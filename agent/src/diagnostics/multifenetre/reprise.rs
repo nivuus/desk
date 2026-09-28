@@ -1,54 +1,54 @@
-//! `MULTIFENETRE_REPRISE` — k duplications DXGI qui tournent, une sortie
-//! virtuelle créée par-dessus, et la question : reprennent-elles ?
+//! `MULTIFENETRE_REPRISE` — k running DXGI duplications, a virtual
+//! output created on top, and the question: do they resume?
 //!
-//! **C'est l'épreuve de l'inférence sur laquelle repose tout le sous-bloc D2.**
-//! Le sous-bloc D1 a relevé que créer une sortie virtuelle fait abandonner le
-//! mutex des duplications déjà ouvertes (`0x887A0026`), et que toutes les
-//! sessions de capture meurent avec lui. Le sous-bloc D2 fait le pari que cet
-//! échec est **récupérable** — que `DXGI_ERROR_ACCESS_LOST` se rattrape en
-//! rouvrant la duplication, comme la documentation Microsoft le dit. Ce banc
-//! est ce qui distingue ce pari d'une croyance : il éprouve la reprise sur CE
-//! matériel, sans navigateur ni signaling, donc sans rien qui puisse masquer la
+//! **This is the test of the inference on which the whole sub-block D2 rests.**
+//! Sub-block D1 noted that creating a virtual output makes the mutex of already
+//! open duplications be abandoned (`0x887A0026`), and that all
+//! capture sessions die with it. Sub-block D2 bets that this
+//! failure is **recoverable** — that `DXGI_ERROR_ACCESS_LOST` is caught up by
+//! reopening the duplication, as Microsoft's documentation says. This bench
+//! is what distinguishes this bet from a belief: it tests recovery on THIS
+//! hardware, without browser or signaling, hence without anything that could mask the
 //! cause.
 //!
-//! **C'est un point d'arrêt** (spec §6.1). Si les duplications ne reprennent
-//! pas, la voie est réfutée et il faut basculer sur la sérialisation (§8) —
-//! avant d'avoir engagé le reste du plan.
+//! **This is a stop point** (spec §6.1). If the duplications do not resume,
+//! the path is refuted and we must switch to serialisation (§8) —
+//! before having committed the rest of the plan.
 //!
-//! Le montage est celui de `paralleles.rs` — k sorties virtuelles, une mire et
-//! une duplication chacune, contrôle d'image en rotation, restauration de la
-//! topologie — **plus une perturbation au milieu**. Il capture par
-//! `DesktopCapture::next_frame`, c'est-à-dire par le chemin de PRODUCTION :
-//! c'est la raison pour laquelle la reprise a été logée là et non dans
-//! `WindowsSource`. Contourner ce chemin viderait la mesure de son objet.
+//! The set-up is that of `paralleles.rs` — k virtual outputs, one test pattern and
+//! one duplication each, rotating image check, restoration of the
+//! topology — **plus a disruption in the middle**. It captures through
+//! `DesktopCapture::next_frame`, that is through the PRODUCTION path:
+//! that is the reason why recovery was placed there and not in
+//! `WindowsSource`. Bypassing this path would empty the measurement of its purpose.
 //!
-//! # Ce que ce banc ne dit pas
+//! # What this bench does not say
 //!
-//! - **Une exécution par rang ne donne aucun taux.** Le sous-bloc D1 a
-//!   reproduit son défaut trois fois sur trois ; une reprise qui marche une
-//!   fois ne prouve pas qu'elle marche toujours.
-//! - **Les mires ne sont pas des applications** : D3D11 plein cadre, sans
-//!   occlusion ni interaction.
-//! - **La justesse est ÉCHANTILLONNÉE** — une voie contrôlée par tour.
-//! - **La DESTRUCTION d'une sortie n'est pas exercée ici**, pas plus qu'elle
-//!   ne l'a été en D1.
+//! - **One run per rank gives no rate.** Sub-block D1
+//!   reproduced its defect three times out of three; a recovery that works once
+//!   does not prove that it always works.
+//! - **The test patterns are not applications**: full-frame D3D11, without
+//!   occlusion or interaction.
+//! - **Correctness is SAMPLED** — one path checked per round.
+//! - **The DESTRUCTION of an output is not exercised here**, any more than it
+//!   was in D1.
 //!
-//! # Piège : un plantage ici laisse jusqu'à NEUF sorties orphelines
+//! # Trap: a crash here leaves up to NINE orphaned outputs
 //!
-//! Ce banc crée `k` sorties, puis **une de plus**, sur un vivier qui n'en
-//! compte que **10** (plafond mesuré, `montee.rs`). La garde
-//! `moniteurs_virtuels::Sorties` les détruit à la sortie de portée, y compris
-//! pendant une panique — mais **pas sur un plantage du processus**. Rattrapage :
-//! `MULTIFENETRE_VDD_PURGE=1`. Contrôler l'état AVANT de conclure d'un refus de
-//! création, et depuis un processus neuf (`MULTIFENETRE_DXGI=1`).
+//! This bench creates `k` outputs, then **one more**, from a pool that only
+//! counts **10** (measured ceiling, `montee.rs`). The
+//! `moniteurs_virtuels::Sorties` guard destroys them when going out of scope, including
+//! during a panic — but **not on a crash of the process**. Recovery:
+//! `MULTIFENETRE_VDD_PURGE=1`. Check the state BEFORE concluding from a creation
+//! refusal, and from a fresh process (`MULTIFENETRE_DXGI=1`).
 //!
-//! # Découpage
+//! # Split
 //!
-//! Ce fichier est *le pilote des sorties* : création, désignation, contrôle
-//! d'état, restauration — comme `paralleles.rs` l'est du sien, et pour la même
-//! raison (plafond de 500 lignes). *Les deux passes et la perturbation* vivent
-//! dans `reprise/passes.rs` ; *la sonde post-mortem*, qui n'est pas une mesure
-//! mais un diagnostic sur la mesure, dans `reprise/post_mortem.rs`.
+//! This file is *the output driver*: creation, designation, state
+//! check, restoration — as `paralleles.rs` is of its own, and for the same
+//! reason (500-line ceiling). *The two passes and the disruption* live
+//! in `reprise/passes.rs`; *the post-mortem probe*, which is not a measurement
+//! but a diagnostic on the measurement, in `reprise/post_mortem.rs`.
 
 mod passes;
 mod post_mortem;
@@ -82,21 +82,21 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
 
-    // Portée explicite de la garde : les sorties — les k du montage ET la
-    // perturbatrice — doivent être détruites AVANT le relevé final, sans quoi
-    // celui-ci décrirait un état transitoire.
+    // Explicit scope of the guard: the outputs — the k of the set-up AND the
+    // disruptor — must be destroyed BEFORE the final survey, otherwise
+    // the latter would describe a transient state.
     let issue = {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
-        // CLÔTURE et non bloc nu : les `?` de la préparation doivent sortir
-        // d'ICI, pas de `mesurer`.
+        // A CLOSURE and not a bare block: the `?`s of the preparation must exit
+        // from HERE, not from `mesurer`.
         //
-        // Ils en sortaient, et sautaient du même coup le rattrapage de purge
-        // placé plus bas — c'est-à-dire précisément sur les chemins où la
-        // création ou la topologie a dérapé, **ceux où un retrait a le plus de
-        // chances d'avoir été refusé dans le `Drop` de la garde**. Sur un
-        // vivier de dix sorties, une place ainsi perdue l'est jusqu'au
-        // redémarrage de la machine. La garde RAII, elle, était et reste
-        // correcte : elle court sur tous les chemins, y compris la panique.
+        // They used to exit from it, and thereby skipped the purge recovery
+        // placed further down — that is, precisely on the paths where the
+        // creation or the topology went astray, **those where a removal is most
+        // likely to have been refused in the guard's `Drop`**. On a
+        // pool of ten outputs, a slot lost that way stays lost until the
+        // machine reboots. The RAII guard, for its part, was and remains
+        // correct: it runs on all paths, including panic.
         (|| -> Result<()> {
             for rang in 1..=nombre {
                 let id = sorties
@@ -108,8 +108,8 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 
             let apres = relever_topologie("après création")?;
             let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
-            // Construite juste après `attendre_en_pinguant`, donc juste après le
-            // dernier ping connu (voir `compteurs::Garde::nouvelle`).
+            // Built right after `attendre_en_pinguant`, hence right after the
+            // last known ping (see `compteurs::Garde::nouvelle`).
             let mut garde = compteurs::Garde::nouvelle(&pilote);
             garde.battre()?;
             let issue = passes::eprouver(&mut garde, &mut sorties, &virtuelles, &connues);
@@ -117,33 +117,33 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
                 intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
                 "chien de garde : plus grand écart entre deux battements sur toute la mesure"
             );
-            // Appel INCONDITIONNEL, sur l'issue d'`eprouver` quelle qu'elle
-            // soit. Il redouble le contrôle qu'`eprouver` fait déjà après sa
-            // perturbation, et le porte aux chemins où `eprouver` a rendu une
-            // erreur avant d'y arriver.
+            // UNCONDITIONAL call, on the outcome of `eprouver` whatever it
+            // is. It duplicates the check `eprouver` already makes after its
+            // disruption, and extends it to the paths where `eprouver` returned an
+            // error before getting there.
             //
-            // ⚠️ Ce que cela implique à lire : si l'épreuve a échoué AVANT que la
-            // perturbatrice ne soit créée, la mise en garde « aucune sortie
-            // tierce » de `constater_tierces` porte sur un IOCTL qui n'a jamais
-            // été émis. Elle est libellée au moment « après perturbation » et ne
-            // s'applique donc pas au moment « bilan » — mais un lecteur pressé
-            // pourrait l'y lire, et c'est ce paragraphe qui l'en empêche.
+            // ⚠️ What this implies for reading: if the test failed BEFORE the
+            // disruptor was created, the "no third-party
+            // output" warning of `constater_tierces` bears on an IOCTL that was never
+            // issued. It is labelled at the "après perturbation" moment and
+            // therefore does not apply to the "bilan" moment — but a hurried reader
+            // could read it there, and it is this paragraph that prevents it.
             constater_places("bilan", &virtuelles, &connues);
             issue
         })()
     };
 
-    // Second essai des retraits que la garde n'a pas obtenus : dernière chance
-    // de CE processus, au-delà seule la purge inter-processus les atteindra.
-    // Court désormais sur les chemins d'ERREUR aussi (voir la clôture ci-dessus).
+    // Second attempt at the removals the guard did not obtain: last chance
+    // of THIS process, beyond that only the inter-process purge will reach them.
+    // Now also runs on ERROR paths (see the closure above).
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
         tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
     }
 
-    // Une sortie virtuelle survit au processus. Ce contrôle reste celui du
-    // processus mesureur, donc juge et partie — le contrôle qui vaut est un
-    // relevé `MULTIFENETRE_DXGI=1` depuis un processus neuf, après coup.
+    // A virtual output outlives the process. This check remains that of the
+    // measuring process, hence judge and party — the check that counts is a
+    // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);
@@ -160,31 +160,31 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     issue
 }
 
-/// Dit si les k sorties virtuelles sont encore là, encore attachées, **encore à
-/// la même place**, et si une sortie TIERCE est apparue dans la topologie.
+/// Tells whether the k virtual outputs are still there, still attached, **still at
+/// the same place**, and whether a THIRD-PARTY output appeared in the topology.
 ///
-/// Les deux premiers contrôles sont ceux de `paralleles::constater_survie`. Les
-/// deux autres sont propres à ce banc :
+/// The first two checks are those of `paralleles::constater_survie`. The
+/// two others are specific to this bench:
 ///
-/// - **la place.** Les mires ont été posées une fois pour toutes aux
-///   coordonnées relevées à la création. Si l'arrivée d'une sortie de plus fait
-///   glisser les autres dans le bureau virtuel, les mires se retrouvent hors de
-///   leur sortie et les captures deviennent noires — et l'on imputerait à un
-///   défaut de reprise ce qui n'est qu'un déménagement.
-/// - **les tierces**, c'est-à-dire tout ce qui n'est ni connu d'avance
-///   (`connues`) ni créé par le montage (`virtuelles`) : au moment « après
-///   perturbation », c'est la **sortie perturbatrice**, et c'est la seule preuve
-///   que la perturbation a réellement eu lieu. `Sorties::creer` rend `Ok(id)`
-///   dès que le pilote accepte l'IOCTL ; rien ne dit alors que Windows a
-///   reconfiguré quoi que ce soit. Une perturbatrice créée mais non attachée ne
-///   perturberait rien, et « zéro réouverture » se lirait à tort comme un
-///   résultat de la reprise. (Une tierce peut aussi être une addition d'Apollo,
-///   qui pilote la configuration d'affichage de cette VM : d'où le relevé
-///   nominatif plutôt qu'un compte.)
+/// - **the place.** The test patterns were placed once and for all at the
+///   coordinates surveyed at creation. If the arrival of one more output makes
+///   the others slide in the virtual desktop, the test patterns end up outside
+///   their output and the captures turn black — and we would blame a
+///   recovery defect for what is only a move.
+/// - **the third parties**, that is everything that is neither known in advance
+///   (`connues`) nor created by the set-up (`virtuelles`): at the "après
+///   perturbation" moment, it is the **disrupting output**, and it is the only proof
+///   that the disruption really took place. `Sorties::creer` returns `Ok(id)`
+///   as soon as the driver accepts the IOCTL; nothing then says that Windows
+///   reconfigured anything at all. A disruptor created but not attached would
+///   disrupt nothing, and "zero reopenings" would wrongly read as a
+///   result of recovery. (A third party can also be an addition by Apollo,
+///   which drives the display configuration of this VM: hence the survey
+///   by name rather than a count.)
 ///
-/// N'échoue pas : la mesure est faite, la nier maintenant ne la rendrait pas
-/// meilleure. Ce relevé sert à INTERPRÉTER les verdicts, pas à les remplacer.
-/// Privée : `passes.rs` y accède comme module enfant.
+/// Does not fail: the measurement is done, denying it now would not make it
+/// better. This survey serves to INTERPRET the verdicts, not to replace them.
+/// Private: `passes.rs` accesses it as a child module.
 fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<String>) {
     let vivantes = match crate::capture::enumerer_sorties() {
         Ok(sorties) => sorties,
@@ -254,8 +254,8 @@ fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<S
     }
 }
 
-/// La preuve que la perturbation a eu lieu : une sortie ni connue d'avance, ni
-/// créée par le montage, donc la perturbatrice.
+/// The proof that the disruption took place: an output neither known in advance, nor
+/// created by the set-up, hence the disruptor.
 fn constater_tierces(
     moment: &str,
     virtuelles: &[SortieDxgi],

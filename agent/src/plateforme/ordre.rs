@@ -1,50 +1,50 @@
-//! Ce que la plateforme demande à la boucle d'applications.
+//! What the platform asks of the applications loop.
 //!
-//! 🔴 EXTRAIT DE `agent/src/plateforme.rs` VERBATIM (sous-bloc G2), PARCE QUE
-//! LE PLAFOND DE 500 LIGNES A ÉTÉ FRANCHI — 504 — ET QUE LA DOCTRINE DU DÉPÔT
-//! EST DE RATTRAPER PAR UNE EXTRACTION, JAMAIS PAR UNE COMPRESSION.
+//! 🔴 EXTRACTED FROM `agent/src/plateforme.rs` VERBATIM (sub-block G2), BECAUSE
+//! THE 500-LINE CEILING WAS CROSSED — 504 — AND BECAUSE THE REPOSITORY'S DOCTRINE
+//! IS TO CATCH UP THROUGH AN EXTRACTION, NEVER THROUGH A COMPRESSION.
 //!
-//! ⚠️ **L'EXTRACTION AURAIT DÛ PRÉCÉDER L'ADDITION.** Le plan de G2 annonçait
-//! ce fichier à 453 lignes pour « +1 branche descendante » ; la branche et sa
-//! documentation l'ont porté à 504. **Le franchissement est DÉCLARÉ**, comme
-//! ce dépôt l'exige de ses trois franchissements de D10 et de ses deux de D9.
+//! ⚠️ **THE EXTRACTION SHOULD HAVE PRECEDED THE ADDITION.** G2's plan announced
+//! this file at 453 lines for "+1 downstream branch"; the branch and its
+//! documentation brought it to 504. **The crossing is DECLARED**, as
+//! this repository requires of its three crossings in D10 and its two in D9.
 //!
-//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
-//! les modules extraits d'un parent `#[cfg(windows)]` : ce parent-ci n'a aucun
-//! `cfg`, et c'est le même mécanisme employé pour l'autre raison — la règle des
-//! 500 lignes.
+//! ⚠️ This is NOT the "Child module convention" of `CLAUDE.md`, which targets
+//! modules extracted from a `#[cfg(windows)]` parent: this parent has no
+//! `cfg`, and it is the same mechanism used for the other reason — the
+//! 500-line rule.
 
-/// Ce que la plateforme demande à la boucle d'applications.
+/// What the platform asks of the applications loop.
 ///
-/// ❌ **« LES DEUX MESSAGES DESCENDANTS » EST DEVENU FAUX AU SOUS-BLOC G3 : IL
-/// Y EN A TROIS.** `DepuisLaPlateforme::Installer` s'y ajoute, et il ne va PAS
-/// au même consommateur — d'où une SECONDE file, `Canal::installations()`.
+/// ❌ **"THE TWO DOWNSTREAM MESSAGES" BECAME FALSE IN SUB-BLOCK G3: THERE
+/// ARE THREE.** `DepuisLaPlateforme::Installer` is added, and it does NOT go
+/// to the same consumer — hence a SECOND queue, `Canal::installations()`.
 ///
-/// ⚠️ **L'ARGUMENT CI-DESSOUS N'EST PAS RÉFUTÉ POUR AUTANT, et c'est ce qui
-/// mérite d'être lu.** Le risque qu'il nomme — « un ajout futur en oublie une »
-/// — est réel, et il vaut d'un consommateur unique. Il n'y en a plus un : la
-/// découverte draine `Ordre` sur son fil COM, l'installation draine sa file sur
-/// `tokio`. Poser `Installer` ici ferait TÉLÉCHARGER PLUSIEURS CENTAINES DE
-/// MÉGAOCTETS AU FIL COM, qui cesserait de réconcilier — c'est-à-dire que le
-/// catalogue se figerait pendant exactement l'installation dont on attend qu'il
-/// rende compte. Le risque de l'oubli est traité autrement : la file d'en face
-/// n'a **qu'un seul type de message**, donc rien à oublier, et `Ordre` reste
-/// exhaustif pour SON consommateur — exactement comme ces lignes le demandent.
-/// Voir `agent/src/plateforme/installation.rs`.
+/// ⚠️ **THE ARGUMENT BELOW IS NOT REFUTED FOR ALL THAT, and that is what
+/// deserves to be read.** The risk it names — "a future addition forgets one"
+/// — is real, and it holds for a single consumer. There is no longer one:
+/// discovery drains `Ordre` on its COM thread, installation drains its queue on
+/// `tokio`. Putting `Installer` here would make the COM THREAD DOWNLOAD SEVERAL HUNDRED
+/// MEGABYTES, and it would stop reconciling — that is, the
+/// catalogue would freeze during exactly the installation it is expected
+/// to report on. The risk of forgetting is handled otherwise: the queue opposite
+/// has **only one message type**, hence nothing to forget, and `Ordre` stays
+/// exhaustive for ITS consumer — exactly as these lines ask.
+/// See `agent/src/plateforme/installation.rs`.
 ///
-/// 🔴 UN ENUM PLUTÔT QU'UNE SECONDE FILE, ET C'EST UNE DÉCISION. Les deux
-/// messages descendants vont au MÊME consommateur — la boucle d'apps, sur son
-/// fil COM dédié —, et deux files l'obligeraient à interroger les deux à
-/// chaque tour d'attente, avec le risque qu'un ajout futur en oublie une. Un
-/// enum rend l'exhaustivité vérifiable par le compilateur là où deux files la
-/// laisseraient à la vigilance.
+/// 🔴 AN ENUM RATHER THAN A SECOND QUEUE, AND IT IS A DECISION. The two
+/// downstream messages go to the SAME consumer — the apps loop, on its
+/// dedicated COM thread —, and two queues would force it to query both at
+/// each wait round, with the risk that a future addition forgets one. An
+/// enum makes exhaustiveness checkable by the compiler where two queues would
+/// leave it to vigilance.
 ///
-/// ⚠️ IL NE TRANSPORTE AUCUN OCTET D'IMAGE. `IconesManquantes` ne porte qu'un
-/// inventaire d'empreintes ; les images montent par `PUT /icone/:sha256`.
+/// ⚠️ IT CARRIES NO IMAGE BYTE. `IconesManquantes` only carries an
+/// inventory of fingerprints; the images go up through `PUT /icone/:sha256`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ordre {
-    /// Lancer une application, par sa clé. `demande` apparie la réponse.
+    /// Launch an application, by its key. `demande` pairs the response.
     Lancer { demande: String, cle: String },
-    /// Téléverser les icônes que la plateforme n'a pas.
+    /// Upload the icons the platform does not have.
     IconesManquantes { empreintes: Vec<String> },
 }

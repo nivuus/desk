@@ -1,34 +1,34 @@
-//! Les TROIS rappels d'énumération de répertoire, extraits de [`super`].
+//! The THREE directory enumeration callbacks, extracted from [`super`].
 //!
-//! # Pourquoi ce fichier s'appelle `listage` et non `enumeration`
+//! # Why this file is called `listage` and not `enumeration`
 //!
-//! La spec §9 écrit : « s'il approche 500, **les rappels d'énumération partent
-//! dans `projfs/enumeration.rs`**, jamais par compression ». **Deux choses ont
-//! changé depuis** :
+//! Spec §9 writes: "if it approaches 500, **the enumeration callbacks move
+//! to `projfs/enumeration.rs`**, never by compression". **Two things have
+//! changed since**:
 //!
-//! 1. les rappels ne vivent plus dans `projfs.rs` mais dans
-//!    `projfs/rappels.rs` — extrait par la tâche 13 de F1 —, si bien que le
-//!    point de chute est `projfs/rappels/…` ;
-//! 2. **`agent/src/pont/enumeration.rs` EXISTE DÉJÀ**, et il est **PUR** (la
-//!    session d'énumération, 140 lignes). Un `projfs/rappels/enumeration.rs`
-//!    créerait deux modules homonymes dont l'un est pur et l'autre
-//!    `#[cfg(windows)]` — le genre d'homonymie qu'on ne remarque qu'en
-//!    relisant un renvoi, six mois plus tard.
+//! 1. the callbacks no longer live in `projfs.rs` but in
+//!    `projfs/rappels.rs` — extracted by F1's task 13 —, so that the
+//!    landing point is `projfs/rappels/…`;
+//! 2. **`agent/src/pont/enumeration.rs` ALREADY EXISTS**, and it is **PURE** (the
+//!    enumeration session, 140 lines). A `projfs/rappels/enumeration.rs`
+//!    would create two homonymous modules, one pure and the other
+//!    `#[cfg(windows)]` — the kind of homonymy one only notices when
+//!    rereading a cross-reference, six months later.
 //!
-//! D'où **`listage`**. ⚠️ *Le sous-bloc F3 nomme le même fichier dans son plan,
-//! sous ce même nom, précisément pour qu'il n'existe jamais un troisième
-//! découpage de `rappels.rs`.*
+//! Hence **`listage`**. ⚠️ *Sub-block F3 names the same file in its plan,
+//! under this same name, precisely so that there is never a third
+//! split of `rappels.rs`.*
 //!
-//! # Ce que cette extraction N'EST PAS
+//! # What this extraction is NOT
 //!
-//! **Elle n'ajoute aucun comportement.** La transposition est VERBATIM, et
-//! elle a été faite en découpant le fichier par NUMÉROS DE LIGNE plutôt qu'en
-//! recopiant à la main. Elle vient **AVANT** l'addition de F2 et non après :
-//! `rappels.rs` était à **488** lignes, marge **12**, et le rappel de
-//! notification est exactement ce que F2 fait grossir. C'est le geste que D9 a
-//! inventé (`capteur/serveur/instances.rs`, marge rendue de 10 à 65) et que
-//! D10 a joué trois fois — **jamais une compression**, que `CLAUDE.md`
-//! interdit nommément.
+//! **It adds no behaviour.** The transposition is VERBATIM, and
+//! it was done by cutting the file by LINE NUMBERS rather than by
+//! copying by hand. It comes **BEFORE** F2's addition and not after:
+//! `rappels.rs` was at **488** lines, margin **12**, and the notification
+//! callback is exactly what F2 makes grow. It is the gesture D9
+//! invented (`capteur/serveur/instances.rs`, margin returned from 10 to 65) and that
+//! D10 played three times — **never a compression**, which `CLAUDE.md`
+//! forbids by name.
 
 use windows::core::{GUID, HRESULT};
 use windows::Win32::Foundation::{E_UNEXPECTED, S_OK};
@@ -44,18 +44,18 @@ use crate::pont::table::{Attendue, DELAI_LISTER};
 use proto::fichiers::entetes;
 
 // ────────────────────────────────────────────────────────────────────────────
-// 🔵 LES TROIS `const _` PARTENT AVEC LEURS FONCTIONS, et ce n'est pas un
-// rangement : c'est le SEUL garde d'ABI de ce dépôt (voir l'en-tête de
-// [`super`]). Le laisser derrière en ferait une déclaration qui pointe
-// ailleurs. D9 a posé la règle en extrayant `capteur/serveur/instances.rs` —
-// *le commentaire part avec sa constante*, et la revue a comparé mot pour mot.
+// 🔵 THE THREE `const _`s LEAVE WITH THEIR FUNCTIONS, and it is not
+// tidying: it is this repository's ONLY ABI guard (see the header of
+// [`super`]). Leaving it behind would make it a declaration pointing
+// elsewhere. D9 set the rule when extracting `capteur/serveur/instances.rs` —
+// *the comment leaves with its constant*, and the review compared word for word.
 // ────────────────────────────────────────────────────────────────────────────
 const _: PRJ_START_DIRECTORY_ENUMERATION_CB = Some(debut_enumeration);
 const _: PRJ_END_DIRECTORY_ENUMERATION_CB = Some(fin_enumeration);
 const _: PRJ_GET_DIRECTORY_ENUMERATION_CB = Some(suite_enumeration);
 
-/// Ouvre une session d'énumération. **Synchrone, `S_OK`** — il n'y a rien à
-/// demander au navigateur pour ouvrir une session (spec §4.3).
+/// Opens an enumeration session. **Synchronous, `S_OK`** — there is nothing to
+/// ask the browser to open a session (spec §4.3).
 pub(super) unsafe extern "system" fn debut_enumeration(
     donnees: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
@@ -66,11 +66,11 @@ pub(super) unsafe extern "system" fn debut_enumeration(
         }) else {
             return E_UNEXPECTED;
         };
-        // ⚠️ La session est indexée par le GUID d'ÉNUMÉRATION, jamais par le
-        // chemin : deux applications qui listent le même répertoire en même
-        // temps ouvrent deux sessions distinctes, et indexer par chemin ferait
-        // que la seconde écraserait la première — l'une des deux recevrait un
-        // répertoire vide (spec §7.2).
+        // ⚠️ The session is indexed by the ENUMERATION GUID, never by the
+        // path: two applications listing the same directory at the same
+        // time open two distinct sessions, and indexing by path would make
+        // the second overwrite the first — one of the two would receive an
+        // empty directory (spec §7.2).
         etat.sessions
             .lock()
             .expect("verrou des sessions")
@@ -80,7 +80,7 @@ pub(super) unsafe extern "system" fn debut_enumeration(
     })
 }
 
-/// Ferme une session d'énumération. **Synchrone, `S_OK`.**
+/// Closes an enumeration session. **Synchronous, `S_OK`.**
 pub(super) unsafe extern "system" fn fin_enumeration(
     donnees: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
@@ -91,9 +91,9 @@ pub(super) unsafe extern "system" fn fin_enumeration(
         }) else {
             return E_UNEXPECTED;
         };
-        // La session meurt ici : ses entrées ne survivent PAS à l'énumération.
-        // C'est ce qui distingue une session d'un cache d'énumération, qui n'est
-        // PAS livré en F1 (voir `pont::enumeration`).
+        // The session dies here: its entries do NOT outlive the enumeration.
+        // It is what distinguishes a session from an enumeration cache, which is
+        // NOT delivered in F1 (see `pont::enumeration`).
         etat.sessions
             .lock()
             .expect("verrou des sessions")
@@ -102,10 +102,10 @@ pub(super) unsafe extern "system" fn fin_enumeration(
     })
 }
 
-/// Rend les entrées d'un répertoire.
+/// Returns the entries of a directory.
 ///
-/// ❌ *Annonçait « `S_OK`, tampon vide, racine vide » : l'état de la tâche 13.
-/// La tâche 14 de la MÊME branche l'a réfuté — `Lister` part vraiment.*
+/// ❌ *Announced "`S_OK`, empty buffer, empty root": task 13's state.
+/// Task 14 of the SAME branch refuted it — `Lister` really goes out.*
 pub(super) unsafe extern "system" fn suite_enumeration(
     donnees: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
@@ -124,13 +124,13 @@ pub(super) unsafe extern "system" fn suite_enumeration(
         let motif = if expression.is_null() {
             None
         } else {
-            // SÛRETÉ : ProjFS garantit un `PCWSTR` terminé par un nul.
+            // SAFETY: ProjFS guarantees a null-terminated `PCWSTR`.
             unsafe { expression.to_string() }.ok()
         };
-        // ⚠️ `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (`mod.rs:177`, valeur `1i32`)
-        // **doit être honoré** : il redémarre l'énumération en cours. L'ignorer
-        // ferait rendre un répertoire vide à toute application qui redemande
-        // depuis le début, silencieusement.
+        // ⚠️ `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (`mod.rs:177`, value `1i32`)
+        // **must be honoured**: it restarts the enumeration in progress. Ignoring it
+        // would return an empty directory to any application that asks again
+        // from the start, silently.
         let redemarrer = unsafe { (*donnees).Flags }.0 & 1 != 0;
 
         let mut sessions = match etat.sessions.lock() {
@@ -142,35 +142,35 @@ pub(super) unsafe extern "system" fn suite_enumeration(
             session.redemarrer();
         }
         if session.chargee() {
-            // ⚠️ **Chemin SYNCHRONE, et il est le cas nominal.** ProjFS rappelle
-            // `GetDirectoryEnumeration` jusqu'à épuisement ; seul le PREMIER
-            // appel d'une session consulte le navigateur. Repasser par la table
-            // à chaque tour ferait un aller-retour réseau par tampon plein,
-            // pour une liste qu'on a déjà.
+            // ⚠️ **SYNCHRONOUS path, and it is the nominal case.** ProjFS calls
+            // `GetDirectoryEnumeration` again until exhaustion; only the FIRST
+            // call of a session consults the browser. Going through the table again
+            // at each turn would make a network round trip per full buffer,
+            // for a list we already have.
             return crate::pont::service::remplir_session(etat, session, tampon);
         }
         drop(sessions);
 
         // ────────────────────────────────────────────────────────────────────
-        // 🔴 **F5 — LE CACHE D'ÉNUMÉRATION SE CONSULTE ICI, ET NULLE PART
-        // AILLEURS.**
+        // 🔴 **F5 — THE ENUMERATION CACHE IS CONSULTED HERE, AND NOWHERE
+        // ELSE.**
         //
-        // Le point est choisi : **après** le chemin synchrone de la session
-        // chargée (qui n'a rien à demander), **avant** l'inscription d'une
-        // commande dans la table. Sur un succès, la commande n'est **jamais
-        // inscrite**, donc **jamais complétée** — et c'est ce détail qui
-        // préserve l'invariant que la spec §7.1 énonce : *« Un seul fil du pont
-        // complète les commandes, jamais un fil de rappel. »*
+        // The point is chosen: **after** the synchronous path of the loaded
+        // session (which has nothing to request), **before** registering a
+        // command in the table. On a hit, the command is **never
+        // registered**, hence **never completed** — and it is this detail that
+        // preserves the invariant spec §7.1 states: *"A single bridge thread
+        // completes commands, never a callback thread."*
         //
-        // **Remplir un tampon et rendre `S_OK` depuis ce fil-ci n'est PAS
-        // compléter une commande** : c'est ne jamais en créer une. Appeler
-        // `PrjCompleteCommand` d'ici, en revanche, casserait l'invariant — et
-        // c'est le geste qu'il ne faut pas faire.
+        // **Filling a buffer and returning `S_OK` from this thread is NOT
+        // completing a command**: it is never creating one. Calling
+        // `PrjCompleteCommand` from here, on the other hand, would break the invariant — and
+        // it is the gesture not to make.
         //
-        // ⚠️ **Les entrées mémorisées sont BRUTES**, et `preparer` court quand
-        // même : le filtrage par `expression` et le tri dépendent de la
-        // REQUÊTE, si bien qu'un `dir *.txt` empoisonnerait le cache pour le
-        // `dir` suivant si l'on mémorisait le résultat préparé.
+        // ⚠️ **The memorised entries are RAW**, and `preparer` runs
+        // anyway: filtering by `expression` and sorting depend on the
+        // REQUEST, so that a `dir *.txt` would poison the cache for the
+        // next `dir` if the prepared result were memorised.
         // ────────────────────────────────────────────────────────────────────
         if etat.cache_arme {
             let memorisees = etat.cache.lock().ok().and_then(|mut c| {

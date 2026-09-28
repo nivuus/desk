@@ -1,97 +1,97 @@
-//! La couleur d'accent d'une fenêtre — sous-bloc **A1**.
+//! The accent colour of a window — sub-block **A1**.
 //!
-//! **PUR, aucun `cfg`** : tout ce fichier compile et se teste sur l'hôte Linux.
-//! La moitié Windows — lire l'icône d'un `hwnd` — vit dans `accent/win32.rs`,
-//! qui ne prend **aucune décision** : il rend des octets, c'est ici qu'on
-//! décide.
+//! **PURE, no `cfg`**: this whole file compiles and is tested on the Linux host.
+//! The Windows half — reading the icon of an `hwnd` — lives in `accent/win32.rs`,
+//! which makes **no decision**: it returns bytes, and it is here that the
+//! decision is made.
 //!
-//! **Convention de module** (`CLAUDE.md`, § « Convention de module enfant ») :
-//! `accent` ne préfixe aucun module de premier niveau existant, il vit donc à
-//! la **racine nue** — `mod accent;` ordinaire dans `main.rs`. Son enfant
-//! `win32` se déclare par un `mod` ordinaire **à l'intérieur** de lui : il n'a
-//! jamais besoin de sortir de l'arbre de son parent, donc la règle du `#[path]`
-//! est **hors de portée**. C'est ce que `presse_papier` fait déjà.
+//! **Module convention** (`CLAUDE.md`, § "Child module convention"):
+//! `accent` prefixes no existing top-level module, so it lives at the
+//! **bare root** — an ordinary `mod accent;` in `main.rs`. Its child
+//! `win32` is declared by an ordinary `mod` **inside** it: it never
+//! needs to leave its parent's tree, so the `#[path]` rule
+//! is **out of scope**. This is what `presse_papier` already does.
 //!
-//! ⚠️ **AUCUNE des cinq constantes de `dominante` n'est CALIBRÉE**, non plus que
-//! `PERIODE_ACCENT`. Elles rejoignent la liste que ce dépôt tient depuis
-//! `BPP_MIN` : aucun jugement visuel n'a été porté sur aucune, et le sous-bloc
-//! A1 n'en porte pas davantage.
+//! ⚠️ **NONE of the five constants of `dominante` is CALIBRATED**, nor is
+//! `PERIODE_ACCENT`. They join the list this repository has kept since
+//! `BPP_MIN`: no visual judgement has been made on any of them, and sub-block
+//! A1 makes none either.
 
 use std::sync::OnceLock;
 use std::time::Duration;
 
-/// La lecture Win32 de l'icône — **aucune décision n'y vit**.
+/// The Win32 reading of the icon — **no decision lives there**.
 #[cfg(windows)]
 pub mod win32;
 
 #[cfg(test)]
 mod tests;
 
-/// Le pas de relecture de l'icône, sur le **fil de fenêtre** du capteur.
+/// The icon re-read step, on the sensor's **window thread**.
 ///
-/// ⚠️ **Ce n'est PAS le tour de roue.** La spec D9 prescrivait de relire
-/// l'icône sur le même tour que le presse-papier ; **le tour de roue n'a pas le
-/// `hwnd`** (`capteur/sommeil/registre.rs` : aucun de ses quinze champs ne le
-/// porte, et `inscrire(session, pid)` ne le prend pas). Le presse-papier y vit
-/// parce qu'il est **global à la window station** — une ressource, un sondeur ;
-/// l'accent est **par fenêtre**, et c'est justement la propriété que D9
-/// revendique. Voir D-A1-1 du plan.
+/// ⚠️ **This is NOT the wheel tick.** Spec D9 prescribed re-reading
+/// the icon on the same tick as the clipboard; **the wheel tick does not have the
+/// `hwnd`** (`capteur/sommeil/registre.rs`: none of its fifteen fields
+/// carries it, and `inscrire(session, pid)` does not take it). The clipboard lives there
+/// because it is **global to the window station** — one resource, one poller;
+/// the accent is **per window**, and that is precisely the property D9
+/// claims. See D-A1-1 of the plan.
 ///
-/// ⚠️ **NON CALIBRÉE.**
+/// ⚠️ **NOT CALIBRATED.**
 pub const PERIODE_ACCENT: Duration = Duration::from_secs(5);
 
-/// En deçà de cette opacité, un pixel ne compte pas.
+/// Below this opacity, a pixel does not count.
 ///
-/// Une icône est **majoritairement transparente** : compter ses pixels vides
-/// noierait toute teinte. ⚠️ **NON CALIBRÉE.**
+/// An icon is **mostly transparent**: counting its empty pixels
+/// would drown any hue. ⚠️ **NOT CALIBRATED.**
 const ALPHA_MIN: u8 = 128;
 
-/// En deçà de cet écart `max − min` par pixel, la couleur est **achromatique**
-/// et ne compte pas : c'est ce qui empêche un aplat gris de gagner.
-/// ⚠️ **NON CALIBRÉE.**
+/// Below this per-pixel `max − min` spread, the colour is **achromatic**
+/// and does not count: this is what keeps a flat grey from winning.
+/// ⚠️ **NOT CALIBRATED.**
 const SATURATION_MIN: u8 = 32;
 
-/// Hors de cette bande de luminance, un pixel ne compte pas : c'est ce qui
-/// empêche un **contour sombre majoritaire** de l'emporter sur la teinte de
-/// l'icône. ⚠️ **NON CALIBRÉES.**
+/// Outside this luminance band, a pixel does not count: this is what
+/// keeps a **dominant dark outline** from beating the hue of
+/// the icon. ⚠️ **NOT CALIBRATED.**
 const LUMA_MIN: u8 = 32;
 /// Voir [`LUMA_MIN`].
 const LUMA_MAX: u8 = 224;
 
-/// Le pas de quantification, par canal : les pixels retenus sont rangés dans
-/// des seaux de `PAS³`, et c'est le seau le plus peuplé qui décide.
-/// ⚠️ **NON CALIBRÉE.**
+/// The quantisation step, per channel: the retained pixels are sorted into
+/// buckets of `PAS³`, and the most populated bucket decides.
+/// ⚠️ **NOT CALIBRATED.**
 const PAS: u16 = 32;
 
-/// Luminance perçue, en entier, sur les coefficients ITU-R BT.601.
+/// Perceived luminance, as an integer, on the ITU-R BT.601 coefficients.
 fn luma(r: u8, g: u8, b: u8) -> u8 {
     ((r as u32 * 299 + g as u32 * 587 + b as u32 * 114) / 1000) as u8
 }
 
-/// Convertit **BGRA en RGBA sur place**, en ÉCHANGEANT les canaux rouge et
-/// bleu et en ne touchant PAS l'alpha.
+/// Converts **BGRA to RGBA in place**, by SWAPPING the red and
+/// blue channels and NOT touching alpha.
 ///
-/// 🔴 ELLE EXISTE POUR ÊTRE ÉPROUVÉE, ET C'EST TOUT SON OBJET. La conversion
-/// vivait à l'identique dans `accent/win32.rs`, derrière un `#[cfg(windows)]`,
-/// et **n'était couverte par rien** — c'est le legs RA1-6 du sous-projet ①.
-/// Le sous-bloc G5 en avait besoin une SECONDE fois, pour l'icône d'une
-/// application : **en écrire une seconde copie aurait doublé une règle que
-/// personne ne vérifiait**. Elle est donc extraite plutôt que recopiée, et le
-/// site d'origine l'APPELLE.
+/// 🔴 IT EXISTS TO BE TESTED, AND THAT IS ITS WHOLE PURPOSE. The conversion
+/// lived identically in `accent/win32.rs`, behind a `#[cfg(windows)]`,
+/// and **was covered by nothing** — that is legacy RA1-6 of sub-project ①.
+/// Sub-block G5 needed it a SECOND time, for the icon of an
+/// application: **writing a second copy would have duplicated a rule that
+/// nobody checked**. It is therefore extracted rather than copied, and the
+/// original site CALLS it.
 ///
-/// ⚠️ SE TROMPER DE SENS ÉCHANGERAIT LE ROUGE ET LE BLEU — un défaut
-/// **plausible et silencieux**, qui vivrait derrière le `#[cfg(windows)]` où
-/// aucun test d'hôte ne le verrait. C'est précisément pourquoi la règle
-/// descend ici.
+/// ⚠️ GETTING THE DIRECTION WRONG WOULD SWAP RED AND BLUE — a
+/// **plausible and silent** defect, which would live behind the `#[cfg(windows)]` where
+/// no host test would see it. That is precisely why the rule
+/// moves down here.
 ///
-/// ⚠️ L'ALPHA N'EST PAS TOUCHÉ : c'est lui que le filtre `ALPHA_MIN` de
-/// [`dominante`] consomme, et l'échanger avec un canal de couleur rendrait ce
-/// filtre absurde sans qu'aucun test ne le dise.
+/// ⚠️ ALPHA IS NOT TOUCHED: it is what the `ALPHA_MIN` filter of
+/// [`dominante`] consumes, and swapping it with a colour channel would make that
+/// filter absurd without any test saying so.
 ///
-/// Une tranche dont la longueur n'est pas un multiple de 4 voit son reste
-/// **laissé tel quel** — `as_chunks_mut` returns it apart and it is ignored. Ce n'est pas un silence
-/// commode : un tampon mal dimensionné est refusé plus loin par [`dominante`],
-/// qui compare la longueur au produit `largeur × hauteur × 4`.
+/// A slice whose length is not a multiple of 4 has its remainder
+/// **left as is** — `as_chunks_mut` returns it apart and it is ignored. This is not a
+/// convenient silence: a badly sized buffer is refused further on by [`dominante`],
+/// which compares the length with the product `largeur × hauteur × 4`.
 pub fn bgra_en_rgba(tampon: &mut [u8]) {
     let (pixels, _reste) = tampon.as_chunks_mut::<4>();
     for pixel in pixels {
@@ -101,25 +101,25 @@ pub fn bgra_en_rgba(tampon: &mut [u8]) {
 
 /// La couleur dominante d'une tranche **RGBA**, ou `None`.
 ///
-/// ⚠️ **RGBA, et non BGRA.** `GetDIBits` rend du **BGRA** : la conversion
-/// appartient à `accent/win32.rs`, jamais ici. Se tromper de sens échangerait
-/// le rouge et le bleu — un défaut **plausible et silencieux**, qu'aucun test
-/// d'hôte ne verrait puisqu'il vivrait derrière le `#[cfg(windows)]`.
+/// ⚠️ **RGBA, not BGRA.** `GetDIBits` returns **BGRA**: the conversion
+/// belongs to `accent/win32.rs`, never here. Getting the direction wrong would swap
+/// red and blue — a **plausible and silent** defect, which no
+/// host test would see since it would live behind the `#[cfg(windows)]`.
 ///
-/// Les cinq clauses, et chacune est un test :
-/// 1. les pixels **trop transparents** ne comptent pas (`ALPHA_MIN`) ;
-/// 2. les pixels **non chromatiques** ne comptent pas — trop peu saturés
-///    (`SATURATION_MIN`), trop sombres ou trop clairs (`LUMA_MIN`/`LUMA_MAX`) ;
-/// 3. les survivants sont **quantifiés** par seaux de `PAS` ;
-/// 4. on rend la **MOYENNE des pixels du seau le plus peuplé** — jamais le
-///    centre du seau : la moyenne rend une teinte **réelle de l'image**, le
-///    centre rend une teinte **de la grille** ;
-/// 5. `None` si aucun pixel ne survit. **`None` n'est PAS une erreur** : c'est
-///    « pas d'accent », et aucune annonce ne part. Il doit rester
-///    **atteignable**, sans quoi la clause 2 serait un ornement.
+/// The five clauses, and each one is a test:
+/// 1. **too transparent** pixels do not count (`ALPHA_MIN`);
+/// 2. **non-chromatic** pixels do not count — too little saturated
+///    (`SATURATION_MIN`), too dark or too light (`LUMA_MIN`/`LUMA_MAX`);
+/// 3. the survivors are **quantised** into buckets of `PAS`;
+/// 4. the **AVERAGE of the pixels of the most populated bucket** is returned — never the
+///    centre of the bucket: the average gives a hue **really in the image**, the
+///    centre gives a hue **of the grid**;
+/// 5. `None` if no pixel survives. **`None` is NOT an error**: it means
+///    "no accent", and no announcement goes out. It must remain
+///    **reachable**, otherwise clause 2 would be an ornament.
 ///
-/// En cas d'égalité de population, le seau de plus petite clé l'emporte : le
-/// résultat est **déterministe**, ce qu'un test exige.
+/// On equal population, the bucket with the smallest key wins: the
+/// result is **deterministic**, which a test requires.
 pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
     let attendu = (largeur as usize)
         .checked_mul(hauteur as usize)?
@@ -157,8 +157,8 @@ pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
     }
 
     let (_, (sr, sg, sb, n)) = seaux.iter().max_by_key(|(cle, (_, _, _, n))| {
-        // `max_by_key` rend le DERNIER maximum : on inverse la clé pour que le
-        // seau de plus petite clé gagne les égalités.
+        // `max_by_key` returns the LAST maximum: the key is inverted so that the
+        // bucket with the smallest key wins ties.
         (*n, std::cmp::Reverse(**cle))
     })?;
     if *n == 0 {
@@ -167,51 +167,51 @@ pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
     Some([(sr / n) as u8, (sg / n) as u8, (sb / n) as u8])
 }
 
-/// `#rrggbb`, **six chiffres hexadécimaux minuscules**, et rien d'autre.
+/// `#rrggbb`, **six lowercase hexadecimal digits**, and nothing else.
 ///
-/// 🔴 **Le format est une contrainte du DESIGN SYSTEM, pas du protocole**, et un
-/// successeur qui l'ignorerait l'élargirait sans le savoir :
-/// `client/src/design/contraste.ts::luminanceRelative` n'accepte que `#rgb`,
-/// `#rgba`, `#rrggbb` et `#rrggbbaa`, et **LÈVE** sur tout le reste. Le client
-/// se défend (`client/src/accent.ts` refuse toute autre forme **avant** d'appeler
-/// `rapportDeContraste`), mais l'agent n'a aucune raison de lui envoyer une
-/// forme qu'il devra jeter.
+/// 🔴 **The format is a constraint of the DESIGN SYSTEM, not of the protocol**, and a
+/// successor who ignored it would widen it without knowing:
+/// `client/src/design/contraste.ts::luminanceRelative` only accepts `#rgb`,
+/// `#rgba`, `#rrggbb` and `#rrggbbaa`, and **THROWS** on everything else. The client
+/// defends itself (`client/src/accent.ts` refuses any other shape **before** calling
+/// `rapportDeContraste`), but the agent has no reason to send it a
+/// shape it will have to throw away.
 pub fn en_hexa(rgb: [u8; 3]) -> String {
     format!("#{:02x}{:02x}{:02x}", rgb[0], rgb[1], rgb[2])
 }
 
-/// Suit la couleur d'accent d'une fenêtre et n'annonce que les CHANGEMENTS —
-/// **sa première lecture comprise**.
+/// Tracks the accent colour of a window and only announces CHANGES —
+/// **its first reading included**.
 ///
-/// 🔴 **C'est l'INVERSE de `plein_ecran::SuiviBordure`, et c'est délibéré.**
-/// Celui-là est construit à partir de **l'état lu à l'ouverture**, précisément
-/// pour ne **rien** annoncer au premier tour : D8 voulait qu'« une application
-/// née sans bordure n'annonce rien ». L'accent a le besoin **inverse** — le
-/// navigateur doit recevoir la couleur initiale, sinon `--accent-fenetre` n'est
-/// jamais posé de la session.
+/// 🔴 **This is the OPPOSITE of `plein_ecran::SuiviBordure`, and it is deliberate.**
+/// That one is built from **the state read at opening**, precisely
+/// so as to announce **nothing** on the first tick: D8 wanted "an application
+/// born without a border to announce nothing". The accent has the **opposite** need — the
+/// browser must receive the initial colour, otherwise `--accent-fenetre` is
+/// never set during the session.
 ///
-/// ⚠️ **C'est ce qui rend le critère ④ jugeable** : « aucun message tant que
-/// l'icône ne change pas » se compte **APRÈS** la première annonce, et le relevé
-/// doit dire *exactement une* annonce en régime établi. **Un critère qui
-/// exigerait zéro message serait tenu par un mécanisme entièrement mort.**
+/// ⚠️ **This is what makes criterion ④ judgeable**: "no message as long as
+/// the icon does not change" is counted **AFTER** the first announcement, and the survey
+/// must show *exactly one* announcement in steady state. **A criterion that
+/// required zero messages would be met by an entirely dead mechanism.**
 ///
-/// ⚠️ **Et c'est ce qui rend le rejeu à l'inscription inutile** : un
-/// rattachement recrée le fil de fenêtre côté capteur, donc un `SuiviAccent`
-/// neuf, donc une première annonce. Le legs n°3 de P1 — l'état courant à
-/// l'attache, qui a coûté deux tâches à P3 — **n'a pas d'équivalent ici**.
+/// ⚠️ **And this is what makes replaying at registration useless**: a
+/// re-attachment recreates the window thread on the sensor side, hence a new `SuiviAccent`,
+/// hence a first announcement. Legacy no. 3 of P1 — the current state at
+/// attach time, which cost P3 two tasks — **has no equivalent here**.
 #[derive(Default)]
 pub struct SuiviAccent {
     derniere: Option<String>,
 }
 
 impl SuiviAccent {
-    /// Un suivi neuf n'a **rien** vu : sa première lecture réussie s'annonce.
+    /// A new tracker has seen **nothing**: its first successful reading is announced.
     pub fn neuf() -> Self {
         Self::default()
     }
 
-    /// Rend `Some(couleur)` au changement — **première lecture comprise** —,
-    /// `None` sinon.
+    /// Returns `Some(couleur)` on a change — **first reading included** —,
+    /// `None` otherwise.
     pub fn observer(&mut self, couleur: &str) -> Option<String> {
         if self.derniere.as_deref() == Some(couleur) {
             return None;
@@ -221,19 +221,19 @@ impl SuiviAccent {
     }
 }
 
-/// `ACCENT=0` désarme le mécanisme **ENTIER**.
+/// `ACCENT=0` disarms the **WHOLE** mechanism.
 ///
-/// ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention de
+/// ⚠️ **`=0` DISABLES; mere PRESENCE does not enable** — the convention of
 /// `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`,
-/// `PRESSE_PAPIER` et `APPS`, **et pour la même raison** : tester `is_ok()`
-/// armerait le mécanisme en écrivant `ACCENT=0` pour le couper.
+/// `PRESSE_PAPIER` and `APPS`, **and for the same reason**: testing `is_ok()`
+/// would arm the mechanism when `ACCENT=0` is written to turn it off.
 ///
-/// 🔴 **Elle se teste AVANT toute lecture Win32**, comme `Sondeur::tour` le fait
-/// pour le presse-papier : `ACCENT=0` doit empêcher jusqu'au
-/// `SendMessageTimeout`, pas seulement l'envoi.
+/// 🔴 **It is tested BEFORE any Win32 read**, as `Sondeur::tour` does
+/// for the clipboard: `ACCENT=0` must prevent even the
+/// `SendMessageTimeout`, not only the send.
 ///
-/// `OnceLock` et non une lecture par appel : la relecture court à 0,2 Hz, et
-/// l'environnement ne change pas en cours de processus.
+/// `OnceLock` rather than a read per call: the re-read runs at 0.2 Hz, and
+/// the environment does not change during the process.
 pub fn actif() -> bool {
     static ACTIF: OnceLock<bool> = OnceLock::new();
     *ACTIF.get_or_init(|| {

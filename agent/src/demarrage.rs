@@ -1,5 +1,5 @@
-//! Mise en route d'une session : capture, encodeur, source, `Session`
-//! WebRTC et signalisation, assemblés dans cet ordre.
+//! Starting a session: capture, encoder, source, WebRTC `Session`
+//! and signaling, assembled in this order.
 
 #[cfg(windows)]
 use std::time::Duration;
@@ -13,69 +13,69 @@ use crate::Config;
 #[cfg(windows)]
 use crate::{cursor, encode, gamepad, input};
 
-/// Construction de la source vidéo Windows, extraite pour tenir le plafond de
-/// 500 lignes de ce fichier — voir son commentaire de tête.
+/// Construction of the Windows video source, extracted to keep within the
+/// 500-line cap of this file — see its head comment.
 #[cfg(windows)]
 mod source;
 
-/// Construction et branchement de la source audio, extraite pour la même
-/// raison (tâche 7 du sous-bloc D7) — voir son commentaire de tête.
+/// Construction and wiring of the audio source, extracted for the same
+/// reason (task 7 of sub-block D7) — see its head comment.
 #[cfg(windows)]
 mod audio;
 
-/// Le fil de trace du chemin réel (`SOURCE_TRACE=1`), extrait pour tenir le
-/// plafond de 500 lignes de ce fichier — voir son commentaire de tête.
+/// The real-path trace thread (`SOURCE_TRACE=1`), extracted to keep within the
+/// 500-line cap of this file — see its head comment.
 #[cfg(windows)]
 mod trace;
 
-/// Le puits de MESURE du micro (`MICRO_MESURE=1`, chantier E) — voir son
-/// commentaire de tête, qui porte tout le raisonnement. **Sans
-/// `#[cfg(windows)]`** : ce puits est pur, il se teste sur l'hôte.
+/// The mic MEASUREMENT sink (`MICRO_MESURE=1`, work stream E) — see its
+/// head comment, which carries all the reasoning. **Without
+/// `#[cfg(windows)]`**: this sink is pure, it is tested on the host.
 pub(crate) mod micro;
 
 pub(crate) async fn executer(config: Config) -> Result<()> {
-    // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
-    // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
-    // mode fichier de test (pas de fenêtre Windows à piloter) ou hors
+    // Filled in the Windows branch below: the captured window is
+    // also the one receiving the injected inputs (task 12). `None` in
+    // test file mode (no Windows window to drive) or outside
     // Windows.
     //
-    // Conservé sous forme d'adresse brute (`isize`, qui est `Send`) plutôt
-    // que de `HWND` directement : `HWND` enveloppe un `*mut c_void`, non
-    // `Send` en windows-rs 0.62, et ne peut donc pas traverser tel quel la
-    // fermeture `move` de `spawn_blocking` ci-dessous. Un HWND n'est qu'un
-    // identifiant opaque (pas un pointeur réellement déréférencé côté
-    // processus), le faire transiter par son adresse et le reconstruire
-    // dans le fil cible est sûr — même technique que le fil d'agitation de
-    // fenêtre du mode diagnostic `CAPTURE_TEST` (voir
+    // Kept as a raw address (`isize`, which is `Send`) rather
+    // than as an `HWND` directly: `HWND` wraps a `*mut c_void`, not
+    // `Send` in windows-rs 0.62, and therefore cannot cross the
+    // `move` closure of `spawn_blocking` below as is. An HWND is only an
+    // opaque identifier (not a pointer actually dereferenced on the
+    // process side), passing it through its address and rebuilding it
+    // in the target thread is safe — same technique as the window
+    // shaking thread of the `CAPTURE_TEST` diagnostic mode (see
     // `diagnostics/capture.rs`).
     #[cfg(windows)]
     let mut window_hwnd_addr: Option<isize> = None;
 
-    // 🔴 **`Option`, et surtout PAS un défaut `ZoneClientDeLaFenetre`.** Un
-    // défaut serait une variante parfaitement légitime, donc un repli
-    // silencieux : le chemin multi-fenêtres qui aurait oublié de la poser
-    // démapperait sur la fenêtre — exactement le défaut du lot 32M, revenu
-    // par la porte de derrière. `None` ne peut construire aucun injecteur.
+    // 🔴 **`Option`, and above all NOT a `ZoneClientDeLaFenetre` default.** A
+    // default would be a perfectly legitimate variant, hence a silent
+    // fallback: the multi-window path that forgot to set it
+    // would unmap onto the window — exactly the defect of batch 32M, back
+    // through the back door. `None` cannot build any injector.
     #[cfg(windows)]
     let mut reference_entrees: Option<crate::entrees::Reference> = None;
 
-    // Origine d'horloge unique de la session. Les deux médias l'utilisent :
-    // c'est ce qui rend leurs lignes de temps comparables, et donc la synchro
-    // A/V exacte par construction. La créer ici, une seule fois, garantit
-    // qu'aucune durée d'initialisation ne les décale l'une de l'autre.
+    // Single clock origin of the session. Both media use it:
+    // it is what makes their timelines comparable, and hence the A/V sync
+    // exact by construction. Creating it here, only once, guarantees
+    // that no initialisation duration shifts one against the other.
     let clock_origin = std::time::Instant::now();
 
-    // Plafond de débit vidéo, en bits par seconde. Lu depuis `BITRATE` dans
-    // la branche Windows ci-dessous (seule branche où l'environnement a un
-    // sens — la source de test ne pilote pas d'encodeur matériel) ; sinon la
-    // valeur par défaut. Remonté ici, hors de cette branche, pour que
-    // `Session::new` reçoive le même plafond que celui appliqué à
-    // l'encodeur, sans le relire une seconde fois depuis l'environnement.
-    // `mut` n'est utile que dans la branche `#[cfg(windows)]` ci-dessous :
-    // sur l'hôte de test (Linux, toujours `TEST_FILE`), la valeur ne varie
-    // jamais, d'où l'`allow` — inutile de découper la déclaration par cfg
-    // pour une valeur qui reste de toute façon lue plus bas sur les deux
-    // plateformes.
+    // Video bitrate ceiling, in bits per second. Read from `BITRATE` in
+    // the Windows branch below (the only branch where the environment makes
+    // sense — the test source drives no hardware encoder); otherwise the
+    // default value. Brought up here, outside that branch, so that
+    // `Session::new` receives the same ceiling as the one applied to
+    // the encoder, without re-reading it a second time from the environment.
+    // `mut` is only useful in the `#[cfg(windows)]` branch below:
+    // on the test host (Linux, always `TEST_FILE`), the value never
+    // varies, hence the `allow` — no point splitting the declaration by cfg
+    // for a value that is read further down on both
+    // platforms anyway.
     #[allow(unused_mut)]
     let mut bitrate: u32 = 12_000_000;
 
@@ -100,10 +100,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         }
     };
 
-    // `receiver_task`/`sender_task` : conservés par `SignalingHandle` pour ne
-    // pas être abandonnés silencieusement (I6), mais cette tâche mono-session
-    // n'a rien de plus à en faire une fois `closed` observé ci-dessous — on
-    // les laisse donc détachés explicitement plutôt que de les ignorer par
+    // `receiver_task`/`sender_task`: kept by `SignalingHandle` so as not
+    // to be silently abandoned (I6), but this single-session task
+    // has nothing more to do with them once `closed` is observed below — we
+    // therefore leave them explicitly detached rather than ignoring them by
     // accident.
     let signaling::SignalingHandle {
         mut offers,
@@ -120,65 +120,65 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     )
     .await?;
     let mut session = Session::new(source, config.local_ip, clock_origin, bitrate)?;
-    // Pour la ligne de cadence périodique de `piste_video` (voir sa doc) :
-    // apparier ce relevé à celui du capteur dans un `agent.log` que
-    // plusieurs fenêtres se partagent (voir `capteur/fenetre.rs`).
+    // For the periodic cadence line of `piste_video` (see its doc):
+    // pairing this reading with the sensor's in an `agent.log` that
+    // several windows share (see `capteur/fenetre.rs`).
     session.set_session_id(&config.session_id);
 
-    // Source audio : son absence ne compromet jamais la session vidéo — voir
-    // le commentaire de tête de `demarrage::audio` pour le détail des deux
-    // modes (mix de session, ou process loopback par fenêtre) et le repli
-    // délibérément écarté.
+    // Audio source: its absence never compromises the video session — see
+    // the head comment of `demarrage::audio` for the detail of the two
+    // modes (session mix, or per-window process loopback) and the fallback
+    // deliberately ruled out.
     #[cfg(windows)]
     audio::brancher(&config, &mut session, clock_origin);
 
-    // Sans `MICRO_MESURE=1` il ne pose rien : `micro_disponible()` reste faux,
-    // `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas —
-    // ce qu'on veut tant que le vrai câble (bloc E2) n'existe pas.
+    // Without `MICRO_MESURE=1` it sets nothing: `micro_disponible()` stays false,
+    // `ready` carries `mic: false`, and the browser's button does not appear —
+    // which is what we want as long as the real cable (block E2) does not exist.
     micro::brancher(&config, &mut session);
 
-    // Le fil de trace du chemin réel (`SOURCE_TRACE=1`) vit dans
-    // `demarrage/trace.rs` depuis le sous-bloc P2 du chantier presse-papier —
-    // extraction préalable à l'addition, voir son commentaire de tête, qui porte
-    // tout le raisonnement sur les compteurs qu'il lit et sur ceux qui sont morts.
+    // The real-path trace thread (`SOURCE_TRACE=1`) has lived in
+    // `demarrage/trace.rs` since sub-block P2 of the clipboard work stream —
+    // extraction prior to the addition, see its head comment, which carries
+    // all the reasoning about the counters it reads and those that are dead.
     #[cfg(windows)]
     let _source_trace = trace::brancher();
 
-    // 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
-    // critique ②) — même geste que `pont.rs::executer` : un refus de volume
-    // (`trop-de-requetes`) ferme `offers` sans offre, ce processus va
-    // mourir, et on honore le délai suggéré par le relais AVANT de rendre la
-    // main — voir `signaling::honorer_retry_suggere`.
+    // 🔴 FIX FOR THE MISSING-BRAKES HAND-OVER (fix round 1,
+    // critical ②) — same gesture as `pont.rs::executer`: a volume refusal
+    // (`trop-de-requetes`) closes `offers` without an offer, this process is going
+    // to die, and we honour the delay suggested by the relay BEFORE giving
+    // control back — see `signaling::honorer_retry_suggere`.
     //
-    // 🔴 **DÉCLARÉ, PAS CORRIGÉ (revue, round de correction 2)** : CE
-    // PROCESSUS-CI EST L'ENFANT D'UNE FENÊTRE, PAS LE PONT — et le sommeil
-    // qui suit (jusqu'à 30 s, `REPLI_MAX_MS`) retarde d'AUTANT le moment où
-    // `superviseur::table::orphelines::relancer_les_orphelines` voit cette
-    // entrée redevenir `SansSession` et la relance. Avec `RELANCES_MAX = 3`
-    // tolérées (`superviseur/table.rs`) et un refus qui se reproduit à
-    // chaque relance, l'échec d'attache d'une fenêtre — le message « la
-    // session n'a pas tenu après 3 tentatives » — peut donc mettre jusqu'à
-    // quelques dizaines de secondes à quelques minutes à devenir visible à
-    // l'utilisateur, au lieu de quelques secondes avant ce lot. Non mesuré
-    // en recette ; le mécanisme, lui, est vérifiable par lecture croisée de
-    // `orphelines.rs` et de ce fichier.
+    // 🔴 **DECLARED, NOT FIXED (review, fix round 2)**: THIS
+    // PROCESS IS A WINDOW'S CHILD, NOT THE BRIDGE — and the sleep
+    // that follows (up to 30 s, `REPLI_MAX_MS`) delays BY AS MUCH the moment
+    // `superviseur::table::orphelines::relancer_les_orphelines` sees this
+    // entry become `SansSession` again and restarts it. With `RELANCES_MAX = 3`
+    // tolerated (`superviseur/table.rs`) and a refusal that recurs at
+    // each restart, a window's attach failure — the message "la
+    // session n'a pas tenu après 3 tentatives" — may therefore take from
+    // a few tens of seconds to a few minutes to become visible to
+    // the user, instead of a few seconds before this batch. Not measured
+    // in an acceptance run; the mechanism, for its part, can be checked by cross-reading
+    // `orphelines.rs` and this file.
     let Some(offer) = offers.recv().await else {
         signaling::honorer_retry_suggere(&retry_apres_s).await;
         return Err(anyhow::anyhow!("le signaling s'est fermé avant l'offre"));
     };
     tracing::info!("offre reçue");
 
-    // Le client web n'a pas de trickle ICE : il envoie UNE offre après
-    // collecte complète et attend UNE réponse. Le candidat relayé doit donc
-    // exister AVANT que la réponse ne soit produite — après, il n'y a plus
-    // aucun moyen de le transmettre.
+    // The web client has no trickle ICE: it sends ONE offer after
+    // complete gathering and waits for ONE answer. The relayed candidate must therefore
+    // exist BEFORE the answer is produced — afterwards, there is no longer
+    // any way to transmit it.
     //
-    // Borné à 2 s : très en deçà des 15 s au bout desquelles le client
-    // abandonne (`ANSWER_TIMEOUT_MS` de `client/src/webrtc.ts`), et suffisant
-    // pour les deux aller-retours d'une allocation authentifiée (Allocate nu →
-    // 401 → Allocate signé).
-    // Pleinement qualifié : l'import de `Duration` en tête de fichier est
-    // conditionné à Windows, et cette séquence-ci est commune aux deux cibles.
+    // Bounded at 2 s: well below the 15 s after which the client
+    // gives up (`ANSWER_TIMEOUT_MS` of `client/src/webrtc.ts`), and enough
+    // for the two round trips of an authenticated allocation (bare Allocate →
+    // 401 → signed Allocate).
+    // Fully qualified: the import of `Duration` at the head of the file is
+    // conditioned on Windows, and this sequence is common to both targets.
     const DELAI_ALLOCATION: std::time::Duration = std::time::Duration::from_secs(2);
 
     if let Some(config) = ice_config.borrow().clone() {
@@ -194,16 +194,16 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     let answer = session.accept_offer(&offer)?;
     answers.send(answer).await?;
     tracing::info!("réponse envoyée");
-    // Note : `AgentControl::ready` n'est plus envoyé ici. À cet instant SCTP
-    // n'est pas encore ouvert (le canal de contrôle vaut encore `None`), donc
-    // l'envoyer maintenant serait silencieusement perdu (I3 de la revue).
-    // `Session` le met en file elle-même dès `Event::ChannelOpen("control")`.
+    // Note: `AgentControl::ready` is no longer sent here. At this instant SCTP
+    // is not yet open (the control channel is still `None`), so
+    // sending it now would be silently lost (I3 of the review).
+    // `Session` queues it itself as soon as `Event::ChannelOpen("control")`.
 
-    // I6 : une perte du signaling après l'échange initial doit être visible
-    // plutôt que silencieuse. Le transport ne dépend plus du signaling une
-    // fois l'offre/réponse échangées (pas de renégociation dans cette
-    // tâche), donc on ne fait rien de plus qu'observer et journaliser — mais
-    // on l'observe.
+    // I6: a loss of signaling after the initial exchange must be visible
+    // rather than silent. The transport no longer depends on signaling once
+    // the offer/answer are exchanged (no renegotiation in this
+    // task), so we do nothing more than observe and log — but
+    // we do observe it.
     tokio::spawn(async move {
         if closed.changed().await.is_ok() && *closed.borrow() {
             tracing::warn!(
@@ -212,14 +212,14 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         }
     });
 
-    // Fil de sondage du curseur : décide du mode absolu/relatif et de la
-    // forme à afficher. Le drapeau est partagé avec l'injecteur d'entrées,
-    // les messages passent par la session (canal de contrôle).
+    // Cursor polling thread: decides the absolute/relative mode and the
+    // shape to display. The flag is shared with the input injector,
+    // messages go through the session (control channel).
     #[cfg_attr(not(windows), allow(unused_variables))]
     let mode_relatif = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let arret_sondes = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    // `control_tx` n'a de lecteur (`cursor::spawn_probe`) que sous Windows :
-    // même raison que `mode_relatif` ci-dessus, même traitement.
+    // `control_tx` only has a reader (`cursor::spawn_probe`) under Windows:
+    // same reason as `mode_relatif` above, same treatment.
     #[cfg_attr(not(windows), allow(unused_variables))]
     let (control_tx, control_rx) = std::sync::mpsc::channel();
     session.set_control_source(control_rx);
@@ -231,42 +231,42 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         arret_sondes.clone(),
     );
 
-    // Vrai à ce stade : ViGEmBus n'est sondé qu'au premier état de manette
-    // reçu, et l'échec éventuel enverra un second `Capabilities` à false.
-    // Annoncer l'optimisme évite d'afficher « manette indisponible » à un
-    // utilisateur qui n'en a simplement pas branché.
+    // True at this stage: ViGEmBus is only probed at the first gamepad state
+    // received, and a possible failure will send a second `Capabilities` as false.
+    // Announcing optimism avoids showing "gamepad unavailable" to a
+    // user who simply has not plugged one in.
     //
-    // ⚠️ **Le second argument est le PRESSE-PAPIER, et il n'a rien à voir avec
-    // la manette** : c'est `PRESSE_PAPIER`, lue par le même `actif()` que le
-    // capteur. Les deux replis ci-dessous rejouent donc `actif()` et NON
-    // `false` — un `capabilities(false, false)` recopié éteindrait le collage
-    // parce qu'une manette manque, ce qui n'a aucun sens. La condition de
-    // validité de cette annonce vit dans la doc du champ
-    // (`proto/src/control.rs`, `Capabilities::clipboard`) : elle tient parce
-    // que capteur et enfant lisent la MÊME variable héritée.
+    // ⚠️ **The second argument is the CLIPBOARD, and it has nothing to do with
+    // the gamepad**: it is `PRESSE_PAPIER`, read by the same `actif()` as the
+    // sensor. The two fallbacks below therefore replay `actif()` and NOT
+    // `false` — a copied `capabilities(false, false)` would switch off pasting
+    // because a gamepad is missing, which makes no sense. The validity condition
+    // of this announcement lives in the field's doc
+    // (`proto/src/control.rs`, `Capabilities::clipboard`): it holds because
+    // sensor and child read the SAME inherited variable.
     #[cfg(windows)]
     let _ = control_tx.send(proto::control::AgentControl::capabilities(
         true,
         crate::presse_papier::actif(),
     ));
 
-    // Clone dédiée au fil de transport ci-dessous (`spawn_blocking` est
-    // `move` : il faut lui donner sa propre copie de l'`Arc`, faute de quoi
-    // il capturerait `arret_sondes` en entier et la rendrait indisponible
-    // pour `arret_sondes.store(...)` après `transport.await`, plus bas).
+    // Clone dedicated to the transport thread below (`spawn_blocking` is
+    // `move`: it must be given its own copy of the `Arc`, otherwise
+    // it would capture `arret_sondes` whole and make it unavailable
+    // for `arret_sondes.store(...)` after `transport.await`, below).
     #[cfg_attr(not(windows), allow(unused_variables))]
     let arret_sondes_manette = arret_sondes.clone();
 
-    // I6 : `Session::run` bloque volontairement (lecture UDP synchrone bornée
-    // par la cadence vidéo et les échéances str0m). L'exécuter sur un ouvrier
-    // async de tokio gèlerait les autres tâches de ce processus — ici, la
-    // boucle d'émission du signaling — jusqu'à une seconde par tour, voire
-    // beaucoup plus dès que la session n'est plus vivante. On la déplace donc
-    // sur le pool de threads bloquants de tokio, dédié à cet usage.
-    // Clonée avant la fermeture `move` ci-dessous : c'est cette copie qui
-    // donne à la trace `contrôle reçu` sa `session` (voir `on_control` plus
-    // bas), faute de quoi elle est indiscernable de celle de tout autre
-    // enfant partageant le même `agent.log` (D4).
+    // I6: `Session::run` blocks on purpose (synchronous UDP read bounded
+    // by the video cadence and str0m's deadlines). Running it on a tokio
+    // async worker would freeze the other tasks of this process — here, the
+    // signaling send loop — for up to a second per round, or even
+    // much more once the session is no longer alive. We therefore move it
+    // to tokio's blocking thread pool, dedicated to this use.
+    // Cloned before the `move` closure below: it is this copy that
+    // gives the `contrôle reçu` trace its `session` (see `on_control`
+    // below), without which it is indistinguishable from that of any other
+    // child sharing the same `agent.log` (D4).
     let session_id = config.session_id.clone();
     let transport = tokio::task::spawn_blocking(move || {
         #[cfg(windows)]
@@ -274,29 +274,29 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
             .zip(reference_entrees)
             .map(|(addr, reference)| {
                 let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
-                // La référence des entrées vient TELLE QUELLE de
-                // `demarrage::source` : deux descriptions indépendantes du même
-                // rectangle sont ce qui a produit le défaut du lot 32M, et une
-                // taille recalculée à côté de celle de la source est ce qui a
-                // produit celui du lot 32Q.
+                // The input reference comes AS IS from
+                // `demarrage::source`: two independent descriptions of the same
+                // rectangle are what produced the defect of batch 32M, and a
+                // size recomputed next to the source's is what
+                // produced that of batch 32Q.
                 input::InputInjector::new(hwnd, reference, mode_relatif.clone())
             });
 
-        // Branchement paresseux : à la PREMIÈRE réception d'un état de
-        // manette, pas au démarrage — voir le commentaire de
-        // `gamepad::win::VirtualPad`. `pad_indisponible` garantit qu'on ne
-        // retente qu'une fois : au premier échec, on renonce pour le reste
-        // de la session plutôt que de retenter à chaque état reçu.
+        // Lazy wiring: at the FIRST reception of a gamepad
+        // state, not at start-up — see the comment on
+        // `gamepad::win::VirtualPad`. `pad_indisponible` guarantees we only
+        // retry once: at the first failure, we give up for the rest
+        // of the session rather than retrying at every state received.
         #[cfg(windows)]
         let mut pad: Option<gamepad::VirtualPad> = None;
         #[cfg(windows)]
         let mut pad_indisponible = false;
-        // `gamepad::VirtualPad::connect()` peut dormir jusqu'à 5 s (attente
-        // de l'énumération PnP côté Windows, voir sa documentation) : on ne
-        // l'appelle donc JAMAIS directement ici, cette fermeture tournant
-        // dans la boucle de `Session::run` qui porte aussi vidéo et RTCP
-        // (voir le commentaire sur `spawn_blocking` plus haut). `spawn_connect`
-        // le fait sur un fil séparé ; ce récepteur est sondé sans bloquer.
+        // `gamepad::VirtualPad::connect()` may sleep for up to 5 s (waiting
+        // for PnP enumeration on the Windows side, see its documentation): we
+        // therefore NEVER call it directly here, this closure running
+        // in the loop of `Session::run` which also carries video and RTCP
+        // (see the comment on `spawn_blocking` above). `spawn_connect`
+        // does it on a separate thread; this receiver is polled without blocking.
         #[cfg(windows)]
         let mut connexion_manette: Option<
             std::sync::mpsc::Receiver<anyhow::Result<gamepad::VirtualPad>>,
@@ -321,9 +321,9 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             connexion_manette = None;
                         }
                         Ok(Err(e)) => {
-                            // Une seule fois : `pad_indisponible` empêche tout
-                            // nouvel essai, et donc tout second envoi de
-                            // `Capabilities` pour cette session.
+                            // Only once: `pad_indisponible` prevents any
+                            // new attempt, and hence any second sending of
+                            // `Capabilities` for this session.
                             pad_indisponible = true;
                             connexion_manette = None;
                             tracing::warn!(erreur = %e, "manette virtuelle indisponible");
@@ -333,14 +333,14 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             ));
                         }
                         Err(std::sync::mpsc::TryRecvError::Empty) => {
-                            // Connexion encore en cours (jusqu'à 5 s
-                            // observées) : cet état de manette est perdu,
-                            // sans conséquence — pas grâce à la fréquence de
-                            // sondage du client (cadence sous charge du
-                            // `setInterval(4 ms)` jamais mesurée), mais parce
-                            // qu'il réémet un état complet toutes les 100 ms
-                            // même sans changement jusqu'à ce que la cible
-                            // soit prête (voir `client/src/gamepad.ts`,
+                            // Connection still in progress (up to 5 s
+                            // observed): this gamepad state is lost,
+                            // without consequence — not thanks to the client's polling
+                            // frequency (cadence under load of
+                            // `setInterval(4 ms)` never measured), but because
+                            // it re-emits a complete state every 100 ms
+                            // even without change until the target
+                            // is ready (see `client/src/gamepad.ts`,
                             // `RAFRAICHISSEMENT_MS`).
                         }
                         Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -364,12 +364,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 return;
             }
 
-            // Seul journal d'entrée disponible : il était auparavant gardé
-            // par `#[cfg(not(windows))]`, donc mort sur la cible réelle — la
-            // recette du chantier B (mesure 4) a dû s'en passer et
-            // reconstituer la preuve autrement (instrumentation du canal
-            // côté client). Le rendre disponible sous Windows aussi permet
-            // au prochain diagnostic de lire directement `agent.log`.
+            // The only input log available: it was previously guarded
+            // by `#[cfg(not(windows))]`, hence dead on the real target — the
+            // acceptance run of work stream B (measurement 4) had to do without it and
+            // reconstruct the evidence another way (instrumenting the channel
+            // on the client side). Making it available under Windows too lets
+            // the next diagnosis read `agent.log` directly.
             tracing::debug!(?message, "entrée reçue");
 
             #[cfg(windows)]
@@ -379,11 +379,11 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 }
             }
         };
-        // `session` : sans ce champ la trace n'est PAS attribuable — tous les enfants
-        // héritent le même `agent.log` depuis D4. C'est exactement ce qui a rendu
-        // indécidable « 2 `Resize` pour 5 sessions » (leg 10 de D8, correction I8) :
-        // les deux lignes ne portaient aucune session, donc rien n'établissait
-        // qu'elles vinssent de deux sessions distinctes.
+        // `session`: without this field the trace is NOT attributable — all children
+        // have inherited the same `agent.log` since D4. That is exactly what made
+        // "2 `Resize` for 5 sessions" undecidable (D8's hand-over 10, fix I8):
+        // the two lines carried no session, so nothing established
+        // that they came from two distinct sessions.
         let mut on_control =
             |message| tracing::info!(session = %session_id, ?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)
@@ -392,10 +392,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     match transport.await {
         Ok(Ok(())) => tracing::info!("session terminée"),
         Ok(Err(e)) => {
-            // `Session::run` ne remonte une erreur que pour un problème jugé
-            // irrécupérable au niveau de la session (voir
-            // `Session::begin_ending` pour ce qui est au contraire traité
-            // comme une fin de session propre, via `Ok(())`).
+            // `Session::run` only returns an error for a problem deemed
+            // unrecoverable at the session level (see
+            // `Session::begin_ending` for what is, on the contrary, treated
+            // as a clean session end, via `Ok(())`).
             tracing::error!(erreur = %e, "erreur fatale dans la boucle de transport");
             return Err(e);
         }
@@ -412,20 +412,20 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     Ok(())
 }
 
-/// Fil de surveillance du pipeline d'encodage : journalise chaque seconde
-/// l'étape Media Foundation en cours et les compteurs du chemin chaud.
+/// Watchdog thread of the encoding pipeline: logs every second
+/// the current Media Foundation step and the hot-path counters.
 ///
-/// Indispensable pour distinguer un appel qui ne rend JAMAIS la main (l'étape
-/// reste figée sur le même nom) d'une boucle qui tourne sans progresser
-/// (l'étape varie, les compteurs non). Aucune trace posée *autour* des appels
-/// ne peut faire cette distinction, puisqu'un appel bloqué n'atteint jamais sa
-/// trace de sortie — c'est exactement ce qui a rendu le blocage du 28/07
-/// invisible pendant plusieurs cycles d'investigation.
+/// Indispensable to distinguish a call that NEVER returns (the step
+/// stays frozen on the same name) from a loop that spins without progressing
+/// (the step varies, the counters do not). No trace set *around* the calls
+/// can make this distinction, since a blocked call never reaches its
+/// exit trace — that is exactly what made the block of 28/07
+/// invisible for several investigation cycles.
 ///
-/// Renvoie de quoi l'arrêter : appeler la closure rendue rejoint le fil.
+/// Returns what is needed to stop it: calling the returned closure joins the thread.
 ///
-/// `pub(crate)` et non `pub(super)` : seul `diagnostics::capture` l'appelle
-/// aujourd'hui, depuis l'autre branche de l'arborescence de modules.
+/// `pub(crate)` and not `pub(super)`: only `diagnostics::capture` calls it
+/// today, from the other branch of the module tree.
 #[cfg(windows)]
 pub(crate) fn watch_encoder(telemetry: std::sync::Arc<encode::EncoderTelemetry>) -> impl FnOnce() {
     use std::sync::atomic::{AtomicBool, Ordering::Relaxed};

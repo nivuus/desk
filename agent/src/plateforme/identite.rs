@@ -1,73 +1,73 @@
-//! D'où un processus agent tient son identité de plateforme — la règle, PURE.
+//! Where an agent process holds its platform identity from — the rule, PURE.
 //!
-//! 🔴 **UN SEUL CANAL `/agent` PAR VM, ET C'EST TOUT LE SUJET DE CE FICHIER.**
-//! La plateforme tient sa table des agents joignables par `vm_id`
-//! (`plateforme/src/agents/registre.ts`) : au plus UN socket par VM, et
-//! **le dernier inscrit gagne, l'ancien étant fermé**. C'est la bonne
-//! règle — deux sockets pour la même VM poseraient la question « lequel reçoit
-//! l'ordre de lancement ? », à laquelle la clé primaire d'`agent_enrole`
-//! répond déjà. Ce qui était faux, c'est que l'agent en présentait plusieurs.
+//! 🔴 **A SINGLE `/agent` CHANNEL PER VM, AND THAT IS THE WHOLE SUBJECT OF THIS FILE.**
+//! The platform keeps its table of reachable agents by `vm_id`
+//! (`plateforme/src/agents/registre.ts`): at most ONE socket per VM, and
+//! **the last registered wins, the old one being closed**. It is the right
+//! rule — two sockets for the same VM would raise the question "which one receives
+//! the launch order?", which the primary key of `agent_enrole`
+//! already answers. What was wrong is that the agent presented several.
 //!
-//! **Le défaut, MESURÉ sur la VM le 20 août 2026 (une exécution, 64 s) :**
-//! `lancer_pont` retirait `SUPERVISEUR`, `CAPTEUR`, `TEST_FILE` et
-//! `WINDOW_TITLE` de l'environnement du pont fichiers, **mais pas `AGENT_VM`
-//! ni `AGENT_SECRET`**. Le pont s'enrôlait donc sous la même identité que son
-//! père, chacun évinçait l'autre, l'évincé reprenait aussitôt — le repli
-//! exponentiel repart de zéro après tout enrôlement réussi —, et le cycle
-//! n'avait aucun terme : **95 enrôlements et 94 évictions en 64 s**, à ~1,5 Hz.
-//! Ce que cela coûtait, relevé en recette G1 : le catalogue complet renvoyé à
-//! chaque cycle, les messages incrémentaux perdus, les réponses de lancement
-//! perdues (les `504 delai`), et **deux boucles de découverte** au lieu d'une.
+//! **The defect, MEASURED on the VM on 20 August 2026 (one run, 64 s):**
+//! `lancer_pont` removed `SUPERVISEUR`, `CAPTEUR`, `TEST_FILE` and
+//! `WINDOW_TITLE` from the file bridge's environment, **but not `AGENT_VM`
+//! nor `AGENT_SECRET`**. The bridge therefore enrolled under the same identity as its
+//! father, each evicted the other, the evicted one reconnected immediately — the
+//! exponential backoff restarts from zero after any successful enrolment —, and the cycle
+//! had no end: **95 enrolments and 94 evictions in 64 s**, at ~1.5 Hz.
+//! What it cost, noted in acceptance run G1: the complete catalogue resent at
+//! each cycle, the incremental messages lost, the launch responses
+//! lost (the `504 delai`), and **two discovery loops** instead of one.
 //!
-//! ⚠️ **LE PONT N'ÉTAIT PAS SEUL EN CAUSE, et c'est ce que la cartographie
-//! montre** : `lancer` (les enfants de fenêtre) ne les retirait pas davantage,
-//! et un enfant traverse lui aussi l'enrôlement de `main.rs`. La recette G1
-//! n'avait aucune fenêtre ouverte, donc aucun enfant : le défaut y était
-//! invisible sur cette moitié-là, et il aurait mordu à la première fenêtre.
-//! Le **capteur**, lui, est hors de cause — `main.rs` lui rend la main AVANT
-//! l'enrôlement — mais ses variables lui sont retirées quand même, par la
-//! règle que `lanceur.rs` s'impose déjà pour `SUPERVISEUR`, `CAPTEUR` et
-//! `PONT` : *un ordre de test est une propriété qui change, un `env_remove`
-//! non.*
+//! ⚠️ **THE BRIDGE WAS NOT THE ONLY ONE AT FAULT, and that is what the mapping
+//! shows**: `lancer` (the window children) did not remove them either,
+//! and a child also goes through the enrolment of `main.rs`. Acceptance run G1
+//! had no window open, hence no child: the defect was
+//! invisible there on that half, and it would have bitten at the first window.
+//! The **sensor**, for its part, is not at fault — `main.rs` returns control to it BEFORE
+//! enrolment — but its variables are removed anyway, by the
+//! rule that `lanceur.rs` already imposes on itself for `SUPERVISEUR`, `CAPTEUR` and
+//! `PONT`: *a test order is a property that changes, an `env_remove`
+//! is not.*
 //!
-//! 🔴 **CE QUI SE TRANSMET EST LE JETON, JAMAIS LE SECRET.** Un enfant et le
-//! pont ont besoin d'une identité — ils ouvrent chacun leur propre
-//! `PeerConnection`, et la garde de la plateforme refuse une poignée de main
-//! sans jeton d'agent depuis le sous-bloc P3 —, mais ils n'ont besoin
-//! d'AUCUN canal : ils ne battent pas le cœur de la VM, ne poussent aucun
-//! catalogue et ne reçoivent aucun ordre de lancement. Le superviseur leur
-//! passe donc `AGENT_JETON`, et retient `AGENT_VM`/`AGENT_SECRET`. Le secret
-//! d'enrôlement ne quitte plus le processus qui tient le canal.
+//! 🔴 **WHAT IS PASSED ON IS THE TOKEN, NEVER THE SECRET.** A child and the
+//! bridge need an identity — they each open their own
+//! `PeerConnection`, and the platform's guard refuses a handshake
+//! without an agent token since sub-block P3 —, but they need
+//! NO channel: they do not beat the VM's heart, push no
+//! catalogue and receive no launch order. The supervisor therefore
+//! passes them `AGENT_JETON`, and withholds `AGENT_VM`/`AGENT_SECRET`. The enrolment
+//! secret no longer leaves the process that holds the channel.
 
-/// D'où ce processus tire son jeton d'agent.
+/// Where this process gets its agent token from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SourceIdentite {
-    /// `AGENT_JETON` : l'identité vient du père, qui tient le canal. Ce
-    /// processus n'ouvre AUCUN canal `/agent`.
+    /// `AGENT_JETON`: the identity comes from the father, which holds the channel. This
+    /// process opens NO `/agent` channel.
     Heritee(String),
-    /// `AGENT_VM` + `AGENT_SECRET` : ce processus s'enrôle lui-même, et
-    /// devient le socket joignable de la VM.
+    /// `AGENT_VM` + `AGENT_SECRET`: this process enrols itself, and
+    /// becomes the VM's reachable socket.
     Enrolement { vm: String, secret: String },
-    /// Ni l'un ni l'autre : aucun jeton, donc aucune session ne s'établira.
-    /// Ce n'est pas un mode de repli, c'est une panne annoncée.
+    /// Neither one nor the other: no token, hence no session will be established.
+    /// It is not a fallback mode, it is an announced failure.
     Aucune,
 }
 
-/// Tranche la source d'identité de ce processus.
+/// Decides the identity source of this process.
 ///
-/// 🔴 **LE JETON HÉRITÉ L'EMPORTE, MÊME SI LE COUPLE D'ENRÔLEMENT EST LÀ**, et
-/// cette précédence est le cœur du remède plutôt qu'un détail. `lanceur.rs`
-/// retire `AGENT_VM` et `AGENT_SECRET` de tout enfant, donc le cas ne devrait
-/// pas se produire — mais « ne devrait pas » est exactement ce qu'on disait de
-/// l'héritage lui-même avant de le mesurer. Si les deux arrivent quand même,
-/// par une voie qu'on n'a pas prévue, la précédence garantit que le processus
-/// n'ouvre PAS un second canal : le défaut redeviendrait au pire une identité
-/// vieillissante, jamais une éviction mutuelle sans terme.
+/// 🔴 **THE INHERITED TOKEN WINS, EVEN IF THE ENROLMENT PAIR IS THERE**, and
+/// this precedence is the heart of the remedy rather than a detail. `lanceur.rs`
+/// removes `AGENT_VM` and `AGENT_SECRET` from any child, so the case should
+/// not happen — but "should not" is exactly what was said about
+/// inheritance itself before measuring it. If both arrive anyway,
+/// through a path not foreseen, the precedence guarantees that the process
+/// does NOT open a second channel: the defect would at worst become an
+/// ageing identity, never an endless mutual eviction.
 ///
-/// ⚠️ **UN COUPLE INCOMPLET REND `Aucune`, jamais un demi-enrôlement.** C'est
-/// le contrat que `main.rs` portait déjà (« les deux ou aucun ») : présenter un
-/// nom de VM sans secret ne peut qu'être refusé, et le faire quand même ne
-/// produirait qu'un refus `enrolement` indistinct d'un secret faux.
+/// ⚠️ **AN INCOMPLETE PAIR RETURNS `Aucune`, never a half-enrolment.** It is
+/// the contract `main.rs` already carried ("both or none"): presenting a
+/// VM name without a secret can only be refused, and doing it anyway would
+/// only produce an `enrolement` refusal indistinguishable from a wrong secret.
 pub fn source(
     jeton_herite: Option<&str>,
     vm: Option<&str>,
@@ -97,11 +97,11 @@ mod tests {
         );
     }
 
-    /// 🔴 LA PRÉCÉDENCE, ET C'EST ELLE QUI TIENT L'INVARIANT « UN SEUL CANAL
-    /// PAR VM ». Mutation qui la rougit : tester le couple d'enrôlement en
-    /// premier. Un processus recevant les trois variables ouvrirait alors son
-    /// propre canal, et l'on retomberait sur les 95 enrôlements / 94 évictions
-    /// mesurés le 20 août 2026.
+    /// 🔴 THE PRECEDENCE, AND IT IS WHAT HOLDS THE "A SINGLE CHANNEL
+    /// PER VM" INVARIANT. Mutation that turns it red: test the enrolment pair
+    /// first. A process receiving the three variables would then open its
+    /// own channel, and we would fall back on the 95 enrolments / 94 evictions
+    /// measured on 20 August 2026.
     #[test]
     fn le_jeton_herite_l_emporte_sur_un_couple_d_enrolement_present() {
         assert_eq!(
@@ -121,9 +121,9 @@ mod tests {
         );
     }
 
-    /// Les deux moitiés du couple incomplet, et le cas vide — un test par
-    /// forme, parce qu'un `assert!` qui interrompt au premier échec laisserait
-    /// les suivantes non éprouvées.
+    /// The two halves of the incomplete pair, and the empty case — one test per
+    /// form, because an `assert!` that stops at the first failure would leave
+    /// the following ones untested.
     #[test]
     fn un_couple_incomplet_ne_produit_aucune_identite() {
         assert_eq!(source(None, Some("vm-1"), None), SourceIdentite::Aucune);

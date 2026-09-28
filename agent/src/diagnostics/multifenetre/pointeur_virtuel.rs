@@ -1,10 +1,10 @@
-//! Sonde : le bureau virtuel s'étend-il jusqu'à une sortie virtuelle, et le
-//! pointeur y arrive-t-il ?
+//! Probe: does the virtual desktop extend to a virtual output, and does the
+//! pointer get there?
 //!
-//! `input.rs` pose déjà `MOUSEEVENTF_VIRTUALDESK` et calcule ses coordonnées
-//! sur `SM_*VIRTUALSCREEN` : rien n'est à écrire côté produit. Ce qui n'est
-//! établi par aucune lecture de code, c'est que Windows compte une sortie
-//! virtuelle dans ces métriques. Cette sonde le tranche par une mesure.
+//! `input.rs` already sets `MOUSEEVENTF_VIRTUALDESK` and computes its coordinates
+//! on `SM_*VIRTUALSCREEN`: nothing is to be written on the product side. What is
+//! established by no reading of code is that Windows counts a virtual
+//! output in these metrics. This probe settles it by a measurement.
 
 use anyhow::{Context, Result};
 use windows::Win32::Foundation::POINT;
@@ -21,7 +21,7 @@ use crate::capture::enumerer_sorties;
 use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::moniteurs_virtuels::Sorties;
 
-/// Rectangle du bureau virtuel, tel que Windows le déclare.
+/// Rectangle of the virtual desktop, as Windows declares it.
 fn bureau_virtuel() -> (i32, i32, i32, i32) {
     unsafe {
         (
@@ -49,9 +49,9 @@ pub(super) fn sonder() -> Result<()> {
         .creer(1280, 720, 60)
         .context("création de la sortie virtuelle")?;
 
-    // Le pilote crée la sortie de façon asynchrone du point de vue de
-    // l'espace de bureau : Windows doit encore la rattacher. On laisse
-    // le temps à la topologie de s'établir, puis on relit.
+    // The driver creates the output asynchronously from the point of view of
+    // the desktop space: Windows still has to attach it. We give
+    // the topology time to settle, then read again.
     std::thread::sleep(std::time::Duration::from_secs(3));
     pilote.pinguer()?;
 
@@ -66,9 +66,9 @@ pub(super) fn sonder() -> Result<()> {
         "bureau virtuel APRÈS création de la sortie"
     );
 
-    // Retrouver la sortie virtuelle parmi les sorties DXGI : c'est son
-    // rectangle qui donne la cible à viser. `GetDesc`/`DesktopCoordinates`
-    // est la source de vérité — WMI ment (champ vu périmé de 68 s).
+    // Find the virtual output among the DXGI outputs: it is its
+    // rectangle that gives the target to aim at. `GetDesc`/`DesktopCoordinates`
+    // is the source of truth — WMI lies (field seen 68 s stale).
     let toutes = enumerer_sorties()?;
     for s in &toutes {
         tracing::info!(
@@ -87,9 +87,9 @@ pub(super) fn sonder() -> Result<()> {
              entrée dans la topologie du bureau",
         )?;
 
-    // Centre de la sortie, en coordonnées du bureau virtuel, converti dans
-    // l'espace normalisé 0..65535 que `MOUSEEVENTF_ABSOLUTE` attend — la
-    // conversion exacte de `input.rs`.
+    // Centre of the output, in virtual desktop coordinates, converted into
+    // the normalised 0..65535 space that `MOUSEEVENTF_ABSOLUTE` expects — the
+    // exact conversion of `input.rs`.
     let vise_x = cible.rect.x + (cible.rect.width / 2) as i32;
     let vise_y = cible.rect.y + (cible.rect.height / 2) as i32;
     let normalise = |v: i32, origine: i32, etendue: i32| -> i32 {
@@ -122,8 +122,8 @@ pub(super) fn sonder() -> Result<()> {
         obtenu_y = ou.y,
         ecart_x = ecart.0,
         ecart_y = ecart.1,
-        // Deux pixels de tolérance : la conversion normalisée n'est pas
-        // exactement réversible, et ce n'est pas ce qu'on mesure ici.
+        // Two pixels of tolerance: the normalised conversion is not
+        // exactly reversible, and that is not what we measure here.
         verdict = if ecart.0 <= 2 && ecart.1 <= 2 {
             "ATTEINTE"
         } else {

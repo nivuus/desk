@@ -4,20 +4,20 @@
 use super::tests::{attributs, maintenant};
 use super::*;
 
-/// 🔴 **UNE ÉCRITURE ET UNE LECTURE NE PARTAGENT JAMAIS UNE CORRÉLATION.**
+/// 🔴 **A WRITE AND A READ NEVER SHARE A CORRELATION.**
 ///
-/// C'est la raison pour laquelle `inscrire_sans_commande` passe par CETTE
-/// table, et non par un second compteur : deux compteurs indépendants sur le
-/// même canal se collisionneraient, et la collision serait **silencieuse** —
-/// une réponse appliquée à la mauvaise commande.
+/// It is the reason `inscrire_sans_commande` goes through THIS
+/// table, and not through a second counter: two independent counters on the
+/// same channel would collide, and the collision would be **silent** —
+/// a response applied to the wrong command.
 #[test]
 fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
     let e = maintenant() + DELAI_LIRE;
     let mut t = Table::nouvelle();
     let mut vues = std::collections::HashSet::new();
     for i in 0..64 {
-        // Les deux sortes s'entrelacent, comme sur le chemin réel : un fil
-        // d'écriture pousse pendant qu'une application lit.
+        // The two kinds interleave, as on the real path: a write
+        // thread pushes while an application reads.
         let lecture = t.inscrire(i, attributs(&format!("l{i}")), e);
         let ecriture = t.inscrire_sans_commande(
             Attendue::Ecrire {
@@ -38,8 +38,8 @@ fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
     assert_eq!(t.en_vol(), 128);
 }
 
-/// Une inscription sans commande reçoit une corrélation **et aucun
-/// `command_id`** : `verbes::completer` doit pouvoir la distinguer.
+/// A registration without a command receives a correlation **and no
+/// `command_id`**: `verbes::completer` must be able to tell it apart.
 #[test]
 fn une_inscription_sans_commande_n_a_pas_de_command_id() {
     let e = maintenant() + DELAI_ECRIRE;
@@ -63,13 +63,13 @@ fn une_inscription_sans_commande_n_a_pas_de_command_id() {
     );
 }
 
-/// 🔴 **L'ÂGE RENDU PAR `resoudre` EST UNE VRAIE SOUSTRACTION, PAS UN ZÉRO.**
+/// 🔴 **THE AGE RETURNED BY `resoudre` IS A REAL SUBTRACTION, NOT A ZERO.**
 ///
-/// C'est la seule chose que le pont sache mesurer d'une traversée (F4, §0.5),
-/// et un `Duration::ZERO` constant rendrait tout l'histogramme de
-/// `pont::latence` muet **sans qu'aucune ligne de recensement ne manque** :
-/// `n:` monterait, `moy_us:` resterait à 0. Le temps étant un paramètre, le
-/// test l'éprouve **sans dormir**.
+/// It is the only thing the bridge can measure of a traversal (F4, §0.5),
+/// and a constant `Duration::ZERO` would make the whole histogram of
+/// `pont::latence` mute **without a single census line missing**:
+/// `n:` would rise, `moy_us:` would stay at 0. Time being a parameter, the
+/// test exercises it **without sleeping**.
 #[test]
 fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
     let depart = maintenant();
@@ -82,8 +82,8 @@ fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
         depart + DELAI_ATTRIBUTS,
     );
 
-    // `inscrire` lit `Instant::now()` pour l'inscription ; on mesure donc un
-    // âge PLANCHER en prenant un « maintenant » décalé de 250 ms.
+    // `inscrire` reads `Instant::now()` for the registration; we therefore measure a
+    // FLOOR age by taking a "now" shifted by 250 ms.
     let (_, _, age) = t
         .resoudre(c, Instant::now() + Duration::from_millis(250))
         .expect("inscrite à l'instant");
@@ -94,10 +94,10 @@ fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
     );
 }
 
-/// 🔴 **`vider` REND LES ÉCRITURES AVEC UN `command_id` ABSENT.**
+/// 🔴 **`vider` RETURNS WRITES WITH AN ABSENT `command_id`.**
 ///
-/// Rendre `Some(0)` ferait appeler `PrjCompleteCommand(0)` à l'arrêt du pont,
-/// c'est-à-dire compléter une commande qui appartient à quelqu'un d'autre.
+/// Returning `Some(0)` would make `PrjCompleteCommand(0)` be called at bridge shutdown,
+/// that is, complete a command belonging to someone else.
 #[test]
 fn vider_rend_les_ecritures_avec_un_command_id_absent() {
     let e = maintenant() + DELAI_ECRIRE;
@@ -119,11 +119,11 @@ fn vider_rend_les_ecritures_avec_un_command_id_absent() {
     );
 }
 
-/// Une écriture expirée est retirée comme les autres.
+/// An expired write is removed like the others.
 ///
-/// L'exclure du balayage la laisserait en table **pour toujours** : rien
-/// d'autre ne la retire, puisqu'aucun rappel ProjFS ne l'a inscrite et
-/// qu'aucune annulation ne peut la viser.
+/// Excluding it from the sweep would leave it in the table **forever**: nothing
+/// else removes it, since no ProjFS callback registered it and
+/// no cancellation can target it.
 #[test]
 fn une_ecriture_expiree_est_retiree_comme_les_autres() {
     let debut = maintenant();
@@ -140,12 +140,12 @@ fn une_ecriture_expiree_est_retiree_comme_les_autres() {
     assert_eq!(t.en_vol(), 0);
 }
 
-/// `annuler` ne peut pas viser une écriture — elle n'a pas de `command_id`.
+/// `annuler` cannot target a write — it has no `command_id`.
 ///
-/// ⚠️ **Sans cette assertion, `annuler(0)` pourrait apparier une écriture dont
-/// le `command_id` est `None`** le jour où la comparaison serait écrite à
-/// l'envers. Une application qui abandonne son E/S emporterait alors une
-/// écriture due, qui ne serait jamais poussée ET jamais retirée du journal.
+/// ⚠️ **Without this assertion, `annuler(0)` could pair a write whose
+/// `command_id` is `None`** the day the comparison is written
+/// backwards. An application giving up its I/O would then carry away a
+/// due write, which would never be pushed AND never removed from the journal.
 #[test]
 fn annuler_ne_vise_jamais_une_ecriture() {
     let e = maintenant() + DELAI_ECRIRE;
@@ -162,21 +162,21 @@ fn annuler_ne_vise_jamais_une_ecriture() {
     assert!(t.resoudre(ecriture, Instant::now()).is_some());
 }
 
-/// 🔴 **LE RELEVÉ QUI REND LE LEGS N°4 DE F1 DIAGNOSTICABLE.**
+/// 🔴 **THE SURVEY THAT MAKES F1'S LEGACY NO. 4 DIAGNOSABLE.**
 ///
-/// F1 a mesuré des lectures qui CALENT sans jamais expirer — `commande expirée`
-/// reste à 0 pendant 540 s — et déclare qu'on ne sait pas OÙ le blocage se
-/// produit, « faute d'une trace à l'inscription en table ». C'est cette trace.
+/// F1 measured reads that STALL without ever expiring — the expired-command count
+/// stays at 0 for 540 s — and declares that we do not know WHERE the blockage
+/// happens, "for lack of a trace at table registration". This is that trace.
 ///
-/// Rouge : rendre `None` inconditionnellement, ou rendre le MINIMUM au lieu du
-/// maximum. Dans les deux cas le legs reste indiagnosticable, et c'est
-/// exactement l'état d'aujourd'hui.
+/// Red: return `None` unconditionally, or return the MINIMUM instead of the
+/// maximum. In both cases the legacy stays undiagnosable, and that is
+/// exactly today's state.
 #[test]
 fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
     let mut t = Table::nouvelle();
     let depart = Instant::now();
-    // Rien en vol : `None`, et c'est la PREMIÈRE ligne du tableau de lecture —
-    // « rien n'a jamais été inscrit, le blocage est dans le rappel ».
+    // Nothing in flight: `None`, and it is the FIRST line of the reading table —
+    // "nothing was ever registered, the blockage is in the callback".
     assert_eq!(t.plus_ancienne(depart), None);
 
     t.inscrire(
@@ -198,12 +198,12 @@ fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
     );
 }
 
-/// Les commandes **sans rappel ProjFS** sont comptées à part.
+/// Commands **without a ProjFS callback** are counted separately.
 ///
-/// ⚠️ Une application figée avec `en vol=3` et `sans_commande=3` n'attend RIEN
-/// du pont : les trois sont des poussées, et son blocage est ailleurs. Sans
-/// cette distinction, le recensement ferait accuser le pont d'un blocage qui
-/// ne le concerne pas.
+/// ⚠️ A frozen application with `en vol=3` and `sans_commande=3` waits for NOTHING
+/// from the bridge: all three are pushes, and its blockage is elsewhere. Without
+/// this distinction, the census would blame the bridge for a blockage that
+/// does not concern it.
 #[test]
 fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
     let mut t = Table::nouvelle();
@@ -228,12 +228,12 @@ fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
     assert_eq!(t.sans_commande(), 2);
 }
 
-/// ⚠️ **Les cinq budgets sont DISTINCTS, et le rester est le point.**
+/// ⚠️ **The five budgets are DISTINCT, and staying so is the point.**
 ///
-/// L'ancien pont en avait **un seul**, 10 s, pour tout (`src/file.js:89`),
-/// d'où deux défauts symétriques : des lectures de gros blocs qui expiraient
-/// avant d'aboutir, et des `getattr` qui figeaient l'Explorateur dix secondes
-/// sur un chemin inexistant.
+/// The old bridge had **a single one**, 10 s, for everything (`src/file.js:89`),
+/// hence two symmetric defects: reads of large blocks that expired
+/// before completing, and `getattr`s that froze Explorer for ten seconds
+/// on a nonexistent path.
 #[test]
 fn les_cinq_budgets_sont_distincts() {
     let tous = [
@@ -248,21 +248,21 @@ fn les_cinq_budgets_sont_distincts() {
             assert_ne!(a, b, "deux budgets partagent la valeur {a:?}");
         }
     }
-    // Le budget d'une mutation est entre celui d'une lecture et celui d'une
-    // écriture : un seul aller-retour, mais dont le repli de copie est en
-    // O(taille) côté navigateur.
+    // A mutation's budget lies between a read's and a
+    // write's: a single round trip, but whose copy fallback is
+    // O(size) on the browser side.
     assert!(DELAI_MUTATION > DELAI_LIRE);
     assert!(DELAI_MUTATION < DELAI_ECRIRE);
 }
 
-/// 🔴 **`annuler` REND TOUTES LES CORRÉLATIONS D'UNE COMMANDE, ET C'EST LA
-/// FENÊTRE DE LECTURE DE F3 QUI L'EXIGE.**
+/// 🔴 **`annuler` RETURNS ALL THE CORRELATIONS OF A COMMAND, AND IT IS
+/// F3'S READ WINDOW THAT REQUIRES IT.**
 ///
-/// Rouge : n'en rendre qu'une, comme jusqu'à F2. Les *N−1* autres resteraient
-/// en vol, expireraient au budget, et `service::balayer` appellerait alors
-/// `PrjCompleteCommand` sur une commande **DÉJÀ COMPLÉTÉE** — un appel au
-/// système sur un identifiant qui appartient désormais à quelqu'un d'autre.
-/// *Muet, différé, et hors de notre processus.*
+/// Red: return only one, as until F2. The *N−1* others would stay
+/// in flight, would expire at the budget, and `service::balayer` would then call
+/// `PrjCompleteCommand` on an **ALREADY COMPLETED** command — a system
+/// call on an identifier that now belongs to someone else.
+/// *Mute, deferred, and outside our process.*
 #[test]
 fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
     let mut t = Table::nouvelle();
@@ -294,7 +294,7 @@ fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
         },
         e,
     );
-    // Une commande VOISINE ne doit pas être emportée.
+    // A NEIGHBOURING command must not be carried away.
     let autre = t.inscrire(8, attributs("x"), e);
     assert_eq!(t.en_vol(), 4);
 

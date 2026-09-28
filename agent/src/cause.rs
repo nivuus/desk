@@ -1,43 +1,43 @@
-//! Rendre LISIBLE la chaîne de causes d'une `anyhow::Error` dans une trace.
+//! Making the cause chain of an `anyhow::Error` READABLE in a trace.
 //!
-//! 🔴 **Le défaut que ce module ferme est un défaut D'INSTRUMENT, et il a
-//! coûté un lot entier.** Le lot 25 a mesuré 74 puis 52 `réveil refusé, la
-//! fenêtre reste endormie` d'affilée sans que personne ne puisse dire
-//! POURQUOI : le site de trace écrivait `%erreur` sur une `anyhow::Error`,
-//! or le `Display` SIMPLE d'`anyhow` ne rend **que la couche la plus
-//! EXTERNE** — ici le `with_context` posé par `transitions.rs::reveiller`,
-//! c'est-à-dire « réveil de la session …:w-24 », qui ne dit rien de plus que
-//! « ça a raté ». Le `HRESULT` de la couche Windows, seule donnée qui
-//! réponde à la question, restait dans les causes, jetée à l'écriture.
+//! 🔴 **The defect this module closes is an INSTRUMENT defect, and it
+//! cost a whole batch.** Batch 25 measured 74 then 52 `réveil refusé, la
+//! fenêtre reste endormie` in a row without anyone being able to say
+//! WHY: the trace site wrote `%erreur` on an `anyhow::Error`,
+//! yet `anyhow`'s PLAIN `Display` renders **only the OUTERMOST
+//! layer** — here the `with_context` set by `transitions.rs::reveiller`,
+//! that is "réveil de la session …:w-24", which says nothing more than
+//! "it failed". The `HRESULT` of the Windows layer, the only datum that
+//! answers the question, stayed in the causes, thrown away at writing time.
 //!
-//! **Pourquoi `{:#}` et non `{:?}`** — le choix est écrit ici pour qu'on ne
-//! le repose pas :
+//! **Why `{:#}` and not `{:?}`** — the choice is written here so that nobody
+//! reopens it:
 //!
-//! - `{}` (donc `%erreur` en `tracing`) : la couche externe SEULE. C'est le
-//!   défaut qu'on corrige.
-//! - `{:#}` : la chaîne COMPLÈTE, des causes séparées par `: `, **sur une
-//!   seule ligne**. C'est ce qu'on retient.
-//! - `{:?}` : la chaîne complète **plus** une trace d'exécution, sur
-//!   PLUSIEURS lignes, et seulement si `RUST_BACKTRACE` est posée — que
-//!   `scripts/run-agent.sh` ne pose pas. Écarté pour deux raisons : la trace
-//!   serait vide en pratique, et le multi-ligne casserait le seul instrument
-//!   dont ce dépôt dispose sur `agent.log`, qui est le comptage de lignes par
-//!   `grep -c` (un `réveil refusé` compterait pour trois).
+//! - `{}` (hence `%erreur` in `tracing`): the outer layer ALONE. That is the
+//!   defect being fixed.
+//! - `{:#}`: the COMPLETE chain, causes separated by `: `, **on a
+//!   single line**. That is what we keep.
+//! - `{:?}`: the complete chain **plus** a backtrace, on
+//!   SEVERAL lines, and only if `RUST_BACKTRACE` is set — which
+//!   `scripts/run-agent.sh` does not set. Ruled out for two reasons: the backtrace
+//!   would be empty in practice, and multi-line would break the only instrument
+//!   this repository has on `agent.log`, which is line counting through
+//!   `grep -c` (one `réveil refusé` would count for three).
 //!
-//! Le dépôt avait déjà tranché ainsi, deux fois, sans jamais poser la règle
-//! au même endroit : `transport/piste_audio.rs` (leg 6 de D10, un `HRESULT`
-//! perdu de la même façon) et `diagnostics/multifenetre/plafond/sonde.rs`.
-//! **Ce module est cet endroit** ; il vit à la racine nue parce que son nom
-//! se comprend sans référence à un parent (convention de `CLAUDE.md`,
-//! précédents `geometry`, `sortie_dxgi`, `survie_verdict`).
+//! The repository had already decided this way, twice, without ever setting the rule
+//! in the same place: `transport/piste_audio.rs` (D10's hand-over 6, an `HRESULT`
+//! lost the same way) and `diagnostics/multifenetre/plafond/sonde.rs`.
+//! **This module is that place**; it lives at the bare root because its name
+//! is understood without reference to a parent (`CLAUDE.md` convention,
+//! precedents `geometry`, `sortie_dxgi`, `survie_verdict`).
 
-/// Rend la chaîne de causes complète d'une erreur, sur une seule ligne.
+/// Returns the complete cause chain of an error, on a single line.
 ///
-/// À employer partout où l'on journalisait `%erreur` sur une `anyhow::Error` :
+/// To be used everywhere `%erreur` was logged on an `anyhow::Error`:
 /// `tracing::warn!(erreur = %crate::cause::chaine(&erreur), "…")`.
 ///
-/// Prend une référence et **ne consomme pas** l'erreur : plusieurs sites
-/// corrigés la journalisent puis la propagent.
+/// Takes a reference and **does not consume** the error: several fixed
+/// sites log it then propagate it.
 pub fn chaine(erreur: &anyhow::Error) -> String {
     format!("{erreur:#}")
 }
@@ -46,10 +46,10 @@ pub fn chaine(erreur: &anyhow::Error) -> String {
 mod tests {
     use anyhow::{anyhow, Context};
 
-    /// Le contrôle qui vaut : il doit ROUGIR si l'on revient à `{}`. Les deux
-    /// assertions sont donc dissymétriques à dessein — la première dit ce que
-    /// `{:#}` ajoute, la seconde dit ce que `{}` PERD, et sans elle le test
-    /// passerait encore avec un `format!("{erreur}")` dans `chaine`.
+    /// The check that counts: it must TURN RED if we go back to `{}`. The two
+    /// assertions are therefore asymmetric on purpose — the first says what
+    /// `{:#}` adds, the second says what `{}` LOSES, and without it the test
+    /// would still pass with a `format!("{erreur}")` in `chaine`.
     #[test]
     fn la_chaine_porte_la_cause_profonde_que_le_display_simple_jette() {
         let profonde = anyhow!("0x88890004");
@@ -72,8 +72,8 @@ mod tests {
             "la couche externe manque : {rendue}"
         );
 
-        // Le témoin négatif, dans le MÊME relevé : le `Display` simple, celui
-        // que `%erreur` employait, ne rend QUE la couche externe.
+        // The negative witness, in the SAME reading: the plain `Display`, the one
+        // `%erreur` used, renders ONLY the outer layer.
         let simple = format!("{erreur}");
         assert_eq!(simple, "réveil de la session prefixe:w-24");
         assert!(
@@ -82,8 +82,8 @@ mod tests {
         );
     }
 
-    /// Une erreur SANS contexte doit rester lisible telle quelle : la
-    /// correction ne doit pas dégrader le cas simple, qui est le plus fréquent.
+    /// An error WITHOUT context must stay readable as is: the
+    /// fix must not degrade the simple case, which is the most frequent.
     #[test]
     fn une_erreur_sans_contexte_est_rendue_telle_quelle() {
         assert_eq!(

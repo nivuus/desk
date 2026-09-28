@@ -1,53 +1,53 @@
-//! Découpe d'une plage en trames bornées. **PUR** : aucun `cfg`, testé
-//! isolément sur l'hôte.
+//! Splitting a range into bounded frames. **PURE**: no `cfg`, tested
+//! in isolation on the host.
 //!
-//! ⚠️ *Ce module disait « une plage de LECTURE » : depuis F2, le **fil
-//! d'écriture** l'emploie aussi pour découper un fichier local à pousser — et
-//! les trois défauts décrits ci-dessous y coûtent alors le fichier de
-//! l'utilisateur, sur SON poste, plutôt qu'une hydratation fausse.*
+//! ⚠️ *This module said "a READ range": since F2, the **write
+//! thread** also uses it to split a local file to push — and
+//! the three defects described below then cost the user's
+//! file, on THEIR workstation, rather than a wrong hydration.*
 //!
-//! ⚠️ **C'est le module où vivent les erreurs d'unité, et c'est pour cela
-//! qu'il est pur et testé à part** (spec §7.3). Le critère (2) de la recette
-//! F1 — le condensat SHA-256 du fichier lu à travers le lecteur — est
-//! exactement ce que ce module peut faire échouer : un fichier tronqué d'une
-//! trame, des plages dans le désordre, un recouvrement qui duplique des
-//! octets. Aucun de ces trois défauts ne se voit à l'œil sur un fichier
-//! texte ; tous les trois cassent le condensat.
+//! ⚠️ **It is the module where unit errors live, and that is why
+//! it is pure and tested separately** (spec §7.3). Criterion (2) of F1's
+//! acceptance run — the SHA-256 digest of the file read through the drive — is
+//! exactly what this module can make fail: a file truncated by one
+//! frame, ranges out of order, an overlap that duplicates
+//! bytes. None of these three defects is visible to the eye on a text
+//! file; all three break the digest.
 //!
-//! ⚠️ **Le piège d'unité que le type impose** : `PRJ_GET_FILE_DATA_CB` reçoit
-//! un `byteoffset: u64` et une `length: u32`. La position est donc sur 64 bits
-//! — un fichier peut dépasser 4 Gio — mais chaque longueur de morceau tient
-//! sur 32 bits. La signature de [`decouper`] prend une longueur en `u64` et
-//! rend des longueurs en `u32` : c'est la conversion qui déborderait si `max`
-//! n'était pas lui-même borné, et le test la couvre.
+//! ⚠️ **The unit trap the type imposes**: `PRJ_GET_FILE_DATA_CB` receives
+//! a `byteoffset: u64` and a `length: u32`. The position is therefore on 64 bits
+//! — a file can exceed 4 GiB — but each chunk length fits
+//! in 32 bits. The signature of [`decouper`] takes a length in `u64` and
+//! returns lengths in `u32`: it is the conversion that would overflow if `max`
+//! were not itself bounded, and the test covers it.
 
-/// Une plage contiguë à demander au navigateur en une seule trame.
+/// A contiguous range to request from the browser in a single frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Morceau {
     pub position: u64,
     pub longueur: u32,
 }
 
-/// Découpe `[position, position + longueur)` en morceaux d'au plus `max`
-/// octets, contigus et croissants.
+/// Splits `[position, position + longueur)` into chunks of at most `max`
+/// bytes, contiguous and increasing.
 ///
-/// Une longueur nulle ne produit **aucun** morceau : un morceau vide
-/// provoquerait une trame de réponse vide que rien ne distinguerait d'une fin
-/// de fichier.
+/// A zero length produces **no** chunk: an empty chunk
+/// would cause an empty response frame that nothing would distinguish from an end
+/// of file.
 ///
 /// # Panique
 ///
-/// Si `max` vaut 0 — une découpe en morceaux de zéro octet ne se termine pas.
-/// C'est une erreur de programmation de l'appelant, pas un cas d'exécution :
-/// `max` est une constante du pont, jamais une valeur reçue du réseau.
+/// If `max` is 0 — a split into zero-byte chunks does not terminate.
+/// It is a programming error of the caller, not a runtime case:
+/// `max` is a constant of the bridge, never a value received from the network.
 pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
     assert!(
         max > 0,
         "une découpe en morceaux de zéro octet ne se termine pas"
     );
-    // `max` est borné à `u32::MAX` avant toute conversion : c'est ici que le
-    // débordement se produirait sur une cible 64 bits, où `usize` est plus
-    // large que `u32`.
+    // `max` is bounded to `u32::MAX` before any conversion: it is here that the
+    // overflow would occur on a 64-bit target, where `usize` is wider
+    // than `u32`.
     let max = max.min(u32::MAX as usize) as u64;
     let mut morceaux = Vec::new();
     let mut reste = longueur;
@@ -56,8 +56,8 @@ pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
         let prise = reste.min(max);
         morceaux.push(Morceau {
             position: curseur,
-            // `prise <= max <= u32::MAX` : la conversion ne peut pas déborder,
-            // et c'est le `min` ci-dessus qui le garantit, pas un espoir.
+            // `prise <= max <= u32::MAX`: the conversion cannot overflow,
+            // and it is the `min` above that guarantees it, not a hope.
             longueur: prise as u32,
         });
         curseur += prise;

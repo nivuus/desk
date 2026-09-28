@@ -1,12 +1,12 @@
-//! Le client de tube côté enfant : il se connecte au capteur, s'attache, et
-//! rend une `SourceDistante` prête à servir la boucle de transport.
+//! The child-side pipe client: it connects to the sensor, attaches, and
+//! returns a `SourceDistante` ready to serve the transport loop.
 //!
-//! **Deux connexions, un seul sens par bout.** La connexion de commandes (B)
-//! est écrite puis lue par le seul fil appelant, en stricte alternance ; la
-//! connexion média (A) ne porte qu'une trame d'identité à l'ouverture, puis
-//! n'est plus que lue, par le seul fil répartiteur. Aucun objet fichier ne
-//! porte donc jamais une lecture et une écriture concurrentes — voir la
-//! tâche 10 du sous-bloc D4.
+//! **Two connections, a single direction per end.** The command connection (B)
+//! is written then read by the calling thread alone, in strict alternation; the
+//! media connection (A) only carries an identity frame at opening, then
+//! is only read, by the dispatcher thread alone. No file object
+//! therefore ever carries a concurrent read and write — see
+//! task 10 of sub-block D4.
 
 #![cfg(windows)]
 
@@ -25,33 +25,33 @@ use crate::capteur::protocole::{
 };
 use crate::capteur::reprise::DUREE_FENETRE_CANAL;
 
-/// Profondeur de la file d'images entre le fil lecteur et `next_frame`.
+/// Depth of the frame queue between the reader thread and `next_frame`.
 ///
-/// **C'est elle qui exerce la contre-pression sur toute la chaîne** : file
-/// pleine → le fil lecteur bloque → le tampon du tube se remplit → l'écriture
-/// du capteur bloque, et son fil de fenêtre attend. Une unité d'accès ne peut
-/// pas être jetée sans corrompre le flux, donc bloquer est la seule issue
-/// correcte. 8 unités ≈ 90 ms de vidéo à 90 i/s : assez pour absorber un
-/// à-coup d'ordonnancement, trop peu pour laisser une session dériver en
-/// silence.
+/// **It is what exerts back-pressure on the whole chain**: queue
+/// full → the reader thread blocks → the pipe buffer fills up → the sensor's
+/// write blocks, and its window thread waits. An access unit cannot
+/// be thrown away without corrupting the stream, so blocking is the only correct
+/// way out. 8 units ≈ 90 ms of video at 90 fps: enough to absorb a
+/// scheduling hiccup, too little to let a session drift
+/// silently.
 const CAPACITE_FILE: usize = 8;
 
-/// Pas entre deux tentatives de connexion. Même valeur que le pas de reprise
-/// de `capture/reprise.rs`, et pour la même raison : assez petit pour ne pas
-/// retarder la reprise réelle, assez grand pour que la trace reste rare.
+/// Step between two connection attempts. Same value as the resumption step
+/// of `capture/reprise.rs`, and for the same reason: small enough not to
+/// delay the real resumption, large enough for the trace to stay rare.
 const PAS_CONNEXION: Duration = Duration::from_millis(150);
 
-/// Fenêtre d'ouverture de la connexion média, une fois l'attache acceptée.
+/// Opening window of the media connection, once the attach is accepted.
 ///
-/// Le capteur ne recrée son instance d'écoute qu'après avoir accepté la
-/// précédente : une ouverture immédiate peut tomber sur `ERROR_PIPE_BUSY`.
-/// Une seconde couvre largement cette course sans rien retarder — l'attache
-/// vient d'aboutir, donc le capteur est vivant et son serveur tourne.
+/// The sensor only recreates its listening instance after accepting the
+/// previous one: an immediate opening may hit `ERROR_PIPE_BUSY`.
+/// One second amply covers this race without delaying anything — the attach
+/// has just succeeded, so the sensor is alive and its server is running.
 ///
-/// **Publique parce que le capteur en dérive son propre budget d'attente**
-/// (`serveur::DELAI_CONNEXION_MEDIA`) : les deux patiences doivent être une
-/// seule décision, sans quoi le capteur retient une duplication DXGI bien
-/// après que l'enfant a renoncé.
+/// **Public because the sensor derives its own wait budget from it**
+/// (`serveur::DELAI_CONNEXION_MEDIA`): the two patiences must be a
+/// single decision, otherwise the sensor holds a DXGI duplication long
+/// after the child has given up.
 pub const DUREE_OUVERTURE_MEDIA: Duration = Duration::from_secs(1);
 
 pub fn connecter(
@@ -60,10 +60,10 @@ pub fn connecter(
     sortie: &str,
     fps: u32,
     debit: u32,
-    // La taille RETENUE que le superviseur a posée sur cette fenêtre — pas
-    // la taille de la sortie. `(u32::MAX, u32::MAX)` en son absence (chemin
-    // mono-fenêtre) : `taille_retenue`, côté capteur (tâche 8), la ramène
-    // alors à la taille de la sortie.
+    // The KEPT size the supervisor set on this window — not
+    // the output size. `(u32::MAX, u32::MAX)` in its absence (single-window
+    // path): `taille_retenue`, on the sensor side (task 8), then brings it back
+    // to the output size.
     taille: (u32, u32),
     clock_origin: Instant,
 ) -> Result<SourceDistante> {
@@ -76,9 +76,9 @@ pub fn connecter(
         taille,
         clock_origin,
     };
-    // La PREMIÈRE ouverture est patiente : l'enfant peut démarrer avant que le
-    // capteur n'ait ouvert son tube. Les réouvertures de `rattacher`, elles,
-    // ne le sont pas — elles courent depuis la boucle de transport.
+    // The FIRST opening is patient: the child may start before the
+    // sensor has opened its pipe. The reopenings of `rattacher`, on the other hand,
+    // are not — they run from the transport loop.
     let commandes = ouvrir_dans(DUREE_FENETRE_CANAL)?;
     let attachee = attacher_sur(commandes, &signalement)?;
     let (largeur, hauteur) = (attachee.largeur, attachee.hauteur);
@@ -93,28 +93,28 @@ pub fn connecter(
     ))
 }
 
-/// Attache l'enfant au capteur sur un tube de commandes déjà ouvert, puis
-/// ouvre la connexion média. **Partagée par `connecter` et `rattacher`** : les
-/// deux ne doivent pas porter deux copies de cette séquence.
+/// Attaches the child to the sensor on an already open command pipe, then
+/// opens the media connection. **Shared by `connecter` and `rattacher`**: the
+/// two must not carry two copies of this sequence.
 ///
-/// L'ordre est imposé : les commandes d'abord (l'attache y rend les
-/// dimensions), le média ensuite (l'identité y apparie la connexion à la
-/// session déjà attachée). Le capteur ne saurait pas apparier l'inverse.
+/// The order is imposed: commands first (the attach returns the
+/// dimensions there), media next (the identity pairs the connection with the
+/// already attached session there). The sensor could not pair the reverse.
 fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Result<Attachee> {
-    // `clock_origin` a été créée par `demarrage.rs` AVANT cet appel — la
-    // connexion peut avoir attendu le capteur plusieurs secondes, et un
-    // rattachement survient bien plus tard encore. Lire QPC maintenant et
-    // l'envoyer tel quel décalerait la vidéo de tout cet écart par rapport à
-    // l'audio, qui partage `clock_origin`. On CORRIGE donc de l'écoulé, ce
-    // qui rend l'origine exacte à chaque attache.
+    // `clock_origin` was created by `demarrage.rs` BEFORE this call — the
+    // connection may have waited for the sensor for several seconds, and a
+    // re-attachment happens much later still. Reading QPC now and
+    // sending it as is would shift the video by that whole gap relative to
+    // the audio, which shares `clock_origin`. We therefore CORRECT by the elapsed time, which
+    // makes the origin exact at every attach.
     let frequence = crate::capteur::horloge::frequence_qpc()?;
     let ecoule_tics = (signalement.clock_origin.elapsed().as_nanos() * frequence as u128
         / 1_000_000_000)
         .min(i64::MAX as u128) as i64;
     let origine_qpc = lire_qpc().context("lecture de QPC avant l'attache")? - ecoule_tics;
 
-    // Écriture PUIS lecture, sur CE fil, sans aucun tampon d'écriture : c'est
-    // déjà la discipline de `commander`, et l'attache l'inaugure.
+    // Write THEN read, on THIS thread, without any write buffer: it is
+    // already the discipline of `commander`, and the attach inaugurates it.
     ecrire_json(
         &mut commandes,
         &VersCapteur::Attache {
@@ -132,18 +132,18 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
     let (largeur, hauteur) = match lire_trame(&mut commandes).context("réponse à l'attache")? {
         Trame::Json(octets) => match serde_json::from_slice::<DepuisCapteur>(&octets)? {
             DepuisCapteur::Attachee { largeur, hauteur } => (largeur, hauteur),
-            // Un refus fait échouer l'attache BRUYAMMENT : sans cela l'enfant
-            // attendrait une image qui ne viendra jamais.
+            // A refusal makes the attach fail LOUDLY: without it the child
+            // would wait for a frame that will never come.
             DepuisCapteur::Refus { motif } => bail!("le capteur a refusé l'attache : {motif}"),
             autre => bail!("réponse inattendue à l'attache : {autre:?}"),
         },
         Trame::Image(_) => bail!("le capteur a répondu une image à l'attache"),
     };
 
-    // La connexion MÉDIA. On y écrit son identité — la seule et unique trame
-    // que ce bout y écrira jamais — puis on la confie au fil répartiteur, qui
-    // ne fait que lire. C'est ce qui rend impossible qu'une lecture et une
-    // écriture s'y croisent.
+    // The MEDIA connection. We write our identity there — the one and only frame
+    // this end will ever write there — then hand it to the dispatcher thread, which
+    // only reads. That is what makes it impossible for a read and a
+    // write to cross there.
     let mut media =
         ouvrir_dans(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
     ecrire_json(
@@ -180,10 +180,10 @@ fn ouvrir_une_instance() -> std::io::Result<std::fs::File> {
         .open(NOM_TUBE)
 }
 
-/// Réessaie l'ouverture dans une fenêtre bornée : l'enfant peut démarrer avant
-/// que le capteur n'ait ouvert son tube (au tout premier lancement, ou pendant
-/// une relance du capteur), et une instance d'écoute peut être momentanément
-/// occupée entre deux accueils.
+/// Retries the opening within a bounded window: the child may start before
+/// the sensor has opened its pipe (at the very first launch, or during
+/// a sensor restart), and a listening instance may be momentarily
+/// busy between two welcomes.
 fn ouvrir_dans(fenetre: Duration) -> Result<std::fs::File> {
     let debut = Instant::now();
     let mut derniere = None;
@@ -203,34 +203,34 @@ fn ouvrir_dans(fenetre: Duration) -> Result<std::fs::File> {
 }
 
 struct CanalTube {
-    /// La connexion de commandes. `Mutex` et non `&mut` : `Canal::commander`
-    /// prend `&mut self`, mais c'est l'alternance écriture → lecture qui doit
-    /// rester indivisible, et rien ne promet que l'appelant sera toujours le
-    /// même fil.
+    /// The command connection. `Mutex` and not `&mut`: `Canal::commander`
+    /// takes `&mut self`, but it is the write → read alternation that must
+    /// stay indivisible, and nothing promises the caller will always be the
+    /// same thread.
     commandes: Mutex<std::fs::File>,
-    /// De quoi se réattacher à un capteur relancé. Retenu à la connexion :
-    /// au moment de la rupture, plus rien d'autre ne porte ces valeurs.
+    /// What is needed to re-attach to a restarted sensor. Kept at connection:
+    /// at the moment of the break, nothing else carries these values.
     signalement: Signalement,
 }
 
-/// Ce qu'il faut redire au capteur pour se réattacher.
+/// What must be repeated to the sensor to re-attach.
 ///
-/// `clock_origin` est retenue et NON figée en tics QPC : chaque attache
-/// recalcule `origine_qpc` à partir d'elle, de sorte que l'origine reste
-/// exacte quel que soit le temps écoulé depuis le démarrage de l'enfant.
+/// `clock_origin` is kept and NOT frozen in QPC ticks: each attach
+/// recomputes `origine_qpc` from it, so that the origin stays
+/// exact whatever the time elapsed since the child started.
 struct Signalement {
     session: String,
     hwnd: u64,
     sortie: String,
     fps: u32,
     debit: u32,
-    /// La taille RETENUE demandée par le superviseur, redite à chaque
-    /// attache et à chaque rattachement (`connecter`, `Canal::rattacher`).
+    /// The KEPT size requested by the supervisor, repeated at every
+    /// attach and every re-attachment (`connecter`, `Canal::rattacher`).
     taille: (u32, u32),
     clock_origin: Instant,
 }
 
-/// Le fruit d'une attache réussie, côté enfant.
+/// The fruit of a successful attach, child side.
 struct Attachee {
     commandes: std::fs::File,
     images: Receiver<Recu>,
@@ -239,23 +239,23 @@ struct Attachee {
 }
 
 impl Canal for CanalTube {
-    /// Rouvre les DEUX connexions vers le capteur (relancé par le
-    /// superviseur) et réémet l'attache. Remplace la connexion de commandes de
-    /// CE `CanalTube`, et rend la file d'images neuve.
+    /// Reopens BOTH connections to the sensor (restarted by the
+    /// supervisor) and re-sends the attach. Replaces the command connection of
+    /// THIS `CanalTube`, and returns the new frame queue.
     ///
-    /// **Sans cette méthode, la fenêtre de reprise de `SourceDistante` ne
-    /// ferait que retarder la mort des sessions de 15 s** : rien d'autre
-    /// n'ouvre jamais un second tube. Voir la tâche 3bis.
+    /// **Without this method, the resumption window of `SourceDistante` would
+    /// only delay the death of sessions by 15 s**: nothing else
+    /// ever opens a second pipe. See task 3bis.
     ///
-    /// Une seule tentative sur la connexion de commandes, sans patience
-    /// interne : c'est `SourceDistante` qui tient le budget et l'espacement
-    /// (`PAS_RATTACHEMENT`). Une ouverture patiente bloquerait la boucle de
-    /// transport jusqu'à 15 s.
+    /// A single attempt on the command connection, without internal
+    /// patience: it is `SourceDistante` that holds the budget and the spacing
+    /// (`PAS_RATTACHEMENT`). A patient opening would block the transport
+    /// loop for up to 15 s.
     fn rattacher(&mut self) -> Result<Rattachee> {
         let commandes = ouvrir_une_instance().context("réouverture du tube du capteur")?;
         let attachee = attacher_sur(commandes, &self.signalement)?;
-        // Remplacer la connexion de CE canal : l'ancienne pointe sur un tube
-        // mort, et `commander` l'emploierait encore.
+        // Replace THIS channel's connection: the old one points to a dead
+        // pipe, and `commander` would still use it.
         self.commandes = Mutex::new(attachee.commandes);
         Ok(Rattachee {
             images: attachee.images,
@@ -264,23 +264,23 @@ impl Canal for CanalTube {
         })
     }
 
-    /// ⚠️ **Cette lecture n'a AUCUN délai, et c'est assumé.** Le `recv_timeout`
-    /// qui bornait autrefois l'attente a disparu avec le fil lecteur, et il
-    /// n'existe pas d'équivalent de `SO_RCVTIMEO` pour un tube nommé
-    /// synchrone. La parade retenue est que le capteur ferme ses tubes en
-    /// mourant — le job object garantit sa mort, et la fermeture de ses
-    /// handles avec —, ce qui fait rendre une **erreur** à cette lecture
-    /// plutôt que de la suspendre. **À vérifier explicitement à la recette** :
-    /// tuer le capteur pendant que des commandes circulent, et constater que
-    /// `commander` rend une erreur.
+    /// ⚠️ **This read has NO timeout, and it is accepted.** The `recv_timeout`
+    /// that used to bound the wait disappeared with the reader thread, and there
+    /// is no equivalent of `SO_RCVTIMEO` for a synchronous named
+    /// pipe. The chosen countermeasure is that the sensor closes its pipes when
+    /// dying — the job object guarantees its death, and the closing of its
+    /// handles with it —, which makes this read return an **error**
+    /// rather than hang. **To be explicitly checked in the acceptance run**:
+    /// kill the sensor while commands are flowing, and observe that
+    /// `commander` returns an error.
     fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur> {
         let mut commandes = self
             .commandes
             .lock()
             .unwrap_or_else(|empoisonne| empoisonne.into_inner());
-        // Écriture PUIS lecture sur le même fil : c'est la discipline qui
-        // rend le blocage impossible. Ne jamais introduire de fil lecteur
-        // sur cette connexion — voir la tâche 10 du sous-bloc D4.
+        // Write THEN read on the same thread: that is the discipline that
+        // makes blocking impossible. Never introduce a reader thread
+        // on this connection — see task 10 of sub-block D4.
         ecrire_json(&mut *commandes, &message)?;
         commandes.flush()?;
         match lire_trame(&mut *commandes).context("réponse du capteur")? {

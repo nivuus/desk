@@ -1,20 +1,20 @@
-//! La configuration de l'agent, lue depuis l'environnement.
+//! The agent's configuration, read from the environment.
 //!
-//! **Extrait de `main.rs` VERBATIM le 20 août 2026**, avant les additions du
-//! sous-bloc P1 du presse-papier, parce que `main.rs` était à **513 lignes** —
-//! au-dessus du plafond de 500 de `CLAUDE.md`, et absent de son tableau de
-//! dette. Le commit `264c275` (« un seul canal `/agent` par VM ») l'avait porté
-//! de 470 à 505 sans le déclarer, et la tâche 4 du presse-papier y avait ajouté
-//! 8 lignes de plus. La règle du dépôt est d'**extraire avant d'ajouter**,
-//! jamais de comprimer un commentaire pour repasser sous la ligne.
+//! **Extracted from `main.rs` VERBATIM on 20 August 2026**, before the additions of
+//! clipboard sub-block P1, because `main.rs` was at **513 lines** —
+//! above the 500 cap of `CLAUDE.md`, and absent from its debt
+//! table. Commit `264c275` ("a single `/agent` channel per VM") had taken it
+//! from 470 to 505 without declaring it, and clipboard task 4 had added
+//! 8 more lines to it. The repository's rule is to **extract before adding**,
+//! never to compress a comment to get back under the line.
 //!
-//! Le découpage suit la responsabilité : `main.rs` ne garde que la déclaration
-//! des modules et l'aiguillage des modes (capteur, pont, superviseur,
-//! mono-fenêtre) ; la lecture et la validation de l'environnement vivent ici.
-//! Aucun site d'appel n'a bougé — `Config` reste `crate::Config`, réexporté par
-//! `main.rs`. Le seul changement au texte déplacé est la **visibilité** :
-//! `pub(crate)` sur le type, ses champs et les deux fonctions que `main.rs`
-//! appelle encore, sans quoi elles seraient invisibles depuis leur propre
+//! The split follows responsibility: `main.rs` only keeps the declaration
+//! of the modules and the routing of the modes (sensor, bridge, supervisor,
+//! single-window); reading and validating the environment live here.
+//! No call site moved — `Config` stays `crate::Config`, re-exported by
+//! `main.rs`. The only change to the moved text is **visibility**:
+//! `pub(crate)` on the type, its fields and the two functions `main.rs`
+//! still calls, otherwise they would be invisible from their own
 //! crate.
 
 use std::net::IpAddr;
@@ -22,100 +22,100 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-// Importé plutôt que qualifié `crate::demarrage::…` sur son site d'appel : le
-// texte déplacé reste ainsi VERBATIM, à la seule visibilité près.
+// Imported rather than qualified `crate::demarrage::…` at its call site: the
+// moved text thus stays VERBATIM, visibility aside.
 use crate::demarrage;
 
-/// Configuration de l'agent, lue depuis l'environnement.
+/// Agent configuration, read from the environment.
 pub(crate) struct Config {
     pub(crate) signaling_url: String,
     pub(crate) session_id: String,
     pub(crate) local_ip: IpAddr,
     pub(crate) test_file: Option<PathBuf>,
-    /// Vrai en mode superviseur : ce processus ne capture rien, il détecte les
-    /// fenêtres et lance un enfant par fenêtre.
+    /// True in supervisor mode: this process captures nothing, it detects the
+    /// windows and launches one child per window.
     pub(crate) superviseur: bool,
-    /// `HWND` de la fenêtre à capturer, en décimal ou hexadécimal préfixé
-    /// `0x`. Posé par le superviseur sur ses enfants ; absent, l'agent
-    /// retombe sur la recherche par titre (`WINDOW_TITLE`), c'est-à-dire sur
-    /// le comportement mono-fenêtre d'avant ce sous-bloc.
+    /// `HWND` of the window to capture, in decimal or hexadecimal prefixed
+    /// with `0x`. Set by the supervisor on its children; absent, the agent
+    /// falls back on the search by title (`WINDOW_TITLE`), that is on
+    /// the single-window behaviour from before this sub-block.
     ///
-    /// Les quatre champs qui suivent ne sont lus que par la branche Windows de
-    /// `demarrage` : sur l'hôte Linux ils sont morts par construction, et
-    /// l'`allow` le dit plutôt que de laisser un avertissement s'installer.
+    /// The four fields that follow are only read by the Windows branch of
+    /// `demarrage`: on the Linux host they are dead by construction, and
+    /// the `allow` says so rather than letting a warning settle in.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) fenetre_hwnd: Option<u64>,
-    /// Sortie DXGI à capturer, désignée par son nom (`\\.\DISPLAYn`). Absente,
-    /// l'agent capture le bureau et recadre la fenêtre.
+    /// DXGI output to capture, designated by its name (`\\.\DISPLAYn`). Absent,
+    /// the agent captures the desktop and crops the window.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) sortie_dxgi: Option<String>,
-    /// La taille RETENUE (`superviseur::placement::taille_retenue`) à
-    /// laquelle le superviseur a posé cette fenêtre — posée par lui seul
-    /// (`lanceur.rs`), jamais par un opérateur. Absente — le chemin
-    /// mono-fenêtre, où `sortie_dxgi` l'est aussi —, la taille demandée au
-    /// capteur à l'attache reste `(u32::MAX, u32::MAX)`
-    /// (`capteur::tube::connecter`), et `taille_retenue` la ramène telle
-    /// quelle à la taille de la sortie : le comportement d'avant ce
-    /// sous-bloc, inchangé.
+    /// The KEPT size (`superviseur::placement::taille_retenue`) at
+    /// which the supervisor placed this window — set by it alone
+    /// (`lanceur.rs`), never by an operator. Absent — the
+    /// single-window path, where `sortie_dxgi` is too —, the size requested from the
+    /// sensor at attach stays `(u32::MAX, u32::MAX)`
+    /// (`capteur::tube::connecter`), and `taille_retenue` brings it back as
+    /// is to the output size: the behaviour from before this
+    /// sub-block, unchanged.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) taille_fenetre: Option<(u32, u32)>,
-    /// Faux quand `AUDIO=0` coupe le son de cet agent.
+    /// False when `AUDIO=0` mutes this agent's sound.
     ///
-    /// **Interrupteur GLOBAL, plus une consigne par fenêtre.** Jusqu'au
-    /// sous-bloc D7, le superviseur posait `AUDIO=0` sur tous les enfants sauf
-    /// un, parce qu'un unique loopback de session aurait été capté huit fois.
-    /// Chaque enfant capte désormais le son de son PROPRE processus, et c'est
-    /// le capteur qui arbitre entre les fenêtres d'un même processus : il n'y a
-    /// plus rien à réserver.
+    /// **GLOBAL switch, no longer a per-window instruction.** Until
+    /// sub-block D7, the supervisor set `AUDIO=0` on all children but
+    /// one, because a single session loopback would have been captured eight times.
+    /// Each child now captures the sound of its OWN process, and it is
+    /// the sensor that arbitrates between the windows of the same process: there is
+    /// nothing left to reserve.
     ///
-    /// **Un agent lancé à la main coupe son son via `AUDIO=0
-    /// scripts/run-agent.sh`**, qui transmet la variable en `$env:AUDIO` dans
-    /// le script d'amorçage PowerShell (`schtasks` ne transmet pas
-    /// l'environnement directement). Ce transport a manqué un temps : retirer
-    /// le poseur du superviseur a d'abord laissé `AUDIO` sans aucun chemin
-    /// vers l'enfant, `run-agent.sh` ne la portant pas — corrigé dans la
-    /// même tâche 9, avant que ce commentaire ne soit lu par personne.
+    /// **An agent launched by hand mutes its sound via `AUDIO=0
+    /// scripts/run-agent.sh`**, which passes the variable as `$env:AUDIO` in
+    /// the PowerShell bootstrap script (`schtasks` does not pass
+    /// the environment directly). This transport was missing for a while: removing
+    /// the supervisor's setter first left `AUDIO` with no path at all
+    /// to the child, `run-agent.sh` not carrying it — fixed in the
+    /// same task 9, before this comment was read by anyone.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) audio: bool,
-    /// Faux quand `MICRO=0` coupe le microphone de cet agent.
+    /// False when `MICRO=0` mutes this agent's microphone.
     ///
-    /// ⚠️ **Convention d'`AUDIO`, `SUPERVISEUR`, `PLEIN_ECRAN` et `CAPTEUR` —
-    /// et donc INVERSE de celle de `micro_mesure` juste en dessous, à
-    /// dessein** : on désarme sur `=0` ce qui est LIVRÉ, on arme sur `=1` ce
-    /// qui ne l'est pas. Le micro est livré depuis le bloc E2 ; le puits de
-    /// mesure ne le sera jamais.
+    /// ⚠️ **Convention of `AUDIO`, `SUPERVISEUR`, `PLEIN_ECRAN` and `CAPTEUR` —
+    /// and therefore the REVERSE of that of `micro_mesure` just below, on
+    /// purpose**: we disarm on `=0` what is SHIPPED, we arm on `=1` what
+    /// is not. The mic has been shipped since block E2; the measurement sink
+    /// never will be.
     ///
-    /// La décision vit dans `demarrage::micro::arme_micro`, où un test la
-    /// garde : **jamais `is_ok()`**, sans quoi quelqu'un qui écrirait
-    /// `MICRO=0` pour être sûr de le couper l'allumerait.
+    /// The decision lives in `demarrage::micro::arme_micro`, where a test
+    /// guards it: **never `is_ok()`**, otherwise someone writing
+    /// `MICRO=0` to be sure to turn it off would turn it on.
     pub(crate) micro: bool,
-    /// Vrai quand `MICRO_MESURE=1` arme le puits de mesure du micro
-    /// (chantier E, `demarrage/micro.rs`).
+    /// True when `MICRO_MESURE=1` arms the mic measurement sink
+    /// (work stream E, `demarrage/micro.rs`).
     ///
-    /// ⚠️ **CONVENTION INVERSE de `AUDIO`, `SUPERVISEUR`, `PLEIN_ECRAN` et
-    /// `CAPTEUR`, et à dessein** : on désarme sur `=0` ce qui est LIVRÉ, on
-    /// **arme sur `=1`** ce qui ne l'est pas. Ce puits est un instrument de
-    /// banc — il consomme le flux montant pour le journaliser, il ne le joue
-    /// nulle part —, et une simple présence de la variable ne suffit donc pas :
-    /// il faut la valeur `1`. C'est la convention qu'avait
-    /// `PLEIN_ECRAN_MODE_SORTIE`, variable retirée par le sous-bloc D9 et qu'il
-    /// est donc inutile de chercher dans le code.
+    /// ⚠️ **REVERSE CONVENTION of `AUDIO`, `SUPERVISEUR`, `PLEIN_ECRAN` and
+    /// `CAPTEUR`, on purpose**: we disarm on `=0` what is SHIPPED, we
+    /// **arm on `=1`** what is not. This sink is a bench
+    /// instrument — it consumes the upstream flow to log it, it plays it
+    /// nowhere —, and a mere presence of the variable is therefore not enough:
+    /// the value `1` is required. It is the convention
+    /// `PLEIN_ECRAN_MODE_SORTIE` had, a variable removed by sub-block D9 and which it
+    /// is therefore pointless to look for in the code.
     pub(crate) micro_mesure: bool,
-    /// Le nom de la VM enrôlée auprès de la plateforme, et son secret
-    /// d'enrôlement (sous-bloc P3). **Les deux ou aucun** : c'est le couple
-    /// que le canal `/agent` présente.
+    /// The name of the VM enrolled with the platform, and its enrolment
+    /// secret (sub-block P3). **Both or neither**: it is the pair
+    /// the `/agent` channel presents.
     ///
-    /// ⚠️ **ABSENTS = aucun jeton d'agent, donc AUCUNE session.** Depuis P3 la
-    /// garde de la plateforme refuse un `{"role":"agent"}` anonyme, et il n'y
-    /// a pas d'interrupteur permissif. Leur absence n'est donc PAS un mode de
-    /// repli : c'est une panne, annoncée par un `warn!` qui la nomme, et non
-    /// un échec de démarrage — les sondes de `diagnostics` (`MULTIFENETRE_*`)
-    /// n'ouvrent aucun signaling et doivent continuer de tourner sans elles.
+    /// ⚠️ **ABSENT = no agent token, hence NO session.** Since P3 the
+    /// platform's guard refuses an anonymous `{"role":"agent"}`, and there
+    /// is no permissive switch. Their absence is therefore NOT a fallback
+    /// mode: it is a failure, announced by a `warn!` that names it, and not
+    /// a start-up failure — the `diagnostics` probes (`MULTIFENETRE_*`)
+    /// open no signaling and must keep running without them.
     pub(crate) agent_vm: Option<String>,
     pub(crate) agent_secret: Option<String>,
-    /// Le préfixe de session délivré à l'enrôlement, et le jeton d'agent qui
-    /// ouvre les deux poignées de main. Remplis par `main` APRÈS le
-    /// démarrage, jamais par `config()` : les obtenir demande un socket.
+    /// The session prefix delivered at enrolment, and the agent token that
+    /// opens both handshakes. Filled by `main` AFTER
+    /// start-up, never by `config()`: obtaining them requires a socket.
     pub(crate) prefixe: String,
     pub(crate) jeton: Option<String>,
 }
@@ -130,22 +130,22 @@ pub(crate) fn config() -> Result<Config> {
             .parse()
             .context("LOCAL_IP n'est pas une adresse IP valide")?,
         test_file: std::env::var("TEST_FILE").ok().map(PathBuf::from),
-        // `SUPERVISEUR=0` DÉSACTIVE le mode, comme `AUDIO=0` désactive le son.
-        // Une simple présence (`is_ok()`) ferait qu'écrire `SUPERVISEUR=0`
-        // pour le couper l'activerait — piège d'exploitation d'autant plus
-        // sûr que la variable voisine, elle, se lit bien ainsi.
+        // `SUPERVISEUR=0` DISABLES the mode, as `AUDIO=0` disables sound.
+        // A mere presence (`is_ok()`) would make writing `SUPERVISEUR=0`
+        // to turn it off enable it — an operational trap all the more
+        // certain since the neighbouring variable is indeed read that way.
         superviseur: matches!(std::env::var("SUPERVISEUR").as_deref(), Ok(v) if v != "0"),
-        // ABSENTE : mode mono-fenêtre légitime, aucun bruit. PRÉSENTE MAIS MAL
-        // FORMÉE : échec du démarrage, jamais un repli muet — voir
+        // ABSENT: legitimate single-window mode, no noise. PRESENT BUT
+        // MALFORMED: start-up failure, never a silent fallback — see
         // `analyser_hwnd`.
         fenetre_hwnd: match std::env::var("FENETRE_HWND") {
             Ok(brut) => Some(analyser_hwnd(&brut)?),
             Err(_) => None,
         },
-        // ABSENTE : mode mono-fenêtre légitime. PRÉSENTE MAIS VIDE : échec du
-        // démarrage, jamais un repli muet — même règle que `FENETRE_HWND`.
-        // Plus d'analyse `adaptateur:sortie` : c'est un NOM de sortie DXGI
-        // (`\\.\DISPLAYn`), stable là où les index sont positionnels.
+        // ABSENT: legitimate single-window mode. PRESENT BUT EMPTY: start-up
+        // failure, never a silent fallback — same rule as `FENETRE_HWND`.
+        // No more `adaptateur:sortie` parsing: it is a DXGI output NAME
+        // (`\\.\DISPLAYn`), stable where indices are positional.
         sortie_dxgi: match std::env::var("SORTIE_DXGI") {
             Ok(brut) => {
                 let nom = brut.trim().to_string();
@@ -154,12 +154,12 @@ pub(crate) fn config() -> Result<Config> {
             }
             Err(_) => None,
         },
-        // ABSENTE : mode mono-fenêtre légitime, aucun bruit — même cas que
-        // `SORTIE_DXGI`. PRÉSENTE MAIS MAL FORMÉE : échec du démarrage, même
-        // règle que `FENETRE_HWND` et `SORTIE_DXGI` — cette variable n'est
-        // posée QUE par le superviseur (`lanceur.rs`, forme `LxH`), donc une
-        // valeur illisible signale un bug du superviseur, pas une entrée
-        // d'opérateur à tolérer en silence.
+        // ABSENT: legitimate single-window mode, no noise — same case as
+        // `SORTIE_DXGI`. PRESENT BUT MALFORMED: start-up failure, same
+        // rule as `FENETRE_HWND` and `SORTIE_DXGI` — this variable is only
+        // set by the supervisor (`lanceur.rs`, `WxH` form), so an
+        // unreadable value signals a supervisor bug, not an operator
+        // input to tolerate silently.
         taille_fenetre: match std::env::var("TAILLE_FENETRE") {
             Ok(brut) => {
                 let (l, h) = brut
@@ -175,28 +175,28 @@ pub(crate) fn config() -> Result<Config> {
             }
             Err(_) => None,
         },
-        // Le son est actif par défaut : un agent lancé à la main doit
-        // retrouver ce comportement. `AUDIO=0` DÉSACTIVE, comme
-        // `SUPERVISEUR=0` : une simple présence (`is_ok()`) activerait le son
-        // en écrivant `AUDIO=0` pour le couper — même piège que documenté
-        // au-dessus pour `SUPERVISEUR`. Depuis la tâche 9 du sous-bloc D7, le
-        // superviseur ne pose plus cette variable sur ses enfants : chacun
-        // capte le son de SON PROPRE processus (tâche 7), et c'est le capteur
-        // qui arbitre entre les fenêtres qui en partagent un.
+        // Sound is on by default: an agent launched by hand must
+        // get this behaviour back. `AUDIO=0` DISABLES, like
+        // `SUPERVISEUR=0`: a mere presence (`is_ok()`) would enable sound
+        // when writing `AUDIO=0` to mute it — same trap as documented
+        // above for `SUPERVISEUR`. Since task 9 of sub-block D7, the
+        // supervisor no longer sets this variable on its children: each one
+        // captures the sound of ITS OWN process (task 7), and it is the sensor
+        // that arbitrates between the windows that share one.
         audio: std::env::var("AUDIO").as_deref() != Ok("0"),
-        // La décision vit dans `demarrage::micro::arme`, où un test la garde :
-        // une variable posée à `0`, à vide, ou à quoi que ce soit d'autre
-        // laisse le puits DÉSARMÉ, comme son absence.
-        // Le micro est actif par défaut depuis le bloc E2 : un agent lancé à
-        // la main doit retrouver le comportement livré. `MICRO=0` DÉSACTIVE,
-        // comme `AUDIO=0` — et le prédicat vit chez `demarrage::micro`, où un
-        // test interdit le `is_ok()` qui inverserait le sens de la variable.
+        // The decision lives in `demarrage::micro::arme`, where a test guards it:
+        // a variable set to `0`, empty, or anything else
+        // leaves the sink DISARMED, like its absence.
+        // The mic has been on by default since block E2: an agent launched by
+        // hand must get the shipped behaviour back. `MICRO=0` DISABLES,
+        // like `AUDIO=0` — and the predicate lives in `demarrage::micro`, where a
+        // test forbids the `is_ok()` that would invert the variable's meaning.
         micro: demarrage::micro::arme_micro(std::env::var("MICRO").ok().as_deref()),
         micro_mesure: demarrage::micro::arme(std::env::var("MICRO_MESURE").ok().as_deref()),
-        // Une valeur vide vaut absence : `run-agent.sh` n'écrit la ligne que
-        // si la variable est définie, mais un `AGENT_VM=` posé à la main
-        // donnerait sinon un enrôlement au nom vide, que la plateforme
-        // refuserait sans qu'on sache pourquoi.
+        // An empty value counts as absence: `run-agent.sh` only writes the line
+        // if the variable is defined, but an `AGENT_VM=` set by hand
+        // would otherwise give an enrolment with an empty name, which the platform
+        // would refuse without anyone knowing why.
         agent_vm: variable_non_vide("AGENT_VM"),
         agent_secret: variable_non_vide("AGENT_SECRET"),
         prefixe: String::new(),
@@ -204,7 +204,7 @@ pub(crate) fn config() -> Result<Config> {
     })
 }
 
-/// Lit une variable d'environnement, en traitant la chaîne vide comme une
+/// Reads an environment variable, treating the empty string as
 /// absence.
 pub(crate) fn variable_non_vide(nom: &str) -> Option<String> {
     let valeur = std::env::var(nom).ok()?;
@@ -212,17 +212,17 @@ pub(crate) fn variable_non_vide(nom: &str) -> Option<String> {
     (!valeur.is_empty()).then_some(valeur)
 }
 
-/// Analyse un `HWND` tel que le superviseur le pose sur ses enfants :
-/// hexadécimal préfixé `0x` (la forme que produit `lanceur.rs`), ou décimal.
+/// Parses an `HWND` as the supervisor sets it on its children:
+/// hexadecimal prefixed with `0x` (the form `lanceur.rs` produces), or decimal.
 ///
-/// **Échoue bruyamment plutôt que de rendre `None`**, et c'est le correctif I5
-/// de la revue finale. La version précédente enchaînait `.ok().and_then(…)` :
-/// toute valeur mal formée — un `0x` oublié, un espace, un débordement —
-/// devenait indiscernable d'une variable absente, et `demarrage::source`
-/// basculait alors sur la capture du bureau entier avec recadrage, sans un mot.
-/// Un enfant du superviseur diffuserait ainsi le bureau de la VM en croyant
-/// montrer sa fenêtre. Une variable ABSENTE garde son sens (mode mono-fenêtre,
-/// recherche par titre) ; une variable PRÉSENTE doit être honorée ou refusée.
+/// **Fails loudly rather than returning `None`**, and it is fix I5
+/// of the final review. The previous version chained `.ok().and_then(…)`:
+/// any malformed value — a forgotten `0x`, a space, an overflow —
+/// became indistinguishable from an absent variable, and `demarrage::source`
+/// then switched to capturing the whole desktop with cropping, without a word.
+/// A supervisor child would thus stream the VM's desktop believing it was
+/// showing its window. An ABSENT variable keeps its meaning (single-window mode,
+/// search by title); a PRESENT variable must be honoured or refused.
 fn analyser_hwnd(brut: &str) -> Result<u64> {
     let texte = brut.trim();
     let valeur = match texte
@@ -253,8 +253,8 @@ mod tests {
         assert_eq!(analyser_hwnd("6699").unwrap(), 6699);
     }
 
-    /// Le cœur de I5 : chacune de ces valeurs rendait `None` — donc « pas de
-    /// fenêtre imposée », donc le repli silencieux sur la capture du bureau.
+    /// The heart of I5: each of these values returned `None` — hence "no
+    /// imposed window", hence the silent fallback to capturing the desktop.
     #[test]
     fn un_hwnd_mal_forme_fait_echouer_le_demarrage() {
         assert!(analyser_hwnd("").is_err(), "vide");

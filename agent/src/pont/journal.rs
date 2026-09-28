@@ -1,72 +1,72 @@
-//! Le journal de reprise des écritures dues. **PUR** — aucun `cfg`, aucune
-//! entrée-sortie : il rend les LIGNES à ajouter, et c'est l'appelant qui les
-//! écrit.
+//! The resumption journal of due writes. **PURE** — no `cfg`, no
+//! input-output: it returns the LINES to append, and it is the caller that
+//! writes them.
 //!
-//! # 🔴 Ce qu'il est, et pourquoi il ne peut pas être autre chose
+//! # 🔴 What it is, and why it cannot be anything else
 //!
-//! **ProjFS ne met JAMAIS le fournisseur sur le chemin de l'écriture** (spec
-//! §6.1). Quand nous apprenons qu'un fichier a été modifié, l'application a
-//! déjà refermé son handle et **cru avoir enregistré**. Entre cet instant et
-//! l'arrivée des octets sur le poste local s'ouvre une **fenêtre de perte** que
-//! rien ne peut fermer.
+//! **ProjFS NEVER puts the provider on the write path** (spec
+//! §6.1). When we learn that a file was modified, the application has
+//! already closed its handle and **believed it had saved**. Between that moment and
+//! the arrival of the bytes on the local workstation opens a **loss window** that
+//! nothing can close.
 //!
-//! Ce module ne la ferme pas non plus. Il fait la seule chose qui reste :
-//! **écrire sur le disque de la VM, HORS de la racine, la liste de ce qui n'est
-//! pas encore arrivé** — pour qu'un pont relancé la repousse, et pour qu'un
-//! utilisateur qui referme son onglet apprenne ce qu'il risque de perdre.
+//! This module does not close it either. It does the only thing left:
+//! **write on the VM's disk, OUTSIDE the root, the list of what has not
+//! arrived yet** — so that a restarted bridge pushes it again, and so that a
+//! user who closes their tab learns what they risk losing.
 //!
-//! *Savoir ce qu'on a perdu n'est pas l'avoir* (spec §6.4). Ce module tient le
-//! premier terme.
+//! *Knowing what we lost is not having it* (spec §6.4). This module holds the
+//! first term.
 //!
-//! # La forme du fichier, et les quatre raisons de celle-là
+//! # The file's shape, and the four reasons for it
 //!
 //! ```text
 //! +<octets> <chemin JSON>\n     inscription
 //! -<chemin JSON>\n              retrait
 //! ```
 //!
-//! 1. **EN AJOUT SEUL, jamais de réécriture en place.** Une réécriture
-//!    interrompue perdrait les entrées **ANTÉRIEURES** — c'est-à-dire les plus
-//!    anciennes, donc celles qui attendent depuis le plus longtemps. La spec
-//!    §4.4 désigne nommément ce cas comme le rouge de ce module.
-//! 2. **Le chemin est encodé en JSON.** Il peut porter des espaces, des
-//!    accents, et — le poste local pouvant être sur macOS ou Linux — **un saut
-//!    de ligne**, qui y est un caractère de nom de fichier parfaitement licite.
-//!    Un séparateur naïf couperait une entrée en deux. F1 mesure déjà un nom
-//!    accentué avec espace (`éphémère été.txt`) ; le saut de ligne est le cas
-//!    que personne n'essaie et que tout le monde casse.
-//! 3. **La dernière ligne peut être TRONQUÉE, et [`Journal::relire`] la jette
-//!    en la comptant.** Une ligne partielle est le seul dommage qu'un arrêt
-//!    brutal puisse causer à un fichier en ajout — et lever plutôt que la jeter
-//!    ferait perdre TOUTES les entrées antérieures, qui sont intactes.
-//! 4. **Le compactage n'a lieu QUE sur un journal vide.** Tronquer un fichier
-//!    qui porte encore une due perdrait la donnée **exactement quand elle
-//!    sert**.
+//! 1. **APPEND-ONLY, never rewritten in place.** An interrupted
+//!    rewrite would lose the **EARLIER** entries — that is, the
+//!    oldest, hence those that have been waiting the longest. Spec
+//!    §4.4 names this case explicitly as this module's red.
+//! 2. **The path is encoded as JSON.** It can carry spaces,
+//!    diacritics, and — the local workstation possibly being macOS or Linux — **a line
+//!    break**, which is a perfectly legal file-name character there.
+//!    A naive separator would cut an entry in two. F1 already measures an
+//!    accented name with a space; the line break is the case
+//!    no one tries and everyone breaks.
+//! 3. **The last line may be TRUNCATED, and [`Journal::relire`] throws it away
+//!    while counting it.** A partial line is the only damage an abrupt
+//!    stop can cause to an append-only file — and raising rather than throwing it away
+//!    would lose ALL the earlier entries, which are intact.
+//! 4. **Compaction happens ONLY on an empty journal.** Truncating a file
+//!    that still carries a due entry would lose the data **exactly when it
+//!    matters**.
 //!
-//! ⚠️ **Ce module ne connaît ni `%LOCALAPPDATA%` ni ProjFS** : c'est
-//! `pont::executer` — déjà `#[cfg(windows)]` — qui résout le chemin. Le
-//! journal vit **hors de la racine** (`projfs/racine.rs`), pour la raison que
-//! ce fichier-là écrit : un état qui vivrait DANS la racine serait lui-même un
-//! objet projeté, donc dépendant du pont pour être lu — circulaire — et il
-//! disparaîtrait avec la racine le jour où il faudrait la recréer, c'est-à-dire
-//! **exactement le jour où il sert**.
+//! ⚠️ **This module knows neither `%LOCALAPPDATA%` nor ProjFS**: it is
+//! `pont::executer` — already `#[cfg(windows)]` — that resolves the path. The
+//! journal lives **outside the root** (`projfs/racine.rs`), for the reason
+//! that file states: a state that lived IN the root would itself be a
+//! projected object, hence dependent on the bridge to be read — circular — and it
+//! would disappear with the root the day it had to be recreated, that is
+//! **exactly the day it matters**.
 
-/// Au-delà de cette taille, un journal **vide** est tronqué à zéro.
+/// Beyond this size, an **empty** journal is truncated to zero.
 ///
-/// ⚠️ **NON CALIBRÉE.** Elle rejoint `DELAI_ECRIRE`, `TAILLE_TRAME_MAX`,
+/// ⚠️ **NOT CALIBRATED.** It joins `DELAI_ECRIRE`, `TAILLE_TRAME_MAX`,
 /// `DELAI_ATTRIBUTS`, `DELAI_LIRE`, `DELAI_LISTER`, `BPP_MIN`, `FACTEUR_FOCUS`,
 /// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
-/// `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` dans la liste des constantes
-/// de ce dépôt qu'aucune mesure n'a jugées.
+/// `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the list of this repository's
+/// constants that no measurement has judged.
 pub const TAILLE_JOURNAL_COMPACTAGE: u64 = 256 * 1024;
 
-/// L'ensemble des écritures dues, dans leur ordre d'inscription.
+/// The set of due writes, in their registration order.
 ///
-/// ⚠️ **Un `Vec` et non un `HashMap`, et ce n'est pas une commodité** : l'ordre
-/// d'inscription est la seule chose qui rende la reprise déterministe, et un
-/// `HashMap` en rendrait un différent à chaque exécution. Le coût est un
-/// balayage linéaire par opération, sur un ensemble qui compte les écritures
-/// **non encore acquittées** — quelques unités en régime nominal.
+/// ⚠️ **A `Vec` and not a `HashMap`, and it is not a convenience**: the
+/// registration order is the only thing that makes resumption deterministic, and a
+/// `HashMap` would give a different one at each run. The cost is a
+/// linear sweep per operation, over a set counting the writes
+/// **not yet acknowledged** — a handful in nominal operation.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Journal {
     dues: Vec<(String, u64)>,
@@ -77,20 +77,20 @@ impl Journal {
         Self::default()
     }
 
-    /// Relit un journal, en **TOLÉRANT une dernière ligne tronquée**.
+    /// Rereads a journal, **TOLERATING a truncated last line**.
     ///
-    /// Rend le journal et le **nombre de lignes ignorées** : l'appelant les
-    /// journalise, il ne les devine pas.
+    /// Returns the journal and the **number of ignored lines**: the caller
+    /// logs them, it does not guess them.
     ///
-    /// 🔴 **Une ligne illisible est JETÉE, jamais fatale.** Lever ferait perdre
-    /// toutes les entrées antérieures, qui sont pourtant intactes — et le
-    /// journal existe précisément pour ne rien perdre.
+    /// 🔴 **An unreadable line is THROWN AWAY, never fatal.** Raising would lose
+    /// all earlier entries, which are nevertheless intact — and the
+    /// journal exists precisely to lose nothing.
     pub fn relire(contenu: &str) -> (Self, usize) {
         let mut journal = Self::nouveau();
         let mut ignorees = 0usize;
         for ligne in contenu.split('\n') {
             if ligne.is_empty() {
-                // La coupe après le dernier `\n` : ce n'est pas une ligne.
+                // The cut after the last `\n`: it is not a line.
                 continue;
             }
             match analyser(ligne) {
@@ -102,28 +102,28 @@ impl Journal {
         (journal, ignorees)
     }
 
-    /// Inscrit une écriture due, et rend **la ligne à ajouter au fichier**.
+    /// Registers a due write, and returns **the line to append to the file**.
     ///
-    /// Un chemin déjà présent voit ses octets mis à jour **sans changer de
-    /// place** : le rejeu d'une écriture n'est pas une écriture neuve, et le
-    /// faire remonter en queue ferait passer devant lui des entrées plus
-    /// jeunes.
+    /// A path already present has its bytes updated **without changing
+    /// place**: the replay of a write is not a new write, and
+    /// moving it back to the tail would let younger entries pass ahead
+    /// of it.
     pub fn inscrire(&mut self, chemin: &str, octets: u64) -> String {
         self.poser(chemin, octets);
         format!("+{octets} {}\n", encoder(chemin))
     }
 
-    /// Retire une écriture due, et rend **la ligne à ajouter au fichier**.
+    /// Removes a due write, and returns **the line to append to the file**.
     ///
-    /// ⚠️ **Le retrait est ÉCRIT même si le chemin était absent.** Le fichier
-    /// est un journal d'événements, pas un état : y taire un retrait le rendrait
-    /// dépendant de ce que la mémoire croit savoir.
+    /// ⚠️ **The removal is WRITTEN even if the path was absent.** The file
+    /// is an event log, not a state: keeping quiet about a removal would make it
+    /// dependent on what memory thinks it knows.
     pub fn retirer(&mut self, chemin: &str) -> String {
         self.oter(chemin);
         format!("-{}\n", encoder(chemin))
     }
 
-    /// Les écritures dues, **dans l'ordre d'inscription**.
+    /// The due writes, **in registration order**.
     pub fn dues(&self) -> &[(String, u64)] {
         &self.dues
     }
@@ -136,11 +136,11 @@ impl Journal {
         self.dues.is_empty()
     }
 
-    /// Le journal peut-il être compacté ?
+    /// Can the journal be compacted?
     ///
-    /// 🔴 **`est_vide()` ET la taille, JAMAIS la taille seule.** Tronquer un
-    /// fichier qui porte encore une due perdrait la donnée exactement quand
-    /// elle sert.
+    /// 🔴 **`est_vide()` AND the size, NEVER the size alone.** Truncating a
+    /// file that still carries a due entry would lose the data exactly when
+    /// it matters.
     pub fn compactable(&self, taille_fichier: u64) -> bool {
         self.est_vide() && taille_fichier > TAILLE_JOURNAL_COMPACTAGE
     }
@@ -153,9 +153,9 @@ impl Journal {
     }
 
     fn oter(&mut self, chemin: &str) {
-        // 🔴 **ÉGALITÉ EXACTE, jamais un préfixe.** Retirer par préfixe ferait
-        // que `note.txt` effacerait `note.txt.bak`, et qu'un dossier effacerait
-        // tout ce qu'il contient.
+        // 🔴 **EXACT EQUALITY, never a prefix.** Removing by prefix would mean
+        // that `note.txt` would erase `note.txt.bak`, and that a folder would erase
+        // everything it contains.
         self.dues.retain(|(c, _)| c != chemin);
     }
 }
@@ -177,8 +177,8 @@ fn analyser(ligne: &str) -> Option<Entree> {
     let (marque, reste) = ligne.split_at_checked(1)?;
     match marque {
         "+" => {
-            // `+<octets> <chemin JSON>` : le premier espace sépare, et il ne
-            // peut pas y en avoir dans un nombre.
+            // `+<bytes> <JSON path>`: the first space separates, and there
+            // cannot be one in a number.
             let (octets, chemin) = reste.split_once(' ')?;
             Some(Entree::Inscription {
                 chemin: decoder(chemin)?,

@@ -1,5 +1,5 @@
-//! Le contrôleur : convertit les observations du pair en décisions de débit
-//! et de résolution, en passant par l'échelle et l'hystérésis.
+//! The controller: converts the peer's observations into bitrate and
+//! resolution decisions, going through the ladder and the hysteresis.
 
 use std::time::Instant;
 
@@ -9,32 +9,32 @@ use super::{Adaptation, Config, Decision, Observation, Qualite};
 use super::{ECART_MINIMAL_DEBIT, MARGE, PERTE_MAX_OPUS};
 
 pub struct Controleur {
-    /// `pub(super)` : `reconfiguration::changer_source`, dans un module
-    /// frère, lit et écrit ces quatre champs — voir la doc de tête de
+    /// `pub(super)`: `reconfiguration::changer_source`, in a sibling
+    /// module, reads and writes these four fields — see the head doc of
     /// `congestion.rs`.
     pub(super) config: Config,
     pub(super) echelle: Echelle,
     pub(super) hysteresis: Hysteresis,
     pub(super) courant: Decision,
-    /// Instant de la toute première estimation reçue, `None` tant qu'aucune
-    /// n'est arrivée.
+    /// Instant of the very first estimate received, `None` as long as none
+    /// has arrived.
     ///
-    /// **Repurposé en revue finale de branche (I3+I2).** Ce champ existait
-    /// déjà comme simple booléen (`estimation_vue`), écrit à la première
-    /// estimation mais jamais relu — fossile d'une intention perdue, signalé
-    /// par la revue. Il devient utile en portant l'INSTANT de cette première
-    /// estimation plutôt qu'un simple drapeau : c'est ce qui permet de borner
-    /// `DELAI_AMORCAGE` (voir sa doc), la fenêtre pendant laquelle la rampe du
-    /// BWE ne doit pas être prise pour une dégradation.
+    /// **Repurposed in final branch review (I3+I2).** This field already
+    /// existed as a mere boolean (`estimation_vue`), written at the first
+    /// estimate but never re-read — a fossil of a lost intent, flagged
+    /// by the review. It becomes useful by carrying the INSTANT of that first
+    /// estimate rather than a mere flag: that is what makes it possible to bound
+    /// `DELAI_AMORCAGE` (see its doc), the window during which the BWE ramp
+    /// must not be taken for a degradation.
     ///
-    /// **`pub(super)` depuis le sous-bloc D6 (tâche 7, fix round 2)** :
-    /// `reconfiguration::changer_plafond` en a besoin pour distinguer « aucune
-    /// estimation jamais reçue » de « estimation reçue puis périmée ». C'est
-    /// le seul champ qui porte cette distinction : contrairement à
-    /// `courant.adaptation` (dérivé, réversible — il retombe à `Indisponible`
-    /// aussi bien avant la première estimation qu'après la péremption d'une
-    /// estimation ancienne), celui-ci est un fait MONOTONE, posé une fois et
-    /// jamais effacé.
+    /// **`pub(super)` since sub-block D6 (task 7, fix round 2)**:
+    /// `reconfiguration::changer_plafond` needs it to distinguish "no
+    /// estimate ever received" from "estimate received then stale". It is
+    /// the only field carrying that distinction: unlike
+    /// `courant.adaptation` (derived, reversible — it falls back to `Indisponible`
+    /// both before the first estimate and after an old estimate
+    /// goes stale), this one is a MONOTONIC fact, set once and
+    /// never erased.
     pub(super) premiere_estimation_a: Option<Instant>,
 }
 
@@ -57,56 +57,56 @@ impl Controleur {
         }
     }
 
-    /// Décision actuellement appliquée. Sert au démarrage, avant toute
-    /// observation, et à alimenter le message d'état du lien.
+    /// Decision currently applied. Serves at start-up, before any
+    /// observation, and to feed the link state message.
     pub fn courant(&self) -> Decision {
         self.courant
     }
 
-    /// Change le budget réservé à la piste audio.
+    /// Changes the budget reserved for the audio track.
     ///
-    /// **Zéro quand la session ne porte pas le son** (sous-bloc D7). Avant lui,
-    /// `Config::audio_bps` valait inconditionnellement `opus::BITRATE_BPS`, et
-    /// une fenêtre sans aucune piste audio amputait quand même son budget vidéo
-    /// de 128 kb/s.
+    /// **Zero when the session does not carry sound** (sub-block D7). Before it,
+    /// `Config::audio_bps` was unconditionally `opus::BITRATE_BPS`, and
+    /// a window with no audio track at all still cut its video budget
+    /// by 128 kb/s.
     ///
-    /// **Ne recalcule rien de lui-même**, et c'est délibéré : la valeur ne mord
-    /// qu'au prochain `observer`, qui est le seul endroit où le budget vidéo se
-    /// dérive de l'estimation. Recalculer ici demanderait une estimation qui
-    /// peut n'avoir jamais existé.
+    /// **Recomputes nothing by itself**, and it is deliberate: the value only bites
+    /// at the next `observer`, which is the only place where the video budget is
+    /// derived from the estimate. Recomputing here would require an estimate that
+    /// may never have existed.
     pub fn changer_audio_bps(&mut self, bps: u32) {
         self.config.audio_bps = bps;
     }
 
     pub fn observer(&mut self, o: Observation) -> Option<Decision> {
         let Some(estimate) = o.estimate_bps else {
-            // Sans estimation, rien à asservir sur le débit ni la résolution.
-            // L'INDISPONIBILITÉ, elle, doit être reflétée immédiatement :
-            // sans cette ligne, `self.courant.adaptation` resterait figé à
-            // `Active` après une première estimation suivie d'un silence
-            // prolongé (TWCC qui se tarit, voir I4 côté transport), et
-            // `courant()` mentirait sur l'état réel du lien à quiconque
-            // l'interroge pendant ce silence — précisément le trou que la
-            // revue finale de branche a nommé (I2). Seul ce champ bouge ici :
-            // qualité, débit et taille restent ceux de la dernière décision
-            // réelle, il n'y a rien de neuf à en tirer sans estimation.
+            // Without an estimate, nothing to control on bitrate or resolution.
+            // UNAVAILABILITY, on the other hand, must be reflected immediately:
+            // without this line, `self.courant.adaptation` would stay frozen at
+            // `Active` after a first estimate followed by a prolonged
+            // silence (TWCC drying up, see I4 on the transport side), and
+            // `courant()` would lie about the real link state to whoever
+            // queries it during that silence — precisely the gap the
+            // final branch review named (I2). Only this field moves here:
+            // quality, bitrate and size stay those of the last real
+            // decision, there is nothing new to draw from them without an estimate.
             self.courant.adaptation = Adaptation::Indisponible;
             return None;
         };
         if self.premiere_estimation_a.is_none() {
             self.premiere_estimation_a = Some(o.at);
         }
-        // Fenêtre d'amorçage : le sous-système BWE part bas et sonde à la
-        // hausse (voir `DELAI_AMORCAGE`) — pendant cette rampe, un débit
-        // disponible bas ne signifie pas un lien dégradé.
+        // Bootstrap window: the BWE subsystem starts low and probes
+        // upwards (see `DELAI_AMORCAGE`) — during this ramp, a low available
+        // bitrate does not mean a degraded link.
         let en_amorcage = o.at.duration_since(
             self.premiere_estimation_a
                 .expect("vient d'être posé si absent"),
         ) < DELAI_AMORCAGE;
 
-        // Part vidéo : marge de sécurité, moins le budget audio, borné au
-        // plafond. `saturating_sub` : une estimation plus basse que le seul
-        // budget audio ne doit pas déborder.
+        // Video share: safety margin, minus the audio budget, bounded by the
+        // ceiling. `saturating_sub`: an estimate lower than the audio budget
+        // alone must not overflow.
         let disponible = ((estimate as f32 * MARGE) as u32)
             .saturating_sub(self.config.audio_bps)
             .min(self.config.plafond_bps);
@@ -119,11 +119,11 @@ impl Controleur {
             .iter()
             .position(|b| b.taille == taille_avant)
             .unwrap_or(0);
-        // Pendant l'amorçage, ne jamais VISER un barreau pire que celui déjà
-        // en place : on nourrit l'hystérésis avec le barreau courant plutôt
-        // qu'avec la cible calculée, pour qu'aucune descente ne s'accumule
-        // sur la rampe du BWE (voir `DELAI_AMORCAGE`). Une cible MEILLEURE
-        // (remontée) reste autorisée sans restriction.
+        // During bootstrap, never AIM at a rung worse than the one already
+        // in place: we feed the hysteresis with the current rung rather than
+        // with the computed target, so that no descent accumulates
+        // on the BWE ramp (see `DELAI_AMORCAGE`). A BETTER target
+        // (going back up) remains allowed without restriction.
         let vise = if en_amorcage && vise > barreau_courant {
             barreau_courant
         } else {
@@ -132,16 +132,16 @@ impl Controleur {
         if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
             self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
         }
-        // Signal correct d'un changement de résolution, capturé avant/après
-        // l'appel à l'hystérésis : depuis que `qualite` peut basculer dès que
-        // le débit s'effondre (avant même que l'hystérésis n'ait bougé la
-        // résolution), le changement de résolution qui arrive *plus tard* ne
-        // fait souvent plus varier ni `qualite` ni `video_bitrate_bps` — sans
-        // ce signal, ce changement de résolution ne remonterait jamais à
-        // l'appelant. Ne pas confondre avec la clause plus bas comparant
-        // `encode_size` au barreau appliqué : elle est toujours fausse par
-        // construction (point relevé en revue, laissé pour la revue finale
-        // de branche) — ce nouveau signal la complète sans la remplacer.
+        // Correct signal of a resolution change, captured before/after
+        // the call to the hysteresis: since `qualite` can switch as soon as
+        // the bitrate collapses (even before the hysteresis has moved the
+        // resolution), the resolution change that arrives *later* often no
+        // longer changes either `qualite` or `video_bitrate_bps` — without
+        // this signal, that resolution change would never reach
+        // the caller. Not to be confused with the clause further down comparing
+        // `encode_size` to the applied rung: it is always false by
+        // construction (point raised in review, left for the final branch
+        // review) — this new signal complements it without replacing it.
         let resolution_changee = self.courant.encode_size != taille_avant;
 
         let dernier = self.echelle.barreaux().len() - 1;
@@ -152,24 +152,24 @@ impl Controleur {
             .position(|b| b.taille == self.courant.encode_size)
             .unwrap_or(0);
 
-        // `video_bitrate_bps` bascule immédiatement (pas d'hystérésis dessus),
-        // alors que `encode_size` ne bouge qu'après le délai de descente.
-        // Comparer seulement au minimum du barreau *appliqué* laisserait donc
-        // afficher `Bonne` pendant cette fenêtre, alors que le débit qui
-        // arrive déjà ne finance plus la résolution encore en place. On
-        // compare aussi `disponible` au minimum du barreau appliqué, pas
-        // seulement à son indice.
+        // `video_bitrate_bps` switches immediately (no hysteresis on it),
+        // whereas `encode_size` only moves after the descent delay.
+        // Comparing only with the minimum of the *applied* rung would therefore
+        // show `Bonne` during this window, while the bitrate
+        // already arriving no longer finances the resolution still in place. We
+        // also compare `disponible` with the minimum of the applied rung, not
+        // only with its index.
         //
-        // Pendant l'amorçage (`en_amorcage`), cette dernière comparaison est
-        // désactivée : c'est elle qui, sur une source ≥1080p, faisait
-        // afficher « Image réduite par le réseau » en bandeau persistant dès
-        // la première observation de la rampe du BWE (I3, revue finale de
-        // branche) — le débit disponible y est bas par construction, sans
-        // que le lien le soit. Ce qui reste actif pendant l'amorçage : le
-        // plancher (`Insuffisante`, ci-dessus) si le débit tombe RÉELLEMENT
-        // sous le dernier barreau, et la dégradation par barreau déjà
-        // appliqué (`barreau_applique > 0`) si une réduction a réellement eu
-        // lieu avant l'amorçage.
+        // During bootstrap (`en_amorcage`), this last comparison is
+        // disabled: it is what, on a ≥1080p source, made
+        // "Image réduite par le réseau" show as a persistent banner from
+        // the first observation of the BWE ramp (I3, final branch
+        // review) — the available bitrate is low there by construction, without
+        // the link being so. What stays active during bootstrap: the
+        // floor (`Insuffisante`, above) if the bitrate REALLY falls
+        // below the last rung, and degradation by an already
+        // applied rung (`barreau_applique > 0`) if a reduction really took
+        // place before the bootstrap.
         let qualite = if disponible < self.echelle.barreaux()[dernier].min_bps {
             Qualite::Insuffisante
         } else if barreau_applique > 0
@@ -205,9 +205,9 @@ impl Controleur {
     }
 }
 
-/// Écart relatif entre deux débits, rapporté au plus grand des deux pour
-/// rester symétrique — sinon une division par un `avant` nul exploserait, et
-/// une hausse de 1 à 2 ne pèserait pas comme une baisse de 2 à 1.
+/// Relative gap between two bitrates, relative to the larger of the two to
+/// stay symmetric — otherwise a division by a zero `avant` would blow up, and
+/// a rise from 1 to 2 would not weigh like a drop from 2 to 1.
 fn ecart_relatif(avant: u32, apres: u32) -> f32 {
     let max = avant.max(apres);
     if max == 0 {

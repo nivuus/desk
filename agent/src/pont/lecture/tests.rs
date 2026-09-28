@@ -1,4 +1,4 @@
-//! La fenêtre de lecture. **Purs, exécutés sur l'hôte.**
+//! The read window. **Pure, run on the host.**
 
 use super::*;
 
@@ -11,19 +11,19 @@ fn morceaux(n: usize) -> VecDeque<Morceau> {
         .collect()
 }
 
-/// 🔴 **LA BORNE PORTE SUR LE TOTAL EN VOL, PAS SUR LE LOT.**
+/// 🔴 **THE BOUND APPLIES TO THE TOTAL IN FLIGHT, NOT TO THE BATCH.**
 ///
-/// Rouge : retirer la borne. La file SCTP se remplirait sans terme, et le canal
-/// deviendrait la source de latence de tout le reste — ce que ce module existe
-/// précisément pour empêcher.
+/// Red: remove the bound. The SCTP queue would fill without end, and the channel
+/// would become the latency source of everything else — which this module exists
+/// precisely to prevent.
 #[test]
 fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
     let mut f = Fenetre::nouvelle(morceaux(50));
     let lot = f.a_demander();
     assert_eq!(lot.len(), MORCEAUX_EN_VOL);
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
-    // Un second appel SANS réception ne doit RIEN ajouter : borner le lot au
-    // lieu du total ferait ici seize en vol.
+    // A second call WITHOUT receipt must add NOTHING: bounding the batch instead
+    // of the total would make sixteen in flight here.
     assert!(
         f.a_demander().is_empty(),
         "aucun morceau de plus tant que rien n'est reçu"
@@ -31,16 +31,16 @@ fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
 }
 
-/// 🔴 **LE ROUGE DU LIVRABLE LUI-MÊME.**
+/// 🔴 **THE RED OF THE DELIVERABLE ITSELF.**
 ///
-/// Avec `MORCEAUX_EN_VOL = 1`, le mécanisme est **INERTE** : le pont n'est
-/// jamais en avance, et la contre-pression du navigateur n'a jamais rien à
-/// retenir. F3 aurait alors livré un contrôle de flux incapable de mordre —
-/// c'est-à-dire un contrôle qu'on ne verrait jamais rouge, appliqué à un
-/// mécanisme de PRODUIT.
+/// With `MORCEAUX_EN_VOL = 1`, the mechanism is **INERT**: the bridge is
+/// never ahead, and the browser's back-pressure never has anything to
+/// hold back. F3 would then have delivered a flow control unable to bite —
+/// that is, a check we would never see red, applied to a
+/// PRODUCT mechanism.
 ///
-/// Ce test échoue si la constante retombe à 1, et il échoue aussi si la fenêtre
-/// cesse de se remplir après une réception.
+/// This test fails if the constant falls back to 1, and it also fails if the window
+/// stops filling after a receipt.
 #[test]
 #[allow(non_snake_case)]
 fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
@@ -65,11 +65,11 @@ fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
     );
 }
 
-/// 🔴 **UNE RÉPONSE HORS D'ORDRE EST DÉNONCÉE, ET PAS APPLIQUÉE.**
+/// 🔴 **AN OUT-OF-ORDER RESPONSE IS DENOUNCED, AND NOT APPLIED.**
 ///
-/// Rouge : l'appliquer quand même. Le fichier aurait ses plages dans le
-/// désordre, et **le condensat SHA-256 serait le seul critère qui l'attraperait**
-/// — celui que F1 n'a JAMAIS établi.
+/// Red: apply it anyway. The file would have its ranges out of
+/// order, and **the SHA-256 digest would be the only criterion to catch it**
+/// — the one F1 NEVER established.
 #[test]
 fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
     let mut f = Fenetre::nouvelle(morceaux(10));
@@ -84,15 +84,15 @@ fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
             attendue: Some(0)
         }
     );
-    // Rien n'a bougé : la réponse n'a pas été consommée.
+    // Nothing moved: the response was not consumed.
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
-    // Et la bonne réponse passe toujours.
+    // And the right response still goes through.
     assert!(f.recu(0).is_ok());
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL - 1);
 }
 
-/// Une position **inconnue** est dénoncée elle aussi, et le message dit ce
-/// qu'on attendait.
+/// An **unknown** position is denounced too, and the message says what
+/// we expected.
 #[test]
 fn une_position_inconnue_est_denoncee() {
     let mut f = Fenetre::nouvelle(morceaux(2));
@@ -106,9 +106,9 @@ fn une_position_inconnue_est_denoncee() {
     );
 }
 
-/// Une réponse alors que **rien** n'est en vol est dénoncée, et `attendue` vaut
-/// `None` — ce qui distingue « tu m'as répondu au mauvais moment » de « tu m'as
-/// répondu la mauvaise plage ».
+/// A response while **nothing** is in flight is denounced, and `attendue` is
+/// `None` — which distinguishes "you answered me at the wrong moment" from "you
+/// answered me the wrong range".
 #[test]
 fn une_reponse_sans_rien_en_vol_est_denoncee_avec_attendue_none() {
     let mut f = Fenetre::nouvelle(morceaux(1));
@@ -123,8 +123,8 @@ fn une_reponse_sans_rien_en_vol_est_denoncee_avec_attendue_none() {
     );
 }
 
-/// La fenêtre se vide et se remplit : après une réception, un morceau de plus
-/// est demandé, et pas deux.
+/// The window empties and fills: after a receipt, one more chunk
+/// is requested, and not two.
 #[test]
 fn une_reception_libere_exactement_une_place() {
     let mut f = Fenetre::nouvelle(morceaux(10));
@@ -136,8 +136,8 @@ fn une_reception_libere_exactement_une_place() {
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
 }
 
-/// Les morceaux sont demandés dans l'ordre **croissant** des positions : c'est
-/// ce qui rend l'invariant d'ordre vrai, et il ne se suppose pas.
+/// Chunks are requested in **increasing** position order: it is
+/// what makes the ordering invariant true, and it is not assumed.
 #[test]
 fn les_morceaux_sont_demandes_dans_l_ordre_croissant() {
     let mut f = Fenetre::nouvelle(morceaux(12));
@@ -155,11 +155,11 @@ fn les_morceaux_sont_demandes_dans_l_ordre_croissant() {
     assert_eq!(vues.len(), 12);
 }
 
-/// Une lecture vide est terminée d'emblée — et ne demande rien.
+/// An empty read is finished straight away — and requests nothing.
 ///
-/// ⚠️ `decoupe::decouper` rend délibérément ZÉRO morceau pour une longueur
-/// nulle. Sans ce cas, la fenêtre attendrait une réponse qui ne viendrait
-/// jamais, et la commande ProjFS expirerait sur un fichier parfaitement lu.
+/// ⚠️ `decoupe::decouper` deliberately returns ZERO chunks for a zero
+/// length. Without this case, the window would wait for a response that would never
+/// come, and the ProjFS command would expire on a perfectly read file.
 #[test]
 fn une_lecture_sans_morceau_est_terminee_d_emblee() {
     let mut f = Fenetre::nouvelle(VecDeque::new());
@@ -168,12 +168,12 @@ fn une_lecture_sans_morceau_est_terminee_d_emblee() {
     assert_eq!(f.en_vol_max(), 0);
 }
 
-/// `terminee()` n'est vrai que lorsque **les deux** sont vides : ce qui reste à
-/// demander ET ce qui est en vol.
+/// `terminee()` is only true when **both** are empty: what remains to
+/// request AND what is in flight.
 ///
-/// Rouge : ne tester que `restants`. La lecture se déclarerait complète alors
-/// que quatre morceaux sont encore en vol, et le fichier serait tronqué de
-/// quatre trames — sans qu'aucune erreur ne soit rendue.
+/// Red: only test `restants`. The read would declare itself complete while
+/// four chunks are still in flight, and the file would be truncated by
+/// four frames — without any error being returned.
 #[test]
 fn terminee_exige_que_le_vol_soit_vide_aussi() {
     let mut f = Fenetre::nouvelle(morceaux(2));

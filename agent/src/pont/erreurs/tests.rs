@@ -2,12 +2,12 @@ use super::*;
 
 #[test]
 fn deux_causes_distinctes_ne_partagent_jamais_un_code() {
-    // ⚠️ Le test que la spec §4.4 nomme, et le contre-exemple est l'ancien
-    // pont : `cb(-1)` (EPERM) à NEUF sites distincts de `src/file.js`.
+    // ⚠️ The test spec §4.4 names, and the counter-example is the old
+    // bridge: `cb(-1)` (EPERM) at NINE distinct sites of `src/file.js`.
     //
-    // Il s'écrit par BALAYAGE de `TOUTES`, jamais par énumération à la main :
-    // sinon une variante ajoutée demain échapperait au contrôle, et la table
-    // redeviendrait décorative sans que rien ne le dise.
+    // It is written by SWEEPING `TOUTES`, never by listing by hand:
+    // otherwise a variant added tomorrow would escape the check, and the table
+    // would become decorative again with nothing saying so.
     for (i, a) in Erreur::TOUTES.iter().enumerate() {
         for b in &Erreur::TOUTES[i + 1..] {
             assert_ne!(
@@ -22,9 +22,9 @@ fn deux_causes_distinctes_ne_partagent_jamais_un_code() {
 
 #[test]
 fn le_balayage_couvre_reellement_chaque_variante() {
-    // Le garde du garde : sans lui, `TOUTES` pourrait oublier une variante et
-    // le balayage ci-dessus passerait en n'exerçant rien — le patron exact que
-    // ce dépôt a attrapé quatre fois en D10.
+    // The guard's guard: without it, `TOUTES` could forget a variant and
+    // the sweep above would pass while exercising nothing — the exact pattern
+    // this repository caught four times in D10.
     assert_eq!(Erreur::TOUTES.len(), NOMBRE);
     let mut vus = [false; NOMBRE];
     for e in Erreur::TOUTES {
@@ -36,10 +36,10 @@ fn le_balayage_couvre_reellement_chaque_variante() {
 
 #[test]
 fn aucun_code_rendu_n_est_un_succes() {
-    // Le bit de sévérité (0x8000_0000) doit être posé sur les douze : un
-    // `HRESULT` de succès rendu à ProjFS lui ferait croire que l'opération a
-    // abouti, et l'application Windows lirait un fichier vide au lieu d'une
-    // erreur — le pire mode de défaillance possible pour ce module.
+    // The severity bit (0x8000_0000) must be set on all twelve: a
+    // success `HRESULT` returned to ProjFS would make it believe the operation
+    // succeeded, and the Windows application would read an empty file instead of an
+    // error — the worst possible failure mode for this module.
     for e in Erreur::TOUTES {
         let h = hresult(e);
         assert!(h < 0, "{e:?} rend {h:#010x}, qui est un succès");
@@ -53,27 +53,27 @@ fn aucun_code_rendu_n_est_un_succes() {
 
 #[test]
 fn le_canal_ferme_rend_bien_error_io_device() {
-    // « L'erreur I/O standard » du cadrage §7 : c'est ce que l'Explorateur
-    // affiche comme « Le périphérique n'est pas accessible », et non comme
-    // « fichier introuvable », quand l'onglet du navigateur se ferme.
+    // "The standard I/O error" of framing §7: it is what Explorer
+    // displays as "the device is not accessible", and not as
+    // "file not found", when the browser tab closes.
     assert_eq!(hresult(Erreur::CanalFerme), 0x8007_045Du32 as i32);
 }
 
 #[test]
 fn la_protection_en_ecriture_rend_0x80070013() {
-    // ❌ *Ce commentaire disait « toute écriture, toute CRÉATION, toute
-    // suppression y aboutit ». La recette de F1 a réfuté la création : un
-    // fichier créé de toutes pièces dans la racine RÉUSSIT (2 exécutions
-    // versées sur 2 qui atteignent cette phase). `NEW_FILE_CREATED` est une
-    // notification POST, donc irrefusable — voir `pont::notifications`.*
+    // ❌ *This comment said "every write, every CREATION, every
+    // deletion ends up there". F1's acceptance run refuted creation: a
+    // file created from scratch in the root SUCCEEDS (2 runs
+    // recorded out of 2 that reach this phase). `NEW_FILE_CREATED` is a
+    // POST notification, hence unrefusable — see `pont::notifications`.*
     assert_eq!(hresult(Erreur::ProtegeEnEcriture), 0x8007_0013u32 as i32);
 }
 
 #[test]
 fn les_douze_codes_sont_epingles_un_a_un() {
-    // Épingle la table entière : le test de distinction ci-dessus resterait
-    // vert si deux variantes ÉCHANGEAIENT leurs codes, ce qui rendrait
-    // « disque plein » pour un fichier absent.
+    // Pins the whole table: the distinction test above would stay
+    // green if two variants SWAPPED their codes, which would return
+    // "disk full" for an absent file.
     let attendu: [(Erreur, u32); NOMBRE] = [
         (Erreur::Introuvable, 0x8007_0002),
         (Erreur::CheminIntrouvable, 0x8007_0003),
@@ -93,19 +93,19 @@ fn les_douze_codes_sont_epingles_un_a_un() {
     }
 }
 
-/// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` vaut `0x800703E5`, et c'est la valeur
-/// que TOUT rappel asynchrone rend. Une erreur de transcription y ferait rendre
-/// un code d'échec là où ProjFS attend « en cours » : l'application recevrait
-/// une E/S en échec sur chaque lecture, et le pont attendrait indéfiniment une
-/// complétion que ProjFS n'accepterait plus.
+/// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` is `0x800703E5`, and it is the value
+/// EVERY asynchronous callback returns. A transcription error would return
+/// a failure code where ProjFS expects "in progress": the application would receive
+/// a failed I/O on every read, and the bridge would wait indefinitely for a
+/// completion ProjFS would no longer accept.
 #[test]
 fn en_cours_vaut_le_hresult_de_error_io_pending() {
     assert_eq!(EN_COURS, 0x8007_03E5u32 as i32);
 }
 
-/// `EN_COURS` n'est le `hresult` d'AUCUNE variante d'`Erreur`. S'il l'était,
-/// un échec réel serait indistinguable d'une opération en cours, et ProjFS
-/// attendrait une complétion qui ne viendrait jamais.
+/// `EN_COURS` is the `hresult` of NO `Erreur` variant. If it were,
+/// a real failure would be indistinguishable from an operation in progress, and ProjFS
+/// would wait for a completion that would never come.
 #[test]
 fn en_cours_ne_collide_avec_aucune_cause_d_echec() {
     for cause in Erreur::TOUTES {

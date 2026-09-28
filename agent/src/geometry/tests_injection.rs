@@ -10,17 +10,17 @@ const DESKTOP: Rect = Rect {
     height: 1080,
 };
 
-// --- Cohérence entre la région capturée et la région d'injection ---
+// --- Consistency between the captured region and the injection region ---
 //
-// Cas réel relevé le 29/07/2026 : viewport client de 1187 px de haut,
-// bureau de 1080. La zone client de la fenêtre mesurait 1550×1178 à
-// l'origine (62, 0), donc 98 px sous l'écran. La capture encodait
-// 1550×1080 (l'intersection) pendant que l'injection mappait sur 1178 :
-// le clic dérivait de `t × 98` px, nul en haut, croissant vers le bas.
+// Real case noted on 29/07/2026: client viewport 1187 px high,
+// desktop of 1080. The window's client area measured 1550×1178 at
+// origin (62, 0), hence 98 px below the screen. The capture encoded
+// 1550×1080 (the intersection) while the injection mapped onto 1178:
+// the click drifted by `t × 98` px, nil at the top, growing towards the bottom.
 
 #[test]
 fn le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre() {
-    // Fenêtre débordant de 98 px sous un bureau de 1080.
+    // Window sticking out 98 px below a 1080 desktop.
     let window = Rect {
         x: 62,
         y: 0,
@@ -37,9 +37,9 @@ fn le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre() {
     let (_, y) =
         to_virtual_desktop_visible(32768, 32768, window, desktop).expect("la fenêtre est visible");
 
-    // Le milieu de l'image montrée est le pixel écran 540, soit 32768 une
-    // fois normalisé sur le bureau. Mapper sur la zone client complète
-    // donnerait 589 px, soit 35742 — l'écart que voyait l'utilisateur.
+    // The middle of the shown image is screen pixel 540, that is 32768 once
+    // normalised on the desktop. Mapping onto the complete client area
+    // would give 589 px, that is 35742 — the gap the user saw.
     assert!((y - 32768).abs() <= 40, "y = {y}, attendu ~32768");
 }
 
@@ -66,7 +66,7 @@ fn le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre() {
 
 #[test]
 fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
-    // La largeur ne déborde pas : le mapping horizontal ne doit pas bouger.
+    // The width does not stick out: the horizontal mapping must not move.
     let window = Rect {
         x: 62,
         y: 0,
@@ -87,8 +87,8 @@ fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
 
 #[test]
 fn une_fenetre_entierement_visible_est_mappee_a_l_identique() {
-    // Sans débordement, la correction ne doit rien changer : c'est ce qui
-    // rendait le défaut invisible jusqu'ici.
+    // Without overflow, the fix must change nothing: that is what
+    // made the defect invisible until now.
     let window = Rect {
         x: 100,
         y: 50,
@@ -116,8 +116,8 @@ fn une_fenetre_hors_ecran_ne_produit_aucune_coordonnee() {
 
 #[test]
 fn borne_une_hauteur_qui_depasserait_le_bas_du_bureau() {
-    // Le cas réel : 1187 demandés depuis un viewport plus haut que le
-    // bureau de la VM.
+    // The real case: 1187 requested from a viewport taller than the
+    // VM's desktop.
     assert_eq!(
         borner_au_bureau(62, 0, 1550, 1187, 2400, 1080),
         (1550, 1080)
@@ -126,7 +126,7 @@ fn borne_une_hauteur_qui_depasserait_le_bas_du_bureau() {
 
 #[test]
 fn tient_compte_de_l_origine_de_la_fenetre() {
-    // Fenêtre déjà descendue de 100 px : il ne lui reste que 980.
+    // Window already moved down by 100 px: only 980 remain for it.
     assert_eq!(borner_au_bureau(0, 100, 800, 1187, 2400, 1080), (800, 980));
 }
 
@@ -142,8 +142,8 @@ fn borne_aussi_la_largeur() {
 
 #[test]
 fn une_origine_negative_ne_produit_pas_une_taille_absurde() {
-    // Fenêtre dont le coin haut-gauche est hors écran : le bornage ne doit
-    // ni déborder, ni rendre une taille nulle qui ferait échouer la capture.
+    // Window whose top-left corner is off screen: the clamping must
+    // neither overflow, nor return a zero size that would make the capture fail.
     let (w, h) = borner_au_bureau(-500, -300, 800, 600, 2400, 1080);
     assert!(w > 0 && h > 0, "taille = {w}x{h}");
     assert!(w <= 2400 && h <= 1080, "taille = {w}x{h}");
@@ -176,7 +176,7 @@ fn coin_inferieur_droit_d_une_fenetre_plein_ecran() {
 
 #[test]
 fn centre_d_une_fenetre_decalee() {
-    // Fenêtre de 960×540 placée au centre : son centre est celui de l'écran.
+    // 960×540 window placed in the centre: its centre is the screen's.
     let window = Rect {
         x: 480,
         y: 270,
@@ -202,7 +202,7 @@ fn origine_d_une_fenetre_decalee() {
 
 #[test]
 fn borne_les_debordements_sur_un_bureau_multi_ecrans() {
-    // Bureau virtuel commençant en coordonnées négatives (écran à gauche).
+    // Virtual desktop starting at negative coordinates (screen on the left).
     let desktop = Rect {
         x: -1920,
         y: 0,
@@ -234,10 +234,10 @@ fn ne_divise_jamais_par_zero() {
 
 #[test]
 fn ne_deborde_ni_ne_panique_sur_des_coordonnees_extremes() {
-    // Même esprit que `gere_une_largeur_superieure_a_i32_max` pour
-    // `crop_region` : une fenêtre aux coordonnées ou dimensions extrêmes
-    // (jamais produites par `client_rect_on_screen` en pratique, mais pas
-    // structurellement impossibles) ne doit ni paniquer, ni sortir de
+    // Same spirit as `gere_une_largeur_superieure_a_i32_max` for
+    // `crop_region`: a window with extreme coordinates or dimensions
+    // (never produced by `client_rect_on_screen` in practice, but not
+    // structurally impossible) must neither panic, nor leave
     // `0..=65535`.
     let window = Rect {
         x: i32::MAX - 10,
@@ -255,7 +255,7 @@ fn ne_deborde_ni_ne_panique_sur_des_coordonnees_extremes() {
     assert!((0..=65535).contains(&x), "x = {x}");
     assert!((0..=65535).contains(&y), "y = {y}");
 
-    // Bureau lui-même dégénéré à l'extrême, combiné à une fenêtre normale.
+    // Desktop itself degenerate to the extreme, combined with a normal window.
     let window = Rect {
         x: 0,
         y: 0,

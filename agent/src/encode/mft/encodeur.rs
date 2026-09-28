@@ -1,31 +1,31 @@
-//! La moitié **encodeur** de la pompe : la MFT H.264 *asynchrone*, pilotée
-//! par événements (`METransformNeedInput` / `METransformHaveOutput`).
+//! The **encoder** half of the pump: the *asynchronous* H.264 MFT, driven
+//! by events (`METransformNeedInput` / `METransformHaveOutput`).
 //!
-//! Extrait d'`encode.rs` avec le reste du chemin MFT (lot 31). Son pendant est
-//! `super::convertisseur`, dont il appelle `feed_converter` et
-//! `take_output_sample` — les deux seuls, et c'est pourquoi ce sont les deux
-//! seuls à être `pub(super)` là-bas.
+//! Extracted from `encode.rs` with the rest of the MFT path (batch 31). Its counterpart is
+//! `super::convertisseur`, whose `feed_converter` and
+//! `take_output_sample` it calls — only those two, and that is why they are the only two
+//! to be `pub(super)` there.
 
 use std::sync::atomic::Ordering;
 
 use anyhow::{anyhow, Context, Result};
 
-// ⚠️ **Importation globale, et c'est un choix motivé.** Ce fichier est la
-// CONTINUATION d'`encode.rs` : phases, compteurs publics et constantes de
-// réglage y vivent, et les énumérer ici en donnerait une seconde liste à
-// tenir à jour — celle qui se désynchronise. La règle du dépôt vise les
-// affirmations recopiées ; une importation globale n'en recopie aucune.
+// ⚠️ **Glob import, and it is a motivated choice.** This file is the
+// CONTINUATION of `encode.rs`: phases, public counters and tuning
+// constants live there, and listing them here would create a second list to
+// keep up to date — the one that gets out of sync. The repository's rule targets
+// copied assertions; a glob import copies none.
 use crate::encode::*;
-// Le type du dos MFT vient du PARENT, pas du glob : `crate::encode`
-// exporte la FAÇADE, qui n'est pas ce qu'on implémente ici.
+// The MFT back end's type comes from the PARENT, not from the glob: `crate::encode`
+// exports the FACADE, which is not what we implement here.
 use super::EncodeurMft;
-// Les deux seuls elements que ce fichier emprunte a son pendant.
+// The only two elements this file borrows from its counterpart.
 use super::convertisseur::take_output_sample;
 impl EncodeurMft {
-    /// Draine les événements disponibles sans bloquer.
+    /// Drains the available events without blocking.
     fn drain_events(&mut self) -> Result<()> {
         loop {
-            // MF_EVENT_FLAG_NO_WAIT : renvoie immédiatement s'il n'y a rien.
+            // MF_EVENT_FLAG_NO_WAIT: returns immediately if there is nothing.
             let event = match unsafe { self.events.GetEvent(MF_EVENT_FLAG_NO_WAIT) } {
                 Ok(event) => event,
                 Err(_) => break, // file vide
@@ -59,12 +59,12 @@ impl EncodeurMft {
         Ok(())
     }
 
-    /// Convertit l'image capturée et la remet à l'encodeur dès qu'il en
-    /// réclame une.
+    /// Converts the captured image and hands it to the encoder as soon as it
+    /// claims one.
     ///
-    /// **Correction du plafond de débit à ~30 i/s (28/07).** La version
-    /// précédente ne convertissait l'image que si `pending_nv12` ne suffisait
-    /// pas déjà à satisfaire les demandes d'entrée en attente :
+    /// **Fix of the ~30 fps throughput ceiling (28/07).** The previous
+    /// version only converted the image if `pending_nv12` was not already
+    /// enough to satisfy the pending input requests:
     ///
     /// ```ignore
     /// if (self.pending_nv12.len() as u32) < self.pending_input_requests {
@@ -72,31 +72,31 @@ impl EncodeurMft {
     /// }
     /// ```
     ///
-    /// L'intention (« ne pas convertir d'avance, ce ne serait que de la
-    /// latence ») était juste pour une source qu'on peut réinterroger à
-    /// volonté — elle est fausse pour celle-ci. `AcquireNextFrame` ne signale
-    /// un contenu qu'**une fois** : l'image que ce garde écartait n'était pas
-    /// remise à plus tard, elle était **perdue définitivement**. Au tour
-    /// suivant, quand l'encodeur réclamait enfin une entrée, la capture
-    /// n'avait plus rien à donner (le bureau n'avait pas rechangé), et la
-    /// demande restait en souffrance jusqu'au tour d'après. D'où un
-    /// verrouillage en antiphase à une image tous les deux tours de
-    /// `Session::run` : 60 Hz / 2 = **exactement le plafond de ~30 i/s**
-    /// mesuré de bout en bout, six fois, par les rondes précédentes.
+    /// The intent ("do not convert in advance, it would only be
+    /// latency") was right for a source that can be queried again at
+    /// will — it is wrong for this one. `AcquireNextFrame` only signals
+    /// content **once**: the image this guard discarded was not
+    /// postponed, it was **permanently lost**. At the next
+    /// round, when the encoder finally claimed an input, the capture
+    /// had nothing left to give (the desktop had not changed again), and the
+    /// request stayed pending until the round after. Hence an
+    /// anti-phase lock at one image every two rounds of
+    /// `Session::run`: 60 Hz / 2 = **exactly the ~30 fps ceiling**
+    /// measured end to end, six times, by the previous rounds.
     ///
-    /// Ce garde explique aussi pourquoi les deux expériences qui auraient dû
-    /// trancher n'ont rien montré : `ENCODER_THROUGHPUT_TEST`/`ENCODE_TEST`
-    /// (`diagnostics/capture.rs`) resoumettent **la même texture** en boucle, si bien qu'y
-    /// jeter une image ne coûte rien — d'où les ~80 i/s qui semblaient
-    /// disculper le code et accuser le pilote NVENC ; et forcer la capture à
-    /// 60 Hz (`remesure-debit.md`, étape 3a) n'a pas bougé le débit, les
-    /// captures supplémentaires retombant toutes dans ce même garde.
+    /// This guard also explains why the two experiments that should have
+    /// settled it showed nothing: `ENCODER_THROUGHPUT_TEST`/`ENCODE_TEST`
+    /// (`diagnostics/capture.rs`) resubmit **the same texture** in a loop, so that
+    /// throwing an image away there costs nothing — hence the ~80 fps that seemed to
+    /// exonerate the code and accuse the NVENC driver; and forcing the capture to
+    /// 60 Hz (`remesure-debit.md`, step 3a) did not move the throughput, the
+    /// extra captures all falling back into this same guard.
     ///
-    /// Le pilotage correct découple les deux rythmes : on convertit
-    /// systématiquement ce que la capture a donné, on n'en garde d'avance que
-    /// `MAX_PENDING_NV12` (la plus récente — une image plus ancienne est
-    /// périmée pour un flux interactif), et on sert les demandes d'entrée
-    /// avec ce qui est prêt.
+    /// The correct driving decouples the two rhythms: we systematically
+    /// convert what the capture gave, we keep in advance only
+    /// `MAX_PENDING_NV12` of them (the most recent — an older image is
+    /// stale for an interactive stream), and we serve the input requests
+    /// with what is ready.
     pub fn submit(&mut self, frame: &CapturedFrame, pts_90k: u64) -> Result<()> {
         self.telemetry.submit_calls.fetch_add(1, Ordering::Relaxed);
         let t = std::time::Instant::now();
@@ -112,23 +112,23 @@ impl EncodeurMft {
             tracing::warn!(?elapsed, "drainage des événements de l'encodeur lent");
         }
 
-        // Media Foundation compte en unités de 100 ns ; nos horodatages sont
-        // en 1/90000 s. 90000 Hz → 10 000 000 Hz : facteur 1000/9.
+        // Media Foundation counts in 100 ns units; our timestamps are
+        // in 1/90000 s. 90000 Hz → 10,000,000 Hz: factor 1000/9.
         let sample_time = (pts_90k as i64) * 1000 / 9;
         let duration = 10_000_000 / self.fps.max(1) as i64;
 
-        // Convertir sans condition : l'image ne sera jamais reproposée par la
-        // capture (voir le commentaire de méthode).
+        // Convert unconditionally: the image will never be offered again by the
+        // capture (see the method comment).
         let t_convert = std::time::Instant::now();
         let converted = self.feed_converter(frame, sample_time, duration);
         CONVERT_NS.fetch_add(t_convert.elapsed().as_nanos() as u64, Ordering::Relaxed);
         converted?;
 
-        // Ne garder que les plus récentes. `feed_converter` empile en queue,
-        // donc les périmées sont en tête. Les retirer ici plutôt que de
-        // laisser la file croître évite de servir à l'encodeur une image déjà
-        // dépassée au moment où il la réclame — ce serait payer en latence le
-        // débit qu'on vient de gagner.
+        // Keep only the most recent. `feed_converter` pushes at the tail,
+        // so the stale ones are at the head. Removing them here rather than
+        // letting the queue grow avoids serving the encoder an image already
+        // outdated at the moment it claims it — that would be paying in latency for the
+        // throughput just gained.
         while self.pending_nv12.len() > MAX_PENDING_NV12 {
             self.pending_nv12.pop_front();
             self.telemetry
@@ -163,20 +163,20 @@ impl EncodeurMft {
         Ok(())
     }
 
-    /// Récupère une unité d'accès encodée si elle est disponible.
+    /// Retrieves an encoded access unit if one is available.
     ///
-    /// **Ronde de correction 1/5** : le relecteur a demandé de vérifier,
-    /// plutôt que supposer, que le même raccourci (s'arrêter après un seul
-    /// échantillon) n'affecte pas aussi le drainage de l'encodeur. Modèle
-    /// async de MF : un événement `METransformHaveOutput` correspond à
-    /// exactement un appel à `ProcessOutput` — mais le drapeau
-    /// `MFT_OUTPUT_DATA_BUFFER_INCOMPLETE` (posé dans `dwStatus`) signale
-    /// explicitement, quand il est présent, qu'il reste de la sortie pour CE
-    /// flux sans qu'un nouvel événement ne soit garanti. On le vérifie
-    /// désormais explicitement plutôt que de l'ignorer : s'il est posé, on
-    /// se replanifie une entrée dans `pending_outputs` pour que la boucle de
-    /// l'appelant (`while let Some(unit) = poll_output()?`) redemande
-    /// immédiatement, sans attendre un événement qui pourrait ne pas venir.
+    /// **Fix round 1/5**: the reviewer asked to check,
+    /// rather than assume, that the same shortcut (stopping after a single
+    /// sample) does not also affect the draining of the encoder. MF's async
+    /// model: one `METransformHaveOutput` event corresponds to
+    /// exactly one `ProcessOutput` call — but the
+    /// `MFT_OUTPUT_DATA_BUFFER_INCOMPLETE` flag (set in `dwStatus`) explicitly
+    /// signals, when present, that output remains for THIS
+    /// stream without a new event being guaranteed. We now check it
+    /// explicitly rather than ignore it: if it is set, we
+    /// reschedule an entry in `pending_outputs` so that the
+    /// caller's loop (`while let Some(unit) = poll_output()?`) asks again
+    /// immediately, without waiting for an event that might not come.
     pub fn poll_output(&mut self) -> Result<Option<AccessUnit>> {
         self.telemetry
             .phase
@@ -189,7 +189,7 @@ impl EncodeurMft {
         }
         self.pending_outputs -= 1;
 
-        // Les MFT matérielles allouent elles-mêmes leurs échantillons de sortie.
+        // Hardware MFTs allocate their output samples themselves.
         let mut buffers = [MFT_OUTPUT_DATA_BUFFER {
             dwStreamID: 0,
             pSample: std::mem::ManuallyDrop::new(None),
@@ -206,13 +206,13 @@ impl EncodeurMft {
         self.telemetry
             .phase
             .store(PHASE_ENCODER_READ_BUFFER, Ordering::Relaxed);
-        // Reprendre la référence AVANT toute propagation d'erreur, comme
-        // l'exige `take_output_sample` et comme le fait déjà
-        // `drain_converter_output`. Sortir par `?` d'abord laisserait fuir
-        // l'échantillon si le MFT en avait déposé un malgré l'échec — ce
-        // pilote ne semble pas le faire, mais c'est exactement la classe de
-        // fuite corrigée dans ce fichier, et rien ne la garantit ailleurs.
-        // `dwStatus` est lu avant, le tampon ne devant plus l'être après.
+        // Take the reference back BEFORE any error propagation, as
+        // `take_output_sample` requires and as
+        // `drain_converter_output` already does. Exiting through `?` first would leak
+        // the sample if the MFT had dropped one despite the failure — this
+        // driver does not seem to do so, but it is exactly the class of
+        // leak fixed in this file, and nothing guarantees it elsewhere.
+        // `dwStatus` is read before, since the buffer must no longer be read after.
         let incomplete = buffers[0].dwStatus & MFT_OUTPUT_DATA_BUFFER_INCOMPLETE.0 as u32 != 0;
         let taken = unsafe { take_output_sample(&mut buffers[0]) };
         ENC_OUT_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
@@ -238,36 +238,36 @@ impl EncodeurMft {
         let bytes = unsafe { std::slice::from_raw_parts(data_ptr, length as usize) }.to_vec();
         unsafe { media_buffer.Unlock()? };
 
-        // La sortie est en Annex-B ; on la repasse par le regroupement pour
-        // obtenir l'indicateur d'image clé de façon cohérente avec le reste.
+        // The output is in Annex-B; we pass it again through grouping to
+        // obtain the key frame indicator consistently with the rest.
         let mut units = group_access_units(&bytes, self.fps.max(1));
         if units.is_empty() {
             return Ok(None);
         }
         let mut unit = units.remove(0);
-        // L'horodatage vient de l'échantillon, pas de la position dans le flux.
+        // The timestamp comes from the sample, not from the position in the stream.
         let sample_time = unsafe { sample.GetSampleTime() }.unwrap_or(0);
         unit.pts_90k = (sample_time.max(0) as u64) * 9 / 1000;
         self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
         Ok(Some(unit))
     }
 
-    /// Remet à l'encodeur les échantillons NV12 déjà prêts, pour chaque
-    /// demande d'entrée qu'il a émise depuis le dernier appel.
+    /// Hands the encoder the NV12 samples already ready, for each
+    /// input request it has issued since the last call.
     ///
-    /// Existe pour casser une sérialisation mesurée dans `Session::run` : le
-    /// cycle « soumettre → l'encodeur produit → récupérer la sortie →
-    /// l'encodeur libère un emplacement → il redemande une entrée » ne
-    /// franchissait qu'UNE étape par tour de boucle, puisque `submit` et
-    /// `poll_output` n'étaient appelés qu'une fois chacun par tour de 16,7 ms.
-    /// Le débit s'en trouvait plafonné à la cadence de boucle divisée par le
-    /// nombre d'étapes — mesuré à ~23 Hz pour 60 Hz de boucle, alors que le
-    /// même encodeur soutient 66 Hz sollicité en boucle serrée
-    /// (`ENCODE_TEST`), où ces étapes s'enchaînent en quelques microsecondes.
+    /// Exists to break a serialisation measured in `Session::run`: the
+    /// cycle "submit → the encoder produces → retrieve the output →
+    /// the encoder frees a slot → it asks for an input again" only
+    /// crossed ONE step per loop round, since `submit` and
+    /// `poll_output` were only called once each per 16.7 ms round.
+    /// Throughput was thereby capped at the loop cadence divided by the
+    /// number of steps — measured at ~23 Hz for a 60 Hz loop, whereas the
+    /// same encoder sustains 66 Hz when solicited in a tight loop
+    /// (`ENCODE_TEST`), where these steps chain in a few microseconds.
     ///
-    /// Appelée après le drainage des sorties : c'est ce drainage qui libère
-    /// les emplacements d'entrée, donc c'est juste après lui que la demande
-    /// correspondante devient disponible.
+    /// Called after draining the outputs: it is this draining that frees
+    /// the input slots, so it is right after it that the
+    /// corresponding request becomes available.
     pub fn flush_pending_inputs(&mut self) -> Result<()> {
         self.drain_events()?;
         while self.pending_input_requests > 0 {

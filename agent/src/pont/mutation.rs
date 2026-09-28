@@ -1,51 +1,51 @@
-//! Le renommage et la suppression : **quoi pousser, et DANS QUEL ORDRE par
-//! rapport aux écritures dues**. **PUR** — aucun `cfg`, aucune E/S, aucune
-//! horloge.
+//! Renaming and deletion: **what to push, and IN WHICH ORDER relative
+//! to due writes**. **PURE** — no `cfg`, no I/O, no
+//! clock.
 //!
-//! # 🔴 LA RÈGLE DONT L'OUBLI PRODUIT UNE PERTE DE DONNÉES
+//! # 🔴 THE RULE WHOSE OMISSION PRODUCES DATA LOSS
 //!
-//! **Elle n'est écrite dans aucun document du dépôt avant celui-ci**, et elle
-//! naît de l'interaction de deux sous-blocs dont chacun est correct seul.
+//! **It is written in no document of the repository before this one**, and it
+//! arises from the interaction of two sub-blocks each of which is correct alone.
 //!
-//! L'idiome d'enregistrement que la spec §3.5 donne pour justifier sa décision
-//! D5 est : *écrire un fichier temporaire, renommer, supprimer l'ancien*.
-//! LibreOffice, Word et la plupart des éditeurs l'emploient, et les trois
-//! gestes arrivent **en rafale**, sur le même répertoire.
+//! The saving idiom spec §3.5 gives to justify its decision
+//! D5 is: *write a temporary file, rename, delete the old one*.
+//! LibreOffice, Word and most editors use it, and the three
+//! gestures arrive **in a burst**, on the same directory.
 //!
-//! Or F2 pousse les écritures **après coup**, à la fermeture du handle, dans
-//! une fenêtre dont il déclare lui-même qu'elle n'est pas bornée en durée.
-//! Donc, sans ce module :
+//! Yet F2 pushes writes **after the fact**, when the handle closes, in
+//! a window it declares itself is not bounded in duration.
+//! So, without this module:
 //!
-//! - **une écriture encore due sur `de` au moment où `Renommer` part arriverait
-//!   APRÈS le renommage, sur un chemin qui n'existe plus** — et
-//!   `getFileHandle(…, { create: true })` **RECRÉERAIT le fichier temporaire** :
-//!   l'enregistrement serait perdu, et un fichier d'échange resterait sur le
-//!   poste local ;
-//! - **une écriture due sur un chemin qu'on vient de supprimer RECRÉERAIT** ce
-//!   que l'utilisateur efface.
+//! - **a write still due on `de` when `Renommer` goes out would arrive
+//!   AFTER the renaming, on a path that no longer exists** — and
+//!   `getFileHandle(…, { create: true })` **WOULD RECREATE the temporary file**:
+//!   the save would be lost, and a swap file would remain on the
+//!   local workstation;
+//! - **a write due on a path just deleted WOULD RECREATE** what
+//!   the user erases.
 //!
-//! **Chacun des deux sous-blocs est correct seul ; c'est leur interaction qui
-//! détruit.** C'est la forme exacte des défauts que les revues transverses de
-//! ce dépôt trouvent depuis D7, et la seule qu'une revue par tâche ne peut
-//! structurellement pas voir.
+//! **Each of the two sub-blocks is correct alone; it is their interaction that
+//! destroys.** It is the exact shape of the defects the cross-cutting reviews of
+//! this repository have found since D7, and the only one a per-task review
+//! structurally cannot see.
 //!
-//! # ⚠️ CE MODULE NE DÉCIDE PAS DU `PRE_`, ET C'EST UNE DIVERGENCE DÉCLARÉE
+//! # ⚠️ THIS MODULE DOES NOT DECIDE THE `PRE_`, AND IT IS A DECLARED DIVERGENCE
 //!
-//! Le §3.2 du plan de F3 lui prescrit un `decider_prealable(etat, quoi)`.
-//! **Il n'est pas écrit** : [`crate::pont::notifications::decider`] EST cette
-//! fonction, elle existe depuis F1, elle est pure, elle est balayée sur les 32
-//! bits du masque et sur quatre états, et F3 vient de lui ajouter les quatre
-//! refus du renommage et de la suppression. En écrire une seconde ferait deux
-//! vérités que rien ne confronte — le défaut de `TYPES_AGENT`
-//! (`proto/ts/control.ts`), liste écrite à la main que rien ne compare à
-//! l'union qu'elle reflète.
+//! §3.2 of F3's plan prescribes a `decider_prealable(etat, quoi)` for it.
+//! **It is not written**: [`crate::pont::notifications::decider`] IS that
+//! function, it has existed since F1, it is pure, it is swept over the 32
+//! bits of the mask and over four states, and F3 has just added to it the four
+//! refusals of renaming and deletion. Writing a second one would make two
+//! truths nothing confronts — the defect of `TYPES_AGENT`
+//! (`proto/ts/control.ts`), a hand-written list nothing compares to
+//! the union it reflects.
 
 /// Ce qu'une mutation demande au poste local.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mutation {
-    /// 🔴 **`de` EST LA SOURCE, `vers` LA DESTINATION.** S'y tromper de sens ne
-    /// produirait aucune erreur : le renommage aurait lieu, à l'envers, et la
-    /// destination écraserait la source. C'est le risque R-F3-1 du plan.
+    /// 🔴 **`de` IS THE SOURCE, `vers` THE DESTINATION.** Getting the direction wrong would
+    /// produce no error: the renaming would happen, backwards, and the
+    /// destination would overwrite the source. It is risk R-F3-1 of the plan.
     Renommer {
         de: String,
         vers: String,
@@ -58,8 +58,8 @@ pub enum Mutation {
 }
 
 impl Mutation {
-    /// Le chemin **SOURCE** — celui qui existe encore au moment où la mutation
-    /// est décidée, et donc celui sur lequel des écritures peuvent être dues.
+    /// The **SOURCE** path — the one that still exists when the mutation
+    /// is decided, and hence the one on which writes can be due.
     pub fn source(&self) -> &str {
         match self {
             Mutation::Renommer { de, .. } => de,
@@ -67,13 +67,13 @@ impl Mutation {
         }
     }
 
-    /// La source est-elle un répertoire ?
+    /// Is the source a directory?
     ///
-    /// 🔴 **C'est ce qui décide si les écritures dues sur les ENFANTS
-    /// comptent**, et c'est pour cela que `isdirectory` est transporté depuis
-    /// le rappel plutôt que redécouvert par le navigateur : celui-ci le
-    /// redemanderait au prix d'un aller-retour, et se tromperait sur une entrée
-    /// que le renommage vient précisément de faire disparaître.
+    /// 🔴 **It is what decides whether writes due on CHILDREN
+    /// count**, and that is why `isdirectory` is carried from
+    /// the callback rather than rediscovered by the browser: the browser would
+    /// ask again at the cost of a round trip, and would be wrong about an entry
+    /// the renaming has precisely just made disappear.
     pub fn repertoire(&self) -> bool {
         match self {
             Mutation::Renommer { repertoire, .. } | Mutation::Supprimer { repertoire, .. } => {
@@ -83,38 +83,38 @@ impl Mutation {
     }
 }
 
-/// Ce qu'il faut faire **AVANT** de pousser une mutation.
+/// What must be done **BEFORE** pushing a mutation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ordonnancement {
-    /// Rien ne retient : pousser maintenant.
+    /// Nothing holds back: push now.
     Pousser,
-    /// Ces chemins portent des écritures dues, et la mutation **N'EST PAS
-    /// poussée** : il faut les vider d'abord, puis re-demander.
+    /// These paths carry due writes, and the mutation **IS NOT
+    /// pushed**: they must be drained first, then ask again.
     ///
-    /// ⚠️ **Le drainage n'est pas instantané, et son échec ne doit PAS être
-    /// traité comme un succès.** Si les écritures ne partent pas, la mutation
-    /// reste en attente, le fichier est NOMMÉ à l'utilisateur par le compteur
-    /// de F2, et le journal porte sa raison. Pousser quand même perdrait
-    /// l'enregistrement.
+    /// ⚠️ **Draining is not instantaneous, and its failure must NOT be
+    /// treated as a success.** If the writes do not go out, the mutation
+    /// stays waiting, the file is NAMED to the user by F2's
+    /// counter, and the log carries its reason. Pushing anyway would lose
+    /// the save.
     AttendreEcrituresDues { chemins: Vec<String> },
-    /// Ces écritures dues doivent être **RETIRÉES** du journal, **puis la
-    /// mutation est poussée dans la foulée**.
+    /// These due writes must be **REMOVED** from the journal, **then the
+    /// mutation is pushed right after**.
     ///
-    /// 🔴 **Le retrait vient AVANT la poussée, et l'ordre est le sens même** :
-    /// pousser d'abord recréerait sur le poste local ce que l'utilisateur vient
-    /// d'effacer, et la suppression qui suit ne rattraperait pas
-    /// nécessairement — le navigateur peut la refuser (répertoire non vide,
-    /// permission), et le fichier ressuscité resterait.
+    /// 🔴 **The removal comes BEFORE the push, and the order is the very meaning**:
+    /// pushing first would recreate on the local workstation what the user has just
+    /// erased, and the deletion that follows would not necessarily catch
+    /// up — the browser can refuse it (non-empty directory,
+    /// permission), and the resurrected file would remain.
     AbandonnerEcrituresDues { chemins: Vec<String> },
 }
 
-/// Ce qu'il faut faire de `quoi`, sachant que `dues` sont les chemins dont des
-/// octets attendent encore d'être poussés.
+/// What to do with `quoi`, knowing that `dues` are the paths whose
+/// bytes are still waiting to be pushed.
 ///
-/// ⚠️ **`dues` porte les chemins de la file d'écriture — EN VOL COMPRIS.**
-/// Ne considérer que l'attente laisserait passer le cas le plus courant : le
-/// fichier temporaire dont la poussée vient de commencer, et que le renommage
-/// suit de quelques millisecondes.
+/// ⚠️ **`dues` carries the paths of the write queue — IN FLIGHT INCLUDED.**
+/// Only considering the waiting list would let through the most common case: the
+/// temporary file whose push has just started, and which the renaming
+/// follows by a few milliseconds.
 pub fn ordonnancer(dues: &[String], quoi: &Mutation) -> Ordonnancement {
     let concernes: Vec<String> = dues
         .iter()
@@ -132,19 +132,19 @@ pub fn ordonnancer(dues: &[String], quoi: &Mutation) -> Ordonnancement {
     }
 }
 
-/// Une écriture due sur `due` est-elle retenue par une mutation de `cible` ?
+/// Is a write due on `due` held back by a mutation of `cible`?
 ///
-/// 🔴 **DEUX RÈGLES QUI SE CONTREDIRAIENT SI L'ON CONFONDAIT FICHIER ET
-/// RÉPERTOIRE**, et c'est `repertoire` qui tranche :
+/// 🔴 **TWO RULES THAT WOULD CONTRADICT EACH OTHER IF FILE AND
+/// DIRECTORY WERE CONFUSED**, and it is `repertoire` that decides:
 ///
-/// - une écriture due sur un **AUTRE** chemin ne retarde rien — comparer par
-///   préfixe seul ferait que toute écriture bloquerait tout renommage ;
-/// - une écriture due sur un **ENFANT** d'un répertoire renommé retarde bien —
-///   comparer par égalité seule laisserait le cas du répertoire passer à
-///   travers, et l'enfant serait recréé sous l'ancien chemin.
+/// - a write due on **ANOTHER** path delays nothing — comparing by
+///   prefix alone would make every write block every renaming;
+/// - a write due on a **CHILD** of a renamed directory does delay —
+///   comparing by equality alone would let the directory case slip
+///   through, and the child would be recreated under the old path.
 ///
-/// ⚠️ **Le `/` du préfixe n'est pas décoratif** : sans lui, renommer `a`
-/// retiendrait une écriture due sur `ab/x`, qui n'a rien à voir.
+/// ⚠️ **The prefix's `/` is not decorative**: without it, renaming `a`
+/// would hold back a write due on `ab/x`, which is unrelated.
 fn concerne(due: &str, cible: &str, repertoire: bool) -> bool {
     if due == cible {
         return true;
@@ -152,29 +152,29 @@ fn concerne(due: &str, cible: &str, repertoire: bool) -> bool {
     if !repertoire {
         return false;
     }
-    // Le renommage de la RACINE (`cible` vide) n'existe pas : ProjFS ne livre
-    // jamais de notification pour elle. Le cas est refusé plutôt que traité
-    // comme « tout est enfant », qui retiendrait toute écriture pour toujours.
+    // Renaming the ROOT (`cible` empty) does not exist: ProjFS never delivers
+    // a notification for it. The case is refused rather than treated
+    // as "everything is a child", which would hold back every write forever.
     if cible.is_empty() {
         return false;
     }
     due.starts_with(&format!("{cible}/"))
 }
 
-/// Les mutations en vol et en attente.
+/// The mutations in flight and waiting.
 ///
-/// ⚠️ **Une seule en vol à la fois, GLOBALEMENT — c'est plus strict que ce que
-/// le plan demande, et c'est délibéré.** Il écrit « une mutation par CHEMIN à
-/// la fois » ; la file d'écriture de F2 sérialise, elle, globalement. Deux
-/// disciplines différentes sur le même canal se relisent mal, et la plus
-/// stricte rend l'autre vraie *a fortiori* : deux renommages du même chemin ne
-/// peuvent pas se croiser si aucune paire ne le peut.
+/// ⚠️ **Only one in flight at a time, GLOBALLY — it is stricter than what
+/// the plan asks, and it is deliberate.** It writes "one mutation per PATH at
+/// a time"; F2's write queue serialises globally. Two
+/// different disciplines on the same channel read badly together, and the stricter
+/// makes the other true *a fortiori*: two renamings of the same path cannot
+/// cross if no pair can.
 ///
-/// 🔴 **AUCUNE COALESCENCE, contrairement à [`crate::pont::ecriture::File`].**
-/// Deux écritures du même fichier n'ont qu'un effet — écrire le dernier
-/// contenu. Deux mutations, non : renommer `a`→`b` puis `b`→`c` sont deux
-/// gestes dont **l'ordre est le sens**, et fusionner le second dans le premier
-/// laisserait `b` sur le poste local.
+/// 🔴 **NO COALESCING, unlike [`crate::pont::ecriture::File`].**
+/// Two writes of the same file have only one effect — writing the last
+/// content. Two mutations do not: renaming `a`→`b` then `b`→`c` are two
+/// gestures whose **order is the meaning**, and merging the second into the first
+/// would leave `b` on the local workstation.
 #[derive(Debug, Default)]
 pub struct FileMutations {
     en_vol: Option<Mutation>,
@@ -186,30 +186,30 @@ impl FileMutations {
         Self::default()
     }
 
-    /// Inscrit une mutation, et rend **ce qu'il faut pousser maintenant**.
+    /// Registers a mutation, and returns **what must be pushed now**.
     ///
-    /// `None` veut dire « rien à commencer » : une mutation est déjà en vol.
+    /// `None` means "nothing to start": a mutation is already in flight.
     pub fn signaler(&mut self, quoi: Mutation) -> Option<Mutation> {
         self.attente.push(quoi);
         self.demarrer()
     }
 
-    /// La mutation en vol est finie — **quelle qu'en soit l'issue**.
+    /// The mutation in flight is over — **whatever its outcome**.
     ///
-    /// 🔴 **ÉCHEC COMPRIS.** Une mutation qui échoue libère le vol : sans quoi
-    /// un seul refus bloquerait toutes les mutations suivantes. C'est ce que la
-    /// file d'écriture de F2 fait déjà, pour la même raison.
+    /// 🔴 **FAILURE INCLUDED.** A mutation that fails frees the flight: otherwise
+    /// a single refusal would block all following mutations. It is what
+    /// F2's write queue already does, for the same reason.
     pub fn terminee(&mut self) -> Option<Mutation> {
         self.en_vol = None;
         self.demarrer()
     }
 
-    /// Remet la mutation en vol **en TÊTE de l'attente**, sans la perdre.
+    /// Puts the in-flight mutation back **at the HEAD of the waiting list**, without losing it.
     ///
-    /// C'est ce qu'on fait d'une mutation que [`ordonnancer`] retient : les
-    /// écritures dues partent, et la mutation repasse **avant** celles qui
-    /// l'ont suivie — sans quoi l'ordre des gestes de l'utilisateur serait
-    /// inversé.
+    /// It is what we do with a mutation [`ordonnancer`] holds back: the
+    /// due writes go out, and the mutation goes back **ahead** of those that
+    /// followed it — otherwise the order of the user's gestures would be
+    /// reversed.
     pub fn differer(&mut self) {
         if let Some(quoi) = self.en_vol.take() {
             self.attente.insert(0, quoi);

@@ -1,35 +1,35 @@
-//! Ce que la boucle retient d'un tour à l'autre, et la réconciliation qui le
-//! produit : lire le disque, filtrer, comparer, mesurer les icônes.
+//! What the loop keeps from one tick to the next, and the reconciliation that
+//! produces it: read the disk, filter, compare, measure the icons.
 //!
-//! 🔴 CE MODULE EST UNE EXTRACTION VERBATIM, JOUÉE **AVANT** L'ADDITION QUI LA
-//! RENDAIT NÉCESSAIRE. `apps/boucle.rs` valait 385 lignes ; le sondage de la
-//! surveillance, son déclencheur, son mode et leur documentation l'auraient
-//! porté au-delà de la porte de 450 lignes que ce sous-bloc s'impose. La forme
-//! forte — extraire d'abord, ajouter ensuite — a été inventée par le sous-bloc
-//! D9 (tâche 6) et jouée trois fois par D10 ; ce dépôt a payé **cinq** fois la
-//! forme faible, « on franchit puis on rattrape », dont deux fois par une
-//! COMPRESSION que `CLAUDE.md` interdit nommément.
+//! 🔴 THIS MODULE IS A VERBATIM EXTRACTION, PERFORMED **BEFORE** THE ADDITION THAT
+//! MADE IT NECESSARY. `apps/boucle.rs` was 385 lines; polling the
+//! watcher, its trigger, its mode and their documentation would have
+//! taken it past the 450-line gate this sub-block imposes on itself. The strong
+//! form — extract first, add afterwards — was invented by sub-block
+//! D9 (task 6) and played three times by D10; this repository paid **five** times for the
+//! weak form, "cross the line then catch up", twice of them through a
+//! COMPRESSION that `CLAUDE.md` forbids by name.
 //!
-//! ⚠️ **LA SEULE DIFFÉRENCE AVEC LE TEXTE D'ORIGINE EST CET EN-TÊTE, CES `use`,
-//! ET CINQ QUALIFICATEURS `pub(super)`** — sur `Memoire`, sur `reconcilier`, et
-//! sur les trois champs que `boucle.rs` lit (`catalogue`, `lancables`,
-//! `icones`). ⚠️ *Cette ligne a d'abord annoncé QUATRE, et le diff du contrôle
-//! l'a réfutée en montrant cinq hunks : un compte écrit de mémoire au lieu
-//! d'être lu dans la sortie de la commande, dans le fichier même dont
-//! l'en-tête promet la complétude.* Ils ne sont pas un embellissement : en Rust un item privé d'un
-//! module ENFANT n'est PAS visible de son parent, et une extraction
-//! rigoureusement verbatim ne compilerait donc pas. La divergence est déclarée
-//! plutôt que passée en douce, et le contrôle qui l'accompagne compare le corps
-//! ligne à ligne pour qu'il n'en subsiste aucune autre.
+//! ⚠️ **THE ONLY DIFFERENCE FROM THE ORIGINAL TEXT IS THIS HEADER, THESE `use`,
+//! AND FIVE `pub(super)` QUALIFIERS** — on `Memoire`, on `reconcilier`, and
+//! on the three fields `boucle.rs` reads (`catalogue`, `lancables`,
+//! `icones`). ⚠️ *This line first announced FOUR, and the diff of the check
+//! refuted it by showing five hunks: a count written from memory instead of
+//! being read from the command's output, in the very file whose
+//! header promises completeness.* They are not an embellishment: in Rust a private item of a
+//! CHILD module is NOT visible from its parent, and a strictly
+//! verbatim extraction would therefore not compile. The divergence is declared
+//! rather than slipped through, and the check that accompanies it compares the body
+//! line by line so that no other one remains.
 //!
-//! ⚠️ `mesurer` et les champs `vues` / `ecartes` restent PRIVÉS : ils ne
-//! traversent pas la frontière, et les élargir « pour uniformiser » ouvrirait
-//! une surface que personne ne demande.
+//! ⚠️ `mesurer` and the `vues` / `ecartes` fields stay PRIVATE: they do not
+//! cross the boundary, and widening them "for uniformity" would open
+//! a surface nobody asks for.
 //!
-//! `mod memoire;` ORDINAIRE dans `boucle.rs`, **aucun `#[path]`** : les deux
-//! sont `#[cfg(windows)]`, et la « Convention de module enfant » de
-//! `CLAUDE.md` écrit noir sur blanc qu'un module gaté qui n'a pas besoin
-//! d'exister sur l'hôte reste un enfant normal.
+//! ORDINARY `mod memoire;` in `boucle.rs`, **no `#[path]`**: both
+//! are `#[cfg(windows)]`, and the "Child module convention" of
+//! `CLAUDE.md` states in black and white that a gated module that does not need
+//! to exist on the host stays a normal child.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
@@ -39,60 +39,60 @@ use proto::plateforme::{Application, SourceMax};
 use crate::apps::icone::{self, magasin::Magasin};
 use crate::apps::{lecture, raccourci, reconciliation};
 
-/// Ce que la boucle retient d'un tour à l'autre.
+/// What the loop keeps from one tick to the next.
 #[derive(Default)]
 pub(super) struct Memoire {
-    /// Le catalogue du tour précédent, pour le diff.
+    /// The previous tick's catalogue, for the diff.
     pub(super) catalogue: Vec<Application>,
-    /// Le chemin du `.lnk` et le `nShow` de chaque clé, pour le lancement.
+    /// The `.lnk` path and the `nShow` of each key, for launching.
     ///
-    /// ⚠️ C'EST LE CATALOGUE DE L'AGENT QUI FAIT AUTORITÉ POUR LANCER, jamais
-    /// celui de la plateforme : l'ordre ne porte qu'une clé, et la copie de la
-    /// plateforme peut être vieille d'une réconciliation quand celle-ci vient
-    /// d'être lue sur le disque.
+    /// ⚠️ IT IS THE AGENT'S CATALOGUE THAT IS AUTHORITATIVE FOR LAUNCHING, never
+    /// the platform's: the order only carries a key, and the
+    /// platform's copy may be one reconciliation old when this one has just
+    /// been read from disk.
     pub(super) lancables: BTreeMap<String, (String, i32)>,
-    /// 🔴 LES ICÔNES DU CATALOGUE COURANT, ADRESSÉES PAR CONTENU. Sur ce
-    /// corpus, **153 applications rendent 99 PNG distincts** — 54
-    /// téléversements évités. Il est REMPLACÉ à chaque réconciliation, jamais
-    /// accumulé : sur un processus qui vit des jours, fusionner le ferait
-    /// croître sans terme.
+    /// 🔴 THE ICONS OF THE CURRENT CATALOGUE, CONTENT-ADDRESSED. On this
+    /// corpus, **153 applications yield 99 distinct PNGs** — 54
+    /// uploads avoided. It is REPLACED at every reconciliation, never
+    /// accumulated: on a process that lives for days, merging it would make it
+    /// grow with no end.
     pub(super) icones: Magasin,
-    /// L'empreinte et la provenance déjà connues d'une clé, plus le `chemin`
-    /// du `.lnk` au moment où on les a mesurées.
+    /// The fingerprint and provenance already known for a key, plus the `chemin`
+    /// of the `.lnk` at the time they were measured.
     ///
-    /// 🔴 C'EST CE QUI ÉVITE DE RÉEXTRAIRE À CHAQUE TOUR. L'extraction coûte
-    /// **2 298 ms pour 153 icônes** au premier tour (mesuré) : la refaire
-    /// toutes les trente secondes ferait de la découverte d'applications le
-    /// poste le plus cher de l'agent, pour un disque qui ne bouge pas.
+    /// 🔴 IT IS WHAT AVOIDS RE-EXTRACTING ON EVERY TICK. Extraction costs
+    /// **2,298 ms for 153 icons** on the first tick (measured): redoing it
+    /// every thirty seconds would make application discovery the
+    /// most expensive item of the agent, for a disk that does not move.
     ///
-    /// ⚠️ **TROU NOMMÉ, PAS OUBLIÉ** : une application qui se met à jour en
-    /// réécrivant son `.exe` EN PLACE — même chemin, même icône déclarée,
-    /// image différente — ne sera PAS revue. Le fermer demanderait un
-    /// horodatage ou une empreinte de la source, donc un accès disque par
-    /// application et par tour.
-    /// ⚠️ LE QUATRIÈME MEMBRE EST L'ACCENT (sous-bloc G5) : il DÉRIVE des
-    /// pixels de l'icône, donc le recalculer exigerait de ré-extraire l'image
-    /// — c'est-à-dire de défaire exactement l'économie que ce cache existe
-    /// pour faire.
+    /// ⚠️ **NAMED GAP, NOT FORGOTTEN**: an application that updates itself by
+    /// rewriting its `.exe` IN PLACE — same path, same declared icon,
+    /// different image — will NOT be re-read. Closing it would require a
+    /// timestamp or a fingerprint of the source, hence one disk access per
+    /// application and per tick.
+    /// ⚠️ THE FOURTH MEMBER IS THE ACCENT (sub-block G5): it DERIVES from the
+    /// pixels of the icon, so recomputing it would require re-extracting the image
+    /// — that is, undoing exactly the saving this cache exists
+    /// to make.
     vues: BTreeMap<String, (String, Option<String>, SourceMax, Option<String>)>,
-    /// Les chemins déjà signalés écartés.
+    /// The paths already reported as discarded.
     ///
-    /// 🔴 SANS CET ENSEMBLE, LES SEPT ÉCARTS DE CETTE VM FERAIENT 20 160
-    /// LIGNES PAR JOUR pour des fichiers qui ne changent pas — dans un journal
-    /// partagé par le superviseur, le capteur et tous les enfants depuis D4.
-    /// Une ligne est émise quand un chemin ENTRE dans cet ensemble, une autre
-    /// quand il en SORT.
+    /// 🔴 WITHOUT THIS SET, THE SEVEN DISCARDED ENTRIES OF THIS VM WOULD MAKE 20,160
+    /// LINES PER DAY for files that do not change — in a log
+    /// shared by the supervisor, the sensor and all the children since D4.
+    /// One line is emitted when a path ENTERS this set, another
+    /// when it LEAVES it.
     ///
-    /// ⚠️ CONSÉQUENCE POUR TOUTE RECETTE : le critère « sept lignes nommant
-    /// chacune leur fichier » se mesure sur la PREMIÈRE réconciliation, dans
-    /// une fenêtre temporelle explicite. Jamais sur un total de fichier.
+    /// ⚠️ CONSEQUENCE FOR ANY ACCEPTANCE RUN: the criterion "seven lines each naming
+    /// their file" is measured on the FIRST reconciliation, within
+    /// an explicit time window. Never on a whole-file total.
     ecartes: BTreeSet<String>,
 }
 
-/// Une réconciliation complète : lire le disque, décider, rendre le diff.
+/// A complete reconciliation: read the disk, decide, return the diff.
 ///
-/// Rend aussi le catalogue entier, parce que l'appelant en a besoin pour le
-/// renvoi `complet` d'un réenrôlement.
+/// Also returns the whole catalogue, because the caller needs it for the
+/// `complet` resend of a re-enrolment.
 pub(super) fn reconcilier(
     memoire: &mut Memoire,
     contexte: super::Contexte,
@@ -105,10 +105,10 @@ pub(super) fn reconcilier(
             total += 1;
             match lecture::lire(&chemin) {
                 Ok(r) => brutes.push(r),
-                // ⚠️ UN `.lnk` ILLISIBLE EST SAUTÉ AVEC SA TRACE. Une
-                // réconciliation qui échouerait en entier sur un fichier
-                // ferait disparaître TOUT le catalogue — un octet corrompu sur
-                // le Bureau viderait la liste des applications.
+                // ⚠️ AN UNREADABLE `.lnk` IS SKIPPED WITH ITS TRACE. A
+                // reconciliation that failed entirely on one file
+                // would make the WHOLE catalogue disappear — one corrupt byte on
+                // the Desktop would empty the list of applications.
                 Err(erreur) => tracing::warn!(
                     chemin = %chemin.display(), %erreur, "raccourci illisible, sauté"
                 ),
@@ -121,31 +121,31 @@ pub(super) fn reconcilier(
     let mut catalogue = Vec::new();
     let mut lancables = BTreeMap::new();
     let mut ecartes = BTreeSet::new();
-    // 🔴 LE LEGS N°7 DE G1, FERMÉ ICI. Le champ `retenus` émis plus bas valait
-    // `lancables.len()` — une table indexée par CLÉ, donc TOUJOURS égale à
-    // `cles`. Les raccourcis réellement retenus n'étaient émis NULLE PART, et
-    // le champ mentait sur son nom.
+    // 🔴 G1 LEGACY NO. 7, CLOSED HERE. The `retenus` field emitted below was
+    // `lancables.len()` — a table indexed by KEY, hence ALWAYS equal to
+    // `cles`. The shortcuts actually retained were emitted NOWHERE, and
+    // the field lied about its name.
     //
-    // **Mesuré le 21 août 2026 sur la VM de développement : `retenus=167` pour
-    // `cles=154`.** DEUX NOMBRES DIFFÉRENTS, donc un contrôle qui peut
-    // échouer — c'est tout ce qu'on lui demande.
+    // **Measured on 21 August 2026 on the development VM: `retenus=167` for
+    // `cles=154`.** TWO DIFFERENT NUMBERS, hence a check that can
+    // fail — that is all that is asked of it.
     //
-    // ⚠️ **Le même relevé rend `169`/`156` en fin de recette G2**, et l'écart
-    // n'est pas une dérive : la recette a créé DEUX raccourcis témoins sur le
-    // Bureau (`G2 Temoin 48.lnk`, `G2 Temoin 256.lnk`) pour le critère ②, et
-    // **ils y sont RESTÉS** — c'est ce qui rend ce critère rejouable sans rien
-    // remonter. Un chantier suivant qui compterait 154 sur cette VM les
-    // cherchera : ils portent des arguments distincts (`--g2-temoin-48` et
-    // `--g2-temoin-256`), sans quoi leur clé serait la même et le catalogue
-    // n'en garderait qu'un.
+    // ⚠️ **The same survey gives `169`/`156` at the end of the G2 acceptance run**, and the gap
+    // is not a drift: the run created TWO witness shortcuts on the
+    // Desktop (`G2 Temoin 48.lnk`, `G2 Temoin 256.lnk`) for criterion ②, and
+    // **they STAYED there** — that is what makes the criterion replayable without rebuilding
+    // anything. A later work stream counting 154 on this VM will
+    // look for them: they carry distinct arguments (`--g2-temoin-48` and
+    // `--g2-temoin-256`), otherwise their key would be the same and the catalogue
+    // would only keep one.
     let mut retenus = 0usize;
     let mut icones = Magasin::new();
     let mut vues = BTreeMap::new();
-    // 🔴 LE REGISTRE EST LU **UNE FOIS PAR RÉCONCILIATION**, ET NON UNE FOIS
-    // PAR APPLICATION. Le corpus de cette VM porte 156 applications : les
-    // interroger une à une relirait toutes les entrées de `FileExts` 156 fois,
-    // toutes les `PERIODE_RECONCILIATION`. Chaque application CHERCHE ensuite
-    // son chemin dans cette table.
+    // 🔴 THE REGISTRY IS READ **ONCE PER RECONCILIATION**, NOT ONCE
+    // PER APPLICATION. This VM's corpus has 156 applications:
+    // querying them one by one would re-read every entry of `FileExts` 156 times,
+    // every `PERIODE_RECONCILIATION`. Each application then LOOKS UP
+    // its path in this table.
     let associations = crate::apps::associations::table_de_la_machine();
     let mut extraites = 0usize;
     let mut echecs_icone = 0usize;
@@ -158,21 +158,21 @@ pub(super) fn reconcilier(
                 let mut app = raccourci::depuis_brut(r.brut);
                 lancables.insert(app.cle.clone(), (chemin_lnk.clone(), r.montrer));
                 if vus.insert(app.cle.clone()) {
-                    // 🔴 EXTRAIRE SEULEMENT SI LA CLÉ EST NEUVE OU SI LE `.lnk`
-                    // A CHANGÉ DE PLACE — jamais à chaque tour.
+                    // 🔴 EXTRACT ONLY IF THE KEY IS NEW OR IF THE `.lnk`
+                    // HAS MOVED — never on every tick.
                     match memoire.vues.get(&app.cle) {
                         Some((ancien, empreinte, source, accent)) if *ancien == chemin_lnk => {
                             app.icone = empreinte.clone();
                             app.source_max = *source;
-                            // 🔴 L'ACCENT EST MÉMORISÉ AVEC L'ICÔNE, ET NON
-                            // RECALCULÉ : il dérive des PIXELS, donc le
-                            // recalculer exigerait de ré-extraire l'image —
-                            // c'est-à-dire de défaire l'économie que ce cache
-                            // existe pour faire (153 extractions COM par tour).
+                            // 🔴 THE ACCENT IS STORED WITH THE ICON, NOT
+                            // RECOMPUTED: it derives from the PIXELS, so
+                            // recomputing it would require re-extracting the image —
+                            // that is, undoing the saving this cache
+                            // exists to make (153 COM extractions per tick).
                             app.accent = accent.clone();
-                            // Les octets restent nécessaires : le magasin est
-                            // remplacé à chaque tour, et la plateforme peut
-                            // redemander une icône qu'elle a perdue.
+                            // The bytes are still needed: the store is
+                            // replaced on every tick, and the platform may
+                            // ask again for an icon it lost.
                             if let Some(e) = empreinte {
                                 if let Some(o) = memoire.icones.octets(e) {
                                     icones.ajouter(o.to_vec());
@@ -182,13 +182,13 @@ pub(super) fn reconcilier(
                         _ => {
                             let (e, s, a) =
                                 mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
-                            // 🔴 UN DÉSARMEMENT N'EST PAS UN ÉCHEC, et les
-                            // compter ensemble ferait lire 156 pannes sur un
-                            // agent parfaitement sain qu'on vient de couper
-                            // avec `ICONES=0` — MESURÉ le 21 août 2026, avant
-                            // cette ligne. C'est exactement le défaut que le
-                            // legs n°7 de G1 portait sur `retenus` : un
-                            // compteur qui ment sur son nom.
+                            // 🔴 A DISARM IS NOT A FAILURE, and
+                            // counting them together would read 156 failures on a
+                            // perfectly healthy agent that was just switched off
+                            // with `ICONES=0` — MEASURED on 21 August 2026, before
+                            // this line. It is exactly the defect that
+                            // G1 legacy no. 7 carried on `retenus`: a
+                            // counter that lies about its name.
                             if e.is_some() {
                                 extraites += 1;
                             } else if icone::armee() {
@@ -199,13 +199,13 @@ pub(super) fn reconcilier(
                             app.accent = a;
                         }
                     }
-                    // ⚠️ LES ASSOCIATIONS NE SONT PAS MÉMORISÉES AVEC L'ICÔNE,
-                    // et c'est délibéré : elles ne coûtent qu'une recherche
-                    // dans une table déjà en main, et elles CHANGENT sans que
-                    // le `.lnk` bouge — il suffit que l'utilisateur choisisse
-                    // une autre application par défaut. Les mettre au cache de
-                    // l'icône figerait ce choix jusqu'au prochain déplacement
-                    // du raccourci.
+                    // ⚠️ THE ASSOCIATIONS ARE NOT STORED WITH THE ICON,
+                    // and that is deliberate: they only cost one lookup
+                    // in a table already at hand, and they CHANGE without
+                    // the `.lnk` moving — it is enough for the user to choose
+                    // another default application. Putting them in the icon's
+                    // cache would freeze that choice until the next move
+                    // of the shortcut.
                     app.associations =
                         crate::apps::associations::pour_cible(&associations, &app.cible);
                     vues.insert(
@@ -256,12 +256,12 @@ pub(super) fn reconcilier(
         modifiees = diff.modifiees.len(),
         disparues = diff.disparues.len(),
         duree_ms = depart.elapsed().as_millis(),
-        // 🔴 LES TROIS CHAMPS DE G4. `declencheur` rend le critère ① lisible :
-        // sans lui, une réconciliation arrivée juste après la création d'un
-        // raccourci est indiscernable d'une périodique tombée là par hasard.
-        // `notifications` et `debordements` sont CUMULÉS depuis le démarrage du
-        // fil — deux lignes successives se soustraient, un delta déjà pris ne
-        // se recompose pas.
+        // 🔴 THE THREE G4 FIELDS. `declencheur` makes criterion ① readable:
+        // without it, a reconciliation arriving just after the creation of a
+        // shortcut is indistinguishable from a periodic one that happened to fall there.
+        // `notifications` and `debordements` are CUMULATIVE since the
+        // thread started — two successive lines can be subtracted, a delta already taken cannot
+        // be recomposed.
         declencheur = contexte.declencheur.mot(),
         notifications = contexte.notifications,
         debordements = contexte.debordements,
@@ -272,20 +272,20 @@ pub(super) fn reconcilier(
     memoire.lancables = lancables;
     memoire.ecartes = ecartes;
     memoire.vues = vues;
-    // 🔴 REMPLACER, JAMAIS FUSIONNER : le magasin porte le catalogue COURANT.
+    // 🔴 REPLACE, NEVER MERGE: the store carries the CURRENT catalogue.
     memoire.icones.remplacer(icones);
     (diff, catalogue)
 }
 
-/// Extrait l'icône d'un raccourci, et mesure sa PROVENANCE.
+/// Extracts the icon of a shortcut, and measures its PROVENANCE.
 ///
-/// 🔴 `source_max` VIENT DE LA RESSOURCE, JAMAIS DU PNG. Un code qui la
-/// déduirait de la taille rendue donnerait `256` à TOUT — mesuré deux fois sur
-/// deux témoins fabriqués, et c'est tout l'objet du sous-bloc.
+/// 🔴 `source_max` COMES FROM THE RESOURCE, NEVER FROM THE PNG. Code that
+/// deduced it from the rendered size would give `256` to EVERYTHING — measured twice on
+/// two fabricated witnesses, and that is the whole purpose of the sub-block.
 ///
-/// ⚠️ **UN ÉCHEC N'EST PAS UNE APPLICATION PERDUE** : une application sans
-/// icône vaut mieux qu'une application absente (spécification §7). L'échec est
-/// journalisé, `icone` vaut `None`, et `source_max` vaut `NonMesuree`.
+/// ⚠️ **A FAILURE IS NOT A LOST APPLICATION**: an application without an
+/// icon is better than a missing application (specification §7). The failure is
+/// logged, `icone` is `None`, and `source_max` is `NonMesuree`.
 fn mesurer(
     lnk: &str,
     icone_location: &str,
@@ -299,25 +299,25 @@ fn mesurer(
         Ok((png, accent)) => {
             let octets = png.len();
             let empreinte = icones.ajouter(png);
-            // ⚠️ `debug!` ET NON `info!`, ET C'EST MESURÉ : cette ligne sort
-            // une fois PAR APPLICATION au premier tour — 153 lignes sur ce
-            // corpus —, dans un journal que le superviseur, le capteur et tous
-            // les enfants partagent depuis D4. Elle ne sort ensuite QUE pour
-            // les clés neuves, donc zéro sur un disque au repos.
+            // ⚠️ `debug!` AND NOT `info!`, AND IT IS MEASURED: this line is emitted
+            // once PER APPLICATION on the first tick — 153 lines on this
+            // corpus —, in a log that the supervisor, the sensor and all
+            // the children share since D4. Afterwards it is emitted ONLY for
+            // new keys, hence zero on an idle disk.
             //
-            // 🔴 C'EST ELLE QUI REND LA DÉTERMINATION DE WIC MESURABLE : deux
-            // exécutions séparées de l'agent, deux journaux, et les empreintes
-            // se comparent chemin par chemin. Sans elle, la seule chose
-            // observable serait `icones_distinctes`, qui ne dirait RIEN d'une
-            // empreinte qui change d'un processus à l'autre — le compte
-            // resterait le même.
+            // 🔴 IT IS WHAT MAKES WIC'S DETERMINISM MEASURABLE: two
+            // separate runs of the agent, two logs, and the fingerprints
+            // are compared path by path. Without it, the only
+            // observable thing would be `icones_distinctes`, which would say NOTHING about a
+            // fingerprint that changes from one process to the next — the count
+            // would stay the same.
             tracing::debug!(lnk, %empreinte, octets, "icone extraite");
-            // ⚠️ LA PROVENANCE EST MESURÉE MÊME QUAND ELLE EST INCONNUE : elle
-            // rend `NonMesuree` sans erreur, et ce n'est pas une panne — 37 des
-            // 153 applications de cette VM sont dans ce cas.
-            // ⚠️ L'ACCENT SUIT L'ICÔNE, ET `None` N'EST PAS UNE PANNE : une
-            // icône trop pâle, trop sombre ou trop transparente n'a AUCUNE
-            // dominante. Le manifeste OMET alors `theme_color`.
+            // ⚠️ THE PROVENANCE IS MEASURED EVEN WHEN IT IS UNKNOWN: it
+            // returns `NonMesuree` without error, and that is not a failure — 37 of the
+            // 153 applications of this VM are in that case.
+            // ⚠️ THE ACCENT FOLLOWS THE ICON, AND `None` IS NOT A FAILURE: an
+            // icon that is too pale, too dark or too transparent has NO
+            // dominant colour. The manifest then OMITS `theme_color`.
             (
                 Some(empreinte),
                 icone::provenance_de(icone_location, cible),

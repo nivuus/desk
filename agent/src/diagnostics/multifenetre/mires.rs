@@ -1,14 +1,14 @@
-//! Fenêtres de test de la sonde multi-fenêtres : N fenêtres sans bordure,
-//! peintes par D3D11 d'une couleur qui encode leur identité et leur numéro
-//! de trame (`crate::mire`).
+//! Test windows of the multi-window probe: N borderless windows,
+//! painted by D3D11 with a colour that encodes their identity and their frame
+//! number (`crate::mire`).
 //!
-//! Le rendu passe par une swapchain D3D11 et non par GDI. `PrintWindow`
-//! échoue précisément sur le contenu D3D : une mire peinte en GDI validerait
-//! la voie des replis, qui s'effondrerait ensuite devant un vrai jeu.
+//! Rendering goes through a D3D11 swapchain and not through GDI. `PrintWindow`
+//! fails precisely on D3D content: a test pattern painted in GDI would validate
+//! the fallback path, which would then collapse in front of a real game.
 //!
-//! L'animation n'est pas décorative — Desktop Duplication n'émet une image
-//! que lorsque le bureau change. Sans alternance de couleur, le banc mesure
-//! une capture qui ne reçoit rien (piège déjà payé au jalon 1).
+//! The animation is not decorative — Desktop Duplication only emits an image
+//! when the desktop changes. Without colour alternation, the bench measures
+//! a capture that receives nothing (a trap already paid for at milestone 1).
 
 use anyhow::{anyhow, Context, Result};
 use windows::core::{w, Interface, PCWSTR};
@@ -47,9 +47,9 @@ pub(super) struct Mires {
 }
 
 impl Mires {
-    /// Ouvre une fenêtre par place, peinte et visible, sans jamais prendre le
-    /// focus (`WS_EX_NOACTIVATE`) : une mire qui volerait le premier plan
-    /// changerait le recouvrement que le banc met en scène.
+    /// Opens one window per slot, painted and visible, without ever taking
+    /// focus (`WS_EX_NOACTIVATE`): a test pattern that stole the foreground
+    /// would change the covering the bench stages.
     pub(super) fn ouvrir(device: &ID3D11Device, places: &[Rect]) -> Result<Self> {
         anyhow::ensure!(
             places.len() <= mire::MIRES_MAX as usize,
@@ -67,13 +67,13 @@ impl Mires {
             unsafe { adaptateur.GetParent() }.context("fabrique DXGI depuis l'adaptateur")?;
         let contexte = unsafe { device.GetImmediateContext() }.context("contexte immédiat")?;
 
-        // Chaque itération peut échouer après avoir déjà créé une fenêtre
-        // Win32 (swapchain, vue de rendu). Sans nettoyage explicite ici, un
-        // échec partiel laisserait les fenêtres déjà ouvertes orphelines :
-        // `Fenetre` ne porte pas de `Drop` propre (seul `Mires` en a un), et
-        // le déroulement normal de `?` abandonnerait le `Vec<Fenetre>` local
-        // sans jamais appeler `DestroyWindow`. Une mire orpheline fausserait
-        // la mesure suivante, le banc étant relancé plusieurs fois de suite.
+        // Each iteration may fail after having already created a Win32
+        // window (swapchain, render view). Without explicit cleanup here, a
+        // partial failure would leave the already-open windows orphaned:
+        // `Fenetre` has no `Drop` of its own (only `Mires` has one), and
+        // the normal unwinding of `?` would drop the local `Vec<Fenetre>`
+        // without ever calling `DestroyWindow`. An orphaned test pattern would skew
+        // the next measurement, since the bench is relaunched several times in a row.
         let mut fenetres = Vec::with_capacity(places.len());
         for (index, place) in places.iter().enumerate() {
             match creer_fenetre(device, &fabrique, index as u8, *place) {
@@ -94,14 +94,14 @@ impl Mires {
         })
     }
 
-    /// Peint une trame sur toutes les mires et la présente.
+    /// Paints one frame on all the test patterns and presents it.
     pub(super) fn peindre(&mut self) -> Result<()> {
         for fenetre in &self.fenetres {
             let (r, g, b) = mire::couleur_mire(fenetre.id, self.trame);
-            // Format UNORM non-sRGB : la valeur flottante est écrite telle
-            // quelle dans l'octet, donc `r/255` rend exactement `r` à la
-            // lecture. Un format `_SRGB` imposerait une conversion et la
-            // vérification par pixels échouerait sur une mire pourtant juste.
+            // Non-sRGB UNORM format: the float value is written as
+            // is into the byte, so `r/255` returns exactly `r` on
+            // reading. An `_SRGB` format would impose a conversion and the
+            // pixel check would fail on a test pattern that is actually right.
             let couleur = [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0];
             unsafe {
                 self.contexte
@@ -115,8 +115,8 @@ impl Mires {
         Ok(())
     }
 
-    /// Vide la file de messages des fenêtres. Sans cela Windows les tient
-    /// pour figées et cesse de les composer.
+    /// Empties the windows' message queue. Without it Windows considers them
+    /// frozen and stops composing them.
     pub(super) fn pomper(&self) {
         let mut message = MSG::default();
         while unsafe { PeekMessageW(&mut message, None, 0, 0, PM_REMOVE) }.as_bool() {
@@ -125,14 +125,14 @@ impl Mires {
         }
     }
 
-    /// Met la mire `dessus` par-dessus la mire `dessous`, en la déplaçant sur
-    /// sa place et en la portant au premier plan. C'est la mise en scène de
-    /// la porte éliminatoire : la mire recouverte doit rester capturable.
+    /// Puts test pattern `dessus` on top of test pattern `dessous`, moving it onto
+    /// its slot and bringing it to the foreground. It is the staging of
+    /// the elimination gate: the covered test pattern must remain capturable.
     ///
-    /// Met aussi à jour `Fenetre.place` du côté déplacé : c'est la seule
-    /// voie exposée (`place()`) pour connaître la position d'une mire, et
-    /// une valeur périmée après recouvrement rendrait la porte éliminatoire
-    /// ininterprétable pour les tâches qui s'appuient dessus (6, 8, 9).
+    /// Also updates `Fenetre.place` on the moved side: it is the only
+    /// exposed way (`place()`) to know a test pattern's position, and
+    /// a stale value after covering would make the elimination gate
+    /// uninterpretable for the tasks that rely on it (6, 8, 9).
     pub(super) fn recouvrir(&mut self, dessus: u8, dessous: u8) -> Result<()> {
         let cible = self.place(dessous)?;
         let hwnd = self.hwnd(dessus)?;
@@ -185,8 +185,8 @@ impl Mires {
 
 impl Drop for Mires {
     fn drop(&mut self) {
-        // Une mire orpheline fausserait la mesure suivante, et le banc est
-        // lancé plusieurs fois de suite.
+        // An orphaned test pattern would skew the next measurement, and the bench is
+        // launched several times in a row.
         for fenetre in &self.fenetres {
             let _ = unsafe { DestroyWindow(fenetre.hwnd) };
         }
@@ -203,13 +203,13 @@ fn enregistrer_classe() -> Result<()> {
             lpszClassName: CLASSE,
             ..Default::default()
         };
-        // `RegisterClassW` rend 0 en cas d'échec. Un second enregistrement de
-        // la même classe échouerait aussi — d'où le `Once`.
+        // `RegisterClassW` returns 0 on failure. A second registration of
+        // the same class would fail too — hence the `Once`.
         if unsafe { RegisterClassW(&classe) } == 0 {
-            // écart d'API windows-rs 0.62 par rapport au brief :
-            // `windows::core::Error::from_win32()` (qui lisait `GetLastError`
-            // et le convertissait en HRESULT) n'existe plus — remplacé par
-            // `Error::from_thread()`, qui lit la même erreur de fil courant.
+            // windows-rs 0.62 API gap relative to the brief:
+            // `windows::core::Error::from_win32()` (which read `GetLastError`
+            // and converted it into an HRESULT) no longer exists — replaced by
+            // `Error::from_thread()`, which reads the same current-thread error.
             resultat = Err(anyhow!(
                 "enregistrement de la classe de fenêtre : {}",
                 windows::core::Error::from_thread()
@@ -228,12 +228,12 @@ unsafe extern "system" fn procedure(
     DefWindowProcW(hwnd, message, wparam, lparam)
 }
 
-/// Crée une fenêtre de mire, sa swapchain et sa vue de rendu.
+/// Creates a test pattern window, its swapchain and its render view.
 ///
-/// Détruit elle-même la fenêtre Win32 si un échec survient après sa
-/// création (swapchain, tampon arrière, vue de rendu) : c'est le seul point
-/// qui connaît encore le HWND à cet instant, l'appelant ne recevant qu'une
-/// erreur.
+/// Destroys the Win32 window itself if a failure occurs after its
+/// creation (swapchain, back buffer, render view): it is the only point
+/// that still knows the HWND at that instant, the caller only receiving an
+/// error.
 fn creer_fenetre(
     device: &ID3D11Device,
     fabrique: &IDXGIFactory2,

@@ -1,69 +1,69 @@
-//! Ce qu'un raccourci Windows devient, et ce qui le fait entrer au catalogue.
+//! What a Windows shortcut becomes, and what makes it enter the catalogue.
 //!
-//! 🔴 CE MODULE EST PUR : aucun `#[cfg]`, aucun objet COM, aucun accès au
-//! système de fichiers. C'est ce qui permet de le juger sur l'hôte Linux
-//! contre `agent/testdata/gapps-corpus-vm.json`, les 218 raccourcis réels de
-//! la VM. La lecture COM vit dans `apps::lecture`, qui est `#[cfg(windows)]`.
+//! 🔴 THIS MODULE IS PURE: no `#[cfg]`, no COM object, no file system
+//! access. That is what lets it be judged on the Linux host
+//! against `agent/testdata/gapps-corpus-vm.json`, the 218 real shortcuts of
+//! the VM. The COM read lives in `apps::lecture`, which is `#[cfg(windows)]`.
 //!
-//! ⚠️ L'EXISTENCE DE LA CIBLE EST UN PRÉDICAT INJECTÉ, et c'est la seule
-//! raison pour laquelle la règle de filtrage est testable ici : écrite avec un
-//! `Path::exists()` en dur, elle rendrait `false` pour les 167 cibles du
-//! corpus — aucune n'existe sur l'hôte — et le test serait inerte tout en
-//! restant vert.
+//! ⚠️ THE TARGET'S EXISTENCE IS AN INJECTED PREDICATE, and that is the only
+//! reason the filtering rule is testable here: written with a
+//! hardcoded `Path::exists()`, it would return `false` for the 167 targets of the
+//! corpus — none exists on the host — and the test would be inert while
+//! staying green.
 
 use proto::plateforme::{Application, SourceMax};
 
 use super::sha256;
 
-/// Un raccourci tel que le Shell le rend, avant toute décision.
+/// A shortcut as the Shell returns it, before any decision.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Brut {
-    /// Le nom du `.lnk`, sans son extension.
+    /// The name of the `.lnk`, without its extension.
     pub nom: String,
-    /// Le chemin du `.lnk` lui-même.
+    /// The path of the `.lnk` itself.
     pub chemin: String,
     pub cible: String,
     pub arguments: String,
     pub repertoire: String,
 }
 
-/// Pourquoi un raccourci n'entre pas au catalogue.
+/// Why a shortcut does not enter the catalogue.
 ///
-/// ⚠️ TROIS MOTIFS, ET AUCUN N'EST UN FILTRE PAR NOM NI PAR CHEMIN. Un motif
-/// « Uninstall » dépend de la langue — cette VM est en français, et l'un de ses
-/// désinstalleurs s'appelle `maintenancetool.exe` — et il écarterait en
-/// silence des applications légitimes. Un filtre par chemin système perdrait
-/// Bloc-notes et Paint, dont les cibles sont deux des 63 sous `C:\Windows`.
-/// Les 15 désinstalleurs entrent donc au catalogue, et c'est l'utilisateur qui
-/// les masque, par un geste explicite et réversible.
+/// ⚠️ THREE REASONS, AND NONE IS A FILTER BY NAME OR BY PATH. An
+/// "Uninstall" pattern depends on the language — this VM is in French, and one of its
+/// uninstallers is called `maintenancetool.exe` — and it would silently
+/// discard legitimate applications. A system-path filter would lose
+/// Notepad and Paint, whose targets are two of the 63 under `C:\Windows`.
+/// The 15 uninstallers therefore enter the catalogue, and it is the user who
+/// hides them, through an explicit and reversible gesture.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ecart {
-    /// Cible de l'espace de noms Shell (PIDL), sans chemin de fichier —
-    /// `Paramètres Windows`, `Ce PC`, la Corbeille. **Ce n'est pas une
-    /// erreur** : 7 des 218 raccourcis de la VM sont dans ce cas.
+    /// Shell namespace target (PIDL), without a file path —
+    /// `Paramètres Windows`, `Ce PC`, the Recycle Bin. **This is not an
+    /// error**: 7 of the VM's 218 shortcuts are in that case.
     CibleVide,
-    /// L'extension observée, repliée en minuscules. Vide si la cible n'en
-    /// porte aucune.
+    /// The observed extension, folded to lowercase. Empty if the target
+    /// carries none.
     Extension(String),
-    /// La cible est nommée mais le fichier n'est pas là — 3 des 170 `.exe` de
-    /// la VM, tous sous une installation Python 3.13 disparue.
+    /// The target is named but the file is not there — 3 of the VM's 170 `.exe`,
+    /// all under a Python 3.13 installation that has vanished.
     CibleAbsente,
 }
 
-/// La seule extension de cible qui entre au catalogue en v1.
+/// The only target extension that enters the catalogue in v1.
 ///
-/// ⚠️ C'EST UNE LISTE D'AUTORISATION, PAS UNE LISTE DE REFUS, et la différence
-/// porte sur les extensions qu'on n'a pas vues : une liste de refus les
-/// laisserait toutes entrer. Les `.msc` et les `.url` sont lançables et
-/// délibérément exclus — `.msc` ouvre une console MMC dont la fenêtre est
-/// celle de `mmc.exe`, que le rattachement de fenêtre du chantier D n'a jamais
-/// éprouvé ; `.url` ouvre le navigateur par défaut, c'est-à-dire une
-/// application qui n'est pas celle qu'on croit lancer. Hors périmètre v1,
-/// nommés et non oubliés.
+/// ⚠️ IT IS AN ALLOW LIST, NOT A DENY LIST, and the difference
+/// is about the extensions we have not seen: a deny list would
+/// let them all in. `.msc` and `.url` are launchable and
+/// deliberately excluded — `.msc` opens an MMC console whose window is
+/// that of `mmc.exe`, which work stream D's window attachment never
+/// tested; `.url` opens the default browser, that is an
+/// application that is not the one you think you are launching. Out of v1 scope,
+/// named and not forgotten.
 const EXTENSIONS_RETENUES: &[&str] = &["exe"];
 
-/// L'extension du dernier composant d'un chemin Windows, repliée en
-/// minuscules. Vide si le nom de fichier n'en porte aucune.
+/// The extension of the last component of a Windows path, folded to
+/// lowercase. Empty if the file name carries none.
 fn extension_de(chemin: &str) -> String {
     let fichier = chemin.rsplit(['\\', '/']).next().unwrap_or(chemin);
     match fichier.rsplit_once('.') {
@@ -72,9 +72,9 @@ fn extension_de(chemin: &str) -> String {
     }
 }
 
-/// La règle de filtrage, dans l'ordre où la spec l'écrit.
+/// The filtering rule, in the order the spec writes it.
 ///
-/// `existe` est INJECTÉ : voir l'en-tête de ce module.
+/// `existe` is INJECTED: see the header of this module.
 pub fn retenir(brut: &Brut, existe: &dyn Fn(&str) -> bool) -> Result<(), Ecart> {
     if brut.cible.trim().is_empty() {
         return Err(Ecart::CibleVide);
@@ -89,20 +89,20 @@ pub fn retenir(brut: &Brut, existe: &dyn Fn(&str) -> bool) -> Result<(), Ecart> 
     Ok(())
 }
 
-/// Replie un chemin Windows pour la comparaison : espaces de bord retirés,
-/// casse repliée, barre oblique inverse finale retirée.
+/// Folds a Windows path for comparison: edge whitespace removed,
+/// case folded, final backslash removed.
 ///
-/// ⚠️ LA CASSE EST REPLIÉE PARCE QUE NTFS EST INSENSIBLE À LA CASSE : deux
-/// chemins qui n'en diffèrent que désignent le même fichier, et les traiter
-/// comme deux applications dédoublerait le catalogue au gré de la casse
-/// qu'un installeur a écrite dans son `.lnk`.
+/// ⚠️ CASE IS FOLDED BECAUSE NTFS IS CASE-INSENSITIVE: two
+/// paths that differ only by it designate the same file, and treating them
+/// as two applications would duplicate the catalogue according to the case
+/// an installer wrote into its `.lnk`.
 ///
-/// ⚠️ LA BARRE FINALE EST RETIRÉE SAUF SUR UNE RACINE (`c:\`), qui n'est pas
-/// un répertoire sans elle. 25 des 167 répertoires de travail de la VM en
-/// portent une ; **la retirer ne change AUCUN des deux comptes de clés**
-/// (mesuré : 154 et 104 dans les deux cas). Ce n'est donc pas une correction
-/// mais une prudence, et c'est écrit pour qu'on ne la croie pas mesurée
-/// nécessaire.
+/// ⚠️ THE FINAL SLASH IS REMOVED EXCEPT ON A ROOT (`c:\`), which is not
+/// a directory without it. 25 of the VM's 167 working directories
+/// carry one; **removing it changes NEITHER of the two key counts**
+/// (measured: 154 and 104 in both cases). It is therefore not a fix
+/// but a precaution, and it is written so that nobody believes it measured
+/// necessary.
 pub fn normaliser_chemin(chemin: &str) -> String {
     let taille = chemin.trim().to_lowercase();
     if taille.len() > 3 && taille.ends_with('\\') {
@@ -112,21 +112,21 @@ pub fn normaliser_chemin(chemin: &str) -> String {
     }
 }
 
-/// L'identité d'une application : l'empreinte du triplet.
+/// The identity of an application: the fingerprint of the triple.
 ///
-/// 🔴 LES ARGUMENTS SONT BRUTS, LA CIBLE ET LE RÉPERTOIRE SONT NORMALISÉS, et
-/// c'est le chiffre qui l'impose : sur les 167 raccourcis retenus de la VM, le
-/// triplet rend **154** clés distinctes quand la cible seule en rend **104**.
-/// Les 26 raccourcis de `smartmontools` visent tous le même `runcmdu.exe` avec
-/// des arguments différents ; les fondre serait perdre 25 applications, et
-/// l'écart total est de 50.
+/// 🔴 THE ARGUMENTS ARE RAW, THE TARGET AND DIRECTORY ARE NORMALISED, and
+/// it is the figure that imposes it: out of the VM's 167 kept shortcuts, the
+/// triple yields **154** distinct keys when the target alone yields **104**.
+/// The 26 `smartmontools` shortcuts all target the same `runcmdu.exe` with
+/// different arguments; merging them would lose 25 applications, and
+/// the total gap is 50.
 ///
-/// Replier la casse des arguments referait la même perte en plus discret :
-/// `-Mode admin` et `-mode Admin` sont deux invocations distinctes.
+/// Folding the case of arguments would cause the same loss more discreetly:
+/// `-Mode admin` and `-mode Admin` are two distinct invocations.
 ///
-/// Le séparateur est l'octet nul, qui ne peut apparaître dans aucun des trois
-/// champs : sans lui, `("ab", "", "c")` et `("a", "b", "c")` auraient la même
-/// empreinte.
+/// The separator is the nul byte, which cannot appear in any of the three
+/// fields: without it, `("ab", "", "c")` and `("a", "b", "c")` would have the same
+/// fingerprint.
 pub fn cle(cible: &str, arguments: &str, repertoire: &str) -> String {
     let mut matiere = Vec::new();
     matiere.extend_from_slice(normaliser_chemin(cible).as_bytes());
@@ -137,12 +137,12 @@ pub fn cle(cible: &str, arguments: &str, repertoire: &str) -> String {
     sha256::hex(&matiere)
 }
 
-/// Ce qui voyage sur le canal : la clé, plus les cinq champs.
+/// What travels on the channel: the key, plus the five fields.
 ///
-/// ⚠️ `chemin` EST CELUI DU `.lnk`, ET C'EST LUI QU'ON LANCERA. Il ne
-/// participe pas à l'identité — un raccourci qui se déplace du Bureau vers le
-/// menu Démarrer reste la même application — mais il doit voyager, parce que
-/// le lancement passe par le raccourci et non par la cible reconstruite.
+/// ⚠️ `chemin` IS THAT OF THE `.lnk`, AND IT IS WHAT WE WILL LAUNCH. It does not
+/// take part in the identity — a shortcut that moves from the Desktop to the
+/// Start menu remains the same application — but it must travel, because
+/// the launch goes through the shortcut and not through the rebuilt target.
 pub fn depuis_brut(brut: Brut) -> Application {
     Application {
         cle: cle(&brut.cible, &brut.arguments, &brut.repertoire),
@@ -151,25 +151,25 @@ pub fn depuis_brut(brut: Brut) -> Application {
         cible: normaliser_chemin(&brut.cible),
         arguments: brut.arguments,
         repertoire: normaliser_chemin(&brut.repertoire),
-        // ⚠️ L'ICÔNE N'EST PAS CONNUE ICI, ET CE MODULE NE DOIT PAS LA
-        // CHERCHER : il est PUR, et l'extraction ouvre COM. C'est
-        // `apps::boucle` qui remplit ces deux champs quand la clé est neuve ou
-        // que le `.lnk` a changé — jamais à chaque tour.
+        // ⚠️ THE ICON IS NOT KNOWN HERE, AND THIS MODULE MUST NOT
+        // LOOK FOR IT: it is PURE, and extraction opens COM. It is
+        // `apps::boucle` that fills these two fields when the key is new or
+        // the `.lnk` has changed — never on every round.
         //
-        // 🔴 `None` / `NonMesuree` EST DONC L'ÉTAT DE DÉPART, ET IL EST
-        // HONNÊTE : une application sans icône vaut mieux qu'une application
-        // absente. La combinaison inverse — une icône nulle et une taille
-        // mesurée — est INTERDITE, et aucun chemin ne l'écrit.
+        // 🔴 `None` / `NonMesuree` IS THEREFORE THE STARTING STATE, AND IT IS
+        // HONEST: an application without an icon is better than a missing
+        // application. The reverse combination — a null icon and a measured
+        // size — is FORBIDDEN, and no path writes it.
         icone: None,
         source_max: SourceMax::NonMesuree,
-        // 🔴 MÊME RAISON QUE L'ICÔNE, ET MÊME ÉTAT DE DÉPART. L'accent se
-        // dérive des PIXELS de l'icône — donc pas avant qu'elle existe — et
-        // les associations se lisent dans le REGISTRE, ce qui n'est pas plus
-        // pur que d'ouvrir COM. C'est `apps::boucle` qui remplit les deux.
+        // 🔴 SAME REASON AS THE ICON, AND SAME STARTING STATE. The accent is
+        // derived from the icon's PIXELS — so not before it exists — and
+        // associations are read from the REGISTRY, which is no more
+        // pure than opening COM. It is `apps::boucle` that fills both.
         //
-        // ⚠️ `None` et la liste VIDE sont HONNÊTES : une application sans
-        // accent et sans association vaut mieux qu'une application absente,
-        // et c'est l'état de la très grande majorité d'entre elles.
+        // ⚠️ `None` and the EMPTY list are HONEST: an application without
+        // accent and without association is better than a missing application,
+        // and it is the state of the vast majority of them.
         accent: None,
         associations: Vec::new(),
     }

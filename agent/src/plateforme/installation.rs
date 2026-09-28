@@ -1,39 +1,39 @@
-//! Ce que la plateforme demande d'INSTALLER, et pourquoi cela ne passe pas par
+//! What the platform asks to INSTALL, and why it does not go through
 //! [`super::Ordre`].
 //!
-//! 🔴 UNE SECONDE FILE, ET NON UNE TROISIÈME VARIANTE D'`Ordre` : C'EST LE
-//! CONSOMMATEUR QUI DÉCIDE, PAS LE GOÛT.
+//! 🔴 A SECOND QUEUE, AND NOT A THIRD VARIANT OF `Ordre`: IT IS THE
+//! CONSUMER THAT DECIDES, NOT TASTE.
 //!
-//! `Ordre` est drainé par la boucle de découverte, qui tourne sur **un vrai
-//! fil COM dédié** (`apps.rs` : « l'appartement COM appartient à SON fil ;
-//! `IShellLinkW` et `ShellExecuteExW` doivent tous deux courir sur celui qui a
-//! appelé `CoInitializeEx` »). Une installation, elle, TÉLÉCHARGE plusieurs
-//! centaines de mégaoctets en `tokio` puis attend un processus pendant des
-//! minutes. La poser dans `Ordre` ferait faire ce travail au fil COM, qui
-//! cesserait alors de réconcilier — c'est-à-dire que le catalogue se figerait
-//! **pendant exactement l'installation dont on attend qu'il rende compte**.
+//! `Ordre` is drained by the discovery loop, which runs on **a real
+//! dedicated COM thread** (`apps.rs`: "the COM apartment belongs to ITS thread;
+//! `IShellLinkW` and `ShellExecuteExW` must both run on the one that
+//! called `CoInitializeEx`"). An installation, for its part, DOWNLOADS several
+//! hundred megabytes in `tokio` then waits for a process for
+//! minutes. Putting it in `Ordre` would make the COM thread do this work, which
+//! would then stop reconciling — that is, the catalogue would freeze
+//! **during exactly the installation it is expected to report on**.
 //!
-//! ⚠️ **L'EN-TÊTE D'`ordre.rs` ARGUMENTE CONTRE LES DEUX FILES, et il a raison
-//! du risque qu'il nomme** : « deux files obligeraient à interroger les deux à
-//! chaque tour, avec le risque qu'un ajout futur en oublie une ». C'est vrai
-//! d'un consommateur unique — et il n'y en a pas un ici, il y en a deux. Le
-//! risque est traité autrement : cette file n'a **qu'un seul type de message**,
-//! donc rien à oublier ; et `Ordre` reste exhaustif pour son propre
-//! consommateur, exactement comme G2 l'a écrit.
+//! ⚠️ **THE HEADER OF `ordre.rs` ARGUES AGAINST TWO QUEUES, and it is right
+//! about the risk it names**: "two queues would force querying both at
+//! each round, with the risk that a future addition forgets one". That is true
+//! of a single consumer — and there is not one here, there are two. The
+//! risk is handled otherwise: this queue has **only one message type**,
+//! hence nothing to forget; and `Ordre` stays exhaustive for its own
+//! consumer, exactly as G2 wrote it.
 //!
-//! ⚠️ **Sa phrase « les DEUX messages descendants » est devenue fausse** — il
-//! y en a trois depuis le sous-bloc G3. Annotée à sa place.
+//! ⚠️ **Its sentence "the TWO downstream messages" became false** — there
+//! are three since sub-block G3. Annotated in its place.
 //!
-//! ⚠️ La décision D11 du plan de G3 argumentait contre « un tuple élargi » :
-//! `ordres()` rendait alors un `(String, String)`. G2 l'a remplacé par un enum
-//! entre-temps. **La prémisse a changé ; la conclusion tient pour une autre
-//! raison**, celle qui est écrite ci-dessus.
+//! ⚠️ Decision D11 of G3's plan argued against "a widened tuple":
+//! `ordres()` then returned a `(String, String)`. G2 replaced it with an enum
+//! in the meantime. **The premise changed; the conclusion holds for another
+//! reason**, the one written above.
 
-/// L'ordre d'installer un logiciel téléversé.
+/// The order to install an uploaded piece of software.
 ///
-/// ⚠️ IL NE PORTE AUCUN OCTET, seulement une **URL** : le canal est en JSON,
-/// il porte le battement de cœur, et une tranche de 8 Mio y coûterait +33 % en
-/// base64 tout en bloquant ce battement.
+/// ⚠️ IT CARRIES NO BYTE, only a **URL**: the channel is in JSON,
+/// it carries the heartbeat, and an 8 MiB slice would cost +33 % in
+/// base64 there while blocking this heartbeat.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Installation {
     pub id: String,

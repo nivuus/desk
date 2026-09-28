@@ -1,68 +1,68 @@
-//! Parmi quelles sorties DXGI le superviseur a le droit d'apparier une
-//! fenêtre — et pourquoi la question ne se réduit pas à « laquelle vient
-//! d'apparaître ».
+//! Among which DXGI outputs the supervisor is allowed to pair a
+//! window — and why the question does not reduce to "which one just
+//! appeared".
 //!
-//! 🔴 **LE DÉFAUT QUE CE MODULE EXISTE POUR FERMER (lot 30, mesuré sur la
-//! VM).** Sans le VGA de QEMU, la session 1 démarre avec zéro moniteur PnP
-//! mais UN écran (`\\.\DISPLAY5`), dont la cible active porte
-//! `statusFlags = 0x11` (`IN_USE | FORCED_AVAILABILITY_SYSTEM`) : une **cible
-//! forcée**, que Windows fabrique quand il ne lui reste aucun affichage. Le
-//! premier moniteur virtuel créé **REMPLACE cette cible forcée sur la MÊME
-//! source** — il hérite donc du même nom GDI, et n'« apparaît » jamais. Le
-//! produit n'appariant que parmi les sorties APPARUES, il refusait la fenêtre
-//! (« aucune sortie d'affichage ne peut servir cette fenêtre ») et rendait au
-//! pilote une sortie parfaitement utilisable. La boucle n'atteignait jamais
-//! la deuxième fenêtre.
+//! 🔴 **THE DEFECT THIS MODULE EXISTS TO CLOSE (batch 30, measured on the
+//! VM).** Without QEMU's VGA, session 1 starts with zero PnP monitors
+//! but ONE display (`\\.\DISPLAY5`), whose active target carries
+//! `statusFlags = 0x11` (`IN_USE | FORCED_AVAILABILITY_SYSTEM`): a **forced
+//! target**, which Windows fabricates when it has no display left. The
+//! first virtual monitor created **REPLACES this forced target on the SAME
+//! source** — it therefore inherits the same GDI name, and never "appears". The
+//! product only pairing among outputs that APPEARED, it refused the window
+//! ("no display output can serve this window") and handed back to the
+//! driver a perfectly usable output. The loop never reached
+//! the second window.
 //!
-//! ⚠️ **L'hypothèse « le registre pollué empêche l'attachement » a été
-//! RÉFUTÉE** par le même lot : registre intact, 4 sorties créées → 4
-//! attachées. Ce n'est pas une limite de Windows ni de SudoVDA, c'est un
-//! défaut de code.
+//! ⚠️ **The hypothesis "the polluted registry prevents attachment" was
+//! REFUTED** by the same batch: intact registry, 4 outputs created → 4
+//! attached. It is not a limit of Windows nor of SudoVDA, it is a
+//! code defect.
 //!
-//! **La règle, en deux chemins et dans cet ordre.** ① DÉSIGNER la sortie par
-//! ce qu'on a donné au pilote (voir `moniteurs_virtuels::config_affichage`) ;
-//! ② à défaut seulement, le REPLI historique — la différence d'ensembles.
+//! **The rule, in two paths and in this order.** ① DESIGNATE the output by
+//! what we gave the driver (see `moniteurs_virtuels::config_affichage`);
+//! ② only failing that, the historical FALLBACK — the set difference.
 //!
-//! 🔴 **LE REPLI N'EST PAS MORT ET NE DOIT PAS ÊTRE RETIRÉ.** Il court dès
-//! que la désignation ne rend rien : pilote sans adaptateur connu, CCD muette
-//! ou en erreur, cible pas encore dans un chemin actif, paire ambiguë. C'est
-//! lui qui garantit qu'une hypothèse fausse sur `identifiant_cible` — que
-//! `sudovda.rs` déclare lui-même « non confirmée » — dégrade vers le
-//! comportement CONNU au lieu de casser. Sans lui, la voie retenue n'aurait
-//! pas été livrable avant d'avoir été mesurée sur la VM.
+//! 🔴 **THE FALLBACK IS NOT DEAD AND MUST NOT BE REMOVED.** It runs as soon
+//! as designation returns nothing: driver without a known adapter, mute or failing
+//! CCD, target not yet in an active path, ambiguous pair. It is
+//! what guarantees that a wrong hypothesis about `identifiant_cible` — which
+//! `sudovda.rs` itself declares "not confirmed" — degrades to the
+//! KNOWN behaviour instead of breaking. Without it, the chosen path would
+//! not have been shippable before being measured on the VM.
 //!
-//! Hors `#[cfg(windows)]`, dans son propre fichier plutôt que dans
-//! `placement.rs` : ce dernier était à 441 lignes, et l'y poser l'aurait
-//! amené à ~496 — la marge que ce dépôt a mesuré six fois se reperdre, une
-//! fois le jour même dans la branche qui l'avait gagnée.
+//! Outside `#[cfg(windows)]`, in its own file rather than in
+//! `placement.rs`: the latter was at 441 lines, and putting it there would have
+//! brought it to ~496 — the margin this repository measured being lost again six times, once
+//! the very same day in the branch that had gained it.
 
 use std::sync::OnceLock;
 
 use crate::sortie_dxgi::SortieDxgi;
 
-/// Le chemin ① (DÉSIGNER) est-il armé ?
+/// Is path ① (DESIGNATE) armed?
 ///
-/// **`SORTIE_DESIGNEE=0` DÉSARME ; une simple PRÉSENCE n'active pas** —
-/// convention de `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`,
-/// `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` et `PONT_ECRITURE`, et pour la même
-/// raison : tester `is_ok()` armerait le mécanisme chez qui écrit
-/// `SORTIE_DESIGNEE=0` pour le couper.
+/// **`SORTIE_DESIGNEE=0` DISARMS; mere PRESENCE does not enable** —
+/// convention of `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`,
+/// `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` and `PONT_ECRITURE`, and for the same
+/// reason: testing `is_ok()` would arm the mechanism for whoever writes
+/// `SORTIE_DESIGNEE=0` to cut it.
 ///
-/// 🔴 **VARIABLE DE BANC, JAMAIS UNE CONFIGURATION LIVRÉE**, même statut que
-/// `PART_SONDAGE`, `PONT_ECRITURE`, `PONT_CACHE` et `PRESSE_PAPIER_GARDE`.
-/// Désarmée, elle rend **exactement le produit d'avant le lot 32** : c'est le
-/// bras ROUGE de la recette, et il existe parce que « le bras rouge est le
-/// binaire d'avant » n'est pas reproductible — dans trois semaines ce binaire
-/// n'existe plus.
+/// 🔴 **BENCH VARIABLE, NEVER A SHIPPED CONFIGURATION**, same status as
+/// `PART_SONDAGE`, `PONT_ECRITURE`, `PONT_CACHE` and `PRESSE_PAPIER_GARDE`.
+/// Disarmed, it gives **exactly the product from before batch 32**: it is the
+/// acceptance run's RED arm, and it exists because "the red arm is the
+/// earlier binary" is not reproducible — in three weeks that binary
+/// no longer exists.
 ///
-/// **Le prédicat est RÉUTILISÉ, pas recopié** : `crate::apps::desarme` porte
-/// déjà exactement cet argument, et le précédent est `ICONES` (G2) puis
+/// **The predicate is REUSED, not copied**: `crate::apps::desarme` already carries
+/// exactly this argument, and the precedent is `ICONES` (G2) then
 /// `APPS_SURVEILLANCE` (G4).
 ///
-/// ⚠️ **Forcée au DÉMARRAGE du superviseur, pas au premier appariement** —
-/// sans quoi la trace ne sortirait qu'à la première fenêtre, donc APRÈS les
-/// premiers gestes d'une recette courte. C'est la leçon que `PONT_MESURE` a
-/// payée en F4.
+/// ⚠️ **Forced at supervisor STARTUP, not at the first pairing** —
+/// else the trace would appear only with the first window, i.e. after the
+/// first steps of a short acceptance run. `PONT_MESURE` taught this
+/// lesson in F4.
 pub fn armee() -> bool {
     static ARMEE: OnceLock<bool> = OnceLock::new();
     *ARMEE.get_or_init(|| {

@@ -1,7 +1,7 @@
-//! Mise au repos des MFT d'un encodeur avant leur relâchement.
+//! Putting an encoder's MFTs at rest before releasing them.
 //!
-//! Séparé d'`encode.rs` (déjà en dette de taille, voir `CLAUDE.md`) plutôt
-//! qu'ajouté dedans.
+//! Separated from `encode.rs` (already in size debt, see `CLAUDE.md`) rather
+//! than added to it.
 
 use std::time::{Duration, Instant};
 
@@ -15,64 +15,64 @@ use windows::Win32::Media::MediaFoundation::{
 mod file;
 pub(super) use file::FileMft;
 
-/// Met au repos les deux MFT d'un encodeur, dans l'ordre, avant que leurs
-/// références COM ne soient relâchées.
+/// Puts an encoder's two MFTs at rest, in order, before their
+/// COM references are released.
 ///
-/// **Pourquoi cette séquence existe** — relevé de la tâche 2bis (deux
-/// plantages, piles identiques, symbolisées) : la faute est levée par
-/// `RtlEnterCriticalSection` dans du code de `nvEncMFTH264x.dll` exécuté sous
-/// `CSerialWorkQueue::QueueItem::ExecuteWorkItem`, c'est-à-dire **sur un fil de
-/// la file de travail Media Foundation**, sur une section critique dont le
-/// `DebugInfo` vaut `NULL`. La MFT a donc encore un élément de travail en vol
-/// quand nous détruisons l'encodeur.
+/// **Why this sequence exists** — survey of task 2bis (two
+/// crashes, identical stacks, symbolised): the fault is raised by
+/// `RtlEnterCriticalSection` in code of `nvEncMFTH264x.dll` running under
+/// `CSerialWorkQueue::QueueItem::ExecuteWorkItem`, that is **on a thread of
+/// the Media Foundation work queue**, on a critical section whose
+/// `DebugInfo` is `NULL`. The MFT therefore still has a work item in flight
+/// when we destroy the encoder.
 ///
-/// Dans les deux vidages de 2bis, le fil principal était simultanément dans
-/// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown`. Retirer
-/// `MFShutdown` du chemin n'a PAS empêché la faute : cet appel n'est donc pas
-/// **nécessaire** à la faute (voir `super::demarrer_media_foundation` pour la
-/// portée exacte de ce relevé).
+/// In both dumps of 2bis, the main thread was simultaneously in
+/// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown`. Removing
+/// `MFShutdown` from the path did NOT prevent the fault: this call is therefore not
+/// **necessary** for the fault (see `super::demarrer_media_foundation` for the
+/// exact scope of this survey).
 ///
-/// Ce qui la traite est le COUPLE arrêt + barrière, et il a fallu retirer
-/// chacun des deux séparément pour l'établir : l'arrêt seul laisse la faute
-/// revenir (1 sur 10), la barrière seule aussi (2 sur 5). Ni l'un ni l'autre
-/// n'est redondant — voir `arreter` et `FileMft`.
+/// What handles it is the PAIR stop + barrier, and each of the two had to be
+/// removed separately to establish it: the stop alone lets the fault
+/// come back (1 out of 10), the barrier alone too (2 out of 5). Neither
+/// is redundant — see `arreter` and `FileMft`.
 ///
-/// L'amont (le convertisseur) est mis au repos avant l'aval (l'encodeur) : il
-/// ne doit plus rien produire pendant qu'on arrête celui qui consomme.
+/// Upstream (the converter) is put at rest before downstream (the encoder): it
+/// must no longer produce anything while the one consuming is being stopped.
 ///
-/// Chaque étape se journalise : ces appels peuvent bloquer sans rendre la
-/// main, et la dernière ligne écrite est alors le seul moyen de savoir lequel.
-/// Elles ne courent qu'à la destruction d'un encodeur, jamais par trame. Le
-/// détail est en `debug`, mais les deux traces qui encadrent
-/// `IMFShutdown::Shutdown` — seul appel dont un gel a été OBSERVÉ — sont en
-/// `info`, donc lisibles sous le `RUST_LOG=info` de `scripts/run-agent.sh` :
-/// une mitigation muette en exploitation n'en est pas une.
+/// Each step logs itself: these calls can block without returning
+/// control, and the last line written is then the only way to know which one.
+/// They only run at the destruction of an encoder, never per frame. The
+/// detail is at `debug`, but the two traces that bracket
+/// `IMFShutdown::Shutdown` — the only call whose freeze was OBSERVED — are at
+/// `info`, hence readable under the `RUST_LOG=info` of `scripts/run-agent.sh`:
+/// a mitigation that is silent in operation is not one.
 ///
-/// # Quand cette séquence court, et ce qu'elle coûte au pire
+/// # When this sequence runs, and what it costs at worst
 ///
-/// **Ce n'est pas un chemin réservé au multi-fenêtres à venir : il court
-/// AUJOURD'HUI, en production mono-fenêtre.** `Drop for H264Encoder` s'exécute
-/// à chaque remplacement de l'encodeur de la session — `set_encode_size`,
-/// appelé par `transport::adaptation` à **chaque changement de barreau** du
-/// réseau, et `resize` / la reconstruction de chaîne au redimensionnement (les
-/// deux dans `windows_source.rs`). Tous deux tournent sur le fil unique de
-/// `Session::run` (`spawn_blocking`) : ce qui bloque ici fige la session
-/// **entière** — capture, encodage, RTP, ICE — sans reprise.
+/// **It is not a path reserved for the upcoming multi-window work: it runs
+/// TODAY, in single-window production.** `Drop for H264Encoder` runs
+/// at each replacement of the session's encoder — `set_encode_size`,
+/// called by `transport::adaptation` at **each rung change** of the
+/// network, and `resize` / the chain rebuild on resize (both
+/// in `windows_source.rs`). Both run on the single thread of
+/// `Session::run` (`spawn_blocking`): whatever blocks here freezes the **whole**
+/// session — capture, encoding, RTP, ICE — without recovery.
 ///
-/// **Borne du pire cas, par destruction d'encodeur** : la partie bornée vaut au
-/// plus `2 × DELAI_BARRIERE + 2 × DELAI_ARRET_MFT` = **8 s** (deux barrières,
-/// plus une confirmation d'arrêt par MFT), ramenés à **6 s** là où le
-/// convertisseur n'expose pas `IMFShutdown`. **Le total n'est borné par rien
-/// pour autant** : ni les quatre `ProcessMessage`, ni les deux
-/// `IMFShutdown::Shutdown` (voir `arreter`). Nominal relevé, sans commune
-/// mesure : 0,5 ms par encodeur, 4,0 ms pour huit d'affilée, `attente_ms=0`
-/// partout (`paralleles-n8.log`) — **mais un nominal n'est pas une borne**.
+/// **Worst-case bound, per encoder destruction**: the bounded part is at
+/// most `2 × DELAI_BARRIERE + 2 × DELAI_ARRET_MFT` = **8 s** (two barriers,
+/// plus one stop confirmation per MFT), reduced to **6 s** where the
+/// converter does not expose `IMFShutdown`. **The total is bounded by nothing
+/// for all that**: neither the four `ProcessMessage` nor the two
+/// `IMFShutdown::Shutdown` (see `arreter`). Nominal survey, out of all
+/// proportion: 0.5 ms per encoder, 4.0 ms for eight in a row, `attente_ms=0`
+/// everywhere (`paralleles-n8.log`) — **but a nominal value is not a bound**.
 pub(super) fn mettre_au_repos(
     convertisseur: &IMFTransform,
     encodeur: &IMFTransform,
     file_encodeur: &FileMft,
 ) {
-    // Fin de flux : inchangé, c'est ce que faisait déjà `Drop`.
+    // End of stream: unchanged, it is what `Drop` already did.
     message(
         convertisseur,
         "convertisseur",
@@ -98,130 +98,130 @@ pub(super) fn mettre_au_repos(
         MFT_MESSAGE_NOTIFY_END_STREAMING,
     );
 
-    // DEUX MESSAGES DÉLIBÉRÉMENT ABSENTS, et ce n'est pas un oubli.
+    // TWO MESSAGES DELIBERATELY ABSENT, and it is not an oversight.
     //
-    // `MFT_MESSAGE_COMMAND_FLUSH` et `MFT_MESSAGE_SET_D3D_MANAGER` à zéro
-    // (deux pistes du brief 2ter) ont été posés ici, puis retirés sur relevé :
-    // avec eux, à N = 4 encodeurs, **une exécution sur quatre s'est bloquée
-    // sans retour** dans ce bloc, juste après la mise au repos de l'encodeur
-    // n°0 et pendant celle du n°1 (journal arrêté sur « libération d'un
-    // encodeur : avant id=1 », processus encore vivant treize minutes plus
-    // tard, `Responding: True`). Le blocage est **borné à ce bloc** : la trace
-    // suivante n'a jamais été écrite. Les deux fins de flux ci-dessus, elles,
-    // précèdent ce chantier et n'ont jamais bloqué. Preuve versée :
+    // `MFT_MESSAGE_COMMAND_FLUSH` and `MFT_MESSAGE_SET_D3D_MANAGER` to zero
+    // (two leads of brief 2ter) were set here, then removed on evidence:
+    // with them, at N = 4 encoders, **one run out of four blocked
+    // without returning** in this block, right after putting encoder
+    // no. 0 at rest and during that of no. 1 (log stopped at "libération d'un
+    // encodeur : avant id=1", process still alive thirteen minutes
+    // later, `Responding: True`). The block is **bounded to this block**: the next
+    // trace was never written. The two end-of-stream messages above, for their part,
+    // predate this work stream and never blocked. Evidence committed:
     // `docs/superpowers/plans/journaux-duplications-paralleles/2ter-blocage-n4-flush-setd3dmanager.log`.
-    // NON établi : lequel des deux bloquait, ni pourquoi.
+    // NOT established: which of the two blocked, nor why.
 
-    // LE CONVERTISSEUR N'A PAS DE FILE IMPOSÉE, et c'est un arbitrage mesuré,
-    // pas un oubli. La revue a raison sur le principe : `create_color_converter`
-    // tente d'abord `find_hardware_video_processor()`, et sur un hôte où un
-    // Video Processor MATÉRIEL est enregistré, le convertisseur serait une MFT
-    // matérielle avec son propre travail asynchrone, que rien ici ne couvre.
-    // Sur cette VM c'est toujours le repli logiciel qui sort, donc une MFT
-    // synchrone.
+    // THE CONVERTER HAS NO IMPOSED QUEUE, and it is a measured trade-off,
+    // not an oversight. The review is right in principle: `create_color_converter`
+    // first tries `find_hardware_video_processor()`, and on a host where a
+    // HARDWARE Video Processor is registered, the converter would be a hardware
+    // MFT with its own asynchronous work, which nothing here covers.
+    // On this VM it is always the software fallback that comes out, hence a
+    // synchronous MFT.
     //
-    // Lui imposer une file et une barrière a été fait, puis retiré : dans cette
-    // forme (8 files sérialisées à N = 4 au lieu de 4), une exécution sur six à
-    // N = 4 s'est **figée dans `IMFShutdown::Shutdown` de l'encodeur**, trace
-    // « Shutdown : avant » écrite, « après » jamais
-    // (`2ter-gel-n4-shutdown.log`). La forme sans file au convertisseur avait,
-    // elle, passé 16 exécutions à N = 4 sans gel. Couvrir un cas qui n'existe
-    // sur aucune machine éprouvée, au prix d'un gel observé sur celle qu'on
-    // éprouve, est un mauvais échange.
+    // Imposing a queue and a barrier on it was done, then removed: in that
+    // form (8 serialised queues at N = 4 instead of 4), one run out of six at
+    // N = 4 **froze in the encoder's `IMFShutdown::Shutdown`**, trace
+    // "Shutdown : avant" written, "après" never
+    // (`2ter-gel-n4-shutdown.log`). The form without a queue on the converter had,
+    // for its part, passed 16 runs at N = 4 without a freeze. Covering a case that exists
+    // on no tested machine, at the cost of a freeze observed on the one being
+    // tested, is a bad trade.
     //
-    // NON établi : que la file du convertisseur soit la CAUSE de ce gel. C'est
-    // la seule différence structurelle entre les deux formes, et le gel n'est
-    // apparu qu'avec elle — sur six exécutions. `Shutdown()` peut aussi bien
-    // porter ce risque en propre (voir `arreter`).
+    // NOT established: that the converter's queue is the CAUSE of this freeze. It is
+    // the only structural difference between the two forms, and the freeze only
+    // appeared with it — over six runs. `Shutdown()` may just as well
+    // carry this risk on its own (see `arreter`).
 
-    // Barrière : plus rien de ce qui était déjà en file ne court encore.
+    // Barrier: nothing that was already queued is still running.
     file_encodeur.barriere("encodeur", "après END_STREAMING");
 
-    // Arrêt explicite des MFT, puis SECONDE barrière : l'arrêt lui-même dépose
-    // du travail sur la file, et c'est précisément ce travail-là qu'il faut
-    // attendre. Voir `arreter` pour ce qui rend ces deux appels nécessaires.
+    // Explicit stop of the MFTs, then a SECOND barrier: the stop itself drops
+    // work onto the queue, and it is precisely that work that must be
+    // waited for. See `arreter` for what makes these two calls necessary.
     arreter(convertisseur, "convertisseur");
     arreter(encodeur, "encodeur");
 
     file_encodeur.barriere("encodeur", "après IMFShutdown");
 }
 
-/// Garde-fou de l'attente de confirmation d'arrêt d'une MFT.
+/// Safeguard of the wait for an MFT's stop confirmation.
 const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 
-/// Demande à une MFT d'arrêter ses files de travail, et attend qu'elle le
-/// confirme.
+/// Asks an MFT to stop its work queues, and waits for it to
+/// confirm.
 ///
-/// `IMFShutdown::Shutdown` est le mécanisme documenté par lequel un client de
-/// MFT obtient cet arrêt — c'est ce que fait le pipeline Media Foundation
-/// lui-même, via `MFShutdownObject`, quand il démonte un nœud de topologie. On
-/// l'appelle directement plutôt que par `MFShutdownObject` pour savoir, et
-/// pouvoir journaliser, si la MFT expose seulement cette interface
-/// (`MFShutdownObject` rend `S_OK` sans rien dire quand elle l'ignore), et pour
-/// pouvoir attendre la confirmation par `GetShutdownStatus`.
+/// `IMFShutdown::Shutdown` is the documented mechanism by which an MFT client
+/// obtains this stop — it is what the Media Foundation pipeline
+/// itself does, through `MFShutdownObject`, when it tears down a topology node. We
+/// call it directly rather than through `MFShutdownObject` to know, and
+/// be able to log, whether the MFT even exposes this interface
+/// (`MFShutdownObject` returns `S_OK` silently when it ignores it), and to
+/// be able to wait for the confirmation through `GetShutdownStatus`.
 ///
-/// # Deux relevés qui se contredisent en apparence, et ce qu'ils disent
+/// # Two surveys that seem to contradict each other, and what they say
 ///
-/// 1. **Seul, cet appel ne suffit pas.** Il rend `MFSHUTDOWN_COMPLETED` en 0 ms
-///    et la faute survient quand même : 1 récidive sur 10 exécutions, la
-///    dernière ligne du journal avant la mort étant justement la confirmation
-///    d'arrêt (`2ter-recidive-apres-imfshutdown-pile.log`).
-///    **`MFSHUTDOWN_COMPLETED` d'une MFT ne prouve donc pas l'absence
-///    d'élément de travail en vol la concernant.**
-/// 2. **Mais il est nécessaire.** Retiré du chemin en laissant la barrière
-///    seule, la faute est revenue **2 fois sur 5 exécutions**, pile et décalage
-///    identiques, alors même que la barrière avait été franchie
-///    (`2ter-recidive-barriere-seule-agent.log` et `…-pile.log`). Barrière et
-///    arrêt ne sont pas
-///    redondants : l'arrêt fait cesser la MFT, la barrière attend ce qu'il
-///    laisse derrière lui. C'est pourquoi la seconde barrière suit cet appel.
+/// 1. **On its own, this call is not enough.** It returns `MFSHUTDOWN_COMPLETED` in 0 ms
+///    and the fault occurs anyway: 1 recurrence out of 10 runs, the
+///    last log line before death being precisely the stop
+///    confirmation (`2ter-recidive-apres-imfshutdown-pile.log`).
+///    **An MFT's `MFSHUTDOWN_COMPLETED` therefore does not prove the absence
+///    of a work item in flight concerning it.**
+/// 2. **But it is necessary.** Removed from the path leaving the barrier
+///    alone, the fault came back **2 times out of 5 runs**, identical stack and offset,
+///    even though the barrier had been crossed
+///    (`2ter-recidive-barriere-seule-agent.log` and `…-pile.log`). Barrier and
+///    stop are not
+///    redundant: the stop makes the MFT cease, the barrier waits for what it
+///    leaves behind. That is why the second barrier follows this call.
 ///
-/// # Ce que cet appel coûte comme risque, et pourquoi il reste
+/// # What this call costs as a risk, and why it stays
 ///
-/// `Shutdown()` n'est borné par RIEN — le garde-fou ci-dessous ne borne que la
-/// boucle de confirmation qui suit. Un appel non borné dans un `Drop` gèle la
-/// session entière, ce qui serait pire que le plantage qu'on corrige. **Et ce
-/// n'est pas un risque différé au multi-fenêtres** : ce `Drop` court déjà en
-/// production mono-fenêtre — voir `mettre_au_repos`, qui nomme les deux chemins
-/// et écrit la borne du pire cas.
+/// `Shutdown()` is bounded by NOTHING — the safeguard below only bounds the
+/// confirmation loop that follows. An unbounded call in a `Drop` freezes the
+/// whole session, which would be worse than the crash being fixed. **And it
+/// is not a risk deferred to multi-window**: this `Drop` already runs in
+/// single-window production — see `mettre_au_repos`, which names both paths
+/// and writes the worst-case bound.
 ///
-/// **Et ce gel a été OBSERVÉ, dans cet appel précis.** À N = 4, une exécution
-/// s'est arrêtée sur `IMFShutdown::Shutdown : avant mft="encodeur"` (id=2,
-/// 18:00:27,347197) sans jamais écrire son `après`, processus encore vivant
-/// treize minutes plus tard :
+/// **And this freeze was OBSERVED, in this precise call.** At N = 4, a run
+/// stopped on `IMFShutdown::Shutdown : avant mft="encodeur"` (id=2,
+/// 18:00:27,347197) without ever writing its `après`, process still alive
+/// thirteen minutes later:
 /// `docs/superpowers/plans/journaux-duplications-paralleles/2ter-gel-n4-shutdown.log`.
-/// Ce n'est donc pas un risque théorique.
+/// It is therefore not a theoretical risk.
 ///
-/// **La cause n'est PAS attribuée.** Cette exécution portait aussi une file
-/// imposée au convertisseur, retirée depuis (voir `mettre_au_repos`) ; le
-/// départage entre les deux n'a pas été fait, et six exécutions ne l'auraient
-/// pas permis. Que le gel ait disparu avec cette file ne prouve pas qu'il
-/// venait d'elle.
+/// **The cause is NOT attributed.** This run also carried a queue
+/// imposed on the converter, removed since (see `mettre_au_repos`); the
+/// decision between the two was not made, and six runs would not have
+/// allowed it. That the freeze disappeared with this queue does not prove that it
+/// came from it.
 ///
-/// L'appel reste malgré tout, faute d'alternative sûre : le déporter sur un
-/// autre fil exigerait de faire traverser une interface COM à une frontière
-/// d'appartement (le fil principal est dans un STA — cadres
-/// `ClassicSTAThreadWaitForHandles` du vidage 2bis), ce qui échangerait un
-/// risque contre un défaut certain. Ce qui reste acquis, et rien de plus :
-/// l'appel est encadré de deux traces **`info`** — et non `debug`, sans quoi la
-/// mitigation serait muette sous le `RUST_LOG=info` de l'exploitation —, de
-/// sorte qu'un gel se lit au lieu de rester muet ; c'est ainsi que celui-ci a
-/// été vu.
+/// The call stays all the same, for lack of a safe alternative: moving it to another
+/// thread would require passing a COM interface across an apartment
+/// boundary (the main thread is in an STA — the
+/// `ClassicSTAThreadWaitForHandles` frames of the 2bis dump), which would trade a
+/// risk for a certain defect. What remains established, and nothing more:
+/// the call is bracketed by two **`info`** traces — and not `debug`, otherwise the
+/// mitigation would be silent under the operational `RUST_LOG=info` —, so
+/// that a freeze can be read instead of staying silent; that is how this one was
+/// seen.
 fn arreter(mft: &IMFTransform, quoi: &'static str) {
     let arret: IMFShutdown = match mft.cast() {
         Ok(arret) => arret,
         Err(err) => {
-            // Relevé, pas supposé : si l'interface manque, le journal le dit,
-            // et l'on sait que ce chemin n'a rien arrêté du tout. C'est le cas
-            // du convertisseur logiciel sur cette VM (`0x80004002`).
+            // Surveyed, not assumed: if the interface is missing, the log says so,
+            // and we know this path stopped nothing at all. It is the case
+            // of the software converter on this VM (`0x80004002`).
             tracing::debug!(mft = quoi, erreur = %err, "MFT sans IMFShutdown : pas d'arrêt explicite");
             return;
         }
     };
 
-    // `info` et non `debug` : seule mitigation du seul appel non borné, et
-    // l'exploitation tourne en `RUST_LOG=info`. Deux lignes par destruction
-    // d'encodeur, jamais par trame. NE PAS REDESCENDRE.
+    // `info` and not `debug`: the only mitigation of the only unbounded call, and
+    // operation runs at `RUST_LOG=info`. Two lines per encoder
+    // destruction, never per frame. DO NOT LOWER IT.
     tracing::info!(mft = quoi, "IMFShutdown::Shutdown : avant");
     if let Err(err) = unsafe { arret.Shutdown() } {
         tracing::warn!(mft = quoi, erreur = %err, "IMFShutdown::Shutdown refusé");
@@ -240,7 +240,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
                 );
                 return;
             }
-            // `MFSHUTDOWN_INITIATED` : l'arrêt court encore, on repasse.
+            // `MFSHUTDOWN_INITIATED`: the stop is still running, we go round again.
             Ok(_) => {}
             Err(err) => {
                 tracing::debug!(
@@ -263,8 +263,8 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
     }
 }
 
-/// Envoie un message à une MFT en encadrant l'appel de deux traces : un appel
-/// qui ne rend pas la main se lit alors dans le journal.
+/// Sends a message to an MFT, bracketing the call with two traces: a call
+/// that does not return can then be read in the log.
 fn message(mft: &IMFTransform, quoi: &'static str, nom: &'static str, message: MFT_MESSAGE_TYPE) {
     tracing::debug!(mft = quoi, message = nom, "mise au repos : avant");
     let issue = unsafe { mft.ProcessMessage(message, 0) };

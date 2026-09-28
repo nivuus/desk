@@ -1,11 +1,11 @@
-//! Transcription de l'ABI NVENC : versions de structures, et les constantes
-//! d'énumération dont le chemin d'encodage a besoin.
+//! Transcription of the NVENC ABI: structure versions, and the enumeration
+//! constants the encoding path needs.
 //!
-//! 🔴 **CE MODULE EST LA FRONTIÈRE D'ATTRIBUTION, ET C'EST DÉLIBÉRÉ.** Tout
-//! ce qui est transcrit de l'en-tête amont vit ICI et nulle part ailleurs,
-//! avec la notice ci-dessous ; le reste du dépôt est de nous. La licence de
-//! l'en-tête l'exige, et regrouper la transcription rend la frontière
-//! vérifiable d'un coup d'œil plutôt que de la disperser.
+//! 🔴 **THIS MODULE IS THE ATTRIBUTION BOUNDARY, AND IT IS DELIBERATE.** Everything
+//! transcribed from the upstream header lives HERE and nowhere else,
+//! with the notice below; the rest of the repository is ours. The
+//! header's licence requires it, and grouping the transcription makes the boundary
+//! checkable at a glance rather than scattering it.
 //!
 //! ```text
 //! /*
@@ -36,70 +36,70 @@
 //!  */
 //! ```
 //!
-//! ⚠️ **Deux précisions qui ne se devinent pas.** ① Le texte ci-dessus **est**
-//! celui de la licence MIT, mais l'en-tête ne le nomme jamais « MIT » et le
-//! titulaire est **NVIDIA Corporation**, pas FFmpeg ; sa première ligne borne
-//! elle-même la portée : *« applies to this header file only »*. ② Le dépôt
-//! `nv-codec-headers` **ne porte AUCUN fichier `LICENSE`** — vérifié à ce
-//! tag : la notice par en-tête EST la licence, et c'est elle qu'on cite.
-//! 🔵 **Nous ne redistribuons pas `nvEncodeAPI64.dll`** : elle vient du
-//! pilote installé. Ce qui est transcrit ici, c'est l'ABI. ⚠️ **L'usage de
-//! NVENC à l'exécution relève de la licence du pilote NVIDIA, qui n'est PAS
-//! celle-ci et qui n'a pas été lue** — question distincte, non tranchée ici.
+//! ⚠️ **Two clarifications that cannot be guessed.** ① The text above **is**
+//! that of the MIT licence, but the header never names it "MIT" and the
+//! holder is **NVIDIA Corporation**, not FFmpeg; its first line itself bounds
+//! the scope: *"applies to this header file only"*. ② The
+//! `nv-codec-headers` repository **carries NO `LICENSE` file** — checked at this
+//! tag: the per-header notice IS the licence, and it is the one quoted.
+//! 🔵 **We do not redistribute `nvEncodeAPI64.dll`**: it comes from the
+//! installed driver. What is transcribed here is the ABI. ⚠️ **Using
+//! NVENC at runtime falls under the NVIDIA driver licence, which is NOT
+//! this one and which has not been read** — a distinct question, not settled here.
 //!
-//! ## Provenance, et comment la relire
+//! ## Provenance, and how to reread it
 //!
 //! | | |
 //! | --- | --- |
-//! | dépôt | `FFmpeg/nv-codec-headers` |
+//! | repository | `FFmpeg/nv-codec-headers` |
 //! | tag | `n12.2.72.0` |
 //! | commit | `c69278340ab1d5559c7d7bf0edf615dc33ddbba7` |
-//! | fichier | `include/ffnvcodec/nvEncodeAPI.h` |
+//! | file | `include/ffnvcodec/nvEncodeAPI.h` |
 //! | sha256 | `4677a397e3ec5300a6b38bf49cba42bb63a922ab26f24bc63a05ed08857cba16` |
 //!
-//! **Pourquoi ce tag et pas le plus récent** : son `README` annonce un
-//! plancher de pilote **Windows 551.76**, quand celui de `n13.1.15.0` exige
-//! **610.0**, qui n'existe pas sur la VM cible. Les dispositions des
-//! structures dont ce chemin dépend sont par ailleurs **identiques** entre
-//! les deux tags.
+//! **Why this tag and not the most recent**: its `README` announces a
+//! driver floor of **Windows 551.76**, whereas that of `n13.1.15.0` requires
+//! **610.0**, which does not exist on the target VM. The layouts of the
+//! structures this path depends on are moreover **identical** between
+//! the two tags.
 //!
-//! 🔴 **AUCUNE VALEUR DE CE FICHIER N'A ÉTÉ RECOPIÉE DE MÉMOIRE.** Chacune a
-//! été obtenue en **compilant l'en-tête réel** et en imprimant la macro.
-//! Refaire la dérivation, et c'est le contrôle qui vaut :
+//! 🔴 **NO VALUE IN THIS FILE WAS COPIED FROM MEMORY.** Each one was
+//! obtained by **compiling the real header** and printing the macro.
+//! Redo the derivation, and that is the check that counts:
 //!
 //! ```text
 //! curl -sL https://raw.githubusercontent.com/FFmpeg/nv-codec-headers/n12.2.72.0/include/ffnvcodec/nvEncodeAPI.h -o nvEncodeAPI.h
-//! sha256sum nvEncodeAPI.h   # doit rendre le sha256 ci-dessus
+//! sha256sum nvEncodeAPI.h   # must return the sha256 above
 //! printf '#include <stdio.h>\n#include <stdint.h>\n#include "nvEncodeAPI.h"\nint main(void){printf("%%08X\\n",(unsigned)NV_ENC_CONFIG_VER);}\n' > v.c
-//! gcc v.c -o v && ./v        # doit rendre F209000C
+//! gcc v.c -o v && ./v        # must return F209000C
 //! ```
 //!
-//! 🔴 **POURQUOI CE FICHIER EXISTE SÉPARÉMENT, ET POURQUOI IL EST TESTÉ.**
-//! Une version de structure fausse ne plante pas et ne dit rien : NVENC
-//! **REFUSE**, avec `NV_ENC_ERR_INVALID_VERSION`. C'est-à-dire exactement le
-//! symptôme qu'on essaie de faire disparaître — un encodeur qui ne se crée
-//! pas. Une constante dont l'erreur est muette doit être **relisible**, donc
-//! recalculée par une `const fn` et éprouvée contre la valeur mesurée.
+//! 🔴 **WHY THIS FILE EXISTS SEPARATELY, AND WHY IT IS TESTED.**
+//! A wrong structure version does not crash and says nothing: NVENC
+//! **REFUSES**, with `NV_ENC_ERR_INVALID_VERSION`. That is, exactly the
+//! symptom we are trying to make disappear — an encoder that does not get
+//! created. A constant whose error is silent must be **re-readable**, hence
+//! recomputed by a `const fn` and tested against the measured value.
 
-// 🔴 **POURQUOI CE `allow`, ET QUAND LE RETIRER.** Ce module transcrit une
-// ABI, et une ABI se transcrit ENTIÈRE : n'en déclarer que la moitié
-// aujourd'hui obligerait le prochain à rouvrir l'en-tête amont, donc à
-// repayer la vérification de provenance. Une partie n'a donc aucun appelant.
+// 🔴 **WHY THIS `allow`, AND WHEN TO REMOVE IT.** This module transcribes an
+// ABI, and an ABI is transcribed WHOLE: declaring only half of it
+// today would force the next person to reopen the upstream header, hence to
+// pay again for the provenance check. Part of it therefore has no caller.
 //
-// ⚠️ **Le compte a changé, et il est remesuré plutôt que recopié** : il
-// valait **31** avant que la session d'encodage n'existe, il vaut **7** pour
-// les quatre modules de transcription réunis une fois la façade branchée
-// (mesuré le 30 août 2026 en retirant les quatre `allow` et en comptant).
-// Sept avertissements de plus ne noieraient plus grand-chose ; ce qui
-// justifie encore ce `allow`, c'est que les éléments restants sont
-// **délibérément** déclarés — `BUFFER_FORMAT_ABGR` n'existe que pour qu'un
-// test puisse établir qu'on ne l'a PAS pris.
+// ⚠️ **The count has changed, and it is remeasured rather than copied**: it
+// was **31** before the encoding session existed, it is **7** for
+// the four transcription modules together once the facade is wired
+// (measured on 30 August 2026 by removing the four `allow`s and counting).
+// Seven more warnings would no longer drown much; what
+// still justifies this `allow` is that the remaining elements are
+// **deliberately** declared — `BUFFER_FORMAT_ABGR` only exists so that a
+// test can establish that we did NOT pick it.
 //
-// ⚠️ **Il est posé sur CE MODULE SEUL, jamais sur le crate**, et il masque
-// exactement une famille : `dead_code`. Une constante fausse resterait
-// fausse ; c'est le rôle des tests plus bas, pas celui du compilateur.
-// **À retirer dès que la session d'encodage consomme ces constantes** — et
-// ce qui le rappellera est ce commentaire, pas une note ailleurs.
+// ⚠️ **It is set on THIS MODULE ONLY, never on the crate**, and it masks
+// exactly one family: `dead_code`. A wrong constant would stay
+// wrong; that is the role of the tests below, not the compiler's.
+// **To be removed as soon as the encoding session consumes these constants** — and
+// what will remind of it is this comment, not a note elsewhere.
 #![allow(dead_code)]
 
 /// Version majeure de l'API transcrite.
@@ -107,46 +107,46 @@ pub const VERSION_MAJEURE: u32 = 12;
 /// Version mineure de l'API transcrite.
 pub const VERSION_MINEURE: u32 = 2;
 
-/// `NVENCAPI_VERSION` — ⚠️ **empaquetage `majeure | (mineure << 24)`**, qui
-/// n'est PAS celui que rend le pilote (voir `version_pilote_attendue`).
+/// `NVENCAPI_VERSION` — ⚠️ **packing `major | (minor << 24)`**, which
+/// is NOT the one the driver returns (see `version_pilote_attendue`).
 pub const VERSION_API: u32 = VERSION_MAJEURE | (VERSION_MINEURE << 24);
 
-/// `NVENCAPI_STRUCT_VERSION(ver)` de l'en-tête, réimplémentée.
+/// The header's `NVENCAPI_STRUCT_VERSION(ver)`, reimplemented.
 ///
-/// Le `0x7 << 28` est une étiquette que porte toute version de structure.
+/// The `0x7 << 28` is a tag that every structure version carries.
 pub const fn version_de_structure(revision: u32) -> u32 {
     VERSION_API | (revision << 16) | (0x7 << 28)
 }
 
-/// Les structures dont l'en-tête ajoute `1u << 31` à leur version.
+/// The structures whose version the header adds `1u << 31` to.
 ///
-/// 🔴 **Omettre ce bit rend `NV_ENC_ERR_INVALID_VERSION`**, et rien d'autre
-/// ne le signale. C'est pour cela que les deux formes sont deux fonctions
-/// distinctes plutôt qu'un booléen à ne pas oublier.
+/// 🔴 **Omitting this bit returns `NV_ENC_ERR_INVALID_VERSION`**, and nothing else
+/// reports it. That is why the two forms are two distinct functions
+/// rather than a boolean not to forget.
 pub const fn version_de_structure_marquee(revision: u32) -> u32 {
     version_de_structure(revision) | (1 << 31)
 }
 
-/// Ce que `NvEncodeAPIGetMaxSupportedVersion` doit rendre au minimum.
+/// What `NvEncodeAPIGetMaxSupportedVersion` must return at minimum.
 ///
-/// 🔴 **L'EMPAQUETAGE EST `(majeure << 4) | mineure`, ET IL DIFFÈRE DE
-/// `VERSION_API`.** L'en-tête le dit en toutes lettres : « the 4 least
+/// 🔴 **THE PACKING IS `(major << 4) | minor`, AND IT DIFFERS FROM
+/// `VERSION_API`.** The header says it in so many words: "the 4 least
 /// significant bits […] indicate the minor version and the rest of the bits
-/// indicate the major version ». Confondre les deux fait comparer 0x0200000C
-/// à 0xC2 et rejeter tous les pilotes du monde.
+/// indicate the major version". Confusing the two compares 0x0200000C
+/// with 0xC2 and rejects every driver in the world.
 pub const fn version_pilote_attendue() -> u32 {
     (VERSION_MAJEURE << 4) | VERSION_MINEURE
 }
 
-/// Le pilote installé sait-il parler la version qu'on a transcrite ?
+/// Does the installed driver speak the version we transcribed?
 ///
-/// À appeler **avant** `NvEncodeAPICreateInstance` : sinon l'échec arrive
-/// plus tard et se lit moins bien.
+/// To be called **before** `NvEncodeAPICreateInstance`: otherwise the failure arrives
+/// later and reads less well.
 pub const fn pilote_compatible(rendu_par_le_pilote: u32) -> bool {
     rendu_par_le_pilote >= version_pilote_attendue()
 }
 
-// --- Les versions de structures, chacune avec sa révision d'en-tête. ---
+// --- The structure versions, each with its header revision. ---
 pub const OPEN_ENCODE_SESSION_EX_PARAMS_VER: u32 = version_de_structure(1);
 pub const INITIALIZE_PARAMS_VER: u32 = version_de_structure_marquee(7);
 pub const CONFIG_VER: u32 = version_de_structure_marquee(9);
@@ -158,20 +158,20 @@ pub const CREATE_BITSTREAM_BUFFER_VER: u32 = version_de_structure(1);
 pub const PIC_PARAMS_VER: u32 = version_de_structure_marquee(7);
 pub const LOCK_BITSTREAM_VER: u32 = version_de_structure_marquee(2);
 pub const FUNCTION_LIST_VER: u32 = version_de_structure(2);
-/// ⚠️ **Même valeur que `LOCK_BITSTREAM_VER`** — les deux structures
-/// portent la révision 2 et le bit de poids fort. Ce n'est pas une
-/// coquille : deux structures peuvent partager une version.
+/// ⚠️ **Same value as `LOCK_BITSTREAM_VER`** — both structures
+/// carry revision 2 and the high-order bit. It is not a
+/// typo: two structures can share a version.
 pub const RECONFIGURE_PARAMS_VER: u32 = version_de_structure_marquee(2);
 
-// --- Les constantes d'énumération du chemin d'encodage. ---
+// --- The enumeration constants of the encoding path. ---
 
-/// `NV_ENC_DEVICE_TYPE_DIRECTX`. ⚠️ Le commentaire de l'en-tête dit
-/// « directx9 » ; c'est **aussi** la valeur pour D3D11 et D3D12, il n'existe
-/// pas de constante D3D11 séparée.
+/// `NV_ENC_DEVICE_TYPE_DIRECTX`. ⚠️ The header's comment says
+/// "directx9"; it is **also** the value for D3D11 and D3D12, there is no
+/// separate D3D11 constant.
 pub const DEVICE_TYPE_DIRECTX: u32 = 0;
 /// `NV_ENC_INPUT_RESOURCE_TYPE_DIRECTX`.
 pub const INPUT_RESOURCE_TYPE_DIRECTX: u32 = 0;
-/// `NV_ENC_INPUT_IMAGE`, l'usage d'un tampon d'entrée.
+/// `NV_ENC_INPUT_IMAGE`, the usage of an input buffer.
 pub const BUFFER_USAGE_INPUT_IMAGE: u32 = 0;
 
 /// `NV_ENC_BUFFER_FORMAT_NV12`.
@@ -179,22 +179,22 @@ pub const BUFFER_FORMAT_NV12: u32 = 0x0000_0001;
 
 /// `NV_ENC_BUFFER_FORMAT_ARGB`.
 ///
-/// 🔴 **C'EST LE FORMAT DE CE QUE LA CAPTURE NOUS DONNE, MALGRÉ SON NOM.**
-/// L'en-tête le définit comme *word-ordered* avec **B dans les 8 bits de
-/// poids faible** — c'est-à-dire, en mémoire petit-boutiste, l'ordre d'octets
-/// B, G, R, A : exactement `DXGI_FORMAT_B8G8R8A8_UNORM`, ce que rend
-/// Desktop Duplication. **Prendre `ABGR` à la place intervertit le rouge et
-/// le bleu SANS AUCUNE ERREUR** — l'image sort, simplement fausse.
+/// 🔴 **THIS IS THE FORMAT OF WHAT THE CAPTURE GIVES US, DESPITE ITS NAME.**
+/// The header defines it as *word-ordered* with **B in the 8 least
+/// significant bits** — that is, in little-endian memory, the byte order
+/// B, G, R, A: exactly `DXGI_FORMAT_B8G8R8A8_UNORM`, what
+/// Desktop Duplication returns. **Picking `ABGR` instead swaps red and
+/// blue WITHOUT ANY ERROR** — the image comes out, simply wrong.
 pub const BUFFER_FORMAT_ARGB: u32 = 0x0100_0000;
-/// `NV_ENC_BUFFER_FORMAT_ABGR` — **le piège voisin**, déclaré pour qu'un
-/// test puisse établir qu'on ne l'a pas pris par mégarde.
+/// `NV_ENC_BUFFER_FORMAT_ABGR` — **the neighbouring trap**, declared so that a
+/// test can establish that we did not pick it by mistake.
 pub const BUFFER_FORMAT_ABGR: u32 = 0x1000_0000;
 
-/// `NV_ENC_PARAMS_RC_CBR` — débit constant, ce que l'interactif exige.
+/// `NV_ENC_PARAMS_RC_CBR` — constant bitrate, what interactive use requires.
 pub const RC_MODE_CBR: u32 = 2;
 
-/// `NV_ENC_PIC_STRUCT_FRAME`. ⚠️ **Vaut 1, pas 0** : mettre la structure à
-/// zéro et oublier ce champ est une erreur, pas un défaut inoffensif.
+/// `NV_ENC_PIC_STRUCT_FRAME`. ⚠️ **Is 1, not 0**: zeroing the structure and
+/// forgetting this field is an error, not a harmless default.
 pub const PIC_STRUCT_FRAME: u32 = 1;
 
 /// `NV_ENC_PIC_FLAG_FORCEIDR`.
@@ -205,7 +205,7 @@ pub const PIC_FLAG_OUTPUT_SPSPPS: u32 = 0x4;
 /// `NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY`.
 pub const TUNING_ULTRA_LOW_LATENCY: u32 = 3;
 
-/// `NV_ENC_ERR_INVALID_VERSION` — le code que rend une version fausse.
+/// `NV_ENC_ERR_INVALID_VERSION` — the code a wrong version returns.
 pub const ERR_INVALID_VERSION: u32 = 15;
 /// `NV_ENC_SUCCESS`.
 pub const SUCCESS: u32 = 0;
@@ -214,11 +214,11 @@ pub const SUCCESS: u32 = 0;
 mod tests {
     use super::*;
 
-    /// 🔴 **LES VALEURS ATTENDUES NE SONT PAS RECOPIÉES : ELLES SONT
-    /// MESURÉES.** Chacune a été imprimée en compilant l'en-tête réel
-    /// (commande dans l'en-tête de ce module). Ce test compare notre
-    /// arithmétique à ce relevé — c'est ce qui rend relisible une constante
-    /// dont l'erreur serait muette.
+    /// 🔴 **THE EXPECTED VALUES ARE NOT COPIED: THEY ARE
+    /// MEASURED.** Each one was printed by compiling the real header
+    /// (command in this module's header). This test compares our
+    /// arithmetic with that survey — it is what makes re-readable a constant
+    /// whose error would be silent.
     #[test]
     fn les_versions_de_structures_valent_celles_de_l_entete() {
         assert_eq!(VERSION_API, 0x0200_000C, "NVENCAPI_VERSION");
@@ -240,8 +240,8 @@ mod tests {
         );
     }
 
-    /// 🔴 Le bit `1 << 31` sépare les deux familles. S'il disparaissait des
-    /// cinq structures qui le portent, NVENC les refuserait **en silence**.
+    /// 🔴 The `1 << 31` bit separates the two families. If it disappeared from the
+    /// five structures that carry it, NVENC would refuse them **silently**.
     #[test]
     fn le_bit_de_poids_fort_distingue_les_deux_familles() {
         for (nom, v) in [
@@ -269,8 +269,8 @@ mod tests {
         }
     }
 
-    /// 🔴 **LES DEUX EMPAQUETAGES DE VERSION SONT DIFFÉRENTS**, et les
-    /// confondre rejetterait tous les pilotes. Ce test fige l'écart.
+    /// 🔴 **THE TWO VERSION PACKINGS ARE DIFFERENT**, and
+    /// confusing them would reject every driver. This test pins the difference.
     #[test]
     fn la_version_attendue_du_pilote_n_est_pas_celle_de_l_api() {
         assert_eq!(version_pilote_attendue(), 0xC2, "(12 << 4) | 2");
@@ -285,9 +285,9 @@ mod tests {
         assert!(!pilote_compatible(0), "pilote muet");
     }
 
-    /// 🔴 Le piège rouge/bleu, figé : ce que la capture produit
-    /// (`DXGI_FORMAT_B8G8R8A8_UNORM`) se déclare `ARGB` à NVENC, jamais
-    /// `ABGR` — l'inverse sortirait une image sans la moindre erreur.
+    /// 🔴 The red/blue trap, pinned: what the capture produces
+    /// (`DXGI_FORMAT_B8G8R8A8_UNORM`) is declared `ARGB` to NVENC, never
+    /// `ABGR` — the reverse would output an image without the slightest error.
     #[test]
     fn le_format_de_la_capture_est_argb_et_non_abgr() {
         assert_eq!(BUFFER_FORMAT_ARGB, 0x0100_0000);

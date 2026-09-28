@@ -1,10 +1,10 @@
-//! Le capteur : un seul processus qui tient les N duplications DXGI et les N
-//! encodeurs, et distribue le média aux enfants par tube nommé.
+//! The sensor: a single process that holds the N DXGI duplications and the N
+//! encoders, and distributes the media to the children through a named pipe.
 //!
-//! Ce fichier reste mince à dessein — il assemble, il ne décide pas. Même
-//! découpage que `superviseur.rs` : la logique pure (protocole, source
-//! distante, reprise) est hors `cfg` et se teste sur l'hôte ; ce qui touche
-//! DXGI et les tubes est gaté.
+//! This file stays thin on purpose — it assembles, it does not decide. Same
+//! split as `superviseur.rs`: the pure logic (protocol, remote
+//! source, resumption) is outside `cfg` and is tested on the host; what touches
+//! DXGI and the pipes is gated.
 
 pub mod audio;
 pub mod distante;
@@ -23,7 +23,7 @@ pub mod sommeil;
 pub mod tube;
 pub mod vivier;
 
-/// Point d'entrée du mode capteur.
+/// Entry point of sensor mode.
 #[cfg(windows)]
 pub fn executer() -> anyhow::Result<()> {
     tracing::info!(tube = protocole::NOM_TUBE, "capteur démarré");

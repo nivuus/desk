@@ -1,16 +1,16 @@
-//! Le **recensement** du pont : la ligne des douze causes, celle du banc de
-//! latence de F4, et la complétion de masse qui les accompagne.
+//! The bridge's **census**: the line of the twelve causes, the one of F4's
+//! latency bench, and the mass completion accompanying them.
 //!
-//! **EXTRAIT PLUTÔT QUE COMPRIMÉ**, et **AVANT l'addition qui l'imposait** —
-//! la doctrine du dépôt est de faire l'extraction avant d'avoir franchi le
-//! plafond, pas après. `service.rs` était à **458 lignes pour une porte à
-//! 460** (plan F4, §2.4) quand F4 y a câblé son histogramme ; les trois blocs
-//! ci-dessous en sont partis **verbatim**, doc-comments compris.
+//! **EXTRACTED RATHER THAN COMPRESSED**, and **BEFORE the addition that required it** —
+//! the repository's doctrine is to extract before having crossed the
+//! ceiling, not after. `service.rs` was at **458 lines for a gate at
+//! 460** (F4 plan, §2.4) when F4 wired its histogram there; the three blocks
+//! below left it **verbatim**, doc comments included.
 //!
-//! ⚠️ **Un `mod` ORDINAIRE, à l'intérieur de son parent** : il n'y a aucune
-//! frontière `#[cfg(windows)]` à franchir ici — tout `pont::service` est déjà
-//! `#[cfg(windows)]` —, donc la convention `#[path]` de `CLAUDE.md` **ne
-//! s'applique pas**, comme pour les deux extractions de D11.
+//! ⚠️ **An ORDINARY `mod`, inside its parent**: there is no
+//! `#[cfg(windows)]` boundary to cross here — all of `pont::service` is already
+//! `#[cfg(windows)]` —, so `CLAUDE.md`'s `#[path]` convention **does not
+//! apply**, as for D11's two extractions.
 
 use std::sync::atomic::Ordering;
 use std::time::Instant;
@@ -21,16 +21,16 @@ use super::{oublier_contexte, prevenir_l_ecriture, verbes};
 use crate::pont::erreurs::Erreur;
 use crate::pont::projfs::Etat;
 
-/// **F4** — le banc de latence est-il armé ?
+/// **F4** — is the latency bench armed?
 ///
-/// 🔴 **`=1` ARME ; l'ABSENCE désarme.** C'est la convention de `MICRO_MESURE`,
-/// **et NON celle de `PONT`, `PONT_ECRITURE` et `PONT_MUTATION`**, qui sont
-/// désarmées par `=0`. La règle du dépôt est : *on désarme sur `=0` ce qui est
-/// LIVRÉ, on arme sur `=1` ce qui ne l'est pas.* Le pont, l'écriture et les
-/// mutations sont livrés ; la ligne de latence est un **instrument de banc,
-/// jamais une configuration livrée**.
+/// 🔴 **`=1` ARMS; ABSENCE disarms.** It is `MICRO_MESURE`'s convention,
+/// **and NOT that of `PONT`, `PONT_ECRITURE` and `PONT_MUTATION`**, which are
+/// disarmed by `=0`. The repository's rule is: *we disarm on `=0` what is
+/// SHIPPED, we arm on `=1` what is not.* The bridge, writing and
+/// mutations are shipped; the latency line is a **bench instrument,
+/// never a shipped configuration**.
 ///
-/// ⚠️ **Ce qu'elle arme est l'ÉMISSION, pas la COLLECTE** : voir
+/// ⚠️ **What it arms is EMISSION, not COLLECTION**: see
 /// [`crate::pont::projfs::Etat::latences`].
 pub(super) fn mesure_armee() -> bool {
     static ARMEE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -39,9 +39,9 @@ pub(super) fn mesure_armee() -> bool {
             .map(|v| v == "1")
             .unwrap_or(false);
         if armee {
-            // ⚠️ **`warn!`, comme `PART_SONDAGE` et `AUDIO_FAUTE_*`** : c'est ce
-            // qui la rend visible sous `RUST_LOG=info` et ce qui empêche de la
-            // confondre avec une configuration ordinaire.
+            // ⚠️ **`warn!`, like `PART_SONDAGE` and `AUDIO_FAUTE_*`**: it is what
+            // makes it visible under `RUST_LOG=info` and what prevents
+            // confusing it with an ordinary configuration.
             tracing::warn!(
                 "banc de latence du pont ARME (PONT_MESURE=1) : instrument de banc, \
                  jamais une configuration livree"
@@ -51,41 +51,41 @@ pub(super) fn mesure_armee() -> bool {
     })
 }
 
-/// La ligne de recensement — **l'instrument du critère (4) de F3**.
+/// The census line — **the instrument of F3's criterion (4)**.
 ///
 /// ```text
 /// codes rendus total=17 introuvable=3 chemin-introuvable=1 acces-refuse=0 …
 /// ```
 ///
-/// 🔴 **UN CODE JAMAIS PRODUIT AFFICHE `0`, ET C'EST TOUT L'INTÉRÊT.** Le
-/// critère (4) — « chacun des douze est observé au moins une fois » — devient
-/// alors un `grep` sur UNE ligne, et il **ne peut pas être satisfait par
-/// accident** : une exécution qui n'exerce rien rend douze zéros.
+/// 🔴 **A CODE NEVER PRODUCED SHOWS `0`, AND THAT IS THE WHOLE POINT.** The
+/// criterion (4) — "each of the twelve is observed at least once" — then becomes
+/// a `grep` on ONE line, and it **cannot be satisfied by
+/// accident**: a run exercising nothing returns twelve zeros.
 ///
-/// ⚠️ **CE QUE CE RECENSEMENT NE PEUT PAS DIRE, mesuré par la recette de F3** :
-/// il est émis **à la fermeture du canal**, et le fil du service RETOURNE
-/// aussitôt. Un code produit APRÈS cette fermeture — `CanalFerme` sur un geste
-/// qui arrive alors qu'il n'y a plus de navigateur — est bien **compté**, et
-/// **personne ne l'imprime**. Le compteur est juste ; la ligne qui le rend
-/// observable, elle, est déjà partie.
+/// ⚠️ **WHAT THIS CENSUS CANNOT SAY, measured by F3's acceptance run**:
+/// it is emitted **when the channel closes**, and the service thread RETURNS
+/// right after. A code produced AFTER that closing — `CanalFerme` on a gesture
+/// arriving when there is no browser any more — is indeed **counted**, and
+/// **no one prints it**. The counter is right; the line that makes it
+/// observable has already gone.
 ///
-/// ⚠️ **`info!` et non `debug!`** : `scripts/run-agent.sh` pose `RUST_LOG=info`
-/// par défaut, et la doctrine de ce dépôt est que l'exploitation y tourne. Une
-/// mitigation muette n'en est pas une — c'est la raison écrite pour les deux
-/// traces de `encode/arret.rs`, appliquée ici.
+/// ⚠️ **`info!` and not `debug!`**: `scripts/run-agent.sh` sets `RUST_LOG=info`
+/// by default, and the doctrine of this repository is that operations run with it. A
+/// mute mitigation is not one — it is the reason written for the two
+/// traces of `encode/arret.rs`, applied here.
 pub(super) fn recenser(etat: &Etat) {
-    // ── LE RELEVÉ DE LA TABLE — l'instrument du legs n°4 de F1 ────────────
+    // ── THE TABLE SURVEY — the instrument of F1's legacy no. 4 ─────────────
     //
-    // 🔴 **C'est ce qui départage les quatre hypothèses**, et aucune n'était
-    // départageable jusqu'ici. F1 a mesuré des lectures qui CALENT sans jamais
-    // expirer — `commande expirée` reste à 0 pendant 540 s — et déclare qu'on
-    // ne sait pas OÙ le blocage se produit. Voir `pont::table::plus_ancienne`,
-    // qui porte le tableau de lecture.
+    // 🔴 **It is what decides between the four hypotheses**, and none was
+    // decidable until now. F1 measured reads that STALL without ever
+    // expiring — the expired-command count stays at 0 for 540 s — and declares that we
+    // do not know WHERE the blockage happens. See `pont::table::plus_ancienne`,
+    // which carries the reading table.
     //
-    // ⚠️ **Une ligne toutes les 10 s, jamais une par rappel.** Le chantier TURN
-    // a payé 18 619 lignes en quelques secondes pour une trace par paquet,
-    // écrites sur un partage CIFS depuis la boucle : la mesure détruisait ce
-    // qu'elle mesurait.
+    // ⚠️ **One line every 10 s, never one per callback.** The TURN work item
+    // paid 18,619 lines in a few seconds for a per-packet trace,
+    // written to a CIFS share from the loop: the measurement destroyed what
+    // it measured.
     let maintenant = Instant::now();
     let (en_vol, sans_commande, plus_ancienne_ms) = match etat.table.lock() {
         Ok(table) => (
@@ -96,9 +96,9 @@ pub(super) fn recenser(etat: &Etat) {
                 .map(|d| d.as_millis())
                 .unwrap_or(0),
         ),
-        // ⚠️ **Un verrou empoisonné est DIT, pas tu.** Rendre des zéros ferait
-        // lire « rien en vol » là où la table est inaccessible — c'est-à-dire
-        // la PREMIÈRE ligne du tableau de lecture, qui accuserait le rappel.
+        // ⚠️ **A poisoned lock is SAID, not kept quiet.** Returning zeros would
+        // read "nothing in flight" where the table is inaccessible — that is,
+        // the FIRST line of the reading table, which would blame the callback.
         Err(_) => {
             tracing::warn!("recensement impossible : le verrou de la table est empoisonne");
             return;
@@ -123,11 +123,11 @@ pub(super) fn recenser(etat: &Etat) {
         .map(crate::pont::compteurs::nom)
         .collect();
     tracing::info!(
-        // ⚠️ **Un champ `tracing` porterait des séquences ANSI entre son nom et
-        // sa valeur sur un journal BRUT** — c'est le piège que la recette
-        // d'entrée de D8 a payé, et que le `grep` de F1 a rejoué trois fois.
-        // Le recensement est donc **une chaîne unique**, `nom=valeur` séparés
-        // par des espaces, et il se lit tel quel sans `sed`.
+        // ⚠️ **A `tracing` field would carry ANSI sequences between its name and
+        // its value in a RAW log** — it is the trap D8's input acceptance
+        // run paid for, and that F1's `grep` replayed three times.
+        // The census is therefore **a single string**, `name=value` separated
+        // by spaces, and it is read as is without `sed`.
         "codes rendus {} | jamais rendus : {}",
         etat.compteurs.recensement(),
         if manquants.is_empty() {
@@ -137,21 +137,21 @@ pub(super) fn recenser(etat: &Etat) {
         }
     );
 
-    // ── LE BANC DE LATENCE (F4) — émis SEULEMENT si `PONT_MESURE=1` ────────
+    // ── THE LATENCY BENCH (F4) — emitted ONLY if `PONT_MESURE=1` ───────────
     //
-    // ⚠️ **Les compteurs sont CUMULATIFS depuis le démarrage du pont** : une
-    // mesure se lit par DIFFÉRENCE entre deux recensements, jamais sur une
-    // ligne isolée. C'est pourquoi tout palier de mesure dure au moins six
-    // périodes.
+    // ⚠️ **The counters are CUMULATIVE since the bridge started**: a
+    // measurement is read by DIFFERENCE between two censuses, never on an
+    // isolated line. That is why any measurement step lasts at least six
+    // periods.
     if mesure_armee() {
-        // ⚠️ **Chaîne unique, jamais des champs `tracing`** — même raison qu'au
-        // recensement des codes, trois lignes plus haut.
+        // ⚠️ **A single string, never `tracing` fields** — same reason as for the
+        // census of codes, three lines above.
         tracing::info!("{}", etat.latences.recensement());
     }
 }
 
-/// Complète en erreur tout ce qui reste en vol. Appelée quand plus aucune
-/// réponse ne peut arriver.
+/// Completes with an error everything left in flight. Called when no more
+/// response can arrive.
 pub(super) fn tout_completer(etat: &Etat, cause: Erreur) {
     let restantes = match etat.table.lock() {
         Ok(mut table) => table.vider(),
@@ -159,10 +159,10 @@ pub(super) fn tout_completer(etat: &Etat, cause: Erreur) {
     };
     for (commande, correlation) in restantes {
         oublier_contexte(etat, correlation);
-        // ⚠️ **Une écriture abandonnée doit être DITE au fil d'écriture**, sans
-        // quoi sa poussée resterait « en vol » à jamais et la file n'avancerait
-        // plus. L'entrée, elle, RESTE au journal — c'est le fil qui décide, et
-        // c'est ce qui la rend récupérable.
+        // ⚠️ **An abandoned write must be TOLD to the write thread**, otherwise
+        // its push would stay "in flight" forever and the queue would no longer
+        // advance. The entry, for its part, STAYS in the journal — it is the thread that decides, and
+        // it is what makes it recoverable.
         prevenir_l_ecriture(etat, commande, correlation, cause);
         verbes::completer(etat, commande, HRESULT(etat.compteurs.rendre(cause)));
     }

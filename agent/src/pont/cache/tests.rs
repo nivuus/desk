@@ -31,9 +31,9 @@ fn ce_qui_est_pose_est_relu_a_l_identique() {
     assert_eq!(lues[1].nom, "b.txt");
 }
 
-/// 🔴 **L'EXPIRATION SANS DORMIR** — c'est ce que l'horloge injectée achète.
-/// La borne est assiégée des DEUX côtés, sans quoi un `>` mis pour un `>=`
-/// passerait inaperçu.
+/// 🔴 **EXPIRY WITHOUT SLEEPING** — it is what the injected clock buys.
+/// The bound is besieged from BOTH sides, otherwise a `>` put in place of a `>=`
+/// would go unnoticed.
 #[test]
 fn une_memoire_expire_au_terme_exact_et_pas_avant() {
     let mut c = CacheEnumeration::nouveau();
@@ -45,9 +45,9 @@ fn une_memoire_expire_au_terme_exact_et_pas_avant() {
     assert!(c.lire("dossier", t + TTL_ENUMERATION).is_none());
 }
 
-/// Une mémoire expirée est **RETIRÉE**, pas seulement ignorée : sans cela le
-/// cache croîtrait sans terme sur une arborescence parcourue une fois, et ce
-/// module n'a **aucune** politique d'éviction (spec §10 R4).
+/// An expired memory is **REMOVED**, not merely ignored: without that the
+/// cache would grow endlessly on a tree traversed once, and this
+/// module has **no** eviction policy (spec §10 R4).
 #[test]
 fn une_memoire_expiree_est_retiree_et_pas_seulement_ignoree() {
     let mut c = CacheEnumeration::nouveau();
@@ -76,13 +76,13 @@ fn poser_deux_fois_ecrase_et_rearme_l_horloge() {
     assert_eq!(lues[0].nom, "neuf.txt");
 }
 
-/// 🔴 **`invalider` PREND LE PARENT, JAMAIS LE CHEMIN LUI-MÊME.**
+/// 🔴 **`invalider` TAKES THE PARENT, NEVER THE PATH ITSELF.**
 ///
-/// **Sa ROUGE** : faire prendre à [`CacheEnumeration::invalider`] le chemin
-/// lui-même au lieu de `parent_de(chemin)`. Ce test tombe alors — et l'erreur
-/// qu'il verrouille est **silencieuse** en production : le listage du parent
-/// continuerait d'être servi depuis la mémoire, et le fichier créé
-/// n'apparaîtrait jamais.
+/// **Its RED**: make [`CacheEnumeration::invalider`] take the path
+/// itself instead of `parent_de(chemin)`. This test then fails — and the error
+/// it locks is **silent** in production: the parent's listing
+/// would keep being served from memory, and the created file
+/// would never appear.
 #[test]
 fn invalider_oublie_le_repertoire_parent_du_chemin_mute() {
     let mut c = CacheEnumeration::nouveau();
@@ -92,10 +92,10 @@ fn invalider_oublie_le_repertoire_parent_du_chemin_mute() {
     assert!(c.lire("dossier", t).is_none(), "le PARENT doit être oublié");
 }
 
-/// ⚠️ **Le parent d'un chemin sans séparateur est la RACINE, `""`** — la clé
-/// qu'un `Get-ChildItem` sur le lecteur monté sollicite. L'oublier ferait
-/// qu'une création à la racine serait invisible : c'est exactement le geste du
-/// critère ① de la recette de F5.
+/// ⚠️ **The parent of a path without a separator is the ROOT, `""`** — the key
+/// a `Get-ChildItem` on the mounted drive solicits. Forgetting it would make
+/// a creation at the root invisible: it is exactly the gesture of
+/// criterion ① of F5's acceptance run.
 #[test]
 fn le_parent_d_un_chemin_de_premier_niveau_est_la_racine() {
     assert_eq!(parent_de("note.txt"), "");
@@ -112,8 +112,8 @@ fn le_parent_d_un_chemin_de_premier_niveau_est_la_racine() {
     );
 }
 
-/// Invalider un répertoire n'en touche **aucun autre** : un cache qui se
-/// viderait entièrement à chaque écriture ne serait pas un cache.
+/// Invalidating a directory touches **no other**: a cache that would
+/// empty itself entirely at each write would not be a cache.
 #[test]
 fn invalider_ne_touche_pas_les_repertoires_voisins() {
     let mut c = CacheEnumeration::nouveau();
@@ -125,9 +125,9 @@ fn invalider_ne_touche_pas_les_repertoires_voisins() {
     assert!(c.lire("b", t).is_some(), "le voisin doit survivre");
 }
 
-/// Invalider un chemin jamais mémorisé ne doit **rien** faire, et surtout pas
-/// paniquer : les notifications ProjFS arrivent pour des chemins que le pont
-/// n'a jamais listés.
+/// Invalidating a path never memorised must do **nothing**, and above all not
+/// panic: ProjFS notifications arrive for paths the bridge
+/// has never listed.
 #[test]
 fn invalider_un_chemin_inconnu_est_inoffensif() {
     let mut c = CacheEnumeration::nouveau();
@@ -138,7 +138,7 @@ fn invalider_un_chemin_inconnu_est_inoffensif() {
     assert!(c.lire("a", t).is_some());
 }
 
-/// `vider` est ce que fait l'annonce `Rafraichir` : tout, d'un coup.
+/// `vider` is what the `Rafraichir` announcement does: everything, at once.
 #[test]
 fn vider_oublie_tout() {
     let mut c = CacheEnumeration::nouveau();
@@ -153,9 +153,9 @@ fn vider_oublie_tout() {
     assert!(c.lire("", t).is_none());
 }
 
-/// Un répertoire **vide** mémorisé n'est pas la même chose qu'un répertoire
-/// jamais mémorisé : les confondre ferait repayer un aller-retour à chaque
-/// listage d'un dossier vide.
+/// A memorised **empty** directory is not the same thing as a directory
+/// never memorised: confusing them would make each listing of an empty folder
+/// pay a round trip again.
 #[test]
 fn un_repertoire_vide_memorise_est_servi_comme_tel() {
     let mut c = CacheEnumeration::nouveau();

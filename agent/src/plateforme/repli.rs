@@ -1,32 +1,32 @@
-//! Le délai avant la prochaine tentative d'ouverture du canal `/agent`.
+//! The delay before the next attempt to open the `/agent` channel.
 //!
-//! Pur, sans horloge et sans socket : c'est la seule part du client de canal
-//! qui soit éprouvable sur l'hôte Linux, et c'est pour cela qu'elle vit dans
-//! son propre fichier.
+//! Pure, without clock and without socket: it is the only part of the channel client
+//! that is testable on the Linux host, and that is why it lives in
+//! its own file.
 
-/// Attente avant la PREMIÈRE reprise. ⚠️ **NON CALIBRÉE** : aucune mesure de
-/// ce dépôt ne dit combien de temps une coupure dure en pratique. Choisie
-/// assez courte pour qu'une coupure d'une seconde ne coûte pas une minute de
-/// `vu_a` périmé, assez longue pour qu'un relais qui refuse ne soit pas
-/// martelé.
+/// Wait before the FIRST reconnection. ⚠️ **NOT CALIBRATED**: no measurement of
+/// this repository says how long an outage lasts in practice. Chosen
+/// short enough that a one-second outage does not cost a minute of
+/// stale `vu_a`, long enough that a relay that refuses is not
+/// hammered.
 pub const REPLI_MIN_MS: u64 = 500;
 
-/// Plafond de l'attente. ⚠️ **NON CALIBRÉE** de la même façon.
+/// Ceiling of the wait. ⚠️ **NOT CALIBRATED** in the same way.
 ///
-/// 🔴 **Ce plafond n'est PAS un confort, c'est le garde-fou du critère ④.**
-/// Sans lui, le repli exponentiel atteint l'heure à la treizième tentative et
-/// le jour à la dix-huitième : la VM resterait `injoignable` alors que le
-/// réseau est revenu, et **rien ne le dirait** — l'agent serait vivant, en
-/// train d'attendre.
+/// 🔴 **This ceiling is NOT a convenience, it is the safeguard of criterion ④.**
+/// Without it, exponential backoff reaches an hour at the thirteenth attempt and
+/// a day at the eighteenth: the VM would stay `injoignable` while the
+/// network has come back, and **nothing would say so** — the agent would be alive,
+/// waiting.
 pub const REPLI_MAX_MS: u64 = 30_000;
 
-/// Délai avant la tentative n°`tentative + 1`, la tentative 0 étant la
-/// première reprise après une chute.
+/// Delay before attempt no. `tentative + 1`, attempt 0 being the
+/// first reconnection after a fall.
 pub fn delai_de_repli(tentative: u32) -> u64 {
-    // `checked_shl` et non `1 << tentative` : le décalage déborde à 64, et un
-    // débordement en `debug` est un `panic`, donc la mort du fil de reprise —
-    // le seul fil qui pouvait encore ramener la VM. `saturating_mul` couvre
-    // le même risque un cran plus loin.
+    // `checked_shl` and not `1 << tentative`: the shift overflows at 64, and an
+    // overflow in `debug` is a `panic`, hence the death of the reconnection thread —
+    // the only thread that could still bring the VM back. `saturating_mul` covers
+    // the same risk one step further.
     let facteur = 1u64.checked_shl(tentative).unwrap_or(u64::MAX);
     REPLI_MIN_MS.saturating_mul(facteur).min(REPLI_MAX_MS)
 }
@@ -40,8 +40,8 @@ mod tests {
         assert_eq!(delai_de_repli(0), REPLI_MIN_MS);
     }
 
-    /// Un délai constant, c'est un martèlement : dix mille tentatives par
-    /// heure contre un relais qui vient de refuser.
+    /// A constant delay is hammering: ten thousand attempts per
+    /// hour against a relay that just refused.
     #[test]
     fn le_delai_croit_avec_la_tentative() {
         assert!(
@@ -58,9 +58,9 @@ mod tests {
         );
     }
 
-    /// 🔴 Le test qui compte. Sans le plafond, la vingtième tentative attend
-    /// **145 heures** : la VM est injoignable pour toujours, et l'agent qui
-    /// attend a exactement l'air d'un agent qui va reprendre.
+    /// 🔴 The test that matters. Without the ceiling, the twentieth attempt waits
+    /// **145 hours**: the VM is unreachable forever, and the agent that
+    /// waits looks exactly like an agent about to reconnect.
     #[test]
     fn le_delai_est_borne_par_le_plafond() {
         for tentative in 0..200u32 {
@@ -77,9 +77,9 @@ mod tests {
         );
     }
 
-    /// `1 << tentative` déborde à 64 — et une boucle de reprise qui tourne
-    /// depuis assez longtemps y arrive. Un débordement en `debug` est un
-    /// `panic`, donc la mort du fil de reprise : la VM ne revient jamais.
+    /// `1 << tentative` overflows at 64 — and a reconnection loop that has been
+    /// running long enough gets there. An overflow in `debug` is a
+    /// `panic`, hence the death of the reconnection thread: the VM never comes back.
     #[test]
     fn le_delai_ne_deborde_pas_sur_une_tentative_enorme() {
         assert_eq!(delai_de_repli(63), REPLI_MAX_MS);

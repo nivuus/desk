@@ -1,32 +1,32 @@
-//! Le périphérique de rendu par défaut, relevé AVANT et APRÈS une installation.
+//! The default render device, read BEFORE and AFTER an installation.
 //!
-//! 🔴 POURQUOI CE MODULE EXISTE, ET CE N'EST PAS UNE PRÉCAUTION THÉORIQUE.
-//! **Le 19 août 2026, l'installation de VB-Cable a fait basculer le rendu par
-//! défaut de Windows sur un câble virtuel que rien n'alimente**, et le loopback
-//! du chantier A — qui suivait ce défaut — s'est mis à capter du silence **sans
-//! qu'aucune ligne de journal ne dise pourquoi**. Le diagnostic a coûté une
-//! campagne. **C'est le cas NOMINAL, pas un cas limite** : tout installeur
-//! audio le rejouera.
+//! 🔴 WHY THIS MODULE EXISTS, AND IT IS NOT A THEORETICAL PRECAUTION.
+//! **On 19 August 2026, installing VB-Cable switched Windows' default
+//! render device to a virtual cable that nothing feeds**, and the loopback
+//! of work stream A — which followed that default — started capturing silence **without
+//! any log line saying why**. The diagnosis cost a
+//! campaign. **It is the NOMINAL case, not an edge case**: every audio
+//! installer will replay it.
 //!
-//! 🔴 DEUX LIGNES, AVANT ET APRÈS, AVEC LE MÊME NOM DE CHAMP ET UN
-//! `moment=avant|apres`. Ne tracer qu'APRÈS rendrait un changement
-//! INATTRIBUABLE — on saurait quel périphérique est le défaut, jamais s'il
-//! l'était déjà. C'est exactement ce qui a coûté la campagne.
+//! 🔴 TWO LINES, BEFORE AND AFTER, WITH THE SAME FIELD NAME AND A
+//! `moment=avant|apres`. Tracing only AFTER would make a change
+//! UNATTRIBUTABLE — we would know which device is the default, never whether it
+//! already was. That is exactly what cost the campaign.
 //!
-//! ⚠️ **AUCUNE RESTAURATION, AUCUN GARDE-FOU** (spec D8, décision D19 du plan).
-//! Remettre d'autorité le périphérique d'avant serait décider à la place de
-//! l'utilisateur qui vient d'installer un périphérique audio EXPRÈS. Ce module
-//! observe ; il ne répare pas, et il ne prétend pas le faire.
+//! ⚠️ **NO RESTORATION, NO SAFEGUARD** (spec D8, plan decision D19).
+//! Forcibly putting back the previous device would decide on behalf of
+//! the user who has just installed an audio device ON PURPOSE. This module
+//! observes; it does not repair, and it does not pretend to.
 //!
-//! ⚠️ CE MODULE PORTE UN `cfg`, comme `execution`. Il n'y a rien de pur à en
-//! sortir : la règle de choix du périphérique est déjà PURE et déjà testée
-//! ailleurs (`wasapi_peripherique`, chantier A-bis) ; ici on ne fait que
-//! l'interroger et écrire une ligne.
+//! ⚠️ THIS MODULE CARRIES A `cfg`, like `execution`. There is nothing pure to
+//! take out of it: the device selection rule is already PURE and already tested
+//! elsewhere (`wasapi_peripherique`, work stream A-bis); here we only
+//! query it and write a line.
 
 use windows::Win32::Media::Audio::{IMMDeviceEnumerator, MMDeviceEnumerator};
 use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
 
-/// Où l'on en est de l'installation quand on relève.
+/// Where the installation stands when we take the reading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Moment {
     Avant,
@@ -42,13 +42,13 @@ impl Moment {
     }
 }
 
-/// Relève le périphérique de rendu capté et l'écrit au journal.
+/// Reads the captured render device and writes it to the log.
 ///
-/// ⚠️ **ELLE NE REND RIEN, ET NE PEUT PAS ÉCHOUER POUR L'APPELANT.** Un relevé
-/// impossible ne doit pas empêcher une installation : il se journalise en
-/// `warn!` et l'on continue. L'inverse — refuser d'installer parce qu'on n'a
-/// pas su nommer une carte son — serait une panne bien pire que le risque
-/// qu'elle prétend couvrir.
+/// ⚠️ **IT RETURNS NOTHING, AND CANNOT FAIL FOR THE CALLER.** An
+/// impossible reading must not prevent an installation: it is logged as
+/// `warn!` and we carry on. The reverse — refusing to install because we could
+/// not name a sound card — would be a far worse failure than the risk
+/// it claims to cover.
 pub fn tracer(installation: &str, moment: Moment) {
     match relever() {
         Ok(identifiant) => tracing::info!(
@@ -68,13 +68,13 @@ pub fn tracer(installation: &str, moment: Moment) {
 }
 
 fn relever() -> anyhow::Result<String> {
-    // ⚠️ L'APPARTEMENT COM EST CELUI DE L'APPELANT. Ce fil est le fil
-    // d'installation, qui a déjà appelé `CoInitializeEx` — comme le fil de
-    // découverte le fait pour `IShellLinkW`. Le refaire ici serait au mieux
-    // inutile, au pire un changement de modèle d'appartement sous les pieds
-    // d'un objet vivant.
+    // ⚠️ THE COM APARTMENT IS THE CALLER'S. This thread is the installation
+    // thread, which has already called `CoInitializeEx` — as the discovery
+    // thread does for `IShellLinkW`. Doing it again here would be at best
+    // useless, at worst a change of apartment model under the feet
+    // of a live object.
     //
-    // SAFETY : `CoCreateInstance` sur un fil dont l'appartement est initialisé.
+    // SAFETY: `CoCreateInstance` on a thread whose apartment is initialised.
     let enumerateur: IMMDeviceEnumerator =
         unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }?;
     crate::wasapi::rendu::identifiant_capte(&enumerateur)

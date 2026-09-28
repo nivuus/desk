@@ -1,38 +1,38 @@
-//! L'icône d'une application : l'extraire, l'encoder, et PROUVER d'où elle
-//! vient.
+//! The icon of an application: extract it, encode it, and PROVE where it
+//! comes from.
 //!
-//! ⚠️ CE MODULE EST DÉCLARÉ SANS `cfg` DANS `apps.rs`, ET CE SONT SES PARTIES
-//! WINDOWS QUI PORTENT LE LEUR. C'est la figure exacte d'`apps.rs` lui-même,
-//! un cran plus bas, et c'est ce qui fait exister `apps::icone::ressource`,
-//! `::magasin` et `::source` sur l'hôte Linux, où leurs tests courent.
+//! ⚠️ THIS MODULE IS DECLARED WITHOUT `cfg` IN `apps.rs`, AND IT IS ITS WINDOWS
+//! PARTS THAT CARRY THEIRS. It is the exact shape of `apps.rs` itself,
+//! one level down, and it is what makes `apps::icone::ressource`,
+//! `::magasin` and `::source` exist on the Linux host, where their tests run.
 //!
-//! 🔴 **DIVERGENCE AVEC LE PLAN DE G2, RELEVÉE ET TRANCHÉE PLUTÔT QUE
-//! RECOPIÉE.** Le plan écrit deux choses qui ne tiennent pas ensemble : que ce
-//! fichier-ci est `#[cfg(windows)]`, ET que ses enfants purs sont déclarés
-//! « dans `apps.rs` … et cela évite le `#[path]` ». Or on ne peut pas déclarer
-//! un PETIT-fils depuis le grand-parent sans `#[path]` : si `icone` était gaté,
-//! `apps::icone::ressource` n'existerait pas sur l'hôte, et l'y faire vivre
-//! demanderait précisément le `#[path]` que le plan dit éviter. Ce qui est
-//! retenu est donc son INTENTION — les modules purs existent sur l'hôte, et
-//! aucun `#[path]` n'est employé — par la seule construction qui la serve : le
-//! parent est libre de `cfg`, ses parties Windows sont gatées à l'intérieur.
+//! 🔴 **DIVERGENCE FROM THE G2 PLAN, NOTED AND SETTLED RATHER THAN
+//! COPIED.** The plan writes two things that do not hold together: that this
+//! very file is `#[cfg(windows)]`, AND that its pure children are declared
+//! "in `apps.rs` … and this avoids the `#[path]`". But one cannot declare
+//! a GRANDchild from the grandparent without `#[path]`: if `icone` were gated,
+//! `apps::icone::ressource` would not exist on the host, and making it live there
+//! would require precisely the `#[path]` the plan says it avoids. What is
+//! kept is therefore its INTENT — the pure modules exist on the host, and
+//! no `#[path]` is used — through the only construction that serves it: the
+//! parent is free of `cfg`, its Windows parts are gated inside.
 //!
-//! La « Convention de module enfant » de `CLAUDE.md` n'est **pas** mobilisée :
-//! aucun module ne franchit ici de frontière `#[cfg(windows)]`.
+//! The "Child module convention" of `CLAUDE.md` is **not** invoked:
+//! no module crosses a `#[cfg(windows)]` boundary here.
 
-/// 🔴 LA PREUVE DU SOUS-BLOC, ET ELLE EST PURE : lire un `GRPICONDIR` ou un
-/// `ICONDIR` depuis un `&[u8]`.
+/// 🔴 THE PROOF OF THE SUB-BLOCK, AND IT IS PURE: reading a `GRPICONDIR` or an
+/// `ICONDIR` from a `&[u8]`.
 pub mod ressource;
 
-/// Le magasin en mémoire, adressé par contenu. **PUR.**
+/// The in-memory store, content-addressed. **PURE.**
 pub mod magasin;
-/// D'où vient l'icône d'un raccourci. **PUR.**
+/// Where the icon of a shortcut comes from. **PURE.**
 pub mod source;
 
 // ---------------------------------------------------------------------------
-// Ce qui suit est `#[cfg(windows)]` : l'extraction par le Shell, l'encodage
-// PNG par WIC, et la lecture de la ressource. Rien n'y DÉCIDE — les décisions
-// vivent dans les trois modules purs ci-dessus.
+// What follows is `#[cfg(windows)]`: extraction through the Shell, PNG
+// encoding through WIC, and reading the resource. Nothing there DECIDES — the decisions
+// live in the three pure modules above.
 // ---------------------------------------------------------------------------
 
 /// Les octets bruts d'un `GRPICONDIR`. **`#[cfg(windows)]`.**
@@ -45,9 +45,9 @@ mod extraction;
 #[cfg(windows)]
 pub use extraction::{armee, extraire, provenance_de};
 
-/// Le téléversement HTTP des icônes vers la plateforme.
+/// The HTTP upload of icons to the platform.
 ///
-/// ⚠️ SANS `cfg` : ses deux parties PURES — la dérivation de l'autorité et la
-/// lecture du statut — se testent sur l'hôte, et ce sont elles qui décident du
-/// refus de TLS.
+/// ⚠️ WITHOUT `cfg`: its two PURE parts — deriving the authority and
+/// reading the status — are tested on the host, and they are what decides the
+/// refusal of TLS.
 pub mod televersement;

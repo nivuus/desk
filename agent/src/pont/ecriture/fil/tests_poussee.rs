@@ -5,16 +5,16 @@
 use super::tests::{modifie, Bac};
 use super::*;
 
-/// 🔴 **UN MORCEAU EN VOL À LA FOIS.**
+/// 🔴 **ONE CHUNK IN FLIGHT AT A TIME.**
 ///
-/// Tout pousser d'un coup inonderait la file SCTP — ce que F1 a déjà décidé
-/// d'éviter.
+/// Pushing everything at once would flood the SCTP queue — which F1 already decided
+/// to avoid.
 ///
-/// ⚠️ **F3 N'A PAS CHANGÉ CELA, et sa fenêtre ne s'applique pas ici.** *(Cette
-/// phrase ajoutait « et le contrôle de flux par `bufferedAmount` est un
-/// livrable de F3 ».)* `pont::lecture::Fenetre` gouverne le sens LECTURE, où
-/// c'est le NAVIGATEUR qui émet ; en écriture, c'est le pont, et pousser
-/// plusieurs morceaux d'avance inonderait précisément ce qu'on évite.
+/// ⚠️ **F3 DID NOT CHANGE THIS, and its window does not apply here.** *(This
+/// sentence added "and flow control through `bufferedAmount` is a
+/// deliverable of F3".)* `pont::lecture::Fenetre` governs the READ direction, where
+/// it is the BROWSER that emits; in writing, it is the bridge, and pushing
+/// several chunks in advance would flood precisely what we avoid.
 #[test]
 fn un_morceau_en_vol_a_la_fois() {
     let bac = Bac::neuf();
@@ -50,8 +50,8 @@ fn un_morceau_en_vol_a_la_fois() {
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
 }
 
-/// Une écriture qui arrive PENDANT une poussée est rejouée après — et le
-/// fichier est relu **depuis le début**.
+/// A write arriving DURING a push is replayed afterwards — and the
+/// file is reread **from the start**.
 #[test]
 fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
     let bac = Bac::neuf();
@@ -61,7 +61,7 @@ fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
     let (_, c1, _, charge) = bac.trames().last().expect("morceau").clone();
     assert_eq!(charge, b"premier");
 
-    // L'utilisateur réenregistre pendant que la poussée est en vol.
+    // The user saves again while the push is in flight.
     bac.poser("a.txt", b"SECOND CONTENU PLUS LONG");
     fil.traiter(modifie("a.txt"));
     fil.traiter(Ordre::Fait { correlation: c1 });
@@ -76,7 +76,7 @@ fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
 }
 
-/// Une création de RÉPERTOIRE ne produit aucun morceau.
+/// A DIRECTORY creation produces no chunk.
 #[test]
 fn un_repertoire_cree_ne_produit_aucun_morceau() {
     let bac = Bac::neuf();
@@ -101,8 +101,8 @@ fn un_repertoire_cree_ne_produit_aucun_morceau() {
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
 }
 
-/// Un acquittement tardif — arrivé après une expiration — est **jeté**, jamais
-/// appliqué à la poussée suivante.
+/// A late acknowledgement — arrived after an expiry — is **thrown away**, never
+/// applied to the next push.
 #[test]
 fn un_acquittement_tardif_est_jete() {
     let bac = Bac::neuf();
@@ -110,7 +110,7 @@ fn un_acquittement_tardif_est_jete() {
     let mut fil = Fil::demarrer(bac.config(true));
     fil.traiter(modifie("a.txt"));
     let (_, c, _, _) = *bac.trames().last().expect("morceau");
-    // Une corrélation qui n'est pas celle en vol.
+    // A correlation that is not the one in flight.
     fil.traiter(Ordre::Fait {
         correlation: c.wrapping_add(1),
     });
@@ -123,8 +123,8 @@ fn un_acquittement_tardif_est_jete() {
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
 }
 
-/// Les écritures prennent leurs corrélations dans **la même table** que les
-/// lectures : deux sources sur un canal unique se collisionneraient en silence.
+/// Writes take their correlations from **the same table** as
+/// reads: two sources on a single channel would collide silently.
 #[test]
 fn les_ecritures_prennent_leurs_correlations_dans_la_table_partagee() {
     let bac = Bac::neuf();

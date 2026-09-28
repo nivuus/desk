@@ -1,18 +1,18 @@
-//! L'installation d'un logiciel déposé par l'utilisateur : télécharger,
-//! exécuter, et dire ce qui s'est réellement passé.
+//! Installing software dropped by the user: download,
+//! run, and say what really happened.
 //!
-//! ⚠️ CE MODULE EST DÉCLARÉ SANS `cfg` depuis `apps.rs`, exactement comme
-//! `apps` lui-même l'est depuis `main.rs`, et ce sont ses enfants Windows qui
-//! portent le leur. C'est ce qui fait exister `verdict`, `fenetre`, `reponse`,
-//! `depot`, `cadence` et `telechargement` sur l'hôte Linux, où leurs tests
-//! courent — la « Convention de module enfant » de `CLAUDE.md` n'est donc pas
-//! mobilisée : aucun module ne franchit ici de frontière `#[cfg(windows)]`.
+//! ⚠️ THIS MODULE IS DECLARED WITHOUT `cfg` from `apps.rs`, exactly as
+//! `apps` itself is from `main.rs`, and it is its Windows children that
+//! carry theirs. That is what makes `verdict`, `fenetre`, `reponse`,
+//! `depot`, `cadence` and `telechargement` exist on the Linux host, where their tests
+//! run — the "Child module convention" of `CLAUDE.md` is therefore not
+//! invoked: no module crosses a `#[cfg(windows)]` boundary here.
 //!
-//! 🔴 **SEUL `execution` PORTE LE `cfg`.** Tout ce qui pouvait en sortir en est
-//! sorti — le verdict, la fenêtre de comptage, les chemins, les extensions, la
-//! cadence, l'analyse des en-têtes HTTP et le téléchargement lui-même —, et
-//! c'est là qu'est la couverture : `execution.rs` n'a, sur l'hôte, aucune
-//! épreuve possible hors `cargo check --target x86_64-pc-windows-gnu`.
+//! 🔴 **ONLY `execution` CARRIES THE `cfg`.** Everything that could leave it has
+//! left — the verdict, the counting window, the paths, the extensions, the
+//! cadence, parsing HTTP headers and the download itself —, and
+//! that is where the coverage is: `execution.rs` has, on the host, no
+//! possible test outside `cargo check --target x86_64-pc-windows-gnu`.
 
 pub mod cadence;
 pub mod depot;

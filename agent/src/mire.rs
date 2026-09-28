@@ -1,47 +1,47 @@
-//! Description des mires de la sonde multi-fenêtres : la couleur qu'une
-//! fenêtre doit peindre, et le verdict rendu sur un pixel lu dans une image
-//! capturée.
+//! Description of the multi-window probe's test patterns: the colour a
+//! window must paint, and the verdict returned on a pixel read in a captured
+//! image.
 //!
-//! Portable à dessein, comme `geometry.rs` : c'est le juge de la porte
-//! éliminatoire du banc (« la fenêtre recouverte rend-elle toujours sa mire »).
-//! Un juge cassé et un banc qui ne trouve rien produisent le même silence —
-//! d'où les tests, exécutés sur l'hôte Linux.
+//! Portable on purpose, like `geometry.rs`: it is the judge of the bench's
+//! elimination gate ("does the covered window still render its test pattern").
+//! A broken judge and a bench that finds nothing produce the same silence —
+//! hence the tests, run on the Linux host.
 
-/// Nombre maximal de mires simultanées — la cible du banc.
+/// Maximum number of simultaneous test patterns — the bench's target.
 pub const MIRES_MAX: u8 = 8;
 
-/// Rouge de la mire n°0. Non nul : un rouge à 0 se confondrait avec du noir
-/// sur une lecture bruitée.
+/// Red of test pattern no. 0. Not zero: a red at 0 would be confused with black
+/// on a noisy reading.
 const BASE_IDENTITE: u8 = 16;
-/// Écart de rouge entre deux mires voisines. Très au-delà de la tolérance :
-/// confondre deux mires ferait passer la porte éliminatoire à une voie qui
-/// capture la mauvaise fenêtre, exactement le défaut recherché.
+/// Red gap between two neighbouring test patterns. Far beyond the tolerance:
+/// confusing two test patterns would make the elimination gate pass a path that
+/// captures the wrong window, exactly the defect being looked for.
 const PAS_IDENTITE: u8 = 24;
-/// Bleu commun à toutes les mires : signe qu'on lit bien une mire.
+/// Blue common to all test patterns: a sign that we are indeed reading a test pattern.
 const BLEU_MIRE: u8 = 96;
-/// Vert des trames paires et impaires. L'alternance rend l'animation
-/// détectable, et Desktop Duplication n'émet une image que si le bureau change.
+/// Green of even and odd frames. The alternation makes the animation
+/// detectable, and Desktop Duplication only emits an image if the desktop changes.
 const VERT_PAIR: u8 = 32;
 const VERT_IMPAIR: u8 = 224;
-/// Écart toléré par canal sur un pixel lu.
+/// Tolerated gap per channel on a pixel read.
 const TOLERANCE: i16 = 4;
-/// En deçà, sur les trois canaux, l'image est tenue pour noire.
+/// Below it, on all three channels, the image is deemed black.
 const SEUIL_NOIR: u8 = 12;
 
-/// Ce qu'un pixel lu dit de la fenêtre attendue.
+/// What a pixel read says about the expected window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verdict {
-    /// La mire attendue, à la tolérance près.
+    /// The expected test pattern, within tolerance.
     Juste,
-    /// La mire d'une AUTRE fenêtre : la voie capture le mauvais contenu.
+    /// The test pattern of ANOTHER window: the path captures the wrong content.
     Voisine(u8),
-    /// Image noire : la voie ne rend rien du contenu.
+    /// Black image: the path returns nothing of the content.
     Noire,
-    /// Ni une mire, ni du noir.
+    /// Neither a test pattern, nor black.
     Inconnue,
 }
 
-/// Couleur que la mire `id` doit peindre à la trame `trame`, en `(r, g, b)`.
+/// Colour test pattern `id` must paint at frame `trame`, as `(r, g, b)`.
 pub fn couleur_mire(id: u8, trame: u64) -> (u8, u8, u8) {
     debug_assert!(id < MIRES_MAX);
     let rouge = BASE_IDENTITE + id * PAS_IDENTITE;
@@ -57,7 +57,7 @@ fn proche(valeur: u8, attendu: u8) -> bool {
     (valeur as i16 - attendu as i16).abs() <= TOLERANCE
 }
 
-/// Identifie la fenêtre dont ce pixel porte la mire, s'il en porte une.
+/// Identifies the window whose test pattern this pixel carries, if it carries one.
 pub fn identifier(pixel: (u8, u8, u8)) -> Option<u8> {
     let (rouge, vert, bleu) = pixel;
     if !proche(bleu, BLEU_MIRE) {
@@ -71,9 +71,9 @@ pub fn identifier(pixel: (u8, u8, u8)) -> Option<u8> {
         return None;
     }
     let id = ecart / PAS_IDENTITE as i16;
-    // Le reste doit tomber sur un multiple exact du pas, à la tolérance près :
-    // sans cette vérification, toute nuance de rouge serait attribuée à une
-    // mire par simple division.
+    // The remainder must fall on an exact multiple of the step, within tolerance:
+    // without this check, any shade of red would be attributed to a
+    // test pattern by mere division.
     if (ecart - id * PAS_IDENTITE as i16).abs() > TOLERANCE || id >= MIRES_MAX as i16 {
         return None;
     }
@@ -93,19 +93,19 @@ pub fn verdict(attendu: u8, pixel: (u8, u8, u8)) -> Verdict {
     }
 }
 
-/// Quelle voie est contrôlée au tour `tour`, parmi `nombre` voies.
+/// Which path is checked at round `tour`, among `nombre` paths.
 ///
-/// Le montage multi-sorties supprime le recouvrement — une fenêtre par
-/// sortie, rien ne peut en cacher une autre — donc la porte éliminatoire du
-/// banc mono-sortie n'a plus d'objet. Le risque devient l'appariement : que la
-/// voie *i* capture en réalité la sortie *j*, ou du noir.
+/// The multi-output set-up removes covering — one window per
+/// output, nothing can hide another — so the elimination gate of the
+/// single-output bench no longer has a purpose. The risk becomes pairing: that
+/// path *i* actually captures output *j*, or black.
 ///
-/// Contrôler les N voies à chaque tour le détecterait, mais ferait croître le
-/// coût CPU du contrôle avec N : la cadence relevée à N=8 intégrerait huit
-/// fois ce coût et ne serait comparable à rien — l'erreur déjà payée au
-/// chantier précédent, où la portée de la lecture de pixel a changé en cours
-/// de route. La rotation couvre toutes les voies pour **une** lecture par
-/// tour, quel que soit N.
+/// Checking the N paths at each round would detect it, but would make the
+/// CPU cost of the check grow with N: the frame rate surveyed at N=8 would include eight
+/// times that cost and would be comparable to nothing — the mistake already paid for in the
+/// previous work stream, where the scope of the pixel reading changed
+/// midway. The rotation covers all paths for **one** reading per
+/// round, whatever N.
 pub fn voie_controlee(tour: u64, nombre: usize) -> Option<usize> {
     if nombre == 0 {
         return None;
@@ -139,15 +139,15 @@ mod tests {
 
     #[test]
     fn la_mire_d_une_fenetre_voisine_est_rejetee() {
-        // Le cas exact que la porte éliminatoire doit attraper : la capture
-        // d'une fenêtre recouverte rend le contenu de celle du dessus.
+        // The exact case the elimination gate must catch: the capture
+        // of a covered window returns the content of the one on top.
         assert_eq!(verdict(3, couleur_mire(4, 0)), Verdict::Voisine(4));
     }
 
     #[test]
     fn une_image_noire_est_rejetee() {
-        // PrintWindow sur une fenêtre D3D rend typiquement du noir : c'est un
-        // échec de voie, pas une mire inconnue.
+        // PrintWindow on a D3D window typically returns black: it is a
+        // path failure, not an unknown test pattern.
         assert_eq!(verdict(0, (0, 0, 0)), Verdict::Noire);
     }
 
@@ -159,15 +159,15 @@ mod tests {
 
     #[test]
     fn une_couleur_etrangere_est_inconnue() {
-        // Le fond du bureau, une console PowerShell : ni une mire, ni du noir.
+        // The desktop background, a PowerShell console: neither a test pattern, nor black.
         assert_eq!(verdict(0, (255, 255, 255)), Verdict::Inconnue);
         assert_eq!(identifier((1, 36, 86)), None);
     }
 
-    /// La propriété qui compte : sur k·N tours, chaque voie est contrôlée
-    /// exactement k fois. Un contrôle qui favoriserait une voie laisserait
-    /// les autres non couvertes, et c'est précisément l'appariement croisé
-    /// entre sorties que ce montage doit détecter.
+    /// The property that matters: over k·N rounds, each path is checked
+    /// exactly k times. A check that favoured one path would leave
+    /// the others uncovered, and it is precisely cross-pairing
+    /// between outputs that this set-up must detect.
     #[test]
     fn la_rotation_controle_chaque_voie_le_meme_nombre_de_fois() {
         for nombre in 1..=8usize {
@@ -193,8 +193,8 @@ mod tests {
         }
     }
 
-    /// Zéro voie n'est pas une erreur d'appelant à signaler par panique : le
-    /// banc doit pouvoir demander sans savoir, et ne rien contrôler.
+    /// Zero paths is not a caller error to report through a panic: the
+    /// bench must be able to ask without knowing, and check nothing.
     #[test]
     fn sans_voie_il_n_y_a_rien_a_controler() {
         assert_eq!(voie_controlee(0, 0), None);

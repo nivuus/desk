@@ -1,10 +1,10 @@
-//! Création et acceptation des instances du tube nommé du capteur.
+//! Creating and accepting the instances of the sensor's named pipe.
 //!
-//! **Extrait de `serveur.rs` le 6 août 2026**, qui était à 490 lignes pour un
-//! plafond de 500 — `CLAUDE.md` exige pour ce fichier « une extraction, jamais
-//! une compression du commentaire de `TAMPON` », et c'est bien le commentaire
-//! de `TAMPON` qui part ici AVEC sa constante, auprès de laquelle il doit
-//! rester. **Aucune valeur, aucun ordre d'opération n'a changé.**
+//! **Extracted from `serveur.rs` on 6 August 2026**, which was at 490 lines for a
+//! cap of 500 — `CLAUDE.md` requires for this file "an extraction, never
+//! a compression of the `TAMPON` comment", and it is indeed the comment
+//! on `TAMPON` that moves here WITH its constant, next to which it must
+//! stay. **No value, no order of operations changed.**
 
 use std::time::Duration;
 
@@ -19,40 +19,40 @@ use windows::Win32::System::Pipes::{
 
 use crate::capteur::protocole::NOM_TUBE;
 
-/// Tampon de tube, dans les deux sens. **Dimensionné en unités d'accès, pas
-/// en mégaoctets ronds** (correctif I4 de la revue finale de branche).
+/// Pipe buffer, in both directions. **Sized in access units, not
+/// in round megabytes** (fix I4 from the final branch review).
 ///
-/// C'est ce tampon qui fixe la profondeur RÉELLE de la file d'images, et non
-/// `CAPACITE_ECRITURES` ni `CAPACITE_FILE` : ces deux-là valent 8 et raisonnent
-/// sur ≈90 ms de vidéo, mais un tampon OS plus grand les rend sans effet — il
-/// se remplit derrière elles. À 1 MiB, une unité d'accès pesant 10 à 30 Ko, le
-/// tube retenait 30 à 100 images, soit **0,3 à 1,1 s de vidéo en file**. Or
-/// chaque image porte son instant de capture d'origine : un à-coup ne se
-/// rattrape pas, il se rejoue en rafale d'images anciennes.
+/// It is this buffer that sets the REAL depth of the frame queue, and not
+/// `CAPACITE_ECRITURES` nor `CAPACITE_FILE`: those two are 8 and reason
+/// about ≈90 ms of video, but a larger OS buffer makes them ineffective — it
+/// fills up behind them. At 1 MiB, with an access unit weighing 10 to 30 KB, the
+/// pipe held 30 to 100 frames, that is **0.3 to 1.1 s of queued video**. Yet
+/// each frame carries its original capture instant: a hiccup is not
+/// caught up, it is replayed as a burst of old frames.
 ///
-/// 128 Kio ramène cela à ≈4 à 12 images, du même ordre que les deux capacités
-/// ci-dessus, sans descendre au point qu'un à-coup normal bloque le fil de
-/// capture.
+/// 128 KiB brings that down to ≈4 to 12 frames, of the same order as the two capacities
+/// above, without going so low that a normal hiccup blocks the capture
+/// thread.
 ///
-/// ⚠️ **La latence n'a jamais été mesurée sur ce chemin** : la recette du
-/// sous-bloc D4 a relevé des cadences, jamais un délai de bout en bout. Ce
-/// dimensionnement est un raisonnement sur des tailles d'unités d'accès
-/// observées, pas un réglage calibré.
+/// ⚠️ **Latency has never been measured on this path**: the acceptance run of
+/// sub-block D4 recorded frame rates, never an end-to-end delay. This
+/// sizing is a reasoning on observed access unit sizes,
+/// not a calibrated setting.
 const TAMPON: u32 = 128 * 1024;
 
-/// Souffle entre deux tentatives de création d'instance de tube après un échec
-/// (correctif I5). Assez court pour qu'un échec transitoire ne coûte rien de
-/// perceptible à l'enfant qui attend, assez long pour qu'un échec persistant
-/// ne devienne pas une boucle serrée. Majorant assumé, non calibré.
+/// Breather between two pipe instance creation attempts after a failure
+/// (fix I5). Short enough for a transient failure to cost nothing
+/// noticeable to the waiting child, long enough for a persistent failure
+/// not to become a tight loop. Accepted upper bound, not calibrated.
 pub(super) const SOUFFLE_CREATION_INSTANCE: Duration = Duration::from_millis(200);
 
-/// Bloque jusqu'à ce qu'un enfant se connecte à `tube`.
+/// Blocks until a child connects to `tube`.
 ///
-/// **`ERROR_PIPE_CONNECTED` est un SUCCÈS déguisé en erreur.** Il signale
-/// qu'un enfant s'est connecté dans l'intervalle entre `CreateNamedPipeW` et
-/// cet appel — une course banale, attendue sous `PIPE_UNLIMITED_INSTANCES` —
-/// et non un échec. Le confondre avec un échec réel tuerait le processus
-/// capteur entier (donc les N fenêtres avec lui) à la première course.
+/// **`ERROR_PIPE_CONNECTED` is a SUCCESS disguised as an error.** It signals
+/// that a child connected in the interval between `CreateNamedPipeW` and
+/// this call — a mundane race, expected under `PIPE_UNLIMITED_INSTANCES` —
+/// and not a failure. Confusing it with a real failure would kill the whole
+/// sensor process (hence the N windows with it) at the first race.
 pub(super) fn connecter(tube: HANDLE) -> Result<()> {
     match unsafe { ConnectNamedPipe(tube, None) } {
         Ok(()) => Ok(()),

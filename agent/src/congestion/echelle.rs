@@ -1,54 +1,54 @@
-//! L'échelle de barreaux : les résolutions d'encodage disponibles pour une
-//! taille de source donnée, et le débit minimal que chacune exige.
+//! The rung ladder: the encoding resolutions available for a
+//! given source size, and the minimum bitrate each requires.
 //!
-//! `BPP_MIN` (0,05 bit par pixel et par image) est **reconduit faute de
-//! preuve du contraire, pas confirmé**, et il est couplé au `fps` de
-//! `Config` : les deux se recalibrent ensemble. Voir `CLAUDE.md`,
-//! « Réglages du contrôleur ».
+//! `BPP_MIN` (0.05 bit per pixel per frame) is **kept for lack of
+//! proof to the contrary, not confirmed**, and it is coupled to the `fps` of
+//! `Config`: the two are recalibrated together. See `CLAUDE.md`,
+//! "Controller settings".
 
-/// Diviseurs successifs appliqués à la taille source pour former l'échelle.
+/// Successive divisors applied to the source size to form the ladder.
 ///
-/// Quatre barreaux, choisis pour que chaque descente soit visible sans être
-/// brutale : de 1080p on passe à 864p, puis 720p, puis 540p.
+/// Four rungs, chosen so that each descent is visible without being
+/// abrupt: from 1080p we go to 864p, then 720p, then 540p.
 const DIVISEURS: [f32; 4] = [1.0, 1.25, 1.5, 2.0];
 
-/// Débit minimal, en bits par pixel et par image, en dessous duquel un barreau
-/// devient laid.
+/// Minimum bitrate, in bits per pixel per frame, below which a rung
+/// becomes ugly.
 ///
-/// **C'est LE réglage du contrôleur.** La valeur de départ est choisie pour
-/// donner une échelle cohérente sous le plafond de 12 Mb/s en 1080p60 (6,2 →
-/// 4,0 → 2,8 → 1,6 Mb/s), pas mesurée.
+/// **It is THE controller setting.** The starting value is chosen to
+/// give a coherent ladder under the 12 Mb/s ceiling at 1080p60 (6.2 →
+/// 4.0 → 2.8 → 1.6 Mb/s), not measured.
 ///
-/// **Issue réelle (tâche 12, recette netem) :** RECONDUITE, faute de preuve
-/// du contraire — pas confirmée par une inspection visuelle positive. Sous
-/// `adsl` (8 Mb/s), le seuil du barreau plein pour la source captée valait
-/// ≈1,11 Mb/s, largement sous le débit du lien : les descentes observées
-/// venaient de l'instabilité de l'estimation BWE (voir `DELAI_REMONTEE`), pas
-/// d'un seuil mal calibré. Mais le critère qui aurait permis de VALIDER cette
-/// valeur (« l'image en pleine résolution était visiblement acceptable ou
-/// dégradée ») suppose un jugement visuel qui n'a jamais été fait — aucune
-/// capture d'écran n'a été comparée à l'œil. Voir
+/// **Real outcome (task 12, netem acceptance run):** KEPT, for lack of proof
+/// to the contrary — not confirmed by a positive visual inspection. Under
+/// `adsl` (8 Mb/s), the full-rung threshold for the captured source was
+/// ≈1.11 Mb/s, well under the link bitrate: the descents observed
+/// came from the instability of the BWE estimate (see `DELAI_REMONTEE`), not
+/// from a badly calibrated threshold. But the criterion that would have made it possible to VALIDATE this
+/// value ("the full-resolution picture was visibly acceptable or
+/// degraded") assumes a visual judgement that was never made — no
+/// screenshot was compared by eye. See
 /// `docs/superpowers/plans/2026-07-29-reseau-adaptatif-resultats.md`, §5.
 const BPP_MIN: f32 = 0.05;
 
-/// Un barreau de l'échelle : une taille d'encodage et le débit en dessous
-/// duquel elle cesse d'être regardable.
+/// A rung of the ladder: an encoding size and the bitrate below
+/// which it stops being watchable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Barreau {
     pub taille: (u32, u32),
     pub min_bps: u32,
 }
 
-/// Échelle de résolutions dérivée d'une taille source et d'une cadence.
+/// Resolution ladder derived from a source size and a frame rate.
 ///
-/// L'échelle contient **au plus quatre barreaux**, strictement décroissants en
-/// largeur. La troncature au pixel pair (H.264) peut faire converger plusieurs
-/// diviseurs vers la même taille pour les sources minuscules — dans ce cas,
-/// l'échelle les fusionne, tout en garantissant au moins un barreau (le
-/// plancher), ce qui évite les préconditions inutiles en amont (qui ne
-/// garantissent pas une taille source minimale).
+/// The ladder contains **at most four rungs**, strictly decreasing in
+/// width. Truncation to an even pixel (H.264) can make several
+/// divisors converge to the same size for tiny sources — in that case,
+/// the ladder merges them, while guaranteeing at least one rung (the
+/// floor), which avoids needless preconditions upstream (which do not
+/// guarantee a minimum source size).
 ///
-/// Le premier barreau est toujours la taille source (diviseur 1.0).
+/// The first rung is always the source size (divisor 1.0).
 #[derive(Debug, Clone)]
 pub struct Echelle {
     barreaux: Vec<Barreau>,
@@ -60,10 +60,10 @@ impl Echelle {
         let tous_barreaux: Vec<Barreau> = DIVISEURS
             .iter()
             .map(|d| {
-                // `& !1` : H.264 exige des dimensions paires. La même
-                // contrainte est déjà appliquée par `WindowsSource::resize`.
-                // `.max(2)` empêche une source minuscule de produire une
-                // dimension nulle, que Media Foundation refuserait.
+                // `& !1`: H.264 requires even dimensions. The same
+                // constraint is already applied by `WindowsSource::resize`.
+                // `.max(2)` prevents a tiny source from producing a
+                // zero dimension, which Media Foundation would refuse.
                 let w = (((sw as f32) / d) as u32 & !1).max(2);
                 let h = (((sh as f32) / d) as u32 & !1).max(2);
                 let pixels = w as u64 * h as u64;
@@ -75,9 +75,9 @@ impl Echelle {
             })
             .collect();
 
-        // Éliminer les barreaux dont la taille est identique au précédent.
-        // Cela peut arriver pour les sources minuscules, en raison de la
-        // troncature au pixel pair et du plancher `.max(2)`.
+        // Remove the rungs whose size is identical to the previous one.
+        // This can happen for tiny sources, due to the
+        // even-pixel truncation and the `.max(2)` floor.
         let mut barreaux: Vec<Barreau> = Vec::new();
         for barreau in tous_barreaux {
             if barreaux.is_empty() || barreau.taille != barreaux.last().unwrap().taille {
@@ -92,11 +92,11 @@ impl Echelle {
         &self.barreaux
     }
 
-    /// Indice du barreau le plus haut que `disponible_bps` finance.
+    /// Index of the highest rung that `disponible_bps` finances.
     ///
-    /// Rend le dernier barreau quand rien ne le finance : l'échelle n'a pas
-    /// de barreau en dessous. Constater l'insuffisance est le rôle du
-    /// contrôleur, qui seul sait qu'on est au plancher.
+    /// Returns the last rung when nothing finances it: the ladder has no
+    /// rung below. Observing the shortfall is the role of the
+    /// controller, which alone knows we are at the floor.
     pub fn barreau_finance(&self, disponible_bps: u32) -> usize {
         self.barreaux
             .iter()
@@ -136,11 +136,11 @@ mod tests {
 
     #[test]
     fn echelle_minuscule_sans_doublons() {
-        // Sources où la troncature au pixel pair peut produire des doublons,
-        // sans cette correction. Vérifie que l'échelle élimine les doublons et
-        // reste strictement décroissante.
+        // Sources where the even-pixel truncation can produce duplicates,
+        // without this fix. Checks that the ladder removes duplicates and
+        // stays strictly decreasing.
 
-        // Source 8×8 : les diviseurs 1.5 et 2.0 retomberaient sur (4, 4).
+        // 8×8 source: the divisors 1.5 and 2.0 would fall back on (4, 4).
         let echelle_8x8 = Echelle::depuis((8, 8), 60);
         let tailles_8x8: Vec<(u32, u32)> =
             echelle_8x8.barreaux().iter().map(|b| b.taille).collect();
@@ -163,9 +163,9 @@ mod tests {
             );
         }
 
-        // Source 2×2 : les quatre diviseurs retomberaient tous sur (2, 2).
-        // L'échelle ne doit avoir qu'un seul barreau, le plancher, pas quatre
-        // doublons.
+        // 2×2 source: the four divisors would all fall back on (2, 2).
+        // The ladder must have only one rung, the floor, not four
+        // duplicates.
         let echelle_2x2 = Echelle::depuis((2, 2), 60);
         let tailles_2x2: Vec<(u32, u32)> =
             echelle_2x2.barreaux().iter().map(|b| b.taille).collect();
@@ -183,18 +183,18 @@ mod tests {
         let echelle = Echelle::depuis((1920, 1080), 60);
         let barreaux = echelle.barreaux();
 
-        // Très large : le barreau 0.
+        // Very wide: rung 0.
         assert_eq!(echelle.barreau_finance(50_000_000), 0);
 
-        // Juste au minimum du barreau 0 : encore le barreau 0.
+        // Right at the minimum of rung 0: still rung 0.
         assert_eq!(echelle.barreau_finance(barreaux[0].min_bps), 0);
 
-        // Un bit sous le minimum du barreau 0 : on descend d'un cran.
+        // One bit under the minimum of rung 0: we go down one notch.
         assert_eq!(echelle.barreau_finance(barreaux[0].min_bps - 1), 1);
 
-        // Sous le minimum du dernier barreau : on reste au dernier, c'est le
-        // plancher. Déclarer l'insuffisance est le rôle du contrôleur
-        // (tâche 5), pas celui de l'échelle.
+        // Under the minimum of the last rung: we stay at the last one, it is the
+        // floor. Declaring the shortfall is the role of the controller
+        // (task 5), not that of the ladder.
         assert_eq!(echelle.barreau_finance(0), barreaux.len() - 1);
     }
 }

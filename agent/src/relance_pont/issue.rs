@@ -1,62 +1,62 @@
-//! Les deux types d'OBSERVATION que le superviseur passe à
-//! [`super::EtatRelance`] : l'issue d'un processus mort, et ce qu'un tour de
-//! boucle voit du processus.
+//! The two OBSERVATION types the supervisor passes to
+//! [`super::EtatRelance`]: the outcome of a dead process, and what a loop turn
+//! sees of the process.
 //!
-//! **Extrait de `relance_pont.rs` le 25 août 2026, DANS UN COMMIT DÉDIÉ ET
-//! AVANT l'addition qui l'a rendu nécessaire** — la règle des 500 lignes de
-//! `CLAUDE.md`, et sa forme forte : « la forme forte est l'extraction jouée
-//! dans une tâche DÉDIÉE, AVANT celle qui ajoute ». Le parent était à 399 et
-//! l'addition du round 5 l'aurait porté à 499, soit une marge de UNE ligne,
-//! que ce dépôt a vue se reperdre six fois.
+//! **Extracted from `relance_pont.rs` on August 25th, 2026, IN A DEDICATED COMMIT AND
+//! BEFORE the addition that made it necessary** — the 500-line rule of
+//! `CLAUDE.md`, and its strong form: "the strong form is the extraction played
+//! in a DEDICATED task, BEFORE the one that adds". The parent was at 399 and
+//! round 5's addition would have taken it to 499, a margin of ONE line,
+//! which this repository has seen lost again six times.
 //!
-//! ⚠️ **La « convention de module enfant » de `CLAUDE.md` NE S'APPLIQUE PAS
-//! ICI, et c'est vérifié plutôt que supposé** : elle ne vise que les modules
-//! qu'on extrait d'un parent `#[cfg(windows)]` pour les faire compiler sur
-//! l'hôte. `relance_pont` est portable de bout en bout, ce fichier aussi ;
-//! c'est un enfant ordinaire, déclaré par un `mod issue;` à l'intérieur de
-//! son parent, sans `#[path]` et sans préfixe de nom.
+//! ⚠️ **`CLAUDE.md`'s "child module convention" DOES NOT APPLY
+//! HERE, and it is checked rather than assumed**: it only targets modules
+//! extracted from a `#[cfg(windows)]` parent to make them compile on the
+//! host. `relance_pont` is portable end to end, this file too;
+//! it is an ordinary child, declared by a `mod issue;` inside
+//! its parent, without `#[path]` and without a name prefix.
 
-/// Ce qu'un processus supervisé laisse derrière lui en mourant — **le
-/// discriminant du réarmement du repli depuis le round de correction 4**, à
-/// la place d'une durée de vie qui ne distinguait pas une session saine d'un
-/// refus endormi (voir la doc de tête de [`super`], module `relance_pont`).
+/// What a supervised process leaves behind when dying — **the
+/// discriminant for re-arming the fallback since fix round 4**, in
+/// place of a lifetime that did not distinguish a healthy session from a
+/// sleeping refusal (see the header doc of [`super`], module `relance_pont`).
 ///
-/// Le type est PUR : il ne connaît ni `std::process::ExitStatus`, ni Windows,
-/// ni `tracing`. La conversion depuis le code de sortie est
-/// [`IssueDeSortie::depuis_le_code`], et c'est le seul point de contact.
+/// The type is PURE: it knows neither `std::process::ExitStatus`, nor Windows,
+/// nor `tracing`. The conversion from the exit code is
+/// [`IssueDeSortie::depuis_le_code`], and it is the only point of contact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IssueDeSortie {
-    /// Code de sortie **0** : le processus a fini son travail et s'est
-    /// arrêté normalement. Pour le pont, c'est le `Ok(())` de
-    /// `pont::executer` — la page-shell a fermé sa session.
+    /// Exit code **0**: the process finished its work and
+    /// stopped normally. For the bridge, it is the `Ok(())` of
+    /// `pont::executer` — the shell page closed its session.
     Propre,
-    /// Code de sortie **non nul** : `bail!`, panique, `exit(n)`. Pour le
-    /// pont, c'est le refus du relais, honoré puis propagé.
+    /// **Non-zero** exit code: `bail!`, panic, `exit(n)`. For the
+    /// bridge, it is the relay's refusal, honoured then propagated.
     Erreur,
-    /// **Aucun code n'est disponible** : le processus a été tué par un signal
-    /// (POSIX), ou l'état n'a pas pu être lu.
+    /// **No code is available**: the process was killed by a signal
+    /// (POSIX), or the state could not be read.
     Inconnue,
 }
 
 impl IssueDeSortie {
-    /// Depuis le code de sortie, tel que `std::process::ExitStatus::code()`
-    /// le rend — `None` quand il n'y en a pas.
+    /// From the exit code, as `std::process::ExitStatus::code()`
+    /// returns it — `None` when there is none.
     ///
-    /// 🔴 **`None` DEVIENT `Inconnue`, ET `Inconnue` NE RÉARME PAS.** C'est
-    /// le sens SÛR, et voici pourquoi : le coût des deux erreurs n'est pas
-    /// symétrique. Réarmer à tort rouvre le défaut que ce round ferme — le
-    /// martèlement à 100 connexions/minute contre un budget partagé de 120,
-    /// c'est-à-dire le **verrouillage de la VM entière**, aucune fenêtre
-    /// neuve ne pouvant plus s'attacher. Ne PAS réarmer à tort coûte, au
-    /// pire, une reconnexion saine retardée de `REPLI_MAX_MS` (30 s) une
-    /// fois — un inconfort borné, sur un service que le cadrage §4 déclare
-    /// FACULTATIF et dont une panne ne touche jamais le flux vidéo.
+    /// 🔴 **`None` BECOMES `Inconnue`, AND `Inconnue` DOES NOT RE-ARM.** It is
+    /// the SAFE direction, and here is why: the cost of the two errors is not
+    /// symmetric. Re-arming wrongly reopens the defect this round closes — the
+    /// hammering at 100 connections/minute against a shared budget of 120,
+    /// that is, the **locking of the whole VM**, no new window
+    /// being able to attach any more. NOT re-arming wrongly costs, at
+    /// worst, a healthy reconnection delayed by `REPLI_MAX_MS` (30 s) once
+    /// — a bounded discomfort, on a service framing §4 declares
+    /// OPTIONAL and whose failure never touches the video stream.
     ///
-    /// ⚠️ **Sur la cible réelle, ce cas ne court pas** : Windows rend
-    /// toujours un code de sortie, `ExitStatus::code()` y étant `Some(_)`
-    /// même pour un `TerminateProcess`. `Inconnue` couvre l'hôte POSIX (où
-    /// `relance_pont` compile et se teste) et l'avenir — il est livré, éprouvé,
-    /// et **jamais exercé en production** : c'est dit plutôt que supposé.
+    /// ⚠️ **On the real target, this case does not run**: Windows always
+    /// returns an exit code, `ExitStatus::code()` being `Some(_)` there
+    /// even for a `TerminateProcess`. `Inconnue` covers the POSIX host (where
+    /// `relance_pont` compiles and is tested) and the future — it is shipped, exercised,
+    /// and **never exercised in production**: it is said rather than assumed.
     pub fn depuis_le_code(code: Option<i32>) -> Self {
         match code {
             Some(0) => Self::Propre,
@@ -65,30 +65,30 @@ impl IssueDeSortie {
         }
     }
 
-    /// Cette issue prouve-t-elle qu'une panne passée est RÉSOLUE, donc que le
-    /// repli exponentiel peut repartir de son plancher ?
+    /// Does this outcome prove that a past failure is RESOLVED, hence that the
+    /// exponential fallback can start again from its floor?
     pub fn prouve_une_panne_resolue(self) -> bool {
         matches!(self, Self::Propre)
     }
 }
 
-/// Ce que le superviseur OBSERVE d'un processus à un tour de boucle.
+/// What the supervisor OBSERVES of a process at a loop turn.
 ///
-/// 🔴 **`Mort` N'EST RENDU QU'UNE FOIS PAR MORT**, et tout `relance_pont` en
-/// dépend — voir la doc de tête de [`super`] : la propriété vit dans le câblage
-/// `#[cfg(windows)]` (`etat_du_pont` pose `*pont = None` en constatant la
-/// mort), donc hors de portée de `cargo test --workspace`.
+/// 🔴 **`Mort` IS RETURNED ONLY ONCE PER DEATH**, and all of `relance_pont`
+/// depends on it — see the header doc of [`super`]: the property lives in the
+/// `#[cfg(windows)]` wiring (`etat_du_pont` sets `*pont = None` when observing the
+/// death), hence out of reach of `cargo test --workspace`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EtatObserve {
-    /// Le processus tourne — ou son état est illisible et **tenu pour
-    /// vivant**, ce qui est la décision de `etat_du_pont` (deux ponts se
-    /// disputant la même racine ProjFS coûtent plus cher qu'un tour perdu).
+    /// The process runs — or its state is unreadable and **held to be
+    /// alive**, which is `etat_du_pont`'s decision (two bridges
+    /// contending for the same ProjFS root cost more than a lost turn).
     Vivant,
-    /// Le processus vient d'être vu mort, avec cette issue.
+    /// The process has just been seen dead, with this outcome.
     Mort(IssueDeSortie),
-    /// Aucun processus : jamais lancé (un `spawn` en échec), ou mort déjà
-    /// constatée à un tour précédent. **Ne réarme rien** — un `spawn` qui
-    /// échoue en boucle doit voir son repli croître, c'est le cas même que
-    /// le critique ③ du round 1 a mesuré.
+    /// No process: never launched (a failed `spawn`), or death already
+    /// observed at a previous turn. **Re-arms nothing** — a `spawn` that
+    /// fails in a loop must see its fallback grow, it is the very case
+    /// round 1's critical ③ measured.
     Absent,
 }

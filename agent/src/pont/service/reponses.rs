@@ -1,34 +1,34 @@
-//! **Ce qu'on fait d'une réponse du navigateur** : l'appariement de ce qu'on
-//! attendait avec ce qui est arrivé, et l'écriture qui en découle.
+//! **What we do with a browser response**: pairing what we
+//! expected with what arrived, and the write that follows from it.
 //!
-//! # Pourquoi cette extraction, et POURQUOI ELLE ARRIVE UNE ADDITION TROP TARD
+//! # Why this extraction, and WHY IT COMES ONE ADDITION TOO LATE
 //!
-//! `service.rs` valait **436** lignes quand F3 l'a ouvert — et non les 325 que
-//! le §2.2 du plan annonçait, F2 l'ayant fait grossir entre-temps. Le
-//! recensement des codes de la tâche 5 l'a porté à **510** : **le plafond de
-//! 500 a été FRANCHI**, et il est rattrapé par cette extraction — **jamais par
-//! une compression**, que `CLAUDE.md` interdit nommément et que D9 a payée deux
-//! fois avant de devoir extraire quand même.
+//! `service.rs` stood at **436** lines when F3 opened it — and not the 325 that
+//! §2.2 of the plan announced, F2 having made it grow in the meantime. The
+//! census of codes of task 5 took it to **510**: **the ceiling of
+//! 500 was CROSSED**, and it is caught up by this extraction — **never by
+//! a compression**, which `CLAUDE.md` forbids by name and which D9 paid for twice
+//! before having to extract anyway.
 //!
-//! ⚠️ **Le geste juste aurait été d'extraire AVANT d'ajouter**, comme D9 l'a
-//! inventé (`capteur/serveur/instances.rs`) et comme D10 l'a joué trois fois.
-//! Ce n'est pas ce qui s'est passé : le plan budgétait une marge de 175 qui
-//! n'existait plus, et le franchissement a été constaté par la commande après
-//! l'addition. **Déclaré plutôt que dissimulé**, et les tâches 8 et 13, qui
-//! ajoutent encore à ce fichier, disposent maintenant de la marge.
+//! ⚠️ **The right gesture would have been to extract BEFORE adding**, as D9
+//! invented it (`capteur/serveur/instances.rs`) and as D10 played it three times.
+//! That is not what happened: the plan budgeted a margin of 175 that
+//! no longer existed, and the crossing was noticed by the command after
+//! the addition. **Declared rather than hidden**, and tasks 8 and 13, which
+//! still add to this file, now have the margin.
 //!
-//! # La ligne de partage
+//! # The dividing line
 //!
-//! [`super`] porte **la boucle** — recevoir, balayer, expirer, recenser,
-//! compléter. Ce module porte **l'appariement** : `(ce qu'on attendait, le
-//! contexte ProjFS retenu)` contre `(le type reçu, l'en-tête, la charge)`. Les
-//! deux responsabilités se relisent séparément, et c'est la seule raison qui
-//! vaille de scinder un fichier.
+//! [`super`] carries **the loop** — receive, sweep, expire, take census,
+//! complete. This module carries **the pairing**: `(what we expected, the
+//! retained ProjFS context)` against `(the received type, the header, the payload)`. The
+//! two responsibilities are reviewed separately, and it is the only reason worth
+//! splitting a file.
 //!
-//! ⚠️ **AUCUNE LIGNE DE CORPS N'EST MODIFIÉE** par l'extraction elle-même : la
-//! transposition est VERBATIM, et le contrôle est une comparaison texte à
-//! texte versée au journal de la tâche 5. Ce que la tâche 13 y ajoutera vient
-//! dans un commit séparé, pour que la revue puisse comparer l'un et l'autre.
+//! ⚠️ **NO BODY LINE IS MODIFIED** by the extraction itself: the
+//! transposition is VERBATIM, and the check is a text-to-text
+//! comparison recorded in task 5's log. What task 13 will add to it comes
+//! in a separate commit, so that the review can compare one with the other.
 
 use std::sync::atomic::Ordering;
 
@@ -44,14 +44,14 @@ use proto::fichiers::entetes;
 
 use super::verbes;
 
-/// Ce qu'il reste à faire après avoir appliqué une réponse.
+/// What remains to do after applying a response.
 pub(super) enum Suite {
     Termine(HRESULT),
     Poursuit,
 }
 
-/// Complète, en tenant compte du fait qu'une énumération exige des paramètres
-/// étendus.
+/// Completes, taking into account that an enumeration requires extended
+/// parameters.
 pub(super) fn terminer(
     etat: &Etat,
     commande: Option<i32>,
@@ -61,8 +61,8 @@ pub(super) fn terminer(
     match contexte {
         Some(ContexteProjFs::Enumeration { tampon, .. }) => match commande {
             Some(commande) => verbes::completer_enumeration(etat, commande, tampon.0, resultat),
-            // Un contexte d'énumération sans commande n'existe pas ; le dire
-            // plutôt que de l'ignorer.
+            // An enumeration context without a command does not exist; saying so
+            // rather than ignoring it.
             None => tracing::warn!("contexte d'énumération sans commande ProjFS : ignoré"),
         },
         _ => verbes::completer(etat, commande, resultat),
@@ -83,16 +83,16 @@ pub(super) fn appliquer(
                 tracing::warn!(chemin, "en-tête Meta illisible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             };
-            // 🔴 **LE SUBSTITUT EST CRÉÉ SOUS LE NOM **STOCKÉ**, jamais sous
-            // celui que l'application a tapé** — c'est la conséquence ① du
-            // canonicaliseur de casse de F3.
+            // 🔴 **THE PLACEHOLDER IS CREATED UNDER THE **STORED** NAME, never under
+            // the one the application typed** — it is consequence ① of
+            // F3's case canonicaliser.
             //
-            // ⚠️ **On ne reconvertit le chemin QUE s'il y a quelque chose à
-            // changer.** F1 s'était donné la propriété de ne jamais toucher les
-            // octets que ProjFS a livrés — « un aller-retour où une casse ou un
-            // séparateur pourrait se perdre » —, et
-            // `chemins::avec_dernier_composant` rend `None` quand le nom
-            // canonique est déjà celui du chemin.
+            // ⚠️ **We only reconvert the path IF there is something to
+            // change.** F1 gave itself the property of never touching the
+            // bytes ProjFS delivered — "a round trip where a case or a
+            // separator could be lost" —, and
+            // `chemins::avec_dernier_composant` returns `None` when the canonical
+            // name is already the path's.
             let projfs_texte = String::from_utf16_lossy(
                 chemin_projfs.strip_suffix(&[0u16]).unwrap_or(chemin_projfs),
             );
@@ -122,13 +122,13 @@ pub(super) fn appliquer(
             if issue.is_ok() {
                 return Suite::Termine(issue);
             }
-            // 🔴 **LE REPLI, ET IL EST DÉCLARÉ.** Que ProjFS accepte un
-            // substitut dont le nom diffère de celui demandé est la façon
-            // documentée de corriger une casse — **mais cela n'a jamais été
-            // MESURÉ sur cette VM**, et un refus rendrait le fichier
-            // inouvrable alors qu'il s'ouvre aujourd'hui. On retente donc sous
-            // le nom demandé plutôt que d'échouer, et **le journal dit
-            // laquelle des deux voies a servi**.
+            // 🔴 **THE FALLBACK, AND IT IS DECLARED.** That ProjFS accepts a
+            // placeholder whose name differs from the one requested is the
+            // documented way to correct a case — **but it has never been
+            // MEASURED on this VM**, and a refusal would make the file
+            // unopenable whereas it opens today. We therefore retry under
+            // the requested name rather than fail, and **the log says
+            // which of the two paths served**.
             tracing::warn!(
                 demande = %projfs_texte,
                 stocke = %neuf,
@@ -143,10 +143,10 @@ pub(super) fn appliquer(
                 meta.modifie,
             ))
         }
-        // `QueryFileName` : le nom existe, et c'est TOUT ce que ProjFS attend.
-        // Écrire un marqueur ici créerait un objet projeté pour un fichier que
-        // personne n'ouvre. Un `TYPE_ECHEC` est traité en amont et rend
-        // `ERROR_FILE_NOT_FOUND`, ce qui alimente le cache négatif.
+        // `QueryFileName`: the name exists, and that is ALL ProjFS expects.
+        // Writing a marker here would create a projected object for a file
+        // no one opens. A `TYPE_ECHEC` is handled upstream and returns
+        // `ERROR_FILE_NOT_FOUND`, which feeds the negative cache.
         (Attendue::Attributs { .. }, Some(ContexteProjFs::Existence)) => Suite::Termine(S_OK),
         (
             Attendue::Lire {
@@ -160,11 +160,11 @@ pub(super) fn appliquer(
                 tracing::warn!(chemin, "en-tête Donnees illisible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             };
-            // ⚠️ **L'en-tête et la charge doivent se corroborer.** Écrire dans
-            // le tampon de ProjFS une quantité d'octets que l'émetteur ne
-            // croyait pas envoyer est le genre de divergence qu'aucun contrôle
-            // en aval ne rattrape : le fichier serait tronqué ou allongé, et
-            // seul un condensat le dirait.
+            // ⚠️ **The header and the payload must corroborate each other.** Writing into
+            // ProjFS's buffer a quantity of bytes the sender did not
+            // believe it sent is the kind of divergence no downstream check
+            // catches: the file would be truncated or lengthened, and
+            // only a digest would say so.
             if entete.longueur as usize != trame.charge.len()
                 || entete.position != position
                 || entete.longueur != longueur
@@ -180,9 +180,9 @@ pub(super) fn appliquer(
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             }
-            // 🔴 **L'ORDRE EST VÉRIFIÉ AVANT L'ÉCRITURE, JAMAIS APRÈS.** Une
-            // réponse hors d'ordre écrite puis dénoncée aurait déjà corrompu le
-            // fichier, et **seul un condensat SHA-256 le dirait**.
+            // 🔴 **THE ORDER IS CHECKED BEFORE WRITING, NEVER AFTER.** An
+            // out-of-order response written then denounced would already have corrupted the
+            // file, and **only a SHA-256 digest would say so**.
             let mut garde = match fenetre.lock() {
                 Ok(g) => g,
                 Err(empoisonne) => empoisonne.into_inner(),
@@ -203,23 +203,23 @@ pub(super) fn appliquer(
             etat.octets_hydrates
                 .fetch_add(trame.charge.len() as u64, Ordering::Relaxed);
 
-            // ✅ **LA FENÊTRE DE F3 REMPLACE « UN MORCEAU EN VOL À LA
-            // FOIS ».** *(Ces lignes disaient : « UN morceau en vol à la fois
-            // […] le contrôle de flux par `bufferedAmount` et `SEUIL_TAMPON`
-            // est un livrable de F3, pas de F1. L'implémenter à moitié ici
-            // serait pire que de ne pas l'implémenter. » F3 est arrivé, et il
-            // n'en a PAS implémenté la moitié : la fenêtre du pont
-            // (`pont::lecture`) ET la contre-pression du navigateur
-            // (`client/src/fichiers/flux.ts`) sont livrées ensemble — avec un
-            // seul morceau en vol, la règle de la spec §7.3 ne pourrait JAMAIS
-            // mordre.)*
+            // ✅ **F3'S WINDOW REPLACES "ONE CHUNK IN FLIGHT AT A
+            // TIME".** *(These lines said: "ONE chunk in flight at a time
+            // […] flow control through `bufferedAmount` and `SEUIL_TAMPON`
+            // is a deliverable of F3, not F1. Implementing it halfway here
+            // would be worse than not implementing it." F3 has arrived, and it
+            // did NOT implement half of it: the bridge's window
+            // (`pont::lecture`) AND the browser's back-pressure
+            // (`client/src/fichiers/flux.ts`) are delivered together — with a
+            // single chunk in flight, the rule of spec §7.3 could NEVER
+            // bite.)*
             //
-            // 🔴 **L'INVARIANT D'ORDRE EST VÉRIFIÉ, JAMAIS CRU.** Le canal est
-            // `ordered` et les morceaux sont demandés en positions
-            // croissantes ; `Fenetre::recu` **dénonce** néanmoins une réponse
-            // hors d'ordre au lieu de l'appliquer. Écrire une plage au mauvais
-            // rang produirait un fichier dont **seul un condensat SHA-256**
-            // dirait qu'il est faux — celui que F1 n'a JAMAIS établi.
+            // 🔴 **THE ORDERING INVARIANT IS CHECKED, NEVER BELIEVED.** The channel is
+            // `ordered` and chunks are requested in increasing
+            // positions; `Fenetre::recu` nevertheless **denounces** an out-of-order
+            // response instead of applying it. Writing a range at the wrong
+            // rank would produce a file that **only a SHA-256 digest**
+            // would show to be wrong — the one F1 NEVER established.
             let lot = garde.a_demander();
             let terminee = garde.terminee();
             let en_vol_max = garde.en_vol_max();
@@ -229,8 +229,8 @@ pub(super) fn appliquer(
                 tracing::debug!(chemin, correlation, en_vol_max, "lecture complète");
                 return Suite::Termine(S_OK);
             }
-            // Une lecture porte TOUJOURS une commande ProjFS : c'est un rappel
-            // `GetFileData` qui l'a inscrite.
+            // A read ALWAYS carries a ProjFS command: it is a `GetFileData`
+            // callback that registered it.
             let Some(commande) = commande else {
                 tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
@@ -244,9 +244,9 @@ pub(super) fn appliquer(
                     std::sync::Arc::clone(fenetre),
                 );
             }
-            // ⚠️ **`Poursuit` MÊME QUAND LE LOT EST VIDE** : d'autres
-            // corrélations de la MÊME commande sont encore en vol, et
-            // compléter ici les laisserait répondre à un rappel achevé.
+            // ⚠️ **`Poursuit` EVEN WHEN THE BATCH IS EMPTY**: other
+            // correlations of the SAME command are still in flight, and
+            // completing here would let them answer a finished callback.
             Suite::Poursuit
         }
         (
@@ -262,10 +262,10 @@ pub(super) fn appliquer(
                 tracing::warn!(chemin, "en-tête Entrees illisible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             };
-            // **F5** — le cache mémorise les entrées BRUTES, avant `preparer`.
-            // Voir `pont::cache` : le résultat préparé dépend de la requête, et
-            // le mémoriser ferait qu'un `dir *.txt` empoisonnerait le `dir`
-            // suivant.
+            // **F5** — the cache memorises the RAW entries, before `preparer`.
+            // See `pont::cache`: the prepared result depends on the request, and
+            // memorising it would make a `dir *.txt` poison the next
+            // `dir`.
             let brutes = verbes::entrees_depuis(entete.entrees);
             if etat.cache_arme {
                 if let Ok(mut cache) = etat.cache.lock() {
@@ -290,13 +290,13 @@ pub(super) fn appliquer(
             session.poser(entrees);
             Suite::Termine(verbes::remplir(etat, session, tampon.0))
         }
-        // 🔴 **LES DEUX BRAS DE L'ÉCRITURE.** Ils ne complètent AUCUN rappel —
-        // `command_id` est `None` — et ne font que relayer l'acquittement au
-        // fil d'écriture, qui décide s'il pousse le morceau suivant ou retire
-        // l'entrée du journal.
+        // 🔴 **THE TWO WRITE ARMS.** They complete NO callback —
+        // `command_id` is `None` — and only relay the acknowledgement to the
+        // write thread, which decides whether it pushes the next chunk or removes
+        // the entry from the journal.
         //
-        // ⚠️ **Le contexte ProjFS est `None` ici, et ce n'est pas une anomalie**
-        // : une écriture n'a ni tampon d'énumération, ni flux de données.
+        // ⚠️ **The ProjFS context is `None` here, and it is not an anomaly**
+        // : a write has neither an enumeration buffer nor a data stream.
         (Attendue::Ecrire { chemin, dernier }, None) => {
             if trame.type_message != proto::fichiers::TYPE_FAIT {
                 tracing::warn!(
@@ -311,14 +311,14 @@ pub(super) fn appliquer(
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
-        // 🔴 **LA MUTATION (F3).** Elle ne complète AUCUN rappel — `command_id`
-        // est `None` — et ne fait que relayer l'acquittement au fil, qui décide
-        // s'il pousse la suivante.
+        // 🔴 **THE MUTATION (F3).** It completes NO callback — `command_id`
+        // is `None` — and only relays the acknowledgement to the thread, which decides
+        // whether it pushes the next one.
         //
-        // ⚠️ **Le contexte ProjFS est `None` ici, et ce n'est pas une anomalie**
-        // : une mutation n'a ni tampon d'énumération, ni flux de données. Elle
-        // naît d'une notification POST, qui a déjà rendu la main à
-        // l'application.
+        // ⚠️ **The ProjFS context is `None` here, and it is not an anomaly**
+        // : a mutation has neither an enumeration buffer nor a data stream. It
+        // arises from a POST notification, which has already returned control to
+        // the application.
         (
             Attendue::Muter {
                 chemin,
@@ -338,11 +338,11 @@ pub(super) fn appliquer(
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             }
             tracing::debug!(chemin, correlation, renommage, "mutation acquittee");
-            // **F5 — SECONDE MOITIÉ DE L'INVALIDATION : ce que le NAVIGATEUR a
-            // fait.** Elle ne double pas la première, elle ferme la fenêtre que
-            // la première laisse : entre la notification et cet acquittement,
-            // le poste local n'avait pas encore changé, et un listage aurait pu
-            // y mémoriser — légitimement — un contenu qui devient faux ICI.
+            // **F5 — SECOND HALF OF INVALIDATION: what the BROWSER
+            // did.** It does not duplicate the first, it closes the window
+            // the first leaves: between the notification and this acknowledgement,
+            // the local workstation had not changed yet, and a listing could have
+            // memorised there — legitimately — a content that becomes wrong HERE.
             invalider_le_cache(etat, &chemin, destination.as_deref());
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
@@ -362,10 +362,10 @@ pub(super) fn appliquer(
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
-        // Une réponse dont le type ne correspond pas à ce que la commande
-        // attendait. Elle n'est pas appliquée « au mieux » : le navigateur et
-        // le pont divergent, et deviner ferait écrire n'importe quoi dans le
-        // tampon de ProjFS.
+        // A response whose type does not match what the command
+        // expected. It is not applied "as best we can": the browser and
+        // the bridge diverge, and guessing would write anything into
+        // ProjFS's buffer.
         (attendue, contexte) => {
             tracing::warn!(
                 correlation,
@@ -379,13 +379,13 @@ pub(super) fn appliquer(
     }
 }
 
-/// Oublie ce que contenaient les répertoires qu'une mutation acquittée a
-/// changés — **le parent de la source, et celui de la destination s'il y en a
-/// une**.
+/// Forgets what the directories an acknowledged mutation changed
+/// contained — **the source's parent, and the destination's if there is
+/// one**.
 ///
-/// ⚠️ **Inerte si `PONT_CACHE=0`**, comme tout ce que F5 ajoute : le bras
-/// désarmé doit se comporter EXACTEMENT comme le produit d'avant F5, sans quoi
-/// le rouge du critère ① mesurerait autre chose que l'absence de cache.
+/// ⚠️ **Inert if `PONT_CACHE=0`**, like everything F5 adds: the disarmed
+/// arm must behave EXACTLY like the product before F5, otherwise
+/// criterion ①'s red would measure something other than the absence of a cache.
 fn invalider_le_cache(etat: &Etat, source: &str, destination: Option<&str>) {
     if !etat.cache_arme {
         return;

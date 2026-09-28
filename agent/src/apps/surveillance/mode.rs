@@ -1,90 +1,90 @@
-//! Les quatre états d'`APPS_SURVEILLANCE`, et **aucun n'est une présence**.
+//! The four states of `APPS_SURVEILLANCE`, and **none is a presence**.
 //!
-//! **PUR** : aucun `cfg`, aucune lecture d'environnement, aucune entrée-sortie.
-//! La lecture de `std::env` vit chez l'appelant (`apps::brancher`) ; ce qui se
-//! DÉCIDE vit ici, et c'est la seule part de la garde qu'on puisse voir rougir
-//! sur l'hôte — `apps::desarme` porte déjà exactement cet argument.
+//! **PURE**: no `cfg`, no environment read, no input-output.
+//! Reading `std::env` lives with the caller (`apps::brancher`); what is
+//! DECIDED lives here, and it is the only part of the guard that can be seen turning red
+//! on the host — `apps::desarme` already carries exactly this argument.
 //!
-//! 🔴 UNE SEULE VARIABLE POUR QUATRE ÉTATS, ET NON TROIS BOOLÉENS. Deux raisons,
-//! et la seconde est structurelle :
+//! 🔴 A SINGLE VARIABLE FOR FOUR STATES, AND NOT THREE BOOLEANS. Two reasons,
+//! and the second is structural:
 //!
-//! 1. le piège de `scripts/run-agent.sh` a été payé CINQ fois par ce dépôt
-//!    (`SUPERVISEUR` en D1, `MULTIFENETRE_REPRISE` en D2, `AUDIO` en D7…) : une
-//!    ligne à transmettre au lieu de trois, c'est un tiers du risque ;
-//! 2. **les quatre états sont mutuellement exclusifs par construction.** Trois
-//!    booléens autoriseraient « ni surveillance ni réconciliation périodique »,
-//!    c'est-à-dire un agent qui ne réconcilie JAMAIS — un état qui n'a aucun
-//!    sens et qu'aucune recette ne veut.
+//! 1. the `scripts/run-agent.sh` trap has been paid FIVE times by this repository
+//!    (`SUPERVISEUR` in D1, `MULTIFENETRE_REPRISE` in D2, `AUDIO` in D7…): one
+//!    line to pass through instead of three is a third of the risk;
+//! 2. **the four states are mutually exclusive by construction.** Three
+//!    booleans would allow "neither watch nor periodic reconciliation",
+//!    that is an agent that NEVER reconciles — a state that makes no
+//!    sense and that no acceptance run wants.
 
-/// Ce que `APPS_SURVEILLANCE` commande.
+/// What `APPS_SURVEILLANCE` controls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
-    /// Variable absente : **le produit livré.** Surveillance armée, anti-rebond
-    /// armé, réconciliation périodique armée.
+    /// Variable absent: **the shipped product.** Watch armed, debounce
+    /// armed, periodic reconciliation armed.
     Armee,
-    /// `0` : surveillance désarmée — **le comportement de G1, exactement.**
-    /// C'est la ROUGE du critère ①. ✅ **JOUÉE, et elle est ROUGE** :
-    /// **29 997 ms et 29 966 ms** contre **960 ms et 999 ms** au bras livré, en
-    /// `declencheur="periode"` contre `"notification"`, deux exécutions par bras.
-    /// ⚠️ Et **aucune ligne `racine surveillée` n'apparaît** sous cet état : le
-    /// fil ne démarre pas. **C'est ce compte-là qui discrimine, jamais la trace
-    /// du mode.**
+    /// `0`: watch disarmed — **exactly G1's behaviour.**
+    /// It is the RED of criterion ①. ✅ **PLAYED, and it is RED**:
+    /// **29,997 ms and 29,966 ms** against **960 ms and 999 ms** on the shipped arm, as
+    /// `declencheur="periode"` against `"notification"`, two runs per arm.
+    /// ⚠️ And **no `racine surveillée` line appears** in this state: the
+    /// thread does not start. **It is that count that discriminates, never the mode's
+    /// trace.**
     Desarmee,
-    /// `sans-rebond` : surveillance armée, **anti-rebond neutralisé**. Toute
-    /// notification rompt l'attente. C'est la ROUGE du critère ④. ✅ **JOUÉE, et
-    /// elle est ROUGE** : **60 et 58** réconciliations contre **4 et 4**, sur la
-    /// même rafale de 20 000 fichiers et dans une fenêtre bornée par deux
-    /// horodatages.
+    /// `sans-rebond`: watch armed, **debounce neutralised**. Every
+    /// notification breaks the wait. It is the RED of criterion ④. ✅ **PLAYED, and
+    /// it is RED**: **60 and 58** reconciliations against **4 and 4**, on the
+    /// same burst of 20,000 files and in a window bounded by two
+    /// timestamps.
     ///
-    /// ⚠️ **ELLE NE MESURE PAS « L'ANTI-REBOND CONTRE RIEN »**, et il faut le
-    /// dire à côté du chiffre : le sondage de `apps::boucle` a une granularité
-    /// de 200 ms, qui est **déjà** un anti-rebond faible. Le facteur 15 oppose
-    /// donc `750 ms/4 s` à **200 ms**, jamais à zéro.
+    /// ⚠️ **IT DOES NOT MEASURE "DEBOUNCE AGAINST NOTHING"**, and that must be
+    /// said next to the figure: the polling in `apps::boucle` has a granularity
+    /// of 200 ms, which is **already** a weak debounce. The factor of 15 therefore pits
+    /// `750 ms/4 s` against **200 ms**, never against zero.
     SansRebond,
-    /// `seule` : surveillance armée, **réconciliation périodique DÉSARMÉE**.
-    /// C'était la ROUGE du critère ③ **telle que la spécification l'écrit**.
+    /// `seule`: watch armed, **periodic reconciliation DISARMED**.
+    /// It was the RED of criterion ③ **as the specification writes it**.
     ///
-    /// 🔴 **JOUÉE, ET ELLE EST VERTE — deux exécutions par bras, `cles=157` des
-    /// DEUX côtés.** Ce n'est pas une surprise : c'était écrit AVANT de la jouer
-    /// (divergence E4), et pour trois raisons lisibles dans le code — une
-    /// réconciliation relit le disque **entier** quel que soit son déclencheur,
-    /// un débordement est **lui-même** une complétion donc un déclencheur, et le
-    /// premier tour est `complet` par construction. **Ce qui achète l'absence de
-    /// perte n'est donc pas la réconciliation périodique : c'est que toute
-    /// réconciliation relise tout.**
+    /// 🔴 **PLAYED, AND IT IS GREEN — two runs per arm, `cles=157` on
+    /// BOTH sides.** It is not a surprise: it was written BEFORE playing it
+    /// (divergence E4), and for three reasons readable in the code — a
+    /// reconciliation re-reads the **whole** disk whatever its trigger,
+    /// an overflow is **itself** a completion hence a trigger, and the
+    /// first round is `complet` by construction. **What buys the absence of
+    /// loss is therefore not the periodic reconciliation: it is that every
+    /// reconciliation re-reads everything.**
     ///
-    /// 🔵 **CE MODE RESTE POURTANT LA MOITIÉ INDISPENSABLE DU SEUL MONTAGE QUI
-    /// SOIT DISCRIMINANT** : `seule` **plus** `APPS_FAUTE=muette`. Mesuré,
-    /// deux exécutions par bras — la période armée rattrape (`cles=157`,
-    /// `declencheur="periode"`), `seule` ne rattrape **jamais** (`cles=156`,
-    /// quatre-vingt-dix secondes durant). **C'est la mesure qui justifie la
-    /// décision D1 de la spécification, et elle n'existait pas avant G4.**
+    /// 🔵 **THIS MODE NONETHELESS REMAINS THE INDISPENSABLE HALF OF THE ONLY SET-UP THAT
+    /// IS DISCRIMINATING**: `seule` **plus** `APPS_FAUTE=muette`. Measured,
+    /// two runs per arm — the armed period catches up (`cles=157`,
+    /// `declencheur="periode"`), `seule` **never** catches up (`cles=156`,
+    /// for ninety seconds). **It is the measurement that justifies the
+    /// specification's decision D1, and it did not exist before G4.**
     ///
-    /// ⚠️ **Variable de BANC, jamais une configuration livrée** : un agent qui
-    /// ne réconcilie que sur notification perd tout ce qu'une notification
-    /// manquée emporte — c'est-à-dire exactement la panne que la
-    /// réconciliation périodique existe pour fermer.
+    /// ⚠️ **BENCH variable, never a shipped configuration**: an agent that
+    /// reconciles only on notification loses everything a missed notification
+    /// carries away — that is, exactly the failure the
+    /// periodic reconciliation exists to close.
     Seule,
 }
 
 impl Mode {
-    /// Rend le mode **et**, le cas échéant, la valeur inconnue à journaliser.
+    /// Returns the mode **and**, where relevant, the unknown value to log.
     ///
-    /// 🔴 CHAQUE ÉTAT EST UNE ÉGALITÉ EXACTE, JAMAIS UN `is_some()`. Tester la
-    /// présence ACTIVERAIT le mécanisme en écrivant `APPS_SURVEILLANCE=0` POUR
-    /// LE COUPER, et le couperait en écrivant `=1` pour l'activer. Les deux
-    /// erreurs se compensent au point que personne ne les verrait sans le test
-    /// qui les fixe. C'est la convention de `PLEIN_ECRAN`, `AUDIO`, `APPS`,
-    /// `ICONES`, `PART_SONDAGE` et `PRESSE_PAPIER`, et `crate::apps::desarme`
-    /// est **RÉUTILISÉ, pas recopié** — G2 a posé ce précédent pour `ICONES`,
-    /// et le réemploi est ce qui préserve gratuitement le cas `"0 "`.
+    /// 🔴 EACH STATE IS AN EXACT EQUALITY, NEVER AN `is_some()`. Testing
+    /// presence would ENABLE the mechanism when writing `APPS_SURVEILLANCE=0` TO
+    /// TURN IT OFF, and would turn it off when writing `=1` to enable it. The two
+    /// errors compensate to the point that nobody would see them without the test
+    /// that pins them. It is the convention of `PLEIN_ECRAN`, `AUDIO`, `APPS`,
+    /// `ICONES`, `PART_SONDAGE` and `PRESSE_PAPIER`, and `crate::apps::desarme`
+    /// is **REUSED, not copied** — G2 set that precedent for `ICONES`,
+    /// and the reuse is what preserves the `"0 "` case for free.
     ///
-    /// 🔴 UNE VALEUR INCONNUE RETIENT LE COMPORTEMENT LIVRÉ, ET LA NOMME. Sans
-    /// cela, une coquille dans une rouge — `seul` pour `seule` — ferait tourner
-    /// le comportement VERT sous le nom du ROUGE, et la recette lirait un
-    /// verdict faux. C'est le patron « un contrôle qui ne peut pas échouer »
-    /// sous une forme neuve : le montage rendrait `156` là où il croit lire
-    /// `156`, pour une raison qui n'est pas celle qu'il mesure.
+    /// 🔴 AN UNKNOWN VALUE KEEPS THE SHIPPED BEHAVIOUR, AND NAMES IT. Without
+    /// it, a typo in a red — `seul` for `seule` — would run
+    /// the GREEN behaviour under the RED's name, and the acceptance run would read a
+    /// wrong verdict. It is the "a check that cannot fail" pattern
+    /// in a new form: the set-up would yield `156` where it believes it reads
+    /// `156`, for a reason that is not the one it measures.
     pub fn lire(valeur: Option<&str>) -> (Mode, Option<String>) {
         if crate::apps::desarme(valeur) {
             return (Mode::Desarmee, None);
@@ -97,24 +97,24 @@ impl Mode {
         }
     }
 
-    /// Le fil de surveillance doit-il seulement démarrer ?
+    /// Should the watch thread start at all?
     pub fn surveille(&self) -> bool {
         !matches!(self, Mode::Desarmee)
     }
 
-    /// L'anti-rebond doit-il différer la réconciliation ?
+    /// Should the debounce defer the reconciliation?
     pub fn rebond(&self) -> bool {
         !matches!(self, Mode::SansRebond)
     }
 
-    /// La réconciliation périodique doit-elle courir ?
+    /// Should the periodic reconciliation run?
     ///
-    /// ⚠️ **`Desarmee` rend `true`**, et ce n'est pas un oubli : `0` désarme la
-    /// SURVEILLANCE, il ne coupe pas la source de vérité. C'est précisément ce
-    /// qui fait de `APPS_SURVEILLANCE=0` le comportement de G1 à l'identique,
-    /// donc une ROUGE de ① meilleure que celle que la spécification propose —
-    /// même binaire, même corpus, même machine, une seule variable de
-    /// différence.
+    /// ⚠️ **`Desarmee` returns `true`**, and it is not an oversight: `0` disarms the
+    /// WATCH, it does not cut off the source of truth. That is precisely what
+    /// makes `APPS_SURVEILLANCE=0` identical to G1's behaviour,
+    /// hence a better RED for ① than the one the specification proposes —
+    /// same binary, same corpus, same machine, a single variable of
+    /// difference.
     pub fn periodique(&self) -> bool {
         !matches!(self, Mode::Seule)
     }
@@ -132,11 +132,11 @@ mod tests {
         assert_eq!(Mode::lire(Some("seule")), (Mode::Seule, None));
     }
 
-    /// 🔴 LA ROUGE DE LA CONVENTION : remplacer `crate::apps::desarme(valeur)`
-    /// par `valeur.is_some()` fait tomber ce test sur sa PREMIÈRE assertion —
-    /// `"sans-rebond"` deviendrait `Desarmee`, c'est-à-dire que demander la
-    /// ROUGE du critère ④ rendrait celle du critère ①, et la recette lirait un
-    /// verdict faux sans qu'aucune ligne ne le dise.
+    /// 🔴 THE CONVENTION'S RED: replacing `crate::apps::desarme(valeur)`
+    /// with `valeur.is_some()` makes this test fail on its FIRST assertion —
+    /// `"sans-rebond"` would become `Desarmee`, that is, asking for the
+    /// RED of criterion ④ would yield that of criterion ①, and the acceptance run would read a
+    /// wrong verdict without any line saying so.
     #[test]
     fn une_presence_n_est_pas_un_desarmement() {
         assert_eq!(Mode::lire(Some("sans-rebond")).0, Mode::SansRebond);
@@ -144,9 +144,9 @@ mod tests {
         assert_eq!(Mode::lire(Some("1")).0, Mode::Armee);
     }
 
-    /// ⚠️ `"0 "` — un espace de trop dans un `.ps1` généré — NE DÉSARME PAS.
-    /// Le test d'`apps.rs` le fixe déjà pour `APPS` ; le réemploi de `desarme`
-    /// doit le préserver, et c'est ce que cette assertion vérifie.
+    /// ⚠️ `"0 "` — one space too many in a generated `.ps1` — DOES NOT DISARM.
+    /// The test in `apps.rs` already pins it for `APPS`; the reuse of `desarme`
+    /// must preserve it, and that is what this assertion checks.
     #[test]
     fn une_valeur_inconnue_retient_le_comportement_livre_et_se_nomme() {
         for valeur in ["seul", "SEULE", "", "00", "0 ", "sans_rebond", "false"] {
@@ -160,8 +160,8 @@ mod tests {
         }
     }
 
-    /// Les trois prédicats, un par consommateur — et `Desarmee` laisse la
-    /// réconciliation périodique courir, ce qui est ce qui rend `=0` égal à G1.
+    /// The three predicates, one per consumer — and `Desarmee` lets the
+    /// periodic reconciliation run, which is what makes `=0` equal to G1.
     #[test]
     fn chaque_predicat_ne_coupe_que_ce_qui_le_concerne() {
         assert!(Mode::Armee.surveille() && Mode::Armee.rebond() && Mode::Armee.periodique());

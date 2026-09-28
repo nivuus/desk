@@ -1,53 +1,53 @@
-//! L'histogramme des traversées du pont, **par famille de commande**. **PUR** —
-//! aucun `cfg`, aucune E/S, **et aucune horloge lue en interne** : la durée est
-//! un paramètre, exactement comme dans [`crate::pont::table`], « ce qui rend
-//! l'expiration testable sans dormir ».
+//! The histogram of bridge traversals, **per command family**. **PURE** —
+//! no `cfg`, no I/O, **and no clock read internally**: the duration is
+//! a parameter, exactly as in [`crate::pont::table`], "which makes
+//! expiry testable without sleeping".
 //!
-//! # 🔴 CE QUE CE MODULE N'EST PAS
+//! # 🔴 WHAT THIS MODULE IS NOT
 //!
-//! **Ce n'est pas une trace par commande.** *Compter ou échantillonner, jamais
-//! tracer par unité* — la trace par paquet du chantier TURN a tué la session
-//! qu'elle mesurait avec 18 619 lignes en quelques secondes, écrites sur un
-//! partage CIFS depuis la boucle. C'est la même raison qui a fait de
-//! [`crate::pont::compteurs`] un compteur plutôt qu'une trace par échec.
+//! **It is not a per-command trace.** *Count or sample, never
+//! trace per unit* — the per-packet trace of the TURN work item killed the session
+//! it measured with 18,619 lines in a few seconds, written to a
+//! CIFS share from the loop. It is the same reason that made
+//! [`crate::pont::compteurs`] a counter rather than a per-failure trace.
 //!
-//! **Ce n'est pas une mesure de ce que l'APPLICATION attend.** Il mesure la
-//! traversée **pont → navigateur → pont**, et rien d'autre : ni l'entrée dans
-//! le rappel ProjFS, ni l'inscription en table, ni le balayage à
-//! `PERIODE_BALAYAGE`, ni `PrjCompleteCommand`, ni le retour de ProjFS à
-//! l'application. **Le nom des choses le dit** — `traversees`, jamais
-//! `latences`. Ce que l'application attend est mesuré par un chronomètre DANS
-//! la VM, et la différence entre les deux est un **résidu nommé, jamais une
-//! grandeur mesurée** (plan F4, §0.5).
+//! **It is not a measure of what the APPLICATION waits for.** It measures the
+//! **bridge → browser → bridge** traversal, and nothing else: neither the entry into
+//! the ProjFS callback, nor the table registration, nor the sweep at
+//! `PERIODE_BALAYAGE`, nor `PrjCompleteCommand`, nor ProjFS's return to
+//! the application. **The names of things say so** — `traversees`, never
+//! `latences`. What the application waits for is measured by a stopwatch IN
+//! the VM, and the difference between the two is a **named residue, never a
+//! measured quantity** (F4 plan, §0.5).
 //!
-//! **Ce n'est pas un `Mutex`.** Les compteurs sont des `AtomicU64`, comme ceux
-//! de [`crate::pont::compteurs`] et **pour la même raison** : ils sont touchés
-//! depuis les fils de rappel que le SYSTÈME possède, où attendre un verrou
-//! ferait attendre l'application.
+//! **It is not a `Mutex`.** The counters are `AtomicU64`s, like those
+//! of [`crate::pont::compteurs`] and **for the same reason**: they are touched
+//! from the callback threads the SYSTEM owns, where waiting for a lock
+//! would make the application wait.
 //!
-//! # La famille est le BUDGET, pas le verbe
+//! # The family is the BUDGET, not the verb
 //!
-//! Les cinq familles recouvrent **exactement** les cinq budgets de
-//! [`crate::pont::table`], et c'est ce qui rend le recensement lisible contre
-//! eux : `Creer` partage `DELAI_ECRIRE` avec `Ecrire` (toutes deux inscrites
-//! par `ecriture::fil`), `Muter` a `DELAI_MUTATION` pour lui seul. Grouper par
-//! verbe au lieu de grouper par budget produirait une distribution qu'aucune
-//! constante n'encadre.
+//! The five families cover **exactly** the five budgets of
+//! [`crate::pont::table`], and that is what makes the census readable against
+//! them: `Creer` shares `DELAI_ECRIRE` with `Ecrire` (both registered
+//! by `ecriture::fil`), `Muter` has `DELAI_MUTATION` to itself. Grouping by
+//! verb instead of by budget would produce a distribution no
+//! constant frames.
 //!
-//! # Le garde structurel, à trois étages
+//! # The structural guard, in three stages
 //!
-//! Le jumeau de celui de [`crate::pont::erreurs`] et [`crate::pont::compteurs`] :
-//! [`NOMBRE`] force l'inscription dans [`Famille::TOUTES`], [`nom`] est un
-//! `match` **exhaustif** — une famille neuve ne peut pas hériter du nom d'une
-//! autre —, et [`Famille::de`] est un second `match` exhaustif qui force à
-//! classer toute variante d'[`Attendue`] qui apparaîtrait.
+//! The twin of the one in [`crate::pont::erreurs`] and [`crate::pont::compteurs`]:
+//! [`NOMBRE`] forces registration in [`Famille::TOUTES`], [`nom`] is an
+//! **exhaustive** `match` — a new family cannot inherit the name of another
+//! one —, and [`Famille::de`] is a second exhaustive `match` that forces
+//! classifying any [`Attendue`] variant that would appear.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use crate::pont::table::Attendue;
 
-/// Une famille de commande, telle qu'on la lit au recensement.
+/// A command family, as read in the census.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Famille {
     Attributs,
@@ -57,9 +57,9 @@ pub enum Famille {
     Mutation,
 }
 
-/// ⚠️ **Porter une famille de plus impose de porter `NOMBRE`**, ce qui fait
-/// échouer la compilation de [`Famille::TOUTES`], typé `[Famille; NOMBRE]`,
-/// tant que la variante neuve n'y figure pas.
+/// ⚠️ **Adding one more family requires raising `NOMBRE`**, which makes
+/// the compilation of [`Famille::TOUTES`], typed `[Famille; NOMBRE]`, fail
+/// as long as the new variant is not listed there.
 pub const NOMBRE: usize = 5;
 
 impl Famille {
@@ -71,26 +71,26 @@ impl Famille {
         Famille::Mutation,
     ];
 
-    /// La famille d'une commande en vol. `match` **exhaustif** : une variante
-    /// neuve d'[`Attendue`] ne compile pas tant qu'elle n'est pas classée.
+    /// The family of a command in flight. **Exhaustive** `match`: a new
+    /// [`Attendue`] variant does not compile as long as it is not classified.
     pub fn de(attendue: &Attendue) -> Famille {
         match attendue {
             Attendue::Attributs { .. } => Famille::Attributs,
             Attendue::Lister { .. } => Famille::Lister,
             Attendue::Lire { .. } => Famille::Lire,
-            // ⚠️ `Creer` EST de la famille `Ecrire` : les deux sont inscrites
-            // par `ecriture::fil` sous le même `DELAI_ECRIRE`.
+            // ⚠️ `Creer` IS of the `Ecrire` family: both are registered
+            // by `ecriture::fil` under the same `DELAI_ECRIRE`.
             Attendue::Ecrire { .. } | Attendue::Creer { .. } => Famille::Ecrire,
             Attendue::Muter { .. } => Famille::Mutation,
         }
     }
 }
 
-/// Le nom d'une famille **sur la ligne de recensement**.
+/// The name of a family **on the census line**.
 ///
-/// ⚠️ **Écrit à chaque champ, jamais déduit d'un rang** : un `grep` de recette
-/// lit un nom, et un recensement dont l'ordre dériverait ferait sinon lire un
-/// compteur pour un autre.
+/// ⚠️ **Written at each field, never derived from a rank**: an acceptance `grep`
+/// reads a name, and a census whose order drifted would otherwise read one
+/// counter for another.
 pub fn nom(f: Famille) -> &'static str {
     match f {
         Famille::Attributs => "attributs",
@@ -101,23 +101,23 @@ pub fn nom(f: Famille) -> &'static str {
     }
 }
 
-/// Les bornes SUPÉRIEURES des seaux, en millisecondes. Un treizième seau
-/// implicite, `inf`, recueille tout ce qui les dépasse.
+/// The UPPER bounds of the buckets, in milliseconds. A thirteenth implicit
+/// bucket, `inf`, collects everything beyond them.
 ///
-/// **Choisies pour couvrir les cinq budgets** (2 s, 5 s, 15 s, 20 s, 30 s) et
-/// le RTT du pont (1 à 3 ms mesurés en D1). ⚠️ **NON CALIBRÉES** — elles
-/// rejoignent `TAILLE_TRAME_MAX`, `SEUIL_TAMPON`, `MORCEAUX_EN_VOL`, `BPP_MIN`
-/// et tout ce que ce dépôt n'a jamais jugé à l'usage.
+/// **Chosen to cover the five budgets** (2 s, 5 s, 15 s, 20 s, 30 s) and
+/// the bridge's RTT (1 to 3 ms measured in D1). ⚠️ **NOT CALIBRATED** — they
+/// join `TAILLE_TRAME_MAX`, `SEUIL_TAMPON`, `MORCEAUX_EN_VOL`, `BPP_MIN`
+/// and everything this repository has never judged in use.
 pub const SEAUX_MS: [u64; 12] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 2_000, 5_000];
 
 /// Douze bornes, plus `inf`.
 pub const SEAUX: usize = SEAUX_MS.len() + 1;
 
-/// Le rang du seau qui **contient** `duree`.
+/// The rank of the bucket that **contains** `duree`.
 ///
-/// 🔴 **La borne est INCLUSIVE en haut** : une traversée de 5 ms exactement
-/// tombe dans le seau `5`, jamais dans le seau `10`. Un `<` au lieu d'un `<=`
-/// décalerait toute la distribution d'un seau, en silence.
+/// 🔴 **The bound is INCLUSIVE at the top**: a traversal of exactly 5 ms
+/// falls into bucket `5`, never into bucket `10`. A `<` instead of a `<=`
+/// would shift the whole distribution by one bucket, silently.
 fn seau_de(duree: Duration) -> usize {
     let us = duree.as_micros();
     SEAUX_MS
@@ -140,14 +140,14 @@ impl Histogramme {
         Self::default()
     }
 
-    /// Enregistre une traversée **ACHEVÉE**. `duree` est calculée par
-    /// l'appelant, depuis SON horloge.
+    /// Records a **COMPLETED** traversal. `duree` is computed by
+    /// the caller, from ITS clock.
     ///
-    /// ⚠️ **Une traversée qui n'aboutit pas n'est PAS observée** : une commande
-    /// expirée ou annulée ne passe jamais par `Table::resoudre`. Le
-    /// recensement mesure donc ce qui a **abouti**, et les échecs se lisent
-    /// sur la ligne des douze codes — les deux se lisent ensemble, jamais l'une
-    /// pour l'autre.
+    /// ⚠️ **A traversal that does not complete is NOT observed**: an expired
+    /// or cancelled command never goes through `Table::resoudre`. The
+    /// census therefore measures what **completed**, and failures are read
+    /// on the line of the twelve codes — the two are read together, never one
+    /// for the other.
     pub fn observer(&self, famille: Famille, duree: Duration) {
         let r = rang(famille);
         let us = u64::try_from(duree.as_micros()).unwrap_or(u64::MAX);
@@ -165,8 +165,8 @@ impl Histogramme {
         self.max_us[rang(f)].load(Ordering::Relaxed)
     }
 
-    /// La moyenne, **zéro quand rien n'a été observé** — et non une division
-    /// par zéro.
+    /// The mean, **zero when nothing has been observed** — and not a division
+    /// by zero.
     pub fn moyenne_us(&self, f: Famille) -> u64 {
         let n = self.compte(f);
         if n == 0 {
@@ -179,22 +179,22 @@ impl Histogramme {
         self.seaux[rang(f)][rang_seau].load(Ordering::Relaxed)
     }
 
-    /// La ligne de recensement, **dans l'ordre de [`Famille::TOUTES`]**, en
-    /// **chaîne unique** `nom=valeur`.
+    /// The census line, **in the order of [`Famille::TOUTES`]**, as a
+    /// **single string** `name=value`.
     ///
-    /// ⚠️ **Jamais en champs `tracing`** : ceux-ci porteraient des séquences
-    /// ANSI entre le nom et la valeur sur un journal BRUT — le piège que la
-    /// recette d'entrée de D8 a payé et que le `grep` de F1 a rejoué trois
-    /// fois. Elle se lit **sans `sed`**.
+    /// ⚠️ **Never as `tracing` fields**: those would carry ANSI
+    /// sequences between the name and the value in a RAW log — the trap that
+    /// D8's input acceptance run paid for and that F1's `grep` replayed three
+    /// times. It is read **without `sed`**.
     ///
-    /// ⚠️ **Les compteurs sont CUMULATIFS depuis le démarrage du pont** : une
-    /// mesure se lit par DIFFÉRENCE entre deux recensements, jamais sur une
-    /// ligne isolée.
+    /// ⚠️ **The counters are CUMULATIVE since the bridge started**: a
+    /// measurement is read by DIFFERENCE between two censuses, never on an
+    /// isolated line.
     ///
-    /// ⚠️ **Les seaux sont émis pour les CINQ familles**, et non pour la seule
-    /// `lire` : n'en émettre qu'une ferait de ce choix une décision cachée, et
-    /// un successeur qui mesurerait `lister` n'y trouverait aucune
-    /// distribution. Divergence E13 du plan, déclarée.
+    /// ⚠️ **The buckets are emitted for the FIVE families**, and not only for
+    /// `lire`: emitting only one would make that choice a hidden decision, and
+    /// a successor measuring `lister` would find no
+    /// distribution there. Divergence E13 of the plan, declared.
     pub fn recensement(&self) -> String {
         let mut ligne = String::from("traversees");
         for f in Famille::TOUTES {
@@ -218,11 +218,11 @@ impl Histogramme {
     }
 }
 
-/// Le rang d'une famille dans [`Famille::TOUTES`].
+/// The rank of a family in [`Famille::TOUTES`].
 ///
-/// ⚠️ **Dérivé de `TOUTES` et non écrit à la main**, comme
-/// `compteurs::rang` : deux vérités que rien ne confronte divergeraient en
-/// silence.
+/// ⚠️ **Derived from `TOUTES` and not written by hand**, like
+/// `compteurs::rang`: two truths nothing confronts would diverge
+/// silently.
 fn rang(f: Famille) -> usize {
     Famille::TOUTES
         .iter()

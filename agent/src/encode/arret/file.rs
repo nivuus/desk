@@ -16,90 +16,90 @@ use windows::Win32::Media::MediaFoundation::{
     MFASYNC_CALLBACK_QUEUE_MULTITHREADED,
 };
 
-/// Garde-fou de l'attente d'une barrière de file de travail.
+/// Safeguard of the wait for a work queue barrier.
 ///
-/// La barrière porte sur une CONDITION OBSERVABLE (notre propre élément de
-/// travail a-t-il été exécuté), pas sur une durée. Ce délai n'est qu'un
-/// garde-fou contre une file qui ne dépêcherait plus rien ; le franchir est
-/// journalisé en `error` et **change le comportement de `Drop`** (voir
+/// The barrier bears on an OBSERVABLE CONDITION (has our own work
+/// item been executed), not on a duration. This delay is only a
+/// safeguard against a queue that would no longer dispatch anything; crossing it is
+/// logged at `error` and **changes the behaviour of `Drop`** (see
 /// `Drop for FileMft`).
 const DELAI_BARRIERE: Duration = Duration::from_secs(2);
 
-/// File de travail Media Foundation **sérialisée** dédiée à UNE MFT, et
-/// imposée à elle.
+/// **Serialised** Media Foundation work queue dedicated to ONE MFT, and
+/// imposed on it.
 ///
-/// **Pourquoi.** La faute relevée par la tâche 2bis s'exécute sous
-/// `CSerialWorkQueue::QueueItem::ExecuteWorkItem` : un élément de travail de la
-/// MFT NVIDIA court encore quand nous relâchons l'encodeur. Deux mécanismes
-/// documentés ont été mesurés incapables de l'empêcher — `IMFShutdown::Shutdown`
-/// (1 récidive sur 10) et le retrait de `MFShutdown` (1 récidive sur 5).
+/// **Why.** The fault noted by task 2bis runs under
+/// `CSerialWorkQueue::QueueItem::ExecuteWorkItem`: a work item of the
+/// NVIDIA MFT is still running when we release the encoder. Two documented
+/// mechanisms were measured unable to prevent it — `IMFShutdown::Shutdown`
+/// (1 recurrence out of 10) and the removal of `MFShutdown` (1 recurrence out of 5).
 ///
-/// `IMFRealTimeClientEx::SetWorkQueueEx` permet au client de DICTER à la MFT la
-/// file sur laquelle elle déposera son travail asynchrone — relevé : les deux
-/// MFT de l'encodeur exposent l'interface. En lui imposant une file
-/// **sérialisée**, dont la sémantique est d'exécuter un élément à la fois dans
-/// l'ordre de dépôt, on vise une barrière : déposer notre propre élément et
-/// attendre qu'il s'exécute.
+/// `IMFRealTimeClientEx::SetWorkQueueEx` lets the client DICTATE to the MFT the
+/// queue on which it will drop its asynchronous work — surveyed: both
+/// MFTs of the encoder expose the interface. By imposing on it a
+/// **serialised** queue, whose semantics is to run one item at a time in
+/// drop order, we aim for a barrier: drop our own item and
+/// wait for it to run.
 ///
-/// C'est une attente **bornée sur une condition observable**, pas un délai.
+/// It is a wait **bounded on an observable condition**, not a delay.
 ///
-/// # Mode d'échec résiduel identifié — imbrication de files sérialisées
+/// # Identified residual failure mode — nesting of serialised queues
 ///
-/// **Ce n'est pas une réserve de style, c'est le mécanisme précis par lequel
-/// cette barrière pourrait ne rien barrer.** L'implémentation idiomatique de
-/// `SetWorkQueueEx` dans un objet Media Foundation est
-/// `MFAllocateSerialWorkQueue(file_du_client, &sa_propre_file)` : l'objet
-/// empile SA file sérialisée sur la nôtre, ses éléments attendent chez lui et
-/// ne sont dépêchés vers nous **qu'un à la fois**. Notre sentinelle, déposée
-/// directement sur notre file, serait alors ordonnancée derrière **un seul**
-/// de ses éléments, pas derrière tous — et la barrière ne serait qu'une
-/// réduction de fenêtre, pas une garantie.
+/// **This is not a stylistic caveat, it is the precise mechanism by which
+/// this barrier could bar nothing.** The idiomatic implementation of
+/// `SetWorkQueueEx` in a Media Foundation object is
+/// `MFAllocateSerialWorkQueue(client_queue, &its_own_queue)`: the object
+/// stacks ITS serialised queue on ours, its items wait at its place and
+/// are dispatched to us **only one at a time**. Our sentinel, dropped
+/// directly on our queue, would then be scheduled behind **a single**
+/// one of its items, not behind all of them — and the barrier would only be a
+/// window reduction, not a guarantee.
 ///
-/// L'indice qui rend l'hypothèse sérieuse : la pile d'AVANT correctif porte
-/// déjà des cadres `CSerialWorkQueue` alors qu'aucune file sérialisée n'était
-/// allouée par nous — la MFT en avait donc déjà une à elle.
+/// The clue that makes the hypothesis serious: the stack from BEFORE the fix already carries
+/// `CSerialWorkQueue` frames although no serialised queue was
+/// allocated by us — the MFT therefore already had one of its own.
 ///
-/// Ce qui est mesuré, et qui ne tranche que la moitié de la question :
-/// bloquer notre file pendant l'encodage **arrête l'encodeur** (épreuve
-/// `MULTIFENETRE_EPREUVE_FILE_MS`, voir le rapport 2ter). Le travail de la MFT
-/// transite donc bien par notre file — mais cela reste vrai que l'imbrication
-/// existe ou non, puisque bloquer la file cible bloque aussi la file empilée
-/// dessus. **Ce qui départagerait** : symboliser une récidive survenant malgré
-/// la barrière, ou observer la file interne de la MFT (aucune API ne
-/// l'expose).
+/// What is measured, and which only settles half of the question:
+/// blocking our queue during encoding **stops the encoder** (test
+/// `MULTIFENETRE_EPREUVE_FILE_MS`, see the 2ter report). The MFT's work
+/// does go through our queue — but that remains true whether the nesting
+/// exists or not, since blocking the target queue also blocks the queue stacked
+/// on it. **What would decide**: symbolising a recurrence occurring despite
+/// the barrier, or observing the MFT's internal queue (no API
+/// exposes it).
 pub(in crate::encode) struct FileMft {
-    /// `None` si l'allocation ou l'imposition à la MFT a échoué : on continue
-    /// alors sans barrière plutôt que de refuser de construire l'encodeur.
+    /// `None` if the allocation or the imposition on the MFT failed: we then continue
+    /// without a barrier rather than refusing to build the encoder.
     ///
-    /// **Ce que vaut alors l'encodeur** : la configuration « arrêt seul »,
-    /// **mesurée à 1 récidive sur 10** — le défaut d'origine, atténué mais
-    /// présent. Pas silencieux pour autant : les trois chemins qui mènent ici
-    /// journalisent un `warn!` (`allouer`, puis les deux échecs de `confier`)
-    /// et le cas nominal un `info!` — un journal dit donc, encodeur par
-    /// encodeur, lequel est protégé. Le relâchement, lui, ne le redit pas :
-    /// `barriere` rend la main sans un mot si la file manque.
+    /// **What the encoder is then worth**: the "stop only" configuration,
+    /// **measured at 1 recurrence out of 10** — the original defect, mitigated but
+    /// present. Not silent for all that: the three paths that lead here
+    /// log a `warn!` (`allouer`, then the two failures of `confier`)
+    /// and the nominal case an `info!` — a log therefore says, encoder by
+    /// encoder, which one is protected. The release, for its part, does not say it again:
+    /// `barriere` returns without a word if the queue is missing.
     id: Option<u32>,
-    /// Vrai si une barrière n'a pas été franchie dans le délai. La file porte
-    /// alors, au minimum, notre sentinelle non exécutée : la rendre serait
-    /// pire que la garder (voir `Drop`).
+    /// True if a barrier was not crossed within the delay. The queue then carries,
+    /// at the very least, our unexecuted sentinel: releasing it would be
+    /// worse than keeping it (see `Drop`).
     compromise: AtomicBool,
 }
 
 impl FileMft {
-    /// Alloue une file sérialisée, **sans encore la confier à quiconque**.
+    /// Allocates a serialised queue, **without yet handing it to anyone**.
     ///
-    /// Séparé de `confier` pour une raison de durée de vie, pas de style : les
-    /// variables locales sont détruites dans l'ordre **inverse** de leur
-    /// déclaration. En allouant ici, avant que la MFT n'existe, la `FileMft`
-    /// est la locale la plus ancienne et donc la **dernière** détruite si la
-    /// construction de l'encodeur échoue plus loin sur un `?` — la file n'est
-    /// alors rendue qu'après le relâchement de la MFT qui la détient. L'ordre
-    /// inverse (allouer après la MFT) rendait la file en premier, exactement
-    /// l'inversion que l'ordre des champs de `H264Encoder` est conçu pour
-    /// éviter. Ce chemin n'est pas théorique : `windows_source.rs` traite
-    /// l'échec de construction d'un encodeur et poursuit la session.
+    /// Separated from `confier` for a lifetime reason, not a stylistic one: local
+    /// variables are destroyed in the **reverse** order of their
+    /// declaration. By allocating here, before the MFT exists, the `FileMft`
+    /// is the oldest local and therefore the **last** destroyed if the
+    /// construction of the encoder fails further on a `?` — the queue is
+    /// then released only after the release of the MFT that holds it. The
+    /// reverse order (allocating after the MFT) released the queue first, exactly
+    /// the inversion the field order of `H264Encoder` is designed to
+    /// avoid. This path is not theoretical: `windows_source.rs` handles
+    /// the construction failure of an encoder and continues the session.
     ///
-    /// Exige que Media Foundation soit démarré.
+    /// Requires Media Foundation to be started.
     pub(in crate::encode) fn allouer() -> Self {
         match unsafe { MFAllocateSerialWorkQueue(MFASYNC_CALLBACK_QUEUE_MULTITHREADED) } {
             Ok(id) => Self {
@@ -116,7 +116,7 @@ impl FileMft {
         }
     }
 
-    /// Impose la file à une MFT. À appeler **avant** tout démarrage de flux.
+    /// Imposes the queue on an MFT. To be called **before** any stream starts.
     pub(in crate::encode) fn confier(&mut self, mft: &IMFTransform, quoi: &'static str) {
         let Some(id) = self.id else { return };
         let client = match mft.cast::<IMFRealTimeClientEx>() {
@@ -127,8 +127,8 @@ impl FileMft {
                 return;
             }
         };
-        // Priorité 0 : la priorité de base des éléments, pas un réglage de
-        // temps réel — on ne demande aucun privilège d'ordonnancement.
+        // Priority 0: the base priority of items, not a real-time
+        // setting — we ask for no scheduling privilege.
         if let Err(err) = unsafe { client.SetWorkQueueEx(id, 0) } {
             tracing::warn!(mft = quoi, erreur = %err, file = id, "la MFT refuse la file imposée");
             self.rendre();
@@ -137,22 +137,22 @@ impl FileMft {
         tracing::info!(mft = quoi, file = id, "file de travail sérialisée imposée");
     }
 
-    /// Rend la file immédiatement, quand personne ne la détient encore.
+    /// Releases the queue immediately, when no one holds it yet.
     fn rendre(&mut self) {
         if let Some(id) = self.id.take() {
             let _ = unsafe { MFUnlockWorkQueue(id) };
         }
     }
 
-    /// Attend que tout ce qui était déposé sur la file avant cet appel ait fini
-    /// de s'exécuter.
+    /// Waits for everything dropped on the queue before this call to have finished
+    /// running.
     pub(super) fn barriere(&self, quoi: &'static str, quand: &'static str) {
         let Some(id) = self.id else { return };
         let fait = Arc::new((Mutex::new(false), Condvar::new()));
         let rappel: IMFAsyncCallback = Sentinelle { fait: fait.clone() }.into();
         if let Err(err) = unsafe { MFPutWorkItem(id, &rappel, None) } {
-            // La file ne dépêche plus : notre sentinelle n'y est pas, mais le
-            // travail de la MFT, lui, peut y être resté.
+            // The queue no longer dispatches: our sentinel is not in it, but the
+            // MFT's work, for its part, may have stayed there.
             tracing::error!(mft = quoi, erreur = %err, quand, "dépôt de la sentinelle refusé : file NON barrée");
             self.compromise.store(true, Ordering::SeqCst);
             return;
@@ -166,8 +166,8 @@ impl FileMft {
                 .unwrap_or_else(|e| e.into_inner());
             pose = garde;
             if !*pose && issue.timed_out() {
-                // On ne peut pas refuser de poursuivre : `Drop` doit finir. Ce
-                // qu'on peut faire, c'est ne pas AGGRAVER — voir `Drop`.
+                // We cannot refuse to proceed: `Drop` must finish. What
+                // we can do is not MAKE IT WORSE — see `Drop`.
                 tracing::error!(
                     mft = quoi,
                     quand,
@@ -187,11 +187,11 @@ impl FileMft {
         );
     }
 
-    /// Occupe la file pendant `duree`, pour éprouver si le travail de la MFT y
-    /// transite réellement (voir le mode d'échec résiduel documenté plus haut).
+    /// Occupies the queue for `duree`, to test whether the MFT's work really
+    /// goes through it (see the residual failure mode documented above).
     ///
-    /// Sonde de mesure, appelée seulement sous variable d'environnement. Rend
-    /// la main immédiatement : c'est la file qui reste occupée.
+    /// Measurement probe, only called under an environment variable. Returns
+    /// immediately: it is the queue that stays occupied.
     pub(in crate::encode) fn bloquer(&self, duree: Duration) {
         let Some(id) = self.id else {
             tracing::warn!("épreuve de file demandée mais aucune file imposée");
@@ -213,31 +213,31 @@ impl Drop for FileMft {
     fn drop(&mut self) {
         let Some(id) = self.id else { return };
         if self.compromise.load(Ordering::SeqCst) {
-            // Rendre une file dont des éléments n'ont pas été dépêchés
-            // ajouterait un défaut à celui qu'on n'a pas su éviter. On la
-            // garde : un déverrouillage à éléments pendants coûte un plantage.
+            // Releasing a queue some of whose items were not dispatched
+            // would add a defect to the one we could not avoid. We
+            // keep it: an unlock with pending items costs a crash.
             //
-            // CE QUE LA FUITE COÛTE, sans le minimiser : pas « quelques
-            // octets » mais un objet de plateforme adossé au pool de fils de
-            // RTWorkQ, enregistré pour la vie du processus. Chaque expiration
-            // en fuite une définitivement, et rien ne les compte ni ne les
-            // plafonne : arbitrage à rouvrir si ces `error!` cessaient d'être
-            // exceptionnels — aucune expiration observée à ce jour.
+            // WHAT THE LEAK COSTS, without minimising it: not "a few
+            // bytes" but a platform object backed by the RTWorkQ thread
+            // pool, registered for the life of the process. Each expiry
+            // leaks one permanently, and nothing counts them or
+            // caps them: a trade-off to reopen if these `error!`s stopped being
+            // exceptional — no expiry observed to date.
             tracing::error!(
                 file = id,
                 "file compromise : NON rendue, délibérément fuitée"
             );
             return;
         }
-        // Champ déclaré en dernier dans `H264Encoder`, et locale déclarée en
-        // premier dans `H264Encoder::new` : dans les deux cas la file n'est
-        // rendue qu'après le relâchement de la MFT qui s'en sert.
+        // Field declared last in `H264Encoder`, and local declared
+        // first in `H264Encoder::new`: in both cases the queue is only
+        // released after the release of the MFT that uses it.
         let _ = unsafe { MFUnlockWorkQueue(id) };
     }
 }
 
-/// Élément de travail sans effet, dont la seule raison d'être est de signaler
-/// son propre passage : c'est lui qui rend la barrière observable.
+/// Work item without effect, whose only purpose is to signal
+/// its own passage: it is what makes the barrier observable.
 #[implement(IMFAsyncCallback)]
 struct Sentinelle {
     fait: Arc<(Mutex<bool>, Condvar)>,
@@ -245,8 +245,8 @@ struct Sentinelle {
 
 impl IMFAsyncCallback_Impl for Sentinelle_Impl {
     fn GetParameters(&self, _drapeaux: *mut u32, _file: *mut u32) -> windows::core::Result<()> {
-        // Réponse normale d'un rappel qui n'impose ni file ni drapeau : Media
-        // Foundation l'attend et retombe sur ses valeurs par défaut.
+        // Normal answer of a callback that imposes neither queue nor flag: Media
+        // Foundation expects it and falls back on its default values.
         Err(E_NOTIMPL.into())
     }
 
@@ -258,8 +258,8 @@ impl IMFAsyncCallback_Impl for Sentinelle_Impl {
     }
 }
 
-/// Élément de travail qui occupe la file : instrument de l'épreuve, jamais
-/// déposé en exploitation.
+/// Work item that occupies the queue: instrument of the test, never
+/// dropped in operation.
 #[implement(IMFAsyncCallback)]
 struct Bouchon {
     duree: Duration,

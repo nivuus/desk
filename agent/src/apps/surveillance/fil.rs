@@ -1,19 +1,19 @@
-//! Le fil de surveillance : **un seul**, quatre racines, une attente.
+//! The watch thread: **a single one**, four roots, one wait.
 //!
-//! 🔴 `#[cfg(windows)]`, et **aucun test d'hôte n'est possible** — même statut
-//! que `racine.rs`, et pour la même raison.
+//! 🔴 `#[cfg(windows)]`, and **no host test is possible** — same status
+//! as `racine.rs`, and for the same reason.
 //!
-//! **UN SEUL FIL, ET NON QUATRE.** Ce qui a été écarté, avec sa raison :
+//! **ONE THREAD, NOT FOUR.** What was ruled out, with its reason:
 //!
-//! - **quatre fils bloquants** (`ReadDirectoryChangesW` synchrone) : quatre
-//!   fils pour attendre, et **aucun moyen de les arrêter proprement** — un fil
-//!   bloqué dans un appel synchrone ne voit pas un drapeau d'arrêt ;
-//! - **un port de complétion** : plus de machinerie que quatre handles n'en
-//!   justifient, et une seconde façon d'attendre dans un processus qui en a
-//!   déjà quatre ;
-//! - **`SHChangeNotifyRegister`** : écarté par la spécification elle-même, et
-//!   pour de bonnes raisons — un `HWND`, une pompe de messages, et des PIDL à
-//!   re-résoudre.
+//! - **four blocking threads** (synchronous `ReadDirectoryChangesW`): four
+//!   threads to wait, and **no way to stop them cleanly** — a thread
+//!   blocked in a synchronous call does not see a stop flag;
+//! - **a completion port**: more machinery than four handles
+//!   justify, and a second way of waiting in a process that
+//!   already has four;
+//! - **`SHChangeNotifyRegister`**: ruled out by the specification itself, and
+//!   for good reasons — an `HWND`, a message pump, and PIDLs to
+//!   re-resolve.
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -25,27 +25,27 @@ use windows::Win32::System::Threading::WaitForMultipleObjects;
 use super::partage::Veille;
 use super::racine::{Issue, Racine};
 
-/// Le pas de l'attente.
+/// The wait step.
 ///
-/// 🔴 IL EXISTE **POUR QUE LE DRAPEAU D'ARRÊT SOIT VU**, et pour rendre la main
-/// aux replis échus. **Il ne sonde rien** : les notifications arrivent par les
-/// événements, jamais par ce délai. Le confondre avec un intervalle de sondage
-/// ferait croire que le raccourcir accélère la détection — il ne ferait que
-/// réveiller un fil qui n'a rien à faire.
+/// 🔴 IT EXISTS **SO THAT THE STOP FLAG IS SEEN**, and to give control back
+/// to due backoffs. **It polls nothing**: notifications arrive through the
+/// events, never through this delay. Confusing it with a polling interval
+/// would make people believe shortening it speeds up detection — it would only
+/// wake a thread that has nothing to do.
 const PAS_ATTENTE_MS: u32 = 1_000;
 
-/// Le corps du fil.
+/// The body of the thread.
 pub(super) fn tourner(veille: Veille) {
-    // 🔴 DÉDUPLICATION. `lecture::racines()` ne déduplique pas, et rien ne
-    // garantit que les quatre dossiers connus soient distincts sur une
-    // configuration inhabituelle. Ouvrir deux fois le même répertoire
-    // gaspillerait 64 Kio de pool NON PAGINÉ pour compter chaque événement
-    // deux fois.
+    // 🔴 DEDUPLICATION. `lecture::racines()` does not deduplicate, and nothing
+    // guarantees that the four known folders are distinct on an
+    // unusual configuration. Opening the same directory twice
+    // would waste 64 KiB of NON-PAGED pool to count each event
+    // twice.
     //
-    // ⚠️ `racines()` N'EST PAS TOUCHÉE : elle est partagée avec la
-    // réconciliation, où les doublons sont déjà inoffensifs
-    // (`vus.insert(app.cle)`). La déduplication est un besoin de CE
-    // consommateur, et elle vit chez lui.
+    // ⚠️ `racines()` IS NOT TOUCHED: it is shared with the
+    // reconciliation, where duplicates are already harmless
+    // (`vus.insert(app.cle)`). Deduplication is a need of THIS
+    // consumer, and it lives with it.
     let distinctes: BTreeSet<PathBuf> = crate::apps::lecture::racines().into_iter().collect();
     if distinctes.is_empty() {
         tracing::warn!(
@@ -62,13 +62,13 @@ pub(super) fn tourner(veille: Veille) {
                 tracing::info!(racine = %chemin.display(), "racine surveillée");
                 racines.push(racine);
             }
-            // ⚠️ TROU NOMMÉ, NON FERMÉ : une racine ABSENTE au démarrage n'a
-            // pas de handle, donc pas d'erreur de complétion, donc aucune
-            // tentative de réouverture. Si elle apparaît plus tard, **elle
-            // n'est jamais surveillée**, et seule la réconciliation périodique
-            // la voit. C'est de la LATENCE, jamais une perte — et le fermer
-            // demanderait un minuteur de re-résolution que rien ne justifie
-            // aujourd'hui.
+            // ⚠️ NAMED GAP, NOT CLOSED: a root ABSENT at start-up has
+            // no handle, hence no completion error, hence no
+            // reopening attempt. If it appears later, **it
+            // is never watched**, and only the periodic reconciliation
+            // sees it. It is LATENCY, never a loss — and closing it
+            // would require a re-resolution timer nothing justifies
+            // today.
             Err(erreur) => tracing::warn!(
                 racine = %chemin.display(), %erreur,
                 "racine non surveillée : la réconciliation périodique reste la source de vérité"
@@ -94,37 +94,37 @@ fn boucler(racines: &mut [Racine], veille: &Veille) {
         if veille.arretee() {
             return;
         }
-        // Les racines VIVANTES seulement : une racine en échec n'a plus de
-        // handle valide, et l'inclure ferait rendre `WAIT_FAILED` à l'attente
-        // entière — une racine morte emporterait les trois autres.
+        // The LIVE roots only: a failed root no longer has a
+        // valid handle, and including it would make the whole wait return
+        // `WAIT_FAILED` — one dead root would take down the other three.
         let vivantes: Vec<usize> = (0..racines.len())
             .filter(|i| !racines[*i].en_echec())
             .collect();
         if vivantes.is_empty() {
-            // Toutes en échec : il n'y a rien à attendre, mais il y a des
-            // replis à faire échoir. Dormir le pas de l'attente est
-            // exactement ce que ferait le `WaitForMultipleObjects` s'il
-            // acceptait zéro handle — il ne l'accepte pas.
+            // All failed: there is nothing to wait for, but there are
+            // backoffs to let fall due. Sleeping the wait step is
+            // exactly what `WaitForMultipleObjects` would do if it
+            // accepted zero handles — it does not.
             std::thread::sleep(std::time::Duration::from_millis(u64::from(PAS_ATTENTE_MS)));
             reprendre_les_echues(racines);
             continue;
         }
         let handles: Vec<_> = vivantes.iter().map(|i| racines[*i].evenement()).collect();
-        // SÉCURITÉ : appel FFI. `bWaitAll = false` : on veut la PREMIÈRE
-        // racine signalée, pas les quatre.
+        // SAFETY: FFI call. `bWaitAll = false`: we want the FIRST
+        // signalled root, not all four.
         let issue = unsafe { WaitForMultipleObjects(&handles, false, PAS_ATTENTE_MS) };
         if issue == WAIT_TIMEOUT {
             reprendre_les_echues(racines);
             continue;
         }
         if issue == WAIT_FAILED {
-            // 🔴 UNE SEULE LIGNE, PUIS ON QUITTE. Un fil qui boucle sur un
-            // échec d'attente est un fil qui brûle un cœur EN SILENCE — et
-            // dans un journal partagé par le superviseur, le capteur et tous
-            // les enfants, il l'inonderait aussi.
-            // SÉCURITÉ : appel FFI. `GetLastError` n'a aucune précondition ;
-            // il est `unsafe` parce que sa valeur n'a de sens qu'ici, tout de
-            // suite après l'appel qui a échoué.
+            // 🔴 A SINGLE LINE, THEN WE QUIT. A thread that loops on a
+            // wait failure is a thread that burns a core SILENTLY — and
+            // in a log shared by the supervisor, the sensor and all
+            // the children, it would flood it too.
+            // SAFETY: FFI call. `GetLastError` has no precondition;
+            // it is `unsafe` because its value only makes sense here, right
+            // after the call that failed.
             let code = unsafe { windows::Win32::Foundation::GetLastError() };
             tracing::error!(
                 erreur = %windows::core::Error::from_hresult(code.to_hresult()),
@@ -144,13 +144,13 @@ fn boucler(racines: &mut [Racine], veille: &Veille) {
     }
 }
 
-/// Complète une racine signalée, la réarme, et publie ce qu'elle a dit.
+/// Completes a signalled root, re-arms it, and publishes what it said.
 fn servir(racine: &mut Racine, veille: &Veille) {
     match racine.completer() {
-        // 🔵 AVALÉE : ni comptée, ni journalisée, ni déclenchante — et la
-        // racine est tout de même RÉARMÉE, sans quoi l'injection d'une seule
-        // faute arrêterait la surveillance au lieu de lui faire manquer une
-        // complétion.
+        // 🔵 SWALLOWED: neither counted, nor logged, nor triggering — and the
+        // root is nonetheless RE-ARMED, otherwise injecting a single
+        // fault would stop the watch instead of making it miss one
+        // completion.
         Issue::Avalee => rearmer(racine),
         Issue::Notification => {
             veille.signaler();
@@ -158,20 +158,20 @@ fn servir(racine: &mut Racine, veille: &Veille) {
         }
         Issue::Debordement => {
             veille.signaler_debordement();
-            // 🔴 PAS DE LIMITATION DE DÉBIT SUR CE `warn!`, ET C'EST RAISONNÉ.
-            // Un débordement exige plus d'un millier d'événements entre deux
-            // réarmements, c'est-à-dire dans les microsecondes qui les
-            // séparent : il est RARE PAR CONSTRUCTION. Limiter son débit
-            // cacherait exactement le cas pathologique qu'on voudrait voir.
-            // ✅ **« RARE PAR CONSTRUCTION » EST DEVENU UNE MESURE** : sur
-            // sept exécutions de la porte S1 (jusqu'à 60 000 fichiers à
-            // 2 850/s) et deux rafales sur le produit (~96 000 notifications
-            // réelles chacune), cette ligne n'est sortie **AUCUNE fois**. Le
-            // seul relevé qui la montre est sous injection
-            // (`APPS_FAUTE=debordement:3` : exactement trois lignes).
-            // ⚠️ Si une recette relève un jour un déluge, c'est un RÉSULTAT :
-            // il se consigne, et la limitation se lègue — elle ne s'ajoute pas
-            // en catastrophe.
+            // 🔴 NO RATE LIMITING ON THIS `warn!`, AND IT IS REASONED.
+            // An overflow requires more than a thousand events between two
+            // re-arms, that is in the microseconds separating
+            // them: it is RARE BY CONSTRUCTION. Rate-limiting it
+            // would hide exactly the pathological case one would want to see.
+            // ✅ **"RARE BY CONSTRUCTION" HAS BECOME A MEASUREMENT**: over
+            // seven runs of gate S1 (up to 60,000 files at
+            // 2,850/s) and two bursts on the product (~96,000 real
+            // notifications each), this line came out **NOT ONCE**. The
+            // only reading that shows it is under injection
+            // (`APPS_FAUTE=debordement:3`: exactly three lines).
+            // ⚠️ If an acceptance run one day records a deluge, it is a RESULT:
+            // it is recorded, and the limiting is handed over — it is not added
+            // in a rush.
             tracing::warn!(
                 racine = %racine.chemin().display(),
                 debordements = veille.debordements(),
@@ -182,10 +182,10 @@ fn servir(racine: &mut Racine, veille: &Veille) {
         }
         Issue::Annulee => {}
         Issue::Perte(erreur) => {
-            // 🔴 UNE LIGNE PAR TRANSITION, JAMAIS UNE PAR TENTATIVE. C'est le
-            // patron de l'ensemble `ecartes` de `apps/boucle.rs`, dont le
-            // commentaire chiffre ce qu'il évite : « sans cet ensemble, les
-            // sept écarts de cette VM feraient 20 160 lignes par jour ».
+            // 🔴 ONE LINE PER TRANSITION, NEVER ONE PER ATTEMPT. It is the
+            // pattern of the `ecartes` set in `apps/boucle.rs`, whose
+            // comment quantifies what it avoids: "without this set, the
+            // seven discards on this VM would make 20,160 lines a day".
             if !racine.en_echec() {
                 tracing::warn!(
                     racine = %racine.chemin().display(), %erreur,
@@ -210,8 +210,8 @@ fn rearmer(racine: &mut Racine) {
     }
 }
 
-/// Tente la réouverture des racines en échec **dont le repli est échu**, et
-/// rien d'autre.
+/// Tries to reopen the failed roots **whose backoff is due**, and
+/// nothing else.
 fn reprendre_les_echues(racines: &mut [Racine]) {
     let maintenant = Instant::now();
     for racine in racines.iter_mut() {
@@ -223,9 +223,9 @@ fn reprendre_les_echues(racines: &mut [Racine]) {
                 racine = %racine.chemin().display(),
                 "racine de surveillance RÉTABLIE"
             ),
-            // ⚠️ AUCUNE LIGNE ICI : la racine était déjà en échec, et son
-            // entrée en échec a déjà été dite. Une ligne par tentative ferait
-            // 2 880 lignes par jour et par racine au plafond de repli.
+            // ⚠️ NO LINE HERE: the root was already failed, and its
+            // entry into failure has already been reported. One line per attempt would make
+            // 2,880 lines per day and per root at the backoff ceiling.
             Err(_) => racine.programmer_la_reprise(maintenant),
         }
     }

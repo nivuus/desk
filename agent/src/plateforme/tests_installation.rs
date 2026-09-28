@@ -1,18 +1,18 @@
-//! Le canal de l'agent, côté INSTALLATION : la seconde file, et son routage.
+//! The agent's channel, INSTALLATION side: the second queue, and its routing.
 //!
-//! 🔴 EXTRAITS PARCE QUE `tests.rs` A FRANCHI 500 LIGNES — 501 —, et la
-//! doctrine de `CLAUDE.md` est de rattraper par une EXTRACTION, jamais par une
-//! compression. **Un seul franchissement de UNE ligne se rattrape aussi par une
-//! extraction** : compresser pour un dépassement de un serait exactement le
-//! geste que D9 a payé (`sommeil.rs` ramené à 499, puis extrait sur exigence de
-//! revue).
+//! 🔴 EXTRACTED BECAUSE `tests.rs` CROSSED 500 LINES — 501 —, and the
+//! doctrine of `CLAUDE.md` is to catch up through an EXTRACTION, never through a
+//! compression. **A single crossing of ONE line is also caught up through an
+//! extraction**: compressing for an overflow of one would be exactly the
+//! gesture D9 paid for (`sommeil.rs` brought back to 499, then extracted on review
+//! demand).
 //!
-//! ⚠️ Le harnais reste chez le parent (`faux_canal_bidirectionnel`,
-//! `attendre_message`) : le recopier produirait deux versions qui divergeraient
-//! à la première correction portée sur une seule.
+//! ⚠️ The harness stays in the parent (`faux_canal_bidirectionnel`,
+//! `attendre_message`): copying it would produce two versions that would diverge
+//! at the first fix applied to only one.
 //!
-//! ⚠️ TRANSPOSITION VERBATIM. Le contrôle est le COMPTE, annoncé avant d'être
-//! mesuré : `cargo test -p agent` rendait 861 avant, il doit rendre 861 après.
+//! ⚠️ VERBATIM TRANSPOSITION. The check is the COUNT, announced before being
+//! measured: `cargo test -p agent` returned 861 before, it must return 861 after.
 
 use super::*;
 use crate::plateforme::tests::{attendre_message, faux_canal_bidirectionnel};
@@ -21,18 +21,18 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session() {
-    // 🔴 DEUX ROUGES EN UNE, exactement comme pour `Lancer` — et c'est la
-    // CINQUIÈME fois que ce dépôt paie la leçon du bras manquant (D5 `Sommeil`,
-    // D6 `Part`, D7 `Audio`, D8 `PleinEcran`, G2 `IconesManquantes`). Sans le
-    // bras `Installer`, un ordre valide tomberait dans le bras `Err` (« message
-    // illisible »), qui FERME la session : le canal se reprendrait à chaque
-    // installation demandée, et la trace accuserait une divergence de version
-    // qui n'existe pas.
+    // 🔴 TWO REDS IN ONE, exactly as for `Lancer` — and it is the
+    // FIFTH time this repository pays the lesson of the missing arm (D5 `Sommeil`,
+    // D6 `Part`, D7 `Audio`, D8 `PleinEcran`, G2 `IconesManquantes`). Without the
+    // `Installer` arm, a valid order would fall into the `Err` arm ("unreadable
+    // message"), which CLOSES the session: the channel would reconnect at each
+    // requested installation, and the trace would accuse a version divergence
+    // that does not exist.
     //
-    // ⚠️ ET IL VÉRIFIE QUE L'ORDRE ARRIVE DANS **L'AUTRE** FILE. Un bras qui
-    // l'aurait poussé dans `ordres` passerait un test qui ne regarde que « la
-    // session survit » : la file des ordres est drainée par le fil COM de la
-    // découverte, qui se figerait alors pendant tout le téléchargement.
+    // ⚠️ AND IT CHECKS THAT THE ORDER ARRIVES IN **THE OTHER** QUEUE. An arm that
+    // had pushed it into `ordres` would pass a test that only looks at "the
+    // session survives": the order queue is drained by the COM thread of
+    // discovery, which would then freeze during the whole download.
     let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
     canal.attendre_identite().await.expect("enrôlement");
@@ -64,14 +64,14 @@ async fn un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session(
             sha256: "ab".into(),
         }
     );
-    // 🔴 ET LA FILE DES ORDRES N'A RIEN REÇU. C'est l'assertion qui distingue
-    // « routé correctement » de « routé n'importe où ».
+    // 🔴 AND THE ORDER QUEUE RECEIVED NOTHING. It is the assertion that distinguishes
+    // "routed correctly" from "routed anywhere".
     assert!(
         recu_ordres.try_recv().is_err(),
         "l'installation ne doit PAS aller aux ordres"
     );
 
-    // La session vit toujours : l'émission suivante arrive.
+    // The session is still alive: the next emission arrives.
     canal
         .emetteur()
         .emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
@@ -81,9 +81,9 @@ async fn un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session(
 
 #[tokio::test]
 async fn la_file_d_installations_ne_se_prend_qu_une_fois() {
-    // Même propriété qu'`ordres()`, et pour la même raison : deux consommateurs
-    // se voleraient les ordres l'un à l'autre, et le symptôme serait « une
-    // installation sur deux ne part pas ».
+    // Same property as `ordres()`, and for the same reason: two consumers
+    // would steal orders from one another, and the symptom would be "one
+    // installation out of two does not go".
     let (url, _recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
     canal.attendre_identite().await.expect("enrôlement");

@@ -4,9 +4,9 @@ use super::{commande_vise, executable_de_commande, normaliser_extension, ranger}
 
 #[test]
 fn une_ligne_citee_garde_les_espaces_du_chemin() {
-    // 🔴 LE CAS QUI IMPOSE LA RÈGLE : sans le traitement du guillemet, on
-    // rendrait `"C:\Program` et l'appariement échouerait sur toute application
-    // installée sous `Program Files` — c'est-à-dire sur la quasi-totalité.
+    // 🔴 THE CASE THAT IMPOSES THE RULE: without the quote handling, we
+    // would return `"C:\Program` and matching would fail for every application
+    // installed under `Program Files` — that is, almost all of them.
     assert_eq!(
         executable_de_commande("\"C:\\Program Files\\App\\a.exe\" \"%1\""),
         Some("C:\\Program Files\\App\\a.exe".to_string()),
@@ -45,12 +45,12 @@ fn une_ligne_vide_ne_rend_rien() {
 
 #[test]
 fn un_guillemet_ouvrant_jamais_ferme_est_refuse() {
-    // ⚠️ On refuse plutôt que de prendre tout le reste : une ligne mal formée
-    // n'est pas un chemin, et en fabriquer un attribuerait l'association à
-    // n'importe quoi.
-    // ROUGE : `reste.split_once('"').map(...).unwrap_or(reste)` ⟹ rend
-    // `C:\a b\x.exe %1`, qui n'apparie rien mais qui n'est pas non plus un
-    // refus — le défaut serait SILENCIEUX.
+    // ⚠️ Refusing rather than taking all the rest: a malformed line
+    // is not a path, and making one up would attribute the association to
+    // anything.
+    // RED: `reste.split_once('"').map(...).unwrap_or(reste)` ⟹ returns
+    // `C:\a b\x.exe %1`, which matches nothing but is not a
+    // refusal either — the defect would be SILENT.
     assert_eq!(executable_de_commande("\"C:\\a b\\x.exe %1"), None);
 }
 
@@ -59,12 +59,12 @@ fn un_guillemet_ferme_immediatement_ne_rend_rien() {
     assert_eq!(executable_de_commande("\"\" %1"), None);
 }
 
-// ── `commande_vise` — L'APPARIEMENT PAR IDENTITÉ ────────────────────────────
+// ── `commande_vise` — MATCHING BY IDENTITY ──────────────────────────────────
 
 #[test]
 fn une_commande_vise_sa_cible_a_la_casse_pres() {
-    // `normaliser_chemin` replie la casse : c'est la règle DÉJÀ écrite, et
-    // elle est RÉEMPLOYÉE plutôt que recopiée.
+    // `normaliser_chemin` folds case: it is the rule ALREADY written, and
+    // it is REUSED rather than copied.
     assert!(commande_vise(
         "\"C:\\Program Files\\App\\a.exe\" \"%1\"",
         "c:\\program files\\app\\A.EXE",
@@ -73,13 +73,13 @@ fn une_commande_vise_sa_cible_a_la_casse_pres() {
 
 #[test]
 fn une_commande_ne_vise_pas_une_autre_version_du_meme_produit() {
-    // 🔴 C'EST LA RAISON D'ÊTRE DE LA DÉCISION D12, ET LE TEST QUI L'IMPOSE.
-    // Le modèle que la conception cite (`src/app.js:15-37`) apparie par
-    // SOUS-CHAÎNE DE NOM après avoir retiré les chiffres : « Nsight 2020.3 »
-    // et « Nsight 2024.6 » y produisent la même clé, et l'association
-    // atterrirait sur la mauvaise version sans que personne ne le voie.
-    // ROUGE : comparer par `contains` sur le nom ⟹ les deux assertions
-    // suivantes tombent ENSEMBLE.
+    // 🔴 IT IS THE REASON FOR DECISION D12, AND THE TEST THAT IMPOSES IT.
+    // The model the design cites (`src/app.js:15-37`) matches by
+    // NAME SUBSTRING after stripping digits: "Nsight 2020.3"
+    // and "Nsight 2024.6" produce the same key there, and the association
+    // would land on the wrong version without anyone seeing it.
+    // RED: compare with `contains` on the name ⟹ the next two
+    // assertions fail TOGETHER.
     let commande = "\"C:\\Nsight 2020.3\\nsight.exe\" \"%1\"";
     assert!(
         commande_vise(commande, "C:\\Nsight 2020.3\\nsight.exe"),
@@ -99,9 +99,9 @@ fn une_commande_illisible_ne_vise_rien() {
 
 #[test]
 fn un_meme_executable_sous_deux_ecritures_est_le_meme() {
-    // Une barre oblique finale et une casse différente ne font pas deux
-    // applications — c'est ce que `normaliser_chemin` garantit, et le
-    // réemployer nous le donne gratuitement.
+    // A trailing slash and a different case do not make two
+    // applications — that is what `normaliser_chemin` guarantees, and
+    // reusing it gives it to us for free.
     assert!(commande_vise(
         "C:\\WINDOWS\\Notepad.exe %1",
         "c:\\windows\\notepad.exe"
@@ -112,8 +112,8 @@ fn un_meme_executable_sous_deux_ecritures_est_le_meme() {
 
 #[test]
 fn une_extension_prend_son_point_et_ses_minuscules() {
-    // Le registre écrit `.txt` sous `HKCR` et `txt` sous `FileExts` : les deux
-    // formes arrivent, et une seule doit voyager.
+    // The registry writes `.txt` under `HKCR` and `txt` under `FileExts`: both
+    // forms arrive, and only one must travel.
     assert_eq!(normaliser_extension("TXT"), Some(".txt".to_string()));
     assert_eq!(normaliser_extension(".TxT"), Some(".txt".to_string()));
     assert_eq!(normaliser_extension("  .md  "), Some(".md".to_string()));
@@ -121,9 +121,9 @@ fn une_extension_prend_son_point_et_ses_minuscules() {
 
 #[test]
 fn une_extension_vide_ou_absurde_est_refusee() {
-    // ⚠️ Sans ces refus, une clé de registre déréglée ferait voyager `"."` ou
-    // un fragment de chemin, que la plateforme poserait tel quel dans un
-    // manifeste.
+    // ⚠️ Without these refusals, a messed-up registry key would send `"."` or
+    // a path fragment down the wire, which the platform would put as is into a
+    // manifest.
     assert_eq!(normaliser_extension(""), None);
     assert_eq!(normaliser_extension("."), None);
     assert_eq!(normaliser_extension("a b"), None);
@@ -135,11 +135,11 @@ fn une_extension_vide_ou_absurde_est_refusee() {
 
 #[test]
 fn ranger_trie_et_dedoublonne() {
-    // 🔴 L'ORDRE N'EST PAS UN ORNEMENT : la plateforme compare le catalogue
-    // reçu à celui qu'elle connaît. Deux listes identiques dans un ordre
-    // différent la feraient écrire à chaque tour et journaliser un changement
-    // qui n'a pas eu lieu.
-    // ROUGE : retirer le `sort()` ⟹ cette assertion tombe.
+    // 🔴 THE ORDER IS NOT AN ORNAMENT: the platform compares the received
+    // catalogue with the one it knows. Two identical lists in a different
+    // order would make it write on every tick and log a change
+    // that did not happen.
+    // RED: remove the `sort()` ⟹ this assertion fails.
     assert_eq!(
         ranger(vec![
             ".TXT".into(),
@@ -162,12 +162,12 @@ fn ranger_ecarte_ce_qui_n_est_pas_une_extension_sans_tout_perdre() {
 
 #[test]
 fn ranger_rend_une_liste_vide_plutot_que_rien() {
-    // Une application sans association est un ÉTAT NORMAL, pas une panne : le
-    // champ reste présent sur le fil, et il est vide.
+    // An application with no association is a NORMAL STATE, not a failure: the
+    // field stays present on the wire, and it is empty.
     assert_eq!(ranger(vec![]), Vec::<String>::new());
 }
 
-// ── `table` et `pour_cible` — LA VOIE QUE LE PRODUIT EMPRUNTE ───────────────
+// ── `table` and `pour_cible` — THE PATH THE PRODUCT TAKES ───────────────────
 
 use super::{pour_cible, table};
 
@@ -195,8 +195,8 @@ fn la_table_groupe_les_extensions_par_executable() {
 
 #[test]
 fn la_table_ecarte_ce_qui_ne_se_lit_pas_sans_perdre_le_reste() {
-    // ⚠️ Un ProgID dont la commande ne se lit pas ne désigne AUCUNE
-    // application ; l'attribuer au hasard serait pire que de l'écarter.
+    // ⚠️ A ProgID whose command cannot be read designates NO
+    // application; attributing it at random would be worse than discarding it.
     let t = table(vec![
         (".a".into(), "".into()),
         (".b".into(), "\"C:\\x.exe".into()),
@@ -209,12 +209,12 @@ fn la_table_ecarte_ce_qui_ne_se_lit_pas_sans_perdre_le_reste() {
 
 #[test]
 fn pour_cible_normalise_la_cible_aussi() {
-    // 🔴 LE DÉFAUT QUE CE TEST EMPÊCHE EST SILENCIEUX : la table est bâtie sur
-    // des chemins normalisés ; l'interroger avec un chemin brut ne trouverait
-    // JAMAIS rien, et toutes les listes seraient simplement vides — un produit
-    // qui a l'air de fonctionner et n'associe rien.
-    // ROUGE : `table.get(cible)` au lieu de `table.get(&normaliser_chemin(cible))`
-    // ⟹ cette assertion tombe, la suivante reste verte.
+    // 🔴 THE DEFECT THIS TEST PREVENTS IS SILENT: the table is built on
+    // normalised paths; querying it with a raw path would
+    // NEVER find anything, and every list would simply be empty — a product
+    // that looks like it works and associates nothing.
+    // RED: `table.get(cible)` instead of `table.get(&normaliser_chemin(cible))`
+    // ⟹ this assertion fails, the next one stays green.
     let t = table(vec![(".txt".into(), "C:\\Windows\\Notepad.exe %1".into())]);
     assert_eq!(
         pour_cible(&t, "C:\\WINDOWS\\NOTEPAD.EXE"),
@@ -228,8 +228,8 @@ fn pour_cible_normalise_la_cible_aussi() {
 
 #[test]
 fn pour_cible_rend_une_liste_vide_quand_l_application_n_ouvre_rien() {
-    // C'est l'état de la très grande majorité des applications, et ce n'est
-    // pas une panne.
+    // That is the state of the vast majority of applications, and it is
+    // not a failure.
     let t = table(vec![(".txt".into(), "C:\\Windows\\notepad.exe %1".into())]);
     assert_eq!(pour_cible(&t, "C:\\autre\\chose.exe"), Vec::<String>::new());
 }

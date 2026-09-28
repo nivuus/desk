@@ -1,9 +1,9 @@
-//! Lecture de pixels d'une texture GPU, pour les modes diagnostic.
+//! Reading pixels of a GPU texture, for the diagnostic modes.
 //!
-//! Copie vers une texture « staging » accessible au CPU
-//! (`D3D11_USAGE_STAGING`) : c'est ce qui permet de prouver que le recadrage
-//! capture bien le contenu de la fenêtre, et pas seulement des dimensions
-//! qui auraient l'air correctes sans l'être.
+//! Copy into a CPU-accessible "staging" texture
+//! (`D3D11_USAGE_STAGING`): it is what makes it possible to prove that the crop
+//! does capture the window's content, and not only dimensions
+//! that would look correct without being so.
 
 use std::time::Duration;
 
@@ -11,13 +11,13 @@ use anyhow::{Context, Result};
 
 use crate::{capture, geometry};
 
-/// Lit un pixel BGRA d'une texture GPU en la copiant vers une texture
-/// « staging » accessible au CPU (`D3D11_USAGE_STAGING`).
+/// Reads a BGRA pixel of a GPU texture by copying it into a
+/// CPU-accessible "staging" texture (`D3D11_USAGE_STAGING`).
 ///
-/// Sert uniquement au mode diagnostic `CAPTURE_TEST` : prouver que le
-/// recadrage capture bien le contenu de la fenêtre, et pas juste des
-/// dimensions qui auraient l'air correctes sans l'être (voir l'appelant).
-/// Renvoie `(r, g, b, a)`.
+/// Only serves the `CAPTURE_TEST` diagnostic mode: proving that the
+/// crop does capture the window's content, and not just
+/// dimensions that would look correct without being so (see the caller).
+/// Returns `(r, g, b, a)`.
 pub(crate) fn read_pixel(
     device: &windows::Win32::Graphics::Direct3D11::ID3D11Device,
     texture: &windows::Win32::Graphics::Direct3D11::ID3D11Texture2D,
@@ -62,7 +62,7 @@ pub(crate) fn read_pixel(
 
     let base = mapped.pData as *const u8;
     let offset = (y * mapped.RowPitch + x * 4) as isize;
-    // Format BGRA : l'ordre des octets en mémoire est bleu, vert, rouge, alpha.
+    // BGRA format: the byte order in memory is blue, green, red, alpha.
     let (b, g, r, a) = unsafe {
         (
             *base.offset(offset),
@@ -77,8 +77,8 @@ pub(crate) fn read_pixel(
     Ok((r, g, b, a))
 }
 
-/// Acquiert une image pour `region` (en retentant jusqu'à `timeout`) et lit
-/// le pixel en son centre.
+/// Acquires an image for `region` (retrying until `timeout`) and reads
+/// the pixel at its centre.
 pub(super) fn capture_center_pixel(
     capture: &mut capture::DesktopCapture,
     region: geometry::Rect,

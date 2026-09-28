@@ -1,27 +1,27 @@
-//! Le contrat du fil d'écriture : ce qu'il **reçoit** ([`Ordre`]) et ce dont il
-//! a **besoin** ([`Config`]).
+//! The write thread's contract: what it **receives** ([`Ordre`]) and what it
+//! **needs** ([`Config`]).
 //!
-//! # Ce que cette extraction EST, et ce qu'elle n'est PAS
+//! # What this extraction IS, and what it is NOT
 //!
-//! **Elle n'ajoute aucun comportement.** Les deux déclarations sont transposées
-//! **VERBATIM** depuis `fil.rs` (l. 97-127), avec leurs doc-commentaires, et
-//! `fil.rs` les réexporte par `pub use contrat::{Config, Ordre};` : **aucun
-//! site d'appel ne bouge.**
+//! **It adds no behaviour.** The two declarations are transposed
+//! **VERBATIM** from `fil.rs` (l. 97-127), with their doc comments, and
+//! `fil.rs` re-exports them through `pub use contrat::{Config, Ordre};`: **no
+//! call site moves.**
 //!
-//! Elle vient **AVANT** l'addition qu'elle accueille, et non après : `fil.rs`
-//! était à **472** lignes, marge **28**, et F5 doit y ajouter `Ordre::Bonjour`
-//! plus son bras dans `Fil::traiter` — ce qui l'aurait porté entre 482 et 490,
-//! trop serré pour la revue qui suit. C'est le geste que D9 a inventé
-//! (`capteur/serveur/instances.rs`, marge rendue de 10 à 65) et que D10 a joué
-//! trois fois. **Jamais une compression**, que `CLAUDE.md` interdit nommément.
+//! It comes **BEFORE** the addition it hosts, and not after: `fil.rs`
+//! was at **472** lines, margin **28**, and F5 must add `Ordre::Bonjour`
+//! to it plus its arm in `Fil::traiter` — which would have brought it between 482 and 490,
+//! too tight for the review that follows. It is the gesture D9 invented
+//! (`capteur/serveur/instances.rs`, margin returned from 10 to 65) and that D10 played
+//! three times. **Never a compression**, which `CLAUDE.md` forbids by name.
 //!
-//! ⚠️ **Pourquoi CES deux-là et pas `Fil` ni `EnCours`.** Les deux extraites
-//! sont `pub` : leur type suit leur visibilité. `Fil::en_cours` est `pub(super)`
-//! et son type `EnCours` aussi ; les emporter demanderait de hisser une
-//! visibilité, et `fil.rs:138-142` porte déjà le constat qu'une **extraction
-//! rigoureusement verbatim ne compile pas** quand un élément privé d'un module
-//! enfant doit devenir visible de son parent — `rustc` le dit par
-//! `private_interfaces`, *un avertissement d'une autre famille que `dead_code`*.
+//! ⚠️ **Why THESE two and not `Fil` nor `EnCours`.** The two extracted
+//! are `pub`: their type follows their visibility. `Fil::en_cours` is `pub(super)`
+//! and so is its type `EnCours`; taking them would require hoisting a
+//! visibility, and `fil.rs:138-142` already carries the finding that a **strictly
+//! verbatim extraction does not compile** when a private item of a child
+//! module must become visible to its parent — `rustc` says so through
+//! `private_interfaces`, *a warning of a family other than `dead_code`*.
 
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
@@ -31,58 +31,58 @@ use crate::pont::ecriture::Evenement;
 use crate::pont::table::Table;
 use crate::pont::transport::VersNavigateur;
 use proto::fichiers::CodeEchec;
-/// Ce que le fil d'écriture reçoit.
+/// What the write thread receives.
 ///
-/// ⚠️ **UN SEUL CANAL, et c'est une divergence déclarée avec le plan de F2**,
-/// dont la signature prend **deux** `Receiver` (les événements, les faits).
-/// Deux récepteurs sur un fil bloquant imposeraient un sondage alterné, donc
-/// une latence bornée par un délai arbitraire de plus — et un test qui dépend
-/// d'un `sleep`. Un canal unique rend la boucle déterministe, donc testable
-/// sans dormir : la propriété que `pont::table` s'est donnée pour l'expiration.
+/// ⚠️ **A SINGLE CHANNEL, and it is a declared divergence from F2's plan**,
+/// whose signature takes **two** `Receiver`s (the events, the acks).
+/// Two receivers on a blocking thread would impose alternating polling, hence
+/// a latency bounded by yet another arbitrary delay — and a test that depends
+/// on a `sleep`. A single channel makes the loop deterministic, hence testable
+/// without sleeping: the property `pont::table` gave itself for expiry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ordre {
-    /// Une notification ProjFS a désigné un chemin.
+    /// A ProjFS notification named a path.
     Survenu(Evenement),
-    /// Le navigateur a acquitté un morceau.
+    /// The browser acknowledged a chunk.
     Fait { correlation: u32 },
-    /// Le navigateur a refusé, ou la commande a expiré.
+    /// The browser refused, or the command expired.
     Echec { correlation: u32, code: CodeEchec },
-    /// **F5** — le navigateur s'est annoncé, et il dit sur quelle racine.
+    /// **F5** — the browser announced itself, and it says on which root.
     ///
-    /// 🔴 **C'EST LE SEUL ORDRE QUI DÉCLENCHE LA REPRISE**, et c'est ce qui
-    /// ferme la fenêtre de trente secondes que F2 a mesurée deux fois sur deux.
-    /// Avant F5, `Fil::demarrer` appelait `reprendre()` **au démarrage du
-    /// fil** — c'est-à-dire au démarrage du pont, *sans savoir si un navigateur
-    /// est là, ni lequel, ni sur quel répertoire*. F2 a relevé la poussée du
-    /// rejeu **0,8 s AVANT** que le navigateur n'annonce son montage, puis
-    /// `commande expirée … correlation=0` **+30,2 s** plus tard : *« l'indicateur
-    /// qui existe pour dénoncer la perte est MUET pendant trente secondes. »*
+    /// 🔴 **IT IS THE ONLY ORDER THAT TRIGGERS RESUMPTION**, and it is what
+    /// closes the thirty-second window F2 measured two times out of two.
+    /// Before F5, `Fil::demarrer` called `reprendre()` **at the thread's
+    /// start** — that is, at the bridge's start, *without knowing whether a browser
+    /// is there, nor which one, nor on which directory*. F2 recorded the replay's
+    /// push **0.8 s BEFORE** the browser announced its mount, then
+    /// `command expired … correlation=0` **+30.2 s** later: *"the indicator
+    /// that exists to denounce the loss is SILENT for thirty seconds."*
     ///
-    /// C'est **littéralement le remède que F2 a nommé** : « que le pont n'ouvre
-    /// son canal d'écriture qu'après un acquittement de l'écrivain ».
+    /// It is **literally the remedy F2 named**: "that the bridge only opens
+    /// its write channel after an acknowledgement from the writer".
     ///
-    /// ⚠️ **Il n'y avait AUCUN ordre correspondant à `CanalOuvert`**, et c'est
-    /// la cause structurelle de cette fenêtre : le fil ne pouvait pas savoir que
-    /// le navigateur était prêt, faute qu'on le lui dise.
+    /// ⚠️ **There was NO order matching `CanalOuvert`**, and it is
+    /// the structural cause of that window: the thread could not know that
+    /// the browser was ready, since no one told it.
     Bonjour {
-        /// Le nom de la racine que l'utilisateur a choisie. **Un indice, pas une
-        /// preuve** — voir [`crate::pont::bonjour`].
+        /// The name of the root the user chose. **A hint, not a
+        /// proof** — see [`crate::pont::bonjour`].
         racine: String,
-        /// L'utilisateur a confirmé vouloir pousser malgré un nom différent.
+        /// The user confirmed wanting to push despite a different name.
         forcer: bool,
     },
 }
 
-/// Ce dont le fil a besoin pour tourner.
+/// What the thread needs to run.
 pub struct Config {
-    /// La racine de virtualisation, où vivent les fichiers hydratés.
+    /// The virtualisation root, where hydrated files live.
     pub racine: PathBuf,
-    /// Le journal de reprise, **hors de la racine**.
+    /// The resumption journal, **outside the root**.
     pub chemin_journal: PathBuf,
-    /// **La MÊME table que les lectures** : deux sources de corrélations sur un
-    /// canal unique se collisionneraient en silence.
+    /// **The SAME table as reads**: two sources of correlations on a
+    /// single channel would collide silently.
     pub table: Arc<Mutex<Table>>,
     pub vers_navigateur: Sender<VersNavigateur>,
-    /// `PONT_ECRITURE` : `false` = le bras désarmé de l'A/B.
+    /// `PONT_ECRITURE`: `false` = the disarmed arm of the A/B.
     pub armee: bool,
 }

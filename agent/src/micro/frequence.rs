@@ -1,58 +1,58 @@
-//! L'instrument de fréquence de la recette du micro : la fréquence dominante
-//! d'un signal supposé périodique, par comptage des passages par zéro.
+//! The frequency instrument of the microphone acceptance run: the dominant frequency
+//! of a signal assumed periodic, by counting zero crossings.
 //!
-//! **PUR, aucun `cfg`.** Extrait de `micro.rs` au titre de la règle des 500
-//! lignes, et EXTRAIT PLUTÔT QUE COMPRIMÉ — le parent devait accueillir le
-//! plafond de dissimulation (`micro/dissimulation.rs`) et n'avait plus la
-//! marge. La doctrine du dépôt est de faire l'extraction AVANT l'addition, pas
-//! après l'avoir franchie ; c'est ce qui est fait ici.
+//! **PURE, no `cfg`.** Extracted from `micro.rs` under the 500-line
+//! rule, and EXTRACTED RATHER THAN COMPRESSED — the parent had to host the
+//! concealment cap (`micro/dissimulation.rs`) and no longer had the
+//! margin. The repository's doctrine is to extract BEFORE the addition, not
+//! after having crossed it; that is what is done here.
 //!
-//! Rien n'a changé de son contenu : il est déplacé mot pour mot, et
-//! `micro.rs` le ré-exporte, de sorte qu'aucun site d'appel ne bouge.
+//! Nothing in its content changed: it is moved word for word, and
+//! `micro.rs` re-exports it, so that no call site moves.
 //!
-//! ⚠️ **Ce n'est PAS le seul instrument de fréquence du dépôt** : `spectre.rs`
-//! en porte un autre, par filtre de Goertzel, qui cherche LA raie dominante
-//! sur une grille connue d'avance. Les deux coexistent à dessein — celui-ci
-//! ne suppose aucune grille et rend `None` sur ce qui n'est pas périodique,
-//! ce qu'un Goertzel ne fait pas de lui-même.
+//! ⚠️ **It is NOT the repository's only frequency instrument**: `spectre.rs`
+//! carries another, through a Goertzel filter, which looks for THE dominant line
+//! on a grid known in advance. The two coexist on purpose — this one
+//! assumes no grid and returns `None` on what is not periodic,
+//! which a Goertzel does not do by itself.
 
-/// Fraction de la crête sous laquelle un échantillon ne compte pas comme un
-/// passage : la bande morte.
+/// Fraction of the peak below which a sample does not count as a
+/// crossing: the dead band.
 ///
-/// **Sans elle, l'instrument prendrait du bruit pour un ton.** Le bruit de
-/// quantification autour de zéro multiplie les changements de signe, et c'est
-/// exactement ce que sanctionne
-/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible`.
+/// **Without it, the instrument would take noise for a tone.** Quantisation
+/// noise around zero multiplies the sign changes, and it is
+/// exactly what
+/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible` sanctions.
 const BANDE_MORTE: f32 = 0.25;
 
-/// Amplitude crête sous laquelle le signal n'a pas de fréquence du tout.
+/// Peak amplitude below which the signal has no frequency at all.
 const CRETE_MINIMALE: f32 = 1.0 / 512.0;
 
-/// Fréquence dominante d'un signal supposé PÉRIODIQUE, par passages par zéro.
+/// Dominant frequency of a signal assumed PERIODIC, by zero crossings.
 ///
-/// ⚠️ **`pcm` est un signal MONO à `hz` échantillons par seconde.** Un tampon
-/// stéréo entrelacé doit être désentrelacé par l'appelant (`step_by(2)`).
+/// ⚠️ **`pcm` is a MONO signal at `hz` samples per second.** An interleaved
+/// stereo buffer must be deinterleaved by the caller (`step_by(2)`).
 ///
-/// ❌ **CETTE DOC A PORTÉ UN FAUX, et c'est la MESURE qui l'a réfuté** (tâche 13,
-/// chantier E). Elle disait que l'analyser tel quel « doublerait la cadence
-/// apparente ». **C'est l'inverse : la fréquence est DIVISÉE PAR DEUX** —
-/// relevé **219,5 Hz pour une tonalité de 440 Hz**, canaux identiques, en
-/// retirant le `step_by(2)` de `demarrage::micro::Fenetre` et en relançant son
-/// test. Le mécanisme est dans le calcul ci-dessous : `duree` vaut
-/// `pcm.len() / hz`, et un tampon entrelacé porte deux fois plus de valeurs que
-/// de trames — la durée calculée double, quand le nombre de passages par zéro
-/// ne bouge pas (dupliquer chaque échantillon n'ajoute aucun changement de
-/// signe). L'obligation de désentrelacer est INCHANGÉE ; seul le sens de
-/// l'erreur qu'on commet en l'oubliant était faux, et un lecteur qui aurait
-/// cherché un « x2 » dans un journal n'aurait rien trouvé. *(Le plan décrivait l'implémentation comme opérant « sur le canal
-/// gauche » tout en écrivant ses tests sur un tampon mono : les deux ne peuvent
-/// pas être vrais ensemble, et c'est la sémantique du test qui a été retenue,
-/// parce que c'est elle qui rend la fonction utilisable des deux façons.)*
+/// ❌ **THIS DOC CARRIED A FALSEHOOD, and it is the MEASUREMENT that refuted it** (task 13,
+/// work stream E). It said that analysing it as is "would double the apparent
+/// cadence". **It is the reverse: the frequency is HALVED** —
+/// noted **219.5 Hz for a 440 Hz tone**, identical channels, by
+/// removing the `step_by(2)` from `demarrage::micro::Fenetre` and rerunning its
+/// test. The mechanism is in the computation below: `duree` is
+/// `pcm.len() / hz`, and an interleaved buffer carries twice as many values as
+/// frames — the computed duration doubles, while the number of zero crossings
+/// does not move (duplicating each sample adds no sign
+/// change). The obligation to deinterleave is UNCHANGED; only the direction of the
+/// error made by forgetting it was wrong, and a reader who would have
+/// looked for an "x2" in a log would have found nothing. *(The plan described the implementation as operating "on the left
+/// channel" while writing its tests on a mono buffer: the two cannot
+/// both be true, and it is the test's semantics that was retained,
+/// because it is what makes the function usable both ways.)*
 ///
-/// Rend `None` quand le signal est trop faible pour qu'un passage ait un sens :
-/// **un signal trop faible n'a pas de fréquence**, et rendre un nombre pour le
-/// silence ferait de cet instrument le compteur d'octets qu'il existe pour
-/// remplacer (doctrine du dépôt, payée en D7).
+/// Returns `None` when the signal is too weak for a crossing to make sense:
+/// **a signal too weak has no frequency**, and returning a number for
+/// silence would make this instrument the byte counter it exists to
+/// replace (repository doctrine, paid for in D7).
 pub fn frequence_par_passages_a_zero(pcm: &[f32], hz: u32) -> Option<f32> {
     if pcm.len() < 2 || hz == 0 {
         return None;

@@ -1,28 +1,28 @@
-//! Voie 4 : les replis par fenêtre, sondés en dernier parce qu'ils sont les
-//! moins prometteurs.
+//! Path 4: the per-window fallbacks, probed last because they are the
+//! least promising.
 //!
-//! `PrintWindow(PW_RENDERFULLCONTENT)` passe par GDI, ce qui le fait
-//! généralement échouer (image noire) sur le contenu D3D des fenêtres —
-//! c'est ce que cette sonde vérifie, sur une mire peinte en D3D11 et non en
-//! GDI. **Mesuré sur cette VM : ce n'est PAS le cas** — la mire recouverte
-//! est rendue correctement (`verdict=Juste`, pixel exact), probablement
-//! grâce au modèle de présentation flip de la swapchain de la mire. Il
-//! rapatrie néanmoins les pixels en mémoire centrale : même l'image
-//! correcte tombe sur la porte « chemin GPU » de la spec §5. On le sonde
-//! pour le CONSIGNER, pas dans l'espoir de le retenir.
+//! `PrintWindow(PW_RENDERFULLCONTENT)` goes through GDI, which makes it
+//! generally fail (black image) on the D3D content of windows —
+//! that is what this probe checks, on a test pattern painted in D3D11 and not in
+//! GDI. **Measured on this VM: that is NOT the case** — the covered test pattern
+//! is rendered correctly (`verdict=Juste`, exact pixel), probably
+//! thanks to the flip presentation model of the test pattern's swapchain. It
+//! nevertheless brings the pixels back to main memory: even the correct
+//! image falls on the "GPU path" gate of spec §5. We probe it
+//! to RECORD it, not in the hope of keeping it.
 //!
-//! `DwmGetDxSharedSurface` n'est pas documentée : elle est résolue
-//! dynamiquement dans user32.dll, et son absence est un résultat, pas une
-//! erreur.
+//! `DwmGetDxSharedSurface` is not documented: it is resolved
+//! dynamically in user32.dll, and its absence is a result, not an
+//! error.
 
 use anyhow::{Context, Result};
 use windows::core::s;
-// Écart avec le plan : `PrintWindow` et `PRINT_WINDOW_FLAGS` ne sont PAS dans
-// `Win32::UI::WindowsAndMessaging` sous `windows` 0.62 (comme l'énonçait le
-// plan), mais dans `Win32::Storage::Xps` — la fonction y est déclarée sous
-// `#[cfg(feature = "Win32_Graphics_Gdi")]`, mais le module qui la porte est
-// lui-même gated par la feature `Win32_Storage_Xps`, ajoutée à `Cargo.toml`
-// pour cette tâche. Suivi en source : `windows-0.62.2/src/Windows/Win32/
+// Gap from the plan: `PrintWindow` and `PRINT_WINDOW_FLAGS` are NOT in
+// `Win32::UI::WindowsAndMessaging` under `windows` 0.62 (as the
+// plan stated), but in `Win32::Storage::Xps` — the function is declared there under
+// `#[cfg(feature = "Win32_Graphics_Gdi")]`, but the module that carries it is
+// itself gated by the `Win32_Storage_Xps` feature, added to `Cargo.toml`
+// for this task. Followed in source: `windows-0.62.2/src/Windows/Win32/
 // Storage/Xps/mod.rs`.
 use windows::Win32::Graphics::Gdi::{
     CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetPixel, ReleaseDC,
@@ -37,18 +37,18 @@ use crate::mire;
 
 use super::mires::Mires;
 
-/// Non exposée par `windows` 0.62 : `PW_RENDERFULLCONTENT` vaut 2 (WinUser.h).
-/// Seule `PW_CLIENTONLY` (1) est exportée par ce crate à cette version.
+/// Not exposed by `windows` 0.62: `PW_RENDERFULLCONTENT` is 2 (WinUser.h).
+/// Only `PW_CLIENTONLY` (1) is exported by this crate at this version.
 ///
-/// `pub(super)` : la voie `printwindow` du banc (`voies.rs`) réutilise cette
-/// même constante plutôt que de la redéfinir une seconde fois.
+/// `pub(super)`: the bench's `printwindow` path (`voies.rs`) reuses this
+/// same constant rather than redefining it a second time.
 pub(super) const PW_RENDERFULLCONTENT: PRINT_WINDOW_FLAGS = PRINT_WINDOW_FLAGS(2);
 
 pub(super) fn eprouver() -> Result<()> {
-    // Panne du banc, pas verdict sur les replis : si le bureau ne peut pas
-    // être découpé en deux places ou si les fenêtres de mire ne s'ouvrent
-    // pas, aucune mesure n'est possible. Comme dans `wgc.rs`, ces échecs
-    // restent donc propagés par `?`.
+    // A bench failure, not a verdict on the fallbacks: if the desktop cannot
+    // be split into two slots or if the test pattern windows do not open,
+    // no measurement is possible. As in `wgc.rs`, these failures
+    // are therefore still propagated by `?`.
     let capture = crate::capture::DesktopCapture::new()?;
     let (largeur, hauteur) = capture.desktop_size();
     let places = disposition::tuiles(
@@ -73,12 +73,12 @@ pub(super) fn eprouver() -> Result<()> {
     Ok(())
 }
 
-/// À partir d'ici, tout échec de mesure devient un verdict ÉLIMINÉE
-/// journalisé plutôt qu'une erreur propagée — le patron établi à la tâche 6
-/// (`wgc.rs`) : un lecteur du journal doit toujours trouver l'un des
-/// messages « verdict … » ci-dessous, jamais une erreur qui remonte
-/// silencieusement jusqu'à `main()`. Seule la préparation du banc lui-même
-/// (déjà passée dans `eprouver`) reste propagée par `?`.
+/// From here on, any measurement failure becomes an ÉLIMINÉE verdict
+/// logged rather than a propagated error — the pattern established at task 6
+/// (`wgc.rs`): a reader of the log must always find one of the
+/// "verdict …" messages below, never an error that silently goes up
+/// to `main()`. Only the preparation of the bench itself
+/// (already done in `eprouver`) is still propagated by `?`.
 fn eprouver_printwindow(mires: &Mires) -> Result<()> {
     let hwnd = mires.hwnd(0)?;
     let place = mires.place(0)?;
@@ -88,7 +88,7 @@ fn eprouver_printwindow(mires: &Mires) -> Result<()> {
     let ancien = unsafe { SelectObject(memoire, bitmap.into()) };
 
     let rendu = unsafe { PrintWindow(hwnd, memoire, PW_RENDERFULLCONTENT) }.as_bool();
-    // `GetPixel` rend un COLORREF 0x00BBGGRR.
+    // `GetPixel` returns a 0x00BBGGRR COLORREF.
     let couleur = unsafe { GetPixel(memoire, place.width as i32 / 2, place.height as i32 / 2) };
     let brut = couleur.0;
     let pixel = (
@@ -122,15 +122,15 @@ fn eprouver_printwindow(mires: &Mires) -> Result<()> {
 }
 
 fn eprouver_surface_dwm() {
-    // Résolution dynamique : la fonction n'est pas documentée et peut être
-    // absente. Son absence est un résultat.
-    // `LoadLibraryA` n'est enveloppée par aucun `.context(...)` ici : son
-    // erreur brute (`windows::core::Error`) porte déjà le HRESULT dans son
-    // `Display` (`{message} ({code})`), contrairement aux erreurs de
-    // `wgc::preparer_session` qui traversaient plusieurs `.context(...)`
-    // anyhow avant d'être journalisées — c'est CETTE traversée qui perdait
-    // le HRESULT, pas l'absence de `causes()` en soi. Un `%erreur` direct
-    // suffit donc à faire figurer le code natif au journal.
+    // Dynamic resolution: the function is not documented and may be
+    // absent. Its absence is a result.
+    // `LoadLibraryA` is wrapped by no `.context(...)` here: its
+    // raw error (`windows::core::Error`) already carries the HRESULT in its
+    // `Display` (`{message} ({code})`), unlike the errors of
+    // `wgc::preparer_session` which went through several anyhow `.context(...)`
+    // before being logged — it is THAT traversal that lost
+    // the HRESULT, not the absence of `causes()` in itself. A direct `%erreur`
+    // is therefore enough to get the native code into the log.
     let module = match unsafe { LoadLibraryA(s!("user32.dll")) } {
         Ok(module) => module,
         Err(erreur) => {

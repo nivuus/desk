@@ -1,10 +1,10 @@
-//! La sonde post-mortem du banc de reprise : retenter, une fois, ce que les
-//! voies mortes n'ont pas réussi en rafale.
+//! The post-mortem probe of the recovery bench: retry, once, what the
+//! dead paths did not manage in a burst.
 //!
-//! Module à part plutôt que fonction de `passes.rs` : ce n'est pas une passe de
-//! mesure mais un **diagnostic sur la mesure**, il ne compte rien, et il ne
-//! tourne que sur le chemin où quelque chose est mort. (Le plafond de 500
-//! lignes du projet l'imposait de toute façon.)
+//! A separate module rather than a function of `passes.rs`: it is not a
+//! measurement pass but a **diagnostic on the measurement**, it counts nothing, and it
+//! only runs on the path where something died. (The project's 500-line
+//! ceiling required it anyway.)
 
 use std::time::{Duration, Instant};
 
@@ -14,51 +14,51 @@ use super::super::montee::DELAI_TOPOLOGIE;
 use crate::capture::{DesktopCapture, SortieDxgi};
 use crate::geometry::Rect;
 
-/// Durée pendant laquelle la sonde sollicite une duplication rouverte avant de
-/// conclure qu'elle ne rend rien.
+/// Duration during which the probe solicits a reopened duplication before
+/// concluding that it returns nothing.
 ///
-/// Les mires peignent pendant ce temps : Desktop Duplication n'émet une image
-/// qu'au changement du bureau, et une sonde qui ne peindrait pas conclurait au
-/// silence sur une duplication parfaitement vivante.
+/// The test patterns paint meanwhile: Desktop Duplication only emits an image
+/// when the desktop changes, and a probe that did not paint would conclude to
+/// silence on a perfectly alive duplication.
 const DUREE_SONDE_IMAGE: Duration = Duration::from_millis(500);
 
-/// Retente **une seule fois**, la topologie stabilisée, ce qu'une voie n'a pas
-/// réussi à rétablir dans sa fenêtre de reprise (`FenetreDeReprise`,
-/// `DUREE_FENETRE_REPRISE` = 8 s, `PAS_REPRISE` = 150 ms — voir
+/// Retries **only once**, with the topology stabilised, what a path did not
+/// manage to restore within its recovery window (`FenetreDeReprise`,
+/// `DUREE_FENETRE_REPRISE` = 8 s, `PAS_REPRISE` = 150 ms — see
 /// `capture::reprise`).
 ///
-/// **Née d'un défaut de calibrage, corrigé depuis (tâche 6 bis) — la sonde
-/// reste utile.** Avant correction, `next_frame` n'accordait que 3
-/// réouvertures CONSÉCUTIVES et SANS AUCUN DÉLAI (`AcquireNextFrame(0, …)`
-/// puis `rouvrir()` immédiat), épuisées en 14 à 21 ms là où le dépôt attend
-/// par ailleurs `DELAI_TOPOLOGIE` = 3 s qu'une topologie se stabilise : le
-/// point d'arrêt du chantier avait été déclenché par ce sous-calibrage, pas
-/// par une reprise réellement impossible. La fenêtre de 8 s couvre cette
-/// durée au double, mais reste une MAJORANTE non calibrée (`CLAUDE.md`) :
-/// rien n'exclut qu'une topologie particulièrement lente échappe aussi aux
+/// **Born from a calibration defect, fixed since (task 6 bis) — the probe
+/// remains useful.** Before the fix, `next_frame` only granted 3
+/// CONSECUTIVE reopenings WITHOUT ANY DELAY (`AcquireNextFrame(0, …)`
+/// then immediate `rouvrir()`), exhausted in 14 to 21 ms where the repository
+/// elsewhere waits `DELAI_TOPOLOGIE` = 3 s for a topology to stabilise: the
+/// work stream's stop point had been triggered by this under-calibration, not
+/// by a recovery that was really impossible. The 8 s window covers this
+/// duration twice over, but remains an uncalibrated UPPER BOUND (`CLAUDE.md`):
+/// nothing excludes that a particularly slow topology also escapes the
 /// 8 s.
 ///
-/// Cette sonde reste donc la ligne qui sépare « la reprise est impossible sur
-/// ce matériel » de « la fenêtre de reprise ne suffisait pas ». La
-/// perturbation tombe juste avant le premier `AcquireNextFrame` de la passe
-/// B, c'est-à-dire au moment le plus instable, et une voie peut mourir dans
-/// sa fenêtre de reprise sans que la reprise elle-même soit réfutée :
+/// This probe therefore remains the line that separates "recovery is impossible on
+/// this hardware" from "the recovery window was not enough". The
+/// disruption falls just before the first `AcquireNextFrame` of pass
+/// B, that is at the most unstable moment, and a path can die within
+/// its recovery window without recovery itself being refuted:
 ///
-/// - la fenêtre de 8 s peut expirer alors que la topologie ne s'est toujours
-///   pas stabilisée ;
-/// - une réouverture peut échouer à retrouver `\\.\DISPLAYn` plusieurs fois de
-///   suite le temps du remaniement — chaque échec consomme désormais une
-///   tentative ET écrit sa propre ligne (« réouverture de la duplication
-///   échouée … »), sans que cela soit définitif : seule l'expiration de la
-///   fenêtre entière l'est.
+/// - the 8 s window can expire while the topology has still
+///   not stabilised;
+/// - a reopening can fail to find `\\.\DISPLAYn` several times in
+///   a row during the reshuffle — each failure now consumes an
+///   attempt AND writes its own line ("réouverture de la duplication
+///   échouée …"), without it being final: only the expiry of the
+///   whole window is.
 ///
-/// Dans les deux cas le bilan montre `voies_vivantes_apres = 0`, dont la
-/// lecture naturelle est « voie réfutée ». Une ligne doit suffire à séparer
-/// « la reprise est impossible sur ce matériel » de « la fenêtre ne
-/// suffisait pas », et c'est celle que cette sonde écrit.
+/// In both cases the summary shows `voies_vivantes_apres = 0`, whose
+/// natural reading is "path refuted". One line must be enough to separate
+/// "recovery is impossible on this hardware" from "the window was not
+/// enough", and it is the one this probe writes.
 ///
-/// N'échoue jamais : c'est un diagnostic, pas une mesure. Elle suppose les
-/// duplications du banc déjà relâchées (voir son appelant).
+/// Never fails: it is a diagnostic, not a measurement. It assumes the
+/// bench's duplications already released (see its caller).
 pub(super) fn sonder(
     garde: &mut Garde<'_>,
     mires: &mut Mires,
@@ -84,25 +84,25 @@ pub(super) fn sonder(
     }
 
     for &id in perdues {
-        // Battre AVANT la sollicitation, et pas seulement après.
+        // Beat BEFORE the solicitation, and not only after.
         //
-        // `DesktopCapture::sur_sortie` retente sa duplication pendant
-        // `DUREE_FENETRE_OUVERTURE` : elle **bloque jusqu'à 3 s** et ne peut
-        // pas être pinguée pendant ce temps. Le seul battement de cette boucle
-        // était celui qui suit la sollicitation, et la branche d'échec le
-        // SAUTAIT par son `continue` : sur huit voies perdues — le cas nominal
-        // de cette sonde — c'étaient huit fois 3 s bout à bout, soit ~24 s sans
-        // un ping, là où `compteurs::CADENCE_PING` vaut 1 s précisément parce
-        // que le `delai = 3` du pilote est d'unité INCONNUE, la seconde non
-        // exclue. Le pilote aurait repris ses sorties SOUS la sonde, et la
-        // sonde qui sert à départager deux réfutations serait devenue
-        // inimputable sans que rien ne le dise.
+        // `DesktopCapture::sur_sortie` retries its duplication during
+        // `DUREE_FENETRE_OUVERTURE`: it **blocks for up to 3 s** and cannot
+        // be pinged during that time. The only beat of this loop
+        // was the one following the solicitation, and the failure branch
+        // SKIPPED it through its `continue`: with eight lost paths — the nominal case
+        // of this probe — that was eight times 3 s end to end, i.e. ~24 s without
+        // a ping, where `compteurs::CADENCE_PING` is 1 s precisely because
+        // the driver's `delai = 3` is of UNKNOWN unit, the second not
+        // excluded. The driver would have taken back its outputs UNDER the probe, and the
+        // probe that serves to decide between two refutations would have become
+        // unattributable without anything saying so.
         //
-        // Remettre le compteur à zéro juste avant le blocage borne le trou à la
-        // durée d'UN `sur_sortie` (~3 s), quel que soit le chemin pris ensuite :
-        // le `continue` repasse par ici. Les 3 s elles-mêmes restent
-        // irréductibles sans changer la sémantique d'ouverture — ce que la revue
-        // finale n'est pas le moment de faire.
+        // Resetting the counter just before the block bounds the gap to the
+        // duration of ONE `sur_sortie` (~3 s), whatever path is taken afterwards:
+        // the `continue` goes back through here. The 3 s themselves remain
+        // irreducible without changing the opening semantics — which the final
+        // review is not the moment to do.
         if let Err(erreur) = garde.battre_si_du() {
             tracing::error!(
                 voie = id,
@@ -116,9 +116,9 @@ pub(super) fn sonder(
         let mut capture = match DesktopCapture::sur_sortie(nom) {
             Ok(capture) => capture,
             Err(erreur) => {
-                // Battu ici AUSSI, et pas seulement au tour suivant : la trace
-                // ci-dessous n'est pas gratuite, et le `continue` ne doit
-                // laisser aucun chemin sans battement.
+                // Beaten here AS WELL, and not only at the next round: the trace
+                // below is not free, and the `continue` must
+                // leave no path without a beat.
                 let _ = garde.battre_si_du();
                 tracing::error!(
                     voie = id,
@@ -139,15 +139,15 @@ pub(super) fn sonder(
             height: hauteur,
         };
 
-        // Les mires peignent pendant la sollicitation : sans changement du
-        // bureau, une duplication vivante ne rendrait rien et la sonde
-        // conclurait au silence à tort.
+        // The test patterns paint during the solicitation: without a change of the
+        // desktop, a live duplication would return nothing and the probe
+        // would wrongly conclude to silence.
         //
-        // D'où le suivi de l'échec de peinture, et non un `let _ =` : une
-        // peinture morte produit EXACTEMENT le symptôme « aucune image », et
-        // le rendre sous un libellé de résultat ferait passer une panne de
-        // l'instrument pour une mesure. C'est la classe de défaut que ce banc
-        // traque partout ailleurs.
+        // Hence the tracking of painting failure, and not a `let _ =`: a
+        // dead painting produces EXACTLY the "no image" symptom, and
+        // returning it under a result label would pass off a failure of
+        // the instrument as a measurement. It is the class of defect this bench
+        // tracks everywhere else.
         let mut issue = Ok(false);
         let mut peinture_perdue = false;
         let debut = Instant::now();
@@ -174,19 +174,19 @@ pub(super) fn sonder(
             Ok(true) => tracing::info!(
                 voie = id,
                 nom_sortie = nom,
-                // Ce message nommait « 3 tentatives en rafale et sans délai » —
-                // le calibrage d'AVANT la tâche 6 bis, que le commentaire de
-                // tête de ce fichier déclare pourtant corrigé deux écrans plus
-                // haut. Ce qui n'a pas suffi, désormais, c'est la FENÊTRE de
-                // reprise ; sa durée est donc journalisée au lieu d'être dite.
+                // This message named "3 attempts in a burst and without delay" —
+                // the calibration from BEFORE task 6 bis, which the header
+                // comment of this file nevertheless declares fixed two screens
+                // above. What was not enough, now, is the recovery
+                // WINDOW; its duration is therefore logged instead of being stated.
                 fenetre_reprise_ms =
                     crate::capture_reprise::DUREE_FENETRE_REPRISE.as_millis() as u64,
                 "sonde post-mortem : la sortie se REDUPLIQUAIT et rendait une image une fois la \
                  topologie stabilisée — la mort de cette voie ne réfute PAS la reprise, elle \
                  dit que la fenêtre de reprise n'a pas suffi sur ce remaniement de topologie"
             ),
-            // Le silence a deux causes possibles, et une seule est un
-            // résultat : les nommer séparément est tout l'objet du suivi de
+            // Silence has two possible causes, and only one is a
+            // result: naming them separately is the whole point of tracking
             // `peinture_perdue`.
             Ok(false) if peinture_perdue => tracing::error!(
                 voie = id,

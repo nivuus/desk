@@ -1,12 +1,12 @@
-//! Mode diagnostic `CAPTURE_TEST` : vérifie le repérage d'une fenêtre par
-//! fragment de titre, puis que la capture en restitue bien le contenu.
+//! `CAPTURE_TEST` diagnostic mode: checks finding a window by
+//! title fragment, then that the capture does return its content.
 //!
-//! Deux mesures facultatives s'y greffent, actives seulement si
-//! `CAPTURE_TEST` l'est déjà — elles réutilisent sa fenêtre et sa capture :
-//! `ENCODE_TEST`, qui encode des images réellement capturées (débit du
-//! chemin complet capture+encodage), et `ENCODER_THROUGHPUT_TEST`, qui
-//! réinjecte une seule texture en boucle pour isoler le débit du pipeline
-//! conversion+encodage de celui de la source.
+//! Two optional measurements are grafted onto it, active only if
+//! `CAPTURE_TEST` already is — they reuse its window and its capture:
+//! `ENCODE_TEST`, which encodes really captured frames (throughput of the
+//! complete capture+encoding path), and `ENCODER_THROUGHPUT_TEST`, which
+//! reinjects a single texture in a loop to isolate the throughput of the
+//! conversion+encoding pipeline from that of the source.
 
 use std::time::Duration;
 
@@ -27,29 +27,29 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
     tracing::info!(?region, bureau = ?(dw, dh), "région de recadrage");
 
-    // Desktop Duplication ne rend une image que lorsque le bureau change
-    // (voir la note du brief). Une animation CSS dans la page de test
-    // suffit en général, mais elle peut être throttlée par le navigateur
-    // dès que sa fenêtre perd le focus (constaté en pratique : le tout
-    // premier next_frame réussit, les suivants expirent tous — y compris
-    // 5 s durant sur cette VM). Un premier essai a tenté de pallier ça en
-    // faisant osciller le curseur via `SetCursorPos` en tâche de fond,
-    // sans effet : le curseur matériel semble composé hors du pipeline
-    // que surveille Desktop Duplication sur cette configuration (double
-    // adaptateur virtuel/RTX 4070). On déplace donc plutôt la fenêtre
-    // elle-même d'un pixel, en boucle : un déplacement de fenêtre force
-    // toujours une recomposition DWM réelle du bureau, quel que soit le
-    // pipeline d'affichage, et débloque `AcquireNextFrame` pour N'IMPORTE
-    // QUELLE région échantillonnée (l'API renvoie l'image du bureau
-    // entier dès qu'UNE zone change, pas seulement celle qui a changé).
+    // Desktop Duplication only returns a frame when the desktop changes
+    // (see the brief's note). A CSS animation in the test page
+    // is usually enough, but it may be throttled by the browser
+    // as soon as its window loses focus (observed in practice: the very
+    // first next_frame succeeds, the following ones all time out — including
+    // for 5 s on this VM). A first attempt tried to work around this by
+    // making the cursor oscillate via `SetCursorPos` in the background,
+    // without effect: the hardware cursor seems composed outside the pipeline
+    // Desktop Duplication watches on this configuration (dual
+    // virtual/RTX 4070 adapter). We therefore move the window
+    // itself by one pixel instead, in a loop: moving a window
+    // always forces a real DWM recomposition of the desktop, whatever the
+    // display pipeline, and unblocks `AcquireNextFrame` for ANY
+    // sampled region (the API returns the whole desktop's frame
+    // as soon as ONE area changes, not only the one that changed).
     let stop_jitter = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let jitter_flag = stop_jitter.clone();
-    // écart d'API windows-rs 0.62 : `HWND` enveloppe un `*mut c_void`, qui
-    // n'est pas `Send` — on ne peut pas déplacer `hwnd` tel quel dans le
-    // fil d'agitation. Un HWND n'est qu'un identifiant opaque (pas un
-    // pointeur réellement déréférencé côté processus), donc le faire
-    // transiter par son adresse brute (`isize`, qui est `Send`) et le
-    // reconstruire dans le fil cible est sûr.
+    // windows-rs 0.62 API gap: `HWND` wraps a `*mut c_void`, which
+    // is not `Send` — `hwnd` cannot be moved as is into the
+    // shaking thread. An HWND is only an opaque identifier (not a
+    // pointer actually dereferenced on the process side), so passing
+    // it through its raw address (`isize`, which is `Send`) and
+    // rebuilding it in the target thread is safe.
     let jitter_hwnd_addr = hwnd.0 as isize;
     let jitter_thread = std::thread::spawn(move || {
         use windows::Win32::Foundation::HWND;
@@ -58,20 +58,20 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             GetWindowRect, SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
         };
         let jitter_hwnd = HWND(jitter_hwnd_addr as *mut core::ffi::c_void);
-        // Repère d'oscillation : l'origine de la FENÊTRE, pas celle de sa
-        // zone client. `window_rect` est un rectangle client converti en
-        // coordonnées écran (`client_rect_on_screen`) : le repasser tel
-        // quel à `SetWindowPos`, qui attend des coordonnées de fenêtre,
-        // décalait la fenêtre vers la droite de l'épaisseur de sa bordure
-        // (~9 px) à chaque exécution. Le décalage s'accumulait d'un essai
-        // à l'autre jusqu'à faire chevaucher la fenêtre et la région de
-        // contrôle, ce qui faisait échouer la preuve de contenu — panne
-        // du banc d'essai, pas de la capture.
+        // Oscillation anchor: the origin of the WINDOW, not that of its
+        // client area. `window_rect` is a client rectangle converted into
+        // screen coordinates (`client_rect_on_screen`): passing it back as
+        // is to `SetWindowPos`, which expects window coordinates,
+        // shifted the window right by the thickness of its border
+        // (~9 px) at each run. The shift accumulated from one attempt
+        // to the next until the window overlapped the control
+        // region, which made the content proof fail — a failure
+        // of the test bench, not of the capture.
         let mut origin = RECT::default();
         let anchor = match unsafe { GetWindowRect(jitter_hwnd, &mut origin) } {
             Ok(()) => (origin.left, origin.top),
-            // Repli sur l'ancien comportement : mieux vaut agiter la
-            // fenêtre à quelques pixels près que ne pas l'agiter du tout.
+            // Fallback on the old behaviour: better to shake the
+            // window to within a few pixels than not to shake it at all.
             Err(_) => (window_rect.x, window_rect.y),
         };
         let mut toggle = false;
@@ -93,27 +93,27 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         }
     });
     let stop_jitter_on_exit = stop_jitter.clone();
-    // `result` porte le corps du diagnostic : on le fait passer par une
-    // closure pour garantir l'arrêt du fil d'agitation de la fenêtre sur
-    // TOUS les chemins de sortie (succès comme erreur via `?`), sans
-    // dupliquer le `store` avant chaque `return`/`?`.
+    // `result` carries the body of the diagnostic: it goes through a
+    // closure to guarantee the window shaking thread stops on
+    // ALL exit paths (success as well as error via `?`), without
+    // duplicating the `store` before each `return`/`?`.
     let result = (|| -> Result<()> {
-        // Preuve fondée sur le CONTENU, pas seulement les dimensions
-        // (revue 1/5) : `CapturedFrame.width/height` sont recopiés
-        // depuis `region` par construction, donc les voir correspondre à
-        // la taille de la fenêtre ne prouve rien sur ce que
-        // `CopySubresourceRegion` a réellement copié — un box figé sur
-        // l'origine du bureau donnerait exactement le même journal. On
-        // lit donc un vrai pixel :
-        //   - une fois recadré sur `region` (la fenêtre, attendue verte
-        //     — voir la page de test utilisée pour l'essai),
-        //   - une fois recadré sur un rectangle de contrôle de même
-        //     taille, placé dans le coin du bureau le plus éloigné de la
-        //     fenêtre (et non à l'origine (0, 0) : pour une fenêtre
-        //     proche du coin haut-gauche, un rectangle de contrôle à
-        //     l'origine et de même taille peut chevaucher la fenêtre
-        //     elle-même, ce qui invaliderait la comparaison sans qu'on
-        //     s'en aperçoive).
+        // Proof based on CONTENT, not only dimensions
+        // (review 1/5): `CapturedFrame.width/height` are copied
+        // from `region` by construction, so seeing them match
+        // the window's size proves nothing about what
+        // `CopySubresourceRegion` actually copied — a box frozen on
+        // the desktop origin would give exactly the same log. We
+        // therefore read a real pixel:
+        //   - once cropped to `region` (the window, expected green
+        //     — see the test page used for the run),
+        //   - once cropped to a control rectangle of the same
+        //     size, placed in the desktop corner farthest from the
+        //     window (and not at the origin (0, 0): for a window
+        //     close to the top-left corner, a control rectangle at
+        //     the origin and of the same size may overlap the window
+        //     itself, which would invalidate the comparison without
+        //     anyone noticing).
         let (rw, rh, rr, rg, rb, ra) =
             capture_center_pixel(&mut capture, region, Duration::from_secs(5))?;
         tracing::info!(
@@ -175,16 +175,16 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         tracing::info!(captured, "images capturées en 3 s");
         anyhow::ensure!(captured > 0, "aucune image capturée");
 
-        // Encodage de vérification : ENCODE_TEST=1 encode 120 images capturées.
+        // Verification encoding: ENCODE_TEST=1 encodes 120 captured frames.
         //
-        // Écart au brief : les dimensions de l'encodeur viennent de `region`
-        // (la zone effectivement recadrée par `crop_region`, toujours paire)
-        // plutôt que de `window::client_size(hwnd)` — ce sont exactement les
-        // dimensions des `CapturedFrame` produites par `capture.next_frame`,
-        // qui peuvent différer de la zone client brute si la fenêtre déborde
-        // de l'écran. Utiliser une dimension différente de celle des textures
-        // réellement soumises aurait pu faire échouer `SetInputType`/
-        // `ProcessInput` de façon confuse.
+        // Gap from the brief: the encoder's dimensions come from `region`
+        // (the area actually cropped by `crop_region`, always even)
+        // rather than from `window::client_size(hwnd)` — they are exactly the
+        // dimensions of the `CapturedFrame` produced by `capture.next_frame`,
+        // which may differ from the raw client area if the window overflows
+        // the screen. Using a dimension different from that of the textures
+        // actually submitted could have made `SetInputType`/
+        // `ProcessInput` fail in a confusing way.
         if std::env::var("ENCODE_TEST").is_ok() {
             let mut encoder = encode::H264Encoder::new(
                 capture.device(),
@@ -194,10 +194,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 8_000_000,
             )?;
             encoder.request_keyframe()?;
-            // Même surveillance que la mesure de débit : elle sert ici à
-            // vérifier que des images RÉELLEMENT DISTINCTES traversent le
-            // convertisseur (`converter_inputs` doit progresser), et pas
-            // seulement que des unités d'accès sortent de l'encodeur.
+            // Same watchdog as the throughput measurement: here it serves to
+            // check that REALLY DISTINCT frames go through the
+            // converter (`converter_inputs` must progress), and not
+            // only that access units come out of the encoder.
             let stop_watchdog = watch_encoder(encoder.telemetry());
 
             let mut encoded = 0usize;
@@ -205,20 +205,20 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             let mut submitted = 0usize;
             let mut first_unit_has_params = None;
             let mut pts = 0u64;
-            // Bornes réglables : le contrat du brief (120 images, 5 s)
-            // reste la valeur par défaut, mais une mesure du pipeline
-            // RÉEL sur plusieurs centaines d'images demande une fenêtre
-            // plus longue.
+            // Adjustable bounds: the brief's contract (120 frames, 5 s)
+            // stays the default value, but a measurement of the REAL
+            // pipeline over several hundred frames requires a longer
+            // window.
             //
-            // Chiffre périmé retiré (28/07) : ce commentaire citait un
-            // plafond de ~48 im/s pour la capture Desktop Duplication.
-            // La recette du jalon 1
+            // Stale figure removed (28/07): this comment cited a
+            // ceiling of ~48 fps for Desktop Duplication capture.
+            // The milestone 1 acceptance run
             // (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`,
-            // « Ce qui a été appris ») établit que ce chiffre était
-            // obsolète — remesurée, la capture isolée (`CAPTURE_TEST`)
-            // soutient ~90 im/s, et cette boucle capture+encodage
-            // elle-même (mesurée ici, `ENCODE_TEST`) soutient ~80 im/s.
-            // 120 images durent donc en pratique ~1,5 s, pas 2,5 s.
+            // "What was learned") establishes that this figure was
+            // obsolete — re-measured, isolated capture (`CAPTURE_TEST`)
+            // sustains ~90 fps, and this capture+encoding loop
+            // itself (measured here, `ENCODE_TEST`) sustains ~80 fps.
+            // 120 frames therefore last ~1.5 s in practice, not 2.5 s.
             let encode_target: usize = std::env::var("ENCODE_TEST_TARGET")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -230,11 +230,11 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             let start = std::time::Instant::now();
             let deadline = start + std::time::Duration::from_secs(encode_secs);
             let phase = encoder.telemetry();
-            // Marquer l'acquisition : un blocage dans la capture et un
-            // blocage dans l'encodeur produisent la même signature vue du
-            // fil de surveillance (compteurs figés, étape au repos). La
-            // capture affine elle-même en sous-étapes (acquisition, copie
-            // GPU, libération) une fois le marqueur branché.
+            // Mark the acquisition: a block in the capture and a
+            // block in the encoder produce the same signature as seen from
+            // the watchdog thread (frozen counters, step at rest). The
+            // capture itself refines into sub-steps (acquisition, GPU
+            // copy, release) once the marker is plugged in.
             capture.set_phase_marker(phase.phase.clone());
             while std::time::Instant::now() < deadline && encoded < encode_target {
                 phase
@@ -253,12 +253,12 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 }
                 while let Some(unit) = encoder.poll_output()? {
                     if encoded == 0 {
-                        // Une unité d'accès H.264 valide doit ouvrir sur des
-                        // NAL de paramètres (SPS puis PPS) avant la première
-                        // tranche IDR : sans elles le décodeur du navigateur
-                        // ne peut pas s'initialiser (tâche 11). On le vérifie
-                        // ici plutôt que de supposer que `group_access_units`
-                        // les a bien rattachées.
+                        // A valid H.264 access unit must open with
+                        // parameter NALs (SPS then PPS) before the first
+                        // IDR slice: without them the browser's decoder
+                        // cannot initialise (task 11). We check it
+                        // here rather than assuming `group_access_units`
+                        // did attach them.
                         let nals = h264::split_annex_b(&unit.data);
                         let types: Vec<u8> = nals
                             .iter()
@@ -284,10 +284,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             }
             stop_watchdog();
             let elapsed = start.elapsed();
-            // `converter_inputs` prouve que ce sont bien des images
-            // NEUVES qui ont traversé le convertisseur, et pas la même
-            // réencodée : c'est la différence entre un pipeline qui
-            // fonctionne et un compteur qui monte.
+            // `converter_inputs` proves that it is indeed NEW
+            // frames that went through the converter, and not the same one
+            // re-encoded: it is the difference between a pipeline that
+            // works and a counter that goes up.
             let converter_inputs = encoder
                 .telemetry()
                 .converter_inputs
@@ -310,20 +310,20 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             );
         }
 
-        // Mesure de débit isolée du pipeline conversion+encodage :
-        // ENCODER_THROUGHPUT_TEST=1 réinjecte une SEULE texture déjà
-        // capturée, en boucle serrée, sans jamais repasser par
-        // `capture.next_frame` — contrairement à `ENCODE_TEST` ci-dessus,
-        // qui mélange le débit de la source (Desktop Duplication, limité
-        // par les changements d'écran réels) avec celui de l'encodeur
-        // lui-même. C'est cette mesure isolée, faite par le relecteur
-        // pendant la ronde de correction 1/5, qui a permis d'établir que
-        // le plafond à ~1 image/s observé avec `ENCODE_TEST` venait d'un
-        // bogue de pilotage du convertisseur (voir `encode.rs`), pas du
-        // GPU : rejouer la même texture prouve/dément la théorie
-        // matérielle sans dépendre de la disponibilité d'images fraîches.
-        // Conservée telle quelle pour la tâche 14, qui en aura besoin
-        // pour ses propres mesures de débit.
+        // Isolated throughput measurement of the conversion+encoding pipeline:
+        // ENCODER_THROUGHPUT_TEST=1 reinjects a SINGLE already
+        // captured texture, in a tight loop, without ever going back through
+        // `capture.next_frame` — unlike `ENCODE_TEST` above,
+        // which mixes the throughput of the source (Desktop Duplication, limited
+        // by real screen changes) with that of the encoder
+        // itself. It is this isolated measurement, made by the reviewer
+        // during fix round 1/5, that established that
+        // the ~1 fps ceiling observed with `ENCODE_TEST` came from a
+        // converter driving bug (see `encode.rs`), not from the
+        // GPU: replaying the same texture proves/disproves the hardware
+        // theory without depending on the availability of fresh frames.
+        // Kept as is for task 14, which will need it
+        // for its own throughput measurements.
         if std::env::var("ENCODER_THROUGHPUT_TEST").is_ok() {
             let mut encoder = encode::H264Encoder::new(
                 capture.device(),
@@ -334,11 +334,11 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             )?;
             encoder.request_keyframe()?;
 
-            // Une seule image réelle, capturée une fois puis réinjectée
-            // telle quelle à chaque itération : aucun autre appel à
-            // `capture.next_frame` dans cette boucle.
-            // Bornée : sans échéance, une capture qui ne rend plus d'image
-            // ferait attendre indéfiniment sans la moindre trace.
+            // A single real frame, captured once then reinjected
+            // as is at each iteration: no other call to
+            // `capture.next_frame` in this loop.
+            // Bounded: without a deadline, a capture that no longer returns a frame
+            // would make it wait indefinitely without the slightest trace.
             let frame_deadline = std::time::Instant::now() + Duration::from_secs(10);
             let frame = loop {
                 if let Some(frame) = capture
@@ -358,27 +358,27 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(600);
-            // Échéance réglable, et courte par défaut : une échéance de
-            // dix minutes transforme le moindre blocage du pipeline en
-            // dix minutes de silence complet, ce qui a réellement coûté
-            // plusieurs cycles d'investigation sur cette tâche.
+            // Adjustable deadline, and short by default: a ten-minute
+            // deadline turns the slightest pipeline block into
+            // ten minutes of complete silence, which really cost
+            // several investigation cycles on this task.
             let deadline_secs: u64 = std::env::var("ENCODER_THROUGHPUT_DEADLINE_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(30);
-            // Cadence de soumission, en images par seconde. 0 = aucune
-            // limite (on soumet aussi vite que la boucle tourne).
+            // Submission cadence, in frames per second. 0 = no
+            // limit (we submit as fast as the loop spins).
             //
-            // Cadencer change ce que la mesure signifie, et c'est
-            // volontaire. Sans limite, `submit` est appelé bien plus
-            // souvent qu'aucune source réelle ne le ferait : le
-            // convertisseur, sollicité en permanence, refuse la quasi-
-            // totalité des images neuves et le débit mesuré ne reflète
-            // plus que l'encodeur rejouant la dernière image convertie.
-            // Avec une cadence, on mesure ce que le jalon exige vraiment :
-            // combien d'images NEUVES par seconde traversent conversion
-            // PUIS encodage (`converter_inputs` dans la ligne de
-            // résultat).
+            // Pacing changes what the measurement means, and it is
+            // intended. Without a limit, `submit` is called far more
+            // often than any real source would: the
+            // converter, constantly solicited, refuses almost
+            // all new frames and the measured throughput no longer reflects
+            // anything but the encoder replaying the last converted frame.
+            // With a cadence, we measure what the milestone really requires:
+            // how many NEW frames per second go through conversion
+            // THEN encoding (`converter_inputs` in the result
+            // line).
             let submit_hz: u64 = std::env::var("ENCODER_THROUGHPUT_SUBMIT_HZ")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -420,14 +420,14 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                         }
                     }
                     if encoded == before && submit_interval.is_none() {
-                        // Rien n'a avancé : rendre la main brièvement.
-                        // Marteler `submit` sans répit (mesuré : 90
-                        // millions d'appels en 30 s) ne mesure pas un
-                        // débit, ça le détruit — chaque appel interroge le
-                        // convertisseur et le maintient sous une pression
-                        // qu'aucune source réelle ne produirait. La pause
-                        // n'a lieu QUE sur un tour improductif, donc elle
-                        // ne peut pas plafonner le débit mesuré.
+                        // Nothing progressed: yield briefly.
+                        // Hammering `submit` without respite (measured: 90
+                        // million calls in 30 s) does not measure a
+                        // throughput, it destroys it — each call queries the
+                        // converter and keeps it under a pressure
+                        // no real source would produce. The pause
+                        // only happens on an unproductive round, so it
+                        // cannot cap the measured throughput.
                         std::thread::sleep(Duration::from_micros(100));
                     }
                 }
@@ -436,11 +436,11 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             stop_watchdog();
             let elapsed = start.elapsed();
             let fps = encoded as f64 / elapsed.as_secs_f64();
-            // Une mesure de débit doit dire ce qu'elle a réellement fait :
-            // `converter_inputs` est le nombre de conversions DISTINCTES,
-            // `conv_refus` le nombre d'images sautées faute de
-            // disponibilité du convertisseur. Sans ces deux chiffres, un
-            // débit élevé pourrait n'être que la même image réencodée.
+            // A throughput measurement must say what it actually did:
+            // `converter_inputs` is the number of DISTINCT conversions,
+            // `conv_refus` the number of frames skipped for lack of
+            // converter availability. Without these two figures, a
+            // high throughput could be nothing but the same frame re-encoded.
             let telemetry = encoder.telemetry();
             let converter_inputs = telemetry
                 .converter_inputs
@@ -448,10 +448,10 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             let conv_refus = telemetry
                 .converter_not_accepting
                 .load(std::sync::atomic::Ordering::Relaxed);
-            // Journalisé AVANT de propager une éventuelle erreur de la
-            // boucle : une mesure partielle reste une donnée, alors qu'une
-            // erreur remontée sans chiffres ne dit rien de l'endroit où le
-            // pipeline s'est arrêté.
+            // Logged BEFORE propagating a possible error from the
+            // loop: a partial measurement remains data, whereas an
+            // error raised without figures says nothing about where the
+            // pipeline stopped.
             tracing::info!(
                 encoded,
                 keyframes,

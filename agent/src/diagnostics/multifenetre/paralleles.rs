@@ -1,50 +1,50 @@
-//! N sorties virtuelles, une fenêtre et une duplication DXGI chacune.
+//! N virtual outputs, one window and one DXGI duplication each.
 //!
-//! **C'est l'arrangement que la voie recommandée du chantier D propose
-//! réellement**, et que rien n'avait exercé : le banc de la sonde et la mesure
-//! ③ ont tous deux posé N fenêtres sur UNE sortie. DXGI n'autorisant qu'une
-//! duplication par sortie, N duplications de front était une question ouverte,
-//! pas un détail d'implémentation.
+//! **This is the arrangement the recommended path of work stream D actually
+//! proposes**, and that nothing had exercised: the probe's bench and measurement
+//! ③ both placed N windows on ONE output. DXGI only allowing one
+//! duplication per output, N duplications side by side was an open question,
+//! not an implementation detail.
 //!
-//! ✅ **Elle ne l'est plus, et c'est ce module qui l'a fermée** (31 juillet
-//! 2026) : la voie est **reçue** — 90,1 i/s par fenêtre en capture+encodage
-//! jusqu'à N=8, zéro verdict faux, huit duplications ouvertes de front
+//! ✅ **It no longer is, and it is this module that closed it** (31 July
+//! 2026): the path is **accepted** — 90.1 fps per window in capture+encoding
+//! up to N=8, zero wrong verdicts, eight duplications open side by side
 //! (`docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`).
-//! **Une exécution par rang, donc aucun taux**, et rien au-delà de 8 sorties.
+//! **One run per rank, hence no rate**, and nothing beyond 8 outputs.
 //!
-//! Second écart avec tout ce qui précède : chaque sortie fait 1280×720, donc
-//! **l'aire totale croît avec N**. Les cadences de la sonde étaient prises à
-//! aire totale fixe (`disposition::tuiles` découpe un bureau), où le débit de
-//! pixels est quasi constant par construction et où le nombre de fenêtres
-//! n'est pas prouvé neutre en soi.
+//! Second difference from everything before: each output is 1280×720, so
+//! **the total area grows with N**. The probe's frame rates were taken at
+//! fixed total area (`disposition::tuiles` splits a desktop), where the pixel
+//! throughput is quasi constant by construction and where the number of windows
+//! is not proven neutral in itself.
 //!
-//! Pas de recouvrement ici — une fenêtre par sortie, rien ne peut en cacher
-//! une autre — donc pas de porte éliminatoire. Le risque est l'appariement :
-//! que la voie *i* capture la sortie *j*, ou du noir. C'est ce que la rotation
-//! du contrôle (`mire::voie_controlee`) détecte, pour une lecture par tour.
+//! No covering here — one window per output, nothing can hide
+//! another — hence no elimination gate. The risk is the pairing:
+//! that path *i* captures output *j*, or black. That is what the rotation
+//! of the check (`mire::voie_controlee`) detects, with one reading per round.
 //!
-//! # Piège : un plantage ici laisse jusqu'à HUIT sorties orphelines
+//! # Trap: a crash here leaves up to EIGHT orphaned outputs
 //!
-//! Cette sonde crée jusqu'à 8 sorties virtuelles sur un vivier qui n'en compte
-//! que **10** (plafond mesuré, `montee.rs`). La garde `moniteurs_virtuels::
-//! Sorties` les détruit à la sortie de portée, y compris pendant le déroulement
-//! d'une panique — mais **pas sur un plantage du processus** : ces API
-//! échouent en `0xc0000005`, et la passe d'encodage de la voie `duplication`
-//! avait précisément ce défaut jusqu'à sa correction le 31 juillet 2026, par
-//! ce chantier même (`capture_virtuelle.rs`, section « Le piège que cette
-//! sonde a révélé » ; correctif dans `encode::arret`). Un plantage laisserait
-//! **8 des 10 sorties** derrière lui, et l'exécution suivante échouerait à en
-//! créer 8 sans que la cause soit lisible.
+//! This probe creates up to 8 virtual outputs from a pool that only counts
+//! **10** (measured ceiling, `montee.rs`). The `moniteurs_virtuels::
+//! Sorties` guard destroys them when going out of scope, including during the unwinding
+//! of a panic — but **not on a crash of the process**: these APIs
+//! fail with `0xc0000005`, and the encoding pass of the `duplication` path
+//! had precisely this defect until its fix on 31 July 2026, by
+//! this very work stream (`capture_virtuelle.rs`, section "The trap this
+//! probe revealed"; fix in `encode::arret`). A crash would leave
+//! **8 of the 10 outputs** behind it, and the next run would fail to
+//! create 8 without the cause being readable.
 //!
-//! Rattrapage : `MULTIFENETRE_VDD_PURGE=1`, éprouvé sur exactement cet état.
-//! Contrôler l'état AVANT de conclure quoi que ce soit d'un refus de création,
-//! et depuis un processus neuf (`MULTIFENETRE_DXGI=1`).
+//! Recovery: `MULTIFENETRE_VDD_PURGE=1`, tested on exactly this state.
+//! Check the state BEFORE concluding anything from a creation refusal,
+//! and from a fresh process (`MULTIFENETRE_DXGI=1`).
 //!
-//! # Découpage
+//! # Split
 //!
-//! Ce fichier est *le pilote des sorties* : création, désignation, contrôle de
-//! survie, restauration de l'état initial. *La boucle de passes* — ouverture
-//! des N duplications, cadence, encodage — vit dans `paralleles/passes.rs`.
+//! This file is *the output driver*: creation, designation, survival
+//! check, restoration of the initial state. *The pass loop* — opening
+//! of the N duplications, cadence, encoding — lives in `paralleles/passes.rs`.
 
 mod passes;
 
@@ -76,8 +76,8 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
 
-    // Portée explicite de la garde : les sorties doivent être détruites AVANT
-    // le relevé final, sans quoi celui-ci décrirait un état transitoire.
+    // Explicit scope of the guard: the outputs must be destroyed BEFORE
+    // the final survey, otherwise the latter would describe a transient state.
     let issue = {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
         for rang in 1..=nombre {
@@ -90,40 +90,40 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 
         let apres = relever_topologie("après création")?;
         let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
-        // Construite juste après `attendre_en_pinguant`, donc juste après le
-        // dernier ping connu. La couture entre les deux n'est PAS comptée dans
-        // l'intervalle maximal — `Garde::nouvelle` pose son origine à sa propre
-        // construction —, elle est rendue négligeable par l'adjacence des deux
-        // appels : 66 µs au relevé. Voir `compteurs::Garde::nouvelle`.
+        // Built right after `attendre_en_pinguant`, hence right after the
+        // last known ping. The seam between the two is NOT counted in
+        // the maximum interval — `Garde::nouvelle` sets its origin at its own
+        // construction —, it is made negligible by the adjacency of the two
+        // calls: 66 µs in the survey. See `compteurs::Garde::nouvelle`.
         let mut garde = compteurs::Garde::nouvelle(&pilote);
         garde.battre()?;
         let issue = passes::executer_passes(&mut garde, &virtuelles);
-        // Le chiffre qui dit si le chien de garde a été battu sans trou sur
-        // toute la mesure. Journalisé même en cas d'échec des passes : c'est
-        // justement quand une mesure tourne mal qu'il faut savoir si une
-        // sortie a pu être reprise sous elle.
+        // The figure that tells whether the watchdog was beaten without a gap over
+        // the whole measurement. Logged even when the passes fail: it is
+        // precisely when a measurement goes wrong that one must know whether an
+        // output could have been taken back under it.
         tracing::info!(
             intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
             "chien de garde : plus grand écart entre deux battements sur toute la mesure"
         );
-        // Dernier constat, celui du CHEMIN D'ERREUR : `executer_passes`
-        // contrôle déjà la survie après chacune de ses passes, mais un `?` en
-        // sort sans passer par ces contrôles. Celui-ci court quoi qu'il
-        // arrive, et c'est le seul qui couvre un abandon en cours de route.
+        // Last finding, that of the ERROR PATH: `executer_passes`
+        // already checks survival after each of its passes, but a `?`
+        // exits it without going through these checks. This one runs whatever
+        // happens, and it is the only one covering an abandonment midway.
         constater_survie("bilan", &virtuelles);
         issue
     };
 
-    // Second essai des retraits que la garde n'a pas obtenus : dernière chance
-    // de CE processus, au-delà seule la purge inter-processus les atteindra.
+    // Second attempt at the removals the guard did not obtain: last chance
+    // of THIS process, beyond that only the inter-process purge will reach them.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
         tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
     }
 
-    // Une sortie virtuelle survit au processus. Ce contrôle reste celui du
-    // processus mesureur, donc juge et partie — le contrôle qui vaut est un
-    // relevé `MULTIFENETRE_DXGI=1` depuis un processus neuf, après coup.
+    // A virtual output outlives the process. This check remains that of the
+    // measuring process, hence judge and party — the check that counts is a
+    // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);
@@ -140,21 +140,21 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     issue
 }
 
-/// Retrouve les `nombre` sorties que cette sonde vient de créer, par
-/// DIFFÉRENCE D'ENSEMBLES DE NOMS.
+/// Finds the `nombre` outputs this probe has just created, by
+/// DIFFERENCE OF SETS OF NAMES.
 ///
-/// Pas par index : DXGI renumérote ses sorties à chaque reconfiguration de
-/// topologie. Pas par cardinal : Apollo pilote la configuration d'affichage de
-/// cette VM et peut ajouter une sortie à tout instant — une addition externe
-/// compenserait exactement un retrait, et un contrôle par nombre passerait
-/// alors qu'une sortie a disparu. Le cardinal n'est éprouvé qu'APRÈS la
-/// différence de noms, jamais à sa place.
+/// Not by index: DXGI renumbers its outputs at each topology
+/// reconfiguration. Not by cardinality: Apollo drives the display configuration of
+/// this VM and can add an output at any moment — an external addition
+/// would exactly compensate a removal, and a check by number would pass
+/// while an output has disappeared. The cardinality is only tested AFTER the
+/// difference of names, never in its place.
 ///
-/// `pub(super)` : le banc `reprise.rs` crée exactement le même montage de
-/// départ, et une seconde désignation écrite à côté de celle-ci divergerait —
-/// c'est ici que vivent les deux refus (addition externe, sortie non attachée)
-/// qui rendent une mesure inimputable, et ils doivent valoir pour les deux
-/// bancs.
+/// `pub(super)`: the `reprise.rs` bench creates exactly the same starting
+/// set-up, and a second designation written next to this one would diverge —
+/// it is here that the two refusals live (external addition, non-attached output)
+/// that make a measurement unattributable, and they must hold for both
+/// benches.
 pub(super) fn designer_sorties_neuves(
     apres: &[SortieDxgi],
     connues: &HashSet<String>,
@@ -172,11 +172,11 @@ pub(super) fn designer_sorties_neuves(
          une addition ou un retrait externe rend la mesure inimputable",
         neuves.len()
     );
-    // Une sortie énumérée mais NON attachée au bureau n'est pas capturable :
-    // Windows ne compose rien dessus, DXGI l'annonce en 0×0, et le défaut ne
-    // se manifesterait que bien plus loin — sur `facteur_echelle` (dimension
-    // nulle) ou sur la swapchain d'une mire 0×0, loin de sa cause. Le refus se
-    // prend ici, où il se lit.
+    // An output enumerated but NOT attached to the desktop is not capturable:
+    // Windows composes nothing on it, DXGI announces it as 0×0, and the defect would
+    // only show much further on — at `facteur_echelle` (zero
+    // dimension) or at the swapchain of a 0×0 test pattern, far from its cause. The refusal is
+    // taken here, where it can be read.
     let detachees: Vec<&str> = neuves
         .iter()
         .filter(|sortie| !sortie.attachee_au_bureau)
@@ -205,27 +205,27 @@ pub(super) fn designer_sorties_neuves(
     Ok(neuves)
 }
 
-/// Dit si les N sorties virtuelles sont encore là, et encore ATTACHÉES, après
-/// la passe nommée par `passe`.
+/// Tells whether the N virtual outputs are still there, and still ATTACHED, after
+/// the pass named by `passe`.
 ///
-/// N'échoue pas : la mesure est faite, la nier maintenant ne la rendrait pas
-/// meilleure. Ce relevé sert à INTERPRÉTER les verdicts, pas à les remplacer —
-/// une sortie retirée par le chien de garde en cours de route rendrait du noir,
-/// et l'on imputerait à Windows un défaut du protocole de mesure.
+/// Does not fail: the measurement is done, denying it now would not make it
+/// better. This survey serves to INTERPRET the verdicts, not to replace them —
+/// an output removed by the watchdog along the way would return black,
+/// and we would blame Windows for a defect of the measurement protocol.
 ///
-/// **Présente ne suffit pas : il faut attachée.** Une sortie que le pilote
-/// détacherait du bureau en cours de passe reste parfaitement énumérable par
-/// DXGI — Windows cesse simplement d'y composer, et la capture devient noire.
-/// Un contrôle qui ne regarderait que l'énumération déclarerait cette sortie
-/// « survivante » sur une image devenue noire : exactement la mésattribution
-/// que cette fonction existe pour empêcher. Le reste du module compare déjà des
-/// ensembles d'attachées (`montee::noms_attaches`), pas d'énumérées.
+/// **Present is not enough: it must be attached.** An output that the driver
+/// detached from the desktop during a pass remains perfectly enumerable by
+/// DXGI — Windows simply stops composing on it, and the capture turns black.
+/// A check that only looked at enumeration would declare this output
+/// "surviving" on an image that turned black: exactly the misattribution
+/// this function exists to prevent. The rest of the module already compares
+/// sets of attached outputs (`montee::noms_attaches`), not of enumerated ones.
 ///
-/// Les deux défauts sont journalisés SÉPARÉMENT parce qu'ils ne disent pas la
-/// même chose : `disparues` est un retrait, `detachees` une sortie que le
-/// pilote garde mais que Windows n'affiche plus.
-/// Privée : `passes.rs` y accède comme module enfant (`super::`), sans que ce
-/// contrôle devienne une surface offerte au reste de `multifenetre`.
+/// The two defects are logged SEPARATELY because they do not say the
+/// same thing: `disparues` is a removal, `detachees` an output that the
+/// driver keeps but that Windows no longer displays.
+/// Private: `passes.rs` accesses it as a child module (`super::`), without this
+/// check becoming a surface offered to the rest of `multifenetre`.
 fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
     let vivantes = match crate::capture::enumerer_sorties() {
         Ok(sorties) => sorties,

@@ -1,57 +1,57 @@
-//! Le diff d'une réconciliation à l'autre.
+//! The diff from one reconciliation to the next.
 //!
-//! 🔴 CE MODULE EST PUR, et il est le cœur du sous-bloc : c'est lui qui fait
-//! que le catalogue voyage en DELTA et non en 154 lignes toutes les
-//! 30 secondes.
+//! 🔴 THIS MODULE IS PURE, and it is the heart of the sub-block: it is what makes
+//! the catalogue travel as a DELTA and not as 154 lines every
+//! 30 seconds.
 //!
-//! ⚠️ IL NE TIENT AUCUNE MÉMOIRE DES DISPARITIONS. Une application qui revient
-//! après avoir disparu ressort en `apparues`, parce que « une disparition
-//! n'est pas une suppression » et que c'est la PLATEFORME qui sait qu'elle la
-//! connaît déjà — elle porte `disparue_a`, l'agent non. Lui donner cette
-//! mémoire dupliquerait un état qui vit déjà ailleurs, et les deux copies
-//! divergeraient au premier redémarrage d'agent.
+//! ⚠️ IT KEEPS NO MEMORY OF DISAPPEARANCES. An application that comes back
+//! after disappearing shows up again in `apparues`, because "a disappearance
+//! is not a deletion" and it is the PLATFORM that knows it already
+//! knows it — it carries `disparue_a`, the agent does not. Giving it that
+//! memory would duplicate a state that already lives elsewhere, and the two copies
+//! would diverge at the first agent restart.
 
 use std::collections::BTreeMap;
 
 use proto::plateforme::Application;
 
-/// Ce qui a changé entre deux lectures du disque.
+/// What changed between two reads of the disk.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Diff {
     pub apparues: Vec<Application>,
     pub modifiees: Vec<Application>,
-    /// Des CLÉS, jamais des objets : la plateforme n'a besoin que de
-    /// l'identité pour marquer une disparition, et l'objet ferait grossir le
-    /// message sans rien porter d'utile.
+    /// KEYS, never objects: the platform only needs the
+    /// identity to mark a disappearance, and the object would inflate the
+    /// message without carrying anything useful.
     pub disparues: Vec<String>,
 }
 
 impl Diff {
-    /// Rien n'a bougé — l'état nominal, tour après tour, sur un disque au
-    /// repos. C'est lui qui décide s'il faut émettre quoi que ce soit.
+    /// Nothing moved — the nominal state, round after round, on an idle
+    /// disk. It is what decides whether anything needs to be emitted at all.
     pub fn est_vide(&self) -> bool {
         self.apparues.is_empty() && self.modifiees.is_empty() && self.disparues.is_empty()
     }
 }
 
-/// Compare deux catalogues PAR CLÉ, et rend un résultat TRIÉ.
+/// Compares two catalogues BY KEY, and returns a SORTED result.
 ///
-/// 🔴 PAR CLÉ, JAMAIS PAR ORDRE : le parcours d'un répertoire ne garantit
-/// aucun ordre, et comparer positionnellement produirait un diff plein à
-/// chaque tour pour un disque qui n'a pas bougé.
+/// 🔴 BY KEY, NEVER BY ORDER: walking a directory guarantees
+/// no order, and comparing positionally would produce a full diff on
+/// every round for a disk that has not moved.
 ///
-/// 🔴 TRIÉ, ET C'EST UNE PROPRIÉTÉ DU PROTOCOLE, PAS UNE COMMODITÉ : sans
-/// elle, deux réconciliations successives émettraient des messages différents
-/// pour un état identique. Le journal montrerait un catalogue qui bouge sans
-/// cause, et toute recette qui compare deux tours serait indécidable. La
-/// `BTreeMap` la donne par construction — c'est pourquoi ce n'est pas une
-/// `HashMap` suivie d'un `sort`.
+/// 🔴 SORTED, AND IT IS A PROPERTY OF THE PROTOCOL, NOT A CONVENIENCE: without
+/// it, two successive reconciliations would emit different messages
+/// for an identical state. The log would show a catalogue moving without
+/// cause, and any acceptance run comparing two rounds would be undecidable. The
+/// `BTreeMap` gives it by construction — that is why it is not a
+/// `HashMap` followed by a `sort`.
 ///
-/// ⚠️ UN DOUBLON DE CLÉ DANS `aujourdhui` NE COMPTE QU'UNE FOIS : deux `.lnk`
-/// au même triplet sont une seule application, et c'est le cas mesuré — 167
-/// raccourcis retenus rendent 154 clés sur la VM. Le dernier lu gagne ; les
-/// champs qui les distinguent (nom, chemin du `.lnk`) ne participent pas à
-/// l'identité, donc aucun des deux n'est « le bon ».
+/// ⚠️ A DUPLICATE KEY IN `aujourdhui` COUNTS ONLY ONCE: two `.lnk`
+/// with the same triple are a single application, and it is the measured case — 167
+/// kept shortcuts yield 154 keys on the VM. The last one read wins; the
+/// fields that distinguish them (name, `.lnk` path) do not take part in
+/// the identity, so neither of the two is "the right one".
 pub fn diff(hier: &[Application], aujourdhui: &[Application]) -> Diff {
     let anciennes: BTreeMap<&str, &Application> =
         hier.iter().map(|a| (a.cle.as_str(), a)).collect();
@@ -62,10 +62,10 @@ pub fn diff(hier: &[Application], aujourdhui: &[Application]) -> Diff {
     for (cle, neuve) in &nouvelles {
         match anciennes.get(cle) {
             None => sortie.apparues.push((*neuve).clone()),
-            // L'égalité porte sur TOUS les champs, pas seulement la clé : le
-            // nom et le chemin du `.lnk` n'ont aucune part dans l'identité,
-            // mais ils doivent suivre — et c'est ce chemin-là que le
-            // lancement emploie.
+            // Equality covers ALL fields, not only the key: the
+            // name and the `.lnk` path have no part in the identity,
+            // but they must follow — and it is that path the
+            // launch uses.
             Some(ancienne) if ancienne != neuve => sortie.modifiees.push((*neuve).clone()),
             Some(_) => {}
         }

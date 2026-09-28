@@ -1,21 +1,21 @@
-//! La lecture de l'icône d'une fenêtre, par `hwnd` — **la moitié Windows de A1**.
+//! Reading the icon of a window, by `hwnd` — **the Windows half of A1**.
 //!
-//! 🔴 **AUCUNE DÉCISION NE VIT ICI.** Ce module rend des octets RGBA et une
-//! géométrie ; les seuils, les filtres et le format de sortie appartiennent à
-//! `accent.rs`, qui est **pur** et testé sur l'hôte. C'est la même séparation
-//! que `presse_papier/win32.rs` (les deux appels Win32, aucune décision).
+//! 🔴 **NO DECISION LIVES HERE.** This module returns RGBA bytes and a
+//! geometry; the thresholds, the filters and the output format belong to
+//! `accent.rs`, which is **pure** and tested on the host. It is the same separation
+//! as `presse_papier/win32.rs` (the two Win32 calls, no decision).
 //!
-//! 🔴 **AUCUN TEST D'HÔTE NE COUVRE CE FICHIER**, et c'est déclaré plutôt que
-//! tu : il est `#[cfg(windows)]`, et `cargo check --target
-//! x86_64-pc-windows-gnu` vérifie **types, emprunts, visibilités et durées de
-//! vie — jamais le comportement**. Sa seule preuve de fonctionnement est la
-//! recette. C'est le patron d'`apps/icone/extraction.rs`, qui le déclare de
-//! lui-même.
+//! 🔴 **NO HOST TEST COVERS THIS FILE**, and it is declared rather than
+//! kept quiet: it is `#[cfg(windows)]`, and `cargo check --target
+//! x86_64-pc-windows-gnu` checks **types, borrows, visibility and
+//! lifetimes — never behaviour**. Its only proof of working is the
+//! acceptance run. It is the pattern of `apps/icone/extraction.rs`, which declares it
+//! itself.
 //!
-//! **Aucune dépendance ni feature Cargo neuve** : `Win32_UI_WindowsAndMessaging`
-//! (`agent/Cargo.toml:157`) porte `SendMessageTimeoutW`, `WM_GETICON`,
-//! `GetClassLongPtrW` et `GetIconInfo` ; `Win32_Graphics_Gdi` (`:60`) porte
-//! `GetDIBits`, `GetObjectW` et `DeleteObject`. **Relu, pas supposé.**
+//! **No new Cargo dependency or feature**: `Win32_UI_WindowsAndMessaging`
+//! (`agent/Cargo.toml:157`) carries `SendMessageTimeoutW`, `WM_GETICON`,
+//! `GetClassLongPtrW` and `GetIconInfo`; `Win32_Graphics_Gdi` (`:60`) carries
+//! `GetDIBits`, `GetObjectW` and `DeleteObject`. **Re-read, not assumed.**
 
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::Graphics::Gdi::{
@@ -27,50 +27,50 @@ use windows::Win32::UI::WindowsAndMessaging::{
     ICON_BIG, ICON_SMALL, ICON_SMALL2, SMTO_ABORTIFHUNG,
 };
 
-/// Le délai laissé à `WM_GETICON`, en millisecondes.
+/// The timeout given to `WM_GETICON`, in milliseconds.
 ///
-/// 🔴 **`WM_GETICON` est un `SendMessage` SYNCHRONE VERS UNE AUTRE
-/// APPLICATION** (R4 de la spec, et il n'est pas théorique) : une application
-/// figée ne répond pas, et l'appel **bloquerait indéfiniment le fil qui l'a
-/// émis**. D'où `SMTO_ABORTIFHUNG` **et** ce délai.
+/// 🔴 **`WM_GETICON` is a SYNCHRONOUS `SendMessage` TO ANOTHER
+/// APPLICATION** (R4 of the spec, and it is not theoretical): a frozen application
+/// does not answer, and the call **would block indefinitely the thread that
+/// sent it**. Hence `SMTO_ABORTIFHUNG` **and** this timeout.
 ///
-/// ⚠️ **La gravité est moindre que ce que la spec redoutait, et elle ne
-/// disparaît pas.** Sous D-A1-1 la lecture vit sur le **fil de fenêtre**, pas
-/// sur le tour de roue : un blocage ne gèle **que cette fenêtre**. Mais ce fil
-/// est celui qui produit ses images — la session se figerait, exactement comme
-/// le pont ProjFS s'est figé neuf minutes en F1.
+/// ⚠️ **The severity is lower than the spec feared, and it does not
+/// go away.** Under D-A1-1 the read lives on the **window thread**, not
+/// on the wheel tick: a block freezes **only this window**. But this thread
+/// is the one that produces its frames — the session would freeze, exactly as
+/// the ProjFS bridge froze for nine minutes in F1.
 ///
-/// ⚠️ **NON CALIBRÉ**, et **JAMAIS EXERCÉ** : `SMTO_ABORTIFHUNG` est **posé**,
-/// aucune application figée n'est provoquée par la recette de A1.
+/// ⚠️ **NOT CALIBRATED**, and **NEVER EXERCISED**: `SMTO_ABORTIFHUNG` is **set**,
+/// no frozen application is provoked by the A1 acceptance run.
 const DELAI_MS: u32 = 200;
 
-/// Rend l'icône de `hwnd` en **RGBA**, avec sa largeur et sa hauteur.
+/// Returns the icon of `hwnd` in **RGBA**, with its width and height.
 ///
-/// La cascade, dans l'ordre décroissant de taille (D-A1-8) :
-/// 1. `WM_GETICON` en `ICON_BIG`, puis `ICON_SMALL2`, puis `ICON_SMALL`, tous
-///    trois par `SendMessageTimeoutW` + `SMTO_ABORTIFHUNG` ;
-/// 2. repli **non bloquant** `GetClassLongPtrW(GCLP_HICON)` puis `GCLP_HICONSM`.
+/// The cascade, in decreasing order of size (D-A1-8):
+/// 1. `WM_GETICON` with `ICON_BIG`, then `ICON_SMALL2`, then `ICON_SMALL`, all
+///    three through `SendMessageTimeoutW` + `SMTO_ABORTIFHUNG`;
+/// 2. **non-blocking** fallback `GetClassLongPtrW(GCLP_HICON)` then `GCLP_HICONSM`.
 ///
-/// 🔴 **Un délai dépassé, un `HICON` nul, ou un échec de `GetIconInfo` /
-/// `GetDIBits` se traitent comme « PAS D'ICÔNE » : `None`. Le tour ne produit
-/// aucune annonce, et il ne produit pas d'erreur non plus.** Une icône qu'on ne
-/// sait pas lire n'est pas une panne du produit.
+/// 🔴 **An exceeded timeout, a null `HICON`, or a failure of `GetIconInfo` /
+/// `GetDIBits` are treated as "NO ICON": `None`. The tick produces
+/// no announcement, and it produces no error either.** An icon that cannot
+/// be read is not a failure of the product.
 ///
-/// ⚠️ **Le repli `GetClassLongPtrW` ne courra que si `WM_GETICON` échoue, ce
-/// qu'aucun protocole de recette ne provoque : code livré, chemin probablement
-/// jamais emprunté** — comme `borner_a_la_taille_max` l'a été un sous-bloc
-/// entier.
+/// ⚠️ **The `GetClassLongPtrW` fallback only runs if `WM_GETICON` fails, which
+/// no acceptance protocol provokes: code shipped, path probably
+/// never taken** — as `borner_a_la_taille_max` was for a whole
+/// sub-block.
 pub fn lire_icone(hwnd: HWND) -> Option<(Vec<u8>, u32, u32)> {
     let icone = trouver_icone(hwnd)?;
     pixels_de(icone)
 }
 
-/// La cascade de la doc de [`lire_icone`], et rien d'autre.
+/// The cascade of the doc of [`lire_icone`], and nothing else.
 fn trouver_icone(hwnd: HWND) -> Option<HICON> {
     for taille in [ICON_BIG, ICON_SMALL2, ICON_SMALL] {
         let mut resultat: usize = 0;
-        // `SendMessageTimeoutW` rend 0 sur expiration comme sur échec : les
-        // deux se traitent pareil — « pas d'icône par cette voie ».
+        // `SendMessageTimeoutW` returns 0 on timeout as on failure: both
+        // are treated the same — "no icon by this route".
         let rendu = unsafe {
             SendMessageTimeoutW(
                 hwnd,
@@ -86,8 +86,8 @@ fn trouver_icone(hwnd: HWND) -> Option<HICON> {
             return Some(HICON(resultat as *mut _));
         }
     }
-    // Repli NON BLOQUANT : la classe de fenêtre, qui est une donnée locale au
-    // processus appelant et ne demande rien à l'application cible.
+    // NON-BLOCKING fallback: the window class, which is data local to the
+    // calling process and asks nothing of the target application.
     for index in [GCLP_HICON, GCLP_HICONSM] {
         let brut = unsafe { GetClassLongPtrW(hwnd, index) };
         if brut != 0 {
@@ -97,24 +97,24 @@ fn trouver_icone(hwnd: HWND) -> Option<HICON> {
     None
 }
 
-/// Décode un `HICON` en RGBA.
+/// Decodes an `HICON` into RGBA.
 ///
-/// 🔴 **`GetDIBits` REND DU BGRA. LA CONVERSION SE FAIT ICI, ET NULLE PART
-/// AILLEURS.** Se tromper de sens échangerait le rouge et le bleu — un défaut
-/// **plausible et silencieux**, qu'**aucun test d'hôte ne verrait** puisqu'il
-/// vivrait derrière ce `#[cfg(windows)]` (RA1-6). Le module pur reçoit du RGBA,
-/// et son test le dit ; **le seul contrôle réel est le critère ① de la
-/// recette**, et il ne le verrait que si les deux applications choisies ont des
-/// icônes de teintes opposées.
+/// 🔴 **`GetDIBits` RETURNS BGRA. THE CONVERSION HAPPENS HERE, AND NOWHERE
+/// ELSE.** Getting the direction wrong would swap red and blue — a
+/// **plausible and silent** defect, which **no host test would see** since it would
+/// live behind this `#[cfg(windows)]` (RA1-6). The pure module receives RGBA,
+/// and its test says so; **the only real check is criterion ① of the
+/// acceptance run**, and it would only see it if the two chosen applications have
+/// icons of opposite hues.
 fn pixels_de(icone: HICON) -> Option<(Vec<u8>, u32, u32)> {
     let mut info = ICONINFO::default();
     if unsafe { GetIconInfo(icone, &mut info) }.is_err() {
         return None;
     }
-    // 🔴 `DeleteObject` SUR TOUS LES CHEMINS DE SORTIE, Y COMPRIS D'ERREUR :
-    // `GetIconInfo` crée DEUX bitmaps dont l'appelant devient propriétaire, et
-    // les oublier est une fuite par tour de lecture — soit une fuite toutes les
-    // `PERIODE_ACCENT`, pour toute la vie de la session. Le patron est
+    // 🔴 `DeleteObject` ON EVERY EXIT PATH, ERROR PATHS INCLUDED:
+    // `GetIconInfo` creates TWO bitmaps the caller becomes the owner of, and
+    // forgetting them is one leak per read tick — i.e. one leak every
+    // `PERIODE_ACCENT`, for the whole life of the session. The pattern is
     // `apps/icone/extraction.rs`.
     let resultat = decoder(info.hbmColor);
     unsafe {
@@ -130,13 +130,13 @@ fn pixels_de(icone: HICON) -> Option<(Vec<u8>, u32, u32)> {
 
 /// La lecture des octets d'un `HBITMAP` 32 bits, top-down.
 ///
-/// **Séparée pour que le `DeleteObject` de l'appelant coure sur TOUS les
-/// chemins**, y compris ceux qui rendent `None` — c'est la raison d'être de la
-/// même séparation dans `apps/icone/extraction.rs`.
+/// **Split out so that the caller's `DeleteObject` runs on ALL
+/// paths**, including those that return `None` — that is the reason for the
+/// same split in `apps/icone/extraction.rs`.
 fn decoder(bitmap: HBITMAP) -> Option<(Vec<u8>, u32, u32)> {
     if bitmap.is_invalid() {
-        // Une icône monochrome n'a pas de plan couleur : elle n'a pas de
-        // teinte à donner, et ce n'est pas une erreur.
+        // A monochrome icon has no colour plane: it has no
+        // hue to give, and that is not an error.
         return None;
     }
     let mut brut = BITMAP::default();
@@ -160,11 +160,11 @@ fn decoder(bitmap: HBITMAP) -> Option<(Vec<u8>, u32, u32)> {
         bmiHeader: BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
             biWidth: largeur as i32,
-            // Négatif : bitmap TOP-DOWN. Sans cela les lignes reviendraient
-            // dans l'ordre inverse — sans conséquence pour une couleur
-            // dominante, qui ne dépend pas de l'ordre, mais le dire évite qu'un
-            // successeur qui réemploierait ce module pour rendre une IMAGE
-            // hérite d'une image retournée. Le modèle est
+            // Negative: TOP-DOWN bitmap. Without it the rows would come back
+            // in reverse order — harmless for a dominant
+            // colour, which does not depend on the order, but saying so keeps a
+            // successor who reused this module to render an IMAGE
+            // from inheriting an upside-down image. The model is
             // `diagnostics/multifenetre/voies.rs`.
             biHeight: -(hauteur as i32),
             biPlanes: 1,
@@ -192,12 +192,12 @@ fn decoder(bitmap: HBITMAP) -> Option<(Vec<u8>, u32, u32)> {
         return None;
     }
 
-    // 🔴 BGRA -> RGBA, PAR LA RÈGLE PURE ET NON PAR UNE COPIE. Cette boucle
-    // vivait ici, derrière le `#[cfg(windows)]`, et n'était couverte par rien
-    // (legs RA1-6). Le sous-bloc G5 en a eu besoin une seconde fois, pour
-    // l'icône d'une APPLICATION : elle est descendue dans `accent.rs`, où elle
-    // est testée, plutôt que d'être recopiée — deux copies d'une règle que
-    // personne ne vérifie divergeraient sans que rien ne le dise.
+    // 🔴 BGRA -> RGBA, BY THE PURE RULE AND NOT BY A COPY. This loop
+    // lived here, behind the `#[cfg(windows)]`, and was covered by nothing
+    // (legacy RA1-6). Sub-block G5 needed it a second time, for the
+    // icon of an APPLICATION: it moved down into `accent.rs`, where it
+    // is tested, rather than being copied — two copies of a rule that
+    // nobody checks would diverge without anything saying so.
     crate::accent::bgra_en_rgba(&mut tampon);
     Some((tampon, largeur, hauteur))
 }

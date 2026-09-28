@@ -1,66 +1,66 @@
-//! Le registre global du sommeil : un `Vivier` partagé, un canal d'ordres par
-//! fenêtre, et le tour de roue qui débloque l'hystérésis.
+//! The global sleep registry: a shared `Vivier`, one order channel per
+//! window, and the wheel round that unblocks the hysteresis.
 //!
-//! **Il ne décide rien.** Toute la logique est dans `vivier.rs`, qui est pur et
-//! testé ; ce module ne fait que la brancher sur des canaux.
+//! **It decides nothing.** All the logic is in `vivier.rs`, which is pure and
+//! tested; this module only plugs it into channels.
 //!
-//! **Pourquoi un état global de processus plutôt qu'un objet passé de main en
-//! main.** Chaque fenêtre du capteur vit sur son propre fil, créé par
-//! `serveur::ouvrir_les_commandes`, et l'arbitrage est par nature transverse :
-//! le signal d'une fenêtre peut endormir sa voisine. Le registre des attentes
-//! de connexion média (`serveur.rs`) emploie déjà exactement ce patron, pour
-//! la même raison. C'est aussi ce qui permet à ce sous-bloc de **ne pas
-//! toucher `serveur.rs`**, dont la marge de taille est de 10 lignes.
+//! **Why a process-global state rather than an object passed from hand to
+//! hand.** Each sensor window lives on its own thread, created by
+//! `serveur::ouvrir_les_commandes`, and arbitration is by nature cross-cutting:
+//! one window's signal can put its neighbour to sleep. The registry of media
+//! connection waits (`serveur.rs`) already uses exactly this pattern, for
+//! the same reason. It is also what lets this sub-block **not
+//! touch `serveur.rs`**, whose size margin is 10 lines.
 
-// `parts` porte le calcul et la distribution des parts de débit. Extrait pour
-// la même raison que `fenetre::transitions` : ce fichier a franchi le
-// plafond de 500 lignes du projet en y ajoutant le remède au canal rompu
-// détecté par cette voie-là (voir `parts::distribuer_les_parts`). Il ne
-// s'appelle pas `repartiteur` : ce nom est déjà pris par le module qui porte
-// la RÈGLE pure ; celui-ci ne porte que sa BRANCHE sur ce registre.
-// `file` porte la RÈGLE PURE de coalescence du canal d'une session : aucun
-// verrou, aucun `cfg`, aucune API Windows — c'est ce qui la rend éprouvable
-// par `cargo test --workspace` sur l'hôte Linux, alors que ce fichier entier
-// ne l'est pas. Le verrou et le réveil restent chez cet appelant (tâche
-// ultérieure) ; ce module ne décide QUE si un dépôt s'empile, coalesce, ou
-// est refusé.
+// `parts` carries the computation and distribution of bitrate shares. Extracted for
+// the same reason as `fenetre::transitions`: this file crossed the
+// project's 500-line cap when the remedy for the broken channel
+// detected through that path was added (see `parts::distribuer_les_parts`). It is not
+// called `repartiteur`: that name is already taken by the module carrying
+// the pure RULE; this one only carries its BRANCH on this registry.
+// `file` carries the PURE coalescing RULE of a session's channel: no
+// lock, no `cfg`, no Windows API — that is what makes it testable
+// by `cargo test --workspace` on the Linux host, whereas this whole file
+// is not. The lock and the wake-up stay with this caller (later
+// task); this module ONLY decides whether a drop stacks, coalesces, or
+// is refused.
 pub(crate) mod file;
 mod parts;
 mod porteurs;
-// `presse_papier` porte la DISTRIBUTION du presse-papier de la VM, extraite
-// au même endroit que `parts` et `porteurs` — mais PAS pour la même raison, et
-// il faut le dire : `parts` a été extrait d'un fichier qui avait FRANCHI 500
-// lignes, alors que celui-ci en fait 352 et garde 148 de marge. Ce qui la
-// justifie est que le module inliné, ses trois tests compris, aurait porté
-// `sommeil.rs` au-delà du plafond. ⚠️ La rédaction initiale disait « ce
-// fichier-ci est proche de son plafond » : c'était faux à l'écriture (328
-// lignes alors), et corrigé par la revue transverse du 20 août 2026 — **le
-// geste était bon, sa raison écrite ne l'était pas**.
-// Il ne s'appelle pas comme le module racine
-// `crate::presse_papier` par confusion — celui-là porte la RÈGLE pure, celui-ci
-// sa seule branche sur ce registre.
+// `presse_papier` carries the DISTRIBUTION of the VM's clipboard, extracted
+// at the same place as `parts` and `porteurs` — but NOT for the same reason, and
+// it must be said: `parts` was extracted from a file that had CROSSED 500
+// lines, whereas this one is 352 and keeps 148 of margin. What
+// justifies it is that the inlined module, its three tests included, would have taken
+// `sommeil.rs` beyond the cap. ⚠️ The initial wording said "this
+// file is close to its cap": it was false at the time of writing (328
+// lines then), and fixed by the cross-cutting review of 20 August 2026 — **the
+// gesture was right, its written reason was not**.
+// It is not named like the root module
+// `crate::presse_papier` by confusion — that one carries the pure RULE, this one
+// only its branch on this registry.
 mod presse_papier;
 
-// Le registre lui-même — `Etat`, `etat`, le tour de roue, `distribuer`,
-// `oublier`, `inscrire`, `retirer` — extrait pour rester sous le plafond de
-// 500 lignes du projet (revue de la tâche 10, D9) : ce fichier-ci était
-// tombé à exactement 500 avec ce bloc en ligne. Voir l'en-tête de
-// `registre.rs`. Les quatre re-exports ci-dessous rendent l'extraction
-// invisible à `parts.rs`/`porteurs.rs`/`tests.rs`, qui continuent d'écrire
-// `super::{distribuer, oublier, Etat, Message}` sans le savoir.
+// The registry itself — `Etat`, `etat`, the wheel round, `distribuer`,
+// `oublier`, `inscrire`, `retirer` — extracted to stay under the project's
+// 500-line cap (review of task 10, D9): this file had
+// landed at exactly 500 with this block inline. See the header of
+// `registre.rs`. The four re-exports below make the extraction
+// invisible to `parts.rs`/`porteurs.rs`/`tests.rs`, which keep writing
+// `super::{distribuer, oublier, Etat, Message}` without knowing it.
 mod registre;
 use registre::{distribuer, etat, oublier, Etat};
 pub use registre::{inscrire, retirer};
 
 use std::collections::HashMap;
-// `ReceveurSession`, `Mutex` et `MutexGuard` : plus employés par le code de
-// PRODUCTION de ce fichier depuis l'extraction ci-dessus — seul
-// `sommeil::tests` s'en sert encore (`premier_ordre`, `VERROU_TESTS`), via
-// `use super::*`. Gater sur `cfg(test)` évite un `unused_imports` en dehors de
-// la compilation de test, sans toucher `tests.rs`.
+// `ReceveurSession`, `Mutex` and `MutexGuard`: no longer used by the
+// PRODUCTION code of this file since the extraction above — only
+// `sommeil::tests` still uses them (`premier_ordre`, `VERROU_TESTS`), via
+// `use super::*`. Gating on `cfg(test)` avoids an `unused_imports` outside
+// the test build, without touching `tests.rs`.
 //
-// ⚠️ `Receiver` jusqu'au 25 août 2026 : le canal du registre n'est plus un
-// `std::sync::mpsc` non borné (voir `file.rs`).
+// ⚠️ `Receiver` until 25 August 2026: the registry's channel is no longer an
+// unbounded `std::sync::mpsc` (see `file.rs`).
 #[cfg(test)]
 use file::ReceveurSession;
 #[cfg(test)]
@@ -69,180 +69,180 @@ use std::time::{Duration, Instant};
 
 use crate::capteur::vivier::{Ordre, Raison};
 
-/// Période du tour de roue. Ni une cadence de rendu ni une horloge : c'est le
-/// seul moyen pour une fenêtre bloquée sous hystérésis d'être réexaminée, et
-/// 250 ms est très en deçà des 2 s d'hystérésis tout en restant négligeable.
+/// Period of the wheel round. Neither a rendering cadence nor a clock: it is the
+/// only way for a window blocked under hysteresis to be re-examined, and
+/// 250 ms is well below the 2 s of hysteresis while staying negligible.
 const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 
-/// Répit avant qu'une fenêtre dont la capture audio est morte ne redevienne
-/// éligible au portage.
+/// Respite before a window whose audio capture has died becomes
+/// eligible to carry sound again.
 ///
-/// ❌ **CE MÉCANISME EST INERTE POUR LE CAS MAJORITAIRE, et une rédaction
-/// antérieure de ce commentaire affirmait le contraire à tort** (constaté
-/// par la recette VM de la tâche 15, sous-bloc D9, revue finale). Elle
-/// disait : « réélire la même session construit une activation *process
-/// loopback* NEUVE ». **C'est faux, vérifié sur le code** :
-/// `WindowsAudioSource` n'est construite QU'UNE FOIS, au démarrage de
-/// l'enfant (`demarrage/audio.rs::brancher`, appelé une seule fois, sans
-/// boucle) ; le fil de capture (`windows_audio.rs`), une fois
-/// `capture_morte` posé, exécute un `return` DÉFINITIF et ne relit plus
-/// jamais rien ; et réélire la MÊME session ne fait que pousser
-/// `Audio { actif: true }`, qui aboutit à `AudioSource::set_actif(true)`
-/// (`windows_audio.rs::set_actif`) — **lequel n'écrit qu'un booléen atomique
-/// que ce fil mort ne lira plus jamais**. Rien, nulle part, ne reconstruit
-/// la source.
+/// ❌ **THIS MECHANISM IS INERT FOR THE MAJORITY CASE, and an earlier
+/// wording of this comment wrongly claimed the opposite** (found
+/// by the VM acceptance run of task 15, sub-block D9, final review). It
+/// said: "re-electing the same session builds a NEW *process
+/// loopback* activation". **That is false, checked against the code**:
+/// `WindowsAudioSource` is built ONLY ONCE, at the child's start-up
+/// (`demarrage/audio.rs::brancher`, called only once, without a
+/// loop); the capture thread (`windows_audio.rs`), once
+/// `capture_morte` is set, executes a DEFINITIVE `return` and never re-reads
+/// anything; and re-electing the SAME session only pushes
+/// `Audio { actif: true }`, which ends in `AudioSource::set_actif(true)`
+/// (`windows_audio.rs::set_actif`) — **which only writes an atomic boolean
+/// this dead thread will never read again**. Nothing, anywhere, rebuilds
+/// the source.
 ///
-/// ✅ **La branche PROMOTION, elle, reste valide** : une voisine du même
-/// groupe de PID a SA PROPRE `WindowsAudioSource`, construite à SON PROPRE
-/// démarrage, sur un fil de capture qui n'a jamais échoué — l'élire lui
-/// donne réellement le son. C'est le répit lui-même — la RÉÉLECTION DE LA
-/// MÊME SESSION SANS VOISINE — qui ne restaure rien.
+/// ✅ **The PROMOTION branch, for its part, remains valid**: a neighbour of the same
+/// PID group has ITS OWN `WindowsAudioSource`, built at ITS OWN
+/// start-up, on a capture thread that has never failed — electing it
+/// really gives it the sound. It is the respite itself — the RE-ELECTION OF THE
+/// SAME SESSION WITHOUT A NEIGHBOUR — that restores nothing.
 ///
-/// **Conséquence assumée** : le cas MAJORITAIRE — une application, une
-/// fenêtre, donc aucune voisine à promouvoir — reste SANS REMÈDE. Le répit
-/// fait taire puis reparler la bonne session au niveau du REGISTRE (le
-/// capteur cesse de la croire inapte, lui renvoie `Audio { actif: true }`),
-/// mais aucun son ne sort réellement côté enfant tant que sa capture n'a pas
-/// été reconstruite — ce que rien ne fait. **Ceci reste une dette, pas un
-/// remède partiel** : le chemin de reconstruction n'existe pas, et devrait
-/// vivre à l'intersection de trois fichiers déjà nommés dans ce commentaire —
-/// `demarrage/audio.rs` (qui construit la source aujourd'hui, une fois),
-/// `transport/piste_audio.rs` (qui la porte via `appliquer_audio`), et
-/// `windows_audio.rs` (qui tient le fil et le témoin `capture_morte`) —
-/// légué au sous-bloc suivant.
+/// **Accepted consequence**: the MAJORITY case — one application, one
+/// window, hence no neighbour to promote — remains WITHOUT A REMEDY. The respite
+/// silences then un-silences the right session at the REGISTRY level (the
+/// sensor stops believing it unfit, sends it `Audio { actif: true }` again),
+/// but no sound actually comes out on the child side as long as its capture has not
+/// been rebuilt — which nothing does. **This remains a debt, not a
+/// partial remedy**: the rebuild path does not exist, and should
+/// live at the intersection of three files already named in this comment —
+/// `demarrage/audio.rs` (which builds the source today, once),
+/// `transport/piste_audio.rs` (which carries it via `appliquer_audio`), and
+/// `windows_audio.rs` (which holds the thread and the `capture_morte` witness) —
+/// handed over to the next sub-block.
 ///
-/// ✅ **CE CHEMIN EXISTE DÉSORMAIS, câblé de bout en bout (sous-bloc D10,
-/// tâches 11 et 12) : le cas MAJORITAIRE N'EST PLUS SANS REMÈDE.**
-/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) tente
-/// D'ABORD de refabriquer la source — exactement à l'intersection nommée
-/// ci-dessus, `demarrage/audio.rs` fournissant le reconstructeur — et
-/// n'appelle `audio_mort` (donc ce répit et cette promotion) qu'en REPLI :
-/// quand son propre budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`)
-/// est épuisé, ou qu'il n'existe aucun reconstructeur (`AUDIO=0`, ou toute
-/// session dont l'ouverture audio initiale a échoué : là, le comportement
-/// d'avant D10 — signaler immédiatement — reste exactement conservé).
+/// ✅ **THIS PATH NOW EXISTS, wired end to end (sub-block D10,
+/// tasks 11 and 12): the MAJORITY case IS NO LONGER WITHOUT A REMEDY.**
+/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) tries
+/// FIRST to rebuild the source — exactly at the intersection named
+/// above, `demarrage/audio.rs` providing the rebuilder — and
+/// only calls `audio_mort` (hence this respite and this promotion) as a FALLBACK:
+/// when its own attempt budget (`crate::audio::RECONSTRUCTIONS_MAX`)
+/// is exhausted, or there is no rebuilder (`AUDIO=0`, or any
+/// session whose initial audio opening failed: there, the behaviour
+/// from before D10 — report immediately — is kept exactly).
 ///
-/// ❌ **« Chemin mono-fenêtre » figurait dans cette liste, et c'est faux :
-/// `demarrage/audio.rs::brancher` pose un reconstructeur dans les DEUX
-/// modes** (revue transverse de fin de branche). Le mono-fenêtre reconstruit
-/// donc lui aussi, `RECONSTRUCTIONS_MAX` fois, avant de signaler. ⚠️ **Le
-/// remède y a été INERTE pour une autre raison** : la source reconstruite y
-/// était réarmée sur `audio_porteuse`, qu'aucun ordre de capteur ne venait
-/// jamais poser en l'absence de capteur. ✅ **« Léguée et non corrigée » ne
-/// l'est plus — leg n°4 de D10, CORRIGÉ au sous-bloc D11** : le branchement
-/// mono-fenêtre pose lui-même `audio_porteuse` (`demarrage/audio.rs`), et la
-/// recette ① mesure le son revenu (441 Hz contre la sentinelle au rouge) —
-/// voir `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`). Ce que
-/// CE mécanisme-ci (le répit et la
-/// promotion) continue de faire, inchangé : donner sa chance à une voisine du
-/// même groupe de PID, et éviter qu'un périphérique définitivement mort ne
-/// fasse tourner le cycle sans fin. Et la preuve que la reconstruction a
-/// réellement rendu du son — pas seulement réussi à s'ouvrir — referme le
-/// cycle de réarmements : voir `signaler_audio_vivant` plus bas, et le leg 6
-/// de D9 qu'il ferme (`capteur/sommeil/porteurs.rs`).
+/// ❌ **"Single-window path" was in this list, and it is false:
+/// `demarrage/audio.rs::brancher` sets a rebuilder in BOTH
+/// modes** (cross-cutting end-of-branch review). Single-window therefore rebuilds
+/// too, `RECONSTRUCTIONS_MAX` times, before reporting. ⚠️ **The
+/// remedy was INERT there for another reason**: the rebuilt source was
+/// re-armed there on `audio_porteuse`, which no sensor order ever
+/// set in the absence of a sensor. ✅ **"Handed over and not fixed" is
+/// no longer so — D10's hand-over no. 4, FIXED in sub-block D11**: the
+/// single-window wiring sets `audio_porteuse` itself (`demarrage/audio.rs`), and
+/// acceptance run ① measures the sound back (441 Hz against the sentinel on red) —
+/// see `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`). What
+/// THIS mechanism (the respite and the
+/// promotion) keeps doing, unchanged: giving its chance to a neighbour of the
+/// same PID group, and preventing a definitively dead device from
+/// making the cycle run forever. And the proof that the rebuild
+/// actually produced sound — not merely managed to open — closes the
+/// re-arm cycle: see `signaler_audio_vivant` below, and D9's hand-over 6
+/// that it closes (`capteur/sommeil/porteurs.rs`).
 ///
-/// ⚠️ **Précision apportée en REVUE de la tâche 12 : le rôle de la
-/// réélection ne s'arrête pas à « donner sa chance à une voisine ».** Le
-/// budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`) n'est posé
-/// qu'UNE FOIS à la construction de la `Session`, et sans réapprovisionnement
-/// le cycle décrit ci-dessus ne pouvait tourner qu'une seule fois PAR
-/// SESSION : après le premier `AudioMort`, le verrou `audio_mort_signale` (qui
-/// ne retombe qu'à un rattachement) empêchait toute nouvelle tentative,
-/// quelle que soit la durée de vie restante de la session. C'est la
-/// réélection ELLE-MÊME — la transition vers `Audio { actif: true }`,
-/// `Session::appliquer_audio`, `transport/piste_audio.rs` — qui
-/// réapprovisionne ce budget et lève ce verrou. Sans ce second rôle,
-/// `REARMEMENTS_MAX` juste en dessous n'aurait jamais compté qu'un seul échec
-/// par session, jamais plusieurs échecs CONSÉCUTIFS — l'inverse de son
-/// intention.
+/// ⚠️ **Clarification made in REVIEW of task 12: the role of
+/// re-election does not stop at "giving its chance to a neighbour".** The
+/// attempt budget (`crate::audio::RECONSTRUCTIONS_MAX`) is set
+/// only ONCE when the `Session` is built, and without replenishment
+/// the cycle described above could only run once PER
+/// SESSION: after the first `AudioMort`, the `audio_mort_signale` latch (which
+/// only drops on a re-attachment) prevented any new attempt,
+/// whatever the session's remaining lifetime. It is
+/// re-election ITSELF — the transition to `Audio { actif: true }`,
+/// `Session::appliquer_audio`, `transport/piste_audio.rs` — that
+/// replenishes this budget and lifts this latch. Without this second role,
+/// `REARMEMENTS_MAX` just below would only ever have counted a single failure
+/// per session, never several CONSECUTIVE failures — the opposite of its
+/// intent.
 ///
-/// ⚠️ **NON CALIBRÉE.** Aucune mesure ne la fonde : elle rejoint `BPP_MIN`,
-/// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` et
+/// ⚠️ **NOT CALIBRATED.** No measurement underpins it: it joins `BPP_MIN`,
+/// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` and
 /// `TAILLE_MAX_SORTIE`.
 pub const REPIT_REARMEMENT_AUDIO: Duration = Duration::from_secs(5);
 
-/// Nombre de réarmements consécutifs avant abandon définitif.
+/// Number of consecutive re-arms before giving up for good.
 ///
-/// Sans borne, un périphérique audio définitivement mort ferait tourner le
-/// cycle « inapte → répit → réélue → morte » sans fin, et chaque tour coûte
-/// une activation COM.
+/// Without a bound, a definitively dead audio device would make the
+/// "unfit → respite → re-elected → dead" cycle run forever, and each round costs
+/// a COM activation.
 ///
-/// ⚠️ **NON CALIBRÉE**, comme la précédente. L'abandon définitif est
-/// **journalisé**, jamais muet — c'est la contrainte que F3 de D7 a posée.
+/// ⚠️ **NOT CALIBRATED**, like the previous one. Giving up for good is
+/// **logged**, never silent — that is the constraint F3 of D7 set.
 pub const REARMEMENTS_MAX: u32 = 5;
 
-/// Ce qu'une fenêtre reçoit du registre global.
+/// What a window receives from the global registry.
 ///
-/// **Un seul canal pour les deux**, et non deux canaux parallèles : ce qu'un
-/// canal unique garantit est l'ordre de LIVRAISON — deux canaux parallèles
-/// laisseraient une part d'endormie doubler l'ordre de dormir qui la motive,
-/// et la fenêtre serait momentanément décrite comme endormie alors qu'elle
-/// encode encore.
+/// **A single channel for both**, and not two parallel channels: what a
+/// single channel guarantees is the DELIVERY order — two parallel channels
+/// would let a sleeping window's share overtake the sleep order motivating it,
+/// and the window would momentarily be described as asleep while it
+/// is still encoding.
 ///
-/// ⚠️ **Il ne garantit PAS l'ordre de CALCUL, et la distinction n'est pas
-/// théorique** (I2, revue finale de branche du sous-bloc D6). Les appelants
-/// respectent bien « `distribuer` puis `distribuer_les_parts` », sauf un : le
-/// chemin `rompus` de `distribuer_les_parts` envoie les parts d'abord, puis
-/// retire du vivier les sessions dont le canal est rompu, puis seulement
-/// relaie les ordres que ce retrait engendre. Une session réveillée par la
-/// place ainsi libérée reçoit son `Reveiller` APRÈS une part d'endormie déjà
-/// périmée, et ne reçoit sa part d'éveillée qu'au tour de roue suivant.
-/// **Borne : `PERIODE_REARBITRAGE`, 250 ms au plancher `PART_DORMANTE_BPS`.**
-/// Conséquence assumée : la recalculer sur place demanderait une seconde passe
-/// de parts sous le même verrou, pour 250 ms de plancher sur un chemin qui ne
-/// s'emprunte qu'à la mort inopinée d'un fil de fenêtre.
+/// ⚠️ **It does NOT guarantee the COMPUTATION order, and the distinction is not
+/// theoretical** (I2, final branch review of sub-block D6). Callers
+/// do respect "`distribuer` then `distribuer_les_parts`", except one: the
+/// `rompus` path of `distribuer_les_parts` sends the shares first, then
+/// removes from the pool the sessions whose channel is broken, and only then
+/// relays the orders that removal generates. A session woken by the
+/// place thus freed receives its `Reveiller` AFTER an already stale sleeping
+/// share, and only receives its awake share at the next wheel round.
+/// **Bound: `PERIODE_REARBITRAGE`, 250 ms at the `PART_DORMANTE_BPS` floor.**
+/// Accepted consequence: recomputing it on the spot would require a second pass
+/// of shares under the same lock, for 250 ms of floor on a path that is only
+/// taken on the unexpected death of a window thread.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     Sommeil(Ordre),
     Part {
         bps: u32,
     },
-    /// Ordre de porter le son, ou de se taire. Poussé **au changement
-    /// seulement**, comme `Part`.
+    /// Order to carry the sound, or to go silent. Pushed **on change
+    /// only**, like `Part`.
     ///
-    /// Sur le même canal que les deux autres, et pour la même raison : au
-    /// sein du canal d'UNE session, un canal unique garantit l'ordre de
-    /// LIVRAISON entre `Sommeil`, `Part` et `Audio`. **Cela ne s'étend pas
-    /// entre deux sessions** : l'ancienne porteuse et la nouvelle ont chacune
-    /// leur propre canal, lu par son propre fil de fenêtre. `porteurs::
-    /// distribuer_l_audio` envoie l'ordre de se taire avant celui de porter,
-    /// ce qui RÉDUIT la fenêtre où les deux fenêtres d'un même processus
-    /// seraient audibles ensemble — sans la fermer : la borne réelle est
-    /// l'ordonnancement des deux fils, pas ce canal.
+    /// On the same channel as the other two, and for the same reason: within
+    /// ONE session's channel, a single channel guarantees the
+    /// DELIVERY order between `Sommeil`, `Part` and `Audio`. **This does not extend
+    /// across two sessions**: the old carrier and the new one each have
+    /// their own channel, read by its own window thread. `porteurs::
+    /// distribuer_l_audio` sends the order to go silent before the order to carry,
+    /// which REDUCES the window where both windows of the same process
+    /// would be audible together — without closing it: the real bound is
+    /// the scheduling of the two threads, not this channel.
     Audio {
         actif: bool,
     },
-    /// Le presse-papier de la VM a changé (sous-bloc P1). Poussé **au
-    /// changement seulement**, comme `Part` et `Audio` — c'est
-    /// `crate::presse_papier::Sondeur` qui porte les gardes, pas ce registre.
+    /// The VM's clipboard changed (sub-block P1). Pushed **on
+    /// change only**, like `Part` and `Audio` — it is
+    /// `crate::presse_papier::Sondeur` that carries the guards, not this registry.
     ///
-    /// `texte` vaut `None` sur un REFUS de taille, `octets` portant alors la
-    /// taille refusée : le contenu est refusé, jamais tronqué, et le refus est
-    /// DIT à l'utilisateur (D4). Un `None` n'est donc pas « rien à annoncer ».
+    /// `texte` is `None` on a size REFUSAL, `octets` then carrying the
+    /// refused size: the content is refused, never truncated, and the refusal is
+    /// TOLD to the user (D4). A `None` therefore does not mean "nothing to announce".
     ///
-    /// ⚠️ **C'est de très loin le plus gros message de ce canal** : jusqu'à
-    /// `crate::presse_papier::PRESSE_PAPIER_MAX` (64 Kio), là où `Sommeil`,
-    /// `Part` et `Audio` pèsent quelques octets — **quatre** ordres de
-    /// grandeur, et non « deux » comme cette phrase l'annonçait d'abord. Le
-    /// « deux ordres de grandeur » de `protocole.rs`, sa voisine, est exact
-    /// (8 Mio contre 64 Kio) : les deux phrases n'employaient pas la même
-    /// échelle (revue transverse, 20 août 2026).
+    /// ⚠️ **It is by far the largest message on this channel**: up to
+    /// `crate::presse_papier::PRESSE_PAPIER_MAX` (64 KiB), where `Sommeil`,
+    /// `Part` and `Audio` weigh a few bytes — **four** orders of
+    /// magnitude, and not "two" as this sentence first announced. The
+    /// "two orders of magnitude" of `protocole.rs`, its neighbour, is accurate
+    /// (8 MiB against 64 KiB): the two sentences did not use the same
+    /// scale (cross-cutting review, 20 August 2026).
     ///
-    /// 🔴 ~~Le canal du registre est NON BORNÉ (`std::sync::mpsc::channel`),
-    /// donc `send` ne bloque jamais — mais un fil de fenêtre bloqué
-    /// accumulerait ces messages. Borné en pratique par le fait qu'on n'émet
-    /// qu'au changement et que le garde d'égalité de contenu supprime les
-    /// répétitions ; nommé ici plutôt que découvert, et à surveiller si P3
-    /// mesure une fenêtre lente.~~ **FAUX DEPUIS LE 25 AOÛT 2026 : le canal
-    /// est BORNÉ**, par `capteur/sommeil/file.rs` — `PROFONDEUR_MAX` (64
-    /// messages), et un dépôt au-delà est **REFUSÉ et COMPTÉ**, jamais
-    /// bloquant ni tronqué. Le « borné en pratique » ci-dessus était un
-    /// raisonnement de bonne foi sur le régime NORMAL : c'est le régime
-    /// ANORMAL — un fil de fenêtre qui cesse de lire — qu'il ne bornait pas,
-    /// et c'est celui-là qui coûtait la mémoire. ⚠️ **`PressePapier` n'est PAS
-    /// coalescable** (elle porte la donnée de l'utilisateur), donc c'est la
-    /// variante par laquelle la borne se heurte réellement : 64 messages ×
-    /// 64 Kio, soit 4 Mio au pire pour une fenêtre bloquée.
+    /// 🔴 ~~The registry's channel is UNBOUNDED (`std::sync::mpsc::channel`),
+    /// so `send` never blocks — but a blocked window thread
+    /// would accumulate these messages. Bounded in practice by the fact that we only emit
+    /// on change and that the content-equality guard suppresses
+    /// repetitions; named here rather than discovered, and to watch if P3
+    /// measures a slow window.~~ **FALSE SINCE 25 AUGUST 2026: the channel
+    /// is BOUNDED**, by `capteur/sommeil/file.rs` — `PROFONDEUR_MAX` (64
+    /// messages), and a drop beyond that is **REFUSED and COUNTED**, never
+    /// blocking nor truncated. The "bounded in practice" above was a
+    /// good-faith reasoning about the NORMAL regime: it is the
+    /// ABNORMAL regime — a window thread that stops reading — that it did not bound,
+    /// and that is the one that cost memory. ⚠️ **`PressePapier` is NOT
+    /// coalescable** (it carries the user's data), so it is the
+    /// variant through which the bound is actually hit: 64 messages ×
+    /// 64 KiB, that is 4 MiB at worst for a blocked window.
     PressePapier {
         texte: Option<String>,
         octets: u32,
@@ -253,9 +253,9 @@ pub fn signaler(session: &str, visible: bool, focalisee: bool) {
     let mut garde = etat();
     if focalisee {
         garde.focalisee = Some(session.to_string());
-        // Le rang du focus, et non un booléen : c'est lui qui fait tenir la
-        // règle 3 de l'arbitrage — un groupe qui perd tout focus garde son son
-        // sur la DERNIÈRE à l'avoir eu.
+        // The focus rank, and not a boolean: it is what makes
+        // arbitration rule 3 hold — a group that loses all focus keeps its sound
+        // on the LAST one to have had it.
         garde.horloge += 1;
         let rang = garde.horloge;
         garde.derniers_focus.insert(session.to_string(), rang);
@@ -270,12 +270,12 @@ pub fn signaler(session: &str, visible: bool, focalisee: bool) {
     porteurs::distribuer_l_audio(&mut garde);
 }
 
-/// Signale l'échec de la reconstruction du `WindowsSource` lors d'un réveil.
+/// Reports the failure to rebuild the `WindowsSource` during a wake-up.
 ///
-/// Appelée par la tâche 6 quand la reconstruction du `WindowsSource` échoue
-/// après un `Ordre::Reveiller` : sans ce chemin de retour, le vivier croirait
-/// la fenêtre éveillée pour toujours et ne la reproposerait jamais au tour de
-/// roue.
+/// Called by task 6 when rebuilding the `WindowsSource` fails
+/// after an `Ordre::Reveiller`: without this return path, the pool would believe
+/// the window awake forever and would never propose it again at the wheel
+/// round.
 pub fn echec_de_reveil(session: &str) {
     let mut garde = etat();
     let ordres = garde.vivier.echec_de_reveil(session, Instant::now());
@@ -284,40 +284,40 @@ pub fn echec_de_reveil(session: &str) {
     porteurs::distribuer_l_audio(&mut garde);
 }
 
-/// Écrit `texte` dans le presse-papier de la VM (sens navigateur → VM).
+/// Writes `texte` into the VM's clipboard (browser → VM direction).
 ///
-/// **Le capteur est le seul propriétaire du presse-papier** (D1) : c'est
-/// pourquoi cette porte existe, et pourquoi aucun enfant n'écrit lui-même.
+/// **The sensor is the sole owner of the clipboard** (D1): that is
+/// why this door exists, and why no child writes by itself.
 ///
-/// Rend `Err` quand l'écriture a échoué — refus d'ouverture par une autre
-/// application (cas NORMAL sous Windows), ou mécanisme désarmé. **L'appelant
-/// n'injecte alors PAS `Ctrl+V`** : la touche est perdue, pas reportée (D6).
+/// Returns `Err` when the write failed — refusal to open by another
+/// application (a NORMAL case under Windows), or mechanism disarmed. **The caller
+/// then does NOT inject `Ctrl+V`**: the key is lost, not postponed (D6).
 pub fn ecrire_le_presse_papier(texte: &str) -> anyhow::Result<()> {
     presse_papier::ecrire(texte)
 }
 
-/// Une session signale que sa capture audio est morte.
+/// A session reports that its audio capture has died.
 ///
-/// **Ne répond rien, et c'est voulu** : l'arbitrage est global et la décision
-/// peut concerner une AUTRE fenêtre. L'effet revient par
-/// `DepuisCapteur::Audio`, poussé sur la connexion média de chaque fenêtre
-/// concernée — exactement le patron de `signaler`.
+/// **Replies nothing, and it is intended**: arbitration is global and the decision
+/// may concern ANOTHER window. The effect comes back through
+/// `DepuisCapteur::Audio`, pushed on the media connection of each window
+/// concerned — exactly the pattern of `signaler`.
 pub fn audio_mort(session: &str) {
     let mut garde = etat();
-    // Une session déjà inapte (répit en cours, ou abandon définitif) qui
-    // signale À NOUVEAU une capture morte n'a pas échoué une seconde fois :
-    // c'est le MÊME échec, redit — typiquement une reconnexion de canal sur
-    // un capteur resté vivant (`SourceDistante::rattacher`, sous-bloc D9),
-    // qui ne peut structurellement pas distinguer ce cas d'un vrai
-    // redémarrage du capteur et remet donc `Session::audio_mort_signale` à
-    // zéro dans les deux cas. Compter ce signal comme un échec CONSÉCUTIF de
-    // plus rapprocherait l'abandon définitif de 24 h pour une raison
-    // étrangère à l'état réel de la capture. **Journalisé, jamais tu** :
-    // le silence est précisément le défaut que F3 de D7 a corrigé.
+    // An already unfit session (respite in progress, or given up for good) that
+    // reports a dead capture AGAIN has not failed a second time:
+    // it is the SAME failure, said again — typically a channel reconnection on
+    // a sensor that stayed alive (`SourceDistante::rattacher`, sub-block D9),
+    // which structurally cannot distinguish this case from a real
+    // sensor restart and therefore resets `Session::audio_mort_signale`
+    // in both cases. Counting this signal as one more CONSECUTIVE failure
+    // would bring giving up for good 24 h closer for a reason
+    // foreign to the capture's real state. **Logged, never silenced**:
+    // silence is precisely the defect F3 of D7 fixed.
     if garde.inaptes.contains_key(session) {
-        // `info!`, pas `debug!` : l'exploitation tourne en `RUST_LOG=info`
-        // (voir `encode/arret.rs`), et un signal muet ici serait exactement
-        // le défaut que ce commentaire vient d'expliquer comment éviter.
+        // `info!`, not `debug!`: operations run at `RUST_LOG=info`
+        // (see `encode/arret.rs`), and a silent signal here would be exactly
+        // the defect this comment has just explained how to avoid.
         tracing::info!(
             %session,
             "capture audio morte signalée à nouveau pour une session déjà \
@@ -328,8 +328,8 @@ pub fn audio_mort(session: &str) {
     let tours = garde.rearmements.entry(session.to_string()).or_insert(0);
     *tours += 1;
     if *tours > REARMEMENTS_MAX {
-        // Abandon définitif, JOURNALISÉ. Un silence muet est précisément le
-        // défaut que F3 de D7 a corrigé ; ne pas le réintroduire ici.
+        // Giving up for good, LOGGED. Silence is precisely the
+        // defect F3 of D7 fixed; do not reintroduce it here.
         tracing::warn!(
             %session,
             rearmements = *tours - 1,
@@ -353,36 +353,36 @@ pub fn audio_mort(session: &str) {
     porteurs::distribuer_l_audio(&mut garde);
 }
 
-/// Une session apporte la PREUVE que sa capture audio est repartie : un
-/// paquet réel, pas seulement une reconstruction qui a rendu `Ok` (sous-bloc
-/// D10, ferme le leg 6 de D9).
+/// A session brings the PROOF that its audio capture has restarted: a
+/// real packet, not merely a rebuild that returned `Ok` (sub-block
+/// D10, closes D9's hand-over 6).
 ///
-/// **Ne répond rien, et ne ré-arbitre rien** : contrairement à `audio_mort`,
-/// cette preuve ne concerne jamais qu'une seule session — la sienne — donc
-/// rien à distribuer à une voisine. Elle referme seulement le cycle de
-/// réarmements sur une PREUVE plutôt que sur la seule décision d'arbitrage
-/// (voir `sommeil/porteurs.rs`, dont la remise à zéro vivait ici jusqu'à ce
+/// **Replies nothing, and re-arbitrates nothing**: unlike `audio_mort`,
+/// this proof only ever concerns a single session — its own — so
+/// nothing to distribute to a neighbour. It only closes the re-arm
+/// cycle on a PROOF rather than on the arbitration decision alone
+/// (see `sommeil/porteurs.rs`, whose reset lived here until this
 /// signal).
 pub fn signaler_audio_vivant(session: &str) {
     etat().rearmements.remove(session);
 }
 
-/// Retire du registre les inaptitudes dont le répit a expiré.
+/// Removes from the registry the unfitness entries whose respite has expired.
 ///
-/// **Nommée et séparée pour être ÉPROUVABLE** : le tour de roue (250 ms) est
-/// ce qui rend le répit effectif, et sans cette purge une inapte le resterait
-/// jusqu'au prochain événement, qui peut ne jamais venir. Un `retain` en ligne
-/// dans le tour de roue ne serait couvert par aucun test.
+/// **Named and separated to be TESTABLE**: the wheel round (250 ms) is
+/// what makes the respite effective, and without this purge an unfit window would stay so
+/// until the next event, which may never come. An inline `retain`
+/// in the wheel round would be covered by no test.
 pub(super) fn purger_les_inaptitudes(inaptes: &mut HashMap<String, Instant>, maintenant: Instant) {
     inaptes.retain(|_, echeance| *echeance > maintenant);
 }
 
-/// Ce `retirer` est-il périmé, c'est-à-dire adressé à une instance déjà
-/// remplacée par un rattachement ?
+/// Is this `retirer` stale, that is addressed to an instance already
+/// replaced by a re-attachment?
 ///
-/// **Nommé et séparé pour être ÉPROUVABLE** : la logique en ligne dans
-/// `retirer` ne serait couverte par aucun test, `retirer` touchant un état
-/// global (`OnceLock<Mutex<Etat>>`) qu'un test d'hôte ne peut pas isoler.
+/// **Named and separated to be TESTABLE**: the logic inline in
+/// `retirer` would be covered by no test, `retirer` touching a global
+/// state (`OnceLock<Mutex<Etat>>`) a host test cannot isolate.
 pub(super) fn retirer_est_perime(
     generations: &HashMap<String, u64>,
     session: &str,
@@ -393,8 +393,8 @@ pub(super) fn retirer_est_perime(
         .is_some_and(|courante| *courante > generation)
 }
 
-/// Le texte que le client recevra. **Stable** : il traverse deux protocoles et
-/// s'affiche à l'utilisateur.
+/// The text the client will receive. **Stable**: it crosses two protocols and
+/// is shown to the user.
 pub fn raison_en_texte(raison: Raison) -> &'static str {
     match raison {
         Raison::Masquee => "masquee",
@@ -402,16 +402,16 @@ pub fn raison_en_texte(raison: Raison) -> &'static str {
     }
 }
 
-// Extrait dans un fichier voisin : cette suite portait `sommeil.rs` à 500
-// lignes pour un plafond de projet à 500, marge nulle dès sa naissance. Voir
-// l'en-tête de `sommeil/tests.rs`.
+// Extracted into a sibling file: this suite took `sommeil.rs` to 500
+// lines for a project cap of 500, zero margin from birth. See
+// the header of `sommeil/tests.rs`.
 #[cfg(test)]
 mod tests;
 
-// Les deux tests du SIXIÈME site de mémorisation (round de correction 2) dans
-// un fichier voisin DÉDIÉ, et non ajoutés à `tests.rs` : celui-ci est à 473
-// lignes pour un plafond de 500, et ils l'auraient fait franchir. Ne pas faire
-// grossir plutôt que d'avoir à extraire ensuite. Précédent :
-// `superviseur/table.rs`, qui range de même ses tests de relance à part.
+// The two tests of the SIXTH memorisation site (fix round 2) in
+// a DEDICATED sibling file, and not added to `tests.rs`: that one is at 473
+// lines for a cap of 500, and they would have pushed it over. Avoid growing it
+// rather than having to extract afterwards. Precedent:
+// `superviseur/table.rs`, which likewise keeps its restart tests apart.
 #[cfg(test)]
 mod tests_refus;

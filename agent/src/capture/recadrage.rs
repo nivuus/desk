@@ -6,15 +6,15 @@
 use super::*;
 
 impl DesktopCapture {
-    /// Copie la région demandée dans une texture dédiée, sur le GPU.
+    /// Copies the requested region into a dedicated texture, on the GPU.
     pub(super) fn crop(&mut self, source: &ID3D11Texture2D, region: Rect) -> Result<CapturedFrame> {
         let (width, height) = (region.width, region.height);
         if width == 0 || height == 0 {
             bail!("région de recadrage vide");
         }
 
-        // Réallouer seulement si la taille a changé : un redimensionnement est
-        // rare, une image ne l'est pas.
+        // Reallocate only if the size changed: a resize is
+        // rare, a frame is not.
         let need_alloc = !matches!(self.target, Some((_, w, h)) if w == width && h == height);
         if need_alloc {
             let desc = D3D11_TEXTURE2D_DESC {

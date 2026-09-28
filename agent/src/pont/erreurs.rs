@@ -1,26 +1,26 @@
-//! De la cause d'un échec au `HRESULT` que ProjFS attend. **PUR** : aucun
-//! `cfg`, et surtout **aucune dépendance au crate `windows`**.
+//! From the cause of a failure to the `HRESULT` ProjFS expects. **PURE**: no
+//! `cfg`, and above all **no dependency on the `windows` crate**.
 //!
-//! ⚠️ **Pourquoi les douze valeurs sont RECOPIÉES et non importées** : importer
-//! `windows::Win32::Foundation::ERROR_FILE_NOT_FOUND` gaterait ce module en
-//! `#[cfg(windows)]` et lui ferait perdre sa testabilité d'hôte, qui est tout
-//! son intérêt. Chaque constante porte donc **le numéro de ligne de sa source**
-//! en regard — c'est le contrôle de revue que la spec §3.1 impose aux
-//! transcriptions, appliqué ici aussi. Relevé par la commande le 19 août 2026
-//! dans `windows-0.62.2/src/Windows/Win32/Foundation/mod.rs`.
+//! ⚠️ **Why the twelve values are COPIED and not imported**: importing
+//! `windows::Win32::Foundation::ERROR_FILE_NOT_FOUND` would gate this module behind
+//! `#[cfg(windows)]` and make it lose its host testability, which is its whole
+//! point. Each constant therefore carries **the line number of its source**
+//! alongside — it is the review check spec §3.1 imposes on
+//! transcriptions, applied here too. Read by command on August 19th, 2026
+//! in `windows-0.62.2/src/Windows/Win32/Foundation/mod.rs`.
 //!
-//! **Le contre-exemple que ce module existe pour ne pas rejouer** : l'ancien
-//! pont rendait `cb(-1)` — `EPERM` — à **neuf** sites distincts
-//! (`src/file.js:189,203,245,267,277,288,299,311,323`). Un fichier absent, un
-//! disque plein, un délai dépassé et une erreur interne y étaient
-//! indistinguables, côté application Windows comme au journal.
+//! **The counter-example this module exists not to replay**: the old
+//! bridge returned `cb(-1)` — `EPERM` — at **nine** distinct sites
+//! (`src/file.js:189,203,245,267,277,288,299,311,323`). An absent file, a
+//! full disk, an exceeded delay and an internal error were
+//! indistinguishable there, on the Windows application side as in the log.
 
-/// `HRESULT_FROM_WIN32(x)` pour un code d'erreur Win32 : le bit de sévérité,
-/// l'installation `FACILITY_WIN32` (7), puis le code.
+/// `HRESULT_FROM_WIN32(x)` for a Win32 error code: the severity bit,
+/// the `FACILITY_WIN32` facility (7), then the code.
 const FACILITE_WIN32: u32 = 0x8007_0000;
 
-// Les TREIZE codes Win32, transcrits avec leur ligne source. (Douze causes
-// d'échec, plus `ERROR_IO_PENDING`, qui n'en est pas une — voir `EN_COURS`.)
+// The THIRTEEN Win32 codes, transcribed with their source line. (Twelve failure
+// causes, plus `ERROR_IO_PENDING`, which is not one — see `EN_COURS`.)
 const ERROR_FILE_NOT_FOUND: u32 = 2; // Foundation/mod.rs:2355
 const ERROR_PATH_NOT_FOUND: u32 = 3; // Foundation/mod.rs:3689
 const ERROR_ACCESS_DENIED: u32 = 5; // Foundation/mod.rs:1143
@@ -35,113 +35,113 @@ const ERROR_OPERATION_ABORTED: u32 = 995; // Foundation/mod.rs:3632
 const ERROR_IO_DEVICE: u32 = 1117; // Foundation/mod.rs:3003
 const ERROR_IO_PENDING: u32 = 997; // Foundation/mod.rs:3005
 
-/// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` — **la valeur que rend TOUT rappel
-/// asynchrone**, et elle n'est pas une [`Erreur`].
+/// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` — **the value EVERY asynchronous
+/// callback returns**, and it is not an [`Erreur`].
 ///
-/// ⚠️ **Elle n'a délibérément PAS de variante d'[`Erreur`]**, et ce n'est pas
-/// un oubli : `Erreur` énumère les causes d'un ÉCHEC, et son `NOMBRE` porte un
-/// garde structurel qui oblige à classer toute variante neuve. « L'opération
-/// est en cours » n'est pas un échec — lui donner une variante ferait qu'un
-/// balayage exhaustif des causes d'erreur inclurait un succès différé, et que
-/// `hresult` pourrait rendre `EN_COURS` là où un appelant attend un code de
-/// refus.
+/// ⚠️ **It deliberately has NO [`Erreur`] variant**, and it is not
+/// an oversight: `Erreur` enumerates the causes of a FAILURE, and its `NOMBRE` carries a
+/// structural guard that forces classifying any new variant. "The operation
+/// is in progress" is not a failure — giving it a variant would mean that an
+/// exhaustive sweep of error causes would include a deferred success, and that
+/// `hresult` could return `EN_COURS` where a caller expects a refusal
+/// code.
 ///
-/// C'est la valeur qui fait tenir la discipline de fil : un rappel l'inscrit
-/// dans la table, la rend, et **rend la main immédiatement**. Y attendre un
-/// aller-retour navigateur figerait l'application qui lit le fichier.
+/// It is the value that makes the threading discipline hold: a callback registers
+/// in the table, returns it, and **returns control immediately**. Waiting there for a
+/// browser round trip would freeze the application reading the file.
 pub const EN_COURS: i32 = (FACILITE_WIN32 | ERROR_IO_PENDING) as i32;
 
-/// Ce qui a empêché une opération d'aboutir.
+/// What prevented an operation from completing.
 ///
-/// **Une variante par CAUSE**, jamais par commodité de code : c'est ce qui
-/// permet à l'application Windows de distinguer « ce fichier n'existe pas » de
-/// « le navigateur a fermé l'onglet », et à l'exploitant de le lire au journal.
+/// **One variant per CAUSE**, never for code convenience: it is what
+/// allows the Windows application to distinguish "this file does not exist" from
+/// "the browser closed the tab", and the operator to read it in the log.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Erreur {
-    /// Le fichier demandé n'existe pas dans le répertoire partagé.
+    /// The requested file does not exist in the shared directory.
     Introuvable,
-    /// Un composant intermédiaire du chemin n'existe pas.
+    /// An intermediate component of the path does not exist.
     CheminIntrouvable,
-    /// La File System Access API a refusé l'accès (permission révoquée).
+    /// The File System Access API refused access (permission revoked).
     AccesRefuse,
-    /// Le canal de données est fermé : onglet fermé, page rechargée, WebRTC
-    /// tombé. C'est « l'erreur d'E/S standard » du cadrage §7.
+    /// The data channel is closed: tab closed, page reloaded, WebRTC
+    /// down. It is "the standard I/O error" of framing §7.
     CanalFerme,
-    /// Le navigateur n'a pas répondu dans le budget imparti.
+    /// The browser did not answer within the allotted budget.
     DelaiDepasse,
-    /// La commande a été annulée, par ProjFS ou par l'arrêt du pont.
+    /// The command was cancelled, by ProjFS or by the bridge's shutdown.
     Abandonnee,
-    /// Le disque du poste local est plein.
+    /// The local workstation's disk is full.
     ///
-    /// ✅ **CONSTRUITE DEPUIS F2** *(cette ligne disait « (F2 et au-delà) »)* :
-    /// `service::cause_de` la produit sur un `CodeEchec::DisquePlein`.
+    /// ✅ **BUILT SINCE F2** *(this line said "(F2 and beyond)")*:
+    /// `service::cause_de` produces it on a `CodeEchec::DisquePlein`.
     ///
-    /// 🔴 **ET SON `HRESULT` N'ATTEINT PERSONNE.** Elle naît d'une poussée
-    /// d'ÉCRITURE, c'est-à-dire APRÈS que l'application a refermé son handle et
-    /// cru avoir enregistré : il n'y a **plus aucune commande ProjFS à
-    /// compléter**. `ERROR_DISK_FULL` est ici une valeur de JOURNAL, et rien
-    /// d'autre. Sans cette phrase, un successeur croirait que le code d'erreur
-    /// fait quelque chose.
+    /// 🔴 **AND ITS `HRESULT` REACHES NO ONE.** It is born from a WRITE
+    /// push, that is AFTER the application has closed its handle and
+    /// believed it had saved: there is **no longer any ProjFS command to
+    /// complete**. `ERROR_DISK_FULL` is a LOG value here, and nothing
+    /// else. Without this sentence, a successor would believe the error code
+    /// does something.
     DisquePlein,
-    /// L'opération n'a pas d'équivalent dans la File System Access API.
+    /// The operation has no equivalent in the File System Access API.
     NonSupporte,
-    /// Suppression d'un répertoire non vide.
+    /// Deletion of a non-empty directory.
     ///
-    /// ✅ **CONSTRUITE DEPUIS F3** *(cette ligne disait « (F3) »)* :
-    /// `service::cause_de` la produit sur un `CodeEchec::RepertoireNonVide`.
+    /// ✅ **BUILT SINCE F3** *(this line said "(F3)")*:
+    /// `service::cause_de` produces it on a `CodeEchec::RepertoireNonVide`.
     ///
-    /// 🔵 **ET SON `HRESULT` ATTEINT BIEN QUELQU'UN, à la différence de
-    /// [`Erreur::DisquePlein`] et de [`Erreur::DejaPresent`].** Elle naît d'une
-    /// suppression, dont le `PRE_DELETE` est **SYNCHRONE** : l'Explorateur y
-    /// attend. C'est aussi la seule cause **DIAGNOSTIQUE** de la table — la
-    /// recevoir signifie que le poste local porte des entrées que la VM ne
-    /// connaît pas, c'est-à-dire que **le miroir a dérivé**.
+    /// 🔵 **AND ITS `HRESULT` DOES REACH SOMEONE, unlike
+    /// [`Erreur::DisquePlein`] and [`Erreur::DejaPresent`].** It is born from a
+    /// deletion, whose `PRE_DELETE` is **SYNCHRONOUS**: Explorer waits on
+    /// it. It is also the only **DIAGNOSTIC** cause in the table — receiving
+    /// it means the local workstation carries entries the VM does not
+    /// know, that is, **the mirror has drifted**.
     ///
-    /// ⚠️ **Elle n'existe QUE parce que F3 supprime SANS `recursive`.** Avec
-    /// `recursive: true`, le sous-arbre du poste local disparaîtrait en
-    /// silence, et ce code ne serait jamais produit — un code jamais produit
-    /// est exactement ce que le critère (4) existe pour interdire.
+    /// ⚠️ **It exists ONLY because F3 deletes WITHOUT `recursive`.** With
+    /// `recursive: true`, the local workstation's subtree would disappear
+    /// silently, and this code would never be produced — a code never produced
+    /// is exactly what criterion (4) exists to forbid.
     RepertoireNonVide,
-    /// Création d'une entrée qui existe déjà.
+    /// Creation of an entry that already exists.
     ///
-    /// ✅ **CONSTRUITE DEPUIS F2** *(cette ligne disait « (F2) »)*. Même réserve
-    /// que [`Erreur::DisquePlein`] : son `HRESULT` n'atteint personne.
+    /// ✅ **BUILT SINCE F2** *(this line said "(F2)")*. Same caveat
+    /// as [`Erreur::DisquePlein`]: its `HRESULT` reaches no one.
     DejaPresent,
-    /// ❌ **« F1 VIT TOUT ENTIER DANS CET ÉTAT » N'EST PLUS VRAI.** F2 a ouvert
-    /// l'écriture : `PRE_CONVERT_TO_FULL` est **autorisée** quand la racine est
-    /// inscriptible et le canal ouvert, et les octets sont poussés vers le
-    /// poste local après coup (`pont::notifications`).
+    /// ❌ **"F1 LIVES ENTIRELY IN THIS STATE" IS NO LONGER TRUE.** F2 opened
+    /// writing: `PRE_CONVERT_TO_FULL` is **allowed** when the root is
+    /// writable and the channel open, and the bytes are pushed to the
+    /// local workstation after the fact (`pont::notifications`).
     ///
-    /// **Ce que cette variante signifie DÉSORMAIS**, et c'est plus étroit :
-    /// - la racine est montée en lecture seule (`PONT_ECRITURE=0` ne la produit
-    ///   PAS — c'est une variable de banc du fil, pas de la racine) ;
-    /// - ou l'opération est un **renommage** ou une **suppression**, que F2
-    ///   refuse inconditionnellement parce que `Renommer` et `Supprimer` sont
-    ///   des livrables de **F3** ;
-    /// - ou le navigateur a répondu `protege-en-ecriture`.
+    /// **What this variant means NOW**, and it is narrower:
+    /// - the root is mounted read-only (`PONT_ECRITURE=0` does NOT produce
+    ///   it — it is a bench variable of the thread, not of the root);
+    /// - or the operation is a **renaming** or a **deletion**, which F2
+    ///   refuses unconditionally because `Renommer` and `Supprimer` are
+    ///   deliverables of **F3**;
+    /// - or the browser answered `protege-en-ecriture`.
     ///
-    /// ⚠️ *La réserve de F1 tient : un fichier créé DE TOUTES PIÈCES n'est
-    /// toujours pas refusable, la notification étant une POST — mais F2 le
-    /// POUSSE désormais, ce qui referme la divergence qu'elle décrivait.*
+    /// ⚠️ *F1's caveat holds: a file created FROM SCRATCH is
+    /// still not refusable, the notification being a POST one — but F2 now
+    /// PUSHES it, which closes the divergence it described.*
     ProtegeEnEcriture,
-    /// Tout le reste. Une seule variante fourre-tout, et elle est nommée comme
-    /// telle — c'est ce qui empêche qu'elle avale les onze autres.
+    /// Everything else. A single catch-all variant, and it is named as
+    /// such — it is what prevents it from swallowing the eleven others.
     Inattendue,
 }
 
-/// Le nombre de variantes d'[`Erreur`].
+/// The number of [`Erreur`] variants.
 ///
-/// ⚠️ **Ce n'est pas une commodité : c'est le second étage du garde
-/// structurel.** Ajouter une variante casse d'abord la compilation d'[`index`]
-/// et de [`hresult`] (deux `match` exhaustifs), ce qui oblige à lui donner un
-/// indice ; l'indice suivant impose de porter `NOMBRE` à 13, ce qui fait
-/// échouer la compilation de [`Erreur::TOUTES`], typé `[Erreur; NOMBRE]`, tant
-/// que la variante n'y est pas inscrite. **Le balayage ne peut donc pas devenir
-/// décoratif en silence** — même intention que le critère (4) de F3.
+/// ⚠️ **It is not a convenience: it is the second stage of the structural
+/// guard.** Adding a variant first breaks the compilation of [`index`]
+/// and [`hresult`] (two exhaustive `match`es), which forces giving it an
+/// index; the next index requires raising `NOMBRE` to 13, which makes
+/// the compilation of [`Erreur::TOUTES`], typed `[Erreur; NOMBRE]`, fail as long
+/// as the variant is not listed there. **The sweep therefore cannot become
+/// decorative silently** — same intention as F3's criterion (4).
 pub const NOMBRE: usize = 12;
 
 impl Erreur {
-    /// Toutes les variantes. Le balayage exhaustif des tests s'appuie dessus.
+    /// All variants. The tests' exhaustive sweep relies on it.
     pub const TOUTES: [Erreur; NOMBRE] = [
         Erreur::Introuvable,
         Erreur::CheminIntrouvable,
@@ -158,8 +158,8 @@ impl Erreur {
     ];
 }
 
-/// Le rang d'une variante. `match` **exhaustif** : c'est lui qui rend
-/// impossible d'ajouter une variante sans être forcé de la classer.
+/// The rank of a variant. **Exhaustive** `match`: it is what makes it
+/// impossible to add a variant without being forced to classify it.
 #[cfg(test)]
 const fn index(e: Erreur) -> usize {
     match e {
@@ -180,9 +180,9 @@ const fn index(e: Erreur) -> usize {
 
 /// `HRESULT_FROM_WIN32(x) = 0x8007_0000 | x`.
 ///
-/// Rend un `i32` : c'est ce que `windows_core::HRESULT` enveloppe, et le module
-/// reste PUR. Le `match` est **exhaustif** — une variante neuve ne peut pas
-/// tomber dans un bras fourre-tout et hériter en silence du code d'une autre.
+/// Returns an `i32`: it is what `windows_core::HRESULT` wraps, and the module
+/// stays PURE. The `match` is **exhaustive** — a new variant cannot
+/// fall into a catch-all arm and silently inherit another's code.
 pub fn hresult(e: Erreur) -> i32 {
     let code = match e {
         Erreur::Introuvable => ERROR_FILE_NOT_FOUND,

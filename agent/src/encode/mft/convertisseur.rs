@@ -1,99 +1,99 @@
-//! La moitié **convertisseur** de la pompe : BGRA → NV12, par une MFT
-//! *synchrone* pilotée par une paire `ProcessInput`/`ProcessOutput`.
+//! The **converter** half of the pump: BGRA → NV12, through a
+//! *synchronous* MFT driven by a `ProcessInput`/`ProcessOutput` pair.
 //!
-//! Extrait d'`encode.rs` avec le reste du chemin MFT (lot 31). Son pendant est
-//! `super::encodeur`, qui pilote la MFT *asynchrone*. La frontière entre les
-//! deux est celle des deux transforms, pas une coupe arbitraire.
+//! Extracted from `encode.rs` with the rest of the MFT path (batch 31). Its counterpart is
+//! `super::encodeur`, which drives the *asynchronous* MFT. The boundary between the
+//! two is that of the two transforms, not an arbitrary cut.
 //!
-//! ⚠️ **`feed_converter` et `take_output_sample` sont `pub(super)`**, et eux
-//! seuls : ce sont les deux seuls éléments que `super::encodeur` appelle —
-//! établi par relevé des sites d'appel, pas par supposition. Tout le reste
-//! demeure privé à ce fichier.
+//! ⚠️ **`feed_converter` and `take_output_sample` are `pub(super)`**, and they
+//! alone: they are the only two elements `super::encodeur` calls —
+//! established by surveying call sites, not by assumption. Everything else
+//! stays private to this file.
 
 use std::sync::atomic::Ordering;
 
 use anyhow::{Context, Result};
 use windows::core::Interface;
 
-// ⚠️ **Importation globale, et c'est un choix motivé.** Ce fichier est la
-// CONTINUATION d'`encode.rs` : phases, compteurs publics et constantes de
-// réglage y vivent, et les énumérer ici en donnerait une seconde liste à
-// tenir à jour — celle qui se désynchronise. La règle du dépôt vise les
-// affirmations recopiées ; une importation globale n'en recopie aucune.
+// ⚠️ **Glob import, and it is a motivated choice.** This file is the
+// CONTINUATION of `encode.rs`: phases, public counters and tuning
+// constants live there, and listing them here would create a second list to
+// keep up to date — the one that gets out of sync. The repository's rule targets
+// copied assertions; a glob import copies none.
 use crate::encode::*;
-// Le type du dos MFT vient du PARENT, pas du glob : `crate::encode`
-// exporte la FAÇADE, qui n'est pas ce qu'on implémente ici.
+// The MFT back end's type comes from the PARENT, not from the glob: `crate::encode`
+// exports the FACADE, which is not what we implement here.
 use super::EncodeurMft;
 use crate::capture::CapturedFrame;
 
-/// Résultat d'un appel à `ProcessOutput` sur le convertisseur BGRA→NV12 (voir
+/// Result of a `ProcessOutput` call on the BGRA→NV12 converter (see
 /// `EncodeurMft::drain_converter_output`).
 enum ConverterPoll {
-    /// Un échantillon converti est disponible.
+    /// A converted sample is available.
     Sample(IMFSample),
-    /// `MF_E_TRANSFORM_NEED_MORE_INPUT` : rien de plus à produire pour
-    /// l'instant, le convertisseur est prêt pour une nouvelle entrée.
+    /// `MF_E_TRANSFORM_NEED_MORE_INPUT`: nothing more to produce for
+    /// now, the converter is ready for a new input.
     NeedMoreInput,
-    /// `MF_E_SAMPLEALLOCATOR_EMPTY` : pool de sortie momentanément épuisé.
-    /// Signal de contre-pression documenté par Media Foundation, pas une
-    /// panne (voir `drain_converter_output`).
+    /// `MF_E_SAMPLEALLOCATOR_EMPTY`: output pool momentarily exhausted.
+    /// Back-pressure signal documented by Media Foundation, not a
+    /// failure (see `drain_converter_output`).
     Busy,
 }
 
 impl EncodeurMft {
-    /// Convertit **une** texture BGRA capturée en **un** échantillon NV12,
-    /// empilé dans `pending_nv12`. Contrairement à l'encodeur, ce transform se
-    /// pilote par une paire `ProcessInput`/`ProcessOutput` classique : pas
-    /// d'événements à suivre.
+    /// Converts **one** captured BGRA texture into **one** NV12 sample,
+    /// stacked in `pending_nv12`. Unlike the encoder, this transform is
+    /// driven by a classic `ProcessInput`/`ProcessOutput` pair: no
+    /// events to follow.
     ///
-    /// **Correction du 28/07 — modèle de drainage revu, mesures à l'appui.**
-    /// La ronde précédente avait remplacé un `ProcessOutput` unique par une
-    /// boucle « jusqu'à observer réellement `MF_E_TRANSFORM_NEED_MORE_INPUT` »,
-    /// en s'appuyant sur le « Basic MFT Processing Model » de Microsoft. La
-    /// télémétrie (voir `EncoderTelemetry`) montre que ce MFT-ci **ne renvoie
-    /// jamais ce code** : avec seulement 2 entrées soumises, la boucle a tiré
-    /// 10 échantillons de sortie, puis 9 de plus par seconde — c'est-à-dire
-    /// autant d'échantillons que son `IMFVideoSampleAllocator` en contient,
-    /// après quoi `ProcessOutput` bloque une seconde entière avant de rendre
-    /// `MF_E_SAMPLEALLOCATOR_EMPTY`. Boucler ne « draine » donc pas ce
-    /// convertisseur : ça vide son pool, ça duplique des images qui n'ont
-    /// jamais été soumises, et ça impose une seconde d'attente par tour.
+    /// **Fix of 28/07 — draining model revised, with measurements to back it.**
+    /// The previous round had replaced a single `ProcessOutput` with a
+    /// loop "until actually observing `MF_E_TRANSFORM_NEED_MORE_INPUT`",
+    /// relying on Microsoft's "Basic MFT Processing Model". The
+    /// telemetry (see `EncoderTelemetry`) shows that this MFT **never returns
+    /// this code**: with only 2 inputs submitted, the loop pulled
+    /// 10 output samples, then 9 more per second — that is
+    /// as many samples as its `IMFVideoSampleAllocator` contains,
+    /// after which `ProcessOutput` blocks a whole second before returning
+    /// `MF_E_SAMPLEALLOCATOR_EMPTY`. Looping therefore does not "drain" this
+    /// converter: it empties its pool, it duplicates images that were
+    /// never submitted, and it imposes a one-second wait per round.
     ///
-    /// Le pilotage correct pour ce transform 1-entrée/1-sortie est celui
-    /// d'origine : un `ProcessOutput` par `ProcessInput`. Ce qui faisait
-    /// échouer cette version-là avec `MF_E_NOTACCEPTING` n'était pas le
-    /// modèle mais la fuite de références corrigée dans `take_output_sample` —
-    /// pool épuisé, donc convertisseur incapable d'accepter une entrée de
-    /// plus.
+    /// The correct driving for this 1-input/1-output transform is the
+    /// original one: one `ProcessOutput` per `ProcessInput`. What made
+    /// that version fail with `MF_E_NOTACCEPTING` was not the
+    /// model but the reference leak fixed in `take_output_sample` —
+    /// pool exhausted, hence a converter unable to accept one more
+    /// input.
     pub(super) fn feed_converter(
         &mut self,
         frame: &CapturedFrame,
         sample_time: i64,
         duration: i64,
     ) -> Result<()> {
-        // 1. Retirer les sorties en attente jusqu'à ce que le convertisseur se
-        //    déclare preneur d'une entrée.
+        // 1. Remove the pending outputs until the converter
+        //    declares itself ready to take an input.
         //
-        // C'est `GetInputStatus` — et non `GetOutputStatus` — qui sert de
-        // condition d'arrêt, pour une raison mesurée : après avoir consommé
-        // une entrée, ce MFT continue d'annoncer « sortie prête » en
-        // permanence (chaque `ProcessOutput` supplémentaire réussit en
-        // rejouant la dernière image convertie), si bien qu'une boucle
-        // « drainer jusqu'à ce qu'il n'annonce plus rien » ne se termine
-        // jamais et finit par vider son `IMFVideoSampleAllocator`. En
-        // revanche il refuse toute entrée neuve tant qu'on ne lui a pas repris
-        // sa sortie : l'appariement strict « une sortie par entrée » bloque
-        // donc tout aussi sûrement (mesuré : 1 seule image convertie en 30 s).
-        // Retirer des sorties jusqu'à ce qu'il redevienne preneur est le seul
-        // des trois pilotages qui fasse réellement passer des images neuves —
-        // en régime nominal, une seule itération suffit.
+        // It is `GetInputStatus` — and not `GetOutputStatus` — that serves as the
+        // stop condition, for a measured reason: after having consumed
+        // an input, this MFT keeps announcing "output ready"
+        // permanently (each extra `ProcessOutput` succeeds by
+        // replaying the last converted image), so that a loop
+        // "drain until it announces nothing anymore" never
+        // ends and ends up emptying its `IMFVideoSampleAllocator`. On the
+        // other hand it refuses any new input as long as its output has not been
+        // taken back: the strict "one output per input" pairing therefore blocks
+        // just as surely (measured: only 1 image converted in 30 s).
+        // Removing outputs until it is ready again is the only one
+        // of the three drivings that really gets new images through —
+        // in the nominal regime, a single iteration is enough.
         let mut collected = 0usize;
         while !self.converter_accepts_input() {
             if collected >= MAX_CONVERTER_COLLECTS || !self.collect_converter_output()? {
-                // Toujours pas preneur (ou pool momentanément vide) : on saute
-                // cette image et on retentera. Une image sautée vaut mieux
-                // qu'un pipeline mort — et mieux qu'un `MF_E_NOTACCEPTING`
-                // encaissé en erreur.
+                // Still not ready (or pool momentarily empty): we skip
+                // this image and will retry. A skipped image is better
+                // than a dead pipeline — and better than a `MF_E_NOTACCEPTING`
+                // taken as an error.
                 self.telemetry
                     .converter_not_accepting
                     .fetch_add(1, Ordering::Relaxed);
@@ -119,9 +119,9 @@ impl EncodeurMft {
             self.converter.ProcessInput(0, &bgra_sample, 0)
         };
         self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
-        // Filet de sécurité : `GetInputStatus` vient de dire oui, mais si le
-        // convertisseur se ravise, `MF_E_NOTACCEPTING` reste une
-        // contre-pression et non une panne — on saute l'image.
+        // Safety net: `GetInputStatus` just said yes, but if the
+        // converter changes its mind, `MF_E_NOTACCEPTING` remains
+        // back-pressure and not a failure — we skip the image.
         if let Err(e) = &result {
             if e.code() == MF_E_NOTACCEPTING {
                 self.telemetry
@@ -149,21 +149,21 @@ impl EncodeurMft {
         Ok(())
     }
 
-    /// Le convertisseur se déclare-t-il prêt à accepter une entrée ?
+    /// Does the converter declare itself ready to accept an input?
     ///
-    /// **Risque de portabilité à connaître** : ce pilotage repose sur une API
-    /// documentée, mais son adoption vient de l'observation d'un comportement
-    /// anormal constaté sur **un seul pilote (NVIDIA) et une seule machine**.
-    /// `GetInputStatus`/`GetOutputStatus` sont optionnelles dans `IMFTransform`
-    /// et rien ne garantit qu'un convertisseur Intel ou AMD se comporte de
-    /// même. Le repli ci-dessous (tenter `ProcessInput` quand la méthode n'est
-    /// pas implémentée) couvre le cas le plus probable, pas tous ; à revalider
-    /// sur le premier autre GPU rencontré.
+    /// **Portability risk to be aware of**: this driving relies on a
+    /// documented API, but its adoption comes from observing an abnormal
+    /// behaviour found on **a single driver (NVIDIA) and a single machine**.
+    /// `GetInputStatus`/`GetOutputStatus` are optional in `IMFTransform`
+    /// and nothing guarantees that an Intel or AMD converter behaves the
+    /// same. The fallback below (attempting `ProcessInput` when the method is
+    /// not implemented) covers the most likely case, not all of them; to be revalidated
+    /// on the first other GPU encountered.
     ///
-    /// Publie au passage les deux drapeaux dans la télémétrie. Si le MFT
-    /// n'implémente pas `GetInputStatus` (`u64::MAX`), on répond oui : mieux
-    /// vaut tenter `ProcessInput` et traiter un éventuel `MF_E_NOTACCEPTING`
-    /// que de ne jamais rien soumettre.
+    /// Publishes both flags to the telemetry along the way. If the MFT
+    /// does not implement `GetInputStatus` (`u64::MAX`), we answer yes: better
+    /// to attempt `ProcessInput` and handle a possible `MF_E_NOTACCEPTING`
+    /// than never to submit anything.
     fn converter_accepts_input(&self) -> bool {
         let input = converter_status(&self.converter, true);
         self.telemetry
@@ -175,14 +175,14 @@ impl EncodeurMft {
         input == u64::MAX || input & MFT_INPUT_STATUS_ACCEPT_DATA.0 as u64 != 0
     }
 
-    /// Retire **un** échantillon converti et l'empile dans `pending_nv12`,
-    /// avec l'horodatage de SON entrée d'origine (dépilé de
-    /// `pending_conversion_timestamps`, FIFO — voir son commentaire de champ).
+    /// Removes **one** converted sample and stacks it in `pending_nv12`,
+    /// with the timestamp of ITS original input (popped from
+    /// `pending_conversion_timestamps`, FIFO — see its field comment).
     ///
-    /// Renvoie `true` si la sortie due a bien été retirée (le convertisseur
-    /// accepte à nouveau une entrée), `false` s'il faut réessayer plus tard
-    /// (`MF_E_SAMPLEALLOCATOR_EMPTY`, `0xC00D4A3E` — pool momentanément vide,
-    /// signal de contre-pression et non une panne).
+    /// Returns `true` if the due output was indeed removed (the converter
+    /// accepts an input again), `false` if we must retry later
+    /// (`MF_E_SAMPLEALLOCATOR_EMPTY`, `0xC00D4A3E` — pool momentarily empty,
+    /// a back-pressure signal and not a failure).
     fn collect_converter_output(&mut self) -> Result<bool> {
         let t = std::time::Instant::now();
         self.telemetry
@@ -213,7 +213,7 @@ impl EncodeurMft {
                 self.converter_output_pending = false;
                 true
             }
-            // Rien de prêt : le convertisseur est disponible pour une entrée.
+            // Nothing ready: the converter is available for an input.
             ConverterPoll::NeedMoreInput => {
                 self.converter_output_pending = false;
                 true
@@ -229,30 +229,30 @@ impl EncodeurMft {
         Ok(ready)
     }
 
-    /// Un appel à `ProcessOutput` sur le convertisseur.
+    /// One `ProcessOutput` call on the converter.
     ///
-    /// Piège rencontré à l'essai, au-delà de `MF_E_NOTACCEPTING` documenté
-    /// plus haut : même après avoir élargi le pool de sortie via
-    /// `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`/`_PROGRESSIVE` (essayé jusqu'à 16),
-    /// l'appel « de confirmation » échoue de façon reproductible après
-    /// exactement 5 images avec `MF_E_SAMPLEALLOCATOR_EMPTY` — identique
-    /// quelle que soit la taille de pool demandée, ce qui prouve que cet
-    /// attribut n'est pas honoré par ce MFT pour ce cas d'usage. Le message
-    /// d'erreur MF associé à ce code (« vide en raison de demandes non
-    /// traitées ») correspond à un signal de contre-pression documenté par
-    /// Media Foundation pour `IMFVideoSampleAllocator` — pas à une panne — et
-    /// se traite normalement en réessayant plus tard, une fois qu'un
-    /// échantillon précédent aura été relâché par l'encodeur en aval.
+    /// Trap met during the attempt, beyond the `MF_E_NOTACCEPTING` documented
+    /// above: even after enlarging the output pool through
+    /// `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`/`_PROGRESSIVE` (tried up to 16),
+    /// the "confirmation" call fails reproducibly after
+    /// exactly 5 images with `MF_E_SAMPLEALLOCATOR_EMPTY` — identical
+    /// whatever the requested pool size, which proves that this
+    /// attribute is not honoured by this MFT for this use case. The MF error
+    /// message associated with this code ("empty due to outstanding
+    /// requests") corresponds to a back-pressure signal documented by
+    /// Media Foundation for `IMFVideoSampleAllocator` — not a failure — and
+    /// is handled normally by retrying later, once a previous
+    /// sample has been released by the downstream encoder.
     fn drain_converter_output(&mut self) -> Result<ConverterPoll> {
         let mut buffer = MFT_OUTPUT_DATA_BUFFER {
             dwStreamID: 0,
-            // Un échantillon neuf à chaque tour dans le cas où le
-            // convertisseur ne s'auto-alloue pas : plusieurs sorties peuvent
-            // être mises en file simultanément (`pending_nv12`), donc en
-            // réutiliser un seul les ferait toutes pointer sur la même texture
-            // — chacune écrasant la précédente. Ce chemin n'est pas emprunté
-            // sur la VM cible (`converter_provides_samples` y vaut `true`),
-            // mais il ne doit pas pour autant être faux.
+            // A new sample at each round in the case where the
+            // converter does not self-allocate: several outputs can
+            // be queued simultaneously (`pending_nv12`), so
+            // reusing a single one would make them all point at the same texture
+            // — each overwriting the previous one. This path is not taken
+            // on the target VM (`converter_provides_samples` is `true` there),
+            // but it must not be wrong for all that.
             pSample: std::mem::ManuallyDrop::new(if self.converter_provides_samples {
                 None
             } else {
@@ -270,9 +270,9 @@ impl EncodeurMft {
             self.converter
                 .ProcessOutput(0, std::slice::from_mut(&mut buffer), &mut status)
         };
-        // `take_output_sample` DOIT être appelé sur tous les chemins, y compris
-        // d'erreur : voir son commentaire (la référence déposée dans
-        // `pSample` par le MFT n'appartient à personne d'autre que nous).
+        // `take_output_sample` MUST be called on all paths, including
+        // error ones: see its comment (the reference dropped into
+        // `pSample` by the MFT belongs to no one but us).
         let sample = unsafe { take_output_sample(&mut buffer) };
         match result {
             Ok(()) => Ok(sample
@@ -287,48 +287,48 @@ impl EncodeurMft {
     }
 }
 
-/// Reprend possession de l'échantillon (et des événements) qu'un MFT vient de
-/// déposer dans un `MFT_OUTPUT_DATA_BUFFER`, en laissant la structure vide.
+/// Takes back ownership of the sample (and events) an MFT has just
+/// dropped into an `MFT_OUTPUT_DATA_BUFFER`, leaving the structure empty.
 ///
-/// **C'est la cause racine du blocage du 28/07, corrigée ici** (voir le
-/// rapport de tâche). Les deux champs `pSample`/`pEvents` de
-/// `MFT_OUTPUT_DATA_BUFFER` sont des `ManuallyDrop<Option<...>>` : windows-rs
-/// se refuse délibérément à les libérer tout seul, puisque leur propriété
-/// dépend du sens de l'appel. `ProcessOutput` y dépose une référence COM dont
-/// **l'appelant devient propriétaire** ; la lire par `.as_ref().cloned()`
-/// ajoute une seconde référence sans jamais rendre la première, et le
-/// `ManuallyDrop` emporte celle-ci dans la tombe à la fin du bloc. Chaque
-/// image encodée fuyait donc une référence.
+/// **This is the root cause of the block of 28/07, fixed here** (see the
+/// task report). The two fields `pSample`/`pEvents` of
+/// `MFT_OUTPUT_DATA_BUFFER` are `ManuallyDrop<Option<...>>`: windows-rs
+/// deliberately refuses to free them on its own, since their ownership
+/// depends on the direction of the call. `ProcessOutput` drops a COM reference into them of which
+/// **the caller becomes the owner**; reading it through `.as_ref().cloned()`
+/// adds a second reference without ever giving back the first, and the
+/// `ManuallyDrop` takes the latter to the grave at the end of the block. Each
+/// encoded image therefore leaked a reference.
 ///
-/// Conséquence observée, bien plus grave qu'une simple fuite mémoire : les
-/// échantillons de sortie du `Video Processor MFT` proviennent d'un
-/// `IMFVideoSampleAllocator` de taille fixe (10 sur cette VM). Un échantillon
-/// jamais relâché ne retourne jamais au pool. Après exactement 10 images le
-/// pool était définitivement vide, et chaque `ProcessOutput` suivant attendait
-/// une seconde entière un échantillon libre avant de rendre
-/// `MF_E_SAMPLEALLOCATOR_EMPTY` — d'où le « plafond à ~1 image/s » puis, dès
-/// que le drainage a exigé une confirmation par
-/// `MF_E_TRANSFORM_NEED_MORE_INPUT` (ronde précédente), l'arrêt total du
-/// pipeline. `ManuallyDrop::take` déplace la référence hors de la structure :
-/// elle est alors possédée normalement, et relâchée dès que l'appelant en a
-/// fini — ce qui rend l'échantillon au pool.
+/// Observed consequence, much more serious than a mere memory leak: the
+/// output samples of the `Video Processor MFT` come from a
+/// fixed-size `IMFVideoSampleAllocator` (10 on this VM). A sample
+/// never released never returns to the pool. After exactly 10 images the
+/// pool was permanently empty, and each following `ProcessOutput` waited
+/// a whole second for a free sample before returning
+/// `MF_E_SAMPLEALLOCATOR_EMPTY` — hence the "ceiling at ~1 frame/s" then, as soon
+/// as draining demanded a confirmation through
+/// `MF_E_TRANSFORM_NEED_MORE_INPUT` (previous round), the total stop of the
+/// pipeline. `ManuallyDrop::take` moves the reference out of the structure:
+/// it is then owned normally, and released as soon as the caller is
+/// done with it — which returns the sample to the pool.
 ///
-/// # Sécurité
+/// # Safety
 ///
-/// Le tampon ne doit plus être lu après cet appel (ses deux champs COM sont
-/// laissés dans un état déplacé). Tous les appelants l'utilisent en variable
-/// locale et n'y touchent plus ensuite.
-/// Interroge le convertisseur : `true` pour `GetInputStatus` (peut-il accepter
-/// une entrée), `false` pour `GetOutputStatus` (une sortie est-elle prête).
+/// The buffer must no longer be read after this call (its two COM fields are
+/// left in a moved state). All callers use it as a local
+/// variable and no longer touch it afterwards.
+/// Queries the converter: `true` for `GetInputStatus` (can it accept
+/// an input), `false` for `GetOutputStatus` (is an output ready).
 ///
-/// Renvoie les drapeaux bruts, ou `u64::MAX` si la méthode n'est pas
-/// implémentée par ce MFT — les deux sont optionnelles dans `IMFTransform`, et
-/// la distinction « répond non » / « ne répond pas » est justement ce qu'on a
-/// besoin de savoir.
+/// Returns the raw flags, or `u64::MAX` if the method is not
+/// implemented by this MFT — both are optional in `IMFTransform`, and
+/// the distinction "answers no" / "does not answer" is precisely what we
+/// need to know.
 fn converter_status(converter: &IMFTransform, input: bool) -> u64 {
-    // écart d'API windows-rs 0.62 : ces deux méthodes rendent les drapeaux par
-    // valeur de retour (`Result<u32>`), là où la signature C les écrit dans un
-    // paramètre de sortie.
+    // windows-rs 0.62 API gap: these two methods return the flags as a
+    // return value (`Result<u32>`), where the C signature writes them into an
+    // output parameter.
     let result = if input {
         unsafe { converter.GetInputStatus(0) }
     } else {
@@ -341,8 +341,8 @@ fn converter_status(converter: &IMFTransform, input: bool) -> u64 {
 }
 
 pub(super) unsafe fn take_output_sample(buffer: &mut MFT_OUTPUT_DATA_BUFFER) -> Option<IMFSample> {
-    // `pEvents` est presque toujours nul, mais quand un MFT y dépose une file
-    // d'événements elle nous appartient exactement au même titre.
+    // `pEvents` is almost always null, but when an MFT drops an event queue
+    // into it, it belongs to us in exactly the same way.
     drop(std::mem::ManuallyDrop::take(&mut buffer.pEvents));
     std::mem::ManuallyDrop::take(&mut buffer.pSample)
 }

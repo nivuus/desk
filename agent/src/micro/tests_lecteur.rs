@@ -1,26 +1,26 @@
-//! Les tests de `LecteurMicro` — le résidu, l'instrument de fréquence, le
-//! bout en bout pur, et le plafond de dissimulation.
+//! The tests of `LecteurMicro` — the residue, the frequency instrument, the
+//! pure end-to-end, and the concealment cap.
 //!
-//! **Sortis de `micro/tests.rs` au titre de la règle des 500 lignes**, et
-//! sortis AVANT l'addition qu'ils devaient accueillir (le plafond de
-//! dissimulation), pas après avoir franchi le plafond : c'est la doctrine du
-//! dépôt, qui impose d'extraire et interdit de comprimer un commentaire pour
-//! repasser sous la ligne. La coupure suit la bannière qui séparait déjà les
-//! deux moitiés du fichier — les tests du `TamponGigue` restent chez le
-//! voisin, les helpers `trames_d_un_ton` et `gauche` viennent ici avec les
-//! seuls tests qui les emploient.
+//! **Moved out of `micro/tests.rs` under the 500-line rule**, and
+//! moved out BEFORE the addition they were to host (the concealment
+//! cap), not after having crossed the ceiling: it is the repository's
+//! doctrine, which requires extracting and forbids compressing a comment to
+//! get back under the line. The cut follows the banner that already separated the
+//! two halves of the file — the tests of `TamponGigue` stay with the
+//! neighbour, the helpers `trames_d_un_ton` and `gauche` come here with the
+//! only tests that use them.
 //!
-//! Déclaré chez le parent par `#[path]`, comme son voisin, et pour la même
-//! raison : l'usage est HORS de la « Convention de module enfant » de
-//! `CLAUDE.md`, qui ne vise que les modules qu'on sort d'un parent
-//! `#[cfg(windows)]`. Ici le parent est pur ; le seul motif est la taille, et
-//! le précédent est `superviseur/table.rs`.
+//! Declared in the parent through `#[path]`, like its neighbour, and for the same
+//! reason: the usage is OUTSIDE the "Child module convention" of
+//! `CLAUDE.md`, which only targets modules taken out of a
+//! `#[cfg(windows)]` parent. Here the parent is pure; the only motive is size, and
+//! the precedent is `superviseur/table.rs`.
 
 use super::*;
 
-/// Encode `n` trames de 10 ms d'un ton pur à `f` hertz, en stéréo, telles que
-/// le chantier A les produit — c'est-à-dire par le MÊME encodeur que celui du
-/// produit, pas par un encodeur ad hoc plus complaisant.
+/// Encodes `n` 10 ms frames of a pure tone at `f` hertz, in stereo, as
+/// work stream A produces them — that is by the SAME encoder as the
+/// product's, not by a more lenient ad hoc encoder.
 fn trames_d_un_ton(f: f32, n: usize) -> Vec<TrameMicro> {
     use crate::opus::{OpusEncoder, FRAME_SAMPLES};
     let mut enc = OpusEncoder::new().expect("encodeur");
@@ -44,32 +44,32 @@ fn trames_d_un_ton(f: f32, n: usize) -> Vec<TrameMicro> {
     out
 }
 
-/// Le canal gauche d'un tampon stéréo entrelacé.
+/// The left channel of an interleaved stereo buffer.
 fn gauche(entrelace: &[f32]) -> Vec<f32> {
     entrelace.iter().step_by(2).copied().collect()
 }
 
-/// Le paquet WASAPI ne fait presque jamais la taille d'une trame Opus : une
-/// trame de 10 ms rend 480 échantillons par canal, et le tampon réclamé peut
-/// en vouloir 441, 480 ou 1024. Le résidu est la pièce qui évite de jeter la
-/// queue de chaque trame.
+/// The WASAPI packet is almost never the size of an Opus frame: a
+/// 10 ms frame yields 480 samples per channel, and the claimed buffer may
+/// want 441, 480 or 1024 of them. The residue is the piece that avoids throwing away the
+/// tail of each frame.
 ///
-/// **Le critère est une ÉGALITÉ ÉCHANTILLON PAR ÉCHANTILLON**, entre un
-/// lecteur rempli par petites tranches et un lecteur identique rempli d'un
-/// seul coup. C'est exact, et ça ne se confond avec rien.
+/// **The criterion is a SAMPLE-BY-SAMPLE EQUALITY**, between a
+/// player filled by small slices and an identical player filled in a
+/// single go. It is exact, and it cannot be confused with anything.
 ///
-/// ⚠️ **La première rédaction jugeait à la FRÉQUENCE sur 83 ms, et elle
-/// mesurait autre chose** : elle rendait 402 Hz pour un ton de 440 sur un
-/// régime pourtant parfaitement nominal (`sauts`, `insertions`, `plc`,
-/// `famines` tous nuls, relevé). L'écart venait de la mise en régime du
-/// décodeur Opus, dont les premières trames pèsent un quart d'une fenêtre
-/// aussi courte — le même test sur 1 s rend 437 Hz. **Un instrument juste
-/// appliqué à la mauvaise fenêtre reste un mauvais instrument.**
+/// ⚠️ **The first draft judged on FREQUENCY over 83 ms, and it
+/// measured something else**: it returned 402 Hz for a 440 tone on a
+/// perfectly nominal regime (`sauts`, `insertions`, `plc`,
+/// `famines` all zero, surveyed). The gap came from the warm-up of the
+/// Opus decoder, whose first frames weigh a quarter of such a short
+/// window — the same test over 1 s returns 437 Hz. **A correct instrument
+/// applied to the wrong window remains a bad instrument.**
 #[test]
 fn le_residu_survit_d_un_remplissage_a_l_autre() {
     let trames = trames_d_un_ton(440.0, 12);
 
-    // Deux lecteurs nourris à l'identique, lus différemment.
+    // Two players fed identically, read differently.
     let mut par_tranches = LecteurMicro::new().unwrap();
     let mut d_un_coup = LecteurMicro::new().unwrap();
     for t in &trames {
@@ -77,9 +77,9 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
         d_un_coup.deposer(t.clone());
     }
 
-    // 100 échantillons ENTRELACÉS par tranche, soit 50 par canal : jamais un
-    // diviseur des 480 d'une trame, donc chaque tranche coupe une trame en
-    // plein milieu. Sans résidu, la queue serait perdue à chaque fois.
+    // 100 INTERLEAVED samples per slice, that is 50 per channel: never a
+    // divisor of a frame's 480, so each slice cuts a frame right in the
+    // middle. Without residue, the tail would be lost every time.
     const TRANCHE: usize = 100;
     const TOURS: usize = 80;
     let mut recolte = Vec::new();
@@ -92,8 +92,8 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
     let mut reference = vec![0.0f32; TRANCHE * TOURS];
     d_un_coup.remplir(&mut reference);
 
-    // Le test ne doit pas comparer deux silences : sans cette garde, un
-    // lecteur qui ne décoderait RIEN passerait l'égalité ci-dessous.
+    // The test must not compare two silences: without this guard, a
+    // player that decoded NOTHING would pass the equality below.
     assert!(
         reference.iter().any(|&e| e.abs() > 0.01),
         "la référence est muette : il n'y a rien à comparer"
@@ -111,7 +111,7 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
         );
     }
 
-    // Et le régime est bien nominal : aucune correction n'a maquillé l'égalité.
+    // And the regime is indeed nominal: no correction has made up the equality.
     let c = par_tranches.compteurs();
     assert_eq!(
         (c.sauts, c.insertions, c.plc, c.famines),
@@ -120,9 +120,9 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
     );
 }
 
-/// Spec §8 « Silence » : le câble doit être alimenté EN CONTINU. Une
-/// application qui écoute un tampon vide ne perçoit pas du silence, elle voit
-/// un flux qui s'interrompt.
+/// Spec §8 "Silence": the cable must be fed CONTINUOUSLY. An
+/// application listening to an empty buffer does not perceive silence, it sees
+/// a stream that gets interrupted.
 #[test]
 fn un_lecteur_vide_rend_du_silence_et_jamais_une_erreur() {
     let mut l = LecteurMicro::new().unwrap();
@@ -134,8 +134,8 @@ fn un_lecteur_vide_rend_du_silence_et_jamais_une_erreur() {
     );
 }
 
-/// L'instrument de la recette (décision 8), éprouvé sur un signal SYNTHÉTIQUE
-/// avant de servir à juger quoi que ce soit.
+/// The acceptance run's instrument (decision 8), tested on a SYNTHETIC signal
+/// before serving to judge anything at all.
 #[test]
 fn la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent() {
     for cible in [220.0f32, 440.0, 1000.0] {
@@ -150,17 +150,17 @@ fn la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent() {
     }
 }
 
-/// ⚠️ LE test qui rend l'instrument crédible : il doit REFUSER ce qui n'est
-/// pas un ton. Sans lui, « la fréquence vaut 440 » ne prouverait rien de plus
-/// qu'un compte d'octets — et c'est exactement la doctrine que ce dépôt a
-/// payée en D7.
+/// ⚠️ THE test that makes the instrument credible: it must REFUSE what is
+/// not a tone. Without it, "the frequency is 440" would prove nothing more
+/// than a byte count — and that is exactly the doctrine this repository
+/// paid for in D7.
 #[test]
 fn le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible() {
     assert!(
         frequence_par_passages_a_zero(&vec![0.0; 48_000], 48_000).is_none(),
         "le silence a rendu une fréquence"
     );
-    // Bruit déterministe (générateur congruentiel, aucune dépendance neuve).
+    // Deterministic noise (congruential generator, no new dependency).
     let mut x = 12_345u32;
     let bruit: Vec<f32> = (0..48_000)
         .map(|_| {
@@ -175,15 +175,15 @@ fn le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible() {
     );
 }
 
-/// ⚠️ **LE test qui exerce la BANDE MORTE**, et il a fallu une mutation pour
-/// découvrir qu'aucun autre ne le faisait : retirer la bande morte laisse vert
-/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible` (du bruit pur
-/// rend ~12 000 Hz avec ou sans elle, donc toujours loin de 440).
+/// ⚠️ **THE test that exercises the DEAD BAND**, and it took a mutation to
+/// discover that no other did: removing the dead band leaves
+/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible` green (pure noise
+/// returns ~12,000 Hz with or without it, hence always far from 440).
 ///
-/// Ce que la bande morte évite vraiment, c'est le cas MIXTE : un vrai ton, avec
-/// du bruit de faible amplitude qui traverse zéro entre deux passages
-/// légitimes. Chaque traversée parasite y ajoute deux changements de signe, et
-/// la fréquence mesurée explose alors que le signal, lui, est bien un 440 Hz.
+/// What the dead band really avoids is the MIXED case: a real tone, with
+/// low-amplitude noise crossing zero between two legitimate
+/// crossings. Each parasitic crossing adds two sign changes there, and
+/// the measured frequency explodes while the signal, for its part, is indeed a 440 Hz.
 #[test]
 fn un_ton_bruite_reste_mesure_a_sa_frequence() {
     let mut x = 987_654u32;
@@ -202,19 +202,19 @@ fn un_ton_bruite_reste_mesure_a_sa_frequence() {
     );
 }
 
-/// Le bout en bout PUR : encoder un 440 Hz, le passer par le tampon de gigue,
-/// le décoder, et le retrouver à sa fréquence. **C'est le critère de la
-/// recette de E1, joué sans VM et sans navigateur** — ce qui restera à la
-/// recette, c'est le trajet WebRTC, pas la chaîne de traitement.
+/// The PURE end-to-end: encode a 440 Hz, pass it through the jitter buffer,
+/// decode it, and find it again at its frequency. **It is the criterion of
+/// E1's acceptance run, played without VM and without browser** — what will remain for the
+/// acceptance run is the WebRTC path, not the processing chain.
 #[test]
 fn un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence() {
     let trames = trames_d_un_ton(440.0, 106);
     let mut l = LecteurMicro::new().unwrap();
 
-    // Amorcer à 6 trames (60 ms) : franchement DANS la bande morte de la
-    // correction de dérive. À une seule trame en réserve on serait sous
-    // SEUIL_INSERTION et le lecteur insérerait du silence à chaque tour ; à
-    // plus de douze on serait au-dessus de SEUIL_SAUT et il en sauterait.
+    // Prime with 6 frames (60 ms): squarely INSIDE the dead band of the
+    // drift correction. With a single frame in reserve we would be under
+    // SEUIL_INSERTION and the player would insert silence at each round; with
+    // more than twelve we would be above SEUIL_SAUT and it would skip some.
     let mut it = trames.into_iter();
     for _ in 0..6 {
         l.deposer(it.next().unwrap());
@@ -249,20 +249,20 @@ fn un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence() {
 }
 
 // ----------------------------------------------------------------------
-// Le plafond de dissimulation (correctif du chantier E)
+// The concealment cap (work stream E fix)
 // ----------------------------------------------------------------------
 
-/// Nourrit un lecteur en régime nominal, puis coupe l'émetteur et rend ce
-/// que le puits a entendu pendant `reveils` réveils de 10 ms de famine.
+/// Feeds a player in the nominal regime, then cuts the sender and returns what
+/// the sink heard during `reveils` wake-ups of 10 ms of starvation.
 ///
-/// **Le montage imite le consommateur réel** (`demarrage/micro.rs`) : un
-/// réveil toutes les 10 ms, 480 trames par canal. Une famine mesurée d'un
-/// seul `remplir` géant ne serait pas le même chemin.
+/// **The set-up imitates the real consumer** (`demarrage/micro.rs`): one
+/// wake-up every 10 ms, 480 frames per channel. A starvation measured with a
+/// single giant `remplir` would not be the same path.
 fn famine_apres_un_ton(reveils: usize) -> (Vec<f32>, LecteurMicro) {
     let mut it = trames_d_un_ton(440.0, 30).into_iter();
     let mut l = LecteurMicro::new().unwrap();
-    // Amorcer à 6 trames (60 ms) : franchement DANS la bande morte de la
-    // correction de dérive, comme le bout en bout pur ci-dessus.
+    // Prime with 6 frames (60 ms): squarely INSIDE the dead band of the
+    // drift correction, like the pure end-to-end above.
     for _ in 0..6 {
         l.deposer(it.next().unwrap());
     }
@@ -272,7 +272,7 @@ fn famine_apres_un_ton(reveils: usize) -> (Vec<f32>, LecteurMicro) {
         l.remplir(&mut tranche);
     }
 
-    // L'émetteur se tait. Plus une seule trame ne sera déposée.
+    // The sender goes silent. Not a single frame more will be dropped off.
     let mut recolte = Vec::with_capacity(reveils * 480 * 2);
     for _ in 0..reveils {
         let mut tranche = vec![0.0f32; 480 * 2];
@@ -282,28 +282,28 @@ fn famine_apres_un_ton(reveils: usize) -> (Vec<f32>, LecteurMicro) {
     (recolte, l)
 }
 
-/// ⚠️ **LE test du défaut mesuré par la recette E1.** Pendant 60 s de silence
-/// du navigateur — DTX nominal, `packetsSent` figé —, le lecteur appelait
-/// `dissimuler()` à chaque trame manquante sans aucune borne, et le journal
-/// relevait `plc = 50/s`, `crete` entre 0,53 et 0,67 et une `frequence_hz`
-/// errant entre 308 et 393 Hz. **La dissimulation fabriquait un bourdon
-/// continu**, qui au bloc E2 sortirait sur le câble virtuel, donc dans
-/// l'application Windows.
+/// ⚠️ **THE test of the defect measured by acceptance run E1.** During 60 s of silence
+/// from the browser — nominal DTX, `packetsSent` frozen —, the player called
+/// `dissimuler()` at each missing frame without any bound, and the log
+/// noted `plc = 50/s`, `crete` between 0.53 and 0.67 and a `frequence_hz`
+/// wandering between 308 and 393 Hz. **Concealment produced a continuous
+/// drone**, which in block E2 would come out on the virtual cable, hence into the
+/// Windows application.
 ///
-/// La cause est dans libopus et n'est pas un défaut : sa dissimulation
-/// CELT bascule sur du bruit dès la 6ᵉ perte consécutive, puis fait décroître
-/// l'énergie **jusqu'au plancher de bruit de fond et l'y maintient**
-/// (`celt/celt_decoder.c:537` et `:562`, `MAX16(backgroundLogE, ...)`). Elle
-/// converge donc vers du bruit de confort et ne s'arrête JAMAIS d'elle-même :
-/// borner la durée dissimulée est à NOUS.
+/// The cause is in libopus and is not a defect: its CELT concealment
+/// switches to noise from the 6th consecutive loss, then makes energy
+/// decrease **down to the background noise floor and keeps it there**
+/// (`celt/celt_decoder.c:537` and `:562`, `MAX16(backgroundLogE, ...)`). It
+/// therefore converges towards comfort noise and NEVER stops by itself:
+/// bounding the concealed duration is up to US.
 #[test]
 fn une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence() {
     const REVEILS: usize = 100; // 1 s de famine
-    const QUEUE_DEPUIS: usize = 50; // on juge la seconde moitié
+    const QUEUE_DEPUIS: usize = 50; // we judge the second half
     let (recolte, lecteur) = famine_apres_un_ton(REVEILS);
 
-    // Garde anti-vacuité : sans elle, un lecteur qui ne dissimulerait JAMAIS
-    // rien passerait ce test sans avoir exercé quoi que ce soit.
+    // Anti-vacuity guard: without it, a player that NEVER concealed
+    // anything would pass this test without having exercised anything at all.
     let c = lecteur.compteurs();
     assert!(
         c.plc > 0,
@@ -325,15 +325,15 @@ fn une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence() {
     );
 }
 
-/// ⚠️ **L'OBSERVABILITÉ, sans laquelle la correction ne serait pas
-/// falsifiable.** Une recette doit pouvoir distinguer « la dissimulation
-/// travaille » de « le plafond a mordu et le puits se tait » : les deux
-/// rendent des famines, et sans deux compteurs DISJOINTS elles se lisent
-/// identiquement au journal.
+/// ⚠️ **OBSERVABILITY, without which the fix would not be
+/// falsifiable.** An acceptance run must be able to distinguish "concealment
+/// is working" from "the cap has bitten and the sink is silent": both
+/// return starvations, and without two DISJOINT counters they read
+/// identically in the log.
 ///
-/// Le test vérifie les trois propriétés qui rendent la trace lisible :
-/// `plc` s'arrête, `plc_plafonnees` prend le relais, et la somme des deux
-/// couvre bien toutes les trames manquantes rendues.
+/// The test checks the three properties that make the trace readable:
+/// `plc` stops, `plc_plafonnees` takes over, and the sum of the two
+/// does cover all the missing frames returned.
 #[test]
 fn le_plafond_est_compte_a_part_de_la_dissimulation() {
     const REVEILS: usize = 100;
@@ -346,16 +346,16 @@ fn le_plafond_est_compte_a_part_de_la_dissimulation() {
          recette ne peut pas distinguer ce silence-là d'une dissimulation qui \
          travaille — {c:?}"
     );
-    // La dissimulation a bien eu lieu AVANT le plafond, et elle est bornée par
-    // lui : 200 ms de trames de 10 ms font au plus 20 dissimulations.
+    // Concealment did take place BEFORE the cap, and it is bounded by
+    // it: 200 ms of 10 ms frames make at most 20 concealments.
     assert!(
         (1..=20).contains(&c.plc),
         "les dissimulations réellement produites devraient tenir dans les \
          200 ms du plafond (au plus 20 trames de 10 ms) — {c:?}"
     );
-    // Et les deux compteurs se partagent EXACTEMENT les trames manquantes :
-    // une trame due est soit dissimulée, soit rendue en silence, jamais les
-    // deux ni ni l'une ni l'autre.
+    // And the two counters share EXACTLY the missing frames:
+    // a due frame is either concealed or returned as silence, never
+    // both nor neither.
     assert_eq!(
         c.plc + c.plc_plafonnees,
         c.famines + c.insertions,
@@ -364,12 +364,12 @@ fn le_plafond_est_compte_a_part_de_la_dissimulation() {
     );
 }
 
-/// ⚠️ **LE test qui interdit au plafond de condamner la session.** Une fois le
-/// plafond atteint, le puits se tait — mais le retour de la parole doit rendre
-/// le budget entier, faute de quoi la PROCHAINE perte réseau, si courte
-/// soit-elle, ne serait plus jamais dissimulée. C'est le seul test de ce
-/// fichier qui exerce la remise à zéro sur le chemin de PRODUCTION : les tests
-/// unitaires de `micro/dissimulation.rs` couvrent la règle, jamais son câblage.
+/// ⚠️ **THE test that forbids the cap from condemning the session.** Once the
+/// cap is reached, the sink goes silent — but the return of speech must give back
+/// the whole budget, otherwise the NEXT network loss, however
+/// short, would never be concealed again. It is the only test of this
+/// file that exercises the reset on the PRODUCTION path: the unit
+/// tests of `micro/dissimulation.rs` cover the rule, never its wiring.
 #[test]
 fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
     let toutes = trames_d_un_ton(440.0, 70);
@@ -389,7 +389,7 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
         reveil(&mut l);
     }
 
-    // Première famine, assez longue pour épuiser le plafond.
+    // First starvation, long enough to exhaust the cap.
     for _ in 0..60 {
         reveil(&mut l);
     }
@@ -399,15 +399,15 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
         "le plafond n'a pas mordu : la suite du test ne prouverait rien — {apres_famine_1:?}"
     );
 
-    // La parole revient : trente trames, une par réveil.
+    // Speech comes back: thirty frames, one per wake-up.
     let mut entendu = Vec::new();
     for _ in 0..30 {
         l.deposer(it.next().unwrap());
         entendu.extend_from_slice(&reveil(&mut l));
     }
 
-    // Le ton est bien revenu — sans quoi « le budget est rendu » se lirait sur
-    // un puits qui ne rend plus rien du tout.
+    // The tone has indeed come back — otherwise "the budget is given back" would be read on
+    // a sink that returns nothing at all anymore.
     let crete = entendu.iter().fold(0.0f32, |m, e| m.max(e.abs()));
     assert!(
         crete > 0.05,
@@ -415,8 +415,8 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
          reste muet alors que des trames arrivent"
     );
 
-    // Seconde famine, COURTE : trois réveils, l'ordre de grandeur d'une perte
-    // réseau. Elle doit être dissimulée comme avant, donc faire croître `plc`.
+    // Second starvation, SHORT: three wake-ups, the order of magnitude of a network
+    // loss. It must be concealed as before, hence make `plc` grow.
     for _ in 0..3 {
         reveil(&mut l);
     }

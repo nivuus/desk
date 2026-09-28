@@ -1,6 +1,6 @@
-//! Calculs géométriques partagés, indépendants de toute API système.
+//! Shared geometric computations, independent of any system API.
 
-/// Rectangle en coordonnées écran, dimensions non signées.
+/// Rectangle in screen coordinates, unsigned dimensions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rect {
     pub x: i32,
@@ -9,22 +9,22 @@ pub struct Rect {
     pub height: u32,
 }
 
-/// Intersecte le rectangle d'une fenêtre avec l'écran et aligne les dimensions
-/// sur des valeurs paires.
+/// Intersects a window's rectangle with the screen and aligns the dimensions
+/// on even values.
 ///
-/// L'alignement pair n'est pas cosmétique : l'encodeur H.264 travaille en
-/// macroblocs et refuse les dimensions impaires en 4:2:0. Renvoie `None` si la
-/// fenêtre est entièrement hors de l'écran ou si l'intersection est trop petite
-/// pour être encodée.
+/// Even alignment is not cosmetic: the H.264 encoder works in
+/// macroblocks and refuses odd dimensions in 4:2:0. Returns `None` if the
+/// window is entirely off screen or if the intersection is too small
+/// to be encoded.
 ///
-/// Toute l'arithmétique se fait en `i64` : `window.x` (`i32`) et
-/// `window.width`/`window.height` (`u32`) tiennent tous les deux dans un
-/// `i64` sans perte, et leur somme aussi (au pire `i32::MAX + u32::MAX`,
-/// très loin de `i64::MAX`). Un calcul équivalent en `i32` déborderait dès
-/// que `window.x` est proche de `i32::MAX` — atteignable en pratique côté
-/// souris (tâche 12), où les coordonnées viennent d'événements navigateur et
-/// ne sont pas garanties raisonnables comme le sont celles issues de
-/// `client_rect_on_screen`.
+/// All the arithmetic is done in `i64`: `window.x` (`i32`) and
+/// `window.width`/`window.height` (`u32`) both fit in an
+/// `i64` without loss, and so does their sum (at worst `i32::MAX + u32::MAX`,
+/// very far from `i64::MAX`). An equivalent computation in `i32` would overflow as soon
+/// as `window.x` is close to `i32::MAX` — reachable in practice on the
+/// mouse side (task 12), where the coordinates come from browser events and
+/// are not guaranteed reasonable as those from
+/// `client_rect_on_screen` are.
 pub fn crop_region(window: Rect, desktop_width: u32, desktop_height: u32) -> Option<Rect> {
     let desktop_width = desktop_width as i64;
     let desktop_height = desktop_height as i64;
@@ -49,9 +49,9 @@ pub fn crop_region(window: Rect, desktop_width: u32, desktop_height: u32) -> Opt
         return None;
     }
 
-    // `left`/`top` sont bornés par `desktop_width`/`desktop_height` (via le
-    // `.min()` ci-dessus) : pour toute résolution d'écran réaliste (très en
-    // deçà de `i32::MAX`), ils tiennent sans troncature dans `i32`.
+    // `left`/`top` are bounded by `desktop_width`/`desktop_height` (through the
+    // `.min()` above): for any realistic screen resolution (far
+    // below `i32::MAX`), they fit in `i32` without truncation.
     Some(Rect {
         x: left as i32,
         y: top as i32,
@@ -60,33 +60,33 @@ pub fn crop_region(window: Rect, desktop_width: u32, desktop_height: u32) -> Opt
     })
 }
 
-/// Convertit une coordonnée normalisée sur la fenêtre en coordonnée normalisée
-/// sur le bureau virtuel, seule forme acceptée par `SendInput` en mode absolu
-/// (tâche 12).
+/// Converts a coordinate normalised on the window into a coordinate normalised
+/// on the virtual desktop, the only form accepted by `SendInput` in absolute mode
+/// (task 12).
 ///
-/// `x`/`y` sont dans `0..=65535` relativement à la zone client de `window`.
-/// Le résultat est dans `0..=65535` relativement à `desktop`. Le calcul
-/// compose deux passages : coordonnée normalisée → pixel écran (via
-/// `window`), puis pixel écran → coordonnée normalisée sur le bureau (via
+/// `x`/`y` are in `0..=65535` relative to the client area of `window`.
+/// The result is in `0..=65535` relative to `desktop`. The computation
+/// composes two steps: normalised coordinate → screen pixel (through
+/// `window`), then screen pixel → coordinate normalised on the desktop (through
 /// `desktop`).
 ///
-/// Arithmétique en `f64` plutôt qu'en entier, à dessein : `window.x`/
-/// `desktop.x` (`i32`) et `window.width`/`desktop.width` (`u32`) tiennent
-/// tous exactement dans la mantisse 52 bits d'un `f64` (le plus grand, tout
-/// `u32`, tient sur 32 bits), donc aucune perte de précision — et
-/// contrairement à une multiplication en `i32`/`i64`, une valeur `f64` ne
-/// panique jamais par débordement : au pire elle sature vers l'infini, et la
-/// conversion finale `as i32` sur un flottant hors bornes sature elle aussi
-/// (comportement garanti par Rust depuis la 1.45) plutôt que de produire un
-/// résultat indéfini. Le `.clamp(0.0, 65535.0)` avant conversion couvre donc
-/// à la fois les débordements représentables et les cas déjà dans les bornes.
+/// Arithmetic in `f64` rather than integer, on purpose: `window.x`/
+/// `desktop.x` (`i32`) and `window.width`/`desktop.width` (`u32`) all fit
+/// exactly in the 52-bit mantissa of an `f64` (the largest, any
+/// `u32`, fits in 32 bits), so no loss of precision — and
+/// unlike a multiplication in `i32`/`i64`, an `f64` value never
+/// panics on overflow: at worst it saturates towards infinity, and the
+/// final `as i32` conversion of an out-of-range float saturates too
+/// (behaviour guaranteed by Rust since 1.45) rather than producing an
+/// undefined result. The `.clamp(0.0, 65535.0)` before conversion therefore covers
+/// both representable overflows and cases already within bounds.
 pub fn to_virtual_desktop(x: u16, y: u16, window: Rect, desktop: Rect) -> (i32, i32) {
-    // Position en pixels écran, au centre du pixel visé.
+    // Position in screen pixels, at the centre of the targeted pixel.
     let screen_x = window.x as f64 + (x as f64 / 65535.0) * window.width as f64;
     let screen_y = window.y as f64 + (y as f64 / 65535.0) * window.height as f64;
 
-    // `.max(1.0)` évite toute division par zéro pour un bureau dégénéré
-    // (largeur ou hauteur nulle) sans avoir à traiter ce cas séparément.
+    // `.max(1.0)` avoids any division by zero for a degenerate desktop
+    // (zero width or height) without having to handle that case separately.
     let width = (desktop.width as f64).max(1.0);
     let height = (desktop.height as f64).max(1.0);
     let normalized_x = ((screen_x - desktop.x as f64) / width * 65535.0).round();
@@ -98,27 +98,27 @@ pub fn to_virtual_desktop(x: u16, y: u16, window: Rect, desktop: Rect) -> (i32, 
     )
 }
 
-/// Borne une coordonnée normalisée dans `0..=65535`, y compris pour un
-/// flottant déjà hors de portée d'un `i32` (voir la note de
-/// `to_virtual_desktop` sur la saturation des conversions `as`).
+/// Clamps a normalised coordinate into `0..=65535`, including for a
+/// float already out of range of an `i32` (see the note of
+/// `to_virtual_desktop` on the saturation of `as` conversions).
 fn clamp_normalized(value: f64) -> i32 {
     value.clamp(0.0, 65535.0) as i32
 }
 
-/// Comme [`to_virtual_desktop`], mais en mappant sur la région **réellement
-/// montrée au client** plutôt que sur la zone client complète.
+/// Like [`to_virtual_desktop`], but mapping onto the region **actually
+/// shown to the client** rather than onto the complete client area.
 ///
-/// La distinction n'est pas théorique. La capture encode
-/// `crop_region(window, …)`, c'est-à-dire l'intersection de la fenêtre avec
-/// l'écran ; le navigateur normalise donc ses coordonnées sur cette
-/// intersection. Mapper l'injection sur la zone client entière fait dériver le
-/// pointeur de tout ce qui dépasse : constaté le 29/07/2026 avec une zone
-/// client de 1178 px pour un bureau de 1080, soit 98 px d'erreur au bas de
-/// l'image et zéro en haut.
+/// The distinction is not theoretical. The capture encodes
+/// `crop_region(window, …)`, that is the intersection of the window with
+/// the screen; the browser therefore normalises its coordinates on this
+/// intersection. Mapping the injection onto the whole client area makes the
+/// pointer drift by everything that sticks out: found on 29/07/2026 with a client
+/// area of 1178 px for a desktop of 1080, that is 98 px of error at the bottom of
+/// the image and zero at the top.
 ///
-/// Les deux fonctions doivent donc rester appelées avec la même région. Rend
-/// `None` quand la fenêtre est entièrement hors de l'écran — il n'y a alors
-/// aucune image, donc aucune coordonnée à convertir.
+/// Both functions must therefore keep being called with the same region. Returns
+/// `None` when the window is entirely off screen — there is then
+/// no image, hence no coordinate to convert.
 pub fn to_virtual_desktop_visible(
     x: u16,
     y: u16,
@@ -129,16 +129,16 @@ pub fn to_virtual_desktop_visible(
     Some(to_virtual_desktop(x, y, visible, desktop))
 }
 
-/// Borne une taille demandée pour que la fenêtre, dont le coin haut-gauche ne
-/// bouge pas (`SWP_NOMOVE`), tienne entièrement dans le bureau.
+/// Clamps a requested size so that the window, whose top-left corner does not
+/// move (`SWP_NOMOVE`), fits entirely within the desktop.
 ///
-/// Sans ce bornage, un viewport client plus haut que le bureau de la VM
-/// produit une fenêtre qui dépasse : la capture la rogne, l'image prend un
-/// rapport d'aspect que le conteneur du navigateur n'a pas — d'où des bandes
-/// noires — et la partie basse de l'application devient inatteignable.
+/// Without this clamping, a client viewport taller than the VM's desktop
+/// produces a window that sticks out: the capture trims it, the image takes an
+/// aspect ratio the browser's container does not have — hence black
+/// bars — and the lower part of the application becomes unreachable.
 ///
-/// Le plancher de 2 px n'est pas cosmétique : `crop_region` refuse toute
-/// région plus petite, et une taille nulle ferait échouer la capture.
+/// The 2 px floor is not cosmetic: `crop_region` refuses any
+/// smaller region, and a zero size would make the capture fail.
 pub fn borner_au_bureau(
     origin_x: i32,
     origin_y: i32,
@@ -147,22 +147,22 @@ pub fn borner_au_bureau(
     desktop_width: u32,
     desktop_height: u32,
 ) -> (u32, u32) {
-    // Une origine négative laisse au contraire PLUS de place vers le bas et la
-    // droite : `max(0)` évite d'en conclure une taille négative, `saturating_sub`
-    // évite de déborder pour une origine au-delà du bureau.
+    // A negative origin leaves on the contrary MORE room downwards and to the
+    // right: `max(0)` avoids concluding a negative size from it, `saturating_sub`
+    // avoids overflowing for an origin beyond the desktop.
     let disponible_x = (desktop_width as i64 - origin_x.max(0) as i64).max(2) as u32;
     let disponible_y = (desktop_height as i64 - origin_y.max(0) as i64).max(2) as u32;
     (width.min(disponible_x), height.min(disponible_y))
 }
 
-/// Vrai si les deux rectangles ont une intersection non vide (frontières qui
-/// se touchent exclues).
+/// True if the two rectangles have a non-empty intersection (touching
+/// boundaries excluded).
 ///
-/// Sert au mode diagnostic `CAPTURE_TEST` pour vérifier qu'une région de
-/// contrôle placée à l'opposé du bureau ne chevauche pas, même
-/// partiellement, la fenêtre réellement capturée : sans cette garantie, une
-/// preuve par comparaison de pixel serait invalidée par construction (les
-/// deux zones pourraient légitimement montrer la même chose).
+/// Serves the `CAPTURE_TEST` diagnostic mode to check that a control
+/// region placed opposite on the desktop does not overlap, even
+/// partially, the window actually captured: without this guarantee, a
+/// proof by pixel comparison would be invalidated by construction (the
+/// two areas could legitimately show the same thing).
 pub fn rects_overlap(a: Rect, b: Rect) -> bool {
     let a_left = a.x as i64;
     let a_top = a.y as i64;

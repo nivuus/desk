@@ -1,16 +1,16 @@
-//! Les trois IOCTL du pilote qui n'ajoutent ni ne retirent rien : version de
-//! protocole, ping du chien de garde, lecture de sa veille.
+//! The three driver IOCTLs that neither add nor remove anything: protocol
+//! version, watchdog ping, reading of its countdown.
 //!
-//! **Module ENFANT de `pilote`**, et non frère : c'est ce qui lui donne accès à
-//! `PiloteParIoctl::commander`, restée privée. Extrait de `pilote.rs` à la revue
-//! finale de branche parce que le correctif I1 y ajoutait le recyclage des
-//! numéros et portait le fichier à 507 lignes, au-dessus du plafond de 500 du
-//! projet (voir `CLAUDE.md`) : l'addition s'accompagne de son extraction.
+//! **CHILD module of `pilote`**, and not sibling: it is what gives it access to
+//! `PiloteParIoctl::commander`, which stays private. Extracted from `pilote.rs` at the final
+//! branch review because fix I1 added number recycling to it
+//! and brought the file to 507 lines, above the project's ceiling of 500
+//! (see `CLAUDE.md`): the addition comes with its extraction.
 //!
-//! Ces trois-là forment un bloc naturel — aucune ne touche à l'état des
-//! sorties, aucune n'a d'effet de bord sur la topologie, et toutes trois ne
-//! servent qu'à interroger ou entretenir le pilote. Rien n'a changé de valeur
-//! au déplacement.
+//! These three form a natural block — none touches the state of the
+//! outputs, none has a side effect on the topology, and all three only
+//! serve to query or maintain the driver. No value changed
+//! in the move.
 
 use anyhow::Result;
 
@@ -20,8 +20,8 @@ use crate::moniteurs_virtuels::sudovda::{
 };
 
 impl PiloteParIoctl {
-    /// Version de protocole annoncée par le pilote installé. Sans effet de
-    /// bord — le tampon le plus simple des six.
+    /// Protocol version announced by the installed driver. Without side
+    /// effect — the simplest buffer of the six.
     pub(crate) fn version_protocole(&self) -> Result<(VersionProtocole, u32)> {
         let mut version = VersionProtocole::default();
         let rendus = self.commander(
@@ -36,21 +36,21 @@ impl PiloteParIoctl {
         Ok((version, rendus))
     }
 
-    /// Réarme le chien de garde du pilote pour CE handle.
+    /// Rearms the driver's watchdog for THIS handle.
     ///
-    /// Ni entrée ni sortie : c'est le seul des six IOCTL dont les deux tampons
-    /// soient vides, donc le seul dont aucune disposition supposée ne puisse
-    /// être fausse.
+    /// Neither input nor output: it is the only one of the six IOCTLs whose two buffers
+    /// are empty, hence the only one where no assumed layout can
+    /// be wrong.
     ///
-    /// **Pourquoi ce battement n'est pas lancé ici, dans un fil interne.** Le
-    /// pilote associe vraisemblablement son chien de garde au *file object*
-    /// ouvert par `CreateFile` — c'est ce que fait le client amont, qui pingue
-    /// sur le handle même dont il s'est servi pour ajouter ses sorties. Pinguer
-    /// depuis un second handle ne sauverait donc rien. Un fil interne devrait
-    /// alors partager CE handle, ce qui obligerait à le rendre `Send` ; or les
-    /// deux seuls appelants de ce module sont séquentiels par construction et
-    /// n'ont besoin que de ponctuer leurs attentes. On expose le battement,
-    /// l'appelant tient la cadence.
+    /// **Why this beat is not launched here, in an internal thread.** The
+    /// driver most likely associates its watchdog with the *file object*
+    /// opened by `CreateFile` — that is what the upstream client does, pinging
+    /// on the very handle it used to add its outputs. Pinging
+    /// from a second handle would therefore save nothing. An internal thread would
+    /// then have to share THIS handle, which would force making it `Send`; yet the
+    /// only two callers of this module are sequential by construction and
+    /// only need to punctuate their waits. We expose the beat,
+    /// the caller keeps the cadence.
     pub(crate) fn pinguer(&self) -> Result<()> {
         self.commander(
             IOCTL_PINGUER,
@@ -61,7 +61,7 @@ impl PiloteParIoctl {
         Ok(())
     }
 
-    /// Délai et décompte du chien de garde du pilote. Sans effet de bord.
+    /// Delay and countdown of the driver's watchdog. Without side effect.
     pub(crate) fn veille(&self) -> Result<(Veille, u32)> {
         let mut veille = Veille::default();
         let rendus = self.commander(

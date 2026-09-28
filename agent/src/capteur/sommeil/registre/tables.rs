@@ -1,30 +1,30 @@
-//! Les tables du registre : le struct `Etat` et rien d'autre.
+//! The registry's tables: the `Etat` struct and nothing else.
 //!
-//! **Extrait de `registre.rs` dans le round de correction 3 (25 août 2026),
-//! AVANT d'y écrire** : le fichier était à 470 lignes pour un plafond de
-//! projet à 500, et ce round y porte la cadence de la trace et deux
-//! corrections de rédaction. Extraire, jamais comprimer — et dans une tâche
-//! DÉDIÉE, avant celle qui ajoute. C'est la troisième extraction de cette
-//! série (`file/tests.rs` au round 1, `parts/tests.rs` au round 2), et la
-//! seconde de `registre.rs` après `registre/tour_de_roue.rs`.
+//! **Extracted from `registre.rs` in fix round 3 (25 August 2026),
+//! BEFORE writing to it**: the file was at 470 lines for a project
+//! cap of 500, and this round brings the trace pacing and two
+//! wording fixes to it. Extract, never compress — and in a DEDICATED
+//! task, before the one that adds. It is the third extraction of this
+//! series (`file/tests.rs` in round 1, `parts/tests.rs` in round 2), and the
+//! second of `registre.rs` after `registre/tour_de_roue.rs`.
 //!
-//! **Ce qui a guidé la coupe** : `Etat` est un AGRÉGAT DE TABLES, presque
-//! entièrement fait de documentation — chacun de ses champs porte la raison
-//! d'être d'une table et les défauts qu'elle a coûtés. `registre.rs` garde ce
-//! qui AGIT sur elles : `etat()`, `distribuer`, `oublier`, `inscrire`,
+//! **What guided the cut**: `Etat` is an AGGREGATE OF TABLES, almost
+//! entirely made of documentation — each of its fields carries the reason
+//! for a table and the defects it cost. `registre.rs` keeps what
+//! ACTS on them: `etat()`, `distribuer`, `oublier`, `inscrire`,
 //! `retirer`.
 //!
-//! ⚠️ **Le module s'appelle `tables` et non `etat`, à dessein** :
-//! `registre.rs` porte déjà une fonction `etat()`, et si Rust distingue sans
-//! peine un module d'une fonction, un lecteur humain trébuche. Le nom dit ce
-//! que le fichier contient.
+//! ⚠️ **The module is called `tables` and not `etat`, on purpose**:
+//! `registre.rs` already carries a function `etat()`, and while Rust easily
+//! tells a module from a function, a human reader stumbles. The name says what
+//! the file contains.
 //!
-//! ⚠️ **Transposition, pas réécriture** : le bloc est déplacé à l'identique,
-//! aucun champ, aucun type, aucun commentaire n'a changé. Seule la VISIBILITÉ
-//! est réécrite — `pub(super)` valait « visible dans `sommeil` » depuis
-//! `registre` ; depuis `registre::tables` il faudrait deux crans, et la portée
-//! est donc écrite en toutes lettres (`pub(in crate::capteur::sommeil)`)
-//! plutôt qu'élargie à `pub(crate)`, qui serait PLUS LARGE que l'original.
+//! ⚠️ **Transposition, not rewrite**: the block is moved identically,
+//! no field, no type, no comment changed. Only the VISIBILITY
+//! is rewritten — `pub(super)` meant "visible in `sommeil`" from
+//! `registre`; from `registre::tables` it would take two steps, and the scope
+//! is therefore spelled out (`pub(in crate::capteur::sommeil)`)
+//! rather than widened to `pub(crate)`, which would be BROADER than the original.
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -34,144 +34,144 @@ use crate::capteur::vivier::Vivier;
 
 pub(in crate::capteur::sommeil) struct Etat {
     pub(in crate::capteur::sommeil) vivier: Vivier,
-    /// Le bout ÉMETTEUR du canal de chaque session.
+    /// The SENDING end of each session's channel.
     ///
-    /// 🔴 **`EmetteurSession` et non `Sender<Message>` depuis le 25 août
-    /// 2026** : le canal `mpsc` était NON BORNÉ, et une fenêtre qui cesse de
-    /// lire faisait croître sa file sans terme. Le contrat qui compte ici est
-    /// INCHANGÉ — `envoyer` rend `Err` quand le receveur est tombé, et c'est
-    /// sur cette valeur que `distribuer` et `parts::distribuer_les_parts`
-    /// purgent une session morte. Voir `file.rs` pour la borne, la
-    /// coalescence, le compte des refus et sa trace.
+    /// 🔴 **`EmetteurSession` and not `Sender<Message>` since 25 August
+    /// 2026**: the `mpsc` channel was UNBOUNDED, and a window that stops
+    /// reading made its queue grow without end. The contract that matters here is
+    /// UNCHANGED — `envoyer` returns `Err` when the receiver has dropped, and it is
+    /// on this value that `distribuer` and `parts::distribuer_les_parts`
+    /// purge a dead session. See `file.rs` for the bound, the
+    /// coalescing, the refusal count and its trace.
     pub(in crate::capteur::sommeil) canaux: HashMap<String, EmetteurSession>,
-    /// La session que le client déclare focalisée, si elle existe encore.
+    /// The session the client declares focused, if it still exists.
     ///
-    /// Tenue ici et non dans `Vivier` : le vivier arbitre des places
-    /// d'encodeur, le répartiteur des parts de débit. Le client émet `blur`
-    /// aussi bien que `focus` (`client/src/visibilite.ts`), donc ce champ se
-    /// vide bien quand la fenêtre perd le focus.
+    /// Held here and not in `Vivier`: the pool arbitrates encoder
+    /// places, the distributor bitrate shares. The client emits `blur`
+    /// as well as `focus` (`client/src/visibilite.ts`), so this field does
+    /// empty when the window loses the focus.
     pub(in crate::capteur::sommeil) focalisee: Option<String>,
-    /// Dernière part envoyée à chaque session. **Le seul rempart contre une
-    /// inondation** : le tour de roue ré-arbitre toutes les 250 ms, et sans
-    /// cette mémoire huit fenêtres recevraient 32 messages par seconde à vie.
+    /// Last share sent to each session. **The only rampart against a
+    /// flood**: the wheel round re-arbitrates every 250 ms, and without
+    /// this memory eight windows would receive 32 messages per second for life.
     pub(in crate::capteur::sommeil) dernieres_parts: HashMap<String, u32>,
-    /// PID du processus propriétaire de chaque fenêtre. **Ici et pas dans un
-    /// second registre** : le capteur n'a qu'une vérité à tenir, et deux
-    /// tables à synchroniser en feraient deux.
+    /// PID of the process owning each window. **Here and not in a
+    /// second registry**: the sensor has only one truth to hold, and two
+    /// tables to synchronise would make two of it.
     pub(in crate::capteur::sommeil) pids: HashMap<String, u32>,
-    /// Rang d'arrivée de chaque session, et rang du dernier focus reçu. Deux
-    /// compteurs tirés du même `horloge`, strictement croissante.
+    /// Arrival rank of each session, and rank of the last focus received. Two
+    /// counters drawn from the same `horloge`, strictly increasing.
     pub(in crate::capteur::sommeil) arrivees: HashMap<String, u64>,
     pub(in crate::capteur::sommeil) derniers_focus: HashMap<String, u64>,
-    /// Compteur monotone qui sert de rang aux deux tables ci-dessus. Un
-    /// `Instant` ne conviendrait pas : il faut un ordre total, stable et
-    /// comparable, pas une durée.
+    /// Monotonic counter serving as a rank for the two tables above. An
+    /// `Instant` would not do: a total, stable and comparable order is needed,
+    /// not a duration.
     pub(in crate::capteur::sommeil) horloge: u64,
-    /// Dernier ordre audio envoyé à chaque session. **Le rempart contre
-    /// l'inondation**, exactement comme `dernieres_parts` : le tour de roue
-    /// ré-arbitre toutes les 250 ms.
+    /// Last audio order sent to each session. **The rampart against
+    /// the flood**, exactly like `dernieres_parts`: the wheel round
+    /// re-arbitrates every 250 ms.
     pub(in crate::capteur::sommeil) derniers_audio: HashMap<String, bool>,
-    /// Instant après lequel une session dont la capture audio est morte
-    /// redevient éligible au portage. Absente = apte.
+    /// Instant after which a session whose audio capture has died
+    /// becomes eligible to carry sound again. Absent = fit.
     ///
-    /// **Ici et pas dans `capteur::audio`** : ce module a l'horloge, l'autre
-    /// est pur et le reste.
+    /// **Here and not in `capteur::audio`**: this module has the clock, the other
+    /// is pure and stays so.
     pub(in crate::capteur::sommeil) inaptes: HashMap<String, Instant>,
-    /// La DERNIÈRE annonce de presse-papier distribuée, quelle qu'elle soit.
+    /// The LAST clipboard announcement distributed, whatever it is.
     ///
-    /// 🔴 **C'est la moitié AGENT du legs n°3 de P1** — « une fenêtre attachée
-    /// après une copie ne reçoit jamais ce contenu ». Sans cette mémoire, une
-    /// fenêtre qui s'attache attend la copie SUIVANTE, et le `Sondeur` le dit
-    /// de lui-même : son premier tour prend l'état courant pour référence et
-    /// n'annonce rien.
+    /// 🔴 **It is the AGENT half of P1's hand-over no. 3** — "a window attached
+    /// after a copy never receives that content". Without this memory, a
+    /// window that attaches waits for the NEXT copy, and the `Sondeur` says so
+    /// itself: its first round takes the current state as reference and
+    /// announces nothing.
     ///
-    /// ⚠️ **Elle mémorise AUSSI les `Annonce::Refus`, et il le faut** : une
-    /// fenêtre qui s'attache après un refus doit voir le bandeau, sans quoi
-    /// elle attendrait un contenu qui n'arrivera jamais.
+    /// ⚠️ **It ALSO memorises `Annonce::Refus`, and it must**: a
+    /// window attaching after a refusal must see the banner, otherwise
+    /// it would wait for a content that will never arrive.
     ///
-    /// 🔴 **AUCUNE PURGE À LA RÉ-INSCRIPTION, et la symétrie avec
-    /// `dernieres_parts` / `derniers_audio` est TROMPEUSE** (D-P3-3). Ces
-    /// deux-là se purgent parce que `distribuer_les_parts` et
-    /// `distribuer_l_audio` FILTRENT sur eux : sans purge, une part identique
-    /// à celle envoyée sur l'ANCIEN canal serait jugée déjà livrée sur le
-    /// canal NEUF, qui ne l'a jamais reçue. L'émission du presse-papier à
-    /// l'inscription, elle, est INCONDITIONNELLE : il n'y a rien à filtrer,
-    /// donc rien à purger — et purger ici retirerait la mémoire au moment
-    /// précis où l'on veut s'en servir, le remède ne remédiant alors à rien.
+    /// 🔴 **NO PURGE ON RE-REGISTRATION, and the symmetry with
+    /// `dernieres_parts` / `derniers_audio` is MISLEADING** (D-P3-3). Those
+    /// two are purged because `distribuer_les_parts` and
+    /// `distribuer_l_audio` FILTER on them: without a purge, a share identical
+    /// to the one sent on the OLD channel would be judged already delivered on the
+    /// NEW channel, which never received it. The clipboard emission at
+    /// registration, on the other hand, is UNCONDITIONAL: there is nothing to filter,
+    /// hence nothing to purge — and purging here would remove the memory at the precise
+    /// moment we want to use it, the remedy then remedying nothing.
     pub(in crate::capteur::sommeil) dernier_presse_papier: Option<crate::presse_papier::Annonce>,
-    /// Le couple (numéro de séquence, texte) de NOTRE PROPRE écriture du
-    /// presse-papier, en attente d'être consommé par le tour de roue pour
-    /// armer les gardes n°1 et n°2 de D5 (sous-bloc P2).
+    /// The (sequence number, text) pair of OUR OWN clipboard write,
+    /// waiting to be consumed by the wheel round to
+    /// arm D5's guards no. 1 and no. 2 (sub-block P2).
     ///
-    /// 🔴 **Il vit ICI, sous le verrou, et non à côté du `Sondeur`, parce que
-    /// les deux ne courent pas sur le même fil.** Le `Sondeur` est local au fil
-    /// du tour de roue ; l'écriture, elle, arrive du fil de FENÊTRE qui sert la
-    /// commande `PressePapierEcrire`. Il n'existe aucun moyen d'armer le garde
-    /// depuis là sans course — sinon ce registre, qui est déjà le point de
-    /// rendez-vous verrouillé des deux.
+    /// 🔴 **It lives HERE, under the lock, and not next to the `Sondeur`, because
+    /// the two do not run on the same thread.** The `Sondeur` is local to the
+    /// wheel-round thread; the write, for its part, comes from the WINDOW thread serving the
+    /// `PressePapierEcrire` command. There is no way to arm the guard
+    /// from there without a race — other than this registry, which is already the locked
+    /// meeting point of the two.
     ///
-    /// ⚠️ **Cela DÉPLACE la course, cela ne la supprime pas, et il faut le
-    /// dire** : jusqu'à `PERIODE_REARBITRAGE` (250 ms) peut s'écouler entre
-    /// notre `SetClipboardData` et la consommation ci-dessous. Si une AUTRE
-    /// copie survient dans cet intervalle, poser `reference` sur *notre* `seq`
-    /// ne la masque pas — le compteur aura encore bougé, et cette copie sera
-    /// annoncée. **C'est le comportement voulu**, exact au sens de D5, et un
-    /// test le vérifie plutôt que de le supposer.
+    /// ⚠️ **This MOVES the race, it does not remove it, and it must be
+    /// said**: up to `PERIODE_REARBITRAGE` (250 ms) may elapse between
+    /// our `SetClipboardData` and the consumption below. If ANOTHER
+    /// copy happens in that interval, setting `reference` on *our* `seq`
+    /// does not mask it — the counter will have moved again, and that copy will be
+    /// announced. **That is the intended behaviour**, exact in D5's sense, and a
+    /// test checks it rather than assuming it.
     ///
-    /// Écrasement du dernier : deux écritures en moins d'un tour de roue ne
-    /// laissent que la seconde, qui est celle que le presse-papier porte
-    /// réellement.
+    /// Last one overwrites: two writes in less than one wheel round
+    /// leave only the second, which is the one the clipboard actually
+    /// carries.
     pub(in crate::capteur::sommeil) notre_ecriture: Option<(u32, String)>,
-    /// Nombre de réarmements consécutifs déjà accordés à chaque session.
+    /// Number of consecutive re-arms already granted to each session.
     ///
-    /// ❌ **« Remis à zéro dès qu'elle porte le son sans mourir » décrit la
-    /// sémantique que le sous-bloc D10 a précisément RETIRÉE** (relevé par la
-    /// revue transverse : ce fichier n'a pas été touché par la branche, d'où
-    /// le résidu). La remise à zéro sur la **décision** d'arbitrage a quitté
-    /// `sommeil/porteurs.rs` ; `signaler_audio_vivant` (`capteur/sommeil.rs`)
-    /// en est désormais le seul point, et il ne court que sur une **PREUVE**
-    /// — un paquet réel, remonté par `VersCapteur::AudioVivant`. C'est le
-    /// leg 6 de D9, et c'était son objet : le compteur comptait des échecs
-    /// non consécutifs.
+    /// ❌ **"Reset as soon as it carries the sound without dying" describes the
+    /// semantics that sub-block D10 precisely REMOVED** (found by the
+    /// cross-cutting review: this file was not touched by the branch, hence
+    /// the residue). The reset on the arbitration **decision** left
+    /// `sommeil/porteurs.rs`; `signaler_audio_vivant` (`capteur/sommeil.rs`)
+    /// is now its only point, and it only runs on a **PROOF**
+    /// — a real packet, reported by `VersCapteur::AudioVivant`. It is
+    /// D9's hand-over 6, and that was its purpose: the counter counted
+    /// non-consecutive failures.
     ///
-    /// **Conséquence assumée, à connaître** : une session peut « porter le
-    /// son sans mourir » et ne jamais voir son compteur retomber, si aucun
-    /// paquet n'arrive jamais. C'est voulu — c'est exactement l'état que la
-    /// recette ② de D10 a trouvé en production (une source reconstruite qui
-    /// naissait muette) et que le compteur doit dénoncer, pas absoudre.
+    /// **Accepted consequence, to be known**: a session may "carry the
+    /// sound without dying" and never see its counter drop back, if no
+    /// packet ever arrives. It is intended — it is exactly the state that
+    /// D10's acceptance run ② found in production (a rebuilt source that
+    /// was born silent) and that the counter must denounce, not absolve.
     pub(in crate::capteur::sommeil) rearmements: HashMap<String, u32>,
-    /// Génération de la dernière inscription connue de chaque session (D9,
-    /// F5 de D7 — course au `retirer` quand un nom se réinscrit). Posée par
-    /// `inscrire`, lue et effacée par `retirer` via `retirer_est_perime`.
+    /// Generation of the last known registration of each session (D9,
+    /// F5 of D7 — race on `retirer` when a name re-registers). Set by
+    /// `inscrire`, read and erased by `retirer` via `retirer_est_perime`.
     ///
-    /// **Volontairement absente d'`oublier`** : c'est `retirer` seul qui la
-    /// purge, et seulement quand il n'est pas périmé. La purger depuis
-    /// `oublier` la ferait disparaître aussi sur les chemins de canal rompu,
-    /// qui n'ont aucune génération à comparer et ne doivent donc jamais
-    /// l'effacer à la place d'un rattachement déjà inscrit. **Conséquence
-    /// assumée** : sur ces chemins-là, l'entrée d'un nom survit à sa session
-    /// pour le reste de la vie du processus capteur — sans effet
-    /// fonctionnel (elle ne fait que dormir dans une `HashMap`), et les noms
-    /// de session n'étant jamais réemployés (`Table::compteur`,
-    /// `superviseur/table.rs`), cette table ne fait que croître avec le
-    /// nombre de fenêtres jamais ouvertes sur la durée de vie du capteur.
+    /// **Deliberately absent from `oublier`**: it is `retirer` alone that
+    /// purges it, and only when it is not stale. Purging it from
+    /// `oublier` would make it disappear on the broken-channel paths too,
+    /// which have no generation to compare and must therefore never
+    /// erase it in place of an already registered re-attachment. **Accepted
+    /// consequence**: on those paths, a name's entry survives its session
+    /// for the rest of the sensor process's life — without functional
+    /// effect (it only sleeps in a `HashMap`), and session names
+    /// never being reused (`Table::compteur`,
+    /// `superviseur/table.rs`), this table only grows with the
+    /// number of windows ever opened over the sensor's lifetime.
     pub(in crate::capteur::sommeil) generations: HashMap<String, u64>,
-    /// Compteur qui frappe la génération de chaque `inscrire` — **DISTINCT
-    /// de `horloge` ci-dessus, délibérément**.
+    /// Counter that stamps the generation of each `inscrire` — **DISTINCT
+    /// from `horloge` above, deliberately**.
     ///
-    /// `horloge` a une invariant que `generations` viole nécessairement :
-    /// `arrivees`/`derniers_focus` ne sont posées qu'à la PREMIÈRE
-    /// inscription d'un nom (`if !garde.arrivees.contains_key(session)`) et
-    /// restent ensuite STABLES tant que le nom vit — c'est ce qui leur donne
-    /// un sens de rang d'ARRIVÉE. `generations` a l'exigence inverse :
-    /// **chaque** appel à `inscrire`, y compris un rattachement sous le même
-    /// nom, doit recevoir une valeur NEUVE — c'est le seul moyen de
-    /// distinguer l'instance vivante de la précédente. Faire porter cette
-    /// exigence par `horloge` demanderait de le frapper inconditionnellement
-    /// à `inscrire`, donc de désolidariser sa progression de la garde qui
-    /// protège `arrivees`/`derniers_focus` — un couplage qui rendrait cette
-    /// exigence dépendante d'une logique écrite pour un autre besoin, et
-    /// silencieusement cassable par une évolution future de cette garde.
-    /// Deux compteurs, deux invariants, aucun risque de confusion.
+    /// `horloge` has an invariant that `generations` necessarily violates:
+    /// `arrivees`/`derniers_focus` are only set at the FIRST
+    /// registration of a name (`if !garde.arrivees.contains_key(session)`) and
+    /// then stay STABLE as long as the name lives — that is what gives them
+    /// their meaning of ARRIVAL rank. `generations` has the opposite requirement:
+    /// **every** call to `inscrire`, including a re-attachment under the same
+    /// name, must receive a NEW value — it is the only way to
+    /// distinguish the live instance from the previous one. Making `horloge` carry this
+    /// requirement would require stamping it unconditionally
+    /// in `inscrire`, hence decoupling its progression from the guard that
+    /// protects `arrivees`/`derniers_focus` — a coupling that would make this
+    /// requirement depend on logic written for another need, and
+    /// silently breakable by a future evolution of that guard.
+    /// Two counters, two invariants, no risk of confusion.
     pub(in crate::capteur::sommeil) prochaine_generation: u64,
 }

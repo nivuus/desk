@@ -12,9 +12,9 @@ pub(super) fn attributs(chemin: &str) -> Attendue {
 
 #[test]
 fn une_reponse_arrivee_apres_annulation_est_jetee() {
-    // ⚠️ Le test que la spec §4.4 nomme. ProjFS annule une commande quand
-    // l'application appelante abandonne ; la réponse du navigateur, elle, est
-    // déjà en vol. L'appliquer écrirait dans un tampon que le système a repris.
+    // ⚠️ The test spec §4.4 names. ProjFS cancels a command when
+    // the calling application gives up; the browser's response, for its part, is
+    // already in flight. Applying it would write into a buffer the system has taken back.
     let mut t = Table::nouvelle();
     let c = t.inscrire(42, attributs("a.txt"), maintenant() + DELAI_ATTRIBUTS);
     assert_eq!(t.en_vol(), 1);
@@ -34,15 +34,15 @@ fn une_commande_expiree_ne_reste_pas_en_table() {
     let mut t = Table::nouvelle();
     let c = t.inscrire(7, attributs("a.txt"), debut + DELAI_ATTRIBUTS);
 
-    // Juste avant l'échéance : rien n'expire.
+    // Just before the deadline: nothing expires.
     assert!(t.expirees(debut).is_empty());
     assert_eq!(t.en_vol(), 1);
 
-    // À l'échéance EXACTE : elle expire. Faire dépendre l'expiration d'un
-    // dépassement strict la ferait dépendre de la granularité de l'horloge.
+    // At the EXACT deadline: it expires. Making expiry depend on a
+    // strict overrun would make it depend on the clock's granularity.
     assert_eq!(t.expirees(debut + DELAI_ATTRIBUTS), vec![(Some(7), c)]);
     assert_eq!(t.en_vol(), 0, "en_vol() doit être décrémenté");
-    // …et une seconde passe ne la rend pas deux fois.
+    // …and a second pass does not return it twice.
     assert!(t.expirees(debut + DELAI_LISTER).is_empty());
 }
 
@@ -62,8 +62,8 @@ fn les_correlations_sont_monotones_et_ne_se_reutilisent_pas() {
     let a = t.inscrire(1, attributs("a"), e);
     let b = t.inscrire(2, attributs("b"), e);
     assert_ne!(a, b);
-    // Et une corrélation résolue n'est PAS recyclée : une réponse dupliquée du
-    // navigateur serait sinon appliquée à la commande suivante.
+    // And a resolved correlation is NOT recycled: a duplicated response from the
+    // browser would otherwise be applied to the next command.
     t.resoudre(a, Instant::now());
     let c = t.inscrire(3, attributs("c"), e);
     assert_ne!(c, a);
@@ -72,9 +72,9 @@ fn les_correlations_sont_monotones_et_ne_se_reutilisent_pas() {
 
 #[test]
 fn vider_rend_tout_et_laisse_la_table_vide() {
-    // C'est ce qui précède `PrjStopVirtualizing` : une commande laissée en vol
-    // y attendrait une réponse que plus rien ne peut délivrer, et ProjFS
-    // attendrait sa complétion indéfiniment.
+    // It is what precedes `PrjStopVirtualizing`: a command left in flight
+    // would wait there for a response nothing can deliver any more, and ProjFS
+    // would wait for its completion indefinitely.
     let mut t = Table::nouvelle();
     let e = maintenant() + DELAI_LISTER;
     let c1 = t.inscrire(11, attributs("a"), e);
@@ -86,7 +86,7 @@ fn vider_rend_tout_et_laisse_la_table_vide() {
     assert_eq!(tout, vec![(Some(11), c1), (Some(22), c2), (Some(33), c3)]);
     assert_eq!(t.en_vol(), 0);
     assert!(t.vider().is_empty());
-    // …et plus aucune réponse n'est appliquée après.
+    // …and no response is applied afterwards any more.
     assert_eq!(t.resoudre(c1, Instant::now()), None);
 }
 
@@ -100,11 +100,11 @@ fn une_correlation_inconnue_rend_none_sans_paniquer() {
 
 #[test]
 fn deux_enumerations_du_meme_chemin_coexistent() {
-    // ⚠️ La session d'énumération est indexée par le GUID d'énumération du
-    // rappel, PAS par le chemin (spec §7.2) : deux applications qui listent le
-    // même répertoire en même temps ouvrent deux sessions distinctes. Indexer
-    // par chemin ferait que la seconde écraserait la première, et l'une des
-    // deux recevrait un répertoire vide — sans qu'aucune erreur ne soit levée.
+    // ⚠️ The enumeration session is indexed by the callback's enumeration GUID,
+    // NOT by the path (spec §7.2): two applications listing the
+    // same directory at the same time open two distinct sessions. Indexing
+    // by path would make the second overwrite the first, and one of the
+    // two would receive an empty directory — without any error being raised.
     let mut t = Table::nouvelle();
     let e = maintenant() + DELAI_LISTER;
     let g1 = [1u8; 16];
@@ -128,7 +128,7 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
 
     assert_ne!(c1, c2);
     assert_eq!(t.en_vol(), 2, "les deux sessions doivent COEXISTER");
-    // …et chacune se résout sur SA session, pas sur celle de l'autre.
+    // …and each resolves on ITS session, not on the other's.
     let (id1, quoi1, _) = t
         .resoudre(c1, Instant::now())
         .expect("la première session existe");
@@ -155,15 +155,15 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
 
 #[test]
 fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en_vol() {
-    // ⚠️ Ce test est le seul qui ne puisse pas s'écrire naïvement : faire
-    // tourner un `u32` demanderait quatre milliards d'inscriptions. Il passe
-    // par la couture `nouvelle_depuis`, ce qui le rend atteignable en trois
-    // appels. **Sans elle il serait vacueux** — il passerait sans rien exercer.
+    // ⚠️ This test is the only one that cannot be written naively: wrapping
+    // a `u32` would require four billion registrations. It goes
+    // through the `nouvelle_depuis` seam, which makes it reachable in three
+    // calls. **Without it, it would be vacuous** — it would pass without exercising anything.
     let mut t = Table::nouvelle_depuis(u32::MAX - 1);
     let e = maintenant() + DELAI_LIRE;
     let a = t.inscrire(1, attributs("a"), e); // u32::MAX - 1
     let b = t.inscrire(2, attributs("b"), e); // u32::MAX
-    let c = t.inscrire(3, attributs("c"), e); // reboucle à 0
+    let c = t.inscrire(3, attributs("c"), e); // wraps to 0
     let d = t.inscrire(4, attributs("d"), e); // 1
 
     assert_eq!(a, u32::MAX - 1);
@@ -176,21 +176,21 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
         "aucune des quatre ne doit en écraser une autre"
     );
 
-    // …et le cas qui mord vraiment : une corrélation ENCORE EN VOL est
-    // enjambée, pas écrasée. On repart de 0 alors que 0 et 1 sont pris.
+    // …and the case that really bites: a correlation STILL IN FLIGHT is
+    // stepped over, not overwritten. We start again from 0 while 0 and 1 are taken.
     let mut t = Table::nouvelle_depuis(0);
     let e = maintenant() + DELAI_LIRE;
     let zero = t.inscrire(10, attributs("z"), e);
     let un = t.inscrire(11, attributs("u"), e);
     assert_eq!((zero, un), (0, 1));
-    t.prochaine = 0; // le compteur a rebouclé sur des entrées encore en vol
+    t.prochaine = 0; // the counter wrapped onto entries still in flight
     let apres = t.inscrire(12, attributs("v"), e);
     assert!(
         apres != zero && apres != un,
         "la corrélation rebouclée {apres} écrase une commande en vol"
     );
     assert_eq!(t.en_vol(), 3);
-    // La commande d'origine répond toujours pour ELLE.
+    // The original command still answers for ITSELF.
     assert_eq!(
         t.resoudre(zero, Instant::now()).map(|(id, _, _)| id),
         Some(Some(10))

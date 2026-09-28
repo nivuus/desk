@@ -1,25 +1,25 @@
-//! Observation du curseur Windows : décision de mode (absolu / relatif) et
-//! forme à afficher.
+//! Observing the Windows cursor: mode decision (absolute / relative) and
+//! shape to display.
 //!
-//! La décision de mode est stabilisée ici, hors de tout appel système, pour
-//! être testable sous Linux — même raison que `geometry.rs` pour le mapping
-//! de coordonnées.
+//! The mode decision is stabilised here, outside any system call, to
+//! be testable under Linux — same reason as `geometry.rs` for the
+//! coordinate mapping.
 
-/// Nombre d'observations consécutives cohérentes avant qu'un changement de
-/// mode soit retenu.
+/// Number of consistent consecutive observations before a mode change
+/// is kept.
 ///
-/// Les transitions d'écran font clignoter le curseur : sans ce filtre, le
-/// pointeur se verrouillerait et se déverrouillerait pendant les chargements.
-/// À 50 ms par sondage, trois observations coûtent ~150 ms de latence de
-/// bascule — imperceptible, puisqu'elle accompagne un changement de scène.
+/// Screen transitions make the cursor blink: without this filter, the
+/// pointer would lock and unlock during loading screens.
+/// At 50 ms per poll, three observations cost ~150 ms of switching
+/// latency — imperceptible, since it accompanies a scene change.
 pub const SEUIL: u8 = 3;
 
-/// Filtre de stabilité sur un état booléen observé périodiquement.
+/// Stability filter on a periodically observed boolean state.
 ///
-/// Rend `Some(nouvel_état)` au moment précis où un changement est retenu, et
-/// `None` sinon — y compris pour toutes les observations qui suivent le
-/// changement. L'appelant n'a donc rien à mémoriser : il émet un message
-/// chaque fois qu'on lui rend `Some`.
+/// Returns `Some(nouvel_état)` at the precise moment a change is kept, and
+/// `None` otherwise — including for all observations following the
+/// change. The caller therefore has nothing to memorise: it emits a message
+/// every time it is given `Some`.
 pub struct Hysteresis {
     courant: bool,
     compte_contraire: u8,
@@ -47,8 +47,8 @@ impl Hysteresis {
         Some(observe)
     }
 
-    /// État actuellement retenu. Utile au fil de sondage pour renseigner le
-    /// drapeau partagé avec l'injecteur d'entrées.
+    /// Currently kept state. Useful to the polling thread to fill in the
+    /// flag shared with the input injector.
     pub fn courant(&self) -> bool {
         self.courant
     }
@@ -70,14 +70,14 @@ mod win {
         IDC_SIZENS, IDC_SIZENWSE, IDC_SIZEWE, IDC_WAIT,
     };
 
-    /// Période de sondage. 20 Hz : assez pour que la bascule accompagne un
-    /// changement de scène, assez peu pour être invisible au profileur.
+    /// Polling period. 20 Hz: enough for the switch to accompany a
+    /// scene change, little enough to be invisible to the profiler.
     const PERIODE: Duration = Duration::from_millis(50);
 
-    /// Table des curseurs système, chargée une fois. `LoadCursorW` sur un
-    /// `IDC_*` rend un HANDLE PARTAGÉ, stable pour la durée du processus :
-    /// comparer le handle courant à cette table identifie la forme sans
-    /// inspecter le bitmap.
+    /// Table of system cursors, loaded once. `LoadCursorW` on an
+    /// `IDC_*` returns a SHARED HANDLE, stable for the duration of the process:
+    /// comparing the current handle with this table identifies the shape without
+    /// inspecting the bitmap.
     fn table_des_formes() -> Vec<(isize, CursorShape)> {
         let paires = [
             (IDC_ARROW, CursorShape::Default),
@@ -105,9 +105,9 @@ mod win {
     }
 
     fn forme_de(handle: HCURSOR, table: &[(isize, CursorShape)]) -> CursorShape {
-        // Un curseur applicatif custom ne correspond à aucun curseur système
-        // et retombe sur `default` : c'est le prix assumé du choix « forme
-        // seule », qui évite tout rendu d'overlay côté client.
+        // A custom application cursor matches no system cursor
+        // and falls back on `default`: that is the accepted price of the "shape
+        // only" choice, which avoids any overlay rendering on the client side.
         table
             .iter()
             .find(|(h, _)| *h == handle.0 as isize)
@@ -124,9 +124,9 @@ mod win {
         Ok((info.flags.0 & CURSOR_SHOWING.0 != 0, info.hCursor))
     }
 
-    /// Lance le fil de sondage. Il émet un `AgentControl::Pointer` à chaque
-    /// changement retenu — de visibilité comme de forme — et tient à jour le
-    /// drapeau `mode_relatif` que lit l'injecteur d'entrées.
+    /// Launches the polling thread. It emits an `AgentControl::Pointer` at each
+    /// kept change — of visibility as of shape — and keeps up to date the
+    /// `mode_relatif` flag the input injector reads.
     pub fn spawn_probe(
         tx: Sender<AgentControl>,
         mode_relatif: Arc<AtomicBool>,
@@ -146,24 +146,24 @@ mod win {
                         let visible_retenu = hysteresis.courant();
                         let forme_changee = derniere_forme != Some(forme);
 
-                        // Toujours mémoriser la forme observée, même si elle
-                        // ne cause pas d'émission ci-dessous : sinon, un
-                        // changement survenu pendant que le curseur est
-                        // masqué ne serait jamais annoncé au retour en mode
-                        // visible (le prochain `forme_changee` le comparerait
-                        // à une forme déjà obsolète).
+                        // Always memorise the observed shape, even if it
+                        // causes no emission below: otherwise, a
+                        // change happening while the cursor is
+                        // hidden would never be announced on return to
+                        // visible mode (the next `forme_changee` would compare it
+                        // to an already obsolete shape).
                         derniere_forme = Some(forme);
 
-                        // Un changement de forme seul ne justifie une émission
-                        // que si le curseur est retenu visible : masqué, le
-                        // client pose `cursor: 'none'` et n'utilise jamais
-                        // `shape` (voir pointer.ts) — un message de forme
-                        // pendant qu'un jeu tourne serait donc pur bruit sur un
-                        // canal fiable, jusqu'à 20 messages par seconde.
+                        // A shape change alone only justifies an emission
+                        // if the cursor is kept visible: hidden, the
+                        // client sets `cursor: 'none'` and never uses
+                        // `shape` (see pointer.ts) — a shape message
+                        // while a game is running would therefore be pure noise on a
+                        // reliable channel, up to 20 messages per second.
                         if bascule.is_some() || (forme_changee && visible_retenu) {
                             mode_relatif.store(!visible_retenu, Ordering::Relaxed);
-                            // Le récepteur est tombé : la session est finie,
-                            // ce fil n'a plus de raison d'être.
+                            // The receiver has dropped: the session is over,
+                            // this thread has no reason to exist any more.
                             if tx
                                 .send(AgentControl::pointer(visible_retenu, forme))
                                 .is_err()
@@ -173,7 +173,7 @@ mod win {
                         }
                     }
                     Err(e) => {
-                        // On reste en absolu : jamais de bascule à l'aveugle.
+                        // We stay absolute: never a blind switch.
                         if !echec_signale {
                             echec_signale = true;
                             tracing::warn!(erreur = %e, "sondage du curseur indisponible (avertissement unique)");
@@ -233,7 +233,7 @@ mod tests {
         let mut h = Hysteresis::new(true);
         assert_eq!(h.observer(false), None);
         assert_eq!(h.observer(false), None);
-        assert_eq!(h.observer(true), None); // le compteur repart de zéro
+        assert_eq!(h.observer(true), None); // the counter restarts from zero
         assert_eq!(h.observer(false), None);
         assert_eq!(h.observer(false), None);
         assert_eq!(h.observer(false), Some(false));

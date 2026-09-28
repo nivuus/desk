@@ -17,7 +17,7 @@ fn le_meme_repertoire_pousse() {
     );
 }
 
-/// 🔴 Le cas pour lequel tout ce module existe.
+/// 🔴 The case this whole module exists for.
 #[test]
 fn un_repertoire_different_sans_confirmation_retient() {
     assert_eq!(
@@ -33,20 +33,20 @@ fn un_repertoire_different_avec_confirmation_pousse_et_memorise_le_neuf() {
     assert_eq!(a_memoriser(d, "Téléchargements"), Some("Téléchargements"));
 }
 
-/// 🔴 **RETENIR NE MÉMORISE RIEN**, et c'est la moitié qui compte.
+/// 🔴 **HOLDING BACK REMEMBERS NOTHING**, and it is the half that matters.
 ///
-/// **Sa rouge** : faire rendre `Some(annonce)` à `a_memoriser` sur `Retenir`.
-/// Ce test tombe, et le défaut serait qu'un simple rechargement de page ferait
-/// pousser ce que le premier `Bonjour` avait refusé — *la retenue ne durerait
-/// qu'une visite*.
+/// **Its red**: make `a_memoriser` return `Some(annonce)` on `Retenir`.
+/// This test fails, and the defect would be that a simple page reload would
+/// push what the first `Bonjour` had refused — *holding back would only last
+/// one visit*.
 #[test]
 fn retenir_ne_memorise_rien() {
     assert_eq!(a_memoriser(Decision::Retenir, "Téléchargements"), None);
 }
 
-/// La comparaison est EXACTE : ni casse repliée, ni espaces rognés. Un nom de
-/// répertoire est ce que le système de fichiers en dit, et « Documents » n'est
-/// pas « documents » sur tous les systèmes.
+/// The comparison is EXACT: no case folding, no trimmed spaces. A
+/// directory name is what the file system says it is, and "Documents" is
+/// not "documents" on every system.
 #[test]
 fn la_comparaison_de_nom_est_exacte() {
     assert_eq!(
@@ -59,16 +59,16 @@ fn la_comparaison_de_nom_est_exacte() {
     );
 }
 
-/// Un nom VIDE est un nom comme un autre : il ne vaut pas « absent ». Les
-/// confondre ferait qu'une racine sans nom pousserait toujours.
+/// An EMPTY name is a name like any other: it is not worth "absent". Confusing
+/// them would mean a nameless root would always push.
 #[test]
 fn un_nom_memorise_vide_n_est_pas_un_nom_absent() {
     assert_eq!(decider(Some(""), "Documents", false), Decision::Retenir);
     assert_eq!(decider(Some(""), "", false), Decision::Pousser);
 }
 
-/// `forcer` sur un premier montage ou sur le même répertoire ne change rien :
-/// on poussait déjà.
+/// `forcer` on a first mount or on the same directory changes nothing:
+/// we were already pushing.
 #[test]
 fn forcer_ne_change_rien_quand_on_poussait_deja() {
     assert_eq!(decider(None, "Documents", true), Decision::Pousser);

@@ -1,19 +1,19 @@
-//! **La porte** : charger `nvEncodeAPI64.dll`, vérifier que le pilote parle
-//! notre version, et obtenir sa table de fonctions.
+//! **The door**: load `nvEncodeAPI64.dll`, check that the driver speaks
+//! our version, and obtain its function table.
 //!
-//! Extrait de `session.rs` le 30 août 2026, **parce que l'ajout de
-//! `regler_debit` y avait fait franchir le plafond de 500 lignes** (504
-//! mesurées). La doctrine du dépôt est d'extraire, jamais de comprimer — et
-//! la coupe suit une frontière réelle : ouvrir la porte n'est pas s'en
-//! servir. `session.rs` retombe à ~440.
+//! Extracted from `session.rs` on 30 August 2026, **because the addition of
+//! `regler_debit` had made it cross the 500-line ceiling** (504
+//! measured). The repository's doctrine is to extract, never to compress — and
+//! the cut follows a real boundary: opening the door is not
+//! using it. `session.rs` falls back to ~440.
 //!
-//! 🟢 **CE MODULE A TOURNÉ** (30 août 2026, VM cible) : le pilote a annoncé
-//! **`0xd1`** — soit **13.1**, plus récent que la **12.2** transcrite — et
-//! `abi::pilote_compatible` l'a accepté. ⚠️ **La branche du REFUS, elle,
-//! n'a jamais couru** : aucune machine ici ne porte un pilote antérieur à
-//! 12.2, et ce chemin-là reste donc non éprouvé.
+//! 🟢 **THIS MODULE HAS RUN** (30 August 2026, target VM): the driver announced
+//! **`0xd1`** — that is **13.1**, more recent than the transcribed **12.2** — and
+//! `abi::pilote_compatible` accepted it. ⚠️ **The REFUSAL branch, for its part,
+//! has never run**: no machine here carries a driver older than
+//! 12.2, and that path therefore remains untested.
 //!
-//! ⚠️ **Notice de licence et provenance de l'ABI : `super::abi`.**
+//! ⚠️ **Licence notice and provenance of the ABI: `super::abi`.**
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -22,14 +22,14 @@ use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
 use super::abi;
 use super::fonctions::{self, ListeDeFonctions, Statut};
 
-/// Traduit un `NVENCSTATUS` en erreur, en nommant l'appel.
+/// Translates an `NVENCSTATUS` into an error, naming the call.
 pub(super) fn verifier(statut: Statut, quoi: &str) -> Result<()> {
     if statut == abi::SUCCESS {
         return Ok(());
     }
-    // 🔴 Ce code-ci mérite d'être nommé : il veut dire « une version de
-    // structure est fausse », et c'est le défaut le plus silencieux de cette
-    // API — voir `super::abi`.
+    // 🔴 This code deserves to be named: it means "a structure
+    // version is wrong", and it is the most silent defect of this
+    // API — see `super::abi`.
     if statut == abi::ERR_INVALID_VERSION {
         bail!(
             "{quoi} : NV_ENC_ERR_INVALID_VERSION ({statut}) — une version de \
@@ -40,11 +40,11 @@ pub(super) fn verifier(statut: Statut, quoi: &str) -> Result<()> {
     bail!("{quoi} : NVENCSTATUS {statut}")
 }
 
-/// La porte : la DLL du pilote et sa table de fonctions.
+/// The door: the driver's DLL and its function table.
 ///
-/// ⚠️ **La DLL n'est jamais relâchée**, à dessein : plusieurs sessions
-/// coexistent (une par fenêtre), et un `FreeLibrary` sous les pieds d'une
-/// voisine serait un plantage. Le processus la rend en mourant.
+/// ⚠️ **The DLL is never released**, on purpose: several sessions
+/// coexist (one per window), and a `FreeLibrary` pulled from under a
+/// neighbour would be a crash. The process gives it back when dying.
 pub struct Porte {
     pub(super) fonctions: ListeDeFonctions,
 }
@@ -54,7 +54,7 @@ impl Porte {
         let module = unsafe { LoadLibraryA(windows::core::s!("nvEncodeAPI64.dll")) }
             .context("chargement de nvEncodeAPI64.dll (la DLL vient du pilote NVIDIA)")?;
 
-        // ① La version du pilote AVANT tout, pour que le refus soit lisible.
+        // ① The driver version BEFORE anything, so that the refusal is readable.
         let version_max = unsafe {
             GetProcAddress(
                 module,
@@ -86,7 +86,7 @@ impl Porte {
             "porte NVENC : pilote compatible"
         );
 
-        // ② La table de fonctions.
+        // ② The function table.
         let creer =
             unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPICreateInstance")) }
                 .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance absente de la DLL"))?;

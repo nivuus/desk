@@ -1,4 +1,4 @@
-//! Tests d'hôte de [`super`]. Purs : aucun `.lnk`, aucun COM, aucune VM.
+//! Host tests of [`super`]. Pure: no `.lnk`, no COM, no VM.
 
 use super::*;
 
@@ -10,15 +10,15 @@ fn app(cle: &str, nom: &str, chemin: &str) -> Application {
         cible: r"c:\x\y.exe".into(),
         arguments: String::new(),
         repertoire: r"c:\x".into(),
-        // ⚠️ Ce fixture N'A PAS D'ICÔNE, et c'est délibéré : le diff apparie
-        // sur la CLÉ, et l'icône n'est pas une identité. Le cas d'une icône
-        // qui change sans que la clé change est éprouvé à part.
+        // ⚠️ This fixture HAS NO ICON, and it is deliberate: the diff matches
+        // on the KEY, and the icon is not an identity. The case of an icon
+        // that changes without the key changing is tested separately.
         icone: None,
         source_max: proto::plateforme::SourceMax::NonMesuree,
-        // ⚠️ MÊME RAISON QUE L'ICÔNE : ni l'accent ni les associations ne
-        // participent à l'identité, qui est la CLÉ. Le cas d'une application
-        // dont l'accent change sans que la clé change relève du même
-        // raisonnement, et le diff n'a rien à en dire.
+        // ⚠️ SAME REASON AS THE ICON: neither the accent nor the associations
+        // take part in the identity, which is the KEY. The case of an application
+        // whose accent changes without the key changing follows the same
+        // reasoning, and the diff has nothing to say about it.
         accent: None,
         associations: Vec::new(),
     }
@@ -26,10 +26,10 @@ fn app(cle: &str, nom: &str, chemin: &str) -> Application {
 
 #[test]
 fn deux_catalogues_identiques_rendent_un_diff_entierement_vide() {
-    // 🔴 LA ROUGE : comparer par ORDRE au lieu de par CLÉ. Le parcours d'un
-    // répertoire ne garantit aucun ordre, donc un simple remaniement de la
-    // lecture produirait un diff plein À CHAQUE TOUR — c'est-à-dire un message
-    // toutes les 30 secondes pour un disque qui n'a pas bougé.
+    // 🔴 THE RED: comparing by ORDER instead of by KEY. Walking a
+    // directory guarantees no order, so a mere reshuffle of the
+    // read would produce a full diff ON EVERY ROUND — that is, a message
+    // every 30 seconds for a disk that has not moved.
     let hier = vec![app("a", "A", "/a"), app("b", "B", "/b")];
     let aujourdhui = vec![app("b", "B", "/b"), app("a", "A", "/a")];
     let d = diff(&hier, &aujourdhui);
@@ -52,8 +52,8 @@ fn une_application_neuve_est_apparue_et_pas_modifiee() {
 
 #[test]
 fn un_nom_qui_change_a_cle_egale_est_une_modification() {
-    // Le `.lnk` renommé : même triplet, donc même application, mais le nom
-    // affiché doit suivre. Ne comparer que les clés le figerait pour toujours.
+    // The renamed `.lnk`: same triple, hence same application, but the displayed
+    // name must follow. Comparing only keys would freeze it forever.
     let d = diff(&[app("a", "Ancien", "/a")], &[app("a", "Nouveau", "/a")]);
     assert_eq!(d.modifiees, vec![app("a", "Nouveau", "/a")]);
     assert!(d.apparues.is_empty());
@@ -62,8 +62,8 @@ fn un_nom_qui_change_a_cle_egale_est_une_modification() {
 
 #[test]
 fn un_chemin_de_lnk_qui_change_est_une_modification() {
-    // Et c'est ce chemin que le lancement emploie : le laisser dériver ferait
-    // lancer un raccourci qui n'est plus là.
+    // And it is that path the launch uses: letting it drift would
+    // launch a shortcut that is no longer there.
     let d = diff(
         &[app("a", "A", "/bureau/a.lnk")],
         &[app("a", "A", "/menu/a.lnk")],
@@ -73,8 +73,8 @@ fn un_chemin_de_lnk_qui_change_est_une_modification() {
 
 #[test]
 fn une_application_absente_d_aujourdhui_disparait_par_sa_cle() {
-    // La plateforme n'a besoin que de l'identité : rendre l'objet entier ferait
-    // grossir le message pour rien.
+    // The platform only needs the identity: returning the whole object would
+    // inflate the message for nothing.
     let d = diff(
         &[app("a", "A", "/a"), app("b", "B", "/b")],
         &[app("a", "A", "/a")],
@@ -86,9 +86,9 @@ fn une_application_absente_d_aujourdhui_disparait_par_sa_cle() {
 
 #[test]
 fn une_application_qui_revient_est_apparue() {
-    // 🔴 « Une disparition n'est pas une suppression » : le diff la redonne en
-    // `apparues`, et c'est la plateforme qui saura qu'elle la connaît déjà.
-    // L'agent ne tient aucune mémoire des disparitions passées.
+    // 🔴 "A disappearance is not a deletion": the diff gives it back as
+    // `apparues`, and it is the platform that will know it already knows it.
+    // The agent keeps no memory of past disappearances.
     let d1 = diff(&[app("a", "A", "/a")], &[]);
     assert_eq!(d1.disparues, vec!["a".to_string()]);
     let d2 = diff(&[], &[app("a", "A", "/a")]);
@@ -97,7 +97,7 @@ fn une_application_qui_revient_est_apparue() {
 
 #[test]
 fn un_catalogue_d_hier_vide_rend_tout_en_apparues_et_rien_en_disparues() {
-    // C'est le premier tour, et il ne doit rien annoncer disparu.
+    // It is the first round, and it must announce nothing as disappeared.
     let d = diff(&[], &[app("a", "A", "/a"), app("b", "B", "/b")]);
     assert_eq!(d.apparues.len(), 2);
     assert!(d.disparues.is_empty());
@@ -106,9 +106,9 @@ fn un_catalogue_d_hier_vide_rend_tout_en_apparues_et_rien_en_disparues() {
 
 #[test]
 fn le_diff_est_deterministe_et_trie_quel_que_soit_l_ordre_d_entree() {
-    // 🔴 SANS LE TRI, deux réconciliations successives émettraient des messages
-    // DIFFÉRENTS pour un état IDENTIQUE, et rien ne le dirait — le journal
-    // montrerait un catalogue qui bouge sans que le disque ait changé.
+    // 🔴 WITHOUT SORTING, two successive reconciliations would emit DIFFERENT
+    // messages for an IDENTICAL state, and nothing would say so — the log
+    // would show a catalogue moving without the disk having changed.
     let hier = vec![app("x", "X", "/x")];
     let a = vec![
         app("c", "C", "/c"),
@@ -145,9 +145,9 @@ fn le_diff_est_deterministe_et_trie_quel_que_soit_l_ordre_d_entree() {
 
 #[test]
 fn un_doublon_de_cle_dans_la_lecture_du_jour_ne_produit_qu_une_application() {
-    // Deux `.lnk` au même triplet — le cas mesuré : sur la VM, 167 raccourcis
-    // retenus rendent 154 clés. Le diff ne doit pas les compter deux fois, ni
-    // rendre une `modifiee` pour une application qui vient d'apparaître.
+    // Two `.lnk` with the same triple — the measured case: on the VM, 167 kept
+    // shortcuts yield 154 keys. The diff must not count them twice, nor
+    // return a `modifiee` for an application that has just appeared.
     let d = diff(
         &[],
         &[

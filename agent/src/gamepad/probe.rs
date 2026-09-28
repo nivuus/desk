@@ -1,37 +1,37 @@
 use std::time::{Duration, Instant};
 
-/// Sonde du chantier B : ViGEmBus est-il utilisable, et son rappel de
-/// vibration restitue-t-il les magnitudes ?
+/// Work stream B probe: is ViGEmBus usable, and does its vibration
+/// callback restore the magnitudes?
 ///
-/// A initialement servi à figer l'API réelle de `vigem-client` avant que la
-/// tâche 10 n'écrive `win::VirtualPad`/`win::spawn_rumble` ci-dessus. Gardée
-/// après coup, à la demande explicite du brief de la tâche 10 : `diagnostics.rs`
-/// l'appelle encore derrière `VIGEM_PROBE`, et la tâche 16 (recette) prévoit
-/// de la réutiliser pour relire l'état de la manette par `XInputGetState`.
+/// Initially served to pin the real API of `vigem-client` before
+/// task 10 wrote `win::VirtualPad`/`win::spawn_rumble` above. Kept
+/// afterwards, at the explicit request of task 10's brief: `diagnostics.rs`
+/// still calls it behind `VIGEM_PROBE`, and task 16 (acceptance) plans
+/// to reuse it to read the gamepad's state back through `XInputGetState`.
 ///
-/// **Écart avec la forme envisagée au départ** : il n'existe pas de
-/// `notification.wait_timeout(Duration)`. L'API réelle (vérifiée sur le
-/// code source publié de la crate, docs.rs 0.1.4) est :
+/// **Gap from the form initially envisaged**: there is no
+/// `notification.wait_timeout(Duration)`. The real API (checked on the
+/// crate's published source code, docs.rs 0.1.4) is:
 ///
 /// - `target.request_notification() -> Result<XRequestNotification, Error>`,
-///   disponible uniquement avec la fonctionnalité de crate
-///   `unstable_xtarget_notification` (sans elle la méthode n'existe pas du
-///   tout — pas une erreur à l'exécution, une absence à la compilation).
-/// - `XRequestNotification` n'est pas directement pollable : ses méthodes
-///   bas niveau (`request`, `poll`) exigent un `Pin<&mut Self>` parce que la
-///   structure contient un `PhantomPinned`. L'usage prévu par la crate
-///   elle-même est sa méthode `spawn_thread(self, f)`, qui fait tourner la
-///   boucle requête/attente dans un fil dédié et rappelle `f` à chaque
-///   notification reçue — pas de délai réglable non plus, elle bloque tant
-///   qu'aucune notification n'arrive.
-/// - La structure reçue est `XNotification { large_motor: u8, small_motor:
-///   u8, led_number: u8 }` — les noms de champs supposés dans le brief
-///   étaient corrects.
+///   only available with the crate feature
+///   `unstable_xtarget_notification` (without it the method does not exist at
+///   all — not a runtime error, an absence at compile time).
+/// - `XRequestNotification` is not directly pollable: its low-level
+///   methods (`request`, `poll`) require a `Pin<&mut Self>` because the
+///   structure contains a `PhantomPinned`. The usage intended by the crate
+///   itself is its `spawn_thread(self, f)` method, which runs the
+///   request/wait loop in a dedicated thread and calls `f` back at each
+///   notification received — no adjustable delay either, it blocks as long as
+///   no notification arrives.
+/// - The received structure is `XNotification { large_motor: u8, small_motor:
+///   u8, led_number: u8 }` — the field names assumed in the brief
+///   were correct.
 ///
-/// On relaie donc les notifications du fil de `spawn_thread` vers ce fil-ci
-/// par un canal `mpsc`, et c'est CE canal qu'on interroge avec un délai
-/// (`recv_timeout`) pour retrouver le comportement « attends jusqu'à N
-/// secondes » que la sonde doit avoir.
+/// We therefore relay the notifications from the `spawn_thread` thread to this one
+/// through an `mpsc` channel, and it is THIS channel we query with a delay
+/// (`recv_timeout`) to get back the "wait up to N
+/// seconds" behaviour the probe must have.
 pub fn probe(secondes: u64) -> anyhow::Result<String> {
     use anyhow::Context;
     use std::sync::mpsc;
@@ -44,8 +44,8 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
         .context("branchement de la manette virtuelle")?;
     target.wait_ready().context("attente de disponibilité")?;
 
-    // Un état non neutre : si un outil Windows (joy.cpl) est ouvert sur la
-    // VM, il doit le montrer.
+    // A non-neutral state: if a Windows tool (joy.cpl) is open on the
+    // VM, it must show it.
     let etat = vigem_client::XGamepad {
         buttons: vigem_client::XButtons!(A),
         left_trigger: 128,
@@ -55,21 +55,21 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
         thumb_rx: 0,
         thumb_ry: 0,
     };
-    // Constat de cette sonde : `wait_ready()` peut rendre `Ok(())` alors que
-    // le bus USB virtuel n'a pas fini son énumération PnP côté Windows — le
-    // premier `update()` échoue alors avec `WinError(259)`
-    // (`ERROR_NO_MORE_ITEMS`), une variante que `vigem-client` ne traduit
-    // PAS en `Error::TargetNotReady` (seul `ERROR_DEV_NOT_EXIST` l'est).
-    // `wait_ready` n'est donc pas une garantie suffisante avant le premier
-    // envoi d'état : il faut réessayer avec un court repli. Documenté ici
-    // pour la tâche 10, qui devra faire de même dans le module définitif.
+    // Finding of this probe: `wait_ready()` can return `Ok(())` while
+    // the virtual USB bus has not finished its PnP enumeration on the Windows side — the
+    // first `update()` then fails with `WinError(259)`
+    // (`ERROR_NO_MORE_ITEMS`), a variant that `vigem-client` does NOT translate
+    // into `Error::TargetNotReady` (only `ERROR_DEV_NOT_EXIST` is).
+    // `wait_ready` is therefore not a sufficient guarantee before the first
+    // state send: one must retry with a short backoff. Documented here
+    // for task 10, which will have to do the same in the final module.
     //
-    // Décompte exact : le premier appel à `update()` ci-dessous compte comme
-    // tentative n°1 et n'est pas soumis à la garde `tentatives < 20` (elle ne
-    // s'évalue qu'après un premier échec) ; en cas d'échecs répétés, la
-    // boucle en fait donc au plus 21 au total (1 initial + 20 reprises), pas
-    // 20 — c'est bien ce que `tentatives` compte à la fin (nombre de
-    // REPRISES, pas d'appels totaux).
+    // Exact count: the first call to `update()` below counts as
+    // attempt no. 1 and is not subject to the `tentatives < 20` guard (it is only
+    // evaluated after a first failure); in case of repeated failures, the
+    // loop therefore makes at most 21 in total (1 initial + 20 retries), not
+    // 20 — that is indeed what `tentatives` counts at the end (number of
+    // RETRIES, not of total calls).
     let mut tentatives = 0u32;
     loop {
         match target.update(&etat) {
@@ -93,9 +93,9 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
         tracing::info!(tentatives, "update() a fini par réussir après attente");
     }
 
-    // `request_notification()` puis `spawn_thread` : voir le commentaire de
-    // module ci-dessus pour pourquoi ce détour est nécessaire plutôt qu'un
-    // hypothétique `wait_timeout`.
+    // `request_notification()` then `spawn_thread`: see the module comment
+    // above for why this detour is necessary rather than a
+    // hypothetical `wait_timeout`.
     let (tx, rx) = mpsc::channel::<vigem_client::XNotification>();
     let requete = target.request_notification().context(
         "requête de notification (nécessite la fonctionnalité unstable_xtarget_notification)",
@@ -125,9 +125,9 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
         }
     }
 
-    // Débrancher la manette avant de joindre le fil : `poll` y est bloqué en
-    // attente d'une notification, et seul le débranchement (qui annule la
-    // requête en cours côté pilote) le fait sortir de sa boucle.
+    // Unplug the gamepad before joining the thread: `poll` is blocked there
+    // waiting for a notification, and only unplugging (which cancels the
+    // pending request on the driver side) gets it out of its loop.
     drop(target);
     let _ = fil.join();
 

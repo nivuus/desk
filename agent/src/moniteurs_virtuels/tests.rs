@@ -1,18 +1,18 @@
 use super::*;
 use std::cell::RefCell;
 
-/// Pilote factice : il compte les sorties vivantes, il n'en crée aucune.
+/// Fake driver: it counts the live outputs, it creates none.
 struct PiloteFactice {
     vivantes: RefCell<Vec<IdSortie>>,
     suivant: RefCell<IdSortie>,
     plafond: usize,
-    /// Sorties effectivement rendues par `detruire`, dans l'ordre — ce que
-    /// `Sorties::detruire` teste, distinctement de `vivantes` qui ne dit
-    /// que ce qui reste.
+    /// Outputs actually returned by `detruire`, in order — what
+    /// `Sorties::detruire` tests, distinctly from `vivantes` which only says
+    /// what remains.
     detruites: RefCell<Vec<IdSortie>>,
-    /// Fait échouer toute destruction tant que levé, sans toucher
-    /// `vivantes` : c'est le cas où le pilote refuse, et où la sortie
-    /// doit rester tenue par la garde.
+    /// Makes any destruction fail as long as it is raised, without touching
+    /// `vivantes`: it is the case where the driver refuses, and where the output
+    /// must stay held by the guard.
     refuse_les_destructions: RefCell<bool>,
 }
 
@@ -29,8 +29,8 @@ impl PiloteFactice {
 }
 
 impl Default for PiloteFactice {
-    /// Aucun plafond : les tests de `detruire` ne portent pas sur le
-    /// vivier, `usize::MAX` évite qu'ils s'en soucient.
+    /// No ceiling: the tests of `detruire` do not bear on the
+    /// pool, `usize::MAX` keeps them from caring about it.
     fn default() -> Self {
         Self::avec_plafond(usize::MAX)
     }
@@ -75,8 +75,8 @@ fn la_garde_detruit_tout_ce_qu_elle_a_cree() {
     );
 }
 
-/// Le cas qui justifie la garde : ces API échouent par plantage, et un
-/// moniteur virtuel survit au processus.
+/// The case that justifies the guard: these APIs fail by crashing, and a
+/// virtual monitor outlives the process.
 #[test]
 fn la_garde_detruit_meme_quand_le_fil_panique() {
     let pilote = PiloteFactice::avec_plafond(8);
@@ -104,8 +104,8 @@ fn detruire_rend_la_sortie_au_pilote_et_l_oublie() {
     assert_eq!(*pilote.detruites.borrow(), vec![a]);
     assert_eq!(sorties.nombre(), 1);
 
-    // La garde ne doit pas redétruire `a` : le pilote refuserait, et le
-    // journal accuserait une purge due qui n'existe pas.
+    // The guard must not destroy `a` again: the driver would refuse, and the
+    // log would accuse a due purge that does not exist.
     drop(sorties);
     assert_eq!(*pilote.detruites.borrow(), vec![a, b]);
 }
@@ -123,9 +123,9 @@ fn detruire_une_sortie_inconnue_echoue_sans_rien_toucher() {
 
 #[test]
 fn une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie() {
-    // Le GUID est la seule prise du projet sur ce moniteur : l'oublier
-    // sur échec le rendrait irrécupérable, et la garde ne le retenterait
-    // jamais.
+    // The GUID is the project's only handle on this monitor: forgetting it
+    // on failure would make it unrecoverable, and the guard would never retry
+    // it.
     let pilote = PiloteFactice::default();
     let mut sorties = Sorties::nouvelles(&pilote);
     let a = sorties.creer(1280, 720, 60).unwrap();
@@ -167,8 +167,8 @@ fn des_dimensions_identiques_donnent_un_facteur_unite() {
     );
 }
 
-/// Le piège relevé par la sonde : sortie annoncée 3413×960 par DXGI,
-/// 5120×1440 par WMI — rapport 1,5, la mise à l'échelle DPI à 150 %.
+/// The trap noted by the probe: output announced as 3413×960 by DXGI,
+/// 5120×1440 by WMI — ratio 1.5, DPI scaling at 150 %.
 #[test]
 fn le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi() {
     let (horizontal, vertical) = facteur_echelle((3413, 960), (5120, 1440)).unwrap();
@@ -227,8 +227,8 @@ fn une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture() {
     );
 }
 
-/// Le cas qui compte : recadrer sur le rectangle annoncé alors que la
-/// texture est aux dimensions physiques décalerait tout d'un facteur 1,5.
+/// The case that matters: cropping on the announced rectangle while the
+/// texture is at physical dimensions would shift everything by a factor of 1.5.
 #[test]
 fn le_facteur_dpi_agrandit_la_region_et_son_origine() {
     let sortie = Rect {
@@ -254,10 +254,10 @@ fn le_facteur_dpi_agrandit_la_region_et_son_origine() {
     );
 }
 
-/// Le piège que cette fonction existe pour éviter : appliquer à toutes les
-/// sorties le facteur d'échelle de la première. Deux sorties virtuelles
-/// peuvent porter deux DPI différents, et un recadrage calculé au mauvais
-/// facteur est décalé sans que rien ne le signale.
+/// The trap this function exists to avoid: applying to all
+/// outputs the scale factor of the first. Two virtual outputs
+/// can carry two different DPIs, and a crop computed with the wrong
+/// factor is shifted without anything reporting it.
 #[test]
 fn chaque_sortie_est_convertie_avec_son_propre_facteur() {
     let sorties = vec![
@@ -285,9 +285,9 @@ fn chaque_sortie_est_convertie_avec_son_propre_facteur() {
             height: 720
         }
     );
-    // Facteur 1280/853 ≈ 1,5 : la seconde sortie couvre TOUTE sa texture.
-    // C'est le test qui compte : avec le facteur de la sortie 0 (l'unité),
-    // on obtiendrait 853×480 dans un coin d'une texture 1280×720.
+    // Factor 1280/853 ≈ 1.5: the second output covers its WHOLE texture.
+    // It is the test that matters: with output 0's factor (unity),
+    // one would get 853×480 in a corner of a 1280×720 texture.
     assert_eq!(
         places[1],
         Rect {
@@ -299,8 +299,8 @@ fn chaque_sortie_est_convertie_avec_son_propre_facteur() {
     );
 }
 
-/// Chaque place est ramenée à l'origine de SA texture : c'est ce qui
-/// distingue N sorties de N tuiles sur une sortie.
+/// Each slot is brought back to the origin of ITS texture: it is what
+/// distinguishes N outputs from N tiles on one output.
 #[test]
 fn une_sortie_decalee_dans_le_bureau_virtuel_part_de_l_origine_de_sa_texture() {
     let sorties = vec![Rect {
@@ -333,9 +333,9 @@ fn un_desaccord_de_longueur_est_refuse() {
     assert!(places_texture_par_sortie(&[], &[(1280, 720)]).is_err());
 }
 
-/// Une annonce dégénérée ne donne aucun facteur (`facteur_echelle` rend
-/// `None`) : le refus doit ressortir, pas un facteur unité silencieux qui
-/// décalerait tous les recadrages de cette sortie.
+/// A degenerate announcement gives no factor (`facteur_echelle` returns
+/// `None`): the refusal must come out, not a silent unity factor that
+/// would shift all the crops of this output.
 #[test]
 fn une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite() {
     let sorties = vec![Rect {

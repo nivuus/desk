@@ -1,36 +1,36 @@
-//! **L'AIGUILLAGE du micro** : lequel des puits reçoit le flux montant, et
-//! pourquoi il n'y en a jamais deux.
+//! **The mic ROUTING**: which of the sinks receives the upstream flow, and
+//! why there are never two.
 //!
-//! Trois issues, et une seule règle (Décision 10 du plan E2) — voir
-//! [`choisir_puits`] :
+//! Three outcomes, and a single rule (Decision 10 of plan E2) — see
+//! [`choisir_puits`]:
 //!
-//! | `MICRO` | `MICRO_MESURE` | Puits |
+//! | `MICRO` | `MICRO_MESURE` | Sink |
 //! | --- | --- | --- |
-//! | ≠ `0` | `1` | **Mesure** — l'instrument de banc PREND LE PAS |
-//! | ≠ `0` | autre | **Câble** — le puits nominal depuis le bloc E2 |
-//! | `0` | *n'importe* | **Aucun** |
+//! | ≠ `0` | `1` | **Measurement** — the bench instrument TAKES PRECEDENCE |
+//! | ≠ `0` | other | **Cable** — the nominal sink since block E2 |
+//! | `0` | *any* | **None** |
 //!
-//! 🔴 **Deux puits ne peuvent pas consommer un même `LecteurMicro`** : chacun
-//! draine ce que l'autre attend, et le symptôme serait un micro qui hoquette
-//! sans qu'aucune ligne ne le dise. D'où une règle **pure et testée sur
-//! l'hôte**, plutôt que deux `if` posés l'un après l'autre.
+//! 🔴 **Two sinks cannot consume the same `LecteurMicro`**: each
+//! drains what the other waits for, and the symptom would be a mic that hiccups
+//! without any line saying so. Hence a rule **pure and tested on
+//! the host**, rather than two `if`s placed one after the other.
 //!
-//! Le puits de MESURE lui-même (`MICRO_MESURE=1`) vit dans `micro/mesure.rs` :
-//! un consommateur qui joue le rôle du câble et rend au journal ce qu'il a
-//! entendu.
+//! The MEASUREMENT sink itself (`MICRO_MESURE=1`) lives in `micro/mesure.rs`:
+//! a consumer that plays the cable's role and reports to the log what it
+//! heard.
 //!
-//! ⚠️ **INSTRUMENT DE BANC, JAMAIS UNE CONFIGURATION LIVRÉE.** D'où la
-//! convention `MICRO_MESURE=1` qui **ARME** — et non `=0` qui désarmerait,
-//! comme le font `AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR` et `CAPTEUR`. Une simple
-//! présence ne suffit pas non plus : il faut la valeur `1`. La règle générale du
-//! dépôt reste « on désarme sur `=0` ce qui est livré, on arme sur `=1` ce qui
-//! ne l'est pas ».
+//! ⚠️ **BENCH INSTRUMENT, NEVER A SHIPPED CONFIGURATION.** Hence the
+//! `MICRO_MESURE=1` convention that **ARMS** — and not `=0` that would disarm,
+//! as `AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR` and `CAPTEUR` do. A mere
+//! presence is not enough either: the value `1` is required. The repository's general
+//! rule remains "we disarm on `=0` what is shipped, we arm on `=1` what
+//! is not".
 //!
-//! **PUR : aucun `cfg`, aucun objet COM, aucun périphérique.** Ce fichier
-//! compile et se teste sous Linux, contrairement à son voisin
-//! `demarrage/audio.rs`. C'est ce qui permet à la partie qui peut réellement se
-//! tromper — le désentrelacement, la fenêtre d'une seconde, le sens de la crête
-//! — d'être éprouvée sans VM.
+//! **PURE: no `cfg`, no COM object, no device.** This file
+//! compiles and is tested under Linux, unlike its neighbour
+//! `demarrage/audio.rs`. That is what lets the part that can really
+//! go wrong — the de-interleaving, the one-second window, the direction of the peak
+//! — be tested without a VM.
 
 use std::sync::{Arc, Mutex};
 
@@ -40,14 +40,14 @@ use crate::Config;
 
 use mesure::{consommer, PuitsDeMesure};
 
-/// Le puits de mesure lui-même, extrait au titre de la règle des 500 lignes.
-/// **Ce fichier ne garde que l'aiguillage.**
+/// The measurement sink itself, extracted under the 500-line rule.
+/// **This file only keeps the routing.**
 mod mesure;
 
-/// Quel puits reçoit le flux montant. Voir la table en tête de module.
+/// Which sink receives the upstream flow. See the table at the head of the module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Puits {
-    /// Le câble virtuel (`windows_micro`) : le puits nominal.
+    /// The virtual cable (`windows_micro`): the nominal sink.
     Cable,
     /// L'instrument de banc (`MICRO_MESURE=1`).
     Mesure,
@@ -56,71 +56,71 @@ pub(crate) enum Puits {
     Aucun,
 }
 
-/// **PUR, et testé sur l'hôte.** L'arbitrage entre les deux puits.
+/// **PURE, and tested on the host.** The arbitration between the two sinks.
 ///
-/// ⚠️ **Il prend deux booléens et non `&Config`, contrairement à la lettre du
-/// plan E2 (tâche 10, step 2).** Deux raisons : c'est tout ce dont la règle a
-/// besoin — un `Config` porte dix-huit champs dont seize sont hors sujet —, et
-/// surtout il n'existe aucun constructeur de `Config` pour les tests, si bien
-/// qu'exiger le type entier aurait rendu la règle éprouvable seulement au prix
-/// d'un montage. Une règle qu'on n'éprouve pas parce qu'elle coûte trop cher à
-/// monter est une règle non éprouvée.
+/// ⚠️ **It takes two booleans and not `&Config`, contrary to the letter of
+/// plan E2 (task 10, step 2).** Two reasons: it is all the rule
+/// needs — a `Config` carries eighteen fields, sixteen of which are off topic —, and
+/// above all there is no `Config` constructor for tests, so
+/// that requiring the whole type would have made the rule testable only at the cost
+/// of a set-up. A rule not tested because it costs too much to
+/// set up is an untested rule.
 pub(crate) fn choisir_puits(micro: bool, micro_mesure: bool) -> Puits {
     if !micro {
         return Puits::Aucun;
     }
-    // ⚠️ **L'instrument de banc PREND LE PAS**, il ne s'ajoute pas : on l'arme
-    // pour observer *au lieu* du câble.
+    // ⚠️ **The bench instrument TAKES PRECEDENCE**, it is not added: we arm it
+    // to observe *instead of* the cable.
     if micro_mesure {
         return Puits::Mesure;
     }
     Puits::Cable
 }
 
-/// `MICRO` laisse-t-elle le micro armé ? **Tout sauf `0`.**
+/// Does `MICRO` leave the mic armed? **Anything but `0`.**
 ///
-/// ⚠️ **Convention INVERSE de celle de `MICRO_MESURE` juste en dessous, et à
-/// dessein** : on désarme sur `=0` ce qui est LIVRÉ, on arme sur `=1` ce qui ne
-/// l'est pas. Le micro est livré depuis le bloc E2 ; le puits de mesure ne le
-/// sera jamais.
+/// ⚠️ **REVERSE convention of that of `MICRO_MESURE` just below, on
+/// purpose**: we disarm on `=0` what is SHIPPED, we arm on `=1` what is
+/// not. The mic has been shipped since block E2; the measurement sink
+/// never will be.
 ///
-/// **Ne jamais tester `is_ok()`** : quelqu'un qui écrirait `MICRO=0` pour être
-/// sûr de le couper l'allumerait. Un test garde ce prédicat.
+/// **Never test `is_ok()`**: someone writing `MICRO=0` to be
+/// sure to turn it off would turn it on. A test guards this predicate.
 pub(crate) fn arme_micro(valeur: Option<&str>) -> bool {
     valeur != Some("0")
 }
 
-/// `MICRO_MESURE` arme-t-elle le puits ? **`1`, et rien d'autre.**
+/// Does `MICRO_MESURE` arm the sink? **`1`, and nothing else.**
 ///
-/// ⚠️ **Ce prédicat existe pour être TESTÉ**, et le test existe pour empêcher
-/// une « simplification » future en `is_ok()`. La convention est l'inverse de
-/// celle d'`AUDIO`/`SUPERVISEUR`/`PLEIN_ECRAN`/`CAPTEUR`, qui désarment sur
-/// `=0` : ici on arme sur `=1`, parce qu'un instrument de banc ne doit pas
-/// s'allumer par la simple présence d'une variable — quelqu'un qui écrirait
-/// `MICRO_MESURE=0` pour être sûr de le couper l'allumerait.
+/// ⚠️ **This predicate exists to be TESTED**, and the test exists to prevent
+/// a future "simplification" into `is_ok()`. The convention is the reverse of
+/// that of `AUDIO`/`SUPERVISEUR`/`PLEIN_ECRAN`/`CAPTEUR`, which disarm on
+/// `=0`: here we arm on `=1`, because a bench instrument must not
+/// switch on through the mere presence of a variable — someone writing
+/// `MICRO_MESURE=0` to be sure to turn it off would turn it on.
 pub(crate) fn arme(valeur: Option<&str>) -> bool {
     valeur == Some("1")
 }
 
-/// Installe sur `session` le puits que [`choisir_puits`] désigne — le câble,
-/// l'instrument de banc, ou aucun.
+/// Installs on `session` the sink [`choisir_puits`] designates — the cable,
+/// the bench instrument, or none.
 ///
-/// ⚠️ **Cette ligne disait « le puits de mesure, si `MICRO_MESURE=1` », et
-/// concluait « tant que le vrai câble (bloc E2) n'existe pas ».** Le câble
-/// existe depuis la tâche 9 de ce même bloc : la phrase était devenue fausse
-/// dans la branche qui la livrait, ce qui est la classe de défaut exacte que
-/// la revue transverse de fin de branche cherche. Corrigée ici plutôt que
-/// laissée à trouver.
+/// ⚠️ **This line said "the measurement sink, if `MICRO_MESURE=1`", and
+/// concluded "as long as the real cable (block E2) does not exist".** The cable
+/// has existed since task 9 of this same block: the sentence had become false
+/// in the branch that shipped it, which is the exact class of defect
+/// the cross-cutting end-of-branch review looks for. Fixed here rather than
+/// left to be found.
 ///
-/// **Aucune de ces trois issues ne compromet la session** : quand aucun puits
-/// n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et
-/// le bouton du navigateur ne paraît pas.
+/// **None of these three outcomes compromises the session**: when no sink
+/// is set, `micro_disponible()` stays false, `ready` carries `mic: false`, and
+/// the browser's button does not appear.
 pub(super) fn brancher(config: &Config, session: &mut Session) {
     match choisir_puits(config.micro, config.micro_mesure) {
         Puits::Aucun => {
-            // ⚠️ ÉMISE AU BRANCHEMENT, comme celle du puits de mesure : son
-            // absence est ce qui prouve que `MICRO` n'a pas atteint le
-            // processus.
+            // ⚠️ EMITTED AT WIRING, like that of the measurement sink: its
+            // absence is what proves `MICRO` did not reach the
+            // process.
             tracing::info!(
                 session = %config.session_id,
                 "micro DESARME (MICRO=0)"
@@ -139,13 +139,13 @@ pub(super) fn brancher(config: &Config, session: &mut Session) {
     }
 }
 
-/// Le puits NOMINAL : l'écriture sur le câble virtuel.
+/// The NOMINAL sink: writing to the virtual cable.
 ///
-/// Son échec ne compromet jamais la session — `micro_disponible()` reste faux,
-/// `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. C'est
-/// le comportement d'avant le bloc E2, et il reste atteignable pour toutes les
-/// raisons que `windows_micro::ouvrir` sait nommer : câble introuvable ou
-/// ambigu, format refusé, boucle locale.
+/// Its failure never compromises the session — `micro_disponible()` stays false,
+/// `ready` carries `mic: false`, and the browser's button does not appear. It is
+/// the behaviour from before block E2, and it remains reachable for all the
+/// reasons `windows_micro::ouvrir` can name: cable not found or
+/// ambiguous, format refused, local loop.
 #[cfg(windows)]
 fn brancher_cable(config: &Config, session: &mut Session) {
     match crate::windows_micro::ouvrir(config) {
@@ -158,8 +158,8 @@ fn brancher_cable(config: &Config, session: &mut Session) {
     }
 }
 
-/// Sur l'hôte Linux il n'y a pas de câble, et il n'y a rien à dire : ce mode
-/// n'existe que pour que le crate compile et que les règles pures s'éprouvent.
+/// On the Linux host there is no cable, and nothing to say: this mode
+/// only exists so that the crate compiles and the pure rules can be tested.
 #[cfg(not(windows))]
 fn brancher_cable(_config: &Config, _session: &mut Session) {}
 
@@ -177,12 +177,12 @@ fn brancher_mesure(config: &Config, session: &mut Session) {
         lecteur: Arc::clone(&lecteur),
     }));
 
-    // ⚠️ ÉMISE AU BRANCHEMENT, PAS AU PREMIER PAQUET, et c'est délibéré. D6 a
-    // écrit un contrôle « la variable est-elle arrivée ? » qui rendait vide aux
-    // sept exécutions parce qu'il courait avant l'initialisation qu'il
-    // observait : il aurait masqué une variable réellement manquante. Ici, la
-    // ligne sort dès que le puits est posé — donc avant toute session WebRTC —
-    // et son ABSENCE prouve que `MICRO_MESURE` n'a pas atteint le processus.
+    // ⚠️ EMITTED AT WIRING, NOT AT THE FIRST PACKET, and it is deliberate. D6
+    // wrote a "did the variable arrive?" check that returned empty on all
+    // seven runs because it ran before the initialisation it
+    // observed: it would have masked a really missing variable. Here, the
+    // line comes out as soon as the sink is set — hence before any WebRTC session —
+    // and its ABSENCE proves `MICRO_MESURE` did not reach the process.
     tracing::info!(
         session = %config.session_id,
         "micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree"
@@ -196,12 +196,12 @@ fn brancher_mesure(config: &Config, session: &mut Session) {
 mod tests {
     use super::*;
 
-    /// 🔴 **LE test de la Décision 10, et le seul de ce fichier qui protège
-    /// contre une panne silencieuse.** Deux puits ne peuvent pas consommer un
-    /// même `LecteurMicro` : chacun draine ce que l'autre attend, et le
-    /// symptôme serait un micro qui hoquette sans qu'aucune ligne ne le dise.
-    /// `MICRO_MESURE=1` gagne — on arme un instrument de banc pour observer
-    /// *au lieu* du câble, jamais en plus.
+    /// 🔴 **THE test of Decision 10, and the only one in this file that protects
+    /// against a silent failure.** Two sinks cannot consume the
+    /// same `LecteurMicro`: each drains what the other waits for, and the
+    /// symptom would be a mic that hiccups without any line saying so.
+    /// `MICRO_MESURE=1` wins — we arm a bench instrument to observe
+    /// *instead of* the cable, never in addition.
     #[test]
     fn le_puits_de_mesure_prend_le_pas_sur_le_cable() {
         assert_eq!(choisir_puits(true, true), Puits::Mesure);
@@ -212,19 +212,19 @@ mod tests {
         assert_eq!(choisir_puits(true, false), Puits::Cable);
     }
 
-    /// `MICRO=0` désarme tout, y compris l'instrument de banc : la variable
-    /// dit « pas de micro », pas « pas de câble ».
+    /// `MICRO=0` disarms everything, including the bench instrument: the variable
+    /// says "no mic", not "no cable".
     #[test]
     fn micro_desarme_ne_pose_aucun_puits() {
         assert_eq!(choisir_puits(false, false), Puits::Aucun);
         assert_eq!(choisir_puits(false, true), Puits::Aucun);
     }
 
-    /// ⚠️ **`MICRO` DÉSARME sur `=0` ; une simple présence n'arme pas.**
-    /// Convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR` et `CAPTEUR` : on
-    /// désarme sur `=0` ce qui est LIVRÉ. Ce test existe pour empêcher une
-    /// « simplification » future en `is_ok()`, qui allumerait le micro chez
-    /// quelqu'un qui écrit `MICRO=0` pour être sûr de le couper.
+    /// ⚠️ **`MICRO` DISARMS on `=0`; mere presence does not arm.**
+    /// Convention of `AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR` and `CAPTEUR`: we
+    /// disarm on `=0` what is SHIPPED. This test exists to prevent a future
+    /// "simplification" into `is_ok()`, which would switch the mic on for
+    /// someone writing `MICRO=0` to be sure to turn it off.
     #[test]
     fn seule_la_valeur_zero_desarme_le_micro() {
         assert!(!arme_micro(Some("0")));

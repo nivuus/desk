@@ -1,18 +1,18 @@
-//! Combien d'encodeurs H.264 matériels cette RTX 4070 accepte-t-elle en
-//! parallèle ?
+//! How many hardware H.264 encoders does this RTX 4070 accept in
+//! parallel?
 //!
-//! L'ordre de grandeur admis (8 sessions sur Ada) est une rumeur de
-//! spécification, pas une mesure sur cette carte et ce pilote. Le chantier D
-//! en dépend directement : si le plafond est bas, suspendre l'encodage des
-//! fenêtres masquées cesse d'être « souhaitable en soi » pour devenir une
-//! condition de viabilité.
+//! The accepted order of magnitude (8 sessions on Ada) is a specification
+//! rumour, not a measurement on this card and this driver. Work stream D
+//! depends on it directly: if the ceiling is low, suspending the encoding of
+//! hidden windows stops being "desirable in itself" and becomes a
+//! viability condition.
 //!
-//! La sonde de capture multi-fenêtres a mesuré 8 instances sur un périphérique
-//! D3D11 UNIQUE et partagé, la 9ᵉ échouant à la liaison du type d'entrée
-//! (`MF_E_UNSUPPORTED_D3D_TYPE`). Elle n'a pas su dire si la contrainte était
-//! l'encodeur matériel lui-même ou le partage du périphérique : c'est
-//! exactement ce que le mode `separe` tranche ici, le mode `partage` restant
-//! disponible comme témoin pour que sa mesure reste reproductible.
+//! The multi-window capture probe measured 8 instances on a SINGLE, shared D3D11
+//! device, the 9th failing at the binding of the input type
+//! (`MF_E_UNSUPPORTED_D3D_TYPE`). It could not tell whether the constraint was
+//! the hardware encoder itself or the sharing of the device: that is
+//! exactly what the `separe` mode settles here, the `partage` mode remaining
+//! available as a control so that its measurement stays reproducible.
 
 use anyhow::{anyhow, Context, Result};
 use windows::core::Interface;
@@ -22,14 +22,14 @@ use windows::Win32::Graphics::Direct3D11::{
     D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
 };
 
-/// Au-delà, on cesse de chercher : le résultat serait déjà largement
-/// suffisant pour le chantier D.
+/// Beyond that, we stop searching: the result would already be largely
+/// sufficient for work stream D.
 const PLAFOND_RECHERCHE: usize = 16;
 
-/// Un périphérique D3D11 neuf, sans lien avec la capture.
+/// A new D3D11 device, unrelated to capture.
 ///
-/// L'adaptateur est laissé au choix du système (`D3D_DRIVER_TYPE_HARDWARE`) :
-/// sur cette VM il n'y a qu'un GPU réel, et c'est celui qui porte NVENC.
+/// The adapter is left to the system's choice (`D3D_DRIVER_TYPE_HARDWARE`):
+/// on this VM there is only one real GPU, and it is the one carrying NVENC.
 pub(super) fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
     let mut device: Option<ID3D11Device> = None;
     let mut contexte: Option<ID3D11DeviceContext> = None;
@@ -50,11 +50,11 @@ pub(super) fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceConte
     let device = device.ok_or_else(|| anyhow!("périphérique D3D11 autonome absent"))?;
     let contexte = contexte.ok_or_else(|| anyhow!("contexte D3D11 autonome absent"))?;
 
-    // Même protection que `DesktopCapture::ouvrir` : ce périphérique est
-    // confié à Media Foundation, dont le convertisseur de couleur et
-    // l'encodeur y entrent depuis leurs propres fils de travail. Sans elle,
-    // deux fils entrent ensemble dans le pilote et l'un peut ne pas
-    // ressortir — le blocage mesuré au jalon 1.
+    // Same protection as `DesktopCapture::ouvrir`: this device is
+    // handed to Media Foundation, whose colour converter and
+    // encoder enter it from their own worker threads. Without it,
+    // two threads enter the driver together and one may never
+    // come out — the block measured at milestone 1.
     let multithread: ID3D11Multithread = contexte
         .cast()
         .context("obtention de ID3D11Multithread sur le périphérique autonome")?;
@@ -67,10 +67,10 @@ pub(super) fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceConte
     Ok((device, contexte))
 }
 
-/// `partage` reproduit la mesure de la sonde : UN périphérique D3D11 pour
-/// tous les encodeurs. `separe` répond à la question qu'elle a laissée
-/// ouverte : le refus de la 9ᵉ instance venait-il de l'encodeur matériel, ou
-/// du partage du périphérique ?
+/// `partage` reproduces the probe's measurement: ONE D3D11 device for
+/// all encoders. `separe` answers the question it left
+/// open: did the refusal of the 9th instance come from the hardware encoder, or
+/// from the sharing of the device?
 pub(super) fn plafond(mode: &str) -> Result<()> {
     let partage = match mode {
         "partage" => Some(crate::capture::DesktopCapture::new()?),
@@ -81,24 +81,24 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
     };
     tracing::info!(mode, "plafond d'encodeurs : mode retenu");
 
-    // Les périphériques autonomes DOIVENT rester vivants aussi longtemps que
-    // les encodeurs qui s'y appuient : les relâcher au tour suivant ferait
-    // mesurer autre chose que ce qu'on croit.
+    // The standalone devices MUST stay alive as long as
+    // the encoders that rely on them: releasing them at the next round would
+    // measure something other than what we think.
     let mut peripheriques = Vec::new();
     let mut encodeurs = Vec::new();
 
     let issue = chercher(mode, partage.as_ref(), &mut peripheriques, &mut encodeurs);
 
-    // La passe d'encodage du banc tuait le processus À LA SORTIE de sa boucle,
-    // donc à la DESTRUCTION des encodeurs, pas à leur alimentation. ✅ Défaut
-    // diagnostiqué et corrigé le 31 juillet 2026 (`encode::arret` : la MFT
-    // NVIDIA gardait un élément de travail en vol au relâchement) — 0 récidive
-    // sur 20 exécutions du cas comparable, ce qui n'est pas une preuve
-    // d'absence. Ici rien n'est encodé, mais la destruction a bien lieu : ces
-    // deux traces encadrent le relâchement pour qu'un plantage à cet endroit se
-    // lise comme tel, et ne se confonde jamais avec un plafond — « le processus
-    // meurt » et « la création est refusée » sont deux modes d'échec
-    // distincts.
+    // The bench's encoding pass killed the process AT THE EXIT of its loop,
+    // hence at the DESTRUCTION of the encoders, not while feeding them. ✅ Defect
+    // diagnosed and fixed on 31 July 2026 (`encode::arret`: the NVIDIA MFT
+    // kept a work item in flight at release) — 0 recurrence
+    // over 20 runs of the comparable case, which is not a proof
+    // of absence. Here nothing is encoded, but the destruction does take place: these
+    // two traces bracket the release so that a crash at this place
+    // reads as such, and is never confused with a ceiling — "the process
+    // dies" and "the creation is refused" are two distinct failure
+    // modes.
     tracing::info!(
         encodeurs = encodeurs.len(),
         peripheriques = peripheriques.len(),
@@ -112,10 +112,10 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
     issue
 }
 
-/// Crée des encodeurs jusqu'au refus, ou jusqu'à `PLAFOND_RECHERCHE`.
+/// Creates encoders until refusal, or until `PLAFOND_RECHERCHE`.
 ///
-/// Séparée de `plafond` pour que le relâchement des ressources reste sous le
-/// contrôle de l'appelante, quel que soit le chemin de sortie.
+/// Separate from `plafond` so that the release of resources stays under the
+/// control of the caller, whatever the exit path.
 fn chercher(
     mode: &str,
     partage: Option<&crate::capture::DesktopCapture>,

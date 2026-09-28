@@ -1,10 +1,10 @@
-//! Le superviseur : il détecte les fenêtres, leur donne une sortie virtuelle,
-//! lance un processus enfant par fenêtre et parle à la page-shell.
+//! The supervisor: it detects windows, gives them a virtual output,
+//! launches a child process per window and talks to the shell page.
 //!
-//! Ce fichier reste mince à dessein — il assemble, il ne décide pas. Les
-//! décisions vivent dans `fenetres` (quelle fenêtre mérite d'exister côté
-//! navigateur) et `table` (où en est chacune), tous deux en logique pure et
-//! testés sur l'hôte.
+//! This file stays thin on purpose — it assembles, it does not decide. The
+//! decisions live in `fenetres` (which window deserves to exist on the
+//! browser side) and `table` (where each one stands), both pure logic and
+//! tested on the host.
 
 pub mod designation;
 pub mod enfants;
@@ -14,10 +14,10 @@ pub mod hook;
 pub mod placement;
 pub mod reprise;
 pub mod sursis;
-// La décision PURE de reconnexion de la session de contrôle. Enfant
-// ORDINAIRE — pas de `#[path]` : ce fichier-ci n'est pas `#[cfg(windows)]`,
-// donc `cargo test --workspace` compile et exécute ses tests sur l'hôte,
-// là où `signalisation.rs` (son seul appelant) reste hors de portée.
+// The PURE reconnection decision of the control session. ORDINARY
+// child — no `#[path]`: this file is not `#[cfg(windows)]`,
+// so `cargo test --workspace` compiles and runs its tests on the host,
+// where `signalisation.rs` (its only caller) stays out of reach.
 pub mod protocole;
 pub mod reprise_controle;
 pub mod table;
@@ -36,27 +36,27 @@ pub async fn executer(
 ) -> anyhow::Result<()> {
     use anyhow::Context;
 
-    // La session de contrôle porte le préfixe de la VM depuis le sous-bloc
-    // P3 : sans lui, deux VMs ouvriraient toutes deux `bureau` et la seconde
-    // serait refusée en « un agent est déjà connecté à la session ».
+    // The control session carries the VM's prefix since sub-block
+    // P3: without it, two VMs would both open `bureau` and the second
+    // would be refused with "an agent is already connected to the session".
     let session_de_controle = protocole::session_de_controle(&config.prefixe);
-    // 🔴 CETTE SESSION VIT SUR LE MÊME RELAIS QUE `demarrage.rs` ET
-    // `pont.rs` — celui que le 21 août 2026 a déplacé de la racine vers
-    // `/signal` (voir `crate::signaling::url_du_relais`). `config.signaling_url`
-    // reste la BASE du service ; sans cette dérivation, le superviseur
-    // continuerait de frapper l'ancienne racine, désormais fermée, et la
-    // page-shell — qui, elle, a suivi le déplacement via
-    // `client/src/adresse-plateforme.ts` — ne trouverait jamais personne en
-    // face sur la session de contrôle.
-    // 🔴 LA VEILLE D'IDENTITÉ PART AVEC, ET PAS SEULEMENT `config.jeton`.
-    // Le socket de contrôle SE REPREND depuis ce lot ; une reconnexion
-    // survenue une heure plus tard présenterait l'instantané du démarrage,
-    // c'est-à-dire un jeton mort que la garde refuse (« jeton refusé
-    // (expire) », ligne réellement observée en production). C'est le même
-    // argument, mot pour mot, que `main.rs` porte déjà pour le LANCEUR —
-    // « un superviseur vit des heures ; le jeton d'agent dure dix minutes ».
-    // `config.jeton` reste la valeur de la PREMIÈRE ouverture, et le repli
-    // quand aucun canal `/agent` n'a été ouvert.
+    // 🔴 THIS SESSION LIVES ON THE SAME RELAY AS `demarrage.rs` AND
+    // `pont.rs` — the one that August 21st, 2026 moved from the root to
+    // `/signal` (see `crate::signaling::url_du_relais`). `config.signaling_url`
+    // stays the service BASE; without this derivation, the supervisor
+    // would keep hitting the old root, now closed, and the
+    // shell page — which, for its part, followed the move via
+    // `client/src/adresse-plateforme.ts` — would never find anyone
+    // facing it on the control session.
+    // 🔴 THE IDENTITY WATCH GOES ALONG, AND NOT ONLY `config.jeton`.
+    // The control socket RESUMES since this batch; a reconnection
+    // occurring an hour later would present the startup snapshot,
+    // that is, a dead token the guard refuses ("token refused
+    // (expired)", a line really observed in production). It is the same
+    // argument, word for word, that `main.rs` already carries for the LAUNCHER —
+    // "a supervisor lives for hours; the agent token lasts ten minutes".
+    // `config.jeton` stays the value of the FIRST opening, and the fallback
+    // when no `/agent` channel has been opened.
     let (rx_shell, envoyer) = signalisation::connecter(
         &crate::signaling::url_du_relais(&config.signaling_url),
         &session_de_controle,
@@ -69,23 +69,23 @@ pub async fn executer(
     let prefixe = config.prefixe.clone();
     let local_ip = config.local_ip.to_string();
 
-    // TOUT le reste court sur un fil bloquant, et pas sur un ouvrier async.
+    // EVERYTHING else runs on a blocking thread, and not on an async worker.
     //
-    // Une seule raison, et elle suffit : `boucle::tourner` ne rend JAMAIS la
-    // main. La tenir sur un ouvrier tokio y gèlerait les deux tâches
-    // d'émission et de réception ouvertes ci-dessus, c'est-à-dire le lien avec
-    // la page-shell.
+    // A single reason, and it is enough: `boucle::tourner` NEVER returns
+    // control. Holding it on a tokio worker would freeze the two send
+    // and receive tasks opened above there, that is, the link with
+    // the shell page.
     //
-    // Ce n'est PAS une contrainte de compilation : `PiloteParIoctl` (un
-    // `HANDLE`) et `Hook` (un `HWINEVENTHOOK`) ne sont certes pas `Send`, mais
-    // les créer dans le contexte async compilerait — ils naîtraient après le
-    // dernier `.await`, et le futur de `main` sous `block_on` ne porte aucune
-    // borne `Send`. C'est un choix d'exécution, pas une obligation du type
-    // système ; qu'ils naissent ici les fait simplement vivre sur le fil même
-    // qui les emploie.
+    // It is NOT a compilation constraint: `PiloteParIoctl` (a
+    // `HANDLE`) and `Hook` (an `HWINEVENTHOOK`) are indeed not `Send`, but
+    // creating them in the async context would compile — they would be born after the
+    // last `.await`, and `main`'s future under `block_on` carries no
+    // `Send` bound. It is an execution choice, not a type system
+    // obligation; having them born here simply makes them live on the very thread
+    // that uses them.
     tokio::task::spawn_blocking(move || {
-        // Purger AVANT tout : une exécution précédente tuée net a pu laisser
-        // des sorties, et elles occupent le vivier de dix.
+        // Purge BEFORE anything: a previous run killed outright may have left
+        // outputs, and they occupy the pool of ten.
         if let Err(erreur) = crate::moniteurs_virtuels::purge::purger() {
             tracing::warn!(%erreur, "purge des sorties orphelines incomplète au démarrage");
         }
@@ -101,8 +101,8 @@ pub async fn executer(
         )?;
 
         let (tx_hook, rx_hook) = std::sync::mpsc::channel();
-        // La garde vit jusqu'à la fin de cette fermeture : la lâcher retirerait
-        // le hook et arrêterait sa pompe de messages.
+        // The guard lives until the end of this closure: dropping it would remove
+        // the hook and stop its message pump.
         let _garde_hook = hook::poser(tx_hook).context("pose du hook de détection")?;
 
         boucle::tourner(&pilote, &lanceur, rx_hook, rx_shell, envoyer, prefixe)

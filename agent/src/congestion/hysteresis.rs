@@ -1,70 +1,70 @@
-//! Hystérésis : combien de temps une contrainte doit durer avant qu'on
-//! descende d'un barreau, et combien avant qu'on remonte. Asymétrique à
-//! dessein — voir `DELAI_REMONTEE`.
+//! Hysteresis: how long a constraint must last before we
+//! go down a rung, and how long before we go back up. Asymmetric on
+//! purpose — see `DELAI_REMONTEE`.
 
 use std::time::{Duration, Instant};
 
-/// Durée pendant laquelle la condition doit tenir avant de DESCENDRE.
+/// Duration for which the condition must hold before GOING DOWN.
 const DELAI_DESCENTE: Duration = Duration::from_secs(2);
-/// Durée pendant laquelle la condition doit tenir avant de REMONTER.
+/// Duration for which the condition must hold before GOING BACK UP.
 ///
-/// Dix fois plus long que la descente, et c'est délibéré : une estimation
-/// qui oscille autour d'un seuil ferait sinon battre l'encodeur, et chaque
-/// battement coûte une reconstruction du type de sortie et une image clé.
-/// On dégrade vite pour rester fluide, on restaure lentement pour rester
+/// Ten times longer than the descent, and it is deliberate: an estimate
+/// oscillating around a threshold would otherwise make the encoder flap, and each
+/// flap costs a rebuild of the output type and a key frame.
+/// We degrade fast to stay fluid, we restore slowly to stay
 /// stable.
 ///
-/// **Ajusté de 10 s à 20 s à la tâche 12** (recette), après mesure sous le
-/// profil `adsl` (8 Mb/s, 30 ms ±5 ms, sans perte) : 4 changements de barreau
-/// observés en 49 s, alors que la propriété attendue est « au plus deux en
-/// 60 s ». Preuve tracée dans le journal de l'agent : une remontée au
-/// barreau plein (764×242 → 764×484, `taille d'encodage changée` à
-/// 16:24:09.545) est suivie, une seconde plus tard, d'un effondrement de
-/// l'estimation BWE de ×10 en une seule observation
-/// (`estimation=Some(6639480)` à 16:24:10 puis `estimation=Some(619982)` à
-/// 16:24:11) — cohérent avec l'image clé que le changement de résolution
-/// déclenche lui-même, interprétée par l'estimateur comme une surcharge. La
-/// remontée suivante retombe alors immédiatement (5,0 s plus tard, pile le
-/// plancher `SEJOUR_MINIMAL`). Doubler `DELAI_REMONTEE` exige deux fois plus
-/// de temps de confiance avant de reprendre la pleine résolution, ce qui
-/// laisse au réseau (et à l'effet de la propre image clé du contrôleur) le
-/// temps de se stabiliser avant la prochaine tentative. Remesuré après ce
-/// changement (voir le document de résultats, §5) : plus aucune régression
-/// observée sur ce point, mais l'échantillon reste court (une seule
-/// fenêtre) — voir les réserves du document de résultats.
+/// **Adjusted from 10 s to 20 s in task 12** (acceptance run), after measurement under the
+/// `adsl` profile (8 Mb/s, 30 ms ±5 ms, no loss): 4 rung changes
+/// observed in 49 s, whereas the expected property is "at most two in
+/// 60 s". Evidence traced in the agent's log: a rise back to the
+/// full rung (764×242 → 764×484, `taille d'encodage changée` at
+/// 16:24:09.545) is followed, one second later, by a ×10 collapse of
+/// the BWE estimate in a single observation
+/// (`estimation=Some(6639480)` at 16:24:10 then `estimation=Some(619982)` at
+/// 16:24:11) — consistent with the key frame the resolution change
+/// itself triggers, interpreted by the estimator as an overload. The
+/// next rise then falls back immediately (5.0 s later, exactly the
+/// `SEJOUR_MINIMAL` floor). Doubling `DELAI_REMONTEE` requires twice as much
+/// confidence time before taking back full resolution, which
+/// gives the network (and the effect of the controller's own key frame) the
+/// time to stabilise before the next attempt. Re-measured after this
+/// change (see the results document, §5): no regression
+/// observed any more on this point, but the sample remains short (a single
+/// window) — see the reservations of the results document.
 const DELAI_REMONTEE: Duration = Duration::from_secs(20);
-/// Durée minimale entre deux changements de barreau, quelle que soit la
-/// condition. Filet contre un aller-retour rapide autour d'un seuil.
+/// Minimum duration between two rung changes, whatever the
+/// condition. Safety net against a quick back-and-forth around a threshold.
 const SEJOUR_MINIMAL: Duration = Duration::from_secs(5);
 
-/// Durée après la PREMIÈRE estimation pendant laquelle la rampe du BWE ne doit
-/// pas être prise pour une dégradation.
+/// Duration after the FIRST estimate during which the BWE ramp must
+/// not be taken for a degradation.
 ///
-/// Le sous-système d'estimation part volontairement bas et sonde à la hausse
-/// (voir `ESTIMATION_INITIALE_BPS` côté transport) : pendant cette montée, le
-/// débit disponible est bas sans que le lien le soit. Sans cette fenêtre, toute
-/// session sur une source 1080p annoncerait « Image réduite par le réseau » sur
-/// un lien parfait, en bandeau persistant — mesuré : la rampe atteint 8,7 à
-/// 17,7 Mb/s en 1 à 3 s sur gigabit.
+/// The estimation subsystem deliberately starts low and probes upwards
+/// (see `ESTIMATION_INITIALE_BPS` on the transport side): during this rise, the
+/// available bitrate is low without the link being so. Without this window, any
+/// session on a 1080p source would announce "Image réduite par le réseau" on
+/// a perfect link, as a persistent banner — measured: the ramp reaches 8.7 to
+/// 17.7 Mb/s in 1 to 3 s on gigabit.
 ///
-/// `pub(super)` : lue par `controleur::observer`, qui est un module frère —
-/// voir la doc de tête de `congestion.rs`.
+/// `pub(super)`: read by `controleur::observer`, which is a sibling module —
+/// see the head doc of `congestion.rs`.
 pub(super) const DELAI_AMORCAGE: Duration = Duration::from_secs(5);
 
-/// Filtre temporel asymétrique sur un indice de barreau.
+/// Asymmetric time filter on a rung index.
 ///
-/// Rend `Some(nouvel_indice)` à l'instant précis où un changement est retenu,
-/// et `None` sinon. L'appelant n'a rien à mémoriser.
+/// Returns `Some(nouvel_indice)` at the precise instant a change is kept,
+/// and `None` otherwise. The caller has nothing to memorise.
 ///
-/// **À ne pas confondre avec `cursor::Hysteresis`**, qui compte des
-/// observations booléennes consécutives : ici le filtre est temporel,
-/// asymétrique, et porte sur une échelle ordonnée.
+/// **Not to be confused with `cursor::Hysteresis`**, which counts
+/// consecutive boolean observations: here the filter is temporal,
+/// asymmetric, and works on an ordered ladder.
 pub struct Hysteresis {
     courant: usize,
-    /// Barreau visé de façon continue depuis `vise_depuis`, s'il diffère du
-    /// courant.
+    /// Rung aimed at continuously since `vise_depuis`, if it differs from the
+    /// current one.
     vise: Option<(usize, Instant)>,
-    /// Instant du dernier changement retenu.
+    /// Instant of the last kept change.
     dernier_changement: Instant,
 }
 
@@ -73,24 +73,24 @@ impl Hysteresis {
         Self {
             courant: barreau_initial,
             vise: None,
-            // Placé de façon à ce que le temps de séjour soit déjà écoulé au
-            // démarrage : la toute première adaptation ne doit pas attendre
-            // 5 s de plus que sa propre condition.
+            // Placed so that the dwell time has already elapsed at
+            // start-up: the very first adaptation must not wait
+            // 5 s more than its own condition.
             dernier_changement: now - SEJOUR_MINIMAL,
         }
     }
 
     pub fn observer(&mut self, vise: usize, now: Instant) -> Option<usize> {
         if vise == self.courant {
-            // Retour au barreau courant : toute intention de changement en
-            // cours est annulée.
+            // Back to the current rung: any change intent in progress
+            // is cancelled.
             self.vise = None;
             return None;
         }
 
-        // Un barreau visé DIFFÉRENT de celui déjà en cours d'observation
-        // redémarre le décompte : la condition n'a pas « tenu », elle a
-        // changé de cible.
+        // A targeted rung DIFFERENT from the one already under observation
+        // restarts the countdown: the condition has not "held", it has
+        // changed target.
         let depuis = match self.vise {
             Some((precedent, depuis)) if precedent == vise => depuis,
             _ => {
@@ -99,8 +99,8 @@ impl Hysteresis {
             }
         };
 
-        // Indices croissants = résolutions décroissantes : viser plus grand
-        // que le courant, c'est descendre.
+        // Increasing indices = decreasing resolutions: aiming higher
+        // than the current one means going down.
         let delai = if vise > self.courant {
             DELAI_DESCENTE
         } else {
@@ -120,11 +120,11 @@ impl Hysteresis {
     }
 }
 
-/// Instant de référence des tests. Placé loin dans le passé pour que toute
-/// soustraction de durée reste valide.
+/// Reference instant of the tests. Placed far in the past so that any
+/// duration subtraction stays valid.
 ///
-/// `pub(super)` : les tests de `controleur` et de `reconfiguration`, modules
-/// frères, en ont aussi besoin — voir la doc de tête de `congestion.rs`.
+/// `pub(super)`: the tests of `controleur` and `reconfiguration`, sibling
+/// modules, need it too — see the head doc of `congestion.rs`.
 #[cfg(test)]
 pub(super) fn t0() -> Instant {
     Instant::now() - Duration::from_secs(3600)
@@ -136,16 +136,16 @@ mod tests {
 
     #[test]
     fn descendre_exige_deux_secondes_sous_le_barreau() {
-        // Base liée UNE SEULE FOIS : `t0()` rend un instant neuf à chaque
-        // appel, et des assertions posées sur des bornes exactes (2,000 s)
-        // deviendraient instables à quelques microsecondes près.
+        // Base bound ONLY ONCE: `t0()` returns a new instant at each
+        // call, and assertions set on exact bounds (2.000 s)
+        // would become unstable to within a few microseconds.
         let base = t0();
         let mut h = Hysteresis::new(0, base);
 
-        // Première observation du barreau 1 : le décompte DÉMARRE ici, il ne
-        // s'est encore rien écoulé.
+        // First observation of rung 1: the countdown STARTS here, nothing
+        // has elapsed yet.
         assert_eq!(h.observer(1, base + Duration::from_millis(1900)), None);
-        // 1,999 s après le début du décompte : pas encore.
+        // 1.999 s after the start of the countdown: not yet.
         assert_eq!(h.observer(1, base + Duration::from_millis(3899)), None);
         // 2,000 s pile : on descend.
         assert_eq!(h.observer(1, base + Duration::from_millis(3900)), Some(1));
@@ -157,29 +157,29 @@ mod tests {
         let mut h = Hysteresis::new(0, base);
 
         assert_eq!(h.observer(1, base + Duration::from_millis(1900)), None);
-        // Une seule observation revenue au barreau courant annule le décompte.
+        // A single observation back at the current rung cancels the countdown.
         assert_eq!(h.observer(0, base + Duration::from_millis(1950)), None);
-        // Le décompte repart de zéro à 3000 ms.
+        // The countdown restarts from zero at 3000 ms.
         assert_eq!(h.observer(1, base + Duration::from_millis(3000)), None);
-        // 1,9 s après ce nouveau départ : toujours pas.
+        // 1.9 s after this new start: still not.
         assert_eq!(h.observer(1, base + Duration::from_millis(4900)), None);
-        // 2,0 s après : cette fois oui.
+        // 2.0 s after: this time yes.
         assert_eq!(h.observer(1, base + Duration::from_millis(5000)), Some(1));
     }
 
     #[test]
     fn remonter_exige_vingt_secondes_et_non_deux() {
         let base = t0();
-        // Départ au barreau 1 : `new` place le dernier changement dans le
-        // passé, donc le temps de séjour n'entrave pas ce test.
+        // Start at rung 1: `new` places the last change in the
+        // past, so the dwell time does not hinder this test.
         let mut h = Hysteresis::new(1, base);
 
         assert_eq!(h.observer(0, base + Duration::from_millis(2000)), None);
-        // 2,0 s pile après le début du décompte : une DESCENTE aurait basculé
-        // ici, le seuil étant atteint. Une remontée, non — c'est tout l'objet
-        // de ce test.
+        // Exactly 2.0 s after the start of the countdown: a DESCENT would have switched
+        // here, the threshold being reached. A rise, no — that is the whole point
+        // of this test.
         assert_eq!(h.observer(0, base + Duration::from_millis(4000)), None);
-        // 19,999 s : toujours pas (DELAI_REMONTEE = 20 s depuis la tâche 12).
+        // 19.999 s: still not (DELAI_REMONTEE = 20 s since task 12).
         assert_eq!(h.observer(0, base + Duration::from_millis(21_999)), None);
         // 20,000 s pile : on remonte.
         assert_eq!(h.observer(0, base + Duration::from_millis(22_000)), Some(0));
@@ -190,41 +190,41 @@ mod tests {
         let base = t0();
         let mut h = Hysteresis::new(0, base);
 
-        // Première descente : décompte démarré à 0, retenu à 2,0 s.
+        // First descent: countdown started at 0, kept at 2.0 s.
         assert_eq!(h.observer(1, base), None);
         assert_eq!(h.observer(1, base + Duration::from_millis(2000)), Some(1));
 
-        // La condition de descente vers 2 est remplie 2 s plus tard, mais le
-        // temps de séjour de 5 s depuis le dernier changement l'interdit.
+        // The descent condition towards 2 is met 2 s later, but the
+        // 5 s dwell time since the last change forbids it.
         assert_eq!(h.observer(2, base + Duration::from_millis(2001)), None);
         assert_eq!(h.observer(2, base + Duration::from_millis(4001)), None);
-        // À 7,000 s : 5,0 s de séjour écoulées ET la condition tient depuis
-        // 4,999 s. Les deux verrous sont levés.
+        // At 7.000 s: 5.0 s of dwell elapsed AND the condition has held for
+        // 4.999 s. Both locks are lifted.
         assert_eq!(h.observer(2, base + Duration::from_millis(7000)), Some(2));
     }
 
     #[test]
     fn cibler_un_second_barreau_sans_repasser_par_le_courant_redemarre_le_decompte() {
-        // Trouvaille triviale de la revue finale : ce chemin (branche
-        // `_ => { self.vise = Some((vise, now)); now }` d'`observer`) n'était
-        // exercé par aucun test. On vise d'abord 1, puis on change de cible
-        // vers 2 SANS jamais repasser par le barreau courant (0) entre les
-        // deux — le décompte doit repartir de zéro pour la nouvelle cible, ne
-        // pas se poursuivre depuis la première.
+        // Trivial finding of the final review: this path (branch
+        // `_ => { self.vise = Some((vise, now)); now }` of `observer`) was
+        // exercised by no test. We first aim at 1, then change target
+        // to 2 WITHOUT ever going back through the current rung (0) in
+        // between — the countdown must restart from zero for the new target, not
+        // continue from the first one.
         let base = t0();
         let mut h = Hysteresis::new(0, base);
 
-        // Vise 1 : décompte démarré à 0 ms.
+        // Aims at 1: countdown started at 0 ms.
         assert_eq!(h.observer(1, base + Duration::from_millis(500)), None);
-        // Change de cible vers 2 à 1000 ms, sans repasser par 0 : le
-        // décompte pour 2 doit repartir de 1000 ms, pas de 0 ms.
+        // Changes target to 2 at 1000 ms, without going back through 0: the
+        // countdown for 2 must restart from 1000 ms, not from 0 ms.
         assert_eq!(h.observer(2, base + Duration::from_millis(1000)), None);
-        // 1,999 s après ce redémarrage (2999 ms) : si le décompte avait
-        // continué depuis le tout premier `observer` (0 ms), il serait déjà
-        // à 2,999 s et aurait basculé — la preuve que ce n'est pas le cas.
+        // 1.999 s after this restart (2999 ms): if the countdown had
+        // continued from the very first `observer` (0 ms), it would already
+        // be at 2.999 s and would have switched — the proof that it is not the case.
         assert_eq!(h.observer(2, base + Duration::from_millis(2999)), None);
-        // 2,000 s pile après le redémarrage à 1000 ms : bascule vers 2, la
-        // cible la plus récente — jamais vers 1.
+        // Exactly 2.000 s after the restart at 1000 ms: switches to 2, the
+        // most recent target — never to 1.
         assert_eq!(h.observer(2, base + Duration::from_millis(3000)), Some(2));
     }
 }

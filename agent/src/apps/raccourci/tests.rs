@@ -1,4 +1,4 @@
-//! Tests d'hôte de [`super`], dont ceux qui portent sur le corpus réel.
+//! Host tests of [`super`], including those on the real corpus.
 
 use super::*;
 use serde::Deserialize;
@@ -14,15 +14,15 @@ fn brut(cible: &str, arguments: &str, repertoire: &str) -> Brut {
     }
 }
 
-/// Le prédicat injecté le plus simple : tout existe.
+/// The simplest injected predicate: everything exists.
 fn tout_existe(_: &str) -> bool {
     true
 }
 
 #[test]
 fn ecarte_une_cible_vide() {
-    // 7 des 218 raccourcis de la VM sont dans ce cas : des cibles de l'espace
-    // de noms Shell, sans chemin de fichier. Ce n'est pas une erreur.
+    // 7 of the VM's 218 shortcuts are in that case: Shell namespace
+    // targets, without a file path. It is not an error.
     assert_eq!(
         retenir(&brut("", "", ""), &tout_existe),
         Err(Ecart::CibleVide)
@@ -35,10 +35,10 @@ fn ecarte_une_cible_vide() {
 
 #[test]
 fn ecarte_toute_extension_qui_n_est_pas_exe() {
-    // 🔴 `.msi` EST ÉCARTÉ, et ce n'est pas un oubli : un installeur
-    // s'installe, il ne se lance pas. L'accepter « puisqu'il s'exécute »
-    // ferait entrer au catalogue des lignes que l'utilisateur ne peut que
-    // regretter d'avoir cliquées.
+    // 🔴 `.msi` IS DISCARDED, and it is not an oversight: an installer
+    // is installed, it is not launched. Accepting it "since it runs"
+    // would bring into the catalogue lines the user can only
+    // regret having clicked.
     for ext in ["msc", "url", "html", "pdf", "chm", "txt", "bat", "msi", "2"] {
         let cible = format!(r"C:\x\y.{ext}");
         assert_eq!(
@@ -47,28 +47,28 @@ fn ecarte_toute_extension_qui_n_est_pas_exe() {
             "extension {ext}"
         );
     }
-    // Sans extension du tout — un cas RÉEL du corpus, et que la table du §3.1
-    // de la spec n'énumère pas.
+    // With no extension at all — a REAL case from the corpus, and one the table in §3.1
+    // of the spec does not list.
     assert_eq!(
         retenir(&brut(r"C:\x\sans_extension", "", ""), &tout_existe),
         Err(Ecart::Extension(String::new()))
     );
-    // La casse de l'extension ne décide pas.
+    // The extension's case does not decide.
     assert!(retenir(&brut(r"C:\x\Y.EXE", "", ""), &tout_existe).is_ok());
 }
 
 #[test]
 fn ecarte_une_cible_absente_et_c_est_le_predicat_injecte_qui_le_dit() {
-    // 🔴 LA ROUGE SE JOUE EN CÂBLANT `Path::exists()` EN DUR : aucune cible du
-    // corpus n'existe sur l'hôte, donc `retenir` rendrait `CibleAbsente` pour
-    // les 167 et le test des chiffres tomberait. C'est la raison d'être de
-    // l'injection, et ce test en est la moitié positive.
+    // 🔴 THE RED IS PLAYED BY HARDWIRING `Path::exists()`: no target of the
+    // corpus exists on the host, so `retenir` would return `CibleAbsente` for
+    // all 167 and the figures test would fail. It is the reason for the
+    // injection, and this test is its positive half.
     let jamais = |_: &str| false;
     assert_eq!(
         retenir(&brut(r"C:\x\y.exe", "", ""), &jamais),
         Err(Ecart::CibleAbsente)
     );
-    // Le prédicat reçoit bien la cible, pas autre chose.
+    // The predicate does receive the target, not something else.
     let seulement_notepad = |c: &str| c == r"C:\Windows\notepad.exe";
     assert!(retenir(&brut(r"C:\Windows\notepad.exe", "", ""), &seulement_notepad).is_ok());
     assert_eq!(
@@ -79,9 +79,9 @@ fn ecarte_une_cible_absente_et_c_est_le_predicat_injecte_qui_le_dit() {
 
 #[test]
 fn n_ecarte_rien_par_le_nom() {
-    // Un motif « Uninstall » dépend de la langue et écarterait en silence des
-    // applications légitimes. `maintenancetool.exe` est le désinstalleur de Qt
-    // et ne porte aucun de ces mots.
+    // An "Uninstall" pattern depends on the language and would silently discard
+    // legitimate applications. `maintenancetool.exe` is Qt's uninstaller
+    // and carries none of these words.
     for cible in [
         r"C:\Qt\maintenancetool.exe",
         r"C:\App\Uninstall.exe",
@@ -97,8 +97,8 @@ fn n_ecarte_rien_par_le_nom() {
 
 #[test]
 fn n_ecarte_rien_par_le_chemin() {
-    // 63 des cibles de la VM vivent sous C:\Windows, Bloc-notes et Paint
-    // compris : un filtre système les perdrait.
+    // 63 of the VM's targets live under C:\Windows, Notepad and Paint
+    // included: a system filter would lose them.
     for cible in [
         r"C:\Windows\system32\notepad.exe",
         r"C:\Windows\system32\mspaint.exe",
@@ -126,14 +126,14 @@ fn la_cle_replie_la_casse_de_la_cible_et_du_repertoire_mais_pas_des_arguments() 
 
 #[test]
 fn la_cle_ne_confond_pas_deux_decoupages_du_meme_texte() {
-    // Sans le séparateur nul, ces deux triplets auraient la même empreinte.
+    // Without the nul separator, these two triples would have the same fingerprint.
     assert_ne!(cle("ab", "", "c"), cle("a", "b", "c"));
 }
 
 #[test]
 fn deux_raccourcis_au_meme_triplet_rendent_une_seule_application() {
-    // Un raccourci qui se déplace du Bureau vers le menu Démarrer reste la
-    // même application : l'identité n'est ni le chemin du `.lnk`, ni le nom.
+    // A shortcut that moves from the Desktop to the Start menu remains the
+    // same application: the identity is neither the `.lnk` path nor the name.
     let bureau = Brut {
         nom: "Bloc-notes".into(),
         chemin: r"C:\Users\u\Desktop\Bloc-notes.lnk".into(),
@@ -151,14 +151,14 @@ fn deux_raccourcis_au_meme_triplet_rendent_une_seule_application() {
 
 #[test]
 fn deux_applications_de_meme_nom_a_triplets_differents_restent_deux() {
-    // C'est le défaut de `src/app.js:67`, qui identifie par le nom.
+    // That is the defect of `src/app.js:67`, which identifies by name.
     let a = brut(r"C:\A\jeu.exe", "", r"C:\A");
     let b = brut(r"C:\B\jeu.exe", "", r"C:\B");
     assert_ne!(depuis_brut(a).cle, depuis_brut(b).cle);
 }
 
 // ---------------------------------------------------------------------------
-// Le corpus réel de la VM — 218 raccourcis, versés.
+// The VM's real corpus — 218 shortcuts, checked in.
 // ---------------------------------------------------------------------------
 
 #[derive(Deserialize)]
@@ -182,9 +182,9 @@ fn corpus() -> Vec<EntreeCorpus> {
     doc.raccourcis
 }
 
-/// 🔴 LES CHIFFRES SONT ÉCRITS EN DUR ICI, JAMAIS LUS DU CORPUS. Le corpus
-/// porte bien un bloc `attendus`, mais s'en servir ferait du test une
-/// tautologie : il vérifierait que le fichier est d'accord avec lui-même.
+/// 🔴 THE FIGURES ARE HARDCODED HERE, NEVER READ FROM THE CORPUS. The corpus
+/// does carry an `attendus` block, but using it would make the test a
+/// tautology: it would check that the file agrees with itself.
 #[test]
 fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() {
     let entrees = corpus();
@@ -194,8 +194,8 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
         "218 raccourcis lus sur les quatre racines"
     );
 
-    // Le prédicat injecté relit le booléen MESURÉ sur la VM. C'est très
-    // exactement ce que D7 achète : sur l'hôte, aucune de ces cibles n'existe.
+    // The injected predicate re-reads the boolean MEASURED on the VM. That is
+    // exactly what D7 buys: on the host, none of these targets exists.
     let presents: HashSet<&str> = entrees
         .iter()
         .filter(|e| e.existe)
@@ -230,8 +230,8 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
         167,
         "raccourcis retenus par les trois règles"
     );
-    // Contrôle croisé de la spec §3.1, le seul de ce paragraphe :
-    // 170 cibles .exe moins 3 absentes font 167.
+    // Cross-check of spec §3.1, the only one in this paragraph:
+    // 170 .exe targets minus 3 missing make 167.
     assert_eq!(retenus.len() + absentes, 170, "cibles .exe non vides");
     assert_eq!(vides + par_extension + absentes + retenus.len(), 218);
 
@@ -245,11 +245,11 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
         "applications distinctes sur cette VM"
     );
 
-    // 🔴 C'EST LA ROUGE GRATUITE, ET ELLE EST ICI, SUR L'HÔTE, SANS VM. Un
-    // `cle()` qui ignorerait les arguments ferait tomber l'assertion
-    // précédente en rendant 104 : les 26 raccourcis de `smartmontools` visent
-    // tous `runcmdu.exe` avec des arguments différents, et l'écart total entre
-    // les deux comptes est de 50 applications.
+    // 🔴 THIS IS THE FREE RED, AND IT IS HERE, ON THE HOST, WITHOUT A VM. A
+    // `cle()` that ignored the arguments would make the previous assertion
+    // fail by returning 104: the 26 `smartmontools` shortcuts all
+    // target `runcmdu.exe` with different arguments, and the total gap between
+    // the two counts is 50 applications.
     let par_cible_seule: HashSet<String> = retenus
         .iter()
         .map(|b| normaliser_chemin(&b.cible))

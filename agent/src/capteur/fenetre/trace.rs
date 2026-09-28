@@ -1,38 +1,38 @@
-//! La trace périodique des compteurs de capture (`SOURCE_TRACE=1`).
+//! The periodic trace of the capture counters (`SOURCE_TRACE=1`).
 //!
-//! **Extrait de `fenetre.rs`** (revue de la tâche 11, D9) pour la même raison
-//! que `commandes.rs` et `transitions.rs` : le fichier parent est en marge
-//! étroite sous le plafond de 500 lignes du projet — ce serait le troisième
-//! module enfant sur le même patron. Transposé tel quel : ni les valeurs, ni
-//! l'ordre des opérations n'ont changé, seul l'emplacement.
+//! **Extracted from `fenetre.rs`** (review of task 11, D9) for the same reason
+//! as `commandes.rs` and `transitions.rs`: the parent file has a narrow margin
+//! under the project's 500-line cap — this would be the third
+//! child module on the same pattern. Transposed as is: neither the values, nor
+//! the order of operations changed, only the location.
 
 use std::sync::OnceLock;
 
 use crate::windows_source::WindowsSource;
 
-/// `SOURCE_TRACE=1` (présence, valeur quelconque) active la trace périodique
-/// des compteurs de capture (`Telemetrie`, voir
-/// `windows_source/telemetrie.rs`) — **présence ACTIVE**, à l'inverse de la
-/// convention `=0` DÉSACTIVE de `PLEIN_ECRAN`/`AUDIO`/`SUPERVISEUR`/`CAPTEUR` :
-/// c'est la convention déjà en vigueur pour cette variable précise avant son
-/// déplacement ici (D9, tâche 11). Elle vivait dans `demarrage.rs`, côté
-/// ENFANT, qui n'a plus de `WindowsSource` depuis D4 : elle n'y affichait que
-/// des zéros, et rien ne lisait les compteurs du CAPTEUR, où ils sont
-/// réellement écrits — voir la doc de module de `windows_source/telemetrie.rs`.
+/// `SOURCE_TRACE=1` (presence, any value) enables the periodic trace
+/// of the capture counters (`Telemetrie`, see
+/// `windows_source/telemetrie.rs`) — **presence ENABLES**, the reverse of the
+/// `=0` DISABLES convention of `PLEIN_ECRAN`/`AUDIO`/`SUPERVISEUR`/`CAPTEUR`:
+/// it is the convention already in force for this specific variable before its
+/// move here (D9, task 11). It lived in `demarrage.rs`, on the
+/// CHILD side, which has had no `WindowsSource` since D4: it only showed
+/// zeros there, and nothing read the counters of the SENSOR, where they are
+/// actually written — see the module doc of `windows_source/telemetrie.rs`.
 ///
-/// `OnceLock`, même raison que `plein_ecran::actif` : cette fonction est
-/// consultée à chaque `PERIODE_COMPTEURS`, et l'environnement ne change pas en
-/// cours de processus.
+/// `OnceLock`, same reason as `plein_ecran::actif`: this function is
+/// consulted at every `PERIODE_COMPTEURS`, and the environment does not change during
+/// the process.
 fn trace_source_active() -> bool {
     static ACTIF: OnceLock<bool> = OnceLock::new();
     *ACTIF.get_or_init(|| std::env::var("SOURCE_TRACE").is_ok())
 }
 
-/// Sous le span `fenetre{session=…}` posé par D7 : la trace est donc
-/// attribuable sans champ supplémentaire, ce qui était impossible tant que
-/// les compteurs vivaient dans trois statiques de processus. `None` : la
-/// fenêtre dort, l'encodeur et la capture sont relâchés (voir le champ
-/// `source` de `Fenetre`).
+/// Under the `fenetre{session=…}` span set by D7: the trace is therefore
+/// attributable without an extra field, which was impossible as long as
+/// the counters lived in three process statics. `None`: the
+/// window sleeps, the encoder and capture are released (see the
+/// `source` field of `Fenetre`).
 pub(super) fn tracer_les_compteurs(source: Option<&WindowsSource>) {
     if trace_source_active() {
         if let Some(source) = source {

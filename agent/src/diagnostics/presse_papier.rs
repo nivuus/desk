@@ -1,47 +1,47 @@
-//! Sonde P0 du sous-bloc P1 (presse-papier) : le compteur de séquence du
-//! presse-papier Windows se comporte-t-il comme la documentation l'annonce ?
+//! P0 probe of sub-block P1 (clipboard): does the sequence counter of the
+//! Windows clipboard behave as the documentation announces?
 //!
-//! La spécification (§8) déclare ce point **non mesuré** : elle s'appuie sur
-//! la documentation de `GetClipboardSequenceNumber`, la VM ayant été occupée
-//! quand elle a été écrite. Cette sonde prend la mesure, et elle est une
-//! **porte éliminatoire** : trois de ses cinq verdicts rendent le mécanisme
-//! de détection retenu (D2) non livrable en l'état.
+//! The specification (§8) declares this point **not measured**: it relies on
+//! the documentation of `GetClipboardSequenceNumber`, the VM having been busy
+//! when it was written. This probe takes the measurement, and it is an
+//! **elimination gate**: three of its five verdicts make the retained detection
+//! mechanism (D2) not deliverable as is.
 //!
-//! ⚠️ **ELLE ÉCRIT LE PRESSE-PAPIER DE LA VM, et le détruit donc.** Les
-//! phases C et D posent `SetClipboardData(CF_UNICODETEXT)` pour répondre aux
-//! questions Q3 et Q2. C'est un geste de SONDE : **le produit, lui, n'écrit
-//! jamais le presse-papier en P1** — il ne fait que le lire. Ne pas
-//! confondre les deux (décision D-P1-7 du plan).
+//! ⚠️ **IT WRITES THE VM'S CLIPBOARD, and therefore destroys it.** Phases
+//! C and D set `SetClipboardData(CF_UNICODETEXT)` to answer
+//! questions Q3 and Q2. It is a PROBE gesture: **the product, for its part, never
+//! writes the clipboard in P1** — it only reads it. Do not
+//! confuse the two (decision D-P1-7 of the plan).
 //!
-//! ⚠️ **Elle ne journalise JAMAIS le texte du presse-papier** — une empreinte
-//! tronquée et une longueur, jamais le contenu. C'est une ressource privée de
-//! l'utilisateur de la VM, et un journal versé dans git est public au dépôt.
+//! ⚠️ **It NEVER logs the clipboard's text** — a truncated fingerprint
+//! and a length, never the content. It is a private resource of
+//! the VM's user, and a log committed to git is public to the repository.
 //!
-//! ⚠️ **Elle se lance SEULE**, sans `SUPERVISEUR` : voir le commentaire du
-//! bras d'aiguillage dans `diagnostics.rs` (divergence E10 du plan).
+//! ⚠️ **It runs ALONE**, without `SUPERVISEUR`: see the comment of the
+//! routing arm in `diagnostics.rs` (divergence E10 of the plan).
 //!
-//! Aucun verdict ne se juge sur un code de retour. La phase C juge sur le
-//! **mouvement du compteur relu**, jamais sur le succès de
-//! `SetClipboardData` — c'est la doctrine que ce dépôt s'est donnée après
-//! qu'un `ChangeDisplaySettingsExW` a rendu `0` sur une sortie qui n'avait
-//! pas bougé d'un pixel (sous-bloc D8).
+//! No verdict is judged on a return code. Phase C judges on the
+//! **movement of the counter read back**, never on the success of
+//! `SetClipboardData` — it is the doctrine this repository adopted after
+//! a `ChangeDisplaySettingsExW` returned `0` on an output that had
+//! not moved by one pixel (sub-block D8).
 
 use anyhow::Result;
 
-/// Nombre de relevés de la phase A, et leur espacement.
+/// Number of phase A readings, and their spacing.
 const RELEVES_REPOS: usize = 3;
 const PAS_REPOS: std::time::Duration = std::time::Duration::from_millis(250);
-/// Cadence de la phase B : 4 Hz, la même que `PERIODE_PRESSE_PAPIER`.
+/// Phase B cadence: 4 Hz, the same as `PERIODE_PRESSE_PAPIER`.
 const PAS_OBSERVATION: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// Empreinte d'un texte : SHA-1 tronqué à 12 caractères hexadécimaux.
+/// Fingerprint of a text: SHA-1 truncated to 12 hexadecimal characters.
 ///
-/// ⚠️ **SHA-1 et non SHA-256, contrairement au plan (tâche 1)**, et c'est
-/// délibéré : `sha1` est déjà une dépendance de cette caisse (bail TURN),
-/// `sha2` ne l'est pas, et le plan pose en tête que **P1 n'ajoute aucune
-/// dépendance**. La propriété recherchée est « distinguer deux textes sans
-/// jamais écrire l'un des deux », pas une résistance cryptographique : les
-/// deux fonctions la rendent également.
+/// ⚠️ **SHA-1 and not SHA-256, unlike the plan (task 1)**, and it is
+/// deliberate: `sha1` is already a dependency of this crate (TURN lease),
+/// `sha2` is not, and the plan states at the top that **P1 adds no
+/// dependency**. The property sought is "distinguish two texts without
+/// ever writing either of them", not cryptographic resistance: both
+/// functions provide it equally.
 fn empreinte(texte: &str) -> String {
     use sha1::{Digest, Sha1};
     let condense = Sha1::digest(texte.as_bytes());
@@ -52,14 +52,14 @@ fn empreinte(texte: &str) -> String {
         .collect()
 }
 
-/// Ce que la sonde a lu du presse-papier à un instant donné.
+/// What the probe read from the clipboard at a given instant.
 struct Lecture {
     octets_utf16: usize,
     octets_utf8: usize,
     empreinte: String,
 }
 
-/// Exécute la sonde pendant `secondes` de phase B.
+/// Runs the probe for `secondes` of phase B.
 pub fn executer(secondes_texte: &str) -> Result<()> {
     let secondes: u64 = secondes_texte.trim().parse().unwrap_or(40);
 
@@ -68,7 +68,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         "P0 DEBUT sonde presse-papier — elle ECRIT le presse-papier de la VM (phases C et D)"
     );
 
-    // ---- Phase A : le compteur existe-t-il, et est-il STABLE au repos ? ----
+    // ---- Phase A: does the counter exist, and is it STABLE at rest? ----
     let mut repos = Vec::with_capacity(RELEVES_REPOS);
     for i in 0..RELEVES_REPOS {
         if i > 0 {
@@ -80,30 +80,30 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     }
     let stable_au_repos = repos.windows(2).all(|paire| paire[0] == paire[1]);
 
-    // ---- Phase A-bis : DÉSAMBIGUÏSER un zéro, jamais en conclure ----
+    // ---- Phase A-bis: DISAMBIGUATE a zero, never conclude from it ----
     //
-    // 🔴 **Trois zéros ont DEUX causes, et la première version de cette sonde
-    // les confondait — elle a rendu un verdict éliminatoire FAUX sur un
-    // système parfaitement sain** (exécution n°1 du 20 août 2026, journal
-    // `p0-sonde-1.log`, conservé pour cela) :
+    // 🔴 **Three zeros have TWO causes, and the first version of this probe
+    // confused them — it returned a WRONG elimination verdict on a
+    // perfectly healthy system** (run no. 1 of 20 August 2026, log
+    // `p0-sonde-1.log`, kept for that reason):
     //
-    // 1. `GetClipboardSequenceNumber` a ÉCHOUÉ — le processus n'a pas
-    //    l'accès `WINSTA_ACCESSCLIPBOARD` sur sa station de fenêtres. La
-    //    documentation ne prévoit que ce cas, et c'est ce que la première
-    //    version supposait.
-    // 2. Le compteur EXISTE et vaut réellement zéro, parce que **rien n'a
-    //    jamais été copié depuis le démarrage de la station de fenêtres**.
-    //    Mesuré : la VM venait d'être démarrée, la sonde a lu `0, 0, 0` et
-    //    a déclaré `P0 NON MESURABLE` ; cinq copies plus tard, la même sonde
-    //    sur la même station lisait **53**, stable, et toutes les phases
-    //    passaient. Le zéro était le compteur, pas son absence.
+    // 1. `GetClipboardSequenceNumber` FAILED — the process does not have
+    //    `WINSTA_ACCESSCLIPBOARD` access on its window station. The
+    //    documentation only provides for this case, and it is what the first
+    //    version assumed.
+    // 2. The counter EXISTS and is really zero, because **nothing has
+    //    ever been copied since the window station started**.
+    //    Measured: the VM had just been started, the probe read `0, 0, 0` and
+    //    declared `P0 NON MESURABLE`; five copies later, the same probe
+    //    on the same station read **53**, stable, and all phases
+    //    passed. The zero was the counter, not its absence.
     //
-    // On ne conclut donc pas : on écrit nous-mêmes le presse-papier — le
-    // geste de la phase C, joué ici en désambiguïsateur — et on relit. S'il
-    // bouge, le compteur existe et les phases suivantes ont un sens. **Un
-    // verdict négatif exige que la chose mesurée soit ABSENTE, pas
-    // seulement nulle** ; c'est la symétrie du piège de D9 (`survit=true`
-    // rendu par une sortie disparue).
+    // So we do not conclude: we write the clipboard ourselves — the
+    // gesture of phase C, played here as a disambiguator — and read back. If it
+    // moves, the counter exists and the following phases make sense. **A
+    // negative verdict requires the measured thing to be ABSENT, not
+    // merely zero**; it is the mirror image of D9's trap (`survit=true`
+    // returned by a vanished output).
     if repos.iter().all(|&s| s == 0) {
         tracing::info!(
             "P0 A-bis : trois zeros — on ecrit le presse-papier pour departager \
@@ -114,8 +114,8 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         let apres = win::numero_de_sequence();
         tracing::info!(apres, "P0 A-bis releve apres notre ecriture");
         if apres != 0 {
-            // Le compteur existe : la station était simplement vierge. On
-            // repart de ce relevé-ci, qui est le vrai état de référence.
+            // The counter exists: the station was simply blank. We
+            // start again from this reading, which is the real reference state.
             repos = vec![apres; RELEVES_REPOS];
         }
     }
@@ -155,7 +155,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         return Ok(());
     }
 
-    // ---- Phase B : une copie faite à la main fait-elle bouger le compteur ? ----
+    // ---- Phase B: does a copy made by hand make the counter move? ----
     let seq_debut = *repos.last().expect("RELEVES_REPOS > 0");
     let mut reference = seq_debut;
     let mut mouvements = 0usize;
@@ -211,14 +211,14 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     };
     tracing::info!(q1bis, mouvements, lectures, echecs_open, "P0 B bilan");
 
-    // ---- Phase C : notre PROPRE écriture fait-elle bouger le compteur ? ----
+    // ---- Phase C: does our OWN write make the counter move? ----
     let nonce = format!("{:x}", std::process::id());
     let notre_texte = format!("sonde-presse-papier-{nonce}");
     let avant_c = win::numero_de_sequence();
     let ecrit_c = win::ecrire_texte(&notre_texte);
     std::thread::sleep(PAS_REPOS);
     let apres_c = win::numero_de_sequence();
-    // On juge sur le MOUVEMENT relu, jamais sur `ecrit_c`.
+    // We judge on the movement read back, never on `ecrit_c`.
     let q3 = if apres_c != avant_c {
         "bouge"
     } else {
@@ -234,7 +234,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         "P0 C notre ecriture"
     );
 
-    // ---- Phase D : une réécriture IDENTIQUE fait-elle bouger le compteur ? ----
+    // ---- Phase D: does an IDENTICAL rewrite make the counter move? ----
     let avant_d = win::numero_de_sequence();
     let ecrit_d = win::ecrire_texte(&notre_texte);
     std::thread::sleep(PAS_REPOS);
@@ -269,7 +269,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     Ok(())
 }
 
-/// Ce qu'on mesure d'un texte lu — jamais le texte lui-même.
+/// What we measure of a text read — never the text itself.
 fn mesurer(texte: &str) -> Lecture {
     Lecture {
         octets_utf16: texte.encode_utf16().count() * 2,
@@ -294,9 +294,9 @@ mod win {
 
     /// Ouvre le presse-papier, lit `CF_UNICODETEXT`, referme.
     ///
-    /// `Ok(None)` = le presse-papier ne porte pas de texte Unicode (une image,
-    /// par exemple) ; `Err` = l'ouverture a été refusée, ce qui est NORMAL
-    /// sous Windows (une autre application le tient) et non une panne.
+    /// `Ok(None)` = the clipboard carries no Unicode text (an image,
+    /// for example); `Err` = opening was refused, which is NORMAL
+    /// under Windows (another application holds it) and not a failure.
     pub fn lire_texte() -> Result<Option<String>> {
         unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
         let resultat = (|| unsafe {
@@ -322,7 +322,7 @@ mod win {
         resultat
     }
 
-    /// Écrit `texte` dans le presse-papier — **geste de sonde uniquement**.
+    /// Writes `texte` to the clipboard — **probe gesture only**.
     pub fn ecrire_texte(texte: &str) -> Result<()> {
         let mut unites: Vec<u16> = texte.encode_utf16().collect();
         unites.push(0);
@@ -337,7 +337,7 @@ mod win {
             }
             std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
             let _ = GlobalUnlock(global);
-            // Le presse-papier prend possession du bloc : ne pas le libérer.
+            // The clipboard takes ownership of the block: do not free it.
             SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(global.0)))
                 .context("SetClipboardData")?;
             Ok(())

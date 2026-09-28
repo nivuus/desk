@@ -1,23 +1,23 @@
-//! L'horloge commune au capteur et à ses enfants.
+//! The clock shared by the sensor and its children.
 //!
-//! `clock_origin` est un `std::time::Instant`, partagé côté enfant entre la
-//! vidéo et l'audio : c'est cette origine commune qui rend les deux lignes de
-//! temps comparables, donc la synchro A/V exacte. Un `Instant` n'a aucun sens
-//! dans un autre processus — mais `QueryPerformanceCounter` est monotone et
-//! **commun à toute la machine**. L'enfant envoie donc son origine en tics QPC,
-//! et le capteur reconstruit l'`Instant` équivalent chez lui.
+//! `clock_origin` is a `std::time::Instant`, shared on the child side between
+//! video and audio: it is this common origin that makes the two
+//! timelines comparable, hence the A/V sync exact. An `Instant` makes no sense
+//! in another process — but `QueryPerformanceCounter` is monotonic and
+//! **common to the whole machine**. The child therefore sends its origin in QPC ticks,
+//! and the sensor rebuilds the equivalent `Instant` on its side.
 //!
-//! La conversion est PURE et hors `cfg` : c'est elle qui peut être fausse, pas
-//! l'appel système.
+//! The conversion is PURE and outside `cfg`: it is what can be wrong, not
+//! the system call.
 
 use std::time::{Duration, Instant};
 
-/// Reconstruit l'origine d'horloge de l'enfant dans le référentiel `Instant`
-/// du capteur.
+/// Rebuilds the child's clock origin in the sensor's `Instant` frame
+/// of reference.
 ///
-/// Retombe sur `maintenant` dans les deux cas dégénérés — origine postérieure
-/// à la lecture courante, ou fréquence nulle — plutôt que de paniquer : une
-/// origine fausse décale la synchro A/V, une panique tue la fenêtre.
+/// Falls back on `maintenant` in both degenerate cases — origin after
+/// the current reading, or zero frequency — rather than panicking: a
+/// wrong origin shifts the A/V sync, a panic kills the window.
 pub fn origine_depuis_qpc(
     origine_qpc: i64,
     qpc_maintenant: i64,
@@ -63,7 +63,7 @@ mod tests {
     #[test]
     fn une_origine_anterieure_se_reconstruit_en_arriere() {
         let maintenant = Instant::now();
-        // 10 MHz, et 25 millions de tics écoulés = 2,5 s.
+        // 10 MHz, and 25 million elapsed ticks = 2.5 s.
         let reconstruite = origine_depuis_qpc(1_000_000, 26_000_000, 10_000_000, maintenant);
         let ecart = maintenant.duration_since(reconstruite);
         assert!(
@@ -81,9 +81,9 @@ mod tests {
         );
     }
 
-    /// Une origine POSTÉRIEURE ne peut pas exister, mais une horloge lue de
-    /// travers la produirait : on retombe alors sur `maintenant` plutôt que de
-    /// paniquer en soustrayant au-delà de l'origine de l'`Instant`.
+    /// A LATER origin cannot exist, but a clock read
+    /// wrongly would produce one: we then fall back on `maintenant` rather than
+    /// panicking by subtracting beyond the `Instant`'s origin.
     #[test]
     fn une_origine_posterieure_retombe_sur_maintenant() {
         let maintenant = Instant::now();

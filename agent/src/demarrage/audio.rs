@@ -1,11 +1,11 @@
-//! Construction et branchement de la source audio d'une session.
+//! Construction and wiring of a session's audio source.
 //!
-//! Extrait de `demarrage.rs` à la tâche 7 du sous-bloc D7 : l'ajout du mode
-//! par-processus (deux embranchements, plus l'aide `pid_de_fenetre`) portait
-//! le fichier parent au-dessus du plafond de 500 lignes du dépôt — même
-//! règle, même remède que `demarrage/source.rs` (voir son commentaire de
-//! tête) : l'addition s'accompagne de son extraction plutôt que d'une
-//! compression du commentaire qu'elle porte.
+//! Extracted from `demarrage.rs` in task 7 of sub-block D7: adding the
+//! per-process mode (two branches, plus the `pid_de_fenetre` helper) took
+//! the parent file above the repository's 500-line cap — same
+//! rule, same remedy as `demarrage/source.rs` (see its head
+//! comment): the addition comes with its extraction rather than a
+//! compression of the comment it carries.
 
 #![cfg(windows)]
 
@@ -14,22 +14,22 @@ use std::time::Instant;
 use crate::transport::Session;
 use crate::{windows_audio, Config};
 
-/// Ouvre la source audio adaptée au mode de l'agent, et la branche sur
-/// `session` si l'ouverture réussit.
+/// Opens the audio source suited to the agent's mode, and wires it to
+/// `session` if opening succeeds.
 ///
-/// Son absence ne compromet jamais la session vidéo : sur une source de test
-/// (`TEST_FILE`), il n'y a rien à capter, et si la capture refuse de
-/// s'ouvrir, on journalise et la session continue, muette.
+/// Its absence never compromises the video session: on a test source
+/// (`TEST_FILE`), there is nothing to capture, and if the capture refuses to
+/// open, we log and the session carries on, silent.
 ///
-/// **Deux modes, et le repli n'est JAMAIS le mix global.** Avec
-/// `FENETRE_HWND`, l'enfant capte le son du seul processus propriétaire de sa
-/// fenêtre, et le capteur arbitre entre les fenêtres qui en partagent un.
-/// Sans, il capte le mix de la session : c'est le mode mono-fenêtre d'avant
-/// le sous-bloc D7, et il ne doit pas régresser.
+/// **Two modes, and the fallback is NEVER the global mix.** With
+/// `FENETRE_HWND`, the child captures the sound of the sole process owning its
+/// window, and the sensor arbitrates between the windows that share one.
+/// Without it, it captures the session mix: that is the single-window mode from before
+/// sub-block D7, and it must not regress.
 ///
-/// Retomber sur le mix global quand le process loopback échoue ferait
-/// entendre à une fenêtre le son de TOUTES les autres, sous couvert
-/// d'isolation — c'est le repli explicitement écarté au cadrage.
+/// Falling back on the global mix when process loopback fails would make
+/// a window hear the sound of ALL the others, under the guise of
+/// isolation — it is the fallback explicitly ruled out at framing.
 pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Instant) {
     if config.test_file.is_none() && config.audio {
         let ouverture = match config.fenetre_hwnd {
@@ -48,30 +48,30 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                 );
                 session.set_audio_source(Box::new(source_audio));
 
-                // Mode MONO-FENÊTRE : aucun capteur n'arbitrera jamais cette
-                // session, donc `appliquer_audio` — l'unique écrivain de
-                // `audio_porteuse` côté `transport` — n'y sera jamais appelée
-                // (son garde est `VideoSource::audio_a_appliquer`, qui rend
-                // `None` par défaut et n'a `capteur/distante.rs` pour seule
-                // surcharge). Sans cette ligne, toute capture reconstruite est
-                // remise au silence par le réarmement
-                // `set_actif(self.audio_porteuse)` de
-                // `reconstruire_ou_signaler`, et le remède de D10 est INERTE
-                // dans le cas MAJORITAIRE — une application, une fenêtre.
-                // Leg 4 de D10.
+                // SINGLE-WINDOW mode: no sensor will ever arbitrate this
+                // session, so `appliquer_audio` — the only writer of
+                // `audio_porteuse` on the `transport` side — will never be called there
+                // (its guard is `VideoSource::audio_a_appliquer`, which returns
+                // `None` by default and has `capteur/distante.rs` as its only
+                // override). Without this line, any rebuilt capture is
+                // put back to silence by the re-arm
+                // `set_actif(self.audio_porteuse)` of
+                // `reconstruire_ou_signaler`, and D10's remedy is INERT
+                // in the MAJORITY case — one application, one window.
+                // D10's hand-over 4.
                 //
-                // ⚠️ `is_none()` et non un `match` recopié : le `match` du
-                // choix de source ci-dessus a déjà consommé la valeur, et
-                // refaire ici un troisième embranchement sur le mode
-                // dupliquerait ce que ce fichier a déjà payé deux fois.
+                // ⚠️ `is_none()` and not a copied `match`: the `match` of the
+                // source choice above has already consumed the value, and
+                // redoing a third branch on the mode here
+                // would duplicate what this file has already paid for twice.
                 if config.fenetre_hwnd.is_none() {
                     session.set_audio_porteuse(true);
                 }
 
-                // Le MÊME choix de mode que ci-dessus, refait à l'identique.
-                // Le repli n'est JAMAIS le mix global : une fenêtre qui
-                // entendrait toutes les autres sous couvert d'isolation est
-                // l'arbitrage explicitement écarté au cadrage de D7.
+                // The SAME mode choice as above, redone identically.
+                // The fallback is NEVER the global mix: a window that
+                // would hear all the others under the guise of isolation is
+                // the trade-off explicitly ruled out at D7's framing.
                 let hwnd = config.fenetre_hwnd;
                 session.set_audio_reconstructeur(Box::new(move || {
                     let source = match hwnd {
@@ -94,19 +94,19 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
     }
 }
 
-/// Le PID du processus propriétaire d'une fenêtre.
+/// The PID of the process owning a window.
 ///
-/// Dérivé du `hwnd`, exactement comme le capteur le dérive de son côté
-/// (`capteur/fenetre.rs`). Le PID ne circule sur aucun protocole : deux
-/// dérivations indépendantes du même identifiant stable valent mieux qu'un
-/// champ de plus à tenir cohérent.
+/// Derived from the `hwnd`, exactly as the sensor derives it on its side
+/// (`capteur/fenetre.rs`). The PID travels on no protocol: two
+/// independent derivations of the same stable identifier are better than
+/// one more field to keep consistent.
 fn pid_de_fenetre(hwnd: u64) -> anyhow::Result<u32> {
     use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 
     let handle = HWND(hwnd as *mut core::ffi::c_void);
     let mut pid = 0u32;
-    // SAFETY : un handle invalide fait rendre 0, ce que le `ensure` attrape.
+    // SAFETY: an invalid handle makes it return 0, which the `ensure` catches.
     unsafe { GetWindowThreadProcessId(handle, Some(&mut pid)) };
     anyhow::ensure!(pid != 0, "aucun PID pour la fenêtre {hwnd:#x}");
     Ok(pid)

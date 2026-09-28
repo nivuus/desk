@@ -1,20 +1,20 @@
-//! Duplications DXGI BRUTES sur des sorties voisines, pour compter les pertes
-//! d'accès qu'un changement de mode leur inflige — l'inconnue annexe n°2 de
-//! D8 (« combien de pertes d'accès `0x887a0026` un changement de mode
-//! inflige-t-il aux voisines ? »).
+//! RAW DXGI duplications on neighbouring outputs, to count the access
+//! losses that a mode change inflicts on them — D8's side unknown no. 2
+//! ("how many `0x887a0026` access losses does a mode change
+//! inflict on the neighbours?").
 //!
-//! Extrait de `mode_sortie.rs` à la tâche 1 du sous-bloc D9, pour le plafond
-//! de 500 lignes (`CLAUDE.md`) — et séparé de
-//! `crate::capture::DesktopCapture` par NÉCESSITÉ, pas par convenance : sa
-//! fenêtre de reprise (`capture_reprise::FenetreDeReprise`) ABSORBE une perte
-//! d'accès transitoire en la rouvrant en silence, sans jamais la remonter à
-//! l'appelant tant que la reprise réussit dans les 8 s de sa fenêtre — voir
-//! `next_frame` dans `capture.rs`. C'est précisément ce que cette mesure
-//! annexe doit observer et compter, pas ce que la production a intérêt à
-//! masquer. `crate::capture::ouverture` porte la même logique d'ouverture par
-//! sortie, mais ses fonctions sont `pub(super)` du module `capture` : hors de
-//! portée d'un module de diagnostic, et les rendre plus visibles toucherait
-//! du code de production pour un besoin qui n'est pas le sien.
+//! Extracted from `mode_sortie.rs` at task 1 of sub-block D9, for the
+//! 500-line ceiling (`CLAUDE.md`) — and separated from
+//! `crate::capture::DesktopCapture` out of NECESSITY, not convenience: its
+//! recovery window (`capture_reprise::FenetreDeReprise`) ABSORBS a transient
+//! access loss by silently reopening it, without ever reporting it to
+//! the caller as long as recovery succeeds within the 8 s of its window — see
+//! `next_frame` in `capture.rs`. That is precisely what this side
+//! measurement must observe and count, not what production has an interest in
+//! masking. `crate::capture::ouverture` carries the same per-output opening
+//! logic, but its functions are `pub(super)` of the `capture` module: out of
+//! reach of a diagnostic module, and making them more visible would touch
+//! production code for a need that is not its own.
 
 use std::collections::HashSet;
 
@@ -35,55 +35,55 @@ use crate::capture::SortieDxgi;
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 use crate::moniteurs_virtuels::Sorties;
 
-/// Une duplication brute, tenue le temps du tour, sur une sortie qui n'est
-/// PAS celle sous test.
+/// A raw duplication, held for the duration of the round, on an output that is
+/// NOT the one under test.
 pub(super) struct DuplicationVoisine {
     nom: String,
     device: ID3D11Device,
     output: IDXGIOutput1,
     duplication: IDXGIOutputDuplication,
-    /// Posé quand une réouverture après perte d'accès a elle-même échoué :
-    /// plus rien à sonder sur cette voisine, voir `sonder`.
+    /// Set when a reopening after an access loss itself failed:
+    /// nothing left to probe on this neighbour, see `sonder`.
     morte: bool,
 }
 
 impl DuplicationVoisine {
-    /// Ouvre par INDEX (`sortie.index_adaptateur`/`index_sortie`) plutôt que
-    /// par nom, à la différence de `DesktopCapture::sur_sortie` : `sortie`
-    /// vient d'un relevé de topologie que l'appelant vient tout juste de
-    /// prendre, et rien ne s'intercale entre ce relevé et cette ouverture qui
-    /// puisse décaler ces indices positionnels (voir la doctrine du nom dans
-    /// `capture_virtuelle.rs` — elle vaut pour un index conservé À TRAVERS une
-    /// mutation, pas pour un index relu et consommé sur-le-champ).
+    /// Opens by INDEX (`sortie.index_adaptateur`/`index_sortie`) rather than
+    /// by name, unlike `DesktopCapture::sur_sortie`: `sortie`
+    /// comes from a topology survey the caller has just
+    /// taken, and nothing comes between that survey and this opening that
+    /// could shift these positional indices (see the name doctrine in
+    /// `capture_virtuelle.rs` — it applies to an index kept ACROSS a
+    /// mutation, not to an index read and consumed on the spot).
     ///
-    /// **⚠️ Cette garantie repose ENTIÈREMENT sur l'appelant : il doit ouvrir
-    /// CETTE voisine avant de créer la sortie suivante** — la revue de la
-    /// tâche 1 (Critique 1) a trouvé `mode_sortie::executer` en défaut sur ce
-    /// point exact (la voisine 1 était ouverte après la création de la
-    /// voisine 2, donc sur un index déjà décalé). C'est pourquoi `ouvrir`
-    /// reste privée à ce module : la seule voie de construction publique est
-    /// désormais `creer_deux`, qui applique l'ordre strict au lieu d'en
-    /// dépendre.
+    /// **⚠️ This guarantee rests ENTIRELY on the caller: it must open
+    /// THIS neighbour before creating the next output** — the review of
+    /// task 1 (Critical 1) found `mode_sortie::executer` at fault on this
+    /// exact point (neighbour 1 was opened after the creation of
+    /// neighbour 2, hence on an already shifted index). That is why `ouvrir`
+    /// stays private to this module: the only public construction path is
+    /// now `creer_deux`, which enforces the strict order instead of
+    /// depending on it.
     ///
-    /// **`SetMultithreadProtected(TRUE)` est posé, et la tension avec
-    /// `CLAUDE.md` est tranchée ici plutôt que laissée implicite (Important 1
-    /// de la revue de la tâche 1).** Deux affirmations coexistent dans ce
-    /// dépôt : `capture::ouverture::creer_peripherique` explique le mécanisme
-    /// — SANS cet appel, un périphérique D3D11 sollicité depuis DEUX FILS À
-    /// LA FOIS (capture ET Media Foundation, chacun depuis ses propres fils)
-    /// peut se bloquer indéfiniment DANS le pilote, sans erreur — quand
-    /// `CLAUDE.md` (sous-bloc D3, épreuve de la « sonde minimale ») l'énonce
-    /// SANS cette condition : « elle porte inévitablement un `ID3D11Device`
-    /// avec `SetMultithreadProtected(true)`, `DuplicateOutput` L'EXIGEANT ».
-    /// Cette voisine ne remplit AUCUNE des deux conditions du mécanisme de
-    /// `creer_peripherique` (jamais confiée à Media Foundation, jamais
-    /// sollicitée que depuis le fil unique de la sonde) — un raisonnement
-    /// PLAUSIBLE pour s'en passer. Mais la mesure de D3 dit « `DuplicateOutput`
-    /// l'exigeant », sans réserve de partage ni de concurrence, et je n'ai
-    /// aucune mesure à moi qui contredise cette formulation plus large.
-    /// **Faute de pouvoir départager les deux lectures, je pose l'appel** :
-    /// son coût est nul (un drapeau sur le contexte immédiat), et la doctrine
-    /// déjà consignée, prise à la lettre, l'exige.
+    /// **`SetMultithreadProtected(TRUE)` is set, and the tension with
+    /// `CLAUDE.md` is settled here rather than left implicit (Important 1
+    /// of the review of task 1).** Two assertions coexist in this
+    /// repository: `capture::ouverture::creer_peripherique` explains the mechanism
+    /// — WITHOUT this call, a D3D11 device solicited from TWO THREADS AT
+    /// ONCE (capture AND Media Foundation, each from its own threads)
+    /// can block indefinitely INSIDE the driver, without an error — while
+    /// `CLAUDE.md` (sub-block D3, the "minimal probe" test) states it
+    /// WITHOUT that condition: "it inevitably carries an `ID3D11Device`
+    /// with `SetMultithreadProtected(true)`, `DuplicateOutput` REQUIRING IT".
+    /// This neighbour fulfils NEITHER of the two conditions of the mechanism of
+    /// `creer_peripherique` (never handed to Media Foundation, only ever
+    /// solicited from the probe's single thread) — a PLAUSIBLE
+    /// reasoning for doing without it. But D3's measurement says "`DuplicateOutput`
+    /// requiring it", with no sharing or concurrency caveat, and I have
+    /// no measurement of my own contradicting this broader wording.
+    /// **Unable to decide between the two readings, I make the call**:
+    /// its cost is nil (a flag on the immediate context), and the doctrine
+    /// already recorded, taken literally, requires it.
     fn ouvrir(sortie: &SortieDxgi) -> Result<Self> {
         let factory: IDXGIFactory1 =
             unsafe { CreateDXGIFactory1() }.context("fabrique DXGI (duplication d'une voisine)")?;
@@ -106,9 +106,9 @@ impl DuplicationVoisine {
                 &adapter,
                 D3D_DRIVER_TYPE_UNKNOWN,
                 Default::default(),
-                // Aucun drapeau : cette voisine ne lit ni ne convertit jamais
-                // de pixel, `D3D11_CREATE_DEVICE_BGRA_SUPPORT` n'a donc rien
-                // à y faire.
+                // No flags: this neighbour never reads nor converts
+                // any pixel, so `D3D11_CREATE_DEVICE_BGRA_SUPPORT` has nothing
+                // to do here.
                 Default::default(),
                 Some(&[D3D_FEATURE_LEVEL_11_0]),
                 D3D11_SDK_VERSION,
@@ -123,17 +123,17 @@ impl DuplicationVoisine {
         let contexte: ID3D11DeviceContext = contexte
             .ok_or_else(|| anyhow!("contexte D3D11 absent (voisine {})", sortie.nom_sortie))?;
 
-        // Voir le commentaire de tête de cette fonction : posé par doctrine
-        // consignée (`CLAUDE.md`, sous-bloc D3), pas parce qu'un mécanisme
-        // connu l'exigerait pour CE périphérique-ci. Le contexte lui-même
-        // n'est conservé que le temps de cet appel -- rien ensuite ne s'en
-        // sert, le périphérique porte l'état posé.
+        // See this function's header comment: set by recorded
+        // doctrine (`CLAUDE.md`, sub-block D3), not because a known
+        // mechanism would require it for THIS device. The context itself
+        // is only kept for the duration of this call -- nothing afterwards
+        // uses it, the device carries the state set.
         let multithread: ID3D11Multithread = contexte
             .cast()
             .with_context(|| format!("ID3D11Multithread pour la voisine {}", sortie.nom_sortie))?;
-        // Rend l'état PRÉCÉDENT (`BOOL` qu'il faut consommer) : jamais lu
-        // ailleurs, mais journalisé plutôt qu'ignoré par un `let _`, même
-        // discipline que `capture::ouverture::creer_peripherique`.
+        // Returns the PREVIOUS state (a `BOOL` that must be consumed): never read
+        // elsewhere, but logged rather than ignored by a `let _`, same
+        // discipline as `capture::ouverture::creer_peripherique`.
         let protection_precedente = unsafe { multithread.SetMultithreadProtected(true) };
         tracing::info!(
             voisine = %sortie.nom_sortie,
@@ -154,22 +154,22 @@ impl DuplicationVoisine {
         })
     }
 
-    /// Sonde une fois, sans bloquer (`AcquireNextFrame(0, ..)`, même
-    /// convention que `capture.rs::tenter_acquisition`).
+    /// Probes once, without blocking (`AcquireNextFrame(0, ..)`, same
+    /// convention as `capture.rs::tenter_acquisition`).
     ///
-    /// Rend `true` si CETTE sollicitation détecte une perte d'accès —
-    /// auquel cas la duplication est immédiatement rouverte pour que la
-    /// sollicitation SUIVANTE puisse en détecter une AUTRE. Sans cette
-    /// réouverture, `AcquireNextFrame` rendrait indéfiniment le même refus
-    /// sur l'instance périmée : une seule coupure compterait pour autant de
-    /// sollicitations qu'il en reste dans le tour, ce qui fausserait
-    /// `pertes_acces_voisines` dans le sens dangereux (une majoration muette).
+    /// Returns `true` if THIS solicitation detects an access loss —
+    /// in which case the duplication is immediately reopened so that the
+    /// NEXT solicitation can detect ANOTHER one. Without this
+    /// reopening, `AcquireNextFrame` would indefinitely return the same refusal
+    /// on the stale instance: a single cut would count for as many
+    /// solicitations as remain in the round, which would skew
+    /// `pertes_acces_voisines` in the dangerous direction (a silent overestimate).
     ///
-    /// Ne détecte donc, par construction, qu'AU PLUS une perte par appel —
-    /// si plusieurs coupures distinctes survenaient entre deux sollicitations,
-    /// elles se compteraient pour une seule. Ce n'est pas un défaut caché :
-    /// c'est la granularité du tour, qui ne sonde qu'une fois par tentative
-    /// de changement de mode (voir son appelant).
+    /// Therefore detects, by construction, AT MOST one loss per call —
+    /// if several distinct cuts occurred between two solicitations,
+    /// they would count as one. It is not a hidden defect:
+    /// it is the granularity of the round, which only probes once per mode
+    /// change attempt (see its caller).
     pub(super) fn sonder(&mut self) -> bool {
         if self.morte {
             return false;
@@ -184,8 +184,8 @@ impl DuplicationVoisine {
                 let _ = unsafe { self.duplication.ReleaseFrame() };
                 false
             }
-            // Rien de neuf, ou une panne étrangère à la question posée ici :
-            // dans les deux cas, rien à compter.
+            // Nothing new, or a failure unrelated to the question asked here:
+            // in both cases, nothing to count.
             Err(e) if !crate::capture_reprise::est_acces_perdu(e.code().0) => false,
             Err(e) => {
                 tracing::info!(
@@ -196,10 +196,10 @@ impl DuplicationVoisine {
                 match unsafe { self.output.DuplicateOutput(&self.device) } {
                     Ok(fraiche) => self.duplication = fraiche,
                     Err(erreur) => {
-                        // Cette coupure-CI compte tout de même : elle a bien
-                        // eu lieu. Ce sont les SUIVANTES, sur cette voisine,
-                        // qui ne seront plus comptées -- `morte` l'empêche de
-                        // relire indéfiniment la même instance périmée.
+                        // THIS cut still counts: it did
+                        // take place. It is the FOLLOWING ones, on this neighbour,
+                        // that will no longer be counted -- `morte` prevents it from
+                        // indefinitely rereading the same stale instance.
                         self.morte = true;
                         tracing::warn!(
                             voisine = %self.nom,
@@ -215,18 +215,18 @@ impl DuplicationVoisine {
     }
 }
 
-/// Crée, désigne ET OUVRE les deux voisines — dans cet ordre STRICT, pour
-/// CHACUNE, sans qu'aucune création ne s'intercale entre le relevé d'une
-/// voisine et l'ouverture de SA duplication (voir la doctrine de `ouvrir`
-/// ci-dessus, et Critique 1 de la revue de la tâche 1). C'est pour rendre
-/// cet ordre STRUCTUREL, plutôt qu'une discipline que l'appelant devrait
-/// respecter de lui-même, que `ouvrir` est privée et que ceci est l'unique
-/// point d'entrée public de ce module.
+/// Creates, designates AND OPENS the two neighbours — in this STRICT order, for
+/// EACH, without any creation coming between the survey of a
+/// neighbour and the opening of ITS duplication (see the doctrine of `ouvrir`
+/// above, and Critical 1 of the review of task 1). It is to make
+/// this order STRUCTURAL, rather than a discipline the caller would have to
+/// respect by itself, that `ouvrir` is private and that this is the only
+/// public entry point of this module.
 ///
-/// Met à jour `connues_a_ce_point` au passage : l'appelant en a encore
-/// besoin pour désigner la sortie témoin ensuite. Rend les NOMS des deux
-/// voisines et non leurs `SortieDxgi` entières — tout ce dont l'appelant se
-/// sert au-delà de cette fonction.
+/// Updates `connues_a_ce_point` along the way: the caller still needs
+/// it to designate the control output afterwards. Returns the NAMES of the two
+/// neighbours and not their whole `SortieDxgi` — all that the caller
+/// uses beyond this function.
 pub(super) fn creer_deux(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,

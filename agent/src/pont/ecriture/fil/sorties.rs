@@ -54,12 +54,12 @@ impl Fil {
         }
     }
 
-    /// Ajoute une ligne au journal, et le compacte si c'est possible.
+    /// Appends a line to the journal, and compacts it if possible.
     ///
-    /// ⚠️ **UN ÉCHEC D'ÉCRITURE DU JOURNAL N'EMPÊCHE PAS LA POUSSÉE.** Ne pas
-    /// pousser perdrait la donnée tout autant, et **sans même la nommer**. Le
-    /// `warn!` est tout ce qu'on peut faire — et il dit exactement ce qui est
-    /// perdu : la capacité de REPRENDRE cette entrée après un arrêt brutal.
+    /// ⚠️ **A JOURNAL WRITE FAILURE DOES NOT PREVENT THE PUSH.** Not
+    /// pushing would lose the data just as much, and **without even naming it**. The
+    /// `warn!` is all we can do — and it says exactly what is
+    /// lost: the ability to RESUME this entry after an abrupt stop.
     pub(super) fn ecrire_journal(&mut self, ligne: &str) {
         if let Err(erreur) = disque::ajouter(&self.config.chemin_journal, ligne) {
             tracing::warn!(

@@ -1,11 +1,11 @@
-//! Le TÉMOIN de l'étape 3 et la troisième inconnue annexe de D8 (« la sortie
-//! garde-t-elle son nom `\\.\DISPLAYn` ? »).
+//! The CONTROL of step 3 and D8's third side unknown ("does the output
+//! keep its `\\.\DISPLAYn` name?").
 //!
-//! Extrait de `mode_sortie.rs` à la tâche 1 du sous-bloc D9, pour le plafond
-//! de 500 lignes (`CLAUDE.md`). Aucune de ces deux fonctions ne touche à un
-//! champ privé de `mode_sortie` : l'une rejoue un geste déjà exposé
-//! (`combinaisons::appliquer_combo`), l'autre relit une topologie déjà
-//! exposée (`montee::relever_topologie`).
+//! Extracted from `mode_sortie.rs` at task 1 of sub-block D9, for the
+//! 500-line ceiling (`CLAUDE.md`). Neither of these two functions touches a
+//! private field of `mode_sortie`: one replays an already exposed gesture
+//! (`combinaisons::appliquer_combo`), the other reads back an already
+//! exposed topology (`montee::relever_topologie`).
 
 use std::collections::HashSet;
 
@@ -17,31 +17,31 @@ use super::combinaisons::{appliquer_combo, Combo};
 use super::{choisir_cible, modes_annonces};
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
-/// Le TÉMOIN (étape 3, brief D9) : rejoue `combo` sur `nom_sortie` — une
-/// sortie NEUVE, sans duplication ouverte — et relit son propre mouvement.
+/// The CONTROL (step 3, D9 brief): replays `combo` on `nom_sortie` — a
+/// NEW output, with no duplication open — and reads back its own movement.
 ///
-/// Sans lui, un refus au tour ÉLIMINATOIRE s'imputerait à la duplication
-/// tenue pendant ce tour, alors qu'il pourrait tout aussi bien venir du mode
-/// choisi lui-même : le témoin rejoue le MÊME geste.
+/// Without it, a refusal in the ELIMINATION round would be blamed on the duplication
+/// held during that round, whereas it could just as well come from the chosen
+/// mode itself: the control replays the SAME gesture.
 ///
-/// ⚠️ **Correction (revue de la tâche 2, point mineur)** : ce commentaire
-/// affirmait « la seule variable qui change étant la duplication » — c'est
-/// faux. La sortie témoin est une sortie NEUVE (pas la même que celle testée
-/// par l'éliminatoire), et `drop(voisines)` relâche aussi les deux
-/// duplications voisines avant que le témoin ne soit rejoué
-/// (`mode_sortie.rs::executer`). Au moins trois choses diffèrent entre
-/// l'éliminatoire et le témoin : la duplication SUT, les deux duplications
-/// voisines, et l'identité de la sortie elle-même. Le témoin isole « aucune
-/// duplication DXGI ouverte nulle part », pas « uniquement la duplication
-/// SUT ».
+/// ⚠️ **Fix (review of task 2, minor point)**: this comment
+/// asserted "the only variable that changes being the duplication" — that is
+/// false. The control output is a NEW output (not the same one tested
+/// by the elimination test), and `drop(voisines)` also releases the two
+/// neighbouring duplications before the control is replayed
+/// (`mode_sortie.rs::executer`). At least three things differ between
+/// the elimination test and the control: the SUT duplication, the two neighbouring
+/// duplications, and the identity of the output itself. The control isolates "no
+/// DXGI duplication open anywhere", not "only the SUT
+/// duplication".
 ///
-/// `cible_eliminatoire` est la cible retenue pour l'ÉLIMINATOIRE, PAS
-/// forcément celle appliquée ici : voir `cible_du_temoin`, qui la substitue
-/// dans le cas dégénéré où la sortie témoin naît déjà à cette valeur
-/// (persistance registre, doctrine D8) -- exactement le défaut F1 que
-/// `choisir_cible` corrige déjà pour l'éliminatoire, et qui frapperait le
-/// témoin à l'identique sans cette parade (Critique 2 de la revue de la
-/// tâche 1).
+/// `cible_eliminatoire` is the target retained for the ELIMINATION test, NOT
+/// necessarily the one applied here: see `cible_du_temoin`, which substitutes it
+/// in the degenerate case where the control output is already born at that value
+/// (registry persistence, doctrine D8) -- exactly the F1 defect that
+/// `choisir_cible` already fixes for the elimination test, and which would hit the
+/// control identically without this safeguard (Critical 2 of the review of
+/// task 1).
 pub(super) fn rejouer_temoin(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
@@ -69,11 +69,11 @@ pub(super) fn rejouer_temoin(
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
         .map(|sortie| (sortie.rect.width, sortie.rect.height));
-    // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 13).**
-    // L'ancien repli `.unwrap_or((0, 0))` aurait pu faire gagner "TEMOIN
-    // RECU" sur la seule disparition de la sortie témoin (même défaut que
-    // dans `eliminatoire.rs`, même remède : aucun verdict n'est rendu sur
-    // une sentinelle, l'absence est journalisée à part).
+    // ⚠️ **Fix (review of task 2bis, second pass, point 13).**
+    // The old `.unwrap_or((0, 0))` fallback could have made "TEMOIN
+    // RECU" win on the mere disappearance of the control output (same defect as
+    // in `eliminatoire.rs`, same remedy: no verdict is returned on
+    // a sentinel, absence is logged separately).
     let Some(derniere_taille) = taille_lue else {
         tracing::error!(
             etiquette = combo.etiquette(),
@@ -106,29 +106,29 @@ pub(super) fn rejouer_temoin(
     Ok(())
 }
 
-/// Choisit la cible RÉELLEMENT appliquée par le témoin.
+/// Chooses the target ACTUALLY applied by the control.
 ///
-/// En général la MÊME que l'éliminatoire (`cible_eliminatoire`) — c'est le
-/// sens même du mot « témoin » : rejouer le geste à l'identique. Mais si
-/// cette sortie NEUVE naît déjà à `cible_eliminatoire`, appliquer CE combo
-/// sur CETTE cible ne pourrait JAMAIS observer de mouvement, quel que soit le
-/// verdict réel du pilote : un pilote qui accepte et un pilote qui refuse
-/// rendraient tous deux `derniere_taille == avant`. C'est le défaut F1
-/// rejoué — le même que `choisir_cible` corrige pour l'éliminatoire.
+/// Generally the SAME as the elimination test's (`cible_eliminatoire`) — that is the
+/// very meaning of the word "control": replaying the gesture identically. But if
+/// this NEW output is already born at `cible_eliminatoire`, applying THIS combo
+/// on THIS target could NEVER observe a movement, whatever the
+/// driver's real verdict: a driver that accepts and a driver that refuses
+/// would both return `derniere_taille == avant`. It is the F1 defect
+/// replayed — the same one `choisir_cible` fixes for the elimination test.
 ///
-/// **Ce cas n'est pas un accident de tirage.** La doctrine D8 est qu'une
-/// sortie naît à la DERNIÈRE taille laissée au registre par un
-/// `CDS_UPDATEREGISTRY` antérieur, et `CLAUDE.md` rapporte que
-/// « `CDS_UPDATEREGISTRY` seul a toujours suffi quand quelque chose
-/// bougeait » : SI le bras gagnant de l'éliminatoire écrit le registre (3 des
-/// 4 bras de `combinaisons::combos` le font), la sortie témoin, créée
-/// juste APRÈS, naît alors précisément à `cible_eliminatoire`. C'est donc le
-/// cas ATTENDU sur un bras gagnant persistant, pas une exception rare.
+/// **This case is not an accident of chance.** Doctrine D8 is that an
+/// output is born at the LAST size left in the registry by an earlier
+/// `CDS_UPDATEREGISTRY`, and `CLAUDE.md` reports that
+/// "`CDS_UPDATEREGISTRY` alone was always enough when something
+/// moved": IF the winning arm of the elimination test writes the registry (3 of the
+/// 4 arms of `combinaisons::combos` do), the control output, created
+/// right AFTER, is then born precisely at `cible_eliminatoire`. It is therefore the
+/// EXPECTED case on a persistent winning arm, not a rare exception.
 ///
-/// La parade est la MÊME que pour l'éliminatoire : substituer une cible
-/// mesurable, choisie parmi ce que CETTE sortie annonce, en excluant sa
-/// taille courante. `None` si aucun mode annoncé n'en diffère — cas
-/// dégénéré, voir `choisir_cible`.
+/// The safeguard is the SAME as for the elimination test: substitute a measurable
+/// target, chosen among what THIS output advertises, excluding its
+/// current size. `None` if no advertised mode differs from it — a
+/// degenerate case, see `choisir_cible`.
 fn cible_du_temoin(
     nom_sortie: &str,
     avant: (u32, u32),
@@ -155,24 +155,24 @@ fn cible_du_temoin(
     substituee
 }
 
-/// Le nom sous lequel la sortie testée se retrouve après le tour éliminatoire
-/// — l'inconnue annexe n°3 de D8 (« la sortie garde-t-elle son nom
-/// `\\.\DISPLAYn` ? »), et sa taille à ce même instant — le point
-/// `avant_creation` du contrôle de PERSISTANCE (`persistance::journaliser_verdict`,
-/// tâche 2bis de D9), pour ne pas relire une seconde fois une topologie déjà
-/// en main.
+/// The name under which the tested output ends up after the elimination round
+/// — D8's side unknown no. 3 ("does the output keep its
+/// `\\.\DISPLAYn` name?"), and its size at that same instant — the
+/// `avant_creation` point of the PERSISTENCE check (`persistance::journaliser_verdict`,
+/// task 2bis of D9), so as not to read back a second time a topology already
+/// in hand.
 ///
-/// Cherche d'abord le nom INCHANGÉ. À défaut, cherche un successeur parmi les
-/// noms apparus depuis le tout début de la sonde et qui ne sont ni la sortie
-/// testée elle-même ni l'une des deux voisines : une seule candidate tranche,
-/// plusieurs ou aucune laissent la question ouverte (`<disparue>`, journalisé
-/// à part plutôt que deviné).
+/// First looks for the UNCHANGED name. Failing that, looks for a successor among the
+/// names that appeared since the very start of the probe and that are neither the tested
+/// output itself nor one of the two neighbours: a single candidate settles it,
+/// several or none leave the question open (`<disparue>`, logged
+/// separately rather than guessed).
 ///
-/// ⚠️ **Correction (revue de la tâche 2bis, I4)** : la taille rend désormais
-/// `Option<(u32, u32)>`, PAS `(0, 0)` en repli sur le cas `<disparue>`. Un
-/// repli `(0, 0)` faisait dire à `journaliser_verdict` qu'une sortie
-/// disparue avait « survécu » dès lors que l'autre bout du calcul valait
-/// aussi `(0, 0)` — `None` rend cette confusion impossible par construction.
+/// ⚠️ **Fix (review of task 2bis, I4)**: the size now returns
+/// `Option<(u32, u32)>`, NOT `(0, 0)` as a fallback for the `<disparue>` case. A
+/// `(0, 0)` fallback made `journaliser_verdict` say that a vanished
+/// output had "survived" whenever the other end of the calculation was
+/// also `(0, 0)` — `None` makes this confusion impossible by construction.
 pub(super) fn nom_apres_tour(
     nom_sortie: &str,
     connues_avant_tout: &HashSet<String>,

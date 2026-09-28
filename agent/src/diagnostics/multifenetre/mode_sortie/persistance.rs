@@ -1,75 +1,75 @@
-//! Le contrôle de PERSISTANCE (tâche 2bis, sous-bloc D9) : le changement de
-//! mode qui a fait bouger la sortie SOUS TEST survit-il à la création d'une
-//! sortie virtuelle supplémentaire — l'événement le plus banal de la
-//! production, ouvrir une fenêtre de plus ?
+//! The PERSISTENCE check (task 2bis, sub-block D9): does the mode
+//! change that made the output UNDER TEST move survive the creation of an
+//! additional virtual output — the most mundane event of
+//! production, opening one more window?
 //!
-//! **Ce que la tâche 2 avait déjà sous les yeux sans le nommer.** Son verdict
-//! « ACCEPTE » ne portait que sur le DÉCLENCHEMENT du mouvement (un `WARN`
-//! plus tard corrigé) ; le retour de `\\.\DISPLAY5` à sa taille de création,
-//! entre la ligne « après le tour » et la ligne « après création (témoin) »,
-//! n'était lisible qu'en recoupant deux blocs de topologie à dix lignes
-//! d'écart — c'est ce recoupement manuel qui l'a fait manquer au premier
-//! rapport. La tâche 2 portait UNE SEULE combinaison exercée
-//! (`CDS_TYPE(0)`, dynamique et non persistée par construction) : cette
-//! tâche répond pour `CDS_UPDATEREGISTRY`, celle qui persiste par
-//! construction, en restreignant le tour à ce seul bras
+//! **What task 2 already had before its eyes without naming it.** Its verdict
+//! "ACCEPTE" only bore on the TRIGGERING of the movement (a `WARN`
+//! later fixed); the return of `\\.\DISPLAY5` to its creation size,
+//! between the "après le tour" line and the "après création (témoin)" line,
+//! was only readable by cross-checking two topology blocks ten lines
+//! apart — it is this manual cross-checking that made it missed in the first
+//! report. Task 2 carried A SINGLE exercised combination
+//! (`CDS_TYPE(0)`, dynamic and not persisted by construction): this
+//! task answers for `CDS_UPDATEREGISTRY`, the one that persists by
+//! construction, by restricting the round to that single arm
 //! (`combinaisons::combos_du_tour`).
 //!
-//! Extrait à part plutôt que versé dans `mode_sortie.rs` : ce fichier est à
-//! 496 lignes pour un plafond de 500 (`CLAUDE.md`), marge de 4 — toute
-//! addition y appelle une extraction, pas une compression.
+//! Extracted separately rather than poured into `mode_sortie.rs`: that file is at
+//! 496 lines for a ceiling of 500 (`CLAUDE.md`), a margin of 4 — any
+//! addition there calls for an extraction, not a compression.
 
 use crate::sortie_dxgi::SortieDxgi;
 use crate::survie_verdict::verdict_persistance;
 
-/// Restreint le tour à UNE combinaison, désignée par son étiquette exacte
-/// (`MULTIFENETRE_MODE_SORTIE_DRAPEAUX`). Sans elle, le comportement actuel
-/// est inchangé : les quatre combinaisons, dans l'ordre.
+/// Restricts the round to ONE combination, designated by its exact label
+/// (`MULTIFENETRE_MODE_SORTIE_DRAPEAUX`). Without it, the current behaviour
+/// is unchanged: all four combinations, in order.
 ///
-/// **Pourquoi** : `CDS_TYPE(0)` réussit au premier essai, ce qui laisse les
-/// trois combinaisons suivantes non sollicitées — dont `CDS_UPDATEREGISTRY`,
-/// la seule qui persiste par construction. Sans ce sélecteur, la question
-/// « le changement PERSISTANT survit-il, lui, à la création d'une sortie ? »
-/// n'est pas atteignable.
+/// **Why**: `CDS_TYPE(0)` succeeds on the first attempt, which leaves the
+/// three following combinations unexercised — including `CDS_UPDATEREGISTRY`,
+/// the only one that persists by construction. Without this selector, the question
+/// "does the PERSISTENT change, for its part, survive the creation of an output?"
+/// cannot be reached.
 pub(super) fn combinaison_imposee() -> Option<String> {
     std::env::var("MULTIFENETRE_MODE_SORTIE_DRAPEAUX").ok()
 }
 
-/// Journalise le verdict de PERSISTANCE comme un événement nommé, plutôt que
-/// de le laisser recomposable seulement en recoupant deux relevés de
-/// topologie à dix lignes d'écart (voir le commentaire de tête du module).
+/// Logs the PERSISTENCE verdict as a named event, rather than
+/// leaving it reconstructible only by cross-checking two topology
+/// surveys ten lines apart (see the module's header comment).
 ///
-/// `combinaison_imposee` : la valeur BRUTE de `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`,
-/// que l'opérateur a demandée -- PAS forcément celle qui a gagné (`combinaison_gagnante`).
-/// ⚠️ **Correction (revue de la tâche 2bis, mineurs)** : la première version
-/// ne journalisait QUE le bras gagnant, si bien qu'un tour resté VIDE parce
-/// que l'étiquette imposée ne correspondait à rien (mojibake, voir le
-/// commentaire de tête du module) affichait `combinaison=None` -- identique
-/// à l'absence de toute contrainte. Les deux champs distincts permettent de
-/// relire directement CE que l'opérateur a demandé et CE qui s'est
-/// réellement passé.
+/// `combinaison_imposee`: the RAW value of `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`,
+/// which the operator requested -- NOT necessarily the one that won (`combinaison_gagnante`).
+/// ⚠️ **Fix (review of task 2bis, minor points)**: the first version
+/// logged ONLY the winning arm, so that a round left EMPTY because
+/// the imposed label matched nothing (mojibake, see the
+/// module's header comment) displayed `combinaison=None` -- identical
+/// to the absence of any constraint. The two distinct fields make it possible to
+/// read back directly WHAT the operator requested and WHAT
+/// really happened.
 ///
-/// `avant_creation` : la taille de la sortie sous test relevée par
-/// `temoin::nom_apres_tour`, APRÈS le tour, duplication encore tenue — pas
-/// une supposition sur ce que le tour vient de fixer. `None` si la sortie a
-/// disparu à ce moment-là (`<disparue>`, voir `nom_apres_tour`).
+/// `avant_creation`: the size of the output under test surveyed by
+/// `temoin::nom_apres_tour`, AFTER the round, duplication still held — not
+/// an assumption about what the round just set. `None` if the output had
+/// vanished at that moment (`<disparue>`, see `nom_apres_tour`).
 ///
-/// `apres_creation_releve` : la topologie relue APRÈS que la sortie témoin
-/// (une sortie virtuelle NEUVE) a été créée ; `nom_cible` y est recherchée
-/// nommément, jamais par position -- doctrine constante de ce module.
+/// `apres_creation_releve`: the topology read back AFTER the control output
+/// (a NEW virtual output) was created; `nom_cible` is looked up in it
+/// by name, never by position -- a constant doctrine of this module.
 ///
-/// ⚠️ **Correction (revue de la tâche 2bis, Important I4)** : `survit` ne
-/// vaut PLUS `true` quand la sortie a disparu d'un côté ou de l'autre. La
-/// comparaison elle-même est déléguée à `survie_verdict::verdict_persistance`
-/// depuis la correction n°14 de la seconde revue — un prédicat PUR, sorti de
-/// cet arbre `#[cfg(windows)]` pour être testable sur l'hôte, voir son
-/// commentaire de tête pour le défaut exact qu'il empêche de revenir.
+/// ⚠️ **Fix (review of task 2bis, Important I4)**: `survit` is
+/// NO LONGER `true` when the output vanished on one side or the other. The
+/// comparison itself is delegated to `survie_verdict::verdict_persistance`
+/// since fix no. 14 of the second review — a PURE predicate, taken out of
+/// this `#[cfg(windows)]` tree to be testable on the host, see its
+/// header comment for the exact defect it prevents from coming back.
 ///
-/// La comparaison elle-même, quand les deux relevés existent, porte sur deux
-/// tailles obtenues par la MÊME relecture DXGI (`GetDesc`/`DesktopCoordinates`)
-/// que le reste de la sonde : jamais le code de retour de
-/// `ChangeDisplaySettingsExW`, mesuré ailleurs rendant `0` sur une sortie qui
-/// n'a pas bougé d'un pixel.
+/// The comparison itself, when both surveys exist, bears on two
+/// sizes obtained by the SAME DXGI read-back (`GetDesc`/`DesktopCoordinates`)
+/// as the rest of the probe: never the return code of
+/// `ChangeDisplaySettingsExW`, measured elsewhere returning `0` on an output that
+/// did not move by one pixel.
 pub(super) fn journaliser_verdict(
     combinaison_imposee: Option<&str>,
     combinaison_gagnante: Option<&str>,

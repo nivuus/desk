@@ -1,102 +1,102 @@
-//! Normalisation d'un chemin livré par ProjFS en chemin logique pour la File
-//! System Access API. **PUR** : aucun `cfg`, aucune dépendance à `windows`,
-//! entièrement testé sur l'hôte.
+//! Normalisation of a path delivered by ProjFS into a logical path for the File
+//! System Access API. **PURE**: no `cfg`, no dependency on `windows`,
+//! fully tested on the host.
 //!
-//! ProjFS livre `PRJ_CALLBACK_DATA.FilePathName` : un chemin **relatif à la
-//! racine de virtualisation**, en contre-obliques, sans lettre de lecteur. Ce
-//! module le transforme en chemin logique — composants séparés par `/` — ou le
-//! **refuse**. Il ne fait jamais confiance à ce qu'il reçoit : la racine de
-//! virtualisation est traversée par n'importe quelle application de la session
-//! Windows, y compris hostile.
+//! ProjFS delivers `PRJ_CALLBACK_DATA.FilePathName`: a path **relative to the
+//! virtualisation root**, with backslashes, without a drive letter. This
+//! module turns it into a logical path — components separated by `/` — or
+//! **refuses** it. It never trusts what it receives: the virtualisation
+//! root is traversed by any application of the Windows
+//! session, including hostile ones.
 //!
-//! ⚠️ **La CASSE est le piège structurel de ce module, et F1 ne le résout
-//! pas.** Windows est insensible à la casse ; la File System Access API ne
-//! l'est **pas** : `getFileHandle("Rapport.txt")` échoue là où NTFS aurait
-//! ouvert `rapport.txt`. Ce module **conserve la casse** telle que ProjFS l'a
-//! livrée — la replier serait pire, puisque la FSA ne retrouverait plus rien
-//! du tout — et le défaut est **documenté, pas masqué**.
+//! ⚠️ **CASE is the structural trap of this module, and F1 does not solve
+//! it.** Windows is case-insensitive; the File System Access API is
+//! **not**: `getFileHandle("Rapport.txt")` fails where NTFS would have
+//! opened `rapport.txt`. This module **preserves the case** as ProjFS
+//! delivered it — folding it would be worse, since the FSA would find nothing
+//! at all anymore — and the defect is **documented, not masked**.
 //!
-//! ✅ **LE REMÈDE EST ARRIVÉ EN F3, ET CE N'EST PAS UNE TABLE DE
-//! CORRESPONDANCE.** *(Ces lignes annonçaient « une table de correspondance
-//! alimentée par l'énumération, qui seule connaît la casse réelle du disque »,
-//! et la donnaient comme appartenant « à F3 ou plus tard ».)* F3 livre
-//! `client/src/fichiers/noms.ts`, qui **énumère le parent à CHAQUE
-//! résolution, SANS AUCUN CACHE** — un cache que rien n'invalide est le défaut
-//! de l'ancien pont (`src/file.js`, cache SANS TTL). ✅ **`Rafraichir` EST
-//! LIVRÉ DEPUIS F5** (21 août 2026) : un bouton de la page-shell vide le cache
-//! d'énumération du pont **et** le cache négatif de ProjFS.
-//! ⚠️ **`noms.ts` N'EN PROFITE PAS, et c'est à dire** : il n'a toujours aucun
-//! cache, donc rien à vider. Le `Rafraichir` de F5 vide le cache
-//! d'ÉNUMÉRATION, qui est un autre objet.
+//! ✅ **THE REMEDY ARRIVED IN F3, AND IT IS NOT A LOOKUP
+//! TABLE.** *(These lines announced "a lookup table
+//! fed by enumeration, which alone knows the real case of the disk",
+//! and gave it as belonging "to F3 or later".)* F3 delivers
+//! `client/src/fichiers/noms.ts`, which **enumerates the parent at EACH
+//! resolution, WITHOUT ANY CACHE** — a cache nothing invalidates is the defect
+//! of the old bridge (`src/file.js`, cache WITHOUT TTL). ✅ **`Rafraichir` IS
+//! DELIVERED SINCE F5** (21 August 2026): a button of the shell page empties the bridge's
+//! enumeration cache **and** ProjFS's negative cache.
+//! ⚠️ **`noms.ts` DOES NOT BENEFIT FROM IT, and that must be said**: it still has no
+//! cache, hence nothing to empty. F5's `Rafraichir` empties the
+//! ENUMERATION cache, which is another object.
 //!
-//! ⚠️ **CE MODULE-CI N'A PAS CHANGÉ POUR AUTANT, et c'est délibéré** : il
-//! conserve toujours la casse telle que ProjFS l'a livrée. C'est le NAVIGATEUR
-//! qui replie, parce que **lui seul voit le poste local**. Ce que F3 ajoute
-//! ici est [`avec_dernier_composant`], qui fait redescendre le nom canonique
-//! jusqu'à `PrjWritePlaceholderInfo`.
+//! ⚠️ **THIS MODULE HAS NOT CHANGED FOR ALL THAT, and it is deliberate**: it
+//! still preserves the case as ProjFS delivered it. It is the BROWSER
+//! that folds, because **it alone sees the local workstation**. What F3 adds
+//! here is [`avec_dernier_composant`], which brings the canonical name down
+//! to `PrjWritePlaceholderInfo`.
 //!
-//! ⚠️ **ET LA MOITIÉ VM DU DÉFAUT N'EST PAS RÉPARABLE**, ni ici ni ailleurs :
-//! quand NTFS résout la casse sur un fichier DÉJÀ hydraté, nous ne sommes pas
-//! consultés. *Le déclarer résolu sans l'avoir mesuré serait exactement le
-//! geste que ce dépôt reproche à ses constantes non calibrées.*
+//! ⚠️ **AND THE VM HALF OF THE DEFECT IS NOT REPAIRABLE**, neither here nor elsewhere:
+//! when NTFS resolves the case on an ALREADY hydrated file, we are not
+//! consulted. *Declaring it solved without having measured it would be exactly the
+//! gesture this repository criticises in its uncalibrated constants.*
 //!
-//! ❌ **CE MODULE ANNONÇAIT « obtiendra donc `Introuvable` », ET LA RECETTE DE
-//! F1 L'A RÉFUTÉ : le défaut réel est PIRE, parce qu'il est SILENCIEUX.**
-//! Mesuré sur la VM, **trois exécutions sur trois** (`mesure-exec{1,2,5}.txt`,
-//! sous `docs/superpowers/plans/journaux-pont-fichiers/`) : avec `Casse.txt`
-//! sur le poste local, `casse.txt` **et** `CASSE.TXT` rendent tous deux le
-//! CONTENU de `Casse.txt`, sans erreur — l'application reçoit le mauvais
-//! fichier et ne peut pas le savoir. **Et le comportement n'est pas cohérent
-//! avec lui-même** : dans la même exécution, `GROS.BIN` rend bien
-//! « introuvable ».
+//! ❌ **THIS MODULE ANNOUNCED "will therefore get `Introuvable`", AND F1'S ACCEPTANCE RUN
+//! REFUTED IT: the real defect is WORSE, because it is SILENT.**
+//! Measured on the VM, **three runs out of three** (`mesure-exec{1,2,5}.txt`,
+//! under `docs/superpowers/plans/journaux-pont-fichiers/`): with `Casse.txt`
+//! on the local workstation, `casse.txt` **and** `CASSE.TXT` both return the
+//! CONTENT of `Casse.txt`, without error — the application receives the wrong
+//! file and cannot know it. **And the behaviour is not consistent
+//! with itself**: in the same run, `GROS.BIN` does return
+//! "not found".
 //!
-//! ⚠️ **Le mécanisme est une HYPOTHÈSE cohérente avec les pièces, pas une
-//! mesure.** L'écart suit exactement l'HYDRATATION : la trace
-//! `racine hydratee … octets=42 entrees=1` dit qu'une seule entrée de 42
-//! octets — `Casse.txt`, lu par la sonde juste avant — vivait en local, et
-//! NTFS, insensible à la casse, la retrouve alors **sans jamais atteindre ce
-//! module** ; `gros.bin`, jamais hydraté, retombe sur le rappel, qui demande
-//! au navigateur une casse qu'il ne connaît pas. **Rien ne l'établit** : il
-//! faudrait une exécution où l'ordre d'hydratation est renversé.
+//! ⚠️ **The mechanism is a HYPOTHESIS consistent with the evidence, not a
+//! measurement.** The gap follows exactly HYDRATION: the trace
+//! `racine hydratee … octets=42 entrees=1` says that a single entry of 42
+//! bytes — `Casse.txt`, read by the probe just before — lived locally, and
+//! NTFS, case-insensitive, then finds it **without ever reaching this
+//! module**; `gros.bin`, never hydrated, falls back on the callback, which asks
+//! the browser for a case it does not know. **Nothing establishes it**: it
+//! would take a run where the hydration order is reversed.
 //!
-//! La comparaison, elle, **replie bien la casse** là où Windows le fait :
-//! `CON.txt`, `con.txt` et `Con.TXT` désignent tous le même périphérique
-//! réservé, et les trois sont refusés.
+//! The comparison, for its part, **does fold case** where Windows does:
+//! `CON.txt`, `con.txt` and `Con.TXT` all designate the same reserved
+//! device, and all three are refused.
 
-/// Pourquoi un chemin est refusé. Une cause par variante : deux causes qui
-/// partageraient une variante rendraient le journal inutilisable le jour où
-/// l'une des deux se produirait en production.
+/// Why a path is refused. One cause per variant: two causes that
+/// shared a variant would make the log useless the day
+/// one of the two occurred in production.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CheminRefuse {
-    /// Un composant `..` — la traversée que la spec §4.4 nomme.
+    /// A `..` component — the traversal spec §4.4 names.
     Remontee,
-    /// Un flux de données alternatif NTFS (`fichier.txt:Zone.Identifier`).
+    /// An NTFS alternate data stream (`fichier.txt:Zone.Identifier`).
     FluxAlternatif,
-    /// Un nom de périphérique réservé (`CON`, `NUL`, `COM1`…).
+    /// A reserved device name (`CON`, `NUL`, `COM1`…).
     NomReserve,
-    /// Une lettre de lecteur, une racine, ou un chemin UNC.
+    /// A drive letter, a root, or a UNC path.
     Absolu,
-    /// Un composant vide, produit par un séparateur doublé.
+    /// An empty component, produced by a doubled separator.
     Vide,
-    /// Les unités UTF-16 livrées par ProjFS ne forment pas du texte valide.
+    /// The UTF-16 units delivered by ProjFS do not form valid text.
     NonUtf16Valide,
 }
 
-/// Les noms de périphérique réservés de Win32.
+/// Win32's reserved device names.
 ///
-/// ⚠️ La liste est celle des **périphériques DOS**, pas une liste de sécurité
-/// arbitraire : Windows les résout AVANT de regarder le système de fichiers, à
-/// n'importe quelle profondeur, et avec n'importe quelle extension.
+/// ⚠️ The list is that of **DOS devices**, not an arbitrary security
+/// list: Windows resolves them BEFORE looking at the file system, at
+/// any depth, and with any extension.
 const NOMS_RESERVES: &[&str] = &[
     "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
     "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
 
-/// Décode les unités UTF-16 d'un `PCWSTR` ProjFS, puis normalise.
+/// Decodes the UTF-16 units of a ProjFS `PCWSTR`, then normalises.
 ///
-/// Ce n'est pas une commodité : c'est le seul producteur de
-/// [`CheminRefuse::NonUtf16Valide`]. Il vit ici, pur et testé sur l'hôte,
-/// plutôt que dans `pont/projfs.rs` où rien ne pourrait l'éprouver.
+/// It is not a convenience: it is the only producer of
+/// [`CheminRefuse::NonUtf16Valide`]. It lives here, pure and tested on the host,
+/// rather than in `pont/projfs.rs` where nothing could test it.
 pub fn normaliser_utf16(unites: &[u16]) -> Result<String, CheminRefuse> {
     let texte: Result<String, _> = char::decode_utf16(unites.iter().copied()).collect();
     match texte {
@@ -105,17 +105,17 @@ pub fn normaliser_utf16(unites: &[u16]) -> Result<String, CheminRefuse> {
     }
 }
 
-/// Normalise un chemin ProjFS en chemin logique, ou dit pourquoi il est refusé.
+/// Normalises a ProjFS path into a logical path, or says why it is refused.
 ///
-/// La chaîne vide est **licite** : c'est le chemin de la racine elle-même,
-/// celui que ProjFS livre pour l'énumération du répertoire racine.
+/// The empty string is **lawful**: it is the path of the root itself,
+/// the one ProjFS delivers for the enumeration of the root directory.
 pub fn normaliser(brut: &str) -> Result<String, CheminRefuse> {
     if brut.is_empty() {
         return Ok(String::new());
     }
-    // Un chemin absolu ou UNC n'est jamais relatif à la racine : ProjFS n'en
-    // livre pas, donc en recevoir un signale qu'on n'est pas sur le chemin
-    // qu'on croit — refus, pas rattrapage.
+    // An absolute or UNC path is never relative to the root: ProjFS does not
+    // deliver any, so receiving one signals that we are not on the path
+    // we think — refusal, not recovery.
     if brut.starts_with('\\') || brut.starts_with('/') || brut.chars().nth(1) == Some(':') {
         return Err(CheminRefuse::Absolu);
     }
@@ -125,12 +125,12 @@ pub fn normaliser(brut: &str) -> Result<String, CheminRefuse> {
         if composant.is_empty() {
             return Err(CheminRefuse::Vide);
         }
-        // `.` est inoffensif et se laisse tomber ; `..` ne se laisse JAMAIS
-        // résoudre. Résoudre `a\..\b` en `b` serait déjà une erreur : le
-        // chemin franchirait alors la racine sur un `a` inexistant, et
-        // surtout `a\..\..\x` deviendrait indistinguable de `x` après une
-        // seule passe de résolution. On refuse la remontée, on ne la calcule
-        // pas — c'est le seul traitement qui n'ait pas de cas limite.
+        // `.` is harmless and gets dropped; `..` NEVER gets
+        // resolved. Resolving `a\..\b` into `b` would already be an error: the
+        // path would then cross the root on a non-existent `a`, and
+        // above all `a\..\..\x` would become indistinguishable from `x` after a
+        // single resolution pass. We refuse going up, we do not compute
+        // it — it is the only treatment that has no edge case.
         if composant == "." {
             continue;
         }
@@ -148,11 +148,11 @@ pub fn normaliser(brut: &str) -> Result<String, CheminRefuse> {
     Ok(composants.join("/"))
 }
 
-/// Un composant désigne-t-il un périphérique réservé ?
+/// Does a component designate a reserved device?
 ///
-/// La comparaison replie la casse et ignore l'extension **et** les points et
-/// espaces de fin, exactement comme Win32 : `con`, `CON.txt`, `Con. ` désignent
-/// tous le périphérique console.
+/// The comparison folds case and ignores the extension **and** the trailing dots and
+/// spaces, exactly like Win32: `con`, `CON.txt`, `Con. ` all designate
+/// the console device.
 fn est_reserve(composant: &str) -> bool {
     let base = composant.split('.').next().unwrap_or(composant);
     let base = base.trim_end_matches([' ', '.']);
@@ -162,27 +162,27 @@ fn est_reserve(composant: &str) -> bool {
 #[cfg(test)]
 mod tests;
 
-/// Remplace le DERNIER composant d'un chemin ProjFS par `nom`, en gardant les
-/// séparateurs et la casse de tout ce qui précède.
+/// Replaces the LAST component of a ProjFS path with `nom`, keeping the
+/// separators and the case of everything preceding it.
 ///
-/// 🔴 **C'est la conséquence ① du canonicaliseur de casse de F3**, et elle est
-/// PURE pour être éprouvée sur l'hôte : `PrjWritePlaceholderInfo` doit recevoir
-/// le nom **STOCKÉ sur le poste local**, jamais celui que l'application a tapé.
+/// 🔴 **It is consequence ① of F3's case canonicaliser**, and it is
+/// PURE to be tested on the host: `PrjWritePlaceholderInfo` must receive
+/// the name **STORED on the local workstation**, never the one the application typed.
 ///
-/// Sans elle, un `GROS.BIN` demandé sur un `gros.bin` local ferait créer un
-/// substitut nommé `GROS.BIN` dans la racine. La racine étant NTFS — donc
-/// insensible à la casse —, l'ouverture réussirait ; mais **une énumération du
-/// parent rendrait `gros.bin`** : deux noms pour un fichier, dont un qui
-/// n'existe nulle part.
+/// Without it, a `GROS.BIN` requested on a local `gros.bin` would create a
+/// placeholder named `GROS.BIN` in the root. The root being NTFS — hence
+/// case-insensitive —, the opening would succeed; but **an enumeration of the
+/// parent would return `gros.bin`**: two names for one file, one of which
+/// exists nowhere.
 ///
-/// ⚠️ **Le séparateur de ProjFS est `\`**, jamais `/` : ce n'est pas le chemin
-/// logique normalisé, c'est celui que le système a livré et qu'il reprendra tel
-/// quel.
+/// ⚠️ **ProjFS's separator is `\`**, never `/`: it is not the normalised
+/// logical path, it is the one the system delivered and will take back as
+/// is.
 ///
-/// Rend `None` quand il n'y a rien à changer — chemin vide, ou dernier
-/// composant déjà égal à `nom`. **L'appelant garde alors les octets d'origine**,
-/// ce qui préserve la propriété que F1 s'était donnée : ne pas reconvertir un
-/// chemin qu'on n'a aucune raison de toucher.
+/// Returns `None` when there is nothing to change — empty path, or last
+/// component already equal to `nom`. **The caller then keeps the original bytes**,
+/// which preserves the property F1 had given itself: not reconverting a
+/// path we have no reason to touch.
 pub fn avec_dernier_composant(chemin_projfs: &str, nom: &str) -> Option<String> {
     if chemin_projfs.is_empty() || nom.is_empty() {
         return None;

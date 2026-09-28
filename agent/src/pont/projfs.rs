@@ -1,89 +1,89 @@
-//! La racine de virtualisation ProjFS : la marquer, la démarrer, l'arrêter.
+//! The ProjFS virtualisation root: mark it, start it, stop it.
 //!
-//! **`#[cfg(windows)]`, et appelé par le SYSTÈME : aucun test d'hôte n'est
-//! possible ici, et c'est déclaré, pas contourné** (spec §4.4). La seule
-//! compensation est que ce module soit **mince** — il traduit, il ne décide
-//! pas. Toute décision qui peut vivre dans un module pur y vit :
-//! `pont::chemins` (normalisation), `pont::erreurs` (les `HRESULT`),
-//! `pont::decoupe` (les plages), `pont::table` (les commandes en vol),
-//! `pont::resolution` (les treize entrées).
+//! **`#[cfg(windows)]`, and called by the SYSTEM: no host test is
+//! possible here, and it is declared, not worked around** (spec §4.4). The only
+//! compensation is that this module be **thin** — it translates, it does not
+//! decide. Every decision that can live in a pure module lives there:
+//! `pont::chemins` (normalisation), `pont::erreurs` (the `HRESULT`s),
+//! `pont::decoupe` (the ranges), `pont::table` (the commands in flight),
+//! `pont::resolution` (the thirteen entries).
 //!
-//! # LA DISCIPLINE DE FIL, et elle est la décision centrale de ce module
+//! # THE THREADING DISCIPLINE, and it is this module's central decision
 //!
-//! **Trois catégories de fils, et la frontière entre elles est stricte.**
+//! **Three categories of threads, and the boundary between them is strict.**
 //!
-//! ⚠️ **QUATRE FILS DEPUIS F2, POUR TROIS CATÉGORIES.** Le **fil d'écriture**
-//! (`pont::ecriture::fil`) rejoint la catégorie 3 : il ne complète aucune
-//! commande, mais il partage sa propriété essentielle — **il ne court sur
-//! aucun fil du système**. Il lit des fichiers de la racine, ce que le fil du
-//! pont ne doit JAMAIS faire (voir `pont/service.rs` : « il s'attendrait
-//! lui-même »), et c'est précisément pourquoi il lui est distinct.
+//! ⚠️ **FOUR THREADS SINCE F2, FOR THREE CATEGORIES.** The **write thread**
+//! (`pont::ecriture::fil`) joins category 3: it completes no
+//! command, but it shares its essential property — **it runs on
+//! no system thread**. It reads files of the root, which the bridge
+//! thread must NEVER do (see `pont/service.rs`: "it would wait for
+//! itself"), and that is precisely why it is distinct from it.
 //!
-//! 1. **Les fils de RAPPEL, que le SYSTÈME possède.** ProjFS en tient un vivier
-//!    dimensionné par `PRJ_STARTVIRTUALIZING_OPTIONS.PoolThreadCount` /
+//! 1. **The CALLBACK threads, which the SYSTEM owns.** ProjFS keeps a pool of them
+//!    sized by `PRJ_STARTVIRTUALIZING_OPTIONS.PoolThreadCount` /
 //!    `ConcurrentThreadCount` (windows-rs, `ProjectedFileSystem/mod.rs:518-523`).
-//!    Un rappel qui s'y exécute :
-//!      - enveloppe TOUT son corps dans `std::panic::catch_unwind` et rend
-//!        `E_UNEXPECTED` — une panique Rust qui traverserait une frontière
-//!        `extern "system"` est un **ABANDON DE PROCESSUS** ;
-//!      - n'écrit QUE dans les états sous verrou de [`Etat`], et pousse sur un
-//!        `mpsc::Sender` ;
-//!      - **n'appelle JAMAIS `PrjCompleteCommand`**, ne touche JAMAIS le
-//!        socket, ne tient JAMAIS un verrou pendant une E/S ;
-//!      - rend `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` et rend la main
-//!        IMMÉDIATEMENT.
+//!    A callback running there:
+//!      - wraps ALL its body in `std::panic::catch_unwind` and returns
+//!        `E_UNEXPECTED` — a Rust panic crossing an `extern "system"`
+//!        boundary is a **PROCESS ABORT**;
+//!      - writes ONLY into the locked states of [`Etat`], and pushes on an
+//!        `mpsc::Sender`;
+//!      - **NEVER calls `PrjCompleteCommand`**, NEVER touches the
+//!        socket, NEVER holds a lock during an I/O;
+//!      - returns `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` and returns control
+//!        IMMEDIATELY.
 //!
-//!    Y attendre un aller-retour navigateur figerait l'APPLICATION qui lit le
-//!    fichier — **pas la vidéo** : le flux continue de couler et la fenêtre
-//!    montre une application gelée (spec §5.2). C'est la seule raison d'être
-//!    de cette discipline.
+//!    Waiting there for a browser round trip would freeze the APPLICATION reading the
+//!    file — **not the video**: the stream keeps flowing and the window
+//!    shows a frozen application (spec §5.2). It is the only raison d'être
+//!    of this discipline.
 //!
-//! 2. **Le fil de TRANSPORT**, qui possède le `Rtc` et le socket UDP
+//! 2. **The TRANSPORT thread**, which owns the `Rtc` and the UDP socket
 //!    (`pont::transport::tourner`).
 //!
-//! 3. **Le fil du PONT**, qui possède la table, complète les commandes par
-//!    `PrjCompleteCommand`, et balaie les expirations
-//!    (`pont::service`, tâche 14).
+//! 3. **The BRIDGE thread**, which owns the table, completes commands through
+//!    `PrjCompleteCommand`, and sweeps expiries
+//!    (`pont::service`, task 14).
 //!
-//! ⚠️ **DIVERGENCE DÉLIBÉRÉE D'AVEC LE PLAN DE F1** (tâche 13, step 2), qui
-//! écrit « **LE** fil du pont, unique. Il possède le `Rtc`, lit le socket,
-//! complète les commandes par `PrjCompleteCommand`, et balaie les
-//! expirations ». **Ces deux rôles ne peuvent pas tenir dans un seul fil** :
-//! `pont::transport::tourner` — dont la signature est fixée par le §
-//! « Interfaces partagées » du même plan, et qui est livrée depuis la tâche 11 —
-//! possède le `Rtc` dans une boucle bloquante et **ne connaît ni ProjFS ni
-//! Windows**, ce qui est précisément ce qui la rend testable sur l'hôte. Y
-//! loger `PrjCompleteCommand` détruirait cette propriété. D'où deux fils, 2 et
-//! 3, reliés par les deux `mpsc` que le plan définit lui-même. **L'invariant
-//! qui compte est préservé** : aucun rappel ne complète, aucun rappel ne fait
-//! d'E/S, et `pont::table` reste pur.
+//! ⚠️ **DELIBERATE DIVERGENCE FROM F1'S PLAN** (task 13, step 2), which
+//! writes "**THE** bridge thread, unique. It owns the `Rtc`, reads the socket,
+//! completes commands through `PrjCompleteCommand`, and sweeps
+//! expiries". **These two roles cannot fit in a single thread**:
+//! `pont::transport::tourner` — whose signature is fixed by the §
+//! "Shared interfaces" of the same plan, and which has been delivered since task 11 —
+//! owns the `Rtc` in a blocking loop and **knows neither ProjFS nor
+//! Windows**, which is precisely what makes it testable on the host. Putting
+//! `PrjCompleteCommand` there would destroy this property. Hence two threads, 2 and
+//! 3, linked by the two `mpsc`s the plan defines itself. **The invariant
+//! that matters is preserved**: no callback completes, no callback does
+//! I/O, and `pont::table` stays pure.
 //!
-//! Le `PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT` est un pointeur brut partagé entre
-//! les trois : il est enveloppé dans [`Contexte`], dont l'`unsafe impl Send +
-//! Sync` porte sa justification.
+//! The `PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT` is a raw pointer shared between
+//! the three: it is wrapped in [`Contexte`], whose `unsafe impl Send +
+//! Sync` carries its justification.
 //!
-//! # Ce qui se passe quand une commande dépasse son délai
+//! # What happens when a command exceeds its delay
 //!
-//! **Un rappel ne dépasse jamais son délai : il rend en microsecondes.** Ce qui
-//! dépasse, c'est la **commande** qu'il a inscrite. Le balayage du fil du pont
-//! retire les échues de la table et les complète par
+//! **A callback never exceeds its delay: it returns in microseconds.** What
+//! exceeds is the **command** it registered. The bridge thread's sweep
+//! removes the expired ones from the table and completes them with
 //! `PrjCompleteCommand(command_id, HRESULT_FROM_WIN32(ERROR_SEM_TIMEOUT))`.
 //!
-//! ⚠️ **CE CHEMIN N'A JAMAIS ÉTÉ OBSERVÉ.** `commande expirée` vaut **0** aux
-//! cinq exécutions nominales de la recette F1, et la seule occurrence de tout
-//! le corpus (`agent-dbg-plat.log`, une ligne) tombe **après** que le pilote a
-//! fermé le navigateur. Or la même recette montre des lectures qui **calent
-//! sans expirer** — la mesure VM d'`exec1` ne rend pas la main en 540 s. Ce que
-//! l'absence de trace établit est que le balayage n'a rien retiré ; elle ne dit
-//! **pas où** le blocage se produit, et un blocage EN AMONT de l'inscription en
-//! table laisserait ce paragraphe littéralement vrai tout en décrivant un
-//! chemin que rien n'atteint. **Trancher demanderait une trace à
-//! l'inscription, qui n'existe pas.**
+//! ⚠️ **THIS PATH HAS NEVER BEEN OBSERVED.** The expired-command log line counts **0** in the
+//! five nominal runs of F1's acceptance run, and the only occurrence in the whole
+//! corpus (`agent-dbg-plat.log`, one line) comes **after** the driver has
+//! closed the browser. Yet the same acceptance run shows reads that **stall
+//! without expiring** — `exec1`'s VM measurement does not return in 540 s. What
+//! the absence of trace establishes is that the sweep removed nothing; it does
+//! **not** say **where** the blockage happens, and a blockage UPSTREAM of the table
+//! registration would leave this paragraph literally true while describing a
+//! path nothing reaches. **Deciding would require a trace at
+//! registration, which does not exist.**
 //!
-//! L'application reçoit une E/S expirée ; **rien n'est rejoué**, jamais — une
-//! commande expirée dont on rejouerait la requête produirait une seconde
-//! réponse sans destinataire (spec §5.3). Si la réponse du navigateur arrive
-//! **après**, `Table::resoudre` rend `None` et la réponse est **jetée**.
+//! The application receives an expired I/O; **nothing is replayed**, ever — an
+//! expired command whose request we replayed would produce a second
+//! response without a recipient (spec §5.3). If the browser's response arrives
+//! **after**, `Table::resoudre` returns `None` and the response is **thrown away**.
 
 pub mod chargement;
 mod etat;
@@ -109,56 +109,56 @@ use crate::pont::erreurs::Erreur;
 use crate::pont::table::Table;
 use crate::pont::transport::VersNavigateur;
 
-/// Période du relevé d'hydratation.
+/// Period of the hydration survey.
 ///
-/// ⚠️ **Le cas 4 de la spec §6.4 — « pas une perte, mais qui mord » —
-/// S'APPLIQUE PLEINEMENT à F1, et F1 est le sous-bloc qui le crée** : chaque
-/// fichier LU est écrit en entier sur le disque de la VM, et **il y reste**.
-/// **Aucune politique d'éviction en F1** : `PrjDeleteFile` est chargée
-/// (tâche 12) pour que la politique, quand elle viendra, n'ait pas à rouvrir la
-/// couche. Poser une politique sans mesure serait exactement le geste que ce
-/// dépôt reproche à ses constantes non calibrées. ✅ **LA MESURE EST ARRIVÉE
-/// EN F5** (porte P1), ⛔ **LA POLITIQUE D'ÉVICTION NON** : `PrjDeleteFile`
-/// reste chargée et sans appelant, et le sous-projet ③ se ferme derrière F5.
+/// ⚠️ **Case 4 of spec §6.4 — "not a loss, but it bites" —
+/// APPLIES FULLY to F1, and F1 is the sub-block that creates it**: each
+/// file READ is written in full to the VM's disk, and **it stays there**.
+/// **No eviction policy in F1**: `PrjDeleteFile` is loaded
+/// (task 12) so that the policy, when it comes, does not have to reopen the
+/// layer. Setting a policy without measurement would be exactly the gesture this
+/// repository reproaches its uncalibrated constants for. ✅ **THE MEASUREMENT ARRIVED
+/// IN F5** (gate P1), ⛔ **THE EVICTION POLICY DID NOT**: `PrjDeleteFile`
+/// stays loaded and without a caller, and sub-project ③ closes behind F5.
 pub const PERIODE_HYDRATATION: std::time::Duration = std::time::Duration::from_secs(60);
 
-/// Le contexte de virtualisation, partagé entre les fils de rappel, le fil du
-/// pont et le fil principal.
+/// The virtualisation context, shared between the callback threads, the bridge
+/// thread and the main thread.
 ///
-/// # Sûreté
+/// # Safety
 ///
-/// `PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT` est un `*mut c_void` opaque. Il est
-/// `Send + Sync` **parce que ProjFS le documente comme tel** : c'est ce même
-/// contexte que le système passe simultanément à tous les fils de son propre
-/// vivier de rappels, et toutes les entrées qui le prennent
-/// (`PrjCompleteCommand`, `PrjWriteFileData`, `PrjAllocateAlignedBuffer`…) sont
-/// appelables depuis n'importe lequel d'entre eux. Nous n'en faisons jamais
-/// rien d'autre que de le passer à ces entrées ; **nous ne le déréférençons
-/// jamais**.
+/// `PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT` is an opaque `*mut c_void`. It is
+/// `Send + Sync` **because ProjFS documents it as such**: it is this same
+/// context the system passes simultaneously to all threads of its own
+/// callback pool, and all the entry points taking it
+/// (`PrjCompleteCommand`, `PrjWriteFileData`, `PrjAllocateAlignedBuffer`…) are
+/// callable from any of them. We never do anything with it
+/// other than pass it to these entry points; **we never dereference
+/// it**.
 #[derive(Clone, Copy)]
 pub struct Contexte(pub PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT);
-// SÛRETÉ : voir la justification ci-dessus. Elle est écrite plutôt que
-// supposée — c'est la règle que ce dépôt s'impose pour tout `unsafe impl`.
+// SAFETY: see the justification above. It is written rather than
+// assumed — it is the rule this repository imposes on itself for every `unsafe impl`.
 unsafe impl Send for Contexte {}
 unsafe impl Sync for Contexte {}
 
-/// Une racine de virtualisation vivante. **Son `Drop` arrête la
-/// virtualisation** — c'est le seul chemin d'arrêt, et il n'est pas facultatif.
+/// A live virtualisation root. **Its `Drop` stops the
+/// virtualisation** — it is the only stop path, and it is not optional.
 pub struct Virtualisation {
     etat: Arc<Etat>,
-    /// L'exemplaire d'`Arc` confié à ProjFS, à reprendre après l'arrêt.
+    /// The `Arc` copy entrusted to ProjFS, to take back after the stop.
     confie: *const Etat,
     racine: PathBuf,
 }
 
-// SÛRETÉ : `confie` est un `*const Etat` issu d'`Arc::into_raw`, et `Etat` est
-// `Send + Sync` (tous ses champs le sont, `Contexte` par l'`unsafe impl`
-// ci-dessus). Le pointeur n'est jamais déréférencé par ce type ; il n'est que
-// rendu à `Arc::from_raw` dans `drop`.
+// SAFETY: `confie` is a `*const Etat` from `Arc::into_raw`, and `Etat` is
+// `Send + Sync` (all its fields are, `Contexte` through the `unsafe impl`
+// above). The pointer is never dereferenced by this type; it is only
+// handed back to `Arc::from_raw` in `drop`.
 unsafe impl Send for Virtualisation {}
 
 impl Virtualisation {
-    /// Prépare la racine, la marque si besoin, et démarre la virtualisation.
+    /// Prepares the root, marks it if needed, and starts virtualisation.
     pub fn demarrer(
         projfs: chargement::ProjFs,
         sortant: std::sync::mpsc::Sender<VersNavigateur>,
@@ -178,11 +178,11 @@ impl Virtualisation {
             vers_ecriture,
             inscriptible,
             mutations_armees,
-            // ⚠️ **`false` AU DÉPART, et ce n'est pas une précaution de style** :
-            // ProjFS peut appeler un rappel PENDANT `PrjStartVirtualizing`,
-            // c'est-à-dire bien avant que le navigateur n'ait ouvert son canal.
-            // Partir de `true` autoriserait une écriture qui n'aurait personne
-            // à qui être poussée.
+            // ⚠️ **`false` AT START, and it is not a style precaution**:
+            // ProjFS can call a callback DURING `PrjStartVirtualizing`,
+            // that is, well before the browser has opened its channel.
+            // Starting from `true` would allow a write that would have no one
+            // to be pushed to.
             canal_ouvert: std::sync::atomic::AtomicBool::new(false),
             compteurs: crate::pont::compteurs::Compteurs::nouveaux(),
             latences: crate::pont::latence::Histogramme::nouveau(),
@@ -194,22 +194,22 @@ impl Virtualisation {
 
         racine::preparer(&etat.projfs, &racine)?;
 
-        // Le bloc de rappels et les options doivent rester valides pendant tout
-        // l'appel. `Box::leak` plutôt qu'une variable locale : la documentation
-        // de ProjFS ne dit pas si le service RETIENT le pointeur des
-        // `NotificationMappings` au-delà de l'appel, et **une supposition qui
-        // se révélerait fausse produirait une lecture de mémoire libérée dans
-        // un service du système**. Une allocation de quelques dizaines
-        // d'octets, une fois par processus, achète la certitude — et le pont
-        // est un processus dédié qui n'en démarre qu'une.
+        // The callback block and the options must stay valid during the whole
+        // call. `Box::leak` rather than a local variable: ProjFS's documentation
+        // does not say whether the service RETAINS the pointer of the
+        // `NotificationMappings` beyond the call, and **an assumption that
+        // turned out false would produce a use-after-free read in
+        // a system service**. An allocation of a few dozen
+        // bytes, once per process, buys certainty — and the bridge
+        // is a dedicated process that starts only one.
         let rappels = Box::leak(Box::new(rappels::bloc()));
-        // Un masque vide comme `NotificationRoot` désigne la racine elle-même :
-        // le chemin est RELATIF à la racine de virtualisation.
+        // An empty mask as `NotificationRoot` designates the root itself:
+        // the path is RELATIVE to the virtualisation root.
         let racine_relative = Box::leak(Box::new([0u16; 1]));
         let mappings = Box::leak(Box::new([PRJ_NOTIFICATION_MAPPING {
-            // Le masque vit dans le module PUR, où il est épinglé : SEPT bits
-            // exactement depuis F2 — cinq en F1 —, et aucun d'eux ne retombe
-            // dans le bras fourre-tout de `notifications::decider`.
+            // The mask lives in the PURE module, where it is pinned: exactly SEVEN bits
+            // since F2 — five in F1 —, and none of them falls back
+            // into the catch-all arm of `notifications::decider`.
             NotificationBitMask: windows::Win32::Storage::ProjectedFileSystem::PRJ_NOTIFY_TYPES(
                 crate::pont::notifications::MASQUE,
             ),
@@ -217,26 +217,26 @@ impl Virtualisation {
         }]));
         let options = Box::leak(Box::new(PRJ_STARTVIRTUALIZING_OPTIONS {
             Flags: PRJ_FLAG_USE_NEGATIVE_PATH_CACHE,
-            // Zéro = le dimensionnement par défaut de ProjFS. Poser une valeur
-            // sans l'avoir mesurée rejoindrait la liste des constantes non
-            // calibrées de ce dépôt, pour un gain inconnu.
+            // Zero = ProjFS's default sizing. Setting a value
+            // without having measured it would join this repository's list of
+            // uncalibrated constants, for an unknown gain.
             PoolThreadCount: 0,
             ConcurrentThreadCount: 0,
             NotificationMappings: mappings.as_mut_ptr(),
             NotificationMappingsCount: 1,
         }));
 
-        // L'exemplaire confié à ProjFS. Créé AVANT `PrjStartVirtualizing` :
-        // un rappel peut survenir pendant l'appel, et il doit déjà pouvoir
-        // retrouver l'état.
+        // The copy entrusted to ProjFS. Created BEFORE `PrjStartVirtualizing`:
+        // a callback can occur during the call, and it must already be able to
+        // find the state.
         let confie = Arc::into_raw(Arc::clone(&etat));
         let chemin = racine::utf16(&racine);
         let mut contexte = PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT::default();
-        // SÛRETÉ : `chemin`, `rappels`, `options` et `mappings` sont valides ;
-        // `contexte` est un emplacement de sortie initialisé. La signature
-        // appelée est la transcription du `link!` de `mod.rs:101`, à CINQ
-        // paramètres — le cinquième est ce paramètre de sortie, que l'enveloppe
-        // de windows-rs cache derrière son `Result`.
+        // SAFETY: `chemin`, `rappels`, `options` and `mappings` are valid;
+        // `contexte` is an initialised output slot. The called signature
+        // is the transcription of the `link!` at `mod.rs:101`, with FIVE
+        // parameters — the fifth is this output parameter, which windows-rs's
+        // wrapper hides behind its `Result`.
         let issue = unsafe {
             (etat.projfs.demarrer_virtualisation)(
                 PCWSTR(chemin.as_ptr()),
@@ -247,10 +247,10 @@ impl Virtualisation {
             )
         };
         if issue.is_err() {
-            // Reprendre l'exemplaire confié : la virtualisation n'a pas
-            // démarré, donc plus aucun rappel ne peut l'atteindre.
-            // SÛRETÉ : `confie` vient d'`Arc::into_raw` juste au-dessus et n'a
-            // été rendu à personne d'autre.
+            // Take back the entrusted copy: virtualisation did not
+            // start, so no callback can reach it any more.
+            // SAFETY: `confie` comes from `Arc::into_raw` just above and has
+            // been handed to no one else.
             drop(unsafe { Arc::from_raw(confie) });
             bail!(
                 "PrjStartVirtualizing sur « {} » : {issue}",
@@ -266,36 +266,36 @@ impl Virtualisation {
         })
     }
 
-    /// L'état partagé, pour le fil du pont.
+    /// The shared state, for the bridge thread.
     pub fn etat(&self) -> Arc<Etat> {
         Arc::clone(&self.etat)
     }
 
-    /// La racine, pour le relevé d'hydratation.
+    /// The root, for the hydration survey.
     pub fn racine(&self) -> &Path {
         &self.racine
     }
 }
 
 impl Drop for Virtualisation {
-    /// **L'ordre n'est pas négociable** (plan, tâche 13 step 6) :
+    /// **The order is not negotiable** (plan, task 13 step 6):
     ///
-    /// 1. vider la table, et **compléter CHAQUE commande** en `ERROR_IO_DEVICE` ;
-    /// 2. `PrjStopVirtualizing` ;
-    /// 3. reprendre l'exemplaire d'`Arc` confié à ProjFS.
+    /// 1. empty the table, and **complete EACH command** with `ERROR_IO_DEVICE`;
+    /// 2. `PrjStopVirtualizing`;
+    /// 3. take back the `Arc` copy entrusted to ProjFS.
     ///
-    /// ⚠️ **C'est le remède au dernier défaut de l'annexe §13 de la spec** :
-    /// l'arrêt forcé de l'ancien pont n'appelait PAS les callbacks FUSE en
-    /// attente (`src/file.js:359-365`), et le noyau n'obtenait jamais de
-    /// réponse. Ici, `PrjStopVirtualizing` est **précédé** de la complétion en
-    /// erreur de tout ce qui reste — une commande laissée en vol y attendrait
-    /// une réponse que plus rien ne peut délivrer.
+    /// ⚠️ **It is the remedy to the last defect of the spec's appendix §13**:
+    /// the old bridge's forced stop did NOT call the pending FUSE callbacks
+    /// (`src/file.js:359-365`), and the kernel never got a
+    /// response. Here, `PrjStopVirtualizing` is **preceded** by the error
+    /// completion of everything left — a command left in flight would wait there for
+    /// a response nothing can deliver any more.
     ///
-    /// **`Drop` ne panique jamais** : chaque verrou est pris par
-    /// `lock().ok()`, jamais par `expect`, parce qu'un verrou empoisonné par la
-    /// panique d'un autre fil ferait ici une double panique, donc un `abort`
-    /// — et l'`abort` laisserait la racine montée, c'est-à-dire le cas exact
-    /// que ce `Drop` existe pour éviter.
+    /// **`Drop` never panics**: each lock is taken through
+    /// `lock().ok()`, never through `expect`, because a lock poisoned by another
+    /// thread's panic would make a double panic here, hence an `abort`
+    /// — and the `abort` would leave the root mounted, that is, the exact case
+    /// this `Drop` exists to avoid.
     fn drop(&mut self) {
         let contexte = self.etat.contexte.lock().ok().and_then(|c| *c);
         let Some(Contexte(contexte)) = contexte else {
@@ -303,9 +303,9 @@ impl Drop for Virtualisation {
             return;
         };
 
-        // 1. Les commandes en vol, complétées en erreur d'E/S. La table est
-        //    vidée AVANT l'arrêt, jamais après : après, le contexte n'est plus
-        //    valide et `PrjCompleteCommand` n'a plus où écrire.
+        // 1. The commands in flight, completed with an I/O error. The table is
+        //    emptied BEFORE the stop, never after: after, the context is no longer
+        //    valid and `PrjCompleteCommand` has nowhere left to write.
         let restantes = match self.etat.table.lock() {
             Ok(mut table) => table.vider(),
             Err(empoisonne) => {
@@ -317,12 +317,12 @@ impl Drop for Virtualisation {
         };
         let echec = windows::core::HRESULT(self.etat.compteurs.rendre(Erreur::CanalFerme));
         for (commande, correlation) in &restantes {
-            // 🔴 **UNE ÉCRITURE EN VOL EST VIDÉE DE LA TABLE COMME LES AUTRES,
-            // MAIS N'EST PAS RETIRÉE DU JOURNAL** — c'est exactement le cas que
-            // le journal existe pour couvrir. Le pont relancé la repoussera.
+            // 🔴 **A WRITE IN FLIGHT IS EMPTIED FROM THE TABLE LIKE THE OTHERS,
+            // BUT IS NOT REMOVED FROM THE JOURNAL** — it is exactly the case
+            // the journal exists to cover. The restarted bridge will push it again.
             //
-            // Il n'y a rien à compléter : `command_id` est `None`, et il
-            // n'existe aucun rappel ProjFS derrière une écriture.
+            // There is nothing to complete: `command_id` is `None`, and there
+            // is no ProjFS callback behind a write.
             let Some(commande) = commande else {
                 tracing::debug!(
                     correlation,
@@ -330,11 +330,11 @@ impl Drop for Virtualisation {
                 );
                 continue;
             };
-            // SÛRETÉ : contexte valide (la virtualisation n'est pas encore
-            // arrêtée), `commande` vient de la table, et le quatrième paramètre
-            // est nul — `PrjCompleteCommand` accepte l'absence de paramètres
-            // étendus, ce que l'enveloppe de windows-rs exprime par un
-            // `Option::None` transformé en pointeur nul (`mod.rs:14`).
+            // SAFETY: valid context (virtualisation is not stopped
+            // yet), `commande` comes from the table, and the fourth parameter
+            // is null — `PrjCompleteCommand` accepts the absence of extended
+            // parameters, which windows-rs's wrapper expresses as an
+            // `Option::None` turned into a null pointer (`mod.rs:14`).
             let issue = unsafe {
                 (self.etat.projfs.completer_commande)(contexte, *commande, echec, std::ptr::null())
             };
@@ -349,16 +349,16 @@ impl Drop for Virtualisation {
             );
         }
 
-        // 2. L'arrêt lui-même. ProjFS garantit qu'aucun rappel ne court après
-        //    le retour de cet appel : c'est ce qui rend l'étape 3 sûre.
-        // SÛRETÉ : `PrjStopVirtualizing` ne rend RIEN (`mod.rs:109`), et la
-        // transcription le reflète.
+        // 2. The stop itself. ProjFS guarantees that no callback runs after
+        //    this call returns: it is what makes step 3 safe.
+        // SAFETY: `PrjStopVirtualizing` returns NOTHING (`mod.rs:109`), and the
+        // transcription reflects it.
         unsafe { (self.etat.projfs.arreter_virtualisation)(contexte) };
         tracing::info!(racine = %self.racine.display(), "virtualisation ProjFS arrêtée");
 
-        // 3. L'exemplaire confié, repris.
-        // SÛRETÉ : `confie` vient d'`Arc::into_raw` dans `demarrer`, n'a été
-        // rendu qu'à ProjFS, et plus aucun rappel ne peut courir.
+        // 3. The entrusted copy, taken back.
+        // SAFETY: `confie` comes from `Arc::into_raw` in `demarrer`, has only been
+        // handed to ProjFS, and no callback can run any more.
         drop(unsafe { Arc::from_raw(self.confie) });
     }
 }

@@ -1,51 +1,51 @@
-//! Reconstruction-avec-repli d'une ressource dont la fabrication réussie
-//! exige d'avoir d'abord relâché une éventuelle instance existante.
+//! Rebuild-with-fallback of a resource whose successful construction
+//! requires first releasing any existing instance.
 //!
-//! Motivé par `WindowsSource::resize` (voir son commentaire) : DXGI
-//! n'autorise qu'une seule instance vivante d'`IDXGIOutputDuplication` par
-//! sortie et par processus à la fois, donc l'ancienne capture doit être
-//! relâchée AVANT de tenter d'en construire une nouvelle. Si cette tentative
-//! échoue, l'appelant ne doit pas rester sans rien — un `next_frame` appelé
-//! juste après ne doit jamais heurter un état absent (c'est exactement le
-//! bogue signalé en revue sur la première version du correctif : la ronde
-//! précédente vidait le champ, tentait une reconstruction, et si celle-ci
-//! échouait via `?`, le champ restait `None` pour de bon, faisant paniquer
-//! le prochain appel à `next_frame`).
+//! Motivated by `WindowsSource::resize` (see its comment): DXGI
+//! only allows a single live `IDXGIOutputDuplication` instance per
+//! output and per process at a time, so the old capture must be
+//! released BEFORE trying to build a new one. If that attempt
+//! fails, the caller must not be left with nothing — a `next_frame` called
+//! right after must never hit an absent state (it is exactly the
+//! bug reported in review on the first version of the fix: the previous
+//! round emptied the field, tried a rebuild, and if that one
+//! failed via `?`, the field stayed `None` for good, making
+//! the next call to `next_frame` panic).
 //!
-//! Extrait dans un module sans dépendance Windows pour rester testable sur
-//! Linux (voir les tests plus bas) : la logique de décision — essayer,
-//! retomber sur un secours, ou déclarer une panne définitive — ne dépend
-//! d'aucun type spécifique à `windows-rs`, `DesktopCapture` ou
+//! Extracted into a module without a Windows dependency to stay testable on
+//! Linux (see the tests below): the decision logic — try,
+//! fall back on a recovery, or declare a definitive failure — depends
+//! on no type specific to `windows-rs`, `DesktopCapture` or
 //! `H264Encoder`.
 
 use anyhow::{Error, Result};
 
-/// Issue d'une tentative de reconstruction avec repli (voir le commentaire
-/// de module).
+/// Outcome of a rebuild-with-fallback attempt (see the module
+/// comment).
 pub enum RebuildOutcome<T, C> {
-    /// La fabrique principale a réussi : l'appelant adopte `T` en entier.
+    /// The primary factory succeeded: the caller adopts `T` entirely.
     Rebuilt(T),
-    /// La fabrique principale a échoué, mais la fabrique de secours a
-    /// réussi : l'appelant doit adopter `C` (typiquement un sous-ensemble de
-    /// ce que produit la fabrique principale — la capture seule, pas la
-    /// région ni l'encodeur, qui restent ceux d'avant et demeurent valides)
-    /// et garder inchangé le reste de son état précédent. L'erreur d'origine
-    /// est conservée : le repli restaure un état exploitable, il ne doit pas
-    /// faire disparaître l'erreur que l'appelant doit journaliser/renvoyer.
+    /// The primary factory failed, but the recovery factory
+    /// succeeded: the caller must adopt `C` (typically a subset of
+    /// what the primary factory produces — the capture alone, not the
+    /// region nor the encoder, which stay the previous ones and remain valid)
+    /// and keep the rest of its previous state unchanged. The original error
+    /// is kept: the fallback restores a usable state, it must not
+    /// make the error the caller must log/return disappear.
     Recovered(C, Error),
-    /// Les deux fabriques ont échoué : aucun état exploitable n'a pu être
-    /// obtenu. L'appelant ne doit conserver aucune ressource partielle et
-    /// doit se déclarer définitivement épuisé plutôt que de laisser un appel
-    /// suivant heurter une ressource absente.
+    /// Both factories failed: no usable state could be
+    /// obtained. The caller must keep no partial resource and
+    /// must declare itself definitively exhausted rather than let a following
+    /// call hit an absent resource.
     Fatal(Error),
 }
 
-/// Tente `primary`. En cas d'échec, tente `recovery` pour retomber sur un
-/// état exploitable plutôt que de laisser l'appelant sans rien.
+/// Tries `primary`. On failure, tries `recovery` to fall back on a
+/// usable state rather than leave the caller with nothing.
 ///
-/// `recovery` n'est appelée QUE si `primary` échoue : à aucun moment les
-/// deux fabriques ne produisent une ressource vivante simultanément, ce qui
-/// est précisément la contrainte qui motive ce mécanisme.
+/// `recovery` is called ONLY if `primary` fails: at no moment do the
+/// two factories produce a live resource simultaneously, which
+/// is precisely the constraint that motivates this mechanism.
 pub fn rebuild_or_recover<T, C>(
     primary: impl FnOnce() -> Result<T>,
     recovery: impl FnOnce() -> Result<C>,
@@ -75,10 +75,10 @@ mod tests {
 
     #[test]
     fn echec_principal_avec_secours_reussi_produit_recovered() {
-        // Le cas motivant : la fabrique principale (nouvelle capture +
-        // région + encodeur) échoue, mais une capture de secours seule
-        // réussit — l'appelant doit pouvoir continuer à produire des images
-        // avec ses anciens paramètres plutôt que de rester sans capture.
+        // The motivating case: the primary factory (new capture +
+        // region + encoder) fails, but a recovery capture alone
+        // succeeds — the caller must be able to keep producing frames
+        // with its old parameters rather than stay without capture.
         let outcome = rebuild_or_recover(
             || Err::<i32, _>(anyhow!("échec principal")),
             || Ok::<_, Error>("secours"),
@@ -106,10 +106,10 @@ mod tests {
 
     #[test]
     fn la_fabrique_de_secours_n_est_jamais_appelee_si_la_principale_reussit() {
-        // Preuve directe de la contrainte qui motive ce mécanisme : ne
-        // jamais construire les deux ressources en même temps (DXGI
-        // n'autorise qu'une seule instance vivante à la fois pour la sortie
-        // dupliquée).
+        // Direct proof of the constraint that motivates this mechanism: never
+        // build both resources at the same time (DXGI
+        // only allows a single live instance at a time for the duplicated
+        // output).
         let mut recovery_called = false;
         let outcome = rebuild_or_recover(
             || Ok::<_, Error>(1),

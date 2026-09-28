@@ -1,30 +1,30 @@
-//! Fréquence dominante d'un bloc d'échantillons — **pur, éprouvé sur l'hôte**.
+//! Dominant frequency of a block of samples — **pure, exercised on the host**.
 //!
 //! ## Pourquoi ce module existe
 //!
-//! Ce dépôt a établi, au sous-bloc D7, que **le bon instrument pour juger un
-//! son est sa fréquence dominante, jamais un compte d'octets** : une piste
-//! dont `bytesReceived` croît peut porter un spectre à −1000 dB. La sonde
-//! `AUDIO_PROBE` (`diagnostics/audio.rs`) ne rendait qu'une **crête**, qui
-//! distingue « du son » de « rien » mais jamais « MON son » de « un autre
-//! son ». C'est exactement la distinction dont la correction « A-bis » a
-//! besoin : elle doit montrer qu'un périphérique NOMMÉ porte la tonalité
-//! qu'on y a jouée, pendant qu'un autre ne la porte pas.
+//! This repository established, in sub-block D7, that **the right instrument to judge a
+//! sound is its dominant frequency, never a byte count**: a track
+//! whose `bytesReceived` grows can carry a spectrum at −1000 dB. The
+//! `AUDIO_PROBE` probe (`diagnostics/audio.rs`) only returned a **peak**, which
+//! distinguishes "some sound" from "nothing" but never "MY sound" from "another
+//! sound". It is exactly the distinction the "A-bis" fix
+//! needs: it must show that a NAMED device carries the tone
+//! played on it, while another does not.
 //!
-//! ## Goertzel, pas une FFT
+//! ## Goertzel, not an FFT
 //!
-//! On ne cherche pas un spectre complet : on cherche **la** raie dominante
-//! d'une tonalité pure, sur une grille de fréquences connue d'avance. Le
-//! filtre de Goertzel évalue une seule fréquence en O(n) sans allouer, et
-//! balayer quelques dizaines de points coûte moins qu'une FFT — et surtout
-//! n'embarque aucune dépendance. La résolution du relevé est celle de la
-//! grille, et elle est **rendue avec le résultat** plutôt que supposée.
+//! We are not looking for a full spectrum: we are looking for **the** dominant line
+//! of a pure tone, on a frequency grid known in advance. The
+//! Goertzel filter evaluates a single frequency in O(n) without allocating, and
+//! sweeping a few dozen points costs less than an FFT — and above all
+//! brings in no dependency. The survey's resolution is the grid's,
+//! and it is **returned with the result** rather than assumed.
 
-/// Magnitude au carré d'une fréquence donnée, par le filtre de Goertzel.
+/// Squared magnitude of a given frequency, through the Goertzel filter.
 ///
-/// `echantillons` est MONO (voir `mono` ci-dessous). Rend 0 sur un bloc vide,
-/// ce qui évite à l'appelant un cas particulier : une magnitude nulle ne peut
-/// jamais devenir un maximum strict.
+/// `echantillons` is MONO (see `mono` below). Returns 0 on an empty block,
+/// which spares the caller a special case: a zero magnitude can
+/// never become a strict maximum.
 pub fn magnitude(echantillons: &[f32], frequence_hz: f32, taux_hz: f32) -> f32 {
     if echantillons.is_empty() || taux_hz <= 0.0 {
         return 0.0;
@@ -37,14 +37,14 @@ pub fn magnitude(echantillons: &[f32], frequence_hz: f32, taux_hz: f32) -> f32 {
         s2 = s1;
         s1 = s0;
     }
-    // |X(k)|² sans le terme de phase, suffisant pour comparer des raies entre
-    // elles — c'est un ARGMAX qu'on cherche, pas une valeur physique.
+    // |X(k)|² without the phase term, enough to compare lines with each
+    // other — it is an ARGMAX we are looking for, not a physical value.
     s1 * s1 + s2 * s2 - coefficient * s1 * s2
 }
 
-/// Réduit un bloc entrelacé stéréo (ce que rend `LoopbackCapture::read`) à du
-/// mono flottant. La moyenne des canaux, et non un seul : une tonalité jouée
-/// sur un seul canal ne doit pas disparaître.
+/// Reduces an interleaved stereo block (what `LoopbackCapture::read` returns) to
+/// floating mono. The average of the channels, and not a single one: a tone played
+/// on a single channel must not disappear.
 pub fn mono(entrelace: &[i16], canaux: usize) -> Vec<f32> {
     if canaux == 0 {
         return Vec::new();
@@ -58,24 +58,24 @@ pub fn mono(entrelace: &[i16], canaux: usize) -> Vec<f32> {
         .collect()
 }
 
-/// Ce qu'un relevé de fréquence dominante rend.
+/// What a dominant frequency survey returns.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dominante {
-    /// La fréquence de la grille dont la magnitude est maximale.
+    /// The grid frequency whose magnitude is maximal.
     pub frequence_hz: f32,
-    /// Sa magnitude, pour que l'appelant puisse juger du rapport au reste.
+    /// Its magnitude, so that the caller can judge the ratio to the rest.
     pub magnitude: f32,
-    /// Le pas de la grille : la résolution du relevé, **rendue plutôt que
-    /// supposée**. Sans elle, « 441 Hz » ne dit pas s'il faut lire 440 ou 441.
+    /// The grid step: the survey's resolution, **returned rather than
+    /// assumed**. Without it, "441 Hz" does not say whether to read 440 or 441.
     pub resolution_hz: f32,
 }
 
-/// Cherche la fréquence dominante entre `min_hz` et `max_hz`, sur une grille
-/// de pas `pas_hz`.
+/// Looks for the dominant frequency between `min_hz` and `max_hz`, on a grid
+/// of step `pas_hz`.
 ///
-/// Rend `None` quand le bloc est vide, la grille dégénérée, ou que **toute**
-/// la bande est à magnitude nulle — un silence n'a pas de dominante, et en
-/// inventer une serait exactement le genre de verdict qui ne peut pas échouer.
+/// Returns `None` when the block is empty, the grid degenerate, or **the whole**
+/// band is at zero magnitude — a silence has no dominant, and
+/// inventing one would be exactly the kind of verdict that cannot fail.
 pub fn dominante(
     mono: &[f32],
     taux_hz: f32,
@@ -106,7 +106,7 @@ pub fn dominante(
 mod tests {
     use super::*;
 
-    /// Fabrique une sinusoïde stéréo entrelacée de `frequence` Hz.
+    /// Builds an interleaved stereo sine wave of `frequence` Hz.
     fn sinus(frequence: f32, taux: f32, echantillons: usize, amplitude: f32) -> Vec<i16> {
         (0..echantillons)
             .flat_map(|n| {
@@ -130,10 +130,10 @@ mod tests {
         );
     }
 
-    /// **Le test qui rend l'instrument discriminant** : deux tonalités
-    /// différentes ne doivent pas rendre le même verdict. Sans lui, une
-    /// implémentation qui rendrait toujours `min_hz` passerait le test
-    /// ci-dessus si la borne valait 440.
+    /// **The test that makes the instrument discriminating**: two different
+    /// tones must not return the same verdict. Without it, an
+    /// implementation always returning `min_hz` would pass the test
+    /// above if the bound were 440.
     #[test]
     fn deux_tonalites_differentes_rendent_deux_dominantes_differentes() {
         let grave = dominante(
@@ -157,8 +157,8 @@ mod tests {
         assert_ne!(grave.frequence_hz, aigu.frequence_hz);
     }
 
-    /// Un silence n'a pas de dominante. C'est LE cas que la correction
-    /// « A-bis » doit pouvoir distinguer : un périphérique qu'on ne joue pas.
+    /// A silence has no dominant. It is THE case the "A-bis"
+    /// fix must be able to distinguish: a device not being played.
     #[test]
     fn un_silence_n_a_aucune_dominante() {
         assert_eq!(
@@ -168,8 +168,8 @@ mod tests {
         assert_eq!(dominante(&[], 48_000.0, 100.0, 2_000.0, 1.0), None);
     }
 
-    /// La magnitude de la raie porteuse doit dominer NETTEMENT une raie
-    /// voisine : sans écart, « dominante » ne voudrait rien dire.
+    /// The magnitude of the carrier line must CLEARLY dominate a neighbouring
+    /// line: without a gap, "dominant" would mean nothing.
     #[test]
     fn la_raie_porteuse_domine_nettement_ses_voisines() {
         let m = mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2);
@@ -183,15 +183,15 @@ mod tests {
 
     #[test]
     fn le_mono_moyenne_les_canaux_et_ignore_une_trame_incomplete() {
-        // Trois valeurs pour deux canaux : la troisième est incomplète.
+        // Three values for two channels: the third is incomplete.
         let m = mono(&[i16::MAX, 0, 1234], 2);
         assert_eq!(m.len(), 1);
         assert!((m[0] - 0.5).abs() < 1e-3, "moyenne obtenue {}", m[0]);
         assert!(mono(&[1, 2, 3], 0).is_empty());
     }
 
-    /// Une tonalité présente sur un SEUL canal ne doit pas être perdue par le
-    /// repliement en mono — elle est seulement deux fois plus faible.
+    /// A tone present on a SINGLE channel must not be lost by the
+    /// fold into mono — it is only half as strong.
     #[test]
     fn une_tonalite_sur_un_seul_canal_survit_au_repliement() {
         let bloc: Vec<i16> = (0..24_000)
@@ -204,17 +204,17 @@ mod tests {
         assert!((d.frequence_hz - 440.0).abs() <= d.resolution_hz);
     }
 
-    /// **Épingle la FORMULE, pas seulement l'argmax.** Une mutation qui
-    /// amputait Goertzel de son terme croisé (`- coefficient·s1·s2`) est
-    /// restée VERTE sur tous les autres tests : l'argmax survit à une
-    /// magnitude fausse, parce qu'il ne dépend que de l'ordre des raies. La
-    /// magnitude étant PUBLIÉE dans `Dominante`, un appelant qui la
-    /// comparerait à un seuil lirait un nombre faux — d'où ce test.
+    /// **Pins the FORMULA, not only the argmax.** A mutation that
+    /// cut Goertzel's cross term (`- coefficient·s1·s2`) stayed
+    /// GREEN on all other tests: the argmax survives a
+    /// wrong magnitude, because it only depends on the order of the lines. The
+    /// magnitude being PUBLISHED in `Dominante`, a caller that
+    /// compared it to a threshold would read a wrong number — hence this test.
     ///
-    /// Valeur analytique : pour une sinusoïde réelle d'amplitude `A`
-    /// exactement sur une raie, sur `N` échantillons, Goertzel rend
-    /// `|X(k)|² = (A·N/2)²`. Ici `A = 0,5`, `N = 24 000` — soit 220 périodes
-    /// entières de 440 Hz à 48 kHz, donc pas de fuite spectrale.
+    /// Analytical value: for a real sine wave of amplitude `A`
+    /// exactly on a line, over `N` samples, Goertzel returns
+    /// `|X(k)|² = (A·N/2)²`. Here `A = 0.5`, `N = 24,000` — i.e. 220 whole
+    /// periods of 440 Hz at 48 kHz, hence no spectral leakage.
     #[test]
     fn la_magnitude_suit_la_valeur_analytique_de_goertzel() {
         let m = mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2);

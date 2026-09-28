@@ -1,20 +1,20 @@
-//! Le fil d'installation : télécharger, exécuter, fermer la fenêtre, rapporter.
+//! The installation thread: download, run, close the window, report.
 //!
-//! 🔴 UN FIL À PART, ET NON LA BOUCLE DE DÉCOUVERTE. Celle-ci tourne sur un
-//! **vrai fil COM dédié** — l'appartement COM appartient à SON fil, et
-//! `IShellLinkW` comme `ShellExecuteExW` doivent courir sur celui qui a appelé
-//! `CoInitializeEx`. Une installation télécharge plusieurs centaines de
-//! mégaoctets puis attend un processus des minutes durant : l'y poser figerait
-//! le catalogue **pendant exactement l'installation dont on attend qu'il rende
-//! compte**.
+//! 🔴 A SEPARATE THREAD, NOT THE DISCOVERY LOOP. That one runs on a
+//! **real dedicated COM thread** — the COM apartment belongs to ITS thread, and
+//! `IShellLinkW` as well as `ShellExecuteExW` must run on the one that called
+//! `CoInitializeEx`. An installation downloads several hundred
+//! megabytes then waits for a process for minutes: putting it there would freeze
+//! the catalogue **for exactly the installation it is expected to report
+//! on**.
 //!
-//! 🔴 CE FICHIER EST LE SEUL POINT DE CONTACT ENTRE `apps` ET `installation`,
-//! et il n'en a que deux : la **fenêtre de comptage**, que la boucle alimente,
-//! et le drapeau « réconcilie maintenant », qu'elle observe. `apps::boucle` n'a
-//! rien d'autre à connaître des installations.
+//! 🔴 THIS FILE IS THE ONLY POINT OF CONTACT BETWEEN `apps` AND `installation`,
+//! and it has only two: the **counting window**, which the loop feeds,
+//! and the "reconcile now" flag, which it observes. `apps::boucle` has
+//! nothing else to know about installations.
 //!
-//! ⚠️ IL PORTE UN `cfg` PARCE QU'IL APPELLE `execution`. Tout ce qui pouvait en
-//! sortir en est sorti : six modules purs, et c'est là qu'est la couverture.
+//! ⚠️ IT CARRIES A `cfg` BECAUSE IT CALLS `execution`. Everything that could leave it
+//! has left: six pure modules, and that is where the coverage is.
 
 use std::path::Path;
 use std::sync::atomic::Ordering;
@@ -33,20 +33,20 @@ use super::peripherique_audio::{self, Moment};
 use super::telechargement::{self, Demande};
 use super::verdict::{Issue, Motif};
 
-/// 🔴 VARIABLE DE BANC, JAMAIS UNE CONFIGURATION LIVRÉE.
+/// 🔴 BENCH VARIABLE, NEVER A SHIPPED CONFIGURATION.
 ///
-/// `INSTALLATION_FAUTE=empreinte` altère **un octet** du fichier après écriture
-/// et avant vérification, ce qui exerce la **troisième** vérification
-/// d'empreinte sur le chemin réel — autrement inatteignable sans corrompre
-/// quelque chose à la main pendant un transfert.
+/// `INSTALLATION_FAUTE=empreinte` alters **one byte** of the file after writing
+/// and before checking, which exercises the **third** fingerprint
+/// check on the real path — otherwise unreachable without corrupting
+/// something by hand during a transfer.
 ///
-/// ⚠️ **CONVENTION DE VALEUR, PAS D'INTERRUPTEUR** : la valeur NOMME une faute,
-/// elle ne désarme rien. C'est la figure d'`AUDIO_PERIPHERIQUE` et
-/// d'`AUDIO_FAUTE_LECTURE`, et **l'inverse** de `PLEIN_ECRAN`/`AUDIO`/`APPS`,
-/// où `=0` désarme. **Absente, tout est armé normalement.**
+/// ⚠️ **VALUE CONVENTION, NOT A SWITCH**: the value NAMES a fault,
+/// it disarms nothing. It is the shape of `AUDIO_PERIPHERIQUE` and
+/// `AUDIO_FAUTE_LECTURE`, and **the opposite** of `PLEIN_ECRAN`/`AUDIO`/`APPS`,
+/// where `=0` disarms. **Absent, everything is armed normally.**
 const VARIABLE_FAUTE: &str = "INSTALLATION_FAUTE";
 
-/// Fait tourner le fil jusqu'à ce que le canal se ferme.
+/// Runs the thread until the channel closes.
 pub async fn tourner(
     mut installations: mpsc::UnboundedReceiver<Installation>,
     emettre: impl Fn(VersLaPlateforme) + Send + Sync + 'static,
@@ -83,8 +83,8 @@ async fn honorer(
     let racine = match std::env::var("ProgramData") {
         Ok(r) => r,
         Err(_) => {
-            // ⚠️ ON REFUSE PLUTÔT QUE DE RETOMBER SUR `%TEMP%` : Windows le
-            // purge, y compris PENDANT une installation.
+            // ⚠️ WE REFUSE RATHER THAN FALLING BACK ON `%TEMP%`: Windows
+            // purges it, even DURING an installation.
             return terminer(
                 emettre,
                 ordre,
@@ -125,9 +125,9 @@ async fn honorer(
         );
     };
 
-    // 🔴 LA MÉMOIRE EST SUR LE DISQUE, ET C'EST LE RÉPERTOIRE LUI-MÊME. La
-    // plateforme RÉÉMET à chaque enrôlement, et l'agent redémarre : une
-    // déduplication en mémoire ne tiendrait que dans UN processus.
+    // 🔴 THE MEMORY IS ON DISK, AND IT IS THE DIRECTORY ITSELF. The
+    // platform RE-SENDS at every enrolment, and the agent restarts: an
+    // in-memory deduplication would only hold within ONE process.
     let commence = repertoire.join(depot::MARQUEUR_COMMENCE).exists();
     let termine = repertoire.join(depot::MARQUEUR_TERMINE).exists();
     match depot::etat(commence, termine) {
@@ -159,7 +159,7 @@ async fn honorer(
         );
     }
 
-    // --- la fenêtre s'ouvre AVANT le lancement, pas après ---
+    // --- the window opens BEFORE the launch, not after ---
     if let Ok(mut f) = partage.fenetres.lock() {
         f.ouvrir(&ordre.id);
     }
@@ -180,8 +180,8 @@ async fn honorer(
             },
             move |faits, total| {
                 let ms = maintenant_ms();
-                // ⚠️ LA DERNIÈRE EST TOUJOURS ÉMISE : sans cette clause, une
-                // barre s'arrêterait à 97 % pour l'éternité.
+                // ⚠️ THE LAST ONE IS ALWAYS EMITTED: without this clause, a
+                // bar would stop at 97 % forever.
                 if doit_emettre(dernier, ms, faits >= total) {
                     dernier = Some(ms);
                     emettre(VersLaPlateforme::progression(
@@ -207,18 +207,18 @@ async fn honorer(
         return terminer(emettre, ordre, Issue::Refusee, Some(motif), None, "", false);
     }
 
-    // 🔴 LA FAUTE DE BANC S'INJECTE ICI : après écriture, AVANT vérification —
-    // c'est le seul endroit qui exerce la troisième vérification d'empreinte
-    // sur le chemin réel. ⚠️ Le téléchargement l'a déjà vérifiée, donc la faute
-    // doit passer par une seconde relecture ; c'est ce que fait `verifier`.
+    // 🔴 THE BENCH FAULT IS INJECTED HERE: after writing, BEFORE checking —
+    // it is the only place that exercises the third fingerprint check
+    // on the real path. ⚠️ The download has already checked it, so the fault
+    // must go through a second re-read; that is what `verifier` does.
     if std::env::var(VARIABLE_FAUTE).as_deref() == Ok("empreinte") {
         if let Err(erreur) = alterer_un_octet(Path::new(&chemin)) {
             tracing::warn!(%erreur, "faute d'empreinte non injectée");
         } else if !verifier(Path::new(&chemin), &ordre.sha256) {
             tracing::error!("faute injectée : l'empreinte relue DIFFÈRE, installation refusée");
             if let Err(erreur) = std::fs::remove_file(&chemin) {
-                // ⚠️ LE GARDER SERAIT PIRE QUE DE NE PAS L'AVOIR : un chemin
-                // ultérieur pourrait le prendre pour un installeur valide.
+                // ⚠️ KEEPING IT WOULD BE WORSE THAN NOT HAVING IT: a later
+                // path could take it for a valid installer.
                 tracing::warn!(%erreur, chemin, "fichier corrompu NON supprimé");
             }
             fermer(partage, &ordre.id);
@@ -234,17 +234,17 @@ async fn honorer(
         }
     }
 
-    // --- exécution ---
-    // 🔴 L'ÉCHEC DE CE MARQUEUR EST UN REFUS, PAS UN AVERTISSEMENT, et c'était
-    // un `let _ =` jusqu'à la relecture de fin de branche. Il est **la seule
-    // mémoire qui survive à un redémarrage de l'agent** : la plateforme réémet
-    // à chaque enrôlement, et une déduplication en mémoire ne tient que dans UN
-    // processus. Sans lui, un agent redémarré pendant l'exécution **relancerait
-    // l'installeur sur une machine à l'état inconnu** — la seule chose dont ce
-    // sous-bloc ne sache pas sortir.
+    // --- execution ---
+    // 🔴 FAILING TO WRITE THIS MARKER IS A REFUSAL, NOT A WARNING, and it was
+    // a `let _ =` until the end-of-branch review. It is **the only
+    // memory that survives an agent restart**: the platform re-sends
+    // at every enrolment, and an in-memory deduplication only holds within ONE
+    // process. Without it, an agent restarted during execution **would relaunch
+    // the installer on a machine in an unknown state** — the only thing this
+    // sub-block cannot get out of.
     //
-    // ⚠️ ET IL S'ÉCRIT AVANT `CreateProcessW`, JAMAIS APRÈS : entre les deux,
-    // il y a exactement la fenêtre qu'il existe pour couvrir.
+    // ⚠️ AND IT IS WRITTEN BEFORE `CreateProcessW`, NEVER AFTER: between the two,
+    // there is exactly the window it exists to cover.
     if let Err(erreur) = std::fs::write(repertoire.join(depot::MARQUEUR_COMMENCE), b"") {
         tracing::error!(
             %erreur,
@@ -275,18 +275,18 @@ async fn honorer(
 
     let chemin_exe = chemin.clone();
     let rep = repertoire.clone();
-    // ⚠️ `spawn_blocking` : `executer` scrute et dort, elle bloquerait le
-    // réacteur tokio des heures durant.
+    // ⚠️ `spawn_blocking`: `executer` polls and sleeps, it would block the
+    // tokio reactor for hours.
     let sortie = tokio::task::spawn_blocking(move || {
         execution::executer(Path::new(&chemin_exe), extension, &rep, maintenant_ms)
     })
     .await;
     peripherique_audio::tracer(&ordre.id, Moment::Apres);
-    // ⚠️ CELUI-CI, EN REVANCHE, N'EST QU'UN AVERTISSEMENT, et l'asymétrie est
-    // délibérée : son absence fait lire `Commence` à une installation FINIE,
-    // donc rapporter `issue_inconnue` sur un réenrôlement. C'est **prudent dans
-    // le bon sens** — on ne rejoue pas —, mais c'est faux, et il faut pouvoir
-    // le voir au journal plutôt que de le déduire d'une issue surprenante.
+    // ⚠️ THIS ONE, ON THE OTHER HAND, IS ONLY A WARNING, and the asymmetry is
+    // deliberate: its absence makes a FINISHED installation read as `Commence`,
+    // hence report `issue_inconnue` on a re-enrolment. It is **cautious in
+    // the right direction** — nothing is replayed —, but it is wrong, and one must be able
+    // to see it in the log rather than deduce it from a surprising outcome.
     if let Err(erreur) = std::fs::write(repertoire.join(depot::MARQUEUR_TERMINE), b"") {
         tracing::warn!(
             %erreur,
@@ -309,7 +309,7 @@ async fn honorer(
         }
     };
 
-    // --- réconciliation forcée, puis fermeture de la fenêtre ---
+    // --- forced reconciliation, then closing the window ---
     emettre(VersLaPlateforme::progression(
         ordre.id.clone(),
         Phase::Reconciliation,
@@ -341,11 +341,11 @@ async fn honorer(
     );
 }
 
-/// Lève le drapeau, et attend que la boucle l'ait honoré — **borné**.
+/// Raises the flag, and waits for the loop to have honoured it — **bounded**.
 ///
-/// ⚠️ ON ATTEND LE FAIT, JAMAIS UNE DURÉE, et l'attente est BORNÉE : une boucle
-/// de découverte morte ne doit pas figer le fil d'installation, qui doit
-/// pouvoir rapporter son issue de toute façon.
+/// ⚠️ WE WAIT FOR THE FACT, NEVER A DURATION, and the wait is BOUNDED: a dead
+/// discovery loop must not freeze the installation thread, which must
+/// be able to report its outcome anyway.
 async fn forcer_une_reconciliation(partage: &Partage) {
     partage.reconciliee.store(false, Ordering::SeqCst);
     partage.reconcilier.store(true, Ordering::SeqCst);
@@ -375,11 +375,11 @@ fn terminer(
     journal: &str,
     tronque: bool,
 ) {
-    // 🔴 CETTE BORNE PANIQUAIT. Elle faisait `&journal[journal.len() - N..]` sur
-    // un `&str` sans vérifier la frontière de caractère — et le chemin était
-    // ATTEIGNABLE, `from_utf8_lossy` agrandissant. Un installeur écrivant du
-    // Latin-1 sur sa sortie standard aurait tué ce fil, qui serait mort SANS
-    // RAPPORTER D'ISSUE : le hub aurait affiché « en cours » pour l'éternité.
+    // 🔴 THIS BOUND PANICKED. It did `&journal[journal.len() - N..]` on
+    // a `&str` without checking the character boundary — and the path was
+    // REACHABLE, `from_utf8_lossy` enlarging. An installer writing
+    // Latin-1 on its standard output would have killed this thread, which would have died WITHOUT
+    // REPORTING AN OUTCOME: the hub would have shown "in progress" forever.
     let (queue, deja_tronque) = queue(journal);
     let tronque = tronque || deja_tronque;
     emettre(VersLaPlateforme::termine(

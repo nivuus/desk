@@ -10,20 +10,20 @@ fn e(nom: &str) -> Entree {
     }
 }
 
-/// Un comparateur qui trie **à l'envers** de l'ordre lexicographique.
+/// A comparator that sorts **in reverse** of lexicographic order.
 ///
-/// C'est ce qui rend le test capable d'échouer : à comparateur lexicographique,
-/// un `sort()` oublié rendrait le même résultat que l'appel au comparateur
-/// injecté, et le test passerait sur un code qui ignore ProjFS.
+/// It is what makes the test able to fail: with a lexicographic comparator,
+/// a forgotten `sort()` would give the same result as the call to the injected
+/// comparator, and the test would pass on code that ignores ProjFS.
 fn a_l_envers(a: &str, b: &str) -> Ordering {
     b.cmp(a)
 }
 
-/// 🔴 **L'ordre est IMPOSÉ par `PrjFileNameCompare`**, qui n'est ni l'ordre
-/// lexicographique d'`OsStr` ni `Ordering::cmp` (spec §7.2). `dir.values()` de
-/// la File System Access API ne garantit **aucun** ordre. Un fournisseur qui
-/// remplit dans le mauvais ordre voit son énumération **silencieusement**
-/// tronquée ou désordonnée par ProjFS.
+/// 🔴 **The order is IMPOSED by `PrjFileNameCompare`**, which is neither the
+/// lexicographic order of `OsStr` nor `Ordering::cmp` (spec §7.2). `dir.values()` of
+/// the File System Access API guarantees **no** order. A provider that
+/// fills in the wrong order sees its enumeration **silently**
+/// truncated or scrambled by ProjFS.
 #[test]
 fn l_ordre_suit_le_comparateur_injecte_et_non_l_ordre_lexicographique() {
     let entrees = vec![e("alpha"), e("charlie"), e("bravo")];
@@ -32,8 +32,8 @@ fn l_ordre_suit_le_comparateur_injecte_et_non_l_ordre_lexicographique() {
     assert_eq!(noms, ["charlie", "bravo", "alpha"]);
 }
 
-/// 🔴 **Le filtre `searchExpression` est FACULTATIF et il est FOURNI.**
-/// L'ignorer est une faute silencieuse : un `dir /b *.txt` rendrait tout.
+/// 🔴 **The `searchExpression` filter is OPTIONAL and it is PROVIDED.**
+/// Ignoring it is a silent fault: a `dir /b *.txt` would return everything.
 #[test]
 fn l_expression_de_recherche_est_appliquee_quand_elle_est_fournie() {
     let entrees = vec![e("note.txt"), e("image.png"), e("autre.txt")];
@@ -47,9 +47,9 @@ fn l_expression_de_recherche_est_appliquee_quand_elle_est_fournie() {
     assert_eq!(noms, ["autre.txt", "note.txt"]);
 }
 
-/// Sans expression, l'apparieur n'est **jamais** consulté : ProjFS n'en fournit
-/// pas toujours une, et en inventer une (`*`) ferait dépendre le résultat du
-/// comportement de `PrjFileNameMatch` sur un motif qu'on aurait forgé.
+/// Without an expression, the matcher is **never** consulted: ProjFS does not
+/// always provide one, and inventing one (`*`) would make the result depend on
+/// `PrjFileNameMatch`'s behaviour on a pattern we forged.
 #[test]
 fn sans_expression_l_apparieur_n_est_pas_consulte() {
     let mut consulte = false;
@@ -91,9 +91,9 @@ fn une_session_chargee_rend_ses_entrees_dans_l_ordre_puis_s_epuise() {
     );
 }
 
-/// 🔴 `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (mod.rs:177) **doit être honoré** :
-/// il redémarre l'énumération en cours. Ne pas le faire rendrait un répertoire
-/// vide à toute application qui redemande depuis le début — silencieusement.
+/// 🔴 `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (mod.rs:177) **must be honoured**:
+/// it restarts the enumeration in progress. Not doing so would return an empty
+/// directory to any application that asks again from the start — silently.
 #[test]
 fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
     let mut session = Session::nouvelle();
@@ -109,9 +109,9 @@ fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
     assert_eq!(session.prochaine().map(|e| e.nom.as_str()), Some("un"));
 }
 
-/// Recharger une session déjà chargée remet aussi le curseur à zéro : sans
-/// cela, une seconde réponse `Entrees` laisserait le curseur au-delà de la
-/// nouvelle liste, et l'énumération rendrait vide.
+/// Reloading an already loaded session also resets the cursor to zero: without
+/// it, a second `Entrees` response would leave the cursor beyond the
+/// new list, and the enumeration would return empty.
 #[test]
 fn reposer_des_entrees_remet_le_curseur_a_zero() {
     let mut session = Session::nouvelle();

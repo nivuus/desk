@@ -1,13 +1,13 @@
-//! Lancer une application comme un double-clic le ferait.
+//! Launching an application the way a double-click would.
 //!
-//! 🔴 CE MODULE EST `#[cfg(windows)]`, ET IL NE DÉCIDE DE RIEN. Il reçoit un
-//! chemin de `.lnk`, une cible de repli et un `nShow`, et rend l'issue de ce
-//! qu'il a tenté. `IssueLancement::Inconnue` n'est PAS rendue ici : seul
-//! l'appelant connaît le catalogue, donc seul lui peut dire qu'une clé n'y est
-//! pas.
+//! 🔴 THIS MODULE IS `#[cfg(windows)]`, AND IT DECIDES NOTHING. It receives a
+//! `.lnk` path, a fallback target and an `nShow`, and returns the outcome of what
+//! it tried. `IssueLancement::Inconnue` is NOT returned here: only
+//! the caller knows the catalogue, so only it can say that a key is not
+//! there.
 //!
-//! ⚠️ VÉRIFIÉ PAR `cargo check --target x86_64-pc-windows-gnu` SEUL, comme
-//! `apps::lecture`. Aucun test d'hôte ne peut le couvrir.
+//! ⚠️ CHECKED BY `cargo check --target x86_64-pc-windows-gnu` ALONE, like
+//! `apps::lecture`. No host test can cover it.
 
 use proto::plateforme::IssueLancement;
 use windows::core::PCWSTR;
@@ -16,51 +16,51 @@ use windows::Win32::UI::Shell::{
     SHELLEXECUTEINFOW,
 };
 
-/// Lance le raccourci, et retombe sur la cible enregistrée s'il a disparu.
+/// Launches the shortcut, and falls back on the recorded target if it has disappeared.
 ///
-/// 🔴 AUCUNE LIGNE DE COMMANDE N'EST RECONSTRUITE, NULLE PART. Le `.lnk` est
-/// passé tel quel à `ShellExecuteExW`, qui en tire lui-même la cible, les
-/// arguments, le répertoire de travail et le verbe. Reconstruire, ce serait
-/// réintroduire un analyseur de ligne de commande maison — c'est-à-dire
-/// exactement le défaut qu'on retire à `src/lnkParser.js`, dont ce sous-bloc
-/// est le remède. Le repli lui-même passe la cible comme `lpFile`, sans jamais
-/// coller d'arguments derrière.
+/// 🔴 NO COMMAND LINE IS REBUILT, ANYWHERE. The `.lnk` is
+/// passed as is to `ShellExecuteExW`, which itself draws the target, the
+/// arguments, the working directory and the verb from it. Rebuilding would
+/// reintroduce a home-made command-line parser — that is,
+/// exactly the defect being removed from `src/lnkParser.js`, of which this sub-block
+/// is the remedy. The fallback itself passes the target as `lpFile`, without ever
+/// sticking arguments behind it.
 ///
-/// 🔴 LE PROCESSUS LANCÉ N'ENTRE DANS AUCUN JOB OBJECT, et le raisonnement du
-/// superviseur NE SE TRANSPOSE PAS ICI. `agent/src/superviseur/lanceur.rs`
-/// pose `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, dont l'objet est que la mort du
-/// superviseur ne laisse pas N processus agent derrière lui. Une application
-/// que l'UTILISATEUR vient de lancer n'est pas dans ce cas : l'y assigner la
-/// tuerait avec l'agent, c'est-à-dire au premier redéploiement. `ShellExecuteEx`
-/// crée son processus hors de tout job, et c'est ce qu'on veut.
+/// 🔴 THE LAUNCHED PROCESS ENTERS NO JOB OBJECT, and the supervisor's
+/// reasoning DOES NOT CARRY OVER HERE. `agent/src/superviseur/lanceur.rs`
+/// sets `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, whose purpose is that the death of the
+/// supervisor does not leave N agent processes behind it. An application
+/// the USER has just launched is not in that case: assigning it there would
+/// kill it with the agent, that is at the first redeployment. `ShellExecuteEx`
+/// creates its process outside any job, and that is what we want.
 ///
-/// 🔴 **CETTE DERNIÈRE PHRASE A ÉTÉ MESURÉE LE 30 AOÛT 2026, ET ELLE EST
-/// FAUSSE.** Elle disait : « `ShellExecuteEx` crée son processus hors de tout
-/// job », par la conséquence que `superviseur/lanceur.rs` « n'assigne que ses
-/// ENFANTS et jamais lui-même ». **Le superviseur EST dans un job** — celui du
-/// **Planificateur de tâches**, qui lance l'agent — et les applications qu'il
-/// lance en **héritent** : `DANS_UN_JOB=True` relevé pour le superviseur, ses
-/// douze enfants, et le `notepad.exe` lancé par le catalogue (relevé en
+/// 🔴 **THIS LAST SENTENCE WAS MEASURED ON 30 AUGUST 2026, AND IT IS
+/// FALSE.** It said: "`ShellExecuteEx` creates its process outside any
+/// job", by the consequence that `superviseur/lanceur.rs` "assigns only its
+/// CHILDREN and never itself". **The supervisor IS in a job** — that of the
+/// **Task Scheduler**, which launches the agent — and the applications it
+/// launches **inherit** it: `DANS_UN_JOB=True` read for the supervisor, its
+/// twelve children, and the `notepad.exe` launched by the catalogue (read in
 /// session 1, `journaux-lot32j/`).
 ///
-/// ⚠️ **Ce que cela ne change PAS** : rien ne tue ces processus, parce que le
-/// job du Planificateur ne porte pas `KILL_ON_JOB_CLOSE` de notre fait, et que
-/// `installation::execution::tue_a_la_fermeture` mesure ce drapeau au lieu de
-/// le supposer. **Ce que cela change** : `IsProcessInJob(p, None)` ne
-/// discrimine plus rien ici, et la seule question qui vaille est « dans CE
-/// job-ci ». Voir `crate::appartenance`.
+/// ⚠️ **What this does NOT change**: nothing kills these processes, because the
+/// Scheduler's job does not carry `KILL_ON_JOB_CLOSE` through us, and
+/// `installation::execution::tue_a_la_fermeture` measures that flag instead of
+/// assuming it. **What it does change**: `IsProcessInJob(p, None)` no longer
+/// discriminates anything here, and the only question that matters is "in THIS
+/// particular job". See `crate::appartenance`.
 ///
-/// 🔴 **G3 NE S'APPUIE PAS DESSUS : il MESURE et il REFUSE.**
-/// `apps::installation::execution::dans_un_job` appelle `IsProcessInJob` avant
-/// tout lancement d'installeur, journalise le booléen à chaque fois, et refuse
-/// si la réponse est oui. **Rien de tel n'est fait ici**, et c'est assumé : un
-/// installeur tué au milieu laisse une machine à moitié installée, une
-/// application tuée ne laisse rien.
+/// 🔴 **G3 DOES NOT RELY ON IT: it MEASURES and it REFUSES.**
+/// `apps::installation::execution::dans_un_job` calls `IsProcessInJob` before
+/// any installer launch, logs the boolean every time, and refuses
+/// if the answer is yes. **Nothing of the kind is done here**, and that is accepted: an
+/// installer killed halfway leaves a half-installed machine, a killed
+/// application leaves nothing.
 ///
-/// ⚠️ LES DEUX TENTATIVES SONT JOURNALISÉES, y compris celle qui réussit :
-/// sans la trace du repli, `Cible` serait indiscernable de `Raccourci` dans un
-/// journal, et c'est précisément la distinction que l'issue existe pour
-/// rendre décidable.
+/// ⚠️ BOTH ATTEMPTS ARE LOGGED, including the one that succeeds:
+/// without the fallback's trace, `Cible` would be indistinguishable from `Raccourci` in a
+/// log, and that is precisely the distinction the outcome exists to make
+/// decidable.
 pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
     match executer(chemin_lnk, montrer) {
         Ok(()) => {
@@ -74,11 +74,11 @@ pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
         ),
     }
 
-    // ⚠️ LE REPLI N'EST PAS UNE ÉQUIVALENCE, et c'est pour cela qu'il porte une
-    // issue distincte : la cible enregistrée n'emporte ni les arguments du
-    // raccourci, ni son répertoire de travail. Une application lancée par ce
-    // chemin-là peut donc démarrer différemment — c'est mieux que rien, ce
-    // n'est pas la même chose, et l'appelant doit pouvoir le savoir.
+    // ⚠️ THE FALLBACK IS NOT AN EQUIVALENCE, and that is why it carries a
+    // distinct outcome: the recorded target carries neither the shortcut's
+    // arguments nor its working directory. An application launched through that
+    // path may therefore start differently — it is better than nothing, it
+    // is not the same thing, and the caller must be able to know it.
     if cible.trim().is_empty() {
         tracing::warn!(chemin = chemin_lnk, "aucune cible de repli enregistrée");
         return IssueLancement::Echec;
@@ -103,54 +103,54 @@ fn executer(fichier: &str, montrer: i32) -> windows::core::Result<()> {
     let large: Vec<u16> = fichier.encode_utf16().chain(std::iter::once(0)).collect();
     let mut info = SHELLEXECUTEINFOW {
         cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
-        // ⚠️ `SEE_MASK_NOASYNC` EST REQUIS, et ce n'est PAS une mesure ici :
-        // c'est une lecture de la documentation Windows, déclarée comme telle.
-        // `ShellExecuteEx` peut rendre la main AVANT que le processus enfant
-        // ne soit créé ; si le fil appelant se termine dans l'intervalle, le
-        // lancement est perdu. Notre fil de réconciliation survit, mais
-        // l'appel doit rester synchrone pour que l'issue rendue décrive
-        // vraiment ce qui s'est passé — sans quoi `Raccourci` signifierait
-        // « la demande a été acceptée », pas « l'application a démarré ».
+        // ⚠️ `SEE_MASK_NOASYNC` IS REQUIRED, and this is NOT a measurement here:
+        // it is a reading of the Windows documentation, declared as such.
+        // `ShellExecuteEx` may return BEFORE the child process
+        // is created; if the calling thread ends in the meantime, the
+        // launch is lost. Our reconciliation thread survives, but
+        // the call must stay synchronous so that the returned outcome really
+        // describes what happened — otherwise `Raccourci` would mean
+        // "the request was accepted", not "the application started".
         //
-        // `SEE_MASK_FLAG_NO_UI` supprime les boîtes de dialogue d'erreur : la
-        // session interactive de la VM n'a personne pour les fermer, et une
-        // modale bloquerait l'appel jusqu'au prochain redémarrage.
-        // 🔴 `SEE_MASK_NOCLOSEPROCESS` NOUS REND LE HANDLE DU PROCESSUS, et
-        // c'est la seule raison de sa présence : sans lui, aucun moyen
-        // d'inscrire l'application au job d'APPARTENANCE (`crate::appartenance`),
-        // donc aucun moyen de distinguer nos fenêtres de celles d'Apollo ou de
-        // Steam. ⚠️ Il nous rend aussi PROPRIÉTAIRES du handle : il faut le
-        // fermer, sans quoi chaque lancement fuit un handle noyau.
+        // `SEE_MASK_FLAG_NO_UI` suppresses error dialog boxes: the
+        // VM's interactive session has nobody to close them, and a
+        // modal would block the call until the next reboot.
+        // 🔴 `SEE_MASK_NOCLOSEPROCESS` GIVES US THE PROCESS HANDLE, and
+        // that is the only reason for its presence: without it, there is no way
+        // to enrol the application in the OWNERSHIP job (`crate::appartenance`),
+        // hence no way to tell our windows from Apollo's or
+        // Steam's. ⚠️ It also makes us OWNERS of the handle: it must be
+        // closed, otherwise every launch leaks a kernel handle.
         fMask: SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS,
         lpFile: PCWSTR(large.as_ptr()),
-        // Le `nShow` du raccourci est rejoué tel quel, pour qu'un lancement
-        // par l'agent et un double-clic dans l'Explorateur donnent la même
-        // fenêtre.
+        // The shortcut's `nShow` is replayed as is, so that a launch
+        // by the agent and a double-click in Explorer give the same
+        // window.
         nShow: montrer,
         ..Default::default()
     };
-    // SÉCURITÉ : appel FFI. `info` vit jusqu'à la fin de la fonction, et
-    // `large` aussi — le pointeur de `lpFile` ne peut donc pas pendre pendant
-    // l'appel, qui est synchrone par `SEE_MASK_NOASYNC`.
+    // SAFETY: FFI call. `info` lives until the end of the function, and
+    // so does `large` — the `lpFile` pointer therefore cannot dangle during
+    // the call, which is synchronous through `SEE_MASK_NOASYNC`.
     let issue = unsafe { ShellExecuteExW(&mut info) };
 
-    // ⚠️ LA COURSE, NOMMÉE ET BORNÉE. `ShellExecuteEx` ne sait pas créer un
-    // processus SUSPENDU : le patron « créer suspendu, assigner, reprendre »
-    // n'existe pas sur ce chemin. Entre le retour ci-dessus et l'assignation,
-    // il s'écoule un appel système — des microsecondes —, et un descendant né
-    // dans cet intervalle n'hériterait pas du job. Le processus LANCÉ, lui,
-    // est toujours assigné : c'est son handle qu'on tient. Et une fenêtre
-    // écartée pour cette raison le serait BRUYAMMENT (voir la trace de refus
-    // de `superviseur::hook`), jamais en silence.
+    // ⚠️ THE RACE, NAMED AND BOUNDED. `ShellExecuteEx` cannot create a
+    // SUSPENDED process: the "create suspended, assign, resume" pattern
+    // does not exist on this path. Between the return above and the assignment,
+    // one system call elapses — microseconds —, and a descendant born
+    // in that interval would not inherit the job. The LAUNCHED process, for its part,
+    // is always assigned: it is its handle we hold. And a window
+    // discarded for that reason would be discarded LOUDLY (see the refusal trace
+    // of `superviseur::hook`), never silently.
     if !info.hProcess.is_invalid() {
         crate::appartenance::adopter(info.hProcess);
-        // `SEE_MASK_NOCLOSEPROCESS` nous en rend propriétaires.
+        // `SEE_MASK_NOCLOSEPROCESS` makes us their owners.
         let _ = unsafe { windows::Win32::Foundation::CloseHandle(info.hProcess) };
     } else if issue.is_ok() {
-        // Un lancement réussi SANS handle : l'application a rejoint une
-        // instance existante (Chrome sans `--user-data-dir` distinct le fait,
-        // ce dépôt l'a relevé). Ses fenêtres appartiendront au processus
-        // d'origine, qui n'est pas dans notre job — et seront donc écartées.
+        // A successful launch WITHOUT a handle: the application joined an
+        // existing instance (Chrome without a distinct `--user-data-dir` does so,
+        // this repository has recorded it). Its windows will belong to the original
+        // process, which is not in our job — and will therefore be discarded.
         tracing::warn!(
             "lancement réussi sans handle de processus : l'application a rejoint \
              une instance existante, ses fenêtres ne seront PAS adoptées"

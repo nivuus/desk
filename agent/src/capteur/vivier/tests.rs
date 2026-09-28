@@ -4,8 +4,8 @@ fn t0() -> Instant {
     Instant::now()
 }
 
-/// Un vivier de 2 places, sans hystérésis, pour que les tests d'éviction
-/// n'aient pas à faire vieillir le temps.
+/// A pool of 2 places, without hysteresis, so that the eviction tests
+/// do not have to age time.
 fn petit() -> Vivier {
     Vivier::nouveau(2, Duration::ZERO)
 }
@@ -54,7 +54,7 @@ fn au_dela_du_plafond_la_moins_recemment_vue_est_evincee() {
         v.inscrire(nom, quand);
         v.signaler(nom, true, true, quand);
     }
-    // « a » a été vue en premier, donc la plus anciennement vue des trois.
+    // "a" was seen first, hence the least recently seen of the three.
     assert_eq!(v.eveillee("a"), Some(false), "a devait être évincée");
     assert_eq!(v.eveillee("b"), Some(true));
     assert_eq!(v.eveillee("c"), Some(true));
@@ -86,7 +86,7 @@ fn un_focus_rafraichit_la_recence_et_protege_de_l_eviction() {
         v.inscrire(nom, quand);
         v.signaler(nom, true, true, quand);
     }
-    // « a » reprend le focus : elle redevient la plus récemment vue.
+    // "a" takes the focus back: it becomes the most recently seen again.
     v.signaler("a", true, true, t + Duration::from_millis(500));
     v.inscrire("c", t + Duration::from_millis(600));
     v.signaler("c", true, true, t + Duration::from_millis(600));
@@ -106,7 +106,7 @@ fn l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee() {
     v.signaler("a", true, true, t);
     assert_eq!(v.eveillee("a"), Some(true));
 
-    // « b » demande à veiller 500 ms plus tard : « a » est protégée.
+    // "b" asks to wake 500 ms later: "a" is protected.
     v.inscrire("b", t + Duration::from_millis(500));
     let ordres = v.signaler("b", true, true, t + Duration::from_millis(500));
     assert!(
@@ -126,8 +126,8 @@ fn passee_l_hysteresis_la_rearbitration_periodique_debloque_le_reveil() {
     v.inscrire("b", t + Duration::from_millis(500));
     v.signaler("b", true, true, t + Duration::from_millis(500));
 
-    // Sans ce ré-arbitrage, « b » attendrait un signal qui ne viendra
-    // jamais : elle est déjà visible et déjà focalisée.
+    // Without this re-arbitration, "b" would wait for a signal that will
+    // never come: it is already visible and already focused.
     let ordres = v.rearbitrer(t + Duration::from_secs(3));
     assert!(ordres.contains(&("a".to_string(), Ordre::Dormir(Raison::Evincee))));
     assert!(ordres.contains(&("b".to_string(), Ordre::Reveiller)));
@@ -135,8 +135,8 @@ fn passee_l_hysteresis_la_rearbitration_periodique_debloque_le_reveil() {
 
 #[test]
 fn une_fenetre_masquee_s_endort_meme_sous_l_hysteresis() {
-    // Se masquer est un geste EXPLICITE de l'utilisateur : l'hystérésis
-    // protège contre le battement d'éviction, jamais contre une volonté.
+    // Hiding is an EXPLICIT gesture of the user: hysteresis
+    // protects against eviction flapping, never against a will.
     let mut v = Vivier::nouveau(2, Duration::from_secs(10));
     let t = t0();
     v.inscrire("a", t);
@@ -177,7 +177,7 @@ fn un_ordre_n_est_jamais_emis_deux_fois_pour_le_meme_etat() {
     let t = t0();
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
-    // Second signal identique : la fenêtre est déjà éveillée.
+    // Second identical signal: the window is already awake.
     let ordres = v.signaler("a", true, true, t + Duration::from_millis(50));
     assert!(
         ordres.is_empty(),
@@ -193,14 +193,14 @@ fn un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_sui
     v.signaler("a", true, true, t);
     assert_eq!(v.eveillee("a"), Some(true), "a était éveillée");
 
-    // L'encodeur échoue à se construire : enregistrer l'échec.
+    // The encoder fails to build: record the failure.
     let ordres = v.echec_de_reveil("a", t + Duration::from_millis(100));
     assert_eq!(
         v.eveillee("a"),
         Some(false),
         "a doit s'endormir après l'échec"
     );
-    // Aucun nouvel ordre ne doit être émis : a était déjà le seul éveillé.
+    // No new order must be emitted: a was already the only awake one.
     assert!(
         ordres.is_empty(),
         "pas de réélection au tour même de l'échec : {ordres:?}"
@@ -216,7 +216,7 @@ fn passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec() {
     v.echec_de_reveil("a", t + Duration::from_millis(100));
     assert_eq!(v.eveillee("a"), Some(false), "a est endormie après l'échec");
 
-    // Avant le répit : pas de reproposition.
+    // Before the respite: no re-proposal.
     let ordres = v.rearbitrer(t + Duration::from_millis(200));
     assert!(
         ordres.is_empty(),
@@ -224,7 +224,7 @@ fn passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec() {
     );
     assert_eq!(v.eveillee("a"), Some(false));
 
-    // Après le répit : reproposition.
+    // After the respite: re-proposal.
     let ordres = v.rearbitrer(t + Duration::from_millis(700));
     assert_eq!(
         ordres,
@@ -236,8 +236,8 @@ fn passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec() {
 
 #[test]
 fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
-    // Cas où on éteint une fenêtre et on en allume une autre
-    // simultanément : vérifier que Dormir précède Reveiller.
+    // Case where one window is turned off and another turned on
+    // simultaneously: check that Dormir precedes Reveiller.
     let mut v = petit();
     let t = t0();
     for (i, nom) in ["a", "b", "c"].iter().enumerate() {
@@ -245,17 +245,17 @@ fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
         v.inscrire(nom, quand);
         v.signaler(nom, true, true, quand);
     }
-    // État : a endormi, b et c éveillés.
+    // State: a asleep, b and c awake.
     assert_eq!(v.eveillee("a"), Some(false));
     assert_eq!(v.eveillee("b"), Some(true));
     assert_eq!(v.eveillee("c"), Some(true));
 
-    // Faire arriver une quatrième fenêtre : d > c > b > a en récence.
+    // Bring in a fourth window: d > c > b > a in recency.
     v.inscrire("d", t + Duration::from_millis(300));
     let ordres = v.signaler("d", true, true, t + Duration::from_millis(300));
 
-    // Ordres attendus : b s'endort (Dormir), d s'éveille (Reveiller).
-    // Ou plus largement, les Dormir avant les Reveiller.
+    // Expected orders: b falls asleep (Dormir), d wakes up (Reveiller).
+    // Or more broadly, the Dormir before the Reveiller.
     let premiers_dormir = ordres
         .iter()
         .position(|(_, o)| matches!(o, Ordre::Dormir(_)));
@@ -279,9 +279,9 @@ fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
 
 #[test]
 fn une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé() {
-    // Une fenêtre qui échoue à s'éveiller reste en répit et n'est pas
-    // reproposée même si une place se libère, jusqu'à ce que le répit
-    // s'écoule.
+    // A window that fails to wake up stays in respite and is not
+    // proposed again even if a place is freed, until the respite
+    // elapses.
     let mut v = petit();
     let t = t0();
     v.inscrire("a", t);
@@ -289,10 +289,10 @@ fn une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé() {
     v.inscrire("b", t + Duration::from_millis(100));
     v.signaler("b", true, true, t + Duration::from_millis(100));
 
-    // Échec du reveil de « a » à t + 200.
+    // Wake-up failure of "a" at t + 200.
     v.echec_de_reveil("a", t + Duration::from_millis(200));
-    // « b » se voit masquer à t + 300 (100 ms après l'échec), libérant une place.
-    // Mais « a » est encore en répit (le répit dure 500 ms).
+    // "b" gets hidden at t + 300 (100 ms after the failure), freeing a place.
+    // But "a" is still in respite (the respite lasts 500 ms).
     let ordres = v.signaler("b", false, false, t + Duration::from_millis(300));
     assert!(
         !ordres.iter().any(|(nom, _)| nom == "a"),
@@ -321,16 +321,16 @@ fn eveillees_rend_exactement_les_sessions_reveillees() {
     assert_eq!(vivier.eveillees(), vec!["b".to_string()]);
 }
 
-/// Les deux clauses du contrat écrit d'`annuler_ordre_non_livre` que son
-/// unique appelant ne peut pas atteindre.
+/// The two clauses of `annuler_ordre_non_livre`'s written contract that its
+/// only caller cannot reach.
 ///
-/// ⚠️ **Elle n'avait AUCUN test pur** : les deux rouges qui la tiennent
-/// passent par `sommeil::registre::distribuer`, donc par le chemin qui compte
-/// — mais deux clauses restaient tenues par une phrase seule. Le garde « sans
-/// effet si la session a disparu, jamais une panique » est **du code défensif
-/// qu'aucun appelant ne peut exercer** (les noms viennent de `canaux`, sous le
-/// même verrou), et l'invariant « elle ne touche QU'`eveillee` » n'était figé
-/// par rien.
+/// ⚠️ **It had NO pure test**: the two reds that hold it
+/// go through `sommeil::registre::distribuer`, hence through the path that matters
+/// — but two clauses were held by a sentence alone. The guard "no
+/// effect if the session has disappeared, never a panic" is **defensive code
+/// no caller can exercise** (the names come from `canaux`, under the
+/// same lock), and the invariant "it touches ONLY `eveillee`" was pinned
+/// by nothing.
 #[test]
 fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_disparue() {
     let t = t0();
@@ -343,7 +343,7 @@ fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_dispar
         "précondition : elle est éveillée"
     );
 
-    // Un `Dormir` non livré la ramène à son état d'avant l'ordre.
+    // An undelivered `Dormir` brings it back to its state before the order.
     v.annuler_ordre_non_livre("a", Ordre::Dormir(Raison::Masquee));
     assert_eq!(
         v.eveillee("a"),
@@ -357,14 +357,14 @@ fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_dispar
         "un Reveiller non livré la laisse endormie"
     );
 
-    // Le garde : une session disparue est ignorée, jamais une panique. C'est
-    // la clause qu'aucun appelant ne peut atteindre.
+    // The guard: a vanished session is ignored, never a panic. It is
+    // the clause no caller can reach.
     v.annuler_ordre_non_livre("jamais-inscrite", Ordre::Reveiller);
     assert_eq!(v.eveillee("jamais-inscrite"), None);
 
-    // L'invariant : rien d'autre qu'`eveillee` n'a bougé — la session reste
-    // connue, et un ré-arbitrage la réélit aussitôt (donc ni sa visibilité ni
-    // sa récence n'ont été effacées).
+    // The invariant: nothing other than `eveillee` moved — the session stays
+    // known, and a re-arbitration re-elects it immediately (so neither its visibility nor
+    // its recency were erased).
     let ordres = v.rearbitrer(t);
     assert!(
         ordres.contains(&("a".to_string(), Ordre::Reveiller)),

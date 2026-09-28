@@ -1,73 +1,73 @@
-//! La file des messages d'une session, BORNÉE PAR COALESCENCE.
+//! A session's message queue, BOUNDED BY COALESCING.
 //!
-//! 🔴 POURQUOI CE MODULE EXISTE. Le canal du registre était un
-//! `std::sync::mpsc::channel()` NON BORNÉ, et quatre sous-blocs y ont ajouté
-//! chacun une variante. Trois d'entre elles sont poussées « au changement
-//! seulement » et n'ont de valeur que dans leur DERNIÈRE occurrence : sous
-//! coalescence, elles cessent de faire croître la file en régime permanent,
-//! quelle que soit la cadence d'arrivée.
+//! 🔴 WHY THIS MODULE EXISTS. The registry's channel was an
+//! UNBOUNDED `std::sync::mpsc::channel()`, and four sub-blocks each added
+//! a variant to it. Three of them are pushed "on change
+//! only" and are only valuable in their LAST occurrence: under
+//! coalescing, they stop making the queue grow in steady state,
+//! whatever the arrival rate.
 //!
-//! 🔴 LA COALESCENCE CONSERVE LA POSITION DU CRÉNEAU — ELLE NE CONSERVE PAS
-//! L'ORDRE D'ARRIVÉE DES VALEURS, ET LA DISTINCTION EST TOUT LE SUJET.
+//! 🔴 COALESCING KEEPS THE SLOT'S POSITION — IT DOES NOT KEEP
+//! THE ARRIVAL ORDER OF THE VALUES, AND THE DISTINCTION IS THE WHOLE POINT.
 //!
-//! ❌ ~~Remplacer en place préserve l'ordre de livraison ; déplacer en queue
-//! ferait franchir à une part de débit un ordre de dormir déposé entre-temps,
-//! et livrerait la part APRÈS l'ordre qui aurait dû la rendre caduque.~~
-//! **CET ARGUMENT ÉTAIT FAUX, et le round de correction 1 l'a réfuté** :
-//! coalescer en QUEUE placerait toujours la valeur la plus récente en queue,
-//! donc `Part(dormante), Sommeil(Reveiller), Part(éveillée)` y rendrait
-//! `[Reveiller, Part(éveillée)]` — chronologiquement juste ET portant la
-//! bonne valeur. Le mode de défaillance décrit n'existe pas. Barré plutôt
-//! qu'effacé.
+//! ❌ ~~Replacing in place preserves the delivery order; moving to the tail
+//! would make a bitrate share cross a sleep order dropped in the meantime,
+//! and would deliver the share AFTER the order that should have made it void.~~
+//! **THIS ARGUMENT WAS FALSE, and fix round 1 refuted it**:
+//! coalescing at the TAIL would always put the most recent value at the tail,
+//! so `Part(dormante), Sommeil(Reveiller), Part(éveillée)` would yield
+//! `[Reveiller, Part(éveillée)]` there — chronologically right AND carrying the
+//! right value. The failure mode described does not exist. Struck out rather
+//! than erased.
 //!
-//! **CE QUI EST VRAI, ET QUI TIENT LA DÉCISION.** Remplacer en place conserve
-//! la POSITION du créneau : la file garde exactement autant d'entrées, aux
-//! mêmes places. Elle ne conserve PAS l'ordre d'arrivée des valeurs — la
-//! valeur d'éveillée est livrée à la place qu'occupait celle de dormante,
-//! donc AVANT le `Sommeil` arrivé entre les deux. **C'est acceptable parce que
-//! le capteur RELAIE ces deux variantes sans les appliquer** :
-//! `fenetre/transitions.rs` écrit « rien à faire localement » pour `Part` et
-//! pour `Audio` — seul `Sommeil` a un effet local. Les deux politiques
-//! convergent donc vers le même état final, et c'est cet argument-là, pas le
-//! précédent, qui justifie le choix.
+//! **WHAT IS TRUE, AND WHAT HOLDS THE DECISION.** Replacing in place keeps
+//! the slot's POSITION: the queue keeps exactly as many entries, in the
+//! same places. It does NOT keep the arrival order of the values — the
+//! awake value is delivered in the place the sleeping one occupied,
+//! hence BEFORE the `Sommeil` that arrived between the two. **That is acceptable because
+//! the sensor RELAYS these two variants without applying them**:
+//! `fenetre/transitions.rs` writes "nothing to do locally" for `Part` and
+//! for `Audio` — only `Sommeil` has a local effect. The two policies
+//! therefore converge to the same final state, and it is that argument, not the
+//! previous one, that justifies the choice.
 //!
-//! ⚠️ SÉPARER LES VARIANTES EN CANAUX DISTINCTS RESTE FAUX, pour une raison
-//! qui, elle, n'a pas bougé : `Sommeil` a un effet local, et deux canaux
-//! parallèles laisseraient un ordre de dormir doubler une part déjà livrée ou
-//! l'inverse, sans qu'aucun ordre total n'existe entre eux. C'est la solution
-//! qui vient d'abord à l'esprit, et elle est fausse.
+//! ⚠️ SPLITTING THE VARIANTS INTO DISTINCT CHANNELS REMAINS WRONG, for a reason
+//! that has not moved: `Sommeil` has a local effect, and two
+//! parallel channels would let a sleep order overtake an already delivered share or
+//! the reverse, without any total order existing between them. It is the solution
+//! that comes to mind first, and it is wrong.
 //!
-//! ⚠️ ~~CE MODULE EST PUR : il ne connaît ni verrou, ni fil, ni Windows.~~
-//! **DEVENU FAUX quand ce module a reçu le CANAL lui-même** (`Partage`,
-//! `EmetteurSession`, `ReceveurSession`, plus bas) : il connaît désormais un
-//! `Mutex` et un `Arc`. Barré plutôt qu'effacé, comme ce dépôt le fait
-//! partout. **Ce qui reste vrai, et qui était l'intention** : il ne connaît
-//! toujours ni Windows, ni aucun `#[cfg]` — `capteur/sommeil.rs` n'est pas
-//! gaté, donc tout ce fichier se compile et s'éprouve sur l'hôte Linux par
-//! `cargo test --workspace`. La RÈGLE (`deposer`, `coalescable`) est restée
-//! pure, elle : elle prend une `VecDeque` et rien d'autre.
+//! ⚠️ ~~THIS MODULE IS PURE: it knows neither lock, nor thread, nor Windows.~~
+//! **BECAME FALSE when this module received the CHANNEL itself** (`Partage`,
+//! `EmetteurSession`, `ReceveurSession`, below): it now knows a
+//! `Mutex` and an `Arc`. Struck out rather than erased, as this repository does
+//! everywhere. **What remains true, and which was the intent**: it still knows
+//! neither Windows, nor any `#[cfg]` — `capteur/sommeil.rs` is not
+//! gated, so this whole file compiles and is tested on the Linux host through
+//! `cargo test --workspace`. The RULE (`deposer`, `coalescable`) stayed
+//! pure: it takes a `VecDeque` and nothing else.
 //!
-//! 🔴 CE MODULE REMPLACE `std::sync::mpsc::channel()`, MAIS SON `envoyer` A
-//! TROIS ISSUES LÀ OÙ `send` EN AVAIT DEUX — ET C'EST LE PIÈGE QUE LE ROUND
-//! DE CORRECTION 1 A PAYÉ.
+//! 🔴 THIS MODULE REPLACES `std::sync::mpsc::channel()`, BUT ITS `envoyer` HAS
+//! THREE OUTCOMES WHERE `send` HAD TWO — AND IT IS THE TRAP FIX ROUND 1
+//! PAID FOR.
 //!
-//! Sous `mpsc`, `send(...).is_ok()` valait **« livré »**. Ici il ne vaudrait
-//! plus que « pas déconnecté » : un refus de file pleine est un ÉCHEC DE
-//! LIVRAISON sur une session parfaitement VIVANTE. Les cinq points d'appel de
-//! production avaient gardé l'ancienne lecture, et deux d'entre eux
-//! MÉMORISAIENT le refus comme un envoi (`dernieres_parts`,
-//! `derniers_audio`), ce qui supprimait toute réémission future de cette
-//! valeur — une fenêtre bloquée au débit précédent, ou muette, **sans
-//! borne**.
+//! Under `mpsc`, `send(...).is_ok()` meant **"delivered"**. Here it would
+//! only mean "not disconnected": a queue-full refusal is a DELIVERY
+//! FAILURE on a perfectly ALIVE session. The five production
+//! call sites had kept the old reading, and two of them
+//! MEMORISED the refusal as a send (`dernieres_parts`,
+//! `derniers_audio`), which suppressed any future re-emission of that
+//! value — a window stuck at the previous bitrate, or silent, **without
+//! bound**.
 //!
-//! 🔴 C'EST POURQUOI `envoyer` NE REND PAS UN `Result` MAIS UN `Envoi` À
-//! TROIS VARIANTES, `#[must_use]`, QUE CHAQUE APPELANT TRAITE PAR UN `match`
-//! EXHAUSTIF. Le remède est MÉCANIQUE : le compilateur refuse un site qui
-//! oublie un cas, et refusera de même toute variante future.
-//! ⚠️ **`#[must_use]` sur `Depot` seul ne suffisait PAS, et cela a été
-//! mesuré** : `Result` est lui-même `#[must_use]`, et `.is_ok()`, `.is_err()`
-//! ou `let _ =` le consomment — ce qui éteint le `must_use` du `Depot` qu'il
-//! contient. `cargo check` ne signalait AUCUN des cinq sites.
+//! 🔴 THAT IS WHY `envoyer` DOES NOT RETURN A `Result` BUT A THREE-VARIANT
+//! `Envoi`, `#[must_use]`, THAT EACH CALLER HANDLES WITH AN EXHAUSTIVE
+//! `match`. The remedy is MECHANICAL: the compiler refuses a site that
+//! forgets a case, and will likewise refuse any future variant.
+//! ⚠️ **`#[must_use]` on `Depot` alone was NOT enough, and it was
+//! measured**: `Result` is itself `#[must_use]`, and `.is_ok()`, `.is_err()`
+//! or `let _ =` consume it — which switches off the `must_use` of the `Depot` it
+//! contains. `cargo check` reported NONE of the five sites.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -75,43 +75,43 @@ use std::sync::{Arc, Mutex};
 
 use super::Message;
 
-/// La profondeur au-delà de laquelle un dépôt est REFUSÉ.
+/// The depth beyond which a drop is REFUSED.
 ///
-/// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est. Elle est choisie
-/// assez grande pour qu'un régime normal ne l'atteigne jamais — les variantes
-/// coalescables n'y contribuent pas — et assez petite pour que la mémoire reste
-/// bornée si un enfant cesse de lire.
+/// ⚠️ **NOT CALIBRATED.** No constant of this repository is. It is chosen
+/// large enough for a normal regime never to reach it — the coalescable
+/// variants do not contribute to it — and small enough for memory to stay
+/// bounded if a child stops reading.
 pub(crate) const PROFONDEUR_MAX: usize = 64;
 
-/// Ce qu'un dépôt a fait.
+/// What a drop did.
 ///
-/// ⚠️ **`#[must_use]` est posé ici par principe — il ne garde PAS les appels
-/// à `envoyer`.** Mesuré : enveloppé dans un `Result` (lui-même `must_use`),
-/// il est éteint dès qu'on écrit `.is_ok()` ou `let _ =`. C'est `Envoi`,
-/// plus bas, qui porte la garde réelle. Ce `must_use`-ci ne couvre que les
-/// appels DIRECTS à `deposer`.
+/// ⚠️ **`#[must_use]` is set here on principle — it does NOT guard the calls
+/// to `envoyer`.** Measured: wrapped in a `Result` (itself `must_use`),
+/// it is switched off as soon as one writes `.is_ok()` or `let _ =`. It is `Envoi`,
+/// below, that carries the real guard. This `must_use` only covers
+/// DIRECT calls to `deposer`.
 #[must_use]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Depot {
-    /// Ajouté en queue.
+    /// Added at the tail.
     Empilee,
-    /// A remplacé, EN PLACE, un message de la même variante déjà en attente.
+    /// Replaced, IN PLACE, a message of the same variant already pending.
     Coalescee,
-    /// La file était pleine. **Rien n'a été ajouté, rien n'a été retiré.**
+    /// The queue was full. **Nothing was added, nothing was removed.**
     Refusee,
 }
 
-/// Cette variante peut-elle remplacer une occurrence en attente d'elle-même ?
+/// Can this variant replace a pending occurrence of itself?
 ///
-/// 🔴 LA RÈGLE EST « SA PERTE COÛTE-T-ELLE QUELQUE CHOSE ? », PAS « EST-ELLE
-/// FRÉQUENTE ? ». `Part` et `Audio` sont poussées au changement seulement et
-/// n'ont de valeur que dans leur dernière occurrence. `Sommeil` porte un ORDRE,
-/// `PressePapier` porte la DONNÉE DE L'UTILISATEUR : ni l'un ni l'autre ne se
-/// remplace.
+/// 🔴 THE RULE IS "DOES LOSING IT COST ANYTHING?", NOT "IS IT
+/// FREQUENT?". `Part` and `Audio` are pushed on change only and
+/// are only valuable in their last occurrence. `Sommeil` carries an ORDER,
+/// `PressePapier` carries the USER'S DATA: neither one nor the other can be
+/// replaced.
 ///
-/// ⚠️ TOUTE VARIANTE NEUVE DOIT PASSER ICI, et le `match` est EXHAUSTIF pour
-/// que le compilateur l'exige — jamais un `_ => false`, qui la classerait
-/// « à conserver » en silence et laisserait la file recroître.
+/// ⚠️ ANY NEW VARIANT MUST GO THROUGH HERE, and the `match` is EXHAUSTIVE so
+/// that the compiler requires it — never a `_ => false`, which would classify it
+/// "to keep" silently and let the queue grow again.
 pub(crate) fn coalescable(m: &Message) -> bool {
     match m {
         Message::Part { .. } | Message::Audio { .. } => true,
@@ -119,12 +119,12 @@ pub(crate) fn coalescable(m: &Message) -> bool {
     }
 }
 
-/// Deux messages sont-ils de la même variante ?
+/// Are two messages of the same variant?
 fn meme_variante(a: &Message, b: &Message) -> bool {
     std::mem::discriminant(a) == std::mem::discriminant(b)
 }
 
-/// Dépose un message, en appliquant la politique de sa variante.
+/// Drops a message, applying its variant's policy.
 pub(crate) fn deposer(file: &mut VecDeque<Message>, message: Message) -> Depot {
     if coalescable(&message) {
         if let Some(place) = file
@@ -142,96 +142,96 @@ pub(crate) fn deposer(file: &mut VecDeque<Message>, message: Message) -> Depot {
     Depot::Empilee
 }
 
-/// L'état partagé d'une session : sa file, et le compte de ses refus.
+/// A session's shared state: its queue, and the count of its refusals.
 ///
-/// **Exactement deux détenteurs, jamais plus** : l'émetteur et le receveur.
-/// Ni `EmetteurSession` ni `ReceveurSession` n'est `Clone`, et **cela n'est
-/// pas un oubli** — c'est ce qui donne son sens au `Arc::strong_count`
-/// d'`envoyer` (voir sa doc). Rendre l'un des deux clonable romprait la
-/// détection du receveur tombé **sans qu'aucun test ne bronche**.
+/// **Exactly two holders, never more**: the sender and the receiver.
+/// Neither `EmetteurSession` nor `ReceveurSession` is `Clone`, and **that is
+/// not an oversight** — it is what gives meaning to the `Arc::strong_count`
+/// in `envoyer` (see its doc). Making either of them cloneable would break the
+/// detection of the dropped receiver **without any test flinching**.
 struct Partage {
     file: Mutex<VecDeque<Message>>,
-    /// Compte CUMULÉ des dépôts refusés de cette session.
+    /// CUMULATIVE count of this session's refused drops.
     refuses: AtomicU64,
-    /// Le nom de la session, porté ICI et pour une seule raison : **rendre la
-    /// trace du refus ATTRIBUABLE**.
+    /// The session's name, carried HERE and for a single reason: **making the
+    /// refusal trace ATTRIBUTABLE**.
     ///
-    /// 🔴 ~~Le nom de la session n'est pas ici, le span de l'appelant
-    /// l'attribue.~~ **FAUX, et le round de correction 1 l'a établi : IL
-    /// N'EXISTE AUCUN SPAN.** Le seul `info_span!` du capteur est posé sur le
-    /// fil de FENÊTRE (`capteur/fenetre.rs`) ; les cinq appels à `envoyer`
-    /// courent soit sur le fil du tour de roue — aucun span —, soit, via
-    /// `signaler`, **sous le span d'une AUTRE session**, `distribuer_les_parts`
-    /// poussant à *toutes*. Le champ aurait alors été FAUX, ce qui est pire
-    /// qu'absent. Un exploitant lisant `refuses=8` sans savoir de quelle
-    /// session n'apprend rien.
+    /// 🔴 ~~The session's name is not here, the caller's span
+    /// attributes it.~~ **FALSE, and fix round 1 established it: THERE
+    /// IS NO SPAN.** The sensor's only `info_span!` is set on the
+    /// WINDOW thread (`capteur/fenetre.rs`); the five calls to `envoyer`
+    /// run either on the wheel-round thread — no span —, or, via
+    /// `signaler`, **under the span of ANOTHER session**, `distribuer_les_parts`
+    /// pushing to *all*. The field would then have been WRONG, which is worse
+    /// than missing. An operator reading `refuses=8` without knowing which
+    /// session learns nothing.
     ///
-    /// ⚠️ **La trace le publie sous le nom `session_cible`, PAS `session`**
-    /// (round 2) : le span d'une autre session peut bel et bien envelopper
-    /// cette ligne, et deux `session=` de valeurs différentes côte à côte
-    /// rejoueraient la confusion d'un cran plus loin. Le nom distinct dit
-    /// lequel des deux désigne la fenêtre qui déborde.
+    /// ⚠️ **The trace publishes it under the name `session_cible`, NOT `session`**
+    /// (round 2): the span of another session may well wrap
+    /// this line, and two `session=` with different values side by side
+    /// would replay the confusion one step further. The distinct name says
+    /// which of the two designates the overflowing window.
     session: String,
 }
 
-/// Le bout par lequel le registre écrit à une fenêtre.
+/// The end through which the registry writes to a window.
 pub(crate) struct EmetteurSession {
     partage: Arc<Partage>,
 }
 
-/// Le bout par lequel le fil de fenêtre lit. **Rendu par `inscrire`.**
+/// The end through which the window thread reads. **Returned by `inscrire`.**
 pub(crate) struct ReceveurSession {
     partage: Arc<Partage>,
 }
 
-/// Ce qu'il est advenu d'un `envoyer`. **TROIS issues, jamais deux.**
+/// What became of an `envoyer`. **THREE outcomes, never two.**
 ///
-/// 🔴 UN ENUM ET NON UN `Result<Depot, ()>`, ET C'EST LE REMÈDE MÉCANIQUE AU
-/// CRITIQUE DU ROUND 1. Un `Result` invite à `.is_ok()` / `.is_err()`, qui
-/// écrasent `Depose` et `Refuse` sur une seule valeur — c'est exactement la
-/// confusion qui a coûté deux mémorisations fautives. Ici le compilateur
-/// **exige** que chaque site nomme les trois cas, et le fera encore pour
-/// toute variante ajoutée plus tard. Précédent du dépôt : le `match`
-/// exhaustif de `transport/controle.rs`, qui « se signale au compilateur »,
-/// par opposition au catch-all de `capteur/pont_media.rs` qui a tué un fil en
-/// silence six fois.
+/// 🔴 AN ENUM AND NOT A `Result<Depot, ()>`, AND IT IS THE MECHANICAL REMEDY FOR
+/// ROUND 1'S CRITICAL. A `Result` invites `.is_ok()` / `.is_err()`, which
+/// crush `Depose` and `Refuse` into a single value — that is exactly the
+/// confusion that cost two faulty memorisations. Here the compiler
+/// **requires** each site to name the three cases, and will still do so for
+/// any variant added later. The repository's precedent: the exhaustive
+/// `match` of `transport/controle.rs`, which "reports itself to the compiler",
+/// as opposed to the catch-all of `capteur/pont_media.rs` that killed a thread
+/// silently six times.
 #[must_use]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Envoi {
-    /// Le message est dans la file : il ATTEINDRA la fenêtre. Porte ce que le
-    /// dépôt a fait (empilé, ou coalescé sur une occurrence en attente).
+    /// The message is in the queue: it WILL REACH the window. Carries what the
+    /// drop did (stacked, or coalesced onto a pending occurrence).
     Depose(Depot),
-    /// La file était pleine : **rien n'a été déposé**, et le message est
-    /// perdu. ⚠️ **La session est VIVANTE** — la purger serait tuer
-    /// l'arbitrage de la fenêtre la plus en peine. Et **il ne faut pas non
-    /// plus le compter comme livré** : tout appelant qui MÉMORISE ce qu'il a
-    /// envoyé doit s'abstenir ici, sans quoi son garde d'écrasement supprime
-    /// la réémission de cette valeur pour toujours.
+    /// The queue was full: **nothing was dropped**, and the message is
+    /// lost. ⚠️ **The session is ALIVE** — purging it would kill the
+    /// arbitration of the window in most trouble. And **it must not
+    /// be counted as delivered either**: any caller that MEMORISES what it
+    /// sent must refrain here, otherwise its overwrite guard suppresses
+    /// the re-emission of that value forever.
     Refuse,
-    /// Le receveur est tombé : la session est MORTE, il faut la PURGER. C'est
-    /// le seul cas qui remplace l'ancien `send(...).is_err()`.
+    /// The receiver has dropped: the session is DEAD, it must be PURGED. It is
+    /// the only case that replaces the old `send(...).is_err()`.
     Rompu,
 }
 
-/// Pourquoi une réception n'a rien rendu.
+/// Why a receive returned nothing.
 ///
-/// La distinction reprend celle de `std::sync::mpsc::TryRecvError`
-/// (`Empty` / `Disconnected`) que ce couple remplace : `transitions.rs`
-/// traitait les deux cas différemment dans son commentaire, et les confondre
-/// effacerait cette distinction.
+/// The distinction mirrors that of `std::sync::mpsc::TryRecvError`
+/// (`Empty` / `Disconnected`) which this pair replaces: `transitions.rs`
+/// treated the two cases differently in its comment, and confusing them
+/// would erase that distinction.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum VideOuFerme {
-    /// La file est VIDE — l'émetteur vit encore, il n'a rien déposé.
+    /// The queue is EMPTY — the sender is still alive, it has dropped nothing.
     Vide,
-    /// Plus personne n'écrit : l'émetteur est tombé, et la file est épuisée.
+    /// Nobody writes any more: the sender has dropped, and the queue is exhausted.
     Ferme,
 }
 
-/// Le couple d'une session. **Un émetteur, un receveur, et jamais davantage.**
+/// A session's pair. **One sender, one receiver, and never more.**
 ///
-/// `session` n'est retenu que pour rendre la trace du refus attribuable —
-/// voir le champ `Partage::session`, qui dit pourquoi aucun span ne peut le
-/// faire à sa place.
+/// `session` is kept only to make the refusal trace attributable —
+/// see the `Partage::session` field, which says why no span can
+/// do it in its place.
 pub(crate) fn canal_de_session(session: &str) -> (EmetteurSession, ReceveurSession) {
     let partage = Arc::new(Partage {
         file: Mutex::new(VecDeque::new()),
@@ -246,25 +246,25 @@ pub(crate) fn canal_de_session(session: &str) -> (EmetteurSession, ReceveurSessi
     )
 }
 
-/// Prend le verrou d'une file, **sans jamais paniquer**.
+/// Takes a queue's lock, **without ever panicking**.
 ///
-/// 🔴 CE QU'IL ADVIENT D'UN VERROU EMPOISONNÉ : **on reprend l'état tel quel
-/// et on continue**, jamais un `unwrap()`. Trois raisons, dans cet ordre :
+/// 🔴 WHAT HAPPENS TO A POISONED LOCK: **we take the state as is
+/// and carry on**, never an `unwrap()`. Three reasons, in this order:
 ///
-/// ① **Le capteur tient TOUTES les fenêtres.** Une panique ici, sur le fil du
-/// tour de roue ou sur un fil de fenêtre, emporterait le canal de chacune des
-/// N sessions, pas seulement celui de la session fautive.
+/// ① **The sensor holds ALL the windows.** A panic here, on the
+/// wheel-round thread or on a window thread, would take down the channel of each of the
+/// N sessions, not only that of the faulty session.
 ///
-/// ② **L'état reste cohérent par construction.** Rien de ce qui court sous ce
-/// verrou ne peut paniquer en laissant la `VecDeque` à moitié écrite :
-/// `deposer` n'y fait qu'un `position`, une écriture indexée et un
-/// `push_back`, et `essayer_recevoir` un `pop_front`. Un empoisonnement ne
-/// pourrait venir que d'une panique d'un AUTRE fil pendant qu'il tient ce
-/// verrou — au pire un message de plus ou de moins en file.
+/// ② **The state stays consistent by construction.** Nothing running under this
+/// lock can panic leaving the `VecDeque` half-written:
+/// `deposer` only does a `position`, an indexed write and a
+/// `push_back` there, and `essayer_recevoir` a `pop_front`. Poisoning could
+/// only come from a panic of ANOTHER thread while it holds this
+/// lock — at worst one message more or less in the queue.
 ///
-/// ③ **Le dépôt a déjà ce précédent, et il est nommé** :
-/// `registre.rs::etat()` fait le même `unwrap_or_else(|e| e.into_inner())`,
-/// pour la même raison, écrite au même endroit.
+/// ③ **The repository already has this precedent, and it is named**:
+/// `registre.rs::etat()` does the same `unwrap_or_else(|e| e.into_inner())`,
+/// for the same reason, written in the same place.
 fn sous_verrou<T>(
     verrou: &Mutex<VecDeque<Message>>,
     action: impl FnOnce(&mut VecDeque<Message>) -> T,
@@ -276,28 +276,28 @@ fn sous_verrou<T>(
 }
 
 impl EmetteurSession {
-    /// Dépose un message pour la fenêtre, et dit ce qu'il en est advenu.
+    /// Drops a message for the window, and says what became of it.
     ///
-    /// 🔴 `Envoi::Rompu` SIGNIFIE « LE RECEVEUR EST TOMBÉ », et **c'est le
-    /// contrat que `std::sync::mpsc::Sender::send(...).is_err()` donnait avant
-    /// ce module**. `registre.rs::distribuer`,
-    /// `parts::distribuer_les_parts`, `porteurs::distribuer_l_audio` et
-    /// `presse_papier::distribuer` purgent une session morte sur cette valeur,
-    /// et **rien d'autre ne la purge sur ces chemins** : ne jamais la rendre
-    /// laisserait les sessions mortes occuper une place au vivier pour la vie
-    /// du processus.
+    /// 🔴 `Envoi::Rompu` MEANS "THE RECEIVER HAS DROPPED", and **it is the
+    /// contract `std::sync::mpsc::Sender::send(...).is_err()` gave before
+    /// this module**. `registre.rs::distribuer`,
+    /// `parts::distribuer_les_parts`, `porteurs::distribuer_l_audio` and
+    /// `presse_papier::distribuer` purge a dead session on this value,
+    /// and **nothing else purges it on these paths**: never returning it would
+    /// let dead sessions occupy a place in the pool for the life
+    /// of the process.
     ///
-    /// ⚠️ **COMMENT ON LE SAIT : `Arc::strong_count(&self.partage) == 1`.**
-    /// C'est le SEUL signal disponible — il n'y a plus de `mpsc` pour le
-    /// donner. Il ne vaut que parce que `canal_de_session` crée exactement
-    /// deux détenteurs et qu'aucun des deux bouts n'est `Clone` : `1` veut
-    /// alors dire « je suis seul », donc « le receveur a été laissé choir ».
+    /// ⚠️ **HOW WE KNOW: `Arc::strong_count(&self.partage) == 1`.**
+    /// It is the ONLY signal available — there is no `mpsc` any more to
+    /// give it. It only holds because `canal_de_session` creates exactly
+    /// two holders and neither end is `Clone`: `1` then
+    /// means "I am alone", hence "the receiver was dropped".
     ///
-    /// 🔴 **`Envoi::Refuse` N'EST NI UNE LIVRAISON NI UNE RUPTURE**, et c'est
-    /// la troisième issue que `mpsc` n'avait pas. La confondre avec la
-    /// première fait mémoriser un message jamais parti ; avec la seconde, elle
-    /// purge une session bien vivante. Le `match` exhaustif qu'`Envoi` impose
-    /// est ce qui empêche les deux.
+    /// 🔴 **`Envoi::Refuse` IS NEITHER A DELIVERY NOR A BREAK**, and it is
+    /// the third outcome `mpsc` did not have. Confusing it with the
+    /// first memorises a message that never went out; with the second, it
+    /// purges a perfectly alive session. The exhaustive `match` that `Envoi` imposes
+    /// is what prevents both.
     pub(crate) fn envoyer(&self, message: Message) -> Envoi {
         if Arc::strong_count(&self.partage) == 1 {
             return Envoi::Rompu;
@@ -312,63 +312,63 @@ impl EmetteurSession {
         }
     }
 
-    /// Le compte CUMULÉ des dépôts refusés de cette session.
+    /// The CUMULATIVE count of this session's refused drops.
     ///
-    /// ⚠️ ~~**`#[cfg(test)]`**~~ **FAUX AU PRÉSENT — le gate est tombé au
-    /// round 3, voir juste en dessous ; ce qui suit décrit l'état d'ALORS,
-    /// au round 1.** C'était une correction du round 1 : elle n'avait AUCUN
-    /// appelant de production (`method 'refuses' is never used` sur la
-    /// cible Windows), alors que sa doc annonçait le bénéfice « dire LAQUELLE
-    /// déborde ». Ce bénéfice était réalisé par la TRACE, qui porte désormais le
-    /// nom de session ; cet accesseur n'existait que pour que le test puisse
-    /// éprouver le compteur. Le gater était ce qui empêchait de réaffirmer un
-    /// bénéfice d'exploitation qui n'existait pas.
+    /// ⚠️ ~~**`#[cfg(test)]`**~~ **FALSE IN THE PRESENT — the gate fell in
+    /// round 3, see just below; what follows describes the state AT THE TIME,
+    /// in round 1.** It was a round 1 fix: it had NO
+    /// production caller (`method 'refuses' is never used` on the
+    /// Windows target), while its doc announced the benefit "telling WHICH one
+    /// overflows". That benefit was delivered by the TRACE, which now carries the
+    /// session name; this accessor existed only so the test could
+    /// exercise the counter. Gating it was what prevented re-asserting an
+    /// operational benefit that did not exist.
     ///
-    /// ✅ **LE GATE `#[cfg(test)]` EST TOMBÉ AU ROUND 3** : la méthode a
-    /// désormais un appelant de PRODUCTION — `registre::distribuer` s'en sert
-    /// pour cadencer sa propre trace sur le MÊME palier que
-    /// `journaliser_le_refus`, de sorte que les deux lignes sortent ensemble.
-    /// Le raisonnement qui l'avait gatée reste juste : on ne dégate pas pour
-    /// faire joli, on dégate parce qu'un appelant est apparu.
+    /// ✅ **THE `#[cfg(test)]` GATE FELL IN ROUND 3**: the method now
+    /// has a PRODUCTION caller — `registre::distribuer` uses it
+    /// to pace its own trace on the SAME step as
+    /// `journaliser_le_refus`, so that the two lines come out together.
+    /// The reasoning that had gated it stays right: we do not ungate to
+    /// make it pretty, we ungate because a caller appeared.
     pub(crate) fn refuses(&self) -> u64 {
         self.partage.refuses.load(Ordering::Relaxed)
     }
 
-    /// Journalise un refus **AU FRANCHISSEMENT D'UN PALIER, jamais à chaque
-    /// refus** — et le palier retenu est la **puissance de deux** du compte
-    /// cumulé (1, 2, 4, 8, 16…).
+    /// Logs a refusal **WHEN A STEP IS CROSSED, never at every
+    /// refusal** — and the chosen step is the **power of two** of the cumulative
+    /// count (1, 2, 4, 8, 16…).
     ///
-    /// 🔴 POURQUOI PAS UNE TRACE PAR REFUS. « Ne jamais tracer par paquet dans
-    /// la boucle de transport » : 18 619 lignes en quelques secondes sur un
-    /// partage CIFS ont déjà empêché une session de s'établir. Une fenêtre
-    /// bloquée reçoit un message tous les `PERIODE_REARBITRAGE` (250 ms) au
-    /// minimum, et bien davantage sur un presse-papier actif — la trace par
-    /// refus croîtrait sans borne avec la durée du blocage.
+    /// 🔴 WHY NOT ONE TRACE PER REFUSAL. "Never trace per packet in
+    /// the transport loop": 18,619 lines in a few seconds on a
+    /// CIFS share have already prevented a session from establishing. A blocked
+    /// window receives a message every `PERIODE_REARBITRAGE` (250 ms) at
+    /// least, and much more on an active clipboard — a per-refusal
+    /// trace would grow without bound with the duration of the block.
     ///
-    /// 🔴 POURQUOI LE PALIER PLUTÔT QU'UNE TRACE « À L'ENTRÉE EN SATURATION ».
-    /// L'alternative — tracer la transition « ne refusait pas → refuse » —
-    /// n'est PAS bornée : une file qui oscille autour de `PROFONDEUR_MAX` la
-    /// franchit à chaque tour de roue, et l'on retombe sur une ligne toutes
-    /// les 250 ms pour la durée du blocage. Le compte cumulé, lui, est
-    /// monotone : **au plus 64 lignes pour toute la vie d'une session**, quoi
-    /// qu'il arrive, et la ligne porte le compte, donc l'ampleur reste
-    /// lisible sans qu'on ait à compter les lignes.
+    /// 🔴 WHY THE STEP RATHER THAN A TRACE "ON ENTERING SATURATION".
+    /// The alternative — tracing the "was not refusing → refuses" transition —
+    /// is NOT bounded: a queue oscillating around `PROFONDEUR_MAX`
+    /// crosses it at every wheel round, and we fall back to one line every
+    /// 250 ms for the duration of the block. The cumulative count, on the other hand, is
+    /// monotonic: **at most 64 lines for the whole life of a session**, whatever
+    /// happens, and the line carries the count, so the magnitude stays
+    /// readable without having to count the lines.
     ///
-    /// 🔴 ~~Le nom de la session n'est PAS ici ; le span de l'appelant
-    /// l'attribue.~~ **CORRIGÉ AU ROUND 1 : IL N'EXISTE AUCUN SPAN**, et la
-    /// trace n'était donc attribuable à personne. L'émetteur connaît sa
-    /// session : il la porte, et la trace la nomme — sous `session_cible`, pour
-    /// ne pas entrer en collision avec un span englobant. Voir
+    /// 🔴 ~~The session's name is NOT here; the caller's span
+    /// attributes it.~~ **FIXED IN ROUND 1: THERE IS NO SPAN**, and the
+    /// trace was therefore attributable to nobody. The sender knows its
+    /// session: it carries it, and the trace names it — under `session_cible`, so as
+    /// not to collide with an enclosing span. See
     /// `Partage::session`.
     fn journaliser_le_refus(&self, refuses: u64) {
         if refuses.is_power_of_two() {
             tracing::warn!(
-                // `session_cible` et non `session` : ce champ peut se poser
-                // SOUS le span `fenetre{session=…}` d'une AUTRE session — le
-                // fil de fenêtre qui appelle `signaler` fait pousser à
-                // TOUTES. Deux `session=` de valeurs différentes sur la même
-                // ligne rejoueraient, d'un cran plus loin, la confusion que ce
-                // champ vient supprimer.
+                // `session_cible` and not `session`: this field may be set
+                // UNDER the `fenetre{session=…}` span of ANOTHER session — the
+                // window thread calling `signaler` makes it push to
+                // ALL. Two `session=` with different values on the same
+                // line would replay, one step further, the confusion this
+                // field has just removed.
                 session_cible = %self.partage.session,
                 refuses,
                 profondeur_max = PROFONDEUR_MAX,
@@ -379,18 +379,18 @@ impl EmetteurSession {
 }
 
 impl ReceveurSession {
-    /// Retire le plus ancien message en attente, sans jamais bloquer.
+    /// Removes the oldest pending message, without ever blocking.
     ///
-    /// **Le seul appel de PRODUCTION** (`transitions.rs::appliquer_les_ordres`,
-    /// en boucle jusqu'à `Err`). ⚠️ **Aucune variante bloquante n'est livrée,
-    /// et c'est délibéré** : le relevé de surface n'a trouvé ni `recv()` ni
-    /// `recv_timeout()` sur ce canal, ni en production ni dans les tests. Une
-    /// méthode bloquante demanderait une `Condvar` que personne n'appellerait,
-    /// donc un mécanisme que le produit n'exerce jamais.
+    /// **The only PRODUCTION call** (`transitions.rs::appliquer_les_ordres`,
+    /// in a loop until `Err`). ⚠️ **No blocking variant is shipped,
+    /// and it is deliberate**: the surface survey found neither `recv()` nor
+    /// `recv_timeout()` on this channel, neither in production nor in tests. A
+    /// blocking method would require a `Condvar` nobody would call,
+    /// hence a mechanism the product never exercises.
     ///
-    /// ⚠️ **`Ferme` ne se rend qu'une fois la file ÉPUISÉE** : ce qui a été
-    /// déposé avant la chute de l'émetteur se lit encore, comme le faisait
-    /// `mpsc`. Jeter ces messages perdrait un ordre de sommeil déjà décidé.
+    /// ⚠️ **`Ferme` is only returned once the queue is EXHAUSTED**: what was
+    /// dropped before the sender fell can still be read, as
+    /// `mpsc` did. Throwing these messages away would lose an already decided sleep order.
     pub(crate) fn essayer_recevoir(&self) -> Result<Message, VideOuFerme> {
         match sous_verrou(&self.partage.file, |file| file.pop_front()) {
             Some(message) => Ok(message),
@@ -399,29 +399,29 @@ impl ReceveurSession {
         }
     }
 
-    /// Retire et rend TOUT ce qui attend, dans l'ordre.
+    /// Removes and returns EVERYTHING waiting, in order.
     ///
-    /// Le remplaçant de `Receiver::try_iter().collect()`, dont les suites de
-    /// `parts`, `porteurs` et `presse_papier` se servent pour lire le DERNIER
-    /// message d'une variante. **En une seule prise de verrou** plutôt qu'une
-    /// par message.
+    /// The replacement of `Receiver::try_iter().collect()`, which the suites of
+    /// `parts`, `porteurs` and `presse_papier` use to read the LAST
+    /// message of a variant. **In a single lock acquisition** rather than one
+    /// per message.
     ///
-    /// ⚠️ **`#[cfg(test)]`, et c'est une correction du round 1** : ses six
-    /// appelants sont TOUS des helpers de test (`method 'vider' is never used`
-    /// sur la cible Windows). La production, elle, ne lit ce canal que par
-    /// `essayer_recevoir`, en boucle.
+    /// ⚠️ **`#[cfg(test)]`, and it is a round 1 fix**: its six
+    /// callers are ALL test helpers (`method 'vider' is never used`
+    /// on the Windows target). Production, for its part, only reads this channel through
+    /// `essayer_recevoir`, in a loop.
     #[cfg(test)]
     pub(crate) fn vider(&self) -> Vec<Message> {
         sous_verrou(&self.partage.file, |file| file.drain(..).collect())
     }
 }
 
-// Module de tests extrait dans un fichier voisin : ce fichier était à 445
-// lignes pour un plafond de projet à 500, et le round de correction 1 y
-// ajoute du code et de la doc. Extraire, jamais comprimer — et dans une
-// tâche DÉDIÉE, avant celle qui ajoute. Même montage et même idiome que
-// `superviseur/table.rs` ; voir la doc en tête du fichier extrait pour
-// pourquoi ce `#[path]` ne relève PAS de la convention `<parent>_<enfant>`.
+// Test module extracted into a sibling file: this file was at 445
+// lines for a project cap of 500, and fix round 1
+// adds code and doc to it. Extract, never compress — and in a
+// DEDICATED task, before the one that adds. Same set-up and same idiom as
+// `superviseur/table.rs`; see the doc at the head of the extracted file for
+// why this `#[path]` does NOT fall under the `<parent>_<child>` convention.
 #[cfg(test)]
 #[path = "file/tests.rs"]
 mod tests;

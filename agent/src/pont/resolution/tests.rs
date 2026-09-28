@@ -1,9 +1,9 @@
 use super::*;
 
-/// Un résolveur qui rend une adresse non nulle pour tout nom connu de [`NOMS`],
-/// et `None` pour les autres. L'adresse est `rang + 1` : non nulle, et
-/// **différente pour chaque entrée**, ce qui est ce qui rend le test des rangs
-/// capable d'échouer.
+/// A resolver returning a non-null address for any name known to [`NOMS`],
+/// and `None` for the others. The address is `rang + 1`: non-null, and
+/// **different for each entry point**, which is what makes the ranks test
+/// able to fail.
 fn resolveur_complet(nom: &str) -> Option<usize> {
     NOMS.iter().position(|n| *n == nom).map(|rang| rang + 1)
 }
@@ -18,16 +18,16 @@ fn les_treize_noms_sont_distincts() {
     }
 }
 
-/// 🔴 **LE garde de l'appariement champ ↔ entrée.** Sans lui, deux champs
-/// intervertis dans `resoudre` feraient `transmute` de deux adresses vers la
-/// mauvaise signature — corruption de pile, aucun diagnostic. Une première
-/// rédaction reposait sur des constantes de RANG, et une mutation jouée après
-/// le vert a montré qu'échanger deux rangs au site d'appel **survivait** :
-/// l'appariement était épinglé au mauvais endroit.
+/// 🔴 **THE guard of the field ↔ entry point pairing.** Without it, two fields
+/// swapped in `resoudre` would `transmute` two addresses to the
+/// wrong signature — stack corruption, no diagnostic. A first
+/// draft relied on RANK constants, and a mutation played after
+/// green showed that swapping two ranks at the call site **survived**:
+/// the pairing was pinned at the wrong place.
 ///
-/// Le résolveur rend une adresse **différente pour chaque nom**, ce qui est ce
-/// qui rend ce test capable d'échouer : à adresse commune, tout appariement
-/// passerait.
+/// The resolver returns an address **different for each name**, which is what
+/// makes this test able to fail: with a common address, any pairing
+/// would pass.
 #[test]
 fn chaque_champ_recoit_l_adresse_de_son_entree() {
     let a = resoudre(resolveur_complet).expect("les treize sont là");
@@ -50,10 +50,10 @@ fn chaque_champ_recoit_l_adresse_de_son_entree() {
     assert_eq!(a.ecrire_info_marqueur, attendue("PrjWritePlaceholderInfo"));
 }
 
-/// 🔴 **Le contrôle qui est la raison d'être de ce module.** Chacune des treize
-/// entrées, retirée à son tour, doit produire une erreur qui **nomme
-/// l'entrée** — pas un `Ok`, pas une erreur muette. Le balayage est exhaustif :
-/// éprouver une seule entrée laisserait douze chemins non couverts.
+/// 🔴 **The check that is this module's raison d'être.** Each of the thirteen
+/// entry points, removed in turn, must produce an error that **names
+/// the entry point** — not an `Ok`, not a mute error. The sweep is exhaustive:
+/// exercising a single entry point would leave twelve paths uncovered.
 #[test]
 fn chaque_entree_absente_est_nommee_par_l_erreur() {
     for manquante in NOMS {
@@ -73,10 +73,10 @@ fn chaque_entree_absente_est_nommee_par_l_erreur() {
     }
 }
 
-/// Une adresse nulle n'est pas une adresse. `GetProcAddress` rend `NULL` sur
-/// échec ; l'envelopper dans un `Some` sans le regarder ferait `transmute`
-/// d'un pointeur nul en pointeur de fonction, et le premier appel sauterait à
-/// l'adresse 0.
+/// A null address is not an address. `GetProcAddress` returns `NULL` on
+/// failure; wrapping it in a `Some` without looking at it would `transmute`
+/// a null pointer into a function pointer, and the first call would jump to
+/// address 0.
 #[test]
 fn une_adresse_nulle_vaut_une_entree_absente() {
     for manquante in NOMS {
@@ -92,11 +92,11 @@ fn une_adresse_nulle_vaut_une_entree_absente() {
     }
 }
 
-/// L'échec est **immédiat** : rien ne sert d'interroger les entrées suivantes,
-/// et surtout la première manquante est celle que le journal doit nommer. Sans
-/// cette propriété, une DLL d'une génération antérieure nommerait sa dernière
-/// entrée absente plutôt que la première, et le diagnostic partirait du mauvais
-/// bout.
+/// The failure is **immediate**: there is no point querying the next entry points,
+/// and above all the first missing one is the one the log must name. Without
+/// this property, a DLL of an earlier generation would name its last
+/// absent entry point rather than the first, and the diagnosis would start from the wrong
+/// end.
 #[test]
 fn la_resolution_s_arrete_a_la_premiere_entree_manquante() {
     let mut interroges = Vec::new();

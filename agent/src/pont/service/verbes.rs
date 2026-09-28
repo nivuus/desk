@@ -1,9 +1,9 @@
-//! Les appels ProjFS que le fil du pont émet : compléter, écrire un marqueur,
-//! écrire des données, remplir un tampon d'entrées.
+//! The ProjFS calls the bridge thread emits: complete, write a marker,
+//! write data, fill an entry buffer.
 //!
-//! Extrait de [`super`] pour la même raison que `projfs/racine.rs` l'a été de
-//! `projfs.rs` : **avant** que l'addition ne rende l'extraction nécessaire, et
-//! non après. Ce fichier porte les `unsafe`, [`super`] porte la boucle.
+//! Extracted from [`super`] for the same reason `projfs/racine.rs` was from
+//! `projfs.rs`: **before** the addition made the extraction necessary, and
+//! not after. This file carries the `unsafe`s, [`super`] carries the loop.
 
 use windows::core::{GUID, HRESULT, PCWSTR};
 use windows::Win32::Foundation::S_OK;
@@ -20,41 +20,41 @@ use crate::pont::projfs::{chargement::ProjFs, Contexte, Etat};
 
 /// `FILE_ATTRIBUTE_DIRECTORY` / `FILE_ATTRIBUTE_NORMAL`.
 ///
-/// ⚠️ **`NORMAL` (ou `DIRECTORY`) pour TOUT, et c'est déclaré** : la File
-/// System Access API n'expose aucun attribut, il n'y a **rien à transporter**
-/// (spec §3.5.2). Ce n'est pas une approximation faute de mieux, c'est
-/// l'absence de source.
+/// ⚠️ **`NORMAL` (or `DIRECTORY`) for EVERYTHING, and it is declared**: the File
+/// System Access API exposes no attribute, there is **nothing to carry**
+/// (spec §3.5.2). It is not an approximation for lack of better, it is
+/// the absence of a source.
 const ATTRIBUT_REPERTOIRE: u32 = 0x0000_0010; // Storage/FileSystem/mod.rs, FILE_ATTRIBUTE_DIRECTORY
 const ATTRIBUT_NORMAL: u32 = 0x0000_0080; // Storage/FileSystem/mod.rs, FILE_ATTRIBUTE_NORMAL
 
-/// `HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER)` — ce que
-/// `PrjFillDirEntryBuffer` rend quand le tampon est plein. **Ce n'est pas une
-/// erreur** : c'est le signal de s'arrêter là et de compléter, la suite partant
-/// au prochain `GetDirectoryEnumeration`.
-const TAMPON_PLEIN: HRESULT = HRESULT(0x8007_007Au32 as i32); // Foundation/mod.rs:2813, valeur 122
+/// `HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER)` — what
+/// `PrjFillDirEntryBuffer` returns when the buffer is full. **It is not an
+/// error**: it is the signal to stop there and complete, the rest going
+/// at the next `GetDirectoryEnumeration`.
+const TAMPON_PLEIN: HRESULT = HRESULT(0x8007_007Au32 as i32); // Foundation/mod.rs:2813, value 122
 
-/// Un tampon aligné, rendu par son `Drop`.
+/// An aligned buffer, released by its `Drop`.
 ///
-/// ⚠️ **`PrjAllocateAlignedBuffer` / `PrjFreeAlignedBuffer` sont la première
-/// source de fuite mémoire d'un fournisseur ProjFS** (spec §4.3). Le couple est
-/// donc encapsulé ici, **jamais appelé à la main** — et il est rendu par `Drop`,
-/// donc y compris quand `PrjWriteFileData` échoue, ce qu'un `free` écrit après
-/// l'appel ne ferait pas.
+/// ⚠️ **`PrjAllocateAlignedBuffer` / `PrjFreeAlignedBuffer` are the first
+/// source of memory leaks in a ProjFS provider** (spec §4.3). The pair is
+/// therefore encapsulated here, **never called by hand** — and it is released by `Drop`,
+/// including when `PrjWriteFileData` fails, which a `free` written after
+/// the call would not do.
 struct TamponAligne<'a> {
     pointeur: *mut core::ffi::c_void,
     projfs: &'a ProjFs,
 }
 
 impl<'a> TamponAligne<'a> {
-    /// `None` si l'allocation échoue — `PrjAllocateAlignedBuffer` rend un
-    /// POINTEUR, et `NULL` est l'échec (piège n°3 des transcriptions).
+    /// `None` if the allocation fails — `PrjAllocateAlignedBuffer` returns a
+    /// POINTER, and `NULL` is the failure (transcription trap no. 3).
     fn allouer(
         projfs: &'a ProjFs,
         contexte: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT,
         taille: usize,
     ) -> Option<Self> {
-        // SÛRETÉ : contexte valide, taille non nulle. Transcription du `link!`
-        // de `mod.rs:3`.
+        // SAFETY: valid context, non-zero size. Transcription of the `link!`
+        // at `mod.rs:3`.
         let pointeur = unsafe { (projfs.allouer_tampon_aligne)(contexte, taille) };
         if pointeur.is_null() {
             return None;
@@ -65,23 +65,23 @@ impl<'a> TamponAligne<'a> {
 
 impl Drop for TamponAligne<'_> {
     fn drop(&mut self) {
-        // SÛRETÉ : `pointeur` vient de `PrjAllocateAlignedBuffer` et n'a été
-        // rendu à personne. `PrjFreeAlignedBuffer` ne rend RIEN (`mod.rs:68`).
+        // SAFETY: `pointeur` comes from `PrjAllocateAlignedBuffer` and has been
+        // handed to no one. `PrjFreeAlignedBuffer` returns NOTHING (`mod.rs:68`).
         unsafe { (self.projfs.rendre_tampon_aligne)(self.pointeur) };
     }
 }
 
-/// Complète une commande ProjFS, sans paramètres étendus.
+/// Completes a ProjFS command, without extended parameters.
 ///
-/// 🔴 **UN `command_id` ABSENT N'EST PAS UNE ERREUR : c'est une ÉCRITURE.**
-/// Elle naît d'une notification POST, qui a déjà rendu la main à
-/// l'application — il n'y a donc **aucun rappel à compléter**. Appeler
-/// `PrjCompleteCommand(0)` compléterait une commande qui appartient à
-/// quelqu'un d'autre.
+/// 🔴 **AN ABSENT `command_id` IS NOT AN ERROR: it is a WRITE.**
+/// It arises from a POST notification, which has already returned control to
+/// the application — there is therefore **no callback to complete**. Calling
+/// `PrjCompleteCommand(0)` would complete a command belonging to
+/// someone else.
 ///
-/// ⚠️ **Le cas est journalisé à `debug!`, jamais tu.** Le silence ferait qu'un
-/// `None` inattendu — venu d'une lecture dont on aurait perdu l'identifiant —
-/// serait indiscernable du cas nominal.
+/// ⚠️ **The case is logged at `debug!`, never kept quiet.** Silence would make an
+/// unexpected `None` — coming from a read whose identifier was lost —
+/// indistinguishable from the nominal case.
 pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
     let Some(commande) = commande else {
         tracing::debug!(%resultat, "aucune commande ProjFS a completer : c'est une ecriture");
@@ -94,9 +94,9 @@ pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
         );
         return;
     };
-    // SÛRETÉ : contexte valide tant que la virtualisation tourne — le fil du
-    // pont s'arrête avant le `Drop` de `Virtualisation`. Le quatrième
-    // paramètre nul vaut « aucun paramètre étendu » (`mod.rs:14`).
+    // SAFETY: context valid as long as virtualisation runs — the bridge
+    // thread stops before `Virtualisation`'s `Drop`. The null fourth
+    // parameter means "no extended parameter" (`mod.rs:14`).
     let issue =
         unsafe { (etat.projfs.completer_commande)(contexte, commande, resultat, std::ptr::null()) };
     if issue.is_err() {
@@ -104,11 +104,11 @@ pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
     }
 }
 
-/// Complète une **énumération**, qui exige des paramètres étendus.
+/// Completes an **enumeration**, which requires extended parameters.
 ///
-/// ⚠️ Une énumération complétée sans `PRJ_COMPLETE_COMMAND_TYPE_ENUMERATION` et
-/// sans son `DirEntryBufferHandle` rendrait un répertoire vide (spec §4.3) :
-/// ProjFS ne saurait pas quel tampon relire.
+/// ⚠️ An enumeration completed without `PRJ_COMPLETE_COMMAND_TYPE_ENUMERATION` and
+/// without its `DirEntryBufferHandle` would return an empty directory (spec §4.3):
+/// ProjFS would not know which buffer to reread.
 pub(super) fn completer_enumeration(
     etat: &Etat,
     commande: i32,
@@ -130,8 +130,8 @@ pub(super) fn completer_enumeration(
             },
         },
     };
-    // SÛRETÉ : `parametres` vit jusqu'à la fin de l'expression, donc au-delà
-    // de l'appel.
+    // SAFETY: `parametres` lives until the end of the expression, hence beyond
+    // the call.
     let issue =
         unsafe { (etat.projfs.completer_commande)(contexte, commande, resultat, &parametres) };
     if issue.is_err() {
@@ -139,19 +139,19 @@ pub(super) fn completer_enumeration(
     }
 }
 
-/// Le bloc d'informations de base d'une entrée.
+/// The basic information block of an entry.
 fn info_de_base(repertoire: bool, taille: u64, modifie_ms: i64) -> PRJ_FILE_BASIC_INFO {
     let horodatage = filetime_depuis_ms(modifie_ms);
     PRJ_FILE_BASIC_INFO {
         IsDirectory: repertoire,
-        // `i64` côté ProjFS, `u64` côté protocole : une taille supérieure à
-        // 8 Eio n'existe pas, mais la saturer vaut mieux qu'un négatif, que
-        // ProjFS lirait comme une taille absurde.
+        // `i64` on the ProjFS side, `u64` on the protocol side: a size above
+        // 8 EiB does not exist, but saturating it beats a negative, which
+        // ProjFS would read as an absurd size.
         FileSize: taille.min(i64::MAX as u64) as i64,
-        // ⚠️ **Les quatre champs portent le MÊME horodatage, et c'est
-        // déclaré** : la File System Access API n'expose que
-        // `File.lastModified` (spec §3.5.2). Inventer une date de création
-        // distincte serait une donnée fabriquée.
+        // ⚠️ **The four fields carry the SAME timestamp, and it is
+        // declared**: the File System Access API only exposes
+        // `File.lastModified` (spec §3.5.2). Inventing a distinct creation
+        // date would be fabricated data.
         CreationTime: horodatage,
         LastAccessTime: horodatage,
         LastWriteTime: horodatage,
@@ -164,7 +164,7 @@ fn info_de_base(repertoire: bool, taille: u64, modifie_ms: i64) -> PRJ_FILE_BASI
     }
 }
 
-/// Écrit le marqueur d'une entrée — la réponse à `GetPlaceholderInfo`.
+/// Writes an entry's marker — the response to `GetPlaceholderInfo`.
 pub(super) fn ecrire_marqueur(
     etat: &Etat,
     chemin: &[u16],
@@ -182,11 +182,11 @@ pub(super) fn ecrire_marqueur(
         FileBasicInfo: info_de_base(repertoire, taille, modifie_ms),
         ..Default::default()
     };
-    // SÛRETÉ : `chemin` est terminé par un nul (posé par le rappel depuis le
-    // `FilePathName` de ProjFS), `info` vit jusqu'à la fin de la fonction.
-    // `PRJ_PLACEHOLDER_INFO` se termine par un `VariableData: [u8; 1]` de
-    // taille flexible : la taille annoncée est celle de la structure, puisque
-    // nous n'écrivons aucune donnée variable.
+    // SAFETY: `chemin` is null-terminated (set by the callback from ProjFS's
+    // `FilePathName`), `info` lives until the end of the function.
+    // `PRJ_PLACEHOLDER_INFO` ends with a flexible-size `VariableData: [u8; 1]`:
+    // the announced size is that of the structure, since
+    // we write no variable data.
     unsafe {
         (etat.projfs.ecrire_info_marqueur)(
             contexte,
@@ -197,22 +197,22 @@ pub(super) fn ecrire_marqueur(
     }
 }
 
-/// Écrit un morceau de fichier — la réponse à `GetFileData`.
+/// Writes a chunk of a file — the response to `GetFileData`.
 ///
-/// ⚠️ **Le fichier entier n'entre JAMAIS en mémoire.** C'est l'inverse exact de
-/// l'ancien pont, dont chaque lecture faisait `getFile()` + `arrayBuffer()` +
-/// `.slice(...)` (`web/index.js:562-564`) : une lecture séquentielle d'un
-/// fichier de 100 Mio par blocs de 128 Kio y relisait 100 Mio depuis le disque,
-/// **huit cents fois**.
+/// ⚠️ **The whole file NEVER enters memory.** It is the exact opposite of
+/// the old bridge, each read of which did `getFile()` + `arrayBuffer()` +
+/// `.slice(...)` (`web/index.js:562-564`): a sequential read of a
+/// 100 MiB file in 128 KiB blocks reread 100 MiB from disk there,
+/// **eight hundred times**.
 ///
-/// ⚠️ **Hypothèse d'alignement, déclarée et NON vérifiée** :
-/// `PrjGetVirtualizationInstanceInfo` rend un `WriteAlignment` que ce pont ne
-/// lit pas — l'entrée n'est pas chargée (les treize de la tâche 12 ne
-/// l'incluent pas). Les morceaux font `TAILLE_TRAME_MAX` (64 Kio), multiple de
-/// toute taille de secteur plausible, et leur position dérive de celle que
-/// ProjFS a demandée. **Cela n'est pas une preuve** : si un
-/// `PrjWriteFileData` était refusé pour alignement, c'est ici qu'il faudrait
-/// charger `PrjGetVirtualizationInstanceInfo` et arrondir. Legs déclaré.
+/// ⚠️ **Alignment assumption, declared and NOT verified**:
+/// `PrjGetVirtualizationInstanceInfo` returns a `WriteAlignment` this bridge does not
+/// read — the entry point is not loaded (task 12's thirteen do not
+/// include it). Chunks are `TAILLE_TRAME_MAX` (64 KiB), a multiple of
+/// any plausible sector size, and their position derives from the one
+/// ProjFS requested. **This is not a proof**: if a
+/// `PrjWriteFileData` were refused for alignment, it is here that one would have to
+/// load `PrjGetVirtualizationInstanceInfo` and round. Declared legacy.
 pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u8]) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
         return HRESULT(
@@ -230,13 +230,13 @@ pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u
                 .rendre(crate::pont::erreurs::Erreur::Inattendue),
         );
     };
-    // SÛRETÉ : `tampon.pointeur` est non nul et fait au moins `charge.len()`
-    // octets ; les deux régions ne se recouvrent pas.
+    // SAFETY: `tampon.pointeur` is non-null and is at least `charge.len()`
+    // bytes; the two regions do not overlap.
     unsafe {
         std::ptr::copy_nonoverlapping(charge.as_ptr(), tampon.pointeur as *mut u8, charge.len())
     };
-    // SÛRETÉ : transcription du `link!` de `mod.rs:122`. Le tampon est rendu
-    // par le `Drop` de `TamponAligne`, y compris si cet appel échoue.
+    // SAFETY: transcription of the `link!` at `mod.rs:122`. The buffer is released
+    // by `TamponAligne`'s `Drop`, including if this call fails.
     unsafe {
         (etat.projfs.ecrire_donnees)(
             contexte,
@@ -248,12 +248,12 @@ pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u
     }
 }
 
-/// Remplit le tampon d'entrées depuis la session, jusqu'à ce qu'il soit plein
-/// ou la session épuisée.
+/// Fills the entry buffer from the session, until it is full
+/// or the session exhausted.
 ///
-/// Rend le `HRESULT` de complétion : `S_OK` dans les deux cas. **Un tampon
-/// plein n'est pas une erreur** — la suite part au prochain
-/// `GetDirectoryEnumeration`, sur la même session.
+/// Returns the completion `HRESULT`: `S_OK` in both cases. **A full
+/// buffer is not an error** — the rest goes at the next
+/// `GetDirectoryEnumeration`, on the same session.
 pub(super) fn remplir(
     etat: &Etat,
     session: &mut Session,
@@ -266,15 +266,15 @@ pub(super) fn remplir(
             .chain(std::iter::once(0))
             .collect();
         let info = info_de_base(entree.repertoire, entree.taille, entree.modifie_ms);
-        // SÛRETÉ : `nom` est terminé par un nul et vit jusqu'à la fin du tour ;
-        // `info` de même. Transcription du `link!` de `mod.rs:55`.
+        // SAFETY: `nom` is null-terminated and lives until the end of the turn;
+        // `info` likewise. Transcription of the `link!` at `mod.rs:55`.
         let issue =
             unsafe { (etat.projfs.remplir_tampon_entrees)(PCWSTR(nom.as_ptr()), &info, tampon) };
         if issue == TAMPON_PLEIN {
-            // ⚠️ **Ne PAS avancer** : l'entrée n'a pas été écrite, et avancer
-            // la perdrait pour toujours — silencieusement, puisque
-            // l'énumération se terminerait normalement avec un fichier de
-            // moins.
+            // ⚠️ **Do NOT advance**: the entry was not written, and advancing
+            // would lose it forever — silently, since
+            // the enumeration would end normally with one file
+            // fewer.
             return S_OK;
         }
         if issue.is_err() {
@@ -286,7 +286,7 @@ pub(super) fn remplir(
     S_OK
 }
 
-/// Convertit les entrées du protocole en entrées d'énumération.
+/// Converts protocol entries into enumeration entries.
 pub(super) fn entrees_depuis(json: Vec<proto::fichiers::entetes::EntreeJson>) -> Vec<Entree> {
     json.into_iter()
         .map(|e| Entree {

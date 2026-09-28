@@ -1,10 +1,10 @@
-//! Le tour ÉLIMINATOIRE (étape 2, brief D9) : essaie les combinaisons connues
-//! sur la sortie SOUS TEST, duplication DXGI ouverte et tenue, jusqu'à ce que
-//! la relecture DXGI confirme un mouvement, ou jusqu'à épuisement.
+//! The ELIMINATION round (step 2, D9 brief): tries the known combinations
+//! on the output UNDER TEST, DXGI duplication open and held, until
+//! the DXGI read-back confirms a movement, or until exhaustion.
 //!
-//! Extrait de `mode_sortie.rs` à la tâche 2bis du sous-bloc D9, pour le
-//! plafond de 500 lignes (`CLAUDE.md`) — même raison que `temoin.rs`,
-//! `voisines.rs` et `combinaisons.rs`, extraits à la tâche 1.
+//! Extracted from `mode_sortie.rs` at task 2bis of sub-block D9, for the
+//! 500-line ceiling (`CLAUDE.md`) — same reason as `temoin.rs`,
+//! `voisines.rs` and `combinaisons.rs`, extracted at task 1.
 
 use anyhow::Result;
 use windows::Win32::Graphics::Gdi::DISP_CHANGE_SUCCESSFUL;
@@ -16,44 +16,44 @@ use super::voisines::DuplicationVoisine;
 use super::{choisir_cible, modes_annonces};
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
-/// Ce qu'un tour de combinaisons a établi.
+/// What a round of combinations established.
 pub(super) struct ResultatTour {
-    /// Cible numérique effectivement visée pendant le tour, ou `None` si
-    /// aucune cible mesurable n'a pu être choisie (`P1 NON MESURABLE`) — le
-    /// témoin n'a alors rien à rejouer, voir son appelant.
+    /// Numeric target actually aimed at during the round, or `None` if
+    /// no measurable target could be chosen (`P1 NON MESURABLE`) — the
+    /// control then has nothing to replay, see its caller.
     pub(super) cible: Option<(u32, u32)>,
-    /// Le bras qui a fait bouger la sortie, s'il y en a un.
+    /// The arm that made the output move, if there is one.
     pub(super) gagnante: Option<&'static str>,
-    /// Nombre de tentatives où au moins une voisine a perdu l'accès à sa
-    /// duplication pendant le tour — voir
-    /// `voisines::DuplicationVoisine::sonder` pour la granularité exacte.
+    /// Number of attempts where at least one neighbour lost access to its
+    /// duplication during the round — see
+    /// `voisines::DuplicationVoisine::sonder` for the exact granularity.
     pub(super) pertes_voisines: u32,
-    /// La valeur BRUTE de `MULTIFENETRE_MODE_SORTIE_DRAPEAUX` (ce que
-    /// l'opérateur a DEMANDÉ), à distinguer de `gagnante` (ce qui s'est
-    /// RÉELLEMENT passé) — voir `persistance::journaliser_verdict`, qui
-    /// journalise les deux séparément depuis la revue de la tâche 2bis.
+    /// The RAW value of `MULTIFENETRE_MODE_SORTIE_DRAPEAUX` (what
+    /// the operator REQUESTED), to be distinguished from `gagnante` (what
+    /// REALLY happened) — see `persistance::journaliser_verdict`, which
+    /// logs both separately since the review of task 2bis.
     pub(super) combinaison_imposee: Option<String>,
 }
 
-/// Essaie les combinaisons connues jusqu'à ce que la relecture DXGI confirme
-/// la cible, ou jusqu'à épuisement. Rend toujours `Ok` : un refus — ou
-/// l'impossibilité de choisir une cible mesurable — est une mesure, pas une
-/// erreur de la sonde ; voir le commentaire de tête de `mode_sortie.rs`. Seule
-/// une topologie devenue illisible fait remonter une erreur.
+/// Tries the known combinations until the DXGI read-back confirms
+/// the target, or until exhaustion. Always returns `Ok`: a refusal — or
+/// the impossibility of choosing a measurable target — is a measurement, not an
+/// error of the probe; see the header comment of `mode_sortie.rs`. Only
+/// a topology that became unreadable raises an error.
 ///
-/// `avant_a_la_creation` est la taille lue par DXGI juste après la création
-/// de la sortie sous test, plusieurs secondes avant que ce tour ne
-/// s'exécute — voir la relecture FRAÎCHE ci-dessous, qui la remplace comme
-/// référence de mouvement.
+/// `avant_a_la_creation` is the size read by DXGI right after the creation
+/// of the output under test, several seconds before this round
+/// runs — see the FRESH read-back below, which replaces it as the
+/// movement reference.
 ///
-/// `voisines` : sondées une fois PAR TENTATIVE (voir `DuplicationVoisine::sonder`)
-/// — c'est l'inconnue annexe n°2 de D8 relevée au même moment que
-/// l'éliminatoire, pas une mesure séparée.
+/// `voisines`: probed once PER ATTEMPT (see `DuplicationVoisine::sonder`)
+/// — it is D8's side unknown no. 2 surveyed at the same moment as
+/// the elimination test, not a separate measurement.
 ///
-/// Le tour est restreint à UN bras si l'opérateur l'impose (tâche 2bis, D9,
-/// `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`) — voir `persistance::combinaison_imposee`
-/// et `combinaisons::combos_du_tour`. Sans elle, comportement inchangé : les
-/// quatre combos, dans l'ordre.
+/// The round is restricted to ONE arm if the operator imposes it (task 2bis, D9,
+/// `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`) — see `persistance::combinaison_imposee`
+/// and `combinaisons::combos_du_tour`. Without it, unchanged behaviour: the
+/// four combos, in order.
 pub(super) fn essayer_les_modes(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
@@ -61,36 +61,36 @@ pub(super) fn essayer_les_modes(
     demande: (u32, u32),
     voisines: &mut [DuplicationVoisine],
 ) -> Result<ResultatTour> {
-    // La valeur BRUTE demandée par l'opérateur, capturée UNE fois et
-    // réutilisée aux deux points de sortie (`P1 NON MESURABLE` inclus) --
-    // voir le champ `combinaison_imposee` de `ResultatTour`.
+    // The RAW value requested by the operator, captured ONCE and
+    // reused at both exit points (`P1 NON MESURABLE` included) --
+    // see the `combinaison_imposee` field of `ResultatTour`.
     let imposee = combinaison_imposee();
 
-    // ⚠️ **Correction (revue de la tâche 2bis, Critique).** `avant_a_la_creation`
-    // a été capturé plusieurs secondes plus tôt, AVANT l'ouverture de la
-    // duplication et la création des deux voisines. Entre ces deux instants,
-    // la sortie peut avoir bougé SANS AUCUN appel d'API : `p-persistance-2`
-    // et le témoin invalide de la tâche 2bis montrent tous deux `DISPLAY5`
-    // passer de 1280×720 à 2560×1440 avant tout `ChangeDisplaySettingsExW`
-    // de CE tour -- un résidu de pollution du registre d'une exécution
-    // antérieure, apparemment réappliqué à la création d'une sortie
-    // virtuelle voisine (mécanisme non expliqué, doctrine D1/D2 de
-    // l'abandon du mutex sous une autre forme). Comparer `mouvement` contre
-    // la valeur STALE ferait passer ce résidu pour un effet DE ce tour.
-    // La relecture fraîche sert désormais de référence PARTOUT dans cette
-    // fonction (`choisir_cible` compris) ; `avant_a_la_creation` ne sert
-    // plus qu'à détecter et journaliser l'écart.
+    // ⚠️ **Fix (review of task 2bis, Critical).** `avant_a_la_creation`
+    // was captured several seconds earlier, BEFORE the opening of the
+    // duplication and the creation of the two neighbours. Between these two instants,
+    // the output may have moved WITHOUT ANY API call: `p-persistance-2`
+    // and the invalid control of task 2bis both show `DISPLAY5`
+    // going from 1280×720 to 2560×1440 before any `ChangeDisplaySettingsExW`
+    // of THIS round -- a residue of registry pollution from an earlier
+    // run, apparently reapplied at the creation of a neighbouring virtual
+    // output (unexplained mechanism, doctrine D1/D2 of
+    // abandoning the mutex in another form). Comparing `mouvement` against
+    // the STALE value would pass this residue off as an effect OF this round.
+    // The fresh read-back now serves as the reference EVERYWHERE in this
+    // function (`choisir_cible` included); `avant_a_la_creation` only serves
+    // to detect and log the gap.
     //
-    // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 12).**
-    // `.unwrap_or(avant_a_la_creation)` était le même trou que celui que
-    // cette correction referme partout ailleurs (I4/I13) : si la SUT est
-    // ABSENTE de la relecture fraîche, l'ancien repli rendait
-    // `avant == avant_a_la_creation` PAR CONSTRUCTION, et le `WARN`
-    // d'écart ci-dessous ne pouvait alors JAMAIS se déclencher -- une
-    // sortie disparue se lisait comme « aucun écart détecté », exactement
-    // l'inverse. L'absence est maintenant un événement journalisé À PART
-    // (`tracing::error!`, jamais confondu avec le cas « présente et
-    // inchangée »), avant même de retomber sur la valeur de création.
+    // ⚠️ **Fix (review of task 2bis, second pass, point 12).**
+    // `.unwrap_or(avant_a_la_creation)` was the same hole as the one
+    // this fix closes everywhere else (I4/I13): if the SUT is
+    // ABSENT from the fresh read-back, the old fallback returned
+    // `avant == avant_a_la_creation` BY CONSTRUCTION, and the gap `WARN`
+    // below could then NEVER trigger -- a
+    // vanished output read as "no gap detected", exactly
+    // the opposite. Absence is now an event logged SEPARATELY
+    // (`tracing::error!`, never confused with the "present and
+    // unchanged" case), before even falling back to the creation value.
     let releve_frais = relever_topologie("juste avant le premier essai (relecture fraîche)")?;
     let taille_fraiche = releve_frais
         .iter()
@@ -174,38 +174,38 @@ pub(super) fn essayer_les_modes(
     }
 
     let mut dernier_code = 0i32;
-    // ⚠️ **Correction (revue de la tâche 2bis, Important I5).** Initialisée à
-    // `avant` (fraîche) et non plus `(0, 0)` : sur un tour VIDE (aucun combo
-    // ne correspond à `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`, voir
-    // `combinaisons::combos_du_tour`), `derniere_taille` restait à `(0, 0)`
-    // et `mouvement_observe = derniere_taille != avant` valait presque
-    // toujours `true` -- un tour qui n'avait RIEN tenté affichait un
-    // mouvement. Avec `avant` comme valeur de repos, l'absence de tentative
-    // se traduit par l'absence de mouvement, sans code spécial.
+    // ⚠️ **Fix (review of task 2bis, Important I5).** Initialised to
+    // `avant` (fresh) and no longer `(0, 0)`: on an EMPTY round (no combo
+    // matches `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`, see
+    // `combinaisons::combos_du_tour`), `derniere_taille` stayed at `(0, 0)`
+    // and `mouvement_observe = derniere_taille != avant` was almost
+    // always `true` -- a round that had tried NOTHING displayed a
+    // movement. With `avant` as the resting value, the absence of any attempt
+    // translates into the absence of movement, without special code.
     let mut derniere_taille = avant;
     let mut gagnante: Option<&'static str> = None;
     let mut cible_exacte_atteinte = false;
     let mut pertes_voisines = 0u32;
-    // Compte les tentatives RÉELLEMENT effectuées -- distinct de
-    // `gagnante.is_some()` : un tour VIDE (0 tentative) et un tour qui a
-    // épuisé ses bras sans succès (N tentatives, 0 succès) se ressemblaient
-    // jusqu'ici (`gagnante = None` dans les deux cas). Voir le verdict
-    // "P1 NON TENTE" plus bas.
+    // Counts the attempts REALLY made -- distinct from
+    // `gagnante.is_some()`: an EMPTY round (0 attempts) and a round that
+    // exhausted its arms without success (N attempts, 0 successes) looked alike
+    // until now (`gagnante = None` in both cases). See the
+    // "P1 NON TENTE" verdict below.
     let mut tentatives = 0u32;
     for combo in combos_du_tour(imposee.as_deref()) {
         tentatives += 1;
         dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
-        // Windows reconfigure sa topologie d'affichage de façon asynchrone —
-        // exactement pourquoi `montee.rs` observe le même délai de grâce
-        // après une création. Interroger DXGI trop tôt ferait conclure à un
-        // refus là où il n'y a qu'un délai, et battre le chien de garde
-        // pendant l'attente comme le fait le reste de ce module.
+        // Windows reconfigures its display topology asynchronously —
+        // exactly why `montee.rs` observes the same grace delay
+        // after a creation. Querying DXGI too early would conclude to a
+        // refusal where there is only a delay, and beat the watchdog
+        // during the wait as the rest of this module does.
         attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
-        // Sondées ICI, après l'attente : si une perte survient à n'importe
-        // quel instant de la fenêtre qui vient de s'écouler, l'instance de
-        // duplication de la voisine la porte encore au moment de cette
-        // sollicitation (voir `DuplicationVoisine::sonder`) -- une sonde par
-        // tentative suffit à la détecter.
+        // Probed HERE, after the wait: if a loss occurs at any
+        // instant of the window that just elapsed, the neighbour's
+        // duplication instance still carries it at the moment of this
+        // solicitation (see `DuplicationVoisine::sonder`) -- one probe per
+        // attempt is enough to detect it.
         for voisine in voisines.iter_mut() {
             if voisine.sonder() {
                 pertes_voisines += 1;
@@ -216,16 +216,16 @@ pub(super) fn essayer_les_modes(
             .iter()
             .find(|sortie| sortie.nom_sortie == nom_sortie)
             .map(|sortie| (sortie.rect.width, sortie.rect.height));
-        // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 13).**
-        // L'ancien repli `.unwrap_or((0, 0))` faisait d'une sortie ABSENTE
-        // après tentative un FAUX mouvement dans la quasi-totalité des cas
-        // (`(0, 0) != avant` presque toujours) -- un bras aurait pu
-        // « gagner » (`gagnante = Some(...)`, verdict "P1 RECU") sur la
-        // seule disparition de la sortie, jamais sur un changement de
-        // taille réel. L'absence est maintenant une anomalie journalisée à
-        // part qui ne peut PAS faire gagner ce bras : `derniere_taille`
-        // garde la dernière valeur RÉELLEMENT lue (celle d'avant cette
-        // tentative, ou `avant` à la première itération).
+        // ⚠️ **Fix (review of task 2bis, second pass, point 13).**
+        // The old `.unwrap_or((0, 0))` fallback turned an output ABSENT
+        // after an attempt into a FALSE movement in nearly all cases
+        // (`(0, 0) != avant` almost always) -- an arm could have
+        // "won" (`gagnante = Some(...)`, verdict "P1 RECU") on the
+        // mere disappearance of the output, never on a real size
+        // change. Absence is now an anomaly logged
+        // separately that CANNOT make this arm win: `derniere_taille`
+        // keeps the last value REALLY read (the one before this
+        // attempt, or `avant` at the first iteration).
         let Some(taille_lue) = taille_lue else {
             tracing::error!(
                 etiquette = combo.etiquette(),
@@ -236,12 +236,12 @@ pub(super) fn essayer_les_modes(
             continue;
         };
         derniere_taille = taille_lue;
-        // Le critère qui compte est le MOUVEMENT (`derniere_taille != avant`),
-        // pas l'égalité à la cible choisie — voir le commentaire de tête du
-        // module parent (défaut F1 corrigé). `cible_atteinte` reste
-        // journalisé, séparément : il documente si le pilote honore la valeur
-        // exacte demandée, une question plus fine que P1, jamais celle qui
-        // décide du verdict.
+        // The criterion that counts is MOVEMENT (`derniere_taille != avant`),
+        // not equality with the chosen target — see the header comment of the
+        // parent module (F1 defect fixed). `cible_atteinte` remains
+        // logged, separately: it documents whether the driver honours the exact
+        // requested value, a finer question than P1, never the one that
+        // decides the verdict.
         let mouvement = derniere_taille != avant;
         let cible_atteinte = derniere_taille == cible;
         tracing::info!(
@@ -261,12 +261,12 @@ pub(super) fn essayer_les_modes(
         }
     }
 
-    // ⚠️ **Correction (revue de la tâche 2bis, I5/I6).** Un tour VIDE
-    // (`tentatives == 0`, filtre de `combos_du_tour` n'ayant rien retenu)
-    // rendait "P1 REFUSE" -- une absence d'essai présentée comme un relevé,
-    // exactement la confusion que la doctrine du dépôt (D9, tâche 2bis I6)
-    // interdit. "P1 NON TENTE" la distingue d'un refus RÉEL (N tentatives,
-    // 0 succès).
+    // ⚠️ **Fix (review of task 2bis, I5/I6).** An EMPTY round
+    // (`tentatives == 0`, the `combos_du_tour` filter having retained nothing)
+    // returned "P1 REFUSE" -- an absence of attempt presented as a survey,
+    // exactly the confusion that the repository's doctrine (D9, task 2bis I6)
+    // forbids. "P1 NON TENTE" distinguishes it from a REAL refusal (N attempts,
+    // 0 successes).
     let verdict = if gagnante.is_some() {
         "P1 RECU"
     } else if tentatives == 0 {
@@ -286,19 +286,19 @@ pub(super) fn essayer_les_modes(
         hauteur_relue = derniere_taille.1,
         largeur_cible = cible.0,
         hauteur_cible = cible.1,
-        // Le verdict lui-même : un mouvement (A != B) a-t-il été observé ?
-        // C'est CE champ qui gouverne "P1 RECU" ci-dessus, pas une égalité à
-        // la cible (voir le commentaire de tête du module parent, défaut F1
-        // corrigé) -- recalculé ici, redondant avec `gagnante.is_some()` par
-        // construction, pour qu'un lecteur du journal n'ait pas à le déduire.
-        // Sur un tour VIDE, `derniere_taille == avant` par construction
-        // (voir son initialisation) : `mouvement_observe` vaut `false`,
-        // jamais `true` par défaut (correction I5).
+        // The verdict itself: was a movement (A != B) observed?
+        // It is THIS field that governs "P1 RECU" above, not an equality with
+        // the target (see the header comment of the parent module, F1 defect
+        // fixed) -- recomputed here, redundant with `gagnante.is_some()` by
+        // construction, so that a reader of the log does not have to deduce it.
+        // On an EMPTY round, `derniere_taille == avant` by construction
+        // (see its initialisation): `mouvement_observe` is `false`,
+        // never `true` by default (fix I5).
         mouvement_observe = derniere_taille != avant,
-        // Secondaire : le pilote a-t-il honoré la valeur EXACTE demandée, ou
-        // s'est-il arrêté à un mode intermédiaire ? Peut valoir `false` avec
-        // un verdict "P1 RECU" -- ce n'est pas une contradiction, c'est une
-        // question plus fine que celle de P1.
+        // Secondary: did the driver honour the EXACT requested value, or
+        // did it stop at an intermediate mode? Can be `false` with
+        // a "P1 RECU" verdict -- it is not a contradiction, it is a
+        // finer question than P1's.
         cible_exacte_atteinte,
         pertes_acces_voisines_pendant_le_tour = pertes_voisines,
         "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"

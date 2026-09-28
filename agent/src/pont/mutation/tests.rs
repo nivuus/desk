@@ -1,4 +1,4 @@
-//! L'ordonnancement des mutations. **Purs, exécutés sur l'hôte.**
+//! The scheduling of mutations. **Pure, run on the host.**
 
 use super::*;
 
@@ -32,12 +32,12 @@ fn dues(v: &[&str]) -> Vec<String> {
     v.iter().map(|s| (*s).to_string()).collect()
 }
 
-/// 🔴 **LE TEST QUI EMPÊCHE LA PERTE DE L'ENREGISTREMENT DE LIBREOFFICE.**
+/// 🔴 **THE TEST THAT PREVENTS LOSING LIBREOFFICE'S SAVE.**
 ///
-/// Rouge : rendre `Pousser`. L'écriture due partirait APRÈS le renommage, sur
-/// un chemin qui n'existe plus, et `getFileHandle(…, { create: true })`
-/// **recréerait le fichier temporaire** — l'enregistrement serait perdu, et un
-/// fichier d'échange resterait sur le poste local.
+/// Red: return `Pousser`. The due write would go out AFTER the renaming, on
+/// a path that no longer exists, and `getFileHandle(…, { create: true })`
+/// **would recreate the temporary file** — the save would be lost, and a
+/// swap file would remain on the local workstation.
 #[test]
 fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
     assert_eq!(
@@ -48,10 +48,10 @@ fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
     );
 }
 
-/// 🔴 **LE TEST QUI EMPÊCHE UN FICHIER EFFACÉ DE RÉAPPARAÎTRE.**
+/// 🔴 **THE TEST THAT PREVENTS AN ERASED FILE FROM REAPPEARING.**
 ///
-/// Rouge : rendre `Pousser`. L'écriture due recréerait sur le poste local ce
-/// que l'utilisateur vient d'effacer.
+/// Red: return `Pousser`. The due write would recreate on the local workstation what
+/// the user has just erased.
 #[test]
 fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
     assert_eq!(
@@ -62,11 +62,11 @@ fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
     );
 }
 
-/// 🔴 **LES DEUX ORDONNANCEMENTS NE SONT PAS INTERCHANGEABLES.**
+/// 🔴 **THE TWO SCHEDULINGS ARE NOT INTERCHANGEABLE.**
 ///
-/// Abandonner les écritures d'un RENOMMAGE perdrait l'enregistrement ; attendre
-/// celles d'une SUPPRESSION pousserait le fichier avant de l'effacer, ce qui le
-/// ressusciterait si la suppression échoue ensuite.
+/// Abandoning the writes of a RENAMING would lose the save; waiting for
+/// those of a DELETION would push the file before erasing it, which would
+/// resurrect it if the deletion then fails.
 #[test]
 fn un_renommage_attend_la_ou_une_suppression_abandonne() {
     let r = ordonnancer(&dues(&["a.txt"]), &renommer("a.txt", "b.txt"));
@@ -76,8 +76,8 @@ fn un_renommage_attend_la_ou_une_suppression_abandonne() {
     assert!(matches!(s, Ordonnancement::AbandonnerEcrituresDues { .. }));
 }
 
-/// Rouge : comparer par PRÉFIXE au lieu d'égalité — toute écriture bloquerait
-/// alors tout renommage, et le pont se figerait sur le premier gros fichier.
+/// Red: compare by PREFIX instead of equality — every write would
+/// then block every renaming, and the bridge would freeze on the first large file.
 #[test]
 fn une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien() {
     assert_eq!(
@@ -89,13 +89,13 @@ fn une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien() {
     );
 }
 
-/// Rouge : comparer par ÉGALITÉ seule — le cas du répertoire passerait à
-/// travers, et l'enfant serait recréé sous l'ANCIEN chemin, hors du répertoire
-/// renommé.
+/// Red: compare by EQUALITY alone — the directory case would slip
+/// through, and the child would be recreated under the OLD path, outside the renamed
+/// directory.
 ///
-/// ⚠️ **Ce test et le précédent se contrediraient si l'on confondait fichier et
-/// répertoire** : c'est `repertoire` qui tranche, et c'est pour cela qu'il est
-/// transporté depuis le rappel.
+/// ⚠️ **This test and the previous one would contradict each other if file and
+/// directory were confused**: it is `repertoire` that decides, and that is why it is
+/// carried from the callback.
 #[test]
 fn une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde() {
     assert_eq!(
@@ -107,19 +107,19 @@ fn une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde() {
             chemins: dues(&["projet/note.txt"])
         }
     );
-    // …et le même chemin ne retarde PAS le renommage d'un FICHIER homonyme.
+    // …and the same path does NOT delay the renaming of a FILE of the same name.
     assert_eq!(
         ordonnancer(&dues(&["projet/note.txt"]), &renommer("projet", "autre")),
         Ordonnancement::Pousser
     );
 }
 
-/// 🔴 **LE `/` DU PRÉFIXE N'EST PAS DÉCORATIF.**
+/// 🔴 **THE PREFIX'S `/` IS NOT DECORATIVE.**
 ///
-/// Rouge : `due.starts_with(cible)` sans le séparateur. Renommer `a`
-/// retiendrait alors une écriture due sur `ab/x`, qui n'a rien à voir — et le
-/// renommage attendrait une écriture qui ne le concerne pas, indéfiniment si
-/// elle échoue.
+/// Red: `due.starts_with(cible)` without the separator. Renaming `a`
+/// would then hold back a write due on `ab/x`, which is unrelated — and the
+/// renaming would wait for a write that does not concern it, indefinitely if
+/// it fails.
 #[test]
 fn un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien() {
     assert_eq!(
@@ -134,7 +134,7 @@ fn un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien() {
     );
 }
 
-/// Le répertoire supprimé emporte ses enfants dus, eux aussi.
+/// The deleted directory takes its due children with it, too.
 #[test]
 fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
     assert_eq!(
@@ -148,9 +148,9 @@ fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
     );
 }
 
-/// ⚠️ **La racine n'est jamais renommée ni supprimée**, et le cas est refusé
-/// plutôt que traité comme « tout est enfant » — ce qui retiendrait toute
-/// écriture pour toujours, sur un pont qui aurait l'air de fonctionner.
+/// ⚠️ **The root is never renamed nor deleted**, and the case is refused
+/// rather than treated as "everything is a child" — which would hold back every
+/// write forever, on a bridge that would appear to work.
 #[test]
 fn une_cible_vide_ne_retient_rien() {
     assert_eq!(
@@ -159,7 +159,7 @@ fn une_cible_vide_ne_retient_rien() {
     );
 }
 
-/// Sans aucune écriture due, il n'y a rien à ordonnancer.
+/// Without any due write, there is nothing to schedule.
 #[test]
 fn sans_ecriture_due_on_pousse() {
     assert_eq!(
@@ -169,11 +169,11 @@ fn sans_ecriture_due_on_pousse() {
     assert_eq!(ordonnancer(&[], &supprimer("a")), Ordonnancement::Pousser);
 }
 
-/// 🔴 **UNE MUTATION À LA FOIS.**
+/// 🔴 **ONE MUTATION AT A TIME.**
 ///
-/// Rouge : autoriser deux en vol. Deux renommages du même chemin se
-/// croiseraient, et l'ordre de leurs `Fait` déciderait du nom final — c'est-à-
-/// dire le hasard du réseau.
+/// Red: allow two in flight. Two renamings of the same path would
+/// cross, and the order of their `Fait`s would decide the final name — that
+/// is, the network's chance.
 #[test]
 fn une_seule_mutation_en_vol_a_la_fois() {
     let mut f = FileMutations::nouvelle();
@@ -184,11 +184,11 @@ fn une_seule_mutation_en_vol_a_la_fois() {
     assert_eq!(f.terminee(), None, "plus rien");
 }
 
-/// 🔴 **AUCUNE COALESCENCE — l'ordre des mutations EST leur sens.**
+/// 🔴 **NO COALESCING — the order of mutations IS their meaning.**
 ///
-/// Rouge : fusionner deux mutations du même chemin comme la file d'écriture le
-/// fait de deux écritures. `a`→`b` puis `b`→`c` laisserait `b` sur le poste
-/// local, ou perdrait le fichier selon la fusion retenue.
+/// Red: merge two mutations of the same path as the write queue
+/// does with two writes. `a`→`b` then `b`→`c` would leave `b` on the local
+/// workstation, or would lose the file depending on the merge chosen.
 #[test]
 fn deux_mutations_du_meme_chemin_sont_toutes_deux_jouees_dans_l_ordre() {
     let mut f = FileMutations::nouvelle();
@@ -201,10 +201,10 @@ fn deux_mutations_du_meme_chemin_sont_toutes_deux_jouees_dans_l_ordre() {
     assert_eq!(f.terminee(), None);
 }
 
-/// Une mutation différée repasse **DEVANT** celles qui l'ont suivie.
+/// A deferred mutation goes back **AHEAD** of those that followed it.
 ///
-/// Rouge : la remettre en QUEUE. L'ordre des gestes de l'utilisateur serait
-/// inversé — il verrait le second renommage prendre effet avant le premier.
+/// Red: put it back at the TAIL. The order of the user's gestures would be
+/// reversed — they would see the second renaming take effect before the first.
 #[test]
 fn une_mutation_differee_repasse_devant() {
     let mut f = FileMutations::nouvelle();
@@ -219,8 +219,8 @@ fn une_mutation_differee_repasse_devant() {
     );
 }
 
-/// `source()` rend la SOURCE d'un renommage, jamais la destination : c'est sur
-/// elle que des octets peuvent être dus.
+/// `source()` returns the SOURCE of a renaming, never the destination: it is on
+/// it that bytes can be due.
 #[test]
 fn source_rend_le_chemin_qui_existe_encore() {
     assert_eq!(renommer("de.txt", "vers.txt").source(), "de.txt");

@@ -1,27 +1,27 @@
-//! Tests de `SourceDistante` — tous sur l'hôte, sans aucun `#[cfg(windows)]`.
+//! Tests of `SourceDistante` — all on the host, without any `#[cfg(windows)]`.
 //!
-//! Fichier voisin plutôt que module en ligne : `distante.rs` était à 487
-//! lignes pour un plafond de projet à 500, et la garde d'épuisement de la
-//! revue finale de branche (I2) plus son test l'auraient fait franchir.
-//! Extraire plutôt que comprimer — même schéma que
+//! Sibling file rather than inline module: `distante.rs` was at 487
+//! lines for a project cap of 500, and the exhaustion guard from the
+//! final branch review (I2) plus its test would have pushed it over.
+//! Extract rather than compress — same scheme as
 //! `superviseur/table/tests_retention.rs`.
 
 use super::*;
-// `VideoSource` est importé ICI depuis que l'implémentation du trait a été
-// extraite vers `distante/video_source.rs` (sous-bloc A1) : le parent ne s'en
-// sert plus, et un trait doit être en portée pour que ses méthodes soient
-// appelables.
+// `VideoSource` is imported HERE since the trait implementation was
+// extracted to `distante/video_source.rs` (sub-block A1): the parent no longer
+// uses it, and a trait must be in scope for its methods to be
+// callable.
 use crate::capteur::reprise::{DUREE_FENETRE_CANAL, PAS_RATTACHEMENT};
 use crate::source::VideoSource;
 use std::sync::mpsc::sync_channel;
 
-/// Ce que le canal factice rendra au prochain `rattacher`. `None` = échec.
-/// Une file, pour que les tests enchaînent échecs puis succès.
+/// What the fake channel will return at the next `rattacher`. `None` = failure.
+/// A queue, so that tests can chain failures then successes.
 type ProchainsRattachements = std::sync::Arc<std::sync::Mutex<Vec<Option<u32>>>>;
 
-/// Canal factice : rend des réponses préparées et retient ce qui a été
-/// demandé, pour que les tests vérifient le message ÉMIS et pas seulement
-/// l'effet.
+/// Fake channel: returns prepared replies and records what was
+/// asked, so that tests check the SENT message and not only
+/// the effect.
 struct CanalFactice {
     reponses: Vec<anyhow::Result<DepuisCapteur>>,
     recus: std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
@@ -52,8 +52,8 @@ impl Canal for CanalFactice {
         match prochain {
             Some(largeur) => {
                 let (tx, rx) = sync_channel(4);
-                // Une image dans la file neuve : c'est elle qui prouvera
-                // que la source lit bien le NOUVEAU canal.
+                // A frame in the new queue: it is what will prove
+                // that the source does read the NEW channel.
                 tx.send(Recu::Image(AccessUnit {
                     data: vec![7],
                     is_keyframe: true,
@@ -71,9 +71,9 @@ impl Canal for CanalFactice {
     }
 }
 
-/// `_capacite` est conservée pour ne pas changer la signature appelée par
-/// les tests existants, mais `source_rattachable` fixe la sienne à 4 —
-/// ce qui couvre tous les usages actuels de `source_avec`.
+/// `_capacite` is kept so as not to change the signature called by
+/// the existing tests, but `source_rattachable` sets its own to 4 —
+/// which covers all current uses of `source_avec`.
 pub(super) fn source_avec(
     _capacite: usize,
 ) -> (
@@ -85,9 +85,9 @@ pub(super) fn source_avec(
     (source, tx, recus)
 }
 
-/// Comme `source_avec`, mais le canal factice rend les `reponses` données, dans
-/// l'ordre, avant de retomber sur son `Fait` par défaut. C'est ce qui permet
-/// d'éprouver un REFUS du capteur.
+/// Like `source_avec`, but the fake channel returns the given `reponses`, in
+/// order, before falling back on its default `Fait`. That is what makes it possible
+/// to test a REFUSAL from the sensor.
 pub(super) fn source_avec_reponses(
     reponses: Vec<anyhow::Result<DepuisCapteur>>,
 ) -> (
@@ -153,8 +153,8 @@ fn une_image_poussee_est_rendue_par_next_frame() {
     assert!(unite.is_keyframe);
 }
 
-/// Le cas COURANT : rien de neuf. Il doit être gratuit et ne surtout pas
-/// passer pour un épuisement — la boucle de transport interroge à 100 Hz.
+/// The COMMON case: nothing new. It must be free and above all not
+/// pass for an exhaustion — the transport loop polls at 100 Hz.
 #[test]
 fn une_file_vide_rend_none_sans_epuiser_la_source() {
     let (mut source, _tx, _) = source_avec(4);
@@ -180,8 +180,8 @@ fn les_images_sortent_dans_l_ordre_d_arrivee() {
     assert_eq!(rendus, vec![1, 2, 3]);
 }
 
-/// `Etat` n'est pas une image : il met à jour le cache et la lecture
-/// continue, sans consommer le tour.
+/// `Etat` is not a frame: it updates the cache and reading
+/// continues, without consuming the round.
 #[test]
 fn un_etat_intercale_met_a_jour_le_cache_sans_masquer_l_image_suivante() {
     let (mut source, tx, _) = source_avec(4);
@@ -217,19 +217,19 @@ fn une_fenetre_disparue_rend_la_source_non_vivante_et_epuisee() {
     assert!(source.is_exhausted());
 }
 
-/// **I2 de la revue finale de branche du sous-bloc D4.** Le test ci-dessus
-/// garde `tx` vivant, donc n'atteint JAMAIS `Disconnected` : c'est celui-ci
-/// qui éprouve la suite réelle des événements à la fermeture normale d'une
-/// fenêtre — le capteur pousse `Etat { epuisee: true }`, PUIS ferme le tube.
+/// **I2 from the final branch review of sub-block D4.** The test above
+/// keeps `tx` alive, hence NEVER reaches `Disconnected`: it is this one
+/// that tests the real sequence of events on the normal close of a
+/// window — the sensor pushes `Etat { epuisee: true }`, THEN closes the pipe.
 ///
-/// L'enfant doit alors conclure, et surtout pas rattacher : un rattachement
-/// ferait rouvrir au capteur une duplication DXGI et un encodeur sur une
-/// sortie que le superviseur détruit au même instant, et s'il aboutissait il
-/// remettrait `epuisee` à faux — la session qui devait se clore ne se
-/// clorait pas.
+/// The child must then conclude, and above all not re-attach: a re-attachment
+/// would make the sensor reopen a DXGI duplication and an encoder on an
+/// output the supervisor is destroying at the same instant, and if it succeeded it
+/// would reset `epuisee` to false — the session that was meant to close would not
+/// close.
 ///
-/// La file de rattachements porte un succès À DESSEIN : sans la garde, le
-/// rattachement ne se contenterait pas d'être tenté, il RÉUSSIRAIT.
+/// The re-attachment queue carries a success ON PURPOSE: without the guard, the
+/// re-attachment would not merely be attempted, it would SUCCEED.
 #[test]
 fn un_epuisement_autoritaire_interdit_tout_rattachement() {
     let (mut source, tx, _, _, essais) = source_rattachable(vec![Some(1600)]);
@@ -243,7 +243,7 @@ fn un_epuisement_autoritaire_interdit_tout_rattachement() {
     assert!(source.next_frame().is_none());
     assert!(source.is_exhausted(), "l'état autoritaire épuise la source");
 
-    // Le capteur ferme le tube : le tour suivant voit `Disconnected`.
+    // The sensor closes the pipe: the next round sees `Disconnected`.
     drop(tx);
     assert!(source.next_frame().is_none());
     assert_eq!(
@@ -275,10 +275,10 @@ fn les_commandes_partent_sous_la_forme_attendue() {
     );
 }
 
-/// `resize` doit retenir la taille RÉELLEMENT obtenue, pas celle demandée
-/// — même règle qu'en mono-fenêtre (`transport/redimensionnement.rs`).
-/// Le test utilise des dimensions initiales DIFFÉRENTES de la réponse
-/// pour vérifier que la réponse est réellement adoptée (et pas ignorée).
+/// `resize` must keep the size ACTUALLY obtained, not the one requested
+/// — same rule as in single-window mode (`transport/redimensionnement.rs`).
+/// The test uses initial dimensions DIFFERENT from the reply
+/// to check that the reply is actually adopted (and not ignored).
 #[test]
 fn un_redimensionnement_retient_la_taille_obtenue() {
     let (tx_img, rx) = sync_channel(4);
@@ -317,9 +317,9 @@ fn une_erreur_du_capteur_remonte_en_erreur() {
     );
 }
 
-/// Le cœur du critère 2 : tuer le capteur ferme le tube, donc rompt le
-/// canal — et cela ne doit PAS clore la session, sans quoi
-/// `brancher_video` appelle `begin_ending("source vidéo épuisée")`.
+/// The heart of criterion 2: killing the sensor closes the pipe, hence breaks the
+/// channel — and that must NOT close the session, otherwise
+/// `brancher_video` calls `begin_ending("source vidéo épuisée")`.
 #[test]
 fn un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre() {
     let (mut source, tx, _) = source_avec(4);
@@ -331,8 +331,8 @@ fn un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre() {
     );
 }
 
-/// Mais une rupture qui dure l'est : sans cela, une session morte
-/// resterait ouverte indéfiniment sur une image figée.
+/// But a lasting break does: without it, a dead session
+/// would stay open indefinitely on a frozen frame.
 #[test]
 fn un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source() {
     let (mut source, tx, _) = source_avec(4);
@@ -345,20 +345,20 @@ fn un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source() {
     assert!(source.is_exhausted());
 }
 
-/// Le cœur du critère 2 : le capteur meurt, il est relancé, et la session
-/// reprend — même file neuve, mêmes dimensions annoncées par le capteur.
+/// The heart of criterion 2: the sensor dies, it is restarted, and the session
+/// resumes — same new queue, same dimensions announced by the sensor.
 #[test]
 fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
     let (mut source, tx, _, rattachements, essais) = source_rattachable(vec![Some(1600)]);
     drop(tx);
-    // Premier tour : rupture constatée, rattachement tenté et réussi.
+    // First round: break observed, re-attachment attempted and successful.
     assert!(
         source.next_frame().is_none(),
         "le tour de la rupture ne rend pas d'image"
     );
     assert_eq!(*essais.lock().unwrap(), 1);
     assert!(rattachements.lock().unwrap().is_empty());
-    // Tour suivant : l'image vient de la file NEUVE.
+    // Next round: the frame comes from the NEW queue.
     let unite = source.next_frame().expect("la file neuve porte une image");
     assert_eq!(unite.pts_90k, 700);
     assert_eq!(
@@ -370,7 +370,7 @@ fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
     assert!(source.is_alive());
 }
 
-/// Un rattachement qui échoue ne conclut rien : la fenêtre court encore.
+/// A failed re-attachment concludes nothing: the window is still running.
 #[test]
 fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
     let (mut source, tx, _, _, essais) = source_rattachable(vec![None]);
@@ -383,16 +383,16 @@ fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
     );
 }
 
-/// Mais un échec qui dure au-delà de la fenêtre, si : sans cela une
-/// session morte resterait ouverte indéfiniment sur une image figée.
+/// But a failure lasting beyond the window does: without it a
+/// dead session would stay open indefinitely on a frozen frame.
 ///
-/// ⚠️ Ce test n'exerce PAS un second essai de rattachement : une fois
-/// `DUREE_FENETRE_CANAL` dépassée, `rupture()` court-circuite et rend
-/// `true` avant même d'atteindre `peut_reessayer` (branche `Disconnected`
-/// de `next_frame`) — que `vieillir_pour_test` fasse vieillir
-/// `dernier_essai` ou non est donc sans effet ICI. Cette bande-là
-/// (vieillir au-delà du seul pas d'espacement, en restant dans la
-/// fenêtre) est celle qu'éprouve `un_vieillissement_du_pas_seul_relance_un_essai`.
+/// ⚠️ This test does NOT exercise a second re-attachment attempt: once
+/// `DUREE_FENETRE_CANAL` is exceeded, `rupture()` short-circuits and returns
+/// `true` before even reaching `peut_reessayer` (`Disconnected` branch
+/// of `next_frame`) — whether `vieillir_pour_test` ages
+/// `dernier_essai` or not therefore has no effect HERE. That band
+/// (ageing beyond the spacing step alone, while staying within the
+/// window) is the one tested by `un_vieillissement_du_pas_seul_relance_un_essai`.
 #[test]
 fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
     let (mut source, tx, _, _, _) = source_rattachable(vec![None]);
@@ -403,10 +403,10 @@ fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
     assert!(source.is_exhausted());
 }
 
-/// Vieillir DANS la fenêtre, au-delà du seul pas d'espacement : un second
-/// essai doit partir. Ce test-ci est le seul à éprouver que
-/// `vieillir_pour_test` fait bien vieillir `dernier_essai` — celui de
-/// l'expiration ne l'atteint jamais, `rupture` court-circuitant avant.
+/// Ageing WITHIN the window, beyond the spacing step alone: a second
+/// attempt must go out. This test is the only one to check that
+/// `vieillir_pour_test` does age `dernier_essai` — the expiry one
+/// never reaches it, `rupture` short-circuiting before.
 #[test]
 fn un_vieillissement_du_pas_seul_relance_un_essai() {
     let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None]);
@@ -423,7 +423,7 @@ fn un_vieillissement_du_pas_seul_relance_un_essai() {
     assert!(!source.is_exhausted(), "on est encore dans la fenêtre");
 }
 
-/// Sans espacement, une rupture provoquerait ~100 tentatives par seconde.
+/// Without spacing, a break would cause ~100 attempts per second.
 #[test]
 fn une_rafale_d_interrogations_ne_produit_qu_un_seul_essai() {
     let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None, None, None]);

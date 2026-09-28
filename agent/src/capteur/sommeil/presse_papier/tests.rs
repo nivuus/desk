@@ -1,23 +1,23 @@
 //! Les tests de `capteur/sommeil/presse_papier.rs`.
 //!
-//! **Extraits VERBATIM au sous-bloc P3 (tâche 4), AVANT l'addition qui les a
-//! rendus nécessaires** — la mémoire `dernier_presse_papier` de D-P3-2 et la
-//! seconde prise de D-P3-6. Le parent était à 379 lignes pour un plafond de
-//! 500. La règle du dépôt est d'extraire AVANT d'ajouter, jamais de comprimer
-//! après.
+//! **Extracted VERBATIM in sub-block P3 (task 4), BEFORE the addition that
+//! made it necessary** — the `dernier_presse_papier` memory of D-P3-2 and the
+//! second take of D-P3-6. The parent was at 379 lines for a cap of
+//! 500. The repository's rule is to extract BEFORE adding, never to compress
+//! afterwards.
 //!
-//! ⚠️ **Le bloc extrait était AU MILIEU du fichier**, pas en queue : le code de
-//! production reprenait juste après (`ecrire`, `ecrire_avec`,
-//! `armer_les_gardes`). Le `git diff` en est moins lisible qu'un déplacement de
-//! fin de fichier, et le contrôle de transposition caractère pour caractère
-//! n'en est que plus obligatoire — il a été joué, et la désindentation de
-//! quatre espaces a été vérifiée RÉVERSIBLE.
+//! ⚠️ **The extracted block was IN THE MIDDLE of the file**, not at the end: the
+//! production code resumed right after (`ecrire`, `ecrire_avec`,
+//! `armer_les_gardes`). The `git diff` is less readable than an end-of-file
+//! move, and the character-for-character transposition check
+//! is all the more mandatory — it was run, and the four-space
+//! de-indentation was checked REVERSIBLE.
 //!
-//! ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de
-//! module enfant » de `CLAUDE.md` : c'est le même mécanisme Rust employé pour
-//! une autre raison — la règle des 500 lignes —, exactement comme
-//! `superviseur/table.rs` et `presse_papier.rs`. Ce module ne se hisse PAS à la
-//! racine du crate.
+//! ⚠️ This use of `#[path]` is OUTSIDE the scope of the "Child
+//! module convention" of `CLAUDE.md`: it is the same Rust mechanism used for
+//! another reason — the 500-line rule —, exactly like
+//! `superviseur/table.rs` and `presse_papier.rs`. This module is NOT hoisted to the
+//! crate root.
 
 use crate::capteur::sommeil::file::ReceveurSession;
 use crate::capteur::sommeil::tests::{premier_ordre, verrouiller_pour_le_test};
@@ -26,8 +26,8 @@ use crate::capteur::vivier::Ordre;
 use crate::presse_papier::Annonce;
 use crate::presse_papier::Sondeur;
 
-/// Le dernier presse-papier reçu sur un canal, en vidant ce qui s'y
-/// trouve : parts et ordres de sommeil s'y intercalent librement.
+/// The last clipboard received on a channel, draining what is
+/// there: shares and sleep orders are freely interleaved.
 fn dernier_presse_papier(canal: &ReceveurSession) -> Option<(Option<String>, u32)> {
     canal
         .vider()
@@ -39,9 +39,9 @@ fn dernier_presse_papier(canal: &ReceveurSession) -> Option<(Option<String>, u32
         .next_back()
 }
 
-/// **Toutes les fenêtres reçoivent, pas seulement la focalisée** : chaque
-/// fenêtre navigateur a son propre presse-papier local, et c'est le client
-/// qui décide s'il écrit maintenant ou au retour du focus.
+/// **All windows receive, not only the focused one**: each
+/// browser window has its own local clipboard, and it is the client
+/// that decides whether it writes now or when the focus comes back.
 #[test]
 fn une_annonce_de_texte_part_vers_toutes_les_sessions_inscrites() {
     let _verrou = verrouiller_pour_le_test();
@@ -66,9 +66,9 @@ fn une_annonce_de_texte_part_vers_toutes_les_sessions_inscrites() {
     retirer("pp-b", generation_b);
 }
 
-/// Un refus voyage par la même variante, `texte` à `None` et `octets`
-/// portant la taille refusée — c'est ce qui permet au bandeau du
-/// navigateur de dire *combien* plutôt que « trop grand ».
+/// A refusal travels through the same variant, `texte` as `None` and `octets`
+/// carrying the refused size — that is what lets the
+/// browser's banner say *how much* rather than "too large".
 #[test]
 fn un_refus_part_sans_texte_mais_avec_sa_taille() {
     let _verrou = verrouiller_pour_le_test();
@@ -85,22 +85,22 @@ fn un_refus_part_sans_texte_mais_avec_sa_taille() {
     retirer("pp-refus", generation);
 }
 
-/// Même remède, et pour la même raison, que
-/// `un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier` : un fil de
-/// fenêtre qui meurt sans passer par `retirer` (une panique court-circuite
-/// le point de passage unique de `Fenetre::servir`) laisse une entrée dans
-/// `canaux` ET dans le vivier, où elle occuperait une place d'encodeur
-/// pour toute la vie du processus. `oublier` — jamais un `remove` direct —
-/// est ce qui retire les deux.
+/// Same remedy, and for the same reason, as
+/// `un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier`: a window
+/// thread dying without going through `retirer` (a panic short-circuits
+/// the single passage point of `Fenetre::servir`) leaves an entry in
+/// `canaux` AND in the pool, where it would occupy an encoder place
+/// for the whole life of the process. `oublier` — never a direct `remove` —
+/// is what removes both.
 ///
-/// ⚠️ **Ce test observe le vivier DIRECTEMENT, et c'est ce qui le rend
-/// discriminant.** Une première rédaction jugeait sur « une session neuve
-/// arrive-t-elle à s'éveiller » — et elle passait AVEC UN DISTRIBUTEUR
-/// VIDE : `inscrire` et `signaler` appellent tous deux
-/// `parts::distribuer_les_parts`, qui détecte la même rupture par son
-/// propre chemin et libère la place à la place de celui-ci. Le contrôle ne
-/// pouvait donc pas échouer — exactement le patron que ce dépôt paie
-/// depuis D6. Ici, rien ne s'intercale entre la rupture et l'observation.
+/// ⚠️ **This test observes the pool DIRECTLY, and that is what makes it
+/// discriminating.** A first draft judged on "does a new session
+/// manage to wake up" — and it passed WITH AN EMPTY
+/// DISTRIBUTOR: `inscrire` and `signaler` both call
+/// `parts::distribuer_les_parts`, which detects the same break through its
+/// own path and frees the place instead of this one. The check
+/// therefore could not fail — exactly the pattern this repository has been paying for
+/// since D6. Here, nothing comes between the break and the observation.
 #[test]
 fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
     let _verrou = verrouiller_pour_le_test();
@@ -112,11 +112,11 @@ fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
         "pp-mort devrait s'éveiller avant qu'on ne tue son fil"
     );
 
-    // Le fil « meurt » : son récepteur est jeté SANS passer par `retirer`.
+    // The thread "dies": its receiver is thrown away WITHOUT going through `retirer`.
     drop(canal_mort);
 
-    // Aucun appel public entre la rupture et l'observation : ni `inscrire`
-    // ni `signaler`, qui détecteraient la rupture par le chemin des parts.
+    // No public call between the break and the observation: neither `inscrire`
+    // nor `signaler`, which would detect the break through the shares path.
     super::distribuer(&mut etat(), Annonce::Texte("bonjour".to_string()));
 
     assert!(
@@ -130,11 +130,11 @@ fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
 }
 
 // -----------------------------------------------------------------------
-// Sous-bloc P2 — l'écriture par le propriétaire, et l'armement des gardes.
+// Sub-block P2 — writing by the owner, and arming the guards.
 // -----------------------------------------------------------------------
 
-/// Un `Sondeur` qui a déjà pris sa référence : c'est l'état nominal après
-/// le premier tour, et le seul dans lequel les gardes se jugent.
+/// A `Sondeur` that has already taken its reference: it is the nominal state after
+/// the first round, and the only one in which the guards are judged.
 fn sondeur_amorce() -> Sondeur {
     let mut sondeur = Sondeur::nouveau();
     assert_eq!(
@@ -144,24 +144,24 @@ fn sondeur_amorce() -> Sondeur {
     sondeur
 }
 
-/// Le fil de fenêtre pose notre écriture dans `Etat` ; `armer_les_gardes`
-/// la consomme et arme le `Sondeur`. Le témoin n'est pas que rien ne soit
-/// annoncé — ce serait aussi vrai du garde n°2 — mais que le presse-papier
-/// ne soit **même pas rouvert** : la fermeture de lecture PANIQUE si elle
-/// est appelée.
+/// The window thread puts our write into `Etat`; `armer_les_gardes`
+/// consumes it and arms the `Sondeur`. The witness is not that nothing is
+/// announced — that would also be true of guard no. 2 — but that the clipboard
+/// is **not even reopened**: the read closure PANICS if it
+/// is called.
 ///
-/// ROUGE si `armer_les_gardes` ne consomme rien, ou ne pose pas
+/// RED if `armer_les_gardes` consumes nothing, or does not set
 /// `reference`.
 ///
-/// 🔴 **CE QUE CE TEST NE COUVRE PAS, ET C'EST MESURÉ, PAS SUPPOSÉ.** Il
-/// établit que le mécanisme est juste **quand on l'appelle avant
-/// `tour()`** ; il n'établit **pas** que le tour de roue l'appelle bien
-/// dans cet ordre. Vérifié par mutation le 21 août 2026 : intervertir les
-/// deux lignes de `registre.rs::demarrer_le_tour_de_roue` laisse **les sept
-/// tests de ce module VERTS**. Le corps du tour de roue est une boucle
-/// infinie dans un `thread::spawn`, qu'aucun test d'hôte n'atteint —
-/// l'ordre y est un fait de LECTURE, et sa seule épreuve est la recette
-/// (critère ④, qui compte les messages de retour).
+/// 🔴 **WHAT THIS TEST DOES NOT COVER, AND IT IS MEASURED, NOT ASSUMED.** It
+/// establishes that the mechanism is right **when called before
+/// `tour()`**; it does **not** establish that the wheel round calls it
+/// in that order. Checked by mutation on 21 August 2026: swapping the
+/// two lines of `registre.rs::demarrer_le_tour_de_roue` leaves **the seven
+/// tests of this module GREEN**. The body of the wheel round is an infinite
+/// loop in a `thread::spawn`, which no host test reaches —
+/// the order there is a fact of READING, and its only test is the acceptance run
+/// (criterion ④, which counts the return messages).
 #[test]
 fn armer_les_gardes_empeche_de_relire_notre_ecriture() {
     let _verrou = verrouiller_pour_le_test();
@@ -176,17 +176,17 @@ fn armer_les_gardes_empeche_de_relire_notre_ecriture() {
         )),
         None
     );
-    // Consommée : un second armement ne trouve plus rien.
+    // Consumed: a second arming finds nothing any more.
     assert!(etat().notre_ecriture.is_none());
 }
 
-/// 🔴 **Le garde reste EXACT au sens de D5, et c'est ce que ce test
-/// mesure.** Poser `reference` sur *notre* `seq` ne masque pas une copie
-/// TIERCE survenue depuis : le compteur a encore bougé, et cette copie doit
-/// être annoncée.
+/// 🔴 **The guard stays EXACT in D5's sense, and that is what this test
+/// measures.** Setting `reference` on *our* `seq` does not mask a THIRD-PARTY
+/// copy that happened since: the counter moved again, and that copy must
+/// be announced.
 ///
-/// ROUGE si l'armement posait un état « on se tait désormais ». Sans ce
-/// test, un garde trop large passerait le précédent.
+/// RED if the arming set a "we stay silent from now on" state. Without this
+/// test, an overly broad guard would pass the previous one.
 #[test]
 fn une_copie_tierce_survenue_apres_notre_ecriture_est_quand_meme_annoncee() {
     let _verrou = verrouiller_pour_le_test();
@@ -201,18 +201,18 @@ fn une_copie_tierce_survenue_apres_notre_ecriture_est_quand_meme_annoncee() {
     );
 }
 
-/// 🔴 **Une écriture ÉCHOUÉE n'arme AUCUN garde**, et c'est le cas le plus
-/// dangereux : armer avant de savoir ferait sortir de l'observation un
-/// contenu qui n'a jamais atteint le presse-papier. Ce contenu deviendrait
-/// alors invisible **à jamais** — le tour suivant ne le verrait pas comme
-/// un changement.
+/// 🔴 **A FAILED write arms NO guard**, and it is the most
+/// dangerous case: arming before knowing would take out of observation a
+/// content that never reached the clipboard. That content would then become
+/// invisible **forever** — the next round would not see it as
+/// a change.
 ///
-/// L'écrivain est INJECTÉ, exactement comme la fermeture de lecture de
-/// `Sondeur::observer` : c'est ce qui rend ce chemin éprouvable sur l'hôte
-/// sans le moindre `cfg`.
+/// The writer is INJECTED, exactly like the read closure of
+/// `Sondeur::observer`: that is what makes this path testable on the host
+/// without any `cfg`.
 ///
-/// ROUGE si `ecrire_avec` posait `notre_ecriture` avant d'appeler
-/// l'écrivain, ou si elle ignorait son `Err`.
+/// RED if `ecrire_avec` set `notre_ecriture` before calling
+/// the writer, or if it ignored its `Err`.
 #[test]
 fn une_ecriture_echouee_n_arme_aucun_garde() {
     let _verrou = verrouiller_pour_le_test();
@@ -227,12 +227,12 @@ fn une_ecriture_echouee_n_arme_aucun_garde() {
     );
 }
 
-/// Le pendant : une écriture RÉUSSIE pose bien le couple, avec le numéro
-/// que l'écrivain a rendu — celui relu APRÈS `CloseClipboard`.
+/// The counterpart: a SUCCESSFUL write does set the pair, with the number
+/// the writer returned — the one re-read AFTER `CloseClipboard`.
 ///
-/// ROUGE si `ecrire_avec` posait un numéro fabriqué au lieu de celui de
-/// l'écrivain : le garde n°1 serait alors faux d'un cran, c'est-à-dire
-/// silencieusement inopérant.
+/// RED if `ecrire_avec` set a fabricated number instead of the
+/// writer's: guard no. 1 would then be off by one step, that is
+/// silently inoperative.
 #[test]
 fn une_ecriture_reussie_pose_le_numero_rendu_par_l_ecrivain() {
     let _verrou = verrouiller_pour_le_test();
@@ -251,17 +251,17 @@ fn une_ecriture_reussie_pose_le_numero_rendu_par_l_ecrivain() {
     etat().notre_ecriture = None;
 }
 
-/// La SECONDE PRISE de D-P3-6, sur SA BRANCHE : elle doit CONSOMMER
-/// `etat().notre_ecriture` et écarter l'annonce qui porte notre propre texte.
+/// The SECOND TAKE of D-P3-6, on ITS BRANCH: it must CONSUME
+/// `etat().notre_ecriture` and discard the announcement carrying our own text.
 ///
-/// ⚠️ **Ce test couvre la lecture d'`etat()`, que la règle pure de
-/// `Sondeur::ecarter` ne peut pas couvrir** — c'est le seul endroit où la
-/// branche est éprouvable. Le SITE D'APPEL, lui (`registre.rs`, entre `tour()`
-/// et `distribuer`), n'est couvert par aucun test d'hôte : il vit dans le fil
-/// du tour de roue. Dit plutôt que tu.
+/// ⚠️ **This test covers the read of `etat()`, which the pure rule of
+/// `Sondeur::ecarter` cannot cover** — it is the only place where the
+/// branch is testable. The CALL SITE (`registre.rs`, between `tour()`
+/// and `distribuer`) is covered by no host test: it lives in the
+/// wheel-round thread. Said rather than kept quiet.
 ///
-/// ROUGE si `filtrer_nos_ecritures_tardives` ne prend pas le couple, ou s'il
-/// le lit sans le consommer — la deuxième assertion tomberait.
+/// RED if `filtrer_nos_ecritures_tardives` does not take the pair, or if it
+/// reads it without consuming it — the second assertion would fail.
 #[test]
 fn la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte() {
     let _verrou = verrouiller_pour_le_test();
@@ -282,10 +282,10 @@ fn la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte() {
     );
 }
 
-/// Sans écriture de notre part, la seconde prise est transparente.
+/// Without a write of ours, the second take is transparent.
 ///
-/// ROUGE si elle écartait tout : une copie faite dans la VM n'arriverait
-/// jamais nulle part, et le sens descendant serait mort.
+/// RED if it discarded everything: a copy made in the VM would never
+/// arrive anywhere, and the downward direction would be dead.
 #[test]
 fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
     let _verrou = verrouiller_pour_le_test();
@@ -300,25 +300,25 @@ fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
     );
 }
 
-// ── L'ÉTAT COURANT À L'INSCRIPTION — moitié AGENT du legs n°3 de P1 ──────
+// ── THE CURRENT STATE AT REGISTRATION — AGENT half of P1's hand-over no. 3 ──────
 //
-// 🔴 **CES TESTS ONT ÉTÉ ÉCRITS DANS `sommeil/tests.rs` PUIS DÉPLACÉS ICI,
-// PARCE QU'ILS L'ONT FAIT FRANCHIR LE PLAFOND** — 417 → 562 lignes, pour une
-// porte de 500. E13 du plan l'avait annoncé (« si l'addition le porte au-delà
-// de 480, extraire AVANT d'écrire, jamais comprimer ») et la mesure n'a pas
-// été prise d'avance. **L'extraction est jouée, jamais une compression** :
-// c'est la règle du dépôt, que D9 a payée deux fois pour l'avoir oubliée.
+// 🔴 **THESE TESTS WERE WRITTEN IN `sommeil/tests.rs` THEN MOVED HERE,
+// BECAUSE THEY MADE IT CROSS THE CAP** — 417 → 562 lines, for a
+// gate of 500. The plan's E13 had announced it ("if the addition takes it beyond
+// 480, extract BEFORE writing, never compress") and the measurement was not
+// taken in advance. **The extraction is done, never a compression**:
+// that is the repository's rule, which D9 paid for twice for having forgotten it.
 //
-// ⚠️ **Et ce n'est pas seulement un déménagement de commodité.** E13 range les
-// tests de `registre.rs` dans `sommeil/tests.rs`, faute de module de tests chez
-// lui ; mais ce que ces tests exercent est `emettre_l_etat_courant`, qui vit
-// dans le PARENT de ce fichier-ci. Ils sont donc auprès de la fonction qu'ils
-// éprouvent, et le helper `dernier_presse_papier` qui vit déjà ici leur sert
-// tel quel — le jumeau écrit dans `sommeil/tests.rs` faisait double emploi et
-// n'a pas suivi.
+// ⚠️ **And it is not merely a move of convenience.** E13 puts the
+// tests of `registre.rs` in `sommeil/tests.rs`, for lack of a test module of
+// its own; but what these tests exercise is `emettre_l_etat_courant`, which lives
+// in the PARENT of this file. They are therefore next to the function they
+// test, and the `dernier_presse_papier` helper that already lives here serves them
+// as is — the twin written in `sommeil/tests.rs` was redundant and
+// did not follow.
 
-/// 🔴 ROUGE SUR L'ARBRE INTACT avant le remède : c'est le legs n°3 de P1 —
-/// « une fenêtre attachée après une copie ne reçoit jamais ce contenu ».
+/// 🔴 RED ON THE INTACT TREE before the remedy: it is P1's hand-over no. 3 —
+/// "a window attached after a copy never receives that content".
 #[test]
 fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
     let _verrou = verrouiller_pour_le_test();
@@ -330,7 +330,7 @@ fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
     );
     let _ = dernier_presse_papier(&canal_present);
 
-    // La fenêtre s'attache APRÈS la copie.
+    // The window attaches AFTER the copy.
     let (canal_tardif, generation_tardif) = inscrire("t11-tardif", 7301);
 
     assert_eq!(
@@ -346,9 +346,9 @@ fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
     drop(canal_tardif);
 }
 
-/// ROUGE = appeler `distribuer` au lieu d'envoyer sur le seul canal neuf : les
-/// voisines recevraient aussi, et le contenu serait rejoué à TOUTES les
-/// fenêtres à chaque attache.
+/// RED = calling `distribuer` instead of sending on the new channel alone: the
+/// neighbours would receive too, and the content would be replayed to ALL
+/// windows at every attach.
 #[test]
 fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
     let _verrou = verrouiller_pour_le_test();
@@ -358,7 +358,7 @@ fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
         &mut etat(),
         crate::presse_papier::Annonce::Texte("copie".into()),
     );
-    // On vide ce que la voisine a légitimement reçu de `distribuer`.
+    // We drain what the neighbour legitimately received from `distribuer`.
     let _ = dernier_presse_papier(&canal_present);
 
     let (canal_neuf, generation_neuf) = inscrire("t12-neuf", 7311);
@@ -381,8 +381,8 @@ fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
     drop(canal_neuf);
 }
 
-/// ROUGE = ne mémoriser que `Annonce::Texte` : la fenêtre attendrait alors un
-/// contenu qui n'arrivera jamais, sans le bandeau qui lui dit pourquoi.
+/// RED = memorising only `Annonce::Texte`: the window would then wait for a
+/// content that will never arrive, without the banner telling it why.
 #[test]
 fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
     let _verrou = verrouiller_pour_le_test();
@@ -405,9 +405,9 @@ fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
     drop(canal);
 }
 
-/// ROUGE = émettre un `Message::PressePapier` vide quand la mémoire est
-/// `None` : le client écrirait alors une chaîne vide dans son presse-papier
-/// local à chaque attache.
+/// RED = emitting an empty `Message::PressePapier` when the memory is
+/// `None`: the client would then write an empty string into its local
+/// clipboard at every attach.
 #[test]
 fn une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien() {
     let _verrou = verrouiller_pour_le_test();
@@ -421,13 +421,13 @@ fn une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien() {
     drop(canal);
 }
 
-/// 🔴 AUCUNE PURGE À LA RÉ-INSCRIPTION (D-P3-3) — et la symétrie avec
-/// `dernieres_parts` / `derniers_audio`, que `inscrire` purge quelques lignes
-/// plus haut, est TROMPEUSE.
+/// 🔴 NO PURGE ON RE-REGISTRATION (D-P3-3) — and the symmetry with
+/// `dernieres_parts` / `derniers_audio`, which `inscrire` purges a few lines
+/// above, is MISLEADING.
 ///
-/// ROUGE = copier cette purge par symétrie de forme : la mémoire serait
-/// retirée au moment précis où l'on veut s'en servir, et le rattachement — le
-/// cas où le rejeu est le PLUS utile — ne rejouerait rien.
+/// RED = copying that purge by symmetry of form: the memory would be
+/// removed at the precise moment we want to use it, and re-attachment — the
+/// case where replay is MOST useful — would replay nothing.
 #[test]
 fn un_rattachement_recoit_lui_aussi_le_contenu_courant() {
     let _verrou = verrouiller_pour_le_test();
@@ -439,7 +439,7 @@ fn un_rattachement_recoit_lui_aussi_le_contenu_courant() {
     );
     let _ = dernier_presse_papier(&premier_canal);
 
-    // Le rattachement, sous le MÊME nom.
+    // Re-attachment, under the SAME name.
     let (second_canal, seconde_generation) = inscrire("t15-rattache", 7340);
 
     assert_eq!(

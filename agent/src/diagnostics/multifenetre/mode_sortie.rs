@@ -1,117 +1,117 @@
-//! P1 du sous-bloc D8 : une sortie virtuelle SudoVDA accepte-t-elle un autre
-//! mode d'affichage que celui de sa création ?
+//! P1 of sub-block D8: does a SudoVDA virtual output accept a display mode
+//! other than the one it was created with?
 //!
-//! ⚠️ **Le critère juge sur la RELECTURE DXGI, jamais sur le code de retour.**
-//! `mode-sortie-1728x1080.log` montre l'idiome `CDS_UPDATEREGISTRY|CDS_NORESET`
-//! puis `CDS_RESET` annonçant `0` sur une sortie qui n'a pas bougé d'un pixel :
-//! un refus déguisé en succès. Et le premier verdict P1 de D8 était `REÇU`
-//! rendu par un critère qui ne pouvait pas rendre l'autre valeur — la sonde
-//! demandait à la sortie la taille qu'elle avait déjà.
+//! ⚠️ **The criterion judges on the DXGI READ-BACK, never on the return code.**
+//! `mode-sortie-1728x1080.log` shows the `CDS_UPDATEREGISTRY|CDS_NORESET`
+//! then `CDS_RESET` idiom announcing `0` on an output that did not move by one pixel:
+//! a refusal disguised as a success. And D8's first P1 verdict was `REÇU`
+//! returned by a criterion that could not return the other value — the probe
+//! asked the output for the size it already had.
 //!
-//! # Tâche 1 du sous-bloc D9 — l'écart banc/produit, comblé
+//! # Task 1 of sub-block D9 — the bench/product gap, closed
 //!
-//! D8 éprouvait TROIS combinaisons de drapeaux, toutes `CDS_UPDATEREGISTRY`,
-//! et n'ouvrait JAMAIS de duplication DXGI — alors que le produit, à l'époque,
-//! retaillait une sortie dont la duplication était ouverte et détenue jusqu'à
-//! 3,1 s (`agent/src/windows_source/redimensionnement/mode_sortie.rs`,
-//! **retiré par le sous-bloc D9** — voir le constat de mesure en tête de
-//! `capteur/plein_ecran.rs`). Cette sonde comble l'écart :
+//! D8 tested THREE flag combinations, all `CDS_UPDATEREGISTRY`,
+//! and NEVER opened a DXGI duplication — whereas the product, at the time,
+//! resized an output whose duplication was open and held for up to
+//! 3.1 s (`agent/src/windows_source/redimensionnement/mode_sortie.rs`,
+//! **removed by sub-block D9** — see the measurement finding at the head of
+//! `capteur/plein_ecran.rs`). This probe closes the gap:
 //!
-//! 1. une QUATRIÈME combinaison, dynamique et non persistée
-//!    (`combinaisons::combos`) ;
-//! 2. une duplication DXGI ouverte sur la sortie testée ET TENUE pendant tout
-//!    le tour (`DesktopCapture::sur_sortie`) — c'est l'ÉLIMINATOIRE elle-même,
-//!    l'objet de cette sonde ;
-//! 3. un TÉMOIN : le même bras, rejoué sur une sortie neuve sans duplication
-//!    ouverte, pour ne pas imputer un refus à la duplication alors qu'il
-//!    viendrait du mode choisi ;
-//! 4. les deux inconnues annexes de D8 relevées au même moment que
-//!    l'éliminatoire : les pertes d'accès infligées à deux sorties VOISINES
-//!    (`mode_sortie::voisines`), et si la sortie testée conserve son nom
-//!    `\\.\DISPLAYn`.
+//! 1. a FOURTH combination, dynamic and not persisted
+//!    (`combinaisons::combos`);
+//! 2. a DXGI duplication opened on the tested output AND HELD for the whole
+//!    round (`DesktopCapture::sur_sortie`) — it is the ELIMINATION test itself,
+//!    the subject of this probe;
+//! 3. a CONTROL: the same arm, replayed on a fresh output with no duplication
+//!    open, so as not to blame the duplication for a refusal that would
+//!    come from the chosen mode;
+//! 4. D8's two side unknowns, surveyed at the same moment as
+//!    the elimination test: the access losses inflicted on two NEIGHBOURING outputs
+//!    (`mode_sortie::voisines`), and whether the tested output keeps its
+//!    `\\.\DISPLAYn` name.
 //!
-//! **L'énumération ne suffit pas, et c'est tout le sujet de cette sonde.** Un
-//! pilote peut annoncer un mode et le refuser, comme il peut accepter un mode
-//! qu'il n'énumère pas. Elle fait donc les TROIS, dans l'ordre : elle énumère
-//! (`EnumDisplaySettingsExW`), PUIS elle change réellement
-//! (`ChangeDisplaySettingsExW`), PUIS elle relit par
-//! `crate::capture::enumerer_sorties` — la même relecture DXGI
-//! (`GetDesc`/`DesktopCoordinates`) que tout ce module emploie déjà, jamais
-//! WMI, dont le champ de résolution a été vu périmé de 68 s sur ce terrain
-//! (voir `moniteurs_virtuels.rs`).
+//! **Enumeration is not enough, and that is the whole subject of this probe.** A
+//! driver can advertise a mode and refuse it, just as it can accept a mode
+//! it does not enumerate. So it does all THREE, in order: it enumerates
+//! (`EnumDisplaySettingsExW`), THEN it really changes
+//! (`ChangeDisplaySettingsExW`), THEN it reads back through
+//! `crate::capture::enumerer_sorties` — the same DXGI read-back
+//! (`GetDesc`/`DesktopCoordinates`) this whole module already uses, never
+//! WMI, whose resolution field was seen 68 s stale on this ground
+//! (see `moniteurs_virtuels.rs`).
 //!
-//! `MULTIFENETRE_MODE_SORTIE=<L>x<H>` : crée une sortie à la résolution de
-//! production (`montee::RESOLUTION`, 1280×720 — le chemin par lequel le
-//! produit fait paraître ses sorties), tente de la faire passer à L×H par
-//! QUATRE combinaisons de drapeaux `CDS_*` croissantes, relit après chacune,
-//! s'arrête à la première qui tient, puis rend la sortie au pilote.
-//! `CDS_SET_PRIMARY` n'est employé dans AUCUNE combinaison : on ne touche pas
-//! au moniteur primaire.
+//! `MULTIFENETRE_MODE_SORTIE=<W>x<H>`: creates an output at the production
+//! resolution (`montee::RESOLUTION`, 1280×720 — the path through which the
+//! product makes its outputs appear), tries to switch it to W×H through
+//! FOUR increasing `CDS_*` flag combinations, reads back after each one,
+//! stops at the first that holds, then returns the output to the driver.
+//! `CDS_SET_PRIMARY` is used in NO combination: we do not touch
+//! the primary monitor.
 //!
-//! Refus et acceptation sont deux résultats de mesure également valides —
-//! aucun des deux n'est une panne de la sonde. Un refus a son repli déjà acté
-//! ailleurs dans le plan (l'upscale, documenté puis accepté).
+//! Refusal and acceptance are two equally valid measurement results —
+//! neither is a failure of the probe. A refusal has its fallback already settled
+//! elsewhere in the plan (upscaling, documented then accepted).
 //!
-//! # Défaut corrigé le 4 août 2026 (F1 rejoué) — voir `p1-mode-sortie.log`
+//! # Defect fixed on 4 August 2026 (F1 replayed) — see `p1-mode-sortie.log`
 //!
-//! La première exécution a rendu « P1 RECU » sans valeur : elle demandait à
-//! la sortie la taille qu'elle avait **déjà** au moment de la création
-//! (`sortie moment="après création" … largeur=1920 hauteur=1080`, alors que
-//! la sonde croyait avoir créé du 1280×720 — persistance probable au
-//! registre d'un `CDS_UPDATEREGISTRY` d'une exécution antérieure). Le critère
-//! `derniere_taille == cible` était donc vrai AVANT toute tentative :
-//! `ChangeDisplaySettingsExW` n'a jamais eu l'occasion de changer quoi que ce
-//! soit, et rien ne pouvait faire échouer le contrôle. Exactement le défaut
-//! que ce dépôt appelle F1 (un contrôle qui ne peut pas rendre l'autre
-//! verdict), rejoué sur l'instrument censé l'éviter.
+//! The first run returned "P1 RECU" with no value: it asked
+//! the output for the size it **already** had at creation time
+//! (`sortie moment="après création" … largeur=1920 hauteur=1080`, whereas
+//! the probe believed it had created 1280×720 — probable persistence in the
+//! registry of a `CDS_UPDATEREGISTRY` from an earlier run). The criterion
+//! `derniere_taille == cible` was therefore true BEFORE any attempt:
+//! `ChangeDisplaySettingsExW` never had the chance to change anything
+//! at all, and nothing could make the check fail. Exactly the defect
+//! this repository calls F1 (a check that cannot return the other
+//! verdict), replayed on the instrument meant to avoid it.
 //!
-//! **Le remède tient en deux points, tous deux appliqués ci-dessous :**
-//! 1. la taille courante est relevée par DXGI (`GetDesc`/`DesktopCoordinates`,
-//!    jamais WMI) **avant toute tentative**, sous une clé sans ambiguïté
-//!    (`taille_avant_tentative_*`), et comparée à la cible ;
-//! 2. la cible n'est plus un couple fixe reçu tel quel : elle est choisie
-//!    dynamiquement parmi les modes que `EnumDisplaySettingsExW` annonce, **en
-//!    excluant la taille courante** (`choisir_cible`). Si aucun mode
-//!    n'en diffère — cas dégénéré, non rencontré en pratique avec les neuf
-//!    modes de cette VM — la sonde REFUSE de mesurer (`P1 NON MESURABLE`)
-//!    plutôt que de rendre un verdict vide ;
-//! 3. **le verdict lui-même est un MOUVEMENT observé, pas une égalité à la
-//!    cible.** `P1 RECU` ⟺ la taille relue par DXGI après une tentative
-//!    diffère de `avant` — exactement la question que pose le titre du
-//!    module (« un AUTRE mode que celui de sa création »), pas « CE mode
-//!    précis-là ». Que le pilote honore ou non la valeur exacte demandée est
-//!    journalisé à part (`cible_atteinte`/`cible_exacte_atteinte`) : une
-//!    question plus fine, qui peut valoir `false` sous un verdict `P1 RECU`
-//!    sans que ce soit une contradiction.
+//! **The remedy fits in two points, both applied below:**
+//! 1. the current size is read through DXGI (`GetDesc`/`DesktopCoordinates`,
+//!    never WMI) **before any attempt**, under an unambiguous key
+//!    (`taille_avant_tentative_*`), and compared with the target;
+//! 2. the target is no longer a fixed pair received as is: it is chosen
+//!    dynamically among the modes `EnumDisplaySettingsExW` advertises, **by
+//!    excluding the current size** (`choisir_cible`). If no mode
+//!    differs from it — a degenerate case, not met in practice with the nine
+//!    modes of this VM — the probe REFUSES to measure (`P1 NON MESURABLE`)
+//!    rather than return an empty verdict;
+//! 3. **the verdict itself is an observed MOVEMENT, not an equality with the
+//!    target.** `P1 RECU` ⟺ the size read back by DXGI after an attempt
+//!    differs from `avant` — exactly the question the module's title
+//!    asks ("a mode OTHER than the one it was created with"), not "THIS precise
+//!    mode". Whether or not the driver honours the exact requested value is
+//!    logged separately (`cible_atteinte`/`cible_exacte_atteinte`): a
+//!    finer question, which can be `false` under a `P1 RECU` verdict
+//!    without that being a contradiction.
 //!
-//! # Tâche 2bis du sous-bloc D9 — la PERSISTANCE, pas seulement le déclenchement
+//! # Task 2bis of sub-block D9 — PERSISTENCE, not only triggering
 //!
-//! La tâche 2 a établi que `CDS_TYPE(0)` (dynamique, non persistée par
-//! construction) fait bouger la sortie **au premier essai**, si bien que les
-//! trois autres bras — dont `CDS_UPDATEREGISTRY`, seul à persister par
-//! construction — n'ont jamais été sollicités, et que le mouvement obtenu ne
-//! survit pas à la création d'une sortie virtuelle de plus. Cette tâche
-//! répond pour `CDS_UPDATEREGISTRY` : `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`
-//! restreint le tour à un seul bras désigné (`persistance::combinaison_imposee`,
-//! `combinaisons::combos_du_tour`), et le verdict de survie est journalisé
-//! explicitement (`persistance::journaliser_verdict`) plutôt que recomposable
-//! seulement en recoupant deux relevés de topologie à dix lignes d'écart.
+//! Task 2 established that `CDS_TYPE(0)` (dynamic, not persisted by
+//! construction) makes the output move **on the first attempt**, so that the
+//! three other arms — including `CDS_UPDATEREGISTRY`, the only one to persist by
+//! construction — were never exercised, and the movement obtained does not
+//! survive the creation of one more virtual output. This task
+//! answers for `CDS_UPDATEREGISTRY`: `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`
+//! restricts the round to a single designated arm (`persistance::combinaison_imposee`,
+//! `combinaisons::combos_du_tour`), and the survival verdict is logged
+//! explicitly (`persistance::journaliser_verdict`) rather than being reconstructible
+//! only by cross-checking two topology surveys ten lines apart.
 //!
-//! ## Revue de la tâche 2bis — quatre défauts trouvés sur pièces, corrigés
+//! ## Review of task 2bis — four defects found on evidence, fixed
 //!
-//! La première mesure comparait `mouvement` à une valeur `avant` capturée
-//! plusieurs secondes avant le tour, AVANT l'ouverture des deux voisines —
-//! **la sortie peut bouger sans aucun appel d'API entre ces deux instants**
-//! (résidu de pollution du registre d'une exécution antérieure, réappliqué à
-//! la création d'une sortie virtuelle voisine). `essayer_les_modes` relit
-//! désormais l'état DXGI juste avant le premier essai et compare CONTRE
-//! CETTE relecture fraîche, jamais contre la valeur stale. Trois autres
-//! défauts, plus mineurs mais réels : `journaliser_verdict` pouvait rendre
-//! `survit=true` sur une sortie disparue (repli `(0, 0)` des deux côtés) ;
-//! `mouvement_observe` pouvait valoir `true` sur un tour VIDE (aucun combo
-//! tenté) ; et seul le bras GAGNANT était journalisé, jamais le bras
-//! IMPOSÉ — voir les commentaires de tête d'`eliminatoire.rs` et
-//! `persistance.rs` pour le détail de chaque correction.
+//! The first measurement compared `mouvement` with an `avant` value captured
+//! several seconds before the round, BEFORE the two neighbours were opened —
+//! **the output can move without any API call between these two instants**
+//! (residue of registry pollution from an earlier run, reapplied at
+//! the creation of a neighbouring virtual output). `essayer_les_modes` now reads
+//! the DXGI state back just before the first attempt and compares AGAINST
+//! THIS fresh read-back, never against the stale value. Three other
+//! defects, more minor but real: `journaliser_verdict` could return
+//! `survit=true` on a vanished output (`(0, 0)` fallback on both sides);
+//! `mouvement_observe` could be `true` on an EMPTY round (no combo
+//! attempted); and only the WINNING arm was logged, never the
+//! IMPOSED arm — see the header comments of `eliminatoire.rs` and
+//! `persistance.rs` for the detail of each fix.
 
 mod combinaisons;
 mod eliminatoire;
@@ -140,13 +140,13 @@ use crate::capture::DesktopCapture;
 use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::moniteurs_virtuels::Sorties;
 
-/// Modes que la sortie ANNONCE (`EnumDisplaySettingsExW`, énumération pure) —
-/// ne dit rien de ce qu'elle accepte réellement, c'est tout le sujet du
+/// Modes the output ADVERTISES (`EnumDisplaySettingsExW`, pure enumeration) —
+/// says nothing about what it really accepts, that is the whole subject of the
 /// module.
 ///
-/// `pub(super)` : `temoin::rejouer_temoin` en a besoin pour se prémunir du
-/// même défaut F1 que `choisir_cible` corrige ici pour l'éliminatoire — voir
-/// son commentaire de tête.
+/// `pub(super)`: `temoin::rejouer_temoin` needs it to guard against the
+/// same F1 defect that `choisir_cible` fixes here for the elimination test — see
+/// its header comment.
 pub(super) fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
     let nom: Vec<u16> = nom_sortie
         .encode_utf16()
@@ -178,21 +178,21 @@ pub(super) fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
     modes
 }
 
-/// Choisit la cible à tenter : la résolution demandée si elle diffère déjà de
-/// la taille courante et figure parmi les modes annoncés, sinon une cible
-/// prise dynamiquement dans les modes annoncés, **en excluant systématiquement
-/// la taille courante** (`avant`) — c'est ce qui rend impossible de rejouer le
-/// défaut F1 documenté en tête du module : quel que soit l'état où la
-/// persistance au registre a laissé la sortie, la cible retenue en diffère
-/// par construction, sauf le cas dégénéré rendu par `None`.
+/// Chooses the target to attempt: the requested resolution if it already differs from
+/// the current size and is among the advertised modes, otherwise a target
+/// taken dynamically from the advertised modes, **always excluding
+/// the current size** (`avant`) — this is what makes it impossible to replay the
+/// F1 defect documented at the head of the module: whatever state the
+/// registry persistence left the output in, the retained target differs from it
+/// by construction, except for the degenerate case returned as `None`.
 ///
-/// Modes triés par `modes_annonces` (croissant, dédupliqués) : le repli
-/// choisit le plus grand mode distinct de `avant`, pour un mouvement large et
-/// donc sans ambiguïté de mesure.
+/// Modes sorted by `modes_annonces` (ascending, deduplicated): the fallback
+/// picks the largest mode distinct from `avant`, for a wide movement and
+/// hence one without measurement ambiguity.
 ///
-/// `pub(super)` : `temoin::rejouer_temoin` réemploie cette MÊME fonction
-/// plutôt que d'en récrire une variante, pour la même raison qu'elle existe
-/// ici -- voir Critique 2 de la revue de la tâche 1.
+/// `pub(super)`: `temoin::rejouer_temoin` reuses this SAME function
+/// rather than rewriting a variant of it, for the same reason it exists
+/// here -- see Critical 2 of the review of task 1.
 pub(super) fn choisir_cible(
     avant: (u32, u32),
     demande: (u32, u32),
@@ -212,10 +212,10 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
              (par exemple 1920x1080)"
         )
     })?;
-    // `demande` : la préférence de l'opérateur, PAS forcément la cible
-    // retenue — voir `choisir_cible`. La conserver permet à un opérateur qui
-    // connaît déjà la taille courante de viser directement une cible utile,
-    // sans rien changer au format d'appel documenté.
+    // `demande`: the operator's preference, NOT necessarily the retained
+    // target — see `choisir_cible`. Keeping it lets an operator who
+    // already knows the current size aim directly at a useful target,
+    // without changing anything in the documented call format.
     let demande: (u32, u32) = (
         l.trim()
             .parse()
@@ -225,8 +225,8 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             .context("hauteur invalide dans MULTIFENETRE_MODE_SORTIE")?,
     );
 
-    // Relevé AVANT toute création, comme les sondes voisines : sans lui, une
-    // restauration manuelle après plantage se ferait à l'aveugle.
+    // Surveyed BEFORE any creation, like the neighbouring probes: without it, a
+    // manual restoration after a crash would be done blindly.
     let avant = relever_topologie("avant création")?;
     let noms_avant = noms_attaches(&avant);
     let connues_avant_tout: HashSet<String> = avant
@@ -237,25 +237,25 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     let pilote = ouvrir_pilote()?;
     let (largeur_creation, hauteur_creation, hertz) = RESOLUTION;
 
-    // Portée explicite : la garde `Sorties` doit avoir détruit AVANT le
-    // relevé final, sans quoi celui-ci décrirait un état transitoire — même
-    // discipline que `montee.rs` et `capture_virtuelle.rs`.
+    // Explicit scope: the `Sorties` guard must have destroyed BEFORE the
+    // final survey, otherwise the latter would describe a transient state — same
+    // discipline as `montee.rs` and `capture_virtuelle.rs`.
     let issue = {
         let mut sorties = Sorties::nouvelles(&pilote);
 
-        // --- La sortie SOUS TEST ---
+        // --- The output UNDER TEST ---
         let id = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
         let apres_creation = relever_topologie("après création (sortie testée)")?;
         let virtuelle = designer_sortie_neuve(&apres_creation, &connues_avant_tout, id)?;
         let nom_sortie = virtuelle.nom_sortie.clone();
-        // `taille_avant_tentative` : la taille RÉELLEMENT lue par DXGI juste
-        // après la création — PAS supposée être
-        // `largeur_creation`×`hauteur_creation`. C'est exactement le relevé
-        // dont l'absence a rendu le premier passage de cette sonde vide de
-        // sens (voir le commentaire de tête du module) : la sortie peut
-        // naître à une taille différente de celle demandée au pilote, par
-        // persistance au registre d'un `CDS_UPDATEREGISTRY` antérieur.
+        // `taille_avant_tentative`: the size ACTUALLY read by DXGI right
+        // after creation — NOT assumed to be
+        // `largeur_creation`×`hauteur_creation`. It is exactly the survey
+        // whose absence made the first run of this probe
+        // meaningless (see the module's header comment): the output can
+        // be born at a size different from the one requested from the driver, through
+        // registry persistence of an earlier `CDS_UPDATEREGISTRY`.
         let taille_avant_tentative = (virtuelle.rect.width, virtuelle.rect.height);
         tracing::info!(
             nom = %nom_sortie,
@@ -268,23 +268,23 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         let mut connues_a_ce_point = connues_avant_tout.clone();
         connues_a_ce_point.insert(nom_sortie.clone());
 
-        // L'ÉCART BANC/PRODUIT que D8 a laissé béant, et l'objet même de
-        // cette sonde : la production retaillait alors une sortie DONT LA
-        // DUPLICATION EST OUVERTE et détenue jusqu'à 3,1 s. P1 n'en ouvrait
-        // jamais. Le mécanisme mesuré ici a depuis été retiré par le
-        // sous-bloc D9 (voir `capteur/plein_ecran.rs`) ; cette sonde garde sa
-        // valeur de mesure.
+        // THE BENCH/PRODUCT GAP that D8 left wide open, and the very subject of
+        // this probe: production then resized an output WHOSE
+        // DUPLICATION IS OPEN and held for up to 3.1 s. P1 never opened
+        // one. The mechanism measured here has since been removed by
+        // sub-block D9 (see `capteur/plein_ecran.rs`); this probe keeps its
+        // measurement value.
         let duplication = DesktopCapture::sur_sortie(&nom_sortie)
             .context("ouverture de la duplication sur la sortie virtuelle neuve")?;
         tracing::info!(sortie = %nom_sortie, "duplication ouverte et TENUE pendant les tentatives");
 
-        // --- Deux VOISINES, pour l'inconnue annexe n°2 (D8) : combien de
-        // pertes d'accès un changement de mode leur inflige-t-il ? La
-        // création, la désignation ET l'ouverture de chacune sont
-        // ORCHESTRÉES par `voisines::creer_deux` (et non enchaînées ici) :
-        // c'est cet ordre strict, un index positionnel résolu et consommé
-        // avant toute création suivante, qui évite le piège documenté en
-        // doctrine D1 -- voir son commentaire de tête.
+        // --- Two NEIGHBOURS, for side unknown no. 2 (D8): how many
+        // access losses does a mode change inflict on them? The
+        // creation, designation AND opening of each are
+        // ORCHESTRATED by `voisines::creer_deux` (and not chained here):
+        // it is this strict order, a positional index resolved and consumed
+        // before any following creation, that avoids the trap documented in
+        // doctrine D1 -- see its header comment.
         let (voisine1, voisine2, nom_v1, nom_v2) = voisines::creer_deux(
             &pilote,
             &mut sorties,
@@ -295,7 +295,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         )?;
         let mut voisines = vec![voisine1, voisine2];
 
-        // --- L'ÉLIMINATOIRE ---
+        // --- THE ELIMINATION TEST ---
         let resultat = essayer_les_modes(
             &pilote,
             &nom_sortie,
@@ -304,8 +304,8 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             &mut voisines,
         )?;
 
-        // --- Les deux inconnues annexes (étape 5), relevées au même moment
-        // que l'éliminatoire -- avant de relâcher quoi que ce soit.
+        // --- The two side unknowns (step 5), surveyed at the same moment
+        // as the elimination test -- before releasing anything.
         let autres_noms_a_nous: HashSet<String> = [nom_v1, nom_v2].into_iter().collect();
         let (nom_apres, taille_apres_tour) =
             nom_apres_tour(&nom_sortie, &connues_avant_tout, &autres_noms_a_nous)?;
@@ -317,24 +317,24 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             nom_conserve = nom_sortie == nom_apres,
             "inconnues annexes relevées au même moment que l'éliminatoire"
         );
-        // Le nom qui remplace `nom_sortie` (s'il a changé -- ce que la ligne
-        // ci-dessus vient de mesurer) n'est encore connu de PERSONNE : ni de
-        // `connues_avant_tout`, ni de `connues_a_ce_point` (qui ne porte que
-        // l'ANCIEN nom). Sans cet ajout, la création du témoin verrait DEUX
-        // entrées neuves -- le nom renommé ET le témoin -- et échouerait avec
-        // « addition externe » (Important 2, revue de la tâche 1)
-        // précisément quand le renommage est le phénomène étudié.
+        // The name that replaces `nom_sortie` (if it changed -- which the line
+        // above just measured) is not yet known to ANYONE: neither to
+        // `connues_avant_tout`, nor to `connues_a_ce_point` (which only carries
+        // the OLD name). Without this addition, the creation of the control would see TWO
+        // new entries -- the renamed name AND the control -- and would fail with
+        // "external addition" (Important 2, review of task 1)
+        // precisely when the renaming is the phenomenon under study.
         if nom_apres != "<disparue>" {
             connues_a_ce_point.insert(nom_apres.clone());
         }
 
-        // TÉMOIN. Sans lui, un refus s'imputerait à la duplication alors
-        // qu'il pourrait venir du mode choisi. Le témoin rejoue le MÊME
-        // geste sur une sortie neuve, duplication fermée.
+        // CONTROL. Without it, a refusal would be blamed on the duplication while
+        // it could come from the chosen mode. The control replays the SAME
+        // gesture on a fresh output, duplication closed.
         drop(duplication);
         tracing::info!("duplication relâchée — début du témoin sans duplication");
-        // Les voisines n'ont plus rien à sonder : le témoin porte sur la
-        // duplication de la sortie TESTÉE, pas sur celle des voisines.
+        // The neighbours have nothing left to probe: the control bears on the
+        // duplication of the TESTED output, not on that of the neighbours.
         drop(voisines);
 
         match resultat.cible {
@@ -343,15 +343,15 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
                 let id_temoin = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
                 attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
                 let apres_temoin = relever_topologie("après création (témoin)")?;
-                // PERSISTANCE (tâche 2bis, D9) : la sortie sous test a-t-elle
-                // gardé, au moment où une sortie virtuelle DE PLUS vient
-                // d'être créée, la taille que le tour venait de lui donner ?
-                // Voir `persistance.rs` -- même relevé que `designer_sortie_neuve`
-                // ci-dessous, recherché sous `nom_apres` plutôt que par
-                // position. Les deux premiers arguments sont DISTINCTS depuis
-                // la revue de la tâche 2bis : `combinaison_imposee` (ce qui a
-                // été DEMANDÉ) et `resultat.gagnante` (ce qui s'est
-                // RÉELLEMENT passé) peuvent diverger (tour vide, mojibake).
+                // PERSISTENCE (task 2bis, D9): did the output under test
+                // keep, at the moment when ONE MORE virtual output has just
+                // been created, the size the round had just given it?
+                // See `persistance.rs` -- same survey as `designer_sortie_neuve`
+                // below, looked up under `nom_apres` rather than by
+                // position. The first two arguments are DISTINCT since
+                // the review of task 2bis: `combinaison_imposee` (what was
+                // REQUESTED) and `resultat.gagnante` (what
+                // REALLY happened) can diverge (empty round, mojibake).
                 journaliser_verdict(
                     resultat.combinaison_imposee.as_deref(),
                     resultat.gagnante,
@@ -372,22 +372,22 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         }
 
         Ok(())
-        // La garde `sorties` rend les sorties au pilote ici, à la sortie de
-        // portée.
+        // The `sorties` guard returns the outputs to the driver here, when going out of
+        // scope.
     };
 
-    // Second essai des retraits que la garde n'a pas obtenus : dernière
-    // chance de CE processus, au-delà seule la purge inter-processus les
-    // atteindra.
+    // Second attempt at the removals the guard did not obtain: last
+    // chance of THIS process, beyond that only the inter-process purge will
+    // reach them.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
         tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
     }
 
-    // Une sortie virtuelle survit au processus. Ce contrôle reste celui du
-    // processus mesureur, donc juge et partie — le contrôle qui vaut est un
-    // relevé `MULTIFENETRE_DXGI=1` depuis un processus NEUF, après coup, en
-    // comparant des ENSEMBLES DE NOMS et jamais des cardinaux.
+    // A virtual output outlives the process. This check remains that of the
+    // measuring process, hence judge and party — the check that counts is a
+    // `MULTIFENETRE_DXGI=1` survey from a FRESH process, afterwards, by
+    // comparing SETS OF NAMES and never cardinalities.
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);

@@ -1,32 +1,32 @@
-//! Les **huit** rappels que ProjFS appelle, et le seul endroit du pont où du
-//! code s'exécute sur un fil que le SYSTÈME possède.
+//! The **eight** callbacks ProjFS calls, and the only place in the bridge where
+//! code runs on a thread the SYSTEM owns.
 //!
-//! **TROIS d'entre eux sont ASYNCHRONES** — `GetPlaceholderInfo`,
-//! `GetFileData`, `GetDirectoryEnumeration` (plus `QueryFileName`, qui emprunte
-//! la même requête que le premier) : ils inscrivent une commande, poussent une
-//! requête, rendent `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` et rendent la main.
+//! **THREE of them are ASYNCHRONOUS** — `GetPlaceholderInfo`,
+//! `GetFileData`, `GetDirectoryEnumeration` (plus `QueryFileName`, which borrows
+//! the same request as the first): they register a command, push a
+//! request, return `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` and return control.
 //!
-//! ⚠️ **La spec §8 annonce « les CINQ rappels obligatoires en mode
-//! asynchrone » ; c'est un écart d'énoncé, pas de conception, et sa propre
-//! table §4.3 le dit** : `StartDirectoryEnumeration` et
-//! `EndDirectoryEnumeration` y figurent comme « synchrone, `S_OK` », puisqu'ils
-//! ne consultent jamais le navigateur. **Cinq sont implémentés, trois sont
-//! asynchrones.**
+//! ⚠️ **Spec §8 announces "the FIVE mandatory callbacks in
+//! asynchronous mode"; it is a wording gap, not a design one, and its own
+//! table §4.3 says so**: `StartDirectoryEnumeration` and
+//! `EndDirectoryEnumeration` appear there as "synchronous, `S_OK`", since they
+//! never consult the browser. **Five are implemented, three are
+//! asynchronous.**
 //!
-//! # Ce que chaque rappel a le droit de faire, et rien de plus
+//! # What each callback is allowed to do, and nothing more
 //!
-//! Voir la discipline de fil en tête de [`super`]. En résumé, un rappel :
+//! See the threading discipline at the head of [`super`]. In short, a callback:
 //!
-//! - enveloppe **tout** son corps dans [`std::panic::catch_unwind`] et rend
-//!   `E_UNEXPECTED` — une panique Rust qui traverserait une frontière
-//!   `extern "system"` est un **abandon de processus**, et c'est exactement
-//!   ce que la décision D2 (le pont dans son propre processus) rend
-//!   supportable plutôt que fatal ;
-//! - n'écrit que dans les états sous verrou de [`super::Etat`], jamais pendant
-//!   une E/S ;
-//! - **n'appelle JAMAIS `PrjCompleteCommand`** — c'est le fil du pont qui
-//!   complète ;
-//! - rend la main **immédiatement**.
+//! - wraps **all** its body in [`std::panic::catch_unwind`] and returns
+//!   `E_UNEXPECTED` — a Rust panic crossing an `extern "system"`
+//!   boundary is a **process abort**, and that is exactly
+//!   what decision D2 (the bridge in its own process) makes
+//!   bearable rather than fatal;
+//! - only writes into the locked states of [`super::Etat`], never during
+//!   an I/O;
+//! - **NEVER calls `PrjCompleteCommand`** — it is the bridge thread that
+//!   completes;
+//! - returns control **immediately**.
 
 mod listage;
 mod notification;
@@ -45,18 +45,18 @@ use crate::pont::table::{Attendue, DELAI_ATTRIBUTS};
 use proto::fichiers::entetes;
 
 // ────────────────────────────────────────────────────────────────────────────
-// 🔵 LE SEUL GARDE D'ABI QUE CE DÉPÔT POSSÈDE, et il ne couvre QUE ces huit
-// fonctions-ci — celles que nous ÉCRIVONS, un ensemble DISJOINT des treize que
-// nous APPELONS (voir l'en-tête de `chargement.rs`).
+// 🔵 THE ONLY ABI GUARD THIS REPOSITORY HAS, and it covers ONLY these eight
+// functions — those we WRITE, a set DISJOINT from the thirteen
+// we CALL (see the header of `chargement.rs`).
 //
-// ⚠️ **Un `const _` et non un `#[test]`, et c'est une divergence DÉLIBÉRÉE
-// d'avec le plan de F1** (tâche 12, step 4b), qui écrit ce contrôle sous forme
-// de `#[test]` en affirmant qu'« il est donc couvert par `cargo check --target
-// x86_64-pc-windows-gnu` ». **C'est faux** : `cargo check` sans `--tests` ne
-// compile pas le code de test, et un `#[cfg(test)]` sur une cible qu'on ne
-// teste jamais n'est compilé par RIEN. Le contrôle du plan n'aurait pas pu
-// échouer. Sous forme de `const _`, il est vérifié par la compilation croisée
-// ordinaire, à chaque fois.
+// ⚠️ **A `const _` and not a `#[test]`, and it is a DELIBERATE divergence
+// from F1's plan** (task 12, step 4b), which writes this check as a
+// `#[test]` claiming "it is therefore covered by `cargo check --target
+// x86_64-pc-windows-gnu`". **That is wrong**: `cargo check` without `--tests` does not
+// compile test code, and a `#[cfg(test)]` on a target never
+// tested is compiled by NOTHING. The plan's check could not have
+// failed. As a `const _`, it is checked by ordinary cross
+// compilation, every time.
 // ────────────────────────────────────────────────────────────────────────────
 const _: PRJ_GET_PLACEHOLDER_INFO_CB = Some(info_marqueur);
 const _: PRJ_GET_FILE_DATA_CB = Some(donnees_fichier);
@@ -65,10 +65,10 @@ const _: PRJ_CANCEL_COMMAND_CB = Some(annulation);
 
 /// Enveloppe commune : `catch_unwind`, et `E_UNEXPECTED` sur panique.
 ///
-/// **Le message nomme le rappel.** Sans lui, la seule trace d'une panique
-/// serait un `E_UNEXPECTED` rendu à une application, c'est-à-dire une erreur
-/// d'E/S sans cause lisible — le défaut que `pont::erreurs` existe pour ne pas
-/// rejouer.
+/// **The message names the callback.** Without it, the only trace of a panic
+/// would be an `E_UNEXPECTED` returned to an application, that is, an I/O
+/// error with no readable cause — the defect `pont::erreurs` exists not to
+/// replay.
 pub(super) fn garde(
     rappel: &'static str,
     corps: impl FnOnce() -> HRESULT + std::panic::UnwindSafe,
@@ -86,16 +86,16 @@ pub(super) fn garde(
     }
 }
 
-/// Récupère l'état du pont depuis `InstanceContext`.
+/// Retrieves the bridge state from `InstanceContext`.
 ///
-/// # Sûreté
+/// # Safety
 ///
-/// L'appelant garantit que `donnees` est le `PRJ_CALLBACK_DATA` que ProjFS
-/// vient de fournir, et que son `InstanceContext` est le pointeur confié à
-/// `PrjStartVirtualizing` — un `Arc<Etat>` que [`super::Virtualisation`] tient
-/// vivant jusqu'après `PrjStopVirtualizing`. ProjFS garantit qu'aucun rappel ne
-/// court après le retour de cet appel, c'est-à-dire avant que l'`Arc` ne soit
-/// repris.
+/// The caller guarantees that `donnees` is the `PRJ_CALLBACK_DATA` ProjFS
+/// has just provided, and that its `InstanceContext` is the pointer entrusted to
+/// `PrjStartVirtualizing` — an `Arc<Etat>` that [`super::Virtualisation`] keeps
+/// alive until after `PrjStopVirtualizing`. ProjFS guarantees that no callback
+/// runs after that call returns, that is, before the `Arc` is
+/// taken back.
 pub(super) unsafe fn etat<'a>(donnees: *const PRJ_CALLBACK_DATA) -> Option<&'a Etat> {
     if donnees.is_null() {
         return None;
@@ -107,22 +107,22 @@ pub(super) unsafe fn etat<'a>(donnees: *const PRJ_CALLBACK_DATA) -> Option<&'a E
     Some(unsafe { &*contexte })
 }
 
-/// Le chemin livré par ProjFS, sous ses DEUX formes : celle que la File System
-/// Access API attend (logique, séparée par `/`, **normalisée et vérifiée**), et
-/// celle que ProjFS reprendra telle quelle.
+/// The path delivered by ProjFS, in its TWO forms: the one the File System
+/// Access API expects (logical, `/`-separated, **normalised and checked**), and
+/// the one ProjFS will take back as is.
 ///
-/// ⚠️ **La normalisation n'est pas un confort : c'est la seule barrière.** La
-/// racine de virtualisation est traversée par n'importe quelle application de
-/// la session Windows, y compris hostile — remontées `..`, flux alternatifs
-/// NTFS, noms de périphérique réservés. `pont::chemins` les refuse, et il est
-/// PUR, donc éprouvé sur l'hôte.
+/// ⚠️ **Normalisation is not a comfort: it is the only barrier.** The
+/// virtualisation root is traversed by any application of
+/// the Windows session, including hostile ones — `..` climbs, NTFS alternate
+/// streams, reserved device names. `pont::chemins` refuses them, and it is
+/// PURE, hence exercised on the host.
 pub(super) unsafe fn chemins_de(donnees: *const PRJ_CALLBACK_DATA) -> Option<(String, Vec<u16>)> {
     let brut = unsafe { donnees.as_ref() }?.FilePathName;
     if brut.is_null() {
-        // La racine elle-même : chemin vide des deux côtés.
+        // The root itself: empty path on both sides.
         return Some((String::new(), vec![0u16]));
     }
-    // SÛRETÉ : ProjFS garantit un `PCWSTR` terminé par un nul.
+    // SAFETY: ProjFS guarantees a null-terminated `PCWSTR`.
     let unites: Vec<u16> = unsafe { brut.as_wide() }.to_vec();
     let logique = match chemins::normaliser_utf16(&unites) {
         Ok(logique) => logique,
@@ -135,11 +135,11 @@ pub(super) unsafe fn chemins_de(donnees: *const PRJ_CALLBACK_DATA) -> Option<(St
     Some((logique, projfs))
 }
 
-/// Le GUID d'une énumération, sous la forme que [`crate::pont::table`] emploie.
+/// The GUID of an enumeration, in the form [`crate::pont::table`] uses.
 ///
-/// `[u8; 16]` et non `GUID` : la table est **pure** et ne connaît pas
-/// `windows`. La conversion passe par `to_u128`, donc elle est totale et
-/// réversible — aucune interprétation des champs du GUID n'est faite ici.
+/// `[u8; 16]` and not `GUID`: the table is **pure** and does not know
+/// `windows`. The conversion goes through `to_u128`, so it is total and
+/// reversible — no interpretation of the GUID's fields is made here.
 pub(super) unsafe fn identifiant(guid: *const GUID) -> Option<[u8; 16]> {
     if guid.is_null() {
         return None;
@@ -147,9 +147,9 @@ pub(super) unsafe fn identifiant(guid: *const GUID) -> Option<[u8; 16]> {
     Some(unsafe { (*guid).to_u128() }.to_le_bytes())
 }
 
-/// Rend les métadonnées d'une entrée.
+/// Returns the metadata of an entry.
 ///
-/// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
+/// ❌ *Announced `ERROR_FILE_NOT_FOUND`: task 13's state, refuted by 14.*
 unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("GetPlaceholderInfo", || {
         let Some(etat) = (unsafe { etat(donnees) }) else {
@@ -180,9 +180,9 @@ unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HR
     })
 }
 
-/// Rend le contenu d'un fichier.
+/// Returns the content of a file.
 ///
-/// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
+/// ❌ *Announced `ERROR_FILE_NOT_FOUND`: task 13's state, refuted by 14.*
 unsafe extern "system" fn donnees_fichier(
     donnees: *const PRJ_CALLBACK_DATA,
     position: u64,
@@ -195,16 +195,16 @@ unsafe extern "system" fn donnees_fichier(
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
             return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
-        // ⚠️ **Le fichier entier n'entre JAMAIS en mémoire** : la plage est
-        // découpée par `pont::decoupe`, PUR et testé.
+        // ⚠️ **The whole file NEVER enters memory**: the range is
+        // split by `pont::decoupe`, PURE and tested.
         //
-        // ✅ **ET IL Y EN A DÉSORMAIS JUSQU'À `MORCEAUX_EN_VOL` EN VOL.** *(Ces
-        // lignes disaient « un seul morceau est en vol à la fois en F1. Le
-        // contrôle de flux par `bufferedAmount` est un livrable de F3 ;
-        // l'implémenter à moitié ici serait pire. » F3 l'a livré — et PAS à
-        // moitié : la fenêtre du pont ET la contre-pression du navigateur sont
-        // là toutes les deux, parce qu'avec un seul morceau en vol la règle de
-        // la spec §7.3 ne pourrait JAMAIS mordre.)*
+        // ✅ **AND THERE ARE NOW UP TO `MORCEAUX_EN_VOL` IN FLIGHT.** *(These
+        // lines said "only one chunk is in flight at a time in F1. Flow
+        // control through `bufferedAmount` is a deliverable of F3;
+        // implementing it halfway here would be worse." F3 delivered it — and NOT
+        // halfway: the bridge's window AND the browser's back-pressure are
+        // both there, because with a single chunk in flight the rule of
+        // spec §7.3 could NEVER bite.)*
         let morceaux: std::collections::VecDeque<_> = crate::pont::decoupe::decouper(
             position,
             u64::from(longueur),
@@ -214,22 +214,22 @@ unsafe extern "system" fn donnees_fichier(
         let mut fenetre = crate::pont::lecture::Fenetre::nouvelle(morceaux);
         let lot = fenetre.a_demander();
         if lot.is_empty() {
-            // Longueur nulle : rien à écrire, et rien à demander. Compléter
-            // tout de suite plutôt qu'inscrire une commande qui n'aurait
-            // jamais de réponse.
+            // Zero length: nothing to write, and nothing to request. Complete
+            // right away rather than register a command that would
+            // never get a response.
             return S_OK;
         }
         let flux = unsafe { (*donnees).DataStreamId };
         let commande = unsafe { (*donnees).CommandId };
-        // 🔴 **UNE SEULE FENÊTRE, PARTAGÉE PAR LES *N* CORRÉLATIONS.** La
-        // cloner ferait que chaque réponse verrait sa propre copie et
-        // redemanderait les mêmes morceaux — le fichier serait écrit *N* fois,
-        // ou tronqué selon l'ordre.
+        // 🔴 **A SINGLE WINDOW, SHARED BY THE *N* CORRELATIONS.** Cloning
+        // it would make each response see its own copy and
+        // request the same chunks again — the file would be written *N* times,
+        // or truncated depending on the order.
         let fenetre = std::sync::Arc::new(std::sync::Mutex::new(fenetre));
-        // ⚠️ **Un ÉCHEC EN COURS DE LOT NE LAISSE RIEN EN VOL** : `demander`
-        // retire ce qu'il vient d'inscrire quand le transport est parti, et les
-        // corrélations déjà émises expireront sur leur budget. On s'arrête au
-        // premier refus plutôt que d'en émettre d'autres vers un canal mort.
+        // ⚠️ **A FAILURE MID-BATCH LEAVES NOTHING IN FLIGHT**: `demander`
+        // removes what it just registered when the transport is gone, and the
+        // correlations already emitted will expire on their budget. We stop at the
+        // first refusal rather than emit more towards a dead channel.
         let mut au_moins_une = false;
         for morceau in lot {
             let entete = match serde_json::to_string(&entetes::Lire {
@@ -268,11 +268,11 @@ unsafe extern "system" fn donnees_fichier(
     })
 }
 
-/// Dit si un nom existe. Consulté en permanence par Windows pour des chemins
-/// qui n'existent pas (`desktop.ini`, `Thumbs.db`, les manifestes
-/// d'application) — d'où le cache négatif armé au démarrage.
+/// Says whether a name exists. Constantly consulted by Windows for paths
+/// that do not exist (`desktop.ini`, `Thumbs.db`, application
+/// manifests) — hence the negative cache armed at startup.
 ///
-/// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
+/// ❌ *Announced `ERROR_FILE_NOT_FOUND`: task 13's state, refuted by 14.*
 unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("QueryFileName", || {
         let Some(etat) = (unsafe { etat(donnees) }) else {
@@ -287,13 +287,13 @@ unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRES
             Ok(entete) => entete,
             Err(_) => return E_UNEXPECTED,
         };
-        // Même requête que `GetPlaceholderInfo` : « ce nom existe-t-il ? » et
-        // « quelles sont ses métadonnées ? » ont la même réponse côté
-        // navigateur. Le cache négatif de ProjFS
-        // (`PRJ_FLAG_USE_NEGATIVE_PATH_CACHE`) est ce qui empêche que les
-        // sondages permanents de Windows — `desktop.ini`, `Thumbs.db`,
-        // `folder.jpg`, les manifestes d'application — deviennent chacun un
-        // aller-retour navigateur (spec §7.4).
+        // Same request as `GetPlaceholderInfo`: "does this name exist?" and
+        // "what are its metadata?" have the same answer on the
+        // browser side. ProjFS's negative cache
+        // (`PRJ_FLAG_USE_NEGATIVE_PATH_CACHE`) is what prevents Windows's
+        // constant probes — `desktop.ini`, `Thumbs.db`,
+        // `folder.jpg`, application manifests — from each becoming a
+        // browser round trip (spec §7.4).
         let demandee = etat.demander(
             unsafe { (*donnees).CommandId },
             Attendue::Attributs { chemin },
@@ -310,40 +310,40 @@ unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRES
     })
 }
 
-/// Retire une commande abandonnée par l'application.
+/// Removes a command abandoned by the application.
 ///
-/// ⚠️ **Obligatoire dès F1.** `PRJ_CANCEL_COMMAND_CB` n'est optionnel que pour
-/// un fournisseur SYNCHRONE ; le nôtre ne l'est pas (spec §4.3). Sans lui, une
-/// application qui abandonne son E/S nous laisserait une commande orpheline
-/// dans la table, et sa réponse tardive serait appliquée à un tampon que le
-/// système a repris.
+/// ⚠️ **Mandatory from F1.** `PRJ_CANCEL_COMMAND_CB` is only optional for
+/// a SYNCHRONOUS provider; ours is not (spec §4.3). Without it, an
+/// application abandoning its I/O would leave us an orphan command
+/// in the table, and its late response would be applied to a buffer the
+/// system has taken back.
 unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
-    // Ce rappel ne rend RIEN (`PRJ_CANCEL_COMMAND_CB`), donc `garde` — qui rend
-    // un `HRESULT` — ne s'applique pas tel quel. Le `catch_unwind` est écrit à
-    // la main : c'est la même exigence, et l'oublier ici serait exactement
-    // aussi fatal.
+    // This callback returns NOTHING (`PRJ_CANCEL_COMMAND_CB`), so `garde` — which returns
+    // an `HRESULT` — does not apply as is. The `catch_unwind` is written by
+    // hand: it is the same requirement, and forgetting it here would be exactly
+    // as fatal.
     let issue = std::panic::catch_unwind(|| {
         let Some(etat) = (unsafe { etat(donnees) }) else {
             return;
         };
         let commande = unsafe { (*donnees).CommandId };
-        // 🔴 **TOUTES LES CORRÉLATIONS, et c'est la fenêtre de lecture de F3
-        // qui l'exige** : une lecture peut en avoir jusqu'à
-        // `pont::lecture::MORCEAUX_EN_VOL` en vol. En laisser survivre une
-        // ferait appeler `PrjCompleteCommand` sur une commande DÉJÀ complétée,
-        // à l'expiration de son budget — un appel au système sur un
-        // identifiant qui appartient à quelqu'un d'autre.
+        // 🔴 **ALL THE CORRELATIONS, and it is F3's read window
+        // that requires it**: a read can have up to
+        // `pont::lecture::MORCEAUX_EN_VOL` in flight. Letting one survive
+        // would make `PrjCompleteCommand` be called on an ALREADY completed command,
+        // when its budget expires — a system call on an
+        // identifier that belongs to someone else.
         let correlations = etat
             .table
             .lock()
             .expect("verrou de la table")
             .annuler(commande);
         for correlation in &correlations {
-            // ⚠️ **Le contexte ProjFS part AVEC l'entrée de table, sinon il
-            // fuit.** `Table::annuler` ne connaît que la table — elle est PURE
-            // — et le tampon d'énumération ou le flux de données d'une commande
-            // annulée resterait sinon dans `en_attente` pour toute la vie du
-            // pont, sans que rien ne le lise jamais.
+            // ⚠️ **The ProjFS context leaves WITH the table entry, otherwise it
+            // leaks.** `Table::annuler` only knows the table — it is PURE
+            // — and the enumeration buffer or the data stream of a cancelled
+            // command would otherwise stay in `en_attente` for the whole life of the
+            // bridge, with nothing ever reading it.
             if let Ok(mut attente) = etat.en_attente.lock() {
                 attente.remove(correlation);
             }
@@ -364,7 +364,7 @@ unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
     }
 }
 
-/// Le bloc des huit rappels, tel que `PrjStartVirtualizing` l'attend.
+/// The block of the eight callbacks, as `PrjStartVirtualizing` expects it.
 pub(super) fn bloc() -> windows::Win32::Storage::ProjectedFileSystem::PRJ_CALLBACKS {
     windows::Win32::Storage::ProjectedFileSystem::PRJ_CALLBACKS {
         StartDirectoryEnumerationCallback: Some(listage::debut_enumeration),

@@ -1,16 +1,16 @@
-//! Le téléchargement, éprouvé **contre un vrai serveur TCP local** — jamais
-//! contre un double.
+//! The download, tested **against a real local TCP server** — never
+//! against a double.
 //!
-//! 🔴 C'EST CE QUE LA PORTABILITÉ DU MODULE ACHÈTE, et c'est la seule raison
-//! d'avoir divergé du §6 de la spécification, qui le rangeait en
-//! `#[cfg(windows)]` : la troisième vérification d'empreinte, la reprise par
-//! `Range`, le refus du `chunked` et celui de `https` sont ici tous les
-//! quatre, sur l'hôte, au lieu de dépendre d'une recette VM.
+//! 🔴 THIS IS WHAT THE MODULE'S PORTABILITY BUYS, and it is the only reason
+//! for having diverged from §6 of the specification, which put it under
+//! `#[cfg(windows)]`: the third fingerprint check, the `Range`
+//! resumption, the refusal of `chunked` and that of `https` are all four
+//! here, on the host, instead of depending on a VM acceptance run.
 //!
-//! ⚠️ UN DOUBLE N'AURAIT PAS SUFFI. Ce que ces cas éprouvent est précisément ce
-//! qu'un faux client aurait décidé lui-même : où reprendre, quoi faire d'un
-//! `200` qui répond à un `Range`, et ce qu'on écrit quand la connexion tombe au
-//! milieu du corps.
+//! ⚠️ A DOUBLE WOULD NOT HAVE BEEN ENOUGH. What these cases test is precisely what
+//! a fake client would have decided by itself: where to resume, what to do with a
+//! `200` answering a `Range`, and what is written when the connection drops in the
+//! middle of the body.
 
 use std::sync::{Arc, Mutex};
 
@@ -19,21 +19,21 @@ use tokio::net::TcpListener;
 
 use super::*;
 
-/// Ce que le faux serveur fait d'une requête.
+/// What the fake server does with a request.
 enum Reaction {
-    /// Répond `200` avec ce corps, entier.
+    /// Replies `200` with this body, whole.
     Entier(Vec<u8>),
-    /// Répond `200`, envoie `coupe_a` octets, puis FERME. La reprise doit
-    /// suivre.
+    /// Replies `200`, sends `coupe_a` bytes, then CLOSES. The resumption must
+    /// follow.
     Coupe { corps: Vec<u8>, coupe_a: usize },
-    /// Répond `200` même à un `Range` — le cas que le client doit détecter.
+    /// Replies `200` even to a `Range` — the case the client must detect.
     IgnoreLeRange(Vec<u8>),
-    /// Une réponse brute, telle quelle.
+    /// A raw response, as is.
     Brut(&'static str),
 }
 
-/// Le journal de ce que le serveur a VU : c'est lui qui rend l'offset
-/// vérifiable.
+/// The log of what the server SAW: it is what makes the offset
+/// checkable.
 #[derive(Default)]
 struct Vu {
     ranges: Vec<Option<u64>>,
@@ -109,8 +109,8 @@ async fn serveur(reactions: Vec<Reaction>) -> (String, Arc<Mutex<Vu>>) {
                     let _ = socket.write_all(&part[..coupe_a.min(part.len())]).await;
                 }
                 Reaction::IgnoreLeRange(corps) => {
-                    // 🔴 `200`, PAS `206`, ET LE CORPS ENTIER : c'est ce que
-                    // fait un serveur qui ne gère pas les plages.
+                    // 🔴 `200`, NOT `206`, AND THE WHOLE BODY: that is what
+                    // a server that does not handle ranges does.
                     let _ = socket
                         .write_all(
                             format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n", corps.len())
@@ -180,20 +180,20 @@ async fn telecharge_ecrit_et_verifie_l_empreinte() {
     .expect("téléchargement");
     assert_eq!(ecrits, corps.len() as u64);
     assert_eq!(std::fs::read(&b.fichier).expect("relecture"), corps);
-    // Le jeton part bien en `Authorization: Bearer` — sans lui la route
-    // refuserait, et le symptôme serait un 401 très loin d'ici.
+    // The token does go out as `Authorization: Bearer` — without it the route
+    // would refuse, and the symptom would be a 401 very far from here.
     assert_eq!(
         vu.lock().expect("verrou").autorisations[0],
         "Authorization: Bearer jeton-d-agent"
     );
 }
 
-/// 🔴 LA ROUGE N°1, ET LE TEST VÉRIFIE L'**OFFSET DEMANDÉ**, PAS SEULEMENT LE
-/// SUCCÈS.
+/// 🔴 RED NO. 1, AND THE TEST CHECKS THE **REQUESTED OFFSET**, NOT ONLY THE
+/// SUCCESS.
 ///
-/// Une reprise qui redemanderait tout depuis zéro passerait un test qui ne
-/// regarde que le résultat — c'est la leçon du critère ③ de la spécification,
-/// et c'est pourquoi le faux serveur JOURNALISE les `Range` qu'il reçoit.
+/// A resumption that asked for everything again from zero would pass a test that
+/// looks only at the result — that is the lesson of criterion ③ of the specification,
+/// and it is why the fake server LOGS the `Range` it receives.
 #[tokio::test]
 async fn une_coupure_reprend_au_bon_offset_et_l_empreinte_reste_juste() {
     let corps = corps_de(150_000);
@@ -229,18 +229,18 @@ async fn une_coupure_reprend_au_bon_offset_et_l_empreinte_reste_juste() {
     );
 }
 
-/// 🔴 LA ROUGE N°2 : UN `200` EN RÉPONSE À UN `Range` FAIT REPARTIR DE ZÉRO.
+/// 🔴 RED NO. 2: A `200` IN REPLY TO A `Range` MAKES IT START OVER FROM ZERO.
 ///
-/// Concaténer produirait un fichier plus long que sa taille et une empreinte
-/// fausse **sans que l'on sache pourquoi**. Le test compare la **TAILLE**.
+/// Concatenating would produce a file longer than its size and a wrong
+/// fingerprint **without anyone knowing why**. The test compares the **SIZE**.
 ///
-/// 🔴 ET IL COMPTE LES CONNEXIONS, ce qui est la seconde moitié : le client
-/// consomme **cette réponse-là**, il ne rouvre pas une troisième connexion pour
-/// redemander ce qui est déjà en train d'arriver. La première rédaction de ce
-/// module le faisait, et sur un installeur de 800 Mo cela aurait fait passer le
-/// fichier DEUX FOIS sur le lien. **C'est ce test qui l'a trouvé** — le faux
-/// serveur n'offrait que deux réactions, et la troisième connexion a été
-/// refusée.
+/// 🔴 AND IT COUNTS THE CONNECTIONS, which is the second half: the client
+/// consumes **that very response**, it does not reopen a third connection to
+/// ask again for what is already arriving. The first draft of this
+/// module did, and on an 800 MB installer it would have pushed the
+/// file TWICE over the link. **This test is what found it** — the fake
+/// server offered only two reactions, and the third connection was
+/// refused.
 #[tokio::test]
 async fn un_200_en_reponse_a_un_range_fait_repartir_de_zero() {
     let corps = corps_de(100_000);
@@ -280,12 +280,12 @@ async fn un_200_en_reponse_a_un_range_fait_repartir_de_zero() {
     );
 }
 
-/// 🔴 LA ROUGE N°3 : `chunked` EST REFUSÉ, ET LE MOTIF LE NOMME.
+/// 🔴 RED NO. 3: `chunked` IS REFUSED, AND THE REASON NAMES IT.
 ///
-/// Le service pose un `Content-Length` ; qu'un proxy puisse le remplacer par un
-/// codage par morceaux **n'a pas été mesuré**. Un refus nommé se diagnostique
-/// en une ligne de journal ; un analyseur qui devine se diagnostique en une
-/// campagne.
+/// The service sets a `Content-Length`; that a proxy might replace it with a
+/// chunked coding **has not been measured**. A named refusal is diagnosed
+/// in one log line; a parser that guesses is diagnosed in a
+/// campaign.
 #[tokio::test]
 async fn un_transfert_chunked_est_refuse_et_le_motif_le_nomme() {
     let (url, _) = serveur(vec![Reaction::Brut(
@@ -313,7 +313,7 @@ async fn un_transfert_chunked_est_refuse_et_le_motif_le_nomme() {
     }
 }
 
-/// 🔴 LA ROUGE N°4 : UN STATUT INATTENDU EST REFUSÉ, ET IL VOYAGE.
+/// 🔴 RED NO. 4: AN UNEXPECTED STATUS IS REFUSED, AND IT TRAVELS.
 #[tokio::test]
 async fn un_statut_inattendu_est_refuse_en_portant_son_statut() {
     let (url, _) = serveur(vec![Reaction::Brut(
@@ -336,10 +336,10 @@ async fn un_statut_inattendu_est_refuse_en_portant_son_statut() {
     assert_eq!(refus, Refus::Reponse(reponse::Refus::Statut(500)));
 }
 
-/// 🔴 LA ROUGE N°5, ET C'EST LA TROISIÈME DES TROIS VÉRIFICATIONS
-/// D'EMPREINTE : le corps arrive en entier, à la bonne taille, et son empreinte
-/// diffère. **Le fichier partiel est supprimé**, et le téléversement reste
-/// reprenable.
+/// 🔴 RED NO. 5, AND IT IS THE THIRD OF THE THREE FINGERPRINT
+/// CHECKS: the body arrives whole, at the right size, and its fingerprint
+/// differs. **The partial file is deleted**, and the upload remains
+/// resumable.
 #[tokio::test]
 async fn une_empreinte_fausse_est_refusee_et_le_fichier_partiel_disparait() {
     let corps = corps_de(50_000);
@@ -375,8 +375,8 @@ async fn une_empreinte_fausse_est_refusee_et_le_fichier_partiel_disparait() {
     );
 }
 
-/// 🔴 `https` EST REFUSÉ AVANT MÊME D'OUVRIR UN SOCKET, et le refus nomme la
-/// capacité manquante — pas une coquille d'URL.
+/// 🔴 `https` IS REFUSED BEFORE EVEN OPENING A SOCKET, and the refusal names the
+/// missing capability — not a URL typo.
 #[tokio::test]
 async fn https_est_refuse_en_nommant_la_capacite_manquante() {
     let b = bac("https");
@@ -401,13 +401,13 @@ async fn https_est_refuse_en_nommant_la_capacite_manquante() {
     assert!(!b.fichier.exists(), "aucun fichier ne doit être créé");
 }
 
-/// Le budget de rétablissements est BORNÉ, et son épuisement est un refus
-/// typé — jamais une boucle sans terme.
+/// The recovery budget is BOUNDED, and exhausting it is a typed
+/// refusal — never an endless loop.
 #[tokio::test]
 async fn le_budget_de_retablissements_est_borne() {
     let corps = corps_de(10_000);
-    // Sept coupures pour un budget de cinq : la sixième reprise doit rendre la
-    // main.
+    // Seven cuts for a budget of five: the sixth resumption must give
+    // up.
     let reactions = (0..8)
         .map(|_| Reaction::Coupe {
             corps: corps.clone(),
@@ -438,38 +438,38 @@ fn une_url_se_decoupe_et_le_port_par_defaut_ne_s_ecrit_pas_dans_host() {
     assert_eq!(c.hote, "plateforme.local");
     assert_eq!(c.port, 80);
     assert_eq!(c.chemin, "/televersement/t-1/contenu");
-    // ⚠️ RFC 9110 §7.2 : le port par défaut ne s'écrit pas, et un proxy peut
-    // router dessus.
+    // ⚠️ RFC 9110 §7.2: the default port is not written, and a proxy may
+    // route on it.
     assert_eq!(c.entete_host, "plateforme.local");
 
     let c = decouper("http://127.0.0.1:8080/t/c").expect("url");
     assert_eq!(c.port, 8080);
     assert_eq!(c.entete_host, "127.0.0.1:8080");
 
-    // Sans chemin, la ligne de requête en porte quand même un.
+    // Without a path, the request line still carries one.
     assert_eq!(decouper("http://h:9/").expect("url").chemin, "/");
     assert_eq!(decouper("http://h:9").expect("url").chemin, "/");
 
-    // 🔴 `ws://` EST LU COMME `http://`, ET CE TEST DISAIT L'INVERSE. Il
-    // assérait `Err(Refus::Url(_))` sur `ws://h/x` — écrit depuis la même
-    // lecture fausse que le code qu'il gardait, et **il épinglait donc le
-    // défaut au lieu de le prévenir**. La recette l'a réfuté sur la chaîne
-    // réelle : l'URL de l'installeur étant DÉRIVÉE de celle du canal, elle
-    // arrive toujours en `ws://`, et tout ordre d'installation était refusé.
-    // Un test vert n'est une garde que si ce qu'il fixe est vrai.
+    // 🔴 `ws://` IS READ LIKE `http://`, AND THIS TEST SAID THE OPPOSITE. It
+    // asserted `Err(Refus::Url(_))` on `ws://h/x` — written from the same
+    // wrong reading as the code it guarded, and **so it pinned the
+    // defect instead of preventing it**. The acceptance run refuted it on the real
+    // chain: the installer URL being DERIVED from the channel's, it
+    // always arrives as `ws://`, and every installation order was refused.
+    // A green test is a guard only if what it pins is true.
     let ws = decouper("ws://h:9/x").expect("ws:// doit se lire comme http://");
     assert_eq!(ws.hote, "h");
     assert_eq!(ws.port, 9);
     assert_eq!(ws.chemin, "/x");
-    // Le port par défaut d'un `ws://` est celui de `http://` — 80 —, et c'est
-    // la conséquence directe de le traiter comme tel.
+    // The default port of a `ws://` is that of `http://` — 80 —, and that is
+    // the direct consequence of treating it as such.
     assert_eq!(decouper("ws://h/x").expect("ws sans port").port, 80);
 
-    // ⚠️ `wss://` RESTE REFUSÉ, ET NOMMÉMENT : accepter `ws://` ne dit rien de
-    // TLS, que ce client ne parle pas plus qu'avant.
+    // ⚠️ `wss://` STAYS REFUSED, AND BY NAME: accepting `ws://` says nothing about
+    // TLS, which this client speaks no more than before.
     assert!(matches!(decouper("wss://h/x"), Err(Refus::Url(_))));
 
-    // Et les formes qu'on ne sait pas lire sont refusées NOMMÉMENT.
+    // And the forms we cannot read are refused BY NAME.
     assert!(matches!(decouper("http:///x"), Err(Refus::Url(_))));
     assert!(matches!(decouper("http://h:70000/x"), Err(Refus::Url(_))));
     assert!(matches!(decouper("http://[::1]:80/x"), Err(Refus::Url(_))));

@@ -1,23 +1,23 @@
 //! Manipulation de flux H.264 en format Annex-B.
 //!
-//! L'encodeur Media Foundation produit des NAL préfixées par des start codes
-//! (`00 00 01` ou `00 00 00 01`). str0m attend des unités d'accès complètes,
-//! une par image affichée.
+//! The Media Foundation encoder produces NALs prefixed by start codes
+//! (`00 00 01` or `00 00 00 01`). str0m expects complete access units,
+//! one per displayed image.
 
-/// Horloge RTP de la vidéo, en hertz. Valeur imposée par la RFC 3551.
+/// Video RTP clock, in hertz. Value imposed by RFC 3551.
 pub const CLOCK_RATE_HZ: u64 = 90_000;
 
-/// Une unité d'accès : toutes les NAL composant une image affichable.
+/// An access unit: all the NALs making up a displayable image.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessUnit {
-    /// Flux Annex-B complet de l'unité, start codes inclus.
+    /// Complete Annex-B stream of the unit, start codes included.
     pub data: Vec<u8>,
     pub is_keyframe: bool,
-    /// Horodatage de présentation, en unités de 1/90000 s.
+    /// Presentation timestamp, in units of 1/90000 s.
     pub pts_90k: u64,
 }
 
-/// Découpe un flux Annex-B en NAL, start codes retirés.
+/// Splits an Annex-B stream into NALs, start codes removed.
 pub fn split_annex_b(stream: &[u8]) -> Vec<Vec<u8>> {
     let mut nals = Vec::new();
     let mut start: Option<usize> = None;
@@ -48,7 +48,7 @@ fn push_nal(nals: &mut Vec<Vec<u8>>, nal: &[u8]) {
     }
 }
 
-/// Longueur du start code à la position donnée, ou 0 s'il n'y en a pas.
+/// Length of the start code at the given position, or 0 if there is none.
 fn start_code_len(stream: &[u8], i: usize) -> usize {
     if stream[i..].starts_with(&[0, 0, 0, 1]) {
         4
@@ -67,32 +67,32 @@ fn nal_type(nal: &[u8]) -> u8 {
     nal.first().map_or(0, |b| b & 0x1F)
 }
 
-/// Vrai si la tranche est la première de son image (`first_mb_in_slice == 0`).
+/// True if the slice is the first of its image (`first_mb_in_slice == 0`).
 ///
-/// `first_mb_in_slice` est le tout premier champ de l'en-tête de tranche,
-/// codé en Exp-Golomb non signé (ue(v)) et débutant au premier octet suivant
-/// l'octet d'en-tête NAL. Dans ce codage, la valeur zéro tient sur un seul
-/// bit à 1 : il suffit donc de tester le bit de poids fort de cet octet.
-/// Une tranche sans octet de charge utile (NAL tronquée à son seul en-tête)
-/// est traitée comme une continuation plutôt que comme un début d'image,
-/// pour ne pas fragmenter davantage un flux déjà corrompu.
+/// `first_mb_in_slice` is the very first field of the slice header,
+/// coded in unsigned Exp-Golomb (ue(v)) and starting at the first byte following
+/// the NAL header byte. In this coding, the value zero fits in a single
+/// bit set to 1: it is therefore enough to test the high-order bit of that byte.
+/// A slice without a payload byte (NAL truncated to its header alone)
+/// is treated as a continuation rather than as the start of an image,
+/// so as not to fragment an already corrupted stream further.
 fn is_first_slice(nal: &[u8]) -> bool {
     nal.get(1).is_some_and(|b| b & 0x80 != 0)
 }
 
-/// Vrai si l'ensemble de NAL contient une image de référence instantanée.
+/// True if the set of NALs contains an instantaneous decoding refresh image.
 pub fn is_keyframe(nals: &[Vec<u8>]) -> bool {
     nals.iter().any(|nal| nal_type(nal) == NAL_TYPE_IDR)
 }
 
-/// Regroupe les NAL d'un flux en unités d'accès, une par image affichable.
+/// Groups the NALs of a stream into access units, one per displayable image.
 ///
-/// Une image peut être répartie sur plusieurs NAL de tranche (une par groupe
-/// de macroblocs, par exemple quand l'encodeur sous-découpe pour respecter
-/// une contrainte de niveau H.264). Seule la *première* tranche d'une image
-/// (`first_mb_in_slice == 0`) ouvre une nouvelle unité d'accès ; les tranches
-/// suivantes de la même image la rejoignent. Les NAL de paramètres (SPS/PPS)
-/// qui précèdent la première tranche sont rattachées à l'unité qui les suit.
+/// An image can be spread over several slice NALs (one per group
+/// of macroblocks, for example when the encoder sub-splits to respect
+/// an H.264 level constraint). Only the *first* slice of an image
+/// (`first_mb_in_slice == 0`) opens a new access unit; the following
+/// slices of the same image join it. The parameter NALs (SPS/PPS)
+/// preceding the first slice are attached to the unit that follows them.
 pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     let nals = split_annex_b(stream);
     let tick = if fps == 0 {
@@ -108,13 +108,13 @@ pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     for nal in nals {
         let kind = nal_type(&nal);
         let is_slice = kind == NAL_TYPE_IDR || kind == NAL_TYPE_NON_IDR;
-        // Une nouvelle image ne commence qu'à la première tranche qui la compose ;
-        // les tranches suivantes de la même image ne déclenchent pas de flush.
+        // A new image only begins at the first slice that makes it up;
+        // the following slices of the same image do not trigger a flush.
         let starts_new_picture = is_slice && is_first_slice(&nal);
 
-        // Une NAL de paramètres, ou la première tranche d'une nouvelle image,
-        // ouvre l'unité suivante — mais seulement si l'unité en cours contient
-        // déjà une image (sinon on est encore en train de la construire).
+        // A parameter NAL, or the first slice of a new image,
+        // opens the next unit — but only if the current unit already
+        // contains an image (otherwise we are still building it).
         if slice_seen && (starts_new_picture || kind == NAL_TYPE_SPS) {
             flush(&mut units, &mut current, tick);
             slice_seen = false;
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn detecte_une_image_cle_sur_nal_idr() {
-        // Type de NAL = 5 bits de poids faible du premier octet.
+        // NAL type = 5 low-order bits of the first byte.
         assert!(is_keyframe(&[vec![0x65, 0x00]])); // 0x65 & 0x1F == 5 → IDR
         assert!(!is_keyframe(&[vec![0x41, 0x00]])); // 0x41 & 0x1F == 1 → non IDR
         assert!(is_keyframe(&[vec![0x67, 0x00], vec![0x65, 0x00]])); // SPS puis IDR
@@ -209,7 +209,7 @@ mod tests {
         assert!(!units[1].is_keyframe);
         assert_eq!(units[0].pts_90k, 0);
         assert_eq!(units[1].pts_90k, 1500); // 90000 / 60
-                                            // La première unité contient les trois NAL avec leurs start codes.
+                                            // The first unit contains the three NALs with their start codes.
         assert_eq!(units[0].data.len(), 3 * 4 + 2 + 2 + 2);
     }
 
@@ -220,9 +220,9 @@ mod tests {
 
     #[test]
     fn regroupe_des_images_multi_tranches_en_une_seule_unite() {
-        // Deux images de trois tranches chacune. Le bit de poids fort du
-        // premier octet de charge utile distingue la première tranche
-        // (0x88 / 0x9A, bit armé) des suivantes (0x00, bit éteint).
+        // Two images of three slices each. The high-order bit of the
+        // first payload byte distinguishes the first slice
+        // (0x88 / 0x9A, bit set) from the following ones (0x00, bit clear).
         let mut stream = Vec::new();
         // Image 1 (IDR) : trois tranches de type 5.
         for nal in [vec![0x65u8, 0x88], vec![0x65, 0x00], vec![0x65, 0x00]] {
@@ -236,8 +236,8 @@ mod tests {
         }
 
         let units = group_access_units(&stream, 60);
-        // Six tranches, mais seulement deux images : une NAL mal comptée par
-        // tranche produirait à tort six unités.
+        // Six slices, but only two images: a NAL counted wrongly per
+        // slice would wrongly produce six units.
         assert_eq!(units.len(), 2);
         assert!(units[0].is_keyframe);
         assert!(!units[1].is_keyframe);
@@ -247,11 +247,11 @@ mod tests {
 
     #[test]
     fn compte_les_memes_unites_que_ffprobe_sur_le_flux_reel() {
-        // Référence indépendante : `ffprobe -count_frames` rapporte 300 images
-        // sur ce fichier, alors que chaque image y est en réalité découpée en
-        // huit tranches par libx264 (contrainte de niveau 3.1 à 1280x720/60).
-        // Une règle de découpage naïve (une unité par tranche) produirait 2400
-        // unités au lieu de 300.
+        // Independent reference: `ffprobe -count_frames` reports 300 images
+        // on this file, whereas each image is actually split into
+        // eight slices by libx264 (level 3.1 constraint at 1280x720/60).
+        // A naive splitting rule (one unit per slice) would produce 2400
+        // units instead of 300.
         let path =
             std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
         let data = std::fs::read(path).expect("lecture du flux de test");

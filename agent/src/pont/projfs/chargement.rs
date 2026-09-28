@@ -1,69 +1,69 @@
-//! Résolution à l'exécution des **treize** entrées de `ProjectedFSLib.dll`, et
-//! les treize signatures transcrites à la main.
+//! Runtime resolution of the **thirteen** entry points of `ProjectedFSLib.dll`, and
+//! the thirteen signatures transcribed by hand.
 //!
-//! # Pourquoi ce module existe — décision D1 de la spec
+//! # Why this module exists — decision D1 of the spec
 //!
-//! Les enveloppes `Prj*` du crate `windows` passent par
-//! `windows_core::link!`, qui se développe en
+//! The `Prj*` wrappers of the `windows` crate go through
+//! `windows_core::link!`, which expands to
 //! `#[link(name = …, kind = "raw-dylib", modifiers = "+verbatim")]`
-//! (`windows-link-0.2.1/src/lib.rs:22`, la branche `not(target_arch = "x86")`,
-//! celle de notre cible x86_64 ; la branche x86 est aux lignes 5-15 et porte en
-//! plus `import_name_type = "undecorated"`). En appeler une seule poserait un
-//! import **statique** de `ProjectedFSLib.dll` dans le PE.
+//! (`windows-link-0.2.1/src/lib.rs:22`, the `not(target_arch = "x86")` branch,
+//! that of our x86_64 target; the x86 branch is at lines 5-15 and carries
+//! `import_name_type = "undecorated"` in addition). Calling a single one would set up a
+//! **static** import of `ProjectedFSLib.dll` in the PE.
 //!
-//! Or `agent.exe` est **un seul binaire pour tous les modes**. Un import non
-//! résolu ne tuerait pas « le pont » : il tuerait la capture, la vidéo et
-//! l'entrée sur toute VM dépourvue de ProjFS — l'état exact de cette VM avant
-//! le sous-bloc F0. D'où `LoadLibraryW` + `GetProcAddress`.
+//! Yet `agent.exe` is **a single binary for all modes**. An unresolved
+//! import would not kill "the bridge": it would kill capture, video and
+//! input on any VM lacking ProjFS — the exact state of this VM before
+//! sub-block F0. Hence `LoadLibraryW` + `GetProcAddress`.
 //!
-//! **Ce module prend donc les TYPES du crate `windows` et jamais ses
-//! ENVELOPPES.** Les types (`PRJ_CALLBACKS`, `PRJ_CALLBACK_DATA`, les huit
-//! `PRJ_*_CB`, les constantes) sont des `struct`/`type`/`const` : ils
-//! n'émettent aucun symbole importé.
+//! **This module therefore takes the TYPES of the `windows` crate and never its
+//! WRAPPERS.** The types (`PRJ_CALLBACKS`, `PRJ_CALLBACK_DATA`, the eight
+//! `PRJ_*_CB`, the constants) are `struct`/`type`/`const`: they
+//! emit no imported symbol.
 //!
-//! # 🔴 Le risque que ce module porte, et que rien ne referme — R7 de la spec
+//! # 🔴 The risk this module carries, and which nothing closes — R7 of the spec
 //!
-//! **Les treize signatures ci-dessous sont transcrites à la main, et le
-//! compilateur ne peut plus rien en dire.** Un paramètre oublié, un type de
-//! retour inventé, un `*const` pris pour un `*mut` : aucun de ces défauts
-//! n'est détecté avant l'appel, et l'appel corrompt la pile sans diagnostic.
+//! **The thirteen signatures below are transcribed by hand, and the
+//! compiler can no longer say anything about them.** A forgotten parameter, an invented
+//! return type, a `*const` mistaken for a `*mut`: none of these defects
+//! is detected before the call, and the call corrupts the stack without diagnostic.
 //!
-//! Ce qui EXISTE comme garde, et il faut le dire exactement :
+//! What EXISTS as a guard, and it must be said exactly:
 //!
-//! 1. **Chaque transcription porte, en commentaire, la ligne `link!` dont elle
-//!    est la copie, VERBATIM**, avec son numéro de ligne dans
+//! 1. **Each transcription carries, in a comment, the `link!` line it
+//!    is a copy of, VERBATIM**, with its line number in
 //!    `windows-0.62.2/src/Windows/Win32/Storage/ProjectedFileSystem/mod.rs`
-//!    (relevé par la commande le 19 août 2026, fichier de 621 lignes). La
-//!    relecture est donc une comparaison de texte à texte, jamais une
-//!    reconstruction de mémoire.
-//! 2. **`pont::resolution` vérifie que les treize NOMS existent**, et nomme
-//!    celle qui manque — treize chemins balayés à chaque `cargo test`. Il
-//!    épingle aussi l'appariement CHAMP ↔ ENTRÉE, et la construction ci-dessous
-//!    passe par une macro qui n'écrit chaque nom de champ qu'une fois : deux
-//!    entrées interverties sont donc structurellement impossibles ici.
-//! 3. Les huit **rappels** que nous fournissons, eux, sont vérifiés par le
-//!    compilateur : `pont::projfs` les affecte à leur type `PRJ_*_CB` dans un
-//!    `const _`, et une divergence d'ABI ne compile pas.
+//!    (read by command on August 19th, 2026, a 621-line file). The
+//!    review is therefore a text-to-text comparison, never a
+//!    reconstruction from memory.
+//! 2. **`pont::resolution` checks that the thirteen NAMES exist**, and names
+//!    the one missing — thirteen paths swept at each `cargo test`. It
+//!    also pins the FIELD ↔ ENTRY pairing, and the construction below
+//!    goes through a macro that writes each field name only once: two
+//!    swapped entries are therefore structurally impossible here.
+//! 3. The eight **callbacks** we provide, for their part, are checked by the
+//!    compiler: `pont::projfs` assigns them to their `PRJ_*_CB` type in a
+//!    `const _`, and an ABI divergence does not compile.
 //!
-//! ⚠️ **Ce que ces trois gardes NE couvrent PAS, et c'est le cœur du risque :
-//! aucun d'eux ne porte sur l'ABI des treize entrées IMPORTÉES.** Le point 3
-//! concerne les huit fonctions que nous ÉCRIVONS, un ensemble **disjoint** des
-//! treize que nous APPELONS — il n'existe dans `windows-rs` aucun type auquel
-//! comparer `PrjWriteFileData`, ni aucune des douze autres. **Les treize
-//! reposent entièrement sur le point 1.** Le dire plutôt que de laisser croire
-//! que « huit sur treize sont couvertes ».
+//! ⚠️ **What these three guards do NOT cover, and it is the heart of the risk:
+//! none of them bears on the ABI of the thirteen IMPORTED entry points.** Point 3
+//! concerns the eight functions we WRITE, a set **disjoint** from the
+//! thirteen we CALL — there is no type in `windows-rs` to
+//! compare `PrjWriteFileData` against, nor any of the twelve others. **The thirteen
+//! rest entirely on point 1.** Saying so rather than letting it be believed
+//! that "eight out of thirteen are covered".
 //!
-//! ⚠️ **Ce n'est pas une crainte, c'est un fait MESURÉ** (20 août 2026, journal
-//! `journaux-pont-fichiers/f1-tache12-mutations.txt`) : trois mutations d'ABI
-//! jouées sur les déclarations ci-dessous — retirer le cinquième paramètre de
-//! `PrjStartVirtualizing`, donner un `HRESULT` de retour à
-//! `PrjStopVirtualizing`, changer le retour de `PrjAllocateAlignedBuffer` en
-//! `HRESULT` — **ont TOUTES LES TROIS survécu** à `cargo check --target
-//! x86_64-pc-windows-gnu` et à la suite d'hôte entière. **Rien, dans ce dépôt,
-//! ne peut attraper une transcription fautive.** La relecture texte à texte du
-//! point 1 est le seul garde, et l'exécution sur la VM le seul juge.
+//! ⚠️ **It is not a fear, it is a MEASURED fact** (August 20th, 2026, log
+//! `journaux-pont-fichiers/f1-tache12-mutations.txt`): three ABI mutations
+//! played on the declarations below — removing the fifth parameter of
+//! `PrjStartVirtualizing`, giving `PrjStopVirtualizing` an `HRESULT` return,
+//! changing the return of `PrjAllocateAlignedBuffer` to
+//! `HRESULT` — **ALL THREE survived** `cargo check --target
+//! x86_64-pc-windows-gnu` and the whole host suite. **Nothing in this repository
+//! can catch a faulty transcription.** Point 1's text-to-text review
+//! is the only guard, and running on the VM the only judge.
 //!
-//! # Le contrôle qui prouve l'absence d'import statique, et sa portée
+//! # The check proving the absence of static import, and its reach
 //!
 //! ```text
 //! cd agent && cargo build --release --target x86_64-pc-windows-gnu
@@ -71,12 +71,12 @@
 //!   | grep -i 'projectedfslib'
 //! ```
 //!
-//! ⚠️ **Il porte sur le binaire `-gnu` de l'hôte, pas sur le binaire `msvc`
-//! livré sur la VM.** Il ne prouve donc PAS l'absence d'import dans le
-//! livrable. Le contrôle qui porte sur le vrai binaire est en recette (tâche 18)
-//! et il est d'une autre nature : renommer `ProjectedFSLib.dll`, et vérifier
-//! que le superviseur, le capteur et un enfant démarrent quand même.
-//! **L'un ne vaut pas l'autre.**
+//! ⚠️ **It bears on the host's `-gnu` binary, not on the `msvc` binary
+//! shipped on the VM.** It therefore does NOT prove the absence of import in the
+//! deliverable. The check that bears on the real binary is in the acceptance run (task 18)
+//! and it is of another nature: rename `ProjectedFSLib.dll`, and check
+//! that the supervisor, the capturer and a child start anyway.
+//! **One is not worth the other.**
 
 use anyhow::{Context, Result};
 use windows::core::{GUID, PCSTR, PCWSTR};
@@ -91,23 +91,23 @@ use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
 use crate::pont::resolution;
 
 // ────────────────────────────────────────────────────────────────────────────
-// Les treize signatures. Chacune porte la ligne `link!` dont elle est la copie.
+// The thirteen signatures. Each carries the `link!` line it is a copy of.
 //
-// ⚠️ TROIS pièges relevés dans le module, et non supposés :
+// ⚠️ THREE traps found in the module, not assumed:
 //
-//   1. `PrjStartVirtualizing` a CINQ paramètres dans le `link!` et QUATRE dans
-//      l'enveloppe : celle-ci cache le paramètre de SORTIE
-//      `namespacevirtualizationcontext` et le rend en `Result`. Transcrire
-//      l'enveloppe produirait un appel dont le dernier argument manque.
-//   2. `PrjStopVirtualizing` et `PrjFreeAlignedBuffer` NE RENDENT RIEN. Leur
-//      donner un `HRESULT` de retour est un défaut d'ABI.
-//   3. `PrjAllocateAlignedBuffer` rend un POINTEUR, pas un `HRESULT` : `NULL`
-//      est l'échec.
+//   1. `PrjStartVirtualizing` has FIVE parameters in the `link!` and FOUR in
+//      the wrapper: the wrapper hides the OUTPUT parameter
+//      `namespacevirtualizationcontext` and returns it as a `Result`. Transcribing
+//      the wrapper would produce a call missing its last argument.
+//   2. `PrjStopVirtualizing` and `PrjFreeAlignedBuffer` RETURN NOTHING. Giving
+//      them an `HRESULT` return is an ABI defect.
+//   3. `PrjAllocateAlignedBuffer` returns a POINTER, not an `HRESULT`: `NULL`
+//      is the failure.
 //
-// ⚠️ Le type de retour est `windows::core::HRESULT` là où le `link!` l'écrit,
-// et jamais `i32` : `HRESULT` est `#[repr(transparent)]` sur un `i32`, donc
-// l'ABI est identique, mais écrire `i32` ferait perdre à la relecture la
-// comparaison littérale que le point 1 ci-dessus lui promet.
+// ⚠️ The return type is `windows::core::HRESULT` where the `link!` writes it,
+// and never `i32`: `HRESULT` is `#[repr(transparent)]` over an `i32`, so
+// the ABI is identical, but writing `i32` would make the review lose the
+// literal comparison point 1 above promises it.
 // ────────────────────────────────────────────────────────────────────────────
 
 /// `mod.rs:3` — `fn PrjAllocateAlignedBuffer(namespacevirtualizationcontext : PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT, size : usize) -> *mut core::ffi::c_void`
@@ -143,10 +143,10 @@ type ComparerNoms = unsafe extern "system" fn(filename1: PCWSTR, filename2: PCWS
 
 /// `mod.rs:47` — `fn PrjFileNameMatch(filenametocheck : windows_core::PCWSTR, pattern : windows_core::PCWSTR) -> bool`
 ///
-/// ⚠️ Le retour est `bool` **parce que le `link!` l'écrit `bool`**, et non par
-/// commodité : la fonction Win32 rend un `BOOLEAN` d'un octet, et `bool` en
-/// Rust en fait un aussi. Écrire `i32` ou `BOOL` lirait trois octets de plus
-/// que la fonction n'en a écrits.
+/// ⚠️ The return is `bool` **because the `link!` writes it `bool`**, and not for
+/// convenience: the Win32 function returns a one-byte `BOOLEAN`, and Rust's `bool`
+/// is one byte too. Writing `i32` or `BOOL` would read three more bytes
+/// than the function wrote.
 type ApparierNom = unsafe extern "system" fn(filenametocheck: PCWSTR, pattern: PCWSTR) -> bool;
 
 /// `mod.rs:55` — `fn PrjFillDirEntryBuffer(filename : windows_core::PCWSTR, filebasicinfo : *const PRJ_FILE_BASIC_INFO, direntrybufferhandle : PRJ_DIR_ENTRY_BUFFER_HANDLE) -> windows_core::HRESULT`
@@ -158,7 +158,7 @@ type RemplirTamponEntrees = unsafe extern "system" fn(
 
 /// `mod.rs:68` — `fn PrjFreeAlignedBuffer(buffer : *const core::ffi::c_void)`
 ///
-/// ⚠️ **Aucun retour** (piège 2 ci-dessus).
+/// ⚠️ **No return** (trap 2 above).
 type RendreTamponAligne = unsafe extern "system" fn(buffer: *const core::ffi::c_void);
 
 /// `mod.rs:93` — `fn PrjMarkDirectoryAsPlaceholder(rootpathname : windows_core::PCWSTR, targetpathname : windows_core::PCWSTR, versioninfo : *const PRJ_PLACEHOLDER_VERSION_INFO, virtualizationinstanceid : *const windows_core::GUID) -> windows_core::HRESULT`
@@ -171,8 +171,8 @@ type MarquerRacine = unsafe extern "system" fn(
 
 /// `mod.rs:101` — `fn PrjStartVirtualizing(virtualizationrootpath : windows_core::PCWSTR, callbacks : *const PRJ_CALLBACKS, instancecontext : *const core::ffi::c_void, options : *const PRJ_STARTVIRTUALIZING_OPTIONS, namespacevirtualizationcontext : *mut PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT) -> windows_core::HRESULT`
 ///
-/// ⚠️ **CINQ paramètres** (piège 1 ci-dessus). Le cinquième est le paramètre de
-/// SORTIE que l'enveloppe cache derrière son `Result`.
+/// ⚠️ **FIVE parameters** (trap 1 above). The fifth is the OUTPUT
+/// parameter the wrapper hides behind its `Result`.
 type DemarrerVirtualisation = unsafe extern "system" fn(
     virtualizationrootpath: PCWSTR,
     callbacks: *const PRJ_CALLBACKS,
@@ -183,7 +183,7 @@ type DemarrerVirtualisation = unsafe extern "system" fn(
 
 /// `mod.rs:109` — `fn PrjStopVirtualizing(namespacevirtualizationcontext : PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT)`
 ///
-/// ⚠️ **Aucun retour** (piège 2 ci-dessus).
+/// ⚠️ **No return** (trap 2 above).
 type ArreterVirtualisation =
     unsafe extern "system" fn(namespacevirtualizationcontext: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT);
 
@@ -204,66 +204,66 @@ type EcrireInfoMarqueur = unsafe extern "system" fn(
     placeholderinfosize: u32,
 ) -> windows::core::HRESULT;
 
-/// Convertit une adresse en pointeur de fonction typé.
+/// Converts an address into a typed function pointer.
 ///
-/// # Sûreté
+/// # Safety
 ///
-/// L'appelant garantit qu'`adresse` est l'adresse réellement exportée pour
-/// l'entrée dont `T` est la transcription. **C'est là que le risque R7 est
-/// pris** : ni cette fonction ni le compilateur ne peuvent vérifier que `T`
-/// décrit la signature de la fonction qui vit à cette adresse.
+/// The caller guarantees that `adresse` is the address actually exported for
+/// the entry point `T` is the transcription of. **This is where risk R7 is
+/// taken**: neither this function nor the compiler can check that `T`
+/// describes the signature of the function living at this address.
 ///
-/// L'assertion de taille n'y change rien, et elle n'est pas décorative pour
-/// autant : elle attrape un `T` qui ne serait **pas** un pointeur de fonction
-/// nu — un `Option<fn>` habitant une niche, une référence grasse —, cas que
-/// `transmute_copy` accepterait en silence **en lisant au-delà de la variable
-/// source**.
+/// The size assertion changes nothing to that, and it is not decorative for
+/// all that: it catches a `T` that would **not** be a bare function
+/// pointer — an `Option<fn>` inhabiting a niche, a fat reference —, a case
+/// `transmute_copy` would silently accept **by reading beyond the source
+/// variable**.
 unsafe fn depuis_adresse<T: Copy>(adresse: usize) -> T {
     assert_eq!(
         std::mem::size_of::<T>(),
         std::mem::size_of::<usize>(),
         "la cible d'une transcription ProjFS n'est pas un pointeur de fonction nu"
     );
-    // SÛRETÉ : les tailles sont égales (assertion ci-dessus), et l'appelant
-    // garantit la correspondance de signature.
+    // SAFETY: the sizes are equal (assertion above), and the caller
+    // guarantees the signature match.
     unsafe { std::mem::transmute_copy(&adresse) }
 }
 
-/// Les treize entrées, résolues une seule fois.
+/// The thirteen entry points, resolved once.
 ///
-/// **Aucune n'est `Option`** : [`charger`] échoue si une seule manque, donc un
-/// `ProjFs` qui existe les a toutes. Les rendre optionnelles ferait porter à
-/// chaque site d'appel une décision qui appartient au chargement.
+/// **None is `Option`**: [`charger`] fails if a single one is missing, so a
+/// `ProjFs` that exists has them all. Making them optional would put on
+/// each call site a decision that belongs to loading.
 pub struct ProjFs {
     pub allouer_tampon_aligne: AllouerTamponAligne,
-    /// ⚠️ **Chargée sans appelant, DÉLIBÉRÉMENT.** Elle vide le cache négatif
-    /// de ProjFS, ce qu'aucun chemin de F1 ne demande : le seul moyen de le
-    /// solliciter est `Rafraichir`. Elle est résolue dès maintenant pour que
-    /// F5 n'ait pas à rouvrir cette couche — et parce qu'une entrée absente
-    /// doit être découverte au CHARGEMENT, avec un message qui la nomme,
-    /// jamais au premier appel.
+    /// ⚠️ **Loaded without a caller, DELIBERATELY.** It empties ProjFS's negative
+    /// cache, which no F1 path requests: the only way to
+    /// trigger it is `Rafraichir`. It is resolved right now so that
+    /// F5 does not have to reopen this layer — and because a missing entry point
+    /// must be discovered at LOADING, with a message naming it,
+    /// never at the first call.
     ///
-    /// ✅ **ELLE A SON PREMIER APPELANT DE PRODUCTION DEPUIS F5**
-    /// (`service::annonces::rafraichir`), et le pari de F1 a donc tenu : la
-    /// couche n'a pas été rouverte. **R7 se referme d'UNE entrée sur cinq** —
-    /// pas « R7 est fermé ».
-    /// 🔵 **Et son `totalentrynumber` est TRACÉ** : le cache négatif est
-    /// devenu OBSERVABLE pour la première fois. Relevé, 3 exécutions :
-    /// `cache_negatif_purge=1`. F4 n'avait pu en mesurer qu'un différentiel
-    /// **nul**, faute qu'un sondage atteigne le fournisseur.
+    /// ✅ **IT HAS HAD ITS FIRST PRODUCTION CALLER SINCE F5**
+    /// (`service::annonces::rafraichir`), and F1's bet therefore held: the
+    /// layer was not reopened. **R7 closes by ONE entry point out of five** —
+    /// not "R7 is closed".
+    /// 🔵 **And its `totalentrynumber` is TRACED**: the negative cache has
+    /// become OBSERVABLE for the first time. Recorded, 3 runs:
+    /// `cache_negatif_purge=1`. F4 could only measure a **zero**
+    /// differential, since no probe reached the provider.
     pub vider_cache_negatif: ViderCacheNegatif,
     pub completer_commande: CompleterCommande,
-    /// ⚠️ **Chargée sans appelant, DÉLIBÉRÉMENT**, pour la même raison :
-    /// **aucune politique d'éviction en F1**. Chaque fichier lu est hydraté sur
-    /// le disque de la VM et il y reste (spec §6.4, cas 4). Poser une politique
-    /// sans mesure serait exactement le geste que ce dépôt reproche à ses
-    /// constantes non calibrées ; la mesure appartient à F5, et l'entrée est
-    /// prête pour elle.
+    /// ⚠️ **Loaded without a caller, DELIBERATELY**, for the same reason:
+    /// **no eviction policy in F1**. Each file read is hydrated on
+    /// the VM's disk and stays there (spec §6.4, case 4). Setting a policy
+    /// without measurement would be exactly the gesture this repository reproaches its
+    /// uncalibrated constants for; the measurement belongs to F5, and the entry point is
+    /// ready for it.
     ///
-    /// ⛔ **F5 A MESURÉ, ET N'A POSÉ AUCUNE POLITIQUE** — c'était sa décision
-    /// D9, écrite d'avance. **Cette entrée reste donc sans appelant, et le
-    /// sous-projet ③ se ferme derrière elle** : il n'y aura pas de F6. Quatre
-    /// des cinq entrées ProjFS sans jumeau `PRJ_*_CB` le restent.
+    /// ⛔ **F5 MEASURED, AND SET NO POLICY** — it was its decision
+    /// D9, written in advance. **This entry point therefore stays without a caller, and
+    /// sub-project ③ closes behind it**: there will be no F6. Four
+    /// of the five ProjFS entry points without a `PRJ_*_CB` twin stay so.
     #[allow(dead_code)]
     pub supprimer_fichier: SupprimerFichier,
     pub comparer_noms: ComparerNoms,
@@ -277,37 +277,37 @@ pub struct ProjFs {
     pub ecrire_info_marqueur: EcrireInfoMarqueur,
 }
 
-/// Le nom de la bibliothèque, en UTF-16 terminé par un nul.
+/// The library's name, in null-terminated UTF-16.
 ///
-/// Écrit en toutes lettres plutôt que par la macro `w!` pour que le nom soit
-/// `grep`-able tel quel : c'est le motif exact que le contrôle `objdump` et la
-/// recette de renommage (tâche 18) cherchent tous les deux.
+/// Written out in full rather than through the `w!` macro so that the name is
+/// `grep`-able as is: it is the exact pattern the `objdump` check and the
+/// renaming acceptance run (task 18) both look for.
 const BIBLIOTHEQUE: &str = "ProjectedFSLib.dll";
 
-/// Charge `ProjectedFSLib.dll` et résout les treize entrées.
+/// Loads `ProjectedFSLib.dll` and resolves the thirteen entry points.
 ///
-/// **Une seule entrée absente fait échouer le chargement, et l'erreur la
-/// nomme** — voir [`crate::pont::resolution`], où cette règle vit et est testée
-/// sur l'hôte. Ici ne reste que ce qu'aucun test d'hôte ne peut atteindre.
+/// **A single missing entry point makes loading fail, and the error
+/// names it** — see [`crate::pont::resolution`], where this rule lives and is tested
+/// on the host. Only what no host test can reach remains here.
 pub fn charger() -> Result<ProjFs> {
     let nom: Vec<u16> = BIBLIOTHEQUE
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect();
-    // `LoadLibraryW` et non `LoadLibraryA` : le nom est du texte, et rien ne
-    // garantit la page de code ANSI de la session Windows.
+    // `LoadLibraryW` and not `LoadLibraryA`: the name is text, and nothing
+    // guarantees the Windows session's ANSI code page.
     let module = unsafe { LoadLibraryW(PCWSTR(nom.as_ptr())) }
         .with_context(|| format!("chargement de {BIBLIOTHEQUE}"))?;
 
     let adresses = resolution::resoudre(|entree| {
-        // `GetProcAddress` prend un nom ANSI terminé par un nul. Les treize
-        // noms sont de l'ASCII pur (`resolution::NOMS`), donc la conversion ne
-        // peut pas perdre de caractère ; le `ok()?` couvre le seul cas
-        // restant, un nul interne, qui ne peut venir que d'une édition
-        // fautive de `NOMS`.
+        // `GetProcAddress` takes a null-terminated ANSI name. The thirteen
+        // names are pure ASCII (`resolution::NOMS`), so the conversion cannot
+        // lose a character; the `ok()?` covers the only remaining
+        // case, an inner null, which can only come from a faulty
+        // edit of `NOMS`.
         let c = std::ffi::CString::new(entree).ok()?;
-        // SÛRETÉ : `module` est un handle valide rendu par `LoadLibraryW`, et
-        // `c` vit jusqu'à la fin de cette expression, donc au-delà de l'appel.
+        // SAFETY: `module` is a valid handle returned by `LoadLibraryW`, and
+        // `c` lives until the end of this expression, hence beyond the call.
         unsafe { GetProcAddress(module, PCSTR(c.as_ptr() as *const u8)) }.map(|f| f as usize)
     })
     .with_context(|| {
@@ -317,20 +317,20 @@ pub fn charger() -> Result<ProjFs> {
         )
     })?;
 
-    // SÛRETÉ : chaque adresse vient de `GetProcAddress` sur le nom que
-    // `resolution::Adresses` associe à ce champ — appariement épinglé par
-    // `resolution::chaque_champ_recoit_l_adresse_de_son_entree` — et chaque
-    // type ci-dessus est la copie littérale du `link!` cité en regard de sa
-    // déclaration. **C'est ici, et nulle part ailleurs, que le risque R7 est
-    // pris** : si une transcription diverge, ce `transmute` est valide pour le
-    // compilateur et faux pour la machine.
+    // SAFETY: each address comes from `GetProcAddress` on the name that
+    // `resolution::Adresses` associates with this field — a pairing pinned by
+    // `resolution::chaque_champ_recoit_l_adresse_de_son_entree` — and each
+    // type above is the literal copy of the `link!` cited next to its
+    // declaration. **It is here, and nowhere else, that risk R7 is
+    // taken**: if a transcription diverges, this `transmute` is valid for the
+    // compiler and wrong for the machine.
     //
-    // ⚠️ **Le nom de champ n'est écrit QU'UNE FOIS par entrée**, par la macro
-    // ci-dessous, et il est le MÊME dans `ProjFs` et dans
-    // `resolution::Adresses`. C'est ce qui rend l'interversion de deux entrées
-    // structurellement impossible ici : la première rédaction indexait un
-    // `[usize; 13]` par des constantes de rang, et une mutation qui échangeait
-    // deux de ces rangs SURVIVAIT à toute la suite de tests.
+    // ⚠️ **The field name is written ONLY ONCE per entry point**, by the macro
+    // below, and it is the SAME in `ProjFs` and in
+    // `resolution::Adresses`. It is what makes swapping two entry points
+    // structurally impossible here: the first draft indexed a
+    // `[usize; 13]` by rank constants, and a mutation swapping
+    // two of these ranks SURVIVED the whole test suite.
     macro_rules! transcrire {
         ($($champ:ident),+ $(,)?) => {
             ProjFs { $( $champ: unsafe { depuis_adresse(adresses.$champ) }, )+ }

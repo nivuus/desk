@@ -1,16 +1,16 @@
-//! Lecture d'un raccourci Windows par `IShellLinkW`, et découverte des quatre
-//! racines par `SHGetKnownFolderPath`.
+//! Reading a Windows shortcut through `IShellLinkW`, and discovering the four
+//! roots through `SHGetKnownFolderPath`.
 //!
-//! 🔴 CE MODULE EST `#[cfg(windows)]` DANS SON ENTIER, ET IL NE PORTE AUCUNE
-//! RÈGLE. Il rend un [`Brut`] et rien d'autre ; ce qui décide de le retenir
-//! vit dans `apps::raccourci`, qui est pur et se juge sur l'hôte contre les
-//! 218 raccourcis réels de la VM. La coupure est celle de la spec §6, pas un
-//! arbitrage d'implémentation.
+//! 🔴 THIS MODULE IS `#[cfg(windows)]` IN ITS ENTIRETY, AND IT CARRIES NO
+//! RULE. It returns a [`Brut`] and nothing else; what decides whether to keep it
+//! lives in `apps::raccourci`, which is pure and is judged on the host against the
+//! VM's 218 real shortcuts. The split is that of spec §6, not an
+//! implementation trade-off.
 //!
-//! ⚠️ IL N'EST VÉRIFIÉ QUE PAR `cargo check --target x86_64-pc-windows-gnu`,
-//! qui couvre types, emprunts, visibilités et durées de vie — et PAS
-//! l'édition de liens, la cible réelle étant `msvc`. Aucun test d'hôte ne peut
-//! le couvrir.
+//! ⚠️ IT IS CHECKED ONLY BY `cargo check --target x86_64-pc-windows-gnu`,
+//! which covers types, borrows, visibility and lifetimes — and NOT
+//! linking, the real target being `msvc`. No host test can
+//! cover it.
 
 use std::path::{Path, PathBuf};
 
@@ -28,36 +28,36 @@ use windows::Win32::UI::Shell::{
 
 use super::raccourci::Brut;
 
-/// Les tampons de `IShellLinkW` : la documentation de l'interface ne borne
-/// aucune de ces chaînes, mais un argument de raccourci ne peut de toute façon
-/// pas dépasser la ligne de commande Windows (32 767 unités UTF-16). Le
-/// tampon est donc dimensionné pour qu'aucune troncature silencieuse ne soit
-/// possible, plutôt que sur `MAX_PATH` — que les chemins longs dépassent.
+/// The `IShellLinkW` buffers: the interface documentation bounds
+/// none of these strings, but a shortcut argument cannot in any case
+/// exceed the Windows command line (32,767 UTF-16 units). The
+/// buffer is therefore sized so that no silent truncation is
+/// possible, rather than on `MAX_PATH` — which long paths exceed.
 const TAMPON: usize = 32_768;
 
-/// Rejoint l'appartement COM cloisonné du fil appelant.
+/// Joins the calling thread's single-threaded COM apartment.
 ///
-/// 🔴 `APARTMENTTHREADED`, ET NON `MULTITHREADED` comme `wasapi.rs` : le Shell
-/// et surtout `ShellExecuteExW` (`apps::lancement`) exigent une STA, et les
-/// deux tournent sur le MÊME fil dédié. Choisir la MTA ici ferait échouer le
-/// lancement plus tard, loin de sa cause.
+/// 🔴 `APARTMENTTHREADED`, AND NOT `MULTITHREADED` like `wasapi.rs`: the Shell
+/// and above all `ShellExecuteExW` (`apps::lancement`) require an STA, and the
+/// two run on the SAME dedicated thread. Choosing the MTA here would make the
+/// launch fail later, far from its cause.
 ///
-/// 🔴 LE `HRESULT` EST CONTRÔLÉ, PAS IGNORÉ — précédent `wasapi.rs`. `S_OK`
-/// (ce fil vient de rejoindre une STA) et `S_FALSE` (il en était déjà membre)
-/// sont acceptables ; `RPC_E_CHANGED_MODE` signifie que ce fil appartient déjà
-/// à un appartement d'un autre modèle, et poursuivre reviendrait à appeler des
-/// vtables COM depuis le mauvais appartement sans marshaling — un comportement
-/// indéfini qui « marche » la plupart du temps, donc qu'aucune exécution ne
-/// révèle de façon fiable.
+/// 🔴 THE `HRESULT` IS CHECKED, NOT IGNORED — precedent `wasapi.rs`. `S_OK`
+/// (this thread has just joined an STA) and `S_FALSE` (it was already a member)
+/// are acceptable; `RPC_E_CHANGED_MODE` means this thread already belongs
+/// to an apartment of another model, and carrying on would mean calling
+/// COM vtables from the wrong apartment without marshalling — undefined
+/// behaviour that "works" most of the time, hence that no run
+/// reliably reveals.
 ///
-/// Pas de `CoUninitialize` en regard : ce fil vit aussi longtemps que la
-/// boucle de réconciliation, et COM exige que la libération se fasse sur le
-/// fil qui a initialisé — c'est le même raisonnement, et le même précédent,
-/// qu'à `agent/src/wasapi.rs`.
+/// No matching `CoUninitialize`: this thread lives as long as the
+/// reconciliation loop, and COM requires the release to happen on the
+/// thread that initialised — it is the same reasoning, and the same precedent,
+/// as in `agent/src/wasapi.rs`.
 pub fn initialiser_com() -> Result<()> {
-    // SÉCURITÉ : appel FFI. Le seul contrat est que ce fil n'ait pas déjà
-    // rejoint un appartement d'un autre modèle, ce que le contrôle ci-dessous
-    // vérifie plutôt que de le supposer.
+    // SAFETY: FFI call. The only contract is that this thread has not already
+    // joined an apartment of another model, which the check below
+    // verifies rather than assumes.
     let hr = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
     if hr.is_err() {
         bail!(
@@ -70,46 +70,46 @@ pub fn initialiser_com() -> Result<()> {
     Ok(())
 }
 
-/// Lit un `.lnk` et rend ses cinq champs, plus le `nShow` que le lancement
-/// réemploiera.
+/// Reads a `.lnk` and returns its five fields, plus the `nShow` the launch
+/// will reuse.
 ///
-/// 🔴 `IShellLink::Resolve` N'EST APPELÉE NULLE PART, ET C'EST UNE DÉCISION.
-/// Elle peut interroger le réseau, et surtout **déclencher l'installation à la
-/// demande d'un raccourci MSI publié** — pendant une réconciliation de
-/// routine, toutes les trente secondes, sans que personne ne l'ait demandé.
-/// Le coût du refus est nommé : un raccourci dont la cible a bougé garde son
-/// ancien chemin, et c'est le lancement qui le rattrape, par son repli.
+/// 🔴 `IShellLink::Resolve` IS CALLED NOWHERE, AND IT IS A DECISION.
+/// It may query the network, and above all **trigger the on-demand
+/// installation of an advertised MSI shortcut** — during a routine
+/// reconciliation, every thirty seconds, without anyone having asked.
+/// The cost of refusing is named: a shortcut whose target has moved keeps its
+/// old path, and it is the launch that catches up, through its fallback.
 pub fn lire(chemin: &Path) -> Result<Raccourci> {
     let chemin_w = vers_utf16(&chemin.to_string_lossy());
 
-    // SÉCURITÉ : appels FFI. `CoCreateInstance` rend une interface comptée par
-    // référence que `windows-rs` libère par `Drop`.
+    // SAFETY: FFI calls. `CoCreateInstance` returns a reference-counted
+    // interface that `windows-rs` releases through `Drop`.
     let lien: IShellLinkW = unsafe { CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER) }
         .context("CoCreateInstance(ShellLink)")?;
     let persistance: IPersistFile = lien.cast().context("IShellLinkW -> IPersistFile")?;
     unsafe { persistance.Load(PCWSTR(chemin_w.as_ptr()), STGM_READ) }
         .with_context(|| format!("IPersistFile::Load({})", chemin.display()))?;
 
-    // `SLGP_RAWPATH` rend le chemin TEL QU'IL EST STOCKÉ, variables
-    // d'environnement comprises et non développées : c'est ce qui évite
-    // d'appeler `Resolve` implicitement. `SLGP_UNCPRIORITY` préfère le chemin
-    // UNC au chemin de lecteur mappé, qui dépend de la session.
+    // `SLGP_RAWPATH` returns the path AS STORED, environment
+    // variables included and unexpanded: that is what avoids
+    // calling `Resolve` implicitly. `SLGP_UNCPRIORITY` prefers the UNC
+    // path to the mapped-drive path, which depends on the session.
     //
-    // ⚠️ Le troisième argument est un `u32` NU, alors que les constantes
-    // vivent dans le newtype `SLGP_FLAGS(pub i32)` : la conversion est
-    // explicite, et elle a été relue dans les bindings.
+    // ⚠️ The third argument is a BARE `u32`, while the constants
+    // live in the newtype `SLGP_FLAGS(pub i32)`: the conversion is
+    // explicit, and it was re-read in the bindings.
     let drapeaux = (SLGP_RAWPATH.0 | SLGP_UNCPRIORITY.0) as u32;
     let mut tampon = vec![0u16; TAMPON];
-    // Le second argument peut être nul : nous ne voulons pas le
-    // `WIN32_FIND_DATAW`, et le demander coûterait un accès disque par
-    // raccourci — 218 par tour.
+    // The second argument may be null: we do not want the
+    // `WIN32_FIND_DATAW`, and asking for it would cost one disk access per
+    // shortcut — 218 per round.
     let cible = match unsafe { lien.GetPath(&mut tampon, std::ptr::null_mut(), drapeaux) } {
         Ok(()) => developper(&depuis_utf16(&tampon)),
-        // ⚠️ UNE CIBLE ILLISIBLE N'EST PAS UNE ERREUR : les cibles de l'espace
-        // de noms Shell (Corbeille, « Ce PC », Panneau de configuration) n'ont
-        // aucun chemin de fichier, et il y en a 7 sur cette VM. La règle de
-        // filtrage les écarte par `Ecart::CibleVide` ; échouer ici les
-        // transformerait en pannes de lecture.
+        // ⚠️ AN UNREADABLE TARGET IS NOT AN ERROR: Shell namespace
+        // targets (Recycle Bin, "This PC", Control Panel) have
+        // no file path, and there are 7 of them on this VM. The filtering
+        // rule discards them through `Ecart::CibleVide`; failing here would
+        // turn them into read failures.
         Err(_) => String::new(),
     };
 
@@ -125,20 +125,20 @@ pub fn lire(chemin: &Path) -> Result<Raccourci> {
         Err(_) => String::new(),
     };
 
-    // Le style de fenêtre que le raccourci demande — minimisé, maximisé,
-    // normal. Le lancement le rejoue tel quel, pour qu'un double-clic dans
-    // l'agent et un double-clic dans l'Explorateur donnent la même chose.
+    // The window style the shortcut asks for — minimised, maximised,
+    // normal. The launch replays it as is, so that a double-click in
+    // the agent and a double-click in Explorer give the same thing.
     let montrer = unsafe { lien.GetShowCmd() }.map(|c| c.0).unwrap_or(1);
 
-    // 🔴 L'`IconLocation` AU FORMAT BRUT `<chemin>,<index>` — sous-bloc G2.
-    // C'est de lui que `apps::icone::source` tire la PROVENANCE de l'image, et
-    // c'est pourquoi il n'est ni développé ni normalisé ici : le module qui le
-    // lit est PUR, et il doit voir exactement ce que le raccourci porte.
+    // 🔴 THE `IconLocation` IN RAW `<path>,<index>` FORMAT — sub-block G2.
+    // It is from it that `apps::icone::source` draws the image's PROVENANCE, and
+    // that is why it is neither expanded nor normalised here: the module that
+    // reads it is PURE, and it must see exactly what the shortcut carries.
     //
-    // ⚠️ UN CHEMIN VIDE N'EST PAS UNE ABSENCE D'ICÔNE : il renvoie à la CIBLE,
-    // et **92 des 153 raccourcis retenus de cette VM sont dans ce cas**. Une
-    // erreur de lecture rend donc la chaîne vide, qui porte exactement ce
-    // sens-là.
+    // ⚠️ AN EMPTY PATH IS NOT AN ABSENCE OF ICON: it refers to the TARGET,
+    // and **92 of the 153 shortcuts kept on this VM are in that case**. A
+    // read error therefore returns the empty string, which carries exactly that
+    // meaning.
     let mut tampon = vec![0u16; TAMPON];
     let mut index = 0i32;
     let icone = match unsafe { lien.GetIconLocation(&mut tampon, &mut index) } {
@@ -171,29 +171,29 @@ pub fn lire(chemin: &Path) -> Result<Raccourci> {
     })
 }
 
-/// Ce que la lecture rend : les cinq champs, plus le `nShow`.
+/// What the read returns: the five fields, plus the `nShow`.
 ///
-/// `montrer` ne participe NI à l'identité NI au message : il ne sert qu'au
-/// lancement, et le mettre dans [`Brut`] le ferait voyager sur le canal pour
-/// rien.
+/// `montrer` takes part NEITHER in the identity NOR in the message: it only serves the
+/// launch, and putting it in [`Brut`] would make it travel on the channel for
+/// nothing.
 pub struct Raccourci {
     pub brut: Brut,
     pub montrer: i32,
-    /// L'`IconLocation` BRUTE, `<chemin>,<index>` — vide quand le raccourci
-    /// n'en déclare aucune, ce qui renvoie à la cible. Sous-bloc G2.
+    /// The RAW `IconLocation`, `<path>,<index>` — empty when the shortcut
+    /// declares none, which refers to the target. Sub-block G2.
     pub icone: String,
 }
 
-/// Les quatre racines de raccourcis, résolues par le système.
+/// The four shortcut roots, resolved by the system.
 ///
-/// 🔴 JAMAIS DES CHEMINS LITTÉRAUX. La spec mesure
-/// `C:\Users\Administrateur\Desktop` sur UNE machine : le coder rendrait la
-/// découverte fausse sur toute autre installation, et muette à ce sujet.
+/// 🔴 NEVER LITERAL PATHS. The spec measures
+/// `C:\Users\Administrateur\Desktop` on ONE machine: hardcoding it would make
+/// discovery wrong on any other installation, and silent about it.
 ///
-/// ⚠️ UNE RACINE QUI ÉCHOUE À SE RÉSOUDRE EST SAUTÉE AVEC SA TRACE, JAMAIS
-/// FATALE. `FOLDERID_StartMenu` peut ne pas exister sur un profil neuf, et une
-/// réconciliation qui échouerait en entier sur une racine absente ferait
-/// disparaître TOUT le catalogue — la spec §7 le dit nommément.
+/// ⚠️ A ROOT THAT FAILS TO RESOLVE IS SKIPPED WITH ITS TRACE, NEVER
+/// FATAL. `FOLDERID_StartMenu` may not exist on a fresh profile, and a
+/// reconciliation that failed entirely on a missing root would make the
+/// WHOLE catalogue disappear — spec §7 says so by name.
 pub fn racines() -> Vec<PathBuf> {
     const RACINES: [(&str, GUID); 4] = [
         ("Bureau", FOLDERID_Desktop),
@@ -219,8 +219,8 @@ pub fn racines() -> Vec<PathBuf> {
 }
 
 fn dossier_connu(id: &GUID) -> Result<PathBuf> {
-    // SÉCURITÉ : appel FFI. Le tampon rendu est alloué par le Shell, et c'est
-    // à nous de le libérer par `CoTaskMemFree` — d'où la copie avant.
+    // SAFETY: FFI call. The returned buffer is allocated by the Shell, and it is
+    // up to us to free it through `CoTaskMemFree` — hence the copy before.
     let brut = unsafe { SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None) }
         .context("SHGetKnownFolderPath")?;
     if brut.is_null() {
@@ -231,13 +231,13 @@ fn dossier_connu(id: &GUID) -> Result<PathBuf> {
     Ok(PathBuf::from(chemin?))
 }
 
-/// Parcourt une racine RÉCURSIVEMENT et rend ses `.lnk`.
+/// Walks a root RECURSIVELY and returns its `.lnk` files.
 ///
-/// ⚠️ RÉCURSIF PARCE QUE LE MENU DÉMARRER EST ARBORESCENT : il porte 203 des
-/// 218 raccourcis de cette VM, presque tous dans des sous-dossiers par
-/// éditeur. Un parcours à plat n'en verrait quasiment aucun.
+/// ⚠️ RECURSIVE BECAUSE THE START MENU IS A TREE: it carries 203 of the
+/// VM's 218 shortcuts, almost all in per-publisher subfolders.
+/// A flat walk would see almost none of them.
 ///
-/// ⚠️ UN RÉPERTOIRE ILLISIBLE EST SAUTÉ AVEC SA TRACE, comme une racine.
+/// ⚠️ AN UNREADABLE DIRECTORY IS SKIPPED WITH ITS TRACE, like a root.
 pub fn lnk_sous(racine: &Path) -> Vec<PathBuf> {
     let mut sortie = Vec::new();
     let mut pile = vec![racine.to_path_buf()];
@@ -252,9 +252,9 @@ pub fn lnk_sous(racine: &Path) -> Vec<PathBuf> {
         for entree in entrees.flatten() {
             let chemin = entree.path();
             match entree.file_type() {
-                // Les liens symboliques ne sont pas suivis : un lien qui
-                // pointerait vers un ancêtre ferait boucler ce parcours sans
-                // fin, toutes les trente secondes.
+                // Symbolic links are not followed: a link that
+                // pointed to an ancestor would make this walk loop without
+                // end, every thirty seconds.
                 Ok(t) if t.is_dir() => pile.push(chemin),
                 Ok(t) if t.is_file() => {
                     let est_lnk = chemin
@@ -271,22 +271,22 @@ pub fn lnk_sous(racine: &Path) -> Vec<PathBuf> {
     sortie
 }
 
-/// Développe les variables d'environnement d'un chemin.
+/// Expands the environment variables of a path.
 ///
-/// `SLGP_RAWPATH` rend le chemin tel qu'il est stocké — `%ProgramFiles%\…`
-/// pour beaucoup de raccourcis d'installeurs. Sans ce développement, la règle
-/// « le fichier cible existe » les écarterait tous, et la clé d'identité
-/// dépendrait de la forme d'écriture plutôt que du fichier visé.
+/// `SLGP_RAWPATH` returns the path as stored — `%ProgramFiles%\…`
+/// for many installer shortcuts. Without this expansion, the rule
+/// "the target file exists" would discard them all, and the identity key
+/// would depend on the way it was written rather than on the file targeted.
 fn developper(valeur: &str) -> String {
     if !valeur.contains('%') {
         return valeur.to_string();
     }
     let source = vers_utf16(valeur);
     let mut tampon = vec![0u16; TAMPON];
-    // SÉCURITÉ : appel FFI. Rend le nombre d'unités écrites, zéro en cas
-    // d'échec — auquel cas on garde la valeur non développée plutôt que de
-    // rendre une chaîne vide, qui se lirait comme « cible de l'espace de noms
-    // Shell » et changerait le motif d'écart.
+    // SAFETY: FFI call. Returns the number of units written, zero on
+    // failure — in which case we keep the unexpanded value rather than
+    // returning an empty string, which would read as "Shell namespace
+    // target" and would change the discard reason.
     let ecrit = unsafe { ExpandEnvironmentStringsW(PCWSTR(source.as_ptr()), Some(&mut tampon)) };
     if ecrit == 0 {
         return valeur.to_string();
@@ -294,19 +294,19 @@ fn developper(valeur: &str) -> String {
     depuis_utf16(&tampon)
 }
 
-/// ⚠️ `pub(super)` DEPUIS LE SOUS-BLOC G2, et c'est une réutilisation
-/// DÉLIBÉRÉE plutôt qu'une copie : `apps::icone` et `apps::icone::lecture_pe`
-/// en ont besoin, et deux encodages identiques divergeraient le jour où l'un
-/// cesserait d'ajouter son nul terminal — panne que rien ne dirait avant un
-/// dépassement de tampon côté Windows.
+/// ⚠️ `pub(super)` SINCE SUB-BLOCK G2, and it is a DELIBERATE reuse
+/// rather than a copy: `apps::icone` and `apps::icone::lecture_pe`
+/// need it, and two identical encodings would diverge the day one of them
+/// stopped appending its terminating nul — a failure nothing would report before a
+/// buffer overrun on the Windows side.
 pub(super) fn vers_utf16(valeur: &str) -> Vec<u16> {
     valeur.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-/// ⚠️ S'ARRÊTE AU PREMIER NUL. Les tampons de `IShellLinkW` ne sont pas
-/// remplis : ils portent une chaîne terminée par un nul suivie de 32 000
-/// zéros, et une conversion naïve rendrait une chaîne de 32 768 caractères
-/// dont l'égalité et l'empreinte seraient fausses.
+/// ⚠️ STOPS AT THE FIRST NUL. The `IShellLinkW` buffers are not
+/// filled: they carry a nul-terminated string followed by 32,000
+/// zeros, and a naive conversion would return a 32,768-character string
+/// whose equality and fingerprint would be wrong.
 fn depuis_utf16(tampon: &[u16]) -> String {
     let fin = tampon.iter().position(|&c| c == 0).unwrap_or(tampon.len());
     String::from_utf16_lossy(&tampon[..fin])

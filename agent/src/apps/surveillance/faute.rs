@@ -1,52 +1,52 @@
-//! L'injection de fautes de surveillance — variable de banc `APPS_FAUTE`,
-//! **jamais une configuration livrée**.
+//! Watch fault injection — bench variable `APPS_FAUTE`,
+//! **never a shipped configuration**.
 //!
-//! Elle rend atteignables trois chemins de code que la machine ne produit pas
-//! d'elle-même : le débordement de tampon, la complétion **avalée**, et la
-//! perte d'un handle. Patron **verbatim** de
+//! It makes reachable three code paths the machine does not produce
+//! on its own: buffer overflow, the **swallowed** completion, and the
+//! loss of a handle. **Verbatim** pattern of
 //! `agent/src/transport/piste_audio/injection.rs`.
 //!
-//! 🔴 **CE QUE L'INJECTION ÉTABLIT, ET CE QU'ELLE N'ÉTABLIT PAS.** Elle établit
-//! que le **REMÈDE** fonctionne, jamais qu'une **CAUSE** existe. C'est la phrase
-//! que le sous-bloc D11 a écrite d'`AUDIO_FAUTE_RECONSTRUCTION`, et elle vaut
-//! ici mot pour mot : une ligne `notifications perdues` produite par injection
-//! **ne dit rien** de la probabilité qu'un débordement réel se produise sur
-//! cette machine. Seule une rafale réelle le dit, et son verdict peut être NON
-//! MESURABLE.
+//! 🔴 **WHAT INJECTION ESTABLISHES, AND WHAT IT DOES NOT.** It establishes
+//! that the **REMEDY** works, never that a **CAUSE** exists. It is the sentence
+//! sub-block D11 wrote about `AUDIO_FAUTE_RECONSTRUCTION`, and it holds
+//! here word for word: a `notifications perdues` line produced by injection
+//! **says nothing** about the probability that a real overflow happens on
+//! this machine. Only a real burst says so, and its verdict may be NOT
+//! MEASURABLE.
 //!
-//! ⚠️ **Convention `absente = désarmée`** — celle d'`AUDIO_FAUTE_LECTURE`,
-//! d'`AUDIO_FAUTE_RECONSTRUCTION` et d'`INSTALLATION_FAUTE`. **Jamais** celle
-//! de `PLEIN_ECRAN` : ici l'absence n'est pas un désarmement de mécanisme
-//! livré, c'est l'état nominal d'un instrument qui n'existe que pour un banc.
+//! ⚠️ **Convention `absent = disarmed`** — that of `AUDIO_FAUTE_LECTURE`,
+//! `AUDIO_FAUTE_RECONSTRUCTION` and `INSTALLATION_FAUTE`. **Never** that
+//! of `PLEIN_ECRAN`: here absence is not the disarming of a shipped
+//! mechanism, it is the nominal state of an instrument that exists only for a bench.
 
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::OnceLock;
 
-/// Ce qu'on fait dire à la prochaine complétion.
+/// What the next completion is made to say.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Famille {
-    /// Les *n* prochaines complétions sont traitées comme des **débordements** :
-    /// comptées, journalisées, **et déclenchantes**. Rend atteignable le chemin
-    /// du critère ② quand la rafale réelle ne déborde pas.
+    /// The next *n* completions are treated as **overflows**:
+    /// counted, logged, **and triggering**. Makes the path of
+    /// criterion ② reachable when the real burst does not overflow.
     Debordement,
-    /// 🔵 Les *n* prochaines complétions sont **AVALÉES** : ni comptées, ni
-    /// journalisées, ni déclenchantes.
+    /// 🔵 The next *n* completions are **SWALLOWED**: neither counted, nor
+    /// logged, nor triggering.
     ///
-    /// 🔴 C'EST LE SEUL MONTAGE QUI RENDE LE CRITÈRE ③ DISCRIMINANT, et la
-    /// raison tient en une phrase : dans cette conception, **un débordement est
-    /// lui-même une complétion**, donc un déclencheur, et toute réconciliation
-    /// relit le disque entier — un débordement se répare donc tout seul. La
-    /// seule panne que la réconciliation périodique achète réellement est
-    /// **une surveillance qui cesse de délivrer SANS ERREUR**, et c'est
-    /// exactement ce que cette famille fabrique.
+    /// 🔴 IT IS THE ONLY SET-UP THAT MAKES CRITERION ③ DISCRIMINATING, and the
+    /// reason fits in one sentence: in this design, **an overflow is
+    /// itself a completion**, hence a trigger, and every reconciliation
+    /// re-reads the whole disk — an overflow therefore fixes itself. The
+    /// only failure the periodic reconciliation really buys is
+    /// **a watch that stops delivering WITHOUT AN ERROR**, and that is
+    /// exactly what this family fabricates.
     Muette,
-    /// Les *n* prochaines complétions rendent une erreur fatale de handle : la
-    /// racine passe en échec, et son rétablissement devient observable.
+    /// The next *n* completions return a fatal handle error: the
+    /// root goes into failure, and its recovery becomes observable.
     Perte,
 }
 
 impl Famille {
-    /// Le code stocké dans l'atomique. **`0` est réservé à « aucune ».**
+    /// The code stored in the atomic. **`0` is reserved for "none".**
     fn code(self) -> u8 {
         match self {
             Famille::Debordement => 1,
@@ -65,16 +65,16 @@ impl Famille {
     }
 }
 
-/// Analyse `APPS_FAUTE`. **PURE** — elle ne lit ni l'environnement, ni l'état.
+/// Parses `APPS_FAUTE`. **PURE** — it reads neither the environment nor the state.
 ///
-/// ⚠️ `"debordement:0"` REND `None`, ET C'EST TRANCHÉ ICI PLUTÔT QUE SUBI : un
-/// budget de zéro est une injection qui ne tirera jamais, et la déclarer
-/// « ARMÉE » au journal ferait lire un armement à qui n'en a aucun. Le
-/// comportement est donc celui de l'absence, exactement.
+/// ⚠️ `"debordement:0"` RETURNS `None`, AND IT IS DECIDED HERE RATHER THAN SUFFERED: a
+/// budget of zero is an injection that will never fire, and declaring it
+/// "ARMED" in the log would make someone read an arming where there is none. The
+/// behaviour is therefore exactly that of absence.
 ///
-/// ⚠️ UNE FAMILLE INCONNUE SE PLAINT, elle ne se tait pas : sans le `warn!`, une
-/// coquille (`debordment:3`) désarmerait l'injection en silence et la recette
-/// lirait un zéro qui ne veut rien dire.
+/// ⚠️ AN UNKNOWN FAMILY COMPLAINS, it does not stay silent: without the `warn!`, a
+/// typo (`debordment:3`) would silently disarm the injection and the acceptance run
+/// would read a zero that means nothing.
 pub fn lire(valeur: Option<&str>) -> Option<(Famille, u32)> {
     let valeur = valeur?;
     let (nom, compte) = valeur.split_once(':')?;
@@ -98,20 +98,20 @@ pub fn lire(valeur: Option<&str>) -> Option<(Famille, u32)> {
     Some((famille, compte))
 }
 
-/// L'état d'injection, **GLOBAL AU PROCESSUS**.
+/// The injection state, **PROCESS-GLOBAL**.
 ///
-/// 🔴 **GLOBAL, ET LA RAISON EST MESURÉE AILLEURS.** Le sous-bloc D10 a payé un
-/// budget relu **par fil** sur `AUDIO_FAUTE_LECTURE` : chaque capture
-/// reconstruite recevait un budget neuf, et **le chiffre-juge était
-/// structurellement incapable de quitter zéro, sur un produit pourtant
-/// corrigé**. Ici la surveillance **se rouvre** après une perte : un budget
-/// relu à la réouverture se réarmerait à l'identique, et la même panne de
-/// mesure se rejouerait.
+/// 🔴 **GLOBAL, AND THE REASON IS MEASURED ELSEWHERE.** Sub-block D10 paid for a
+/// budget re-read **per thread** on `AUDIO_FAUTE_LECTURE`: every rebuilt
+/// capture received a fresh budget, and **the judging figure was
+/// structurally unable to leave zero, on a product that was nonetheless
+/// fixed**. Here the watch **reopens** after a loss: a budget
+/// re-read at reopening would re-arm identically, and the same measurement
+/// failure would replay.
 ///
-/// Deux atomiques plutôt qu'un `Option<Famille>` : c'est ce qui permet aux
-/// tests de **seeder l'état directement** plutôt que l'environnement — un
-/// `OnceLock` déjà initialisé ne relirait de toute façon plus `std::env`, et
-/// c'est la note que porte `piste_audio/injection.rs`.
+/// Two atomics rather than an `Option<Famille>`: that is what lets the
+/// tests **seed the state directly** rather than the environment — an
+/// already initialised `OnceLock` would not re-read `std::env` anyway, and
+/// that is the note `piste_audio/injection.rs` carries.
 fn etat() -> &'static (AtomicU8, AtomicU32) {
     static ETAT: OnceLock<(AtomicU8, AtomicU32)> = OnceLock::new();
     ETAT.get_or_init(|| {
@@ -130,12 +130,12 @@ fn etat() -> &'static (AtomicU8, AtomicU32) {
     })
 }
 
-/// Consomme une faute de cette famille, ou rend `false`.
+/// Consumes a fault of this family, or returns `false`.
 ///
-/// `fetch_update` avec `checked_sub(1)` décrémente atomiquement SI le budget
-/// global n'est pas déjà à zéro, et rend `Err` sans y toucher sinon : un budget
-/// épuisé — le cas nominal, la variable étant absente — laisse donc passer
-/// l'appel réel dès le premier tour, sans surcoût mesurable.
+/// `fetch_update` with `checked_sub(1)` decrements atomically IF the global
+/// budget is not already at zero, and returns `Err` without touching it otherwise: an exhausted
+/// budget — the nominal case, the variable being absent — therefore lets
+/// the real call through from the first round, at no measurable cost.
 pub fn consommer(famille: Famille) -> bool {
     let (armee, reste) = etat();
     if Famille::depuis_code(armee.load(Ordering::Relaxed)) != Some(famille) {
@@ -167,26 +167,26 @@ mod tests {
         );
         assert_eq!(lire(Some("debordement:")), None);
         assert_eq!(lire(Some("debordement:x")), None);
-        // ⚠️ TRANCHÉ : un budget de zéro vaut l'absence, et ne se déclare pas
-        // « ARMÉE ». Un armement qui ne tirera jamais serait un armement faux
-        // au journal.
+        // ⚠️ DECIDED: a budget of zero equals absence, and does not declare itself
+        // "ARMED". An arming that will never fire would be a false arming
+        // in the log.
         assert_eq!(lire(Some("debordement:0")), None);
-        // Famille inconnue : `None`, ET un `warn!` qui la nomme.
+        // Unknown family: `None`, AND a `warn!` naming it.
         assert_eq!(lire(Some("debordment:3")), None);
         assert_eq!(lire(Some("muette")), None);
     }
 
-    /// 🔴 LE TEST QUI FIXE QUE LE BUDGET EST GLOBAL AU PROCESSUS.
+    /// 🔴 THE TEST THAT PINS THE BUDGET AS PROCESS-GLOBAL.
     ///
-    /// Sa ROUGE est un budget **relu à chaque appel** : la panne que D10 a
-    /// payée sur `AUDIO_FAUTE_LECTURE`. Sous elle, l'état n'étant pas seedé
-    /// depuis l'environnement, le tout premier `consommer` rendrait déjà
-    /// `false` — et un chiffre-juge bâti dessus ne pourrait jamais quitter
-    /// zéro, sur un produit pourtant correct.
+    /// Its RED is a budget **re-read on every call**: the failure D10
+    /// paid for on `AUDIO_FAUTE_LECTURE`. Under it, the state not being seeded
+    /// from the environment, the very first `consommer` would already return
+    /// `false` — and a judging figure built on it could never leave
+    /// zero, on a product that is nonetheless correct.
     ///
-    /// ⚠️ L'état est SEEDÉ DIRECTEMENT, jamais par `std::env` : un `OnceLock`
-    /// déjà initialisé ne relit plus l'environnement, et deux tests qui s'en
-    /// remettraient à lui se voleraient leur budget l'un à l'autre.
+    /// ⚠️ The state is SEEDED DIRECTLY, never through `std::env`: an already
+    /// initialised `OnceLock` no longer re-reads the environment, and two tests relying
+    /// on it would steal each other's budget.
     #[test]
     fn le_budget_est_global_au_processus_et_s_epuise_une_seule_fois() {
         let (armee, reste) = etat();
@@ -204,8 +204,8 @@ mod tests {
         reste.store(0, Ordering::Relaxed);
     }
 
-    /// Une famille armée n'en sert aucune autre : demander `Muette` quand
-    /// `Debordement` est armé ne consomme rien, et ne ment pas.
+    /// An armed family serves no other: asking for `Muette` when
+    /// `Debordement` is armed consumes nothing, and does not lie.
     #[test]
     fn une_famille_ne_consomme_pas_le_budget_d_une_autre() {
         let (armee, reste) = etat();

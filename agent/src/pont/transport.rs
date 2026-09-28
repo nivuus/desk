@@ -1,17 +1,17 @@
-//! Le transport du pont : une `PeerConnection` **sans média**, portant un
-//! unique canal de données `fichiers`, fiable et ordonné.
+//! The bridge's transport: a `PeerConnection` **without media**, carrying a
+//! single `fichiers` data channel, reliable and ordered.
 //!
-//! **Mixte, mais sans Windows** : la boucle str0m et le socket UDP sont
-//! portables, et ce module se teste donc entièrement sur l'hôte. Il ne connaît
-//! **ni ProjFS ni Windows** — il transporte des octets opaques, corrélés, et
-//! rien d'autre. C'est ce qui permet de l'éprouver avec un vrai pair str0m en
-//! boucle locale, sans la moindre racine de virtualisation.
+//! **Mixed, but without Windows**: the str0m loop and the UDP socket are
+//! portable, and this module is therefore entirely tested on the host. It knows
+//! **neither ProjFS nor Windows** — it carries opaque, correlated bytes, and
+//! nothing else. That is what allows exercising it with a real str0m peer in
+//! local loopback, without any virtualisation root.
 //!
-//! **Pourquoi une connexion DÉDIÉE** (décision D4) : la session vidéo porte
-//! déjà `control` et `input`, et le relais de signaling n'accepte qu'un
-//! `agent` et un `client` par identifiant. Surtout, mêler le canal fichiers à
-//! la session vidéo ferait qu'une reconnexion de l'une emporterait l'autre —
-//! ce que le principe 4 du cadrage interdit.
+//! **Why a DEDICATED connection** (decision D4): the video session already
+//! carries `control` and `input`, and the signaling relay only accepts one
+//! `agent` and one `client` per identifier. Above all, mixing the files channel with
+//! the video session would mean a reconnection of one would carry away the other —
+//! which principle 4 of the framing forbids.
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
@@ -22,28 +22,28 @@ use str0m::channel::ChannelId;
 use str0m::net::{Protocol, Receive};
 use str0m::{Candidate, Event, Input, Output, Rtc};
 
-/// Le label du canal de données du pont. **C'est le navigateur qui crée le
-/// canal** (`createDataChannel('fichiers')`) ; l'agent est répondant.
+/// The label of the bridge's data channel. **It is the browser that creates the
+/// channel** (`createDataChannel('fichiers')`); the agent is the responder.
 pub const LABEL_FICHIERS: &str = "fichiers";
 
-/// Taille du tampon de réception UDP. Une trame du pont tient dans
-/// `TAILLE_TRAME_MAX` plus son en-tête, mais SCTP fragmente : ce tampon borne
-/// un datagramme, pas un message applicatif.
+/// UDP receive buffer size. A bridge frame fits in
+/// `TAILLE_TRAME_MAX` plus its header, but SCTP fragments: this buffer bounds
+/// a datagram, not an application message.
 const TAMPON_UDP: usize = 2048;
 
-/// Attente maximale d'un tour de boucle quand str0m n'a pas d'échéance
-/// proche. Borne la latence de prise en compte d'une requête déposée dans
-/// `sortant` — sans elle, une requête arrivée juste après un `recv_timeout`
-/// attendrait l'échéance str0m suivante.
+/// Maximum wait of a loop turn when str0m has no close
+/// deadline. Bounds the latency of taking into account a request dropped into
+/// `sortant` — without it, a request arriving just after a `recv_timeout`
+/// would wait for the next str0m deadline.
 const ATTENTE_MAX: Duration = Duration::from_millis(20);
 
-/// Ce que le pont envoie au navigateur.
+/// What the bridge sends to the browser.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VersNavigateur {
     Requete { correlation: u32, trame: Vec<u8> },
 }
 
-/// Ce que le pont reçoit du navigateur, ou apprend de l'état du canal.
+/// What the bridge receives from the browser, or learns of the channel state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DuNavigateur {
     Reponse {
@@ -51,26 +51,26 @@ pub enum DuNavigateur {
         trame: Vec<u8>,
     },
     CanalOuvert,
-    /// Le canal est parti : onglet fermé, page rechargée, WebRTC tombé.
-    /// L'appelant traduit en [`crate::pont::erreurs::Erreur::CanalFerme`],
-    /// c'est-à-dire `ERROR_IO_DEVICE` — « l'erreur I/O standard » du cadrage.
+    /// The channel is gone: tab closed, page reloaded, WebRTC down.
+    /// The caller translates to [`crate::pont::erreurs::Erreur::CanalFerme`],
+    /// that is, `ERROR_IO_DEVICE` — "the standard I/O error" of the framing.
     CanalFerme,
 }
 
-/// Construit le socket UDP et le `Rtc` d'un point d'accès **données seules**.
+/// Builds the UDP socket and the `Rtc` of a **data-only** endpoint.
 ///
-/// Par rapport à `transport::initialisation::construire_rtc`, **tombent** :
-/// `enable_h264`, `enable_opus`, `enable_bwe`, `set_stats_interval` et
-/// `set_desired_bitrate` — il n'y a aucune piste, donc rien à estimer ni à
-/// sonder. **Restent** le socket UDP non bloquant (dont la raison est mesurée :
-/// le délai de `set_read_timeout` déborde massivement sous Windows), la pose du
-/// fournisseur cryptographique, et le candidat hôte.
+/// Compared to `transport::initialisation::construire_rtc`, **dropped** are:
+/// `enable_h264`, `enable_opus`, `enable_bwe`, `set_stats_interval` and
+/// `set_desired_bitrate` — there is no track, hence nothing to estimate or
+/// probe. **Kept** are the non-blocking UDP socket (whose reason is measured:
+/// `set_read_timeout`'s delay overshoots massively under Windows), the setting of the
+/// cryptographic provider, and the host candidate.
 ///
-/// ⚠️ **`clear_codecs()` sans aucun `enable_*` est délibéré, et il fonctionne** :
-/// éprouvé par les tests de ce module, qui négocient et échangent réellement
-/// sur un canal de données avec un pair str0m sans qu'aucun codec ne soit
-/// activé d'aucun côté. Le navigateur n'offre aucune piste ; il n'y a donc rien
-/// à apparier.
+/// ⚠️ **`clear_codecs()` without any `enable_*` is deliberate, and it works**:
+/// exercised by this module's tests, which really negotiate and exchange
+/// on a data channel with a str0m peer without any codec being
+/// enabled on either side. The browser offers no track; there is therefore nothing
+/// to match.
 pub fn construire_rtc_donnees(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
     let socket =
         UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("ouverture du socket UDP du pont")?;
@@ -80,9 +80,9 @@ pub fn construire_rtc_donnees(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
     let addr = socket.local_addr()?;
     tracing::info!(%addr, "socket UDP du pont fichiers");
 
-    // Idempotent : `OnceLock::set` ignore silencieusement un second appel. Le
-    // pont est un processus à part, donc c'est en pratique le premier — mais
-    // les tests de ce module en construisent plusieurs.
+    // Idempotent: `OnceLock::set` silently ignores a second call. The
+    // bridge is a separate process, so in practice it is the first — but
+    // this module's tests build several.
     str0m::crypto::from_feature_flags().install_process_default();
 
     let mut rtc = Rtc::builder().clear_codecs().build(Instant::now());
@@ -92,11 +92,11 @@ pub fn construire_rtc_donnees(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
     Ok((socket, rtc))
 }
 
-/// La boucle de transport. Rend `Ok(())` quand la connexion se termine ou que
-/// l'appelant lâche `sortant`.
+/// The transport loop. Returns `Ok(())` when the connection ends or the
+/// caller drops `sortant`.
 ///
-/// `sortant` porte les requêtes à émettre, `entrant` rend les réponses et les
-/// changements d'état du canal.
+/// `sortant` carries the requests to emit, `entrant` returns the responses and the
+/// channel state changes.
 pub fn tourner(
     mut rtc: Rtc,
     socket: UdpSocket,
@@ -111,15 +111,15 @@ pub fn tourner(
 
     loop {
         if !rtc.is_alive() {
-            // Le canal part avec la connexion : le dire explicitement, sinon
-            // les commandes en vol attendraient un délai plutôt qu'une erreur.
+            // The channel goes with the connection: saying so explicitly, otherwise
+            // commands in flight would wait for a delay rather than an error.
             let _ = entrant.send(DuNavigateur::CanalFerme);
             return Ok(());
         }
 
-        // Drainer `poll_output` jusqu'à `Output::Timeout` : même invariant que
-        // la boucle vidéo (`transport.rs`), et pour la même raison — toute
-        // mutation de `Rtc` doit être suivie d'un drainage complet.
+        // Drain `poll_output` until `Output::Timeout`: same invariant as
+        // the video loop (`transport.rs`), and for the same reason — every
+        // mutation of `Rtc` must be followed by a complete drain.
         let echeance = loop {
             match rtc
                 .poll_output()
@@ -127,12 +127,12 @@ pub fn tourner(
             {
                 Output::Timeout(t) => break t,
                 Output::Transmit(t) => {
-                    // Une écriture qui échoue n'est pas fatale : str0m
-                    // retransmettra. La journaliser par datagramme le serait —
-                    // « ne jamais tracer par paquet dans la boucle de
-                    // transport » est une leçon que ce dépôt a payée d'une
-                    // session entière (18 619 lignes en quelques secondes,
-                    // écrites sur un partage CIFS).
+                    // A failing write is not fatal: str0m
+                    // will retransmit. Logging it per datagram would be —
+                    // "never trace per packet in the transport
+                    // loop" is a lesson this repository paid for with a
+                    // whole session (18,619 lines in a few seconds,
+                    // written to a CIFS share).
                     let _ = socket.send_to(&t.contents, t.destination);
                 }
                 Output::Event(evenement) => {
@@ -148,7 +148,7 @@ pub fn tourner(
             .saturating_duration_since(maintenant)
             .min(ATTENTE_MAX);
 
-        // Une requête à émettre ? On attend au plus jusqu'à l'échéance str0m.
+        // A request to emit? We wait at most until the str0m deadline.
         match sortant.recv_timeout(attente) {
             Ok(VersNavigateur::Requete { correlation, trame }) => {
                 emettre(&mut rtc, canal, correlation, &trame);
@@ -161,8 +161,8 @@ pub fn tourner(
             }
         }
 
-        // Puis le socket, sans bloquer (il est non bloquant), et enfin le
-        // temps qui passe.
+        // Then the socket, without blocking (it is non-blocking), and finally the
+        // passing time.
         match socket.recv_from(&mut tampon) {
             Ok((taille, source)) => {
                 let recu = Receive::new(Protocol::Udp, source, adresse, &tampon[..taille])
@@ -179,7 +179,7 @@ pub fn tourner(
     }
 }
 
-/// Traite un événement str0m. Rend `Some(..)` quand la boucle doit s'arrêter.
+/// Handles a str0m event. Returns `Some(..)` when the loop must stop.
 fn traiter(
     evenement: Event,
     canal: &mut Option<ChannelId>,
@@ -189,15 +189,15 @@ fn traiter(
         Event::Connected => {
             tracing::info!("pont fichiers connecté au navigateur");
         }
-        // 🔴 **Défaut trouvé par le test de fermeture, et non par la
-        // relecture.** Sans ces deux bras, la boucle ne remarquait le départ du
-        // pair qu'à l'expiration d'ICE — soit des dizaines de secondes après
-        // que l'onglet s'est fermé, pendant lesquelles toute commande en vol
-        // aurait attendu son DÉLAI au lieu de rendre `ERROR_IO_DEVICE` tout de
-        // suite. C'est exactement le correctif I1 de `transport/evenements.rs`,
-        // qui avait dû être fait là-bas pour la même raison ; le rejouer ici
-        // aurait été la cinquième fois que ce dépôt paie un événement tombé
-        // dans un bras fourre-tout.
+        // 🔴 **Defect found by the closing test, not by
+        // review.** Without these two arms, the loop only noticed the peer's
+        // departure at ICE expiry — that is, tens of seconds after
+        // the tab closed, during which any command in flight
+        // would have waited for its DELAY instead of returning `ERROR_IO_DEVICE` right
+        // away. It is exactly fix I1 of `transport/evenements.rs`,
+        // which had had to be made there for the same reason; replaying it here
+        // would have been the fifth time this repository paid for an event fallen
+        // into a catch-all arm.
         Event::Closed => {
             tracing::info!("connexion du pont fermée par le pair (close_notify DTLS)");
             let _ = entrant.send(DuNavigateur::CanalFerme);
@@ -209,17 +209,17 @@ fn traiter(
             return Some(Ok(()));
         }
         Event::ChannelOpen(id, label) => {
-            // ⚠️ **L'AIGUILLAGE EST PAR LABEL, DÈS LE PREMIER JOUR.**
+            // ⚠️ **ROUTING IS BY LABEL, FROM DAY ONE.**
             //
-            // ❌ *Ce commentaire décrivait AU PRÉSENT un défaut de
-            // `transport/evenements.rs::dispatch_channel_data` — « aiguille
-            // sur le seul `data.binary` et ignore `data.id` ». La tâche 17 de
-            // la MÊME branche l'a corrigé : il appelle désormais
-            // `destination(data.id, …)`, donc il regarde le canal.* La raison
-            // de ce bloc-ci ne change pas : retenir l'id du label attendu, et
-            // refuser
-            // tout le reste, coûte trois lignes maintenant et une recette
-            // entière plus tard.
+            // ❌ *This comment described IN THE PRESENT TENSE a defect of
+            // `transport/evenements.rs::dispatch_channel_data` — "routes
+            // on `data.binary` alone and ignores `data.id`". Task 17 of
+            // the SAME branch fixed it: it now calls
+            // `destination(data.id, …)`, so it looks at the channel.* The reason
+            // for this block does not change: keeping the id of the expected label, and
+            // refusing
+            // everything else, costs three lines now and a whole acceptance
+            // run later.
             if label == LABEL_FICHIERS {
                 tracing::info!(%label, "canal du pont fichiers ouvert");
                 *canal = Some(id);
@@ -240,10 +240,10 @@ fn traiter(
         }
         Event::ChannelData(data) => {
             if *canal != Some(data.id) {
-                // Nommer l'id : sans lui, ce `warn!` ne permet pas de dire
-                // QUEL canal a parlé, et la trace serait inexploitable en
-                // recette. « Une trace non attribuable coûte une
-                // ré-imputation » (D6).
+                // Naming the id: without it, this `warn!` does not allow saying
+                // WHICH channel spoke, and the trace would be unusable in
+                // an acceptance run. "An unattributable trace costs a
+                // re-attribution" (D6).
                 tracing::warn!(
                     id = ?data.id, attendu = ?canal, octets = data.data.len(),
                     "données reçues sur un canal qui n'est pas celui du pont : ignorées"
@@ -264,9 +264,9 @@ fn traiter(
                         return Some(Ok(()));
                     }
                 }
-                // Une trame illisible est JETÉE, jamais devinée : sa
-                // corrélation est justement ce qu'on ne peut pas lire, donc
-                // rien ne permettrait de la rattacher à une commande.
+                // An unreadable frame is THROWN AWAY, never guessed: its
+                // correlation is precisely what cannot be read, so
+                // nothing would allow linking it to a command.
                 Err(erreur) => tracing::warn!(%erreur, "trame du navigateur illisible, jetée"),
             }
         }
@@ -275,13 +275,13 @@ fn traiter(
     None
 }
 
-/// Écrit une requête sur le canal, si le canal existe.
+/// Writes a request on the channel, if the channel exists.
 fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u8]) {
     let Some(id) = canal else {
-        // Ce n'est pas une anomalie de programmation : le canal peut tomber
-        // entre l'inscription d'une commande et son émission. L'appelant
-        // l'apprendra par l'expiration de sa table — c'est ce que la table
-        // existe pour couvrir.
+        // It is not a programming anomaly: the channel can go down
+        // between a command's registration and its emission. The caller
+        // will learn it through its table's expiry — it is what the table
+        // exists to cover.
         tracing::warn!(
             correlation,
             "requête non émise : aucun canal du pont ouvert"
@@ -296,9 +296,9 @@ fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u
         );
         return;
     };
-    // ⚠️ `binary = true`, **à l'inverse du canal `control`** qui écrit `false` :
-    // la charge d'une trame de fichiers est faite d'octets bruts, et l'écrire
-    // en mode texte la ferait passer par une validation UTF-8 côté navigateur.
+    // ⚠️ `binary = true`, **unlike the `control` channel** which writes `false`:
+    // a files frame's payload is made of raw bytes, and writing it
+    // in text mode would put it through UTF-8 validation on the browser side.
     if let Err(erreur) = sortie.write(true, trame) {
         tracing::warn!(%erreur, correlation, "écriture d'une requête du pont échouée");
     }

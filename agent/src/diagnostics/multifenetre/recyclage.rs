@@ -1,21 +1,21 @@
-//! La mesure pivot du sous-bloc D5 : **détruire un encodeur libère-t-il la
-//! place ?**
+//! The pivot measurement of sub-block D5: **does destroying an encoder free the
+//! slot?**
 //!
-//! La question est ouverte depuis le 31 juillet 2026 et conditionne tout le
-//! sous-bloc — le remède au défaut de D4 comme la mise en sommeil elle-même.
-//! La séquence « créer 8 → en détruire 1 → tenter un 9ᵉ » n'avait jamais été
-//! jouée.
+//! The question has been open since 31 July 2026 and conditions the whole
+//! sub-block — the remedy for D4's defect as well as sleeping itself.
+//! The sequence "create 8 → destroy 1 → attempt a 9th" had never been
+//! played.
 //!
-//! **Le montage reproduit l'arrangement de PRODUCTION** : un processus, un
-//! périphérique D3D11 par encodeur (chaque `DesktopCapture` crée le sien, voir
-//! `capture/ouverture.rs`). Ce n'est ni le mode `partage` ni le mode `separe`
-//! de `nvenc.rs`, et c'est le seul montage dont la réponse engage le produit.
+//! **The set-up reproduces the PRODUCTION arrangement**: one process, one
+//! D3D11 device per encoder (each `DesktopCapture` creates its own, see
+//! `capture/ouverture.rs`). It is neither the `partage` mode nor the `separe` mode
+//! of `nvenc.rs`, and it is the only set-up whose answer commits the product.
 //!
-//! **Le cycle répété est le cœur de la mesure, pas un supplément.** Un seul
-//! recyclage ne distingue pas un plafond de CONCURRENCE (8 vivants à la fois)
-//! d'un plafond de CRÉATIONS CUMULÉES avec du mou : le premier cycle passerait
-//! dans les deux cas. Le vivier de D5 recycle des encodeurs par construction —
-//! c'est précisément lui qui déclencherait la seconde panne.
+//! **The repeated cycle is the heart of the measurement, not an extra.** A single
+//! recycling does not distinguish a CONCURRENCY ceiling (8 alive at once)
+//! from a CUMULATIVE CREATIONS ceiling with some slack: the first cycle would pass
+//! in both cases. D5's pool recycles encoders by construction —
+//! it is precisely what would trigger the second failure.
 
 #![cfg(windows)]
 
@@ -24,32 +24,32 @@ use anyhow::Result;
 use super::nvenc::peripherique_autonome;
 use crate::encode::H264Encoder;
 
-/// Les paramètres exacts de la seconde recette de D4, pour que le chiffre soit
-/// opposable au sien.
+/// The exact parameters of D4's second acceptance run, so that the figure is
+/// comparable to its own.
 const LARGEUR: u32 = 1280;
 const HAUTEUR: u32 = 720;
 const FPS: u32 = 60;
 const DEBIT: u32 = 8_000_000;
 
-/// On cesse de chercher au-delà : le plafond attendu est 8.
+/// We stop searching beyond: the expected ceiling is 8.
 const PLAFOND_RECHERCHE: usize = 16;
 
-/// Un encodeur et le périphérique qui le porte. Le périphérique DOIT vivre
-/// aussi longtemps que l'encodeur ; les relâcher séparément ferait mesurer
-/// autre chose que ce qu'on croit.
+/// An encoder and the device that carries it. The device MUST live
+/// as long as the encoder; releasing them separately would measure
+/// something other than what we think.
 ///
-/// Les trois champs ne sont que des porteurs de durée de vie : aucun n'est
-/// jamais lu, ils existent uniquement pour que leurs objets restent vivants
-/// jusqu'au `drop` de l'`Instance`, d'où le préfixe `_` sur les trois — un
-/// champ `_x` reste possédé et se détruit normalement, seule la lecture est
-/// tue.
+/// The three fields are only lifetime carriers: none is
+/// ever read, they exist only so that their objects stay alive
+/// until the `drop` of the `Instance`, hence the `_` prefix on all three — a
+/// `_x` field stays owned and is destroyed normally, only the read is
+/// silenced.
 struct Instance {
     _peripherique: windows::Win32::Graphics::Direct3D11::ID3D11Device,
     _contexte: windows::Win32::Graphics::Direct3D11::ID3D11DeviceContext,
     _encodeur: H264Encoder,
 }
 
-/// Construit une instance complète, ou rend l'erreur du refus.
+/// Builds a complete instance, or returns the refusal's error.
 fn construire() -> Result<Instance> {
     let (peripherique, contexte) = peripherique_autonome()?;
     let encodeur = H264Encoder::new(
@@ -78,9 +78,9 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
 
     // ── Phase 1 : monter jusqu'au refus, et le NOMMER.
     //
-    // Sans ce témoin, rien de ce qui suit ne prouve quoi que ce soit : un 9ᵉ
-    // qui réussit après une destruction ne dit rien si le 9ᵉ réussissait déjà
-    // avant.
+    // Without this control, nothing that follows proves anything: a 9th
+    // that succeeds after a destruction says nothing if the 9th already succeeded
+    // before.
     let mut vivants: Vec<Instance> = Vec::new();
     let mut plafond = 0usize;
     for rang in 1..=PLAFOND_RECHERCHE {
@@ -111,12 +111,12 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
         return Ok(());
     }
 
-    // ── Phase 2 : le cycle. Détruire un, en construire un, k fois.
+    // ── Phase 2: the cycle. Destroy one, build one, k times.
     //
-    // `vivants` contient exactement `plafond` instances. À chaque tour on en
-    // retire une (destruction réelle : `drop` explicite, tracé de part et
-    // d'autre pour qu'un gel de `Drop for H264Encoder` se lise comme tel) puis
-    // on tente d'en construire une neuve.
+    // `vivants` contains exactly `plafond` instances. At each round we
+    // remove one (real destruction: explicit `drop`, traced on either
+    // side so that a freeze of `Drop for H264Encoder` reads as such) then
+    // we attempt to build a new one.
     let mut reussis = 0usize;
     let mut premier_echec: Option<usize> = None;
     for cycle in 1..=cycles {
@@ -156,7 +156,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
         }
     }
 
-    // ── Verdict, en une ligne lisible sans le reste du journal.
+    // ── Verdict, in one line readable without the rest of the log.
     match premier_echec {
         None => tracing::info!(
             plafond,

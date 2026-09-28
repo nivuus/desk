@@ -1,24 +1,24 @@
 //! `impl VideoSource for SourceDistante` — EXTRAIT VERBATIM de `distante.rs`.
 //!
-//! **Pourquoi ce fichier existe** : `distante.rs` était à **472 lignes** pour
-//! un plafond de projet à 500, et le sous-bloc A1 (la couleur d'accent) doit y
-//! greffer le patron `PressePapier` — une variante de `Recu`, un champ de
-//! rétention, un bras et un accesseur, soit une trentaine de lignes. **La marge
-//! de 28 ne suffisait pas.** L'extraction est donc jouée **AVANT** l'addition
-//! qui la rend nécessaire, dans son propre commit et sans aucune autre
-//! modification : c'est la doctrine du dépôt, et elle a cinq précédents (D9
-//! tâche 6 ; D10 tâches 1 à 3 ; P3 tâches 3 et 4 ; G1 tâche 1). **Jamais une
-//! compression** — D9 l'a payé deux fois.
+//! **Why this file exists**: `distante.rs` was at **472 lines** for
+//! a project cap of 500, and sub-block A1 (the accent colour) had to
+//! graft the `PressePapier` pattern onto it — a `Recu` variant, a
+//! retention field, an arm and an accessor, some thirty lines. **The margin
+//! of 28 was not enough.** The extraction is therefore done **BEFORE** the addition
+//! that makes it necessary, in its own commit and without any other
+//! change: that is the repository's doctrine, and it has five precedents (D9
+//! task 6; D10 tasks 1 to 3; P3 tasks 3 and 4; G1 task 1). **Never a
+//! compression** — D9 paid for it twice.
 //!
-//! ⚠️ **Le `#[path]` qui déclare ce module est HORS de la convention de
-//! `CLAUDE.md`** (§ « Convention de module enfant ») : celle-ci ne vise que les
-//! modules extraits d'un parent `#[cfg(windows)]` pour compiler sur l'hôte.
-//! C'est ici le **second** usage du même mécanisme Rust — scinder un fichier
-//! trop long —, celui que `distante/tests.rs` et `distante/tests_etats.rs`
-//! emploient déjà dans ce même fichier, et il ne suit pas la règle du préfixe.
+//! ⚠️ **The `#[path]` declaring this module is OUTSIDE the convention of
+//! `CLAUDE.md`** (§ "Child module convention"): that one only targets
+//! modules extracted from a `#[cfg(windows)]` parent to compile on the host.
+//! This is the **second** use of the same Rust mechanism — splitting a file
+//! that is too long —, the one `distante/tests.rs` and `distante/tests_etats.rs`
+//! already use in this same file, and it does not follow the prefix rule.
 //!
-//! ⚠️ **Un `impl` de trait dans un module enfant est global : aucun site
-//! d'appel n'a bougé, et aucune ré-exportation n'est nécessaire.**
+//! ⚠️ **A trait `impl` in a child module is global: no call
+//! site moved, and no re-export is needed.**
 
 use anyhow::{bail, Result};
 
@@ -48,8 +48,8 @@ impl VideoSource for SourceDistante {
                     self.taille.poser(largeur, hauteur);
                 }
                 Ok(Recu::Sommeil { endormie, raison }) => {
-                    // Deux écritures, deux durées de vie : l'état courant, qui
-                    // survit à sa lecture, et l'annonce, qui ne s'y survit pas.
+                    // Two writes, two lifetimes: the current state, which
+                    // survives its read, and the announcement, which does not.
                     self.endormie = endormie;
                     self.sommeil = Some((endormie, raison));
                 }
@@ -68,35 +68,35 @@ impl VideoSource for SourceDistante {
                 Ok(Recu::Accent { couleur }) => {
                     self.accent = Some(couleur);
                 }
-                // Le cas COURANT et normal : rien de neuf ce tour-ci. La
-                // boucle de transport interroge à 100 Hz une source qui
-                // produit à ~90 i/s.
+                // The COMMON and normal case: nothing new this round. The
+                // transport loop polls at 100 Hz a source that
+                // produces at ~90 fps.
                 Err(TryRecvError::Empty) => {
                     self.fenetre.succes();
                     return None;
                 }
-                // Le canal est rompu. La fenêtre de reprise borne combien de
-                // temps la source reste vivante en attendant un rattachement.
+                // The channel is broken. The resumption window bounds how
+                // long the source stays alive while waiting for a re-attachment.
                 Err(TryRecvError::Disconnected) => {
-                    // **Un épuisement AUTORITAIRE ne se retente pas** (I2,
-                    // revue finale de branche du sous-bloc D4). À chaque
-                    // fermeture NORMALE d'une fenêtre, le capteur pousse un
-                    // `Etat { epuisee: true }` puis ferme le tube : l'enfant
-                    // consomme cet état, reboucle, et voit `Disconnected` dans
-                    // le même tour. Sans cette garde il rattacherait
-                    // aussitôt — un tube de commandes neuf, un tube média
-                    // neuf, et côté capteur une duplication DXGI et un
-                    // `H264Encoder` neufs sur une sortie que le superviseur
-                    // est justement en train de détruire. Pire, un
-                    // rattachement qui aboutirait remettrait `epuisee` à faux
-                    // (plus bas) : la session qui devait se clore ne se
-                    // clorait pas, et le résultat dépendrait d'une course.
+                    // **An AUTHORITATIVE exhaustion is not retried** (I2,
+                    // final branch review of sub-block D4). At every
+                    // NORMAL close of a window, the sensor pushes an
+                    // `Etat { epuisee: true }` then closes the pipe: the child
+                    // consumes that state, loops again, and sees `Disconnected` in
+                    // the same round. Without this guard it would re-attach
+                    // at once — a new command pipe, a new media
+                    // pipe, and on the sensor side a new DXGI duplication and
+                    // `H264Encoder` on an output the supervisor
+                    // is precisely destroying. Worse, a
+                    // re-attachment that succeeded would reset `epuisee` to false
+                    // (below): the session that was meant to close would not
+                    // close, and the outcome would depend on a race.
                     if self.epuisee {
                         return None;
                     }
                     let maintenant = Instant::now();
                     if self.fenetre.rupture(maintenant) {
-                        // La fenêtre est expirée : l'épuisement est acquis.
+                        // The window has expired: exhaustion is settled.
                         self.epuisee = true;
                         return None;
                     }
@@ -112,76 +112,76 @@ impl VideoSource for SourceDistante {
                                 self.taille.poser(largeur, hauteur);
                                 self.vivante = true;
                                 self.epuisee = false;
-                                // Un rattachement passe par `VersCapteur::Attache`,
-                                // donc par une `Fenetre` NEUVE côté capteur — et
-                                // une fenêtre naît endormie. Garder ici l'état
-                                // d'avant la rupture ferait appliquer la part
-                                // plancher de cette renaissance comme un plafond
-                                // d'encodage, pour toute la durée qui sépare
-                                // l'attache du premier `Ordre::Reveiller`.
+                                // A re-attachment goes through `VersCapteur::Attache`,
+                                // hence through a NEW `Fenetre` on the sensor side — and
+                                // a window is born asleep. Keeping here the state
+                                // from before the break would make the floor
+                                // share of this rebirth apply as an encoding
+                                // ceiling, for the whole time between
+                                // the attach and the first `Ordre::Reveiller`.
                                 self.endormie = true;
-                                // ⚠️ **`Some(false)`, PAS `None` : au
-                                // rattachement, l'enfant REDEVIENT MUET**
-                                // (conception §4.4 ; F2, revue finale de
-                                // branche du sous-bloc D7). `None` ne veut
-                                // pas dire « muet », il veut dire « rien à
-                                // changer » : le drapeau `emet` de la
-                                // `WindowsAudioSource` gardait alors sa valeur
-                                // d'AVANT la rupture, et une fenêtre qui
-                                // portait le son continuait de le porter.
+                                // ⚠️ **`Some(false)`, NOT `None`: on
+                                // re-attachment, the child BECOMES SILENT AGAIN**
+                                // (design §4.4; F2, final branch
+                                // review of sub-block D7). `None` does not
+                                // mean "silent", it means "nothing to
+                                // change": the `emet` flag of the
+                                // `WindowsAudioSource` then kept its value
+                                // from BEFORE the break, and a window that
+                                // carried the sound went on carrying it.
                                 //
-                                // Le cas qui mord : deux fenêtres A et B d'un
-                                // même PID, A porteuse, le capteur redémarre.
-                                // B se rattache la première, son groupe est
-                                // vide côté capteur — donc elle est élue et
-                                // démarre. A se rattache quelques dizaines à
-                                // quelques centaines de millisecondes plus
-                                // tard (D4 a mesuré 538 à 689 ms pour le seul
-                                // rattachement, et rien ne synchronise les deux
-                                // enfants) en émettant TOUJOURS : les deux
-                                // jouent le même mix du même PID, désynchronisé
-                                // — un écho audible — jusqu'à ce que le
-                                // `Audio { actif: false }` destiné à A arrive.
+                                // The case that bites: two windows A and B of the
+                                // same PID, A the carrier, the sensor restarts.
+                                // B re-attaches first, its group is
+                                // empty on the sensor side — so it is elected and
+                                // starts. A re-attaches a few tens to
+                                // a few hundred milliseconds
+                                // later (D4 measured 538 to 689 ms for the
+                                // re-attachment alone, and nothing synchronises the two
+                                // children) while STILL emitting: both
+                                // play the same mix of the same PID, out of sync
+                                // — an audible echo — until the
+                                // `Audio { actif: false }` meant for A arrives.
                                 //
-                                // Le défaut inverse n'existe pas : un
-                                // rattachement passe par `VersCapteur::Attache`,
-                                // donc par une `Fenetre` NEUVE côté capteur,
-                                // dont `sommeil::inscrire` purge
-                                // `derniers_audio` — un ordre neuf arrive donc
-                                // TOUJOURS, et sans la borne du tour de roue.
-                                // `inscrire` appelle `distribuer_l_audio`
-                                // SYNCHRONEMENT, avant même que `boucler` ne
-                                // démarre sa boucle (`fenetre.rs`, `servir`),
-                                // laquelle sonde `ordres` en tête de chaque
-                                // tour, sans délai. Ce n'est PAS le résidu de
-                                // `sommeil/porteurs.rs` (un ordre différé au
-                                // TOUR DE ROUE SUIVANT, borné
-                                // `PERIODE_REARBITRAGE` = 250 ms) : ce
-                                // résidu-là ne joue que quand le canal d'une
-                                // fenêtre VOISINE casse pendant la MÊME passe
-                                // d'arbitrage. Le silence d'une porteuse qui se
-                                // rattache est donc borné par l'acheminement du
-                                // message sur le fil, et c'est l'arbitrage que
-                                // la conception a choisi : un blanc bref plutôt
-                                // qu'un écho.
+                                // The reverse defect does not exist: a
+                                // re-attachment goes through `VersCapteur::Attache`,
+                                // hence through a NEW `Fenetre` on the sensor side,
+                                // whose `sommeil::inscrire` purges
+                                // `derniers_audio` — a new order therefore
+                                // ALWAYS arrives, and without the wheel-round bound.
+                                // `inscrire` calls `distribuer_l_audio`
+                                // SYNCHRONOUSLY, before `boucler` even
+                                // starts its loop (`fenetre.rs`, `servir`),
+                                // which polls `ordres` at the head of every
+                                // round, without delay. It is NOT the residue of
+                                // `sommeil/porteurs.rs` (an order deferred to the
+                                // NEXT WHEEL ROUND, bounded by
+                                // `PERIODE_REARBITRAGE` = 250 ms): that
+                                // residue only plays when the channel of a
+                                // NEIGHBOURING window breaks during the SAME arbitration
+                                // pass. The silence of a carrier that
+                                // re-attaches is therefore bounded by the delivery of the
+                                // message on the wire, and that is the trade-off
+                                // the design chose: a brief gap rather
+                                // than an echo.
                                 self.audio = Some(false);
-                                // Consommé par `rattachement_survenu`, pour
-                                // remettre à zéro `Session::audio_mort_signale`
-                                // : un `AudioMort` déjà signalé avant la
-                                // rupture n'est pas garanti connu du capteur de
-                                // l'autre côté de CE rattachement (le cas visé
-                                // est le capteur relancé, dont le registre
-                                // d'inaptitudes repart vide en mémoire).
+                                // Consumed by `rattachement_survenu`, to
+                                // reset `Session::audio_mort_signale`
+                                // : an `AudioMort` already reported before the
+                                // break is not guaranteed to be known by the sensor on
+                                // the other side of THIS re-attachment (the targeted case
+                                // is the restarted sensor, whose registry
+                                // of unfitness starts empty in memory again).
                                 self.rattache = true;
                                 self.fenetre.succes();
                             }
-                            // Journalisé en `debug!` et non `info!` : au pas
-                            // de 250 ms sur une fenêtre de 15 s, un capteur
-                            // durablement absent produirait 60 lignes par
-                            // fenêtre et par session.
-                            // `cause::chaine` : même raison qu'ailleurs sur
-                            // ce chemin — le `Display` simple d'`anyhow` ne
-                            // rend que la couche externe. Voir `crate::cause`.
+                            // Logged at `debug!` and not `info!`: at a step
+                            // of 250 ms over a 15 s window, a sensor
+                            // absent for long would produce 60 lines per
+                            // window and per session.
+                            // `cause::chaine`: same reason as elsewhere on
+                            // this path — `anyhow`'s plain `Display` only
+                            // renders the outer layer. See `crate::cause`.
                             Err(erreur) => tracing::debug!(
                                 erreur = %crate::cause::chaine(&erreur),
                                 "rattachement refusé"
@@ -211,9 +211,9 @@ impl VideoSource for SourceDistante {
             largeur: width,
             hauteur: height,
         })? {
-            // La taille RETENUE est celle obtenue, jamais celle demandée : le
-            // pilote quantifie, et une fenêtre Windows impose des dimensions
-            // paires. Même règle qu'en mono-fenêtre.
+            // The size KEPT is the one obtained, never the one requested: the
+            // driver quantises, and a Windows window imposes even
+            // dimensions. Same rule as in single-window mode.
             DepuisCapteur::Taille { largeur, hauteur } => {
                 self.taille.poser(largeur, hauteur);
                 Ok(())
@@ -242,69 +242,69 @@ impl VideoSource for SourceDistante {
         self.commander_simple(VersCapteur::Visibilite { visible, focalisee })
     }
 
-    /// Fait écrire le presse-papier de la VM par le CAPTEUR, qui en est le seul
-    /// propriétaire (D1), et **attend sa réponse**.
+    /// Has the VM's clipboard written by the SENSOR, its sole
+    /// owner (D1), and **waits for its reply**.
     ///
-    /// 🔴 **Synchrone à dessein, et c'est tout l'ordre de D6** :
-    /// `commander_simple` bloque jusqu'au `Fait` du capteur, si bien que
-    /// l'appelant (`transport/tick.rs`, branche `a1octies`) ne peut armer
-    /// l'injection de `Ctrl+V` qu'après une écriture RÉELLEMENT survenue.
-    /// Aucun ordonnancement de canal n'entre là-dedans.
+    /// 🔴 **Synchronous on purpose, and that is D6's whole ordering**:
+    /// `commander_simple` blocks until the sensor's `Fait`, so that
+    /// the caller (`transport/tick.rs`, `a1octies` branch) can arm
+    /// the `Ctrl+V` injection only after a write has ACTUALLY happened.
+    /// No channel scheduling enters into it.
     ///
-    /// ⚠️ **Le coût est réel et il est nommé** : cet appel bloque la boucle de
-    /// transport le temps d'un aller-retour de tube. Le précédent existe et il
-    /// est exercé — `set_awake` juste au-dessus commande le capteur depuis
-    /// cette même boucle, et D4 a mesuré une attache en 34 µs. Mais la borne du
-    /// canal est de **12 s**, et un capteur mort ferait attendre la boucle
-    /// jusque-là. **Ce chemin-là n'a jamais couru** (la borne de 12 s est
-    /// déclarée « code jamais couru » depuis D4) : c'est un legs de P2, pas un
-    /// remède.
+    /// ⚠️ **The cost is real and it is named**: this call blocks the
+    /// transport loop for the time of a pipe round trip. The precedent exists and it
+    /// is exercised — `set_awake` just above commands the sensor from
+    /// this same loop, and D4 measured an attach at 34 µs. But the
+    /// channel's bound is **12 s**, and a dead sensor would make the loop wait
+    /// that long. **That path has never run** (the 12 s bound has been
+    /// declared "code never run" since D4): it is a hand-over from P2, not a
+    /// remedy.
     ///
-    /// `commander_simple` — et non `commander` nu — parce que lui seul traduit
-    /// `DepuisCapteur::Erreur` en `Err` : un refus d'ouverture du presse-papier
-    /// par une autre application (cas NORMAL sous Windows) doit empêcher
-    /// l'injection, pas la laisser passer.
+    /// `commander_simple` — and not bare `commander` — because it alone translates
+    /// `DepuisCapteur::Erreur` into `Err`: a refusal to open the clipboard
+    /// by another application (a NORMAL case under Windows) must prevent
+    /// the injection, not let it through.
     fn ecrire_le_presse_papier(&mut self, texte: &str) -> Result<()> {
         self.commander_simple(VersCapteur::PressePapierEcrire {
             texte: texte.to_owned(),
         })
     }
 
-    /// Rend le changement de sommeil en attente, et le consomme.
+    /// Returns the pending sleep change, and consumes it.
     ///
-    /// **Une annonce ne se répète pas** : la boucle de transport l'interroge à
-    /// chaque tour, et réémettre le même message inonderait le canal de
-    /// contrôle.
+    /// **An announcement is not repeated**: the transport loop polls it at
+    /// every round, and re-emitting the same message would flood the control
+    /// channel.
     fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
         self.sommeil.take()
     }
 
-    /// Rend la part en attente, et la consomme.
+    /// Returns the pending share, and consumes it.
     fn part_a_appliquer(&mut self) -> Option<u32> {
         self.part.take()
     }
 
-    /// Rend l'ordre audio en attente, et le consomme.
+    /// Returns the pending audio order, and consumes it.
     fn audio_a_appliquer(&mut self) -> Option<bool> {
         self.audio.take()
     }
 
-    /// Rend le changement de plein écran en attente, et le consomme.
+    /// Returns the pending fullscreen change, and consumes it.
     fn plein_ecran_a_annoncer(&mut self) -> Option<bool> {
         self.plein_ecran.take()
     }
 
-    /// Rend le presse-papier en attente d'annonce, et le consomme.
+    /// Returns the clipboard pending announcement, and consumes it.
     fn presse_papier_a_annoncer(&mut self) -> Option<(Option<String>, u32)> {
         self.presse_papier.take()
     }
 
-    /// Rend la couleur d'accent en attente d'annonce, et la consomme.
+    /// Returns the accent colour pending announcement, and consumes it.
     fn accent_a_annoncer(&mut self) -> Option<String> {
         self.accent.take()
     }
 
-    /// Rend l'état de sommeil courant, sans le consommer.
+    /// Returns the current sleep state, without consuming it.
     fn est_endormie(&self) -> bool {
         self.endormie
     }
@@ -315,9 +315,9 @@ impl VideoSource for SourceDistante {
         }
     }
 
-    /// Voir le trait : prévient le capteur qu'un paquet réel a prouvé la
-    /// reprise de la capture audio — la PREUVE, pas la seule décision de
-    /// reconstruction (sous-bloc D10).
+    /// See the trait: tells the sensor that a real packet has proven the
+    /// audio capture resumed — the PROOF, not merely the rebuild
+    /// decision (sub-block D10).
     fn signaler_audio_vivant(&mut self) {
         if let Err(erreur) = self.commander_simple(VersCapteur::AudioVivant) {
             tracing::warn!(%erreur, "signalement de capture audio vivante non délivré");
