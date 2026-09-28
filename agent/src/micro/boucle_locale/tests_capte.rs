@@ -62,13 +62,13 @@ fn une_demande_qui_elit_rend_son_identifiant() {
 /// with a `warn!`. Returning here the requested identifier — or nothing at all in the sense of
 /// "no capture" — would make the guard diverge from reality.
 #[test]
-fn une_demande_introuvable_retombe_sur_le_defaut_comme_resoudre() {
+fn a_request_not_found_falls_back_to_the_default_like_resolve() {
     assert_eq!(identifiant_capte(&vm(), Some("Realtek")), None);
 }
 
 /// 🔴 Same thing for AMBIGUITY: "Haut-parleurs" designates two of the three
 /// render devices of this VM, `resoudre` refuses to decide and falls back.
 #[test]
-fn une_demande_ambigue_retombe_sur_le_defaut_comme_resoudre() {
+fn an_ambiguous_request_falls_back_to_the_default_like_resolve() {
     assert_eq!(identifiant_capte(&vm(), Some("Haut-parleurs")), None);
 }

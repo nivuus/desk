@@ -42,18 +42,18 @@ use super::montee::{
 const SORTIES_MAX: u16 = 8;
 
 /// Analyse `"<P>x<D>"` : P processus sondes, D duplications chacune.
-pub(super) fn analyser(valeur: &str) -> Result<(u8, u8)> {
-    let (p, d) = valeur
+pub(super) fn analyser(value: &str) -> Result<(u8, u8)> {
+    let (p, d) = value
         .split_once('x')
-        .with_context(|| format!("MULTIFENETRE_PLAFOND attend « <P>x<D> », reçu « {valeur} »"))?;
+        .with_context(|| format!("MULTIFENETRE_PLAFOND attend « <P>x<D> », reçu « {value} »"))?;
     let processus: u8 = p
         .trim()
         .parse()
-        .with_context(|| format!("nombre de processus illisible dans « {valeur} »"))?;
+        .with_context(|| format!("nombre de processus illisible dans « {value} »"))?;
     let duplications: u8 = d
         .trim()
         .parse()
-        .with_context(|| format!("nombre de duplications illisible dans « {valeur} »"))?;
+        .with_context(|| format!("nombre de duplications illisible dans « {value} »"))?;
     anyhow::ensure!(processus >= 1, "au moins un processus sonde est nécessaire");
     anyhow::ensure!(
         duplications >= 1,
@@ -94,8 +94,8 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     // afterwards if a previous draw left it behind.
     let _ = std::fs::remove_file(sonde::chemin_verdict_rang_invalide());
 
-    let avant = relever_topologie("avant création")?;
-    let noms_avant = noms_attaches(&avant);
+    let before = relever_topologie("avant création")?;
+    let names_before = noms_attaches(&before);
 
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
@@ -118,7 +118,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
         for rang in 1..=total {
             sorties
-                .creer(largeur, hauteur, hertz)
+                .create(largeur, hauteur, hertz)
                 .with_context(|| format!("création de la sortie virtuelle n°{rang}/{total}"))?;
         }
 
@@ -127,7 +127,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         // pinging, including those just created.
         //
         // Gap from the brief (Step 1): `attendre_en_pinguant` does NOT take
-        // `(&pilote, &noms_avant, attendues)` and does not return the appeared
+        // `(&pilote, &names_before, attendues)` and does not return the appeared
         // names — its real signature, noted in `montee.rs:176`, is
         // `(&PiloteParIoctl, Duration) -> Result<()>`: it waits `duree` while
         // pinging, full stop. Same pattern as `paralleles.rs`, the
@@ -140,7 +140,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         let noms_apres_creation = noms_attaches(&apres_creation);
         let apparues: Vec<String> = noms_apres_creation
             .iter()
-            .filter(|nom| !noms_avant.contains(nom))
+            .filter(|nom| !names_before.contains(nom))
             .cloned()
             .collect();
         // Addition beyond the brief: without this check, fewer than `total` appeared
@@ -174,7 +174,7 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
         // last ping of `attendre_en_pinguant`: the seam between the two
         // is negligible (66 µs measured elsewhere on the same pattern), not
         // counted in `intervalle_max`.
-        let mut garde = compteurs::Garde::nouvelle(&pilote);
+        let mut garde = compteurs::Garde::new(&pilote);
         let issue_conduite = conduire_les_sondes(processus, duplications, &apparues, &mut garde);
         tracing::info!(
             intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
@@ -208,9 +208,9 @@ pub(super) fn mesurer(processus: u8, duplications: u8) -> Result<()> {
     // Compare SETS OF NAMES, never cardinalities: Apollo can
     // add an output at any moment, and an external addition would exactly
     // compensate a removal.
-    if noms_apres != noms_avant {
+    if noms_apres != names_before {
         tracing::error!(
-            avant = ?noms_avant, apres = ?noms_apres,
+            before = ?names_before, apres = ?noms_apres,
             "topologie NON restaurée — contrôler depuis un processus neuf (MULTIFENETRE_DXGI=1)"
         );
     } else {
@@ -235,13 +235,13 @@ struct SondesEnCours {
 }
 
 impl SondesEnCours {
-    fn nouvelle() -> Self {
+    fn new() -> Self {
         Self {
             enfants: Vec::new(),
         }
     }
 
-    fn ajouter(&mut self, rang: u8, enfant: std::process::Child) {
+    fn add(&mut self, rang: u8, enfant: std::process::Child) {
         self.enfants.push((rang, enfant));
     }
 }
@@ -254,17 +254,17 @@ impl Drop for SondesEnCours {
         // Best-effort: on this path, something has already gone wrong before
         // reaching this `drop` — it is the signal that counts, a failed
         // write here would worsen nothing beyond the failure already logged upstream.
-        if let Err(erreur) = std::fs::write(sonde::chemin_arret(), b"1") {
+        if let Err(error) = std::fs::write(sonde::chemin_arret(), b"1") {
             tracing::error!(
-                %erreur,
+                %error,
                 "dépôt du signal d'arrêt échoué — sondes potentiellement orphelines"
             );
         }
         for (rang, enfant) in &mut self.enfants {
             match enfant.wait() {
                 Ok(statut) => tracing::info!(sonde = *rang, ?statut, "sonde terminée"),
-                Err(erreur) => {
-                    tracing::error!(sonde = *rang, %erreur, "attente de la sonde échouée")
+                Err(error) => {
+                    tracing::error!(sonde = *rang, %error, "attente de la sonde échouée")
                 }
             }
         }
@@ -286,7 +286,7 @@ fn conduire_les_sondes(
     garde: &mut compteurs::Garde<'_>,
 ) -> Result<()> {
     let executable = std::env::current_exe().context("chemin de l'exécutable courant")?;
-    let mut sondes = SondesEnCours::nouvelle();
+    let mut sondes = SondesEnCours::new();
     let mut verdicts: Vec<(u8, String)> = Vec::new();
 
     for rang in 0..processus {
@@ -307,7 +307,7 @@ fn conduire_les_sondes(
             .env_remove("MULTIFENETRE_PLAFOND")
             .spawn()
             .with_context(|| format!("lancement de la sonde {rang}"))?;
-        sondes.ajouter(rang, enfant);
+        sondes.add(rang, enfant);
 
         let verdict = attendre_le_verdict(rang, duplications, garde)?;
         tracing::info!(sonde = rang, %verdict, "verdict reçu");
@@ -397,21 +397,21 @@ mod tests {
 
     #[test]
     fn les_cinq_rangs_de_la_matrice_sont_acceptes() {
-        for (valeur, attendu) in [
+        for (value, attendu) in [
             ("1x8", (1, 8)),
             ("2x4", (2, 4)),
             ("4x2", (4, 2)),
             ("8x1", (8, 1)),
             ("4x1", (4, 1)),
         ] {
-            assert_eq!(analyser(valeur).unwrap(), attendu, "rang {valeur}");
+            assert_eq!(analyser(value).unwrap(), attendu, "rang {value}");
         }
     }
 
     #[test]
     fn un_produit_au_dela_du_vivier_est_refuse() {
-        let erreur = analyser("4x4").unwrap_err().to_string();
-        assert!(erreur.contains("16 sorties"), "reçu « {erreur} »");
+        let error = analyser("4x4").unwrap_err().to_string();
+        assert!(error.contains("16 sorties"), "reçu « {error} »");
     }
 
     #[test]
@@ -421,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn une_valeur_malformee_est_refusee() {
+    fn a_malformed_value_is_refused() {
         assert!(analyser("4").is_err());
         assert!(analyser("quatre x deux").is_err());
     }

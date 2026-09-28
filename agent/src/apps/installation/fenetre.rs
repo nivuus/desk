@@ -15,7 +15,7 @@
 //! **Hence a window**: opened at launch, fed by each
 //! reconciliation, closed after the process exits.
 //!
-//! ⚠️ **[`Fenetres::ajouter`] ADDS TO ALL OPEN WINDOWS, and it is
+//! ⚠️ **[`Fenetres::add`] ADDS TO ALL OPEN WINDOWS, and it is
 //! deliberate.** Two concurrent installations are possible, and each must
 //! count what appeared during ITS window — even if both
 //! count the same application. **Attributing an appearance to a single
@@ -70,7 +70,7 @@ impl Fenetres {
     /// saw, otherwise the window would only measure its last instant and
     /// would yield the false `sans_effet` it exists to prevent. It is the
     /// red of this module.
-    pub fn ajouter(&mut self, apparues: usize) {
+    pub fn add(&mut self, apparues: usize) {
         for total in self.ouvertes.values_mut() {
             *total = total.saturating_add(apparues);
         }
@@ -110,8 +110,8 @@ mod tests {
     fn une_reconciliation_vide_n_efface_pas_ce_que_la_precedente_a_compte() {
         let mut fenetres = Fenetres::nouvelles();
         fenetres.ouvrir("inst-1");
-        fenetres.ajouter(3);
-        fenetres.ajouter(0);
+        fenetres.add(3);
+        fenetres.add(0);
         assert_eq!(fenetres.fermer("inst-1"), Some(3));
     }
 
@@ -120,7 +120,7 @@ mod tests {
         let mut fenetres = Fenetres::nouvelles();
         fenetres.ouvrir("inst-1");
         for apparues in [0, 2, 0, 0, 1, 0] {
-            fenetres.ajouter(apparues);
+            fenetres.add(apparues);
         }
         assert_eq!(fenetres.fermer("inst-1"), Some(3));
     }
@@ -131,11 +131,11 @@ mod tests {
     fn deux_fenetres_concurrentes_comptent_chacune_ce_qui_passe_pendant_la_sienne() {
         let mut fenetres = Fenetres::nouvelles();
         fenetres.ouvrir("inst-1");
-        fenetres.ajouter(1);
+        fenetres.add(1);
         // The second one opens along the way: it must inherit NOTHING from the
         // addition made before its launch.
         fenetres.ouvrir("inst-2");
-        fenetres.ajouter(2);
+        fenetres.add(2);
         assert_eq!(fenetres.en_vol(), 2);
         assert_eq!(fenetres.fermer("inst-1"), Some(3));
         assert_eq!(fenetres.fermer("inst-2"), Some(2));
@@ -150,7 +150,7 @@ mod tests {
         fenetres.ouvrir("inst-1");
         fenetres.ouvrir("inst-2");
         assert_eq!(fenetres.fermer("inst-1"), Some(0));
-        fenetres.ajouter(5);
+        fenetres.add(5);
         assert_eq!(fenetres.fermer("inst-2"), Some(5));
     }
 
@@ -170,18 +170,18 @@ mod tests {
     fn rouvrir_un_identifiant_vivant_repart_de_zero() {
         let mut fenetres = Fenetres::nouvelles();
         fenetres.ouvrir("inst-1");
-        fenetres.ajouter(4);
+        fenetres.add(4);
         fenetres.ouvrir("inst-1");
         assert_eq!(fenetres.en_vol(), 1, "l'identifiant reste unique");
         assert_eq!(fenetres.fermer("inst-1"), Some(0));
     }
 
-    /// Without an open window, `ajouter` is inert: the reconciliation
+    /// Without an open window, `add` is inert: the reconciliation
     /// loop calls it on every tick, installation or not.
     #[test]
-    fn ajouter_sans_fenetre_ouverte_ne_fait_rien() {
+    fn adding_without_an_open_window_does_nothing() {
         let mut fenetres = Fenetres::nouvelles();
-        fenetres.ajouter(9);
+        fenetres.add(9);
         assert_eq!(fenetres.en_vol(), 0);
         fenetres.ouvrir("inst-1");
         assert_eq!(fenetres.fermer("inst-1"), Some(0));

@@ -125,7 +125,7 @@ pub(super) fn create_color_converter(
     let converter: IMFTransform = match find_hardware_video_processor() {
         Ok(t) => t,
         Err(e) => {
-            tracing::debug!(erreur = %e, "aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT");
+            tracing::debug!(error = %e, "aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT");
             unsafe { CoCreateInstance(&CLSID_VideoProcessorMFT, None, CLSCTX_INPROC_SERVER) }
                 .context("création du convertisseur vidéo (Video Processor MFT)")?
         }
@@ -377,14 +377,14 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
     match active {
         Ok(transform) => Ok(transform),
-        Err(erreur) => Err(anyhow!(
+        Err(error) => Err(anyhow!(
             "{}",
             // The COMPOSITION of the message is pure and lives in
             // `encode_nvenc`, where it is tested on the host: here we only
             // give it the code and what the machine carries.
             encode_nvenc::diagnostic_activation(
-                erreur.code().0,
-                &erreur.to_string(),
+                error.code().0,
+                &error.to_string(),
                 &adaptateurs_dxgi()
             )
         )),

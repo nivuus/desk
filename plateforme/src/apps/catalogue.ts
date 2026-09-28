@@ -41,7 +41,7 @@ export interface Connue {
 /// it wants: they are DISJOINT by construction on `aInserer`,
 /// `aMarquerDisparues` and `aRessusciter`.
 ///
-/// ⚠️ `aRessusciter` AND `aMettreAJour` OVERLAP DELIBERATELY: a row
+/// ⚠️ `aRessusciter` AND `toUpdate` OVERLAP DELIBERATELY: a row
 /// that comes back is in both. Resurrecting resets `disparue_a` to NULL;
 /// updating refreshes the name, the path and the three identity
 /// fields. A resurrection alone would make visible again a row
@@ -50,7 +50,7 @@ export interface Fusion {
     /// Whole applications: the platform does not know them yet and
     /// will assign them an identifier.
     aInserer: Application[];
-    aMettreAJour: Array<{ id: string; app: Application }>;
+    toUpdate: Array<{ id: string; app: Application }>;
     /// IDENTIFIERS, never keys — these are rows the
     /// platform knows, and a row we really do not want to confuse
     /// is designated by its identifier.
@@ -88,7 +88,7 @@ export function fusionner(connues: Connue[], message: CatalogueMessage): Fusion 
     const parCle = new Map(connues.map((c) => [c.cle, c]));
     const fusion: Fusion = {
         aInserer: [],
-        aMettreAJour: [],
+        toUpdate: [],
         aMarquerDisparues: [],
         aRessusciter: [],
     };
@@ -101,7 +101,7 @@ export function fusionner(connues: Connue[], message: CatalogueMessage): Fusion 
             fusion.aInserer.push(app);
             continue;
         }
-        fusion.aMettreAJour.push({ id: connue.id, app });
+        fusion.toUpdate.push({ id: connue.id, app });
         if (connue.disparue_a !== null) fusion.aRessusciter.push(connue.id);
     }
 

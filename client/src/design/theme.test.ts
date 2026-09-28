@@ -3,7 +3,7 @@ import {
     CLE_THEME,
     appliquer,
     choisir,
-    surStockageModifie,
+    onStorageChanged,
     themeStocke,
 } from './theme';
 import amorce from './amorce-theme.js?raw';
@@ -17,8 +17,8 @@ function coffreFactice(initial: Record<string, string> = {}) {
         getItem(cle: string) {
             return contenu.get(cle) ?? null;
         },
-        setItem(this: { ecritures: number }, cle: string, valeur: string) {
-            contenu.set(cle, valeur);
+        setItem(this: { ecritures: number }, cle: string, value: string) {
+            contenu.set(cle, value);
             this.ecritures += 1;
         },
     };
@@ -28,8 +28,8 @@ function coffreFactice(initial: Record<string, string> = {}) {
 function racineFactice() {
     return {
         attributs: new Map<string, string>(),
-        setAttribute(this: { attributs: Map<string, string> }, nom: string, valeur: string) {
-            this.attributs.set(nom, valeur);
+        setAttribute(this: { attributs: Map<string, string> }, nom: string, value: string) {
+            this.attributs.set(nom, value);
         },
         removeAttribute(this: { attributs: Map<string, string> }, nom: string) {
             this.attributs.delete(nom);
@@ -61,12 +61,12 @@ describe('choisir — la fenêtre ÉCRIVANTE', () => {
 describe('surStockageModifie — une fenêtre VOISINE', () => {
     it("pose `data-theme` à partir de l'événement d'une autre fenêtre", () => {
         const racine = racineFactice();
-        surStockageModifie(racine, CLE_THEME, 'sombre');
+        onStorageChanged(racine, CLE_THEME, 'sombre');
         expect(racine.attributs.get('data-theme')).toBe('sombre');
     });
 
     it("retire l'attribut quand la voisine est repassée à « systeme »", () => {
-        // ⚠️ CE TEST REMPLACE celui que le plan prescrivait — « `surStockageModifie`
+        // ⚠️ CE TEST REMPLACE celui que le plan prescrivait — « `onStorageChanged`
         // n'écrit rien dans le coffre ». Ce dernier est INSATISFIABLE COMME
         // TEST : la signature ne reçoit AUCUN `Coffre`, donc la fonction n'a
         // rien à écrire et l'assertion ne peut pas tomber. La propriété est
@@ -76,7 +76,7 @@ describe('surStockageModifie — une fenêtre VOISINE', () => {
         // remise sur « systeme » efface la clé, et l'attribut doit disparaître.
         const racine = racineFactice();
         racine.attributs.set('data-theme', 'clair');
-        surStockageModifie(racine, CLE_THEME, null);
+        onStorageChanged(racine, CLE_THEME, null);
         expect(racine.attributs.has('data-theme')).toBe(false);
     });
 
@@ -87,7 +87,7 @@ describe('surStockageModifie — une fenêtre VOISINE', () => {
         // filtrerait pas la clé poserait `data-theme` à partir d'un JWT.
         const racine = racineFactice();
         racine.attributs.set('data-theme', 'clair');
-        surStockageModifie(racine, 'guac.jeton.acces', 'eyJhbGciOiJIUzI1NiJ9.charge.signature');
+        onStorageChanged(racine, 'guac.jeton.acces', 'eyJhbGciOiJIUzI1NiJ9.charge.signature');
         expect(racine.attributs.get('data-theme')).toBe('clair');
     });
 });

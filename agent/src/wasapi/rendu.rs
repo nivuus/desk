@@ -310,11 +310,11 @@ pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> 
         let collection = enumerateur
             .EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
             .context("énumération des périphériques audio de rendu")?;
-        let nombre = collection
+        let count = collection
             .GetCount()
             .context("comptage des périphériques audio de rendu")?;
-        let mut peripheriques = Vec::with_capacity(nombre as usize);
-        for index in 0..nombre {
+        let mut peripheriques = Vec::with_capacity(count as usize);
+        for index in 0..count {
             // A device we fail to describe does not interrupt the
             // enumeration: it would otherwise be impossible to elect another one
             // because of a neighbour in bad shape. `decrire` then returns
@@ -352,7 +352,7 @@ fn decrire(peripherique: &IMMDevice) -> (String, String) {
         let nom = peripherique
             .OpenPropertyStore(STGM_READ)
             .and_then(|magasin| magasin.GetValue(&PKEY_Device_FriendlyName))
-            .map(|valeur| valeur.to_string())
+            .map(|value| value.to_string())
             .unwrap_or_default();
         (nom, identifiant)
     }

@@ -165,7 +165,7 @@ export class Sha256 {
     private readonly w = new Int32Array(64);
     /** The bytes received that have not yet completed a 64-byte block. */
     private readonly residu = new Uint8Array(64);
-    private residuLongueur = 0;
+    private residueLength = 0;
     /** The TOTAL number of bytes absorbed — this is what the padding records. */
     private octets = 0;
     /** The fingerprint, once `terminer` has been called. `null` until then. */
@@ -191,14 +191,14 @@ export class Sha256 {
         let i = 0;
         // First complete the residue, if there is one: as long as it is not
         // full, no block of the input is aligned on a 64-byte boundary.
-        if (this.residuLongueur > 0) {
-            const pris = Math.min(64 - this.residuLongueur, bloc.length);
-            this.residu.set(bloc.subarray(0, pris), this.residuLongueur);
-            this.residuLongueur += pris;
+        if (this.residueLength > 0) {
+            const pris = Math.min(64 - this.residueLength, bloc.length);
+            this.residu.set(bloc.subarray(0, pris), this.residueLength);
+            this.residueLength += pris;
             i = pris;
-            if (this.residuLongueur < 64) return;
+            if (this.residueLength < 64) return;
             comprimer(this.etat, this.w, this.residu, 0);
-            this.residuLongueur = 0;
+            this.residueLength = 0;
         }
         // Then the full blocks, read straight from the input: no copy.
         for (; i + 64 <= bloc.length; i += 64) {
@@ -207,7 +207,7 @@ export class Sha256 {
         // What remains waits for the next chunk, or the padding.
         if (i < bloc.length) {
             this.residu.set(bloc.subarray(i), 0);
-            this.residuLongueur = bloc.length - i;
+            this.residueLength = bloc.length - i;
         }
     }
 
@@ -229,19 +229,19 @@ export class Sha256 {
         // only place in this file where a bound error (`<` versus `<=`)
         // would stay invisible on short messages.
         const queue = new Uint8Array(128);
-        queue.set(this.residu.subarray(0, this.residuLongueur), 0);
-        queue[this.residuLongueur] = 0x80;
-        const taille = this.residuLongueur < 56 ? 64 : 128;
+        queue.set(this.residu.subarray(0, this.residueLength), 0);
+        queue[this.residueLength] = 0x80;
+        const size = this.residueLength < 56 ? 64 : 128;
 
         const bits = this.octets * 8;
         const haut = Math.floor(bits / 4294967296);
         const bas = bits - haut * 4294967296;
         for (let i = 0; i < 4; i += 1) {
-            queue[taille - 8 + i] = (haut >>> ((3 - i) * 8)) & 0xff;
-            queue[taille - 4 + i] = (bas >>> ((3 - i) * 8)) & 0xff;
+            queue[size - 8 + i] = (haut >>> ((3 - i) * 8)) & 0xff;
+            queue[size - 4 + i] = (bas >>> ((3 - i) * 8)) & 0xff;
         }
 
-        for (let debut = 0; debut < taille; debut += 64) {
+        for (let debut = 0; debut < size; debut += 64) {
             comprimer(this.etat, this.w, queue, debut);
         }
 

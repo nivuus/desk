@@ -45,7 +45,7 @@ impl Fil {
             "bonjour du navigateur : decision de reprise"
         );
         if let Some(nom) = a_memoriser(decision, racine) {
-            self.ecrire_le_nom_memorise(nom);
+            self.write_remembered_name(nom);
         }
         match decision {
             Decision::Pousser => {
@@ -94,11 +94,11 @@ impl Fil {
         Some(nom)
     }
 
-    fn ecrire_le_nom_memorise(&self, nom: &str) {
-        if let Err(erreur) = std::fs::write(self.chemin_du_nom(), nom) {
+    fn write_remembered_name(&self, nom: &str) {
+        if let Err(error) = std::fs::write(self.chemin_du_nom(), nom) {
             // A `warn!` and nothing else: not memorising causes a HOLD-BACK at the
             // next startup, which is the safe side.
-            tracing::warn!(%erreur, nom, "nom de racine non memorise");
+            tracing::warn!(%error, nom, "nom de racine non memorise");
         }
     }
 
@@ -121,19 +121,19 @@ impl Fil {
                     chemin,
                     repertoire: true,
                 },
-                Ok(_) => Evenement::Modifie { chemin },
-                Err(erreur) => {
+                Ok(_) => Evenement::Modified { chemin },
+                Err(error) => {
                     // 🔴 **The root was recreated, and the file went away with
                     // it** (spec §6.4 case 3). Looping on retry would
                     // push indefinitely a file that no longer exists; removing
                     // it WHILE NAMING IT is all that remains — *knowing what
                     // we lost is not having it*.
                     tracing::warn!(
-                        chemin, %erreur,
+                        chemin, %error,
                         "ecriture due abandonnee : le fichier local n'existe plus"
                     );
                     let ligne = self.journal.retirer(&chemin);
-                    self.ecrire_journal(&ligne);
+                    self.write_journal(&ligne);
                     continue;
                 }
             };

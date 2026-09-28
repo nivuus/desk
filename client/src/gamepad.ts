@@ -60,7 +60,7 @@ export interface GamepadLike {
 export interface ActuateurVibration {
     playEffect?(
         type: 'dual-rumble',
-        parametres: { duration: number; strongMagnitude: number; weakMagnitude: number },
+        params: { duration: number; strongMagnitude: number; weakMagnitude: number },
     ): unknown;
 }
 
@@ -77,12 +77,12 @@ export interface GamepadConnectee extends GamepadLike {
 
 /** What this module needs from `navigator.getGamepads()`. */
 export interface SourceManettes {
-    obtenir(): ReadonlyArray<GamepadConnectee | null>;
+    get(): ReadonlyArray<GamepadConnectee | null>;
 }
 
 /** What this module needs from `window.setInterval`/`clearInterval`. */
 export interface Minuteur {
-    poser(fonction: () => void, delaiMs: number): number;
+    poser(callback: () => void, delaiMs: number): number;
     annuler(id: number): void;
 }
 
@@ -99,10 +99,10 @@ export const ETAT_NEUTRE: Omit<GamepadStateFields, 'seq'> = {
     thumbRY: 0,
 };
 
-function axe(valeur: number | undefined): number {
+function axe(value: number | undefined): number {
     // No dead zone is applied: games apply their own, adding
     // one here would dig it twice.
-    const borne = Math.max(-32768, Math.min(32767, Math.round((valeur ?? 0) * 32767)));
+    const borne = Math.max(-32768, Math.min(32767, Math.round((value ?? 0) * 32767)));
     // `-(0)` produces `-0` (inverting the vertical axis does so for a
     // gamepad at rest): `+ 0` brings it back to positive `0`, otherwise the neutral
     // state would not be structurally equal to `ETAT_NEUTRE`.
@@ -158,7 +158,7 @@ export interface GamepadHandle {
 }
 
 function manetteBranchee(manettes: SourceManettes): GamepadConnectee | undefined {
-    return manettes.obtenir().find((p): p is GamepadConnectee => p !== null && p.connected);
+    return manettes.get().find((p): p is GamepadConnectee => p !== null && p.connected);
 }
 
 export function attachGamepad({
@@ -169,16 +169,16 @@ export function attachGamepad({
     surPresence,
 }: GamepadOptions): GamepadHandle {
     let seq = 0;
-    let dernier: GamepadStateFields = { ...ETAT_NEUTRE, seq: 0 };
+    let last: GamepadStateFields = { ...ETAT_NEUTRE, seq: 0 };
     // Initialised at attach time, not at 0: otherwise the very first round would
     // wrongly be considered an elapsed refresh (see the test dedicated to
     // emission on change, which distinguishes the two paths).
-    let dernierEnvoi = horloge();
+    let lastSend = horloge();
     let presentPrecedent = false;
 
     const emettre = (etat: GamepadStateFields): void => {
-        dernier = etat;
-        dernierEnvoi = horloge();
+        last = etat;
+        lastSend = horloge();
         envoyer(encodeGamepadState(etat));
     };
 
@@ -202,8 +202,8 @@ export function attachGamepad({
 
         seq = (seq + 1) & 0xffff;
         const etat = versEtatXInput(pad, seq);
-        const expire = horloge() - dernierEnvoi >= RAFRAICHISSEMENT_MS;
-        if (aChange(dernier, etat) || expire) emettre(etat);
+        const expire = horloge() - lastSend >= RAFRAICHISSEMENT_MS;
+        if (aChange(last, etat) || expire) emettre(etat);
     };
 
     const id = minuteur.poser(tour, PERIODE_MS);
@@ -235,10 +235,10 @@ export function attachGamepadAuDOM(
 ): GamepadHandle {
     return attachGamepad({
         manettes: {
-            obtenir: () => navigator.getGamepads() as unknown as ReadonlyArray<GamepadConnectee | null>,
+            get: () => navigator.getGamepads() as unknown as ReadonlyArray<GamepadConnectee | null>,
         },
         minuteur: {
-            poser: (fonction, delaiMs) => window.setInterval(fonction, delaiMs),
+            poser: (callback, delaiMs) => window.setInterval(callback, delaiMs),
             annuler: (id) => window.clearInterval(id),
         },
         horloge: () => performance.now(),

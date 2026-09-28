@@ -222,7 +222,7 @@ impl Session {
                 // process. Only `Session::new` and `accept_offer` — before
                 // a session really exists — justify killing the
                 // whole process.
-                tracing::warn!(erreur = %e, "échec d'écriture de l'image, fin de session");
+                tracing::warn!(error = %e, "échec d'écriture de l'image, fin de session");
                 self.begin_ending("échec d'écriture vidéo");
                 false
             }

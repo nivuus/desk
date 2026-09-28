@@ -17,7 +17,7 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { SEUIL_INJOIGNABLE_MS } from '../agents/fraicheur';
 import { enroler, marquerVu } from '../depot/agent';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
 import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
@@ -103,7 +103,7 @@ async function poserVm(p: Pilote, id: string, nom: string, prefixe: string, vuA:
 }
 
 async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
-    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+    const u = await createUser(p, email, 'empreinte-opaque-de-test', MS);
     await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
     return u;
 }
@@ -197,7 +197,7 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         const url = await servir('rs-aucune');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         await attribuer(base!, 'v1', 'bob@exemple.test');
-        const carole = await creerUtilisateur(base!, 'carole@exemple.test', 'e', MS);
+        const carole = await createUser(base!, 'carole@exemple.test', 'e', MS);
         const r = await demander(url, signer(carole, SECRET, MS));
         expect(r.status).toBe(409);
         expect((await corpsDe(r)).motif).toBe('aucune-vm');
@@ -305,13 +305,13 @@ describe(`route POST /session, moteur=${MOTEUR}`, () => {
         // chaque requête rendrait 401 indéfiniment — cette route n'a aucune
         // notion d'échec (voir `securite/frein.ts`).
         const url = await servir('rs-frein-requetes');
-        let dernier: Response | undefined;
+        let last: Response | undefined;
         for (let i = 0; i < REQUETES_MAX_ADRESSE + 1; i++) {
-            dernier = await demander(url);
+            last = await demander(url);
         }
-        expect(dernier!.status).toBe(429);
-        expect((await corpsDe(dernier!)).refus).toBe('trop-de-requetes');
-        const retry = dernier!.headers.get('retry-after');
+        expect(last!.status).toBe(429);
+        expect((await corpsDe(last!)).refus).toBe('trop-de-requetes');
+        const retry = last!.headers.get('retry-after');
         expect(retry).not.toBeNull();
         expect(Number(retry)).toBeGreaterThan(0);
     });

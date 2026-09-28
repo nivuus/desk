@@ -2,14 +2,14 @@
 // proto/src/fichiers.rs — the pinned vector of fichiers.test.ts, hardcoded
 // on both sides, is what checks it.
 //
-// Format: version u8 | type u8 | correlation u32 | longueur_entete u32 |
+// Format: version u8 | type u8 | correlation u32 | header_length u32 |
 // header | payload, integers in LITTLE-ENDIAN (`setUint32(…, true)`).
 //
 // The payload is NEVER encoded: that is the whole point of the binary format. The
 // original bridge serialised the bytes through `Array.from(buffer.slice(…))`,
 // about 4 bytes sent per useful byte, on every byte of every read.
 
-export const FICHIERS_VERSION = 1;
+export const FILES_VERSION = 1;
 
 /**
  * Maximum size of a frame's PAYLOAD, in bytes.
@@ -18,19 +18,19 @@ export const FICHIERS_VERSION = 1;
  * value bounds the payload: a divergence noted in the plan, settled on the side
  * that makes the module consistent with `pont::decoupe`. See the Rust twin's doc.
  */
-export const TAILLE_TRAME_MAX = 64 * 1024;
+export const MAX_FRAME_SIZE = 64 * 1024;
 
 /** Version, type, correlation, header length. */
-export const TAILLE_ENTETE_FIXE = 1 + 1 + 4 + 4;
+export const FIXED_HEADER_SIZE = 1 + 1 + 4 + 4;
 
 // Bridge → browser requests — they EXPECT an answer.
 export const TYPE_LISTER = 1;
 export const TYPE_ATTRIBUTS = 2;
 export const TYPE_LIRE = 3;
-export const TYPE_ECRIRE = 4; // F2 — `Ecrire` header, the payload carries the bytes
-export const TYPE_CREER = 5; // F2 — `Creer` header, empty payload
+export const TYPE_WRITE = 4; // F2 — `Write` header, the payload carries the bytes
+export const TYPE_CREATE = 5; // F2 — `Create` header, empty payload
 export const TYPE_RENOMMER = 7; // F3 — `Renommer` header, empty payload
-export const TYPE_SUPPRIMER = 8; // F3 — `Supprimer` header, empty payload
+export const TYPE_DELETE = 8; // F3 — `Delete` header, empty payload
 
 // Bridge → browser announcements — they expect NOTHING.
 //
@@ -56,7 +56,7 @@ export const TYPE_RAFRAICHIR = 69; // F5 — EMPTY header `{}`, empty payload
 // Browser → bridge answers.
 export const TYPE_ENTREES = 64;
 export const TYPE_META = 65;
-export const TYPE_DONNEES = 66;
+export const TYPE_DATA = 66;
 export const TYPE_FAIT = 67; // F2 — EMPTY header `{}`, empty payload
 export const TYPE_ECHEC = 127;
 
@@ -70,16 +70,16 @@ export type TypeMessage =
     | typeof TYPE_LISTER
     | typeof TYPE_ATTRIBUTS
     | typeof TYPE_LIRE
-    | typeof TYPE_ECRIRE
-    | typeof TYPE_CREER
+    | typeof TYPE_WRITE
+    | typeof TYPE_CREATE
     | typeof TYPE_RENOMMER
-    | typeof TYPE_SUPPRIMER
+    | typeof TYPE_DELETE
     | typeof TYPE_DUES
     | typeof TYPE_BONJOUR
     | typeof TYPE_RAFRAICHIR
     | typeof TYPE_ENTREES
     | typeof TYPE_META
-    | typeof TYPE_DONNEES
+    | typeof TYPE_DATA
     | typeof TYPE_FAIT
     | typeof TYPE_ECHEC;
 
@@ -100,21 +100,21 @@ const TYPES_CONNUS: Readonly<Record<TypeMessage, true>> = {
     [TYPE_LISTER]: true,
     [TYPE_ATTRIBUTS]: true,
     [TYPE_LIRE]: true,
-    [TYPE_ECRIRE]: true,
-    [TYPE_CREER]: true,
+    [TYPE_WRITE]: true,
+    [TYPE_CREATE]: true,
     [TYPE_RENOMMER]: true,
-    [TYPE_SUPPRIMER]: true,
+    [TYPE_DELETE]: true,
     [TYPE_DUES]: true,
     [TYPE_BONJOUR]: true,
     [TYPE_RAFRAICHIR]: true,
     [TYPE_ENTREES]: true,
     [TYPE_META]: true,
-    [TYPE_DONNEES]: true,
+    [TYPE_DATA]: true,
     [TYPE_FAIT]: true,
     [TYPE_ECHEC]: true,
 };
 
-export const TOUS_LES_TYPES: readonly TypeMessage[] = Object.keys(TYPES_CONNUS).map(
+export const ALL_TYPES: readonly TypeMessage[] = Object.keys(TYPES_CONNUS).map(
     Number,
 ) as TypeMessage[];
 
@@ -163,7 +163,7 @@ export interface Trame {
 /**
  * Encodes a frame whose header is ALREADY serialised.
  *
- * ⚠️ It is the EXACT twin of `proto::fichiers::encoder`, whose Rust
+ * ⚠️ It is the EXACT twin of `proto::files::encoder`, whose Rust
  * signature takes `entete: &str`. The variant that follows, `encoder`, takes an object and
  * serialises it: handy for tests, but it lets `JSON.stringify`
  * decide the key order. The product thus goes through here, with the
@@ -179,14 +179,14 @@ export function encoderTexte(
 ): ArrayBuffer {
     const enteteOctets = new TextEncoder().encode(enteteJson);
     const chargeOctets = charge ?? new Uint8Array(0);
-    const sortie = new Uint8Array(TAILLE_ENTETE_FIXE + enteteOctets.length + chargeOctets.length);
+    const sortie = new Uint8Array(FIXED_HEADER_SIZE + enteteOctets.length + chargeOctets.length);
     const vue = new DataView(sortie.buffer);
-    sortie[0] = FICHIERS_VERSION;
+    sortie[0] = FILES_VERSION;
     sortie[1] = type;
     vue.setUint32(2, correlation >>> 0, true);
     vue.setUint32(6, enteteOctets.length, true);
-    sortie.set(enteteOctets, TAILLE_ENTETE_FIXE);
-    sortie.set(chargeOctets, TAILLE_ENTETE_FIXE + enteteOctets.length);
+    sortie.set(enteteOctets, FIXED_HEADER_SIZE);
+    sortie.set(chargeOctets, FIXED_HEADER_SIZE + enteteOctets.length);
     return sortie.buffer;
 }
 
@@ -211,32 +211,32 @@ export function encoder(
 /** Decodes a frame, or throws saying precisely why it is refused. */
 export function decoder(octets: ArrayBuffer): Trame {
     const brut = new Uint8Array(octets);
-    if (brut.length < TAILLE_ENTETE_FIXE) {
+    if (brut.length < FIXED_HEADER_SIZE) {
         throw new Error(
-            `trame tronquée : ${brut.length} octets reçus, ${TAILLE_ENTETE_FIXE} attendus`,
+            `trame tronquée : ${brut.length} octets reçus, ${FIXED_HEADER_SIZE} attendus`,
         );
     }
     const version = brut[0];
-    if (version !== FICHIERS_VERSION) {
+    if (version !== FILES_VERSION) {
         throw new Error(`version de fichiers non supportée : ${version}`);
     }
     const vue = new DataView(brut.buffer, brut.byteOffset, brut.byteLength);
     const correlation = vue.getUint32(2, true);
-    const longueurEntete = vue.getUint32(6, true);
-    const disponible = brut.length - TAILLE_ENTETE_FIXE;
-    if (longueurEntete > disponible) {
+    const headerLength = vue.getUint32(6, true);
+    const disponible = brut.length - FIXED_HEADER_SIZE;
+    if (headerLength > disponible) {
         throw new Error(
-            `en-tête de ${longueurEntete} octets annoncé, ${disponible} disponibles`,
+            `en-tête de ${headerLength} octets annoncé, ${disponible} disponibles`,
         );
     }
-    const debutCharge = TAILLE_ENTETE_FIXE + longueurEntete;
+    const debutCharge = FIXED_HEADER_SIZE + headerLength;
     const charge = brut.subarray(debutCharge);
-    if (charge.length > TAILLE_TRAME_MAX) {
-        throw new Error(`charge de ${charge.length} octets, maximum ${TAILLE_TRAME_MAX}`);
+    if (charge.length > MAX_FRAME_SIZE) {
+        throw new Error(`charge de ${charge.length} octets, maximum ${MAX_FRAME_SIZE}`);
     }
     const entete =
-        longueurEntete === 0
+        headerLength === 0
             ? undefined
-            : JSON.parse(new TextDecoder().decode(brut.subarray(TAILLE_ENTETE_FIXE, debutCharge)));
+            : JSON.parse(new TextDecoder().decode(brut.subarray(FIXED_HEADER_SIZE, debutCharge)));
     return { version, type: brut[1], correlation, entete, charge };
 }

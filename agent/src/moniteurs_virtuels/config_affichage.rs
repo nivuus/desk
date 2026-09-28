@@ -122,9 +122,9 @@ mod win {
     /// attaches while we poll. A single attempt would make a transient
     /// error indistinguishable from a failure.
     pub fn chemins_actifs() -> Result<Vec<CheminActif>> {
-        const ESSAIS: u32 = 4;
+        const ATTEMPTS: u32 = 4;
         let mut derniere: Option<WIN32_ERROR> = None;
-        for _ in 0..ESSAIS {
+        for _ in 0..ATTEMPTS {
             let (mut n_chemins, mut n_modes) = (0u32, 0u32);
             let statut = unsafe {
                 GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut n_chemins, &mut n_modes)
@@ -154,7 +154,7 @@ mod win {
             derniere = Some(statut);
         }
         Err(anyhow::anyhow!(
-            "QueryDisplayConfig a rendu {:#010x} après {ESSAIS} essais — la \
+            "QueryDisplayConfig a rendu {:#010x} après {ATTEMPTS} essais — la \
              configuration d'affichage change plus vite qu'on ne la lit",
             derniere.map(|e| e.0).unwrap_or(0)
         ))

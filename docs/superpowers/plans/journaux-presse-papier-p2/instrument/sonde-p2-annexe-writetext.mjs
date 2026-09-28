@@ -55,12 +55,12 @@ await cdp.send('Page.bringToFront', {}, sessionId);
 
 const etat = async () => JSON.parse(await cdp.eval(sessionId,
     `JSON.stringify({isActive:navigator.userActivation.isActive,hasBeenActive:navigator.userActivation.hasBeenActive,hasFocus:document.hasFocus()})`));
-const ecrire = (t) => cdp.eval(sessionId, `navigator.clipboard.writeText(${JSON.stringify(t)}).then(()=>'OK',e=>'THROW:'+e.name)`, true);
+const write = (t) => cdp.eval(sessionId, `navigator.clipboard.writeText(${JSON.stringify(t)}).then(()=>'OK',e=>'THROW:'+e.name)`, true);
 
 dire('navigateur', version.Browser);
-const avant = await etat();
-const rAvant = await ecrire(`annexe-${ETIQUETTE}-avant`);
-dire('AVANT tout geste :', JSON.stringify(avant), '→ writeText', rAvant);
+const before = await etat();
+const rAvant = await write(`annexe-${ETIQUETTE}-avant`);
+dire('AVANT tout geste :', JSON.stringify(before), '→ writeText', rAvant);
 
 // Un geste de confiance : une VRAIE frappe. Ctrl+C sur un textarea sélectionné.
 await cdp.eval(sessionId, `(() => { const a=document.querySelector('#amorce'); a.value='geste'; a.focus(); a.select(); return 'ok'; })()`);
@@ -75,7 +75,7 @@ for (const [type, mods] of [['rawKeyDown', 2], ['keyUp', 0]]) {
 }
 await dodo(300);
 const apres = await etat();
-const rApres = await ecrire(`annexe-${ETIQUETTE}-apres`);
+const rApres = await write(`annexe-${ETIQUETTE}-apres`);
 dire('APRES un Ctrl+C de confiance :', JSON.stringify(apres), '→ writeText', rApres);
 
 const hypothese = rAvant.startsWith('THROW') && rApres === 'OK'
@@ -90,6 +90,6 @@ dire('⚠️ Cette sonde n\'etablit RIEN du prealable de P2, et rien du sens VM 
 dire('   que P1 a recette par ailleurs (4 executions).');
 
 writeFileSync(SORTIE, JSON.stringify({ etiquette: ETIQUETTE, date: new Date().toISOString(),
-    navigateur: version.Browser, avant, writeTextAvant: rAvant, apres, writeTextApres: rApres, hypothese }, null, 2));
+    navigateur: version.Browser, before, writeTextAvant: rAvant, apres, writeTextApres: rApres, hypothese }, null, 2));
 dire('releve ecrit : ' + SORTIE);
 chrome.kill('SIGKILL'); srv.close(); await dodo(300); process.exit(0);

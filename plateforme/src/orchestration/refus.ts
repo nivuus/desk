@@ -55,9 +55,9 @@ export type Motif = (typeof MOTIFS)[number];
 ///
 /// ⚠️ Success carries NO data, and that is enough: the three verbs
 /// that succeed in v1 (`lister`, `etat`, `attribuer`) return either their
-/// own value, or this `Resultat`. Slipping an optional field into it would make
+/// own value, or this `Outcome`. Slipping an optional field into it would make
 /// `ok:true` an object whose content would have to be checked.
-export type Resultat =
+export type Outcome =
     | { ok: true }
     | { ok: false; motif: Motif; operation: Operation; backend: string };
 
@@ -93,6 +93,6 @@ export function refuser(
     motif: Motif,
     operation: Operation,
     backend: string = BACKEND_STATIQUE,
-): Resultat {
+): Outcome {
     return { ok: false, motif, operation, backend };
 }

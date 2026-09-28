@@ -10,8 +10,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { lireParVm } from '../depot/agent';
-import { verifierEnrolement } from '../agents/enrolement';
-import { verifier } from '../identite/mot-de-passe';
+import { verifyEnrolment } from '../agents/enrolement';
+import { verify } from '../identite/mot-de-passe';
 import { analyserArguments, enrolerLaVm, roterLeSecret } from './enroler-agent';
 
 let base: Pilote | undefined;
@@ -120,7 +120,7 @@ describe(`enrolerLaVm, moteur=${MOTEUR}`, () => {
         expect(ligne!.prefixe_session).toBe(prefixe);
         // Et l'empreinte VÉRIFIE bien le secret rendu : sans cette assertion,
         // écrire n'importe quoi passerait la précédente.
-        expect(await verifier(secret, ligne!.empreinte_secret)).toBe(true);
+        expect(await verify(secret, ligne!.empreinte_secret)).toBe(true);
         // Une VM enrôlée n'a pas encore battu.
         expect(ligne!.vu_a).toBeNull();
     });
@@ -130,7 +130,7 @@ describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
     it("🔴 (a) l'ANCIEN secret est refusé et le NEUF accepté, de bout en bout", async () => {
         // 🔴 LA ROUGE : écrire le secret en clair au lieu de son empreinte, ou
         // ne rien écrire du tout. Le juge n'est pas la colonne mais
-        // `verifierEnrolement`, c'est-à-dire le chemin RÉEL du canal /agent :
+        // `verifyEnrolment`, c'est-à-dire le chemin RÉEL du canal /agent :
         // c'est la seule façon de savoir que la rotation a produit une
         // empreinte que le service sait vérifier.
         base = await baseNeuve('admin-roter-bout-en-bout');
@@ -141,8 +141,8 @@ describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
         expect('refus' in r).toBe(false);
         if ('refus' in r) return;
 
-        expect((await verifierEnrolement(base, vmId, ancien, () => {})).ok).toBe(false);
-        expect((await verifierEnrolement(base, vmId, r.secret, () => {})).ok).toBe(true);
+        expect((await verifyEnrolment(base, vmId, ancien, () => {})).ok).toBe(false);
+        expect((await verifyEnrolment(base, vmId, r.secret, () => {})).ok).toBe(true);
     });
 
     it('🔴 (b) le PRÉFIXE DE SESSION est inchangé — relu des deux côtés', async () => {
@@ -151,14 +151,14 @@ describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
         // test relit la colonne AVANT et APRÈS l'appel, sans quoi il ne
         // mesurerait rien.
         base = await baseNeuve('admin-roter-prefixe');
-        const { vmId, prefixe: avant } = await enrolerLaVm(
+        const { vmId, prefixe: before } = await enrolerLaVm(
             base, 'w1', '192.168.3.2', 1_787_136_773_742);
 
         const r = await roterLeSecret(base, vmId);
         expect('refus' in r).toBe(false);
 
         const apres = (await lireParVm(base, vmId))!.prefixe_session;
-        expect(apres).toBe(avant);
+        expect(apres).toBe(before);
         expect(apres).toHaveLength(22);
     });
 

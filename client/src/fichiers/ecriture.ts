@@ -50,10 +50,10 @@
 // loss, but wrong. NOT HANDLED, declared; it is F3's canonicaliser.
 
 import {
-    EchecFichiers,
+    FilesError,
     classer,
     type PoigneeBase,
-    type PoigneeFichier,
+    type FileHandle,
     type PoigneeRepertoire,
 } from './adaptateur';
 
@@ -84,7 +84,7 @@ export type OctetsInscriptibles = Uint8Array<ArrayBuffer>;
 
 /** The write stream returned by `createWritable()`. */
 export interface FluxInscriptible {
-    write(donnees: {
+    write(data: {
         type: 'write';
         position: number;
         data: OctetsInscriptibles;
@@ -102,7 +102,7 @@ export interface FluxInscriptible {
     close(): Promise<void>;
 }
 
-export interface PoigneeFichierInscriptible extends PoigneeFichier {
+export interface WritableFileHandle extends FileHandle {
     createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
 }
 
@@ -114,19 +114,19 @@ export interface RacineInscriptible extends PoigneeRepertoire {
     getFileHandle(
         nom: string,
         options?: { create?: boolean },
-    ): Promise<PoigneeFichierInscriptible>;
+    ): Promise<WritableFileHandle>;
     values(): AsyncIterable<PoigneeBase>;
 }
 
 export interface Ecrivain {
-    ecrire(
+    write(
         chemin: string,
         position: number,
         octets: Uint8Array,
         premier: boolean,
-        dernier: boolean,
+        last: boolean,
     ): Promise<void>;
-    creer(chemin: string, repertoire: boolean): Promise<void>;
+    create(chemin: string, repertoire: boolean): Promise<void>;
     /** Closes any stream left open. Called when the channel closes. */
     abandonner(): void;
 }
@@ -136,7 +136,7 @@ function composants(chemin: string): string[] {
     return chemin.split('/').filter((c) => c.length > 0);
 }
 
-export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
+export function createWriter(racine: RacineInscriptible): Ecrivain {
     /**
      * The open streams, ONE PER PATH.
      *
@@ -181,7 +181,7 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
             // user will be able to do: rename one of the two. The CODE, for its part,
             // crosses the wire; the message stays in the browser console
             // and in the shell page.
-            throw new EchecFichiers(
+            throw new FilesError(
                 'casse-ambigue',
                 `« ${nom} » ne diffère de « ${homonymes.join(' », « ')} » que par la casse : ` +
                     `écrire écraserait le mauvais fichier, rien n'a été écrit`,
@@ -193,7 +193,7 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
     async function ouvrir(chemin: string): Promise<FluxInscriptible> {
         const parts = composants(chemin);
         if (parts.length === 0) {
-            throw new EchecFichiers('introuvable', 'la racine n’est pas un fichier');
+            throw new FilesError('introuvable', 'la racine n’est pas un fichier');
         }
         const parent = await descendre(parts, parts.length - 1);
         const nom = await nomSur(parent, parts[parts.length - 1]);
@@ -211,7 +211,7 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
     }
 
     return {
-        async ecrire(chemin, position, octets, premier, dernier) {
+        async write(chemin, position, octets, premier, last) {
             if (premier) {
                 // ⚠️ A `premier` on an ALREADY open path can only come
                 // from a replay whose previous stream was never closed — an
@@ -232,7 +232,7 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
                 // : the bridge and the browser have diverged. Opening here would write
                 // a file truncated to this very chunk, which is WORSE than
                 // refusing — the truncation would be silent.
-                throw new EchecFichiers(
+                throw new FilesError(
                     'interne',
                     `morceau non initial sur « ${chemin} » sans flux ouvert`,
                 );
@@ -250,15 +250,15 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
                 //
                 // 🔵 It is the structural check of `canal.ts` that required this
                 // tightening — see [`OctetsInscriptibles`].
-                const donnees: OctetsInscriptibles = new Uint8Array(octets);
-                await ouvert.write({ type: 'write', position, data: donnees });
+                const data: OctetsInscriptibles = new Uint8Array(octets);
+                await ouvert.write({ type: 'write', position, data: data });
             } catch (e) {
                 // The stream is lost: remove it, otherwise the next chunk
                 // would write into a dead stream and the failure would change cause.
                 flux.delete(chemin);
                 throw classer(e, 'introuvable');
             }
-            if (dernier) {
+            if (last) {
                 flux.delete(chemin);
                 try {
                     // 🔵 LA COMMITTAISON.
@@ -269,10 +269,10 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
             }
         },
 
-        async creer(chemin, repertoire) {
+        async create(chemin, repertoire) {
             const parts = composants(chemin);
             if (parts.length === 0) {
-                throw new EchecFichiers('deja-present', 'la racine existe déjà');
+                throw new FilesError('deja-present', 'la racine existe déjà');
             }
             const parent = await descendre(parts, parts.length - 1);
             const nom = await nomSur(parent, parts[parts.length - 1]);

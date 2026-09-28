@@ -100,10 +100,10 @@ describe('fenetresAPeindre', () => {
             'MEME QUAND SA PROPRE LISTE EST VIDE',
         () => {
             // 🔴 C EST CE CAS QUI ATTRAPE LE DEFAUT DU ROUND 1 (critique ①) :
-            // la minuterie repeint a 1 Hz depuis `bureau.liste()`, qui est
+            // la minuterie repeint a 1 Hz depuis `bureau.list()`, qui est
             // STRUCTURELLEMENT VIDE chez un suiveur -- aucun socket, donc
             // aucun `fenetreOuverte` ne l alimente jamais. Une regle qui
-            // peindrait `listePropre` chez un suiveur effacerait donc, au
+            // peindrait `ownList` chez un suiveur effacerait donc, au
             // tour SUIVANT une diffusion, ce qu elle venait de montrer.
             const recues = [{ session: 's', titre: 'Bloc-notes', ouverte: true }];
             expect(fenetresAPeindre('suiveur', [], recues)).toEqual(recues);

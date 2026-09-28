@@ -102,7 +102,7 @@ export function prevenirLePairEnPlace(roleArrivant: 'agent' | 'client'): boolean
 ///
 /// ⚠️ **WHAT THIS MESSAGE COSTS ELSEWHERE, MEASURED BY READING THE CODE RATHER THAN
 /// ASSUMED.** It now also goes to the agents of the `w-N` and
-/// `fichiers` sessions, where the page usually connects first: these processes
+/// `files` sessions, where the page usually connects first: these processes
 /// read their signaling in `agent/src/signaling.rs`, whose dispatch
 /// ends with `other => tracing::debug!(?other, "signaling message
 /// ignored")` — a catch-all that logs and **continues**, never a

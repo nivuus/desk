@@ -15,25 +15,25 @@ type Trace = Arc<Mutex<Vec<String>>>;
 /// Fake source that records each clipboard write and returns the
 /// prepared answer.
 ///
-/// ⚠️ **It OVERRIDES `ecrire_le_presse_papier`, and that is intended here**: this
+/// ⚠️ **It OVERRIDES `write_clipboard`, and that is intended here**: this
 /// file exercises the use `collage` makes of the method, not its default.
 /// The trait's default — which must return `Err` and not `Ok(())`, precisely
 /// so that D10's trap does not replay — is exercised separately, in
 /// `capteur/distante/tests_etats.rs`.
-struct SourceQuiEcrit {
+struct WritingSource {
     inner: crate::source::FileSource,
     trace: Trace,
     accepte: bool,
 }
 
-impl VideoSource for SourceQuiEcrit {
+impl VideoSource for WritingSource {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.inner.next_frame()
     }
     fn dimensions(&self) -> (u32, u32) {
         self.inner.dimensions()
     }
-    fn ecrire_le_presse_papier(&mut self, texte: &str) -> anyhow::Result<()> {
+    fn write_clipboard(&mut self, texte: &str) -> anyhow::Result<()> {
         self.trace.lock().unwrap().push(format!("ecrire:{texte}"));
         if self.accepte {
             Ok(())
@@ -43,13 +43,13 @@ impl VideoSource for SourceQuiEcrit {
     }
 }
 
-fn session_qui_ecrit(accepte: bool) -> (Session, Trace) {
+fn writing_session(accepte: bool) -> (Session, Trace) {
     let trace: Trace = Arc::new(Mutex::new(Vec::new()));
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let inner = crate::source::FileSource::from_path(source_path, 1280, 720, 60)
         .expect("chargement du flux de test");
-    let source = Box::new(SourceQuiEcrit {
+    let source = Box::new(WritingSource {
         inner,
         trace: trace.clone(),
         accepte,
@@ -82,7 +82,7 @@ fn injecter(session: &mut Session, trace: &Trace) {
 /// denormalisation.
 #[test]
 fn l_ecriture_precede_l_injection_et_le_texte_part_denormalise() {
-    let (mut session, trace) = session_qui_ecrit(true);
+    let (mut session, trace) = writing_session(true);
     session.traiter_le_collage("une\ndeux");
     injecter(&mut session, &trace);
 
@@ -104,8 +104,8 @@ fn l_ecriture_precede_l_injection_et_le_texte_part_denormalise() {
 /// modifier PRESSED, and **every following keystroke would become a
 /// shortcut**. It is the most insidious defect of this path.
 #[test]
-fn un_collage_injecte_exactement_les_quatre_touches_dans_l_ordre() {
-    let (mut session, trace) = session_qui_ecrit(true);
+fn a_paste_injects_exactly_the_four_keys_in_order() {
+    let (mut session, trace) = writing_session(true);
     session.traiter_le_collage("x");
     trace.lock().unwrap().clear();
     injecter(&mut session, &trace);
@@ -160,8 +160,8 @@ fn un_collage_injecte_exactement_les_quatre_touches_dans_l_ordre() {
 /// entirely to avoid, and the only one that gives the user a WRONG result
 /// rather than a missing one.
 #[test]
-fn une_ecriture_refusee_n_injecte_aucune_touche() {
-    let (mut session, trace) = session_qui_ecrit(false);
+fn a_refused_write_injects_no_key() {
+    let (mut session, trace) = writing_session(false);
     session.traiter_le_collage("x");
     assert_eq!(
         trace.lock().unwrap().len(),
@@ -183,7 +183,7 @@ fn une_ecriture_refusee_n_injecte_aucune_touche() {
 /// every round, that is, at the video cadence.
 #[test]
 fn le_drapeau_se_consomme() {
-    let (mut session, trace) = session_qui_ecrit(true);
+    let (mut session, trace) = writing_session(true);
     session.traiter_le_collage("x");
     injecter(&mut session, &trace);
     trace.lock().unwrap().clear();
@@ -199,8 +199,8 @@ fn le_drapeau_se_consomme() {
 ///
 /// RED if `injecter_le_collage` typed without looking at the flag.
 #[test]
-fn sans_collage_aucune_touche_n_est_injectee() {
-    let (mut session, trace) = session_qui_ecrit(true);
+fn without_paste_no_key_is_injected() {
+    let (mut session, trace) = writing_session(true);
     injecter(&mut session, &trace);
     assert!(trace.lock().unwrap().is_empty());
 }
@@ -211,8 +211,8 @@ fn sans_collage_aucune_touche_n_est_injectee() {
 /// to the sensor↔child pipe, and the VM would paste a text the client had
 /// nevertheless refused to send.
 #[test]
-fn un_texte_au_dessus_de_la_borne_n_est_ni_ecrit_ni_injecte() {
-    let (mut session, trace) = session_qui_ecrit(true);
+fn a_text_above_the_bound_is_neither_written_nor_injected() {
+    let (mut session, trace) = writing_session(true);
     let trop = "a".repeat(crate::presse_papier::PRESSE_PAPIER_MAX + 1);
     session.traiter_le_collage(&trop);
 
@@ -237,7 +237,7 @@ fn un_texte_au_dessus_de_la_borne_n_est_ni_ecrit_ni_injecte() {
 /// ROUGE si l'ordre est `denormaliser` puis `borner_entrant`.
 #[test]
 fn la_borne_porte_sur_la_forme_normalisee_pour_que_l_aller_retour_tienne() {
-    let (mut session, trace) = session_qui_ecrit(true);
+    let (mut session, trace) = writing_session(true);
     let sauts = "\n".repeat(crate::presse_papier::PRESSE_PAPIER_MAX);
     session.traiter_le_collage(&sauts);
 

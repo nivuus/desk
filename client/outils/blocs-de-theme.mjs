@@ -46,17 +46,17 @@ import { COULEURS_HORS_THEME, ecartsEntreBlocs, lireBlocsDeTheme } from '../src/
 
 const args = process.argv.slice(2);
 const iFichier = args.indexOf('--fichier');
-const fichier = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
+const file = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
-if (!existsSync(fichier)) {
-    console.error(`${fichier} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+if (!existsSync(file)) {
+    console.error(`${file} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
     process.exit(2);
 }
 
-const css = readFileSync(fichier, 'utf8');
+const css = readFileSync(file, 'utf8');
 const blocs = lireBlocsDeTheme(css);
 
-console.log(`fichier : ${fichier}`);
+console.log(`fichier : ${file}`);
 for (const bloc of blocs) {
     console.log(`  bloc ${bloc.nom} : ${bloc.tokens.size} token(s)`);
 }

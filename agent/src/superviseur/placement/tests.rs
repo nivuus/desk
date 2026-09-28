@@ -16,7 +16,7 @@
 //! was not foreseeable when the ceiling was computed.
 //!
 //! No assertion, no comment was rewritten in the move. The
-//! TWO modules (`tests` and `tests_taille`) are kept distinct: they
+//! TWO modules (`tests` and `tests_size`) are kept distinct: they
 //! were, and merging them would have been a rewrite.
 
 use super::*;
@@ -47,11 +47,11 @@ fn trouve_la_sortie_aux_dimensions_demandees() {
     // dimensions` stays inadequate by staying smaller on both
     // axes: see task 5's report, this data is not in
     // the brief as is, which made this test red as it stood.
-    let toutes = vec![
+    let all = vec![
         sortie(0, 0, 0, 2400, 800, true),
         sortie(0, 1, 2400, 1600, 900, true),
     ];
-    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &[], None).unwrap();
+    let trouvee = sortie_pour_viewport(&all, 1600, 900, &[], None).unwrap();
     assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 1));
 }
 
@@ -59,8 +59,8 @@ fn trouve_la_sortie_aux_dimensions_demandees() {
 fn ignore_une_sortie_non_attachee() {
     // An output created but not yet attached by Windows can
     // display nothing: taking it would give a black capture.
-    let toutes = vec![sortie(0, 1, 2400, 1600, 900, false)];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[], None).is_none());
+    let all = vec![sortie(0, 1, 2400, 1600, 900, false)];
+    assert!(sortie_pour_viewport(&all, 1600, 900, &[], None).is_none());
 }
 
 #[test]
@@ -68,20 +68,20 @@ fn ignore_une_sortie_deja_attribuee() {
     // Two windows with the same viewport: without this filter, the second would
     // be assigned the first one's output, and both streams
     // would show the same image.
-    let toutes = vec![
+    let all = vec![
         sortie(0, 1, 2400, 1600, 900, true),
         sortie(0, 2, 4000, 1600, 900, true),
     ];
     let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-    let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &deja_prises, None).unwrap();
+    let trouvee = sortie_pour_viewport(&all, 1600, 900, &deja_prises, None).unwrap();
     assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 2));
 }
 
 #[test]
-fn ne_trouve_rien_quand_toutes_sont_prises() {
-    let toutes = vec![sortie(0, 1, 2400, 1600, 900, true)];
+fn finds_nothing_when_all_are_taken() {
+    let all = vec![sortie(0, 1, 2400, 1600, 900, true)];
     let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &deja_prises, None).is_none());
+    assert!(sortie_pour_viewport(&all, 1600, 900, &deja_prises, None).is_none());
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
     // lines below, now says the opposite. Pairing HAS
     // deliberately become approximate (inequality, plus a tolerance of
     // 4 px): a DPI gap is no longer a reason to refuse, it is cropped.
-    // The protection migrated to `taille_retenue`, which bounds the window to
+    // The protection migrated to `retained_size`, which bounds the window to
     // what the output can really carry. Found by the cross-cutting
     // review: it is the only comment of this file that the
     // `sortie_par_dimensions` → `sortie_pour_viewport` renaming left
@@ -102,15 +102,15 @@ fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
     //
     // What this test still exercises, and which stays right: an output
     // TOO SMALL on one axis is still not paired.
-    let toutes = vec![sortie(0, 1, 2400, 1067, 600, true)];
-    assert!(sortie_pour_viewport(&toutes, 1600, 900, &[], None).is_none());
+    let all = vec![sortie(0, 1, 2400, 1067, 600, true)];
+    assert!(sortie_pour_viewport(&all, 1600, 900, &[], None).is_none());
 }
 
 /// §3.1 of acceptance run D1: an output created at 1280×713 was returned by
 /// DXGI at 1280×720 once, then at 1280×713 the next try. Strict
 /// equality then made opening the window impossible.
 #[test]
-fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
+fn a_gap_within_tolerance_still_matches() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1280, 717)];
     let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[], None);
     assert_eq!(
@@ -123,12 +123,12 @@ fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
 /// DXGI) is no longer a reason to REFUSE: a larger output is
 /// cropped. What protected against it — putting the window on a
 /// texture of the wrong dimensions — is now ensured by
-/// `taille_retenue`, not by pairing.
+/// `retained_size`, not by pairing.
 #[test]
 fn un_facteur_d_echelle_est_desormais_recadre_et_non_refuse() {
     let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1920, 1080)];
     assert!(sortie_pour_viewport(&sorties, 1280, 720, &[], None).is_some());
-    assert_eq!(taille_retenue((1280, 720), (1920, 1080)), (1280, 720));
+    assert_eq!(retained_size((1280, 720), (1920, 1080)), (1280, 720));
 }
 
 #[test]
@@ -179,11 +179,11 @@ fn une_grande_sortie_deja_prise_n_est_pas_reattribuee() {
 }
 
 #[test]
-fn ignore_toujours_une_sortie_non_attachee() {
+fn always_ignores_an_unattached_output() {
     // An output Windows did not attach can display nothing:
     // taking it would give a black capture, whatever its size.
-    let toutes = vec![sortie(0, 1, 2400, 3840, 2160, false)];
-    assert!(sortie_pour_viewport(&toutes, 1280, 720, &[], None).is_none());
+    let all = vec![sortie(0, 1, 2400, 3840, 2160, false)];
+    assert!(sortie_pour_viewport(&all, 1280, 720, &[], None).is_none());
 }
 
 // Distinct from `sortie` above (which sets `nom_sortie` from
@@ -275,11 +275,11 @@ fn un_ecart_d_un_pixel_ne_declenche_pas_de_replacement() {
     assert!(!doit_etre_replacee(&presque, &cible));
 }
 
-mod tests_taille {
+mod tests_size {
     // ⚠️ `super::super::*` and not `super::*`: the ONLY change of the
     // move, and it is mechanical. This module stays nested (it was),
     // but its parent is no longer `placement` — it is the `tests` module this
-    // file now IS. Without this one extra notch, `taille_retenue` and
+    // file now IS. Without this one extra notch, `retained_size` and
     // `sortie_assez_grande` would not resolve.
     use super::super::*;
 
@@ -309,32 +309,32 @@ mod tests_taille {
     }
 
     #[test]
-    fn la_taille_retenue_recadre_une_sortie_trop_grande() {
-        assert_eq!(taille_retenue((1280, 720), (3840, 2160)), (1280, 720));
+    fn the_retained_size_crops_an_oversized_output() {
+        assert_eq!(retained_size((1280, 720), (3840, 2160)), (1280, 720));
     }
 
     /// Born too small, the output is honoured at what it offers: the client
     /// scales. No case hands an output back to the driver for a
     /// question of size any more.
     #[test]
-    fn la_taille_retenue_se_borne_a_la_sortie_quand_celle_ci_est_plus_petite() {
-        assert_eq!(taille_retenue((1280, 720), (1024, 576)), (1024, 576));
+    fn the_retained_size_is_clamped_to_the_output_when_it_is_smaller() {
+        assert_eq!(retained_size((1280, 720), (1024, 576)), (1024, 576));
     }
 
     /// The NV12 encoder requires even dimensions, and an output born at an
     /// odd size is a real case (odd viewport, D1).
     #[test]
-    fn la_taille_retenue_est_toujours_paire_et_jamais_nulle() {
-        assert_eq!(taille_retenue((1281, 721), (3840, 2160)), (1280, 720));
-        assert_eq!(taille_retenue((0, 0), (1280, 720)), (2, 2));
+    fn the_retained_size_is_always_even_and_never_zero() {
+        assert_eq!(retained_size((1281, 721), (3840, 2160)), (1280, 720));
+        assert_eq!(retained_size((0, 0), (1280, 720)), (2, 2));
     }
 
     /// Axes are bounded SEPARATELY: we crop, we do not
     /// scale, so there is no aspect ratio to preserve here —
-    /// unlike `borner_a_la_taille_max`, which, for its part, resizes.
+    /// unlike `clamp_to_max_size`, which, for its part, resizes.
     #[test]
     fn les_deux_axes_se_bornent_separement() {
-        assert_eq!(taille_retenue((1920, 720), (1280, 2160)), (1280, 720));
+        assert_eq!(retained_size((1920, 720), (1280, 2160)), (1280, 720));
     }
 }
 
@@ -363,7 +363,7 @@ mod tests_taille {
 ///
 /// **The rule set here**: when designation has POSITIVELY named
 /// our output, its size is no longer a REFUSAL criterion — it is a
-/// CONSTRAINT, and `windows_source_sortie::taille_pour_viewport` already knows how to
+/// CONSTRAINT, and `windows_source_sortie::size_for_viewport` already knows how to
 /// fit the window to it with the aspect ratio preserved. Refusing meant refusing the
 /// only output we could have served.
 mod sortie_designee {
@@ -374,8 +374,8 @@ mod sortie_designee {
     /// The production case, to the byte.
     #[test]
     fn une_sortie_designee_plus_petite_que_le_viewport_est_servie() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
-        let trouvee = sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(NOTRE));
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let trouvee = sortie_pour_viewport(&all, 1614, 1080, &[], Some(NOTRE));
         assert_eq!(
             trouvee.map(|s| s.nom_sortie),
             Some(NOTRE.to_string()),
@@ -389,17 +389,17 @@ mod sortie_designee {
     /// stops being a criterion; `deja_prises` does not stop being one.
     #[test]
     fn une_sortie_designee_deja_prise_reste_refusee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
         let prises = vec![NOTRE.to_string()];
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &prises, Some(NOTRE)).is_none());
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &prises, Some(NOTRE)).is_none());
     }
 
     /// An output Windows has not attached yet stays unusable,
     /// designated or not: the capture would have nothing to duplicate.
     #[test]
     fn une_sortie_designee_non_attachee_reste_refusee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, false)];
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(NOTRE)).is_none());
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, false)];
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &[], Some(NOTRE)).is_none());
     }
 
     /// 🔴 **WHAT THE RELAXATION DOES NOT TOUCH.** Without designation, the
@@ -408,16 +408,16 @@ mod sortie_designee {
     /// and it is the negative witness of the previous test.
     #[test]
     fn sans_designation_une_sortie_trop_petite_reste_refusee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], None).is_none());
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &[], None).is_none());
     }
 
     /// A designation naming ANOTHER output relaxes nothing on
     /// this one: the exemption is by name, never global.
     #[test]
     fn l_exemption_ne_vaut_que_pour_la_sortie_nommee() {
-        let toutes = vec![sortie(0, 6, 1280, 1428, 1080, true)];
+        let all = vec![sortie(0, 6, 1280, 1428, 1080, true)];
         let autre = "\\\\.\\DISPLAY7";
-        assert!(sortie_pour_viewport(&toutes, 1614, 1080, &[], Some(autre)).is_none());
+        assert!(sortie_pour_viewport(&all, 1614, 1080, &[], Some(autre)).is_none());
     }
 }

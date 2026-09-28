@@ -47,24 +47,24 @@ export interface LigneTeleversement {
     scelle_a: number | null;
 }
 
-export async function creer(
+export async function create(
     p: Pilote,
     entree: {
-        utilisateurId: string;
+        userId: string;
         nom: string;
         taille: number;
         sha256: string;
-        tailleTranche: number;
+        chunkSize: number;
     },
     maintenant: number,
 ): Promise<LigneTeleversement> {
     const ligne: LigneTeleversement = {
         id: randomUUID(),
-        utilisateur_id: entree.utilisateurId,
+        utilisateur_id: entree.userId,
         nom: entree.nom,
         taille: entree.taille,
         sha256: entree.sha256,
-        taille_tranche: entree.tailleTranche,
+        taille_tranche: entree.chunkSize,
         cree_a: maintenant,
         scelle_a: null,
     };
@@ -110,15 +110,15 @@ export async function sceller(p: Pilote, id: string, maintenant: number): Promis
 /// PRE-AUTHENTICATED doors, where an anonymous peer guesses a secret. These routes
 /// all require a valid token; what protects them is a bound on what
 /// an AUTHENTICATED user can make the disk work on.
-export async function compterEnCours(p: Pilote, utilisateurId: string): Promise<number> {
+export async function compterEnCours(p: Pilote, userId: string): Promise<number> {
     const lignes = await p.interroger<{ n: number }>(
         'SELECT COUNT(*) AS n FROM televersement WHERE utilisateur_id = ? AND scelle_a IS NULL',
-        [utilisateurId],
+        [userId],
     );
     return Number(lignes[0]?.n ?? 0);
 }
 
-/// The uploads older than `avant`, for the age sweep.
+/// The uploads older than `before`, for the age sweep.
 ///
 /// ⚠️ IT ALSO RETURNS THE SEALED ONES: a sealed upload whose installation
 /// succeeded no longer has any reason to occupy the disk. It is the caller that decides
@@ -127,15 +127,15 @@ export async function compterEnCours(p: Pilote, utilisateurId: string): Promise<
 /// remain readable.
 export async function lirePlusVieuxQue(
     p: Pilote,
-    avant: number,
+    before: number,
 ): Promise<LigneTeleversement[]> {
     return p.interroger<LigneTeleversement>(
         'SELECT id, utilisateur_id, nom, taille, sha256, taille_tranche, cree_a, scelle_a'
             + ' FROM televersement WHERE cree_a < ?',
-        [avant],
+        [before],
     );
 }
 
-export async function supprimer(p: Pilote, id: string): Promise<void> {
+export async function remove(p: Pilote, id: string): Promise<void> {
     await p.executer('DELETE FROM televersement WHERE id = ?', [id]);
 }

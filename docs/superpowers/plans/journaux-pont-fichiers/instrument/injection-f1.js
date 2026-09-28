@@ -54,7 +54,7 @@
     // The driver's log: the page writes into it, the driver rereads it. It is
     // BOUNDED (200 entries) -- an unbounded buffer is the instrument defect
     // D8 left open on `window.__pleinEcran`.
-    window.__f1 = { etapes: [], erreurs: [] };
+    window.__f1 = { etapes: [], errors: [] };
     const noter = (m) => {
         window.__f1.etapes.push({ t: Date.now(), m: String(m).slice(0, 300) });
         if (window.__f1.etapes.length > 200) window.__f1.etapes.shift();
@@ -76,14 +76,14 @@
             await dossier.removeEntry(nom, { recursive: true });
         }
 
-        const liste = await (await fetch(BASE + '/liste')).json();
+        const list = await (await fetch(BASE + '/liste')).json();
         // Directories first, so that files have their parent.
-        for (const e of liste.filter((x) => x.type === 'directory')) {
+        for (const e of list.filter((x) => x.type === 'directory')) {
             const parts = e.chemin.split('/');
             let ici = dossier;
             for (const p of parts) ici = await ici.getDirectoryHandle(p, { create: true });
         }
-        for (const e of liste.filter((x) => x.type === 'file')) {
+        for (const e of list.filter((x) => x.type === 'file')) {
             const parts = e.chemin.split('/');
             const nom = parts.pop();
             let ici = dossier;
@@ -108,16 +108,16 @@
             const d = await crypto.subtle.digest('SHA-256', await f.arrayBuffer());
             window.__f1.sha_opfs = Array.from(new Uint8Array(d))
                 .map((b) => b.toString(16).padStart(2, '0')).join('');
-            window.__f1.taille_opfs = f.size;
+            window.__f1.opfs_size = f.size;
             noter('sha256 OPFS de gros.bin : ' + window.__f1.sha_opfs);
         } catch (e) {
-            window.__f1.erreurs.push('condensat OPFS : ' + String(e).slice(0, 200));
+            window.__f1.errors.push('condensat OPFS : ' + String(e).slice(0, 200));
         }
-        noter('OPFS peuple : ' + liste.length + ' entrees');
-        window.__f1.peuple = liste.length;
+        noter('OPFS peuple : ' + list.length + ' entrees');
+        window.__f1.peuple = list.length;
         return dossier;
     })().catch((e) => {
-        window.__f1.erreurs.push('peuplement OPFS : ' + String(e).slice(0, 300));
+        window.__f1.errors.push('peuplement OPFS : ' + String(e).slice(0, 300));
         throw e;
     });
 

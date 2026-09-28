@@ -11,7 +11,7 @@
 // costs 2 GiB of channel".
 //
 // **That is only true if the BRIDGE orchestrates the copy**, through a sequence of
-// `Lire` and `Ecrire`. F3 does not orchestrate it: renaming is **ONE SINGLE
+// `Lire` and `Write`. F3 does not orchestrate it: renaming is **ONE SINGLE
 // MESSAGE** (`Renommer { de, vers }`), and the fallback copy happens between two
 // handles that both live in the browser, on the local machine's
 // disk. **Cost of the fallback on the channel: ZERO bytes, in both branches.**
@@ -114,13 +114,13 @@
 // no, deleting a non-empty directory will leave the children on the
 // local machine — **degrades, does not block**.
 
-import { EchecFichiers, classer, type PoigneeBase, type PoigneeFichier } from './adaptateur';
+import { FilesError, classer, type PoigneeBase, type FileHandle } from './adaptateur';
 import type { FluxInscriptible, RacineInscriptible } from './ecriture';
 import { canoniser, canoniserOuLever } from './noms';
-import { copierFichier, copierRepertoire, ouvrirRepertoire, retirerArbre } from './copie';
+import { copyFile, copierRepertoire, ouvrirRepertoire, retirerArbre } from './copie';
 
 /** What we can do with a file handle we want to move. */
-export interface PoigneeFichierMutable extends PoigneeFichier {
+export interface MutableFileHandle extends FileHandle {
     createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
     /** **NON STANDARD** — extension Chromium. Absente ⇒ le repli local. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
@@ -136,7 +136,7 @@ export interface PoigneeFichierMutable extends PoigneeFichier {
  */
 export interface RacineMutable extends RacineInscriptible {
     getDirectoryHandle(nom: string, options?: { create?: boolean }): Promise<RacineMutable>;
-    getFileHandle(nom: string, options?: { create?: boolean }): Promise<PoigneeFichierMutable>;
+    getFileHandle(nom: string, options?: { create?: boolean }): Promise<MutableFileHandle>;
     /** ⚠️ **WITHOUT `recursive`** — see the header. */
     removeEntry(nom: string): Promise<void>;
     /** **NON STANDARD**. */
@@ -193,7 +193,7 @@ async function descendreEnCreant(
         const r = await canoniser(ici, parts[i]);
         const nom = r.sorte === 'trouve' ? r.nom : parts[i];
         if (r.sorte === 'ambigu') {
-            throw new EchecFichiers(
+            throw new FilesError(
                 'casse-ambigue',
                 `« ${parts[i]} » ne se distingue pas de « ${r.noms.join(' », « ')} »`,
             );
@@ -223,7 +223,7 @@ export async function renommer(
     const partsDe = composants(de);
     const partsVers = composants(vers);
     if (partsDe.length === 0 || partsVers.length === 0) {
-        throw new EchecFichiers('non-supporte', 'la racine ne se renomme pas');
+        throw new FilesError('non-supporte', 'la racine ne se renomme pas');
     }
     const parentSource = await descendre(racine, partsDe, partsDe.length - 1);
     const nomSource = await canoniserOuLever(
@@ -241,7 +241,7 @@ export async function renommer(
     const memeParent = parentSource === parentDest;
     let cassePure = false;
     if (dest.sorte === 'ambigu') {
-        throw new EchecFichiers(
+        throw new FilesError(
             'casse-ambigue',
             `« ${nomDemande} » ne se distingue pas de « ${dest.noms.join(' », « ')} »`,
         );
@@ -253,7 +253,7 @@ export async function renommer(
         if (memeParent && dest.nom === nomSource) {
             cassePure = true;
         } else {
-            throw new EchecFichiers(
+            throw new FilesError(
                 'deja-present',
                 `« ${vers} » existe déjà sous le nom « ${dest.nom} »`,
             );
@@ -295,7 +295,7 @@ async function deplacer(
     // ⚠️ **DETECTED AT CALL TIME**, on the handle actually obtained.
     const poignee: PoigneeBase & { move?: unknown } = repertoire
         ? await ouvrirRepertoire(parentSource, nomSource)
-        : await ouvrirFichier(parentSource, nomSource);
+        : await openFile(parentSource, nomSource);
     if (typeof poignee.move === 'function') {
         try {
             await (poignee as { move(p: RacineMutable, n: string): Promise<void> }).move(
@@ -312,7 +312,7 @@ async function deplacer(
     if (repertoire) {
         await copierRepertoire(parentSource, nomSource, parentDest, nomDest, trace);
     } else {
-        await copierFichier(parentSource, nomSource, parentDest, nomDest, trace);
+        await copyFile(parentSource, nomSource, parentDest, nomDest, trace);
     }
     // 🔴 **THE SOURCE IS ONLY REMOVED AFTERWARDS**, and an interrupted copy
     // therefore leaves it INTACT. The reverse would lose the file on a cut.
@@ -328,10 +328,10 @@ async function deplacer(
     return trace;
 }
 
-async function ouvrirFichier(
+async function openFile(
     parent: RacineMutable,
     nom: string,
-): Promise<PoigneeFichierMutable> {
+): Promise<MutableFileHandle> {
     try {
         return await parent.getFileHandle(nom);
     } catch (e) {
@@ -344,14 +344,14 @@ async function ouvrirFichier(
  *
  * ⚠️ **`removeEntry(nom)` WITHOUT `recursive`** — see the header.
  */
-export async function supprimer(
+export async function remove(
     racine: RacineMutable,
     chemin: string,
     _repertoire: boolean,
 ): Promise<void> {
     const parts = composants(chemin);
     if (parts.length === 0) {
-        throw new EchecFichiers('non-supporte', 'la racine ne se supprime pas');
+        throw new FilesError('non-supporte', 'la racine ne se supprime pas');
     }
     const parent = await descendre(racine, parts, parts.length - 1);
     const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
@@ -376,7 +376,7 @@ export async function supprimer(
         // identical runs. `repertoire-non-vide` is therefore indeed
         // reachable — it is not a code written for the table.
         if (e instanceof DOMException && e.name === 'InvalidModificationError') {
-            throw new EchecFichiers(
+            throw new FilesError(
                 'repertoire-non-vide',
                 `« ${chemin} » n’est pas vide sur le poste local : le miroir a dérivé, ` +
                     `rien n’a été supprimé`,

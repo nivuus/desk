@@ -57,7 +57,7 @@ impl Mires {
             mire::MIRES_MAX,
             places.len()
         );
-        enregistrer_classe()?;
+        register_class()?;
 
         let dxgi: IDXGIDevice = device
             .cast()
@@ -76,7 +76,7 @@ impl Mires {
         // the next measurement, since the bench is relaunched several times in a row.
         let mut fenetres = Vec::with_capacity(places.len());
         for (index, place) in places.iter().enumerate() {
-            match creer_fenetre(device, &fabrique, index as u8, *place) {
+            match create_window(device, &fabrique, index as u8, *place) {
                 Ok(fenetre) => fenetres.push(fenetre),
                 Err(e) => {
                     for fenetre in &fenetres {
@@ -178,7 +178,7 @@ impl Mires {
         self.trame
     }
 
-    pub(super) fn nombre(&self) -> u8 {
+    pub(super) fn count(&self) -> u8 {
         self.fenetres.len() as u8
     }
 }
@@ -193,10 +193,10 @@ impl Drop for Mires {
     }
 }
 
-fn enregistrer_classe() -> Result<()> {
+fn register_class() -> Result<()> {
     use std::sync::Once;
     static UNE_FOIS: Once = Once::new();
-    let mut resultat = Ok(());
+    let mut result = Ok(());
     UNE_FOIS.call_once(|| {
         let classe = WNDCLASSW {
             lpfnWndProc: Some(procedure),
@@ -210,13 +210,13 @@ fn enregistrer_classe() -> Result<()> {
             // `windows::core::Error::from_win32()` (which read `GetLastError`
             // and converted it into an HRESULT) no longer exists — replaced by
             // `Error::from_thread()`, which reads the same current-thread error.
-            resultat = Err(anyhow!(
+            result = Err(anyhow!(
                 "enregistrement de la classe de fenêtre : {}",
                 windows::core::Error::from_thread()
             ));
         }
     });
-    resultat
+    result
 }
 
 unsafe extern "system" fn procedure(
@@ -234,7 +234,7 @@ unsafe extern "system" fn procedure(
 /// creation (swapchain, back buffer, render view): it is the only point
 /// that still knows the HWND at that instant, the caller only receiving an
 /// error.
-fn creer_fenetre(
+fn create_window(
     device: &ID3D11Device,
     fabrique: &IDXGIFactory2,
     id: u8,
@@ -258,7 +258,7 @@ fn creer_fenetre(
     }
     .context("création d'une fenêtre de mire")?;
 
-    match creer_swapchain_et_cible(device, fabrique, hwnd, place) {
+    match create_swapchain_and_target(device, fabrique, hwnd, place) {
         Ok((swapchain, cible)) => {
             let _ = unsafe { ShowWindow(hwnd, SW_SHOWNOACTIVATE) };
             Ok(Fenetre {
@@ -276,7 +276,7 @@ fn creer_fenetre(
     }
 }
 
-fn creer_swapchain_et_cible(
+fn create_swapchain_and_target(
     device: &ID3D11Device,
     fabrique: &IDXGIFactory2,
     hwnd: HWND,

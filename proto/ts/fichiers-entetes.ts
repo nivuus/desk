@@ -1,7 +1,7 @@
 // The JSON headers of the file bridge frames — the TypeScript twin of
 // `proto/src/fichiers/entetes.rs`.
 //
-// ⚠️ THE SPLIT IS THE SAME ON BOTH SIDES: the frame in `fichiers.{rs,ts}`,
+// ⚠️ THE SPLIT IS THE SAME ON BOTH SIDES: the frame in `files.{rs,ts}`,
 // the headers here and in `fichiers/entetes.rs`. An asymmetric split
 // would make the pairing harder to read than to write. This file is
 // separate from `fichiers.ts` for the same reason its Rust twin is separate from
@@ -15,7 +15,7 @@
 // breaking a single test — the exact pattern of `TYPES_AGENT` (`control.ts`) and of
 // the `battement-recu` variant that stayed green over fifty tests.
 //
-// ⚠️ `position`, `taille` and `longueur` are 64-bit integers on the Rust side and
+// ⚠️ `position`, `size` and `length` are 64-bit integers on the Rust side and
 // `number` here: beyond 2^53 the two implementations would diverge
 // silently. The bridge serves a local directory opened through the File System Access
 // API, where a 9-petabyte file does not exist; the bound is named, not
@@ -67,21 +67,21 @@ export interface EnteteMeta {
     modifie: number;
 }
 
-/** The header of `TYPE_DONNEES`. **The payload carries the bytes.** */
-export interface EnteteDonnees {
+/** The header of `TYPE_DATA`. **The payload carries the bytes.** */
+export interface DataHeader {
     position: number;
     longueur: number;
 }
 
 /**
- * The header of `TYPE_ECRIRE`. **The payload carries the bytes.**
+ * The header of `TYPE_WRITE`. **The payload carries the bytes.**
  *
- * ⚠️ `premier` and `dernier` CANNOT BE DEDUCED from `position` and
- * `longueur`: it is `premier` that commands opening the stream WITHOUT
- * `keepExistingData`, and `dernier` that triggers the `close()`, hence the
+ * ⚠️ `premier` and `last` CANNOT BE DEDUCED from `position` and
+ * `length`: it is `premier` that commands opening the stream WITHOUT
+ * `keepExistingData`, and `last` that triggers the `close()`, hence the
  * COMMIT.
  */
-export interface EnteteEcrire {
+export interface WriteHeader {
     chemin: string;
     position: number;
     longueur: number;
@@ -89,8 +89,8 @@ export interface EnteteEcrire {
     dernier: boolean;
 }
 
-/** The header of `TYPE_CREER`. **Empty** binary payload. */
-export interface EnteteCreer {
+/** The header of `TYPE_CREATE`. **Empty** binary payload. */
+export interface CreateHeader {
     chemin: string;
     repertoire: boolean;
 }
@@ -113,14 +113,14 @@ export interface EnteteRenommer {
 }
 
 /**
- * The header of `TYPE_SUPPRIMER`. **Empty** binary payload.
+ * The header of `TYPE_DELETE`. **Empty** binary payload.
  *
  * ⚠️ Deletion is NOT recursive on the browser side, against the letter of
  * spec §3.5. A gesture in the VM must not trigger a recursive
  * destruction of the local machine's disk, on the strength of a mirror no proof
  * says is up to date.
  */
-export interface EnteteSupprimer {
+export interface DeleteHeader {
     chemin: string;
     repertoire: boolean;
 }
@@ -186,8 +186,8 @@ export function encodeChemin(chemin: string): string {
     return JSON.stringify({ chemin } satisfies EnteteChemin);
 }
 
-export function encodeLire(chemin: string, position: number, longueur: number): string {
-    return JSON.stringify({ chemin, position, longueur } satisfies EnteteLire);
+export function encodeLire(chemin: string, position: number, length: number): string {
+    return JSON.stringify({ chemin, position, longueur: length } satisfies EnteteLire);
 }
 
 export function encodeEntrees(entrees: EntreeJson[]): string {
@@ -206,48 +206,48 @@ export function encodeEntrees(entrees: EntreeJson[]): string {
 export function encodeMeta(
     nom: string,
     repertoire: boolean,
-    taille: number,
-    modifie: number,
+    size: number,
+    modified: number,
 ): string {
     // ⚠️ THE KEY ORDER IS THAT OF THE RUST DECLARATION, and the vector
     // freezes it: `nom` comes FIRST.
-    return JSON.stringify({ nom, repertoire, taille, modifie } satisfies EnteteMeta);
+    return JSON.stringify({ nom, repertoire, taille: size, modifie: modified } satisfies EnteteMeta);
 }
 
-export function encodeDonnees(position: number, longueur: number): string {
-    return JSON.stringify({ position, longueur } satisfies EnteteDonnees);
+export function encodeData(position: number, length: number): string {
+    return JSON.stringify({ position, longueur: length } satisfies DataHeader);
 }
 
 export function encodeEchec(code: CodeEchec): string {
     return JSON.stringify({ code } satisfies EnteteEchec);
 }
 
-export function encodeEcrire(
+export function encodeWrite(
     chemin: string,
     position: number,
-    longueur: number,
+    length: number,
     premier: boolean,
-    dernier: boolean,
+    last: boolean,
 ): string {
     return JSON.stringify({
         chemin,
         position,
-        longueur,
+        longueur: length,
         premier,
-        dernier,
-    } satisfies EnteteEcrire);
+        dernier: last,
+    } satisfies WriteHeader);
 }
 
-export function encodeCreer(chemin: string, repertoire: boolean): string {
-    return JSON.stringify({ chemin, repertoire } satisfies EnteteCreer);
+export function encodeCreate(chemin: string, repertoire: boolean): string {
+    return JSON.stringify({ chemin, repertoire } satisfies CreateHeader);
 }
 
 export function encodeRenommer(de: string, vers: string, repertoire: boolean): string {
     return JSON.stringify({ de, vers, repertoire } satisfies EnteteRenommer);
 }
 
-export function encodeSupprimer(chemin: string, repertoire: boolean): string {
-    return JSON.stringify({ chemin, repertoire } satisfies EnteteSupprimer);
+export function encodeDelete(chemin: string, repertoire: boolean): string {
+    return JSON.stringify({ chemin, repertoire } satisfies DeleteHeader);
 }
 
 export function encodeBonjour(racine: string, forcer: boolean): string {
@@ -269,17 +269,17 @@ export function encodeDues(dues: Due[], retenues: boolean): string {
    version doctrine of `control`, applied to headers — and the Rust twin
    has no `#[serde(default)]` for the same reason.
 
-   The TYPE is checked as much as the PRESENCE: a `taille` given as a string would pass
+   The TYPE is checked as much as the PRESENCE: a `size` given as a string would pass
    a presence check and would give ProjFS an absurd file size. */
 
-function objet(valeur: unknown, forme: string): Record<string, unknown> {
-    if (typeof valeur !== 'object' || valeur === null || Array.isArray(valeur)) {
-        throw new Error(`en-tête ${forme} : objet attendu, reçu ${typeof valeur}`);
+function objet(value: unknown, forme: string): Record<string, unknown> {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new Error(`en-tête ${forme} : objet attendu, reçu ${typeof value}`);
     }
-    return valeur as Record<string, unknown>;
+    return value as Record<string, unknown>;
 }
 
-function chaine(o: Record<string, unknown>, cle: string, forme: string): string {
+function chain(o: Record<string, unknown>, cle: string, forme: string): string {
     const v = o[cle];
     if (typeof v !== 'string') {
         throw new Error(`en-tête ${forme} : champ « ${cle} » absent ou non textuel`);
@@ -305,13 +305,13 @@ function booleen(o: Record<string, unknown>, cle: string, forme: string): boolea
 
 export function parseChemin(brut: unknown): EnteteChemin {
     const o = objet(brut, 'Chemin');
-    return { chemin: chaine(o, 'chemin', 'Chemin') };
+    return { chemin: chain(o, 'chemin', 'Chemin') };
 }
 
 export function parseLire(brut: unknown): EnteteLire {
     const o = objet(brut, 'Lire');
     return {
-        chemin: chaine(o, 'chemin', 'Lire'),
+        chemin: chain(o, 'chemin', 'Lire'),
         position: entier(o, 'position', 'Lire'),
         longueur: entier(o, 'longueur', 'Lire'),
     };
@@ -319,15 +319,15 @@ export function parseLire(brut: unknown): EnteteLire {
 
 export function parseEntrees(brut: unknown): EnteteEntrees {
     const o = objet(brut, 'Entrees');
-    const liste = o.entrees;
-    if (!Array.isArray(liste)) {
+    const list = o.entrees;
+    if (!Array.isArray(list)) {
         throw new Error('en-tête Entrees : champ « entrees » absent ou non tableau');
     }
     return {
-        entrees: liste.map((e) => {
+        entrees: list.map((e) => {
             const item = objet(e, 'EntreeJson');
             return {
-                nom: chaine(item, 'nom', 'EntreeJson'),
+                nom: chain(item, 'nom', 'EntreeJson'),
                 repertoire: booleen(item, 'repertoire', 'EntreeJson'),
                 taille: entier(item, 'taille', 'EntreeJson'),
                 modifie: entier(item, 'modifie', 'EntreeJson'),
@@ -339,14 +339,14 @@ export function parseEntrees(brut: unknown): EnteteEntrees {
 export function parseMeta(brut: unknown): EnteteMeta {
     const o = objet(brut, 'Meta');
     return {
-        nom: chaine(o, 'nom', 'Meta'),
+        nom: chain(o, 'nom', 'Meta'),
         repertoire: booleen(o, 'repertoire', 'Meta'),
         taille: entier(o, 'taille', 'Meta'),
         modifie: entier(o, 'modifie', 'Meta'),
     };
 }
 
-export function parseDonnees(brut: unknown): EnteteDonnees {
+export function parseData(brut: unknown): DataHeader {
     const o = objet(brut, 'Donnees');
     return {
         position: entier(o, 'position', 'Donnees'),
@@ -354,25 +354,25 @@ export function parseDonnees(brut: unknown): EnteteDonnees {
     };
 }
 
-export function parseEcrire(brut: unknown): EnteteEcrire {
+export function parseWrite(brut: unknown): WriteHeader {
     const o = objet(brut, 'Ecrire');
     return {
-        chemin: chaine(o, 'chemin', 'Ecrire'),
+        chemin: chain(o, 'chemin', 'Ecrire'),
         position: entier(o, 'position', 'Ecrire'),
         longueur: entier(o, 'longueur', 'Ecrire'),
         // 🔴 BOTH flags are required. Without `premier`, the stream would open
         // with `keepExistingData` and a file rewritten shorter would keep its
-        // tail of bytes — the EXACT defect of the old bridge. Without `dernier`, the
+        // tail of bytes — the EXACT defect of the old bridge. Without `last`, the
         // `close()` would never come and nothing would ever be committed.
         premier: booleen(o, 'premier', 'Ecrire'),
         dernier: booleen(o, 'dernier', 'Ecrire'),
     };
 }
 
-export function parseCreer(brut: unknown): EnteteCreer {
+export function parseCreate(brut: unknown): CreateHeader {
     const o = objet(brut, 'Creer');
     return {
-        chemin: chaine(o, 'chemin', 'Creer'),
+        chemin: chain(o, 'chemin', 'Creer'),
         repertoire: booleen(o, 'repertoire', 'Creer'),
     };
 }
@@ -380,31 +380,31 @@ export function parseCreer(brut: unknown): EnteteCreer {
 export function parseRenommer(brut: unknown): EnteteRenommer {
     const o = objet(brut, 'Renommer');
     return {
-        de: chaine(o, 'de', 'Renommer'),
-        vers: chaine(o, 'vers', 'Renommer'),
+        de: chain(o, 'de', 'Renommer'),
+        vers: chain(o, 'vers', 'Renommer'),
         repertoire: booleen(o, 'repertoire', 'Renommer'),
     };
 }
 
-export function parseSupprimer(brut: unknown): EnteteSupprimer {
+export function parseDelete(brut: unknown): DeleteHeader {
     const o = objet(brut, 'Supprimer');
     return {
-        chemin: chaine(o, 'chemin', 'Supprimer'),
+        chemin: chain(o, 'chemin', 'Supprimer'),
         repertoire: booleen(o, 'repertoire', 'Supprimer'),
     };
 }
 
 export function parseDues(brut: unknown): EnteteDues {
     const o = objet(brut, 'Dues');
-    const liste = o.dues;
-    if (!Array.isArray(liste)) {
+    const list = o.dues;
+    if (!Array.isArray(list)) {
         throw new Error('en-tête Dues : champ « dues » absent ou non tableau');
     }
     return {
-        dues: liste.map((d) => {
+        dues: list.map((d) => {
             const item = objet(d, 'Due');
             return {
-                chemin: chaine(item, 'chemin', 'Due'),
+                chemin: chain(item, 'chemin', 'Due'),
                 octets: entier(item, 'octets', 'Due'),
             };
         }),
@@ -415,14 +415,14 @@ export function parseDues(brut: unknown): EnteteDues {
 export function parseBonjour(brut: unknown): EnteteBonjour {
     const o = objet(brut, 'Bonjour');
     return {
-        racine: chaine(o, 'racine', 'Bonjour'),
+        racine: chain(o, 'racine', 'Bonjour'),
         forcer: booleen(o, 'forcer', 'Bonjour'),
     };
 }
 
 export function parseEchec(brut: unknown): EnteteEchec {
     const o = objet(brut, 'Echec');
-    const code = chaine(o, 'code', 'Echec');
+    const code = chain(o, 'code', 'Echec');
     // 🔴 The list is that of `CODES_ECHEC`, hence of the Rust enum: an
     // unknown code is refused rather than propagated as a free string.
     if (!(CODES_ECHEC as readonly string[]).includes(code)) {

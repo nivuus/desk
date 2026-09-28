@@ -57,7 +57,7 @@ import { identifiantValide, rangValide } from '../apps/magasin-tranches';
 import type { Pilote } from '../base/pilote';
 import {
     compterEnCours,
-    creer,
+    create,
     lireParId,
     sceller,
     type LigneTeleversement,
@@ -83,7 +83,7 @@ export interface DependancesTeleversement {
 /// COPY IS THE ONE THAT HOLDS AFTERWARDS: changing it would re-slice the uploads
 /// ALREADY declared, for which `verdict` would call every slice `incoherentes` —
 /// a state that is NOT REPAIRED by uploading again.
-export const TAILLE_TRANCHE = 8 * 1024 * 1024;
+export const CHUNK_SIZE = 8 * 1024 * 1024;
 
 /// ⚠️ **NOT CALIBRATED**, AN UPPER BOUND BY EYE: no real installer size was
 /// measured to set it. Joins the list kept since `BPP_MIN`.
@@ -151,12 +151,12 @@ const REFUS_INCONNU = { refus: 'televersement-inconnu' } as const;
 async function lireSienne(
     ctx: Contexte,
     id: string,
-    utilisateurId: string,
+    userId: string,
 ): Promise<LigneTeleversement | undefined> {
     const ligne = await lireParId(ctx.deps.base, id);
-    if (ligne === undefined) return journaliserLeRefus('inconnu', id, utilisateurId);
-    if (ligne.utilisateur_id !== utilisateurId) {
-        return journaliserLeRefus('etranger', id, utilisateurId);
+    if (ligne === undefined) return journaliserLeRefus('inconnu', id, userId);
+    if (ligne.utilisateur_id !== userId) {
+        return journaliserLeRefus('etranger', id, userId);
     }
     return ligne;
 }
@@ -200,16 +200,16 @@ export async function servirTeleversement(
     // and, on the `PUT`, the chance to write megabytes before the refusal.
     const porteur = lirePorteur(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) return repondre(ctx, porteur.code, { refus: porteur.motif });
-    const utilisateur = porteur.utilisateurId;
+    const user = porteur.userId;
 
-    if (cible.quoi === 'creer') return declarer(req, ctx, utilisateur);
+    if (cible.quoi === 'create') return declarer(req, ctx, user);
 
     // 🔴 THE SHAPE GUARD COMES BEFORE ANY READ. `:id` comes from the NETWORK and
     // becomes a DIRECTORY NAME, where `..` is meaningful; the store THROWS
     // on a malformed identifier, so without it a twisted URL would return 500.
     if (!identifiantValide(cible.id)) return repondre(ctx, 400, { refus: 'identifiant-invalide' });
 
-    const ligne = await lireSienne(ctx, cible.id, utilisateur);
+    const ligne = await lireSienne(ctx, cible.id, user);
     if (ligne === undefined) return repondre(ctx, 404, REFUS_INCONNU);
 
     if (cible.quoi === 'etat') return repondre(ctx, 200, etatDe(ctx, ligne));
@@ -256,7 +256,7 @@ function motifDeDeclaration(c: Record<string, unknown>): string | undefined {
     return undefined;
 }
 
-async function declarer(req: IncomingMessage, ctx: Contexte, utilisateur: string): Promise<boolean> {
+async function declarer(req: IncomingMessage, ctx: Contexte, user: string): Promise<boolean> {
     const brut = await lireDeclaration(req);
     if (brut === 'trop-gros') return repondre(ctx, 413, { refus: 'corps-trop-grand' });
 
@@ -274,27 +274,27 @@ async function declarer(req: IncomingMessage, ctx: Contexte, utilisateur: string
     const motif = motifDeDeclaration(champs);
     if (motif !== undefined) return repondre(ctx, 400, { refus: motif });
 
-    const taille = champs.taille as number;
-    if (taille > TELEVERSEMENT_MAX_OCTETS) {
+    const size = champs.taille as number;
+    if (size > TELEVERSEMENT_MAX_OCTETS) {
         return repondre(ctx, 413, { refus: 'trop-grand', maximum: TELEVERSEMENT_MAX_OCTETS });
     }
 
     // 🔴 THE QUOTA IS COUNTED BEFORE CREATION: checking afterwards would create the
     // row then remove it, and a failure between the two would leave
     // precisely the one upload too many.
-    if ((await compterEnCours(ctx.deps.base, utilisateur)) >= TELEVERSEMENTS_EN_COURS_MAX) {
+    if ((await compterEnCours(ctx.deps.base, user)) >= TELEVERSEMENTS_EN_COURS_MAX) {
         const refus = { refus: 'trop-de-televersements', maximum: TELEVERSEMENTS_EN_COURS_MAX };
         return repondre(ctx, 429, refus);
     }
 
     const entree = {
-        utilisateurId: utilisateur,
+        userId: user,
         nom: champs.nom as string,
-        taille,
+        taille: size,
         sha256: champs.sha256 as string,
-        tailleTranche: TAILLE_TRANCHE,
+        chunkSize: CHUNK_SIZE,
     };
-    const ligne = await creer(ctx.deps.base, entree, ctx.deps.maintenant());
+    const ligne = await create(ctx.deps.base, entree, ctx.deps.maintenant());
 
     // 201: the resource IS created, its identifier is in the body. The
     // browser only looks at `r.ok`, which 200 and 201 both satisfy.
@@ -372,7 +372,7 @@ async function deposer(
     // 🔴 THE BODY IS NEVER HELD IN MEMORY: `req` is an
     // `AsyncIterable<Uint8Array>` handed AS IS to the store. A `Buffer.concat`
     // would turn the service into a memory bomb driven by its clients.
-    const issue = await ctx.deps.tranches.ecrire(ligne.id, n, req, ligne.taille_tranche);
+    const issue = await ctx.deps.tranches.write(ligne.id, n, req, ligne.taille_tranche);
     if (!issue.ok) {
         // ⚠️ THE PARTIAL FILE IS ALREADY DELETED BY THE STORE — reread in
         // `magasin-tranches.ts`: `rmSync(provisoire)` in the `catch`, and the

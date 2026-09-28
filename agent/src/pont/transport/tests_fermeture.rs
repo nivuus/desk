@@ -9,7 +9,7 @@ use str0m::channel::ChannelId;
 use str0m::{Event, Rtc};
 
 #[test]
-fn la_fermeture_du_canal_seul_remonte_canal_ferme_et_seulement_pour_le_bon_id() {
+fn closing_the_channel_alone_surfaces_channel_closed_and_only_for_the_right_id() {
     // The case where the browser closes ITS data channel without closing the
     // connection — distinct from the next test's close_notify, and served by
     // another arm of `traiter`. Born from a SURVIVING MUTATION: removing the
@@ -33,14 +33,14 @@ fn la_fermeture_du_canal_seul_remonte_canal_ferme_et_seulement_pour_le_bon_id() 
     // discrimination without negotiation.
     let mut faux = Rtc::builder().clear_codecs().build(Instant::now());
     let mut api = faux.sdp_api();
-    let bon = api.add_channel(LABEL_FICHIERS.to_string());
+    let bon = api.add_channel(FILES_LABEL.to_string());
     let autre = api.add_channel("autre-canal".to_string());
 
     let (tx, rx) = channel();
     let mut canal: Option<ChannelId> = None;
 
     assert!(traiter(
-        Event::ChannelOpen(bon, LABEL_FICHIERS.to_string()),
+        Event::ChannelOpen(bon, FILES_LABEL.to_string()),
         &mut canal,
         &tx
     )
@@ -72,13 +72,13 @@ fn un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu() {
     // would overwrite ours.
     let mut faux = Rtc::builder().clear_codecs().build(Instant::now());
     let mut api = faux.sdp_api();
-    let bon = api.add_channel(LABEL_FICHIERS.to_string());
+    let bon = api.add_channel(FILES_LABEL.to_string());
     let autre = api.add_channel("autre-canal".to_string());
 
     let (tx, rx) = channel();
     let mut canal: Option<ChannelId> = None;
     traiter(
-        Event::ChannelOpen(bon, LABEL_FICHIERS.to_string()),
+        Event::ChannelOpen(bon, FILES_LABEL.to_string()),
         &mut canal,
         &tx,
     );
@@ -102,7 +102,7 @@ fn un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu() {
 
 #[test]
 fn la_fermeture_du_canal_remonte_canal_ferme() {
-    let (mut pair, _sortant, entrant) = monter(&[LABEL_FICHIERS]);
+    let (mut pair, _sortant, entrant) = monter(&[FILES_LABEL]);
 
     // The peer leaves — the tab closes. The loop must SAY so, not
     // end silently: without this message, commands in flight would wait

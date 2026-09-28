@@ -111,8 +111,8 @@ describe('primitives.css — les gardes de forme', () => {
         // DEUX `<button>` : un `button { … }` écrit ici changerait son
         // apparence sans qu'aucun des neuf contrôles ne le dise.
         const nus: string[] = [];
-        for (const liste of SELECTEURS) {
-            for (const selecteur of liste.split(',')) {
+        for (const list of SELECTEURS) {
+            for (const selecteur of list.split(',')) {
                 for (const compound of compounds(selecteur.trim())) {
                     if (!compound.includes('.')) nus.push(compound);
                 }
@@ -128,8 +128,8 @@ describe('primitives.css — les gardes de forme', () => {
         const effacements = DECLARATIONS.filter(
             (d) =>
                 /^outline(-(width|style))?$/i.test(d.propriete) &&
-                /^(none|0|0px|0rem|0em)$/i.test(d.valeur),
-        ).map((d) => `${d.propriete}: ${d.valeur}`);
+                /^(none|0|0px|0rem|0em)$/i.test(d.value),
+        ).map((d) => `${d.propriete}: ${d.value}`);
         expect(effacements, 'effacements de l’anneau de focus').toEqual([]);
     });
 
@@ -140,7 +140,7 @@ describe('primitives.css — les gardes de forme', () => {
         // dont le contraste ne serait mesuré par rien.
         const compositions = DECLARATIONS.filter((d) =>
             ['opacity', 'filter', 'backdrop-filter'].includes(d.propriete.toLowerCase()),
-        ).map((d) => `${d.propriete}: ${d.valeur}`);
+        ).map((d) => `${d.propriete}: ${d.value}`);
         expect(compositions, 'compositions d’exécution dans primitives.css').toEqual([]);
     });
 
@@ -155,9 +155,9 @@ describe('primitives.css — les gardes de forme', () => {
         // de son côté. G4 reste donc le seul garde de ces quatre familles.
         const hors: string[] = [];
         for (const d of DECLARATIONS) {
-            const reste = d.valeur.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
+            const reste = d.value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
             const trouve = reste.match(/(\d+(?:\.\d+)?)(px|rem|em|ms|s|pt|ch|vw|vh)\b/);
-            if (trouve) hors.push(`${d.propriete}: ${d.valeur} → « ${trouve[0]} » hors token`);
+            if (trouve) hors.push(`${d.propriete}: ${d.value} → « ${trouve[0]} » hors token`);
         }
         expect(hors, 'longueurs littérales dans primitives.css').toEqual([]);
     });

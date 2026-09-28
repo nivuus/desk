@@ -59,7 +59,7 @@
 //! (`sortie moment="après création" … largeur=1920 hauteur=1080`, whereas
 //! the probe believed it had created 1280×720 — probable persistence in the
 //! registry of a `CDS_UPDATEREGISTRY` from an earlier run). The criterion
-//! `derniere_taille == cible` was therefore true BEFORE any attempt:
+//! `last_size == cible` was therefore true BEFORE any attempt:
 //! `ChangeDisplaySettingsExW` never had the chance to change anything
 //! at all, and nothing could make the check fail. Exactly the defect
 //! this repository calls F1 (a check that cannot return the other
@@ -77,7 +77,7 @@
 //!    rather than return an empty verdict;
 //! 3. **the verdict itself is an observed MOVEMENT, not an equality with the
 //!    target.** `P1 RECU` ⟺ the size read back by DXGI after an attempt
-//!    differs from `avant` — exactly the question the module's title
+//!    differs from `before` — exactly the question the module's title
 //!    asks ("a mode OTHER than the one it was created with"), not "THIS precise
 //!    mode". Whether or not the driver honours the exact requested value is
 //!    logged separately (`cible_atteinte`/`cible_exacte_atteinte`): a
@@ -99,7 +99,7 @@
 //!
 //! ## Review of task 2bis — four defects found on evidence, fixed
 //!
-//! The first measurement compared `mouvement` with an `avant` value captured
+//! The first measurement compared `mouvement` with an `before` value captured
 //! several seconds before the round, BEFORE the two neighbours were opened —
 //! **the output can move without any API call between these two instants**
 //! (residue of registry pollution from an earlier run, reapplied at
@@ -181,27 +181,27 @@ pub(super) fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
 /// Chooses the target to attempt: the requested resolution if it already differs from
 /// the current size and is among the advertised modes, otherwise a target
 /// taken dynamically from the advertised modes, **always excluding
-/// the current size** (`avant`) — this is what makes it impossible to replay the
+/// the current size** (`before`) — this is what makes it impossible to replay the
 /// F1 defect documented at the head of the module: whatever state the
 /// registry persistence left the output in, the retained target differs from it
 /// by construction, except for the degenerate case returned as `None`.
 ///
 /// Modes sorted by `modes_annonces` (ascending, deduplicated): the fallback
-/// picks the largest mode distinct from `avant`, for a wide movement and
+/// picks the largest mode distinct from `before`, for a wide movement and
 /// hence one without measurement ambiguity.
 ///
 /// `pub(super)`: `temoin::rejouer_temoin` reuses this SAME function
 /// rather than rewriting a variant of it, for the same reason it exists
 /// here -- see Critical 2 of the review of task 1.
 pub(super) fn choisir_cible(
-    avant: (u32, u32),
+    before: (u32, u32),
     demande: (u32, u32),
     annonces: &[(u32, u32)],
 ) -> Option<(u32, u32)> {
-    if demande != avant && annonces.contains(&demande) {
+    if demande != before && annonces.contains(&demande) {
         return Some(demande);
     }
-    annonces.iter().copied().rev().find(|&mode| mode != avant)
+    annonces.iter().copied().rev().find(|&mode| mode != before)
 }
 
 /// Sonde `MULTIFENETRE_MODE_SORTIE=<L>x<H>`.
@@ -227,9 +227,9 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
 
     // Surveyed BEFORE any creation, like the neighbouring probes: without it, a
     // manual restoration after a crash would be done blindly.
-    let avant = relever_topologie("avant création")?;
-    let noms_avant = noms_attaches(&avant);
-    let connues_avant_tout: HashSet<String> = avant
+    let before = relever_topologie("avant création")?;
+    let names_before = noms_attaches(&before);
+    let known_before_all: HashSet<String> = before
         .iter()
         .map(|sortie| sortie.nom_sortie.clone())
         .collect();
@@ -244,28 +244,28 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         let mut sorties = Sorties::nouvelles(&pilote);
 
         // --- The output UNDER TEST ---
-        let id = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
+        let id = sorties.create(largeur_creation, hauteur_creation, hertz)?;
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
         let apres_creation = relever_topologie("après création (sortie testée)")?;
-        let virtuelle = designer_sortie_neuve(&apres_creation, &connues_avant_tout, id)?;
+        let virtuelle = designer_sortie_neuve(&apres_creation, &known_before_all, id)?;
         let nom_sortie = virtuelle.nom_sortie.clone();
-        // `taille_avant_tentative`: the size ACTUALLY read by DXGI right
+        // `size_before_attempt`: the size ACTUALLY read by DXGI right
         // after creation — NOT assumed to be
         // `largeur_creation`×`hauteur_creation`. It is exactly the survey
         // whose absence made the first run of this probe
         // meaningless (see the module's header comment): the output can
         // be born at a size different from the one requested from the driver, through
         // registry persistence of an earlier `CDS_UPDATEREGISTRY`.
-        let taille_avant_tentative = (virtuelle.rect.width, virtuelle.rect.height);
+        let size_before_attempt = (virtuelle.rect.width, virtuelle.rect.height);
         tracing::info!(
             nom = %nom_sortie,
             largeur_demandee_a_la_creation = largeur_creation,
             hauteur_demandee_a_la_creation = hauteur_creation,
-            largeur_avant_tentative = taille_avant_tentative.0,
-            hauteur_avant_tentative = taille_avant_tentative.1,
+            width_before_attempt = size_before_attempt.0,
+            height_before_attempt = size_before_attempt.1,
             "sortie de sonde créée -- taille relue par DXGI avant toute tentative de changement"
         );
-        let mut connues_a_ce_point = connues_avant_tout.clone();
+        let mut connues_a_ce_point = known_before_all.clone();
         connues_a_ce_point.insert(nom_sortie.clone());
 
         // THE BENCH/PRODUCT GAP that D8 left wide open, and the very subject of
@@ -281,11 +281,11 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // --- Two NEIGHBOURS, for side unknown no. 2 (D8): how many
         // access losses does a mode change inflict on them? The
         // creation, designation AND opening of each are
-        // ORCHESTRATED by `voisines::creer_deux` (and not chained here):
+        // ORCHESTRATED by `voisines::create_two` (and not chained here):
         // it is this strict order, a positional index resolved and consumed
         // before any following creation, that avoids the trap documented in
         // doctrine D1 -- see its header comment.
-        let (voisine1, voisine2, nom_v1, nom_v2) = voisines::creer_deux(
+        let (voisine1, voisine2, nom_v1, nom_v2) = voisines::create_two(
             &pilote,
             &mut sorties,
             &mut connues_a_ce_point,
@@ -296,10 +296,10 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         let mut voisines = vec![voisine1, voisine2];
 
         // --- THE ELIMINATION TEST ---
-        let resultat = essayer_les_modes(
+        let result = essayer_les_modes(
             &pilote,
             &nom_sortie,
-            taille_avant_tentative,
+            size_before_attempt,
             demande,
             &mut voisines,
         )?;
@@ -307,19 +307,19 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // --- The two side unknowns (step 5), surveyed at the same moment
         // as the elimination test -- before releasing anything.
         let autres_noms_a_nous: HashSet<String> = [nom_v1, nom_v2].into_iter().collect();
-        let (nom_apres, taille_apres_tour) =
-            nom_apres_tour(&nom_sortie, &connues_avant_tout, &autres_noms_a_nous)?;
-        let pertes_acces_voisines = resultat.pertes_voisines;
+        let (nom_apres, size_after_round) =
+            nom_apres_tour(&nom_sortie, &known_before_all, &autres_noms_a_nous)?;
+        let pertes_acces_voisines = result.pertes_voisines;
         tracing::info!(
             pertes_acces_voisines,
-            nom_avant = %nom_sortie,
+            name_before = %nom_sortie,
             nom_apres = %nom_apres,
             nom_conserve = nom_sortie == nom_apres,
             "inconnues annexes relevées au même moment que l'éliminatoire"
         );
         // The name that replaces `nom_sortie` (if it changed -- which the line
         // above just measured) is not yet known to ANYONE: neither to
-        // `connues_avant_tout`, nor to `connues_a_ce_point` (which only carries
+        // `known_before_all`, nor to `connues_a_ce_point` (which only carries
         // the OLD name). Without this addition, the creation of the control would see TWO
         // new entries -- the renamed name AND the control -- and would fail with
         // "external addition" (Important 2, review of task 1)
@@ -337,10 +337,10 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // duplication of the TESTED output, not on that of the neighbours.
         drop(voisines);
 
-        match resultat.cible {
+        match result.cible {
             Some(cible) => {
-                let combo_temoin = combo_pour_temoin(resultat.gagnante);
-                let id_temoin = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
+                let combo_temoin = combo_pour_temoin(result.gagnante);
+                let id_temoin = sorties.create(largeur_creation, hauteur_creation, hertz)?;
                 attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
                 let apres_temoin = relever_topologie("après création (témoin)")?;
                 // PERSISTENCE (task 2bis, D9): did the output under test
@@ -350,20 +350,20 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
                 // below, looked up under `nom_apres` rather than by
                 // position. The first two arguments are DISTINCT since
                 // the review of task 2bis: `combinaison_imposee` (what was
-                // REQUESTED) and `resultat.gagnante` (what
+                // REQUESTED) and `result.gagnante` (what
                 // REALLY happened) can diverge (empty round, mojibake).
                 journaliser_verdict(
-                    resultat.combinaison_imposee.as_deref(),
-                    resultat.gagnante,
+                    result.combinaison_imposee.as_deref(),
+                    result.gagnante,
                     &nom_apres,
-                    taille_apres_tour,
+                    size_after_round,
                     &apres_temoin,
                 );
                 let sortie_temoin =
                     designer_sortie_neuve(&apres_temoin, &connues_a_ce_point, id_temoin)?;
                 let nom_temoin = sortie_temoin.nom_sortie.clone();
-                let avant_temoin = (sortie_temoin.rect.width, sortie_temoin.rect.height);
-                rejouer_temoin(&pilote, &nom_temoin, avant_temoin, cible, &combo_temoin)?;
+                let before_witness = (sortie_temoin.rect.width, sortie_temoin.rect.height);
+                rejouer_temoin(&pilote, &nom_temoin, before_witness, cible, &combo_temoin)?;
             }
             None => tracing::info!(
                 "témoin non joué : le tour éliminatoire n'a désigné aucune cible mesurable \
@@ -391,13 +391,13 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);
-    if noms_final == noms_avant && final_.len() == avant.len() {
+    if noms_final == names_before && final_.len() == before.len() {
         tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
     } else {
         tracing::error!(
-            noms_avant = ?noms_avant,
+            names_before = ?names_before,
             noms_apres = ?noms_final,
-            total_avant = avant.len(),
+            total_before = before.len(),
             total_apres = final_.len(),
             "la topologie n'est PAS revenue à son état initial — purge requise"
         );

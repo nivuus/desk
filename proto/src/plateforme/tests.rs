@@ -94,7 +94,7 @@ fn serialise_l_enrole_et_le_refus() {
 }
 
 // 🔴 ONE VERSION TEST PER INCOMING VARIANT, never a single one for all.
-// `verifie_version` is wired variant by variant: omitting it on ONE
+// `check_version` is wired variant by variant: omitting it on ONE
 // alone would leave that hole open, and a single test would not see it.
 
 #[test]
@@ -194,7 +194,7 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     );
     // Without `v`, on the other hand, it is still an invalid shape: a message
     // without a version is not a message of a version we do not know. And
-    // `v: null` neither — it is the exact hole that `verifie_version` closes
+    // `v: null` neither — it is the exact hole that `check_version` closes
     // for the other variants, and that `version_toleree` does not reopen.
     assert!(
         serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
@@ -278,7 +278,7 @@ fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
 
 /// 🔴 THE RED OF DEFECT 2, AND IT IS EXACTLY THE CASE MEASURED IN THE G1 ACCEPTANCE RUN:
 /// a v1 agent facing a v2 platform receives `{"type":"refus","v":2,
-/// "motif":"version"}` and cannot read it, because `verifie_version`
+/// "motif":"version"}` and cannot read it, because `check_version`
 /// ALSO applies to the refusal. It falls into the "unreadable" branch, which is
 /// resumable, and loops with no end — 0 refusal line, 10 resumptions recorded.
 ///
@@ -336,11 +336,11 @@ fn la_table_des_motifs_fait_l_aller_retour_sur_les_quatre() {
         (MotifCanal::Enrolement, "enrolement"),
         (MotifCanal::Sequence, "sequence"),
     ];
-    // 🔴 ANTI-OMISSION: `TOUS` must cover exactly the enumeration above.
+    // 🔴 ANTI-OMISSION: `ALL` must cover exactly the enumeration above.
     // A variant added without its line here would make this count wrong.
-    assert_eq!(MotifCanal::TOUS.len(), attendus.len());
+    assert_eq!(MotifCanal::ALL.len(), attendus.len());
     for (motif, mot) in attendus {
-        assert!(MotifCanal::TOUS.contains(&motif), "{mot} absent de TOUS");
+        assert!(MotifCanal::ALL.contains(&motif), "{mot} absent de TOUS");
         assert_eq!(motif.mot(), mot);
         assert_eq!(MotifCanal::depuis_mot(mot), Some(motif));
     }

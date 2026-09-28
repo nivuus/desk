@@ -67,7 +67,7 @@ pub enum Refus {
     /// truncate: **no hop trusts the previous one**.
     Empreinte { attendue: String, obtenue: String },
     /// The received body is not the size announced by the order.
-    Taille { attendue: u64, obtenue: u64 },
+    Size { attendue: u64, obtenue: u64 },
     /// The recovery budget is exhausted.
     TropDeCoupures(u32),
 }
@@ -80,7 +80,7 @@ pub struct Demande<'a> {
     pub jeton: &'a str,
     /// Where to write. The parent directory must exist.
     pub destination: &'a Path,
-    pub taille_attendue: u64,
+    pub expected_size: u64,
     /// In lowercase hexadecimal, 64 characters.
     pub sha256_attendu: &'a str,
 }
@@ -225,10 +225,10 @@ where
         );
     }
 
-    if deja != demande.taille_attendue {
+    if deja != demande.expected_size {
         let _ = tokio::fs::remove_file(demande.destination).await;
-        return Err(Refus::Taille {
-            attendue: demande.taille_attendue,
+        return Err(Refus::Size {
+            attendue: demande.expected_size,
             obtenue: deja,
         });
     }
@@ -319,16 +319,16 @@ where
     };
 
     // --- le corps ---
-    let mut fichier = ouvrir(demande.destination, deja).await?;
+    let mut file = ouvrir(demande.destination, deja).await?;
     let mut ecrits = 0u64;
     let debut = &tampon[entete.debut_du_corps..];
     if !debut.is_empty() {
-        ecrire(&mut fichier, condensateur, debut).await?;
+        write(&mut file, condensateur, debut).await?;
         ecrits += debut.len() as u64;
-        progres(deja + ecrits, demande.taille_attendue);
+        progres(deja + ecrits, demande.expected_size);
     }
 
-    while ecrits < entete.longueur {
+    while ecrits < entete.length {
         let n = socket
             .read(&mut lecture)
             .await
@@ -336,8 +336,7 @@ where
         if n == 0 {
             // ⚠️ CLOSED BEFORE THE ANNOUNCED END: this is a cut, not an
             // end. The caller will resume through `Range`.
-            fichier
-                .flush()
+            file.flush()
                 .await
                 .map_err(|e| Refus::Disque(format!("vidage : {e}")))?;
             return Ok(Passe {
@@ -347,14 +346,13 @@ where
         }
         // ⚠️ WE NEVER WRITE BEYOND WHAT IS ANNOUNCED: a server that
         // sent too much would otherwise make the file grow without end.
-        let reste = (entete.longueur - ecrits) as usize;
+        let reste = (entete.length - ecrits) as usize;
         let utile = &lecture[..n.min(reste)];
-        ecrire(&mut fichier, condensateur, utile).await?;
+        write(&mut file, condensateur, utile).await?;
         ecrits += utile.len() as u64;
-        progres(deja + ecrits, demande.taille_attendue);
+        progres(deja + ecrits, demande.expected_size);
     }
-    fichier
-        .flush()
+    file.flush()
         .await
         .map_err(|e| Refus::Disque(format!("vidage : {e}")))?;
 
@@ -378,13 +376,12 @@ async fn ouvrir(destination: &Path, deja: u64) -> Result<tokio::fs::File, Refus>
         .map_err(|e| Refus::Disque(format!("réouverture de {} : {e}", destination.display())))
 }
 
-async fn ecrire(
-    fichier: &mut tokio::fs::File,
+async fn write(
+    file: &mut tokio::fs::File,
     condensateur: &mut Condensateur,
     bloc: &[u8],
 ) -> Result<(), Refus> {
-    fichier
-        .write_all(bloc)
+    file.write_all(bloc)
         .await
         .map_err(|e| Refus::Disque(format!("écriture : {e}")))?;
     condensateur.absorber(bloc);

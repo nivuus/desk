@@ -69,7 +69,7 @@ fn un_tour_de_roue() {
 /// laisser le vivier croire la fenêtre éveillée` —, `eveillee` then being
 /// `Some(true)`.
 #[test]
-fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
+fn an_undelivered_wake_leaves_the_pool_intact_and_goes_again_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("r2-reveil", 6500);
     // Precondition: asleep, and the pool knows it.
@@ -88,7 +88,7 @@ fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
 
     // The window resumes reading, and the next wheel round must re-emit
     // the order by itself — that is the whole point of not having lied.
-    let recus = canal.vider();
+    let recus = canal.drain();
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
@@ -96,7 +96,7 @@ fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::Sommeil(o) => Some(o),
@@ -125,14 +125,14 @@ fn un_reveil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
 /// the cancellation only runs afterwards. The over-subscription does happen; what
 /// the remedy achieves is that it is **TRANSIENT** instead of
 /// permanent. See
-/// `une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant`,
+/// `an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round`,
 /// just below, which measures it at both times.
 ///
 /// **Turns red on its FIRST assertion** — `un Dormir non déposé ne doit pas
 /// laisser le vivier compter endormie une fenêtre qui encode encore` —,
 /// `eveillee` then being `Some(false)`.
 #[test]
-fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
+fn an_undelivered_sleep_leaves_the_pool_intact_and_goes_again_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("r2-sommeil", 6501);
     // It wakes up for good, queue free: the order is delivered.
@@ -142,7 +142,7 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
         Some(true),
         "précondition : la fenêtre est bien éveillée"
     );
-    let _ = canal.vider();
+    let _ = canal.drain();
     boucher_la_file("r2-sommeil");
 
     // It becomes invisible: the pool emits `Dormir(Masquee)` — REFUSED.
@@ -155,7 +155,7 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
          fenêtre qui encode encore"
     );
 
-    let recus = canal.vider();
+    let recus = canal.drain();
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
@@ -163,7 +163,7 @@ fn un_sommeil_non_depose_laisse_le_vivier_intact_et_repart_au_tour_suivant() {
     );
     un_tour_de_roue();
     let ordres: Vec<Ordre> = canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::Sommeil(o) => Some(o),
@@ -232,11 +232,11 @@ fn refus_de(session: &str) -> u64 {
 /// `0` instead of `3`. Without the pacing (→ `if true`): `10` traces for ten
 /// rounds, instead of the `3` steps actually crossed (2, 4, 8).
 #[test]
-fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
+fn an_order_refused_every_round_is_traced_at_logarithmic_cadence() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("r3-cadence", 6600);
     signaler("r3-cadence", true, true);
-    let _ = canal.vider();
+    let _ = canal.drain();
     boucher_la_file("r3-cadence");
     // Hiding generates a `Dormir` — refused, and cancelled.
     signaler("r3-cadence", false, false);
@@ -305,7 +305,7 @@ fn un_ordre_refuse_a_chaque_tour_est_trace_a_cadence_logarithmique() {
 /// someone back to sleep. Without the remedy, it would never see 9 — it would count 8 while
 /// believing the blocked window asleep, and the drift would be PERMANENT.
 #[test]
-fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() {
+fn an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let plafond = crate::capteur::vivier::PLAFOND_EVEIL;
 
@@ -336,7 +336,7 @@ fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() 
     // `Dormir` is refused, and cancelled — but `arbitrer` has already elected the ninth
     // in the same pass.
     let (ref nom_bloquee, ref canal_bloquee, _) = occupantes[0];
-    let _ = canal_bloquee.vider();
+    let _ = canal_bloquee.drain();
     boucher_la_file(nom_bloquee);
     signaler(nom_bloquee, false, false);
 
@@ -347,7 +347,7 @@ fn une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant() 
     );
 
     // The blocked window resumes reading; the next round absorbs.
-    let _ = canal_bloquee.vider();
+    let _ = canal_bloquee.drain();
     un_tour_de_roue();
     assert_eq!(
         etat().vivier.eveillees().len(),

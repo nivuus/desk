@@ -32,7 +32,7 @@ use crate::geometry::Rect;
 /// three restarts, `relances` being 0, 1, 2 then 3), **plus** the final abandonment
 /// `relancer_les_orphelines` emits when `relances >= RELANCES_MAX` — and
 /// no longer just one as before this task.
-pub(super) fn creer_sortie(
+pub(super) fn create_output(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
     table: &mut Table,
@@ -47,7 +47,7 @@ pub(super) fn creer_sortie(
         hauteur,
     } = demande;
 
-    // D9's LEG 5. `borner_a_la_taille_max` had been waiting for its caller since
+    // D9's LEG 5. `clamp_to_max_size` had been waiting for its caller since
     // output mode switching was removed: it is here.
     //
     // ⚠️ The viewport arrives in DEVICE PIXELS since D9's task 5
@@ -57,10 +57,9 @@ pub(super) fn creer_sortie(
     // 8 concurrent encoders has NEVER been measured beyond 720p — NVENC
     // bounds in macroblocks per second, not in number of sessions.
     //
-    // `TAILLE_MAX_SORTIE` (1920×1080) is NOT calibrated: it is a
+    // `MAX_OUTPUT_SIZE` (1920×1080) is NOT calibrated: it is a
     // prudence safeguard, and no visual judgement has judged it.
-    let (largeur, hauteur) =
-        crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+    let (largeur, hauteur) = crate::windows_source_sortie::clamp_to_max_size((largeur, hauteur));
 
     // Recorded BEFORE creation. ⚠️ **It STOPPED being the centrepiece of
     // pairing in batch 32** — it is now its FALLBACK, the main path
@@ -83,10 +82,10 @@ pub(super) fn creer_sortie(
     // inherits the previous name, hence never appears, and this set
     // difference refused a perfectly usable output. See the header
     // of `superviseur::designation`.
-    let avant = match relever_topologie("avant création de sortie") {
-        Ok(avant) => noms_attaches(&avant),
-        Err(erreur) => {
-            tracing::error!(session = %session.0, %erreur, "topologie DXGI illisible avant création");
+    let before = match relever_topologie("avant création de sortie") {
+        Ok(before) => noms_attaches(&before),
+        Err(error) => {
+            tracing::error!(session = %session.0, %error, "topologie DXGI illisible avant création");
             envoyer(&VersLaShell::Refus {
                 titre: titre.clone(),
                 motif: "topologie d'affichage illisible".into(),
@@ -100,13 +99,13 @@ pub(super) fn creer_sortie(
         }
     };
 
-    let id_pilote = match sorties.creer(largeur, hauteur, 60) {
+    let id_pilote = match sorties.create(largeur, hauteur, 60) {
         Ok(id) => id,
-        Err(erreur) => {
-            tracing::error!(session = %session.0, %erreur, "création de sortie refusée");
+        Err(error) => {
+            tracing::error!(session = %session.0, %error, "création de sortie refusée");
             envoyer(&VersLaShell::Refus {
                 titre,
-                motif: format!("{erreur}"),
+                motif: format!("{error}"),
             });
             return table.enfant_mort(&session);
         }
@@ -116,7 +115,7 @@ pub(super) fn creer_sortie(
     // without ceasing to beat the driver's watchdog (see the doc
     // of `attendre_notre_sortie`).
     let (designee, candidates) =
-        attendre_notre_sortie(pilote, id_pilote, &avant, LIMITE_RATTACHEMENT);
+        attendre_notre_sortie(pilote, id_pilote, &before, LIMITE_RATTACHEMENT);
 
     let Some(cible) =
         placement::sortie_pour_viewport(&candidates, largeur, hauteur, prises, designee.as_deref())
@@ -213,10 +212,10 @@ pub(super) fn creer_sortie(
     // stuck at the bottom of each served output (Windows default, measured in
     // session 1 on August 31st, 2026): putting the window at the monitor's rectangle
     // made the bar cover it — 48 px of application content lost —
-    // and put those 48 rows into the crop. `taille_pour_viewport`
-    // composes the same `borner_a_la_taille_max` and the same `taille_retenue`
+    // and put those 48 rows into the crop. `size_for_viewport`
+    // composes the same `clamp_to_max_size` and the same `retained_size`
     // as before: only the BOUND changes.
-    let retenue = crate::windows_source_sortie::taille_pour_viewport(
+    let retenue = crate::windows_source_sortie::size_for_viewport(
         (largeur, hauteur),
         placement_periodique::borne_de(&cible),
     );
@@ -262,8 +261,8 @@ pub(super) fn creer_sortie(
             width: retenue.0,
             height: retenue.1,
         };
-        if let Err(erreur) = placement::poser(hwnd, &rect) {
-            tracing::warn!(session = %session.0, %erreur, "placement de la fenêtre échoué");
+        if let Err(error) = placement::poser(hwnd, &rect) {
+            tracing::warn!(session = %session.0, %error, "placement de la fenêtre échoué");
         }
     }
     suite
@@ -274,9 +273,9 @@ pub(super) fn creer_sortie(
 /// Nothing to remove from `prises`: by construction, none of these paths
 /// registered anything there — or the caller takes care of it.
 fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
-    if let Err(erreur) = sorties.detruire(id_pilote) {
+    if let Err(error) = sorties.detruire(id_pilote) {
         tracing::error!(
-            id_pilote, %erreur,
+            id_pilote, %error,
             "sortie orpheline NON rendue — la garde la retentera à l'arrêt"
         );
     }
@@ -286,7 +285,7 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
 ///
 /// 🔴 **"OUR", and not "a new output" — that is the whole of batch 32.** The
 /// function was called `attendre_une_sortie_neuve`, and its predicate
-/// (`!avant.contains(…)`) was the defect measured by batch 30: an output
+/// (`!before.contains(…)`) was the defect measured by batch 30: an output
 /// that REPLACES a forced target inherits the previous name and is therefore never
 /// "new". See the header of `superviseur::designation`.
 ///
@@ -303,7 +302,7 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
 /// existing DXGI output at each turn — the repository has already paid twice for
 /// a trace emitted at a loop's cadence (TURN work item, fix I2 of
 /// D1). The named and logged survey is still done once before the call
-/// (`creer_sortie`), and — since this function was reread — once
+/// (`create_output`), and — since this function was reread — once
 /// more ONLY if the wait expires, right before returning the empty vector.
 ///
 /// **This expiry survey is not cosmetic.** Without it, a failure only
@@ -320,7 +319,7 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
 fn attendre_notre_sortie(
     pilote: &PiloteParIoctl,
     id_pilote: crate::moniteurs_virtuels::IdSortie,
-    avant: &[String],
+    before: &[String],
     limite: std::time::Duration,
 ) -> (Option<String>, Vec<SortieDxgi>) {
     // Reread ONCE: the pair does not move during the wait, and a
@@ -337,10 +336,10 @@ fn attendre_notre_sortie(
     let mut tour: u32 = 1;
     let mut echeance = std::time::Instant::now() + limite;
     loop {
-        if let Err(erreur) = pilote.pinguer() {
-            tracing::warn!(%erreur, "ping du chien de garde pendant l'attente de rattachement");
+        if let Err(error) = pilote.pinguer() {
+            tracing::warn!(%error, "ping du chien de garde pendant l'attente de rattachement");
         }
-        let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+        let all = enumerer_sorties_silencieux().unwrap_or_default();
 
         // ① DESIGNATE — by what we GAVE the driver, not by what changed
         // around. `chemins_actifs` is SILENT, and it must be: we are
@@ -358,7 +357,7 @@ fn attendre_notre_sortie(
         // tests — the loop only passes it what it recorded. It is
         // what makes the rule exercisable without Windows: `creation_sortie` is
         // `#[cfg(windows)]` end to end.
-        let candidates = designation::candidates(&toutes, designee.as_deref(), avant);
+        let candidates = designation::candidates(&all, designee.as_deref(), before);
         if !candidates.is_empty() {
             // 🔴 THE PATH TRACE, AND IT IS NOT COSMETIC. Without it,
             // a served window does not say BY WHICH PATH it was served, and
@@ -389,10 +388,8 @@ fn attendre_notre_sortie(
         if std::time::Instant::now() >= echeance {
             // The turn has elapsed. The rule — bounded, tested on the host — says
             // whether one remains.
-            if let reprise::Suite::Reessayer {
-                tour_suivant,
-                apres,
-            } = reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
+            if let reprise::Suite::Reessayer { next_round, apres } =
+                reprise::apres_un_tour(tour, reprise::TOURS, reprise::REPIT)
             {
                 // ⚠️ `warn!` and not `error!`: it is not a refusal yet.
                 // A lost turn and an abandonment must not read the same.
@@ -406,7 +403,7 @@ fn attendre_notre_sortie(
                      sur la MÊME sortie (l'attachement est intermittent, pas lent)"
                 );
                 std::thread::sleep(apres);
-                tour = tour_suivant;
+                tour = next_round;
                 echeance = std::time::Instant::now() + limite;
                 continue;
             }
@@ -419,8 +416,8 @@ fn attendre_notre_sortie(
             // Complete, named survey, ONCE — on this failure path only.
             // It is here, and only here, that this diagnosis is worth anything: see the
             // function's doc.
-            if let Err(erreur) = relever_topologie("attente de rattachement expirée") {
-                tracing::error!(%erreur, "topologie DXGI illisible au moment de l'expiration");
+            if let Err(error) = relever_topologie("attente de rattachement expirée") {
+                tracing::error!(%error, "topologie DXGI illisible au moment de l'expiration");
             }
             // The complete survey above does not say WHY designation
             // went quiet. This line says it, once, on this failure path
@@ -465,8 +462,8 @@ pub(super) fn rendre_la_sortie(
         // and would wrongly be destroyed at closing — the old one staying
         // orphaned. Keeping the place reserved costs at worst one DXGI place
         // until shutdown; freeing it costs an identity confusion.
-        Err(erreur) => tracing::error!(
-            sortie_pilote, %nom_sortie, %erreur,
+        Err(error) => tracing::error!(
+            sortie_pilote, %nom_sortie, %error,
             "sortie virtuelle NON rendue — la garde la retentera à l'arrêt, \
              et sa place DXGI reste réservée d'ici là"
         ),

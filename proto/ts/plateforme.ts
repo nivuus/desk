@@ -178,7 +178,7 @@ export type DepuisLaPlateforme =
  * reverse direction is not — an extra `enroler: true` would be a
  * `tsc` error (key outside the union), so both directions are indeed covered.
  */
-const TOUS_DEPUIS: Record<DepuisLaPlateforme['type'], true> = {
+const ALL_FROM: Record<DepuisLaPlateforme['type'], true> = {
     enrole: true,
     'battement-recu': true,
     refus: true,
@@ -186,7 +186,7 @@ const TOUS_DEPUIS: Record<DepuisLaPlateforme['type'], true> = {
     'icones-manquantes': true,
     installer: true,
 };
-const TYPES_DEPUIS = Object.keys(TOUS_DEPUIS) as DepuisLaPlateforme['type'][];
+const TYPES_DEPUIS = Object.keys(ALL_FROM) as DepuisLaPlateforme['type'][];
 
 /** Exposed so the test can compare the derived list to its union. */
 export function typesDepuis(): readonly DepuisLaPlateforme['type'][] {
@@ -241,7 +241,7 @@ export function encodeLancee(demande: string, issue: IssueLancement): string {
  * reason: the answer types are ABSENT ON PURPOSE. Accepting them
  * would let the platform treat its own answer as a request.
  */
-const TOUS_VERS: Record<VersLaPlateforme['type'], true> = {
+const ALL_TO: Record<VersLaPlateforme['type'], true> = {
     enroler: true,
     battement: true,
     catalogue: true,
@@ -249,7 +249,7 @@ const TOUS_VERS: Record<VersLaPlateforme['type'], true> = {
     progression: true,
     termine: true,
 };
-const TYPES_VERS = Object.keys(TOUS_VERS) as VersLaPlateforme['type'][];
+const TYPES_VERS = Object.keys(ALL_TO) as VersLaPlateforme['type'][];
 
 /** Exposed so the test can compare the derived list to its union. */
 export function typesVers(): readonly VersLaPlateforme['type'][] {
@@ -273,9 +273,9 @@ export type LectureVersLaPlateforme =
 // file CROSSED 500 lines (528). See the header of `plateforme-gardes.ts`
 // for the declaration of the crossing.
 import {
-    chaineNonVide,
+    nonEmptyString,
     estApplication,
-    estChaine,
+    isString,
     estIssue,
     estObjetJson,
 } from './plateforme-gardes';
@@ -316,7 +316,7 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
     }
 
     if (parsed.type === 'enroler') {
-        if (!chaineNonVide(parsed.vm) || !chaineNonVide(parsed.secret)) {
+        if (!nonEmptyString(parsed.vm) || !nonEmptyString(parsed.secret)) {
             return { ok: false, motif: 'forme' };
         }
         return {
@@ -331,7 +331,7 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
         // `applications` would otherwise travel all the way to the SQL query.
         if (typeof parsed.complet !== 'boolean') return { ok: false, motif: 'forme' };
         if (!Array.isArray(parsed.applications)) return { ok: false, motif: 'forme' };
-        if (!Array.isArray(parsed.disparues) || !parsed.disparues.every(estChaine)) {
+        if (!Array.isArray(parsed.disparues) || !parsed.disparues.every(isString)) {
             return { ok: false, motif: 'forme' };
         }
         if (!parsed.applications.every(estApplication)) return { ok: false, motif: 'forme' };
@@ -348,7 +348,7 @@ export function parseVersLaPlateforme(raw: string): LectureVersLaPlateforme {
     }
 
     if (parsed.type === 'lancee') {
-        if (!chaineNonVide(parsed.demande)) return { ok: false, motif: 'forme' };
+        if (!nonEmptyString(parsed.demande)) return { ok: false, motif: 'forme' };
         if (!estIssue(parsed.issue)) return { ok: false, motif: 'forme' };
         return {
             ok: true,
@@ -438,7 +438,7 @@ export function encodeIconesManquantes(empreintes: string[]): string {
  * 🔴 THE VERSION COMPARISON IS STRICT (`!==`), AND THE FIELD HAS NO
  * DEFAULT. A `parsed.v ?? PLATEFORME_VERSION` would accept a message WITHOUT
  * a `v` field, and a `v: null` message with it — that is exactly the hole that
- * `verifie_version` refuses on the Rust side, and that its comment names.
+ * `check_version` refuses on the Rust side, and that its comment names.
  *
  * 🔴 THE `refus` IS EXEMPT FROM IT, AND THE TYPE IS THUS CHECKED BEFORE THE VERSION
  * HERE — the exact opposite of `parseVersLaPlateforme`, which checks the version

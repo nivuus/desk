@@ -56,8 +56,8 @@ async function lire(r: Readable): Promise<Buffer> {
 describe('le magasin des tranches sur disque', () => {
     it('écrit une tranche EN FLUX, et la relit par concaténation', async () => {
         const m = magasinNeuf();
-        expect(await m.ecrire(ID, 0, flux('abc', 'def'), PLAFOND)).toEqual({ ok: true, octets: 6 });
-        expect(await m.ecrire(ID, 1, flux('gh'), PLAFOND)).toEqual({ ok: true, octets: 2 });
+        expect(await m.write(ID, 0, flux('abc', 'def'), PLAFOND)).toEqual({ ok: true, octets: 6 });
+        expect(await m.write(ID, 1, flux('gh'), PLAFOND)).toEqual({ ok: true, octets: 2 });
         expect((await lire(m.concatener(ID, [0, 1]))).toString()).toBe('abcdefgh');
     });
 
@@ -66,8 +66,8 @@ describe('le magasin des tranches sur disque', () => {
         // et l'assemblé serait une SECONDE source de vérité que rien ne
         // départagerait de ses tranches le jour où elles divergeraient.
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('abc'), PLAFOND);
-        await m.ecrire(ID, 1, flux('de'), PLAFOND);
+        await m.write(ID, 0, flux('abc'), PLAFOND);
+        await m.write(ID, 1, flux('de'), PLAFOND);
         // La concaténation est un FLUX : la consommer n'écrit rien.
         expect((await lire(m.concatener(ID, [0, 1]))).toString()).toBe('abcde');
         expect(readdirSync(join(m.racine, ID)).sort()).toEqual(['0', '1']);
@@ -75,7 +75,7 @@ describe('le magasin des tranches sur disque', () => {
 
     it('🔴 le plafond COUPE, supprime le partiel, et se dit — jamais une troncature', async () => {
         const m = magasinNeuf();
-        const r = await m.ecrire(ID, 0, flux('a'.repeat(600), 'b'.repeat(600)), PLAFOND);
+        const r = await m.write(ID, 0, flux('a'.repeat(600), 'b'.repeat(600)), PLAFOND);
         expect(r).toEqual({ ok: false, motif: 'plafond-depasse', plafond: PLAFOND });
         // 🔴 NI LA TRANCHE, NI LE `.part` : un fichier de 600 octets laissé là
         // serait vu PRÉSENT par la reprise, `verdict` le dirait `incoherentes`,
@@ -87,7 +87,7 @@ describe('le magasin des tranches sur disque', () => {
 
     it('une tranche EXACTEMENT au plafond passe : la borne est inclusive', async () => {
         const m = magasinNeuf();
-        expect(await m.ecrire(ID, 0, flux('x'.repeat(PLAFOND)), PLAFOND))
+        expect(await m.write(ID, 0, flux('x'.repeat(PLAFOND)), PLAFOND))
             .toEqual({ ok: true, octets: PLAFOND });
         expect(m.lister(ID)).toEqual([{ n: 0, octets: PLAFOND }]);
     });
@@ -98,15 +98,15 @@ describe('le magasin des tranches sur disque', () => {
         // connaît pas le contrat, et le lui faire connaître serait la seconde
         // arithmétique que `proto/ts/tranches.ts` existe pour empêcher.
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('court'), PLAFOND);
+        await m.write(ID, 0, flux('court'), PLAFOND);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 5 }]);
         expect(verdict(20, 10, m.lister(ID))).toEqual({ etat: 'incoherentes', n: [0] });
     });
 
     it('🔴 `lister` interroge le DISQUE, pas une comptabilité', async () => {
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('abcde'), PLAFOND);
-        await m.ecrire(ID, 1, flux('fg'), PLAFOND);
+        await m.write(ID, 0, flux('abcde'), PLAFOND);
+        await m.write(ID, 1, flux('fg'), PLAFOND);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 5 }, { n: 1, octets: 2 }]);
 
         // 🔴 LE FICHIER EST SUPPRIMÉ SOUS LES PIEDS DU MAGASIN. Une table
@@ -120,7 +120,7 @@ describe('le magasin des tranches sur disque', () => {
 
     it('`lister` trie par rang, et un tri de CHAÎNES ne suffirait pas', async () => {
         const m = magasinNeuf();
-        for (const n of [10, 2, 0]) await m.ecrire(ID, n, flux('x'), PLAFOND);
+        for (const n of [10, 2, 0]) await m.write(ID, n, flux('x'), PLAFOND);
         expect(m.lister(ID).map((t) => t.n)).toEqual([0, 2, 10]);
     });
 
@@ -128,7 +128,7 @@ describe('le magasin des tranches sur disque', () => {
         // Le compter ferait paraître complète une tranche qui n'a jamais fini
         // de s'écrire — et `verdict` scellerait un fichier tronqué.
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('ab'), PLAFOND);
+        await m.write(ID, 0, flux('ab'), PLAFOND);
         writeFileSync(join(m.racine, ID, '1.12345.abc.part'), 'moitie');
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 2 }]);
     });
@@ -146,8 +146,8 @@ describe('le magasin des tranches sur disque', () => {
         // n'aurait tout simplement pas vu la tranche, et se serait terminé
         // proprement.
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('aaa'), PLAFOND);
-        await m.ecrire(ID, 1, flux('bbb'), PLAFOND);
+        await m.write(ID, 0, flux('aaa'), PLAFOND);
+        await m.write(ID, 1, flux('bbb'), PLAFOND);
         rmSync(join(m.racine, ID, '1'));
         await expect(lire(m.concatener(ID, [0, 1]))).rejects.toThrow(/ENOENT/);
     });
@@ -158,8 +158,8 @@ describe('le magasin des tranches sur disque', () => {
         // tranche est assez grosse pour que la contre-pression suspende le
         // générateur bien avant qu'il n'ouvre la seconde.
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux(Buffer.alloc(1 << 20, 0x61)), 1 << 21);
-        await m.ecrire(ID, 1, flux('bbb'), PLAFOND);
+        await m.write(ID, 0, flux(Buffer.alloc(1 << 20, 0x61)), 1 << 21);
+        await m.write(ID, 1, flux('bbb'), PLAFOND);
         const r = m.concatener(ID, [0, 1]);
         let vus = 0;
         await expect(
@@ -190,11 +190,11 @@ describe('le magasin des tranches sur disque', () => {
             `${ID} `,
         ]) {
             expect(identifiantValide(mauvais)).toBe(false);
-            await expect(m.ecrire(mauvais, 0, flux('x'), PLAFOND))
+            await expect(m.write(mauvais, 0, flux('x'), PLAFOND))
                 .rejects.toThrow(/identifiant de téléversement invalide/);
             expect(() => m.lister(mauvais)).toThrow(/identifiant/);
             expect(() => m.concatener(mauvais, [0])).toThrow(/identifiant/);
-            expect(() => m.supprimer(mauvais)).toThrow(/identifiant/);
+            expect(() => m.remove(mauvais)).toThrow(/identifiant/);
         }
         expect(readdirSync(m.racine)).toEqual([]);
         expect(identifiantValide(ID)).toBe(true);
@@ -207,7 +207,7 @@ describe('le magasin des tranches sur disque', () => {
         const m = magasinNeuf();
         for (const mauvais of [-1, 1.5, NaN, Infinity, 1e21, Number.MAX_SAFE_INTEGER + 2]) {
             expect(rangValide(mauvais)).toBe(false);
-            await expect(m.ecrire(ID, mauvais, flux('x'), PLAFOND))
+            await expect(m.write(ID, mauvais, flux('x'), PLAFOND))
                 .rejects.toThrow(/rang de tranche invalide/);
             expect(() => m.concatener(ID, [mauvais])).toThrow(/rang de tranche invalide/);
         }
@@ -225,7 +225,7 @@ describe('le magasin des tranches sur disque', () => {
         const m = magasinNeuf();
         const evil = '../../evil' as unknown as number;
         expect(rangValide(evil)).toBe(false);
-        await expect(m.ecrire(ID, evil, flux('poison'), PLAFOND))
+        await expect(m.write(ID, evil, flux('poison'), PLAFOND))
             .rejects.toThrow(/rang de tranche invalide/);
         expect(() => m.concatener(ID, [evil])).toThrow(/rang de tranche invalide/);
         // 🔴 ET RIEN N'A ÉTÉ ÉCRIT AILLEURS : ni dans la racine, ni au-dessus
@@ -239,43 +239,43 @@ describe('le magasin des tranches sur disque', () => {
         // Un rang fautif lève à l'APPEL, où l'appelant peut encore répondre,
         // plutôt qu'au milieu d'une réponse déjà commencée.
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('a'), PLAFOND);
+        await m.write(ID, 0, flux('a'), PLAFOND);
         expect(() => m.concatener(ID, [0, -1])).toThrow(/rang/);
     });
 
     it('l’écriture est ATOMIQUE : aucun `.part` ne survit à un succès', async () => {
         const m = magasinNeuf();
-        await m.ecrire(ID, 7, flux('abc'), PLAFOND);
+        await m.write(ID, 7, flux('abc'), PLAFOND);
         expect(readdirSync(join(m.racine, ID))).toEqual(['7']);
         expect(readFileSync(join(m.racine, ID, '7')).toString()).toBe('abc');
     });
 
     it('réécrire un rang le REMPLACE, sans laisser de résidu', async () => {
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('aaaaa'), PLAFOND);
-        await m.ecrire(ID, 0, flux('bb'), PLAFOND);
+        await m.write(ID, 0, flux('aaaaa'), PLAFOND);
+        await m.write(ID, 0, flux('bb'), PLAFOND);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 2 }]);
         expect(readdirSync(join(m.racine, ID))).toEqual(['0']);
     });
 
     it('`supprimer` retire tout, et sur un absent c’est un succès', async () => {
         const m = magasinNeuf();
-        await m.ecrire(ID, 0, flux('a'), PLAFOND);
-        m.supprimer(ID);
+        await m.write(ID, 0, flux('a'), PLAFOND);
+        m.remove(ID);
         expect(existsSync(join(m.racine, ID))).toBe(false);
         expect(m.lister(ID)).toEqual([]);
         // Une purge qui passe après un dépôt abandonné avant sa première trame.
-        expect(() => m.supprimer(ID)).not.toThrow();
+        expect(() => m.remove(ID)).not.toThrow();
     });
 
     it('deux téléversements ne se mêlent pas', async () => {
         const m = magasinNeuf();
         const autre = randomUUID();
-        await m.ecrire(ID, 0, flux('un'), PLAFOND);
-        await m.ecrire(autre, 0, flux('deux'), PLAFOND);
+        await m.write(ID, 0, flux('un'), PLAFOND);
+        await m.write(autre, 0, flux('deux'), PLAFOND);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 2 }]);
         expect(m.lister(autre)).toEqual([{ n: 0, octets: 4 }]);
-        m.supprimer(autre);
+        m.remove(autre);
         expect(m.lister(ID)).toEqual([{ n: 0, octets: 2 }]);
     });
 
@@ -305,7 +305,7 @@ describe('l’éviction par âge, avec plancher', () => {
     /// tranche isolée, que `evincer` mesure. Équivalent, sur le magasin RÉEL,
     /// du `deposer(cle, octets, quand)` de la tâche.
     async function deposerA(m: ReturnType<typeof magasinNeuf>, id: string, quandMs: number): Promise<void> {
-        await m.ecrire(id, 0, flux('x'), PLAFOND);
+        await m.write(id, 0, flux('x'), PLAFOND);
         utimesSync(join(m.racine, id), new Date(quandMs), new Date(quandMs));
     }
 

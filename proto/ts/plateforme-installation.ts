@@ -18,7 +18,7 @@
 // the module evaluation order.
 
 import { PLATEFORME_VERSION } from './plateforme-version';
-import { chaineNonVide, estChaine } from './plateforme-gardes';
+import { nonEmptyString, isString } from './plateforme-gardes';
 
 /**
  * Where an installation stands.
@@ -100,12 +100,12 @@ export interface TermineMessage {
 const PHASES: readonly Phase[] = ['transfert', 'execution', 'reconciliation'];
 const ISSUES: readonly Issue[] = ['reussie', 'sans-effet', 'issue-inconnue', 'refusee'];
 
-export function estPhase(valeur: unknown): valeur is Phase {
-    return typeof valeur === 'string' && (PHASES as readonly string[]).includes(valeur);
+export function estPhase(value: unknown): value is Phase {
+    return typeof value === 'string' && (PHASES as readonly string[]).includes(value);
 }
 
-export function estIssueInstallation(valeur: unknown): valeur is Issue {
-    return typeof valeur === 'string' && (ISSUES as readonly string[]).includes(valeur);
+export function estIssueInstallation(value: unknown): value is Issue {
+    return typeof value === 'string' && (ISSUES as readonly string[]).includes(value);
 }
 
 /**
@@ -117,11 +117,11 @@ export function estIssueInstallation(valeur: unknown): valeur is Issue {
  * on a `NOT NULL` column — that is an SQL error very far from its
  * cause.
  */
-export function estCompte(valeur: unknown): valeur is number {
+export function estCompte(value: unknown): value is number {
     return (
-        typeof valeur === 'number' &&
-        Number.isSafeInteger(valeur) &&
-        valeur >= 0
+        typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0
     );
 }
 
@@ -140,17 +140,17 @@ export function estCompte(valeur: unknown): valeur is number {
 export function presentEtNulOu<T>(
     objet: Record<string, unknown>,
     cle: string,
-    garde: (valeur: unknown) => valeur is T,
-): { present: true; valeur: T | null } | { present: false } {
+    garde: (value: unknown) => value is T,
+): { present: true; value: T | null } | { present: false } {
     if (!(cle in objet)) return { present: false };
-    const valeur = objet[cle];
-    if (valeur === null) return { present: true, valeur: null };
-    if (garde(valeur)) return { present: true, valeur };
+    const value = objet[cle];
+    if (value === null) return { present: true, value: null };
+    if (garde(value)) return { present: true, value };
     return { present: false };
 }
 
-export function estEntierSigne(valeur: unknown): valeur is number {
-    return typeof valeur === 'number' && Number.isSafeInteger(valeur);
+export function estEntierSigne(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value);
 }
 
 // --- The encoders and the readers, moved here from `plateforme.ts` ---
@@ -202,7 +202,7 @@ export function encodeTermine(
 }
 
 export function lireProgression(parsed: Record<string, unknown>): ProgressionMessage | null {
-    if (!chaineNonVide(parsed.installation)) return null;
+    if (!nonEmptyString(parsed.installation)) return null;
     if (!estPhase(parsed.phase)) return null;
     if (
         !estCompte(parsed.octets_faits) ||
@@ -223,7 +223,7 @@ export function lireProgression(parsed: Record<string, unknown>): ProgressionMes
 }
 
 export function lireTermine(parsed: Record<string, unknown>): TermineMessage | null {
-    if (!chaineNonVide(parsed.installation)) return null;
+    if (!nonEmptyString(parsed.installation)) return null;
     if (!estIssueInstallation(parsed.issue)) return null;
     // 🔴 `presentEtNulOu` RATHER THAN A VALUE TEST: the key must be
     // PRESENT, its value may be `null`. It is the exact twin of
@@ -231,19 +231,19 @@ export function lireTermine(parsed: Record<string, unknown>): TermineMessage | n
     // from an older version — without `motif` — would be accepted with a
     // silently missing reason. That is the exact disguise the
     // version bump exists to prevent.
-    const motif = presentEtNulOu(parsed, 'motif', estChaine);
+    const motif = presentEtNulOu(parsed, 'motif', isString);
     if (!motif.present) return null;
     const code = presentEtNulOu(parsed, 'code_sortie', estEntierSigne);
     if (!code.present) return null;
-    if (!estChaine(parsed.journal)) return null;
+    if (!isString(parsed.journal)) return null;
     if (typeof parsed.journal_tronque !== 'boolean') return null;
     return {
         type: 'termine',
         v: PLATEFORME_VERSION,
         installation: parsed.installation,
         issue: parsed.issue,
-        motif: motif.valeur,
-        code_sortie: code.valeur,
+        motif: motif.value,
+        code_sortie: code.value,
         journal: parsed.journal,
         journal_tronque: parsed.journal_tronque,
     };
@@ -261,7 +261,7 @@ export function encodeInstaller(
     installation: string,
     url: string,
     nom: string,
-    taille: number,
+    size: number,
     sha256: string,
 ): string {
     const message: InstallerMessage = {
@@ -270,7 +270,7 @@ export function encodeInstaller(
         installation,
         url,
         nom,
-        taille,
+        taille: size,
         sha256,
     };
     return JSON.stringify(message);

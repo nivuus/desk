@@ -6,7 +6,7 @@
 use std::io::Write;
 use std::sync::mpsc::Receiver;
 
-use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur};
+use crate::capteur::protocole::{write_image, write_json, DepuisCapteur};
 use crate::h264::AccessUnit;
 
 /// Depth of the queue between the window thread and the media connection's
@@ -27,21 +27,17 @@ pub(super) enum AEcrire {
 
 /// The media connection's writer thread: it only writes, and it is the
 /// only one touching this file object. Nobody reads it.
-pub(super) fn ecrire_le_media<E: Write>(
-    mut ecrivain: E,
-    charges: Receiver<AEcrire>,
-    session: &str,
-) {
+pub(super) fn write_media<E: Write>(mut ecrivain: E, charges: Receiver<AEcrire>, session: &str) {
     for charge in charges {
-        let ecrit = match charge {
-            AEcrire::Image(unite) => ecrire_image(&mut ecrivain, &unite),
-            AEcrire::Etat(message) => ecrire_json(&mut ecrivain, &message),
+        let written = match charge {
+            AEcrire::Image(unite) => write_image(&mut ecrivain, &unite),
+            AEcrire::Etat(message) => write_json(&mut ecrivain, &message),
         };
         // `flush` at every payload: in front of a still window, the next
         // payload may never come, and the child would wait for this one in
         // a buffer. Same lesson as the attach reply of task 9.
-        if let Err(erreur) = ecrit.and_then(|()| ecrivain.flush()) {
-            tracing::warn!(%session, %erreur, "écriture de la connexion média interrompue");
+        if let Err(error) = written.and_then(|()| ecrivain.flush()) {
+            tracing::warn!(%session, %error, "écriture de la connexion média interrompue");
             return;
         }
     }

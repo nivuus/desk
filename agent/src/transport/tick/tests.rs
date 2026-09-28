@@ -19,7 +19,7 @@ use crate::source::VideoSource;
 /// (here, audio rebuild): test video, local IP, arbitrary clock and
 /// ceiling — none of these choices is inspected by the tests that
 /// use it.
-pub(super) fn session_d_essai() -> Session {
+pub(super) fn test_session() -> Session {
     let source = Box::new(crate::transport::fixtures::video_test_source());
     Session::new(
         source,
@@ -33,7 +33,7 @@ pub(super) fn session_d_essai() -> Session {
 /// Minimal Opus packet, timestamped at the present instant — enough for
 /// tests that only concern the PATH a packet takes, never
 /// its content.
-pub(super) fn paquet_d_essai() -> AudioPacket {
+pub(super) fn test_packet() -> AudioPacket {
     AudioPacket {
         data: vec![0xAA],
         pts_48k: 0,
@@ -47,13 +47,13 @@ pub(super) fn paquet_d_essai() -> AudioPacket {
 /// sensor: this test checks the wiring of branches a1bis/a1ter
 /// of `act_on_timeout`, not the logic of `SourceDistante` itself
 /// (covered by `capteur/distante/tests.rs`).
-struct SourceAvecSommeil {
+struct SourceWithSleep {
     inner: crate::source::FileSource,
     awake_recus: std::sync::Arc<std::sync::Mutex<Vec<(bool, bool)>>>,
     sommeil_prepare: Option<(bool, String)>,
 }
 
-impl VideoSource for SourceAvecSommeil {
+impl VideoSource for SourceWithSleep {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.inner.next_frame()
     }
@@ -75,12 +75,12 @@ impl VideoSource for SourceAvecSommeil {
 /// branch a1quater of `act_on_timeout`, not the logic of `SourceDistante`
 /// itself (covered by `capteur/distante/tests.rs`) nor that of
 /// `Session::appliquer_part` (covered by `transport/part.rs`).
-struct SourceAvecPart {
+struct SourceWithShare {
     inner: crate::source::FileSource,
     part_preparee: Option<u32>,
 }
 
-impl VideoSource for SourceAvecPart {
+impl VideoSource for SourceWithShare {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.inner.next_frame()
     }
@@ -111,11 +111,11 @@ impl AudioSource for AudioSourceMortelle {
 /// Fake video source that counts calls to `signaler_audio_mort`, returns
 /// a reattachment driven from outside, and records calls to
 /// `signaler_audio_vivant` (sub-block D10) — same pattern as
-/// `SourceAvecSommeil`/`SourceAvecPart` above: this test checks the
+/// `SourceWithSleep`/`SourceWithShare` above: this test checks the
 /// WIRING of branch a1sexies of `act_on_timeout` (and its reset
 /// by a1sexies itself), not the logic of `SourceDistante`, covered by
 /// `capteur/distante/tests.rs`.
-struct SourceAvecAudioMort {
+struct SourceWithDeadAudio {
     inner: crate::source::FileSource,
     signalements: std::sync::Arc<std::sync::Mutex<u32>>,
     rattachement_prepare: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -124,7 +124,7 @@ struct SourceAvecAudioMort {
     annonces_audio_vivant: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
-impl VideoSource for SourceAvecAudioMort {
+impl VideoSource for SourceWithDeadAudio {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.inner.next_frame()
     }
@@ -140,7 +140,7 @@ impl VideoSource for SourceAvecAudioMort {
     }
     fn rattachement_survenu(&mut self) -> bool {
         // `swap`, not a mere read: CONSUMED, on the same regime as
-        // `Option::take()` in `SourceAvecSommeil`/`SourceAvecPart` — otherwise
+        // `Option::take()` in `SourceWithSleep`/`SourceWithShare` — otherwise
         // this flag would stay true indefinitely and would mask the
         // defect this test exists to catch (a latch that never
         // reset would be, identically, invisible).
@@ -161,12 +161,12 @@ impl VideoSource for SourceAvecAudioMort {
 /// `Session::appliquer_part` directly. P1's plan prescribed none
 /// for a1septies ("`cargo test -p agent` → unchanged"); it is an
 /// assumed divergence, and in the direction this file already documents.
-struct SourceAvecPressePapier {
+struct SourceWithClipboard {
     inner: crate::source::FileSource,
     presse_papier_prepare: Option<(Option<String>, u32)>,
 }
 
-impl VideoSource for SourceAvecPressePapier {
+impl VideoSource for SourceWithClipboard {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.inner.next_frame()
     }
@@ -188,12 +188,12 @@ impl VideoSource for SourceAvecPressePapier {
 /// left the tests green. Link 6 of A1's plan is explicitly
 /// "NOT guarded — a forgotten `if let` compiles", and it is that hole these
 /// two tests close.
-struct SourceAvecAccent {
+struct SourceWithAccent {
     inner: crate::source::FileSource,
     accent_prepare: Option<String>,
 }
 
-impl VideoSource for SourceAvecAccent {
+impl VideoSource for SourceWithAccent {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         self.inner.next_frame()
     }

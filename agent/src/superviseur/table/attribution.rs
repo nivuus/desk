@@ -33,7 +33,7 @@ impl Table {
         // separately.
         if entree.etat == Etat::Vivante && entree.nom_sortie.is_some() {
             let (largeur, hauteur) =
-                crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+                crate::windows_source_sortie::clamp_to_max_size((largeur, hauteur));
             return vec![Effet::SuivreLeViewport {
                 session: session.clone(),
                 largeur,
@@ -47,36 +47,36 @@ impl Table {
         // staleness safeguard of `relancer_les_orphelines` no longer concerns it.
         entree.attente_depuis = None;
 
-        // Same bounding as at creation (`creation_sortie::creer_sortie`), and
+        // Same bounding as at creation (`creation_sortie::create_output`), and
         // for the same reason: the viewport arrives in device pixels
         // since D9, and without this bounding a retained output would be judged large
         // enough — or too small — against a request exceeding the ceiling
         // creation imposes on itself. Setting it here rather than at the caller
         // (`boucle.rs`) keeps both paths symmetric.
         let (largeur, hauteur) =
-            crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+            crate::windows_source_sortie::clamp_to_max_size((largeur, hauteur));
 
         // **Reuse path (§7.1 of sub-block D3).** A restarted window
         // kept its output; if the announced viewport matches it,
         // there is NOTHING to create — and it is precisely creation that makes
         // the neighbouring DXGI duplications abandon the mutex.
-        if let (Some(nom), Some(taille)) = (entree.nom_sortie.clone(), entree.taille_sortie) {
+        if let (Some(nom), Some(size)) = (entree.nom_sortie.clone(), entree.output_size) {
             // Same predicate as pairing at creation
             // (`placement::sortie_pour_viewport`), and that is the point: two
             // distinct rules would make the restart destroy an output
             // creation had just accepted. The retained output is reused
             // as soon as it is LARGE ENOUGH; it is only handed back if it is
             // too small, the only case where recreating it can bring pixels.
-            if crate::superviseur::placement::sortie_assez_grande(taille, (largeur, hauteur)) {
+            if crate::superviseur::placement::sortie_assez_grande(size, (largeur, hauteur)) {
                 entree.etat = Etat::Vivante;
                 let retenue =
-                    crate::superviseur::placement::taille_retenue((largeur, hauteur), taille);
-                entree.taille_sortie = Some(retenue);
+                    crate::superviseur::placement::retained_size((largeur, hauteur), size);
+                entree.output_size = Some(retenue);
                 return vec![Effet::LancerEnfant {
                     session: session.clone(),
                     fenetre: entree.fenetre,
                     nom_sortie: nom,
-                    taille: retenue,
+                    size: retenue,
                 }];
             }
         }
@@ -89,7 +89,7 @@ impl Table {
         // the entry would no longer keep its identifier.
         // The three fields are set together in `sortie_creee` and cleared
         // together here: it is the invariant on which the whole reuse path
-        // above rests, which requires `nom_sortie` AND `taille_sortie`
+        // above rests, which requires `nom_sortie` AND `output_size`
         // to recognise a retained output. The `unwrap_or_default` is therefore
         // not reachable; if it were, it would produce a `nom_sortie: ""`,
         // that is, a destruction targeting a nameless output. Same fallback and
@@ -99,9 +99,9 @@ impl Table {
                 sortie_pilote,
                 nom_sortie: entree.nom_sortie.take().unwrap_or_default(),
             });
-            entree.taille_sortie = None;
+            entree.output_size = None;
         }
-        effets.push(Effet::CreerSortie {
+        effets.push(Effet::CreateOutput {
             session: session.clone(),
             titre: entree.titre.clone(),
             largeur,
@@ -119,7 +119,7 @@ impl Table {
         session: &IdSession,
         sortie_pilote: u32,
         nom_sortie: String,
-        taille: (u32, u32),
+        size: (u32, u32),
     ) -> Vec<Effet> {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
@@ -130,12 +130,12 @@ impl Table {
         entree.etat = Etat::Vivante;
         entree.sortie_pilote = Some(sortie_pilote);
         entree.nom_sortie = Some(nom_sortie.clone());
-        entree.taille_sortie = Some(taille);
+        entree.output_size = Some(size);
         vec![Effet::LancerEnfant {
             session: session.clone(),
             fenetre: entree.fenetre,
             nom_sortie,
-            taille,
+            size,
         }]
     }
 }

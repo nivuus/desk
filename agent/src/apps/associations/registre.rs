@@ -37,10 +37,10 @@ fn en_pcwstr(s: &str) -> HSTRING {
 /// the type and closes in one call, and it **guarantees null termination** of what
 /// it returns — which `RegQueryValueEx` does not, and which is a
 /// classic source of reads past the buffer.
-fn valeur(racine: HKEY, sous_cle: &str, nom: Option<&str>) -> Option<String> {
+fn value(racine: HKEY, subkey: &str, nom: Option<&str>) -> Option<String> {
     let mut tampon = [0u16; 2048];
     let mut octets = (tampon.len() * 2) as u32;
-    let cle = en_pcwstr(sous_cle);
+    let cle = en_pcwstr(subkey);
     let nom_h = nom.map(en_pcwstr);
     let code = unsafe {
         RegGetValueW(
@@ -100,13 +100,13 @@ fn extensions_connues() -> Vec<String> {
             break;
         }
         let mut tampon = [0u16; MAX_PATH as usize];
-        let mut taille = tampon.len() as u32;
+        let mut size = tampon.len() as u32;
         let code = unsafe {
             RegEnumKeyExW(
                 cle,
                 index,
                 Some(windows::core::PWSTR(tampon.as_mut_ptr())),
-                &mut taille,
+                &mut size,
                 None,
                 None,
                 None,
@@ -116,7 +116,7 @@ fn extensions_connues() -> Vec<String> {
         if code != ERROR_SUCCESS {
             break;
         }
-        noms.push(String::from_utf16_lossy(&tampon[..taille as usize]));
+        noms.push(String::from_utf16_lossy(&tampon[..size as usize]));
         index += 1;
     }
     unsafe {
@@ -133,7 +133,7 @@ fn extensions_connues() -> Vec<String> {
 /// set. Swapping them would attribute the association to the most
 /// recently installed software rather than to the one in use.
 fn progid(extension_brute: &str) -> Option<String> {
-    let choix = valeur(
+    let choix = value(
         HKEY_CURRENT_USER,
         &format!(r"{FILE_EXTS}\{extension_brute}\UserChoice"),
         Some("ProgId"),
@@ -141,12 +141,12 @@ fn progid(extension_brute: &str) -> Option<String> {
     if choix.is_some() {
         return choix;
     }
-    let avec_point = if extension_brute.starts_with('.') {
+    let with_dot = if extension_brute.starts_with('.') {
         extension_brute.to_string()
     } else {
         format!(".{extension_brute}")
     };
-    valeur(HKEY_CLASSES_ROOT, &avec_point, None)
+    value(HKEY_CLASSES_ROOT, &with_dot, None)
 }
 
 /// The `(extension, command line)` pairs the registry holds —
@@ -166,7 +166,7 @@ pub fn couples() -> Vec<(String, String)> {
     let mut couples = Vec::new();
     for brute in extensions_connues() {
         let Some(id) = progid(&brute) else { continue };
-        let Some(commande) = valeur(
+        let Some(commande) = value(
             HKEY_CLASSES_ROOT,
             &format!(r"{id}\shell\open\command"),
             None,

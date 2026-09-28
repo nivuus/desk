@@ -175,7 +175,7 @@ export async function servirSession(
     // the same user, which the partial index makes impossible in the database — and
     // if the database carried it anyway, that is a defect, not a preference to
     // express through a silent choice.
-    const sienne = laVmDe(await orchestrateur.lister(), porteur.utilisateurId);
+    const sienne = laVmDe(await orchestrateur.lister(), porteur.userId);
 
     if (sienne === undefined) {
         // ③ An empty listing is NOT a refusal, and that is why this path
@@ -200,7 +200,7 @@ export async function servirSession(
         // « VM unreachable -> the hub shows it, OFFERS A RESTART »; with the
         // v1 backend the hub SHOWS it and says it cannot restart. The
         // field carries the SAME reason and the SAME backend as the typed refusal of
-        // `orchestrateur.demarrer`, of which it is the HTTP projection — and it is
+        // `orchestrateur.start`, of which it is the HTTP projection — and it is
         // returned here rather than left to the browser to guess, because a
         // missing field reads as an oversight.
         //

@@ -31,7 +31,7 @@ afterEach(async () => {
     base = undefined;
 });
 
-async function avecVm(p: Pilote, id: string): Promise<void> {
+async function withVm(p: Pilote, id: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [id, `vm-${id}`, '192.168.3.2']);
 }
 
@@ -55,15 +55,15 @@ function cle(n: number): string {
     return `${n}`.padStart(64, 'a');
 }
 
-const RIEN: Fusion = { aInserer: [], aMettreAJour: [], aMarquerDisparues: [], aRessusciter: [] };
+const RIEN: Fusion = { aInserer: [], toUpdate: [], aMarquerDisparues: [], aRessusciter: [] };
 
 describe(`dépôt application, moteur=${MOTEUR}`, () => {
     it('lireParVm ne rend QUE les applications de cette VM', async () => {
         // 🔴 Omettre le `WHERE vm_id = ?` ferait voir à un utilisateur le
         // catalogue de toutes les VMs du service.
         base = await baseNeuve('app-par-vm');
-        await avecVm(base, 'v-1');
-        await avecVm(base, 'v-2');
+        await withVm(base, 'v-1');
+        await withVm(base, 'v-2');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Firefox', cle(1))] }, MS);
         await appliquer(base, 'v-2', { ...RIEN, aInserer: [app('Excel', cle(2))] }, MS);
 
@@ -76,7 +76,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         // qui n'existent plus sur la VM — et le hub proposerait de lancer un
         // raccourci supprimé.
         base = await baseNeuve('app-exclusions');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(
             base,
             'v-1',
@@ -110,7 +110,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         // produire le même — la clé, elle, est l'empreinte d'un triplet de
         // chemins, et deux VMs portant la même application la partagent.
         base = await baseNeuve('app-identifiant');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Firefox', cle(1))] }, MS);
         const [ligne] = await lireParVm(base, 'v-1');
 
@@ -122,18 +122,18 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
 
     it("met à jour les champs et avance vue_a, sans toucher ni l'id ni apparue_a", async () => {
         base = await baseNeuve('app-maj');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Ancien', cle(1))] }, MS);
-        const avant = (await lireParVm(base, 'v-1'))[0];
+        const before = (await lireParVm(base, 'v-1'))[0];
 
         await appliquer(
             base,
             'v-1',
-            { ...RIEN, aMettreAJour: [{ id: avant.id, app: app('Neuf', cle(1)) }] },
+            { ...RIEN, toUpdate: [{ id: before.id, app: app('Neuf', cle(1)) }] },
             MS + 30,
         );
         const apres = (await lireParVm(base, 'v-1'))[0];
-        expect(apres.id).toBe(avant.id);
+        expect(apres.id).toBe(before.id);
         expect(apres.nom).toBe('Neuf');
         expect(apres.cible).toBe('c:\\program files\\Neuf\\Neuf.exe');
         expect(apres.vue_a).toBe(MS + 30);
@@ -148,41 +148,41 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         // `DELETE` poserait bien « plus dans le catalogue », et ferait perdre
         // son identifiant à une application installée côté navigateur.
         base = await baseNeuve('app-disparue');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Partante', cle(1))] }, MS);
-        const avant = (await lireParVm(base, 'v-1'))[0];
+        const before = (await lireParVm(base, 'v-1'))[0];
 
-        await appliquer(base, 'v-1', { ...RIEN, aMarquerDisparues: [avant.id] }, MS + 40);
+        await appliquer(base, 'v-1', { ...RIEN, aMarquerDisparues: [before.id] }, MS + 40);
 
         expect(await lireParVm(base, 'v-1')).toEqual([]);
-        const ligne = await lireParId(base, avant.id);
+        const ligne = await lireParId(base, before.id);
         expect(ligne).toBeDefined();
         expect(ligne!.disparue_a).toBe(MS + 40);
-        expect(ligne!.id).toBe(avant.id);
+        expect(ligne!.id).toBe(before.id);
     });
 
     it("ressuscite : disparue_a repasse à NULL, et l'identifiant NE CHANGE PAS", async () => {
         // 🔴 Insérer une ligne neuve serait la même perte d'identifiant, par
         // une autre porte.
         base = await baseNeuve('app-resurrection');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Revenante', cle(1))] }, MS);
-        const avant = (await lireParVm(base, 'v-1'))[0];
-        await appliquer(base, 'v-1', { ...RIEN, aMarquerDisparues: [avant.id] }, MS + 50);
+        const before = (await lireParVm(base, 'v-1'))[0];
+        await appliquer(base, 'v-1', { ...RIEN, aMarquerDisparues: [before.id] }, MS + 50);
 
         await appliquer(
             base,
             'v-1',
             {
                 ...RIEN,
-                aRessusciter: [avant.id],
-                aMettreAJour: [{ id: avant.id, app: app('Revenante', cle(1)) }],
+                aRessusciter: [before.id],
+                toUpdate: [{ id: before.id, app: app('Revenante', cle(1)) }],
             },
             MS + 60,
         );
 
         const [apres] = await lireParVm(base, 'v-1');
-        expect(apres.id).toBe(avant.id);
+        expect(apres.id).toBe(before.id);
         expect(apres.disparue_a).toBeNull();
         expect(apres.apparue_a).toBe(MS);
     });
@@ -194,7 +194,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         // catalogue affiché et le lecteur de la fusion ne peuvent donc PAS
         // être le même.
         base = await baseNeuve('app-connues');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('A', cle(1)), app('B', cle(2))] }, MS);
         const b = (await lireParVm(base, 'v-1')).find((l) => l.nom === 'B')!;
         await appliquer(base, 'v-1', { ...RIEN, aMarquerDisparues: [b.id] }, MS + 70);
@@ -223,7 +223,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         // VM : la première passe, la seconde est refusée par l'index unique
         // `application_cle`. Sans transaction, la première resterait.
         base = await baseNeuve('app-transaction');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
 
         await expect(
             appliquer(
@@ -253,7 +253,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         // en une fois : c'est le seul moyen de faire passer chaque requête par
         // le convertisseur de marqueurs.
         base = await baseNeuve('app-marqueurs');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Une', cle(1))] }, MS);
         const une = (await lireParVm(base, 'v-1'))[0];
         await appliquer(
@@ -261,7 +261,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
             'v-1',
             {
                 aInserer: [],
-                aMettreAJour: [{ id: une.id, app: app('Une', cle(1)) }],
+                toUpdate: [{ id: une.id, app: app('Une', cle(1)) }],
                 aMarquerDisparues: [une.id],
                 aRessusciter: [une.id],
             },
@@ -288,21 +288,21 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
     it('🔴 les deux champs d’icône font l’ALLER-RETOUR par la base', async () => {
         base = await baseNeuve('app-icones');
         const p = base;
-        await avecVm(p, 'v-ico');
+        await withVm(p, 'v-ico');
         await appliquer(p, 'v-ico', {
             aInserer: [
                 { ...app('Avec', 'k-avec'), icone: 'f'.repeat(64), source_max: { pixels: 256 } },
                 { ...app('Sans', 'k-sans'), icone: null, source_max: 'non-mesuree' },
             ],
-            aMettreAJour: [],
+            toUpdate: [],
             aMarquerDisparues: [],
             aRessusciter: [],
         }, 1_700_000_000_000);
         const lignes = await lireParVm(p, 'v-ico');
-        const avec = lignes.find((l) => l.nom === 'Avec')!;
+        const withIt = lignes.find((l) => l.nom === 'Avec')!;
         const sans = lignes.find((l) => l.nom === 'Sans')!;
-        expect(avec.icone).toBe('f'.repeat(64));
-        expect(sourceMaxDepuis(avec.source_max_px)).toEqual({ pixels: 256 });
+        expect(withIt.icone).toBe('f'.repeat(64));
+        expect(sourceMaxDepuis(withIt.source_max_px)).toEqual({ pixels: 256 });
         // 🔴 LA COMBINAISON INTERDITE — `icone` nul et une taille mesurée —
         // N'EST ÉCRITE PAR AUCUN CHEMIN. Le test la NOMME pour qu'elle ne
         // naisse pas d'une inattention.
@@ -312,10 +312,10 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
 
         // Une icône qui CHANGE atteint bien la base : c'est le cas nominal
         // d'une application qui se met à jour, pas l'exception.
-        const id = avec.id;
+        const id = withIt.id;
         await appliquer(p, 'v-ico', {
             aInserer: [],
-            aMettreAJour: [
+            toUpdate: [
                 { id, app: { ...app('Avec', 'k-avec'), icone: 'e'.repeat(64), source_max: { pixels: 48 } } },
             ],
             aMarquerDisparues: [],

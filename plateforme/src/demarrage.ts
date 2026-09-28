@@ -2,7 +2,7 @@
 //
 // 🔴 THE ORDER IS NON-NEGOTIABLE:
 //     lireConfig -> ouvrirBase -> appliquerMigrations -> balayerLesOuvertes
-//     -> demarrerServeur
+//     -> startServer
 //
 // THE PORT OPENS ONLY LAST. A peer must never reach a
 // service whose database is not ready: spec §6, "a signaling that pairs
@@ -18,7 +18,7 @@ import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from './base/migrations';
 import { ouvrirBase } from './base/ouvrir';
 import type { Pilote } from './base/pilote';
 import { balayerLesOuvertes } from './depot/session';
-import { demarrerServeur, type ServicePlateforme } from './http/serveur';
+import { startServer, type ServicePlateforme } from './http/serveur';
 
 export interface Service {
     port: number;
@@ -26,7 +26,7 @@ export interface Service {
     arreter(): Promise<void>;
 }
 
-export async function demarrer(config: Config, maintenant = Date.now()): Promise<Service> {
+export async function start(config: Config, maintenant = Date.now()): Promise<Service> {
     let base: Pilote;
     try {
         base = await ouvrirBase(config);
@@ -45,7 +45,7 @@ export async function demarrer(config: Config, maintenant = Date.now()): Promise
     // THE PORT OPENS ONLY HERE, after the database and its migrations.
     let service: ServicePlateforme;
     try {
-        service = await demarrerServeur(config, base);
+        service = await startServer(config, base);
     } catch (cause) {
         // The database is already open: close it again rather than leaving a
         // dangling connection behind an aborted startup.

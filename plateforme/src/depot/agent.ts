@@ -36,14 +36,14 @@ export interface LigneAgent {
     vu_a: number | null;
 }
 
-const COLONNES = 'vm_id, empreinte_secret, prefixe_session, vu_a';
+const COLUMNS = 'vm_id, empreinte_secret, prefixe_session, vu_a';
 
 /// Enrols a VM.
 ///
 /// A prefix already taken makes it THROW, through the UNIQUE index of `0003-agents.sql` —
 /// never a silent return: here the caller is the administrator, and hiding
 /// the failure from them would make them believe in an enrolment that does not exist. Same
-/// reasoning as `creerUtilisateur` on the email.
+/// reasoning as `createUser` on the email.
 export async function enroler(
     p: Pilote,
     vmId: string,
@@ -51,7 +51,7 @@ export async function enroler(
     prefixe: string,
 ): Promise<void> {
     await p.executer(
-        `INSERT INTO agent_enrole(${COLONNES}) VALUES(?, ?, ?, ?)`,
+        `INSERT INTO agent_enrole(${COLUMNS}) VALUES(?, ?, ?, ?)`,
         [vmId, empreinte, prefixe, null],
     );
 }
@@ -63,7 +63,7 @@ export async function enroler(
 /// exist. Precedent: `depot/utilisateur.ts::lireParEmail`.
 export async function lireParVm(p: Pilote, vmId: string): Promise<LigneAgent | undefined> {
     const lignes = await p.interroger<LigneAgent>(
-        `SELECT ${COLONNES} FROM agent_enrole WHERE vm_id = ?`,
+        `SELECT ${COLUMNS} FROM agent_enrole WHERE vm_id = ?`,
         [vmId],
     );
     return lignes[0];
@@ -79,7 +79,7 @@ export async function lireParPrefixe(
     prefixe: string,
 ): Promise<LigneAgent | undefined> {
     const lignes = await p.interroger<LigneAgent>(
-        `SELECT ${COLONNES} FROM agent_enrole WHERE prefixe_session = ?`,
+        `SELECT ${COLUMNS} FROM agent_enrole WHERE prefixe_session = ?`,
         [prefixe],
     );
     return lignes[0];

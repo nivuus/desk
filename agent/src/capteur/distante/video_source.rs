@@ -45,7 +45,7 @@ impl VideoSource for SourceDistante {
                 }) => {
                     self.vivante = vivante;
                     self.epuisee = epuisee;
-                    self.taille.poser(largeur, hauteur);
+                    self.size.poser(largeur, hauteur);
                 }
                 Ok(Recu::Sommeil { endormie, raison }) => {
                     // Two writes, two lifetimes: the current state, which
@@ -100,7 +100,7 @@ impl VideoSource for SourceDistante {
                         self.epuisee = true;
                         return None;
                     }
-                    if self.fenetre.peut_reessayer(maintenant) {
+                    if self.fenetre.can_retry(maintenant) {
                         match self.canal.rattacher() {
                             Ok(Rattachee {
                                 images,
@@ -109,7 +109,7 @@ impl VideoSource for SourceDistante {
                             }) => {
                                 tracing::info!(largeur, hauteur, "canal rattaché au capteur");
                                 self.images = images;
-                                self.taille.poser(largeur, hauteur);
+                                self.size.poser(largeur, hauteur);
                                 self.vivante = true;
                                 self.epuisee = false;
                                 // A re-attachment goes through `VersCapteur::Attache`,
@@ -179,11 +179,11 @@ impl VideoSource for SourceDistante {
                             // of 250 ms over a 15 s window, a sensor
                             // absent for long would produce 60 lines per
                             // window and per session.
-                            // `cause::chaine`: same reason as elsewhere on
+                            // `cause::chain`: same reason as elsewhere on
                             // this path — `anyhow`'s plain `Display` only
                             // renders the outer layer. See `crate::cause`.
-                            Err(erreur) => tracing::debug!(
-                                erreur = %crate::cause::chaine(&erreur),
+                            Err(error) => tracing::debug!(
+                                error = %crate::cause::chain(&error),
                                 "rattachement refusé"
                             ),
                         }
@@ -195,7 +195,7 @@ impl VideoSource for SourceDistante {
     }
 
     fn dimensions(&self) -> (u32, u32) {
-        self.taille.lire()
+        self.size.lire()
     }
 
     fn is_exhausted(&self) -> bool {
@@ -214,11 +214,11 @@ impl VideoSource for SourceDistante {
             // The size KEPT is the one obtained, never the one requested: the
             // driver quantises, and a Windows window imposes even
             // dimensions. Same rule as in single-window mode.
-            DepuisCapteur::Taille { largeur, hauteur } => {
-                self.taille.poser(largeur, hauteur);
+            DepuisCapteur::Size { largeur, hauteur } => {
+                self.size.poser(largeur, hauteur);
                 Ok(())
             }
-            DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
+            DepuisCapteur::Error { motif } => bail!("le capteur a refusé : {motif}"),
             autre => bail!("réponse inattendue du capteur : {autre:?}"),
         }
     }
@@ -228,7 +228,7 @@ impl VideoSource for SourceDistante {
     }
 
     fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
-        self.commander_simple(VersCapteur::TailleEncodage {
+        self.commander_simple(VersCapteur::EncodeSize {
             largeur: width,
             hauteur: height,
         })
@@ -261,11 +261,11 @@ impl VideoSource for SourceDistante {
     /// remedy.
     ///
     /// `commander_simple` — and not bare `commander` — because it alone translates
-    /// `DepuisCapteur::Erreur` into `Err`: a refusal to open the clipboard
+    /// `DepuisCapteur::Error` into `Err`: a refusal to open the clipboard
     /// by another application (a NORMAL case under Windows) must prevent
     /// the injection, not let it through.
-    fn ecrire_le_presse_papier(&mut self, texte: &str) -> Result<()> {
-        self.commander_simple(VersCapteur::PressePapierEcrire {
+    fn write_clipboard(&mut self, texte: &str) -> Result<()> {
+        self.commander_simple(VersCapteur::ClipboardWrite {
             texte: texte.to_owned(),
         })
     }
@@ -310,8 +310,8 @@ impl VideoSource for SourceDistante {
     }
 
     fn signaler_audio_mort(&mut self) {
-        if let Err(erreur) = self.commander_simple(VersCapteur::AudioMort) {
-            tracing::warn!(%erreur, "signalement de capture audio morte non délivré");
+        if let Err(error) = self.commander_simple(VersCapteur::AudioMort) {
+            tracing::warn!(%error, "signalement de capture audio morte non délivré");
         }
     }
 
@@ -319,8 +319,8 @@ impl VideoSource for SourceDistante {
     /// audio capture resumed — the PROOF, not merely the rebuild
     /// decision (sub-block D10).
     fn signaler_audio_vivant(&mut self) {
-        if let Err(erreur) = self.commander_simple(VersCapteur::AudioVivant) {
-            tracing::warn!(%erreur, "signalement de capture audio vivante non délivré");
+        if let Err(error) = self.commander_simple(VersCapteur::AudioVivant) {
+            tracing::warn!(%error, "signalement de capture audio vivante non délivré");
         }
     }
 

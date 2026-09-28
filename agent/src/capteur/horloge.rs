@@ -40,15 +40,15 @@ mod systeme {
     use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 
     pub fn lire_qpc() -> Result<i64> {
-        let mut valeur = 0i64;
-        unsafe { QueryPerformanceCounter(&mut valeur) }.context("QueryPerformanceCounter")?;
-        Ok(valeur)
+        let mut value = 0i64;
+        unsafe { QueryPerformanceCounter(&mut value) }.context("QueryPerformanceCounter")?;
+        Ok(value)
     }
 
     pub fn frequence_qpc() -> Result<i64> {
-        let mut valeur = 0i64;
-        unsafe { QueryPerformanceFrequency(&mut valeur) }.context("QueryPerformanceFrequency")?;
-        Ok(valeur)
+        let mut value = 0i64;
+        unsafe { QueryPerformanceFrequency(&mut value) }.context("QueryPerformanceFrequency")?;
+        Ok(value)
     }
 }
 

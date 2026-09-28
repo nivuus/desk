@@ -1,23 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     TYPE_ATTRIBUTS,
-    TYPE_CREER,
-    TYPE_DONNEES,
+    TYPE_CREATE,
+    TYPE_DATA,
     TYPE_ECHEC,
-    TYPE_ECRIRE,
+    TYPE_WRITE,
     TYPE_ENTREES,
     TYPE_FAIT,
     TYPE_RENOMMER,
-    TYPE_SUPPRIMER,
+    TYPE_DELETE,
     TYPE_LIRE,
     TYPE_LISTER,
     TYPE_META,
     encoder,
 } from '../../../proto/ts/fichiers';
-import { parseDonnees, parseEchec, parseEntrees, parseMeta } from '../../../proto/ts/fichiers-entetes';
+import { parseData, parseEchec, parseEntrees, parseMeta } from '../../../proto/ts/fichiers-entetes';
 import { decoder } from '../../../proto/ts/fichiers';
-import { EchecFichiers, type Adaptateur } from './adaptateur';
-import { creerServeur } from './protocole';
+import { FilesError, type Adaptateur } from './adaptateur';
+import { createServer } from './protocole';
 import type { Ecrivain } from './ecriture';
 import type { Mutateur } from './mutation-service';
 
@@ -26,10 +26,10 @@ function fauxEcrivain(surcharge: Partial<Ecrivain> = {}): Ecrivain & { vus: stri
     const vus: string[] = [];
     return {
         vus,
-        ecrire: async (chemin, position, octets, premier, dernier) => {
-            vus.push(`ecrire ${chemin} @${position} +${octets.length} ${premier}/${dernier}`);
+        write: async (chemin, position, octets, premier, last) => {
+            vus.push(`ecrire ${chemin} @${position} +${octets.length} ${premier}/${last}`);
         },
-        creer: async (chemin, repertoire) => {
+        create: async (chemin, repertoire) => {
             vus.push(`creer ${chemin} ${repertoire}`);
         },
         abandonner: () => vus.push('abandonner'),
@@ -54,7 +54,7 @@ function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
 
 describe('serveur du protocole fichiers', () => {
     it('répond à LISTER par ENTREES', async () => {
-        const serveur = creerServeur(fauxAdaptateur());
+        const serveur = createServer(fauxAdaptateur());
         const reponse = await serveur.traiter(encoder(TYPE_LISTER, 11, { chemin: 'dossier' }));
         const trame = decoder(reponse!);
         expect(trame.type).toBe(TYPE_ENTREES);
@@ -65,7 +65,7 @@ describe('serveur du protocole fichiers', () => {
     });
 
     it('répond à ATTRIBUTS par META', async () => {
-        const serveur = creerServeur(fauxAdaptateur());
+        const serveur = createServer(fauxAdaptateur());
         const trame = decoder((await serveur.traiter(encoder(TYPE_ATTRIBUTS, 3, { chemin: '' })))!);
         expect(trame.type).toBe(TYPE_META);
         expect(parseMeta(trame.entete).taille).toBe(1234);
@@ -81,14 +81,14 @@ describe('serveur du protocole fichiers', () => {
         // et l'agent la refuserait pour incohérence en-tête/charge — le seul
         // contrôle qui existe pour empêcher d'écrire dans le tampon de ProjFS
         // une quantité que l'émetteur ne croyait pas envoyer.
-        const serveur = creerServeur(fauxAdaptateur({ lire: async () => new Uint8Array([1, 2]) }));
+        const serveur = createServer(fauxAdaptateur({ lire: async () => new Uint8Array([1, 2]) }));
         const trame = decoder(
             (await serveur.traiter(
                 encoder(TYPE_LIRE, 5, { chemin: 'gros.bin', position: 64, longueur: 4096 }),
             ))!,
         );
-        expect(trame.type).toBe(TYPE_DONNEES);
-        const entete = parseDonnees(trame.entete);
+        expect(trame.type).toBe(TYPE_DATA);
+        const entete = parseData(trame.entete);
         expect(entete.position).toBe(64);
         expect(entete.longueur).toBe(2);
         expect([...trame.charge]).toEqual([1, 2]);
@@ -102,8 +102,8 @@ describe('serveur du protocole fichiers', () => {
         // aiguillage sur le seul drapeau binaire prenait toute trame pour une
         // entrée souris.
         const journal = vi.fn();
-        const serveur = creerServeur(fauxAdaptateur(), journal);
-        for (const type of [TYPE_ENTREES, TYPE_META, TYPE_DONNEES, TYPE_ECHEC]) {
+        const serveur = createServer(fauxAdaptateur(), journal);
+        for (const type of [TYPE_ENTREES, TYPE_META, TYPE_DATA, TYPE_ECHEC]) {
             expect(await serveur.traiter(encoder(type, 77, {}))).toBeNull();
         }
         expect(journal).toHaveBeenCalledTimes(4);
@@ -124,7 +124,7 @@ describe('serveur du protocole fichiers', () => {
 
     it('un type inconnu est ignoré, et le journal le distingue d’une réponse', async () => {
         const journal = vi.fn();
-        const serveur = creerServeur(fauxAdaptateur(), journal);
+        const serveur = createServer(fauxAdaptateur(), journal);
         expect(await serveur.traiter(encoder(200, 9, {}))).toBeNull();
         expect(journal.mock.calls[0][0]).toMatch(/type inconnu/);
         expect(journal.mock.calls[0][0]).toMatch(/200/);
@@ -132,7 +132,7 @@ describe('serveur du protocole fichiers', () => {
 
     it('une trame illisible est ignorée plutôt que de faire tomber le canal', async () => {
         const journal = vi.fn();
-        const serveur = creerServeur(fauxAdaptateur(), journal);
+        const serveur = createServer(fauxAdaptateur(), journal);
         const mauvaise = new Uint8Array(encoder(TYPE_LISTER, 1, { chemin: '' }));
         mauvaise[0] = 2; // version 2
         expect(await serveur.traiter(mauvaise.buffer as ArrayBuffer)).toBeNull();
@@ -140,10 +140,10 @@ describe('serveur du protocole fichiers', () => {
     });
 
     it('🔴 un échec de l’adaptateur devient un CODE, jamais une chaîne', async () => {
-        const serveur = creerServeur(
+        const serveur = createServer(
             fauxAdaptateur({
                 attributs: async () => {
-                    throw new EchecFichiers('acces-refuse', 'permission révoquée');
+                    throw new FilesError('acces-refuse', 'permission révoquée');
                 },
             }),
         );
@@ -157,7 +157,7 @@ describe('serveur du protocole fichiers', () => {
         // 🔴 Ne rien répondre laisserait la commande en vol côté agent jusqu'à
         // son expiration : l'Explorateur se figerait sur une panne qui, elle,
         // est immédiate.
-        const serveur = creerServeur(
+        const serveur = createServer(
             fauxAdaptateur({
                 lister: async () => {
                     throw new Error('quelque chose a explosé');
@@ -171,7 +171,7 @@ describe('serveur du protocole fichiers', () => {
     });
 
     it('un en-tête malformé est REFUSÉ, et la corrélation est rendue', async () => {
-        const serveur = creerServeur(fauxAdaptateur());
+        const serveur = createServer(fauxAdaptateur());
         // `chemin` absent : le parseur du protocole partagé lève.
         const trame = decoder((await serveur.traiter(encoder(TYPE_LISTER, 8, { rien: 1 })))!);
         expect(trame.type).toBe(TYPE_ECHEC);
@@ -183,14 +183,14 @@ describe('serveur du protocole fichiers', () => {
 describe('les verbes d’écriture de F2', () => {
     it('🔴 une écriture reçoit TOUJOURS un FAIT ou un ECHEC', async () => {
         // Ne rien rendre laisserait la commande en vol côté agent jusqu'à
-        // `DELAI_ECRIRE` — trente secondes pendant lesquelles le fil d'écriture
+        // `WRITE_TIMEOUT` — trente secondes pendant lesquelles le fil d'écriture
         // ne pousserait plus rien, et le compteur de dues ne bougerait pas.
         const ecrivain = fauxEcrivain();
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const serveur = createServer(fauxAdaptateur(), () => {}, { ecrivain });
         const trame = decoder(
             (await serveur.traiter(
                 encoder(
-                    TYPE_ECRIRE,
+                    TYPE_WRITE,
                     7,
                     { chemin: 'note.txt', position: 0, longueur: 3, premier: true, dernier: true },
                     new Uint8Array([1, 2, 3]),
@@ -204,9 +204,9 @@ describe('les verbes d’écriture de F2', () => {
 
     it('une création reçoit un FAIT', async () => {
         const ecrivain = fauxEcrivain();
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const serveur = createServer(fauxAdaptateur(), () => {}, { ecrivain });
         const trame = decoder(
-            (await serveur.traiter(encoder(TYPE_CREER, 8, { chemin: 'dossier', repertoire: true })))!,
+            (await serveur.traiter(encoder(TYPE_CREATE, 8, { chemin: 'dossier', repertoire: true })))!,
         );
         expect(trame.type).toBe(TYPE_FAIT);
         expect(ecrivain.vus).toEqual(['creer dossier true']);
@@ -217,14 +217,14 @@ describe('les verbes d’écriture de F2', () => {
         // exactement le défaut de `web/index.js:669`, qui émettait
         // `JSON.stringify(e)` et rendait `"{}"` pour toute `Error`.
         const ecrivain = fauxEcrivain({
-            ecrire: async () => {
-                throw new EchecFichiers('casse-ambigue', 'homonyme');
+            write: async () => {
+                throw new FilesError('casse-ambigue', 'homonyme');
             },
         });
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const serveur = createServer(fauxAdaptateur(), () => {}, { ecrivain });
         const trame = decoder(
             (await serveur.traiter(
-                encoder(TYPE_ECRIRE, 9, {
+                encoder(TYPE_WRITE, 9, {
                     chemin: 'a.txt',
                     position: 0,
                     longueur: 0,
@@ -241,10 +241,10 @@ describe('les verbes d’écriture de F2', () => {
         // PAS `interne` : « ce lecteur est en lecture seule » et « le lecteur
         // est en panne » n'appellent pas le même geste, et c'est tout l'objet
         // de `CodeEchec`.
-        const serveur = creerServeur(fauxAdaptateur());
+        const serveur = createServer(fauxAdaptateur());
         const trame = decoder(
             (await serveur.traiter(
-                encoder(TYPE_ECRIRE, 1, {
+                encoder(TYPE_WRITE, 1, {
                     chemin: 'a.txt',
                     position: 0,
                     longueur: 0,
@@ -261,11 +261,11 @@ describe('les verbes d’écriture de F2', () => {
         // est le genre de divergence qu'aucun contrôle en aval ne rattrape :
         // seul un condensat le dirait.
         const ecrivain = fauxEcrivain();
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const serveur = createServer(fauxAdaptateur(), () => {}, { ecrivain });
         const trame = decoder(
             (await serveur.traiter(
                 encoder(
-                    TYPE_ECRIRE,
+                    TYPE_WRITE,
                     2,
                     { chemin: 'a.txt', position: 0, longueur: 99, premier: true, dernier: true },
                     new Uint8Array([1, 2, 3]),
@@ -287,16 +287,16 @@ describe('la dénonciation d’un échec d’écriture', () => {
         // concerne.
         const vus: Array<[string, string]> = [];
         const ecrivain = fauxEcrivain({
-            ecrire: async () => {
-                throw new EchecFichiers('disque-plein', 'plus de place');
+            write: async () => {
+                throw new FilesError('disque-plein', 'plus de place');
             },
         });
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             ecrivain,
             onEchecEcriture: (chemin, code) => vus.push([chemin, code]),
         });
         await serveur.traiter(
-            encoder(TYPE_ECRIRE, 4, {
+            encoder(TYPE_WRITE, 4, {
                 chemin: 'dossier/rapport.docx',
                 position: 0,
                 longueur: 0,
@@ -311,11 +311,11 @@ describe('la dénonciation d’un échec d’écriture', () => {
         // Deviner un chemin qu'on n'a pas lu serait pire que se taire : la
         // page-shell nommerait un fichier au hasard.
         const vus: unknown[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             ecrivain: fauxEcrivain(),
             onEchecEcriture: (...a) => vus.push(a),
         });
-        await serveur.traiter(encoder(TYPE_ECRIRE, 5, { rien: 'du tout' }));
+        await serveur.traiter(encoder(TYPE_WRITE, 5, { rien: 'du tout' }));
         expect(vus).toEqual([]);
     });
 });
@@ -330,7 +330,7 @@ function fauxMutateur(surcharge: Partial<Mutateur> = {}): Mutateur & { vus: stri
             vus.push(`renommer ${de} -> ${vers} ${repertoire}`);
             return { parMove: true, octets: 0, entrees: 0 };
         },
-        async supprimer(chemin, repertoire) {
+        async remove(chemin, repertoire) {
             vus.push(`supprimer ${chemin} ${repertoire}`);
         },
         ...surcharge,
@@ -345,7 +345,7 @@ describe('les deux verbes de F3', () => {
         // en majuscules depuis F1, et que F3 ne relâche PAS : `TYPE_RENOMMER`
         // est une REQUÊTE, pas une annonce.
         const mutateur = fauxMutateur();
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, { mutateur });
+        const serveur = createServer(fauxAdaptateur(), () => {}, { mutateur });
         const reponse = await serveur.traiter(
             encoder(TYPE_RENOMMER, 11, { de: 'a.txt', vers: 'b.txt', repertoire: false }),
         );
@@ -356,9 +356,9 @@ describe('les deux verbes de F3', () => {
 
     it('🔴 SUPPRIMER répond TOUJOURS — par FAIT', async () => {
         const mutateur = fauxMutateur();
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, { mutateur });
+        const serveur = createServer(fauxAdaptateur(), () => {}, { mutateur });
         const reponse = await serveur.traiter(
-            encoder(TYPE_SUPPRIMER, 12, { chemin: 'd', repertoire: true }),
+            encoder(TYPE_DELETE, 12, { chemin: 'd', repertoire: true }),
         );
         expect(reponse).not.toBeNull();
         expect(decoder(reponse!).type).toBe(TYPE_FAIT);
@@ -369,7 +369,7 @@ describe('les deux verbes de F3', () => {
         // Un lecteur monté sans mutateur et un lecteur en panne n'appellent pas
         // le même geste — le contre-exemple est l'ancien pont, qui rendait
         // `EPERM` à neuf sites distincts.
-        const serveur = creerServeur(fauxAdaptateur(), () => {});
+        const serveur = createServer(fauxAdaptateur(), () => {});
         const trame = decoder(
             (await serveur.traiter(
                 encoder(TYPE_RENOMMER, 13, { de: 'a', vers: 'b', repertoire: false }),
@@ -384,10 +384,10 @@ describe('les deux verbes de F3', () => {
         const vus: Array<[string, string]> = [];
         const mutateur = fauxMutateur({
             renommer: async () => {
-                throw new EchecFichiers('deja-present', 'déjà là');
+                throw new FilesError('deja-present', 'déjà là');
             },
         });
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             mutateur,
             onEchecMutation: (quoi, code) => vus.push([quoi, code]),
         });
@@ -403,15 +403,15 @@ describe('les deux verbes de F3', () => {
     it('un échec de SUPPRESSION nomme le chemin', async () => {
         const vus: Array<[string, string]> = [];
         const mutateur = fauxMutateur({
-            supprimer: async () => {
-                throw new EchecFichiers('repertoire-non-vide', 'pas vide');
+            remove: async () => {
+                throw new FilesError('repertoire-non-vide', 'pas vide');
             },
         });
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             mutateur,
             onEchecMutation: (quoi, code) => vus.push([quoi, code]),
         });
-        await serveur.traiter(encoder(TYPE_SUPPRIMER, 15, { chemin: 'd', repertoire: true }));
+        await serveur.traiter(encoder(TYPE_DELETE, 15, { chemin: 'd', repertoire: true }));
         expect(vus).toEqual([['d', 'repertoire-non-vide']]);
     });
 
@@ -422,7 +422,7 @@ describe('les deux verbes de F3', () => {
         const parCopie = fauxMutateur({
             renommer: async () => ({ parMove: false, octets: 4096, entrees: 3 }),
         });
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             mutateur: parCopie,
             onRenommagePorCopie: (de, vers, octets, entrees) =>
                 vus.push([de, vers, octets, entrees]),
@@ -435,7 +435,7 @@ describe('les deux verbes de F3', () => {
         // Et sur la branche `move`, RIEN n'est instrumenté : il n'y a rien à
         // mesurer.
         vus.length = 0;
-        const parMove = creerServeur(fauxAdaptateur(), () => {}, {
+        const parMove = createServer(fauxAdaptateur(), () => {}, {
             mutateur: fauxMutateur(),
             onRenommagePorCopie: (de, vers, octets, entrees) =>
                 vus.push([de, vers, octets, entrees]),

@@ -56,12 +56,12 @@ pub(super) const SOUFFLE_CREATION_INSTANCE: Duration = Duration::from_millis(200
 pub(super) fn connecter(tube: HANDLE) -> Result<()> {
     match unsafe { ConnectNamedPipe(tube, None) } {
         Ok(()) => Ok(()),
-        Err(erreur) if erreur.code() == HRESULT::from_win32(ERROR_PIPE_CONNECTED.0) => Ok(()),
-        Err(erreur) => Err(erreur).context("attente d'un enfant"),
+        Err(error) if error.code() == HRESULT::from_win32(ERROR_PIPE_CONNECTED.0) => Ok(()),
+        Err(error) => Err(error).context("attente d'un enfant"),
     }
 }
 
-pub(super) fn creer_instance() -> Result<HANDLE> {
+pub(super) fn create_instance() -> Result<HANDLE> {
     let nom: Vec<u16> = NOM_TUBE.encode_utf16().chain(std::iter::once(0)).collect();
     let tube = unsafe {
         CreateNamedPipeW(

@@ -160,7 +160,7 @@ describe('protocole de contrôle', () => {
 
     // 🔴 Le témoin d'EXÉCUTION de la dérivation de `TYPES_AGENT`. Les DIX
     // valeurs sont écrites À LA MAIN ici, précisément pour que le test soit
-    // indépendant de la table qu'il juge : une clé de trop dans `TOUS_AGENT`
+    // indépendant de la table qu'il juge : une clé de trop dans `ALL_AGENT`
     // le fait tomber, et une clé manquante fait d'abord tomber `tsc`.
     //
     // ⚠️ **Neuf jusqu'au sous-bloc A1, DIX depuis** — et le garde `tsc` a été
@@ -180,7 +180,7 @@ describe('protocole de contrôle', () => {
     });
 
     // Sous-bloc A1 : la variante d'accent traverse `parseAgentControl`.
-    // ROUGE si l'interface, l'union ou `TOUS_AGENT` manquaient — les trois
+    // ROUGE si l'interface, l'union ou `ALL_AGENT` manquaient — les trois
     // sont éprouvés d'un coup ici, à l'EXÉCUTION.
     it('analyse un accent', () => {
         const raw = JSON.stringify({ v: CONTROL_VERSION, type: 'accent', couleur: '#7aa2f7' });
@@ -224,7 +224,7 @@ describe('protocole de contrôle', () => {
     });
 
     it("mic-state figure dans TYPES_AGENT, donc dans la dérivation de l'union", () => {
-        // Le témoin d'EXÉCUTION de `TOUS_AGENT` : `tsc` garde déjà la liste,
+        // Le témoin d'EXÉCUTION de `ALL_AGENT` : `tsc` garde déjà la liste,
         // mais un test ne peut pas constater une erreur de compilation.
         expect(TYPES_AGENT).toContain('mic-state');
     });

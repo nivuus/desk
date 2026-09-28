@@ -15,12 +15,12 @@ impl Lanceur for LanceurDeProcessus {
             .env("LOCAL_IP", &self.local_ip)
             .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
             .env("SORTIE_DXGI", &consigne.nom_sortie)
-            // The RETAINED size (`Consigne::taille`), not the output's
+            // The RETAINED size (`Consigne::size`), not the output's
             // — see its doc. Read by `demarrage`, repeated to the capturer at
             // attach time (task 9 of sub-block D10).
             .env(
                 "TAILLE_FENETRE",
-                format!("{}x{}", consigne.taille.0, consigne.taille.1),
+                format!("{}x{}", consigne.size.0, consigne.size.1),
             )
             // Above all NOT `SUPERVISEUR`: a child inheriting the
             // variable would take itself for a supervisor and launch its
@@ -92,7 +92,7 @@ impl Lanceur for LanceurDeProcessus {
         // returning `Err` — otherwise the child would run untracked and its
         // virtual output would stay captive from the pool of ten.
         let handle = HANDLE(enfant.as_raw_handle());
-        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
+        if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             if let Err(mise_a_mort) = enfant.kill() {
                 tracing::error!(
                     pid, %mise_a_mort,
@@ -100,7 +100,7 @@ impl Lanceur for LanceurDeProcessus {
                 );
             }
             let _ = enfant.wait();
-            return Err(anyhow::Error::new(erreur)
+            return Err(anyhow::Error::new(error)
                 .context(format!("rattachement de l'enfant {pid} au job object")));
         }
 
@@ -134,7 +134,7 @@ impl Lanceur for LanceurDeProcessus {
                 enfants.remove(&pid);
                 false
             }
-            Err(erreur) => {
+            Err(error) => {
                 // An unreadable state is NOT a death: declaring it dead would
                 // destroy the output of a child still capturing.
                 //
@@ -143,7 +143,7 @@ impl Lanceur for LanceurDeProcessus {
                 if !enfant.etat_illisible_signale {
                     enfant.etat_illisible_signale = true;
                     tracing::warn!(
-                        pid, %erreur,
+                        pid, %error,
                         "état de l'enfant illisible, tenu pour vivant \
                          (signalé une seule fois tant que l'état reste illisible)"
                     );

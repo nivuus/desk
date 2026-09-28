@@ -114,7 +114,7 @@ pub struct FenetreDeReprise {
 }
 
 impl FenetreDeReprise {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self {
             ouverte_a: None,
             derniere_tentative: None,
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn la_premiere_perte_fait_rouvrir_tout_de_suite() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         assert_eq!(fenetre.tenter(t(base, 0)), Tentative::Rouvrir);
         assert_eq!(fenetre.tentatives(), 1);
     }
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn une_seconde_tentative_trop_proche_fait_patienter() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         assert_eq!(fenetre.tenter(t(base, 5)), Tentative::Patienter);
         assert_eq!(fenetre.tenter(t(base, 20)), Tentative::Patienter);
@@ -230,9 +230,9 @@ mod tests {
     }
 
     #[test]
-    fn le_pas_ecoule_fait_rouvrir_a_nouveau() {
+    fn the_elapsed_step_reopens_again() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         let apres_le_pas = PAS_REPRISE.as_millis() as u64;
         assert_eq!(fenetre.tenter(t(base, apres_le_pas)), Tentative::Rouvrir);
@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn la_fenetre_expire_au_bout_de_sa_duree() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         let apres = DUREE_FENETRE_REPRISE.as_millis() as u64 + 1;
         assert_eq!(fenetre.tenter(t(base, apres)), Tentative::Expiree);
@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn l_expiration_se_compte_depuis_l_ouverture_et_non_depuis_la_derniere_tentative() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         let pas = PAS_REPRISE.as_millis() as u64;
         let mut instant = 0;
         while instant < DUREE_FENETRE_REPRISE.as_millis() as u64 {
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn un_succes_referme_la_fenetre_qui_rouvre_alors_pleine() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         fenetre.succes();
         assert_eq!(fenetre.tentatives(), 0);

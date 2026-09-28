@@ -105,16 +105,16 @@ pub fn tourner(
 
     let mut sorties = Sorties::nouvelles(pilote);
     let mut enfants = Enfants::nouveaux(lanceur);
-    let mut table = Table::avec_prefixe(CAPACITE, prefixe);
+    let mut table = Table::with_prefix(CAPACITE, prefixe);
 
     // The capturer, before any window — `surveillance_capteur::EtatCapteur`.
-    let mut etat_capteur = surveillance_capteur::EtatCapteur::demarrer(lanceur)?;
+    let mut etat_capteur = surveillance_capteur::EtatCapteur::start(lanceur)?;
     // The files bridge, right after — and its startup IS NOT FATAL, unlike
     // the capturer's: no `?` here, and it is not an
     // oversight. Framing §4 principle 4 requires that a failure on the files side
-    // never touches the video stream; `EtatPont::demarrer` therefore returns no
+    // never touches the video stream; `EtatPont::start` therefore returns no
     // `Result`, and retries indefinitely from `surveiller`.
-    let mut etat_pont = surveillance_pont::EtatPont::demarrer(lanceur);
+    let mut etat_pont = surveillance_pont::EtatPont::start(lanceur);
     // DXGI outputs already assigned, so that two windows with the same viewport are not
     // given the same one. The table already carries the
     // session -> output mapping; this is only the set of occupied outputs, by
@@ -126,8 +126,8 @@ pub fn tourner(
     // Windows already open: the hook only reports changes.
     let mut effets = recenser_les_fenetres_existantes(&mut table);
 
-    let mut dernier_ping = std::time::Instant::now();
-    let mut dernier_controle_placement = std::time::Instant::now();
+    let mut last_ping = std::time::Instant::now();
+    let mut last_placement_check = std::time::Instant::now();
     loop {
         // 1. Execute pending effects.
         let a_faire = std::mem::take(&mut effets);
@@ -139,13 +139,13 @@ pub fn tourner(
                         titre,
                     });
                 }
-                Effet::CreerSortie {
+                Effet::CreateOutput {
                     session,
                     titre,
                     largeur,
                     hauteur,
                 } => {
-                    effets.extend(creer_sortie(
+                    effets.extend(create_output(
                         pilote,
                         &mut sorties,
                         &mut table,
@@ -158,28 +158,28 @@ pub fn tourner(
                             hauteur,
                         },
                     ));
-                    // `creer_sortie` beat the watchdog during its
+                    // `create_output` beat the watchdog during its
                     // attach wait: do not count it again as late.
-                    dernier_ping = std::time::Instant::now();
+                    last_ping = std::time::Instant::now();
                 }
                 Effet::LancerEnfant {
                     session,
                     fenetre,
                     nom_sortie,
-                    taille,
+                    size,
                 } => {
                     // The path reusing a retained output does not go
-                    // through `creer_sortie`, so the window was not
+                    // through `create_output`, so the window was not
                     // placed again. A single enumeration, on this arm only.
-                    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
-                    replacer_si_besoin(&table, &session, &toutes);
-                    if let Err(erreur) = enfants.lancer(Consigne {
+                    let all = enumerer_sorties_silencieux().unwrap_or_default();
+                    replacer_si_besoin(&table, &session, &all);
+                    if let Err(error) = enfants.lancer(Consigne {
                         session: session.clone(),
                         fenetre: fenetre.0,
                         nom_sortie,
-                        taille,
+                        size,
                     }) {
-                        tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
+                        tracing::error!(session = %session.0, %error, "lancement de l'enfant échoué");
                         // The `Lanceur` trait's contract is atomic: `Err`
                         // means no process is running. Nothing to kill
                         // then; the output, for its part, is RETAINED by `enfant_mort`
@@ -215,11 +215,11 @@ pub fn tourner(
         }
 
         // 2. Beat the driver's watchdog.
-        if dernier_ping.elapsed() >= PERIODE_PING {
-            if let Err(erreur) = pilote.pinguer() {
-                tracing::warn!(%erreur, "ping du chien de garde du pilote échoué");
+        if last_ping.elapsed() >= PERIODE_PING {
+            if let Err(error) = pilote.pinguer() {
+                tracing::warn!(%error, "ping du chien de garde du pilote échoué");
             }
-            dernier_ping = std::time::Instant::now();
+            last_ping = std::time::Instant::now();
         }
 
         // 3. Window events.
@@ -361,8 +361,8 @@ pub fn tourner(
         // pixel of movement, on all desktop windows, and would drown
         // the hook's channel for a need that tolerates a second of delay
         // very well.
-        if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
-            dernier_controle_placement = std::time::Instant::now();
+        if last_placement_check.elapsed() >= PERIODE_PLACEMENT {
+            last_placement_check = std::time::Instant::now();
             controler_le_placement(&table);
             // 7. Windows whose child is dead but which still exist
             // on the Windows side: we offer them again rather than let them
@@ -432,4 +432,4 @@ mod surveillance_pont;
 // scheme as the two modules above, and before the addition that would
 // otherwise have made it cross the ceiling.
 mod creation_sortie;
-use creation_sortie::{creer_sortie, rendre_la_sortie};
+use creation_sortie::{create_output, rendre_la_sortie};

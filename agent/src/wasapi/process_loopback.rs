@@ -48,7 +48,7 @@ use crate::opus::{CHANNELS, SAMPLE_RATE_HZ};
 /// COM callback of `ActivateAudioInterfaceAsync`, which runs on a thread of the
 /// COM thread pool — not necessarily the one that launched the call.
 struct EtatActivation {
-    resultat: Mutex<Option<ResultatActivation>>,
+    result: Mutex<Option<ActivationResult>>,
     signal: Condvar,
 }
 
@@ -65,8 +65,8 @@ struct EtatActivation {
 /// Passing this value to the calling thread, once the callback has
 /// signalled through the `Condvar` below, therefore violates no COM
 /// apartment constraint.
-struct ResultatActivation(Result<IAudioClient>);
-unsafe impl Send for ResultatActivation {}
+struct ActivationResult(Result<IAudioClient>);
+unsafe impl Send for ActivationResult {}
 
 /// COM completion handler for `ActivateAudioInterfaceAsync`.
 ///
@@ -83,7 +83,7 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for GestionnaireCompletion_Im
         &self,
         activateoperation: Ref<'_, IActivateAudioInterfaceAsyncOperation>,
     ) -> windows::core::Result<()> {
-        let resultat: Result<IAudioClient> = (|| {
+        let result: Result<IAudioClient> = (|| {
             let operation = activateoperation
                 .ok()
                 .context("le rappel d'activation n'a rendu aucune opération")?;
@@ -98,8 +98,8 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for GestionnaireCompletion_Im
                 .context("l'interface activée n'est pas un IAudioClient")
         })();
 
-        let mut verrou = self.etat.resultat.lock().unwrap_or_else(|e| e.into_inner());
-        *verrou = Some(ResultatActivation(resultat));
+        let mut verrou = self.etat.result.lock().unwrap_or_else(|e| e.into_inner());
+        *verrou = Some(ActivationResult(result));
         self.etat.signal.notify_one();
         Ok(())
     }
@@ -181,7 +181,7 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
         };
 
         let etat = Arc::new(EtatActivation {
-            resultat: Mutex::new(None),
+            result: Mutex::new(None),
             signal: Condvar::new(),
         });
         let gestionnaire: IActivateAudioInterfaceCompletionHandler =
@@ -197,15 +197,15 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
         )
         .context("appel à ActivateAudioInterfaceAsync")?;
 
-        let verrou = etat.resultat.lock().unwrap_or_else(|e| e.into_inner());
+        let verrou = etat.result.lock().unwrap_or_else(|e| e.into_inner());
         let (mut verrou, _attente) = etat
             .signal
             .wait_timeout_while(verrou, DELAI_RAPPEL_ACTIVATION, |r| r.is_none())
             .unwrap_or_else(|e| e.into_inner());
 
         match verrou.take() {
-            Some(ResultatActivation(Ok(client))) => Ok(client),
-            Some(ResultatActivation(Err(e))) => Err(e).context("activation refusée"),
+            Some(ActivationResult(Ok(client))) => Ok(client),
+            Some(ActivationResult(Err(e))) => Err(e).context("activation refusée"),
             None => bail!(
                 "aucun rappel d'activation reçu en {DELAI_RAPPEL_ACTIVATION:?} pour le PID {pid}"
             ),
@@ -251,7 +251,7 @@ pub struct CaptureProcessus {
     /// `IAudioClient::Start` on an already started stream returns
     /// `AUDCLNT_E_NOT_STOPPED`, and arbitration can re-emit an identical
     /// order after a channel reattachment.
-    demarre: bool,
+    started: bool,
 }
 
 // SAFETY: same reasoning as `unsafe impl Send for LoopbackCapture`
@@ -312,7 +312,7 @@ impl CaptureProcessus {
                 client,
                 capture,
                 description,
-                demarre: false,
+                started: false,
             })
         }
     }
@@ -322,12 +322,12 @@ impl CaptureProcessus {
     }
 
     /// Starts the stream. Idempotent: a second call does nothing.
-    pub fn demarrer(&mut self) -> Result<()> {
-        if self.demarre {
+    pub fn start(&mut self) -> Result<()> {
+        if self.started {
             return Ok(());
         }
         unsafe { self.client.Start() }.context("Start du client de process loopback")?;
-        self.demarre = true;
+        self.started = true;
         Ok(())
     }
 
@@ -338,11 +338,11 @@ impl CaptureProcessus {
     /// next toggle. That is the whole point of the approach chosen in §4.4 of
     /// the spec.
     pub fn arreter(&mut self) -> Result<()> {
-        if !self.demarre {
+        if !self.started {
             return Ok(());
         }
         unsafe { self.client.Stop() }.context("Stop du client de process loopback")?;
-        self.demarre = false;
+        self.started = false;
         Ok(())
     }
 
@@ -360,11 +360,11 @@ impl CaptureProcessus {
                 return Ok(None);
             }
 
-            let mut donnees: *mut u8 = std::ptr::null_mut();
+            let mut data: *mut u8 = std::ptr::null_mut();
             let mut images = 0u32;
             let mut drapeaux = 0u32;
             self.capture
-                .GetBuffer(&mut donnees, &mut images, &mut drapeaux, None, None)
+                .GetBuffer(&mut data, &mut images, &mut drapeaux, None, None)
                 .context("GetBuffer sur le process loopback")?;
 
             let echantillons = images as usize * CHANNELS;
@@ -373,7 +373,7 @@ impl CaptureProcessus {
                 // buffer: reading its bytes would return anything.
                 vec![0i16; echantillons]
             } else {
-                std::slice::from_raw_parts(donnees as *const i16, echantillons).to_vec()
+                std::slice::from_raw_parts(data as *const i16, echantillons).to_vec()
             };
 
             self.capture

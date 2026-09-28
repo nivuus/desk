@@ -32,7 +32,7 @@
 //! ⚠️ **THIS MODULE HAS NOT CHANGED FOR ALL THAT, and it is deliberate**: it
 //! still preserves the case as ProjFS delivered it. It is the BROWSER
 //! that folds, because **it alone sees the local workstation**. What F3 adds
-//! here is [`avec_dernier_composant`], which brings the canonical name down
+//! here is [`with_last_component`], which brings the canonical name down
 //! to `PrjWritePlaceholderInfo`.
 //!
 //! ⚠️ **AND THE VM HALF OF THE DEFECT IS NOT REPAIRABLE**, neither here nor elsewhere:
@@ -70,7 +70,7 @@
 pub enum CheminRefuse {
     /// A `..` component — the traversal spec §4.4 names.
     Remontee,
-    /// An NTFS alternate data stream (`fichier.txt:Zone.Identifier`).
+    /// An NTFS alternate data stream (`file.txt:Zone.Identifier`).
     FluxAlternatif,
     /// A reserved device name (`CON`, `NUL`, `COM1`…).
     NomReserve,
@@ -183,7 +183,7 @@ mod tests;
 /// component already equal to `nom`. **The caller then keeps the original bytes**,
 /// which preserves the property F1 had given itself: not reconverting a
 /// path we have no reason to touch.
-pub fn avec_dernier_composant(chemin_projfs: &str, nom: &str) -> Option<String> {
+pub fn with_last_component(chemin_projfs: &str, nom: &str) -> Option<String> {
     if chemin_projfs.is_empty() || nom.is_empty() {
         return None;
     }

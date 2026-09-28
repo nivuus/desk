@@ -59,7 +59,7 @@ use crate::wasapi_format;
 /// Duration of the render buffer requested from WASAPI, in 100 ns units. 40 ms.
 ///
 /// ⚠️ **NOT CALIBRATED**, and it joins the list `CLAUDE.md` keeps
-/// (`BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `TAILLE_MAX_SORTIE`…).
+/// (`BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `MAX_OUTPUT_SIZE`…).
 /// It is not a neutral duration: in steady state the buffer stays **full**
 /// — `remplir` never blocks and fills with silence, so all the room
 /// returned by `attendre_place` is consumed at each round —, and this duration
@@ -172,7 +172,7 @@ pub struct RenduWasapi {
     /// `None` en mode [`Reveil::Echeance`].
     evenement: Option<HANDLE>,
     /// `GetBufferSize()`, in frames per channel.
-    taille_tampon: u32,
+    buffer_size: u32,
     canaux: usize,
     description: String,
     reveil: Reveil,
@@ -219,13 +219,13 @@ impl RenduWasapi {
                 // reference on `SubFormat` — which `==` on a GUID does —
                 // is an unaligned access, hence undefined behaviour.
                 let ext = mix.0 as *const WAVEFORMATEXTENSIBLE;
-                let sous_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
-                sous_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
+                let sub_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
+                sub_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
             } else {
                 mix.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
             };
 
-            wasapi_format::verifier(frequence, canaux, bits, flottant)?;
+            wasapi_format::verify(frequence, canaux, bits, flottant)?;
             let description = wasapi_format::decrire(frequence, canaux, bits, flottant);
 
             // Decision 8: we ATTEMPT the event, we do not assume it.
@@ -247,7 +247,7 @@ impl RenduWasapi {
                 Ok(()) => (client, Reveil::Evenement),
                 Err(e) => {
                     tracing::warn!(
-                        erreur = %e,
+                        error = %e,
                         "AUDCLNT_STREAMFLAGS_EVENTCALLBACK refuse par le cable : repli sur une \
                          boucle a echeance (spec §6 le predisait supporte, ce n'etait qu'une \
                          prediction)"
@@ -283,7 +283,7 @@ impl RenduWasapi {
                 None
             };
 
-            let taille_tampon = client
+            let buffer_size = client
                 .GetBufferSize()
                 .context("lecture de la taille du tampon de rendu")?;
             let rendu: IAudioRenderClient = client
@@ -295,7 +295,7 @@ impl RenduWasapi {
                 client,
                 rendu,
                 evenement,
-                taille_tampon,
+                buffer_size,
                 canaux,
                 description,
                 reveil,
@@ -365,7 +365,7 @@ impl RenduWasapi {
         // SAFETY: `client` comes from a successful `Initialize`.
         let occupe = unsafe { self.client.GetCurrentPadding() }
             .context("lecture de l'occupation du tampon de rendu")?;
-        Ok(self.taille_tampon.saturating_sub(occupe) as usize)
+        Ok(self.buffer_size.saturating_sub(occupe) as usize)
     }
 
     /// Writes `trames` per channel from `pcm` (interleaved stereo, `f32`).
@@ -373,7 +373,7 @@ impl RenduWasapi {
     /// `pcm` must carry at least `trames * canaux` samples; the format
     /// having been refused if it was not stereo 32-bit float
     /// (`wasapi/format.rs`), the copy is a `memcpy` and nothing else.
-    pub fn ecrire(&mut self, pcm: &[f32], trames: usize) -> Result<()> {
+    pub fn write(&mut self, pcm: &[f32], trames: usize) -> Result<()> {
         if trames == 0 {
             return Ok(());
         }

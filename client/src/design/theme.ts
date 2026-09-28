@@ -27,7 +27,7 @@
  * GALLERY — not a shell page opening N sessions through `window.open`. Whether the
  * theme reaches the PRODUCT's N windows stays unmeasured.
  *
- * ⚠️ "`surStockageModifie` writes nothing into the vault" is guaranteed by the
+ * ⚠️ "`onStorageChanged` writes nothing into the vault" is guaranteed by the
  * SIGNATURE, not by a test: the function receives no `Coffre`, so it
  * has nothing to write. A test of this property could never fail, and
  * this repository keeps no check unable to fail. It is what closes the
@@ -50,22 +50,22 @@ const ATTRIBUT = 'data-theme';
 
 export interface Coffre {
     getItem(cle: string): string | null;
-    setItem(cle: string, valeur: string): void;
+    setItem(cle: string, value: string): void;
 }
 
 export interface Racine {
-    setAttribute(nom: string, valeur: string): void;
+    setAttribute(nom: string, value: string): void;
     removeAttribute(nom: string): void;
 }
 
-function estTheme(valeur: string | null): valeur is Theme {
-    return valeur === 'systeme' || valeur === 'clair' || valeur === 'sombre';
+function estTheme(value: string | null): value is Theme {
+    return value === 'systeme' || value === 'clair' || value === 'sombre';
 }
 
 /** Reads the vault. Any unknown value — `null` included — returns `'systeme'`. */
 export function themeStocke(coffre: Coffre): Theme {
-    const valeur = coffre.getItem(CLE_THEME);
-    return estTheme(valeur) ? valeur : 'systeme';
+    const value = coffre.getItem(CLE_THEME);
+    return estTheme(value) ? value : 'systeme';
 }
 
 /**
@@ -101,7 +101,7 @@ export function choisir(coffre: Coffre, racine: Racine, theme: Theme): void {
  * neighbouring window receives that event. Without the filter, `data-theme`
  * would be a JWT.
  */
-export function surStockageModifie(racine: Racine, cle: string | null, valeur: string | null): void {
+export function onStorageChanged(racine: Racine, cle: string | null, value: string | null): void {
     if (cle !== CLE_THEME) return;
-    appliquer(racine, estTheme(valeur) ? valeur : 'systeme');
+    appliquer(racine, estTheme(value) ? value : 'systeme');
 }

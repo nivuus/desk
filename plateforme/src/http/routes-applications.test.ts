@@ -13,13 +13,13 @@ import { DELAI_LANCEMENT_MS, RegistreAgents, type SocketAgent } from '../agents/
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { parseDepuisLaPlateforme } from '../../../proto/ts/plateforme';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 // 🔴 LE HARNAIS EST EXTRAIT, ET IL L'A ÉTÉ AVANT L'ADDITION de la famille de
 // la route d'icône : ce fichier était à 480 lignes pour un plafond de 500.
 import {
     app,
     attribuer,
-    avec,
+    withIt,
     jetonDe,
     MS,
     ORIGINE,
@@ -27,7 +27,7 @@ import {
     poserVm,
     SECRET,
 } from './routes-harnais';
-import { signerUrlIcone, verifierUrlIcone } from '../apps/url-icone';
+import { signerUrlIcone, verifyIconUrl } from '../apps/url-icone';
 import { servirApplications } from './routes-applications';
 
 let base: Pilote | undefined;
@@ -78,9 +78,9 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
 function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAgent {
     return {
         readyState: 1,
-        send(donnees: string) {
+        send(data: string) {
             if (issue === null) return;
-            const ordre = parseDepuisLaPlateforme(donnees);
+            const ordre = parseDepuisLaPlateforme(data);
             if (ordre.type !== 'lancer') return;
             // Sur le tour de boucle suivant, comme le ferait un vrai socket.
             setTimeout(() => registre.resoudre(ordre.demande, issue), 0);
@@ -141,7 +141,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         // lirait alors le catalogue de son propre utilisateur, et le lancerait.
         const url = await servir('apps-jeton-agent');
         const r = await fetch(`${url}/applications?vm=v-1`, {
-            headers: avec(jetonDe('RhH1x2QmTz9kLpVbNc7dAw', 'agent')),
+            headers: withIt(jetonDe('RhH1x2QmTz9kLpVbNc7dAw', 'agent')),
         });
         expect(r.status).toBe(403);
         expect(await r.json()).toEqual({ refus: 'jeton-agent' });
@@ -154,7 +154,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const url = await servir('apps-jeton-expire');
         const jeton = jetonDe('u-1');
         maintenant = MS + 24 * 60 * 60 * 1000;
-        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jeton) });
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jeton) });
         expect(r.status).toBe(401);
         expect(await r.json()).toEqual({ refus: 'jeton-expire' });
     });
@@ -182,7 +182,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         await poserApp(base!, 'v-1', 'Firefox', 'c-1');
         await poserApp(base!, 'v-2', 'Excel', 'c-2');
 
-        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(u)) });
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jetonDe(u)) });
         expect(r.status).toBe(200);
         const corps = (await r.json()) as { applications: Array<{ nom: string }> };
         expect(corps.applications.map((a) => a.nom)).toEqual(['Firefox']);
@@ -201,7 +201,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         await poserApp(base!, 'v-1', 'Avec', 'c-1', empreinte, { pixels: 256 });
         await poserApp(base!, 'v-1', 'Sans', 'c-2');
 
-        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(u)) });
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jetonDe(u)) });
         const corps = (await r.json()) as {
             applications: Array<{ id: string; nom: string; icone_url: string | null }>;
         };
@@ -210,15 +210,15 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(parNom.get('Sans')!.icone_url).toBe(null);
         // Avec icône : EXACTEMENT ce que la règle du produit frappe — jamais
         // une URL réécrite ici, qui n'éprouverait qu'elle-même.
-        const avecIcone = parNom.get('Avec')!;
-        expect(avecIcone.icone_url).toBe(
-            signerUrlIcone(avecIcone.id, 'v-1', empreinte, SECRET, maintenant),
+        const withIcon = parNom.get('Avec')!;
+        expect(withIcon.icone_url).toBe(
+            signerUrlIcone(withIcon.id, 'v-1', empreinte, SECRET, maintenant),
         );
         // 🔴 ET ELLE SE VÉRIFIE : la signature frappée est celle que la route
         // d'icône acceptera. Un chaînage qui frapperait avec une AUTRE clé
         // rendrait une URL bien formée et systématiquement refusée.
-        const p = new URL(avecIcone.icone_url!, 'http://interne');
-        expect(verifierUrlIcone(avecIcone.id, p.searchParams, SECRET, maintenant)).toEqual({
+        const p = new URL(withIcon.icone_url!, 'http://interne');
+        expect(verifyIconUrl(withIcon.id, p.searchParams, SECRET, maintenant)).toEqual({
             ok: true,
             vm: 'v-1',
         });
@@ -243,10 +243,10 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const url = await servir('apps-etrangere');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
-        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(base!, 'autre@exemple.test', 'x', MS);
         await poserApp(base!, 'v-1', 'Firefox', 'c-1');
 
-        const entetes = avec(jetonDe(autre));
+        const entetes = withIt(jetonDe(autre));
         const etrangere = await fetch(`${url}/applications?vm=v-1`, { headers: entetes });
         const inconnue = await fetch(`${url}/applications?vm=jamais-vue`, { headers: entetes });
 
@@ -267,10 +267,10 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const url = await servir('apps-etrangere-muette');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
-        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(base!, 'autre@exemple.test', 'x', MS);
         await poserApp(base!, 'v-1', 'Firefox', 'c-1');
 
-        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(autre)) });
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jetonDe(autre)) });
         const corps = await r.text();
         expect(corps).toBe(JSON.stringify({ refus: 'vm-inconnue' }));
         expect(corps).not.toContain('etrangere');
@@ -292,9 +292,9 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const url = await servir('apps-journal-distingue');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
-        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(base!, 'autre@exemple.test', 'x', MS);
 
-        const entetes = avec(jetonDe(autre));
+        const entetes = withIt(jetonDe(autre));
         await fetch(`${url}/applications?vm=v-1`, { headers: entetes });
         const apresEtrangere = traces.join(' | ');
         await fetch(`${url}/applications?vm=jamais-vue`, { headers: entetes });
@@ -320,10 +320,10 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const url = await servir('apps-non-attribuee');
         await poserVm(base!, 'v-1');
-        const u = await creerUtilisateur(base!, 'quiconque@exemple.test', 'x', MS);
+        const u = await createUser(base!, 'quiconque@exemple.test', 'x', MS);
         await poserApp(base!, 'v-1', 'Firefox', 'c-1');
 
-        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(u)) });
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jetonDe(u)) });
         expect(r.status).toBe(200);
         expect(traces.join(' | ')).toContain('vm non attribuee');
         expect(traces.join(' | ')).toContain('v-1');
@@ -331,10 +331,10 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
 
     it('rend 404 sur une application INCONNUE', async () => {
         const url = await servir('apps-lancer-inconnue');
-        const u = await creerUtilisateur(base!, 'u@exemple.test', 'x', MS);
+        const u = await createUser(base!, 'u@exemple.test', 'x', MS);
         const r = await fetch(`${url}/application/jamais-vue/lancer`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
         });
         expect(r.status).toBe(404);
         expect(await r.json()).toEqual({ refus: 'application-inconnue' });
@@ -351,7 +351,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
 
         const r = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
         });
         expect(r.status).toBe(503);
         expect(await r.json()).toEqual({ refus: 'agent-injoignable' });
@@ -371,7 +371,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const debut = Date.now();
         const r = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
         });
         expect(r.status).toBe(504);
         expect(await r.json()).toEqual({ refus: 'delai' });
@@ -393,7 +393,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
 
         const r = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
         });
         expect(r.status).toBe(200);
         expect(await r.json()).toEqual({ issue: 'raccourci' });
@@ -412,7 +412,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
 
         const r = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
         });
         expect(r.status).toBe(200);
         expect(await r.json()).toEqual({ issue: 'echec' });
@@ -449,11 +449,11 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const url = await servir('apps-lancer-etrangere');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
-        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(base!, 'autre@exemple.test', 'x', MS);
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
         registre.inscrire('v-1', agentQuiRepond('raccourci'));
 
-        const entetes = avec(jetonDe(autre));
+        const entetes = withIt(jetonDe(autre));
         const etrangere = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
             headers: entetes,
@@ -477,8 +477,8 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
 
     it('exige le paramètre `vm`, et le dit', async () => {
         const url = await servir('apps-sans-vm');
-        const u = await creerUtilisateur(base!, 'u@exemple.test', 'x', MS);
-        const r = await fetch(`${url}/applications`, { headers: avec(jetonDe(u)) });
+        const u = await createUser(base!, 'u@exemple.test', 'x', MS);
+        const r = await fetch(`${url}/applications`, { headers: withIt(jetonDe(u)) });
         expect(r.status).toBe(400);
         expect(await r.json()).toEqual({ refus: 'vm-absente' });
     });

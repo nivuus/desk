@@ -6,7 +6,7 @@ fn morceaux(n: usize) -> VecDeque<Morceau> {
     (0..n)
         .map(|i| Morceau {
             position: (i as u64) * 4096,
-            longueur: 4096,
+            length: 4096,
         })
         .collect()
 }
@@ -18,7 +18,7 @@ fn morceaux(n: usize) -> VecDeque<Morceau> {
 /// precisely to prevent.
 #[test]
 fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
-    let mut f = Fenetre::nouvelle(morceaux(50));
+    let mut f = Fenetre::new(morceaux(50));
     let lot = f.a_demander();
     assert_eq!(lot.len(), MORCEAUX_EN_VOL);
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
@@ -50,7 +50,7 @@ fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
             "une fenêtre de 1 est INERTE : voir la doc du module"
         )
     };
-    let mut f = Fenetre::nouvelle(morceaux(50));
+    let mut f = Fenetre::new(morceaux(50));
     for _ in 0..20 {
         for m in f.a_demander() {
             let _ = m;
@@ -72,13 +72,13 @@ fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
 /// — the one F1 NEVER established.
 #[test]
 fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
-    let mut f = Fenetre::nouvelle(morceaux(10));
+    let mut f = Fenetre::new(morceaux(10));
     f.a_demander();
-    let erreur = f
+    let error = f
         .recu(4096)
         .expect_err("la position 4096 n'est pas la plus ancienne");
     assert_eq!(
-        erreur,
+        error,
         HorsOrdre {
             recue: 4096,
             attendue: Some(0)
@@ -95,7 +95,7 @@ fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
 /// we expected.
 #[test]
 fn une_position_inconnue_est_denoncee() {
-    let mut f = Fenetre::nouvelle(morceaux(2));
+    let mut f = Fenetre::new(morceaux(2));
     f.a_demander();
     assert_eq!(
         f.recu(999_999).expect_err("position jamais demandée"),
@@ -110,8 +110,8 @@ fn une_position_inconnue_est_denoncee() {
 /// `None` — which distinguishes "you answered me at the wrong moment" from "you
 /// answered me the wrong range".
 #[test]
-fn une_reponse_sans_rien_en_vol_est_denoncee_avec_attendue_none() {
-    let mut f = Fenetre::nouvelle(morceaux(1));
+fn a_reply_with_nothing_in_flight_is_reported_with_expected_none() {
+    let mut f = Fenetre::new(morceaux(1));
     f.a_demander();
     f.recu(0).expect("la seule");
     assert_eq!(
@@ -127,7 +127,7 @@ fn une_reponse_sans_rien_en_vol_est_denoncee_avec_attendue_none() {
 /// is requested, and not two.
 #[test]
 fn une_reception_libere_exactement_une_place() {
-    let mut f = Fenetre::nouvelle(morceaux(10));
+    let mut f = Fenetre::new(morceaux(10));
     f.a_demander();
     f.recu(0).unwrap();
     let lot = f.a_demander();
@@ -139,8 +139,8 @@ fn une_reception_libere_exactement_une_place() {
 /// Chunks are requested in **increasing** position order: it is
 /// what makes the ordering invariant true, and it is not assumed.
 #[test]
-fn les_morceaux_sont_demandes_dans_l_ordre_croissant() {
-    let mut f = Fenetre::nouvelle(morceaux(12));
+fn pieces_are_requested_in_increasing_order() {
+    let mut f = Fenetre::new(morceaux(12));
     let mut vues = Vec::new();
     while !f.terminee() {
         for m in f.a_demander() {
@@ -162,7 +162,7 @@ fn les_morceaux_sont_demandes_dans_l_ordre_croissant() {
 /// come, and the ProjFS command would expire on a perfectly read file.
 #[test]
 fn une_lecture_sans_morceau_est_terminee_d_emblee() {
-    let mut f = Fenetre::nouvelle(VecDeque::new());
+    let mut f = Fenetre::new(VecDeque::new());
     assert!(f.terminee());
     assert!(f.a_demander().is_empty());
     assert_eq!(f.en_vol_max(), 0);
@@ -176,7 +176,7 @@ fn une_lecture_sans_morceau_est_terminee_d_emblee() {
 /// four frames — without any error being returned.
 #[test]
 fn terminee_exige_que_le_vol_soit_vide_aussi() {
-    let mut f = Fenetre::nouvelle(morceaux(2));
+    let mut f = Fenetre::new(morceaux(2));
     f.a_demander();
     assert!(!f.terminee(), "deux morceaux sont en vol");
     f.recu(0).unwrap();

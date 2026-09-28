@@ -21,20 +21,20 @@ pub const SEUIL: u8 = 3;
 /// change. The caller therefore has nothing to memorise: it emits a message
 /// every time it is given `Some`.
 pub struct Hysteresis {
-    courant: bool,
+    current: bool,
     compte_contraire: u8,
 }
 
 impl Hysteresis {
     pub fn new(initial: bool) -> Self {
         Self {
-            courant: initial,
+            current: initial,
             compte_contraire: 0,
         }
     }
 
     pub fn observer(&mut self, observe: bool) -> Option<bool> {
-        if observe == self.courant {
+        if observe == self.current {
             self.compte_contraire = 0;
             return None;
         }
@@ -42,15 +42,15 @@ impl Hysteresis {
         if self.compte_contraire < SEUIL {
             return None;
         }
-        self.courant = observe;
+        self.current = observe;
         self.compte_contraire = 0;
         Some(observe)
     }
 
     /// Currently kept state. Useful to the polling thread to fill in the
     /// flag shared with the input injector.
-    pub fn courant(&self) -> bool {
-        self.courant
+    pub fn current(&self) -> bool {
+        self.current
     }
 }
 
@@ -143,7 +143,7 @@ mod win {
                     Ok((visible, handle)) => {
                         let forme = forme_de(handle, &table);
                         let bascule = hysteresis.observer(visible);
-                        let visible_retenu = hysteresis.courant();
+                        let visible_retenu = hysteresis.current();
                         let forme_changee = derniere_forme != Some(forme);
 
                         // Always memorise the observed shape, even if it
@@ -176,7 +176,7 @@ mod win {
                         // We stay absolute: never a blind switch.
                         if !echec_signale {
                             echec_signale = true;
-                            tracing::warn!(erreur = %e, "sondage du curseur indisponible (avertissement unique)");
+                            tracing::warn!(error = %e, "sondage du curseur indisponible (avertissement unique)");
                         }
                     }
                 }
@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn un_retour_a_l_etat_courant_remet_le_compteur_a_zero() {
+    fn a_return_to_the_current_state_resets_the_counter() {
         let mut h = Hysteresis::new(true);
         assert_eq!(h.observer(false), None);
         assert_eq!(h.observer(false), None);
@@ -240,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn bascule_dans_les_deux_sens() {
+    fn toggles_both_ways() {
         let mut h = Hysteresis::new(true);
         for _ in 0..SEUIL - 1 {
             h.observer(false);

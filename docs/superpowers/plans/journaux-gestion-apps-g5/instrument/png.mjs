@@ -29,13 +29,13 @@ function crc32(buf) {
     return (c ^ 0xffffffff) >>> 0;
 }
 
-function morceau(type, donnees) {
+function morceau(type, data) {
     const nom = Buffer.from(type, 'ascii');
-    const taille = Buffer.alloc(4);
-    taille.writeUInt32BE(donnees.length, 0);
+    const size = Buffer.alloc(4);
+    size.writeUInt32BE(data.length, 0);
     const somme = Buffer.alloc(4);
-    somme.writeUInt32BE(crc32(Buffer.concat([nom, donnees])), 0);
-    return Buffer.concat([taille, nom, donnees, somme]);
+    somme.writeUInt32BE(crc32(Buffer.concat([nom, data])), 0);
+    return Buffer.concat([size, nom, data, somme]);
 }
 
 /// Rend un PNG RGBA d'un aplat, de `cote` × `cote` pixels.

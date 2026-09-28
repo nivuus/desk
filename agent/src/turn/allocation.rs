@@ -77,7 +77,7 @@ pub struct TurnClient {
     /// counter guarantees that reproducibly in tests.
     compteur_trans: u64,
     /// Instant of the last diagnostic reading (see `avancer`).
-    dernier_releve: Instant,
+    last_reading: Instant,
     /// Bound channels, from number to binding (peer served and
     /// reaffirmation deadline).
     pub(super) canaux: std::collections::HashMap<u16, super::canaux::Canal>,
@@ -99,7 +99,7 @@ impl TurnClient {
             maintenant: now,
             tentatives: 0,
             compteur_trans: 0,
-            dernier_releve: now,
+            last_reading: now,
             canaux: std::collections::HashMap::new(),
             prochain_canal: super::canaux::CANAL_MIN,
         };
@@ -155,8 +155,8 @@ impl TurnClient {
         // Periodic diagnostic reading: one line per minute, saying what
         // the state machine believes it must do. Without it, a lease not
         // refreshed is only noticed after the fact, in the server's logs.
-        if now.saturating_duration_since(self.dernier_releve) >= Duration::from_secs(60) {
-            self.dernier_releve = now;
+        if now.saturating_duration_since(self.last_reading) >= Duration::from_secs(60) {
+            self.last_reading = now;
             let etat = match self.etat {
                 Etat::Repos => "repos",
                 Etat::AttenteRefus { .. } => "attente-refus",
@@ -165,13 +165,13 @@ impl TurnClient {
                 Etat::AttenteRefresh { .. } => "attente-refresh",
                 Etat::Abandonnee => "abandonnée",
             };
-            let dans_s = self
+            let in_s = self
                 .poll_timeout()
                 .map(|e| e.saturating_duration_since(now).as_secs() as i64)
                 .unwrap_or(-1);
             tracing::info!(
                 etat,
-                prochaine_echeance_s = dans_s,
+                prochaine_echeance_s = in_s,
                 canaux = self.canaux.len(),
                 "état du client TURN"
             );
@@ -248,7 +248,7 @@ impl TurnClient {
             .map_err(|e| anyhow::anyhow!("message TURN illisible : {e}"))?;
 
         if let Some((code, _raison)) = message.error_code() {
-            self.traiter_erreur(code, &message);
+            self.handle_error(code, &message);
             return Ok(None);
         }
 
@@ -285,7 +285,7 @@ impl TurnClient {
         Ok(None)
     }
 
-    fn traiter_erreur(&mut self, code: u16, message: &is::stun::StunMessage<'_>) {
+    fn handle_error(&mut self, code: u16, message: &is::stun::StunMessage<'_>) {
         match code {
             // 401: first refusal, carrying the realm and the nonce. A normal
             // step of the protocol, not a failure.

@@ -77,7 +77,7 @@ pub type Reconstructeur = Box<dyn Fn() -> anyhow::Result<Box<dyn AudioSource + S
 /// Number of rebuilds attempted before giving up and reporting.
 ///
 /// ⚠️ **NOT CALIBRATED** — it joins `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `MAX_OUTPUT_SIZE`,
 /// `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the list of constants
 /// no listening judgement has assessed.
 pub const RECONSTRUCTIONS_MAX: u32 = 3;
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn rend_les_paquets_dans_l_ordre_de_depot() {
+    fn returns_packets_in_deposit_order() {
         let ring = PacketRing::new(4);
         ring.push(paquet(0));
         ring.push(paquet(480));
@@ -366,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn dans_la_fenetre_l_injection_est_armee() {
+    fn within_the_window_the_injection_is_armed() {
         assert!(injection_encore_armee(
             Duration::from_millis(500),
             Some(Duration::from_secs(3))

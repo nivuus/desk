@@ -83,7 +83,7 @@ impl LanceurDeProcessus {
         let mut pont = commande.spawn().context("lancement du pont fichiers")?;
         let pid = pont.id();
         let handle = HANDLE(pont.as_raw_handle());
-        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
+        if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             // Same atomic contract as `lancer` and `lancer_capteur`: a bridge
             // not attached to the job would outlive the supervisor WHILE HOLDING a
             // ProjFS virtualisation root, which nothing would unmount.
@@ -92,7 +92,7 @@ impl LanceurDeProcessus {
                     "pont fichiers NON rattaché au job ET NON tué — il survivra au superviseur");
             }
             let _ = pont.wait();
-            return Err(anyhow::Error::new(erreur)
+            return Err(anyhow::Error::new(error)
                 .context(format!("rattachement du pont fichiers {pid} au job object")));
         }
         tracing::info!(pid, session, "pont fichiers lancé");
@@ -154,11 +154,11 @@ impl LanceurDeProcessus {
                 *pont = None;
                 EtatObserve::Mort(issue)
             }
-            Err(erreur) => {
+            Err(error) => {
                 if !en_cours.etat_illisible_signale {
                     en_cours.etat_illisible_signale = true;
                     tracing::warn!(
-                        %erreur,
+                        %error,
                         "état du pont fichiers illisible, tenu pour vivant \
                          (signalé une seule fois tant que l'état reste illisible)"
                     );

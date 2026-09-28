@@ -9,7 +9,7 @@
 //! installer will replay it.
 //!
 //! 🔴 TWO LINES, BEFORE AND AFTER, WITH THE SAME FIELD NAME AND A
-//! `moment=avant|apres`. Tracing only AFTER would make a change
+//! `moment=before|apres`. Tracing only AFTER would make a change
 //! UNATTRIBUTABLE — we would know which device is the default, never whether it
 //! already was. That is exactly what cost the campaign.
 //!
@@ -29,14 +29,14 @@ use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
 /// Where the installation stands when we take the reading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Moment {
-    Avant,
+    Before,
     Apres,
 }
 
 impl Moment {
     fn mot(self) -> &'static str {
         match self {
-            Self::Avant => "avant",
+            Self::Before => "avant",
             Self::Apres => "apres",
         }
     }
@@ -57,10 +57,10 @@ pub fn tracer(installation: &str, moment: Moment) {
             peripherique_rendu = %identifiant,
             "peripherique de rendu par defaut, autour d'une installation"
         ),
-        Err(erreur) => tracing::warn!(
+        Err(error) => tracing::warn!(
             installation,
             moment = moment.mot(),
-            %erreur,
+            %error,
             "peripherique de rendu par defaut illisible : le changement \
              eventuel ne sera pas attribuable"
         ),

@@ -253,7 +253,7 @@ pub trait VideoSource {
     /// it SAYS so.** Without a capturer, `SourceDistante` does not exist and it is this
     /// default that runs. The single-window owner stays P1's legacy no. 1,
     /// not filled; P2 makes it loud instead of silent.
-    fn ecrire_le_presse_papier(&mut self, _texte: &str) -> anyhow::Result<()> {
+    fn write_clipboard(&mut self, _texte: &str) -> anyhow::Result<()> {
         anyhow::bail!("aucun capteur : le presse-papier de la VM n'est pas accessible")
     }
 
@@ -383,7 +383,7 @@ mod tests {
     }
 
     #[test]
-    fn rejoue_en_boucle_avec_des_horodatages_croissants() {
+    fn replays_in_a_loop_with_increasing_timestamps() {
         let mut source = FileSource::from_annex_b(flux_de_test(3), 640, 480, 60).unwrap();
         let mut horodatages = Vec::new();
         for _ in 0..7 {
@@ -394,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn la_premiere_image_de_chaque_boucle_est_une_image_cle() {
+    fn the_first_frame_of_each_loop_is_a_keyframe() {
         let mut source = FileSource::from_annex_b(flux_de_test(3), 640, 480, 60).unwrap();
         assert!(source.next_frame().unwrap().is_keyframe);
         assert!(!source.next_frame().unwrap().is_keyframe);
@@ -421,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn boucle_avec_300_images_reelles_et_horodatages_strictement_croissants() {
+    fn loops_with_300_real_frames_and_strictly_increasing_timestamps() {
         // Non-regression check on the over-splitting bug: the
         // real file contains 300 frames despite its 2400 slices, so the
         // loop counter must increment after 300 calls, not 2400.
@@ -469,7 +469,7 @@ mod tests {
     }
 
     #[test]
-    fn is_alive_par_defaut_vaut_toujours_vrai() {
+    fn is_alive_defaults_to_always_true() {
         // `FileSource` loops indefinitely and never "dies": the
         // trait's default method must reflect that.
         let source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();

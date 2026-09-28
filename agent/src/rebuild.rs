@@ -74,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn echec_principal_avec_secours_reussi_produit_recovered() {
+    fn primary_failure_with_successful_fallback_produces_recovered() {
         // The motivating case: the primary factory (new capture +
         // region + encoder) fails, but a recovery capture alone
         // succeeds — the caller must be able to keep producing frames

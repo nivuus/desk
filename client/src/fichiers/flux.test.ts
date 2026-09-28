@@ -74,7 +74,7 @@ describe('la contre-pression', () => {
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(0);
-        expect(await resolue(cp.avantEnvoi())).toBe(true);
+        expect(await resolue(cp.beforeSend())).toBe(true);
     });
 
     it('🔴 n’envoie PAS tant que le tampon dépasse le seuil', async () => {
@@ -83,7 +83,7 @@ describe('la contre-pression', () => {
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 4);
-        const attente = cp.avantEnvoi();
+        const attente = cp.beforeSend();
         await new Promise((r) => setTimeout(r, 5));
         expect(await resolue(attente)).toBe(false);
         c.poser(0);
@@ -97,7 +97,7 @@ describe('la contre-pression', () => {
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
-        const attente = cp.avantEnvoi();
+        const attente = cp.beforeSend();
         expect(await resolue(attente)).toBe(false);
         c.poser(SEUIL_TAMPON);
         expect(await resolue(attente)).toBe(true);
@@ -110,7 +110,7 @@ describe('la contre-pression', () => {
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
-        const attente = cp.avantEnvoi();
+        const attente = cp.beforeSend();
         expect(await resolue(attente)).toBe(false);
         c.fermer();
         expect(await resolue(attente)).toBe(true);
@@ -121,7 +121,7 @@ describe('la contre-pression', () => {
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
         c.fermer();
-        expect(await resolue(cp.avantEnvoi())).toBe(true);
+        expect(await resolue(cp.beforeSend())).toBe(true);
     });
 
     it('🔴 LES DEUX ÉCOUTEURS SONT RETIRÉS, quel que soit celui qui gagne', async () => {
@@ -132,7 +132,7 @@ describe('la contre-pression', () => {
         const cp = contrePression(c);
         for (let i = 0; i < 5; i += 1) {
             c.poser(SEUIL_TAMPON * 2);
-            const a = cp.avantEnvoi();
+            const a = cp.beforeSend();
             c.poser(0);
             await a;
         }
@@ -154,6 +154,6 @@ describe('la contre-pression', () => {
             vrai(type, e);
             if (type === 'bufferedamountlow') c.poser(0);
         };
-        expect(await resolue(cp.avantEnvoi())).toBe(true);
+        expect(await resolue(cp.beforeSend())).toBe(true);
     });
 });

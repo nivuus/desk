@@ -48,7 +48,7 @@ export function preludes(css: string): string[] {
 
 export interface Declaration {
     propriete: string;
-    valeur: string;
+    value: string;
 }
 
 /**
@@ -63,7 +63,7 @@ export function declarationsDe(css: string): Declaration[] {
             if (coupe === -1) continue;
             sortie.push({
                 propriete: morceau.slice(0, coupe).trim(),
-                valeur: morceau.slice(coupe + 1).trim(),
+                value: morceau.slice(coupe + 1).trim(),
             });
         }
     }

@@ -24,7 +24,7 @@ fn instant(base: std::time::Instant, ms: u64) -> std::time::Instant {
 /// applications were still running.
 #[test]
 fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -64,7 +64,7 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
 #[test]
 fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let mut effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     // `RELANCES_MAX` TOLERATED restarts (w-1→w-2→w-3→w-4, three successful
     // restarts) and it is the next restart, the fourth, that meets the
@@ -100,7 +100,7 @@ fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
 /// otherwise `relancer_les_orphelines` would resurrect it indefinitely.
 #[test]
 fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -120,7 +120,7 @@ fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
 /// guarantee is that a second death does not leak the retained output.
 #[test]
 fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -161,7 +161,7 @@ fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
 #[test]
 fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -204,7 +204,7 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
 #[test]
 fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -246,7 +246,7 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
 #[test]
 fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
 
     // First pass: the timestamp is set, nothing is abandoned.
@@ -266,9 +266,9 @@ fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() 
 
 /// The timestamp must not abandon a window that answers within the delay.
 #[test]
-fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
+fn a_new_window_answering_in_time_is_not_abandoned() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -295,9 +295,9 @@ fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
 /// next test exercises that this catching up is indeed possible: an
 /// abandoned window can COME BACK into the table.
 #[test]
-fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
+fn a_shell_page_arriving_late_receives_the_pending_windows() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -337,7 +337,7 @@ fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
 #[test]
 fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     t.relancer_les_orphelines(base);
 
@@ -362,9 +362,9 @@ fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
 /// **Without this test, the fix would be indistinguishable from removing
 /// the bound** — the pattern "a check never seen red".
 #[test]
-fn une_shell_presente_mais_muette_perd_toujours_sa_fenetre() {
+fn a_present_but_silent_shell_always_loses_its_window() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(1);
+    let mut t = Table::new(1);
     t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     t.relancer_les_orphelines(base);
     t.reannoncer_les_attentes(instant(base, 20_000));
@@ -383,9 +383,9 @@ fn une_shell_presente_mais_muette_perd_toujours_sa_fenetre() {
 /// 🔴 THE RETAINED VIRTUAL OUTPUT — the COSTLY resource the bound
 /// protects — is always handed back on abandonment, re-announcement or not.
 #[test]
-fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
+fn the_retained_output_is_always_released_on_abandon_after_a_reannounce() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -424,7 +424,7 @@ fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
 #[test]
 fn une_fenetre_vivante_n_est_pas_redite() {
     let base = std::time::Instant::now();
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -448,7 +448,7 @@ fn une_fenetre_vivante_n_est_pas_redite() {
 /// true of a method that NEVER returns anything.
 #[test]
 fn la_reannonce_sur_une_table_vide_ne_rend_rien() {
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     assert!(t
         .reannoncer_les_attentes(std::time::Instant::now())
         .is_empty());

@@ -10,8 +10,8 @@ import {
     analyser,
     doitEtreRehache,
     hacher,
-    PARAMETRES_COURANTS,
-    verifier,
+    CURRENT_PARAMS,
+    verify,
 } from './mot-de-passe';
 
 const MOT_DE_PASSE = 'un-mot-de-passe-ordinaire-42';
@@ -22,7 +22,7 @@ describe('hacher', () => {
         expect(encode).toMatch(/^scrypt\$16384\$8\$1\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
         const { algo, params, sel, empreinte } = analyser(encode);
         expect(algo).toBe('scrypt');
-        expect(params).toEqual(PARAMETRES_COURANTS);
+        expect(params).toEqual(CURRENT_PARAMS);
         // Tailles RÉELLES : 16 octets de sel, 32 d'empreinte.
         expect(sel).toHaveLength(16);
         expect(empreinte).toHaveLength(32);
@@ -40,12 +40,12 @@ describe('hacher', () => {
 describe('verifier', () => {
     it('accepte le bon mot de passe', async () => {
         const encode = await hacher(MOT_DE_PASSE);
-        expect(await verifier(MOT_DE_PASSE, encode)).toBe(true);
+        expect(await verify(MOT_DE_PASSE, encode)).toBe(true);
     });
 
     it('refuse un mot de passe faux', async () => {
         const encode = await hacher(MOT_DE_PASSE);
-        expect(await verifier('un-mot-de-passe-ordinaire-43', encode)).toBe(false);
+        expect(await verify('un-mot-de-passe-ordinaire-43', encode)).toBe(false);
     });
 
     it('rend false SANS LEVER sur une empreinte tronquée', async () => {
@@ -66,7 +66,7 @@ describe('verifier', () => {
         morceaux[5] = morceaux[5].slice(0, 20);
         const tronque = morceaux.join('$');
         expect(analyser(tronque).empreinte.length).toBeLessThan(32);
-        await expect(verifier(MOT_DE_PASSE, tronque)).resolves.toBe(false);
+        await expect(verify(MOT_DE_PASSE, tronque)).resolves.toBe(false);
     });
 
     it('LÈVE sur un algorithme inconnu, plutôt que de rendre false', async () => {
@@ -74,14 +74,14 @@ describe('verifier', () => {
         // passe : personne ne saurait diagnostiquer une base écrite par une
         // version future.
         const encode = (await hacher(MOT_DE_PASSE)).replace(/^scrypt/, 'argon2id');
-        await expect(verifier(MOT_DE_PASSE, encode)).rejects.toThrow(/argon2id/);
+        await expect(verify(MOT_DE_PASSE, encode)).rejects.toThrow(/argon2id/);
     });
 });
 
 describe('doitEtreRehache', () => {
     it('dit vrai sur un N inférieur au courant, faux sur le courant', async () => {
-        const courant = await hacher(MOT_DE_PASSE);
-        expect(doitEtreRehache(courant)).toBe(false);
+        const current = await hacher(MOT_DE_PASSE);
+        expect(doitEtreRehache(current)).toBe(false);
         const faible = await hacher(MOT_DE_PASSE, { N: 4096, r: 8, p: 1 });
         expect(doitEtreRehache(faible)).toBe(true);
     });

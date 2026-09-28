@@ -51,7 +51,7 @@ use windows::Win32::UI::Shell::{
 /// particular job". See `crate::appartenance`.
 ///
 /// 🔴 **G3 DOES NOT RELY ON IT: it MEASURES and it REFUSES.**
-/// `apps::installation::execution::dans_un_job` calls `IsProcessInJob` before
+/// `apps::installation::execution::in_a_job` calls `IsProcessInJob` before
 /// any installer launch, logs the boolean every time, and refuses
 /// if the answer is yes. **Nothing of the kind is done here**, and that is accepted: an
 /// installer killed halfway leaves a half-installed machine, a killed
@@ -67,9 +67,9 @@ pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
             tracing::info!(chemin = chemin_lnk, "raccourci lancé");
             return IssueLancement::Raccourci;
         }
-        Err(erreur) => tracing::warn!(
+        Err(error) => tracing::warn!(
             chemin = chemin_lnk,
-            %erreur,
+            %error,
             "lancement du raccourci échoué, repli sur la cible enregistrée"
         ),
     }
@@ -92,15 +92,15 @@ pub fn lancer(chemin_lnk: &str, cible: &str, montrer: i32) -> IssueLancement {
             );
             IssueLancement::Cible
         }
-        Err(erreur) => {
-            tracing::error!(chemin = chemin_lnk, cible, %erreur, "lancement échoué des deux côtés");
+        Err(error) => {
+            tracing::error!(chemin = chemin_lnk, cible, %error, "lancement échoué des deux côtés");
             IssueLancement::Echec
         }
     }
 }
 
-fn executer(fichier: &str, montrer: i32) -> windows::core::Result<()> {
-    let large: Vec<u16> = fichier.encode_utf16().chain(std::iter::once(0)).collect();
+fn executer(file: &str, montrer: i32) -> windows::core::Result<()> {
+    let large: Vec<u16> = file.encode_utf16().chain(std::iter::once(0)).collect();
     let mut info = SHELLEXECUTEINFOW {
         cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
         // ⚠️ `SEE_MASK_NOASYNC` IS REQUIRED, and this is NOT a measurement here:

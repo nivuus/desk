@@ -128,19 +128,19 @@ fn executer_commande(
         // with its encoder.
         //
         // 🔴 **It is the ONLY one of this family whose `Fait` carries the effect**,
-        // and the only one that can return `Erreur`: the child waits for this
+        // and the only one that can return `Error`: the child waits for this
         // reply to know whether it must inject `Ctrl+V`. See the doc of the
         // variant, which carries D6's whole ordering.
-        VersCapteur::PressePapierEcrire { texte } => {
-            return match crate::capteur::sommeil::ecrire_le_presse_papier(&texte) {
+        VersCapteur::ClipboardWrite { texte } => {
+            return match crate::capteur::sommeil::write_clipboard(&texte) {
                 Ok(()) => DepuisCapteur::Fait,
-                Err(erreur) => DepuisCapteur::Erreur {
-                    motif: format!("{erreur:#}"),
+                Err(error) => DepuisCapteur::Error {
+                    motif: format!("{error:#}"),
                 },
             };
         }
         VersCapteur::Attache { .. } => {
-            return DepuisCapteur::Erreur {
+            return DepuisCapteur::Error {
                 motif: "seconde attache sur un canal déjà attaché".into(),
             }
         }
@@ -148,7 +148,7 @@ fn executer_commande(
         // first and only frame: seeing it here signals a child confusing
         // its two connections.
         VersCapteur::Identite { session: autre } => {
-            return DepuisCapteur::Erreur {
+            return DepuisCapteur::Error {
                 motif: format!("identité de {autre} sur la connexion de commandes"),
             }
         }
@@ -165,7 +165,7 @@ fn executer_commande(
     // size and at the attach bitrate.
     //
     // **Re-read at task 8 of sub-block D10: still true, and "full"
-    // now designates the KEPT size** (`superviseur::placement::taille_retenue`),
+    // now designates the KEPT size** (`superviseur::placement::retained_size`),
     // not the raw size of the DXGI output — which may be larger on
     // a polluted registry. It is even more accurate than before: the "full
     // resolution" rebuilt on wake-up is the one the window
@@ -190,7 +190,7 @@ fn executer_commande(
         return match message {
             // The kept size, as is: a sleeping window no longer has
             // either capture or encoder, there is nothing to resize. A `Fait`
-            // would make `SourceDistante::resize` fail, which expects a `Taille`.
+            // would make `SourceDistante::resize` fail, which expects a `Size`.
             //
             // ⚠️ **This comment has successively said two false things, and
             // it was the CROSS-CUTTING end-of-branch review of D9 that caught it —
@@ -227,51 +227,49 @@ fn executer_commande(
             // sleep", and it is said as such.
             //
             // What remains true, and why this arm exists: returning a
-            // `Taille` rather than a `Fait`, because `SourceDistante::resize`
-            // expects a `Taille`.
-            VersCapteur::Redimensionner { .. } => DepuisCapteur::Taille {
-                largeur: ctx.taille.0,
-                hauteur: ctx.taille.1,
+            // `Size` rather than a `Fait`, because `SourceDistante::resize`
+            // expects a `Size`.
+            VersCapteur::Redimensionner { .. } => DepuisCapteur::Size {
+                largeur: ctx.size.0,
+                hauteur: ctx.size.1,
             },
             _ => DepuisCapteur::Fait,
         };
     };
 
-    let resultat = match message {
+    let result = match message {
         VersCapteur::Redimensionner { largeur, hauteur } => {
             return match source.resize(largeur, hauteur) {
                 Ok(()) => {
                     let (largeur, hauteur) = source.dimensions();
-                    DepuisCapteur::Taille { largeur, hauteur }
+                    DepuisCapteur::Size { largeur, hauteur }
                 }
-                Err(erreur) => DepuisCapteur::Erreur {
-                    motif: format!("{erreur:#}"),
+                Err(error) => DepuisCapteur::Error {
+                    motif: format!("{error:#}"),
                 },
             }
         }
-        VersCapteur::TailleEncodage { largeur, hauteur } => {
-            source.set_encode_size(largeur, hauteur)
-        }
+        VersCapteur::EncodeSize { largeur, hauteur } => source.set_encode_size(largeur, hauteur),
         VersCapteur::Debit { bps } => source.set_bitrate(bps),
         VersCapteur::ImageCle => source.request_keyframe(),
         // Handled above, before the source, hence never reached here. An
-        // `Erreur` rather than an `unreachable!`: a panic on this thread
+        // `Error` rather than an `unreachable!`: a panic on this thread
         // would take the window down for a drafting mistake.
         VersCapteur::Attache { .. }
         | VersCapteur::Identite { .. }
         | VersCapteur::Visibilite { .. }
         | VersCapteur::AudioMort
         | VersCapteur::AudioVivant
-        | VersCapteur::PressePapierEcrire { .. } => {
-            return DepuisCapteur::Erreur {
+        | VersCapteur::ClipboardWrite { .. } => {
+            return DepuisCapteur::Error {
                 motif: "commande déjà traitée hors de la source".into(),
             }
         }
     };
-    match resultat {
+    match result {
         Ok(()) => DepuisCapteur::Fait,
-        Err(erreur) => DepuisCapteur::Erreur {
-            motif: format!("{erreur:#}"),
+        Err(error) => DepuisCapteur::Error {
+            motif: format!("{error:#}"),
         },
     }
 }

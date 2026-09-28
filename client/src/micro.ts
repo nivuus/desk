@@ -109,15 +109,15 @@ export function attacherMicro(options: OptionsMicro): Micro {
         piste = undefined;
     };
 
-    const classer = (erreur: unknown): EtatMicro => {
-        const nom = erreur instanceof Error ? erreur.name : '';
+    const classer = (error: unknown): EtatMicro => {
+        const nom = error instanceof Error ? error.name : '';
         if (REFUS_DE_PERMISSION.has(nom)) return annoncer('refuse', DETAIL_REFUS);
         // The browser's message is attached when it is not a plain
         // `NotFoundError`: on a failure, it is the only information we have.
         const detail =
             nom === 'NotFoundError' || nom === 'DevicesNotFoundError'
                 ? DETAIL_SANS_PERIPHERIQUE
-                : `micro indisponible : ${erreur instanceof Error ? erreur.message : String(erreur)}`;
+                : `micro indisponible : ${error instanceof Error ? error.message : String(error)}`;
         return annoncer('indisponible', detail);
     };
 
@@ -147,12 +147,12 @@ export function attacherMicro(options: OptionsMicro): Micro {
             piste = obtenue;
             await options.sender.replaceTrack(obtenue);
             return annoncer('actif');
-        } catch (erreur) {
+        } catch (error) {
             // The track may have been obtained before `replaceTrack` rejected:
             // stopping it is the only way not to leave the mic open
             // on an error path.
             eteindre();
-            return classer(erreur);
+            return classer(error);
         } finally {
             enVol = false;
         }
@@ -311,8 +311,8 @@ export function attacherBoutonMicro(options: OptionsBoutonMicro): ControleBouton
         // `basculer` never rejects (spec §10); the `catch` is a safety belt
         // so that nothing surfaces as an "unhandled rejection" if this invariant
         // came to be broken by a future change.
-        enVol = micro.basculer().catch((erreur: unknown) => {
-            console.warn('bascule micro en échec', erreur);
+        enVol = micro.basculer().catch((error: unknown) => {
+            console.warn('bascule micro en échec', error);
         });
     };
     bouton.addEventListener('click', onClick);

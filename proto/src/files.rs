@@ -1,6 +1,6 @@
 //! Binary frame of the file bridge (reliable, ordered channel).
 //!
-//! Format: `version: u8 | type: u8 | correlation: u32 | longueur_entete: u32 |
+//! Format: `version: u8 | type: u8 | correlation: u32 | header_length: u32 |
 //! entete | charge`, integers in **little-endian** — the convention of [`input`]
 //! (`proto/src/input.rs`), and that of `DataView.setUint32(…, true)` on the
 //! browser side.
@@ -37,7 +37,7 @@ use serde::{Deserialize, Serialize};
 /// ⚠️ **What will increment it is a change of SHAPE, not of inventory**:
 /// a renamed field, a different byte order, a header whose meaning
 /// changes. Those, a peer of another version cannot ignore.
-pub const FICHIERS_VERSION: u8 = 1;
+pub const FILES_VERSION: u8 = 1;
 
 /// Maximum size of the **payload** of a frame, in bytes.
 ///
@@ -55,31 +55,31 @@ pub const FICHIERS_VERSION: u8 = 1;
 /// bridge channel, a 64 KiB chunk takes ~2 s, and four concurrent chunks
 /// exceed `DELAI_LIRE`. It joins `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`,
-/// `TAILLE_MAX_SORTIE`, `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the
+/// `MAX_OUTPUT_SIZE`, `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the
 /// set of constants of this repository that no measurement has judged.
 ///
 /// ⚠️ **The name says "frame", the value bounds the PAYLOAD** — divergence noted
-/// in the plan, which names the constant `TAILLE_TRAME_MAX` and writes in the
-/// same breath the check "the maximum payload of `TAILLE_TRAME_MAX` passes".
+/// in the plan, which names the constant `MAX_FRAME_SIZE` and writes in the
+/// same breath the check "the maximum payload of `MAX_FRAME_SIZE` passes".
 /// It is the second reading that is kept, because it is the one that makes the
 /// module consistent with `pont::decoupe`, whose `max` is indeed a payload
-/// size. A full frame therefore weighs `TAILLE_TRAME_MAX + TAILLE_ENTETE_FIXE +
+/// size. A full frame therefore weighs `MAX_FRAME_SIZE + FIXED_HEADER_SIZE +
 /// the length of the JSON header`: the name is misleading, saying so costs three
 /// lines, keeping quiet would cost an application MTU overrun one day.
-pub const TAILLE_TRAME_MAX: usize = 64 * 1024;
+pub const MAX_FRAME_SIZE: usize = 64 * 1024;
 
 /// Length of the fixed part of a frame: version, type, correlation,
 /// header length.
-pub const TAILLE_ENTETE_FIXE: usize = 1 + 1 + 4 + 4;
+pub const FIXED_HEADER_SIZE: usize = 1 + 1 + 4 + 4;
 
 // Bridge → browser requests — **they AWAIT an answer**.
 pub const TYPE_LISTER: u8 = 1;
 pub const TYPE_ATTRIBUTS: u8 = 2;
 pub const TYPE_LIRE: u8 = 3;
-pub const TYPE_ECRIRE: u8 = 4; // F2 — `Ecrire` header, the payload carries the bytes
-pub const TYPE_CREER: u8 = 5; // F2 — `Creer` header, empty payload
+pub const TYPE_WRITE: u8 = 4; // F2 — `Write` header, the payload carries the bytes
+pub const TYPE_CREATE: u8 = 5; // F2 — `Create` header, empty payload
 pub const TYPE_RENOMMER: u8 = 7; // F3 — `Renommer` header, empty payload
-pub const TYPE_SUPPRIMER: u8 = 8; // F3 — `Supprimer` header, empty payload
+pub const TYPE_DELETE: u8 = 8; // F3 — `Delete` header, empty payload
 
 // Bridge → browser announcements — **they await NOTHING**.
 //
@@ -119,7 +119,7 @@ pub const TYPE_RAFRAICHIR: u8 = 69; // F5 — EMPTY header `{}`, empty payload
 // Browser → bridge answers.
 pub const TYPE_ENTREES: u8 = 64;
 pub const TYPE_META: u8 = 65;
-pub const TYPE_DONNEES: u8 = 66;
+pub const TYPE_DATA: u8 = 66;
 pub const TYPE_FAIT: u8 = 67; // F2 — EMPTY header `{}`, empty payload
 pub const TYPE_ECHEC: u8 = 127;
 
@@ -219,13 +219,13 @@ pub struct Trame<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-pub enum ErreurTrame {
+pub enum FrameError {
     #[error("trame tronquée : {recu} octets reçus, {attendu} attendus")]
     TropCourte { recu: usize, attendu: usize },
     #[error("version de fichiers non supportée : {0}")]
     VersionNonSupportee(u8),
-    #[error("en-tête de {longueur} octets annoncé, {disponible} disponibles")]
-    EnteteDeborde { longueur: u64, disponible: usize },
+    #[error("en-tête de {length} octets annoncé, {disponible} disponibles")]
+    EnteteDeborde { length: u64, disponible: usize },
     #[error("charge de {recu} octets, maximum {max}")]
     ChargeTropGrande { recu: usize, max: usize },
 }
@@ -233,8 +233,8 @@ pub enum ErreurTrame {
 /// Encodes a frame. The header is UTF-8 JSON, the payload raw bytes.
 pub fn encoder(type_message: u8, correlation: u32, entete: &str, charge: &[u8]) -> Vec<u8> {
     let entete = entete.as_bytes();
-    let mut out = Vec::with_capacity(TAILLE_ENTETE_FIXE + entete.len() + charge.len());
-    out.push(FICHIERS_VERSION);
+    let mut out = Vec::with_capacity(FIXED_HEADER_SIZE + entete.len() + charge.len());
+    out.push(FILES_VERSION);
     out.push(type_message);
     out.extend_from_slice(&correlation.to_le_bytes());
     out.extend_from_slice(&(entete.len() as u32).to_le_bytes());
@@ -244,34 +244,34 @@ pub fn encoder(type_message: u8, correlation: u32, entete: &str, charge: &[u8]) 
 }
 
 /// Decodes a frame, or says precisely why it is refused.
-pub fn decoder(octets: &[u8]) -> Result<Trame<'_>, ErreurTrame> {
-    if octets.len() < TAILLE_ENTETE_FIXE {
-        return Err(ErreurTrame::TropCourte {
+pub fn decoder(octets: &[u8]) -> Result<Trame<'_>, FrameError> {
+    if octets.len() < FIXED_HEADER_SIZE {
+        return Err(FrameError::TropCourte {
             recu: octets.len(),
-            attendu: TAILLE_ENTETE_FIXE,
+            attendu: FIXED_HEADER_SIZE,
         });
     }
     let version = octets[0];
-    if version != FICHIERS_VERSION {
-        return Err(ErreurTrame::VersionNonSupportee(version));
+    if version != FILES_VERSION {
+        return Err(FrameError::VersionNonSupportee(version));
     }
     let correlation = u32::from_le_bytes([octets[2], octets[3], octets[4], octets[5]]);
-    let longueur_entete = u32::from_le_bytes([octets[6], octets[7], octets[8], octets[9]]);
-    let reste = &octets[TAILLE_ENTETE_FIXE..];
-    // Comparison in `u64`: `longueur_entete as usize` would overflow on a
+    let header_length = u32::from_le_bytes([octets[6], octets[7], octets[8], octets[9]]);
+    let reste = &octets[FIXED_HEADER_SIZE..];
+    // Comparison in `u64`: `header_length as usize` would overflow on a
     // 32-bit target, and would make this bound inoperative exactly where it is most
     // needed.
-    if u64::from(longueur_entete) > reste.len() as u64 {
-        return Err(ErreurTrame::EnteteDeborde {
-            longueur: u64::from(longueur_entete),
+    if u64::from(header_length) > reste.len() as u64 {
+        return Err(FrameError::EnteteDeborde {
+            length: u64::from(header_length),
             disponible: reste.len(),
         });
     }
-    let (entete, charge) = reste.split_at(longueur_entete as usize);
-    if charge.len() > TAILLE_TRAME_MAX {
-        return Err(ErreurTrame::ChargeTropGrande {
+    let (entete, charge) = reste.split_at(header_length as usize);
+    if charge.len() > MAX_FRAME_SIZE {
+        return Err(FrameError::ChargeTropGrande {
             recu: charge.len(),
-            max: TAILLE_TRAME_MAX,
+            max: MAX_FRAME_SIZE,
         });
     }
     Ok(Trame {

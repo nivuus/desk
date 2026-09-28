@@ -50,7 +50,7 @@ pub enum SourceIdentite {
     Enrolement { vm: String, secret: String },
     /// Neither one nor the other: no token, hence no session will be established.
     /// It is not a fallback mode, it is an announced failure.
-    Aucune,
+    Absent,
 }
 
 /// Decides the identity source of this process.
@@ -64,7 +64,7 @@ pub enum SourceIdentite {
 /// does NOT open a second channel: the defect would at worst become an
 /// ageing identity, never an endless mutual eviction.
 ///
-/// ⚠️ **AN INCOMPLETE PAIR RETURNS `Aucune`, never a half-enrolment.** It is
+/// ⚠️ **AN INCOMPLETE PAIR RETURNS `Absent`, never a half-enrolment.** It is
 /// the contract `main.rs` already carried ("both or none"): presenting a
 /// VM name without a secret can only be refused, and doing it anyway would
 /// only produce an `enrolement` refusal indistinguishable from a wrong secret.
@@ -81,7 +81,7 @@ pub fn source(
             vm: vm.to_string(),
             secret: secret.to_string(),
         },
-        _ => SourceIdentite::Aucune,
+        _ => SourceIdentite::Absent,
     }
 }
 
@@ -125,9 +125,9 @@ mod tests {
     /// form, because an `assert!` that stops at the first failure would leave
     /// the following ones untested.
     #[test]
-    fn un_couple_incomplet_ne_produit_aucune_identite() {
-        assert_eq!(source(None, Some("vm-1"), None), SourceIdentite::Aucune);
-        assert_eq!(source(None, None, Some("chut")), SourceIdentite::Aucune);
-        assert_eq!(source(None, None, None), SourceIdentite::Aucune);
+    fn an_incomplete_pair_produces_no_identity() {
+        assert_eq!(source(None, Some("vm-1"), None), SourceIdentite::Absent);
+        assert_eq!(source(None, None, Some("chut")), SourceIdentite::Absent);
+        assert_eq!(source(None, None, None), SourceIdentite::Absent);
     }
 }

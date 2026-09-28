@@ -124,7 +124,7 @@ mod lisere {
     /// would go unnoticed with the measured fringe, where three sides out of four
     /// are 7.
     #[test]
-    fn chaque_cote_du_lisere_est_honore_separement() {
+    fn each_side_of_the_margin_is_honoured_separately() {
         let l = Lisere {
             gauche: 3,
             haut: 5,
@@ -158,15 +158,15 @@ mod lisere {
     fn un_lisere_nul_rend_la_cible_telle_quelle() {
         let cible = cible_mesuree();
         assert_eq!(rect_a_poser(&cible, Lisere::NUL), cible);
-        assert_eq!(taille_a_poser((1732, 1032), Lisere::NUL), (1732, 1032));
+        assert_eq!(size_to_set((1732, 1032), Lisere::NUL), (1732, 1032));
         assert!(Lisere::NUL.est_nul());
         assert!(!MESURE.est_nul());
     }
 
     /// The counterpart for the CAPTURER path, which resizes without moving.
     #[test]
-    fn la_taille_posee_est_la_taille_visible_gonflee_du_lisere() {
-        assert_eq!(taille_a_poser((1732, 1032), MESURE), (1746, 1039));
+    fn the_set_size_is_the_visible_size_inflated_by_the_margin() {
+        assert_eq!(size_to_set((1732, 1032), MESURE), (1746, 1039));
     }
 
     /// An aberrant fringe — DWM returning anything — must not
@@ -223,7 +223,7 @@ mod bordure_peinte {
     };
 
     #[test]
-    fn l_enveloppe_ajoute_la_bordure_peinte_au_lisere_invisible() {
+    fn the_envelope_adds_the_painted_border_to_the_invisible_margin() {
         assert_eq!(
             enveloppe(DWM, BORDURE),
             Lisere {

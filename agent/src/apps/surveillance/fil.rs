@@ -69,8 +69,8 @@ pub(super) fn tourner(veille: Veille) {
             // sees it. It is LATENCY, never a loss — and closing it
             // would require a re-resolution timer nothing justifies
             // today.
-            Err(erreur) => tracing::warn!(
-                racine = %chemin.display(), %erreur,
+            Err(error) => tracing::warn!(
+                racine = %chemin.display(), %error,
                 "racine non surveillée : la réconciliation périodique reste la source de vérité"
             ),
         }
@@ -127,7 +127,7 @@ fn boucler(racines: &mut [Racine], veille: &Veille) {
             // after the call that failed.
             let code = unsafe { windows::Win32::Foundation::GetLastError() };
             tracing::error!(
-                erreur = %windows::core::Error::from_hresult(code.to_hresult()),
+                error = %windows::core::Error::from_hresult(code.to_hresult()),
                 "attente de surveillance en échec : fil arrêté (la réconciliation périodique continue)"
             );
             return;
@@ -181,14 +181,14 @@ fn servir(racine: &mut Racine, veille: &Veille) {
             rearmer(racine);
         }
         Issue::Annulee => {}
-        Issue::Perte(erreur) => {
+        Issue::Perte(error) => {
             // 🔴 ONE LINE PER TRANSITION, NEVER ONE PER ATTEMPT. It is the
             // pattern of the `ecartes` set in `apps/boucle.rs`, whose
             // comment quantifies what it avoids: "without this set, the
             // seven discards on this VM would make 20,160 lines a day".
             if !racine.en_echec() {
                 tracing::warn!(
-                    racine = %racine.chemin().display(), %erreur,
+                    racine = %racine.chemin().display(), %error,
                     "racine de surveillance PERDUE : réouverture programmée \
                      (la réconciliation périodique reste la source de vérité)"
                 );
@@ -199,10 +199,10 @@ fn servir(racine: &mut Racine, veille: &Veille) {
 }
 
 fn rearmer(racine: &mut Racine) {
-    if let Err(erreur) = racine.armer() {
+    if let Err(error) = racine.armer() {
         if !racine.en_echec() {
             tracing::warn!(
-                racine = %racine.chemin().display(), %erreur,
+                racine = %racine.chemin().display(), %error,
                 "réarmement de surveillance en échec : réouverture programmée"
             );
         }

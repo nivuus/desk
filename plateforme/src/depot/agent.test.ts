@@ -26,14 +26,14 @@ afterEach(async () => {
 
 /// Une VM à laquelle s'accrocher : `agent_enrole.vm_id` la RÉFÉRENCE, et
 /// SQLite applique la clé étrangère (`PRAGMA foreign_keys=ON` à l'ouverture).
-async function avecVm(p: Pilote, id: string): Promise<void> {
+async function withVm(p: Pilote, id: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [id, `vm-${id}`, '192.168.3.2']);
 }
 
 describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
     it('enrôle, puis relit par VM', async () => {
         base = await baseNeuve('agent-enrole');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         // Une empreinte RÉELLE, produite par la même dérivation que les
         // comptes humains — pas une chaîne courte qui ne mesure aucune
         // longueur de colonne.
@@ -54,7 +54,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         // session porte — c'est la seule clé dont `signaling/trace.ts`
         // dispose pour remonter à la VM.
         base = await baseNeuve('agent-prefixe');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('secret-un'), PREFIXE);
 
         const parPrefixe = await lireParPrefixe(base, PREFIXE);
@@ -77,8 +77,8 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         // préfixe rendraient `lireParPrefixe` ambiguë, et le choix de la VM
         // arbitraire — le problème exact que le préfixe existe pour fermer.
         base = await baseNeuve('agent-unique');
-        await avecVm(base, 'v-1');
-        await avecVm(base, 'v-2');
+        await withVm(base, 'v-1');
+        await withVm(base, 'v-2');
         await enroler(base, 'v-1', await hacher('secret-un'), PREFIXE);
         await expect(enroler(base, 'v-2', await hacher('secret-deux'), PREFIXE)).rejects.toThrow();
     });
@@ -96,7 +96,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         // était de classe. L'assertion est donc désormais NUE — c'est elle
         // qui tient la déclaration de type honnête.
         base = await baseNeuve('agent-vu');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('secret-un'), PREFIXE);
 
         await marquerVu(base, 'v-1', MS);
@@ -110,7 +110,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
 describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
     it("remplace l'empreinte de la VM nommée, et rend le nombre de lignes touchées", async () => {
         base = await baseNeuve('agent-rotation');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         const ancienne = await hacher('le-secret-d-origine-de-la-vraie-longueur');
         await enroler(base, 'v-1', ancienne, PREFIXE);
 
@@ -127,14 +127,14 @@ describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
         // (`agents/prefixe.ts`) : le changer couperait toute session en cours.
         // Rotation du secret n'est pas rotation de l'identité.
         base = await baseNeuve('agent-rotation-prefixe');
-        await avecVm(base, 'v-1');
+        await withVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('le-secret-d-origine-tres-long'), PREFIXE);
 
-        const avant = (await lireParVm(base, 'v-1'))!.prefixe_session;
+        const before = (await lireParVm(base, 'v-1'))!.prefixe_session;
         await remplacerEmpreinte(base, 'v-1', await hacher('un-tout-autre-secret-aussi-long'));
         const apres = (await lireParVm(base, 'v-1'))!.prefixe_session;
 
-        expect(apres).toBe(avant);
+        expect(apres).toBe(before);
         expect(apres).toBe(PREFIXE);
     });
 
@@ -142,8 +142,8 @@ describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
         // 🔴 LA ROUGE : oublier la clause WHERE. Toutes les VMs partageraient
         // alors le même secret, ce qu'aucun test à une seule VM ne verrait.
         base = await baseNeuve('agent-rotation-portee');
-        await avecVm(base, 'v-1');
-        await avecVm(base, 'v-2');
+        await withVm(base, 'v-1');
+        await withVm(base, 'v-2');
         const gardee = await hacher('le-secret-de-la-vm-voisine-bien-long');
         await enroler(base, 'v-1', await hacher('le-secret-a-remplacer-bien-long'), PREFIXE);
         await enroler(base, 'v-2', gardee, 'Zk4pQ7mNr2xTvB9wLcHd1s');

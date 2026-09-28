@@ -86,8 +86,8 @@ pub(crate) fn choisir_puits(micro: bool, micro_mesure: bool) -> Puits {
 ///
 /// **Never test `is_ok()`**: someone writing `MICRO=0` to be
 /// sure to turn it off would turn it on. A test guards this predicate.
-pub(crate) fn arme_micro(valeur: Option<&str>) -> bool {
-    valeur != Some("0")
+pub(crate) fn arme_micro(value: Option<&str>) -> bool {
+    value != Some("0")
 }
 
 /// Does `MICRO_MESURE` arm the sink? **`1`, and nothing else.**
@@ -98,8 +98,8 @@ pub(crate) fn arme_micro(valeur: Option<&str>) -> bool {
 /// `=0`: here we arm on `=1`, because a bench instrument must not
 /// switch on through the mere presence of a variable — someone writing
 /// `MICRO_MESURE=0` to be sure to turn it off would turn it on.
-pub(crate) fn arme(valeur: Option<&str>) -> bool {
-    valeur == Some("1")
+pub(crate) fn arme(value: Option<&str>) -> bool {
+    value == Some("1")
 }
 
 /// Installs on `session` the sink [`choisir_puits`] designates — the cable,
@@ -152,7 +152,7 @@ fn brancher_cable(config: &Config, session: &mut Session) {
         Ok(puits) => session.set_puits_micro(Box::new(puits)),
         Err(e) => tracing::warn!(
             session = %config.session_id,
-            erreur = %e,
+            error = %e,
             "micro indisponible, la session continue sans"
         ),
     }
@@ -168,7 +168,7 @@ fn brancher_mesure(config: &Config, session: &mut Session) {
     let lecteur = match LecteurMicro::new() {
         Ok(l) => Arc::new(Mutex::new(l)),
         Err(e) => {
-            tracing::warn!(erreur = %e, "puits de mesure du micro indisponible, la session continue sans");
+            tracing::warn!(error = %e, "puits de mesure du micro indisponible, la session continue sans");
             return;
         }
     };
@@ -226,7 +226,7 @@ mod tests {
     /// "simplification" into `is_ok()`, which would switch the mic on for
     /// someone writing `MICRO=0` to be sure to turn it off.
     #[test]
-    fn seule_la_valeur_zero_desarme_le_micro() {
+    fn only_the_value_zero_disarms_the_mic() {
         assert!(!arme_micro(Some("0")));
         assert!(arme_micro(None));
         assert!(arme_micro(Some("")));

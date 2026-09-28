@@ -77,7 +77,7 @@ export interface Verdict {
 
 /// ⚠️ THE FOUR CONSTANTS ARE NOT CALIBRATED, and they join the list
 /// this repository has kept since effort C: `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `MAX_OUTPUT_SIZE`,
 /// `SEUIL_INJOIGNABLE_MS`, `DUREE_JETON_ACCES_MS`. No usage judgement
 /// has been made on any of them.
 

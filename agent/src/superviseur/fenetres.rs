@@ -64,7 +64,7 @@ pub fn merite_une_fenetre(d: &DescriptionFenetre) -> bool {
 /// 🔴 **`None` KEEPS, AND IT IS DELIBERATE.** Setting aside for failing to ask
 /// would turn a measurement failure into the silent disappearance of all
 /// windows — the mute failure this repository pays more dearly for than a loud
-/// defect. Same reasoning as `installation::execution::dans_un_job`, which
+/// defect. Same reasoning as `installation::execution::in_a_job`, which
 /// answers `false` when the question fails.
 pub fn ecartee_pour_non_appartenance(appartient: Option<bool>, regle_armee: bool) -> bool {
     regle_armee && appartient == Some(false)

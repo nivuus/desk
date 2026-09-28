@@ -16,7 +16,7 @@ fn obs(estimate_bps: Option<u32>, loss: Option<f32>, at: Instant) -> Observation
 fn sans_estimation_le_debit_reste_au_plafond_et_l_adaptation_est_indisponible() {
     let base = t0();
     let mut c = Controleur::new(config(), base);
-    let d = c.courant();
+    let d = c.current();
 
     assert_eq!(d.video_bitrate_bps, 12_000_000);
     assert_eq!(d.encode_size, (1920, 1080));
@@ -29,7 +29,7 @@ fn sans_estimation_le_debit_reste_au_plafond_et_l_adaptation_est_indisponible() 
         let at = base + Duration::from_millis(i * 100);
         assert_eq!(c.observer(obs(None, None, at)), None);
     }
-    assert_eq!(c.courant().adaptation, Adaptation::Indisponible);
+    assert_eq!(c.current().adaptation, Adaptation::Indisponible);
 }
 
 #[test]
@@ -39,22 +39,22 @@ fn une_session_muette_ne_retranche_plus_le_budget_audio() {
     // cut their video budget by 128 kb/s for a track they
     // did not have — about 8.5 % of a 1.5 Mb/s share.
     let base = t0();
-    let mut avec = Controleur::new(config(), base);
+    let mut with = Controleur::new(config(), base);
     let mut sans = Controleur::new(config(), base);
     sans.changer_audio_bps(0);
 
     let o = obs(Some(2_000_000), None, base + DELAI_AMORCAGE * 2);
-    avec.observer(o);
+    with.observer(o);
     sans.observer(o);
 
     assert!(
-        sans.courant().video_bitrate_bps > avec.courant().video_bitrate_bps,
+        sans.current().video_bitrate_bps > with.current().video_bitrate_bps,
         "sans piste audio, le budget video doit etre plus grand : {} vs {}",
-        sans.courant().video_bitrate_bps,
-        avec.courant().video_bitrate_bps
+        sans.current().video_bitrate_bps,
+        with.current().video_bitrate_bps
     );
     assert_eq!(
-        sans.courant().video_bitrate_bps - avec.courant().video_bitrate_bps,
+        sans.current().video_bitrate_bps - with.current().video_bitrate_bps,
         crate::opus::BITRATE_BPS as u32,
         "l'ecart doit valoir exactement le budget audio"
     );
@@ -138,7 +138,7 @@ fn une_contrainte_durable_fait_descendre_un_barreau_et_marque_la_degradation() {
 }
 
 #[test]
-fn sous_le_plancher_la_qualite_est_declaree_insuffisante() {
+fn below_the_floor_the_quality_is_declared_insufficient() {
     let base = t0();
     let mut c = Controleur::new(config(), base);
     c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)));
@@ -155,7 +155,7 @@ fn sous_le_plancher_la_qualite_est_declaree_insuffisante() {
     // We went down to the last rung, no lower: frame rate is
     // never sacrificed automatically.
     let echelle = Echelle::depuis((1920, 1080), 60);
-    assert_eq!(d.encode_size, echelle.barreaux().last().unwrap().taille);
+    assert_eq!(d.encode_size, echelle.barreaux().last().unwrap().size);
 }
 
 #[test]

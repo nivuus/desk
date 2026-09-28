@@ -222,7 +222,7 @@ export type AgentControl =
 /// failure mode, in the file that defines the
 /// protocol. It is the same remedy as the one from the app management work,
 /// applied here at its source.
-const TOUS_AGENT: Record<AgentControl['type'], true> = {
+const ALL_AGENT: Record<AgentControl['type'], true> = {
     ready: true,
     'session-end': true,
     pointer: true,
@@ -238,9 +238,9 @@ const TOUS_AGENT: Record<AgentControl['type'], true> = {
 
 /// Exported so the derivation has a RUNTIME witness, and not only
 /// a compile-time witness. A widening of surface, assumed and declared:
-/// without it, `TOUS_AGENT` is guarded only by `tsc`, and a test cannot
+/// without it, `ALL_AGENT` is guarded only by `tsc`, and a test cannot
 /// observe that the list and the union match.
-export const TYPES_AGENT = Object.keys(TOUS_AGENT) as AgentControl['type'][];
+export const TYPES_AGENT = Object.keys(ALL_AGENT) as AgentControl['type'][];
 
 export function encodeResize(width: number, height: number): string {
     const message: ResizeMessage = {
@@ -265,7 +265,7 @@ export function encodeVisibility(visible: boolean, focused: boolean): string {
 /// Encodes a paste coming from the browser.
 ///
 /// 🔴 **There is deliberately NO `TYPES_CLIENT` to keep this union
-/// exhaustive, and it is not an oversight.** `TOUS_AGENT` exists because
+/// exhaustive, and it is not an oversight.** `ALL_AGENT` exists because
 /// `parseAgentControl` PARSES `AgentControl` on the TypeScript side: a forgotten
 /// variant was lost there against a `console.warn`, silently. In this
 /// direction there is nothing to parse — the client ENCODES, and it is `serde` that

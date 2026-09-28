@@ -15,7 +15,7 @@ pub struct Controleur {
     pub(super) config: Config,
     pub(super) echelle: Echelle,
     pub(super) hysteresis: Hysteresis,
-    pub(super) courant: Decision,
+    pub(super) current: Decision,
     /// Instant of the very first estimate received, `None` as long as none
     /// has arrived.
     ///
@@ -31,7 +31,7 @@ pub struct Controleur {
     /// `reconfiguration::changer_plafond` needs it to distinguish "no
     /// estimate ever received" from "estimate received then stale". It is
     /// the only field carrying that distinction: unlike
-    /// `courant.adaptation` (derived, reversible — it falls back to `Indisponible`
+    /// `current.adaptation` (derived, reversible — it falls back to `Indisponible`
     /// both before the first estimate and after an old estimate
     /// goes stale), this one is a MONOTONIC fact, set once and
     /// never erased.
@@ -41,9 +41,9 @@ pub struct Controleur {
 impl Controleur {
     pub fn new(config: Config, now: Instant) -> Self {
         let echelle = Echelle::depuis(config.source, config.fps);
-        let courant = Decision {
+        let current = Decision {
             video_bitrate_bps: config.plafond_bps,
-            encode_size: echelle.barreaux()[0].taille,
+            encode_size: echelle.barreaux()[0].size,
             opus_loss_perc: 0,
             qualite: Qualite::Bonne,
             adaptation: Adaptation::Indisponible,
@@ -52,15 +52,15 @@ impl Controleur {
             config,
             echelle,
             hysteresis: Hysteresis::new(0, now),
-            courant,
+            current,
             premiere_estimation_a: None,
         }
     }
 
     /// Decision currently applied. Serves at start-up, before any
     /// observation, and to feed the link state message.
-    pub fn courant(&self) -> Decision {
-        self.courant
+    pub fn current(&self) -> Decision {
+        self.current
     }
 
     /// Changes the budget reserved for the audio track.
@@ -82,15 +82,15 @@ impl Controleur {
         let Some(estimate) = o.estimate_bps else {
             // Without an estimate, nothing to control on bitrate or resolution.
             // UNAVAILABILITY, on the other hand, must be reflected immediately:
-            // without this line, `self.courant.adaptation` would stay frozen at
+            // without this line, `self.current.adaptation` would stay frozen at
             // `Active` after a first estimate followed by a prolonged
             // silence (TWCC drying up, see I4 on the transport side), and
-            // `courant()` would lie about the real link state to whoever
+            // `current()` would lie about the real link state to whoever
             // queries it during that silence — precisely the gap the
             // final branch review named (I2). Only this field moves here:
             // quality, bitrate and size stay those of the last real
             // decision, there is nothing new to draw from them without an estimate.
-            self.courant.adaptation = Adaptation::Indisponible;
+            self.current.adaptation = Adaptation::Indisponible;
             return None;
         };
         if self.premiere_estimation_a.is_none() {
@@ -112,25 +112,25 @@ impl Controleur {
             .min(self.config.plafond_bps);
 
         let vise = self.echelle.barreau_finance(disponible);
-        let taille_avant = self.courant.encode_size;
-        let barreau_courant = self
+        let size_before = self.current.encode_size;
+        let current_rung = self
             .echelle
             .barreaux()
             .iter()
-            .position(|b| b.taille == taille_avant)
+            .position(|b| b.size == size_before)
             .unwrap_or(0);
         // During bootstrap, never AIM at a rung worse than the one already
         // in place: we feed the hysteresis with the current rung rather than
         // with the computed target, so that no descent accumulates
         // on the BWE ramp (see `DELAI_AMORCAGE`). A BETTER target
         // (going back up) remains allowed without restriction.
-        let vise = if en_amorcage && vise > barreau_courant {
-            barreau_courant
+        let vise = if en_amorcage && vise > current_rung {
+            current_rung
         } else {
             vise
         };
-        if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
-            self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
+        if let Some(new) = self.hysteresis.observer(vise, o.at) {
+            self.current.encode_size = self.echelle.barreaux()[new].size;
         }
         // Correct signal of a resolution change, captured before/after
         // the call to the hysteresis: since `qualite` can switch as soon as
@@ -142,14 +142,14 @@ impl Controleur {
         // `encode_size` to the applied rung: it is always false by
         // construction (point raised in review, left for the final branch
         // review) — this new signal complements it without replacing it.
-        let resolution_changee = self.courant.encode_size != taille_avant;
+        let resolution_changee = self.current.encode_size != size_before;
 
-        let dernier = self.echelle.barreaux().len() - 1;
+        let last = self.echelle.barreaux().len() - 1;
         let barreau_applique = self
             .echelle
             .barreaux()
             .iter()
-            .position(|b| b.taille == self.courant.encode_size)
+            .position(|b| b.size == self.current.encode_size)
             .unwrap_or(0);
 
         // `video_bitrate_bps` switches immediately (no hysteresis on it),
@@ -170,7 +170,7 @@ impl Controleur {
         // below the last rung, and degradation by an already
         // applied rung (`barreau_applique > 0`) if a reduction really took
         // place before the bootstrap.
-        let qualite = if disponible < self.echelle.barreaux()[dernier].min_bps {
+        let qualite = if disponible < self.echelle.barreaux()[last].min_bps {
             Qualite::Insuffisante
         } else if barreau_applique > 0
             || (!en_amorcage && disponible < self.echelle.barreaux()[barreau_applique].min_bps)
@@ -183,37 +183,37 @@ impl Controleur {
         let perte = o
             .loss
             .map(|l| ((l * 100.0).round() as i32).clamp(0, PERTE_MAX_OPUS))
-            .unwrap_or(self.courant.opus_loss_perc);
+            .unwrap_or(self.current.opus_loss_perc);
 
         let debit_change =
-            ecart_relatif(self.courant.video_bitrate_bps, disponible) >= ECART_MINIMAL_DEBIT;
+            ecart_relatif(self.current.video_bitrate_bps, disponible) >= ECART_MINIMAL_DEBIT;
         let change = debit_change
             || resolution_changee
-            || qualite != self.courant.qualite
-            || perte != self.courant.opus_loss_perc
-            || self.courant.adaptation != Adaptation::Active
-            || self.courant.encode_size != self.echelle.barreaux()[barreau_applique].taille;
+            || qualite != self.current.qualite
+            || perte != self.current.opus_loss_perc
+            || self.current.adaptation != Adaptation::Active
+            || self.current.encode_size != self.echelle.barreaux()[barreau_applique].size;
 
         if debit_change {
-            self.courant.video_bitrate_bps = disponible;
+            self.current.video_bitrate_bps = disponible;
         }
-        self.courant.qualite = qualite;
-        self.courant.opus_loss_perc = perte;
-        self.courant.adaptation = Adaptation::Active;
+        self.current.qualite = qualite;
+        self.current.opus_loss_perc = perte;
+        self.current.adaptation = Adaptation::Active;
 
-        change.then_some(self.courant)
+        change.then_some(self.current)
     }
 }
 
 /// Relative gap between two bitrates, relative to the larger of the two to
-/// stay symmetric — otherwise a division by a zero `avant` would blow up, and
+/// stay symmetric — otherwise a division by a zero `before` would blow up, and
 /// a rise from 1 to 2 would not weigh like a drop from 2 to 1.
-fn ecart_relatif(avant: u32, apres: u32) -> f32 {
-    let max = avant.max(apres);
+fn ecart_relatif(before: u32, apres: u32) -> f32 {
+    let max = before.max(apres);
     if max == 0 {
         return 0.0;
     }
-    (avant as f32 - apres as f32).abs() / max as f32
+    (before as f32 - apres as f32).abs() / max as f32
 }
 
 #[cfg(test)]

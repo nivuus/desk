@@ -42,7 +42,7 @@ export const MESSAGE_ECHEC =
 /// **Two, not one**: a first failure is the ordinary case of a window that
 /// does not have focus when the agent pushes, and shouting about it would make a
 /// permanent banner on a product that works.
-export const ECHECS_AVANT_MESSAGE = 2;
+export const FAILURES_BEFORE_MESSAGE = 2;
 
 /// Maximum size, in **UTF-8 bytes**, of a text the page agrees
 /// to emit towards the agent (sub-block P2).
@@ -75,7 +75,7 @@ export class PressePapierLocal {
     /// the last.
     private enAttente: string | undefined;
     /// The last text actually written — we do not rewrite it.
-    private ecrit: string | undefined;
+    private written: string | undefined;
     /// Consecutive write failures.
     private echecs = 0;
     /// The refusal to voice, **consumable**: otherwise the banner would show again at
@@ -143,16 +143,16 @@ export class PressePapierLocal {
     /// ⚠️ **Probes filed**: `journaux-presse-papier-p3/p3-writetext-{1,2}.json`
     /// (the 2×2) and `p3-focus-{1,2}.json` (measurability of focus with N
     /// windows), two runs each, identical reports.
-    aEcrire(focalise: boolean): string | undefined {
+    toWrite(focalise: boolean): string | undefined {
         if (!focalise) return undefined;
         if (this.enAttente === undefined) return undefined;
-        if (this.enAttente === this.ecrit) return undefined;
+        if (this.enAttente === this.written) return undefined;
         return this.enAttente;
     }
 
     /// The write succeeded.
     confirmer(texte: string): void {
-        this.ecrit = texte;
+        this.written = texte;
         // A success resets the counter to zero: without that, a failure at startup
         // and a failure an hour later would shout together.
         this.echecs = 0;
@@ -162,7 +162,7 @@ export class PressePapierLocal {
     /// failure, `undefined` before.
     echouer(): string | undefined {
         this.echecs += 1;
-        return this.echecs >= ECHECS_AVANT_MESSAGE ? MESSAGE_ECHEC : undefined;
+        return this.echecs >= FAILURES_BEFORE_MESSAGE ? MESSAGE_ECHEC : undefined;
     }
 
     /// Returns the text to emit towards the agent, or `undefined` if it is the echo

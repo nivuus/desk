@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, piloteCompteur } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { CacheSante, PERIODE_SANTE_MS, servirSante } from './routes-sante';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { startServer, type ServicePlateforme } from './serveur';
 import type { Config } from '../config';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -55,14 +55,14 @@ function piloteMort(): Pilote {
 describe('GET /sante', () => {
     it('(a) base saine ⇒ 200 et `{"etat":"ok"}`', async () => {
         base = await baseNeuve('sante-ok');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`);
         expect(r.status).toBe(200);
         expect(await r.json()).toEqual({ etat: 'ok' });
     });
 
     it('(b) base en échec ⇒ 503 et `{"etat":"degrade"}`', async () => {
-        service = await demarrerServeur(CONFIG, piloteMort());
+        service = await startServer(CONFIG, piloteMort());
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`);
         expect(r.status).toBe(503);
         expect(await r.json()).toEqual({ etat: 'degrade' });
@@ -80,7 +80,7 @@ describe('GET /sante', () => {
         // TOUCHE LA BASE, donc la seule dont la réponse puisse en dire
         // quelque chose. Voir `routes-sante.ts`.
         base = await baseNeuve('sante-rien-d-autre');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const corps = (await (await fetch(`http://127.0.0.1:${service.port}/sante`)).json()) as Record<string, unknown>;
         expect(Object.keys(corps)).toEqual(['etat']);
     });
@@ -127,16 +127,16 @@ describe('GET /sante', () => {
         base = reel;
         const compteur = piloteCompteur(reel);
         const cache = new CacheSante();
-        const tous = await Promise.all(
+        const all = await Promise.all(
             Array.from({ length: 8 }, () => cache.verdict(compteur.pilote, T0)),
         );
-        expect(tous).toEqual(Array.from({ length: 8 }, () => true));
+        expect(all).toEqual(Array.from({ length: 8 }, () => true));
         expect(compteur.acces()).toBe(1);
     });
 
     it('(f) une méthode autre que GET rend 405', async () => {
         base = await baseNeuve('sante-methode');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`, { method: 'POST' });
         expect(r.status).toBe(405);
         expect(await r.json()).toEqual({ refus: 'methode' });
@@ -148,7 +148,7 @@ describe('GET /sante', () => {
         // déclarerait le service mort. Le cache est ce qui la rend sûre SANS
         // frein — les deux décisions vivent dans le même paragraphe.
         base = await baseNeuve('sante-anonyme');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`);
         expect(r.status).toBe(200);
     });
@@ -158,7 +158,7 @@ describe('GET /sante', () => {
         // `/sante`, et un préfixe ouvrirait une famille de chemins que
         // personne n'a décidés.
         base = await baseNeuve('sante-chemin');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         expect((await fetch(`http://127.0.0.1:${service.port}/santelle`)).status).toBe(404);
     });
 

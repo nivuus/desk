@@ -67,9 +67,9 @@ function pilote(base: TypeDatabaseSync): Pilote {
         async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
             base.exec('BEGIN');
             try {
-                const valeur = await corps(pilote(base));
+                const value = await corps(pilote(base));
                 base.exec('COMMIT');
-                return valeur;
+                return value;
             } catch (cause) {
                 base.exec('ROLLBACK');
                 throw cause;

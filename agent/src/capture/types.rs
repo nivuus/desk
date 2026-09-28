@@ -65,16 +65,16 @@ pub enum CibleCapture {
 /// output resolution, the duplication itself): in that case `None`
 /// PERSISTS beyond `rouvrir()`, until the next attempt — an
 /// earlier comment wrongly claimed the opposite. Returning
-/// `AccesPerdu(dernier_code_perdu)` rather than a `Panne` is what lets
+/// `AccesPerdu(last_lost_code)` rather than a `Panne` is what lets
 /// `next_frame` retry the reopening instead of declaring the source
 /// exhausted on a failure that is in no way definitive: an absence of duplication
 /// outside `rouvrir()` is therefore, since this fix, no longer a
 /// programming defect — it is a normal state of the resumption window.
 pub(super) fn lire(
     duplication: &Option<IDXGIOutputDuplication>,
-    dernier_code_perdu: i32,
+    last_lost_code: i32,
 ) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
     duplication
         .as_ref()
-        .ok_or(EchecAcquisition::AccesPerdu(dernier_code_perdu))
+        .ok_or(EchecAcquisition::AccesPerdu(last_lost_code))
 }

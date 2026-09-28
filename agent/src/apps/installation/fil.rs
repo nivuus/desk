@@ -146,8 +146,8 @@ async fn honorer(
         Etat::Neuf => {}
     }
 
-    if let Err(erreur) = std::fs::create_dir_all(&repertoire) {
-        tracing::error!(%erreur, "répertoire d'installation non créé");
+    if let Err(error) = std::fs::create_dir_all(&repertoire) {
+        tracing::error!(%error, "répertoire d'installation non créé");
         return terminer(
             emettre,
             ordre,
@@ -166,7 +166,7 @@ async fn honorer(
 
     // --- transfert ---
     let url = format!("{}{}", base.trim_end_matches('/'), ordre.url);
-    let mut dernier: Option<u64> = None;
+    let mut last: Option<u64> = None;
     let telecharge = {
         let emettre = &emettre;
         let id = ordre.id.clone();
@@ -175,15 +175,15 @@ async fn honorer(
                 url: &url,
                 jeton,
                 destination: Path::new(&chemin),
-                taille_attendue: ordre.taille,
+                expected_size: ordre.size,
                 sha256_attendu: &ordre.sha256,
             },
             move |faits, total| {
                 let ms = maintenant_ms();
                 // ⚠️ THE LAST ONE IS ALWAYS EMITTED: without this clause, a
                 // bar would stop at 97 % forever.
-                if doit_emettre(dernier, ms, faits >= total) {
-                    dernier = Some(ms);
+                if doit_emettre(last, ms, faits >= total) {
+                    last = Some(ms);
                     emettre(VersLaPlateforme::progression(
                         id.clone(),
                         Phase::Transfert,
@@ -210,16 +210,16 @@ async fn honorer(
     // 🔴 THE BENCH FAULT IS INJECTED HERE: after writing, BEFORE checking —
     // it is the only place that exercises the third fingerprint check
     // on the real path. ⚠️ The download has already checked it, so the fault
-    // must go through a second re-read; that is what `verifier` does.
+    // must go through a second re-read; that is what `verify` does.
     if std::env::var(VARIABLE_FAUTE).as_deref() == Ok("empreinte") {
-        if let Err(erreur) = alterer_un_octet(Path::new(&chemin)) {
-            tracing::warn!(%erreur, "faute d'empreinte non injectée");
-        } else if !verifier(Path::new(&chemin), &ordre.sha256) {
+        if let Err(error) = alterer_un_octet(Path::new(&chemin)) {
+            tracing::warn!(%error, "faute d'empreinte non injectée");
+        } else if !verify(Path::new(&chemin), &ordre.sha256) {
             tracing::error!("faute injectée : l'empreinte relue DIFFÈRE, installation refusée");
-            if let Err(erreur) = std::fs::remove_file(&chemin) {
+            if let Err(error) = std::fs::remove_file(&chemin) {
                 // ⚠️ KEEPING IT WOULD BE WORSE THAN NOT HAVING IT: a later
                 // path could take it for a valid installer.
-                tracing::warn!(%erreur, chemin, "fichier corrompu NON supprimé");
+                tracing::warn!(%error, chemin, "fichier corrompu NON supprimé");
             }
             fermer(partage, &ordre.id);
             return terminer(
@@ -245,9 +245,9 @@ async fn honorer(
     //
     // ⚠️ AND IT IS WRITTEN BEFORE `CreateProcessW`, NEVER AFTER: between the two,
     // there is exactly the window it exists to cover.
-    if let Err(erreur) = std::fs::write(repertoire.join(depot::MARQUEUR_COMMENCE), b"") {
+    if let Err(error) = std::fs::write(repertoire.join(depot::MARQUEUR_COMMENCE), b"") {
         tracing::error!(
-            %erreur,
+            %error,
             installation = %ordre.id,
             "marqueur .commence non écrit : on REFUSE d'exécuter. Sans lui, un \
              redémarrage de l'agent relancerait l'installeur sur une machine à \
@@ -264,7 +264,7 @@ async fn honorer(
             false,
         );
     }
-    peripherique_audio::tracer(&ordre.id, Moment::Avant);
+    peripherique_audio::tracer(&ordre.id, Moment::Before);
     emettre(VersLaPlateforme::progression(
         ordre.id.clone(),
         Phase::Execution,
@@ -287,9 +287,9 @@ async fn honorer(
     // hence report `issue_inconnue` on a re-enrolment. It is **cautious in
     // the right direction** — nothing is replayed —, but it is wrong, and one must be able
     // to see it in the log rather than deduce it from a surprising outcome.
-    if let Err(erreur) = std::fs::write(repertoire.join(depot::MARQUEUR_TERMINE), b"") {
+    if let Err(error) = std::fs::write(repertoire.join(depot::MARQUEUR_TERMINE), b"") {
         tracing::warn!(
-            %erreur,
+            %error,
             installation = %ordre.id,
             "marqueur .termine non écrit : une réémission rapporterait \
              issue_inconnue sur une installation pourtant finie"
@@ -302,8 +302,8 @@ async fn honorer(
             fermer(partage, &ordre.id);
             return terminer(emettre, ordre, Issue::Refusee, Some(motif), None, "", false);
         }
-        Err(erreur) => {
-            tracing::error!(%erreur, "fil d'exécution perdu");
+        Err(error) => {
+            tracing::error!(%error, "fil d'exécution perdu");
             fermer(partage, &ordre.id);
             return terminer(emettre, ordre, Issue::IssueInconnue, None, None, "", false);
         }
@@ -411,7 +411,7 @@ fn alterer_un_octet(chemin: &Path) -> std::io::Result<()> {
     f.write_all(&[octet[0] ^ 0xFF])
 }
 
-fn verifier(chemin: &Path, attendu: &str) -> bool {
+fn verify(chemin: &Path, attendu: &str) -> bool {
     use std::io::Read;
     let Ok(mut f) = std::fs::File::open(chemin) else {
         return false;

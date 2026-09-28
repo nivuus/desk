@@ -20,7 +20,7 @@
 //! consumes the pool: the red arm's survey carries **9 outputs created for
 //! 7 refusals**. The driver has already accepted the creation; there is nothing to redo.
 //!
-//! ⚠️ **WHAT THIS RETRY COSTS, AND IT MUST BE SAID.** `creer_sortie` runs
+//! ⚠️ **WHAT THIS RETRY COSTS, AND IT MUST BE SAID.** `create_output` runs
 //! INSIDE the supervisor loop, which is single-threaded: during the wait, nothing
 //! else is handled. The worst case goes from 5 s to
 //! `TOURS × LIMITE_RATTACHEMENT + (TOURS − 1) × REPIT`. It is PURE waiting
@@ -29,7 +29,7 @@
 //!
 //! ⚠️ **Out of reach of `DELAI_ATTENTE_VIEWPORT_MAX`**: that 30 s
 //! bound only filters `Etat::AttendLeViewport`
-//! (`superviseur/table/orphelines.rs`), whereas `creer_sortie` runs in
+//! (`superviseur/table/orphelines.rs`), whereas `create_output` runs in
 //! `Etat::AttendLaSortie` (`table/attribution.rs`). Checked by reading both,
 //! not assumed — a retry cancelled by a neighbouring safeguard would be a remedy
 //! that remedies nothing.
@@ -58,7 +58,7 @@ pub const REPIT: Duration = Duration::from_secs(1);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Suite {
     /// Retry, **on the same output**, after this respite.
-    Reessayer { tour_suivant: u32, apres: Duration },
+    Reessayer { next_round: u32, apres: Duration },
     /// Give up: the output is handed back to the driver and the window refused.
     ///
     /// `tours_epuises` serves the LOG: a refusal after N turns does not read
@@ -80,7 +80,7 @@ pub fn apres_un_tour(tour_acheve: u32, tours: u32, repit: Duration) -> Suite {
         };
     }
     Suite::Reessayer {
-        tour_suivant: tour_acheve + 1,
+        next_round: tour_acheve + 1,
         apres: repit,
     }
 }
@@ -94,14 +94,14 @@ mod tests {
         assert_eq!(
             apres_un_tour(1, 3, REPIT),
             Suite::Reessayer {
-                tour_suivant: 2,
+                next_round: 2,
                 apres: REPIT
             }
         );
         assert_eq!(
             apres_un_tour(2, 3, REPIT),
             Suite::Reessayer {
-                tour_suivant: 3,
+                next_round: 3,
                 apres: REPIT
             }
         );
@@ -110,7 +110,7 @@ mod tests {
     /// 🔴 The bound. Without it, the retry would become the second unbounded
     /// restart loop of this repository.
     #[test]
-    fn le_dernier_tour_renonce_et_dit_combien_il_en_a_faits() {
+    fn the_last_round_gives_up_and_says_how_many_it_made() {
         assert_eq!(
             apres_un_tour(3, 3, REPIT),
             Suite::Renoncer { tours_epuises: 3 }
@@ -144,7 +144,7 @@ mod tests {
     /// turn. It is the WITNESS that makes the retry discriminating — it shows
     /// that the rule also knows how to retry nothing.
     #[test]
-    fn un_seul_tour_est_le_produit_d_avant_la_reprise() {
+    fn a_single_round_is_the_product_before_the_retry() {
         assert_eq!(
             apres_un_tour(1, 1, REPIT),
             Suite::Renoncer { tours_epuises: 1 }
@@ -163,12 +163,9 @@ mod tests {
             tours += 1;
             attente += limite;
             match apres_un_tour(tour, TOURS, REPIT) {
-                Suite::Reessayer {
-                    tour_suivant,
-                    apres,
-                } => {
+                Suite::Reessayer { next_round, apres } => {
                     attente += apres;
-                    tour = tour_suivant;
+                    tour = next_round;
                 }
                 Suite::Renoncer { .. } => break,
             }

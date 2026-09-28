@@ -25,7 +25,7 @@ pub use curseur::CursorShape;
 // rejected (mandatory field), not silently filled in with the current
 // version. `default` would short-circuit `deserialize_with` when the field is
 // absent, which would break the check.
-fn verifie_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
+fn check_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -56,7 +56,7 @@ pub use lien::{LinkAdaptation, LinkQuality};
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ClientControl {
     Resize {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         width: u32,
         height: u32,
@@ -68,7 +68,7 @@ pub enum ClientControl {
     /// of the capturer when several windows are visible at the same time — they
     /// then have exactly the same visibility.
     Visibility {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         visible: bool,
         focused: bool,
@@ -96,7 +96,7 @@ pub enum ClientControl {
     /// banner; here the size is read from `text.len()`, and there is no
     /// banner to feed.
     Clipboard {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         text: String,
     },
@@ -110,7 +110,7 @@ pub enum ClientControl {
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum AgentControl {
     Ready {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         width: u32,
         height: u32,
@@ -150,7 +150,7 @@ pub enum AgentControl {
         mic: bool,
     },
     SessionEnd {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         reason: String,
     },
@@ -159,7 +159,7 @@ pub enum AgentControl {
     /// observation on the agent side (the system cursor is hidden), hence a single
     /// message.
     Pointer {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         visible: bool,
         shape: CursorShape,
@@ -170,13 +170,13 @@ pub enum AgentControl {
     /// pool took its place while the user was looking at it). The two do not
     /// weigh the same for the user: the second deserves to be said.
     Asleep {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         asleep: bool,
         reason: String,
     },
     Rumble {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         left: u8,
         right: u8,
@@ -192,7 +192,7 @@ pub enum AgentControl {
     /// gated its initialisation on `Ready` would lose this message and the
     /// first `Pointer`: do not do that.
     Capabilities {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         gamepad: bool,
         /// Is browser → VM pasting available for this session
@@ -237,7 +237,7 @@ pub enum AgentControl {
     /// The direction is SINGLE — the browser never forces the state of the Windows
     /// window —, and that is what makes any oscillation impossible.
     Fullscreen {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         active: bool,
     },
@@ -270,7 +270,7 @@ pub enum AgentControl {
     /// (a state plus its reason) and `Link` (a decision plus its magnitudes);
     /// the repository has no precedent of two variants for a single state.
     Clipboard {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         text: Option<String>,
         bytes: u32,
@@ -307,14 +307,14 @@ pub enum AgentControl {
     /// not a capability the client must announce or discover — it
     /// receives it, or it does not.
     Accent {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         couleur: String,
     },
     /// Network link state, emitted at each change of adaptation
     /// decision — hence rarely, not every second.
     Link {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         bitrate: u32,
         width: u32,
@@ -363,7 +363,7 @@ pub enum AgentControl {
     /// `MicState` keeps it closed rather than reopening it.
     ///
     /// 🔴 **`CONTROL_VERSION` DOES NOT GO UP.** The two checks of `v` —
-    /// `verifie_version` above and `parseAgentControl` on the TypeScript side —
+    /// `check_version` above and `parseAgentControl` on the TypeScript side —
     /// are **strict equalities**: raising it would reject **all**
     /// messages, `Ready` and `SessionEnd` included, and would replace a
     /// PER-MESSAGE degradation with a TOTAL incompatibility. An old client
@@ -376,7 +376,7 @@ pub enum AgentControl {
     /// disclose, and the remedy applies **to the TYPE, not to the logging
     /// site**.
     MicState {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         granted: bool,
     },

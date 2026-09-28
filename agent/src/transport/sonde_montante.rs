@@ -88,7 +88,7 @@ fn str0m_expose_l_opus_montant_via_media_data() {
     socket_r.set_nonblocking(false).unwrap();
 
     let echeance = Instant::now() + Duration::from_secs(15);
-    let mut ecrit = false;
+    let mut written = false;
     let mut recu: Option<(Vec<u8>, Codec, u32)> = None;
     let mut horodatage = 0u64;
 
@@ -97,7 +97,7 @@ fn str0m_expose_l_opus_montant_via_media_data() {
         assert!(
             maintenant < echeance,
             "aucun `Event::MediaData` reçu en 15 s : str0m ne délivre pas l'Opus montant, \
-             ou la connexion ne s'est pas établie (au moins une écriture tentée : {ecrit})"
+             ou la connexion ne s'est pas établie (au moins une écriture tentée : {written})"
         );
 
         // ---- the emitter ------------------------------------------------
@@ -122,7 +122,7 @@ fn str0m_expose_l_opus_montant_via_media_data() {
                                 .write(pt, Instant::now(), temps, CHARGE.to_vec())
                                 .is_ok()
                             {
-                                ecrit = true;
+                                written = true;
                                 horodatage += 960;
                             }
                         }
@@ -157,14 +157,14 @@ fn str0m_expose_l_opus_montant_via_media_data() {
         }
     }
 
-    let (donnees, codec, denominateur) = recu.unwrap();
+    let (data, codec, denominateur) = recu.unwrap();
     eprintln!(
         "SONDE 1 : MediaData reçue — {} octets, codec {codec:?}, horloge RTP {denominateur} Hz",
-        donnees.len()
+        data.len()
     );
 
     assert_eq!(
-        donnees, CHARGE,
+        data, CHARGE,
         "la charge utile n'a pas traversé octet pour octet : str0m ne se comporte pas en \
          passe-plat sur l'Opus entrant"
     );

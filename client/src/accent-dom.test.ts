@@ -32,32 +32,32 @@ const CLAIR = theme(clairBrut, sombre);
 /// SOMBRES, et **2,194 / 2,047 / 1,889** sur les fonds CLAIRS — mesuré le
 /// 21 août 2026. C'est ce qui fait de lui le fixture exact du test de bascule :
 /// la MÊME couleur est acceptée dans un thème et refusée dans l'autre.
-const LISIBLE_EN_SOMBRE_SEULEMENT = sombre.get('--succes')!;
+const READABLE_IN_DARK_ONLY = sombre.get('--succes')!;
 
 /// Une racine factice qui compte ses lectures : c'est ce compteur qui distingue
 /// « les fonds sont relus » de « les fonds ont été mémorisés au montage ».
 function racine(depart: Record<string, string>) {
     const poses: Array<[string, string]> = [];
     const lus: string[] = [];
-    let courant = depart;
+    let current = depart;
     const acces: AccesTokens = {
         lireToken: (nom) => {
             lus.push(nom);
-            return courant[nom] ?? '';
+            return current[nom] ?? '';
         },
-        poserToken: (nom, valeur) => {
-            poses.push([nom, valeur]);
+        poserToken: (nom, value) => {
+            poses.push([nom, value]);
         },
     };
-    return { acces, poses, lus, basculer: (t: Record<string, string>) => (courant = t) };
+    return { acces, poses, lus, basculer: (t: Record<string, string>) => (current = t) };
 }
 
 describe('attacherAccentAuDOM', () => {
     it('une couleur CONFORME est posée sur la racine', () => {
         // ROUGE : l'arbre intact avant que le module n'existe.
         const r = racine(SOMBRE);
-        attacherAccentAuDOM(r.acces).recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
-        expect(r.poses).toEqual([[TOKEN_ACCENT, LISIBLE_EN_SOMBRE_SEULEMENT]]);
+        attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
+        expect(r.poses).toEqual([[TOKEN_ACCENT, READABLE_IN_DARK_ONLY]]);
     });
 
     it('une couleur REFUSÉE fait poser l\'accent du thème, jamais rien', () => {
@@ -66,10 +66,10 @@ describe('attacherAccentAuDOM', () => {
         // de cette fenêtre — un état périmé, plus trompeur qu'un repli visible.
         const r = racine(SOMBRE);
         const a = attacherAccentAuDOM(r.acces);
-        a.recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        a.recevoir(READABLE_IN_DARK_ONLY);
         a.recevoir(sombre.get('--bord')!); // 1,447 / 1,336 / 1,215 : illisible
         expect(r.poses).toEqual([
-            [TOKEN_ACCENT, LISIBLE_EN_SOMBRE_SEULEMENT],
+            [TOKEN_ACCENT, READABLE_IN_DARK_ONLY],
             [TOKEN_ACCENT, SOMBRE['--accent']],
         ]);
     });
@@ -81,11 +81,11 @@ describe('attacherAccentAuDOM', () => {
         // message poserait la couleur au lieu de l'accent clair.
         const r = racine(SOMBRE);
         const a = attacherAccentAuDOM(r.acces);
-        a.recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        a.recevoir(READABLE_IN_DARK_ONLY);
         expect(r.lus).toEqual(['--fond-0', '--fond-1', '--fond-2', '--accent']);
 
         r.basculer(CLAIR);
-        a.recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        a.recevoir(READABLE_IN_DARK_ONLY);
         expect(r.lus).toHaveLength(8);
         expect(r.poses[1]).toEqual([TOKEN_ACCENT, CLAIR['--accent']]);
         expect(CLAIR['--accent']).not.toBe(SOMBRE['--accent']);
@@ -108,7 +108,7 @@ describe('attacherAccentAuDOM', () => {
         // rendrait aussi la chaîne vide, et la chaîne vide est ce que rend un
         // mécanisme entièrement mort. C'est la leçon de la rouge ① de P3.
         const r = racine(SOMBRE);
-        attacherAccentAuDOM(r.acces).recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
         expect(r.poses.every(([nom]) => nom === TOKEN_ACCENT)).toBe(true);
         expect(Object.keys(r.acces)).toEqual(['lireToken', 'poserToken']);
     });
@@ -120,7 +120,7 @@ describe('attacherAccentAuDOM', () => {
         // dire. Le cas est RÉEL : `getComputedStyle` rend la chaîne vide pour un
         // token absent — donc pour toute page dont le socle n'est pas encore lié.
         const r = racine({});
-        attacherAccentAuDOM(r.acces).recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
         expect(r.poses).toEqual([[TOKEN_ACCENT, '']]);
     });
 });

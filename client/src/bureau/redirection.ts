@@ -27,6 +27,6 @@
 ///
 /// ⚠️ `?app=` IS THE POINT: losing it would break PWAs as surely as
 /// deleting the file.
-export function cibleDeRedirection(recherche: string): string {
-    return `/${recherche}`;
+export function cibleDeRedirection(search: string): string {
+    return `/${search}`;
 }

@@ -38,7 +38,7 @@
     } catch (e) { /* criterion ⑥ will say */ }
 
     const BASE = '__BASE_JEU__';
-    window.__f2 = { etapes: [], erreurs: [] };
+    window.__f2 = { etapes: [], errors: [] };
     const noter = (m) => {
         window.__f2.etapes.push({ t: Date.now(), m: String(m).slice(0, 300) });
         if (window.__f2.etapes.length > 300) window.__f2.etapes.shift();
@@ -67,12 +67,12 @@
         for await (const nom of dossier.keys()) {
             await dossier.removeEntry(nom, { recursive: true });
         }
-        const liste = await (await fetch(BASE + '/liste')).json();
-        for (const e of liste.filter((x) => x.type === 'directory')) {
+        const list = await (await fetch(BASE + '/liste')).json();
+        for (const e of list.filter((x) => x.type === 'directory')) {
             let ici = dossier;
             for (const p of e.chemin.split('/')) ici = await ici.getDirectoryHandle(p, { create: true });
         }
-        for (const e of liste.filter((x) => x.type === 'file')) {
+        for (const e of list.filter((x) => x.type === 'file')) {
             const parts = e.chemin.split('/');
             const nom = parts.pop();
             let ici = dossier;
@@ -86,12 +86,12 @@
             await w.write(octets);
             await w.close();
         }
-        noter('OPFS peuple : ' + liste.length + ' entrees');
-        window.__f2.peuple = liste.length;
+        noter('OPFS peuple : ' + list.length + ' entrees');
+        window.__f2.peuple = list.length;
         window.__f2.racine = dossier;
         return dossier;
     })().catch((e) => {
-        window.__f2.erreurs.push('peuplement OPFS : ' + String(e).slice(0, 300));
+        window.__f2.errors.push('peuplement OPFS : ' + String(e).slice(0, 300));
         throw e;
     });
 
@@ -124,7 +124,7 @@
                 sha256: Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join(''),
             });
         } catch (e) {
-            return JSON.stringify({ present: false, erreur: String(e).slice(0, 200) });
+            return JSON.stringify({ present: false, error: String(e).slice(0, 200) });
         }
     };
 
@@ -141,7 +141,7 @@
         try {
             const racine = await navigator.storage.getDirectory();
             await descendre(await racine.getDirectoryHandle('Mes documents'), '');
-        } catch (e) { sortie.push({ erreur: String(e).slice(0, 200) }); }
+        } catch (e) { sortie.push({ error: String(e).slice(0, 200) }); }
         return JSON.stringify(sortie);
     };
 

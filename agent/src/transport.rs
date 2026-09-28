@@ -254,7 +254,7 @@ pub struct Session {
     ///
     /// Reset to `false` as soon as a fresh estimate comes back: a later
     /// unavailability (new TWCC outage, see I4) is new
-    /// information, to be announced again — as `taille_refus_signalee`
+    /// information, to be announced again — as `reported_refused_size`
     /// resets to `None` as soon as a size change succeeds.
     indisponibilite_annoncee: bool,
     /// Encoding size actually applied. Distinct from the decided one:
@@ -266,7 +266,7 @@ pub struct Session {
     /// other hand, a NEW refused target is new information.
     /// Reset to `None` as soon as a size change succeeds, so that a
     /// later refusal of the same size is told again.
-    taille_refus_signalee: Option<(u32, u32)>,
+    reported_refused_size: Option<(u32, u32)>,
     /// True once the refusal of the hot bitrate change has been logged.
     refus_debit_signale: bool,
     /// Bitrate actually applied by the encoder. Distinct from the decided one:
@@ -299,7 +299,7 @@ pub struct Session {
     /// round that produces nothing.
     unites_video_ecrites: u64,
     /// Instant of the last cadence reading of the video track.
-    dernier_compte_video: Instant,
+    last_video_count: Instant,
     /// True once `VideoSource::signaler_audio_mort` has been called for this
     /// capture — the latch that prevents flooding the sensor: `capture_morte`
     /// (`crate::audio::AudioSource`) stays true forever once set, whereas
@@ -457,7 +457,7 @@ impl Session {
             absence_bwe_signalee: false,
             indisponibilite_annoncee: false,
             encode_size_appliquee: dimensions,
-            taille_refus_signalee: None,
+            reported_refused_size: None,
             refus_debit_signale: false,
             // As the controller initialises its own: before any applied
             // decision, the real bitrate is the fallback one, the ceiling.
@@ -467,7 +467,7 @@ impl Session {
             _timer_resolution: TimerResolutionGuard::new(),
             session_id: String::new(),
             unites_video_ecrites: 0,
-            dernier_compte_video: Instant::now(),
+            last_video_count: Instant::now(),
             audio_mort_signale: false,
             audio_reconstructeur: None,
             reconstructions_restantes: crate::audio::RECONSTRUCTIONS_MAX,

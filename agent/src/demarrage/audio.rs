@@ -85,7 +85,7 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                 }));
             }
             Err(e) => {
-                tracing::warn!(erreur = %e, "audio indisponible, la session continue sans son");
+                tracing::warn!(error = %e, "audio indisponible, la session continue sans son");
             }
         }
     }

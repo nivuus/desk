@@ -106,7 +106,7 @@ pub use effets::Effet;
 struct Entree {
     fenetre: IdFenetre,
     /// Kept for the sole reason that an output refusal must be told to a
-    /// human (see `Effet::CreerSortie`). It is NOT an identifier: a
+    /// human (see `Effet::CreateOutput`). It is NOT an identifier: a
     /// window's title changes during its life, it is `IdSession` that
     /// designates.
     titre: String,
@@ -118,11 +118,11 @@ struct Entree {
     nom_sortie: Option<String>,
     /// ❌ **This field carried "the dimensions ACTUALLY returned by DXGI",
     /// and that is no longer true since sub-block D10** (found by the cross-cutting
-    /// review: the file contradicted itself, `rafraichir_taille_sortie`
+    /// review: the file contradicted itself, `refresh_output_size`
     /// below and `boucle/placement_periodique.rs` both saying the
     /// opposite). It carries the **RETAINED size** — `min` axis by axis between the
     /// bounded viewport and the real DXGI size —, written by
-    /// `boucle::creation_sortie::creer_sortie` at creation and by
+    /// `boucle::creation_sortie::create_output` at creation and by
     /// `table::attribution::viewport_recu` at reuse. It is the size
     /// at which the window is put, and the one the capture crops in
     /// the output's duplication; it **no longer has any reason to equal** the
@@ -137,7 +137,7 @@ struct Entree {
     ///
     /// Set and cleared together with `sortie_pilote` and `nom_sortie`: the
     /// three designate the same output and are never separated.
-    taille_sortie: Option<(u32, u32)>,
+    output_size: Option<(u32, u32)>,
     /// Number of times this window has already been restarted after its
     /// child's death. The safeguard of `relancer_les_orphelines` (`RELANCES_MAX`)
     /// relies on it to give up rather than restart endlessly.
@@ -203,17 +203,17 @@ impl Table {
     /// exactly as before sub-block P3.
     ///
     /// ⚠️ **No PRODUCTION caller any more since P3** (`boucle.rs` goes
-    /// through `avec_prefixe`), and the lint says so on the Windows build.
+    /// through `with_prefix`), and the lint says so on the Windows build.
     /// Kept because it is the witness of the behaviour from before P3 —
     /// it is what the twenty or so tests of this module use, and it is through
     /// it that "empty prefix = today's name" stays exercised.
     #[cfg(test)]
-    pub fn nouvelle(capacite: usize) -> Self {
-        Self::avec_prefixe(capacite, String::new())
+    pub fn new(capacite: usize) -> Self {
+        Self::with_prefix(capacite, String::new())
     }
 
     /// A table all of whose sessions carry their VM's prefix.
-    pub fn avec_prefixe(capacite: usize, prefixe: String) -> Self {
+    pub fn with_prefix(capacite: usize, prefixe: String) -> Self {
         Self {
             capacite,
             entrees: HashMap::new(),
@@ -286,7 +286,7 @@ impl Table {
                 etat: Etat::AttendLeViewport,
                 sortie_pilote: None,
                 nom_sortie: None,
-                taille_sortie: None,
+                output_size: None,
                 relances: 0,
                 attente_depuis: None,
             },
@@ -303,33 +303,33 @@ impl Table {
     }
 
     /// Dimensions of the output retained by a session, if there is one.
-    pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
-        self.entrees.get(session).and_then(|e| e.taille_sortie)
+    pub fn output_size_of(&self, session: &IdSession) -> Option<(u32, u32)> {
+        self.entrees.get(session).and_then(|e| e.output_size)
     }
 
     /// Updates the RETAINED size of an already assigned output, from a
     /// fresh DXGI read. Writes NOTHING if the session has no retained
     /// output (yet): this method only corrects an existing
     /// record, never creates one — `sortie_creee` stays the only point that
-    /// sets `nom_sortie` and `taille_sortie` together.
+    /// sets `nom_sortie` and `output_size` together.
     ///
     /// Former IMPORTANT 5 (review of task 9): closes the gap D8 had
     /// opened — `WindowsSource::changer_mode_de_sortie` resized a virtual
     /// output without going through this table, hence without it knowing,
-    /// and `taille_sortie` stayed frozen at the CREATION size. **That path
+    /// and `output_size` stayed frozen at the CREATION size. **That path
     /// was removed in sub-block D9**, with measurement to back it (see the finding at
     /// the head of `capteur/plein_ecran.rs`): nothing, in production, any longer
     /// resizes an output after its creation. **No caller any more since
-    /// sub-block D10**: `taille_sortie` now carries the RETAINED size
+    /// sub-block D10**: `output_size` now carries the RETAINED size
     /// (`sortie_pour_viewport` accepts an output larger than the
     /// viewport), which no longer has any reason to equal the raw DXGI size — the
     /// periodic refresh would therefore have overwritten it, and the call was
     /// removed. No safety net is wired for a future resize
     /// outside this table.
-    pub fn rafraichir_taille_sortie(&mut self, session: &IdSession, taille: (u32, u32)) {
+    pub fn refresh_output_size(&mut self, session: &IdSession, size: (u32, u32)) {
         if let Some(entree) = self.entrees.get_mut(session) {
-            if entree.taille_sortie.is_some() {
-                entree.taille_sortie = Some(taille);
+            if entree.output_size.is_some() {
+                entree.output_size = Some(size);
             }
         }
     }

@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 
 use super::allocation::TurnClient;
 use super::messages::{
-    ecrire_attribut, xor_adresse, ATTR_ERROR_CODE, ATTR_LIFETIME, ATTR_NONCE, ATTR_REALM,
+    write_attribute, xor_adresse, ATTR_ERROR_CODE, ATTR_LIFETIME, ATTR_NONCE, ATTR_REALM,
     ATTR_XOR_MAPPED_ADDRESS, ATTR_XOR_RELAYED_ADDRESS, MAGIC, METHODE_ALLOCATE,
 };
 
@@ -35,8 +35,8 @@ pub(super) fn reponse(
     attributs: &[(u16, Vec<u8>)],
 ) -> Vec<u8> {
     let mut corps = Vec::new();
-    for (type_, valeur) in attributs {
-        ecrire_attribut(&mut corps, *type_, valeur);
+    for (type_, value) in attributs {
+        write_attribute(&mut corps, *type_, value);
     }
     // Success class = 0b10 → bits 0x0100; error class = 0b11 → 0x0110.
     let type_fil = methode | if classe_succes { 0x0100 } else { 0x0110 };

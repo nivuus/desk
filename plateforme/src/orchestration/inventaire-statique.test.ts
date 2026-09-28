@@ -15,7 +15,7 @@ import type { Pilote } from '../base/pilote';
 import { SEUIL_INJOIGNABLE_MS } from '../agents/fraicheur';
 import { enroler, marquerVu } from '../depot/agent';
 import { lireParId } from '../depot/vm';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { BACKEND_STATIQUE } from './refus';
 import { inventaireStatique } from './inventaire-statique';
 
@@ -33,8 +33,8 @@ async function poserVm(p: Pilote, id: string, nom: string): Promise<void> {
     await p.executer('INSERT INTO vm(id, nom, adresse) VALUES(?, ?, ?)', [id, nom, '192.168.3.2']);
 }
 
-async function poserUtilisateur(p: Pilote, email: string): Promise<string> {
-    return creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+async function seedUser(p: Pilote, email: string): Promise<string> {
+    return createUser(p, email, 'empreinte-opaque-de-test', MS);
 }
 
 /// Une horloge FIGÉE mais réglable : chaque test pose l'instant qu'il éprouve.
@@ -85,7 +85,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         base = await baseNeuve('inv-demarrer');
         await poserVm(base, 'v1', 'w1');
         const o = inventaireStatique(base, horlogeA(MS));
-        expect(await o.demarrer('v1')).toEqual({
+        expect(await o.start('v1')).toEqual({
             ok: false,
             motif: 'non-supporte',
             operation: 'demarrer',
@@ -118,7 +118,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         await poserVm(base, 'v1', 'w1');
         await enroler(base, 'v1', 'empreinte-opaque', 'PREFIXEv1');
         await marquerVu(base, 'v1', MS);
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         await inventaireStatique(base, horlogeA(MS)).attribuer('v1', alice);
 
         const [vm] = await inventaireStatique(base, horlogeA(MS)).lister();
@@ -126,7 +126,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
             id: 'v1',
             nom: 'w1',
             adresse: '192.168.3.2',
-            utilisateurId: alice,
+            userId: alice,
             prefixe: 'PREFIXEv1',
             vuA: MS,
         });
@@ -171,7 +171,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
     it('🔴 `attribuer` sur une VM libre rend `{ok:true}`', async () => {
         base = await baseNeuve('inv-attrib-ok');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         expect(await inventaireStatique(base, horlogeA(MS)).attribuer('v1', alice))
             .toEqual({ ok: true });
     });
@@ -182,7 +182,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         // la première.
         base = await baseNeuve('inv-attrib-ok-etat');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         await inventaireStatique(base, horlogeA(MS)).attribuer('v1', alice);
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
     });
@@ -192,8 +192,8 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         // `depot/vm.ts`. MESURÉ sur les deux moteurs : le vol passe alors.
         base = await baseNeuve('inv-attrib-prise');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         const o = inventaireStatique(base, horlogeA(MS));
         await o.attribuer('v1', alice);
         expect(await o.attribuer('v1', bob)).toEqual({
@@ -209,8 +209,8 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         // sur l'ÉTAT, pas sur le verdict.
         base = await baseNeuve('inv-attrib-prise-etat');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         const o = inventaireStatique(base, horlogeA(MS));
         await o.attribuer('v1', alice);
         await o.attribuer('v1', bob);
@@ -225,7 +225,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         base = await baseNeuve('inv-attrib-servi');
         await poserVm(base, 'v1', 'w1');
         await poserVm(base, 'v2', 'w2');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         const o = inventaireStatique(base, horlogeA(MS));
         await o.attribuer('v1', alice);
         expect(await o.attribuer('v2', alice)).toEqual({
@@ -239,7 +239,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
 
     it('`attribuer` sur une VM INCONNUE rend `vm-inconnue`', async () => {
         base = await baseNeuve('inv-attrib-inconnue');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         expect(await inventaireStatique(base, horlogeA(MS)).attribuer('v-inexistante', alice))
             .toEqual({
                 ok: false,
@@ -353,8 +353,8 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         // processus unique.
         base = await baseNeuve('inv-course');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         const gagnant = inventaireStatique(base, horlogeA(MS));
         const perdant = inventaireStatique(base, horlogeA(MS));
         expect(await gagnant.attribuer('v1', alice)).toEqual({ ok: true });

@@ -11,7 +11,7 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { hacher } from '../identite/mot-de-passe';
 import { enroler } from '../depot/agent';
-import { verifierEnrolement } from './enrolement';
+import { verifyEnrolment } from './enrolement';
 
 let base: Pilote | undefined;
 
@@ -34,7 +34,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
     it('accepte le bon couple, et rend le préfixe de la VM', async () => {
         base = await baseEnrolee('enrol-bon');
         const journal: string[] = [];
-        const v = await verifierEnrolement(base, 'v-1', SECRET, (l) => journal.push(l));
+        const v = await verifyEnrolment(base, 'v-1', SECRET, (l) => journal.push(l));
         expect(v).toEqual({ ok: true, vmId: 'v-1', prefixe: PREFIXE });
         // Un succès ne journalise pas de refus.
         expect(journal).toEqual([]);
@@ -46,8 +46,8 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         // différence d'UN caractère pour qu'il le redevienne — d'où la
         // comparaison stricte des deux objets entiers.
         base = await baseEnrolee('enrol-indistinct');
-        const inconnue = await verifierEnrolement(base, 'v-jamais-enrolee', SECRET, () => {});
-        const fauxSecret = await verifierEnrolement(base, 'v-1', 'pas-le-bon-secret', () => {});
+        const inconnue = await verifyEnrolment(base, 'v-jamais-enrolee', SECRET, () => {});
+        const fauxSecret = await verifyEnrolment(base, 'v-1', 'pas-le-bon-secret', () => {});
         expect(inconnue.ok).toBe(false);
         expect(fauxSecret.ok).toBe(false);
         expect(inconnue).toEqual(fauxSecret);
@@ -61,7 +61,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         // `identite/garde.ts`.
         base = await baseEnrolee('enrol-journal');
         const journal: string[] = [];
-        await verifierEnrolement(base, 'v-jamais-enrolee', SECRET, (l) => journal.push(l));
+        await verifyEnrolment(base, 'v-jamais-enrolee', SECRET, (l) => journal.push(l));
         expect(journal).toHaveLength(1);
         expect(journal[0]).toContain('v-jamais-enrolee');
         // 🔴 ET IL NE RECOPIE JAMAIS LE SECRET. Le balayage du critère ④ de P2
@@ -83,12 +83,12 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         const entiere = await hacher(SECRET);
         await enroler(base, 'v-1', entiere.slice(0, entiere.length - 10), PREFIXE);
 
-        const v = await verifierEnrolement(base, 'v-1', SECRET, () => {});
+        const v = await verifyEnrolment(base, 'v-1', SECRET, () => {});
         expect(v.ok).toBe(false);
     });
 
     it('LAISSE PASSER l’exception d’un algorithme inconnu, sans la transformer en refus', async () => {
-        // ⚠️ `identite/mot-de-passe.ts::verifier` LÈVE délibérément sur un
+        // ⚠️ `identite/mot-de-passe.ts::verify` LÈVE délibérément sur un
         // algorithme inconnu : un refus muet y serait indiscernable d'un secret
         // faux, et personne ne saurait diagnostiquer une base écrite par une
         // version future du service. L'enrôlement ne doit donc PAS l'avaler —
@@ -97,7 +97,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         base = await baseNeuve('enrol-algo');
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v-1', 'vm-1', '10.0.0.1']);
         await enroler(base, 'v-1', 'argon2id$1$2$3$sel$empreinte', PREFIXE);
-        await expect(verifierEnrolement(base, 'v-1', SECRET, () => {}))
+        await expect(verifyEnrolment(base, 'v-1', SECRET, () => {}))
             .rejects.toThrow(/algorithme de hachage inconnu/i);
     });
 });

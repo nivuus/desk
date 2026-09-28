@@ -14,15 +14,15 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import {
     compterEnCours,
-    creer as creerTeleversement,
+    create as createUpload,
     lireParId as lireTeleversement,
     lirePlusVieuxQue,
     sceller,
-    supprimer,
+    remove,
 } from './televersement';
 import {
     avancer,
-    creer as creerInstallation,
+    create as createInstallation,
     lireEnAttentePourVm,
     lireParId as lireInstallation,
     terminer,
@@ -40,7 +40,7 @@ afterEach(async () => {
     base = undefined;
 });
 
-async function socle(p: Pilote): Promise<{ utilisateur: string; vm: string }> {
+async function socle(p: Pilote): Promise<{ user: string; vm: string }> {
     await p.executer(
         'INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
         ['u-1', 'a@b.c', 'scrypt$1$1$1$x$y', MS],
@@ -50,21 +50,21 @@ async function socle(p: Pilote): Promise<{ utilisateur: string; vm: string }> {
         'g3',
         '192.168.3.2',
     ]);
-    return { utilisateur: 'u-1', vm: 'v-1' };
+    return { user: 'u-1', vm: 'v-1' };
 }
 
 describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
     it('crée, relit, et scelle', async () => {
         base = await baseNeuve('tel-cree');
-        const { utilisateur } = await socle(base);
-        const ligne = await creerTeleversement(
+        const { user } = await socle(base);
+        const ligne = await createUpload(
             base,
             {
-                utilisateurId: utilisateur,
+                userId: user,
                 nom: 'Firefox Setup 130.0.exe',
                 taille: TROIS_GO,
                 sha256: 'a'.repeat(64),
-                tailleTranche: 8 * 1024 * 1024,
+                chunkSize: 8 * 1024 * 1024,
             },
             MS,
         );
@@ -94,15 +94,15 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
     // remède vit AU PILOTE (`setTypeParser`), jamais dans une rustine locale.
     it('🔴 rend des NOMBRES, pas des chaînes, sur des magnitudes réelles', async () => {
         base = await baseNeuve('tel-nombres');
-        const { utilisateur } = await socle(base);
-        const ligne = await creerTeleversement(
+        const { user } = await socle(base);
+        const ligne = await createUpload(
             base,
             {
-                utilisateurId: utilisateur,
+                userId: user,
                 nom: 'gros.msi',
                 taille: TROIS_GO,
                 sha256: 'b'.repeat(64),
-                tailleTranche: 8 * 1024 * 1024,
+                chunkSize: 8 * 1024 * 1024,
             },
             MS,
         );
@@ -117,54 +117,54 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
 
     it('compte les EN COURS, et un scellé n’en est plus un', async () => {
         base = await baseNeuve('tel-quota');
-        const { utilisateur } = await socle(base);
-        const a = await creerTeleversement(
+        const { user } = await socle(base);
+        const a = await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'a.exe', taille: 1, sha256: 'c'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'a.exe', taille: 1, sha256: 'c'.repeat(64), chunkSize: 8 },
             MS,
         );
-        await creerTeleversement(
+        await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'b.exe', taille: 1, sha256: 'd'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'b.exe', taille: 1, sha256: 'd'.repeat(64), chunkSize: 8 },
             MS,
         );
-        expect(await compterEnCours(base, utilisateur)).toBe(2);
+        expect(await compterEnCours(base, user)).toBe(2);
         await sceller(base, a.id, MS + 1);
-        expect(await compterEnCours(base, utilisateur)).toBe(1);
+        expect(await compterEnCours(base, user)).toBe(1);
         // Un autre utilisateur n'entre pas dans le quota.
         expect(await compterEnCours(base, 'u-inconnu')).toBe(0);
     });
 
     it('le balayage d’âge rend ce qui est plus vieux que la borne', async () => {
         base = await baseNeuve('tel-age');
-        const { utilisateur } = await socle(base);
-        const vieux = await creerTeleversement(
+        const { user } = await socle(base);
+        const vieux = await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'v.exe', taille: 1, sha256: 'e'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'v.exe', taille: 1, sha256: 'e'.repeat(64), chunkSize: 8 },
             MS - 100_000,
         );
-        await creerTeleversement(
+        await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'n.exe', taille: 1, sha256: 'f'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'n.exe', taille: 1, sha256: 'f'.repeat(64), chunkSize: 8 },
             MS,
         );
         const a_purger = await lirePlusVieuxQue(base, MS - 1);
         expect(a_purger.map((l) => l.id)).toEqual([vieux.id]);
-        await supprimer(base, vieux.id);
+        await remove(base, vieux.id);
         expect(await lireTeleversement(base, vieux.id)).toBeUndefined();
     });
 
     // 🔴 LA ROUGE DE LA CLÉ ÉTRANGÈRE, PREMIÈRE MOITIÉ. Sans
-    // `REFERENCES utilisateur(id)`, cette insertion PASSERAIT — et un
+    // `REFERENCES user(id)`, cette insertion PASSERAIT — et un
     // téléversement orphelin n'appartiendrait à personne, donc échapperait à
     // toute vérification de propriétaire. Les clés étrangères sont APPLIQUÉES
     // des deux côtés : `pilote-sqlite.ts` pose `PRAGMA foreign_keys = ON`.
     it('🔴 REFUSE un téléversement dont l’utilisateur n’existe pas', async () => {
         base = await baseNeuve('tel-orphelin');
         await expect(
-            creerTeleversement(
+            createUpload(
                 base,
-                { utilisateurId: 'u-fantome', nom: 'x.exe', taille: 1, sha256: 'g'.repeat(64), tailleTranche: 8 },
+                { userId: 'u-fantome', nom: 'x.exe', taille: 1, sha256: 'g'.repeat(64), chunkSize: 8 },
                 MS,
             ),
         ).rejects.toThrow();
@@ -172,16 +172,16 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
 });
 
 describe(`dépôt installation, moteur=${MOTEUR}`, () => {
-    async function avecTeleversement(p: Pilote): Promise<{ vm: string; tel: string }> {
-        const { utilisateur, vm } = await socle(p);
-        const tel = await creerTeleversement(
+    async function withUpload(p: Pilote): Promise<{ vm: string; tel: string }> {
+        const { user, vm } = await socle(p);
+        const tel = await createUpload(
             p,
             {
-                utilisateurId: utilisateur,
+                userId: user,
                 nom: 'setup.exe',
                 taille: TROIS_GO,
                 sha256: 'a'.repeat(64),
-                tailleTranche: 8 * 1024 * 1024,
+                chunkSize: 8 * 1024 * 1024,
             },
             MS,
         );
@@ -191,8 +191,8 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
 
     it('naît en attente, avance, puis se termine', async () => {
         base = await baseNeuve('inst-cycle');
-        const { vm, tel } = await avecTeleversement(base);
-        const inst = await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        const { vm, tel } = await withUpload(base);
+        const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         expect(inst.etat).toBe('en_attente');
         expect((await lireEnAttentePourVm(base, vm)).map((l) => l.id)).toEqual([inst.id]);
 
@@ -231,8 +231,8 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
     // sur les DEUX écritures ; sans lui, ce test voit l'issue disparaître.
     it('🔴 une progression TARDIVE n’efface pas une issue déjà posée', async () => {
         base = await baseNeuve('inst-tardive');
-        const { vm, tel } = await avecTeleversement(base);
-        const inst = await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        const { vm, tel } = await withUpload(base);
+        const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         await terminer(
             base,
             inst.id,
@@ -253,8 +253,8 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
 
     it('un code de sortie NON RECUEILLI reste null, jamais une sentinelle', async () => {
         base = await baseNeuve('inst-sans-code');
-        const { vm, tel } = await avecTeleversement(base);
-        const inst = await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        const { vm, tel } = await withUpload(base);
+        const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         await terminer(
             base,
             inst.id,
@@ -277,17 +277,17 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
     // PASSE au lieu d'échouer ».
     it('🔴 REFUSE une installation pour une VM inexistante', async () => {
         base = await baseNeuve('inst-vm-fantome');
-        const { tel } = await avecTeleversement(base);
+        const { tel } = await withUpload(base);
         await expect(
-            creerInstallation(base, { vmId: 'v-fantome', televersementId: tel }, MS),
+            createInstallation(base, { vmId: 'v-fantome', televersementId: tel }, MS),
         ).rejects.toThrow();
     });
 
     it('🔴 REFUSE une installation pour un téléversement inexistant', async () => {
         base = await baseNeuve('inst-tel-fantome');
-        const { vm } = await avecTeleversement(base);
+        const { vm } = await withUpload(base);
         await expect(
-            creerInstallation(base, { vmId: vm, televersementId: 't-fantome' }, MS),
+            createInstallation(base, { vmId: vm, televersementId: 't-fantome' }, MS),
         ).rejects.toThrow();
     });
 
@@ -297,8 +297,8 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
     // la place, pas la ligne.
     it('🔴 REFUSE de supprimer un téléversement qu’une installation référence', async () => {
         base = await baseNeuve('inst-fk-refus');
-        const { vm, tel } = await avecTeleversement(base);
-        await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
-        await expect(supprimer(base, tel)).rejects.toThrow();
+        const { vm, tel } = await withUpload(base);
+        await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        await expect(remove(base, tel)).rejects.toThrow();
     });
 });

@@ -18,7 +18,7 @@ use anyhow::{Context, Result};
 
 use super::super::compteurs::{self, Compteurs, Garde, DUREE_PASSE, PERIODE_JOURNAL};
 use super::super::mires::Mires;
-use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
+use super::super::voies::{create_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
 use super::constater_survie;
 use crate::capture::SortieDxgi;
 use crate::geometry::Rect;
@@ -65,24 +65,24 @@ fn ouvrir_duplications(
                 textures.push(dimensions);
                 sources.push(source);
             }
-            Err(erreur) => {
+            Err(error) => {
                 // Full chain formatted WITHOUT consuming the error (`{:#}`):
                 // the log must carry the HRESULT AND the error must still
                 // be propagated as is just below. The helper
                 // `multifenetre::causes` does not fit here, it takes its
                 // error by value.
-                let chaine = format!("{erreur:#}");
+                let chain = format!("{error:#}");
                 tracing::error!(
                     rang = rang + 1,
                     nom = %sortie.nom_sortie,
-                    causes = %chaine,
+                    causes = %chain,
                     "duplication REFUSÉE — c'est le résultat de la mesure, pas une panne"
                 );
                 let nom = sortie.nom_sortie.clone();
-                // `Err(erreur).with_context(…)` and not `bail!`: the
+                // `Err(error).with_context(…)` and not `bail!`: the
                 // reconstructed message of `bail!` lost the HRESULT, which is the substance
                 // of the answer to the question asked.
-                return Err(erreur).with_context(|| {
+                return Err(error).with_context(|| {
                     format!(
                         "{rang} duplications DXGI ouvertes de front, la {}ᵉ refusée (sortie {nom})",
                         rang + 1
@@ -97,7 +97,7 @@ fn ouvrir_duplications(
 
     let mut voies: Vec<Box<dyn VoieDeCapture>> = Vec::new();
     for (id, source) in sources.into_iter().enumerate() {
-        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::nouvelle(source));
+        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::new(source));
         voie.ouvrir(mires.hwnd(id as u8)?, places[id])?;
         voies.push(voie);
     }
@@ -114,13 +114,13 @@ fn passe_capture(
     mires: &mut Mires,
     voies: &mut [Box<dyn VoieDeCapture>],
     regions: &[Rect],
-    avec_encodage: bool,
+    with_encoding: bool,
 ) -> Result<Compteurs> {
-    let nombre = voies.len();
-    let mut compteurs = Compteurs::nouveaux(nombre);
+    let count = voies.len();
+    let mut compteurs = Compteurs::nouveaux(count);
     let mut encodeurs: Vec<crate::encode::H264Encoder> = Vec::new();
-    if avec_encodage {
-        for id in 0..nombre {
+    if with_encoding {
+        for id in 0..count {
             // Building eight Media Foundation encoders takes an unbounded time,
             // and it runs BEFORE the pass loop (hence its 1 Hz ping)
             // starts: without this beat, it is a second gap.
@@ -146,7 +146,7 @@ fn passe_capture(
 
     let debut = Instant::now();
     let mut prochain_journal = debut + PERIODE_JOURNAL;
-    let mut pts = vec![0u64; nombre];
+    let mut pts = vec![0u64; count];
 
     while debut.elapsed() < DUREE_PASSE {
         mires.peindre()?;
@@ -154,7 +154,7 @@ fn passe_capture(
         let tour = mires.trame();
         // The path checked at this round, and it alone: one reading per round
         // whatever N (see `mire::voie_controlee`).
-        let controlee = mire::voie_controlee(tour, nombre);
+        let controlee = mire::voie_controlee(tour, count);
 
         for (id, voie) in voies.iter_mut().enumerate() {
             let Some(image) = voie.prochaine_image(tour)? else {
@@ -171,7 +171,7 @@ fn passe_capture(
                 compteurs.apres_recouvrement.compter(verdict);
             }
 
-            if avec_encodage {
+            if with_encoding {
                 encodeurs[id].submit(&image, pts[id])?;
                 pts[id] += 90_000 / 60;
                 while let Some(_unite) = encodeurs[id].poll_output()? {
@@ -233,7 +233,7 @@ fn passe_capture(
             "images converties puis écartées, encodeur par encodeur — l'écart entre \
              « images » et « unites » se lit ici, pas dans le parallélisme"
         );
-        tracing::info!(nombre = encodeurs.len(), "libération des encodeurs : début");
+        tracing::info!(count = encodeurs.len(), "libération des encodeurs : début");
         for (id, encodeur) in encodeurs.drain(..).enumerate() {
             tracing::info!(id, "libération d'un encodeur : avant");
             drop(encodeur);
@@ -254,7 +254,7 @@ pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) 
     // The test patterns' device does NOT come from a provisional
     // `DesktopCapture`: DXGI only allows one duplication per output, and the
     // provisional one would make the real one fail with 0x80070057.
-    let (device, _contexte) = creer_device()?;
+    let (device, _contexte) = create_device()?;
     // The test patterns live in VIRTUAL DESKTOP coordinates — the rectangles
     // announced by DXGI. The paths crop in TEXTURE coordinates, which
     // `ouvrir_duplications` computes. Confusing them would shift everything by a
@@ -270,7 +270,7 @@ pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) 
 
     let (mut voies, places_texture) = ouvrir_duplications(garde, virtuelles, &mires)?;
     tracing::info!(
-        nombre = voies.len(),
+        count = voies.len(),
         ?places_bureau,
         ?places_texture,
         "les N duplications sont ouvertes de front"
@@ -279,20 +279,20 @@ pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) 
     // Key for reading the log. `compteurs::journaliser` carries the labels of the
     // single-output protocol, and they are kept as is so that these
     // surveys stay `grep`-able together with those already committed in `docs/`. Here:
-    // `mire0_avant_recouvrement` is always empty (no covering is
+    // `pattern0_before_overlap` is always empty (no covering is
     // staged), and `mire0_apres_recouvrement` carries ALL the verdicts of
     // the rotation, on all paths — not only those of test pattern 0.
-    let nombre = voies.len() as u8;
+    let count = voies.len() as u8;
     // A survival check AFTER EACH PASS, and not a single one at the end: an
     // output removed during the "capture" pass would only be noticed after
     // "capture+encodage", and both surveys would be equally suspect
     // with no way of saying which one is affected.
     let releve = passe_capture(garde, &mut mires, &mut voies, &places_texture, false)?;
-    compteurs::journaliser("capture", "duplication-parallele", nombre, &releve);
+    compteurs::journaliser("capture", "duplication-parallele", count, &releve);
     constater_survie("capture", virtuelles);
 
     let releve = passe_capture(garde, &mut mires, &mut voies, &places_texture, true)?;
-    compteurs::journaliser("capture+encodage", "duplication-parallele", nombre, &releve);
+    compteurs::journaliser("capture+encodage", "duplication-parallele", count, &releve);
     constater_survie("capture+encodage", virtuelles);
 
     // The duplications were the second suspect of the inherited defect, after the

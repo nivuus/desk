@@ -173,7 +173,7 @@ fn conformite_aux_refus_lisibles_partages() {
         let name = cas["name"].as_str().expect("nom");
         let brut = cas["json"].as_str().expect("json");
         let lu: DepuisLaPlateforme = serde_json::from_str(brut)
-            .unwrap_or_else(|erreur| panic!("refus « {name} » illisible : {erreur}"));
+            .unwrap_or_else(|error| panic!("refus « {name} » illisible : {error}"));
         let DepuisLaPlateforme::Refus { version, motif } = lu else {
             panic!("le vecteur « {name} » n'a pas été lu comme un refus");
         };

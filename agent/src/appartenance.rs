@@ -120,8 +120,8 @@ mod win {
                 tracing::error!("job d'appartenance : poignée invalide, la règle sera INERTE");
                 None
             }
-            Err(erreur) => {
-                tracing::error!(%erreur, "job d'appartenance NON créé — la règle sera INERTE");
+            Err(error) => {
+                tracing::error!(%error, "job d'appartenance NON créé — la règle sera INERTE");
                 None
             }
         })
@@ -138,8 +138,8 @@ mod win {
         let Some(job) = job() else { return };
         match unsafe { AssignProcessToJobObject(job, processus) } {
             Ok(()) => tracing::info!("processus lancé inscrit au job d'appartenance"),
-            Err(erreur) => tracing::error!(
-                %erreur,
+            Err(error) => tracing::error!(
+                %error,
                 "processus lancé NON inscrit au job d'appartenance — ses fenêtres \
                  seront ÉCARTÉES, et c'est une panne, pas un refus normal"
             ),

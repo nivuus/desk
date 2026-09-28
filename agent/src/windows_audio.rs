@@ -71,7 +71,7 @@ impl Capture {
     /// this method — a single-window agent always carries its sound.
     ///
     /// ⚠️ This immunity does NOT extend to the calling thread: it is the thread that gates
-    /// reading/encoding/depositing on the value of `emettait` (see `demarrer`),
+    /// reading/encoding/depositing on the value of `emettait` (see `start`),
     /// not this method. A `set_actif(false)` reaching a source in
     /// `Session` mode would therefore make it just as silent as a source in
     /// `Processus` mode — ~~only `new()` (which never exposes
@@ -97,7 +97,7 @@ impl Capture {
             Capture::Session(_) => Ok(()),
             Capture::Processus(c) => {
                 if actif {
-                    c.demarrer()
+                    c.start()
                 } else {
                     c.arreter()
                 }
@@ -125,7 +125,7 @@ pub struct WindowsAudioSource {
     /// both audible during the milliseconds preceding the first
     /// arbitration.
     ///
-    /// ⚠️ **"At birth" means at EACH call of `demarrer` — hence
+    /// ⚠️ **"At birth" means at EACH call of `start` — hence
     /// also at each REBUILD**, not only at the initial opening
     /// (defect found during VM acceptance, sub-block D10: "audio capture
     /// rebuilt" = 2, `compteurs_audio_actif_true` = 0 in both
@@ -173,7 +173,7 @@ impl WindowsAudioSource {
     /// comparable, hence A/V sync exact.
     pub fn new(origin: Instant) -> Result<Self> {
         let capture = LoopbackCapture::open().context("ouverture du loopback audio")?;
-        let source = Self::demarrer(Capture::Session(capture), origin, None)?;
+        let source = Self::start(Capture::Session(capture), origin, None)?;
         // No sensor will ever send an order to this agent: it emits straight away.
         source.emettre(true);
         Ok(source)
@@ -187,12 +187,12 @@ impl WindowsAudioSource {
     pub fn pour_processus(pid: u32, origin: Instant) -> Result<Self> {
         let capture = CaptureProcessus::ouvrir(pid)
             .with_context(|| format!("ouverture du process loopback du PID {pid}"))?;
-        Self::demarrer(Capture::Processus(capture), origin, Some(pid))
+        Self::start(Capture::Processus(capture), origin, Some(pid))
     }
 
     /// Body common to both constructors: starts the production thread from
     /// an already opened capture, whatever its mode.
-    fn demarrer(capture: Capture, origin: Instant, pid: Option<u32>) -> Result<Self> {
+    fn start(capture: Capture, origin: Instant, pid: Option<u32>) -> Result<Self> {
         let description = capture.description();
         let encodeur = OpusEncoder::new().context("création de l'encodeur Opus")?;
 

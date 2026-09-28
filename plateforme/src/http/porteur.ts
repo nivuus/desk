@@ -9,7 +9,7 @@
 // the session membership registry, and it is wired exclusively to
 // the relay. Nothing, anywhere in this service, read the
 // `Authorization` header before P4. The precedent of a direct consumer of
-// `verifierJeton` outside the guard is `agents/canal.ts`.
+// `verifyToken` outside the guard is `agents/canal.ts`.
 //
 // 🔴 REFUSING THE `agent` TYPE IS NOT DECORATIVE. Both tokens are signed
 // by the SAME secret and carry the same payload: `identite/jeton.ts` lists
@@ -18,12 +18,12 @@
 // by P3; it is the other direction that this module closes, and it is the only one P4
 // opens.
 
-import { verifierJeton } from '../identite/jeton';
+import { verifyToken } from '../identite/jeton';
 
 export type MotifPorteur = 'jeton-absent' | 'jeton-invalide' | 'jeton-expire' | 'jeton-agent';
 
 export type VerdictPorteur =
-    | { ok: true; utilisateurId: string }
+    | { ok: true; userId: string }
     | { ok: false; motif: MotifPorteur; code: 401 | 403 };
 
 /// The scheme, compared character by character.
@@ -41,7 +41,7 @@ const SCHEMA = 'Bearer';
 /// decision that will need reopening, not bypassing. The check is
 /// EXPLICIT in one direction; do not make it implicit in the other.
 ///
-/// ⚠️ ALL THE REASONS OF `verifierJeton` EXCEPT `expire` FOLD INTO
+/// ⚠️ ALL THE REASONS OF `verifyToken` EXCEPT `expire` FOLD INTO
 /// `jeton-invalide`, and that is deliberate: `forme`, `algorithme` and `signature`
 /// tell apart ways of being wrong that the requester has no use for, and
 /// from which an attacker, for their part, would learn how far along they are. `expire` is kept
@@ -71,7 +71,7 @@ export function lirePorteur(
         return { ok: false, motif: 'jeton-invalide', code: 401 };
     }
 
-    const verdict = verifierJeton(morceaux[1], secret, maintenant);
+    const verdict = verifyToken(morceaux[1], secret, maintenant);
     if (!verdict.ok) {
         return verdict.motif === 'expire'
             ? { ok: false, motif: 'jeton-expire', code: 401 }
@@ -86,5 +86,5 @@ export function lirePorteur(
         return { ok: false, motif: 'jeton-agent', code: 403 };
     }
 
-    return { ok: true, utilisateurId: verdict.sujet };
+    return { ok: true, userId: verdict.sujet };
 }

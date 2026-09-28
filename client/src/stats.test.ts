@@ -19,13 +19,13 @@ describe('suivreMontant — les mesures du micro (chantier E)', () => {
     });
 
     it('calcule le débit sur le delta, pas sur le cumul', () => {
-        const avant = { octets: 1_000, paquets: 10, horodatage: 1_000 };
+        const before = { octets: 1_000, paquets: 10, horodatage: 1_000 };
         const apres = { octets: 3_000, paquets: 60, horodatage: 2_000 };
 
         // 2 000 octets en 1 s = 16 000 bits/s = 16 kb/s. Un affichage du CUMUL
         // rendrait 24 kb/s ici, ce qui passerait inaperçu sur une première
         // lecture et croîtrait sans fin.
-        const { ligne } = suivreMontant(avant, apres);
+        const { ligne } = suivreMontant(before, apres);
         expect(ligne).toMatch(/^micro 16 kb\/s/);
         expect(ligne).toMatch(/paquets 60/);
     });

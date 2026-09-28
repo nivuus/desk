@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { startServer, type ServicePlateforme } from './serveur';
 import type { Config } from '../config';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -78,7 +78,7 @@ async function combienDeComptes(p: Pilote): Promise<number> {
 describe('GET /auth/moi', () => {
     it('① compte inconnu ⇒ 200, et le compte est CRÉÉ', async () => {
         base = await baseNeuve('moi-inconnu');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         expect(await combienDeComptes(base)).toBe(0);
 
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
@@ -93,7 +93,7 @@ describe('GET /auth/moi', () => {
 
     it('② compte connu ⇒ 200, et AUCUN compte de plus', async () => {
         base = await baseNeuve('moi-connu');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const url = `http://127.0.0.1:${service.port}/auth/moi`;
         const en = { 'x-pomerium-claim-email': 'a@b.c' };
 
@@ -108,7 +108,7 @@ describe('GET /auth/moi', () => {
     // le service REFUSE — il ne se replie sur aucun utilisateur par défaut.
     it('③ en-tête absent ⇒ 401 identite-absente', async () => {
         base = await baseNeuve('moi-absent');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
 
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`);
 
@@ -124,7 +124,7 @@ describe('GET /auth/moi', () => {
     // déclare `127.0.0.1`.
     it("REFUSE (401) l'en-tête d'identité venu d'un pair non déclaré", async () => {
         base = await baseNeuve('moi-pair-etranger-statut');
-        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
             headers: { [ENTETE_IDENTITE]: 'a@b.c' },
         });
@@ -133,7 +133,7 @@ describe('GET /auth/moi', () => {
 
     it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, avec le motif nommé", async () => {
         base = await baseNeuve('moi-pair-etranger-motif');
-        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
             headers: { [ENTETE_IDENTITE]: 'a@b.c' },
         });
@@ -146,13 +146,13 @@ describe('GET /auth/moi', () => {
     // par test »). Retiré une première fois en jugeant qu'il « n'apportait
     // rien que le statut et le motif ne disaient déjà » : FAUX, mesuré — en
     // déplaçant la garde APRÈS `identifiantDe`, le 401 et le motif restent
-    // IDENTIQUES et pourtant 3 comptes se créent dans `utilisateur` depuis un
+    // IDENTIQUES et pourtant 3 comptes se créent dans `user` depuis un
     // pair non déclaré, un par courriel choisi par l'attaquant. C'est le
     // vecteur que `CLAUDE.md` nomme au § legs `auth-pomerium` : « crée une
-    // ligne `utilisateur` par courriel distinct, sans borne ».
+    // ligne `user` par courriel distinct, sans borne ».
     it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, SANS CRÉER DE COMPTE", async () => {
         base = await baseNeuve('moi-pair-etranger-compte');
-        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
             headers: { [ENTETE_IDENTITE]: 'attaquant@x.y' },
         });
@@ -175,7 +175,7 @@ describe('GET /auth/moi', () => {
         // confiance ne déclare QUE `10.9.9.9`, l'adresse que l'en-tête va
         // prétendre porter. Si la garde lisait l'en-tête, `10.9.9.9` serait
         // reconnue de confiance et la requête réussirait.
-        service = await demarrerServeur({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
+        service = await startServer({ ...CONFIG, proxyDeConfiance: new Set(['10.9.9.9']) }, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
             headers: { [ENTETE_IDENTITE]: 'a@b.c', 'x-forwarded-for': '10.9.9.9' },
         });
@@ -187,7 +187,7 @@ describe('GET /auth/moi', () => {
     // en mode `motdepasse`, et pas seulement que la route est absente.
     it('④ mode motdepasse ⇒ 404, en-tête forgé IGNORÉ', async () => {
         base = await baseNeuve('moi-motdepasse');
-        service = await demarrerServeur({ ...CONFIG, auth: 'motdepasse' }, base);
+        service = await startServer({ ...CONFIG, auth: 'motdepasse' }, base);
 
         const r = await fetch(`http://127.0.0.1:${service.port}/auth/moi`, {
             headers: { 'x-pomerium-claim-email': 'forge@x.y' },

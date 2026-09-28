@@ -28,7 +28,7 @@ fn le_premier_espacement_egale_le_plancher() {
 /// ⚠️ **ITS TWIN WAS REMOVED IN ROUND 4, AND IT IS SAID RATHER THAN PASSED OVER IN SILENCE**:
 /// `le_plancher_reste_strictement_sous_le_seuil_de_stabilite` fixed
 /// `ESPACEMENT_PLANCHER_MS < SEUIL_STABILITE_MS` to guarantee the ORDER in
-/// which `surveiller` called `reinitialiser_le_repli` then `stable`. That
+/// which `surveiller` called `reset_the_backoff` then `stable`. That
 /// order no longer exists: both methods now live in
 /// DIFFERENT BRANCHES of `surveiller` (dead versus alive), and can no longer
 /// run at the same turn. Keeping this test would have been keeping a
@@ -83,8 +83,8 @@ fn seul_le_premier_lancement_du_cycle_est_signale() {
 #[test]
 fn etat_observe_distingue_mort_de_vivant_et_d_absent_par_son_issue() {
     let mort_propre = EtatObserve::Mort(IssueDeSortie::Propre);
-    let mort_erreur = EtatObserve::Mort(IssueDeSortie::Erreur);
-    assert_ne!(mort_propre, mort_erreur, "l'issue distingue deux morts");
+    let error_death = EtatObserve::Mort(IssueDeSortie::Error);
+    assert_ne!(mort_propre, error_death, "l'issue distingue deux morts");
     assert_ne!(EtatObserve::Vivant, EtatObserve::Absent);
     assert_ne!(EtatObserve::Vivant, mort_propre);
 }
@@ -92,18 +92,15 @@ fn etat_observe_distingue_mort_de_vivant_et_d_absent_par_son_issue() {
 /// The translation of the exit code, in all three directions — including the one
 /// that does NOT run on the target (see the doc of `depuis_le_code`).
 #[test]
-fn le_code_de_sortie_se_traduit_dans_les_trois_sens() {
+fn the_exit_code_translates_in_all_three_directions() {
     assert_eq!(
         IssueDeSortie::depuis_le_code(Some(0)),
         IssueDeSortie::Propre
     );
-    assert_eq!(
-        IssueDeSortie::depuis_le_code(Some(1)),
-        IssueDeSortie::Erreur
-    );
+    assert_eq!(IssueDeSortie::depuis_le_code(Some(1)), IssueDeSortie::Error);
     assert_eq!(
         IssueDeSortie::depuis_le_code(Some(101)),
-        IssueDeSortie::Erreur
+        IssueDeSortie::Error
     );
     assert_eq!(IssueDeSortie::depuis_le_code(None), IssueDeSortie::Inconnue);
 }
@@ -119,7 +116,7 @@ fn le_code_de_sortie_se_traduit_dans_les_trois_sens() {
 /// a second, not in thirty". **And that session's duration enters
 /// nowhere**: the test shows it by providing none.
 #[test]
-fn une_sortie_propre_rearme_le_repli_sans_qu_aucune_duree_n_intervienne() {
+fn a_clean_exit_rearms_the_backoff_without_any_duration_involved() {
     let mut etat = EtatRelance::neuve();
     for _ in 0..5 {
         etat.tentative_lancee();
@@ -128,7 +125,7 @@ fn une_sortie_propre_rearme_le_repli_sans_qu_aucune_duree_n_intervienne() {
         etat.espacement_ms() > ESPACEMENT_PLANCHER_MS,
         "le repli a bien grandi avant le test"
     );
-    etat.reinitialiser_le_repli(IssueDeSortie::Propre);
+    etat.reset_the_backoff(IssueDeSortie::Propre);
     assert_eq!(
         etat.espacement_ms(),
         ESPACEMENT_PLANCHER_MS,
@@ -145,26 +142,26 @@ fn une_sortie_propre_rearme_le_repli_sans_qu_aucune_duree_n_intervienne() {
 /// against a shared budget of 120.
 ///
 /// 🔵 The TWO other outcomes are exercised in the same test, because
-/// they share the conclusion: neither `Erreur` nor `Inconnue` re-arms.
+/// they share the conclusion: neither `Error` nor `Inconnue` re-arms.
 #[test]
 fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
-    for issue in [IssueDeSortie::Erreur, IssueDeSortie::Inconnue] {
+    for issue in [IssueDeSortie::Error, IssueDeSortie::Inconnue] {
         let mut etat = EtatRelance::neuve();
         for _ in 0..5 {
             etat.tentative_lancee();
         }
-        let avant = etat.espacement_ms();
+        let before = etat.espacement_ms();
         assert!(
-            avant > ESPACEMENT_PLANCHER_MS,
+            before > ESPACEMENT_PLANCHER_MS,
             "le repli a bien grandi avant le test"
         );
         // A VERY long life — longer than the longest possible refusal
         // sleep — and yet no re-arming: duration does not enter
         // the decision, that is the whole of round 4.
-        etat.reinitialiser_le_repli(issue);
+        etat.reset_the_backoff(issue);
         assert_eq!(
             etat.espacement_ms(),
-            avant,
+            before,
             "{issue:?} ne doit RIEN réarmer, quelle qu'ait été la durée de vie"
         );
     }
@@ -172,7 +169,7 @@ fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
 
 /// 🔴 THE EXACT RED OF THE DEFECT FIXED BY ROUND 2, REPLAYED HERE:
 /// a REFUSED process staying alive up to `REPLI_MAX_MS` before
-/// dying (`honorer_retry_suggere`'s sleep) must NEVER be
+/// dying (`honour_suggested_retry`'s sleep) must NEVER be
 /// declared stable during that sleep. Probed at regular intervals,
 /// as the supervisor loop would at ~10 Hz. **It is THE red
 /// of the "trace loop"**, which rounds 3 and 4 had to preserve:
@@ -202,11 +199,11 @@ fn stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable() {
 /// IT IS NOT A COVERAGE HOLE — IT IS A BETTER GUARANTEE.** The
 /// previous version targeted the state `cycle_signale == false && tentative >
 /// 0` (a bridge declared stable then ended cleanly, round 3's guard
-/// on `reinitialiser_le_repli` then blocking the re-arming) by calling
-/// `reinitialiser_le_repli(Propre)` AFTER `stable`. Since `stable()`
+/// on `reset_the_backoff` then blocking the re-arming) by calling
+/// `reset_the_backoff(Propre)` AFTER `stable`. Since `stable()`
 /// ITSELF resets `tentative` to zero in its true branch (see its doc),
 /// that call could no longer prove anything: `tentative` was already zero
-/// BEFORE it, whatever `reinitialiser_le_repli` did — proven by
+/// BEFORE it, whatever `reset_the_backoff` did — proven by
 /// mutation. The real guarantee is the INVARIANT that makes this state
 /// unreachable, held directly below rather than deduced: `stable()
 /// == true` resets `tentative` to zero IN THE SAME GESTURE that makes
@@ -262,7 +259,7 @@ fn sans_cycle_en_cours_stable_ne_declare_jamais_rien() {
 /// repli` never touches `cycle_signale`, and the `Erreur` outcome does not even
 /// re-arm `tentative`.
 #[test]
-fn sur_plusieurs_cycles_de_refus_une_seule_ligne_lancee_et_aucune_ligne_stable() {
+fn over_several_refusal_cycles_a_single_launched_line_and_no_stable_line() {
     const PAS_MS: u64 = 100; // ~10 Hz, the loop's real cadence
     let mut etat = EtatRelance::neuve();
     let mut lignes_lancees = 0u32;
@@ -281,7 +278,7 @@ fn sur_plusieurs_cycles_de_refus_une_seule_ligne_lancee_et_aucune_ligne_stable()
         // The process dies here, IN ERROR (end of the refusal sleep, then
         // `pont::executer`'s `bail!`): it is what `surveiller`
         // observes, once only, before restarting.
-        etat.reinitialiser_le_repli(IssueDeSortie::Erreur);
+        etat.reset_the_backoff(IssueDeSortie::Error);
     }
     assert_eq!(
         lignes_lancees, 1,
@@ -309,7 +306,7 @@ fn sur_plusieurs_cycles_de_refus_une_seule_ligne_lancee_et_aucune_ligne_stable()
 /// the test above, on its own, cannot prove since none of
 /// its cycles ever reaches stability.
 #[test]
-fn apres_une_vraie_stabilite_le_cycle_suivant_redevient_bruyant() {
+fn after_real_stability_the_next_cycle_becomes_noisy_again() {
     let mut etat = EtatRelance::neuve();
     assert!(
         etat.tentative_lancee(),
@@ -341,7 +338,7 @@ fn apres_une_vraie_stabilite_le_cycle_suivant_redevient_bruyant() {
 /// 2 s, 12 for 5 s) — 83% of the shared budget consumed by the bridge alone,
 /// **without any `retryApresS` having to step in**.
 #[test]
-fn un_pont_qui_meurt_en_erreur_apres_une_demi_seconde_ne_martele_pas() {
+fn a_bridge_dying_in_error_after_half_a_second_does_not_hammer() {
     const PAS_MS: u64 = 100;
     const DUREE_MS: u64 = 60_000;
     const VIE_MS: u64 = 600;
@@ -368,7 +365,7 @@ fn un_pont_qui_meurt_en_erreur_apres_une_demi_seconde_ne_martele_pas() {
         } else {
             if lance_a.take().is_some() {
                 // The death is observed ONCE: `bail!` after the refusal.
-                relance.reinitialiser_le_repli(IssueDeSortie::Erreur);
+                relance.reset_the_backoff(IssueDeSortie::Error);
             }
             if relance.doit_relancer(ecoule_ms) {
                 derniere_tentative_ms = horloge;
@@ -409,7 +406,7 @@ fn un_pont_qui_meurt_en_erreur_apres_une_demi_seconde_ne_martele_pas() {
 /// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
 /// and `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`.
 #[test]
-fn une_longue_vie_stable_puis_une_mort_en_erreur_reprend_au_plancher() {
+fn a_long_stable_life_then_an_error_death_restarts_at_the_floor() {
     const TROIS_JOURS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
     let mut etat = EtatRelance::neuve();
     for _ in 0..6 {
@@ -429,9 +426,9 @@ fn une_longue_vie_stable_puis_une_mort_en_erreur_reprend_au_plancher() {
     );
 
     // Then the network outage: `pont::executer` returns an `Err`, hence a non-zero
-    // exit code, hence `IssueDeSortie::Erreur` — which
-    // `reinitialiser_le_repli` rightly refuses to count as proof.
-    etat.reinitialiser_le_repli(IssueDeSortie::Erreur);
+    // exit code, hence `IssueDeSortie::Error` — which
+    // `reset_the_backoff` rightly refuses to count as proof.
+    etat.reset_the_backoff(IssueDeSortie::Error);
     assert_eq!(
         etat.espacement_ms(),
         ESPACEMENT_PLANCHER_MS,

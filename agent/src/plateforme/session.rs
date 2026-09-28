@@ -34,8 +34,8 @@ pub(super) async fn une_session(
 ) -> Fin {
     let mut socket = match connecter(url).await {
         Ok(socket) => socket,
-        Err(erreur) => {
-            tracing::warn!(url, %erreur, "ouverture du canal /agent échouée");
+        Err(error) => {
+            tracing::warn!(url, %error, "ouverture du canal /agent échouée");
             return Fin::Reprenable;
         }
     };
@@ -44,13 +44,13 @@ pub(super) async fn une_session(
         Ok(texte) => texte,
         // A serialisation that fails is a code defect, not a random event:
         // retrying it would return the same error indefinitely.
-        Err(erreur) => {
-            tracing::error!(%erreur, "sérialisation de l'enrôlement impossible");
+        Err(error) => {
+            tracing::error!(%error, "sérialisation de l'enrôlement impossible");
             return Fin::Definitive;
         }
     };
-    if let Err(erreur) = socket.send(Message::Text(enroler)).await {
-        tracing::warn!(url, %erreur, "envoi de l'enrôlement échoué");
+    if let Err(error) = socket.send(Message::Text(enroler)).await {
+        tracing::warn!(url, %error, "envoi de l'enrôlement échoué");
         return Fin::Reprenable;
     }
 
@@ -72,8 +72,8 @@ pub(super) async fn une_session(
                     tracing::error!("sérialisation d'un message montant impossible");
                     continue;
                 };
-                if let Err(erreur) = socket.send(Message::Text(texte)).await {
-                    tracing::warn!(url, %erreur, "message montant non émis");
+                if let Err(error) = socket.send(Message::Text(texte)).await {
+                    tracing::warn!(url, %error, "message montant non émis");
                     return Fin::Reprenable;
                 }
             }
@@ -81,8 +81,8 @@ pub(super) async fn une_session(
                 let Ok(texte) = serde_json::to_string(&VersLaPlateforme::battement()) else {
                     return Fin::Definitive;
                 };
-                if let Err(erreur) = socket.send(Message::Text(texte)).await {
-                    tracing::warn!(url, %erreur, "battement de cœur non émis");
+                if let Err(error) = socket.send(Message::Text(texte)).await {
+                    tracing::warn!(url, %error, "battement de cœur non émis");
                     return Fin::Reprenable;
                 }
             }
@@ -94,8 +94,8 @@ pub(super) async fn une_session(
                         return Fin::Reprenable;
                     }
                     Some(Ok(_)) => continue,
-                    Some(Err(erreur)) => {
-                        tracing::warn!(url, %erreur, "canal /agent perdu");
+                    Some(Err(error)) => {
+                        tracing::warn!(url, %error, "canal /agent perdu");
                         return Fin::Reprenable;
                     }
                     None => {
@@ -174,14 +174,14 @@ pub(super) async fn une_session(
                     // catalogue DURING THE INSTALLATION it is expected
                     // to report on.
                     Ok(DepuisLaPlateforme::Installer {
-                        installation, url: source, nom, taille, sha256, ..
+                        installation, url: source, nom, size, sha256, ..
                     }) => {
                         tracing::info!(
-                            url, %installation, %nom, taille,
+                            url, %installation, %nom, size,
                             "ordre d'installation reçu"
                         );
                         let ordre = Installation {
-                            id: installation, url: source, nom, taille, sha256,
+                            id: installation, url: source, nom, size, sha256,
                         };
                         if installations.send(ordre).is_err() {
                             tracing::warn!(
@@ -192,7 +192,7 @@ pub(super) async fn une_session(
                     }
                     // 🔴 THIS CASE IS VERY PROBABLY A VERSION DIVERGENCE,
                     // and it is retried anyway — deliberately.
-                    // `verifie_version` refuses at deserialisation, so a
+                    // `check_version` refuses at deserialisation, so a
                     // more recent platform lands here and not in the
                     // `Refus` arm. Retrying it cannot resolve the
                     // divergence, but the backoff is BOUNDED (30 s) and each
@@ -201,9 +201,9 @@ pub(super) async fn une_session(
                     // itself as a silent reconnection loop, which is the
                     // failure mode this channel exists to avoid. And a
                     // platform redeployed at the right version recovers on its own.
-                    Err(erreur) => {
+                    Err(error) => {
                         tracing::warn!(
-                            url, %erreur, texte,
+                            url, %error, texte,
                             "message de la plateforme illisible (version divergente ?)"
                         );
                         return Fin::Reprenable;

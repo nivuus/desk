@@ -163,7 +163,7 @@ impl Racine {
                 // of this VM's shortcuts, almost all in
                 // per-publisher subfolders. A flat watch would see
                 // almost none of them — same reason as the recursive walk of
-                // `lecture::lnk_sous`.
+                // `lecture::lnk_under`.
                 true,
                 FILE_NOTIFY_CHANGE_FILE_NAME
                     | FILE_NOTIFY_CHANGE_DIR_NAME
@@ -205,15 +205,13 @@ impl Racine {
             // away" when it does not return `ERROR_NOTIFY_ENUM_DIR`.
             Ok(()) if octets == 0 => Issue::Debordement,
             Ok(()) => Issue::Notification,
-            Err(erreur) if erreur.code() == ERROR_NOTIFY_ENUM_DIR.to_hresult() => {
-                Issue::Debordement
-            }
+            Err(error) if error.code() == ERROR_NOTIFY_ENUM_DIR.to_hresult() => Issue::Debordement,
             // Cancellation is what `CancelIoEx` causes at stop: classifying
             // it as a loss would log a failure at every
             // clean shutdown.
-            Err(erreur) if erreur.code() == ERROR_OPERATION_ABORTED.to_hresult() => Issue::Annulee,
-            Err(erreur) => Issue::Perte(
-                anyhow::Error::new(erreur)
+            Err(error) if error.code() == ERROR_OPERATION_ABORTED.to_hresult() => Issue::Annulee,
+            Err(error) => Issue::Perte(
+                anyhow::Error::new(error)
                     .context(format!("GetOverlappedResult sur {}", self.chemin.display())),
             ),
         }
@@ -318,12 +316,12 @@ fn ouvrir_les_deux_handles(chemin: &Path) -> Result<(HANDLE, HANDLE)> {
     // SAFETY: FFI call.
     match unsafe { CreateEventW(None, true, false, PCWSTR::null()) } {
         Ok(evenement) => Ok((repertoire, evenement)),
-        Err(erreur) => {
+        Err(error) => {
             // SAFETY: FFI call, on a handle we have just opened.
             unsafe {
                 let _ = CloseHandle(repertoire);
             }
-            Err(anyhow::Error::new(erreur).context(format!(
+            Err(anyhow::Error::new(error).context(format!(
                 "CreateEventW pour la racine surveillée {}",
                 chemin.display()
             )))

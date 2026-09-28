@@ -61,7 +61,7 @@ pub type IdSortie = u32;
 ///
 /// 🔴 **The driver returns THREE numbers, and the product only kept ONE.**
 /// `SortieAjoutee` carries `(adaptateur_bas, adaptateur_haut, identifiant_cible)`
-/// ; until batch 32 only the third survived `creer`, the other two
+/// ; until batch 32 only the third survived `create`, the other two
 /// only being logged. Yet it is the PAIR that designates a display
 /// target unambiguously: a target identifier is only unique PER
 /// adapter, and this VM has more than one (SudoVDA, plus QEMU's VGA when
@@ -75,7 +75,7 @@ pub type Adaptateur = (u32, i32);
 /// neither the scale-up in N nor the guard. And the guard below must
 /// be testable without Windows.
 pub trait PiloteAffichageVirtuel {
-    fn creer(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie>;
+    fn create(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie>;
     fn detruire(&self, id: IdSortie) -> Result<()>;
 }
 
@@ -99,14 +99,14 @@ impl<'p> Sorties<'p> {
     /// A driver refusal comes out as is and does not count as a creation:
     /// destroying an identifier the driver never returned would at best add
     /// one more error to the log, at worst destroy someone else's output.
-    pub fn creer(&mut self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
-        let id = self.pilote.creer(largeur, hauteur, hertz)?;
+    pub fn create(&mut self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
+        let id = self.pilote.create(largeur, hauteur, hertz)?;
         self.creees.push(id);
         Ok(id)
     }
 
     #[cfg(test)]
-    pub fn nombre(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.creees.len()
     }
 
@@ -142,10 +142,10 @@ impl Drop for Sorties<'_> {
         // `Drop` also runs during the unwinding of a panic — it is
         // precisely the case the guard exists to cover.
         for id in self.creees.drain(..).rev() {
-            if let Err(erreur) = self.pilote.detruire(id) {
+            if let Err(error) = self.pilote.detruire(id) {
                 tracing::error!(
                     id,
-                    %erreur,
+                    %error,
                     "sortie virtuelle NON détruite — purge manuelle requise"
                 );
             }

@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import {
     PressePapierLocal,
     MESSAGE_ECHEC,
-    ECHECS_AVANT_MESSAGE,
+    FAILURES_BEFORE_MESSAGE,
     PRESSE_PAPIER_MAX,
 } from './presse-papier';
 
@@ -19,7 +19,7 @@ describe('PressePapierLocal', () => {
     it('rend le texte reçu quand la fenêtre est focalisée', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'bonjour', octets: 7 });
-        expect(pp.aEcrire(true)).toBe('bonjour');
+        expect(pp.toWrite(true)).toBe('bonjour');
     });
 
     // 🔴 Le dépôt différé : écrire sans focus ferait rendre le texte au
@@ -27,8 +27,8 @@ describe('PressePapierLocal', () => {
     it('ne rend rien sans focus, puis rend le texte au retour du focus', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'bonjour', octets: 7 });
-        expect(pp.aEcrire(false)).toBeUndefined();
-        expect(pp.aEcrire(true)).toBe('bonjour');
+        expect(pp.toWrite(false)).toBeUndefined();
+        expect(pp.toWrite(true)).toBe('bonjour');
     });
 
     // 🔴 « Une écriture obsolète est impossible » : empiler dans un tableau
@@ -37,16 +37,16 @@ describe('PressePapierLocal', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'ancien', octets: 6 });
         pp.recevoir({ texte: 'recent', octets: 6 });
-        expect(pp.aEcrire(true)).toBe('recent');
+        expect(pp.toWrite(true)).toBe('recent');
         pp.confirmer('recent');
-        expect(pp.aEcrire(true)).toBeUndefined();
+        expect(pp.toWrite(true)).toBeUndefined();
     });
 
     it('ne réécrit pas ce qui a déjà été écrit', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'bonjour', octets: 7 });
         pp.confirmer('bonjour');
-        expect(pp.aEcrire(true)).toBeUndefined();
+        expect(pp.toWrite(true)).toBeUndefined();
     });
 
     // 🔴 Crier au PREMIER échec ferait un bandeau permanent sur un produit
@@ -56,7 +56,7 @@ describe('PressePapierLocal', () => {
         const pp = new PressePapierLocal();
         expect(pp.echouer()).toBeUndefined();
         expect(pp.echouer()).toBe(MESSAGE_ECHEC);
-        expect(ECHECS_AVANT_MESSAGE).toBe(2);
+        expect(FAILURES_BEFORE_MESSAGE).toBe(2);
     });
 
     it('un succès remet le compteur d’échecs à zéro', () => {
@@ -79,7 +79,7 @@ describe('PressePapierLocal', () => {
     it('un refus n’écrit rien et se dit, en nommant la taille', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: null, octets: 102400 });
-        expect(pp.aEcrire(true)).toBeUndefined();
+        expect(pp.toWrite(true)).toBeUndefined();
         const message = pp.refusADire();
         expect(message).toBeDefined();
         expect(message).toContain('100');
@@ -89,7 +89,7 @@ describe('PressePapierLocal', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'valide', octets: 6 });
         pp.recevoir({ texte: null, octets: 102400 });
-        expect(pp.aEcrire(true)).toBe('valide');
+        expect(pp.toWrite(true)).toBe('valide');
     });
 
     // 🔴 Sans consommation, le bandeau se réafficherait à chaque tour.
@@ -162,7 +162,7 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
     it('arme le garde même quand l écriture locale n a pas encore eu lieu', () => {
         const etat = new PressePapierLocal();
         etat.recevoir({ texte: 'x', octets: 1 });
-        expect(etat.aEcrire(false)).toBeUndefined();
+        expect(etat.toWrite(false)).toBeUndefined();
         expect(etat.aEmettre('x')).toBeUndefined();
     });
 });
@@ -183,7 +183,7 @@ describe('PRESSE_PAPIER_MAX', () => {
         // que ce dépôt paie depuis D7.
         expect(trouve, "la constante Rust n'a pas été retrouvée").not.toBeNull();
         // eslint-disable-next-line no-eval
-        const valeurRust = Number(new Function(`return ${trouve![1].replace(/_/g, '')}`)());
-        expect(PRESSE_PAPIER_MAX).toBe(valeurRust);
+        const rustValue = Number(new Function(`return ${trouve![1].replace(/_/g, '')}`)());
+        expect(PRESSE_PAPIER_MAX).toBe(rustValue);
     });
 });

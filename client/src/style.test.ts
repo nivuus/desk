@@ -52,7 +52,7 @@ function declarationsDuBloc(css: string, selecteur: string): string[] {
     return regles
         .filter((r) => r[1].trim() === selecteur)
         .flatMap((r) => declarationsDe(`{${r[2]}}`))
-        .map((d) => `${d.propriete}: ${d.valeur}`);
+        .map((d) => `${d.propriete}: ${d.value}`);
 }
 
 /**
@@ -119,18 +119,18 @@ const FEUILLES_SRC = import.meta.glob<string>('./**/*.css', {
 const cheminSrc = (cle: string) => cle.replace(/^\.\//, 'client/src/');
 
 /** Tout `env(titlebar-area-…)` des feuilles, avec sa queue d'arguments. */
-const envs: { fichier: string; texte: string; repli: string }[] = [];
+const envs: { file: string; texte: string; repli: string }[] = [];
 /** Tout prélude d'at-rule conditionnel au WCO. */
-const requetesWco: { fichier: string; prelude: string }[] = [];
+const requetesWco: { file: string; prelude: string }[] = [];
 
 for (const [cle, brut] of Object.entries(FEUILLES_SRC).sort()) {
     const css = sansCommentaires(brut);
     for (const m of css.matchAll(/env\(\s*(titlebar-area-[a-z-]+)\s*([^)]*)\)/g)) {
-        envs.push({ fichier: cheminSrc(cle), texte: `env(${m[1]}${m[2]})`, repli: m[2].trim() });
+        envs.push({ file: cheminSrc(cle), texte: `env(${m[1]}${m[2]})`, repli: m[2].trim() });
     }
     for (const p of preludes(css)) {
         if (/display-mode\s*:\s*window-controls-overlay/.test(p)) {
-            requetesWco.push({ fichier: cheminSrc(cle), prelude: p });
+            requetesWco.push({ file: cheminSrc(cle), prelude: p });
         }
     }
 }
@@ -139,7 +139,7 @@ for (const [cle, brut] of Object.entries(FEUILLES_SRC).sort()) {
 // ne lit jamais la valeur ne sert qu'à passer » (`poids-css.mjs`).
 console.log(`garde WCO  feuilles de client/src/ : ${Object.keys(FEUILLES_SRC).length}`);
 console.log(`           env(titlebar-area-*) lus : ${envs.length}`);
-for (const e of envs) console.log(`           ${e.fichier}  ${e.texte}`);
+for (const e of envs) console.log(`           ${e.file}  ${e.texte}`);
 
 describe('le Window Controls Overlay — la règle est livrée, et elle est INERTE', () => {
     it('③ atteignabilité : il existe au moins un env(titlebar-area-) à lire', () => {
@@ -159,7 +159,7 @@ describe('le Window Controls Overlay — la règle est livrée, et elle est INER
 
     it('① tout env(titlebar-area-*) porte le repli 0px', () => {
         expect(
-            envs.filter((e) => e.repli !== ', 0px').map((e) => `${e.fichier}  ${e.texte}`),
+            envs.filter((e) => e.repli !== ', 0px').map((e) => `${e.file}  ${e.texte}`),
             'un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI',
         ).toEqual([]);
     });
@@ -167,7 +167,7 @@ describe('le Window Controls Overlay — la règle est livrée, et elle est INER
     it('② aucune requête @media conditionnelle au WCO', () => {
         // Un repli neutralise un `env()` ; rien ne neutralise un bloc `@media`.
         expect(
-            requetesWco.map((r) => `${r.fichier}  ${r.prelude}`),
+            requetesWco.map((r) => `${r.file}  ${r.prelude}`),
             'une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise',
         ).toEqual([]);
     });

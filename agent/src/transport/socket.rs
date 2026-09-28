@@ -307,7 +307,7 @@ impl Session {
                                 .map_err(|e| anyhow!("handle_input receive : {e}"))?;
                         }
                         Err(e) => {
-                            tracing::debug!(erreur = %e, "paquet UDP ignoré (non reconnu)");
+                            tracing::debug!(error = %e, "paquet UDP ignoré (non reconnu)");
                         }
                     }
                     return Ok(Tick::Continue);
@@ -349,7 +349,7 @@ impl Session {
                             self.consecutive_recv_errors.saturating_add(1);
                         let backoff = recv_error_backoff(self.consecutive_recv_errors);
                         tracing::warn!(
-                            erreur = %e,
+                            error = %e,
                             consecutives = self.consecutive_recv_errors,
                             backoff_ms = backoff.as_millis(),
                             "échec de réception UDP transitoire, ignoré"
@@ -365,7 +365,7 @@ impl Session {
                     // (see the module comment).
                     RecvErrorAction::Fatal => {
                         tracing::warn!(
-                            erreur = %e,
+                            error = %e,
                             "échec de réception UDP non transitoire, fin de session"
                         );
                         self.begin_ending("échec de réception UDP non transitoire");
@@ -409,7 +409,7 @@ mod tests {
     }
 
     #[test]
-    fn erreurs_non_reconnues_sont_fatales() {
+    fn unrecognised_errors_are_fatal() {
         // A representative selection of errors with no reason to
         // resolve by themselves: no exhaustive list needed,
         // only proof that the default classification is indeed fatal
@@ -431,7 +431,7 @@ mod tests {
     }
 
     #[test]
-    fn backoff_croit_avec_le_nombre_d_erreurs_consecutives() {
+    fn backoff_grows_with_the_number_of_consecutive_errors() {
         let un = recv_error_backoff(1);
         let deux = recv_error_backoff(2);
         let trois = recv_error_backoff(3);
@@ -451,7 +451,7 @@ mod tests {
     }
 
     #[test]
-    fn backoff_est_non_nul_des_la_premiere_erreur() {
+    fn backoff_is_non_zero_from_the_first_error() {
         // A single error is already enough to introduce a backoff: no
         // "free first hit" that would let one tight loop round
         // through before the mechanism engages.

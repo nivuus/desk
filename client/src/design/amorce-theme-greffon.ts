@@ -26,14 +26,14 @@
 // through `?raw` (which, for its part, resolves perfectly well under Vitest).
 //
 // See `client/vite.config.ts` (the big comment above
-// `NOM_FICHIER_AMORCE`) for the FULL REASONING of batch `csp-amorce`
+// `BOOTSTRAP_FILE_NAME`) for the FULL REASONING of batch `csp-amorce`
 // (August 29th, 2026): why the bootstrap is an external `'self'` file and not
 // a `sha256-…` hash in the CSP.
 
 /// The name under which the bootstrap is emitted into `dist/` — a STABLE name, outside
 /// `assets/` (the only directory Vite fingerprints), hence never a year
 /// of `immutable` on content that changes without the name moving.
-export const NOM_FICHIER_AMORCE = 'amorce-theme.js';
+export const BOOTSTRAP_FILE_NAME = 'amorce-theme.js';
 
 /// The tag the Vite plugin injects into the `<head>` of EVERY page.
 ///
@@ -52,7 +52,7 @@ export const NOM_FICHIER_AMORCE = 'amorce-theme.js';
 export function baliseAmorce() {
     return {
         tag: 'script' as const,
-        attrs: { src: `/${NOM_FICHIER_AMORCE}` },
+        attrs: { src: `/${BOOTSTRAP_FILE_NAME}` },
         injectTo: 'head' as const,
     };
 }

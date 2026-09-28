@@ -88,7 +88,7 @@ function palette(couleurs: Record<string, [string, string]>): string {
 // à `PAIRES` sans l'ajouter à cette palette synthétique fait tomber le test
 // ci-dessous sur deux échecs de rapport 0. C'est le comportement voulu, et il a
 // été observé ROUGE avant cette ligne.
-const TOUS = [
+const ALL = [
     '--fond-0', '--fond-1', '--fond-2', '--bord-fort', '--texte-fort', '--texte',
     '--texte-faible', '--accent', '--accent-survol', '--sur-accent', '--succes',
     '--alerte', '--danger',
@@ -105,23 +105,23 @@ const FONDS_SYNTHETIQUES = (n: string) =>
 describe('evaluer', () => {
     it('rend aucun échec sur une palette conforme', () => {
         const conforme = Object.fromEntries(
-            TOUS.map((n) => [
+            ALL.map((n) => [
                 n,
                 FONDS_SYNTHETIQUES(n)
                     ? (['#ffffff', '#000000'] as [string, string])
                     : (['#000000', '#ffffff'] as [string, string]),
             ]),
         );
-        const resultat = evaluer(lireBlocsDeTheme(palette(conforme)));
-        expect(resultat.echecs).toEqual([]);
-        expect(resultat.verifiees).toBe(53);
-        expect(resultat.minimum).toBeCloseTo(21, 5);
+        const result = evaluer(lireBlocsDeTheme(palette(conforme)));
+        expect(result.echecs).toEqual([]);
+        expect(result.verifiees).toBe(53);
+        expect(result.minimum).toBeCloseTo(21, 5);
     });
 
     it("NOMME le thème, l'encre, le fond et le rapport de chaque échec", () => {
         // Un booléen ne dirait pas quoi corriger.
         const fautif = Object.fromEntries(
-            TOUS.map((n) => [
+            ALL.map((n) => [
                 n,
                 FONDS_SYNTHETIQUES(n)
                     ? (['#ffffff', '#000000'] as [string, string])
@@ -130,9 +130,9 @@ describe('evaluer', () => {
                       : (['#000000', '#ffffff'] as [string, string]),
             ]),
         );
-        const resultat = evaluer(lireBlocsDeTheme(palette(fautif)));
-        expect(resultat.echecs.length).toBeGreaterThan(0);
-        const premier = resultat.echecs[0];
+        const result = evaluer(lireBlocsDeTheme(palette(fautif)));
+        expect(result.echecs.length).toBeGreaterThan(0);
+        const premier = result.echecs[0];
         expect(premier.paire.theme).toBe('sombre');
         expect(premier.paire.encre).toBe('--texte-faible');
         expect(premier.paire.fond).toMatch(/^--fond-[012]$/);

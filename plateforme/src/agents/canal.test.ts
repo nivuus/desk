@@ -20,12 +20,12 @@ import {
 import { baseNeuve, piloteCompteur } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
-import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
+import { startServer, type ServicePlateforme } from '../http/serveur';
 import { garde as fabriquerGarde } from '../identite/garde';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DUREE_JETON_ACCES_MS, verifierJeton } from '../identite/jeton';
+import { DUREE_JETON_ACCES_MS, verifyToken } from '../identite/jeton';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { servirLeCanalAgent } from './canal';
 import { RegistreAgents } from './registre';
@@ -62,7 +62,7 @@ afterEach(async () => {
 /// Monte le canal sur un port attribué par le système, avec l'horloge du
 /// fichier. On attend `listening` : lire `address()` avant que le socket ne
 /// soit lié rendrait `null`, et le test se connecterait à un port inexistant.
-async function demarrer(p: Pilote, frein: Frein = new Frein()): Promise<number> {
+async function start(p: Pilote, frein: Frein = new Frein()): Promise<number> {
     maintenant = T0;
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
     await new Promise<void>((r) => wss!.once('listening', () => r()));
@@ -84,7 +84,7 @@ describe('la boucle du canal /agent', () => {
     it('`enroler` avec le BON secret rend `enrole`, avec préfixe et jeton', async () => {
         base = await baseNeuve('canal-enrole');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeEnroler('v-1', SECRET_VM));
         expect(rep.type).toBe('enrole');
@@ -105,11 +105,11 @@ describe('la boucle du canal /agent', () => {
         // est juste tout seul ; c'est leur JONCTION qui n'est éprouvée qu'ici.
         base = await baseNeuve('canal-jeton-garde');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         const rep = await pair.dire(encodeEnroler('v-1', SECRET_VM));
 
         // Le SUJET du jeton est le PRÉFIXE, et son type est `agent`.
-        expect(verifierJeton(rep.jeton, SECRET, T0)).toEqual({
+        expect(verifyToken(rep.jeton, SECRET, T0)).toEqual({
             ok: true,
             sujet: P,
             type: 'agent',
@@ -118,13 +118,13 @@ describe('la boucle du canal /agent', () => {
         // Et la garde du relais l'accepte pour une session que ce préfixe
         // porte — c'est-à-dire pour l'usage RÉEL du jeton.
         const g = fabriquerGarde(SECRET, () => T0, new ProprieteDeSession());
-        expect(g.verifier({ role: 'agent', session: `${P}:bureau`, jeton: rep.jeton })).toEqual({
+        expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton: rep.jeton })).toEqual({
             ok: true,
         });
         // TÉMOIN, dans la même exécution : la garde refuse ce même jeton pour
         // une session que le préfixe ne porte PAS. Sans lui, l'acceptation
         // ci-dessus serait vraie d'une garde qui ne regarderait rien.
-        expect(g.verifier({ role: 'agent', session: 'bureau', jeton: rep.jeton }).ok).toBe(false);
+        expect(g.verify({ role: 'agent', session: 'bureau', jeton: rep.jeton }).ok).toBe(false);
         pair.socket.terminate();
     });
 
@@ -139,7 +139,7 @@ describe('la boucle du canal /agent', () => {
         base = await baseNeuve('canal-mauvais-secret');
         await enrolerUneVm(base, 'v-1');
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeEnroler('v-1', 'un-autre-secret-de-la-vraie-longueur'));
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'enrolement' });
@@ -165,7 +165,7 @@ describe('la boucle du canal /agent', () => {
         // sens de la nôtre.
         base = await baseNeuve('canal-version');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(
             JSON.stringify({ type: 'battement', v: PLATEFORME_VERSION + 1 }),
@@ -187,7 +187,7 @@ describe('la boucle du canal /agent', () => {
         // forme.
         base = await baseNeuve('canal-sequence');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeBattement());
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
@@ -207,7 +207,7 @@ describe('la boucle du canal /agent', () => {
         // `vu_a` simplement recopié de l'enrôlement passerait le test.
         base = await baseNeuve('canal-vu-a');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         await pair.dire(encodeEnroler('v-1', SECRET_VM));
         await attendreVu(base, 'v-1', (vu) => vu === T0, 'posé à l’enrôlement');
@@ -227,7 +227,7 @@ describe('la boucle du canal /agent', () => {
         // est qu'à l'instant où l'ANCIEN est refusé, le NOUVEAU passe.
         base = await baseNeuve('canal-jeton-frais');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const premier = await pair.dire(encodeEnroler('v-1', SECRET_VM));
         maintenant = T0 + 30_000;
@@ -240,11 +240,11 @@ describe('la boucle du canal /agent', () => {
         // L'instant EXACT où le premier meurt : la borne est franche
         // (`maintenant >= exp`), donc le premier est refusé et le second passe.
         const instantCritique = T0 + DUREE_JETON_ACCES_MS;
-        expect(verifierJeton(premier.jeton, SECRET, instantCritique)).toEqual({
+        expect(verifyToken(premier.jeton, SECRET, instantCritique)).toEqual({
             ok: false,
             motif: 'expire',
         });
-        expect(verifierJeton(second.jeton, SECRET, instantCritique).ok).toBe(true);
+        expect(verifyToken(second.jeton, SECRET, instantCritique).ok).toBe(true);
         pair.socket.terminate();
     });
 });
@@ -257,7 +257,7 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
         // passerait. C'est la panne muette exacte que `serveur.ts` invoque déjà
         // pour rendre `base` et `garde` REQUISES.
         //
-        // L'horloge n'est pas injectable ici (`demarrerServeur` lit `Date.now`),
+        // L'horloge n'est pas injectable ici (`startServer` lit `Date.now`),
         // donc l'expiration n'est pas assertée sur une valeur exacte : ce test
         // mesure le CÂBLAGE, les sept ci-dessus mesurent la boucle.
         const config: Config = {
@@ -275,7 +275,7 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
         };
         base = await baseNeuve('canal-service');
         await enrolerUneVm(base, 'v-1');
-        service = await demarrerServeur(config, base);
+        service = await startServer(config, base);
 
         const surLeChemin = await ouvrirUrl(`ws://127.0.0.1:${service.port}/agent`);
         const rep = await surLeChemin.dire(encodeEnroler('v-1', SECRET_VM));
@@ -301,7 +301,7 @@ describe('le frein du canal /agent', () => {
     it('(a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein', async () => {
         base = await baseNeuve('canal-frein-vm');
         await enrolerUneVm(base, 'v-1');
-        const port = await demarrer(base);
+        const port = await start(base);
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
             expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
         }
@@ -314,7 +314,7 @@ describe('le frein du canal /agent', () => {
         const reel = await baseNeuve('canal-frein-adresse');
         base = reel;
         const compteur = piloteCompteur(reel);
-        const port = await demarrer(compteur.pilote);
+        const port = await start(compteur.pilote);
         // Aucun budget de VM ne peut mordre : chaque nom est essayé UNE fois.
         for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
             await tenter(port, `inconnue-${i}`, 'peu-importe');
@@ -333,7 +333,7 @@ describe('le frein du canal /agent', () => {
         // produits DANS LE MÊME TEST et comparés objet pour objet.
         base = await baseNeuve('canal-frein-oracle');
         await enrolerUneVm(base, 'v-1');
-        const port = await demarrer(base);
+        const port = await start(base);
 
         const refusNonFreine = await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
@@ -349,7 +349,7 @@ describe('le frein du canal /agent', () => {
         const avertir = vi.spyOn(console, 'warn').mockImplementation(() => {});
         base = await baseNeuve('canal-frein-journal');
         await enrolerUneVm(base, 'v-1');
-        const port = await demarrer(base);
+        const port = await start(base);
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
             await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         }
@@ -365,7 +365,7 @@ describe('le frein du canal /agent', () => {
     }, 30000);
 
     it('(e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`', async () => {
-        // 🔴 C'EST LE POINT DE TOUTE LA TÂCHE. `verifierEnrolement` lit
+        // 🔴 C'EST LE POINT DE TOUTE LA TÂCHE. `verifyEnrolment` lit
         // `agent_enrole` PUIS dérive une empreinte `scrypt`, à mémoire dure et
         // délibérément chère (68 ms mesurés le 20 août 2026). Un frein posté
         // APRÈS ne protège rien : il compte des tentatives qu'il a déjà payées,
@@ -374,7 +374,7 @@ describe('le frein du canal /agent', () => {
         base = reel;
         await enrolerUneVm(reel, 'v-1');
         const compteur = piloteCompteur(reel);
-        const port = await demarrer(compteur.pilote);
+        const port = await start(compteur.pilote);
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
             await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         }
@@ -389,7 +389,7 @@ describe('le frein du canal /agent', () => {
         // valide se blanchirait entre deux rafales.
         base = await baseNeuve('canal-frein-succes');
         await enrolerUneVm(base, 'v-1');
-        const port = await demarrer(base);
+        const port = await start(base);
         for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) {
             await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
         }

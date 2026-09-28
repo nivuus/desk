@@ -18,12 +18,12 @@ import { laVmDe, vmsDe } from './selection';
 
 const MS = 1_787_136_773_742;
 
-function vm(id: string, utilisateurId: string | null): Vm {
+function vm(id: string, userId: string | null): Vm {
     return {
         id,
         nom: `w-${id}`,
         adresse: '192.168.3.2',
-        utilisateurId,
+        userId,
         prefixe: `prefixe-${id}`,
         // Une époque en millisecondes, jamais un petit nombre commode : c'est
         // la leçon la plus chère de P1.

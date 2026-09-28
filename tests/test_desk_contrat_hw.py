@@ -104,7 +104,7 @@ check("detect_all() rend un ensemble de clés non vide", bool(CLES_MOTEUR), True
 
 # --- Ce qu'un hook LIT dans `hw`, et ce que `resolve` ÉMET en facts -------
 
-def cles_lues_dans(chemin: pathlib.Path, nom_variable: str) -> set:
+def keys_read_in(chemin: pathlib.Path, nom_variable: str) -> set:
     """Les clés littérales lues sur `<nom_variable>` — `x.get("k")` et
     `x["k"]` — dans le fichier donné."""
     arbre = ast.parse(chemin.read_text(encoding="utf-8"))
@@ -133,10 +133,10 @@ def cles_des_facts(chemin: pathlib.Path) -> set:
     for noeud in ast.walk(arbre):
         if not isinstance(noeud, ast.Dict):
             continue
-        for cle, valeur in zip(noeud.keys, noeud.values):
+        for cle, value in zip(noeud.keys, noeud.values):
             if (isinstance(cle, ast.Constant) and cle.value == "facts"
-                    and isinstance(valeur, ast.Dict)):
-                return {k.value for k in valeur.keys
+                    and isinstance(value, ast.Dict)):
+                return {k.value for k in value.keys
                         if isinstance(k, ast.Constant)}
     return set()
 
@@ -149,7 +149,7 @@ check("resolve.py émet bien un dict `facts` non vide", bool(CLES_FACTS), True)
 # 🔴 C'EST LA CRITIQUE, FIGÉE. Avant le 30 août 2026, cette assertion
 # aurait rendu {'vm_windows'} — une clé introuvable dans TOUT le dépôt
 # voisin (`grep -rn vm_windows ../installer/` : aucune sortie).
-lues_resolve = cles_lues_dans(RACINE / "hooks" / "resolve.py", "hw")
+lues_resolve = keys_read_in(RACINE / "hooks" / "resolve.py", "hw")
 check("resolve ne lit dans hw aucune clé que detect_all() ne produit pas",
       sorted(lues_resolve - CLES_MOTEUR), [])
 
@@ -159,7 +159,7 @@ check("resolve ne lit dans hw aucune clé que detect_all() ne produit pas",
 # (runner.py::run_activate -> merge_into_hw), donc une clé de facts y est
 # légitime — et une clé qui n'est NI dans detect_all() NI dans facts ne
 # peut venir de nulle part.
-lues_activate = cles_lues_dans(RACINE / "hooks" / "activate.py", "hw")
+lues_activate = keys_read_in(RACINE / "hooks" / "activate.py", "hw")
 check("activate ne lit dans hw que detect_all() ou les facts de resolve",
       sorted(lues_activate - (CLES_MOTEUR | CLES_FACTS)), [])
 
@@ -200,24 +200,24 @@ check("contexte du MOTEUR : un événement facts est émis",
 # directement dans le dict d'émission (`True`, `None`, un nombre, une
 # chaîne littérale) ne peut PAS être une mesure — par construction, elle ne
 # dépend d'aucune entrée. C'est exactement la forme de `"vm_repond": True`.
-def facts_avec_litteraux(chemin: pathlib.Path) -> list:
+def facts_with_literals(chemin: pathlib.Path) -> list:
     """Les clés du dict `facts` dont la valeur est un littéral en dur."""
     arbre = ast.parse(chemin.read_text(encoding="utf-8"))
     for noeud in ast.walk(arbre):
         if not isinstance(noeud, ast.Dict):
             continue
-        for cle, valeur in zip(noeud.keys, noeud.values):
+        for cle, value in zip(noeud.keys, noeud.values):
             if (isinstance(cle, ast.Constant) and cle.value == "facts"
-                    and isinstance(valeur, ast.Dict)):
+                    and isinstance(value, ast.Dict)):
                 return sorted(
-                    k.value for k, v in zip(valeur.keys, valeur.values)
+                    k.value for k, v in zip(value.keys, value.values)
                     if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)
                 )
     return []
 
 
 check("aucun fait émis par resolve n'est un littéral codé en dur",
-      facts_avec_litteraux(RACINE / "hooks" / "resolve.py"), [])
+      facts_with_literals(RACINE / "hooks" / "resolve.py"), [])
 
 if failures:
     print(f"FAIL ({len(failures)})")

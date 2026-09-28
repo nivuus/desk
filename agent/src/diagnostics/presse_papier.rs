@@ -109,7 +109,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
             "P0 A-bis : trois zeros — on ecrit le presse-papier pour departager \
              « compteur absent » de « rien n'a encore ete copie »"
         );
-        let _ = win::ecrire_texte("sonde-presse-papier-desambiguisation");
+        let _ = win::write_text("sonde-presse-papier-desambiguisation");
         std::thread::sleep(PAS_REPOS);
         let apres = win::numero_de_sequence();
         tracing::info!(apres, "P0 A-bis releve apres notre ecriture");
@@ -197,9 +197,9 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
                     "P0 B mouvement, aucun CF_UNICODETEXT"
                 );
             }
-            Err(erreur) => {
+            Err(error) => {
                 echecs_open += 1;
-                tracing::warn!(seq, precedent = reference, %erreur, "P0 B mouvement, ouverture refusee");
+                tracing::warn!(seq, precedent = reference, %error, "P0 B mouvement, ouverture refusee");
             }
         }
         reference = seq;
@@ -214,41 +214,41 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     // ---- Phase C: does our OWN write make the counter move? ----
     let nonce = format!("{:x}", std::process::id());
     let notre_texte = format!("sonde-presse-papier-{nonce}");
-    let avant_c = win::numero_de_sequence();
-    let ecrit_c = win::ecrire_texte(&notre_texte);
+    let before_c = win::numero_de_sequence();
+    let written_c = win::write_text(&notre_texte);
     std::thread::sleep(PAS_REPOS);
     let apres_c = win::numero_de_sequence();
-    // We judge on the movement read back, never on `ecrit_c`.
-    let q3 = if apres_c != avant_c {
+    // We judge on the movement read back, never on `written_c`.
+    let q3 = if apres_c != before_c {
         "bouge"
     } else {
         "PAS-DE-MOUVEMENT"
     };
     tracing::info!(
         q3,
-        avant = avant_c,
+        before = before_c,
         apres = apres_c,
-        api_annonce_succes = ecrit_c.is_ok(),
+        api_annonce_succes = written_c.is_ok(),
         empreinte = empreinte(&notre_texte),
         octets = notre_texte.len(),
         "P0 C notre ecriture"
     );
 
     // ---- Phase D: does an IDENTICAL rewrite make the counter move? ----
-    let avant_d = win::numero_de_sequence();
-    let ecrit_d = win::ecrire_texte(&notre_texte);
+    let before_d = win::numero_de_sequence();
+    let written_d = win::write_text(&notre_texte);
     std::thread::sleep(PAS_REPOS);
     let apres_d = win::numero_de_sequence();
-    let q2 = if apres_d != avant_d {
+    let q2 = if apres_d != before_d {
         "bouge"
     } else {
         "PAS-DE-MOUVEMENT"
     };
     tracing::info!(
         q2,
-        avant = avant_d,
+        before = before_d,
         apres = apres_d,
-        api_annonce_succes = ecrit_d.is_ok(),
+        api_annonce_succes = written_d.is_ok(),
         "P0 D reecriture identique"
     );
 
@@ -299,7 +299,7 @@ mod win {
     /// under Windows (another application holds it) and not a failure.
     pub fn lire_texte() -> Result<Option<String>> {
         unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
-        let resultat = (|| unsafe {
+        let result = (|| unsafe {
             let poignee = match GetClipboardData(CF_UNICODETEXT.0 as u32) {
                 Ok(poignee) if !poignee.is_invalid() => poignee,
                 _ => return Ok(None),
@@ -309,25 +309,25 @@ mod win {
             if pointeur.is_null() {
                 anyhow::bail!("GlobalLock a rendu un pointeur nul");
             }
-            let mut longueur = 0usize;
-            while *pointeur.add(longueur) != 0 {
-                longueur += 1;
+            let mut length = 0usize;
+            while *pointeur.add(length) != 0 {
+                length += 1;
             }
-            let unites = std::slice::from_raw_parts(pointeur, longueur);
+            let unites = std::slice::from_raw_parts(pointeur, length);
             let texte = String::from_utf16_lossy(unites);
             let _ = GlobalUnlock(global);
             Ok(Some(texte))
         })();
         let _ = unsafe { CloseClipboard() };
-        resultat
+        result
     }
 
     /// Writes `texte` to the clipboard — **probe gesture only**.
-    pub fn ecrire_texte(texte: &str) -> Result<()> {
+    pub fn write_text(texte: &str) -> Result<()> {
         let mut unites: Vec<u16> = texte.encode_utf16().collect();
         unites.push(0);
         unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
-        let resultat = (|| unsafe {
+        let result = (|| unsafe {
             EmptyClipboard().context("EmptyClipboard")?;
             let octets = unites.len() * std::mem::size_of::<u16>();
             let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
@@ -343,6 +343,6 @@ mod win {
             Ok(())
         })();
         let _ = unsafe { CloseClipboard() };
-        resultat
+        result
     }
 }

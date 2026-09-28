@@ -29,10 +29,10 @@ async function empreinteDeReference(message: Uint8Array): Promise<string> {
  * pour qu'un échec se rejoue à l'identique : d'où une graine fixe plutôt que
  * `Math.random`.
  */
-function messageDeTaille(taille: number): Uint8Array {
-    const octets = new Uint8Array(taille);
-    let etat = 0x9e3779b9 ^ taille;
-    for (let i = 0; i < taille; i += 1) {
+function messageOfSize(size: number): Uint8Array {
+    const octets = new Uint8Array(size);
+    let etat = 0x9e3779b9 ^ size;
+    for (let i = 0; i < size; i += 1) {
         etat ^= etat << 13;
         etat ^= etat >>> 17;
         etat ^= etat << 5;
@@ -41,15 +41,15 @@ function messageDeTaille(taille: number): Uint8Array {
     return octets;
 }
 
-function texte(chaine: string): Uint8Array {
-    return new TextEncoder().encode(chaine);
+function texte(chain: string): Uint8Array {
+    return new TextEncoder().encode(chain);
 }
 
-/** Absorbe `message` en morceaux de `taille` octets, puis clôt. */
-function empreinteParMorceaux(message: Uint8Array, taille: number): string {
+/** Absorbe `message` en morceaux de `size` octets, puis clôt. */
+function empreinteParMorceaux(message: Uint8Array, size: number): string {
     const empreinte = new Sha256();
-    for (let i = 0; i < message.length; i += taille) {
-        empreinte.absorber(message.subarray(i, Math.min(i + taille, message.length)));
+    for (let i = 0; i < message.length; i += size) {
+        empreinte.absorber(message.subarray(i, Math.min(i + size, message.length)));
     }
     return empreinte.terminer();
 }
@@ -91,7 +91,7 @@ describe('Sha256, les vecteurs de réponse connue', () => {
  * premier qui en exige un second, 64 un bloc plein dont le bourrage occupe
  * tout un bloc de plus. Les grandes tailles, elles, éprouvent l'enchaînement.
  */
-const TAILLES = [0, 1, 3, 55, 56, 57, 63, 64, 65, 127, 128, 129, 1000, 4096, 100_000];
+const SIZES = [0, 1, 3, 55, 56, 57, 63, 64, 65, 127, 128, 129, 1000, 4096, 100_000];
 
 /**
  * 🔴 LES DÉCOUPAGES, ET C'EST LE CŒUR DE CE FICHIER.
@@ -118,15 +118,15 @@ describe('Sha256 confronté à crypto.subtle', () => {
      * satisfait par une faute que nous aurions commise deux fois — à la
      * différence d'un aller-retour de notre code contre lui-même.
      */
-    it.each(TAILLES)('concorde sur un message de %i octets absorbé d’un coup', async (taille) => {
-        const message = messageDeTaille(taille);
+    it.each(SIZES)('concorde sur un message de %i octets absorbé d’un coup', async (size) => {
+        const message = messageOfSize(size);
         expect(condenserHex(message)).toBe(await empreinteDeReference(message));
     });
 
     it.each(DECOUPES)('concorde sur tous les messages absorbés par morceaux de %i octets', async (decoupe) => {
-        for (const taille of TAILLES) {
-            const message = messageDeTaille(taille);
-            expect(empreinteParMorceaux(message, decoupe), `taille ${taille}, morceaux de ${decoupe}`).toBe(
+        for (const size of SIZES) {
+            const message = messageOfSize(size);
+            expect(empreinteParMorceaux(message, decoupe), `taille ${size}, morceaux de ${decoupe}`).toBe(
                 await empreinteDeReference(message),
             );
         }
@@ -139,24 +139,24 @@ describe('Sha256 confronté à crypto.subtle', () => {
      * chaque fois différents.
      */
     it('concorde sur un découpage aux longueurs variables', async () => {
-        const longueurs = [1, 7, 64, 2, 63, 65, 128, 3, 55, 56, 1, 200, 9];
-        for (const taille of TAILLES) {
-            const message = messageDeTaille(taille);
+        const lengths = [1, 7, 64, 2, 63, 65, 128, 3, 55, 56, 1, 200, 9];
+        for (const size of SIZES) {
+            const message = messageOfSize(size);
             const empreinte = new Sha256();
             let i = 0;
             let n = 0;
             while (i < message.length) {
-                const pris = Math.min(longueurs[n % longueurs.length], message.length - i);
+                const pris = Math.min(lengths[n % lengths.length], message.length - i);
                 empreinte.absorber(message.subarray(i, i + pris));
                 i += pris;
                 n += 1;
             }
-            expect(empreinte.terminer(), `taille ${taille}`).toBe(await empreinteDeReference(message));
+            expect(empreinte.terminer(), `taille ${size}`).toBe(await empreinteDeReference(message));
         }
     });
 
     it('absorbe un morceau vide sans rien changer', async () => {
-        const message = messageDeTaille(200);
+        const message = messageOfSize(200);
         const empreinte = new Sha256();
         empreinte.absorber(new Uint8Array(0));
         empreinte.absorber(message.subarray(0, 70));
@@ -186,16 +186,16 @@ describe('Sha256, le contrat de l’objet', () => {
     });
 
     it('rend 64 caractères hexadécimaux minuscules', () => {
-        for (const taille of TAILLES) {
-            expect(condenserHex(messageDeTaille(taille))).toMatch(/^[0-9a-f]{64}$/);
+        for (const size of SIZES) {
+            expect(condenserHex(messageOfSize(size))).toMatch(/^[0-9a-f]{64}$/);
         }
     });
 
     it('rend des empreintes distinctes pour 130 longueurs distinctes', () => {
         // Un bourrage cassé — un `<` pour un `<=`, une longueur écrite au
         // mauvais décalage — ferait collisionner deux tailles voisines.
-        const toutes = new Set<string>();
-        for (let n = 0; n < 130; n += 1) toutes.add(condenserHex(new Uint8Array(n).fill(0x61)));
-        expect(toutes.size).toBe(130);
+        const all = new Set<string>();
+        for (let n = 0; n < 130; n += 1) all.add(condenserHex(new Uint8Array(n).fill(0x61)));
+        expect(all.size).toBe(130);
     });
 });

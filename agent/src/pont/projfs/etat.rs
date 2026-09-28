@@ -18,7 +18,7 @@ use windows::core::PCWSTR;
 use super::{chargement, Contexte};
 use crate::pont::decoupe::Morceau;
 use crate::pont::enumeration::Session;
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 use crate::pont::table::{Attendue, Table};
 use crate::pont::transport::VersNavigateur;
 
@@ -46,7 +46,7 @@ unsafe impl Sync for TamponEntrees {}
 /// a bare `windows::core::GUID` is `Send`, but naming it here makes the intention
 /// readable at the use site.
 #[derive(Clone, Copy)]
-pub struct FluxDonnees(pub windows::core::GUID);
+pub struct DataStream(pub windows::core::GUID);
 
 /// What [`crate::pont::table`] cannot carry **because it is PURE**:
 /// the ProjFS handles of a command in flight.
@@ -76,7 +76,7 @@ pub enum ContexteProjFs {
     /// feed the negative cache.
     Existence,
     Lecture {
-        flux: FluxDonnees,
+        flux: DataStream,
         /// ✅ **F3'S WINDOW, SHARED BETWEEN THE *N* CORRELATIONS IN FLIGHT.**
         ///
         /// *(This field was `restants: VecDeque<Morceau>`, with "only one in
@@ -267,7 +267,7 @@ impl Etat {
         if let Ok(mut attente) = self.en_attente.lock() {
             attente.insert(correlation, contexte);
         }
-        let trame = proto::fichiers::encoder(type_message, correlation, entete, &[]);
+        let trame = proto::files::encoder(type_message, correlation, entete, &[]);
         if self
             .sortant
             .send(VersNavigateur::Requete { correlation, trame })
@@ -313,10 +313,10 @@ impl Etat {
         flux: windows::core::GUID,
         fenetre: std::sync::Arc<Mutex<crate::pont::lecture::Fenetre>>,
     ) {
-        let entete = serde_json::to_string(&proto::fichiers::entetes::Lire {
+        let entete = serde_json::to_string(&proto::files::entetes::Lire {
             chemin: chemin.to_string(),
             position: morceau.position,
-            longueur: morceau.longueur,
+            length: morceau.length,
         })
         .expect("un en-tête Lire se sérialise toujours");
         let poursuivie = self.demander(
@@ -324,14 +324,14 @@ impl Etat {
             Attendue::Lire {
                 chemin: chemin.to_string(),
                 position: morceau.position,
-                longueur: morceau.longueur,
+                length: morceau.length,
             },
             std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
             ContexteProjFs::Lecture {
-                flux: FluxDonnees(flux),
+                flux: DataStream(flux),
                 fenetre,
             },
-            proto::fichiers::TYPE_LIRE,
+            proto::files::TYPE_LIRE,
             &entete,
         );
         if !poursuivie {
@@ -347,7 +347,7 @@ impl Etat {
                     (self.projfs.completer_commande)(
                         contexte,
                         commande,
-                        windows::core::HRESULT(self.compteurs.rendre(Erreur::CanalFerme)),
+                        windows::core::HRESULT(self.compteurs.rendre(Error::CanalFerme)),
                         std::ptr::null(),
                     )
                 };

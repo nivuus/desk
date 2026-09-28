@@ -201,7 +201,7 @@ async fn main() -> Result<()> {
         match pointer_settings::neutraliser() {
             Ok(rapport) => tracing::info!(rapport, "accélération pointeur neutralisée"),
             Err(e) => {
-                tracing::warn!(erreur = %e, "neutralisation de l'accélération pointeur échouée")
+                tracing::warn!(error = %e, "neutralisation de l'accélération pointeur échouée")
             }
         }
     } else {
@@ -282,7 +282,7 @@ async fn main() -> Result<()> {
             config.jeton = Some(identite.jeton);
             Some(canal)
         }
-        plateforme::identite::SourceIdentite::Aucune => {
+        plateforme::identite::SourceIdentite::Absent => {
             tracing::warn!(
                 "AGENT_VM ou AGENT_SECRET absent, et aucun AGENT_JETON hérité : aucun \
                  jeton d'agent. La plateforme REFUSERA la poignée de main et aucune \

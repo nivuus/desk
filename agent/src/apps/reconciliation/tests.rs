@@ -144,7 +144,7 @@ fn le_diff_est_deterministe_et_trie_quel_que_soit_l_ordre_d_entree() {
 }
 
 #[test]
-fn un_doublon_de_cle_dans_la_lecture_du_jour_ne_produit_qu_une_application() {
+fn a_duplicate_key_in_the_day_read_produces_a_single_application() {
     // Two `.lnk` with the same triple — the measured case: on the VM, 167 kept
     // shortcuts yield 154 keys. The diff must not count them twice, nor
     // return a `modifiee` for an application that has just appeared.

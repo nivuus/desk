@@ -58,7 +58,7 @@ function corps(texte: string): string {
     return texte.replace(/--.*$/gm, '');
 }
 
-const fichiers = readdirSync(REPERTOIRE).filter((f) => f.endsWith('.sql')).sort();
+const files = readdirSync(REPERTOIRE).filter((f) => f.endsWith('.sql')).sort();
 
 describe('sous-ensemble SQL portable', () => {
     it('lit au moins un fichier de migration', () => {
@@ -66,13 +66,13 @@ describe('sous-ensemble SQL portable', () => {
         // trivialement — et serait vert le jour où le répertoire serait
         // renommé. C'est le patron du « contrôle qui ne peut pas échouer »,
         // que ce dépôt a payé quatre fois.
-        expect(fichiers.length).toBeGreaterThan(0);
+        expect(files.length).toBeGreaterThan(0);
     });
 
-    for (const fichier of fichiers) {
-        const sql = corps(readFileSync(path.join(REPERTOIRE, fichier), 'utf8'));
+    for (const file of files) {
+        const sql = corps(readFileSync(path.join(REPERTOIRE, file), 'utf8'));
 
-        it(`${fichier} n'emploie aucun jeton hors du sous-ensemble`, () => {
+        it(`${file} n'emploie aucun jeton hors du sous-ensemble`, () => {
             const trouves = INTERDITS.filter(([motif]) => motif.test(sql)).map(([, raison]) => raison);
             // Comparé comme une CHAÎNE et non comme un tableau : vitest tronque
             // un tableau à `[ Array(1) ]`, message qui ne nomme pas le jeton
@@ -80,7 +80,7 @@ describe('sous-ensemble SQL portable', () => {
             expect(trouves.join(' | ')).toBe('');
         });
 
-        it(`${fichier} ne porte aucune chaîne littérale`, () => {
+        it(`${file} ne porte aucune chaîne littérale`, () => {
             // Contrainte de `rendreMarqueurs` : toute valeur passe en
             // paramètre, pas même un DEFAULT littéral. Une apostrophe ici
             // ferait lever la conversion des marqueurs côté Postgres.
@@ -102,9 +102,9 @@ describe('la définition dupliquée de schema_migration', () => {
     );
     const socle = readFileSync(path.join(REPERTOIRE, '0001-socle.sql'), 'utf8');
 
-    /// Réduit une définition de table à `colonne type` séparés par des
+    /// Réduit une définition de table à `column type` séparés par des
     /// virgules, pour comparer la STRUCTURE et non la mise en page.
-    function colonnes(ddl: string): string {
+    function columns(ddl: string): string {
         const corps = /schema_migration\s*\(([^)]*)\)/i.exec(ddl);
         if (!corps) throw new Error(`aucune définition de schema_migration dans ce texte`);
         return corps[1]
@@ -114,12 +114,12 @@ describe('la définition dupliquée de schema_migration', () => {
     }
 
     it('est la même dans migrations.ts et dans 0001-socle.sql', () => {
-        expect(colonnes(source)).toBe(colonnes(corps(socle)));
+        expect(columns(source)).toBe(columns(corps(socle)));
     });
 
     it("porte bien l'horodatage en BIGINT", () => {
         // Sans cette seconde assertion, deux définitions FAUSSES et identiques
         // passeraient la première — c'est le contrôle qui ne peut pas échouer.
-        expect(colonnes(source)).toContain('APPLIQUE_A BIGINT');
+        expect(columns(source)).toContain('APPLIQUE_A BIGINT');
     });
 });

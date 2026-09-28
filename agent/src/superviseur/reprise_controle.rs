@@ -26,7 +26,7 @@
 //! socket**. That is why this module is NOT [`crate::relance_pont::
 //! EtatRelance`] and does not derive from it:
 //!
-//! ① `EtatRelance::reinitialiser_le_repli` takes a [`crate::relance_pont::
+//! ① `EtatRelance::reset_the_backoff` takes a [`crate::relance_pont::
 //!    IssueDeSortie`] — a process exit code, which does not exist here;
 //! ② `EtatRelance::doit_relancer(ecoule_ms)` assumes a caller that POLLS at
 //!    each clock turn; this loop **sleeps** the wanted delay, it

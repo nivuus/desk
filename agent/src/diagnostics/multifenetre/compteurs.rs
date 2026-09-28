@@ -49,7 +49,7 @@ const CADENCE_PING: Duration = Duration::from_secs(1);
 /// ping would give one line per second for nothing.
 pub(super) struct Garde<'p> {
     pilote: &'p PiloteParIoctl,
-    dernier: Instant,
+    last: Instant,
     intervalle_max: Duration,
 }
 
@@ -57,16 +57,16 @@ impl<'p> Garde<'p> {
     /// To be built right after the last known ping — typically on return
     /// from `attendre_en_pinguant`.
     ///
-    /// **Wording precision, corrected in the final review**: `dernier` is set to
+    /// **Wording precision, corrected in the final review**: `last` is set to
     /// `Instant::now()` HERE, so the seam between the last real ping and
     /// this construction **escapes the counter** — it is not *counted*,
     /// it is made *negligible* by the adjacency of the two calls (66 µs in the
     /// survey of the parallel duplications work stream). Counting this seam
     /// would require `attendre_en_pinguant` to return the instant of its last ping.
-    pub(super) fn nouvelle(pilote: &'p PiloteParIoctl) -> Self {
+    pub(super) fn new(pilote: &'p PiloteParIoctl) -> Self {
         Self {
             pilote,
-            dernier: Instant::now(),
+            last: Instant::now(),
             intervalle_max: Duration::ZERO,
         }
     }
@@ -74,15 +74,15 @@ impl<'p> Garde<'p> {
     /// Beats unconditionally, and records the gap since the previous beat.
     pub(super) fn battre(&mut self) -> Result<()> {
         let maintenant = Instant::now();
-        self.intervalle_max = self.intervalle_max.max(maintenant - self.dernier);
+        self.intervalle_max = self.intervalle_max.max(maintenant - self.last);
         self.pilote.pinguer()?;
-        self.dernier = maintenant;
+        self.last = maintenant;
         Ok(())
     }
 
     /// Beats if the cadence requires it, doing nothing otherwise.
     pub(super) fn battre_si_du(&mut self) -> Result<()> {
-        if self.dernier.elapsed() >= CADENCE_PING {
+        if self.last.elapsed() >= CADENCE_PING {
             self.battre()?;
         }
         Ok(())
@@ -93,7 +93,7 @@ impl<'p> Garde<'p> {
     /// as much as a closed gap, otherwise the last segment of the measurement
     /// would escape the check.
     pub(super) fn intervalle_max(&self) -> Duration {
-        self.intervalle_max.max(self.dernier.elapsed())
+        self.intervalle_max.max(self.last.elapsed())
     }
 }
 
@@ -137,17 +137,17 @@ pub(super) struct Compteurs {
     /// then unobstructed, and it is the only window of the bench where one reads "does this path
     /// simply capture this window". On the physical desktop the
     /// answer went without saying; on a virtual output, it is the question.
-    pub(super) avant_recouvrement: Verdicts,
+    pub(super) before_overlap: Verdicts,
     /// Verdicts given once test pattern 0 is covered: the elimination gate.
     pub(super) apres_recouvrement: Verdicts,
 }
 
 impl Compteurs {
-    pub(super) fn nouveaux(nombre: usize) -> Self {
+    pub(super) fn nouveaux(count: usize) -> Self {
         Self {
-            images: vec![0; nombre],
-            unites: vec![0; nombre],
-            avant_recouvrement: Verdicts::default(),
+            images: vec![0; count],
+            unites: vec![0; count],
+            before_overlap: Verdicts::default(),
             apres_recouvrement: Verdicts::default(),
         }
     }
@@ -176,7 +176,7 @@ pub(super) fn passe_temoin(mires: &mut Mires, mut garde: Option<&mut Garde<'_>>)
     }
     let secondes = debut.elapsed().as_secs_f64();
     tracing::info!(
-        mires = mires.nombre(),
+        mires = mires.count(),
         trames,
         cadence = trames as f64 / secondes,
         "passe TÉMOIN — cadence de peinture sans capture"
@@ -184,7 +184,7 @@ pub(super) fn passe_temoin(mires: &mut Mires, mut garde: Option<&mut Garde<'_>>)
     Ok(())
 }
 
-pub(super) fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compteurs) {
+pub(super) fn journaliser(passe: &str, voie: &str, count: u8, compteurs: &Compteurs) {
     let secondes = DUREE_PASSE.as_secs_f64();
     let cadences: Vec<f64> = compteurs
         .images
@@ -194,11 +194,11 @@ pub(super) fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compt
     tracing::info!(
         passe,
         voie,
-        nombre,
+        count,
         ?cadences,
         unites = ?compteurs.unites,
         verdicts_faux = compteurs.apres_recouvrement.faux(),
-        mire0_avant_recouvrement = ?compteurs.avant_recouvrement,
+        pattern0_before_overlap = ?compteurs.before_overlap,
         mire0_apres_recouvrement = ?compteurs.apres_recouvrement,
         "passe terminée"
     );

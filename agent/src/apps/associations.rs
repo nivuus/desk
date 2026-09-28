@@ -72,16 +72,16 @@ pub fn table_de_la_machine() -> std::collections::BTreeMap<String, Vec<String>> 
 ///
 /// Returns `None` on an empty line, or on an opening quote never closed.
 pub fn executable_de_commande(commande: &str) -> Option<String> {
-    let taille = commande.trim();
-    if taille.is_empty() {
+    let size = commande.trim();
+    if size.is_empty() {
         return None;
     }
-    let chemin = if let Some(reste) = taille.strip_prefix('"') {
+    let chemin = if let Some(reste) = size.strip_prefix('"') {
         // ⚠️ An unclosed opening quote is refused rather than taking
         // all the rest: a malformed line is not a path.
-        reste.split_once('"').map(|(avant, _)| avant)?
+        reste.split_once('"').map(|(before, _)| before)?
     } else {
-        taille.split_whitespace().next()?
+        size.split_whitespace().next()?
     };
     if chemin.is_empty() {
         return None;
@@ -110,11 +110,11 @@ pub fn commande_vise(commande: &str, cible: &str) -> bool {
 /// depending on the key, and letting both forms travel would force the platform
 /// to choose — that is, to carry a rule that is not its own.
 pub fn normaliser_extension(extension: &str) -> Option<String> {
-    let taille = extension.trim().trim_start_matches('.').to_lowercase();
-    if taille.is_empty() || taille.contains(['\\', '/', ' ']) {
+    let size = extension.trim().trim_start_matches('.').to_lowercase();
+    if size.is_empty() || size.contains(['\\', '/', ' ']) {
         return None;
     }
-    Some(format!(".{taille}"))
+    Some(format!(".{size}"))
 }
 
 /// The association TABLE: **normalised** executable path → sorted

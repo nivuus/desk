@@ -35,7 +35,7 @@ const BPP_MIN: f32 = 0.05;
 /// which it stops being watchable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Barreau {
-    pub taille: (u32, u32),
+    pub size: (u32, u32),
     pub min_bps: u32,
 }
 
@@ -57,7 +57,7 @@ pub struct Echelle {
 impl Echelle {
     pub fn depuis(source: (u32, u32), fps: u32) -> Self {
         let (sw, sh) = source;
-        let tous_barreaux: Vec<Barreau> = DIVISEURS
+        let all_rungs: Vec<Barreau> = DIVISEURS
             .iter()
             .map(|d| {
                 // `& !1`: H.264 requires even dimensions. The same
@@ -69,7 +69,7 @@ impl Echelle {
                 let pixels = w as u64 * h as u64;
                 let min_bps = (pixels * fps as u64) as f32 * BPP_MIN;
                 Barreau {
-                    taille: (w, h),
+                    size: (w, h),
                     min_bps: min_bps as u32,
                 }
             })
@@ -79,8 +79,8 @@ impl Echelle {
         // This can happen for tiny sources, due to the
         // even-pixel truncation and the `.max(2)` floor.
         let mut barreaux: Vec<Barreau> = Vec::new();
-        for barreau in tous_barreaux {
-            if barreaux.is_empty() || barreau.taille != barreaux.last().unwrap().taille {
+        for barreau in all_rungs {
+            if barreaux.is_empty() || barreau.size != barreaux.last().unwrap().size {
                 barreaux.push(barreau);
             }
         }
@@ -112,24 +112,24 @@ mod tests {
     #[test]
     fn l_echelle_a_quatre_barreaux_decroissants_et_pairs() {
         let echelle = Echelle::depuis((1920, 1080), 60);
-        let tailles: Vec<(u32, u32)> = echelle.barreaux().iter().map(|b| b.taille).collect();
+        let sizes: Vec<(u32, u32)> = echelle.barreaux().iter().map(|b| b.size).collect();
 
         // Pour 1920×1080, on attend exactement 4 barreaux (cas nominal).
-        assert_eq!(tailles.len(), 4, "quatre barreaux attendus pour 1920×1080");
+        assert_eq!(sizes.len(), 4, "quatre barreaux attendus pour 1920×1080");
         assert_eq!(
-            tailles[0],
+            sizes[0],
             (1920, 1080),
             "le premier barreau est la taille source"
         );
-        for (i, (w, h)) in tailles.iter().enumerate() {
+        for (i, (w, h)) in sizes.iter().enumerate() {
             assert_eq!(w % 2, 0, "barreau {i} : largeur impaire, refusée par H.264");
             assert_eq!(h % 2, 0, "barreau {i} : hauteur impaire, refusée par H.264");
         }
-        for i in 1..tailles.len() {
+        for i in 1..sizes.len() {
             assert!(
-                tailles[i].0 < tailles[i - 1].0,
+                sizes[i].0 < sizes[i - 1].0,
                 "barreau {i} pas plus petit que le précédent : {:?}",
-                tailles
+                sizes
             );
         }
     }
@@ -142,24 +142,23 @@ mod tests {
 
         // 8×8 source: the divisors 1.5 and 2.0 would fall back on (4, 4).
         let echelle_8x8 = Echelle::depuis((8, 8), 60);
-        let tailles_8x8: Vec<(u32, u32)> =
-            echelle_8x8.barreaux().iter().map(|b| b.taille).collect();
+        let sizes_8x8: Vec<(u32, u32)> = echelle_8x8.barreaux().iter().map(|b| b.size).collect();
 
-        assert!(tailles_8x8.len() <= 4, "au plus 4 barreaux pour source 8×8");
+        assert!(sizes_8x8.len() <= 4, "au plus 4 barreaux pour source 8×8");
         assert_eq!(
-            tailles_8x8[0],
+            sizes_8x8[0],
             (8, 8),
             "le premier barreau est la taille source (8×8)"
         );
-        for (i, (w, h)) in tailles_8x8.iter().enumerate() {
+        for (i, (w, h)) in sizes_8x8.iter().enumerate() {
             assert_eq!(w % 2, 0, "barreau {i} : largeur impaire");
             assert_eq!(h % 2, 0, "barreau {i} : hauteur impaire");
         }
-        for i in 1..tailles_8x8.len() {
+        for i in 1..sizes_8x8.len() {
             assert!(
-                tailles_8x8[i].0 < tailles_8x8[i - 1].0,
+                sizes_8x8[i].0 < sizes_8x8[i - 1].0,
                 "barreau {i} pas plus petit que le précédent : {:?}",
-                tailles_8x8
+                sizes_8x8
             );
         }
 
@@ -167,15 +166,14 @@ mod tests {
         // The ladder must have only one rung, the floor, not four
         // duplicates.
         let echelle_2x2 = Echelle::depuis((2, 2), 60);
-        let tailles_2x2: Vec<(u32, u32)> =
-            echelle_2x2.barreaux().iter().map(|b| b.taille).collect();
+        let sizes_2x2: Vec<(u32, u32)> = echelle_2x2.barreaux().iter().map(|b| b.size).collect();
 
         assert_eq!(
-            tailles_2x2.len(),
+            sizes_2x2.len(),
             1,
             "source 2×2 : un seul barreau (plancher)"
         );
-        assert_eq!(tailles_2x2[0], (2, 2), "le barreau est le plancher (2, 2)");
+        assert_eq!(sizes_2x2[0], (2, 2), "le barreau est le plancher (2, 2)");
     }
 
     #[test]

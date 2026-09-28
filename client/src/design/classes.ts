@@ -65,16 +65,16 @@ const OUVRE_UNE_REGEX = ['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '
 /** Index just after the regex literal starting at `debut`. */
 function finDeRegex(ts: string, debut: number): number {
     let i = debut + 1;
-    let dansUneClasse = false;
+    let insideAClass = false;
     while (i < ts.length) {
         const c = ts[i];
         if (c === '\\') {
             i += 2;
             continue;
         }
-        if (c === '[') dansUneClasse = true;
-        else if (c === ']') dansUneClasse = false;
-        else if (c === '/' && !dansUneClasse) return i + 1;
+        if (c === '[') insideAClass = true;
+        else if (c === ']') insideAClass = false;
+        else if (c === '/' && !insideAClass) return i + 1;
         else if (c === '\n') return i;
         i += 1;
     }

@@ -6,7 +6,7 @@ import { plan, verdict, type Tranche } from './tranches';
  * `Math.floor` dans `plan`. La dernière tranche disparaît, et `verdict`
  * déclare alors `complet` un fichier TRONQUÉ. Les tests qui la tuent portent le
  * marqueur 🔴 dans leur titre — ce sont ceux qui rattachent le découpage à la
- * `taille` par un chemin INDÉPENDANT de `plan` : compter des tranches ou
+ * `size` par un chemin INDÉPENDANT de `plan` : compter des tranches ou
  * sommer leurs octets contre le nombre attendu, jamais contre ce que `plan`
  * vient de rendre. Un test qui comparerait `plan` à lui-même resterait vert
  * sous la mutation.
@@ -35,10 +35,10 @@ describe('plan', () => {
         [7, 3],
     ])(
         '🔴 la somme des octets vaut EXACTEMENT la taille (taille=%i, pas=%i)',
-        (taille, pas) => {
-            // La comparaison porte sur `taille`, PAS sur `plan` : c'est ce qui
+        (size, pas) => {
+            // La comparaison porte sur `size`, PAS sur `plan` : c'est ce qui
             // rend l'assertion capable de voir une queue de fichier perdue.
-            expect(somme(plan(taille, pas))).toBe(taille);
+            expect(somme(plan(size, pas))).toBe(size);
         },
     );
 
@@ -51,10 +51,10 @@ describe('plan', () => {
         [9, 3, 3],
     ])(
         '🔴 le nombre de tranches est le plafond du quotient (taille=%i, pas=%i → %i)',
-        (taille, pas, combien) => {
+        (size, pas, combien) => {
             // Le nombre attendu est écrit à la main, jamais recalculé : un
             // `Math.ceil` dans le test reproduirait le défaut qu'il cherche.
-            expect(plan(taille, pas)).toHaveLength(combien);
+            expect(plan(size, pas)).toHaveLength(combien);
         },
     );
 
@@ -95,11 +95,11 @@ describe('plan', () => {
         ['une taille négative', -1, 4],
         ['une taille non entière', 2.5, 4],
         ['une taille NaN', Number.NaN, 4],
-    ])('LÈVE sur un contrat invalide : %s', (_titre, taille, pas) => {
+    ])('LÈVE sur un contrat invalide : %s', (_titre, size, pas) => {
         // Le contrat est détenu par l'appelant, pas reçu du fil : un contrat
         // absurde est un défaut de programme, et le rendre sous forme de
         // verdict le déguiserait en anomalie de transfert.
-        expect(() => plan(taille, pas)).toThrow(/tranches :/);
+        expect(() => plan(size, pas)).toThrow(/tranches :/);
     });
 });
 
@@ -140,12 +140,12 @@ describe('verdict', () => {
         [9, 2],
     ])(
         "🔴 un dépôt amputé de sa dernière tranche n'est JAMAIS complet (taille=%i, pas=%i)",
-        (taille, pas) => {
-            const ampute = plan(taille, pas).slice(0, -1);
+        (size, pas) => {
+            const ampute = plan(size, pas).slice(0, -1);
             // La somme déposée est strictement inférieure à la taille : c'est
             // la formulation la plus directe de « le fichier est tronqué ».
-            expect(somme(ampute)).toBeLessThan(taille);
-            expect(verdict(taille, pas, ampute).etat).toBe('manquantes');
+            expect(somme(ampute)).toBeLessThan(size);
+            expect(verdict(size, pas, ampute).etat).toBe('manquantes');
         },
     );
 
@@ -273,10 +273,10 @@ describe('verdict', () => {
     it.each<[string, number, number]>([
         ['un pas nul', 10, 0],
         ['une taille négative', -1, 4],
-    ])('LÈVE sur un contrat invalide, comme plan : %s', (_titre, taille, pas) => {
+    ])('LÈVE sur un contrat invalide, comme plan : %s', (_titre, size, pas) => {
         // La garde est la MÊME des deux côtés : un contrat qui ne tient pas ne
         // doit pas produire un verdict d'apparence normale.
-        expect(() => verdict(taille, pas, [])).toThrow(/tranches :/);
+        expect(() => verdict(size, pas, [])).toThrow(/tranches :/);
     });
 
     it('ne lève JAMAIS sur ce qui vient du fil, si absurde soit-il', () => {

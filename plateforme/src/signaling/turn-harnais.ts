@@ -38,18 +38,18 @@ export interface TurnAmbiant {
 /// as on a machine with no TURN server configured, which is the
 /// only way for a "next message" test to be sealed off from
 /// the environment of whoever runs it.
-export function poserTurnAmbiant(valeurs: TurnAmbiant = {}): () => void {
-    const avant = CLES.map((cle) => [cle, process.env[cle]] as const);
+export function poserTurnAmbiant(values: TurnAmbiant = {}): () => void {
+    const before = CLES.map((cle) => [cle, process.env[cle]] as const);
 
-    appliquer('TURN_URL', valeurs.url);
-    appliquer('TURN_SECRET', valeurs.secret);
+    appliquer('TURN_URL', values.url);
+    appliquer('TURN_SECRET', values.secret);
 
     return () => {
-        for (const [cle, valeur] of avant) appliquer(cle, valeur);
+        for (const [cle, value] of before) appliquer(cle, value);
     };
 }
 
-function appliquer(cle: (typeof CLES)[number], valeur: string | undefined): void {
-    if (valeur === undefined) delete process.env[cle];
-    else process.env[cle] = valeur;
+function appliquer(cle: (typeof CLES)[number], value: string | undefined): void {
+    if (value === undefined) delete process.env[cle];
+    else process.env[cle] = value;
 }

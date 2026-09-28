@@ -8,7 +8,7 @@
 // places where the old bridge was wrong.
 //
 // This module knows neither the DOM, nor WebRTC, nor the binary frame: it returns
-// values and raises `EchecFichiers`. It is `protocole.ts` that puts them on the
+// values and raises `FilesError`. It is `protocole.ts` that puts them on the
 // wire.
 //
 // ✅ CASE IS HANDLED SINCE F3, ON READ AS ON WRITE.
@@ -43,7 +43,7 @@
 // case canonicalisation. **The cost remains OWED.**
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
-import { TAILLE_TRAME_MAX } from '../../../proto/ts/fichiers';
+import { MAX_FRAME_SIZE } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
 import { canoniserOuLever, injecterFaute } from './noms';
 
@@ -70,7 +70,7 @@ export interface TrancheLisible {
  * check with a compiler promise — stronger in appearance, but we would never
  * have seen it fail.
  */
-export interface FichierLu {
+export interface ReadableFile {
     readonly size: number;
     readonly lastModified: number;
     slice(debut: number, fin: number): TrancheLisible;
@@ -87,7 +87,7 @@ export interface FichierLu {
  * returns the concrete subtypes. Declaring the union here would make the real handle
  * NOT assignable, and the compatibility check of `canal.ts` would fail on
  * a divergence of the library, not of the product. The adapter therefore narrows
- * down to `PoigneeFichier` after reading `kind` — the same thing
+ * down to `FileHandle` after reading `kind` — the same thing
  * TypeScript would do on its own if the union were declared.
  */
 export interface PoigneeBase {
@@ -95,15 +95,15 @@ export interface PoigneeBase {
     readonly name: string;
 }
 
-export interface PoigneeFichier extends PoigneeBase {
+export interface FileHandle extends PoigneeBase {
     readonly kind: 'file';
-    getFile(): Promise<FichierLu>;
+    getFile(): Promise<ReadableFile>;
 }
 
 export interface PoigneeRepertoire extends PoigneeBase {
     readonly kind: 'directory';
     getDirectoryHandle(nom: string): Promise<PoigneeRepertoire>;
-    getFileHandle(nom: string): Promise<PoigneeFichier>;
+    getFileHandle(nom: string): Promise<FileHandle>;
     values(): AsyncIterable<PoigneeBase>;
 }
 
@@ -119,11 +119,11 @@ export type Racine = PoigneeRepertoire;
  * was destroyed at emission, and no one could recover it.
  *
  * Here the cause travels as a `CodeEchec`, a member of the shared enumeration
- * `proto::fichiers::CodeEchec`: it crosses the wire without losing
+ * `proto::files::CodeEchec`: it crosses the wire without losing
  * anything, and the agent translates it back into an `HRESULT`. The `message`, for its part, does not
  * cross — it is what one reads in the browser console.
  */
-export class EchecFichiers extends Error {
+export class FilesError extends Error {
     readonly code: CodeEchec;
 
     constructor(code: CodeEchec, message: string) {
@@ -141,17 +141,17 @@ export class EchecFichiers extends Error {
  * about which Explorer does not say the same thing: a missing INTERMEDIATE component
  * returns `chemin-introuvable`, the FINAL component returns `introuvable`.
  */
-export function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
-    if (e instanceof EchecFichiers) return e;
+export function classer(e: unknown, siAbsent: CodeEchec): FilesError {
+    if (e instanceof FilesError) return e;
     const nom = e instanceof DOMException ? e.name : '';
     const texte = e instanceof Error ? e.message : String(e);
     switch (nom) {
         case 'NotFoundError':
         case 'TypeMismatchError':
-            return new EchecFichiers(siAbsent, texte);
+            return new FilesError(siAbsent, texte);
         case 'NotAllowedError':
         case 'SecurityError':
-            return new EchecFichiers('acces-refuse', texte);
+            return new FilesError('acces-refuse', texte);
         // ── THE TWO CAUSES OF F2 ──────────────────────────────────────────
         // They did not exist in read-only mode, and without them both
         // would fall into `interne`: the log would no longer say WHY a
@@ -164,14 +164,14 @@ export function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
         // file after failing as a directory. Classifying it twice is
         // impossible; classifying it here would break reading.
         case 'QuotaExceededError':
-            return new EchecFichiers('disque-plein', texte);
+            return new FilesError('disque-plein', texte);
         case 'InvalidModificationError':
-            return new EchecFichiers('deja-present', texte);
+            return new FilesError('deja-present', texte);
         default:
             // Everything else is `interne`: inventing a more precise code
             // would amount to guessing, and the agent would translate it into a wrong
             // HRESULT rather than a vague one.
-            return new EchecFichiers('interne', texte);
+            return new FilesError('interne', texte);
     }
 }
 
@@ -188,10 +188,10 @@ function composants(chemin: string): string[] {
 export interface Adaptateur {
     lister(chemin: string): Promise<EntreeJson[]>;
     attributs(chemin: string): Promise<EnteteMeta>;
-    lire(chemin: string, position: number, longueur: number): Promise<Uint8Array>;
+    lire(chemin: string, position: number, length: number): Promise<Uint8Array>;
 }
 
-export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateur {
+export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur {
     /**
      * Walks down the first `jusqua` components, all directories, **while
      * CANONICALISING them**.
@@ -212,11 +212,11 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
         return ici;
     }
 
-    async function metaDuFichier(nom: string, f: PoigneeFichier): Promise<EnteteMeta> {
-        const fichier = await f.getFile();
+    async function fileMeta(nom: string, f: FileHandle): Promise<EnteteMeta> {
+        const file = await f.getFile();
         // 🔴 **`nom` IS THE STORED NAME**, the one the canonicaliser returned —
         // and it is the one `PrjWritePlaceholderInfo` will receive.
-        return { nom, repertoire: false, taille: fichier.size, modifie: fichier.lastModified };
+        return { nom, repertoire: false, taille: file.size, modifie: file.lastModified };
     }
 
     return {
@@ -254,10 +254,10 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
                         // `getFile()` are INSIDE and are not isolated:
                         // F4 measures the traversal, never what composes it.
                         // Explicit narrowing: `kind` is `'file'`, so the
-                        // handle IS a `PoigneeFichier`. See the note on
+                        // handle IS a `FileHandle`. See the note on
                         // `PoigneeBase` — it is the DOM library that
                         // subtypes `values()`, not the API.
-                        const f = await (enfant as PoigneeFichier).getFile();
+                        const f = await (enfant as FileHandle).getFile();
                         entrees.push({
                             nom: enfant.name,
                             repertoire: false,
@@ -286,10 +286,10 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
             // serves BOTH attempts — directory then file. Redoing it
             // twice would cost two enumerations of the parent for the same
             // question.
-            const dernier = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+            const last = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
             try {
-                await parent.getDirectoryHandle(dernier);
-                return { nom: dernier, repertoire: true, taille: 0, modifie: 0 };
+                await parent.getDirectoryHandle(last);
+                return { nom: last, repertoire: true, taille: 0, modifie: 0 };
             } catch (e) {
                 // We retry AS A FILE only if the failure is an absence. A
                 // retried permission refusal would be masked as "not found",
@@ -298,32 +298,32 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
                 if (!estAbsence(e)) throw classer(e, 'introuvable');
             }
             try {
-                return await metaDuFichier(dernier, await parent.getFileHandle(dernier));
+                return await fileMeta(last, await parent.getFileHandle(last));
             } catch (e) {
                 throw classer(e, 'introuvable');
             }
         },
 
-        async lire(chemin, position, longueur) {
+        async lire(chemin, position, length) {
             await injecterFaute(composants(chemin), fautesArmees);
-            if (longueur > TAILLE_TRAME_MAX) {
+            if (length > MAX_FRAME_SIZE) {
                 // The peer is granted no trust on the size
                 // it requests: `pont::decoupe` already bounds on the agent side, but
                 // it is the agent doing it, hence the other end of the wire.
-                throw new EchecFichiers(
+                throw new FilesError(
                     'trop-grand',
-                    `${longueur} octets demandés, maximum ${TAILLE_TRAME_MAX}`,
+                    `${length} octets demandés, maximum ${MAX_FRAME_SIZE}`,
                 );
             }
             const parts = composants(chemin);
             if (parts.length === 0) {
-                throw new EchecFichiers('introuvable', 'la racine n’est pas un fichier');
+                throw new FilesError('introuvable', 'la racine n’est pas un fichier');
             }
             const parent = await descendre(parts, parts.length - 1);
             const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
-            let fichier: FichierLu;
+            let file: ReadableFile;
             try {
-                fichier = await (await parent.getFileHandle(nom)).getFile();
+                file = await (await parent.getFileHandle(nom)).getFile();
             } catch (e) {
                 throw classer(e, 'introuvable');
             }
@@ -331,10 +331,10 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
             // file to return 4 KB of it is the defect found in the old bridge
             // (`web/index.js:562-564`): on a one-gigabyte file, each
             // ProjFS read would materialise it in memory.
-            const debut = Math.min(position, fichier.size);
-            const fin = Math.min(position + longueur, fichier.size);
+            const debut = Math.min(position, file.size);
+            const fin = Math.min(position + length, file.size);
             try {
-                return new Uint8Array(await fichier.slice(debut, fin).arrayBuffer());
+                return new Uint8Array(await file.slice(debut, fin).arrayBuffer());
             } catch (e) {
                 throw classer(e, 'introuvable');
             }

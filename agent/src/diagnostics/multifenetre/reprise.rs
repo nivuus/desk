@@ -65,16 +65,16 @@ use super::paralleles::designer_sorties_neuves;
 use crate::capture::SortieDxgi;
 use crate::mire;
 
-pub(super) fn mesurer(nombre: u8) -> Result<()> {
+pub(super) fn mesurer(count: u8) -> Result<()> {
     anyhow::ensure!(
-        (1..=mire::MIRES_MAX).contains(&nombre),
+        (1..=mire::MIRES_MAX).contains(&count),
         "MULTIFENETRE_REPRISE doit valoir 1 à {}",
         mire::MIRES_MAX
     );
 
-    let avant = relever_topologie("avant création")?;
-    let noms_avant = noms_attaches(&avant);
-    let connues: HashSet<String> = avant
+    let before = relever_topologie("avant création")?;
+    let names_before = noms_attaches(&before);
+    let connues: HashSet<String> = before
         .iter()
         .map(|sortie| sortie.nom_sortie.clone())
         .collect();
@@ -98,19 +98,19 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
         // machine reboots. The RAII guard, for its part, was and remains
         // correct: it runs on all paths, including panic.
         (|| -> Result<()> {
-            for rang in 1..=nombre {
+            for rang in 1..=count {
                 let id = sorties
-                    .creer(largeur, hauteur, hertz)
+                    .create(largeur, hauteur, hertz)
                     .with_context(|| format!("création de la sortie virtuelle n°{rang}"))?;
                 tracing::info!(rang, id, "sortie virtuelle créée");
             }
             attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
             let apres = relever_topologie("après création")?;
-            let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
+            let virtuelles = designer_sorties_neuves(&apres, &connues, count)?;
             // Built right after `attendre_en_pinguant`, hence right after the
-            // last known ping (see `compteurs::Garde::nouvelle`).
-            let mut garde = compteurs::Garde::nouvelle(&pilote);
+            // last known ping (see `compteurs::Garde::new`).
+            let mut garde = compteurs::Garde::new(&pilote);
             garde.battre()?;
             let issue = passes::eprouver(&mut garde, &mut sorties, &virtuelles, &connues);
             tracing::info!(
@@ -147,11 +147,11 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);
-    if noms_final == noms_avant {
+    if noms_final == names_before {
         tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
     } else {
         tracing::error!(
-            noms_avant = ?noms_avant,
+            names_before = ?names_before,
             noms_apres = ?noms_final,
             "la topologie n'est PAS revenue à son état initial — purge requise"
         );
@@ -174,7 +174,7 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 /// - **the third parties**, that is everything that is neither known in advance
 ///   (`connues`) nor created by the set-up (`virtuelles`): at the "après
 ///   perturbation" moment, it is the **disrupting output**, and it is the only proof
-///   that the disruption really took place. `Sorties::creer` returns `Ok(id)`
+///   that the disruption really took place. `Sorties::create` returns `Ok(id)`
 ///   as soon as the driver accepts the IOCTL; nothing then says that Windows
 ///   reconfigured anything at all. A disruptor created but not attached would
 ///   disrupt nothing, and "zero reopenings" would wrongly read as a
@@ -188,10 +188,10 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<String>) {
     let vivantes = match crate::capture::enumerer_sorties() {
         Ok(sorties) => sorties,
-        Err(erreur) => {
+        Err(error) => {
             tracing::error!(
                 moment,
-                causes = %super::causes(erreur),
+                causes = %super::causes(error),
                 "topologie illisible — état des sorties inconnu"
             );
             return;
@@ -221,7 +221,7 @@ fn constater_places(moment: &str, virtuelles: &[SortieDxgi], connues: &HashSet<S
     if disparues.is_empty() && detachees.is_empty() && deplacees.is_empty() {
         tracing::info!(
             moment,
-            nombre = virtuelles.len(),
+            count = virtuelles.len(),
             "les k sorties virtuelles sont là, attachées, et à la même place — les verdicts \
              portent bien sur elles"
         );

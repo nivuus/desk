@@ -8,7 +8,7 @@
 // vide évincerait tout ce qui est vieux, y compris ce qui sert — la
 // corruption exacte que le plancher existe pour empêcher. Le test qui prouve
 // que PERSONNE N'APPELLE PLUS `evincer` — le défaut précis du round 1 — vit
-// dans `http/serveur.test.ts`, parce que c'est `demarrerServeur` qui doit le
+// dans `http/serveur.test.ts`, parce que c'est `startServer` qui doit le
 // faire, pas ce fichier-ci.
 
 import { createHash } from 'node:crypto';
@@ -20,14 +20,14 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { appliquer } from '../depot/application';
 import {
-    creer as creerTeleversement,
+    create as createUpload,
     lireParId as lireTeleversement,
 } from '../depot/televersement';
-import { creer as creerInstallation } from '../depot/installation';
+import { create as createInstallation } from '../depot/installation';
 import type { Application } from '../../../proto/ts/plateforme-apps';
 import { ouvrirMagasin, type Magasin } from './icones';
 import { ouvrirMagasinTranches, type MagasinTranches } from './magasin-tranches';
-import { demarrerNettoyage, referencesIcones, referencesTranches, unTour } from './nettoyage';
+import { startCleanup, referencesIcones, referencesTranches, unTour } from './nettoyage';
 
 let base: Pilote | undefined;
 let racines: string[] = [];
@@ -57,11 +57,11 @@ function magasinTranchesNeuf(): MagasinTranches {
     return ouvrirMagasinTranches(join(r, 'televersements'), () => {});
 }
 
-async function avecVm(p: Pilote, id: string): Promise<void> {
+async function withVm(p: Pilote, id: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [id, `vm-${id}`, '192.168.3.2']);
 }
 
-async function avecUtilisateur(p: Pilote, id: string): Promise<void> {
+async function withUser(p: Pilote, id: string): Promise<void> {
     await p.executer('INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)', [
         id,
         `${id}@exemple.test`,
@@ -75,7 +75,7 @@ function icone(texte: string): { empreinte: string; octets: Buffer } {
     return { empreinte: createHash('sha256').update(octets).digest('hex'), octets };
 }
 
-function appAvecIcone(nom: string, cle: string, empreinteIcone: string | null): Application {
+function appWithIcon(nom: string, cle: string, empreinteIcone: string | null): Application {
     return {
         cle,
         nom,
@@ -111,12 +111,12 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         // qu'une application vivante existe évincerait cette icône — c'est
         // exactement la corruption que le plancher existe pour empêcher.
         base = await baseNeuve('nettoyage-refs-icones-non-vide');
-        await avecVm(base, 'v1');
+        await withVm(base, 'v1');
         const { empreinte } = icone('vivante');
         await appliquer(
             base,
             'v1',
-            { aInserer: [appAvecIcone('X', 'a'.repeat(64), empreinte)], aMettreAJour: [], aMarquerDisparues: [], aRessusciter: [] },
+            { aInserer: [appWithIcon('X', 'a'.repeat(64), empreinte)], toUpdate: [], aMarquerDisparues: [], aRessusciter: [] },
             MS,
         );
         const refs = await referencesIcones(base);
@@ -126,32 +126,32 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
 
     it('une entrée DISPARUE ne référence plus son icône', async () => {
         base = await baseNeuve('nettoyage-refs-icones-disparue');
-        await avecVm(base, 'v1');
+        await withVm(base, 'v1');
         const { empreinte } = icone('feu-vivante');
         const cle = 'b'.repeat(64);
         await appliquer(
             base,
             'v1',
-            { aInserer: [appAvecIcone('X', cle, empreinte)], aMettreAJour: [], aMarquerDisparues: [], aRessusciter: [] },
+            { aInserer: [appWithIcon('X', cle, empreinte)], toUpdate: [], aMarquerDisparues: [], aRessusciter: [] },
             MS,
         );
         const [{ id }] = await base.interroger<{ id: string }>(
             'SELECT id FROM application WHERE cle = ?',
             [cle],
         );
-        await appliquer(base, 'v1', { aInserer: [], aMettreAJour: [], aMarquerDisparues: [id], aRessusciter: [] }, MS + 1);
+        await appliquer(base, 'v1', { aInserer: [], toUpdate: [], aMarquerDisparues: [id], aRessusciter: [] }, MS + 1);
         expect(await referencesIcones(base)).toEqual(new Set());
     });
 
     it('une entrée MASQUÉE référence ENCORE son icône — masquer n’est pas disparaître', async () => {
         base = await baseNeuve('nettoyage-refs-icones-masquee');
-        await avecVm(base, 'v1');
+        await withVm(base, 'v1');
         const { empreinte } = icone('masquable');
         const cle = 'c'.repeat(64);
         await appliquer(
             base,
             'v1',
-            { aInserer: [appAvecIcone('X', cle, empreinte)], aMettreAJour: [], aMarquerDisparues: [], aRessusciter: [] },
+            { aInserer: [appWithIcon('X', cle, empreinte)], toUpdate: [], aMarquerDisparues: [], aRessusciter: [] },
             MS,
         );
         const [{ id }] = await base.interroger<{ id: string }>(
@@ -167,14 +167,14 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
 
     it('un TOUR RÉEL, contre la base : vieille+référencée reste, vieille+orpheline part, jeune reste', async () => {
         base = await baseNeuve('nettoyage-tour-icones');
-        await avecVm(base, 'v1');
+        await withVm(base, 'v1');
         const enService = icone('en-service-tour');
         await appliquer(
             base,
             'v1',
             {
-                aInserer: [appAvecIcone('X', 'd'.repeat(64), enService.empreinte)],
-                aMettreAJour: [],
+                aInserer: [appWithIcon('X', 'd'.repeat(64), enService.empreinte)],
+                toUpdate: [],
                 aMarquerDisparues: [],
                 aRessusciter: [],
             },
@@ -184,9 +184,9 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         const magasin = magasinIconesNeuf();
         const orpheline = icone('orpheline-tour');
         const recente = icone('recente-tour');
-        magasin.ecrire(enService.empreinte, enService.octets);
-        magasin.ecrire(orpheline.empreinte, orpheline.octets);
-        magasin.ecrire(recente.empreinte, recente.octets);
+        magasin.write(enService.empreinte, enService.octets);
+        magasin.write(orpheline.empreinte, orpheline.octets);
+        magasin.write(recente.empreinte, recente.octets);
         vieillir(join(magasin.repertoire, enService.empreinte), 0);
         vieillir(join(magasin.repertoire, orpheline.empreinte), 0);
         // `recente` garde sa date d'écriture réelle (maintenant) : jeune par
@@ -202,10 +202,10 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
 
     it('🔴 referencesTranches VIENT DE LA BASE : une ligne existante rend un ensemble NON VIDE', async () => {
         base = await baseNeuve('nettoyage-refs-tranches-non-vide');
-        await avecUtilisateur(base, 'u1');
-        const t = await creerTeleversement(
+        await withUser(base, 'u1');
+        const t = await createUpload(
             base,
-            { utilisateurId: 'u1', nom: 'x.exe', taille: 1, sha256: 'e'.repeat(64), tailleTranche: 8 },
+            { userId: 'u1', nom: 'x.exe', taille: 1, sha256: 'e'.repeat(64), chunkSize: 8 },
             MS,
         );
         const refs = await referencesTranches(base);
@@ -218,35 +218,35 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
             'la ligne — et donc le disque —, un téléversement vraiment orphelin perd les DEUX',
         async () => {
             base = await baseNeuve('nettoyage-tour-tranches');
-            await avecUtilisateur(base, 'u1');
-            await avecVm(base, 'v1');
+            await withUser(base, 'u1');
+            await withVm(base, 'v1');
 
             // A : vieux, mais une installation le référence encore.
-            const a = await creerTeleversement(
+            const a = await createUpload(
                 base,
-                { utilisateurId: 'u1', nom: 'a.exe', taille: 1, sha256: 'f'.repeat(64), tailleTranche: 8 },
+                { userId: 'u1', nom: 'a.exe', taille: 1, sha256: 'f'.repeat(64), chunkSize: 8 },
                 MS - 400 * JOUR_MS,
             );
-            await creerInstallation(base, { vmId: 'v1', televersementId: a.id }, MS);
+            await createInstallation(base, { vmId: 'v1', televersementId: a.id }, MS);
 
             // B : vieux, et personne ne le référence — le cas ORPHELIN.
-            const b = await creerTeleversement(
+            const b = await createUpload(
                 base,
-                { utilisateurId: 'u1', nom: 'b.exe', taille: 1, sha256: 'a'.repeat(64), tailleTranche: 8 },
+                { userId: 'u1', nom: 'b.exe', taille: 1, sha256: 'a'.repeat(64), chunkSize: 8 },
                 MS - 400 * JOUR_MS,
             );
 
             // C : jeune — protégé par son âge, indépendamment de toute référence.
-            const c = await creerTeleversement(
+            const c = await createUpload(
                 base,
-                { utilisateurId: 'u1', nom: 'c.exe', taille: 1, sha256: 'b'.repeat(64), tailleTranche: 8 },
+                { userId: 'u1', nom: 'c.exe', taille: 1, sha256: 'b'.repeat(64), chunkSize: 8 },
                 MS,
             );
 
             const tranches = magasinTranchesNeuf();
-            await tranches.ecrire(a.id, 0, flux('a'), 1024);
-            await tranches.ecrire(b.id, 0, flux('b'), 1024);
-            await tranches.ecrire(c.id, 0, flux('c'), 1024);
+            await tranches.write(a.id, 0, flux('a'), 1024);
+            await tranches.write(b.id, 0, flux('b'), 1024);
+            await tranches.write(c.id, 0, flux('c'), 1024);
             vieillir(join(tranches.racine, a.id), 0);
             vieillir(join(tranches.racine, b.id), 0);
             // `c` garde sa date d'écriture réelle : jeune par construction.
@@ -282,23 +282,23 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
             'vient d’ARRIVER, conserve SA LIGNE ET SON DISQUE',
         async () => {
             base = await baseNeuve('nettoyage-critique-planchers');
-            await avecUtilisateur(base, 'u1');
+            await withUser(base, 'u1');
 
             const maintenant = MS;
-            const t = await creerTeleversement(
+            const t = await createUpload(
                 base,
                 {
-                    utilisateurId: 'u1',
+                    userId: 'u1',
                     nom: 'actif.exe',
                     taille: 1,
                     sha256: 'c'.repeat(64),
-                    tailleTranche: 8,
+                    chunkSize: 8,
                 },
                 maintenant - 31 * JOUR_MS,
             );
 
             const tranches = magasinTranchesNeuf();
-            await tranches.ecrire(t.id, 0, flux('x'), 1024);
+            await tranches.write(t.id, 0, flux('x'), 1024);
             // La tranche « vient d'arriver » : sa date d'activité est FORCÉE
             // à `maintenant`, jamais laissée à vieillir — c'est elle qui
             // distingue ce scénario du cas orphelin réel (le test au-dessus).
@@ -323,17 +323,17 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     // séparés pour qu'on ne les confonde pas.
     it('un refus de clé étrangère (ATTENDU) ne journalise RIEN', async () => {
         base = await baseNeuve('nettoyage-fk-muet');
-        await avecUtilisateur(base, 'u1');
-        await avecVm(base, 'v1');
-        const t = await creerTeleversement(
+        await withUser(base, 'u1');
+        await withVm(base, 'v1');
+        const t = await createUpload(
             base,
-            { utilisateurId: 'u1', nom: 'ref.exe', taille: 1, sha256: 'e'.repeat(64), tailleTranche: 8 },
+            { userId: 'u1', nom: 'ref.exe', taille: 1, sha256: 'e'.repeat(64), chunkSize: 8 },
             MS - 400 * JOUR_MS,
         );
-        await creerInstallation(base, { vmId: 'v1', televersementId: t.id }, MS);
+        await createInstallation(base, { vmId: 'v1', televersementId: t.id }, MS);
 
         const tranches = magasinTranchesNeuf();
-        await tranches.ecrire(t.id, 0, flux('x'), 1024);
+        await tranches.write(t.id, 0, flux('x'), 1024);
         vieillir(join(tranches.racine, t.id), 0);
 
         const espion = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -348,18 +348,18 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
 
     it('🔴 un échec de purge qui N’EST PAS une clé étrangère SE JOURNALISE', async () => {
         base = await baseNeuve('nettoyage-fk-pas-muet');
-        await avecUtilisateur(base, 'u1');
+        await withUser(base, 'u1');
         // Vraiment orphelin — rien ne le référence, la suppression de sa
         // ligne RÉUSSIRAIT normalement (voir le test « un TOUR RÉEL… » plus
         // haut) : c'est ce qui rend la faute injectée ci-dessous imputable
         // au `catch`, jamais à la clé étrangère.
-        const t = await creerTeleversement(
+        const t = await createUpload(
             base,
-            { utilisateurId: 'u1', nom: 'orph.exe', taille: 1, sha256: 'f'.repeat(64), tailleTranche: 8 },
+            { userId: 'u1', nom: 'orph.exe', taille: 1, sha256: 'f'.repeat(64), chunkSize: 8 },
             MS - 400 * JOUR_MS,
         );
         const tranches = magasinTranchesNeuf();
-        await tranches.ecrire(t.id, 0, flux('x'), 1024);
+        await tranches.write(t.id, 0, flux('x'), 1024);
         vieillir(join(tranches.racine, t.id), 0);
 
         // Un pilote qui fait échouer SPÉCIFIQUEMENT le DELETE, d'une cause
@@ -408,7 +408,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
         };
         const tranches = magasinTranchesNeuf();
 
-        const nettoyage = await demarrerNettoyage(
+        const nettoyage = await startCleanup(
             { base, magasin, tranches, maintenant: () => MS },
             20, // periodeMs minuscule — un test, jamais une valeur livrée.
         );
@@ -423,7 +423,7 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     });
 
     // 🔴 DURCISSEMENT (round de correction 3) : une ligne MALFORMÉE (id qui
-    // n'est pas un UUID — NON ATTEIGNABLE aujourd'hui, `creer` étant le seul
+    // n'est pas un UUID — NON ATTEIGNABLE aujourd'hui, `create` étant le seul
     // `INSERT`, mais provoquée ici directement en SQL) ne doit PAS faire
     // abandonner le tour entier. L'ordre de retour de `lirePlusVieuxQue`
     // n'étant pas garanti, ce test ne suppose AUCUN ordre : que la ligne
@@ -431,24 +431,24 @@ describe(`nettoyage de fond, moteur=${MOTEUR}`, () => {
     // dans tous les cas, finir purgée — ligne ET disque.
     it('une ligne malformée n’abandonne pas le tour : l’orpheline voisine est quand même évincée', async () => {
         base = await baseNeuve('nettoyage-durcissement-id-malforme');
-        await avecUtilisateur(base, 'u1');
+        await withUser(base, 'u1');
 
         const vieux = MS - 400 * JOUR_MS;
-        // La ligne FAUTIVE, posée directement en SQL — jamais par `creer`.
+        // La ligne FAUTIVE, posée directement en SQL — jamais par `create`.
         await base.executer(
             'INSERT INTO televersement(id,utilisateur_id,nom,taille,sha256,taille_tranche,cree_a,scelle_a)'
                 + ' VALUES(?,?,?,?,?,?,?,?)',
             ['pas-un-uuid', 'u1', 'fautif.exe', 1, 'a'.repeat(64), 8, vieux, null],
         );
         // L'orpheline LÉGITIME, par le chemin normal.
-        const orpheline = await creerTeleversement(
+        const orpheline = await createUpload(
             base,
-            { utilisateurId: 'u1', nom: 'orph.exe', taille: 1, sha256: 'b'.repeat(64), tailleTranche: 8 },
+            { userId: 'u1', nom: 'orph.exe', taille: 1, sha256: 'b'.repeat(64), chunkSize: 8 },
             vieux,
         );
 
         const tranches = magasinTranchesNeuf();
-        await tranches.ecrire(orpheline.id, 0, flux('x'), 1024);
+        await tranches.write(orpheline.id, 0, flux('x'), 1024);
         vieillir(join(tranches.racine, orpheline.id), 0);
 
         const magasin = magasinIconesNeuf();

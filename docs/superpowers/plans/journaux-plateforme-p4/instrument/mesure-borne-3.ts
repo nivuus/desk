@@ -13,15 +13,15 @@
 // on a loaded machine while staying eight times below the prescribed red run
 // (`setTimeout(2000)`). Both ratios are written in the log.
 
-import { appeler, creerCompte, demarrerService, enroler, jetonDe, ligne, type Moteur } from './socle';
+import { appeler, createAccount, startService, enroler, jetonDe, ligne, type Moteur } from './socle';
 import { inventaireStatique } from '../../../../../plateforme/src/orchestration/inventaire-statique';
 
 const [moteur, commit] = process.argv.slice(2) as [Moteur, string];
 const N = 100;
 
-const service = await demarrerService(moteur, 'mesure3');
-const carol = await creerCompte(service.base, 'carol@essai.local');
-const autre = await creerCompte(service.base, 'autre@essai.local');
+const service = await startService(moteur, 'mesure3');
+const carol = await createAccount(service.base, 'carol@essai.local');
+const autre = await createAccount(service.base, 'autre@essai.local');
 const vm = await enroler(service.base, 'w-autre');
 await inventaireStatique(service.base, Date.now).attribuer(vm.vmId, autre);
 const jeton = jetonDe(carol);

@@ -318,7 +318,7 @@ mod win {
             // ```text
             // grep -n 'normalised on 0..65535' client/src/input.ts
             // grep -rn 'ModeCapture::SortieEntiere' agent/src/windows_source/
-            // grep -rn 'TailleImage' agent/src/
+            // grep -rn 'FrameSize' agent/src/
             // cargo test --workspace entrees::
             // ```
             //

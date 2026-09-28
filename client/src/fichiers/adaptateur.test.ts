@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-    creerAdaptateur,
-    EchecFichiers,
-    type FichierLu,
-    type PoigneeFichier,
+    createAdapter,
+    FilesError,
+    type ReadableFile,
+    type FileHandle,
     type PoigneeRepertoire,
     type TrancheLisible,
 } from './adaptateur';
@@ -24,10 +24,10 @@ interface Compteurs {
     slice: number;
 }
 
-function fauxFichier(octets: Uint8Array, modifie: number, compteurs: Compteurs): FichierLu {
+function fakeFile(octets: Uint8Array, modified: number, compteurs: Compteurs): ReadableFile {
     return {
         size: octets.length,
-        lastModified: modifie,
+        lastModified: modified,
         slice(debut: number, fin: number): TrancheLisible {
             compteurs.slice += 1;
             const tranche = octets.slice(debut, fin);
@@ -42,7 +42,7 @@ function fauxFichier(octets: Uint8Array, modifie: number, compteurs: Compteurs):
 
 type Arbre = { [nom: string]: Arbre | { octets: Uint8Array; modifie: number } };
 
-function estFichier(n: Arbre[string]): n is { octets: Uint8Array; modifie: number } {
+function isFile(n: Arbre[string]): n is { octets: Uint8Array; modifie: number } {
     return 'octets' in n && n.octets instanceof Uint8Array;
 }
 
@@ -62,26 +62,26 @@ function repertoire(nom: string, arbre: Arbre, compteurs: Compteurs): PoigneeRep
         async getDirectoryHandle(enfant: string): Promise<PoigneeRepertoire> {
             const n = arbre[enfant];
             if (n === undefined) absent(enfant);
-            if (estFichier(n)) mauvaisType(enfant);
+            if (isFile(n)) mauvaisType(enfant);
             return repertoire(enfant, n, compteurs);
         },
-        async getFileHandle(enfant: string): Promise<PoigneeFichier> {
+        async getFileHandle(enfant: string): Promise<FileHandle> {
             const n = arbre[enfant];
             if (n === undefined) absent(enfant);
-            if (!estFichier(n)) mauvaisType(enfant);
+            if (!isFile(n)) mauvaisType(enfant);
             return {
                 kind: 'file',
                 name: enfant,
-                getFile: async () => fauxFichier(n.octets, n.modifie, compteurs),
+                getFile: async () => fakeFile(n.octets, n.modifie, compteurs),
             };
         },
         async *values() {
             for (const [enfant, n] of Object.entries(arbre)) {
-                yield estFichier(n)
+                yield isFile(n)
                     ? {
                           kind: 'file' as const,
                           name: enfant,
-                          getFile: async () => fauxFichier(n.octets, n.modifie, compteurs),
+                          getFile: async () => fakeFile(n.octets, n.modifie, compteurs),
                       }
                     : repertoire(enfant, n, compteurs);
             }
@@ -100,14 +100,14 @@ function monter() {
             'dedans.txt': { octets: new Uint8Array([88]), modifie: -86_400_000 },
         },
     };
-    return { compteurs, adaptateur: creerAdaptateur(repertoire('', arbre, compteurs)) };
+    return { compteurs, adaptateur: createAdapter(repertoire('', arbre, compteurs)) };
 }
 
 /** Le même arbre, avec l'injection de fautes ARMÉE. */
 function monterArme() {
     const compteurs: Compteurs = { arrayBufferEntier: 0, slice: 0 };
     const arbre: Arbre = { 'note.txt': { octets: new Uint8Array([1]), modifie: 0 } };
-    return creerAdaptateur(repertoire('', arbre, compteurs), true);
+    return createAdapter(repertoire('', arbre, compteurs), true);
 }
 
 describe('adaptateur de la File System Access API', () => {
@@ -171,7 +171,7 @@ describe('adaptateur de la File System Access API', () => {
 
     it('🔴 un chemin inexistant rend le code Introuvable', async () => {
         const { adaptateur } = monter();
-        await expect(adaptateur.attributs('absent.txt')).rejects.toBeInstanceOf(EchecFichiers);
+        await expect(adaptateur.attributs('absent.txt')).rejects.toBeInstanceOf(FilesError);
         await expect(adaptateur.attributs('absent.txt')).rejects.toMatchObject({
             code: 'introuvable',
         });
@@ -201,13 +201,13 @@ describe('adaptateur de la File System Access API', () => {
         expect(JSON.stringify(new Error('permission refusée'))).toBe('{}');
 
         const echec = await adaptateur.attributs('absent.txt').catch((e: unknown) => e);
-        expect(echec).toBeInstanceOf(EchecFichiers);
+        expect(echec).toBeInstanceOf(FilesError);
         // Ce que l'adaptateur produit à la place : un membre de l'énumération
         // PARTAGÉE, qui traverse le fil sans rien perdre.
-        expect((echec as EchecFichiers).code).toBe('introuvable');
+        expect((echec as FilesError).code).toBe('introuvable');
         // Et le message reste lisible pour un humain, côté navigateur — il ne
         // traverse pas le fil, mais il est ce qu'on lit dans la console.
-        expect((echec as EchecFichiers).message).toMatch(/absent\.txt/);
+        expect((echec as FilesError).message).toMatch(/absent\.txt/);
     });
 
     it('un refus de permission devient acces-refuse, pas interne', async () => {
@@ -220,11 +220,11 @@ describe('adaptateur de la File System Access API', () => {
             async getFileHandle() {
                 throw new DOMException('permission révoquée', 'NotAllowedError');
             },
-            async *values(): AsyncGenerator<PoigneeFichier | PoigneeRepertoire> {
+            async *values(): AsyncGenerator<FileHandle | PoigneeRepertoire> {
                 throw new DOMException('permission révoquée', 'NotAllowedError');
             },
         };
-        const adaptateur = creerAdaptateur(refusante);
+        const adaptateur = createAdapter(refusante);
         await expect(adaptateur.lister('')).rejects.toMatchObject({ code: 'acces-refuse' });
         await expect(adaptateur.attributs('x')).rejects.toMatchObject({ code: 'acces-refuse' });
     });
@@ -239,11 +239,11 @@ describe('adaptateur de la File System Access API', () => {
             async getFileHandle() {
                 throw new Error('quelque chose a explosé');
             },
-            async *values(): AsyncGenerator<PoigneeFichier | PoigneeRepertoire> {
+            async *values(): AsyncGenerator<FileHandle | PoigneeRepertoire> {
                 throw new Error('quelque chose a explosé');
             },
         };
-        await expect(creerAdaptateur(cassee).lister('')).rejects.toMatchObject({
+        await expect(createAdapter(cassee).lister('')).rejects.toMatchObject({
             code: 'interne',
         });
     });
@@ -256,7 +256,7 @@ describe('la casse en LECTURE, corrigée par F3', () => {
     // (il atteignait le pont et butait sur OPFS), DANS LA MÊME EXÉCUTION.
 
     it('🔴 `GROS.BIN` rend `gros.bin`, et l’incohérence de F1 DISPARAÎT', async () => {
-        // Rouge : garder la résolution directe (`getFileHandle(dernier)`).
+        // Rouge : garder la résolution directe (`getFileHandle(last)`).
         // `GROS.BIN` rendrait `introuvable`, ce qui est exactement l'état que
         // F1 relève.
         const { adaptateur } = monter();

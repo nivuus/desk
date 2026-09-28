@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
     CODES_ECHEC,
-    FICHIERS_VERSION,
-    TAILLE_ENTETE_FIXE,
-    TAILLE_TRAME_MAX,
-    TOUS_LES_TYPES,
-    TYPE_DONNEES,
+    FILES_VERSION,
+    FIXED_HEADER_SIZE,
+    MAX_FRAME_SIZE,
+    ALL_TYPES,
+    TYPE_DATA,
     TYPE_ENTREES,
     TYPE_LISTER,
     TYPE_META,
@@ -23,7 +23,7 @@ import {
  * du code — ils doivent rester identiques, octet pour octet, à
  * `VECTEUR_EPINGLE` côté Rust.
  *
- * version 1 | type 66 (`TYPE_DONNEES`) | corrélation 0x0A0B0C0D petit-boutiste |
+ * version 1 | type 66 (`TYPE_DATA`) | corrélation 0x0A0B0C0D petit-boutiste |
  * longueur d'en-tête 2 petit-boutiste | en-tête `{}` | charge `00 FF 7F 80`.
  */
 const VECTEUR_EPINGLE = new Uint8Array([
@@ -39,12 +39,12 @@ describe('trame binaire du pont fichiers', () => {
         // Zéro octet ne porte pas sa version : rejet, jamais complétion.
         expect(() => decoder(new ArrayBuffer(0))).toThrow(/tronqu/i);
         // …et un octet de moins que l'en-tête fixe l'est aussi.
-        expect(() => decoder(new ArrayBuffer(TAILLE_ENTETE_FIXE - 1))).toThrow(/tronqu/i);
+        expect(() => decoder(new ArrayBuffer(FIXED_HEADER_SIZE - 1))).toThrow(/tronqu/i);
     });
 
     it('refuse une trame de version 2', () => {
         const trame = octets(encoder(TYPE_LISTER, 7, {}));
-        trame[0] = FICHIERS_VERSION + 1;
+        trame[0] = FILES_VERSION + 1;
         expect(() => decoder(trame.buffer as ArrayBuffer)).toThrow(/version/i);
     });
 
@@ -65,9 +65,9 @@ describe('trame binaire du pont fichiers', () => {
         // premier ; on passe les 256.
         const charge = new Uint8Array(256);
         for (let i = 0; i < 256; i += 1) charge[i] = i;
-        const trame = decoder(encoder(TYPE_DONNEES, 0xdeadbeef, { position: 0 }, charge));
-        expect(trame.version).toBe(FICHIERS_VERSION);
-        expect(trame.type).toBe(TYPE_DONNEES);
+        const trame = decoder(encoder(TYPE_DATA, 0xdeadbeef, { position: 0 }, charge));
+        expect(trame.version).toBe(FILES_VERSION);
+        expect(trame.type).toBe(TYPE_DATA);
         expect(trame.correlation).toBe(0xdeadbeef);
         expect(trame.entete).toEqual({ position: 0 });
         expect(Array.from(trame.charge)).toEqual(Array.from(charge));
@@ -75,7 +75,7 @@ describe('trame binaire du pont fichiers', () => {
 
     it('accepte une charge vide et un en-tête vide', () => {
         const brut = octets(encoder(TYPE_META, 0));
-        expect(brut.length).toBe(TAILLE_ENTETE_FIXE);
+        expect(brut.length).toBe(FIXED_HEADER_SIZE);
         const trame = decoder(brut.buffer as ArrayBuffer);
         expect(trame.entete).toBeUndefined();
         expect(trame.charge.length).toBe(0);
@@ -85,11 +85,11 @@ describe('trame binaire du pont fichiers', () => {
     it('accepte une charge de TAILLE_TRAME_MAX et refuse un octet de plus', () => {
         // Au seuil EXACT. C'est l'inégalité stricte qui est éprouvée, pas la
         // borne en général.
-        const pleine = new Uint8Array(TAILLE_TRAME_MAX).fill(0xab);
-        expect(decoder(encoder(TYPE_DONNEES, 1, {}, pleine)).charge.length).toBe(TAILLE_TRAME_MAX);
+        const pleine = new Uint8Array(MAX_FRAME_SIZE).fill(0xab);
+        expect(decoder(encoder(TYPE_DATA, 1, {}, pleine)).charge.length).toBe(MAX_FRAME_SIZE);
 
-        const trop = new Uint8Array(TAILLE_TRAME_MAX + 1).fill(0xab);
-        expect(() => decoder(encoder(TYPE_DONNEES, 1, {}, trop))).toThrow(/charge/i);
+        const trop = new Uint8Array(MAX_FRAME_SIZE + 1).fill(0xab);
+        expect(() => decoder(encoder(TYPE_DATA, 1, {}, trop))).toThrow(/charge/i);
     });
 
     it('décode ce que Rust a encodé — le vecteur épinglé', () => {
@@ -97,14 +97,14 @@ describe('trame binaire du pont fichiers', () => {
         // Rust et TypeScript resterait verte des deux côtés.
         const trame = decoder(VECTEUR_EPINGLE.buffer as ArrayBuffer);
         expect(trame.version).toBe(1);
-        expect(trame.type).toBe(TYPE_DONNEES);
+        expect(trame.type).toBe(TYPE_DATA);
         expect(trame.correlation).toBe(0x0a0b0c0d);
         expect(trame.entete).toEqual({});
         expect(Array.from(trame.charge)).toEqual([0x00, 0xff, 0x7f, 0x80]);
         // …et l'encodeur TypeScript le REPRODUIT à l'octet près.
         expect(
             Array.from(
-                octets(encoder(TYPE_DONNEES, 0x0a0b0c0d, {}, new Uint8Array([0x00, 0xff, 0x7f, 0x80]))),
+                octets(encoder(TYPE_DATA, 0x0a0b0c0d, {}, new Uint8Array([0x00, 0xff, 0x7f, 0x80]))),
             ),
         ).toEqual(Array.from(VECTEUR_EPINGLE));
     });
@@ -131,13 +131,13 @@ describe('trame binaire du pont fichiers', () => {
     });
 
     it('ne fait chevaucher aucun type de message', () => {
-        // `TOUS_LES_TYPES` est DÉRIVÉE de l'union, pas écrite à la main : c'est
+        // `ALL_TYPES` est DÉRIVÉE de l'union, pas écrite à la main : c'est
         // le remède structurel au défaut de `TYPES_AGENT` (`control.ts:106`),
         // liste manuelle que rien ne confronte à son union. Ajouter un type
         // sans l'inscrire dans la table casse `tsc --noEmit`, pas seulement ce
         // test.
-        expect(new Set(TOUS_LES_TYPES).size).toBe(TOUS_LES_TYPES.length);
-        expect(TOUS_LES_TYPES).toContain(TYPE_LISTER);
-        expect(TOUS_LES_TYPES).toContain(TYPE_DONNEES);
+        expect(new Set(ALL_TYPES).size).toBe(ALL_TYPES.length);
+        expect(ALL_TYPES).toContain(TYPE_LISTER);
+        expect(ALL_TYPES).toContain(TYPE_DATA);
     });
 });

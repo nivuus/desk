@@ -14,7 +14,7 @@ import { createServer, type Server } from 'node:http';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { enroler, marquerVu } from '../depot/agent';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { ouvrirSession } from '../depot/session';
 import { signer } from '../identite/jeton';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
@@ -83,7 +83,7 @@ async function poserVm(p: Pilote, id: string, nom: string, prefixe: string): Pro
 }
 
 async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
-    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+    const u = await createUser(p, email, 'empreinte-opaque-de-test', MS);
     await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
     return u;
 }
@@ -92,7 +92,7 @@ function jetonDe(sujet: string): string {
     return signer(sujet, SECRET, MS);
 }
 
-function avec(jeton?: string, autres: Record<string, string> = {}): Record<string, string> {
+function withIt(jeton?: string, autres: Record<string, string> = {}): Record<string, string> {
     return jeton === undefined ? autres : { authorization: `Bearer ${jeton}`, ...autres };
 }
 
@@ -116,7 +116,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         // énumère.
         const url = await servir('rvm-403');
         const jetonAgent = signer('PREFIXEdelaVM', SECRET, MS, undefined, 'agent');
-        const r = await fetch(`${url}/vm`, { headers: avec(jetonAgent) });
+        const r = await fetch(`${url}/vm`, { headers: withIt(jetonAgent) });
         expect(r.status).toBe(403);
         expect((await corpsDe(r)).refus).toBe('jeton-agent');
     });
@@ -133,7 +133,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         await attribuer(base!, 'v2', 'bob@exemple.test');
 
-        const r = await fetch(`${url}/vm`, { headers: avec(jetonDe(alice)) });
+        const r = await fetch(`${url}/vm`, { headers: withIt(jetonDe(alice)) });
         expect(r.status).toBe(200);
         const corps = await corpsDe(r);
         expect(corps.vms!.map((v) => v.id)).toEqual(['v1']);
@@ -146,7 +146,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         await ouvrirSession(base!, 'PREFIXEv1:bureau', MS, alice, 'v1');
 
-        const r = await fetch(`${url}/vm`, { headers: avec(jetonDe(alice)) });
+        const r = await fetch(`${url}/vm`, { headers: withIt(jetonDe(alice)) });
         const [vm] = (await corpsDe(r)).vms!;
         expect(vm.id).toBe('v1');
         expect(vm.nom).toBe('w1');
@@ -163,7 +163,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const url = await servir('rvm-adresse');
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
-        const r = await fetch(`${url}/vm`, { headers: avec(jetonDe(alice)) });
+        const r = await fetch(`${url}/vm`, { headers: withIt(jetonDe(alice)) });
         const [vm] = (await corpsDe(r)).vms!;
         expect(Object.keys(vm).sort()).toEqual(
             ['etat', 'id', 'nom', 'prefixe', 'sessions_ouvertes'].sort(),
@@ -179,7 +179,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const r = await fetch(`${url}/vm/v1/instantane`, {
             method: 'POST',
-            headers: avec(jetonDe(alice)),
+            headers: withIt(jetonDe(alice)),
         });
         expect(r.status).toBe(501);
         expect(await corpsDe(r)).toEqual({
@@ -195,7 +195,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const r = await fetch(`${url}/vm/v1/demarrer`, {
             method: 'POST',
-            headers: avec(jetonDe(alice)),
+            headers: withIt(jetonDe(alice)),
         });
         expect(r.status).toBe(501);
         expect((await corpsDe(r)).operation).toBe('demarrer');
@@ -207,7 +207,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const r = await fetch(`${url}/vm/v1/arreter`, {
             method: 'POST',
-            headers: avec(jetonDe(alice)),
+            headers: withIt(jetonDe(alice)),
         });
         expect(r.status).toBe(501);
         expect((await corpsDe(r)).operation).toBe('arreter');
@@ -226,7 +226,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const r = await fetch(`${url}/vm/v1/attribuer`, {
             method: 'POST',
-            headers: avec(jetonDe(alice)),
+            headers: withIt(jetonDe(alice)),
         });
         expect(r.status).toBe(404);
         expect(await r.text()).toBe('introuvable\n');
@@ -242,7 +242,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         for (const verbe of ['exploser', 'lister', 'etat', '']) {
             const r = await fetch(`${url}/vm/v1/${verbe}`, {
                 method: 'POST',
-                headers: avec(jetonDe(alice)),
+                headers: withIt(jetonDe(alice)),
             });
             expect(r.status).toBe(404);
         }
@@ -257,7 +257,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         await attribuer(base!, 'v2', 'bob@exemple.test');
         const r = await fetch(`${url}/vm/v2/instantane`, {
             method: 'POST',
-            headers: avec(jetonDe(alice)),
+            headers: withIt(jetonDe(alice)),
         });
         expect(r.status).toBe(404);
         expect((await corpsDe(r)).motif).toBe('vm-inconnue');
@@ -273,7 +273,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         await poserVm(base!, 'v2', 'w2', 'PREFIXEv2');
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         await attribuer(base!, 'v2', 'bob@exemple.test');
-        const j = avec(jetonDe(alice));
+        const j = withIt(jetonDe(alice));
 
         const autrui = await fetch(`${url}/vm/v2/instantane`, { method: 'POST', headers: j });
         const inexistante = await fetch(`${url}/vm/v-jamais-creee/instantane`, {
@@ -293,7 +293,7 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         const url = await servir('rvm-cors', ORIGINE);
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
-        const r = await fetch(`${url}/vm`, { headers: avec(jetonDe(alice), { origin: ORIGINE }) });
+        const r = await fetch(`${url}/vm`, { headers: withIt(jetonDe(alice), { origin: ORIGINE }) });
         expect(r.headers.get('access-control-allow-origin')).toBe(ORIGINE);
         expect(r.headers.get('vary')).toBe('Origin');
         // Et sur un REFUS aussi : une 401 que le navigateur ne peut pas lire
@@ -329,8 +329,8 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         // Le chemin EXISTE ; c'est la méthode qui ne convient pas. Un 404
         // ferait chercher une route absente. Même choix que `routes-auth.ts`.
         const url = await servir('rvm-methode');
-        const alice = await creerUtilisateur(base!, 'alice@exemple.test', 'e', MS);
-        const r = await fetch(`${url}/vm`, { method: 'POST', headers: avec(jetonDe(alice)) });
+        const alice = await createUser(base!, 'alice@exemple.test', 'e', MS);
+        const r = await fetch(`${url}/vm`, { method: 'POST', headers: withIt(jetonDe(alice)) });
         expect(r.status).toBe(405);
         expect((await corpsDe(r)).refus).toBe('methode');
     });
@@ -341,13 +341,13 @@ describe(`routes /vm, moteur=${MOTEUR}`, () => {
         // notion d'échec, et c'est exactement pourquoi ce budget existe
         // (voir `securite/frein.ts`).
         const url = await servir('rvm-frein-requetes');
-        let dernier: Response | undefined;
+        let last: Response | undefined;
         for (let i = 0; i < REQUETES_MAX_ADRESSE + 1; i++) {
-            dernier = await fetch(`${url}/vm`);
+            last = await fetch(`${url}/vm`);
         }
-        expect(dernier!.status).toBe(429);
-        expect((await corpsDe(dernier!)).refus).toBe('trop-de-requetes');
-        const retry = dernier!.headers.get('retry-after');
+        expect(last!.status).toBe(429);
+        expect((await corpsDe(last!)).refus).toBe('trop-de-requetes');
+        const retry = last!.headers.get('retry-after');
         expect(retry).not.toBeNull();
         expect(Number(retry)).toBeGreaterThan(0);
     });

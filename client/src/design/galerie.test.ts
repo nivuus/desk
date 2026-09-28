@@ -12,7 +12,7 @@ import echellesCss from './tokens/echelles.css?raw';
  * AUCUNE DÉPENDANCE INJECTÉE — à l'inverse de la convention que ce dépôt
  * applique ailleurs pour rendre un module qui touche le DOM testable
  * (`client/src/accent-dom.ts`, `client/src/presse-papier-dom.ts`, et
- * `installerSelecteurDeThemeAuDOM` dans `./selecteur-theme.ts`, qui séparent
+ * `installThemeSelectorInDOM` dans `./selecteur-theme.ts`, qui séparent
  * chacun une fonction PURE, à dépendances injectées, d'une COUTURE — seule à
  * toucher `document`/`window`/`localStorage` réels). `galerie.ts` n'a pas
  * cette couture, et `client/` n'a NI jsdom NI happy-dom (`client/package.json`

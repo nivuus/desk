@@ -33,7 +33,7 @@ use crate::wasapi_peripherique::{choisir, Choix, Peripherique};
 pub enum Boucle {
     /// Nothing to fear: process loopback, audio off, or two distinct
     /// endpoints.
-    Aucune,
+    Absent,
     /// The loopback would capture the cable we are going to write to.
     Risque,
 }
@@ -48,19 +48,19 @@ pub enum Boucle {
 /// output by a rank rather than by a stable identifier.
 pub fn evaluer(capte: Option<&str>, cable: &str) -> Boucle {
     let Some(capte) = capte else {
-        return Boucle::Aucune;
+        return Boucle::Absent;
     };
     // ⚠️ Empty is NOT an identifier: `decrire` returns `String::new()`
     // on an indescribable device, and two empties would be equal. Without
     // this exception, an agent whose captured device is indescribable
     // would lose its microphone without any loop existing.
     if capte.is_empty() || cable.is_empty() {
-        return Boucle::Aucune;
+        return Boucle::Absent;
     }
     if capte.eq_ignore_ascii_case(cable) {
         Boucle::Risque
     } else {
-        Boucle::Aucune
+        Boucle::Absent
     }
 }
 
@@ -115,12 +115,12 @@ mod tests {
 
     #[test]
     fn deux_endpoints_distincts_ne_bouclent_pas() {
-        assert_eq!(evaluer(Some(AUTRE), CABLE), Boucle::Aucune);
+        assert_eq!(evaluer(Some(AUTRE), CABLE), Boucle::Absent);
     }
 
     #[test]
     fn sans_capture_il_n_y_a_pas_de_boucle() {
-        assert_eq!(evaluer(None, CABLE), Boucle::Aucune);
+        assert_eq!(evaluer(None, CABLE), Boucle::Absent);
     }
 
     /// Windows returns its endpoint GUIDs in lower case, but nothing
@@ -140,9 +140,9 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn un_identifiant_VIDE_ne_boucle_pas() {
-        assert_eq!(evaluer(Some(""), ""), Boucle::Aucune);
-        assert_eq!(evaluer(Some(""), CABLE), Boucle::Aucune);
-        assert_eq!(evaluer(Some(CABLE), ""), Boucle::Aucune);
+        assert_eq!(evaluer(Some(""), ""), Boucle::Absent);
+        assert_eq!(evaluer(Some(""), CABLE), Boucle::Absent);
+        assert_eq!(evaluer(Some(CABLE), ""), Boucle::Absent);
     }
 }
 

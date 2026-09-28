@@ -45,7 +45,7 @@ def check(label, got, want):
         failures.append(f"{label}: got {got!r}, want {want!r}")
 
 
-# `hooks/activate.py` fait `from vm import ...` / `from env_fichier import
+# `hooks/activate.py` fait `from vm import ...` / `from env_file import
 # ...` / `from administration import ...` : un import par CHEMIN
 # (spec_from_file_location) ne passe pas par le mécanisme qui ajoute
 # automatiquement le répertoire du script à sys.path (précédent de
@@ -62,14 +62,14 @@ class _EnvTemporaire:
     polluer les tests suivants avec `NIVUUS_PACKAGES_DIR` d'un scénario
     précédent."""
 
-    def __init__(self, **valeurs):
-        self.valeurs = valeurs
+    def __init__(self, **values):
+        self.values = values
         self.anciennes = {}
 
     def __enter__(self):
-        for cle, valeur in self.valeurs.items():
+        for cle, value in self.values.items():
             self.anciennes[cle] = os.environ.get(cle)
-            os.environ[cle] = valeur
+            os.environ[cle] = value
         return self
 
     def __exit__(self, *_exc):

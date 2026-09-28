@@ -16,7 +16,7 @@ const TEMOIN_256: &[u8] = include_bytes!("../../../../testdata/g2-temoin-256.ico
 
 #[test]
 fn le_temoin_48_annonce_48_et_rien_d_autre() {
-    assert_eq!(tailles_icondir(TEMOIN_48), Some(vec![48]));
+    assert_eq!(icondir_sizes(TEMOIN_48), Some(vec![48]));
     assert_eq!(maximum(&[48]), SourceMax::Pixels(48));
 }
 
@@ -31,7 +31,7 @@ fn le_temoin_256_porte_bwidth_zero_et_vaut_256() {
     // decidable rather than trusting.
     assert_eq!(TEMOIN_256[6], 0, "bWidth du témoin 256 doit être l'octet 0");
     assert_eq!(TEMOIN_48[6], 48, "bWidth du témoin 48 doit être 48");
-    assert_eq!(tailles_icondir(TEMOIN_256), Some(vec![256]));
+    assert_eq!(icondir_sizes(TEMOIN_256), Some(vec![256]));
     assert_eq!(maximum(&[256]), SourceMax::Pixels(256));
 }
 
@@ -39,8 +39,8 @@ fn le_temoin_256_porte_bwidth_zero_et_vaut_256() {
 /// by the resource, where any measurement on the rendered image would confuse them.
 #[test]
 fn les_deux_temoins_se_distinguent_par_la_ressource() {
-    let a = maximum(&tailles_icondir(TEMOIN_48).expect("48 lisible"));
-    let b = maximum(&tailles_icondir(TEMOIN_256).expect("256 lisible"));
+    let a = maximum(&icondir_sizes(TEMOIN_48).expect("48 lisible"));
+    let b = maximum(&icondir_sizes(TEMOIN_256).expect("256 lisible"));
     assert_ne!(a, b);
     assert_eq!(a, SourceMax::Pixels(48));
     assert_eq!(b, SourceMax::Pixels(256));
@@ -64,8 +64,8 @@ fn les_deux_temoins_se_distinguent_par_la_ressource() {
 fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_seconde_entree() {
     // The measured fact, written down rather than kept quiet: on ONE entry, both strides
     // agree.
-    assert_eq!(tailles_icondir(TEMOIN_48), Some(vec![48]));
-    assert_eq!(tailles_grpicondir(TEMOIN_48), Some(vec![48]));
+    assert_eq!(icondir_sizes(TEMOIN_48), Some(vec![48]));
+    assert_eq!(grpicondir_sizes(TEMOIN_48), Some(vec![48]));
 
     // 🔴 WITH TWO ENTRIES, THEY DIVERGE. A `GRPICONDIR` of two entries holds
     // 6 + 2×14 = 34 bytes; read with a stride of 16, it would need 38, and the
@@ -74,9 +74,9 @@ fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_seconde_entree() {
     grp.extend_from_slice(&[32, 32, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 7, 0]);
     grp.extend_from_slice(&[0, 0, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 8, 0]);
     assert_eq!(grp.len(), 6 + 2 * 14);
-    assert_eq!(tailles_grpicondir(&grp), Some(vec![32, 256]));
+    assert_eq!(grpicondir_sizes(&grp), Some(vec![32, 256]));
     assert_eq!(
-        tailles_icondir(&grp),
+        icondir_sizes(&grp),
         None,
         "le pas de 16 ne tient pas dans 34 octets"
     );
@@ -87,8 +87,8 @@ fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_seconde_entree() {
     let mut ico = vec![0u8, 0, 1, 0, 2, 0];
     ico.extend_from_slice(&[48, 48, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     ico.extend_from_slice(&[16, 16, 0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq!(tailles_icondir(&ico), Some(vec![48, 16]));
-    let au_mauvais_pas = tailles_grpicondir(&ico).expect("34 octets suffisent au pas de 14");
+    assert_eq!(icondir_sizes(&ico), Some(vec![48, 16]));
+    let au_mauvais_pas = grpicondir_sizes(&ico).expect("34 octets suffisent au pas de 14");
     assert_ne!(
         au_mauvais_pas,
         vec![48, 16],
@@ -109,13 +109,13 @@ fn lit_un_grpicondir_a_deux_entrees() {
     };
     entree(32);
     entree(0);
-    assert_eq!(tailles_grpicondir(&o), Some(vec![32, 256]));
+    assert_eq!(grpicondir_sizes(&o), Some(vec![32, 256]));
     assert_eq!(maximum(&[32, 256]), SourceMax::Pixels(256));
 }
 
 /// 🔴 AN EMPTY LIST RETURNS `NonMesuree`, NEVER `Pixels(0)`.
 #[test]
-fn une_liste_vide_n_est_pas_une_taille_nulle() {
+fn an_empty_list_is_not_a_zero_size() {
     assert_eq!(maximum(&[]), SourceMax::NonMesuree);
     assert_ne!(maximum(&[]), SourceMax::Pixels(0));
 }
@@ -125,9 +125,9 @@ fn une_liste_vide_n_est_pas_une_taille_nulle() {
 #[test]
 fn un_repertoire_a_zero_entree_se_lit_et_ne_mesure_rien() {
     let o = [0u8, 0, 1, 0, 0, 0];
-    assert_eq!(tailles_icondir(&o), Some(vec![]));
+    assert_eq!(icondir_sizes(&o), Some(vec![]));
     assert_eq!(
-        maximum(&tailles_icondir(&o).expect("valide")),
+        maximum(&icondir_sizes(&o).expect("valide")),
         SourceMax::NonMesuree
     );
 }
@@ -137,32 +137,32 @@ fn un_repertoire_a_zero_entree_se_lit_et_ne_mesure_rien() {
 #[test]
 fn refuse_un_en_tete_qui_n_en_est_pas_un() {
     // `reserved` non nul.
-    assert_eq!(tailles_icondir(&[9, 0, 1, 0, 0, 0]), None);
+    assert_eq!(icondir_sizes(&[9, 0, 1, 0, 0, 0]), None);
     // `type` = 2, it is a CURSOR, not an icon.
-    assert_eq!(tailles_icondir(&[0, 0, 2, 0, 0, 0]), None);
+    assert_eq!(icondir_sizes(&[0, 0, 2, 0, 0, 0]), None);
     // Du texte quelconque.
-    assert_eq!(tailles_icondir(b"MZ\x90\x00\x03\x00"), None);
-    assert_eq!(tailles_grpicondir(b"MZ\x90\x00\x03\x00"), None);
+    assert_eq!(icondir_sizes(b"MZ\x90\x00\x03\x00"), None);
+    assert_eq!(grpicondir_sizes(b"MZ\x90\x00\x03\x00"), None);
 }
 
 /// 🔴 A TRUNCATED BUFFER RETURNS `None`, IT DOES NOT OVERFLOW AND DOES NOT RETURN A
 /// PARTIAL LIST. A partial list would be a FALSE measurement.
 #[test]
 fn un_tampon_tronque_rend_none() {
-    assert_eq!(tailles_icondir(&[]), None);
-    assert_eq!(tailles_icondir(&[0, 0, 1, 0, 1]), None); // incomplete header
-                                                         // Announces three entries, carries only one.
+    assert_eq!(icondir_sizes(&[]), None);
+    assert_eq!(icondir_sizes(&[0, 0, 1, 0, 1]), None); // incomplete header
+                                                       // Announces three entries, carries only one.
     let mut o = vec![0u8, 0, 1, 0, 3, 0];
     o.extend_from_slice(&[48; ENTREE_ICO]);
-    assert_eq!(tailles_icondir(&o), None);
+    assert_eq!(icondir_sizes(&o), None);
     // The real witness, cut in two.
-    assert_eq!(tailles_icondir(&TEMOIN_256[..10]), None);
+    assert_eq!(icondir_sizes(&TEMOIN_256[..10]), None);
 }
 
 /// An absurd entry count must not make the arithmetic overflow.
 #[test]
 fn un_compte_absurde_ne_deborde_pas() {
     let o = [0u8, 0, 1, 0, 0xFF, 0xFF]; // 65,535 entries announced, none carried
-    assert_eq!(tailles_icondir(&o), None);
-    assert_eq!(tailles_grpicondir(&o), None);
+    assert_eq!(icondir_sizes(&o), None);
+    assert_eq!(grpicondir_sizes(&o), None);
 }

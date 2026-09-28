@@ -22,9 +22,9 @@ pub enum Verdict {
 }
 
 /// 🔴 **THIS VERDICT CRIED WRONGLY AT EACH START-UP, AND THAT IS WHAT WE FIX.**
-/// The old form compared `apres == avant - retirees` and returned an
+/// The old form compared `apres == before - retirees` and returned an
 /// `ERROR` on **any** difference. Measured twice on 30 August 2026:
-/// `retirees=5 avant=7 apres=1 attendu=2` then `retirees=7 avant=9 apres=1
+/// `retirees=5 before=7 apres=1 attendu=2` then `retirees=7 avant=9 apres=1
 /// attendu=2` — `apres` **LOWER** than `attendu` in both cases, that is
 /// MORE outputs had disappeared than we had removed. The purge
 /// had nevertheless worked perfectly (SudoVDA monitors: 8 → 0).
@@ -41,8 +41,8 @@ pub enum Verdict {
 /// MORE outputs than expected, then removals declared successful removed
 /// nothing — a broken handle or IOCTL, that is the defect this verdict
 /// existed to catch.
-pub fn verdict(avant: usize, apres: usize, retirees: usize) -> Verdict {
-    let attendu = avant.saturating_sub(retirees);
+pub fn verdict(before: usize, apres: usize, retirees: usize) -> Verdict {
+    let attendu = before.saturating_sub(retirees);
     match apres.cmp(&attendu) {
         std::cmp::Ordering::Equal => Verdict::Conforme,
         std::cmp::Ordering::Less => Verdict::UnTiersAAussiRetire,

@@ -124,7 +124,7 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
 /// application listening to an empty buffer does not perceive silence, it sees
 /// a stream that gets interrupted.
 #[test]
-fn un_lecteur_vide_rend_du_silence_et_jamais_une_erreur() {
+fn an_empty_reader_returns_silence_and_never_an_error() {
     let mut l = LecteurMicro::new().unwrap();
     let mut sortie = vec![42.0f32; 480 * 2];
     l.remplir(&mut sortie);
@@ -372,8 +372,8 @@ fn le_plafond_est_compte_a_part_de_la_dissimulation() {
 /// tests of `micro/dissimulation.rs` cover the rule, never its wiring.
 #[test]
 fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
-    let toutes = trames_d_un_ton(440.0, 70);
-    let mut it = toutes.into_iter();
+    let all = trames_d_un_ton(440.0, 70);
+    let mut it = all.into_iter();
     let mut l = LecteurMicro::new().unwrap();
     let reveil = |l: &mut LecteurMicro| {
         let mut tranche = vec![0.0f32; 480 * 2];

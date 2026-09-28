@@ -55,7 +55,7 @@ pub fn decrire(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Stri
 /// ⚠️ **No fallback, no conversion.** See the module header: the refusal
 /// is the intended behaviour, and the message is the only thing that allows
 /// fixing it.
-pub fn verifier(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Result<()> {
+pub fn verify(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Result<()> {
     let description = decrire(frequence, canaux, bits, flottant);
     let attendu = crate::opus::SAMPLE_RATE_HZ;
     if frequence != attendu {
@@ -120,7 +120,7 @@ mod tests {
     /// "Haut-parleurs (VB-Audio Virtual Cable)".
     #[test]
     fn le_format_releve_sur_la_vm_est_accepte() {
-        assert!(verifier(48_000, 2, 32, true).is_ok());
+        assert!(verify(48_000, 2, 32, true).is_ok());
         assert_eq!(SAMPLE_RATE_HZ, 48_000, "la constante du codec a changé");
     }
 
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn une_frequence_autre_est_refusee_EN_LA_NOMMANT() {
-        let e = verifier(44_100, 2, 32, true).unwrap_err().to_string();
+        let e = verify(44_100, 2, 32, true).unwrap_err().to_string();
         assert!(
             e.contains("44100"),
             "la fréquence rencontrée doit être nommée : {e}"
@@ -162,7 +162,7 @@ mod tests {
     /// refused by the float guard.
     #[test]
     fn un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant() {
-        let e = verifier(48_000, 2, 32, false).unwrap_err().to_string();
+        let e = verify(48_000, 2, 32, false).unwrap_err().to_string();
         assert!(
             e.contains("entier"),
             "le motif doit nommer le format entier : {e}"
@@ -176,12 +176,12 @@ mod tests {
     /// And 16-bit integer stays refused too.
     #[test]
     fn un_format_entier_16_bits_est_refuse() {
-        assert!(verifier(48_000, 2, 16, false).is_err());
+        assert!(verify(48_000, 2, 16, false).is_err());
     }
 
     #[test]
     fn un_flottant_qui_n_est_pas_32_bits_est_refuse() {
-        assert!(verifier(48_000, 2, 64, true).is_err());
+        assert!(verify(48_000, 2, 64, true).is_err());
     }
 
     /// 🔴 **Mono is REFUSED, not folded.** Laying an interleaved stereo buffer
@@ -189,7 +189,7 @@ mod tests {
     /// speed: not degraded sound, wrong sound.
     #[test]
     fn le_mono_est_refuse_plutot_que_converti() {
-        let e = verifier(48_000, 1, 32, true).unwrap_err().to_string();
+        let e = verify(48_000, 1, 32, true).unwrap_err().to_string();
         assert!(
             e.contains('1'),
             "le nombre de canaux rencontré doit être nommé : {e}"
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn le_multicanal_est_refuse() {
-        assert!(verifier(48_000, 6, 32, true).is_err());
+        assert!(verify(48_000, 6, 32, true).is_err());
     }
 
     /// 🔴 The counter that makes the periodic trace READABLE. Without it, "48,000
@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn un_signal_plein_ne_compte_aucune_trame_de_silence() {
+    fn a_full_signal_counts_no_silence_frame() {
         assert_eq!(trames_de_silence(&[0.5, -0.5, 0.25, -0.25], 2), 2 - 2);
     }
 
@@ -236,12 +236,12 @@ mod tests {
     /// (the write always lays down whole frames), and it is precisely
     /// for that reason that it must be defined here rather than discovered elsewhere.
     #[test]
-    fn une_queue_incomplete_ne_compte_pour_aucune_trame() {
+    fn an_incomplete_tail_counts_for_no_frame() {
         assert_eq!(trames_de_silence(&[0.0, 0.0, 0.0], 2), 1);
     }
 
     #[test]
-    fn la_description_se_lit_comme_celle_du_loopback() {
+    fn the_description_reads_like_the_loopback_one() {
         assert_eq!(
             decrire(48_000, 2, 32, true),
             "48000 Hz, 2 canaux, 32 bits, flottant"

@@ -75,16 +75,16 @@ impl Famille {
 /// ⚠️ AN UNKNOWN FAMILY COMPLAINS, it does not stay silent: without the `warn!`, a
 /// typo (`debordment:3`) would silently disarm the injection and the acceptance run
 /// would read a zero that means nothing.
-pub fn lire(valeur: Option<&str>) -> Option<(Famille, u32)> {
-    let valeur = valeur?;
-    let (nom, compte) = valeur.split_once(':')?;
+pub fn lire(value: Option<&str>) -> Option<(Famille, u32)> {
+    let value = value?;
+    let (nom, compte) = value.split_once(':')?;
     let famille = match nom {
         "debordement" => Famille::Debordement,
         "muette" => Famille::Muette,
         "perte" => Famille::Perte,
         _ => {
             tracing::warn!(
-                valeur,
+                value,
                 "APPS_FAUTE : famille inconnue, injection DESARMEE \
                  (attendu : debordement:<n>, muette:<n> ou perte:<n>)"
             );
@@ -230,7 +230,7 @@ mod tests {
     }
 
     #[test]
-    fn le_code_zero_est_reserve_a_aucune_famille() {
+    fn code_zero_is_reserved_for_no_family() {
         assert_eq!(Famille::depuis_code(0), None);
         for famille in [Famille::Debordement, Famille::Muette, Famille::Perte] {
             assert_ne!(famille.code(), 0);

@@ -37,7 +37,7 @@
 //! the 30 s step, with no end.
 //!
 //! **The cause was in this file**, and it was structural:
-//! `verifie_version` is a `deserialize_with` set on the `v` field of
+//! `check_version` is a `deserialize_with` set on the `v` field of
 //! **every** message, and the platform emits its refusal with ITS version —
 //! `{"type":"refus","v":2,"motif":"version"}`. An agent of version N
 //! could therefore NEVER READ the refusal of a platform of version M ≠ N: it
@@ -125,11 +125,11 @@ pub const PLATEFORME_VERSION: u8 = 5;
 /// that this file does not cross 500 lines when welcoming sub-block G3.
 ///
 /// 🔴 THE `use` IS NOT COSMETIC: `serde` resolves the path of a
-/// `deserialize_with = "verifie_version"` **in the scope of the module carrying
+/// `deserialize_with = "check_version"` **in the scope of the module carrying
 /// the attribute**. It is what lets the extraction touch NONE of the
 /// attributes of the structures below, hence be a pure transposition.
 mod champs;
-use champs::{icone_obligatoire, option_obligatoire, verifie_version, version_toleree};
+use champs::{check_version, icone_obligatoire, option_obligatoire, version_toleree};
 
 /// The table of refusal reasons, extracted for the same reason.
 mod motifs;
@@ -164,14 +164,14 @@ mod constructeurs;
 pub enum VersLaPlateforme {
     /// Enrol: present the VM name and the enrolment secret.
     Enroler {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         vm: String,
         secret: String,
     },
     /// Heartbeat. Advances `vu_a`, and returns a fresh token.
     Battement {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
     },
     /// The VM's application catalogue, as a DIFF.
@@ -187,7 +187,7 @@ pub enum VersLaPlateforme {
     /// resend a `Catalogue` lost during an outage would leave the
     /// platform divergent WITH NO END.
     Catalogue {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         complet: bool,
         applications: Vec<Application>,
@@ -197,7 +197,7 @@ pub enum VersLaPlateforme {
     },
     /// The outcome of a launch order, matched by `demande`.
     Lancee {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         demande: String,
         issue: IssueLancement,
@@ -216,7 +216,7 @@ pub enum VersLaPlateforme {
     /// total: it is `ecoule_ms` that carries the information, and the interface
     /// shows an indeterminate state.
     Progression {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         installation: String,
         phase: Phase,
@@ -240,7 +240,7 @@ pub enum VersLaPlateforme {
     /// from an empty log: without it, a user would read the last
     /// 64 KiB believing they read everything.
     Termine {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         installation: String,
         issue: Issue,
@@ -261,7 +261,7 @@ pub enum VersLaPlateforme {
 pub enum DepuisLaPlateforme {
     /// The enrolment is accepted: here is the session prefix and the token.
     Enrole {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         prefixe: String,
         jeton: String,
@@ -274,7 +274,7 @@ pub enum DepuisLaPlateforme {
     /// lasts ten minutes, and an agent that kept the first would fall at its
     /// expiry without seeing it coming.
     BattementRecu {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         jeton: String,
         expire_a: i64,
@@ -306,7 +306,7 @@ pub enum DepuisLaPlateforme {
     /// `demande` matches the order to its [`VersLaPlateforme::Lancee`], the HTTP
     /// route awaiting that answer.
     Lancer {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         demande: String,
         cle: String,
@@ -330,7 +330,7 @@ pub enum DepuisLaPlateforme {
     /// re-enrolment (decision D3 of G1), and the G1 acceptance run saw it
     /// work on the real path.
     IconesManquantes {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         empreintes: Vec<String>,
     },
@@ -361,12 +361,13 @@ pub enum DepuisLaPlateforme {
     /// **The agent therefore deduplicates by `installation`, and its memory is ON
     /// DISK** — see `agent/src/apps/installation/depot.rs`.
     Installer {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         installation: String,
         url: String,
         nom: String,
-        taille: u64,
+        #[serde(rename = "taille")]
+        size: u64,
         sha256: String,
     },
 }

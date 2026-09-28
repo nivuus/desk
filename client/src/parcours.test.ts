@@ -35,7 +35,7 @@ import { describe, expect, it } from 'vitest';
 // convention de `src/presse-papier.test.ts`, qui lit ainsi jusqu'à un fichier
 // Rust hors de `client/`.
 import resolutionTs from '../../plateforme/src/http/page/resolution.ts?raw';
-import { creerBureau } from './shell';
+import { createDesktop } from './shell';
 
 /// Toutes les pages bâties, LUES. La portée est DÉRIVÉE du répertoire, jamais
 /// énumérée : une surface neuve entre dans ce garde sans qu'une ligne d'ici ne
@@ -203,20 +203,20 @@ describe('le parcours : ouvrir le produit, lancer une application, voir sa fenê
 
     it('② la surface qui reçoit l’annonce ouvre la fenêtre de l’application', () => {
         const ouvertes: string[] = [];
-        const bureau = creerBureau({
+        const bureau = createDesktop({
             ouvrirFenetre(session) {
                 ouvertes.push(session);
                 return { closed: false } as unknown as Window;
             },
             envoyer() {},
-            afficher() {},
-            afficherEtatFichiers() {},
-            afficherEcrituresDues() {},
-            afficherRetenues() {},
+            show() {},
+            showFilesState() {},
+            showPendingWrites() {},
+            showRetained() {},
         });
         bureau.fenetreOuverte('vm:w-1', 'Untitled - Notepad');
         expect(ouvertes).toEqual(['vm:w-1']);
-        expect(bureau.liste()).toEqual([
+        expect(bureau.list()).toEqual([
             { session: 'vm:w-1', titre: 'Untitled - Notepad', ouverte: true },
         ]);
     });

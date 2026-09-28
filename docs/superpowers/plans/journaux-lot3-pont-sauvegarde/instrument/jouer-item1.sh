@@ -25,7 +25,7 @@ set -a; . "${RACINE}/.env"; set +a
 . "${RACINE}/docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh"
 
 RACINE_PROJFS='C:\Users\Administrator\Mes Fichiers'
-FICHIER='item1-sauvegarde.txt'
+FILE='item1-sauvegarde.txt'
 PORT_HTTP=8099
 
 etape() { echo; echo "=== $(date -Is) $* ==="; }

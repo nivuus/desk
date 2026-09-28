@@ -101,7 +101,7 @@ async function obtenirPaire() {
 
 class FinSousCoupure extends Error {}
 
-const resultat = { maintien_s: MAINTIEN_S, prefixe: PREFIXE, journal, erreurs: [] };
+const result = { maintien_s: MAINTIEN_S, prefixe: PREFIXE, journal, errors: [] };
 let chrome;
 try {
     const paire = await obtenirPaire();
@@ -121,7 +121,7 @@ try {
     chrome = lancerChrome(PORT_CDP, UDD);
     const ver = await attendreDevtools(PORT_CDP);
     dire(`chrome : ${ver.Browser}`);
-    resultat.chrome = ver.Browser;
+    result.chrome = ver.Browser;
 
     const cdp = new Cdp(ver.webSocketDebuggerUrl);
     const sessions = new Map();
@@ -175,7 +175,7 @@ try {
             if (console_page.length > 400) console_page.shift();
         }
     });
-    resultat.console_page = console_page;
+    result.console_page = console_page;
 
     // 🔴 `?faute-fichiers=1` ARME l'injection du canonicaliseur. **VARIABLE DE
     // BANC, jamais une configuration livrée** : sans elle, un `.faute-*` est un
@@ -185,7 +185,7 @@ try {
     // PROUVE PAS QUE LA CAUSE EST ATTEIGNABLE EN EXPLOITATION.** Les deux
     // colonnes restent distinctes au document de résultats.
     const fautes = process.env.FAUTES_FICHIERS === '1' ? '&faute-fichiers=1' : '';
-    resultat.fautes_armees = fautes !== '';
+    result.fautes_armees = fautes !== '';
     const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}${fautes}`;
     dire(`navigation : ${url}`);
     await cdp.send('Page.navigate', { url }, sessionShell);
@@ -193,7 +193,7 @@ try {
 
     for (let i = 0; i < 120; i += 1) {
         const p = await cdp.evalBorne(sessionShell, `String(window.__f2 && window.__f2.peuple)`, 5000, false);
-        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); resultat.opfs_entrees = Number(p); break; }
+        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); result.opfs_entrees = Number(p); break; }
         await dodo(500);
     }
 
@@ -210,7 +210,7 @@ try {
         for (let i = 0; i < 90; i += 1) {
             const cibles = await (await fetch(`http://127.0.0.1:${PORT_CDP}/json/list`)).json();
             const n = cibles.filter((c) => c.type === 'page' && c.url.includes('session=')).length;
-            if (n > 0) { dire(`${n} fenetre(s) d application apres ${i} s`); resultat.fenetres_ouvertes = n; break; }
+            if (n > 0) { dire(`${n} fenetre(s) d application apres ${i} s`); result.fenetres_ouvertes = n; break; }
             await dodo(1000);
         }
     }
@@ -219,7 +219,7 @@ try {
     // tout ce qui suit mesurerait `connexion.html`.
     const jetonVu = await cdp.evalBorne(sessionShell, `JSON.stringify({ href: location.href, jeton: !!localStorage.getItem('guac.jeton.acces'), bouton: !!document.querySelector('#choisir-dossier') })`, 8000, false);
     dire(`etat avant le clic : ${jetonVu}`);
-    resultat.etat_avant_clic = jetonVu;
+    result.etat_avant_clic = jetonVu;
     if (!String(jetonVu).includes('"jeton":true') || !String(jetonVu).includes('"bouton":true')) {
         throw new Error(`la page-shell n est pas dans l etat attendu : ${jetonVu}`);
     }
@@ -237,14 +237,14 @@ try {
         await dodo(1000);
     }
     dire(`#etat-fichiers : ${JSON.stringify(monte)}`);
-    resultat.etat_fichiers = monte;
+    result.etat_fichiers = monte;
 
     // ⚠️ LE TEST PORTE SUR LE SUCCES, PAS SUR LA SOUS-CHAINE « mont » : les DEUX
     // messages de `shell.ts` la contiennent, et F1 a mesure NEUF MINUTES sur un
     // pont NON monte pour l'avoir oublie.
     const bienMonte = typeof monte === 'string' && !monte.includes('n’a pas pu')
         && !monte.includes("n'a pas pu") && /mont[ée]/.test(monte);
-    resultat.bien_monte = bienMonte;
+    result.bien_monte = bienMonte;
     if (!bienMonte) throw new Error(`lecteur NON monte : ${JSON.stringify(monte)}`);
 
     // Repos declare : `#etat-fichiers` passe a « monte » quand le canal s'ouvre
@@ -277,7 +277,7 @@ try {
         // d'une mesure qui n'aurait rien trouvé, alors que le JSON est parfait.
         // *Payé sur place à la première exécution.*
         const propre = String(stdout).replace(/^\uFEFF/, '').trim();
-        try { return JSON.parse(propre); } catch { return { erreur: 'json illisible', brut: propre.slice(0, 800) }; }
+        try { return JSON.parse(propre); } catch { return { error: 'json illisible', brut: propre.slice(0, 800) }; }
     };
 
     // ── PORTE P3, jouée AVANT tout le reste ─────────────────────────────
@@ -287,21 +287,21 @@ try {
     // aller-retour. Sans ce témoin, « le fichier est là » ne distinguerait pas
     // les deux mécanismes.
     dire('PORTE P3 : creation DANS la VM, puis relistage immediat');
-    resultat.p3 = await mesurer('creer-dans-la-vm');
-    dire(`P3 : present_apres=${resultat.p3.present_apres}`);
+    result.p3 = await mesurer('creer-dans-la-vm');
+    dire(`P3 : present_apres=${result.p3.present_apres}`);
 
     // ── PORTE P1 : l'occupation disque ──────────────────────────────────
     dire('PORTE P1 : les candidates d occupation disque');
-    resultat.p1 = await mesurer('occupation');
+    result.p1 = await mesurer('occupation');
 
     // ── CRITÈRE ① ───────────────────────────────────────────────────────
     dire('(1) amorcage du cache');
     const t1 = Date.now();
-    resultat.c1_amorcage = await mesurer('lister');
-    dire(`(1) ${resultat.c1_amorcage.liste?.compte} entrees en ${resultat.c1_amorcage.liste?.ms} ms`);
+    result.c1_amorcage = await mesurer('lister');
+    dire(`(1) ${result.c1_amorcage.list?.compte} entrees en ${result.c1_amorcage.list?.ms} ms`);
 
     dire('(2) ajout d un fichier COTE NAVIGATEUR, hors du pont');
-    resultat.c1_ajout = await cdp.evalBorne(sessionShell, `(async () => {
+    result.c1_ajout = await cdp.evalBorne(sessionShell, `(async () => {
         const r = await navigator.storage.getDirectory();
         const d = await r.getDirectoryHandle('Mes documents');
         const f = await d.getFileHandle('AJOUTE-COTE-LOCAL.txt', { create: true });
@@ -312,30 +312,30 @@ try {
         for await (const n of d.keys()) noms.push(n);
         return JSON.stringify({ ok: true, entrees: noms.length });
     })()`, 30000, true);
-    dire(`(2) ${resultat.c1_ajout}`);
+    dire(`(2) ${result.c1_ajout}`);
 
     dire('(3) relistage : le fichier doit etre ABSENT');
-    resultat.c1_avant_rafraichir = await mesurer('lister');
+    result.c1_avant_rafraichir = await mesurer('lister');
     const t3 = Date.now();
-    resultat.c1_ecart_ms = t3 - t1;
-    resultat.c1_admissible = resultat.c1_ecart_ms < 30000;
-    dire(`(3) ecart (1)->(3) = ${resultat.c1_ecart_ms} ms — admissible : ${resultat.c1_admissible}`);
+    result.c1_ecart_ms = t3 - t1;
+    result.c1_admissible = result.c1_ecart_ms < 30000;
+    dire(`(3) ecart (1)->(3) = ${result.c1_ecart_ms} ms — admissible : ${result.c1_admissible}`);
 
     dire('(4) clic sur #rafraichir');
-    resultat.c1_bouton = await cdp.evalBorne(sessionShell, `(() => {
+    result.c1_bouton = await cdp.evalBorne(sessionShell, `(() => {
         const b = document.querySelector('#rafraichir');
         if (!b) return 'BOUTON ABSENT';
         b.click();
         return 'clique';
     })()`, 8000, false);
-    dire(`(4) ${resultat.c1_bouton}`);
+    dire(`(4) ${result.c1_bouton}`);
     await dodo(2000);
 
     dire('(5) relistage : le fichier doit etre PRESENT');
-    resultat.c1_apres_rafraichir = await mesurer('lister');
+    result.c1_apres_rafraichir = await mesurer('lister');
 
     // ── L'état des boutons et du bandeau ────────────────────────────────
-    resultat.etat_boutons = await cdp.evalBorne(sessionShell, `JSON.stringify({
+    result.etat_boutons = await cdp.evalBorne(sessionShell, `JSON.stringify({
         rafraichir: !!document.querySelector('#rafraichir'),
         reprendre_present: !!document.querySelector('#reprendre-enregistrement'),
         reprendre_cache: document.querySelector('#reprendre-enregistrement')?.hidden ?? null,
@@ -343,7 +343,7 @@ try {
         dues: document.querySelector('#ecritures-dues')?.dataset.dues ?? null,
         vues: document.querySelector('#ecritures-dues')?.dataset.vues ?? null,
     })`, 8000, false);
-    dire(`boutons : ${resultat.etat_boutons}`);
+    dire(`boutons : ${result.etat_boutons}`);
 
     // ════════════════════════════════════════════════════════════════════
     // CRITÈRE ③ — LE RETOUR AVEC UN RÉPERTOIRE DIFFÉRENT RETIENT, ET LE DIT.
@@ -359,13 +359,13 @@ try {
     // règle du nom fonctionne ; il ne mesure pas qu'elle suffise.**
     if (process.env.CRITERE_3 === '1') {
         dire('CRITERE ③ : remontage sur un AUTRE repertoire');
-        resultat.c3_second = await cdp.evalBorne(sessionShell, `(async () => {
+        result.c3_second = await cdp.evalBorne(sessionShell, `(async () => {
             const r = await navigator.storage.getDirectory();
             const d = await r.getDirectoryHandle('Autre dossier', { create: true });
             await d.getFileHandle('temoin.txt', { create: true });
             return JSON.stringify({ nom: d.name });
         })()`, 30000, true);
-        dire(`② second repertoire : ${resultat.c3_second}`);
+        dire(`② second repertoire : ${result.c3_second}`);
         // ⚠️ **LE SÉLECTEUR FACTICE EST SURCHARGÉ ICI, ET PAS DANS
         // `injection-f2.js`.** Celui-ci est l'instrument de F2, que F3 et F4
         // réemploient : y ajouter un crochet pour F5 ferait qu'une recette
@@ -383,14 +383,14 @@ try {
         await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p2.x, y: p2.y, button: 'left', clickCount: 1 }, sessionShell);
         await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p2.x, y: p2.y, button: 'left', clickCount: 1 }, sessionShell);
         await dodo(8000);
-        resultat.c3_etat = await cdp.evalBorne(sessionShell, `JSON.stringify({
+        result.c3_etat = await cdp.evalBorne(sessionShell, `JSON.stringify({
             etat: document.querySelector('#etat-fichiers')?.textContent,
             dues: document.querySelector('#ecritures-dues')?.dataset.dues,
             texte: document.querySelector('#ecritures-dues')?.textContent,
             retenues: document.querySelector('#actions-fichiers')?.dataset.retenues,
             reprendre_cache: document.querySelector('#reprendre-enregistrement')?.hidden,
         })`, 8000, false);
-        dire(`③ ${resultat.c3_etat}`);
+        dire(`③ ${result.c3_etat}`);
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -402,19 +402,19 @@ try {
     // la VM, et relister à chaque fois.
     if (process.env.CRITERE_4 === '1') {
         dire('CRITERE ④ : creer / renommer / supprimer dans la VM, cache arme');
-        resultat.c4 = await mesurer('muter');
-        const c4 = resultat.c4;
-        if (c4 && c4.avant) {
-            dire(`④ avant=${c4.avant.compte} creation=${c4.apres_creation.compte} ` +
+        result.c4 = await mesurer('muter');
+        const c4 = result.c4;
+        if (c4 && c4.before) {
+            dire(`④ avant=${c4.before.compte} creation=${c4.apres_creation.compte} ` +
                  `renommage=${c4.renommage}/${c4.apres_renommage.compte} ` +
                  `suppression=${c4.suppression}/${c4.apres_suppression.compte}`);
-            resultat.c4_verdict = {
+            result.c4_verdict = {
                 creation_vue: c4.apres_creation.noms.includes('a-renommer.txt'),
                 ancien_nom_disparu: !c4.apres_renommage.noms.includes('a-renommer.txt'),
                 nouveau_nom_vu: c4.apres_renommage.noms.includes('RENOMME.txt'),
                 supprime_disparu: !c4.apres_suppression.noms.includes('RENOMME.txt'),
             };
-            dire(`④ verdict : ${JSON.stringify(resultat.c4_verdict)}`);
+            dire(`④ verdict : ${JSON.stringify(result.c4_verdict)}`);
         }
     }
 
@@ -428,14 +428,14 @@ try {
     // ⚠️ **Ce que cela NE ferme PAS** : le mécanisme des DEUX `Lister` par
     // geste (legs n°4 de F4) reste inexpliqué même si le cache en absorbe un.
     if (process.env.RANGS === '1') {
-        resultat.rangs = {};
+        result.rangs = {};
         for (const n of [10, 100, 1000]) {
             dire(`rang ${n} : peuplement OPFS`);
-            const sous = `rang-${n}`;
+            const sub = `rang-${n}`;
             await cdp.evalBorne(sessionShell, `(async () => {
                 const r = await navigator.storage.getDirectory();
                 const d = await r.getDirectoryHandle('Mes documents');
-                const s = await d.getDirectoryHandle(${JSON.stringify(sous)}, { create: true });
+                const s = await d.getDirectoryHandle(${JSON.stringify(sub)}, { create: true });
                 for (let i = 0; i < ${n}; i += 1) {
                     await s.getFileHandle('f' + String(i).padStart(5, '0') + '.txt', { create: true });
                 }
@@ -446,25 +446,25 @@ try {
             // ne le cache.
             await cdp.evalBorne(sessionShell, `(document.querySelector('#rafraichir').click(), 'ok')`, 8000, false);
             await dodo(1500);
-            resultat.rangs[n] = await mesurer(`rang-${sous}`);
-            const m = resultat.rangs[n];
+            result.rangs[n] = await mesurer(`rang-${sub}`);
+            const m = result.rangs[n];
             dire(`rang ${n} : ${m.entrees} entrees | froid ${m.froid_ms} ms | chaud ${m.chaud_ms} ms | chaud2 ${m.chaud2_ms} ms | coherent ${m.coherent}`);
         }
     }
 
-    resultat.arbre_opfs = await cdp.evalBorne(sessionShell, `window.__arbre()`, 30000, true);
+    result.arbre_opfs = await cdp.evalBorne(sessionShell, `window.__arbre()`, 30000, true);
     dire(`maintien de ${MAINTIEN_S} s`);
     await dodo(MAINTIEN_S * 1000);
 } catch (e) {
-    resultat.erreurs.push(String(e && e.stack ? e.stack : e));
+    result.errors.push(String(e && e.stack ? e.stack : e));
     dire(`ERREUR : ${e}`);
 } finally {
     try { if (chrome) chrome.kill(); } catch (e) { /* deja mort */ }
     fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
-    fs.writeFileSync(SORTIE, JSON.stringify(resultat, null, 2));
+    fs.writeFileSync(SORTIE, JSON.stringify(result, null, 2));
     dire(`releve ecrit : ${SORTIE}`);
     // 🔴 SORTIE EXPLICITE : le WebSocket CDP tient la boucle d'evenements
     // apres la mort de Chrome, et sans cela le harnais bascule le pilote en
     // arriere-plan alors que tout est fini (piege du presse-papier P1).
-    process.exit(resultat.erreurs.length > 0 ? 1 : 0);
+    process.exit(result.errors.length > 0 ? 1 : 0);
 }

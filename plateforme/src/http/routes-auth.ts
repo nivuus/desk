@@ -27,7 +27,7 @@ import type { Pilote } from '../base/pilote';
 import { emettre, tourner } from '../depot/jeton';
 import { lireParEmail, remplacerEmpreinte } from '../depot/utilisateur';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
-import { doitEtreRehache, hacher, verifier } from '../identite/mot-de-passe';
+import { doitEtreRehache, hacher, verify } from '../identite/mot-de-passe';
 import { entetesCors } from './cors';
 import { repondreIntrouvable } from './introuvable';
 import { ENTETES_SECURITE } from './entetes';
@@ -223,7 +223,7 @@ export async function servirAuth(
 
     // 🔴 THE BRAKE IS CONSULTED HERE, AND THE POSITION IS WHAT MATTERS: BEFORE
     // `lireParEmail`, so BEFORE the slightest database access, AND BEFORE
-    // `verifier`/`hacher`, so BEFORE THE `scrypt` DERIVATION. `scrypt` is
+    // `verify`/`hacher`, so BEFORE THE `scrypt` DERIVATION. `scrypt` is
     // memory-hard and deliberately costly (68 ms measured on 20 August 2026
     // on this machine): an attacker who triggers it at will exhausts the
     // service without ever guessing a secret. A BRAKE PLACED AFTER THE
@@ -344,8 +344,8 @@ async function connexion(
         return;
     }
 
-    const utilisateur = await lireParEmail(deps.base, email);
-    if (!utilisateur) {
+    const user = await lireParEmail(deps.base, email);
+    if (!user) {
         // See the header: the cost of the path is equalised, the equalisation is
         // NOT measured, and the message is the same as for a wrong password.
         await hacher(LEURRE);
@@ -360,9 +360,9 @@ async function connexion(
 
     let bon: boolean;
     try {
-        bon = await verifier(motdepasse, utilisateur.empreinte_mdp);
+        bon = await verify(motdepasse, user.empreinte_mdp);
     } catch (cause) {
-        // `verifier` THROWS on an unknown algorithm — a database written by a
+        // `verify` THROWS on an unknown algorithm — a database written by a
         // future version. It is a data defect, not a faulty input:
         // it is logged WITHOUT the request body, and the response stays
         // that of the credentials, so as not to become an oracle.
@@ -379,8 +379,8 @@ async function connexion(
 
     // Rehashing on the next login: that is what will make any
     // data migration unnecessary the day the parameters change.
-    if (doitEtreRehache(utilisateur.empreinte_mdp)) {
-        await remplacerEmpreinte(deps.base, utilisateur.id, await hacher(motdepasse));
+    if (doitEtreRehache(user.empreinte_mdp)) {
+        await remplacerEmpreinte(deps.base, user.id, await hacher(motdepasse));
     }
 
     // 🔴 SUCCESS ONLY CLEARS THE ACCOUNT KEY, NEVER THE ADDRESS ONE.
@@ -391,7 +391,7 @@ async function connexion(
 
     // A login opens a NEW family — it is the only move that
     // does so.
-    await delivrer(rep, deps, utilisateur.id, await emettre(deps.base, utilisateur.id, deps.maintenant()), cors);
+    await delivrer(rep, deps, user.id, await emettre(deps.base, user.id, deps.maintenant()), cors);
 }
 
 async function rafraichir(
@@ -427,7 +427,7 @@ async function rafraichir(
     // that the stolen token no longer belongs to, and would protect NOTHING. This
     // defect was really written, and it is the end-to-end replay test
     // that caught it — the repository tests alone could not.
-    await delivrer(rep, deps, issue.utilisateurId, issue.clair, cors);
+    await delivrer(rep, deps, issue.userId, issue.clair, cors);
 }
 
 /// The pair issued by both routes, written once so that they
@@ -435,12 +435,12 @@ async function rafraichir(
 async function delivrer(
     rep: ServerResponse,
     deps: DependancesAuth,
-    utilisateurId: string,
+    userId: string,
     rafraichissement: string,
     cors: Record<string, string> | undefined,
 ): Promise<void> {
     const maintenant = deps.maintenant();
-    const acces = signer(utilisateurId, deps.secretJeton, maintenant);
+    const acces = signer(userId, deps.secretJeton, maintenant);
     repondre(
         rep,
         200,

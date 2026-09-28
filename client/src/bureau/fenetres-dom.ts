@@ -15,7 +15,7 @@ import type { FenetreConnue } from '../shell';
 import { lignes, sectionVisible } from './fenetres';
 
 export interface DepsFenetres {
-    liste: HTMLUListElement;
+    list: HTMLUListElement;
     modele: HTMLTemplateElement;
     /// The section to reveal or to hide again.
     ///
@@ -31,7 +31,7 @@ export interface DepsFenetres {
 }
 
 export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres): void {
-    deps.liste.replaceChildren();
+    deps.list.replaceChildren();
     for (const ligne of lignes(fenetres)) {
         const item = deps.modele.content.cloneNode(true) as DocumentFragment;
         item.querySelector('[data-titre]')!.textContent = ligne.titre;
@@ -51,7 +51,7 @@ export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres):
         if (ligne.rouvrable) bouton.addEventListener('click', () => deps.rouvrir(ligne.session));
         else bouton.remove();
 
-        deps.liste.append(item);
+        deps.list.append(item);
     }
     // ⚠️ REVEAL **AND** HIDE AGAIN. Doing only the first would leave an
     // empty section on a hub that has nothing left to show.

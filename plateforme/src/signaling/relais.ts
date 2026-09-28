@@ -88,7 +88,7 @@ const TYPES_RELAYES = new Set([
 // must be said WHY, otherwise a successor will think the sentence stale and
 // loosen the type guard. This check runs on the FIRST message, which
 // arrives BEFORE the guard could see any token: in this file,
-// `isJsonObject` is called some thirty lines before `garde.verifier`.
+// `isJsonObject` is called some thirty lines before `garde.verify`.
 // The handshake is therefore, at that precise instant, open to anyone who
 // reaches the port — exactly as before P2.
 
@@ -149,7 +149,7 @@ export interface SignalingServer {
 export interface ObservateurDeSession {
     /// BOTH roles are now present on this session.
     ///
-    /// `utilisateurId` is the CLIENT's when the guard established one;
+    /// `userId` is the CLIENT's when the guard established one;
     /// it is absent when the second peer to arrive is the agent. ⚠️ THE REASON
     /// CHANGED IN SUB-BLOCK P3 without the consequence moving: it is no longer
     /// that the agent has "no identity" — it has had one since the
@@ -157,7 +157,7 @@ export interface ObservateurDeSession {
     /// stay claimable by the human client that will join it
     /// (`identite/garde.ts`). That is what makes the word "recorded" of
     /// criterion ③ literally true in the database.
-    apparie(nomSession: string, utilisateurId?: string): void;
+    apparie(nomSession: string, userId?: string): void;
     /// The session has emptied: no role occupies it any more.
     separe(nomSession: string): void;
 }
@@ -219,7 +219,7 @@ export function createSignalingServer(
     wss.on('connection', (socket: WebSocket, requete?: IncomingMessage) => {
         // 🔴 THE "ANY REQUEST" BRAKE IS CONSULTED HERE, ON CONNECTION —
         // BEFORE THE FIRST MESSAGE, hence before `isJsonObject` and before
-        // `garde.verifier`. A WebSocket connection is here the equivalent
+        // `garde.verify`. A WebSocket connection is here the equivalent
         // of a request: it is what costs the pairing and, if it
         // succeeds, a database row (`ObservateurDeSession`).
         // `TRAME_MAX_OCTETS` (`http/serveur.ts`) bounds the size of a
@@ -328,7 +328,7 @@ export function createSignalingServer(
                 // table would occupy the role there and keep the LEGITIMATE
                 // peer from arriving: a denial of service open to anyone,
                 // obtained precisely by refusing to authenticate.
-                const verdict = garde.verifier({
+                const verdict = garde.verify({
                     role: declaredRole,
                     session: declaredSession,
                     jeton: message.jeton,
@@ -374,7 +374,7 @@ export function createSignalingServer(
                 // ONLY NOW: `declarer` has accepted. Claiming
                 // earlier would leave a phantom membership behind a
                 // peer refused because the role was already taken.
-                garde.revendiquer(declaredSession, verdict.utilisateurId);
+                garde.revendiquer(declaredSession, verdict.userId);
 
                 role = declaredRole;
                 sessionId = declaredSession;
@@ -384,7 +384,7 @@ export function createSignalingServer(
                 // OPPOSITE — if it is defined, this peer is the second one.
                 const pairEnFace = sessions.pair(declaredSession, declaredRole);
                 if (pairEnFace) {
-                    trace?.apparie(declaredSession, verdict.utilisateurId);
+                    trace?.apparie(declaredSession, verdict.userId);
                     // The symmetric twin of the `peer-gone` sent at the bottom of the
                     // file: the relay could say "your peer has left"
                     // and could not say "your peer has arrived". The whole

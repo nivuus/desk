@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { enroler, marquerVu } from './agent';
-import { creerUtilisateur } from './utilisateur';
+import { createUser } from './utilisateur';
 import { attribuerSiLibre, detacher, lireParId, lireParNom, lister } from './vm';
 
 /// Une époque réelle, pas un petit nombre : voir l'en-tête.
@@ -34,12 +34,12 @@ async function poserVm(p: Pilote, id: string, nom: string): Promise<void> {
     ]);
 }
 
-/// `vm.utilisateur_id` RÉFÉRENCE `utilisateur(id)`, et SQLite applique bien la
+/// `vm.utilisateur_id` RÉFÉRENCE `user(id)`, et SQLite applique bien la
 /// contrainte (`pilote-sqlite.ts` pose `PRAGMA foreign_keys`). Un identifiant
 /// inventé ferait donc échouer l'attribution pour une raison étrangère au
 /// test.
-async function poserUtilisateur(p: Pilote, email: string): Promise<string> {
-    return creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+async function seedUser(p: Pilote, email: string): Promise<string> {
+    return createUser(p, email, 'empreinte-opaque-de-test', MS);
 }
 
 describe(`dépôt vm, moteur=${MOTEUR}`, () => {
@@ -109,7 +109,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
     it('🔴 `attribuerSiLibre` sur une VM LIBRE rend 1', async () => {
         base = await baseNeuve('vm-attrib-libre');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         expect(await attribuerSiLibre(base, 'v1', alice)).toBe(1);
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
     });
@@ -123,8 +123,8 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         // utilisateur ait deux VMs, jamais qu'une VM change de main.
         base = await baseNeuve('vm-attrib-prise');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         await attribuerSiLibre(base, 'v1', alice);
         expect(await attribuerSiLibre(base, 'v1', bob)).toBe(0);
     });
@@ -137,8 +137,8 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         // deux, et les deux doivent se voir.
         base = await baseNeuve('vm-attrib-prise-etat');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         await attribuerSiLibre(base, 'v1', alice);
         await attribuerSiLibre(base, 'v1', bob);
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
@@ -159,7 +159,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         base = await baseNeuve('vm-attrib-servi');
         await poserVm(base, 'v1', 'w1');
         await poserVm(base, 'v2', 'w2');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         await attribuerSiLibre(base, 'v1', alice);
         await expect(attribuerSiLibre(base, 'v2', alice)).rejects.toThrow();
         // Et `v2` est restée au vivier.
@@ -171,7 +171,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         // de base — et `changes = 0` confond bien TROIS causes (E8), ce qui
         // est précisément pourquoi l'appelant lit d'abord la ligne.
         base = await baseNeuve('vm-attrib-inconnue');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         expect(await attribuerSiLibre(base, 'v-inexistante', alice)).toBe(0);
     });
 
@@ -180,8 +180,8 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         // `--detacher` de `admin:attribuer` ne servirait à rien.
         base = await baseNeuve('vm-detacher');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         await attribuerSiLibre(base, 'v1', alice);
         expect(await detacher(base, 'v1')).toBe(1);
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBeNull();

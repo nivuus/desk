@@ -60,8 +60,8 @@ describe('les longueurs reprises rendent le MÊME nombre de pixels', () => {
             ['--t-m', '0.875rem', 14],
         ];
         for (const [token, litteral, pixels] of attendus) {
-            const valeur = racine?.tokens.get(token);
-            expect(valeur, token).toBe(litteral);
+            const value = racine?.tokens.get(token);
+            expect(value, token).toBe(litteral);
             expect(Number.parseFloat(litteral) * 16, `${token} en pixels`).toBe(pixels);
         }
     });
@@ -83,8 +83,8 @@ describe('les six voiles hors thème reprennent les littérales verbatim', () =>
             '--voile-micro-actif': 'rgb(220 38 38 / 0.85)',
             '--voile-micro-refuse': 'rgb(120 53 15 / 0.85)',
         };
-        for (const [token, valeur] of Object.entries(attendus)) {
-            expect(racine?.tokens.get(token), token).toBe(valeur);
+        for (const [token, value] of Object.entries(attendus)) {
+            expect(racine?.tokens.get(token), token).toBe(value);
         }
     });
 });

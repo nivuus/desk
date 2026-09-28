@@ -185,7 +185,7 @@ impl WindowsSource {
         // would at the same time suspend keyframe requests and network
         // adaptation. Both go through `DesktopCapture::ouvrir`, which sets
         // `SetMultithreadProtected(TRUE)` on THIS device at each call
-        // (`capture/ouverture.rs::creer_peripherique`, local `multithread`) — the
+        // (`capture/ouverture.rs::create_device_and_context`, local `multithread`) — the
         // protection is therefore rebuilt with it, not merely inherited from
         // the old device that has just been released. Without it the
         // intermittent `AcquireNextFrame` blocking documented in task 10
@@ -244,7 +244,7 @@ impl WindowsSource {
                 // is possible until the next successful resize —
                 // far preferable to an agent that crashes.
                 self.capture = Some(new_capture);
-                tracing::warn!(erreur = %primary_error, "reconstruction de la chaîne d'encodage échouée, capture de secours restaurée");
+                tracing::warn!(error = %primary_error, "reconstruction de la chaîne d'encodage échouée, capture de secours restaurée");
                 Err(primary_error)
             }
             RebuildOutcome::Fatal(primary_error) => {
@@ -255,7 +255,7 @@ impl WindowsSource {
                 // `is_exhausted()` will make the session close cleanly at the next
                 // round, rather than a panic on the empty field.
                 self.fatal = true;
-                tracing::error!(erreur = %primary_error, "reconstruction de la chaîne d'encodage et capture de secours toutes deux échouées, source déclarée épuisée");
+                tracing::error!(error = %primary_error, "reconstruction de la chaîne d'encodage et capture de secours toutes deux échouées, source déclarée épuisée");
                 Err(primary_error)
             }
         }
@@ -294,7 +294,7 @@ impl WindowsSource {
         // window — that is what takes the taskbar out of the crop. The
         // supervisor queries the same monitor by the output's origin:
         // same `HMONITOR`, same bound, hence no fight between the two
-        // processes (see `taille_pour_viewport`).
+        // processes (see `size_for_viewport`).
         //
         // ⚠️ **The fallback is the behaviour from before this batch**: when
         // `GetMonitorInfoW` refuses, we bound by the duplication's texture,
@@ -316,13 +316,13 @@ impl WindowsSource {
                 // the region leave the image and `crop_region` would fail.
                 (borne.0.min(texture.0), borne.1.min(texture.1))
             }
-            Err(erreur) => {
-                tracing::warn!(%erreur, "zone de travail illisible : recadrage borné par la texture");
+            Err(error) => {
+                tracing::warn!(%error, "zone de travail illisible : recadrage borné par la texture");
                 texture
             }
         };
 
-        let (l, h) = crate::windows_source_sortie::taille_pour_viewport((width, height), borne);
+        let (l, h) = crate::windows_source_sortie::size_for_viewport((width, height), borne);
         // 🔴 **UNCONDITIONAL TRACE — it replaces the one this batch had
         // REMOVED.** "resize ignored" came out at EVERY request, and
         // it is what made batch 33's diagnosis possible (34 requests
@@ -354,7 +354,7 @@ impl WindowsSource {
         // and cropping at the origin stays right.
         //
         // ⚠️ `resize_window` imposes a 160×120 floor that
-        // `taille_pour_viewport` does not have (its own is 2): below 160×120 the
+        // `size_for_viewport` does not have (its own is 2): below 160×120 the
         // window stays larger than the region, and the image then shows a
         // corner of the application. Degenerate case, not fixed, stated here.
         // 🔴 **COMPENSATE DWM's INVISIBLE EDGE, like `placement::poser`.**
@@ -378,7 +378,7 @@ impl WindowsSource {
             crate::window::lisere_dwm(self.hwnd).unwrap_or_default(),
             crate::window::bordure_peinte(),
         );
-        let (lp, hp) = crate::superviseur::placement::taille_a_poser((l, h), lisere);
+        let (lp, hp) = crate::superviseur::placement::size_to_set((l, h), lisere);
         crate::window::resize_window(self.hwnd, lp, hp)?;
 
         let region = crate::windows_source_sortie::region_de_sortie(l, h)
@@ -393,16 +393,16 @@ impl WindowsSource {
         let neuf = H264Encoder::new(&device, (l, h), (l, h), self.fps, self.bitrate);
         let mut encoder = match neuf {
             Ok(encoder) => encoder,
-            Err(erreur) => {
+            Err(error) => {
                 self.fatal = true;
-                return Err(erreur).context(
+                return Err(error).context(
                     "encodeur neuf refusé après destruction de l'ancien : source épuisée",
                 );
             }
         };
-        if let Err(erreur) = encoder.request_keyframe() {
+        if let Err(error) = encoder.request_keyframe() {
             self.fatal = true;
-            return Err(erreur).context("image clé refusée par l'encodeur neuf : source épuisée");
+            return Err(error).context("image clé refusée par l'encodeur neuf : source épuisée");
         }
 
         self.region = region;

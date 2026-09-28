@@ -64,7 +64,7 @@ impl EtatCapteur {
     /// itself: a failure of THIS call is fatal to the supervisor, just
     /// like a driver or a hook that does not open — there is nothing
     /// else to clean up.
-    pub(super) fn demarrer(lanceur: &LanceurDeProcessus) -> Result<Self> {
+    pub(super) fn start(lanceur: &LanceurDeProcessus) -> Result<Self> {
         let pid = lanceur
             .lancer_capteur()
             .context("lancement initial du capteur")?;
@@ -120,18 +120,18 @@ impl EtatCapteur {
         let premier_du_cycle = !self.cycle_signale;
         self.cycle_signale = true;
         match lanceur.lancer_capteur() {
-            Ok(nouveau) => {
+            Ok(new) => {
                 if premier_du_cycle {
                     tracing::warn!(
                         pid_mort = self.pid,
-                        pid_neuf = nouveau,
+                        pid_neuf = new,
                         "capteur mort, relancé (relances suivantes silencieuses \
                          tant que le cycle se répète)"
                     );
                 }
-                self.pid = nouveau;
+                self.pid = new;
             }
-            Err(erreur) => {
+            Err(error) => {
                 // `self.pid` is NOT updated: it stays the last known
                 // value, so that the next successful restart
                 // logs an exact "dead" one — `lancer_capteur` only returns
@@ -139,7 +139,7 @@ impl EtatCapteur {
                 // live (see its doc).
                 if premier_du_cycle {
                     tracing::error!(
-                        %erreur,
+                        %error,
                         "relance du capteur échouée — retentée indéfiniment passé le délai \
                          minimal, et silencieusement tant que l'échec se répète"
                     );

@@ -90,16 +90,16 @@ pub struct SourceDistante {
     canal: Box<dyn Canal + Send>,
     images: Receiver<Recu>,
     /// 🔴 **THE FRAME SIZE, AND IT IS SHARED — see
-    /// [`crate::entrees::TailleImage`].** It was only a pair of `u32`
+    /// [`crate::entrees::FrameSize`].** It was only a pair of `u32`
     /// until batch 32T; the input injector needed it, and the only
     /// way NOT to have two descriptions of the same rectangle is to
     /// have only one storage. `dimensions()` re-reads it, the injector re-reads it.
     ///
     /// ⚠️ **The three writes are those of `video_source.rs`** (attach,
-    /// `Etat`, `Taille`), plus the initial value. Adding a fourth
+    /// `Etat`, `Size`), plus the initial value. Adding a fourth
     /// elsewhere, without going through here, would reintroduce exactly the defect of
     /// batch 32M.
-    taille: std::sync::Arc<crate::entrees::TailleImage>,
+    size: std::sync::Arc<crate::entrees::FrameSize>,
     vivante: bool,
     epuisee: bool,
     /// Channel break in progress. A break does not exhaust the source as long as
@@ -179,7 +179,7 @@ pub struct SourceDistante {
 }
 
 impl SourceDistante {
-    pub fn nouvelle(
+    pub fn new(
         canal: Box<dyn Canal + Send>,
         images: Receiver<Recu>,
         largeur: u32,
@@ -188,10 +188,10 @@ impl SourceDistante {
         Self {
             canal,
             images,
-            taille: std::sync::Arc::new(crate::entrees::TailleImage::nouvelle(largeur, hauteur)),
+            size: std::sync::Arc::new(crate::entrees::FrameSize::new(largeur, hauteur)),
             vivante: true,
             epuisee: false,
-            fenetre: FenetreCanal::nouvelle(),
+            fenetre: FenetreCanal::new(),
             sommeil: None,
             part: None,
             audio: None,
@@ -208,15 +208,15 @@ impl SourceDistante {
     /// 🔴 **An `Arc` CLONE, never a copy of the value**: it is the
     /// difference between "the same rectangle" and "two rectangles that looked
     /// alike at start-up".
-    pub fn taille_partagee(&self) -> std::sync::Arc<crate::entrees::TailleImage> {
-        std::sync::Arc::clone(&self.taille)
+    pub fn shared_size(&self) -> std::sync::Arc<crate::entrees::FrameSize> {
+        std::sync::Arc::clone(&self.size)
     }
 
     /// Sends a command and accepts only `Fait` as success.
     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
         match self.canal.commander(message)? {
             DepuisCapteur::Fait => Ok(()),
-            DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
+            DepuisCapteur::Error { motif } => bail!("le capteur a refusé : {motif}"),
             autre => bail!("réponse inattendue du capteur : {autre:?}"),
         }
     }

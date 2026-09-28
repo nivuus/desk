@@ -53,12 +53,12 @@
 
 /// Beyond this size, an **empty** journal is truncated to zero.
 ///
-/// ⚠️ **NOT CALIBRATED.** It joins `DELAI_ECRIRE`, `TAILLE_TRAME_MAX`,
+/// ⚠️ **NOT CALIBRATED.** It joins `WRITE_TIMEOUT`, `MAX_FRAME_SIZE`,
 /// `DELAI_ATTRIBUTS`, `DELAI_LIRE`, `DELAI_LISTER`, `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `MAX_OUTPUT_SIZE`,
 /// `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the list of this repository's
 /// constants that no measurement has judged.
-pub const TAILLE_JOURNAL_COMPACTAGE: u64 = 256 * 1024;
+pub const JOURNAL_COMPACTION_SIZE: u64 = 256 * 1024;
 
 /// The set of due writes, in their registration order.
 ///
@@ -73,7 +73,7 @@ pub struct Journal {
 }
 
 impl Journal {
-    pub fn nouveau() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -86,7 +86,7 @@ impl Journal {
     /// all earlier entries, which are nevertheless intact — and the
     /// journal exists precisely to lose nothing.
     pub fn relire(contenu: &str) -> (Self, usize) {
-        let mut journal = Self::nouveau();
+        let mut journal = Self::new();
         let mut ignorees = 0usize;
         for ligne in contenu.split('\n') {
             if ligne.is_empty() {
@@ -141,8 +141,8 @@ impl Journal {
     /// 🔴 **`est_vide()` AND the size, NEVER the size alone.** Truncating a
     /// file that still carries a due entry would lose the data exactly when
     /// it matters.
-    pub fn compactable(&self, taille_fichier: u64) -> bool {
-        self.est_vide() && taille_fichier > TAILLE_JOURNAL_COMPACTAGE
+    pub fn compactable(&self, file_size: u64) -> bool {
+        self.est_vide() && file_size > JOURNAL_COMPACTION_SIZE
     }
 
     fn poser(&mut self, chemin: &str, octets: u64) {

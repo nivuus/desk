@@ -16,7 +16,7 @@ import { poserTurnAmbiant } from './turn-harnais';
 /// ⚠️ Rien de tel n'existe côté production : la seule fabrique de garde exige
 /// un secret, et `PLATEFORME_SECRET_JETON` n'a AUCUN défaut (`config.ts`).
 const GARDE_OUVERTE: Garde = {
-    verifier: () => ({ ok: true }),
+    verify: () => ({ ok: true }),
     revendiquer: () => {},
     liberer: () => {},
 };
@@ -357,7 +357,7 @@ describe('le budget « toute requête » du relais', () => {
         // indéfiniment — ce relais n'a aucune notion d'échec à ce stade.
         const sockets: WebSocket[] = [];
         try {
-            let dernierMessage: { type: string; motif?: string; retryApresS?: number } | undefined;
+            let lastMessage: { type: string; motif?: string; retryApresS?: number } | undefined;
             for (let i = 0; i <= REQUETES_MAX_ADRESSE; i++) {
                 const ws = new WebSocket(`ws://127.0.0.1:${server.port}`);
                 sockets.push(ws);
@@ -371,7 +371,7 @@ describe('le budget « toute requête » du relais', () => {
                 } else {
                     // La (N+1)ᵉ : refusée avant tout message, sur le seul
                     // évènement `connection`.
-                    dernierMessage = await new Promise((resolve, reject) => {
+                    lastMessage = await new Promise((resolve, reject) => {
                         const minuteur = setTimeout(
                             () => reject(new Error('aucun message reçu')),
                             2000,
@@ -384,14 +384,14 @@ describe('le budget « toute requête » du relais', () => {
                     });
                 }
             }
-            expect(dernierMessage?.type).toBe('error');
-            expect(dernierMessage?.motif).toBe('trop-de-requetes');
+            expect(lastMessage?.type).toBe('error');
+            expect(lastMessage?.motif).toBe('trop-de-requetes');
             // 🔴 round de correction 1, critique ② : sans `retryApresS`,
             // l'agent qui se fait refuser ici ne peut pas savoir combien de
             // temps attendre avant de retenter — c'est la moitié la moins
             // chère du remède au verrouillage documenté par
             // `agent/src/superviseur/boucle/surveillance_pont.rs`.
-            expect(dernierMessage?.retryApresS).toBeGreaterThan(0);
+            expect(lastMessage?.retryApresS).toBeGreaterThan(0);
         } finally {
             for (const s of sockets) s.close();
         }

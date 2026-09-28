@@ -244,14 +244,14 @@ describe('Frein', () => {
         // fenêtre (`restant === 0`, cas limite documenté dans `consulter`) et
         // rendrait le test dépendant du hasard de cette coïncidence plutôt que
         // du comportement qu'il éprouve.
-        let dernierInstant = instant;
+        let lastInstant = instant;
         while (instant < T0 + CINQ_MINUTES_MS) {
             const verdict = frein.consulter([cle], instant);
             if (!verdict.freine) {
                 frein.echec([cle], instant);
                 admises++;
             }
-            dernierInstant = instant;
+            lastInstant = instant;
             instant += delaiDeRepli(tentative);
             tentative++;
         }
@@ -274,7 +274,7 @@ describe('Frein', () => {
         // (`freine === true` là-bas). Conservée ici pour la LISIBILITÉ du
         // scénario (« et donc, un pair légitime n'est pas bloqué »), jamais
         // comme un contrôle à part entière.
-        expect(frein.consulter([cle], dernierInstant).freine).toBe(false);
+        expect(frein.consulter([cle], lastInstant).freine).toBe(false);
     });
 
     // 🔵 TÉMOIN NÉGATIF DE (m) : sans le correctif agent, un pair qui retente
@@ -302,14 +302,14 @@ describe('Frein', () => {
         const CINQ_MINUTES_MS = 5 * 60_000;
         let instant = T0;
         let admises = 0;
-        let dernierInstant = instant;
+        let lastInstant = instant;
         while (instant < T0 + CINQ_MINUTES_MS) {
             const verdict = frein.consulter([cle], instant);
             if (!verdict.freine) {
                 frein.echec([cle], instant);
                 admises++;
             }
-            dernierInstant = instant;
+            lastInstant = instant;
             instant += 200;
         }
         // Le patron du bug MESURÉ, à une cadence plus agressive que le
@@ -318,6 +318,6 @@ describe('Frein', () => {
         expect(admises).toBeGreaterThanOrEqual(REQUETES_MAX_ADRESSE);
         // Et un pair LÉGITIME arrivant juste après cette rafale reste freiné
         // — c'est exactement « une fenêtre neuve ne peut plus s'attacher ».
-        expect(frein.consulter([cle], dernierInstant).freine).toBe(true);
+        expect(frein.consulter([cle], lastInstant).freine).toBe(true);
     });
 });

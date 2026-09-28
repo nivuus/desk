@@ -69,7 +69,7 @@ use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
 
 use self::commandes::{deposer, servir_les_commandes};
-use self::media::{ecrire_le_media, AEcrire, CAPACITE_ECRITURES};
+use self::media::{write_media, AEcrire, CAPACITE_ECRITURES};
 use self::trace::tracer_les_compteurs;
 
 /// No sleep when the source has returned nothing.
@@ -99,7 +99,7 @@ enum Fin {
 /// every round of its back-pressure. Passing them one by one lengthened both
 /// signatures by four parameters.
 ///
-/// **Borrows nothing from `Fenetre`** — `taille` is copied — so that a
+/// **Borrows nothing from `Fenetre`** — `size` is copied — so that a
 /// live context never prevents a method call on `&mut self`.
 struct Contexte<'a> {
     /// The session, for the sleep registry: it is through it that the
@@ -108,7 +108,7 @@ struct Contexte<'a> {
     /// KEPT dimensions of the window. The only possible reply to a
     /// resize received during sleep, when there is no longer a source to
     /// query.
-    taille: (u32, u32),
+    size: (u32, u32),
     commandes: &'a Receiver<VersCapteur>,
     reponses: &'a Sender<DepuisCapteur>,
 }
@@ -119,7 +119,7 @@ struct Contexte<'a> {
 /// video track's timestamps, and redoing it on wake-up would shift the stream by
 /// the gap between the two origins — the same trap the attach solves through
 /// `origine_qpc`.
-struct Parametres {
+struct Parameters {
     hwnd: HWND,
     sortie: String,
     fps: u32,
@@ -139,7 +139,7 @@ pub struct Fenetre {
     /// output, for its part, is never touched — that is what avoids inflicting a
     /// mutex abandonment on the neighbouring windows at every fall-asleep.
     source: Option<WindowsSource>,
-    parametres: Parametres,
+    params: Parameters,
     session: String,
     largeur: u32,
     hauteur: u32,
@@ -208,15 +208,15 @@ impl Fenetre {
         tracing::info!(
             %session,
             pid = self.pid,
-            sortie = %self.parametres.sortie,
+            sortie = %self.params.sortie,
             largeur = self.largeur,
             hauteur = self.hauteur,
             "fenêtre attachée au capteur"
         );
 
-        let (ecritures, a_ecrire) = sync_channel::<AEcrire>(CAPACITE_ECRITURES);
+        let (ecritures, to_write) = sync_channel::<AEcrire>(CAPACITE_ECRITURES);
         let session_ecrivain = session.clone();
-        std::thread::spawn(move || ecrire_le_media(ecrivain, a_ecrire, &session_ecrivain));
+        std::thread::spawn(move || write_media(ecrivain, to_write, &session_ecrivain));
 
         // Registration in the pool. A window is born ASLEEP on both sides — in
         // the pool AND here, `source` being `None` since `ouvrir`: that is what
@@ -239,7 +239,7 @@ impl Fenetre {
         // re-attachment that happened in between.
         let (ordres, generation) = crate::capteur::sommeil::inscrire(&session, self.pid);
 
-        let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
+        let result = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
 
         // **SINGLE passage point of all exits from the loop**,
         // including its error exits: a session that exited without
@@ -257,7 +257,7 @@ impl Fenetre {
         // alive. The release stays on this thread, as everywhere else.
         drop(self.source.take());
         crate::capteur::sommeil::retirer(&session, generation);
-        resultat
+        result
     }
 
     /// The service loop. **Extracted from `servir` so that releasing
@@ -287,20 +287,19 @@ impl Fenetre {
         // That is what makes the comparison in point 3 a real safety net: if the
         // texture returned at the first wake-up is not the announced size (a
         // DPI-scaled output announces less than it renders, see
-        // `capture::ouverture::taille_de_sortie`), the gap becomes an `Etat` the
+        // `capture::ouverture::size_of_output`), the gap becomes an `Etat` the
         // child applies. Starting from zero would have produced a useless `Etat` at
         // every session; starting from a guess would have hidden the gap.
-        let mut dernier_etat = (true, false, self.largeur, self.hauteur);
+        let mut last_state = (true, false, self.largeur, self.hauteur);
         let mut images = 0u64;
-        let mut dernier_compte = Instant::now();
+        let mut last_count = Instant::now();
         // D8: the reference state is the one read when the window is OPENED, not
         // an arbitrary default value — it is the guard that prevents an
         // application born borderless from putting its browser window into
         // fullscreen for no reason (see `plein_ecran::SuiviBordure`).
-        let mut suivi_bordure = plein_ecran::SuiviBordure::nouveau(
-            plein_ecran::lire_style(self.parametres.hwnd).unwrap_or(0),
-        );
-        let mut dernier_style = Instant::now();
+        let mut suivi_bordure =
+            plein_ecran::SuiviBordure::new(plein_ecran::lire_style(self.params.hwnd).unwrap_or(0));
+        let mut last_style = Instant::now();
         // A1: `SuiviAccent` starts from `None` and ANNOUNCES ITS FIRST READING —
         // it is the REVERSE of `SuiviBordure` just above, and the why lives
         // in the doc of `accent::SuiviAccent`.
@@ -309,7 +308,7 @@ impl Fenetre {
         // waits for `PERIODE_ACCENT`, which lets the session settle. ⚠️ If the
         // acceptance run finds it too late, it is `PERIODE_ACCENT` that must be
         // tuned, not this line.
-        let mut dernier_accent = Instant::now();
+        let mut last_accent = Instant::now();
 
         let motif = loop {
             // Redone at every round: the kept size may change on wake-up.
@@ -317,7 +316,7 @@ impl Fenetre {
             // so hinders no `&mut self`.
             let ctx = Contexte {
                 session,
-                taille: (self.largeur, self.hauteur),
+                size: (self.largeur, self.hauteur),
                 commandes,
                 reponses,
             };
@@ -374,12 +373,12 @@ impl Fenetre {
                 (source.is_alive(), source.is_exhausted(), largeur, hauteur)
             });
             if let Some(etat) = etat {
-                if etat != dernier_etat {
-                    dernier_etat = etat;
+                if etat != last_state {
+                    last_state = etat;
                     // 🔴 **THE KEPT SIZE FOLLOWS, AND IT IS NEW IN BATCH 33.**
                     // `reveiller` rebuilds the source on `self.dimensions()`
                     // and the asleep arm of `servir_les_commandes` replies
-                    // `ctx.taille`: as long as `resize` was a `no-op` in
+                    // `ctx.size`: as long as `resize` was a `no-op` in
                     // `SortieEntiere`, these two fields could not
                     // drift, and `transitions.rs` relied on it in so many
                     // words. Since cropping follows the viewport, they
@@ -419,9 +418,9 @@ impl Fenetre {
             //    now: sub-block D9 removed the other half, the
             //    virtual output's mode change (see
             //    `plein_ecran::actif` for the measurement finding).
-            if plein_ecran::actif() && dernier_style.elapsed() >= plein_ecran::PERIODE_STYLE {
-                dernier_style = Instant::now();
-                if let Some(style) = plein_ecran::lire_style(self.parametres.hwnd) {
+            if plein_ecran::actif() && last_style.elapsed() >= plein_ecran::PERIODE_STYLE {
+                last_style = Instant::now();
+                if let Some(style) = plein_ecran::lire_style(self.params.hwnd) {
                     if let Some(actif) = suivi_bordure.observer(style) {
                         tracing::info!(%session, actif, "plein ecran de la fenetre Windows");
                         let message = DepuisCapteur::PleinEcran { actif };
@@ -445,8 +444,8 @@ impl Fenetre {
             #[cfg(windows)]
             if let Some(Fin::Terminer(motif)) = accent_fenetre::tour(
                 &mut suivi_accent,
-                &mut dernier_accent,
-                self.parametres.hwnd,
+                &mut last_accent,
+                self.params.hwnd,
                 ecritures,
                 self.source.as_mut(),
                 &ctx,
@@ -454,8 +453,8 @@ impl Fenetre {
                 break motif;
             }
 
-            if dernier_compte.elapsed() >= PERIODE_COMPTEURS {
-                let ecoule = dernier_compte.elapsed().as_secs_f64();
+            if last_count.elapsed() >= PERIODE_COMPTEURS {
+                let ecoule = last_count.elapsed().as_secs_f64();
                 tracing::info!(
                     %session,
                     images,
@@ -465,7 +464,7 @@ impl Fenetre {
                 );
                 tracer_les_compteurs(self.source.as_ref());
                 images = 0;
-                dernier_compte = Instant::now();
+                last_count = Instant::now();
             }
         };
 

@@ -10,7 +10,7 @@ use anyhow::Result;
 /// the whole sizing of paths 2 and 3 depends on it.
 pub(super) fn relever_dxgi() -> Result<()> {
     let sorties = crate::capture::enumerer_sorties()?;
-    tracing::info!(nombre = sorties.len(), "sorties DXGI relevées");
+    tracing::info!(count = sorties.len(), "sorties DXGI relevées");
     for sortie in &sorties {
         tracing::info!(
             adaptateur = %sortie.adaptateur,

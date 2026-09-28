@@ -22,7 +22,7 @@ pub(super) struct PartageFil {
     pub(super) capture_morte_fil: Arc<AtomicBool>,
 }
 
-/// Body of the audio capture thread, launched by `WindowsAudioSource::demarrer`.
+/// Body of the audio capture thread, launched by `WindowsAudioSource::start`.
 ///
 /// Every value is passed explicitly; none is captured by a closure any more.
 pub(super) fn tourner(
@@ -64,7 +64,7 @@ pub(super) fn tourner(
     }
 
     let mut assembleur = FrameAssembler::new(origin);
-    let mut dernier_rapport = Instant::now();
+    let mut last_report = Instant::now();
     // Last value actually set on the encoder. A
     // CTL call per 10 ms frame would be waste on this
     // hot path: we only rewrite when the target has changed.
@@ -183,7 +183,7 @@ pub(super) fn tourner(
                     // above). `emettait` DOES NOT MOVE: it is
                     // the real state of the stream, and it has not changed.
                     tracing::warn!(
-                        erreur = %e,
+                        error = %e,
                         actif = veut_emettre,
                         "bascule d'emission audio refusee"
                     );
@@ -207,8 +207,8 @@ pub(super) fn tourner(
         // The three counters stay readable while silent: they
         // live on `ring_fil` and `assembleur`, which this thread
         // owns, and their accessors only take `&self`.
-        if dernier_rapport.elapsed() >= REPORT_INTERVAL {
-            dernier_rapport = Instant::now();
+        if last_report.elapsed() >= REPORT_INTERVAL {
+            last_report = Instant::now();
             // `info!`, not `debug!`: the default filter
             // (`agent/src/main.rs`, `EnvFilter` falling back to
             // `"info"` when `RUST_LOG` is absent) never emits
@@ -290,7 +290,7 @@ pub(super) fn tourner(
                 lectures_echouees = lectures_echouees.saturating_add(1);
                 if lectures_echouees < LECTURES_ECHOUEES_MAX {
                     tracing::warn!(
-                        erreur = %e,
+                        error = %e,
                         consecutives = lectures_echouees,
                         "lecture audio échouée, nouvelle tentative"
                     );
@@ -309,7 +309,7 @@ pub(super) fn tourner(
                 // `next_packet` would keep returning `None` as
                 // in the nominal case.
                 tracing::warn!(
-                    erreur = %e,
+                    error = %e,
                     consecutives = lectures_echouees,
                     rejetes = ring_fil.rejetes(),
                     complements = assembleur.complements(),
@@ -350,8 +350,8 @@ pub(super) fn tourner(
                         // replaying this call at every frame.
                         derniere_perte = voulue;
                         tracing::warn!(
-                            erreur = %e,
-                            valeur = voulue,
+                            error = %e,
+                            value = voulue,
                             "réglage du taux de perte Opus refusé"
                         );
                     }
@@ -377,7 +377,7 @@ pub(super) fn tourner(
                     // has several.
                     capture_morte_fil.store(true, Ordering::Relaxed);
                     tracing::warn!(
-                        erreur = %e,
+                        error = %e,
                         rejetes = ring_fil.rejetes(),
                         complements = assembleur.complements(),
                         echantillons_jetes = assembleur.echantillons_jetes(),

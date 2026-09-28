@@ -40,7 +40,7 @@ fn normaliser_est_idempotente() {
 /// ROUGE si `observer` appelle `lire` inconditionnellement.
 #[test]
 fn un_numero_inchange_n_ouvre_pas_le_presse_papier() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let appele = Cell::new(false);
     let annonce = sondeur.observer(1, || {
@@ -56,7 +56,7 @@ fn un_numero_inchange_n_ouvre_pas_le_presse_papier() {
 
 #[test]
 fn un_numero_neuf_annonce_le_texte() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     assert_eq!(
         sondeur.observer(2, || Some(String::from("bonjour"))),
@@ -73,7 +73,7 @@ fn un_numero_neuf_annonce_le_texte() {
 /// ROUGE si l'on retire la comparaison : `Some` serait rendu deux fois.
 #[test]
 fn un_meme_texte_a_un_numero_different_n_est_annonce_qu_une_fois() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     assert_eq!(
         sondeur.observer(2, || Some(String::from("bonjour"))),
@@ -88,7 +88,7 @@ fn un_meme_texte_a_un_numero_different_n_est_annonce_qu_une_fois() {
 /// RED if the implementation truncates — the assertion on the variant fails.
 #[test]
 fn un_texte_trop_grand_est_refuse_jamais_tronque() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let gros = "a".repeat(PRESSE_PAPIER_MAX + 1);
     let annonce = sondeur.observer(2, || Some(gros));
@@ -102,8 +102,8 @@ fn un_texte_trop_grand_est_refuse_jamais_tronque() {
 
 /// RED if the bound is written `>=` instead of `>`.
 #[test]
-fn un_texte_de_la_taille_exacte_de_la_borne_passe() {
-    let mut sondeur = Sondeur::nouveau();
+fn a_text_of_exactly_the_bound_size_passes() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let pile = "a".repeat(PRESSE_PAPIER_MAX);
     assert_eq!(
@@ -118,8 +118,8 @@ fn un_texte_de_la_taille_exacte_de_la_borne_passe() {
 /// paired with as many `\n`s: normalisation removes 12 of them, so it
 /// fits. RED if we bound before normalising — it would be refused.
 #[test]
-fn on_normalise_avant_de_borner() {
-    let mut sondeur = Sondeur::nouveau();
+fn normalise_before_clamping() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let corps = "a".repeat(PRESSE_PAPIER_MAX + 8 - 24);
     let brut = format!("{corps}{}", "\r\n".repeat(12));
@@ -139,7 +139,7 @@ fn on_normalise_avant_de_borner() {
 /// counted that way, and would pass while weighing more than 64 KiB.
 #[test]
 fn le_bornage_compte_des_octets_pas_des_caracteres() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let emoji = "🙂".repeat(PRESSE_PAPIER_MAX / 4 + 1);
     assert_eq!(emoji.chars().count(), PRESSE_PAPIER_MAX / 4 + 1);
@@ -159,7 +159,7 @@ fn le_bornage_compte_des_octets_pas_des_caracteres() {
 /// at the SAME number, would no longer call `lire`.
 #[test]
 fn une_lecture_echouee_n_avance_pas_la_reference() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     assert_eq!(sondeur.observer(2, || None), None);
     let rappelee = Cell::new(false);
@@ -178,7 +178,7 @@ fn une_lecture_echouee_n_avance_pas_la_reference() {
 /// each neighbouring copy as long as the huge content stays in place.
 #[test]
 fn un_refus_repete_a_l_identique_n_est_annonce_qu_une_fois() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let gros = "a".repeat(PRESSE_PAPIER_MAX + 1);
     assert!(sondeur.observer(2, || Some(gros.clone())).is_some());
@@ -191,7 +191,7 @@ fn un_refus_repete_a_l_identique_n_est_annonce_qu_une_fois() {
 /// ❌ **THIS COMMENT ADDED "a window that attaches does not receive the
 /// content already present, it receives the first copy THAT FOLLOWS", AND
 /// SUB-BLOCK P3 REFUTED IT** — it was P1's legacy no. 3, now closed by
-/// `Etat::dernier_presse_papier` and its emission at registration. The property
+/// `Etat::last_clipboard` and its emission at registration. The property
 /// THIS test exercises, for its part, is intact: the `Sondeur` announces nothing at its
 /// first turn.
 ///
@@ -199,7 +199,7 @@ fn un_refus_repete_a_l_identique_n_est_annonce_qu_une_fois() {
 /// attach receive a content the user did not copy for it.
 #[test]
 fn le_premier_tour_prend_reference_et_n_annonce_rien() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     assert_eq!(sondeur.observer(7, || Some(String::from("deja-la"))), None);
     // And that content is indeed kept: copying it again restarts nothing.
     assert_eq!(sondeur.observer(8, || Some(String::from("deja-la"))), None);

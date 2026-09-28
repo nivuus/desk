@@ -44,8 +44,8 @@ df -h /tmp | tail -1
 #
 # This run lost one that way: the VM died at the end of trial 3, and
 # trial 4 failed on the "target host is down" error.
-COMPTEUR_AVANT="$(grep -c 'terminating on signal\|shutting down' /var/log/libvirt/qemu/Windows.log 2>/dev/null || echo '?')"
-echo "=== [$ETIQUETTE] compteur libvirt AVANT : $COMPTEUR_AVANT ==="
+COUNTER_BEFORE="$(grep -c 'terminating on signal\|shutting down' /var/log/libvirt/qemu/Windows.log 2>/dev/null || echo '?')"
+echo "=== [$ETIQUETTE] compteur libvirt AVANT : $COUNTER_BEFORE ==="
 if [ "$(virsh list --all 2>/dev/null | grep -c 'Windows.*en cours')" -eq 0 ]; then
     echo "=== [$ETIQUETTE] la VM est ETEINTE : demarrage ==="
     virsh start Windows >/dev/null 2>&1 || true
@@ -92,6 +92,6 @@ done
 
 echo "=== [$ETIQUETTE] agents survivants APRES (y compris si l execution a echoue) ==="
 node "$RACINE/scripts/winrm.js" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\e3-tuer.ps1' 2>&1 | tail -2
-echo "=== [$ETIQUETTE] survie de la VM : compteur libvirt AVANT=$COMPTEUR_AVANT APRES=$(grep -c "terminating on signal\|shutting down" /var/log/libvirt/qemu/Windows.log 2>/dev/null || echo '?') ==="
+echo "=== [$ETIQUETTE] survie de la VM : compteur libvirt AVANT=$COUNTER_BEFORE APRES=$(grep -c "terminating on signal\|shutting down" /var/log/libvirt/qemu/Windows.log 2>/dev/null || echo '?') ==="
 echo "=== [$ETIQUETTE] code du pilote : $CODE ==="
 exit "$CODE"

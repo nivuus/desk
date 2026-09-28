@@ -134,7 +134,7 @@ pub async fn run_signaling(
                     break;
                 }
                 Err(e) => {
-                    tracing::warn!(erreur = %e, "connexion de signaling perdue");
+                    tracing::warn!(error = %e, "connexion de signaling perdue");
                     break;
                 }
                 Ok(_) => continue,
@@ -142,7 +142,7 @@ pub async fn run_signaling(
             let parsed: serde_json::Value = match serde_json::from_str(&text) {
                 Ok(value) => value,
                 Err(e) => {
-                    tracing::warn!(erreur = %e, "message de signaling illisible");
+                    tracing::warn!(error = %e, "message de signaling illisible");
                     continue;
                 }
             };
@@ -267,7 +267,7 @@ pub async fn run_signaling(
 /// exponential fallback (`relance_pont::EtatRelance`, or
 /// `plateforme::repli` for the `/agent` channel) keeps growing
 /// meanwhile, so it never degenerates into hammering.
-pub async fn honorer_retry_suggere(retry_apres_s: &watch::Receiver<Option<u64>>) {
+pub async fn honour_suggested_retry(retry_apres_s: &watch::Receiver<Option<u64>>) {
     let Some(secondes) = *retry_apres_s.borrow() else {
         return;
     };
@@ -438,15 +438,15 @@ mod tests {
     }
 
     /// 🔴 FIX FOR THE MISSING-BRAKES LEGACY (fix round 1,
-    /// critical ②) — `honorer_retry_suggere`, exercised on the host. FROZEN
+    /// critical ②) — `honour_suggested_retry`, exercised on the host. FROZEN
     /// clock (`start_paused`): without it, these three tests would really
     /// wait whole seconds, and an assertion on the elapsed time
     /// would become measurement noise rather than a fact.
     #[tokio::test(start_paused = true)]
-    async fn honorer_retry_suggere_n_attend_rien_sans_valeur() {
+    async fn honour_suggested_retry_waits_nothing_without_a_value() {
         let (_tx, rx) = watch::channel::<Option<u64>>(None);
         let debut = tokio::time::Instant::now();
-        honorer_retry_suggere(&rx).await;
+        honour_suggested_retry(&rx).await;
         assert_eq!(
             tokio::time::Instant::now(),
             debut,
@@ -455,10 +455,10 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn honorer_retry_suggere_attend_exactement_la_valeur_recue() {
+    async fn honour_suggested_retry_waits_exactly_the_received_value() {
         let (_tx, rx) = watch::channel(Some(5u64));
         let debut = tokio::time::Instant::now();
-        honorer_retry_suggere(&rx).await;
+        honour_suggested_retry(&rx).await;
         assert_eq!(
             tokio::time::Instant::now() - debut,
             std::time::Duration::from_secs(5)
@@ -473,7 +473,7 @@ mod tests {
     async fn honorer_retry_suggere_est_bornee_au_plafond_de_repli() {
         let (_tx, rx) = watch::channel(Some(999_999u64));
         let debut = tokio::time::Instant::now();
-        honorer_retry_suggere(&rx).await;
+        honour_suggested_retry(&rx).await;
         assert_eq!(
             tokio::time::Instant::now() - debut,
             std::time::Duration::from_millis(crate::plateforme::repli::REPLI_MAX_MS),

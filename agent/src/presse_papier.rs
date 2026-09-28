@@ -22,7 +22,7 @@
 //! August 21st, 2026. The rule it stated still holds, but differently:
 //!
 //! - **it still does not write itself** — the Win32 call lives in
-//!   `presse_papier/win32.rs`, gated, and `ecrire_la_plateforme` is only
+//!   `presse_papier/win32.rs`, gated, and `write_platform` is only
 //!   the platform switch, twin of `Sondeur::lire_la_plateforme`;
 //! - **guards no. 1 and no. 2 are here**, both set by
 //!   `Sondeur::apres_notre_ecriture` on OUR OWN write. No. 3 lives
@@ -46,7 +46,7 @@ use std::time::Duration;
 /// we agree to push to the browser.
 ///
 /// ⚠️ **NOT CALIBRATED.** It joins `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS` and `TAILLE_MAX_SORTIE`: no judgement
+/// `PART_DORMANTE_BPS`, `HYSTERESIS` and `MAX_OUTPUT_SIZE`: no judgement
 /// in use has been made on its value. 64 KiB holds an ordinary text
 /// document and refuses a clipboard loaded with a whole file.
 ///
@@ -117,7 +117,7 @@ pub fn actif() -> bool {
 /// The specification prescribed disarming no. 1 and expecting a count that
 /// "grows without bound"; **it stays at one, and the spec had foreseen this case**.
 /// Without no. 2 armed, the `Sondeur` rereads our text, announces it **once**,
-/// then itself sets `dernier_emis` and `reference` — at the next turn
+/// then itself sets `last_emitted` and `reference` — at the next turn
 /// `observer` exits on its first line. And nothing restarts it: the client
 /// only emits towards the agent on a `paste`, hence on a HUMAN GESTURE, never on
 /// receiving a `clipboard`. Disarming no. 1 alone would therefore return **zero
@@ -240,8 +240,8 @@ pub fn borner_entrant(texte: &str) -> Option<String> {
 /// ⚠️ **The text must arrive ALREADY denormalised** (`\r\n`): this function
 /// decides nothing, it passes through.
 #[cfg(windows)]
-pub fn ecrire_la_plateforme(texte: &str) -> anyhow::Result<u32> {
-    win32::ecrire_texte(texte)
+pub fn write_platform(texte: &str) -> anyhow::Result<u32> {
+    win32::write_text(texte)
 }
 
 /// Non-Windows fallback. **An `Err`, never an `Ok`**: returning `Ok(0)` would suggest
@@ -249,7 +249,7 @@ pub fn ecrire_la_plateforme(texte: &str) -> anyhow::Result<u32> {
 /// unchanged clipboard — that is, would paste the PREVIOUS content, the
 /// silent failure mode D6 exists entirely to avoid.
 #[cfg(not(windows))]
-pub fn ecrire_la_plateforme(_texte: &str) -> anyhow::Result<u32> {
+pub fn write_platform(_texte: &str) -> anyhow::Result<u32> {
     anyhow::bail!("le presse-papier de la VM n'existe pas hors de Windows")
 }
 

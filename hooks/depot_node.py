@@ -55,7 +55,7 @@ import pathlib
 import shutil
 import subprocess
 
-from depot_arbre import copier_arbre, rendre_lisible_par_tous
+from depot_arbre import copier_arbre, make_world_readable
 
 # The three executables expected under `<prefix>/bin`, and the only global
 # package that travels. Stated here rather than guessed by enumeration: an
@@ -117,11 +117,11 @@ def deposer_node(prefixe: pathlib.Path, destination: pathlib.Path) -> None:
     """Copies the runtime from `prefixe` to `destination` (the target PREFIX,
     not its `bin/`), and makes it readable by all.
 
-    `rendre_lisible_par_tous` is essential, not cosmetic:
+    `make_world_readable` is essential, not cosmetic:
     `DynamicUser=yes` runs the service under an ephemeral UID that
     belongs to no group shared with the files dropped by root —
     that is the real bug of batch 10A, already paid for on `/opt/nivuus/desk` (see
-    `depot_arbre.py::rendre_lisible_par_tous`). A `bin/node` as `rwxr-x---`
+    `depot_arbre.py::make_world_readable`). A `bin/node` as `rwxr-x---`
     would give an `ExecStart` that fails before the first line of
     JavaScript.
     """
@@ -139,4 +139,4 @@ def deposer_node(prefixe: pathlib.Path, destination: pathlib.Path) -> None:
         else:
             shutil.copy2(source, cible)
     copier_arbre(prefixe / PAQUET_GLOBAL, destination / PAQUET_GLOBAL)
-    rendre_lisible_par_tous(destination)
+    make_world_readable(destination)

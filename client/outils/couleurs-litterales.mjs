@@ -157,9 +157,9 @@ function occurrences(texte, extension) {
     // Les mots-clés : côté valeur d'une déclaration, et jamais dans un `.ts`.
     if (extension !== '.ts') {
         for (const d of propre.matchAll(DECLARATION)) {
-            const valeur = d[1];
-            const debutValeur = d.index + d[0].length - valeur.length;
-            for (const m of valeur.matchAll(MOTS_CLES)) {
+            const value = d[1];
+            const debutValeur = d.index + d[0].length - value.length;
+            for (const m of value.matchAll(MOTS_CLES)) {
                 trouvees.push({
                     ligne: ligneDe(propre, debutValeur + m.index),
                     motif: m[0],

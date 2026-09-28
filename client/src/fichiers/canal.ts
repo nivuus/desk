@@ -1,5 +1,5 @@
 // The file bridge's data channel: a DEDICATED `RTCPeerConnection`, WITHOUT
-// MEDIA, carrying a single data channel `fichiers`.
+// MEDIA, carrying a single data channel `files`.
 //
 // 🔴 WHY A SEPARATE CONNECTION (decision D4 of F1's plan). The framing
 // promises that "a failure of the file channel never touches the video stream".
@@ -70,7 +70,7 @@ export interface OptionsCanal {
     traiter(octets: ArrayBuffer): Promise<ArrayBuffer | null>;
 }
 
-export interface CanalFichiers {
+export interface FilesChannel {
     pc: RTCPeerConnection;
     canal: RTCDataChannel;
     close(): void;
@@ -81,7 +81,7 @@ export function sessionDuPont(): string {
     return composer(lirePrefixe(), NOM_SESSION_DU_PONT);
 }
 
-export async function connecterCanalFichiers(options: OptionsCanal): Promise<CanalFichiers> {
+export async function connectFilesChannel(options: OptionsCanal): Promise<FilesChannel> {
     const statut = options.onStatus ?? (() => {});
 
     const socket = new WebSocket(options.signalingUrl);
@@ -128,8 +128,8 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
     canal.addEventListener('open', () => statut('canal fichiers ouvert'));
     canal.addEventListener('close', () => statut('canal fichiers fermé'));
     canal.addEventListener('message', (evenement) => {
-        const donnees: unknown = evenement.data;
-        if (!(donnees instanceof ArrayBuffer)) {
+        const data: unknown = evenement.data;
+        if (!(data instanceof ArrayBuffer)) {
             // The bridge only emits binary. A string here is not a frame.
             console.warn('trame fichiers non binaire, ignorée');
             return;
@@ -147,7 +147,7 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
         // ════════════════════════════════════════════════════════════════
         let correlation: number | undefined;
         try {
-            correlation = decoder(donnees).correlation;
+            correlation = decoder(data).correlation;
         } catch {
             correlation = undefined;
         }
@@ -162,7 +162,7 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
          * ⚠️ **WHAT THIS DOES NOT DO: THE WALL DOES NOT MOVE.** A listing of
          * more than ~3,150 entries **still fails**; it only fails
          * **fast and saying so**. Splitting an enumeration into several
-         * frames remains an increment of `FICHIERS_VERSION`, and it leaves
+         * frames remains an increment of `FILES_VERSION`, and it leaves
          * sub-project ③ **without a recipient**.
          */
         const denoncer = (raison: string, e: unknown) => {
@@ -180,13 +180,13 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
             }
         };
         void options
-            .traiter(donnees)
+            .traiter(data)
             .then(async (reponse) => {
                 if (reponse === null) return;
                 // 🔴 **BACKPRESSURE COMES BEFORE SENDING, AND AFTER IT WE
                 // CHECK THE STATE AGAIN.** The wait can last, and the channel may
                 // have closed meanwhile: `send` on a closed channel THROWS.
-                await frein.avantEnvoi();
+                await frein.beforeSend();
                 if (canal.readyState !== 'open') {
                     denoncer('canal ferme pendant l attente', undefined);
                     return;

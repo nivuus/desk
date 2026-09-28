@@ -38,7 +38,7 @@
 //! [`crate::control`], applied to headers.
 //!
 //! ⚠️ **The split is the SAME on both sides**: the frame in
-//! `fichiers.{rs,ts}`, the headers in `fichiers/entetes.rs` and
+//! `files.{rs,ts}`, the headers in `fichiers/entetes.rs` and
 //! `fichiers-entetes.ts`. A split asymmetry would make the pairing harder
 //! to reread than to write.
 
@@ -58,7 +58,8 @@ pub struct Chemin {
 pub struct Lire {
     pub chemin: String,
     pub position: u64,
-    pub longueur: u32,
+    #[serde(rename = "longueur")]
+    pub length: u32,
 }
 
 /// A directory entry, in the `TYPE_ENTREES` answer.
@@ -66,11 +67,13 @@ pub struct Lire {
 pub struct EntreeJson {
     pub nom: String,
     pub repertoire: bool,
-    pub taille: u64,
+    #[serde(rename = "taille")]
+    pub size: u64,
     /// `File.lastModified`: milliseconds since the Unix epoch, **signed** —
     /// a file older than 1970 yields a negative one, and refusing it would make
     /// an enumeration fail over a date.
-    pub modifie: i64,
+    #[serde(rename = "modifie")]
+    pub modified: i64,
 }
 
 /// The header of `TYPE_ENTREES`. **Empty** binary payload.
@@ -97,58 +100,63 @@ pub struct Meta {
     ///
     /// ⚠️ **REQUIRED FIELD, without `#[serde(default)]`** — the doctrine of this module
     /// carries none. A peer older than F3 therefore cannot produce it:
-    /// it is a break, and `FICHIERS_VERSION` **stays 1** because both
+    /// it is a break, and `FILES_VERSION` **stays 1** because both
     /// ends of this bridge are always deployed together (a single `agent.exe`,
     /// a single shell page). *Saying so rather than suggesting a
     /// compatible addition.*
     pub nom: String,
     pub repertoire: bool,
-    pub taille: u64,
-    pub modifie: i64,
+    #[serde(rename = "taille")]
+    pub size: u64,
+    #[serde(rename = "modifie")]
+    pub modified: i64,
 }
 
-/// The header of `TYPE_DONNEES`. **The payload carries the bytes**, never encoded.
+/// The header of `TYPE_DATA`. **The payload carries the bytes**, never encoded.
 ///
-/// `longueur` is redundant with the payload size, **and that is
+/// `length` is redundant with the payload size, **and that is
 /// deliberate**: the decoder can thus refuse a frame whose header and
 /// payload contradict each other, rather than writing into the ProjFS buffer a
 /// quantity of bytes the sender did not believe it was sending.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Donnees {
+pub struct Data {
     pub position: u64,
-    pub longueur: u32,
+    #[serde(rename = "longueur")]
+    pub length: u32,
 }
 
-/// The header of `TYPE_ECRIRE`. **The payload carries the bytes**, never encoded.
+/// The header of `TYPE_WRITE`. **The payload carries the bytes**, never encoded.
 ///
-/// ⚠️ **`premier` and `dernier` are NOT deducible from `position` and
-/// `longueur`.** A single-chunk file carries both at `true`;
+/// ⚠️ **`premier` and `last` are NOT deducible from `position` and
+/// `length`.** A single-chunk file carries both at `true`;
 /// a file of ZERO size has no chunk at all and goes through
-/// [`Creer`]. Above all, `position == 0` is not enough to say "first" the day
+/// [`Create`]. Above all, `position == 0` is not enough to say "first" the day
 /// a partial write exists: it is the flag that decides, and it
 /// alone, because it is what commands opening the stream **without**
 /// `keepExistingData`.
 ///
-/// 🔵 **`dernier` IS THE COMMIT.** The browser's `createWritable()` writes
+/// 🔵 **`last` IS THE COMMIT.** The browser's `createWritable()` writes
 /// into a swap file and commits only on `close()`: it is the
-/// `dernier` chunk that triggers that `close()`, and hence the only instant the
+/// `last` chunk that triggers that `close()`, and hence the only instant the
 /// local machine's file changes. A push interrupted before it leaves the local
 /// file **unchanged** — not half written. ⚠️ *Inference from the specification
 /// of the File System Access API, not measured by this sub-block.*
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Ecrire {
+pub struct Write {
     pub chemin: String,
     pub position: u64,
-    pub longueur: u32,
+    #[serde(rename = "longueur")]
+    pub length: u32,
     /// Premier morceau : le flux s'ouvre **sans** `keepExistingData`.
     pub premier: bool,
     /// Last chunk: the stream closes, and **that is the commit**.
-    pub dernier: bool,
+    #[serde(rename = "dernier")]
+    pub last: bool,
 }
 
-/// The header of `TYPE_CREER`. **Empty** binary payload.
+/// The header of `TYPE_CREATE`. **Empty** binary payload.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Creer {
+pub struct Create {
     pub chemin: String,
     pub repertoire: bool,
 }
@@ -184,7 +192,7 @@ pub struct Renommer {
     pub repertoire: bool,
 }
 
-/// The header of `TYPE_SUPPRIMER`. **Empty** binary payload.
+/// The header of `TYPE_DELETE`. **Empty** binary payload.
 ///
 /// ⚠️ **Deletion is NOT recursive on the browser side**, against the letter
 /// of spec §3.5 (`dir.removeEntry(nom, { recursive })`). A gesture in the VM
@@ -193,7 +201,7 @@ pub struct Renommer {
 /// then climbs up as [`super::CodeEchec::RepertoireNonVide`], which thereby
 /// becomes **diagnostic** instead of being a code never produced.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Supprimer {
+pub struct Delete {
     pub chemin: String,
     pub repertoire: bool,
 }
@@ -216,7 +224,7 @@ pub struct Due {
 ///
 /// ⚠️ **It is an ANNOUNCEMENT: it awaits no answer**, and the browser must
 /// send nothing back. See the comment on `TYPE_DUES` in
-/// [`crate::fichiers`].
+/// [`crate::files`].
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Dues {
     pub dues: Vec<Due>,
@@ -238,7 +246,7 @@ pub struct Dues {
     ///    completed." Setting one here would make the first, and a doctrine that
     ///    tolerates an exception is no longer one;
     /// 3. **F3 settled the same trade-off in the same direction** for
-    ///    `Meta::nom`: accepted break, `FICHIERS_VERSION` **stays 1**, because
+    ///    `Meta::nom`: accepted break, `FILES_VERSION` **stays 1**, because
     ///    both ends of this bridge are always deployed together — a
     ///    single `agent.exe`, a single shell page.
     ///
@@ -254,7 +262,7 @@ pub struct Dues {
 ///
 /// ⚠️ **It is an ANNOUNCEMENT, and it goes UPSTREAM**: from the browser to the bridge, without
 /// the bridge having asked for it, and **its correlation is ignored**. See the
-/// comment on the fourth family in [`crate::fichiers`], which says
+/// comment on the fourth family in [`crate::files`], which says
 /// why it must be routed before any correlation resolution.
 ///
 /// It carries what only the browser knows: **the name of the root the

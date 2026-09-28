@@ -111,14 +111,14 @@ def appeler(root, hw=None, answers=None, facts=None, env=None,
 def lire_env(racine):
     """Parse `etc/nivuus/desk.env` (KEY=VALUE, une ligne par variable)."""
     chemin = pathlib.Path(racine) / "etc" / "nivuus" / "desk.env"
-    valeurs = {}
+    values = {}
     for ligne in chemin.read_text(encoding="utf-8").splitlines():
         ligne = ligne.strip()
         if not ligne or ligne.startswith("#") or "=" not in ligne:
             continue
-        cle, _, valeur = ligne.partition("=")
-        valeurs[cle] = valeur
-    return valeurs, chemin
+        cle, _, value = ligne.partition("=")
+        values[cle] = value
+    return values, chemin
 
 
 def poser_source_minimale(racine: pathlib.Path) -> None:

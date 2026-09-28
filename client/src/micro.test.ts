@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { attacherBoutonMicro, attacherMicro, type EtatMicro } from './micro';
-import { erreurDom, faussePiste, fauxBouton, fauxFlux, fauxSender } from './micro.fixtures';
+import { domError, faussePiste, fauxBouton, fauxFlux, fauxSender } from './micro.fixtures';
 describe('attacherMicro — la bascule et ses quatre états', () => {
     it('au départ, le sender n’a pas de piste et l’état est « fermé »', () => {
         const sender = fauxSender();
@@ -72,7 +72,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         const micro = attacherMicro({
             sender,
             demanderFlux: async () => {
-                throw erreurDom('NotAllowedError');
+                throw domError('NotAllowedError');
             },
             surEtat: (etat, detail) => etats.push([etat, detail]),
         });
@@ -95,7 +95,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         const micro = attacherMicro({
             sender,
             demanderFlux: async () => {
-                throw erreurDom('NotFoundError');
+                throw domError('NotFoundError');
             },
         });
 
@@ -192,7 +192,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         const demanderFlux = vi.fn(async () => {
             if (premierAppel) {
                 premierAppel = false;
-                throw erreurDom('NotAllowedError');
+                throw domError('NotAllowedError');
             }
             return fauxFlux(piste);
         });
@@ -271,7 +271,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
             bouton,
             sender: fauxSender(),
             demanderFlux: async () => {
-                throw erreurDom(nom);
+                throw domError(nom);
             },
         });
         controle.annoncerDisponibilite(true);
@@ -288,7 +288,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
             bouton: autre,
             sender: fauxSender(),
             demanderFlux: async () => {
-                throw erreurDom(nom);
+                throw domError(nom);
             },
         });
         second.annoncerDisponibilite(true);
@@ -307,7 +307,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
             bouton,
             sender: fauxSender(),
             demanderFlux: async () => {
-                throw erreurDom('NotAllowedError');
+                throw domError('NotAllowedError');
             },
             surMessage: (texte) => messages.push(texte),
         });
@@ -340,6 +340,6 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
         // relancerait une demande de permission sur une session morte.
         expect(piste.arretee).toBe(true);
         expect(bouton.hidden).toBe(true);
-        expect(bouton.nombreEcouteurs()).toBe(0);
+        expect(bouton.listenerCount()).toBe(0);
     });
 });

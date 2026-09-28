@@ -53,7 +53,7 @@ pub struct DesktopCapture {
     duplication: Option<IDXGIOutputDuplication>,
     /// Last access-loss HRESULT, read by `duplication()` if the field
     /// above is `None`.
-    dernier_code_perdu: i32,
+    last_lost_code: i32,
     /// What must be reopened after an access loss. Kept at opening:
     /// at the moment access is lost, the topology has already changed and nothing
     /// in the DXGI objects still held says what we were capturing.
@@ -125,7 +125,7 @@ impl DesktopCapture {
     /// for temporary unavailability is retried. **An ARGUMENT and not the
     /// constant read on the spot, because the right to block is decided by
     /// the caller** — `ouvrir` does not only run at a child's start-up. See
-    /// `ouverture::dupliquer_avec_reprise` for the complete trade-off.
+    /// `ouverture::duplicate_with_retry` for the complete trade-off.
     fn ouvrir(cible: CibleCapture, fenetre_ouverture: std::time::Duration) -> Result<Self> {
         let factory: IDXGIFactory1 =
             unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
@@ -138,10 +138,10 @@ impl DesktopCapture {
         // (`CibleCapture::Sortie`), it is that one that is opened as is.
         let (adapter, output) = ouvrir_sortie(&factory, &cible)?;
 
-        let (device, context) = creer_peripherique(&adapter)?;
+        let (device, context) = create_device_and_context(&adapter)?;
 
         let (duplication, desktop_width, desktop_height) =
-            dupliquer_avec_reprise(&device, &output, &cible, fenetre_ouverture)?;
+            duplicate_with_retry(&device, &output, &cible, fenetre_ouverture)?;
         tracing::info!(
             desktop_width,
             desktop_height,
@@ -152,9 +152,9 @@ impl DesktopCapture {
             device,
             context,
             duplication: Some(duplication),
-            dernier_code_perdu: 0,
+            last_lost_code: 0,
             cible,
-            fenetre: crate::capture_reprise::FenetreDeReprise::nouvelle(),
+            fenetre: crate::capture_reprise::FenetreDeReprise::new(),
             desktop_width,
             desktop_height,
             target: None,
@@ -213,7 +213,7 @@ impl DesktopCapture {
 
     /// The current duplication, or the last lost HRESULT if absent — see `types::lire`.
     fn duplication(&self) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
-        types::lire(&self.duplication, self.dernier_code_perdu)
+        types::lire(&self.duplication, self.last_lost_code)
     }
 
     /// Plugs in the step marker shared with the watchdog thread.
@@ -276,7 +276,7 @@ impl DesktopCapture {
                             hresult = format!("{code_perdu:#010x}"),
                             "accès à la duplication perdu, réouverture"
                         );
-                        if let Err(erreur) = self.rouvrir() {
+                        if let Err(error) = self.rouvrir() {
                             // A reopening failure is NOT definitive: the
                             // output may not yet have reappeared in the
                             // topology. We say so and let the window
@@ -286,7 +286,7 @@ impl DesktopCapture {
                             // call found `self.duplication` as `None` and
                             // broke the window down despite this text.
                             tracing::info!(
-                                erreur = %crate::cause::chaine(&erreur),
+                                error = %crate::cause::chain(&error),
                                 cible = ?self.cible,
                                 "réouverture de la duplication échouée, la fenêtre de reprise court toujours"
                             );
@@ -344,7 +344,7 @@ impl DesktopCapture {
             // carries the precedent of a Windows label that got a
             // refusal attributed to the wrong call for a whole work stream.
             if crate::capture_reprise::est_acces_perdu(e.code().0) {
-                self.dernier_code_perdu = e.code().0;
+                self.last_lost_code = e.code().0;
                 return Err(EchecAcquisition::AccesPerdu(e.code().0));
             }
             return Err(EchecAcquisition::Panne(anyhow!(
@@ -437,12 +437,12 @@ pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 // task 3 of sub-block D2 to bring this file back under the 500-line
 // cap (`CLAUDE.md`) after adding `EchecAcquisition` and the resumption
 // in `next_frame` — see the header of `capture/ouverture.rs`.
-// `creer_peripherique` and `dupliquer_avec_reprise` joined them in
+// `create_device_and_context` and `duplicate_with_retry` joined them in
 // task 11 bis, the second carrying the opening retry and the first having
 // moved down only to give the parent file back the margin that retry
 // took from it.
 pub mod ouverture;
-use ouverture::{creer_peripherique, dupliquer, dupliquer_avec_reprise, ouvrir_sortie};
+use ouverture::{create_device_and_context, duplicate_with_retry, dupliquer, ouvrir_sortie};
 
 // `EchecAcquisition`, `CibleCapture` and the `lire` helper live in this child
 // module, extracted in task 6 quater of sub-block D2 — see the header of

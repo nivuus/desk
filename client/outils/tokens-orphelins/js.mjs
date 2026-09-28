@@ -6,7 +6,7 @@
 // façon d'« employer » un token : un `var(--…)` dans du CSS (ou dans un
 // `<style>` en ligne d'une surface HTML). Mais `accent-dom.ts` pose
 // `--accent-fenetre` par `acces.poserToken(TOKEN_ACCENT, …)`, qui appelle
-// `document.documentElement.style.setProperty(nom, valeur)` — AUCUN `var()`
+// `document.documentElement.style.setProperty(nom, value)` — AUCUN `var()`
 // n'apparaît nulle part dans ce chemin. Un token DÉCLARÉ, posé à l'exécution,
 // et référencé par AUCUN `var()`, était donc un ORPHELIN au sens de l'ancien
 // contrôle, alors qu'il ne l'était pas : le commentaire d'`accent-dom.ts`
@@ -38,7 +38,7 @@
 // 🔴 LE PÉRIMÈTRE EST `client/src/**/*.ts`, **MOINS TOUT `*.test.ts`**, ET
 // C'EST LE PIÈGE NOMMÉ PAR LE BRIEF DE LA TÂCHE : `accent-dom.test.ts` pose
 // SA PROPRE fausse implémentation de `poserToken` pour espionner les appels
-// (`poserToken: (nom, valeur) => { … }`, une DÉFINITION de propriété
+// (`poserToken: (nom, value) => { … }`, une DÉFINITION de propriété
 // d'objet, jamais un APPEL — elle ne matche donc déjà pas ①, `poserToken(`
 // exigeant une PARENTHÈSE immédiatement après le nom, là où le test écrit
 // `poserToken:`). Mais un futur test pourrait très bien écrire
@@ -87,16 +87,16 @@ const RE_APPEL = /\bposerToken\(\s*(?:['"](--[\w-]+)['"]|([A-Za-z_$][\w$]*))/g;
  * jour où un second module importerait la constante d'un premier.
  */
 export function tokensPosesParLeJs(racine) {
-    const fichiers = fichiersTs(join(racine, 'client/src'));
+    const files = fichiersTs(join(racine, 'client/src'));
 
     const constantes = new Map();
-    for (const chemin of fichiers) {
+    for (const chemin of files) {
         const texte = readFileSync(chemin, 'utf8');
         for (const m of texte.matchAll(RE_CONSTANTE)) constantes.set(m[1], m[2]);
     }
 
     const poses = new Map();
-    for (const chemin of fichiers) {
+    for (const chemin of files) {
         const relatif = relative(racine, chemin).split('\\').join('/');
         const texte = readFileSync(chemin, 'utf8');
         for (const m of texte.matchAll(RE_APPEL)) {

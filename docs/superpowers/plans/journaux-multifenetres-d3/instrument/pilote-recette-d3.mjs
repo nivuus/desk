@@ -405,7 +405,7 @@ Write-Output $texte
         log(`   fin de la fenêtre de polling (abandon vu=${abandonVu}) : ${tCondamnationClose}`);
 
         log('SYNTHÈSE ' + JSON.stringify({
-            avant: avantCondamnation,
+            before: avantCondamnation,
             apres: apresCondamnation,
             delta_reouverture: apresCondamnation.reouverture - avantCondamnation.reouverture,
             delta_cloture: apresCondamnation.cloture - avantCondamnation.cloture,

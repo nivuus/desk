@@ -115,7 +115,7 @@ impl Session {
                     tracing::debug!(type_message, "message de contrôle écrit");
                 }
                 Err(e) => {
-                    tracing::warn!(erreur = %e, "échec d'écriture sur le canal de contrôle");
+                    tracing::warn!(error = %e, "échec d'écriture sur le canal de contrôle");
                 }
             }
         }

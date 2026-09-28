@@ -20,8 +20,8 @@ use std::cell::Cell;
 /// RED if `apres_notre_ecriture` does not set `reference`: `observer` reads,
 /// and the test blows up.
 #[test]
-fn apres_notre_ecriture_le_tour_suivant_n_ouvre_pas_le_presse_papier() {
-    let mut sondeur = Sondeur::nouveau();
+fn after_our_write_the_next_round_does_not_open_the_clipboard() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(
@@ -41,8 +41,8 @@ fn apres_notre_ecriture_le_tour_suivant_n_ouvre_pas_le_presse_papier() {
 /// moved, `observer` reads, finds our own text, and sends it back to the
 /// browser — a round trip for nothing.
 #[test]
-fn apres_notre_ecriture_un_compteur_qui_a_bouge_ne_renvoie_pas_notre_texte() {
-    let mut sondeur = Sondeur::nouveau();
+fn after_our_write_a_counter_that_moved_does_not_send_back_our_text() {
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(sondeur.observer(8, || Some(String::from("colle"))), None);
@@ -55,7 +55,7 @@ fn apres_notre_ecriture_un_compteur_qui_a_bouge_ne_renvoie_pas_notre_texte() {
 /// Without this test, a too-wide guard would pass the two previous ones.
 #[test]
 fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(
@@ -72,7 +72,7 @@ fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
 /// RED if the raw text is memorised.
 #[test]
 fn apres_notre_ecriture_memorise_le_texte_normalise() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     // What we HANDED to Windows carries `\r\n`s (it is `denormaliser` that
     // puts them there); what we reread will therefore carry them too.
@@ -152,7 +152,7 @@ fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
 /// The observable is twofold, and both halves count:
 /// - the read closure **is called** ⟹ `reference` was not set,
 ///   so guard no. 1 is indeed disarmed;
-/// - `observer` returns **`Some`** ⟹ `dernier_emis` was not set either,
+/// - `observer` returns **`Some`** ⟹ `last_emitted` was not set either,
 ///   so guard no. 2 is disarmed too.
 ///
 /// RED if `armer` only disarms `reference`: the read would happen,
@@ -160,7 +160,7 @@ fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
 /// at ZERO — criterion ④'s red would be vacuous a second time.
 #[test]
 fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.armer(false, 7, "colle");
 
@@ -188,11 +188,11 @@ fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
 /// RED if `apres_notre_ecriture` stopped delegating to `armer`.
 #[test]
 fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
-    let mut par_defaut = Sondeur::nouveau();
+    let mut par_defaut = Sondeur::new();
     amorce(&mut par_defaut);
     par_defaut.apres_notre_ecriture(7, "colle");
 
-    let mut explicite = Sondeur::nouveau();
+    let mut explicite = Sondeur::new();
     amorce(&mut explicite);
     explicite.armer(true, 7, "colle");
 
@@ -229,7 +229,7 @@ fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
 /// `Some(Texte("textB"))` where the third must return `None`.
 #[test]
 fn une_ecriture_notre_survenue_apres_l_armement_n_est_pas_annoncee() {
-    let mut s = Sondeur::nouveau();
+    let mut s = Sondeur::new();
     // The wheel turn armed on the first write (window A).
     s.armer(true, 10, "textA");
     // Window B pastes: the clipboard carries `textB`, the counter has
@@ -249,8 +249,8 @@ fn une_ecriture_notre_survenue_apres_l_armement_n_est_pas_annoncee() {
 /// third-party copy occurring after our write also carries a later
 /// `seq`, and the number alone does not tell them apart.
 #[test]
-fn une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee() {
-    let mut s = Sondeur::nouveau();
+fn a_third_party_copy_after_arming_is_always_announced() {
+    let mut s = Sondeur::new();
     s.armer(true, 10, "textA");
     // We wrote `textB` (seq 11), THEN a third-party application copied
     // `textC`: it is `textC` the clipboard carries, and it must go out.
@@ -265,8 +265,8 @@ fn une_copie_tierce_survenue_apres_l_armement_est_toujours_annoncee() {
 /// compare: the user would lose the banner telling them why nothing
 /// arrived.
 #[test]
-fn le_filtre_ne_touche_pas_un_refus_de_taille() {
-    let mut s = Sondeur::nouveau();
+fn the_filter_does_not_touch_a_size_refusal() {
+    let mut s = Sondeur::new();
     let refus = Some(Annonce::Refus { octets: 99_999 });
     assert_eq!(
         s.ecarter(true, Some((11, String::from("textB"))), refus.clone()),
@@ -280,7 +280,7 @@ fn le_filtre_ne_touche_pas_un_refus_de_taille() {
 /// take that bit anyway would empty it of its meaning.
 #[test]
 fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
-    let mut s = Sondeur::nouveau();
+    let mut s = Sondeur::new();
     s.armer(true, 10, "textA");
     let annonce = s.observer(11, || Some(String::from("textB")));
     assert_eq!(
@@ -293,7 +293,7 @@ fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
 /// arms nothing: RED if it set `reference` on an invented `seq`.
 #[test]
 fn sans_notre_ecriture_la_seconde_prise_ne_touche_a_rien() {
-    let mut s = Sondeur::nouveau();
+    let mut s = Sondeur::new();
     amorce(&mut s);
     let annonce = s.observer(2, || Some(String::from("copie-tierce")));
     assert_eq!(

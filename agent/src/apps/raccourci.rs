@@ -65,8 +65,8 @@ const EXTENSIONS_RETENUES: &[&str] = &["exe"];
 /// The extension of the last component of a Windows path, folded to
 /// lowercase. Empty if the file name carries none.
 fn extension_de(chemin: &str) -> String {
-    let fichier = chemin.rsplit(['\\', '/']).next().unwrap_or(chemin);
-    match fichier.rsplit_once('.') {
+    let file = chemin.rsplit(['\\', '/']).next().unwrap_or(chemin);
+    match file.rsplit_once('.') {
         Some((_, ext)) => ext.to_lowercase(),
         None => String::new(),
     }
@@ -104,11 +104,11 @@ pub fn retenir(brut: &Brut, existe: &dyn Fn(&str) -> bool) -> Result<(), Ecart> 
 /// but a precaution, and it is written so that nobody believes it measured
 /// necessary.
 pub fn normaliser_chemin(chemin: &str) -> String {
-    let taille = chemin.trim().to_lowercase();
-    if taille.len() > 3 && taille.ends_with('\\') {
-        taille.trim_end_matches('\\').to_string()
+    let size = chemin.trim().to_lowercase();
+    if size.len() > 3 && size.ends_with('\\') {
+        size.trim_end_matches('\\').to_string()
     } else {
-        taille
+        size
     }
 }
 

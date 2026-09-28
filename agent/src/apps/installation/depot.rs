@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn le_chemin_nominal_se_compose_et_dit_ce_qu_on_fera_du_fichier() {
+    fn the_nominal_path_is_composed_and_says_what_will_be_done_with_the_file() {
         let attendu = r"C:\ProgramData\Guacamole\installeurs\a1-b2_c3\VB_Setup.exe";
         assert_eq!(
             chemin(RACINE, "a1-b2_c3", "VB_Setup.exe"),
@@ -314,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn l_identifiant_est_juge_lui_aussi_sur_une_liste_d_autorisation() {
+    fn the_identifier_is_also_judged_against_an_allow_list() {
         // An accent is legitimate in a NAME and refused in an IDENTIFIER:
         // it is the asymmetry of the two lists, and it is intended.
         for (id, motif) in [
@@ -337,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn les_autres_refus_de_nom_portent_chacun_le_leur() {
+    fn the_other_name_refusals_each_carry_their_own() {
         let trop = "a".repeat(NOM_MAX_OCTETS + 1);
         for (nom, motif) in [
             ("CON.exe", RefusNom::Reserve("con".into())),

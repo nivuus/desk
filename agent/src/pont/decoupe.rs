@@ -25,10 +25,10 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Morceau {
     pub position: u64,
-    pub longueur: u32,
+    pub length: u32,
 }
 
-/// Splits `[position, position + longueur)` into chunks of at most `max`
+/// Splits `[position, position + length)` into chunks of at most `max`
 /// bytes, contiguous and increasing.
 ///
 /// A zero length produces **no** chunk: an empty chunk
@@ -40,7 +40,7 @@ pub struct Morceau {
 /// If `max` is 0 — a split into zero-byte chunks does not terminate.
 /// It is a programming error of the caller, not a runtime case:
 /// `max` is a constant of the bridge, never a value received from the network.
-pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
+pub fn decouper(position: u64, length: u64, max: usize) -> Vec<Morceau> {
     assert!(
         max > 0,
         "une découpe en morceaux de zéro octet ne se termine pas"
@@ -50,7 +50,7 @@ pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
     // than `u32`.
     let max = max.min(u32::MAX as usize) as u64;
     let mut morceaux = Vec::new();
-    let mut reste = longueur;
+    let mut reste = length;
     let mut curseur = position;
     while reste > 0 {
         let prise = reste.min(max);
@@ -58,7 +58,7 @@ pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
             position: curseur,
             // `prise <= max <= u32::MAX`: the conversion cannot overflow,
             // and it is the `min` above that guarantees it, not a hope.
-            longueur: prise as u32,
+            length: prise as u32,
         });
         curseur += prise;
         reste -= prise;

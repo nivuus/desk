@@ -89,7 +89,7 @@ pub struct MutexNomme {
 //    is not the case of `LoopbackCapture`, whose `unsafe impl Send` must
 //    rely on an apartment check at opening: here there is
 //    no apartment involved.
-// 2. **Nothing is OWNED at the time of the transfer.** `creer` passes
+// 2. **Nothing is OWNED at the time of the transfer.** `create` passes
 //    `bInitialOwner = false`: acquisition is lazy, at the first deposit,
 //    hence on the transport thread — the very one that will call `tenter`
 //    afterwards. Ownership of a Windows mutex is per thread; what crosses the
@@ -110,8 +110,8 @@ unsafe impl Send for MutexNomme {}
 impl MutexNomme {
     /// Creates (or opens) the mutex. **Acquires nothing**: acquisition is
     /// lazy, at the first deposit.
-    pub fn creer() -> Result<Self> {
-        match Self::creer_dans("Global\\") {
+    pub fn create() -> Result<Self> {
+        match Self::create_in("Global\\") {
             Ok((handle, espace)) => Ok(Self {
                 handle,
                 espace,
@@ -119,12 +119,12 @@ impl MutexNomme {
             }),
             Err(e) if e == ERROR_ACCESS_DENIED.into() => {
                 tracing::warn!(
-                    erreur = %e,
+                    error = %e,
                     "micro : espace de nommage Global refuse (SeCreateGlobalPrivilege absent), \
                      REPLI sur Local. L'exclusivite du cable ne vaut plus que pour CETTE session \
                      Windows"
                 );
-                let (handle, espace) = Self::creer_dans("Local\\")
+                let (handle, espace) = Self::create_in("Local\\")
                     .context("creation du mutex du cable, y compris dans l'espace Local")?;
                 Ok(Self {
                     handle,
@@ -136,7 +136,7 @@ impl MutexNomme {
         }
     }
 
-    fn creer_dans(prefixe: &str) -> windows::core::Result<(HANDLE, &'static str)> {
+    fn create_in(prefixe: &str) -> windows::core::Result<(HANDLE, &'static str)> {
         let nom: Vec<u16> = format!("{prefixe}{NOM}")
             .encode_utf16()
             .chain(std::iter::once(0))

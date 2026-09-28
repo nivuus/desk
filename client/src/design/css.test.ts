@@ -33,14 +33,14 @@ describe('css.ts — le lecteur de feuille', () => {
         expect(
             declarationsDe(sansCommentaires(css)),
             'une déclaration FANTÔME, lue dans un commentaire, est comptée comme réelle',
-        ).toEqual([{ propriete: 'padding', valeur: 'var(--e-2)' }]);
+        ).toEqual([{ propriete: 'padding', value: 'var(--e-2)' }]);
     });
 
     it('② une déclaration s’extrait avec sa propriété et sa valeur', () => {
         const declarations = declarationsDe('.a { padding: 6px var(--e-3); border: 0 }');
         expect(declarations).toEqual([
-            { propriete: 'padding', valeur: '6px var(--e-3)' },
-            { propriete: 'border', valeur: '0' },
+            { propriete: 'padding', value: '6px var(--e-3)' },
+            { propriete: 'border', value: '0' },
         ]);
     });
 
@@ -48,7 +48,7 @@ describe('css.ts — le lecteur de feuille', () => {
         // `[^{}]*` ne franchit ni `{` ni `}` : seuls les blocs les plus
         // intérieurs rendent des déclarations.
         expect(declarationsDe('@media (min-width: 30rem) { .a { padding: var(--e-2) } }')).toEqual([
-            { propriete: 'padding', valeur: 'var(--e-2)' },
+            { propriete: 'padding', value: 'var(--e-2)' },
         ]);
     });
 

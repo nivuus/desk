@@ -10,16 +10,16 @@ import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
     DUREE_JETON_ACCES_MS,
-    LONGUEUR_SECRET_MIN,
+    MIN_SECRET_LENGTH,
     signer,
-    verifierJeton,
+    verifyToken,
 } from './jeton';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const T0 = 1_787_000_000_000;
 
-function b64(valeur: unknown): string {
-    return Buffer.from(JSON.stringify(valeur), 'utf8').toString('base64url');
+function b64(value: unknown): string {
+    return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
 }
 
 /// Forge un jeton avec l'en-tête et la charge voulus. Si `signature` est
@@ -33,14 +33,14 @@ function forger(entete: unknown, charge: unknown, signature?: string): string {
 describe('signer et verifierJeton', () => {
     it('relit le sujet d’un jeton signé', () => {
         const jeton = signer('utilisateur-42', SECRET, T0);
-        expect(verifierJeton(jeton, SECRET, T0))
+        expect(verifyToken(jeton, SECRET, T0))
             .toEqual({ ok: true, sujet: 'utilisateur-42', type: 'utilisateur' });
     });
 
     it('REFUSE alg:none, même avec une signature vide', () => {
         // La forge classique : l'attaquant met `none` et retire la signature.
         const jeton = forger({ alg: 'none', typ: 'JWT' }, { sub: 'intrus', exp: T0 + 10_000 }, '');
-        expect(verifierJeton(jeton, SECRET, T0)).toEqual({ ok: false, motif: 'algorithme' });
+        expect(verifyToken(jeton, SECRET, T0)).toEqual({ ok: false, motif: 'algorithme' });
     });
 
     it('REFUSE alg:RS256, dont la signature HS256 est pourtant VALIDE', () => {
@@ -48,14 +48,14 @@ describe('signer et verifierJeton', () => {
         // de l'`alg` peut le refuser. Un vérificateur qui ne comparerait pas
         // l'algorithme l'accepterait, et ce test est le seul à le voir.
         const jeton = forger({ alg: 'RS256', typ: 'JWT' }, { sub: 'intrus', exp: T0 + 10_000 });
-        expect(verifierJeton(jeton, SECRET, T0)).toEqual({ ok: false, motif: 'algorithme' });
+        expect(verifyToken(jeton, SECRET, T0)).toEqual({ ok: false, motif: 'algorithme' });
     });
 
     it('REFUSE une signature dont un caractère a changé', () => {
         const jeton = signer('utilisateur-42', SECRET, T0);
         const [tete, charge, signature] = jeton.split('.');
         const abimee = (signature[0] === 'A' ? 'B' : 'A') + signature.slice(1);
-        expect(verifierJeton(`${tete}.${charge}.${abimee}`, SECRET, T0))
+        expect(verifyToken(`${tete}.${charge}.${abimee}`, SECRET, T0))
             .toEqual({ ok: false, motif: 'signature' });
     });
 
@@ -65,34 +65,34 @@ describe('signer et verifierJeton', () => {
         // ROUGE du critère ② interdit.
         const duree = 60_000;
         const jeton = signer('utilisateur-42', SECRET, T0, duree);
-        expect(verifierJeton(jeton, SECRET, T0 + duree / 2)).toEqual({
+        expect(verifyToken(jeton, SECRET, T0 + duree / 2)).toEqual({
             ok: true,
             sujet: 'utilisateur-42',
             type: 'utilisateur',
         });
         // La borne est FRANCHE : `maintenant >= exp` refuse.
-        expect(verifierJeton(jeton, SECRET, T0 + duree)).toEqual({ ok: false, motif: 'expire' });
-        expect(verifierJeton(jeton, SECRET, T0 + duree + 1)).toEqual({ ok: false, motif: 'expire' });
+        expect(verifyToken(jeton, SECRET, T0 + duree)).toEqual({ ok: false, motif: 'expire' });
+        expect(verifyToken(jeton, SECRET, T0 + duree + 1)).toEqual({ ok: false, motif: 'expire' });
     });
 
     it('REFUSE une forme invalide sans jamais LEVER', () => {
         // Un `JSON.parse` qui lève ici ferait répondre 500 à l'appelant HTTP,
         // là où il doit répondre 401 — et l'écart serait à lui seul un oracle.
         const attendu = { ok: false, motif: 'forme' };
-        expect(verifierJeton('deux.segments', SECRET, T0)).toEqual(attendu);
-        expect(verifierJeton('###.###.###', SECRET, T0)).toEqual(attendu);
+        expect(verifyToken('deux.segments', SECRET, T0)).toEqual(attendu);
+        expect(verifyToken('###.###.###', SECRET, T0)).toEqual(attendu);
         // Une charge qui est un nombre, pas un objet : `JSON.parse` réussit.
-        expect(verifierJeton(forger({ alg: 'HS256', typ: 'JWT' }, 42), SECRET, T0)).toEqual(attendu);
+        expect(verifyToken(forger({ alg: 'HS256', typ: 'JWT' }, 42), SECRET, T0)).toEqual(attendu);
         // Et tout ce qui n'est même pas une chaîne.
-        expect(verifierJeton(undefined, SECRET, T0)).toEqual(attendu);
-        expect(verifierJeton(null, SECRET, T0)).toEqual(attendu);
-        expect(verifierJeton({ jeton: 'x' }, SECRET, T0)).toEqual(attendu);
+        expect(verifyToken(undefined, SECRET, T0)).toEqual(attendu);
+        expect(verifyToken(null, SECRET, T0)).toEqual(attendu);
+        expect(verifyToken({ jeton: 'x' }, SECRET, T0)).toEqual(attendu);
     });
 
     it('signer LÈVE sur un secret plus court que LONGUEUR_SECRET_MIN', () => {
         // Sans ce refus, une plateforme se déploierait avec un secret
         // devinable, et rien ne le dirait.
-        expect(LONGUEUR_SECRET_MIN).toBe(32);
+        expect(MIN_SECRET_LENGTH).toBe(32);
         expect(() => signer('u', 'trop-court', T0)).toThrow(/32/);
         expect(DUREE_JETON_ACCES_MS).toBeGreaterThan(0);
     });
@@ -102,13 +102,13 @@ describe('signer et verifierJeton', () => {
         // seule chose que P3 ajoute est la capacite de DIRE `agent`, pas celle
         // d'invalider ce qui existe.
         const jeton = signer('u1', SECRET, T0);
-        const v = verifierJeton(jeton, SECRET, T0);
+        const v = verifyToken(jeton, SECRET, T0);
         expect(v).toEqual({ ok: true, sujet: 'u1', type: 'utilisateur' });
     });
 
     it('un jeton signe avec le type « agent » se relit comme tel', () => {
         const jeton = signer('RhH1x2QmTz9kLpVbNc7dAw', SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
-        expect(verifierJeton(jeton, SECRET, T0))
+        expect(verifyToken(jeton, SECRET, T0))
             .toEqual({ ok: true, sujet: 'RhH1x2QmTz9kLpVbNc7dAw', type: 'agent' });
     });
 
@@ -137,11 +137,11 @@ describe('signer et verifierJeton', () => {
             { ...charge, sty: 'agent' },
             signatureDOrigine,
         );
-        expect(verifierJeton(promu, SECRET, T0)).toEqual({ ok: false, motif: 'signature' });
+        expect(verifyToken(promu, SECRET, T0)).toEqual({ ok: false, motif: 'signature' });
     });
 
     it('🔴 REFUSE un type de valeur INCONNUE, plutot que de le ramener a « utilisateur »', () => {
-        // 🔴 La rouge : le laisser passer, ou le ramener a `utilisateur`. Un
+        // 🔴 La rouge : le laisser passer, ou le ramener a `user`. Un
         // jeton de type inconnu deviendrait un jeton humain -- et le jour ou
         // un troisieme type existera, un service ancien l'accepterait comme
         // humain au lieu de le refuser. Le jeton est ici VALIDEMENT SIGNE :
@@ -151,6 +151,6 @@ describe('signer et verifierJeton', () => {
             exp: T0 + 10_000,
             sty: 'administrateur',
         });
-        expect(verifierJeton(jeton, SECRET, T0)).toEqual({ ok: false, motif: 'forme' });
+        expect(verifyToken(jeton, SECRET, T0)).toEqual({ ok: false, motif: 'forme' });
     });
 });

@@ -17,7 +17,7 @@ use crate::geometry::Rect;
 /// capturer queries the same monitor through ITS WINDOW
 /// (`window::zones_du_moniteur_de`), the supervisor through the output's ORIGIN
 /// — it knows the DXGI rectangle even before having put the window. Same
-/// `HMONITOR`, hence same bound, hence same `taille_pour_viewport` on both
+/// `HMONITOR`, hence same bound, hence same `size_for_viewport` on both
 /// sides: no message to exchange, and no battle at 1 Hz.
 ///
 /// ⚠️ **The supervisor does NOT bound by the duplication's texture**, unlike
@@ -34,8 +34,8 @@ pub(super) fn borne_de(sortie: &SortieDxgi) -> (u32, u32) {
             moniteur,
             Some((travail.width, travail.height)),
         ),
-        Err(erreur) => {
-            tracing::warn!(%erreur, nom = %sortie.nom_sortie, "zone de travail illisible : la sortie entière sert de borne");
+        Err(error) => {
+            tracing::warn!(%error, nom = %sortie.nom_sortie, "zone de travail illisible : la sortie entière sert de borne");
             moniteur
         }
     }
@@ -77,15 +77,15 @@ pub(super) fn suivre_le_viewport(
     // `ResizeObserver` is smoothed to 200 ms and only beats during a
     // gesture, hence a few lines per resize — never a per-packet
     // trace in a loop, which `CLAUDE.md` forbids.
-    let precedente = table.taille_sortie_de(session);
+    let precedente = table.output_size_of(session);
     let nom = table.nom_sortie_de(session).map(str::to_owned);
-    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+    let all = enumerer_sorties_silencieux().unwrap_or_default();
     let sortie = nom
         .as_deref()
-        .and_then(|n| toutes.iter().find(|s| s.nom_sortie == n).cloned());
+        .and_then(|n| all.iter().find(|s| s.nom_sortie == n).cloned());
     let borne = sortie.as_ref().map(borne_de);
     let retenue =
-        borne.map(|b| crate::windows_source_sortie::taille_pour_viewport((largeur, hauteur), b));
+        borne.map(|b| crate::windows_source_sortie::size_for_viewport((largeur, hauteur), b));
 
     let decision = match (&nom, &sortie, retenue) {
         (None, _, _) => "AUCUNE sortie retenue pour cette session",
@@ -112,14 +112,14 @@ pub(super) fn suivre_le_viewport(
     if Some(retenue) == precedente {
         return;
     }
-    table.rafraichir_taille_sortie(session, retenue);
-    replacer_si_besoin(table, session, &toutes);
+    table.refresh_output_size(session, retenue);
+    replacer_si_besoin(table, session, &all);
 }
 
 /// Puts back on its output any window that has left it.
 ///
 /// **`&Table`, and not `&mut Table`.** Until sub-block D10, this function
-/// also refreshed `taille_sortie` from the output's raw DXGI size
+/// also refreshed `output_size` from the output's raw DXGI size
 /// (legacy of IMPORTANT 5, review of D8's task 9, which kept this
 /// field up to date with a mode change made outside this table by
 /// `WindowsSource::changer_mode_de_sortie`). That path was removed in
@@ -129,19 +129,19 @@ pub(super) fn suivre_le_viewport(
 /// **D10 makes it downright WRONG, and that is why it disappeared rather than
 /// being kept.** Since `sortie_pour_viewport` (an output can be
 /// much larger than the viewport, polluted registry oblige),
-/// `Table::taille_sortie_de` carries the RETAINED size — the one at which the
+/// `Table::output_size_of` carries the RETAINED size — the one at which the
 /// window is put and which the capture crops —, which no longer has any reason
 /// to equal the DXGI output's `GetDesc`/`DesktopCoordinates`. Refreshing
 /// from the latter would therefore have overwritten the retained size with the output's
 /// FULL size at each turn — putting the window back large a
-/// second after `creer_sortie` put it at its cropped size. The table
+/// second after `create_output` put it at its cropped size. The table
 /// is now the only source of truth for this size, set once at
 /// creation (task 6) and at reuse (task 7): this periodic check
 /// rereads it, it no longer recomputes it.
 pub(super) fn controler_le_placement(table: &Table) {
-    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+    let all = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
-        replacer_si_besoin(table, &session, &toutes);
+        replacer_si_besoin(table, &session, &all);
     }
 }
 
@@ -149,7 +149,7 @@ pub(super) fn controler_le_placement(table: &Table) {
 ///
 /// Called by the periodic check, **and by the `LancerEnfant` arm**: on
 /// the path reusing a retained output (§7.1 of sub-block D3),
-/// `creer_sortie` is not called, hence neither is `placement::poser`. Between
+/// `create_output` is not called, hence neither is `placement::poser`. Between
 /// the child's death and its restart, the application may have moved or resized
 /// its window; without this call, the child would capture a badly placed window
 /// until the next periodic check — up to `PERIODE_PLACEMENT`
@@ -164,31 +164,31 @@ pub(super) fn controler_le_placement(table: &Table) {
 ///
 /// **The position comes from the DXGI output, the size from the table** (sub-block
 /// D10): `sortie.rect` gives the origin in the virtual desktop, but
-/// `Table::taille_sortie_de` gives the RETAINED size — the one, possibly
+/// `Table::output_size_of` gives the RETAINED size — the one, possibly
 /// much smaller than the output, at which the window was put and which the
 /// capture crops. The **THIRD** `let Some` — the one of
-/// `Table::taille_sortie_de` — can, in practice, never fail once
+/// `Table::output_size_of` — can, in practice, never fail once
 /// the FIRST has passed (`nom_sortie_de`): `sortie_creee` sets `nom_sortie` and
-/// `taille_sortie` together, never one without the other (`table.rs`) — it is
+/// `output_size` together, never one without the other (`table.rs`) — it is
 /// therefore not `Etat::Vivante` that governs here, but that invariant. Kept
 /// as is rather than assumed, so as to owe nothing to a neighbouring file.
 ///
 /// ❌ **This sentence said "the second `let Some`", and it designated the
 /// THIRD** (finding of the review of task 6, deferred then taken up at the
 /// branch's final review). ⚠️ **The error was not only one of counting**:
-/// the real second — the DXGI search by name, `toutes.iter().find(...)` —
+/// the real second — the DXGI search by name, `all.iter().find(...)` —
 /// **CAN** fail after the first, an output possibly having disappeared from the
 /// topology between two turns. A reader counting the `let Some`s
 /// therefore attributed the "can never fail" clause to the **wrong guard**,
 /// the one for which it is false.
-pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[SortieDxgi]) {
+pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, all: &[SortieDxgi]) {
     let Some(nom) = table.nom_sortie_de(session) else {
         return;
     };
-    let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom) else {
+    let Some(sortie) = all.iter().find(|s| s.nom_sortie == nom) else {
         return;
     };
-    let Some((largeur, hauteur)) = table.taille_sortie_de(session) else {
+    let Some((largeur, hauteur)) = table.output_size_of(session) else {
         return;
     };
     let cible = Rect {
@@ -230,8 +230,8 @@ pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[S
             vers = format!("{}x{}+{}+{}", cible.width, cible.height, cible.x, cible.y),
             "fenêtre sortie de sa sortie, replacement"
         );
-        if let Err(erreur) = placement::poser(hwnd, &cible) {
-            tracing::warn!(session = %session.0, %erreur, "replacement échoué");
+        if let Err(error) = placement::poser(hwnd, &cible) {
+            tracing::warn!(session = %session.0, %error, "replacement échoué");
         }
     }
 }

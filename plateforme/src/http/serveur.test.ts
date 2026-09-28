@@ -14,7 +14,7 @@ import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { signer } from '../identite/jeton';
-import { demarrerServeur, TRAME_MAX_OCTETS, type ServicePlateforme } from './serveur';
+import { startServer, TRAME_MAX_OCTETS, type ServicePlateforme } from './serveur';
 import type { Pilote as TypePilote } from '../base/pilote';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, utimesSync, writeFileSync } from 'node:fs';
@@ -55,12 +55,12 @@ afterEach(async () => {
 });
 
 /// Le serveur exige une base : elle est REQUISE, pas optionnelle (voir
-/// `demarrerServeur`). Ces trois tests-ci ne mesurent pas la trace — c'est
+/// `startServer`). Ces trois tests-ci ne mesurent pas la trace — c'est
 /// `signaling/trace.test.ts` qui la mesure —, ils ont seulement besoin d'une
 /// base vivante pour démarrer.
 async function servir(nom: string, config: Config = CONFIG): Promise<ServicePlateforme> {
     base = await baseNeuve(nom);
-    return demarrerServeur(config, base);
+    return startServer(config, base);
 }
 
 /// Ouvre un socket et rend son issue : `ouvert` s'il a atteint `open`, sinon
@@ -197,7 +197,7 @@ describe('le chaînage des quatre routeurs', () => {
         // 404 — et c'est la panne la plus discrète possible, puisque le service
         // répond, écoute, et sert les deux autres.
         // ⚠️ `auth: 'motdepasse'` LOCAL (tâche 3) : ce test éprouve que
-        // `/auth/connexion` est bien CHAÎNÉ dans `demarrerServeur` — une
+        // `/auth/connexion` est bien CHAÎNÉ dans `startServer` — une
         // propriété de P2/P4, distincte du mode d'authentification. En mode
         // `pomerium` (le défaut de `CONFIG`), cette route N'EXISTE PLUS DU
         // TOUT (voir `routes-auth.ts`), et l'assertion `400` ci-dessous
@@ -225,15 +225,15 @@ describe('le chaînage des quatre routeurs', () => {
 
         // 🔴 `/applications` ET `/application/:id/lancer` RÉPONDENT : sans
         // jeton, 401 — pas 404. C'est LA SEULE LIGNE qui prouve que le
-        // quatrième maillon est réellement chaîné dans `demarrerServeur`, et
+        // quatrième maillon est réellement chaîné dans `startServer`, et
         // c'est le même argument que celui du canal `/agent` : sans elle, le
         // pair verrait un service qui répond, écoute, sert les trois autres, et
         // rend 404 sur celui-ci.
         //
         // ⚠️ LE CORPS EST LU, PAS SEULEMENT LE CODE. Un 401 `{refus:...}` ne
         // peut venir que de la route ; un 404 générique porte `introuvable\n`.
-        const liste = await fetch(`${url}/applications?vm=v-1`);
-        expect([liste.status, await liste.json()]).toEqual([401, { refus: 'jeton-absent' }]);
+        const list = await fetch(`${url}/applications?vm=v-1`);
+        expect([list.status, await list.json()]).toEqual([401, { refus: 'jeton-absent' }]);
 
         const lancer = await fetch(`${url}/application/a-1/lancer`, { method: 'POST' });
         expect([lancer.status, await lancer.json()]).toEqual([401, { refus: 'jeton-absent' }]);
@@ -266,7 +266,7 @@ describe('le chaînage des quatre routeurs', () => {
             },
             async fermer() {},
         };
-        service = await demarrerServeur(CONFIG, sabotee);
+        service = await startServer(CONFIG, sabotee);
         const url = `http://127.0.0.1:${service.port}`;
         const r = await fetch(`${url}/vm`, {
             headers: { authorization: `Bearer ${signer('u-ada', SECRET, Date.now())}` },
@@ -285,7 +285,7 @@ describe('le chaînage des quatre routeurs', () => {
         // 🔴 La rouge : toucher au routage de l'`upgrade` DEPUIS CE CHAÎNAGE.
         // C'est hors sujet de cette tâche, et ce test le fige — le POINT
         // D'APPEL du chaînage HTTP (`void servirTout(...)`, dans
-        // `demarrerServeur`) et le routage WebSocket vivent dans la même
+        // `startServer`) et le routage WebSocket vivent dans la même
         // fonction, donc à portée de main. ⚠️ DEPUIS L'EXTRACTION DU 22 AOÛT
         // 2026, LA LISTE DES ROUTEURS ELLE-MÊME NE VIT PLUS ICI : elle est
         // dans `./chaine.ts` (`servirTout`, exporté) — seul le POINT D'APPEL
@@ -342,7 +342,7 @@ describe('la trame maximale acceptée avant toute authentification', () => {
     it('(a) 🔴 une trame TROP GRANDE ferme le socket en 1009, sur `/signal`', async () => {
         // Le pair est ANONYME : `signaling/relais.ts:84-86` dit lui-même que
         // le contrôle de FORME court une trentaine de lignes AVANT
-        // `garde.verifier`. Sans borne, `JSON.parse` sur la trame est une
+        // `garde.verify`. Sans borne, `JSON.parse` sur la trame est une
         // allocation puis un pic CPU, par socket et par trame, offerts à
         // quiconque atteint le port. ⚠️ CE TEST FRAPPAIT `/` AVANT LE 21 AOÛT
         // 2026 : le relais a déménagé vers `/signal` dans ce même commit (voir
@@ -416,7 +416,7 @@ describe('la trame maximale acceptée avant toute authentification', () => {
 // défini, testé UNITAIREMENT — et appelé par PERSONNE. Un test qui appelle
 // `unTour` ou `evincer` à la main ne peut PAS voir ce défaut : il prouve que
 // le mécanisme fonctionne, jamais que le SERVICE le déclenche. Celui-ci ne
-// touche qu'à `demarrerServeur`, le point d'entrée réel.
+// touche qu'à `startServer`, le point d'entrée réel.
 describe('le câblage du nettoyage de fond (round de correction 1)', () => {
     it(
         '🔴 démarrer le service évince une icône orpheline et vieille — ' +
@@ -443,10 +443,10 @@ describe('le câblage du nettoyage de fond (round de correction 1)', () => {
                 repertoireIcones: racineIcones,
                 repertoireTeleversements: racineTranches,
             };
-            // 🔴 AUCUN APPEL À `evincer`, `unTour` NI `demarrerNettoyage` ICI :
-            // seul `demarrerServeur` a tourné. Sous le code du round 1 — la
+            // 🔴 AUCUN APPEL À `evincer`, `unTour` NI `startCleanup` ICI :
+            // seul `startServer` a tourné. Sous le code du round 1 — la
             // fonction existait, rien ne l'invoquait —, ce fichier serait
-            // ENCORE LÀ, et cette assertion aurait rougi. `demarrerNettoyage`
+            // ENCORE LÀ, et cette assertion aurait rougi. `startCleanup`
             // est ATTENDU par `serveur.ts` avant que ce `await` ne rende la
             // main : pas d'attente arbitraire, pas de sondage.
             service = await servir('cablage-nettoyage', config);

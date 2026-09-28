@@ -4,9 +4,9 @@
 //! host**: that latter file lives behind `boucle.rs::#![cfg(windows)]`,
 //! and `EtatPont` read `Instant::now()` hard-coded there — none of the three tests
 //! of fix round 1 could therefore cover the WIRING, only the
-//! function `honorer_retry_suggere` taken in isolation. The review measured it:
+//! function `honour_suggested_retry` taken in isolation. The review measured it:
 //! reverting `surveillance_pont.rs` to the earlier bug (fixed constant) or removing
-//! both calls to `honorer_retry_suggere` left BOTH `cargo test
+//! both calls to `honour_suggested_retry` left BOTH `cargo test
 //! --workspace` and `cargo check --target x86_64-pc-windows-gnu` intact.
 //!
 //! 🔴 **THIS ZERO IS NOT AN INEVITABILITY OF `#[cfg(windows)]` — IT IS A
@@ -59,7 +59,7 @@
 //! spacing between two attempts — 500 ms — a shortcut that held as long
 //! as a refused bridge died within a few milliseconds. The fix for
 //! critical ② of fix round 1 (`agent::signaling::
-//! honorer_retry_suggere`) changed that premise: a refused bridge now stays
+//! honour_suggested_retry`) changed that premise: a refused bridge now stays
 //! **alive** (the process runs) while it honours the delay
 //! suggested by the relay, up to `plateforme::repli::REPLI_MAX_MS` (30 s).
 //! **A bridge alive for 500 ms can therefore be DYING
@@ -146,7 +146,7 @@
 //!
 //! 🔵 **WHAT ROUND 4 GIVES BACK TO `cycle_signale` AND TO `SEUIL_STABILITE_MS`.**
 //! Round 3 had made `cycle_signale` a guard of
-//! [`EtatRelance::reinitialiser_le_repli`], hence a CADENCE governor —
+//! [`EtatRelance::reset_the_backoff`], hence a CADENCE governor —
 //! a THIRD role its doc did not name, and the exact shape of the defect
 //! that round fixed. The guard disappeared with duration: it
 //! was no longer merely unnamed, it had become **wrong**, a bridge
@@ -176,7 +176,7 @@ use crate::plateforme::repli::{delai_de_repli, REPLI_MAX_MS};
 /// 1. **The FLOOR cadence of attempts**: `EtatRelance::doit_relancer`
 ///    only returns true beyond `delai_de_repli(tentative)`, of which it is the
 ///    first term.
-/// 2. **The PULLBACK of `derniere_tentative` in `EtatPont::demarrer`**
+/// 2. **The PULLBACK of `derniere_tentative` in `EtatPont::start`**
 ///    (`surveillance_pont.rs`): the clock there is pulled back by exactly this
 ///    value so that the VERY FIRST attempt happens now and not
 ///    in 500 ms. That role is not a cadence, it is a primer — and
@@ -196,7 +196,7 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 /// `ESPACEMENT_PLANCHER_MS` since round 2**, and that is the whole fix:
 /// confusing the two with `REPLI_MAX_MS` in play reopens the trace loop.
 ///
-/// `REPLI_MAX_MS` covers the SLEEP `honorer_retry_suggere` imposes on itself;
+/// `REPLI_MAX_MS` covers the SLEEP `honour_suggested_retry` imposes on itself;
 /// the margin covers the time it takes to REACH it (WS connection,
 /// refusal, reading the error message) — not measured, chosen wide rather than
 /// tight.
@@ -230,7 +230,7 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 /// MECHANISM.** There, the cadence was governed by a 500 ms threshold,
 /// which a refused bridge ALWAYS reaches before dying: re-arming was
 /// therefore systematic and the fallback could no longer grow. Here, the threshold is
-/// `REPLI_MAX_MS + 5 s` = 35 s, and `honorer_retry_suggere`'s sleep is
+/// `REPLI_MAX_MS + 5 s` = 35 s, and `honour_suggested_retry`'s sleep is
 /// bounded at 30 s: **a refused bridge STRUCTURALLY cannot reach it**
 /// — it is the invariant that
 /// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
@@ -380,7 +380,7 @@ impl EtatRelance {
     /// `cycle_signale`, so can never make `tentative_lancee` return `true`
     /// prematurely — it is `cycle_signale`, never
     /// `tentative`, that governs the silence of traces.
-    pub fn reinitialiser_le_repli(&mut self, issue: IssueDeSortie) {
+    pub fn reset_the_backoff(&mut self, issue: IssueDeSortie) {
         if issue.prouve_une_panne_resolue() {
             self.tentative = 0;
         }
@@ -405,10 +405,10 @@ impl EtatRelance {
     /// hence a fallback that could no longer grow); round 4 removed it
     /// **wholesale**, taking with it the only case it handled right:
     /// **a bridge alive for THREE DAYS then cut by a network failure dies IN
-    /// ERROR**, so `reinitialiser_le_repli` refuses — rightly — to
+    /// ERROR**, so `reset_the_backoff` refuses — rightly — to
     /// see proof in it, and the wait stayed at `REPLI_MAX_MS` (30 s) if a
     /// refusal episode had preceded it. See the quote of
-    /// [`Self::reinitialiser_le_repli`], which this round finally makes true.
+    /// [`Self::reset_the_backoff`], which this round finally makes true.
     ///
     /// ⚠️ **WHAT MAKES THIS RESET SAFE, WHERE ROUND 3'S WAS
     /// NOT**: the threshold is `REPLI_MAX_MS + 5 s`, which a sleeping refused bridge

@@ -26,7 +26,7 @@ struct CanalFactice {
     reponses: Vec<anyhow::Result<DepuisCapteur>>,
     recus: std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
     rattachements: ProchainsRattachements,
-    essais: std::sync::Arc<std::sync::Mutex<u32>>,
+    attempts: std::sync::Arc<std::sync::Mutex<u32>>,
 }
 
 impl Canal for CanalFactice {
@@ -40,7 +40,7 @@ impl Canal for CanalFactice {
     }
 
     fn rattacher(&mut self) -> anyhow::Result<Rattachee> {
-        *self.essais.lock().unwrap() += 1;
+        *self.attempts.lock().unwrap() += 1;
         let prochain = {
             let mut file = self.rattachements.lock().unwrap();
             if file.is_empty() {
@@ -73,8 +73,8 @@ impl Canal for CanalFactice {
 
 /// `_capacite` is kept so as not to change the signature called by
 /// the existing tests, but `source_rattachable` sets its own to 4 —
-/// which covers all current uses of `source_avec`.
-pub(super) fn source_avec(
+/// which covers all current uses of `source_with`.
+pub(super) fn source_with(
     _capacite: usize,
 ) -> (
     SourceDistante,
@@ -85,10 +85,10 @@ pub(super) fn source_avec(
     (source, tx, recus)
 }
 
-/// Like `source_avec`, but the fake channel returns the given `reponses`, in
+/// Like `source_with`, but the fake channel returns the given `reponses`, in
 /// order, before falling back on its default `Fait`. That is what makes it possible
 /// to test a REFUSAL from the sensor.
-pub(super) fn source_avec_reponses(
+pub(super) fn source_with_replies(
     reponses: Vec<anyhow::Result<DepuisCapteur>>,
 ) -> (
     SourceDistante,
@@ -101,10 +101,10 @@ pub(super) fn source_avec_reponses(
         reponses,
         recus: recus.clone(),
         rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        essais: std::sync::Arc::new(std::sync::Mutex::new(0)),
+        attempts: std::sync::Arc::new(std::sync::Mutex::new(0)),
     };
     (
-        SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720),
+        SourceDistante::new(Box::new(canal), rx, 1280, 720),
         tx,
         recus,
     )
@@ -123,25 +123,25 @@ pub(super) fn source_rattachable(
     let (tx, rx) = sync_channel(4);
     let recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let file = std::sync::Arc::new(std::sync::Mutex::new(rattachements));
-    let essais = std::sync::Arc::new(std::sync::Mutex::new(0));
+    let attempts = std::sync::Arc::new(std::sync::Mutex::new(0));
     let canal = CanalFactice {
         reponses: Vec::new(),
         recus: recus.clone(),
         rattachements: file.clone(),
-        essais: essais.clone(),
+        attempts: attempts.clone(),
     };
     (
-        SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720),
+        SourceDistante::new(Box::new(canal), rx, 1280, 720),
         tx,
         recus,
         file,
-        essais,
+        attempts,
     )
 }
 
 #[test]
 fn une_image_poussee_est_rendue_par_next_frame() {
-    let (mut source, tx, _) = source_avec(4);
+    let (mut source, tx, _) = source_with(4);
     tx.send(Recu::Image(AccessUnit {
         data: vec![1, 2],
         is_keyframe: true,
@@ -157,15 +157,15 @@ fn une_image_poussee_est_rendue_par_next_frame() {
 /// pass for an exhaustion — the transport loop polls at 100 Hz.
 #[test]
 fn une_file_vide_rend_none_sans_epuiser_la_source() {
-    let (mut source, _tx, _) = source_avec(4);
+    let (mut source, _tx, _) = source_with(4);
     assert!(source.next_frame().is_none());
     assert!(!source.is_exhausted());
     assert!(source.is_alive());
 }
 
 #[test]
-fn les_images_sortent_dans_l_ordre_d_arrivee() {
-    let (mut source, tx, _) = source_avec(4);
+fn frames_come_out_in_arrival_order() {
+    let (mut source, tx, _) = source_with(4);
     for pts in [1, 2, 3] {
         tx.send(Recu::Image(AccessUnit {
             data: vec![],
@@ -184,7 +184,7 @@ fn les_images_sortent_dans_l_ordre_d_arrivee() {
 /// continues, without consuming the round.
 #[test]
 fn un_etat_intercale_met_a_jour_le_cache_sans_masquer_l_image_suivante() {
-    let (mut source, tx, _) = source_avec(4);
+    let (mut source, tx, _) = source_with(4);
     tx.send(Recu::Etat {
         vivante: true,
         epuisee: false,
@@ -204,7 +204,7 @@ fn un_etat_intercale_met_a_jour_le_cache_sans_masquer_l_image_suivante() {
 
 #[test]
 fn une_fenetre_disparue_rend_la_source_non_vivante_et_epuisee() {
-    let (mut source, tx, _) = source_avec(4);
+    let (mut source, tx, _) = source_with(4);
     tx.send(Recu::Etat {
         vivante: false,
         epuisee: true,
@@ -232,7 +232,7 @@ fn une_fenetre_disparue_rend_la_source_non_vivante_et_epuisee() {
 /// re-attachment would not merely be attempted, it would SUCCEED.
 #[test]
 fn un_epuisement_autoritaire_interdit_tout_rattachement() {
-    let (mut source, tx, _, _, essais) = source_rattachable(vec![Some(1600)]);
+    let (mut source, tx, _, _, attempts) = source_rattachable(vec![Some(1600)]);
     tx.send(Recu::Etat {
         vivante: false,
         epuisee: true,
@@ -247,7 +247,7 @@ fn un_epuisement_autoritaire_interdit_tout_rattachement() {
     drop(tx);
     assert!(source.next_frame().is_none());
     assert_eq!(
-        *essais.lock().unwrap(),
+        *attempts.lock().unwrap(),
         0,
         "aucun rattachement ne doit être tenté après un épuisement autoritaire"
     );
@@ -256,8 +256,8 @@ fn un_epuisement_autoritaire_interdit_tout_rattachement() {
 }
 
 #[test]
-fn les_commandes_partent_sous_la_forme_attendue() {
-    let (mut source, _tx, recus) = source_avec(4);
+fn commands_leave_in_the_expected_shape() {
+    let (mut source, _tx, recus) = source_with(4);
     source.set_bitrate(3_000_000).unwrap();
     source.set_encode_size(640, 360).unwrap();
     source.request_keyframe().unwrap();
@@ -266,7 +266,7 @@ fn les_commandes_partent_sous_la_forme_attendue() {
         *recus,
         vec![
             VersCapteur::Debit { bps: 3_000_000 },
-            VersCapteur::TailleEncodage {
+            VersCapteur::EncodeSize {
                 largeur: 640,
                 hauteur: 360
             },
@@ -280,40 +280,40 @@ fn les_commandes_partent_sous_la_forme_attendue() {
 /// The test uses initial dimensions DIFFERENT from the reply
 /// to check that the reply is actually adopted (and not ignored).
 #[test]
-fn un_redimensionnement_retient_la_taille_obtenue() {
+fn a_resize_keeps_the_obtained_size() {
     let (tx_img, rx) = sync_channel(4);
     let recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let canal = CanalFactice {
-        reponses: vec![Ok(DepuisCapteur::Taille {
+        reponses: vec![Ok(DepuisCapteur::Size {
             largeur: 1280,
             hauteur: 720,
         })],
         recus: recus.clone(),
         rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        essais: std::sync::Arc::new(std::sync::Mutex::new(0)),
+        attempts: std::sync::Arc::new(std::sync::Mutex::new(0)),
     };
-    let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 640, 480);
+    let mut source = SourceDistante::new(Box::new(canal), rx, 640, 480);
     drop(tx_img);
     source.resize(1281, 713).unwrap();
     assert_eq!(source.dimensions(), (1280, 720));
 }
 
 #[test]
-fn une_erreur_du_capteur_remonte_en_erreur() {
+fn a_capturer_error_surfaces_as_an_error() {
     let (_tx, rx) = sync_channel(4);
     let canal = CanalFactice {
-        reponses: vec![Ok(DepuisCapteur::Erreur {
+        reponses: vec![Ok(DepuisCapteur::Error {
             motif: "encodeur perdu".into(),
         })],
         recus: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        essais: std::sync::Arc::new(std::sync::Mutex::new(0)),
+        attempts: std::sync::Arc::new(std::sync::Mutex::new(0)),
     };
-    let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720);
-    let erreur = source.set_bitrate(1).unwrap_err().to_string();
+    let mut source = SourceDistante::new(Box::new(canal), rx, 1280, 720);
+    let error = source.set_bitrate(1).unwrap_err().to_string();
     assert!(
-        erreur.contains("encodeur perdu"),
-        "message inattendu : {erreur}"
+        error.contains("encodeur perdu"),
+        "message inattendu : {error}"
     );
 }
 
@@ -321,8 +321,8 @@ fn une_erreur_du_capteur_remonte_en_erreur() {
 /// channel — and that must NOT close the session, otherwise
 /// `brancher_video` calls `begin_ending("source vidéo épuisée")`.
 #[test]
-fn un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre() {
-    let (mut source, tx, _) = source_avec(4);
+fn a_broken_channel_does_not_exhaust_the_source_within_the_window() {
+    let (mut source, tx, _) = source_with(4);
     drop(tx);
     assert!(source.next_frame().is_none());
     assert!(
@@ -335,7 +335,7 @@ fn un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre() {
 /// would stay open indefinitely on a frozen frame.
 #[test]
 fn un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source() {
-    let (mut source, tx, _) = source_avec(4);
+    let (mut source, tx, _) = source_with(4);
     drop(tx);
     assert!(source.next_frame().is_none());
     source.vieillir_pour_test(
@@ -349,14 +349,14 @@ fn un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source() {
 /// resumes — same new queue, same dimensions announced by the sensor.
 #[test]
 fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
-    let (mut source, tx, _, rattachements, essais) = source_rattachable(vec![Some(1600)]);
+    let (mut source, tx, _, rattachements, attempts) = source_rattachable(vec![Some(1600)]);
     drop(tx);
     // First round: break observed, re-attachment attempted and successful.
     assert!(
         source.next_frame().is_none(),
         "le tour de la rupture ne rend pas d'image"
     );
-    assert_eq!(*essais.lock().unwrap(), 1);
+    assert_eq!(*attempts.lock().unwrap(), 1);
     assert!(rattachements.lock().unwrap().is_empty());
     // Next round: the frame comes from the NEW queue.
     let unite = source.next_frame().expect("la file neuve porte une image");
@@ -373,10 +373,10 @@ fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
 /// A failed re-attachment concludes nothing: the window is still running.
 #[test]
 fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
-    let (mut source, tx, _, _, essais) = source_rattachable(vec![None]);
+    let (mut source, tx, _, _, attempts) = source_rattachable(vec![None]);
     drop(tx);
     assert!(source.next_frame().is_none());
-    assert_eq!(*essais.lock().unwrap(), 1);
+    assert_eq!(*attempts.lock().unwrap(), 1);
     assert!(
         !source.is_exhausted(),
         "un échec de rattachement n'épuise pas"
@@ -388,11 +388,11 @@ fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
 ///
 /// ⚠️ This test does NOT exercise a second re-attachment attempt: once
 /// `DUREE_FENETRE_CANAL` is exceeded, `rupture()` short-circuits and returns
-/// `true` before even reaching `peut_reessayer` (`Disconnected` branch
+/// `true` before even reaching `can_retry` (`Disconnected` branch
 /// of `next_frame`) — whether `vieillir_pour_test` ages
-/// `dernier_essai` or not therefore has no effect HERE. That band
+/// `last_attempt` or not therefore has no effect HERE. That band
 /// (ageing beyond the spacing step alone, while staying within the
-/// window) is the one tested by `un_vieillissement_du_pas_seul_relance_un_essai`.
+/// window) is the one tested by `ageing_of_the_step_alone_relaunches_an_attempt`.
 #[test]
 fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
     let (mut source, tx, _, _, _) = source_rattachable(vec![None]);
@@ -405,18 +405,18 @@ fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
 
 /// Ageing WITHIN the window, beyond the spacing step alone: a second
 /// attempt must go out. This test is the only one to check that
-/// `vieillir_pour_test` does age `dernier_essai` — the expiry one
+/// `vieillir_pour_test` does age `last_attempt` — the expiry one
 /// never reaches it, `rupture` short-circuiting before.
 #[test]
-fn un_vieillissement_du_pas_seul_relance_un_essai() {
-    let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None]);
+fn ageing_of_the_step_alone_relaunches_an_attempt() {
+    let (mut source, tx, _, _, attempts) = source_rattachable(vec![None, None]);
     drop(tx);
     assert!(source.next_frame().is_none());
-    assert_eq!(*essais.lock().unwrap(), 1);
+    assert_eq!(*attempts.lock().unwrap(), 1);
     source.vieillir_pour_test(PAS_RATTACHEMENT + std::time::Duration::from_millis(1));
     assert!(source.next_frame().is_none());
     assert_eq!(
-        *essais.lock().unwrap(),
+        *attempts.lock().unwrap(),
         2,
         "le pas écoulé autorise un second essai"
     );
@@ -425,11 +425,11 @@ fn un_vieillissement_du_pas_seul_relance_un_essai() {
 
 /// Without spacing, a break would cause ~100 attempts per second.
 #[test]
-fn une_rafale_d_interrogations_ne_produit_qu_un_seul_essai() {
-    let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None, None, None]);
+fn a_burst_of_polls_produces_a_single_attempt() {
+    let (mut source, tx, _, _, attempts) = source_rattachable(vec![None, None, None, None]);
     drop(tx);
     for _ in 0..10 {
         assert!(source.next_frame().is_none());
     }
-    assert_eq!(*essais.lock().unwrap(), 1, "un seul essai dans la rafale");
+    assert_eq!(*attempts.lock().unwrap(), 1, "un seul essai dans la rafale");
 }

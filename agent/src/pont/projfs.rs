@@ -4,7 +4,7 @@
 //! possible here, and it is declared, not worked around** (spec §4.4). The only
 //! compensation is that this module be **thin** — it translates, it does not
 //! decide. Every decision that can live in a pure module lives there:
-//! `pont::chemins` (normalisation), `pont::erreurs` (the `HRESULT`s),
+//! `pont::chemins` (normalisation), `pont::errors` (the `HRESULT`s),
 //! `pont::decoupe` (the ranges), `pont::table` (the commands in flight),
 //! `pont::resolution` (the thirteen entries).
 //!
@@ -90,7 +90,7 @@ mod etat;
 mod racine;
 mod rappels;
 
-pub use etat::{ContexteProjFs, Etat, FluxDonnees, TamponEntrees};
+pub use etat::{ContexteProjFs, DataStream, Etat, TamponEntrees};
 pub use racine::dossier_etat;
 
 use std::collections::HashMap;
@@ -105,7 +105,7 @@ use windows::Win32::Storage::ProjectedFileSystem::{
     PRJ_NOTIFICATION_MAPPING, PRJ_STARTVIRTUALIZING_OPTIONS,
 };
 
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 use crate::pont::table::Table;
 use crate::pont::transport::VersNavigateur;
 
@@ -159,7 +159,7 @@ unsafe impl Send for Virtualisation {}
 
 impl Virtualisation {
     /// Prepares the root, marks it if needed, and starts virtualisation.
-    pub fn demarrer(
+    pub fn start(
         projfs: chargement::ProjFs,
         sortant: std::sync::mpsc::Sender<VersNavigateur>,
         vers_ecriture: std::sync::mpsc::Sender<crate::pont::ecriture::fil::Ordre>,
@@ -171,7 +171,7 @@ impl Virtualisation {
         let etat = Arc::new(Etat {
             projfs,
             contexte: Mutex::new(None),
-            table: Arc::new(Mutex::new(Table::nouvelle())),
+            table: Arc::new(Mutex::new(Table::new())),
             sessions: Mutex::new(HashMap::new()),
             en_attente: Mutex::new(HashMap::new()),
             sortant,
@@ -185,8 +185,8 @@ impl Virtualisation {
             // to be pushed to.
             canal_ouvert: std::sync::atomic::AtomicBool::new(false),
             compteurs: crate::pont::compteurs::Compteurs::nouveaux(),
-            latences: crate::pont::latence::Histogramme::nouveau(),
-            cache: Mutex::new(crate::pont::cache::CacheEnumeration::nouveau()),
+            latences: crate::pont::latence::Histogramme::new(),
+            cache: Mutex::new(crate::pont::cache::CacheEnumeration::new()),
             cache_arme,
             octets_hydrates: AtomicU64::new(0),
             entrees_hydratees: AtomicU64::new(0),
@@ -238,7 +238,7 @@ impl Virtualisation {
         // parameters — the fifth is this output parameter, which windows-rs's
         // wrapper hides behind its `Result`.
         let issue = unsafe {
-            (etat.projfs.demarrer_virtualisation)(
+            (etat.projfs.start_virtualizing)(
                 PCWSTR(chemin.as_ptr()),
                 rappels,
                 confie as *const core::ffi::c_void,
@@ -307,15 +307,15 @@ impl Drop for Virtualisation {
         //    emptied BEFORE the stop, never after: after, the context is no longer
         //    valid and `PrjCompleteCommand` has nowhere left to write.
         let restantes = match self.etat.table.lock() {
-            Ok(mut table) => table.vider(),
+            Ok(mut table) => table.drain(),
             Err(empoisonne) => {
                 tracing::error!(
                     "verrou de la table empoisonné à l'arrêt : la table est vidée quand même"
                 );
-                empoisonne.into_inner().vider()
+                empoisonne.into_inner().drain()
             }
         };
-        let echec = windows::core::HRESULT(self.etat.compteurs.rendre(Erreur::CanalFerme));
+        let echec = windows::core::HRESULT(self.etat.compteurs.rendre(Error::CanalFerme));
         for (commande, correlation) in &restantes {
             // 🔴 **A WRITE IN FLIGHT IS EMPTIED FROM THE TABLE LIKE THE OTHERS,
             // BUT IS NOT REMOVED FROM THE JOURNAL** — it is exactly the case
@@ -357,7 +357,7 @@ impl Drop for Virtualisation {
         tracing::info!(racine = %self.racine.display(), "virtualisation ProjFS arrêtée");
 
         // 3. The entrusted copy, taken back.
-        // SAFETY: `confie` comes from `Arc::into_raw` in `demarrer`, has only been
+        // SAFETY: `confie` comes from `Arc::into_raw` in `start`, has only been
         // handed to ProjFS, and no callback can run any more.
         drop(unsafe { Arc::from_raw(self.confie) });
     }

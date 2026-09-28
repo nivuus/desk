@@ -16,7 +16,7 @@
 //! 4. `boucle_locale::evaluer` → `Risque` ⇒ **we stop there**, and the `warn!`
 //!    names the remedy;
 //! 5. `RenduWasapi::ouvrir` (that is where the format is refused);
-//! 6. the loop: `attendre_place` → `remplir` → `ecrire`.
+//! 6. the loop: `attendre_place` → `remplir` → `write`.
 //!
 //! The guard comes **before** opening, not after: opening the cable then
 //! noticing the loop would already have put a render stream on the endpoint
@@ -179,7 +179,7 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
         ),
     };
 
-    let mutex = verrou::MutexNomme::creer()?;
+    let mutex = verrou::MutexNomme::create()?;
     tracing::info!(
         session = %session,
         cable = %verdict.cable,
@@ -242,7 +242,7 @@ fn fil_de_rendu(
             Err(e) => {
                 tracing::warn!(
                     session = %session,
-                    erreur = %e,
+                    error = %e,
                     "micro : attente de place sur le cable echouee, fil de rendu arrete"
                 );
                 return;
@@ -279,7 +279,7 @@ fn fil_de_rendu(
                 // of a WASAPI call.
                 lecteur.remplir(cible);
             }
-            if ecrire(&mut rendu_wasapi, cible, trames, &session).is_err() {
+            if write(&mut rendu_wasapi, cible, trames, &session).is_err() {
                 return;
             }
             ecrites += trames as u64;
@@ -319,18 +319,18 @@ fn fil_de_rendu(
 
 /// The write, isolated so that the loop stays readable. `Err(())` means
 /// "the thread stops", and the cause is already logged.
-fn ecrire(
+fn write(
     rendu_wasapi: &mut RenduWasapi,
     pcm: &[f32],
     trames: usize,
     session: &str,
 ) -> std::result::Result<(), ()> {
-    match rendu_wasapi.ecrire(pcm, trames) {
+    match rendu_wasapi.write(pcm, trames) {
         Ok(()) => Ok(()),
         Err(e) => {
             tracing::warn!(
                 session = %session,
-                erreur = %e,
+                error = %e,
                 "micro : ecriture sur le cable echouee, fil de rendu arrete"
             );
             Err(())
@@ -414,7 +414,7 @@ fn tracer(
 ) {
     // The counters are DELTAS of the elapsed second, not cumulative totals: a
     // cumulative total would drag a single incident along for the rest of the session.
-    let d = |maintenant: u64, avant: u64| maintenant.saturating_sub(avant);
+    let d = |maintenant: u64, before: u64| maintenant.saturating_sub(before);
     tracing::info!(
         session = %session,
         ecrites,

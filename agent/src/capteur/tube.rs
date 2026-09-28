@@ -21,7 +21,7 @@ use crate::capteur::distante::{Canal, Rattachee, Recu, SourceDistante};
 use crate::capteur::horloge::lire_qpc;
 use crate::capteur::pont_media::lire_le_media;
 use crate::capteur::protocole::{
-    ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE,
+    lire_trame, write_json, DepuisCapteur, Trame, VersCapteur, NOM_TUBE,
 };
 use crate::capteur::reprise::DUREE_FENETRE_CANAL;
 
@@ -62,9 +62,9 @@ pub fn connecter(
     debit: u32,
     // The KEPT size the supervisor set on this window — not
     // the output size. `(u32::MAX, u32::MAX)` in its absence (single-window
-    // path): `taille_retenue`, on the sensor side (task 8), then brings it back
+    // path): `retained_size`, on the sensor side (task 8), then brings it back
     // to the output size.
-    taille: (u32, u32),
+    size: (u32, u32),
     clock_origin: Instant,
 ) -> Result<SourceDistante> {
     let signalement = Signalement {
@@ -73,16 +73,16 @@ pub fn connecter(
         sortie: sortie.to_string(),
         fps,
         debit,
-        taille,
+        size,
         clock_origin,
     };
     // The FIRST opening is patient: the child may start before the
     // sensor has opened its pipe. The reopenings of `rattacher`, on the other hand,
     // are not — they run from the transport loop.
-    let commandes = ouvrir_dans(DUREE_FENETRE_CANAL)?;
+    let commandes = open_within(DUREE_FENETRE_CANAL)?;
     let attachee = attacher_sur(commandes, &signalement)?;
     let (largeur, hauteur) = (attachee.largeur, attachee.hauteur);
-    Ok(SourceDistante::nouvelle(
+    Ok(SourceDistante::new(
         Box::new(CanalTube {
             commandes: Mutex::new(attachee.commandes),
             signalement,
@@ -115,7 +115,7 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
 
     // Write THEN read, on THIS thread, without any write buffer: it is
     // already the discipline of `commander`, and the attach inaugurates it.
-    ecrire_json(
+    write_json(
         &mut commandes,
         &VersCapteur::Attache {
             session: signalement.session.clone(),
@@ -123,7 +123,7 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
             sortie: signalement.sortie.clone(),
             fps: signalement.fps,
             debit: signalement.debit,
-            taille: signalement.taille,
+            size: signalement.size,
             origine_qpc,
         },
     )?;
@@ -145,8 +145,8 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
     // only reads. That is what makes it impossible for a read and a
     // write to cross there.
     let mut media =
-        ouvrir_dans(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
-    ecrire_json(
+        open_within(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
+    write_json(
         &mut media,
         &VersCapteur::Identite {
             session: signalement.session.clone(),
@@ -184,14 +184,14 @@ fn ouvrir_une_instance() -> std::io::Result<std::fs::File> {
 /// the sensor has opened its pipe (at the very first launch, or during
 /// a sensor restart), and a listening instance may be momentarily
 /// busy between two welcomes.
-fn ouvrir_dans(fenetre: Duration) -> Result<std::fs::File> {
+fn open_within(fenetre: Duration) -> Result<std::fs::File> {
     let debut = Instant::now();
     let mut derniere = None;
     while debut.elapsed() <= fenetre {
         match ouvrir_une_instance() {
-            Ok(fichier) => return Ok(fichier),
-            Err(erreur) => {
-                derniere = Some(erreur);
+            Ok(file) => return Ok(file),
+            Err(error) => {
+                derniere = Some(error);
                 std::thread::sleep(PAS_CONNEXION);
             }
         }
@@ -226,7 +226,7 @@ struct Signalement {
     debit: u32,
     /// The KEPT size requested by the supervisor, repeated at every
     /// attach and every re-attachment (`connecter`, `Canal::rattacher`).
-    taille: (u32, u32),
+    size: (u32, u32),
     clock_origin: Instant,
 }
 
@@ -281,7 +281,7 @@ impl Canal for CanalTube {
         // Write THEN read on the same thread: that is the discipline that
         // makes blocking impossible. Never introduce a reader thread
         // on this connection — see task 10 of sub-block D4.
-        ecrire_json(&mut *commandes, &message)?;
+        write_json(&mut *commandes, &message)?;
         commandes.flush()?;
         match lire_trame(&mut *commandes).context("réponse du capteur")? {
             Trame::Json(octets) => Ok(serde_json::from_slice(&octets)?),

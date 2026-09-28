@@ -22,12 +22,12 @@ pub struct Consigne {
     /// DXGI name of the output (`\\.\DISPLAYn`), stable — unlike a
     /// positional pair of enumeration indexes.
     pub nom_sortie: String,
-    /// The RETAINED size (`placement::taille_retenue`) at which the table
+    /// The RETAINED size (`placement::retained_size`) at which the table
     /// put this window — not the output's size, which can be much
     /// larger. Set on the child through `TAILLE_FENETRE` (`lanceur.rs`),
     /// so that it repeats it to the capturer at attach time (task 9 of sub-block
     /// D10), which will need it to crop (task 8).
-    pub taille: (u32, u32),
+    pub size: (u32, u32),
 }
 
 pub trait Lanceur {
@@ -95,8 +95,8 @@ impl<'l> Enfants<'l> {
         let Some(pid) = self.vivants.remove(session) else {
             return;
         };
-        if let Err(erreur) = self.lanceur.tuer(pid) {
-            tracing::warn!(session = %session.0, pid, %erreur, "mise à mort de l'enfant échouée");
+        if let Err(error) = self.lanceur.tuer(pid) {
+            tracing::warn!(session = %session.0, pid, %error, "mise à mort de l'enfant échouée");
         }
     }
 
@@ -174,7 +174,7 @@ mod tests {
             session: IdSession(session.into()),
             fenetre: 0x1234,
             nom_sortie: "\\\\.\\DISPLAY1".into(),
-            taille: (1280, 720),
+            size: (1280, 720),
         }
     }
 
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn une_session_tuee_ne_ressort_pas_dans_les_morts() {
+    fn a_killed_session_does_not_show_up_among_the_dead() {
         // It was already handled by the `fenetre_disparue` path: signalling
         // it dead would get its output destroyed a second time.
         let lanceur = LanceurFactice::default();
@@ -242,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    fn lancer_echoue_ne_laisse_rien_dans_la_comptabilite() {
+    fn failed_launch_leaves_nothing_in_the_accounting() {
         // Atomic contract of the Lanceur trait: Err ⇒ no process is running.
         // If this contract is violated — launching fails after having really
         // started the child — the child becomes untraceable, the virtual output

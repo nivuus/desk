@@ -25,7 +25,7 @@
 //
 // ⚠️ THIS MODULE RETURNS ITS LINES, IT DOES NOT WRITE THEM — same convention as
 // `obs/journal.ts`, and for the same reason: it is what makes them testable
-// without `spyOn(console)`. Writing is a separate gesture (`ecrire`), called by
+// without `spyOn(console)`. Writing is a separate gesture (`write`), called by
 // `serveur.ts`.
 
 import { constants } from 'node:fs';
@@ -78,7 +78,7 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
             texte: ligne('page servie', { racine: etat.chemin, lisible: 'oui' }),
         };
     }
-    // 🔴 `erreur`, NEVER `info`: it is the case this module exists to
+    // 🔴 `error`, NEVER `info`: it is the case this module exists to
     // make loud. The service STARTS anyway — refusing to start
     // would cut the API and the signaling for one page, which would be
     // disproportionate —, but it no longer does so silently.
@@ -95,7 +95,7 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
 
 /// PURE. The line of the RETAINED trust set.
 ///
-/// 🔴 **THE EMPTY SET IS `info` AND NOT `erreur` — BUT NOT BECAUSE IT
+/// 🔴 **THE EMPTY SET IS `info` AND NOT `error` — BUT NOT BECAUSE IT
 /// WOULD BE THE "SAFE DEFAULT" OF THE `motdepasse` MODE: that sentence was
 /// FALSIFIED by the review of correction round 3 of `frein(pont)`.**
 ///
@@ -135,14 +135,14 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
 /// way of knowing whether the process calling it runs BEHIND a proxy or
 /// exposed directly, and that is a question of DEPLOYMENT TOPOLOGY,
 /// not of configuration that `config.ts` could settle for it. Making this
-/// case `erreur` unconditionally would wrongly alarm the deployment where
+/// case `error` unconditionally would wrongly alarm the deployment where
 /// the empty set is legitimately safe (direct exposure, no proxy).
 /// **The `info` line therefore remains the operator's only witness** — that is
 /// why it already names the exact effect (`X-Forwarded-For is not
 /// trusted, and /auth/moi refuses every peer`) rather than a mere boolean — and
 /// it is `deploiement/README.md` (invariant ③) that bears the responsibility
 /// of saying, for THE setup this repository specifically ships, that this
-/// `info` line actually announces an `erreur` risk.
+/// `info` line actually announces an `error` risk.
 export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce {
     if (confiance.size === 0) {
         return {
@@ -162,7 +162,7 @@ export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce
             // also what makes a host name VISIBLE where it would not be
             // in a count.
             retenus: [...confiance].join(' '),
-            nombre: confiance.size,
+            count: confiance.size,
         }),
     };
 }
@@ -211,7 +211,7 @@ export async function etatRacinePage(
 
 /// Writing, isolated into a single gesture — the only one of this module that touches the
 /// console.
-export function ecrire(annonce: Annonce): void {
+export function write(annonce: Annonce): void {
     if (annonce.niveau === 'erreur') console.error(annonce.texte);
     else console.info(annonce.texte);
 }

@@ -10,9 +10,9 @@
  * changes — the `apres` callback is deliberately empty, the primitives following
  * the theme through their `var(--…)`s alone.
  */
-import { installerSelecteurDeThemeAuDOM } from './selecteur-theme';
+import { installThemeSelectorInDOM } from './selecteur-theme';
 
 const hote = document.getElementById('themes');
 if (!hote) throw new Error('la galerie des primitives attend un élément #themes');
 
-installerSelecteurDeThemeAuDOM(hote, () => {});
+installThemeSelectorInDOM(hote, () => {});

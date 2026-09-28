@@ -68,7 +68,7 @@
 //! output outlived the process; `MULTIFENETRE_VDD_PURGE=1` recovers that
 //! state, tested on exactly it. The purge remains useful — a crash,
 //! whatever its cause, always leaves the guard silent. Measurement ③
-//! itself is taken at `nombre = 2`, where the covering verdict cuts before
+//! itself is taken at `count = 2`, where the covering verdict cuts before
 //! the encoding pass and where the guard runs.
 
 use anyhow::{anyhow, Result};
@@ -79,11 +79,11 @@ use super::montee::{
 use crate::capture::SortieDxgi;
 
 /// `MULTIFENETRE_VDD_CAPTURE` probe: creates ONE virtual output, places
-/// `nombre` test patterns on it, and runs the `duplication` path bench on it.
-pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
-    let avant = relever_topologie("avant création")?;
-    let noms_avant = noms_attaches(&avant);
-    let connues: std::collections::HashSet<String> = avant
+/// `count` test patterns on it, and runs the `duplication` path bench on it.
+pub(super) fn capturer_sur_virtuelle(count: u8) -> Result<()> {
+    let before = relever_topologie("avant création")?;
+    let names_before = noms_attaches(&before);
+    let connues: std::collections::HashSet<String> = before
         .iter()
         .map(|sortie| sortie.nom_sortie.clone())
         .collect();
@@ -95,7 +95,7 @@ pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
     // final survey, otherwise the latter would describe a transient state.
     let issue = {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
-        let id = sorties.creer(largeur, hauteur, hertz)?;
+        let id = sorties.create(largeur, hauteur, hertz)?;
         // Beat the watchdog while waiting for reconfiguration, as
         // the scale-up in N does: its unit remains unknown, and a bare `sleep`
         // would leave the driver free to remove the output under the measurement.
@@ -111,7 +111,7 @@ pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
         // output, yet DXGI only allows ONE — the bench's would then fail
         // with 0x80070057.
         pilote.pinguer()?;
-        let issue = super::banc::executer("duplication", nombre, Some(&nom_virtuelle));
+        let issue = super::banc::executer("duplication", count, Some(&nom_virtuelle));
 
         // The bench does not ping: it runs thirty seconds in a tight loop.
         // If the watchdog had removed the output along the way, the
@@ -135,13 +135,13 @@ pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);
-    if noms_final == noms_avant && final_.len() == avant.len() {
+    if noms_final == names_before && final_.len() == before.len() {
         tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
     } else {
         tracing::error!(
-            noms_avant = ?noms_avant,
+            names_before = ?names_before,
             noms_apres = ?noms_final,
-            total_avant = avant.len(),
+            total_before = before.len(),
             total_apres = final_.len(),
             "la topologie n'est PAS revenue à son état initial — purge requise"
         );
@@ -183,12 +183,12 @@ pub(super) fn designer_sortie_neuve<'s>(
             ))
         }
         [seule] => *seule,
-        plusieurs => {
-            let noms: Vec<&str> = plusieurs.iter().map(|s| s.nom_sortie.as_str()).collect();
+        several => {
+            let noms: Vec<&str> = several.iter().map(|s| s.nom_sortie.as_str()).collect();
             return Err(anyhow!(
                 "{} sorties DXGI neuves après création de la sortie {id} ({noms:?}) — \
                  une addition externe rend la mesure inimputable",
-                plusieurs.len()
+                several.len()
             ));
         }
     };
@@ -232,8 +232,8 @@ fn constater_survie(nom_virtuelle: &str) {
                 );
             }
         }
-        Err(erreur) => tracing::error!(
-            causes = %super::causes(erreur),
+        Err(error) => tracing::error!(
+            causes = %super::causes(error),
             "topologie illisible après le banc — survie de la sortie virtuelle inconnue"
         ),
     }

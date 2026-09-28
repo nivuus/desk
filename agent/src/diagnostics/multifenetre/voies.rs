@@ -50,7 +50,7 @@ pub(super) trait VoieDeCapture {
     ///
     /// **Lifetime contract, not guaranteed beyond one call.** The
     /// texture carried by the returned `CapturedFrame` is the cropping
-    /// texture SPECIFIC to this path (see `creer_texture_recadrage`):
+    /// texture SPECIFIC to this path (see `create_crop_texture`):
     /// the next call to `prochaine_image` on the SAME path overwrites it (through
     /// `CopySubresourceRegion` or `UpdateSubresource` depending on the
     /// implementation). It is only valid until that next call.
@@ -78,7 +78,7 @@ pub(super) trait VoieDeCapture {
 /// overwrite the previous one's before it consumed it, silently,
 /// since `ID3D11Texture2D::clone()` does not copy the content, only the
 /// COM reference).
-fn creer_texture_recadrage(device: &ID3D11Device, region: Rect) -> Result<ID3D11Texture2D> {
+fn create_crop_texture(device: &ID3D11Device, region: Rect) -> Result<ID3D11Texture2D> {
     let desc = D3D11_TEXTURE2D_DESC {
         Width: region.width,
         Height: region.height,
@@ -127,14 +127,14 @@ pub(super) struct SourceDuplication {
     capture: DesktopCapture,
     bureau: Rect,
     contexte: ID3D11DeviceContext,
-    /// Round number for which `dernier_bureau` was primed. `None`
+    /// Round number for which `last_desktop` was primed. `None`
     /// before the first call.
-    dernier_tour: Option<u64>,
-    /// Whole desktop image primed for `dernier_tour`. `None` if the
+    last_round: Option<u64>,
+    /// Whole desktop image primed for `last_round`. `None` if the
     /// desktop had nothing new at that instant — the common case, not an
     /// error: `DesktopCapture::next_frame` only returns an image when
     /// the desktop changed since the last call.
-    dernier_bureau: Option<CapturedFrame>,
+    last_desktop: Option<CapturedFrame>,
 }
 
 impl SourceDuplication {
@@ -147,14 +147,14 @@ impl SourceDuplication {
     /// Primes the whole desktop for `tour`, only once per value of
     /// `tour` whatever the number of paths that call this method.
     fn amorcer(&mut self, tour: u64) -> Result<()> {
-        if self.dernier_tour == Some(tour) {
+        if self.last_round == Some(tour) {
             return Ok(());
         }
-        self.dernier_bureau = self
+        self.last_desktop = self
             .capture
             .next_frame(self.bureau)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        self.dernier_tour = Some(tour);
+        self.last_round = Some(tour);
         Ok(())
     }
 }
@@ -173,7 +173,7 @@ impl SourceDuplication {
 pub(super) struct VoieDuplication {
     source: Rc<RefCell<SourceDuplication>>,
     region: Rect,
-    /// Texture specific to this path (see `creer_texture_recadrage`), allocated
+    /// Texture specific to this path (see `create_crop_texture`), allocated
     /// at `ouvrir()`.
     texture: Option<ID3D11Texture2D>,
 }
@@ -206,12 +206,12 @@ impl VoieDuplication {
                 height: hauteur,
             },
             contexte,
-            dernier_tour: None,
-            dernier_bureau: None,
+            last_round: None,
+            last_desktop: None,
         })))
     }
 
-    pub(super) fn nouvelle(source: Rc<RefCell<SourceDuplication>>) -> Self {
+    pub(super) fn new(source: Rc<RefCell<SourceDuplication>>) -> Self {
         Self {
             source,
             region: Rect {
@@ -229,14 +229,14 @@ impl VoieDeCapture for VoieDuplication {
     fn ouvrir(&mut self, _hwnd: HWND, region: Rect) -> Result<()> {
         self.region = region;
         let device = self.source.borrow().capture.device().clone();
-        self.texture = Some(creer_texture_recadrage(&device, region)?);
+        self.texture = Some(create_crop_texture(&device, region)?);
         Ok(())
     }
 
     fn prochaine_image(&mut self, tour: u64) -> Result<Option<CapturedFrame>> {
         let mut source = self.source.borrow_mut();
         source.amorcer(tour)?;
-        let Some(bureau) = source.dernier_bureau.as_ref() else {
+        let Some(bureau) = source.last_desktop.as_ref() else {
             return Ok(None);
         };
 
@@ -320,7 +320,7 @@ pub(super) struct VoiePrintWindow {
 /// cannot borrow the one of a provisional `DesktopCapture`, DXGI
 /// allowing only ONE duplication per output — the provisional one would make
 /// the real one fail with 0x80070057.
-pub(super) fn creer_device() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
+pub(super) fn create_device() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
     let mut device: Option<ID3D11Device> = None;
     let mut context: Option<ID3D11DeviceContext> = None;
     unsafe {
@@ -350,10 +350,10 @@ impl VoiePrintWindow {
     /// that carries the VM's real GPU, the only one able to then host
     /// the hardware encoder.
     pub(super) fn partagee() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
-        creer_device()
+        create_device()
     }
 
-    pub(super) fn nouvelle(device: ID3D11Device, context: ID3D11DeviceContext) -> Self {
+    pub(super) fn new(device: ID3D11Device, context: ID3D11DeviceContext) -> Self {
         Self {
             device,
             context,
@@ -373,7 +373,7 @@ impl VoieDeCapture for VoiePrintWindow {
     fn ouvrir(&mut self, hwnd: HWND, region: Rect) -> Result<()> {
         self.hwnd = hwnd;
         self.region = region;
-        self.texture = Some(creer_texture_recadrage(&self.device, region)?);
+        self.texture = Some(create_crop_texture(&self.device, region)?);
         Ok(())
     }
 

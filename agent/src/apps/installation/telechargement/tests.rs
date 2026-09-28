@@ -134,8 +134,8 @@ fn depuis_range(requete: &str) -> Option<u64> {
     let ligne = requete
         .lines()
         .find(|l| l.to_ascii_lowercase().starts_with("range:"))?;
-    let valeur = ligne.split_once('=')?.1;
-    valeur.trim_end_matches('-').trim().parse().ok()
+    let value = ligne.split_once('=')?.1;
+    value.trim_end_matches('-').trim().parse().ok()
 }
 
 fn corps_de(n: usize) -> Vec<u8> {
@@ -148,7 +148,7 @@ fn empreinte(octets: &[u8]) -> String {
 
 struct Bac {
     _dir: std::path::PathBuf,
-    fichier: std::path::PathBuf,
+    file: std::path::PathBuf,
 }
 
 fn bac(nom: &str) -> Bac {
@@ -156,13 +156,13 @@ fn bac(nom: &str) -> Bac {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("bac");
     Bac {
-        fichier: dir.join("setup.exe"),
+        file: dir.join("setup.exe"),
         _dir: dir,
     }
 }
 
 #[tokio::test]
-async fn telecharge_ecrit_et_verifie_l_empreinte() {
+async fn downloads_writes_and_verifies_the_digest() {
     let corps = corps_de(200_000);
     let (url, vu) = serveur(vec![Reaction::Entier(corps.clone())]).await;
     let b = bac("nominal");
@@ -170,8 +170,8 @@ async fn telecharge_ecrit_et_verifie_l_empreinte() {
         Demande {
             url: &url,
             jeton: "jeton-d-agent",
-            destination: &b.fichier,
-            taille_attendue: corps.len() as u64,
+            destination: &b.file,
+            expected_size: corps.len() as u64,
             sha256_attendu: &empreinte(&corps),
         },
         |_, _| {},
@@ -179,7 +179,7 @@ async fn telecharge_ecrit_et_verifie_l_empreinte() {
     .await
     .expect("téléchargement");
     assert_eq!(ecrits, corps.len() as u64);
-    assert_eq!(std::fs::read(&b.fichier).expect("relecture"), corps);
+    assert_eq!(std::fs::read(&b.file).expect("relecture"), corps);
     // The token does go out as `Authorization: Bearer` — without it the route
     // would refuse, and the symptom would be a 401 very far from here.
     assert_eq!(
@@ -210,8 +210,8 @@ async fn une_coupure_reprend_au_bon_offset_et_l_empreinte_reste_juste() {
         Demande {
             url: &url,
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: corps.len() as u64,
+            destination: &b.file,
+            expected_size: corps.len() as u64,
             sha256_attendu: &empreinte(&corps),
         },
         |_, _| {},
@@ -220,7 +220,7 @@ async fn une_coupure_reprend_au_bon_offset_et_l_empreinte_reste_juste() {
     .expect("téléchargement repris");
 
     assert_eq!(ecrits, corps.len() as u64);
-    assert_eq!(std::fs::read(&b.fichier).expect("relecture"), corps);
+    assert_eq!(std::fs::read(&b.file).expect("relecture"), corps);
     let ranges = vu.lock().expect("verrou").ranges.clone();
     assert_eq!(
         ranges,
@@ -257,8 +257,8 @@ async fn un_200_en_reponse_a_un_range_fait_repartir_de_zero() {
         Demande {
             url: &url,
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: corps.len() as u64,
+            destination: &b.file,
+            expected_size: corps.len() as u64,
             sha256_attendu: &empreinte(&corps),
         },
         |_, _| {},
@@ -268,10 +268,10 @@ async fn un_200_en_reponse_a_un_range_fait_repartir_de_zero() {
 
     assert_eq!(ecrits, corps.len() as u64, "PAS de concaténation");
     assert_eq!(
-        std::fs::metadata(&b.fichier).expect("stat").len(),
+        std::fs::metadata(&b.file).expect("stat").len(),
         corps.len() as u64
     );
-    assert_eq!(std::fs::read(&b.fichier).expect("relecture"), corps);
+    assert_eq!(std::fs::read(&b.file).expect("relecture"), corps);
     let ranges = vu.lock().expect("verrou").ranges.clone();
     assert_eq!(
         ranges,
@@ -297,8 +297,8 @@ async fn un_transfert_chunked_est_refuse_et_le_motif_le_nomme() {
         Demande {
             url: &url,
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: 1,
+            destination: &b.file,
+            expected_size: 1,
             sha256_attendu: &"0".repeat(64),
         },
         |_, _| {},
@@ -306,8 +306,8 @@ async fn un_transfert_chunked_est_refuse_et_le_motif_le_nomme() {
     .await
     .expect_err("doit refuser");
     match refus {
-        Refus::Reponse(reponse::Refus::TransfertCode(valeur)) => {
-            assert!(valeur.contains("chunked"), "le motif doit NOMMER chunked");
+        Refus::Reponse(reponse::Refus::TransfertCode(value)) => {
+            assert!(value.contains("chunked"), "le motif doit NOMMER chunked");
         }
         autre => panic!("refus inattendu : {autre:?}"),
     }
@@ -325,8 +325,8 @@ async fn un_statut_inattendu_est_refuse_en_portant_son_statut() {
         Demande {
             url: &url,
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: 1,
+            destination: &b.file,
+            expected_size: 1,
             sha256_attendu: &"0".repeat(64),
         },
         |_, _| {},
@@ -341,7 +341,7 @@ async fn un_statut_inattendu_est_refuse_en_portant_son_statut() {
 /// differs. **The partial file is deleted**, and the upload remains
 /// resumable.
 #[tokio::test]
-async fn une_empreinte_fausse_est_refusee_et_le_fichier_partiel_disparait() {
+async fn a_wrong_digest_is_refused_and_the_partial_file_disappears() {
     let corps = corps_de(50_000);
     let (url, _) = serveur(vec![Reaction::Entier(corps.clone())]).await;
     let b = bac("empreinte");
@@ -350,8 +350,8 @@ async fn une_empreinte_fausse_est_refusee_et_le_fichier_partiel_disparait() {
         Demande {
             url: &url,
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: corps.len() as u64,
+            destination: &b.file,
+            expected_size: corps.len() as u64,
             sha256_attendu: &attendue,
         },
         |_, _| {},
@@ -369,7 +369,7 @@ async fn une_empreinte_fausse_est_refusee_et_le_fichier_partiel_disparait() {
         autre => panic!("refus inattendu : {autre:?}"),
     }
     assert!(
-        !b.fichier.exists(),
+        !b.file.exists(),
         "le fichier partiel doit être SUPPRIMÉ : le garder inviterait un chemin \
          ultérieur à le prendre pour un installeur valide"
     );
@@ -384,8 +384,8 @@ async fn https_est_refuse_en_nommant_la_capacite_manquante() {
         Demande {
             url: "https://exemple.invalide/t/c",
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: 1,
+            destination: &b.file,
+            expected_size: 1,
             sha256_attendu: &"0".repeat(64),
         },
         |_, _| {},
@@ -398,7 +398,7 @@ async fn https_est_refuse_en_nommant_la_capacite_manquante() {
         }
         autre => panic!("refus inattendu : {autre:?}"),
     }
-    assert!(!b.fichier.exists(), "aucun fichier ne doit être créé");
+    assert!(!b.file.exists(), "aucun fichier ne doit être créé");
 }
 
 /// The recovery budget is BOUNDED, and exhausting it is a typed
@@ -420,8 +420,8 @@ async fn le_budget_de_retablissements_est_borne() {
         Demande {
             url: &url,
             jeton: "j",
-            destination: &b.fichier,
-            taille_attendue: corps.len() as u64,
+            destination: &b.file,
+            expected_size: corps.len() as u64,
             sha256_attendu: &empreinte(&corps),
         },
         |_, _| {},
@@ -429,11 +429,11 @@ async fn le_budget_de_retablissements_est_borne() {
     .await
     .expect_err("doit refuser");
     assert!(matches!(refus, Refus::TropDeCoupures(_)), "{refus:?}");
-    assert!(!b.fichier.exists(), "le fichier partiel doit être supprimé");
+    assert!(!b.file.exists(), "le fichier partiel doit être supprimé");
 }
 
 #[test]
-fn une_url_se_decoupe_et_le_port_par_defaut_ne_s_ecrit_pas_dans_host() {
+fn a_url_is_split_and_the_default_port_is_not_written_in_host() {
     let c = decouper("http://plateforme.local/televersement/t-1/contenu").expect("url");
     assert_eq!(c.hote, "plateforme.local");
     assert_eq!(c.port, 80);

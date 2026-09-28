@@ -65,7 +65,7 @@ impl Magasin {
     /// 🔴 TWO ADDITIONS OF THE SAME CONTENT MAKE ONLY ONE ENTRY, and that is
     /// the essential point: on this corpus, accumulating would cost 153 entries where
     /// 99 are enough.
-    pub fn ajouter(&mut self, png: Vec<u8>) -> String {
+    pub fn add(&mut self, png: Vec<u8>) -> String {
         let e = empreinte(&png);
         self.par_empreinte.entry(e.clone()).or_insert(png);
         e
@@ -114,7 +114,7 @@ impl Magasin {
 /// it does not have to rewrite it.
 ///
 /// ⚠️ This repository has no doctrine on orphan code — sub-block D10
-/// DELETED `taille_compatible` and KEPT `rafraichir_taille_sortie` without
+/// DELETED `taille_compatible` and KEPT `refresh_output_size` without
 /// stating a rule. The choice is made here in favour of keeping it, and
 /// it is written down.
 ///

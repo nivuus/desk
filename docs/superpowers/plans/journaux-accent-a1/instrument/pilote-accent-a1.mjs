@@ -346,8 +346,8 @@ try {
             par[session] = e ? {
                 token: e.token, accentDuTheme: e.accentDuTheme, fond0: e.fond0,
                 messages: (e.a1?.messages ?? []).map((m) => m.couleur),
-                erreurs: e.a1?.erreurs ?? [],
-            } : { erreur: 'évaluation non rendue' };
+                errors: e.a1?.errors ?? [],
+            } : { error: 'évaluation non rendue' };
         }
         const a = annonces();
         const parSession = {};

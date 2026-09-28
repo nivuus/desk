@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use super::{nom, seau_de, Famille, Histogramme, NOMBRE, SEAUX, SEAUX_MS};
+use super::{nom, seau_de, Famille, Histogramme, COUNT, SEAUX, SEAUX_MS};
 use crate::pont::table::Attendue;
 
 fn ms(n: u64) -> Duration {
@@ -22,8 +22,8 @@ fn attributs(chemin: &str) -> Attendue {
 /// "the neighbouring family did not move" from "it never carried anything".
 #[test]
 fn un_histogramme_neuf_rend_des_zeros() {
-    let h = Histogramme::nouveau();
-    for f in Famille::TOUTES {
+    let h = Histogramme::new();
+    for f in Famille::ALL {
         assert_eq!(h.compte(f), 0, "{}", nom(f));
         assert_eq!(h.moyenne_us(f), 0, "{}", nom(f));
         assert_eq!(h.max_us(f), 0, "{}", nom(f));
@@ -38,7 +38,7 @@ fn un_histogramme_neuf_rend_des_zeros() {
 /// to a bound is exercised, plus one value strictly below and one
 /// strictly above.
 #[test]
-fn une_traversee_tombe_dans_le_seau_qui_la_contient() {
+fn a_crossing_falls_in_the_bucket_that_contains_it() {
     // Exactly on each bound: the bucket of the SAME rank.
     for (i, borne) in SEAUX_MS.iter().enumerate() {
         assert_eq!(seau_de(ms(*borne)), i, "borne {} ms", borne);
@@ -58,7 +58,7 @@ fn une_traversee_tombe_dans_le_seau_qui_la_contient() {
     assert_eq!(seau_de(ms(30_000)), SEAUX_MS.len());
 
     // And the bucket is indeed the one the histogram increments.
-    let h = Histogramme::nouveau();
+    let h = Histogramme::new();
     h.observer(Famille::Lire, ms(5));
     assert_eq!(h.seau(Famille::Lire, 2), 1, "5 ms est dans le seau '5'");
     assert_eq!(
@@ -72,14 +72,14 @@ fn une_traversee_tombe_dans_le_seau_qui_la_contient() {
 /// one family on the back of another.
 #[test]
 fn les_familles_ne_se_melangent_pas() {
-    let h = Histogramme::nouveau();
+    let h = Histogramme::new();
     h.observer(Famille::Lire, ms(7));
     h.observer(Famille::Lire, ms(7));
     h.observer(Famille::Lister, ms(300));
 
     assert_eq!(h.compte(Famille::Lire), 2);
     assert_eq!(h.compte(Famille::Lister), 1);
-    for f in [Famille::Attributs, Famille::Ecrire, Famille::Mutation] {
+    for f in [Famille::Attributs, Famille::Write, Famille::Mutation] {
         assert_eq!(h.compte(f), 0, "{} n'a rien reçu", nom(f));
         assert_eq!(h.max_us(f), 0, "{}", nom(f));
     }
@@ -92,7 +92,7 @@ fn les_familles_ne_se_melangent_pas() {
 /// A swapped sum and count would make the mean equal to the count.
 #[test]
 fn le_max_est_le_max_et_la_moyenne_est_la_moyenne() {
-    let h = Histogramme::nouveau();
+    let h = Histogramme::new();
     h.observer(Famille::Attributs, ms(2));
     h.observer(Famille::Attributs, ms(8));
     h.observer(Famille::Attributs, ms(2));
@@ -110,7 +110,7 @@ fn le_max_est_le_max_et_la_moyenne_est_la_moyenne() {
 /// is pinned in full, values included.
 #[test]
 fn l_ordre_du_recensement_est_epingle() {
-    let h = Histogramme::nouveau();
+    let h = Histogramme::new();
     h.observer(Famille::Lire, ms(3));
 
     let ligne = h.recensement();
@@ -124,7 +124,7 @@ fn l_ordre_du_recensement_est_epingle() {
     );
     // The FIVE families carry their buckets, and `lire` carries its own at the right rank.
     assert!(seaux.starts_with("seaux_ms attributs="), "{seaux}");
-    for f in Famille::TOUTES {
+    for f in Famille::ALL {
         assert!(
             seaux.contains(&format!(" {}=1:", nom(f))),
             "{} absent : {seaux}",
@@ -137,7 +137,7 @@ fn l_ordre_du_recensement_est_epingle() {
     );
     assert!(seaux.ends_with("inf:0"), "{seaux}");
     // A single occurrence of each family name in each half.
-    for f in Famille::TOUTES {
+    for f in Famille::ALL {
         assert_eq!(
             tetes.matches(&format!(" {}=", nom(f))).count(),
             1,
@@ -157,21 +157,21 @@ fn l_ordre_du_recensement_est_epingle() {
 /// family would not appear in the census, or worse, would be confused there with
 /// another.
 #[test]
-fn une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre() {
-    let mut noms: Vec<&str> = Famille::TOUTES.iter().map(|f| nom(*f)).collect();
-    let avant = noms.len();
+fn a_new_family_cannot_inherit_another_name() {
+    let mut noms: Vec<&str> = Famille::ALL.iter().map(|f| nom(*f)).collect();
+    let before = noms.len();
     noms.sort_unstable();
     noms.dedup();
     assert_eq!(
         noms.len(),
-        avant,
+        before,
         "deux familles partagent un nom : {noms:?}"
     );
-    assert_eq!(avant, NOMBRE, "TOUTES doit porter les NOMBRE familles");
+    assert_eq!(before, COUNT, "TOUTES doit porter les NOMBRE familles");
     // ⚠️ No name is the PREFIX of another: two messages sharing a
     // substring make a false instrument (house trap, paid for by F1).
-    for a in Famille::TOUTES {
-        for b in Famille::TOUTES {
+    for a in Famille::ALL {
+        for b in Famille::ALL {
             if a != b {
                 assert!(!nom(a).starts_with(nom(b)), "{} préfixe {}", nom(b), nom(a));
             }
@@ -179,10 +179,10 @@ fn une_famille_neuve_ne_peut_pas_heriter_du_nom_d_une_autre() {
     }
 }
 
-/// The family is the BUDGET, not the verb: `Creer` and `Ecrire` share
-/// `DELAI_ECRIRE`, hence the `ecrire` family.
+/// The family is the BUDGET, not the verb: `Create` and `Write` share
+/// `WRITE_TIMEOUT`, hence the `write` family.
 #[test]
-fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
+fn the_family_follows_the_budget_and_create_belongs_to_the_write_family() {
     assert_eq!(Famille::de(&attributs("a")), Famille::Attributs);
     assert_eq!(
         Famille::de(&Attendue::Lister {
@@ -195,20 +195,20 @@ fn la_famille_suit_le_budget_et_creer_est_de_la_famille_ecrire() {
         Famille::de(&Attendue::Lire {
             chemin: "f".into(),
             position: 0,
-            longueur: 1
+            length: 1
         }),
         Famille::Lire
     );
     assert_eq!(
-        Famille::de(&Attendue::Ecrire {
+        Famille::de(&Attendue::Write {
             chemin: "f".into(),
-            dernier: true
+            last: true
         }),
-        Famille::Ecrire
+        Famille::Write
     );
     assert_eq!(
-        Famille::de(&Attendue::Creer { chemin: "f".into() }),
-        Famille::Ecrire,
+        Famille::de(&Attendue::Create { chemin: "f".into() }),
+        Famille::Write,
         "Creer est inscrite par ecriture::fil sous DELAI_ECRIRE"
     );
     assert_eq!(

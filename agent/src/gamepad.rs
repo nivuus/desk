@@ -23,12 +23,12 @@ use std::time::{Duration, Instant};
 /// when the game produces the most vibrations.
 pub const PERIODE_MIN: Duration = Duration::from_millis(20);
 
-/// True if `nouveau` follows `courant` in the sequence space.
+/// True if `new` follows `current` in the sequence space.
 ///
 /// Subtracting in `u16` then rereading as `i16` handles wraparound
 /// without a special case: 0 does follow 65535.
-pub fn plus_recent(nouveau: u16, courant: u16) -> bool {
-    (nouveau.wrapping_sub(courant)) as i16 > 0
+pub fn plus_recent(new: u16, current: u16) -> bool {
+    (new.wrapping_sub(current)) as i16 > 0
 }
 
 /// Limits the rate of vibrations without ever losing the current state.
@@ -38,8 +38,8 @@ pub fn plus_recent(nouveau: u16, courant: u16) -> bool {
 /// delay has elapsed. A memorised state overwrites the previous one: only the last
 /// describes what the game asks for.
 pub struct LimiteurVibration {
-    dernier_emis: Option<(u8, u8)>,
-    dernier_envoi: Option<Instant>,
+    last_emitted: Option<(u8, u8)>,
+    last_send: Option<Instant>,
     en_attente: Option<(u8, u8)>,
 }
 
@@ -52,18 +52,18 @@ impl Default for LimiteurVibration {
 impl LimiteurVibration {
     pub fn new() -> Self {
         Self {
-            dernier_emis: None,
-            dernier_envoi: None,
+            last_emitted: None,
+            last_send: None,
             en_attente: None,
         }
     }
 
     pub fn observer(&mut self, maintenant: Instant, etat: (u8, u8)) -> Option<(u8, u8)> {
-        if self.dernier_emis == Some(etat) && self.en_attente.is_none() {
+        if self.last_emitted == Some(etat) && self.en_attente.is_none() {
             return None;
         }
         let assez_tot = self
-            .dernier_envoi
+            .last_send
             .is_none_or(|precedent| maintenant.duration_since(precedent) >= PERIODE_MIN);
         if assez_tot {
             self.emettre(maintenant, etat)
@@ -76,21 +76,21 @@ impl LimiteurVibration {
     pub fn echu(&mut self, maintenant: Instant) -> Option<(u8, u8)> {
         let etat = self.en_attente?;
         let assez_tot = self
-            .dernier_envoi
+            .last_send
             .is_none_or(|precedent| maintenant.duration_since(precedent) >= PERIODE_MIN);
         if !assez_tot {
             return None;
         }
         self.en_attente = None;
-        if self.dernier_emis == Some(etat) {
+        if self.last_emitted == Some(etat) {
             return None;
         }
         self.emettre(maintenant, etat)
     }
 
     fn emettre(&mut self, maintenant: Instant, etat: (u8, u8)) -> Option<(u8, u8)> {
-        self.dernier_emis = Some(etat);
-        self.dernier_envoi = Some(maintenant);
+        self.last_emitted = Some(etat);
+        self.last_send = Some(maintenant);
         self.en_attente = None;
         Some(etat)
     }
@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn le_bouclage_de_la_sequence_est_franchi_correctement() {
         // The point of the `seq` field: at 250 Hz, the u16 wraps every
-        // 4 minutes. A naive comparison `nouveau > courant` would then
+        // 4 minutes. A naive comparison `new > current` would then
         // reject all states for half a loop — that is two minutes
         // of frozen gamepad.
         assert!(plus_recent(0, 65535));
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn seul_le_dernier_etat_differe_est_emis() {
+    fn only_the_last_deferred_state_is_emitted() {
         // A burst of vibrations during the limiting window must
         // not produce a queue of stale states: it is the LAST one that describes
         // what the game asks for now.

@@ -1,9 +1,9 @@
-// The `utilisateur` repository: create an account, read it by email, replace
+// The `user` repository: create an account, read it by email, replace
 // its hash.
 //
 // 🔴 THE CLOCK IS A PARAMETER, never read here — same rule as
 // `depot/session.ts` and `signaling/ice.ts`, and it is what makes
-// `utilisateur.test.ts` able to assert an EXACT epoch.
+// `user.test.ts` able to assert an EXACT epoch.
 //
 // 🔴 NO LITERAL VALUE in the SQL, not even a constant: everything goes in
 // as a parameter, otherwise `rendreMarqueurs` would throw on the Postgres side
@@ -16,7 +16,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
 
-export interface LigneUtilisateur {
+export interface UserRow {
     id: string;
     email: string;
     empreinte_mdp: string;
@@ -28,7 +28,7 @@ export interface LigneUtilisateur {
 /// An email already taken makes it THROW, through the UNIQUE index of the base schema — never a
 /// silent return: here the caller is the administrator, and hiding
 /// the failure from them would create two accounts in their head for a single one in the database.
-export async function creerUtilisateur(
+export async function createUser(
     p: Pilote,
     email: string,
     empreinteMdp: string,
@@ -48,8 +48,8 @@ export async function creerUtilisateur(
 export async function lireParEmail(
     p: Pilote,
     email: string,
-): Promise<LigneUtilisateur | undefined> {
-    const lignes = await p.interroger<LigneUtilisateur>(
+): Promise<UserRow | undefined> {
+    const lignes = await p.interroger<UserRow>(
         'SELECT id, email, empreinte_mdp, cree_a FROM utilisateur WHERE email = ?',
         [email],
     );

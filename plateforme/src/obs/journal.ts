@@ -58,8 +58,8 @@
 /// True if the value must be quoted. An unquoted space or `=` makes
 /// the line ambiguous: one could not tell where the value ends and where the
 /// next field begins.
-function doitEtreCitee(valeur: string): boolean {
-    return valeur === '' || /[\s="]/.test(valeur);
+function doitEtreCitee(value: string): boolean {
+    return value === '' || /[\s="]/.test(value);
 }
 
 /// Returns `evenement k=v k=v`.
@@ -77,9 +77,9 @@ function doitEtreCitee(valeur: string): boolean {
 export function ligne(evenement: string, champs: Record<string, string | number>): string {
     const morceaux = [evenement];
     for (const [cle, brut] of Object.entries(champs)) {
-        const valeur = String(brut);
+        const value = String(brut);
         morceaux.push(
-            `${cle}=${doitEtreCitee(valeur) ? `"${valeur.replace(/"/g, '\\"')}"` : valeur}`,
+            `${cle}=${doitEtreCitee(value) ? `"${value.replace(/"/g, '\\"')}"` : value}`,
         );
     }
     return morceaux.join(' ');

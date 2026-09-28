@@ -58,7 +58,7 @@ const DELAI_MS: u32 = 200;
 ///
 /// ⚠️ **The `GetClassLongPtrW` fallback only runs if `WM_GETICON` fails, which
 /// no acceptance protocol provokes: code shipped, path probably
-/// never taken** — as `borner_a_la_taille_max` was for a whole
+/// never taken** — as `clamp_to_max_size` was for a whole
 /// sub-block.
 pub fn lire_icone(hwnd: HWND) -> Option<(Vec<u8>, u32, u32)> {
     let icone = trouver_icone(hwnd)?;
@@ -67,23 +67,23 @@ pub fn lire_icone(hwnd: HWND) -> Option<(Vec<u8>, u32, u32)> {
 
 /// The cascade of the doc of [`lire_icone`], and nothing else.
 fn trouver_icone(hwnd: HWND) -> Option<HICON> {
-    for taille in [ICON_BIG, ICON_SMALL2, ICON_SMALL] {
-        let mut resultat: usize = 0;
+    for size in [ICON_BIG, ICON_SMALL2, ICON_SMALL] {
+        let mut result: usize = 0;
         // `SendMessageTimeoutW` returns 0 on timeout as on failure: both
         // are treated the same — "no icon by this route".
         let rendu = unsafe {
             SendMessageTimeoutW(
                 hwnd,
                 windows::Win32::UI::WindowsAndMessaging::WM_GETICON,
-                WPARAM(taille as usize),
+                WPARAM(size as usize),
                 LPARAM(0),
                 SMTO_ABORTIFHUNG,
                 DELAI_MS,
-                Some(&mut resultat as *mut usize),
+                Some(&mut result as *mut usize),
             )
         };
-        if rendu.0 != 0 && resultat != 0 {
-            return Some(HICON(resultat as *mut _));
+        if rendu.0 != 0 && result != 0 {
+            return Some(HICON(result as *mut _));
         }
     }
     // NON-BLOCKING fallback: the window class, which is data local to the
@@ -116,7 +116,7 @@ fn pixels_de(icone: HICON) -> Option<(Vec<u8>, u32, u32)> {
     // forgetting them is one leak per read tick — i.e. one leak every
     // `PERIODE_ACCENT`, for the whole life of the session. The pattern is
     // `apps/icone/extraction.rs`.
-    let resultat = decoder(info.hbmColor);
+    let result = decoder(info.hbmColor);
     unsafe {
         if !info.hbmColor.is_invalid() {
             let _ = DeleteObject(info.hbmColor.into());
@@ -125,7 +125,7 @@ fn pixels_de(icone: HICON) -> Option<(Vec<u8>, u32, u32)> {
             let _ = DeleteObject(info.hbmMask.into());
         }
     }
-    resultat
+    result
 }
 
 /// La lecture des octets d'un `HBITMAP` 32 bits, top-down.

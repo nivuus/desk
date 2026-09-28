@@ -46,8 +46,8 @@ use crate::pont::enumeration::Entree;
 /// How long a memorised enumeration keeps being served.
 ///
 /// ⚠️ **NOT CALIBRATED.** It joins `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
-/// `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, `TAILLE_TRAME_MAX`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `MAX_OUTPUT_SIZE`,
+/// `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, `MAX_FRAME_SIZE`,
 /// `DELAI_LISTER`, `ATTENTE_MAX` and the thirteen buckets of `pont::latence` in the
 /// list of this repository's constants that **no measurement has judged**.
 ///
@@ -77,7 +77,7 @@ pub struct CacheEnumeration {
 }
 
 impl CacheEnumeration {
-    pub fn nouveau() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -128,12 +128,12 @@ impl CacheEnumeration {
     }
 
     /// Forgets everything. It is what the `Rafraichir` announcement does.
-    pub fn vider(&mut self) {
+    pub fn drain(&mut self) {
         self.par_chemin.clear();
     }
 
     /// How many directories are memorised. **For the trace and the tests.**
-    pub fn taille(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.par_chemin.len()
     }
 }

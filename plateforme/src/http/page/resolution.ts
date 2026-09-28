@@ -62,7 +62,7 @@ export const REPERTOIRE_ACTIFS = 'assets';
 export type Resolution =
     | {
           readonly ok: true;
-          readonly fichier: string;
+          readonly file: string;
           readonly mime: string;
           readonly document: boolean;
           /// 🔴 DOES THE NAME REALLY CARRY A FINGERPRINT? That is the question
@@ -131,14 +131,14 @@ export function resoudre(cheminUrl: string): Resolution {
     const segments = normaliser(decode);
     if (segments === undefined) return { ok: false, motif: 'traversee' };
 
-    const dernier = segments[segments.length - 1];
+    const last = segments[segments.length - 1];
     // Root, or path without an extension: the SPA fallback — the equivalent of
     // nginx's `try_files … /index.html`, except that the TARGET, here, is
     // `hub.html` since 30 August 2026 (see `PAGE` above).
-    const fichier = dernier === undefined || !dernier.includes('.') ? PAGE : segments.join('/');
+    const file = last === undefined || !last.includes('.') ? PAGE : segments.join('/');
 
-    const point = fichier.lastIndexOf('.');
-    const extension = fichier.slice(point + 1).toLowerCase();
+    const point = file.lastIndexOf('.');
+    const extension = file.slice(point + 1).toLowerCase();
     const mime = TYPES_MIME.get(extension);
     if (mime === undefined) return { ok: false, motif: 'extension-inconnue' };
 
@@ -156,19 +156,19 @@ export function resoudre(cheminUrl: string): Resolution {
     // any KNOWN extension (`.json` is one of them) carried by
     // an empty name. Closing the class avoids depending case by case on a
     // list that was not written to settle this question.
-    if (dernier !== undefined && dernier.lastIndexOf('.') === 0) {
+    if (last !== undefined && last.lastIndexOf('.') === 0) {
         return { ok: false, motif: 'nom-vide' };
     }
 
     return {
         ok: true,
-        fichier,
+        file,
         mime,
         document: extension === 'html',
         // ⚠️ THE PREFIX CARRIES THE SEPARATOR: without it, a file named
         // `assetsX.js` placed at the root would pass for a fingerprinted asset.
-        // `fichier` is already NORMALISED (segments put back together, no surviving
+        // `file` is already NORMALISED (segments put back together, no surviving
         // climb), so this test really applies to the first segment.
-        empreinte: fichier.startsWith(`${REPERTOIRE_ACTIFS}/`),
+        empreinte: file.startsWith(`${REPERTOIRE_ACTIFS}/`),
     };
 }

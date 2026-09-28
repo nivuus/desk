@@ -33,7 +33,7 @@
 // would cost an indirection without closing anything. **Declared rather than endured**:
 // any fix to the splitting is made IN BOTH FILES.
 
-import { verifierJeton } from '../identite/jeton';
+import { verifyToken } from '../identite/jeton';
 
 export type MotifPorteurAgent =
     | 'jeton-absent'
@@ -61,7 +61,7 @@ const SCHEMA = 'Bearer';
 /// the TYPE and on nothing else**: a case tolerated on one side and refused on
 /// the other would be a difference nobody decided.
 ///
-/// ⚠️ ALL THE REASONS OF `verifierJeton` EXCEPT `expire` FOLD INTO
+/// ⚠️ ALL THE REASONS OF `verifyToken` EXCEPT `expire` FOLD INTO
 /// `jeton-invalide`: `forme`, `algorithme` and `signature` tell apart
 /// ways of being wrong that the requester has no use for, and from which an
 /// attacker, for their part, would learn how far along they are. `expire` is kept because it
@@ -100,7 +100,7 @@ export function lirePorteurAgent(
         return { ok: false, motif: 'jeton-invalide', code: 401 };
     }
 
-    const verdict = verifierJeton(morceaux[1], secret, maintenant);
+    const verdict = verifyToken(morceaux[1], secret, maintenant);
     if (!verdict.ok) {
         return verdict.motif === 'expire'
             ? { ok: false, motif: 'jeton-expire', code: 401 }

@@ -7,7 +7,7 @@
 // socket, two paths that nothing linked.
 //
 // 🔴 IT IS A SERVICE OBJECT, on the exact pattern of `ProprieteDeSession`
-// (`signaling/propriete.ts`): built ONCE in `demarrerServeur`, passed
+// (`signaling/propriete.ts`): built ONCE in `startServer`, passed
 // to its two consumers, and alive for the duration of the process.
 //
 // ⚠️ IT HAS THE SAME COST AS `ProprieteDeSession`, AND IT IS WRITTEN HERE FOR THE
@@ -50,7 +50,7 @@ const FERMETURE_POLITIQUE = 1008;
 export interface SocketAgent {
     /// 1 = OPEN, in the `ws` convention as in the browser one.
     readonly readyState: number;
-    send(donnees: string): void;
+    send(data: string): void;
     close(code?: number, raison?: string): void;
 }
 
@@ -120,8 +120,8 @@ export class RegistreAgents {
     /// bare removal would then erase the registration of the NEW one, and the VM would become
     /// unreachable although it has just reconnected.
     retirer(vmId: string, socket?: SocketAgent): void {
-        const courant = this.sockets.get(vmId);
-        if (socket !== undefined && courant !== socket) return;
+        const current = this.sockets.get(vmId);
+        if (socket !== undefined && current !== socket) return;
         this.sockets.delete(vmId);
         for (const [demande, attente] of [...this.enVol]) {
             if (attente.vmId !== vmId) continue;

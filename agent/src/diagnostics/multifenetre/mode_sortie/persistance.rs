@@ -49,7 +49,7 @@ pub(super) fn combinaison_imposee() -> Option<String> {
 /// read back directly WHAT the operator requested and WHAT
 /// really happened.
 ///
-/// `avant_creation`: the size of the output under test surveyed by
+/// `before_creation`: the size of the output under test surveyed by
 /// `temoin::nom_apres_tour`, AFTER the round, duplication still held — not
 /// an assumption about what the round just set. `None` if the output had
 /// vanished at that moment (`<disparue>`, see `nom_apres_tour`).
@@ -74,7 +74,7 @@ pub(super) fn journaliser_verdict(
     combinaison_imposee: Option<&str>,
     combinaison_gagnante: Option<&str>,
     nom_cible: &str,
-    avant_creation: Option<(u32, u32)>,
+    before_creation: Option<(u32, u32)>,
     apres_creation_releve: &[SortieDxgi],
 ) {
     let apres_creation = apres_creation_releve
@@ -82,7 +82,7 @@ pub(super) fn journaliser_verdict(
         .find(|sortie| sortie.nom_sortie == nom_cible)
         .map(|sortie| (sortie.rect.width, sortie.rect.height));
 
-    let (avant_mesurable, avant_l, avant_h) = match avant_creation {
+    let (before_measurable, before_w, before_h) = match before_creation {
         Some((l, h)) => (true, l, h),
         None => (false, 0, 0),
     };
@@ -90,14 +90,14 @@ pub(super) fn journaliser_verdict(
         Some((l, h)) => (true, l, h),
         None => (false, 0, 0),
     };
-    let survit = verdict_persistance(avant_creation, apres_creation);
+    let survit = verdict_persistance(before_creation, apres_creation);
 
     tracing::info!(
         combinaison_imposee = ?combinaison_imposee,
         combinaison_gagnante = ?combinaison_gagnante,
-        avant_creation_mesurable = avant_mesurable,
-        avant_creation_l = avant_l,
-        avant_creation_h = avant_h,
+        before_creation_measurable = before_measurable,
+        before_creation_w = before_w,
+        before_creation_h = before_h,
         apres_creation_mesurable = apres_mesurable,
         apres_creation_l = apres_l,
         apres_creation_h = apres_h,

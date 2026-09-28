@@ -92,9 +92,9 @@ impl WindowsSource {
         );
         let mut encoder = match neuf {
             Ok(encoder) => encoder,
-            Err(erreur) => {
+            Err(error) => {
                 self.fatal = true;
-                return Err(erreur).context(
+                return Err(error).context(
                     "encodeur neuf refusé après destruction de l'ancien : source épuisée",
                 );
             }
@@ -104,9 +104,9 @@ impl WindowsSource {
         // stream and renders a grey screen until the next one. A failure here leaves
         // `self.encoder` at `None` if not caught: same treatment
         // as above, and for the same reason.
-        if let Err(erreur) = encoder.request_keyframe() {
+        if let Err(error) = encoder.request_keyframe() {
             self.fatal = true;
-            return Err(erreur).context("image clé refusée par l'encodeur neuf : source épuisée");
+            return Err(error).context("image clé refusée par l'encodeur neuf : source épuisée");
         }
 
         self.encoder = Some(encoder);

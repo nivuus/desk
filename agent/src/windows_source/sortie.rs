@@ -17,7 +17,7 @@
 //! resize the window in this mode" — has been WRONG since batch 33.**
 //! `resize` now resizes the window and redoes the crop to follow
 //! the viewport, **without ever touching the output's display mode**:
-//! see `ModeCapture::suit_le_viewport` and `taille_pour_viewport` below.
+//! see `ModeCapture::suit_le_viewport` and `size_for_viewport` below.
 //!
 //! Two halves, separated by a `#[cfg(windows)]` in the middle of the file:
 //! above, the pure region computation and `ModeCapture`, both testable on
@@ -116,7 +116,7 @@ impl ModeCapture {
     /// crop** and **the Windows window** move inside it.
     ///
     /// ⚠️ **What this arm CANNOT DO**: grow beyond the output.
-    /// `taille_pour_viewport` bounds by an axis-by-axis `min`; a viewport
+    /// `size_for_viewport` bounds by an axis-by-axis `min`; a viewport
     /// wider than the output (the measured `5118x1438`) stays served at the
     /// output's size, and the black bars remain. Without a mode
     /// change — which D9 forbids —, there is no other way out.
@@ -157,7 +157,7 @@ impl ModeCapture {
 /// ⚠️ **THIS BOUNDING MUST NOT BE SHIPPED ALONE.** Taken in isolation, cropping to
 /// the work area **adds** a 48 px letterbox band below the image
 /// — that is, precisely what the owner complains about. It is only worth
-/// anything together with viewport following (`taille_pour_viewport` below), which
+/// anything together with viewport following (`size_for_viewport` below), which
 /// makes the image match the requested aspect ratio.
 ///
 /// `travail` is an `Option` because `GetMonitorInfoW` can fail: the
@@ -183,7 +183,7 @@ pub fn borne_de_la_sortie(moniteur: (u32, u32), travail: Option<(u32, u32)>) -> 
 /// claimants: the SENSOR, which receives the browser's `Resize`, and the
 /// SUPERVISOR, which puts the window back **every second** at the size its
 /// table retains (`boucle::placement_periodique::replacer_si_besoin`, target
-/// read in `Table::taille_sortie_de`). A remedy living only in the
+/// read in `Table::output_size_of`). A remedy living only in the
 /// sensor would be **undone one second later**, and the symptom would be
 /// "it works, then it comes back".
 ///
@@ -205,20 +205,20 @@ pub fn borne_de_la_sortie(moniteur: (u32, u32), travail: Option<(u32, u32)>) -> 
 ///
 /// Composition of two rules that already existed, **reused and not
 /// copied**:
-///   ① `borner_a_la_taille_max` — the viewport arrives in device pixels
+///   ① `clamp_to_max_size` — the viewport arrives in device pixels
 ///      since D9, and a client at `devicePixelRatio > 1` would rush in without
-///      limit; it is the bounding `creer_sortie` and `viewport_recu`
+///      limit; it is the bounding `create_output` and `viewport_recu`
 ///      already apply, at the two entry points of creation;
-///   ② `superviseur::placement::taille_retenue` — axis-by-axis `min`, even and
+///   ② `superviseur::placement::retained_size` — axis-by-axis `min`, even and
 ///      never zero: we **crop** a texture, we do not scale it,
 ///      so no aspect ratio to preserve here.
-pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32) {
+pub fn size_for_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32) {
     // ⑵ **ASPECT-RATIO-PRESERVING FIT, AND NOT AN AXIS-BY-AXIS `min`.**
     //
     // 🔴 **IT WAS A REAL DEFECT, MEASURED ON THE PRODUCT IN PRODUCTION, AND IT
     // WAS MY DOING.** The first draft composed
-    // `borner_a_la_taille_max` (which preserves aspect) with
-    // `placement::taille_retenue` (an axis-by-axis `min`, which does not preserve
+    // `clamp_to_max_size` (which preserves aspect) with
+    // `placement::retained_size` (an axis-by-axis `min`, which does not preserve
     // it) — so that **the second destroyed what the first had just
     // guaranteed**. Network capture of August 31st, 2026, 28 `viewport` frames
     // relayed while the owner dragged the edges of their window:
@@ -242,7 +242,7 @@ pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32
     // on both axes, and at the exact ratio.
     //
     // ⚠️ **THE AXIS-BY-AXIS `min` STAYS RIGHT WHERE IT COMES FROM**:
-    // `placement::taille_retenue` crops a texture in an output born too
+    // `placement::retained_size` crops a texture in an output born too
     // large, where there is no aspect ratio to honour. Here we choose the
     // SHAPE of the served rectangle, and that shape must be the one the
     // browser requests. Two needs, two rules; the defect came from having
@@ -261,7 +261,7 @@ pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32
     // than what the browser requested.** Without it, a viewport of
     // 900×500 would be encoded at 1854×1030 — four times the macroblocks, for
     // pixels the page cannot display.
-    let (dl, dh) = borner_a_la_taille_max(demande);
+    let (dl, dh) = clamp_to_max_size(demande);
     let f = f64::min(
         f64::min(borne.0 as f64 / dl as f64, borne.1 as f64 / dh as f64),
         1.0,
@@ -287,9 +287,9 @@ pub fn taille_pour_viewport(demande: (u32, u32), borne: (u32, u32)) -> (u32, u32
 /// browser's decoder saturated from eight 1280×720 windows (18.03%
 /// of frames dropped at the full rung, one run), and a 4K screen
 /// would require 9× the pixels of a single one of those windows.
-pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
+pub const MAX_OUTPUT_SIZE: (u32, u32) = (1920, 1080);
 
-/// Brings a requested size under `TAILLE_MAX_SORTIE`, aspect ratio
+/// Brings a requested size under `MAX_OUTPUT_SIZE`, aspect ratio
 /// preserved, in even dimensions, and never zero.
 ///
 /// ⚠️ **IMPORTANT 4 (review of task 9): the fast branch below
@@ -302,13 +302,13 @@ pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
 /// that it has none — fixed in task 8 of sub-block D10.** It
 /// stayed without a caller from the removal of the output mode change (D9,
 /// task 3) until D9's legacy 5, closed by tasks 6 and 7 of THIS
-/// sub-block: `superviseur::boucle::creation_sortie::creer_sortie`
+/// sub-block: `superviseur::boucle::creation_sortie::create_output`
 /// bounds with it at the CREATION of an output, and `superviseur::table::attribution::viewport_recu`
 /// bounds with it at the REUSE of a retained output, by the same bounding and
 /// for the same reason — the viewport announced by the browser arrives in
 /// device pixels since D9, and without this cap a request at
 /// `devicePixelRatio > 1` would rush in without limit. Its own role
-/// stays limited to the CAP (`TAILLE_MAX_SORTIE`); the 160×120 application
+/// stays limited to the CAP (`MAX_OUTPUT_SIZE`); the 160×120 application
 /// floor the old caller applied (the mode change removed by
 /// D9) still exists nowhere.
 ///
@@ -316,13 +316,13 @@ pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
 /// entry points above. **No real HiDPI client has been measured for
 /// all that**: the acceptance setup stays a headless Chrome, and nothing
 /// has exercised `deviceScaleFactor > 1` on the COST (eight windows at
-/// `TAILLE_MAX_SORTIE` rather than at 720p, encoder ceiling never measured
+/// `MAX_OUTPUT_SIZE` rather than at 720p, encoder ceiling never measured
 /// beyond 720p) — only unit symmetry has been (D9, task 5). This
 /// last sentence is the same reservation D9 left; the bounding that
 /// followed it was missing, and it is that which is fixed here, not the reservation
 /// itself.
-pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
-    let (max_l, max_h) = TAILLE_MAX_SORTIE;
+pub fn clamp_to_max_size((l, h): (u32, u32)) -> (u32, u32) {
+    let (max_l, max_h) = MAX_OUTPUT_SIZE;
     if l <= max_l && h <= max_h {
         return (l.max(2) & !1, h.max(2) & !1);
     }
@@ -414,7 +414,7 @@ impl WindowsSource {
     /// nothing (`ModeCapture::SortieEntiere`). ⚠️ **But since sub-block
     /// D10, the output itself can be born LARGER than what the
     /// supervisor requested** (polluted registry, see the measurement finding at the
-    /// head of `capteur/plein_ecran.rs`): `taille` carries what the
+    /// head of `capteur/plein_ecran.rs`): `size` carries what the
     /// supervisor retained, and the captured region is cropped at the output's origin
     /// to that size — never to the whole output if
     /// it overflows. `hwnd` stays filled in — input injection and the
@@ -423,7 +423,7 @@ impl WindowsSource {
     pub fn sur_sortie(
         hwnd: HWND,
         nom_sortie: &str,
-        taille: (u32, u32),
+        size: (u32, u32),
         fps: u32,
         bitrate: u32,
         clock_origin: std::time::Instant,
@@ -450,12 +450,12 @@ impl WindowsSource {
                 );
                 (b.0.min(dw), b.1.min(dh))
             }
-            Err(erreur) => {
-                tracing::warn!(%erreur, "zone de travail illisible : recadrage borné par la texture");
+            Err(error) => {
+                tracing::warn!(%error, "zone de travail illisible : recadrage borné par la texture");
                 (dw, dh)
             }
         };
-        let (rl, rh) = taille_pour_viewport(taille, borne);
+        let (rl, rh) = size_for_viewport(size, borne);
         let region = region_de_sortie(rl, rh).with_context(|| {
             format!("sortie {nom_sortie} de dimensions inexploitables ({dw}x{dh})")
         })?;

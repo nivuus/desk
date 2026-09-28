@@ -14,7 +14,7 @@
 //!
 //! 🔴 **NO LINE OF BEHAVIOUR HAS CHANGED**, and the three functions are
 //! transposed word for word. The parent re-imports them through a `use`, which means
-//! the `deserialize_with = "verifie_version"` attributes of the structures
+//! the `deserialize_with = "check_version"` attributes of the structures
 //! **have not moved by one character**: `serde` resolves the path in the scope
 //! of the module carrying the attribute, and a `use` is enough to put it back there.
 
@@ -26,7 +26,7 @@ use super::PLATEFORME_VERSION;
 // rejected (mandatory field), not silently filled in with the current
 // version. `default` would short-circuit `deserialize_with` when the field is
 // absent, which would break the check.
-pub(super) fn verifie_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
+pub(super) fn check_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -44,7 +44,7 @@ where
 ///
 /// 🔴 IT IS NOT "WITHOUT `v`": the field stays mandatory and stays an
 /// integer. Making it optional would reopen the hole that
-/// [`verifie_version`] refuses — a `v: null`, or an absent `v`, would become
+/// [`check_version`] refuses — a `v: null`, or an absent `v`, would become
 /// acceptable — and would deprive the log of the only information that says
 /// WHICH version refuses us.
 pub(super) fn version_toleree<'de, D>(deserializer: D) -> Result<u8, D::Error>

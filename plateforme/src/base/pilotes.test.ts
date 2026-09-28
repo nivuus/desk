@@ -181,7 +181,7 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         // divergence au lieu de la mesurer. Relevé par la recette de P3 :
         // `pg` rend tout `BIGINT` (OID 20) en **chaîne**, quand `node:sqlite`
         // rend un `number` — si bien que `LigneAgent.vu_a`, `LigneSession`,
-        // `LigneUtilisateur` et `LigneJeton` déclaraient `number` une valeur
+        // `UserRow` et `LigneJeton` déclaraient `number` une valeur
         // qui était une `string` sur le moteur de PRODUCTION.
         //
         // ⚠️ Ce n'était pas une coquille de type : `etatDe` (`agents/fraicheur.ts`)
@@ -229,10 +229,10 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
                 'SELECT applique_a FROM schema_migration WHERE version = ?', [1]))[0].applique_a],
         ];
 
-        for (const [nom, valeur] of releves) {
+        for (const [nom, value] of releves) {
             // Le nom de la colonne entre dans l'assertion : sans lui, un échec
             // ne dirait pas LAQUELLE des sept a divergé.
-            expect([nom, typeof valeur]).toEqual([nom, 'number']);
+            expect([nom, typeof value]).toEqual([nom, 'number']);
         }
 
         // Et la valeur elle-même, à l'identique — `'1787136773742'` n'est PAS

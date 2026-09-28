@@ -32,7 +32,7 @@ const FPS: u32 = 60;
 const DEBIT: u32 = 8_000_000;
 
 /// We stop searching beyond: the expected ceiling is 8.
-const PLAFOND_RECHERCHE: usize = 16;
+const SEARCH_CEILING: usize = 16;
 
 /// An encoder and the device that carries it. The device MUST live
 /// as long as the encoder; releasing them separately would measure
@@ -83,19 +83,19 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
     // before.
     let mut vivants: Vec<Instance> = Vec::new();
     let mut plafond = 0usize;
-    for rang in 1..=PLAFOND_RECHERCHE {
+    for rang in 1..=SEARCH_CEILING {
         match construire() {
             Ok(instance) => {
                 vivants.push(instance);
                 tracing::info!(rang, vivants = vivants.len(), "phase 1 : encodeur créé");
             }
-            Err(erreur) => {
+            Err(error) => {
                 plafond = rang - 1;
                 tracing::info!(
                     phase = 1,
                     plafond,
                     rang_refuse = rang,
-                    causes = %super::causes(erreur),
+                    causes = %super::causes(error),
                     "phase 1 : plafond atteint — création refusée"
                 );
                 break;
@@ -104,7 +104,7 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
     }
     if plafond == 0 {
         tracing::warn!(
-            plafond_recherche = PLAFOND_RECHERCHE,
+            search_ceiling = SEARCH_CEILING,
             "phase 1 : aucun refus sous le plafond de recherche — la mesure pivot est SANS OBJET"
         );
         drop(vivants);
@@ -143,12 +143,12 @@ pub(super) fn mesurer(cycles: usize) -> Result<()> {
                     "cycle : reconstruction RÉUSSIE"
                 );
             }
-            Err(erreur) => {
+            Err(error) => {
                 premier_echec = Some(cycle);
                 tracing::info!(
                     cycle,
                     vivants = vivants.len(),
-                    causes = %super::causes(erreur),
+                    causes = %super::causes(error),
                     "cycle : reconstruction REFUSÉE"
                 );
                 break;

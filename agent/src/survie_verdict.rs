@@ -38,10 +38,10 @@
 /// one is missing — never a comparison on a numeric sentinel
 /// that could be confused with a success.
 pub(crate) fn verdict_persistance(
-    avant: Option<(u32, u32)>,
+    before: Option<(u32, u32)>,
     apres: Option<(u32, u32)>,
 ) -> &'static str {
-    match (avant, apres) {
+    match (before, apres) {
         (Some(a), Some(b)) if a == b => "true",
         (Some(_), Some(_)) => "false",
         _ => "indetermine (sortie disparue)",
@@ -72,7 +72,7 @@ mod tests {
     /// measurements absent (output gone before AND after) must NEVER
     /// read as a survival -- nor as a comparison on `(0, 0)`.
     #[test]
-    fn une_mesure_absente_de_chaque_cote_rend_indetermine() {
+    fn a_measure_missing_on_each_side_returns_undetermined() {
         assert_eq!(
             verdict_persistance(None, Some((1280, 720))),
             "indetermine (sortie disparue)"

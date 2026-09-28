@@ -18,9 +18,9 @@ use crate::moniteurs_virtuels::sudovda::INTERFACE_PILOTE;
 /// Frees the device information list on ALL paths,
 /// including error exits — SetupAPI does not forgive leaks of
 /// `HDEVINFO`, and there are four `?` between its opening and its closing.
-struct ListeDePeripheriques(HDEVINFO);
+struct DeviceInfoList(HDEVINFO);
 
-impl Drop for ListeDePeripheriques {
+impl Drop for DeviceInfoList {
     fn drop(&mut self) {
         let _ = unsafe { SetupDiDestroyDeviceInfoList(self.0) };
     }
@@ -28,7 +28,7 @@ impl Drop for ListeDePeripheriques {
 
 /// Resolves the `\\?\…` path of the device that exposes `INTERFACE_PILOTE`.
 pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
-    let liste = ListeDePeripheriques(
+    let list = DeviceInfoList(
         unsafe {
             SetupDiGetClassDevsW(
                 Some(&INTERFACE_PILOTE),
@@ -47,7 +47,7 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
         cbSize: std::mem::size_of::<SP_DEVICE_INTERFACE_DATA>() as u32,
         ..Default::default()
     };
-    unsafe { SetupDiEnumDeviceInterfaces(liste.0, None, &INTERFACE_PILOTE, 0, &mut interface) }
+    unsafe { SetupDiEnumDeviceInterfaces(list.0, None, &INTERFACE_PILOTE, 0, &mut interface) }
         .context(
             "aucun périphérique ne présente l'interface SudoVDA — pilote absent, \
              désactivé, ou device node non créé",
@@ -58,7 +58,7 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
     // second for the content.
     let mut requis = 0u32;
     let _ = unsafe {
-        SetupDiGetDeviceInterfaceDetailW(liste.0, &interface, None, 0, Some(&mut requis), None)
+        SetupDiGetDeviceInterfaceDetailW(list.0, &interface, None, 0, Some(&mut requis), None)
     };
     let entete = std::mem::size_of::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>();
     anyhow::ensure!(
@@ -75,7 +75,7 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
     let detail = tampon.as_mut_ptr() as *mut SP_DEVICE_INTERFACE_DETAIL_DATA_W;
     unsafe { (*detail).cbSize = entete as u32 };
     unsafe {
-        SetupDiGetDeviceInterfaceDetailW(liste.0, &interface, Some(detail), requis, None, None)
+        SetupDiGetDeviceInterfaceDetailW(list.0, &interface, Some(detail), requis, None, None)
     }
     .context("lecture du chemin du périphérique SudoVDA")?;
 

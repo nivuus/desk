@@ -385,7 +385,7 @@ describe('la version du protocole, et les listes blanches DÉRIVÉES de l’unio
 
     it('🔴 les deux listes blanches couvrent EXACTEMENT leur union', () => {
         // 🔴 REMÈDE STRUCTUREL, ET C'EST SA MOITIÉ OBSERVABLE À L'EXÉCUTION.
-        // L'autre moitié est le typecheck : `TOUS_DEPUIS` et `TOUS_VERS` sont
+        // L'autre moitié est le typecheck : `ALL_FROM` et `ALL_TO` sont
         // des `Record<Union['type'], true>`, et `tsc` refuse une clé
         // manquante. C'est le jumeau de `TYPES_AGENT` (`control.ts`), écrit à
         // la main, que rien ne confronte à son union — et dont l'oubli ne

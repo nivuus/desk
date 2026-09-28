@@ -344,17 +344,17 @@ impl LecteurMicro {
     /// sees a stream that gets interrupted, which is not the same thing and
     /// can be heard.
     pub fn remplir(&mut self, sortie: &mut [f32]) {
-        let mut ecrit = 0;
-        while ecrit < sortie.len() {
+        let mut written = 0;
+        while written < sortie.len() {
             // The residue first: it is what glues the splittings back together.
-            while ecrit < sortie.len() {
+            while written < sortie.len() {
                 let Some(e) = self.residu.pop_front() else {
                     break;
                 };
-                sortie[ecrit] = e;
-                ecrit += 1;
+                sortie[written] = e;
+                written += 1;
             }
-            if ecrit == sortie.len() {
+            if written == sortie.len() {
                 return;
             }
 
@@ -365,7 +365,7 @@ impl LecteurMicro {
                 // stop here**: without this exit, a player that has
                 // never decoded anything would spin endlessly, `dissimuler` returning
                 // zero samples at each round.
-                sortie[ecrit..].fill(0.0);
+                sortie[written..].fill(0.0);
                 return;
             }
         }

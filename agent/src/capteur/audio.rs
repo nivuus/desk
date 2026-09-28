@@ -25,7 +25,7 @@ pub struct FenetreAudio {
     /// Rank of the last focus received, `0` if this session has never been
     /// focused. **A rank, not a timestamp**: an `Instant` is not
     /// comparable across processes and would bring nothing here.
-    pub dernier_focus: u64,
+    pub last_focus: u64,
     /// This window cannot carry the sound right now.
     ///
     /// True when the child has reported `AudioMort` and the session observes
@@ -80,10 +80,10 @@ pub fn arbitrer(fenetres: &[FenetreAudio]) -> Vec<(String, bool)> {
 /// Does `candidat` win over `actuel` within their PID group?
 ///
 /// The MOST RECENT focus wins; on a tie — two never-focused windows,
-/// hence `dernier_focus == 0` for both — the FIRST arrival. Sleep
+/// hence `last_focus == 0` for both — the FIRST arrival. Sleep
 /// does not enter the comparison, and no field carries it.
 fn l_emporte(candidat: &FenetreAudio, actuel: &FenetreAudio) -> bool {
-    match candidat.dernier_focus.cmp(&actuel.dernier_focus) {
+    match candidat.last_focus.cmp(&actuel.last_focus) {
         Ordering::Greater => true,
         Ordering::Less => false,
         Ordering::Equal => candidat.arrivee < actuel.arrivee,
@@ -94,12 +94,12 @@ fn l_emporte(candidat: &FenetreAudio, actuel: &FenetreAudio) -> bool {
 mod tests {
     use super::*;
 
-    fn fenetre(session: &str, pid: u32, arrivee: u64, dernier_focus: u64) -> FenetreAudio {
+    fn fenetre(session: &str, pid: u32, arrivee: u64, last_focus: u64) -> FenetreAudio {
         FenetreAudio {
             session: session.into(),
             pid,
             arrivee,
-            dernier_focus,
+            last_focus,
             inapte: false,
         }
     }
@@ -121,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn deux_processus_distincts_portent_chacun_le_leur() {
+    fn two_distinct_processes_each_carry_their_own() {
         // The product's nominal case: one application per window.
         let f = vec![fenetre("a", 100, 1, 0), fenetre("b", 200, 2, 0)];
         assert_eq!(porteurs(&f), vec!["a".to_string(), "b".to_string()]);
@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[test]
-    fn la_decision_est_rendue_pour_chaque_session_meme_muette() {
+    fn the_decision_is_returned_for_every_session_even_a_silent_one() {
         // `arbitrer` returns one entry per window, not only for the
         // carriers: the registry needs the `false` to send the order to
         // go silent to the one that carried the sound just before.
@@ -176,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn aucune_fenetre_rend_aucune_decision() {
+    fn no_window_returns_no_decision() {
         assert!(arbitrer(&[]).is_empty());
     }
 
@@ -190,14 +190,14 @@ mod tests {
                 session: "w-1".into(),
                 pid: 42,
                 arrivee: 1,
-                dernier_focus: 9,
+                last_focus: 9,
                 inapte: true,
             },
             FenetreAudio {
                 session: "w-2".into(),
                 pid: 42,
                 arrivee: 2,
-                dernier_focus: 0,
+                last_focus: 0,
                 inapte: false,
             },
         ];
@@ -213,7 +213,7 @@ mod tests {
             session: "w-1".into(),
             pid: 42,
             arrivee: 1,
-            dernier_focus: 1,
+            last_focus: 1,
             inapte: true,
         }];
         assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false)]);
@@ -280,14 +280,14 @@ mod tests {
                 session: "w-1".into(),
                 pid: 42,
                 arrivee: 1,
-                dernier_focus: 0,
+                last_focus: 0,
                 inapte: true,
             },
             FenetreAudio {
                 session: "w-2".into(),
                 pid: 42,
                 arrivee: 2,
-                dernier_focus: 0,
+                last_focus: 0,
                 inapte: true,
             },
         ];
@@ -304,14 +304,14 @@ mod tests {
                 session: "w-1".into(),
                 pid: 42,
                 arrivee: 1,
-                dernier_focus: 0,
+                last_focus: 0,
                 inapte: true,
             },
             FenetreAudio {
                 session: "w-2".into(),
                 pid: 77,
                 arrivee: 2,
-                dernier_focus: 0,
+                last_focus: 0,
                 inapte: false,
             },
         ];

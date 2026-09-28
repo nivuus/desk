@@ -108,7 +108,7 @@ export function elire(nomVerrou: string, deps: DepsElection): Election {
 /// is only promoted on the carrier's death, potentially hours later,
 /// and `DUREE_JETON_ACCES_MS` is **ten minutes**
 /// (`plateforme/src/identite/jeton.ts`): it therefore presented an expired token,
-/// `garde.verifier` returned `motif: 'expire'`, `estPlacePrise` returned `false`,
+/// `garde.verify` returned `motif: 'expire'`, `estPlacePrise` returned `false`,
 /// and `canalDeControlePerdu()` overwrote the refusal with "Reload the page".
 /// **Promotion — the only thing that justifies this whole election — could
 /// not work in real use.**
@@ -152,7 +152,7 @@ export async function promouvoir(deps: DepsPromotion): Promise<void> {
 /// 🔴 **IT IS A RULE, AND IT WAS IN THE WIRING** (Minor ④ of the final
 /// review): `porteur-dom.ts` declares "NO RULE HERE" and yet carried
 /// this ternary. The carrier goes through `bureau.rouvrir`, which STORES the
-/// `Window` handle and lets `shell.ts::liste` say "open"; a follower
+/// `Window` handle and lets `shell.ts::list` say "open"; a follower
 /// has no fed `bureau` and opens directly — its window is real,
 /// but the carrier does not see it (declared legacy of the workstream).
 export function ouvertureParLeBureau(role: Role): boolean {
@@ -198,9 +198,9 @@ export function batirEtat(fenetres: FenetreConnue[]): EtatDiffuse {
 /// does not necessarily come from us, and a malformed entry is DISCARDED rather
 /// than let through — a half-valid list is better than an `undefined`
 /// on the `titre` field at painting time.
-export function lireEtat(donnees: unknown): FenetreConnue[] | undefined {
-    if (typeof donnees !== 'object' || donnees === null) return undefined;
-    const message = donnees as { type?: unknown; fenetres?: unknown };
+export function lireEtat(data: unknown): FenetreConnue[] | undefined {
+    if (typeof data !== 'object' || data === null) return undefined;
+    const message = data as { type?: unknown; fenetres?: unknown };
     if (message.type !== 'etat-bureau') return undefined;
     if (!Array.isArray(message.fenetres)) return undefined;
     return message.fenetres.filter(
@@ -239,9 +239,9 @@ export function batirDemande(): DemandeEtat {
 /// ⚠️ **ON THE TYPE, NEVER ON PRESENCE**: a `BroadcastChannel` is
 /// shared per origin, and everything passing through it does not come from us — same
 /// reason as `lireEtat` below.
-export function estDemandeEtat(donnees: unknown): boolean {
-    if (typeof donnees !== 'object' || donnees === null) return false;
-    return (donnees as { type?: unknown }).type === 'demande-etat';
+export function estDemandeEtat(data: unknown): boolean {
+    if (typeof data !== 'object' || data === null) return false;
+    return (data as { type?: unknown }).type === 'demande-etat';
 }
 
 /// Reads a RAW frame from the signaling socket, or returns `undefined` if it is not
@@ -268,24 +268,24 @@ export function lireTrame(brut: unknown): Record<string, unknown> | undefined {
 }
 
 /// What a tab must PAINT, given its role, its OWN list (the one
-/// `shell.ts::creerBureau().liste()` returns), and the LAST state received on
-/// the channel — never `bureau.liste()` alone.
+/// `shell.ts::createDesktop().list()` returns), and the LAST state received on
+/// the channel — never `bureau.list()` alone.
 ///
 /// 🔴 **THIS RULE LIVED IN `porteur-dom.ts`, WHOSE HEADER DECLARES IT
 /// CARRIES NONE — AND THAT IS WHERE THE DEFECT LODGED** (review round
-/// 1, critique ①). On a FOLLOWER, `bureau.liste()` is structurally
+/// 1, critique ①). On a FOLLOWER, `bureau.list()` is structurally
 /// EMPTY: no `fenetre-ouverte` message reaches its `bureau`, which
 /// opens no socket (`porteur-dom.ts::ouvrirLaSession` ONLY runs on
 /// the carrier), and its `rouvrir` calls `window.open` DIRECTLY without
 /// going through `bureau.rouvrir`. A timer repainting from
-/// `bureau.liste()` on a follower would therefore ERASE, less than a second
+/// `bureau.list()` on a follower would therefore ERASE, less than a second
 /// after each broadcast received, the list it had just shown — not
 /// an absence of information, FALSE information: the silent failure
 /// this workstream claims to avoid.
 ///
 /// 🔴 **DECLARED LIMIT, NOT FIXED (Important ② of the final review of
 /// August 31st, 2026): PROMOTION ERASES THE LIST THE FOLLOWER DISPLAYED.**
-/// A promoted tab switches to the `porteur` branch, whose `listePropre` is
+/// A promoted tab switches to the `porteur` branch, whose `ownList` is
 /// **structurally empty** — its `bureau` never received a single
 /// `fenetre-ouverte`, for lack of a socket before promotion. It therefore paints `[]`
 /// at the first round, and the state it showed disappears.
@@ -301,13 +301,13 @@ export function lireTrame(brut: unknown): Record<string, unknown> | undefined {
 /// fix wave.
 export function fenetresAPeindre(
     role: Role,
-    listePropre: FenetreConnue[],
-    dernierEtatRecu: FenetreConnue[] | undefined,
+    ownList: FenetreConnue[],
+    lastReceivedState: FenetreConnue[] | undefined,
 ): FenetreConnue[] {
     // The carrier IS the source of truth: its own list, always — a
     // state received before its own promotion would be stale.
-    if (role === 'porteur') return listePropre;
+    if (role === 'porteur') return ownList;
     // The follower ONLY has what was broadcast to it. Nothing received yet is not
     // a lie: it is the exact initial state, before any broadcast.
-    return dernierEtatRecu ?? [];
+    return lastReceivedState ?? [];
 }

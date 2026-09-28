@@ -20,7 +20,7 @@
 // A SECOND, OPTIONAL target receives the TERMINAL messages — and them
 // alone. It is plugged in HERE rather than in `main.ts` for the very reason
 // that gave birth to this module: it is the single write point, and a
-// caller writing `ecran.montrer(...)` next to `statut.afficher(...)`
+// caller writing `ecran.montrer(...)` next to `statut.show(...)`
 // would be two writes nothing forces to stay in agreement. Without a target, the
 // behaviour is the pre-S4 one, to the line: the eleven tests of
 // `status.test.ts` pass UNCHANGED, and if they had to change, the
@@ -52,7 +52,7 @@ export interface OptionsAffichage {
 }
 
 export interface Statut {
-    afficher(message: string, options?: OptionsAffichage): void;
+    show(message: string, options?: OptionsAffichage): void;
     /// Hides the banner — unless a terminal or persistent message is
     /// displayed: it must stay visible until another message
     /// replaces it.
@@ -74,7 +74,7 @@ export interface Statut {
     expirer(): void;
 }
 
-export function creerStatut(element: CibleStatut, ecran?: EcranTerminal): Statut {
+export function createStatus(element: CibleStatut, ecran?: EcranTerminal): Statut {
     let terminal = false;
     let persistant = false;
 
@@ -84,7 +84,7 @@ export function creerStatut(element: CibleStatut, ecran?: EcranTerminal): Statut
     };
 
     return {
-        afficher(message, options) {
+        show(message, options) {
             const estTerminal = options?.terminal ?? false;
             if (terminal && !estTerminal) return;
             terminal = terminal || estTerminal;

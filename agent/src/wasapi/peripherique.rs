@@ -278,7 +278,7 @@ mod tests {
     /// THE FIX'S CASE: the Windows default is the cable, we request
     /// the speakers through a substring, and they are the ones elected.
     #[test]
-    fn une_sous_chaine_unique_elit_les_haut_parleurs_malgre_le_defaut_windows() {
+    fn a_unique_substring_elects_the_speakers_despite_the_windows_default() {
         let disponibles = vm();
         match choisir(&disponibles, Some("Steam Streaming")) {
             Choix::Elu {
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn la_sous_chaine_ignore_la_casse_et_les_espaces_de_bord() {
+    fn the_substring_ignores_case_and_edge_spaces() {
         let disponibles = vm();
         match choisir(&disponibles, Some("  sTeAm sTrEaMiNg  ")) {
             Choix::Elu { peripherique, .. } => {
@@ -305,7 +305,7 @@ mod tests {
     }
 
     #[test]
-    fn le_nom_complet_est_reconnu_comme_exact_et_non_comme_partiel() {
+    fn the_full_name_is_recognised_as_exact_not_partial() {
         let disponibles = vm();
         match choisir(
             &disponibles,
@@ -350,7 +350,7 @@ mod tests {
     /// is the identifier of one AND a substring of the other's name. Without
     /// the order of criteria, the name would win.
     #[test]
-    fn l_identifiant_est_essaye_avant_le_nom() {
+    fn the_identifier_is_tried_before_the_name() {
         let piege = vec![
             Peripherique {
                 nom: "Sortie ligne".into(),
@@ -377,7 +377,7 @@ mod tests {
     /// that is the prefix of another would be declared ambiguous whereas it
     /// designates exactly one device.
     #[test]
-    fn le_nom_exact_est_essaye_avant_la_sous_chaine() {
+    fn the_exact_name_is_tried_before_the_substring() {
         let prefixe = vec![
             Peripherique {
                 nom: "Haut-parleurs".into(),
@@ -404,7 +404,7 @@ mod tests {
     /// in the VM's listing, so taking the first would amount to choosing
     /// by enumeration rank — what this module exists to forbid.
     #[test]
-    fn une_sous_chaine_ambigue_refuse_de_trancher_et_nomme_les_candidats() {
+    fn an_ambiguous_substring_refuses_to_decide_and_names_the_candidates() {
         let disponibles = vm();
         match choisir(&disponibles, Some("Haut-parleurs")) {
             Choix::Ambigu { demande, candidats } => {
@@ -430,7 +430,7 @@ mod tests {
     }
 
     #[test]
-    fn une_demande_sur_une_liste_vide_est_introuvable() {
+    fn a_request_on_an_empty_list_is_not_found() {
         assert_eq!(
             choisir(&[], Some("Steam")),
             Choix::Introuvable {
@@ -440,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    fn l_inventaire_nomme_chaque_peripherique_avec_son_identifiant() {
+    fn the_inventory_names_each_device_with_its_identifier() {
         let texte = inventaire(&vm());
         assert!(texte.contains("«Haut-parleurs (Steam Streaming Speakers)»"));
         assert!(texte.contains("{0.0.0.00000000}.{cable-input}"));

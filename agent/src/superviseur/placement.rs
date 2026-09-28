@@ -90,12 +90,12 @@ pub fn sortie_assez_grande(sortie: (u32, u32), demandee: (u32, u32)) -> bool {
 ///
 /// `min` axis by axis, **without preserving the aspect ratio**: we crop a
 /// texture, we do not scale it. It is the opposite of
-/// `windows_source_sortie::borner_a_la_taille_max`, which resizes and must
+/// `windows_source_sortie::clamp_to_max_size`, which resizes and must
 /// therefore preserve that ratio.
 ///
 /// Even dimensions (the NV12 encoder requires them) and never zero (a collapsed
 /// video box emits `(0, 0)`, a real case recorded in D8).
-pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
+pub fn retained_size(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
     let retenir = |d: u32, s: u32| (d.min(s).max(2)) & !1;
     (retenir(demandee.0, sortie.0), retenir(demandee.1, sortie.1))
 }
@@ -111,7 +111,7 @@ pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
 /// positional pair of enumeration indexes.
 ///
 /// ⚠️ **The caller must look ONLY among the outputs that APPEARED** (see the
-/// comment of `creation_sortie::creer_sortie`): the viewport announced by the
+/// comment of `creation_sortie::create_output`): the viewport announced by the
 /// browser can equal the resolution of a PHYSICAL monitor, and the inequality
 /// makes this risk larger, not smaller — a 4K monitor would now suit
 /// any viewport.
@@ -131,7 +131,7 @@ pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
 /// window showed any more, whatever the application**.
 ///
 /// On a **designated** output, size is therefore no longer a refusal criterion
-/// but a CONSTRAINT: `windows_source_sortie::taille_pour_viewport` already
+/// but a CONSTRAINT: `windows_source_sortie::size_for_viewport` already
 /// fits the window there with the aspect ratio preserved (batch 33). Refusing meant
 /// refusing the only output we could serve.
 ///
@@ -300,15 +300,13 @@ pub fn rect_a_poser(cible: &Rect, lisere: Lisere) -> Rect {
 }
 
 /// The size to pass to `SetWindowPos` so that the **VISIBLE** frame measures
-/// `taille`. The counterpart of [`rect_a_poser`] for the CAPTURER path, which
+/// `size`. The counterpart of [`rect_a_poser`] for the CAPTURER path, which
 /// resizes without moving (`SWP_NOMOVE`) — the origin being already compensated by
 /// the supervisor's placement, only the size remains to correct.
-pub fn taille_a_poser(taille: (u32, u32), lisere: Lisere) -> (u32, u32) {
+pub fn size_to_set(size: (u32, u32), lisere: Lisere) -> (u32, u32) {
     (
-        taille
-            .0
-            .saturating_add_signed(lisere.gauche + lisere.droite),
-        taille.1.saturating_add_signed(lisere.haut + lisere.bas),
+        size.0.saturating_add_signed(lisere.gauche + lisere.droite),
+        size.1.saturating_add_signed(lisere.haut + lisere.bas),
     )
 }
 

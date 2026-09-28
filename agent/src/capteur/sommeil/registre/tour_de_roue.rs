@@ -16,7 +16,7 @@
 //!
 //! **Transposition, not rewrite**: the block is moved identically,
 //! no value, no order of operations, no signature changed — only
-//! the visibility of `demarrer_le_tour_de_roue` moves to `pub(super)` to
+//! the visibility of `start_the_round` moves to `pub(super)` to
 //! stay reachable from `registre.rs`, which calls it.
 
 use std::time::Instant;
@@ -33,9 +33,9 @@ use super::{
 /// `etat()` while this closure is still running **blocks** until
 /// it finishes — the reentrancy that would panic would be that of the *same*
 /// thread, which does not happen here. The `sleep` is only a cadence, not a guard.
-pub(super) fn demarrer_le_tour_de_roue() {
+pub(super) fn start_the_round() {
     std::thread::spawn(|| {
-        let mut sondeur = crate::presse_papier::Sondeur::nouveau();
+        let mut sondeur = crate::presse_papier::Sondeur::new();
         loop {
             std::thread::sleep(PERIODE_REARBITRAGE);
 
@@ -65,7 +65,7 @@ pub(super) fn demarrer_le_tour_de_roue() {
             // ⚠️ **The REVERSE direction tests it a second time, and it is NOT
             // the duplicate the sentence above forbids**: `actif()` there guards
             // another decision point — the WRITE, served from a window
-            // thread (`sommeil::presse_papier::ecrire_avec`). Without it,
+            // thread (`sommeil::presse_papier::write_with`). Without it,
             // `PRESSE_PAPIER=0` would cut reading and leave writing,
             // and "the whole mechanism is disarmed" would be a half-truth.
             // 🔴 **BEFORE `tour()`, and the order IS the mechanism** (sub-block

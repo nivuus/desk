@@ -23,7 +23,7 @@ impl Session {
     /// Writes `texte` into the VM's clipboard, then **arms** the injection.
     ///
     /// Three steps, in this exact order and for this reason: write first —
-    /// **SYNCHRONOUS**, `ecrire_le_presse_papier` waits for the sensor's `Fait` —,
+    /// **SYNCHRONOUS**, `write_clipboard` waits for the sensor's `Fait` —,
     /// only arm AFTERWARDS, and only if the write **succeeded**. No
     /// channel ordering comes into it: the order is guaranteed by
     /// construction.
@@ -54,7 +54,7 @@ impl Session {
             ),
             Some(borne) => {
                 let pour_windows = crate::presse_papier::denormaliser(&borne);
-                match self.source.ecrire_le_presse_papier(&pour_windows) {
+                match self.source.write_clipboard(&pour_windows) {
                     // ⚠️ **NEVER THE TEXT IN THE LOG** (D-P1-7): the
                     // clipboard content is a private resource, and
                     // a log committed to git is public to the repository. Only
@@ -69,9 +69,9 @@ impl Session {
                         );
                         self.collage_a_injecter = true;
                     }
-                    Err(erreur) => tracing::warn!(
+                    Err(error) => tracing::warn!(
                         session = %self.session_id,
-                        erreur = %format!("{erreur:#}"),
+                        error = %format!("{error:#}"),
                         "collage NON écrit : la touche V est perdue, pas reportée"
                     ),
                 }

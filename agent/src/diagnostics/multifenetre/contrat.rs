@@ -88,16 +88,16 @@ pub(super) fn valider_contrat() -> Result<()> {
     // what each one tests — no more. Having a single boolean carry the word
     // "layout" while it only compares sizes would be asserting
     // beyond the survey.
-    let tailles_conformes = rendus_version as usize == std::mem::size_of::<VersionProtocole>()
+    let sizes_match = rendus_version as usize == std::mem::size_of::<VersionProtocole>()
         && rendus_veille as usize == std::mem::size_of::<Veille>();
     let version_conforme = version == VERSION_AMONT;
     tracing::info!(
-        tailles_conformes,
+        sizes_match,
         version_conforme,
-        conforme = tailles_conformes && version_conforme,
+        conforme = sizes_match && version_conforme,
         // The sizes given in figures here are the ASSUMED ones, not the returned ones: this
         // message is constant, it will be emitted identically when
-        // `tailles_conformes` is `false`. Announcing "the returned sizes
+        // `sizes_match` is `false`. Announcing "the returned sizes
         // (4 and 8)" there would then assert exactly what the verdict denies.
         "verdict : les tailles rendues sont confrontées aux tailles supposées \
          (4 et 8), et les quatre octets de version à la constante amont \

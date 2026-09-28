@@ -11,7 +11,7 @@ describe('resoudre', () => {
     it('rend hub.html pour la racine, et le marque DOCUMENT', () => {
         expect(resoudre('/')).toEqual({
             ok: true,
-            fichier: 'hub.html',
+            file: 'hub.html',
             mime: 'text/html; charset=utf-8',
             document: true,
             empreinte: false,
@@ -21,7 +21,7 @@ describe('resoudre', () => {
     it('rend un fichier nommé', () => {
         expect(resoudre('/hub.html')).toEqual({
             ok: true,
-            fichier: 'hub.html',
+            file: 'hub.html',
             mime: 'text/html; charset=utf-8',
             document: true,
             empreinte: false,
@@ -34,7 +34,7 @@ describe('resoudre', () => {
     it("marque un actif comme RESSOURCE, jamais comme document", () => {
         expect(resoudre('/assets/index-a1b2c3.js')).toEqual({
             ok: true,
-            fichier: 'assets/index-a1b2c3.js',
+            file: 'assets/index-a1b2c3.js',
             mime: 'text/javascript; charset=utf-8',
             document: false,
             empreinte: true,
@@ -45,7 +45,7 @@ describe('resoudre', () => {
     // page, jamais sur un 404 — et depuis le 30 août 2026, cette page est le
     // HUB, pas la session (voir le test de racine ci-dessus).
     it('replie un chemin sans extension sur hub.html', () => {
-        expect(resoudre('/quelconque')).toMatchObject({ ok: true, fichier: 'hub.html' });
+        expect(resoudre('/quelconque')).toMatchObject({ ok: true, file: 'hub.html' });
     });
 
     // 🔴 LA TRAVERSÉE SE JUGE SUR LE CHEMIN RÉSOLU. Un filtre par sous-chaîne
@@ -142,7 +142,7 @@ describe("l'empreinte, qui décide du cache", () => {
     // pas hériter de son cache.
     it("un chemin sans extension sous `assets/` retombe sur la page, non empreintée", () => {
         expect(resoudre('/assets/quelque-chose')).toMatchObject({
-            fichier: 'hub.html',
+            file: 'hub.html',
             empreinte: false,
         });
     });

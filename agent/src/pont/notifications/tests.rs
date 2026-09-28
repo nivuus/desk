@@ -25,7 +25,7 @@ const MUTATIONS_DESARMEES: Etat = Etat {
 };
 
 /// The three states F1 and F2 swept, plus F3's.
-const TOUS_LES_ETATS: [Etat; 4] = [OUVERT, LECTURE_SEULE, CANAL_FERME, MUTATIONS_DESARMEES];
+const ALL_STATES: [Etat; 4] = [OUVERT, LECTURE_SEULE, CANAL_FERME, MUTATIONS_DESARMEES];
 
 /// 🔴 **THE ONLY REFUSAL GATE FOR A WRITE, and it bears on a STATE.**
 ///
@@ -37,7 +37,7 @@ const TOUS_LES_ETATS: [Etat; 4] = [OUVERT, LECTURE_SEULE, CANAL_FERME, MUTATIONS
 fn une_ecriture_sur_racine_non_inscriptible_est_refusee() {
     assert_eq!(
         decider(PRE_CONVERT_TO_FULL, LECTURE_SEULE, Cible::SansObjet),
-        Reponse::Refuser(Erreur::ProtegeEnEcriture)
+        Reponse::Refuser(Error::ProtegeEnEcriture)
     );
 }
 
@@ -48,10 +48,10 @@ fn une_ecriture_sur_racine_non_inscriptible_est_refusee() {
 /// same gesture from the user, and it is the only moment we can still
 /// tell them.
 #[test]
-fn une_ecriture_sur_canal_ferme_est_refusee_en_erreur_d_e_s() {
+fn a_write_on_a_closed_channel_is_refused_as_an_io_error() {
     assert_eq!(
         decider(PRE_CONVERT_TO_FULL, CANAL_FERME, Cible::SansObjet),
-        Reponse::Refuser(Erreur::CanalFerme)
+        Reponse::Refuser(Error::CanalFerme)
     );
     // …and the two causes are not confused.
     assert_ne!(
@@ -86,16 +86,16 @@ fn une_ecriture_est_autorisee_quand_la_racine_est_inscriptible_et_le_canal_ouver
 /// 🔴 **A MUTATION IS REFUSED ON A STATE, AND THE FOUR STATES ARE
 /// DISTINGUISHED.**
 #[test]
-fn une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent() {
+fn a_mutation_is_refused_in_each_of_the_four_states_that_prevent_it() {
     for code in [PRE_RENAME, PRE_DELETE] {
         assert_eq!(
-            decider(code, MUTATIONS_DESARMEES, Cible::DansLaRacine),
-            Reponse::Refuser(Erreur::ProtegeEnEcriture),
+            decider(code, MUTATIONS_DESARMEES, Cible::InRoot),
+            Reponse::Refuser(Error::ProtegeEnEcriture),
             "PONT_MUTATION=0, code {code}"
         );
         assert_eq!(
-            decider(code, LECTURE_SEULE, Cible::DansLaRacine),
-            Reponse::Refuser(Erreur::ProtegeEnEcriture),
+            decider(code, LECTURE_SEULE, Cible::InRoot),
+            Reponse::Refuser(Error::ProtegeEnEcriture),
             "racine en lecture seule, code {code}"
         );
         // 🔴 **TWO CAUSES NEVER SHARE A CODE** (spec §5.1): a closed
@@ -103,8 +103,8 @@ fn une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent() {
         // is closed" and "this share is read-only" do not call for the
         // same gesture.
         assert_eq!(
-            decider(code, CANAL_FERME, Cible::DansLaRacine),
-            Reponse::Refuser(Erreur::CanalFerme),
+            decider(code, CANAL_FERME, Cible::InRoot),
+            Reponse::Refuser(Error::CanalFerme),
             "canal fermé, code {code}"
         );
     }
@@ -112,7 +112,7 @@ fn une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent() {
     // destination.
     assert_eq!(
         decider(PRE_RENAME, OUVERT, Cible::HorsRacine),
-        Reponse::Refuser(Erreur::NonSupporte),
+        Reponse::Refuser(Error::NonSupporte),
         "une cible hors racine n'est pas un refus de DROIT"
     );
 }
@@ -126,16 +126,16 @@ fn une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent() {
 #[test]
 fn un_renommage_hors_racine_est_nonsupporte_et_pas_protegeenecriture() {
     let hors = decider(PRE_RENAME, OUVERT, Cible::HorsRacine);
-    assert_eq!(hors, Reponse::Refuser(Erreur::NonSupporte));
-    assert_ne!(hors, Reponse::Refuser(Erreur::ProtegeEnEcriture));
+    assert_eq!(hors, Reponse::Refuser(Error::NonSupporte));
+    assert_ne!(hors, Reponse::Refuser(Error::ProtegeEnEcriture));
 }
 
 /// In the nominal state, both mutations are ALLOWED — and it is the only
 /// line of F3 that changes what an application gets.
 #[test]
-fn une_mutation_est_autorisee_dans_l_etat_nominal() {
+fn a_mutation_is_allowed_in_the_nominal_state() {
     assert_eq!(
-        decider(PRE_RENAME, OUVERT, Cible::DansLaRacine),
+        decider(PRE_RENAME, OUVERT, Cible::InRoot),
         Reponse::Autoriser
     );
     assert_eq!(
@@ -148,14 +148,14 @@ fn une_mutation_est_autorisee_dans_l_etat_nominal() {
 /// PUSHES.**
 ///
 /// Red: leave them as `AccepterSansAttendre`. They would fall back into the
-/// catch-all arm — which `chaque_bit_du_masque_a_une_decision_nommee` catches
+/// catch-all arm — which `each_mask_bit_has_a_named_decision` catches
 /// — and **nothing would ever be pushed**, on a product that appears to
 /// work: the application sees its renaming succeed in the VM, and the local
 /// workstation keeps the old name.
 #[test]
 fn les_deux_post_de_f3_declenchent_chacune_sa_poussee() {
     assert_eq!(
-        decider(FILE_RENAMED, OUVERT, Cible::DansLaRacine),
+        decider(FILE_RENAMED, OUVERT, Cible::InRoot),
         Reponse::Pousser(Poussee::Renommage)
     );
     assert_eq!(
@@ -165,7 +165,7 @@ fn les_deux_post_de_f3_declenchent_chacune_sa_poussee() {
     // The four pushes are distinct: confusing a renaming and a
     // deletion would destroy in one direction or the other.
     assert_ne!(
-        decider(FILE_RENAMED, OUVERT, Cible::DansLaRacine),
+        decider(FILE_RENAMED, OUVERT, Cible::InRoot),
         decider(FILE_HANDLE_CLOSED_FILE_DELETED, OUVERT, Cible::SansObjet)
     );
 }
@@ -177,13 +177,10 @@ fn les_deux_post_de_f3_declenchent_chacune_sa_poussee() {
 /// diverge silently, which is worse than pushing.
 #[test]
 fn une_post_de_f3_part_quel_que_soit_l_etat() {
-    for etat in TOUS_LES_ETATS {
+    for etat in ALL_STATES {
         for code in [FILE_RENAMED, FILE_HANDLE_CLOSED_FILE_DELETED] {
             assert!(
-                matches!(
-                    decider(code, etat, Cible::DansLaRacine),
-                    Reponse::Pousser(_)
-                ),
+                matches!(decider(code, etat, Cible::InRoot), Reponse::Pousser(_)),
                 "code {code} dans l'état {etat:?}"
             );
         }
@@ -201,7 +198,7 @@ fn les_liens_durs_sont_refuses_en_non_supporte() {
     for code in [PRE_SET_HARDLINK, HARDLINK_CREATED] {
         assert_eq!(
             decider(code, OUVERT, Cible::SansObjet),
-            Reponse::Refuser(Erreur::NonSupporte),
+            Reponse::Refuser(Error::NonSupporte),
             "code {code}"
         );
     }
@@ -227,7 +224,7 @@ fn les_deux_post_de_contenu_declenchent_une_poussee() {
 /// A creation is pushed, and **as a creation, not as content**:
 /// a directory has no byte to read.
 #[test]
-fn un_fichier_neuf_est_pousse_comme_une_creation() {
+fn a_new_file_is_pushed_as_a_creation() {
     assert_eq!(
         decider(NEW_FILE_CREATED, OUVERT, Cible::SansObjet),
         Reponse::Pousser(Poussee::Creation)
@@ -246,7 +243,7 @@ fn un_fichier_neuf_est_pousse_comme_une_creation() {
 /// channel closed — the write thread journals it and will hold it back.
 #[test]
 fn une_poussee_part_meme_canal_ferme_car_une_post_ne_se_refuse_pas() {
-    for etat in TOUS_LES_ETATS {
+    for etat in ALL_STATES {
         assert!(
             matches!(
                 decider(FILE_HANDLE_CLOSED_FILE_MODIFIED, etat, Cible::SansObjet),
@@ -268,9 +265,9 @@ fn une_poussee_part_meme_canal_ferme_car_une_post_ne_se_refuse_pas() {
 /// sweep — would have EMPTIED this guard instead of satisfying it. Hence the
 /// `Autoriser` variant, which names the acceptance.
 #[test]
-fn chaque_bit_du_masque_a_une_decision_nommee() {
-    for etat in TOUS_LES_ETATS {
-        for cible in [Cible::SansObjet, Cible::DansLaRacine, Cible::HorsRacine] {
+fn each_mask_bit_has_a_named_decision() {
+    for etat in ALL_STATES {
+        for cible in [Cible::SansObjet, Cible::InRoot, Cible::HorsRacine] {
             for bit in 0..32u32 {
                 let drapeau = 1u32 << bit;
                 if MASQUE & drapeau == 0 {

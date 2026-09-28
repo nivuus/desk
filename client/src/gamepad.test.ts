@@ -93,9 +93,9 @@ describe('détection de changement', () => {
  */
 function faireSourceManettes() {
     let manette: GamepadConnectee | null = null;
-    const effets: Array<{ type: string; parametres: unknown }> = [];
+    const effets: Array<{ type: string; params: unknown }> = [];
     return {
-        obtenir(): ReadonlyArray<GamepadConnectee | null> {
+        get(): ReadonlyArray<GamepadConnectee | null> {
             return [manette];
         },
         brancher(overrides: Partial<GamepadConnectee> = {}): GamepadConnectee {
@@ -104,8 +104,8 @@ function faireSourceManettes() {
                 buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
                 axes: [0, 0, 0, 0],
                 vibrationActuator: {
-                    playEffect: (type, parametres) => {
-                        effets.push({ type, parametres });
+                    playEffect: (type, params) => {
+                        effets.push({ type, params });
                         return Promise.resolve();
                     },
                 },
@@ -126,10 +126,10 @@ function faireMinuteur() {
     const fonctions = new Map<number, () => void>();
     const annules: number[] = [];
     return {
-        poser(fonction: () => void): number {
+        poser(callback: () => void): number {
             const id = prochainId;
             prochainId += 1;
-            fonctions.set(id, fonction);
+            fonctions.set(id, callback);
             return id;
         },
         annuler(id: number): void {
@@ -138,10 +138,10 @@ function faireMinuteur() {
         },
         /** Déclenche le (seul) tour posé — `attachGamepad` n'en pose qu'un. */
         declencher(): void {
-            for (const fonction of fonctions.values()) fonction();
+            for (const callback of fonctions.values()) callback();
         },
         annules,
-        get nombrePoses(): number {
+        get scheduledCount(): number {
             return fonctions.size + annules.length;
         },
     };
@@ -281,7 +281,7 @@ describe('attachGamepad', () => {
         expect(manettes.effets).toEqual([
             {
                 type: 'dual-rumble',
-                parametres: { duration: 200, strongMagnitude: 1, weakMagnitude: 128 / 255 },
+                params: { duration: 200, strongMagnitude: 1, weakMagnitude: 128 / 255 },
             },
         ]);
     });

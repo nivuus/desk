@@ -36,7 +36,7 @@ export interface Coffre {
 /// view, without bringing it anything. `window.localStorage` satisfies
 /// both, and it is the only production caller.
 export interface CoffreEcrivable extends Coffre {
-    setItem(cle: string, valeur: string): void;
+    setItem(cle: string, value: string): void;
     removeItem(cle: string): void;
 }
 
@@ -86,7 +86,7 @@ export function lirePrefixe(
 /// would fall back to `?prefixe=` then to `''`, and the page would SILENTLY join
 /// the shared namespace — the exact silent failure
 /// spec §10 names. A caller that has no prefix has none to write:
-/// it calls `effacerPrefixe`.
+/// it calls `clearPrefix`.
 ///
 /// ⚠️ IT THROWS RATHER THAN RETURNING A `boolean`: the only caller is
 /// wiring (`connexion.ts`), and an ignored boolean would be indistinguishable there from a
@@ -111,7 +111,7 @@ export function poserPrefixe(coffre: CoffreEcrivable, prefixe: string): void {
 /// before the query string, nothing would correct it. It is also what gives
 /// the local trial mode back its `?prefixe=`: as long as the vault carries something,
 /// the query is of no use.
-export function effacerPrefixe(coffre: CoffreEcrivable): void {
+export function clearPrefix(coffre: CoffreEcrivable): void {
     coffre.removeItem(CLE_PREFIXE);
 }
 
@@ -119,7 +119,7 @@ export function effacerPrefixe(coffre: CoffreEcrivable): void {
 ///
 /// 🔴 **THIS RULE EXISTS BECAUSE THE HUB SET NO PREFIX** (final
 /// review of August 31st, 2026, critical ②). `poserPrefixe` had only ONE
-/// production caller — `connexion.ts::chercherLaSession` —, which only runs
+/// production caller — `connexion.ts::fetchTheSession` —, which only runs
 /// on the sign-in page. Yet a visitor behind Pomerium obtains their
 /// token **on the hub** (`jeton.ts::assurerAccesFrais` → `/auth/moi`) without
 /// ever going through that screen: `lirePrefixe()` then returned `''`, the hub
@@ -155,7 +155,7 @@ export function prefixeDeLaVm(annonce: unknown): ChoixPrefixe {
 export function retenirLePrefixe(coffre: CoffreEcrivable, annonce: unknown): void {
     const choix = prefixeDeLaVm(annonce);
     if (choix.action === 'poser') poserPrefixe(coffre, choix.prefixe);
-    else effacerPrefixe(coffre);
+    else clearPrefix(coffre);
 }
 
 /// Composes a session identifier: `<prefix>:<name>`, or `<name>` alone

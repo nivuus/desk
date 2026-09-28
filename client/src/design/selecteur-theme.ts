@@ -22,7 +22,7 @@
  * ⚠️ THIS PARAGRAPH SAID "On the SHELL PAGE … `shell-page.ts` redirects there"
  * until the final review of August 31st, 2026. BOTH halves were wrong:
  * the selector is wired from `hub/page.ts` (`#themes`), and it is
- * `hub/page.ts::demarrer` that sends back to `connexion.html`.
+ * `hub/page.ts::start` that sends back to `connexion.html`.
  *
  * ⛔ NEVER IN THE SESSION WINDOW. Spec §5.2 forbids it by name:
  * a toolbar on a fullscreen game is a regression. "The
@@ -34,21 +34,21 @@
  * only carries `typescript`, `vite`, `vitest`, and no `@vitest-environment`
  * exists in `client/src/`). A product module reading a global at the
  * top would be impossible to load under Node, hence impossible to test. It is
- * the pattern of `theme.ts` and `fullscreen.ts`, and `installerSelecteurDeTheme
+ * the pattern of `theme.ts` and `fullscreen.ts`, and `installThemeSelector
  * AuDOM` is the seam linking them to the real objects — like
  * `armerPleinEcranAuDOM`.
  *
  * ⚠️ `Coffre` and `Racine` are IMPORTED from `theme.ts`, never redeclared here.
  * Two copies of a contract diverge silently.
  */
-import { CLE_THEME, appliquer, choisir, surStockageModifie, themeStocke } from './theme';
+import { CLE_THEME, appliquer, choisir, onStorageChanged, themeStocke } from './theme';
 import type { Coffre, Racine, Theme } from './theme';
 
 /** What a theme button must be able to do — nothing more. */
 export interface BoutonDeTheme {
     dataset: { theme?: string };
     textContent: string | null;
-    setAttribute(nom: string, valeur: string): void;
+    setAttribute(nom: string, value: string): void;
     addEventListener(type: 'click', ecouteur: () => void): void;
 }
 
@@ -71,7 +71,7 @@ export interface OptionsSelecteurDeTheme {
     coffre: Coffre;
     source: SourceDeStockage;
     /** Makes a BLANK button; the caller puts whatever visuals it wants in it. */
-    creerBouton(): BoutonDeTheme;
+    createButton(): BoutonDeTheme;
     /** Called back after EACH theme change, whatever its origin. */
     apres: () => void;
 }
@@ -83,8 +83,8 @@ export interface OptionsSelecteurDeTheme {
  * ⚠️ `hote` IS NOT EMPTIED: two calls on the same element would place six
  * buttons there. It is the caller that decides.
  */
-export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): void {
-    const { hote, racine, coffre, source, creerBouton, apres } = options;
+export function installThemeSelector(options: OptionsSelecteurDeTheme): void {
+    const { hote, racine, coffre, source, createButton, apres } = options;
     const etats: Theme[] = ['systeme', 'clair', 'sombre'];
 
     // 🔴 THE BUTTONS ARE KEPT HERE, AND NOT REREAD THROUGH `querySelectorAll`.
@@ -93,9 +93,9 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
     // EARLIER installation on the same host.
     const boutons: BoutonDeTheme[] = [];
     const marquer = () => {
-        const courant = themeStocke(coffre);
+        const current = themeStocke(coffre);
         for (const bouton of boutons) {
-            bouton.setAttribute('aria-pressed', String(bouton.dataset.theme === courant));
+            bouton.setAttribute('aria-pressed', String(bouton.dataset.theme === current));
         }
     };
 
@@ -129,13 +129,13 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
     // CAN fail, the closure indeed holding the vault.
     source.addEventListener('storage', (evenement) => {
         if (evenement.key !== CLE_THEME) return;
-        surStockageModifie(racine, evenement.key, evenement.newValue);
+        onStorageChanged(racine, evenement.key, evenement.newValue);
         marquer();
         apres();
     });
 
     for (const etat of etats) {
-        const bouton = creerBouton();
+        const bouton = createButton();
         bouton.dataset.theme = etat;
         bouton.textContent = etat;
         bouton.addEventListener('click', () => {
@@ -167,11 +167,11 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
  * markup —, and a `role="group"` with its label would belong to the
  * markup of each page. Declared rather than assumed done.
  */
-export function installerSelecteurDeThemeAuDOM(
+export function installThemeSelectorInDOM(
     hote: HTMLElement,
     apres: () => void = () => {},
 ): void {
-    installerSelecteurDeTheme({
+    installThemeSelector({
         // ⚠️ THE HOST IS ADAPTED RATHER THAN `HTMLElement` WIDENING THE
         // CONTRACT. `HTMLElement.append` accepts `(...nodes: (string|Node)[])`,
         // which `HoteDeSelecteur.append(bouton: BoutonDeTheme)` does not
@@ -183,7 +183,7 @@ export function installerSelecteurDeThemeAuDOM(
         racine: document.documentElement,
         coffre: localStorage,
         source: window,
-        creerBouton: () => {
+        createButton: () => {
             const bouton = document.createElement('button');
             bouton.type = 'button';
             bouton.classList.add('bouton');

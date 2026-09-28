@@ -8,14 +8,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { deriverIdentifiants } from '../signaling/ice';
-import { SEPARATEUR, composer, decouper, nouveauPrefixe } from './prefixe';
+import { SEPARATEUR, composer, decouper, newPrefix } from './prefixe';
 
 describe('le préfixe opaque', () => {
     it('rend 22 caractères de l’alphabet base64url', () => {
         // 16 octets en base64url font 22 caractères sans remplissage. L'alphabet
         // exclut `+` et `/` : `/` casserait un jour un découpage d'URL, et `+`
         // se transforme en espace dans une chaîne de requête mal décodée.
-        const p = nouveauPrefixe();
+        const p = newPrefix();
         expect(p).toHaveLength(22);
         expect(p).toMatch(/^[A-Za-z0-9_-]{22}$/);
     });
@@ -23,7 +23,7 @@ describe('le préfixe opaque', () => {
     it('rend deux valeurs DIFFÉRENTES sur deux appels', () => {
         // Une graine fixe rendrait le préfixe devinable, donc l'espace de noms
         // global mais pas opaque.
-        expect(nouveauPrefixe()).not.toBe(nouveauPrefixe());
+        expect(newPrefix()).not.toBe(newPrefix());
     });
 
     it('🔴 ne contient JAMAIS le séparateur, sur un grand nombre de tirages', () => {
@@ -31,7 +31,7 @@ describe('le préfixe opaque', () => {
         // TURN. 500 tirages, soit 11 000 caractères : un alphabet qui
         // porterait `:` le montrerait ici.
         for (let i = 0; i < 500; i += 1) {
-            expect(nouveauPrefixe()).not.toContain(SEPARATEUR);
+            expect(newPrefix()).not.toContain(SEPARATEUR);
         }
     });
 

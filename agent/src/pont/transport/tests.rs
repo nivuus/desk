@@ -37,11 +37,11 @@ pub(super) struct Pair {
 /// the ready peer as well as both ends of the bridge's loop.
 ///
 /// **No codec is enabled on either side** — it is the point the doc of
-/// `construire_rtc_donnees` announces as exercised: `clear_codecs()` without a single
+/// `build_data_rtc` announces as exercised: `clear_codecs()` without a single
 /// `enable_*` does negotiate a data-only connection.
 pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigateur>) {
     let local_ip = "127.0.0.1".parse().unwrap();
-    let (socket_pont, mut rtc_pont) = construire_rtc_donnees(local_ip).expect("pont construit");
+    let (socket_pont, mut rtc_pont) = build_data_rtc(local_ip).expect("pont construit");
 
     let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
     let adresse = socket.local_addr().unwrap();
@@ -173,10 +173,10 @@ pub(super) fn canal_ouvert(remontees: &[DuNavigateur]) -> bool {
 
 #[test]
 fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
-    let (mut pair, sortant, entrant) = monter(&[LABEL_FICHIERS]);
+    let (mut pair, sortant, entrant) = monter(&[FILES_LABEL]);
 
-    let trame = proto::fichiers::encoder(
-        proto::fichiers::TYPE_LIRE,
+    let trame = proto::files::encoder(
+        proto::files::TYPE_LIRE,
         0x1234_5678,
         r#"{"chemin":"a.txt"}"#,
         &[0x00, 0xFF],
@@ -213,14 +213,9 @@ fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
 }
 
 #[test]
-fn une_trame_du_pair_remonte_avec_sa_correlation() {
-    let (mut pair, _sortant, entrant) = monter(&[LABEL_FICHIERS]);
-    let reponse = proto::fichiers::encoder(
-        proto::fichiers::TYPE_DONNEES,
-        0x0BAD_F00D,
-        "{}",
-        &[1, 2, 3, 4],
-    );
+fn a_peer_frame_surfaces_with_its_correlation() {
+    let (mut pair, _sortant, entrant) = monter(&[FILES_LABEL]);
+    let reponse = proto::files::encoder(proto::files::TYPE_DATA, 0x0BAD_F00D, "{}", &[1, 2, 3, 4]);
 
     let canal = pair.canaux[0];
     let a_envoyer = reponse.clone();
@@ -265,9 +260,9 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
     // ⚠️ This test can only be seen RED if TWO channels are negotiated: without
     // the second, there is nothing to send on the wrong one, and the test would be
     // VACUOUS — it would pass on a bridge that routes on nothing at all.
-    let (mut pair, _sortant, entrant) = monter(&["autre-canal", LABEL_FICHIERS]);
-    let intrus = proto::fichiers::encoder(proto::fichiers::TYPE_ECHEC, 0xDEAD_0000, "{}", b"non");
-    let legitime = proto::fichiers::encoder(proto::fichiers::TYPE_META, 0x0000_BEEF, "{}", b"oui");
+    let (mut pair, _sortant, entrant) = monter(&["autre-canal", FILES_LABEL]);
+    let intrus = proto::files::encoder(proto::files::TYPE_ECHEC, 0xDEAD_0000, "{}", b"non");
+    let legitime = proto::files::encoder(proto::files::TYPE_META, 0x0000_BEEF, "{}", b"oui");
 
     let (mauvais, bon) = (pair.canaux[0], pair.canaux[1]);
     let (a, b) = (intrus.clone(), legitime.clone());
@@ -329,9 +324,9 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
 #[test]
 fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
     // 🔴 **THE label routing test, and it was born from a SURVIVING
-    // MUTATION.** Replacing `if label == LABEL_FICHIERS` with `if true`
+    // MUTATION.** Replacing `if label == FILES_LABEL` with `if true`
     // left the first four tests GREEN: the intruder one negotiates
-    // `autre-canal` then `fichiers`, and since the last `ChannelOpen` overwrites
+    // `autre-canal` then `files`, and since the last `ChannelOpen` overwrites
     // the previous one, `canal` ended up on the right one anyway — by the ORDER
     // of opening, not by the label. The test did not measure what it
     // announced.
@@ -339,7 +334,7 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
     // This one depends on no order: on TWO negotiated channels, the bridge must
     // announce ONLY ONE opening. Without the label filter, it
     // announces two, whatever the order in which they arrive.
-    let (mut pair, _sortant, entrant) = monter(&[LABEL_FICHIERS, "autre-canal"]);
+    let (mut pair, _sortant, entrant) = monter(&[FILES_LABEL, "autre-canal"]);
 
     // We wait for BOTH channels to be open ON THE PEER SIDE — otherwise we
     // would conclude "a single opening" while the second has not

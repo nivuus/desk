@@ -51,7 +51,7 @@ describe('fusionner', () => {
             message(true, [app('a')]),
         );
         expect(f.aMarquerDisparues).toEqual(['id-b']);
-        expect(f.aMettreAJour.map((m) => m.id)).toEqual(['id-a']);
+        expect(f.toUpdate.map((m) => m.id)).toEqual(['id-a']);
     });
 
     it('ne RE-marque pas une ligne déjà disparue', () => {
@@ -73,7 +73,7 @@ describe('fusionner', () => {
         );
         expect(f.aMarquerDisparues).toEqual(['id-c']);
         expect(f.aInserer).toEqual([]);
-        expect(f.aMettreAJour.map((m) => m.id)).toEqual(['id-a']);
+        expect(f.toUpdate.map((m) => m.id)).toEqual(['id-a']);
     });
 
     it('à `complet: true` avec `applications: []`, VIDE le catalogue', () => {
@@ -83,7 +83,7 @@ describe('fusionner', () => {
         const f = fusionner([connue('id-a', 'a'), connue('id-b', 'b')], message(true, []));
         expect(f.aMarquerDisparues).toEqual(['id-a', 'id-b']);
         expect(f.aInserer).toEqual([]);
-        expect(f.aMettreAJour).toEqual([]);
+        expect(f.toUpdate).toEqual([]);
     });
 
     it("apparie sur la CLÉ : une ligne connue et présente va dans aMettreAJour, jamais dans aInserer", () => {
@@ -91,7 +91,7 @@ describe('fusionner', () => {
         // pas, et ne les a jamais vus. Il ne connaît que la clé.
         const f = fusionner([connue('id-a', 'a')], message(true, [app('a', 'renomme')]));
         expect(f.aInserer).toEqual([]);
-        expect(f.aMettreAJour).toEqual([{ id: 'id-a', app: app('a', 'renomme') }]);
+        expect(f.toUpdate).toEqual([{ id: 'id-a', app: app('a', 'renomme') }]);
     });
 
     it('une ligne connue DISPARUE et de nouveau présente est RESSUSCITÉE, et mise à jour', () => {
@@ -108,7 +108,7 @@ describe('fusionner', () => {
             message(true, [app('a', 'revenu')]),
         );
         expect(f.aRessusciter).toEqual(['id-a']);
-        expect(f.aMettreAJour).toEqual([{ id: 'id-a', app: app('a', 'revenu') }]);
+        expect(f.toUpdate).toEqual([{ id: 'id-a', app: app('a', 'revenu') }]);
         expect(f.aInserer).toEqual([]);
         expect(f.aMarquerDisparues).toEqual([]);
     });

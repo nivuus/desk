@@ -67,10 +67,10 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
     /// à une fenêtre qui n'a jamais cessé de l'être.
     it("un accord qui ne suit aucun refus ne pousse aucun bandeau", async () => {
         const { controle, messages } = await boutonAllume();
-        const avant = messages.length;
+        const before = messages.length;
         controle.annoncerExclusivite(true);
         controle.annoncerExclusivite(true);
-        expect(messages.length).toBe(avant);
+        expect(messages.length).toBe(before);
     });
 
     /// ⚠️ Un `mic-state` en vol qui arriverait après une extinction écraserait
@@ -109,9 +109,9 @@ describe("attacherBoutonMicro — l'exclusivité du câble (bloc E3)", () => {
         await controle.enCours();
         expect(bouton.dataset.etat).toBe('actif');
 
-        const avant = messages.length;
+        const before = messages.length;
         controle.annoncerExclusivite(false);
-        expect(messages.length).toBe(avant + 1);
+        expect(messages.length).toBe(before + 1);
         expect(bouton.title).toMatch(/autre fenêtre/);
     });
 });

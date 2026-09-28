@@ -54,8 +54,8 @@ EMAIL='p4@essai.local'
 # of the process THAT REALLY LISTENS" — is paid for by plugging into a service
 # one did not launch. We take a port of our own, and `SIGNALING_URL` follows.
 PORT=8090
-BASE_FICHIER="$SORTIE/plateforme-vm.sqlite"
-rm -f "$BASE_FICHIER"
+DB_FILE="$SORTIE/plateforme-vm.sqlite"
+rm -f "$DB_FILE"
 
 dire() { echo "[$(date +%H:%M:%S)] $*"; }
 # Reads `vu_a` IN THE DATABASE, without going through the service: it is the column the
@@ -67,7 +67,7 @@ const { DatabaseSync } = require("node:sqlite");
 const db = new DatabaseSync(process.argv[1]);
 const l = db.prepare("SELECT vu_a FROM agent_enrole WHERE vm_id = ?").all(process.argv[2]);
 console.log(l.length === 0 ? "aucune ligne agent_enrole" : String(l[0].vu_a));
-' "$BASE_FICHIER" "$1" 2>/dev/null
+' "$DB_FILE" "$1" 2>/dev/null
 }
 # `curl` rather than `fetch`: we test the HTTP surface as it is
 # served, without the slightest code of ours between it and the reading.
@@ -106,7 +106,7 @@ dire '=== 1. démarrage du service de plateforme ==='
 PLATEFORME_HOTE=192.168.3.1 \
 PLATEFORME_PORT="$PORT" \
 PLATEFORME_BASE=sqlite \
-PLATEFORME_BASE_URL="$BASE_FICHIER" \
+PLATEFORME_BASE_URL="$DB_FILE" \
 PLATEFORME_SECRET_JETON="$SECRET_JETON" \
     "$RACINE/plateforme/node_modules/.bin/tsx" "$RACINE/plateforme/src/index.ts" \
     > "$SORTIE/service.log" 2>&1 &
@@ -117,7 +117,7 @@ for _ in $(seq 1 60); do grep -q 'le port ' "$SORTIE/service.log" 2>/dev/null &&
 grep 'le port ' "$SORTIE/service.log" | sed 's/^/    /' || { dire '🔴 le service n’a pas démarré'; cat "$SORTIE/service.log"; exit 1; }
 
 ADMIN_ENV=(PLATEFORME_HOTE=192.168.3.1 PLATEFORME_BASE=sqlite
-           PLATEFORME_BASE_URL="$BASE_FICHIER" PLATEFORME_SECRET_JETON="$SECRET_JETON")
+           PLATEFORME_BASE_URL="$DB_FILE" PLATEFORME_SECRET_JETON="$SECRET_JETON")
 
 # --- 2. enrolment, account, and the state BEFORE assignment -----------------------
 dire '=== 2. npm run admin:agent ==='
@@ -219,7 +219,7 @@ const db = new DatabaseSync(process.argv[1]);
 for (const l of db.prepare("SELECT nom_session, utilisateur_id, vm_id, ouverte_a, fermee_a FROM session ORDER BY ouverte_a").all()) {
     console.log(JSON.stringify(l));
 }
-' "$BASE_FICHIER" 2>&1 | sed 's/^/    /'
+' "$DB_FILE" 2>&1 | sed 's/^/    /'
 
 dire '=== 18. le RELEVÉ, assertion par assertion ==='
 node "$RACINE/docs/superpowers/plans/journaux-plateforme-p4/instrument/verdict-vm.mjs" \

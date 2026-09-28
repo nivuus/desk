@@ -18,20 +18,20 @@
 // tested elsewhere: `shell.ts`, `fichiers/protocole.ts` and
 // `fichiers/adaptateur.ts` are pure and covered.
 
-import { creerAdaptateur } from '../fichiers/adaptateur';
+import { createAdapter } from '../fichiers/adaptateur';
 import {
     choisirDossier,
-    connecterCanalFichiers,
+    connectFilesChannel,
     sessionDuPont,
-    type CanalFichiers,
+    type FilesChannel,
 } from '../fichiers/canal';
-import { creerEcrivain, type RacineInscriptible } from '../fichiers/ecriture';
+import { createWriter, type RacineInscriptible } from '../fichiers/ecriture';
 import type { RacineMutable } from '../fichiers/mutation';
-import { creerMutateur } from '../fichiers/mutation-service';
-import { creerServeur, trameBonjour, trameRafraichir } from '../fichiers/protocole';
+import { createMutator } from '../fichiers/mutation-service';
+import { createServer, trameBonjour, trameRafraichir } from '../fichiers/protocole';
 import type { Bureau } from '../shell';
 
-export interface DepsFichiers {
+export interface FilesDeps {
     bureau: Bureau;
     signalingUrl: string;
     /// 🔴 **A FRESH TOKEN PROVIDER, AND THERE WAS NONE** (critical
@@ -69,8 +69,8 @@ export interface DepsFichiers {
     section: HTMLDetailsElement;
 }
 
-export function installerLePont(deps: DepsFichiers): void {
-    let pont: CanalFichiers | null = null;
+export function installerLePont(deps: FilesDeps): void {
+    let pont: FilesChannel | null = null;
 
     deps.boutonDossier.addEventListener('click', () => {
         // ⚠️ UNFOLDING HAPPENS ON CLICK, AND BEFORE ANY `await`. Unfolding it on
@@ -88,7 +88,7 @@ export function installerLePont(deps: DepsFichiers): void {
 
     async function monterLeLecteur(): Promise<void> {
         // A second click replaces the folder: the old bridge goes first, otherwise
-        // two `PeerConnection`s would fight over the `…:fichiers` session and
+        // two `PeerConnection`s would fight over the `…:files` session and
         // the second would be refused by the relay.
         pont?.close();
         pont = null;
@@ -134,10 +134,10 @@ export function installerLePont(deps: DepsFichiers): void {
         // These two lines are now just wiring.
         const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
         const racineMutable: RacineMutable = choix.racine as RacineMutable;
-        const ecrivain = creerEcrivain(racineInscriptible);
-        const mutateur = creerMutateur(racineMutable);
-        const serveur = creerServeur(
-            creerAdaptateur(choix.racine, deps.fautesArmees),
+        const ecrivain = createWriter(racineInscriptible);
+        const mutateur = createMutator(racineMutable);
+        const serveur = createServer(
+            createAdapter(choix.racine, deps.fautesArmees),
             (m) => console.warn(m),
             {
                 ecrivain,
@@ -158,7 +158,7 @@ export function installerLePont(deps: DepsFichiers): void {
             },
         );
         try {
-            pont = await connecterCanalFichiers({
+            pont = await connectFilesChannel({
                 signalingUrl: deps.signalingUrl,
                 sessionId: sessionDuPont(),
                 jeton,
@@ -196,7 +196,7 @@ export function installerLePont(deps: DepsFichiers): void {
         // THE REAL PATH COULD SHOW.**
         //
         // *The first draft sent right here, without waiting.*
-        // `connecterCanalFichiers` returns as soon as the SDP answer is received; the data
+        // `connectFilesChannel` returns as soon as the SDP answer is received; the data
         // channel, for its part, opens **afterwards**. Measured on the VM, in this order:
         // "file bridge: answer received" → **`file channel closed: announcement not
         // sent`** → "connecting" → "connected" → "file channel open".

@@ -92,7 +92,7 @@ export interface AccesTokens {
     /** Reads the CURRENT value of a token on the root. */
     lireToken(nom: string): string;
     /** Writes a token on the root — **never on an element**. */
-    poserToken(nom: string, valeur: string): void;
+    poserToken(nom: string, value: string): void;
 }
 
 /**

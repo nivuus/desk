@@ -84,7 +84,7 @@ import { lireParId } from '../depot/application';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import { lirePorteurAgent } from './porteur-agent';
-import { verifierUrlIcone } from '../apps/url-icone';
+import { verifyIconUrl } from '../apps/url-icone';
 
 export interface DependancesIcone {
     base: Pilote;
@@ -266,7 +266,7 @@ async function depot(
         // 🔴 THE STORE RECOMPUTES THE FINGERPRINT. It is the third of the three
         // checks — « no hop trusts the previous one ». Without
         // it, content addressing would not be content addressing.
-        deps.magasin.ecrire(empreinte, corps);
+        deps.magasin.write(empreinte, corps);
     } catch (cause) {
         repondre(rep, 400, { refus: 'empreinte' }, cors);
         return true;
@@ -302,7 +302,7 @@ async function service(
     // THE SERVER CLOCK — never by trusting a client field. Both
     // rules live in `apps/url-icone.ts`, with their reasons; this
     // route only translates the verdict into an HTTP response.
-    const verdict = verifierUrlIcone(
+    const verdict = verifyIconUrl(
         idApplication,
         url.searchParams,
         deps.secretJeton,

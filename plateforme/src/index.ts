@@ -13,10 +13,10 @@
 // rather than suffered, and the test checks it by itself by failing.
 
 import { lireConfig } from './config';
-import { demarrer } from './demarrage';
+import { start } from './demarrage';
 
 const config = lireConfig(process.env);
-const service = await demarrer(config);
+const service = await start(config);
 console.log(`plateforme à l'écoute sur ${config.hote}, le port ${service.port}`);
 
 process.on('SIGINT', async () => {

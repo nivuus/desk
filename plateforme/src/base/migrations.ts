@@ -11,7 +11,7 @@ import type { Pilote } from './pilote';
 
 interface Migration {
     version: number;
-    fichier: string;
+    file: string;
     sql: string;
 }
 
@@ -25,17 +25,17 @@ interface Migration {
 function lire(repertoire: string): Migration[] {
     return readdirSync(repertoire)
         .filter((f) => f.endsWith('.sql'))
-        .map((fichier) => {
-            const tete = /^(\d+)/.exec(fichier);
+        .map((file) => {
+            const tete = /^(\d+)/.exec(file);
             if (!tete) {
                 throw new Error(
-                    `migration sans numéro de version en tête : ${fichier} — le nom doit commencer par des chiffres`,
+                    `migration sans numéro de version en tête : ${file} — le nom doit commencer par des chiffres`,
                 );
             }
             return {
                 version: Number(tete[1]),
-                fichier,
-                sql: readFileSync(path.join(repertoire, fichier), 'utf8'),
+                file,
+                sql: readFileSync(path.join(repertoire, file), 'utf8'),
             };
         })
         .sort((a, b) => a.version - b.version);

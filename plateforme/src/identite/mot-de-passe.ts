@@ -17,17 +17,17 @@
 // of a measurement justifying it. These parameters ARE NOT CALIBRATED: the 29 ms
 // are a measurement, not a goal reached. They join the repository's already
 // long list (BPP_MIN, FACTEUR_FOCUS, PART_DORMANTE_BPS, HYSTERESIS,
-// TAILLE_MAX_SORTIE, DUREE_SECONDES).
+// MAX_OUTPUT_SIZE, DUREE_SECONDES).
 
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 
-export interface ParametresScrypt {
+export interface ScryptParams {
     N: number;
     r: number;
     p: number;
 }
 
-export const PARAMETRES_COURANTS: ParametresScrypt = { N: 16384, r: 8, p: 1 };
+export const CURRENT_PARAMS: ScryptParams = { N: 16384, r: 8, p: 1 };
 
 /// 16 bytes of salt, 32 bytes of hash: the usual sizes, and the ones
 /// the tests assert — a shorter salt would weaken the protection
@@ -40,11 +40,11 @@ const ALGO = 'scrypt';
 function deriver(
     motDePasse: string,
     sel: Buffer,
-    params: ParametresScrypt,
+    params: ScryptParams,
 ): Promise<Buffer> {
     return new Promise((resolve, rejeter) => {
-        scrypt(motDePasse, sel, OCTETS_EMPREINTE, params, (erreur, cle) => {
-            if (erreur) rejeter(erreur);
+        scrypt(motDePasse, sel, OCTETS_EMPREINTE, params, (error, cle) => {
+            if (error) rejeter(error);
             else resolve(cle);
         });
     });
@@ -53,7 +53,7 @@ function deriver(
 /// Returns `scrypt$N$r$p$sel$empreinte`, salt and hash in base64url.
 export async function hacher(
     motDePasse: string,
-    params: ParametresScrypt = PARAMETRES_COURANTS,
+    params: ScryptParams = CURRENT_PARAMS,
 ): Promise<string> {
     const sel = randomBytes(OCTETS_SEL);
     const empreinte = await deriver(motDePasse, sel, params);
@@ -72,7 +72,7 @@ export async function hacher(
 /// invisible.
 export function analyser(encode: string): {
     algo: string;
-    params: ParametresScrypt;
+    params: ScryptParams;
     sel: Buffer;
     empreinte: Buffer;
 } {
@@ -96,7 +96,7 @@ export function analyser(encode: string): {
 /// 🔴 THROWS on an unknown algorithm, and that is deliberate: a silent
 /// `false` there would be indistinguishable from a bad password, and nobody
 /// could diagnose a database written by a future version of the service.
-export async function verifier(motDePasse: string, encode: string): Promise<boolean> {
+export async function verify(motDePasse: string, encode: string): Promise<boolean> {
     let analyse: ReturnType<typeof analyser>;
     try {
         analyse = analyser(encode);
@@ -146,8 +146,8 @@ export function doitEtreRehache(encode: string): boolean {
     }
     if (analyse.algo !== ALGO) return true;
     return (
-        analyse.params.N < PARAMETRES_COURANTS.N ||
-        analyse.params.r < PARAMETRES_COURANTS.r ||
-        analyse.params.p < PARAMETRES_COURANTS.p
+        analyse.params.N < CURRENT_PARAMS.N ||
+        analyse.params.r < CURRENT_PARAMS.r ||
+        analyse.params.p < CURRENT_PARAMS.p
     );
 }

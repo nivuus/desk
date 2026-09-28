@@ -87,7 +87,7 @@ use crate::diagnostics::multifenetre::montee::{relever_topologie, DELAI_TOPOLOGI
 pub(crate) fn purger() -> Result<()> {
     // `relever_topologie` already logs the topology survey with `moment="avant
     // purge" nombre=…` — a second message here would be a duplicate.
-    let avant = relever_topologie("avant purge")?;
+    let before = relever_topologie("avant purge")?;
 
     let pilote = ouvrir_pilote()?;
     let mut retirees = 0usize;
@@ -98,7 +98,7 @@ pub(crate) fn purger() -> Result<()> {
                 retirees += 1;
                 tracing::info!(numero, guid = ?guid, "sortie virtuelle retirée par la purge");
             }
-            Err(erreur) => {
+            Err(error) => {
                 // At `debug`, not silent: out of `PLAFOND_NUMEROS`
                 // attempts, the vast majority target a GUID no one has
                 // ever assigned, and it is the expected outcome — an `info` or
@@ -108,7 +108,7 @@ pub(crate) fn purger() -> Result<()> {
                 // from a GUID held by a live process") was verifiable
                 // by no one, including us. The error code stays here,
                 // consultable afterwards.
-                tracing::debug!(numero, guid = ?guid, %erreur, "retrait refusé (GUID jamais attribué, ou échec réel — indiscernable côté code de retour)");
+                tracing::debug!(numero, guid = ?guid, %error, "retrait refusé (GUID jamais attribué, ou échec réel — indiscernable côté code de retour)");
             }
         }
     }
@@ -120,19 +120,19 @@ pub(crate) fn purger() -> Result<()> {
     // silently `retirees=0` and an `Ok(())` — the probe whose job
     // IS to restore would then be the only one judging nothing, whereas
     // `monter_en_n` (montee.rs) emits one in the symmetric case.
-    let attendu = avant.len().saturating_sub(retirees);
-    match verdict(avant.len(), apres.len(), retirees) {
+    let attendu = before.len().saturating_sub(retirees);
+    match verdict(before.len(), apres.len(), retirees) {
         Verdict::Conforme => {
             tracing::info!(
                 retirees,
-                avant = avant.len(),
+                before = before.len(),
                 apres = apres.len(),
                 "purge terminée"
             )
         }
         Verdict::UnTiersAAussiRetire => tracing::info!(
             retirees,
-            avant = avant.len(),
+            before = before.len(),
             apres = apres.len(),
             attendu,
             "purge terminée — MOINS de sorties qu'attendu, ce que la purge ne \
@@ -142,7 +142,7 @@ pub(crate) fn purger() -> Result<()> {
         ),
         Verdict::RetraitsSansEffet => tracing::error!(
             retirees,
-            avant = avant.len(),
+            before = before.len(),
             apres = apres.len(),
             attendu,
             "purge terminée SANS retrouver le compte attendu — il reste PLUS de \
@@ -158,7 +158,7 @@ pub(crate) fn purger() -> Result<()> {
 /// for the rest of the run even though its GUID was known.
 ///
 /// **Is NOT called by `purger()` above.** `a_purger` is only
-/// fed by `creer` and `detruire` (`moniteurs.rs`); `purger()`
+/// fed by `create` and `detruire` (`moniteurs.rs`); `purger()`
 /// calls neither — it goes exclusively through
 /// `retirer_par_guid`, which touches no table. `pilote.a_purger()` would
 /// therefore ALWAYS be empty there: calling it there would have closed nothing, only
@@ -179,8 +179,8 @@ pub(crate) fn rejouer_purge_due(pilote: &PiloteParIoctl) -> usize {
                 reussis += 1;
                 tracing::info!(guid = ?guid_moniteur, "retrait dû rejoué avec succès");
             }
-            Err(erreur) => {
-                tracing::warn!(guid = ?guid_moniteur, %erreur, "retrait dû toujours refusé");
+            Err(error) => {
+                tracing::warn!(guid = ?guid_moniteur, %error, "retrait dû toujours refusé");
             }
         }
     }

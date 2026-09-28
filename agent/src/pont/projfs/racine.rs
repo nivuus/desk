@@ -33,8 +33,8 @@ const NOM_RACINE: &str = "Mes Fichiers";
 /// object — hence dependent on the bridge to be read, which is **circular** —
 /// and it would disappear with the root the day it had to be recreated,
 /// that is, **exactly the day it matters**.
-const SOUS_DOSSIER_ETAT: &str = r"Guacamole\pont";
-const FICHIER_GUID: &str = "instance.guid";
+const STATE_SUBFOLDER: &str = r"Guacamole\pont";
+const GUID_FILE: &str = "instance.guid";
 
 /// `%USERPROFILE%\Mes Fichiers`.
 pub(super) fn racine() -> Result<PathBuf> {
@@ -46,14 +46,14 @@ pub(super) fn racine() -> Result<PathBuf> {
 /// `%LOCALAPPDATA%\Guacamole\pont`.
 ///
 /// ⚠️ **`pub` since F2**: the **due writes journal** lives there
-/// too, for the reason written at the head of [`SOUS_DOSSIER_ETAT`] — a state that
+/// too, for the reason written at the head of [`STATE_SUBFOLDER`] — a state that
 /// lived IN the root would itself be a projected object, hence dependent on the
 /// bridge to be read, and it would disappear with the root **exactly the day
 /// it matters**.
 pub fn dossier_etat() -> Result<PathBuf> {
     let local = std::env::var("LOCALAPPDATA")
         .context("LOCALAPPDATA absent : impossible de situer l'état du pont fichiers")?;
-    Ok(PathBuf::from(local).join(SOUS_DOSSIER_ETAT))
+    Ok(PathBuf::from(local).join(STATE_SUBFOLDER))
 }
 
 /// Creates the root if needed, and marks it **only once**.
@@ -65,12 +65,12 @@ pub fn dossier_etat() -> Result<PathBuf> {
 ///    says the root has already been marked;
 /// 2. **the root must contain no data at marking time** — an
 ///    explicit refusal beats an `HRESULT` no one will know how to read;
-/// 3. **nothing of our state lives in the root** (see [`SOUS_DOSSIER_ETAT`]).
+/// 3. **nothing of our state lives in the root** (see [`STATE_SUBFOLDER`]).
 pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()> {
     std::fs::create_dir_all(racine)
         .with_context(|| format!("création de la racine « {} »", racine.display()))?;
     let etat = dossier_etat()?;
-    let empreinte = etat.join(FICHIER_GUID);
+    let empreinte = etat.join(GUID_FILE);
 
     let deja_marquee = empreinte.exists();
     let guid = match std::fs::read_to_string(&empreinte) {

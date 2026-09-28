@@ -16,14 +16,14 @@ fn rejouer(lignes: &str) -> (Journal, usize) {
 /// spec §4.4 names for this module.
 #[test]
 fn une_derniere_ligne_tronquee_ne_fait_pas_perdre_les_precedentes() {
-    let mut j = Journal::nouveau();
-    let mut fichier = String::new();
-    fichier.push_str(&j.inscrire("note.txt", 42));
-    fichier.push_str(&j.inscrire("dossier/gros.bin", 12_582_912));
+    let mut j = Journal::new();
+    let mut file = String::new();
+    file.push_str(&j.inscrire("note.txt", 42));
+    file.push_str(&j.inscrire("dossier/gros.bin", 12_582_912));
     // …and the process dies in the middle of the third line.
-    fichier.push_str("+7 \"perd");
+    file.push_str("+7 \"perd");
 
-    let (relu, ignorees) = rejouer(&fichier);
+    let (relu, ignorees) = rejouer(&file);
     assert_eq!(ignorees, 1, "la ligne tronquée doit être COMPTÉE, pas tue");
     assert_eq!(
         relu.dues(),
@@ -42,7 +42,7 @@ fn une_derniere_ligne_tronquee_ne_fait_pas_perdre_les_precedentes() {
 /// data loss, produced by the module that exists to prevent it.
 #[test]
 fn un_retrait_efface_l_inscription_et_pas_une_autre() {
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     let mut f = String::new();
     f.push_str(&j.inscrire("note.txt", 1));
     f.push_str(&j.inscrire("note.txt.bak", 2));
@@ -68,7 +68,7 @@ fn un_retrait_efface_l_inscription_et_pas_une_autre() {
 /// and the resumption of a batch of writes would become irreproducible.
 #[test]
 fn l_ordre_d_inscription_est_conserve() {
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     let mut f = String::new();
     for i in 0..16u64 {
         f.push_str(&j.inscrire(&format!("f{i:02}.txt"), i));
@@ -89,7 +89,7 @@ fn l_ordre_d_inscription_est_conserve() {
 /// ahead of it, whereas it has been waiting longer.
 #[test]
 fn un_rejeu_met_a_jour_les_octets_sans_changer_de_place() {
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     let mut f = String::new();
     f.push_str(&j.inscrire("a.txt", 1));
     f.push_str(&j.inscrire("b.txt", 2));
@@ -119,7 +119,7 @@ fn un_chemin_a_saut_de_ligne_survit_a_un_aller_retour() {
         "espaces    multiples.txt",
         "+trompeur -aussi.txt",
     ];
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     let mut f = String::new();
     for (i, chemin) in tordus.iter().enumerate() {
         f.push_str(&j.inscrire(chemin, i as u64));
@@ -140,12 +140,12 @@ fn un_chemin_a_saut_de_ligne_survit_a_un_aller_retour() {
 /// matters**: a large journal is a journal where many writes failed.
 #[test]
 fn un_journal_vide_se_compacte_et_un_journal_non_vide_jamais() {
-    let mut j = Journal::nouveau();
+    let mut j = Journal::new();
     assert!(
-        !j.compactable(TAILLE_JOURNAL_COMPACTAGE),
+        !j.compactable(JOURNAL_COMPACTION_SIZE),
         "au seuil exact : pas encore"
     );
-    assert!(j.compactable(TAILLE_JOURNAL_COMPACTAGE + 1));
+    assert!(j.compactable(JOURNAL_COMPACTION_SIZE + 1));
 
     j.inscrire("une seule due.txt", 1);
     assert!(
@@ -155,7 +155,7 @@ fn un_journal_vide_se_compacte_et_un_journal_non_vide_jamais() {
 
     j.retirer("une seule due.txt");
     assert!(
-        j.compactable(TAILLE_JOURNAL_COMPACTAGE + 1),
+        j.compactable(JOURNAL_COMPACTION_SIZE + 1),
         "vidé, il redevient compactable"
     );
 }
@@ -183,7 +183,7 @@ fn un_journal_vide_ou_de_retraits_seuls_se_relit_sans_rien_inventer() {
 
 /// An unreadable byte count does not make the entry pass for another.
 #[test]
-fn un_nombre_d_octets_illisible_rend_la_ligne_illisible() {
+fn an_unreadable_byte_count_makes_the_line_unreadable() {
     let (relu, ignorees) = rejouer("+beaucoup \"a.txt\"\n");
     assert_eq!(ignorees, 1);
     assert_eq!(relu.compte(), 0);

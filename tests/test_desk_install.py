@@ -31,7 +31,7 @@ RACINE = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from commun import HOTE_DEFAUT, NODE_BIN_DEFAUT, PROXY_DEFAUT  # noqa: E402
-from fichiers_installes import lire_secret_persiste  # noqa: E402
+from installed_files import lire_secret_persiste  # noqa: E402
 
 failures = []
 
@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory() as tmp1:
     # /opt/nivuus/desk/plateforme naissaient en drwxr-x---, inaccessibles à
     # l'UID ÉPHÉMÈRE que `DynamicUser=yes` crée à chaque démarrage — CHDIR
     # échouait avant la moindre ligne de JavaScript (voir
-    # hooks/install.py::rendre_lisible_par_tous). Ce test verifie que TOUT
+    # hooks/install.py::make_world_readable). Ce test verifie que TOUT
     # repertoire sous opt/nivuus/desk (le PARENT compris) est traversable
     # par "autre" — le bit precis que DynamicUser exige, distinct du mode
     # LECTURE SEULE que ProtectSystem=strict impose par ailleurs.
@@ -360,11 +360,11 @@ with tempfile.TemporaryDirectory() as tmp7:
 # --- lire_secret_persiste : les cinq cas au niveau unite -------------------
 # 🔴 BUG RÉEL TROUVÉ ET CORRIGÉ LE 2026-09-08 : `install.py` tirait
 # `PLATEFORME_SECRET_JETON` et `TURN_SECRET` SANS CONDITION à chaque appel
-# (`ecrire_secret()` deux fois, jamais de relecture), en contradiction avec
-# le docstring d'`ecrire_secret` qui promettait « tiré une seule fois,
+# (`write_secret()` deux fois, jamais de relecture), en contradiction avec
+# le docstring d'`write_secret` qui promettait « tiré une seule fois,
 # jamais recalculé » — l'idempotence gate du plan de release a détecté la
 # non-idempotence (etc/nivuus/desk.env et etc/turnserver.conf changent entre
-# deux passes). `lire_secret_persiste` (hooks/fichiers_installes.py) est la
+# deux passes). `lire_secret_persiste` (hooks/installed_files.py) est la
 # fonction qui porte désormais réellement cet invariant ; ces cinq
 # scénarios éprouvent CHAQUE cas, séparément d'une installation complète,
 # parce qu'un seul hook subprocess ne peut pas facilement distinguer "clé
@@ -389,21 +389,21 @@ with tempfile.TemporaryDirectory() as tmp_ls:
     # Cas 3 : la cle est presente mais sa valeur est vide, ou faite
     # uniquement d'espaces (fichier tronque ou modifie a la main) — les
     # DEUX formes comptent comme "rien a reutiliser".
-    valeur_vide = dossier_ls / "valeur-vide.env"
-    valeur_vide.write_text(
+    empty_value = dossier_ls / "valeur-vide.env"
+    empty_value.write_text(
         "PLATEFORME_SECRET_JETON=\nTURN_SECRET=   \n", encoding="utf-8")
     check("lire_secret_persiste : valeur vide -> None",
-          lire_secret_persiste(valeur_vide, "PLATEFORME_SECRET_JETON"), None)
+          lire_secret_persiste(empty_value, "PLATEFORME_SECRET_JETON"), None)
     check("lire_secret_persiste : valeur faite d'espaces -> None",
-          lire_secret_persiste(valeur_vide, "TURN_SECRET"), None)
+          lire_secret_persiste(empty_value, "TURN_SECRET"), None)
 
     # Cas 4 : la cle est presente avec une valeur utilisable -> reutilisee
     # telle quelle.
-    valeur_reelle = dossier_ls / "valeur-reelle.env"
-    valeur_reelle.write_text(
+    real_value = dossier_ls / "valeur-reelle.env"
+    real_value.write_text(
         "PLATEFORME_SECRET_JETON=abc123\nAUTRE=x\n", encoding="utf-8")
     check("lire_secret_persiste : valeur presente -> reutilisee telle quelle",
-          lire_secret_persiste(valeur_reelle, "PLATEFORME_SECRET_JETON"),
+          lire_secret_persiste(real_value, "PLATEFORME_SECRET_JETON"),
           "abc123")
 
     # Cas 5 : le fichier EXISTE mais sa LECTURE echoue (permissions faussees
@@ -433,10 +433,10 @@ with tempfile.TemporaryDirectory() as tmp_ls:
 
     illisible = CheminIllisible()
     try:
-        valeur_obtenue = lire_secret_persiste(illisible, "PLATEFORME_SECRET_JETON")
+        obtained_value = lire_secret_persiste(illisible, "PLATEFORME_SECRET_JETON")
         failures.append(
             "lire_secret_persiste : fichier illisible aurait du LEVER une "
-            f"OSError, a rendu {valeur_obtenue!r} sans lever (secret neuf "
+            f"OSError, a rendu {obtained_value!r} sans lever (secret neuf "
             "tire en silence si ceci arrivait dans install.py)")
     except FileNotFoundError:
         failures.append(

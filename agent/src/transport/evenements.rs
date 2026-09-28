@@ -84,7 +84,7 @@ impl Session {
                 return Tick::Disconnected;
             }
             Event::IceConnectionStateChange(state) => {
-                tracing::info!(?state, écoulé = ?self.started.elapsed(), "état ICE");
+                tracing::info!(?state, elapsed = ?self.started.elapsed(), "état ICE");
             }
             Event::Closed => {
                 // I1: emitted on receiving the DTLS close_notify — typically
@@ -188,10 +188,10 @@ impl Session {
                 // at the head of the file even when called from `handle_event`.
                 tracing::debug!(mid = ?request.mid, "image clé demandée par le pair");
                 if let Err(e) = self.source.request_keyframe() {
-                    // `cause::chaine`: same `commander_simple` chain as
+                    // `cause::chain`: same `commander_simple` chain as
                     // the wake-up. See `crate::cause`.
                     tracing::warn!(
-                        erreur = %crate::cause::chaine(&e),
+                        error = %crate::cause::chain(&e),
                         mid = ?request.mid,
                         "échec de la demande d'image clé"
                     );
@@ -247,10 +247,10 @@ impl Session {
                     perte = ?observation.loss,
                     "observation réseau"
                 );
-                // `observer` MUST be called before reading `courant()`
+                // `observer` MUST be called before reading `current()`
                 // below: it is what, in its branch without an
-                // estimate, updates `courant.adaptation` to
-                // `Indisponible` (see its comment). Reading `courant()`
+                // estimate, updates `current.adaptation` to
+                // `Indisponible` (see its comment). Reading `current()`
                 // before this call would return a stale snapshot (still
                 // `Active`) on the transition we care about most.
                 if let Some(decision) = self.congestion.observer(observation) {
@@ -263,14 +263,14 @@ impl Session {
                     // is missing (see its comment, early return) — without
                     // this explicit relay, `Adaptation::Indisponible`
                     // therefore never reaches the browser, whereas the spec
-                    // demands it by name. We set `self.congestion.courant()`,
+                    // demands it by name. We set `self.congestion.current()`,
                     // read AFTER the call above: its `adaptation` field is
                     // now up to date, and the rest (bitrate, size) reflects
                     // the last real decision — the only sensible thing to
                     // announce as long as no new data arrives.
                     if !self.indisponibilite_annoncee {
                         self.indisponibilite_annoncee = true;
-                        self.pending_decision = Some(self.congestion.courant());
+                        self.pending_decision = Some(self.congestion.current());
                     }
                 } else {
                     // A fresh estimate comes back: a later unavailability
@@ -303,7 +303,7 @@ impl Session {
         match destination(data.id, self.input_channel, self.control_channel) {
             Destination::Entree => match InputMessage::decode(&data.data) {
                 Ok(message) => on_input(message),
-                Err(e) => tracing::warn!(erreur = %e, "message d'entrée invalide"),
+                Err(e) => tracing::warn!(error = %e, "message d'entrée invalide"),
             },
             Destination::Controle => {
                 match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
@@ -311,8 +311,8 @@ impl Session {
                         self.memoriser_controle(&message);
                         on_control(message);
                     }
-                    Ok(Err(e)) => tracing::warn!(erreur = %e, "message de contrôle invalide"),
-                    Err(e) => tracing::warn!(erreur = %e, "contrôle non UTF-8"),
+                    Ok(Err(e)) => tracing::warn!(error = %e, "message de contrôle invalide"),
+                    Err(e) => tracing::warn!(error = %e, "contrôle non UTF-8"),
                 }
             }
             Destination::Ignoree => {

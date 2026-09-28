@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EchecFichiers, type PoigneeBase, type PoigneeFichier, type PoigneeRepertoire } from './adaptateur';
+import { FilesError, type PoigneeBase, type FileHandle, type PoigneeRepertoire } from './adaptateur';
 import {
     FAUTE_SILENCE,
     PREFIXE_FAUTE,
@@ -22,14 +22,14 @@ import {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Un répertoire dont `values()` rend les noms donnés. Rien d'autre. */
-function parentAvec(noms: string[]): PoigneeRepertoire {
+function parentWith(noms: string[]): PoigneeRepertoire {
     return {
         kind: 'directory',
         name: 'racine',
         async getDirectoryHandle(): Promise<PoigneeRepertoire> {
             throw new Error('non employé par le canonicaliseur');
         },
-        async getFileHandle(): Promise<PoigneeFichier> {
+        async getFileHandle(): Promise<FileHandle> {
             throw new Error('non employé par le canonicaliseur');
         },
         values(): AsyncIterable<PoigneeBase> {
@@ -53,11 +53,11 @@ function parentInsensible(noms: string[]): PoigneeRepertoire & {
     ouvertures: string[];
 } {
     const ouvertures: string[] = [];
-    const base = parentAvec(noms);
+    const base = parentWith(noms);
     return {
         ...base,
         ouvertures,
-        async getFileHandle(nom: string): Promise<PoigneeFichier> {
+        async getFileHandle(nom: string): Promise<FileHandle> {
             const trouve = noms.find((n) => n.toLowerCase() === nom.toLowerCase());
             if (trouve === undefined) {
                 throw new DOMException(`« ${nom} » est introuvable`, 'NotFoundError');
@@ -106,7 +106,7 @@ describe('le canonicaliseur', () => {
         // C'est l'incohérence que F1 relève : dans la MÊME exécution,
         // `casse.txt` passait (NTFS) et `GROS.BIN` échouait (OPFS). Elle
         // disparaît.
-        const r = await canoniser(parentAvec(['gros.bin', 'autre.txt']), 'GROS.BIN');
+        const r = await canoniser(parentWith(['gros.bin', 'autre.txt']), 'GROS.BIN');
         expect(r).toEqual({ sorte: 'trouve', nom: 'gros.bin' });
     });
 
@@ -114,7 +114,7 @@ describe('le canonicaliseur', () => {
         // Rouge : rendre `demande`. Le substitut serait créé sous un nom qui
         // n'existe pas côté poste local, et une écriture ultérieure le créerait
         // POUR DE BON — un fichier fantôme, à côté du vrai.
-        const r = await canoniser(parentAvec(['Rapport Final.PDF']), 'rapport final.pdf');
+        const r = await canoniser(parentWith(['Rapport Final.PDF']), 'rapport final.pdf');
         expect(r).toEqual({ sorte: 'trouve', nom: 'Rapport Final.PDF' });
         expect(r).not.toEqual({ sorte: 'trouve', nom: 'rapport final.pdf' });
     });
@@ -122,7 +122,7 @@ describe('le canonicaliseur', () => {
     it('🔴 deux homonymes rendent `ambigu`, et RIEN d’autre', async () => {
         // Rouge : choisir le premier. On écraserait l'un des deux, et le choix
         // dépendrait de l'ordre d'énumération — c'est-à-dire du hasard.
-        const r = await canoniser(parentAvec(['note.txt', 'Note.txt']), 'NOTE.TXT');
+        const r = await canoniser(parentWith(['note.txt', 'Note.txt']), 'NOTE.TXT');
         expect(r).toEqual({ sorte: 'ambigu', noms: ['note.txt', 'Note.txt'] });
     });
 
@@ -130,12 +130,12 @@ describe('le canonicaliseur', () => {
         // Rouge : ne pas privilégier l'exact. `note.txt` deviendrait ambigu sur
         // un poste qui porte AUSSI `Note.txt`, alors qu'il est parfaitement
         // désigné — et on refuserait une lecture légitime.
-        const r = await canoniser(parentAvec(['note.txt', 'Note.txt']), 'note.txt');
+        const r = await canoniser(parentWith(['note.txt', 'Note.txt']), 'note.txt');
         expect(r).toEqual({ sorte: 'trouve', nom: 'note.txt' });
     });
 
     it('rend `absent` quand rien n’y ressemble', async () => {
-        expect(await canoniser(parentAvec(['a.txt']), 'b.txt')).toEqual({ sorte: 'absent' });
+        expect(await canoniser(parentWith(['a.txt']), 'b.txt')).toEqual({ sorte: 'absent' });
     });
 
     it('🔵 résout une divergence de NORMALISATION UNICODE', async () => {
@@ -143,51 +143,51 @@ describe('le canonicaliseur', () => {
         // créerait un DOUBLON au lieu d'écraser — moins grave que la perte,
         // mais faux, et F2 le déclare tel quel.
         const stocke = 'été.txt'; // NFD
-        const r = await canoniser(parentAvec([stocke]), 'été.txt'); // NFC
+        const r = await canoniser(parentWith([stocke]), 'été.txt'); // NFC
         expect(r).toEqual({ sorte: 'trouve', nom: stocke });
     });
 
     it('un répertoire vide rend `absent`, jamais `ambigu`', async () => {
-        expect(await canoniser(parentAvec([]), 'x')).toEqual({ sorte: 'absent' });
+        expect(await canoniser(parentWith([]), 'x')).toEqual({ sorte: 'absent' });
     });
 });
 
 describe('canoniserOuLever', () => {
     it('rend le nom stocké', async () => {
-        expect(await canoniserOuLever(parentAvec(['A.txt']), 'a.txt', 'introuvable')).toBe('A.txt');
+        expect(await canoniserOuLever(parentWith(['A.txt']), 'a.txt', 'introuvable')).toBe('A.txt');
     });
 
     it('🔴 distingue les DEUX façons d’être introuvable', async () => {
         // ProjFS les distingue (`ERROR_FILE_NOT_FOUND` contre
         // `ERROR_PATH_NOT_FOUND`), et l'Explorateur n'en dit pas la même chose.
-        await expect(canoniserOuLever(parentAvec([]), 'x', 'introuvable')).rejects.toMatchObject({
+        await expect(canoniserOuLever(parentWith([]), 'x', 'introuvable')).rejects.toMatchObject({
             code: 'introuvable',
         });
         await expect(
-            canoniserOuLever(parentAvec([]), 'x', 'chemin-introuvable'),
+            canoniserOuLever(parentWith([]), 'x', 'chemin-introuvable'),
         ).rejects.toMatchObject({ code: 'chemin-introuvable' });
     });
 
     it('lève `casse-ambigue` en NOMMANT les homonymes', async () => {
-        const erreur = await canoniserOuLever(parentAvec(['a', 'A']), 'à-plier-en-A', 'introuvable')
-            .catch((e: unknown) => e as EchecFichiers)
-            .then((e) => e as EchecFichiers)
+        const error = await canoniserOuLever(parentWith(['a', 'A']), 'à-plier-en-A', 'introuvable')
+            .catch((e: unknown) => e as FilesError)
+            .then((e) => e as FilesError)
             .catch(() => undefined);
         // Le nom demandé ne se replie sur rien : c'est `absent`, pas `ambigu`.
-        expect(erreur?.code).toBe('introuvable');
+        expect(error?.code).toBe('introuvable');
 
-        const ambigu = await canoniserOuLever(parentAvec(['a', 'A']), 'A', 'introuvable').then(
+        const ambigu = await canoniserOuLever(parentWith(['a', 'A']), 'A', 'introuvable').then(
             (n) => n,
-            (e: unknown) => e as EchecFichiers,
+            (e: unknown) => e as FilesError,
         );
         // 'A' est EXACT : la règle 1 prime, et il n'y a pas d'ambiguïté.
         expect(ambigu).toBe('A');
 
-        const vrai = await canoniserOuLever(parentAvec(['a', 'A']), 'à', 'introuvable').then(
+        const vrai = await canoniserOuLever(parentWith(['a', 'A']), 'à', 'introuvable').then(
             (n) => n,
-            (e: unknown) => e as EchecFichiers,
+            (e: unknown) => e as FilesError,
         );
-        expect(vrai).toBeInstanceOf(EchecFichiers);
+        expect(vrai).toBeInstanceOf(FilesError);
     });
 });
 

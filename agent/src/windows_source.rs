@@ -338,7 +338,7 @@ impl WindowsSource {
                 }
                 Some(Ok(None)) | None => break,
                 Some(Err(e)) => {
-                    tracing::warn!(erreur = %crate::cause::chaine(&e), "récupération de l'image encodée échouée");
+                    tracing::warn!(error = %crate::cause::chain(&e), "récupération de l'image encodée échouée");
                     break;
                 }
             }
@@ -349,7 +349,7 @@ impl WindowsSource {
             .encoder_mut()
             .and_then(H264Encoder::flush_pending_inputs)
         {
-            tracing::warn!(erreur = %crate::cause::chaine(&e), "réalimentation de l'encodeur échouée");
+            tracing::warn!(error = %crate::cause::chain(&e), "réalimentation de l'encodeur échouée");
         }
         self.ready.pop_front()
     }

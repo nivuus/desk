@@ -23,14 +23,14 @@ use anyhow::{bail, Context, Result};
 use windows::Win32::Foundation::{CloseHandle, HANDLE};
 
 use crate::capteur::fenetre::Fenetre;
-use crate::capteur::protocole::{ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur};
+use crate::capteur::protocole::{lire_trame, write_json, DepuisCapteur, Trame, VersCapteur};
 use crate::capteur::tube::DUREE_OUVERTURE_MEDIA;
 
 mod attentes;
 use attentes::{attendre_le_media, oublier};
 
 mod instances;
-use instances::{connecter, creer_instance, SOUFFLE_CREATION_INSTANCE};
+use instances::{connecter, create_instance, SOUFFLE_CREATION_INSTANCE};
 
 /// Maximum wait for the media connection after an accepted attach.
 ///
@@ -69,7 +69,7 @@ const DELAI_CONNEXION_MEDIA: Duration =
 const DELAI_REPONSE_FENETRE: Duration = Duration::from_secs(12);
 
 pub fn servir() -> Result<()> {
-    // True as soon as a `creer_instance` failure has been reported — see below.
+    // True as soon as a `create_instance` failure has been reported — see below.
     let mut echec_signale = false;
     loop {
         // A NEW instance per client. `PIPE_UNLIMITED_INSTANCES` only makes
@@ -91,7 +91,7 @@ pub fn servir() -> Result<()> {
         // The line is reported only once per series of failures, same reason
         // as `Enfant::etat_illisible_signale` (`superviseur/lanceur.rs`): the
         // breather alone would not be enough to bound the log if the cause lasts.
-        let tube = match creer_instance() {
+        let tube = match create_instance() {
             Ok(tube) => {
                 if echec_signale {
                     echec_signale = false;
@@ -99,11 +99,11 @@ pub fn servir() -> Result<()> {
                 }
                 tube
             }
-            Err(erreur) => {
+            Err(error) => {
                 if !echec_signale {
                     echec_signale = true;
                     tracing::warn!(
-                        %erreur,
+                        %error,
                         "création d'une instance de tube refusée, réessais \
                          (signalé une seule fois tant que l'échec se répète)"
                     );
@@ -133,8 +133,8 @@ pub fn servir() -> Result<()> {
                     // A failed attach does NOT bring the server down: the
                     // other windows carry on. That is the whole point
                     // of having a sensor that outlives its windows.
-                    if let Err(erreur) = accueillir(tube) {
-                        tracing::warn!(%erreur, "attache d'un enfant refusée");
+                    if let Err(error) = accueillir(tube) {
+                        tracing::warn!(%error, "attache d'un enfant refusée");
                     }
                 });
             }
@@ -142,11 +142,11 @@ pub fn servir() -> Result<()> {
             // `connecter`): the refused pipe is closed so as not to leak, and the
             // loop recreates a new instance. Does not bring the
             // server down either.
-            Err(erreur) => {
+            Err(error) => {
                 if let Err(fermeture) = unsafe { CloseHandle(tube) } {
                     tracing::warn!(%fermeture, "fermeture d'un tube refusé également en échec");
                 }
-                tracing::warn!(%erreur, "connexion d'un enfant refusée");
+                tracing::warn!(%error, "connexion d'un enfant refusée");
             }
         }
     }
@@ -159,11 +159,11 @@ fn accueillir(tube: HANDLE) -> Result<()> {
     // `std::fs::File` from the handle: it gives `Read`/`Write` without writing
     // a wrapper, and closing it closes the pipe.
     use std::os::windows::io::FromRawHandle;
-    let fichier = unsafe { std::fs::File::from_raw_handle(tube.0 as *mut _) };
-    // The reader works on a DUPLICATED handle: `fichier` stays whole and
+    let file = unsafe { std::fs::File::from_raw_handle(tube.0 as *mut _) };
+    // The reader works on a DUPLICATED handle: `file` stays whole and
     // can be handed as is to the window thread if it is a media
     // connection. Closing the duplicate does not close the pipe instance.
-    let mut lecteur = BufReader::new(fichier.try_clone().context("clone du tube en lecture")?);
+    let mut lecteur = BufReader::new(file.try_clone().context("clone du tube en lecture")?);
 
     let premiere = match lire_trame(&mut lecteur).context("première trame de l'enfant")? {
         Trame::Json(octets) => {
@@ -173,7 +173,7 @@ fn accueillir(tube: HANDLE) -> Result<()> {
     };
 
     match premiere {
-        VersCapteur::Attache { .. } => ouvrir_les_commandes(lecteur, fichier, premiere),
+        VersCapteur::Attache { .. } => ouvrir_les_commandes(lecteur, file, premiere),
         // The media connection: this thread only hands it over to the
         // window thread already waiting. No read will remain pending on it,
         // and the child will write nothing more on it — hence the `lecteur` we let
@@ -185,7 +185,7 @@ fn accueillir(tube: HANDLE) -> Result<()> {
             match attendue {
                 Some(media) => {
                     drop(lecteur);
-                    if media.send(fichier).is_err() {
+                    if media.send(file).is_err() {
                         tracing::warn!(
                             %session,
                             "fil de fenêtre disparu avant sa connexion média, connexion abandonnée"
@@ -232,7 +232,7 @@ fn ouvrir_les_commandes(
     // teardown (`Drop for H264Encoder` can freeze).
     let session_fenetre = session.clone();
     std::thread::spawn(move || {
-        if let Err(erreur) = tenir_la_fenetre(
+        if let Err(error) = tenir_la_fenetre(
             attache,
             session_fenetre,
             generation,
@@ -240,11 +240,11 @@ fn ouvrir_les_commandes(
             receveur_commandes,
             reponses,
         ) {
-            // `cause::chaine`: `tenir_la_fenetre` propagates
+            // `cause::chain`: `tenir_la_fenetre` propagates
             // contextualised errors from end to end of the wake-up path. See
             // `crate::cause`.
             tracing::warn!(
-                erreur = %crate::cause::chaine(&erreur),
+                error = %crate::cause::chain(&error),
                 "fil de fenêtre terminé sur erreur"
             );
         }
@@ -257,15 +257,15 @@ fn ouvrir_les_commandes(
     // that did not return does not freeze this thread.
     let premiere = match receveur_reponses.recv_timeout(DELAI_REPONSE_FENETRE) {
         Ok(reponse) => reponse,
-        Err(erreur) => {
+        Err(error) => {
             // The sender removes the entry it registered: if the window
             // thread stayed stuck in its source construction, it will never reach
             // its own wait, hence never its own removal.
             oublier(&session, generation);
-            tracing::warn!(%session, %erreur, "aucune réponse à l'attache, canal abandonné");
+            tracing::warn!(%session, %error, "aucune réponse à l'attache, canal abandonné");
             // An explicit REFUSAL rather than a silent close: the child
             // reads it and fails loudly, instead of interpreting an end of pipe.
-            let _ = ecrire_json(
+            let _ = write_json(
                 &mut ecrivain,
                 &DepuisCapteur::Refus {
                     motif: format!("aucune réponse du fil de fenêtre en {DELAI_REPONSE_FENETRE:?}"),
@@ -280,7 +280,7 @@ fn ouvrir_les_commandes(
     // until the first frame — which never comes in front of a still
     // window. The `flush` stays, but it is the absence of a buffer that guarantees it.
     let refusee = matches!(premiere, DepuisCapteur::Refus { .. });
-    ecrire_json(&mut ecrivain, &premiere).context("réponse à l'attache")?;
+    write_json(&mut ecrivain, &premiere).context("réponse à l'attache")?;
     ecrivain.flush().context("réponse à l'attache")?;
     if refusee {
         // The refusal is written, the child will read it; nothing else will come on
@@ -304,14 +304,14 @@ fn tenir_la_fenetre(
 ) -> Result<()> {
     let fenetre = match Fenetre::ouvrir(attache) {
         Ok(fenetre) => fenetre,
-        Err(erreur) => {
+        Err(error) => {
             // The refusal is ANNOUNCED to the child, never silent: without this
             // message it would wait for a frame that will not come.
             let _ = reponses.send(DepuisCapteur::Refus {
-                motif: format!("{erreur:#}"),
+                motif: format!("{error:#}"),
             });
             oublier(&session, generation);
-            return Err(erreur);
+            return Err(error);
         }
     };
     let (largeur, hauteur) = fenetre.dimensions();
@@ -364,8 +364,8 @@ fn boucler_les_commandes(
         let message = match lire_trame(&mut lecteur) {
             Ok(Trame::Json(octets)) => match serde_json::from_slice::<VersCapteur>(&octets) {
                 Ok(message) => message,
-                Err(erreur) => {
-                    tracing::warn!(%session, %erreur, "commande illisible, canal abandonné");
+                Err(error) => {
+                    tracing::warn!(%session, %error, "commande illisible, canal abandonné");
                     return;
                 }
             },
@@ -383,7 +383,7 @@ fn boucler_les_commandes(
         // **Bounded, and it is the safety belt of the whole channel.**
         // The child waits for this reply without any timeout: without a bound here, a
         // silent window thread would freeze it forever. On expiry we
-        // return an `Erreur` to it, which `SourceDistante` passes up and the transport
+        // return an `Error` to it, which `SourceDistante` passes up and the transport
         // loop already absorbs through a `warn!` — then we close the connection.
         let reponse = match reponses.recv_timeout(DELAI_REPONSE_FENETRE) {
             Ok(reponse) => reponse,
@@ -395,14 +395,14 @@ fn boucler_les_commandes(
                 );
                 let motif =
                     format!("le fil de fenêtre n'a pas répondu en {DELAI_REPONSE_FENETRE:?}");
-                let _ = ecrire_json(&mut ecrivain, &DepuisCapteur::Erreur { motif });
+                let _ = write_json(&mut ecrivain, &DepuisCapteur::Error { motif });
                 let _ = ecrivain.flush();
                 return;
             }
             // The window thread has gone: the end of pipe will tell the child.
             Err(RecvTimeoutError::Disconnected) => return,
         };
-        if ecrire_json(&mut ecrivain, &reponse)
+        if write_json(&mut ecrivain, &reponse)
             .and_then(|()| ecrivain.flush())
             .is_err()
         {

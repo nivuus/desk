@@ -169,12 +169,12 @@ impl TurnClient {
             return None;
         }
         let canal = u16::from_be_bytes([trame[0], trame[1]]);
-        let longueur = u16::from_be_bytes([trame[2], trame[3]]) as usize;
-        if trame.len() < 4 + longueur {
+        let length = u16::from_be_bytes([trame[2], trame[3]]) as usize;
+        if trame.len() < 4 + length {
             return None;
         }
         let pair = self.canaux.get(&canal)?.pair;
-        Some((pair, &trame[4..4 + longueur]))
+        Some((pair, &trame[4..4 + length]))
     }
 }
 
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn encapsuler_prefixe_le_numero_de_canal_et_la_longueur() {
+    fn encapsulate_prefixes_the_channel_number_and_the_length() {
         let mut c = allouee();
         let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
         let canal = c.lier_canal(pair).expect("canal attribué");
@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn les_numeros_de_canal_restent_dans_la_plage_normative() {
+    fn channel_numbers_stay_in_the_normative_range() {
         let mut c = allouee();
         for i in 0..8u16 {
             let pair: SocketAddr = format!("203.0.113.{}:6000", i + 1).parse().unwrap();
@@ -257,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn un_canal_lie_est_rafraichi_avant_l_expiration_de_la_permission() {
+    fn a_bound_channel_is_refreshed_before_the_permission_expires() {
         // Finding of the acceptance run of 07/30/2026: a relayed session dropped
         // after ~340 s. A TURN permission lasts 300 s (RFC 5766 §8) and a
         // channel 600 s (§11); without re-emission, the server stops relaying our

@@ -194,7 +194,7 @@ describe('les deux champs d’icône traversent le parseur', () => {
     });
 
     it('🔴 REFUSE une `source_max` qui n’est ni la chaîne ni la forme exacte', () => {
-        for (const valeur of [
+        for (const value of [
             '"gros"',
             '{"pixels":"gros"}',
             '{"pixels":256,"bonus":1}',
@@ -203,17 +203,17 @@ describe('les deux champs d’icône traversent le parseur', () => {
             'null',
             '"non_mesuree"',
         ]) {
-            const app = JSON.stringify(APP_TEMOIN).replace('{"pixels":256}', valeur);
+            const app = JSON.stringify(APP_TEMOIN).replace('{"pixels":256}', value);
             const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
     });
 
     it('🔴 REFUSE une `icone` qui n’est ni `null` ni une chaîne', () => {
-        for (const valeur of ['42', 'true', '{}', '[]']) {
+        for (const value of ['42', 'true', '{}', '[]']) {
             const app = JSON.stringify(APP_TEMOIN).replace(
                 '"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2"',
-                valeur,
+                value,
             );
             const brut = `{"type":"catalogue","v":5,"complet":true,"applications":[${app}],"disparues":[]}`;
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });

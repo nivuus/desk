@@ -271,7 +271,7 @@ pub static CONVERTER_SKIPPED: AtomicU64 = AtomicU64::new(0);
 /// then brings back up the platform anymore — which matters for the upcoming work stream, where
 /// closing a window will destroy its encoder while others keep
 /// encoding.
-fn demarrer_media_foundation() -> Result<()> {
+fn start_media_foundation() -> Result<()> {
     static DEMARRAGE: OnceLock<std::result::Result<(), String>> = OnceLock::new();
     match DEMARRAGE.get_or_init(|| {
         unsafe { MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET) }.map_err(|err| err.to_string())
@@ -354,8 +354,8 @@ impl H264Encoder {
                 // 🔴 **The fallback is NOISY, on purpose.** Falling back silently
                 // to the MFT would make whoever sees a session establish itself read "NVENC works",
                 // while the back end running is the other one.
-                Err(erreur) => tracing::warn!(
-                    %erreur,
+                Err(error) => tracing::warn!(
+                    %error,
                     adaptateur = %vu.nom,
                     "NVENC natif indisponible : repli sur la MFT Media Foundation"
                 ),

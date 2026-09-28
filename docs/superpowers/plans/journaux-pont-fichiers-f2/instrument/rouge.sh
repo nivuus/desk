@@ -22,30 +22,30 @@
 #
 # Usage: rouge.sh <label> <file> <sed command> -- <check command…>
 set -uo pipefail
-etiquette="$1"; fichier="$2"; sedcmd="$3"; shift 3
+etiquette="$1"; file="$2"; sedcmd="$3"; shift 3
 [ "${1:-}" = "--" ] && shift
 
 racine="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 cd "$racine" || exit 2
 
 echo "=== ROUGE : $etiquette"
-echo "--- fichier : $fichier"
-sauvegarde="$(mktemp)"
-cp "$fichier" "$sauvegarde"
-avant="$(sha256sum "$fichier" | cut -d' ' -f1)"
-echo "--- sha256 AVANT : $avant"
+echo "--- fichier : $file"
+backup="$(mktemp)"
+cp "$file" "$backup"
+before="$(sha256sum "$file" | cut -d' ' -f1)"
+echo "--- sha256 AVANT : $before"
 
-sed -i "$sedcmd" "$fichier"
+sed -i "$sedcmd" "$file"
 
 # 🔴 THE GUARD. An empty diff means the mutation MUTATED NOTHING: the
 # check that follows would then say nothing about the product.
-if diff -q "$sauvegarde" "$fichier" >/dev/null; then
+if diff -q "$backup" "$file" >/dev/null; then
     echo "!!! LA MUTATION N'A RIEN MUTÉ : cette rouge NE COMPTE PAS."
-    cp "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
+    cp "$backup" "$file"; rm -f "$backup"
     exit 3
 fi
 echo "--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :"
-diff -u "$sauvegarde" "$fichier" | sed -n '3,60p'
+diff -u "$backup" "$file" | sed -n '3,60p'
 
 echo "--- contrôle :"
 "$@" 2>&1 | tail -40
@@ -56,12 +56,12 @@ echo "--- (le code de sortie du contrôle est celui de la commande ci-dessus)"
 # preserves the modification date, so that the RESTORED file looks
 # UNCHANGED to cargo — which then keeps the compiled artefact of the MUTATED version.
 # The symptom is a correct test failing for a reason INVISIBLE IN THE
-# SOURCE: here, `charge.len() > TAILLE_TRAME_MAX` refused a payload of 65536
+# SOURCE: here, `charge.len() > MAX_FRAME_SIZE` refused a payload of 65536
 # against a maximum of 65536, which no reading of the file can
 # explain. The worst case is the reverse: a GREEN suite still running the
 # mutated code.
-cp "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
-apres="$(sha256sum "$fichier" | cut -d' ' -f1)"
+cp "$backup" "$file"; rm -f "$backup"
+apres="$(sha256sum "$file" | cut -d' ' -f1)"
 echo "--- sha256 APRÈS restauration : $apres"
-if [ "$avant" = "$apres" ]; then echo "--- restauration VÉRIFIÉE"; else echo "!!! RESTAURATION FAUSSE"; exit 4; fi
+if [ "$before" = "$apres" ]; then echo "--- restauration VÉRIFIÉE"; else echo "!!! RESTAURATION FAUSSE"; exit 4; fi
 echo

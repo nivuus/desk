@@ -21,7 +21,7 @@
 // ⚠️ THE DRIVER SUBSTITUTES THROUGH `replaceAll`, AND THIS COMMENT NAMES NONE OF ITS
 // MARKERS.
 (() => {
-    window.__f4 = { notes: [], erreurs: [] };
+    window.__f4 = { notes: [], errors: [] };
     const noter = (m) => {
         window.__f4.notes.push({ t: Date.now(), m: String(m).slice(0, 300) });
         if (window.__f4.notes.length > 400) window.__f4.notes.shift();
@@ -51,10 +51,10 @@
 
     /** Pseudo-random content with a FIXED SEED: two runs write the
      *  same bytes, hence the same digest, hence a possible comparison. */
-    const octets = (taille, graine) => {
-        const u = new Uint8Array(taille);
+    const octets = (size, graine) => {
+        const u = new Uint8Array(size);
         let x = (graine >>> 0) || 1;
-        for (let i = 0; i < taille; i += 1) {
+        for (let i = 0; i < size; i += 1) {
             x ^= x << 13; x >>>= 0;
             x ^= x >> 17;
             x ^= x << 5; x >>>= 0;
@@ -80,35 +80,35 @@
             noter('gabarit listage/' + n + ' : ' + vus + ' entrees');
             return JSON.stringify({ demande: n, presentes: vus });
         } catch (e) {
-            window.__f4.erreurs.push('gabaritListage ' + n + ' : ' + String(e).slice(0, 300));
-            return JSON.stringify({ demande: n, erreur: String(e).slice(0, 300) });
+            window.__f4.errors.push('gabaritListage ' + n + ' : ' + String(e).slice(0, 300));
+            return JSON.stringify({ demande: n, error: String(e).slice(0, 300) });
         }
     };
 
-    /** Populates `<sousDossier>/<nom>` with `taille` bytes. */
-    window.__gabaritFichier = async (sousDossier, nom, taille, graine) => {
+    /** Populates `<subfolder>/<nom>` with `size` bytes. */
+    window.__fileTemplate = async (subfolder, nom, size, graine) => {
         try {
-            const d = await dossier(sousDossier);
+            const d = await dossier(subfolder);
             const fh = await d.getFileHandle(nom, { create: true });
             const w = await fh.createWritable();
             // In slices of one MiB: a 100 MiB Uint8Array in one go works,
             // but generating it byte by byte at once freezes the tab.
             const TRANCHE = 1 << 20;
-            let ecrit = 0;
+            let written = 0;
             let g = graine;
-            while (ecrit < taille) {
-                const n = Math.min(TRANCHE, taille - ecrit);
+            while (written < size) {
+                const n = Math.min(TRANCHE, size - written);
                 await w.write(octets(n, g));
-                ecrit += n;
+                written += n;
                 g = (g * 1664525 + 1013904223) >>> 0;
             }
             await w.close();
             const f = await (await d.getFileHandle(nom)).getFile();
-            noter('gabarit ' + sousDossier + '/' + nom + ' : ' + f.size + ' octets');
-            return JSON.stringify({ chemin: sousDossier + '/' + nom, taille: f.size });
+            noter('gabarit ' + subfolder + '/' + nom + ' : ' + f.size + ' octets');
+            return JSON.stringify({ chemin: subfolder + '/' + nom, taille: f.size });
         } catch (e) {
-            window.__f4.erreurs.push('gabaritFichier ' + nom + ' : ' + String(e).slice(0, 300));
-            return JSON.stringify({ chemin: sousDossier + '/' + nom, erreur: String(e).slice(0, 300) });
+            window.__f4.errors.push('gabaritFichier ' + nom + ' : ' + String(e).slice(0, 300));
+            return JSON.stringify({ chemin: subfolder + '/' + nom, error: String(e).slice(0, 300) });
         }
     };
 
@@ -120,7 +120,7 @@
             for await (const _ of d.keys()) n += 1;
             return JSON.stringify({ chemin, entrees: n });
         } catch (e) {
-            return JSON.stringify({ chemin, erreur: String(e).slice(0, 200) });
+            return JSON.stringify({ chemin, error: String(e).slice(0, 200) });
         }
     };
 
@@ -147,7 +147,7 @@
     /** What the injection layer noted, and what escaped it. */
     window.__f4Etat = () => JSON.stringify({
         notes: window.__f4.notes.slice(-40),
-        erreurs: window.__f4.erreurs,
+        errors: window.__f4.errors,
         move: typeof FileSystemFileHandle.prototype.move,
     });
 })();

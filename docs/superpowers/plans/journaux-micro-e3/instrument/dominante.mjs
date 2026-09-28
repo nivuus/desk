@@ -26,7 +26,7 @@ while (pos + 8 <= b.length) {
     if (id === 'data') { dOff = pos + 8; dLen = Math.min(len, b.length - dOff); break; }
     pos += 8 + len + (len % 2);
 }
-if (!dOff || bits !== 16) { console.log(JSON.stringify({ erreur: `WAV inattendu (bits=${bits})` })); process.exit(2); }
+if (!dOff || bits !== 16) { console.log(JSON.stringify({ error: `WAV inattendu (bits=${bits})` })); process.exit(2); }
 
 // Mixage mono, et fenêtre de Hann : sans elle, les bords de la fenêtre
 // produisent une fuite spectrale large bande qu'on lirait comme du bruit.
@@ -61,7 +61,7 @@ for (let f = best.f - PAS; f <= best.f + PAS; f += PAS / 10) {
     if (a > best.a) best = { f, a };
 }
 console.log(JSON.stringify({
-    fichier: chemin, taux, canaux, echantillons: n,
+    file: chemin, taux, canaux, echantillons: n,
     duree_s: Number((n / taux).toFixed(3)),
     resolution_hz: Number(PAS.toFixed(3)),
     dominante_hz: Number(best.f.toFixed(1)),

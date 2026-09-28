@@ -23,7 +23,7 @@ import { type Pilote, rendreMarqueurs } from './pilote';
 ///
 /// **Without this line, the defect is one of CLASS and not of instance**:
 /// `LigneAgent.vu_a`, `LigneSession.ouverte_a` / `.fermee_a`,
-/// `LigneUtilisateur.cree_a` and the two columns of `LigneJeton` all
+/// `UserRow.cree_a` and the two columns of `LigneJeton` all
 /// declare as `number` a value that is a `string` on the
 /// PRODUCTION engine. The typing does not see it — `interroger<T>` does an `as T[]`,
 /// so the assertion is taken at face value.
@@ -46,13 +46,13 @@ import { type Pilote, rendreMarqueurs } from './pilote';
 /// no other consumer of `pg` here, and a per-`Pool` setting would
 /// get lost for the administration pool that `base/harnais.ts` opens.
 pg.types.setTypeParser(pg.types.builtins.INT8, (texte: string) => {
-    const valeur = Number(texte);
-    if (!Number.isSafeInteger(valeur)) {
+    const value = Number(texte);
+    if (!Number.isSafeInteger(value)) {
         throw new Error(
             `BIGINT hors de l'entier sûr de JavaScript, converti nulle part : ${texte}`,
         );
     }
-    return valeur;
+    return value;
 });
 
 /// `maxClients` bounds the number of connections that THIS driver keeps open.
@@ -97,9 +97,9 @@ export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');
-                const valeur = await corps(surClient(client));
+                const value = await corps(surClient(client));
                 await client.query('COMMIT');
-                return valeur;
+                return value;
             } catch (cause) {
                 await client.query('ROLLBACK');
                 throw cause;

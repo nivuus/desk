@@ -77,7 +77,7 @@ impl Motif {
     /// whose count is hardcoded — the compiler requires the branch in
     /// [`Motif::mot`], and the test requires the entry.
     #[cfg(test)]
-    pub const TOUS: [Self; 7] = [
+    pub const ALL: [Self; 7] = [
         Self::Empreinte,
         Self::ElevationRequise,
         Self::Extension,
@@ -115,9 +115,7 @@ impl Motif {
     /// lose it or replace it with a default.
     #[cfg(test)]
     pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS
-            .into_iter()
-            .find(|candidat| candidat.mot() == mot)
+        Self::ALL.into_iter().find(|candidat| candidat.mot() == mot)
     }
 }
 
@@ -283,7 +281,7 @@ mod tests {
         // `installation/execution.rs` needed two reasons this
         // table did not have — `disque` and `lancement-impossible` —, and the
         // hardcoded count demanded them HERE before letting the code compile. A
-        // `TOUS` derived from an exhaustive `match` would not have done so: the
+        // `ALL` derived from an exhaustive `match` would not have done so: the
         // compiler would have accepted the variant, and only the word would have stayed
         // missing from the wire table.
         let attendus = [
@@ -295,11 +293,11 @@ mod tests {
             (Motif::Disque, "disque"),
             (Motif::LancementImpossible, "lancement-impossible"),
         ];
-        // 🔴 ANTI-FORGETTING: `TOUS` must cover exactly the enumeration
+        // 🔴 ANTI-FORGETTING: `ALL` must cover exactly the enumeration
         // above. A variant added without its line here skews this count.
-        assert_eq!(Motif::TOUS.len(), attendus.len());
+        assert_eq!(Motif::ALL.len(), attendus.len());
         for (motif, mot) in attendus {
-            assert!(Motif::TOUS.contains(&motif), "{mot} absent de TOUS");
+            assert!(Motif::ALL.contains(&motif), "{mot} absent de TOUS");
             assert_eq!(motif.mot(), mot);
             assert_eq!(Motif::depuis_mot(mot), Some(motif));
         }

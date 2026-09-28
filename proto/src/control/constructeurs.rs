@@ -77,7 +77,7 @@ impl AgentControl {
     /// The VM clipboard has changed.
     ///
     /// ⚠️ **`CONTROL_VERSION` DOES NOT GO UP for this variant, and it is not
-    /// an oversight.** The two checks of `v` — `verifie_version`
+    /// an oversight.** The two checks of `v` — `check_version`
     /// above and `parseAgentControl` on the TypeScript side — are **strict
     /// equalities**: raising the version would reject **all** messages,
     /// `Ready` and `SessionEnd` included. A TOTAL incompatibility
@@ -123,15 +123,15 @@ impl AgentControl {
 
     pub fn link(
         bitrate: u32,
-        taille: (u32, u32),
+        size: (u32, u32),
         quality: LinkQuality,
         adaptation: LinkAdaptation,
     ) -> Self {
         AgentControl::Link {
             version: CONTROL_VERSION,
             bitrate,
-            width: taille.0,
-            height: taille.1,
+            width: size.0,
+            height: size.1,
             quality,
             adaptation,
         }

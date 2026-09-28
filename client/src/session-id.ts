@@ -18,6 +18,6 @@
 // An ABSENCE therefore stays an absence: `undefined`, never an invented
 // value. It is `main.ts` that decides what to do with that absence (refuse
 // and say so), not this function.
-export function sessionIdDepuisParametres(params: URLSearchParams): string | undefined {
+export function sessionIdFromParams(params: URLSearchParams): string | undefined {
     return params.get('session') ?? undefined;
 }

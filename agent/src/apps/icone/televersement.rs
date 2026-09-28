@@ -65,8 +65,8 @@ pub fn honorer(
 ) {
     let base = match base_http(base) {
         Ok(b) => b,
-        Err(erreur) => {
-            tracing::warn!(base, %erreur, "aucun televersement d'icone possible");
+        Err(error) => {
+            tracing::warn!(base, %error, "aucun televersement d'icone possible");
             return;
         }
     };
@@ -94,9 +94,9 @@ pub fn honorer(
         };
         match envoyer(&base, &jeton, empreinte, octets) {
             Ok(()) => envoyees += 1,
-            Err(erreur) => {
+            Err(error) => {
                 echouees += 1;
-                tracing::warn!(empreinte, %erreur, "televersement d'icone echoue");
+                tracing::warn!(empreinte, %error, "televersement d'icone echoue");
             }
         }
     }

@@ -53,15 +53,15 @@ pub(super) use tables::Etat;
 // which had taken this file to 508 lines for a cap of 500 — extract,
 // never compress.
 mod tour_de_roue;
-use tour_de_roue::demarrer_le_tour_de_roue;
+use tour_de_roue::start_the_round;
 
 static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
 
 pub(super) fn etat() -> MutexGuard<'static, Etat> {
     let mutex = ETAT.get_or_init(|| {
-        demarrer_le_tour_de_roue();
+        start_the_round();
         Mutex::new(Etat {
-            vivier: Vivier::nouveau(PLAFOND_EVEIL, HYSTERESIS),
+            vivier: Vivier::new(PLAFOND_EVEIL, HYSTERESIS),
             canaux: HashMap::new(),
             focalisee: None,
             dernieres_parts: HashMap::new(),
@@ -71,7 +71,7 @@ pub(super) fn etat() -> MutexGuard<'static, Etat> {
             horloge: 0,
             derniers_audio: HashMap::new(),
             inaptes: HashMap::new(),
-            dernier_presse_papier: None,
+            last_clipboard: None,
             notre_ecriture: None,
             rearmements: HashMap::new(),
             generations: HashMap::new(),
@@ -379,7 +379,7 @@ pub fn inscrire(session: &str, pid: u32) -> (ReceveurSession, u64) {
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
     porteurs::distribuer_l_audio(&mut garde);
-    presse_papier::emettre_l_etat_courant(&mut garde, session);
+    presse_papier::emit_current_state(&mut garde, session);
     (receveur, generation)
 }
 

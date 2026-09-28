@@ -7,7 +7,7 @@
 // to await it — exactly what P1 forbade for the trace. The guard therefore
 // touches neither the database nor a real clock: both are injected into it.
 //
-// 🔴 `verifier` AND `revendiquer` ARE TWO DISTINCT CALLS, and the distinction
+// 🔴 `verify` AND `revendiquer` ARE TWO DISTINCT CALLS, and the distinction
 // is not cosmetic: the claim must only happen AFTER
 // `Appariement::declarer` has accepted. Otherwise a peer refused because the role
 // was already taken would leave behind a GHOST ownership, and the legitimate
@@ -38,7 +38,7 @@
 // asynchronous without bothering anyone and which issues the token; the guard only
 // reads it back from that token.
 
-import { verifierJeton, type TypeSujet } from './jeton';
+import { verifyToken, type TypeSujet } from './jeton';
 import { SEPARATEUR } from '../agents/prefixe';
 import type { ProprieteDeSession } from '../signaling/propriete';
 import type { Role } from '../signaling/appariement';
@@ -61,14 +61,14 @@ export type MotifRefus = 'jeton-absent' | 'jeton-invalide' | 'jeton-expire' | 's
 /// and contradict the word "pure" of its own specification. The
 /// relay writes the line (`signaling/relais.ts`).
 export type Verdict =
-    | { ok: true; utilisateurId?: string }
+    | { ok: true; userId?: string }
     | { ok: false; motif: MotifRefus; message: string; journal: string };
 
 export interface Garde {
     /// WITHOUT SIDE EFFECTS: it decides, it records nothing.
-    verifier(poignee: { role: Role; session: string; jeton?: unknown }): Verdict;
+    verify(poignee: { role: Role; session: string; jeton?: unknown }): Verdict;
     /// Called AFTER `Appariement::declarer` has accepted, and only then.
-    revendiquer(session: string, utilisateurId: string | undefined): void;
+    revendiquer(session: string, userId: string | undefined): void;
     liberer(session: string): void;
 }
 
@@ -82,7 +82,7 @@ export function garde(
     proprietes: ProprieteDeSession,
 ): Garde {
     return {
-        verifier({ role, session, jeton }): Verdict {
+        verify({ role, session, jeton }): Verdict {
             if (jeton === undefined || jeton === null || jeton === '') {
                 return {
                     ok: false,
@@ -92,7 +92,7 @@ export function garde(
                 };
             }
 
-            const verdict = verifierJeton(jeton, secret, maintenant());
+            const verdict = verifyToken(jeton, secret, maintenant());
             if (!verdict.ok) {
                 const expire = verdict.motif === 'expire';
                 return {
@@ -138,8 +138,8 @@ export function garde(
                             `elle ne porte pas son préfixe`,
                     };
                 }
-                // ⚠️ THE AGENT STILL CLAIMS NOTHING, and `verifier` therefore does
-                // NOT return a `utilisateurId` here. Its session must remain
+                // ⚠️ THE AGENT STILL CLAIMS NOTHING, and `verify` therefore does
+                // NOT return a `userId` here. Its session must remain
                 // claimable by the human client that will join it — that is
                 // what `revendiquer` documents just below, and returning it
                 // would make the agent the owner of its own session, hence
@@ -157,16 +157,16 @@ export function garde(
                 };
             }
 
-            return { ok: true, utilisateurId: verdict.sujet };
+            return { ok: true, userId: verdict.sujet };
         },
 
-        revendiquer(session, utilisateurId): void {
+        revendiquer(session, userId): void {
             // An `agent` now has an identity (P3), but it STILL claims
             // nothing: its session must remain claimable by the human
-            // client that will join it. `verifier` returns no `utilisateurId`
+            // client that will join it. `verify` returns no `userId`
             // for the `agent` role, and that is what lets this path through.
-            if (utilisateurId === undefined) return;
-            proprietes.revendiquer(session, utilisateurId);
+            if (userId === undefined) return;
+            proprietes.revendiquer(session, userId);
         },
 
         liberer(session): void {

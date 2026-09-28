@@ -55,8 +55,8 @@ fn refuse_un_termine_dont_une_cle_facultative_manque() {
 
 #[test]
 fn accepte_null_sur_les_deux_cles_et_le_distingue_de_l_absence() {
-    let avec_null = termine_complet().replace(r#""code_sortie":0"#, r#""code_sortie":null"#);
-    let lu: VersLaPlateforme = serde_json::from_str(&avec_null).expect("lisible");
+    let with_null = termine_complet().replace(r#""code_sortie":0"#, r#""code_sortie":null"#);
+    let lu: VersLaPlateforme = serde_json::from_str(&with_null).expect("lisible");
     let VersLaPlateforme::Termine {
         motif, code_sortie, ..
     } = lu
@@ -140,9 +140,9 @@ fn les_trois_phases_voyagent_par_leur_mot() {
 #[test]
 fn l_ordre_d_installation_porte_une_url_et_pas_des_octets() {
     let ordre = DepuisLaPlateforme::installer("i-1", "http://h:8080/t/c", "setup.exe", 42, "ab");
-    let chaine = serde_json::to_string(&ordre).expect("sér.");
-    assert!(chaine.contains(r#""url":"http://h:8080/t/c""#));
-    assert!(!chaine.contains("base64"));
-    let relu: DepuisLaPlateforme = serde_json::from_str(&chaine).expect("désér.");
+    let chain = serde_json::to_string(&ordre).expect("sér.");
+    assert!(chain.contains(r#""url":"http://h:8080/t/c""#));
+    assert!(!chain.contains("base64"));
+    let relu: DepuisLaPlateforme = serde_json::from_str(&chain).expect("désér.");
     assert_eq!(relu, ordre);
 }

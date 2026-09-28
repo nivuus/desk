@@ -27,12 +27,12 @@ impl Session {
     /// propagated: the peer closing its port must not end the session
     /// (I2 of the milestone 1 review).
     pub(super) fn envoyer(&mut self, transmit: &str0m::net::Transmit) {
-        let (donnees, destination) = match self.route_relayee(transmit) {
+        let (data, destination) = match self.route_relayee(transmit) {
             Some(trame) => (trame, self.turn.as_ref().expect("relais présent").serveur()),
             None => (transmit.contents.to_vec(), transmit.destination),
         };
-        if let Err(e) = self.socket.send_to(&donnees, destination) {
-            tracing::warn!(erreur = %e, "échec d'envoi UDP, ignoré");
+        if let Err(e) = self.socket.send_to(&data, destination) {
+            tracing::warn!(error = %e, "échec d'envoi UDP, ignoré");
         }
     }
 
@@ -77,7 +77,7 @@ impl Session {
         if !crate::turn::est_channel_data(recu) {
             if let Some(turn) = self.turn.as_mut() {
                 if let Err(e) = turn.handle_packet(recu) {
-                    tracing::warn!(erreur = %e, "message TURN illisible, ignoré");
+                    tracing::warn!(error = %e, "message TURN illisible, ignoré");
                 }
             }
             return Ok(());
@@ -115,7 +115,7 @@ impl Session {
                     .map_err(|e| anyhow!("handle_input relayé : {e}"))?;
             }
             Err(e) => {
-                tracing::debug!(erreur = %e, "charge relayée non reconnue");
+                tracing::debug!(error = %e, "charge relayée non reconnue");
             }
         }
         Ok(())
@@ -132,7 +132,7 @@ impl Session {
         let paquet = turn.poll_transmit()?;
         let serveur = turn.serveur();
         if let Err(e) = self.socket.send_to(&paquet, serveur) {
-            tracing::warn!(erreur = %e, "échec d'envoi vers le serveur TURN, ignoré");
+            tracing::warn!(error = %e, "échec d'envoi vers le serveur TURN, ignoré");
         }
         Some(Tick::Continue)
     }
@@ -170,7 +170,7 @@ impl Session {
             match self.socket.recv_from(&mut buffer) {
                 Ok((n, source)) if source == config.serveur => {
                     if let Err(e) = turn.handle_packet(&buffer[..n]) {
-                        tracing::debug!(erreur = %e, "paquet TURN ignoré pendant l'allocation");
+                        tracing::debug!(error = %e, "paquet TURN ignoré pendant l'allocation");
                     }
                 }
                 // A datagram coming from elsewhere during allocation is
@@ -194,7 +194,7 @@ impl Session {
                 Ok(c) => {
                     self.rtc.add_local_candidate(c);
                 }
-                Err(e) => tracing::warn!(erreur = %e, "candidat réflexif invalide, ignoré"),
+                Err(e) => tracing::warn!(error = %e, "candidat réflexif invalide, ignoré"),
             }
         }
         self.turn = Some(turn);

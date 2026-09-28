@@ -32,7 +32,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { lireBlocsDeTheme } from './tokens';
-import { installerSelecteurDeThemeAuDOM } from './selecteur-theme';
+import { installThemeSelectorInDOM } from './selecteur-theme';
 import couleursCss from './tokens/couleurs.css?raw';
 import echellesCss from './tokens/echelles.css?raw';
 
@@ -46,10 +46,10 @@ for (const bloc of lireBlocsDeTheme(tokensCss)) {
 }
 
 /** The CURRENT value, hence that of the applied theme — see the header. */
-const valeur = (nom: string) => getComputedStyle(racine).getPropertyValue(nom).trim();
+const value = (nom: string) => getComputedStyle(racine).getPropertyValue(nom).trim();
 
 const famille = (prefixe: string) => NOMS.filter((n) => n.startsWith(prefixe));
-const dans = (noms: string[]) => NOMS.filter((n) => noms.includes(n));
+const within = (noms: string[]) => NOMS.filter((n) => noms.includes(n));
 
 const COULEURS = [
     '--fond-0', '--fond-1', '--fond-2', '--bord', '--bord-fort',
@@ -76,7 +76,7 @@ function pastille(hote: HTMLElement, nom: string, style: Partial<CSSStyleDeclara
     etiquette.textContent = nom;
     const val = document.createElement('span');
     val.className = 'valeur';
-    val.textContent = valeur(nom);
+    val.textContent = value(nom);
     carte.append(echantillon, etiquette, val);
     hote.append(carte);
 }
@@ -86,7 +86,7 @@ function ligne(hote: HTMLElement, nom: string, demo: HTMLElement): void {
     const rangee = document.createElement('div');
     rangee.className = 'ligne';
     const etiquette = document.createElement('code');
-    etiquette.textContent = `${nom} ${valeur(nom)}`;
+    etiquette.textContent = `${nom} ${value(nom)}`;
     rangee.append(etiquette, demo);
     hote.append(rangee);
 }
@@ -100,7 +100,7 @@ function texte(contenu: string, style: Partial<CSSStyleDeclaration>): HTMLElemen
 
 function rendre(): void {
     const couleurs = vide('couleurs');
-    for (const nom of dans(COULEURS)) pastille(couleurs, nom, { background: `var(${nom})` });
+    for (const nom of within(COULEURS)) pastille(couleurs, nom, { background: `var(${nom})` });
 
     const voiles = vide('voiles');
     for (const nom of [...famille('--video-'), ...famille('--voile-')]) {
@@ -162,5 +162,5 @@ function rendre(): void {
  * proof is a runtime red, played at extraction — comment out the line
  * below, build, and observe that the three buttons have disappeared.
  */
-installerSelecteurDeThemeAuDOM(vide('themes'), rendre);
+installThemeSelectorInDOM(vide('themes'), rendre);
 rendre();

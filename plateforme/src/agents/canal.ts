@@ -82,7 +82,7 @@ import {
     type Frein,
 } from '../securite/frein';
 import { estMontantDeQuatre, reemettreLesInstallations, traiter } from './canal-apps';
-import { verifierEnrolement } from './enrolement';
+import { verifyEnrolment } from './enrolement';
 import type { RegistreAgents } from './registre';
 
 
@@ -132,7 +132,7 @@ export interface OptionsCanal {
 /// attempts countable at the level above.
 ///
 /// ✅ **THAT LEVEL HAS EXISTED SINCE P5, AND IT IS IN THIS FILE**: the brake is
-/// consulted a hundred and sixty lines further down, before `verifierEnrolement`. This
+/// consulted a hundred and sixty lines further down, before `verifyEnrolment`. This
 /// sentence said "the denial of service that P5 must brake … the day we
 /// want to curb it": that day has come, and the same file spells it out
 /// at that very site. The close stays what it was — the
@@ -270,7 +270,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
             const { vm, secret } = lecture.message;
 
             // 🔴 THE BRAKE IS CONSULTED HERE, AND THE POSITION IS WHAT COUNTS:
-            // BEFORE `verifierEnrolement`, hence before it reads
+            // BEFORE `verifyEnrolment`, hence before it reads
             // `agent_enrole` AND before it derives a `scrypt` digest.
             // `scrypt` is memory-hard and deliberately expensive (68 ms
             // measured on 20 August 2026): an attacker who triggers it at
@@ -299,14 +299,14 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                 return;
             }
             // ⚠️ THE `catch` IS MANDATORY AND IT IS NOT DECORATIVE:
-            // `verifierEnrolement` RAISES on a digest written by a
+            // `verifyEnrolment` RAISES on a digest written by a
             // future version of the service (`identite/mot-de-passe.ts` refuses an
             // unknown algorithm rather than returning a `false` indistinguishable
             // from a wrong secret). This exception is translated HERE into an
             // `enrolement` refusal — the same as all the others, so as to enumerate
             // nothing — and logged WITH its cause, which never carries the
             // secret.
-            void verifierEnrolement(base, vm, secret, (ligne) => console.warn(ligne))
+            void verifyEnrolment(base, vm, secret, (ligne) => console.warn(ligne))
                 .then((verdict) => {
                     if (!verdict.ok) {
                         compterLEchec(frein, cles, adresse, maintenant());
@@ -381,7 +381,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     // and would expose it in a trace file.
                     console.error(`enrôlement en échec pour la VM ${vm} : ${String(cause)}`);
                     // ⚠️ THIS PATH COUNTS TOO. A digest written by a
-                    // future version of the service makes `verifier` RAISE: without
+                    // future version of the service makes `verify` RAISE: without
                     // this counting, an attacker who found a way to make it
                     // raise would have a full-cost path with no
                     // brake.
@@ -416,7 +416,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
 /// trace per packet".
 ///
 /// The transition is detected by consulting again AFTER the failure: the next
-/// attempt is refused BEFORE reaching `verifierEnrolement`, so it never calls
+/// attempt is refused BEFORE reaching `verifyEnrolment`, so it never calls
 /// this function. There is EXACTLY one line per key and per window.
 function compterLEchec(
     frein: Frein,

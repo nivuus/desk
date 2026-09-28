@@ -52,7 +52,7 @@ pub const DELAI_ANTI_REBOND: Duration = Duration::from_millis(750);
 /// 960 ms "feels right".
 /// Nobody judged that four seconds "feel right": it therefore joins
 /// this repository's list of non-calibrated values — `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `MAX_OUTPUT_SIZE`,
 /// `SEUIL_INJOIGNABLE_MS`, `PERIODE_RECONCILIATION`, `DELAI_LANCEMENT_MS`.
 ///
 /// ⚠️ **THE WORST CASE REMAINS OPEN IN ONE PLACE, NAMED AND NOT BOUNDED**: if *k*
@@ -175,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn consommer_remet_le_train_a_zero_et_le_suivant_repart_de_sa_premiere() {
+    fn consuming_resets_the_train_and_the_next_restarts_from_its_first() {
         let t = base();
         let mut r = Rebond::default();
         r.notifier(t);
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn aucune_notification_ne_produit_aucune_echeance() {
+    fn no_notification_produces_no_deadline() {
         let r = Rebond::default();
         assert_eq!(r.echeance(), None);
         assert!(!r.du(base()));
@@ -202,7 +202,7 @@ mod tests {
     /// the comment: the worst case must hold UNDER the five seconds
     /// criterion ① requires, icon margin included.
     #[test]
-    fn le_pire_cas_derive_tient_sous_les_cinq_secondes_du_critere() {
+    fn the_derived_worst_case_fits_under_the_five_second_criterion() {
         let granularite_sondage = Duration::from_millis(200);
         let cout_reconciliation = Duration::from_millis(70);
         let une_icone_neuve = Duration::from_millis(10);

@@ -38,7 +38,7 @@ use super::tampons::{
 macro_rules! deport {
     ($champ:ident, $valeur:expr) => {
         const _: () = assert!(
-            core::mem::offset_of!(ListeDeFonctions, $champ) == $valeur,
+            core::mem::offset_of!(FunctionList, $champ) == $valeur,
             concat!(
                 "déport ABI faux pour NV_ENCODE_API_FUNCTION_LIST.",
                 stringify!($champ)
@@ -62,12 +62,12 @@ pub type OuvrirSessionEx =
     unsafe extern "system" fn(*mut OpenEncodeSessionExParams, *mut *mut c_void) -> Statut;
 pub type PreregleageConfigEx =
     unsafe extern "system" fn(*mut c_void, Guid, Guid, u32, *mut PresetConfig) -> Statut;
-pub type InitialiserEncodeur =
+pub type InitializeEncoderFn =
     unsafe extern "system" fn(*mut c_void, *mut InitializeParams) -> Statut;
-pub type CreerTamponDeFlux =
+pub type CreateBitstreamBufferFn =
     unsafe extern "system" fn(*mut c_void, *mut CreateBitstreamBuffer) -> Statut;
 pub type DetruireTamponDeFlux = unsafe extern "system" fn(*mut c_void, *mut c_void) -> Statut;
-pub type EnregistrerRessource =
+pub type RegisterResourceFn =
     unsafe extern "system" fn(*mut c_void, *mut RegisterResource) -> Statut;
 pub type DesenregistrerRessource = unsafe extern "system" fn(*mut c_void, *mut c_void) -> Statut;
 pub type ProjeterRessource =
@@ -79,14 +79,14 @@ pub type DeverrouillerFlux = unsafe extern "system" fn(*mut c_void, *mut c_void)
 pub type DetruireEncodeur = unsafe extern "system" fn(*mut c_void) -> Statut;
 /// ⚠️ **Does NOT return a `Statut`** but a C string — the only exception in the
 /// table, and it is easy to transcribe wrongly.
-pub type DerniereErreur = unsafe extern "system" fn(*mut c_void) -> *const core::ffi::c_char;
+pub type LastErrorFn = unsafe extern "system" fn(*mut c_void) -> *const core::ffi::c_char;
 pub type ReconfigurerEncodeur =
     unsafe extern "system" fn(*mut c_void, *mut ReconfigureParams) -> Statut;
 
 /// `NV_ENCODE_API_FUNCTION_LIST`.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct ListeDeFonctions {
+pub struct FunctionList {
     pub version: u32,
     pub reserved: u32,
     pub ouvrir_session: *const c_void,
@@ -100,10 +100,10 @@ pub struct ListeDeFonctions {
     pub compte_preregleages: *const c_void,
     pub guids_preregleages: *const c_void,
     pub config_preregleage: *const c_void,
-    pub initialiser_encodeur: Option<InitialiserEncodeur>,
-    pub creer_tampon_entree: *const c_void,
+    pub initialize_encoder: Option<InitializeEncoderFn>,
+    pub create_input_buffer: *const c_void,
     pub detruire_tampon_entree: *const c_void,
-    pub creer_tampon_de_flux: Option<CreerTamponDeFlux>,
+    pub create_bitstream_buffer: Option<CreateBitstreamBufferFn>,
     pub detruire_tampon_de_flux: Option<DetruireTamponDeFlux>,
     pub encoder_image: Option<EncoderImage>,
     pub verrouiller_flux: Option<VerrouillerFlux>,
@@ -111,44 +111,44 @@ pub struct ListeDeFonctions {
     pub verrouiller_tampon_entree: *const c_void,
     pub deverrouiller_tampon_entree: *const c_void,
     pub statistiques: *const c_void,
-    pub parametres_de_sequence: *const c_void,
-    pub enregistrer_evenement_async: *const c_void,
+    pub sequence_params: *const c_void,
+    pub register_async_event: *const c_void,
     pub desenregistrer_evenement_async: *const c_void,
     pub projeter_ressource: Option<ProjeterRessource>,
     pub deprojeter_ressource: Option<DeprojeterRessource>,
     pub detruire_encodeur: Option<DetruireEncodeur>,
     pub invalider_images_de_reference: *const c_void,
     pub ouvrir_session_ex: Option<OuvrirSessionEx>,
-    pub enregistrer_ressource: Option<EnregistrerRessource>,
+    pub register_resource: Option<RegisterResourceFn>,
     pub desenregistrer_ressource: Option<DesenregistrerRessource>,
     pub reconfigurer_encodeur: Option<ReconfigurerEncodeur>,
     /// ⚠️ **A real slot, not padding**: `void* reserved1`
     /// sits between `nvEncReconfigureEncoder` and `nvEncCreateMVBuffer`.
     pub reserved1: *const c_void,
-    pub creer_tampon_mv: *const c_void,
+    pub create_mv_buffer: *const c_void,
     pub detruire_tampon_mv: *const c_void,
     pub estimation_de_mouvement_seule: *const c_void,
-    pub derniere_erreur: Option<DerniereErreur>,
+    pub last_error: Option<LastErrorFn>,
     pub flux_cuda: *const c_void,
     pub config_preregleage_ex: Option<PreregleageConfigEx>,
-    pub parametres_de_sequence_ex: *const c_void,
+    pub sequence_params_ex: *const c_void,
     pub restaurer_etat: *const c_void,
     pub anticipation: *const c_void,
     pub reserved2: [*const c_void; 275],
 }
 
 const _: () = assert!(
-    core::mem::size_of::<ListeDeFonctions>() == 2552,
+    core::mem::size_of::<FunctionList>() == 2552,
     "taille ABI fausse pour NV_ENCODE_API_FUNCTION_LIST"
 );
 const _: () = assert!(
-    core::mem::align_of::<ListeDeFonctions>() == 8,
+    core::mem::align_of::<FunctionList>() == 8,
     "alignement ABI faux pour NV_ENCODE_API_FUNCTION_LIST"
 );
 // Each TYPED slot is pinned: it is what turns "the order is
 // the ABI" into a property the compiler checks.
-deport!(initialiser_encodeur, 96);
-deport!(creer_tampon_de_flux, 120);
+deport!(initialize_encoder, 96);
+deport!(create_bitstream_buffer, 120);
 deport!(detruire_tampon_de_flux, 128);
 deport!(encoder_image, 136);
 deport!(verrouiller_flux, 144);
@@ -157,15 +157,15 @@ deport!(projeter_ressource, 208);
 deport!(deprojeter_ressource, 216);
 deport!(detruire_encodeur, 224);
 deport!(ouvrir_session_ex, 240);
-deport!(enregistrer_ressource, 248);
+deport!(register_resource, 248);
 deport!(desenregistrer_ressource, 256);
 deport!(reconfigurer_encodeur, 264);
-deport!(derniere_erreur, 304);
+deport!(last_error, 304);
 deport!(config_preregleage_ex, 320);
 deport!(reserved2, 352);
 
 /// `NvEncodeAPICreateInstance`, resolved in the driver's DLL.
-pub type CreerInstance = unsafe extern "system" fn(*mut ListeDeFonctions) -> Statut;
+pub type CreateInstanceFn = unsafe extern "system" fn(*mut FunctionList) -> Statut;
 /// `NvEncodeAPIGetMaxSupportedVersion`. ⚠️ **Its packing is not that
 /// of `NVENCAPI_VERSION`** — see `super::abi::version_pilote_attendue`.
 pub type VersionMaxSupportee = unsafe extern "system" fn(*mut u32) -> Statut;

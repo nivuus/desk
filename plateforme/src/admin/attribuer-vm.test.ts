@@ -14,7 +14,7 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { enroler } from '../depot/agent';
 import { lireParId } from '../depot/vm';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { analyserArguments, appliquer } from './attribuer-vm';
 
 const MS = 1_787_136_773_742;
@@ -83,7 +83,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
     it('🔴 succès → code 0, et la ligne RELUE porte le propriétaire', async () => {
         base = await baseNeuve('adm-attrib-ok');
         await poserVm(base, 'v1', 'w1');
-        const ada = await creerUtilisateur(base, 'ada@exemple.test', 'empreinte', MS);
+        const ada = await createUser(base, 'ada@exemple.test', 'empreinte', MS);
         const issue = await appliquer(base, {
             action: 'attribuer',
             email: 'ada@exemple.test',
@@ -104,8 +104,8 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         // n'a pas d'autre appelant.
         base = await baseNeuve('adm-detacher');
         await poserVm(base, 'v1', 'w1');
-        await creerUtilisateur(base, 'ada@exemple.test', 'empreinte', MS);
-        const bob = await creerUtilisateur(base, 'bob@exemple.test', 'empreinte', MS);
+        await createUser(base, 'ada@exemple.test', 'empreinte', MS);
+        const bob = await createUser(base, 'bob@exemple.test', 'empreinte', MS);
         await appliquer(base, { action: 'attribuer', email: 'ada@exemple.test', vm: 'w1' });
 
         expect((await appliquer(base, { action: 'detacher', vm: 'w1' })).code).toBe(0);
@@ -130,22 +130,22 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
             vm: 'w1',
         });
         expect(issue.code).toBe(2);
-        expect(issue.erreur).toMatch(/personne@exemple\.test/);
-        expect(issue.erreur).toMatch(/compte|courriel/i);
+        expect(issue.error).toMatch(/personne@exemple\.test/);
+        expect(issue.error).toMatch(/compte|courriel/i);
         // Et rien n'a été écrit.
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBeNull();
     });
 
     it('VM INCONNUE → code 2, message nommant la VM', async () => {
         base = await baseNeuve('adm-vm-inconnue');
-        await creerUtilisateur(base, 'ada@exemple.test', 'empreinte', MS);
+        await createUser(base, 'ada@exemple.test', 'empreinte', MS);
         const issue = await appliquer(base, {
             action: 'attribuer',
             email: 'ada@exemple.test',
             vm: 'w-jamais-creee',
         });
         expect(issue.code).toBe(2);
-        expect(issue.erreur).toMatch(/w-jamais-creee/);
+        expect(issue.error).toMatch(/w-jamais-creee/);
     });
 
     it('🔴 VM DÉJÀ PRISE → code 2, message nommant le PROPRIÉTAIRE', async () => {
@@ -154,8 +154,8 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         // à la main, ce que cette commande existe pour éviter.
         base = await baseNeuve('adm-vm-prise');
         await poserVm(base, 'v1', 'w1');
-        const ada = await creerUtilisateur(base, 'ada@exemple.test', 'empreinte', MS);
-        await creerUtilisateur(base, 'bob@exemple.test', 'empreinte', MS);
+        const ada = await createUser(base, 'ada@exemple.test', 'empreinte', MS);
+        await createUser(base, 'bob@exemple.test', 'empreinte', MS);
         await appliquer(base, { action: 'attribuer', email: 'ada@exemple.test', vm: 'w1' });
 
         const issue = await appliquer(base, {
@@ -164,7 +164,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
             vm: 'w1',
         });
         expect(issue.code).toBe(2);
-        expect(issue.erreur).toContain(ada);
+        expect(issue.error).toContain(ada);
         // Et la VM n'a PAS changé de main.
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(ada);
     });
@@ -178,7 +178,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         base = await baseNeuve('adm-deja-servi');
         await poserVm(base, 'v1', 'w1');
         await poserVm(base, 'v2', 'w2');
-        await creerUtilisateur(base, 'ada@exemple.test', 'empreinte', MS);
+        await createUser(base, 'ada@exemple.test', 'empreinte', MS);
         await appliquer(base, { action: 'attribuer', email: 'ada@exemple.test', vm: 'w1' });
 
         const issue = await appliquer(base, {
@@ -187,10 +187,10 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
             vm: 'w2',
         });
         expect(issue.code).toBe(2);
-        expect(issue.erreur).toMatch(/déjà|deja/i);
+        expect(issue.error).toMatch(/déjà|deja/i);
         // Aucune trace de pile, et aucun texte de moteur : les deux moteurs
         // n'écrivent pas le même, et l'un des deux serait donc faux.
-        expect(issue.erreur).not.toMatch(/UNIQUE constraint|duplicate key|at Object|\bat \w+\./);
+        expect(issue.error).not.toMatch(/UNIQUE constraint|duplicate key|at Object|\bat \w+\./);
         expect((await lireParId(base, 'v2'))?.utilisateur_id).toBeNull();
     });
 });

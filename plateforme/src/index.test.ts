@@ -8,7 +8,7 @@
 import net from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Config } from './config';
-import { demarrer, type Service } from './demarrage';
+import { start, type Service } from './demarrage';
 import { baseNeuve } from './base/harnais';
 import { ouvrirSession } from './depot/session';
 import { mkdtempSync } from 'node:fs';
@@ -61,7 +61,7 @@ describe('démarrage du service', () => {
             auth: 'pomerium',
         };
         // Deux assertions DISTINCTES, et la seconde est le point de ce test.
-        await expect(demarrer(config)).rejects.toThrow(/base/i);
+        await expect(start(config)).rejects.toThrow(/base/i);
         // 🔴 Sans celle-ci, un service qui ouvre son port PUIS meurt passerait
         // pour correct. C'est elle qui exerce l'ordre de démarrage.
         await expect(connecterA(PORT_MORT)).rejects.toThrow(/ECONNREFUSED/);
@@ -82,7 +82,7 @@ describe('démarrage du service', () => {
     });
 
     it('ouvre le port et sert le relais quand la base est prête', async () => {
-        service = await demarrer({
+        service = await start({
             hote: '127.0.0.1',
             port: 0,
             base: 'sqlite',

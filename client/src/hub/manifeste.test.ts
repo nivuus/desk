@@ -9,14 +9,14 @@ function pngDe(cote: number): Uint8Array {
     const o = new Uint8Array(24);
     o.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
     o.set([0x49, 0x48, 0x44, 0x52], 12);
-    const ecrire = (d: number, v: number) => {
+    const write = (d: number, v: number) => {
         o[d] = (v >>> 24) & 0xff;
         o[d + 1] = (v >>> 16) & 0xff;
         o[d + 2] = (v >>> 8) & 0xff;
         o[d + 3] = v & 0xff;
     };
-    ecrire(16, cote);
-    ecrire(20, cote);
+    write(16, cote);
+    write(20, cote);
     return o;
 }
 

@@ -53,7 +53,7 @@ pub(super) fn executer_vigem() -> Result<()> {
         .unwrap_or(20);
     match crate::gamepad::probe(secondes) {
         Ok(rapport) => tracing::info!(rapport, "sonde ViGEmBus"),
-        Err(e) => tracing::warn!(erreur = %e, "sonde ViGEmBus échouée"),
+        Err(e) => tracing::warn!(error = %e, "sonde ViGEmBus échouée"),
     }
     Ok(())
 }
@@ -77,7 +77,7 @@ pub(super) fn executer_linearite() -> Result<()> {
     if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
         match pointer_settings::neutraliser() {
             Ok(rapport) => tracing::info!(rapport, "neutralisation appliquée"),
-            Err(e) => tracing::warn!(erreur = %e, "neutralisation échouée"),
+            Err(e) => tracing::warn!(error = %e, "neutralisation échouée"),
         }
     } else {
         tracing::warn!("neutralisation SAUTÉE (mesure de référence)");
@@ -104,8 +104,8 @@ pub(super) fn executer_linearite() -> Result<()> {
     unsafe { SetCursorPos(centre_x, centre_y) }?;
     std::thread::sleep(std::time::Duration::from_millis(200));
 
-    let mut avant = POINT::default();
-    unsafe { GetCursorPos(&mut avant) }?;
+    let mut before = POINT::default();
+    unsafe { GetCursorPos(&mut before) }?;
 
     let injecteur_hwnd = windows::Win32::Foundation::HWND(std::ptr::null_mut());
     let mode = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
@@ -131,8 +131,8 @@ pub(super) fn executer_linearite() -> Result<()> {
     // is rather than recomputed, so as not to risk making it
     // diverge from the one that sized the starting point (review 1).
     let attendu = amplitude;
-    let obtenu_x = apres.x - avant.x;
-    let obtenu_y = apres.y - avant.y;
+    let obtenu_x = apres.x - before.x;
+    let obtenu_y = apres.y - before.y;
     tracing::info!(
         attendu,
         obtenu_x,
@@ -193,8 +193,8 @@ mod tests {
         // 100x100 leaves no room for a 1000 px amplitude:
         // the guard must refuse rather than let clamping silently
         // skew the measurement.
-        let erreur = point_depart_lineaire(100, 100, 200, 5, 20).unwrap_err();
-        assert!(erreur.to_string().contains("trop petit"));
+        let error = point_depart_lineaire(100, 100, 200, 5, 20).unwrap_err();
+        assert!(error.to_string().contains("trop petit"));
     }
 
     #[test]
@@ -208,13 +208,13 @@ mod tests {
     }
 
     #[test]
-    fn refuse_juste_sous_la_limite_de_la_marge() {
-        let erreur = point_depart_lineaire(1039, 2000, 10, 100, 20).unwrap_err();
-        assert!(erreur.to_string().contains("trop petit"));
+    fn refuses_just_below_the_margin_limit() {
+        let error = point_depart_lineaire(1039, 2000, 10, 100, 20).unwrap_err();
+        assert!(error.to_string().contains("trop petit"));
     }
 
     #[test]
-    fn amplitude_nulle_ne_demande_aucune_marge_particuliere() {
+    fn zero_amplitude_needs_no_particular_margin() {
         let (x, y, amplitude) = point_depart_lineaire(50, 50, 0, 0, 20).unwrap();
         assert_eq!(amplitude, 0);
         assert_eq!(x, 20);

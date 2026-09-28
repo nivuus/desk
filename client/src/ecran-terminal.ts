@@ -11,15 +11,15 @@
 // `main.ts`. The eleven other calls of that file stay on the banner, including
 // the persistent messages of the degraded link and of sleep.
 //
-// 🔴 THE SCREEN PLUGS INTO `creerStatut`, NOT INTO ONE MORE CALLER.
+// 🔴 THE SCREEN PLUGS INTO `createStatus`, NOT INTO ONE MORE CALLER.
 // `status.ts` exists precisely so that "no caller can forget the
 // guard": adding an OPTIONAL target to it keeps this single write point,
-// whereas an `ecran.montrer(...)` written next to `statut.afficher(...)` in
+// whereas an `ecran.montrer(...)` written next to `statut.show(...)` in
 // `main.ts` would be two writes nothing forces to stay in agreement.
 //
 // ⚠️ PURE, INJECTED DEPENDENCIES, TESTABLE WITHOUT A DOM — the convention of
 // `status.ts`, `audio.ts` and `fullscreen.ts`. The only point touching the DOM
-// is `creerEcranTerminalAuDOM`, the one-line adapter called by `main.ts`,
+// is `createTerminalScreenInDOM`, the one-line adapter called by `main.ts`,
 // exactly like `armerPleinEcranAuDOM` in `fullscreen.ts`.
 //
 // ⚠️ THIS SCREEN CARRIES NO ACTION — neither "retry" nor "close". An
@@ -82,7 +82,7 @@ const CLASSE: Record<TonTerminal, string> = {
     danger: 'message message--danger',
 };
 
-export function creerEcranTerminal(cible: CibleEcranTerminal): EcranTerminal {
+export function createTerminalScreen(cible: CibleEcranTerminal): EcranTerminal {
     return {
         montrer(message, ton) {
             cible.titre.textContent = TITRE[ton];
@@ -95,9 +95,9 @@ export function creerEcranTerminal(cible: CibleEcranTerminal): EcranTerminal {
 
 /// The DOM adapter, called by `main.ts` — the
 /// `armerPleinEcranAuDOM` convention of `fullscreen.ts`. It carries NO rule: everything
-/// that is tested lives in `creerEcranTerminal` above.
-export function creerEcranTerminalAuDOM(): EcranTerminal {
-    return creerEcranTerminal({
+/// that is tested lives in `createTerminalScreen` above.
+export function createTerminalScreenInDOM(): EcranTerminal {
+    return createTerminalScreen({
         racine: document.querySelector<HTMLDivElement>('#fin')!,
         titre: document.querySelector<HTMLHeadingElement>('#fin .ecran__titre')!,
         raison: document.querySelector<HTMLParagraphElement>('#fin-raison')!,

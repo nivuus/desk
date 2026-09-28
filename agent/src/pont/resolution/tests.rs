@@ -29,25 +29,31 @@ fn les_treize_noms_sont_distincts() {
 /// makes this test able to fail: with a common address, any pairing
 /// would pass.
 #[test]
-fn chaque_champ_recoit_l_adresse_de_son_entree() {
+fn each_field_receives_the_address_of_its_entry() {
     let a = resoudre(resolveur_complet).expect("les treize sont là");
     let attendue = |nom: &str| resolveur_complet(nom).expect("nom connu");
     assert_eq!(
         a.allouer_tampon_aligne,
         attendue("PrjAllocateAlignedBuffer")
     );
-    assert_eq!(a.vider_cache_negatif, attendue("PrjClearNegativePathCache"));
+    assert_eq!(
+        a.clear_negative_path_cache,
+        attendue("PrjClearNegativePathCache")
+    );
     assert_eq!(a.completer_commande, attendue("PrjCompleteCommand"));
-    assert_eq!(a.supprimer_fichier, attendue("PrjDeleteFile"));
+    assert_eq!(a.delete_file, attendue("PrjDeleteFile"));
     assert_eq!(a.comparer_noms, attendue("PrjFileNameCompare"));
     assert_eq!(a.apparier_nom, attendue("PrjFileNameMatch"));
     assert_eq!(a.remplir_tampon_entrees, attendue("PrjFillDirEntryBuffer"));
     assert_eq!(a.rendre_tampon_aligne, attendue("PrjFreeAlignedBuffer"));
     assert_eq!(a.marquer_racine, attendue("PrjMarkDirectoryAsPlaceholder"));
-    assert_eq!(a.demarrer_virtualisation, attendue("PrjStartVirtualizing"));
+    assert_eq!(a.start_virtualizing, attendue("PrjStartVirtualizing"));
     assert_eq!(a.arreter_virtualisation, attendue("PrjStopVirtualizing"));
-    assert_eq!(a.ecrire_donnees, attendue("PrjWriteFileData"));
-    assert_eq!(a.ecrire_info_marqueur, attendue("PrjWritePlaceholderInfo"));
+    assert_eq!(a.write_file_data, attendue("PrjWriteFileData"));
+    assert_eq!(
+        a.write_placeholder_info,
+        attendue("PrjWritePlaceholderInfo")
+    );
 }
 
 /// 🔴 **The check that is this module's raison d'être.** Each of the thirteen
@@ -55,9 +61,9 @@ fn chaque_champ_recoit_l_adresse_de_son_entree() {
 /// the entry point** — not an `Ok`, not a mute error. The sweep is exhaustive:
 /// exercising a single entry point would leave twelve paths uncovered.
 #[test]
-fn chaque_entree_absente_est_nommee_par_l_erreur() {
+fn each_missing_entry_is_named_by_the_error() {
     for manquante in NOMS {
-        let erreur = resoudre(|nom| {
+        let error = resoudre(|nom| {
             if nom == manquante {
                 None
             } else {
@@ -65,10 +71,10 @@ fn chaque_entree_absente_est_nommee_par_l_erreur() {
             }
         })
         .expect_err("une entrée manque : la résolution doit échouer");
-        assert_eq!(erreur.nom, manquante);
+        assert_eq!(error.nom, manquante);
         assert!(
-            erreur.to_string().contains(manquante),
-            "le libellé « {erreur} » ne nomme pas « {manquante} »"
+            error.to_string().contains(manquante),
+            "le libellé « {error} » ne nomme pas « {manquante} »"
         );
     }
 }
@@ -80,7 +86,7 @@ fn chaque_entree_absente_est_nommee_par_l_erreur() {
 #[test]
 fn une_adresse_nulle_vaut_une_entree_absente() {
     for manquante in NOMS {
-        let erreur = resoudre(|nom| {
+        let error = resoudre(|nom| {
             if nom == manquante {
                 Some(0)
             } else {
@@ -88,7 +94,7 @@ fn une_adresse_nulle_vaut_une_entree_absente() {
             }
         })
         .expect_err("une adresse nulle doit être refusée");
-        assert_eq!(erreur.nom, manquante);
+        assert_eq!(error.nom, manquante);
     }
 }
 
@@ -100,7 +106,7 @@ fn une_adresse_nulle_vaut_une_entree_absente() {
 #[test]
 fn la_resolution_s_arrete_a_la_premiere_entree_manquante() {
     let mut interroges = Vec::new();
-    let erreur = resoudre(|nom| {
+    let error = resoudre(|nom| {
         interroges.push(nom.to_string());
         if nom == "PrjCompleteCommand" {
             None
@@ -109,7 +115,7 @@ fn la_resolution_s_arrete_a_la_premiere_entree_manquante() {
         }
     })
     .expect_err("PrjCompleteCommand manque");
-    assert_eq!(erreur.nom, "PrjCompleteCommand");
+    assert_eq!(error.nom, "PrjCompleteCommand");
     let rang = NOMS
         .iter()
         .position(|n| *n == "PrjCompleteCommand")

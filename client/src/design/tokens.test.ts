@@ -5,7 +5,7 @@ import {
     lireBlocsDeTheme,
     tokensDeclares,
     tokensReferences,
-    valeurDePropriete,
+    propertyValue,
 } from './tokens';
 import couleursCss from './tokens/couleurs.css?raw';
 import echellesCss from './tokens/echelles.css?raw';
@@ -68,7 +68,7 @@ describe('lireBlocsDeTheme', () => {
         // d'ensembles de §7.4, ni dans les orphelins de §7.6. Il est donc
         // vérifié à part — sans quoi rien ne le garderait.
         const blocs = lireBlocsDeTheme(demonstration);
-        expect(blocs.map((b) => valeurDePropriete(b, 'color-scheme'))).toEqual([
+        expect(blocs.map((b) => propertyValue(b, 'color-scheme'))).toEqual([
             'dark',
             'light',
             'light',
@@ -216,7 +216,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
     // fois ne dirait rien de plus.
 
     /** Racine avec une couleur intermédiaire — ni `#000` ni `#fff`. */
-    const avecCouleur = `
+    const withColour = `
 :root {
     --fond-0: #0b0d10;
     --accent-survol: #3b82f6;
@@ -239,12 +239,12 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
 `;
 
     it('rend VIDE quand toutes les couleurs de la racine sont dans les deux blocs clairs', () => {
-        expect(ecartsEntreBlocs(lireBlocsDeTheme(avecCouleur))).toEqual([]);
+        expect(ecartsEntreBlocs(lireBlocsDeTheme(withColour))).toEqual([]);
     });
 
     it('signale une couleur de la racine absente des DEUX blocs clairs', () => {
         // La mutation exacte que S2 a jouée et versée.
-        const css = avecCouleur
+        const css = withColour
             .replaceAll('        --accent-survol: #1d4ed8;\n', '')
             .replaceAll('    --accent-survol: #1d4ed8;\n', '');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
@@ -258,7 +258,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         // blocs clairs, et c'est VOULU : les six voiles sont posés sur la
         // vidéo, dont le contenu ne suit aucun thème. Sans cette exemption la
         // fermeture serait rouge sur un fichier correct — le risque §11.
-        expect(ecartsEntreBlocs(lireBlocsDeTheme(avecCouleur))).toEqual([]);
+        expect(ecartsEntreBlocs(lireBlocsDeTheme(withColour))).toEqual([]);
     });
 
     it('ne signale AUCUN écart pour un token de la racine qui N\'EST PAS une couleur', () => {
@@ -266,7 +266,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         // sur l'arbre intact — les crans typographiques, l'espacement, les
         // rayons, les durées et les piles de polices ne vivent QUE dans
         // `:root`, par le §4.4 de la spec. Elle serait rejetée en bloc.
-        const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(avecCouleur));
+        const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(withColour));
         expect(ecarts.join(' ')).not.toContain('--e-3');
         expect(ecarts.join(' ')).not.toContain('--police-ui');
     });
@@ -275,7 +275,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         // 🔴 LE TEST QUI ATTRAPE LA VACUITÉ. Un prédicat « est une couleur »
         // qui rendrait `false` pour tout laisserait ce cas passer, et la
         // fermeture entière serait un contrôle qui ne mord jamais.
-        const css = avecCouleur.replace(
+        const css = withColour.replace(
             '    --fond-0: #0b0d10;',
             '    --fond-0: #0b0d10;\n    --bord-neuf: #4b5563;',
         );
@@ -288,7 +288,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
     it('reconnaît une couleur écrite en rgb() et en hsl(), pas seulement en #', () => {
         // Le prédicat décide sur la VALEUR, jamais sur le nom : un préfixe de
         // nom est une convention qu'une faute de frappe contourne.
-        const css = avecCouleur.replace(
+        const css = withColour.replace(
             '    --fond-0: #0b0d10;',
             '    --fond-0: #0b0d10;\n    --a-rgb: rgb(12 34 56);\n    --a-hsl: hsl(210 40% 30%);',
         );

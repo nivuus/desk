@@ -65,9 +65,9 @@ use super::{Evenement, File};
 use crate::pont::decoupe::{decouper, Morceau};
 use crate::pont::journal::Journal;
 use crate::pont::mutation::FileMutations;
-use crate::pont::table::{Attendue, DELAI_ECRIRE};
+use crate::pont::table::{Attendue, WRITE_TIMEOUT};
 use crate::pont::transport::VersNavigateur;
-use proto::fichiers::{entetes, CodeEchec};
+use proto::files::{entetes, CodeEchec};
 
 /// The correlation carried by an **announcement**.
 ///
@@ -93,7 +93,7 @@ const CORRELATION_ANNONCE: u32 = u32::MAX;
 /// `ERROR_DISK_FULL`; **that error code would reach no one.**
 ///
 /// ⚠️ **NOT CALIBRATED.**
-pub const TAILLE_ECRITURE_SIGNALEE: u64 = 64 * 1024 * 1024;
+pub const REPORTED_WRITE_SIZE: u64 = 64 * 1024 * 1024;
 
 mod contrat;
 
@@ -101,7 +101,7 @@ pub use contrat::{Config, Ordre};
 
 /// The thread's loop. Returns when the order channel closes.
 pub fn tourner(config: Config, ordres: Receiver<Ordre>) {
-    let mut fil = Fil::demarrer(config);
+    let mut fil = Fil::start(config);
     while let Ok(ordre) = ordres.recv() {
         fil.traiter(ordre);
     }
@@ -118,7 +118,7 @@ pub(super) struct EnCours {
     chemin: String,
     restants: VecDeque<Morceau>,
     correlation: u32,
-    dernier_envoye: bool,
+    last_sent: bool,
     octets: u64,
     debut: Instant,
 }
@@ -148,7 +148,7 @@ pub(super) struct Fil {
 }
 
 impl Fil {
-    fn demarrer(config: Config) -> Self {
+    fn start(config: Config) -> Self {
         if !config.armee {
             tracing::warn!(
                 "poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une \
@@ -169,9 +169,9 @@ impl Fil {
         let fil = Self {
             config,
             journal,
-            file: File::nouvelle(),
+            file: File::new(),
             en_cours: None,
-            mutations: FileMutations::nouvelle(),
+            mutations: FileMutations::new(),
             mutation_en_vol: None,
             retenues: false,
         };
@@ -198,7 +198,7 @@ impl Fil {
             Ordre::Survenu(evenement) if evenement.est_mutation() => {
                 // 🔴 **A MUTATION IS NOT A WRITE, AND CONFUSING THEM
                 // WOULD DESTROY.** Without this arm, `commencer` would fall onto the
-                // CONTENT path: `disque::taille_de` would return 0 on a
+                // CONTENT path: `disque::size_on_disk` would return 0 on a
                 // source that no longer exists — renamed, or erased —, `decouper`
                 // would return zero chunks, and the fallback empty chunk
                 // **WOULD TRUNCATE THE LOCAL FILE TO ZERO** or **WOULD RECREATE
@@ -218,13 +218,13 @@ impl Fil {
             }
             Ordre::Survenu(evenement) => {
                 let chemin = evenement.chemin().to_string();
-                let octets = disque::taille_de(&self.config.racine, &chemin);
+                let octets = disque::size_on_disk(&self.config.racine, &chemin);
                 // STEP 2: the journal BEFORE the first frame.
                 let ligne = self.journal.inscrire(&chemin, octets);
-                self.ecrire_journal(&ligne);
-                if octets > TAILLE_ECRITURE_SIGNALEE {
+                self.write_journal(&ligne);
+                if octets > REPORTED_WRITE_SIZE {
                     tracing::warn!(
-                        chemin, octets, seuil = TAILLE_ECRITURE_SIGNALEE,
+                        chemin, octets, seuil = REPORTED_WRITE_SIZE,
                         "ecriture due volumineuse : elle restera longtemps dans la fenetre de perte"
                     );
                 }
@@ -245,8 +245,8 @@ impl Fil {
             // The DISARMED arm: we log and announce, we NEVER
             // push. The entry therefore stays due, and the shell page's counter
             // rises without ever coming down — it is what makes it red.
-            if let Some(suivant) = self.file.terminee(&chemin) {
-                self.commencer(suivant);
+            if let Some(next) = self.file.terminee(&chemin) {
+                self.commencer(next);
             }
             return;
         }
@@ -259,14 +259,14 @@ impl Fil {
             self.pousser_creation(&chemin, false);
             return;
         }
-        let octets = disque::taille_de(&self.config.racine, &chemin);
+        let octets = disque::size_on_disk(&self.config.racine, &chemin);
         let mut morceaux: VecDeque<Morceau> =
-            decouper(0, octets, proto::fichiers::TAILLE_TRAME_MAX).into();
+            decouper(0, octets, proto::files::MAX_FRAME_SIZE).into();
         if morceaux.is_empty() {
             // 🔴 **AN EMPTY FILE IS THE NOMINAL CASE OF A "NEW DOCUMENT"
             // SAVED STRAIGHT AWAY**, and `decouper` deliberately returns ZERO
             // chunks for a zero length. Without this special case, no
-            // `dernier` would ever be emitted, the entry would NEVER leave the
+            // `last` would ever be emitted, the entry would NEVER leave the
             // journal, and the user would see a permanent alert for a
             // correctly transmitted file. *A counter that never comes
             // down is as wrong as a counter that never rises.*
@@ -281,14 +281,14 @@ impl Fil {
             // empty, which is what it must be.
             morceaux.push_back(Morceau {
                 position: 0,
-                longueur: 0,
+                length: 0,
             });
         }
         self.en_cours = Some(EnCours {
             chemin,
             restants: morceaux,
             correlation: 0,
-            dernier_envoye: false,
+            last_sent: false,
             octets,
             debut: Instant::now(),
         });
@@ -296,23 +296,23 @@ impl Fil {
     }
 
     fn pousser_creation(&mut self, chemin: &str, repertoire: bool) {
-        let entete = serde_json::to_string(&entetes::Creer {
+        let entete = serde_json::to_string(&entetes::Create {
             chemin: chemin.to_string(),
             repertoire,
         })
         .expect("un en-tete Creer se serialise toujours");
-        let correlation = self.inscrire(Attendue::Creer {
+        let correlation = self.inscrire(Attendue::Create {
             chemin: chemin.to_string(),
         });
         self.en_cours = Some(EnCours {
             chemin: chemin.to_string(),
             restants: VecDeque::new(),
             correlation,
-            dernier_envoye: true,
+            last_sent: true,
             octets: 0,
             debut: Instant::now(),
         });
-        self.emettre(proto::fichiers::TYPE_CREER, correlation, &entete, &[]);
+        self.emettre(proto::files::TYPE_CREATE, correlation, &entete, &[]);
         tracing::debug!(chemin, repertoire, correlation, "creation poussee");
     }
 
@@ -324,41 +324,41 @@ impl Fil {
         let Some(morceau) = en_cours.restants.pop_front() else {
             return;
         };
-        let dernier = en_cours.restants.is_empty();
+        let last = en_cours.restants.is_empty();
         let chemin = en_cours.chemin.clone();
-        let entete = serde_json::to_string(&entetes::Ecrire {
+        let entete = serde_json::to_string(&entetes::Write {
             chemin: chemin.clone(),
             position: morceau.position,
-            longueur: morceau.longueur,
+            length: morceau.length,
             premier,
-            dernier,
+            last,
         })
         .expect("un en-tete Ecrire se serialise toujours");
 
         let octets = match disque::lire(&self.config.racine, &chemin, morceau) {
             Ok(octets) => octets,
-            Err(erreur) => {
-                tracing::warn!(chemin, %erreur, "lecture du fichier local echouee : ecriture due RETENUE");
+            Err(error) => {
+                tracing::warn!(chemin, %error, "lecture du fichier local echouee : ecriture due RETENUE");
                 self.terminer(&chemin, false);
                 return;
             }
         };
-        let correlation = self.inscrire(Attendue::Ecrire {
+        let correlation = self.inscrire(Attendue::Write {
             chemin: chemin.clone(),
-            dernier,
+            last,
         });
         if let Some(en_cours) = self.en_cours.as_mut() {
             en_cours.correlation = correlation;
-            en_cours.dernier_envoye = dernier;
+            en_cours.last_sent = last;
         }
-        self.emettre(proto::fichiers::TYPE_ECRIRE, correlation, &entete, &octets);
+        self.emettre(proto::files::TYPE_WRITE, correlation, &entete, &octets);
         tracing::debug!(
             chemin,
             correlation,
             position = morceau.position,
-            longueur = morceau.longueur,
+            length = morceau.length,
             premier,
-            dernier,
+            last,
             "ecriture poussee"
         );
     }
@@ -378,7 +378,7 @@ impl Fil {
             tracing::debug!(correlation, "acquittement tardif ou inconnu : jete");
             return;
         }
-        if !en_cours.dernier_envoye {
+        if !en_cours.last_sent {
             self.pousser_morceau(false);
             return;
         }
@@ -432,11 +432,11 @@ impl Fil {
         self.en_cours = None;
         if acquittee {
             let ligne = self.journal.retirer(chemin);
-            self.ecrire_journal(&ligne);
+            self.write_journal(&ligne);
         }
         self.annoncer_les_dues();
-        if let Some(suivant) = self.file.terminee(chemin) {
-            self.commencer(suivant);
+        if let Some(next) = self.file.terminee(chemin) {
+            self.commencer(next);
         }
     }
 }

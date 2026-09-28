@@ -8,13 +8,13 @@ use crate::transport::fixtures;
 /// Ferme la réserve ouverte par la tâche 8 : le test du brief ne couvre
 /// que la MÉMORISATION (`dispatch_controle_de_test` → `pending_visibility`
 /// dans `evenements.rs`). Ce test-ci couvre l'APPLICATION, symétrique à
-/// `un_redimensionnement_recalibre_le_controleur_sur_la_taille_obtenue`
+/// `a_resize_recalibrates_the_controller_on_the_obtained_size`
 /// dans `redimensionnement.rs` pour `pending_resize`.
 #[test]
 fn une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee() {
     let inner = fixtures::video_test_source();
     let awake_recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let source = Box::new(SourceAvecSommeil {
+    let source = Box::new(SourceWithSleep {
         inner,
         awake_recus: awake_recus.clone(),
         sommeil_prepare: None,
@@ -45,7 +45,7 @@ fn une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee() {
 #[test]
 fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecSommeil {
+    let source = Box::new(SourceWithSleep {
         inner,
         awake_recus: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         sommeil_prepare: Some((true, "masquee".to_string())),
@@ -89,7 +89,7 @@ fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
 #[test]
 fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecPart {
+    let source = Box::new(SourceWithShare {
         inner,
         part_preparee: Some(3_000_000),
     });
@@ -101,7 +101,7 @@ fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
         .expect("appliquer une part ne doit jamais faire échouer la session");
 
     assert_eq!(
-        session.congestion.courant().video_bitrate_bps, 3_000_000,
+        session.congestion.current().video_bitrate_bps, 3_000_000,
         "la part rendue par la source doit avoir été appliquée au contrôleur par la branche a1quater"
     );
     assert!(
@@ -124,7 +124,7 @@ fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
 /// RTCP/statistiques) au lieu d'être bornée par `next_frame_at` : ce test
 /// aurait alors mesuré environ 1 image/s au lieu de ~60.
 #[test]
-fn atteint_la_cadence_video_visee_avec_un_pair_local() {
+fn reaches_the_target_video_cadence_with_a_local_peer() {
     use std::thread;
     use str0m::change::SdpAnswer;
     use str0m::media::{Direction, MediaKind};
@@ -328,7 +328,7 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
 #[test]
 fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecPressePapier {
+    let source = Box::new(SourceWithClipboard {
         inner,
         presse_papier_prepare: Some((Some("bonjour".to_string()), 7)),
     });
@@ -355,9 +355,9 @@ fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
 /// navigateur ne saurait jamais qu'une copie a été refusée — et un refus
 /// silencieux est exactement ce que la spécification interdit.
 #[test]
-fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
+fn a_size_refusal_is_translated_into_a_clipboard_message_without_text() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecPressePapier {
+    let source = Box::new(SourceWithClipboard {
         inner,
         presse_papier_prepare: Some((None, 100_000)),
     });
@@ -391,7 +391,7 @@ fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
 #[test]
 fn un_accent_de_la_source_est_traduit_en_message_accent() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecAccent {
+    let source = Box::new(SourceWithAccent {
         inner,
         accent_prepare: Some("#7aa2f7".to_string()),
     });
@@ -420,9 +420,9 @@ fn un_accent_de_la_source_est_traduit_en_message_accent() {
 /// palier de 60 s » — deviendrait indémontrable. C'est le régime que ce fichier
 /// documente déjà pour a1ter-bis et a1septies.
 #[test]
-fn l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant() {
+fn the_announced_accent_is_consumed_and_not_resent_next_round() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecAccent {
+    let source = Box::new(SourceWithAccent {
         inner,
         accent_prepare: Some("#fa8c16".to_string()),
     });

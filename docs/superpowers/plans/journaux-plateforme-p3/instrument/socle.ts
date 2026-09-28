@@ -8,19 +8,19 @@
 // the one the service uses. Node's global client shares nothing with
 // the server: it is protocol on the wire, and nothing else.
 //
-// 🔴 THE SERVICE IS THE REAL ONE, mounted by `demarrer()` — the same sequence as
+// 🔴 THE SERVICE IS THE REAL ONE, mounted by `start()` — the same sequence as
 // `src/index.ts`. Nothing is simulated on the platform side: it is the
 // `agent` and `client` peers that are scripted sockets, as spec §4 P3
 // requires.
 
 import { lireConfig } from '../../../../../plateforme/src/config';
-import { demarrer, type Service } from '../../../../../plateforme/src/demarrage';
+import { start, type Service } from '../../../../../plateforme/src/demarrage';
 import { ouvrirPostgres } from '../../../../../plateforme/src/base/pilote-postgres';
 
 export type Moteur = 'sqlite' | 'postgres';
 
 /// The token signing secret. FIXED and long: `lireConfig` refuses
-/// below `LONGUEUR_SECRET_MIN`, and a randomly drawn secret would make
+/// below `MIN_SECRET_LENGTH`, and a randomly drawn secret would make
 /// the logs non-comparable from one run to the next for nothing.
 export const SECRET_JETON = '***RETIRE-DE-L-HISTORIQUE***';
 
@@ -32,7 +32,7 @@ const URL_POSTGRES =
 ///
 /// Postgres: a throwaway SCHEMA, as `base/harnais.ts` does for the
 /// tests — two successive runs must not step on each other.
-export async function demarrerService(moteur: Moteur, nom: string): Promise<Service> {
+export async function startService(moteur: Moteur, nom: string): Promise<Service> {
     let urlBase = ':memory:';
     if (moteur === 'postgres') {
         const schema = `p3_${nom.replace(/[^a-z0-9]/gi, '_')}_${process.pid}`;
@@ -44,13 +44,13 @@ export async function demarrerService(moteur: Moteur, nom: string): Promise<Serv
     }
     const config = lireConfig({
         PLATEFORME_HOTE: '127.0.0.1',
-        // 0 = ephemeral port. `demarrerServeur` rereads the real address.
+        // 0 = ephemeral port. `startServer` rereads the real address.
         PLATEFORME_PORT: '0',
         PLATEFORME_BASE: moteur,
         PLATEFORME_BASE_URL: urlBase,
         PLATEFORME_SECRET_JETON: SECRET_JETON,
     });
-    return demarrer(config);
+    return start(config);
 }
 
 /// A received frame, AS IS — the raw string, never a reparsed object:
@@ -128,8 +128,8 @@ export function poignee(role: string, session: string, jeton?: string): string {
     return JSON.stringify({ role, session, jeton: jeton ?? null });
 }
 
-export function ligne(cle: string, valeur: unknown): string {
-    return `${cle.padEnd(34)}: ${typeof valeur === 'string' ? valeur : JSON.stringify(valeur)}`;
+export function ligne(cle: string, value: unknown): string {
+    return `${cle.padEnd(34)}: ${typeof value === 'string' ? value : JSON.stringify(value)}`;
 }
 
 /// The header EVERY log of this acceptance run carries.

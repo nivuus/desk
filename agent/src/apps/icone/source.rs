@@ -25,7 +25,7 @@ pub enum Provenance {
     /// extension. The image will be extracted anyway — the Shell can render it —
     /// but its PROVENANCE will stay `SourceMax::NonMesuree`. **Measured: 37 of the
     /// 153 applications of this VM.**
-    Aucune,
+    Absent,
 }
 
 /// ⚠️ THE LAST COMMA, NEVER THE FIRST.
@@ -53,7 +53,7 @@ pub fn provenance(icon_location: &str, cible: &str) -> Provenance {
     };
     let chemin = chemin.trim();
     if chemin.is_empty() {
-        return Provenance::Aucune;
+        return Provenance::Absent;
     }
     match extension(chemin).as_deref() {
         Some("ico") => Provenance::Ico(chemin.to_string()),
@@ -65,18 +65,18 @@ pub fn provenance(icon_location: &str, cible: &str) -> Provenance {
         // ⚠️ WITHOUT AN EXTENSION, WE CANNOT READ — and saying so is better than
         // guessing. `C:\Windows\Installer\{1BEA…}\ProductIcon` is the most
         // frequent case of this corpus.
-        _ => Provenance::Aucune,
+        _ => Provenance::Absent,
     }
 }
 
 /// The extension in lowercase, or `None` — never that of a parent directory.
 fn extension(chemin: &str) -> Option<String> {
-    let dernier = chemin.rsplit(['\\', '/']).next()?;
-    let point = dernier.rfind('.')?;
-    if point + 1 >= dernier.len() {
+    let last = chemin.rsplit(['\\', '/']).next()?;
+    let point = last.rfind('.')?;
+    if point + 1 >= last.len() {
         return None;
     }
-    Some(dernier[point + 1..].to_ascii_lowercase())
+    Some(last[point + 1..].to_ascii_lowercase())
 }
 
 /// The index of the icon in the module, `0` by default.

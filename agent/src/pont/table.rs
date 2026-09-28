@@ -33,7 +33,7 @@ use std::time::{Duration, Instant};
 /// distributions, never proposed values — choosing a number requires a
 /// judgement in use that no work item of this repository has ever made. They
 /// join `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `MAX_OUTPUT_SIZE`,
 /// `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the list of this repository's
 /// constants that no measurement has judged.
 ///
@@ -44,7 +44,7 @@ use std::time::{Duration, Instant};
 /// budget cannot be right for an operation that must answer in
 /// milliseconds and for one that transfers megabytes.
 ///
-/// ✅ **The fourth budget has arrived: it is [`DELAI_ECRIRE`], and F2 sets it.**
+/// ✅ **The fourth budget has arrived: it is [`WRITE_TIMEOUT`], and F2 sets it.**
 /// *(This line announced "it belongs to F2"; it is corrected here
 /// rather than left to the future, by the very branch that realises it.)*
 pub const DELAI_ATTRIBUTS: Duration = Duration::from_secs(2);
@@ -55,7 +55,7 @@ pub const DELAI_LISTER: Duration = Duration::from_secs(20);
 ///
 /// ⚠️ **NOT CALIBRATED**, like the three above. It is wider than
 /// [`DELAI_LIRE`] for a reason of form, not of measurement: the browser must
-/// **write** to the local workstation's disk, and the `dernier` chunk also triggers
+/// **write** to the local workstation's disk, and the `last` chunk also triggers
 /// the `close()` of `createWritable()`, that is, the commit —
 /// a copy of the swap file to its destination, whose cost grows with
 /// the file's size and which no measurement of this repository bounds.
@@ -65,13 +65,13 @@ pub const DELAI_LISTER: Duration = Duration::from_secs(20);
 /// ProjFS callback; this one bounds the wait of the **write thread**, which makes
 /// no one wait. Exceeding it returns no `HRESULT`: it leaves
 /// the entry IN THE JOURNAL and names it.
-pub const DELAI_ECRIRE: Duration = Duration::from_secs(30);
+pub const WRITE_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// The budget of a MUTATION — a renaming or a deletion.
 ///
 /// ⚠️ **A FOURTH BUDGET, where spec §5.3 sets three, and it is a
 /// DECLARED divergence.** *(The comment above already said "the fourth
-/// budget has arrived: it is `DELAI_ECRIRE`" — this one is therefore the
+/// budget has arrived: it is `WRITE_TIMEOUT`" — this one is therefore the
 /// FIFTH, and the spec's count has aged by two sub-blocks.)*
 ///
 /// ⚠️ **NOT CALIBRATED**, like the four others.
@@ -84,7 +84,7 @@ pub const DELAI_ECRIRE: Duration = Duration::from_secs(30);
 /// a write's (30 s) would freeze Explorer for half a minute on a
 /// mere refused `ren`.
 ///
-/// 🔴 **THIS ONE PROTECTS SOMEONE, unlike [`DELAI_ECRIRE`].** A
+/// 🔴 **THIS ONE PROTECTS SOMEONE, unlike [`WRITE_TIMEOUT`].** A
 /// mutation arises from a POST notification — the application has already returned
 /// control —, **but the `PRE_` preceding it is SYNCHRONOUS**: Explorer
 /// waits there. The budget therefore does bound an application's wait, like the
@@ -101,21 +101,21 @@ pub enum Attendue {
     Lire {
         chemin: String,
         position: u64,
-        longueur: u32,
+        length: u32,
     },
     /// A write chunk pushed to the browser.
     ///
-    /// ⚠️ **`dernier` is kept here because it is what decides what
+    /// ⚠️ **`last` is kept here because it is what decides what
     /// the `Fait` means**: on the last chunk, it means "the file is
     /// committed, the entry can leave the journal"; on the others, only
     /// "request the next one". Rereading it from the emitted header would be rereading it
     /// from a source the peer could have distorted.
-    Ecrire {
+    Write {
         chemin: String,
-        dernier: bool,
+        last: bool,
     },
     /// An entry creation pushed to the browser.
-    Creer {
+    Create {
         chemin: String,
     },
     /// A **mutation** pushed to the browser (F3).
@@ -193,7 +193,7 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -204,7 +204,7 @@ impl Table {
     /// registrations, and a test that cannot be run is a test that
     /// does not exist. It is the pattern D10 caught four times.
     #[cfg(test)]
-    pub fn nouvelle_depuis(prochaine: u32) -> Self {
+    pub fn new_from(prochaine: u32) -> Self {
         Self {
             prochaine,
             ..Self::default()
@@ -224,7 +224,7 @@ impl Table {
     /// a search for a free one. Two independent counters on the same channel would
     /// collide, and **the collision would be SILENT**: a response
     /// applied to the wrong command. It is exactly the defect
-    /// [`Table::corrélation_libre`] already documents against wraparound —
+    /// [`Table::free_correlation`] already documents against wraparound —
     /// getting the correlation elsewhere would replay it through the back door.
     pub fn inscrire_sans_commande(&mut self, quoi: Attendue, echeance: Instant) -> u32 {
         self.inscrire_interne(None, quoi, echeance)
@@ -236,7 +236,7 @@ impl Table {
         quoi: Attendue,
         echeance: Instant,
     ) -> u32 {
-        let correlation = self.corrélation_libre();
+        let correlation = self.free_correlation();
         // ⚠️ **`echeance` is already computed by the caller from ITS clock**,
         // and the registration instant is taken here: both come from the
         // same `Instant::now()` within a few microseconds, and the module
@@ -263,7 +263,7 @@ impl Table {
     /// wrapped correlation would overwrite a command still in flight, and its
     /// response would be applied to the wrong one. The loop terminates because
     /// the table is bounded by memory, hence far below 2^32 entries.
-    fn corrélation_libre(&mut self) -> u32 {
+    fn free_correlation(&mut self) -> u32 {
         loop {
             let candidate = self.prochaine;
             self.prochaine = self.prochaine.wrapping_add(1);
@@ -367,7 +367,7 @@ impl Table {
     /// Removes and returns EVERYTHING. Called **before** `PrjStopVirtualizing`: a
     /// command left in flight would wait there for a response nothing can
     /// deliver any more, and ProjFS would wait for its completion indefinitely.
-    pub fn vider(&mut self) -> Vec<(Option<i32>, u32)> {
+    pub fn drain(&mut self) -> Vec<(Option<i32>, u32)> {
         let mut tout: Vec<(Option<i32>, u32)> = self
             .en_vol
             .drain()

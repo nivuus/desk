@@ -16,7 +16,7 @@ import primitivesHtml from '../../primitives.html?raw';
  * `galerie.ts`, dont l'en-tête déclare que la liste des tokens en est
  * PARSÉE, `galerie-primitives.ts` déclare noir sur blanc « il ne lit AUCUN
  * TOKEN » : ses dix-sept lignes ne font qu'un seul branchement du sélecteur
- * de thème (`installerSelecteurDeThemeAuDOM`, DÉJÀ testé en entier par
+ * de thème (`installThemeSelectorInDOM`, DÉJÀ testé en entier par
  * `selecteur-theme.test.ts`, sans aucune dépendance propre à ce module-ci).
  * Il n'y a donc, dans `galerie-primitives.ts` lui-même, ni DOM testable ni
  * liste de cas à figer — les deux raisons pour lesquelles `galerie.test.ts`

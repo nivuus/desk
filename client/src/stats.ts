@@ -26,7 +26,7 @@ export interface InstantaneMontant {
 /// judge an acceptance criterion.** The mic's judging figure is the dominant
 /// frequency recorded on the agent side (`MICRO_MESURE`), not what is written here.
 ///
-/// **`courant` absent = NO audio `outbound-rtp`**, which is not the same
+/// **`current` absent = NO audio `outbound-rtp`**, which is not the same
 /// thing as a zero rate: the first says nothing is negotiated or no
 /// packet has gone out yet, the second that a track lives and stays silent. Confusing
 /// them would pass a session without a mic for a silent mic —
@@ -34,25 +34,25 @@ export interface InstantaneMontant {
 /// audio, and for the same reason.
 export function suivreMontant(
     precedent: InstantaneMontant | undefined,
-    courant: InstantaneMontant | undefined,
+    current: InstantaneMontant | undefined,
 ): { ligne: string; memoire: InstantaneMontant | undefined } {
     // The memory is FORGOTTEN when the track disappears: without that, a
     // renegotiated track (new SSRC, counters restarted from zero) would compute its
     // first rate against the counters of another stream.
-    if (!courant) return { ligne: 'micro absent', memoire: undefined };
+    if (!current) return { ligne: 'micro absent', memoire: undefined };
 
     let kbps = 0;
     if (precedent) {
-        const secondes = (courant.horodatage - precedent.horodatage) / 1000;
+        const secondes = (current.horodatage - precedent.horodatage) / 1000;
         // `> 0` and not `!== 0`: a frozen timestamp would produce a division by
         // zero, a timestamp going backwards a negative rate.
         if (secondes > 0) {
-            kbps = ((courant.octets - precedent.octets) * 8) / secondes / 1000;
+            kbps = ((current.octets - precedent.octets) * 8) / secondes / 1000;
         }
     }
     return {
-        ligne: `micro ${kbps.toFixed(0)} kb/s  ·  paquets ${courant.paquets}`,
-        memoire: courant,
+        ligne: `micro ${kbps.toFixed(0)} kb/s  ·  paquets ${current.paquets}`,
+        memoire: current,
     };
 }
 

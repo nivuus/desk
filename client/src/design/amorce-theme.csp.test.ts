@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 // s'il devait un jour être supprimé pour « alléger » ce paquet, le défaut
 // redeviendrait invisible à `npm test`, exactement comme avant ce lot.
 import { CSP } from '../../../plateforme/src/http/page/entetes-page';
-import { NOM_FICHIER_AMORCE, baliseAmorce } from './amorce-theme-greffon';
+import { BOOTSTRAP_FILE_NAME, baliseAmorce } from './amorce-theme-greffon';
 // `?raw`, JAMAIS `node:fs` : voir `amorce-theme-greffon.ts`, qui explique
 // pourquoi la lecture de CONTENU ne vit pas dans ce module partagé.
 import AMORCE from './amorce-theme.js?raw';
@@ -60,7 +60,7 @@ describe("l'amorce anti-FOUC ne peut pas être bloquée par la CSP servie", () =
         // bloquée par la CSP en pratique — la même classe de défaut, une
         // deuxième fois.
         const balise = baliseInjectee();
-        expect(balise.attrs?.src).toBe(`/${NOM_FICHIER_AMORCE}`);
+        expect(balise.attrs?.src).toBe(`/${BOOTSTRAP_FILE_NAME}`);
         expect(balise.attrs?.src).toMatch(/^\//);
     });
 

@@ -240,10 +240,10 @@ fn bgra_en_rgba_puis_dominante_rendent_la_couleur_reelle_du_bgra() {
     let lu_sans = super::dominante(&sans, 8, 8).expect("un aplat sature doit rendre une dominante");
 
     super::bgra_en_rgba(&mut sans);
-    let lu_avec = super::dominante(&sans, 8, 8).expect("idem apres conversion");
+    let read_with = super::dominante(&sans, 8, 8).expect("idem apres conversion");
 
     assert_eq!(
-        lu_avec,
+        read_with,
         [0xd0, 0x80, 0x40],
         "converti : la teinte CHAUDE, celle de l'image"
     );
@@ -253,7 +253,7 @@ fn bgra_en_rgba_puis_dominante_rendent_la_couleur_reelle_du_bgra() {
         "sans conversion : la teinte FROIDE, le rouge et le bleu echanges"
     );
     assert_ne!(
-        lu_sans, lu_avec,
+        lu_sans, read_with,
         "les deux lectures DIFFERENT : le sens compte"
     );
 }

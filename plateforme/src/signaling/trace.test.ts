@@ -19,7 +19,7 @@ import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { enroler } from '../depot/agent';
 import { lireParNom, type LigneSession } from '../depot/session';
-import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
+import { startServer, type ServicePlateforme } from '../http/serveur';
 import { signer } from '../identite/jeton';
 import { hacher } from '../identite/mot-de-passe';
 import { MOTIF_DEPART, observateurDeSession } from './trace';
@@ -249,7 +249,7 @@ describe('la colonne session.vm_id', () => {
 describe('le service entier', () => {
     it('écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs', async () => {
         base = await baseNeuve('trace-service');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = await connecter(url, 'agent', `${P}:trace-1`);
@@ -273,7 +273,7 @@ describe('le service entier', () => {
         // « appariement » de « connexion », et le superviseur se déclare seul
         // sur `bureau` des heures durant au démarrage de la VM.
         base = await baseNeuve('trace-solitaire');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = await connecter(url, 'agent', `${P}:trace-2`);
@@ -293,7 +293,7 @@ describe('le service entier', () => {
         // réel est celui-ci : la session de contrôle `bureau`, où l'`agent`
         // arrive seul et sans identité, et où le CLIENT, lui, est authentifié.
         base = await baseNeuve('trace-appartenance');
-        service = await demarrerServeur(CONFIG, base);
+        service = await startServer(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/signal`;
 
         const agent = await connecter(url, 'agent', `${P}:bureau`);

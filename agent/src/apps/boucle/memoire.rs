@@ -101,7 +101,7 @@ pub(super) fn reconcilier(
     let mut brutes = Vec::new();
     let mut total = 0usize;
     for racine in lecture::racines() {
-        for chemin in lecture::lnk_sous(&racine) {
+        for chemin in lecture::lnk_under(&racine) {
             total += 1;
             match lecture::lire(&chemin) {
                 Ok(r) => brutes.push(r),
@@ -109,8 +109,8 @@ pub(super) fn reconcilier(
                 // reconciliation that failed entirely on one file
                 // would make the WHOLE catalogue disappear — one corrupt byte on
                 // the Desktop would empty the list of applications.
-                Err(erreur) => tracing::warn!(
-                    chemin = %chemin.display(), %erreur, "raccourci illisible, sauté"
+                Err(error) => tracing::warn!(
+                    chemin = %chemin.display(), %error, "raccourci illisible, sauté"
                 ),
             }
         }
@@ -175,7 +175,7 @@ pub(super) fn reconcilier(
                             // ask again for an icon it lost.
                             if let Some(e) = empreinte {
                                 if let Some(o) = memoire.icones.octets(e) {
-                                    icones.ajouter(o.to_vec());
+                                    icones.add(o.to_vec());
                                 }
                             }
                         }
@@ -298,7 +298,7 @@ fn mesurer(
     match icone::extraire(std::path::Path::new(lnk)) {
         Ok((png, accent)) => {
             let octets = png.len();
-            let empreinte = icones.ajouter(png);
+            let empreinte = icones.add(png);
             // ⚠️ `debug!` AND NOT `info!`, AND IT IS MEASURED: this line is emitted
             // once PER APPLICATION on the first tick — 153 lines on this
             // corpus —, in a log that the supervisor, the sensor and all
@@ -324,8 +324,8 @@ fn mesurer(
                 accent,
             )
         }
-        Err(erreur) => {
-            tracing::warn!(lnk, %erreur, "extraction d'icone echouee : l'application reste au catalogue, sans icone");
+        Err(error) => {
+            tracing::warn!(lnk, %error, "extraction d'icone echouee : l'application reste au catalogue, sans icone");
             (None, SourceMax::NonMesuree, None)
         }
     }

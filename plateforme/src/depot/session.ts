@@ -40,7 +40,7 @@ export const MOTIF_BALAYAGE = 'plateforme redémarrée';
 /// The identifier is a v4 UUID, never the session name: the latter is
 /// NOT unique over time — `bureau` comes back at every agent startup.
 ///
-/// ⚠️ `utilisateurId` is OPTIONAL, and it must stay so. Making it required
+/// ⚠️ `userId` is OPTIONAL, and it must stay so. Making it required
 /// would break the P1 callers, and above all it does not always exist: a
 /// session paired by an `agent` peer alone — the `bureau` control
 /// session at the startup of a VM — has nobody to record. ⚠️ THE REASON
@@ -60,7 +60,7 @@ export const MOTIF_BALAYAGE = 'plateforme redémarrée';
 /// future tense of the sentence above has been past since 20 August 2026.
 ///
 /// ⚠️ `vmId` is OPTIONAL FOR THE SAME REASON, and it comes AFTER
-/// `utilisateurId` so as to move no existing caller. It is the trace
+/// `userId` so as to move no existing caller. It is the trace
 /// (`signaling/trace.ts`) that resolves it, by cutting the prefix off the
 /// session name then looking it up in `agent_enrole`. A `bureau` session
 /// WITHOUT a prefix — the local trial mode that spec §10 sets as legitimate —
@@ -71,7 +71,7 @@ export async function ouvrirSession(
     p: Pilote,
     nomSession: string,
     maintenant: number,
-    utilisateurId?: string,
+    userId?: string,
     vmId?: string,
 ): Promise<string> {
     const id = randomUUID();
@@ -80,7 +80,7 @@ export async function ouvrirSession(
     // the identifier would make one of them diverge the day the table changed.
     await p.executer(
         'INSERT INTO session(id, nom_session, utilisateur_id, vm_id, ouverte_a) VALUES(?, ?, ?, ?, ?)',
-        [id, nomSession, utilisateurId ?? null, vmId ?? null, maintenant],
+        [id, nomSession, userId ?? null, vmId ?? null, maintenant],
     );
     return id;
 }
@@ -142,10 +142,10 @@ export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSe
 /// (`identite/garde.ts`, and the comment of `ouvrirSession` above):
 /// SQL equality with `NULL` never yields true, and this property is held
 /// by a test rather than left to the semantics of the engine.
-export async function compterOuvertesDe(p: Pilote, utilisateurId: string): Promise<number> {
+export async function compterOuvertesDe(p: Pilote, userId: string): Promise<number> {
     const lignes = await p.interroger<{ n: number }>(
         'SELECT COUNT(*) AS n FROM session WHERE utilisateur_id = ? AND fermee_a IS NULL',
-        [utilisateurId],
+        [userId],
     );
     // ⚠️ NO `Number(...)` HERE, DELIBERATELY. A `COUNT(*)` is an `int8` on
     // Postgres, which `pg` would return as a STRING without the `setTypeParser` of

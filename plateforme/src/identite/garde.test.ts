@@ -32,7 +32,7 @@ describe('garde de la poignée de main', () => {
         // qui se déclarait `{"role":"agent"}` obtenait des identifiants TURN
         // valables 86 400 s sans présenter la moindre identité.
         const { g } = neuve();
-        const v = g.verifier({ role: 'agent', session: 'bureau' });
+        const v = g.verify({ role: 'agent', session: 'bureau' });
         expect(v.ok).toBe(false);
         if (v.ok) return;
         expect(v.motif).toBe('jeton-absent');
@@ -41,10 +41,10 @@ describe('garde de la poignée de main', () => {
     it('accepte un `agent` dont le jeton PRÉFIXE la session demandée', () => {
         const { g } = neuve();
         const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
-        expect(g.verifier({ role: 'agent', session: `${P}:bureau`, jeton }))
+        expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton }))
             .toEqual({ ok: true });
         // La même VM sur une de SES fenêtres.
-        expect(g.verifier({ role: 'agent', session: `${P}:w-1`, jeton }).ok).toBe(true);
+        expect(g.verify({ role: 'agent', session: `${P}:w-1`, jeton }).ok).toBe(true);
     });
 
     it('🔴 REFUSE le MÊME jeton d’agent sur la session d’une AUTRE VM', () => {
@@ -54,7 +54,7 @@ describe('garde de la poignée de main', () => {
         // que l'existence d'une VM, jamais LAQUELLE.
         const { g } = neuve();
         const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
-        const refus = g.verifier({ role: 'agent', session: `${Q}:bureau`, jeton });
+        const refus = g.verify({ role: 'agent', session: `${Q}:bureau`, jeton });
         expect(refus).toMatchObject({ ok: false, motif: 'session-refusee' });
         if (refus.ok) return;
         // Le message SUR LE FIL ne distingue pas les causes : il est le même
@@ -72,7 +72,7 @@ describe('garde de la poignée de main', () => {
         // toujours en production.
         const { g } = neuve();
         const jeton = signer('AB', SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
-        expect(g.verifier({ role: 'agent', session: 'ABC:bureau', jeton }))
+        expect(g.verify({ role: 'agent', session: 'ABC:bureau', jeton }))
             .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
@@ -87,7 +87,7 @@ describe('garde de la poignée de main', () => {
         // d'avance.
         const { g } = neuve();
         const humain = signer(P, SECRET, T0);
-        expect(g.verifier({ role: 'agent', session: `${P}:bureau`, jeton: humain }))
+        expect(g.verify({ role: 'agent', session: `${P}:bureau`, jeton: humain }))
             .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
@@ -98,13 +98,13 @@ describe('garde de la poignée de main', () => {
         // utilisateur, sur la session de n'importe qui.
         const { g } = neuve();
         const agent = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
-        expect(g.verifier({ role: 'client', session: `${P}:bureau`, jeton: agent }))
+        expect(g.verify({ role: 'client', session: `${P}:bureau`, jeton: agent }))
             .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
     it('REFUSE un `client` sans jeton', () => {
         const { g } = neuve();
-        const v = g.verifier({ role: 'client', session: 's-1' });
+        const v = g.verify({ role: 'client', session: 's-1' });
         expect(v.ok).toBe(false);
         if (v.ok) return;
         expect(v.motif).toBe('jeton-absent');
@@ -112,10 +112,10 @@ describe('garde de la poignée de main', () => {
 
     it('REFUSE un jeton mal formé ou mal signé', () => {
         const { g } = neuve();
-        expect(g.verifier({ role: 'client', session: 's-1', jeton: 'pas.un.jeton' }))
+        expect(g.verify({ role: 'client', session: 's-1', jeton: 'pas.un.jeton' }))
             .toMatchObject({ ok: false, motif: 'jeton-invalide' });
         const autre = signer('u1', 'un-AUTRE-secret-de-quarante-caracteres-ou-plus', T0);
-        expect(g.verifier({ role: 'client', session: 's-1', jeton: autre }))
+        expect(g.verify({ role: 'client', session: 's-1', jeton: autre }))
             .toMatchObject({ ok: false, motif: 'jeton-invalide' });
     });
 
@@ -124,26 +124,26 @@ describe('garde de la poignée de main', () => {
         // chaîne, ou lèverait sur `null`.
         const { g } = neuve();
         for (const jeton of [42, { sub: 'u1' }, null, [], true]) {
-            expect(() => g.verifier({ role: 'client', session: 's-1', jeton }))
+            expect(() => g.verify({ role: 'client', session: 's-1', jeton }))
                 .not.toThrow();
-            expect(g.verifier({ role: 'client', session: 's-1', jeton }).ok).toBe(false);
+            expect(g.verify({ role: 'client', session: 's-1', jeton }).ok).toBe(false);
         }
     });
 
     it('accepte un `client` au jeton valide sur une session LIBRE', () => {
         const { g } = neuve();
         const jeton = signer('u1', SECRET, T0);
-        expect(g.verifier({ role: 'client', session: 's-1', jeton }))
-            .toEqual({ ok: true, utilisateurId: 'u1' });
+        expect(g.verify({ role: 'client', session: 's-1', jeton }))
+            .toEqual({ ok: true, userId: 'u1' });
     });
 
     it('accepte le MÊME utilisateur sur SA session, et REFUSE un autre', () => {
         const { g, proprietes } = neuve();
         proprietes.revendiquer('s-1', 'u1');
-        expect(g.verifier({ role: 'client', session: 's-1', jeton: signer('u1', SECRET, T0) }))
-            .toEqual({ ok: true, utilisateurId: 'u1' });
+        expect(g.verify({ role: 'client', session: 's-1', jeton: signer('u1', SECRET, T0) }))
+            .toEqual({ ok: true, userId: 'u1' });
 
-        const refus = g.verifier({
+        const refus = g.verify({
             role: 'client',
             session: 's-1',
             jeton: signer('u2', SECRET, T0),
@@ -166,10 +166,10 @@ describe('garde de la poignée de main', () => {
         let maintenant = T0;
         const { g } = neuve(() => maintenant);
         const jeton = signer('u1', SECRET, T0);
-        expect(g.verifier({ role: 'client', session: 's-1', jeton }))
-            .toEqual({ ok: true, utilisateurId: 'u1' });
+        expect(g.verify({ role: 'client', session: 's-1', jeton }))
+            .toEqual({ ok: true, userId: 'u1' });
         maintenant = T0 + DUREE_JETON_ACCES_MS;
-        expect(g.verifier({ role: 'client', session: 's-1', jeton }))
+        expect(g.verify({ role: 'client', session: 's-1', jeton }))
             .toMatchObject({ ok: false, motif: 'jeton-expire' });
     });
 
@@ -179,11 +179,11 @@ describe('garde de la poignée de main', () => {
         // cause de rôle déjà occupé.
         const { g, proprietes } = neuve();
         const jeton = signer('u1', SECRET, T0);
-        g.verifier({ role: 'client', session: 's-1', jeton });
-        g.verifier({ role: 'client', session: 's-1', jeton });
+        g.verify({ role: 'client', session: 's-1', jeton });
+        g.verify({ role: 'client', session: 's-1', jeton });
         expect(proprietes.proprietaire('s-1')).toBeUndefined();
         // Et un AUTRE utilisateur passe encore, preuve que rien n'a été posé.
-        expect(g.verifier({ role: 'client', session: 's-1', jeton: signer('u2', SECRET, T0) }).ok)
+        expect(g.verify({ role: 'client', session: 's-1', jeton: signer('u2', SECRET, T0) }).ok)
             .toBe(true);
     });
 

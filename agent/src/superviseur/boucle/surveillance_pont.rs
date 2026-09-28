@@ -44,7 +44,7 @@
 //! remained "the ONLY thing" bounding the cadence — corrected in turn,
 //! so as not to replace a too-optimistic wording with another.
 //!
-//! `agent::signaling::honorer_retry_suggere` (round 1, critical ②) makes
+//! `agent::signaling::honour_suggested_retry` (round 1, critical ②) makes
 //! the refused bridge sleep until the delay the relay suggested (bounded at
 //! `REPLI_MAX_MS`, 30 s); the bridge only dies AFTER that sleep. The next
 //! `tenter()` then compares the time REALLY elapsed since the last
@@ -55,7 +55,7 @@
 //!
 //! **Both cap at THE SAME VALUE** (`REPLI_MAX_MS`, 30 s) —
 //! `delai_de_repli` by construction (`repli.rs`), the sleep of
-//! `honorer_retry_suggere` through the bound it imposes on itself on `retryApresS` —
+//! `honour_suggested_retry` through the bound it imposes on itself on `retryApresS` —
 //! so that neither can ever durably EXCEED the
 //! other: `delai_de_repli(tentative)` reaches exactly 30 s at `tentative = 6`
 //! (`500 × 2⁶ = 32,000`, CLIPPED to `30,000`, never 32,000) and stays there.
@@ -98,7 +98,7 @@ pub(super) struct EtatPont {
 impl EtatPont {
     /// Launches the files bridge.
     ///
-    /// 🔴 **Unlike `EtatCapteur::demarrer`, a failure here is NOT
+    /// 🔴 **Unlike `EtatCapteur::start`, a failure here is NOT
     /// fatal, and it is this module's only decision.**
     ///
     /// The capturer serves the media to any child that attaches: without it,
@@ -115,7 +115,7 @@ impl EtatPont {
     /// failure is logged and **retried indefinitely** by `surveiller`,
     /// exactly like a restart — the bridge can therefore appear during a
     /// session, without restarting the supervisor.
-    pub(super) fn demarrer(lanceur: &LanceurDeProcessus) -> Self {
+    pub(super) fn start(lanceur: &LanceurDeProcessus) -> Self {
         let mut etat = Self {
             pid: None,
             // Pulled back by one floor spacing: the very first attempt
@@ -155,7 +155,7 @@ impl EtatPont {
         // 🔴 THREE BRANCHES SINCE FIX ROUND 4, AND THE TWO
         // DECISIONS OF `EtatRelance` CAN NO LONGER CROSS: `stable`
         // (LONG threshold, a TRACE question) is only asked of a LIVE bridge;
-        // `reinitialiser_le_repli` (a CADENCE question) is only asked of
+        // `reset_the_backoff` (a CADENCE question) is only asked of
         // a DEATH, and of its OUTCOME — never again of a lifetime.
         //
         // The round 4 review measured it: re-arming on "alive for
@@ -179,7 +179,7 @@ impl EtatPont {
             // that a past failure is resolved: the fallback starts again from the floor.
             // A `bail!` — including the relay's refusal, honoured then propagated —
             // proves nothing, and the fallback keeps growing.
-            EtatObserve::Mort(issue) => self.relance.reinitialiser_le_repli(issue),
+            EtatObserve::Mort(issue) => self.relance.reset_the_backoff(issue),
             // ⚠️ NO RE-ARMING HERE, AND THAT IS THE POINT: `Absent` covers
             // a repeatedly failing `spawn`, exactly the case round 1's critical
             // ③ measured, whose fallback must grow.
@@ -190,9 +190,9 @@ impl EtatPont {
 
     /// One launch attempt, spaced and logged once per cycle.
     ///
-    /// Shared between `demarrer` and `surveiller`: the two paths are the
+    /// Shared between `start` and `surveiller`: the two paths are the
     /// same gesture, and writing them twice would make them diverge — it is
-    /// precisely what distinguishes this module from its twin, where `demarrer`
+    /// precisely what distinguishes this module from its twin, where `start`
     /// retries nothing because it is fatal.
     fn tenter(&mut self, lanceur: &LanceurDeProcessus, quoi: &str) {
         // 🔴 THE SPACING COMES FROM `EtatRelance::doit_relancer`, NOT FROM A
@@ -219,20 +219,20 @@ impl EtatPont {
         // EXACTLY the case this batch must fix.
         let premier_du_cycle = self.relance.tentative_lancee();
         match lanceur.lancer_pont() {
-            Ok(nouveau) => {
+            Ok(new) => {
                 if premier_du_cycle {
                     tracing::warn!(
                         pid_mort = self.pid,
-                        pid_neuf = nouveau,
+                        pid_neuf = new,
                         tentative = self.relance.tentative(),
                         espacement_ms,
                         "pont fichiers lancé ou relancé (tentatives suivantes silencieuses \
                          tant que le cycle se répète)"
                     );
                 }
-                self.pid = Some(nouveau);
+                self.pid = Some(new);
             }
-            Err(erreur) => {
+            Err(error) => {
                 // `self.pid` is NOT updated: it stays the last known
                 // value, so that the next successful restart
                 // logs an exact "dead" one — `lancer_pont` only returns `Ok`
@@ -245,7 +245,7 @@ impl EtatPont {
                 // framing principle 4 down to the trace level.
                 if premier_du_cycle {
                     tracing::warn!(
-                        %erreur,
+                        %error,
                         tentative = self.relance.tentative(),
                         espacement_ms,
                         "{quoi} — la capture n'est PAS affectée ; retenté indéfiniment, à un \

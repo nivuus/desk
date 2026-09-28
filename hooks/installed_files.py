@@ -33,7 +33,7 @@ import secrets
 PORT_TURN = 3478
 
 
-def ecrire_secret() -> str:
+def write_secret() -> str:
     """Draws a FRESH random secret — never asked for, never constant.
 
     The word "FRESH" is deliberate: this function, on its own, draws a
@@ -41,7 +41,7 @@ def ecrire_secret() -> str:
     wanted the very first time a secret is needed (none exists
     yet to reuse). `secrets.token_hex(32)` returns 64 hexadecimal
     characters, well above the minimum of 32 that
-    `LONGUEUR_SECRET_MIN` demands.
+    `MIN_SECRET_LENGTH` demands.
 
     🔴 THIS FUNCTION ALONE DOES NOT CARRY THE INVARIANT "drawn only once,
     never recomputed" — an earlier docstring claimed it HERE, wrongly
@@ -59,7 +59,7 @@ def ecrire_secret() -> str:
     The invariant is now carried by the CALLER, never by this
     function: `install.py` must first try `lire_secret_persiste()` on
     the `desk.env` already in place at the TARGET root, and call
-    `ecrire_secret()` only if nothing there is reusable.
+    `write_secret()` only if nothing there is reusable.
     """
     return secrets.token_hex(32)
 
@@ -67,9 +67,9 @@ def ecrire_secret() -> str:
 def lire_secret_persiste(chemin_env: pathlib.Path, cle: str) -> str | None:
     """Reads back a secret already written by an earlier installation of `desk.env`.
 
-    It is THIS function, called by `install.py` BEFORE `ecrire_secret()`,
+    It is THIS function, called by `install.py` BEFORE `write_secret()`,
     that really carries the invariant "drawn only once, never
-    recomputed" that the `ecrire_secret` docstring described without
+    recomputed" that the `write_secret` docstring described without
     enforcing it (bug fixed on 2026-09-08 — see its own docstring).
 
     Three cases are treated as "nothing to reuse", never as an
@@ -110,15 +110,15 @@ def lire_secret_persiste(chemin_env: pathlib.Path, cle: str) -> str | None:
         ligne = ligne.strip()
         if not ligne or ligne.startswith("#") or "=" not in ligne:
             continue
-        cle_ligne, _, valeur = ligne.partition("=")
+        cle_ligne, _, value = ligne.partition("=")
         if cle_ligne.strip() != cle:
             continue
-        valeur = valeur.strip()
-        return valeur or None
+        value = value.strip()
+        return value or None
     return None
 
 
-def ecrire_env(chemin: pathlib.Path, valeurs: dict) -> None:
+def write_env(chemin: pathlib.Path, values: dict) -> None:
     """Writes `chemin` as KEY=VALUE, one per line, ALREADY CREATED in mode 600.
 
     🔴 CREATED AS 0600, NEVER WRITTEN THEN `chmod`ED AFTERWARDS (correction
@@ -134,13 +134,13 @@ def ecrire_env(chemin: pathlib.Path, valeurs: dict) -> None:
     others.
     """
     chemin.parent.mkdir(parents=True, exist_ok=True)
-    corps = "\n".join(f"{cle}={valeur}" for cle, valeur in valeurs.items()) + "\n"
+    corps = "\n".join(f"{cle}={value}" for cle, value in values.items()) + "\n"
     descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
         fh.write(corps)
 
 
-def ecrire_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
+def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
                             turn_relais: str, secret: str) -> None:
     """Lays down the native configuration of the Debian `coturn` package.
 
@@ -178,7 +178,7 @@ no-cli
 log-file=stdout
 """
     chemin.parent.mkdir(parents=True, exist_ok=True)
-    # Same precaution as `ecrire_env` (see its docstring): this file
+    # Same precaution as `write_env` (see its docstring): this file
     # holds `static-auth-secret` in plain text, and a write-then-chmod window
     # would be WORSE there than on desk.env — created already as 0600, never chmod
     # afterwards.

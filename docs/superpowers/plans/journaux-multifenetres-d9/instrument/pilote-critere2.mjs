@@ -217,11 +217,11 @@ async function purgerFenetresVMRescapees() {
     ].join('\n');
     vmIt('purge-rescapees', script);
     await dodo(5000);
-    let resultat = null;
-    try { resultat = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8')); } catch { }
-    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(resultat));
-    if (!resultat || resultat.chrome_restants !== 0 || resultat.agents_restants !== 0) {
-        throw new Error(`état VM non propre avant lancement : ${JSON.stringify(resultat)}`);
+    let result = null;
+    try { result = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8')); } catch { }
+    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(result));
+    if (!result || result.chrome_restants !== 0 || result.agents_restants !== 0) {
+        throw new Error(`état VM non propre avant lancement : ${JSON.stringify(result)}`);
     }
 }
 async function journalPlat() {
@@ -397,13 +397,13 @@ const appPages = () => [...pages].filter(([, p]) =>
 let indexAttachePage = 0;
 
 async function ouvrirFenetreTon(n, hz, gain, profilChromeVm) {
-    const fichier = `ton-d9c2-${n}-${hz}.html`;
-    spawnSync('bash', ['-c', `cp ${TON_HTML} /media/vm/dev/${fichier}`]);
-    const avant = appPages().length;
-    log(`  · ouverture fenêtre ${n} (${fichier}?hz=${hz}&gain=${gain}, profil=${profilChromeVm})`);
+    const file = `ton-d9c2-${n}-${hz}.html`;
+    spawnSync('bash', ['-c', `cp ${TON_HTML} /media/vm/dev/${file}`]);
+    const before = appPages().length;
+    log(`  · ouverture fenêtre ${n} (${file}?hz=${hz}&gain=${gain}, profil=${profilChromeVm})`);
     vmIt(`ouvrird9c2-${n}`, [
         '$a = @(',
-        `  "--app=file:///C:/dev/${fichier}?hz=${hz}&gain=${gain}",`,
+        `  "--app=file:///C:/dev/${file}?hz=${hz}&gain=${gain}",`,
         `  "--user-data-dir=${profilChromeVm}",`,
         "  '--no-first-run','--no-default-browser-check','--disable-session-crashed-bubble',",
         `  '--window-size=1280,720','--window-position=${30 + n * 12},${30 + n * 12}',`,
@@ -415,10 +415,10 @@ async function ouvrirFenetreTon(n, hz, gain, profilChromeVm) {
     ].join('\n'));
     for (let i = 0; i < 30; i += 1) {
         await dodo(2000);
-        if (appPages().length > avant) return { ok: true, hz, sid: dernierSidAppPage, marqueur: fichier };
+        if (appPages().length > before) return { ok: true, hz, sid: dernierSidAppPage, marqueur: file };
     }
     log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
-    return { ok: false, hz, sid: null, marqueur: fichier };
+    return { ok: false, hz, sid: null, marqueur: file };
 }
 
 /// Session agent ("w-N") lue SUR LA PAGE elle-même (vérité vivante), et
@@ -477,11 +477,11 @@ async function resoudrePidChromeVoie(dossierPartage) {
     try { brut = await readFile(`/media/vm/dev/${marqueurJson}`, 'utf8'); } catch { }
     let parsed = null;
     try { parsed = JSON.parse(brut); } catch { }
-    const liste = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-    const pidsUniques = [...new Set(liste.map((p) => p.ProcessId))];
+    const list = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+    const pidsUniques = [...new Set(list.map((p) => p.ProcessId))];
     log(`PID CHROME (voie Get-CimInstance/CommandLine) dossier=${dossierPartage} `
-        + `processus_trouves=${liste.length} pids_uniques=${JSON.stringify(pidsUniques)}`);
-    return { liste, pidsUniques };
+        + `processus_trouves=${list.length} pids_uniques=${JSON.stringify(pidsUniques)}`);
+    return { list, pidsUniques };
 }
 
 /// Les lignes « audio activé … pid=… » du journal (voie agent, INDÉPENDANTE
@@ -514,8 +514,8 @@ async function phaseMontageA(cdp) {
     }
 
     const avantIso = maintenantIso();
-    const avant = await cdp.evalBorne(r1.sid, expressionReleveFrequence([HZ_A]), 8000, true);
-    log(`AVANT (montage A, session=${session}) ` + JSON.stringify(avant));
+    const before = await cdp.evalBorne(r1.sid, expressionReleveFrequence([HZ_A]), 8000, true);
+    log(`AVANT (montage A, session=${session}) ` + JSON.stringify(before));
 
     const debutDeclencheur = maintenantIso();
     log(`>>> déclenchement (${DECLENCHEUR}) : ${commandeDeclencheur()}`);
@@ -541,8 +541,8 @@ async function phaseMontageA(cdp) {
     const dominanteDansTolerance = (r) => r && Number.isFinite(r.hz)
         && Math.abs(r.hz - HZ_A) <= (48000 / 8192) // résolution d'un bin FFT
         && (r.niveaux?.[0]?.db ?? SENTINEL_DB) > SENTINEL_DB;
-    const dernier = releves[releves.length - 1] ?? null;
-    const dominanteRevenue = dominanteDansTolerance(dernier);
+    const last = releves[releves.length - 1] ?? null;
+    const dominanteRevenue = dominanteDansTolerance(last);
     // Le PREMIER relevé (le plus proche du déclenchement) où le niveau à HZ_A
     // retombe au plancher : la preuve que la mort a bien été OBSERVÉE avant
     // toute reprise éventuelle, pas seulement supposée du fait des messages
@@ -550,14 +550,14 @@ async function phaseMontageA(cdp) {
     const premierEffondrement = releves.findIndex((r) => (r.niveaux?.[0]?.db ?? SENTINEL_DB) <= SENTINEL_DB);
 
     return {
-        montage: 'a', session, ice_avant: ice, avant, debut_declencheur: debutDeclencheur,
+        montage: 'a', session, ice_avant: ice, before, debut_declencheur: debutDeclencheur,
         restart_service: { status: restart.status, stdout: (restart.stdout ?? '').trim() },
         releves, fin_observation: finObs,
         lignes_mort_enfant: lignesMortEnfant, lignes_registre: lignesRegistre, lignes_ordre: lignesOrdre,
         effondrement_observe: premierEffondrement >= 0,
         index_premier_effondrement: premierEffondrement,
         dominante_revenue: dominanteRevenue,
-        dernier_releve: dernier,
+        last_reading: last,
     };
 }
 
@@ -622,9 +622,9 @@ async function phaseMontageB(cdp) {
     const lignesOrdre = await lignesAudio(debutDeclencheur, finObs, MOTIFS_ORDRE);
 
     const porte = (r) => (r?.niveaux?.[0]?.db ?? SENTINEL_DB) > SENTINEL_DB;
-    const dernier = releves[releves.length - 1] ?? null;
-    const porteuseApres = dernier
-        ? (porte(dernier[c1.session]) ? c1.session : porte(dernier[c2.session]) ? c2.session : null)
+    const last = releves[releves.length - 1] ?? null;
+    const porteuseApres = last
+        ? (porte(last[c1.session]) ? c1.session : porte(last[c2.session]) ? c2.session : null)
         : null;
     const dominanteRevenueQuelquePart = !!porteuseApres;
     const promotionObservee = dominanteRevenueQuelquePart && porteuseAvant && porteuseApres !== porteuseAvant;
@@ -641,7 +641,7 @@ async function phaseMontageB(cdp) {
         porteuse_apres: porteuseApres,
         dominante_revenue_quelque_part: dominanteRevenueQuelquePart,
         promotion_observee: promotionObservee,
-        dernier_releve: dernier,
+        last_reading: last,
     };
 }
 

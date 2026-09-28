@@ -59,16 +59,16 @@ use super::montee::{
 use crate::capture::SortieDxgi;
 use crate::mire;
 
-pub(super) fn mesurer(nombre: u8) -> Result<()> {
+pub(super) fn mesurer(count: u8) -> Result<()> {
     anyhow::ensure!(
-        (1..=mire::MIRES_MAX).contains(&nombre),
+        (1..=mire::MIRES_MAX).contains(&count),
         "MULTIFENETRE_VDD_PARALLELE doit valoir 1 à {}",
         mire::MIRES_MAX
     );
 
-    let avant = relever_topologie("avant création")?;
-    let noms_avant = noms_attaches(&avant);
-    let connues: HashSet<String> = avant
+    let before = relever_topologie("avant création")?;
+    let names_before = noms_attaches(&before);
+    let connues: HashSet<String> = before
         .iter()
         .map(|sortie| sortie.nom_sortie.clone())
         .collect();
@@ -80,22 +80,22 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     // the final survey, otherwise the latter would describe a transient state.
     let issue = {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
-        for rang in 1..=nombre {
+        for rang in 1..=count {
             let id = sorties
-                .creer(largeur, hauteur, hertz)
+                .create(largeur, hauteur, hertz)
                 .with_context(|| format!("création de la sortie virtuelle n°{rang}"))?;
             tracing::info!(rang, id, "sortie virtuelle créée");
         }
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
         let apres = relever_topologie("après création")?;
-        let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
+        let virtuelles = designer_sorties_neuves(&apres, &connues, count)?;
         // Built right after `attendre_en_pinguant`, hence right after the
         // last known ping. The seam between the two is NOT counted in
-        // the maximum interval — `Garde::nouvelle` sets its origin at its own
+        // the maximum interval — `Garde::new` sets its origin at its own
         // construction —, it is made negligible by the adjacency of the two
-        // calls: 66 µs in the survey. See `compteurs::Garde::nouvelle`.
-        let mut garde = compteurs::Garde::nouvelle(&pilote);
+        // calls: 66 µs in the survey. See `compteurs::Garde::new`.
+        let mut garde = compteurs::Garde::new(&pilote);
         garde.battre()?;
         let issue = passes::executer_passes(&mut garde, &virtuelles);
         // The figure that tells whether the watchdog was beaten without a gap over
@@ -127,11 +127,11 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     std::thread::sleep(DELAI_TOPOLOGIE);
     let final_ = relever_topologie("après destruction")?;
     let noms_final = noms_attaches(&final_);
-    if noms_final == noms_avant {
+    if noms_final == names_before {
         tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
     } else {
         tracing::error!(
-            noms_avant = ?noms_avant,
+            names_before = ?names_before,
             noms_apres = ?noms_final,
             "la topologie n'est PAS revenue à son état initial — purge requise"
         );
@@ -140,7 +140,7 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     issue
 }
 
-/// Finds the `nombre` outputs this probe has just created, by
+/// Finds the `count` outputs this probe has just created, by
 /// DIFFERENCE OF SETS OF NAMES.
 ///
 /// Not by index: DXGI renumbers its outputs at each topology
@@ -158,7 +158,7 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 pub(super) fn designer_sorties_neuves(
     apres: &[SortieDxgi],
     connues: &HashSet<String>,
-    nombre: u8,
+    count: u8,
 ) -> Result<Vec<SortieDxgi>> {
     let neuves: Vec<SortieDxgi> = apres
         .iter()
@@ -167,8 +167,8 @@ pub(super) fn designer_sorties_neuves(
         .collect();
     let noms: Vec<&str> = neuves.iter().map(|s| s.nom_sortie.as_str()).collect();
     anyhow::ensure!(
-        neuves.len() == nombre as usize,
-        "{} sorties DXGI neuves après création de {nombre} ({noms:?}) — \
+        neuves.len() == count as usize,
+        "{} sorties DXGI neuves après création de {count} ({noms:?}) — \
          une addition ou un retrait externe rend la mesure inimputable",
         neuves.len()
     );
@@ -229,10 +229,10 @@ pub(super) fn designer_sorties_neuves(
 fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
     let vivantes = match crate::capture::enumerer_sorties() {
         Ok(sorties) => sorties,
-        Err(erreur) => {
+        Err(error) => {
             tracing::error!(
                 passe,
-                causes = %super::causes(erreur),
+                causes = %super::causes(error),
                 "topologie illisible après la passe — survie des sorties inconnue"
             );
             return;
@@ -262,7 +262,7 @@ fn constater_survie(passe: &str, virtuelles: &[SortieDxgi]) {
     if disparues.is_empty() && detachees.is_empty() {
         tracing::info!(
             passe,
-            nombre = virtuelles.len(),
+            count = virtuelles.len(),
             "les N sorties virtuelles sont encore là ET attachées — les verdicts de cette \
              passe portent bien sur elles"
         );

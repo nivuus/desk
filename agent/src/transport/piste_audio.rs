@@ -123,7 +123,7 @@ impl Session {
         match writer.write(pt, packet.captured_at, rtp_time, packet.data) {
             Ok(()) => true,
             Err(e) => {
-                tracing::warn!(erreur = %e, "échec d'écriture audio, paquet abandonné");
+                tracing::warn!(error = %e, "échec d'écriture audio, paquet abandonné");
                 false
             }
         }
@@ -324,7 +324,7 @@ impl Session {
         // rebuilder — see `injection`, which carries the budget, its reason
         // for being process-global, and the contract of this call site.
         //
-        // ⚠️ The `Err` arm that follows is LEGACY 6's (`{erreur:#}`): the
+        // ⚠️ The `Err` arm that follows is LEGACY 6's (`{error:#}`): the
         // injected fault goes through the same `warn!`, and the acceptance log
         // therefore carries the injected-fault error naming `AUDIO_FAUTE_RECONSTRUCTION`.
         // It is the REACHABILITY check of this legacy — if that string
@@ -341,7 +341,7 @@ impl Session {
                 // rebuilt" = 2, `compteurs_audio_actif_true` = 0 in
                 // both): a source rebuilt by
                 // `WindowsAudioSource::pour_processus` IS BORN SILENT
-                // (`windows_audio.rs::demarrer`) — unlike the
+                // (`windows_audio.rs::start`) — unlike the
                 // single-window `new()`, which enables its own emission. Without this
                 // line, NOTHING re-arms the rebuilt source: it
                 // produces no packet, hence no PROOF
@@ -363,8 +363,8 @@ impl Session {
                 self.audio_reconstruit_sans_preuve = true;
                 false
             }
-            Err(erreur) => {
-                // `{erreur:#}` and not `%erreur`: `anyhow`'s plain `Display`
+            Err(error) => {
+                // `{error:#}` and not `%error`: `anyhow`'s plain `Display`
                 // only renders the OUTERMOST context, and
                 // `windows_audio.rs` sets precisely one
                 // (the process loopback opening for the PID …). The HRESULT —
@@ -377,7 +377,7 @@ impl Session {
                 // `diagnostics/multifenetre/plafond/sonde.rs`, which explains it
                 // word for word about an HRESULT lost the same way.
                 tracing::warn!(
-                    erreur = format!("{erreur:#}"),
+                    error = format!("{error:#}"),
                     restantes = self.reconstructions_restantes,
                     "reconstruction de la capture audio refusée"
                 );
@@ -447,8 +447,8 @@ mod tests {
         let sans_audio = bounded_wait(maintenant, echeance_rtc, None, None);
         assert_eq!(sans_audio, Duration::from_secs(1));
 
-        let avec_audio = bounded_wait(maintenant, echeance_rtc, None, Some(AUDIO_POLL_INTERVAL));
-        assert_eq!(avec_audio, AUDIO_POLL_INTERVAL);
+        let with_audio = bounded_wait(maintenant, echeance_rtc, None, Some(AUDIO_POLL_INTERVAL));
+        assert_eq!(with_audio, AUDIO_POLL_INTERVAL);
 
         // The ceiling must never LENGTHEN an already shorter wait.
         let echeance_proche = maintenant + Duration::from_micros(200);
@@ -456,12 +456,12 @@ mod tests {
         assert_eq!(court, Duration::from_micros(200));
     }
 
-    /// Exercises the FORMAT, not the call site: `{erreur:#}` renders the chain of
-    /// causes where `{erreur}` only renders the outermost context. The site
+    /// Exercises the FORMAT, not the call site: `{error:#}` renders the chain of
+    /// causes where `{error}` only renders the outermost context. The site
     /// itself is not observable on the host (it is a `tracing`
     /// `warn!`); its proof is the acceptance log, not this test.
     #[test]
-    fn le_format_diese_rend_la_chaine_de_causes() {
+    fn the_alternate_format_renders_the_cause_chain() {
         use anyhow::Context;
 
         let cause = anyhow::anyhow!("0x88890004");

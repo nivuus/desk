@@ -85,7 +85,7 @@ async function obtenirPaire() {
     return corps;
 }
 
-const resultat = { prefixe: PREFIXE, journal, erreurs: [], gabarits: [], mesures: [] };
+const result = { prefixe: PREFIXE, journal, errors: [], gabarits: [], mesures: [] };
 let chrome;
 try {
     const paire = await obtenirPaire();
@@ -110,7 +110,7 @@ try {
     chrome = lancerChrome(PORT_CDP, UDD);
     const ver = await attendreDevtools(PORT_CDP);
     dire(`chrome : ${ver.Browser}`);
-    resultat.chrome = ver.Browser;
+    result.chrome = ver.Browser;
 
     const cdp = new Cdp(ver.webSocketDebuggerUrl);
     const sessions = new Map();
@@ -146,7 +146,7 @@ try {
 
     // 🔴 LA CONSOLE DE LA PAGE-SHELL EST CAPTUREE, ET C'EST LA PORTE P0 QUI
     // L'EXIGE : `client/src/fichiers/canal.ts:134` ne journalise qu'un
-    // `console.warn('trame fichiers non traitée', e)` quand `canal.send()`
+    // `console.warn('trame files non traitée', e)` quand `canal.send()`
     // echoue. Sans cette capture, un REFUS DU NAVIGATEUR serait indiscernable
     // d'un SILENCE DU PRODUIT.
     //
@@ -165,7 +165,7 @@ try {
         console_page.push({ t: new Date().toISOString(), niveau: m.params.type, texte: args.join(' ').slice(0, 500) });
         if (console_page.length > 600) console_page.shift();
     });
-    resultat.console_page = console_page;
+    result.console_page = console_page;
 
     const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}`;
     dire(`navigation : ${url}`);
@@ -174,7 +174,7 @@ try {
 
     for (let i = 0; i < 120; i += 1) {
         const p = await cdp.evalBorne(sessionShell, `String(window.__f2 && window.__f2.peuple)`, 5000, false);
-        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); resultat.opfs_entrees = Number(p); break; }
+        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); result.opfs_entrees = Number(p); break; }
         await dodo(500);
     }
 
@@ -188,7 +188,7 @@ try {
 
     const jetonVu = await cdp.evalBorne(sessionShell, `JSON.stringify({ href: location.href, jeton: !!localStorage.getItem('guac.jeton.acces'), bouton: !!document.querySelector('#choisir-dossier') })`, 8000, false);
     dire(`etat avant le clic : ${jetonVu}`);
-    resultat.etat_avant_clic = jetonVu;
+    result.etat_avant_clic = jetonVu;
     if (!String(jetonVu).includes('"jeton":true') || !String(jetonVu).includes('"bouton":true')) {
         throw new Error(`la page-shell n est pas dans l etat attendu : ${jetonVu}`);
     }
@@ -206,20 +206,20 @@ try {
         await dodo(1000);
     }
     dire(`#etat-fichiers : ${JSON.stringify(monte)}`);
-    resultat.etat_fichiers = monte;
+    result.etat_fichiers = monte;
     // ⚠️ LE TEST PORTE SUR LE SUCCES, PAS SUR LA SOUS-CHAINE « mont » : les DEUX
     // messages de `shell.ts` la contiennent, et F1 a mesure NEUF MINUTES sur un
     // pont NON monte pour l'avoir oublie.
     const bienMonte = typeof monte === 'string' && !monte.includes('n’a pas pu')
         && !monte.includes("n'a pas pu") && /mont[ée]/.test(monte);
-    resultat.bien_monte = bienMonte;
+    result.bien_monte = bienMonte;
     if (!bienMonte) throw new Error(`lecteur NON monte : ${JSON.stringify(monte)}`);
 
     await dodo(Number(process.env.REPOS_APRES_MONTAGE_MS ?? 8000));
 
     if (process.env.NEUTRALISER_MOVE === '1') {
-        resultat.move_neutralise = await lire(cdp, sessionShell, `window.__neutraliserMove()`, 10000, false);
-        dire(`move neutralise : ${JSON.stringify(resultat.move_neutralise)}`);
+        result.move_neutralise = await lire(cdp, sessionShell, `window.__neutraliserMove()`, 10000, false);
+        dire(`move neutralise : ${JSON.stringify(result.move_neutralise)}`);
     }
 
     // ── LES GABARITS ──────────────────────────────────────────────────────
@@ -235,11 +235,11 @@ try {
             const compte = await lire(cdp, sessionShell, `window.__compteEntrees(${JSON.stringify('listage/' + n)})`, 60000, true);
             v = { ...v, ...compte };
         } else {
-            const [, sous, nom, taille] = spec.split(':');
-            v = await lire(cdp, sessionShell, `window.__gabaritFichier(${JSON.stringify(sous)}, ${JSON.stringify(nom)}, ${Number(taille)}, 424242)`, 900000, true);
+            const [, sub, nom, size] = spec.split(':');
+            v = await lire(cdp, sessionShell, `window.__gabaritFichier(${JSON.stringify(sub)}, ${JSON.stringify(nom)}, ${Number(size)}, 424242)`, 900000, true);
         }
         const releve = { spec, ms_peuplement: Date.now() - t0, ...v };
-        resultat.gabarits.push(releve);
+        result.gabarits.push(releve);
         dire(`gabarit ${spec} : ${JSON.stringify(releve)}`);
     }
 
@@ -255,12 +255,12 @@ try {
             const { stdout } = await execFileAsync('bash',
                 ['-c', `bash ${ICI}/mesurer-f4.sh ${JSON.stringify(process.env.PLAN_VM)} ${REPOS_MESURE}`],
                 { encoding: 'utf8', timeout: 3_600_000, maxBuffer: 64 * 1024 * 1024 });
-            resultat.mesure_vm_brut = stdout;
+            result.mesure_vm_brut = stdout;
             const ligne = stdout.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('{')).pop();
-            resultat.mesure_vm = ligne ? JSON.parse(ligne) : null;
-            dire(`mesure VM : ${ligne ? `${resultat.mesure_vm?.releves?.length ?? 0} gestes` : 'AUCUN JSON'} en ${Math.round((Date.now() - t0) / 1000)} s`);
+            result.mesure_vm = ligne ? JSON.parse(ligne) : null;
+            dire(`mesure VM : ${ligne ? `${result.mesure_vm?.releves?.length ?? 0} gestes` : 'AUCUN JSON'} en ${Math.round((Date.now() - t0) / 1000)} s`);
         } catch (e) {
-            resultat.mesure_vm_erreur = String(e).slice(0, 3000);
+            result.mesure_vm_erreur = String(e).slice(0, 3000);
             dire(`mesure VM ECHOUEE : ${String(e).slice(0, 300)}`);
         }
     }
@@ -269,8 +269,8 @@ try {
     // ⚠️ Le pilote en prend une copie ICI, tant que la page-shell vit : les
     // lignes de recensement qui bornent le dernier geste y sont deja.
     try {
-        resultat.agent_log_octets = fs.statSync(AGENT_LOG).size;
-    } catch (e) { resultat.agent_log_octets = null; }
+        result.agent_log_octets = fs.statSync(AGENT_LOG).size;
+    } catch (e) { result.agent_log_octets = null; }
 
     // ── TEMOIN « la video est intacte » — GRATUIT ICI ─────────────────────
     // ⚠️ IL A DEJA ETE NON MESURABLE UNE FOIS (F2, critere ⑥ : `window.__pc`
@@ -278,27 +278,27 @@ try {
     // raisonnement.
     const cibles = await (await fetch(`http://127.0.0.1:${PORT_CDP}/json/list`)).json();
     const pages = cibles.filter((c) => c.type === 'page' && c.url.includes('session='));
-    resultat.fenetres_application = pages.length;
-    resultat.flux = [];
+    result.fenetres_application = pages.length;
+    result.flux = [];
     for (const p of pages) {
         const sid = sessions.get(p.id);
-        if (!sid) { resultat.flux.push({ url: p.url.slice(-30), v: { sansSession: true } }); continue; }
+        if (!sid) { result.flux.push({ url: p.url.slice(-30), v: { sansSession: true } }); continue; }
         const v = await lire(cdp, sid, `(async () => { const pc = window.__pc; if (!pc) return JSON.stringify({ sansPc: true }); const s = await pc.getStats(); let d = null, l = null; s.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'video') { d = r.framesDecoded; l = r.packetsLost; } }); return JSON.stringify({ framesDecoded: d, packetsLost: l }); })()`, 8000, true);
-        resultat.flux.push({ url: p.url.slice(-30), v });
+        result.flux.push({ url: p.url.slice(-30), v });
     }
-    dire(`fenetres d application : ${pages.length} — flux : ${JSON.stringify(resultat.flux)}`);
+    dire(`fenetres d application : ${pages.length} — flux : ${JSON.stringify(result.flux)}`);
 
-    resultat.etat_injection = await lire(cdp, sessionShell, `window.__f4Etat()`, 10000, false);
-    resultat.ok = true;
+    result.etat_injection = await lire(cdp, sessionShell, `window.__f4Etat()`, 10000, false);
+    result.ok = true;
 } catch (e) {
-    resultat.ok = false;
-    resultat.erreurs.push(String(e).slice(0, 1500));
+    result.ok = false;
+    result.errors.push(String(e).slice(0, 1500));
     dire(`ERREUR : ${String(e).slice(0, 600)}`);
 } finally {
     fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
-    fs.writeFileSync(SORTIE, JSON.stringify(resultat, null, 1));
+    fs.writeFileSync(SORTIE, JSON.stringify(result, null, 1));
     dire(`resultat ecrit : ${SORTIE}`);
     if (chrome) chrome.kill();
     await dodo(500);
-    process.exit(resultat.ok ? 0 : 1);
+    process.exit(result.ok ? 0 : 1);
 }

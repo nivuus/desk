@@ -5,8 +5,8 @@ fn e(nom: &str) -> Entree {
     Entree {
         nom: nom.to_string(),
         repertoire: false,
-        taille: 0,
-        modifie_ms: 0,
+        size: 0,
+        modified_ms: 0,
     }
 }
 
@@ -35,7 +35,7 @@ fn l_ordre_suit_le_comparateur_injecte_et_non_l_ordre_lexicographique() {
 /// 🔴 **The `searchExpression` filter is OPTIONAL and it is PROVIDED.**
 /// Ignoring it is a silent fault: a `dir /b *.txt` would return everything.
 #[test]
-fn l_expression_de_recherche_est_appliquee_quand_elle_est_fournie() {
+fn the_search_expression_is_applied_when_provided() {
     let entrees = vec![e("note.txt"), e("image.png"), e("autre.txt")];
     let prepare = preparer(
         entrees,
@@ -71,14 +71,14 @@ fn sans_expression_l_apparieur_n_est_pas_consulte() {
 
 #[test]
 fn une_session_neuve_n_est_pas_chargee() {
-    let session = Session::nouvelle();
+    let session = Session::new();
     assert!(!session.chargee());
     assert!(session.prochaine().is_none());
 }
 
 #[test]
-fn une_session_chargee_rend_ses_entrees_dans_l_ordre_puis_s_epuise() {
-    let mut session = Session::nouvelle();
+fn a_loaded_session_returns_its_entries_in_order_then_runs_out() {
+    let mut session = Session::new();
     session.poser(vec![e("un"), e("deux")]);
     assert!(session.chargee());
     assert_eq!(session.prochaine().map(|e| e.nom.as_str()), Some("un"));
@@ -96,7 +96,7 @@ fn une_session_chargee_rend_ses_entrees_dans_l_ordre_puis_s_epuise() {
 /// directory to any application that asks again from the start — silently.
 #[test]
 fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
-    let mut session = Session::nouvelle();
+    let mut session = Session::new();
     session.poser(vec![e("un"), e("deux")]);
     session.avancer();
     session.avancer();
@@ -114,7 +114,7 @@ fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
 /// new list, and the enumeration would return empty.
 #[test]
 fn reposer_des_entrees_remet_le_curseur_a_zero() {
-    let mut session = Session::nouvelle();
+    let mut session = Session::new();
     session.poser(vec![e("un"), e("deux")]);
     session.avancer();
     session.poser(vec![e("trois")]);

@@ -19,7 +19,7 @@
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 
-NOM="${1:?nom}"; FICHIER="${2:?fichier}"; ANCRE="${3?ancre}"; REMPLACEMENT="${4?remplacement}"
+NOM="${1:?nom}"; FILE="${2:?fichier}"; ANCRE="${3?ancre}"; REMPLACEMENT="${4?remplacement}"
 shift 4
 
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
@@ -28,17 +28,17 @@ COPIE="$(mktemp "/tmp/rouge-g5-XXXXXX")"
 
 echo "════════════════════════════════════════════════════════════════"
 echo "ROUGE $NOM"
-echo "  fichier : $FICHIER"
+echo "  fichier : $FILE"
 echo "  ancre   : $ANCRE"
 echo "  vers    : $REMPLACEMENT"
 
 # ① the named copy, and its fingerprint
-cp "$FICHIER" "$COPIE"
-AVANT="$(sha256sum "$FICHIER" | cut -d' ' -f1)"
-echo "  sha256 avant : $AVANT"
+cp "$FILE" "$COPIE"
+BEFORE="$(sha256sum "$FILE" | cut -d' ' -f1)"
+echo "  sha256 avant : $BEFORE"
 
 # ② the anchor exists EXACTLY once — a count, never a rereading
-N="$(python3 - "$FICHIER" "$ANCRE" <<'PY'
+N="$(python3 - "$FILE" "$ANCRE" <<'PY'
 import sys
 print(open(sys.argv[1]).read().count(sys.argv[2]))
 PY
@@ -50,7 +50,7 @@ if [ "$N" != "1" ]; then
 fi
 
 # ③ la mutation
-python3 - "$FICHIER" "$ANCRE" "$REMPLACEMENT" <<'PY'
+python3 - "$FILE" "$ANCRE" "$REMPLACEMENT" <<'PY'
 import sys
 p,a,r = sys.argv[1], sys.argv[2], sys.argv[3]
 s = open(p).read()
@@ -58,11 +58,11 @@ open(p,'w').write(s.replace(a, r, 1))
 PY
 
 # ④ PROOF that the diff AGAINST THE COPY is not empty — otherwise we REFUSE
-LIGNES="$(diff "$COPIE" "$FICHIER" | wc -l)"
+LIGNES="$(diff "$COPIE" "$FILE" | wc -l)"
 echo "  lignes de diff contre la copie : $LIGNES"
 if [ "$LIGNES" = "0" ]; then
   echo "  ⛔ REFUSEE : DIFF VIDE — la mutation n'a rien mute, ce n'est pas une rouge"
-  cp "$COPIE" "$FICHIER"; rm -f "$COPIE"; exit 4
+  cp "$COPIE" "$FILE"; rm -f "$COPIE"; exit 4
 fi
 
 # ⑤ the check
@@ -74,12 +74,12 @@ set -e
 echo "  ── code de sortie du controle : $CODE ──"
 
 # ⑥ restoration, FROM THE COPY
-cp "$COPIE" "$FICHIER"
+cp "$COPIE" "$FILE"
 
 # ⑦ the fingerprint is EQUAL — THAT is the proof of restoration
-APRES="$(sha256sum "$FICHIER" | cut -d' ' -f1)"
+APRES="$(sha256sum "$FILE" | cut -d' ' -f1)"
 echo "  sha256 apres : $APRES"
-if [ "$AVANT" != "$APRES" ]; then
+if [ "$BEFORE" != "$APRES" ]; then
   echo "  ⛔ RESTAURATION FAUSSE : les empreintes different"
   rm -f "$COPIE"; exit 5
 fi

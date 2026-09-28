@@ -27,7 +27,7 @@
         localStorage.setItem('guac.prefixe', '__PREFIXE__');
     } catch (e) { /* page sans localStorage */ }
 
-    window.__e3 = { micState: [], canaux: 0, erreurs: [], ouvertures: [] };
+    window.__e3 = { micState: [], canaux: 0, errors: [], ouvertures: [] };
 
     // 🔴 THE `signaling` PARAMETER IS ADDED TO THE WINDOWS THE SHELL OPENS,
     // AND IT IS A SETUP COMPENSATION, NOT A PRODUCT FIX.
@@ -60,7 +60,7 @@
             window.__e3.ouvertures.push({ t: Date.now(), demande: String(u).slice(0, 200), ouverte: String(cible).slice(0, 200) });
             return natif.call(window, cible, ...reste);
         };
-    } catch (e) { window.__e3.erreurs.push(String(e).slice(0, 200)); }
+    } catch (e) { window.__e3.errors.push(String(e).slice(0, 200)); }
 
     // The control channel is created BY THE CLIENT (`createDataChannel`), so
     // that is where the witness attaches. A PASSIVE `addEventListener`: it takes
@@ -78,9 +78,9 @@
                         if (t.indexOf('mic-state') === -1) return;
                         window.__e3.micState.push({ t: Date.now(), brut: t.slice(0, 200) });
                     });
-                } catch (e) { window.__e3.erreurs.push(String(e).slice(0, 200)); }
+                } catch (e) { window.__e3.errors.push(String(e).slice(0, 200)); }
                 return c;
             };
         }
-    } catch (e) { window.__e3.erreurs.push(String(e).slice(0, 200)); }
+    } catch (e) { window.__e3.errors.push(String(e).slice(0, 200)); }
 })();

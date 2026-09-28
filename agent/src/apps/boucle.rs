@@ -123,8 +123,8 @@ pub fn tourner(
         veille,
         mode,
     } = reglages;
-    if let Err(erreur) = lecture::initialiser_com() {
-        tracing::error!(%erreur, "decouverte d'applications abandonnee : COM indisponible");
+    if let Err(error) = lecture::initialize_com() {
+        tracing::error!(%error, "decouverte d'applications abandonnee : COM indisponible");
         return;
     }
 
@@ -229,7 +229,7 @@ pub fn tourner(
         // would be the defect, not counting it would be another one.
         if !diff.apparues.is_empty() {
             if let Ok(mut f) = partage.fenetres.lock() {
-                f.ajouter(diff.apparues.len());
+                f.add(diff.apparues.len());
             }
         }
         // The request read BEFORE the tick is honoured AFTER it: it really is

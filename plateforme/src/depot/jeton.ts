@@ -29,7 +29,7 @@ import type { Pilote } from '../base/pilote';
 
 export type MotifRafraichissement = 'inconnu' | 'expire' | 'rejeu' | 'revoque';
 export type IssueRotation =
-    | { ok: true; clair: string; utilisateurId: string }
+    | { ok: true; clair: string; userId: string }
     | { ok: false; motif: MotifRafraichissement };
 
 /// 30 days. ⚠️ UNCALIBRATED: no measurement has judged it. It joins the
@@ -59,7 +59,7 @@ interface LigneJeton {
     revoque_a: number | null;
 }
 
-function nouveauClair(): string {
+function newPlaintext(): string {
     return randomBytes(OCTETS_CLAIR).toString('base64url');
 }
 
@@ -79,14 +79,14 @@ async function lireParEmpreinte(p: Pilote, empreinte: string): Promise<LigneJeto
 async function inserer(
     p: Pilote,
     id: string,
-    utilisateurId: string,
+    userId: string,
     famille: string,
     clair: string,
     maintenant: number,
 ): Promise<void> {
     await p.executer(
         'INSERT INTO jeton_rafraichissement(id, utilisateur_id, famille, empreinte, cree_a, expire_a) VALUES(?, ?, ?, ?, ?, ?)',
-        [id, utilisateurId, famille, empreinteDe(clair), maintenant, maintenant + DUREE_RAFRAICHISSEMENT_MS],
+        [id, userId, famille, empreinteDe(clair), maintenant, maintenant + DUREE_RAFRAICHISSEMENT_MS],
     );
 }
 
@@ -94,11 +94,11 @@ async function inserer(
 /// CLEAR, the one and only time it exists outside the browser.
 export async function emettre(
     p: Pilote,
-    utilisateurId: string,
+    userId: string,
     maintenant: number,
 ): Promise<string> {
-    const clair = nouveauClair();
-    await inserer(p, randomUUID(), utilisateurId, randomUUID(), clair, maintenant);
+    const clair = newPlaintext();
+    await inserer(p, randomUUID(), userId, randomUUID(), clair, maintenant);
     return clair;
 }
 
@@ -130,7 +130,7 @@ export async function tourner(
     p: Pilote,
     clair: string,
     maintenant: number,
-    genererClair: () => string = nouveauClair,
+    genererClair: () => string = newPlaintext,
 ): Promise<IssueRotation> {
     return p.transaction(async (tx) => {
         const ligne = await lireParEmpreinte(tx, empreinteDe(clair));
@@ -160,6 +160,6 @@ export async function tourner(
             [maintenant, idNeuf, ligne.id],
         );
         await inserer(tx, idNeuf, ligne.utilisateur_id, ligne.famille, clairNeuf, maintenant);
-        return { ok: true, clair: clairNeuf, utilisateurId: ligne.utilisateur_id } as const;
+        return { ok: true, clair: clairNeuf, userId: ligne.utilisateur_id } as const;
     });
 }

@@ -30,7 +30,7 @@ use std::sync::{Arc, Mutex};
 use crate::pont::ecriture::Evenement;
 use crate::pont::table::Table;
 use crate::pont::transport::VersNavigateur;
-use proto::fichiers::CodeEchec;
+use proto::files::CodeEchec;
 /// What the write thread receives.
 ///
 /// ⚠️ **A SINGLE CHANNEL, and it is a declared divergence from F2's plan**,
@@ -51,7 +51,7 @@ pub enum Ordre {
     ///
     /// 🔴 **IT IS THE ONLY ORDER THAT TRIGGERS RESUMPTION**, and it is what
     /// closes the thirty-second window F2 measured two times out of two.
-    /// Before F5, `Fil::demarrer` called `reprendre()` **at the thread's
+    /// Before F5, `Fil::start` called `reprendre()` **at the thread's
     /// start** — that is, at the bridge's start, *without knowing whether a browser
     /// is there, nor which one, nor on which directory*. F2 recorded the replay's
     /// push **0.8 s BEFORE** the browser announced its mount, then

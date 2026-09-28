@@ -68,7 +68,7 @@ export const AGE_EVICTION_TRANCHES_MS = 30 * 24 * 60 * 60_000;
 /// never sanitised: sanitising silently would write somewhere, and
 /// nobody would know where.
 ///
-/// The required shape is the one `depot/televersement.ts::creer` produces —
+/// The required shape is the one `depot/televersement.ts::create` produces —
 /// `randomUUID()`, hence a LOWERCASE UUID. The coupling is deliberate and
 /// named: if that format changed one day, the guard would LOUDLY refuse every
 /// upload rather than open a path.
@@ -105,20 +105,20 @@ export function rangValide(n: number): boolean {
 /// the cap, on the other hand, is the NORMAL behaviour of a peer that sends
 /// too much: it must translate into an HTTP refusal without a `catch` having to guess the
 /// code from an error message.
-export type ResultatEcriture =
+export type WriteResult =
     | { ok: true; octets: number }
     | { ok: false; motif: 'plafond-depasse'; plafond: number };
 
 export interface MagasinTranches {
     racine: string;
     /// Deposits a chunk AS A STREAM, under a hard byte cap.
-    ecrire(id: string, n: number, flux: AsyncIterable<Uint8Array>, plafondOctets: number): Promise<ResultatEcriture>;
+    write(id: string, n: number, flux: AsyncIterable<Uint8Array>, plafondOctets: number): Promise<WriteResult>;
     /// The chunks actually present on the disk, with their sizes.
     lister(id: string): Tranche[];
     /// A stream that concatenates the requested ranks, in the given order.
     concatener(id: string, rangs: readonly number[]): Readable;
     /// Removes a whole upload.
-    supprimer(id: string): void;
+    remove(id: string): void;
     /// Evicts BY AGE, with a REFERENCE FLOOR — see `AGE_EVICTION_TRANCHES_MS`.
     /// `maintenant` is a PARAMETER, never read from the clock: same rule as
     /// everywhere else in this repository.
@@ -133,7 +133,7 @@ export interface MagasinTranches {
     /// see `nettoyage.ts::nettoyerTranches`.
     ///
     /// ⚠️ RAISES ON AN INVALID IDENTIFIER, like `lister`/`concatener`/
-    /// `supprimer`: this store never writes such a name itself, and a
+    /// `remove`: this store never writes such a name itself, and a
     /// caller that hands it one has a wiring defect, not wire data
     /// to absorb silently.
     derniereActivite(id: string): Promise<number | undefined>;
@@ -195,12 +195,12 @@ export function ouvrirMagasinTranches(
         /// an inconsistency is NOT repaired by requesting again — it makes
         /// the whole upload fail. A network cut would therefore poison an
         /// 800 MB deposit without any trace saying so.
-        async ecrire(
+        async write(
             id: string,
             n: number,
             flux: AsyncIterable<Uint8Array>,
             plafondOctets: number,
-        ): Promise<ResultatEcriture> {
+        ): Promise<WriteResult> {
             const cible = cheminDe(id, n);
             mkdirSync(join(racine, id), { recursive: true });
 
@@ -232,14 +232,14 @@ export function ouvrirMagasinTranches(
                     },
                     createWriteStream('', { fd, autoClose: true }),
                 );
-            } catch (erreur) {
+            } catch (error) {
                 // 🔴 THE PARTIAL FILE IS DELETED, whatever the cause:
                 // overflow, cut-off, full disk. An abandoned `.part`
                 // is never counted as a slice (see `lister`), but
                 // it would occupy the disk until the purge.
                 //
                 // 🔴 AND THIS `rmSync` WAS INEFFECTIVE — MEASURED, NOT ASSUMED.
-                // A direct probe on `ecrire`, outside HTTP, found
+                // A direct probe on `write`, outside HTTP, found
                 // non-empty directories each carrying a `.part`:
                 // **42 out of 400 overflows** on a first measurement, then
                 // **100 out of 400** on a second one, under another load.
@@ -273,7 +273,7 @@ export function ouvrirMagasinTranches(
                 // DISK LEAK, on a service that accepts 4 GiB.
                 rmSync(provisoire, { force: true });
                 if (depasse) return { ok: false, motif: 'plafond-depasse', plafond: plafondOctets };
-                throw erreur;
+                throw error;
             }
             renameSync(provisoire, cible);
             return { ok: true, octets };
@@ -362,7 +362,7 @@ export function ouvrirMagasinTranches(
         /// ⚠️ `force`: deleting an upload that never received a
         /// slice is a success, not an error — it is the state of a purge that
         /// runs after an upload abandoned before its first frame.
-        supprimer(id: string): void {
+        remove(id: string): void {
             rmSync(repertoireDe(id), { recursive: true, force: true });
         },
 
@@ -371,7 +371,7 @@ export function ouvrirMagasinTranches(
         /// comment of `AGE_EVICTION_TRANCHES_MS`.
         ///
         /// 🔴 THE AGE IS THAT OF THE DIRECTORY, NOT OF A SLICE: each upload
-        /// (`ecrire`, through its final `renameSync`) touches the parent directory,
+        /// (`write`, through its final `renameSync`) touches the parent directory,
         /// so its timestamp follows the last activity of the whole
         /// upload, slice by slice, without having to list them all.
         ///

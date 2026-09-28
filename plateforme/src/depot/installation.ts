@@ -52,7 +52,7 @@ export interface LigneInstallation {
     maj_a: number;
 }
 
-export async function creer(
+export async function create(
     p: Pilote,
     entree: { vmId: string; televersementId: string },
     maintenant: number,
@@ -89,7 +89,7 @@ export async function creer(
     return ligne;
 }
 
-const COLONNES =
+const COLUMNS =
     'id, vm_id, televersement_id, demandee_a, etat, phase, octets_faits, octets_total,'
     + ' ecoule_ms, code_sortie, issue, motif, journal, journal_tronque, terminee_a, maj_a';
 
@@ -98,7 +98,7 @@ export async function lireParId(
     id: string,
 ): Promise<LigneInstallation | undefined> {
     const lignes = await p.interroger<LigneInstallation>(
-        `SELECT ${COLONNES} FROM installation WHERE id = ?`,
+        `SELECT ${COLUMNS} FROM installation WHERE id = ?`,
         [id],
     );
     return lignes[0];
@@ -117,7 +117,7 @@ export async function lireEnAttentePourVm(
     vmId: string,
 ): Promise<LigneInstallation[]> {
     return p.interroger<LigneInstallation>(
-        `SELECT ${COLONNES} FROM installation WHERE vm_id = ? AND etat = ? ORDER BY demandee_a`,
+        `SELECT ${COLUMNS} FROM installation WHERE vm_id = ? AND etat = ? ORDER BY demandee_a`,
         [vmId, 'en_attente'],
     );
 }

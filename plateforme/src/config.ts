@@ -26,7 +26,7 @@
 // ✅ **P5 DELIVERED WHAT THIS SENTENCE ANNOUNCED**, and it is corrected rather
 // than removed: it said "secret attempts are throttled by
 // nothing to date (that is the subject of P5)". They are — `agents/canal.ts`
-// consults the throttle BEFORE `verifierEnrolement`, hence before any `scrypt`.
+// consults the throttle BEFORE `verifyEnrolment`, hence before any `scrypt`.
 // The `PLATEFORME_HOTE` argument above loses nothing by it: it still holds
 // before any authentication, and it covers the relay, which the throttle does NOT
 // cover (see the annotation of `signaling/resilience.test.ts`).
@@ -36,7 +36,7 @@
 // parameter, never `process.env` read on the sly, which makes the function pure and
 // testable without dirtying the environment of the test process.
 
-import { LONGUEUR_SECRET_MIN } from './identite/jeton';
+import { MIN_SECRET_LENGTH } from './identite/jeton';
 
 export interface Config {
     /// PLATEFORME_HOTE — no default, see the header comment.
@@ -49,7 +49,7 @@ export interface Config {
     base: 'sqlite' | 'postgres';
     /// PLATEFORME_BASE_URL — SQLite file path or pg connection URL.
     urlBase: string;
-    /// PLATEFORME_SECRET_JETON — NO default, at least `LONGUEUR_SECRET_MIN`
+    /// PLATEFORME_SECRET_JETON — NO default, at least `MIN_SECRET_LENGTH`
     /// characters. See the comment below: a secret drawn
     /// at random at startup would be worse than no secret at all.
     secretJeton: string;
@@ -221,10 +221,10 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
                 'toutes les sessions à chaque redémarrage.',
         );
     }
-    if (secretJeton.length < LONGUEUR_SECRET_MIN) {
+    if (secretJeton.length < MIN_SECRET_LENGTH) {
         throw new Error(
             `PLATEFORME_SECRET_JETON est trop court : ${secretJeton.length} caractères, ` +
-                `${LONGUEUR_SECRET_MIN} au moins sont exigés — un secret devinable ` +
+                `${MIN_SECRET_LENGTH} au moins sont exigés — un secret devinable ` +
                 "n'authentifie personne.",
         );
     }

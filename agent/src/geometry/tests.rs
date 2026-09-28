@@ -77,7 +77,7 @@ fn rejette_une_intersection_trop_petite() {
 }
 
 #[test]
-fn fenetre_plus_grande_que_l_ecran_dans_les_deux_dimensions() {
+fn window_larger_than_the_screen_in_both_dimensions() {
     let w = Rect {
         x: -500,
         y: -300,

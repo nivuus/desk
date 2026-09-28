@@ -143,13 +143,13 @@ pub struct Sortie {
 /// launched by hand. We then answer `false`: no job, no killing job.
 pub fn job_tue_a_la_fermeture() -> bool {
     let mut infos = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-    let taille = std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32;
+    let size = std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32;
     let ok = unsafe {
         QueryInformationJobObject(
             None,
             JobObjectExtendedLimitInformation,
             (&mut infos as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
-            taille,
+            size,
             None,
         )
     };
@@ -158,18 +158,18 @@ pub fn job_tue_a_la_fermeture() -> bool {
             .BasicLimitInformation
             .LimitFlags
             .contains(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE),
-        Err(erreur) => {
+        Err(error) => {
             // ⚠️ A FAILURE IS NOT A YES. Outside any job, the call fails, and
             // that is exactly the state where there is nothing to fear. Refusing
             // the installation because the question could not be asked would be the
             // failure this guard has precisely just stopped being.
-            tracing::debug!(%erreur, "QueryInformationJobObject a échoué : aucun job, ou job non interrogeable");
+            tracing::debug!(%error, "QueryInformationJobObject a échoué : aucun job, ou job non interrogeable");
             false
         }
     }
 }
 
-pub fn dans_un_job() -> bool {
+pub fn in_a_job() -> bool {
     // ⚠️ `BOOL` LIVES IN `windows::core`, NOT IN `Win32::Foundation` — an
     // API gap of windows-rs 0.62, which `agent/src/window.rs` already documents. The
     // crate is locked at **0.62.2** in `Cargo.lock`: reading a signature
@@ -187,11 +187,11 @@ pub fn dans_un_job() -> bool {
     let ok = unsafe { IsProcessInJob(GetCurrentProcess(), None, &mut dedans) };
     match ok {
         Ok(()) => dedans.as_bool(),
-        Err(erreur) => {
+        Err(error) => {
             // ⚠️ A FAILED QUESTION IS NOT AN ANSWER. We log
             // and answer `false`: refusing every installation because we
             // could not ask the question would be a failure worse than the risk.
-            tracing::warn!(%erreur, "IsProcessInJob a échoué : on suppose hors job");
+            tracing::warn!(%error, "IsProcessInJob a échoué : on suppose hors job");
             false
         }
     }
@@ -212,7 +212,7 @@ pub fn executer(
     // and they alone, that make criterion ⑦ decidable.
     //
     // 🔴 THE GUARD IS ON `job_tue_a_la_fermeture`, NOT ON MEMBERSHIP, AND
-    // A MEASUREMENT CORRECTED IT. It first tested `dans_un_job()`, on
+    // A MEASUREMENT CORRECTED IT. It first tested `in_a_job()`, on
     // the premise — written in this file — that "any job is enough to
     // make the installer die". **The probe of task 2 refuted it**, on
     // the VM, in one run:
@@ -231,10 +231,10 @@ pub fn executer(
     // A refusal that can never be lifted is not a protection:
     // it is a failure. The guard now queries the property that KILLS, which
     // is exactly the one spec D8 names.
-    let dedans = dans_un_job();
+    let dedans = in_a_job();
     let tue = job_tue_a_la_fermeture();
     tracing::info!(
-        dans_un_job = dedans,
+        in_a_job = dedans,
         job_tue_a_la_fermeture = tue,
         "installation : le processus qui lance est-il dans un job, et ce job tue-t-il ?"
     );
@@ -250,8 +250,8 @@ pub fn executer(
     // ⚠️ BOTH STREAMS GO TO THE SAME FILE, in the installation's
     // directory: it goes away with it in the age sweep, and it is where
     // someone will look for it.
-    let fichier = std::fs::File::create(&journal_chemin).map_err(|erreur| {
-        tracing::error!(%erreur, chemin = %journal_chemin.display(), "journal d'installeur non créé");
+    let file = std::fs::File::create(&journal_chemin).map_err(|error| {
+        tracing::error!(%error, chemin = %journal_chemin.display(), "journal d'installeur non créé");
         Motif::Disque
     })?;
 
@@ -265,7 +265,7 @@ pub fn executer(
         .chain(std::iter::once(0))
         .collect();
 
-    let poignee = handle_de(&fichier);
+    let poignee = handle_de(&file);
     let depart = STARTUPINFOW {
         cb: u32::try_from(std::mem::size_of::<STARTUPINFOW>()).unwrap_or(0),
         dwFlags: windows::Win32::System::Threading::STARTF_USESTDHANDLES,
@@ -285,7 +285,7 @@ pub fn executer(
     // ⚠️ An earlier draft said here that "the guard above has already
     // established that this process is in no job". It was false on both
     // counts: it is in a job, and the guard no longer tests that.
-    let resultat = unsafe {
+    let result = unsafe {
         CreateProcessW(
             None,
             Some(PWSTR(ligne_utf16.as_mut_ptr())),
@@ -300,7 +300,7 @@ pub fn executer(
         )
     };
 
-    if let Err(erreur) = resultat {
+    if let Err(error) = result {
         // 🔴 `ERROR_ELEVATION_REQUIRED` (740) BECOMES A TYPED REFUSAL, and that is
         // what makes G3 shippable even if the gate is unfavourable: a message
         // the hub can display, instead of a wait nobody
@@ -310,7 +310,7 @@ pub fn executer(
         // REPOSITORY — see the module header. If the gate refutes it, this
         // branch becomes UNREACHABLE rather than false, and the typed refusal
         // will have to be rebuilt on another clue.
-        let code = erreur.code().0 as u32 & 0xFFFF;
+        let code = error.code().0 as u32 & 0xFFFF;
         if code == ERROR_ELEVATION_REQUIRED.0 {
             tracing::error!(
                 chemin = %chemin.display(),
@@ -320,7 +320,7 @@ pub fn executer(
             );
             return Err(Motif::ElevationRequise);
         }
-        tracing::error!(%erreur, chemin = %chemin.display(), "CreateProcessW a échoué");
+        tracing::error!(%error, chemin = %chemin.display(), "CreateProcessW a échoué");
         return Err(Motif::LancementImpossible);
     }
 
@@ -339,8 +339,8 @@ pub fn executer(
                 // 3010 for a success that requires a reboot, and many
                 // installers return 0 after a cancellation.
                 Ok(()) => break Some(brut as i32),
-                Err(erreur) => {
-                    tracing::warn!(%erreur, "code de sortie illisible");
+                Err(error) => {
+                    tracing::warn!(%error, "code de sortie illisible");
                     break None;
                 }
             }
@@ -362,7 +362,7 @@ pub fn executer(
         std::thread::sleep(std::time::Duration::from_millis(PAS_DE_SCRUTATION_MS));
     };
     let _ = unsafe { CloseHandle(infos.hProcess) };
-    drop(fichier);
+    drop(file);
 
     // ⚠️ THE BOUND LIVES IN A PURE MODULE, WRITTEN ONLY ONCE. It was written
     // twice, and the second one PANICKED on a UTF-8 character boundary.
@@ -390,7 +390,7 @@ fn ligne_de_commande(chemin: &Path, extension: Extension) -> String {
     }
 }
 
-fn handle_de(fichier: &std::fs::File) -> HANDLE {
+fn handle_de(file: &std::fs::File) -> HANDLE {
     use std::os::windows::io::AsRawHandle;
-    HANDLE(fichier.as_raw_handle() as _)
+    HANDLE(file.as_raw_handle() as _)
 }

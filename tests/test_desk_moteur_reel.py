@@ -220,8 +220,8 @@ os.symlink(PAQUET, catalogue / "desk")
 if (INSTALLER / "console" / "nivuus-package.yaml").is_file():
     os.symlink(INSTALLER / "console", catalogue / "console")
 
-manifestes, erreurs = discover(root=str(catalogue))
-check("aucun manifeste refuse par discover()", erreurs, [])
+manifestes, errors = discover(root=str(catalogue))
+check("aucun manifeste refuse par discover()", errors, [])
 noms = sorted(m.name for m in manifestes)
 check_vrai("le moteur decouvre desk", "desk" in noms, f"decouverts : {noms}")
 check_vrai("le moteur decouvre console (pre-requis dur)", "console" in noms,
@@ -236,8 +236,8 @@ seul = missing_dependencies([manifeste], manifestes)
 check_vrai("desk seul manque console",
            [m.requires for m in seul] == ["console"],
            f"manquants : {[m.requires for m in seul]}")
-avec = missing_dependencies(manifestes, manifestes)
-check("desk avec console ne manque rien", avec, [])
+with_ = missing_dependencies(manifestes, manifestes)
+check("desk avec console ne manque rien", with_, [])
 
 # --- ③ Les réponses, validées par le VRAI wizard --------------------------
 # Les réponses BRUTES sont celles d'un opérateur (c'est leur nature : le
@@ -299,20 +299,20 @@ check_vrai("desk.env est pose sous la racine cible", env_pose.is_file(),
 check("desk.env n'est lisible que par son proprietaire",
       oct(env_pose.stat().st_mode & 0o777), "0o600")
 
-valeurs = {}
+values = {}
 for ligne in env_pose.read_text(encoding="utf-8").splitlines():
     if "=" in ligne and not ligne.startswith("#"):
-        cle, _, valeur = ligne.partition("=")
-        valeurs[cle.strip()] = valeur.strip()
+        cle, _, value = ligne.partition("=")
+        values[cle.strip()] = value.strip()
 
 check("PLATEFORME_AUTH vient de la reponse validee",
-      valeurs.get("PLATEFORME_AUTH"), answers["auth_mode"])
+      values.get("PLATEFORME_AUTH"), answers["auth_mode"])
 check_vrai("PLATEFORME_HOTE n'est jamais une ecoute universelle",
-           valeurs.get("PLATEFORME_HOTE") not in
+           values.get("PLATEFORME_HOTE") not in
            ("0.0.0.0", "::", "[::]", "*", None),
-           f"valeur : {valeurs.get('PLATEFORME_HOTE')!r}")
+           f"valeur : {values.get('PLATEFORME_HOTE')!r}")
 check_vrai("le secret de jeton fait au moins 32 caracteres",
-           len(valeurs.get("PLATEFORME_SECRET_JETON", "")) >= 32)
+           len(values.get("PLATEFORME_SECRET_JETON", "")) >= 32)
 
 unite = cible / "etc" / "systemd" / "system" / "desk-plateforme.service"
 check_vrai("l'unite systemd est POSEE", unite.is_file(), str(unite))
@@ -354,7 +354,7 @@ check("le port mesure par resolve survit la fusion",
 # Aucun `console` ici : la porte VM refuse sans jamais toucher le réseau.
 os.environ["NIVUUS_PACKAGES_DIR"] = str(sans_console)
 
-avant = {
+before = {
     "unite hote": os.lstat("/etc/systemd/system/desk-plateforme.service")
     if os.path.exists("/etc/systemd/system/desk-plateforme.service") else None,
     "env hote": os.lstat("/etc/nivuus/desk.env")
@@ -362,12 +362,12 @@ avant = {
 }
 
 emetteur_activate = Collecteur()
-erreur_activate = None
+activate_error = None
 try:
     runner._run_hook(manifeste, "activate", hw_active, answers,
                      root=str(cible), emit=emetteur_activate)
 except runner.HookError as exc:
-    erreur_activate = str(exc)
+    activate_error = str(exc)
 
 # 🔴 CE QUE LA CHAÎNE ÉTABLIT ICI : `activate` ARME l'unité (un lien, sous la
 # racine temporaire), puis S'ARRÊTE À LA PORTE DE LA VM — la porte que la
@@ -381,13 +381,13 @@ check_vrai("activate a ARME l'unite, sous la racine temporaire",
 check("le lien arme est RELATIF", os.readlink(lien),
       "../desk-plateforme.service")
 check_vrai("activate refuse a la porte de la VM Windows",
-           erreur_activate is not None
-           and "la VM Windows ne repond pas" in erreur_activate,
-           f"erreur rendue : {erreur_activate!r}")
+           activate_error is not None
+           and "la VM Windows ne repond pas" in activate_error,
+           f"erreur rendue : {activate_error!r}")
 check_vrai("le refus nomme winrm_exec.py, jamais un echec reseau",
-           erreur_activate is not None
-           and "winrm_exec.py introuvable" in erreur_activate,
-           f"erreur rendue : {erreur_activate!r}")
+           activate_error is not None
+           and "winrm_exec.py introuvable" in activate_error,
+           f"erreur rendue : {activate_error!r}")
 
 # --- ⑦ L'HÔTE N'A PAS BOUGÉ ----------------------------------------------
 # Le contrôle qui vaut : si cette suite avait appelé `run_activate` comme la
@@ -400,8 +400,8 @@ apres = {
     "env hote": os.lstat("/etc/nivuus/desk.env")
     if os.path.exists("/etc/nivuus/desk.env") else None,
 }
-for nom in avant:
-    a, b = avant[nom], apres[nom]
+for nom in before:
+    a, b = before[nom], apres[nom]
     check(f"{nom} : mtime inchange",
           None if a is None else a.st_mtime_ns,
           None if b is None else b.st_mtime_ns)

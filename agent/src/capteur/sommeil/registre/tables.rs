@@ -98,7 +98,7 @@ pub(in crate::capteur::sommeil) struct Etat {
     /// registration, on the other hand, is UNCONDITIONAL: there is nothing to filter,
     /// hence nothing to purge — and purging here would remove the memory at the precise
     /// moment we want to use it, the remedy then remedying nothing.
-    pub(in crate::capteur::sommeil) dernier_presse_papier: Option<crate::presse_papier::Annonce>,
+    pub(in crate::capteur::sommeil) last_clipboard: Option<crate::presse_papier::Annonce>,
     /// The (sequence number, text) pair of OUR OWN clipboard write,
     /// waiting to be consumed by the wheel round to
     /// arm D5's guards no. 1 and no. 2 (sub-block P2).
@@ -106,7 +106,7 @@ pub(in crate::capteur::sommeil) struct Etat {
     /// 🔴 **It lives HERE, under the lock, and not next to the `Sondeur`, because
     /// the two do not run on the same thread.** The `Sondeur` is local to the
     /// wheel-round thread; the write, for its part, comes from the WINDOW thread serving the
-    /// `PressePapierEcrire` command. There is no way to arm the guard
+    /// `ClipboardWrite` command. There is no way to arm the guard
     /// from there without a race — other than this registry, which is already the locked
     /// meeting point of the two.
     ///

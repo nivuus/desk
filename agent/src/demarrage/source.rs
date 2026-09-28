@@ -100,14 +100,14 @@ pub(super) fn construire(
                     // in practice for this path, `sortie_dxgi` itself being
                     // set only by the supervisor —, `(u32::MAX, u32::MAX)`
                     // reproduces the behaviour from before this sub-block:
-                    // `taille_retenue` brings it back to the output size
+                    // `retained_size` brings it back to the output size
                     // (task 8).
-                    config.taille_fenetre.unwrap_or((u32::MAX, u32::MAX)),
+                    config.window_size.unwrap_or((u32::MAX, u32::MAX)),
                     clock_origin,
                 )?;
                 // 🔴 **THE FRAME SIZE IS TAKEN HERE, AND IT IS AN `Arc`
                 // CLONE.** It is the sensor that did the cropping
-                // (`taille_retenue`, `capteur/fenetre/ouverture.rs`) and
+                // (`retained_size`, `capteur/fenetre/ouverture.rs`) and
                 // announced it through `DepuisCapteur::Attachee`; `SourceDistante` is
                 // its only storage. Recomputing it here — even with the same
                 // pure function and the same inputs — would re-establish TWO
@@ -115,7 +115,7 @@ pub(super) fn construire(
                 // defect of batch 32M.
                 let reference = crate::entrees::Reference::SortieCapturee {
                     nom: nom_sortie.clone(),
-                    image: distante.taille_partagee(),
+                    image: distante.shared_size(),
                 };
                 (Box::new(distante), reference)
             }

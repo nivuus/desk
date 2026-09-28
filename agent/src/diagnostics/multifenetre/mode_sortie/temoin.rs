@@ -45,27 +45,27 @@ use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 pub(super) fn rejouer_temoin(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
-    avant: (u32, u32),
+    before: (u32, u32),
     cible_eliminatoire: (u32, u32),
     combo: &Combo,
 ) -> Result<()> {
-    let Some(cible) = cible_du_temoin(nom_sortie, avant, cible_eliminatoire) else {
+    let Some(cible) = cible_du_temoin(nom_sortie, before, cible_eliminatoire) else {
         tracing::error!(
             verdict = "TEMOIN NON MESURABLE",
             raison = "la sortie temoin nait deja a la cible de l'eliminatoire, et aucun mode \
                       annonce ne differe de sa taille courante",
-            largeur_avant_tentative = avant.0,
-            hauteur_avant_tentative = avant.1,
+            width_before_attempt = before.0,
+            height_before_attempt = before.1,
             largeur_cible_eliminatoire = cible_eliminatoire.0,
             hauteur_cible_eliminatoire = cible_eliminatoire.1,
             "verdict TEMOIN : mesure impossible, aucune tentative effectuee"
         );
         return Ok(());
     };
-    let dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
+    let last_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
     let releve = relever_topologie(&format!("après tentative TÉMOIN « {} »", combo.etiquette()))?;
-    let taille_lue = releve
+    let read_size = releve
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
         .map(|sortie| (sortie.rect.width, sortie.rect.height));
@@ -74,7 +74,7 @@ pub(super) fn rejouer_temoin(
     // RECU" win on the mere disappearance of the control output (same defect as
     // in `eliminatoire.rs`, same remedy: no verdict is returned on
     // a sentinel, absence is logged separately).
-    let Some(derniere_taille) = taille_lue else {
+    let Some(last_size) = read_size else {
         tracing::error!(
             etiquette = combo.etiquette(),
             nom_sortie,
@@ -83,15 +83,15 @@ pub(super) fn rejouer_temoin(
         );
         return Ok(());
     };
-    let mouvement = derniere_taille != avant;
+    let mouvement = last_size != before;
     tracing::info!(
         etiquette = combo.etiquette(),
-        code_brut = dernier_code,
-        api_annonce_succes = (dernier_code == DISP_CHANGE_SUCCESSFUL.0),
-        largeur_avant_tentative = avant.0,
-        hauteur_avant_tentative = avant.1,
-        largeur_relue = derniere_taille.0,
-        hauteur_relue = derniere_taille.1,
+        code_brut = last_code,
+        api_annonce_succes = (last_code == DISP_CHANGE_SUCCESSFUL.0),
+        width_before_attempt = before.0,
+        height_before_attempt = before.1,
+        largeur_relue = last_size.0,
+        hauteur_relue = last_size.1,
         largeur_cible = cible.0,
         hauteur_cible = cible.1,
         mouvement,
@@ -113,7 +113,7 @@ pub(super) fn rejouer_temoin(
 /// this NEW output is already born at `cible_eliminatoire`, applying THIS combo
 /// on THIS target could NEVER observe a movement, whatever the
 /// driver's real verdict: a driver that accepts and a driver that refuses
-/// would both return `derniere_taille == avant`. It is the F1 defect
+/// would both return `last_size == before`. It is the F1 defect
 /// replayed — the same one `choisir_cible` fixes for the elimination test.
 ///
 /// **This case is not an accident of chance.** Doctrine D8 is that an
@@ -131,18 +131,18 @@ pub(super) fn rejouer_temoin(
 /// degenerate case, see `choisir_cible`.
 fn cible_du_temoin(
     nom_sortie: &str,
-    avant: (u32, u32),
+    before: (u32, u32),
     cible_eliminatoire: (u32, u32),
 ) -> Option<(u32, u32)> {
-    if avant != cible_eliminatoire {
+    if before != cible_eliminatoire {
         return Some(cible_eliminatoire);
     }
     let annonces = modes_annonces(nom_sortie);
-    let substituee = choisir_cible(avant, cible_eliminatoire, &annonces);
+    let substituee = choisir_cible(before, cible_eliminatoire, &annonces);
     if let Some(cible) = substituee {
         tracing::warn!(
-            largeur_avant_tentative = avant.0,
-            hauteur_avant_tentative = avant.1,
+            width_before_attempt = before.0,
+            height_before_attempt = before.1,
             largeur_cible_eliminatoire = cible_eliminatoire.0,
             hauteur_cible_eliminatoire = cible_eliminatoire.1,
             largeur_cible_temoin = cible.0,
@@ -158,7 +158,7 @@ fn cible_du_temoin(
 /// The name under which the tested output ends up after the elimination round
 /// — D8's side unknown no. 3 ("does the output keep its
 /// `\\.\DISPLAYn` name?"), and its size at that same instant — the
-/// `avant_creation` point of the PERSISTENCE check (`persistance::journaliser_verdict`,
+/// `before_creation` point of the PERSISTENCE check (`persistance::journaliser_verdict`,
 /// task 2bis of D9), so as not to read back a second time a topology already
 /// in hand.
 ///
@@ -175,7 +175,7 @@ fn cible_du_temoin(
 /// also `(0, 0)` — `None` makes this confusion impossible by construction.
 pub(super) fn nom_apres_tour(
     nom_sortie: &str,
-    connues_avant_tout: &HashSet<String>,
+    known_before_all: &HashSet<String>,
     autres_noms_a_nous: &HashSet<String>,
 ) -> Result<(String, Option<(u32, u32)>)> {
     let releve = relever_topologie("après le tour (inconnues annexes)")?;
@@ -188,14 +188,14 @@ pub(super) fn nom_apres_tour(
     let candidats: Vec<&str> = releve
         .iter()
         .map(|sortie| sortie.nom_sortie.as_str())
-        .filter(|nom| !connues_avant_tout.contains(*nom) && !autres_noms_a_nous.contains(*nom))
+        .filter(|nom| !known_before_all.contains(*nom) && !autres_noms_a_nous.contains(*nom))
         .collect();
     if let [seul] = candidats.as_slice() {
-        let taille = releve
+        let size = releve
             .iter()
             .find(|sortie| sortie.nom_sortie == *seul)
             .map(|sortie| (sortie.rect.width, sortie.rect.height));
-        return Ok((seul.to_string(), taille));
+        return Ok((seul.to_string(), size));
     }
     tracing::warn!(
         nom_sortie,

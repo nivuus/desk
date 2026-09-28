@@ -78,13 +78,13 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
                 tentatives += 1;
                 tracing::warn!(
                     tentative = tentatives,
-                    erreur = ?e,
+                    error = ?e,
                     "update() pas encore prêt, nouvelle tentative"
                 );
                 std::thread::sleep(Duration::from_millis(250));
             }
             Err(e) => {
-                tracing::warn!(erreur = ?e, "update() a échoué — variante brute, abandon");
+                tracing::warn!(error = ?e, "update() a échoué — variante brute, abandon");
                 return Err(e).context("application d'un état");
             }
         }

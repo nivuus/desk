@@ -41,7 +41,7 @@ use windows::core::Interface;
 use windows::Win32::Graphics::Direct3D11::{ID3D11Device, ID3D11Texture2D};
 
 use super::abi;
-use super::porte::{verifier, Porte};
+use super::porte::{verify, Porte};
 use super::structures::{
     Config, InitializeParams, OpenEncodeSessionExParams, PresetConfig, ReconfigureParams,
 };
@@ -114,7 +114,7 @@ impl SessionNvenc {
             .fonctions
             .ouvrir_session_ex
             .ok_or_else(|| anyhow!("emplacement nvEncOpenEncodeSessionEx vide"))?;
-        verifier(
+        verify(
             unsafe { ouvrir(&mut params, &mut encodeur) },
             "nvEncOpenEncodeSessionEx",
         )?;
@@ -132,11 +132,11 @@ impl SessionNvenc {
             config: Box::new(unsafe { std::mem::zeroed() }),
             init: unsafe { std::mem::zeroed() },
         };
-        session.initialiser(fps, debit_bps)?;
+        session.initialize(fps, debit_bps)?;
         Ok(session)
     }
 
-    fn initialiser(&mut self, fps: u32, debit_bps: u32) -> Result<()> {
+    fn initialize(&mut self, fps: u32, debit_bps: u32) -> Result<()> {
         // ① Start from the preset, never from a blank configuration: NVIDIA
         // puts default values there that we have no reason to
         // reinvent.
@@ -149,7 +149,7 @@ impl SessionNvenc {
             .fonctions
             .config_preregleage_ex
             .ok_or_else(|| anyhow!("emplacement nvEncGetEncodePresetConfigEx vide"))?;
-        verifier(
+        verify(
             unsafe {
                 config_preregleage(
                     self.encodeur,
@@ -209,13 +209,13 @@ impl SessionNvenc {
         // duplication returns. See `abi::BUFFER_FORMAT_ARGB`.
         init.buffer_format = abi::BUFFER_FORMAT_ARGB;
 
-        let initialiser = self
+        let initialize = self
             .porte
             .fonctions
-            .initialiser_encodeur
+            .initialize_encoder
             .ok_or_else(|| anyhow!("emplacement nvEncInitializeEncoder vide"))?;
-        verifier(
-            unsafe { initialiser(self.encodeur, &mut init) },
+        verify(
+            unsafe { initialize(self.encodeur, &mut init) },
             "nvEncInitializeEncoder",
         )?;
         // Keep the initialisation WITHOUT its pointer: it is set again at each
@@ -225,13 +225,13 @@ impl SessionNvenc {
 
         let mut tampon: CreateBitstreamBuffer = unsafe { std::mem::zeroed() };
         tampon.version = abi::CREATE_BITSTREAM_BUFFER_VER;
-        let creer_tampon = self
+        let create_buffer = self
             .porte
             .fonctions
-            .creer_tampon_de_flux
+            .create_bitstream_buffer
             .ok_or_else(|| anyhow!("emplacement nvEncCreateBitstreamBuffer vide"))?;
-        verifier(
-            unsafe { creer_tampon(self.encodeur, &mut tampon) },
+        verify(
+            unsafe { create_buffer(self.encodeur, &mut tampon) },
             "nvEncCreateBitstreamBuffer",
         )?;
         self.tampon_de_flux = tampon.bitstream_buffer;
@@ -261,13 +261,13 @@ impl SessionNvenc {
         demande.resource_to_register = cle;
         demande.buffer_format = abi::BUFFER_FORMAT_ARGB;
         demande.buffer_usage = abi::BUFFER_USAGE_INPUT_IMAGE;
-        let enregistrer = self
+        let register = self
             .porte
             .fonctions
-            .enregistrer_ressource
+            .register_resource
             .ok_or_else(|| anyhow!("emplacement nvEncRegisterResource vide"))?;
-        verifier(
-            unsafe { enregistrer(self.encodeur, &mut demande) },
+        verify(
+            unsafe { register(self.encodeur, &mut demande) },
             "nvEncRegisterResource",
         )?;
         // Keep a live reference: the cache is indexed by POINTER, and
@@ -282,7 +282,7 @@ impl SessionNvenc {
         self.image_cle_demandee = true;
     }
 
-    pub fn taille(&self) -> (u32, u32) {
+    pub fn size(&self) -> (u32, u32) {
         (self.largeur, self.hauteur)
     }
 
@@ -315,7 +315,7 @@ impl SessionNvenc {
             .fonctions
             .reconfigurer_encodeur
             .ok_or_else(|| anyhow!("emplacement nvEncReconfigureEncoder vide"))?;
-        verifier(
+        verify(
             unsafe { reconfigurer(self.encodeur, &mut params) },
             "nvEncReconfigureEncoder",
         )?;
@@ -342,7 +342,7 @@ impl SessionNvenc {
             .fonctions
             .projeter_ressource
             .ok_or_else(|| anyhow!("emplacement nvEncMapInputResource vide"))?;
-        verifier(
+        verify(
             unsafe { projeter(self.encodeur, &mut projection) },
             "nvEncMapInputResource",
         )?;
@@ -390,7 +390,7 @@ impl SessionNvenc {
         if statut == 17 {
             return Ok(None);
         }
-        verifier(statut, "nvEncEncodePicture")?;
+        verify(statut, "nvEncEncodePicture")?;
 
         let mut verrou: LockBitstream = unsafe { std::mem::zeroed() };
         verrou.version = abi::LOCK_BITSTREAM_VER;
@@ -400,7 +400,7 @@ impl SessionNvenc {
             .fonctions
             .verrouiller_flux
             .ok_or_else(|| anyhow!("emplacement nvEncLockBitstream vide"))?;
-        verifier(
+        verify(
             unsafe { verrouiller(self.encodeur, &mut verrou) },
             "nvEncLockBitstream",
         )?;
@@ -417,7 +417,7 @@ impl SessionNvenc {
         .to_vec();
 
         if let Some(deverrouiller) = self.porte.fonctions.deverrouiller_flux {
-            verifier(
+            verify(
                 unsafe { deverrouiller(self.encodeur, self.tampon_de_flux) },
                 "nvEncUnlockBitstream",
             )?;

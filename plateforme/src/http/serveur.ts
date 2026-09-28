@@ -37,7 +37,7 @@ import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
 import { ouvrirMagasin } from '../apps/icones';
 import { ouvrirMagasinTranches } from '../apps/magasin-tranches';
-import { demarrerNettoyage } from '../apps/nettoyage';
+import { startCleanup } from '../apps/nettoyage';
 import { CacheSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
@@ -48,11 +48,11 @@ import { RegistreAgents } from '../agents/registre';
 import { Frein } from '../securite/frein';
 import { servirTout } from './chaine';
 import { repondreIntrouvable } from './introuvable';
-import { encaisserLesErreursDeSocket } from './erreurs-socket';
+import { absorbSocketErrors } from './erreurs-socket';
 import {
     annonceProxyDeConfiance,
     annonceRacinePage,
-    ecrire,
+    write,
     etatRacinePage,
 } from './annonces';
 
@@ -85,7 +85,7 @@ const CHEMIN_SIGNAL = '/signal';
 /// PUSH A 100 MiB FRAME BEFORE ANY AUTHENTICATION. The SHAPE
 /// check runs before the guard — `signaling/relais.ts:84-86` writes it itself,
 /// "`isJsonObject` is called some thirty lines before
-/// `garde.verifier`" —, so that `JSON.parse` on 100 MiB is an
+/// `garde.verify`" —, so that `JSON.parse` on 100 MiB is an
 /// allocation then a CPU spike, per socket and per frame, offered to whoever
 /// reaches the port. And the `/agent` channel is the SECOND anonymous door:
 /// bounding only `/signal` would leave half the problem whole.
@@ -122,7 +122,7 @@ export interface ServicePlateforme {
 /// that is the exact class of silent failure this whole repository is
 /// written against. `demarrage.ts` also guarantees the port only opens after
 /// the database and its migrations.
-export async function demarrerServeur(config: Config, base: Pilote): Promise<ServicePlateforme> {
+export async function startServer(config: Config, base: Pilote): Promise<ServicePlateforme> {
     // The routers are tried IN ORDER; if none recognises the
     // path, the P1 404 is kept WORD FOR WORD. ⚠️ Do not change its
     // body: nothing tested it before P2, and changing it would be an undeclared
@@ -203,7 +203,7 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // BY NOBODY — correction round 1, see `apps/nettoyage.ts` for the
     // cadence and its reason. AWAITED: the first round has finished before this
     // service answers a request, including in tests.
-    const nettoyage = await demarrerNettoyage({
+    const nettoyage = await startCleanup({
         base,
         magasin,
         tranches: magasinTranches,
@@ -220,14 +220,14 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     //
     // ⚠️ IT IS HERE, BEFORE `http.listen`, AND NOWHERE ELSE: an announcement posted
     // after the port opens would arrive after the first request served.
-    ecrire(annonceRacinePage(await etatRacinePage(config.racinePage)));
+    write(annonceRacinePage(await etatRacinePage(config.racinePage)));
     // 🔴 SAME CLASS OF SILENT FAILURE, SAME REMEDY — and the final review rightly
     // grouped them together: a host name in
     // `PLATEFORME_PROXY_DE_CONFIANCE` matches no `remoteAddress`,
     // so `pairDeConfiance` refuses everyone, `/auth/moi` returns `401` to
     // Pomerium itself, and the service answers anyway. The runbook
     // already documents it — but a runbook does not turn red.
-    ecrire(annonceProxyDeConfiance(config.proxyDeConfiance));
+    write(annonceProxyDeConfiance(config.proxyDeConfiance));
 
     const deps = {
         base,
@@ -348,7 +348,7 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // `message` handler — that is what makes it useful, the relay's shape
     // check running before the guard.
     const wssRacine = new WebSocketServer({ noServer: true, maxPayload: TRAME_MAX_OCTETS });
-    encaisserLesErreursDeSocket(wssRacine);
+    absorbSocketErrors(wssRacine);
     // The `/agent` channel (P3): its own `WebSocketServer`, which shares
     // with the relay neither guard, nor ownership registry, nor session
     // observer. That is the direct consequence of E4: enrolment is
@@ -356,7 +356,7 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // SYNCHRONOUS. Making them live in the same server would force one of the
     // two to give way.
     const wssAgent = new WebSocketServer({ noServer: true, maxPayload: TRAME_MAX_OCTETS });
-    encaisserLesErreursDeSocket(wssAgent);
+    absorbSocketErrors(wssAgent);
     // The guard is built HERE, from the configuration secret, and
     // it is the ONLY place in the service that builds one. It is REQUIRED
     // by the relay: there is no path that produces an open guard

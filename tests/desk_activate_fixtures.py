@@ -42,7 +42,7 @@ REPONSES = {"admin_email": "ada@exemple.test", "admin_password": "hunter2hunter2
 # phase qui ne peut rien savoir de la VM — voir `hooks/activate.py` (tête)
 # et `tests/test_desk_contrat_hw.py` (garde ⑤, qui refuse tout retour de
 # ce défaut).
-HW_AVEC_FACTS = {"node_version": "24.9.0",
+HW_WITH_FACTS = {"node_version": "24.9.0",
                   "turn_ecoute": "203.0.113.9", "turn_relais": "203.0.113.9",
                   "hote": "198.51.100.1", "proxy_confiance": "198.51.100.1",
                   "port": 9999}
@@ -180,12 +180,12 @@ def poser_racine_installee(root: pathlib.Path, contenu_env: dict = None) -> None
 
     env_dir = root / "etc" / "nivuus"
     env_dir.mkdir(parents=True, exist_ok=True)
-    valeurs = contenu_env if contenu_env is not None else {
+    values = contenu_env if contenu_env is not None else {
         "PLATEFORME_BASE": "sqlite",
         "PLATEFORME_BASE_URL": "/var/lib/nivuus-desk/plateforme.sqlite",
         "PLATEFORME_SECRET_JETON": "x" * 64,
     }
-    corps = "\n".join(f"{k}={v}" for k, v in valeurs.items()) + "\n"
+    corps = "\n".join(f"{k}={v}" for k, v in values.items()) + "\n"
     chemin_env = env_dir / "desk.env"
     chemin_env.write_text(corps, encoding="utf-8")
     os.chmod(chemin_env, stat.S_IRUSR | stat.S_IWUSR)
@@ -213,7 +213,7 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=No
     de ce fichier — la compilation réelle que la tâche interdit dans les
     tests.
     """
-    contexte = {"hw": hw if hw is not None else HW_AVEC_FACTS,
+    contexte = {"hw": hw if hw is not None else HW_WITH_FACTS,
                 "answers": answers if answers is not None else REPONSES}
     env = dict(os.environ)
     env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
@@ -246,11 +246,11 @@ def load_unit(path):
 
 
 def lire_env(chemin):
-    valeurs = {}
+    values = {}
     for ligne in chemin.read_text(encoding="utf-8").splitlines():
         ligne = ligne.strip()
         if not ligne or ligne.startswith("#") or "=" not in ligne:
             continue
-        cle, _, valeur = ligne.partition("=")
-        valeurs[cle] = valeur
-    return valeurs
+        cle, _, value = ligne.partition("=")
+        values[cle] = value
+    return values

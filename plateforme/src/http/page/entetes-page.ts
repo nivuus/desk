@@ -38,7 +38,7 @@
 /// hash on the fly over the content it serves — a hash would therefore have had to be
 /// copied by hand into BOTH files, the « shipwreck of 487 » that
 /// `CLAUDE.md` forbids. Read the large comment above
-/// `NOM_FICHIER_AMORCE` in `client/vite.config.ts` before proposing a
+/// `BOOTSTRAP_FILE_NAME` in `client/vite.config.ts` before proposing a
 /// hash here again.
 ///
 /// 🔴 `manifest-src 'self'` IS EXPLICIT, AND NOT A FALLBACK TO `default-src` —

@@ -54,7 +54,7 @@ fn une_trame_de_10_ms_vaut_480_echantillons_par_canal() {
 }
 
 #[test]
-fn refuse_une_trame_de_mauvaise_taille() {
+fn refuses_a_frame_of_wrong_size() {
     let mut encodeur = OpusEncoder::new().unwrap();
     let err = encodeur.encode(&vec![0i16; 1000]).unwrap_err();
     assert!(
@@ -106,11 +106,11 @@ fn le_silence_prolonge_retombe_a_quelques_octets_par_trame() {
     // DTX does not work. We therefore look at the TAIL, not the beginning.
     let mut encodeur = OpusEncoder::new().unwrap();
     let silence = vec![0i16; FRAME_INTERLEAVED];
-    let tailles: Vec<usize> = (0..40)
+    let sizes: Vec<usize> = (0..40)
         .map(|_| encodeur.encode(&silence).unwrap().len())
         .collect();
 
-    let queue = &tailles[35..];
+    let queue = &sizes[35..];
     assert!(
         queue.iter().all(|&t| t <= 8),
         "en régime établi, une trame de silence doit tenir en quelques octets, obtenu : {queue:?}"
@@ -156,18 +156,18 @@ fn une_perte_declaree_change_reellement_l_encodage() {
         .collect();
 
     let mut sans = OpusEncoder::new().expect("encodeur");
-    let mut avec = OpusEncoder::new().expect("encodeur");
-    avec.set_packet_loss_perc(20).expect("perte déclarée");
+    let mut with = OpusEncoder::new().expect("encodeur");
+    with.set_packet_loss_perc(20).expect("perte déclarée");
 
     let mut total_sans = 0usize;
-    let mut total_avec = 0usize;
+    let mut total_with = 0usize;
     for _ in 0..100 {
         total_sans += sans.encode(&pcm).expect("encodage").len();
-        total_avec += avec.encode(&pcm).expect("encodage").len();
+        total_with += with.encode(&pcm).expect("encodage").len();
     }
 
     assert_ne!(
-        total_avec, total_sans,
+        total_with, total_sans,
         "sortie identique ({total_sans} octets des deux côtés) : \
          `decide_fec` a pris son retour anticipé, donc aucune redondance \
          LBRR n'est codée — c'est le symptôme du mode CELT seul"
@@ -194,38 +194,38 @@ fn lbrr_est_reellement_decodable() {
         .collect();
 
     let mut enc_sans = OpusEncoder::new().expect("encodeur");
-    let mut enc_avec = OpusEncoder::new().expect("encodeur");
-    enc_avec.set_packet_loss_perc(20).expect("perte déclarée");
+    let mut enc_with = OpusEncoder::new().expect("encodeur");
+    enc_with.set_packet_loss_perc(20).expect("perte déclarée");
 
     // Encode 100 frames to reach steady state.
     let mut paquets_sans = Vec::new();
-    let mut paquets_avec = Vec::new();
+    let mut packets_with = Vec::new();
     for _ in 0..100 {
         paquets_sans.push(enc_sans.encode(&pcm).expect("encodage sans"));
-        paquets_avec.push(enc_avec.encode(&pcm).expect("encodage avec"));
+        packets_with.push(enc_with.encode(&pcm).expect("encodage avec"));
     }
 
     // Take the last packet in steady state.
-    let dernier_sans = &paquets_sans[99];
-    let dernier_avec = &paquets_avec[99];
+    let last_without = &paquets_sans[99];
+    let last_with = &packets_with[99];
 
     // Fresh decoder without history to decode the packet as an
     // FEC frame (the decoder reconstructs from the redundancy of the
     // NEXT packet, or simply tries to mask the loss).
     let mut dec_pour_sans =
         ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("décodeur");
-    let mut dec_pour_avec =
+    let mut dec_for_with =
         ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("décodeur");
 
     let mut sortie_sans = vec![0i16; FRAME_INTERLEAVED];
-    let mut sortie_avec = vec![0i16; FRAME_INTERLEAVED];
+    let mut output_with = vec![0i16; FRAME_INTERLEAVED];
 
     // Decode with the FEC flag (simulates a lost frame).
     dec_pour_sans
-        .decode(dernier_sans, &mut sortie_sans, true)
+        .decode(last_without, &mut sortie_sans, true)
         .expect("décodage sans avec FEC");
-    dec_pour_avec
-        .decode(dernier_avec, &mut sortie_avec, true)
+    dec_for_with
+        .decode(last_with, &mut output_with, true)
         .expect("décodage avec avec FEC");
 
     // Measure the energy (normalised sum of squares).
@@ -234,7 +234,7 @@ fn lbrr_est_reellement_decodable() {
         .map(|&s| (s as f64) * (s as f64))
         .sum::<f64>()
         / (FRAME_INTERLEAVED as f64);
-    let energie_avec: f64 = sortie_avec
+    let energy_with: f64 = output_with
         .iter()
         .map(|&s| (s as f64) * (s as f64))
         .sum::<f64>()
@@ -242,18 +242,18 @@ fn lbrr_est_reellement_decodable() {
 
     eprintln!(
         "Énergie reconstruite : sans FEC = {:.2}, avec FEC = {:.2}",
-        energie_sans, energie_avec
+        energie_sans, energy_with
     );
 
     // Expects the LBRR redundancy to produce a significant signal.
-    // If it is present, energie_avec >> energie_sans.
+    // If it is present, energy_with >> energie_sans.
     assert!(
-        energie_avec > energie_sans,
+        energy_with > energie_sans,
         "pas de redondance LBRR décodable : \
          énergie sans FEC = {:.2}, énergie avec FEC = {:.2} — \
          le FEC n'a rien apporté à la reconstruction",
         energie_sans,
-        energie_avec
+        energy_with
     );
 }
 
@@ -299,7 +299,7 @@ fn un_flux_mono_ressort_stereo_par_duplication() {
 /// they stick to that. It is the test that forbids assuming a
 /// constant again.
 #[test]
-fn des_trames_de_dix_vingt_et_quarante_millisecondes_passent_toutes() {
+fn frames_of_ten_twenty_and_forty_milliseconds_all_pass() {
     for ms in [10u32, 20, 40] {
         let par_canal = (SAMPLE_RATE_HZ / 1000 * ms) as usize;
         let mut enc = ::opus::Encoder::new(
@@ -389,14 +389,14 @@ fn la_reconstruction_fec_restitue_un_signal_correle_a_l_original() {
         .collect();
 
     let mut enc_sans = OpusEncoder::new().expect("encodeur");
-    let mut enc_avec = OpusEncoder::new().expect("encodeur");
-    enc_avec.set_packet_loss_perc(20).expect("perte déclarée");
+    let mut enc_with = OpusEncoder::new().expect("encodeur");
+    enc_with.set_packet_loss_perc(20).expect("perte déclarée");
 
     let mut paquets_sans = Vec::new();
-    let mut paquets_avec = Vec::new();
+    let mut packets_with = Vec::new();
     for _ in 0..100 {
         paquets_sans.push(enc_sans.encode(&pcm).expect("encodage sans"));
-        paquets_avec.push(enc_avec.encode(&pcm).expect("encodage avec"));
+        packets_with.push(enc_with.encode(&pcm).expect("encodage avec"));
     }
 
     let energie = |paquet: &[u8]| -> f64 {
@@ -412,9 +412,9 @@ fn la_reconstruction_fec_restitue_un_signal_correle_a_l_original() {
             / (n * CHANNELS).max(1) as f64
     };
 
-    let avec = energie(&paquets_avec[99]);
+    let with = energie(&packets_with[99]);
     let sans = energie(&paquets_sans[99]);
-    eprintln!("FEC décodé : énergie avec perte déclarée={avec:.2}, sans={sans:.2}");
+    eprintln!("FEC décodé : énergie avec perte déclarée={with:.2}, sans={sans:.2}");
     // ⚠️ TWO assertions, and the second is the one that makes the test
     // discriminating. The energy ratio alone does NOT prove that the FEC
     // path was taken: decoding these two packets NORMALLY (fec
@@ -425,8 +425,8 @@ fn la_reconstruction_fec_restitue_un_signal_correle_a_l_original() {
     // redundancy it returns SILENCE: libopus has nothing to reconstruct and
     // invents nothing. A normal decoding, for its part, returns the packet's signal.
     assert!(
-        avec > sans * 10.0 + 1.0,
-        "la reconstruction FEC ne restitue rien de corrélé : avec={avec:.2}, sans={sans:.2}"
+        with > sans * 10.0 + 1.0,
+        "la reconstruction FEC ne restitue rien de corrélé : avec={with:.2}, sans={sans:.2}"
     );
     assert!(
         sans < 1.0,

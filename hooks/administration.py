@@ -30,9 +30,9 @@ import subprocess
 from commun import lire_node_bin
 
 
-def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
+def lancer_npm(cwd: pathlib.Path, subcommand: str, arguments: list,
                env: dict, entree=None):
-    """`npm run <sous_commande> -- <arguments>`, CWD=`cwd`, ENV=`env`.
+    """`npm run <subcommand> -- <arguments>`, CWD=`cwd`, ENV=`env`.
 
     Always returns `(code, stdout, stderr)`, never raises: `npm` absent
     from `PATH`, or a `cwd` that does not exist (installation did not run),
@@ -52,7 +52,7 @@ def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
     exactly what `tests/desk_activate_fixtures.py::appeler` does, whose
     fake `npm` must keep being found first).
     """
-    commande = ["npm", "run", sous_commande, "--", *arguments]
+    commande = ["npm", "run", subcommand, "--", *arguments]
     env_complet = dict(env)
     node_bin = lire_node_bin()
     chemin_actuel = env_complet.get("PATH", "")
@@ -69,9 +69,9 @@ def lancer_npm(cwd: pathlib.Path, sous_commande: str, arguments: list,
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def creer_compte_admin(plateforme_dir: pathlib.Path, email: str,
+def create_admin_account(plateforme_dir: pathlib.Path, email: str,
                         mot_de_passe: str, env: dict):
-    """`npm run admin:utilisateur -- --email <email>`, password on
+    """`npm run admin:user -- --email <email>`, password on
     STDIN — never in argv (see the top docstring of `activate.py`).
     Returns `(identifier, None)` on success, `(None, reason)` otherwise.
     """
@@ -96,26 +96,26 @@ def enroler_agent_plateforme(plateforme_dir: pathlib.Path, nom_vm: str,
     if code != 0:
         return None, (err or out).strip() or f"code de sortie {code}"
 
-    valeurs = {}
+    values = {}
     for ligne in out.splitlines():
         if "=" in ligne:
-            cle, _, valeur = ligne.partition("=")
-            valeurs[cle.strip()] = valeur.strip()
-    vm_id = valeurs.get("vm_id")
-    secret = valeurs.get("AGENT_SECRET")
+            cle, _, value = ligne.partition("=")
+            values[cle.strip()] = value.strip()
+    vm_id = values.get("vm_id")
+    secret = values.get("AGENT_SECRET")
     if not vm_id or not secret:
         return None, f"sortie d'enrolement illisible (vm_id/AGENT_SECRET absents) : {out!r}"
     return (vm_id, secret), None
 
 
-def attribuer_vm_a_utilisateur(plateforme_dir: pathlib.Path, email: str,
+def assign_vm_to_user(plateforme_dir: pathlib.Path, email: str,
                                 vm_id: str, env: dict):
     """`npm run admin:attribuer -- --email <email> --vm <vm_id>` (task 13,
     a hole found in production on August 29th, 2026 — see the comment of
     `activate.py::main()` for the why and the placement).
 
     Neither `email` nor `vm_id` are secrets: no need for stdin here,
-    unlike `creer_compte_admin`. `attribuer-vm.ts` REFUSES
+    unlike `create_admin_account`. `attribuer-vm.ts` REFUSES
     anyway any flag that would pass a secret through argv
     (`DRAPEAUX_INTERDITS`) — this command uses none.
 

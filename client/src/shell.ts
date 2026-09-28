@@ -13,7 +13,7 @@
 // following ones. Here, no application window is special.
 //
 // All the logic is here, separated from the DOM and the WebSocket, to be
-// testable: `creerBureau` receives its effects by injection.
+// testable: `createDesktop` receives its effects by injection.
 
 /**
  * The TONE of a banner — one of the four of the primitives' `message` family
@@ -46,10 +46,10 @@ export interface OptionsBureau {
     /// Returns `null` if the browser blocked the opening.
     ouvrirFenetre(session: string, titre: string): Window | null;
     envoyer(message: unknown): void;
-    afficher(message: string, ton: Ton): void;
+    show(message: string, ton: Ton): void;
     /// The state of the file drive, separate from the general banner: the two
     /// messages do not chase each other away.
-    afficherEtatFichiers(texte: string, ton: Ton): void;
+    showFilesState(texte: string, ton: Ton): void;
     /// The counter of owed writes.
     ///
     /// 🔴 **`dues` AND `vues` ARE TWO NUMBERS, AND THE SECOND IS CUMULATIVE.**
@@ -58,7 +58,7 @@ export interface OptionsBureau {
     /// negative verdict requires the measured thing to be ABSENT, not merely
     /// zero* — the clipboard's P0 probe returned a false eliminating
     /// verdict for having read three zeros on a healthy VM.
-    afficherEcrituresDues(dues: number, vues: number, texte: string, ton: Ton): void;
+    showPendingWrites(dues: number, vues: number, texte: string, ton: Ton): void;
     /**
      * **F5** — the bridge HOLDS BACK its owed writes: the announced directory is
      * not the one that was registered (spec §6.4 case 2).
@@ -68,7 +68,7 @@ export interface OptionsBureau {
      * most of the time is a click trap*: the user who has seen it inert
      * ten times will no longer see it the day it counts.
      */
-    afficherRetenues(retenues: boolean): void;
+    showRetained(retenues: boolean): void;
 }
 
 export interface Bureau {
@@ -76,7 +76,7 @@ export interface Bureau {
     fenetreFermee(session: string): void;
     refus(titre: string, motif: string): void;
     viewportRecu(session: string, largeur: number, hauteur: number): void;
-    liste(): FenetreConnue[];
+    list(): FenetreConnue[];
     rouvrir(session: string): void;
     /// The `Mes Fichiers` drive is mounted on the folder `nom`.
     lecteurMonte(nom: string): void;
@@ -136,7 +136,7 @@ interface Entree {
     fenetre: Window | null;
 }
 
-export function creerBureau(options: OptionsBureau): Bureau {
+export function createDesktop(options: OptionsBureau): Bureau {
     const connues = new Map<string, Entree>();
     /** The writes owed right now. Goes back down to zero. */
     let dues: EcritureDue[] = [];
@@ -188,7 +188,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
         // without a gesture, and a neutral tone would suggest the bridge
         // is still working.
         const tonFinal: Ton = retenu ? 'alerte' : ton;
-        options.afficherEcrituresDues(dues.length, vues, texte, tonFinal);
+        options.showPendingWrites(dues.length, vues, texte, tonFinal);
     }
 
     function ouvrir(session: string, titre: string): void {
@@ -196,7 +196,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
         if (!fenetre) {
             // DANGER: the user must ACT — allow pop-ups. A
             // neutral tone would suggest the window is on its way.
-            options.afficher(
+            options.show(
                 `« ${titre} » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. ` +
                 `Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.`,
                 'danger',
@@ -220,7 +220,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
 
         refus(titre, motif) {
             // DANGER: the window will not exist.
-            options.afficher(`« ${titre} » n'a pas pu s'ouvrir : ${motif}.`, 'danger');
+            options.show(`« ${titre} » n'a pas pu s'ouvrir : ${motif}.`, 'danger');
         },
 
         viewportRecu(session, largeur, hauteur) {
@@ -231,7 +231,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
             options.envoyer({ type: 'viewport', session, largeur, hauteur });
         },
 
-        liste() {
+        list() {
             return [...connues.entries()].map(([session, e]) => ({
                 session,
                 titre: e.titre,
@@ -249,7 +249,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
 
         lecteurMonte(nom) {
             // SUCCESS — and it is the only positive state of the product.
-            options.afficherEtatFichiers(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`, 'succes');
+            options.showFilesState(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`, 'succes');
         },
 
         lecteurDemonte() {
@@ -271,7 +271,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
             // without a statement — the worst of both worlds, and the exact mirror of the
             // defect above. Empty text and neutral tone are TWO
             // properties, and `shell.test.ts` tests them separately.
-            options.afficherEtatFichiers('', 'neutre');
+            options.showFilesState('', 'neutre');
         },
 
         ecrituresDues(neuves, retenues) {
@@ -290,7 +290,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
             // does not emit it, but relying on it would make the interface depend
             // on a property no type guarantees.
             retenu = retenues && neuves.length > 0;
-            options.afficherRetenues(retenu);
+            options.showRetained(retenu);
             redessinerLesDues();
         },
 
@@ -317,7 +317,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
         lecteurEchoue(motif) {
             // DANGER: sharing failed, and "nothing is shared" does not call for
             // the same gesture as "sharing failed, here is why".
-            options.afficherEtatFichiers(
+            options.showFilesState(
                 `Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`,
                 'danger',
             );
@@ -337,14 +337,14 @@ export function creerBureau(options: OptionsBureau): Bureau {
             // not hold.
             const attente =
                 typeof retryApresS === 'number' ? ` Nouvelle tentative possible dans ${retryApresS} s.` : '';
-            options.afficher(`Bureau refusé : ${cause}.${attente}`, 'danger');
+            options.show(`Bureau refusé : ${cause}.${attente}`, 'danger');
         },
 
         canalDeControlePerdu() {
             // DANGER, never NEUTRAL: no window can open or
             // close any more until the page is reloaded, and saying it
             // neutrally would suggest a desktop that still works.
-            options.afficher(
+            options.show(
                 'Connexion au bureau perdue. Rechargez la page pour vous reconnecter.',
                 'danger',
             );

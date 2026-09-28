@@ -35,7 +35,7 @@ function noter(texte: string): void {
     journal.push(`+${String(Date.now() - debut).padStart(6)} ms  ${texte}`);
 }
 
-/// The HUMAN token, of type `utilisateur` — it is what the guard requires of the
+/// The HUMAN token, of type `user` — it is what the guard requires of the
 /// `client` role, and an agent token would be refused there (claim `sty`, task 9).
 const jeton = signer('recette-p3', secret, Date.now(), DUREE_JETON_ACCES_MS, 'utilisateur');
 

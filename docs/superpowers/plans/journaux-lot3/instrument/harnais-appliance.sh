@@ -65,14 +65,14 @@ vm_prete() {
     #    as a CIFS entry was not a live mount. We therefore test
     #    a COMPLETE ROUND TRIP that reads the agent's log, that is,
     #    the resource all items depend on.
-    local taille
+    local size
     for i in $(seq 1 60); do
-        taille=$(W "(Get-Item ${JOURNAL_VM} -ErrorAction SilentlyContinue).Length" 30 | tr -dc '0-9')
-        [ -n "${taille}" ] && break
+        size=$(W "(Get-Item ${JOURNAL_VM} -ErrorAction SilentlyContinue).Length" 30 | tr -dc '0-9')
+        [ -n "${size}" ] && break
         sleep 5
     done
-    [ -n "${taille}" ] || { echo "🔴 WinRM ouvre mais ne rend pas ${JOURNAL_VM}"; return 1; }
-    echo "vm prête (journal=${taille} octets) : $(bash "${RACINE_HARNAIS}/docs/superpowers/plans/journaux-lot3/instrument/etat-vm.sh")"
+    [ -n "${size}" ] || { echo "🔴 WinRM ouvre mais ne rend pas ${JOURNAL_VM}"; return 1; }
+    echo "vm prête (journal=${size} octets) : $(bash "${RACINE_HARNAIS}/docs/superpowers/plans/journaux-lot3/instrument/etat-vm.sh")"
 }
 
 agent_absent() {
@@ -155,7 +155,7 @@ variable_de_banc() {
     # hence is NEVER executed — the file would contain it, a code trace
     # would conclude wrongly, and only the TRACE IN THE LOG would say so
     # (a trap paid for twice on August 30th, 2026, batch 32).
-    local geste="$1" nom="$2" valeur="${3:-}" script
+    local geste="$1" nom="$2" value="${3:-}" script
     # ⚠️ THE POWERSHELL LITERAL IS BUILT HERE, NOT NESTED INSIDE SHELL
     # QUOTES. The first wording stacked four levels of
     # quoting and produced `env:MICRO_PERIPHERIQUE = "NVIDIA""` — refused at
@@ -172,7 +172,7 @@ if (-not \$idx) { throw "ancre env:SUPERVISEUR introuvable" }
 \$neuf = @()
 for (\$i=0; \$i -lt \$l.Count; \$i++) {
   \$neuf += \$l[\$i]
-  if (\$i -eq (\$idx-1)) { \$neuf += ("{0}env:${nom} = '${valeur}'" -f [char]36) }
+  if (\$i -eq (\$idx-1)) { \$neuf += ("{0}env:${nom} = '${value}'" -f [char]36) }
 }
 Set-Content -Path \$p -Value \$neuf -Encoding UTF8
 "${nom} posee apres l ancre SUPERVISEUR (ligne \$idx)"

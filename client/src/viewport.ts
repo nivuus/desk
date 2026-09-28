@@ -14,6 +14,6 @@ export function viewportPair(
     largeur: number,
     hauteur: number,
 ): { largeur: number; hauteur: number } {
-    const pair = (valeur: number) => Math.max(2, Math.round(valeur) & ~1);
+    const pair = (value: number) => Math.max(2, Math.round(value) & ~1);
     return { largeur: pair(largeur), hauteur: pair(hauteur) };
 }

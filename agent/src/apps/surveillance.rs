@@ -83,7 +83,7 @@ pub const TAMPON_NOTIFICATIONS: usize = 65_536;
 /// the caller, **unconditionally**, which is better than a trace emitted
 /// only by the branch that disarms.
 #[cfg(windows)]
-pub fn demarrer(mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHandle<()>>) {
+pub fn start(mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHandle<()>>) {
     let veille = partage::Veille::default();
     if !mode.surveille() {
         return (veille, None);
@@ -92,13 +92,13 @@ pub fn demarrer(mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinH
     let poignee = std::thread::Builder::new()
         .name("surveillance-apps".into())
         .spawn(move || fil::tourner(pour_le_fil))
-        .map_err(|erreur| {
+        .map_err(|error| {
             // The thread does not start: discovery remains ENTIRELY
             // functional, at its period. That is exactly what "G4
             // adds no feature" means, and the trace says so
             // rather than letting it read as a discovery failure.
             tracing::error!(
-                %erreur,
+                %error,
                 "fil de surveillance non démarré : la réconciliation périodique reste la source de vérité"
             );
         })
@@ -108,11 +108,11 @@ pub fn demarrer(mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinH
 
 /// The non-Windows variant: an inert `Veille`, **and nothing to log**.
 ///
-/// Same reason as `apps::demarrer`: a Linux agent has no business complaining about
+/// Same reason as `apps::start`: a Linux agent has no business complaining about
 /// not watching Windows shortcuts, and confusing it with an explicit
 /// disarm — which, for its part, SAYS it is disarmed — would blur two
 /// distinct states.
 #[cfg(not(windows))]
-pub fn demarrer(_mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHandle<()>>) {
+pub fn start(_mode: mode::Mode) -> (partage::Veille, Option<std::thread::JoinHandle<()>>) {
     (partage::Veille::default(), None)
 }

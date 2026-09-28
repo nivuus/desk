@@ -201,7 +201,7 @@ async fn un_refus_de_version_rend_l_attente_vaine() {
 
 /// The other half: the channel does not reopen.
 #[tokio::test]
-async fn un_refus_de_version_n_ouvre_aucune_seconde_connexion() {
+async fn a_version_refusal_opens_no_second_connection() {
     let (url, mut connexions) = faux_canal(vec![Scenario::Refuse(MotifCanal::Version)]).await;
     let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
@@ -301,7 +301,7 @@ pub(super) async fn attendre_message(
 }
 
 #[tokio::test]
-async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
+async fn a_message_pushed_into_the_queue_reaches_the_server() {
     // 🔴 THE RED: not draining the queue in the `select!`. It would grow
     // endlessly, the agent would believe it had emitted its catalogue, and NOTHING would
     // say so — neither error nor trace, the platform would simply stay empty.
@@ -397,7 +397,7 @@ async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tue
 }
 
 #[tokio::test]
-async fn l_identite_est_reannoncee_a_chaque_reenrolement() {
+async fn the_identity_is_reannounced_at_each_reenrolment() {
     // 🔴 THE RED: pushing the identity only ONCE. The discovery loop
     // observes this `watch` to know that a re-enrolment took place, and it is
     // what makes it send the COMPLETE catalogue again. Without this second send, a
@@ -434,7 +434,7 @@ async fn la_file_d_ordres_ne_se_prend_qu_une_fois() {
 /// plays the frame as it arrives on the wire — the SENDER's version, not
 /// ours — and requires the loop to GIVE UP.
 #[tokio::test]
-async fn un_refus_de_version_emis_dans_une_autre_version_rend_l_attente_vaine() {
+async fn a_version_refusal_sent_in_another_version_makes_the_wait_vain() {
     let (url, _connexions) = faux_canal(vec![Scenario::RefuseBrut(
         r#"{"type":"refus","v":97,"motif":"version"}"#,
     )])
@@ -453,7 +453,7 @@ async fn un_refus_de_version_emis_dans_une_autre_version_rend_l_attente_vaine() 
 /// The other half, written as two tests for the reason already given above
 /// (`expect` stops at the first failure): no second connection.
 #[tokio::test]
-async fn un_refus_de_version_emis_dans_une_autre_version_n_ouvre_aucune_seconde_connexion() {
+async fn a_version_refusal_sent_in_another_version_opens_no_second_connection() {
     let (url, mut connexions) = faux_canal(vec![Scenario::RefuseBrut(
         r#"{"type":"refus","v":97,"motif":"version"}"#,
     )])

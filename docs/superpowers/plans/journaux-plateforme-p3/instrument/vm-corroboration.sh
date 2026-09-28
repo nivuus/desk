@@ -34,8 +34,8 @@ SECRET_JETON='***RETIRE-DE-L-HISTORIQUE***'
 # trap the TURN workstream paid for ("check the environment of the process
 # THAT REALLY LISTENS"). We take a free port, and `SIGNALING_URL` follows.
 PORT=8081
-BASE_FICHIER="$SORTIE/plateforme-vm.sqlite"
-rm -f "$BASE_FICHIER"
+DB_FILE="$SORTIE/plateforme-vm.sqlite"
+rm -f "$DB_FILE"
 
 dire() { echo "[$(date +%H:%M:%S)] $*"; }
 
@@ -71,7 +71,7 @@ dire '=== 1. démarrage du service de plateforme ==='
 PLATEFORME_HOTE=192.168.3.1 \
 PLATEFORME_PORT="$PORT" \
 PLATEFORME_BASE=sqlite \
-PLATEFORME_BASE_URL="$BASE_FICHIER" \
+PLATEFORME_BASE_URL="$DB_FILE" \
 PLATEFORME_SECRET_JETON="$SECRET_JETON" \
     "$RACINE/plateforme/node_modules/.bin/tsx" "$RACINE/plateforme/src/index.ts" \
     > "$SORTIE/service.log" 2>&1 &
@@ -88,7 +88,7 @@ grep 'le port ' "$SORTIE/service.log" | sed 's/^/    /' || { dire '🔴 le servi
 # --- 2. enrolment ----------------------------------------------------------
 dire '=== 2. enrôlement de la VM (npm run admin:agent) ==='
 ENROLEMENT="$(cd "$RACINE/plateforme" && \
-    PLATEFORME_HOTE=192.168.3.1 PLATEFORME_BASE=sqlite PLATEFORME_BASE_URL="$BASE_FICHIER" \
+    PLATEFORME_HOTE=192.168.3.1 PLATEFORME_BASE=sqlite PLATEFORME_BASE_URL="$DB_FILE" \
     PLATEFORME_SECRET_JETON="$SECRET_JETON" \
     npm run --silent admin:agent -- --vm w1 --adresse 192.168.3.2 2>/dev/null)"
 AGENT_VM="$(echo "$ENROLEMENT" | sed -n 's/^vm_id=//p')"
@@ -146,7 +146,7 @@ const db = new DatabaseSync(process.argv[1]);
 for (const l of db.prepare("SELECT id, utilisateur_id, vm_id, ouverte_a, fermee_a FROM session ORDER BY ouverte_a").all()) {
     console.log("    " + JSON.stringify(l));
 }
-' "$BASE_FICHIER" 2>&1 | sed 's/^/    /'
+' "$DB_FILE" 2>&1 | sed 's/^/    /'
 
 # --- 8. task 20's RED run: WITHOUT the variables ---------------------------
 dire '=== 8. 🔴 la même chose SANS AGENT_VM ni AGENT_SECRET ==='

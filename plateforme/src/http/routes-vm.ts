@@ -14,7 +14,7 @@
 //
 // 🔴 `attribuer` IS NOT EXPOSED, and it is not an oversight. There is NO
 // administration role in this service: `identite/jeton.ts` only knows
-// `utilisateur` and `agent`, and `config.ts` has no administrator
+// `user` and `agent`, and `config.ts` has no administrator
 // variable. An assignment route would therefore be, at best, open to
 // any authenticated user — a privilege escalation on a plate.
 // Assignment goes through `npm run admin:attribuer` (D8). The allow list
@@ -75,7 +75,7 @@ export interface DependancesVm {
     proxyDeConfiance: ReadonlySet<string>;
 }
 
-const CHEMIN_LISTE = '/vm';
+const LIST_PATH = '/vm';
 
 function repondre(
     rep: ServerResponse,
@@ -139,7 +139,7 @@ function compterLaRequete(
     adresse: string,
     instant: number,
     // 🔴 MINOR FIXED (correction round 1): this parameter was missing, and
-    // the line UNCONDITIONALLY logged `CHEMIN_LISTE` (`/vm`),
+    // the line UNCONDITIONALLY logged `LIST_PATH` (`/vm`),
     // including for `POST /vm/:id/:operation` — the trace named the
     // wrong route.
     chemin: string,
@@ -165,8 +165,8 @@ export async function servirVm(
 ): Promise<boolean> {
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     const action = operationDe(chemin);
-    const estListe = chemin === CHEMIN_LISTE;
-    if (!estListe && action === undefined) return false;
+    const isList = chemin === LIST_PATH;
+    if (!isList && action === undefined) return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
@@ -186,7 +186,7 @@ export async function servirVm(
         return true;
     }
 
-    if (estListe && req.method !== 'GET') {
+    if (isList && req.method !== 'GET') {
         // The path EXISTS, it is the method that does not fit: a 404
         // would send people looking for a missing route.
         repondre(rep, 405, { refus: 'methode' }, cors);
@@ -299,9 +299,9 @@ export async function servirVm(
     // here: a filter defect living in this layer would leak
     // the whole inventory, and there would be no place to make it fail without
     // standing up a server.
-    const siennes = vmsDe(await orchestrateur.lister(), porteur.utilisateurId);
+    const siennes = vmsDe(await orchestrateur.lister(), porteur.userId);
 
-    if (estListe) {
+    if (isList) {
         // ⚠️ THE COUNT IS THE USER'S, NOT THE VM'S, and it
         // is only exact per VM because the partial index `vm_un_utilisateur`
         // guarantees AT MOST ONE VM per user. The day that invariant
@@ -309,7 +309,7 @@ export async function servirVm(
         // every row — hence wrong. It is written here rather than discovered
         // later; `depot/session.ts` knows nothing about VMs, its table only carrying
         // `vm_id` since P3 and for the trace.
-        const ouvertes = await compterOuvertesDe(deps.base, porteur.utilisateurId);
+        const ouvertes = await compterOuvertesDe(deps.base, porteur.userId);
         const vms = [];
         for (const v of siennes) {
             vms.push({
@@ -321,7 +321,7 @@ export async function servirVm(
                 // changed.
                 etat: await orchestrateur.etat(v.id),
                 prefixe: v.prefixe,
-                // ⚠️ NEITHER `adresse` NOR `utilisateurId`: the first is internal
+                // ⚠️ NEITHER `adresse` NOR `userId`: the first is internal
                 // topology the browser has no use for (D7), the
                 // second is the requester's own, which it already knows.
                 sessions_ouvertes: ouvertes,
@@ -349,12 +349,12 @@ export async function servirVm(
         return true;
     }
 
-    // The three verbs all refuse, and that is criterion ①. The `Resultat`
+    // The three verbs all refuse, and that is criterion ①. The `Outcome`
     // is not rebuilt here: it comes from the orchestrator, whose backend
     // name it carries.
     const issue =
         operation === 'demarrer'
-            ? await orchestrateur.demarrer(vmId)
+            ? await orchestrateur.start(vmId)
             : operation === 'arreter'
               ? await orchestrateur.arreter(vmId)
               : await orchestrateur.instantane(vmId, '');

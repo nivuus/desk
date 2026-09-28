@@ -125,7 +125,7 @@ pub(super) fn configure_rate_control(transform: &IMFTransform, bitrate: u32) -> 
         let gop = variant_u32(0);
         if let Err(e) = codec.SetValue(&CODECAPI_AVEncMPVGOPSize, &gop) {
             tracing::warn!(
-                erreur = %e,
+                error = %e,
                 "réglage CODECAPI_AVEncMPVGOPSize (groupe d'images ouvert) refusé par le pilote"
             );
         }

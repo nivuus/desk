@@ -14,7 +14,7 @@ use super::*;
 
 /// 🔴 THE CASE OF THE 92 OUT OF 153: empty path, the icon is the TARGET's.
 #[test]
-fn un_chemin_vide_renvoie_a_la_cible() {
+fn an_empty_path_points_back_to_the_target() {
     // The exact shape recorded by M1 on this VM.
     assert_eq!(
         provenance(",0", r"c:\windows\system32\notepad.exe"),
@@ -25,17 +25,17 @@ fn un_chemin_vide_renvoie_a_la_cible() {
         provenance("", r"c:\windows\system32\notepad.exe"),
         Provenance::Module(r"c:\windows\system32\notepad.exe".into())
     );
-    // 🔴 THE RED: treating an empty path as `Aucune`. That state would
+    // 🔴 THE RED: treating an empty path as `Absent`. That state would
     // lose the icon of more than one application in two, SILENTLY.
     assert_ne!(
         provenance(",0", r"c:\windows\system32\notepad.exe"),
-        Provenance::Aucune
+        Provenance::Absent
     );
 }
 
 /// A standalone `.ico` — the verbatim line of M1.
 #[test]
-fn un_ico_autonome_est_lu_comme_un_ico() {
+fn a_standalone_ico_is_read_as_an_ico() {
     assert_eq!(
         provenance(
             r"C:\Program Files\GSmartControl\gsmartcontrol.ico,0",
@@ -55,7 +55,7 @@ fn un_ico_autonome_est_lu_comme_un_ico() {
 
 /// A PE module named explicitly — the verbatim line of M1.
 #[test]
-fn un_module_pe_est_lu_comme_un_module() {
+fn a_pe_module_is_read_as_a_module() {
     assert_eq!(
         provenance(r"%windir%\system32\notepad.exe,0", r"c:\autre\chose.exe"),
         Provenance::Module(r"%windir%\system32\notepad.exe".into())
@@ -66,7 +66,7 @@ fn un_module_pe_est_lu_comme_un_module() {
     }
 }
 
-/// 🔴 WITHOUT AN EXTENSION, WE CANNOT READ — and `Aucune` SAYS so, where guessing
+/// 🔴 WITHOUT AN EXTENSION, WE CANNOT READ — and `Absent` SAYS so, where guessing
 /// would produce a false measurement. The verbatim line of M1.
 #[test]
 fn un_chemin_sans_extension_ne_se_lit_pas() {
@@ -75,12 +75,12 @@ fn un_chemin_sans_extension_ne_se_lit_pas() {
             r"C:\Windows\Installer\{1BEA6F9E-0000-0000-0000-000000000000}\ProductIcon,0",
             ""
         ),
-        Provenance::Aucune
+        Provenance::Absent
     );
     // Nor can an unknown extension.
-    assert_eq!(provenance(r"C:\x\y.png,0", ""), Provenance::Aucune);
+    assert_eq!(provenance(r"C:\x\y.png,0", ""), Provenance::Absent);
     // And an empty target with an empty IconLocation: nothing at all.
-    assert_eq!(provenance("", ""), Provenance::Aucune);
+    assert_eq!(provenance("", ""), Provenance::Absent);
 }
 
 /// 🔴 THE LAST COMMA, NEVER THE FIRST — a Windows path may
@@ -94,8 +94,8 @@ fn le_decoupage_se_fait_sur_la_derniere_virgule() {
     );
     assert_eq!(index(l), 3);
     // On the FIRST comma, the path would be `C:\Program Files\Machin`,
-    // which has no extension — hence `Aucune`. The red is visible.
-    assert_ne!(provenance(l, ""), Provenance::Aucune);
+    // which has no extension — hence `Absent`. The red is visible.
+    assert_ne!(provenance(l, ""), Provenance::Absent);
 }
 
 #[test]
@@ -113,17 +113,17 @@ fn l_index_vaut_zero_a_defaut_et_accepte_le_negatif() {
 
 /// A DIRECTORY extension must not be taken for the file's.
 #[test]
-fn l_extension_est_celle_du_dernier_segment() {
+fn the_extension_is_that_of_the_last_segment() {
     assert_eq!(
         provenance(r"C:\dossier.exe\fichier,0", ""),
-        Provenance::Aucune
+        Provenance::Absent
     );
     assert_eq!(
         provenance(r"C:\dossier.ico\fichier.exe,0", ""),
         Provenance::Module(r"C:\dossier.ico\fichier.exe".into())
     );
     // A trailing dot is not an extension.
-    assert_eq!(provenance(r"C:\x\y.,0", ""), Provenance::Aucune);
+    assert_eq!(provenance(r"C:\x\y.,0", ""), Provenance::Absent);
 }
 
 /// The case of the extension decides nothing.

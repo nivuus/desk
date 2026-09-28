@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     CLE_PREFIXE,
     composer,
-    effacerPrefixe,
+    clearPrefix,
     lirePrefixe,
     poserPrefixe,
     prefixeDeLaVm,
@@ -15,8 +15,8 @@ import {
 function coffre(entrees: Record<string, string> = {}) {
     return {
         getItem: (cle: string) => entrees[cle] ?? null,
-        setItem: (cle: string, valeur: string) => {
-            entrees[cle] = valeur;
+        setItem: (cle: string, value: string) => {
+            entrees[cle] = value;
         },
         removeItem: (cle: string) => {
             delete entrees[cle];
@@ -112,7 +112,7 @@ describe('poserPrefixe', () => {
     /// vert parce que le préfixe serait bien quelque part.
     it('écrit dans le coffre PASSÉ, jamais dans un global', () => {
         const global = globalThis as { localStorage?: unknown };
-        const avant = global.localStorage;
+        const before = global.localStorage;
         const espion = coffre();
         global.localStorage = espion;
         try {
@@ -121,8 +121,8 @@ describe('poserPrefixe', () => {
             expect(lirePrefixe(mien, '')).toBe('AB');
             expect(espion.getItem(CLE_PREFIXE)).toBeNull();
         } finally {
-            if (avant === undefined) delete global.localStorage;
-            else global.localStorage = avant;
+            if (before === undefined) delete global.localStorage;
+            else global.localStorage = before;
         }
     });
 });
@@ -134,7 +134,7 @@ describe('effacerPrefixe', () => {
     /// qu'il porte quelque chose la requête ne sert à rien.
     it('retire la clé, et rend la main à la chaîne de requête', () => {
         const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
-        effacerPrefixe(c);
+        clearPrefix(c);
         expect(lirePrefixe(c, '?prefixe=Q')).toBe('Q');
     });
 });

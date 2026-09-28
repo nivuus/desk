@@ -39,7 +39,7 @@ pub struct Sondeur {
     /// the content already present; it receives the first copy THAT FOLLOWS", AND
     /// SUB-BLOCK P3 REFUTED IT.** It was P1's legacy no. 3, and it is
     /// closed: the registry memorises the last announcement
-    /// (`capteur/sommeil/registre.rs::Etat::dernier_presse_papier`) and
+    /// (`capteur/sommeil/registre.rs::Etat::last_clipboard`) and
     /// emits it at registration on the new channel alone.
     ///
     /// ⚠️ **What stays TRUE is the property of THIS field**, and it is
@@ -47,15 +47,15 @@ pub struct Sondeur {
     /// What changed is elsewhere — it is the REGISTRY that replays, not it.
     reference: Option<u32>,
     /// The last content actually announced — **D5's guard no. 2**.
-    dernier_emis: Option<String>,
+    last_emitted: Option<String>,
     /// The last refused size, so as not to repeat the refusal.
-    dernier_refus: Option<u32>,
+    last_refusal: Option<u32>,
     /// When `tour()` last read the counter.
-    dernier_tour: Option<Instant>,
+    last_round: Option<Instant>,
 }
 
 impl Sondeur {
-    pub fn nouveau() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -82,7 +82,7 @@ impl Sondeur {
         self.reference = Some(seq);
         if premier_tour {
             // The state read at attach time serves as reference: we announce nothing.
-            self.dernier_emis = Some(normaliser(&brut));
+            self.last_emitted = Some(normaliser(&brut));
             return None;
         }
         // Normalise first, bound after (D-P1-2): the bound bears on what
@@ -96,20 +96,20 @@ impl Sondeur {
             // A refusal repeated identically is only announced once: otherwise
             // a huge content left in the clipboard would make the banner
             // flicker at each neighbouring copy.
-            if self.dernier_refus == Some(octets) {
+            if self.last_refusal == Some(octets) {
                 return None;
             }
-            self.dernier_refus = Some(octets);
+            self.last_refusal = Some(octets);
             return Some(Annonce::Refus { octets });
         }
-        self.dernier_refus = None;
+        self.last_refusal = None;
         // D5's guard no. 2: the counter moves on an identical rewrite
         // (measured, probe P0). Without this comparison, such a gesture would push
         // a message for nothing.
-        if self.dernier_emis.as_deref() == Some(texte.as_str()) {
+        if self.last_emitted.as_deref() == Some(texte.as_str()) {
             return None;
         }
-        self.dernier_emis = Some(texte.clone());
+        self.last_emitted = Some(texte.clone());
         Some(Annonce::Texte(texte))
     }
 
@@ -125,7 +125,7 @@ impl Sondeur {
     ///
     /// - `reference` **is guard no. 1**: at the next turn, `observer` exits
     ///   on its first line and **does not even reopen** the clipboard;
-    /// - `dernier_emis` **is guard no. 2 armed on our write**: it
+    /// - `last_emitted` **is guard no. 2 armed on our write**: it
     ///   catches the case where a THIRD-PARTY write slipped in between
     ///   our `SetClipboardData` and this reread of the counter. The reread
     ///   number is then no longer the current one, guard no. 1 does not bite, and
@@ -169,7 +169,7 @@ impl Sondeur {
             return;
         }
         self.reference = Some(seq);
-        self.dernier_emis = Some(normaliser(texte));
+        self.last_emitted = Some(normaliser(texte));
     }
 
     /// Discards the announcement OUR OWN write has just produced, and arms
@@ -182,7 +182,7 @@ impl Sondeur {
     ///
     /// 1. window A pastes → the write sets `notre_ecriture = (seqA, textA)`;
     /// 2. the wheel turn calls `armer_les_gardes`: it TAKES this pair and
-    ///    arms `reference = seqA`, `dernier_emis = textA`;
+    ///    arms `reference = seqA`, `last_emitted = textA`;
     /// 3. window B pastes → `notre_ecriture = (seqB, textB)`, and the
     ///    Windows clipboard now carries `textB`;
     /// 4. `tour()` reads `seqB ≠ seqA` — guard no. 1 does not bite — then reads
@@ -197,7 +197,7 @@ impl Sondeur {
     /// write**, and it was declared nowhere.
     ///
     /// ⚠️ **THIS REMEDY NARROWS THE WINDOW, IT DOES NOT CLOSE IT.**
-    /// `capteur/sommeil/presse_papier::ecrire_avec` writes the clipboard
+    /// `capteur/sommeil/presse_papier::write_with` writes the clipboard
     /// **THEN** sets `notre_ecriture` — the lock there is deliberately taken
     /// AFTER the Win32 I/O, because holding it around `OpenClipboard`
     /// would block the attaching and removal of ALL windows. If `tour()`
@@ -258,12 +258,12 @@ impl Sondeur {
     /// elapsed, even if the caller comes more often.
     pub fn tour(&mut self) -> Option<Annonce> {
         let maintenant = Instant::now();
-        if let Some(dernier) = self.dernier_tour {
-            if maintenant.duration_since(dernier) < PERIODE_PRESSE_PAPIER {
+        if let Some(last) = self.last_round {
+            if maintenant.duration_since(last) < PERIODE_PRESSE_PAPIER {
                 return None;
             }
         }
-        self.dernier_tour = Some(maintenant);
+        self.last_round = Some(maintenant);
         if !actif() {
             return None;
         }

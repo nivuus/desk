@@ -38,10 +38,10 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 };
 
 use super::{chemins_de, etat, garde, identifiant};
-use crate::pont::erreurs::{Erreur, EN_COURS};
+use crate::pont::errors::{Error, EN_COURS};
 use crate::pont::projfs::{ContexteProjFs, TamponEntrees};
 use crate::pont::table::{Attendue, DELAI_LISTER};
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 // ────────────────────────────────────────────────────────────────────────────
 // 🔵 THE THREE `const _`s LEAVE WITH THEIR FUNCTIONS, and it is not
@@ -57,13 +57,12 @@ const _: PRJ_GET_DIRECTORY_ENUMERATION_CB = Some(suite_enumeration);
 /// Opens an enumeration session. **Synchronous, `S_OK`** — there is nothing to
 /// ask the browser to open a session (spec §4.3).
 pub(super) unsafe extern "system" fn debut_enumeration(
-    donnees: *const PRJ_CALLBACK_DATA,
+    data: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
 ) -> HRESULT {
     garde("StartDirectoryEnumeration", || {
-        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe {
-            identifiant(enumeration)
-        }) else {
+        let (Some(etat), Some(id)) = (unsafe { etat(data) }, unsafe { identifiant(enumeration) })
+        else {
             return E_UNEXPECTED;
         };
         // ⚠️ The session is indexed by the ENUMERATION GUID, never by the
@@ -82,13 +81,12 @@ pub(super) unsafe extern "system" fn debut_enumeration(
 
 /// Closes an enumeration session. **Synchronous, `S_OK`.**
 pub(super) unsafe extern "system" fn fin_enumeration(
-    donnees: *const PRJ_CALLBACK_DATA,
+    data: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
 ) -> HRESULT {
     garde("EndDirectoryEnumeration", || {
-        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe {
-            identifiant(enumeration)
-        }) else {
+        let (Some(etat), Some(id)) = (unsafe { etat(data) }, unsafe { identifiant(enumeration) })
+        else {
             return E_UNEXPECTED;
         };
         // The session dies here: its entries do NOT outlive the enumeration.
@@ -107,19 +105,18 @@ pub(super) unsafe extern "system" fn fin_enumeration(
 /// ❌ *Announced "`S_OK`, empty buffer, empty root": task 13's state.
 /// Task 14 of the SAME branch refuted it — `Lister` really goes out.*
 pub(super) unsafe extern "system" fn suite_enumeration(
-    donnees: *const PRJ_CALLBACK_DATA,
+    data: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
     expression: windows::core::PCWSTR,
     tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE,
 ) -> HRESULT {
     garde("GetDirectoryEnumeration", || {
-        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe {
-            identifiant(enumeration)
-        }) else {
+        let (Some(etat), Some(id)) = (unsafe { etat(data) }, unsafe { identifiant(enumeration) })
+        else {
             return E_UNEXPECTED;
         };
-        let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
+        let Some((chemin, _)) = (unsafe { chemins_de(data) }) else {
+            return HRESULT(etat.compteurs.rendre(Error::CheminIntrouvable));
         };
         let motif = if expression.is_null() {
             None
@@ -131,7 +128,7 @@ pub(super) unsafe extern "system" fn suite_enumeration(
         // **must be honoured**: it restarts the enumeration in progress. Ignoring it
         // would return an empty directory to any application that asks again
         // from the start, silently.
-        let redemarrer = unsafe { (*donnees).Flags }.0 & 1 != 0;
+        let redemarrer = unsafe { (*data).Flags }.0 & 1 != 0;
 
         let mut sessions = match etat.sessions.lock() {
             Ok(sessions) => sessions,
@@ -201,7 +198,7 @@ pub(super) unsafe extern "system" fn suite_enumeration(
             Err(_) => return E_UNEXPECTED,
         };
         let demandee = etat.demander(
-            unsafe { (*donnees).CommandId },
+            unsafe { (*data).CommandId },
             Attendue::Lister {
                 chemin,
                 enumeration: id,
@@ -211,13 +208,13 @@ pub(super) unsafe extern "system" fn suite_enumeration(
                 tampon: TamponEntrees(tampon),
                 expression: motif,
             },
-            proto::fichiers::TYPE_LISTER,
+            proto::files::TYPE_LISTER,
             &entete,
         );
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Error::CanalFerme))
         }
     })
 }

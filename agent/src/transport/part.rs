@@ -189,13 +189,13 @@ mod tests {
             &mut |_| {},
         );
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Active,
             "précondition : une estimation réelle a bien été observée, donc `changer_plafond` BORNE"
         );
         let part_eveillee = 1_333_333; // 12 Mb/s shared between eight windows.
         assert!(
-            session.congestion.courant().video_bitrate_bps > part_eveillee,
+            session.congestion.current().video_bitrate_bps > part_eveillee,
             "précondition : l'estimation laisse de la place au-dessus de la part d'éveillée, \
              sans quoi l'assertion finale ne prouverait rien"
         );
@@ -219,7 +219,7 @@ mod tests {
         session.appliquer_part(part_eveillee);
 
         assert_eq!(
-            session.congestion.courant().video_bitrate_bps,
+            session.congestion.current().video_bitrate_bps,
             part_eveillee,
             "le débit doit suivre la part de l'ÉVEILLÉE : avant le remède, le `min` du plancher \
              dormant le figeait à {PART_DORMANTE_BPS} bps pour toute la vie de la session"
@@ -241,7 +241,7 @@ mod tests {
         // EXACTLY the ceiling — a loose bound (`<=`) would let through
         // 0 or 1 just as well as a real bound.
         assert_eq!(
-            session.congestion.courant().video_bitrate_bps,
+            session.congestion.current().video_bitrate_bps,
             3_000_000,
             "la décision du contrôleur doit être bornée par la part"
         );
@@ -261,7 +261,7 @@ mod tests {
     /// precisely that in this exact regime ("never any estimate") the
     /// bitrate is a pure fallback value that FOLLOWS the ceiling, upwards
     /// as well as downwards (see `congestion/reconfiguration.rs`, regime 1, and
-    /// its test `un_plafond_qui_monte_est_suivi_tant_qu_aucune_estimation_n_est_jamais_arrivee`).
+    /// its test `a_rising_ceiling_is_followed_while_no_estimate_has_ever_arrived`).
     /// As is, the call `appliquer_part(50_000_000)` does go back up to
     /// 50,000,000 — it is not an implementation bug, it is the test that
     /// did not exercise the regime it claims to cover. Fixed by injecting
@@ -291,13 +291,13 @@ mod tests {
             &mut |_| {},
         );
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Active,
             "précondition : une estimation réelle a bien été observée"
         );
 
         session.appliquer_part(2_000_000);
-        let apres_baisse = session.congestion.courant().video_bitrate_bps;
+        let apres_baisse = session.congestion.current().video_bitrate_bps;
         assert!(
             apres_baisse <= 2_000_000,
             "précondition : la baisse a bien été appliquée"
@@ -306,7 +306,7 @@ mod tests {
         session.appliquer_part(50_000_000);
 
         assert!(
-            session.congestion.courant().video_bitrate_bps <= apres_baisse,
+            session.congestion.current().video_bitrate_bps <= apres_baisse,
             "sans observation neuve, une part plus large ne remonte pas le débit d'elle-même"
         );
     }

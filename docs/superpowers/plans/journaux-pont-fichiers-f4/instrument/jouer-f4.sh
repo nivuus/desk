@@ -77,7 +77,7 @@ mkdir -p /tmp/f4
 # 🔵 M1 — THE BRIDGE ALONE: no sensor, no window, no encoder, no video
 # PeerConnection. `main.rs` wires `PONT` AFTER `CAPTEUR` and BEFORE the supervisor, and
 # `pont.rs` does its OWN signaling on `SESSION_ID` — so an agent launched
-# with `PONT=1` and `SESSION_ID=<prefixe>:fichiers` meets the existing shell page
+# with `PONT=1` and `SESSION_ID=<prefixe>:files` meets the existing shell page
 # WITHOUT A SINGLE CLIENT LINE CHANGING.
 if [ "$MONTAGE" = "m1" ]; then
     MODE="PONT=1 SESSION_ID=$PREFIXE_VM:fichiers"

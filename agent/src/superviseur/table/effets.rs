@@ -2,7 +2,7 @@
 //!
 //! Extracted from `table.rs` (task 9 of sub-block D10, at review, August 6th, 2026):
 //! the parent file was at 499 lines, margin 1, once the
-//! `taille` field of `LancerEnfant` was added — the plan's constraint ("extraction first,
+//! `size` field of `LancerEnfant` was added — the plan's constraint ("extraction first,
 //! without exception", not "extraction once 500 is crossed") applies from
 //! that very margin, before even exceeding it. Purely declarative: no
 //! logic here, only the enumeration and its documentation, already heavy —
@@ -22,7 +22,7 @@ pub enum Effet {
     /// is shown to a human. Without it, the caller only has the session
     /// identifier at hand and the shell page announces "*"w-3" could not
     /// open*" — a message that designates nothing for the user.
-    CreerSortie {
+    CreateOutput {
         session: IdSession,
         titre: String,
         largeur: u32,
@@ -36,13 +36,13 @@ pub enum Effet {
         /// startup — hence later — and an output appearing or disappearing
         /// meanwhile makes it capture something else, or fail.
         nom_sortie: String,
-        /// The RETAINED size (`placement::taille_retenue`), not the output's:
+        /// The RETAINED size (`placement::retained_size`), not the output's:
         /// the output can be much larger (polluted registry,
-        /// see `creation_sortie::creer_sortie`). It is this size the
+        /// see `creation_sortie::create_output`). It is this size the
         /// supervisor puts on the child (`TAILLE_FENETRE`), so that it
         /// tells it again to the sensor at attach time (task 9 of sub-block D10) — the
         /// sensor needs it to crop (task 8).
-        taille: (u32, u32),
+        size: (u32, u32),
     },
     TuerEnfant {
         session: IdSession,
@@ -72,7 +72,7 @@ pub enum Effet {
     /// make a window GROW that a smaller viewport had shrunk. The
     /// table decides THAT IT MUST FOLLOW, the loop measures and applies.
     ///
-    /// `largeur`/`hauteur` are already bounded by `borner_a_la_taille_max`,
+    /// `largeur`/`hauteur` are already bounded by `clamp_to_max_size`,
     /// as on the two other entry paths of the viewport.
     SuivreLeViewport {
         session: IdSession,

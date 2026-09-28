@@ -1,4 +1,4 @@
-# R1: removes `verifie_version` from the ONLY `MicState` variant.
+# R1: removes `check_version` from the ONLY `MicState` variant.
 # Anchored on the variant's syntax, never by a global substring: the line
 # `#[serde(rename = "v", deserialize_with = ...)]` exists TEN TIMES in this file.
 python3 - "$1" <<'PY'

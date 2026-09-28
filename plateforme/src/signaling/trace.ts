@@ -113,7 +113,7 @@ export function observateurDeSession(
     const ouvertes = new Map<string, Promise<string | undefined>>();
 
     return {
-        apparie(nomSession, utilisateurId) {
+        apparie(nomSession, userId) {
             // An already traced session does not open a second row: a peer
             // that reconnects while the other stays in place re-pairs the
             // session, and the first row would otherwise stay orphaned — never
@@ -132,7 +132,7 @@ export function observateurDeSession(
                 // arrive is the agent — whose identity exists since P3, but
                 // which still claims nothing (`identite/garde.ts`).
                 resoudreVm(base, nomSession)
-                    .then((vmId) => ouvrirSession(base, nomSession, instant, utilisateurId, vmId))
+                    .then((vmId) => ouvrirSession(base, nomSession, instant, userId, vmId))
                     .catch((cause) => {
                         console.error(
                             `trace de session non écrite pour ${nomSession} : ${String(cause)}`,

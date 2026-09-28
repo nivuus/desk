@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expireAvant, jetonAcces, paireDeReponse, poser, poserAcces, rafraichirSiNecessaire, vider } from './jeton';
+import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expiresBefore, jetonAcces, paireDeReponse, poser, poserAcces, rafraichirSiNecessaire, drain } from './jeton';
 import type { Coffre } from './jeton';
 
 /// Un coffre factice, en mémoire. Il n'y a AUCUN `localStorage` dans
@@ -27,8 +27,8 @@ function jetonFactice(expMs: number, signature = 'peu-importe'): string {
 /// Encode en base64url avec `btoa`, jamais avec `Buffer` : `client/` n'a pas
 /// `@types/node` (relevé : `npm run typecheck` rend `TS2580 Cannot find name
 /// 'Buffer'`), et le code testé tourne de toute façon dans un navigateur.
-function b64url(valeur: unknown): string {
-    const octets = new TextEncoder().encode(JSON.stringify(valeur));
+function b64url(value: unknown): string {
+    const octets = new TextEncoder().encode(JSON.stringify(value));
     const binaire = Array.from(octets, (o) => String.fromCharCode(o)).join('');
     return btoa(binaire).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -51,7 +51,7 @@ describe('le coffre à jetons du navigateur', () => {
         // tout script de la page lit.
         const coffre = coffreFactice();
         poser(coffre, { acces: 'a-1', rafraichissement: 'r-1' });
-        vider(coffre);
+        drain(coffre);
         expect(coffre.contenu.has(CLE_ACCES)).toBe(false);
         expect(coffre.contenu.has(CLE_RAFRAICHISSEMENT)).toBe(false);
     });
@@ -196,24 +196,24 @@ describe('la fraîcheur, lue SANS vérifier la signature', () => {
     it("lit `exp` d'un jeton dont la SIGNATURE est fausse, et ne le refuse pas", () => {
         // 🔴 C'est la moitié décidable de « le navigateur ne vérifie jamais » :
         // ce jeton porte une signature qui n'est celle de personne, et
-        // `expireAvant` rend quand même `false` parce que son `exp` est loin.
+        // `expiresBefore` rend quand même `false` parce que son `exp` est loin.
         // Le rouge est de prétendre vérifier — le client n'a pas le secret, et
         // croire qu'il vérifie serait pire que savoir qu'il ne le fait pas.
         const jeton = jetonFactice(10_000, 'signature-qui-n-est-celle-de-personne');
-        expect(expireAvant(jeton, 5_000)).toBe(false);
+        expect(expiresBefore(jeton, 5_000)).toBe(false);
     });
 
     it('rend `true` quand `exp` est déjà passé', () => {
-        expect(expireAvant(jetonFactice(1_000), 5_000)).toBe(true);
+        expect(expiresBefore(jetonFactice(1_000), 5_000)).toBe(true);
     });
 
     it('rend `true` sur un jeton MAL FORMÉ', () => {
         // Le rouge est de rendre `false` : un jeton illisible serait alors cru
         // valable, et la session échouerait plus tard, ailleurs, sur un refus
         // du service que rien ne relierait à cette lecture.
-        expect(expireAvant('pas-un-jeton', 0)).toBe(true);
-        expect(expireAvant('a.b.c', 0)).toBe(true);
-        expect(expireAvant(`${b64url({})}.${b64url({})}.x`, 0)).toBe(true);
+        expect(expiresBefore('pas-un-jeton', 0)).toBe(true);
+        expect(expiresBefore('a.b.c', 0)).toBe(true);
+        expect(expiresBefore(`${b64url({})}.${b64url({})}.x`, 0)).toBe(true);
     });
 });
 
@@ -320,14 +320,14 @@ describe('accesParPomerium — le chemin de `tenterPomerium`, extrait', () => {
 
 describe('assurerAccesFrais', () => {
     /// Un jeton dont `exp` vaut `expMs`. La signature n'est pas vérifiée par
-    /// le navigateur (voir `expireAvant`), donc un en-tête et une signature
-    /// factices suffisent — c'est ce que font déjà les tests d'`expireAvant`.
+    /// le navigateur (voir `expiresBefore`), donc un en-tête et une signature
+    /// factices suffisent — c'est ce que font déjà les tests d'`expiresBefore`.
     function jetonExpirantA(expMs: number): string {
         const charge = btoa(JSON.stringify({ exp: expMs })).replace(/=+$/, '');
         return `x.${charge}.y`;
     }
 
-    function coffreAvec(entrees: Record<string, string>): Coffre {
+    function vaultWith(entrees: Record<string, string>): Coffre {
         const carte = new Map(Object.entries(entrees));
         return {
             getItem: (c) => carte.get(c) ?? null,
@@ -337,7 +337,7 @@ describe('assurerAccesFrais', () => {
     }
 
     it('un jeton frais est rendu SANS aucun appel reseau', async () => {
-        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(100_000) });
+        const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(100_000) });
         let appels = 0;
         const acces = await assurerAccesFrais(
             coffre,
@@ -356,7 +356,7 @@ describe('assurerAccesFrais', () => {
     it('un jeton qui expire DANS LA MARGE est traite comme perime', async () => {
         // `exp` = 20 s, marge = 30 s, maintenant = 0 : encore valide a
         // l'instant meme, deja perime au sens de la marge.
-        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(20_000) });
+        const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(20_000) });
         const acces = await assurerAccesFrais(
             coffre,
             'https://h',
@@ -368,7 +368,7 @@ describe('assurerAccesFrais', () => {
     });
 
     it('un jeton perime avec rafraichissement passe par le rafraichissement, PAS par Pomerium', async () => {
-        const coffre = coffreAvec({
+        const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
         });
@@ -385,7 +385,7 @@ describe('assurerAccesFrais', () => {
     });
 
     it('sans jeton de rafraichissement, Pomerium prend le relais et le jeton est POSE', async () => {
-        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(0) });
+        const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(0) });
         const acces = await assurerAccesFrais(
             coffre,
             'https://h',
@@ -399,7 +399,7 @@ describe('assurerAccesFrais', () => {
     });
 
     it('les deux voies echouent : rend undefined ET vide le coffre', async () => {
-        const coffre = coffreAvec({ [CLE_ACCES]: jetonExpirantA(0) });
+        const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(0) });
         const acces = await assurerAccesFrais(
             coffre,
             'https://h',
@@ -415,7 +415,7 @@ describe('assurerAccesFrais', () => {
     });
 
     it('un coffre VIDE va directement a Pomerium', async () => {
-        const coffre = coffreAvec({});
+        const coffre = vaultWith({});
         const acces = await assurerAccesFrais(
             coffre,
             'https://h',
@@ -434,7 +434,7 @@ describe('assurerAccesFrais', () => {
         // Le rouge serait l'exception qui remonte non rattrapee, au lieu de
         // retomber sur l'etape suivante (Pomerium), et la page resterait
         // bloquee sur "identification...".
-        const coffre = coffreAvec({
+        const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
         });
@@ -454,7 +454,7 @@ describe('assurerAccesFrais', () => {
     // vide) doit donc etre rejete PAR LE CALLBACK, jamais ecrit tel quel au
     // coffre par `rafraichirSiNecessaire::poser`.
     it("un corps de rafraichissement MALFORME (ok:true, sans `rafraichissement`) ne poison PAS le coffre", async () => {
-        const coffre = coffreAvec({
+        const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
         });
@@ -471,7 +471,7 @@ describe('assurerAccesFrais', () => {
     });
 
     it("un corps de rafraichissement MALFORME (`acces` vide) ne poison PAS le coffre", async () => {
-        const coffre = coffreAvec({
+        const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
         });

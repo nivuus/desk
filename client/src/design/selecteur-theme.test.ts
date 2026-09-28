@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { installerSelecteurDeTheme, type BoutonDeTheme } from './selecteur-theme';
+import { installThemeSelector, type BoutonDeTheme } from './selecteur-theme';
 import { CLE_THEME } from './theme';
 
 /**
@@ -20,26 +20,26 @@ function banc(themeInitial: string | null = null) {
 
     const coffre = {
         getItem: (cle: string) => stockage.get(cle) ?? null,
-        setItem: (cle: string, valeur: string) => {
-            ecrits.push([cle, valeur]);
-            stockage.set(cle, valeur);
+        setItem: (cle: string, value: string) => {
+            ecrits.push([cle, value]);
+            stockage.set(cle, value);
         },
     };
 
     let attribut: string | null = null;
     const racine = {
-        setAttribute: (_nom: string, valeur: string) => { attribut = valeur; },
+        setAttribute: (_nom: string, value: string) => { attribut = value; },
         removeAttribute: () => { attribut = null; },
     };
 
     const boutons: Array<BoutonDeTheme & { cliquer(): void }> = [];
-    const creerBouton = (): BoutonDeTheme => {
+    const createButton = (): BoutonDeTheme => {
         let clic: (() => void) | null = null;
         const bouton = {
             dataset: {} as { theme?: string },
             textContent: null as string | null,
             attributs: new Map<string, string>(),
-            setAttribute(nom: string, valeur: string) { this.attributs.set(nom, valeur); },
+            setAttribute(nom: string, value: string) { this.attributs.set(nom, value); },
             addEventListener(_type: 'click', ecouteur: () => void) { clic = ecouteur; },
             cliquer() { clic?.(); },
         };
@@ -56,12 +56,12 @@ function banc(themeInitial: string | null = null) {
     };
 
     let rappels = 0;
-    installerSelecteurDeTheme({
+    installThemeSelector({
         hote: { append: () => {} },
         racine,
         coffre,
         source,
-        creerBouton,
+        createButton,
         apres: () => { rappels += 1; },
     });
 
@@ -161,7 +161,7 @@ describe('installerSelecteurDeTheme', () => {
     it("n'écrit RIEN dans le coffre en réagissant à un `storage`", () => {
         // Sans quoi deux fenêtres se renverraient l'événement sans terme.
         // ⚠️ CE TEST N'EST PAS GARANTI PAR LA SIGNATURE, contrairement à celui
-        // de `surStockageModifie` : ici la fermeture DÉTIENT le coffre et le
+        // de `onStorageChanged` : ici la fermeture DÉTIENT le coffre et le
         // LIT à chaque marquage. Il peut donc tomber, et c'est pourquoi il est
         // écrit.
         const b = banc();

@@ -48,13 +48,13 @@ from commun import (
     valider_hote,
     valider_port_de_facts,
 )
-from depot_arbre import copier_arbre, rendre_lisible_par_tous
+from depot_arbre import copier_arbre, make_world_readable
 from depot_node import deposer_node, racine_node_source
-from fichiers_installes import (
+from installed_files import (
     PORT_TURN,
-    ecrire_env,
-    ecrire_secret,
-    ecrire_turnserver_conf,
+    write_env,
+    write_secret,
+    write_turnserver_conf,
     lire_secret_persiste,
 )
 
@@ -145,7 +145,7 @@ def main() -> int:
     args = parser.parse_args()
     root = pathlib.Path(args.root.rstrip("/") or "/")
 
-    def sous(rel: str) -> pathlib.Path:
+    def sub(rel: str) -> pathlib.Path:
         return root / rel
 
     contexte = json.load(sys.stdin)
@@ -153,10 +153,10 @@ def main() -> int:
     facts = contexte.get("facts") or {}
     # wrongly typed `facts` and `answers` gave an `AttributeError` on the
     # first `.get()` — a traceback where this hook writes sentences.
-    for nom, valeur in (("answers", answers), ("facts", facts)):
-        if not isinstance(valeur, dict):
+    for nom, value in (("answers", answers), ("facts", facts)):
+        if not isinstance(value, dict):
             print(f"desk install : {nom} doit etre un objet, recu "
-                  f"{type(valeur).__name__}", file=sys.stderr)
+                  f"{type(value).__name__}", file=sys.stderr)
             return 1
 
     auth_mode = answers.get("auth_mode")
@@ -276,7 +276,7 @@ def main() -> int:
 
     # 🔴 FIXED ON 2026-09-08: install WAS NOT IDEMPOTENT — these two
     # secrets were drawn UNCONDITIONALLY on every run, in
-    # direct contradiction with the `ecrire_secret` docstring ("drawn ONLY
+    # direct contradiction with the `write_secret` docstring ("drawn ONLY
     # ONCE, never recomputed"), which described an invariant the
     # code did not hold. The release plan relies on an update that
     # REPLAYS install IN PLACE: without this fix, every update of
@@ -302,7 +302,7 @@ def main() -> int:
     # one can ignore protects nothing, and rotating the session
     # token/the TURN secret because a file was momentarily
     # unreadable is worse than refusing to install.
-    env_existant = sous("etc/nivuus/desk.env")
+    env_existant = sub("etc/nivuus/desk.env")
     try:
         jeton_existant = lire_secret_persiste(env_existant, "PLATEFORME_SECRET_JETON")
         turn_existant = lire_secret_persiste(env_existant, "TURN_SECRET")
@@ -313,8 +313,8 @@ def main() -> int:
               "silence pendant une panne de lecture passagere.",
               file=sys.stderr)
         return 1
-    secret_jeton = jeton_existant or ecrire_secret()
-    secret_turn = turn_existant or ecrire_secret()
+    secret_jeton = jeton_existant or write_secret()
+    secret_turn = turn_existant or write_secret()
 
     emettre({"event": "progress", "pct": 30, "msg": "Écriture de desk.env"})
 
@@ -350,12 +350,12 @@ def main() -> int:
         "PLATEFORME_ICONES": "/var/lib/nivuus-desk/icones",
         "PLATEFORME_TELEVERSEMENTS": "/var/lib/nivuus-desk/televersements",
         # The coturn configuration on the PLATFORM side (not the coturn server side,
-        # see ecrire_turnserver_conf): `signaling/ice.ts::configurationIce`
+        # see write_turnserver_conf): `signaling/ice.ts::configurationIce`
         # requires BOTH to announce a relay to peers.
         "TURN_URL": f"turn:{turn_ecoute}:{PORT_TURN}",
         "TURN_SECRET": secret_turn,
     }
-    ecrire_env(sous("etc/nivuus/desk.env"), env)
+    write_env(sub("etc/nivuus/desk.env"), env)
 
     emettre({"event": "progress", "pct": 55,
              "msg": "Copie de la plateforme et du client bâti"})
@@ -367,10 +367,10 @@ def main() -> int:
     # under `/var/lib/nivuus-desk`, NOT under its relative default: see
     # PLATEFORME_ICONES/PLATEFORME_TELEVERSEMENTS above, and why the
     # default would break under DynamicUser.
-    copier_arbre(RACINE / "plateforme", sous("opt/nivuus/desk/plateforme"),
+    copier_arbre(RACINE / "plateforme", sub("opt/nivuus/desk/plateforme"),
                  exclure=("donnees",))
     copier_arbre(RACINE / "client" / "dist",
-                 sous("opt/nivuus/desk/client/dist"))
+                 sub("opt/nivuus/desk/client/dist"))
 
     # 🔴 REAL FINDING OF BATCH 10A (29 August 2026), BY STARTING THE REAL
     # SERVICE: `proto/ts/` WAS NOT COPIED AT ALL, AND THE SERVICE DOES NOT
@@ -385,9 +385,9 @@ def main() -> int:
     # (`ERR_MODULE_NOT_FOUND`, measured on this real service). Copied WITHOUT its
     # `*.test.ts` files (never run by the service, only by
     # `vitest` in development).
-    copier_arbre(RACINE / "proto" / "ts", sous("opt/nivuus/desk/proto/ts"),
+    copier_arbre(RACINE / "proto" / "ts", sub("opt/nivuus/desk/proto/ts"),
                  exclure=("*.test.ts",))
-    proto_plateforme_ts = sous("opt/nivuus/desk/proto/ts/plateforme.ts")
+    proto_plateforme_ts = sub("opt/nivuus/desk/proto/ts/plateforme.ts")
     if not proto_plateforme_ts.is_file():
         print(
             f"desk install : {proto_plateforme_ts} est absent apres la copie "
@@ -397,13 +397,13 @@ def main() -> int:
         )
         return 1
 
-    # See `rendre_lisible_par_tous`: needed so that the ephemeral UID of
+    # See `make_world_readable`: needed so that the ephemeral UID of
     # `DynamicUser=yes` can at least TRAVERSE `/opt/nivuus/desk/…` —
-    # set on `sous("opt/nivuus/desk")`, one level ABOVE both copies,
+    # set on `sub("opt/nivuus/desk")`, one level ABOVE both copies,
     # to also cover that parent directory itself (created by the first
     # `copier_arbre` through `destination.parent.mkdir`, under the umask of the
     # process running `install`, never guaranteed world-traversable).
-    rendre_lisible_par_tous(sous("opt/nivuus/desk"))
+    make_world_readable(sub("opt/nivuus/desk"))
 
     # 🔴 PROBLEM B OF BATCH 10A: `npm start` REQUIRES `node_modules`, AND NOTHING
     # GUARANTEED IT. `copier_arbre()` above copies all of `plateforme/`
@@ -421,7 +421,7 @@ def main() -> int:
     # never a mere non-emptiness test of the directory, which would let
     # a partial `node_modules` through), and REFUSES rather than letting an
     # inert service be laid down without saying so.
-    tsx_bin = sous("opt/nivuus/desk/plateforme/node_modules/.bin/tsx")
+    tsx_bin = sub("opt/nivuus/desk/plateforme/node_modules/.bin/tsx")
     if not tsx_bin.exists():
         print(
             f"desk install : {tsx_bin} est absent ; `npm start` "
@@ -443,7 +443,7 @@ def main() -> int:
     emettre({"event": "progress", "pct": 70,
              "msg": "Dépôt du runtime Node (node, npm, npx)"})
     prefixe_cible = pathlib.PurePosixPath(lire_node_bin()).parent
-    deposer_node(prefixe_node, sous(str(prefixe_cible).lstrip("/")))
+    deposer_node(prefixe_node, sub(str(prefixe_cible).lstrip("/")))
 
     emettre({"event": "progress", "pct": 80, "msg": "Dépôt de l'unité systemd"})
 
@@ -472,14 +472,14 @@ def main() -> int:
     contenu_unite = gabarit_unite.replace("__NODE_BIN__", node_bin)
 
     # LAID DOWN, NOT ARMED: see the head comment of the unit itself.
-    unite_dest = sous("etc/systemd/system/desk-plateforme.service")
+    unite_dest = sub("etc/systemd/system/desk-plateforme.service")
     unite_dest.parent.mkdir(parents=True, exist_ok=True)
     unite_dest.write_text(contenu_unite, encoding="utf-8")
     os.chmod(unite_dest, 0o644)  # a unit is DATA, not a program
 
     emettre({"event": "progress", "pct": 95,
              "msg": "Configuration coturn"})
-    ecrire_turnserver_conf(sous("etc/turnserver.conf"), turn_ecoute,
+    write_turnserver_conf(sub("etc/turnserver.conf"), turn_ecoute,
                             turn_relais, secret_turn)
 
     emettre({"event": "done"})

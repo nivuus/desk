@@ -36,11 +36,11 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function verifierLesCles() {
     const source = readFileSync(join(RACINE, 'src', 'jeton.ts'), 'utf8');
-    for (const [nom, valeur] of [
+    for (const [nom, value] of [
         ['CLE_ACCES', CLE_ACCES],
         ['CLE_RAFRAICHISSEMENT', CLE_RAFRAICHISSEMENT],
     ]) {
-        if (!source.includes(`export const ${nom} = '${valeur}';`)) {
+        if (!source.includes(`export const ${nom} = '${value}';`)) {
             throw new Error(
                 `la clé ${nom} de ce module ne correspond plus à celle de client/src/jeton.ts : ` +
                     `le jeton serait semé sous un nom que le client ne lit pas, et la session ` +

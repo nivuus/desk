@@ -50,7 +50,7 @@ pub(super) fn combos() -> [Combo; 4] {
         // ("C1" in its results document): the product then wrote
         // `CDS_UPDATEREGISTRY` at each successful full screen, and an output is BORN
         // at the last size left in the registry (chain
-        // `avant(N) = après(N-1)`, task 3bis of D8) — so that it would have
+        // `before(N) = après(N-1)`, task 3bis of D8) — so that it would have
         // blocked its own later window openings. The three
         // combinations tested by D8 ALL carried `CDS_UPDATEREGISTRY`:
         // this arm had never been tried. ⚠️ Sub-block D9 measured that
@@ -82,11 +82,11 @@ pub(super) fn combos() -> [Combo; 4] {
 /// fallback to all four that would mask a misspelled label —
 /// hence the warning if the filter retains nothing.
 pub(super) fn combos_du_tour(imposee: Option<&str>) -> Vec<Combo> {
-    let toutes = combos();
+    let all = combos();
     let Some(etiquette) = imposee else {
-        return toutes.into_iter().collect();
+        return all.into_iter().collect();
     };
-    let filtrees: Vec<Combo> = toutes
+    let filtrees: Vec<Combo> = all
         .into_iter()
         .filter(|combo| combo.etiquette() == etiquette)
         .collect();

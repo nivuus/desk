@@ -35,10 +35,10 @@ pub(super) fn eprouver() -> Result<()> {
     // `IsSupported` first, and logged even on success: it is
     // the call that raised `E_OUTOFMEMORY` at milestone 1.
     let supporte = match GraphicsCaptureSession::IsSupported() {
-        Ok(valeur) => valeur,
-        Err(erreur) => {
+        Ok(value) => value,
+        Err(error) => {
             tracing::error!(
-                causes = %causes(erreur),
+                causes = %causes(error),
                 "verdict WGC : ÉLIMINÉE — IsSupported a échoué"
             );
             return Ok(());
@@ -83,9 +83,9 @@ pub(super) fn eprouver() -> Result<()> {
     // logged ÉLIMINÉE verdict, rather than a propagated error.
     let (pool, _session) = match preparer_session(&capture, &mires) {
         Ok(paire) => paire,
-        Err(erreur) => {
+        Err(error) => {
             tracing::error!(
-                causes = %causes(erreur),
+                causes = %causes(error),
                 "verdict WGC : ÉLIMINÉE — la préparation de la capture a échoué"
             );
             return Ok(());
@@ -98,7 +98,7 @@ pub(super) fn eprouver() -> Result<()> {
     mires.recouvrir(1, 0)?;
 
     let mut recues = 0usize;
-    let mut dernier_verdict = mire::Verdict::Inconnue;
+    let mut last_verdict = mire::Verdict::Inconnue;
     let echeance = Instant::now() + Duration::from_secs(8);
     while Instant::now() < echeance {
         mires.peindre()?;
@@ -107,27 +107,23 @@ pub(super) fn eprouver() -> Result<()> {
             let surface = trame.Surface()?;
             let acces: IDirect3DDxgiInterfaceAccess = surface.cast()?;
             let texture: ID3D11Texture2D = unsafe { acces.GetInterface() }?;
-            let taille = trame.ContentSize()?;
+            let size = trame.ContentSize()?;
             let (r, g, b, _a) = crate::diagnostics::pixels::read_pixel(
                 capture.device(),
                 &texture,
-                taille.Width as u32,
-                taille.Height as u32,
-                taille.Width as u32 / 2,
-                taille.Height as u32 / 2,
+                size.Width as u32,
+                size.Height as u32,
+                size.Width as u32 / 2,
+                size.Height as u32 / 2,
             )?;
-            dernier_verdict = mire::verdict(0, (r, g, b));
+            last_verdict = mire::verdict(0, (r, g, b));
             recues += 1;
         }
         std::thread::sleep(Duration::from_millis(8));
     }
 
-    tracing::info!(
-        recues,
-        ?dernier_verdict,
-        "trames WGC reçues sous recouvrement"
-    );
-    match (recues > 0, dernier_verdict) {
+    tracing::info!(recues, ?last_verdict, "trames WGC reçues sous recouvrement");
+    match (recues > 0, last_verdict) {
         (true, mire::Verdict::Juste) => tracing::info!(
             "verdict WGC : VIABLE — la fenêtre recouverte reste capturée correctement"
         ),
@@ -196,8 +192,8 @@ fn preparer_session(
 /// conversion is the identity) and a raw `windows::core::Error` error
 /// never wrapped (like that of `IsSupported()`) — the same function thus serves
 /// both verdicts without duplicating the joining logic.
-fn causes(erreur: impl Into<anyhow::Error>) -> String {
-    erreur
+fn causes(error: impl Into<anyhow::Error>) -> String {
+    error
         .into()
         .chain()
         .map(|cause| cause.to_string())

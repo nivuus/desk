@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { EchecFichiers } from './adaptateur';
-import { creerEcrivain, type FluxInscriptible, type RacineInscriptible } from './ecriture';
+import { FilesError } from './adaptateur';
+import { createWriter, type FluxInscriptible, type RacineInscriptible } from './ecriture';
 
 /* ── UN FAUX SYSTÈME DE FICHIERS, INSENSIBLE À LA CASSE PAR CONSTRUCTION ──
    🔴 L'INSENSIBILITÉ EST LE POINT, ET NON UN DÉTAIL DE COMMODITÉ. C'est ce que
@@ -37,12 +37,12 @@ class Faux {
         const parts = chemin.split('/');
         let ici = this.racineNoeud;
         for (const p of parts.slice(0, -1)) {
-            let suivant = this.trouver(ici, p);
-            if (suivant === undefined) {
-                suivant = dossier(p);
-                ici.enfants.set(p, suivant);
+            let next = this.trouver(ici, p);
+            if (next === undefined) {
+                next = dossier(p);
+                ici.enfants.set(p, next);
             }
-            ici = suivant;
+            ici = next;
         }
         const nom = parts[parts.length - 1];
         ici.enfants.set(nom, { kind: 'file', name: nom, contenu, enfants: new Map() });
@@ -52,9 +52,9 @@ class Faux {
         const parts = chemin.split('/');
         let ici = this.racineNoeud;
         for (const p of parts.slice(0, -1)) {
-            const suivant = this.trouver(ici, p);
-            if (suivant === undefined) return undefined;
-            ici = suivant;
+            const next = this.trouver(ici, p);
+            if (next === undefined) return undefined;
+            ici = next;
         }
         const n = this.trouver(ici, parts[parts.length - 1]);
         return n === undefined ? undefined : { nom: n.name, contenu: n.contenu };
@@ -133,9 +133,9 @@ describe('la garde de casse', () => {
     it('🔴 REFUSE d’écrire dans un homonyme de casse', async () => {
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
-        const e = creerEcrivain(faux.racine());
-        await expect(e.ecrire('CASSE.TXT', 0, octets(9), true, true)).rejects.toThrow(
-            EchecFichiers,
+        const e = createWriter(faux.racine());
+        await expect(e.write('CASSE.TXT', 0, octets(9), true, true)).rejects.toThrow(
+            FilesError,
         );
     });
 
@@ -149,8 +149,8 @@ describe('la garde de casse', () => {
         // celui-ci sur le CONTENU.
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('CASSE.TXT', 0, octets(9), true, true).catch(() => {});
+        const e = createWriter(faux.racine());
+        await e.write('CASSE.TXT', 0, octets(9), true, true).catch(() => {});
         expect(faux.lire('Casse.txt')).toEqual({ nom: 'Casse.txt', contenu: [1, 2, 3] });
     });
 
@@ -160,33 +160,33 @@ describe('la garde de casse', () => {
         // l'autre : un flux ouvert puis abandonné laisse un fichier d'échange.
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('CASSE.TXT', 0, octets(9), true, true).catch(() => {});
+        const e = createWriter(faux.racine());
+        await e.write('CASSE.TXT', 0, octets(9), true, true).catch(() => {});
         expect(faux.ouverts).toBe(0);
     });
 
     it('porte le code `casse-ambigue` et NOMME les deux fichiers', async () => {
         const faux = new Faux();
         faux.poser('Casse.txt');
-        const e = creerEcrivain(faux.racine());
-        const erreur = await e
-            .ecrire('CASSE.TXT', 0, octets(9), true, true)
+        const e = createWriter(faux.racine());
+        const error = await e
+            .write('CASSE.TXT', 0, octets(9), true, true)
             .then(() => undefined)
-            .catch((x: unknown) => x as EchecFichiers);
-        expect(erreur).toBeInstanceOf(EchecFichiers);
-        if (erreur === undefined) throw new Error('inatteignable');
-        expect(erreur.code).toBe('casse-ambigue');
+            .catch((x: unknown) => x as FilesError);
+        expect(error).toBeInstanceOf(FilesError);
+        if (error === undefined) throw new Error('inatteignable');
+        expect(error.code).toBe('casse-ambigue');
         // Le message reste dans la console et dans la page-shell ; il doit dire
         // ce que l'utilisateur peut faire, c'est-à-dire renommer l'un des deux.
-        expect(erreur.message).toContain('CASSE.TXT');
-        expect(erreur.message).toContain('Casse.txt');
+        expect(error.message).toContain('CASSE.TXT');
+        expect(error.message).toContain('Casse.txt');
     });
 
     it('refuse aussi une CRÉATION ambiguë', async () => {
         const faux = new Faux();
         faux.poser('Dossier');
-        const e = creerEcrivain(faux.racine());
-        await expect(e.creer('DOSSIER', true)).rejects.toThrow(/casse/);
+        const e = createWriter(faux.racine());
+        await expect(e.create('DOSSIER', true)).rejects.toThrow(/casse/);
     });
 
     it('écrit dans le nom EXACT quand il existe', async () => {
@@ -194,16 +194,16 @@ describe('la garde de casse', () => {
         // ce qui l'empêche.
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('Casse.txt', 0, octets(7, 8), true, true);
+        const e = createWriter(faux.racine());
+        await e.write('Casse.txt', 0, octets(7, 8), true, true);
         expect(faux.lire('Casse.txt')?.contenu).toEqual([7, 8]);
     });
 
     it('crée quand rien ne ressemble au nom demandé', async () => {
         const faux = new Faux();
         faux.poser('autre.txt');
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('neuf.txt', 0, octets(4), true, true);
+        const e = createWriter(faux.racine());
+        await e.write('neuf.txt', 0, octets(4), true, true);
         expect(faux.lire('neuf.txt')?.contenu).toEqual([4]);
     });
 });
@@ -216,17 +216,17 @@ describe('les flux', () => {
         // VM n'a JAMAIS eu.
         const faux = new Faux();
         faux.poser('note.txt', [1, 2, 3, 4, 5, 6, 7, 8]);
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('note.txt', 0, octets(9, 9), true, true);
+        const e = createWriter(faux.racine());
+        await e.write('note.txt', 0, octets(9, 9), true, true);
         expect(faux.lire('note.txt')?.contenu).toEqual([9, 9]);
     });
 
     it('ouvre UNE fois et ferme UNE fois, sur plusieurs morceaux', async () => {
         const faux = new Faux();
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('gros.bin', 0, octets(1, 2), true, false);
-        await e.ecrire('gros.bin', 2, octets(3, 4), false, false);
-        await e.ecrire('gros.bin', 4, octets(5), false, true);
+        const e = createWriter(faux.racine());
+        await e.write('gros.bin', 0, octets(1, 2), true, false);
+        await e.write('gros.bin', 2, octets(3, 4), false, false);
+        await e.write('gros.bin', 4, octets(5), false, true);
         expect([faux.ouverts, faux.fermes]).toEqual([1, 1]);
         expect(faux.lire('gros.bin')?.contenu).toEqual([1, 2, 3, 4, 5]);
     });
@@ -236,18 +236,18 @@ describe('les flux', () => {
         // `close()`. Une poussée interrompue laisse le fichier local INCHANGÉ.
         const faux = new Faux();
         faux.poser('note.txt', [42]);
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('note.txt', 0, octets(1, 2), true, false);
+        const e = createWriter(faux.racine());
+        await e.write('note.txt', 0, octets(1, 2), true, false);
         // Inchangé AVANT le `close()` : c'est l'atomicité.
         expect(faux.lire('note.txt')?.contenu).toEqual([42]);
-        await e.ecrire('note.txt', 2, octets(3), false, true);
+        await e.write('note.txt', 2, octets(3), false, true);
         expect(faux.lire('note.txt')?.contenu).toEqual([1, 2, 3]);
     });
 
     it('🔴 abandonner ferme les flux restés ouverts', async () => {
         const faux = new Faux();
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('a.txt', 0, octets(1), true, false);
+        const e = createWriter(faux.racine());
+        await e.write('a.txt', 0, octets(1), true, false);
         expect(faux.fermes).toBe(0);
         e.abandonner();
         // `abandonner` est SYNCHRONE : le `close()` est lancé sans être attendu,
@@ -258,10 +258,10 @@ describe('les flux', () => {
 
     it('un rejeu ferme le flux précédent au lieu d’en laisser deux', async () => {
         const faux = new Faux();
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('a.txt', 0, octets(1), true, false);
+        const e = createWriter(faux.racine());
+        await e.write('a.txt', 0, octets(1), true, false);
         // La poussée est interrompue, puis relancée depuis le début.
-        await e.ecrire('a.txt', 0, octets(7, 7), true, true);
+        await e.write('a.txt', 0, octets(7, 7), true, true);
         expect([faux.ouverts, faux.fermes]).toEqual([2, 2]);
         expect(faux.lire('a.txt')?.contenu).toEqual([7, 7]);
     });
@@ -270,8 +270,8 @@ describe('les flux', () => {
         // Ouvrir ici écrirait un fichier TRONQUÉ à ce morceau-ci : la
         // troncature serait silencieuse, ce qui est pire qu'un refus.
         const faux = new Faux();
-        const e = creerEcrivain(faux.racine());
-        await expect(e.ecrire('a.txt', 64, octets(1), false, true)).rejects.toThrow(/flux/);
+        const e = createWriter(faux.racine());
+        await expect(e.write('a.txt', 64, octets(1), false, true)).rejects.toThrow(/flux/);
         expect(faux.lire('a.txt')).toBeUndefined();
     });
 });
@@ -280,9 +280,9 @@ describe('les créations', () => {
     it('crée un répertoire, et un fichier VIDE sans le tronquer', async () => {
         const faux = new Faux();
         faux.poser('deja.txt', [1, 2, 3]);
-        const e = creerEcrivain(faux.racine());
-        await e.creer('dossier', true);
-        await e.creer('deja.txt', false);
+        const e = createWriter(faux.racine());
+        await e.create('dossier', true);
+        await e.create('deja.txt', false);
         // 🔴 UNE CRÉATION N'OUVRE AUCUN FLUX : en ouvrir un TRONQUERAIT le
         // fichier local existant, alors qu'une création est sans effet sur ce
         // qui est déjà là.
@@ -292,8 +292,8 @@ describe('les créations', () => {
 
     it('crée les répertoires intermédiaires d’un chemin profond', async () => {
         const faux = new Faux();
-        const e = creerEcrivain(faux.racine());
-        await e.ecrire('a/b/c.txt', 0, octets(5), true, true);
+        const e = createWriter(faux.racine());
+        await e.write('a/b/c.txt', 0, octets(5), true, true);
         expect(faux.lire('a/b/c.txt')?.contenu).toEqual([5]);
     });
 });
@@ -315,12 +315,12 @@ describe('le classement des échecs', () => {
                 },
             };
         };
-        const e = creerEcrivain(racine);
-        const erreur = await e
-            .ecrire('a.txt', 0, octets(1), true, true)
+        const e = createWriter(racine);
+        const error = await e
+            .write('a.txt', 0, octets(1), true, true)
             .then(() => undefined)
-            .catch((x: unknown) => x as EchecFichiers);
-        expect(erreur).toBeInstanceOf(EchecFichiers);
-        expect(erreur?.code).toBe('disque-plein');
+            .catch((x: unknown) => x as FilesError);
+        expect(error).toBeInstanceOf(FilesError);
+        expect(error?.code).toBe('disque-plein');
     });
 });

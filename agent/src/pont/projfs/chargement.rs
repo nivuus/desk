@@ -117,7 +117,7 @@ type AllouerTamponAligne = unsafe extern "system" fn(
 ) -> *mut core::ffi::c_void;
 
 /// `mod.rs:8` — `fn PrjClearNegativePathCache(namespacevirtualizationcontext : PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT, totalentrynumber : *mut u32) -> windows_core::HRESULT`
-type ViderCacheNegatif = unsafe extern "system" fn(
+type ClearNegativePathCacheFn = unsafe extern "system" fn(
     namespacevirtualizationcontext: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT,
     totalentrynumber: *mut u32,
 ) -> windows::core::HRESULT;
@@ -131,7 +131,7 @@ type CompleterCommande = unsafe extern "system" fn(
 ) -> windows::core::HRESULT;
 
 /// `mod.rs:21` — `fn PrjDeleteFile(namespacevirtualizationcontext : PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT, destinationfilename : windows_core::PCWSTR, updateflags : PRJ_UPDATE_TYPES, failurereason : *mut PRJ_UPDATE_FAILURE_CAUSES) -> windows_core::HRESULT`
-type SupprimerFichier = unsafe extern "system" fn(
+type DeleteFileFn = unsafe extern "system" fn(
     namespacevirtualizationcontext: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT,
     destinationfilename: PCWSTR,
     updateflags: PRJ_UPDATE_TYPES,
@@ -173,7 +173,7 @@ type MarquerRacine = unsafe extern "system" fn(
 ///
 /// ⚠️ **FIVE parameters** (trap 1 above). The fifth is the OUTPUT
 /// parameter the wrapper hides behind its `Result`.
-type DemarrerVirtualisation = unsafe extern "system" fn(
+type StartVirtualizingFn = unsafe extern "system" fn(
     virtualizationrootpath: PCWSTR,
     callbacks: *const PRJ_CALLBACKS,
     instancecontext: *const core::ffi::c_void,
@@ -188,7 +188,7 @@ type ArreterVirtualisation =
     unsafe extern "system" fn(namespacevirtualizationcontext: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT);
 
 /// `mod.rs:122` — `fn PrjWriteFileData(namespacevirtualizationcontext : PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT, datastreamid : *const windows_core::GUID, buffer : *const core::ffi::c_void, byteoffset : u64, length : u32) -> windows_core::HRESULT`
-type EcrireDonnees = unsafe extern "system" fn(
+type WriteFileDataFn = unsafe extern "system" fn(
     namespacevirtualizationcontext: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT,
     datastreamid: *const GUID,
     buffer: *const core::ffi::c_void,
@@ -197,7 +197,7 @@ type EcrireDonnees = unsafe extern "system" fn(
 ) -> windows::core::HRESULT;
 
 /// `mod.rs:130` — `fn PrjWritePlaceholderInfo(namespacevirtualizationcontext : PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT, destinationfilename : windows_core::PCWSTR, placeholderinfo : *const PRJ_PLACEHOLDER_INFO, placeholderinfosize : u32) -> windows_core::HRESULT`
-type EcrireInfoMarqueur = unsafe extern "system" fn(
+type WritePlaceholderInfoFn = unsafe extern "system" fn(
     namespacevirtualizationcontext: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT,
     destinationfilename: PCWSTR,
     placeholderinfo: *const PRJ_PLACEHOLDER_INFO,
@@ -251,7 +251,7 @@ pub struct ProjFs {
     /// become OBSERVABLE for the first time. Recorded, 3 runs:
     /// `cache_negatif_purge=1`. F4 could only measure a **zero**
     /// differential, since no probe reached the provider.
-    pub vider_cache_negatif: ViderCacheNegatif,
+    pub clear_negative_path_cache: ClearNegativePathCacheFn,
     pub completer_commande: CompleterCommande,
     /// ⚠️ **Loaded without a caller, DELIBERATELY**, for the same reason:
     /// **no eviction policy in F1**. Each file read is hydrated on
@@ -265,16 +265,16 @@ pub struct ProjFs {
     /// sub-project ③ closes behind it**: there will be no F6. Four
     /// of the five ProjFS entry points without a `PRJ_*_CB` twin stay so.
     #[allow(dead_code)]
-    pub supprimer_fichier: SupprimerFichier,
+    pub delete_file: DeleteFileFn,
     pub comparer_noms: ComparerNoms,
     pub apparier_nom: ApparierNom,
     pub remplir_tampon_entrees: RemplirTamponEntrees,
     pub rendre_tampon_aligne: RendreTamponAligne,
     pub marquer_racine: MarquerRacine,
-    pub demarrer_virtualisation: DemarrerVirtualisation,
+    pub start_virtualizing: StartVirtualizingFn,
     pub arreter_virtualisation: ArreterVirtualisation,
-    pub ecrire_donnees: EcrireDonnees,
-    pub ecrire_info_marqueur: EcrireInfoMarqueur,
+    pub write_file_data: WriteFileDataFn,
+    pub write_placeholder_info: WritePlaceholderInfoFn,
 }
 
 /// The library's name, in null-terminated UTF-16.
@@ -319,7 +319,7 @@ pub fn charger() -> Result<ProjFs> {
 
     // SAFETY: each address comes from `GetProcAddress` on the name that
     // `resolution::Adresses` associates with this field — a pairing pinned by
-    // `resolution::chaque_champ_recoit_l_adresse_de_son_entree` — and each
+    // `resolution::each_field_receives_the_address_of_its_entry` — and each
     // type above is the literal copy of the `link!` cited next to its
     // declaration. **It is here, and nowhere else, that risk R7 is
     // taken**: if a transcription diverges, this `transmute` is valid for the
@@ -338,17 +338,17 @@ pub fn charger() -> Result<ProjFs> {
     }
     Ok(transcrire!(
         allouer_tampon_aligne,
-        vider_cache_negatif,
+        clear_negative_path_cache,
         completer_commande,
-        supprimer_fichier,
+        delete_file,
         comparer_noms,
         apparier_nom,
         remplir_tampon_entrees,
         rendre_tampon_aligne,
         marquer_racine,
-        demarrer_virtualisation,
+        start_virtualizing,
         arreter_virtualisation,
-        ecrire_donnees,
-        ecrire_info_marqueur,
+        write_file_data,
+        write_placeholder_info,
     ))
 }

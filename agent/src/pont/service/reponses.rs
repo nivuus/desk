@@ -37,10 +37,10 @@ use windows::Win32::Foundation::S_OK;
 
 use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 use crate::pont::projfs::{ContexteProjFs, Etat};
 use crate::pont::table::Attendue;
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 use super::verbes;
 
@@ -56,16 +56,16 @@ pub(super) fn terminer(
     etat: &Etat,
     commande: Option<i32>,
     contexte: Option<ContexteProjFs>,
-    resultat: HRESULT,
+    result: HRESULT,
 ) {
     match contexte {
         Some(ContexteProjFs::Enumeration { tampon, .. }) => match commande {
-            Some(commande) => verbes::completer_enumeration(etat, commande, tampon.0, resultat),
+            Some(commande) => verbes::completer_enumeration(etat, commande, tampon.0, result),
             // An enumeration context without a command does not exist; saying so
             // rather than ignoring it.
             None => tracing::warn!("contexte d'énumération sans commande ProjFS : ignoré"),
         },
-        _ => verbes::completer(etat, commande, resultat),
+        _ => verbes::completer(etat, commande, result),
     }
 }
 
@@ -74,14 +74,14 @@ pub(super) fn appliquer(
     correlation: u32,
     commande: Option<i32>,
     attendue: Attendue,
-    trame: &proto::fichiers::Trame<'_>,
+    trame: &proto::files::Trame<'_>,
     contexte: Option<&ContexteProjFs>,
 ) -> Suite {
     match (attendue, contexte) {
         (Attendue::Attributs { chemin }, Some(ContexteProjFs::Attributs { chemin_projfs })) => {
             let Ok(meta) = serde_json::from_slice::<entetes::Meta>(trame.entete) else {
                 tracing::warn!(chemin, "en-tête Meta illisible");
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             // 🔴 **THE PLACEHOLDER IS CREATED UNDER THE **STORED** NAME, never under
             // the one the application typed** — it is consequence ① of
@@ -91,19 +91,19 @@ pub(super) fn appliquer(
             // change.** F1 gave itself the property of never touching the
             // bytes ProjFS delivered — "a round trip where a case or a
             // separator could be lost" —, and
-            // `chemins::avec_dernier_composant` returns `None` when the canonical
+            // `chemins::with_last_component` returns `None` when the canonical
             // name is already the path's.
             let projfs_texte = String::from_utf16_lossy(
                 chemin_projfs.strip_suffix(&[0u16]).unwrap_or(chemin_projfs),
             );
-            let canonique = crate::pont::chemins::avec_dernier_composant(&projfs_texte, &meta.nom);
+            let canonique = crate::pont::chemins::with_last_component(&projfs_texte, &meta.nom);
             let Some(neuf) = canonique else {
-                return Suite::Termine(verbes::ecrire_marqueur(
+                return Suite::Termine(verbes::write_placeholder(
                     etat,
                     chemin_projfs,
                     meta.repertoire,
-                    meta.taille,
-                    meta.modifie,
+                    meta.size,
+                    meta.modified,
                 ));
             };
             tracing::debug!(
@@ -112,12 +112,12 @@ pub(super) fn appliquer(
                 "nom canonique : le substitut prend le nom du poste local"
             );
             let neuf_utf16: Vec<u16> = neuf.encode_utf16().chain(std::iter::once(0)).collect();
-            let issue = verbes::ecrire_marqueur(
+            let issue = verbes::write_placeholder(
                 etat,
                 &neuf_utf16,
                 meta.repertoire,
-                meta.taille,
-                meta.modifie,
+                meta.size,
+                meta.modified,
             );
             if issue.is_ok() {
                 return Suite::Termine(issue);
@@ -135,12 +135,12 @@ pub(super) fn appliquer(
                 %issue,
                 "PrjWritePlaceholderInfo a refuse le nom canonique : repli sur le nom demande"
             );
-            Suite::Termine(verbes::ecrire_marqueur(
+            Suite::Termine(verbes::write_placeholder(
                 etat,
                 chemin_projfs,
                 meta.repertoire,
-                meta.taille,
-                meta.modifie,
+                meta.size,
+                meta.modified,
             ))
         }
         // `QueryFileName`: the name exists, and that is ALL ProjFS expects.
@@ -152,33 +152,33 @@ pub(super) fn appliquer(
             Attendue::Lire {
                 chemin,
                 position,
-                longueur,
+                length,
             },
             Some(ContexteProjFs::Lecture { flux, fenetre }),
         ) => {
-            let Ok(entete) = serde_json::from_slice::<entetes::Donnees>(trame.entete) else {
+            let Ok(entete) = serde_json::from_slice::<entetes::Data>(trame.entete) else {
                 tracing::warn!(chemin, "en-tête Donnees illisible");
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             // ⚠️ **The header and the payload must corroborate each other.** Writing into
             // ProjFS's buffer a quantity of bytes the sender did not
             // believe it sent is the kind of divergence no downstream check
             // catches: the file would be truncated or lengthened, and
             // only a digest would say so.
-            if entete.longueur as usize != trame.charge.len()
+            if entete.length as usize != trame.charge.len()
                 || entete.position != position
-                || entete.longueur != longueur
+                || entete.length != length
             {
                 tracing::warn!(
                     chemin,
                     position,
-                    longueur,
+                    length,
                     recu_position = entete.position,
-                    recu_longueur = entete.longueur,
+                    received_length = entete.length,
                     octets = trame.charge.len(),
                     "réponse Donnees incohérente avec la plage demandée : jetée"
                 );
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
             // 🔴 **THE ORDER IS CHECKED BEFORE WRITING, NEVER AFTER.** An
             // out-of-order response written then denounced would already have corrupted the
@@ -194,9 +194,9 @@ pub(super) fn appliquer(
                     attendue = hors.attendue,
                     "reponse de lecture HORS D'ORDRE : jetee, RIEN n'est ecrit"
                 );
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
-            let issue = verbes::ecrire_donnees(etat, flux.0, position, trame.charge);
+            let issue = verbes::write_file_data(etat, flux.0, position, trame.charge);
             if issue.is_err() {
                 return Suite::Termine(issue);
             }
@@ -233,7 +233,7 @@ pub(super) fn appliquer(
             // callback that registered it.
             let Some(commande) = commande else {
                 tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             for morceau in lot {
                 etat.demander_lecture(
@@ -260,7 +260,7 @@ pub(super) fn appliquer(
         ) => {
             let Ok(entete) = serde_json::from_slice::<entetes::Entrees>(trame.entete) else {
                 tracing::warn!(chemin, "en-tête Entrees illisible");
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             // **F5** — the cache memorises the RAW entries, before `preparer`.
             // See `pont::cache`: the prepared result depends on the request, and
@@ -280,13 +280,9 @@ pub(super) fn appliquer(
             );
             let mut sessions = match etat.sessions.lock() {
                 Ok(sessions) => sessions,
-                Err(_) => {
-                    return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)))
-                }
+                Err(_) => return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue))),
             };
-            let session = sessions
-                .entry(enumeration)
-                .or_insert_with(Session::nouvelle);
+            let session = sessions.entry(enumeration).or_insert_with(Session::new);
             session.poser(entrees);
             Suite::Termine(verbes::remplir(etat, session, tampon.0))
         }
@@ -297,17 +293,17 @@ pub(super) fn appliquer(
         //
         // ⚠️ **The ProjFS context is `None` here, and it is not an anomaly**
         // : a write has neither an enumeration buffer nor a data stream.
-        (Attendue::Ecrire { chemin, dernier }, None) => {
-            if trame.type_message != proto::fichiers::TYPE_FAIT {
+        (Attendue::Write { chemin, last }, None) => {
+            if trame.type_message != proto::files::TYPE_FAIT {
                 tracing::warn!(
                     chemin,
                     correlation,
                     type_message = trame.type_message,
                     "réponse d'un type inattendu à une écriture : jetée"
                 );
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
-            tracing::debug!(chemin, correlation, dernier, "morceau d'écriture acquitté");
+            tracing::debug!(chemin, correlation, last, "morceau d'écriture acquitté");
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
@@ -327,7 +323,7 @@ pub(super) fn appliquer(
             },
             None,
         ) => {
-            if trame.type_message != proto::fichiers::TYPE_FAIT {
+            if trame.type_message != proto::files::TYPE_FAIT {
                 tracing::warn!(
                     chemin,
                     correlation,
@@ -335,7 +331,7 @@ pub(super) fn appliquer(
                     type_message = trame.type_message,
                     "reponse d'un type inattendu a une mutation : jetee"
                 );
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
             tracing::debug!(chemin, correlation, renommage, "mutation acquittee");
             // **F5 — SECOND HALF OF INVALIDATION: what the BROWSER
@@ -347,15 +343,15 @@ pub(super) fn appliquer(
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
-        (Attendue::Creer { chemin }, None) => {
-            if trame.type_message != proto::fichiers::TYPE_FAIT {
+        (Attendue::Create { chemin }, None) => {
+            if trame.type_message != proto::files::TYPE_FAIT {
                 tracing::warn!(
                     chemin,
                     correlation,
                     type_message = trame.type_message,
                     "réponse d'un type inattendu à une création : jetée"
                 );
-                return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
+                return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
             tracing::debug!(chemin, correlation, "création acquittée");
             invalider_le_cache(etat, &chemin, None);
@@ -374,7 +370,7 @@ pub(super) fn appliquer(
                 contexte_present = contexte.is_some(),
                 "réponse d'un type qui ne correspond pas à la commande : jetée"
             );
-            Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)))
+            Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)))
         }
     }
 }

@@ -22,7 +22,7 @@ import {
     parseVersLaPlateforme,
     PLATEFORME_VERSION,
 } from '../../../../../proto/ts/plateforme';
-import { demarrerService, entete, ligne, Pair, poignee, type Moteur } from './socle';
+import { startService, entete, ligne, Pair, poignee, type Moteur } from './socle';
 
 /// The title each log's header carries.
 const TITRES: Record<string, string> = {
@@ -101,7 +101,7 @@ async function tenterSession(
     pair.envoyer(poignee(role, session, jeton));
     await pair.attendre(1);
     const brut = pair.recues.map((t) => t.brut);
-    const erreurs = brut
+    const errors = brut
         .map((b) => JSON.parse(b) as Record<string, unknown>)
         .filter((m) => m.type === 'error');
     const iceConfig = brut.some((b) => (JSON.parse(b) as { type?: string }).type === 'ice-config');
@@ -109,16 +109,16 @@ async function tenterSession(
     // without TURN_URL, the relay sends NONE and the accepted peer receives
     // nothing at all. Acceptance is therefore read from the ABSENCE of a refusal, socket
     // still open — and `ice-config` is recorded separately.
-    const acceptee = erreurs.length === 0 && pair.fermeture === undefined;
+    const acceptee = errors.length === 0 && pair.fermeture === undefined;
     return {
         acceptee,
         iceConfig,
-        refus: erreurs.length > 0 ? String(erreurs[0].reason) : undefined,
+        refus: errors.length > 0 ? String(errors[0].reason) : undefined,
         brut,
     };
 }
 
-const service = await demarrerService(moteur, critere);
+const service = await startService(moteur, critere);
 const port = service.port;
 dire(entete(TITRES[critere] ?? critere, moteur, commit ?? 'inconnu'));
 

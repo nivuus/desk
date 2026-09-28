@@ -20,7 +20,7 @@ use proto::plateforme::IssueLancement;
 use std::time::Duration;
 
 #[tokio::test]
-async fn un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session() {
+async fn an_install_order_arrives_in_its_queue_and_does_not_close_the_session() {
     // 🔴 TWO REDS IN ONE, exactly as for `Lancer` — and it is the
     // FIFTH time this repository pays the lesson of the missing arm (D5 `Sommeil`,
     // D6 `Part`, D7 `Audio`, D8 `PleinEcran`, G2 `IconesManquantes`). Without the
@@ -60,7 +60,7 @@ async fn un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session(
             id: "i-1".into(),
             url: "http://h:8080/t/c".into(),
             nom: "setup.exe".into(),
-            taille: 42,
+            size: 42,
             sha256: "ab".into(),
         }
     );

@@ -154,7 +154,7 @@ fn un_premier_depot_coalescable_bute_bien_sur_la_borne() {
 /// The pair behaves like the channel it replaces: what is dropped
 /// is received, in order.
 #[test]
-fn ce_qui_est_depose_se_recoit_dans_l_ordre() {
+fn what_is_deposited_is_received_in_order() {
     let (e, r) = canal_de_session("test");
     assert!(matches!(
         e.envoyer(Message::Sommeil(Ordre::Reveiller)),
@@ -219,7 +219,7 @@ fn un_receveur_tombe_ferme_l_emetteur() {
 /// `derniers_audio`). Without this test, nothing would forbid a future `envoyer` from
 /// returning `Refuse` on a dropped receiver, or the reverse.
 #[test]
-fn le_refus_ne_se_confond_ni_avec_la_livraison_ni_avec_la_rupture() {
+fn the_refusal_is_confused_neither_with_delivery_nor_with_breakage() {
     let (e, r) = canal_de_session("test");
     for _ in 0..PROFONDEUR_MAX {
         assert!(matches!(
@@ -250,9 +250,9 @@ fn un_emetteur_tombe_se_distingue_d_une_file_vide() {
     assert_eq!(r.essayer_recevoir(), Err(VideOuFerme::Ferme));
 }
 
-/// `vider` returns what is waiting, in order, and leaves the queue empty.
+/// `drain` returns what is waiting, in order, and leaves the queue empty.
 #[test]
-fn vider_rend_tout_ce_qui_attend_dans_l_ordre() {
+fn drain_returns_everything_waiting_in_order() {
     let (e, r) = canal_de_session("test");
     assert!(matches!(
         e.envoyer(Message::Part { bps: 7 }),
@@ -262,9 +262,9 @@ fn vider_rend_tout_ce_qui_attend_dans_l_ordre() {
         e.envoyer(Message::Sommeil(Ordre::Reveiller)),
         Envoi::Depose(_)
     ));
-    let recus = r.vider();
+    let recus = r.drain();
     assert_eq!(recus.len(), 2);
     assert!(matches!(recus[0], Message::Part { bps: 7 }));
     assert!(matches!(recus[1], Message::Sommeil(Ordre::Reveiller)));
-    assert!(r.vider().is_empty());
+    assert!(r.drain().is_empty());
 }

@@ -180,14 +180,14 @@ async function purgerFenetresVMRescapees() {
     ].join('\n');
     vmIt('purge-rescapees', script);
     await dodo(5000);
-    let resultat = null;
+    let result = null;
     try {
-        resultat = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8'));
+        result = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8'));
     } catch { }
-    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(resultat));
-    if (!resultat || resultat.chrome_restants !== 0 || resultat.agents_restants !== 0) {
+    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(result));
+    if (!result || result.chrome_restants !== 0 || result.agents_restants !== 0) {
         throw new Error(
-            `état VM non propre avant lancement : ${JSON.stringify(resultat)} — ` +
+            `état VM non propre avant lancement : ${JSON.stringify(result)} — ` +
             'une fenêtre ou un agent rescapé fausserait l\'attribution cible/voisine');
     }
 }
@@ -486,10 +486,10 @@ async function togglerStyleFenetre(marqueur, action) {
     await dodo(4000);
     let brut = '';
     try { brut = await readFile(`/media/vm/dev/${marqueur}-style.json`, 'utf8'); } catch { }
-    let resultat = null;
-    try { resultat = JSON.parse(brut); } catch { }
+    let result = null;
+    try { result = JSON.parse(brut); } catch { }
     log(`STYLE FENÊTRE (${marqueur}, action=${action}) ` + (brut || '(fichier absent)'));
-    return resultat;
+    return result;
 }
 
 // ---------------------------------------------------------------- ouverture des fenêtres VM
@@ -502,7 +502,7 @@ async function ouvrirFenetre(n) {
     const marqueur = marqueurFenetre(n);
     const hz = hzDe(n);
     assurerTonHtml(hz);
-    const avant = appPages().length;
+    const before = appPages().length;
     log(`  · ouverture fenêtre ${n} (hz=${hz}, marqueur=${marqueur})`);
     vmIt(`ouvrird9c1-${n}`, [
         '$a = @(',
@@ -524,7 +524,7 @@ async function ouvrirFenetre(n) {
         // (voir la note du troisième bug, plus haut — une telle
         // correspondance s'est révélée non fiable pour distinguer des pages
         // ouvertes coup sur coup).
-        if (appPages().length > avant) return { ok: true, hz, marqueur, sid: dernierSidAppPage };
+        if (appPages().length > before) return { ok: true, hz, marqueur, sid: dernierSidAppPage };
     }
     log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
     return { ok: false, hz, marqueur, sid: null };
@@ -593,7 +593,7 @@ async function phaseResizeEtDpr(cdp, sidInitial, dprAttendu, nomFenetre, control
     log(`  état AVANT forçage (${nomFenetre}) session=${sessionAvant} sid=${sidInitial?.slice(0, 8)} `
         + JSON.stringify(etatAvantForcage));
 
-    // FORÇAGE DÉLIBÉRÉ, pas subi. On arme `controleDpr.valeur` au dpr voulu,
+    // FORÇAGE DÉLIBÉRÉ, pas subi. On arme `controleDpr.value` au dpr voulu,
     // on FERME la page vivante (`Target.closeTarget`), et on attend que le
     // produit la ROUVRE : la fenêtre Windows source existe toujours côté VM,
     // la perte de connexion fait mourir l'enfant, et le superviseur relance —
@@ -603,7 +603,7 @@ async function phaseResizeEtDpr(cdp, sidInitial, dprAttendu, nomFenetre, control
     // posé par le handler d'attachement de `main`) est pris pour la
     // réouverture — fiable ICI parce qu'aucune autre fenêtre ne s'ouvre plus
     // à ce stade de l'exécution (la phase d'exclusivité est terminée).
-    controleDpr.valeur = dprAttendu;
+    controleDpr.value = dprAttendu;
     const sidAvantFermeture = dernierSidAppPage;
     const targetId = pages.get(sidInitial)?.targetId;
     if (targetId) {
@@ -616,7 +616,7 @@ async function phaseResizeEtDpr(cdp, sidInitial, dprAttendu, nomFenetre, control
     const sidFrais = await attendreLeFait(`réouverture pour dpr=${dprAttendu} (${nomFenetre})`, async () => {
         return (dernierSidAppPage && dernierSidAppPage !== sidAvantFermeture) ? dernierSidAppPage : null;
     }, 60);
-    controleDpr.valeur = 1;
+    controleDpr.value = 1;
     const reouvertureReussie = !!sidFrais;
     const sid = sidFrais ?? sidInitial;
     log(`  réouverture (${nomFenetre}) reussie=${reouvertureReussie} sid=${sid?.slice(0, 8) ?? '(aucun)'} `
@@ -726,7 +726,7 @@ async function main() {
     // dpr appliqué à TOUTE prochaine page "app" qui s'attache — piloté
     // explicitement par le code plus bas (JAMAIS déduit d'un ordre
     // d'attachement, voir le second bug documenté ci-dessous).
-    const controleDpr = { valeur: 1 };
+    const controleDpr = { value: 1 };
     const sidParOrdre = [];
     // BUG TROUVÉ EN COURS D'EXÉCUTION (première tentative de la tâche 14) : une
     // page ouverte par `window.open()` (donc TOUTE page "app") attache avec une
@@ -765,7 +765,7 @@ async function main() {
     // `dpr=1` (elle avait attaché EN SECOND, hors de tout ordre prévisible).
     //
     // Remède retenu : ne plus JAMAIS déduire le dpr d'un ordre d'attachement.
-    // `controleDpr.valeur` est piloté EXPLICITEMENT par le code de `main`
+    // `controleDpr.value` est piloté EXPLICITEMENT par le code de `main`
     // (armé à `DPR_CIBLE` juste avant `ouvrirFenetre(1)`, désarmé juste après)
     // pour capturer l'ouverture initiale, ET REPRIS explicitement dans
     // `phaseResizeEtDpr`, qui ferme la page vivante puis attend sa
@@ -804,7 +804,7 @@ async function main() {
                 if (estAppPage) {
                     sidParOrdre.push(sessionId);
                     dernierSidAppPage = sessionId;
-                    const dpr = controleDpr.valeur;
+                    const dpr = controleDpr.value;
                     const [L, H] = VIEWPORT_BASE.split('x').map(Number);
                     // QUATRIÈME BUG TROUVÉ EN COURS D'EXÉCUTION : demander
                     // 2560×1440 (1280×720 en pixels CSS à dpr=2) fait échouer
@@ -898,7 +898,7 @@ async function main() {
         // IMMÉDIATEMENT après l'ouverture de la fenêtre 1, tant que
         // `dernierSidAppPage` la désigne SANS AMBIGUÏTÉ (avant que les
         // fenêtres 2 et 3 ne s'ouvrent et n'y ajoutent leurs propres pages).
-        controleDpr.valeur = 1;
+        controleDpr.value = 1;
         const r1 = await ouvrirFenetre(1);
         if (!r1.ok || !r1.sid) throw new Error('fenêtre 1 non ouverte');
         await dodo(2000);
@@ -909,7 +909,7 @@ async function main() {
         releve.session_cible = sessionCible;
 
         // Le reste des fenêtres (2..N_FENETRES) s'ouvre à dpr=1, ensuite.
-        controleDpr.valeur = 1;
+        controleDpr.value = 1;
         const fenetres = [{ ok: true, marqueur: marqueurFenetre(1), sid: r1.sid }];
         for (let n = 2; n <= N_FENETRES; n += 1) {
             const r = await ouvrirFenetre(n);

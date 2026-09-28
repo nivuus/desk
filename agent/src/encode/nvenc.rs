@@ -232,10 +232,10 @@ pub const ECHEC_CATASTROPHIQUE: i32 = 0x8000_FFFFu32 as i32;
 /// adapter. On an Intel or AMD machine, the same code would mean something
 /// else, and asserting our diagnosis there would be a false assertion
 /// presented as a fact.
-pub fn diagnostic_activation(code: i32, erreur: &str, adaptateurs: &[Adaptateur]) -> String {
+pub fn diagnostic_activation(code: i32, error: &str, adaptateurs: &[Adaptateur]) -> String {
     let noms: Vec<&str> = adaptateurs.iter().map(|a| a.nom.as_str()).collect();
     let mut message = format!(
-        "activation de l'encodeur H.264 matériel (ActivateObject) : {erreur} \
+        "activation de l'encodeur H.264 matériel (ActivateObject) : {error} \
          — adaptateurs vus : [{}]",
         noms.join(" | ")
     );
@@ -278,7 +278,7 @@ mod tests_diagnostic {
     }
 
     #[test]
-    fn ajoute_la_cause_connue_quand_les_deux_conditions_sont_reunies() {
+    fn adds_the_known_cause_when_both_conditions_are_met() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
         assert!(m.contains("CAUSE CONNUE"), "{m}");

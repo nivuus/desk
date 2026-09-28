@@ -32,7 +32,7 @@
 //!   `de` — otherwise a late push would arrive **after** the renaming,
 //!   on a path that no longer exists, and the browser **would recreate the temporary
 //!   file**: the save would be lost;
-//! - `Supprimer { chemin }` must **remove** the writes due on `chemin` —
+//! - `Delete { chemin }` must **remove** the writes due on `chemin` —
 //!   pushing them **would recreate what the user erases**.
 //!
 //! **Each of the two sub-blocks is correct alone; it is their interaction that
@@ -46,7 +46,7 @@ pub mod fil;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Evenement {
     /// A file was closed after modification, or truncated at opening.
-    Modifie { chemin: String },
+    Modified { chemin: String },
     /// An entry has just appeared in the root.
     Cree { chemin: String, repertoire: bool },
     /// **F3** — an entry was renamed in the VM.
@@ -60,7 +60,7 @@ pub enum Evenement {
         repertoire: bool,
     },
     /// **F3** — an entry was deleted in the VM.
-    Supprime { chemin: String, repertoire: bool },
+    Deleted { chemin: String, repertoire: bool },
 }
 
 impl Evenement {
@@ -72,9 +72,9 @@ impl Evenement {
     /// exactly what rule §0.3 of F3's plan requires.
     pub fn chemin(&self) -> &str {
         match self {
-            Evenement::Modifie { chemin }
+            Evenement::Modified { chemin }
             | Evenement::Cree { chemin, .. }
-            | Evenement::Supprime { chemin, .. } => chemin,
+            | Evenement::Deleted { chemin, .. } => chemin,
             Evenement::Renomme { de, .. } => de,
         }
     }
@@ -103,7 +103,7 @@ impl Evenement {
     /// very meaning. It is [`crate::pont::mutation`] that schedules them, and this
     /// predicate is what makes it possible to distinguish them without reading the variant.
     pub fn est_mutation(&self) -> bool {
-        matches!(self, Evenement::Renomme { .. } | Evenement::Supprime { .. })
+        matches!(self, Evenement::Renomme { .. } | Evenement::Deleted { .. })
     }
 }
 
@@ -124,7 +124,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -170,7 +170,7 @@ impl File {
             }
             None => {
                 self.attente.push(evenement);
-                self.demarrer()
+                self.start()
             }
         }
     }
@@ -191,7 +191,7 @@ impl File {
             // and its bytes are the most recent anyone is waiting for.
             self.attente.insert(0, rejeu);
         }
-        self.demarrer()
+        self.start()
     }
 
     /// The path of the push in progress.
@@ -240,20 +240,20 @@ impl File {
             .collect()
     }
 
-    fn demarrer(&mut self) -> Option<Evenement> {
+    fn start(&mut self) -> Option<Evenement> {
         if self.en_vol.is_some() || self.attente.is_empty() {
             return None;
         }
-        let suivant = self.attente.remove(0);
-        self.en_vol = Some(suivant.clone());
-        Some(suivant)
+        let next = self.attente.remove(0);
+        self.en_vol = Some(next.clone());
+        Some(next)
     }
 }
 
 /// Merges two events of the **same** path.
 ///
 /// 🔴 **A DIRECTORY CREATION IS NEVER REPLACED.** A directory is not
-/// "modified": letting it become a `Modifie` would make a
+/// "modified": letting it become a `Modified` would make a
 /// directory be read like a file, and the local workstation would receive `IsADirectory` on
 /// the most mundane path there is.
 ///

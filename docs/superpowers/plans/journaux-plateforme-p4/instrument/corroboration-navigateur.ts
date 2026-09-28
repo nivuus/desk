@@ -19,9 +19,9 @@
 // three outcomes `connexion.ts` distinguishes.
 
 import { hacher } from '../../../../../plateforme/src/identite/mot-de-passe';
-import { creerUtilisateur } from '../../../../../plateforme/src/depot/utilisateur';
+import { createUser } from '../../../../../plateforme/src/depot/utilisateur';
 import { lireConfig } from '../../../../../plateforme/src/config';
-import { demarrer } from '../../../../../plateforme/src/demarrage';
+import { start } from '../../../../../plateforme/src/demarrage';
 import { inventaireStatique } from '../../../../../plateforme/src/orchestration/inventaire-statique';
 import { enroler, INSTANT, poserVuA, SECRET_JETON } from './socle';
 import { SEUIL_INJOIGNABLE_MS } from '../../../../../plateforme/src/agents/fraicheur';
@@ -29,7 +29,7 @@ import { SEUIL_INJOIGNABLE_MS } from '../../../../../plateforme/src/agents/fraic
 const [port, origine] = process.argv.slice(2);
 const MDP = 'mot-de-passe-de-recette-p4';
 
-const service = await demarrer(
+const service = await start(
     lireConfig({
         PLATEFORME_HOTE: '127.0.0.1',
         PLATEFORME_PORT: port,
@@ -44,16 +44,16 @@ const empreinte = await hacher(MDP);
 const orch = inventaireStatique(service.base, Date.now);
 
 // ① A user WHO HAS A VM ASSIGNED, and whose agent beats.
-const prete = await creerUtilisateur(service.base, 'prete@essai.local', empreinte, INSTANT);
+const prete = await createUser(service.base, 'prete@essai.local', empreinte, INSTANT);
 const vmPrete = await enroler(service.base, 'w-prete');
 await orch.attribuer(vmPrete.vmId, prete);
 await poserVuA(service.base, vmPrete.vmId, Date.now());
 
 // ② A user WITHOUT any VM.
-await creerUtilisateur(service.base, 'sansvm@essai.local', empreinte, INSTANT);
+await createUser(service.base, 'sansvm@essai.local', empreinte, INSTANT);
 
 // ③ A user whose VM is there but whose agent has gone QUIET.
-const muette = await creerUtilisateur(service.base, 'muette@essai.local', empreinte, INSTANT);
+const muette = await createUser(service.base, 'muette@essai.local', empreinte, INSTANT);
 const vmMuette = await enroler(service.base, 'w-muette');
 await orch.attribuer(vmMuette.vmId, muette);
 await poserVuA(service.base, vmMuette.vmId, Date.now() - SEUIL_INJOIGNABLE_MS - 1);

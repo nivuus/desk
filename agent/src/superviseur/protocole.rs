@@ -66,11 +66,11 @@ pub fn session_de_controle(prefixe: &str) -> String {
 ///
 /// ⚠️ **IT IS NOT A SESSION IDENTIFIER ON ITS OWN**, exactly like
 /// its neighbour since sub-block P3: go through [`session_du_pont`], never
-/// through this bare constant. Two VMs that both opened `fichiers` would
+/// through this bare constant. Two VMs that both opened `files` would
 /// contend for the same session on the platform, and the second would be
 /// refused with "an agent is already connected".
 ///
-/// *(F1's plan wrote `pub const SESSION_DU_PONT: &str = "fichiers"`,
+/// *(F1's plan wrote `pub const SESSION_DU_PONT: &str = "files"`,
 /// used as is, and noted that the identifier "is not namespaced
 /// per user". It was written before P3 set the prefix: the
 /// remark is therefore OBSOLETE — the prefix is that namespace — and the bare form
@@ -131,7 +131,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn une_ouverture_se_serialise_comme_la_shell_l_attend() {
+    fn an_open_serialises_as_the_shell_expects_it() {
         let json = serde_json::to_string(&VersLaShell::FenetreOuverte {
             session: "w-1".into(),
             titre: "Bloc-notes".into(),
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn une_fermeture_et_un_refus_se_serialisent_comme_la_shell_les_attend() {
+    fn a_close_and_a_refusal_serialise_as_the_shell_expects_them() {
         // `shell-page.ts` reads `message.session` on a closing and
         // `message.titre`/`message.motif` on a refusal: those names are the
         // contract, not a naming convenience on the Rust side.
@@ -184,8 +184,8 @@ mod tests {
 
     #[test]
     fn un_message_inconnu_de_la_shell_est_refuse_plutot_qu_ignore() {
-        let resultat: Result<DepuisLaShell, _> = serde_json::from_str(r#"{"type":"autre-chose"}"#);
-        assert!(resultat.is_err());
+        let result: Result<DepuisLaShell, _> = serde_json::from_str(r#"{"type":"autre-chose"}"#);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -200,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn la_session_du_pont_suit_le_prefixe_comme_celle_de_controle() {
+    fn the_bridge_session_follows_the_prefix_like_the_control_one() {
         // 🔴 The bridge has its OWN session because the relay only accepts one
         // `agent` and one `client` per identifier, and the shell page already holds
         // the `client` role of `bureau`.
@@ -208,7 +208,7 @@ mod tests {
         // It must follow the prefix exactly like its neighbour: F1's
         // plan, written before sub-block P3, prescribed a BARE constant
         // used as is. Two VMs would then both have opened
-        // `fichiers`, and the second would have been refused with "an agent is already
+        // `files`, and the second would have been refused with "an agent is already
         // connected" — the very defect P3 had just fixed, reintroduced
         // on the only session that would have escaped it.
         assert_eq!(session_du_pont(""), "fichiers");
@@ -256,8 +256,8 @@ mod tests {
         assert!(matches!(message, DepuisLaShell::PairPresent));
         // …and a superfluous field does not break it: the relay can add
         // one tomorrow without making the agent deaf.
-        let avec_extra: DepuisLaShell =
+        let with_extra: DepuisLaShell =
             serde_json::from_str(r#"{"type":"pair-present","role":"client"}"#).unwrap();
-        assert!(matches!(avec_extra, DepuisLaShell::PairPresent));
+        assert!(matches!(with_extra, DepuisLaShell::PairPresent));
     }
 }

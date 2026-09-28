@@ -46,7 +46,7 @@ impl Fenetre {
     /// since sub-block D5: `Fenetre::ouvrir` no longer builds one, and a
     /// window is born asleep. This path therefore serves the first
     /// construction as well as all rebuilds — and that requires nothing
-    /// special, `Parametres` carrying exactly what `ouvrir` knew.
+    /// special, `Parameters` carrying exactly what `ouvrir` knew.
     ///
     /// **Can fail, and it is the NOMINAL case** when the hardware cap
     /// of encoders is reached: the caller must then tell the pool (see
@@ -83,10 +83,10 @@ impl Fenetre {
         // the freshest KEPT size**, which is exactly what
         // this wake-up needs; it is the REASON that changed, not the expected
         // value.
-        let taille = self.dimensions();
-        let p = &self.parametres;
+        let size = self.dimensions();
+        let p = &self.params;
         let mut source =
-            WindowsSource::sur_sortie(p.hwnd, &p.sortie, taille, p.fps, p.debit, p.clock_origin)
+            WindowsSource::sur_sortie(p.hwnd, &p.sortie, size, p.fps, p.debit, p.clock_origin)
                 .with_context(|| format!("réveil de la session {}", self.session))?;
         // `sur_sortie` already requests one at construction. This second call
         // is a belt: without a key frame, the browser's decoder would have
@@ -146,17 +146,17 @@ impl Fenetre {
                     }
                 }
                 Ok(Message::Sommeil(Ordre::Reveiller)) => {
-                    if let Err(erreur) = self.reveiller() {
+                    if let Err(error) = self.reveiller() {
                         tracing::warn!(
                             session = %ctx.session,
-                            // `cause::chaine` and NOT `%erreur`: `anyhow`'s plain
+                            // `cause::chain` and NOT `%error`: `anyhow`'s plain
                             // `Display` only rendered the
                             // `with_context` set fifteen lines above
                             // ("réveil de la session …"), and threw away the
                             // cause — hence the HRESULT. Batch 25 counted 74
                             // then 52 refusals in a row without being able to say
                             // why. See `crate::cause`.
-                            erreur = %crate::cause::chaine(&erreur),
+                            error = %crate::cause::chain(&error),
                             "réveil refusé, la fenêtre reste endormie"
                         );
                         // **Indispensable, and nothing else replaces it.** The

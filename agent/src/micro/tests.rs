@@ -38,7 +38,7 @@ fn tampon() -> TamponGigue {
 /// redundant with str0m, it is the safety net for what decision 2 takes
 /// away from it.
 #[test]
-fn une_arrivee_desordonnee_est_restituee_dans_l_ordre() {
+fn an_out_of_order_arrival_is_restored_in_order() {
     let mut t = tampon();
     t.deposer(trame(1920, 20));
     t.deposer(trame(0, 20));
@@ -234,7 +234,7 @@ fn en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee() {
 /// Between the two thresholds, NOTHING moves: it is the hysteresis, and its
 /// absence would make the buffer oscillate at each frame.
 #[test]
-fn entre_les_deux_seuils_aucune_correction_n_est_appliquee() {
+fn between_the_two_thresholds_no_correction_is_applied() {
     let mut t = tampon();
     // 4 frames of 20 ms = 80 ms, squarely between 20 and 120.
     for i in 0..4u64 {
@@ -254,7 +254,7 @@ fn entre_les_deux_seuils_aucune_correction_n_est_appliquee() {
 /// buffer lifetime — a counter shared by both would pass the two
 /// previous tests taken separately.
 #[test]
-fn chaque_correction_a_son_compteur() {
+fn each_correction_has_its_counter() {
     let mut t = tampon();
     for i in 0..7u64 {
         t.deposer(trame(i * 960, 20));
@@ -267,7 +267,7 @@ fn chaque_correction_a_son_compteur() {
     while t.occupation() >= SEUIL_INSERTION {
         t.retirer();
     }
-    let sauts_avant = t.compteurs().sauts;
+    let skips_before = t.compteurs().sauts;
     // Enough remains not to be starving, but not enough to play.
     t.deposer(trame(100_000, 10));
     assert!(t.occupation() < SEUIL_INSERTION);
@@ -280,7 +280,7 @@ fn chaque_correction_a_son_compteur() {
     );
     assert_eq!(
         t.compteurs().sauts,
-        sauts_avant,
+        skips_before,
         "l'insertion a incrémenté le compteur des SAUTS : les deux corrections \
          partagent un compteur"
     );

@@ -95,13 +95,13 @@ async function lancerUneApplication(j, vmId, motif) {
         headers: { Authorization: `Bearer ${j}` },
     });
     const c = await r.json();
-    const liste = c.applications ?? c;
-    if (!Array.isArray(liste)) throw new Error(`/applications a rendu ${JSON.stringify(c).slice(0, 200)}`);
-    const choisie = liste.find((a) => new RegExp(motif, 'i').test(a.nom ?? a.cle ?? ''));
+    const list = c.applications ?? c;
+    if (!Array.isArray(list)) throw new Error(`/applications a rendu ${JSON.stringify(c).slice(0, 200)}`);
+    const choisie = list.find((a) => new RegExp(motif, 'i').test(a.nom ?? a.cle ?? ''));
     if (!choisie) {
         throw new Error(
-            `aucune application ne correspond a /${motif}/ parmi ${liste.length} : ` +
-                liste.slice(0, 25).map((a) => a.nom).join(' | '),
+            `aucune application ne correspond a /${motif}/ parmi ${list.length} : ` +
+                list.slice(0, 25).map((a) => a.nom).join(' | '),
         );
     }
     const l = await fetch(`${PLATEFORME}/application/${choisie.id}/lancer`, {
@@ -227,8 +227,8 @@ try {
     }
     await dormir(3000);
 } catch (e) {
-    releve.erreur = String(e && e.message ? e.message : e);
-    log('ERREUR ' + releve.erreur);
+    releve.error = String(e && e.message ? e.message : e);
+    log('ERREUR ' + releve.error);
 } finally {
     chrome.kill('SIGKILL');
     await writeFile(SORTIE, JSON.stringify(releve, null, 1));

@@ -36,7 +36,7 @@ import tempfile
 
 from desk_activate_fixtures import (
     HOOK,
-    HW_AVEC_FACTS,
+    HW_WITH_FACTS,
     RACINE,
     REPONSES,
     appeler,
@@ -105,11 +105,11 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # --- Il a bien ete recu, mais sur stdin -----------------------------
     entrees = lire_commandes(log_npm)
-    appel_utilisateur = next(c for c in entrees if "admin:utilisateur" in c["argv"])
+    user_call = next(c for c in entrees if "admin:utilisateur" in c["argv"])
     check("le mot de passe arrive sur stdin de admin:utilisateur",
-          appel_utilisateur["stdin"].strip(), reponses["admin_password"])
+          user_call["stdin"].strip(), reponses["admin_password"])
     check("--email est passe en argv (lui n'est pas un secret)",
-          "ada@exemple.test" in appel_utilisateur["argv"], True)
+          "ada@exemple.test" in user_call["argv"], True)
 
     # --- L'ordre : compte AVANT enrolement ----------------------------------
     ordre = [c["argv"] for c in entrees]
@@ -151,11 +151,11 @@ with tempfile.TemporaryDirectory() as tmp:
     # journalise desormais la valeur REELLEMENT recue par le processus fils
     # (env_base_url, voir FAUX_NPM) ; on la compare a celle ecrite par
     # poser_racine_installee() dans desk.env.
-    valeur_attendue = "/var/lib/nivuus-desk/plateforme.sqlite"
+    expected_value = "/var/lib/nivuus-desk/plateforme.sqlite"
     check("PLATEFORME_BASE_URL de desk.env atteint le processus npm (admin:utilisateur)",
-          appel_utilisateur.get("env_base_url"), valeur_attendue)
+          user_call.get("env_base_url"), expected_value)
     check("PLATEFORME_BASE_URL de desk.env atteint le processus npm (admin:agent)",
-          appel_agent.get("env_base_url"), valeur_attendue)
+          appel_agent.get("env_base_url"), expected_value)
 
     # --- AGENT_VM / AGENT_SECRET ecrits dans desk.env, APRES le contenu deja
     # la ------------------------------------------------------------------
@@ -220,7 +220,7 @@ with tempfile.TemporaryDirectory() as tmp:
 # ABSENT — le cas precis que la revue a nomme : install partielle, ou un
 # operateur qui a supprime le fichier. Le hook doit REFUSER plutot que
 # recreer desk.env en silence — c'est ce refus qui empeche
-# ajouter_variables_env() d'ecrire un fichier NEUF (fenetre ecriture-puis-
+# add_env_variables() d'ecrire un fichier NEUF (fenetre ecriture-puis-
 # chmod), puisqu'il ne l'atteint jamais dans ce cas. ========================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)

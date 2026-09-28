@@ -27,7 +27,7 @@ fn conformite_aux_vecteurs_partages() {
     // `plateforme.rs` fixed for its file.
     assert_eq!(
         doc["version"].as_u64().expect("clé version"),
-        u64::from(super::super::FICHIERS_VERSION),
+        u64::from(super::super::FILES_VERSION),
         "la version des vecteurs a dérivé de FICHIERS_VERSION"
     );
 
@@ -48,15 +48,15 @@ fn conformite_aux_vecteurs_partages() {
                 let v = Chemin {
                     chemin: c["chemin"].as_str().unwrap().to_string(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "lire" => {
                 let v = Lire {
                     chemin: c["chemin"].as_str().unwrap().to_string(),
                     position: c["position"].as_u64().unwrap(),
-                    longueur: c["longueur"].as_u64().unwrap() as u32,
+                    length: c["longueur"].as_u64().unwrap() as u32,
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "entrees" => {
                 let v = Entrees {
@@ -67,45 +67,45 @@ fn conformite_aux_vecteurs_partages() {
                         .map(|e| EntreeJson {
                             nom: e["nom"].as_str().unwrap().to_string(),
                             repertoire: e["repertoire"].as_bool().unwrap(),
-                            taille: e["taille"].as_u64().unwrap(),
-                            modifie: e["modifie"].as_i64().unwrap(),
+                            size: e["taille"].as_u64().unwrap(),
+                            modified: e["modifie"].as_i64().unwrap(),
                         })
                         .collect(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "meta" => {
                 let v = Meta {
                     nom: c["nom"].as_str().unwrap().to_string(),
                     repertoire: c["repertoire"].as_bool().unwrap(),
-                    taille: c["taille"].as_u64().unwrap(),
-                    modifie: c["modifie"].as_i64().unwrap(),
+                    size: c["taille"].as_u64().unwrap(),
+                    modified: c["modifie"].as_i64().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "donnees" => {
-                let v = Donnees {
+                let v = Data {
                     position: c["position"].as_u64().unwrap(),
-                    longueur: c["longueur"].as_u64().unwrap() as u32,
+                    length: c["longueur"].as_u64().unwrap() as u32,
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "ecrire" => {
-                let v = Ecrire {
+                let v = Write {
                     chemin: c["chemin"].as_str().unwrap().to_string(),
                     position: c["position"].as_u64().unwrap(),
-                    longueur: c["longueur"].as_u64().unwrap() as u32,
+                    length: c["longueur"].as_u64().unwrap() as u32,
                     premier: c["premier"].as_bool().unwrap(),
-                    dernier: c["dernier"].as_bool().unwrap(),
+                    last: c["dernier"].as_bool().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "creer" => {
-                let v = Creer {
+                let v = Create {
                     chemin: c["chemin"].as_str().unwrap().to_string(),
                     repertoire: c["repertoire"].as_bool().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "renommer" => {
                 let v = Renommer {
@@ -113,14 +113,14 @@ fn conformite_aux_vecteurs_partages() {
                     vers: c["vers"].as_str().unwrap().to_string(),
                     repertoire: c["repertoire"].as_bool().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "supprimer" => {
-                let v = Supprimer {
+                let v = Delete {
                     chemin: c["chemin"].as_str().unwrap().to_string(),
                     repertoire: c["repertoire"].as_bool().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "dues" => {
                 let v = Dues {
@@ -135,19 +135,19 @@ fn conformite_aux_vecteurs_partages() {
                         .collect(),
                     retenues: c["retenues"].as_bool().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "bonjour" => {
                 let v = Bonjour {
                     racine: c["racine"].as_str().unwrap().to_string(),
                     forcer: c["forcer"].as_bool().unwrap(),
                 };
-                verifier(nom, attendu, &v);
+                verify(nom, attendu, &v);
             }
             "echec" => {
-                let code: crate::fichiers::CodeEchec =
+                let code: crate::files::CodeEchec =
                     serde_json::from_value(c["code"].clone()).expect("code d'échec connu");
-                verifier(nom, attendu, &Echec { code });
+                verify(nom, attendu, &Echec { code });
             }
             autre => panic!("forme inconnue dans les vecteurs : {autre}"),
         }
@@ -161,17 +161,17 @@ fn conformite_aux_vecteurs_partages() {
 }
 
 /// Serializes, compares to the vector, reads the vector back, compares to the value.
-fn verifier<T>(nom: &str, attendu: &str, valeur: &T)
+fn verify<T>(nom: &str, attendu: &str, value: &T)
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq + std::fmt::Debug,
 {
     assert_eq!(
-        serde_json::to_string(valeur).expect("sérialisation"),
+        serde_json::to_string(value).expect("sérialisation"),
         attendu,
         "sérialisation du vecteur « {nom} »"
     );
     let relu: T = serde_json::from_str(attendu).expect("désérialisation");
-    assert_eq!(&relu, valeur, "désérialisation du vecteur « {nom} »");
+    assert_eq!(&relu, value, "désérialisation du vecteur « {nom} »");
 }
 
 /// A header missing a field is **rejected**, never silently
@@ -186,22 +186,22 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     assert!(
         serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1,"modifie":0}"#).is_err()
     );
-    assert!(serde_json::from_str::<Donnees>(r#"{"position":0}"#).is_err());
+    assert!(serde_json::from_str::<Data>(r#"{"position":0}"#).is_err());
     assert!(serde_json::from_str::<Lire>(r#"{"chemin":"a","position":0}"#).is_err());
-    // 🔴 The two flags of `Ecrire` are the ones whose absence is the most
+    // 🔴 The two flags of `Write` are the ones whose absence is the most
     // costly: without `premier`, the stream would open with `keepExistingData` and
     // a file rewritten shorter would keep its tail of bytes — the EXACT
-    // defect of the old bridge (spec §12). Without `dernier`, the `close()` would
+    // defect of the old bridge (spec §12). Without `last`, the `close()` would
     // never come and the write would **never** be committed.
-    assert!(serde_json::from_str::<Ecrire>(
+    assert!(serde_json::from_str::<Write>(
         r#"{"chemin":"a","position":0,"longueur":1,"dernier":true}"#
     )
     .is_err());
-    assert!(serde_json::from_str::<Ecrire>(
+    assert!(serde_json::from_str::<Write>(
         r#"{"chemin":"a","position":0,"longueur":1,"premier":true}"#
     )
     .is_err());
-    assert!(serde_json::from_str::<Creer>(r#"{"chemin":"a"}"#).is_err());
+    assert!(serde_json::from_str::<Create>(r#"{"chemin":"a"}"#).is_err());
     assert!(serde_json::from_str::<Due>(r#"{"chemin":"a"}"#).is_err());
     // 🔴 **A `Renommer` without `vers` is the case that DESTROYS**: filled in
     // silently with an empty string, it would rename to the root — or, if
@@ -210,7 +210,7 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     // consequence, and that is why it is named here rather than counted.
     assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","repertoire":false}"#).is_err());
     assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","vers":"b"}"#).is_err());
-    assert!(serde_json::from_str::<Supprimer>(r#"{"chemin":"a"}"#).is_err());
+    assert!(serde_json::from_str::<Delete>(r#"{"chemin":"a"}"#).is_err());
     // 🔴 **F5 — THE SECOND CASE WHERE A MISSING FIELD HAS A CONSEQUENCE, and it
     // goes in the DANGEROUS direction.** A `Dues` without `retenues` filled in
     // silently would be `false` = "the bridge pushes", that is the reverse of

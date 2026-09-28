@@ -5,10 +5,10 @@
 //
 // 🔴 WHY THIS IS NOT AN HTTP ROUTE. There is NO administration
 // role in this service: `identite/jeton.ts` only knows
-// `utilisateur` and `agent`, and `config.ts` has no administrator
+// `user` and `agent`, and `config.ts` has no administrator
 // variable. A route that assigned a VM would therefore, at best,
 // be open to any authenticated user — a privilege escalation on offer.
-// The precedent is exact: `admin:utilisateur` and `admin:agent` (D8).
+// The precedent is exact: `admin:user` and `admin:agent` (D8).
 //
 // 🔴 AND THAT IS WHY IT NAMES THE CAUSE, unlike the routes.
 // `http/routes-vm.ts` returns the same refusal for "unknown VM" and "someone
@@ -98,7 +98,7 @@ export interface Issue {
     /// two other commands.
     code: number;
     sortie?: string;
-    erreur?: string;
+    error?: string;
 }
 
 /// Resolves `--vm`: the NAME first, the identifier next.
@@ -118,7 +118,7 @@ async function resoudre(p: Pilote, designation: string): Promise<LigneVm | undef
 export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: string }>): Promise<Issue> {
     const ligne = await resoudre(p, args.vm);
     if (ligne === undefined) {
-        return { code: 2, erreur: `aucune VM nommée « ${args.vm} », ni par son nom ni par son identifiant.` };
+        return { code: 2, error: `aucune VM nommée « ${args.vm} », ni par son nom ni par son identifiant.` };
     }
 
     if (args.action === 'detacher') {
@@ -132,9 +132,9 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
         };
     }
 
-    const utilisateur = await lireParEmail(p, args.email);
-    if (utilisateur === undefined) {
-        return { code: 2, erreur: `aucun compte pour le courriel « ${args.email} ».` };
+    const user = await lireParEmail(p, args.email);
+    if (user === undefined) {
+        return { code: 2, error: `aucun compte pour le courriel « ${args.email} ».` };
     }
 
     // 🔴 THE ASSIGNMENT GOES THROUGH THE ORCHESTRATOR, never through an `UPDATE` written
@@ -146,11 +146,11 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
     // ⚠️ The clock is used by no path of `attribuer`; it is
     // passed because the interface demands it, and `Date.now` is honest here.
     const orchestrateur = inventaireStatique(p, Date.now);
-    const issue = await orchestrateur.attribuer(ligne.id, utilisateur.id);
+    const issue = await orchestrateur.attribuer(ligne.id, user.id);
     if (issue.ok) {
         return {
             code: 0,
-            sortie: `vm=${ligne.id}\nnom=${ligne.nom}\nutilisateur=${utilisateur.id}\nemail=${args.email}\n`,
+            sortie: `vm=${ligne.id}\nnom=${ligne.nom}\nutilisateur=${user.id}\nemail=${args.email}\n`,
         };
     }
 
@@ -167,7 +167,7 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
             const relue = await lireParId(p, ligne.id);
             return {
                 code: 2,
-                erreur:
+                error:
                     `la VM ${ligne.id} (${ligne.nom}) appartient déjà à ` +
                     `${relue?.utilisateur_id ?? 'un autre compte'} — la détacher d'abord : ` +
                     `npm run admin:attribuer -- --detacher --vm ${ligne.nom}`,
@@ -176,7 +176,7 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
         case 'utilisateur-servi':
             return {
                 code: 2,
-                erreur:
+                error:
                     `${args.email} a déjà une VM, et l'index unique partiel ` +
                     "`vm_un_utilisateur` n'en autorise qu'une — détacher la sienne d'abord.",
             };
@@ -184,7 +184,7 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
             // Unreachable with the inputs above (the VM was resolved,
             // so never `vm-inconnue`), written anyway: a reason added one
             // day must not fall into silence.
-            return { code: 2, erreur: `attribution refusée : ${issue.motif}.` };
+            return { code: 2, error: `attribution refusée : ${issue.motif}.` };
     }
 }
 
@@ -205,7 +205,7 @@ export async function executer(argv: string[]): Promise<number> {
         // commands.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
         const issue = await appliquer(base, args);
-        if (issue.erreur !== undefined) process.stderr.write(`${issue.erreur}\n`);
+        if (issue.error !== undefined) process.stderr.write(`${issue.error}\n`);
         if (issue.sortie !== undefined) process.stdout.write(issue.sortie);
         return issue.code;
     } catch (cause) {

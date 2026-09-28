@@ -13,16 +13,16 @@ use super::*;
 #[test]
 fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
     let e = maintenant() + DELAI_LIRE;
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let mut vues = std::collections::HashSet::new();
     for i in 0..64 {
         // The two kinds interleave, as on the real path: a write
         // thread pushes while an application reads.
         let lecture = t.inscrire(i, attributs(&format!("l{i}")), e);
         let ecriture = t.inscrire_sans_commande(
-            Attendue::Ecrire {
+            Attendue::Write {
                 chemin: format!("e{i}"),
-                dernier: false,
+                last: false,
             },
             e,
         );
@@ -42,10 +42,10 @@ fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
 /// `command_id`**: `verbes::completer` must be able to tell it apart.
 #[test]
 fn une_inscription_sans_commande_n_a_pas_de_command_id() {
-    let e = maintenant() + DELAI_ECRIRE;
-    let mut t = Table::nouvelle();
+    let e = maintenant() + WRITE_TIMEOUT;
+    let mut t = Table::new();
     let c = t.inscrire_sans_commande(
-        Attendue::Creer {
+        Attendue::Create {
             chemin: "neuf.txt".into(),
         },
         e,
@@ -57,7 +57,7 @@ fn une_inscription_sans_commande_n_a_pas_de_command_id() {
     );
     assert_eq!(
         quoi,
-        Attendue::Creer {
+        Attendue::Create {
             chemin: "neuf.txt".into()
         }
     );
@@ -73,7 +73,7 @@ fn une_inscription_sans_commande_n_a_pas_de_command_id() {
 #[test]
 fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
     let depart = maintenant();
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let c = t.inscrire(
         7,
         Attendue::Attributs {
@@ -94,23 +94,23 @@ fn resoudre_rend_l_age_de_la_commande_et_non_zero() {
     );
 }
 
-/// 🔴 **`vider` RETURNS WRITES WITH AN ABSENT `command_id`.**
+/// 🔴 **`drain` RETURNS WRITES WITH AN ABSENT `command_id`.**
 ///
 /// Returning `Some(0)` would make `PrjCompleteCommand(0)` be called at bridge shutdown,
 /// that is, complete a command belonging to someone else.
 #[test]
-fn vider_rend_les_ecritures_avec_un_command_id_absent() {
-    let e = maintenant() + DELAI_ECRIRE;
-    let mut t = Table::nouvelle();
+fn drain_returns_writes_with_a_missing_command_id() {
+    let e = maintenant() + WRITE_TIMEOUT;
+    let mut t = Table::new();
     let lecture = t.inscrire(42, attributs("a"), e);
     let ecriture = t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "b".into(),
-            dernier: true,
+            last: true,
         },
         e,
     );
-    let tout = t.vider();
+    let tout = t.drain();
     assert_eq!(tout.len(), 2);
     assert!(tout.contains(&(Some(42), lecture)));
     assert!(
@@ -125,18 +125,18 @@ fn vider_rend_les_ecritures_avec_un_command_id_absent() {
 /// else removes it, since no ProjFS callback registered it and
 /// no cancellation can target it.
 #[test]
-fn une_ecriture_expiree_est_retiree_comme_les_autres() {
+fn an_expired_write_is_removed_like_the_others() {
     let debut = maintenant();
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let c = t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "gros.bin".into(),
-            dernier: false,
+            last: false,
         },
-        debut + DELAI_ECRIRE,
+        debut + WRITE_TIMEOUT,
     );
     assert!(t.expirees(debut).is_empty());
-    assert_eq!(t.expirees(debut + DELAI_ECRIRE), vec![(None, c)]);
+    assert_eq!(t.expirees(debut + WRITE_TIMEOUT), vec![(None, c)]);
     assert_eq!(t.en_vol(), 0);
 }
 
@@ -148,12 +148,12 @@ fn une_ecriture_expiree_est_retiree_comme_les_autres() {
 /// due write, which would never be pushed AND never removed from the journal.
 #[test]
 fn annuler_ne_vise_jamais_une_ecriture() {
-    let e = maintenant() + DELAI_ECRIRE;
-    let mut t = Table::nouvelle();
+    let e = maintenant() + WRITE_TIMEOUT;
+    let mut t = Table::new();
     let ecriture = t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "a".into(),
-            dernier: true,
+            last: true,
         },
         e,
     );
@@ -173,7 +173,7 @@ fn annuler_ne_vise_jamais_une_ecriture() {
 /// exactly today's state.
 #[test]
 fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let depart = Instant::now();
     // Nothing in flight: `None`, and it is the FIRST line of the reading table —
     // "nothing was ever registered, the blockage is in the callback".
@@ -206,13 +206,13 @@ fn plus_ancienne_rend_la_duree_de_la_plus_vieille_commande_en_vol() {
 /// does not concern it.
 #[test]
 fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let echeance = Instant::now() + Duration::from_secs(5);
     t.inscrire(1, Attendue::Attributs { chemin: "a".into() }, echeance);
     t.inscrire_sans_commande(
-        Attendue::Ecrire {
+        Attendue::Write {
             chemin: "b".into(),
-            dernier: true,
+            last: true,
         },
         echeance,
     );
@@ -236,15 +236,15 @@ fn sans_commande_ne_compte_que_ce_qui_ne_complete_aucun_rappel() {
 /// on a nonexistent path.
 #[test]
 fn les_cinq_budgets_sont_distincts() {
-    let tous = [
+    let all = [
         DELAI_ATTRIBUTS,
         DELAI_LIRE,
         DELAI_LISTER,
-        DELAI_ECRIRE,
+        WRITE_TIMEOUT,
         DELAI_MUTATION,
     ];
-    for (i, a) in tous.iter().enumerate() {
-        for b in &tous[i + 1..] {
+    for (i, a) in all.iter().enumerate() {
+        for b in &all[i + 1..] {
             assert_ne!(a, b, "deux budgets partagent la valeur {a:?}");
         }
     }
@@ -252,7 +252,7 @@ fn les_cinq_budgets_sont_distincts() {
     // write's: a single round trip, but whose copy fallback is
     // O(size) on the browser side.
     assert!(DELAI_MUTATION > DELAI_LIRE);
-    assert!(DELAI_MUTATION < DELAI_ECRIRE);
+    assert!(DELAI_MUTATION < WRITE_TIMEOUT);
 }
 
 /// 🔴 **`annuler` RETURNS ALL THE CORRELATIONS OF A COMMAND, AND IT IS
@@ -265,14 +265,14 @@ fn les_cinq_budgets_sont_distincts() {
 /// *Mute, deferred, and outside our process.*
 #[test]
 fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
-    let mut t = Table::nouvelle();
+    let mut t = Table::new();
     let e = maintenant() + DELAI_LIRE;
     let a = t.inscrire(
         7,
         Attendue::Lire {
             chemin: "g".into(),
             position: 0,
-            longueur: 4,
+            length: 4,
         },
         e,
     );
@@ -281,7 +281,7 @@ fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
         Attendue::Lire {
             chemin: "g".into(),
             position: 4,
-            longueur: 4,
+            length: 4,
         },
         e,
     );
@@ -290,7 +290,7 @@ fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
         Attendue::Lire {
             chemin: "g".into(),
             position: 8,
-            longueur: 4,
+            length: 4,
         },
         e,
     );

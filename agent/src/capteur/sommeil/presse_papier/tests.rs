@@ -1,13 +1,13 @@
 //! Les tests de `capteur/sommeil/presse_papier.rs`.
 //!
 //! **Extracted VERBATIM in sub-block P3 (task 4), BEFORE the addition that
-//! made it necessary** — the `dernier_presse_papier` memory of D-P3-2 and the
+//! made it necessary** — the `last_clipboard` memory of D-P3-2 and the
 //! second take of D-P3-6. The parent was at 379 lines for a cap of
 //! 500. The repository's rule is to extract BEFORE adding, never to compress
 //! afterwards.
 //!
 //! ⚠️ **The extracted block was IN THE MIDDLE of the file**, not at the end: the
-//! production code resumed right after (`ecrire`, `ecrire_avec`,
+//! production code resumed right after (`write`, `write_with`,
 //! `armer_les_gardes`). The `git diff` is less readable than an end-of-file
 //! move, and the character-for-character transposition check
 //! is all the more mandatory — it was run, and the four-space
@@ -28,9 +28,9 @@ use crate::presse_papier::Sondeur;
 
 /// The last clipboard received on a channel, draining what is
 /// there: shares and sleep orders are freely interleaved.
-fn dernier_presse_papier(canal: &ReceveurSession) -> Option<(Option<String>, u32)> {
+fn last_clipboard(canal: &ReceveurSession) -> Option<(Option<String>, u32)> {
     canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::PressePapier { texte, octets } => Some((texte, octets)),
@@ -43,7 +43,7 @@ fn dernier_presse_papier(canal: &ReceveurSession) -> Option<(Option<String>, u32
 /// browser window has its own local clipboard, and it is the client
 /// that decides whether it writes now or when the focus comes back.
 #[test]
-fn une_annonce_de_texte_part_vers_toutes_les_sessions_inscrites() {
+fn a_text_announcement_goes_to_all_subscribed_sessions() {
     let _verrou = verrouiller_pour_le_test();
     let (canal_a, generation_a) = inscrire("pp-a", 7100);
     let (canal_b, generation_b) = inscrire("pp-b", 7101);
@@ -52,12 +52,12 @@ fn une_annonce_de_texte_part_vers_toutes_les_sessions_inscrites() {
     super::distribuer(&mut etat(), Annonce::Texte("bonjour".to_string()));
 
     assert_eq!(
-        dernier_presse_papier(&canal_a),
+        last_clipboard(&canal_a),
         Some((Some("bonjour".to_string()), 7)),
         "la fenêtre focalisée doit recevoir le texte"
     );
     assert_eq!(
-        dernier_presse_papier(&canal_b),
+        last_clipboard(&canal_b),
         Some((Some("bonjour".to_string()), 7)),
         "la fenêtre NON focalisée aussi : c'est le client qui décide d'écrire"
     );
@@ -70,14 +70,14 @@ fn une_annonce_de_texte_part_vers_toutes_les_sessions_inscrites() {
 /// carrying the refused size — that is what lets the
 /// browser's banner say *how much* rather than "too large".
 #[test]
-fn un_refus_part_sans_texte_mais_avec_sa_taille() {
+fn a_refusal_leaves_without_text_but_with_its_size() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("pp-refus", 7200);
 
     super::distribuer(&mut etat(), Annonce::Refus { octets: 100_000 });
 
     assert_eq!(
-        dernier_presse_papier(&canal),
+        last_clipboard(&canal),
         Some((None, 100_000)),
         "un refus doit partir, et porter sa taille"
     );
@@ -136,7 +136,7 @@ fn un_canal_rompu_detecte_par_le_presse_papier_est_retire_du_vivier() {
 /// A `Sondeur` that has already taken its reference: it is the nominal state after
 /// the first round, and the only one in which the guards are judged.
 fn sondeur_amorce() -> Sondeur {
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     assert_eq!(
         sondeur.observer(1, || Some(String::from("etat-initial"))),
         None
@@ -157,7 +157,7 @@ fn sondeur_amorce() -> Sondeur {
 /// establishes that the mechanism is right **when called before
 /// `tour()`**; it does **not** establish that the wheel round calls it
 /// in that order. Checked by mutation on 21 August 2026: swapping the
-/// two lines of `registre.rs::demarrer_le_tour_de_roue` leaves **the seven
+/// two lines of `registre.rs::start_the_round` leaves **the seven
 /// tests of this module GREEN**. The body of the wheel round is an infinite
 /// loop in a `thread::spawn`, which no host test reaches —
 /// the order there is a fact of READING, and its only test is the acceptance run
@@ -211,16 +211,16 @@ fn une_copie_tierce_survenue_apres_notre_ecriture_est_quand_meme_annoncee() {
 /// `Sondeur::observer`: that is what makes this path testable on the host
 /// without any `cfg`.
 ///
-/// RED if `ecrire_avec` set `notre_ecriture` before calling
+/// RED if `write_with` set `notre_ecriture` before calling
 /// the writer, or if it ignored its `Err`.
 #[test]
 fn une_ecriture_echouee_n_arme_aucun_garde() {
     let _verrou = verrouiller_pour_le_test();
     etat().notre_ecriture = None;
 
-    let resultat = super::ecrire_avec("colle", |_| anyhow::bail!("OpenClipboard refusé"));
+    let result = super::write_with("colle", |_| anyhow::bail!("OpenClipboard refusé"));
 
-    assert!(resultat.is_err(), "l'échec doit remonter à l'appelant");
+    assert!(result.is_err(), "l'échec doit remonter à l'appelant");
     assert!(
         etat().notre_ecriture.is_none(),
         "rien ne doit être posé quand l'écriture a échoué"
@@ -230,7 +230,7 @@ fn une_ecriture_echouee_n_arme_aucun_garde() {
 /// The counterpart: a SUCCESSFUL write does set the pair, with the number
 /// the writer returned — the one re-read AFTER `CloseClipboard`.
 ///
-/// RED if `ecrire_avec` set a fabricated number instead of the
+/// RED if `write_with` set a fabricated number instead of the
 /// writer's: guard no. 1 would then be off by one step, that is
 /// silently inoperative.
 #[test]
@@ -238,7 +238,7 @@ fn une_ecriture_reussie_pose_le_numero_rendu_par_l_ecrivain() {
     let _verrou = verrouiller_pour_le_test();
     etat().notre_ecriture = None;
 
-    super::ecrire_avec("colle", |texte| {
+    super::write_with("colle", |texte| {
         assert_eq!(texte, "colle", "le texte doit arriver tel quel à Win32");
         Ok(1234)
     })
@@ -267,7 +267,7 @@ fn la_seconde_prise_consomme_notre_ecriture_et_ecarte_notre_texte() {
     let _verrou = verrouiller_pour_le_test();
     etat().notre_ecriture = Some((11, String::from("colle-par-B")));
 
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     let annonce = Some(Annonce::Texte(String::from("colle-par-B")));
 
     assert_eq!(
@@ -291,7 +291,7 @@ fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
     let _verrou = verrouiller_pour_le_test();
     etat().notre_ecriture = None;
 
-    let mut sondeur = Sondeur::nouveau();
+    let mut sondeur = Sondeur::new();
     let annonce = Some(Annonce::Texte(String::from("copie-dans-la-vm")));
 
     assert_eq!(
@@ -311,35 +311,35 @@ fn la_seconde_prise_laisse_passer_une_copie_de_la_vm() {
 //
 // ⚠️ **And it is not merely a move of convenience.** E13 puts the
 // tests of `registre.rs` in `sommeil/tests.rs`, for lack of a test module of
-// its own; but what these tests exercise is `emettre_l_etat_courant`, which lives
+// its own; but what these tests exercise is `emit_current_state`, which lives
 // in the PARENT of this file. They are therefore next to the function they
-// test, and the `dernier_presse_papier` helper that already lives here serves them
+// test, and the `last_clipboard` helper that already lives here serves them
 // as is — the twin written in `sommeil/tests.rs` was redundant and
 // did not follow.
 
 /// 🔴 RED ON THE INTACT TREE before the remedy: it is P1's hand-over no. 3 —
 /// "a window attached after a copy never receives that content".
 #[test]
-fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
+fn a_session_that_subscribes_after_a_copy_receives_the_current_content() {
     let _verrou = verrouiller_pour_le_test();
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     let (canal_present, generation_present) = inscrire("t11-present", 7300);
     super::distribuer(
         &mut etat(),
         crate::presse_papier::Annonce::Texte("deja-copie".into()),
     );
-    let _ = dernier_presse_papier(&canal_present);
+    let _ = last_clipboard(&canal_present);
 
     // The window attaches AFTER the copy.
     let (canal_tardif, generation_tardif) = inscrire("t11-tardif", 7301);
 
     assert_eq!(
-        dernier_presse_papier(&canal_tardif),
+        last_clipboard(&canal_tardif),
         Some((Some("deja-copie".to_string()), 10)),
         "une fenêtre attachée après la copie doit recevoir le contenu courant"
     );
 
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     retirer("t11-present", generation_present);
     retirer("t11-tardif", generation_tardif);
     drop(canal_present);
@@ -352,29 +352,29 @@ fn une_session_qui_s_inscrit_apres_une_copie_recoit_le_contenu_courant() {
 #[test]
 fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
     let _verrou = verrouiller_pour_le_test();
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     let (canal_present, generation_present) = inscrire("t12-present", 7310);
     super::distribuer(
         &mut etat(),
         crate::presse_papier::Annonce::Texte("copie".into()),
     );
     // We drain what the neighbour legitimately received from `distribuer`.
-    let _ = dernier_presse_papier(&canal_present);
+    let _ = last_clipboard(&canal_present);
 
     let (canal_neuf, generation_neuf) = inscrire("t12-neuf", 7311);
 
     assert_eq!(
-        dernier_presse_papier(&canal_neuf),
+        last_clipboard(&canal_neuf),
         Some((Some("copie".to_string()), 5)),
         "le canal neuf reçoit"
     );
     assert_eq!(
-        dernier_presse_papier(&canal_present),
+        last_clipboard(&canal_present),
         None,
         "la voisine NE DOIT RIEN recevoir de plus : ce serait un aller-retour par attache"
     );
 
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     retirer("t12-present", generation_present);
     retirer("t12-neuf", generation_neuf);
     drop(canal_present);
@@ -386,7 +386,7 @@ fn l_emission_a_l_inscription_ne_part_que_sur_le_canal_neuf() {
 #[test]
 fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
     let _verrou = verrouiller_pour_le_test();
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     super::distribuer(
         &mut etat(),
         crate::presse_papier::Annonce::Refus { octets: 123_456 },
@@ -395,12 +395,12 @@ fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
     let (canal, generation) = inscrire("t13-refus", 7320);
 
     assert_eq!(
-        dernier_presse_papier(&canal),
+        last_clipboard(&canal),
         Some((None, 123_456)),
         "le refus doit être rejoué à l'attache, avec sa taille"
     );
 
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     retirer("t13-refus", generation);
     drop(canal);
 }
@@ -409,13 +409,13 @@ fn une_session_qui_s_inscrit_apres_un_refus_recoit_le_refus() {
 /// `None`: the client would then write an empty string into its local
 /// clipboard at every attach.
 #[test]
-fn une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien() {
+fn a_session_that_subscribes_before_any_copy_receives_nothing() {
     let _verrou = verrouiller_pour_le_test();
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
 
     let (canal, generation) = inscrire("t14-vierge", 7330);
 
-    assert_eq!(dernier_presse_papier(&canal), None);
+    assert_eq!(last_clipboard(&canal), None);
 
     retirer("t14-vierge", generation);
     drop(canal);
@@ -429,26 +429,26 @@ fn une_session_qui_s_inscrit_avant_toute_copie_ne_recoit_rien() {
 /// removed at the precise moment we want to use it, and re-attachment — the
 /// case where replay is MOST useful — would replay nothing.
 #[test]
-fn un_rattachement_recoit_lui_aussi_le_contenu_courant() {
+fn a_reattach_also_receives_the_current_content() {
     let _verrou = verrouiller_pour_le_test();
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     let (premier_canal, premiere_generation) = inscrire("t15-rattache", 7340);
     super::distribuer(
         &mut etat(),
         crate::presse_papier::Annonce::Texte("avant-rupture".into()),
     );
-    let _ = dernier_presse_papier(&premier_canal);
+    let _ = last_clipboard(&premier_canal);
 
     // Re-attachment, under the SAME name.
     let (second_canal, seconde_generation) = inscrire("t15-rattache", 7340);
 
     assert_eq!(
-        dernier_presse_papier(&second_canal),
+        last_clipboard(&second_canal),
         Some((Some("avant-rupture".to_string()), 13)),
         "un rattachement doit recevoir le contenu courant : rien n'est purgé"
     );
 
-    etat().dernier_presse_papier = None;
+    etat().last_clipboard = None;
     retirer("t15-rattache", seconde_generation);
     let _ = premiere_generation;
     drop(premier_canal);

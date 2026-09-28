@@ -2,8 +2,8 @@ import { attachInput } from './input';
 import { connectSession } from './webrtc';
 import { attachStats } from './stats';
 import { armerLeSon } from './audio';
-import { creerStatut } from './status';
-import { creerEcranTerminalAuDOM } from './ecran-terminal';
+import { createStatus } from './status';
+import { createTerminalScreenInDOM } from './ecran-terminal';
 import { attachPointerAuDOM } from './pointer';
 import { attachGamepadAuDOM } from './gamepad';
 import { armerPleinEcranAuDOM, attachFullscreenAuDOM } from './fullscreen';
@@ -16,7 +16,7 @@ import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
 import { adresseSignaling } from './adresse-plateforme';
-import { sessionIdDepuisParametres } from './session-id';
+import { sessionIdFromParams } from './session-id';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
 const statusElement = document.querySelector<HTMLDivElement>('#status')!;
@@ -28,8 +28,8 @@ const microElement = document.querySelector<HTMLButtonElement>('#micro')!;
 // (end of session, failure) against being overwritten by an ordinary message
 // arriving after it. See `status.ts` for the complete justification.
 // The SECOND target is the full-frame screen of terminal states (S4, task 9):
-// `creerStatut` raises it for a `terminal` message and for it alone.
-const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
+// `createStatus` raises it for a `terminal` message and for it alone.
+const statut = createStatus(statusElement, createTerminalScreenInDOM());
 
 // The session and signaling can be set through the URL to ease
 // trials: ?session=abc123&signaling=ws://192.168.3.2:8080/signal
@@ -41,7 +41,7 @@ const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
 // media never got established. The rule lives in `adresse-plateforme.ts`,
 // which is PURE and tested — no Node test can see a mixed content refusal.
 const params = new URLSearchParams(window.location.search);
-const sessionId = sessionIdDepuisParametres(params);
+const sessionId = sessionIdFromParams(params);
 const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
 
 // 🔴 WITHOUT A PARAMETER, THIS PAGE REFUSES AND STOPS THERE — it NO LONGER invents
@@ -50,7 +50,7 @@ const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
 // message INDISTINGUISHABLE from a real network failure). `throw` stops
 // the evaluation of THIS ES module: no connection is attempted afterwards.
 if (sessionId === undefined) {
-    statut.afficher('Aucune session indiquée — ouvrez une application depuis le hub.', {
+    statut.show('Aucune session indiquée — ouvrez une application depuis le hub.', {
         terminal: true,
         ton: 'danger',
     });
@@ -103,7 +103,7 @@ const accent = attacherAccentAuDOM({
     // 🔴 `documentElement`, NEVER `document.body`: a token set on `body`
     // is invisible to `getComputedStyle(document.documentElement)`, and it is
     // the red run of the acceptance's criterion ②.
-    poserToken: (nom, valeur) => document.documentElement.style.setProperty(nom, valeur),
+    poserToken: (nom, value) => document.documentElement.style.setProperty(nom, value),
 });
 /// Has the agent announced `Capabilities.clipboard`?
 ///
@@ -133,7 +133,7 @@ let micAnnonce: boolean | undefined;
 // `presse-papier-dom.ts`, where four tests hold it. Their only end-to-end
 // check is the acceptance's criterion ①: a window attached AFTER the
 // copy.
-let dernierPressePapier: Recu | undefined;
+let lastClipboard: Recu | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
 
@@ -147,10 +147,10 @@ connectSession({
     signalingUrl,
     sessionId,
     video,
-    onStatus: (message) => statut.afficher(message),
+    onStatus: (message) => statut.show(message),
     onControl(message) {
         if (message.type === 'ready') {
-            statut.afficher(`prêt — ${message.width}×${message.height}`);
+            statut.show(`prêt — ${message.width}×${message.height}`);
             setTimeout(() => statut.masquer(), 1500);
             // The mic button ONLY appears if the agent says it has the cable
             // (spec §10). `message.mic` is passed AS IS: the rule "its
@@ -182,7 +182,7 @@ connectSession({
             pressePapier?.detacher();
             // `neutre`: the user closed the remote application, it
             // is not an error. The tone ONLY serves the terminal screen.
-            statut.afficher(`session terminée : ${message.reason}`, {
+            statut.show(`session terminée : ${message.reason}`, {
                 terminal: true,
                 ton: 'neutre',
             });
@@ -198,7 +198,7 @@ connectSession({
                         : 'image figée : fenêtre masquée';
                 // `persistant`: the state lasts as long as the window sleeps, it
                 // must not be erased by a neighbouring banner's timer.
-                statut.afficher(texte, { persistant: true });
+                statut.show(texte, { persistant: true });
             } else {
                 // `masquer()` deliberately protects a persistent message: the
                 // wake-up must therefore explicitly lift that persistence,
@@ -232,13 +232,13 @@ connectSession({
                 // the network is still degraded. The status banner
                 // also already protects terminal messages: a
                 // network warning will not overwrite an end of session.
-                statut.afficher(t.resume, { persistant: true });
+                statut.show(t.resume, { persistant: true });
             } else {
                 // Routine information: it clears itself, like
                 // the "ready" banner. Displaying an ordinary message lifts the
                 // persistence of a previous alert (see status.ts), so
                 // a return to `bonne` makes it stop by itself.
-                statut.afficher(t.resume);
+                statut.show(t.resume);
                 bandeauLien = window.setTimeout(() => statut.masquer(), 1500);
             }
         } else if (message.type === 'capabilities') {
@@ -247,7 +247,7 @@ connectSession({
             // message distinct from the gamepad banner's below, otherwise
             // the user would believe their gamepad was at fault.
             if (!message.gamepad) {
-                statut.afficher('manette indisponible sur cette machine');
+                statut.show('manette indisponible sur cette machine');
                 setTimeout(() => statut.masquer(), 4000);
             }
             // No logic here either: this flag only GATES
@@ -262,8 +262,8 @@ connectSession({
             // The memory is set BEFORE the `?.`, never in an `else`
             // branch: setting it in the `else` would make the two paths diverge
             // the day one of them changed.
-            dernierPressePapier = { texte: message.text, octets: message.bytes };
-            pressePapier?.recevoir(dernierPressePapier);
+            lastClipboard = { texte: message.text, octets: message.bytes };
+            pressePapier?.recevoir(lastClipboard);
         } else if (message.type === 'accent') {
             // No logic here: conform, refuse, set — everything lives in
             // `accent-dom.ts`, backed by `accent.ts`, pure and tested.
@@ -298,7 +298,7 @@ connectSession({
 
         pointeur = attachPointerAuDOM({
             envoyer,
-            surEchec: () => statut.afficher('cliquez dans l\'image pour prendre la souris'),
+            surEchec: () => statut.show('cliquez dans l\'image pour prendre la souris'),
         });
 
         manette = attachGamepadAuDOM({
@@ -307,7 +307,7 @@ connectSession({
                 if (present && !manetteAnnoncee) {
                     manetteAnnoncee = true;
                     window.clearTimeout(bandeauManette);
-                    statut.afficher('manette détectée');
+                    statut.show('manette détectée');
                     setTimeout(() => statut.masquer(), 1500);
                 }
             },
@@ -319,7 +319,7 @@ connectSession({
         // there is a failure — same pattern as the audio banner below, including
         // the delay: no point explaining it to someone who has already pressed.
         bandeauManette = window.setTimeout(() => {
-            if (!manetteAnnoncee) statut.afficher('manette : appuyez sur un bouton pour l\'activer');
+            if (!manetteAnnoncee) statut.show('manette : appuyez sur un bouton pour l\'activer');
         }, 4000);
 
         detacherPleinEcran = attachFullscreenAuDOM({ bouton: fullscreenElement, cible: document.documentElement });
@@ -337,7 +337,7 @@ connectSession({
             // HOW to restore the permission, not only that it is missing.
             // `persistant`: the user must have time to read it and
             // go and follow it, a neighbouring timer must not erase it.
-            surMessage: (texte) => statut.afficher(texte, { persistant: true }),
+            surMessage: (texte) => statut.show(texte, { persistant: true }),
         });
         // `ready` may have arrived BEFORE this point: replaying it is the only way
         // for the button to appear in that case. The callback is harmless if
@@ -347,7 +347,7 @@ connectSession({
         // The VM's clipboard. `writeText` ALONE — never `readText`:
         // see the header of `presse-papier-dom`. `window` carries the `focus`
         // that `document` does not carry, as for `armerLeSon` below.
-        pressePapier = attacherPressePapierAuDOM({            ecrire: (texte) => navigator.clipboard.writeText(texte),
+        pressePapier = attacherPressePapierAuDOM({            write: (texte) => navigator.clipboard.writeText(texte),
             focalise: () => document.hasFocus(),
             cible: window,
             // The CONTROL channel, never the input one: a paste
@@ -361,10 +361,10 @@ connectSession({
             },
             // `persistant`, on the EXACT pattern of the mic: size refusal and
             // repeated failure both require a user gesture.
-            surMessage: (texte) => statut.afficher(texte, { persistant: true }),
+            surMessage: (texte) => statut.show(texte, { persistant: true }),
             // What arrived BEFORE this point, if anything. `undefined`
             // leaves the pre-P3 behaviour word for word.
-            initial: dernierPressePapier,
+            initial: lastClipboard,
         });
 
         // Sound starts muted and is enabled at the first gesture. A banner only
@@ -379,7 +379,7 @@ connectSession({
                     statut.masquer();
                 } else {
                     bandeau = window.setTimeout(() => {
-                        statut.afficher('cliquez pour activer le son');
+                        statut.show('cliquez pour activer le son');
                     }, 4000);
                 }
             },
@@ -398,10 +398,10 @@ connectSession({
         // (the common case of a window opening in the foreground and
         // staying there), nothing would re-emit afterwards: exactly the silent
         // failure mode — window never woken, no `WARN`
-        // on the agent side — that the cautious memorisation of `dernier` in
+        // on the agent side — that the cautious memorisation of `last` in
         // visibilite.ts mitigates but cannot, on its own, eliminate if
         // no second trigger ever happens.
-        const demarrerAnnonceVisibilite = () => {
+        const startVisibilityAnnouncement = () => {
             detacherVisibilite = attachVisibilite(
                 {
                     get hidden() {
@@ -431,9 +431,9 @@ connectSession({
             );
         };
         if (session.controlChannel.readyState === 'open') {
-            demarrerAnnonceVisibilite();
+            startVisibilityAnnouncement();
         } else {
-            session.controlChannel.addEventListener('open', demarrerAnnonceVisibilite, { once: true });
+            session.controlChannel.addEventListener('open', startVisibilityAnnouncement, { once: true });
         }
 
         // Size tracking: `ResizeObserver`, smoothing, emission, and the
@@ -455,7 +455,7 @@ connectSession({
         attacherResizeAuDOM(video, session, annonceurDeViewport(sessionId));
     })
     .catch((error: unknown) => {
-        statut.afficher(`échec : ${error instanceof Error ? error.message : String(error)}`, {
+        statut.show(`échec : ${error instanceof Error ? error.message : String(error)}`, {
             terminal: true,
             ton: 'danger',
         });

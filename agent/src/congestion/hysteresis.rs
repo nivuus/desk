@@ -18,7 +18,7 @@ const DELAI_DESCENTE: Duration = Duration::from_secs(2);
 /// `adsl` profile (8 Mb/s, 30 ms ±5 ms, no loss): 4 rung changes
 /// observed in 49 s, whereas the expected property is "at most two in
 /// 60 s". Evidence traced in the agent's log: a rise back to the
-/// full rung (764×242 → 764×484, `taille d'encodage changée` at
+/// full rung (764×242 → 764×484, `size d'encodage changée` at
 /// 16:24:09.545) is followed, one second later, by a ×10 collapse of
 /// the BWE estimate in a single observation
 /// (`estimation=Some(6639480)` at 16:24:10 then `estimation=Some(619982)` at
@@ -60,28 +60,28 @@ pub(super) const DELAI_AMORCAGE: Duration = Duration::from_secs(5);
 /// consecutive boolean observations: here the filter is temporal,
 /// asymmetric, and works on an ordered ladder.
 pub struct Hysteresis {
-    courant: usize,
+    current: usize,
     /// Rung aimed at continuously since `vise_depuis`, if it differs from the
     /// current one.
     vise: Option<(usize, Instant)>,
     /// Instant of the last kept change.
-    dernier_changement: Instant,
+    last_change: Instant,
 }
 
 impl Hysteresis {
     pub fn new(barreau_initial: usize, now: Instant) -> Self {
         Self {
-            courant: barreau_initial,
+            current: barreau_initial,
             vise: None,
             // Placed so that the dwell time has already elapsed at
             // start-up: the very first adaptation must not wait
             // 5 s more than its own condition.
-            dernier_changement: now - SEJOUR_MINIMAL,
+            last_change: now - SEJOUR_MINIMAL,
         }
     }
 
     pub fn observer(&mut self, vise: usize, now: Instant) -> Option<usize> {
-        if vise == self.courant {
+        if vise == self.current {
             // Back to the current rung: any change intent in progress
             // is cancelled.
             self.vise = None;
@@ -101,7 +101,7 @@ impl Hysteresis {
 
         // Increasing indices = decreasing resolutions: aiming higher
         // than the current one means going down.
-        let delai = if vise > self.courant {
+        let delai = if vise > self.current {
             DELAI_DESCENTE
         } else {
             DELAI_REMONTEE
@@ -109,13 +109,13 @@ impl Hysteresis {
         if now.duration_since(depuis) < delai {
             return None;
         }
-        if now.duration_since(self.dernier_changement) < SEJOUR_MINIMAL {
+        if now.duration_since(self.last_change) < SEJOUR_MINIMAL {
             return None;
         }
 
-        self.courant = vise;
+        self.current = vise;
         self.vise = None;
-        self.dernier_changement = now;
+        self.last_change = now;
         Some(vise)
     }
 }
@@ -135,7 +135,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn descendre_exige_deux_secondes_sous_le_barreau() {
+    fn stepping_down_requires_two_seconds_below_the_rung() {
         // Base bound ONLY ONCE: `t0()` returns a new instant at each
         // call, and assertions set on exact bounds (2.000 s)
         // would become unstable to within a few microseconds.
@@ -204,7 +204,7 @@ mod tests {
     }
 
     #[test]
-    fn cibler_un_second_barreau_sans_repasser_par_le_courant_redemarre_le_decompte() {
+    fn targeting_a_second_rung_without_going_back_through_the_current_restarts_the_countdown() {
         // Trivial finding of the final review: this path (branch
         // `_ => { self.vise = Some((vise, now)); now }` of `observer`) was
         // exercised by no test. We first aim at 1, then change target

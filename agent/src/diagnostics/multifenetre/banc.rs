@@ -32,9 +32,9 @@ use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow, VoiesOuverte
 /// `sortie` designates the DXGI output to measure by its name (`\\.\DISPLAYn`), or
 /// `None` for the output that carries the desktop — the original behaviour,
 /// unchanged.
-pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Result<()> {
+pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Result<()> {
     anyhow::ensure!(
-        (1..=mire::MIRES_MAX).contains(&nombre),
+        (1..=mire::MIRES_MAX).contains(&count),
         "MULTIFENETRE_N doit valoir 1 à {}",
         mire::MIRES_MAX
     );
@@ -78,9 +78,9 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
         "banc : coordonnées de fenêtre et de texture"
     );
 
-    let places = disposition::tuiles(bureau, nombre as u32).with_context(|| {
+    let places = disposition::tuiles(bureau, count as u32).with_context(|| {
         format!(
-            "{nombre} places sur un bureau {}x{}",
+            "{count} places sur un bureau {}x{}",
             bureau.width, bureau.height
         )
     })?;
@@ -90,7 +90,7 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
         .collect();
     tracing::info!(
         voie = nom_voie,
-        nombre,
+        count,
         ?places,
         ?places_texture,
         "banc : disposition retenue"
@@ -118,9 +118,9 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
     // afterwards with a survival check.
     compteurs::passe_temoin(&mut mires, None)?;
     let (mut voies, regions) =
-        ouvrir_voies(nom_voie, nombre, &mires, &places, &places_texture, sortie)?;
+        ouvrir_voies(nom_voie, count, &mires, &places, &places_texture, sortie)?;
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, false)?;
-    compteurs::journaliser("capture", nom_voie, nombre, &compteurs);
+    compteurs::journaliser("capture", nom_voie, count, &compteurs);
     if compteurs.apres_recouvrement.faux() > 0 {
         tracing::error!(
             voie = nom_voie,
@@ -133,7 +133,7 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
         return Ok(());
     }
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, true)?;
-    compteurs::journaliser("capture+encodage", nom_voie, nombre, &compteurs);
+    compteurs::journaliser("capture+encodage", nom_voie, count, &compteurs);
     // The second suspect, after the encoders: the duplication source that
     // all paths share. Traced separately so that the log
     // distinguishes "died at the encoders" from "died at the duplication".
@@ -158,7 +158,7 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
 /// scale factor differs from 1.
 fn ouvrir_voies(
     nom_voie: &str,
-    nombre: u8,
+    count: u8,
     mires: &Mires,
     places_fenetres: &[Rect],
     places_texture: &[Rect],
@@ -172,23 +172,23 @@ fn ouvrir_voies(
     let regions: Vec<Rect> = match nom_voie {
         "duplication" => {
             let partagee = VoieDuplication::partagee_sur(sortie)?;
-            for id in 0..nombre {
+            for id in 0..count {
                 let mut voie: Box<dyn VoieDeCapture> =
-                    Box::new(VoieDuplication::nouvelle(partagee.clone()));
+                    Box::new(VoieDuplication::new(partagee.clone()));
                 voie.ouvrir(mires.hwnd(id)?, places_texture[id as usize])?;
                 voies.push(voie);
             }
-            places_texture[..nombre as usize].to_vec()
+            places_texture[..count as usize].to_vec()
         }
         "printwindow" => {
             let (device, contexte) = VoiePrintWindow::partagee()?;
-            for id in 0..nombre {
+            for id in 0..count {
                 let mut voie: Box<dyn VoieDeCapture> =
-                    Box::new(VoiePrintWindow::nouvelle(device.clone(), contexte.clone()));
+                    Box::new(VoiePrintWindow::new(device.clone(), contexte.clone()));
                 voie.ouvrir(mires.hwnd(id)?, places_fenetres[id as usize])?;
                 voies.push(voie);
             }
-            places_fenetres[..nombre as usize].to_vec()
+            places_fenetres[..count as usize].to_vec()
         }
         autre => {
             anyhow::bail!(
@@ -208,13 +208,13 @@ fn passe_capture(
     mires: &mut Mires,
     voies: &mut [Box<dyn VoieDeCapture>],
     regions: &[Rect],
-    avec_encodage: bool,
+    with_encoding: bool,
 ) -> Result<Compteurs> {
-    let nombre = voies.len();
-    let mut compteurs = Compteurs::nouveaux(nombre);
+    let count = voies.len();
+    let mut compteurs = Compteurs::nouveaux(count);
     let mut encodeurs: Vec<crate::encode::H264Encoder> = Vec::new();
-    if avec_encodage {
-        for id in 0..nombre {
+    if with_encoding {
+        for id in 0..count {
             let place = regions[id];
             // One encoder per window, on the device of ITS path: a
             // texture cannot be submitted to an encoder built on another
@@ -239,7 +239,7 @@ fn passe_capture(
         .filter(|ms| *ms > 0);
     let mut eprouve = false;
     let mut prochain_journal = debut + PERIODE_JOURNAL;
-    let mut pts = vec![0u64; nombre];
+    let mut pts = vec![0u64; count];
 
     while debut.elapsed() < DUREE_PASSE {
         mires.peindre()?;
@@ -266,12 +266,12 @@ fn passe_capture(
 
         // Staging of the elimination gate: the last test pattern comes to
         // cover the first.
-        if !recouvert && Instant::now() >= mi_parcours && nombre >= 2 {
-            mires.recouvrir(nombre as u8 - 1, 0)?;
+        if !recouvert && Instant::now() >= mi_parcours && count >= 2 {
+            mires.recouvrir(count as u8 - 1, 0)?;
             recouvert = true;
             tracing::info!(
                 "recouvrement posé : la mire 0 est sous la mire {}",
-                nombre - 1
+                count - 1
             );
         }
 
@@ -299,11 +299,11 @@ fn passe_capture(
                 if recouvert {
                     compteurs.apres_recouvrement.compter(verdict);
                 } else {
-                    compteurs.avant_recouvrement.compter(verdict);
+                    compteurs.before_overlap.compter(verdict);
                 }
             }
 
-            if avec_encodage {
+            if with_encoding {
                 encodeurs[id].submit(&image, pts[id])?;
                 pts[id] += 90_000 / 60;
                 while let Some(_unite) = encodeurs[id].poll_output()? {
@@ -317,7 +317,7 @@ fn passe_capture(
                 images = ?compteurs.images,
                 unites = ?compteurs.unites,
                 verdicts_faux = compteurs.apres_recouvrement.faux(),
-                avant = ?compteurs.avant_recouvrement,
+                before = ?compteurs.before_overlap,
                 apres = ?compteurs.apres_recouvrement,
                 "banc en cours"
             );
@@ -335,7 +335,7 @@ fn passe_capture(
     // These traces are rare by construction (one per encoder, once per
     // pass): they do not violate the "no per-frame trace" rule.
     if !encodeurs.is_empty() {
-        tracing::info!(nombre = encodeurs.len(), "libération des encodeurs : début");
+        tracing::info!(count = encodeurs.len(), "libération des encodeurs : début");
         for (id, encodeur) in encodeurs.drain(..).enumerate() {
             tracing::info!(id, "libération d'un encodeur : avant");
             drop(encodeur);

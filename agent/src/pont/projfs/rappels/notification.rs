@@ -19,7 +19,7 @@
 //! `_est_repertoire` and `_destination` were prefixed with an underscore because
 //! F2 refused renaming and deletion. **Both are now read** —
 //! one is carried as is in the header, the other normalised by
-//! `pont::chemins`. `_parametres`, on the other hand, **stays `_parametres`**: see
+//! `pont::chemins`. `_params`, on the other hand, **stays `_params`**: see
 //! below, it is still a union.
 
 use windows::core::HRESULT;
@@ -63,7 +63,7 @@ const _: PRJ_NOTIFICATION_CB = Some(notification);
 /// `FileRenamed.NotificationMask` serve to **change the mask** for that
 /// file, which F2 does not do, and `FileDeletedOnHandleClose.IsFileModified`
 /// concerns deletion, which is **F3**. The parameter therefore stays
-/// `_parametres` — **not reading it at all is the only safe way**, and saying so
+/// `_params` — **not reading it at all is the only safe way**, and saying so
 /// prevents a successor from seeing an oversight in it.
 ///
 /// ✅ **`destination` IS READ SINCE F3, and it is NOT a member of the union.**
@@ -78,14 +78,14 @@ const _: PRJ_NOTIFICATION_CB = Some(notification);
 /// path: "there is no destination" is a legitimate state, distinct from
 /// "the destination is unacceptable".
 pub(super) unsafe extern "system" fn notification(
-    donnees: *const PRJ_CALLBACK_DATA,
+    data: *const PRJ_CALLBACK_DATA,
     est_repertoire: bool,
     notification: PRJ_NOTIFICATION,
     destination: windows::core::PCWSTR,
-    _parametres: *mut PRJ_NOTIFICATION_PARAMETERS,
+    _params: *mut PRJ_NOTIFICATION_PARAMETERS,
 ) -> HRESULT {
     garde("Notification", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else {
+        let Some(etat) = (unsafe { etat(data) }) else {
             return E_UNEXPECTED;
         };
         // SAFETY: `destination` is a `PCWSTR` ProjFS provided; it is
@@ -93,7 +93,7 @@ pub(super) unsafe extern "system" fn notification(
         let vers = unsafe { destination_de(destination) };
         let cible = match &vers {
             None => notifications::Cible::SansObjet,
-            Some(Ok(_)) => notifications::Cible::DansLaRacine,
+            Some(Ok(_)) => notifications::Cible::InRoot,
             Some(Err(())) => notifications::Cible::HorsRacine,
         };
         // 🔵 **THE TRACE PROBE S1 READS, AND IT IS A `debug!` ON PURPOSE.**
@@ -123,7 +123,7 @@ pub(super) unsafe extern "system" fn notification(
         tracing::debug!(
             code = notification.0,
             est_repertoire,
-            chemin = %chemin_brut(donnees),
+            chemin = %chemin_brut(data),
             destination = ?vers,
             ?cible,
             "notification ProjFS"
@@ -139,7 +139,7 @@ pub(super) unsafe extern "system" fn notification(
                 // barrier** against `..` climbs, NTFS alternate
                 // streams (`:`) and reserved device names. It is
                 // PURE, hence exercised on the host.
-                let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
+                let Some((chemin, _)) = (unsafe { chemins_de(data) }) else {
                     // A path refused by normalisation: we push
                     // NOTHING, and `chemins_de` has already logged the refusal. Returning
                     // S_OK is the only choice — the notification is a POST,
@@ -151,7 +151,7 @@ pub(super) unsafe extern "system" fn notification(
                         chemin,
                         repertoire: est_repertoire,
                     },
-                    notifications::Poussee::Contenu => Evenement::Modifie { chemin },
+                    notifications::Poussee::Contenu => Evenement::Modified { chemin },
                     // ── F3'S TWO PUSHES ───────────────────────────────────
                     notifications::Poussee::Renommage => {
                         // 🔴 **TWO INVARIANTS THAT REFUSE RATHER THAN
@@ -187,7 +187,7 @@ pub(super) unsafe extern "system" fn notification(
                             repertoire: est_repertoire,
                         }
                     }
-                    notifications::Poussee::Suppression => Evenement::Supprime {
+                    notifications::Poussee::Suppression => Evenement::Deleted {
                         chemin,
                         repertoire: est_repertoire,
                     },
@@ -314,10 +314,10 @@ unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, (
 ///
 /// # Safety
 ///
-/// The caller guarantees that `donnees` is the `PRJ_CALLBACK_DATA` ProjFS
+/// The caller guarantees that `data` is the `PRJ_CALLBACK_DATA` ProjFS
 /// has just provided.
-unsafe fn chemin_brut(donnees: *const PRJ_CALLBACK_DATA) -> String {
-    let Some(brut) = (unsafe { donnees.as_ref() }) else {
+unsafe fn chemin_brut(data: *const PRJ_CALLBACK_DATA) -> String {
+    let Some(brut) = (unsafe { data.as_ref() }) else {
         return String::new();
     };
     if brut.FilePathName.is_null() {

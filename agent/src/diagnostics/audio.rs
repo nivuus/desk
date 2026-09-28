@@ -76,7 +76,7 @@ pub(super) fn executer_process_loopback(pid_texte: &str) -> Result<()> {
         .context("PROCESS_LOOPBACK_PROBE doit être un identifiant de processus")?;
     match wasapi::process_loopback::probe_process_loopback(pid) {
         Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
-        Err(e) => tracing::warn!(pid, erreur = %e, "sonde process loopback échouée"),
+        Err(e) => tracing::warn!(pid, error = %e, "sonde process loopback échouée"),
     }
     Ok(())
 }
@@ -100,7 +100,7 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
 
     let mut capture = wasapi::process_loopback::CaptureProcessus::ouvrir(pid)?;
     tracing::info!(pid, format = %capture.description(), "process loopback ouvert");
-    capture.demarrer()?;
+    capture.start()?;
 
     let debut = std::time::Instant::now();
     let mut echantillons = 0u64;
@@ -133,9 +133,9 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
     // incident.
     capture.arreter()?;
     std::thread::sleep(std::time::Duration::from_millis(500));
-    match capture.demarrer() {
+    match capture.start() {
         Ok(()) => tracing::info!(pid, "cycle Stop puis Start accepte"),
-        Err(e) => tracing::warn!(pid, erreur = %e, "cycle Stop puis Start REFUSE"),
+        Err(e) => tracing::warn!(pid, error = %e, "cycle Stop puis Start REFUSE"),
     }
 
     // The second half logs the SAME four fields as the first
@@ -144,7 +144,7 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
     // ambiguous between three quite distinct causes: the stream did resume but
     // the source went silent again (echantillons_apres > 0); the stream
     // resumed but never returns anything (echantillons_apres = 0, lectures_vides_apres
-    // close to the cap); or `demarrer()` was refused and this loop
+    // close to the cap); or `start()` was refused and this loop
     // polled a stream that stayed stopped for 5 s (same signature as the
     // previous case, but for a completely different reason). Yet it is precisely this
     // distinction that task 3 must settle for the decision of §4.4 of the

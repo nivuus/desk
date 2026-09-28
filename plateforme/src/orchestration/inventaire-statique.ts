@@ -23,7 +23,7 @@ import type { Pilote } from '../base/pilote';
 import { etatDe } from '../agents/fraicheur';
 import { attribuerSiLibre, lister as listerLignes, type LigneVm } from '../depot/vm';
 import type { EtatVm, Operation, Orchestrateur, Vm } from './interface';
-import { BACKEND_STATIQUE, refuser, type Resultat } from './refus';
+import { BACKEND_STATIQUE, refuser, type Outcome } from './refus';
 import { vmsDe } from './selection';
 
 /// Converts a repository row into a `Vm`.
@@ -37,7 +37,7 @@ function enVm(l: LigneVm): Vm {
         id: l.id,
         nom: l.nom,
         adresse: l.adresse,
-        utilisateurId: l.utilisateur_id,
+        userId: l.utilisateur_id,
         prefixe: l.prefixe_session,
         vuA: l.vu_a,
     };
@@ -52,7 +52,7 @@ async function inventaireDe(p: Pilote): Promise<Vm[]> {
 ///
 /// ⚠️ THE THREE ACTION VERBS SHARE THIS ONE FUNCTION, and it must be
 /// said: a test on `instantane` therefore exercises the same line as a test on
-/// `demarrer`. Each of the three nevertheless has its own `it()` — not to
+/// `start`. Each of the three nevertheless has its own `it()` — not to
 /// exercise three different lines, but so that a verb that stopped going
 /// through here some day would be noticed.
 ///
@@ -60,7 +60,7 @@ async function inventaireDe(p: Pilote): Promise<Vm[]> {
 /// an operation the operator believes they triggered is
 /// a silent failure; operations run at the ordinary level, and a
 /// silent mitigation is not one.
-function refuserNonSupporte(operation: Operation): Resultat {
+function refuserNonSupporte(operation: Operation): Outcome {
     console.warn(
         `opération refusée : ${operation} n'est pas supportée par le backend ` +
             `${BACKEND_STATIQUE}, qui ne pilote aucun hyperviseur — il inventorie ce ` +
@@ -92,7 +92,7 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
             return etatDe(cible.vuA, maintenant());
         },
 
-        async demarrer(vm: string): Promise<Resultat> {
+        async start(vm: string): Promise<Outcome> {
             // 🔴 THIS REFUSAL IS NOT A CONVENIENCE: it is the content of
             // criterion ④. The framing promises "VM unreachable -> the hub
             // shows it, OFFERS A RESTART". With this backend, the hub
@@ -103,18 +103,18 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
             return refuserNonSupporte('demarrer');
         },
 
-        async arreter(vm: string): Promise<Resultat> {
+        async arreter(vm: string): Promise<Outcome> {
             void vm;
             return refuserNonSupporte('arreter');
         },
 
-        async instantane(vm: string, nom: string): Promise<Resultat> {
+        async instantane(vm: string, nom: string): Promise<Outcome> {
             void vm;
             void nom;
             return refuserNonSupporte('instantane');
         },
 
-        async attribuer(vm: string, utilisateur: string): Promise<Resultat> {
+        async attribuer(vm: string, user: string): Promise<Outcome> {
             try {
                 return await base.transaction(async (t) => {
                     // ① READ FIRST — and it is to NAME the right reason,
@@ -126,10 +126,10 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
                     const inventaire = await inventaireDe(t);
                     const cible = inventaire.find((v) => v.id === vm);
                     if (cible === undefined) return refuser('vm-inconnue', 'attribuer');
-                    if (cible.utilisateurId !== null) {
+                    if (cible.userId !== null) {
                         return refuser('vm-deja-attribuee', 'attribuer');
                     }
-                    if (vmsDe(inventaire, utilisateur).length > 0) {
+                    if (vmsDe(inventaire, user).length > 0) {
                         return refuser('utilisateur-servi', 'attribuer');
                     }
 
@@ -141,7 +141,7 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
                     // see it. Measured on PostgreSQL 16.15: of two
                     // transactions targeting the same free VM, the second blocks
                     // then returns `0 rows` — exactly one winner.
-                    const lignes = await attribuerSiLibre(t, vm, utilisateur);
+                    const lignes = await attribuerSiLibre(t, vm, user);
                     // Zero rows HERE can only mean one thing: the race
                     // was lost between the read and the write, the two
                     // other causes having already been ruled out.
@@ -174,7 +174,7 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
                 // `vmsDe` and not `laVmDe`: the latter THROWS on a duplicate,
                 // and throwing from a `catch` would replace the cause with
                 // another.
-                const siennes = vmsDe(inventaire, utilisateur);
+                const siennes = vmsDe(inventaire, user);
                 if (siennes.length > 0 && !siennes.some((v) => v.id === vm)) {
                     // The user does have ANOTHER VM: it is the partial index
                     // `vm_un_utilisateur` that threw, and the refusal is typed.

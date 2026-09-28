@@ -84,7 +84,7 @@ export function lireBlocsBruts(css: string): BlocDeTheme[] {
         const fin = fermetureDe(propre, m.index + m[0].length - 1);
         if (fin !== -1) plagesMedia.push([m.index, fin]);
     }
-    const dansMedia = (i: number) => plagesMedia.some(([d, f]) => i > d && i < f);
+    const inMedia = (i: number) => plagesMedia.some(([d, f]) => i > d && i < f);
 
     const blocs: BlocDeTheme[] = [];
     for (const m of propre.matchAll(/(:root[^{}]*)\{/g)) {
@@ -96,7 +96,7 @@ export function lireBlocsBruts(css: string): BlocDeTheme[] {
 
         let nom = 'racine';
         if (/\[data-theme\s*=\s*["']clair["']\]/.test(selecteur)) nom = 'attribut-clair';
-        else if (dansMedia(m.index)) nom = 'media-clair';
+        else if (inMedia(m.index)) nom = 'media-clair';
 
         blocs.push({ nom, tokens: tokensDuCorps(corps), corps });
     }
@@ -137,7 +137,7 @@ export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
             fusionnes.set(bloc.nom, bloc);
             continue;
         }
-        for (const [cle, valeur] of bloc.tokens) existant.tokens.set(cle, valeur);
+        for (const [cle, value] of bloc.tokens) existant.tokens.set(cle, value);
         existant.corps += `\n${bloc.corps}`;
     }
     return [...fusionnes.values()];
@@ -148,7 +148,7 @@ export function lireBlocsDeTheme(css: string): BlocDeTheme[] {
  * particular (divergence D9). It counts neither in the equality of §7.4 nor
  * in the orphans of §7.6, so nothing would guard it without this accessor.
  */
-export function valeurDePropriete(bloc: BlocDeTheme, propriete: string): string | null {
+export function propertyValue(bloc: BlocDeTheme, propriete: string): string | null {
     const m = bloc.corps.match(new RegExp(`(?:^|[;{\\s])${propriete}\\s*:\\s*([^;]+);`));
     return m ? m[1].trim() : null;
 }
@@ -261,8 +261,8 @@ export const COULEURS_HORS_THEME: readonly string[] = [
 ];
 
 /** Is a token value a colour? Decided on the VALUE alone. */
-function estUneCouleur(valeur: string): boolean {
-    return /^(#|rgba?\(|hsla?\()/.test(valeur.trim());
+function estUneCouleur(value: string): boolean {
+    return /^(#|rgba?\(|hsla?\()/.test(value.trim());
 }
 export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
     const parNom = new Map(blocs.map((b) => [b.nom, b]));
@@ -295,8 +295,8 @@ export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
     // ③ every colour of the root, except the named out-of-theme ones, has a
     //   light counterpart. Absent from BOTH blocks only: ① already holds
     //   the case where it is missing from just one.
-    for (const [token, valeur] of racine.tokens) {
-        if (!estUneCouleur(valeur)) continue;
+    for (const [token, value] of racine.tokens) {
+        if (!estUneCouleur(value)) continue;
         if (COULEURS_HORS_THEME.includes(token)) continue;
         if (media.tokens.has(token) || attribut.tokens.has(token)) continue;
         ecarts.push(

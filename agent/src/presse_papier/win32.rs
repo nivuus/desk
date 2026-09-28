@@ -7,7 +7,7 @@
 //!
 //! ❌ **This module said "it NEVER WRITES the clipboard; the
 //! browser → VM direction is sub-block P2". That sub-block took place**, and
-//! `ecrire_texte` now lives here. The `diagnostics/presse_papier.rs` probe
+//! `write_text` now lives here. The `diagnostics/presse_papier.rs` probe
 //! keeps its own private `mod win`, on purpose: it measures, its phases C and
 //! D write the VM's clipboard to exercise it, and the product must not
 //! inherit a bench path.
@@ -64,13 +64,13 @@ pub fn lire_texte() -> Result<Option<String>> {
         if pointeur.is_null() {
             anyhow::bail!("GlobalLock a rendu un pointeur nul");
         }
-        let mut longueur = 0usize;
-        while *pointeur.add(longueur) != 0 {
-            longueur += 1;
+        let mut length = 0usize;
+        while *pointeur.add(length) != 0 {
+            length += 1;
         }
         // 🔴 THE DATA IS COPIED BEFORE ANY CLOSING: the handle belongs
         // to the clipboard and is no longer valid after `CloseClipboard`.
-        let texte = String::from_utf16_lossy(std::slice::from_raw_parts(pointeur, longueur));
+        let texte = String::from_utf16_lossy(std::slice::from_raw_parts(pointeur, length));
         let _ = GlobalUnlock(global);
         Ok(Some(texte))
     }
@@ -96,7 +96,7 @@ pub fn lire_texte() -> Result<Option<String>> {
 ///   formats of the previous application would survive in other
 ///   `CF_*`s and the paste would become unpredictable: an application that
 ///   prefers `CF_RTF` or `CF_HTML` would paste the old content.
-pub fn ecrire_texte(texte: &str) -> Result<u32> {
+pub fn write_text(texte: &str) -> Result<u32> {
     // UTF-16 terminated by a `\0`: `CF_UNICODETEXT` requires it, and a
     // non-terminated block would make any pasting application read beyond it.
     let mut unites: Vec<u16> = texte.encode_utf16().collect();

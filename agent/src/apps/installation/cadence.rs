@@ -44,7 +44,7 @@ const PERIODE_MS: u64 = PERIODE_PROGRESSION.as_millis() as u64;
 
 /// Must this progress report go on the wire?
 ///
-/// - `dernier_ms` is `None` as long as the phase has emitted nothing: **the first
+/// - `last_ms` is `None` as long as the phase has emitted nothing: **the first
 ///   progress of a phase always goes through**, otherwise a short phase
 ///   would exist for nobody and the hub would show a jump from `transfert` to
 ///   `reconciliation` with nothing in between;
@@ -52,22 +52,18 @@ const PERIODE_MS: u64 = PERIODE_PROGRESSION.as_millis() as u64;
 /// - otherwise, at least [`PERIODE_PROGRESSION`] must have passed since the last one.
 ///
 /// ⚠️ **A CLOCK GOING BACKWARDS ALLOWS NOTHING.** The gap is computed with
-/// `saturating_sub`, so a `maintenant_ms` earlier than `dernier_ms` gives
+/// `saturating_sub`, so a `maintenant_ms` earlier than `last_ms` gives
 /// zero and **refuses** the emission instead of granting it. It is the safe direction: what
 /// this module protects is a bounded queue, and the price of refusing — a bar
 /// that freezes for a moment — is itself bounded by the end-of-phase clause,
 /// which goes through whatever happens.
-pub fn doit_emettre(
-    dernier_ms: Option<u64>,
-    maintenant_ms: u64,
-    derniere_de_la_phase: bool,
-) -> bool {
+pub fn doit_emettre(last_ms: Option<u64>, maintenant_ms: u64, derniere_de_la_phase: bool) -> bool {
     if derniere_de_la_phase {
         return true;
     }
-    match dernier_ms {
+    match last_ms {
         None => true,
-        Some(dernier) => maintenant_ms.saturating_sub(dernier) >= PERIODE_MS,
+        Some(last) => maintenant_ms.saturating_sub(last) >= PERIODE_MS,
     }
 }
 
@@ -80,20 +76,20 @@ mod tests {
     /// millisecond must produce **only one** emission, otherwise the queue
     /// of 32 overflows in the blink of an eye.
     #[test]
-    fn cent_appels_dans_la_meme_milliseconde_ne_produisent_qu_une_emission() {
-        let mut dernier = None;
+    fn a_hundred_calls_in_the_same_millisecond_produce_a_single_emission() {
+        let mut last = None;
         let mut emissions = 0;
         for _ in 0..100 {
-            if doit_emettre(dernier, 1_000, false) {
+            if doit_emettre(last, 1_000, false) {
                 emissions += 1;
-                dernier = Some(1_000);
+                last = Some(1_000);
             }
         }
         assert_eq!(emissions, 1);
     }
 
     /// 🔴 THE END-OF-PHASE CLAUSE, TESTED ALONE — otherwise it would be true
-    /// by chance. The same instant, the same `dernier`, and **only the flag
+    /// by chance. The same instant, the same `last`, and **only the flag
     /// changes**: that is what proves it is the flag that decides, and not the
     /// elapsed time.
     #[test]
@@ -109,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn la_premiere_progression_d_une_phase_passe_toujours() {
+    fn the_first_progress_of_a_phase_always_passes() {
         assert!(doit_emettre(None, 0, false));
         assert!(doit_emettre(None, u64::MAX, false));
     }
@@ -118,10 +114,10 @@ mod tests {
     /// why the clock is a parameter.
     #[test]
     fn la_frontiere_de_la_periode_est_assiegee_des_deux_cotes() {
-        let dernier = Some(5_000);
-        assert!(!doit_emettre(dernier, 5_000 + PERIODE_MS - 1, false));
-        assert!(doit_emettre(dernier, 5_000 + PERIODE_MS, false));
-        assert!(doit_emettre(dernier, 5_000 + PERIODE_MS + 1, false));
+        let last = Some(5_000);
+        assert!(!doit_emettre(last, 5_000 + PERIODE_MS - 1, false));
+        assert!(doit_emettre(last, 5_000 + PERIODE_MS, false));
+        assert!(doit_emettre(last, 5_000 + PERIODE_MS + 1, false));
     }
 
     #[test]
@@ -135,15 +131,15 @@ mod tests {
     /// without testing anything.
     #[test]
     fn une_phase_longue_emet_une_fois_par_periode() {
-        let mut dernier = None;
+        let mut last = None;
         let mut emissions = 0;
         // Ten seconds, sampled every 10 ms as a slice-by-slice
         // write loop would.
         for tour in 0..1_000_u64 {
             let maintenant = tour * 10;
-            if doit_emettre(dernier, maintenant, false) {
+            if doit_emettre(last, maintenant, false) {
                 emissions += 1;
-                dernier = Some(maintenant);
+                last = Some(maintenant);
             }
         }
         assert_eq!(emissions, 10);

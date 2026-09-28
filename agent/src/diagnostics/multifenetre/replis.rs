@@ -129,13 +129,13 @@ fn eprouver_surface_dwm() {
     // `Display` (`{message} ({code})`), unlike the errors of
     // `wgc::preparer_session` which went through several anyhow `.context(...)`
     // before being logged — it is THAT traversal that lost
-    // the HRESULT, not the absence of `causes()` in itself. A direct `%erreur`
+    // the HRESULT, not the absence of `causes()` in itself. A direct `%error`
     // is therefore enough to get the native code into the log.
     let module = match unsafe { LoadLibraryA(s!("user32.dll")) } {
         Ok(module) => module,
-        Err(erreur) => {
+        Err(error) => {
             tracing::error!(
-                %erreur,
+                %error,
                 "verdict DwmGetDxSharedSurface : ÉLIMINÉE — user32 introuvable"
             );
             return;

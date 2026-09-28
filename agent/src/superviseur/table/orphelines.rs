@@ -70,7 +70,7 @@ impl Table {
                     // the restart (§7.1).
                     sortie_pilote: entree.sortie_pilote,
                     nom_sortie: entree.nom_sortie.clone(),
-                    taille_sortie: entree.taille_sortie,
+                    output_size: entree.output_size,
                     relances: entree.relances + 1,
                     attente_depuis: Some(maintenant),
                 },

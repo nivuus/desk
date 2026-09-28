@@ -36,11 +36,11 @@ use windows::core::HRESULT;
 
 use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 use crate::pont::latence::Famille;
 use crate::pont::projfs::{ContexteProjFs, Etat, PERIODE_HYDRATATION};
 use crate::pont::transport::DuNavigateur;
-use proto::fichiers::entetes;
+use proto::files::entetes;
 use recensement::{mesure_armee, recenser, tout_completer};
 
 /// Period of the expiry sweep.
@@ -90,8 +90,8 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
     // merely late. *The check's trace must precede what it
     // checks.*
     mesure_armee();
-    let mut dernier_releve = Instant::now();
-    let mut dernier_recensement = Instant::now();
+    let mut last_reading = Instant::now();
+    let mut last_census = Instant::now();
     loop {
         match entrant.recv_timeout(PERIODE_BALAYAGE) {
             Ok(DuNavigateur::CanalOuvert) => {
@@ -113,12 +113,12 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
                 // ⚠️ **This site returned `CanalFerme` for both**, and yet the log
                 // line just above said "abandoned":
                 // the code and its own trace contradicted each other. Measured
-                // consequence: `Erreur::Abandonnee` was **defined, counted,
+                // consequence: `Error::Abandonnee` was **defined, counted,
                 // translated — and returned by NO production site**. The
                 // acceptance run of criterion ④ found it by cutting the channel on a
                 // command really in flight: it recorded `canal-ferme=1` where
                 // the table promised `abandonnee`.
-                tout_completer(&etat, Erreur::Abandonnee);
+                tout_completer(&etat, Error::Abandonnee);
                 // ⚠️ **A LAST LINE AT SHUTDOWN, on BOTH exits.**
                 // Without it, a session shorter than `PERIODE_RECENSEMENT`
                 // would return NO census — and a criterion (4) read on an
@@ -134,19 +134,19 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => {
                 tracing::info!("transport du pont arrêté : le fil du pont s'arrête");
-                tout_completer(&etat, Erreur::CanalFerme);
+                tout_completer(&etat, Error::CanalFerme);
                 recenser(&etat);
                 return;
             }
         }
         balayer(&etat);
-        if dernier_releve.elapsed() >= PERIODE_HYDRATATION {
+        if last_reading.elapsed() >= PERIODE_HYDRATATION {
             etat.tracer_hydratation();
-            dernier_releve = Instant::now();
+            last_reading = Instant::now();
         }
-        if dernier_recensement.elapsed() >= PERIODE_RECENSEMENT {
+        if last_census.elapsed() >= PERIODE_RECENSEMENT {
             recenser(&etat);
-            dernier_recensement = Instant::now();
+            last_census = Instant::now();
         }
     }
 }
@@ -160,15 +160,15 @@ pub(super) fn prevenir_l_ecriture(
     etat: &Etat,
     commande: Option<i32>,
     correlation: u32,
-    cause: Erreur,
+    cause: Error,
 ) {
     if commande.is_some() {
         return;
     }
     let code = match cause {
-        Erreur::DelaiDepasse => proto::fichiers::CodeEchec::Interne,
-        Erreur::CanalFerme => proto::fichiers::CodeEchec::AccesRefuse,
-        _ => proto::fichiers::CodeEchec::Interne,
+        Error::DelaiDepasse => proto::files::CodeEchec::Interne,
+        Error::CanalFerme => proto::files::CodeEchec::AccesRefuse,
+        _ => proto::files::CodeEchec::Interne,
     };
     let _ = etat.vers_ecriture.send(Ordre::Echec { correlation, code });
 }
@@ -190,11 +190,11 @@ fn balayer(etat: &Etat) {
             "commande expirée : le navigateur n'a pas répondu"
         );
         oublier_contexte(etat, correlation);
-        prevenir_l_ecriture(etat, commande, correlation, Erreur::DelaiDepasse);
+        prevenir_l_ecriture(etat, commande, correlation, Error::DelaiDepasse);
         verbes::completer(
             etat,
             commande,
-            HRESULT(etat.compteurs.rendre(Erreur::DelaiDepasse)),
+            HRESULT(etat.compteurs.rendre(Error::DelaiDepasse)),
         );
     }
 }
@@ -206,10 +206,10 @@ pub(super) fn oublier_contexte(etat: &Etat, correlation: u32) -> Option<Contexte
 
 /// Handles a browser response.
 fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
-    let trame = match proto::fichiers::decoder(octets) {
+    let trame = match proto::files::decoder(octets) {
         Ok(trame) => trame,
-        Err(erreur) => {
-            tracing::warn!(correlation, %erreur, "réponse du navigateur illisible, jetée");
+        Err(error) => {
+            tracing::warn!(correlation, %error, "réponse du navigateur illisible, jetée");
             return;
         }
     };
@@ -240,11 +240,11 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
     // knows the types.**
     // ════════════════════════════════════════════════════════════════════
     match trame.type_message {
-        proto::fichiers::TYPE_RAFRAICHIR => {
+        proto::files::TYPE_RAFRAICHIR => {
             annonces::rafraichir(etat);
             return;
         }
-        proto::fichiers::TYPE_BONJOUR => {
+        proto::files::TYPE_BONJOUR => {
             annonces::bonjour(etat, trame.entete);
             return;
         }
@@ -269,15 +269,15 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
     etat.latences.observer(Famille::de(&attendue), traversee);
     let contexte = oublier_contexte(etat, correlation);
 
-    if trame.type_message == proto::fichiers::TYPE_ECHEC {
+    if trame.type_message == proto::files::TYPE_ECHEC {
         let code = match serde_json::from_slice::<entetes::Echec>(trame.entete) {
             Ok(echec) => Some(echec.code),
-            Err(erreur) => {
-                tracing::warn!(correlation, %erreur, "échec au code illisible");
+            Err(error) => {
+                tracing::warn!(correlation, %error, "échec au code illisible");
                 None
             }
         };
-        let cause = code.map_or(Erreur::Inattendue, cause_de);
+        let cause = code.map_or(Error::Inattendue, cause_de);
         // ✅ **`warn!` AND NOT `debug!`, AND THE LINE CARRIES THE WIRE CODE IN ADDITION
         // TO THE CAUSE.** *(This trace was a `debug!` carrying only the
         // cause.)*
@@ -308,14 +308,14 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
             "le navigateur refuse"
         );
         // A refused write: the protocol code travels AS IS to the
-        // thread, which names it in the log. Translating it into an `Erreur` first
+        // thread, which names it in the log. Translating it into an `Error` first
         // would lose the distinction between "disk full" and "ambiguous case",
-        // which `pont::erreurs` does not carry — and it is the log, not the
+        // which `pont::errors` does not carry — and it is the log, not the
         // `HRESULT`, that is the only recipient (see `pont::notifications`).
         if commande.is_none() {
             let _ = etat.vers_ecriture.send(Ordre::Echec {
                 correlation,
-                code: code.unwrap_or(proto::fichiers::CodeEchec::Interne),
+                code: code.unwrap_or(proto::files::CodeEchec::Interne),
             });
         }
         return reponses::terminer(
@@ -335,9 +335,7 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
         contexte.as_ref(),
     );
     match issue {
-        reponses::Suite::Termine(resultat) => {
-            reponses::terminer(etat, commande, contexte, resultat)
-        }
+        reponses::Suite::Termine(result) => reponses::terminer(etat, commande, contexte, result),
         // The read continues: the command is already re-registered, and its
         // context stayed in place — above all do not complete it.
         reponses::Suite::Poursuit => {}
@@ -348,21 +346,21 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
 ///
 /// **Exhaustive** `match`: a new protocol code cannot fall into a
 /// catch-all arm and silently inherit another's cause — it is the
-/// defect `pont::erreurs` exists not to replay.
-fn cause_de(code: proto::fichiers::CodeEchec) -> Erreur {
-    use proto::fichiers::CodeEchec;
+/// defect `pont::errors` exists not to replay.
+fn cause_de(code: proto::files::CodeEchec) -> Error {
+    use proto::files::CodeEchec;
     match code {
-        CodeEchec::Introuvable => Erreur::Introuvable,
-        CodeEchec::CheminIntrouvable => Erreur::CheminIntrouvable,
-        CodeEchec::AccesRefuse => Erreur::AccesRefuse,
-        CodeEchec::ProtegeEnEcriture => Erreur::ProtegeEnEcriture,
-        CodeEchec::NonSupporte => Erreur::NonSupporte,
+        CodeEchec::Introuvable => Error::Introuvable,
+        CodeEchec::CheminIntrouvable => Error::CheminIntrouvable,
+        CodeEchec::AccesRefuse => Error::AccesRefuse,
+        CodeEchec::ProtegeEnEcriture => Error::ProtegeEnEcriture,
+        CodeEchec::NonSupporte => Error::NonSupporte,
         // A range larger than what the browser can return. The bridge
-        // already splits at `TAILLE_TRAME_MAX`; receiving this code signals a
+        // already splits at `MAX_FRAME_SIZE`; receiving this code signals a
         // constant disagreement between the two ends, not a runtime
         // condition.
-        CodeEchec::TropGrand => Erreur::Inattendue,
-        CodeEchec::Interne => Erreur::Inattendue,
+        CodeEchec::TropGrand => Error::Inattendue,
+        CodeEchec::Interne => Error::Inattendue,
         // F2's THREE codes. They arise from a WRITE push, hence
         // from a command that completes no ProjFS callback.
         //
@@ -371,16 +369,16 @@ fn cause_de(code: proto::fichiers::CodeEchec) -> Erreur {
         // the application has long closed its handle and believed it
         // saved: there is nothing left to complete. Without this sentence, a
         // successor would read `ERROR_DISK_FULL` as a code returned to someone.
-        CodeEchec::DisquePlein => Erreur::DisquePlein,
-        CodeEchec::DejaPresent => Erreur::DejaPresent,
+        CodeEchec::DisquePlein => Error::DisquePlein,
+        CodeEchec::DejaPresent => Error::DejaPresent,
         // ⚠️ `CasseAmbigue` SHARES `Inattendue` with `TropGrand`, and it is
-        // deliberate: `pont::erreurs` has no variant for this refusal,
+        // deliberate: `pont::errors` has no variant for this refusal,
         // creating one would belong to the complete table of twelve `HRESULT`s of
         // **F3**, and spec §5.1 forbids the same code serving two distinct
         // causes — the constraint bears on the CODE, not on the catch-all,
         // whose very role is to be named as such. What carries
         // the cause is the LOG and the shell page, which name the file.
-        CodeEchec::CasseAmbigue => Erreur::Inattendue,
+        CodeEchec::CasseAmbigue => Error::Inattendue,
         // 🔵 **THE ONLY ONE FROM F3, AND THE ONLY DIAGNOSTIC ONE.** It is
         // not a catch-all: the browser refuses to delete a NON-EMPTY
         // directory because F3 calls `removeEntry(nom)` **without
@@ -389,7 +387,7 @@ fn cause_de(code: proto::fichiers::CodeEchec) -> Erreur {
         // proof says is up to date. Receiving it therefore means **the mirror has
         // drifted**, and `ERROR_DIR_NOT_EMPTY` is exactly what a
         // successor will look for in the log.
-        CodeEchec::RepertoireNonVide => Erreur::RepertoireNonVide,
+        CodeEchec::RepertoireNonVide => Error::RepertoireNonVide,
     }
 }
 

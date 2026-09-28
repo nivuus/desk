@@ -75,7 +75,7 @@ use crate::moniteurs_virtuels::Sorties;
 /// how high a measurement climbs, the other bounds the numbers a monitor can
 /// carry — the second decides the recoverability of a system state, not the
 /// first.
-pub(super) const PLAFOND_RECHERCHE: usize = 16;
+pub(super) const SEARCH_CEILING: usize = 16;
 
 /// Resolution requested for each output: the one work stream D targets per
 /// window, not the desktop's.
@@ -129,7 +129,7 @@ pub(crate) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
     let attachees = sorties.iter().filter(|s| s.attachee_au_bureau).count();
     tracing::info!(
         moment,
-        nombre = sorties.len(),
+        count = sorties.len(),
         attachees,
         "topologie relevée"
     );
@@ -212,9 +212,9 @@ pub(super) fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: Duration) -> 
 pub(super) fn eprouver_chien_de_garde() -> Result<()> {
     let duree = std::env::var("MULTIFENETRE_VDD_VEILLE")
         .ok()
-        .and_then(|valeur| valeur.parse().ok())
+        .and_then(|value| value.parse().ok())
         .map_or(DUREE_EPREUVE_PAR_DEFAUT, Duration::from_secs);
-    let noms_avant = noms_attaches(&relever_topologie("avant création")?);
+    let names_before = noms_attaches(&relever_topologie("avant création")?);
 
     let pilote = ouvrir_pilote()?;
     let (veille_initiale, _) = pilote.veille()?;
@@ -227,7 +227,7 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
 
     let (largeur, hauteur, hertz) = RESOLUTION;
     let mut sorties = Sorties::nouvelles(&pilote);
-    let id = sorties.creer(largeur, hauteur, hertz)?;
+    let id = sorties.create(largeur, hauteur, hertz)?;
     let debut = Instant::now();
 
     let mut nom_cree: Option<String> = None;
@@ -238,22 +238,22 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
         let seconde = debut.elapsed().as_secs();
         let (veille, _) = pilote.veille()?;
         let noms = match crate::capture::enumerer_sorties() {
-            Ok(liste) => noms_attaches(&liste),
-            Err(erreur) => {
-                tracing::warn!(seconde, %erreur, "énumération DXGI en échec pendant l'épreuve");
+            Ok(list) => noms_attaches(&list),
+            Err(error) => {
+                tracing::warn!(seconde, %error, "énumération DXGI en échec pendant l'épreuve");
                 continue;
             }
         };
         if nom_cree.is_none() {
-            if let Some(nouveau) = noms.iter().find(|nom| !noms_avant.contains(nom)) {
+            if let Some(new) = noms.iter().find(|nom| !names_before.contains(nom)) {
                 tracing::info!(
                     seconde,
                     id,
-                    nom = %nouveau,
+                    nom = %new,
                     "la sortie créée est repérée par son nom — c'est SA présence qui est \
                      suivie ensuite, pas un cardinal"
                 );
-                nom_cree = Some(nouveau.clone());
+                nom_cree = Some(new.clone());
             }
         }
         let presente = nom_cree.as_ref().map(|nom| noms.contains(nom));
@@ -308,20 +308,20 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
     // and 3 after, the two readings bracketing the ping within less than a
     // millisecond: a serious hint that the ping ACTS, on a single occurrence,
     // which a coincidence with an Apollo ping does not formally exclude.
-    let avant_ping = pilote.veille().map(|(veille, _)| veille.decompte).ok();
+    let before_ping = pilote.veille().map(|(veille, _)| veille.decompte).ok();
     match pilote.pinguer() {
         Ok(()) => {
             let apres_ping = pilote.veille().map(|(veille, _)| veille.decompte).ok();
             tracing::info!(
-                decompte_avant_ping = ?avant_ping,
+                countdown_before_ping = ?before_ping,
                 decompte_apres_ping = ?apres_ping,
                 "IOCTL_DRIVER_PING accepté par le pilote — le code non confirmé par octets \
                  est le bon. ACCEPTÉ n'est pas AGISSANT : seul un décompte qui REMONTE \
                  prouverait un réarmement"
             );
         }
-        Err(erreur) => tracing::error!(
-            causes = %super::causes(erreur),
+        Err(error) => tracing::error!(
+            causes = %super::causes(error),
             "IOCTL_DRIVER_PING REFUSÉ — la montée en N ne pourra pas s'en servir"
         ),
     }
@@ -343,8 +343,8 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
 pub(super) fn monter_en_n() -> Result<()> {
     // Surveyed BEFORE any creation: without it, a manual restoration after a
     // crash would be done blindly (spec §6.3).
-    let avant = relever_topologie("avant toute création")?;
-    let noms_avant = noms_attaches(&avant);
+    let before = relever_topologie("avant toute création")?;
+    let names_before = noms_attaches(&before);
 
     let pilote = ouvrir_pilote()?;
     let (veille, _) = pilote.veille()?;
@@ -361,14 +361,14 @@ pub(super) fn monter_en_n() -> Result<()> {
     let mut arret = None;
     {
         let mut sorties = Sorties::nouvelles(&pilote);
-        let mut noms_connus = noms_avant.clone();
-        for rang in 1..=PLAFOND_RECHERCHE {
+        let mut noms_connus = names_before.clone();
+        for rang in 1..=SEARCH_CEILING {
             pilote.pinguer()?;
-            match sorties.creer(largeur, hauteur, hertz) {
-                Err(erreur) => {
+            match sorties.create(largeur, hauteur, hertz) {
+                Err(error) => {
                     tracing::info!(
                         plafond = rang - 1,
-                        causes = %super::causes(erreur),
+                        causes = %super::causes(error),
                         presentes = ?noms_connus,
                         "plafond de sorties virtuelles atteint — le pilote refuse la suivante, \
                          et toutes les précédentes sont encore là, nommément"
@@ -425,8 +425,8 @@ pub(super) fn monter_en_n() -> Result<()> {
         }
         if arret.is_none() {
             tracing::info!(
-                plafond_recherche = PLAFOND_RECHERCHE,
-                "aucun plafond atteint sous {PLAFOND_RECHERCHE} sorties virtuelles"
+                search_ceiling = SEARCH_CEILING,
+                "aucun plafond atteint sous {SEARCH_CEILING} sorties virtuelles"
             );
         }
         // Destruction by the guard, here, when going out of scope.
@@ -449,7 +449,7 @@ pub(super) fn monter_en_n() -> Result<()> {
     std::thread::sleep(DELAI_TOPOLOGIE);
     let apres = relever_topologie("après destruction")?;
     let noms_apres = noms_attaches(&apres);
-    if noms_apres == noms_avant && apres.len() == avant.len() {
+    if noms_apres == names_before && apres.len() == before.len() {
         tracing::info!(
             arret = arret.unwrap_or("plafond de recherche épuisé"),
             noms = ?noms_apres,
@@ -457,9 +457,9 @@ pub(super) fn monter_en_n() -> Result<()> {
         );
     } else {
         tracing::error!(
-            noms_avant = ?noms_avant,
+            names_before = ?names_before,
             noms_apres = ?noms_apres,
-            total_avant = avant.len(),
+            total_before = before.len(),
             total_apres = apres.len(),
             "la topologie n'est PAS revenue à son état initial — purge requise"
         );

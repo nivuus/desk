@@ -39,6 +39,6 @@ pub struct Installation {
     pub id: String,
     pub url: String,
     pub nom: String,
-    pub taille: u64,
+    pub size: u64,
     pub sha256: String,
 }

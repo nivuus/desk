@@ -107,7 +107,7 @@ impl FileMft {
                 compromise: AtomicBool::new(false),
             },
             Err(err) => {
-                tracing::warn!(erreur = %err, "allocation de file sérialisée refusée");
+                tracing::warn!(error = %err, "allocation de file sérialisée refusée");
                 Self {
                     id: None,
                     compromise: AtomicBool::new(false),
@@ -122,7 +122,7 @@ impl FileMft {
         let client = match mft.cast::<IMFRealTimeClientEx>() {
             Ok(client) => client,
             Err(err) => {
-                tracing::warn!(mft = quoi, erreur = %err, "MFT sans IMFRealTimeClientEx : pas de barrière");
+                tracing::warn!(mft = quoi, error = %err, "MFT sans IMFRealTimeClientEx : pas de barrière");
                 self.rendre();
                 return;
             }
@@ -130,7 +130,7 @@ impl FileMft {
         // Priority 0: the base priority of items, not a real-time
         // setting — we ask for no scheduling privilege.
         if let Err(err) = unsafe { client.SetWorkQueueEx(id, 0) } {
-            tracing::warn!(mft = quoi, erreur = %err, file = id, "la MFT refuse la file imposée");
+            tracing::warn!(mft = quoi, error = %err, file = id, "la MFT refuse la file imposée");
             self.rendre();
             return;
         }
@@ -153,7 +153,7 @@ impl FileMft {
         if let Err(err) = unsafe { MFPutWorkItem(id, &rappel, None) } {
             // The queue no longer dispatches: our sentinel is not in it, but the
             // MFT's work, for its part, may have stayed there.
-            tracing::error!(mft = quoi, erreur = %err, quand, "dépôt de la sentinelle refusé : file NON barrée");
+            tracing::error!(mft = quoi, error = %err, quand, "dépôt de la sentinelle refusé : file NON barrée");
             self.compromise.store(true, Ordering::SeqCst);
             return;
         }
@@ -204,7 +204,7 @@ impl FileMft {
                 duree_ms = duree.as_millis() as u64,
                 "épreuve : file bouchée"
             ),
-            Err(err) => tracing::warn!(erreur = %err, "épreuve : dépôt du bouchon refusé"),
+            Err(err) => tracing::warn!(error = %err, "épreuve : dépôt du bouchon refusé"),
         }
     }
 }
@@ -250,7 +250,7 @@ impl IMFAsyncCallback_Impl for Sentinelle_Impl {
         Err(E_NOTIMPL.into())
     }
 
-    fn Invoke(&self, _resultat: Ref<IMFAsyncResult>) -> windows::core::Result<()> {
+    fn Invoke(&self, _result: Ref<IMFAsyncResult>) -> windows::core::Result<()> {
         let (verrou, signal) = &*self.fait;
         *verrou.lock().unwrap_or_else(|e| e.into_inner()) = true;
         signal.notify_one();
@@ -270,7 +270,7 @@ impl IMFAsyncCallback_Impl for Bouchon_Impl {
         Err(E_NOTIMPL.into())
     }
 
-    fn Invoke(&self, _resultat: Ref<IMFAsyncResult>) -> windows::core::Result<()> {
+    fn Invoke(&self, _result: Ref<IMFAsyncResult>) -> windows::core::Result<()> {
         std::thread::sleep(self.duree);
         Ok(())
     }

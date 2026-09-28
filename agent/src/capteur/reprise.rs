@@ -38,11 +38,11 @@ pub struct FenetreCanal {
     ouverte_depuis: Option<Instant>,
     /// Last re-attachment attempt. `None` = none since the last
     /// success, so the next one is immediate.
-    dernier_essai: Option<Instant>,
+    last_attempt: Option<Instant>,
 }
 
 impl FenetreCanal {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -60,13 +60,13 @@ impl FenetreCanal {
 
     /// True if a re-attachment attempt is due. To be called only after a
     /// non-expired `rupture`.
-    pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
-        let du = match self.dernier_essai {
+    pub fn can_retry(&mut self, maintenant: Instant) -> bool {
+        let du = match self.last_attempt {
             None => true,
             Some(precedent) => maintenant.duration_since(precedent) > PAS_RATTACHEMENT,
         };
         if du {
-            self.dernier_essai = Some(maintenant);
+            self.last_attempt = Some(maintenant);
         }
         du
     }
@@ -75,7 +75,7 @@ impl FenetreCanal {
     /// budget starts whole again for a later break.
     pub fn succes(&mut self) {
         self.ouverte_depuis = None;
-        self.dernier_essai = None;
+        self.last_attempt = None;
     }
 
     #[cfg(test)]
@@ -83,8 +83,8 @@ impl FenetreCanal {
         if let Some(debut) = self.ouverte_depuis {
             self.ouverte_depuis = Some(debut - ecart);
         }
-        if let Some(dernier) = self.dernier_essai {
-            self.dernier_essai = Some(dernier - ecart);
+        if let Some(last) = self.last_attempt {
+            self.last_attempt = Some(last - ecart);
         }
     }
 }
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn une_rupture_n_epuise_pas_immediatement() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(
             !fenetre.rupture(t0),
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn une_rupture_ininterrompue_au_dela_de_la_fenetre_epuise() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
         assert!(fenetre.rupture(t0 + DUREE_FENETRE_CANAL + Duration::from_millis(1)));
@@ -116,7 +116,7 @@ mod tests {
     /// later, must find its whole budget again.
     #[test]
     fn un_succes_referme_la_fenetre_et_rend_le_budget_entier() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
         fenetre.succes();
@@ -130,17 +130,14 @@ mod tests {
     /// times per second: without it, a break would trigger 100 reconnection
     /// attempts per second and per window.
     #[test]
-    fn les_essais_de_rattachement_sont_espaces() {
-        let mut fenetre = FenetreCanal::nouvelle();
+    fn reattach_attempts_are_spaced() {
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
-        assert!(fenetre.peut_reessayer(t0), "le premier essai est immédiat");
-        assert!(
-            !fenetre.peut_reessayer(t0),
-            "deux essais dans le même instant"
-        );
-        assert!(!fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT / 2));
-        assert!(fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
+        assert!(fenetre.can_retry(t0), "le premier essai est immédiat");
+        assert!(!fenetre.can_retry(t0), "deux essais dans le même instant");
+        assert!(!fenetre.can_retry(t0 + PAS_RATTACHEMENT / 2));
+        assert!(fenetre.can_retry(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
     }
 
     /// A success must restore the whole attempt budget, not only the
@@ -148,15 +145,15 @@ mod tests {
     /// right away.
     #[test]
     fn un_succes_rend_aussi_le_droit_de_reessayer_immediatement() {
-        let mut fenetre = FenetreCanal::nouvelle();
+        let mut fenetre = FenetreCanal::new();
         let t0 = Instant::now();
         assert!(!fenetre.rupture(t0));
-        assert!(fenetre.peut_reessayer(t0));
+        assert!(fenetre.can_retry(t0));
         fenetre.succes();
         let t1 = t0 + Duration::from_millis(1);
         assert!(!fenetre.rupture(t1));
         assert!(
-            fenetre.peut_reessayer(t1),
+            fenetre.can_retry(t1),
             "après un succès, le premier essai est immédiat"
         );
     }

@@ -67,7 +67,7 @@ fn un_chemin_absolu_est_refuse() {
 }
 
 #[test]
-fn la_racine_elle_meme_est_la_chaine_vide_et_est_licite() {
+fn the_root_itself_is_the_empty_string_and_is_valid() {
     // It is the path of the root's enumeration: refusing it would make the
     // drive empty, and nothing would say so.
     assert_eq!(normaliser("").unwrap(), "");
@@ -105,7 +105,7 @@ fn la_casse_est_conservee_mais_la_comparaison_ne_l_est_pas() {
 }
 
 #[test]
-fn des_unites_utf16_invalides_sont_refusees_avant_toute_normalisation() {
+fn invalid_utf16_units_are_refused_before_any_normalisation() {
     // 0xD800 is an isolated half of a surrogate pair: ProjFS delivers
     // `PCWSTR`s, and nothing guarantees they form valid text.
     assert_eq!(
@@ -123,17 +123,17 @@ fn des_unites_utf16_invalides_sont_refusees_avant_toute_normalisation() {
 
 /// 🔴 **THE CANONICAL NAME REPLACES THE LAST COMPONENT, AND NOTHING ELSE.**
 #[test]
-fn avec_dernier_composant_ne_touche_que_le_dernier() {
+fn with_last_component_only_touches_the_last() {
     assert_eq!(
-        super::avec_dernier_composant("Dossier\\GROS.BIN", "gros.bin"),
+        super::with_last_component("Dossier\\GROS.BIN", "gros.bin"),
         Some("Dossier\\gros.bin".to_string())
     );
     assert_eq!(
-        super::avec_dernier_composant("A\\B\\C\\NOTE.TXT", "note.txt"),
+        super::with_last_component("A\\B\\C\\NOTE.TXT", "note.txt"),
         Some("A\\B\\C\\note.txt".to_string())
     );
     assert_eq!(
-        super::avec_dernier_composant("GROS.BIN", "gros.bin"),
+        super::with_last_component("GROS.BIN", "gros.bin"),
         Some("gros.bin".to_string())
     );
 }
@@ -144,23 +144,23 @@ fn avec_dernier_composant_ne_touche_que_le_dernier() {
 /// "a round trip where a case or a separator could be lost". F3 only
 /// breaks it WHEN there is something to gain.
 #[test]
-fn avec_dernier_composant_rend_none_quand_il_n_y_a_rien_a_changer() {
+fn with_last_component_returns_none_when_there_is_nothing_to_change() {
     assert_eq!(
-        super::avec_dernier_composant("Dossier\\note.txt", "note.txt"),
+        super::with_last_component("Dossier\\note.txt", "note.txt"),
         None
     );
-    assert_eq!(super::avec_dernier_composant("note.txt", "note.txt"), None);
-    assert_eq!(super::avec_dernier_composant("", "note.txt"), None);
-    assert_eq!(super::avec_dernier_composant("note.txt", ""), None);
+    assert_eq!(super::with_last_component("note.txt", "note.txt"), None);
+    assert_eq!(super::with_last_component("", "note.txt"), None);
+    assert_eq!(super::with_last_component("note.txt", ""), None);
 }
 
 /// ⚠️ **ProjFS's separator is `\`, never `/`**: a `/` in the delivered path
 /// is not a separator but a name character, and treating it as
 /// such would truncate the path.
 #[test]
-fn avec_dernier_composant_ignore_la_barre_oblique() {
+fn with_last_component_ignores_the_slash() {
     assert_eq!(
-        super::avec_dernier_composant("a/b", "z"),
+        super::with_last_component("a/b", "z"),
         Some("z".to_string()),
         "il n'y a aucun antislash : tout le chemin est le dernier composant"
     );

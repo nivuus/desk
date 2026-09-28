@@ -2,7 +2,7 @@
 //
 // ⚠️ ILS EXERCENT LE ROUTAGE AUTANT QUE L'ÉCRAN, et c'est le point : ce qui
 // peut casser n'est pas « l'écran sait s'afficher » mais « il s'affiche pour
-// les BONS messages ». Les trois premiers passent donc par `creerStatut`, avec
+// les BONS messages ». Les trois premiers passent donc par `createStatus`, avec
 // l'écran injecté, comme le produit le fait.
 //
 // 🔴 LE SENS QUI COMPTE EST L'INVERSE. Un écran qui se lèverait à TOUT message
@@ -14,8 +14,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { creerStatut } from './status';
-import { creerEcranTerminal } from './ecran-terminal';
+import { createStatus } from './status';
+import { createTerminalScreen } from './ecran-terminal';
 
 function faireEcran() {
     const cible = {
@@ -23,7 +23,7 @@ function faireEcran() {
         titre: { textContent: '' },
         raison: { textContent: '', className: '' },
     };
-    return { cible, ecran: creerEcranTerminal(cible) };
+    return { cible, ecran: createTerminalScreen(cible) };
 }
 
 function faireBandeau() {
@@ -33,9 +33,9 @@ function faireBandeau() {
 describe('écran terminal', () => {
     it('① un message TERMINAL lève l’écran et y écrit le texte', () => {
         const { cible, ecran } = faireEcran();
-        const statut = creerStatut(faireBandeau(), ecran);
+        const statut = createStatus(faireBandeau(), ecran);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session terminée : fermeture demandée', { terminal: true });
 
         expect(cible.racine.hidden).toBe(false);
         // Le TEXTE, pas seulement la visibilité : un écran levé et vide passerait
@@ -46,9 +46,9 @@ describe('écran terminal', () => {
 
     it('② un message ORDINAIRE ne lève pas l’écran', () => {
         const { cible, ecran } = faireEcran();
-        const statut = creerStatut(faireBandeau(), ecran);
+        const statut = createStatus(faireBandeau(), ecran);
 
-        statut.afficher('prêt — 1280×720');
+        statut.show('prêt — 1280×720');
 
         expect(cible.racine.hidden).toBe(true);
         expect(cible.raison.textContent).toBe('');
@@ -56,12 +56,12 @@ describe('écran terminal', () => {
 
     it('③ un message PERSISTANT ne lève pas l’écran', () => {
         const { cible, ecran } = faireEcran();
-        const statut = creerStatut(faireBandeau(), ecran);
+        const statut = createStatus(faireBandeau(), ecran);
 
         // Le sommeil et le lien dégradé passent par ici : ils DURENT, mais ils
         // ne terminent rien, et l'écran plein cadre masquerait une session
         // parfaitement vivante.
-        statut.afficher('image figée : fenêtre masquée', { persistant: true });
+        statut.show('image figée : fenêtre masquée', { persistant: true });
 
         expect(cible.racine.hidden).toBe(true);
         expect(cible.raison.textContent).toBe('');
@@ -80,10 +80,10 @@ describe('écran terminal', () => {
 
     it('⑤ un second état terminal REMPLACE le premier, ton compris', () => {
         const { cible, ecran } = faireEcran();
-        const statut = creerStatut(faireBandeau(), ecran);
+        const statut = createStatus(faireBandeau(), ecran);
 
-        statut.afficher('échec : signaling injoignable', { terminal: true, ton: 'danger' });
-        statut.afficher('session terminée : fermeture demandée', {
+        statut.show('échec : signaling injoignable', { terminal: true, ton: 'danger' });
+        statut.show('session terminée : fermeture demandée', {
             terminal: true,
             ton: 'neutre',
         });
@@ -99,9 +99,9 @@ describe('écran terminal', () => {
         // La cible est OPTIONNELLE : c'est ce qui laisse les onze tests de
         // `status.test.ts` passer inchangés, et c'est le comportement d'avant S4.
         const bandeau = faireBandeau();
-        const statut = creerStatut(bandeau);
+        const statut = createStatus(bandeau);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session terminée : fermeture demandée', { terminal: true });
 
         expect(bandeau.textContent).toBe('session terminée : fermeture demandée');
     });

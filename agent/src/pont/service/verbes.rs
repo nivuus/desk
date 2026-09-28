@@ -51,11 +51,11 @@ impl<'a> TamponAligne<'a> {
     fn allouer(
         projfs: &'a ProjFs,
         contexte: PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT,
-        taille: usize,
+        size: usize,
     ) -> Option<Self> {
         // SAFETY: valid context, non-zero size. Transcription of the `link!`
         // at `mod.rs:3`.
-        let pointeur = unsafe { (projfs.allouer_tampon_aligne)(contexte, taille) };
+        let pointeur = unsafe { (projfs.allouer_tampon_aligne)(contexte, size) };
         if pointeur.is_null() {
             return None;
         }
@@ -82,9 +82,9 @@ impl Drop for TamponAligne<'_> {
 /// ⚠️ **The case is logged at `debug!`, never kept quiet.** Silence would make an
 /// unexpected `None` — coming from a read whose identifier was lost —
 /// indistinguishable from the nominal case.
-pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
+pub(super) fn completer(etat: &Etat, commande: Option<i32>, result: HRESULT) {
     let Some(commande) = commande else {
-        tracing::debug!(%resultat, "aucune commande ProjFS a completer : c'est une ecriture");
+        tracing::debug!(%result, "aucune commande ProjFS a completer : c'est une ecriture");
         return;
     };
     let Some(Contexte(contexte)) = etat.contexte() else {
@@ -98,9 +98,9 @@ pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
     // thread stops before `Virtualisation`'s `Drop`. The null fourth
     // parameter means "no extended parameter" (`mod.rs:14`).
     let issue =
-        unsafe { (etat.projfs.completer_commande)(contexte, commande, resultat, std::ptr::null()) };
+        unsafe { (etat.projfs.completer_commande)(contexte, commande, result, std::ptr::null()) };
     if issue.is_err() {
-        tracing::warn!(commande, %issue, %resultat, "PrjCompleteCommand refusée");
+        tracing::warn!(commande, %issue, %result, "PrjCompleteCommand refusée");
     }
 }
 
@@ -113,7 +113,7 @@ pub(super) fn completer_enumeration(
     etat: &Etat,
     commande: i32,
     tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE,
-    resultat: HRESULT,
+    result: HRESULT,
 ) {
     let Some(Contexte(contexte)) = etat.contexte() else {
         tracing::warn!(
@@ -122,7 +122,7 @@ pub(super) fn completer_enumeration(
         );
         return;
     };
-    let parametres = PRJ_COMPLETE_COMMAND_EXTENDED_PARAMETERS {
+    let params = PRJ_COMPLETE_COMMAND_EXTENDED_PARAMETERS {
         CommandType: PRJ_COMPLETE_COMMAND_TYPE_ENUMERATION,
         Anonymous: PRJ_COMPLETE_COMMAND_EXTENDED_PARAMETERS_0 {
             Enumeration: PRJ_COMPLETE_COMMAND_EXTENDED_PARAMETERS_0_1 {
@@ -130,24 +130,23 @@ pub(super) fn completer_enumeration(
             },
         },
     };
-    // SAFETY: `parametres` lives until the end of the expression, hence beyond
+    // SAFETY: `params` lives until the end of the expression, hence beyond
     // the call.
-    let issue =
-        unsafe { (etat.projfs.completer_commande)(contexte, commande, resultat, &parametres) };
+    let issue = unsafe { (etat.projfs.completer_commande)(contexte, commande, result, &params) };
     if issue.is_err() {
         tracing::warn!(commande, %issue, "PrjCompleteCommand (énumération) refusée");
     }
 }
 
 /// The basic information block of an entry.
-fn info_de_base(repertoire: bool, taille: u64, modifie_ms: i64) -> PRJ_FILE_BASIC_INFO {
-    let horodatage = filetime_depuis_ms(modifie_ms);
+fn info_de_base(repertoire: bool, size: u64, modified_ms: i64) -> PRJ_FILE_BASIC_INFO {
+    let horodatage = filetime_depuis_ms(modified_ms);
     PRJ_FILE_BASIC_INFO {
         IsDirectory: repertoire,
         // `i64` on the ProjFS side, `u64` on the protocol side: a size above
         // 8 EiB does not exist, but saturating it beats a negative, which
         // ProjFS would read as an absurd size.
-        FileSize: taille.min(i64::MAX as u64) as i64,
+        FileSize: size.min(i64::MAX as u64) as i64,
         // ⚠️ **The four fields carry the SAME timestamp, and it is
         // declared**: the File System Access API only exposes
         // `File.lastModified` (spec §3.5.2). Inventing a distinct creation
@@ -165,21 +164,21 @@ fn info_de_base(repertoire: bool, taille: u64, modifie_ms: i64) -> PRJ_FILE_BASI
 }
 
 /// Writes an entry's marker — the response to `GetPlaceholderInfo`.
-pub(super) fn ecrire_marqueur(
+pub(super) fn write_placeholder(
     etat: &Etat,
     chemin: &[u16],
     repertoire: bool,
-    taille: u64,
-    modifie_ms: i64,
+    size: u64,
+    modified_ms: i64,
 ) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
         return HRESULT(
             etat.compteurs
-                .rendre(crate::pont::erreurs::Erreur::Inattendue),
+                .rendre(crate::pont::errors::Error::Inattendue),
         );
     };
     let info = PRJ_PLACEHOLDER_INFO {
-        FileBasicInfo: info_de_base(repertoire, taille, modifie_ms),
+        FileBasicInfo: info_de_base(repertoire, size, modified_ms),
         ..Default::default()
     };
     // SAFETY: `chemin` is null-terminated (set by the callback from ProjFS's
@@ -188,7 +187,7 @@ pub(super) fn ecrire_marqueur(
     // the announced size is that of the structure, since
     // we write no variable data.
     unsafe {
-        (etat.projfs.ecrire_info_marqueur)(
+        (etat.projfs.write_placeholder_info)(
             contexte,
             PCWSTR(chemin.as_ptr()),
             &info,
@@ -208,16 +207,16 @@ pub(super) fn ecrire_marqueur(
 /// ⚠️ **Alignment assumption, declared and NOT verified**:
 /// `PrjGetVirtualizationInstanceInfo` returns a `WriteAlignment` this bridge does not
 /// read — the entry point is not loaded (task 12's thirteen do not
-/// include it). Chunks are `TAILLE_TRAME_MAX` (64 KiB), a multiple of
+/// include it). Chunks are `MAX_FRAME_SIZE` (64 KiB), a multiple of
 /// any plausible sector size, and their position derives from the one
 /// ProjFS requested. **This is not a proof**: if a
 /// `PrjWriteFileData` were refused for alignment, it is here that one would have to
 /// load `PrjGetVirtualizationInstanceInfo` and round. Declared legacy.
-pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u8]) -> HRESULT {
+pub(super) fn write_file_data(etat: &Etat, flux: GUID, position: u64, charge: &[u8]) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
         return HRESULT(
             etat.compteurs
-                .rendre(crate::pont::erreurs::Erreur::Inattendue),
+                .rendre(crate::pont::errors::Error::Inattendue),
         );
     };
     let Some(tampon) = TamponAligne::allouer(&etat.projfs, contexte, charge.len()) else {
@@ -227,7 +226,7 @@ pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u
         );
         return HRESULT(
             etat.compteurs
-                .rendre(crate::pont::erreurs::Erreur::Inattendue),
+                .rendre(crate::pont::errors::Error::Inattendue),
         );
     };
     // SAFETY: `tampon.pointeur` is non-null and is at least `charge.len()`
@@ -238,7 +237,7 @@ pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u
     // SAFETY: transcription of the `link!` at `mod.rs:122`. The buffer is released
     // by `TamponAligne`'s `Drop`, including if this call fails.
     unsafe {
-        (etat.projfs.ecrire_donnees)(
+        (etat.projfs.write_file_data)(
             contexte,
             &flux,
             tampon.pointeur,
@@ -265,7 +264,7 @@ pub(super) fn remplir(
             .encode_utf16()
             .chain(std::iter::once(0))
             .collect();
-        let info = info_de_base(entree.repertoire, entree.taille, entree.modifie_ms);
+        let info = info_de_base(entree.repertoire, entree.size, entree.modified_ms);
         // SAFETY: `nom` is null-terminated and lives until the end of the turn;
         // `info` likewise. Transcription of the `link!` at `mod.rs:55`.
         let issue =
@@ -287,13 +286,13 @@ pub(super) fn remplir(
 }
 
 /// Converts protocol entries into enumeration entries.
-pub(super) fn entrees_depuis(json: Vec<proto::fichiers::entetes::EntreeJson>) -> Vec<Entree> {
+pub(super) fn entrees_depuis(json: Vec<proto::files::entetes::EntreeJson>) -> Vec<Entree> {
     json.into_iter()
         .map(|e| Entree {
             nom: e.nom,
             repertoire: e.repertoire,
-            taille: e.taille,
-            modifie_ms: e.modifie,
+            size: e.size,
+            modified_ms: e.modified,
         })
         .collect()
 }

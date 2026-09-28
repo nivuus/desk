@@ -10,10 +10,10 @@ use super::*;
 #[test]
 fn tls_est_refuse_explicitement() {
     for url in ["wss://plateforme.exemple:443", "https://plateforme.exemple"] {
-        let erreur = base_http(url).expect_err("TLS doit être refusé");
+        let error = base_http(url).expect_err("TLS doit être refusé");
         assert!(
-            erreur.to_string().contains("AUCUNE pile TLS"),
-            "le refus doit NOMMER sa cause : {erreur}"
+            error.to_string().contains("AUCUNE pile TLS"),
+            "le refus doit NOMMER sa cause : {error}"
         );
     }
 }
@@ -44,7 +44,7 @@ fn l_autorite_se_derive_de_l_url_du_canal() {
 /// `400 {refus:'empreinte'}` would pass for a success and the agent
 /// would re-upload indefinitely without ever knowing why.
 #[test]
-fn le_statut_se_lit_dans_la_premiere_ligne() {
+fn the_status_is_read_from_the_first_line() {
     assert_eq!(statut_http(b"HTTP/1.1 204 No Content\r\n\r\n"), Some(204));
     assert_eq!(
         statut_http(b"HTTP/1.1 413 Payload Too Large\r\n\r\n{}"),

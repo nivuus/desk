@@ -88,7 +88,7 @@ impl EncodeurNatif {
     }
 
     pub fn encode_size(&self) -> (u32, u32) {
-        self.session.taille()
+        self.session.size()
     }
 
     pub fn request_keyframe(&mut self) -> Result<()> {

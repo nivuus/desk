@@ -5,7 +5,7 @@
 // (`--injection=…`), reused BY PARAMETER and never by copy.
 //
 // 🔴 WHAT IT SUBSTITUTES: `showDirectoryPicker()`, and nothing else. Everything
-// downstream — `choisirDossier`, `creerEcrivain`, `creerMutateur`, the channel, the
+// downstream — `choisirDossier`, `createWriter`, `createMutator`, the channel, the
 // bridge — is the product.
 //
 // THE DATA SET REPRODUCES F5'S: a `sous-dossier` directory carrying a
@@ -27,18 +27,18 @@
     const racine = await navigator.storage.getDirectory();
     const d = await racine.getDirectoryHandle('Mes documents', { create: true });
     for await (const nom of d.keys()) await d.removeEntry(nom, { recursive: true });
-    const ecrire = async (dossier, nom, texte) => {
+    const write = async (dossier, nom, texte) => {
       const f = await dossier.getFileHandle(nom, { create: true });
       const w = await f.createWritable();
       await w.write(texte);
       await w.close();
     };
     // The SIBLING, and its child: it is what we will look for after the rename.
-    const sous = await d.getDirectoryHandle('sous-dossier', { create: true });
-    await ecrire(sous, 'autre.txt', 'enfant du frere\n');
-    await ecrire(d, 'a-renommer.txt', 'ce fichier va etre renomme dans la VM\n');
-    await ecrire(d, 'temoin-1.txt', 'temoin qui ne bouge pas\n');
-    await ecrire(d, 'temoin-2.txt', 'second temoin qui ne bouge pas\n');
+    const sub = await d.getDirectoryHandle('sous-dossier', { create: true });
+    await write(sub, 'autre.txt', 'enfant du frere\n');
+    await write(d, 'a-renommer.txt', 'ce fichier va etre renomme dans la VM\n');
+    await write(d, 'temoin-1.txt', 'temoin qui ne bouge pas\n');
+    await write(d, 'temoin-2.txt', 'second temoin qui ne bouge pas\n');
     window.__item3Dossier = d;
     noter('OPFS préparé : sous-dossier/, a-renommer.txt, temoin-1.txt, temoin-2.txt');
     return await window.__item3Relire();

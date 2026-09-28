@@ -10,22 +10,22 @@
  *
  * **Pure, DOM-free**: that is what makes it testable.
  */
-export interface Taille {
+export interface Size {
     largeur: number;
     hauteur: number;
 }
 
 export class RejeuResize {
-    private derniere: Taille | undefined;
-    private emise: Taille | undefined;
+    private derniere: Size | undefined;
+    private emise: Size | undefined;
 
     /** The `ResizeObserver` saw a size. */
-    observer(taille: Taille): void {
-        this.derniere = taille;
+    observer(size: Size): void {
+        this.derniere = size;
     }
 
     /** The size to emit, or `undefined` if there is nothing new. */
-    aEmettre(): Taille | undefined {
+    aEmettre(): Size | undefined {
         const derniere = this.derniere;
         if (!derniere) return undefined;
         if (
@@ -39,7 +39,7 @@ export class RejeuResize {
     }
 
     /** The emission really took place. */
-    confirmer(taille: Taille): void {
-        this.emise = taille;
+    confirmer(size: Size): void {
+        this.emise = size;
     }
 }

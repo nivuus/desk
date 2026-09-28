@@ -115,8 +115,8 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                     );
                     return;
                 }
-                Err(erreur) => {
-                    tracing::warn!(%erreur, "trame illisible du capteur, canal abandonné");
+                Err(error) => {
+                    tracing::warn!(%error, "trame illisible du capteur, canal abandonné");
                     return;
                 }
             },
@@ -130,7 +130,7 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capteur::protocole::{ecrire_image, ecrire_json};
+    use crate::capteur::protocole::{write_image, write_json};
     use crate::h264::AccessUnit;
     use std::sync::mpsc::sync_channel;
 
@@ -140,9 +140,9 @@ mod tests {
     /// come out as three `Recu`, IN ORDER, without the thread having
     /// given up before the end of the buffer.
     #[test]
-    fn lire_le_media_relaie_etat_image_et_sommeil_dans_l_ordre() {
+    fn read_media_relays_state_frame_and_sleep_in_order() {
         let mut tampon = Vec::new();
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::Etat {
                 vivante: true,
@@ -152,7 +152,7 @@ mod tests {
             },
         )
         .unwrap();
-        ecrire_image(
+        write_image(
             &mut tampon,
             &AccessUnit {
                 data: vec![1, 2, 3],
@@ -161,7 +161,7 @@ mod tests {
             },
         )
         .unwrap();
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::Sommeil {
                 endormie: true,
@@ -217,10 +217,10 @@ mod tests {
     #[test]
     fn lire_le_media_survit_a_une_part_et_la_transmet() {
         let mut tampon = Vec::new();
-        ecrire_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
+        write_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
         // A frame AFTER the share: if the thread had given up on the share,
         // this frame would never be relayed either.
-        ecrire_image(
+        write_image(
             &mut tampon,
             &AccessUnit {
                 data: vec![9, 9, 9],
@@ -252,10 +252,10 @@ mod tests {
     #[test]
     fn lire_le_media_survit_a_un_audio_et_le_transmet() {
         let mut tampon = Vec::new();
-        ecrire_json(&mut tampon, &DepuisCapteur::Audio { actif: true }).unwrap();
+        write_json(&mut tampon, &DepuisCapteur::Audio { actif: true }).unwrap();
         // A frame AFTER the order: if the thread had given up on it, this
         // frame would never be relayed either.
-        ecrire_image(
+        write_image(
             &mut tampon,
             &AccessUnit {
                 data: vec![4, 4, 4],
@@ -287,10 +287,10 @@ mod tests {
     #[test]
     fn lire_le_media_survit_a_un_plein_ecran_et_le_transmet() {
         let mut tampon = Vec::new();
-        ecrire_json(&mut tampon, &DepuisCapteur::PleinEcran { actif: true }).unwrap();
+        write_json(&mut tampon, &DepuisCapteur::PleinEcran { actif: true }).unwrap();
         // A frame AFTER the order: if the thread had given up on it, this
         // frame would never be relayed either.
-        ecrire_image(
+        write_image(
             &mut tampon,
             &AccessUnit {
                 data: vec![5, 5, 5],
@@ -323,7 +323,7 @@ mod tests {
     #[test]
     fn lire_le_media_survit_a_un_presse_papier_et_le_transmet() {
         let mut tampon = Vec::new();
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::PressePapier {
                 texte: Some("bonjour".into()),
@@ -334,7 +334,7 @@ mod tests {
         // A size REFUSAL travels through the same variant, `texte` as `None`:
         // it must get through too, otherwise the browser's banner would
         // never know that a copy was refused.
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::PressePapier {
                 texte: None,
@@ -344,7 +344,7 @@ mod tests {
         .unwrap();
         // A frame AFTER the two announcements: if the thread had given up
         // on them, this frame would never be relayed either.
-        ecrire_image(
+        write_image(
             &mut tampon,
             &AccessUnit {
                 data: vec![7, 7, 7],
@@ -389,7 +389,7 @@ mod tests {
         let mut tampon = Vec::new();
         // `Attachee` is NEVER supposed to go through the media connection:
         // it is a command reply. Receiving it here must abort.
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::Attachee {
                 largeur: 1280,
@@ -397,7 +397,7 @@ mod tests {
             },
         )
         .unwrap();
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::Etat {
                 vivante: true,
@@ -427,7 +427,7 @@ mod tests {
     #[test]
     fn lire_le_media_survit_a_un_accent_et_le_transmet() {
         let mut tampon = Vec::new();
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::Accent {
                 couleur: "#7aa2f7".into(),
@@ -436,7 +436,7 @@ mod tests {
         .unwrap();
         // A SECOND accent: the sensor only announces on change, but nothing
         // in this thread knows it — it must relay both.
-        ecrire_json(
+        write_json(
             &mut tampon,
             &DepuisCapteur::Accent {
                 couleur: "#fa8c16".into(),
@@ -447,7 +447,7 @@ mod tests {
         // on them, this frame would never be relayed either. It is this
         // third assertion that distinguishes "the arm is missing" from "the message
         // was not written".
-        ecrire_image(
+        write_image(
             &mut tampon,
             &AccessUnit {
                 data: vec![9, 9, 9],

@@ -53,8 +53,8 @@ pub fn couleur_mire(id: u8, trame: u64) -> (u8, u8, u8) {
     (rouge, vert, BLEU_MIRE)
 }
 
-fn proche(valeur: u8, attendu: u8) -> bool {
-    (valeur as i16 - attendu as i16).abs() <= TOLERANCE
+fn proche(value: u8, attendu: u8) -> bool {
+    (value as i16 - attendu as i16).abs() <= TOLERANCE
 }
 
 /// Identifies the window whose test pattern this pixel carries, if it carries one.
@@ -93,7 +93,7 @@ pub fn verdict(attendu: u8, pixel: (u8, u8, u8)) -> Verdict {
     }
 }
 
-/// Which path is checked at round `tour`, among `nombre` paths.
+/// Which path is checked at round `tour`, among `count` paths.
 ///
 /// The multi-output set-up removes covering — one window per
 /// output, nothing can hide another — so the elimination gate of the
@@ -106,11 +106,11 @@ pub fn verdict(attendu: u8, pixel: (u8, u8, u8)) -> Verdict {
 /// previous work stream, where the scope of the pixel reading changed
 /// midway. The rotation covers all paths for **one** reading per
 /// round, whatever N.
-pub fn voie_controlee(tour: u64, nombre: usize) -> Option<usize> {
-    if nombre == 0 {
+pub fn voie_controlee(tour: u64, count: usize) -> Option<usize> {
+    if count == 0 {
         return None;
     }
-    Some((tour % nombre as u64) as usize)
+    Some((tour % count as u64) as usize)
 }
 
 #[cfg(test)]
@@ -152,7 +152,7 @@ mod tests {
     }
 
     #[test]
-    fn un_ecart_de_lecture_dans_la_tolerance_reste_juste() {
+    fn a_read_gap_within_tolerance_stays_correct() {
         let (r, g, b) = couleur_mire(5, 0);
         assert_eq!(verdict(5, (r + 2, g + 2, b + 2)), Verdict::Juste);
     }
@@ -169,26 +169,26 @@ mod tests {
     /// the others uncovered, and it is precisely cross-pairing
     /// between outputs that this set-up must detect.
     #[test]
-    fn la_rotation_controle_chaque_voie_le_meme_nombre_de_fois() {
-        for nombre in 1..=8usize {
-            let mut comptes = vec![0usize; nombre];
-            for tour in 0..(nombre as u64 * 7) {
-                let voie = voie_controlee(tour, nombre).expect("nombre non nul");
+    fn the_rotation_checks_each_lane_the_same_number_of_times() {
+        for count in 1..=8usize {
+            let mut comptes = vec![0usize; count];
+            for tour in 0..(count as u64 * 7) {
+                let voie = voie_controlee(tour, count).expect("nombre non nul");
                 comptes[voie] += 1;
             }
             assert!(
                 comptes.iter().all(|compte| *compte == 7),
-                "nombre = {nombre}, comptes = {comptes:?}"
+                "nombre = {count}, comptes = {comptes:?}"
             );
         }
     }
 
     #[test]
     fn la_rotation_ne_designe_jamais_une_voie_inexistante() {
-        for nombre in 1..=8usize {
+        for count in 1..=8usize {
             for tour in 0..100u64 {
-                let voie = voie_controlee(tour, nombre).expect("nombre non nul");
-                assert!(voie < nombre, "voie {voie} hors des {nombre} voies");
+                let voie = voie_controlee(tour, count).expect("nombre non nul");
+                assert!(voie < count, "voie {voie} hors des {count} voies");
             }
         }
     }

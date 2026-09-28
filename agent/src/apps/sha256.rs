@@ -162,9 +162,9 @@ impl Condensateur {
         let mut queue = [0u8; 128];
         queue[..reste.len()].copy_from_slice(reste);
         queue[reste.len()] = 0x80;
-        let taille = if reste.len() < 56 { 64 } else { 128 };
-        queue[taille - 8..taille].copy_from_slice(&self.bits.to_be_bytes());
-        for debut in (0..taille).step_by(64) {
+        let size = if reste.len() < 56 { 64 } else { 128 };
+        queue[size - 8..size].copy_from_slice(&self.bits.to_be_bytes());
+        for debut in (0..size).step_by(64) {
             comprimer(
                 &mut etat,
                 queue[debut..debut + 64].try_into().expect("64 octets"),
@@ -275,17 +275,17 @@ mod tests {
     /// of a piece; 1000, longer than the longest vector,
     /// checks that a piece overflowing the message changes nothing.
     #[test]
-    fn le_condensateur_absorbe_en_tailles_irregulieres_sans_changer_l_empreinte() {
+    fn the_hasher_absorbs_irregular_sizes_without_changing_the_digest() {
         for (message, attendu) in VECTEURS {
-            for taille in [1usize, 63, 64, 65, 1000] {
+            for size in [1usize, 63, 64, 65, 1000] {
                 let mut condensateur = Condensateur::neuf();
-                for morceau in message.chunks(taille) {
+                for morceau in message.chunks(size) {
                     condensateur.absorber(morceau);
                 }
                 assert_eq!(
                     hexa(condensateur.terminer()),
                     attendu,
-                    "vecteur de {} octets, morceaux de {taille}",
+                    "vecteur de {} octets, morceaux de {size}",
                     message.len()
                 );
             }
@@ -293,16 +293,16 @@ mod tests {
     }
 
     #[test]
-    fn une_longueur_de_message_pile_sur_la_frontiere_du_bourrage() {
+    fn a_message_length_right_on_the_padding_boundary() {
         // 55 bytes: the last one where the length still fits in the block.
         // 56: the first that requires a second. 64: a full block, whose
         // padding takes a whole extra block.
-        for taille in [55usize, 56, 63, 64, 65, 119, 120] {
-            let message = vec![b'a'; taille];
+        for size in [55usize, 56, 63, 64, 65, 119, 120] {
+            let message = vec![b'a'; size];
             // We do not check the value — it is not in the standard —
             // but that nothing panics and that the fingerprint changes with the
             // size, which broken padding would not guarantee.
-            assert_eq!(hex(&message).len(), 64, "taille {taille}");
+            assert_eq!(hex(&message).len(), 64, "taille {size}");
 
             // And the INCREMENTAL path, one byte at a time, must return the
             // same thing: these lengths are the ones that move the residue
@@ -314,15 +314,11 @@ mod tests {
             assert_eq!(
                 hexa(condensateur.terminer()),
                 hex(&message),
-                "taille {taille}, un octet à la fois"
+                "taille {size}, un octet à la fois"
             );
         }
-        let toutes: std::collections::HashSet<String> =
+        let all: std::collections::HashSet<String> =
             (0..130).map(|n| hex(&vec![b'a'; n])).collect();
-        assert_eq!(
-            toutes.len(),
-            130,
-            "130 longueurs, 130 empreintes distinctes"
-        );
+        assert_eq!(all.len(), 130, "130 longueurs, 130 empreintes distinctes");
     }
 }

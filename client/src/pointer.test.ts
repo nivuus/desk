@@ -5,7 +5,7 @@
 // modules d'armement du projet.
 
 import { describe, expect, it, vi } from 'vitest';
-import { attachPointer, creerClampReport, sommerDeltas, type CibleVideo } from './pointer';
+import { attachPointer, createClampReport, sommerDeltas, type CibleVideo } from './pointer';
 
 function faireCibleVideo() {
     const ecouteurs = new Map<string, EventListener[]>();
@@ -13,13 +13,13 @@ function faireCibleVideo() {
     let permisVerrouiller = false;
     return {
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         requestPointerLock() {
             // Simule le comportement réel : le navigateur accepte seulement si une
@@ -79,13 +79,13 @@ function faireCibleDocument() {
             verrouille = null;
         },
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         declencher(type: string) {
             for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
@@ -113,27 +113,27 @@ describe('sommation des deltas coalescés', () => {
 
 describe('clamp avec report', () => {
     it('laisse passer les valeurs dans la plage', () => {
-        const clamp = creerClampReport();
+        const clamp = createClampReport();
         expect(clamp(10, -10)).toEqual({ dx: 10, dy: -10 });
     });
 
     it('borne le débordement et le reporte sur l\'appel suivant', () => {
         // La somme transmise doit rester exacte : c'est elle qui détermine la
         // visée. Écrêter en perdant le reste ferait dériver le tir.
-        const clamp = creerClampReport();
+        const clamp = createClampReport();
         expect(clamp(40000, 0)).toEqual({ dx: 32767, dy: 0 });
         expect(clamp(0, 0)).toEqual({ dx: 7233, dy: 0 });
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: 0 });
     });
 
     it('reporte aussi les débordements négatifs', () => {
-        const clamp = creerClampReport();
+        const clamp = createClampReport();
         expect(clamp(0, -40000)).toEqual({ dx: 0, dy: -32768 });
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: -7232 });
     });
 
     it('ne reporte rien quand rien ne déborde', () => {
-        const clamp = creerClampReport();
+        const clamp = createClampReport();
         clamp(5, 5);
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: 0 });
     });

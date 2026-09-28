@@ -69,7 +69,7 @@ pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
         )
     })?;
 
-    let resultat = lire_groupe(handle, index);
+    let result = lire_groupe(handle, index);
 
     // 🔴 `FreeLibrary` ON EVERY EXIT PATH, error paths included. A
     // leak here would be invisible for hours, on a process that
@@ -78,7 +78,7 @@ pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
     // SAFETY: FFI call. The handle comes from `LoadLibraryExW` just
     // above and has not been released elsewhere.
     let _ = unsafe { FreeLibrary(handle) };
-    resultat
+    result
 }
 
 /// The enumeration callback: it KEEPS the first name and stops.
@@ -150,8 +150,8 @@ fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
         bail!("aucune ressource RT_GROUP_ICON dans ce module");
     }
     // SAFETY: FFI call. `bloc` has just been validated.
-    let taille = unsafe { SizeofResource(Some(handle), bloc) } as usize;
-    if taille == 0 {
+    let size = unsafe { SizeofResource(Some(handle), bloc) } as usize;
+    if size == 0 {
         bail!("ressource RT_GROUP_ICON de taille nulle");
     }
     // SAFETY: FFI call.
@@ -163,9 +163,9 @@ fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
     if debut.is_null() {
         bail!("LockResource a rendu un pointeur nul");
     }
-    // SAFETY: the resource is mapped over `taille` bytes, which
+    // SAFETY: the resource is mapped over `size` bytes, which
     // `SizeofResource` has just returned, and the copy is made BEFORE the
     // caller's `FreeLibrary`. The resulting `Vec` no longer depends on the
     // module.
-    Ok(unsafe { std::slice::from_raw_parts(debut, taille) }.to_vec())
+    Ok(unsafe { std::slice::from_raw_parts(debut, size) }.to_vec())
 }

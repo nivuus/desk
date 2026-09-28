@@ -153,7 +153,7 @@ impl DepuisLaPlateforme {
         installation: impl Into<String>,
         url: impl Into<String>,
         nom: impl Into<String>,
-        taille: u64,
+        size: u64,
         sha256: impl Into<String>,
     ) -> Self {
         Self::Installer {
@@ -161,7 +161,7 @@ impl DepuisLaPlateforme {
             installation: installation.into(),
             url: url.into(),
             nom: nom.into(),
-            taille,
+            size,
             sha256: sha256.into(),
         }
     }

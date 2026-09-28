@@ -29,11 +29,11 @@ impl Controleur {
         // match any rung (should not happen), starting again from the
         // top is the safest choice, never the one that would lack
         // bitrate.
-        let indice_avant = self
+        let index_before = self
             .echelle
             .barreaux()
             .iter()
-            .position(|b| b.taille == self.courant.encode_size)
+            .position(|b| b.size == self.current.encode_size)
             .unwrap_or(0);
 
         self.echelle = Echelle::depuis(source, self.config.fps);
@@ -42,11 +42,11 @@ impl Controleur {
         // Bounding: the new ladder may have fewer rungs than
         // the old one (tiny source after an extreme shrink, see
         // the invariant of `Echelle`).
-        let indice = indice_avant.min(self.echelle.barreaux().len() - 1);
+        let indice = index_before.min(self.echelle.barreaux().len() - 1);
         self.hysteresis = Hysteresis::new(indice, now);
-        self.courant.encode_size = self.echelle.barreaux()[indice].taille;
+        self.current.encode_size = self.echelle.barreaux()[indice].size;
 
-        self.courant
+        self.current
     }
 
     /// Changes the bitrate upper bound, without touching the ladder.
@@ -59,7 +59,7 @@ impl Controleur {
     ///
     /// Three possible regimes, and only TWO behaviours — the witness
     /// that distinguishes them is `premiere_estimation_a`
-    /// (`Option<Instant>`), not `courant.adaptation`: the latter is a
+    /// (`Option<Instant>`), not `current.adaptation`: the latter is a
     /// DERIVED and REVERSIBLE state (it falls back to `Indisponible` both before the
     /// very first estimate and after an old estimate goes stale
     /// — see `observer`, branch `o.estimate_bps == None`), whereas
@@ -99,12 +99,12 @@ impl Controleur {
     /// must stay: this controller has no business knowing the notion of sleep.
     pub fn changer_plafond(&mut self, plafond_bps: u32) -> Decision {
         self.config.plafond_bps = plafond_bps;
-        self.courant.video_bitrate_bps = if self.premiere_estimation_a.is_none() {
+        self.current.video_bitrate_bps = if self.premiere_estimation_a.is_none() {
             plafond_bps
         } else {
-            self.courant.video_bitrate_bps.min(plafond_bps)
+            self.current.video_bitrate_bps.min(plafond_bps)
         };
-        self.courant
+        self.current
     }
 }
 
@@ -132,7 +132,7 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn changer_source_conserve_le_barreau_courant_sur_un_agrandissement() {
+    fn change_source_keeps_the_current_rung_on_an_enlargement() {
         let base = t0();
         let mut c = Controleur::new(config(), base);
         // Simulates an already applied rung 2 (as after a network
@@ -140,32 +140,32 @@ mod tests {
         // is about `changer_source`, not about how to reach that
         // rung.
         c.hysteresis = Hysteresis::new(2, base);
-        c.courant.encode_size = c.echelle.barreaux()[2].taille;
+        c.current.encode_size = c.echelle.barreaux()[2].size;
 
         // Source enlargement (1920×1080 -> 2560×1440).
-        let nouvelle_source = (2560, 1440);
-        let decision = c.changer_source(nouvelle_source, base + Duration::from_secs(1));
+        let new_source = (2560, 1440);
+        let decision = c.changer_source(new_source, base + Duration::from_secs(1));
 
-        let nouvelle_echelle = Echelle::depuis(nouvelle_source, config().fps);
+        let new_ladder = Echelle::depuis(new_source, config().fps);
         assert_eq!(
             decision.encode_size,
-            nouvelle_echelle.barreaux()[2].taille,
+            new_ladder.barreaux()[2].size,
             "le barreau 2 doit être conservé, à la taille de la NOUVELLE échelle"
         );
         assert_eq!(
-            c.config.source, nouvelle_source,
+            c.config.source, new_source,
             "la source mémorisée doit suivre"
         );
     }
 
     #[test]
-    fn changer_source_borne_le_barreau_quand_la_nouvelle_echelle_est_plus_courte() {
+    fn change_source_clamps_the_rung_when_the_new_ladder_is_shorter() {
         let base = t0();
         let mut c = Controleur::new(config(), base);
         // Rung 3 (the lowest of the nominal 1920×1080 ladder) already
         // applied.
         c.hysteresis = Hysteresis::new(3, base);
-        c.courant.encode_size = c.echelle.barreaux()[3].taille;
+        c.current.encode_size = c.echelle.barreaux()[3].size;
         assert_eq!(
             c.echelle.barreaux().len(),
             4,
@@ -176,24 +176,24 @@ mod tests {
         // only one rung (see `echelle_minuscule_sans_doublons`):
         // index 3 no longer exists, it must be bounded to 0, the only
         // available rung — not panic on an out-of-bounds access.
-        let nouvelle_source = (2, 2);
-        let decision = c.changer_source(nouvelle_source, base + Duration::from_secs(1));
+        let new_source = (2, 2);
+        let decision = c.changer_source(new_source, base + Duration::from_secs(1));
 
-        let nouvelle_echelle = Echelle::depuis(nouvelle_source, config().fps);
-        assert_eq!(nouvelle_echelle.barreaux().len(), 1);
-        assert_eq!(decision.encode_size, nouvelle_echelle.barreaux()[0].taille);
+        let new_ladder = Echelle::depuis(new_source, config().fps);
+        assert_eq!(new_ladder.barreaux().len(), 1);
+        assert_eq!(decision.encode_size, new_ladder.barreaux()[0].size);
         assert_eq!(decision.encode_size, (2, 2));
     }
 
     #[test]
-    fn changer_source_recalcule_les_seuils_min_bps_pour_la_nouvelle_taille() {
+    fn change_source_recomputes_the_min_bps_thresholds_for_the_new_size() {
         let base = t0();
         let mut c = Controleur::new(config(), base);
 
-        let nouvelle_source = (1280, 720);
-        c.changer_source(nouvelle_source, base + Duration::from_secs(1));
+        let new_source = (1280, 720);
+        c.changer_source(new_source, base + Duration::from_secs(1));
 
-        let echelle_attendue = Echelle::depuis(nouvelle_source, config().fps);
+        let echelle_attendue = Echelle::depuis(new_source, config().fps);
         let echelle_1080p = Echelle::depuis((1920, 1080), config().fps);
         // Precondition: the two ladders do have different thresholds,
         // otherwise this test would prove nothing.
@@ -218,7 +218,7 @@ mod tests {
         // `fps` would produce identical values but a DIFFERENT
         // allocation — it is this distinction a mere comparison of
         // values cannot make.
-        let ptr_avant = c.echelle.barreaux().as_ptr();
+        let ptr_before = c.echelle.barreaux().as_ptr();
 
         let decision = c.changer_plafond(3_000_000);
         assert_eq!(
@@ -227,7 +227,7 @@ mod tests {
         );
         assert_eq!(
             c.echelle.barreaux().as_ptr(),
-            ptr_avant,
+            ptr_before,
             "l'échelle ne doit pas être reconstruite : même allocation avant et après"
         );
     }
@@ -253,12 +253,12 @@ mod tests {
     }
 
     #[test]
-    fn un_plafond_qui_monte_est_suivi_tant_qu_aucune_estimation_n_est_jamais_arrivee() {
+    fn a_rising_ceiling_is_followed_while_no_estimate_has_ever_arrived() {
         let base = t0();
         let mut c = Controleur::new(config(), base);
         // Precondition: no observation has taken place, the adaptation is
         // still the one set by `Controleur::new`.
-        assert_eq!(c.courant().adaptation, Adaptation::Indisponible);
+        assert_eq!(c.current().adaptation, Adaptation::Indisponible);
 
         // The old ceiling (12,000,000, see `config()`) is indeed lower
         // than the new one: without the remedy, the `min` would freeze the bitrate on
@@ -304,22 +304,22 @@ mod tests {
             at: base + Duration::from_secs(30),
         });
         assert_eq!(
-            c.courant().adaptation,
+            c.current().adaptation,
             Adaptation::Indisponible,
             "précondition : le lien est déclaré indisponible, MAIS une estimation a déjà eu lieu"
         );
 
         // The current bitrate, inherited from the last real estimate — NOT the
         // ceiling's fallback value, unlike the "never received" case.
-        let debit_avant = c.courant().video_bitrate_bps;
+        let bitrate_before = c.current().video_bitrate_bps;
         assert!(
-            debit_avant < 50_000_000,
+            bitrate_before < 50_000_000,
             "précondition : bien en dessous du plafond visé"
         );
 
         let decision = c.changer_plafond(50_000_000);
         assert_eq!(
-            decision.video_bitrate_bps, debit_avant,
+            decision.video_bitrate_bps, bitrate_before,
             "une estimation périmée n'est pas « jamais reçue » : le débit ne doit pas sauter au plafond plein sur un lien qui vient de se taire"
         );
     }

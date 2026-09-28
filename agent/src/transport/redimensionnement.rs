@@ -44,7 +44,7 @@ impl Session {
                 self.encode_size_appliquee = (actual_width, actual_height);
                 // A target refused before this resize no longer
                 // applies: the encoded size has just changed under it.
-                self.taille_refus_signalee = None;
+                self.reported_refused_size = None;
 
                 // The controller must be rebuilt for the new
                 // source size: its thresholds (`min_bps` per rung)
@@ -72,7 +72,7 @@ impl Session {
                 // session: we log and the session continues with
                 // the previous dimensions.
                 tracing::warn!(
-                    erreur = %e,
+                    error = %e,
                     width,
                     height,
                     "échec du redimensionnement, ignoré"
@@ -96,7 +96,7 @@ mod tests {
     /// sources, and nothing sets `pending_resize` in the tests". This
     /// test closes both halves of that reservation.
     #[test]
-    fn un_redimensionnement_recalibre_le_controleur_sur_la_taille_obtenue() {
+    fn a_resize_recalibrates_the_controller_on_the_obtained_size() {
         /// A source whose `resize` succeeds but imposes even alignment, as
         /// a real Windows window does: it is what makes observable
         /// the distinction between REQUESTED size and OBTAINED size, on
@@ -131,13 +131,13 @@ mod tests {
             "précondition du test"
         );
         assert_eq!(
-            session.congestion.courant().encode_size,
+            session.congestion.current().encode_size,
             (1280, 720),
             "précondition : l'échelle est calibrée sur la source d'origine"
         );
         // Trace of an earlier refusal, which no longer applies as soon as the encoded
         // size changes under it.
-        session.taille_refus_signalee = Some((960, 540));
+        session.reported_refused_size = Some((960, 540));
 
         // The browser requests an odd size; the window will return an even
         // one. `pending_resize` is what `dispatch_channel_data` sets on
@@ -159,7 +159,7 @@ mod tests {
              sans passer par `set_encode_size` — la taille appliquée doit être enregistrée ici"
         );
         assert_eq!(
-            session.taille_refus_signalee, None,
+            session.reported_refused_size, None,
             "une cible refusée avant ce redimensionnement n'a plus cours"
         );
 

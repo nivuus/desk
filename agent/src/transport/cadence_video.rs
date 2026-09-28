@@ -40,10 +40,10 @@ impl Session {
     /// it only logs at the `PERIODE_COMPTEURS` step, never at each
     /// unit written (counted by `write_frame` in `unites_video_ecrites`).
     pub(super) fn compter_la_cadence_video(&mut self) {
-        if self.dernier_compte_video.elapsed() < PERIODE_COMPTEURS {
+        if self.last_video_count.elapsed() < PERIODE_COMPTEURS {
             return;
         }
-        let ecoule = self.dernier_compte_video.elapsed().as_secs_f64();
+        let ecoule = self.last_video_count.elapsed().as_secs_f64();
         tracing::info!(
             session = %self.session_id,
             unites = self.unites_video_ecrites,
@@ -51,6 +51,6 @@ impl Session {
             "cadence de la piste vidéo (côté enfant)"
         );
         self.unites_video_ecrites = 0;
-        self.dernier_compte_video = Instant::now();
+        self.last_video_count = Instant::now();
     }
 }

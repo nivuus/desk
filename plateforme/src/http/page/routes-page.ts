@@ -42,7 +42,7 @@ export async function servirPage(
     rep: ServerResponse,
     deps: DependancesPage,
 ): Promise<boolean> {
-    return servirAvecFlux(req, rep, deps, (chemin) => createReadStream(chemin));
+    return serveWithStream(req, rep, deps, (chemin) => createReadStream(chemin));
 }
 
 /// The same route, with the READ stream injected — the only extension point
@@ -58,13 +58,13 @@ export async function servirPage(
 /// repository root, except the two `vitest` ones, from `plateforme/`.
 ///
 /// ① THE DEFAULT CALLBACK IS NOT A COVERAGE HOLE. The only caller
-/// of `servirAvecFlux` in the product is `servirPage` itself; all the
+/// of `serveWithStream` in the product is `servirPage` itself; all the
 /// rest goes through `chaine.ts`, which only calls `servirPage`. In
 /// `routes-page.test.ts`, 21 of the 23 tests stand up a REAL server
-/// (`demarrerServeur` → `servirTout` → `servirPage`, hence a real
+/// (`startServer` → `servirTout` → `servirPage`, hence a real
 /// `createReadStream`); the other 2 are the unit tests of here.
-///   grep -rn 'servirPage\|servirAvecFlux' plateforme/src
-///   grep -c 'await demarrerServeur(' plateforme/src/http/page/routes-page.test.ts   → 21
+///   grep -rn 'servirPage\|serveWithStream' plateforme/src
+///   grep -c 'await startServer(' plateforme/src/http/page/routes-page.test.ts   → 21
 ///   grep -c '    it(' plateforme/src/http/page/routes-page.test.ts                  → 23
 /// ⚠️ THESE TWO COUNTS SAID 18 AND 20, AND THEY WERE RIGHT AT THE TIME
 /// THEY WERE WRITTEN: the fix wave of the final review added
@@ -118,7 +118,7 @@ export async function servirPage(
 ///     (⚠️ `grep -c beforeAll` would yield 2: the `import` line counts too)
 ///
 /// ⑤ 🔴 WHAT THIS CHOICE COSTS, AND WHAT NOBODY MUST READ AS COVERED:
-/// the TWO tests that call `servirAvecFlux` (through a shared factory)
+/// the TWO tests that call `serveWithStream` (through a shared factory)
 /// only observe the FUNCTION facing a stream error, on a MADE-UP
 /// `req`/`rep` — no socket, no port, no server process. NO test of
 /// `plateforme/src` has ever seen a MID-RESPONSE read error on a
@@ -132,7 +132,7 @@ export async function servirPage(
 ///       times. The first draft of this block announced « 3 comments
 ///       of this file » and was false the instant it was written.
 ///       Draw NO number from it without the filter.
-export async function servirAvecFlux(
+export async function serveWithStream(
     req: IncomingMessage,
     rep: ServerResponse,
     deps: DependancesPage,
@@ -151,7 +151,7 @@ export async function servirAvecFlux(
     if (!verdict.ok) return false;
 
     const racine = resolve(deps.racinePage);
-    const candidat = resolve(racine, verdict.fichier);
+    const candidat = resolve(racine, verdict.file);
     // LEXICAL belt. It only protects against a composition that would get out
     // through SEGMENTS (`..`) — `resolution.ts` already refused it upstream, so
     // this costs nothing more; it does NOT protect against a symbolic link,
@@ -160,7 +160,7 @@ export async function servirAvecFlux(
     if (candidat !== racine && !candidat.startsWith(racine + sep)) return false;
 
     let racineReelle: string;
-    let fichierReel: string;
+    let realFile: string;
     try {
         // 🔴 THE ROOT ITSELF MAY LEGITIMATELY BE A LINK — resolve it
         // too, never just the file: comparing a canonical path
@@ -171,9 +171,9 @@ export async function servirAvecFlux(
         // real, but it does not matter here — the attacker would need to be able
         // to WRITE into the built root, where they already have a
         // simpler attack, and `createReadStream` below opens the
-        // CANONICAL path (`fichierReel`), not the link.
+        // CANONICAL path (`realFile`), not the link.
         racineReelle = await realpath(racine);
-        fichierReel = await realpath(candidat);
+        realFile = await realpath(candidat);
     } catch {
         // A DEAD link or a missing file throws here — it is the new
         // « file not found », handled the same way: silent refusal,
@@ -186,13 +186,13 @@ export async function servirAvecFlux(
     // offer — measured (round 2, Critical 3): `/lien.json → ../dessus/
     // vole.json` and `/lien-rep/vole.html → ../dessus/vole.html` both returned
     // `200` with the STOLEN content before this block.
-    if (fichierReel !== racineReelle && !fichierReel.startsWith(racineReelle + sep)) {
+    if (realFile !== racineReelle && !realFile.startsWith(racineReelle + sep)) {
         return false;
     }
 
     let infos;
     try {
-        infos = await stat(fichierReel);
+        infos = await stat(realFile);
     } catch {
         return false;
     }
@@ -232,7 +232,7 @@ export async function servirAvecFlux(
         // emits `error` with no listener THROWS, out of any scope that a
         // `try/catch` of this file could catch: measured, the WHOLE
         // service dies (signaling included).
-        await pipeline(ouvrirFlux(fichierReel), rep);
+        await pipeline(ouvrirFlux(realFile), rep);
     } catch (cause) {
         // The headers have already GONE: the status can no longer change, so
         // there is nothing more accurate to send back than a refusal. The only
@@ -245,7 +245,7 @@ export async function servirAvecFlux(
         // line, an `EMFILE` went from FATAL AND LOUD (before this batch) to
         // SILENT AND TRACELESS — the most discreet failure possible, which
         // `CLAUDE.md` fights first. The CALL SITE of `servirTout`
-        // in `demarrerServeur` (`serveur.ts`) can see NOTHING: `return
+        // in `startServer` (`serveur.ts`) can see NOTHING: `return
         // true` at the end of the function tells it the route was served. The
         // requested path is logged, NOT the request body — this
         // repository never writes to a log what could carry a

@@ -133,7 +133,7 @@ fn une_visibilite_de_mauvaise_version_est_rejetee() {
 }
 
 #[test]
-fn un_sommeil_s_ecrit_avec_son_type_en_tete_et_sa_raison() {
+fn a_sleep_is_written_with_its_type_first_and_its_reason() {
     let json =
         serde_json::to_string(&AgentControl::asleep(true, "evincee")).expect("sérialisation");
     assert!(json.starts_with(r#"{"type":"asleep""#), "obtenu : {json}");
@@ -142,7 +142,7 @@ fn un_sommeil_s_ecrit_avec_son_type_en_tete_et_sa_raison() {
 }
 
 #[test]
-fn le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version() {
+fn fullscreen_serialises_in_kebab_case_with_its_version() {
     let json = serde_json::to_string(&AgentControl::fullscreen(true)).unwrap();
     assert!(json.contains(r#""type":"fullscreen""#), "{json}");
     assert!(json.contains(r#""active":true"#), "{json}");
@@ -158,7 +158,7 @@ fn le_plein_ecran_fait_l_aller_retour() {
 }
 
 #[test]
-fn toutes_les_formes_de_curseur_sont_des_valeurs_css() {
+fn all_cursor_shapes_are_css_values() {
     // The client sets this string as is into `style.cursor`: an
     // unrecognised value would be silently ignored by the
     // browser, hence invisible in tests.
@@ -196,14 +196,14 @@ fn ready_porte_la_disponibilite_du_micro() {
 /// ADDING a field, but a MISSING field is a
 /// deserialization error in Rust. `#[serde(default)]` is therefore MANDATORY.
 #[test]
-fn un_ready_sans_micro_se_lit_avec_micro_faux() {
+fn a_ready_without_mic_reads_with_mic_false() {
     let m: AgentControl =
         serde_json::from_str(r#"{"type":"ready","v":3,"width":1,"height":1}"#).unwrap();
     assert_eq!(m, AgentControl::ready(1, 1, false));
 }
 
 #[test]
-fn serialise_le_presse_papier_avec_son_texte() {
+fn serialises_the_clipboard_with_its_text() {
     let json = serde_json::to_string(&AgentControl::clipboard(Some("bonjour".into()), 7))
         .expect("sérialisation");
     assert_eq!(
@@ -231,18 +231,18 @@ fn un_refus_de_presse_papier_serialise_un_text_null_present() {
     );
 }
 
-/// 🔴 What proves that `verifie_version` is indeed wired onto the NEW
+/// 🔴 What proves that `check_version` is indeed wired onto the NEW
 /// variant — forgetting it is a silent error, `version` being checked
 /// only through its attribute.
 #[test]
 fn un_presse_papier_en_version_2_est_rejete() {
     let brut = r#"{"type":"clipboard","v":2,"text":"bonjour","bytes":7}"#;
-    let erreur = serde_json::from_str::<AgentControl>(brut).expect_err("v:2 doit être rejeté");
+    let error = serde_json::from_str::<AgentControl>(brut).expect_err("v:2 doit être rejeté");
     assert!(
-        erreur
+        error
             .to_string()
             .contains("version de contrôle non supportée"),
-        "message inattendu : {erreur}"
+        "message inattendu : {error}"
     );
 }
 
@@ -274,23 +274,23 @@ fn serialise_le_collage_venu_du_client() {
     );
 }
 
-/// 🔴 RED if one forgets `deserialize_with = "verifie_version"` on the
+/// 🔴 RED if one forgets `deserialize_with = "check_version"` on the
 /// `version` field — **it is the line one omits when copying a neighbouring
 /// variant**, and nothing else in this repository would see it: the variant
 /// would work, it would simply accept any version at all.
 #[test]
 fn un_collage_client_a_la_mauvaise_version_est_rejete() {
-    let erreur = serde_json::from_str::<ClientControl>(r#"{"v":2,"type":"clipboard","text":"x"}"#);
-    assert!(erreur.is_err(), "une version 2 doit être refusée");
+    let error = serde_json::from_str::<ClientControl>(r#"{"v":2,"type":"clipboard","text":"x"}"#);
+    assert!(error.is_err(), "une version 2 doit être refusée");
 }
 
 /// 🔴 RED if the variant were placed on an enum without `deny_unknown_fields`:
 /// a badly behaved client could then push anything through.
 #[test]
-fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
-    let erreur =
+fn a_client_paste_with_an_extra_field_is_rejected() {
+    let error =
         serde_json::from_str::<ClientControl>(r#"{"v":3,"type":"clipboard","text":"x","bytes":1}"#);
-    assert!(erreur.is_err(), "un champ inconnu doit être refusé");
+    assert!(error.is_err(), "un champ inconnu doit être refusé");
 }
 
 /// 🔴 ROUGE si l'on oublie `#[serde(default)]` sur `Capabilities::clipboard`.
@@ -335,7 +335,7 @@ fn capabilities_serialise_les_deux_champs() {
 /// is at the TYPE and not at the logging site, precisely so that the
 /// NEXT site does not have to think about it.
 #[test]
-fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
+fn the_clipboard_debug_shows_the_size_and_never_the_text() {
     let rendu = format!("{:?}", ClientControl::clipboard("mot-de-passe-tres-secret"));
     assert!(
         !rendu.contains("secret"),
@@ -408,7 +408,7 @@ fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
 //
 // ⚠️ **Divergence V1, noted on 21 August 2026 and HANDED DOWN, not closed:**
 // there is NO shared vector file for `AgentControl`. The three
-// `*-vectors.json` of the repository serve `input`, `plateforme` and `fichiers`,
+// `*-vectors.json` of the repository serve `input`, `plateforme` and `files`,
 // never `control`. The tests below pin the wire shape **on the
 // Rust side**; `proto/ts/control.test.ts` pins **its own**. The two
 // agree because two hands wrote the same string, and **nothing
@@ -417,7 +417,7 @@ fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
 // is the first to name it, it does not create it.
 
 #[test]
-fn l_etat_du_micro_se_serialise_en_kebab_case_avec_sa_version() {
+fn the_mic_state_serialises_in_kebab_case_with_its_version() {
     let json = serde_json::to_string(&AgentControl::mic_state(false)).unwrap();
     // The TWO-word name is what makes `rename_all` observable: on an enum
     // whose variants all fit in one word, the mutation
@@ -428,7 +428,7 @@ fn l_etat_du_micro_se_serialise_en_kebab_case_avec_sa_version() {
 }
 
 #[test]
-fn l_etat_du_micro_fait_l_aller_retour_dans_les_deux_sens() {
+fn the_mic_state_round_trips_both_ways() {
     for accorde in [true, false] {
         let origine = AgentControl::mic_state(accorde);
         let json = serde_json::to_string(&origine).unwrap();
@@ -443,14 +443,14 @@ fn un_etat_de_micro_a_la_mauvaise_version_est_rejete() {
     // `deserialize_with` from the `MicState` variant alone establishes that the
     // check is wired variant by variant, and not once and for
     // all (pattern measured in P3: 1 failure out of 18).
-    let erreur =
+    let error =
         serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","v":2,"granted":true}"#)
             .expect_err("une version 2 doit être rejetée");
     assert!(
-        erreur
+        error
             .to_string()
             .contains("version de contrôle non supportée"),
-        "obtenu : {erreur}"
+        "obtenu : {error}"
     );
 }
 

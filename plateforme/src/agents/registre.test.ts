@@ -24,8 +24,8 @@ function socketFeint(readyState = 1): SocketAgent & { ecrits: string[]; fermetur
         get readyState() {
             return readyState;
         },
-        send(donnees: string) {
-            ecrits.push(donnees);
+        send(data: string) {
+            ecrits.push(data);
         },
         close(code?: number) {
             fermetures.push(code ?? 0);

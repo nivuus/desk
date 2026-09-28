@@ -17,7 +17,7 @@
 //! `traiter`, and it is read there.*
 
 use super::Etat;
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 /// L'annonce `Rafraichir` : le pont oublie ce qu'il croyait savoir.
 ///
@@ -29,7 +29,7 @@ use proto::fichiers::entetes;
 ///
 /// 🔵 **`PrjClearNegativePathCache` GAINS ITS FIRST PRODUCTION CALLER
 /// HERE.** It has been loaded since F1, and
-/// `grep -rn vider_cache_negatif agent/src/` returned until now only its
+/// `grep -rn clear_negative_path_cache agent/src/` returned until now only its
 /// declaration. **R7 closes by ONE entry point out of five** — not "R7 is closed":
 /// `PrjDeleteFile` and three others stay without a `PRJ_*_CB` twin.
 ///
@@ -41,13 +41,13 @@ use proto::fichiers::entetes;
 pub(super) fn rafraichir(etat: &Etat) {
     let memorises = match etat.cache.lock() {
         Ok(mut cache) => {
-            let n = cache.taille();
-            cache.vider();
+            let n = cache.size();
+            cache.drain();
             n
         }
         Err(_) => 0,
     };
-    let purgees = vider_le_cache_negatif(etat);
+    let purgees = clear_negative_cache(etat);
     tracing::info!(
         repertoires_oublies = memorises,
         cache_negatif_purge = purgees,
@@ -62,14 +62,14 @@ pub(super) fn rafraichir(etat: &Etat) {
 /// the virtualisation context was not there, the second that the cache was
 /// empty. *Confusing them would read an absence of measurement as a zero
 /// measurement* — it is the trap this repository paid for on `grep` without `-a`.
-fn vider_le_cache_negatif(etat: &Etat) -> i64 {
+fn clear_negative_cache(etat: &Etat) -> i64 {
     let Some(contexte) = etat.contexte() else {
         return -1;
     };
     let mut total: u32 = 0;
     // SAFETY: the context comes from `PrjStartVirtualizing` and lives as long as
     // virtualisation runs; `total` is a local stack slot valid for the call.
-    let hr = unsafe { (etat.projfs.vider_cache_negatif)(contexte.0, &mut total) };
+    let hr = unsafe { (etat.projfs.clear_negative_path_cache)(contexte.0, &mut total) };
     if hr.is_err() {
         tracing::warn!(code = hr.0, "PrjClearNegativePathCache a echoue");
         return -1;
@@ -80,15 +80,15 @@ fn vider_le_cache_negatif(etat: &Etat) -> i64 {
 /// The `Bonjour` announcement: the browser says on which root it is mounted.
 ///
 /// **The bridge has pushed nothing so far**, and that is the whole point: the resumption
-/// of due writes left `Fil::demarrer` to wait for this announcement.
+/// of due writes left `Fil::start` to wait for this announcement.
 pub(super) fn bonjour(etat: &Etat, entete: &[u8]) {
     let annonce = match serde_json::from_slice::<entetes::Bonjour>(entete) {
         Ok(annonce) => annonce,
-        Err(erreur) => {
+        Err(error) => {
             // 🔴 **A `warn!`, never a `debug!`.** An unreadable announcement means
             // that no due write will ever go out — a silence, hence
             // worse than the thirty seconds F2 measured.
-            tracing::warn!(%erreur, "annonce Bonjour illisible : aucune ecriture due ne partira");
+            tracing::warn!(%error, "annonce Bonjour illisible : aucune ecriture due ne partira");
             return;
         }
     };

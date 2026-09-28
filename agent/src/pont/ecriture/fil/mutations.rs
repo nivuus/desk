@@ -31,7 +31,7 @@
 
 use std::time::Instant;
 
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 use super::Fil;
 use crate::pont::ecriture::Evenement;
@@ -55,9 +55,7 @@ impl Fil {
                 vers,
                 repertoire,
             },
-            Evenement::Supprime { chemin, repertoire } => {
-                Mutation::Supprimer { chemin, repertoire }
-            }
+            Evenement::Deleted { chemin, repertoire } => Mutation::Delete { chemin, repertoire },
             // The calling arm guarantees `est_mutation()`; this case is
             // unreachable, and SAYING so beats assuming it.
             autre => {
@@ -111,7 +109,7 @@ impl Fil {
                     tracing::warn!(chemin, "ecriture due abandonnee : le chemin a ete supprime");
                     self.file.oublier(chemin);
                     let ligne = self.journal.retirer(chemin);
-                    self.ecrire_journal(&ligne);
+                    self.write_journal(&ligne);
                 }
                 self.annoncer_les_dues();
             }
@@ -122,7 +120,7 @@ impl Fil {
                 vers,
                 repertoire,
             } => (
-                proto::fichiers::TYPE_RENOMMER,
+                proto::files::TYPE_RENOMMER,
                 serde_json::to_string(&entetes::Renommer {
                     de: de.clone(),
                     vers: vers.clone(),
@@ -133,9 +131,9 @@ impl Fil {
                 true,
                 Some(vers.clone()),
             ),
-            Mutation::Supprimer { chemin, repertoire } => (
-                proto::fichiers::TYPE_SUPPRIMER,
-                serde_json::to_string(&entetes::Supprimer {
+            Mutation::Delete { chemin, repertoire } => (
+                proto::files::TYPE_DELETE,
+                serde_json::to_string(&entetes::Delete {
                     chemin: chemin.clone(),
                     repertoire: *repertoire,
                 })

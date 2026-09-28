@@ -56,8 +56,8 @@
 
 import { accesParPomerium, poser, poserAcces } from './jeton';
 import type { Ton } from './shell';
-import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
-import { effacerPrefixe, poserPrefixe } from './prefixe';
+import { installThemeSelectorInDOM } from './design/selecteur-theme';
+import { clearPrefix, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
 
 const params = new URLSearchParams(window.location.search);
@@ -89,7 +89,7 @@ const message = document.querySelector<HTMLDivElement>('#message')!;
 
 // The theme selector — a reasoned extension of spec §5.2, justified in
 // the header of `design/selecteur-theme.ts`.
-installerSelecteurDeThemeAuDOM(document.querySelector<HTMLElement>('#themes')!);
+installThemeSelectorInDOM(document.querySelector<HTMLElement>('#themes')!);
 
 /* ── THE BANNER'S TONE: A TABLE, NOT A RULE ───────────────────────────────
    🔴 NO CONDITION IS ADDED TO THIS FILE, and that is the clause of its
@@ -117,7 +117,7 @@ const CLASSE_DE_TON: Record<Ton, string> = {
     danger: 'message--danger',
 };
 
-function afficher(texte: string, ton: Ton): void {
+function show(texte: string, ton: Ton): void {
     message.textContent = texte;
     message.classList.remove('message--succes', 'message--alerte', 'message--danger');
     const classe = CLASSE_DE_TON[ton];
@@ -150,8 +150,8 @@ function afficher(texte: string, ton: Ton): void {
 ///   ③ the `catch` and `finally` of the `submit` STAY with the caller:
 ///      moving them here would re-enable `bouton.disabled = false` on the
 ///      Pomerium path, where no button was ever disabled.
-async function chercherLaSession(acces: string): Promise<void> {
-    afficher('recherche de votre machine…', 'neutre');
+async function fetchTheSession(acces: string): Promise<void> {
+    show('recherche de votre machine…', 'neutre');
     const session = await fetch(`${plateformeUrl}/session`, {
         method: 'POST',
         // 🔴 THE `Authorization` HEADER MAKES THE REQUEST NON-SIMPLE, hence
@@ -190,7 +190,7 @@ async function chercherLaSession(acces: string): Promise<void> {
         // prefix in the vault — a SILENT failure, which neither `npm run typecheck`
         // nor any test of this repository would see. The remedy is to move
         // `MOTIFS` down into `proto/ts`; it is LEFT AS LEGACY, not done.
-        effacerPrefixe(window.localStorage);
+        clearPrefix(window.localStorage);
     }
 
     if (!session.ok) {
@@ -205,7 +205,7 @@ async function chercherLaSession(acces: string): Promise<void> {
             sien?.redemarrage?.possible === false
                 ? ` — la plateforme ne sait pas la redémarrer (${sien.redemarrage.motif}, backend ${sien.redemarrage.backend})`
                 : '';
-        afficher(`${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`, 'danger');
+        show(`${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`, 'danger');
         return;
     }
 
@@ -242,21 +242,21 @@ async function chercherLaSession(acces: string): Promise<void> {
 /// (it must call the network ONLY if the vault is empty): copying this
 /// block would have let two copies drift, exactly the pattern
 /// `CLAUDE.md` forbids. What stays HERE — calling, setting, chaining on to
-/// `chercherLaSession` — is wiring specific to THIS page; validating
+/// `fetchTheSession` — is wiring specific to THIS page; validating
 /// the body (`accesDeReponse`, in `jeton.ts` since August 21st, 2026) and
 /// now the network call itself are shared, tested there.
 async function tenterPomerium(): Promise<boolean> {
     const acces = await accesParPomerium(plateformeUrl, window.fetch.bind(window));
     if (acces === undefined) return false;
     poserAcces(window.localStorage, acces);
-    await chercherLaSession(acces);
+    await fetchTheSession(acces);
     return true;
 }
 
 formulaire.addEventListener('submit', async (evenement) => {
     evenement.preventDefault();
     bouton.disabled = true;
-    afficher('connexion…', 'neutre');
+    show('connexion…', 'neutre');
 
     try {
         const reponse = await fetch(`${plateformeUrl}/auth/connexion`, {
@@ -271,7 +271,7 @@ formulaire.addEventListener('submit', async (evenement) => {
 
         if (!reponse.ok) {
             // The service's reason, as is — see the header.
-            afficher(`refusé : ${corps?.refus ?? reponse.status}`, 'danger');
+            show(`refusé : ${corps?.refus ?? reponse.status}`, 'danger');
             return;
         }
 
@@ -284,13 +284,13 @@ formulaire.addEventListener('submit', async (evenement) => {
         // find it filled in.
         champMotDePasse.value = '';
 
-        await chercherLaSession(corps.acces);
+        await fetchTheSession(corps.acces);
     } catch (cause) {
         // A NETWORK failure is stated as such: on another origin, it is the
         // symptom of a `PLATEFORME_ORIGINE_CLIENT` missing on the service side
         // (`plateforme/src/config.ts`), and confusing it with a credentials
         // refusal would send one looking for the defect in the wrong place.
-        afficher(`plateforme injoignable (${String(cause)})`, 'danger');
+        show(`plateforme injoignable (${String(cause)})`, 'danger');
     } finally {
         bouton.disabled = false;
     }
@@ -300,9 +300,9 @@ formulaire.addEventListener('submit', async (evenement) => {
 // fails: showing it first would flash a login screen on a
 // deployment that requires none.
 formulaire.hidden = true;
-afficher('identification…', 'neutre');
+show('identification…', 'neutre');
 void tenterPomerium().then((abouti) => {
     if (abouti) return;
     formulaire.hidden = false;
-    afficher('', 'neutre');
+    show('', 'neutre');
 });

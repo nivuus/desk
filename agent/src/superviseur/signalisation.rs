@@ -130,7 +130,7 @@ pub async fn connecter(
         Ok(texte) => {
             let _ = tx_sortant.send(texte);
         }
-        Err(erreur) => tracing::error!(%erreur, "sérialisation d'un message de contrôle"),
+        Err(error) => tracing::error!(%error, "sérialisation d'un message de contrôle"),
     };
 
     Ok((rx_entrant, envoyer))
@@ -198,7 +198,7 @@ async fn tenir(
     let mut reprise = Reprise::neuve();
     let mut flux = Some(premier);
     loop {
-        let courant = match flux.take() {
+        let current = match flux.take() {
             Some(f) => f,
             None => {
                 let delai_ms = reprise.delai_ms();
@@ -207,14 +207,14 @@ async fn tenir(
                 // 🔴 THE TOKEN IS REREAD HERE, NOT CAPTURED AT STARTUP: see
                 // the header. `borrow()` returns the last known identity,
                 // refreshed at each heartbeat by `plateforme/session.rs`.
-                let jeton = jeton_courant(&identite, &jeton_initial);
+                let jeton = current_token(&identite, &jeton_initial);
                 match ouvrir(&url, &session, jeton.as_deref()).await {
                     Ok(f) => {
                         // ⚠️ UNCONDITIONAL, and it carries the count of
                         // DROPPED messages — including `0`, which is the negative
                         // witness: a resumption without loss is thus distinguished
                         // from a resumption that ate three announcements.
-                        let jetes = vider(&mut rx_sortant);
+                        let jetes = drain(&mut rx_sortant);
                         tracing::warn!(
                             session = %session,
                             tentative = reprise.tentative(),
@@ -226,9 +226,9 @@ async fn tenir(
                         );
                         f
                     }
-                    Err(erreur) => {
+                    Err(error) => {
                         tracing::warn!(
-                            %erreur,
+                            %error,
                             session = %session,
                             tentative = reprise.tentative(),
                             delai_ms,
@@ -242,7 +242,7 @@ async fn tenir(
         };
 
         let debut = std::time::Instant::now();
-        let fin = servir(courant, &tx_entrant, &mut rx_sortant).await;
+        let fin = servir(current, &tx_entrant, &mut rx_sortant).await;
         let vecu_ms = debut.elapsed().as_millis() as u64;
         if let Fin::SuperviseurArrete = fin {
             tracing::info!(
@@ -260,7 +260,7 @@ async fn tenir(
             session = %session,
             vecu_ms,
             repli_rearme = rearme,
-            prochaine_tentative_dans_ms = reprise.delai_ms(),
+            next_attempt_in_ms = reprise.delai_ms(),
             "session de contrôle PERDUE : reconnexion programmée"
         );
     }
@@ -268,7 +268,7 @@ async fn tenir(
 
 /// The token to present NOW: the identity watch's if there is
 /// one, otherwise the startup one.
-fn jeton_courant(
+fn current_token(
     identite: &Option<watch::Receiver<Option<Identite>>>,
     jeton_initial: &Option<String>,
 ) -> Option<String> {
@@ -280,7 +280,7 @@ fn jeton_courant(
 
 /// Drops what was waiting to be emitted, and returns how much. See the header for the
 /// reason: a stale announcement is worse than no announcement.
-fn vider(rx: &mut tokio::sync::mpsc::UnboundedReceiver<String>) -> usize {
+fn drain(rx: &mut tokio::sync::mpsc::UnboundedReceiver<String>) -> usize {
     let mut jetes = 0usize;
     while rx.try_recv().is_ok() {
         jetes += 1;
@@ -313,8 +313,8 @@ async fn servir(
                     // loop spun idle consuming a core, without a
                     // trace. Not observed in production — the connection
                     // ended with `None` — but the path existed.
-                    Err(erreur) => {
-                        tracing::warn!(%erreur, "lecture de la session de contrôle en erreur");
+                    Err(error) => {
+                        tracing::warn!(%error, "lecture de la session de contrôle en erreur");
                         return Fin::ConnexionPerdue;
                     }
                     Ok(Message::Close(_)) => return Fin::ConnexionPerdue,
@@ -330,8 +330,8 @@ async fn servir(
             }
             a_emettre = rx_sortant.recv() => {
                 let Some(texte) = a_emettre else { return Fin::SuperviseurArrete };
-                if let Err(erreur) = sortant.send(Message::Text(texte)).await {
-                    tracing::warn!(%erreur, "émission vers la shell échouée");
+                if let Err(error) = sortant.send(Message::Text(texte)).await {
+                    tracing::warn!(%error, "émission vers la shell échouée");
                     return Fin::ConnexionPerdue;
                 }
             }
@@ -361,10 +361,10 @@ fn analyser(texte: &str) -> Option<DepuisLaShell> {
         // it is the ONLY way to distinguish "the platform is dead"
         // from "the platform refuses what I present to it".
         Err(_) => match serde_json::from_str::<serde_json::Value>(texte) {
-            Ok(valeur) if valeur.get("type").and_then(|t| t.as_str()) == Some("error") => {
+            Ok(value) if value.get("type").and_then(|t| t.as_str()) == Some("error") => {
                 tracing::warn!(
-                    motif = %valeur.get("motif").and_then(|m| m.as_str()).unwrap_or("(absent)"),
-                    raison = %valeur.get("reason").and_then(|r| r.as_str()).unwrap_or("(absente)"),
+                    motif = %value.get("motif").and_then(|m| m.as_str()).unwrap_or("(absent)"),
+                    raison = %value.get("reason").and_then(|r| r.as_str()).unwrap_or("(absente)"),
                     "session de contrôle REFUSÉE par la plateforme"
                 );
                 None

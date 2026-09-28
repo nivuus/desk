@@ -1,7 +1,7 @@
 //! Allocation of the numbers that distinguish our virtual output GUIDs.
 //!
 //! **Fix I1 of the final branch review.** The number was a simple
-//! strictly monotonic counter, never recycled: `pilote::creer`
+//! strictly monotonic counter, never recycled: `pilote::create`
 //! incremented it at each creation and nothing brought it back down at
 //! destruction. Yet the supervisor creates one output per window **opening**,
 //! without bound — whereas the bench that preceded only created ten in its whole
@@ -35,7 +35,7 @@ use anyhow::Result;
 /// stay due without being recycled.
 ///
 /// **It is this ceiling that is authoritative, not
-/// `diagnostics::multifenetre::montee::PLAFOND_RECHERCHE`** — which says
+/// `diagnostics::multifenetre::montee::SEARCH_CEILING`** — which says
 /// how high a MEASUREMENT climbs, an unrelated question that merely
 /// shared the same value.
 pub const PLAFOND_NUMEROS: u16 = 16;
@@ -127,7 +127,7 @@ mod tests {
     /// Eight windows open at the same time — the work stream's target — then
     /// renewed indefinitely: the numbers stay in range.
     #[test]
-    fn huit_sorties_simultanees_renouvelees_restent_dans_la_plage() {
+    fn eight_simultaneous_renewed_outputs_stay_in_range() {
         let mut numeros = Numeros::default();
         let mut vivantes: Vec<u16> = (0..8).map(|_| numeros.attribuer().unwrap()).collect();
         for _ in 0..50 {

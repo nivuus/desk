@@ -169,7 +169,7 @@ with tempfile.TemporaryDirectory() as tmp9:
 # raison (« `facts` vient de nous, on ne s'en défend pas ») a été RÉFUTÉE
 # dans cette branche même, sur `facts["hote"]` — voir l'installation 6. Les
 # clés voisines gardaient pourtant la même raison écrite.
-for etiquette, cle, valeur, attendu in [
+for etiquette, cle, value, attendu in [
     ("turn_ecoute universelle", "turn_ecoute", "0.0.0.0", "universelle"),
     ("turn_relais universelle", "turn_relais", "::", "universelle"),
     ("proxy_confiance universelle", "proxy_confiance", "*", "universelle"),
@@ -180,7 +180,7 @@ for etiquette, cle, valeur, attendu in [
     with tempfile.TemporaryDirectory() as tmp10:
         root10 = pathlib.Path(tmp10)
         facts10 = dict(FACTS)
-        facts10[cle] = valeur
+        facts10[cle] = value
         r10 = appeler(root10, facts=facts10)
         check(f"facts {etiquette} : code de sortie NON NUL", r10.returncode != 0, True)
         check(f"facts {etiquette} : aucune trace Python",

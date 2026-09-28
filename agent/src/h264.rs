@@ -152,27 +152,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn decoupe_avec_start_code_de_quatre_octets() {
+    fn splits_with_four_byte_start_code() {
         let stream = [0, 0, 0, 1, 0x67, 0xAA, 0, 0, 0, 1, 0x68, 0xBB];
         let nals = split_annex_b(&stream);
         assert_eq!(nals, vec![vec![0x67, 0xAA], vec![0x68, 0xBB]]);
     }
 
     #[test]
-    fn decoupe_avec_start_code_de_trois_octets() {
+    fn splits_with_three_byte_start_code() {
         let stream = [0, 0, 1, 0x67, 0xAA, 0, 0, 1, 0x65, 0xBB];
         let nals = split_annex_b(&stream);
         assert_eq!(nals, vec![vec![0x67, 0xAA], vec![0x65, 0xBB]]);
     }
 
     #[test]
-    fn ignore_les_octets_avant_le_premier_start_code() {
+    fn ignores_bytes_before_the_first_start_code() {
         let stream = [0xFF, 0xFF, 0, 0, 0, 1, 0x65, 0x01];
         assert_eq!(split_annex_b(&stream), vec![vec![0x65, 0x01]]);
     }
 
     #[test]
-    fn renvoie_rien_sans_start_code() {
+    fn returns_nothing_without_start_code() {
         assert!(split_annex_b(&[0xFF, 0xFE, 0xFD]).is_empty());
         assert!(split_annex_b(&[]).is_empty());
     }

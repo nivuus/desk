@@ -11,7 +11,7 @@
 // spec §7.7 : « Il n'est adossé à aucune mesure de performance : c'est un
 // garde-fou contre une addition massive, pas une cible de budget. » Il rejoint
 // la liste des constantes non calibrées du dépôt — `BPP_MIN`, `FACTEUR_FOCUS`,
-// `PART_DORMANTE_BPS`, `TAILLE_MAX_SORTIE` — et se révise sans embarras.
+// `PART_DORMANTE_BPS`, `MAX_OUTPUT_SIZE` — et se révise sans embarras.
 //
 // Ligne de base relevée le 19 août 2026, au commit `7314171`, `client/` étant
 // inchangé depuis `8ad03a2` :

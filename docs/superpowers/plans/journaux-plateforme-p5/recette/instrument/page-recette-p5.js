@@ -12,7 +12,7 @@ const etat = {
     fetchStatut: null,
     fetchLisible: null,
     fetchChamps: null,
-    fetchErreur: null,
+    fetchError: null,
 };
 window.__p5 = etat;
 
@@ -71,7 +71,7 @@ fetch(location.origin + '/auth/connexion', {
     })
     .catch((e) => {
         etat.fetchLisible = false;
-        etat.fetchErreur = String(e);
+        etat.fetchError = String(e);
         peindre();
     });
 

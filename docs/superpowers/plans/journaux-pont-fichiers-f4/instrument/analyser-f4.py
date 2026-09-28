@@ -51,7 +51,7 @@ def recensements(chemin):
     return sortie
 
 
-def dernier_avant(rec, t):
+def last_before(rec, t):
     vus = [r for r in rec if r[0] <= t]
     return vus[-1] if vus else None
 
@@ -71,8 +71,8 @@ def main():
     for r in mv.get('releves', []):
         if 'debut_iso' not in r:
             continue
-        a = dernier_avant(rec, horo(r['debut_iso']))
-        b = dernier_avant(rec, horo(r['fin_iso']) + timedelta(seconds=repos))
+        a = last_before(rec, horo(r['debut_iso']))
+        b = last_before(rec, horo(r['fin_iso']) + timedelta(seconds=repos))
         arbitre = r.get('ms', 0)
         if a is None or b is None or a[0] == b[0]:
             print(f"{r['geste']:>16} {arbitre:11.1f} | ⛔ fenêtre de recensement VIDE "

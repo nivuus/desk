@@ -378,11 +378,11 @@ def valider_port_de_facts(brut, origine: str = 'facts["port"]'):
         brut_nettoye = brut.strip()
         if not brut_nettoye.isdigit():
             return None, f"{origine}={brut!r} n'est pas un entier"
-        valeur = int(brut_nettoye)
+        value = int(brut_nettoye)
     elif isinstance(brut, int):
-        valeur = brut
+        value = brut
     else:
         return None, f"{origine}={brut!r} n'est pas un entier"
-    if not 1 <= valeur <= 65535:
-        return None, f"{origine}={valeur} est hors de la plage 1-65535"
-    return valeur, None
+    if not 1 <= value <= 65535:
+        return None, f"{origine}={value} est hors de la plage 1-65535"
+    return value, None

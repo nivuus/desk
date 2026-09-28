@@ -65,13 +65,13 @@ struct Entree {
     /// **Visibility alone would not be enough to order an LRU**: ten
     /// windows all visible have exactly the same visibility, and
     /// eviction would then be arbitrary.
-    dernier_vu: Instant,
+    last_seen: Instant,
     eveillee: bool,
     eveillee_depuis: Instant,
     /// Instant of the last wake-up failure, or `None` if it never failed or not for
     /// a long time. Excludes the window from the candidates as long as the respite has not
     /// elapsed.
-    dernier_echec: Option<Instant>,
+    last_failure: Option<Instant>,
 }
 
 pub struct Vivier {
@@ -81,7 +81,7 @@ pub struct Vivier {
 }
 
 impl Vivier {
-    pub fn nouveau(plafond: usize, hysteresis: Duration) -> Vivier {
+    pub fn new(plafond: usize, hysteresis: Duration) -> Vivier {
         Vivier {
             plafond,
             hysteresis,
@@ -97,10 +97,10 @@ impl Vivier {
             session.to_string(),
             Entree {
                 visible: false,
-                dernier_vu: maintenant,
+                last_seen: maintenant,
                 eveillee: false,
                 eveillee_depuis: maintenant,
-                dernier_echec: None,
+                last_failure: None,
             },
         );
         self.arbitrer(maintenant)
@@ -126,7 +126,7 @@ impl Vivier {
         // Recency is refreshed on focus AND on return to visibility: these
         // are the two ways the user says "I am looking at this one".
         if focalisee || (visible && !entree.visible) {
-            entree.dernier_vu = maintenant;
+            entree.last_seen = maintenant;
         }
         entree.visible = visible;
         self.arbitrer(maintenant)
@@ -144,7 +144,7 @@ impl Vivier {
             return Vec::new();
         };
         entree.eveillee = false;
-        entree.dernier_echec = Some(maintenant);
+        entree.last_failure = Some(maintenant);
         self.arbitrer(maintenant)
     }
 
@@ -182,7 +182,7 @@ impl Vivier {
     /// next re-arbitration, the pool sees 9 > 8 and puts someone back to sleep, whereas
     /// without it it would never see 9 and would let the drift settle in.
     /// The test
-    /// `sommeil::tests_refus::une_sur_souscription_par_un_dormir_non_depose_est_resorbee_au_tour_suivant`
+    /// `sommeil::tests_refus::an_oversubscription_from_an_undelivered_sleep_is_absorbed_next_round`
     /// measures it at both times.
     ///
     /// 🔴 THE REMEDY IS "DO NOT LIE", NOT "RETRY". The state
@@ -193,7 +193,7 @@ impl Vivier {
     /// it is the next wheel round that takes over.
     ///
     /// ⚠️ **WHAT THE CANCELLATION DOES NOT RESTORE, and it must be said**: on a
-    /// `Reveiller`, `arbitrer` set `dernier_echec = None`, and the previous value
+    /// `Reveiller`, `arbitrer` set `last_failure = None`, and the previous value
     /// is not memorised. It is therefore not given back. The
     /// consequence is **intended**: the session becomes a candidate again without
     /// respite, which is precisely what we want — that the next
@@ -300,11 +300,11 @@ impl Vivier {
             .iter()
             .filter(|(_, e)| {
                 e.visible
-                    && e.dernier_echec.is_none_or(|t| {
+                    && e.last_failure.is_none_or(|t| {
                         maintenant.saturating_duration_since(t) >= REPIT_APRES_ECHEC
                     })
             })
-            .map(|(nom, e)| (nom.clone(), e.dernier_vu))
+            .map(|(nom, e)| (nom.clone(), e.last_seen))
             .collect();
         candidates.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
@@ -330,7 +330,7 @@ impl Vivier {
             if doit_veiller && !e.eveillee {
                 e.eveillee = true;
                 e.eveillee_depuis = maintenant;
-                e.dernier_echec = None;
+                e.last_failure = None;
                 ordres_reveiller.push((nom, Ordre::Reveiller));
             } else if !doit_veiller && e.eveillee {
                 e.eveillee = false;

@@ -109,8 +109,8 @@ const chrome = spawn('google-chrome', [
 
 try {
     await attendreDevtools(PORT);
-    const liste = await cibles();
-    const page = liste.find((c) => c.type === 'page');
+    const list = await cibles();
+    const page = list.find((c) => c.type === 'page');
     const shell = new Cdp(page.webSocketDebuggerUrl);
     await shell.envoyer('Page.enable');
     await shell.envoyer('Runtime.enable');
@@ -155,11 +155,11 @@ try {
         await dormir(1000);
         for (const c of await cibles()) {
             if (c.type !== 'page' || c.id === page.id) continue;
-            const essai = new Cdp(c.webSocketDebuggerUrl);
-            await essai.envoyer('Runtime.enable');
-            const vu = await essai.evaluer('typeof window.__pc').catch(() => 'erreur');
-            if (vu === 'object') { session = essai; console.log(`page de session : ${c.url}`); break; }
-            essai.fermer();
+            const attempt = new Cdp(c.webSocketDebuggerUrl);
+            await attempt.envoyer('Runtime.enable');
+            const vu = await attempt.evaluer('typeof window.__pc').catch(() => 'erreur');
+            if (vu === 'object') { session = attempt; console.log(`page de session : ${c.url}`); break; }
+            attempt.fermer();
         }
     }
     if (!session) throw new Error("aucune page de session n'est apparue : la shell a-t-elle recu une fenetre ?");

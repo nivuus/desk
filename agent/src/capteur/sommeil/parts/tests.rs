@@ -26,7 +26,7 @@ use crate::capteur::vivier::Ordre;
 /// Last share received on a channel, draining what is there.
 fn derniere_part(canal: &ReceveurSession) -> Option<u32> {
     canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::Part { bps } => Some(bps),
@@ -92,7 +92,7 @@ fn une_session_qui_s_eveille_recoit_la_part_d_une_eveillee_et_une_seule() {
     let (messages, generation) = inscrire("t6-a", 6001);
     signaler("t6-a", true, true);
 
-    let recus: Vec<Message> = messages.vider();
+    let recus: Vec<Message> = messages.drain();
     assert!(
         recus
             .iter()
@@ -130,12 +130,12 @@ fn une_part_inchangee_n_est_pas_reemise() {
     let _verrou = verrouiller_pour_le_test();
     let (messages, generation) = inscrire("t6-b", 6002);
     signaler("t6-b", true, true);
-    let _ = messages.vider();
+    let _ = messages.drain();
 
     // Same signal, hence same state, hence same share: nothing must go out.
     signaler("t6-b", true, true);
     let parts: Vec<Message> = messages
-        .vider()
+        .drain()
         .into_iter()
         .filter(|m| matches!(m, Message::Part { .. }))
         .collect();
@@ -240,7 +240,7 @@ fn un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier() {
 /// judges it already delivered, and the NEW channel never receives anything — the
 /// bitrate ceiling of this child stays stale without end.
 #[test]
-fn un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf() {
+fn a_reattach_with_unchanged_topology_resends_a_share_on_the_new_channel() {
     let _verrou = verrouiller_pour_le_test();
 
     // First channel: registration alone, no other window, no
@@ -286,7 +286,7 @@ fn un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf() {
 /// change — without bound, and without a log line.
 ///
 /// **This test fails on its LAST assertion before the fix**
-/// (`une part refusée doit être RÉÉMISE au tour suivant`), the share having
+/// (`une part refusée doit être RÉÉMISE au tour next`), the share having
 /// been wrongly memorised. The first two pass on both sides: they
 /// establish the precondition (the queue is indeed full, the share is
 /// indeed not delivered), without which the third would measure nothing.
@@ -299,13 +299,13 @@ fn un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf() {
 /// the new share **without touching wakefulness**, through a second session that
 /// takes its share of the shared budget.
 #[test]
-fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
+fn a_refused_share_is_not_remembered_and_goes_again_next_round() {
     let _verrou = verrouiller_pour_le_test();
     let (canal, generation) = inscrire("t17-refus", 6400);
     // The session wakes up FIRST, queue free: its awake share goes out and is
     // memorised normally. That is the ordinary state we start from.
     signaler("t17-refus", true, true);
-    let _ = canal.vider();
+    let _ = canal.drain();
 
     // Saturates the queue with NON-COALESCABLE messages — `Sommeil` never
     // coalesces, that is what makes it possible to reach the bound.
@@ -327,7 +327,7 @@ fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
 
     // The window resumes reading. No share is there: it was
     // never dropped.
-    let recus = canal.vider();
+    let recus = canal.drain();
     assert_eq!(
         recus.len(),
         PROFONDEUR_MAX,
@@ -345,7 +345,7 @@ fn une_part_refusee_n_est_pas_memorisee_et_repart_au_tour_suivant() {
         super::distribuer_les_parts(&mut garde);
     }
     let parts: Vec<u32> = canal
-        .vider()
+        .drain()
         .into_iter()
         .filter_map(|m| match m {
             Message::Part { bps } => Some(bps),

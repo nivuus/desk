@@ -53,11 +53,11 @@ afterEach(async () => {
 let magasin: Magasin | undefined;
 let racinesIcones: string[] = [];
 
-async function demarrer(p: Pilote, avecMagasin = false): Promise<number> {
+async function start(p: Pilote, withStore = false): Promise<number> {
     maintenant = T0;
     registre = new RegistreAgents();
     magasin = undefined;
-    if (avecMagasin) {
+    if (withStore) {
         const r = mkdtempSync(join(tmpdir(), 'g2-canal-icones-'));
         racinesIcones.push(r);
         magasin = ouvrirMagasin(join(r, 'icones'), () => {});
@@ -135,7 +135,7 @@ describe('le canal /agent, côté applications', () => {
         // jeton.
         base = await baseNeuve('canal-apps-sequence-catalogue');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeCatalogue(true, [app('Intrus', 'cle-intrus')], []));
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
@@ -151,7 +151,7 @@ describe('le canal /agent, côté applications', () => {
         // autre, et faire croire à un lancement réussi qui n'a pas eu lieu.
         base = await baseNeuve('canal-apps-sequence-lancee');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeLancee('d-1', 'raccourci'));
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
@@ -161,7 +161,7 @@ describe('le canal /agent, côté applications', () => {
     it('un `catalogue` valide est FUSIONNÉ et ÉCRIT', async () => {
         base = await baseNeuve('canal-apps-ecriture');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
 
         pair.socket.send(encodeCatalogue(true, [app('Firefox', 'c-1'), app('Excel', 'c-2')], []));
@@ -189,7 +189,7 @@ describe('le canal /agent, côté applications', () => {
         base = await baseNeuve('canal-apps-echec-ecriture');
         await enrolerUneVm(base, 'v-1');
         const journal = vi.spyOn(console, 'error').mockImplementation(() => {});
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
 
         await base.fermer();
@@ -215,7 +215,7 @@ describe('le canal /agent, côté applications', () => {
         // d'attente avant d'échouer.
         base = await baseNeuve('canal-apps-registre');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         // AVANT l'enrôlement : personne. C'est le témoin sans lequel
         // l'assertion suivante serait vraie d'un registre qui accepterait tout.
@@ -241,7 +241,7 @@ describe('le canal /agent, côté applications', () => {
     it('un `lancee` RÉSOUT la demande en vol, avec son issue', async () => {
         base = await baseNeuve('canal-apps-lancee');
         await enrolerUneVm(base, 'v-1');
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
 
         const enVol = registre.lancer('v-1', 'c-1', 'd-1');
@@ -264,7 +264,7 @@ describe('le canal /agent, côté applications', () => {
 
 /// 🔴 LES EMPREINTES SONT DÉRIVÉES DE LEUR CONTENU, JAMAIS INVENTÉES. Une
 /// première rédaction posait `'a'.repeat(64)` et déposait des octets
-/// quelconques dessous : `ecrire` l'a REFUSÉ — c'est la garde de recalcul
+/// quelconques dessous : `write` l'a REFUSÉ — c'est la garde de recalcul
 /// faisant exactement son travail, sur le test qui l'ignorait.
 const OCTETS_1 = Buffer.from('\x89PNG-un');
 const OCTETS_2 = Buffer.from('\x89PNG-deux');
@@ -295,7 +295,7 @@ describe("l'inventaire des icônes manquantes", () => {
 
     it('réclame les empreintes que le magasin n’a PAS', async () => {
         base = await baseNeuve('canal-icones-manque');
-        const port = await demarrer(base, true);
+        const port = await start(base, true);
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(port);
         await enrole(pair);
@@ -314,9 +314,9 @@ describe("l'inventaire des icônes manquantes", () => {
         // toujours. C'est très exactement ce que le diff de G1 existe pour
         // éviter, et c'est là que le critère ⑤ se juge.
         base = await baseNeuve('canal-icones-rien');
-        const port = await demarrer(base, true);
-        magasin!.ecrire(E1, OCTETS_1);
-        magasin!.ecrire(E2, OCTETS_2);
+        const port = await start(base, true);
+        magasin!.write(E1, OCTETS_1);
+        magasin!.write(E2, OCTETS_2);
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(port);
         await enrole(pair);
@@ -330,8 +330,8 @@ describe("l'inventaire des icônes manquantes", () => {
 
     it('ne réclame QUE ce qui manque, et ignore les applications SANS icône', async () => {
         base = await baseNeuve('canal-icones-partiel');
-        const port = await demarrer(base, true);
-        magasin!.ecrire(E1, OCTETS_1);
+        const port = await start(base, true);
+        magasin!.write(E1, OCTETS_1);
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(port);
         await enrole(pair);
@@ -349,8 +349,8 @@ describe("l'inventaire des icônes manquantes", () => {
         // TOUJOURS. C'est ce qui rend le magasin AUTO-RECONSTRUCTIBLE, et donc
         // le disque acceptable.
         base = await baseNeuve('canal-icones-perdu');
-        const port = await demarrer(base, true);
-        magasin!.ecrire(E1, OCTETS_1);
+        const port = await start(base, true);
+        magasin!.write(E1, OCTETS_1);
         rmSync(join(magasin!.repertoire, E1));
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(port);
@@ -363,7 +363,7 @@ describe("l'inventaire des icônes manquantes", () => {
 
     it('sans magasin, aucun inventaire — et le catalogue s’écrit quand même', async () => {
         base = await baseNeuve('canal-icones-sans-magasin');
-        const port = await demarrer(base, false);
+        const port = await start(base, false);
         await enrolerUneVm(base, 'v-1');
         const pair = await ouvrir(port);
         await enrole(pair);

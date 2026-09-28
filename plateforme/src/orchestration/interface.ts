@@ -21,7 +21,7 @@
 import type { EtatAgent } from '../agents/fraicheur';
 // TYPE-only import, hence erased at compile time: the cycle
 // `interface.ts` <-> `refus.ts` does not exist at runtime.
-import type { Resultat } from './refus';
+import type { Outcome } from './refus';
 
 /// The state of a VM, as a v1 backend can know it.
 ///
@@ -51,7 +51,7 @@ export interface Vm {
     adresse: string;
     /// `null` = in the pool, belonging to nobody. ⚠️ "To nobody" is NOT "to
     /// everybody": `orchestration/selection.ts` returns it to no user.
-    utilisateurId: string | null;
+    userId: string | null;
     /// `null` if the VM has never been enrolled as an agent.
     prefixe: string | null;
     /// The last heartbeat, `null` if the agent has never beaten. It is the
@@ -84,7 +84,7 @@ export type Operation = (typeof OPERATIONS)[number];
 ///
 /// 🔴 `attribuer` IS NOT IN IT, AND A NAMED TEST HOLDS THAT. There
 /// is no administration role in this service (`identite/jeton.ts`
-/// only knows `utilisateur` and `agent`): an assignment route would be
+/// only knows `user` and `agent`): an assignment route would be
 /// open to any authenticated user, hence a privilege escalation
 /// on a plate. Assignment goes through `npm run admin:attribuer` (D8).
 export const OPERATIONS_HTTP = [
@@ -107,13 +107,13 @@ export const OPERATIONS_HORS_HTTP = [
 
 /// What an orchestration backend can do — and what it refuses.
 ///
-/// 🔴 THE THREE ACTION VERBS RETURN A `Resultat`, NEVER A
+/// 🔴 THE THREE ACTION VERBS RETURN A `Outcome`, NEVER A
 /// `Promise<void>`. That is the point spec §3.6 calls "the most important shape
 /// decision": a `Promise<void>` that does nothing would be
 /// indistinguishable from a `Promise<void>` that does the work. See
 /// `orchestration/refus.ts`.
 ///
-/// ⚠️ `lister` AND `etat` DO NOT RETURN A `Resultat`, and that is deliberate: an
+/// ⚠️ `lister` AND `etat` DO NOT RETURN A `Outcome`, and that is deliberate: an
 /// empty inventory is an inventory, not a refusal, and an unknown VM has a
 /// state — `injoignable` —, which is true and sufficient. That is already what
 /// `agents/fraicheur.ts` says of a VM never seen.
@@ -124,8 +124,8 @@ export interface Orchestrateur {
     /// The state of a VM. An unknown VM returns `injoignable`, never an
     /// exception.
     etat(vm: string): Promise<EtatVm>;
-    demarrer(vm: string): Promise<Resultat>;
-    arreter(vm: string): Promise<Resultat>;
-    instantane(vm: string, nom: string): Promise<Resultat>;
-    attribuer(vm: string, utilisateur: string): Promise<Resultat>;
+    start(vm: string): Promise<Outcome>;
+    arreter(vm: string): Promise<Outcome>;
+    instantane(vm: string, nom: string): Promise<Outcome>;
+    attribuer(vm: string, user: string): Promise<Outcome>;
 }

@@ -9,7 +9,7 @@
 //!
 //! **What is NOT excluded, and cannot be with the imposed
 //! interface**: `DesktopCapture::sur_sortie` calls `ouvrir`, which calls
-//! `creer_peripherique` (`agent/src/capture/ouverture.rs:83-139`) — and this
+//! `create_device_and_context` (`agent/src/capture/ouverture.rs:83-139`) — and this
 //! function INEVITABLY builds a real `ID3D11Device` + `ID3D11DeviceContext`
 //! per duplication (`D3D11CreateDevice` with
 //! `D3D11_CREATE_DEVICE_BGRA_SUPPORT`), then sets on them
@@ -68,7 +68,7 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
         .context("MULTIFENETRE_PLAFOND_RANG doit être un entier")
     {
         Ok(rang) => rang,
-        Err(erreur) => {
+        Err(error) => {
             // Without this block, the original `?` exited BEFORE any verdict
             // was written: the bearer (Task 10) bounds its wait (see
             // `attendre_le_verdict`, `plafond.rs`) and returns MORTE if nothing
@@ -84,10 +84,10 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
             // value stays in the trace below, where interpolating it poses
             // no risk. Best-effort (a write failure makes nothing worse:
             // this trace remains the reference diagnostic).
-            tracing::error!(rang_brute = %rang_brute, %erreur, "MULTIFENETRE_PLAFOND_RANG illisible");
+            tracing::error!(rang_brute = %rang_brute, %error, "MULTIFENETRE_PLAFOND_RANG illisible");
             let secours = chemin_verdict_rang_invalide();
             let _ = std::fs::write(&secours, format!("KO RANG_INVALIDE {rang_brute}"));
-            return Err(erreur);
+            return Err(error);
         }
     };
 
@@ -108,8 +108,8 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
                 );
                 tenues.push(duplication);
             }
-            Err(erreur) => {
-                // `{erreur:#}` and not `{erreur}`: `anyhow`'s simple Display
+            Err(error) => {
+                // `{error:#}` and not `{error}`: `anyhow`'s simple Display
                 // only renders the OUTERMOST context ("duplication de la
                 // sortie écran"), and the HRESULT — the only data the
                 // matrix uses — would stay in the causes, invisible here.
@@ -119,12 +119,12 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
                 // a trace from ANOTHER module, which nothing guaranteed. The
                 // alternate format renders the full chain of causes, hence
                 // the HRESULT, in the trace as in the verdict.
-                let causes = format!("{erreur:#}");
+                let causes = format!("{error:#}");
                 tracing::error!(
                     sonde = rang,
                     duplication = rang_local + 1,
                     %nom,
-                    erreur = %causes,
+                    error = %causes,
                     "duplication REFUSÉE"
                 );
                 verdict = format!("KO {causes} {nom}");

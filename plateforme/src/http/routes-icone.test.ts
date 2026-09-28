@@ -15,7 +15,7 @@ import { ouvrirMagasin, type Magasin } from '../apps/icones';
 import { MOTEUR } from '../base/harnais';
 import {
     attribuer,
-    avec,
+    withIt,
     demonter,
     jetonDe,
     monterRoute,
@@ -83,7 +83,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
     it('sert `/application/:id/icone` SANS `?e=` par un 400 typé', async () => {
         const url = await servir('icone-sans-e');
         const jeton = jetonDe('u1');
-        const r = await fetch(`${url}/application/x/icone`, { headers: avec(jeton) });
+        const r = await fetch(`${url}/application/x/icone`, { headers: withIt(jeton) });
         // Le chemin EST reconnu — donc pas le 404 générique.
         expect(r.status).toBe(400);
         expect(await r.json()).toEqual({ refus: 'empreinte-absente' });
@@ -94,7 +94,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             const url = await servir('icone-put');
             const r = await fetch(`${url}/icone/${EMPREINTE}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: PNG,
             });
             expect(r.status).toBe(204);
@@ -108,7 +108,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             const url = await servir('icone-put-humain');
             const r = await fetch(`${url}/icone/${EMPREINTE}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('u1')),
+                headers: withIt(jetonDe('u1')),
                 body: PNG,
             });
             expect(r.status).toBe(403);
@@ -137,7 +137,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             const url = await servir('icone-put-menteur');
             const r = await fetch(`${url}/icone/${AUTRE}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: PNG,
             });
             expect(r.status).toBe(400);
@@ -150,7 +150,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             // `..%2f..%2fx` : le chemin décodé sortirait du répertoire.
             const r = await fetch(`${url}/icone/..%2f..%2fx`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: PNG,
             });
             expect(r.status).toBe(400);
@@ -162,7 +162,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             const gros = Buffer.alloc(ICONE_MAX_OCTETS + 1, 7);
             const r = await fetch(`${url}/icone/${createHash('sha256').update(gros).digest('hex')}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: gros,
             });
             expect(r.status).toBe(413);
@@ -171,7 +171,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
 
         it('refuse une autre méthode que PUT en 405', async () => {
             const url = await servir('icone-put-methode');
-            const r = await fetch(`${url}/icone/${EMPREINTE}`, { headers: avec(jetonDe('u1')) });
+            const r = await fetch(`${url}/icone/${EMPREINTE}`, { headers: withIt(jetonDe('u1')) });
             expect(r.status).toBe(405);
             expect(await r.json()).toEqual({ refus: 'methode' });
         });
@@ -186,7 +186,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             const id = await poserApp(base, 'vm-1', 'Bloc-notes', 'a1b2', EMPREINTE, {
                 pixels: 256,
             });
-            magasin.ecrire(EMPREINTE, PNG);
+            magasin.write(EMPREINTE, PNG);
             return { url, id, u };
         }
 
@@ -274,7 +274,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             // sous un en-tête immuable — le cache serait empoisonné POUR UN AN
             // avec une image qui n'est pas celle que l'URL nomme.
             const { url, id } = await poser('icone-get-perime');
-            magasin.ecrire(AUTRE, Buffer.from('autre'));
+            magasin.write(AUTRE, Buffer.from('autre'));
             const r = await fetch(`${url}${signee(id, 'vm-1', AUTRE)}`);
             expect(r.status).toBe(404);
             expect(await r.json()).toEqual({ refus: 'icone-inconnue' });
@@ -287,7 +287,7 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             // pourrait rouvrir la porte sans que rien ne le dise.
             const { url, id, u } = await poser('icone-get-porteur-retire');
             const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(u)),
+                headers: withIt(jetonDe(u)),
             });
             expect(r.status).toBe(400);
             expect(await r.json()).toEqual({ refus: 'signature-absente' });

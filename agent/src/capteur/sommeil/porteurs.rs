@@ -35,9 +35,9 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
             // : `inscrire` sets both together. The `filter_map` is a
             // safety net, not a nominal case.
             //
-            // ⚠️ `arrivee` and `dernier_focus` are NOT symmetric despite
+            // ⚠️ `arrivee` and `last_focus` are NOT symmetric despite
             // appearances: `0` is the DOCUMENTED sentinel of
-            // `dernier_focus` ("never focused", the lowest
+            // `last_focus` ("never focused", the lowest
             // priority — see `FenetreAudio`), so `unwrap_or(0)` is the right
             // fallback there. For `arrivee`, `0` BEATS any real window of its
             // PID group (`l_emporte` compares `candidat.arrivee <
@@ -52,7 +52,7 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
                 session: session.clone(),
                 pid,
                 arrivee,
-                dernier_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
+                last_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
                 inapte: garde.inaptes.contains_key(session),
             })
         })
@@ -156,9 +156,9 @@ mod tests {
     /// module — same set-up as `parts::tests`, which imports
     /// `verrouiller_pour_le_test` the same way rather than adding its
     /// own tests to the parent file.
-    fn dernier_audio(canal: &ReceveurSession) -> Option<bool> {
+    fn last_audio(canal: &ReceveurSession) -> Option<bool> {
         canal
-            .vider()
+            .drain()
             .into_iter()
             .filter_map(|m| match m {
                 Message::Audio { actif } => Some(actif),
@@ -175,18 +175,18 @@ mod tests {
 
         // No focused window: the first arrival carries the sound.
         assert_eq!(
-            dernier_audio(&a),
+            last_audio(&a),
             Some(true),
             "la premiere arrivee porte le son"
         );
-        assert_eq!(dernier_audio(&b), Some(false), "la seconde se tait");
+        assert_eq!(last_audio(&b), Some(false), "la seconde se tait");
 
         // "b" takes the focus: the sound switches, and "a" receives the order to go
         // silent — otherwise both would be audible at the same time.
         signaler("t9-b", true, true);
-        assert_eq!(dernier_audio(&b), Some(true), "la focalisee prend le son");
+        assert_eq!(last_audio(&b), Some(true), "la focalisee prend le son");
         assert_eq!(
-            dernier_audio(&a),
+            last_audio(&a),
             Some(false),
             "la precedente porteuse se tait"
         );
@@ -194,22 +194,18 @@ mod tests {
         // "b" disappears: "a" must take the sound back, otherwise the group becomes
         // permanently silent.
         retirer("t9-b", generation_b);
-        assert_eq!(
-            dernier_audio(&a),
-            Some(true),
-            "le son revient a la survivante"
-        );
+        assert_eq!(last_audio(&a), Some(true), "le son revient a la survivante");
 
         retirer("t9-a", generation_a);
     }
 
     #[test]
-    fn deux_pid_distincts_portent_chacun_leur_son() {
+    fn two_distinct_pids_each_carry_their_sound() {
         let _verrou = verrouiller_pour_le_test();
         let (a, generation_a) = inscrire("t9-c", 111);
         let (b, generation_b) = inscrire("t9-d", 222);
-        assert_eq!(dernier_audio(&a), Some(true));
-        assert_eq!(dernier_audio(&b), Some(true));
+        assert_eq!(last_audio(&a), Some(true));
+        assert_eq!(last_audio(&b), Some(true));
         retirer("t9-c", generation_a);
         retirer("t9-d", generation_b);
     }
@@ -221,10 +217,10 @@ mod tests {
         // `dernieres_parts`.
         let _verrou = verrouiller_pour_le_test();
         let (a, generation) = inscrire("t9-e", 333);
-        let _ = a.vider();
+        let _ = a.drain();
         signaler("t9-e", true, true);
         let ordres: Vec<Message> = a
-            .vider()
+            .drain()
             .into_iter()
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
@@ -251,13 +247,13 @@ mod tests {
     ///
     /// **This test fails on its LAST assertion before the fix.**
     #[test]
-    fn un_ordre_audio_refuse_n_est_pas_memorise_et_repart_au_tour_suivant() {
+    fn a_refused_audio_order_is_not_remembered_and_goes_again_next_round() {
         let _verrou = verrouiller_pour_le_test();
         let (a, generation_a) = inscrire("t9-refus-a", 4300);
         // "a" is alone in its PID: it carries the sound, and `derniers_audio`
         // keeps `true`.
         assert_eq!(
-            dernier_audio(&a),
+            last_audio(&a),
             Some(true),
             "précondition : la seule du PID porte le son"
         );
@@ -280,7 +276,7 @@ mod tests {
         signaler("t9-refus-b", true, true);
 
         // "a" reprend sa lecture. Aucun ordre audio ne s'y trouve.
-        let recus = a.vider();
+        let recus = a.drain();
         assert!(
             !recus.iter().any(|m| matches!(m, Message::Audio { .. })),
             "précondition : l'ordre de se taire n'a PAS été livré : {recus:?}"
@@ -293,7 +289,7 @@ mod tests {
             super::distribuer_l_audio(&mut garde);
         }
         assert_eq!(
-            dernier_audio(&a),
+            last_audio(&a),
             Some(false),
             "un ordre audio refusé doit être RÉÉMIS au tour suivant : il n'a jamais été livré"
         );

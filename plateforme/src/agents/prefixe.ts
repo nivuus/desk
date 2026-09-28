@@ -9,7 +9,7 @@
 // `bureau` and both `w-1`, and fight over the same entry of the pairing
 // table. The prefix makes the name global without touching the counter.
 //
-// 🔴 THIS MODULE IS PURE WITH ONE NAMED EXCEPTION: `nouveauPrefixe` draws from
+// 🔴 THIS MODULE IS PURE WITH ONE NAMED EXCEPTION: `newPrefix` draws from
 // `randomBytes`. Everything else — `composer`, `decouper` — is a string
 // function, with no clock, no database, no state.
 //
@@ -36,7 +36,7 @@ export const SEPARATEUR = ':';
 export const OCTETS_PREFIXE = 16;
 
 /// Draws a new prefix. 22 characters, without padding.
-export function nouveauPrefixe(): string {
+export function newPrefix(): string {
     return randomBytes(OCTETS_PREFIXE).toString('base64url');
 }
 

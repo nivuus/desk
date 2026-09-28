@@ -133,7 +133,7 @@ async function budgetAnnonce() {
 /// On rend la DERNIÈRE part vue pour chaque session avant `finIso`.
 async function partsAgent(finIso) {
     const plat = await journalPlat();
-    const dernieres = {}, toutes = [];
+    const dernieres = {}, all = [];
     for (const l of plat.split('\n')) {
         if (!l.includes('part de budget appliquee')) continue;
         const t = horodate(l);
@@ -142,10 +142,10 @@ async function partsAgent(finIso) {
         const p = Number(l.match(/part_bps=(\d+)/)?.[1]);
         if (!s || !Number.isFinite(p)) continue;
         dernieres[s] = { bps: p, t };
-        toutes.push({ s, bps: p, t });
+        all.push({ s, bps: p, t });
     }
     const somme = Object.values(dernieres).reduce((a, x) => a + x.bps, 0);
-    return { dernieres, somme, nombre_de_lignes: toutes.length };
+    return { dernieres, somme, nombre_de_lignes: all.length };
 }
 
 /// Les lignes `cadence du capteur` de l'agent, restreintes à une fenêtre
@@ -189,7 +189,7 @@ async function barreaux() {
 }
 
 /// Attend que l'échelle se soit POSÉE — le fait, jamais une durée (leçon de
-/// D3). Tant qu'une `taille d'encodage changée` est apparue depuis moins de
+/// D3). Tant qu'une `size d'encodage changée` est apparue depuis moins de
 /// `calmeS` secondes, on continue d'attendre, dans la limite de `maxS`.
 ///
 /// **Pourquoi cette attente existe.** La première exécution
@@ -234,7 +234,7 @@ async function marqueurs(etiquette) {
         taille_changee: compte("taille d'encodage changée"),
         taille_refusee: compte("changement de taille d'encodage refusé"),
         refus_debit: compte("l'encodeur refuse le réglage du débit à chaud"),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -393,7 +393,7 @@ async function statsToutes(cdp, etiquette) {
 /// de la charge — piège hérité de D5), et le répartiteur de D6 majorerait une
 /// fenêtre arbitraire, voire aucune (le critère ④ ne mesurerait rien).
 ///
-/// Le `dernier` de `client/src/visibilite.ts` déduplique l'annonce : on émet
+/// Le `last` de `client/src/visibilite.ts` déduplique l'annonce : on émet
 /// donc `blur` sur TOUTES les pages — la cible comprise — avant `focus` sur la
 /// cible seule.
 ///
@@ -593,7 +593,7 @@ async function main() {
         await dodo(6000);
 
         const ouvrirFenetre = async (n) => {
-            const avant = appPages().length;
+            const before = appPages().length;
             log(`  · ouverture fenêtre ${n}`);
             vmIt(`ouvrird6r-${n}`, [
                 `$a = @(`,
@@ -609,7 +609,7 @@ async function main() {
             ].join('\n'));
             for (let i = 0; i < 30; i += 1) {
                 await dodo(2000);
-                if (appPages().length > avant) return true;
+                if (appPages().length > before) return true;
             }
             log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
             return false;
@@ -669,12 +669,12 @@ async function main() {
             const fin = new Date().toISOString();
             const s = await statsToutes(cdp, `focus sur ${cible}`);
             const parts = await partsAgent(fin);
-            const tailles = Object.fromEntries(Object.entries(s).map(([k, v]) =>
+            const sizes = Object.fromEntries(Object.entries(s).map(([k, v]) =>
                 [k, { taille: `${v?.l}x${v?.h}`, lien_taille: v?.lien_taille,
                       lien_bitrate: v?.lien_bitrate, focalisee: v?.focalisee }]));
-            log(`FOCUS ${cible} — TAILLES ` + JSON.stringify(tailles));
+            log(`FOCUS ${cible} — TAILLES ` + JSON.stringify(sizes));
             log(`FOCUS ${cible} — PARTS somme=${parts.somme} ` + JSON.stringify(parts.dernieres));
-            releve.phases.focus.push({ cible, scenario: scen, fin, tailles, parts, stats: s });
+            releve.phases.focus.push({ cible, scenario: scen, fin, sizes, parts, stats: s });
         }
         vmVivante('après phase 2');
 

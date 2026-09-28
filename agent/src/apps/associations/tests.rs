@@ -98,7 +98,7 @@ fn une_commande_illisible_ne_vise_rien() {
 }
 
 #[test]
-fn un_meme_executable_sous_deux_ecritures_est_le_meme() {
+fn one_executable_under_two_spellings_is_the_same() {
     // A trailing slash and a different case do not make two
     // applications — that is what `normaliser_chemin` guarantees, and
     // reusing it gives it to us for free.
@@ -161,7 +161,7 @@ fn ranger_ecarte_ce_qui_n_est_pas_une_extension_sans_tout_perdre() {
 }
 
 #[test]
-fn ranger_rend_une_liste_vide_plutot_que_rien() {
+fn sort_returns_an_empty_list_rather_than_nothing() {
     // An application with no association is a NORMAL STATE, not a failure: the
     // field stays present on the wire, and it is empty.
     assert_eq!(ranger(vec![]), Vec::<String>::new());
@@ -227,7 +227,7 @@ fn pour_cible_normalise_la_cible_aussi() {
 }
 
 #[test]
-fn pour_cible_rend_une_liste_vide_quand_l_application_n_ouvre_rien() {
+fn for_target_returns_an_empty_list_when_the_application_opens_nothing() {
     // That is the state of the vast majority of applications, and it is
     // not a failure.
     let t = table(vec![(".txt".into(), "C:\\Windows\\notepad.exe %1".into())]);

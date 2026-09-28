@@ -10,7 +10,7 @@ const INTERMEDIAIRE = '198.51.100.4';
 /// exploitant posera réellement dans `PLATEFORME_PROXY_DE_CONFIANCE`.
 const PROXY = '172.18.0.5';
 
-const AUCUNE_CONFIANCE: ReadonlySet<string> = new Set();
+const NO_TRUST: ReadonlySet<string> = new Set();
 const PROXY_DE_CONFIANCE: ReadonlySet<string> = new Set([PROXY]);
 
 describe('adresseSource', () => {
@@ -18,11 +18,11 @@ describe('adresseSource', () => {
         // Le demandeur prétend venir d'ailleurs ; personne ne l'a autorisé à
         // le dire. Croire cet en-tête serait une usurpation d'identité, et
         // rendrait le frein par adresse contournable en une ligne d'en-tête.
-        expect(adresseSource(CLIENT, `${INTERMEDIAIRE}, ${PROXY}`, AUCUNE_CONFIANCE)).toBe(CLIENT);
+        expect(adresseSource(CLIENT, `${INTERMEDIAIRE}, ${PROXY}`, NO_TRUST)).toBe(CLIENT);
     });
 
     it("(a bis) la confiance VIDE est le défaut, et elle ne croit personne", () => {
-        expect(adresseSource(PROXY, CLIENT, AUCUNE_CONFIANCE)).toBe(PROXY);
+        expect(adresseSource(PROXY, CLIENT, NO_TRUST)).toBe(PROXY);
     });
 
     it('(b) 🔴 une source de confiance : on prend le DERNIER élément, jamais le premier', () => {
@@ -55,9 +55,9 @@ describe('adresseSource', () => {
     it('(e) 🔴 une IPv4 encapsulée en IPv6 rend la MÊME clé que sa forme nue', () => {
         // Sans cette normalisation, le même client compte DEUX fois selon la
         // pile employée, et son budget de frein double.
-        expect(adresseSource(`::ffff:${CLIENT}`, undefined, AUCUNE_CONFIANCE))
-            .toBe(adresseSource(CLIENT, undefined, AUCUNE_CONFIANCE));
-        expect(adresseSource(`::ffff:${CLIENT}`, undefined, AUCUNE_CONFIANCE)).toBe(CLIENT);
+        expect(adresseSource(`::ffff:${CLIENT}`, undefined, NO_TRUST))
+            .toBe(adresseSource(CLIENT, undefined, NO_TRUST));
+        expect(adresseSource(`::ffff:${CLIENT}`, undefined, NO_TRUST)).toBe(CLIENT);
     });
 
     it("(e bis) la CONFIANCE se juge sur la forme normalisée, des deux côtés", () => {
@@ -79,7 +79,7 @@ describe('adresseSource', () => {
         // du frein ne doit pas devenir la chaîne `"undefined"` par accident
         // d'interpolation : c'est le piège que `signaling/turn-harnais.ts`
         // documente pour `process.env`, et il se rejoue ici.
-        const rendu = adresseSource(undefined, undefined, AUCUNE_CONFIANCE);
+        const rendu = adresseSource(undefined, undefined, NO_TRUST);
         expect(rendu).toBe(ADRESSE_INCONNUE);
         expect(rendu).not.toBe('undefined');
         expect(rendu.length).toBeGreaterThan(0);

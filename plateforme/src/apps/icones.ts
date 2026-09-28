@@ -77,7 +77,7 @@ export function empreinteValide(s: string): boolean {
 export interface Magasin {
     possede(empreinte: string): boolean;
     manquantes(annoncees: readonly string[]): string[];
-    ecrire(empreinte: string, octets: Buffer): void;
+    write(empreinte: string, octets: Buffer): void;
     lire(empreinte: string): Buffer | undefined;
     /// Evicts BY AGE, with a REFERENCE FLOOR — see `AGE_EVICTION_ICONE_MS`.
     /// `maintenant` is a PARAMETER, never read from the clock: same rule as
@@ -146,7 +146,7 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
         /// interrupted `PUT` would otherwise leave a TRUNCATED file **under a name
         /// that promises its content**, and the next link would serve it without
         /// ever reading it back.
-        ecrire(empreinte: string, octets: Buffer): void {
+        write(empreinte: string, octets: Buffer): void {
             const cible = chemin(empreinte);
             const reel = createHash('sha256').update(octets).digest('hex');
             if (reel !== empreinte) {
@@ -160,9 +160,9 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
             try {
                 writeFileSync(provisoire, octets);
                 renameSync(provisoire, cible);
-            } catch (erreur) {
+            } catch (error) {
                 rmSync(provisoire, { force: true });
-                throw erreur;
+                throw error;
             }
         },
 
@@ -182,12 +182,12 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
         ///
         /// ⚠️ A NAME THAT IS NOT A VALID DIGEST IS NEVER TOUCHED:
         /// a foreign file dropped by hand into the store (the case
-        /// covered by `icones.test.ts::'un fichier étranger…'`) is not the
+        /// covered by `icones.test.ts::'un file étranger…'`) is not the
         /// responsibility of this eviction.
         ///
         /// 🔴 DECLARED LEGACY (correction round 3): THE `stat` → `rm` GAP
         /// CAN MOW DOWN A CONCURRENT WRITE. Between reading the age
-        /// and the deletion, an `ecrire()` on this SAME name (rewrite of an
+        /// and the deletion, an `write()` on this SAME name (rewrite of an
         /// icon recently requested again by the reconciliation, for example)
         /// can fall into the window — the file has just been touched,
         /// but its age was read BEFORE. MEASURED BY THE REVIEW: 0 to 3 icons

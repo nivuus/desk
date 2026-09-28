@@ -5,11 +5,11 @@ fn deux_causes_distinctes_ne_partagent_jamais_un_code() {
     // ⚠️ The test spec §4.4 names, and the counter-example is the old
     // bridge: `cb(-1)` (EPERM) at NINE distinct sites of `src/file.js`.
     //
-    // It is written by SWEEPING `TOUTES`, never by listing by hand:
+    // It is written by SWEEPING `ALL`, never by listing by hand:
     // otherwise a variant added tomorrow would escape the check, and the table
     // would become decorative again with nothing saying so.
-    for (i, a) in Erreur::TOUTES.iter().enumerate() {
-        for b in &Erreur::TOUTES[i + 1..] {
+    for (i, a) in Error::ALL.iter().enumerate() {
+        for b in &Error::ALL[i + 1..] {
             assert_ne!(
                 hresult(*a),
                 hresult(*b),
@@ -21,13 +21,13 @@ fn deux_causes_distinctes_ne_partagent_jamais_un_code() {
 }
 
 #[test]
-fn le_balayage_couvre_reellement_chaque_variante() {
-    // The guard's guard: without it, `TOUTES` could forget a variant and
+fn the_sweep_really_covers_every_variant() {
+    // The guard's guard: without it, `ALL` could forget a variant and
     // the sweep above would pass while exercising nothing — the exact pattern
     // this repository caught four times in D10.
-    assert_eq!(Erreur::TOUTES.len(), NOMBRE);
-    let mut vus = [false; NOMBRE];
-    for e in Erreur::TOUTES {
+    assert_eq!(Error::ALL.len(), COUNT);
+    let mut vus = [false; COUNT];
+    for e in Error::ALL {
         assert!(!vus[index(e)], "{e:?} apparaît deux fois dans TOUTES");
         vus[index(e)] = true;
     }
@@ -40,7 +40,7 @@ fn aucun_code_rendu_n_est_un_succes() {
     // success `HRESULT` returned to ProjFS would make it believe the operation
     // succeeded, and the Windows application would read an empty file instead of an
     // error — the worst possible failure mode for this module.
-    for e in Erreur::TOUTES {
+    for e in Error::ALL {
         let h = hresult(e);
         assert!(h < 0, "{e:?} rend {h:#010x}, qui est un succès");
         assert_eq!(
@@ -56,7 +56,7 @@ fn le_canal_ferme_rend_bien_error_io_device() {
     // "The standard I/O error" of framing §7: it is what Explorer
     // displays as "the device is not accessible", and not as
     // "file not found", when the browser tab closes.
-    assert_eq!(hresult(Erreur::CanalFerme), 0x8007_045Du32 as i32);
+    assert_eq!(hresult(Error::CanalFerme), 0x8007_045Du32 as i32);
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn la_protection_en_ecriture_rend_0x80070013() {
     // file created from scratch in the root SUCCEEDS (2 runs
     // recorded out of 2 that reach this phase). `NEW_FILE_CREATED` is a
     // POST notification, hence unrefusable — see `pont::notifications`.*
-    assert_eq!(hresult(Erreur::ProtegeEnEcriture), 0x8007_0013u32 as i32);
+    assert_eq!(hresult(Error::ProtegeEnEcriture), 0x8007_0013u32 as i32);
 }
 
 #[test]
@@ -74,19 +74,19 @@ fn les_douze_codes_sont_epingles_un_a_un() {
     // Pins the whole table: the distinction test above would stay
     // green if two variants SWAPPED their codes, which would return
     // "disk full" for an absent file.
-    let attendu: [(Erreur, u32); NOMBRE] = [
-        (Erreur::Introuvable, 0x8007_0002),
-        (Erreur::CheminIntrouvable, 0x8007_0003),
-        (Erreur::AccesRefuse, 0x8007_0005),
-        (Erreur::CanalFerme, 0x8007_045D),
-        (Erreur::DelaiDepasse, 0x8007_0079),
-        (Erreur::Abandonnee, 0x8007_03E3),
-        (Erreur::DisquePlein, 0x8007_0070),
-        (Erreur::NonSupporte, 0x8007_0032),
-        (Erreur::RepertoireNonVide, 0x8007_0091),
-        (Erreur::DejaPresent, 0x8007_0050),
-        (Erreur::ProtegeEnEcriture, 0x8007_0013),
-        (Erreur::Inattendue, 0x8007_001F),
+    let attendu: [(Error, u32); COUNT] = [
+        (Error::Introuvable, 0x8007_0002),
+        (Error::CheminIntrouvable, 0x8007_0003),
+        (Error::AccesRefuse, 0x8007_0005),
+        (Error::CanalFerme, 0x8007_045D),
+        (Error::DelaiDepasse, 0x8007_0079),
+        (Error::Abandonnee, 0x8007_03E3),
+        (Error::DisquePlein, 0x8007_0070),
+        (Error::NonSupporte, 0x8007_0032),
+        (Error::RepertoireNonVide, 0x8007_0091),
+        (Error::DejaPresent, 0x8007_0050),
+        (Error::ProtegeEnEcriture, 0x8007_0013),
+        (Error::Inattendue, 0x8007_001F),
     ];
     for (e, code) in attendu {
         assert_eq!(hresult(e), code as i32, "{e:?}");
@@ -103,12 +103,12 @@ fn en_cours_vaut_le_hresult_de_error_io_pending() {
     assert_eq!(EN_COURS, 0x8007_03E5u32 as i32);
 }
 
-/// `EN_COURS` is the `hresult` of NO `Erreur` variant. If it were,
+/// `EN_COURS` is the `hresult` of NO `Error` variant. If it were,
 /// a real failure would be indistinguishable from an operation in progress, and ProjFS
 /// would wait for a completion that would never come.
 #[test]
-fn en_cours_ne_collide_avec_aucune_cause_d_echec() {
-    for cause in Erreur::TOUTES {
+fn in_progress_collides_with_no_failure_cause() {
+    for cause in Error::ALL {
         assert_ne!(hresult(cause), EN_COURS, "{cause:?}");
     }
 }

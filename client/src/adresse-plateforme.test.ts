@@ -14,7 +14,7 @@ const TLS: Emplacement = { protocol: 'https:', host: 'plateforme.exemple.fr' };
 /// La même en clair — l'amorce d'un déploiement, ou un essai local.
 const CLAIR: Emplacement = { protocol: 'http:', host: 'plateforme.exemple.fr' };
 /// Le serveur de développement de vite.
-const ESSAI: Emplacement = { protocol: 'http:', host: 'localhost:5173' };
+const SAMPLE: Emplacement = { protocol: 'http:', host: 'localhost:5173' };
 
 describe('adressePlateforme et adresseSignaling', () => {
     it("(a) une page en https: donne https: et wss:/signal", () => {
@@ -57,8 +57,8 @@ describe('adressePlateforme et adresseSignaling', () => {
     it("(e) le PORT de la page est conservé, pas remplacé par 8080", () => {
         // Le serveur de développement de vite sert sur 5173 : l'adresse rendue
         // est celle de la page, port compris.
-        expect(adressePlateforme(ESSAI)).toBe('http://localhost:5173');
-        expect(adresseSignaling(ESSAI)).toBe('ws://localhost:5173/signal');
+        expect(adressePlateforme(SAMPLE)).toBe('http://localhost:5173');
+        expect(adresseSignaling(SAMPLE)).toBe('ws://localhost:5173/signal');
     });
 
     it("(f) un port NON standard sous TLS est conservé lui aussi", () => {

@@ -73,9 +73,9 @@ pub(super) fn sonder(
     let debut = Instant::now();
     while debut.elapsed() < DELAI_TOPOLOGIE {
         std::thread::sleep(Duration::from_millis(100));
-        if let Err(erreur) = garde.battre_si_du() {
+        if let Err(error) = garde.battre_si_du() {
             tracing::error!(
-                causes = %super::super::causes(erreur),
+                causes = %super::super::causes(error),
                 "sonde post-mortem : chien de garde perdu pendant l'attente — le pilote peut \
                  avoir repris ses sorties, ce qui suit n'est plus imputable"
             );
@@ -103,10 +103,10 @@ pub(super) fn sonder(
         // the `continue` goes back through here. The 3 s themselves remain
         // irreducible without changing the opening semantics — which the final
         // review is not the moment to do.
-        if let Err(erreur) = garde.battre_si_du() {
+        if let Err(error) = garde.battre_si_du() {
             tracing::error!(
                 voie = id,
-                causes = %super::super::causes(erreur),
+                causes = %super::super::causes(error),
                 "sonde post-mortem : chien de garde perdu avant de solliciter cette voie — le \
                  pilote peut avoir repris ses sorties, ce qui suit n'est plus imputable"
             );
@@ -115,7 +115,7 @@ pub(super) fn sonder(
         let nom = virtuelles[id].nom_sortie.as_str();
         let mut capture = match DesktopCapture::sur_sortie(nom) {
             Ok(capture) => capture,
-            Err(erreur) => {
+            Err(error) => {
                 // Beaten here AS WELL, and not only at the next round: the trace
                 // below is not free, and the `continue` must
                 // leave no path without a beat.
@@ -123,7 +123,7 @@ pub(super) fn sonder(
                 tracing::error!(
                     voie = id,
                     nom_sortie = nom,
-                    causes = %super::super::causes(erreur),
+                    causes = %super::super::causes(error),
                     "sonde post-mortem : la sortie ne se redupliquait PAS une fois la topologie \
                      stabilisée — la mort de cette voie n'est pas imputable au seul budget de \
                      reprises"
@@ -162,8 +162,8 @@ pub(super) fn sonder(
                     break;
                 }
                 Ok(None) => {}
-                Err(erreur) => {
-                    issue = Err(format!("{erreur}"));
+                Err(error) => {
+                    issue = Err(format!("{error}"));
                     break;
                 }
             }

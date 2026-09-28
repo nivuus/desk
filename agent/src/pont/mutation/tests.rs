@@ -16,14 +16,14 @@ fn renommer_dossier(de: &str, vers: &str) -> Mutation {
         repertoire: true,
     }
 }
-fn supprimer(chemin: &str) -> Mutation {
-    Mutation::Supprimer {
+fn remove(chemin: &str) -> Mutation {
+    Mutation::Delete {
         chemin: chemin.into(),
         repertoire: false,
     }
 }
-fn supprimer_dossier(chemin: &str) -> Mutation {
-    Mutation::Supprimer {
+fn remove_folder(chemin: &str) -> Mutation {
+    Mutation::Delete {
         chemin: chemin.into(),
         repertoire: true,
     }
@@ -55,7 +55,7 @@ fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
 #[test]
 fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
     assert_eq!(
-        ordonnancer(&dues(&["vieux.odt"]), &supprimer("vieux.odt")),
+        ordonnancer(&dues(&["vieux.odt"]), &remove("vieux.odt")),
         Ordonnancement::AbandonnerEcrituresDues {
             chemins: dues(&["vieux.odt"])
         }
@@ -70,7 +70,7 @@ fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
 #[test]
 fn un_renommage_attend_la_ou_une_suppression_abandonne() {
     let r = ordonnancer(&dues(&["a.txt"]), &renommer("a.txt", "b.txt"));
-    let s = ordonnancer(&dues(&["a.txt"]), &supprimer("a.txt"));
+    let s = ordonnancer(&dues(&["a.txt"]), &remove("a.txt"));
     assert_ne!(r, s);
     assert!(matches!(r, Ordonnancement::AttendreEcrituresDues { .. }));
     assert!(matches!(s, Ordonnancement::AbandonnerEcrituresDues { .. }));
@@ -140,7 +140,7 @@ fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
     assert_eq!(
         ordonnancer(
             &dues(&["d/a.txt", "d/sous/b.txt", "hors.txt"]),
-            &supprimer_dossier("d")
+            &remove_folder("d")
         ),
         Ordonnancement::AbandonnerEcrituresDues {
             chemins: dues(&["d/a.txt", "d/sous/b.txt"])
@@ -154,7 +154,7 @@ fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
 #[test]
 fn une_cible_vide_ne_retient_rien() {
     assert_eq!(
-        ordonnancer(&dues(&["a.txt", "b/c.txt"]), &supprimer_dossier("")),
+        ordonnancer(&dues(&["a.txt", "b/c.txt"]), &remove_folder("")),
         Ordonnancement::Pousser
     );
 }
@@ -166,7 +166,7 @@ fn sans_ecriture_due_on_pousse() {
         ordonnancer(&[], &renommer("a", "b")),
         Ordonnancement::Pousser
     );
-    assert_eq!(ordonnancer(&[], &supprimer("a")), Ordonnancement::Pousser);
+    assert_eq!(ordonnancer(&[], &remove("a")), Ordonnancement::Pousser);
 }
 
 /// 🔴 **ONE MUTATION AT A TIME.**
@@ -176,7 +176,7 @@ fn sans_ecriture_due_on_pousse() {
 /// is, the network's chance.
 #[test]
 fn une_seule_mutation_en_vol_a_la_fois() {
-    let mut f = FileMutations::nouvelle();
+    let mut f = FileMutations::new();
     assert_eq!(f.signaler(renommer("a", "b")), Some(renommer("a", "b")));
     assert_eq!(f.signaler(renommer("b", "c")), None, "la seconde attend");
     assert_eq!(f.en_attente(), 1);
@@ -190,13 +190,13 @@ fn une_seule_mutation_en_vol_a_la_fois() {
 /// does with two writes. `a`→`b` then `b`→`c` would leave `b` on the local
 /// workstation, or would lose the file depending on the merge chosen.
 #[test]
-fn deux_mutations_du_meme_chemin_sont_toutes_deux_jouees_dans_l_ordre() {
-    let mut f = FileMutations::nouvelle();
+fn two_mutations_of_the_same_path_are_both_played_in_order() {
+    let mut f = FileMutations::new();
     f.signaler(renommer("a", "b"));
-    f.signaler(supprimer("a"));
+    f.signaler(remove("a"));
     f.signaler(renommer("a", "c"));
     assert_eq!(f.en_attente(), 2);
-    assert_eq!(f.terminee(), Some(supprimer("a")));
+    assert_eq!(f.terminee(), Some(remove("a")));
     assert_eq!(f.terminee(), Some(renommer("a", "c")));
     assert_eq!(f.terminee(), None);
 }
@@ -207,7 +207,7 @@ fn deux_mutations_du_meme_chemin_sont_toutes_deux_jouees_dans_l_ordre() {
 /// reversed — they would see the second renaming take effect before the first.
 #[test]
 fn une_mutation_differee_repasse_devant() {
-    let mut f = FileMutations::nouvelle();
+    let mut f = FileMutations::new();
     assert_eq!(f.signaler(renommer("a", "b")), Some(renommer("a", "b")));
     f.signaler(renommer("x", "y"));
     f.differer();
@@ -224,7 +224,7 @@ fn une_mutation_differee_repasse_devant() {
 #[test]
 fn source_rend_le_chemin_qui_existe_encore() {
     assert_eq!(renommer("de.txt", "vers.txt").source(), "de.txt");
-    assert_eq!(supprimer("c.txt").source(), "c.txt");
+    assert_eq!(remove("c.txt").source(), "c.txt");
     assert!(renommer_dossier("d", "e").repertoire());
     assert!(!renommer("d", "e").repertoire());
 }

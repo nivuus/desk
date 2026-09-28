@@ -15,10 +15,10 @@ import { lirePorteur } from './porteur';
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const MS = 1_787_136_773_742;
 
-function entetes(valeur: string | string[] | undefined): Record<string, string | string[] | undefined> {
+function entetes(value: string | string[] | undefined): Record<string, string | string[] | undefined> {
     // Node met les noms d'en-tête en MINUSCULES : `req.headers.authorization`
     // est la seule graphie qui existe côté serveur.
-    return valeur === undefined ? {} : { authorization: valeur };
+    return value === undefined ? {} : { authorization: value };
 }
 
 describe('lirePorteur', () => {
@@ -42,7 +42,7 @@ describe('lirePorteur', () => {
         const jeton = signer('u-ada', SECRET, MS);
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, MS)).toEqual({
             ok: true,
-            utilisateurId: 'u-ada',
+            userId: 'u-ada',
         });
     });
 
@@ -73,7 +73,7 @@ describe('lirePorteur', () => {
         // Une milliseconde AVANT : encore valide.
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, exp - 1)).toEqual({
             ok: true,
-            utilisateurId: 'u-ada',
+            userId: 'u-ada',
         });
         // À la borne EXACTE : expiré.
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, exp)).toEqual({

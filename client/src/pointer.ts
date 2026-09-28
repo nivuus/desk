@@ -56,7 +56,7 @@ export function sommerDeltas(
  * did, silently clipping would make aiming drift without anything
  * signalling it.
  */
-export function creerClampReport(): (dx: number, dy: number) => { dx: number; dy: number } {
+export function createClampReport(): (dx: number, dy: number) => { dx: number; dy: number } {
     let restX = 0;
     let restY = 0;
     return (dx, dy) => {
@@ -87,7 +87,7 @@ export interface PointerHandle {
 export function attachPointer(options: PointerOptions): PointerHandle {
     const { video, doc, envoyer, surEchec } = options;
 
-    const clamp = creerClampReport();
+    const clamp = createClampReport();
     let arme = false;
     let echecs = 0;
 

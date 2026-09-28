@@ -13,7 +13,7 @@
 //! as `repartiteur` / `parts` and `audio` / `porteurs`.
 //!
 //! **BOTH directions go through it since sub-block P2**: `distribuer` pushes to the
-//! windows what the VM copied, `ecrire` writes into the VM what a window
+//! windows what the VM copied, `write` writes into the VM what a window
 //! pasted. The second is here and not elsewhere because **the owner of the
 //! clipboard is the sensor, and it alone** (D1): a child writing
 //! by itself would put N processes in competition over a resource Windows
@@ -33,7 +33,7 @@ use super::{distribuer as distribuer_les_ordres, etat, oublier, Etat, Message};
 /// **All, and not only the focused one**: the clipboard is a resource
 /// GLOBAL to the Windows session, each browser window has its own
 /// local clipboard to feed, and it is the client that decides whether it writes
-/// (`PressePapierLocal::aEcrire`, which takes the focus as an argument). Deciding here
+/// (`PressePapierLocal::toWrite`, which takes the focus as an argument). Deciding here
 /// would deprive an unfocused window of content it will have to write as soon as
 /// it gets the focus back — D3's deferred drop.
 ///
@@ -72,9 +72,9 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
 
     // The memory of the current state, for windows that will attach
     // LATER (D-P3-2, agent half). Set at EVERY announcement, refusals included —
-    // see the `Etat::dernier_presse_papier` field, which carries the reason and says
+    // see the `Etat::last_clipboard` field, which carries the reason and says
     // why the symmetry with `dernieres_parts` is misleading.
-    garde.dernier_presse_papier = Some(match &texte {
+    garde.last_clipboard = Some(match &texte {
         Some(t) => Annonce::Texte(t.clone()),
         None => Annonce::Refus { octets },
     });
@@ -125,7 +125,7 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
 /// Writes `texte` into the VM's clipboard, and **arms the guards in the
 /// same gesture**.
 ///
-/// Called from the WINDOW thread serving `VersCapteur::PressePapierEcrire`.
+/// Called from the WINDOW thread serving `VersCapteur::ClipboardWrite`.
 /// The text arrives already normalised, bounded and denormalised by the child.
 ///
 /// 🔴 **`PRESSE_PAPIER=0` ALSO forbids writing**, and not only
@@ -133,11 +133,11 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
 /// symmetry that matters is that of the OWNER: `Sondeur::tour` tests
 /// `actif()` before any read, this path tests it before any write, and
 /// "the whole mechanism is disarmed" stops being a half-truth.
-pub(super) fn ecrire(texte: &str) -> Result<()> {
-    ecrire_avec(texte, crate::presse_papier::ecrire_la_plateforme)
+pub(super) fn write(texte: &str) -> Result<()> {
+    write_with(texte, crate::presse_papier::write_platform)
 }
 
-/// The heart of `ecrire`, with its **injected** writer — that is what makes it
+/// The heart of `write`, with its **injected** writer — that is what makes it
 /// testable on the host, exactly as `Sondeur::observer` receives its
 /// read closure.
 ///
@@ -146,7 +146,7 @@ pub(super) fn ecrire(texte: &str) -> Result<()> {
 /// that never reached the clipboard, and that content would then become
 /// invisible **forever** — the next round would not see it as a
 /// change.
-pub(super) fn ecrire_avec(texte: &str, ecrivain: impl FnOnce(&str) -> Result<u32>) -> Result<()> {
+pub(super) fn write_with(texte: &str, ecrivain: impl FnOnce(&str) -> Result<u32>) -> Result<()> {
     if !crate::presse_papier::actif() {
         anyhow::bail!("presse-papier desarme (PRESSE_PAPIER=0)");
     }
@@ -194,7 +194,7 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
 /// It cannot be: ~~this channel has just been inserted in the same
 /// function~~ — **FALSE, SAME PREMISE AS THE ONE STRUCK OUT TEN LINES BELOW,
 /// SURVIVING HERE UNDER ANOTHER VERB**: the channel is created by
-/// `registre::inscrire`, NOT by this function (`emettre_l_etat_courant`
+/// `registre::inscrire`, NOT by this function (`emit_current_state`
 /// is called FROM `inscrire`, after the channel already exists — see the
 /// ❌ correction below). What remains true, and actually carries the
 /// conclusion: its receiver is still on `inscrire`'s stack, and
@@ -219,8 +219,8 @@ pub(super) fn armer_les_gardes(sondeur: &mut Sondeur) {
 /// `PROFONDEUR_MAX` = 64.** The refusal is therefore unreachable with a margin of
 /// 61 messages — and if one day a fourth emitter slipped in here, the
 /// `match` below would stay right, it would only lose an announcement.
-pub(super) fn emettre_l_etat_courant(garde: &mut MutexGuard<'static, Etat>, session: &str) {
-    let Some(annonce) = garde.dernier_presse_papier.clone() else {
+pub(super) fn emit_current_state(garde: &mut MutexGuard<'static, Etat>, session: &str) {
+    let Some(annonce) = garde.last_clipboard.clone() else {
         return;
     };
     let (texte, octets) = match annonce {
@@ -290,7 +290,7 @@ pub(super) fn filtrer_nos_ecritures_tardives(
 
 // This module's tests have lived apart since sub-block P3 of the clipboard
 // work stream: the file was at 379 lines for a cap of 500, and P3
-// adds the `dernier_presse_papier` memory (D-P3-2), the second take
+// adds the `last_clipboard` memory (D-P3-2), the second take
 // `filtrer_nos_ecritures_tardives` (D-P3-6) and their tests. The extraction
 // precedes the addition, as the repository's rule requires.
 //

@@ -21,7 +21,7 @@
   noter('injection item2 posée sur ' + location.pathname);
   if (!EST_HUB) { noter('pas le hub : OPFS laissé intact'); return; }
 
-  const TAILLES_KIO = [4, 16, 32, 64, 128, 192, 256, 512];
+  const SIZES_KIB = [4, 16, 32, 64, 128, 192, 256, 512];
   const RANGS = [100, 1000, 2000, 3000, 3150, 3200, 4000];
 
   window.__item2Preparer = async () => {
@@ -35,7 +35,7 @@
     const bloc = new Uint8Array(1024);
     for (let i = 0; i < 1024; i += 1) bloc[i] = 33 + (i % 90);
     const faits = [];
-    for (const kio of TAILLES_KIO) {
+    for (const kio of SIZES_KIB) {
       const f = await d.getFileHandle(`taille-${kio}k.bin`, { create: true });
       const w = await f.createWritable();
       for (let i = 0; i < kio; i += 1) await w.write(bloc);
@@ -61,17 +61,17 @@
     // The ENTRIES ladder, in subdirectories.
     const rangs = [];
     for (const n of RANGS) {
-      const sous = await d.getDirectoryHandle(`rang-${n}`, { create: true });
+      const sub = await d.getDirectoryHandle(`rang-${n}`, { create: true });
       for (let i = 0; i < n; i += 1) {
-        await sous.getFileHandle(`e${String(i).padStart(5, '0')}.txt`, { create: true });
+        await sub.getFileHandle(`e${String(i).padStart(5, '0')}.txt`, { create: true });
       }
       let compte = 0;
-      for await (const _ of sous.keys()) compte += 1;
+      for await (const _ of sub.keys()) compte += 1;
       rangs.push({ dossier: `rang-${n}`, demande: n, cree: compte });
       noter(`rang-${n} : ${compte} entrées créées`);
     }
     window.__item2Dossier = d;
-    return { tailles: faits, rangs };
+    return { sizes: faits, rangs };
   };
 
   window.showDirectoryPicker = async () => {

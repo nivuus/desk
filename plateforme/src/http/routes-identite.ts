@@ -29,7 +29,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
-import { creerUtilisateur, lireParEmail } from '../depot/utilisateur';
+import { createUser, lireParEmail } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import { pairDeConfiance } from './adresse-source';
 import { entetesCors } from './cors';
@@ -212,7 +212,7 @@ async function identifiantDe(base: Pilote, email: string, maintenant: number): P
     const existant = await lireParEmail(base, email);
     if (existant !== undefined) return existant.id;
     try {
-        return await creerUtilisateur(base, email, MARQUEUR_SANS_MOT_DE_PASSE, maintenant);
+        return await createUser(base, email, MARQUEUR_SANS_MOT_DE_PASSE, maintenant);
     } catch (cause) {
         const rattrape = await lireParEmail(base, email);
         if (rattrape !== undefined) return rattrape.id;

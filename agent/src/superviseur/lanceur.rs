@@ -111,7 +111,7 @@ pub struct LanceurDeProcessus {
 }
 
 impl LanceurDeProcessus {
-    pub fn nouveau(
+    pub fn new(
         executable: std::path::PathBuf,
         signaling_url: String,
         local_ip: String,
@@ -193,7 +193,7 @@ impl LanceurDeProcessus {
     /// stale token is refused loudly at the handshake, where the absence
     /// of a token refuses it just as much. The real remedy for a long outage is
     /// the channel's resumption, not an abstention here.
-    fn jeton_courant(&self) -> Option<String> {
+    fn current_token(&self) -> Option<String> {
         let veille = self.identite.as_ref()?;
         let courante = veille.borrow();
         courante.as_ref().map(|identite| identite.jeton.clone())
@@ -222,7 +222,7 @@ impl LanceurDeProcessus {
     /// trace linking it to a forgotten environment variable.
     fn identite_heritee(&self, commande: &mut std::process::Command) {
         commande.env_remove("AGENT_VM").env_remove("AGENT_SECRET");
-        match self.jeton_courant() {
+        match self.current_token() {
             Some(jeton) => commande.env("AGENT_JETON", jeton),
             None => commande.env_remove("AGENT_JETON"),
         };
@@ -284,7 +284,7 @@ impl LanceurDeProcessus {
         let mut capteur = commande.spawn().context("lancement du capteur")?;
         let pid = capteur.id();
         let handle = HANDLE(capteur.as_raw_handle());
-        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
+        if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             // Same atomic contract as `lancer`: a capturer not attached to the
             // job would outlive the supervisor WHILE HOLDING N duplications.
             if let Err(mise_a_mort) = capteur.kill() {
@@ -292,7 +292,7 @@ impl LanceurDeProcessus {
                     "capteur NON rattaché au job ET NON tué — il survivra au superviseur");
             }
             let _ = capteur.wait();
-            return Err(anyhow::Error::new(erreur)
+            return Err(anyhow::Error::new(error)
                 .context(format!("rattachement du capteur {pid} au job object")));
         }
         tracing::info!(pid, "capteur lancé");
@@ -326,11 +326,11 @@ impl LanceurDeProcessus {
                 *capteur = None;
                 false
             }
-            Err(erreur) => {
+            Err(error) => {
                 if !en_cours.etat_illisible_signale {
                     en_cours.etat_illisible_signale = true;
                     tracing::warn!(
-                        %erreur,
+                        %error,
                         "état du capteur illisible, tenu pour vivant \
                          (signalé une seule fois tant que l'état reste illisible)"
                     );

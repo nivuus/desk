@@ -7,9 +7,9 @@ import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { baseNeuve } from '../../base/harnais';
 import type { Pilote } from '../../base/pilote';
-import { demarrerServeur, type ServicePlateforme } from '../serveur';
+import { startServer, type ServicePlateforme } from '../serveur';
 import type { Config } from '../../config';
-import { servirAvecFlux } from './routes-page';
+import { serveWithStream } from './routes-page';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
@@ -62,7 +62,7 @@ function racineJetable(): string {
 
 /// Une racine qui porte DEUX liens symboliques qui en SORTENT — le trou de la
 /// Critique 3 (round 2). `dessus/` vit à CÔTÉ de la racine, jamais dedans.
-function racineAvecLiensSymboliques(): string {
+function rootWithSymlinks(): string {
     const parent = mkdtempSync(join(tmpdir(), 'page-parent-'));
     const dessus = join(parent, 'dessus');
     mkdirSync(dessus);
@@ -81,7 +81,7 @@ function racineAvecLiensSymboliques(): string {
 }
 
 /// Compte, PARMI les descripteurs ouverts du PROCESSUS DE TEST (le serveur
-/// tourne dans ce même processus — `demarrerServeur` ne fork rien), ceux qui
+/// tourne dans ce même processus — `startServer` ne fork rien), ceux qui
 /// pointent EXACTEMENT vers `chemin`.
 ///
 /// 🔴 CIBLÉ, PAS UN TOTAL AVEC TOLÉRANCE (round 3, Mineur) : un premier jet
@@ -124,7 +124,7 @@ describe('GET /', () => {
     // PLATEFORME_PAGE a servi à quelque chose.
     it("sans PLATEFORME_PAGE, GET / rend le 404 d'hier, mot pour mot", async () => {
         base = await baseNeuve('page-temoin-negatif');
-        service = await demarrerServeur({ ...CONFIG, racinePage: undefined }, base);
+        service = await startServer({ ...CONFIG, racinePage: undefined }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.status).toBe(404);
         expect(await r.text()).toBe('introuvable\n');
@@ -136,23 +136,23 @@ describe('GET /', () => {
     // `index.html` rend la garde discriminante : sans elle, ce test verrait
     // `200` et le corps piégé.
     it("une racine VIDE ('') retire aussi le servant, jamais le répertoire courant", async () => {
-        const cwdAvant = process.cwd();
+        const cwdBefore = process.cwd();
         const piege = mkdtempSync(join(tmpdir(), 'page-cwd-piege-'));
         writeFileSync(join(piege, 'index.html'), 'CECI NE DOIT JAMAIS ETRE SERVI');
         process.chdir(piege);
         try {
             base = await baseNeuve('page-racine-vide');
-            service = await demarrerServeur({ ...CONFIG, racinePage: '' }, base);
+            service = await startServer({ ...CONFIG, racinePage: '' }, base);
             const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
             expect(r.status).toBe(404);
         } finally {
-            process.chdir(cwdAvant);
+            process.chdir(cwdBefore);
         }
     });
 
     it('avec PLATEFORME_PAGE, GET / rend 200', async () => {
         base = await baseNeuve('page-index-statut');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.status).toBe(200);
     });
@@ -162,7 +162,7 @@ describe('GET /', () => {
     // mesurée en PRODUCTION comme la panne (voir `resolution.ts::PAGE`).
     it('avec PLATEFORME_PAGE, GET / rend le corps EXACT de hub.html', async () => {
         base = await baseNeuve('page-index-corps');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         // Comparer les OCTETS, jamais le seul code 200.
         expect(await r.text()).toBe('<!doctype html><title>hub</title>');
@@ -173,7 +173,7 @@ describe('GET /', () => {
     // repli SPA de `/` ci-dessus.
     it('GET /index.html sert encore la page de session, explicitement', async () => {
         base = await baseNeuve('page-index-explicite');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/index.html`);
         expect(r.status).toBe(200);
         expect(await r.text()).toBe('<!doctype html><title>page</title>');
@@ -181,21 +181,21 @@ describe('GET /', () => {
 
     it('le document porte la CSP', async () => {
         base = await baseNeuve('page-index-csp');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.headers.get('content-security-policy')).toContain("default-src 'self'");
     });
 
     it('le document porte cache-control no-store', async () => {
         base = await baseNeuve('page-index-cache');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.headers.get('cache-control')).toBe('no-store');
     });
 
     it('un actif EMPREINTÉ porte immutable, JAMAIS no-store', async () => {
         base = await baseNeuve('page-actif');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/assets/index-a1b2c3.js`);
         expect(r.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
     });
@@ -213,7 +213,7 @@ describe('GET /', () => {
     // qu'une régression prendrait pour revenir à un an.
     it("une ressource NON empreintée n'obtient JAMAIS immutable", async () => {
         base = await baseNeuve('page-manifeste-immutable');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
         expect(r.headers.get('cache-control')).not.toContain('immutable');
     });
@@ -223,14 +223,14 @@ describe('GET /', () => {
     // n'éprouverait que la première.
     it("une ressource NON empreintée n'obtient pas no-store non plus", async () => {
         base = await baseNeuve('page-manifeste-nostore');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
         expect(r.headers.get('cache-control')).not.toContain('no-store');
     });
 
     it('une ressource NON empreintée est RÉVALIDABLE', async () => {
         base = await baseNeuve('page-manifeste-revalidable');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
         expect(r.headers.get('cache-control')).toContain('must-revalidate');
     });
@@ -244,14 +244,14 @@ describe('GET /', () => {
     // n'était donc jamais éprouvée.
     it('/sante reste servi par SON routeur — content-type json, malgré un fichier homonyme', async () => {
         base = await baseNeuve('page-homonyme-type');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/sante`);
         expect(r.headers.get('content-type')).toContain('application/json');
     });
 
     it('/sante reste servi par SON routeur — corps, malgré un fichier homonyme', async () => {
         base = await baseNeuve('page-homonyme-corps');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/sante`);
         expect(await r.text()).not.toContain('JAMAIS');
     });
@@ -265,7 +265,7 @@ describe('GET /', () => {
     // indépendamment de l'autre.
     it('refuse un fichier hors de la liste MIME', async () => {
         base = await baseNeuve('page-mime-refuse-statut');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/secret.env`);
         expect(r.status).toBe(404);
     });
@@ -277,7 +277,7 @@ describe('GET /', () => {
         // dépend PAS du statut : elle rougirait même si un futur défaut
         // faisait passer la réponse à `200`.
         base = await baseNeuve('page-mime-refuse-corps');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/secret.env`);
         expect(await r.text()).not.toContain('MOT_DE_PASSE');
     });
@@ -290,7 +290,7 @@ describe('GET /', () => {
         const racine = racineJetable();
         writeFileSync(join(racine, '.json'), '"ne doit jamais etre servi"');
         base = await baseNeuve('page-json-nu-disque');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racine }, base);
+        service = await startServer({ ...CONFIG, racinePage: racine }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/.json`);
         expect(r.status).toBe(404);
     });
@@ -305,7 +305,7 @@ describe('GET /', () => {
     // c'est ce que `resoudre()` décode et refuse LUI-MÊME.
     it('refuse une traversée ENCODÉE qui sort de la racine, via une vraie requête HTTP', async () => {
         base = await baseNeuve('page-traversee-disque');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(
             `http://127.0.0.1:${service.port}/assets/..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd`,
         );
@@ -317,7 +317,7 @@ describe('GET /', () => {
     // le `realpath` de `routes-page.ts`.
     it('refuse un fichier atteint via un lien symbolique FICHIER qui sort de la racine', async () => {
         base = await baseNeuve('page-lien-fichier');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineAvecLiensSymboliques() }, base);
+        service = await startServer({ ...CONFIG, racinePage: rootWithSymlinks() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/lien.json`);
         expect(r.status).toBe(404);
     });
@@ -326,7 +326,7 @@ describe('GET /', () => {
     // racine — aucun `..` n'apparaît jamais dans l'URL qui l'atteint.
     it('refuse un fichier atteint via un lien symbolique RÉPERTOIRE qui sort de la racine', async () => {
         base = await baseNeuve('page-lien-repertoire');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineAvecLiensSymboliques() }, base);
+        service = await startServer({ ...CONFIG, racinePage: rootWithSymlinks() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/lien-rep/vole.html`);
         expect(r.status).toBe(404);
     });
@@ -342,9 +342,9 @@ describe('GET /', () => {
         const cheminGros = join(racine, 'assets', 'gros.js');
         writeFileSync(cheminGros, 'x'.repeat(8 * 1024 * 1024));
         base = await baseNeuve('page-fd-abandon');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racine }, base);
+        service = await startServer({ ...CONFIG, racinePage: racine }, base);
 
-        const avant = comptesFdPour(cheminGros);
+        const before = comptesFdPour(cheminGros);
         const N = 20;
         for (let i = 0; i < N; i++) {
             await new Promise<void>((resolvePromesse, reject) => {
@@ -366,10 +366,10 @@ describe('GET /', () => {
         await new Promise((r) => setTimeout(r, 300));
         const apres = comptesFdPour(cheminGros);
         // 🔴 EXACTEMENT DISCRIMINANT (round 3, Mineur) : ciblé sur LE fichier
-        // précis, une fuite rendrait `apres` proche de `avant + N` (un fd par
-        // abandon, monotone, mesuré). Aucune tolérance : `avant` et `apres`
+        // précis, une fuite rendrait `apres` proche de `before + N` (un fd par
+        // abandon, monotone, mesuré). Aucune tolérance : `before` et `apres`
         // DOIVENT être égaux.
-        expect(apres).toBe(avant);
+        expect(apres).toBe(before);
     });
 
     // 🔴 CRITIQUE 2 (round 2), MESURÉE : une lecture qui casse APRÈS que les
@@ -382,11 +382,11 @@ describe('GET /', () => {
     // lui-même.
     //
     // ⚠️ MONTAGE UNITAIRE, SANS SERVEUR HTTP RÉEL (round 3, Neuf 3) : ceci
-    // appelle `servirAvecFlux` directement, avec un `req`/`rep` FABRIQUÉS —
+    // appelle `serveWithStream` directement, avec un `req`/`rep` FABRIQUÉS —
     // il n'y a ni socket, ni port, ni processus serveur. Le titre précédent
     // (« … ne fait PAS mourir LE SERVICE ») promettait une propriété que ce
     // montage n'établit PAS ; la propriété reste vraie (voir le commentaire
-    // de `servirAvecFlux` sur ce que ce choix coûte et ce qu'il n'établit
+    // de `serveWithStream` sur ce que ce choix coûte et ce qu'il n'établit
     // pas), mais CE test-ci n'éprouve que le comportement de la FONCTION.
     //
     // Fabrique un couple `(racine, rep, req, flux)` NEUF à chaque appel :
@@ -394,7 +394,7 @@ describe('GET /', () => {
     // propre état de destruction — les deux tests ci-dessous ne peuvent PAS
     // partager une seule fabrication sans que l'un des deux devienne
     // vacueux.
-    function appelUnitaireAvecFluxFautif(): { resultat: Promise<boolean>; rep: Writable } {
+    function unitCallWithFaultyStream(): { result: Promise<boolean>; rep: Writable } {
         const racine = racineJetable();
         // 🔴 UN VRAI `Writable`, PAS UN OBJET FACTICE À MÉTHODES MUETTES :
         // `pipeline()` s'appuie sur de VRAIS évènements (`'close'`,
@@ -431,29 +431,29 @@ describe('GET /', () => {
         });
 
         const req = { url: '/assets/index-a1b2c3.js', method: 'GET', headers: {} };
-        const resultat = servirAvecFlux(
+        const result = serveWithStream(
             req as never,
             rep as unknown as ServerResponse,
             { racinePage: racine },
             () => fluxFautif,
         );
-        return { resultat, rep };
+        return { result, rep };
     }
 
     // 🔴 SÉPARÉS (round 3, Neuf 2), même raison que le test MIME plus haut :
-    // groupées, `expect(resultat).toBe(true)` courait en premier et aurait
+    // groupées, `expect(result).toBe(true)` courait en premier et aurait
     // masqué un échec de la seconde assertion si elle avait rougi.
     it('une erreur de flux injectée APRÈS les en-têtes est prise en charge (route non retombée en 404)', async () => {
-        const { resultat } = appelUnitaireAvecFluxFautif();
+        const { result } = unitCallWithFaultyStream();
         // La route EST prise en charge (les en-têtes sont partis) : rendre
         // `false` ferait tomber la chaîne sur un 404 générique par-dessus une
         // réponse déjà commencée.
-        expect(await resultat).toBe(true);
+        expect(await result).toBe(true);
     });
 
     it('une erreur de flux injectée APRÈS les en-têtes détruit la réponse, plutôt que de la laisser pendre', async () => {
-        const { resultat, rep } = appelUnitaireAvecFluxFautif();
-        await resultat;
+        const { result, rep } = unitCallWithFaultyStream();
+        await result;
         expect(rep.destroyed).toBe(true);
     });
 
@@ -462,14 +462,14 @@ describe('GET /', () => {
     // n'importe quoi — obtiendrait « méthode » au lieu du 404 qui le désigne.
     it('un POST sur un chemin inconnu rend toujours 404, jamais 405', async () => {
         base = await baseNeuve('page-post-inconnu');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/aplication/x`, { method: 'POST' });
         expect(r.status).toBe(404);
     });
 
     it('sert un HEAD sans corps', async () => {
         base = await baseNeuve('page-head');
-        service = await demarrerServeur({ ...CONFIG, racinePage: racineJetable() }, base);
+        service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`, { method: 'HEAD' });
         expect(r.status).toBe(200);
         expect(await r.text()).toBe('');

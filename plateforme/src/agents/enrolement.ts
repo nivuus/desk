@@ -15,12 +15,12 @@
 //
 // ⚠️ THE DIGEST REUSES `identite/mot-de-passe.ts`, the one of human
 // accounts, format `scrypt$N$r$p$sel$empreinte`. Two derivations in the same
-// service would diverge the day one of them got hardened — and `verifier` already
+// service would diverge the day one of them got hardened — and `verify` already
 // handles length equalisation, whose absence MAKES
 // `timingSafeEqual` RAISE (measured in P2).
 
 import type { Pilote } from '../base/pilote';
-import { verifier } from '../identite/mot-de-passe';
+import { verify } from '../identite/mot-de-passe';
 import { lireParVm } from '../depot/agent';
 
 export type VerdictEnrolement =
@@ -35,13 +35,13 @@ const REFUS: VerdictEnrolement = { ok: false, motif: 'enrolement' };
 /// Checks that a VM presents the secret of its enrolment.
 ///
 /// 🔴 IT DOES NOT CATCH ALL EXCEPTIONS, and that is deliberate:
-/// `mot-de-passe.ts::verifier` RAISES on an unknown algorithm, because a
+/// `mot-de-passe.ts::verify` RAISES on an unknown algorithm, because a
 /// silent refusal there would be indistinguishable from a wrong secret and nobody
 /// could diagnose a database written by a future version of the service.
 /// That exception therefore goes all the way to the channel, which translates it into an
 /// `enrolement` refusal while logging it WITH its cause. A merely
 /// MALFORMED digest, on the other hand, returns `false` without raising — the two cases are distinct.
-export async function verifierEnrolement(
+export async function verifyEnrolment(
     p: Pilote,
     vmId: string,
     secret: string,
@@ -53,7 +53,7 @@ export async function verifierEnrolement(
         return REFUS;
     }
 
-    if (!(await verifier(secret, ligne.empreinte_secret))) {
+    if (!(await verify(secret, ligne.empreinte_secret))) {
         // ⚠️ EXACTLY THE SAME TEXT as above, on purpose: two different
         // labels in a log end up finding their way into a
         // response, and the oracle would be reborn through the back door.

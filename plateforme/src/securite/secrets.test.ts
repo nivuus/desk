@@ -42,7 +42,7 @@ const NOMS = [
 /// L'empreinte d'une valeur — jamais la valeur.
 ///
 /// 🔴 C'EST CE QUI REND UNE EXCEPTION HONNÊTE. Une exception nommée seulement
-/// par `<fichier>:<NOM>` autoriserait N'IMPORTE QUELLE valeur future à cet
+/// par `<file>:<NOM>` autoriserait N'IMPORTE QUELLE valeur future à cet
 /// endroit : le jour où quelqu'un remplacerait la fixture de recette par un
 /// vrai secret, l'exception le couvrirait EN SILENCE. En épinglant
 /// l'empreinte, tout changement de valeur fait ROUGIR le test, et il faut
@@ -54,12 +54,12 @@ const NOMS = [
 /// « abc »). L'empreinte sert à DÉTECTER UN CHANGEMENT, pas à protéger un
 /// secret — et c'est exactement ce qu'on lui demande, puisqu'aucune valeur
 /// exemptée n'est un secret.
-function empreinte(valeur: string): string {
-    return createHash('sha256').update(valeur, 'utf8').digest('hex').slice(0, 16);
+function empreinte(value: string): string {
+    return createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 16);
 }
 
 interface Exception {
-    fichier: string;
+    file: string;
     nom: string;
     /// L'empreinte de la valeur AUTORISÉE, et d'elle seule.
     empreinte: string;
@@ -77,7 +77,7 @@ interface Exception {
 /// Aucun secret de production n'a jamais été versionné dans ce dépôt.
 const EXCEPTIONS: readonly Exception[] = [
     {
-        fichier: 'docker-compose.plateforme.yml',
+        file: 'docker-compose.plateforme.yml',
         nom: 'POSTGRES_PASSWORD',
         empreinte: '3b132f52b3b4ad4d',
         raison:
@@ -86,7 +86,7 @@ const EXCEPTIONS: readonly Exception[] = [
             'fichier ». La valeur est la même pour tout le monde et ne protège rien.',
     },
     {
-        fichier: 'docs/superpowers/plans/2026-08-19-plateforme-p5.md',
+        file: 'docs/superpowers/plans/2026-08-19-plateforme-p5.md',
         nom: 'POSTGRES_PASSWORD',
         // La MÊME empreinte que la ligne du fichier de composition : c'est la
         // même valeur, et l'épinglage le montre plutôt que de l'affirmer.
@@ -105,7 +105,7 @@ const EXCEPTIONS: readonly Exception[] = [
     // ce qui prouve que la branche mord : si elle ne mordait pas, ce fichier
     // rougirait.
     {
-        fichier: 'docs/superpowers/plans/2026-07-29-traversee-nat.md',
+        file: 'docs/superpowers/plans/2026-07-29-traversee-nat.md',
         nom: 'TURN_SECRET',
         empreinte: '2bb80d537b1da3e3',
         raison:
@@ -113,7 +113,7 @@ const EXCEPTIONS: readonly Exception[] = [
             '« secret » lui-même, et le même littéral vit dans `signaling/ice.test.ts`.',
     },
     {
-        fichier: 'plateforme/src/signaling/ice.test.ts',
+        file: 'plateforme/src/signaling/ice.test.ts',
         nom: 'TURN_SECRET',
         empreinte: '2bb80d537b1da3e3',
         raison:
@@ -122,7 +122,7 @@ const EXCEPTIONS: readonly Exception[] = [
             "de l'identifiant dérivé, pas sa résistance.",
     },
     {
-        fichier: 'docs/superpowers/plans/2026-08-19-plateforme-p3.md',
+        file: 'docs/superpowers/plans/2026-08-19-plateforme-p3.md',
         nom: 'AGENT_SECRET',
         empreinte: 'ba7816bf8f01cfea',
         raison:
@@ -131,7 +131,7 @@ const EXCEPTIONS: readonly Exception[] = [
             'aucune VM.',
     },
     {
-        fichier: 'docs/superpowers/plans/journaux-corrections/instrument/compter-enrolements.sh',
+        file: 'docs/superpowers/plans/journaux-corrections/instrument/compter-enrolements.sh',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '6b82a0dca0d6fa4d',
         raison:
@@ -139,7 +139,7 @@ const EXCEPTIONS: readonly Exception[] = [
             "recette-là et mort avec elle. Il ne signe aucun jeton d'un service vivant.",
     },
     {
-        fichier: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/jouer.sh',
+        file: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/jouer.sh',
         nom: 'TURN_SECRET',
         empreinte: '20e73cf9ccbda64a',
         raison:
@@ -147,7 +147,7 @@ const EXCEPTIONS: readonly Exception[] = [
             "précisément pour qu'on ne le confonde pas avec celui du relais réel.",
     },
     {
-        fichier: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/rouge-1a.ts',
+        file: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/rouge-1a.ts',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '2923f1439452d95c',
         raison:
@@ -155,7 +155,7 @@ const EXCEPTIONS: readonly Exception[] = [
             '« recette-p3-… », morte avec sa recette.',
     },
     {
-        fichier: 'plateforme/src/config.test.ts',
+        file: 'plateforme/src/config.test.ts',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '94e4c4bc7d176bd9',
         raison:
@@ -163,7 +163,7 @@ const EXCEPTIONS: readonly Exception[] = [
             "que `lireConfig` REFUSE un secret sous `LONGUEUR_SECRET_MIN`.",
     },
     {
-        fichier: 'tests/desk_activate_fixtures.py',
+        file: 'tests/desk_activate_fixtures.py',
         nom: 'AGENT_SECRET',
         empreinte: 'fc66b5649cf2782e',
         raison:
@@ -184,20 +184,20 @@ const EXCEPTIONS: readonly Exception[] = [
 /// ⚠️ CHAQUE BRANCHE EST UN TROU POTENTIEL, et c'est pourquoi elles sont
 /// énumérées ici plutôt que noyées dans une expression régulière : un
 /// successeur qui en ajoutera une devra écrire pourquoi.
-function inoffensive(valeur: string): boolean {
+function inoffensive(value: string): boolean {
     // Vide : `TURN_SECRET=` ne porte rien.
-    if (valeur === '') return true;
+    if (value === '') return true;
     // Interpolation shell, docker compose ou Windows : la valeur vient
     // d'ailleurs, et « ailleurs » n'est pas versionné.
-    if (/^[$%]/.test(valeur)) return true;
+    if (/^[$%]/.test(value)) return true;
     // Une SUBSTITUTION de commande : `$(openssl rand -hex 32)`.
-    if (valeur.startsWith('(')) return true;
+    if (value.startsWith('(')) return true;
     // Un IDENTIFIANT de code, en majuscules : `PLATEFORME_SECRET_JETON: SECRET`
     // désigne une constante TypeScript, pas une valeur. Un secret réel en
     // majuscules pures et sans chiffre minuscule serait un secret risible.
-    if (/^[A-Z][A-Z0-9_]*$/.test(valeur)) return true;
+    if (/^[A-Z][A-Z0-9_]*$/.test(value)) return true;
     // Un OBJET de remplacement explicite : `<généré>`, `<votre secret>`.
-    if (valeur.startsWith('<')) return true;
+    if (value.startsWith('<')) return true;
     // 🔴 L'ELLIPSE, QUI EST LE MÊME OBJET DE REMPLACEMENT SOUS UN AUTRE
     // SIGNE — ajoutée au lot 33, après que le contrôle a CRIÉ À TORT.
     //
@@ -218,12 +218,12 @@ function inoffensive(valeur: string): boolean {
     // ENTIÈRE `...` (ou `…`), jamais un préfixe ni un suffixe. `abc...` reste
     // dénoncé, et un secret réel qui vaudrait exactement trois points n'est
     // pas un secret.
-    if (valeur === '...' || valeur === '…') return true;
+    if (value === '...' || value === '…') return true;
     return false;
 }
 
 interface Trouvaille {
-    fichier: string;
+    file: string;
     ligne: number;
     nom: string;
     /// L'empreinte de la valeur — jamais la valeur.
@@ -232,7 +232,7 @@ interface Trouvaille {
 
 /// Extrait la valeur affectée, sans jamais la rendre à l'appelant autrement
 /// que pour la classer.
-function valeurApres(reste: string): string {
+function valueAfter(reste: string): string {
     const t = reste.trimStart();
     // Une chaîne citée : on lit jusqu'au guillemet fermant.
     const cite = /^(['"`])(.*?)\1/.exec(t);
@@ -267,7 +267,7 @@ function valeurApres(reste: string): string {
 }
 
 function balayer(): Trouvaille[] {
-    const fichiers = execFileSync('git', ['ls-files', '-z'], {
+    const files = execFileSync('git', ['ls-files', '-z'], {
         cwd: RACINE,
         maxBuffer: 64 * 1024 * 1024,
     })
@@ -290,11 +290,11 @@ function balayer(): Trouvaille[] {
     );
 
     const trouvailles: Trouvaille[] = [];
-    for (const fichier of fichiers) {
-        const chemin = path.join(RACINE, fichier);
-        let taille: number;
+    for (const file of files) {
+        const chemin = path.join(RACINE, file);
+        let size: number;
         try {
-            taille = statSync(chemin).size;
+            size = statSync(chemin).size;
         } catch {
             // Un fichier suivi mais absent du disque (suppression non
             // commitée) : il n'y a rien à lire, et ce n'est pas notre sujet.
@@ -302,7 +302,7 @@ function balayer(): Trouvaille[] {
         }
         // Les binaires volumineux n'ont pas d'affectation lisible, et les lire
         // coûterait sans rien apprendre.
-        if (taille > 4 * 1024 * 1024) continue;
+        if (size > 4 * 1024 * 1024) continue;
         let contenu: string;
         try {
             contenu = readFileSync(chemin, 'utf8');
@@ -315,13 +315,13 @@ function balayer(): Trouvaille[] {
         for (let i = 0; i < lignes.length; i++) {
             const m = motif.exec(lignes[i]);
             if (!m) continue;
-            const valeur = valeurApres(m[2]);
-            if (inoffensive(valeur)) continue;
+            const value = valueAfter(m[2]);
+            if (inoffensive(value)) continue;
             trouvailles.push({
-                fichier,
+                file,
                 ligne: i + 1,
                 nom: m[1],
-                empreinte: empreinte(valeur),
+                empreinte: empreinte(value),
             });
         }
     }
@@ -332,16 +332,16 @@ describe('aucun secret dans un fichier versionné', () => {
     it('🔴 ne trouve aucune affectation littérale hors des exceptions déclarées', () => {
         const trouvailles = balayer();
         const autorisees = new Set(
-            EXCEPTIONS.map((e) => `${e.fichier}:${e.nom}:${e.empreinte}`),
+            EXCEPTIONS.map((e) => `${e.file}:${e.nom}:${e.empreinte}`),
         );
         const hors = trouvailles.filter(
-            (t) => !autorisees.has(`${t.fichier}:${t.nom}:${t.empreinte}`),
+            (t) => !autorisees.has(`${t.file}:${t.nom}:${t.empreinte}`),
         );
         // ⚠️ LE MESSAGE NOMME LE FICHIER, LA LIGNE ET LE NOM — JAMAIS LA
         // VALEUR. Voir l'en-tête : un test de sécurité qui imprimerait le
         // secret le fuirait par la porte qu'il garde.
         expect(
-            hors.map((t) => `${t.fichier}:${t.ligne} affecte ${t.nom} [empreinte ${t.empreinte}]`),
+            hors.map((t) => `${t.file}:${t.ligne} affecte ${t.nom} [empreinte ${t.empreinte}]`),
             "des secrets sont affectés en clair dans des fichiers versionnés " +
                 "(la valeur n'est volontairement pas affichée)",
         ).toEqual([]);
@@ -351,9 +351,9 @@ describe('aucun secret dans un fichier versionné', () => {
         // Sans cette assertion, la liste deviendrait en deux chantiers une
         // liste de choses qu'on a renoncé à comprendre.
         for (const e of EXCEPTIONS) {
-            expect(e.raison.trim().length, `l'exception ${e.fichier}:${e.nom} n'a pas de raison`)
+            expect(e.raison.trim().length, `l'exception ${e.file}:${e.nom} n'a pas de raison`)
                 .toBeGreaterThan(30);
-            expect(e.empreinte, `l'exception ${e.fichier}:${e.nom} n'épingle aucune valeur`)
+            expect(e.empreinte, `l'exception ${e.file}:${e.nom} n'épingle aucune valeur`)
                 .toMatch(/^[0-9a-f]{16}$/);
         }
     });
@@ -364,11 +364,11 @@ describe('aucun secret dans un fichier versionné', () => {
         // que personne ne relit. Cette assertion la fait tomber le jour où
         // elle cesse d'être nécessaire.
         const reelles = new Set(
-            balayer().map((t) => `${t.fichier}:${t.nom}:${t.empreinte}`),
+            balayer().map((t) => `${t.file}:${t.nom}:${t.empreinte}`),
         );
         for (const e of EXCEPTIONS) {
-            const cle = `${e.fichier}:${e.nom}:${e.empreinte}`;
-            expect(reelles.has(cle), `l'exception ${e.fichier}:${e.nom} ne couvre plus rien`)
+            const cle = `${e.file}:${e.nom}:${e.empreinte}`;
+            expect(reelles.has(cle), `l'exception ${e.file}:${e.nom} ne couvre plus rien`)
                 .toBe(true);
         }
     });
@@ -378,14 +378,14 @@ describe('aucun secret dans un fichier versionné', () => {
         // — mauvais `cwd`, dépôt absent — ferait passer le test principal en
         // vert sans avoir rien balayé. C'est le patron du contrôle vacueux,
         // que ce dépôt a payé quatre fois.
-        const fichiers = execFileSync('git', ['ls-files', '-z'], {
+        const files = execFileSync('git', ['ls-files', '-z'], {
             cwd: RACINE,
             maxBuffer: 64 * 1024 * 1024,
         })
             .toString('utf8')
             .split('\0')
             .filter((f) => f !== '');
-        expect(fichiers.length).toBeGreaterThan(500);
-        expect(fichiers).toContain('docker-compose.plateforme.yml');
+        expect(files.length).toBeGreaterThan(500);
+        expect(files).toContain('docker-compose.plateforme.yml');
     });
 });

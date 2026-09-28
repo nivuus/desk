@@ -385,7 +385,7 @@ async function principal() {
             journal.controle = JSON.parse(await cdp.eval(CONTROLE_INSTRUMENT(secondes), true, secondes * 1000 + 20000));
             journal.console = cdp.consoleLines.slice(-40);
             journal.erreursPage = cdp.pageErrors;
-            return journal.controle.erreur ? 1 : 0;
+            return journal.controle.error ? 1 : 0;
         }
 
         await cdp.send('Page.navigate', { url });
@@ -440,7 +440,7 @@ async function principal() {
                 s.etatBouton = JSON.parse((await cdp.eval(ETAT_BOUTON)) ?? '{}');
                 journal.stats.push(s);
             } catch (e) {
-                journal.stats.push({ etiquette: 'relevé en échec', erreur: e.message });
+                journal.stats.push({ etiquette: 'relevé en échec', error: e.message });
             }
         }
         journal.fin = new Date().toISOString();

@@ -11,8 +11,8 @@ describe('ENTETES_SECURITE', () => {
         // Éprouvée ici pour qu'un ajout futur ne l'introduise pas : un `*` sur
         // un en-tête de sécurité est presque toujours une désactivation
         // déguisée en configuration.
-        for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
-            expect(valeur, `l'en-tête ${cle} porte un joker`).not.toContain('*');
+        for (const [cle, value] of Object.entries(ENTETES_SECURITE)) {
+            expect(value, `l'en-tête ${cle} porte un joker`).not.toContain('*');
         }
     });
 

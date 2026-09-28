@@ -14,10 +14,10 @@ import { televerser, type DepsTeleversement, type Fetch, type Issue } from './te
 
 /// Un contenu déterministe — un générateur congruentiel, jamais `Math.random` :
 /// un test dont les octets changent d'une exécution à l'autre ne se rejoue pas.
-function octetsDe(taille: number, graine = 7) {
-    const sortie = new Uint8Array(taille);
+function octetsDe(size: number, graine = 7) {
+    const sortie = new Uint8Array(size);
     let x = graine;
-    for (let i = 0; i < taille; i += 1) {
+    for (let i = 0; i < size; i += 1) {
         x = (x * 1103515245 + 12345) & 0x7fffffff;
         sortie[i] = (x >>> 16) & 0xff;
     }
@@ -81,7 +81,7 @@ function deps(fetch: Fetch, extra: Partial<DepsTeleversement> = {}): DepsTelever
 /// Un fichier de 16 octets découpé par 4 : quatre tranches, le cas de la rouge n°1.
 const OCTETS = octetsDe(16);
 const SHA = condenserHex(OCTETS);
-const fichier = (o: BlobPart = OCTETS, nom = 'setup.exe'): File => new File([o], nom);
+const file = (o: BlobPart = OCTETS, nom = 'setup.exe'): File => new File([o], nom);
 const creation = { status: 200, corps: { id: 't-1', taille_tranche: 4, tranches_presentes: [] } };
 /// 🔴 LA FORME QUE LA ROUTE REND, ET LA SEULE : `{n, octets}`.
 ///
@@ -101,7 +101,7 @@ const etatDe = (presentes: unknown, extra: Record<string, unknown> = {}): Repons
 describe('le chemin nominal', () => {
     it('empreint, crée, dépose les quatre tranches et scelle', async () => {
         const s = serveur({ creation });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toEqual({ etat: 'scelle', id: 't-1', taille: 16, sha256: SHA, deposees: [0, 1, 2, 3] });
         expect(s.rangs()).toEqual([0, 1, 2, 3]);
         expect(s.octetsEmis()).toBe(16);
@@ -113,10 +113,10 @@ describe('le chemin nominal', () => {
 
     it("annonce dès la CRÉATION le nom, la taille et l'empreinte (D5)", async () => {
         // 🔴 C'est cette annonce, et elle seule, qui rendra une reprise
-        // vérifiable : sans `{taille, sha256}` posés d'avance, rien ne dira que
+        // vérifiable : sans `{size, sha256}` posés d'avance, rien ne dira que
         // le fichier re-choisi après un rechargement d'onglet est LE MÊME.
         const s = serveur({ creation });
-        await televerser(fichier(OCTETS, 'programme.msi'), deps(s.fetch));
+        await televerser(file(OCTETS, 'programme.msi'), deps(s.fetch));
         expect(s.appels[0].url).toBe('https://p/televersement');
         expect(s.appels[0].entetes.authorization).toBe('Bearer j-1');
         expect(JSON.parse(s.appels[0].corps ?? '{}')).toEqual({ nom: 'programme.msi', taille: 16, sha256: SHA });
@@ -134,7 +134,7 @@ describe('le chemin nominal', () => {
 
     it('porte le jeton et le type binaire sur chaque tranche déposée', async () => {
         const s = serveur({ creation });
-        await televerser(fichier(), deps(s.fetch));
+        await televerser(file(), deps(s.fetch));
         for (const p of s.puts()) {
             expect(p.entetes.authorization).toBe('Bearer j-1');
             expect(p.entetes['content-type']).toBe('application/octet-stream');
@@ -143,7 +143,7 @@ describe('le chemin nominal', () => {
 
     it("d'un fichier VIDE, ne dépose aucune tranche et scelle quand même", async () => {
         const s = serveur({ creation: { status: 200, corps: { id: 't-0', taille_tranche: 4, tranches_presentes: [] } } });
-        const issue = await televerser(fichier(new Uint8Array(0)), deps(s.fetch));
+        const issue = await televerser(file(new Uint8Array(0)), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'scelle', taille: 0, sha256: condenserHex(new Uint8Array(0)) });
         expect(s.puts()).toHaveLength(0);
         expect(s.appels.at(-1)?.url).toBe('https://p/televersement/t-0/sceller');
@@ -157,7 +157,7 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
         // d'un produit correct — d'où l'assertion sur `octetsEmis`, et non sur
         // la seule issue.
         const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
-        const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
+        const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         // ⚠️ LE COMPTE D'OCTETS PASSE EN PREMIER, ET CE N'EST PAS COSMÉTIQUE :
         // `deposees` est un champ que le PRODUIT déclare, donc falsifiable par un
         // produit qui redéposerait tout en annonçant le contraire. Les octets
@@ -170,14 +170,14 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
 
     it('accepte AUSSI la forme riche `{n, octets}` du listage', async () => {
         const s = serveur({ etat: etatDe([{ n: 0, octets: 4 }, { n: 2, octets: 4 }]) });
-        const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
+        const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(s.octetsEmis()).toBe(8);
         expect(issue).toMatchObject({ etat: 'scelle', deposees: [1, 3] });
     });
 
     it("d'un dépôt COMPLET, ne redépose rien et va droit au scellement", async () => {
         const s = serveur({ etat: etatDe([presente(0), presente(1), presente(2), presente(3)]) });
-        const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
+        const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(s.puts()).toHaveLength(0);
         expect(issue).toMatchObject({ etat: 'scelle', deposees: [] });
         expect(s.appels.map((a) => a.methode)).toEqual(['GET', 'POST']);
@@ -187,7 +187,7 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
         // `incoherentes` n'est pas `manquantes` : redéposer ne réparerait rien,
         // et boucler serait le vrai défaut.
         const s = serveur({ etat: etatDe([{ n: 0, octets: 3 }]) });
-        const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
+        const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toEqual({
             etat: 'refus',
             id: 't-1',
@@ -210,7 +210,7 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
         const phases: string[] = [];
         const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(
-            fichier(octetsDe(12)),
+            file(octetsDe(12)),
             deps(s.fetch, { reprise: 't-1', progression: (p) => void phases.push(p.phase) }),
         );
         expect(phases).toEqual([]);
@@ -224,7 +224,7 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
 
     it("refuse un CONTENU différent à taille égale, et n'émet AUCUN PUT", async () => {
         const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
-        const issue = await televerser(fichier(octetsDe(16, 99)), deps(s.fetch, { reprise: 't-1' }));
+        const issue = await televerser(file(octetsDe(16, 99)), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toMatchObject({ etat: 'refus', id: 't-1', refus: { motif: 'fichier-different' } });
         expect(s.puts()).toHaveLength(0);
     });
@@ -233,7 +233,7 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
         // Reprendre à l'aveugle mélangerait les tranches de deux fichiers, et le
         // scellement échouerait sans que rien ne dise pourquoi.
         const s = serveur({ etat: { status: 200, corps: { taille_tranche: 4, tranches_presentes: [] } } });
-        const issue = await televerser(fichier(), deps(s.fetch, { reprise: 't-1' }));
+        const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'etat-illisible' } });
         expect(s.puts()).toHaveLength(0);
     });
@@ -242,7 +242,7 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
 describe('🔴 les refus du service remontent TYPÉS', () => {
     it("d'un scellement en 409 `empreinte`, rend le refus et ne réessaie PAS", async () => {
         const s = serveur({ creation, sceller: { status: 409, corps: { refus: 'empreinte' } } });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toEqual({
             etat: 'refus',
             id: 't-1',
@@ -257,7 +257,7 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
 
     it("d'un dépôt de tranche refusé, s'arrête à la PREMIÈRE et nomme l'étape", async () => {
         const s = serveur({ creation, tranche: { status: 413, corps: { refus: 'tranche-trop-grande' } } });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({
             etat: 'refus',
             refus: { source: 'service', etape: 'tranche', statut: 413, motif: 'tranche-trop-grande' },
@@ -267,7 +267,7 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
 
     it("d'un corps sans `refus`, rend le statut plutôt que d'inventer un motif", async () => {
         const s = serveur({ creation: { status: 503, corps: 'indisponible' } });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toEqual({
             etat: 'refus',
             refus: { source: 'service', etape: 'creation', statut: 503, motif: 'http-503' },
@@ -276,7 +276,7 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
 
     it("d'une création sans identifiant, refuse au lieu de déposer dans le vide", async () => {
         const s = serveur({ creation: { status: 200, corps: { taille_tranche: 4 } } });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'etat-illisible' } });
         expect(s.puts()).toHaveLength(0);
     });
@@ -285,13 +285,13 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
         // `plan` lève sur un pas nul — sa garde vise un défaut de programme, pas
         // une donnée de fil. La valider ici est ce qui rend un refus nommé.
         const s = serveur({ creation: { status: 200, corps: { id: 't-1', taille_tranche: 0 } } });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'refus', id: 't-1', refus: { motif: 'etat-illisible' } });
     });
 
     it("de `tranches_presentes` de forme inconnue, refuse", async () => {
         const s = serveur({ creation: { status: 200, corps: { id: 't-1', taille_tranche: 4, tranches_presentes: 'deux' } } });
-        const issue = await televerser(fichier(), deps(s.fetch));
+        const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'etat-illisible' } });
     });
 });
@@ -306,7 +306,7 @@ describe("l'interruption est un refus, jamais une panne", () => {
         // pour cette raison avant d'être corrigé.
         let horloge = 0;
         const issue = await televerser(
-            fichier(),
+            file(),
             deps(s.fetch, {
                 signal: arret.signal,
                 maintenant: () => (horloge += 1000),
@@ -325,12 +325,12 @@ describe("l'interruption est un refus, jamais une panne", () => {
             throw new Error('coupé');
         };
         arret.abort();
-        const issue = await televerser(fichier(), deps(casse, { signal: arret.signal }));
+        const issue = await televerser(file(), deps(casse, { signal: arret.signal }));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'interrompu' } });
         // Sans signal levé, la même panne REMONTE : ce module n'a rien d'utile à
         // dire d'une panne d'environnement, et la déguiser en refus la ferait
         // passer pour une décision de protocole.
-        await expect(televerser(fichier(), deps(casse))).rejects.toThrow('coupé');
+        await expect(televerser(file(), deps(casse))).rejects.toThrow('coupé');
     });
 });
 
@@ -340,7 +340,7 @@ describe("la progression, cadencée par l'horloge injectée", () => {
         const vues: string[] = [];
         let horloge = 0;
         await televerser(
-            fichier(),
+            file(),
             deps(s.fetch, {
                 maintenant: () => (horloge += 1000),
                 progression: (p) => void vues.push(`${p.phase}:${p.octets}/${p.total}`),
@@ -358,7 +358,7 @@ describe("la progression, cadencée par l'horloge injectée", () => {
         // doivent sortir. Sans cadence, empreindre 800 Mo en émettrait des milliers.
         const s = serveur({ creation });
         const vues: string[] = [];
-        await televerser(fichier(), deps(s.fetch, { progression: (p) => void vues.push(p.phase) }));
+        await televerser(file(), deps(s.fetch, { progression: (p) => void vues.push(p.phase) }));
         expect(vues.filter((v) => v === 'transfert')).toHaveLength(1);
     });
 });

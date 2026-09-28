@@ -44,7 +44,7 @@ import type { WebSocketServer } from 'ws';
 /// the operator. What stays observable is the CLOSE, which the peer sees
 /// (code 1009), and the fact that the service keeps serving. The day they
 /// need to be counted, a counter is what will be needed — not a trace.
-export function encaisserLesErreursDeSocket(wss: WebSocketServer): void {
+export function absorbSocketErrors(wss: WebSocketServer): void {
     // Registered BEFORE `createSignalingServer` and `servirLeCanalAgent`, which
     // set their own `connection` handlers: the listeners run
     // in their order of registration, and this one must be attached to the

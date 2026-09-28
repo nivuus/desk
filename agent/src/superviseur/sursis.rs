@@ -77,9 +77,9 @@ impl Sursis {
     /// Returns `true` if it was indeed on probation — that is, **if a tab
     /// was just avoided**, and that is what the caller logs.
     pub fn retirer(&mut self, fenetre: IdFenetre) -> bool {
-        let avant = self.attentes.len();
+        let before = self.attentes.len();
         self.attentes.retain(|(f, _, _)| *f != fenetre);
-        self.attentes.len() != avant
+        self.attentes.len() != before
     }
 
     /// The windows whose probation has elapsed, removed from the waiting list.
@@ -115,7 +115,7 @@ mod tests {
     /// The production case: a window dead within 110 ms never reaches
     /// `murs`, hence opens no tab.
     #[test]
-    fn une_fenetre_morte_avant_l_echeance_n_ouvre_aucun_onglet() {
+    fn a_window_dead_before_the_deadline_opens_no_tab() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "splash".into(), t0);
@@ -138,7 +138,7 @@ mod tests {
     /// One second too early, nothing comes out — and the window stays waiting,
     /// it is not lost.
     #[test]
-    fn avant_l_echeance_rien_ne_sort_et_rien_n_est_perdu() {
+    fn before_the_deadline_nothing_leaves_and_nothing_is_lost() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);

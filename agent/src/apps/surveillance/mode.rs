@@ -85,11 +85,11 @@ impl Mode {
     /// wrong verdict. It is the "a check that cannot fail" pattern
     /// in a new form: the set-up would yield `156` where it believes it reads
     /// `156`, for a reason that is not the one it measures.
-    pub fn lire(valeur: Option<&str>) -> (Mode, Option<String>) {
-        if crate::apps::desarme(valeur) {
+    pub fn lire(value: Option<&str>) -> (Mode, Option<String>) {
+        if crate::apps::desarme(value) {
             return (Mode::Desarmee, None);
         }
-        match valeur {
+        match value {
             None => (Mode::Armee, None),
             Some("sans-rebond") => (Mode::SansRebond, None),
             Some("seule") => (Mode::Seule, None),
@@ -132,8 +132,8 @@ mod tests {
         assert_eq!(Mode::lire(Some("seule")), (Mode::Seule, None));
     }
 
-    /// 🔴 THE CONVENTION'S RED: replacing `crate::apps::desarme(valeur)`
-    /// with `valeur.is_some()` makes this test fail on its FIRST assertion —
+    /// 🔴 THE CONVENTION'S RED: replacing `crate::apps::desarme(value)`
+    /// with `value.is_some()` makes this test fail on its FIRST assertion —
     /// `"sans-rebond"` would become `Desarmee`, that is, asking for the
     /// RED of criterion ④ would yield that of criterion ①, and the acceptance run would read a
     /// wrong verdict without any line saying so.
@@ -148,14 +148,14 @@ mod tests {
     /// The test in `apps.rs` already pins it for `APPS`; the reuse of `desarme`
     /// must preserve it, and that is what this assertion checks.
     #[test]
-    fn une_valeur_inconnue_retient_le_comportement_livre_et_se_nomme() {
-        for valeur in ["seul", "SEULE", "", "00", "0 ", "sans_rebond", "false"] {
-            let (mode, inconnue) = Mode::lire(Some(valeur));
-            assert_eq!(mode, Mode::Armee, "{valeur:?} doit retenir le mode livré");
+    fn an_unknown_value_keeps_the_shipped_behaviour_and_names_itself() {
+        for value in ["seul", "SEULE", "", "00", "0 ", "sans_rebond", "false"] {
+            let (mode, inconnue) = Mode::lire(Some(value));
+            assert_eq!(mode, Mode::Armee, "{value:?} doit retenir le mode livré");
             assert_eq!(
                 inconnue.as_deref(),
-                Some(valeur),
-                "{valeur:?} doit être NOMMÉE au journal"
+                Some(value),
+                "{value:?} doit être NOMMÉE au journal"
             );
         }
     }
@@ -163,7 +163,7 @@ mod tests {
     /// The three predicates, one per consumer — and `Desarmee` lets the
     /// periodic reconciliation run, which is what makes `=0` equal to G1.
     #[test]
-    fn chaque_predicat_ne_coupe_que_ce_qui_le_concerne() {
+    fn each_predicate_only_cuts_what_concerns_it() {
         assert!(Mode::Armee.surveille() && Mode::Armee.rebond() && Mode::Armee.periodique());
         assert!(!Mode::Desarmee.surveille());
         assert!(

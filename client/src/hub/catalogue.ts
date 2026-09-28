@@ -96,7 +96,7 @@ export type Refus =
     | { source: 'client'; motif: 'reponse-illisible'; detail: string }
     | { source: 'service'; statut: number; motif: string };
 
-export type Issue<T> = { etat: 'ok'; valeur: T } | { etat: 'refus'; refus: Refus };
+export type Issue<T> = { etat: 'ok'; value: T } | { etat: 'refus'; refus: Refus };
 
 /* ── L'INTERNE ────────────────────────────────────────────────────────── */
 
@@ -144,10 +144,10 @@ export async function listerApplications(
     if (typeof corps !== 'object' || corps === null || !('applications' in corps)) {
         return illisible("le corps ne porte pas de champ 'applications'");
     }
-    const liste = (corps as { applications: unknown }).applications;
-    if (!Array.isArray(liste)) return illisible("'applications' n'est pas un tableau");
+    const list = (corps as { applications: unknown }).applications;
+    if (!Array.isArray(list)) return illisible("'applications' n'est pas un tableau");
     const applications: ApplicationListee[] = [];
-    for (const entree of liste) {
+    for (const entree of list) {
         if (typeof entree !== 'object' || entree === null) return illisible('une entrée n\'est pas un objet');
         const e = entree as Record<string, unknown>;
         if (typeof e.id !== 'string' || typeof e.nom !== 'string') {
@@ -169,7 +169,7 @@ export async function listerApplications(
                 : [],
         });
     }
-    return { etat: 'ok', valeur: applications };
+    return { etat: 'ok', value: applications };
 }
 
 function illisible<T>(detail: string): Issue<T> {
@@ -180,7 +180,7 @@ function illisible<T>(detail: string): Issue<T> {
 
 /// A VM, as `GET /vm` returns it — and NOTHING more.
 ///
-/// ⚠️ NEITHER `adresse`, NOR `utilisateurId`: the platform withholds them deliberately
+/// ⚠️ NEITHER `adresse`, NOR `userId`: the platform withholds them deliberately
 /// (`routes-vm.ts:177-180`) — the first is internal topology, the
 /// second is the requester's, which they already know.
 export interface VmListee {
@@ -209,10 +209,10 @@ export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>>
     if (typeof corps !== 'object' || corps === null || !('vms' in corps)) {
         return illisible("le corps ne porte pas de champ 'vms'");
     }
-    const liste = (corps as { vms: unknown }).vms;
-    if (!Array.isArray(liste)) return illisible("'vms' n'est pas un tableau");
+    const list = (corps as { vms: unknown }).vms;
+    if (!Array.isArray(list)) return illisible("'vms' n'est pas un tableau");
     const vms: VmListee[] = [];
-    for (const entree of liste) {
+    for (const entree of list) {
         if (typeof entree !== 'object' || entree === null) return illisible("une entrée n'est pas un objet");
         const e = entree as Record<string, unknown>;
         if (typeof e.id !== 'string' || typeof e.nom !== 'string') {
@@ -225,7 +225,7 @@ export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>>
             prefixe: typeof e.prefixe === 'string' ? e.prefixe : null,
         });
     }
-    return { etat: 'ok', valeur: vms };
+    return { etat: 'ok', value: vms };
 }
 
 /* ── READING AN ICON ───────────────────────────────────────────── */
@@ -250,7 +250,7 @@ export async function lireIcone(
     }
     const r = await deps.fetch(`${deps.base}${application.icone_url}`, { method: 'GET' });
     if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };
-    return { etat: 'ok', valeur: new Uint8Array(await r.arrayBuffer()) };
+    return { etat: 'ok', value: new Uint8Array(await r.arrayBuffer()) };
 }
 
 /* ── LE LANCEMENT ─────────────────────────────────────────────────────── */
@@ -263,5 +263,5 @@ export async function lancerApplication(
     const url = `${deps.base}/application/${encodeURIComponent(id)}/lancer`;
     const r = await deps.fetch(url, { method: 'POST', headers: entetes(deps) });
     if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };
-    return { etat: 'ok', valeur: null };
+    return { etat: 'ok', value: null };
 }

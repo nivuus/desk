@@ -3,7 +3,7 @@
 et dépôt du binaire, tâche 7 (2026-08-29).
 
 Extrait de `hooks/activate.py` par la tâche 13 (2026-08-29), pour la MÊME
-raison que `hooks/administration.py` et `hooks/env_fichier.py` (voir leurs
+raison que `hooks/administration.py` et `hooks/env_file.py` (voir leurs
 propres docstrings de tête) : `activate.py` atteignait 509 lignes après
 l'ajout de l'attribution de la VM au compte administrateur (tâche 13,
 trou trouvé en production), et ce dépôt interdit de comprimer pour éviter
@@ -11,7 +11,7 @@ une extraction (« ce dépôt l'a payé douze fois »). Ce module porte donc,
 VERBATIM, ce que la tâche 7 avait écrit : le même corps, le même docstring,
 seulement déplacés dans un commit DÉDIÉ, AVANT celui qui ajoute l'attribution.
 
-Comme `hooks/vm.py`, `hooks/administration.py` et `hooks/env_fichier.py`, ce
+Comme `hooks/vm.py`, `hooks/administration.py` et `hooks/env_file.py`, ce
 module N'EST PAS un hook exécutable seul (pas de `--phase`/stdin JSON) :
 `hooks/activate.py` l'importe (`from agent_payload import chemin_agent_console,
 construire_agent_reel, deposer_agent_console`) — Python ajoute automatiquement

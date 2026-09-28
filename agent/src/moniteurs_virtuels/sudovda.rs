@@ -37,7 +37,7 @@ pub(super) const INTERFACE_PILOTE: GUID =
 // tested by nothing anyway.
 
 /// Confirmed by bytes (offset 16316 of the local DLL).
-pub(super) const IOCTL_AJOUTER_SORTIE: u32 = 0x0022_2000;
+pub(super) const IOCTL_ADD_OUTPUT: u32 = 0x0022_2000;
 /// Not confirmed by bytes — same macro, same upstream header.
 pub(super) const IOCTL_RETIRER_SORTIE: u32 = 0x0022_2004;
 /// Confirmed by bytes (offset 16284 of the local DLL).
@@ -51,7 +51,7 @@ pub(super) const IOCTL_LIRE_VERSION_PROTOCOLE: u32 = 0x0022_23FC;
 /// client that went silent — see `Veille` below and `montee.rs`.
 pub(super) const IOCTL_PINGUER: u32 = 0x0022_2220;
 
-/// Input buffer of `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_PARAMS`).
+/// Input buffer of `IOCTL_ADD_OUTPUT` (`VIRTUAL_DISPLAY_ADD_PARAMS`).
 ///
 /// No `#pragma pack` upstream: MSVC/x64 natural alignment, that is 4 here.
 /// Expected offsets: 0, 4, 8, 12, 28, 42 — total 56 bytes, checked by
@@ -75,7 +75,7 @@ pub(super) struct DemandeAjout {
     pub(super) numero_serie: [u8; 14],
 }
 
-/// Output buffer of `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_OUT`).
+/// Output buffer of `IOCTL_ADD_OUTPUT` (`VIRTUAL_DISPLAY_ADD_OUT`).
 ///
 /// Win32 `LUID` = `{ DWORD LowPart; LONG HighPart; }`, 8 bytes aligned on 4 —
 /// written as two fields rather than as `windows::Win32::Foundation::LUID` so

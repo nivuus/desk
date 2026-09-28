@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { creerStatut } from './status';
+import { createStatus } from './status';
 
 function faireCible() {
     return { textContent: '', dataset: {} as { hidden?: string } };
@@ -14,9 +14,9 @@ function faireCible() {
 describe('creerStatut', () => {
     it('affiche un message ordinaire', () => {
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('offre envoyée, attente de l’agent…');
+        statut.show('offre envoyée, attente de l’agent…');
 
         expect(element.textContent).toBe('offre envoyée, attente de l’agent…');
         expect(element.dataset.hidden).toBe('false');
@@ -24,9 +24,9 @@ describe('creerStatut', () => {
 
     it('affiche un message terminal', () => {
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session terminée : fermeture demandée', { terminal: true });
 
         expect(element.textContent).toBe('session terminée : fermeture demandée');
         expect(element.dataset.hidden).toBe('false');
@@ -37,29 +37,29 @@ describe('creerStatut', () => {
         // `disconnected` se déclenche juste après `session-end`, et écrivait
         // par-dessus « session terminée : … » avant ce correctif.
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
-        statut.afficher('connexion : disconnected');
+        statut.show('session terminée : fermeture demandée', { terminal: true });
+        statut.show('connexion : disconnected');
 
         expect(element.textContent).toBe('session terminée : fermeture demandée');
     });
 
     it('deux messages terminaux successifs se remplacent l’un l’autre', () => {
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
-        statut.afficher('session terminée : erreur agent', { terminal: true });
+        statut.show('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session terminée : erreur agent', { terminal: true });
 
         expect(element.textContent).toBe('session terminée : erreur agent');
     });
 
     it('masquer() cache le bandeau tant qu’aucun message terminal n’est affiché', () => {
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('prêt — 1920×1080');
+        statut.show('prêt — 1920×1080');
         statut.masquer();
 
         expect(element.dataset.hidden).toBe('true');
@@ -67,9 +67,9 @@ describe('creerStatut', () => {
 
     it('masquer() n’efface pas un message terminal affiché', () => {
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session terminée : fermeture demandée', { terminal: true });
         statut.masquer();
 
         expect(element.dataset.hidden).toBe('false');
@@ -82,9 +82,9 @@ describe('creerStatut', () => {
         // (« prêt », « manette détectée »…) ne doit pas disparaître quand ce
         // minuteur se déclenche — ce module ne sait rien de son existence.
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+        statut.show('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
             persistant: true,
         });
         statut.masquer();
@@ -99,12 +99,12 @@ describe('creerStatut', () => {
         // réseau) doit pouvoir se masquer normalement, sans que l'ancienne
         // alerte ne le bloque indéfiniment.
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+        statut.show('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
             persistant: true,
         });
-        statut.afficher('1920×1080, 8.0 Mb/s');
+        statut.show('1920×1080, 8.0 Mb/s');
         statut.masquer();
 
         expect(element.dataset.hidden).toBe('true');
@@ -116,9 +116,9 @@ describe('creerStatut', () => {
         // `persistant: true` à l'endormissement — `masquer()` seul ne le
         // peut pas, par construction.
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('image figée : fenêtre masquée', { persistant: true });
+        statut.show('image figée : fenêtre masquée', { persistant: true });
         statut.expirer();
 
         expect(element.dataset.hidden).toBe('true');
@@ -128,9 +128,9 @@ describe('creerStatut', () => {
         // Même exigence que pour masquer() : `expirer()` ne lève QUE la
         // persistance, jamais la protection terminale.
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session terminée : fermeture demandée', { terminal: true });
         statut.expirer();
 
         expect(element.dataset.hidden).toBe('false');
@@ -142,10 +142,10 @@ describe('creerStatut', () => {
         // à côté de `terminal`, exactement le genre d'endroit où l'on
         // affaiblit une garde existante sans le voir.
         const element = faireCible();
-        const statut = creerStatut(element);
+        const statut = createStatus(element);
 
-        statut.afficher('session terminée : fermeture demandée', { terminal: true });
-        statut.afficher('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+        statut.show('session terminée : fermeture demandée', { terminal: true });
+        statut.show('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
             persistant: true,
         });
 

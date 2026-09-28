@@ -1,7 +1,7 @@
 // The common base of acceptance run P4's probes: start a REAL service,
 // populate its database as an administrator would, and hit its routes.
 //
-// 🔴 THE SERVICE IS THE REAL ONE, mounted by `demarrer()` — the same sequence as
+// 🔴 THE SERVICE IS THE REAL ONE, mounted by `start()` — the same sequence as
 // `src/index.ts`. Nothing is simulated on the platform side: it is HTTP over a
 // socket, against a real database, on both engines. What the probe
 // fabricates are the PEERS (a browser scripted through `fetch`) and
@@ -14,16 +14,16 @@
 // from the one the service uses.
 
 import { lireConfig } from '../../../../../plateforme/src/config';
-import { demarrer, type Service } from '../../../../../plateforme/src/demarrage';
+import { start, type Service } from '../../../../../plateforme/src/demarrage';
 import { ouvrirPostgres } from '../../../../../plateforme/src/base/pilote-postgres';
 import type { Pilote } from '../../../../../plateforme/src/base/pilote';
-import { creerUtilisateur } from '../../../../../plateforme/src/depot/utilisateur';
+import { createUser } from '../../../../../plateforme/src/depot/utilisateur';
 import { enrolerLaVm } from '../../../../../plateforme/src/admin/enroler-agent';
 import { signer } from '../../../../../plateforme/src/identite/jeton';
 
 export type Moteur = 'sqlite' | 'postgres';
 
-/// FIXED and long: `lireConfig` refuses below `LONGUEUR_SECRET_MIN`, and
+/// FIXED and long: `lireConfig` refuses below `MIN_SECRET_LENGTH`, and
 /// a randomly drawn secret would make the logs non-comparable from one
 /// run to the next for nothing. It protects nothing — the service only lives
 /// for the duration of the probe, on an ephemeral loopback port.
@@ -37,7 +37,7 @@ const URL_POSTGRES =
 ///
 /// Postgres: a throwaway SCHEMA, as `base/harnais.ts` does for the
 /// tests — two successive runs must not step on each other.
-export async function demarrerService(moteur: Moteur, nom: string): Promise<Service> {
+export async function startService(moteur: Moteur, nom: string): Promise<Service> {
     let urlBase = ':memory:';
     if (moteur === 'postgres') {
         const schema = `p4_${nom.replace(/[^a-z0-9]/gi, '_')}_${process.pid}`;
@@ -49,13 +49,13 @@ export async function demarrerService(moteur: Moteur, nom: string): Promise<Serv
     }
     const config = lireConfig({
         PLATEFORME_HOTE: '127.0.0.1',
-        // 0 = ephemeral port. `demarrerServeur` rereads the real address.
+        // 0 = ephemeral port. `startServer` rereads the real address.
         PLATEFORME_PORT: '0',
         PLATEFORME_BASE: moteur,
         PLATEFORME_BASE_URL: urlBase,
         PLATEFORME_SECRET_JETON: SECRET_JETON,
     });
-    return demarrer(config);
+    return start(config);
 }
 
 /// The order of magnitude of an epoch in milliseconds. It is P1's most
@@ -65,25 +65,25 @@ export const INSTANT = 1_700_000_000_000;
 
 /// Creates an account. The hash is a non-derivable LITERAL: this probe
 /// never signs in by password, it signs its tokens directly.
-export async function creerCompte(p: Pilote, email: string): Promise<string> {
-    return creerUtilisateur(p, email, 'scrypt$16384$8$1$sel-de-recette$aucune-connexion-par-ce-chemin', INSTANT);
+export async function createAccount(p: Pilote, email: string): Promise<string> {
+    return createUser(p, email, 'scrypt$16384$8$1$sel-de-recette$aucune-connexion-par-ce-chemin', INSTANT);
 }
 
-export interface VmEssai {
+export interface TestVm {
     vmId: string;
     prefixe: string;
     nom: string;
 }
 
 /// Enrols a VM as `npm run admin:agent` would — the SAME function.
-export async function enroler(p: Pilote, nom: string): Promise<VmEssai> {
+export async function enroler(p: Pilote, nom: string): Promise<TestVm> {
     const e = await enrolerLaVm(p, nom, '192.168.3.2', INSTANT);
     return { vmId: e.vmId, prefixe: e.prefixe, nom };
 }
 
 /// A user access token, signed with the SAME secret as the service.
-export function jetonDe(utilisateurId: string): string {
-    return signer(utilisateurId, SECRET_JETON, Date.now());
+export function jetonDe(userId: string): string {
+    return signer(userId, SECRET_JETON, Date.now());
 }
 
 /// Writes `vu_a` at the desired value. That is how the probe besieges the
@@ -116,8 +116,8 @@ export async function appeler(
     return { code: r.status, corps, dureeMs: performance.now() - debut };
 }
 
-export function ligne(cle: string, valeur: unknown): string {
-    return `${cle.padEnd(46)}: ${typeof valeur === 'string' ? valeur : JSON.stringify(valeur)}`;
+export function ligne(cle: string, value: unknown): string {
+    return `${cle.padEnd(46)}: ${typeof value === 'string' ? value : JSON.stringify(value)}`;
 }
 
 /// The header EVERY log of this acceptance run carries.
@@ -145,7 +145,7 @@ export class Verdicts {
         this.dire(ligne(nom, ok ? 'TENU' : `🔴 NON TENU — obtenu ${JSON.stringify(obtenu)}, attendu ${JSON.stringify(attendu)}`));
     }
     /// For what is judged by an INEQUALITY (a duration under a bound).
-    jugerSous(nom: string, obtenu: number, borne: number): void {
+    judgeBelow(nom: string, obtenu: number, borne: number): void {
         const ok = obtenu < borne;
         if (!ok) this.toutTenu = false;
         this.dire(ligne(nom, ok ? `TENU (${obtenu.toFixed(2)} < ${borne})` : `🔴 NON TENU — ${obtenu.toFixed(2)} ≥ ${borne}`));

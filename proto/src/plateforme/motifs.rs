@@ -38,7 +38,7 @@ impl MotifCanal {
     /// 🔴 ANTI-OMISSION: a variant added without its line here would be absent
     /// from the mapping test, which compares this set to an EXHAUSTIVE
     /// `match` — the compiler requires the arm, and the test requires the entry.
-    pub const TOUS: [Self; 4] = [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
+    pub const ALL: [Self; 4] = [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
 
     /// The exact word that travels on the wire.
     pub fn mot(self) -> &'static str {
@@ -56,8 +56,6 @@ impl MotifCanal {
     /// beyond us, and the caller must log it as is rather than
     /// lose it. It is clause 2 of the header of this module.
     pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS
-            .into_iter()
-            .find(|candidat| candidat.mot() == mot)
+        Self::ALL.into_iter().find(|candidat| candidat.mot() == mot)
     }
 }

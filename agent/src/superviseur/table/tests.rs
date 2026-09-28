@@ -1,7 +1,7 @@
 use super::*;
 
 fn table() -> Table {
-    Table::nouvelle(10)
+    Table::new(10)
 }
 
 /// Gets the session identifier assigned to the window, by reading
@@ -34,7 +34,7 @@ fn le_viewport_declenche_la_creation_de_la_sortie() {
     let effets = t.viewport_recu(&session, 1600, 900);
     assert_eq!(
         effets,
-        vec![Effet::CreerSortie {
+        vec![Effet::CreateOutput {
             session: session.clone(),
             // The title follows the request: an output refusal is shown to a
             // human, and "w-1" designates nothing to them.
@@ -62,7 +62,7 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
             session: session.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY4".into(),
-            taille: (1280, 720),
+            size: (1280, 720),
         }]
     );
     assert_eq!(t.etat(&session), Some(&Etat::Vivante));
@@ -88,7 +88,7 @@ fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
             session: b,
             fenetre: IdFenetre(2),
             nom_sortie: "\\\\.\\DISPLAY5".into(),
-            taille: (1280, 720),
+            size: (1280, 720),
         }]
     );
 }
@@ -149,14 +149,14 @@ fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
     // than a chance `SHOW` from Windows — see task 10.
     assert_eq!(t.etat(&session), Some(&Etat::SansSession));
     assert_eq!(
-        t.taille_sortie_de(&session),
+        t.output_size_of(&session),
         Some((1280, 720)),
         "la sortie est retenue, pas rendue"
     );
 }
 
 #[test]
-fn une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction() {
+fn a_window_vanishing_before_its_output_requests_no_destruction() {
     // Closed while we waited for its viewport: no output
     // exists, and asking to destroy one would make the driver fail.
     let mut t = table();
@@ -175,7 +175,7 @@ fn une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction() {
 
 #[test]
 fn le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser() {
-    let mut t = Table::nouvelle(2);
+    let mut t = Table::new(2);
     for n in 1..=2u64 {
         let s = session_annoncee(&t.fenetre_apparue(IdFenetre(n), format!("F{n}")));
         t.viewport_recu(&s, 1280, 720);
@@ -193,7 +193,7 @@ fn le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser() {
 
 #[test]
 fn une_sortie_liberee_rouvre_la_place() {
-    let mut t = Table::nouvelle(1);
+    let mut t = Table::new(1);
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1280, 720);
     t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
@@ -294,7 +294,7 @@ fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
     // re-announcement of an already open window, on a full table,
     // would wrongly produce an `AnnoncerRefus` for a window that is
     // nevertheless already open.
-    let mut t = Table::nouvelle(1);
+    let mut t = Table::new(1);
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     let effets = t.fenetre_apparue(IdFenetre(1), "A".into());
     assert!(
@@ -310,7 +310,7 @@ fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
 /// adapter index 0, output 5` noted during acceptance.
 #[test]
 fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -326,7 +326,7 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
             session: session.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY7".into(),
-            taille: (1280, 720),
+            size: (1280, 720),
         }]
     );
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY7"));
@@ -336,7 +336,7 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
 /// the DXGI name to free the slot — and they have no computable relation.
 #[test]
 fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
-    let mut t = Table::nouvelle(4);
+    let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
@@ -366,14 +366,14 @@ fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
 /// turning red — and `":w-1"` is the name of no existing session.
 #[test]
 fn sans_prefixe_une_session_garde_exactement_son_nom_d_aujourd_hui() {
-    let mut t = Table::nouvelle(10);
+    let mut t = Table::new(10);
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     assert_eq!(session, IdSession("w-1".into()));
 }
 
 #[test]
-fn avec_un_prefixe_la_session_le_porte_devant_son_nom() {
-    let mut t = Table::avec_prefixe(10, "Zm9vYmFy".into());
+fn with_a_prefix_the_session_carries_it_before_its_name() {
+    let mut t = Table::with_prefix(10, "Zm9vYmFy".into());
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     assert_eq!(session, IdSession("Zm9vYmFy:w-1".into()));
 }
@@ -384,8 +384,8 @@ fn avec_un_prefixe_la_session_le_porte_devant_son_nom() {
 /// prefix makes the namespace global without changing anything in the mechanism
 /// carrying it — mutation that turns red: deriving the counter from `entrees.len()`.
 #[test]
-fn le_compteur_ne_recule_jamais_meme_sous_un_prefixe() {
-    let mut t = Table::avec_prefixe(10, "Zm9vYmFy".into());
+fn the_counter_never_goes_back_even_under_a_prefix() {
+    let mut t = Table::with_prefix(10, "Zm9vYmFy".into());
     let premiere = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     assert_eq!(premiere, IdSession("Zm9vYmFy:w-1".into()));
     t.fenetre_disparue(IdFenetre(1));

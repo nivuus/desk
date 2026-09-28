@@ -24,7 +24,7 @@
 /// The number of entry points. It is not a convenience: it types [`NOMS`] and the
 /// array [`resoudre`] returns, so adding a fourteenth without
 /// listing it in [`NOMS`] does not compile.
-pub const NOMBRE: usize = 13;
+pub const COUNT: usize = 13;
 
 /// The thirteen exported names, **in the order of the ranks below**.
 ///
@@ -34,7 +34,7 @@ pub const NOMBRE: usize = 13;
 /// **deliberately absent** from it: from a later generation, not checked
 /// present on this machine (spec §2.2), and useless to v1 — they serve
 /// symbolic links, out of scope (spec §3.5.2).
-pub const NOMS: [&str; NOMBRE] = [
+pub const NOMS: [&str; COUNT] = [
     "PrjAllocateAlignedBuffer",
     "PrjClearNegativePathCache",
     "PrjCompleteCommand",
@@ -62,23 +62,23 @@ pub const NOMS: [&str; NOMBRE] = [
 /// entry points are two `transmute`s to the wrong signature.
 ///
 /// With named fields, the only remaining positional pairing is
-/// this one, in a **pure** module — and `chaque_champ_recoit_l_adresse_de_son_entree`
+/// this one, in a **pure** module — and `each_field_receives_the_address_of_its_entry`
 /// sweeps it, all thirteen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Adresses {
     pub allouer_tampon_aligne: usize,
-    pub vider_cache_negatif: usize,
+    pub clear_negative_path_cache: usize,
     pub completer_commande: usize,
-    pub supprimer_fichier: usize,
+    pub delete_file: usize,
     pub comparer_noms: usize,
     pub apparier_nom: usize,
     pub remplir_tampon_entrees: usize,
     pub rendre_tampon_aligne: usize,
     pub marquer_racine: usize,
-    pub demarrer_virtualisation: usize,
+    pub start_virtualizing: usize,
     pub arreter_virtualisation: usize,
-    pub ecrire_donnees: usize,
-    pub ecrire_info_marqueur: usize,
+    pub write_file_data: usize,
+    pub write_placeholder_info: usize,
 }
 
 /// An entry point the library does not export.
@@ -115,7 +115,7 @@ impl std::error::Error for EntreeManquante {}
 pub fn resoudre(
     mut resolveur: impl FnMut(&str) -> Option<usize>,
 ) -> Result<Adresses, EntreeManquante> {
-    let mut a = [0usize; NOMBRE];
+    let mut a = [0usize; COUNT];
     for (rang, nom) in NOMS.iter().enumerate() {
         match resolveur(nom) {
             Some(adresse) if adresse != 0 => a[rang] = adresse,
@@ -127,18 +127,18 @@ pub fn resoudre(
     // could exercise it. The order must follow that of [`NOMS`].
     Ok(Adresses {
         allouer_tampon_aligne: a[0],
-        vider_cache_negatif: a[1],
+        clear_negative_path_cache: a[1],
         completer_commande: a[2],
-        supprimer_fichier: a[3],
+        delete_file: a[3],
         comparer_noms: a[4],
         apparier_nom: a[5],
         remplir_tampon_entrees: a[6],
         rendre_tampon_aligne: a[7],
         marquer_racine: a[8],
-        demarrer_virtualisation: a[9],
+        start_virtualizing: a[9],
         arreter_virtualisation: a[10],
-        ecrire_donnees: a[11],
-        ecrire_info_marqueur: a[12],
+        write_file_data: a[11],
+        write_placeholder_info: a[12],
     })
 }
 

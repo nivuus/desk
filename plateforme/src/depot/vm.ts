@@ -16,7 +16,7 @@
 //
 // 🔴 THE CLOCK IS NOT READ HERE, and there is not even a need for it: this repository
 // writes no timestamp. `vm.vue_a` exists in the schema and this module DOES NOT
-// SELECT IT — see `COLONNES`.
+// SELECT IT — see `COLUMNS`.
 
 import type { Pilote } from '../base/pilote';
 
@@ -48,7 +48,7 @@ export interface LigneVm {
 /// would make a successor believe it is filled in, and they would read
 /// `null`s thinking they were reading a silence. It is the only cheap guard against
 /// this confusion, and it is worth writing here rather than hoping for.
-const COLONNES =
+const COLUMNS =
     'v.id, v.nom, v.adresse, v.utilisateur_id, a.prefixe_session, a.vu_a';
 
 /// 🔴 A `LEFT JOIN`, NEVER A `JOIN`. A VM created without enrolment — which
@@ -62,7 +62,7 @@ const DEPUIS = 'FROM vm v LEFT JOIN agent_enrole a ON a.vm_id = v.id';
 /// PURE module (`orchestration/selection.ts`): doing it here would put the rule out of
 /// reach of a test that opens no database.
 export async function lister(p: Pilote): Promise<LigneVm[]> {
-    return p.interroger<LigneVm>(`SELECT ${COLONNES} ${DEPUIS} ORDER BY v.nom`, []);
+    return p.interroger<LigneVm>(`SELECT ${COLUMNS} ${DEPUIS} ORDER BY v.nom`, []);
 }
 
 /// Returns the row, or `undefined`. NEVER an exception on an unknown VM:
@@ -70,7 +70,7 @@ export async function lister(p: Pilote): Promise<LigneVm[]> {
 /// oracle. Precedent: `depot/agent.ts::lireParVm`.
 export async function lireParId(p: Pilote, id: string): Promise<LigneVm | undefined> {
     const lignes = await p.interroger<LigneVm>(
-        `SELECT ${COLONNES} ${DEPUIS} WHERE v.id = ?`,
+        `SELECT ${COLUMNS} ${DEPUIS} WHERE v.id = ?`,
         [id],
     );
     return lignes[0];
@@ -83,7 +83,7 @@ export async function lireParId(p: Pilote, id: string): Promise<LigneVm | undefi
 /// be on a route.
 export async function lireParNom(p: Pilote, nom: string): Promise<LigneVm | undefined> {
     const lignes = await p.interroger<LigneVm>(
-        `SELECT ${COLONNES} ${DEPUIS} WHERE v.nom = ?`,
+        `SELECT ${COLUMNS} ${DEPUIS} WHERE v.nom = ?`,
         [nom],
     );
     return lignes[0];
@@ -119,11 +119,11 @@ export async function lireParNom(p: Pilote, nom: string): Promise<LigneVm | unde
 export async function attribuerSiLibre(
     p: Pilote,
     vmId: string,
-    utilisateurId: string,
+    userId: string,
 ): Promise<number> {
     const r = await p.executer(
         'UPDATE vm SET utilisateur_id = ? WHERE id = ? AND utilisateur_id IS NULL',
-        [utilisateurId, vmId],
+        [userId, vmId],
     );
     return r.lignes;
 }

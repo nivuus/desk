@@ -19,7 +19,7 @@
 set -uo pipefail
 
 etiquette="${1:?étiquette}"
-fichier="${2:?fichier}"
+file="${2:?fichier}"
 mutation="${3:?script de mutation}"
 verif="${4:?commande de vérification}"
 
@@ -33,22 +33,22 @@ cd "$racine" || exit 2
 # directory". The named copy was intact and the file was restored by hand,
 # fingerprint checked; the harness, for its part, had a failure mode that left
 # a mutation in the tree while announcing a verdict.
-fichier="$(readlink -f "$fichier")"
+file="$(readlink -f "$file")"
 
 copie="$(mktemp "/tmp/rouge-${etiquette}-XXXXXX")"
-cp "$fichier" "$copie"
-avant="$(sha256sum < "$copie" | cut -d' ' -f1)"
+cp "$file" "$copie"
+before="$(sha256sum < "$copie" | cut -d' ' -f1)"
 
 echo "=== ROUGE ${etiquette} ==="
-echo "fichier      : ${fichier}"
+echo "fichier      : ${file}"
 echo "copie nommée : ${copie}"
-echo "sha256 avant : ${avant}"
+echo "sha256 avant : ${before}"
 
 restaurer() {
-    cp "$copie" "$fichier"
-    apres="$(sha256sum < "$fichier" | cut -d' ' -f1)"
+    cp "$copie" "$file"
+    apres="$(sha256sum < "$file" | cut -d' ' -f1)"
     echo "sha256 après restauration : ${apres}"
-    if [ "$avant" = "$apres" ]; then
+    if [ "$before" = "$apres" ]; then
         echo "restauration : IDENTIQUE"
     else
         echo "restauration : 🔴 DIVERGENTE — intervenir à la main"
@@ -57,10 +57,10 @@ restaurer() {
 }
 trap restaurer EXIT
 
-bash "$mutation" "$fichier"
+bash "$mutation" "$file"
 
 # RED 0: did the mutation really change the file?
-lignes="$(diff <(cat "$copie") <(cat "$fichier") | grep -c '^[<>]' || true)"
+lignes="$(diff <(cat "$copie") <(cat "$file") | grep -c '^[<>]' || true)"
 echo "lignes changées par la mutation : ${lignes}"
 if [ "$lignes" -eq 0 ]; then
     echo "🔴 HARNAIS : mutation VIDE — la rouge est REFUSÉE, elle ne prouve rien."

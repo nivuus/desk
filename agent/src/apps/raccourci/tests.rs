@@ -69,10 +69,10 @@ fn ecarte_une_cible_absente_et_c_est_le_predicat_injecte_qui_le_dit() {
         Err(Ecart::CibleAbsente)
     );
     // The predicate does receive the target, not something else.
-    let seulement_notepad = |c: &str| c == r"C:\Windows\notepad.exe";
-    assert!(retenir(&brut(r"C:\Windows\notepad.exe", "", ""), &seulement_notepad).is_ok());
+    let notepad_only = |c: &str| c == r"C:\Windows\notepad.exe";
+    assert!(retenir(&brut(r"C:\Windows\notepad.exe", "", ""), &notepad_only).is_ok());
     assert_eq!(
-        retenir(&brut(r"C:\Windows\autre.exe", "", ""), &seulement_notepad),
+        retenir(&brut(r"C:\Windows\autre.exe", "", ""), &notepad_only),
         Err(Ecart::CibleAbsente)
     );
 }
@@ -259,7 +259,7 @@ fn le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule() 
 }
 
 #[test]
-fn le_corpus_ne_porte_aucune_cible_hors_exe_parmi_les_retenus() {
+fn the_corpus_holds_no_non_exe_target_among_the_retained() {
     let entrees = corpus();
     let presents: HashSet<&str> = entrees
         .iter()

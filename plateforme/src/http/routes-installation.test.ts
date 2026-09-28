@@ -24,11 +24,11 @@ import type { Pilote } from '../base/pilote';
 import { ouvrirMagasinTranches, type MagasinTranches } from '../apps/magasin-tranches';
 import { RegistreAgents } from '../agents/registre';
 import { enroler, marquerVu } from '../depot/agent';
-import { creer as creerInstallation, terminer, avancer } from '../depot/installation';
-import { creer as creerTeleversement, sceller } from '../depot/televersement';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { create as createInstallation, terminer, avancer } from '../depot/installation';
+import { create as createUpload, sceller } from '../depot/televersement';
+import { createUser } from '../depot/utilisateur';
 import { plan } from '../../../proto/ts/tranches';
-import { avec, demonter, jetonDe, monterRoute, MS, ORIGINE, poserVm, attribuer, type Montage } from './routes-harnais';
+import { withIt, demonter, jetonDe, monterRoute, MS, ORIGINE, poserVm, attribuer, type Montage } from './routes-harnais';
 import { servirInstallation } from './routes-installation';
 
 let m: Montage | undefined;
@@ -81,25 +81,25 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
 /// le flux, et deux arithmétiques indépendantes divergeraient un jour.
 async function poserTeleversement(
     base: Pilote,
-    utilisateurId: string,
+    userId: string,
     nom: string,
     octets: Buffer,
-    { scelle = true, tailleTranche = 7 } = {},
+    { scelle = true, chunkSize = 7 } = {},
 ): Promise<{ id: string; octets: Buffer }> {
-    const ligne = await creerTeleversement(
+    const ligne = await createUpload(
         base,
         {
-            utilisateurId,
+            userId,
             nom,
             taille: octets.length,
             sha256: createHash('sha256').update(octets).digest('hex'),
-            tailleTranche,
+            chunkSize,
         },
         MS,
     );
-    for (const t of plan(octets.length, tailleTranche)) {
-        const debut = t.n * tailleTranche;
-        await tranches!.ecrire(ligne.id, t.n, Readable.from([octets.subarray(debut, debut + t.octets)]), 1 << 20);
+    for (const t of plan(octets.length, chunkSize)) {
+        const debut = t.n * chunkSize;
+        await tranches!.write(ligne.id, t.n, Readable.from([octets.subarray(debut, debut + t.octets)]), 1 << 20);
     }
     if (scelle) await sceller(base, ligne.id, MS);
     return { id: ligne.id, octets };
@@ -121,7 +121,7 @@ async function poserVmVivante(base: Pilote, vmId: string, email: string, prefixe
 /// qu'une première rédaction de ce fichier a mesuré.
 const CORPS = (u: string, vm: string, televersement: string) => ({
     method: 'POST',
-    headers: avec(jetonDe(u)),
+    headers: withIt(jetonDe(u)),
     body: JSON.stringify({ vm, televersement }),
 });
 
@@ -193,7 +193,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const url = await servir('inst-ordre-jeton-agent');
         const r = await fetch(`${url}/installation`, {
             method: 'POST',
-            headers: avec(jetonDe('prefixe-quelconque', 'agent')),
+            headers: withIt(jetonDe('prefixe-quelconque', 'agent')),
             body: JSON.stringify({ vm: 'v-1', televersement: 't-1' }),
         });
         expect([r.status, await r.json()]).toEqual([403, { refus: 'jeton-agent' }]);
@@ -204,13 +204,13 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         // chemin de l'agent. Si l'une des deux se relâche, les deux identités
         // redeviennent interchangeables.
         const url = await servir('inst-contenu-jeton-humain');
-        const r = await fetch(`${url}/televersement/t-1/contenu`, { headers: avec(jetonDe('u-1')) });
+        const r = await fetch(`${url}/televersement/t-1/contenu`, { headers: withIt(jetonDe('u-1')) });
         expect([r.status, await r.json()]).toEqual([403, { refus: 'jeton-utilisateur' }]);
     });
 
     it('refuse un corps mal formé, et le dit', async () => {
         const url = await servir('inst-forme');
-        const entetes = avec(jetonDe('u-1'));
+        const entetes = withIt(jetonDe('u-1'));
         for (const corps of ['pas du json', '{}', '{"vm":"v-1"}', '{"vm":"","televersement":"t"}', '[]']) {
             const r = await fetch(`${url}/installation`, { method: 'POST', headers: entetes, body: corps });
             expect([corps, r.status, await r.json()]).toEqual([corps, 400, { refus: 'forme' }]);
@@ -223,11 +223,11 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         // `serveur.ts`, qui n'est pas celui-ci.
         const url = await servir('inst-vm-etrangere');
         await poserVmVivante(m!.base, 'v-1', 'proprietaire@exemple.test', 'PREFIXE-A');
-        const autre = await creerUtilisateur(m!.base, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(m!.base, 'autre@exemple.test', 'x', MS);
         const tel = await poserTeleversement(m!.base, autre, 'setup.exe', Buffer.from('abc'));
         const opts = (vm: string) => ({
             method: 'POST',
-            headers: avec(jetonDe(autre)),
+            headers: withIt(jetonDe(autre)),
             body: JSON.stringify({ vm, televersement: tel.id }),
         });
         const etrangere = await fetch(`${url}/installation`, opts('v-1'));
@@ -242,11 +242,11 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const url = await servir('inst-tel-etranger');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
-        const autre = await creerUtilisateur(m!.base, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(m!.base, 'autre@exemple.test', 'x', MS);
         const aLautre = await poserTeleversement(m!.base, autre, 'setup.exe', Buffer.from('abc'));
         const opts = (tid: string) => ({
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
             body: JSON.stringify({ vm: 'v-1', televersement: tid }),
         });
         const etranger = await fetch(`${url}/installation`, opts(aLautre.id));
@@ -274,7 +274,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abcdefghij'), { scelle: false });
         const r = await fetch(`${url}/installation`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
             body: JSON.stringify({ vm: 'v-1', televersement: tel.id }),
         });
         expect([r.status, await r.json()]).toEqual([409, { refus: 'non-scelle' }]);
@@ -289,7 +289,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
             const tel = await poserTeleversement(m!.base, u, nom, Buffer.from('abc'));
             const r = await fetch(`${url}/installation`, {
                 method: 'POST',
-                headers: avec(jetonDe(u)),
+                headers: withIt(jetonDe(u)),
                 body: JSON.stringify({ vm: 'v-1', televersement: tel.id }),
             });
             expect([nom, r.status, await r.json()]).toEqual([nom, 400, { refus: 'extension' }]);
@@ -300,7 +300,7 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const bon = await poserTeleversement(m!.base, u, 'SETUP.MSI', Buffer.from('abc'));
         const r = await fetch(`${url}/installation`, {
             method: 'POST',
-            headers: avec(jetonDe(u)),
+            headers: withIt(jetonDe(u)),
             body: JSON.stringify({ vm: 'v-1', televersement: bon.id }),
         });
         expect(r.status).toBe(201);
@@ -341,12 +341,12 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const url = await servir('inst-etat');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abc'));
-        const inst = await creerInstallation(m!.base, { vmId: 'v-1', televersementId: tel.id }, MS);
+        const inst = await createInstallation(m!.base, { vmId: 'v-1', televersementId: tel.id }, MS);
         await terminer(m!.base, inst.id, {
             issue: 'refusee', motif: 'elevation-requise', codeSortie: 740,
             journal: 'la queue', journalTronque: true,
         }, MS + 5);
-        const r = await fetch(`${url}/installation/${inst.id}`, { headers: avec(jetonDe(u)) });
+        const r = await fetch(`${url}/installation/${inst.id}`, { headers: withIt(jetonDe(u)) });
         expect(r.status).toBe(200);
         const vue = (await r.json()) as Record<string, unknown>;
         expect(vue).toMatchObject({
@@ -363,10 +363,10 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         // rendre le motif de la VM DIRAIT que l'installation, elle, existe.
         const url = await servir('inst-etat-etranger');
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
-        const autre = await creerUtilisateur(m!.base, 'autre@exemple.test', 'x', MS);
+        const autre = await createUser(m!.base, 'autre@exemple.test', 'x', MS);
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abc'));
-        const inst = await creerInstallation(m!.base, { vmId: 'v-1', televersementId: tel.id }, MS);
-        const entetes = avec(jetonDe(autre));
+        const inst = await createInstallation(m!.base, { vmId: 'v-1', televersementId: tel.id }, MS);
+        const entetes = withIt(jetonDe(autre));
         const etrangere = await fetch(`${url}/installation/${inst.id}`, { headers: entetes });
         const inconnue = await fetch(`${url}/installation/jamais-vue`, { headers: entetes });
         const corps = await etrangere.text();
@@ -387,21 +387,21 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         await poserVmVivante(m!.base, 'v-b', 'b@exemple.test', 'PREFIXE-B');
         const tel = await poserTeleversement(m!.base, a, 'setup.exe', randomBytes(33));
-        await creerInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
+        await createInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
 
         const deB = await fetch(`${url}/televersement/${tel.id}/contenu`, {
-            headers: avec(jetonDe('PREFIXE-B', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-B', 'agent')),
         });
         // ⚠️ COMPARÉ AU REFUS D'UN TÉLÉVERSEMENT VRAIMENT INCONNU : le refus doit
         // être INDISTINGUABLE, sans quoi `B` apprend que ce contenu existe.
         const inconnu = await fetch(`${url}/televersement/jamais-vu/contenu`, {
-            headers: avec(jetonDe('PREFIXE-B', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-B', 'agent')),
         });
         expect([deB.status, await deB.text()]).toEqual([inconnu.status, await inconnu.text()]);
         expect(deB.status).toBe(404);
 
         const deA = await fetch(`${url}/televersement/${tel.id}/contenu`, {
-            headers: avec(jetonDe('PREFIXE-A', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-A', 'agent')),
         });
         expect(deA.status).toBe(200);
         expect(Buffer.from(await deA.arrayBuffer())).toEqual(tel.octets);
@@ -415,12 +415,12 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const url = await servir('inst-contenu-flux');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         const octets = randomBytes(31);
-        const tel = await poserTeleversement(m!.base, a, 'setup.exe', octets, { tailleTranche: 7 });
-        await creerInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
+        const tel = await poserTeleversement(m!.base, a, 'setup.exe', octets, { chunkSize: 7 });
+        await createInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
         expect(tranches!.lister(tel.id).map((t) => t.n)).toEqual([0, 1, 2, 3, 4]);
 
         const r = await fetch(`${url}/televersement/${tel.id}/contenu`, {
-            headers: avec(jetonDe('PREFIXE-A', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-A', 'agent')),
         });
         expect(r.status).toBe(200);
         expect(r.headers.get('content-type')).toBe('application/octet-stream');
@@ -438,13 +438,13 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         await poserVmVivante(m!.base, 'v-b', 'b@exemple.test', 'PREFIXE-B');
         const tel = await poserTeleversement(m!.base, a, 'setup.exe', Buffer.from('abcdefghij'), { scelle: false });
-        await creerInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
+        await createInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
         const deA = await fetch(`${url}/televersement/${tel.id}/contenu`, {
-            headers: avec(jetonDe('PREFIXE-A', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-A', 'agent')),
         });
         expect([deA.status, await deA.json()]).toEqual([409, { refus: 'non-scelle' }]);
         const deB = await fetch(`${url}/televersement/${tel.id}/contenu`, {
-            headers: avec(jetonDe('PREFIXE-B', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-B', 'agent')),
         });
         expect([deB.status, await deB.json()]).toEqual([404, { refus: 'televersement-inconnu' }]);
     });
@@ -456,8 +456,8 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const url = await servir('inst-contenu-etats');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, a, 'setup.exe', Buffer.from('abc'));
-        const inst = await creerInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
-        const entetes = avec(jetonDe('PREFIXE-A', 'agent'));
+        const inst = await createInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
+        const entetes = withIt(jetonDe('PREFIXE-A', 'agent'));
         await avancer(m!.base, inst.id, { phase: 'transfert', octetsFaits: 1, octetsTotal: 3, ecouleMs: 1 }, MS);
         expect((await fetch(`${url}/televersement/${tel.id}/contenu`, { headers: entetes })).status).toBe(200);
         await terminer(m!.base, inst.id, {
@@ -475,9 +475,9 @@ describe(`routes /installation, moteur=${MOTEUR}`, () => {
         const url = await servir('inst-contenu-sans-enrolement');
         const a = await poserVmVivante(m!.base, 'v-a', 'a@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, a, 'setup.exe', Buffer.from('abc'));
-        await creerInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
+        await createInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
         const r = await fetch(`${url}/televersement/${tel.id}/contenu`, {
-            headers: avec(jetonDe('PREFIXE-JAMAIS-ENROLE', 'agent')),
+            headers: withIt(jetonDe('PREFIXE-JAMAIS-ENROLE', 'agent')),
         });
         expect([r.status, await r.json()]).toEqual([404, { refus: 'televersement-inconnu' }]);
         expect(traces.join(' | ')).toContain('cas=prefixe-sans-enrolement');

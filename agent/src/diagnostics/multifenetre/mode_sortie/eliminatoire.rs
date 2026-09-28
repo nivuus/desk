@@ -17,7 +17,7 @@ use super::{choisir_cible, modes_annonces};
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
 /// What a round of combinations established.
-pub(super) struct ResultatTour {
+pub(super) struct RoundResult {
     /// Numeric target actually aimed at during the round, or `None` if
     /// no measurable target could be chosen (`P1 NON MESURABLE`) — the
     /// control then has nothing to replay, see its caller.
@@ -41,7 +41,7 @@ pub(super) struct ResultatTour {
 /// error of the probe; see the header comment of `mode_sortie.rs`. Only
 /// a topology that became unreadable raises an error.
 ///
-/// `avant_a_la_creation` is the size read by DXGI right after the creation
+/// `before_at_creation` is the size read by DXGI right after the creation
 /// of the output under test, several seconds before this round
 /// runs — see the FRESH read-back below, which replaces it as the
 /// movement reference.
@@ -57,16 +57,16 @@ pub(super) struct ResultatTour {
 pub(super) fn essayer_les_modes(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
-    avant_a_la_creation: (u32, u32),
+    before_at_creation: (u32, u32),
     demande: (u32, u32),
     voisines: &mut [DuplicationVoisine],
-) -> Result<ResultatTour> {
+) -> Result<RoundResult> {
     // The RAW value requested by the operator, captured ONCE and
     // reused at both exit points (`P1 NON MESURABLE` included) --
-    // see the `combinaison_imposee` field of `ResultatTour`.
+    // see the `combinaison_imposee` field of `RoundResult`.
     let imposee = combinaison_imposee();
 
-    // ⚠️ **Fix (review of task 2bis, Critical).** `avant_a_la_creation`
+    // ⚠️ **Fix (review of task 2bis, Critical).** `before_at_creation`
     // was captured several seconds earlier, BEFORE the opening of the
     // duplication and the creation of the two neighbours. Between these two instants,
     // the output may have moved WITHOUT ANY API call: `p-persistance-2`
@@ -78,45 +78,45 @@ pub(super) fn essayer_les_modes(
     // abandoning the mutex in another form). Comparing `mouvement` against
     // the STALE value would pass this residue off as an effect OF this round.
     // The fresh read-back now serves as the reference EVERYWHERE in this
-    // function (`choisir_cible` included); `avant_a_la_creation` only serves
+    // function (`choisir_cible` included); `before_at_creation` only serves
     // to detect and log the gap.
     //
     // ⚠️ **Fix (review of task 2bis, second pass, point 12).**
-    // `.unwrap_or(avant_a_la_creation)` was the same hole as the one
+    // `.unwrap_or(before_at_creation)` was the same hole as the one
     // this fix closes everywhere else (I4/I13): if the SUT is
     // ABSENT from the fresh read-back, the old fallback returned
-    // `avant == avant_a_la_creation` BY CONSTRUCTION, and the gap `WARN`
+    // `before == before_at_creation` BY CONSTRUCTION, and the gap `WARN`
     // below could then NEVER trigger -- a
     // vanished output read as "no gap detected", exactly
     // the opposite. Absence is now an event logged SEPARATELY
     // (`tracing::error!`, never confused with the "present and
     // unchanged" case), before even falling back to the creation value.
     let releve_frais = relever_topologie("juste avant le premier essai (relecture fraîche)")?;
-    let taille_fraiche = releve_frais
+    let fresh_size = releve_frais
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
         .map(|sortie| (sortie.rect.width, sortie.rect.height));
-    let avant = match taille_fraiche {
-        Some(taille) => taille,
+    let before = match fresh_size {
+        Some(size) => size,
         None => {
             tracing::error!(
                 nom_sortie,
-                largeur_a_la_creation = avant_a_la_creation.0,
-                hauteur_a_la_creation = avant_a_la_creation.1,
+                largeur_a_la_creation = before_at_creation.0,
+                hauteur_a_la_creation = before_at_creation.1,
                 "la sortie sous test est ABSENTE de la relecture fraiche -- repli sur la taille \
                  de creation, mais ceci N'EST PAS un 'aucun ecart detecte' : c'est une anomalie \
                  distincte, journalisee ici pour ne jamais se confondre avec elle"
             );
-            avant_a_la_creation
+            before_at_creation
         }
     };
-    if avant != avant_a_la_creation {
+    if before != before_at_creation {
         tracing::warn!(
             nom_sortie,
-            largeur_a_la_creation = avant_a_la_creation.0,
-            hauteur_a_la_creation = avant_a_la_creation.1,
-            largeur_fraiche = avant.0,
-            hauteur_fraiche = avant.1,
+            largeur_a_la_creation = before_at_creation.0,
+            hauteur_a_la_creation = before_at_creation.1,
+            largeur_fraiche = before.0,
+            hauteur_fraiche = before.1,
             "la sortie a bouge SANS appel d'API entre sa creation et ce tour -- residu probable \
              d'une execution anterieure ; la relecture FRAICHE sert desormais de reference"
         );
@@ -124,29 +124,29 @@ pub(super) fn essayer_les_modes(
 
     let annonces = modes_annonces(nom_sortie);
     tracing::info!(
-        nombre = annonces.len(),
-        largeur_avant_tentative = avant.0,
-        hauteur_avant_tentative = avant.1,
+        count = annonces.len(),
+        width_before_attempt = before.0,
+        height_before_attempt = before.1,
         contient_demande = annonces.contains(&demande),
-        demande_egale_avant = demande == avant,
+        request_equals_before = demande == before,
         modes = ?annonces,
         "modes annonces (EnumDisplaySettingsExW) avant tout changement"
     );
 
-    let cible = match choisir_cible(avant, demande, &annonces) {
+    let cible = match choisir_cible(before, demande, &annonces) {
         Some(cible) => cible,
         None => {
             tracing::error!(
                 verdict = "P1 NON MESURABLE",
                 raison = "aucun mode annonce ne differe de la taille courante",
-                largeur_avant_tentative = avant.0,
-                hauteur_avant_tentative = avant.1,
+                width_before_attempt = before.0,
+                height_before_attempt = before.1,
                 largeur_demandee = demande.0,
                 hauteur_demandee = demande.1,
                 modes = ?annonces,
                 "verdict P1 : mesure impossible, aucune tentative effectuee"
             );
-            return Ok(ResultatTour {
+            return Ok(RoundResult {
                 cible: None,
                 gagnante: None,
                 pertes_voisines: 0,
@@ -164,8 +164,8 @@ pub(super) fn essayer_les_modes(
         tracing::warn!(
             largeur_demandee = demande.0,
             hauteur_demandee = demande.1,
-            largeur_avant_tentative = avant.0,
-            hauteur_avant_tentative = avant.1,
+            width_before_attempt = before.0,
+            height_before_attempt = before.1,
             largeur_cible = cible.0,
             hauteur_cible = cible.1,
             "la resolution demandee egale deja la taille courante (persistance registre probable \
@@ -173,16 +173,16 @@ pub(super) fn essayer_les_modes(
         );
     }
 
-    let mut dernier_code = 0i32;
+    let mut last_code = 0i32;
     // ⚠️ **Fix (review of task 2bis, Important I5).** Initialised to
-    // `avant` (fresh) and no longer `(0, 0)`: on an EMPTY round (no combo
+    // `before` (fresh) and no longer `(0, 0)`: on an EMPTY round (no combo
     // matches `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`, see
-    // `combinaisons::combos_du_tour`), `derniere_taille` stayed at `(0, 0)`
-    // and `mouvement_observe = derniere_taille != avant` was almost
+    // `combinaisons::combos_du_tour`), `last_size` stayed at `(0, 0)`
+    // and `mouvement_observe = last_size != before` was almost
     // always `true` -- a round that had tried NOTHING displayed a
-    // movement. With `avant` as the resting value, the absence of any attempt
+    // movement. With `before` as the resting value, the absence of any attempt
     // translates into the absence of movement, without special code.
-    let mut derniere_taille = avant;
+    let mut last_size = before;
     let mut gagnante: Option<&'static str> = None;
     let mut cible_exacte_atteinte = false;
     let mut pertes_voisines = 0u32;
@@ -194,7 +194,7 @@ pub(super) fn essayer_les_modes(
     let mut tentatives = 0u32;
     for combo in combos_du_tour(imposee.as_deref()) {
         tentatives += 1;
-        dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
+        last_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
         // Windows reconfigures its display topology asynchronously —
         // exactly why `montee.rs` observes the same grace delay
         // after a creation. Querying DXGI too early would conclude to a
@@ -212,21 +212,21 @@ pub(super) fn essayer_les_modes(
             }
         }
         let releve = relever_topologie(&format!("après tentative « {} »", combo.etiquette()))?;
-        let taille_lue = releve
+        let read_size = releve
             .iter()
             .find(|sortie| sortie.nom_sortie == nom_sortie)
             .map(|sortie| (sortie.rect.width, sortie.rect.height));
         // ⚠️ **Fix (review of task 2bis, second pass, point 13).**
         // The old `.unwrap_or((0, 0))` fallback turned an output ABSENT
         // after an attempt into a FALSE movement in nearly all cases
-        // (`(0, 0) != avant` almost always) -- an arm could have
+        // (`(0, 0) != before` almost always) -- an arm could have
         // "won" (`gagnante = Some(...)`, verdict "P1 RECU") on the
         // mere disappearance of the output, never on a real size
         // change. Absence is now an anomaly logged
-        // separately that CANNOT make this arm win: `derniere_taille`
+        // separately that CANNOT make this arm win: `last_size`
         // keeps the last value REALLY read (the one before this
-        // attempt, or `avant` at the first iteration).
-        let Some(taille_lue) = taille_lue else {
+        // attempt, or `before` at the first iteration).
+        let Some(read_size) = read_size else {
             tracing::error!(
                 etiquette = combo.etiquette(),
                 nom_sortie,
@@ -235,21 +235,21 @@ pub(super) fn essayer_les_modes(
             );
             continue;
         };
-        derniere_taille = taille_lue;
-        // The criterion that counts is MOVEMENT (`derniere_taille != avant`),
+        last_size = read_size;
+        // The criterion that counts is MOVEMENT (`last_size != before`),
         // not equality with the chosen target — see the header comment of the
         // parent module (F1 defect fixed). `cible_atteinte` remains
         // logged, separately: it documents whether the driver honours the exact
         // requested value, a finer question than P1, never the one that
         // decides the verdict.
-        let mouvement = derniere_taille != avant;
-        let cible_atteinte = derniere_taille == cible;
+        let mouvement = last_size != before;
+        let cible_atteinte = last_size == cible;
         tracing::info!(
             etiquette = combo.etiquette(),
-            code_brut = dernier_code,
-            api_annonce_succes = (dernier_code == DISP_CHANGE_SUCCESSFUL.0),
-            largeur_relue = derniere_taille.0,
-            hauteur_relue = derniere_taille.1,
+            code_brut = last_code,
+            api_annonce_succes = (last_code == DISP_CHANGE_SUCCESSFUL.0),
+            largeur_relue = last_size.0,
+            hauteur_relue = last_size.1,
             mouvement,
             cible_atteinte,
             "relecture DXGI (GetDesc/DesktopCoordinates) apres la tentative"
@@ -279,11 +279,11 @@ pub(super) fn essayer_les_modes(
         combinaison_imposee = ?imposee,
         combinaison_gagnante = ?gagnante,
         tentatives_effectuees = tentatives,
-        code_brut_dernier_essai = dernier_code,
-        largeur_avant_tentative = avant.0,
-        hauteur_avant_tentative = avant.1,
-        largeur_relue = derniere_taille.0,
-        hauteur_relue = derniere_taille.1,
+        raw_code_last_attempt = last_code,
+        width_before_attempt = before.0,
+        height_before_attempt = before.1,
+        largeur_relue = last_size.0,
+        hauteur_relue = last_size.1,
         largeur_cible = cible.0,
         hauteur_cible = cible.1,
         // The verdict itself: was a movement (A != B) observed?
@@ -291,10 +291,10 @@ pub(super) fn essayer_les_modes(
         // the target (see the header comment of the parent module, F1 defect
         // fixed) -- recomputed here, redundant with `gagnante.is_some()` by
         // construction, so that a reader of the log does not have to deduce it.
-        // On an EMPTY round, `derniere_taille == avant` by construction
+        // On an EMPTY round, `last_size == before` by construction
         // (see its initialisation): `mouvement_observe` is `false`,
         // never `true` by default (fix I5).
-        mouvement_observe = derniere_taille != avant,
+        mouvement_observe = last_size != before,
         // Secondary: did the driver honour the EXACT requested value, or
         // did it stop at an intermediate mode? Can be `false` with
         // a "P1 RECU" verdict -- it is not a contradiction, it is a
@@ -303,7 +303,7 @@ pub(super) fn essayer_les_modes(
         pertes_acces_voisines_pendant_le_tour = pertes_voisines,
         "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
     );
-    Ok(ResultatTour {
+    Ok(RoundResult {
         cible: Some(cible),
         gagnante,
         pertes_voisines,

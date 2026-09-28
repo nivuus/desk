@@ -23,7 +23,7 @@ use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 use crate::capteur::horloge::{frequence_qpc, lire_qpc, origine_depuis_qpc};
 use crate::capteur::protocole::VersCapteur;
 
-use super::{Fenetre, Parametres};
+use super::{Fenetre, Parameters};
 
 impl Fenetre {
     /// Prepares the window announced by an attach frame — **without building
@@ -52,7 +52,7 @@ impl Fenetre {
     /// command connection, which this thread never touches. The caller writes
     /// `Attachee { largeur, hauteur }` on success, `Refus` otherwise.
     pub fn ouvrir(attache: VersCapteur) -> Result<Fenetre> {
-        // Renamed on destructuring: `Contexte.taille` — in the
+        // Renamed on destructuring: `Contexte.size` — in the
         // PARENT module, `capteur/fenetre.rs`, and not "further down in this file"
         // as this sentence said before the extraction of the same sub-block
         // (the verbatim move kept the text and broke the
@@ -65,7 +65,7 @@ impl Fenetre {
             sortie,
             fps,
             debit,
-            taille: taille_demandee,
+            size: requested_size,
             origine_qpc,
         } = attache
         else {
@@ -97,9 +97,9 @@ impl Fenetre {
             "impossible de dériver le PID de la fenêtre {hwnd:?} de la session {session}"
         );
         // The size is the only thing needed before having the
-        // place: `taille_de_sortie` reads it without opening a duplication, hence
+        // place: `size_of_output` reads it without opening a duplication, hence
         // without taking the output's mutex nor disturbing any neighbour.
-        let sortie_taille = crate::capture::ouverture::taille_de_sortie(&sortie)
+        let output_dims = crate::capture::ouverture::size_of_output(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
         // The output may be larger than the window (polluted registry,
         // D9 §9). The child announced the size the supervisor gave
@@ -107,8 +107,8 @@ impl Fenetre {
         // with the SAME pure function as the supervisor — two deterministic
         // computations on the same inputs, never two rules.
         let (largeur, hauteur) =
-            crate::superviseur::placement::taille_retenue(taille_demandee, sortie_taille);
-        let parametres = Parametres {
+            crate::superviseur::placement::retained_size(requested_size, output_dims);
+        let params = Parameters {
             hwnd,
             sortie,
             fps,
@@ -117,7 +117,7 @@ impl Fenetre {
         };
         Ok(Fenetre {
             source: None,
-            parametres,
+            params,
             session,
             largeur,
             hauteur,

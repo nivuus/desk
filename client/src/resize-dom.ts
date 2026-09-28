@@ -47,7 +47,7 @@ export interface SessionResize {
 /// POINT.** The control channel's `Resize` goes to the SENSOR (cropping and
 /// encoder); the `postMessage`'s `viewport` goes to the SUPERVISOR (Windows
 /// window and retained size). Both processes apply the same pure
-/// rule (`windows_source_sortie::taille_pour_viewport`) on the same bound: if
+/// rule (`windows_source_sortie::size_for_viewport`) on the same bound: if
 /// they were given two different NUMBERS — `video.clientWidth` here and
 /// `window.innerWidth` there —, they would compute two sizes and fight
 /// at 1 Hz. One measurement, two recipients.
@@ -65,8 +65,8 @@ export function attacherResizeAuDOM(
     // covered while the user drags an edge.
     const rejeu = new RejeuResize();
     const emettreSiPossible = () => {
-        const taille = rejeu.aEmettre();
-        if (!taille) return;
+        const size = rejeu.aEmettre();
+        if (!size) return;
         if (session.controlChannel.readyState !== 'open') {
             // Traced, and no longer mute: it is this silent `return` that lost
             // the `Resize`s without leaving the slightest trace (leg 10).
@@ -79,13 +79,13 @@ export function attacherResizeAuDOM(
         // confirms, for THIS `Resize` attempt, which of the three
         // outcomes happened.
         console.debug('[instrumentation resize] emission', {
-            taille,
+            taille: size,
             clientWidth: video.clientWidth,
             clientHeight: video.clientHeight,
             innerWidth: window.innerWidth,
             innerHeight: window.innerHeight,
         });
-        session.controlChannel.send(encodeResize(taille.largeur, taille.hauteur));
+        session.controlChannel.send(encodeResize(size.largeur, size.hauteur));
         // SAME SIZE, SAME INSTANT, TWO RECIPIENTS — see the header
         // of `AnnonceViewport`. Emitted AFTER the `Resize` and not before: the
         // sensor is the short path (data channel then named pipe), the
@@ -94,8 +94,8 @@ export function attacherResizeAuDOM(
         // of arrival does not matter anyway**: both
         // converge on the same value, and the second's gesture is then without
         // effect.
-        annoncerViewport?.(taille.largeur, taille.hauteur);
-        rejeu.confirmer(taille);
+        annoncerViewport?.(size.largeur, size.hauteur);
+        rejeu.confirmer(size);
     };
 
     let resizeTimer: number | undefined;

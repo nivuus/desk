@@ -64,8 +64,8 @@ export class ProprieteDeSession {
 
     /// Claims, or renews. The same user may claim twice
     /// without error: a reconnection would otherwise break their own session.
-    revendiquer(session: string, utilisateurId: string): void {
-        this.proprietaires.set(session, utilisateurId);
+    revendiquer(session: string, userId: string): void {
+        this.proprietaires.set(session, userId);
     }
 
     /// Hands the session back to whoever asks for it next. Never releasing would lose

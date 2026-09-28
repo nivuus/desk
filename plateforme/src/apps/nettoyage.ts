@@ -32,7 +32,7 @@ import type { Magasin } from './icones';
 import { AGE_EVICTION_TRANCHES_MS, type MagasinTranches } from './magasin-tranches';
 import {
     lirePlusVieuxQue as televersementsPlusVieuxQue,
-    supprimer as supprimerTeleversement,
+    remove as removeUpload,
 } from '../depot/televersement';
 
 /// Same remedy, same reason as `icones.ts::PAS_DE_REPRISE` — the loop that
@@ -92,7 +92,7 @@ export async function referencesIcones(p: Pilote): Promise<Set<string>> {
 /// evicts from the DISK whatever no longer has a row.
 ///
 /// 🔴 THE ROW FIRST, THE DISK AFTERWARDS — AND IT IS THE ORDER THAT MAKES THE
-/// FLOOR REAL. `depot/televersement.ts::lirePlusVieuxQue`/`supprimer`
+/// FLOOR REAL. `depot/televersement.ts::lirePlusVieuxQue`/`remove`
 /// already existed, FULLY TESTED (`depot/installation.test.ts`,
 /// "the age sweep…", "REFUSES to delete an upload that an
 /// installation references"), and were called by NO production
@@ -164,10 +164,10 @@ async function nettoyerTranches(
             activite = await tranches.derniereActivite(ligne.id);
         } catch {
             // 🔴 HARDENING (correction round 3): NOT REACHABLE
-            // TODAY — `creer` (`depot/televersement.ts`) is the ONLY
+            // TODAY — `create` (`depot/televersement.ts`) is the ONLY
             // `INSERT` of this table and always sets a UUID —, but
             // `derniereActivite` THROWS on an invalid identifier (same
-            // convention as `lister`/`concatener`/`supprimer`). WITHOUT this
+            // convention as `lister`/`concatener`/`remove`). WITHOUT this
             // `catch`, a single malformed row would make the exception BUBBLE UP
             // out of the loop: the whole round would stop there, the NEIGHBOURING
             // orphan — legitimate though it is — would never be evicted, NEITHER IN THIS
@@ -183,7 +183,7 @@ async function nettoyerTranches(
         }
 
         try {
-            await supprimerTeleversement(p, ligne.id);
+            await removeUpload(p, ligne.id);
         } catch (cause) {
             if (!estRefusDeCleEtrangere(cause)) {
                 // ⚠️ Important ① (correction round 2): ONLY the foreign
@@ -204,7 +204,7 @@ async function nettoyerTranches(
 }
 
 /// Tells a FOREIGN KEY refusal — the ONLY expected failure of
-/// `supprimerTeleversement` — apart from everything else.
+/// `removeUpload` — apart from everything else.
 ///
 /// 🔴 A CODE, NOT A TEXT: `errcode` (node:sqlite,
 /// `SQLITE_CONSTRAINT_FOREIGNKEY = 787`, measured on this repository — see
@@ -239,7 +239,7 @@ export async function referencesTranches(p: Pilote): Promise<Set<string>> {
 /// not a case we expect to see. And if it happened anyway — a
 /// tiny test `periodeMs`, for instance —, the two halves of the round
 /// are IDEMPOTENT: `evincer` on a file already gone is a `rm force`
-/// that finds nothing, and `supprimer` on a row already purged touches zero
+/// that finds nothing, and `remove` on a row already purged touches zero
 /// rows. A guard would add surface for a risk that does not
 /// need it.
 ///
@@ -279,7 +279,7 @@ export async function unTour(deps: {
 /// failure REPRODUCIBLE BY A DETERMINISTIC TEST (`http/serveur.test.ts`
 /// starts a real service and watches an orphan icon disappear WITHOUT
 /// calling `evincer` by hand, without polling or an arbitrary delay, precisely
-/// because this first round is awaited before `demarrerServeur` returns
+/// because this first round is awaited before `startServer` returns
 /// control). That a freshly restarted service does not wait a full
 /// period before its first sweep is a real but SECONDARY benefit:
 /// one more DB query before `http.listen` has a startup latency cost
@@ -291,7 +291,7 @@ export async function unTour(deps: {
 /// full disk must neither interrupt the startup nor prevent the NEXT
 /// round — same philosophy as the `.catch` of each HTTP request in
 /// `serveur.ts`. It is logged, never silently swallowed.
-export async function demarrerNettoyage(
+export async function startCleanup(
     deps: { base: Pilote; magasin: Magasin; tranches: MagasinTranches; maintenant: () => number },
     periodeMs: number = PERIODE_NETTOYAGE_MS,
 ): Promise<{ arreter(): void }> {

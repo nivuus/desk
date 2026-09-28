@@ -15,7 +15,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MOTEUR } from '../base/harnais';
-import { avec, jetonDe } from './routes-harnais';
+import { withIt, jetonDe } from './routes-harnais';
 import {
     deposer,
     magasin,
@@ -25,7 +25,7 @@ import {
     poser,
     racine,
     TRANCHES,
-    utilisateur,
+    user,
 } from './routes-televersement-harnais';
 
 afterEach(nettoyer);
@@ -35,7 +35,7 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
 
     it('dépose, relit l’état, et REDÉPOSER écrase (idempotence)', async () => {
         const { url, base } = await monter('tel-deposer');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
 
@@ -43,7 +43,7 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
         expect(un.status).toBe(200);
         expect(await un.json()).toEqual({ n: 1, octets: 4 });
 
-        const etat = await fetch(`${url}/televersement/${id}`, { headers: avec(jeton) });
+        const etat = await fetch(`${url}/televersement/${id}`, { headers: withIt(jeton) });
         expect(((await etat.json()) as { tranches_presentes: unknown }).tranches_presentes).toEqual([
             { n: 1, octets: 4 },
         ]);
@@ -58,7 +58,7 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
         // 🔴 LA ROUGE : sans la borne, on rend 200 et l'on écrit une tranche de
         // cinq octets là où le pas en vaut quatre.
         const { url, base } = await monter('tel-borne');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const id = await poser(base, ada);
 
         const r = await deposer(url, id, 0, Buffer.alloc(PAS + 1, 0x41), jetonDe(ada));
@@ -84,7 +84,7 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
         //
         // ✅ LA COURSE EST SUPPRIMÉE À SA SOURCE — le descripteur est ouvert par
         // `openSync` AVANT le `pipeline`, donc l'inode existe déjà quand le
-        // `catch` supprime. Différentiel mesuré par sonde directe sur `ecrire`,
+        // `catch` supprime. Différentiel mesuré par sonde directe sur `write`,
         // hors HTTP, **une exécution de 400 dépassements par bras** :
         // **100 répertoires non vides sur 400 AVANT, 0 sur 400 APRÈS**.
         // ⚠️ Le taux dépend de la charge — une mesure antérieure sous une autre
@@ -100,7 +100,7 @@ describe(`routes de téléversement — déposer, moteur=${MOTEUR}`, () => {
 
     it('refuse un rang qui n’est pas un entier, ou qui sort du plan', async () => {
         const { url, base } = await monter('tel-rang');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
 

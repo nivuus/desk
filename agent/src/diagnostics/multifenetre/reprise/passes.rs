@@ -15,7 +15,7 @@
 //! are kept as is so that these surveys stay `grep`-able together with those
 //! already committed in `docs/`. On this bench:
 //!
-//! - **`mire0_avant_recouvrement` is always empty**, and
+//! - **`pattern0_before_overlap` is always empty**, and
 //!   `mire0_apres_recouvrement` carries **ALL** the verdicts of the rotation, on
 //!   all paths — not only those of test pattern 0. No covering is
 //!   staged here: one window per output, nothing can hide
@@ -42,7 +42,7 @@ use anyhow::{Context, Result};
 use super::super::compteurs::{self, Compteurs, Garde, DUREE_PASSE, PERIODE_JOURNAL};
 use super::super::mires::Mires;
 use super::super::montee::RESOLUTION;
-use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
+use super::super::voies::{create_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
 use super::constater_places;
 use crate::capture::SortieDxgi;
 use crate::geometry::Rect;
@@ -75,7 +75,7 @@ pub(super) fn eprouver(
     // The test patterns' device does NOT come from a provisional
     // `DesktopCapture`: DXGI only allows one duplication per output, and the
     // provisional one would make the real one fail with 0x80070057.
-    let (device, _contexte) = creer_device()?;
+    let (device, _contexte) = create_device()?;
     // The test patterns live in VIRTUAL DESKTOP coordinates — the rectangles
     // announced by DXGI. The paths crop in TEXTURE coordinates, which
     // `ouvrir_duplications` computes. Confusing them would shift everything by a
@@ -84,9 +84,9 @@ pub(super) fn eprouver(
     let mut mires = Mires::ouvrir(&device, &places_bureau)?;
 
     let (mut voies, places_texture) = ouvrir_duplications(garde, virtuelles, &mires)?;
-    let nombre = voies.len();
+    let count = voies.len();
     tracing::info!(
-        nombre,
+        count,
         ?places_bureau,
         ?places_texture,
         "les k duplications sont ouvertes"
@@ -99,7 +99,7 @@ pub(super) fn eprouver(
     compteurs::journaliser(
         "avant perturbation",
         "duplication-reprise",
-        nombre as u8,
+        count as u8,
         &passe_a.compteurs,
     );
     // A path already dead BEFORE any disruption invalidates the measurement: what
@@ -120,7 +120,7 @@ pub(super) fn eprouver(
          perturbation mesurée"
     );
     let id_perturbatrice = sorties
-        .creer(largeur, hauteur, hertz)
+        .create(largeur, hauteur, hertz)
         .context("création de la sortie perturbatrice")?;
     let instant_perturbation = Instant::now();
     tracing::info!(id = id_perturbatrice, "sortie perturbatrice créée");
@@ -136,7 +136,7 @@ pub(super) fn eprouver(
     compteurs::journaliser(
         "après perturbation",
         "duplication-reprise",
-        nombre as u8,
+        count as u8,
         &passe_b.compteurs,
     );
     // Two findings that decide what the summary means: did the
@@ -174,20 +174,20 @@ pub(super) fn eprouver(
     // path compensated by another.
     let vivantes_apres = passe_b.compteurs.images.iter().filter(|n| **n > 0).count();
     tracing::info!(
-        images_avant = ?passe_a.compteurs.images,
+        frames_before = ?passe_a.compteurs.images,
         images_apres = ?passe_b.compteurs.images,
         voies_vivantes_apres = vivantes_apres,
-        voies_totales = nombre,
+        voies_totales = count,
         voies_perdues_apres = ?passe_b.perdues,
-        verdicts_faux_avant = passe_a.compteurs.apres_recouvrement.faux(),
+        false_verdicts_before = passe_a.compteurs.apres_recouvrement.faux(),
         verdicts_faux_apres = passe_b.compteurs.apres_recouvrement.faux(),
-        passe_avant_degradee = passe_a.degradee,
+        pass_before_degraded = passe_a.degradee,
         passe_apres_degradee = passe_b.degradee,
         "bilan de la reprise"
     );
     if passe_a.degradee || passe_b.degradee {
         tracing::error!(
-            passe_avant_degradee = passe_a.degradee,
+            pass_before_degraded = passe_a.degradee,
             passe_apres_degradee = passe_b.degradee,
             "une passe au moins a tourné en mode DÉGRADÉ — dans ce bilan, `images_*`, les \
              cadences et les `verdicts_faux_*` de la ou des passes concernées sont \
@@ -294,7 +294,7 @@ fn ouvrir_duplications(
 
     let mut voies: Vec<Box<dyn VoieDeCapture>> = Vec::new();
     for (id, source) in sources.into_iter().enumerate() {
-        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::nouvelle(source));
+        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::new(source));
         voie.ouvrir(mires.hwnd(id as u8)?, places[id])?;
         voies.push(voie);
     }
@@ -341,9 +341,9 @@ fn passe(
     virtuelles: &[SortieDxgi],
     perturbation: Option<Instant>,
 ) -> Result<Passe> {
-    let nombre = voies.len();
-    let mut compteurs = Compteurs::nouveaux(nombre);
-    let mut vivantes = vec![true; nombre];
+    let count = voies.len();
+    let mut compteurs = Compteurs::nouveaux(count);
+    let mut vivantes = vec![true; count];
     let mut peinture_signalee = false;
     let mut lecture_signalee = false;
     // The round number is kept HERE, and not read from `Mires::trame`.
@@ -373,11 +373,11 @@ fn passe(
 
     while debut.elapsed() < DUREE_PASSE {
         tour += 1;
-        if let Err(erreur) = mires.peindre() {
+        if let Err(error) = mires.peindre() {
             if !peinture_signalee {
                 peinture_signalee = true;
                 tracing::error!(
-                    causes = %super::super::causes(erreur),
+                    causes = %super::super::causes(error),
                     // This message asserted "the test patterns no longer change, THEREFORE the
                     // desktop does not either, so the image count stops
                     // advancing" — beyond its survey. `Mires::peindre`
@@ -398,7 +398,7 @@ fn passe(
         mires.pomper();
         // The path checked at this round, and it alone: one reading per round
         // whatever k (see `mire::voie_controlee`).
-        let controlee = mire::voie_controlee(tour, nombre);
+        let controlee = mire::voie_controlee(tour, count);
 
         for (id, voie) in voies.iter_mut().enumerate() {
             if !vivantes[id] {
@@ -409,7 +409,7 @@ fn passe(
                 // Nothing new on this desktop at this instant: the common case,
                 // not an error.
                 Ok(None) => continue,
-                Err(erreur) => {
+                Err(error) => {
                     vivantes[id] = false;
                     // One line per dead path, at most k for the whole pass:
                     // it is not a per-image trace.
@@ -417,8 +417,8 @@ fn passe(
                         voie = id,
                         nom_sortie = %virtuelles[id].nom_sortie,
                         ms_depuis_perturbation = ?perturbation.map(|t| t.elapsed().as_millis() as u64),
-                        images_avant_la_mort = compteurs.images[id],
-                        causes = %super::super::causes(erreur),
+                        frames_before_death = compteurs.images[id],
+                        causes = %super::super::causes(error),
                         "capture définitivement perdue sur cette voie — elle cesse d'être \
                          sollicitée, les autres continuent. Ne PAS en conclure que la reprise \
                          est impossible avant d'avoir lu la sonde post-mortem"
@@ -437,12 +437,12 @@ fn passe(
                 // changed.
                 let verdict = match compteurs::lire_verdict(voie.as_mut(), &image, id as u8) {
                     Ok(verdict) => verdict,
-                    Err(erreur) => {
+                    Err(error) => {
                         if !lecture_signalee {
                             lecture_signalee = true;
                             tracing::error!(
                                 voie = id,
-                                causes = %super::super::causes(erreur),
+                                causes = %super::super::causes(error),
                                 "lecture de pixel perdue — comptée « Inconnue » et la passe \
                                  continue : les verdicts de cette passe sont DÉGRADÉS, leur \
                                  nombre de faux ne dit plus rien de la justesse des images"

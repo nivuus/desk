@@ -86,13 +86,13 @@ pub async fn executer(
     tokio::task::spawn_blocking(move || {
         // Purge BEFORE anything: a previous run killed outright may have left
         // outputs, and they occupy the pool of ten.
-        if let Err(erreur) = crate::moniteurs_virtuels::purge::purger() {
-            tracing::warn!(%erreur, "purge des sorties orphelines incomplète au démarrage");
+        if let Err(error) = crate::moniteurs_virtuels::purge::purger() {
+            tracing::warn!(%error, "purge des sorties orphelines incomplète au démarrage");
         }
 
         let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()
             .context("ouverture du pilote d'affichage virtuel")?;
-        let lanceur = lanceur::LanceurDeProcessus::nouveau(
+        let lanceur = lanceur::LanceurDeProcessus::new(
             std::env::current_exe().context("chemin de l'exécutable")?,
             signaling_url,
             local_ip,

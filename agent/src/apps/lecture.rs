@@ -54,7 +54,7 @@ const TAMPON: usize = 32_768;
 /// reconciliation loop, and COM requires the release to happen on the
 /// thread that initialised — it is the same reasoning, and the same precedent,
 /// as in `agent/src/wasapi.rs`.
-pub fn initialiser_com() -> Result<()> {
+pub fn initialize_com() -> Result<()> {
     // SAFETY: FFI call. The only contract is that this thread has not already
     // joined an apartment of another model, which the check below
     // verifies rather than assumes.
@@ -210,8 +210,8 @@ pub fn racines() -> Vec<PathBuf> {
                 chemin = %chemin.display(),
                 "racine de raccourcis absente du disque, sautée"
             ),
-            Err(erreur) => {
-                tracing::warn!(racine = nom, %erreur, "racine de raccourcis non résolue, sautée")
+            Err(error) => {
+                tracing::warn!(racine = nom, %error, "racine de raccourcis non résolue, sautée")
             }
         }
     }
@@ -238,14 +238,14 @@ fn dossier_connu(id: &GUID) -> Result<PathBuf> {
 /// A flat walk would see almost none of them.
 ///
 /// ⚠️ AN UNREADABLE DIRECTORY IS SKIPPED WITH ITS TRACE, like a root.
-pub fn lnk_sous(racine: &Path) -> Vec<PathBuf> {
+pub fn lnk_under(racine: &Path) -> Vec<PathBuf> {
     let mut sortie = Vec::new();
     let mut pile = vec![racine.to_path_buf()];
     while let Some(dossier) = pile.pop() {
         let entrees = match std::fs::read_dir(&dossier) {
             Ok(e) => e,
-            Err(erreur) => {
-                tracing::warn!(dossier = %dossier.display(), %erreur, "répertoire illisible, sauté");
+            Err(error) => {
+                tracing::warn!(dossier = %dossier.display(), %error, "répertoire illisible, sauté");
                 continue;
             }
         };
@@ -277,19 +277,19 @@ pub fn lnk_sous(racine: &Path) -> Vec<PathBuf> {
 /// for many installer shortcuts. Without this expansion, the rule
 /// "the target file exists" would discard them all, and the identity key
 /// would depend on the way it was written rather than on the file targeted.
-fn developper(valeur: &str) -> String {
-    if !valeur.contains('%') {
-        return valeur.to_string();
+fn developper(value: &str) -> String {
+    if !value.contains('%') {
+        return value.to_string();
     }
-    let source = vers_utf16(valeur);
+    let source = vers_utf16(value);
     let mut tampon = vec![0u16; TAMPON];
     // SAFETY: FFI call. Returns the number of units written, zero on
     // failure — in which case we keep the unexpanded value rather than
     // returning an empty string, which would read as "Shell namespace
     // target" and would change the discard reason.
-    let ecrit = unsafe { ExpandEnvironmentStringsW(PCWSTR(source.as_ptr()), Some(&mut tampon)) };
-    if ecrit == 0 {
-        return valeur.to_string();
+    let written = unsafe { ExpandEnvironmentStringsW(PCWSTR(source.as_ptr()), Some(&mut tampon)) };
+    if written == 0 {
+        return value.to_string();
     }
     depuis_utf16(&tampon)
 }
@@ -299,8 +299,8 @@ fn developper(valeur: &str) -> String {
 /// need it, and two identical encodings would diverge the day one of them
 /// stopped appending its terminating nul — a failure nothing would report before a
 /// buffer overrun on the Windows side.
-pub(super) fn vers_utf16(valeur: &str) -> Vec<u16> {
-    valeur.encode_utf16().chain(std::iter::once(0)).collect()
+pub(super) fn vers_utf16(value: &str) -> Vec<u16> {
+    value.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
 /// ⚠️ STOPS AT THE FIRST NUL. The `IShellLinkW` buffers are not

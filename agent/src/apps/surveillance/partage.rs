@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn l_arret_se_voit_de_tous_les_clones() {
+    fn the_stop_is_seen_from_all_clones() {
         let v = Veille::default();
         let jumelle = v.clone();
         assert!(!jumelle.arretee());

@@ -17,8 +17,8 @@ import { defineConfig } from 'vitest/config';
 // scope from it, and they are loaded by NODE, whose resolver requires
 // the extension where Vite does without. Written without it, the line left the
 // build GREEN and brought §7.6 and §7.9 down with `ERR_MODULE_NOT_FOUND`.
-import { lireBlocsDeTheme, valeurDePropriete } from './src/design/tokens.ts';
-// 🔴 `NOM_FICHIER_AMORCE` AND `baliseAmorce` LIVE UNDER `src/`, NOT HERE —
+import { lireBlocsDeTheme, propertyValue } from './src/design/tokens.ts';
+// 🔴 `BOOTSTRAP_FILE_NAME` AND `baliseAmorce` LIVE UNDER `src/`, NOT HERE —
 // extracted on August 29th, 2026 (batch `csp-amorce`) precisely to stay
 // TYPECHECKED, which this file never is (see below). `AMORCE`, for its part,
 // STAYS read here, through `node:fs` — see the comment of
@@ -27,7 +27,7 @@ import { lireBlocsDeTheme, valeurDePropriete } from './src/design/tokens.ts';
 // complete reasoning: why the bootstrap is an external `'self'` file
 // (never inline `children:`) and why a `sha256-…` hash in the CSP was
 // ruled out.
-import { NOM_FICHIER_AMORCE, baliseAmorce } from './src/design/amorce-theme-greffon.ts';
+import { BOOTSTRAP_FILE_NAME, baliseAmorce } from './src/design/amorce-theme-greffon.ts';
 // 🔴 `baliseManifesteHub` LIVES UNDER `src/hub/`, NOT HERE — extracted on August 29th,
 // 2026 (batch `manifeste-hub-crossorigin`) for the SAME reason as
 // `baliseAmorce` above: staying TYPECHECKED. See its comment for the
@@ -86,13 +86,13 @@ function tokenRacine(nom: string): string {
     const blocs = lireBlocsDeTheme(TOKENS_CSS);
     const racine = blocs.find((b) => b.nom === 'racine');
     if (racine === undefined) throw new Error('tokens/couleurs.css ne porte plus de bloc racine');
-    const valeur = valeurDePropriete(racine, nom);
+    const value = propertyValue(racine, nom);
     // 🔴 WE THROW RATHER THAN FALL BACK TO A DEFAULT COLOUR: a fallback
     //    would set a colour that belongs to no token, that is, the
     //    second source of truth this plugin exists to avoid — and it would
     //    do so SILENTLY.
-    if (valeur === null) throw new Error(`tokens/couleurs.css ne déclare plus ${nom}`);
-    return valeur;
+    if (value === null) throw new Error(`tokens/couleurs.css ne déclare plus ${nom}`);
+    return value;
 }
 
 const MANIFESTE_HUB = {
@@ -155,7 +155,7 @@ export const greffonAmorce = {
         // file is not typechecked: the annotation states the intent.
         this.emitFile({
             type: 'asset',
-            fileName: NOM_FICHIER_AMORCE,
+            fileName: BOOTSTRAP_FILE_NAME,
             source: AMORCE,
         });
     },

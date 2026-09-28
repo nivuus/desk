@@ -15,8 +15,8 @@
 // over. See `http/chaine.ts`, which carries the count and the rule.
 //
 // 🔴 AUTHENTICATION GOES THROUGH `http/porteur.ts`, NEVER THROUGH A COPY.
-// The G1 plan (decision D9) prescribed calling `verifierJeton` then
-// requiring `verdict.type === 'utilisateur'` — that is, rewriting here,
+// The G1 plan (decision D9) prescribed calling `verifyToken` then
+// requiring `verdict.type === 'user'` — that is, rewriting here,
 // word for word, what P4 shipped in the meantime in `lirePorteur`. Copying a
 // security decision is precisely what this repository refuses: « a copy
 // would drift silently » (`agents/canal.ts`), and this one would drift on the
@@ -74,7 +74,7 @@ export interface DependancesApplications {
     maintenant: () => number;
 }
 
-const CHEMIN_LISTE = '/applications';
+const LIST_PATH = '/applications';
 
 function repondre(
     rep: ServerResponse,
@@ -140,20 +140,20 @@ function lancementDe(chemin: string): string | undefined {
 async function acces(
     deps: DependancesApplications,
     vmId: string,
-    utilisateurId: string,
+    userId: string,
 ): Promise<'ok' | 'inconnue' | 'etrangere'> {
     const vm = await lireVm(deps.base, vmId);
-    if (vm === undefined) return journaliserLeRefus('inconnue', vmId, utilisateurId);
+    if (vm === undefined) return journaliserLeRefus('inconnue', vmId, userId);
     if (vm.utilisateur_id === null) {
         console.warn(
             `vm non attribuee, acces accorde sans isolation a la VM ${vmId} `
-                + `pour l utilisateur ${utilisateurId} (attribution = sous-bloc P4)`,
+                + `pour l utilisateur ${userId} (attribution = sous-bloc P4)`,
         );
         return 'ok';
     }
-    return vm.utilisateur_id === utilisateurId
+    return vm.utilisateur_id === userId
         ? 'ok'
-        : journaliserLeRefus('etrangere', vmId, utilisateurId);
+        : journaliserLeRefus('etrangere', vmId, userId);
 }
 
 /// The trade-off of the indistinguishable refusal: the only thing, in the whole
@@ -178,10 +178,10 @@ async function acces(
 function journaliserLeRefus(
     cas: 'inconnue' | 'etrangere',
     vmId: string,
-    utilisateurId: string,
+    userId: string,
 ): 'inconnue' | 'etrangere' {
     console.warn(
-        `refus d'accès à la VM ${vmId} pour l'utilisateur ${utilisateurId} : `
+        `refus d'accès à la VM ${vmId} pour l'utilisateur ${userId} : `
             + `cas=${cas} — la réponse HTTP, elle, est le même 404 « vm-inconnue » `
             + `dans les deux cas (décision du propriétaire du dépôt : pas d'oracle `
             + `d'énumération).`,
@@ -197,8 +197,8 @@ export async function servirApplications(
     const requete = new URL(req.url ?? '/', 'http://placeholder');
     const chemin = requete.pathname;
     const idApplication = lancementDe(chemin);
-    const estListe = chemin === CHEMIN_LISTE;
-    if (!estListe && idApplication === undefined) return false;
+    const isList = chemin === LIST_PATH;
+    if (!isList && idApplication === undefined) return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
@@ -215,7 +215,7 @@ export async function servirApplications(
 
     // The path EXISTS, it is the method that does not fit: a 404 would send people
     // looking for a missing route.
-    if (estListe && req.method !== 'GET') {
+    if (isList && req.method !== 'GET') {
         repondre(rep, 405, { refus: 'methode' }, cors);
         return true;
     }
@@ -236,7 +236,7 @@ export async function servirApplications(
         return true;
     }
 
-    if (estListe) {
+    if (isList) {
         const vmId = requete.searchParams.get('vm');
         if (vmId === null || vmId === '') {
             // 400 and not 404: the path is right, it is the request that is
@@ -244,7 +244,7 @@ export async function servirApplications(
             repondre(rep, 400, { refus: 'vm-absente' }, cors);
             return true;
         }
-        const verdict = await acces(deps, vmId, porteur.utilisateurId);
+        const verdict = await acces(deps, vmId, porteur.userId);
         if (verdict !== 'ok') {
             // 🔴 THE VERDICT IS NOT REREAD HERE, and that is the core of the
             // decision: « unknown » and « foreign » go through the SAME
@@ -337,7 +337,7 @@ export async function servirApplications(
         repondre(rep, 404, { refus: 'application-inconnue' }, cors);
         return true;
     }
-    const verdict = await acces(deps, application.vm_id, porteur.utilisateurId);
+    const verdict = await acces(deps, application.vm_id, porteur.userId);
     if (verdict !== 'ok') {
         // 🔴 WITHOUT THIS GUARD, AN APPLICATION ID WOULD BE ENOUGH TO LAUNCH
         // A PROGRAM ON SOMEONE ELSE'S MACHINE — and the agent, for its part,

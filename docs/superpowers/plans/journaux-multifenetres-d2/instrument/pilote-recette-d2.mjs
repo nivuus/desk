@@ -276,7 +276,7 @@ async function main() {
                       rtt: paire?.currentRoundTripTime,
                       viewport: window.innerWidth + 'x' + window.innerHeight,
                     };
-                })()`, true).catch((e) => ({ erreur: String(e).slice(0, 200) }));
+                })()`, true).catch((e) => ({ error: String(e).slice(0, 200) }));
             }
             log(`STATS (${etiquette}) ` + JSON.stringify(out, null, 1));
             return out;
@@ -312,11 +312,11 @@ async function main() {
         // ce qui rend le compte « une application ouverte = une fenêtre de
         // plus » faux et brouille la lecture du critère.
         const releves = [];
-        const etape = async (nom, fichier, quoi) => {
+        const etape = async (nom, file, quoi) => {
             const n = appPages().length;
             log(`>>> ÉTAPE : ${quoi}  (pages d'application avant = ${n})`);
-            const avant = await marqueurs(`avant ${quoi}`);
-            vmIt(nom, fichier);
+            const before = await marqueurs(`avant ${quoi}`);
+            vmIt(nom, file);
             for (let i = 0; i < 7; i += 1) {
                 await dodo(5000);
                 log(`   … t+${(i + 1) * 5}s  pages=${appPages().length}`);
@@ -324,21 +324,21 @@ async function main() {
             const apres = await marqueurs(`après ${quoi}`);
             await etat(`après ${quoi}`);
             await stats(`après ${quoi}`);
-            releves.push({ quoi, pagesAvant: n, pagesApres: appPages().length, avant, apres });
+            releves.push({ quoi, pagesAvant: n, pagesApres: appPages().length, before, apres });
             log(`RELEVÉ ${quoi} : pages ${n} -> ${appPages().length}, ` +
-                `clôtures ${avant.cloture} -> ${apres.cloture}, ` +
-                `réouvertures ${avant.reouverture} -> ${apres.reouverture}, ` +
-                `duplication refusée (0x887A0022) ${avant.duplication_refusee} -> ${apres.duplication_refusee}`);
+                `clôtures ${before.cloture} -> ${apres.cloture}, ` +
+                `réouvertures ${before.reouverture} -> ${apres.reouverture}, ` +
+                `duplication refusée (0x887A0022) ${before.duplication_refusee} -> ${apres.duplication_refusee}`);
             return apres;
         };
 
-        for (const [nom, fichier, quoi] of [
+        for (const [nom, file, quoi] of [
             ['ouvrirn2', 'ouvrir-n2.ps1', 'Bloc-notes 2'],
             ['ouvrirn3', 'ouvrir-n3.ps1', 'Bloc-notes 3'],
             ['ouvrirn4', 'ouvrir-n4.ps1', 'Bloc-notes 4'],
             ['ouvrirn5', 'ouvrir-n5.ps1', 'Bloc-notes 5'],
         ]) {
-            await etape(nom, fichier, quoi);
+            await etape(nom, file, quoi);
         }
 
         // ---- Épreuve du plafond : une fermeture RÉELLE, puis une ouverture.
@@ -364,9 +364,9 @@ async function main() {
         await fenetresVm('FIN');
         log('SYNTHÈSE ' + JSON.stringify(releves.map((r) => ({
             quoi: r.quoi, pages: `${r.pagesAvant}->${r.pagesApres}`,
-            cloture: `${r.avant.cloture}->${r.apres.cloture}`,
-            reouverture: `${r.avant.reouverture}->${r.apres.reouverture}`,
-            refus_duplication: `${r.avant.duplication_refusee}->${r.apres.duplication_refusee}`,
+            cloture: `${r.before.cloture}->${r.apres.cloture}`,
+            reouverture: `${r.before.reouverture}->${r.apres.reouverture}`,
+            refus_duplication: `${r.before.duplication_refusee}->${r.apres.duplication_refusee}`,
         })), null, 1));
 
         // ---- Après le relevé du critère seulement : clavier, puis captures.

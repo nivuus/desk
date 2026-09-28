@@ -36,10 +36,10 @@ const ERROR_IO_DEVICE: u32 = 1117; // Foundation/mod.rs:3003
 const ERROR_IO_PENDING: u32 = 997; // Foundation/mod.rs:3005
 
 /// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` — **the value EVERY asynchronous
-/// callback returns**, and it is not an [`Erreur`].
+/// callback returns**, and it is not an [`Error`].
 ///
-/// ⚠️ **It deliberately has NO [`Erreur`] variant**, and it is not
-/// an oversight: `Erreur` enumerates the causes of a FAILURE, and its `NOMBRE` carries a
+/// ⚠️ **It deliberately has NO [`Error`] variant**, and it is not
+/// an oversight: `Error` enumerates the causes of a FAILURE, and its `COUNT` carries a
 /// structural guard that forces classifying any new variant. "The operation
 /// is in progress" is not a failure — giving it a variant would mean that an
 /// exhaustive sweep of error causes would include a deferred success, and that
@@ -57,7 +57,7 @@ pub const EN_COURS: i32 = (FACILITE_WIN32 | ERROR_IO_PENDING) as i32;
 /// allows the Windows application to distinguish "this file does not exist" from
 /// "the browser closed the tab", and the operator to read it in the log.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Erreur {
+pub enum Error {
     /// The requested file does not exist in the shared directory.
     Introuvable,
     /// An intermediate component of the path does not exist.
@@ -91,7 +91,7 @@ pub enum Erreur {
     /// `service::cause_de` produces it on a `CodeEchec::RepertoireNonVide`.
     ///
     /// 🔵 **AND ITS `HRESULT` DOES REACH SOMEONE, unlike
-    /// [`Erreur::DisquePlein`] and [`Erreur::DejaPresent`].** It is born from a
+    /// [`Error::DisquePlein`] and [`Error::DejaPresent`].** It is born from a
     /// deletion, whose `PRE_DELETE` is **SYNCHRONOUS**: Explorer waits on
     /// it. It is also the only **DIAGNOSTIC** cause in the table — receiving
     /// it means the local workstation carries entries the VM does not
@@ -105,7 +105,7 @@ pub enum Erreur {
     /// Creation of an entry that already exists.
     ///
     /// ✅ **BUILT SINCE F2** *(this line said "(F2)")*. Same caveat
-    /// as [`Erreur::DisquePlein`]: its `HRESULT` reaches no one.
+    /// as [`Error::DisquePlein`]: its `HRESULT` reaches no one.
     DejaPresent,
     /// ❌ **"F1 LIVES ENTIRELY IN THIS STATE" IS NO LONGER TRUE.** F2 opened
     /// writing: `PRE_CONVERT_TO_FULL` is **allowed** when the root is
@@ -116,7 +116,7 @@ pub enum Erreur {
     /// - the root is mounted read-only (`PONT_ECRITURE=0` does NOT produce
     ///   it — it is a bench variable of the thread, not of the root);
     /// - or the operation is a **renaming** or a **deletion**, which F2
-    ///   refuses unconditionally because `Renommer` and `Supprimer` are
+    ///   refuses unconditionally because `Renommer` and `Delete` are
     ///   deliverables of **F3**;
     /// - or the browser answered `protege-en-ecriture`.
     ///
@@ -129,52 +129,52 @@ pub enum Erreur {
     Inattendue,
 }
 
-/// The number of [`Erreur`] variants.
+/// The number of [`Error`] variants.
 ///
 /// ⚠️ **It is not a convenience: it is the second stage of the structural
 /// guard.** Adding a variant first breaks the compilation of [`index`]
 /// and [`hresult`] (two exhaustive `match`es), which forces giving it an
-/// index; the next index requires raising `NOMBRE` to 13, which makes
-/// the compilation of [`Erreur::TOUTES`], typed `[Erreur; NOMBRE]`, fail as long
+/// index; the next index requires raising `COUNT` to 13, which makes
+/// the compilation of [`Error::ALL`], typed `[Error; COUNT]`, fail as long
 /// as the variant is not listed there. **The sweep therefore cannot become
 /// decorative silently** — same intention as F3's criterion (4).
-pub const NOMBRE: usize = 12;
+pub const COUNT: usize = 12;
 
-impl Erreur {
+impl Error {
     /// All variants. The tests' exhaustive sweep relies on it.
-    pub const TOUTES: [Erreur; NOMBRE] = [
-        Erreur::Introuvable,
-        Erreur::CheminIntrouvable,
-        Erreur::AccesRefuse,
-        Erreur::CanalFerme,
-        Erreur::DelaiDepasse,
-        Erreur::Abandonnee,
-        Erreur::DisquePlein,
-        Erreur::NonSupporte,
-        Erreur::RepertoireNonVide,
-        Erreur::DejaPresent,
-        Erreur::ProtegeEnEcriture,
-        Erreur::Inattendue,
+    pub const ALL: [Error; COUNT] = [
+        Error::Introuvable,
+        Error::CheminIntrouvable,
+        Error::AccesRefuse,
+        Error::CanalFerme,
+        Error::DelaiDepasse,
+        Error::Abandonnee,
+        Error::DisquePlein,
+        Error::NonSupporte,
+        Error::RepertoireNonVide,
+        Error::DejaPresent,
+        Error::ProtegeEnEcriture,
+        Error::Inattendue,
     ];
 }
 
 /// The rank of a variant. **Exhaustive** `match`: it is what makes it
 /// impossible to add a variant without being forced to classify it.
 #[cfg(test)]
-const fn index(e: Erreur) -> usize {
+const fn index(e: Error) -> usize {
     match e {
-        Erreur::Introuvable => 0,
-        Erreur::CheminIntrouvable => 1,
-        Erreur::AccesRefuse => 2,
-        Erreur::CanalFerme => 3,
-        Erreur::DelaiDepasse => 4,
-        Erreur::Abandonnee => 5,
-        Erreur::DisquePlein => 6,
-        Erreur::NonSupporte => 7,
-        Erreur::RepertoireNonVide => 8,
-        Erreur::DejaPresent => 9,
-        Erreur::ProtegeEnEcriture => 10,
-        Erreur::Inattendue => 11,
+        Error::Introuvable => 0,
+        Error::CheminIntrouvable => 1,
+        Error::AccesRefuse => 2,
+        Error::CanalFerme => 3,
+        Error::DelaiDepasse => 4,
+        Error::Abandonnee => 5,
+        Error::DisquePlein => 6,
+        Error::NonSupporte => 7,
+        Error::RepertoireNonVide => 8,
+        Error::DejaPresent => 9,
+        Error::ProtegeEnEcriture => 10,
+        Error::Inattendue => 11,
     }
 }
 
@@ -183,20 +183,20 @@ const fn index(e: Erreur) -> usize {
 /// Returns an `i32`: it is what `windows_core::HRESULT` wraps, and the module
 /// stays PURE. The `match` is **exhaustive** — a new variant cannot
 /// fall into a catch-all arm and silently inherit another's code.
-pub fn hresult(e: Erreur) -> i32 {
+pub fn hresult(e: Error) -> i32 {
     let code = match e {
-        Erreur::Introuvable => ERROR_FILE_NOT_FOUND,
-        Erreur::CheminIntrouvable => ERROR_PATH_NOT_FOUND,
-        Erreur::AccesRefuse => ERROR_ACCESS_DENIED,
-        Erreur::CanalFerme => ERROR_IO_DEVICE,
-        Erreur::DelaiDepasse => ERROR_SEM_TIMEOUT,
-        Erreur::Abandonnee => ERROR_OPERATION_ABORTED,
-        Erreur::DisquePlein => ERROR_DISK_FULL,
-        Erreur::NonSupporte => ERROR_NOT_SUPPORTED,
-        Erreur::RepertoireNonVide => ERROR_DIR_NOT_EMPTY,
-        Erreur::DejaPresent => ERROR_FILE_EXISTS,
-        Erreur::ProtegeEnEcriture => ERROR_WRITE_PROTECT,
-        Erreur::Inattendue => ERROR_GEN_FAILURE,
+        Error::Introuvable => ERROR_FILE_NOT_FOUND,
+        Error::CheminIntrouvable => ERROR_PATH_NOT_FOUND,
+        Error::AccesRefuse => ERROR_ACCESS_DENIED,
+        Error::CanalFerme => ERROR_IO_DEVICE,
+        Error::DelaiDepasse => ERROR_SEM_TIMEOUT,
+        Error::Abandonnee => ERROR_OPERATION_ABORTED,
+        Error::DisquePlein => ERROR_DISK_FULL,
+        Error::NonSupporte => ERROR_NOT_SUPPORTED,
+        Error::RepertoireNonVide => ERROR_DIR_NOT_EMPTY,
+        Error::DejaPresent => ERROR_FILE_EXISTS,
+        Error::ProtegeEnEcriture => ERROR_WRITE_PROTECT,
+        Error::Inattendue => ERROR_GEN_FAILURE,
     };
     (FACILITE_WIN32 | code) as i32
 }

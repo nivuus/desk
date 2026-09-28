@@ -175,13 +175,13 @@ impl Session {
         //        release an encoder on the sensor side, which is long, and
         //        never mutates `Rtc`.
         if let Some((visible, focalisee)) = self.pending_visibility.take() {
-            if let Err(erreur) = self.source.set_awake(visible, focalisee) {
+            if let Err(error) = self.source.set_awake(visible, focalisee) {
                 // Not fatal: losing the arbitration is not losing the session.
-                // `cause::chaine` and not `%erreur`: `set_awake` goes through
+                // `cause::chain` and not `%error`: `set_awake` goes through
                 // `commander_simple`, which stacks a context — `anyhow`'s plain
                 // `Display` would only render that one. See `crate::cause`.
                 tracing::warn!(
-                    erreur = %crate::cause::chaine(&erreur),
+                    error = %crate::cause::chain(&error),
                     visible,
                     focalisee,
                     "visibilité refusée par le capteur"

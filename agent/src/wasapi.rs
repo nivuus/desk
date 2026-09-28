@@ -219,8 +219,8 @@ impl LoopbackCapture {
                 // reference on SubFormat — which `==` on a GUID does —
                 // is an unaligned access, hence undefined behaviour.
                 let ext = mix.0 as *const WAVEFORMATEXTENSIBLE;
-                let sous_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
-                sous_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
+                let sub_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
+                sub_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
             } else {
                 mix.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
             };
@@ -291,11 +291,11 @@ impl LoopbackCapture {
                 return Ok(None);
             }
 
-            let mut donnees: *mut u8 = std::ptr::null_mut();
+            let mut data: *mut u8 = std::ptr::null_mut();
             let mut images: u32 = 0;
             let mut drapeaux: u32 = 0;
             self.capture
-                .GetBuffer(&mut donnees, &mut images, &mut drapeaux, None, None)
+                .GetBuffer(&mut data, &mut images, &mut drapeaux, None, None)
                 .context("lecture du tampon de capture")?;
 
             let muet = drapeaux & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0;
@@ -304,10 +304,10 @@ impl LoopbackCapture {
             } else {
                 let brut = images as usize * self.canaux;
                 if self.flottant {
-                    let source = std::slice::from_raw_parts(donnees as *const f32, brut);
+                    let source = std::slice::from_raw_parts(data as *const f32, brut);
                     convertir_flottant(source, self.canaux)
                 } else {
-                    let source = std::slice::from_raw_parts(donnees as *const i16, brut);
+                    let source = std::slice::from_raw_parts(data as *const i16, brut);
                     convertir_entier(source, self.canaux)
                 }
             };

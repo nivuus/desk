@@ -40,9 +40,9 @@
 // `globalThis.showDirectoryPicker` A L'APPEL. En le surchargeant, TOUT le code
 // produit tourne INCHANGE : `choisirDossier`, l'affectation `const racine:
 // Racine = poignee` qui est le controle de compatibilite structurelle,
-// `creerAdaptateur`, `creerServeur`, `connecterCanalFichiers`, et le
+// `createAdapter`, `createServer`, `connectFilesChannel`, et le
 // gestionnaire de clic de `shell-page.ts`. Une injection plus haute -- par
-// exemple remplacer `creerAdaptateur` -- aurait court-circuite le code sous
+// exemple remplacer `createAdapter` -- aurait court-circuite le code sous
 // test et rendu la recette VACUEUSE.
 //
 // ⚠️ CE QUI N'EST DONC PAS EXERCE, et qu'aucun critere de cette recette ne

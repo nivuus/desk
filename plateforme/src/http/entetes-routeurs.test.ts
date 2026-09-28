@@ -21,10 +21,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { hacher } from '../identite/mot-de-passe';
 import { ENTETES_SECURITE } from './entetes';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { startServer, type ServicePlateforme } from './serveur';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -60,8 +60,8 @@ const CONFIG: Config = {
     // numérotés HORS SÉQUENCE — `(6bis)`, `(6ter)`, `(6quater)`, ajoutés par G2
     // et G3 — n'avaient pas été comptés. **Trois** cas prennent `motdepasse`,
     // donc **HUIT AUTRES** sont indifférents à cette valeur. Recompté par
-    // `grep -c '^\s*it(' <ce fichier>` -> `11`, et par
-    // `grep -c "^\s*const url = await servir(.*motdepasse" <ce fichier>` ->
+    // `grep -c '^\s*it(' <ce file>` -> `11`, et par
+    // `grep -c "^\s*const url = await servir(.*motdepasse" <ce file>` ->
     // `3`. 🔴 **Ces
     // deux commandes se relancent ; ce compte ne se recopie pas** — c'est le
     // « naufrage du 487 » de `CLAUDE.md`, et la numérotation hors séquence en
@@ -83,7 +83,7 @@ const CONFIG: Config = {
     // avait EXACTEMENT le même défaut : « `grep -n 'auth/moi'` ne rend rien »
     // était vrai à l'écriture, et faux dès que la phrase le citant est entrée
     // dans le fichier. Le contrôle qui vaut ÉCARTE les commentaires —
-    // `grep -n 'auth/moi' <ce fichier> | grep -vc '^\s*[0-9]*:\s*//'` doit
+    // `grep -n 'auth/moi' <ce file> | grep -vc '^\s*[0-9]*:\s*//'` doit
     // rendre **0**.
     //
     // **Décision, tranchée cas par cas et non en bloc** : le `CONFIG`
@@ -119,15 +119,15 @@ afterEach(async () => {
 
 async function servir(nom: string, config: Config = CONFIG): Promise<string> {
     base = await baseNeuve(nom);
-    await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
-    service = await demarrerServeur(config, base);
+    await createUser(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
+    service = await startServer(config, base);
     return `http://127.0.0.1:${service.port}`;
 }
 
 /// Vérifie les DEUX en-têtes, nommément, sur une réponse.
 function porteLesEntetes(r: Response, quoi: string): void {
-    for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
-        expect(r.headers.get(cle.toLowerCase()), `${quoi} : en-tête ${cle}`).toBe(valeur);
+    for (const [cle, value] of Object.entries(ENTETES_SECURITE)) {
+        expect(r.headers.get(cle.toLowerCase()), `${quoi} : en-tête ${cle}`).toBe(value);
     }
 }
 

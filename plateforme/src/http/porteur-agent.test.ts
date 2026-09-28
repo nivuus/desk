@@ -26,11 +26,11 @@ const MS = 1_787_136_773_742;
 const PREFIXE = 'AAAAAAAAAAAAAAAAAAAAAA';
 
 function entetes(
-    valeur: string | string[] | undefined,
+    value: string | string[] | undefined,
 ): Record<string, string | string[] | undefined> {
     // Node met les noms d'en-tête en MINUSCULES : `req.headers.authorization`
     // est la seule graphie qui existe côté serveur.
-    return valeur === undefined ? {} : { authorization: valeur };
+    return value === undefined ? {} : { authorization: value };
 }
 
 function jetonAgent(sujet: string = PREFIXE): string {
@@ -73,11 +73,11 @@ describe('lirePorteurAgent', () => {
 
     it('🔴 `Bearer <jeton d’UTILISATEUR>` → jeton-utilisateur, 403', () => {
         // 🔴 LA ROUGE, ET ELLE VA PAR PAIRE AVEC CELLE DE `porteur.test.ts` :
-        // accepter le type `utilisateur` ici. Un humain déposerait alors des
+        // accepter le type `user` ici. Un humain déposerait alors des
         // installeurs et téléchargerait ceux d'une VM dont il n'est pas
         // l'agent, avec un jeton que le service lui a lui-même délivré. La
         // symétrie est le point : `porteur.ts` refuse `agent`, ce module
-        // refuse `utilisateur`, et relâcher L'UN DES DEUX suffit à rendre les
+        // refuse `user`, et relâcher L'UN DES DEUX suffit à rendre les
         // deux identités interchangeables (`identite/jeton.ts`).
         //
         // ⚠️ 403 ET NON 401 : le jeton est VALIDE, il n'est simplement pas
@@ -91,15 +91,15 @@ describe('lirePorteurAgent', () => {
     });
 
     it('🔴 un jeton SANS claim de type est un jeton d’utilisateur, donc refusé', () => {
-        // 🔴 L'ABSENCE DU CLAIM VAUT `utilisateur` (`identite/jeton.ts`,
+        // 🔴 L'ABSENCE DU CLAIM VAUT `user` (`identite/jeton.ts`,
         // `TYPE_PAR_DEFAUT`) — c'est le format des jetons de P2, encore en
         // vol. Ce test tient que le lecteur d'agent lit bien le DÉFAUT et ne
-        // se contente pas de `verdict.type !== 'utilisateur'` : un module qui
+        // se contente pas de `verdict.type !== 'user'` : un module qui
         // testerait l'absence du claim comme « pas humain » accepterait tout
         // jeton de P2.
         //
         // ⚠️ Il n'est pas redondant avec le précédent : `signer` N'ÉCRIT PAS
-        // le claim pour un `utilisateur`, si bien que les deux jetons sont le
+        // le claim pour un `user`, si bien que les deux jetons sont le
         // même octet pour octet — c'est justement ce qui rend l'assertion
         // solide et le commentaire nécessaire, sans quoi un lecteur croira à
         // une copie.

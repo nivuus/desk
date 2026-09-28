@@ -58,16 +58,16 @@ use crate::windows_source::WindowsSource;
 #[cfg(windows)]
 pub(super) fn tour(
     suivi: &mut accent::SuiviAccent,
-    dernier: &mut Instant,
+    last: &mut Instant,
     hwnd: windows::Win32::Foundation::HWND,
     ecritures: &SyncSender<AEcrire>,
     source: Option<&mut WindowsSource>,
     ctx: &Contexte,
 ) -> Option<Fin> {
-    if !accent::actif() || dernier.elapsed() < accent::PERIODE_ACCENT {
+    if !accent::actif() || last.elapsed() < accent::PERIODE_ACCENT {
         return None;
     }
-    *dernier = Instant::now();
+    *last = Instant::now();
 
     let (rgba, largeur, hauteur) = accent::win32::lire_icone(hwnd)?;
     let rgb = accent::dominante(&rgba, largeur, hauteur)?;

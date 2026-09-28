@@ -20,7 +20,7 @@ pub(super) mod mires;
 // task 4) takes `relever_topologie` and `DELAI_TOPOLOGIE` from it;
 // `superviseur::boucle` takes `relever_topologie` and `noms_attaches`,
 // that is the PAIRING of a freshly created output with its DXGI place —
-// the central piece of the set-up. `PLAFOND_RECHERCHE`, on the other hand, is no longer
+// the central piece of the set-up. `SEARCH_CEILING`, on the other hand, is no longer
 // borrowed: it now lives in `moniteurs_virtuels::numeros` (fix I1).
 mod mode_sortie;
 pub(crate) mod montee;
@@ -51,7 +51,7 @@ use anyhow::{Context, Result};
 /// as a duration (`montee.rs`): `=0` now switches the probe off instead of
 /// asking for a zero standby.
 fn sonde_demandee(variable: &str) -> bool {
-    std::env::var(variable).is_ok_and(|valeur| valeur != "0")
+    std::env::var(variable).is_ok_and(|value| value != "0")
 }
 
 /// Returns `true` if a probe of this work stream ran.
@@ -81,8 +81,8 @@ pub(super) fn aiguiller() -> Result<bool> {
     // switch. `is_empty` after `trim`: a value that only carries
     // separators names no output either.
     match std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
-        Ok(liste) if !liste.trim().is_empty() => {
-            let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
+        Ok(list) if !list.trim().is_empty() => {
+            let sorties: Vec<String> = list.split(',').map(|s| s.trim().to_string()).collect();
             plafond::sonder(&sorties)?;
             return Ok(true);
         }
@@ -121,12 +121,12 @@ pub(super) fn aiguiller() -> Result<bool> {
     // change as `SORTIE_DXGI` (`main.rs`), for the same reason — the
     // indices are positional and `DesktopCapture::sur_sortie` no longer takes them.
     if let Ok(voie) = std::env::var("MULTIFENETRE_BANC") {
-        let nombre: u8 = std::env::var("MULTIFENETRE_N")
+        let count: u8 = std::env::var("MULTIFENETRE_N")
             .unwrap_or_else(|_| "8".to_string())
             .parse()
             .context("MULTIFENETRE_N doit être un entier")?;
         let sortie = std::env::var("MULTIFENETRE_SORTIE").ok();
-        banc::executer(&voie, nombre, sortie.as_deref())?;
+        banc::executer(&voie, count, sortie.as_deref())?;
         return Ok(true);
     }
     // Measurement ① — validation of the virtual display driver's contract, before
@@ -154,8 +154,8 @@ pub(super) fn aiguiller() -> Result<bool> {
     // probe itself (`MULTIFENETRE_PLAFOND_SONDE`) is routed at the head of
     // this function, not here: see the comment at that place for
     // why it must win over any other switch.
-    if let Ok(valeur) = std::env::var("MULTIFENETRE_PLAFOND") {
-        let (processus, duplications) = plafond::analyser(&valeur)?;
+    if let Ok(value) = std::env::var("MULTIFENETRE_PLAFOND") {
+        let (processus, duplications) = plafond::analyser(&value)?;
         plafond::mesurer(processus, duplications)?;
         return Ok(true);
     }
@@ -197,10 +197,10 @@ pub(super) fn aiguiller() -> Result<bool> {
     // by the probe — path 2 was only guaranteed there "by construction".
     // It creates an output, hence it comes after `MULTIFENETRE_VDD_PURGE`.
     if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_CAPTURE") {
-        let nombre: u8 = texte
+        let count: u8 = texte
             .parse()
             .context("MULTIFENETRE_VDD_CAPTURE doit être un entier (nombre de mires)")?;
-        capture_virtuelle::capturer_sur_virtuelle(nombre)?;
+        capture_virtuelle::capturer_sur_virtuelle(count)?;
         return Ok(true);
     }
     // The measurement of this work stream: N virtual outputs, one window and one
@@ -208,10 +208,10 @@ pub(super) fn aiguiller() -> Result<bool> {
     // actually proposes. It creates outputs, hence it comes after
     // `MULTIFENETRE_VDD_PURGE`.
     if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_PARALLELE") {
-        let nombre: u8 = texte
+        let count: u8 = texte
             .parse()
             .context("MULTIFENETRE_VDD_PARALLELE doit être un entier (nombre de sorties)")?;
-        paralleles::mesurer(nombre)?;
+        paralleles::mesurer(count)?;
         return Ok(true);
     }
     // The test of sub-block D2's founding inference: do k running duplications
@@ -219,10 +219,10 @@ pub(super) fn aiguiller() -> Result<bool> {
     // of the acceptance run (spec §6.1). Creates outputs — k, plus the disruptor —
     // hence comes after `MULTIFENETRE_VDD_PURGE`.
     if let Ok(texte) = std::env::var("MULTIFENETRE_REPRISE") {
-        let nombre: u8 = texte
+        let count: u8 = texte
             .parse()
             .context("MULTIFENETRE_REPRISE doit être un entier (nombre de duplications)")?;
-        reprise::mesurer(nombre)?;
+        reprise::mesurer(count)?;
         return Ok(true);
     }
     // Pivot measurement of sub-block D5: does destroying an encoder free the
@@ -265,7 +265,7 @@ pub(super) fn aiguiller() -> Result<bool> {
                 Ok(evenement) => tracing::info!(?evenement, "événement de fenêtre"),
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
                 Err(e) => {
-                    tracing::warn!(erreur = %e, "canal du hook rompu");
+                    tracing::warn!(error = %e, "canal du hook rompu");
                     break;
                 }
             }
@@ -280,8 +280,8 @@ pub(super) fn aiguiller() -> Result<bool> {
 /// `H264Encoder::new` (e.g. `.context("partage du périphérique D3D avec
 /// l'encodeur")`) would only show that context and lose the native
 /// error code. See the equivalent defect fixed in task 6 of the probe.
-pub(super) fn causes(erreur: impl Into<anyhow::Error>) -> String {
-    erreur
+pub(super) fn causes(error: impl Into<anyhow::Error>) -> String {
+    error
         .into()
         .chain()
         .map(|cause| cause.to_string())

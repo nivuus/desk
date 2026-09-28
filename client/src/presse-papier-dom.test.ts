@@ -35,10 +35,10 @@ function collage(texte: string | null) {
 
 describe('attacherPressePapierAuDOM', () => {
     it('écrit le texte reçu quand la fenêtre a le focus', async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible,
             surMessage: vi.fn(),
@@ -48,7 +48,7 @@ describe('attacherPressePapierAuDOM', () => {
         attache.recevoir({ texte: 'bonjour', octets: 7 });
         await Promise.resolve();
 
-        expect(ecrire).toHaveBeenCalledWith('bonjour');
+        expect(write).toHaveBeenCalledWith('bonjour');
         attache.detacher();
     });
 
@@ -56,11 +56,11 @@ describe('attacherPressePapierAuDOM', () => {
     /// focus on ne tente rien (`writeText` échouerait), et le retour du focus
     /// est ce qui sort le texte.
     it("n'écrit rien sans focus, puis écrit au retour du focus", async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         let focalise = false;
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => focalise,
             cible,
             surMessage: vi.fn(),
@@ -69,22 +69,22 @@ describe('attacherPressePapierAuDOM', () => {
 
         attache.recevoir({ texte: 'differe', octets: 7 });
         await Promise.resolve();
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
 
         focalise = true;
         cible.declencher('focus');
         await Promise.resolve();
 
-        expect(ecrire).toHaveBeenCalledWith('differe');
+        expect(write).toHaveBeenCalledWith('differe');
         attache.detacher();
     });
 
     /// Un refus est DIT, jamais tu — et il ne déclenche aucune écriture.
     it('dit le refus et n’écrit rien', async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const write = vi.fn().mockResolvedValue(undefined);
         const surMessage = vi.fn();
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
@@ -94,20 +94,20 @@ describe('attacherPressePapierAuDOM', () => {
         attache.recevoir({ texte: null, octets: 100_000 });
         await Promise.resolve();
 
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
         expect(surMessage).toHaveBeenCalledWith(messageDeRefus(100_000));
         attache.detacher();
     });
 
-    /// `ECHECS_AVANT_MESSAGE` vaut 2 : le premier échec est le cas ordinaire
+    /// `FAILURES_BEFORE_MESSAGE` vaut 2 : le premier échec est le cas ordinaire
     /// d'une fenêtre qui perd le focus pendant l'écriture, et crier dessus
     /// ferait un bandeau permanent sur un produit qui marche.
     it('ne crie qu’au deuxième échec consécutif', async () => {
-        const ecrire = vi.fn().mockRejectedValue(new Error('refusé'));
+        const write = vi.fn().mockRejectedValue(new Error('refusé'));
         const surMessage = vi.fn();
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible,
             surMessage,
@@ -132,7 +132,7 @@ describe('attacherPressePapierAuDOM', () => {
     it('détache son écouteur de focus', () => {
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible,
             surMessage: vi.fn(),
@@ -161,7 +161,7 @@ describe('attacherPressePapierAuDOM', () => {
     /// et non par accommodement.
     it('ne reçoit aucune capacité de LECTURE du presse-papier', () => {
         const options = {
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible: cibleFactice(),
             surMessage: vi.fn(),
@@ -169,10 +169,10 @@ describe('attacherPressePapierAuDOM', () => {
         };
         expect(Object.keys(options).sort()).toEqual([
             'cible',
-            'ecrire',
             'emettre',
             'focalise',
             'surMessage',
+            'write',
         ]);
         attacherPressePapierAuDOM(options).detacher();
     });
@@ -187,7 +187,7 @@ describe("l'écouteur de collage", () => {
         const cible = cibleFactice();
         const emettre = vi.fn();
         const attache = attacherPressePapierAuDOM({
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible,
             surMessage,
@@ -300,10 +300,10 @@ describe("l'état reçu AVANT l'attache", () => {
     // bout en bout est le critère ① de la recette.
 
     it('un `initial` fourni est écrit au montage si la fenêtre a le focus', async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const write = vi.fn().mockResolvedValue(undefined);
         // ROUGE avant le paramètre `initial` : rien n'est écrit au montage.
         attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible: cibleFactice(),
             surMessage: vi.fn(),
@@ -311,18 +311,18 @@ describe("l'état reçu AVANT l'attache", () => {
             initial: { texte: 'copie-avant-attache', octets: 19 },
         });
         await Promise.resolve();
-        expect(ecrire).toHaveBeenCalledWith('copie-avant-attache');
+        expect(write).toHaveBeenCalledWith('copie-avant-attache');
     });
 
     it("un `initial` fourni SANS focus n'est pas écrit au montage, et l'est au retour du focus", async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         let focalise = false;
-        // ROUGE = appeler `ecrire` directement au montage au lieu de passer par
-        // `ecrireSiPossible` : le DÉPÔT DIFFÉRÉ de D3 doit rester le seul
+        // ROUGE = appeler `write` directement au montage au lieu de passer par
+        // `writeIfPossible` : le DÉPÔT DIFFÉRÉ de D3 doit rester le seul
         // chemin d'écriture, y compris ici.
         attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => focalise,
             cible,
             surMessage: vi.fn(),
@@ -330,12 +330,12 @@ describe("l'état reçu AVANT l'attache", () => {
             initial: { texte: 'differe', octets: 7 },
         });
         await Promise.resolve();
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
 
         focalise = true;
         cible.declencher('focus');
         await Promise.resolve();
-        expect(ecrire).toHaveBeenCalledWith('differe');
+        expect(write).toHaveBeenCalledWith('differe');
     });
 
     it('un `initial` portant un REFUS dit le bandeau au montage', async () => {
@@ -343,7 +343,7 @@ describe("l'état reçu AVANT l'attache", () => {
         // ROUGE = ne rejouer que les textes : la fenêtre attendrait un contenu
         // qui n'arrivera jamais, sans rien pour lui dire pourquoi.
         attacherPressePapierAuDOM({
-            ecrire: vi.fn().mockResolvedValue(undefined),
+            write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
@@ -355,21 +355,21 @@ describe("l'état reçu AVANT l'attache", () => {
     });
 
     it("sans `initial`, le montage n'écrit rien et ne dit rien", async () => {
-        const ecrire = vi.fn().mockResolvedValue(undefined);
+        const write = vi.fn().mockResolvedValue(undefined);
         const surMessage = vi.fn();
         // ROUGE = rejouer un `Recu` vide quand le paramètre est absent : le
         // client écrirait une chaîne vide dans son presse-papier local à chaque
         // attache. C'est le paramètre FACULTATIF qui garantit que le
         // comportement d'avant P3 est préservé mot pour mot.
         attacherPressePapierAuDOM({
-            ecrire,
+            write,
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
             emettre: vi.fn(),
         });
         await Promise.resolve();
-        expect(ecrire).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
         expect(surMessage).not.toHaveBeenCalled();
     });
 });

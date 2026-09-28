@@ -42,13 +42,13 @@ function faireBouton() {
     return {
         dataset: {} as { actif?: string },
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         declencher(type: string) {
             for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
@@ -100,13 +100,13 @@ function faireDocument() {
             return sorties;
         },
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         declencher(type: string) {
             for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {

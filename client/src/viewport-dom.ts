@@ -67,7 +67,7 @@ export function annoncerLeViewportInitial(sessionId: string): void {
     //
     // ✅ **What the factor REALLY fixes, and which justifies keeping it**:
     // the viewport announcement DECIDES the size of the virtual output created by the
-    // supervisor (`superviseur/boucle.rs::creer_sortie`). Without dpr, a HiDPI
+    // supervisor (`superviseur/boucle.rs::create_output`). Without dpr, a HiDPI
     // client received an output SMALLER than its real display surface,
     // hence an image upscaled by the browser. With it, the
     // output is born in device pixels, the unit in which the routine `Resize`
@@ -77,7 +77,7 @@ export function annoncerLeViewportInitial(sessionId: string): void {
     // `devicePixelRatio = 2`, a 1280×720 CSS window now requests an
     // output of 2560×1440, that is FOUR times the pixels to capture and encode,
     // and **nothing bounds this request** — `windows_source/sortie.rs::
-    // borner_a_la_taille_max` (1920×1080) lost its last caller with the
+    // clamp_to_max_size` (1920×1080) lost its last caller with the
     // mode change and is no longer plugged in anywhere. D6 recorded the
     // browser's decoder saturated from eight 1280×720 windows.
     //

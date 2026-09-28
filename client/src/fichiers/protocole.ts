@@ -4,7 +4,7 @@
 //
 // 🔴 THE BROWSER IS A SERVER, AND NOTHING ELSE. It never asks for anything:
 // no correlation belongs to it. A frame carrying an ANSWER type
-// (`TYPE_ENTREES`, `TYPE_META`, `TYPE_DONNEES`, `TYPE_ECHEC`) can therefore only be
+// (`TYPE_ENTREES`, `TYPE_META`, `TYPE_DATA`, `TYPE_ECHEC`) can therefore only be
 // an echo, a loop, or a confused peer — it is IGNORED and logged,
 // never interpreted as a request.
 //
@@ -40,7 +40,7 @@
 // renumbering — and it is this NAMED switch that says the family, never the value.
 //
 // ⚠️ F3'S INVARIANT IS F1'S, AND NOT F2'S EXCEPTION:
-// `TYPE_RENOMMER` and `TYPE_SUPPRIMER` are REQUESTS. They receive
+// `TYPE_RENOMMER` and `TYPE_DELETE` are REQUESTS. They receive
 // `Fait` or `Echec`, always. Answering nothing would leave the command in flight
 // on the bridge side until it expires, and Explorer would freeze on a failure
 // that is nonetheless immediate.
@@ -50,14 +50,14 @@
 
 import {
     TYPE_ATTRIBUTS,
-    TYPE_CREER,
+    TYPE_CREATE,
     TYPE_RENOMMER,
-    TYPE_SUPPRIMER,
-    TYPE_DONNEES,
+    TYPE_DELETE,
+    TYPE_DATA,
     TYPE_BONJOUR,
     TYPE_DUES,
     TYPE_ECHEC,
-    TYPE_ECRIRE,
+    TYPE_WRITE,
     TYPE_ENTREES,
     TYPE_FAIT,
     TYPE_LIRE,
@@ -68,21 +68,21 @@ import {
     encoderTexte,
 } from '../../../proto/ts/fichiers';
 import {
-    encodeDonnees,
+    encodeData,
     encodeEchec,
     encodeEntrees,
     encodeBonjour,
     encodeMeta,
     parseChemin,
-    parseCreer,
+    parseCreate,
     parseDues,
-    parseEcrire,
+    parseWrite,
     parseLire,
     parseRenommer,
-    parseSupprimer,
+    parseDelete,
     type Due,
 } from '../../../proto/ts/fichiers-entetes';
-import { EchecFichiers, type Adaptateur } from './adaptateur';
+import { FilesError, type Adaptateur } from './adaptateur';
 import type { Ecrivain } from './ecriture';
 import type { Mutateur } from './mutation-service';
 
@@ -151,7 +151,7 @@ export interface OptionsServeur {
     onEchecEcriture?: (chemin: string, code: string) => void;
 }
 
-export function creerServeur(
+export function createServer(
     adaptateur: Adaptateur,
     journal: Journal = () => {},
     options: OptionsServeur = {},
@@ -171,10 +171,10 @@ export function creerServeur(
                 case TYPE_LISTER:
                 case TYPE_ATTRIBUTS:
                 case TYPE_LIRE:
-                case TYPE_ECRIRE:
-                case TYPE_CREER:
+                case TYPE_WRITE:
+                case TYPE_CREATE:
                 case TYPE_RENOMMER:
-                case TYPE_SUPPRIMER:
+                case TYPE_DELETE:
                     break;
                 // ── ANNOUNCEMENT: it receives NOTHING, and the family is NAMED.
                 case TYPE_DUES: {
@@ -190,7 +190,7 @@ export function creerServeur(
                 case TYPE_FAIT:
                 case TYPE_ENTREES:
                 case TYPE_META:
-                case TYPE_DONNEES:
+                case TYPE_DATA:
                 case TYPE_ECHEC:
                     journal(
                         `réponse ignorée : le navigateur ne demande rien ` +
@@ -219,15 +219,15 @@ export function creerServeur(
                 // else — malformed header included — is `interne`. Inventing
                 // a more precise code would make the agent translate a wrong HRESULT
                 // rather than a vague one.
-                const code = e instanceof EchecFichiers ? e.code : 'interne';
+                const code = e instanceof FilesError ? e.code : 'interne';
                 journal(`échec ${code} sur la corrélation ${trame.correlation} : ${(e as Error).message}`);
-                if (trame.type === TYPE_RENOMMER || trame.type === TYPE_SUPPRIMER) {
+                if (trame.type === TYPE_RENOMMER || trame.type === TYPE_DELETE) {
                     // ⚠️ The path is reread from the header rather than kept:
                     // the failure may have come from its PARSING, in which case there is
                     // nothing to name.
                     const quoi = mutationDe(trame.type, trame.entete);
                     if (quoi !== undefined) options.onEchecMutation?.(quoi, code);
-                } else if (trame.type === TYPE_ECRIRE || trame.type === TYPE_CREER) {
+                } else if (trame.type === TYPE_WRITE || trame.type === TYPE_CREATE) {
                     // ⚠️ The path is reread from the header rather than kept:
                     // the failure may have come from its PARSING, in which case there is
                     // nothing to name, and guessing would be worse than keeping quiet.
@@ -250,7 +250,7 @@ export function creerServeur(
 function mutationDe(type: number, entete: unknown): string | undefined {
     if (typeof entete !== 'object' || entete === null) return undefined;
     const o = entete as { chemin?: unknown; de?: unknown; vers?: unknown };
-    if (type === TYPE_SUPPRIMER) {
+    if (type === TYPE_DELETE) {
         return typeof o.chemin === 'string' ? o.chemin : undefined;
     }
     if (typeof o.de === 'string' && typeof o.vers === 'string') {
@@ -275,14 +275,14 @@ async function servir(
     charge: Uint8Array,
 ): Promise<ArrayBuffer> {
     const ecrivain: Ecrivain | undefined = options.ecrivain;
-    if (type === TYPE_RENOMMER || type === TYPE_SUPPRIMER) {
+    if (type === TYPE_RENOMMER || type === TYPE_DELETE) {
         const mutateur = options.mutateur;
         if (mutateur === undefined) {
             // ⚠️ **NOT `interne`: `protege-en-ecriture`.** A drive mounted
             // without a mutator and a failed drive do not call for the same
             // gesture — the counterexample is the old bridge, which returned `EPERM`
             // at nine distinct sites.
-            throw new EchecFichiers(
+            throw new FilesError(
                 'protege-en-ecriture',
                 'ce lecteur ne sait pas renommer ni supprimer',
             );
@@ -294,39 +294,39 @@ async function servir(
                 options.onRenommagePorCopie?.(r.de, r.vers, trace.octets, trace.entrees);
             }
         } else {
-            const s = parseSupprimer(entete);
-            await mutateur.supprimer(s.chemin, s.repertoire);
+            const s = parseDelete(entete);
+            await mutateur.remove(s.chemin, s.repertoire);
         }
         return encoderTexte(TYPE_FAIT, correlation, '{}');
     }
-    if (type === TYPE_ECRIRE || type === TYPE_CREER) {
+    if (type === TYPE_WRITE || type === TYPE_CREATE) {
         if (ecrivain === undefined) {
             // ⚠️ **NOT `interne`: `protege-en-ecriture`.** A server mounted
             // read-only and a failed server do not call for the same
             // gesture, and that is the whole point of `CodeEchec` — the counterexample
             // is the old bridge, which returned `EPERM` at nine distinct sites.
-            throw new EchecFichiers(
+            throw new FilesError(
                 'protege-en-ecriture',
                 'ce lecteur est monté en lecture seule',
             );
         }
-        if (type === TYPE_ECRIRE) {
-            const e = parseEcrire(entete);
+        if (type === TYPE_WRITE) {
+            const e = parseWrite(entete);
             // 🔴 **THE HEADER AND THE PAYLOAD MUST CORROBORATE EACH OTHER.** Writing a
             // quantity of bytes the sender did not believe it was sending is the
             // kind of divergence no downstream check catches: only
             // a digest would say so. It is the exact mirror of the check
-            // the agent already applies to `Donnees` answers.
+            // the agent already applies to `Data` answers.
             if (e.longueur !== charge.length) {
-                throw new EchecFichiers(
+                throw new FilesError(
                     'interne',
                     `en-tête Ecrire incohérent : ${e.longueur} annoncés, ${charge.length} reçus`,
                 );
             }
-            await ecrivain.ecrire(e.chemin, e.position, charge, e.premier, e.dernier);
+            await ecrivain.write(e.chemin, e.position, charge, e.premier, e.dernier);
         } else {
-            const c = parseCreer(entete);
-            await ecrivain.creer(c.chemin, c.repertoire);
+            const c = parseCreate(entete);
+            await ecrivain.create(c.chemin, c.repertoire);
         }
         // ⚠️ **EMPTY HEADER `{}`.** `TYPE_FAIT` has no shape of its own: what
         // identifies the acknowledged write is the CORRELATION, not the header.
@@ -347,14 +347,14 @@ async function servir(
             encodeMeta(m.nom, m.repertoire, m.taille, m.modifie),
         );
     }
-    const { chemin, position, longueur } = parseLire(entete);
-    const octets = await adaptateur.lire(chemin, position, longueur);
+    const { chemin, position, longueur: length } = parseLire(entete);
+    const octets = await adaptateur.lire(chemin, position, length);
     // 🔴 THE ANNOUNCED LENGTH IS THE ONE ACTUALLY READ, never the one requested.
     // A file read to its end returns less; copying the request would make
     // the frame lie, and the agent would refuse it for header/payload inconsistency
     // — it is the only check preventing writing into ProjFS's buffer
     // a quantity the sender did not believe it was sending.
-    return encoderTexte(TYPE_DONNEES, correlation, encodeDonnees(position, octets.length), octets);
+    return encoderTexte(TYPE_DATA, correlation, encodeData(position, octets.length), octets);
 }
 
 /**
@@ -378,7 +378,7 @@ export function trameBonjour(racine: string, forcer: boolean): ArrayBuffer {
  *
  * Its header is `{}`: what identifies it is its TYPE. Giving it a shape
  * would make a structure to pin that pins nothing — the precedent of
- * `TYPE_FAIT`, written in `proto/src/fichiers/entetes.rs`.
+ * `TYPE_FAIT`, written in `proto/src/files/entetes.rs`.
  */
 export function trameRafraichir(): ArrayBuffer {
     return encoderTexte(TYPE_RAFRAICHIR, 0, '{}');

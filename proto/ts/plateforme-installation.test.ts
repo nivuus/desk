@@ -53,9 +53,9 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     });
 
     it('accepte `null` sur ces deux clés, et les distingue de l’absence', () => {
-        const avecNull = { ...termineComplet(), motif: null, code_sortie: null };
-        const lu = parseVersLaPlateforme(JSON.stringify(avecNull));
-        expect(lu).toEqual({ ok: true, message: avecNull });
+        const withNull = { ...termineComplet(), motif: null, code_sortie: null };
+        const lu = parseVersLaPlateforme(JSON.stringify(withNull));
+        expect(lu).toEqual({ ok: true, message: withNull });
     });
 
     // ⚠️ `encodeTermine` EXIGE `| null`, PAS `?`, et c'est la seule chose qui
@@ -64,10 +64,10 @@ describe('`termine` : les champs facultatifs sont OBLIGATOIRES SUR LE FIL', () =
     // produirait donc une chaîne que le jumeau Rust refuserait — et le seul
     // symptôme serait un refus `forme` très loin de sa cause.
     it('🔴 encode `motif: null` en écrivant la clé, jamais en l’omettant', () => {
-        const chaine = encodeTermine('i-1', 'reussie', null, null, '', false);
-        expect(chaine).toContain('"motif":null');
-        expect(chaine).toContain('"code_sortie":null');
-        expect(parseVersLaPlateforme(chaine).ok).toBe(true);
+        const chain = encodeTermine('i-1', 'reussie', null, null, '', false);
+        expect(chain).toContain('"motif":null');
+        expect(chain).toContain('"code_sortie":null');
+        expect(parseVersLaPlateforme(chain).ok).toBe(true);
     });
 
     it('refuse un code de sortie non entier', () => {

@@ -44,7 +44,7 @@ pub(super) fn local(racine: &Path, chemin: &str) -> PathBuf {
 /// The size of the local file. **Zero for a directory**, which has no
 /// byte to push, and zero for an absent path — the thread will notice at
 /// read time, where the error can be named.
-pub(super) fn taille_de(racine: &Path, chemin: &str) -> u64 {
+pub(super) fn size_on_disk(racine: &Path, chemin: &str) -> u64 {
     std::fs::metadata(local(racine, chemin))
         .map(|m| if m.is_dir() { 0 } else { m.len() })
         .unwrap_or(0)
@@ -53,17 +53,17 @@ pub(super) fn taille_de(racine: &Path, chemin: &str) -> u64 {
 /// Reads a chunk of the local file.
 pub(super) fn lire(racine: &Path, chemin: &str, morceau: Morceau) -> std::io::Result<Vec<u8>> {
     use std::io::{Read, Seek, SeekFrom};
-    if morceau.longueur == 0 {
+    if morceau.length == 0 {
         // An empty file: nothing to read, and the stream closes on a chunk
         // without bytes. `File::open` would still fail if the file had
         // disappeared in the meantime, which we want to know.
         std::fs::File::open(local(racine, chemin))?;
         return Ok(Vec::new());
     }
-    let mut fichier = std::fs::File::open(local(racine, chemin))?;
-    fichier.seek(SeekFrom::Start(morceau.position))?;
-    let mut tampon = vec![0u8; morceau.longueur as usize];
-    let lus = fichier.read(&mut tampon)?;
+    let mut file = std::fs::File::open(local(racine, chemin))?;
+    file.seek(SeekFrom::Start(morceau.position))?;
+    let mut tampon = vec![0u8; morceau.length as usize];
+    let lus = file.read(&mut tampon)?;
     // ⚠️ **The ANNOUNCED length must be the one ACTUALLY read.** The file may
     // have shrunk between the `metadata` and the read; announcing the request
     // would make the header diverge from the payload, and the browser would write
@@ -77,13 +77,13 @@ pub(super) fn lire(racine: &Path, chemin: &str, morceau: Morceau) -> std::io::Re
 /// ⚠️ **`sync_all` and not a mere `write`**: a line left in the system's
 /// cache does not survive an abrupt stop, and that is exactly the case
 /// this journal exists to cover.
-pub(super) fn ajouter(chemin_journal: &Path, ligne: &str) -> std::io::Result<()> {
-    let mut fichier = std::fs::OpenOptions::new()
+pub(super) fn add(chemin_journal: &Path, ligne: &str) -> std::io::Result<()> {
+    let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(chemin_journal)?;
-    fichier.write_all(ligne.as_bytes())?;
-    fichier.sync_all()
+    file.write_all(ligne.as_bytes())?;
+    file.sync_all()
 }
 
 /// Truncates the journal **if it is empty** and has grown.
@@ -99,8 +99,8 @@ pub(super) fn compacter_si_possible(chemin_journal: &Path, journal: &Journal) {
     if !journal.compactable(meta.len()) {
         return;
     }
-    if let Err(erreur) = std::fs::write(chemin_journal, b"") {
-        tracing::warn!(%erreur, "compactage du journal des ecritures echoue");
+    if let Err(error) = std::fs::write(chemin_journal, b"") {
+        tracing::warn!(%error, "compactage du journal des ecritures echoue");
     } else {
         tracing::info!(
             octets = meta.len(),

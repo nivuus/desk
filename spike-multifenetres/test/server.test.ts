@@ -101,12 +101,12 @@ describe('serveur du spike', () => {
         const second = new WebSocket(`ws://127.0.0.1:${serveur.port}/ws`);
         await Promise.all([ouvert(premier), ouvert(second)]);
 
-        const avecClients = await fetch(`http://127.0.0.1:${serveur.port}/fire`, {
+        const withClients = await fetch(`http://127.0.0.1:${serveur.port}/fire`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ variant: 1 }),
         });
-        expect(await avecClients.json()).toEqual({ clients: 2 });
+        expect(await withClients.json()).toEqual({ clients: 2 });
 
         premier.close();
         second.close();

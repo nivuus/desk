@@ -223,11 +223,11 @@ for label, stdin_texte in [
 # « la racine n'est pas un objet ». Le test aurait été vert sans jamais
 # atteindre le garde — exactement le patron « un contrôle qu'on n'a jamais vu
 # rouge ». Il est remplacé, pas rafistolé.
-def appeler_octets(donnees: bytes):
+def appeler_octets(data: bytes):
     """Comme `appeler_brut`, mais envoie des OCTETS bruts — nécessaire pour
     éprouver une entrée qui n'est pas décodable en UTF-8, ce que le mode
     texte de `subprocess` ne peut pas exprimer."""
-    r = subprocess.run([sys.executable, str(HOOK)], input=donnees,
+    r = subprocess.run([sys.executable, str(HOOK)], input=data,
                        capture_output=True)
     evenements = []
     for ligne in r.stdout.decode("utf-8", "replace").splitlines():

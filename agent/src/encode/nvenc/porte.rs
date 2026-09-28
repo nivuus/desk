@@ -20,10 +20,10 @@ use anyhow::{anyhow, bail, Context, Result};
 use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
 
 use super::abi;
-use super::fonctions::{self, ListeDeFonctions, Statut};
+use super::fonctions::{self, FunctionList, Statut};
 
 /// Translates an `NVENCSTATUS` into an error, naming the call.
-pub(super) fn verifier(statut: Statut, quoi: &str) -> Result<()> {
+pub(super) fn verify(statut: Statut, quoi: &str) -> Result<()> {
     if statut == abi::SUCCESS {
         return Ok(());
     }
@@ -46,7 +46,7 @@ pub(super) fn verifier(statut: Statut, quoi: &str) -> Result<()> {
 /// coexist (one per window), and a `FreeLibrary` pulled from under a
 /// neighbour would be a crash. The process gives it back when dying.
 pub struct Porte {
-    pub(super) fonctions: ListeDeFonctions,
+    pub(super) fonctions: FunctionList,
 }
 
 impl Porte {
@@ -65,7 +65,7 @@ impl Porte {
         let version_max: fonctions::VersionMaxSupportee =
             unsafe { std::mem::transmute(version_max) };
         let mut rendue = 0u32;
-        verifier(
+        verify(
             unsafe { version_max(&mut rendue) },
             "NvEncodeAPIGetMaxSupportedVersion",
         )?;
@@ -87,13 +87,13 @@ impl Porte {
         );
 
         // ② The function table.
-        let creer =
+        let create =
             unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPICreateInstance")) }
                 .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance absente de la DLL"))?;
-        let creer: fonctions::CreerInstance = unsafe { std::mem::transmute(creer) };
-        let mut table: ListeDeFonctions = unsafe { std::mem::zeroed() };
+        let create: fonctions::CreateInstanceFn = unsafe { std::mem::transmute(create) };
+        let mut table: FunctionList = unsafe { std::mem::zeroed() };
         table.version = abi::FUNCTION_LIST_VER;
-        verifier(unsafe { creer(&mut table) }, "NvEncodeAPICreateInstance")?;
+        verify(unsafe { create(&mut table) }, "NvEncodeAPICreateInstance")?;
 
         Ok(Self { fonctions: table })
     }

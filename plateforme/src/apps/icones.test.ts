@@ -23,7 +23,7 @@ describe('le magasin d’icônes sur disque', () => {
     it('écrit, relit, et se sait posséder', () => {
         const m = magasinNeuf();
         expect(m.possede(EMPREINTE)).toBe(false);
-        m.ecrire(EMPREINTE, OCTETS);
+        m.write(EMPREINTE, OCTETS);
         expect(m.possede(EMPREINTE)).toBe(true);
         expect(m.lire(EMPREINTE)).toEqual(OCTETS);
     });
@@ -35,7 +35,7 @@ describe('le magasin d’icônes sur disque', () => {
         // l'empoisonnement PERMANENT dans les caches.
         const m = magasinNeuf();
         const mensonge = createHash('sha256').update('autre chose').digest('hex');
-        expect(() => m.ecrire(mensonge, OCTETS)).toThrow(/empreinte annoncée/);
+        expect(() => m.write(mensonge, OCTETS)).toThrow(/empreinte annoncée/);
         // Et le fichier partiel n'est JAMAIS écrit.
         expect(m.possede(mensonge)).toBe(false);
         expect(readdirSync(m.repertoire)).toEqual([]);
@@ -57,7 +57,7 @@ describe('le magasin d’icônes sur disque', () => {
             '..',
         ]) {
             expect(empreinteValide(mauvaise)).toBe(false);
-            expect(() => m.ecrire(mauvaise, OCTETS)).toThrow(/invalide/);
+            expect(() => m.write(mauvaise, OCTETS)).toThrow(/invalide/);
             expect(m.possede(mauvaise)).toBe(false);
             expect(m.lire(mauvaise)).toBeUndefined();
         }
@@ -67,7 +67,7 @@ describe('le magasin d’icônes sur disque', () => {
 
     it('l’écriture est ATOMIQUE : aucun fichier partiel ne reste', () => {
         const m = magasinNeuf();
-        m.ecrire(EMPREINTE, OCTETS);
+        m.write(EMPREINTE, OCTETS);
         // 🔴 UN FICHIER TRONQUÉ SOUS UN NOM QUI PROMET SON CONTENU serait
         // servi sans jamais être relu. Le seul fichier du répertoire est
         // l'empreinte elle-même — aucun `.part` résiduel.
@@ -76,7 +76,7 @@ describe('le magasin d’icônes sur disque', () => {
 
     it('🔴 `manquantes` interroge le DISQUE, pas une liste en mémoire', () => {
         const m = magasinNeuf();
-        m.ecrire(EMPREINTE, OCTETS);
+        m.write(EMPREINTE, OCTETS);
         expect(m.manquantes([EMPREINTE])).toEqual([]);
 
         // 🔴 LE FICHIER EST SUPPRIMÉ SOUS LES PIEDS DU MAGASIN. Une table de
@@ -93,7 +93,7 @@ describe('le magasin d’icônes sur disque', () => {
         const a = createHash('sha256').update('a').digest('hex');
         const b = createHash('sha256').update('b').digest('hex');
         const c = createHash('sha256').update('c').digest('hex');
-        m.ecrire(b, Buffer.from('b'));
+        m.write(b, Buffer.from('b'));
         expect(m.manquantes([c, a, c, b, a])).toEqual([c, a]);
     });
 
@@ -143,7 +143,7 @@ describe('l’éviction par âge, avec plancher', () => {
     const JOUR_MS = 24 * 60 * 60_000;
 
     /// Une icône dont le contenu et l'empreinte se correspondent, comme
-    /// `ecrire` l'exige.
+    /// `write` l'exige.
     function icone(texte: string): { empreinte: string; octets: Buffer } {
         const octets = Buffer.from(texte);
         return { empreinte: createHash('sha256').update(octets).digest('hex'), octets };
@@ -151,10 +151,10 @@ describe('l’éviction par âge, avec plancher', () => {
 
     /// Dépose une icône, puis FORCE sa date de dernière modification : c'est
     /// l'équivalent, sur le magasin RÉEL, du `deposer(cle, octets, quand)` de
-    /// la tâche — `ecrire` seul n'a aucune prise sur l'horloge du disque.
+    /// la tâche — `write` seul n'a aucune prise sur l'horloge du disque.
     function deposerA(m: ReturnType<typeof magasinNeuf>, texte: string, quandMs: number): string {
         const { empreinte, octets } = icone(texte);
-        m.ecrire(empreinte, octets);
+        m.write(empreinte, octets);
         utimesSync(join(m.repertoire, empreinte), new Date(quandMs), new Date(quandMs));
         return empreinte;
     }

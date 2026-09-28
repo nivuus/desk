@@ -158,7 +158,7 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 ///
 /// ⚠️ **NOT CALIBRATED.** No measurement underpins it: it joins `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` and
-/// `TAILLE_MAX_SORTIE`.
+/// `MAX_OUTPUT_SIZE`.
 pub const REPIT_REARMEMENT_AUDIO: Duration = Duration::from_secs(5);
 
 /// Number of consecutive re-arms before giving up for good.
@@ -292,8 +292,8 @@ pub fn echec_de_reveil(session: &str) {
 /// Returns `Err` when the write failed — refusal to open by another
 /// application (a NORMAL case under Windows), or mechanism disarmed. **The caller
 /// then does NOT inject `Ctrl+V`**: the key is lost, not postponed (D6).
-pub fn ecrire_le_presse_papier(texte: &str) -> anyhow::Result<()> {
-    presse_papier::ecrire(texte)
+pub fn write_clipboard(texte: &str) -> anyhow::Result<()> {
+    presse_papier::write(texte)
 }
 
 /// A session reports that its audio capture has died.

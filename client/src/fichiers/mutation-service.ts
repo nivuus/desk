@@ -10,16 +10,16 @@
 // It is the same split as `Ecrivain` (`ecriture.ts`): an interface of
 // verbs on one side, a factory capturing the root on the other.
 
-import { renommer, supprimer, type RacineMutable, type TraceRenommage } from './mutation';
+import { renommer, remove, type RacineMutable, type TraceRenommage } from './mutation';
 
 export interface Mutateur {
     renommer(de: string, vers: string, repertoire: boolean): Promise<TraceRenommage>;
-    supprimer(chemin: string, repertoire: boolean): Promise<void>;
+    remove(chemin: string, repertoire: boolean): Promise<void>;
 }
 
-export function creerMutateur(racine: RacineMutable): Mutateur {
+export function createMutator(racine: RacineMutable): Mutateur {
     return {
         renommer: (de, vers, repertoire) => renommer(racine, de, vers, repertoire),
-        supprimer: (chemin, repertoire) => supprimer(racine, chemin, repertoire),
+        remove: (chemin, repertoire) => remove(racine, chemin, repertoire),
     };
 }

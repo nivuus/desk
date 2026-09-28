@@ -47,7 +47,7 @@ use windows::Win32::System::Threading::GetCurrentThreadId;
 /// A loaded module, as snapshotted at installation.
 struct Module {
     base: usize,
-    taille: usize,
+    size: usize,
     nom: String,
 }
 
@@ -65,10 +65,10 @@ static FIL_PRINCIPAL: AtomicU32 = AtomicU32::new(0);
 static RAPPORTS: AtomicU32 = AtomicU32::new(0);
 /// Non-reentrancy guard: if the handler itself faults, do not
 /// go back into it.
-static DANS_LE_GESTIONNAIRE: AtomicBool = AtomicBool::new(false);
+static IN_THE_HANDLER: AtomicBool = AtomicBool::new(false);
 
 const PLAFOND_RAPPORTS: u32 = 8;
-const CONTINUER_LA_RECHERCHE: i32 = 0;
+const CONTINUE_SEARCH: i32 = 0;
 
 /// Installs the filter if `AGENT_TRACE_EXCEPTIONS` is set to anything other than
 /// `0`. Silent and without effect otherwise.
@@ -82,11 +82,11 @@ pub(crate) fn installer() {
         let chemin = std::env::var("AGENT_TRACE_EXCEPTIONS_FICHIER")
             .unwrap_or_else(|_| r"C:\dev\exceptions.log".to_string());
         match File::create(&chemin) {
-            Ok(fichier) => {
-                let _ = JOURNAL.set(fichier);
+            Ok(file) => {
+                let _ = JOURNAL.set(file);
             }
             Err(e) => {
-                tracing::warn!(chemin, erreur = %e, "journal d'exceptions non ouvert");
+                tracing::warn!(chemin, error = %e, "journal d'exceptions non ouvert");
                 return;
             }
         }
@@ -98,10 +98,10 @@ pub(crate) fn installer() {
             AddVectoredExceptionHandler(1, Some(filtre_vectorise));
             SetUnhandledExceptionFilter(Some(filtre_final));
         }
-        let nombre = MODULES.get().map(|m| m.len()).unwrap_or(0);
+        let count = MODULES.get().map(|m| m.len()).unwrap_or(0);
         tracing::info!(
             chemin,
-            modules = nombre,
+            modules = count,
             fil_principal = FIL_PRINCIPAL.load(Ordering::SeqCst),
             "filtre d'exception installé"
         );
@@ -153,7 +153,7 @@ fn photographier_les_modules() -> Vec<Module> {
                     .unwrap_or(entree.szModule.len());
                 modules.push(Module {
                     base: entree.modBaseAddr as usize,
-                    taille: entree.modBaseSize as usize,
+                    size: entree.modBaseSize as usize,
                     nom: String::from_utf16_lossy(&entree.szModule[..fin]),
                 });
                 entree.dwSize = std::mem::size_of::<MODULEENTRY32W>() as u32;
@@ -199,7 +199,7 @@ impl std::fmt::Write for Tampon {
 fn situer(tampon: &mut Tampon, adresse: usize) {
     if let Some(modules) = MODULES.get() {
         for m in modules {
-            if adresse >= m.base && adresse < m.base + m.taille {
+            if adresse >= m.base && adresse < m.base + m.size {
                 let _ = write!(tampon, "{}+0x{:x}", m.nom, adresse - m.base);
                 return;
             }
@@ -274,9 +274,9 @@ unsafe fn consigner(
     }
 
     let mut cadres: [*mut core::ffi::c_void; 62] = [std::ptr::null_mut(); 62];
-    let nombre = unsafe { RtlCaptureStackBackTrace(0, &mut cadres, None) } as usize;
-    let _ = writeln!(t, "pile ({nombre} cadres, du plus récent au plus ancien) :");
-    for (i, cadre) in cadres.iter().take(nombre).enumerate() {
+    let count = unsafe { RtlCaptureStackBackTrace(0, &mut cadres, None) } as usize;
+    let _ = writeln!(t, "pile ({count} cadres, du plus récent au plus ancien) :");
+    for (i, cadre) in cadres.iter().take(count).enumerate() {
         let a = *cadre as usize;
         let _ = write!(t, "  #{i:02} 0x{a:016x}  ");
         situer(&mut t, a);
@@ -286,9 +286,9 @@ unsafe fn consigner(
 
     // A single `write`, then sync: the process may die right
     // after this handler returns.
-    let mut fichier = journal;
-    let _ = fichier.write_all(t.contenu());
-    let _ = fichier.flush();
+    let mut file = journal;
+    let _ = file.write_all(t.contenu());
+    let _ = file.flush();
     let _ = journal.sync_data();
 }
 
@@ -298,13 +298,13 @@ fn autorise() -> bool {
     if RAPPORTS.fetch_add(1, Ordering::SeqCst) >= PLAFOND_RAPPORTS {
         return false;
     }
-    DANS_LE_GESTIONNAIRE
+    IN_THE_HANDLER
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_ok()
 }
 
 fn relacher() {
-    DANS_LE_GESTIONNAIRE.store(false, Ordering::SeqCst);
+    IN_THE_HANDLER.store(false, Ordering::SeqCst);
 }
 
 /// Vectored handler, first chance. Catches NOTHING: it records and
@@ -313,22 +313,22 @@ fn relacher() {
 /// stays exactly the one from before.
 unsafe extern "system" fn filtre_vectorise(infos: *mut EXCEPTION_POINTERS) -> i32 {
     if infos.is_null() {
-        return CONTINUER_LA_RECHERCHE;
+        return CONTINUE_SEARCH;
     }
     let enregistrement = unsafe { (*infos).ExceptionRecord };
     if enregistrement.is_null() {
-        return CONTINUER_LA_RECHERCHE;
+        return CONTINUE_SEARCH;
     }
     // Only access violations interest us: a C++ exception or
     // a first-chance breakpoint would fill the log for nothing.
     if unsafe { (*enregistrement).ExceptionCode } != EXCEPTION_ACCESS_VIOLATION {
-        return CONTINUER_LA_RECHERCHE;
+        return CONTINUE_SEARCH;
     }
     if autorise() {
         unsafe { consigner("première chance", enregistrement, (*infos).ContextRecord) };
         relacher();
     }
-    CONTINUER_LA_RECHERCHE
+    CONTINUE_SEARCH
 }
 
 /// Final filter: only called if nobody handled the exception, hence
@@ -336,11 +336,11 @@ unsafe extern "system" fn filtre_vectorise(infos: *mut EXCEPTION_POINTERS) -> i3
 /// `EXCEPTION_CONTINUE_SEARCH` to let WER produce its dump.
 unsafe extern "system" fn filtre_final(infos: *const EXCEPTION_POINTERS) -> i32 {
     if infos.is_null() {
-        return CONTINUER_LA_RECHERCHE;
+        return CONTINUE_SEARCH;
     }
     let enregistrement = unsafe { (*infos).ExceptionRecord };
     if enregistrement.is_null() {
-        return CONTINUER_LA_RECHERCHE;
+        return CONTINUE_SEARCH;
     }
     // Here, no filter on the code: an unhandled exception is fatal
     // whatever it is, and it is exactly the one we want to see.
@@ -349,5 +349,5 @@ unsafe extern "system" fn filtre_final(infos: *const EXCEPTION_POINTERS) -> i32 
         unsafe { consigner("NON GÉRÉE — fatale", enregistrement, (*infos).ContextRecord) };
         relacher();
     }
-    CONTINUER_LA_RECHERCHE
+    CONTINUE_SEARCH
 }

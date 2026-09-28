@@ -27,7 +27,7 @@ fn un_repertoire_different_sans_confirmation_retient() {
 }
 
 #[test]
-fn un_repertoire_different_avec_confirmation_pousse_et_memorise_le_neuf() {
+fn a_different_directory_with_confirmation_pushes_and_remembers_the_new_one() {
     let d = decider(Some("Documents"), "Téléchargements", true);
     assert_eq!(d, Decision::Pousser);
     assert_eq!(a_memoriser(d, "Téléchargements"), Some("Téléchargements"));

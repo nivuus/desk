@@ -35,7 +35,7 @@ pub mod decoupe;
 pub mod ecriture;
 pub mod entetes;
 pub mod enumeration;
-pub mod erreurs;
+pub mod errors;
 pub mod journal;
 pub mod latence;
 pub mod lecture;
@@ -79,7 +79,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let projfs = projfs::chargement::charger()?;
 
     // The socket and the **data-only** `Rtc`: no track, no codec, no BWE.
-    let (socket, mut rtc) = transport::construire_rtc_donnees(config.local_ip)?;
+    let (socket, mut rtc) = transport::build_data_rtc(config.local_ip)?;
 
     let crate::signaling::SignalingHandle {
         mut offers,
@@ -99,12 +99,12 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     // (`trop-de-requetes`) closes the `offers` channel without an offer: `.recv()`
     // returns `None`, and this process is going to die on the next line. BEFORE
     // returning, we wait for the delay the relay suggested (bounded,
-    // see `honorer_retry_suggere`): the time this process takes to
+    // see `honour_suggested_retry`): the time this process takes to
     // die counts in the spacing that `surveillance_pont.rs::EtatPont`
     // measures since its last LAUNCH, without any channel crossing
     // the process boundary.
     let Some(offre) = offers.recv().await else {
-        crate::signaling::honorer_retry_suggere(&retry_apres_s).await;
+        crate::signaling::honour_suggested_retry(&retry_apres_s).await;
         anyhow::bail!("aucune offre SDP pour le pont fichiers");
     };
     let offre = str0m::change::SdpOffer::from_sdp_string(&offre)
@@ -199,7 +199,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         );
     }
 
-    let virtualisation = projfs::Virtualisation::demarrer(
+    let virtualisation = projfs::Virtualisation::start(
         projfs,
         vers_navigateur.clone(),
         vers_ecriture,
@@ -240,8 +240,8 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let transport = std::thread::Builder::new()
         .name("pont-transport".into())
         .spawn(move || {
-            if let Err(erreur) = transport::tourner(rtc, socket, requetes, vers_pont) {
-                tracing::error!(%erreur, "transport du pont arrêté sur erreur");
+            if let Err(error) = transport::tourner(rtc, socket, requetes, vers_pont) {
+                tracing::error!(%error, "transport du pont arrêté sur erreur");
             }
         })
         .context("lancement du fil de transport du pont")?;

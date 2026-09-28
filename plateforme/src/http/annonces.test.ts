@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { startServer, type ServicePlateforme } from './serveur';
 import {
     annonceProxyDeConfiance,
     annonceRacinePage,
@@ -114,9 +114,9 @@ describe('le sondage réel du disque', () => {
     // racine absente : c'est une faute de configuration plausible (pointer
     // `index.html` au lieu de `client/dist`), et elle doit être nommée.
     it("refuse un chemin qui n'est pas un répertoire", async () => {
-        const fichier = join(mkdtempSync(join(tmpdir(), 'annonce-fichier-')), 'page.html');
-        writeFileSync(fichier, 'x');
-        await expect(sonderRepertoire(fichier)).rejects.toThrow();
+        const file = join(mkdtempSync(join(tmpdir(), 'annonce-fichier-')), 'page.html');
+        writeFileSync(file, 'x');
+        await expect(sonderRepertoire(file)).rejects.toThrow();
     });
 });
 
@@ -143,7 +143,7 @@ describe("l'ensemble de confiance annoncé", () => {
     // forger quoi que ce soit — voir la doc de `annonceProxyDeConfiance`,
     // corrigée à sa place. `info` reste le niveau attendu parce que cette
     // fonction PURE n'a aucun moyen de savoir si l'appelant tourne derrière
-    // un proxy — un `erreur` inconditionnel alarmerait à tort le montage où
+    // un proxy — un `error` inconditionnel alarmerait à tort le montage où
     // l'ensemble vide est légitimement sûr (exposition directe). `config.ts`
     // refuse déjà de démarrer sans lui en mode `pomerium`.
     it("un ensemble vide n'est PAS une erreur", () => {
@@ -152,7 +152,7 @@ describe("l'ensemble de confiance annoncé", () => {
 });
 
 // 🔴 LES QUATRE TESTS CI-DESSUS SONT PURS : ILS NE PROUVENT PAS QUE
-// `demarrerServeur` LES APPELLE. C'est le piège que `CLAUDE.md` nomme pour
+// `startServer` LES APPELLE. C'est le piège que `CLAUDE.md` nomme pour
 // `scripts/run-agent.sh` — « le contrôle qui vaut est de lire la ligne dans le
 // script GÉNÉRÉ, jamais de tracer le code » —, et il se rejoue ici : un module
 // d'annonces entièrement testé et JAMAIS BRANCHÉ rendrait exactement le
@@ -169,34 +169,34 @@ describe('le service annonce au démarrage', () => {
         base = undefined;
     });
 
-    async function demarrerEtCapturer(
+    async function startAndCapture(
         surcharge: Partial<Config>,
         nom: string,
-    ): Promise<{ infos: string[]; erreurs: string[] }> {
+    ): Promise<{ infos: string[]; errors: string[] }> {
         const infos: string[] = [];
-        const erreurs: string[] = [];
+        const errors: string[] = [];
         const espionInfo = vi.spyOn(console, 'info').mockImplementation((m) => infos.push(String(m)));
-        const espionErreur = vi
+        const errorSpy = vi
             .spyOn(console, 'error')
-            .mockImplementation((m) => erreurs.push(String(m)));
+            .mockImplementation((m) => errors.push(String(m)));
         try {
             base = await baseNeuve(nom);
-            service = await demarrerServeur({ ...CONFIG, ...surcharge }, base);
+            service = await startServer({ ...CONFIG, ...surcharge }, base);
         } finally {
             espionInfo.mockRestore();
-            espionErreur.mockRestore();
+            errorSpy.mockRestore();
         }
-        return { infos, erreurs };
+        return { infos, errors };
     }
 
     it('annonce la racine de page RETENUE, résolue', async () => {
         const racine = mkdtempSync(join(tmpdir(), 'annonce-service-'));
-        const { infos } = await demarrerEtCapturer({ racinePage: racine }, 'annonce-page-armee');
+        const { infos } = await startAndCapture({ racinePage: racine }, 'annonce-page-armee');
         expect(infos.some((l) => l.startsWith('page servie') && l.includes(racine))).toBe(true);
     });
 
     it("annonce l'absence de page servie quand la variable n'est pas posée", async () => {
-        const { infos } = await demarrerEtCapturer({ racinePage: undefined }, 'annonce-page-absente');
+        const { infos } = await startAndCapture({ racinePage: undefined }, 'annonce-page-absente');
         expect(infos.some((l) => l.startsWith('page servie') && l.includes('racine=aucune'))).toBe(
             true,
         );
@@ -206,14 +206,14 @@ describe('le service annonce au démarrage', () => {
     // inexistante rendait `404` sur toute page, sans une ligne nulle part.
     it('une racine posée mais INEXISTANTE est annoncée sur console.error', async () => {
         const absente = join(mkdtempSync(join(tmpdir(), 'annonce-absente-')), 'jamais-batie');
-        const { erreurs } = await demarrerEtCapturer({ racinePage: absente }, 'annonce-page-morte');
-        expect(erreurs.some((l) => l.startsWith('page servie') && l.includes('lisible=non'))).toBe(
+        const { errors } = await startAndCapture({ racinePage: absente }, 'annonce-page-morte');
+        expect(errors.some((l) => l.startsWith('page servie') && l.includes('lisible=non'))).toBe(
             true,
         );
     });
 
     it("annonce l'ensemble de confiance retenu", async () => {
-        const { infos } = await demarrerEtCapturer(
+        const { infos } = await startAndCapture(
             { proxyDeConfiance: new Set(['172.18.0.5']) },
             'annonce-proxy',
         );

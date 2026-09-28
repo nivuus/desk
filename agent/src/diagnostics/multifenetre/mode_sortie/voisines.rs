@@ -62,13 +62,13 @@ impl DuplicationVoisine {
     /// exact point (neighbour 1 was opened after the creation of
     /// neighbour 2, hence on an already shifted index). That is why `ouvrir`
     /// stays private to this module: the only public construction path is
-    /// now `creer_deux`, which enforces the strict order instead of
+    /// now `create_two`, which enforces the strict order instead of
     /// depending on it.
     ///
     /// **`SetMultithreadProtected(TRUE)` is set, and the tension with
     /// `CLAUDE.md` is settled here rather than left implicit (Important 1
     /// of the review of task 1).** Two assertions coexist in this
-    /// repository: `capture::ouverture::creer_peripherique` explains the mechanism
+    /// repository: `capture::ouverture::create_device_and_context` explains the mechanism
     /// — WITHOUT this call, a D3D11 device solicited from TWO THREADS AT
     /// ONCE (capture AND Media Foundation, each from its own threads)
     /// can block indefinitely INSIDE the driver, without an error — while
@@ -76,7 +76,7 @@ impl DuplicationVoisine {
     /// WITHOUT that condition: "it inevitably carries an `ID3D11Device`
     /// with `SetMultithreadProtected(true)`, `DuplicateOutput` REQUIRING IT".
     /// This neighbour fulfils NEITHER of the two conditions of the mechanism of
-    /// `creer_peripherique` (never handed to Media Foundation, only ever
+    /// `create_device_and_context` (never handed to Media Foundation, only ever
     /// solicited from the probe's single thread) — a PLAUSIBLE
     /// reasoning for doing without it. But D3's measurement says "`DuplicateOutput`
     /// requiring it", with no sharing or concurrency caveat, and I have
@@ -133,7 +133,7 @@ impl DuplicationVoisine {
             .with_context(|| format!("ID3D11Multithread pour la voisine {}", sortie.nom_sortie))?;
         // Returns the PREVIOUS state (a `BOOL` that must be consumed): never read
         // elsewhere, but logged rather than ignored by a `let _`, same
-        // discipline as `capture::ouverture::creer_peripherique`.
+        // discipline as `capture::ouverture::create_device_and_context`.
         let protection_precedente = unsafe { multithread.SetMultithreadProtected(true) };
         tracing::info!(
             voisine = %sortie.nom_sortie,
@@ -195,7 +195,7 @@ impl DuplicationVoisine {
                 );
                 match unsafe { self.output.DuplicateOutput(&self.device) } {
                     Ok(fraiche) => self.duplication = fraiche,
-                    Err(erreur) => {
+                    Err(error) => {
                         // THIS cut still counts: it did
                         // take place. It is the FOLLOWING ones, on this neighbour,
                         // that will no longer be counted -- `morte` prevents it from
@@ -203,7 +203,7 @@ impl DuplicationVoisine {
                         self.morte = true;
                         tracing::warn!(
                             voisine = %self.nom,
-                            %erreur,
+                            %error,
                             "reouverture de la voisine apres perte d'acces : echouee -- les \
                              pertes suivantes ne seront plus comptees sur cette voisine"
                         );
@@ -227,7 +227,7 @@ impl DuplicationVoisine {
 /// it to designate the control output afterwards. Returns the NAMES of the two
 /// neighbours and not their whole `SortieDxgi` — all that the caller
 /// uses beyond this function.
-pub(super) fn creer_deux(
+pub(super) fn create_two(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
     connues_a_ce_point: &mut HashSet<String>,
@@ -235,14 +235,14 @@ pub(super) fn creer_deux(
     hauteur: u32,
     hertz: u32,
 ) -> Result<(DuplicationVoisine, DuplicationVoisine, String, String)> {
-    let id_v1 = sorties.creer(largeur, hauteur, hertz)?;
+    let id_v1 = sorties.create(largeur, hauteur, hertz)?;
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
     let apres_v1 = relever_topologie("après création (voisine 1)")?;
     let sortie_v1 = designer_sortie_neuve(&apres_v1, connues_a_ce_point, id_v1)?.clone();
     connues_a_ce_point.insert(sortie_v1.nom_sortie.clone());
     let voisine1 = DuplicationVoisine::ouvrir(&sortie_v1)?;
 
-    let id_v2 = sorties.creer(largeur, hauteur, hertz)?;
+    let id_v2 = sorties.create(largeur, hauteur, hertz)?;
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
     let apres_v2 = relever_topologie("après création (voisine 2)")?;
     let sortie_v2 = designer_sortie_neuve(&apres_v2, connues_a_ce_point, id_v2)?.clone();

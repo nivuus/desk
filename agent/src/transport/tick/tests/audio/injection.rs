@@ -51,7 +51,7 @@ fn une_faute_injectee_fait_refuser_la_reconstruction() {
     crate::transport::piste_audio::injection::budget_faute_reconstruction()
         .store(1, Ordering::Relaxed);
 
-    let mut session = session_d_essai();
+    let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
     let observe = actif_recu.clone();
@@ -93,7 +93,7 @@ fn le_budget_epuise_laisse_la_reconstruction_reussir() {
     crate::transport::piste_audio::injection::budget_faute_reconstruction()
         .store(0, Ordering::Relaxed);
 
-    let mut session = session_d_essai();
+    let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
     let observe = actif_recu.clone();
@@ -125,7 +125,7 @@ fn un_budget_superieur_a_RECONSTRUCTIONS_MAX_mene_a_AudioMort() {
     crate::transport::piste_audio::injection::budget_faute_reconstruction()
         .store(crate::audio::RECONSTRUCTIONS_MAX + 2, Ordering::Relaxed);
 
-    let mut session = session_d_essai();
+    let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
     session.set_audio_reconstructeur(Box::new(move || {
         Ok(Box::new(SourceVivante::new()) as Box<dyn AudioSource + Send>)

@@ -120,17 +120,17 @@ const UNITES = /(\d+(?:\.\d+)?)(px|rem|em|ms|s|pt|ch|vw|vh|dvw|dvh|vmin|vmax)\b/
  *    toute façon hors de la portée dérivée ci-dessus, et le dire ici évite
  *    qu'on l'y ramène « pour être complet ».
  */
-function horsExceptions(valeur: string): string {
-    return valeur
+function horsExceptions(value: string): string {
+    return value
         .replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ')
         .replace(/\b100(vw|vh|dvw|dvh)\b/g, ' ')
         .replace(/(^|[\s(,])0(px)?(?=$|[\s),;])/g, '$1 ');
 }
 
 interface Occurrence {
-    fichier: string;
+    file: string;
     propriete: string;
-    valeur: string;
+    value: string;
     fautive: string;
 }
 
@@ -145,30 +145,30 @@ let declarationsLues = 0;
 for (const [cle, texte] of Object.entries(FEUILLES).sort()) {
     for (const d of declarationsDe(sansCommentaires(texte))) {
         declarationsLues += 1;
-        if (/var\(\s*--[a-z0-9-]+\s*\)/i.test(d.valeur) && !UNITES.test(d.valeur)) parToken += 1;
+        if (/var\(\s*--[a-z0-9-]+\s*\)/i.test(d.value) && !UNITES.test(d.value)) parToken += 1;
         UNITES.lastIndex = 0;
-        for (const m of horsExceptions(d.valeur).matchAll(UNITES)) {
+        for (const m of horsExceptions(d.value).matchAll(UNITES)) {
             occurrences.push({
-                fichier: chemin(cle),
+                file: chemin(cle),
                 propriete: d.propriete,
-                valeur: d.valeur,
+                value: d.value,
                 fautive: m[0],
             });
         }
     }
 }
-const valeurs = new Set(occurrences.map((o) => o.fautive));
+const values = new Set(occurrences.map((o) => o.fautive));
 
 // ── LE RELEVÉ, TOUJOURS IMPRIMÉ, SUCCÈS COMPRIS ───────────────────────────
 console.log(`§7.10  feuilles de surface : ${Object.keys(FEUILLES).length}`);
 console.log(`       déclarations lues : ${declarationsLues}, dont ${parToken} par un token`);
 for (const o of occurrences) {
-    console.log(`       ${o.fichier}  ${o.propriete}: ${o.valeur}  → « ${o.fautive} »`);
+    console.log(`       ${o.file}  ${o.propriete}: ${o.value}  → « ${o.fautive} »`);
 }
 console.log(
     `       hors token : ${occurrences.length} occurrence(s), ` +
-        `${valeurs.size} valeur(s) distincte(s)` +
-        (valeurs.size ? ` — ${[...valeurs].sort().join(', ')}` : ''),
+        `${values.size} valeur(s) distincte(s)` +
+        (values.size ? ` — ${[...values].sort().join(', ')}` : ''),
 );
 
 describe('§7.10 — aucune longueur hors token dans une feuille de surface', () => {
@@ -194,8 +194,8 @@ describe('§7.10 — aucune longueur hors token dans une feuille de surface', ()
 
     it('toute longueur passe par un token, hors les trois exceptions nommées', () => {
         expect(
-            occurrences.map((o) => `${o.fichier}  ${o.propriete}: ${o.valeur}  → « ${o.fautive} »`),
-            `longueurs hors token : ${occurrences.length} occurrence(s) pour ${valeurs.size} valeur(s) distincte(s)`,
+            occurrences.map((o) => `${o.file}  ${o.propriete}: ${o.value}  → « ${o.fautive} »`),
+            `longueurs hors token : ${occurrences.length} occurrence(s) pour ${values.size} valeur(s) distincte(s)`,
         ).toEqual([]);
     });
 });

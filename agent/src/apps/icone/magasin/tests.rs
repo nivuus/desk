@@ -7,10 +7,10 @@ use super::*;
 #[test]
 fn deux_ajouts_du_meme_contenu_ne_font_qu_une_entree() {
     let mut m = Magasin::new();
-    let a = m.ajouter(b"\x89PNG-un".to_vec());
-    let b = m.ajouter(b"\x89PNG-un".to_vec());
-    let c = m.ajouter(b"\x89PNG-un".to_vec());
-    let d = m.ajouter(b"\x89PNG-deux".to_vec());
+    let a = m.add(b"\x89PNG-un".to_vec());
+    let b = m.add(b"\x89PNG-un".to_vec());
+    let c = m.add(b"\x89PNG-un".to_vec());
+    let d = m.add(b"\x89PNG-deux".to_vec());
     assert_eq!(a, b);
     assert_eq!(b, c);
     assert_ne!(a, d);
@@ -42,9 +42,9 @@ fn l_empreinte_est_celle_du_contenu_et_rien_d_autre() {
 #[test]
 fn remplacer_fait_disparaitre_le_catalogue_precedent() {
     let mut m = Magasin::new();
-    let ancienne = m.ajouter(b"tour-1".to_vec());
+    let ancienne = m.add(b"tour-1".to_vec());
     let mut neuf = Magasin::new();
-    let neuve = neuf.ajouter(b"tour-2".to_vec());
+    let neuve = neuf.add(b"tour-2".to_vec());
     m.remplacer(neuf);
     assert!(
         !m.contient(&ancienne),
@@ -57,7 +57,7 @@ fn remplacer_fait_disparaitre_le_catalogue_precedent() {
 #[test]
 fn les_octets_se_relisent_a_l_identique() {
     let mut m = Magasin::new();
-    let e = m.ajouter(b"\x89PNG\r\n\x1a\n-corps".to_vec());
+    let e = m.add(b"\x89PNG\r\n\x1a\n-corps".to_vec());
     assert_eq!(m.octets(&e), Some(&b"\x89PNG\r\n\x1a\n-corps"[..]));
     assert_eq!(m.octets("pas-une-empreinte"), None);
     assert!(m.contient(&e));
@@ -109,8 +109,8 @@ fn l_ordre_est_preserve_et_les_doublons_fondus() {
 #[test]
 fn les_empreintes_du_magasin_sont_celles_de_ce_qu_il_porte() {
     let mut m = Magasin::new();
-    let a = m.ajouter(b"un".to_vec());
-    let b = m.ajouter(b"deux".to_vec());
+    let a = m.add(b"un".to_vec());
+    let b = m.add(b"deux".to_vec());
     assert_eq!(m.empreintes(), [a, b].into_iter().collect::<BTreeSet<_>>());
     assert!(Magasin::new().is_empty());
 }

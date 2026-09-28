@@ -59,8 +59,8 @@ pub const PERIODE_RECONCILIATION: Duration = Duration::from_secs(30);
 /// The decision is isolated here BECAUSE `brancher` is `#[cfg(windows)]` and
 /// no host test can therefore reach it: this predicate, on the other hand, is pure,
 /// and it is the only part of the guard that can be seen turning red on the host.
-pub fn desarme(valeur: Option<&str>) -> bool {
-    valeur == Some("0")
+pub fn desarme(value: Option<&str>) -> bool {
+    value == Some("0")
 }
 
 /// Wires up discovery **AND INSTALLATION**, or returns `None` while SAYING
@@ -131,7 +131,7 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
         return None;
     };
     // 🔴 `APPS=0` ALSO DISARMS INSTALLATION, and it is DECLARED rather than
-    // discovered: `demarrer` returns before anything, so neither of the two halves
+    // discovered: `start` returns before anything, so neither of the two halves
     // gets wired. No separate variable is added to disarm
     // installation alone, for lack of a demonstrated need — and one more variable
     // that would serve nobody is a variable one will forget to
@@ -148,14 +148,14 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
     // `catalogue reconcilie` lines, never the presence of this one.
     let brut = std::env::var("APPS_SURVEILLANCE").ok();
     let (mode, inconnue) = surveillance::mode::Mode::lire(brut.as_deref());
-    if let Some(valeur) = inconnue {
+    if let Some(value) = inconnue {
         // 🔴 AN UNKNOWN VALUE IS NAMED, AND THE SHIPPED BEHAVIOUR IS
         // KEPT. Without this `warn!`, a typo in a red (`seul` for
         // `seule`) would run the GREEN behaviour under the name of the RED, and
         // the acceptance run would read a false verdict — "a check that cannot
         // fail", in a new form.
         tracing::warn!(
-            valeur,
+            value,
             "APPS_SURVEILLANCE : valeur inconnue, le comportement LIVRÉ est retenu \
              (attendu : 0, sans-rebond, seule, ou la variable absente)"
         );
@@ -168,7 +168,7 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
     // that **nobody polls any more**: four handles, 256 KiB of NON-PAGED
     // pool and a thread, serving nothing.
     //
-    // ⚠️ The read is done HERE, in addition to the two `demarrer` that already do it
+    // ⚠️ The read is done HERE, in addition to the two `start` that already do it
     // each for themselves: `desarme` is pure and reading it costs nothing,
     // whereas deducing the state from an `Option<JoinHandle>` returned by another stage
     // would couple two mechanisms through a value.
@@ -177,9 +177,9 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
     } else {
         mode
     };
-    let (veille, surveillance) = surveillance::demarrer(mode);
-    let decouverte = demarrer(canal, partage.clone(), veille, mode);
-    let installation = demarrer_installation(canal, partage);
+    let (veille, surveillance) = surveillance::start(mode);
+    let decouverte = start(canal, partage.clone(), veille, mode);
+    let installation = start_installation(canal, partage);
     if decouverte.is_none() && installation.is_none() {
         return None;
     }
@@ -196,7 +196,7 @@ pub fn brancher(canal: Option<&mut crate::plateforme::Canal>) -> Option<Poignees
 /// `None` on the second call, exactly like `ordres()`, and for the same
 /// reason — two consumers would steal orders from each other.
 #[cfg(windows)]
-fn demarrer_installation(
+fn start_installation(
     canal: &mut crate::plateforme::Canal,
     partage: installation::partage::Partage,
 ) -> Option<tokio::task::JoinHandle<()>> {
@@ -217,9 +217,9 @@ fn demarrer_installation(
 }
 
 /// The non-Windows variant: nothing to install, and **nothing to log** —
-/// same reason as `demarrer`.
+/// same reason as `start`.
 #[cfg(not(windows))]
-fn demarrer_installation(
+fn start_installation(
     _canal: &mut crate::plateforme::Canal,
     _partage: installation::partage::Partage,
 ) -> Option<tokio::task::JoinHandle<()>> {
@@ -227,7 +227,7 @@ fn demarrer_installation(
 }
 
 #[cfg(windows)]
-fn demarrer(
+fn start(
     canal: &mut crate::plateforme::Canal,
     partage: installation::partage::Partage,
     veille: surveillance::partage::Veille,
@@ -263,8 +263,8 @@ fn demarrer(
                 },
             )
         })
-        .map_err(|erreur| {
-            tracing::error!(%erreur, "fil de decouverte d'applications non demarre");
+        .map_err(|error| {
+            tracing::error!(%error, "fil de decouverte d'applications non demarre");
         })
         .ok()
 }
@@ -276,7 +276,7 @@ fn demarrer(
 /// not discover Windows applications, and confusing it with `APPS=0` — which,
 /// itself, SAYS it is disarmed — would blur two distinct states.
 #[cfg(not(windows))]
-fn demarrer(
+fn start(
     _canal: &mut crate::plateforme::Canal,
     _partage: installation::partage::Partage,
     _veille: surveillance::partage::Veille,
@@ -290,14 +290,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn seule_la_valeur_zero_desarme_la_decouverte() {
-        // 🔴 THE RED: a `valeur.is_some()`. It would return `true` for `"1"`,
+    fn only_the_value_zero_disarms_discovery() {
+        // 🔴 THE RED: a `value.is_some()`. It would return `true` for `"1"`,
         // for `""` and for anything — that is, writing `APPS=0`
         // TO TURN OFF discovery would turn it on, and writing `APPS=1` TO
         // TURN IT ON would turn it off. The two errors cancel out so well that
         // nobody would see them without this test.
         assert!(desarme(Some("0")));
-        for valeur in [
+        for value in [
             None,
             Some(""),
             Some("1"),
@@ -305,7 +305,7 @@ mod tests {
             Some("0 "),
             Some("false"),
         ] {
-            assert!(!desarme(valeur), "{valeur:?} ne doit PAS désarmer");
+            assert!(!desarme(value), "{value:?} ne doit PAS désarmer");
         }
     }
 

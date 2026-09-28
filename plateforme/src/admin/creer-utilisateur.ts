@@ -21,7 +21,7 @@ import { createInterface } from 'node:readline';
 import { lireConfig } from '../config';
 import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from '../base/migrations';
 import { ouvrirBase } from '../base/ouvrir';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { hacher } from '../identite/mot-de-passe';
 
 export type Arguments = { email: string } | { refus: string };
@@ -92,7 +92,7 @@ export async function executer(argv: string[]): Promise<number> {
         // on a new database, and an `INSERT` on a missing table would give a
         // diagnosis unrelated to the cause.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
-        const id = await creerUtilisateur(
+        const id = await createUser(
             base,
             args.email,
             await hacher(motDePasse),

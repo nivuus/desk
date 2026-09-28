@@ -13,7 +13,7 @@
 // extraction has a second benefit, which the plan declared out of reach: the
 // wiring becomes TESTABLE. `main.ts` has no coverage; this file has
 // some, because it touches neither `document` nor `navigator` directly but
-// receives `ecrire`, `focalise`, `cible` and — since P2 — `emettre` by
+// receives `write`, `focalise`, `cible` and — since P2 — `emettre` by
 // injection: the pattern of `attachFullscreenAuDOM` and `armerLeSon`.
 //
 // 🔴 **`navigator.clipboard.readText` is called NOWHERE, neither here nor
@@ -56,7 +56,7 @@ export interface EvenementCollage {
 
 export interface OptionsPressePapier {
     /// `navigator.clipboard.writeText`, injected. **Write only.**
-    ecrire: (texte: string) => Promise<void>;
+    write: (texte: string) => Promise<void>;
     /// `document.hasFocus()`, injected: `writeText` fails on a document
     /// that does not have focus, and attempting it would cost a failure for nothing.
     focalise: () => boolean;
@@ -95,7 +95,7 @@ export interface OptionsPressePapier {
     /// at mount" — is here, and it is tested here.
     ///
     /// ⚠️ **The replay goes through the PATH THAT ALREADY EXISTS** (`etat.recevoir`
-    /// then `ecrireSiPossible`), never through a second one: D3's deferred write
+    /// then `writeIfPossible`), never through a second one: D3's deferred write
     /// must stay the only write path, including at mount. A window
     /// without focus remembers and will write on its return.
     initial?: Recu;
@@ -132,19 +132,19 @@ export interface PressePapierAttache {
 }
 
 export function attacherPressePapierAuDOM(options: OptionsPressePapier): PressePapierAttache {
-    const { ecrire, focalise, cible, surMessage, emettre, initial } = options;
+    const { write, focalise, cible, surMessage, emettre, initial } = options;
     const etat = new PressePapierLocal();
 
-    const ecrireSiPossible = (): void => {
+    const writeIfPossible = (): void => {
         // The refusal is voiced BEFORE the write, and it is consumed: a received refusal
         // does not prevent a valid text remembered earlier from going out in the same
         // round, and it is not displayed again at the next round.
         const refus = etat.refusADire();
         if (refus !== undefined) surMessage(refus);
 
-        const texte = etat.aEcrire(focalise());
+        const texte = etat.toWrite(focalise());
         if (texte === undefined) return;
-        void ecrire(texte).then(
+        void write(texte).then(
             () => etat.confirmer(texte),
             () => {
                 const message = etat.echouer();
@@ -154,15 +154,15 @@ export function attacherPressePapierAuDOM(options: OptionsPressePapier): PresseP
     };
 
     // Replaying what arrived BEFORE attachment (client half of P1's
-    // legacy no. 3). Placed AFTER `ecrireSiPossible`, which it uses, and BEFORE the two
+    // legacy no. 3). Placed AFTER `writeIfPossible`, which it uses, and BEFORE the two
     // listeners: nothing depends on it, but the reading order follows that of the
     // reasoning.
     if (initial !== undefined) {
         etat.recevoir(initial);
-        ecrireSiPossible();
+        writeIfPossible();
     }
 
-    const surFocus = (): void => ecrireSiPossible();
+    const surFocus = (): void => writeIfPossible();
     cible.addEventListener('focus', surFocus);
 
     /// The user pasted into the session window (sub-block P2).
@@ -207,7 +207,7 @@ export function attacherPressePapierAuDOM(options: OptionsPressePapier): PresseP
     return {
         recevoir(recu: Recu): void {
             etat.recevoir(recu);
-            ecrireSiPossible();
+            writeIfPossible();
         },
         detacher(): void {
             cible.removeEventListener('focus', surFocus);

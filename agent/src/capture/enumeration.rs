@@ -58,7 +58,7 @@ fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
             Err(_) => "<inconnu>".to_string(),
         };
         let mut index_sortie = 0u32;
-        let nombre_avant = sorties.len();
+        let count_before = sorties.len();
         while let Ok(output) = unsafe { adapter.EnumOutputs(index_sortie) } {
             if let Ok(desc) = unsafe { output.GetDesc() } {
                 let r = desc.DesktopCoordinates;
@@ -80,7 +80,7 @@ fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
             }
             index_sortie += 1;
         }
-        if journaliser && sorties.len() == nombre_avant {
+        if journaliser && sorties.len() == count_before {
             // An adapter with no output never produces a
             // `SortieDxgi`: without this trace, it would stay invisible in the
             // reading, which today only logs per output. It is

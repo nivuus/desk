@@ -16,7 +16,7 @@ import { inventaireStatique } from '../../../../../plateforme/src/orchestration/
 import { CODE_HTTP, BACKEND_STATIQUE } from '../../../../../plateforme/src/orchestration/refus';
 import { SEUIL_INJOIGNABLE_MS } from '../../../../../plateforme/src/agents/fraicheur';
 import {
-    appeler, creerCompte, demarrerService, enroler, entete, INSTANT, jetonDe, ligne, poserVuA,
+    appeler, createAccount, startService, enroler, entete, INSTANT, jetonDe, ligne, poserVuA,
     Verdicts, type Moteur,
 } from './socle';
 
@@ -80,7 +80,7 @@ function enCourse(reelRacine: Pilote, perime: LigneVm[]): { pilote: Pilote; lect
 }
 
 const v = new Verdicts();
-const service = await demarrerService(moteur, `c${critere}`);
+const service = await startService(moteur, `c${critere}`);
 const base = service.base;
 const horloge = () => Date.now();
 const orch = inventaireStatique(base, horloge);
@@ -88,11 +88,11 @@ const orch = inventaireStatique(base, horloge);
 try {
     if (critere === '1') {
         v.dire(entete("CRITÈRE ① — `instantane` REFUSE explicitement, en 501, et le JOURNALISE", moteur, commit));
-        const alice = await creerCompte(base, 'alice@essai.local');
+        const alice = await createAccount(base, 'alice@essai.local');
         const vm = await enroler(base, 'w-alice');
         v.juger('attribution préalable', await orch.attribuer(vm.vmId, alice), { ok: true });
 
-        const avant = journalises.length;
+        const before = journalises.length;
         const r = await appeler(service.port, `/vm/${vm.vmId}/instantane`, 'POST', jetonDe(alice));
 
         // ①a — THE CODE AND THE TYPED BODY.
@@ -107,7 +107,7 @@ try {
 
         // ①b — THE LOG LINE. An `it()` distinct from ①a: otherwise the
         // first verdict would mask the second.
-        const neuves = journalises.slice(avant);
+        const neuves = journalises.slice(before);
         v.dire(ligne('lignes de journal émises pendant l’appel', neuves.length));
         for (const l of neuves) v.dire(ligne('  ligne', l));
         v.juger('①b le refus a produit EXACTEMENT une ligne de journal', neuves.length, 1);
@@ -117,8 +117,8 @@ try {
 
     if (critere === '2') {
         v.dire(entete("CRITÈRE ② — deux utilisateurs ne partagent pas une VM, un utilisateur n’en a pas deux, et JAMAIS un 500", moteur, commit));
-        const alice = await creerCompte(base, 'alice@essai.local');
-        const bob = await creerCompte(base, 'bob@essai.local');
+        const alice = await createAccount(base, 'alice@essai.local');
+        const bob = await createAccount(base, 'bob@essai.local');
         const v1 = await enroler(base, 'w-1');
         const v2 = await enroler(base, 'w-2');
 
@@ -179,11 +179,11 @@ try {
 
     if (critere === '3') {
         v.dire(entete("CRITÈRE ③ — un utilisateur sans VM reçoit un refus IMMÉDIAT", moteur, commit));
-        const carol = await creerCompte(base, 'carol@essai.local');
+        const carol = await createAccount(base, 'carol@essai.local');
         // A VM exists, and it does NOT belong to carol: the refusal must be
         // `aucune-vm`, not "no VM in the world". Without this VM, the criterion
         // would pass on an empty inventory, a weaker case.
-        const autre = await creerCompte(base, 'autre@essai.local');
+        const autre = await createAccount(base, 'autre@essai.local');
         const vm = await enroler(base, 'w-autre');
         v.juger('mise en place : la VM est à quelqu’un d’AUTRE', await orch.attribuer(vm.vmId, autre), { ok: true });
 
@@ -208,12 +208,12 @@ try {
         v.dire(ligne('20 appels — médiane (ms)', Number(median.toFixed(2))));
         v.dire(ligne('20 appels — pire cas (ms)', Number(pire.toFixed(2))));
         v.dire(ligne('borne MESURÉE du critère (ms)', BORNE_REFUS_MS));
-        v.jugerSous('③b le pire des 20 refus reste sous la borne', pire, BORNE_REFUS_MS);
+        v.judgeBelow('③b le pire des 20 refus reste sous la borne', pire, BORNE_REFUS_MS);
     }
 
     if (critere === '4') {
         v.dire(entete("CRITÈRE ④ — une VM dont l’agent n’a pas été vu est ANNONCÉE injoignable, et l’API AVOUE ne pas savoir la redémarrer", moteur, commit));
-        const dave = await creerCompte(base, 'dave@essai.local');
+        const dave = await createAccount(base, 'dave@essai.local');
         const vm = await enroler(base, 'w-dave');
         v.juger('mise en place : la VM est à dave', await orch.attribuer(vm.vmId, dave), { ok: true });
         const jeton = jetonDe(dave);

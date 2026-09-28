@@ -110,9 +110,9 @@ pub fn armee() -> bool {
 /// same image — see the doc of `placement::sortie_pour_viewport`, which carries
 /// the measurement and the reasoning.
 pub fn candidates(
-    toutes: &[SortieDxgi],
+    all: &[SortieDxgi],
     notre_nom: Option<&str>,
-    avant: &[String],
+    before: &[String],
 ) -> Vec<SortieDxgi> {
     // ① DESIGNATE — by what we GAVE the driver, never by what changed
     // around. Insensitive to the replacement of a forced target, and incidentally
@@ -120,7 +120,7 @@ pub fn candidates(
     // display configuration of this VM) can no longer be taken for
     // ours, which the set difference does not guarantee.
     if let Some(nom) = notre_nom {
-        if let Some(notre) = toutes
+        if let Some(notre) = all
             .iter()
             .find(|s| s.attachee_au_bureau && s.nom_sortie == nom)
         {
@@ -130,9 +130,8 @@ pub fn candidates(
 
     // ② FALLBACK — yesterday's product, word for word. See the module header:
     // it is not dead, it is what makes a wrong hypothesis harmless.
-    toutes
-        .iter()
-        .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
+    all.iter()
+        .filter(|s| s.attachee_au_bureau && !before.contains(&s.nom_sortie))
         .cloned()
         .collect()
 }
@@ -169,8 +168,8 @@ mod tests {
 
     #[test]
     fn la_sortie_qui_remplace_une_cible_forcee_est_retenue() {
-        let (toutes, avant) = montage_du_lot_30();
-        assert_eq!(candidates(&toutes, Some(NOTRE), &avant).len(), 1);
+        let (all, before) = montage_du_lot_30();
+        assert_eq!(candidates(&all, Some(NOTRE), &before).len(), 1);
     }
 
     /// 🔴 **THE RED, and it lives in ITS OWN test.** Two assertions in
@@ -184,10 +183,10 @@ mod tests {
     /// same survey, that the setup is indeed the one that failed, and not a
     /// setup where everything would have passed anyway.
     #[test]
-    fn le_produit_d_avant_le_lot_32_rend_un_ensemble_vide_sur_ce_meme_montage() {
-        let (toutes, avant) = montage_du_lot_30();
+    fn the_product_before_batch_32_returns_an_empty_set_on_this_same_setup() {
+        let (all, before) = montage_du_lot_30();
         assert!(
-            candidates(&toutes, None, &avant).is_empty(),
+            candidates(&all, None, &before).is_empty(),
             "la différence d'ensembles rend un vecteur VIDE sur une sortie \
              parfaitement utilisable — c'est le défaut mesuré par le lot 30"
         );
@@ -200,8 +199,8 @@ mod tests {
     /// would have shown the same image.
     #[test]
     fn la_designation_ne_court_circuite_pas_le_filtre_des_prises() {
-        let (toutes, avant) = montage_du_lot_30();
-        let candidates = candidates(&toutes, Some(NOTRE), &avant);
+        let (all, before) = montage_du_lot_30();
+        let candidates = candidates(&all, Some(NOTRE), &before);
         assert!(
             crate::superviseur::placement::sortie_pour_viewport(
                 &candidates,
@@ -222,9 +221,9 @@ mod tests {
     #[test]
     fn sans_designation_un_ecran_preexistant_reste_refuse() {
         let physique = "\\\\.\\DISPLAY1";
-        let toutes = vec![sortie(physique, 3840, 2160)];
-        let avant = vec![physique.to_string()];
-        assert!(candidates(&toutes, None, &avant).is_empty());
+        let all = vec![sortie(physique, 3840, 2160)];
+        let before = vec![physique.to_string()];
+        assert!(candidates(&all, None, &before).is_empty());
     }
 
     /// A DETACHED output cannot be designated: the name can be exact
@@ -238,10 +237,10 @@ mod tests {
     #[test]
     fn seul_le_zero_desarme_la_designation() {
         assert!(crate::apps::desarme(Some("0")));
-        for valeur in [None, Some(""), Some("1"), Some("0 "), Some("oui")] {
+        for value in [None, Some(""), Some("1"), Some("0 "), Some("oui")] {
             assert!(
-                !crate::apps::desarme(valeur),
-                "{valeur:?} ne doit PAS désarmer"
+                !crate::apps::desarme(value),
+                "{value:?} ne doit PAS désarmer"
             );
         }
     }
@@ -250,7 +249,7 @@ mod tests {
     fn une_sortie_detachee_n_est_pas_designee() {
         let mut detachee = sortie(NOTRE, 1860, 1080);
         detachee.attachee_au_bureau = false;
-        let avant = vec![NOTRE.to_string()];
-        assert!(candidates(&[detachee], Some(NOTRE), &avant).is_empty());
+        let before = vec![NOTRE.to_string()];
+        assert!(candidates(&[detachee], Some(NOTRE), &before).is_empty());
     }
 }

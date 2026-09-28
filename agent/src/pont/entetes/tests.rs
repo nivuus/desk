@@ -4,7 +4,7 @@ use super::*;
 // The three wire SHAPE tests that lived here — pinned serialisation
 // of request headers, re-reading of response headers, rejection of an
 // incomplete header — left with the structures they pinned, for
-// `proto/src/fichiers/entetes/tests.rs`. They are stronger there than here: their
+// `proto/src/files/entetes/tests.rs`. They are stronger there than here: their
 // vector is a SHARED FILE that the TypeScript twin reads too, whereas these
 // three only pinned the shapes from one side.
 //

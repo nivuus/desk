@@ -34,19 +34,19 @@ fn bureau_virtuel() -> (i32, i32, i32, i32) {
 }
 
 pub(super) fn sonder() -> Result<()> {
-    let avant = bureau_virtuel();
+    let before = bureau_virtuel();
     tracing::info!(
-        x = avant.0,
-        y = avant.1,
-        largeur = avant.2,
-        hauteur = avant.3,
+        x = before.0,
+        y = before.1,
+        largeur = before.2,
+        hauteur = before.3,
         "bureau virtuel AVANT création de la sortie"
     );
 
     let pilote = ouvrir_pilote()?;
     let mut sorties = Sorties::nouvelles(&pilote);
     let id = sorties
-        .creer(1280, 720, 60)
+        .create(1280, 720, 60)
         .context("création de la sortie virtuelle")?;
 
     // The driver creates the output asynchronously from the point of view of
@@ -62,15 +62,15 @@ pub(super) fn sonder() -> Result<()> {
         y = apres.1,
         largeur = apres.2,
         hauteur = apres.3,
-        elargi = (apres != avant),
+        elargi = (apres != before),
         "bureau virtuel APRÈS création de la sortie"
     );
 
     // Find the virtual output among the DXGI outputs: it is its
     // rectangle that gives the target to aim at. `GetDesc`/`DesktopCoordinates`
     // is the source of truth — WMI lies (field seen 68 s stale).
-    let toutes = enumerer_sorties()?;
-    for s in &toutes {
+    let all = enumerer_sorties()?;
+    for s in &all {
         tracing::info!(
             adaptateur = %s.adaptateur, nom = %s.nom_sortie,
             attachee = s.attachee_au_bureau,
@@ -78,7 +78,7 @@ pub(super) fn sonder() -> Result<()> {
             "sortie DXGI énumérée"
         );
     }
-    let cible = toutes
+    let cible = all
         .iter()
         .filter(|s| s.attachee_au_bureau && s.rect.width == 1280 && s.rect.height == 720)
         .max_by_key(|s| s.rect.x)

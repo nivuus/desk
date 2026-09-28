@@ -19,26 +19,23 @@
 use super::*;
 
 #[test]
-fn une_taille_sous_le_plafond_passe_telle_quelle() {
-    assert_eq!(borner_a_la_taille_max((1280, 720)), (1280, 720));
+fn a_size_below_the_ceiling_passes_as_is() {
+    assert_eq!(clamp_to_max_size((1280, 720)), (1280, 720));
 }
 
 #[test]
-fn une_taille_4k_est_ramenee_au_plafond() {
+fn a_4k_size_is_brought_down_to_the_ceiling() {
     // D6 measured the browser's decoder saturated from eight 720p
     // windows: 9× the pixels of a single one is exactly what it copes with
     // worst.
-    assert_eq!(borner_a_la_taille_max((3840, 2160)), TAILLE_MAX_SORTIE);
+    assert_eq!(clamp_to_max_size((3840, 2160)), MAX_OUTPUT_SIZE);
 }
 
 #[test]
 fn le_bornage_preserve_le_rapport_d_aspect() {
     // A 21:9 bounded independently on each axis would distort the image.
-    let (l, h) = borner_a_la_taille_max((3440, 1440));
-    assert!(
-        l <= TAILLE_MAX_SORTIE.0 && h <= TAILLE_MAX_SORTIE.1,
-        "{l}x{h}"
-    );
+    let (l, h) = clamp_to_max_size((3440, 1440));
+    assert!(l <= MAX_OUTPUT_SIZE.0 && h <= MAX_OUTPUT_SIZE.1, "{l}x{h}");
     let ecart = (l as f64 / h as f64) - (3440.0 / 1440.0);
     assert!(ecart.abs() < 0.01, "rapport {l}/{h} contre 3440/1440");
 }
@@ -47,7 +44,7 @@ fn le_bornage_preserve_le_rapport_d_aspect() {
 fn le_bornage_rend_des_dimensions_paires() {
     // A Windows window imposes even dimensions, and so does an NV12
     // encoder.
-    let (l, h) = borner_a_la_taille_max((3441, 1441));
+    let (l, h) = clamp_to_max_size((3441, 1441));
     assert_eq!(l % 2, 0, "largeur {l}");
     assert_eq!(h % 2, 0, "hauteur {h}");
 }
@@ -57,7 +54,7 @@ fn le_bornage_rend_des_dimensions_paires() {
 ///
 /// On `(3441, 1441)`, `facteur ≈ 0.557977` gives `round(3441×f) = 1920` and
 /// `round(1441×f) = 804` — **already even before any masking**. Removing the
-/// two `& !1` from `borner_a_la_taille_max` leaves it GREEN. And the two
+/// two `& !1` from `clamp_to_max_size` leaves it GREEN. And the two
 /// other even inputs of the neighbouring tests (`(1280, 720)`, `(0, 0)`) do not
 /// exercise it either: before this case, **none of the five tests
 /// covered even alignment**, whereas one bears its name.
@@ -69,7 +66,7 @@ fn le_bornage_rend_des_dimensions_paires() {
 /// seen red is not a check** (D7, F1).
 #[test]
 fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
-    assert_eq!(borner_a_la_taille_max((1281, 721)), (1280, 720));
+    assert_eq!(clamp_to_max_size((1281, 721)), (1280, 720));
 }
 
 /// IMPORTANT 4 (review of task 9): the fast branch did not bound
@@ -78,7 +75,7 @@ fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
 /// reduced to nothing (collapsed window, fullscreen transition) emits it.
 #[test]
 fn le_bornage_ne_rend_jamais_une_dimension_nulle() {
-    assert_eq!(borner_a_la_taille_max((0, 0)), (2, 2));
+    assert_eq!(clamp_to_max_size((0, 0)), (2, 2));
 }
 
 #[test]
@@ -108,7 +105,7 @@ fn les_dimensions_impaires_sont_alignees_vers_le_bas() {
 }
 
 #[test]
-fn une_sortie_degeneree_ne_donne_aucune_region() {
+fn a_degenerate_output_gives_no_region() {
     assert_eq!(region_de_sortie(1, 900), None);
     assert_eq!(region_de_sortie(0, 0), None);
 }
@@ -156,7 +153,7 @@ fn seul_le_mode_sortie_entiere_suit_le_viewport() {
 ///
 /// 🔴 **AND HERE IS WHAT THIS TEST'S FIRST DRAFT GOT WRONG, CAUGHT BY THE
 /// TEST ITSELF.** It expected `(1723, 1080)` for a `1723x1303` request,
-/// believing `borner_a_la_taille_max` an axis-by-axis CLIPPING. **It is
+/// believing `clamp_to_max_size` an axis-by-axis CLIPPING. **It is
 /// a SCALING one, with the aspect ratio PRESERVED**: `1723x1303` comes out as
 /// `1428x1080`, that is, exactly the size the product already served.
 /// A consequence that changes the diagnosis and is stated here rather than forgotten:
@@ -167,11 +164,11 @@ fn seul_le_mode_sortie_entiere_suit_le_viewport() {
 fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
     // Under the bound on both axes: it goes through as is (up to
     // evenness), so the image matches EXACTLY the requested ratio.
-    assert_eq!(taille_pour_viewport((778, 491), (1428, 1032)), (778, 490));
+    assert_eq!(size_for_viewport((778, 491), (1428, 1032)), (778, 490));
     // …and it is no longer 1428×1080, yesterday's frozen size. Without this second
     // assertion, a rule ignoring its request would stay green if the
     // bound were 778×490.
-    assert_ne!(taille_pour_viewport((778, 491), (1428, 1032)), (1428, 1080));
+    assert_ne!(size_for_viewport((778, 491), (1428, 1032)), (1428, 1080));
 }
 
 /// 🔴 **WHAT THE BATCH DOES NOT SOLVE, WRITTEN AS A TEST SO THAT NOBODY BELIEVES
@@ -188,7 +185,7 @@ fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
 #[test]
 fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
     let borne = (1428, 1032);
-    let (l, h) = taille_pour_viewport((5118, 1438), borne);
+    let (l, h) = size_for_viewport((5118, 1438), borne);
     assert!(
         l <= borne.0 && h <= borne.1,
         "{l}x{h} doit tenir dans {borne:?}"
@@ -215,10 +212,7 @@ fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
     // ⚠️ The WIDTH goes down with it, to 1364: it is the aspect-preserving fit, and
     // it is intended. Returning `(1428, 1032)` — the old axis-by-axis `min` —
     // would serve a 1.384 for a requested 1.322, hence the bars.
-    assert_eq!(
-        taille_pour_viewport((1428, 1080), (1428, 1032)),
-        (1364, 1032)
-    );
+    assert_eq!(size_for_viewport((1428, 1080), (1428, 1032)), (1364, 1032));
 }
 
 /// 🔴 **THE FALLBACK IS THE BEHAVIOUR FROM BEFORE THE BATCH, AND IT MUST BE
@@ -252,10 +246,10 @@ fn une_zone_de_travail_plus_grande_que_le_moniteur_est_ramenee_a_lui() {
 /// size: it must therefore be **stable**, otherwise each round
 /// would rebuild the encoder. A fixed point, tested.
 #[test]
-fn la_regle_est_stable_sur_son_propre_resultat() {
+fn the_rule_is_stable_on_its_own_result() {
     let sortie = (1860, 1080);
-    let une = taille_pour_viewport((1723, 1303), sortie);
-    assert_eq!(taille_pour_viewport(une, sortie), une);
+    let une = size_for_viewport((1723, 1303), sortie);
+    assert_eq!(size_for_viewport(une, sortie), une);
 }
 
 /// A collapsed video box emits `(0, 0)` (real case noted in D8): the
@@ -263,7 +257,7 @@ fn la_regle_est_stable_sur_son_propre_resultat() {
 /// would refuse.
 #[test]
 fn une_boite_video_repliee_ne_rend_jamais_une_dimension_nulle() {
-    assert_eq!(taille_pour_viewport((0, 0), (1860, 1080)), (2, 2));
+    assert_eq!(size_for_viewport((0, 0), (1860, 1080)), (2, 2));
 }
 
 /// The EIGHT sizes the owner's browser ACTUALLY requested,
@@ -312,7 +306,7 @@ fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
     // minus the taskbar's 48 rows).
     let borne = (1860, 1032);
     for demande in VIEWPORTS_MESURES {
-        let servi = taille_pour_viewport(demande, borne);
+        let servi = size_for_viewport(demande, borne);
         let ecart = ecart_de_rapport(servi, demande);
         assert!(
             ecart < ECART_D_ARRONDI_MAX,
@@ -343,7 +337,7 @@ fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
         (800, 600),
     ] {
         for demande in VIEWPORTS_MESURES {
-            let servi = taille_pour_viewport(demande, borne);
+            let servi = size_for_viewport(demande, borne);
             assert!(
                 servi.0 <= borne.0 && servi.1 <= borne.1,
                 "{demande:?} sur {borne:?} rend {servi:?}, qui DÉBORDE"
@@ -376,10 +370,10 @@ fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
 /// it is chosen DIFFERENT from the values lying around in this file
 /// (1032, 1080) precisely so that a hardcoded number turns it red.
 #[test]
-fn la_hauteur_servie_ne_depasse_jamais_la_zone_de_travail_donnee() {
+fn the_served_height_never_exceeds_the_given_work_area() {
     for travail in [(1860, 1032), (1860, 900), (1428, 700), (1280, 752)] {
         for demande in VIEWPORTS_MESURES {
-            let servi = taille_pour_viewport(demande, travail);
+            let servi = size_for_viewport(demande, travail);
             assert!(
                 servi.1 <= travail.1,
                 "{demande:?} sur une zone de travail {travail:?} rend une hauteur de {} : \
@@ -390,7 +384,7 @@ fn la_hauteur_servie_ne_depasse_jamais_la_zone_de_travail_donnee() {
     }
     // The most tempting case: a request ALREADY at the monitor's height. It
     // must be brought down to the work area, never served at 1080.
-    assert!(taille_pour_viewport((1860, 1080), (1860, 1032)).1 <= 1032);
+    assert!(size_for_viewport((1860, 1080), (1860, 1032)).1 <= 1032);
 }
 
 /// The `1.0` cap has its OWN property, distinct from the one above, and
@@ -402,7 +396,7 @@ fn la_hauteur_servie_ne_depasse_jamais_la_zone_de_travail_donnee() {
 fn une_demande_plus_petite_que_la_borne_n_est_jamais_agrandie() {
     let borne = (1860, 1032);
     for demande in [(900u32, 500u32), (640, 480), (1280, 720)] {
-        let servi = taille_pour_viewport(demande, borne);
+        let servi = size_for_viewport(demande, borne);
         assert!(
             servi.0 <= demande.0 && servi.1 <= demande.1,
             "{demande:?} servi {servi:?} : plus grand que ce que le navigateur a demandé"

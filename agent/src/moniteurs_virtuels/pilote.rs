@@ -48,7 +48,7 @@ use super::{Adaptateur, IdSortie, PiloteAffichageVirtuel};
 use crate::moniteurs_virtuels::guid::{guid_pour, numero_de};
 use crate::moniteurs_virtuels::peripherique::chemin_du_peripherique;
 use crate::moniteurs_virtuels::sudovda::{
-    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_AJOUTER_SORTIE,
+    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_ADD_OUTPUT,
     IOCTL_RETIRER_SORTIE,
 };
 
@@ -69,7 +69,7 @@ use etat::EtatSorties;
 
 pub(crate) struct PiloteParIoctl {
     peripherique: HANDLE,
-    /// A `Mutex` and not a `RefCell` because `creer(&self, …)` must stay
+    /// A `Mutex` and not a `RefCell` because `create(&self, …)` must stay
     /// usable from a shared context. See `etat()` for the only
     /// subtlety it introduces.
     etat: Mutex<EtatSorties>,
@@ -123,7 +123,7 @@ impl PiloteParIoctl {
     ///
     /// `Sorties::drop` calls `detruire` during the unwinding of a panic
     /// and catches the `Err`s — but not the panics. If the panic occurred
-    /// while `creer` held this lock, the latter is poisoned:
+    /// while `create` held this lock, the latter is poisoned:
     /// an `.expect(…)` would panic here, in a `Drop`, which cuts the
     /// process short (`abort`) and would leave the remaining outputs undestroyed.
     /// It is precisely the scenario this module must cover, not
@@ -162,7 +162,7 @@ impl PiloteParIoctl {
 
     /// Removes from the driver the output carrying this GUID.
     ///
-    /// Extracted from `detruire` because `creer` must be able to call it too,
+    /// Extracted from `detruire` because `create` must be able to call it too,
     /// on its failure path — where no reliable `IdSortie` exists.
     ///
     /// `pub(super)`: it is also the door through which `purge.rs` removes
@@ -197,17 +197,17 @@ impl PiloteParIoctl {
         sortie: Option<(*mut std::ffi::c_void, u32)>,
         quoi: &str,
     ) -> Result<u32> {
-        let (ptr_entree, taille_entree) = entree.map_or((None, 0), |(p, t)| (Some(p), t));
-        let (ptr_sortie, taille_sortie) = sortie.map_or((None, 0), |(p, t)| (Some(p), t));
+        let (ptr_entree, input_size) = entree.map_or((None, 0), |(p, t)| (Some(p), t));
+        let (ptr_sortie, output_size) = sortie.map_or((None, 0), |(p, t)| (Some(p), t));
         let mut rendus = 0u32;
         unsafe {
             DeviceIoControl(
                 self.peripherique,
                 code,
                 ptr_entree,
-                taille_entree,
+                input_size,
                 ptr_sortie,
-                taille_sortie,
+                output_size,
                 Some(&mut rendus),
                 // Null, and legitimately: the handle is opened in
                 // synchronous mode (see `ouvrir_pilote`).
@@ -246,7 +246,7 @@ impl PiloteParIoctl {
 }
 
 impl PiloteAffichageVirtuel for PiloteParIoctl {
-    fn creer(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
+    fn create(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
         // This lock is held during the add `DeviceIoControl`, a blocking kernel
         // call: without consequence as long as the scale-up in N stays
         // sequential, to be revisited if it stops being so.
@@ -270,7 +270,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         };
         let mut ajoutee = SortieAjoutee::default();
         let rendus = match self.commander(
-            IOCTL_AJOUTER_SORTIE,
+            IOCTL_ADD_OUTPUT,
             Some((
                 &demande as *const _ as *const _,
                 std::mem::size_of::<DemandeAjout>() as u32,
@@ -282,7 +282,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             &format!("création d'une sortie {largeur}x{hauteur}@{hertz}"),
         ) {
             Ok(rendus) => rendus,
-            Err(erreur) => {
+            Err(error) => {
                 // NO output exists: the number is owed to no one and
                 // goes back to the allocator. Without it, a series of driver
                 // refusals — whose pool of ten is LOWER than our
@@ -290,7 +290,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 // numbers for nothing and would end up making any
                 // creation be refused while the driver, for its part, would have room.
                 etat.numeros.rendre(numero);
-                return Err(erreur);
+                return Err(error);
             }
         };
 
@@ -331,7 +331,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                          VIRTUAL_DISPLAY_ADD_OUT est fausse ; la sortie a été retirée"
                     );
                 }
-                Err(erreur) => {
+                Err(error) => {
                     // The GUID stays in `a_purger` on purpose: it is the only
                     // trace of what must be removed. It does NOT enter
                     // `apparies` — a dubious identifier appearing there
@@ -339,7 +339,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                     // remove the wrong output.
                     tracing::error!(
                         guid = ?guid_moniteur,
-                        %erreur,
+                        %error,
                         "sortie virtuelle NON retirée après un tampon illisible — \
                          purge manuelle requise"
                     );
@@ -347,7 +347,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                         "le pilote a rendu {rendus} octets pour une sortie créée, \
                          {attendus} attendus — la disposition supposée de \
                          VIRTUAL_DISPLAY_ADD_OUT est fausse, ET son retrait a \
-                         échoué : {erreur}"
+                         échoué : {error}"
                     );
                 }
             }
@@ -402,7 +402,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 tracing::info!(id, "sortie virtuelle détruite");
                 Ok(())
             }
-            Err(erreur) => {
+            Err(error) => {
                 // The GUID changes list rather than being forgotten or left
                 // in place. Leaving it in `apparies` would be the real danger:
                 // a display driver commonly reassigns its target
@@ -419,10 +419,10 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 tracing::error!(
                     id,
                     guid = ?guid_moniteur,
-                    %erreur,
+                    %error,
                     "sortie virtuelle NON détruite — purge manuelle requise"
                 );
-                Err(erreur)
+                Err(error)
             }
         }
     }
@@ -438,7 +438,7 @@ impl Drop for PiloteParIoctl {
         // distinction that separates them — "an entry of `apparies` can still be
         // requested again by identifier" — stops making sense at the
         // precise moment the process ends: no one will request
-        // anything again. A caller that uses `creer` without going through the
+        // anything again. A caller that uses `create` without going through the
         // `Sorties` guard, or whose guard was neutralised, would otherwise leave N
         // monitors behind it in total silence.
         //
@@ -457,7 +457,7 @@ impl Drop for PiloteParIoctl {
         drop(etat);
         if !apparies.is_empty() || !a_purger.is_empty() {
             tracing::error!(
-                nombre = apparies.len() + a_purger.len(),
+                count = apparies.len() + a_purger.len(),
                 numeros_en_vol,
                 guids_jamais_detruits = ?apparies,
                 guids_dont_le_retrait_a_echoue = ?a_purger,

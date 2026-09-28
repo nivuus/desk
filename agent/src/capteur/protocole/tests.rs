@@ -10,11 +10,11 @@ fn une_attache_fait_l_aller_retour() {
         sortie: r"\\.\DISPLAY8".into(),
         fps: 90,
         debit: 8_000_000,
-        taille: (1280, 720),
+        size: (1280, 720),
         origine_qpc: 123_456_789,
     };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Json(octets) => {
@@ -36,7 +36,7 @@ fn une_identite_fait_l_aller_retour() {
         session: "w-1".into(),
     };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Json(octets) => {
@@ -50,7 +50,7 @@ fn une_identite_fait_l_aller_retour() {
 }
 
 #[test]
-fn chaque_reponse_fait_l_aller_retour() {
+fn each_reply_makes_the_round_trip() {
     for message in [
         DepuisCapteur::Attachee {
             largeur: 1280,
@@ -59,12 +59,12 @@ fn chaque_reponse_fait_l_aller_retour() {
         DepuisCapteur::Refus {
             motif: "sortie inconnue".into(),
         },
-        DepuisCapteur::Taille {
+        DepuisCapteur::Size {
             largeur: 1280,
             hauteur: 720,
         },
         DepuisCapteur::Fait,
-        DepuisCapteur::Erreur {
+        DepuisCapteur::Error {
             motif: "encodeur perdu".into(),
         },
         DepuisCapteur::Etat {
@@ -75,7 +75,7 @@ fn chaque_reponse_fait_l_aller_retour() {
         },
     ] {
         let mut tampon = Vec::new();
-        ecrire_json(&mut tampon, &message).unwrap();
+        write_json(&mut tampon, &message).unwrap();
         let mut lecteur = Cursor::new(tampon);
         let Trame::Json(octets) = lire_trame(&mut lecteur).unwrap() else {
             panic!("attendu du JSON")
@@ -97,7 +97,7 @@ fn une_unite_d_acces_fait_l_aller_retour_sans_reencodage() {
         pts_90k: 90_000,
     };
     let mut tampon = Vec::new();
-    ecrire_image(&mut tampon, &unite).unwrap();
+    write_image(&mut tampon, &unite).unwrap();
     // 4 (length) + 1 (tag) + 8 (pts) + 1 (key) + 8 (data)
     assert_eq!(tampon.len(), 22, "cadrage inattendu : {tampon:?}");
     let mut lecteur = Cursor::new(tampon);
@@ -108,10 +108,10 @@ fn une_unite_d_acces_fait_l_aller_retour_sans_reencodage() {
 }
 
 #[test]
-fn deux_trames_a_la_suite_se_lisent_dans_l_ordre() {
+fn two_frames_in_a_row_are_read_in_order() {
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
-    ecrire_image(
+    write_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
+    write_image(
         &mut tampon,
         &AccessUnit {
             data: vec![9, 9],
@@ -139,7 +139,7 @@ fn une_etiquette_inconnue_est_refusee() {
 #[test]
 fn une_trame_tronquee_est_refusee() {
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
+    write_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
     tampon.truncate(tampon.len() - 1);
     assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
 }
@@ -147,9 +147,9 @@ fn une_trame_tronquee_est_refusee() {
 /// Without this bound, a corrupted length would reserve gigabytes
 /// before even reading one byte of body.
 #[test]
-fn une_longueur_aberrante_est_refusee_avant_toute_allocation() {
+fn an_aberrant_length_is_refused_before_any_allocation() {
     let mut tampon = Vec::new();
-    tampon.extend_from_slice(&(TAILLE_MAX as u32 + 1).to_le_bytes());
+    tampon.extend_from_slice(&(MAX_SIZE as u32 + 1).to_le_bytes());
     tampon.push(1);
     assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
 }
@@ -179,7 +179,7 @@ fn un_sommeil_traverse_le_canal_du_capteur() {
 #[test]
 fn une_part_traverse_l_encodage_json() {
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
+    write_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
     let mut lecture = &tampon[..];
     let Trame::Json(corps) = lire_trame(&mut lecture).unwrap() else {
         panic!("une trame JSON était attendue");
@@ -203,11 +203,11 @@ fn une_image_sans_en_tete_complet_est_refusee() {
 /// round-trip tests of this file.
 #[test]
 fn aller_retour_de_l_ecriture_du_presse_papier() {
-    let message = VersCapteur::PressePapierEcrire {
+    let message = VersCapteur::ClipboardWrite {
         texte: String::from("une\r\ndeux"),
     };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {
         Trame::Json(octets) => {
             assert_eq!(
@@ -222,23 +222,23 @@ fn aller_retour_de_l_ecriture_du_presse_papier() {
 /// 🔴 **The sensor↔child pipe's bound is NOT the constraining factor**,
 /// and this test MEASURES it where the spec asserted it.
 ///
-/// `PRESSE_PAPIER_MAX` is 64 KiB; `TAILLE_MAX` is 8 MiB, a hundred and
+/// `PRESSE_PAPIER_MAX` is 64 KiB; `MAX_SIZE` is 8 MiB, a hundred and
 /// twenty-eight times more. A text of the maximum size the product accepts
 /// therefore crosses this pipe without coming near it.
 ///
-/// RED if `TAILLE_MAX` went below 64 KiB, or if the text's encoding
+/// RED if `MAX_SIZE` went below 64 KiB, or if the text's encoding
 /// inflated by an unforeseen factor — JSON escapes `\r` and `\n` as two
 /// characters each, and a text made entirely of line breaks therefore doubles
 /// in size.
 #[test]
-fn un_texte_de_la_taille_maximale_du_produit_traverse_le_tube() {
+fn a_text_of_the_product_maximum_size_crosses_the_pipe() {
     let texte = "a".repeat(crate::presse_papier::PRESSE_PAPIER_MAX);
-    let message = VersCapteur::PressePapierEcrire { texte };
+    let message = VersCapteur::ClipboardWrite { texte };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     assert!(
-        tampon.len() < TAILLE_MAX,
-        "{} octets sur le tube, borne {TAILLE_MAX}",
+        tampon.len() < MAX_SIZE,
+        "{} octets sur le tube, borne {MAX_SIZE}",
         tampon.len()
     );
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {

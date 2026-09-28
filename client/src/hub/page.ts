@@ -15,7 +15,7 @@
 
 import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
-import { installerSelecteurDeThemeAuDOM } from '../design/selecteur-theme';
+import { installThemeSelectorInDOM } from '../design/selecteur-theme';
 import { assurerAccesFrais, paireDeReponse } from '../jeton';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
@@ -40,23 +40,23 @@ const params = new URLSearchParams(window.location.search);
 const base = adressePlateforme(window.location, params.get('plateforme'));
 
 const elMessage = document.getElementById('message') as HTMLDivElement;
-const elListe = document.getElementById('applications') as HTMLUListElement;
+const elList = document.getElementById('applications') as HTMLUListElement;
 const elDepot = document.getElementById('depot') as HTMLElement;
 const elChoisir = document.getElementById('choisir') as HTMLButtonElement;
 const elThemes = document.getElementById('themes');
 
-if (elThemes !== null) installerSelecteurDeThemeAuDOM(elThemes);
+if (elThemes !== null) installThemeSelectorInDOM(elThemes);
 
 function dire(ton: Ton, texte: string): void {
     elMessage.className = `${CLASSE_DE_TON[ton]} hub__message`;
     elMessage.textContent = texte;
 }
 
-// 🔴 `deps` CARRIES AN EMPTY TOKEN UNTIL `demarrer()` (at the foot of the
+// 🔴 `deps` CARRIES AN EMPTY TOKEN UNTIL `start()` (at the foot of the
 // file) HAS OBTAINED IT — see its header for what this fix repairs.
-// `let`, and not `const`: the closures that follow (`traiterUnFichier`,
+// `let`, and not `const`: the closures that follow (`processOneFile`,
 // `entree`, `peupler`) read `deps` AT CALL TIME, never at declaration,
-// so they see the final value once `demarrer()` has resolved — none is
+// so they see the final value once `start()` has resolved — none is
 // invoked before.
 let deps: DepsCatalogue = { base, jeton: '', fetch: window.fetch.bind(window) };
 
@@ -84,7 +84,7 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
     let icone: Uint8Array | undefined;
     if (application.icone !== null) {
         const issue = await lireIcone(application, deps);
-        if (issue.etat === 'ok') icone = issue.valeur;
+        if (issue.etat === 'ok') icone = issue.value;
     }
     // The background colour is READ FROM THE LIVE THEME, never written in a
     // `.ts`: §7.2 sweeps `.ts` files as much as `.css` ones, and there is
@@ -125,15 +125,15 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
 /// 🔴 BOTH PATHS CALL THIS, AND NOTHING ELSE (decision D10). It is what
 /// makes criterion ②'s RED run decidable: removing `launchQueue` must
 /// leave drag-and-drop GREEN.
-async function traiterUnFichier(fichier: File): Promise<void> {
-    dire('neutre', `Téléversement de ${fichier.name}…`);
-    const resume = await deposer(fichier, {
+async function processOneFile(file: File): Promise<void> {
+    dire('neutre', `Téléversement de ${file.name}…`);
+    const resume = await deposer(file, {
         ...deps,
         maintenant: () => Date.now(),
         progression: (p) => {
             if (p.total > 0) {
                 const pourcent = Math.floor((p.octets / p.total) * 100);
-                dire('neutre', `${fichier.name} — ${p.phase} ${String(pourcent)} %`);
+                dire('neutre', `${file.name} — ${p.phase} ${String(pourcent)} %`);
             }
         },
     });
@@ -182,22 +182,22 @@ function entree(application: ApplicationListee): DocumentFragment {
 
 async function peupler(): Promise<void> {
     // ⚠️ NO GUARD ON THE TOKEN HERE: `peupler` is only called by
-    // `demarrer()` (foot of the file) AFTER `assurerAccesFrais` has
+    // `start()` (foot of the file) AFTER `assurerAccesFrais` has
     // returned one — it is that function that decides, and `jeton.test.ts` holds it.
     const vms = await listerVms(deps);
     if (vms.etat !== 'ok') {
         dire('danger', `Les machines n'ont pas pu être lues : ${vms.refus.motif}.`);
         return;
     }
-    if (vms.valeur.length === 0) {
+    if (vms.value.length === 0) {
         dire('neutre', "Aucune machine ne vous est attribuée : il n'y a rien à montrer.");
         return;
     }
-    const vm = vms.valeur[0];
+    const vm = vms.value[0];
 
     // 🔴 **THE VM'S PREFIX IS RETAINED HERE, AND IT WAS RETAINED NOWHERE**
     // (critical ② of the final review of August 31st, 2026). `poserPrefixe` had
-    // only one production caller — `connexion.ts::chercherLaSession` —, which
+    // only one production caller — `connexion.ts::fetchTheSession` —, which
     // runs **only on the sign-in page**. Yet this workstream makes
     // precisely a visitor behind Pomerium obtain their token ON THE
     // HUB (`assurerAccesFrais` → `/auth/moi`) without ever going through that
@@ -207,7 +207,7 @@ async function peupler(): Promise<void> {
     // three lines away: `routes-vm.ts` returns it, `catalogue.ts` already parses it
     // into `VmListee.prefixe`.
     //
-    // 🔴 **THE ORDER IS THE POINT**: `demarrer()` only installs the desktop
+    // 🔴 **THE ORDER IS THE POINT**: `start()` only installs the desktop
     // AFTER this call, so that `lirePrefixe()` composes the right session
     // and lock names. The decision "which prefix to retain?" lives in
     // `prefixe.ts::prefixeDeLaVm`, pure and tested; what remains here is
@@ -219,14 +219,14 @@ async function peupler(): Promise<void> {
         dire('danger', `Le catalogue n'a pas pu être lu : ${applications.refus.motif}.`);
         return;
     }
-    elListe.replaceChildren(...applications.valeur.map(entree));
-    dire('neutre', `${String(applications.valeur.length)} application(s) sur ${vm.nom}.`);
+    elList.replaceChildren(...applications.value.map(entree));
+    dire('neutre', `${String(applications.value.length)} application(s) sur ${vm.nom}.`);
 
     // `?app=<uuid>`: the page publishes THIS application's manifest, which
     // makes it installable. It is also what `start_url` will reopen.
     const demandee = params.get('app');
     if (demandee !== null) {
-        const cible = applications.valeur.find((a) => a.id === demandee);
+        const cible = applications.value.find((a) => a.id === demandee);
         if (cible !== undefined) await publierLeManifeste(cible);
         else dire('danger', "L'application demandée n'est pas dans ce catalogue.");
     }
@@ -242,16 +242,16 @@ elDepot.addEventListener('dragleave', () => elDepot.classList.remove('hub__depot
 elDepot.addEventListener('drop', (e) => {
     e.preventDefault();
     elDepot.classList.remove('hub__depot--survol');
-    const fichier = e.dataTransfer?.files?.[0];
-    if (fichier !== undefined) void traiterUnFichier(fichier);
+    const file = e.dataTransfer?.files?.[0];
+    if (file !== undefined) void processOneFile(file);
 });
 
 elChoisir.addEventListener('click', () => {
     const saisie = document.createElement('input');
     saisie.type = 'file';
     saisie.addEventListener('change', () => {
-        const fichier = saisie.files?.[0];
-        if (fichier !== undefined) void traiterUnFichier(fichier);
+        const file = saisie.files?.[0];
+        if (file !== undefined) void processOneFile(file);
     });
     saisie.click();
 });
@@ -271,7 +271,7 @@ if ('launchQueue' in window) {
     (window as unknown as { launchQueue: FileLaunchQueue }).launchQueue.setConsumer((lancement) => {
         const premier = lancement.files[0];
         if (premier === undefined) return;
-        void premier.getFile().then(traiterUnFichier);
+        void premier.getFile().then(processOneFile);
     });
 }
 
@@ -298,7 +298,7 @@ if ('launchQueue' in window) {
    `connexion.ts::tenterPomerium`, EXTRACTED rather than copied — and all three
    are held by `jeton.test.ts`. What remains HERE is pure wiring: read
    the result, and either populate or redirect. */
-async function demarrer(): Promise<void> {
+async function start(): Promise<void> {
     dire('neutre', 'identification…');
     const acces = await jetonFrais();
     if (acces === undefined) {
@@ -347,14 +347,14 @@ async function demarrer(): Promise<void> {
         fautesArmees: params.get('faute-fichiers') === '1',
         elements: {
             statut: document.querySelector<HTMLDivElement>('#statut')!,
-            liste: document.querySelector<HTMLUListElement>('#fenetres')!,
+            list: document.querySelector<HTMLUListElement>('#fenetres')!,
             modele: document.querySelector<HTMLTemplateElement>('#modele-fenetre')!,
             sectionFenetres: document.querySelector<HTMLElement>('#section-fenetres')!,
-            sectionFichiers: document.querySelector<HTMLDetailsElement>('#section-fichiers')!,
+            filesSection: document.querySelector<HTMLDetailsElement>('#section-fichiers')!,
             boutonDossier: document.querySelector<HTMLButtonElement>('#choisir-dossier')!,
-            etatFichiers: document.querySelector<HTMLDivElement>('#etat-fichiers')!,
+            filesState: document.querySelector<HTMLDivElement>('#etat-fichiers')!,
             ecrituresDues: document.querySelector<HTMLDivElement>('#ecritures-dues')!,
-            actionsFichiers: document.querySelector<HTMLParagraphElement>('#actions-fichiers')!,
+            filesActions: document.querySelector<HTMLParagraphElement>('#actions-fichiers')!,
             boutonRafraichir: document.querySelector<HTMLButtonElement>('#rafraichir')!,
             boutonReprendre: document.querySelector<HTMLButtonElement>('#reprendre-enregistrement')!,
         },
@@ -377,8 +377,8 @@ async function jetonFrais(): Promise<string | undefined> {
             // CALLER until this task, hence never put to the test
             // of an unreachable network. Without this `try/catch`, an exception
             // (offline, DNS, CORS) would propagate uncaught through
-            // `assurerAccesFrais` → `jetonFrais()` → `demarrer()` (unhandled rejection
-            // on `void demarrer()`) or the click handler, and the
+            // `assurerAccesFrais` → `jetonFrais()` → `start()` (unhandled rejection
+            // on `void start()`) or the click handler, and the
             // page would stay stuck on "identifying…" instead of
             // falling back to Pomerium (step ③ of `assurerAccesFrais`).
             try {
@@ -402,4 +402,4 @@ async function jetonFrais(): Promise<string | undefined> {
     return acces;
 }
 
-void demarrer();
+void start();

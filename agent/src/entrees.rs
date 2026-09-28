@@ -48,7 +48,7 @@
 //! fully to the right not good, it's progressive", in x only.
 //!
 //! **The capture is not the output: it is a CROP of the output,
-//! `taille_retenue`, placed at its origin** (`windows_source/sortie.rs`,
+//! `retained_size`, placed at its origin** (`windows_source/sortie.rs`,
 //! `capteur/fenetre/ouverture.rs`). Surveyed on the owner's machine,
 //! in the same log:
 //!
@@ -68,12 +68,12 @@
 //! In y, 1080 against 1080: **zero**. It is exactly the symptom described.
 //!
 //! 🔴 **THE SIZE IS NOT RECOMPUTED HERE, IT IS SHARED.** Recomputing
-//! `taille_retenue(taille_fenetre, taille_sortie)` in the child would give back
+//! `retained_size(window_size, output_size)` in the child would give back
 //! **two descriptions of the same rectangle** — precisely the mechanism that
 //! produced the defect of batch 32M. The size used is the one the
 //! **sensor** retained and announced through `DepuisCapteur::Attachee`,
 //! that is **the one and only storage** that `SourceDistante::dimensions`
-//! returns to the rest of the child: [`TailleImage`], created by
+//! returns to the rest of the child: [`FrameSize`], created by
 //! `demarrage::source::construire` and handed both to the source and to the
 //! injector. There is **nothing to keep in agreement**, because there is only one
 //! value.
@@ -83,15 +83,15 @@
 //!
 //! ```text
 //! grep -n 'Attachee { largeur, hauteur }' agent/src/capteur/tube.rs
-//! grep -n 'taille_retenue' agent/src/capteur/fenetre/ouverture.rs
-//! grep -rn 'TailleImage' agent/src/
+//! grep -n 'retained_size' agent/src/capteur/fenetre/ouverture.rs
+//! grep -rn 'FrameSize' agent/src/
 //! ```
 
 /// The size of the image ACTUALLY captured and encoded, in pixels.
 ///
 /// 🔴 **ONE STORAGE, TWO READERS.** `SourceDistante` sets it from
 /// `DepuisCapteur::Attachee` (attach), `DepuisCapteur::Etat` (change) and
-/// `DepuisCapteur::Taille` (acknowledged resize), and its
+/// `DepuisCapteur::Size` (acknowledged resize), and its
 /// `dimensions()` reads it back; the input injector reads it back too. No one
 /// recomputes it — that is the whole point of this type, and the reason why
 /// it lives in THIS module rather than next to the source.
@@ -103,10 +103,10 @@
 /// existed. Packing both halves makes this tearing
 /// **impossible** instead of making it rare.
 #[derive(Debug)]
-pub struct TailleImage(std::sync::atomic::AtomicU64);
+pub struct FrameSize(std::sync::atomic::AtomicU64);
 
-impl TailleImage {
-    pub fn nouvelle(largeur: u32, hauteur: u32) -> Self {
+impl FrameSize {
+    pub fn new(largeur: u32, hauteur: u32) -> Self {
         let cellule = Self(std::sync::atomic::AtomicU64::new(0));
         cellule.poser(largeur, hauteur);
         cellule
@@ -128,7 +128,7 @@ impl TailleImage {
 ///
 /// 🔴 **THE MULTI-WINDOW VARIANT CARRIES THE IMAGE SIZE, AND IT IS THE
 /// TYPE THAT ENFORCES IT.** An `Option<&str>` on one side and an
-/// `Option<Arc<TailleImage>>` on the other would have left representable the state
+/// `Option<Arc<FrameSize>>` on the other would have left representable the state
 /// "a named output without its size", that is exactly the silent
 /// fallback this module exists to forbid. Here, the variant cannot be
 /// built without the size.
@@ -147,7 +147,7 @@ pub enum Reference {
     /// SIZE. Confusing them is the defect of batch 32Q, fixed here.
     SortieCapturee {
         nom: String,
-        image: std::sync::Arc<TailleImage>,
+        image: std::sync::Arc<FrameSize>,
     },
 }
 
@@ -160,7 +160,7 @@ pub enum Reference {
 /// the symptom would again become "the mouse drifts to the right" without a
 /// single trace saying so. The caller must turn it into a named error.
 ///
-/// ⚠️ **No clamping to the output either.** `taille_retenue` already guarantees
+/// ⚠️ **No clamping to the output either.** `retained_size` already guarantees
 /// that the image fits in the texture (`capteur/fenetre/ouverture.rs`); a
 /// `min` here would be a SECOND rule, which would mask a divergence instead
 /// of showing it.
@@ -188,20 +188,20 @@ mod tests {
     /// The shared cell: what we set is what we read back, and the two
     /// halves do not mix.
     #[test]
-    fn la_taille_partagee_rend_ce_qu_on_y_pose() {
-        let taille = TailleImage::nouvelle(1428, 1080);
-        assert_eq!(taille.lire(), (1428, 1080));
-        taille.poser(640, 360);
-        assert_eq!(taille.lire(), (640, 360));
+    fn the_shared_size_returns_what_is_stored_in_it() {
+        let size = FrameSize::new(1428, 1080);
+        assert_eq!(size.lire(), (1428, 1080));
+        size.poser(640, 360);
+        assert_eq!(size.lire(), (640, 360));
         // The two halves are well separated, including at the extremes.
-        taille.poser(u32::MAX, 1);
-        assert_eq!(taille.lire(), (u32::MAX, 1));
+        size.poser(u32::MAX, 1);
+        assert_eq!(size.lire(), (u32::MAX, 1));
     }
 
     /// A size not yet known must **not** produce a rectangle:
     /// it is this refusal that prevents a silent fallback to the whole output.
     #[test]
-    fn sans_taille_d_image_il_n_y_a_pas_de_rectangle() {
+    fn without_a_frame_size_there_is_no_rectangle() {
         let sortie = Rect {
             x: 3140,
             y: 0,
@@ -222,7 +222,7 @@ mod tests {
     /// The formula from BEFORE, which unmaps on the window, returns `(4428, 51)`:
     /// **+1288 in x and +51 in y**, exactly the offset derived from the log.
     #[test]
-    fn la_formule_d_avant_rend_le_decalage_releve_de_1288_et_51() {
+    fn the_former_formula_yields_the_measured_offset_of_1288_and_51() {
         let bureau = Rect {
             x: 0,
             y: 0,
@@ -273,7 +273,7 @@ mod tests {
     /// top-left corner: it is the SCALE term, and that is why this defect cannot
     /// be repaired by subtracting 1288.
     #[test]
-    fn l_erreur_n_est_pas_un_simple_decalage_elle_croit_avec_la_distance() {
+    fn the_error_is_not_a_plain_offset_it_grows_with_distance() {
         let bureau = Rect {
             x: 0,
             y: 0,

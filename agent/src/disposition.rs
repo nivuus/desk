@@ -21,17 +21,17 @@ pub fn tuiles(bureau: Rect, n: u32) -> Option<Vec<Rect>> {
     if n == 0 {
         return None;
     }
-    // Squarest grid possible: `colonnes` is the smallest integer
+    // Squarest grid possible: `columns` is the smallest integer
     // whose square reaches `n`. Computed by a loop rather than by
     // `(n as f64).sqrt().ceil()`, whose floating-point rounding is wrong for
     // some perfect squares depending on the platform.
-    let mut colonnes = 1u32;
-    while colonnes * colonnes < n {
-        colonnes += 1;
+    let mut columns = 1u32;
+    while columns * columns < n {
+        columns += 1;
     }
-    let lignes = n.div_ceil(colonnes);
+    let lignes = n.div_ceil(columns);
 
-    let largeur = (bureau.width / colonnes) & !1;
+    let largeur = (bureau.width / columns) & !1;
     let hauteur = (bureau.height / lignes) & !1;
     if largeur < TUILE_MIN_LARGEUR || hauteur < TUILE_MIN_HAUTEUR {
         return None;
@@ -39,10 +39,10 @@ pub fn tuiles(bureau: Rect, n: u32) -> Option<Vec<Rect>> {
 
     let mut places = Vec::with_capacity(n as usize);
     for index in 0..n {
-        let colonne = index % colonnes;
-        let ligne = index / colonnes;
+        let column = index % columns;
+        let ligne = index / columns;
         places.push(Rect {
-            x: bureau.x + (colonne * largeur) as i32,
+            x: bureau.x + (column * largeur) as i32,
             y: bureau.y + (ligne * hauteur) as i32,
             width: largeur,
             height: hauteur,
@@ -65,7 +65,7 @@ mod tests {
     };
 
     #[test]
-    fn huit_places_ne_se_recouvrent_pas_et_tiennent_dans_le_bureau() {
+    fn eight_slots_do_not_overlap_and_fit_in_the_desktop() {
         let places = tuiles(BUREAU, 8).expect("huit places sur 2400x1080");
         assert_eq!(places.len(), 8);
         for (i, a) in places.iter().enumerate() {
@@ -110,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn le_nombre_de_places_demande_est_respecte_meme_si_la_grille_est_plus_large() {
+    fn the_requested_slot_count_is_honoured_even_if_the_grid_is_wider() {
         // Seven slots fit in a 3x3 grid: two cells stay empty,
         // and we must not return nine slots for all that.
         assert_eq!(tuiles(BUREAU, 7).unwrap().len(), 7);

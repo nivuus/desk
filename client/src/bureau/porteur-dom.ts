@@ -11,7 +11,7 @@
 // 🔴 THIS DECLARATION WAS CAUGHT OUT TWICE, AND BOTH ARE
 // NAMED RATHER THAN KEPT QUIET:
 //   ① review round 1 — "which list does this tab paint" WAS a rule,
-//      set here in the form of a `bureau.liste()` called unconditionally by
+//      set here in the form of a `bureau.list()` called unconditionally by
 //      the timer. Moved down into `porteur.ts::fenetresAPeindre`.
 //   ② FINAL review (August 31st, 2026, Minor ④) — "who opens the window on a
 //      Reopen click" was another, in the form of a ternary
@@ -29,7 +29,7 @@
 // by `hub/page.ts`. Importing it without using it would be a `TS6133`, that is,
 // a FAILURE of `tsc --noEmit`, not a warning.
 import { composer } from '../prefixe';
-import { creerBureau, type FenetreConnue, type Ton } from '../shell';
+import { createDesktop, type FenetreConnue, type Ton } from '../shell';
 import { dessinerFenetres } from './fenetres-dom';
 import { installerLePont } from './fichiers-dom';
 import {
@@ -114,7 +114,7 @@ export interface DepsBureauPage {
     /// 🔴 **IT MUST BE READ AFTER `GET /vm` HAS ANSWERED** — critique ② of the
     /// final review: the hub set no prefix, `lirePrefixe()` returned
     /// `''`, and the hub listened on `bureau` while the agent announced on
-    /// `<prefixe>:bureau`. It is `hub/page.ts::demarrer` that guarantees this
+    /// `<prefixe>:bureau`. It is `hub/page.ts::start` that guarantees this
     /// order; this module only receives the value.
     prefixe: string;
     /// `?faute-fichiers=1` — BENCH variable, never a shipped
@@ -124,14 +124,14 @@ export interface DepsBureauPage {
     fautesArmees: boolean;
     elements: {
         statut: HTMLDivElement;
-        liste: HTMLUListElement;
+        list: HTMLUListElement;
         modele: HTMLTemplateElement;
         sectionFenetres: HTMLElement;
-        sectionFichiers: HTMLDetailsElement;
+        filesSection: HTMLDetailsElement;
         boutonDossier: HTMLButtonElement;
-        etatFichiers: HTMLDivElement;
+        filesState: HTMLDivElement;
         ecrituresDues: HTMLDivElement;
-        actionsFichiers: HTMLParagraphElement;
+        filesActions: HTMLParagraphElement;
         boutonRafraichir: HTMLButtonElement;
         boutonReprendre: HTMLButtonElement;
     };
@@ -146,8 +146,8 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     /// The LAST state received on the channel, FOLLOWER side. `undefined` as long
     /// as no broadcast has arrived yet — that is what
     /// `fenetresAPeindre` distinguishes from an empty list broadcast for real.
-    let dernierEtatRecu: FenetreConnue[] | undefined;
-    // ⚠️ DECLARED BEFORE `creerBureau`, whose `envoyer` callback reads it: a
+    let lastReceivedState: FenetreConnue[] | undefined;
+    // ⚠️ DECLARED BEFORE `createDesktop`, whose `envoyer` callback reads it: a
     // closure capturing a `let` declared further down compiles, but reads
     // badly — and the temporal dead zone is an error class avoided
     // by layout rather than by vigilance.
@@ -172,16 +172,16 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     const ouvrirUneFenetre = (session: string): Window | null =>
         window.open(`/index.html?session=${encodeURIComponent(session)}`, `guac-${session}`);
 
-    const bureau = creerBureau({
+    const bureau = createDesktop({
         ouvrirFenetre(session) {
             return ouvrirUneFenetre(session);
         },
         envoyer(message) {
             if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
         },
-        afficher(message, ton) { el.statut.textContent = message; poserTon(el.statut, ton); },
-        afficherEtatFichiers(texte, ton) { el.etatFichiers.textContent = texte; poserTon(el.etatFichiers, ton); },
-        afficherEcrituresDues(dues, vues, texte, ton) {
+        show(message, ton) { el.statut.textContent = message; poserTon(el.statut, ton); },
+        showFilesState(texte, ton) { el.filesState.textContent = texte; poserTon(el.filesState, ton); },
+        showPendingWrites(dues, vues, texte, ton) {
             // 🔴 NUMBERS IN `data-*` ATTRIBUTES, TEXT IN THE
             // PAGE. Acceptance drivers read the attributes, NEVER the
             // text — F1's trap.
@@ -190,28 +190,28 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             el.ecrituresDues.textContent = texte;
             poserTon(el.ecrituresDues, ton);
         },
-        afficherRetenues(retenues) {
+        showRetained(retenues) {
             el.boutonReprendre.hidden = !retenues;
-            el.actionsFichiers.dataset.retenues = String(retenues);
+            el.filesActions.dataset.retenues = String(retenues);
             // A bridge holding back its writes has something to say NOW.
-            if (retenues) el.sectionFichiers.open = true;
+            if (retenues) el.filesSection.open = true;
         },
     });
 
     // ── THE SINGLE PAINTING PATH, FOR BOTH ROLES ────────────────────────────
     // 🔴 THE TIMER AND THE RECEPTION OF A BROADCAST EACH CALLED THEIR
     // OWN `dessinerFenetres(...)`, TWICE OVER — it is that duplication that
-    // produced critique ①: the timer painted from `bureau.liste()`
+    // produced critique ①: the timer painted from `bureau.list()`
     // regardless of the role, erasing on a follower, less than a second
     // later, what the reception had just shown. There is now only one
     // path: `redessiner()`, called by BOTH triggers, which asks
     // `fenetresAPeindre` (pure, tested) what must be painted.
     const redessiner = (): void => {
         const role = porteur ? 'porteur' : 'suiveur';
-        const listePropre = bureau.liste();
-        const fenetres = fenetresAPeindre(role, listePropre, dernierEtatRecu);
+        const ownList = bureau.list();
+        const fenetres = fenetresAPeindre(role, ownList, lastReceivedState);
         dessinerFenetres(fenetres, {
-            liste: el.liste,
+            list: el.list,
             modele: el.modele,
             section: el.sectionFenetres,
             rouvrir: (session) => {
@@ -223,7 +223,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                 // ⚠️ A FOLLOWER OPENS ITS OWN WINDOW, FROM ITS OWN
                 // CLICK: `window.open` requires the activation of THIS tab. It
                 // does not warn the carrier, and NOTHING CATCHES UP AFTERWARDS:
-                // `shell.ts::liste` computes `ouverte` from the HANDLE the
+                // `shell.ts::list` computes `ouverte` from the HANDLE the
                 // carrier ITSELF holds (`e.fenetre !== null &&
                 // !e.fenetre.closed`), and that handle stays closed
                 // forever — the follower has just created ANOTHER
@@ -255,7 +255,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         // Broadcasting, for its part, stays reserved to the carrier, and carries ITS OWN
         // list — never `fenetres`, which on a follower is the last state
         // RECEIVED: rebroadcasting it would loop the echo instead of carrying anything new.
-        if (porteur) empreinte = diffuserSiChange(canal, listePropre, empreinte);
+        if (porteur) empreinte = diffuserSiChange(canal, ownList, empreinte);
     };
 
     // ── THE FOLLOWER: it opens NO socket; it stores what is
@@ -279,7 +279,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         if (porteur) return;
         const fenetres = lireEtat(evenement.data);
         if (fenetres === undefined) return;
-        dernierEtatRecu = fenetres;
+        lastReceivedState = fenetres;
         redessiner();
     });
 
@@ -298,13 +298,13 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     // tab does not handle files".
     const desactiverLePont = (): void => {
         el.boutonDossier.disabled = true;
-        el.etatFichiers.textContent = 'Les fichiers sont gérés par l’onglet qui tient le bureau.';
-        poserTon(el.etatFichiers, 'neutre');
+        el.filesState.textContent = 'Les fichiers sont gérés par l’onglet qui tient le bureau.';
+        poserTon(el.filesState, 'neutre');
     };
     const activerLePont = (): void => {
         el.boutonDossier.disabled = false;
-        el.etatFichiers.textContent = '';
-        poserTon(el.etatFichiers, 'neutre');
+        el.filesState.textContent = '';
+        poserTon(el.filesState, 'neutre');
     };
 
     const ouvrirLaSession = (): void => {
@@ -339,7 +339,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                     boutonDossier: el.boutonDossier,
                     boutonRafraichir: el.boutonRafraichir,
                     boutonReprendre: el.boutonReprendre,
-                    section: el.sectionFichiers,
+                    section: el.filesSection,
                 }),
             ouvrirSocket: (jeton) => ouvrirLeSocket(jeton),
             sansJeton: () => {

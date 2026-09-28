@@ -20,8 +20,8 @@ import {
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { Frein } from '../securite/frein';
-import { creer as creerInstallation, lireParId } from '../depot/installation';
-import { creer as creerTeleversement, sceller } from '../depot/televersement';
+import { create as createInstallation, lireParId } from '../depot/installation';
+import { create as createUpload, sceller } from '../depot/televersement';
 import { servirLeCanalAgent } from './canal';
 import { enrolerUneVm, ouvrir, SECRET, SECRET_VM, T0, type Pair } from './canal-harnais';
 import { RegistreAgents } from './registre';
@@ -42,7 +42,7 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-async function demarrer(p: Pilote): Promise<number> {
+async function start(p: Pilote): Promise<number> {
     maintenant = T0;
     registre = new RegistreAgents();
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
@@ -71,19 +71,19 @@ async function unOrdreEnAttente(p: Pilote): Promise<{ installation: string; tel:
         'INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
         ['u-1', 'a@b.c', 'scrypt$1$1$1$x$y', T0],
     );
-    const tel = await creerTeleversement(
+    const tel = await createUpload(
         p,
         {
-            utilisateurId: 'u-1',
+            userId: 'u-1',
             nom: 'Firefox Setup 130.0.exe',
             taille: 3_221_225_472,
             sha256: 'a'.repeat(64),
-            tailleTranche: 8 * 1024 * 1024,
+            chunkSize: 8 * 1024 * 1024,
         },
         T0,
     );
     await sceller(p, tel.id, T0 + 1);
-    const inst = await creerInstallation(p, { vmId: 'v-1', televersementId: tel.id }, T0 + 2);
+    const inst = await createInstallation(p, { vmId: 'v-1', televersementId: tel.id }, T0 + 2);
     return { installation: inst.id, tel: tel.id };
 }
 
@@ -102,7 +102,7 @@ describe('la réémission des installations à l’enrôlement', () => {
         base = await baseNeuve('canal-inst-reemission');
         await enrolerUneVm(base, 'v-1');
         const { installation, tel } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         await enrole(pair);
         const ordre = await pair.recevoir();
@@ -132,7 +132,7 @@ describe('la réémission des installations à l’enrôlement', () => {
         base = await baseNeuve('canal-inst-pas-deux-fois');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const premier = await ouvrir(await demarrer(base));
+        const premier = await ouvrir(await start(base));
         await enrole(premier);
         // Le premier enrôlement le reçoit bien — c'est le témoin sans lequel
         // l'assertion suivante serait vraie d'un service entièrement muet.
@@ -150,7 +150,7 @@ describe('la réémission des installations à l’enrôlement', () => {
         premier.socket.terminate();
 
         // Un second enrôlement ne doit RIEN recevoir.
-        const second = await ouvrir(await demarrer(base));
+        const second = await ouvrir(await start(base));
         await enrole(second);
         await expect(second.recevoir()).rejects.toThrow(/aucun message poussé/);
         second.socket.terminate();
@@ -167,7 +167,7 @@ describe('les deux montantes de l’installation', () => {
         base = await baseNeuve('canal-inst-seq-progression');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeProgression(installation, 'transfert', 1, 2, 3));
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
@@ -182,7 +182,7 @@ describe('les deux montantes de l’installation', () => {
         base = await baseNeuve('canal-inst-seq-termine');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(
             encodeTermine(installation, 'reussie', null, 0, '', false),
@@ -196,7 +196,7 @@ describe('les deux montantes de l’installation', () => {
         base = await baseNeuve('canal-inst-termine');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
         await pair.recevoir(); // l'ordre réémis
 
@@ -224,7 +224,7 @@ describe('les deux montantes de l’installation', () => {
         base = await baseNeuve('canal-inst-echec-ecriture');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
         await pair.recevoir();
 

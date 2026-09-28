@@ -32,7 +32,7 @@ pub enum IssueDeSortie {
     Propre,
     /// **Non-zero** exit code: `bail!`, panic, `exit(n)`. For the
     /// bridge, it is the relay's refusal, honoured then propagated.
-    Erreur,
+    Error,
     /// **No code is available**: the process was killed by a signal
     /// (POSIX), or the state could not be read.
     Inconnue,
@@ -60,7 +60,7 @@ impl IssueDeSortie {
     pub fn depuis_le_code(code: Option<i32>) -> Self {
         match code {
             Some(0) => Self::Propre,
-            Some(_) => Self::Erreur,
+            Some(_) => Self::Error,
             None => Self::Inconnue,
         }
     }

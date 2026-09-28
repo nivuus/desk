@@ -40,7 +40,7 @@ import { ouvrirBase } from '../base/ouvrir';
 import type { Pilote } from '../base/pilote';
 import { enroler, lireParVm, remplacerEmpreinte } from '../depot/agent';
 import { hacher } from '../identite/mot-de-passe';
-import { nouveauPrefixe } from '../agents/prefixe';
+import { newPrefix } from '../agents/prefixe';
 
 /// The two actions of this command, and the refusal.
 ///
@@ -142,7 +142,7 @@ export async function enrolerLaVm(
     // guessable by anyone who knows that name, and the enrolment
     // would no longer authenticate anything.
     const secret = randomBytes(OCTETS_SECRET).toString('base64url');
-    await enroler(p, vmId, await hacher(secret), nouveauPrefixe());
+    await enroler(p, vmId, await hacher(secret), newPrefix());
 
     const ligne = await p.interroger<{ prefixe_session: string }>(
         'SELECT prefixe_session FROM agent_enrole WHERE vm_id = ?',

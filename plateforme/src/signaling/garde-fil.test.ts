@@ -9,7 +9,7 @@
 // reçoit un.
 //
 // L'horloge du service de test est INJECTÉE : le critère ② exige qu'elle
-// avance entre deux poignées de main, et `demarrerServeur` ne prend pas
+// avance entre deux poignées de main, et `startServer` ne prend pas
 // d'horloge. Ce fichier construit donc sa garde lui-même et appelle
 // `createSignalingServer(port, garde, frein, proxyDeConfiance)` — 🔴 QUATRE
 // ARGUMENTS DÉSORMAIS, PAS DEUX : `frein` et `proxyDeConfiance` l'ont
@@ -59,7 +59,7 @@ afterAll(() => {
     restaurerTurn();
 });
 
-function demarrer(): number {
+function start(): number {
     maintenant = T0;
     proprietes = new ProprieteDeSession();
     garde = fabriquerGarde(SECRET, () => maintenant, proprietes);
@@ -119,7 +119,7 @@ function poignee(port: number, corps: unknown): Promise<Suivi> {
 
 describe('la garde, au niveau du socket', () => {
     it('CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config', async () => {
-        const port = demarrer();
+        const port = start();
         const refuse = await poignee(port, { role: 'client', session: 's-1' });
 
         // Première assertion : le refus est typé.
@@ -144,7 +144,7 @@ describe('la garde, au niveau du socket', () => {
     });
 
     it('le socket est FERMÉ après le refus, et le message est arrivé AVANT', async () => {
-        const port = demarrer();
+        const port = start();
         const refuse = await poignee(port, { role: 'client', session: 's-1' });
         await refuse.ferme;
         // Fermer avant d'envoyer tronquerait le message : le pair verrait une
@@ -154,7 +154,7 @@ describe('la garde, au niveau du socket', () => {
     });
 
     it('CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire', async () => {
-        const port = demarrer();
+        const port = start();
         const jeton = signer('u1', SECRET, T0);
         // Le même jeton passe à t0…
         const admis = await poignee(port, { role: 'client', session: 's-2', jeton });
@@ -170,7 +170,7 @@ describe('la garde, au niveau du socket', () => {
     });
 
     it('CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme', async () => {
-        const port = demarrer();
+        const port = start();
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         const un = await poignee(port, {
@@ -185,12 +185,12 @@ describe('la garde, au niveau du socket', () => {
             session: 's-privee',
             jeton: signer('u2', SECRET, T0),
         });
-        const erreur = deux.messages.find((m) => m.type === 'error');
-        expect(erreur).toBeDefined();
-        expect(erreur.motif).toBe('session-refusee');
+        const error = deux.messages.find((m) => m.type === 'error');
+        expect(error).toBeDefined();
+        expect(error.motif).toBe('session-refusee');
         // Le message SUR LE FIL ne nomme ni la session ni son propriétaire.
-        expect(erreur.reason).not.toContain('s-privee');
-        expect(erreur.reason).not.toContain('u1');
+        expect(error.reason).not.toContain('s-privee');
+        expect(error.reason).not.toContain('u1');
 
         // Le JOURNAL, lui, porte le nom de session ET le demandeur.
         const lignes = journal.mock.calls.map((c) => String(c[0])).join('\n');
@@ -201,7 +201,7 @@ describe('la garde, au niveau du socket', () => {
     });
 
     it('après le départ des deux pairs, u2 PEUT prendre la session', async () => {
-        const port = demarrer();
+        const port = start();
         const un = await poignee(port, {
             role: 'client',
             session: 's-rendue',
@@ -230,7 +230,7 @@ describe('la garde, au niveau du socket', () => {
         // prévu : « Le jour où P3 l'inversera, il faudra le réécrire À DESSEIN,
         // pas par surprise. » C'est fait, à dessein, et la rouge est GRATUITE —
         // le binaire de P2 la porte.
-        const port = demarrer();
+        const port = start();
         const agent = await poignee(port, { role: 'agent', session: 'bureau' });
         expect(agent.messages.map((m) => m.type)).toContain('error');
         agent.socket.terminate();
@@ -248,7 +248,7 @@ describe('la garde, au niveau du socket', () => {
         // précédent : `expect` interrompt à la première, et cette fuite-ci —
         // la seule que P3 ferme réellement — ne serait alors éprouvée par
         // rien. C'est la leçon ①A-bis de P2, appliquée d'avance.
-        const port = demarrer();
+        const port = start();
         const agent = await poignee(port, { role: 'agent', session: 'bureau' });
         expect(agent.messages.map((m) => m.type)).not.toContain('ice-config');
         agent.socket.terminate();

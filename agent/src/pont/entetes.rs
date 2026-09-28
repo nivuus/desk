@@ -10,9 +10,9 @@
 //! task 15, which could, did it rather than reproduce the shapes by
 //! hand on the TypeScript side.
 //!
-//! They now live in [`proto::fichiers::entetes`], pinned by
+//! They now live in [`proto::files::entetes`], pinned by
 //! `proto/fichiers-vectors.json`, which **both** implementations read —
-//! `proto/src/fichiers/entetes/tests.rs` and `proto/ts/fichiers-entetes.test.ts`.
+//! `proto/src/files/entetes/tests.rs` and `proto/ts/fichiers-entetes.test.ts`.
 //! A renaming now has only one side to break to be seen RED.
 //!
 //! This module therefore only keeps what is NOT a wire shape: **what
@@ -21,12 +21,12 @@
 //! twin.
 //!
 //! ⚠️ **It deliberately does NOT RE-EXPORT the seven structures.** A
-//! `pub use proto::fichiers::entetes::*` would have avoided touching the three
+//! `pub use proto::files::entetes::*` would have avoided touching the three
 //! call sites, at the cost of two things: an `unused_imports` warning
 //! on the host, all consumers being `#[cfg(windows)]`, and above all an
 //! indirection that would hide from the reader of `projfs/rappels.rs` where
 //! these shapes really come from. The three sites therefore write
-//! `use proto::fichiers::entetes;`, and say so.
+//! `use proto::files::entetes;`, and say so.
 
 /// Milliseconds since the Unix epoch → 100 ns units since the
 /// FILETIME epoch (January 1st, 1601).

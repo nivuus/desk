@@ -16,7 +16,7 @@
  * a browser as in the service. That is the condition for it to be
  * truly shared rather than copied.
  *
- * ⚠️ `taille`, `tailleTranche` and `octets` are `number`: beyond 2^53
+ * ⚠️ `size`, `chunkSize` and `octets` are `number`: beyond 2^53
  * the arithmetic would stop being exact, and the two ends would diverge
  * silently. A 9-petabyte upload does not exist; the bound is named,
  * not guarded — same trade-off, and for the same reason, as that of
@@ -28,7 +28,7 @@
  *
  * ⚠️ `n` IS A ZERO-BASED RANK, and this choice is load-bearing: it makes the position
  * of the slice in the file computable without a table — it is exactly
- * `n * tailleTranche`. A base of 1 would force every caller to subtract one,
+ * `n * chunkSize`. A base of 1 would force every caller to subtract one,
  * and the day one of the two forgot, the whole file would be shifted by one
  * slice without any size moving.
  */
@@ -59,7 +59,7 @@ export type Verdict =
  * 🔴 WHAT IS GUARDED HERE THROWS; WHAT COMES FROM THE WIRE NEVER THROWS. The
  * boundary is deliberate, and it is the only one in this module:
  *
- * - `taille` and `tailleTranche` are the CONTRACT, fixed when the upload is
+ * - `size` and `chunkSize` are the CONTRACT, fixed when the upload is
  *   declared and held by the caller. An absurd contract — a zero step,
  *   a negative size — is a PROGRAM defect, not received data:
  *   returning it as a verdict would disguise it as a transfer anomaly, and
@@ -70,29 +70,29 @@ export type Verdict =
  *   not be able to bring the checker down by sending it anything at all.
  *
  * ⚠️ A ZERO slicing step is not merely absurd: it would make
- * `Math.ceil(taille / 0)` equal to `Infinity`, and the plan loop would not
+ * `Math.ceil(size / 0)` equal to `Infinity`, and the plan loop would not
  * stop. The guard is thus also what keeps this module from freezing
  * its caller.
  */
-function verifierContrat(taille: number, tailleTranche: number): void {
-    if (!Number.isInteger(taille) || taille < 0) {
+function checkContract(size: number, chunkSize: number): void {
+    if (!Number.isInteger(size) || size < 0) {
         throw new Error(
-            `tranches : taille invalide (${taille}) — un entier positif ou nul est attendu`,
+            `tranches : taille invalide (${size}) — un entier positif ou nul est attendu`,
         );
     }
-    if (!Number.isInteger(tailleTranche) || tailleTranche <= 0) {
+    if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
         throw new Error(
-            `tranches : tailleTranche invalide (${tailleTranche}) — un entier strictement positif est attendu`,
+            `tranches : tailleTranche invalide (${chunkSize}) — un entier strictement positif est attendu`,
         );
     }
 }
 
 /**
- * The EXPECTED slicing of a file of `taille` bytes with a step of
- * `tailleTranche`.
+ * The EXPECTED slicing of a file of `size` bytes with a step of
+ * `chunkSize`.
  *
  * Ranks are contiguous from `0` to `n - 1`, and the sum of the `octets` is
- * EXACTLY `taille` — it is the invariant the tests pin, and it is the
+ * EXACTLY `size` — it is the invariant the tests pin, and it is the
  * only one that tells a right plan apart from a truncated plan.
  *
  * 🔴 `Math.ceil` AND NOT `Math.floor`, AND THE DIFFERENCE IS THE TAIL OF THE FILE.
@@ -102,7 +102,7 @@ function verifierContrat(taille: number, tailleTranche: number): void {
  * that judges this module: it breaks no exact-multiple case, and it silently
  * damages all the others.
  *
- * ⚠️ `taille === 0` YIELDS ZERO SLICES, never one empty slice. An empty file
+ * ⚠️ `size === 0` YIELDS ZERO SLICES, never one empty slice. An empty file
  * is a legitimate file: it has nothing to upload, and its verdict is `complet`
  * on an empty list. Crafting a zero-byte slice would force the
  * uploader to send a frame with no content to seal a file with no
@@ -111,17 +111,17 @@ function verifierContrat(taille: number, tailleTranche: number): void {
  *
  * ⚠️ A SIZE THAT IS AN EXACT MULTIPLE OF THE STEP DOES NOT PRODUCE AN EMPTY FINAL SLICE,
  * for the same reason: `ceil(8 / 4)` is 2, not 3. The last slice is
- * `taille - n * tailleTranche`, which is zero only if no slice exists.
+ * `size - n * chunkSize`, which is zero only if no slice exists.
  */
-export function plan(taille: number, tailleTranche: number): Tranche[] {
-    verifierContrat(taille, tailleTranche);
+export function plan(size: number, chunkSize: number): Tranche[] {
+    checkContract(size, chunkSize);
 
     const tranches: Tranche[] = [];
-    const combien = Math.ceil(taille / tailleTranche);
+    const combien = Math.ceil(size / chunkSize);
     for (let n = 0; n < combien; n += 1) {
         // The last slice is the only one that may be shorter than the
         // step: `min` bounds it without having to treat its case separately.
-        const octets = Math.min(tailleTranche, taille - n * tailleTranche);
+        const octets = Math.min(chunkSize, size - n * chunkSize);
         tranches.push({ n, octets });
     }
     return tranches;
@@ -152,14 +152,14 @@ export function plan(taille: number, tailleTranche: number): Tranche[] {
  * shows what was really sent rather than a cleaned-up value.
  */
 export function verdict(
-    taille: number,
-    tailleTranche: number,
+    size: number,
+    chunkSize: number,
     presentes: Tranche[],
 ): Verdict {
-    verifierContrat(taille, tailleTranche);
+    checkContract(size, chunkSize);
 
     const attendu = new Map<number, number>();
-    for (const t of plan(taille, tailleTranche)) attendu.set(t.n, t.octets);
+    for (const t of plan(size, chunkSize)) attendu.set(t.n, t.octets);
 
     const incoherentes = new Set<number>();
     const vues = new Set<number>();

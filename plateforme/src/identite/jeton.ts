@@ -57,7 +57,7 @@ export const DUREE_JETON_ACCES_MS = 600_000;
 
 /// 32 characters. ⚠️ NOT CALIBRATED either — it is the length of a
 /// 256-bit secret in hexadecimal cut in half, not a measured threshold.
-export const LONGUEUR_SECRET_MIN = 32;
+export const MIN_SECRET_LENGTH = 32;
 
 const ALGORITHME = 'HS256';
 
@@ -75,19 +75,19 @@ const ALGORITHME = 'HS256';
 /// the algorithm confusion against which `alg` is compared further down.
 const CLAIM_TYPE = 'sty';
 
-/// A missing claim means `utilisateur`.
+/// A missing claim means `user`.
 ///
 /// 🔴 That is what keeps IN FLIGHT the tokens issued by P2, which carry
 /// none: P3 adds the ability to SAY `agent`, it does not invalidate what
-/// exists. Corollary kept here: a `utilisateur` token does NOT WRITE it
+/// exists. Corollary kept here: a `user` token does NOT WRITE it
 /// either, which keeps the wire format identical to P2's -- a single
 /// encoding, hence a single read path.
 const TYPE_PAR_DEFAUT: TypeSujet = 'utilisateur';
 
 const TYPES_CONNUS: readonly TypeSujet[] = ['utilisateur', 'agent'];
 
-function encoder(valeur: unknown): string {
-    return Buffer.from(JSON.stringify(valeur), 'utf8').toString('base64url');
+function encoder(value: unknown): string {
+    return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
 }
 
 function signature(tete: string, secret: string): string {
@@ -103,9 +103,9 @@ export function signer(
     dureeMs: number = DUREE_JETON_ACCES_MS,
     type: TypeSujet = TYPE_PAR_DEFAUT,
 ): string {
-    if (secret.length < LONGUEUR_SECRET_MIN) {
+    if (secret.length < MIN_SECRET_LENGTH) {
         throw new Error(
-            `secret de signature trop court : ${secret.length} caractères, ${LONGUEUR_SECRET_MIN} au moins sont exigés`,
+            `secret de signature trop court : ${secret.length} caractères, ${MIN_SECRET_LENGTH} au moins sont exigés`,
         );
     }
     const tete = `${encoder({ alg: ALGORITHME, typ: 'JWT' })}.${encoder({
@@ -113,21 +113,21 @@ export function signer(
         // In MILLISECONDS — see the divergence declared at the top of the file.
         exp: maintenant + dureeMs,
         // The claim is only WRITTEN if it says something other than the default: see
-        // `TYPE_PAR_DEFAUT`. An explicit `utilisateur` and a P2 token are
+        // `TYPE_PAR_DEFAUT`. An explicit `user` and a P2 token are
         // thus the SAME token, byte for byte.
         ...(type === TYPE_PAR_DEFAUT ? {} : { [CLAIM_TYPE]: type }),
     })}`;
     return `${tete}.${signature(tete, secret)}`;
 }
 
-function estObjet(valeur: unknown): valeur is Record<string, unknown> {
-    return typeof valeur === 'object' && valeur !== null && !Array.isArray(valeur);
+function estObjet(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /// Verifies a token. ALWAYS returns a verdict, never an exception: the
 /// `jeton` comes from the network, and a throwing `JSON.parse` would make the answer
 /// 500 where it must be 401.
-export function verifierJeton(jeton: unknown, secret: string, maintenant: number): VerdictJeton {
+export function verifyToken(jeton: unknown, secret: string, maintenant: number): VerdictJeton {
     if (typeof jeton !== 'string') return { ok: false, motif: 'forme' };
 
     const morceaux = jeton.split('.');
@@ -163,7 +163,7 @@ export function verifierJeton(jeton: unknown, secret: string, maintenant: number
     if (typeof exp !== 'number' || !Number.isFinite(exp)) return { ok: false, motif: 'forme' };
 
     // 🔴 AN UNKNOWN TYPE IS REFUSED, never mapped to the default. Mapping it to
-    // `utilisateur` would let a token of a THIRD type, issued some day by
+    // `user` would let a token of a THIRD type, issued some day by
     // a future version of the service, be accepted as human by an
     // old version -- a silent privilege change checked
     // in the wrong direction. ABSENCE, on the other hand, does mean the default: it is the

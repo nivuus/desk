@@ -98,7 +98,7 @@ pub struct Fenetre {
 }
 
 impl Fenetre {
-    pub fn nouvelle(restants: VecDeque<Morceau>) -> Self {
+    pub fn new(restants: VecDeque<Morceau>) -> Self {
         Self {
             restants,
             en_vol: VecDeque::new(),

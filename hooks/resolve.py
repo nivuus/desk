@@ -93,11 +93,11 @@ def parser_borne(borne: str):
         if not correspond:
             return None
         operateur, a, b, c = correspond.groups()
-        valeur = (int(a), int(b), int(c))
+        value = (int(a), int(b), int(c))
         if operateur == ">=":
-            mini = valeur
+            mini = value
         else:
-            maxi = valeur
+            maxi = value
     if mini is None or maxi is None:
         return None
     return mini, maxi

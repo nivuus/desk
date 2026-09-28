@@ -26,7 +26,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { startServer, type ServicePlateforme } from './serveur';
 
 const CONFIG: Config = {
     hote: '127.0.0.1',
@@ -72,7 +72,7 @@ function requeteFermee(url: string): Promise<Response> {
 
 async function servir(auth: 'pomerium' | 'motdepasse', nom: string): Promise<string> {
     base = await baseNeuve(nom);
-    service = await demarrerServeur({ ...CONFIG, auth, racinePage: racineArmee() }, base);
+    service = await startServer({ ...CONFIG, auth, racinePage: racineArmee() }, base);
     return `http://127.0.0.1:${service.port}`;
 }
 

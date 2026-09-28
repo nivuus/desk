@@ -57,7 +57,7 @@ export interface CanalSortant {
  * D in the list of constants no measurement has judged.
  *
  * **Why this order of magnitude, and it is a REASONING, not a measurement**:
- * `MORCEAUX_EN_VOL` (4) × `TAILLE_TRAME_MAX` (64 KiB) = 256 KiB of answers in
+ * `MORCEAUX_EN_VOL` (4) × `MAX_FRAME_SIZE` (64 KiB) = 256 KiB of answers in
  * flight at most. The threshold is set at a quarter, so that the buffer drains
  * before the window is full — otherwise backpressure would
  * **never** bite, and would be a mechanism unable to trigger.
@@ -73,7 +73,7 @@ export interface ContrePression {
      * therefore **never** end — a blockage WORSE than the one being fixed,
      * since it would freeze the page instead of slowing a transfer.
      */
-    avantEnvoi(): Promise<void>;
+    beforeSend(): Promise<void>;
 }
 
 export function contrePression(canal: CanalSortant, seuil = SEUIL_TAMPON): ContrePression {
@@ -83,7 +83,7 @@ export function contrePression(canal: CanalSortant, seuil = SEUIL_TAMPON): Contr
     // fire on the old value.
     canal.bufferedAmountLowThreshold = seuil;
     return {
-        async avantEnvoi(): Promise<void> {
+        async beforeSend(): Promise<void> {
             if (canal.readyState !== 'open') return;
             if (canal.bufferedAmount <= seuil) return;
             await new Promise<void>((resolve) => {

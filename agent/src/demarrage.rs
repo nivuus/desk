@@ -148,7 +148,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // critical ②) — same gesture as `pont.rs::executer`: a volume refusal
     // (`trop-de-requetes`) closes `offers` without an offer, this process is going
     // to die, and we honour the delay suggested by the relay BEFORE giving
-    // control back — see `signaling::honorer_retry_suggere`.
+    // control back — see `signaling::honour_suggested_retry`.
     //
     // 🔴 **DECLARED, NOT FIXED (review, fix round 2)**: THIS
     // PROCESS IS A WINDOW'S CHILD, NOT THE BRIDGE — and the sleep
@@ -163,7 +163,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // in an acceptance run; the mechanism, for its part, can be checked by cross-reading
     // `orphelines.rs` and this file.
     let Some(offer) = offers.recv().await else {
-        signaling::honorer_retry_suggere(&retry_apres_s).await;
+        signaling::honour_suggested_retry(&retry_apres_s).await;
         return Err(anyhow::anyhow!("le signaling s'est fermé avant l'offre"));
     };
     tracing::info!("offre reçue");
@@ -185,7 +185,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         match session.allouer_relais(config, DELAI_ALLOCATION) {
             Ok(()) => tracing::info!("relais TURN alloué avant la réponse SDP"),
             Err(e) => tracing::warn!(
-                erreur = %e,
+                error = %e,
                 "allocation TURN impossible : la session continue sans relais"
             ),
         }
@@ -308,16 +308,16 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 if pad.is_none() && !pad_indisponible {
                     let rx = connexion_manette.get_or_insert_with(gamepad::spawn_connect);
                     match rx.try_recv() {
-                        Ok(Ok(mut nouveau)) => {
+                        Ok(Ok(mut new)) => {
                             match gamepad::spawn_rumble(
-                                &mut nouveau,
+                                &mut new,
                                 control_tx.clone(),
                                 arret_sondes_manette.clone(),
                             ) {
                                 Ok(_) => {}
-                                Err(e) => tracing::warn!(erreur = %e, "vibrations indisponibles"),
+                                Err(e) => tracing::warn!(error = %e, "vibrations indisponibles"),
                             }
-                            pad = Some(nouveau);
+                            pad = Some(new);
                             connexion_manette = None;
                         }
                         Ok(Err(e)) => {
@@ -326,7 +326,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             // `Capabilities` for this session.
                             pad_indisponible = true;
                             connexion_manette = None;
-                            tracing::warn!(erreur = %e, "manette virtuelle indisponible");
+                            tracing::warn!(error = %e, "manette virtuelle indisponible");
                             let _ = control_tx.send(proto::control::AgentControl::capabilities(
                                 false,
                                 crate::presse_papier::actif(),
@@ -358,7 +358,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 }
                 if let Some(pad) = pad.as_mut() {
                     if let Err(e) = pad.apply(&state) {
-                        tracing::warn!(erreur = %e, "application de l'état de manette échouée");
+                        tracing::warn!(error = %e, "application de l'état de manette échouée");
                     }
                 }
                 return;
@@ -375,7 +375,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
             #[cfg(windows)]
             if let Some(injector) = injector.as_mut() {
                 if let Err(e) = injector.inject(message) {
-                    tracing::warn!(erreur = %e, "injection d'entrée échouée");
+                    tracing::warn!(error = %e, "injection d'entrée échouée");
                 }
             }
         };
@@ -396,11 +396,11 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
             // unrecoverable at the session level (see
             // `Session::begin_ending` for what is, on the contrary, treated
             // as a clean session end, via `Ok(())`).
-            tracing::error!(erreur = %e, "erreur fatale dans la boucle de transport");
+            tracing::error!(error = %e, "erreur fatale dans la boucle de transport");
             return Err(e);
         }
         Err(join_err) => {
-            tracing::error!(erreur = %join_err, "la boucle de transport a paniqué");
+            tracing::error!(error = %join_err, "la boucle de transport a paniqué");
             return Err(join_err.into());
         }
     }

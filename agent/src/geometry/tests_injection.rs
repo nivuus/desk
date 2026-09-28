@@ -80,9 +80,9 @@ fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
         height: 1080,
     };
 
-    let (avec, _) = to_virtual_desktop_visible(32768, 0, window, desktop).unwrap();
+    let (with, _) = to_virtual_desktop_visible(32768, 0, window, desktop).unwrap();
     let (sans, _) = to_virtual_desktop(32768, 0, window, desktop);
-    assert_eq!(avec, sans);
+    assert_eq!(with, sans);
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn une_fenetre_entierement_visible_est_mappee_a_l_identique() {
 }
 
 #[test]
-fn une_fenetre_hors_ecran_ne_produit_aucune_coordonnee() {
+fn an_off_screen_window_produces_no_coordinate() {
     let window = Rect {
         x: 5000,
         y: 0,
@@ -131,7 +131,7 @@ fn tient_compte_de_l_origine_de_la_fenetre() {
 }
 
 #[test]
-fn ne_touche_pas_a_une_taille_qui_tient_deja() {
+fn leaves_a_size_that_already_fits_untouched() {
     assert_eq!(borner_au_bureau(62, 0, 1550, 900, 2400, 1080), (1550, 900));
 }
 
@@ -141,7 +141,7 @@ fn borne_aussi_la_largeur() {
 }
 
 #[test]
-fn une_origine_negative_ne_produit_pas_une_taille_absurde() {
+fn a_negative_origin_does_not_produce_an_absurd_size() {
     // Window whose top-left corner is off screen: the clamping must
     // neither overflow, nor return a zero size that would make the capture fail.
     let (w, h) = borner_au_bureau(-500, -300, 800, 600, 2400, 1080);

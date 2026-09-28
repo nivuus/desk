@@ -8,7 +8,7 @@
 // `base/sous-ensemble.test.ts` : chacun couvre l'angle mort de l'autre.
 
 import { describe, expect, it } from 'vitest';
-import { BACKEND_STATIQUE, CODE_HTTP, MOTIFS, refuser, type Resultat } from './refus';
+import { BACKEND_STATIQUE, CODE_HTTP, MOTIFS, refuser, type Outcome } from './refus';
 
 describe('les motifs de refus', () => {
     it('🔴 CODE_HTTP porte EXACTEMENT les motifs de MOTIFS, ni plus ni moins', () => {
@@ -53,7 +53,7 @@ describe('les motifs de refus', () => {
         //
         // ⚠️ `it()` DISTINCT des précédents : `expect` interrompt un test à sa
         // première assertion fausse (leçon ①A/①A-bis de P2).
-        const succes: Resultat = { ok: true };
+        const succes: Outcome = { ok: true };
         expect('motif' in succes).toBe(false);
         for (const motif of MOTIFS) {
             const r = refuser(motif, 'demarrer');

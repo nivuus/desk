@@ -196,14 +196,14 @@ fn serialise_les_deux_formes_de_source_max() {
         r#""non-mesuree""#
     );
     // And the round trip, in both directions.
-    for valeur in [
+    for value in [
         SourceMax::Pixels(48),
         SourceMax::Pixels(256),
         SourceMax::NonMesuree,
     ] {
-        let json = serde_json::to_string(&valeur).expect("sér.");
+        let json = serde_json::to_string(&value).expect("sér.");
         let relu: SourceMax = serde_json::from_str(&json).expect("désér.");
-        assert_eq!(valeur, relu);
+        assert_eq!(value, relu);
     }
 }
 

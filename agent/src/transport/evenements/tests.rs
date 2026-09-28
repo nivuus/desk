@@ -38,7 +38,7 @@ mod memorisation;
 /// a packet loss detected by its decoder) is indeed relayed down to
 /// `VideoSource::request_keyframe`, without going through a mock of the
 /// `Event` trait: the local peer here is a real second str0m `Rtc`, as in
-/// `atteint_la_cadence_video_visee_avec_un_pair_local`.
+/// `reaches_the_target_video_cadence_with_a_local_peer`.
 ///
 /// Does NOT exercise the real `WindowsSource`/`H264Encoder::request_keyframe`
 /// path (`#![cfg(windows)]`, unavailable on the Linux build
@@ -175,7 +175,7 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
 /// negotiation. The fact that str0m indeed returns the LOCAL direction is
 /// established by MEASUREMENT: probe 1 (`transport::sonde_montante`) sees the
 /// receiver announce `RecvOnly` for a track offered as `SendOnly`.
-fn session_avec_pistes(pistes: &[(MediaKind, Direction)]) -> Session {
+fn session_with_tracks(pistes: &[(MediaKind, Direction)]) -> Session {
     let source = Box::new(fixtures::video_test_source());
     let mut session =
         Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
@@ -205,7 +205,7 @@ fn session_avec_pistes(pistes: &[(MediaKind, Direction)]) -> Session {
 /// and it was seen red on the code from before.
 #[test]
 fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
-    let s = session_avec_pistes(&[
+    let s = session_with_tracks(&[
         (MediaKind::Video, Direction::RecvOnly),
         (MediaKind::Audio, Direction::SendOnly),
         (MediaKind::Audio, Direction::RecvOnly),
@@ -227,7 +227,7 @@ fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
 /// the browser that offers.
 #[test]
 fn une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro() {
-    let s = session_avec_pistes(&[
+    let s = session_with_tracks(&[
         (MediaKind::Audio, Direction::RecvOnly),
         (MediaKind::Audio, Direction::SendOnly),
     ]);
@@ -240,7 +240,7 @@ fn une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro() {
 /// the microphone side would cut the downstream sound.
 #[test]
 fn une_piste_audio_sendrecv_est_une_piste_de_sortie() {
-    let s = session_avec_pistes(&[(MediaKind::Audio, Direction::SendRecv)]);
+    let s = session_with_tracks(&[(MediaKind::Audio, Direction::SendRecv)]);
     assert_eq!(s.audio_mid, Some("m0".into()));
     assert_eq!(s.mic_mid, None);
 }
@@ -249,7 +249,7 @@ fn une_piste_audio_sendrecv_est_une_piste_de_sortie() {
 /// by the peer would take the place of a live track.
 #[test]
 fn une_piste_audio_inactive_n_est_retenue_nulle_part() {
-    let s = session_avec_pistes(&[
+    let s = session_with_tracks(&[
         (MediaKind::Audio, Direction::SendOnly),
         (MediaKind::Audio, Direction::Inactive),
     ]);
@@ -267,7 +267,7 @@ available in `Event::ChannelOpen(id, label)` and simply unused —
 only `"control"` was recognised there, to store its `ChannelId`.
 
 The file bridge's dedicated `PeerConnection` (decision D4) makes this defect
-moot FOR F1: the `fichiers` channel lives in another `PeerConnection`, in
+moot FOR F1: the `files` channel lives in another `PeerConnection`, in
 another process. But it does not CLOSE it — it remains whole in
 each child's `PeerConnection`, dormant because today only `input`
 is binary there, and it is the exact trap the first person who
@@ -292,7 +292,7 @@ pays for it at each new message.
 /// identifier, `str0m::channel::ChannelId` being deliberately unconstructible
 /// outside str0m's crate.
 #[test]
-fn une_trame_arrivee_avant_tout_channel_open_est_refusee() {
+fn a_frame_arriving_before_any_channel_open_is_refused() {
     // The initial state: no channel is named yet.
     assert_eq!(destination(1u8, None, None), Destination::Ignoree);
     // The real transient: `control` opens, `input` not yet. An `input`
@@ -368,7 +368,7 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
     });
 
     let butoir = Instant::now() + Duration::from_secs(10);
-    let mut ecrit = false;
+    let mut written = false;
     // ⚠️ `Event::Connected` IS NOT ENOUGH: it marks the end of the DTLS/ICE
     // handshake, whereas the SCTP channels open AFTERWARDS. Writing at that
     // moment makes `peer_rtc.channel(...)` return `None` — which, in a
@@ -421,8 +421,8 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
                 if !ouverts.contains(&id) {
                     ouverts.push(id);
                 }
-                if !ecrit && ouverts.contains(&canal_input) && ouverts.contains(&canal_parasite) {
-                    ecrit = true;
+                if !written && ouverts.contains(&canal_input) && ouverts.contains(&canal_parasite) {
+                    written = true;
                     // The parasite FIRST: if it were to get through, it would have
                     // all the lead.
                     peer_rtc

@@ -35,8 +35,8 @@ export interface SpikeServer {
     close(): Promise<void>;
 }
 
-function estVarianteValide(valeur: unknown): valeur is number {
-    return typeof valeur === 'number' && Number.isInteger(valeur) && valeur >= 1 && valeur <= 4;
+function estVarianteValide(value: unknown): value is number {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 4;
 }
 
 // Run identifier forged by the page. The server does not interpret it — it
@@ -80,7 +80,7 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
         return touches;
     }
 
-    async function servirFichier(chemin: string, reponse: ServerResponse): Promise<void> {
+    async function serveFile(chemin: string, reponse: ServerResponse): Promise<void> {
         // `normalize` then prefix check: without it, `/../.env` would escape
         // public/. The server is exposed on the internet via Pomerium.
         const absolu = normalize(join(RACINE_PUBLIQUE, chemin));
@@ -151,7 +151,7 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
             return;
         }
 
-        await servirFichier(url.pathname === '/' ? 'index.html' : url.pathname, reponse);
+        await serveFile(url.pathname === '/' ? 'index.html' : url.pathname, reponse);
     });
 
     const wss = new WebSocketServer({ server: http, path: '/ws' });

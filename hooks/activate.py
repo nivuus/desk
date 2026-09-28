@@ -113,9 +113,9 @@ import pathlib
 import subprocess
 import sys
 
-from administration import attribuer_vm_a_utilisateur, creer_compte_admin, enroler_agent_plateforme
+from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
-from env_fichier import ajouter_variables_env, lire_env_fichier
+from env_file import add_env_variables, read_env_file
 from vm import poser_projfs, poser_vb_audio
 
 # --- What task 4 set up, and what this hook arms or completes -----------
@@ -170,7 +170,7 @@ def armer_unite(root: pathlib.Path, unite: str) -> pathlib.Path:
     return lien
 
 
-def demarrer_maintenant(unite: str) -> list:
+def start_now(unite: str) -> list:
     """`daemon-reload` then `start <unite>`. Never raises.
 
     `systemctl` is legitimately unusable in a constrained
@@ -240,7 +240,7 @@ def main() -> int:
 
     # Only on the REAL machine: see the top docstring.
     if str(root) == "/":
-        echecs = demarrer_maintenant(UNITE)
+        echecs = start_now(UNITE)
         if echecs:
             print("desk activate: unite liee mais non demarree ; l'armement "
                   "prendra effet au prochain redemarrage", file=sys.stderr)
@@ -334,14 +334,14 @@ def main() -> int:
     #      set up, `desk.env` never written or deleted since) — a problem
     #      more serious than a mere missing file, which deserves a named refusal
     #      rather than a silent fallback;
-    #   2. `ajouter_variables_env()` (below) writes through `write_text()` THEN
-    #      `chmod`, exactly the pattern `install.py::ecrire_env`
+    #   2. `add_env_variables()` (below) writes through `write_text()` THEN
+    #      `chmod`, exactly the pattern `install.py::write_env`
     #      abandoned (commit `92cacfb`, "a secret never readable between
     #      creation and chmod") for an atomic `os.open(..., 0o600)` — a
     #      NEW file would be born here with the process umask, briefly readable
     #      by anyone before the `chmod` catches up, and this file is about to
     #      receive `AGENT_SECRET`. Refusing here guarantees that
-    #      `ajouter_variables_env()` only EVER writes to a file already at
+    #      `add_env_variables()` only EVER writes to a file already at
     #      600: `write_text()` on an EXISTING file does not touch its
     #      mode, so no window opens. `tests/test_desk_activate.py`
     #      tests this refusal (dedicated scenario: `plateforme/` set up, `desk.env`
@@ -353,15 +353,15 @@ def main() -> int:
               "rien n'est cree a sa place", file=sys.stderr)
         return 1
 
-    env_deja_pose = lire_env_fichier(env_chemin)
+    env_deja_pose = read_env_file(env_chemin)
 
     # 🔴 IDEMPOTENCE: an ALREADY SUCCESSFUL activation replays neither the creation
     # of the account, nor the enrolment. `vm.nom` has NO uniqueness constraint
-    # (`plateforme/…/0001-schema.sql`: only `utilisateur.email` is
+    # (`plateforme/…/0001-schema.sql`: only `user.email` is
     # `UNIQUE`) — a second `admin:agent` on a replay would therefore create one more
     # ORPHAN VM at each call, never a refusal; and a
-    # second `admin:utilisateur` with the SAME email would fail on the
-    # `UNIQUE` constraint of `utilisateur.email`. Without this guard, a replay
+    # second `admin:user` with the SAME email would fail on the
+    # `UNIQUE` constraint of `user.email`. Without this guard, a replay
     # (retried by the engine, or relaunched by hand by an operator after a
     # first success) would therefore be either CORRUPTING (orphan VMs piling
     # up), or doomed to fail forever. Same doctrine
@@ -387,7 +387,7 @@ def main() -> int:
               "sont requis et absents", file=sys.stderr)
         return 1
 
-    # `admin:utilisateur`/`admin:agent` read their configuration (which
+    # `admin:user`/`admin:agent` read their configuration (which
     # database, which SQLite file…) from `process.env` — see
     # `plateforme/src/config.ts::lireConfig`. These are NOT the variables
     # of this Python process: they live in desk.env, written by
@@ -399,7 +399,7 @@ def main() -> int:
     env_npm.update(env_deja_pose)
 
     emettre({"event": "progress", "pct": 40, "msg": "Creation du compte administrateur"})
-    _identifiant, raison = creer_compte_admin(plateforme_dir, email, mot_de_passe, env_npm)
+    _identifiant, raison = create_admin_account(plateforme_dir, email, mot_de_passe, env_npm)
     if raison:
         print(f"desk activate: creation du compte refusee : {raison}", file=sys.stderr)
         return 1
@@ -407,13 +407,13 @@ def main() -> int:
     emettre({"event": "progress", "pct": 70, "msg": "Enrolement de l'agent"})
     nom_vm = os.environ.get("DESK_VM_NOM", NOM_VM_DEFAUT)
     adresse_vm = os.environ.get("GUEST_IP", ADRESSE_VM_DEFAUT)
-    resultat, raison = enroler_agent_plateforme(plateforme_dir, nom_vm, adresse_vm, env_npm)
+    result, raison = enroler_agent_plateforme(plateforme_dir, nom_vm, adresse_vm, env_npm)
     if raison:
         print(f"desk activate: enrolement de l'agent refuse : {raison}", file=sys.stderr)
         return 1
-    vm_id, secret = resultat
+    vm_id, secret = result
 
-    ajouter_variables_env(env_chemin, {"AGENT_VM": vm_id, "AGENT_SECRET": secret})
+    add_env_variables(env_chemin, {"AGENT_VM": vm_id, "AGENT_SECRET": secret})
 
     # 🔴 TASK 13 — A HOLE FOUND IN PRODUCTION ON AUGUST 29TH, 2026: `enroler_agent_
     # plateforme()` (hence `admin:agent`, hence `enrolerLaVm`) does
@@ -466,7 +466,7 @@ def main() -> int:
     # exactly how the real instance of August 29th, 2026 was repaired.
     emettre({"event": "progress", "pct": 90,
              "msg": "Attribution de la VM au compte administrateur"})
-    _sortie_attribution, raison = attribuer_vm_a_utilisateur(plateforme_dir, email, vm_id, env_npm)
+    _sortie_attribution, raison = assign_vm_to_user(plateforme_dir, email, vm_id, env_npm)
     if raison:
         print(f"desk activate: attribution de la VM refusee : {raison}", file=sys.stderr)
         return 1

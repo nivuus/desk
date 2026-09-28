@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TYPE_DUES, TYPE_FAIT, encoder } from '../../../proto/ts/fichiers';
 import type { Adaptateur } from './adaptateur';
-import { creerServeur } from './protocole';
+import { createServer } from './protocole';
 
 /**
  * La famille des ANNONCES du protocole fichiers, extraite de
@@ -46,7 +46,7 @@ describe('l’ANNONCE des écritures dues', () => {
         // SILENCIEUSEMENT. C'est le bras catch-all payé quatre fois sur
         // `capteur/pont_media.rs`.
         const vues: unknown[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             onDues: (dues, retenues) => vues.push({ dues, retenues }),
         });
         const reponse = await serveur.traiter(
@@ -65,7 +65,7 @@ describe('l’ANNONCE des écritures dues', () => {
      */
     it('🔴 une annonce RETENUE le dit au rappel', async () => {
         const vues: boolean[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+        const serveur = createServer(fauxAdaptateur(), () => {}, {
             onDues: (_dues, retenues) => vues.push(retenues),
         });
         await serveur.traiter(
@@ -82,7 +82,7 @@ describe('l’ANNONCE des écritures dues', () => {
     it('🔴 une annonce SANS `retenues` est refusée, pas complétée', async () => {
         const messages: string[] = [];
         const vues: unknown[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m), {
+        const serveur = createServer(fauxAdaptateur(), (m) => messages.push(m), {
             onDues: (dues) => vues.push(dues),
         });
         expect(
@@ -94,7 +94,7 @@ describe('l’ANNONCE des écritures dues', () => {
 
     it('une annonce illisible est journalisée, jamais fatale', async () => {
         const messages: string[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m), {
+        const serveur = createServer(fauxAdaptateur(), (m) => messages.push(m), {
             onDues: () => {
                 throw new Error('jamais atteint');
             },
@@ -105,7 +105,7 @@ describe('l’ANNONCE des écritures dues', () => {
 
     it('un FAIT reçu par le navigateur est IGNORÉ : il ne demande rien', async () => {
         const messages: string[] = [];
-        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m));
+        const serveur = createServer(fauxAdaptateur(), (m) => messages.push(m));
         expect(await serveur.traiter(encoder(TYPE_FAIT, 3, {}))).toBeNull();
         expect(messages.join(' ')).toMatch(/ne demande rien/);
     });

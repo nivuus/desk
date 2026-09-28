@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lireConfig } from './config';
 
-/// 42 caractères : au-dessus de `LONGUEUR_SECRET_MIN`, et jamais `''` — un
+/// 42 caractères : au-dessus de `MIN_SECRET_LENGTH`, et jamais `''` — un
 /// secret de test explicite, comme l'exige la tâche 3.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
@@ -138,13 +138,13 @@ describe('lireConfig', () => {
             PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
         expect(sans.origineClient).toBeUndefined();
-        const avec = lireConfig({
+        const withIt = lireConfig({
             PLATEFORME_HOTE: '127.0.0.1',
             PLATEFORME_SECRET_JETON: SECRET,
             PLATEFORME_ORIGINE_CLIENT: 'http://127.0.0.1:5173',
             PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
         });
-        expect(avec.origineClient).toBe('http://127.0.0.1:5173');
+        expect(withIt.origineClient).toBe('http://127.0.0.1:5173');
         // Vide vaut absente, jamais la chaîne vide : un `Origin: ` vide ne
         // correspondrait à aucune origine réelle.
         const vide = lireConfig({

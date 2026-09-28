@@ -24,7 +24,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { appliquer, lireParVm } from '../depot/application';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
 import type { Application } from '../../../proto/ts/plateforme';
 
@@ -85,7 +85,7 @@ export async function poserVm(p: Pilote, id: string): Promise<void> {
 }
 
 export async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
-    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+    const u = await createUser(p, email, 'empreinte-opaque-de-test', MS);
     await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
     return u;
 }
@@ -121,7 +121,7 @@ export async function poserApp(
         vmId,
         {
             aInserer: [app(nom, cle, icone, source)],
-            aMettreAJour: [],
+            toUpdate: [],
             aMarquerDisparues: [],
             aRessusciter: [],
         },
@@ -134,7 +134,7 @@ export function jetonDe(sujet: string, type: 'utilisateur' | 'agent' = 'utilisat
     return signer(sujet, SECRET, MS, undefined, type);
 }
 
-export function avec(
+export function withIt(
     jeton?: string,
     autres: Record<string, string> = {},
 ): Record<string, string> {

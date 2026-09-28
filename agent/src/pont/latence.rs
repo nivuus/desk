@@ -29,15 +29,15 @@
 //!
 //! The five families cover **exactly** the five budgets of
 //! [`crate::pont::table`], and that is what makes the census readable against
-//! them: `Creer` shares `DELAI_ECRIRE` with `Ecrire` (both registered
+//! them: `Create` shares `WRITE_TIMEOUT` with `Write` (both registered
 //! by `ecriture::fil`), `Muter` has `DELAI_MUTATION` to itself. Grouping by
 //! verb instead of by budget would produce a distribution no
 //! constant frames.
 //!
 //! # The structural guard, in three stages
 //!
-//! The twin of the one in [`crate::pont::erreurs`] and [`crate::pont::compteurs`]:
-//! [`NOMBRE`] forces registration in [`Famille::TOUTES`], [`nom`] is an
+//! The twin of the one in [`crate::pont::errors`] and [`crate::pont::compteurs`]:
+//! [`COUNT`] forces registration in [`Famille::ALL`], [`nom`] is an
 //! **exhaustive** `match` — a new family cannot inherit the name of another
 //! one —, and [`Famille::de`] is a second exhaustive `match` that forces
 //! classifying any [`Attendue`] variant that would appear.
@@ -53,21 +53,21 @@ pub enum Famille {
     Attributs,
     Lister,
     Lire,
-    Ecrire,
+    Write,
     Mutation,
 }
 
-/// ⚠️ **Adding one more family requires raising `NOMBRE`**, which makes
-/// the compilation of [`Famille::TOUTES`], typed `[Famille; NOMBRE]`, fail
+/// ⚠️ **Adding one more family requires raising `COUNT`**, which makes
+/// the compilation of [`Famille::ALL`], typed `[Famille; COUNT]`, fail
 /// as long as the new variant is not listed there.
-pub const NOMBRE: usize = 5;
+pub const COUNT: usize = 5;
 
 impl Famille {
-    pub const TOUTES: [Famille; NOMBRE] = [
+    pub const ALL: [Famille; COUNT] = [
         Famille::Attributs,
         Famille::Lister,
         Famille::Lire,
-        Famille::Ecrire,
+        Famille::Write,
         Famille::Mutation,
     ];
 
@@ -78,9 +78,9 @@ impl Famille {
             Attendue::Attributs { .. } => Famille::Attributs,
             Attendue::Lister { .. } => Famille::Lister,
             Attendue::Lire { .. } => Famille::Lire,
-            // ⚠️ `Creer` IS of the `Ecrire` family: both are registered
-            // by `ecriture::fil` under the same `DELAI_ECRIRE`.
-            Attendue::Ecrire { .. } | Attendue::Creer { .. } => Famille::Ecrire,
+            // ⚠️ `Create` IS of the `Write` family: both are registered
+            // by `ecriture::fil` under the same `WRITE_TIMEOUT`.
+            Attendue::Write { .. } | Attendue::Create { .. } => Famille::Write,
             Attendue::Muter { .. } => Famille::Mutation,
         }
     }
@@ -96,7 +96,7 @@ pub fn nom(f: Famille) -> &'static str {
         Famille::Attributs => "attributs",
         Famille::Lister => "lister",
         Famille::Lire => "lire",
-        Famille::Ecrire => "ecrire",
+        Famille::Write => "ecrire",
         Famille::Mutation => "mutation",
     }
 }
@@ -106,7 +106,7 @@ pub fn nom(f: Famille) -> &'static str {
 ///
 /// **Chosen to cover the five budgets** (2 s, 5 s, 15 s, 20 s, 30 s) and
 /// the bridge's RTT (1 to 3 ms measured in D1). ⚠️ **NOT CALIBRATED** — they
-/// join `TAILLE_TRAME_MAX`, `SEUIL_TAMPON`, `MORCEAUX_EN_VOL`, `BPP_MIN`
+/// join `MAX_FRAME_SIZE`, `SEUIL_TAMPON`, `MORCEAUX_EN_VOL`, `BPP_MIN`
 /// and everything this repository has never judged in use.
 pub const SEAUX_MS: [u64; 12] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 2_000, 5_000];
 
@@ -129,14 +129,14 @@ fn seau_de(duree: Duration) -> usize {
 /// Compte, somme, maximum et distribution, par famille.
 #[derive(Debug, Default)]
 pub struct Histogramme {
-    compte: [AtomicU64; NOMBRE],
-    somme_us: [AtomicU64; NOMBRE],
-    max_us: [AtomicU64; NOMBRE],
-    seaux: [[AtomicU64; SEAUX]; NOMBRE],
+    compte: [AtomicU64; COUNT],
+    somme_us: [AtomicU64; COUNT],
+    max_us: [AtomicU64; COUNT],
+    seaux: [[AtomicU64; SEAUX]; COUNT],
 }
 
 impl Histogramme {
-    pub fn nouveau() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -179,7 +179,7 @@ impl Histogramme {
         self.seaux[rang(f)][rang_seau].load(Ordering::Relaxed)
     }
 
-    /// The census line, **in the order of [`Famille::TOUTES`]**, as a
+    /// The census line, **in the order of [`Famille::ALL`]**, as a
     /// **single string** `name=value`.
     ///
     /// ⚠️ **Never as `tracing` fields**: those would carry ANSI
@@ -197,7 +197,7 @@ impl Histogramme {
     /// distribution there. Divergence E13 of the plan, declared.
     pub fn recensement(&self) -> String {
         let mut ligne = String::from("traversees");
-        for f in Famille::TOUTES {
+        for f in Famille::ALL {
             ligne.push_str(&format!(
                 " {}=n:{} moy_us:{} max_us:{}",
                 nom(f),
@@ -207,7 +207,7 @@ impl Histogramme {
             ));
         }
         ligne.push_str(" | seaux_ms");
-        for f in Famille::TOUTES {
+        for f in Famille::ALL {
             ligne.push_str(&format!(" {}=", nom(f)));
             for (i, borne) in SEAUX_MS.iter().enumerate() {
                 ligne.push_str(&format!("{}:{},", borne, self.seau(f, i)));
@@ -218,13 +218,13 @@ impl Histogramme {
     }
 }
 
-/// The rank of a family in [`Famille::TOUTES`].
+/// The rank of a family in [`Famille::ALL`].
 ///
-/// ⚠️ **Derived from `TOUTES` and not written by hand**, like
+/// ⚠️ **Derived from `ALL` and not written by hand**, like
 /// `compteurs::rang`: two truths nothing confronts would diverge
 /// silently.
 fn rang(f: Famille) -> usize {
-    Famille::TOUTES
+    Famille::ALL
         .iter()
         .position(|c| *c == f)
         .expect("toute famille figure dans TOUTES — NOMBRE l'impose")

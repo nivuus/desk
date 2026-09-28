@@ -87,21 +87,21 @@ describe('listerApplications', () => {
         const issue = await listerApplications('vm-1', deps);
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
-        expect(issue.valeur.map((a) => a.nom)).toEqual(['Bloc-notes', 'Paint']);
-        expect(issue.valeur[1].icone).toBeNull();
+        expect(issue.value.map((a) => a.nom)).toEqual(['Bloc-notes', 'Paint']);
+        expect(issue.value[1].icone).toBeNull();
         // 🔴 L'URL SIGNÉE TRAVERSE, ET UNE ENTRÉE SANS ELLE REND `null` —
         //    jamais `undefined`, jamais une URL fabriquée ici. Le hub ne doit
         //    pas avoir à distinguer « pas d'icône » de « champ absent », et il
         //    ne doit surtout pas se croire capable d'en écrire une.
-        expect(issue.valeur[0].icone_url).toBe(URL_SIGNEE);
-        expect(issue.valeur[1].icone_url).toBeNull();
-        expect(issue.valeur[0].accent).toBe(ACCENT);
-        expect(issue.valeur[0].associations).toEqual(['.txt', '.log']);
+        expect(issue.value[0].icone_url).toBe(URL_SIGNEE);
+        expect(issue.value[1].icone_url).toBeNull();
+        expect(issue.value[0].accent).toBe(ACCENT);
+        expect(issue.value[0].associations).toEqual(['.txt', '.log']);
         // ⚠️ UNE ENTRÉE SANS LES DEUX CHAMPS RETOMBE SUR DES VALEURS NEUTRES,
         //    et non sur `undefined` : le hub ne doit pas avoir à distinguer
         //    « aucune association » de « champ absent ».
-        expect(issue.valeur[1].accent).toBeNull();
-        expect(issue.valeur[1].associations).toEqual([]);
+        expect(issue.value[1].accent).toBeNull();
+        expect(issue.value[1].associations).toEqual([]);
         // 🔴 L'EN-TÊTE EST LA MOITIÉ QUI COMPTE : toute la voie V1 repose sur
         //    le fait que la page lit AUTHENTIFIÉE ce que le navigateur ne
         //    saurait pas aller chercher lui-même.
@@ -175,7 +175,7 @@ describe('lireIcone', () => {
         const issue = await lireIcone(APP, { base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
-        expect(Array.from(issue.valeur)).toEqual([0x89, 0x50, 0x4e, 0x47]);
+        expect(Array.from(issue.value)).toEqual([0x89, 0x50, 0x4e, 0x47]);
         // 🔴 L'URL EST RELAYÉE TELLE QUELLE, jamais reconstruite : le client
         // n'a pas la clé, et une URL qu'il fabriquerait serait refusée.
         expect(appels[0].url).toBe(`https://x${URL_SIGNEE}`);
@@ -235,7 +235,7 @@ describe('listerVms', () => {
         const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
-        expect(issue.valeur).toEqual([{ id: 'vm-1', nom: 'poste', etat: 'prete', prefixe: 'AAA' }]);
+        expect(issue.value).toEqual([{ id: 'vm-1', nom: 'poste', etat: 'prete', prefixe: 'AAA' }]);
         expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
     });
 
@@ -245,7 +245,7 @@ describe('listerVms', () => {
         //    hub qu'il est cassé là où il n'a rien à montrer.
         const { fetch } = faux({ 'https://x/vm': { json: async () => ({ vms: [] }) } });
         const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
-        expect(issue).toEqual({ etat: 'ok', valeur: [] });
+        expect(issue).toEqual({ etat: 'ok', value: [] });
     });
 
     it('rend le motif du service sur un refus', async () => {
@@ -280,7 +280,7 @@ describe('les deux champs de la tranche F', () => {
         const issue = await listerApplications('v', { base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
-        expect(issue.valeur[0].associations).toEqual(['.a', '.b']);
+        expect(issue.value[0].associations).toEqual(['.a', '.b']);
     });
 
     it("retombe sur `[]` quand `associations` n'est pas un tableau", async () => {
@@ -296,6 +296,6 @@ describe('les deux champs de la tranche F', () => {
         const issue = await listerApplications('v', { base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
-        expect(issue.valeur[0].associations).toEqual([]);
+        expect(issue.value[0].associations).toEqual([]);
     });
 });

@@ -52,17 +52,17 @@ export interface Resume {
 /// propagates as is: it is the arbitration of
 /// `plateforme/src/orchestration/refus.ts`, which `televersement.ts` already holds,
 /// and disguising it here would pass a failure off as a protocol decision.
-export async function deposer(fichier: File, deps: DepsTeleversement): Promise<Resume> {
-    return resumer(fichier, await televerser(fichier, deps));
+export async function deposer(file: File, deps: DepsTeleversement): Promise<Resume> {
+    return resumer(file, await televerser(file, deps));
 }
 
 /// Translating an outcome into a sentence. SEPARATED from `deposer` to be
 /// testable without setting up a complete fake `fetch`.
-export function resumer(fichier: File, issue: Issue): Resume {
+export function resumer(file: File, issue: Issue): Resume {
     if (issue.etat === 'scelle') {
         return {
             ton: 'succes',
-            texte: `${fichier.name} a été téléversé et scellé (${issue.deposees.length} tranche(s) déposée(s)).`,
+            texte: `${file.name} a été téléversé et scellé (${issue.deposees.length} tranche(s) déposée(s)).`,
             id: issue.id,
         };
     }
@@ -74,7 +74,7 @@ export function resumer(fichier: File, issue: Issue): Resume {
     // `connexion.ts` declares about `aucune-vm` and which P4 bequeathed without closing it.
     const texte =
         r.source === 'client'
-            ? `${fichier.name} n'a pas été téléversé : ${r.motif} (${r.detail}).`
-            : `${fichier.name} a été refusé par le service à l'étape « ${r.etape} » : ${r.motif}.`;
+            ? `${file.name} n'a pas été téléversé : ${r.motif} (${r.detail}).`
+            : `${file.name} a été refusé par le service à l'étape « ${r.etape} » : ${r.motif}.`;
     return { ton: 'danger', texte, id: issue.id };
 }

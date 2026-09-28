@@ -20,7 +20,7 @@ pub const NOM_TUBE: &str = r"\\.\pipe\agent-capteur";
 /// start-up key frame stays well below a megabyte. 8 MiB
 /// leave three orders of magnitude of margin while making it impossible
 /// for a corrupted length to reserve gigabytes.
-pub const TAILLE_MAX: usize = 8 * 1024 * 1024;
+pub const MAX_SIZE: usize = 8 * 1024 * 1024;
 
 pub const ETIQUETTE_JSON: u8 = 1;
 pub const ETIQUETTE_IMAGE: u8 = 2;
@@ -33,7 +33,7 @@ const EN_TETE_IMAGE: usize = 9;
 pub enum VersCapteur {
     /// A child's first message: it describes itself. There is
     /// **no direct supervisor→sensor channel**; what comes from the
-    /// supervisor (for example `taille`, below) goes through the child,
+    /// supervisor (for example `size`, below) goes through the child,
     /// which repeats it here.
     Attache {
         session: String,
@@ -45,10 +45,11 @@ pub enum VersCapteur {
         /// (`TAILLE_FENETRE`), not the output size — which may be
         /// much larger on a polluted registry. `(u32::MAX, u32::MAX)`
         /// when the child does not know it (single-window path, without a
-        /// supervisor): `taille_retenue` then brings it back to the output
+        /// supervisor): `retained_size` then brings it back to the output
         /// size, which reproduces the behaviour before this sub-block.
         /// Not consumed before task 8 — see `Fenetre::ouvrir`.
-        taille: (u32, u32),
+        #[serde(rename = "taille")]
+        size: (u32, u32),
         /// `QueryPerformanceCounter` read by the child at the very moment it creates
         /// its `clock_origin`. An `Instant` makes no sense in another
         /// process; QPC, on the other hand, is common to the whole machine. Without this
@@ -67,7 +68,8 @@ pub enum VersCapteur {
         largeur: u32,
         hauteur: u32,
     },
-    TailleEncodage {
+    #[serde(rename = "TailleEncodage")]
+    EncodeSize {
         largeur: u32,
         hauteur: u32,
     },
@@ -134,17 +136,18 @@ pub enum VersCapteur {
     /// window and comes back through the media connection. Here the caller needs to
     /// know that the write **actually happened BEFORE** injecting
     /// `Ctrl+V`: that is D6's whole ordering, and nothing else carries it. On
-    /// `DepuisCapteur::Erreur`, the child does not inject — the `V` key is
+    /// `DepuisCapteur::Error`, the child does not inject — the `V` key is
     /// **lost, not postponed**, because a `Ctrl+V` on an unchanged
     /// clipboard would paste the PREVIOUS content, without anything saying so.
     ///
     /// The text is already **normalised, bounded and denormalised** (`\r\n`) by
     /// the child when it arrives here: the owner decides nothing about its
-    /// content, it writes it. This pipe's bound (`TAILLE_MAX`, 8 MiB) is
+    /// content, it writes it. This pipe's bound (`MAX_SIZE`, 8 MiB) is
     /// therefore **not** the constraining factor — `PRESSE_PAPIER_MAX` (64 KiB)
     /// bites a hundred and twenty-eight times earlier —, and a test checks it rather than
     /// assuming it.
-    PressePapierEcrire {
+    #[serde(rename = "PressePapierEcrire")]
+    ClipboardWrite {
         texte: String,
     },
 }
@@ -159,12 +162,14 @@ pub enum DepuisCapteur {
     Refus {
         motif: String,
     },
-    Taille {
+    #[serde(rename = "Taille")]
+    Size {
         largeur: u32,
         hauteur: u32,
     },
     Fait,
-    Erreur {
+    #[serde(rename = "Erreur")]
+    Error {
         motif: String,
     },
     /// Emitted **on change only**, never periodically: it feeds
@@ -257,7 +262,7 @@ pub enum DepuisCapteur {
     /// endings.
     ///
     /// ⚠️ **It is NOT this channel that constrains the size**, and writing it here
-    /// keeps a successor from believing the opposite: `TAILLE_MAX` is **8 MiB**
+    /// keeps a successor from believing the opposite: `MAX_SIZE` is **8 MiB**
     /// (see the head of the file) while `PRESSE_PAPIER_MAX` is **64 KiB** —
     /// two orders of magnitude apart. The bound is a product decision
     /// (D4), not a transport limit.
@@ -339,43 +344,43 @@ pub enum Trame {
     Image(AccessUnit),
 }
 
-fn ecrire_trame<W: Write>(sortie: &mut W, etiquette: u8, corps: &[u8]) -> io::Result<()> {
-    let longueur = corps.len() + 1;
-    if longueur > TAILLE_MAX {
+fn write_frame<W: Write>(sortie: &mut W, etiquette: u8, corps: &[u8]) -> io::Result<()> {
+    let length = corps.len() + 1;
+    if length > MAX_SIZE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("trame de {longueur} octets au-dessus de la borne {TAILLE_MAX}"),
+            format!("trame de {length} octets au-dessus de la borne {MAX_SIZE}"),
         ));
     }
-    sortie.write_all(&(longueur as u32).to_le_bytes())?;
+    sortie.write_all(&(length as u32).to_le_bytes())?;
     sortie.write_all(&[etiquette])?;
     sortie.write_all(corps)
 }
 
-pub fn ecrire_json<W: Write, T: Serialize>(sortie: &mut W, message: &T) -> io::Result<()> {
+pub fn write_json<W: Write, T: Serialize>(sortie: &mut W, message: &T) -> io::Result<()> {
     let corps = serde_json::to_vec(message).map_err(io::Error::other)?;
-    ecrire_trame(sortie, ETIQUETTE_JSON, &corps)
+    write_frame(sortie, ETIQUETTE_JSON, &corps)
 }
 
-pub fn ecrire_image<W: Write>(sortie: &mut W, unite: &AccessUnit) -> io::Result<()> {
+pub fn write_image<W: Write>(sortie: &mut W, unite: &AccessUnit) -> io::Result<()> {
     let mut corps = Vec::with_capacity(EN_TETE_IMAGE + unite.data.len());
     corps.extend_from_slice(&unite.pts_90k.to_le_bytes());
     corps.push(u8::from(unite.is_keyframe));
     corps.extend_from_slice(&unite.data);
-    ecrire_trame(sortie, ETIQUETTE_IMAGE, &corps)
+    write_frame(sortie, ETIQUETTE_IMAGE, &corps)
 }
 
 pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
-    let mut longueur = [0u8; 4];
-    entree.read_exact(&mut longueur)?;
-    let longueur = u32::from_le_bytes(longueur) as usize;
-    if longueur == 0 || longueur > TAILLE_MAX {
+    let mut length = [0u8; 4];
+    entree.read_exact(&mut length)?;
+    let length = u32::from_le_bytes(length) as usize;
+    if length == 0 || length > MAX_SIZE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("longueur de trame aberrante : {longueur}"),
+            format!("longueur de trame aberrante : {length}"),
         ));
     }
-    let mut corps = vec![0u8; longueur];
+    let mut corps = vec![0u8; length];
     entree.read_exact(&mut corps)?;
     let etiquette = corps[0];
     let corps = &corps[1..];
@@ -408,7 +413,7 @@ pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
 // work stream: the file was at 464 lines for a cap of 500, and the
 // documentation of a `VersCapteur` variant is copious there — that
 // of `AudioMort` is twenty-seven lines on its own. The extraction precedes
-// the addition of `PressePapierEcrire`, as the repository's rule requires.
+// the addition of `ClipboardWrite`, as the repository's rule requires.
 //
 // ⚠️ This use of `#[path]` is OUTSIDE the scope of the "Child module
 // convention" of `CLAUDE.md`: same Rust mechanism, different reason — the

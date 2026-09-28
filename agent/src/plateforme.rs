@@ -113,7 +113,7 @@ pub struct Canal {
     ///     real target; `emission` and `ordres` are indeed read, by the
     ///     discovery loop;
     ///   - on the host: "fields `tache`, `emission`, and `ordres` are never
-    ///     read", because `apps::demarrer` is a stub there that returns `None`
+    ///     read", because `apps::start` is a stub there that returns `None`
     ///     without touching anything.
     ///
     /// An `allow` that became useless is an assertion that became false: this one
@@ -162,8 +162,8 @@ impl Emetteur {
     /// from a lost message has an END. Removing this complete resend would make this
     /// loss silent and permanent.
     pub fn emettre(&self, message: VersLaPlateforme) {
-        if let Err(erreur) = self.file.try_send(message) {
-            tracing::warn!(%erreur, "message montant abandonné : canal coupé ou file pleine");
+        if let Err(error) = self.file.try_send(message) {
+            tracing::warn!(%error, "message montant abandonné : canal coupé ou file pleine");
         }
     }
 }

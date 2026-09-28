@@ -28,7 +28,7 @@ export interface CibleVisibilite {
  *
  * **`envoyer` returns a boolean**: `true` if the send really took place,
  * `false` if it was abandoned (control channel not open yet, most
- * often at the very first call, made BEFORE any WebRTC connection). `dernier`
+ * often at the very first call, made BEFORE any WebRTC connection). `last`
  * is only remembered on a successful send — without this guard, a lost first
  * send would mark the current state as already announced, and as long as
  * visibility did not change afterwards, it would NEVER be re-emitted:
@@ -39,15 +39,15 @@ export function attachVisibilite(
     cible: CibleVisibilite,
     envoyer: (charge: string) => boolean,
 ): () => void {
-    let dernier: string | undefined;
+    let last: string | undefined;
 
     const annoncer = () => {
         const charge = encodeVisibility(!cible.hidden, cible.focalisee);
         // The control channel is reliable and ordered: re-emitting an unchanged
         // state brings nothing, and a browser readily emits several
         // events for a single gesture.
-        if (charge === dernier) return;
-        if (envoyer(charge)) dernier = charge;
+        if (charge === last) return;
+        if (envoyer(charge)) last = charge;
     };
 
     cible.addEventListener('visibilitychange', annoncer);

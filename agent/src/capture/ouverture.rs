@@ -7,7 +7,7 @@
 //! take the device and the target as parameters — so no access reason
 //! required keeping them in the parent file.
 //!
-//! `dupliquer_avec_reprise` joined them in task 11 bis, for the same
+//! `duplicate_with_retry` joined them in task 11 bis, for the same
 //! cap reason and with no more private access than them.
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -47,7 +47,7 @@ use super::CibleCapture;
 /// scaling, the two coincide; a caller that cannot guarantee it must
 /// treat this value as an ANNOUNCEMENT, and check against the real size
 /// once the source is built.
-pub fn taille_de_sortie(nom: &str) -> Result<(u32, u32)> {
+pub fn size_of_output(nom: &str) -> Result<(u32, u32)> {
     let factory: IDXGIFactory1 =
         unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
     // `ouvrir_sortie` already does exactly the resolution by name, with its
@@ -122,7 +122,7 @@ pub(super) fn ouvrir_sortie(
 /// line to `capture.rs`, already at exactly 500 lines (`CLAUDE.md`), and the
 /// instruction is to extract, never to compress. **Pure move: no
 /// call, no order, no value changed.**
-pub(super) fn creer_peripherique(
+pub(super) fn create_device_and_context(
     adapter: &IDXGIAdapter1,
 ) -> Result<(ID3D11Device, ID3D11DeviceContext)> {
     let mut device: Option<ID3D11Device> = None;
@@ -207,7 +207,7 @@ pub(super) fn dupliquer(
 /// **Extracted here rather than written in `capture.rs`**: that parent file is
 /// at exactly 500 lines, zero margin (`CLAUDE.md`), and this loop
 /// only wraps `dupliquer`, which already lives here.
-pub(super) fn dupliquer_avec_reprise(
+pub(super) fn duplicate_with_retry(
     device: &ID3D11Device,
     output: &IDXGIOutput1,
     cible: &CibleCapture,
@@ -235,14 +235,14 @@ pub(super) fn dupliquer_avec_reprise(
     loop {
         match dupliquer(device, output) {
             Ok(rendu) => break Ok(rendu),
-            Err(erreur) => {
+            Err(error) => {
                 // `dupliquer` returns an `anyhow::Error` built through `.context()`
                 // on a `windows::core::Error`: anyhow keeps the underlying
                 // cause and `downcast_ref` finds it again. If it ever
                 // could not be read, `retentable` would be `false` and
                 // the opening would fail without retry — safe degradation,
                 // never a loop.
-                let code = erreur
+                let code = error
                     .downcast_ref::<windows::core::Error>()
                     .map(|e| e.code().0);
                 let retentable = code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
@@ -256,7 +256,7 @@ pub(super) fn dupliquer_avec_reprise(
                         cible = ?cible,
                         "ouverture de la duplication abandonnée"
                     );
-                    break Err(erreur);
+                    break Err(error);
                 }
                 tracing::info!(
                     hresult = code.map(|c| format!("{c:#010x}")),

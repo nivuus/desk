@@ -39,10 +39,10 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 };
 
 use crate::pont::chemins;
-use crate::pont::erreurs::{Erreur, EN_COURS};
-use crate::pont::projfs::{ContexteProjFs, Etat, FluxDonnees};
+use crate::pont::errors::{Error, EN_COURS};
+use crate::pont::projfs::{ContexteProjFs, DataStream, Etat};
 use crate::pont::table::{Attendue, DELAI_ATTRIBUTS};
-use proto::fichiers::entetes;
+use proto::files::entetes;
 
 // ────────────────────────────────────────────────────────────────────────────
 // 🔵 THE ONLY ABI GUARD THIS REPOSITORY HAS, and it covers ONLY these eight
@@ -59,22 +59,22 @@ use proto::fichiers::entetes;
 // compilation, every time.
 // ────────────────────────────────────────────────────────────────────────────
 const _: PRJ_GET_PLACEHOLDER_INFO_CB = Some(info_marqueur);
-const _: PRJ_GET_FILE_DATA_CB = Some(donnees_fichier);
-const _: PRJ_QUERY_FILE_NAME_CB = Some(nom_fichier);
+const _: PRJ_GET_FILE_DATA_CB = Some(get_file_data);
+const _: PRJ_QUERY_FILE_NAME_CB = Some(query_file_name);
 const _: PRJ_CANCEL_COMMAND_CB = Some(annulation);
 
 /// Enveloppe commune : `catch_unwind`, et `E_UNEXPECTED` sur panique.
 ///
 /// **The message names the callback.** Without it, the only trace of a panic
 /// would be an `E_UNEXPECTED` returned to an application, that is, an I/O
-/// error with no readable cause — the defect `pont::erreurs` exists not to
+/// error with no readable cause — the defect `pont::errors` exists not to
 /// replay.
 pub(super) fn garde(
     rappel: &'static str,
     corps: impl FnOnce() -> HRESULT + std::panic::UnwindSafe,
 ) -> HRESULT {
     match std::panic::catch_unwind(corps) {
-        Ok(resultat) => resultat,
+        Ok(result) => result,
         Err(_) => {
             tracing::error!(
                 rappel,
@@ -90,17 +90,17 @@ pub(super) fn garde(
 ///
 /// # Safety
 ///
-/// The caller guarantees that `donnees` is the `PRJ_CALLBACK_DATA` ProjFS
+/// The caller guarantees that `data` is the `PRJ_CALLBACK_DATA` ProjFS
 /// has just provided, and that its `InstanceContext` is the pointer entrusted to
 /// `PrjStartVirtualizing` — an `Arc<Etat>` that [`super::Virtualisation`] keeps
 /// alive until after `PrjStopVirtualizing`. ProjFS guarantees that no callback
 /// runs after that call returns, that is, before the `Arc` is
 /// taken back.
-pub(super) unsafe fn etat<'a>(donnees: *const PRJ_CALLBACK_DATA) -> Option<&'a Etat> {
-    if donnees.is_null() {
+pub(super) unsafe fn etat<'a>(data: *const PRJ_CALLBACK_DATA) -> Option<&'a Etat> {
+    if data.is_null() {
         return None;
     }
-    let contexte = unsafe { (*donnees).InstanceContext } as *const Etat;
+    let contexte = unsafe { (*data).InstanceContext } as *const Etat;
     if contexte.is_null() {
         return None;
     }
@@ -116,8 +116,8 @@ pub(super) unsafe fn etat<'a>(donnees: *const PRJ_CALLBACK_DATA) -> Option<&'a E
 /// the Windows session, including hostile ones — `..` climbs, NTFS alternate
 /// streams, reserved device names. `pont::chemins` refuses them, and it is
 /// PURE, hence exercised on the host.
-pub(super) unsafe fn chemins_de(donnees: *const PRJ_CALLBACK_DATA) -> Option<(String, Vec<u16>)> {
-    let brut = unsafe { donnees.as_ref() }?.FilePathName;
+pub(super) unsafe fn chemins_de(data: *const PRJ_CALLBACK_DATA) -> Option<(String, Vec<u16>)> {
+    let brut = unsafe { data.as_ref() }?.FilePathName;
     if brut.is_null() {
         // The root itself: empty path on both sides.
         return Some((String::new(), vec![0u16]));
@@ -150,13 +150,13 @@ pub(super) unsafe fn identifiant(guid: *const GUID) -> Option<[u8; 16]> {
 /// Returns the metadata of an entry.
 ///
 /// ❌ *Announced `ERROR_FILE_NOT_FOUND`: task 13's state, refuted by 14.*
-unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
+unsafe extern "system" fn info_marqueur(data: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("GetPlaceholderInfo", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else {
+        let Some(etat) = (unsafe { etat(data) }) else {
             return E_UNEXPECTED;
         };
-        let Some((chemin, chemin_projfs)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
+        let Some((chemin, chemin_projfs)) = (unsafe { chemins_de(data) }) else {
+            return HRESULT(etat.compteurs.rendre(Error::CheminIntrouvable));
         };
         let entete = match serde_json::to_string(&entetes::Chemin {
             chemin: chemin.clone(),
@@ -165,17 +165,17 @@ unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HR
             Err(_) => return E_UNEXPECTED,
         };
         let demandee = etat.demander(
-            unsafe { (*donnees).CommandId },
+            unsafe { (*data).CommandId },
             Attendue::Attributs { chemin },
             std::time::Instant::now() + DELAI_ATTRIBUTS,
             ContexteProjFs::Attributs { chemin_projfs },
-            proto::fichiers::TYPE_ATTRIBUTS,
+            proto::files::TYPE_ATTRIBUTS,
             &entete,
         );
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Error::CanalFerme))
         }
     })
 }
@@ -183,17 +183,17 @@ unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HR
 /// Returns the content of a file.
 ///
 /// ❌ *Announced `ERROR_FILE_NOT_FOUND`: task 13's state, refuted by 14.*
-unsafe extern "system" fn donnees_fichier(
-    donnees: *const PRJ_CALLBACK_DATA,
+unsafe extern "system" fn get_file_data(
+    data: *const PRJ_CALLBACK_DATA,
     position: u64,
-    longueur: u32,
+    length: u32,
 ) -> HRESULT {
     garde("GetFileData", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else {
+        let Some(etat) = (unsafe { etat(data) }) else {
             return E_UNEXPECTED;
         };
-        let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
+        let Some((chemin, _)) = (unsafe { chemins_de(data) }) else {
+            return HRESULT(etat.compteurs.rendre(Error::CheminIntrouvable));
         };
         // ⚠️ **The whole file NEVER enters memory**: the range is
         // split by `pont::decoupe`, PURE and tested.
@@ -207,11 +207,11 @@ unsafe extern "system" fn donnees_fichier(
         // spec §7.3 could NEVER bite.)*
         let morceaux: std::collections::VecDeque<_> = crate::pont::decoupe::decouper(
             position,
-            u64::from(longueur),
-            proto::fichiers::TAILLE_TRAME_MAX,
+            u64::from(length),
+            proto::files::MAX_FRAME_SIZE,
         )
         .into();
-        let mut fenetre = crate::pont::lecture::Fenetre::nouvelle(morceaux);
+        let mut fenetre = crate::pont::lecture::Fenetre::new(morceaux);
         let lot = fenetre.a_demander();
         if lot.is_empty() {
             // Zero length: nothing to write, and nothing to request. Complete
@@ -219,8 +219,8 @@ unsafe extern "system" fn donnees_fichier(
             // never get a response.
             return S_OK;
         }
-        let flux = unsafe { (*donnees).DataStreamId };
-        let commande = unsafe { (*donnees).CommandId };
+        let flux = unsafe { (*data).DataStreamId };
+        let commande = unsafe { (*data).CommandId };
         // 🔴 **A SINGLE WINDOW, SHARED BY THE *N* CORRELATIONS.** Cloning
         // it would make each response see its own copy and
         // request the same chunks again — the file would be written *N* times,
@@ -235,7 +235,7 @@ unsafe extern "system" fn donnees_fichier(
             let entete = match serde_json::to_string(&entetes::Lire {
                 chemin: chemin.clone(),
                 position: morceau.position,
-                longueur: morceau.longueur,
+                length: morceau.length,
             }) {
                 Ok(entete) => entete,
                 Err(_) => return E_UNEXPECTED,
@@ -245,14 +245,14 @@ unsafe extern "system" fn donnees_fichier(
                 Attendue::Lire {
                     chemin: chemin.clone(),
                     position: morceau.position,
-                    longueur: morceau.longueur,
+                    length: morceau.length,
                 },
                 std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
                 ContexteProjFs::Lecture {
-                    flux: FluxDonnees(flux),
+                    flux: DataStream(flux),
                     fenetre: std::sync::Arc::clone(&fenetre),
                 },
-                proto::fichiers::TYPE_LIRE,
+                proto::files::TYPE_LIRE,
                 &entete,
             );
             if !demandee {
@@ -263,7 +263,7 @@ unsafe extern "system" fn donnees_fichier(
         if au_moins_une {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Error::CanalFerme))
         }
     })
 }
@@ -273,13 +273,13 @@ unsafe extern "system" fn donnees_fichier(
 /// manifests) — hence the negative cache armed at startup.
 ///
 /// ❌ *Announced `ERROR_FILE_NOT_FOUND`: task 13's state, refuted by 14.*
-unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
+unsafe extern "system" fn query_file_name(data: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("QueryFileName", || {
-        let Some(etat) = (unsafe { etat(donnees) }) else {
+        let Some(etat) = (unsafe { etat(data) }) else {
             return E_UNEXPECTED;
         };
-        let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
+        let Some((chemin, _)) = (unsafe { chemins_de(data) }) else {
+            return HRESULT(etat.compteurs.rendre(Error::CheminIntrouvable));
         };
         let entete = match serde_json::to_string(&entetes::Chemin {
             chemin: chemin.clone(),
@@ -295,17 +295,17 @@ unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRES
         // `folder.jpg`, application manifests — from each becoming a
         // browser round trip (spec §7.4).
         let demandee = etat.demander(
-            unsafe { (*donnees).CommandId },
+            unsafe { (*data).CommandId },
             Attendue::Attributs { chemin },
             std::time::Instant::now() + DELAI_ATTRIBUTS,
             ContexteProjFs::Existence,
-            proto::fichiers::TYPE_ATTRIBUTS,
+            proto::files::TYPE_ATTRIBUTS,
             &entete,
         );
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Error::CanalFerme))
         }
     })
 }
@@ -317,16 +317,16 @@ unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRES
 /// application abandoning its I/O would leave us an orphan command
 /// in the table, and its late response would be applied to a buffer the
 /// system has taken back.
-unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
+unsafe extern "system" fn annulation(data: *const PRJ_CALLBACK_DATA) {
     // This callback returns NOTHING (`PRJ_CANCEL_COMMAND_CB`), so `garde` — which returns
     // an `HRESULT` — does not apply as is. The `catch_unwind` is written by
     // hand: it is the same requirement, and forgetting it here would be exactly
     // as fatal.
     let issue = std::panic::catch_unwind(|| {
-        let Some(etat) = (unsafe { etat(donnees) }) else {
+        let Some(etat) = (unsafe { etat(data) }) else {
             return;
         };
-        let commande = unsafe { (*donnees).CommandId };
+        let commande = unsafe { (*data).CommandId };
         // 🔴 **ALL THE CORRELATIONS, and it is F3's read window
         // that requires it**: a read can have up to
         // `pont::lecture::MORCEAUX_EN_VOL` in flight. Letting one survive
@@ -371,8 +371,8 @@ pub(super) fn bloc() -> windows::Win32::Storage::ProjectedFileSystem::PRJ_CALLBA
         EndDirectoryEnumerationCallback: Some(listage::fin_enumeration),
         GetDirectoryEnumerationCallback: Some(listage::suite_enumeration),
         GetPlaceholderInfoCallback: Some(info_marqueur),
-        GetFileDataCallback: Some(donnees_fichier),
-        QueryFileNameCallback: Some(nom_fichier),
+        GetFileDataCallback: Some(get_file_data),
+        QueryFileNameCallback: Some(query_file_name),
         NotificationCallback: Some(notification::notification),
         CancelCommandCallback: Some(annulation),
     }

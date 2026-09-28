@@ -12,7 +12,7 @@
 //! the bytes are pushed to the local workstation **after the fact**.
 //!
 //! ⚠️ **What remains refused, and it is named**: `PRE_RENAME` and `PRE_DELETE`,
-//! because `Renommer` and `Supprimer` are deliverables of **F3**. An
+//! because `Renommer` and `Delete` are deliverables of **F3**. An
 //! application using the *write-temporary / rename / delete* idiom
 //! will therefore fail **loudly at the renaming**, rather than succeed on the VM
 //! while leaving the local workstation on the old content. **Accepting the renaming
@@ -49,7 +49,7 @@
 //!
 //! # The values are COPIED, with their source line
 //!
-//! Same doctrine as [`crate::pont::erreurs`]: importing the constants of
+//! Same doctrine as [`crate::pont::errors`]: importing the constants of
 //! `windows::Win32::Storage::ProjectedFileSystem` would gate this module behind
 //! `#[cfg(windows)]` and make it lose its host testability, which is its whole
 //! point. Each constant therefore carries the line number of its source,
@@ -63,7 +63,7 @@
 //! the same numeric values here, but they are two distinct types in
 //! windows-rs, and nothing guarantees they will stay aligned.
 
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 
 // What the callback RECEIVES — `PRJ_NOTIFICATION`, `i32`.
 pub const PRE_CONVERT_TO_FULL: i32 = 4096; // mod.rs:340
@@ -132,7 +132,7 @@ pub const NOTIFY_FILE_HANDLE_CLOSED_FILE_DELETED: u32 = 2048; // mod.rs:380
 /// ⚠️ **Requesting LESS would lose writes; requesting MORE would make
 /// a notification arrive without a decision.** Both are pinned by
 /// `le_masque_demande_exactement_les_sept_notifications_de_f2` and
-/// `chaque_bit_du_masque_a_une_decision_nommee`.
+/// `each_mask_bit_has_a_named_decision`.
 pub const MASQUE: u32 = NOTIFY_FILE_PRE_CONVERT_TO_FULL
     | NOTIFY_PRE_RENAME
     | NOTIFY_PRE_DELETE
@@ -216,7 +216,7 @@ pub enum Cible {
     /// `PRE_RENAME`.
     SansObjet,
     /// The destination is acceptable: in the root, and normalised.
-    DansLaRacine,
+    InRoot,
     /// The destination leaves the root, or `chemins::normaliser` refused it.
     HorsRacine,
 }
@@ -225,14 +225,14 @@ pub enum Cible {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reponse {
     /// Refuse, with the cause. The callback returns `hresult(cause)`.
-    Refuser(Erreur),
+    Refuser(Error),
     /// **Allow a write.** It is this module's ONLY explicit acceptance,
     /// and the only line of F2 that changes what an application gets.
     ///
     /// 🔴 **IT IS DISTINCT FROM THE CATCH-ALL, AND IT IS NOT A LUXURY.** F2's
     /// plan prescribed `AccepterSansAttendre` for this case; that would have
     /// made a bit **REQUESTED by the mask** fall back into the catch-all arm,
-    /// hence made `chaque_bit_du_masque_a_une_decision_nommee` fail — this
+    /// hence made `each_mask_bit_has_a_named_decision` fail — this
     /// module's exhaustiveness guard. The obvious remedy would have been
     /// to exclude `PRE_CONVERT_TO_FULL` from the sweep, which would have **emptied the
     /// guard** instead of satisfying it. *A plan does not immunise against the
@@ -258,7 +258,7 @@ pub enum Reponse {
 ///
 /// The `match` is **not** exhaustive in the compiler's sense — `PRJ_NOTIFICATION`
 /// is an integer, not a Rust enum —, hence the test guard
-/// `chaque_bit_du_masque_a_une_decision_nommee`, which sweeps the 32 bits and
+/// `each_mask_bit_has_a_named_decision`, which sweeps the 32 bits and
 /// checks that no REQUESTED bit falls back into the catch-all arm.
 pub fn decider(code: i32, etat: Etat, cible: Cible) -> Reponse {
     match code {
@@ -271,13 +271,13 @@ pub fn decider(code: i32, etat: Etat, cible: Cible) -> Reponse {
         // `ERROR_IO_DEVICE`. Making them share a code would make
         // "this share is read-only" and "the tab is
         // closed" indistinguishable — two situations that do not call for the same gesture.
-        PRE_CONVERT_TO_FULL if !etat.inscriptible => Reponse::Refuser(Erreur::ProtegeEnEcriture),
-        PRE_CONVERT_TO_FULL if !etat.canal_ouvert => Reponse::Refuser(Erreur::CanalFerme),
+        PRE_CONVERT_TO_FULL if !etat.inscriptible => Reponse::Refuser(Error::ProtegeEnEcriture),
+        PRE_CONVERT_TO_FULL if !etat.canal_ouvert => Reponse::Refuser(Error::CanalFerme),
         PRE_CONVERT_TO_FULL => Reponse::Autoriser,
         // ❌ **THESE TWO WERE NOT REFUSED BECAUSE THEY HAD TO BE,
         // BUT BECAUSE F3 DID NOT EXIST YET.** *(This arm said:
         // "REFUSED UNCONDITIONALLY, AND IT IS DELIBERATE. `Renommer` and
-        // `Supprimer` are deliverables of F3: accepting them without being able to
+        // `Delete` are deliverables of F3: accepting them without being able to
         // push them would leave the local workstation on the old content." The reason
         // was right, and it stopped being so: F3 knows how to push them.)*
         //
@@ -291,26 +291,24 @@ pub fn decider(code: i32, etat: Etat, cible: Cible) -> Reponse {
         // already read-only, which does not happen — but leaving it to chance
         // would make the module's two refusal gates diverge.
         PRE_RENAME | PRE_DELETE if !etat.mutations_armees => {
-            Reponse::Refuser(Erreur::ProtegeEnEcriture)
+            Reponse::Refuser(Error::ProtegeEnEcriture)
         }
-        PRE_RENAME | PRE_DELETE if !etat.inscriptible => {
-            Reponse::Refuser(Erreur::ProtegeEnEcriture)
-        }
-        PRE_RENAME | PRE_DELETE if !etat.canal_ouvert => Reponse::Refuser(Erreur::CanalFerme),
+        PRE_RENAME | PRE_DELETE if !etat.inscriptible => Reponse::Refuser(Error::ProtegeEnEcriture),
+        PRE_RENAME | PRE_DELETE if !etat.canal_ouvert => Reponse::Refuser(Error::CanalFerme),
         // ⚠️ **`NonSupporte` AND NOT `ProtegeEnEcriture`**: leaving the root
         // is not a rights refusal, it is an operation the other end cannot
         // do — it has no handle outside the directory the
         // user chose. Making them share a code would violate §5.1
         // of the spec, and would send one looking for a permission where there is none.
-        PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Erreur::NonSupporte),
+        PRE_RENAME if cible == Cible::HorsRacine => Reponse::Refuser(Error::NonSupporte),
         PRE_RENAME | PRE_DELETE => Reponse::Autoriser,
         // Hard links have no equivalent in the File System Access
         // API: it is not a read-only refusal, it is an operation that
         // does not exist on the other side (spec §3.5.2). The distinction is
         // visible on the application side AND in the log — it is the whole purpose of
-        // `pont::erreurs`, whose counter-example is the old bridge, which
+        // `pont::errors`, whose counter-example is the old bridge, which
         // returned `EPERM` at nine distinct sites.
-        PRE_SET_HARDLINK | HARDLINK_CREATED => Reponse::Refuser(Erreur::NonSupporte),
+        PRE_SET_HARDLINK | HARDLINK_CREATED => Reponse::Refuser(Error::NonSupporte),
         // ⚠️ **POST: it cannot be refused** — but F2 PUSHES it, which
         // closes the divergence F1 declared its own ("a file created from
         // scratch lives on the VM and is NEVER pushed").

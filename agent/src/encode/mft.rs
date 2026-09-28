@@ -87,7 +87,7 @@ pub struct EncodeurMft {
     telemetry: Arc<EncoderTelemetry>,
     /// Serialised work queue imposed on the encoder MFT, and barrier of its
     /// putting at rest (see `arret::FileMft`; the converter has none, and
-    /// `arret::mettre_au_repos` says why).
+    /// `arret::put_to_rest` says why).
     ///
     /// **Declared last on purpose**: fields are destroyed in
     /// declaration order, after `Drop for EncodeurMft` has run.
@@ -103,7 +103,7 @@ impl EncodeurMft {
         fps: u32,
         bitrate: u32,
     ) -> Result<Self> {
-        demarrer_media_foundation()?;
+        start_media_foundation()?;
 
         // Allocated HERE, before any MFT: locals are destroyed in
         // REVERSE declaration order, so this one is destroyed last if a
@@ -283,11 +283,11 @@ impl Drop for EncodeurMft {
         // Putting at rest BEFORE releasing the COM references: nothing
         // ever asked the hardware MFT to stop its asynchronous
         // processing, and that is the race task 2bis noted. See
-        // `arret::mettre_au_repos` for the detail and the survey that motivates it.
-        arret::mettre_au_repos(&self.converter, &self.transform, &self.file_encodeur);
+        // `arret::put_to_rest` for the detail and the survey that motivates it.
+        arret::put_to_rest(&self.converter, &self.transform, &self.file_encodeur);
 
         // `MFShutdown` is called nowhere, and it is deliberate: see
-        // `demarrer_media_foundation`. The line below is INERT (borrow
+        // `start_media_foundation`. The line below is INERT (borrow
         // immediately thrown away, zero machine code): to be removed outside the measurement branch.
         let _ = &self.device_manager;
     }

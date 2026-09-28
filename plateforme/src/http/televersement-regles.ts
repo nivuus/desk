@@ -13,7 +13,7 @@
 // `node:` — the property that makes it testable without standing up a server.
 
 export type Cible =
-    | { quoi: 'creer' }
+    | { quoi: 'create' }
     | { quoi: 'etat'; id: string }
     | { quoi: 'tranche'; id: string; rang: string }
     | { quoi: 'sceller'; id: string };
@@ -35,7 +35,7 @@ export function reconnaitre(chemin: string): Cible | undefined {
     const s = chemin.split('/');
     if (s[1] !== 'televersement') return undefined;
     // ['', 'televersement'] — exactement deux.
-    if (s.length === 2) return { quoi: 'creer' };
+    if (s.length === 2) return { quoi: 'create' };
     // Three: `/televersement/` has three as well, but its identifier is
     // empty — that is one slash too many, not a path.
     if (s.length === 3) return s[2] === '' ? undefined : { quoi: 'etat', id: s[2] };
@@ -52,7 +52,7 @@ export function reconnaitre(chemin: string): Cible | undefined {
 /// ⚠️ A table rather than four `if`s: the mapping is exhaustive BY
 /// TYPING, so that a fifth target would not compile without its method.
 export const METHODE: Readonly<Record<Cible['quoi'], string>> = Object.freeze({
-    creer: 'POST',
+    create: 'POST',
     etat: 'GET',
     tranche: 'PUT',
     sceller: 'POST',

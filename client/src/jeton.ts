@@ -35,7 +35,7 @@
 
 export interface Coffre {
     getItem(cle: string): string | null;
-    setItem(cle: string, valeur: string): void;
+    setItem(cle: string, value: string): void;
     removeItem(cle: string): void;
 }
 
@@ -62,7 +62,7 @@ export function poser(coffre: Coffre, paire: Paire): void {
 
 /// Erases BOTH keys. Erasing only one would leave a usable refresh
 /// behind a sign-out.
-export function vider(coffre: Coffre): void {
+export function drain(coffre: Coffre): void {
     coffre.removeItem(CLE_ACCES);
     coffre.removeItem(CLE_RAFRAICHISSEMENT);
 }
@@ -252,7 +252,7 @@ export const MARGE_FRAICHEUR_MS = 30_000;
 ///   ④ `undefined`, **vault emptied**: up to the caller to send back to the sign-in
 ///      screen.
 ///
-/// 🔴 **IT VERIFIES NO SIGNATURE**, and `expireAvant` already says so: the
+/// 🔴 **IT VERIFIES NO SIGNATURE**, and `expiresBefore` already says so: the
 /// browser does not have the secret. What is avoided here is a useless round trip
 /// and an unexplained failure, never an authorisation decision —
 /// that stays with the service, on each handshake.
@@ -296,7 +296,7 @@ export function jetonRafraichissement(
 ///
 /// An UNREADABLE token is deemed stale: holding it valid would make
 /// the session fail later, elsewhere, on a refusal nothing would link back here.
-export function expireAvant(jeton: string, instant: number): boolean {
+export function expiresBefore(jeton: string, instant: number): boolean {
     const morceaux = jeton.split('.');
     if (morceaux.length !== 3) return true;
     try {
@@ -343,7 +343,7 @@ function decoderBase64url(segment: string): string {
 /// exception here had never had the opportunity to show. A network
 /// failure (offline, DNS, CORS) is therefore handled exactly like a refusal
 /// (`!neuve`): the vault is emptied, the caller falls back to Pomerium rather
-/// than seeing the exception propagate unhandled up to a `void demarrer()`
+/// than seeing the exception propagate unhandled up to a `void start()`
 /// or a `.then()` without `.catch`.
 export async function rafraichirSiNecessaire(
     coffre: Coffre,
@@ -352,13 +352,13 @@ export async function rafraichirSiNecessaire(
     appel: (corps: unknown) => Promise<{ acces: string; rafraichissement: string } | undefined>,
 ): Promise<boolean> {
     const acces = jetonAcces(coffre);
-    if (acces !== undefined && !expireAvant(acces, maintenant + margeMs)) return true;
+    if (acces !== undefined && !expiresBefore(acces, maintenant + margeMs)) return true;
 
     const rafraichissement = jetonRafraichissement(coffre);
     if (rafraichissement === undefined) {
         // Nothing to present: we erase what remains rather than leave a
         // stale access the handshake would refuse.
-        vider(coffre);
+        drain(coffre);
         return false;
     }
 
@@ -369,7 +369,7 @@ export async function rafraichirSiNecessaire(
         neuve = undefined;
     }
     if (!neuve) {
-        vider(coffre);
+        drain(coffre);
         return false;
     }
     poser(coffre, neuve);

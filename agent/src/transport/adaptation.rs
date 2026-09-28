@@ -61,7 +61,7 @@ impl Session {
         congestion::Decision {
             encode_size: self.encode_size_appliquee,
             video_bitrate_bps: self.bitrate_applique,
-            ..self.congestion.courant()
+            ..self.congestion.current()
         }
     }
 
@@ -96,11 +96,11 @@ impl Session {
                 // single line, not one per second.
                 if !self.refus_debit_signale {
                     self.refus_debit_signale = true;
-                    tracing::warn!(erreur = %e, "l'encodeur refuse le réglage du débit à chaud");
+                    tracing::warn!(error = %e, "l'encodeur refuse le réglage du débit à chaud");
                 }
             }
         }
-        // **`taille_refus_signalee` is a GUARD, not a mere log
+        // **`reported_refused_size` is a GUARD, not a mere log
         // witness** (I1, final branch review of sub-block D4).
         //
         // After a refusal, `encode_size_appliquee` does not advance: the condition
@@ -120,7 +120,7 @@ impl Session {
         // (`redimensionnement.rs`) — are what make a target
         // submittable again: in both cases the encoded size changed under
         // it, and the previous refusal no longer prejudges anything.
-        let deja_refusee = self.taille_refus_signalee == Some(decision.encode_size);
+        let deja_refusee = self.reported_refused_size == Some(decision.encode_size);
         if decision.encode_size != self.encode_size_appliquee && !deja_refusee {
             match self
                 .source
@@ -147,16 +147,16 @@ impl Session {
                     self.encode_size_appliquee = decision.encode_size;
                     // A later refusal of this same size (or of
                     // another) will become new information again.
-                    self.taille_refus_signalee = None;
+                    self.reported_refused_size = None;
                 }
                 Err(e) => {
                     // We stay at the current rung. The session lives. The guard
                     // above ensures this point is only reached for a
                     // target that has NOT ALREADY been refused: a single log
                     // line per target, and a single attempt per target.
-                    self.taille_refus_signalee = Some(decision.encode_size);
+                    self.reported_refused_size = Some(decision.encode_size);
                     tracing::warn!(
-                        erreur = %e,
+                        error = %e,
                         largeur = decision.encode_size.0,
                         hauteur = decision.encode_size.1,
                         "changement de taille d'encodage refusé, barreau conservé"
@@ -166,7 +166,7 @@ impl Session {
         }
         if let Some(audio) = self.audio_source.as_mut() {
             if let Err(e) = audio.set_packet_loss_perc(decision.opus_loss_perc) {
-                tracing::warn!(erreur = %e, "réglage du taux de perte Opus refusé");
+                tracing::warn!(error = %e, "réglage du taux de perte Opus refusé");
             }
         }
         // We announce `decision_courante()`, not `decision`: `bitrate` and
@@ -176,7 +176,7 @@ impl Session {
         // controller — an encoder refusal would otherwise pass to the
         // browser exactly the lie `decision_courante()`
         // exists to avoid (see its documentation and the test
-        // `un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante`).
+        // `a_repeated_set_encode_size_refusal_does_not_surface_in_current_decision`).
         let etat_lien = self.decision_courante();
         self.queue_control(AgentControl::link(
             etat_lien.video_bitrate_bps,
@@ -249,7 +249,7 @@ mod tests {
             &mut |_| {},
         );
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Active
         );
         assert!(!session.absence_bwe_signalee);
@@ -277,7 +277,7 @@ mod tests {
         );
 
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Indisponible,
             "l'expiration de l'estimation doit faire basculer l'adaptation, pas la laisser à Active"
         );
@@ -323,7 +323,7 @@ mod tests {
             &mut |_| {},
         );
         assert_eq!(
-            session.congestion.courant().adaptation,
+            session.congestion.current().adaptation,
             congestion::Adaptation::Active
         );
         assert!(
@@ -333,7 +333,7 @@ mod tests {
     }
 
     /// Encoding sizes actually SUBMITTED to the source, in order.
-    type TaillesSoumises = std::sync::Arc<std::sync::Mutex<Vec<(u32, u32)>>>;
+    type SubmittedSizes = std::sync::Arc<std::sync::Mutex<Vec<(u32, u32)>>>;
 
     /// A session whose source refuses ANY encoding size, and records
     /// those that were submitted to it.
@@ -341,10 +341,10 @@ mod tests {
     /// Recording the submissions and not only their number: it is what
     /// lets us distinguish "a refused target is no longer resubmitted" from "a
     /// different target is always tried".
-    fn session_refusant_les_tailles() -> (Session, TaillesSoumises) {
+    fn session_refusing_sizes() -> (Session, SubmittedSizes) {
         struct SourceRefusant {
             inner: crate::source::FileSource,
-            soumises: TaillesSoumises,
+            soumises: SubmittedSizes,
         }
 
         impl VideoSource for SourceRefusant {
@@ -363,7 +363,7 @@ mod tests {
         let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
         let source_path =
             std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
-        let soumises: TaillesSoumises = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let soumises: SubmittedSizes = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let source = Box::new(SourceRefusant {
             inner: crate::source::FileSource::from_path(source_path, 1280, 720, 60)
                 .expect("chargement du flux de test"),
@@ -405,10 +405,10 @@ mod tests {
     /// each decision — one per second and per window, indefinitely.
     #[test]
     fn une_cible_deja_refusee_n_est_plus_soumise_a_la_source() {
-        let (mut session, soumises) = session_refusant_les_tailles();
-        let taille_originale = session.encode_size_appliquee;
+        let (mut session, soumises) = session_refusing_sizes();
+        let original_size = session.encode_size_appliquee;
         let refusee = (640, 360);
-        assert_ne!(refusee, taille_originale, "précondition du test");
+        assert_ne!(refusee, original_size, "précondition du test");
 
         // Five identical decisions, as the controller would produce for five
         // seconds under sustained congestion.
@@ -435,47 +435,47 @@ mod tests {
         // the memory follows the last one, it does not accumulate.
         appliquer(&mut session, decision_vers(autre));
         assert_eq!(*soumises.lock().unwrap(), vec![refusee, autre]);
-        assert_eq!(session.taille_refus_signalee, Some(autre));
+        assert_eq!(session.reported_refused_size, Some(autre));
         assert_eq!(
             session.decision_courante().encode_size,
-            taille_originale,
+            original_size,
             "aucun de ces refus ne doit se refléter dans la décision annoncée"
         );
     }
 
     #[test]
-    fn un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante() {
+    fn a_repeated_set_encode_size_refusal_does_not_surface_in_current_decision() {
         // Fix round (post-task 9 review): `Controleur::observer`
-        // stays optimistic by construction — it updates `courant.encode_size`
+        // stays optimistic by construction — it updates `current.encode_size`
         // whether or not the encoder accepts the change. Without the distinction
         // this test checks, `decision_courante()` would announce to the
         // browser (link state message, task 10) a size the
         // video track never emits.
         //
         // This test also covers deduplication of the log on the refusal side
-        // (`taille_refus_signalee`): three identical decisions in a row,
+        // (`reported_refused_size`): three identical decisions in a row,
         // as the controller would do once per second under
         // sustained congestion, must neither grow nor change this
         // memory beyond its first write — counting the log lines
         // themselves is not practicable in this harness (no
         // `tracing` capture exists in this module).
-        let (mut session, _soumises) = session_refusant_les_tailles();
-        let taille_originale = session.encode_size_appliquee;
-        let taille_visee = (640, 360);
-        assert_ne!(taille_visee, taille_originale, "précondition du test");
+        let (mut session, _soumises) = session_refusing_sizes();
+        let original_size = session.encode_size_appliquee;
+        let target_size = (640, 360);
+        assert_ne!(target_size, original_size, "précondition du test");
 
         // Three successive decisions, as the controller would do once
         // per second under sustained congestion: the same size
         // refused at every round.
         for _ in 0..3 {
-            appliquer(&mut session, decision_vers(taille_visee));
+            appliquer(&mut session, decision_vers(target_size));
         }
 
         // Finding 2: `decision_courante()` must keep reporting
         // the OLD size, the one actually emitted — not the refused one.
         assert_eq!(
             session.decision_courante().encode_size,
-            taille_originale,
+            original_size,
             "un refus de l'encodeur ne doit jamais se refléter dans la décision annoncée"
         );
 
@@ -483,8 +483,8 @@ mod tests {
         // target, stable over the three identical rounds — it is what
         // prevents repeating the log at each decision.
         assert_eq!(
-            session.taille_refus_signalee,
-            Some(taille_visee),
+            session.reported_refused_size,
+            Some(target_size),
             "la cible refusée doit être mémorisée pour éviter de rejournaliser à chaque tour"
         );
     }

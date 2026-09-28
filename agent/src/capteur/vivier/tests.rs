@@ -7,7 +7,7 @@ fn t0() -> Instant {
 /// A pool of 2 places, without hysteresis, so that the eviction tests
 /// do not have to age time.
 fn petit() -> Vivier {
-    Vivier::nouveau(2, Duration::ZERO)
+    Vivier::new(2, Duration::ZERO)
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn une_fenetre_visible_est_reveillee_quand_il_reste_de_la_place() {
 }
 
 #[test]
-fn une_fenetre_masquee_s_endort_avec_la_raison_masquee() {
+fn a_hidden_window_falls_asleep_with_the_hidden_reason() {
     let mut v = petit();
     let t = t0();
     v.inscrire("a", t);
@@ -100,7 +100,7 @@ fn un_focus_rafraichit_la_recence_et_protege_de_l_eviction() {
 
 #[test]
 fn l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee() {
-    let mut v = Vivier::nouveau(1, Duration::from_secs(2));
+    let mut v = Vivier::new(1, Duration::from_secs(2));
     let t = t0();
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
@@ -119,7 +119,7 @@ fn l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee() {
 
 #[test]
 fn passee_l_hysteresis_la_rearbitration_periodique_debloque_le_reveil() {
-    let mut v = Vivier::nouveau(1, Duration::from_secs(2));
+    let mut v = Vivier::new(1, Duration::from_secs(2));
     let t = t0();
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
@@ -134,10 +134,10 @@ fn passee_l_hysteresis_la_rearbitration_periodique_debloque_le_reveil() {
 }
 
 #[test]
-fn une_fenetre_masquee_s_endort_meme_sous_l_hysteresis() {
+fn a_hidden_window_falls_asleep_even_under_the_hysteresis() {
     // Hiding is an EXPLICIT gesture of the user: hysteresis
     // protects against eviction flapping, never against a will.
-    let mut v = Vivier::nouveau(2, Duration::from_secs(10));
+    let mut v = Vivier::new(2, Duration::from_secs(10));
     let t = t0();
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
@@ -186,7 +186,7 @@ fn un_ordre_n_est_jamais_emis_deux_fois_pour_le_meme_etat() {
 }
 
 #[test]
-fn un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_suivant() {
+fn a_failing_wake_returns_the_entry_asleep_and_does_not_reelect_it_next_round() {
     let mut v = petit();
     let t = t0();
     v.inscrire("a", t);
@@ -208,7 +208,7 @@ fn un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_sui
 }
 
 #[test]
-fn passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec() {
+fn past_the_respite_a_rearbitrate_does_repropose_the_failed_window() {
     let mut v = petit();
     let t = t0();
     v.inscrire("a", t);
@@ -235,7 +235,7 @@ fn passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec() {
 }
 
 #[test]
-fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
+fn returned_orders_place_every_sleep_before_any_wake() {
     // Case where one window is turned off and another turned on
     // simultaneously: check that Dormir precedes Reveiller.
     let mut v = petit();
@@ -278,7 +278,7 @@ fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
 }
 
 #[test]
-fn une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé() {
+fn a_window_in_respite_stays_excluded_from_candidates_until_the_respite_elapses() {
     // A window that fails to wake up stays in respite and is not
     // proposed again even if a place is freed, until the respite
     // elapses.
@@ -304,7 +304,7 @@ fn une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé() {
 #[test]
 fn eveillees_rend_exactement_les_sessions_reveillees() {
     let base = t0();
-    let mut vivier = Vivier::nouveau(2, Duration::from_secs(2));
+    let mut vivier = Vivier::new(2, Duration::from_secs(2));
     vivier.inscrire("a", base);
     vivier.inscrire("b", base);
     assert!(vivier.eveillees().is_empty(), "une fenêtre naît endormie");
@@ -334,7 +334,7 @@ fn eveillees_rend_exactement_les_sessions_reveillees() {
 #[test]
 fn annuler_un_ordre_non_livre_ne_touche_qu_eveillee_et_ignore_une_session_disparue() {
     let t = t0();
-    let mut v = Vivier::nouveau(PLAFOND_EVEIL, HYSTERESIS);
+    let mut v = Vivier::new(PLAFOND_EVEIL, HYSTERESIS);
     v.inscrire("a", t);
     v.signaler("a", true, true, t);
     assert_eq!(

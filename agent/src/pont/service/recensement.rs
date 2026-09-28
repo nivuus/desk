@@ -18,7 +18,7 @@ use std::time::Instant;
 use windows::core::HRESULT;
 
 use super::{oublier_contexte, prevenir_l_ecriture, verbes};
-use crate::pont::erreurs::Erreur;
+use crate::pont::errors::Error;
 use crate::pont::projfs::Etat;
 
 /// **F4** — is the latency bench armed?
@@ -152,10 +152,10 @@ pub(super) fn recenser(etat: &Etat) {
 
 /// Completes with an error everything left in flight. Called when no more
 /// response can arrive.
-pub(super) fn tout_completer(etat: &Etat, cause: Erreur) {
+pub(super) fn tout_completer(etat: &Etat, cause: Error) {
     let restantes = match etat.table.lock() {
-        Ok(mut table) => table.vider(),
-        Err(empoisonne) => empoisonne.into_inner().vider(),
+        Ok(mut table) => table.drain(),
+        Err(empoisonne) => empoisonne.into_inner().drain(),
     };
     for (commande, correlation) in restantes {
         oublier_contexte(etat, correlation);

@@ -43,7 +43,7 @@ mod tests {
     /// A constant delay is hammering: ten thousand attempts per
     /// hour against a relay that just refused.
     #[test]
-    fn le_delai_croit_avec_la_tentative() {
+    fn the_delay_grows_with_the_attempt() {
         assert!(
             delai_de_repli(1) > delai_de_repli(0),
             "delai_de_repli(1) = {} n'est pas > delai_de_repli(0) = {}",

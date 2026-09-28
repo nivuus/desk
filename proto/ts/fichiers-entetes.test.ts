@@ -1,31 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import vecteurs from '../fichiers-vectors.json';
-import { FICHIERS_VERSION, type CodeEchec } from './fichiers';
+import { FILES_VERSION, type CodeEchec } from './fichiers';
 import {
     encodeChemin,
-    encodeCreer,
-    encodeDonnees,
+    encodeCreate,
+    encodeData,
     encodeBonjour,
     encodeDues,
     encodeEchec,
-    encodeEcrire,
+    encodeWrite,
     encodeEntrees,
     encodeLire,
     encodeMeta,
     encodeRenommer,
-    encodeSupprimer,
+    encodeDelete,
     parseChemin,
-    parseCreer,
-    parseDonnees,
+    parseCreate,
+    parseData,
     parseBonjour,
     parseDues,
     parseEchec,
-    parseEcrire,
+    parseWrite,
     parseEntrees,
     parseLire,
     parseMeta,
     parseRenommer,
-    parseSupprimer,
+    parseDelete,
     type Due,
     type EntreeJson,
 } from './fichiers-entetes';
@@ -72,15 +72,15 @@ function encoder(c: CasVecteur): string {
         case 'meta':
             return encodeMeta(c.nom!, c.repertoire!, c.taille!, c.modifie!);
         case 'donnees':
-            return encodeDonnees(c.position!, c.longueur!);
+            return encodeData(c.position!, c.longueur!);
         case 'ecrire':
-            return encodeEcrire(c.chemin!, c.position!, c.longueur!, c.premier!, c.dernier!);
+            return encodeWrite(c.chemin!, c.position!, c.longueur!, c.premier!, c.dernier!);
         case 'creer':
-            return encodeCreer(c.chemin!, c.repertoire!);
+            return encodeCreate(c.chemin!, c.repertoire!);
         case 'renommer':
             return encodeRenommer(c.de!, c.vers!, c.repertoire!);
         case 'supprimer':
-            return encodeSupprimer(c.chemin!, c.repertoire!);
+            return encodeDelete(c.chemin!, c.repertoire!);
         case 'dues':
             return encodeDues(c.dues!, c.retenues!);
         case 'bonjour':
@@ -105,15 +105,15 @@ function analyser(c: CasVecteur): unknown {
         case 'meta':
             return parseMeta(brut);
         case 'donnees':
-            return parseDonnees(brut);
+            return parseData(brut);
         case 'ecrire':
-            return parseEcrire(brut);
+            return parseWrite(brut);
         case 'creer':
-            return parseCreer(brut);
+            return parseCreate(brut);
         case 'renommer':
             return parseRenommer(brut);
         case 'supprimer':
-            return parseSupprimer(brut);
+            return parseDelete(brut);
         case 'dues':
             return parseDues(brut);
         case 'bonjour':
@@ -130,7 +130,7 @@ describe('vecteurs partagés des en-têtes du pont fichiers', () => {
         // 🔴 La rouge : l'omettre. C'est la lacune que `vectors.json` traîne
         // côté Rust — `input.rs` ne vérifie jamais `doc["version"]`. Ici les
         // DEUX côtés la vérifient.
-        expect(FICHIERS_VERSION).toBe(vecteurs.version);
+        expect(FILES_VERSION).toBe(vecteurs.version);
     });
 
     it('🔴 porte au moins un cas', () => {
@@ -165,7 +165,7 @@ describe('les en-têtes incomplets sont rejetés', () => {
     });
 
     it('refuse un Donnees sans `longueur`', () => {
-        expect(() => parseDonnees({ position: 0 })).toThrow(/longueur/);
+        expect(() => parseData({ position: 0 })).toThrow(/longueur/);
     });
 
     it('refuse un Lire sans `longueur`', () => {
@@ -173,7 +173,7 @@ describe('les en-têtes incomplets sont rejetés', () => {
     });
 
     it('refuse un champ du mauvais TYPE, pas seulement un champ absent', () => {
-        // Un `taille` en chaîne passerait un contrôle de présence et
+        // Un `size` en chaîne passerait un contrôle de présence et
         // produirait une taille de fichier absurde côté ProjFS.
         expect(() => parseMeta({ nom: 'a', repertoire: false, taille: '1', modifie: 0 })).toThrow(
             /taille/,
@@ -189,7 +189,7 @@ describe('les en-têtes incomplets sont rejetés', () => {
     });
 
     it('refuse un Supprimer sans `repertoire`', () => {
-        expect(() => parseSupprimer({ chemin: 'a' })).toThrow(/repertoire/);
+        expect(() => parseDelete({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
     it('refuse un code d’échec inconnu', () => {
@@ -201,20 +201,20 @@ describe('les en-têtes incomplets sont rejetés', () => {
         // fichier réécrit plus court garderait sa queue d'octets, ce qui est le
         // défaut EXACT de l'ancien pont (spec §12).
         expect(() =>
-            parseEcrire({ chemin: 'a', position: 0, longueur: 1, dernier: true }),
+            parseWrite({ chemin: 'a', position: 0, longueur: 1, dernier: true }),
         ).toThrow(/premier/);
     });
 
     it('🔴 refuse un Ecrire sans `dernier`', () => {
-        // Sans `dernier`, le `close()` ne viendrait jamais : rien ne serait
+        // Sans `last`, le `close()` ne viendrait jamais : rien ne serait
         // jamais commis côté poste local, et l'entrée resterait due à jamais.
         expect(() =>
-            parseEcrire({ chemin: 'a', position: 0, longueur: 1, premier: true }),
+            parseWrite({ chemin: 'a', position: 0, longueur: 1, premier: true }),
         ).toThrow(/dernier/);
     });
 
     it('refuse un Creer sans `repertoire`', () => {
-        expect(() => parseCreer({ chemin: 'a' })).toThrow(/repertoire/);
+        expect(() => parseCreate({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
     it('refuse une due incomplète', () => {

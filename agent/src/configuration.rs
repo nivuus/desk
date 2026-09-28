@@ -49,16 +49,16 @@ pub(crate) struct Config {
     /// the agent captures the desktop and crops the window.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) sortie_dxgi: Option<String>,
-    /// The KEPT size (`superviseur::placement::taille_retenue`) at
+    /// The KEPT size (`superviseur::placement::retained_size`) at
     /// which the supervisor placed this window — set by it alone
     /// (`lanceur.rs`), never by an operator. Absent — the
     /// single-window path, where `sortie_dxgi` is too —, the size requested from the
     /// sensor at attach stays `(u32::MAX, u32::MAX)`
-    /// (`capteur::tube::connecter`), and `taille_retenue` brings it back as
+    /// (`capteur::tube::connecter`), and `retained_size` brings it back as
     /// is to the output size: the behaviour from before this
     /// sub-block, unchanged.
     #[cfg_attr(not(windows), allow(dead_code))]
-    pub(crate) taille_fenetre: Option<(u32, u32)>,
+    pub(crate) window_size: Option<(u32, u32)>,
     /// False when `AUDIO=0` mutes this agent's sound.
     ///
     /// **GLOBAL switch, no longer a per-window instruction.** Until
@@ -160,7 +160,7 @@ pub(crate) fn config() -> Result<Config> {
         // set by the supervisor (`lanceur.rs`, `WxH` form), so an
         // unreadable value signals a supervisor bug, not an operator
         // input to tolerate silently.
-        taille_fenetre: match std::env::var("TAILLE_FENETRE") {
+        window_size: match std::env::var("TAILLE_FENETRE") {
             Ok(brut) => {
                 let (l, h) = brut
                     .split_once('x')
@@ -207,9 +207,9 @@ pub(crate) fn config() -> Result<Config> {
 /// Reads an environment variable, treating the empty string as
 /// absence.
 pub(crate) fn variable_non_vide(nom: &str) -> Option<String> {
-    let valeur = std::env::var(nom).ok()?;
-    let valeur = valeur.trim().to_string();
-    (!valeur.is_empty()).then_some(valeur)
+    let value = std::env::var(nom).ok()?;
+    let value = value.trim().to_string();
+    (!value.is_empty()).then_some(value)
 }
 
 /// Parses an `HWND` as the supervisor sets it on its children:
@@ -225,7 +225,7 @@ pub(crate) fn variable_non_vide(nom: &str) -> Option<String> {
 /// search by title); a PRESENT variable must be honoured or refused.
 fn analyser_hwnd(brut: &str) -> Result<u64> {
     let texte = brut.trim();
-    let valeur = match texte
+    let value = match texte
         .strip_prefix("0x")
         .or_else(|| texte.strip_prefix("0X"))
     {
@@ -236,10 +236,10 @@ fn analyser_hwnd(brut: &str) -> Result<u64> {
             .with_context(|| format!("FENETRE_HWND « {texte} » : décimal illisible"))?,
     };
     anyhow::ensure!(
-        valeur != 0,
+        value != 0,
         "FENETRE_HWND vaut 0 : aucune fenêtre ne porte ce handle"
     );
-    Ok(valeur)
+    Ok(value)
 }
 
 #[cfg(test)]

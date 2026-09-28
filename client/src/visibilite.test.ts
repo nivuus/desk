@@ -76,7 +76,7 @@ describe('attachVisibilite', () => {
 
     it('retente un envoi refusé au signal suivant, au lieu de le perdre', () => {
         // Défaut corrigé : si le canal n'est pas encore ouvert à l'attache,
-        // `envoyer` rend `false`. Mémoriser `dernier` malgré cet échec
+        // `envoyer` rend `false`. Mémoriser `last` malgré cet échec
         // ferait croire l'état déjà annoncé, et aucun changement de
         // visibilité ultérieur ne le réémettrait jamais — la fenêtre resterait
         // endormie pour toujours côté agent, sans aucun symptôme observable.

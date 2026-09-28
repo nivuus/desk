@@ -29,7 +29,7 @@ pub(super) use file::FileMft;
 /// In both dumps of 2bis, the main thread was simultaneously in
 /// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown`. Removing
 /// `MFShutdown` from the path did NOT prevent the fault: this call is therefore not
-/// **necessary** for the fault (see `super::demarrer_media_foundation` for the
+/// **necessary** for the fault (see `super::start_media_foundation` for the
 /// exact scope of this survey).
 ///
 /// What handles it is the PAIR stop + barrier, and each of the two had to be
@@ -67,7 +67,7 @@ pub(super) use file::FileMft;
 /// `IMFShutdown::Shutdown` (see `arreter`). Nominal survey, out of all
 /// proportion: 0.5 ms per encoder, 4.0 ms for eight in a row, `attente_ms=0`
 /// everywhere (`paralleles-n8.log`) — **but a nominal value is not a bound**.
-pub(super) fn mettre_au_repos(
+pub(super) fn put_to_rest(
     convertisseur: &IMFTransform,
     encodeur: &IMFTransform,
     file_encodeur: &FileMft,
@@ -182,18 +182,18 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 /// confirmation loop that follows. An unbounded call in a `Drop` freezes the
 /// whole session, which would be worse than the crash being fixed. **And it
 /// is not a risk deferred to multi-window**: this `Drop` already runs in
-/// single-window production — see `mettre_au_repos`, which names both paths
+/// single-window production — see `put_to_rest`, which names both paths
 /// and writes the worst-case bound.
 ///
 /// **And this freeze was OBSERVED, in this precise call.** At N = 4, a run
-/// stopped on `IMFShutdown::Shutdown : avant mft="encodeur"` (id=2,
+/// stopped on `IMFShutdown::Shutdown : before mft="encodeur"` (id=2,
 /// 18:00:27,347197) without ever writing its `après`, process still alive
 /// thirteen minutes later:
 /// `docs/superpowers/plans/journaux-duplications-paralleles/2ter-gel-n4-shutdown.log`.
 /// It is therefore not a theoretical risk.
 ///
 /// **The cause is NOT attributed.** This run also carried a queue
-/// imposed on the converter, removed since (see `mettre_au_repos`); the
+/// imposed on the converter, removed since (see `put_to_rest`); the
 /// decision between the two was not made, and six runs would not have
 /// allowed it. That the freeze disappeared with this queue does not prove that it
 /// came from it.
@@ -214,7 +214,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
             // Surveyed, not assumed: if the interface is missing, the log says so,
             // and we know this path stopped nothing at all. It is the case
             // of the software converter on this VM (`0x80004002`).
-            tracing::debug!(mft = quoi, erreur = %err, "MFT sans IMFShutdown : pas d'arrêt explicite");
+            tracing::debug!(mft = quoi, error = %err, "MFT sans IMFShutdown : pas d'arrêt explicite");
             return;
         }
     };
@@ -224,7 +224,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
     // destruction, never per frame. DO NOT LOWER IT.
     tracing::info!(mft = quoi, "IMFShutdown::Shutdown : avant");
     if let Err(err) = unsafe { arret.Shutdown() } {
-        tracing::warn!(mft = quoi, erreur = %err, "IMFShutdown::Shutdown refusé");
+        tracing::warn!(mft = quoi, error = %err, "IMFShutdown::Shutdown refusé");
         return;
     }
     tracing::info!(mft = quoi, "IMFShutdown::Shutdown : après");
@@ -245,7 +245,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
             Err(err) => {
                 tracing::debug!(
                     mft = quoi,
-                    erreur = %err,
+                    error = %err,
                     "GetShutdownStatus indisponible : arrêt demandé mais non confirmable"
                 );
                 return;

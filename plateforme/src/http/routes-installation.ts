@@ -51,10 +51,10 @@ import { reemettreLesInstallations } from '../agents/canal-apps';
 import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
 import { lireParPrefixe } from '../depot/agent';
-import { creer, lireParId as lireInstallation, type LigneInstallation } from '../depot/installation';
+import { create, lireParId as lireInstallation, type LigneInstallation } from '../depot/installation';
 import { lireParId as lireTeleversement, type LigneTeleversement } from '../depot/televersement';
 import { lireParId as lireVm } from '../depot/vm';
-import { chaineNonVide, estObjetJson } from '../../../proto/ts/plateforme-gardes';
+import { nonEmptyString, estObjetJson } from '../../../proto/ts/plateforme-gardes';
 import { plan } from '../../../proto/ts/tranches';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
@@ -155,19 +155,19 @@ function journaliser(cas: string, ressource: string, demandeur: string): void {
 /// `vm.utilisateur_id` is born NULL, and as long as no VM is assigned EVERY
 /// AUTHENTICATED USER SEES ALL THE VMS.
 async function acces(
-    deps: DependancesInstallation, vmId: string, utilisateurId: string,
+    deps: DependancesInstallation, vmId: string, userId: string,
 ): Promise<'ok' | 'inconnue' | 'etrangere'> {
     const vm = await lireVm(deps.base, vmId);
     if (vm === undefined) {
-        journaliser('inconnue', `la VM ${vmId}`, `l'utilisateur ${utilisateurId}`);
+        journaliser('inconnue', `la VM ${vmId}`, `l'utilisateur ${userId}`);
         return 'inconnue';
     }
     if (vm.utilisateur_id === null) {
         console.warn(`vm non attribuee, acces accorde sans isolation a la VM ${vmId}`);
         return 'ok';
     }
-    if (vm.utilisateur_id !== utilisateurId) {
-        journaliser('etrangere', `la VM ${vmId}`, `l'utilisateur ${utilisateurId}`);
+    if (vm.utilisateur_id !== userId) {
+        journaliser('etrangere', `la VM ${vmId}`, `l'utilisateur ${userId}`);
         return 'etrangere';
     }
     return 'ok';
@@ -271,7 +271,7 @@ async function ordre(
         repondre(rep, 400, { refus: 'forme' }, cors);
         return true;
     }
-    if (!estObjetJson(parse) || !chaineNonVide(parse.vm) || !chaineNonVide(parse.televersement)) {
+    if (!estObjetJson(parse) || !nonEmptyString(parse.vm) || !nonEmptyString(parse.televersement)) {
         repondre(rep, 400, { refus: 'forme' }, cors);
         return true;
     }
@@ -282,17 +282,17 @@ async function ordre(
     // the extension or the sealing dooms. 🔴 AND THE VERDICT IS NOT REREAD:
     // both cases go through the SAME expression, so the bodies CANNOT
     // differ.
-    if ((await acces(deps, vmId, porteur.utilisateurId)) !== 'ok') {
+    if ((await acces(deps, vmId, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
     // 🔴 UNKNOWN AND FOREIGN RETURN THE SAME REFUSAL, through the same expression: otherwise
     // one would learn which uploads exist at other people's.
     const tel = await lireTeleversement(deps.base, televersementId);
-    if (tel === undefined || tel.utilisateur_id !== porteur.utilisateurId) {
+    if (tel === undefined || tel.utilisateur_id !== porteur.userId) {
         journaliser(
             tel === undefined ? 'inconnue' : 'etrangere',
-            `le televersement ${televersementId}`, `l'utilisateur ${porteur.utilisateurId}`,
+            `le televersement ${televersementId}`, `l'utilisateur ${porteur.userId}`,
         );
         repondre(rep, 404, { refus: 'televersement-inconnu' }, cors);
         return true;
@@ -320,7 +320,7 @@ async function ordre(
         repondre(rep, 503, { refus: 'agent-injoignable' }, cors);
         return true;
     }
-    const ligne = await creer(deps.base, { vmId, televersementId }, deps.maintenant());
+    const ligne = await create(deps.base, { vmId, televersementId }, deps.maintenant());
 
     // 🔴 THE ORDER IS PUSHED HERE, AND THAT PUSH WAS MISSING — ACCEPTANCE TESTING
     // FOUND IT, NOT REREADING. This file documented that the
@@ -382,7 +382,7 @@ async function etat(
     // the installation exists, and would reopen the oracle through the back door, on
     // the very resource the URL names. SAME expression for both cases; the
     // log line, for its part, tells them apart.
-    if (ligne === undefined || (await acces(deps, ligne.vm_id, porteur.utilisateurId)) !== 'ok') {
+    if (ligne === undefined || (await acces(deps, ligne.vm_id, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'installation-inconnue' }, cors);
         return true;
     }

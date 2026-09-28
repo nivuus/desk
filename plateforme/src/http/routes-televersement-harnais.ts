@@ -21,9 +21,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ouvrirMagasinTranches, type MagasinTranches } from '../apps/magasin-tranches';
 import type { Pilote } from '../base/pilote';
-import { creer } from '../depot/televersement';
-import { creerUtilisateur } from '../depot/utilisateur';
-import { avec, demonter, monterRoute, MS, SECRET, type Montage } from './routes-harnais';
+import { create } from '../depot/televersement';
+import { createUser } from '../depot/utilisateur';
+import { withIt, demonter, monterRoute, MS, SECRET, type Montage } from './routes-harnais';
 import { servirTeleversement } from './routes-televersement';
 
 /// Ten bytes, a step of four: three slices (4 + 4 + 2). The last one is
@@ -69,22 +69,22 @@ export async function nettoyer(): Promise<void> {
     racines = [];
 }
 
-export function utilisateur(base: Pilote, courriel: string): Promise<string> {
-    return creerUtilisateur(base, courriel, 'empreinte-opaque-de-test', MS);
+export function user(base: Pilote, courriel: string): Promise<string> {
+    return createUser(base, courriel, 'empreinte-opaque-de-test', MS);
 }
 
 /// Sets up a short-step row, WITHOUT going through the creation route — that one
-/// sets `TAILLE_TRANCHE` (8 MiB), and a red one no longer dares to replay because
+/// sets `CHUNK_SIZE` (8 MiB), and a red one no longer dares to replay because
 /// it costs eight mebibytes is no longer one.
 export async function poser(
     base: Pilote,
     proprietaire: string,
     sha256 = SHA,
-    taille = CONTENU.length,
+    size = CONTENU.length,
 ): Promise<string> {
-    const ligne = await creer(
+    const ligne = await create(
         base,
-        { utilisateurId: proprietaire, nom: 'installeur.exe', taille, sha256, tailleTranche: PAS },
+        { userId: proprietaire, nom: 'installeur.exe', taille: size, sha256, chunkSize: PAS },
         MS,
     );
     return ligne.id;
@@ -99,19 +99,19 @@ export function deposer(
 ) {
     return fetch(`${url}/televersement/${id}/tranche/${n}`, {
         method: 'PUT',
-        headers: avec(jeton, { 'content-type': 'application/octet-stream' }),
+        headers: withIt(jeton, { 'content-type': 'application/octet-stream' }),
         body: corps,
     });
 }
 
 export const sceller = (url: string, id: string, jeton: string) =>
-    fetch(`${url}/televersement/${id}/sceller`, { method: 'POST', headers: avec(jeton) });
+    fetch(`${url}/televersement/${id}/sceller`, { method: 'POST', headers: withIt(jeton) });
 
 /// ⚠️ `corps` goes AS IS if it is a string: otherwise the harness would make
 /// valid, by serialising it, the non-JSON one precisely wants to send.
 export const declarerChez = (url: string, jeton: string, corps: unknown) =>
     fetch(`${url}/televersement`, {
         method: 'POST',
-        headers: avec(jeton, { 'content-type': 'application/json' }),
+        headers: withIt(jeton, { 'content-type': 'application/json' }),
         body: typeof corps === 'string' ? corps : JSON.stringify(corps),
     });

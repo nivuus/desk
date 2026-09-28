@@ -2,7 +2,7 @@
 //! during a push, late acknowledgements - apart from `tests.rs` to stay under
 //! 500 lines.
 
-use super::tests::{modifie, Bac};
+use super::tests::{modified, Bac};
 use super::*;
 
 /// 🔴 **ONE CHUNK IN FLIGHT AT A TIME.**
@@ -18,16 +18,13 @@ use super::*;
 #[test]
 fn un_morceau_en_vol_a_la_fois() {
     let bac = Bac::neuf();
-    bac.poser(
-        "gros.bin",
-        &vec![1u8; 3 * proto::fichiers::TAILLE_TRAME_MAX],
-    );
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("gros.bin"));
+    bac.poser("gros.bin", &vec![1u8; 3 * proto::files::MAX_FRAME_SIZE]);
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("gros.bin"));
     let ecritures = |b: &Bac| -> Vec<(u8, u32, Vec<u8>, Vec<u8>)> {
         b.trames()
             .into_iter()
-            .filter(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE)
+            .filter(|(t, ..)| *t == proto::files::TYPE_WRITE)
             .collect()
     };
     let mut correlation = {
@@ -56,20 +53,20 @@ fn un_morceau_en_vol_a_la_fois() {
 fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
     let bac = Bac::neuf();
     bac.poser("a.txt", b"premier");
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("a.txt"));
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("a.txt"));
     let (_, c1, _, charge) = bac.trames().last().expect("morceau").clone();
     assert_eq!(charge, b"premier");
 
     // The user saves again while the push is in flight.
     bac.poser("a.txt", b"SECOND CONTENU PLUS LONG");
-    fil.traiter(modifie("a.txt"));
+    fil.traiter(modified("a.txt"));
     fil.traiter(Ordre::Fait { correlation: c1 });
 
     let (_, c2, _, charge) = bac
         .trames()
         .into_iter()
-        .rfind(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE)
+        .rfind(|(t, ..)| *t == proto::files::TYPE_WRITE)
         .expect("le rejeu doit repartir");
     assert_eq!(charge, b"SECOND CONTENU PLUS LONG", "relu DEPUIS LE DÉBUT");
     fil.traiter(Ordre::Fait { correlation: c2 });
@@ -81,20 +78,18 @@ fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
 fn un_repertoire_cree_ne_produit_aucun_morceau() {
     let bac = Bac::neuf();
     std::fs::create_dir(bac.racine.join("dossier")).expect("dossier de test");
-    let mut fil = Fil::demarrer(bac.config(true));
+    let mut fil = Fil::start(bac.config(true));
     fil.traiter(Ordre::Survenu(Evenement::Cree {
         chemin: "dossier".to_string(),
         repertoire: true,
     }));
     let trames = bac.trames();
     let (type_message, c, entete, _) = trames.last().expect("une trame").clone();
-    assert_eq!(type_message, proto::fichiers::TYPE_CREER);
-    let creer: entetes::Creer = serde_json::from_slice(&entete).expect("en-tête Creer");
-    assert!(creer.repertoire);
+    assert_eq!(type_message, proto::files::TYPE_CREATE);
+    let create: entetes::Create = serde_json::from_slice(&entete).expect("en-tête Creer");
+    assert!(create.repertoire);
     assert!(
-        !trames
-            .iter()
-            .any(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE),
+        !trames.iter().any(|(t, ..)| *t == proto::files::TYPE_WRITE),
         "aucun morceau : un répertoire n'a rien à lire"
     );
     fil.traiter(Ordre::Fait { correlation: c });
@@ -107,8 +102,8 @@ fn un_repertoire_cree_ne_produit_aucun_morceau() {
 fn un_acquittement_tardif_est_jete() {
     let bac = Bac::neuf();
     bac.poser("a.txt", b"a");
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("a.txt"));
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("a.txt"));
     let (_, c, _, _) = *bac.trames().last().expect("morceau");
     // A correlation that is not the one in flight.
     fil.traiter(Ordre::Fait {
@@ -126,11 +121,11 @@ fn un_acquittement_tardif_est_jete() {
 /// Writes take their correlations from **the same table** as
 /// reads: two sources on a single channel would collide silently.
 #[test]
-fn les_ecritures_prennent_leurs_correlations_dans_la_table_partagee() {
+fn writes_take_their_correlations_from_the_shared_table() {
     let bac = Bac::neuf();
     bac.poser("a.txt", b"a");
-    let mut fil = Fil::demarrer(bac.config(true));
-    fil.traiter(modifie("a.txt"));
+    let mut fil = Fil::start(bac.config(true));
+    fil.traiter(modified("a.txt"));
     assert_eq!(
         bac.table.lock().expect("verrou").en_vol(),
         1,

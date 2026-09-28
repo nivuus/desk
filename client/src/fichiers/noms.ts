@@ -80,7 +80,7 @@
 // would take a real `showDirectoryPicker()`, which F1 measured unreachable on
 // this host). **Bequeathed, not half implemented.**
 
-import { EchecFichiers, classer, type PoigneeRepertoire } from './adaptateur';
+import { FilesError, classer, type PoigneeRepertoire } from './adaptateur';
 import { CODES_ECHEC, type CodeEchec } from '../../../proto/ts/fichiers';
 
 /** What resolving a path component can return. */
@@ -155,12 +155,12 @@ export async function canoniserOuLever(
         case 'trouve':
             return r.nom;
         case 'absent':
-            throw new EchecFichiers(siAbsent, `« ${demande} » n’existe pas`);
+            throw new FilesError(siAbsent, `« ${demande} » n’existe pas`);
         case 'ambigu':
             // ⚠️ The message NAMES the namesakes, because that is all the
             // user will be able to do: rename one. The CODE crosses the
             // wire; the message stays in the console and in the shell page.
-            throw new EchecFichiers(
+            throw new FilesError(
                 'casse-ambigue',
                 `« ${demande} » ne se distingue pas de « ${r.noms.join(' », « ')} » : ` +
                     `rendre l’un d’eux choisirait le mauvais fichier, rien n’a été fait`,
@@ -236,7 +236,7 @@ export async function injecterFaute(
         return new Promise<void>(() => {});
     }
     if ((CODES_ECHEC as readonly string[]).includes(demande)) {
-        throw new EchecFichiers(
+        throw new FilesError(
             demande as CodeEchec,
             `faute injectée par « ${premier} » : banc, jamais une configuration livrée`,
         );
@@ -245,7 +245,7 @@ export async function injecterFaute(
     // swallowed: without that, an acceptance typo would produce an ordinary
     // "not found", and the operator would believe they had exercised a code they had not
     // exercised.
-    throw new EchecFichiers(
+    throw new FilesError(
         'interne',
         `« ${premier} » demande une faute inconnue « ${demande} » : ` +
             `les codes connus sont ${CODES_ECHEC.join(', ')}, plus « ${FAUTE_SILENCE} »`,

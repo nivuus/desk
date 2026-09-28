@@ -122,15 +122,15 @@ async function motifDuService(reponse: ReponseHttp): Promise<string> {
 type Emettre = (p: Phase, octets: number, total: number, force: boolean) => void;
 /// The progress pacer — the clock's only reader.
 function cadenceur(deps: DepsTeleversement): Emettre {
-    let dernier = Number.NEGATIVE_INFINITY;
+    let last = Number.NEGATIVE_INFINITY;
     return (phase, octets, total, force) => {
         if (deps.progression === undefined) return;
         const instant = deps.maintenant();
         // A phase change ALWAYS goes through: otherwise a small file
         // would only display one phase out of three, and the complete read pass
         // would stay invisible.
-        if (!force && instant - dernier < PERIODE_PROGRESSION_MS) return;
-        dernier = instant;
+        if (!force && instant - last < PERIODE_PROGRESSION_MS) return;
+        last = instant;
         deps.progression({ phase, octets, total });
     };
 }
@@ -144,13 +144,13 @@ function cadenceur(deps: DepsTeleversement): Emettre {
 /// what it buys: the tab regains control BETWEEN two chunks, it stays blocked
 /// WHILE hashing each one — a series of short pauses, not a silent
 /// freeze, and the phase is displayed.
-async function empreindre(fichier: File, deps: DepsTeleversement, emettre: Emettre): Promise<string | null> {
+async function empreindre(file: File, deps: DepsTeleversement, emettre: Emettre): Promise<string | null> {
     const condensat = new Sha256();
-    for (let debut = 0; debut < fichier.size; debut += OCTETS_LECTURE) {
+    for (let debut = 0; debut < file.size; debut += OCTETS_LECTURE) {
         if (deps.signal?.aborted === true) return null;
-        const fin = Math.min(debut + OCTETS_LECTURE, fichier.size);
-        condensat.absorber(new Uint8Array(await fichier.slice(debut, fin).arrayBuffer()));
-        emettre('empreinte', fin, fichier.size, false);
+        const fin = Math.min(debut + OCTETS_LECTURE, file.size);
+        condensat.absorber(new Uint8Array(await file.slice(debut, fin).arrayBuffer()));
+        emettre('empreinte', fin, file.size, false);
     }
     // An empty file does not enter the loop and returns the fingerprint of the empty message:
     // the right value, not a special case added by hand.
@@ -184,8 +184,8 @@ function normaliserPresentes(brut: unknown): Tranche[] | null {
     return sortie;
 }
 
-export async function televerser(fichier: File, deps: DepsTeleversement): Promise<Issue> {
-    const taille = fichier.size;
+export async function televerser(file: File, deps: DepsTeleversement): Promise<Issue> {
+    const size = file.size;
     const emettre = cadenceur(deps);
     // 🔴 THE IDENTIFIER IS CAPTURED, NOT PASSED AT EACH REFUSAL: that is what guarantees
     // no refusal forgets it — a caller losing the `id` on a refused sealing
@@ -206,76 +206,76 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         if (r === null) return nonLocal('interrompu', 'pendant la relecture');
         if (!r.ok) return await nonService('etat', r);
         etat = (await r.json().catch(() => undefined)) as Record<string, unknown> | undefined;
-        // 🔴 A STATE THAT DOES NOT ANNOUNCE `{taille, sha256}` MAKES THE RESUMPTION REFUSED, it
+        // 🔴 A STATE THAT DOES NOT ANNOUNCE `{size, sha256}` MAKES THE RESUMPTION REFUSED, it
         // does not make it resume blindly: without these two values, nothing says
         // the re-chosen file is THE SAME, the slices of two files would
         // mix, and sealing would fail without anything saying why.
         if (typeof etat?.taille !== 'number' || typeof etat.sha256 !== 'string') {
             return nonLocal('etat-illisible', 'état sans taille ni empreinte : reprise invérifiable');
         }
-        if (etat.taille !== taille) {
-            return nonLocal('fichier-different', `taille ${taille} contre ${etat.taille} au téléversement`);
+        if (etat.taille !== size) {
+            return nonLocal('fichier-different', `taille ${size} contre ${etat.taille} au téléversement`);
         }
     }
 
     // ② THE FINGERPRINT, AT CREATION AND NOT AT SEALING (D5): it is what
     // makes resumption safe, and the only value the three stages compare.
-    emettre('empreinte', 0, taille, true);
-    const sha256 = await empreindre(fichier, deps, emettre);
+    emettre('empreinte', 0, size, true);
+    const sha256 = await empreindre(file, deps, emettre);
     if (sha256 === null) return nonLocal('interrompu', "pendant l'empreinte");
-    emettre('empreinte', taille, taille, true);
+    emettre('empreinte', size, size, true);
     if (etat !== undefined && etat.sha256 !== sha256) {
         return nonLocal('fichier-different', `empreinte ${sha256} contre ${String(etat.sha256)} retenue`);
     }
 
     // ③ CREATE, IF WE ARE NOT RESUMING.
-    let tailleTranche: unknown;
+    let chunkSize: unknown;
     let presentesBrut: unknown;
     if (etat !== undefined) {
-        tailleTranche = etat.taille_tranche;
+        chunkSize = etat.taille_tranche;
         presentesBrut = etat.tranches_presentes;
     } else {
         const r = await appeler(deps, `${deps.base}/televersement`, {
             method: 'POST',
             headers: entetes(deps, 'application/json'),
-            body: JSON.stringify({ nom: fichier.name, taille, sha256 }),
+            body: JSON.stringify({ nom: file.name, taille: size, sha256 }),
         });
         if (r === null) return nonLocal('interrompu', 'pendant la création');
         if (!r.ok) return await nonService('creation', r);
         const c = (await r.json().catch(() => undefined)) as Record<string, unknown> | undefined;
         if (typeof c?.id !== 'string') return nonLocal('etat-illisible', 'création sans identifiant');
         id = c.id;
-        tailleTranche = c.taille_tranche;
+        chunkSize = c.taille_tranche;
         presentesBrut = c.tranches_presentes;
     }
 
     // ④ THE SPLITTING. `plan` and `verdict` THROW on an absurd contract — their guard
     // targets a programming defect. Yet `taille_tranche` comes from the WIRE: validating it here
     // prevents a deranged answer from bringing everything down through an exception.
-    if (!Number.isInteger(tailleTranche) || (tailleTranche as number) <= 0) {
-        return nonLocal('etat-illisible', `taille_tranche ${String(tailleTranche)}`);
+    if (!Number.isInteger(chunkSize) || (chunkSize as number) <= 0) {
+        return nonLocal('etat-illisible', `taille_tranche ${String(chunkSize)}`);
     }
-    const pas = tailleTranche as number;
-    const attendu = plan(taille, pas);
+    const pas = chunkSize as number;
+    const attendu = plan(size, pas);
     const presentes = normaliserPresentes(presentesBrut);
     if (presentes === null) return nonLocal('etat-illisible', 'tranches_presentes de forme inconnue');
 
     // 🔴 `incoherentes` IS NOT FILLED IN AGAIN: the two ends no longer agree
     // on the splitting, and uploading again would return the same thing indefinitely. We
     // refuse, we name the ranks, the caller decides.
-    const v = verdict(taille, pas, presentes);
+    const v = verdict(size, pas, presentes);
     if (v.etat === 'incoherentes') return nonLocal('tranches-incoherentes', `rangs ${v.n.join(', ')}`);
     const aDeposer = v.etat === 'manquantes' ? v.n : [];
 
     // ⑤ UPLOADING ONLY THE MISSING ONES. Starting from zero would pass a test that
     // only looks at the result: it is the spec's criterion ③, and that is
     // why the test COUNTS THE BYTES SENT.
-    let envoyes = taille - aDeposer.reduce((s, n) => s + attendu[n].octets, 0);
-    emettre('transfert', envoyes, taille, true);
+    let envoyes = size - aDeposer.reduce((s, n) => s + attendu[n].octets, 0);
+    emettre('transfert', envoyes, size, true);
     for (const n of aDeposer) {
         if (deps.signal?.aborted === true) return nonLocal('interrompu', `avant la tranche ${n}`);
         const debut = n * pas;
-        const corps = new Uint8Array(await fichier.slice(debut, debut + attendu[n].octets).arrayBuffer());
+        const corps = new Uint8Array(await file.slice(debut, debut + attendu[n].octets).arrayBuffer());
         const url = `${deps.base}/televersement/${encodeURIComponent(id)}/tranche/${n}`;
         const r = await appeler(deps, url, {
             method: 'PUT',
@@ -285,16 +285,16 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         if (r === null) return nonLocal('interrompu', `pendant la tranche ${n}`);
         if (!r.ok) return await nonService('tranche', r);
         envoyes += attendu[n].octets;
-        emettre('transfert', envoyes, taille, false);
+        emettre('transfert', envoyes, size, false);
     }
 
     // ⑥ THE SEALING. The platform RECOMPUTES the fingerprint and refuses if it differs
     // (D4). This refusal propagates as is: neither swallowed nor retried — a fingerprint that
     // diverges does not converge, and a retry loop would upload endlessly.
-    emettre('scellement', taille, taille, true);
+    emettre('scellement', size, size, true);
     const url = `${deps.base}/televersement/${encodeURIComponent(id)}/sceller`;
     const r = await appeler(deps, url, { method: 'POST', headers: entetes(deps) });
     if (r === null) return nonLocal('interrompu', 'pendant le scellement');
     if (!r.ok) return await nonService('scellement', r);
-    return { etat: 'scelle', id, taille, sha256, deposees: aDeposer };
+    return { etat: 'scelle', id, taille: size, sha256, deposees: aDeposer };
 }

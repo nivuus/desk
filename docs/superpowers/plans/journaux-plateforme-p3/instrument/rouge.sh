@@ -16,23 +16,23 @@
 # otherwise — it is the only thing that should alarm it.
 set -uo pipefail
 
-FICHIER="$1"
+FILE="$1"
 MUTATION="$2"
 CONTROLE="$3"
 RACINE="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 cd "$RACINE"
 
 ORIGINAL="$(mktemp)"
-cp "$FICHIER" "$ORIGINAL"
+cp "$FILE" "$ORIGINAL"
 # 🔴 RESTORATION IS A `trap`, NOT A LINE AT THE END OF THE SCRIPT. A
 # check command containing `exit` (they do contain some, to propagate
 # the check's code through `eval`) would end the script BEFORE the
 # restoration and leave the mutation in the tree — MEASURED at the first
 # wording of this script, on `identite/garde.ts`.
-restaurer() { cp "$ORIGINAL" "$FICHIER"; }
+restaurer() { cp "$ORIGINAL" "$FILE"; }
 trap restaurer EXIT
 
-python3 -c "$MUTATION" || { cp "$ORIGINAL" "$FICHIER"; echo 'MUTATION EN ÉCHEC' >&2; exit 1; }
+python3 -c "$MUTATION" || { cp "$ORIGINAL" "$FILE"; echo 'MUTATION EN ÉCHEC' >&2; exit 1; }
 
 # ⚠️ `diff -u` ON THE COPY, AND NOT `git diff`. One of the probes mutated here is
 # the instrument itself, which is not yet tracked by git when the
@@ -40,7 +40,7 @@ python3 -c "$MUTATION" || { cp "$ORIGINAL" "$FICHIER"; echo 'MUTATION EN ÉCHEC'
 # would return 0 on a file left mutated — a restoration check unable
 # to fail. MEASURED at the first wording of this script, on red run ④.
 echo "--- la mutation, en diff ---"
-diff -u "$ORIGINAL" "$FICHIER" | sed 's/^/    /'
+diff -u "$ORIGINAL" "$FILE" | sed 's/^/    /'
 echo
 echo "--- le contrôle, sur l'arbre MUTÉ ---"
 # SUBSHELL: an `exit` in the check command must not
@@ -57,14 +57,14 @@ trap - EXIT
 echo
 # The proof of restoration is a FINGERPRINT, not a `git diff`: it holds
 # for a tracked file as well as for one that is not.
-AVANT="$(sha256sum < "$ORIGINAL" | cut -d' ' -f1)"
-APRES="$(sha256sum < "$FICHIER" | cut -d' ' -f1)"
+BEFORE="$(sha256sum < "$ORIGINAL" | cut -d' ' -f1)"
+APRES="$(sha256sum < "$FILE" | cut -d' ' -f1)"
 rm -f "$ORIGINAL"
-echo "# sha256 avant la mutation : $AVANT"
+echo "# sha256 avant la mutation : $BEFORE"
 echo "# sha256 après restauration: $APRES"
-if [ "$AVANT" = "$APRES" ]; then
+if [ "$BEFORE" = "$APRES" ]; then
     echo "# source RESTAURÉE À L'IDENTIQUE (empreintes égales)"
     exit 0
 fi
-echo "🔴 RESTAURATION EN ÉCHEC sur $FICHIER" >&2
+echo "🔴 RESTAURATION EN ÉCHEC sur $FILE" >&2
 exit 1

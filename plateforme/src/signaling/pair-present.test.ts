@@ -24,7 +24,7 @@ import { prevenirLArrivant, prevenirLePairEnPlace, TYPE_PAIR_PRESENT } from './p
 /// argument et même forme que `server.test.ts` : ces tests éprouvent le
 /// RELAIS, pas l'authentification, qui a son propre fichier.
 const GARDE_OUVERTE: Garde = {
-    verifier: () => ({ ok: true }),
+    verify: () => ({ ok: true }),
     revendiquer: () => {},
     liberer: () => {},
 };

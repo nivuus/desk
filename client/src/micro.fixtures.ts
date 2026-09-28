@@ -53,7 +53,7 @@ export function fauxSender() {
 
 /// Error as `getUserMedia` throws it: it is the `name` that carries the meaning,
 /// never the message.
-export function erreurDom(name: string): Error {
+export function domError(name: string): Error {
     const e = new Error(name);
     e.name = name;
     return e;
@@ -79,6 +79,6 @@ export function fauxBouton() {
         cliquer() {
             for (const e of [...(ecouteurs.get('click') ?? [])]) e(new Event('click'));
         },
-        nombreEcouteurs: () => (ecouteurs.get('click')?.size ?? 0),
+        listenerCount: () => (ecouteurs.get('click')?.size ?? 0),
     };
 }

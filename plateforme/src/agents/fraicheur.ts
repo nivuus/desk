@@ -39,7 +39,7 @@
 /// ⚠️ IT IS NOT CALIBRATED. No measurement judged it, no usage
 /// judgement was passed on it: it joins the already long list of
 /// uncalibrated constants of this repository — `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `MAX_OUTPUT_SIZE`,
 /// `DUREE_JETON_ACCES_MS`, `DUREE_SECONDES`, `OCTETS_PREFIXE`. It is a
 /// minute and a half because that is several times the heartbeat period,
 /// not because a bench established it; the day the heartbeat period is

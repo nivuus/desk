@@ -130,32 +130,32 @@ pub fn encoder_requete(
     // the authentication attributes, then MESSAGE-INTEGRITY last.
     match requete {
         Requete::AllocateNu | Requete::AllocateSigne => {
-            ecrire_attribut(
+            write_attribute(
                 &mut attributs,
                 ATTR_REQUESTED_TRANSPORT,
                 &[TRANSPORT_UDP, 0, 0, 0],
             );
             if matches!(requete, Requete::AllocateSigne) {
-                ecrire_attribut(&mut attributs, ATTR_LIFETIME, &BAIL_DEMANDE_S.to_be_bytes());
+                write_attribute(&mut attributs, ATTR_LIFETIME, &BAIL_DEMANDE_S.to_be_bytes());
             }
         }
         Requete::Refresh { duree_s } => {
-            ecrire_attribut(&mut attributs, ATTR_LIFETIME, &duree_s.to_be_bytes());
+            write_attribute(&mut attributs, ATTR_LIFETIME, &duree_s.to_be_bytes());
         }
         Requete::CreatePermission { pair } => {
-            ecrire_attribut(
+            write_attribute(
                 &mut attributs,
                 ATTR_XOR_PEER_ADDRESS,
                 &xor_adresse(*pair, &trans_id),
             );
         }
         Requete::ChannelBind { canal, pair } => {
-            ecrire_attribut(
+            write_attribute(
                 &mut attributs,
                 ATTR_CHANNEL_NUMBER,
                 &[(canal >> 8) as u8, *canal as u8, 0, 0],
             );
-            ecrire_attribut(
+            write_attribute(
                 &mut attributs,
                 ATTR_XOR_PEER_ADDRESS,
                 &xor_adresse(*pair, &trans_id),
@@ -164,9 +164,9 @@ pub fn encoder_requete(
     }
 
     if let Some((ids, _)) = identifiants {
-        ecrire_attribut(&mut attributs, ATTR_USERNAME, ids.username.as_bytes());
-        ecrire_attribut(&mut attributs, ATTR_REALM, ids.realm.as_bytes());
-        ecrire_attribut(&mut attributs, ATTR_NONCE, ids.nonce.as_bytes());
+        write_attribute(&mut attributs, ATTR_USERNAME, ids.username.as_bytes());
+        write_attribute(&mut attributs, ATTR_REALM, ids.realm.as_bytes());
+        write_attribute(&mut attributs, ATTR_NONCE, ids.nonce.as_bytes());
     }
 
     let mut paquet = Vec::with_capacity(20 + attributs.len() + 24);
@@ -181,19 +181,19 @@ pub fn encoder_requete(
     paquet.extend_from_slice(&attributs);
 
     let Some((_, cle)) = identifiants else {
-        let longueur = (paquet.len() - 20) as u16;
-        paquet[2..4].copy_from_slice(&longueur.to_be_bytes());
+        let length = (paquet.len() - 20) as u16;
+        paquet[2..4].copy_from_slice(&length.to_be_bytes());
         return paquet;
     };
 
     // Length announced BEFORE the computation: it already includes the
     // MESSAGE-INTEGRITY attribute not yet written (4 header bytes + 20
     // digest bytes).
-    let longueur_avec_integrite = (paquet.len() - 20 + 24) as u16;
-    paquet[2..4].copy_from_slice(&longueur_avec_integrite.to_be_bytes());
+    let length_with_integrity = (paquet.len() - 20 + 24) as u16;
+    paquet[2..4].copy_from_slice(&length_with_integrity.to_be_bytes());
 
     let empreinte = sha1_hmac(cle, &[&paquet]);
-    ecrire_attribut(&mut paquet, ATTR_MESSAGE_INTEGRITY, &empreinte);
+    write_attribute(&mut paquet, ATTR_MESSAGE_INTEGRITY, &empreinte);
     paquet
 }
 
@@ -215,13 +215,13 @@ pub(super) fn methode_de(paquet: &[u8]) -> Option<u16> {
 /// Writes a TLV attribute, padded to a multiple of 4 bytes.
 ///
 /// `pub(super)`: `allocation` uses it to fabricate its test responses.
-pub(super) fn ecrire_attribut(sortie: &mut Vec<u8>, type_: u16, valeur: &[u8]) {
+pub(super) fn write_attribute(sortie: &mut Vec<u8>, type_: u16, value: &[u8]) {
     sortie.extend_from_slice(&type_.to_be_bytes());
-    sortie.extend_from_slice(&(valeur.len() as u16).to_be_bytes());
-    sortie.extend_from_slice(valeur);
+    sortie.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    sortie.extend_from_slice(value);
     // Padding is NOT counted in the attribute's announced length,
     // but it must be present on the wire.
-    let reste = valeur.len() % 4;
+    let reste = value.len() % 4;
     if reste != 0 {
         sortie.extend_from_slice(&[0u8; 4][..4 - reste]);
     }
@@ -286,12 +286,8 @@ mod tests {
         assert_eq!(&paquet[8..20], &trans_id);
 
         // The announced length must match what follows the header.
-        let longueur = u16::from_be_bytes([paquet[2], paquet[3]]) as usize;
-        assert_eq!(
-            longueur,
-            paquet.len() - 20,
-            "longueur d'en-tête incohérente"
-        );
+        let length = u16::from_be_bytes([paquet[2], paquet[3]]) as usize;
+        assert_eq!(length, paquet.len() - 20, "longueur d'en-tête incohérente");
 
         // REQUESTED-TRANSPORT = UDP (17), the attribute is::stun cannot
         // write and without which coturn answers 400.

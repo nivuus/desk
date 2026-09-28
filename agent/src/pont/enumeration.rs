@@ -52,13 +52,13 @@ use std::cmp::Ordering;
 pub struct Entree {
     pub nom: String,
     pub repertoire: bool,
-    pub taille: u64,
+    pub size: u64,
     /// `File.lastModified`, in milliseconds since the Unix epoch.
     ///
     /// ⚠️ **The File System Access API gives only ONE**, and the four time
     /// fields of `PRJ_FILE_BASIC_INFO` all carry it. It is an accepted
     /// divergence (spec §3.5.2), not an oversight.
-    pub modifie_ms: i64,
+    pub modified_ms: i64,
 }
 
 /// Filters then sorts, with ProjFS's two functions **injected**.
@@ -102,7 +102,7 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 

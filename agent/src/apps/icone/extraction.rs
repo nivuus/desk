@@ -178,7 +178,7 @@ fn dominante_du_bitmap(hbm: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<St
 /// runs whatever happens.**
 fn encoder_png(hbm: windows::Win32::Graphics::Gdi::HBITMAP) -> Result<Vec<u8>> {
     // SAFETY: FFI call. The COM apartment is the apps thread's, opened
-    // once by `lecture::initialiser_com`.
+    // once by `lecture::initialize_com`.
     let fabrique: IWICImagingFactory =
         unsafe { CoCreateInstance(&CLSID_WICImagingFactory, None, CLSCTX_INPROC_SERVER) }
             .context("CoCreateInstance(WICImagingFactory)")?;
@@ -248,18 +248,18 @@ fn relire(flux: &IStream) -> Result<Vec<u8>> {
             .context("Stat du flux PNG")?;
         s
     };
-    let taille = stat.cbSize as usize;
-    if taille == 0 {
+    let size = stat.cbSize as usize;
+    if size == 0 {
         bail!("l'encodeur PNG a rendu un flux VIDE");
     }
-    let mut octets = vec![0u8; taille];
+    let mut octets = vec![0u8; size];
     let mut lus = 0u32;
-    // SAFETY: FFI call. The buffer is exactly `taille` bytes.
-    unsafe { flux.Read(octets.as_mut_ptr().cast(), taille as u32, Some(&mut lus)) }
+    // SAFETY: FFI call. The buffer is exactly `size` bytes.
+    unsafe { flux.Read(octets.as_mut_ptr().cast(), size as u32, Some(&mut lus)) }
         .ok()
         .context("Read du flux PNG")?;
-    if lus as usize != taille {
-        bail!("flux PNG tronqué : {lus} octets lus sur {taille}");
+    if lus as usize != size {
+        bail!("flux PNG tronqué : {lus} octets lus sur {size}");
     }
     Ok(octets)
 }
@@ -281,10 +281,10 @@ pub fn provenance_de(icon_location: &str, cible: &str) -> SourceMax {
             // weighs a few dozen kilobytes: reading it whole costs
             // less than a partial open, and it is simpler to re-read.
             Ok(octets) => {
-                ressource::maximum(&ressource::tailles_icondir(&octets).unwrap_or_default())
+                ressource::maximum(&ressource::icondir_sizes(&octets).unwrap_or_default())
             }
-            Err(erreur) => {
-                tracing::debug!(chemin, %erreur, "ico illisible, provenance non mesuree");
+            Err(error) => {
+                tracing::debug!(chemin, %error, "ico illisible, provenance non mesuree");
                 SourceMax::NonMesuree
             }
         },
@@ -292,15 +292,15 @@ pub fn provenance_de(icon_location: &str, cible: &str) -> SourceMax {
             let index = source::index(icon_location);
             match lecture_pe_grpicondir(&chemin, index) {
                 Ok(octets) => {
-                    ressource::maximum(&ressource::tailles_grpicondir(&octets).unwrap_or_default())
+                    ressource::maximum(&ressource::grpicondir_sizes(&octets).unwrap_or_default())
                 }
-                Err(erreur) => {
-                    tracing::debug!(chemin, %erreur, "ressource illisible, provenance non mesuree");
+                Err(error) => {
+                    tracing::debug!(chemin, %error, "ressource illisible, provenance non mesuree");
                     SourceMax::NonMesuree
                 }
             }
         }
-        source::Provenance::Aucune => SourceMax::NonMesuree,
+        source::Provenance::Absent => SourceMax::NonMesuree,
     }
 }
 

@@ -91,7 +91,7 @@ impl VirtualPad {
                     tentatives += 1;
                     tracing::warn!(
                         tentative = tentatives,
-                        erreur = ?e,
+                        error = ?e,
                         "update() pas encore prêt, nouvelle tentative"
                     );
                     std::thread::sleep(DELAI_TENTATIVE);

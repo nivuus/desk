@@ -24,7 +24,7 @@ use windows::Win32::Graphics::Direct3D11::{
 
 /// Beyond that, we stop searching: the result would already be largely
 /// sufficient for work stream D.
-const PLAFOND_RECHERCHE: usize = 16;
+const SEARCH_CEILING: usize = 16;
 
 /// A new D3D11 device, unrelated to capture.
 ///
@@ -87,7 +87,7 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
     let mut peripheriques = Vec::new();
     let mut encodeurs = Vec::new();
 
-    let issue = chercher(mode, partage.as_ref(), &mut peripheriques, &mut encodeurs);
+    let issue = search(mode, partage.as_ref(), &mut peripheriques, &mut encodeurs);
 
     // The bench's encoding pass killed the process AT THE EXIT of its loop,
     // hence at the DESTRUCTION of the encoders, not while feeding them. ✅ Defect
@@ -112,17 +112,17 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
     issue
 }
 
-/// Creates encoders until refusal, or until `PLAFOND_RECHERCHE`.
+/// Creates encoders until refusal, or until `SEARCH_CEILING`.
 ///
 /// Separate from `plafond` so that the release of resources stays under the
 /// control of the caller, whatever the exit path.
-fn chercher(
+fn search(
     mode: &str,
     partage: Option<&crate::capture::DesktopCapture>,
     peripheriques: &mut Vec<(ID3D11Device, ID3D11DeviceContext)>,
     encodeurs: &mut Vec<crate::encode::H264Encoder>,
 ) -> Result<()> {
-    for rang in 1..=PLAFOND_RECHERCHE {
+    for rang in 1..=SEARCH_CEILING {
         let device = match partage {
             Some(capture) => capture.device().clone(),
             None => {
@@ -136,11 +136,11 @@ fn chercher(
                 encodeurs.push(encodeur);
                 tracing::info!(rang, mode, "encodeur créé");
             }
-            Err(erreur) => {
+            Err(error) => {
                 tracing::info!(
                     plafond = rang - 1,
                     mode,
-                    causes = %super::causes(erreur),
+                    causes = %super::causes(error),
                     "plafond d'encodeurs atteint — création du suivant refusée"
                 );
                 return Ok(());
@@ -148,9 +148,9 @@ fn chercher(
         }
     }
     tracing::info!(
-        plafond_recherche = PLAFOND_RECHERCHE,
+        search_ceiling = SEARCH_CEILING,
         mode,
-        "aucun plafond atteint sous {PLAFOND_RECHERCHE} encodeurs"
+        "aucun plafond atteint sous {SEARCH_CEILING} encodeurs"
     );
     Ok(())
 }

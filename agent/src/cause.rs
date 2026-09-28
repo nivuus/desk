@@ -3,7 +3,7 @@
 //! 🔴 **The defect this module closes is an INSTRUMENT defect, and it
 //! cost a whole batch.** Batch 25 measured 74 then 52 `réveil refusé, la
 //! fenêtre reste endormie` in a row without anyone being able to say
-//! WHY: the trace site wrote `%erreur` on an `anyhow::Error`,
+//! WHY: the trace site wrote `%error` on an `anyhow::Error`,
 //! yet `anyhow`'s PLAIN `Display` renders **only the OUTERMOST
 //! layer** — here the `with_context` set by `transitions.rs::reveiller`,
 //! that is "réveil de la session …:w-24", which says nothing more than
@@ -13,7 +13,7 @@
 //! **Why `{:#}` and not `{:?}`** — the choice is written here so that nobody
 //! reopens it:
 //!
-//! - `{}` (hence `%erreur` in `tracing`): the outer layer ALONE. That is the
+//! - `{}` (hence `%error` in `tracing`): the outer layer ALONE. That is the
 //!   defect being fixed.
 //! - `{:#}`: the COMPLETE chain, causes separated by `: `, **on a
 //!   single line**. That is what we keep.
@@ -33,13 +33,13 @@
 
 /// Returns the complete cause chain of an error, on a single line.
 ///
-/// To be used everywhere `%erreur` was logged on an `anyhow::Error`:
-/// `tracing::warn!(erreur = %crate::cause::chaine(&erreur), "…")`.
+/// To be used everywhere `%error` was logged on an `anyhow::Error`:
+/// `tracing::warn!(error = %crate::cause::chain(&error), "…")`.
 ///
 /// Takes a reference and **does not consume** the error: several fixed
 /// sites log it then propagate it.
-pub fn chaine(erreur: &anyhow::Error) -> String {
-    format!("{erreur:#}")
+pub fn chain(error: &anyhow::Error) -> String {
+    format!("{error:#}")
 }
 
 #[cfg(test)]
@@ -49,16 +49,16 @@ mod tests {
     /// The check that counts: it must TURN RED if we go back to `{}`. The two
     /// assertions are therefore asymmetric on purpose — the first says what
     /// `{:#}` adds, the second says what `{}` LOSES, and without it the test
-    /// would still pass with a `format!("{erreur}")` in `chaine`.
+    /// would still pass with a `format!("{error}")` in `chain`.
     #[test]
-    fn la_chaine_porte_la_cause_profonde_que_le_display_simple_jette() {
+    fn the_chain_carries_the_root_cause_that_plain_display_drops() {
         let profonde = anyhow!("0x88890004");
-        let erreur = Err::<(), _>(profonde)
+        let error = Err::<(), _>(profonde)
             .context("activation de l'encodeur H.264 matériel (ActivateObject)")
             .context("réveil de la session prefixe:w-24")
             .unwrap_err();
 
-        let rendue = super::chaine(&erreur);
+        let rendue = super::chain(&error);
         assert!(
             rendue.contains("0x88890004"),
             "la cause profonde manque : {rendue}"
@@ -73,8 +73,8 @@ mod tests {
         );
 
         // The negative witness, in the SAME reading: the plain `Display`, the one
-        // `%erreur` used, renders ONLY the outer layer.
-        let simple = format!("{erreur}");
+        // `%error` used, renders ONLY the outer layer.
+        let simple = format!("{error}");
         assert_eq!(simple, "réveil de la session prefixe:w-24");
         assert!(
             !simple.contains("0x88890004"),
@@ -85,9 +85,9 @@ mod tests {
     /// An error WITHOUT context must stay readable as is: the
     /// fix must not degrade the simple case, which is the most frequent.
     #[test]
-    fn une_erreur_sans_contexte_est_rendue_telle_quelle() {
+    fn an_error_without_context_is_rendered_as_is() {
         assert_eq!(
-            super::chaine(&anyhow!("aucune sortie DXGI nommée 0:1")),
+            super::chain(&anyhow!("aucune sortie DXGI nommée 0:1")),
             "aucune sortie DXGI nommée 0:1"
         );
     }

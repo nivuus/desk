@@ -79,7 +79,7 @@ pub struct SuiviBordure {
 }
 
 impl SuiviBordure {
-    pub fn nouveau(style_initial: u32) -> Self {
+    pub fn new(style_initial: u32) -> Self {
         Self {
             sans_bordure: est_sans_bordure(style_initial),
         }
@@ -87,12 +87,12 @@ impl SuiviBordure {
 
     /// Returns `Some(actif)` on change, `None` otherwise.
     pub fn observer(&mut self, style: u32) -> Option<bool> {
-        let courant = est_sans_bordure(style);
-        if courant == self.sans_bordure {
+        let current = est_sans_bordure(style);
+        if current == self.sans_bordure {
             return None;
         }
-        self.sans_bordure = courant;
-        Some(courant)
+        self.sans_bordure = current;
+        Some(current)
     }
 }
 
@@ -197,7 +197,7 @@ mod tests {
     fn le_premier_observer_sur_l_etat_initial_n_annonce_rien() {
         // The §5.2 guard: the state read at attach time is the reference, and we
         // only announce CHANGES.
-        let mut suivi = SuiviBordure::nouveau(ORDINAIRE);
+        let mut suivi = SuiviBordure::new(ORDINAIRE);
         assert_eq!(suivi.observer(ORDINAIRE), None);
     }
 
@@ -205,13 +205,13 @@ mod tests {
     fn une_fenetre_nee_sans_bordure_n_annonce_rien() {
         // Without this guard, an application already borderless at start-up
         // would put its browser window into fullscreen for no reason.
-        let mut suivi = SuiviBordure::nouveau(SANS_BORDURE);
+        let mut suivi = SuiviBordure::new(SANS_BORDURE);
         assert_eq!(suivi.observer(SANS_BORDURE), None);
     }
 
     #[test]
     fn la_perte_de_la_bordure_annonce_le_plein_ecran_une_seule_fois() {
-        let mut suivi = SuiviBordure::nouveau(ORDINAIRE);
+        let mut suivi = SuiviBordure::new(ORDINAIRE);
         assert_eq!(suivi.observer(SANS_BORDURE), Some(true));
         // Second identical reading: nothing more to announce.
         assert_eq!(suivi.observer(SANS_BORDURE), None);
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn le_retour_de_la_bordure_annonce_la_sortie_du_plein_ecran() {
-        let mut suivi = SuiviBordure::nouveau(ORDINAIRE);
+        let mut suivi = SuiviBordure::new(ORDINAIRE);
         assert_eq!(suivi.observer(SANS_BORDURE), Some(true));
         assert_eq!(suivi.observer(ORDINAIRE), Some(false));
         assert_eq!(suivi.observer(ORDINAIRE), None);
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn un_aller_retour_complet_annonce_deux_fois_et_pas_davantage() {
-        let mut suivi = SuiviBordure::nouveau(ORDINAIRE);
+        let mut suivi = SuiviBordure::new(ORDINAIRE);
         let annonces: Vec<Option<bool>> = [SANS_BORDURE, SANS_BORDURE, ORDINAIRE, ORDINAIRE]
             .into_iter()
             .map(|s| suivi.observer(s))

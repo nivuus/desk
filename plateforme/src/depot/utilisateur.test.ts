@@ -1,4 +1,4 @@
-// Le dépôt `utilisateur`, joué contre le pilote que `PLATEFORME_BASE` désigne.
+// Le dépôt `user`, joué contre le pilote que `PLATEFORME_BASE` désigne.
 //
 // 🔴 LES VALEURS SONT RÉELLES, jamais commodes : l'empreinte est produite par
 // `hacher` — donc de la longueur qu'une base de production portera —, et
@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { hacher } from '../identite/mot-de-passe';
-import { creerUtilisateur, lireParEmail, remplacerEmpreinte } from './utilisateur';
+import { createUser, lireParEmail, remplacerEmpreinte } from './utilisateur';
 
 /// Une époque réelle en millisecondes, la même que `base/pilotes.test.ts`.
 const MS = 1_787_136_773_742;
@@ -26,7 +26,7 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
     it('crée un compte et le relit par courriel, à l’époque EXACTE écrite', async () => {
         base = await baseNeuve('util-creer');
         const empreinte = await hacher('un-mot-de-passe-ordinaire-42');
-        const id = await creerUtilisateur(base, 'ada@exemple.test', empreinte, MS);
+        const id = await createUser(base, 'ada@exemple.test', empreinte, MS);
 
         const ligne = await lireParEmail(base, 'ada@exemple.test');
         expect(ligne).toBeDefined();
@@ -46,15 +46,15 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
         // l'authentification non déterministe.
         base = await baseNeuve('util-unique');
         const empreinte = await hacher('un-mot-de-passe-ordinaire-42');
-        await creerUtilisateur(base, 'ada@exemple.test', empreinte, MS);
-        await expect(creerUtilisateur(base, 'ada@exemple.test', empreinte, MS + 1))
+        await createUser(base, 'ada@exemple.test', empreinte, MS);
+        await expect(createUser(base, 'ada@exemple.test', empreinte, MS + 1))
             .rejects.toThrow();
         // Et rien n'a été ajouté.
-        const toutes = await base.interroger<{ n: number | string }>(
+        const all = await base.interroger<{ n: number | string }>(
             'SELECT COUNT(*) AS n FROM utilisateur',
             [],
         );
-        expect(Number(toutes[0].n)).toBe(1);
+        expect(Number(all[0].n)).toBe(1);
     });
 
     it('rend undefined sur un courriel inconnu, JAMAIS une exception', async () => {
@@ -68,7 +68,7 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
     it('remplace l’empreinte, et RIEN d’autre', async () => {
         base = await baseNeuve('util-rehache');
         const ancienne = await hacher('un-mot-de-passe-ordinaire-42', { N: 4096, r: 8, p: 1 });
-        const id = await creerUtilisateur(base, 'ada@exemple.test', ancienne, MS);
+        const id = await createUser(base, 'ada@exemple.test', ancienne, MS);
 
         const neuve = await hacher('un-mot-de-passe-ordinaire-42');
         await remplacerEmpreinte(base, id, neuve);
@@ -85,8 +85,8 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
     it('donne un identifiant distinct à chaque compte', async () => {
         base = await baseNeuve('util-ids');
         const empreinte = await hacher('un-mot-de-passe-ordinaire-42');
-        const un = await creerUtilisateur(base, 'ada@exemple.test', empreinte, MS);
-        const deux = await creerUtilisateur(base, 'grace@exemple.test', empreinte, MS + 1);
+        const un = await createUser(base, 'ada@exemple.test', empreinte, MS);
+        const deux = await createUser(base, 'grace@exemple.test', empreinte, MS + 1);
         expect(deux).not.toBe(un);
     });
 });

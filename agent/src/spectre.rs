@@ -160,7 +160,7 @@ mod tests {
     /// A silence has no dominant. It is THE case the "A-bis"
     /// fix must be able to distinguish: a device not being played.
     #[test]
-    fn un_silence_n_a_aucune_dominante() {
+    fn a_silence_has_no_dominant() {
         assert_eq!(
             dominante(&vec![0.0; 4_800], 48_000.0, 100.0, 2_000.0, 1.0),
             None
@@ -216,7 +216,7 @@ mod tests {
     /// `|X(k)|² = (A·N/2)²`. Here `A = 0.5`, `N = 24,000` — i.e. 220 whole
     /// periods of 440 Hz at 48 kHz, hence no spectral leakage.
     #[test]
-    fn la_magnitude_suit_la_valeur_analytique_de_goertzel() {
+    fn the_magnitude_follows_the_goertzel_analytic_value() {
         let m = mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2);
         let mesuree = magnitude(&m, 440.0, 48_000.0);
         let attendue = (0.5 * 24_000.0 / 2.0f32).powi(2);

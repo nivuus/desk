@@ -108,7 +108,7 @@ mod tests {
     }
 
     impl VerrouFactice {
-        fn nouveau(reponses: &[bool]) -> Self {
+        fn new(reponses: &[bool]) -> Self {
             Self {
                 reponses: reponses.to_vec(),
                 appels: 0,
@@ -126,14 +126,14 @@ mod tests {
 
     #[test]
     fn un_verrou_libre_accepte_sans_rien_journaliser() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[true]));
+        let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
         assert_eq!(e.arbitrer(), Issue::Accepte);
         assert!(e.tenue());
     }
 
     #[test]
     fn un_refus_ne_se_journalise_qu_une_fois() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[false]));
+        let mut e = Exclusivite::new(VerrouFactice::new(&[false]));
         assert_eq!(e.arbitrer(), Issue::RefusePremierement);
         for _ in 0..10 {
             assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn la_tentative_est_REFAITE_apres_un_refus() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[false]));
+        let mut e = Exclusivite::new(VerrouFactice::new(&[false]));
         for _ in 0..20 {
             e.arbitrer();
         }
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn une_acquisition_tardive_est_ANNONCEE() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[false, false, false, true]));
+        let mut e = Exclusivite::new(VerrouFactice::new(&[false, false, false, true]));
         assert_eq!(e.arbitrer(), Issue::RefusePremierement);
         assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
         assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn une_acquisition_deja_tenue_ne_reannonce_rien() {
-        let mut e = Exclusivite::new(VerrouFactice::nouveau(&[true]));
+        let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
         for _ in 0..10 {
             assert_eq!(e.arbitrer(), Issue::Accepte);
         }

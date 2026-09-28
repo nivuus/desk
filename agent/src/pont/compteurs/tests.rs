@@ -4,27 +4,31 @@ use super::*;
 
 /// 🔴 **EACH VARIANT HAS ITS COUNTER, AND ITS NAME.**
 ///
-/// Red: adding a variant to [`Erreur`] without adding it to [`nom`] first
+/// Red: adding a variant to [`Error`] without adding it to [`nom`] first
 /// makes compilation fail (the `match` is exhaustive); forgetting it in
-/// `TOUTES` makes that of `erreurs.rs` fail (`NOMBRE` types the array). This
+/// `ALL` makes that of `erreurs.rs` fail (`COUNT` types the array). This
 /// test covers what the two do not: that the name is **distinct**
 /// and **non-empty**.
 #[test]
-fn chaque_variante_a_son_compteur_et_un_nom_distinct() {
-    let mut noms: Vec<&str> = Erreur::TOUTES.iter().map(|e| nom(*e)).collect();
+fn each_variant_has_its_counter_and_a_distinct_name() {
+    let mut noms: Vec<&str> = Error::ALL.iter().map(|e| nom(*e)).collect();
     assert_eq!(
         noms.len(),
-        NOMBRE,
-        "TOUTES doit porter les {NOMBRE} variantes"
+        COUNT,
+        "TOUTES doit porter les {COUNT} variantes"
     );
     assert!(
         noms.iter().all(|n| !n.is_empty()),
         "un nom vide ne se grep pas"
     );
     noms.sort_unstable();
-    let avant = noms.len();
+    let before = noms.len();
     noms.dedup();
-    assert_eq!(noms.len(), avant, "deux causes partagent un nom : {noms:?}");
+    assert_eq!(
+        noms.len(),
+        before,
+        "deux causes partagent un nom : {noms:?}"
+    );
 }
 
 /// 🔴 **NO NAME IS A PREFIX OF ANOTHER.**
@@ -43,8 +47,8 @@ fn chaque_variante_a_son_compteur_et_un_nom_distinct() {
 /// space included. Saying it here avoids rediscovering it at `grep` time.
 #[test]
 fn aucun_nom_n_est_prefixe_d_un_autre() {
-    for a in Erreur::TOUTES {
-        for b in Erreur::TOUTES {
+    for a in Error::ALL {
+        for b in Error::ALL {
             if a == b {
                 continue;
             }
@@ -62,7 +66,7 @@ fn aucun_nom_n_est_prefixe_d_un_autre() {
 fn un_recensement_neuf_est_a_zero_partout() {
     let c = Compteurs::nouveaux();
     assert_eq!(c.total(), 0);
-    for e in Erreur::TOUTES {
+    for e in Error::ALL {
         assert_eq!(c.compte(e), 0, "{} devrait naître à zéro", nom(e));
     }
 }
@@ -73,15 +77,15 @@ fn un_recensement_neuf_est_a_zero_partout() {
 /// wrong counters — the one that did not rise and the one that wrongly rose.
 #[test]
 fn rendre_incremente_la_bonne_case_et_elle_seule() {
-    for cible in Erreur::TOUTES {
+    for cible in Error::ALL {
         let c = Compteurs::nouveaux();
         let code = c.rendre(cible);
         assert_eq!(
             code,
-            crate::pont::erreurs::hresult(cible),
+            crate::pont::errors::hresult(cible),
             "le code rendu doit être celui de la table"
         );
-        for e in Erreur::TOUTES {
+        for e in Error::ALL {
             let attendu = u64::from(e == cible);
             assert_eq!(
                 c.compte(e),
@@ -100,11 +104,11 @@ fn rendre_incremente_la_bonne_case_et_elle_seule() {
 fn rendre_cumule() {
     let c = Compteurs::nouveaux();
     for _ in 0..3 {
-        c.rendre(Erreur::Introuvable);
+        c.rendre(Error::Introuvable);
     }
-    c.rendre(Erreur::CanalFerme);
-    assert_eq!(c.compte(Erreur::Introuvable), 3);
-    assert_eq!(c.compte(Erreur::CanalFerme), 1);
+    c.rendre(Error::CanalFerme);
+    assert_eq!(c.compte(Error::Introuvable), 3);
+    assert_eq!(c.compte(Error::CanalFerme), 1);
     assert_eq!(c.total(), 4);
 }
 
@@ -120,33 +124,33 @@ fn manquants_rend_exactement_les_causes_a_zero() {
     let c = Compteurs::nouveaux();
     assert_eq!(
         c.manquants().len(),
-        NOMBRE,
+        COUNT,
         "tout manque sur un compteur neuf"
     );
 
-    c.rendre(Erreur::Introuvable);
-    c.rendre(Erreur::DisquePlein);
+    c.rendre(Error::Introuvable);
+    c.rendre(Error::DisquePlein);
     let manquants = c.manquants();
-    assert_eq!(manquants.len(), NOMBRE - 2);
-    assert!(!manquants.contains(&Erreur::Introuvable));
-    assert!(!manquants.contains(&Erreur::DisquePlein));
-    assert!(manquants.contains(&Erreur::Abandonnee));
+    assert_eq!(manquants.len(), COUNT - 2);
+    assert!(!manquants.contains(&Error::Introuvable));
+    assert!(!manquants.contains(&Error::DisquePlein));
+    assert!(manquants.contains(&Error::Abandonnee));
 
-    for e in Erreur::TOUTES {
+    for e in Error::ALL {
         c.rendre(e);
     }
     assert!(c.manquants().is_empty(), "le critère (4) est alors TENU");
 }
 
-/// 🔴 **THE CENSUS ORDER IS THAT OF `TOUTES`**, and the whole string
+/// 🔴 **THE CENSUS ORDER IS THAT OF `ALL`**, and the whole string
 /// is compared: swapping two names makes it fail.
 #[test]
 #[allow(non_snake_case)]
-fn l_ordre_du_recensement_est_celui_de_TOUTES() {
+fn the_census_order_is_that_of_all() {
     let c = Compteurs::nouveaux();
-    c.rendre(Erreur::Introuvable);
-    c.rendre(Erreur::Introuvable);
-    c.rendre(Erreur::ProtegeEnEcriture);
+    c.rendre(Error::Introuvable);
+    c.rendre(Error::Introuvable);
+    c.rendre(Error::ProtegeEnEcriture);
     assert_eq!(
         c.recensement(),
         "total=3 introuvable=2 chemin-introuvable=0 acces-refuse=0 canal-ferme=0 \
@@ -157,14 +161,14 @@ deja-present=0 protege-en-ecriture=1 inattendue=0"
 
 /// The census carries **exactly** one field per variant, plus the total.
 ///
-/// ⚠️ Without this test, adding a variant to `TOUTES` without touching `recensement`
+/// ⚠️ Without this test, adding a variant to `ALL` without touching `recensement`
 /// would be caught — but removing a loop and writing the twelve by hand
 /// would pass, and the thirteenth field would be silently missing.
 #[test]
 fn le_recensement_porte_un_champ_par_variante() {
     let ligne = Compteurs::nouveaux().recensement();
-    assert_eq!(ligne.split(' ').count(), NOMBRE + 1);
-    for e in Erreur::TOUTES {
+    assert_eq!(ligne.split(' ').count(), COUNT + 1);
+    for e in Error::ALL {
         assert!(
             ligne.contains(&format!(" {}=", nom(e))),
             "« {} » absent",
@@ -177,14 +181,14 @@ fn le_recensement_porte_un_champ_par_variante() {
 /// under concurrency, otherwise criterion (4) would lie in the most
 /// flattering direction.
 #[test]
-fn le_compteur_est_juste_sous_concurrence() {
+fn the_counter_is_correct_under_concurrency() {
     let c = std::sync::Arc::new(Compteurs::nouveaux());
     let fils: Vec<_> = (0..8)
         .map(|_| {
             let c = std::sync::Arc::clone(&c);
             std::thread::spawn(move || {
                 for _ in 0..250 {
-                    c.rendre(Erreur::DelaiDepasse);
+                    c.rendre(Error::DelaiDepasse);
                 }
             })
         })
@@ -192,5 +196,5 @@ fn le_compteur_est_juste_sous_concurrence() {
     for f in fils {
         f.join().expect("aucun fil ne panique");
     }
-    assert_eq!(c.compte(Erreur::DelaiDepasse), 2_000);
+    assert_eq!(c.compte(Error::DelaiDepasse), 2_000);
 }

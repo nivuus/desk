@@ -15,10 +15,10 @@ import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MOTEUR } from '../base/harnais';
 import { lireParId } from '../depot/televersement';
-import { avec, jetonDe, MS } from './routes-harnais';
+import { withIt, jetonDe, MS } from './routes-harnais';
 import { ENTETES_SECURITE } from './entetes';
 import {
-    TAILLE_TRANCHE,
+    CHUNK_SIZE,
     TELEVERSEMENT_MAX_OCTETS,
     TELEVERSEMENTS_EN_COURS_MAX,
 } from './routes-televersement';
@@ -35,7 +35,7 @@ import {
     sceller,
     SHA,
     TRANCHES,
-    utilisateur,
+    user,
 } from './routes-televersement-harnais';
 
 afterEach(async () => {
@@ -60,7 +60,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
             '/televersements',
             '/applications',
         ]) {
-            const r = await fetch(`${url}${chemin}`, { headers: avec(jetonDe('u1')) });
+            const r = await fetch(`${url}${chemin}`, { headers: withIt(jetonDe('u1')) });
             expect(r.status, chemin).toBe(404);
             expect(await r.text(), chemin).toBe('introuvable\n');
         }
@@ -70,8 +70,8 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         const { url } = await monter('tel-options');
         const r = await fetch(`${url}/televersement`, { method: 'OPTIONS' });
         expect(r.status).toBe(204);
-        for (const [nom, valeur] of Object.entries(ENTETES_SECURITE)) {
-            expect(r.headers.get(nom), nom).toBe(valeur);
+        for (const [nom, value] of Object.entries(ENTETES_SECURITE)) {
+            expect(r.headers.get(nom), nom).toBe(value);
         }
         // Sur un REFUS aussi — c'est là qu'ils comptent le plus.
         const refus = await fetch(`${url}/televersement`, { method: 'POST' });
@@ -89,7 +89,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
             ['/televersement/x/tranche/0', 'POST'],
         ];
         for (const [chemin, methode] of cas) {
-            const r = await fetch(`${url}${chemin}`, { method: methode, headers: avec(jeton) });
+            const r = await fetch(`${url}${chemin}`, { method: methode, headers: withIt(jeton) });
             expect(r.status, chemin).toBe(405);
             expect(await r.json(), chemin).toEqual({ refus: 'methode' });
         }
@@ -103,7 +103,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
         const agent = await fetch(`${url}/televersement`, {
             method: 'POST',
-            headers: avec(jetonDe('a1', 'agent')),
+            headers: withIt(jetonDe('a1', 'agent')),
         });
         // 403 et non 401 : le jeton est VALIDE, il n'est pas celui d'un humain.
         expect(agent.status).toBe(403);
@@ -114,7 +114,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('crée, et rend le pas et une liste de tranches VIDE', async () => {
         const { url, base } = await monter('tel-creer');
-        const u = await utilisateur(base, 'ada@exemple.test');
+        const u = await user(base, 'ada@exemple.test');
         const r = await declarerChez(url, jetonDe(u), {
             nom: 'installeur.exe',
             taille: 42,
@@ -123,18 +123,18 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect(r.status).toBe(201);
         const corps = (await r.json()) as Record<string, unknown>;
         expect(typeof corps.id).toBe('string');
-        expect(corps.taille_tranche).toBe(TAILLE_TRANCHE);
+        expect(corps.taille_tranche).toBe(CHUNK_SIZE);
         expect(corps.tranches_presentes).toEqual([]);
         expect(corps.scelle_a).toBe(null);
         // La ligne existe RÉELLEMENT, et elle porte le demandeur.
         const ligne = await lireParId(base, corps.id as string);
         expect(ligne?.utilisateur_id).toBe(u);
-        expect(ligne?.taille_tranche).toBe(TAILLE_TRANCHE);
+        expect(ligne?.taille_tranche).toBe(CHUNK_SIZE);
     });
 
     it('refuse une déclaration mal formée, champ par champ', async () => {
         const { url, base } = await monter('tel-creer-forme');
-        const jeton = jetonDe(await utilisateur(base, 'bob@exemple.test'));
+        const jeton = jetonDe(await user(base, 'bob@exemple.test'));
         const cas: [unknown, string][] = [
             [{ nom: '', taille: 1, sha256: SHA }, 'nom-invalide'],
             [{ taille: 1, sha256: SHA }, 'nom-invalide'],
@@ -161,7 +161,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('borne le corps de la déclaration, et le quota de téléversements', async () => {
         const { url, base } = await monter('tel-creer-quota');
-        const jeton = jetonDe(await utilisateur(base, 'cle@exemple.test'));
+        const jeton = jetonDe(await user(base, 'cle@exemple.test'));
 
         const enorme = await declarerChez(url, jeton, {
             nom: 'x'.repeat(9000),
@@ -190,13 +190,13 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         // propriétaire (200), rendre 403 (statut), ou rendre un 404 au CORPS
         // distinct — seule la comparaison du corps attrape la troisième.
         const { url, base } = await monter('tel-propriete');
-        const ada = await utilisateur(base, 'ada@exemple.test');
-        const bob = await utilisateur(base, 'bob@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
+        const bob = await user(base, 'bob@exemple.test');
         const id = await poser(base, ada);
 
-        const chez = await fetch(`${url}/televersement/${id}`, { headers: avec(jetonDe(bob)) });
+        const chez = await fetch(`${url}/televersement/${id}`, { headers: withIt(jetonDe(bob)) });
         const absent = await fetch(`${url}/televersement/${INCONNU}`, {
-            headers: avec(jetonDe(bob)),
+            headers: withIt(jetonDe(bob)),
         });
         expect(chez.status).toBe(404);
         expect(absent.status).toBe(404);
@@ -208,7 +208,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         expect(corpsChez).not.toContain(ada);
 
         // Le propriétaire, lui, voit le sien.
-        const sien = await fetch(`${url}/televersement/${id}`, { headers: avec(jetonDe(ada)) });
+        const sien = await fetch(`${url}/televersement/${id}`, { headers: withIt(jetonDe(ada)) });
         expect(sien.status).toBe(200);
         expect((await sien.json()) as Record<string, unknown>).toMatchObject({
             id,
@@ -221,14 +221,14 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('journalise LEQUEL des deux cas, et les deux lignes diffèrent', async () => {
         const { url, base } = await monter('tel-journal');
-        const ada = await utilisateur(base, 'ada@exemple.test');
-        const bob = await utilisateur(base, 'bob@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
+        const bob = await user(base, 'bob@exemple.test');
         const id = await poser(base, ada);
         const vu = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-        await fetch(`${url}/televersement/${id}`, { headers: avec(jetonDe(bob)) });
+        await fetch(`${url}/televersement/${id}`, { headers: withIt(jetonDe(bob)) });
         await fetch(`${url}/televersement/00000000-0000-4000-8000-000000000000`, {
-            headers: avec(jetonDe(bob)),
+            headers: withIt(jetonDe(bob)),
         });
         const lignes = vu.mock.calls.map((c) => String(c[0]));
         expect(lignes.some((l) => l.includes('cas=etranger'))).toBe(true);
@@ -237,9 +237,9 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('refuse un identifiant qui n’est pas un UUID, avant tout accès au disque', async () => {
         const { url, base } = await monter('tel-id-invalide');
-        const jeton = jetonDe(await utilisateur(base, 'ada@exemple.test'));
+        const jeton = jetonDe(await user(base, 'ada@exemple.test'));
         for (const id of ['..%2F..%2Fetc', 'pas-un-uuid', SHA]) {
-            const r = await fetch(`${url}/televersement/${id}`, { headers: avec(jeton) });
+            const r = await fetch(`${url}/televersement/${id}`, { headers: withIt(jeton) });
             expect(r.status, id).toBe(400);
             expect(await r.json(), id).toEqual({ refus: 'identifiant-invalide' });
         }
@@ -249,7 +249,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('refuse de sceller tant qu’il manque une tranche', async () => {
         const { url, base } = await monter('tel-manquantes');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
         await deposer(url, id, 0, TRANCHES[0], jeton);
@@ -266,7 +266,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         // Le refus doit être `tranches-incoherentes`, JAMAIS `-manquantes` :
         // redemander une tranche mal taillée ne la réparerait jamais.
         const { url, base } = await monter('tel-incoherentes');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
         await deposer(url, id, 0, TRANCHES[0], jeton);
@@ -285,7 +285,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         // téléversement, dont les octets ne sont pas les siens. Les trois
         // tranches ont la taille EXACTE du plan — seul un recalcul le voit.
         const { url, base } = await monter('tel-empreinte');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
         await deposer(url, id, 0, Buffer.from('AAAA'), jeton);
@@ -301,7 +301,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('scelle quand tout concorde, refuse tout dépôt ensuite, et sceller deux fois réussit', async () => {
         const { url, base } = await monter('tel-sceller');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const jeton = jetonDe(ada);
         const id = await poser(base, ada);
         for (let n = 0; n < TRANCHES.length; n += 1) {
@@ -330,7 +330,7 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
         // Zéro tranche (`ceil(0 / pas)`), verdict `complet` sur une liste vide :
         // sceller un fichier sans contenu n'exige pas une trame sans contenu.
         const { url, base } = await monter('tel-vide');
-        const ada = await utilisateur(base, 'ada@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
         const vide = createHash('sha256').update('').digest('hex');
         const id = await poser(base, ada, vide, 0);
         const r = await sceller(url, id, jetonDe(ada));
@@ -340,8 +340,8 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('un scellement d’AUTRUI rend le même 404 que l’inconnu', async () => {
         const { url, base } = await monter('tel-sceller-autrui');
-        const ada = await utilisateur(base, 'ada@exemple.test');
-        const bob = await utilisateur(base, 'bob@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
+        const bob = await user(base, 'bob@exemple.test');
         const id = await poser(base, ada);
         const r = await sceller(url, id, jetonDe(bob));
         expect(r.status).toBe(404);
@@ -351,8 +351,8 @@ describe(`routes de téléversement, moteur=${MOTEUR}`, () => {
 
     it('un dépôt sur le téléversement d’autrui n’écrit RIEN', async () => {
         const { url, base } = await monter('tel-deposer-autrui');
-        const ada = await utilisateur(base, 'ada@exemple.test');
-        const bob = await utilisateur(base, 'bob@exemple.test');
+        const ada = await user(base, 'ada@exemple.test');
+        const bob = await user(base, 'bob@exemple.test');
         const id = await poser(base, ada);
         const r = await deposer(url, id, 0, TRANCHES[0], jetonDe(bob));
         expect(r.status).toBe(404);

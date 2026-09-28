@@ -213,11 +213,11 @@ const CALME_S = Number(process.env.CALME_S ?? 12);
 const STABILISATION_MAX_S = Number(process.env.STABILISATION_MAX_S ?? 150);
 // Taille visée pour simuler un viewport « plein écran » côté client (§6 de la
 // spec). Choisie nettement au-dessus de 1280×720 pour dépasser la tolérance de
-// 4 px de `taille_compatible`, et nettement EN DESSOUS de `TAILLE_MAX_SORTIE`
+// 4 px de `taille_compatible`, et nettement EN DESSOUS de `MAX_OUTPUT_SIZE`
 // (1920×1080, `agent/src/windows_source/sortie.rs`) pour que ② mesure un
 // changement de mode ACCEPTÉ plutôt que borné.
 const VIEWPORT_PLEIN_ECRAN = [1920, 1080];
-// Volontairement AU-DESSUS de `TAILLE_MAX_SORTIE`, pour vérifier que le plafond
+// Volontairement AU-DESSUS de `MAX_OUTPUT_SIZE`, pour vérifier que le plafond
 // borne réellement — probe annexe de ②, pas le critère lui-même.
 const VIEWPORT_SURDIMENSIONNE = [3840, 2160];
 
@@ -292,14 +292,14 @@ async function purgerFenetresVMRescapees() {
     ].join('\n');
     vmIt('purge-rescapees', script);
     await dodo(5000);
-    let resultat = null;
+    let result = null;
     try {
-        resultat = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8'));
+        result = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8'));
     } catch { }
-    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(resultat));
-    if (!resultat || resultat.chrome_restants !== 0 || resultat.agents_restants !== 0) {
+    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(result));
+    if (!result || result.chrome_restants !== 0 || result.agents_restants !== 0) {
         throw new Error(
-            `état VM non propre avant lancement : ${JSON.stringify(resultat)} — ` +
+            `état VM non propre avant lancement : ${JSON.stringify(result)} — ` +
             'une fenêtre ou un agent rescapé fausserait l\'attribution cible/voisine (Critique 2)');
     }
 }
@@ -532,7 +532,7 @@ async function marqueurs(etiquette) {
         mode_sortie_reussi: compte("sortie retaillée : chaîne d'encodage reconstruite"),
         mode_sortie_refuse: compte("la sortie n'a pas pris le mode demandé"),
         mutex_abandonne: compte('887a0026'),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -873,10 +873,10 @@ async function togglerStyleFenetre(marqueur, action) {
     await dodo(4000);
     let brut = '';
     try { brut = await readFile(`/media/vm/dev/${marqueur}-style.json`, 'utf8'); } catch { }
-    let resultat = null;
-    try { resultat = JSON.parse(brut); } catch { }
+    let result = null;
+    try { result = JSON.parse(brut); } catch { }
     log(`STYLE FENÊTRE (${marqueur}, action=${action}) ` + (brut || '(fichier absent)'));
-    return resultat;
+    return result;
 }
 
 // ---------------------------------------------------------------- ouverture des fenêtres VM
@@ -905,7 +905,7 @@ async function ouvrirFenetre(n) {
     const marqueur = marqueurFenetre(n);
     const hz = hzDe(n);
     assurerTonHtml(hz);
-    const avant = appPages().length;
+    const before = appPages().length;
     log(`  · ouverture fenêtre ${n} (hz=${hz}, marqueur=${marqueur})`);
     vmIt(`ouvrird8-${n}`, [
         '$a = @(',
@@ -924,7 +924,7 @@ async function ouvrirFenetre(n) {
     ].join('\n'));
     for (let i = 0; i < 30; i += 1) {
         await dodo(2000);
-        if (appPages().length > avant) return { ok: true, hz, marqueur };
+        if (appPages().length > before) return { ok: true, hz, marqueur };
     }
     log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
     return { ok: false, hz, marqueur };
@@ -1098,7 +1098,7 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
     }, 30);
     const statsApresRedim = await cdp.evalBorne(sidDe(cible), STATS, 6000, true);
 
-    // Probe annexe : au-dessus de TAILLE_MAX_SORTIE, le flux doit rester borné.
+    // Probe annexe : au-dessus de MAX_OUTPUT_SIZE, le flux doit rester borné.
     const innerAvant2 = await cdp.evalBorne(sidDe(cible), 'window.innerWidth+"x"+window.innerHeight', 4000, false);
     await forcerViewport(cdp, cible, VIEWPORT_SURDIMENSIONNE[0], VIEWPORT_SURDIMENSIONNE[1], 'critère ② — probe TAILLE_MAX_SORTIE');
     const innerApres2 = await cdp.evalBorne(sidDe(cible), 'window.innerWidth+"x"+window.innerHeight', 4000, false);
@@ -1163,7 +1163,7 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
             stats_apres_surdimensionne: statsApresSurdimensionne,
             surdimensionne_borne: !!(statsApresSurdimensionne?.l <= 1920 && statsApresSurdimensionne?.h <= 1080),
         },
-        garde_fou_7_nom_sortie: { avant: sortieAvant, apres: sortieApres, conserve: !!sortieAvant && sortieAvant === sortieApres },
+        garde_fou_7_nom_sortie: { before: sortieAvant, apres: sortieApres, conserve: !!sortieAvant && sortieAvant === sortieApres },
         mode_sortie_complet: modeSortieComplet,
         pertes_acces_toutes: pertes, pertes_acces_voisines: pertesVoisines,
         detection_agent_sortie: detectionSortieAgent,
@@ -1234,7 +1234,7 @@ async function phaseCritere4Et5(cdp, voisine, hzVoisine) {
         // que le niveau À la fréquence assignée, exactement le champ qui ne
         // pouvait pas échouer : le jugement compare maintenant cette dominante à
         // la fréquence assignée à LA fenêtre, dans la tolérance d'un bin FFT.
-        audio_survit: !!(audioPendantSommeil && !audioPendantSommeil.erreur
+        audio_survit: !!(audioPendantSommeil && !audioPendantSommeil.error
             && typeof audioPendantSommeil.hz === 'number'
             && Math.abs(audioPendantSommeil.hz - hzVoisine) <= toleranceBinHz),
         reveil_confirme: reveilConfirme,

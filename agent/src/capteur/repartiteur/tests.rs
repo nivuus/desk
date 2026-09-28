@@ -17,7 +17,7 @@ fn part_de(parts: &[(String, u32)], session: &str) -> u32 {
 }
 
 #[test]
-fn sans_aucune_fenetre_il_n_y_a_rien_a_repartir() {
+fn without_any_window_there_is_nothing_to_share_out() {
     assert!(repartir(12_000_000, &[]).is_empty());
 }
 
@@ -58,7 +58,7 @@ fn une_endormie_recoit_le_plancher_et_ne_partage_pas_le_reste() {
 }
 
 #[test]
-fn toutes_endormies_recoivent_le_plancher_et_le_reste_n_est_donne_a_personne() {
+fn all_asleep_receive_the_floor_and_the_rest_goes_to_nobody() {
     let parts = repartir(12_000_000, &[f("a", false, false), f("b", false, false)]);
     assert_eq!(part_de(&parts, "a"), PART_DORMANTE_BPS);
     assert_eq!(part_de(&parts, "b"), PART_DORMANTE_BPS);
@@ -87,7 +87,7 @@ fn une_focalisee_endormie_reste_au_plancher_et_les_eveillees_se_partagent_egalem
 /// emits `blur`), but the function must remain TOTAL: a single boost
 /// is granted, to the first encountered, otherwise the budget invariant breaks.
 #[test]
-fn plusieurs_focalisees_ne_donnent_qu_une_seule_majoration() {
+fn several_focused_give_a_single_boost() {
     let parts = repartir(12_000_000, &[f("a", true, true), f("b", true, true)]);
     let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
     assert!(somme <= 12_000_000, "somme {somme} au-dessus du budget");

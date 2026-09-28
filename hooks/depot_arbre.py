@@ -6,7 +6,7 @@ frôlait le plafond de 500 lignes après l'ajout du dépôt de `proto/ts/`
 (trouvaille réelle : le service ne démarre pas sans lui, voir
 `hooks/install.py`).
 
-Comme `hooks/vm.py`, `hooks/administration.py` et `hooks/env_fichier.py`,
+Comme `hooks/vm.py`, `hooks/administration.py` et `hooks/env_file.py`,
 ce module N'EST PAS un hook exécutable seul (pas de `--phase`/stdin JSON) :
 `hooks/install.py` l'importe (`from depot_arbre import copier_arbre,
 rendre_lisible_par_tous`) — Python ajoute automatiquement le répertoire du
@@ -23,7 +23,7 @@ import shutil
 import stat
 
 
-def rendre_lisible_par_tous(racine: pathlib.Path) -> None:
+def make_world_readable(racine: pathlib.Path) -> None:
     """Adds `o+r` everywhere under `racine`, and `o+x` on directories and
     on files already executable for the owner or the group —
     the equivalent of `chmod -R a+rX racine`.
@@ -51,18 +51,18 @@ def rendre_lisible_par_tous(racine: pathlib.Path) -> None:
         mode_dir = chemin_dir.stat().st_mode
         os.chmod(chemin_dir, mode_dir | stat.S_IROTH | stat.S_IXOTH)
         for nom in filenames:
-            chemin_fichier = chemin_dir / nom
-            if chemin_fichier.is_symlink():
+            file_path = chemin_dir / nom
+            if file_path.is_symlink():
                 # chmod (and this function) follow symlinks: their
                 # TARGET is already handled when `os.walk` reaches it in
                 # the tree (the relative targets of node_modules/.bin/*
                 # all point INSIDE the walked tree).
                 continue
-            mode_fichier = chemin_fichier.stat().st_mode
-            nouveau = mode_fichier | stat.S_IROTH
-            if mode_fichier & (stat.S_IXUSR | stat.S_IXGRP):
-                nouveau |= stat.S_IXOTH
-            os.chmod(chemin_fichier, nouveau)
+            file_mode = file_path.stat().st_mode
+            new = file_mode | stat.S_IROTH
+            if file_mode & (stat.S_IXUSR | stat.S_IXGRP):
+                new |= stat.S_IXOTH
+            os.chmod(file_path, new)
 
 
 def copier_arbre(source: pathlib.Path, destination: pathlib.Path,

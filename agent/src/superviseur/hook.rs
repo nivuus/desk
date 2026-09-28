@@ -92,9 +92,9 @@ pub fn merite_encore(fenetre: IdFenetre) -> bool {
 
 pub fn decrire(hwnd: HWND) -> Option<DescriptionFenetre> {
     unsafe {
-        let longueur = GetWindowTextLengthW(hwnd);
-        let titre = if longueur > 0 {
-            let mut tampon = vec![0u16; longueur as usize + 1];
+        let length = GetWindowTextLengthW(hwnd);
+        let titre = if length > 0 {
+            let mut tampon = vec![0u16; length as usize + 1];
             let ecrits = GetWindowTextW(hwnd, &mut tampon);
             if ecrits > 0 {
                 String::from_utf16_lossy(&tampon[..ecrits as usize])
@@ -247,18 +247,18 @@ fn nom_du_processus(pid: u32) -> Option<String> {
     };
     let processus = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
     let mut tampon = [0u16; 260];
-    let mut taille = tampon.len() as u32;
+    let mut size = tampon.len() as u32;
     let issue = unsafe {
         QueryFullProcessImageNameW(
             processus,
             PROCESS_NAME_WIN32,
             PWSTR(tampon.as_mut_ptr()),
-            &mut taille,
+            &mut size,
         )
     };
     let _ = unsafe { windows::Win32::Foundation::CloseHandle(processus) };
     issue.ok()?;
-    let chemin = String::from_utf16_lossy(&tampon[..taille as usize]);
+    let chemin = String::from_utf16_lossy(&tampon[..size as usize]);
     Some(
         chemin
             .rsplit(['\\', '/'])

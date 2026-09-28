@@ -44,27 +44,27 @@
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-ETIQ="$1"; FICHIER="$2"; MUTATION="$3"; FILTRE="$4"
+ETIQ="$1"; FILE="$2"; MUTATION="$3"; FILTRE="$4"
 
 echo "=== ROUGE « $ETIQ » ==="
 echo "date : $(date -Is)   commit : $(git rev-parse --short HEAD)"
-echo "fichier mute : $FICHIER"
+echo "fichier mute : $FILE"
 echo
-AVANT=$(sha256sum "$FICHIER" | cut -d' ' -f1)
+BEFORE=$(sha256sum "$FILE" | cut -d' ' -f1)
 COPIE=$(mktemp)
-cp -- "$FICHIER" "$COPIE"
-echo "1. sha256 AVANT : $AVANT   (copie nommee prise : $COPIE)"
+cp -- "$FILE" "$COPIE"
+echo "1. sha256 AVANT : $BEFORE   (copie nommee prise : $COPIE)"
 
 echo "2. mutation :"
 python3 -c "$MUTATION" || { echo "🔴 LA MUTATION A ECHOUE (ancre introuvable) — ce n'est PAS une rouge."; exit 2; }
 
-MUTE=$(diff -u -- "$COPIE" "$FICHIER")
+MUTE=$(diff -u -- "$COPIE" "$FILE")
 NUMSTAT=$(printf '%s' "$MUTE" | grep -cE '^[-+][^-+]' || true)
 echo "3. lignes changees PAR LA MUTATION (contre la copie nommee) : ${NUMSTAT}"
-echo "   (pour memoire, git diff --numstat contre HEAD : $(git diff --numstat -- "$FICHIER" | tr '\t' ' '))"
+echo "   (pour memoire, git diff --numstat contre HEAD : $(git diff --numstat -- "$FILE" | tr '\t' ' '))"
 if [ -z "$MUTE" ]; then
     echo "🔴 SORTIE VIDE — ECHEC DE LA ROUGE, jamais un succes du produit."
-    cp -- "$COPIE" "$FICHIER"; rm -f -- "$COPIE"; exit 3
+    cp -- "$COPIE" "$FILE"; rm -f -- "$COPIE"; exit 3
 fi
 echo "   diff de la mutation :"
 printf '%s\n' "$MUTE" | grep -E '^[-+][^-+]' | sed 's/^/     /'
@@ -85,12 +85,12 @@ else
         | sed 's/^/     /'
 fi
 
-cp -- "$COPIE" "$FICHIER"; rm -f -- "$COPIE"
+cp -- "$COPIE" "$FILE"; rm -f -- "$COPIE"
 echo "5. restauration DEPUIS LA COPIE NOMMEE (jamais git checkout --)"
-APRES=$(sha256sum "$FICHIER" | cut -d' ' -f1)
+APRES=$(sha256sum "$FILE" | cut -d' ' -f1)
 echo "6. sha256 APRES : $APRES"
-[ "$AVANT" = "$APRES" ] && echo "   ✅ IDENTIQUE" || { echo "   🔴 DIVERGENT"; exit 4; }
-PORCELAIN=$(git status --porcelain -- "$FICHIER")
+[ "$BEFORE" = "$APRES" ] && echo "   ✅ IDENTIQUE" || { echo "   🔴 DIVERGENT"; exit 4; }
+PORCELAIN=$(git status --porcelain -- "$FILE")
 echo "7. git status --porcelain : ${PORCELAIN:-<VIDE>}"
 echo "   (un « M » ici ne dit PAS que la mutation a survecu : il dit que le"
 echo "    fichier porte le correctif NON COMMITE que la rouge eprouve. Ce qui"

@@ -69,7 +69,7 @@ fn largeur(octet: u8) -> u16 {
 /// could get wrong without any check seeing it — it is the
 /// caller that KNOWS where its bytes come from, and the type of the function
 /// it chooses is the only trace of that knowledge.
-fn tailles(octets: &[u8], pas: usize) -> Option<Vec<u16>> {
+fn sizes(octets: &[u8], pas: usize) -> Option<Vec<u16>> {
     if octets.len() < ENTETE {
         return None;
     }
@@ -99,8 +99,8 @@ fn tailles(octets: &[u8], pas: usize) -> Option<Vec<u16>> {
 /// The sizes of an `ICONDIR` — the directory of a STANDALONE `.ico`.
 ///
 /// Entries of **16** bytes: they end with a `DWORD dwImageOffset`.
-pub fn tailles_icondir(octets: &[u8]) -> Option<Vec<u16>> {
-    tailles(octets, ENTREE_ICO)
+pub fn icondir_sizes(octets: &[u8]) -> Option<Vec<u16>> {
+    sizes(octets, ENTREE_ICO)
 }
 
 /// The sizes of a `GRPICONDIR` — the `RT_GROUP_ICON` resource of a PE module.
@@ -108,8 +108,8 @@ pub fn tailles_icondir(octets: &[u8]) -> Option<Vec<u16>> {
 /// Entries of **14** bytes: they end with a `WORD nID`, the identifier
 /// of the matching `RT_ICON` resource, where an `.ico` carries a four-byte
 /// offset.
-pub fn tailles_grpicondir(octets: &[u8]) -> Option<Vec<u16>> {
-    tailles(octets, ENTREE_GRP)
+pub fn grpicondir_sizes(octets: &[u8]) -> Option<Vec<u16>> {
+    sizes(octets, ENTREE_GRP)
 }
 
 /// The largest PRESENT entry, or [`SourceMax::NonMesuree`].
@@ -119,8 +119,8 @@ pub fn tailles_grpicondir(octets: &[u8]) -> Option<Vec<u16>> {
 /// icon of zero pixels, when `NonMesuree` says nothing could be measured. The
 /// whole G2 chain — the wire, the column, the route — exists to keep these
 /// two distinct.
-pub fn maximum(tailles: &[u16]) -> SourceMax {
-    match tailles.iter().copied().max() {
+pub fn maximum(sizes: &[u16]) -> SourceMax {
+    match sizes.iter().copied().max() {
         Some(px) => SourceMax::Pixels(px),
         None => SourceMax::NonMesuree,
     }

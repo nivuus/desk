@@ -51,7 +51,7 @@ pub enum Mutation {
         vers: String,
         repertoire: bool,
     },
-    Supprimer {
+    Delete {
         chemin: String,
         repertoire: bool,
     },
@@ -63,7 +63,7 @@ impl Mutation {
     pub fn source(&self) -> &str {
         match self {
             Mutation::Renommer { de, .. } => de,
-            Mutation::Supprimer { chemin, .. } => chemin,
+            Mutation::Delete { chemin, .. } => chemin,
         }
     }
 
@@ -76,7 +76,7 @@ impl Mutation {
     /// the renaming has precisely just made disappear.
     pub fn repertoire(&self) -> bool {
         match self {
-            Mutation::Renommer { repertoire, .. } | Mutation::Supprimer { repertoire, .. } => {
+            Mutation::Renommer { repertoire, .. } | Mutation::Delete { repertoire, .. } => {
                 *repertoire
             }
         }
@@ -126,9 +126,7 @@ pub fn ordonnancer(dues: &[String], quoi: &Mutation) -> Ordonnancement {
     }
     match quoi {
         Mutation::Renommer { .. } => Ordonnancement::AttendreEcrituresDues { chemins: concernes },
-        Mutation::Supprimer { .. } => {
-            Ordonnancement::AbandonnerEcrituresDues { chemins: concernes }
-        }
+        Mutation::Delete { .. } => Ordonnancement::AbandonnerEcrituresDues { chemins: concernes },
     }
 }
 
@@ -182,7 +180,7 @@ pub struct FileMutations {
 }
 
 impl FileMutations {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -191,7 +189,7 @@ impl FileMutations {
     /// `None` means "nothing to start": a mutation is already in flight.
     pub fn signaler(&mut self, quoi: Mutation) -> Option<Mutation> {
         self.attente.push(quoi);
-        self.demarrer()
+        self.start()
     }
 
     /// The mutation in flight is over — **whatever its outcome**.
@@ -201,7 +199,7 @@ impl FileMutations {
     /// F2's write queue already does, for the same reason.
     pub fn terminee(&mut self) -> Option<Mutation> {
         self.en_vol = None;
-        self.demarrer()
+        self.start()
     }
 
     /// Puts the in-flight mutation back **at the HEAD of the waiting list**, without losing it.
@@ -226,7 +224,7 @@ impl FileMutations {
         self.attente.len()
     }
 
-    fn demarrer(&mut self) -> Option<Mutation> {
+    fn start(&mut self) -> Option<Mutation> {
         if self.en_vol.is_some() || self.attente.is_empty() {
             return None;
         }

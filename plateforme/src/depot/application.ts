@@ -94,7 +94,7 @@ export function pxDepuisSourceMax(source: SourceMax): number | null {
 
 /// The columns are LISTED, never `SELECT *`: a column added one
 /// day would not show up by itself in a type that does not declare it.
-const COLONNES =
+const COLUMNS =
     'id, vm_id, nom, chemin, vue_a, cle, cible, arguments, repertoire, apparue_a, disparue_a,'
     + ' masquee_a, icone, source_max_px, accent';
 
@@ -110,8 +110,8 @@ const COLONNES =
 /// ⚠️ THE `DELETE` IS ON A LINK TABLE, AND NOT ON `application` —
 /// of which the file writes, twice, that it knows NONE. A link
 /// row has no history to preserve: it describes a current state.
-async function ecrireAssociations(
-    tx: { executer(sql: string, parametres?: unknown[]): Promise<unknown> },
+async function writeAssociations(
+    tx: { executer(sql: string, params?: unknown[]): Promise<unknown> },
     applicationId: string,
     extensions: readonly string[],
 ): Promise<void> {
@@ -161,7 +161,7 @@ export async function associationsDe(
 /// same — see `lireConnues`.
 export async function lireParVm(p: Pilote, vmId: string): Promise<LigneApplication[]> {
     return p.interroger<LigneApplication>(
-        `SELECT ${COLONNES} FROM application`
+        `SELECT ${COLUMNS} FROM application`
             + ' WHERE vm_id = ? AND disparue_a IS NULL AND masquee_a IS NULL'
             + ' ORDER BY nom',
         [vmId],
@@ -178,7 +178,7 @@ export async function lireParVm(p: Pilote, vmId: string): Promise<LigneApplicati
 /// that a disappearance did not erase the row.
 export async function lireParId(p: Pilote, id: string): Promise<LigneApplication | undefined> {
     const lignes = await p.interroger<LigneApplication>(
-        `SELECT ${COLONNES} FROM application WHERE id = ?`,
+        `SELECT ${COLUMNS} FROM application WHERE id = ?`,
         [id],
     );
     return lignes[0];
@@ -230,7 +230,7 @@ export async function appliquer(
                 // G5, which adds `accent`. A miscounted `INSERT` THROWS on
                 // BOTH engines: it is the cheapest guard in the file, and
                 // it is free.
-                `INSERT INTO application(${COLONNES})`
+                `INSERT INTO application(${COLUMNS})`
                     + ' VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     identifiant,
@@ -253,10 +253,10 @@ export async function appliquer(
                     app.accent,
                 ],
             );
-            await ecrireAssociations(tx, identifiant, app.associations);
+            await writeAssociations(tx, identifiant, app.associations);
         }
 
-        for (const { id, app } of fusion.aMettreAJour) {
+        for (const { id, app } of fusion.toUpdate) {
             // ⚠️ `apparue_a` IS NOT IN THIS `SET`. Advancing it would make it a
             // duplicate of `vue_a`, and the installation verdict that will read it one
             // day would never again see an appearance.
@@ -292,7 +292,7 @@ export async function appliquer(
                     id,
                 ],
             );
-            await ecrireAssociations(tx, id, app.associations);
+            await writeAssociations(tx, id, app.associations);
         }
 
         for (const id of fusion.aMarquerDisparues) {

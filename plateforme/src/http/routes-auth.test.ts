@@ -11,9 +11,9 @@ import { baseNeuve, piloteCompteur } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { hacher } from '../identite/mot-de-passe';
-import { verifierJeton } from '../identite/jeton';
-import { creerUtilisateur } from '../depot/utilisateur';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { verifyToken } from '../identite/jeton';
+import { createUser } from '../depot/utilisateur';
+import { startServer, type ServicePlateforme } from './serveur';
 import { ECHECS_MAX_ADRESSE, ECHECS_MAX_COMPTE } from '../securite/frein';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -59,8 +59,8 @@ afterEach(async () => {
 
 async function servir(nom: string, origineClient?: string): Promise<string> {
     base = await baseNeuve(nom);
-    await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
-    service = await demarrerServeur(config(origineClient), base);
+    await createUser(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
+    service = await startServer(config(origineClient), base);
     return `http://127.0.0.1:${service.port}`;
 }
 
@@ -92,7 +92,7 @@ describe('routes d’authentification', () => {
         expect(typeof corps.rafraichissement).toBe('string');
         expect(corps.expire_a).toBeGreaterThan(Date.now());
         // Le jeton rendu est réellement vérifiable par ce service.
-        expect(verifierJeton(corps.acces, SECRET, Date.now()).ok).toBe(true);
+        expect(verifyToken(corps.acces, SECRET, Date.now()).ok).toBe(true);
 
         // Et le rafraîchissement tourne.
         const r2 = await poster(`${base_}/auth/rafraichir`, {
@@ -166,8 +166,8 @@ describe('routes d’authentification', () => {
     });
 
     it('OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée', async () => {
-        const avec = await servir('auth-cors-oui', ORIGINE);
-        const r = await fetch(`${avec}/auth/connexion`, {
+        const withIt = await servir('auth-cors-oui', ORIGINE);
+        const r = await fetch(`${withIt}/auth/connexion`, {
             method: 'OPTIONS',
             headers: { origin: ORIGINE },
         });
@@ -235,15 +235,15 @@ describe('le mode d’authentification (Config.auth)', () => {
     // derrière Pomerium serait une SECONDE porte, avec un mot de passe que plus
     // personne ne tourne.
     //
-    // ⚠️ ADAPTÉ AU MONTAGE DE CE FICHIER (`poster`/`demarrerServeur`), pas au
+    // ⚠️ ADAPTÉ AU MONTAGE DE CE FICHIER (`poster`/`startServer`), pas au
     // gabarit du brief qui appelait `servirAuth` directement : ce fichier
     // éprouve les routes À TRAVERS le serveur HTTP réel, jamais le routeur nu
     // (voir l'en-tête du fichier), et `false` s'y observe comme le 404
     // générique que `serveur.ts` rend quand aucun routeur n'a servi.
     it('rend 404 sur /auth/connexion en mode pomerium — la route N’EXISTE PLUS', async () => {
         base = await baseNeuve('auth-mode-connexion-pomerium');
-        await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
-        service = await demarrerServeur({ ...config(), auth: 'pomerium' }, base);
+        await createUser(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
+        service = await startServer({ ...config(), auth: 'pomerium' }, base);
         const url = `http://127.0.0.1:${service.port}`;
         const r = await poster(`${url}/auth/connexion`, {
             email: 'ada@exemple.test',
@@ -254,7 +254,7 @@ describe('le mode d’authentification (Config.auth)', () => {
 
     it('rend 404 sur /auth/rafraichir en mode pomerium — la route N’EXISTE PLUS', async () => {
         base = await baseNeuve('auth-mode-rafraichir-pomerium');
-        service = await demarrerServeur({ ...config(), auth: 'pomerium' }, base);
+        service = await startServer({ ...config(), auth: 'pomerium' }, base);
         const url = `http://127.0.0.1:${service.port}`;
         const r = await poster(`${url}/auth/rafraichir`, { rafraichissement: 'un-jeton-quelconque' });
         expect(r.status).toBe(404);
@@ -281,9 +281,9 @@ describe('le frein des routes d’authentification', () => {
     ): Promise<{ url: string; acces: () => number; remettre: () => void }> {
         const reel = await baseNeuve(nom);
         base = reel;
-        await creerUtilisateur(reel, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
+        await createUser(reel, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
         const compteur = piloteCompteur(reel);
-        service = await demarrerServeur(config(origineClient), compteur.pilote);
+        service = await startServer(config(origineClient), compteur.pilote);
         return { url: `http://127.0.0.1:${service.port}`, acces: compteur.acces, remettre: compteur.remettre };
     }
 

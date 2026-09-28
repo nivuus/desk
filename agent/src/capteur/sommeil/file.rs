@@ -265,7 +265,7 @@ pub(crate) fn canal_de_session(session: &str) -> (EmetteurSession, ReceveurSessi
 /// ③ **The repository already has this precedent, and it is named**:
 /// `registre.rs::etat()` does the same `unwrap_or_else(|e| e.into_inner())`,
 /// for the same reason, written in the same place.
-fn sous_verrou<T>(
+fn under_lock<T>(
     verrou: &Mutex<VecDeque<Message>>,
     action: impl FnOnce(&mut VecDeque<Message>) -> T,
 ) -> T {
@@ -302,7 +302,7 @@ impl EmetteurSession {
         if Arc::strong_count(&self.partage) == 1 {
             return Envoi::Rompu;
         }
-        match sous_verrou(&self.partage.file, |file| deposer(file, message)) {
+        match under_lock(&self.partage.file, |file| deposer(file, message)) {
             Depot::Refusee => {
                 let refuses = self.partage.refuses.fetch_add(1, Ordering::Relaxed) + 1;
                 self.journaliser_le_refus(refuses);
@@ -392,7 +392,7 @@ impl ReceveurSession {
     /// dropped before the sender fell can still be read, as
     /// `mpsc` did. Throwing these messages away would lose an already decided sleep order.
     pub(crate) fn essayer_recevoir(&self) -> Result<Message, VideOuFerme> {
-        match sous_verrou(&self.partage.file, |file| file.pop_front()) {
+        match under_lock(&self.partage.file, |file| file.pop_front()) {
             Some(message) => Ok(message),
             None if Arc::strong_count(&self.partage) == 1 => Err(VideOuFerme::Ferme),
             None => Err(VideOuFerme::Vide),
@@ -407,12 +407,12 @@ impl ReceveurSession {
     /// per message.
     ///
     /// ⚠️ **`#[cfg(test)]`, and it is a round 1 fix**: its six
-    /// callers are ALL test helpers (`method 'vider' is never used`
+    /// callers are ALL test helpers (`method 'drain' is never used`
     /// on the Windows target). Production, for its part, only reads this channel through
     /// `essayer_recevoir`, in a loop.
     #[cfg(test)]
-    pub(crate) fn vider(&self) -> Vec<Message> {
-        sous_verrou(&self.partage.file, |file| file.drain(..).collect())
+    pub(crate) fn drain(&self) -> Vec<Message> {
+        under_lock(&self.partage.file, |file| file.drain(..).collect())
     }
 }
 

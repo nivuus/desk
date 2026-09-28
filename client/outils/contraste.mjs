@@ -27,14 +27,14 @@ import { evaluer } from '../src/design/contraste.ts';
 
 const args = process.argv.slice(2);
 const iFichier = args.indexOf('--fichier');
-const fichier = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
+const file = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
-if (!existsSync(fichier)) {
-    console.error(`${fichier} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+if (!existsSync(file)) {
+    console.error(`${file} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
     process.exit(2);
 }
 
-const blocs = lireBlocsDeTheme(readFileSync(fichier, 'utf8'));
+const blocs = lireBlocsDeTheme(readFileSync(file, 'utf8'));
 const { verifiees, echecs, minimum } = evaluer(blocs);
 
 for (const { paire, rapport } of echecs) {

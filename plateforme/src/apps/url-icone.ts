@@ -58,7 +58,7 @@ const SEL_DERIVATION = 'nivuus-desk/sel/url-icone';
 /// bytes is two HMACs, that is, cheaper than the database read that
 /// follows. A memoised cache would keep a key alive in a global state, which the
 /// tests would then have to know how to clear.
-export function sousCleIcone(secretJeton: string): Buffer {
+export function iconSubkey(secretJeton: string): Buffer {
     return Buffer.from(hkdfSync('sha256', secretJeton, SEL_DERIVATION, ETIQUETTE_DERIVATION, 32));
 }
 
@@ -186,7 +186,7 @@ function messageCanonique(portee: PorteeIcone): string {
 
 /// The signature alone, in `base64url` (43 characters with SHA-256).
 export function signature(portee: PorteeIcone, secretJeton: string): string {
-    return createHmac('sha256', sousCleIcone(secretJeton))
+    return createHmac('sha256', iconSubkey(secretJeton))
         .update(messageCanonique(portee), 'utf8')
         .digest('base64url');
 }
@@ -233,7 +233,7 @@ export type VerdictUrlIcone = { ok: true; vm: string } | { ok: false; motif: Mot
 /// an exception: everything comes from the network, and a throw would answer 500 where
 /// it must refuse.
 ///
-/// 🔴 THE ORDER OF THE CHECKS IS THAT OF `verifierJeton`, AND IT IS DELIBERATE:
+/// 🔴 THE ORDER OF THE CHECKS IS THAT OF `verifyToken`, AND IT IS DELIBERATE:
 /// the SIGNATURE first, the EXPIRY next. A forged AND stale URL must
 /// be told "invalid signature", never "expired" — otherwise the
 /// refusal would inform a forger about the half of his work that succeeded.
@@ -248,15 +248,15 @@ export type VerdictUrlIcone = { ok: true; vm: string } | { ok: false; motif: Mot
 /// refusal then tells how many bytes were right — enough to rebuild a
 /// signature byte by byte. The LENGTHS are compared first: measured,
 /// `timingSafeEqual` THROWS when they differ.
-export function verifierUrlIcone(
+export function verifyIconUrl(
     application: string,
-    parametres: URLSearchParams,
+    params: URLSearchParams,
     secretJeton: string,
     maintenant: number,
 ): VerdictUrlIcone {
-    const vm = parametres.get('v');
-    const brutExpiration = parametres.get('x');
-    const recue = parametres.get('s');
+    const vm = params.get('v');
+    const brutExpiration = params.get('x');
+    const recue = params.get('s');
     if (vm === null || vm === '') return { ok: false, motif: 'parametre-absent' };
     if (brutExpiration === null || brutExpiration === '') {
         return { ok: false, motif: 'parametre-absent' };
@@ -283,7 +283,7 @@ export function verifierUrlIcone(
     if (!Number.isInteger(expiration)) return { ok: false, motif: 'signature-invalide' };
 
     // STRICT bound, written so that the test can besiege it from both sides
-    // — same gesture as `verifierJeton`.
+    // — same gesture as `verifyToken`.
     if (maintenant >= expiration) return { ok: false, motif: 'url-expiree' };
 
     return { ok: true, vm };

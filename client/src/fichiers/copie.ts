@@ -42,7 +42,7 @@ export async function ouvrirRepertoire(
     }
 }
 
-export async function copierFichier(
+export async function copyFile(
     parentSource: RacineMutable,
     nomSource: string,
     parentDest: RacineMutable,
@@ -50,13 +50,13 @@ export async function copierFichier(
     trace: TraceRenommage,
 ): Promise<void> {
     try {
-        const fichier = await (await parentSource.getFileHandle(nomSource)).getFile();
+        const file = await (await parentSource.getFileHandle(nomSource)).getFile();
         const cible = await parentDest.getFileHandle(nomDest, { create: true });
         // ⚠️ **WITHOUT `keepExistingData`** — the destination is new or empty by
         // right, and the old bridge's defect was precisely to keep the
         // byte tail of a file rewritten shorter (spec §12).
         const flux = await cible.createWritable();
-        const octets = new Uint8Array(await fichier.slice(0, fichier.size).arrayBuffer());
+        const octets = new Uint8Array(await file.slice(0, file.size).arrayBuffer());
         await flux.write({ type: 'write', position: 0, data: octets });
         // 🔵 THE COMMIT HAPPENS HERE, AND NOWHERE ELSE.
         await flux.close();
@@ -116,7 +116,7 @@ export async function copierRepertoire(
         if (enfant.kind === 'directory') {
             await copierRepertoire(source, enfant.name, cible, enfant.name, trace);
         } else {
-            await copierFichier(source, enfant.name, cible, enfant.name, trace);
+            await copyFile(source, enfant.name, cible, enfant.name, trace);
         }
     }
 }
@@ -140,7 +140,7 @@ export async function copierRepertoire(
  * the removal fail** instead of being carried off silently — and `deplacer`
  * then propagates the failure, source intact.
  *
- * ⚠️ **[`supprimer`], for its part, NEVER CALLS THIS FUNCTION.** A deletion
+ * ⚠️ **[`remove`], for its part, NEVER CALLS THIS FUNCTION.** A deletion
  * requested by the VM only removes ONE entry: Windows sends one notification
  * PER CHILD, and the mirror follows it step by step. The two paths are neighbours and
  * must not be unified.

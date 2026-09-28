@@ -33,11 +33,11 @@ if (!racine) throw new Error('usage : rouge-1a.ts <racine-du-worktree-P2>');
 const { lireConfig } = (await import(
     pathToFileURL(`${racine}/plateforme/src/config.ts`).href
 )) as typeof import('../../../../../plateforme/src/config');
-const { demarrer } = (await import(
+const { start } = (await import(
     pathToFileURL(`${racine}/plateforme/src/demarrage.ts`).href
 )) as typeof import('../../../../../plateforme/src/demarrage');
 
-const service = await demarrer(
+const service = await start(
     lireConfig({
         PLATEFORME_HOTE: '127.0.0.1',
         PLATEFORME_PORT: '0',
@@ -71,10 +71,10 @@ await second.attendre(1);
 const brutSecond = second.recues.map((t) => t.brut);
 dire(ligne('agent de la VM 2 -> bureau', brutSecond));
 
-const erreurs = brutSecond
+const errors = brutSecond
     .map((b) => JSON.parse(b) as { type?: string; reason?: string })
     .filter((m) => m.type === 'error');
-const motif = erreurs[0]?.reason;
+const motif = errors[0]?.reason;
 dire();
 dire(ligne('motif reçu par le SECOND, verbatim', motif ?? '<aucun>'));
 const attendu = 'un agent est déjà connecté à la session bureau';

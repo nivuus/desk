@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn n_emet_rien_avant_que_la_premiere_trame_ne_soit_due() {
+    fn emits_nothing_before_the_first_frame_is_due() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.push(&bloc(100, FRAME_SAMPLES));
@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn complete_par_du_silence_quand_rien_n_arrive_et_ne_saute_aucune_trame() {
+    fn fills_with_silence_when_nothing_arrives_and_skips_no_frame() {
         // It is the central property: without it, a silent desktop
         // would dig a hole in the RTP timeline, and the browser's jitter
         // buffer would starve before brutally

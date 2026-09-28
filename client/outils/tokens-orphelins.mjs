@@ -207,9 +207,9 @@ for (const chemin of [...feuilles, ...surfaces]) {
 // exactement l'angle mort qui a empêché `accent-dom.ts` de déclarer
 // `--accent-fenetre` (D-A1-2, sonde H1 du 21 août 2026).
 const posesJs = tokensPosesParLeJs(racine);
-for (const [token, fichiers] of posesJs) {
+for (const [token, files] of posesJs) {
     if (!employePar.has(token)) employePar.set(token, []);
-    for (const relatif of fichiers) employePar.get(token).push(`${relatif} (JS, poserToken)`);
+    for (const relatif of files) employePar.get(token).push(`${relatif} (JS, poserToken)`);
 }
 
 const texteSource = sources.map((chemin) => readFileSync(chemin, 'utf8')).join('\n');

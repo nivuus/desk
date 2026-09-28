@@ -2,8 +2,8 @@
 // `Target.setAutoAttach` + `waitForDebuggerOnStart` at BROWSER level.
 //
 // 🔴 WHAT IT SUBSTITUTES, AND NOTHING MORE: `showDirectoryPicker()`. Everything
-// downstream — `choisirDossier()`, `creerEcrivain`, `creerMutateur`,
-// `creerAdaptateur`, the channel, the bridge — is the PRODUCT, unmodified. The
+// downstream — `choisirDossier()`, `createWriter`, `createMutator`,
+// `createAdapter`, the channel, the bridge — is the PRODUCT, unmodified. The
 // returned handle is a REAL `FileSystemDirectoryHandle` (OPFS), so
 // `createWritable()` is the real one there, with its swap file and its
 // commit on `close()`.
@@ -24,7 +24,7 @@
     const EST_HUB = location.pathname === '/'
         || location.pathname.endsWith('/hub.html')
         || location.pathname.endsWith('/index.html') === false && location.search === '';
-    window.__item1 = { etapes: [], erreurs: [], est_hub: EST_HUB, chemin: location.pathname };
+    window.__item1 = { etapes: [], errors: [], est_hub: EST_HUB, chemin: location.pathname };
     const noter = (m) => {
         window.__item1.etapes.push({ t: Date.now(), m: String(m).slice(0, 400) });
         if (window.__item1.etapes.length > 400) window.__item1.etapes.shift();
@@ -73,14 +73,14 @@
         const sortie = [];
         for await (const [nom, poignee] of dossier.entries()) {
             if (poignee.kind !== 'file') { sortie.push({ nom, kind: poignee.kind }); continue; }
-            const fichier = await poignee.getFile();
-            const texte = await fichier.text();
+            const file = await poignee.getFile();
+            const texte = await file.text();
             const octets = new TextEncoder().encode(texte);
             const condensat = await crypto.subtle.digest('SHA-256', octets);
             sortie.push({
                 nom,
-                taille: fichier.size,
-                modifie: fichier.lastModified,
+                taille: file.size,
+                modifie: file.lastModified,
                 sha256: [...new Uint8Array(condensat)]
                     .map((o) => o.toString(16).padStart(2, '0')).join(''),
                 debut: texte.slice(0, 200),

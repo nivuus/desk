@@ -95,7 +95,7 @@ use std::time::Duration;
 ///
 /// ⚠️ **NOT CALIBRATED.** No listening judgement has been made on it, and
 /// in that it joins `CIBLE`, `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `TAILLE_MAX_SORTIE` and `AUDIO_PERIPHERIQUE`: this repository
+/// `PART_DORMANTE_BPS`, `MAX_OUTPUT_SIZE` and `AUDIO_PERIPHERIQUE`: this repository
 /// names its uncalibrated constants rather than suggesting a
 /// measured setting.
 ///

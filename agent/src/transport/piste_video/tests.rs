@@ -91,7 +91,7 @@ fn rattrapage_borne_apres_un_long_blocage() {
 /// must announce the CAPTURE instant, not the write one. An
 /// origin placed in the PAST makes the two impossible to confuse:
 /// if the method read the current clock, the result would be
-/// later than `avant`, not earlier.
+/// later than `before`, not earlier.
 #[test]
 fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
     let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
@@ -102,8 +102,8 @@ fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
             .expect("chargement du flux de test"),
     );
 
-    let avant = Instant::now();
-    let origine = avant - Duration::from_secs(10);
+    let before = Instant::now();
+    let origine = before - Duration::from_secs(10);
     let session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
     // A frame captured 2 s after the origin carries PTS 180,000.
@@ -112,7 +112,7 @@ fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
         origine + Duration::from_secs(2)
     );
     assert!(
-        session.capture_instant(180_000) < avant,
+        session.capture_instant(180_000) < before,
         "l'instant doit être ancré sur l'origine (dans le passé), pas sur l'horloge courante"
     );
     assert_eq!(session.capture_instant(0), origine);
@@ -169,8 +169,8 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
     let local_ip = fixtures::local_ip();
     let source = Box::new(fixtures::video_test_source());
 
-    let avant = Instant::now();
-    let origine = avant - Duration::from_secs(10);
+    let before = Instant::now();
+    let origine = before - Duration::from_secs(10);
     let mut session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
     let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, false);
@@ -201,7 +201,7 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
     // enough even on a loaded CI.
     let hard_deadline = Instant::now() + Duration::from_secs(15);
     let mut connected_at: Option<Instant> = None;
-    let mut mesure: Option<(f64, f64)> = None; // (rtp_time_secondes, ecoule_depuis_avant)
+    let mut mesure: Option<(f64, f64)> = None; // (rtp_time_secondes, elapsed_since_before)
 
     loop {
         let now = Instant::now();
@@ -243,13 +243,13 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
                                 // `Instant::now()` here is later than or
                                 // equal to the real instant the SR was
                                 // built: a safe upper bound on
-                                // `sr_instant - avant`, which can only
+                                // `sr_instant - before`, which can only
                                 // REDUCE the gap measured below, never
                                 // inflate it artificially.
-                                let ecoule_depuis_avant = Instant::now()
-                                    .saturating_duration_since(avant)
+                                let elapsed_since_before = Instant::now()
+                                    .saturating_duration_since(before)
                                     .as_secs_f64();
-                                mesure = Some((rtp_time_secondes, ecoule_depuis_avant));
+                                mesure = Some((rtp_time_secondes, elapsed_since_before));
                             }
                         }
                     }
@@ -259,10 +259,10 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
         }
     }
 
-    let (rtp_time_secondes, ecoule_depuis_avant) = mesure.expect("mesure du SR");
-    let ecart = rtp_time_secondes - ecoule_depuis_avant;
+    let (rtp_time_secondes, elapsed_since_before) = mesure.expect("mesure du SR");
+    let ecart = rtp_time_secondes - elapsed_since_before;
     eprintln!(
-        "wallclock RTCP : rtp_time={rtp_time_secondes:.3}s, écoulé depuis le début du test={ecoule_depuis_avant:.3}s, écart={ecart:.3}s (attendu ≈ 10 s si write_frame annonce bien l'instant de capture)"
+        "wallclock RTCP : rtp_time={rtp_time_secondes:.3}s, écoulé depuis le début du test={elapsed_since_before:.3}s, écart={ecart:.3}s (attendu ≈ 10 s si write_frame annonce bien l'instant de capture)"
     );
     assert!(
         ecart > 3.0,

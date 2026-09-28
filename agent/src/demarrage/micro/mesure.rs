@@ -211,7 +211,7 @@ pub(super) fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
         // incident for the rest of the session, and the plan's example
         // (`deposees=50`, that is one second of 20 ms frames) is a delta.
         // `deposees_total` is added so that the cumulative value stays readable.
-        let d = |maintenant: u64, avant: u64| maintenant.saturating_sub(avant);
+        let d = |maintenant: u64, before: u64| maintenant.saturating_sub(before);
         tracing::info!(
             // ⚠️ MANDATORY: `agent.log` mixes the supervisor and all its
             // children since D4. A trace without `session` is a number in an
@@ -289,7 +289,7 @@ mod tests {
     }
 
     #[test]
-    fn seule_la_valeur_1_arme_le_puits() {
+    fn only_the_value_1_arms_the_sink() {
         assert!(arme(Some("1")));
 
         // ⚠️ The four cases that follow are the substance of the test. A reading through
@@ -327,13 +327,13 @@ mod tests {
         // `Fenetre::absorber` did, and that is what this test caught.
         let mut fenetre = Fenetre::new(SAMPLE_RATE_HZ);
         let seconde = tonalite_continue(440.0, SAMPLE_RATE_HZ as usize);
-        let mut dernier = None;
+        let mut last = None;
         for bloc in reveils(&seconde) {
             if let Some(r) = fenetre.absorber(bloc) {
-                dernier = Some(r);
+                last = Some(r);
             }
         }
-        let f = dernier
+        let f = last
             .expect("une seconde absorbée")
             .frequence_hz
             .expect("un signal fort a une fréquence");
@@ -344,16 +344,16 @@ mod tests {
     }
 
     #[test]
-    fn le_silence_ne_rend_aucune_frequence_mais_rend_sa_crete() {
+    fn silence_returns_no_frequency_but_returns_its_peak() {
         let mut fenetre = Fenetre::new(SAMPLE_RATE_HZ);
         let silence = vec![0.0f32; TRAMES_PAR_REVEIL * 2];
-        let mut dernier = None;
+        let mut last = None;
         for _ in 0..100 {
             if let Some(r) = fenetre.absorber(&silence) {
-                dernier = Some(r);
+                last = Some(r);
             }
         }
-        let releve = dernier.expect("une seconde absorbée");
+        let releve = last.expect("une seconde absorbée");
         // A signal too weak has NO frequency: returning a number for
         // silence would make this instrument the byte counter it exists
         // to replace (doctrine paid for in D7).
@@ -362,7 +362,7 @@ mod tests {
     }
 
     #[test]
-    fn la_crete_voit_les_deux_canaux_pas_seulement_celui_qu_on_analyse() {
+    fn the_peak_sees_both_channels_not_only_the_analysed_one() {
         // Left channel silent, right channel at 0.8: the peak must see it, even
         // though the frequency is analysed on the left. An imbalance between
         // channels must not go unnoticed.
@@ -372,13 +372,13 @@ mod tests {
             bloc.push(0.0);
             bloc.push(0.8);
         }
-        let mut dernier = None;
+        let mut last = None;
         for _ in 0..100 {
             if let Some(r) = fenetre.absorber(&bloc) {
-                dernier = Some(r);
+                last = Some(r);
             }
         }
-        assert_eq!(dernier.expect("une seconde absorbée").crete, 0.8);
+        assert_eq!(last.expect("une seconde absorbée").crete, 0.8);
     }
 
     #[test]
@@ -392,13 +392,13 @@ mod tests {
         }
         // Second window, silent: without a reset, the peak and the
         // frequency of the first would leak into the second.
-        let mut dernier = None;
+        let mut last = None;
         for _ in 0..100 {
             if let Some(r) = fenetre.absorber(&silence) {
-                dernier = Some(r);
+                last = Some(r);
             }
         }
-        let releve = dernier.expect("une seconde absorbée");
+        let releve = last.expect("une seconde absorbée");
         assert_eq!(releve.crete, 0.0);
         assert_eq!(releve.frequence_hz, None);
     }

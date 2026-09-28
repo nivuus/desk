@@ -26,12 +26,12 @@ self.addEventListener('fetch', (evenement) => {
 // on the variant that is the documented fallback of the product framing.
 async function signalerBlocage(url, raison) {
     try {
-        const parametres = new URL(url, self.location.origin).searchParams;
-        const variante = parametres.get('variant') ?? '4';
-        const nonce = parametres.get('nonce') ?? '';
+        const params = new URL(url, self.location.origin).searchParams;
+        const variante = params.get('variant') ?? '4';
+        const nonce = params.get('nonce') ?? '';
         await fetch(`/bloque?variant=${encodeURIComponent(variante)}&nonce=${encodeURIComponent(nonce)}`);
-    } catch (erreur) {
-        console.error('[spike] blocage non rapporté', raison, erreur);
+    } catch (error) {
+        console.error('[spike] blocage non rapporté', raison, error);
     }
 }
 
@@ -47,8 +47,8 @@ self.addEventListener('notificationclick', (evenement) => {
             // page would only see a delay elapsing with nothing.
             const fenetre = await self.clients.openWindow(url);
             if (!fenetre) await signalerBlocage(url, 'poignée nulle');
-        } catch (erreur) {
-            await signalerBlocage(url, erreur);
+        } catch (error) {
+            await signalerBlocage(url, error);
         }
     })());
 });

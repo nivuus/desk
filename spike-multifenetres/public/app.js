@@ -35,7 +35,7 @@ const journal = document.getElementById('journal');
 const etat = document.getElementById('etat');
 const boutons = [...document.querySelectorAll('[data-variante]')];
 
-let dernierGeste = 0;
+let lastGesture = 0;
 let armementVariante3 = null;
 let expirationVariante3 = null;
 
@@ -57,7 +57,7 @@ let dernierePoignee = null;
 // over HTTPS behind Pomerium, but a local trial on http://<lan-ip>:3445 would
 // crash the page at the first arming — an instrument that does not start is
 // yet another lost measurement.
-function nouveauNonce() {
+function newNonce() {
     if (globalThis.crypto?.randomUUID) return crypto.randomUUID().replaceAll('-', '');
     return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
 }
@@ -88,14 +88,14 @@ function desarmerVariante3() {
 // Every user gesture is timestamped: that is what will allow asserting, with figures
 // in hand, that the transient activation had indeed expired at the time of open().
 for (const evenement of ['pointerdown', 'keydown']) {
-    window.addEventListener(evenement, (donnees) => {
-        dernierGeste = Date.now();
+    window.addEventListener(evenement, (data) => {
+        lastGesture = Date.now();
         if (evenement !== 'pointerdown' || !armementVariante3) return;
         // The page buttons are commands of the instrument, not the click
         // under test. Without this guard, a click on "Arm 4" would first run
         // variant 3, attribute a verdict to it, and leave one more window
         // open.
-        if (donnees.target instanceof Element && donnees.target.closest('button')) return;
+        if (data.target instanceof Element && data.target.closest('button')) return;
         desarmerVariante3()();
     }, true);
 }
@@ -116,7 +116,7 @@ function attendreIssue(nonce, variante) {
 }
 
 async function conclure(variante, nonce, poigneeNulle, gesteAttendu = false) {
-    const msDepuisGeste = Date.now() - dernierGeste;
+    const msDepuisGeste = Date.now() - lastGesture;
     const issue = await attendreIssue(nonce, variante);
 
     // The block reported by the service worker (variant 4) counts as a null handle:
@@ -202,7 +202,7 @@ async function executerVariante(variante) {
 }
 
 async function deroulerVariante(variante) {
-    const nonce = nouveauNonce();
+    const nonce = newNonce();
 
     switch (variante) {
         case 1:
@@ -287,7 +287,7 @@ function resoudrePassage(message, issue) {
     resolveur(issue);
 }
 
-function afficherDeconnexion(texte) {
+function showDisconnection(texte) {
     etat.textContent = texte;
     etat.className = 'deconnecte';
     majEtatBoutons();
@@ -309,10 +309,10 @@ function connecter() {
 
     // `error` is always followed by `close`: reconnection is only scheduled
     // in `close`, so as not to double the attempts.
-    socket.addEventListener('error', () => afficherDeconnexion('déconnecté'));
+    socket.addEventListener('error', () => showDisconnection('déconnecté'));
 
     socket.addEventListener('close', () => {
-        afficherDeconnexion('déconnecté');
+        showDisconnection('déconnecté');
         planifierReconnexion();
     });
 
@@ -338,7 +338,7 @@ function connecter() {
 function planifierReconnexion() {
     const delai = Math.min(RECONNEXION_MIN_MS * 2 ** tentativesReconnexion, RECONNEXION_MAX_MS);
     tentativesReconnexion += 1;
-    afficherDeconnexion(`déconnecté — reconnexion dans ${Math.max(1, Math.round(delai / 1000))} s`);
+    showDisconnection(`déconnecté — reconnexion dans ${Math.max(1, Math.round(delai / 1000))} s`);
     setTimeout(connecter, delai);
 }
 
@@ -392,8 +392,8 @@ for (const bouton of boutons) {
                         'echec',
                     );
                 }
-            } catch (erreur) {
-                tracer(`échec du déclenchement : ${erreur}`, 'echec');
+            } catch (error) {
+                tracer(`échec du déclenchement : ${error}`, 'echec');
             }
         }, 1000);
     });
@@ -407,7 +407,7 @@ for (const bouton of boutons) {
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
         .then((enregistrement) => tracer(`service worker enregistré (portée ${enregistrement.scope})`))
-        .catch((erreur) => tracer(`service worker refusé : ${erreur} — vérifier la politique Pomerium`, 'echec'));
+        .catch((error) => tracer(`service worker refusé : ${error} — vérifier la politique Pomerium`, 'echec'));
 }
 
 tracer(`mode d'affichage : ${modeAffichage() === 'standalone' ? 'standalone (PWA installée)' : 'onglet navigateur'}`);
