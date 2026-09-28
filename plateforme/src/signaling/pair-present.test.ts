@@ -243,8 +243,8 @@ describe("the arrival of a peer on a session already held", () => {
     it('the name on the wire is the one the Rust agent expects', () => {
         // 🔴 THE CONTRACT LIVES IN TWO WORD STORES: here, and in
         // `agent/src/superviseur/protocole.rs` (`#[serde(rename =
-        // "pair-present")]`, test `l_arrivee_d_un_pair_se_lit_sur_la_session_
-        // de_controle`). A drift of this name makes the mechanism SILENT on both
+        // "pair-present")]`, test `a_peer_arrival_is_read_on_the_control_
+        // session`). A drift of this name makes the mechanism SILENT on both
         // sides, without any error.
         expect(TYPE_PAIR_PRESENT).toBe('pair-present');
     });
