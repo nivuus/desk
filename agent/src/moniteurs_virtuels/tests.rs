@@ -39,7 +39,7 @@ impl Default for PiloteFactice {
 impl PiloteAffichageVirtuel for PiloteFactice {
     fn create(&self, _largeur: u32, _hauteur: u32, _hertz: u32) -> Result<IdSortie> {
         let mut vivantes = self.vivantes.borrow_mut();
-        anyhow::ensure!(vivantes.len() < self.plafond, "plafond du pilote factice");
+        anyhow::ensure!(vivantes.len() < self.plafond, "fake driver's ceiling");
         let mut next = self.next.borrow_mut();
         let id = *next;
         *next += 1;
@@ -50,7 +50,7 @@ impl PiloteAffichageVirtuel for PiloteFactice {
     fn detruire(&self, id: IdSortie) -> Result<()> {
         anyhow::ensure!(
             !*self.refuse_les_destructions.borrow(),
-            "le pilote factice refuse cette destruction"
+            "the fake driver refuses this destruction"
         );
         self.vivantes.borrow_mut().retain(|vivante| *vivante != id);
         self.detruites.borrow_mut().push(id);
@@ -59,7 +59,7 @@ impl PiloteAffichageVirtuel for PiloteFactice {
 }
 
 #[test]
-fn la_garde_detruit_tout_ce_qu_elle_a_cree() {
+fn the_guard_destroys_everything_it_created() {
     let pilote = PiloteFactice::with_ceiling(8);
     {
         let mut sorties = Sorties::nouvelles(&pilote);
@@ -71,30 +71,30 @@ fn la_garde_detruit_tout_ce_qu_elle_a_cree() {
     }
     assert!(
         pilote.vivantes.borrow().is_empty(),
-        "la garde a laissé des sorties derrière elle"
+        "the guard left outputs behind"
     );
 }
 
 /// The case that justifies the guard: these APIs fail by crashing, and a
 /// virtual monitor outlives the process.
 #[test]
-fn la_garde_detruit_meme_quand_le_fil_panique() {
+fn the_guard_destroys_even_when_the_thread_panics() {
     let pilote = PiloteFactice::with_ceiling(8);
     let issue = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let mut sorties = Sorties::nouvelles(&pilote);
         sorties.create(1920, 1080, 60).unwrap();
         sorties.create(1920, 1080, 60).unwrap();
-        panic!("panique simulée au milieu de la montée en N");
+        panic!("simulated panic in the middle of the ramp-up to N");
     }));
-    assert!(issue.is_err(), "la panique aurait dû se propager");
+    assert!(issue.is_err(), "the panic should have propagated");
     assert!(
         pilote.vivantes.borrow().is_empty(),
-        "des moniteurs fantômes survivent à une panique"
+        "ghost monitors survive a panic"
     );
 }
 
 #[test]
-fn detruire_rend_la_sortie_au_pilote_et_l_oublie() {
+fn destroying_gives_the_output_back_to_the_driver_and_forgets_it() {
     let pilote = PiloteFactice::default();
     let mut sorties = Sorties::nouvelles(&pilote);
     let a = sorties.create(1280, 720, 60).unwrap();
@@ -111,18 +111,18 @@ fn detruire_rend_la_sortie_au_pilote_et_l_oublie() {
 }
 
 #[test]
-fn detruire_une_sortie_inconnue_echoue_sans_rien_toucher() {
+fn destroying_an_unknown_output_fails_without_touching_anything() {
     let pilote = PiloteFactice::default();
     let mut sorties = Sorties::nouvelles(&pilote);
     let a = sorties.create(1280, 720, 60).unwrap();
 
     assert!(sorties.detruire(a + 1000).is_err());
     assert!(pilote.detruites.borrow().is_empty());
-    assert_eq!(sorties.count(), 1, "la sortie légitime reste tenue");
+    assert_eq!(sorties.count(), 1, "the legitimate output stays held");
 }
 
 #[test]
-fn une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie() {
+fn a_destruction_refused_by_the_driver_does_not_forget_the_output() {
     // The GUID is the project's only handle on this monitor: forgetting it
     // on failure would make it unrecoverable, and the guard would never retry
     // it.
@@ -135,12 +135,12 @@ fn une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie() {
     assert_eq!(
         sorties.count(),
         1,
-        "la sortie reste due tant qu'elle n'est pas rendue"
+        "the output stays due as long as it is not given back"
     );
 }
 
 #[test]
-fn un_refus_du_pilote_ne_perd_pas_les_sorties_deja_creees() {
+fn a_driver_refusal_does_not_lose_the_outputs_already_created() {
     let pilote = PiloteFactice::with_ceiling(2);
     {
         let mut sorties = Sorties::nouvelles(&pilote);
@@ -148,19 +148,15 @@ fn un_refus_du_pilote_ne_perd_pas_les_sorties_deja_creees() {
         sorties.create(1920, 1080, 60).unwrap();
         assert!(
             sorties.create(1920, 1080, 60).is_err(),
-            "le plafond aurait dû refuser"
+            "the ceiling should have refused"
         );
-        assert_eq!(
-            sorties.count(),
-            2,
-            "un refus ne doit pas compter comme une création"
-        );
+        assert_eq!(sorties.count(), 2, "a refusal must not count as a creation");
     }
     assert!(pilote.vivantes.borrow().is_empty());
 }
 
 #[test]
-fn des_dimensions_identiques_donnent_un_facteur_unite() {
+fn identical_dimensions_give_a_unit_factor() {
     assert_eq!(
         facteur_echelle((2400, 1080), (2400, 1080)),
         Some((1.0, 1.0))
@@ -170,7 +166,7 @@ fn des_dimensions_identiques_donnent_un_facteur_unite() {
 /// The trap noted by the probe: output announced as 3413×960 by DXGI,
 /// 5120×1440 by WMI — ratio 1.5, DPI scaling at 150 %.
 #[test]
-fn le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi() {
+fn the_probe_dpi_trap_gives_a_factor_of_one_and_a_half() {
     let (horizontal, vertical) = facteur_echelle((3413, 960), (5120, 1440)).unwrap();
     assert!(
         (horizontal - 1.5).abs() < 0.001,
@@ -180,13 +176,13 @@ fn le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi() {
 }
 
 #[test]
-fn une_annonce_degeneree_ne_donne_aucun_facteur() {
+fn a_degenerate_announcement_gives_no_factor() {
     assert_eq!(facteur_echelle((0, 960), (5120, 1440)), None);
     assert_eq!(facteur_echelle((3413, 0), (5120, 1440)), None);
 }
 
 #[test]
-fn sans_echelle_ni_decalage_la_region_ne_bouge_pas() {
+fn without_scale_or_offset_the_region_does_not_move() {
     let sortie = Rect {
         x: 0,
         y: 0,
@@ -203,7 +199,7 @@ fn sans_echelle_ni_decalage_la_region_ne_bouge_pas() {
 }
 
 #[test]
-fn une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture() {
+fn an_offset_output_brings_the_region_back_to_its_texture_origin() {
     let sortie = Rect {
         x: 2400,
         y: 0,
@@ -230,7 +226,7 @@ fn une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture() {
 /// The case that matters: cropping on the announced rectangle while the
 /// texture is at physical dimensions would shift everything by a factor of 1.5.
 #[test]
-fn le_facteur_dpi_agrandit_la_region_et_son_origine() {
+fn the_dpi_factor_enlarges_the_region_and_its_origin() {
     let sortie = Rect {
         x: 0,
         y: 0,
@@ -337,7 +333,7 @@ fn a_length_mismatch_is_refused() {
 /// `None`): the refusal must come out, not a silent unity factor that
 /// would shift all the crops of this output.
 #[test]
-fn une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite() {
+fn a_degenerate_output_is_refused_rather_than_assumed_at_unit_scale() {
     let sorties = vec![Rect {
         x: 0,
         y: 0,

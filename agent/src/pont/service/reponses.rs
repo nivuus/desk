@@ -63,7 +63,7 @@ pub(super) fn terminer(
             Some(commande) => verbes::completer_enumeration(etat, commande, tampon.0, result),
             // An enumeration context without a command does not exist; saying so
             // rather than ignoring it.
-            None => tracing::warn!("contexte d'énumération sans commande ProjFS : ignoré"),
+            None => tracing::warn!("enumeration context without a ProjFS command: ignored"),
         },
         _ => verbes::completer(etat, commande, result),
     }
@@ -80,7 +80,7 @@ pub(super) fn appliquer(
     match (attendue, contexte) {
         (Attendue::Attributs { chemin }, Some(ContexteProjFs::Attributs { chemin_projfs })) => {
             let Ok(meta) = serde_json::from_slice::<entetes::Meta>(trame.entete) else {
-                tracing::warn!(chemin, "en-tête Meta illisible");
+                tracing::warn!(chemin, "unreadable Meta header");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             // 🔴 **THE PLACEHOLDER IS CREATED UNDER THE **STORED** NAME, never under
@@ -109,7 +109,7 @@ pub(super) fn appliquer(
             tracing::debug!(
                 demande = %projfs_texte,
                 stocke = %neuf,
-                "nom canonique : le substitut prend le nom du poste local"
+                "canonical name: the placeholder takes the local machine's name"
             );
             let neuf_utf16: Vec<u16> = neuf.encode_utf16().chain(std::iter::once(0)).collect();
             let issue = verbes::write_placeholder(
@@ -133,7 +133,7 @@ pub(super) fn appliquer(
                 demande = %projfs_texte,
                 stocke = %neuf,
                 %issue,
-                "PrjWritePlaceholderInfo a refuse le nom canonique : repli sur le nom demande"
+                "PrjWritePlaceholderInfo refused the canonical name: falling back to the requested name"
             );
             Suite::Termine(verbes::write_placeholder(
                 etat,
@@ -157,7 +157,7 @@ pub(super) fn appliquer(
             Some(ContexteProjFs::Lecture { flux, fenetre }),
         ) => {
             let Ok(entete) = serde_json::from_slice::<entetes::Data>(trame.entete) else {
-                tracing::warn!(chemin, "en-tête Donnees illisible");
+                tracing::warn!(chemin, "unreadable Donnees header");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             // ⚠️ **The header and the payload must corroborate each other.** Writing into
@@ -176,7 +176,7 @@ pub(super) fn appliquer(
                     recu_position = entete.position,
                     received_length = entete.length,
                     octets = trame.charge.len(),
-                    "réponse Donnees incohérente avec la plage demandée : jetée"
+                    "Donnees answer inconsistent with the requested range: dropped"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
@@ -192,7 +192,7 @@ pub(super) fn appliquer(
                     chemin,
                     recue = hors.recue,
                     attendue = hors.attendue,
-                    "reponse de lecture HORS D'ORDRE : jetee, RIEN n'est ecrit"
+                    "OUT-OF-ORDER read answer: dropped, NOTHING is written"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
@@ -210,7 +210,7 @@ pub(super) fn appliquer(
             // would be worse than not implementing it." F3 has arrived, and it
             // did NOT implement half of it: the bridge's window
             // (`pont::lecture`) AND the browser's back-pressure
-            // (`client/src/fichiers/flux.ts`) are delivered together — with a
+            // (`client/src/fichiers/flux.ts`) are delivered together — with a (policy: allow-fr, real file path)
             // single chunk in flight, the rule of spec §7.3 could NEVER
             // bite.)*
             //
@@ -226,13 +226,13 @@ pub(super) fn appliquer(
             drop(garde);
             if terminee {
                 etat.entrees_hydratees.fetch_add(1, Ordering::Relaxed);
-                tracing::debug!(chemin, correlation, en_vol_max, "lecture complète");
+                tracing::debug!(chemin, correlation, en_vol_max, "read complete");
                 return Suite::Termine(S_OK);
             }
             // A read ALWAYS carries a ProjFS command: it is a `GetFileData`
             // callback that registered it.
             let Some(commande) = commande else {
-                tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
+                tracing::warn!(chemin, "read without a ProjFS command: impossible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             for morceau in lot {
@@ -259,7 +259,7 @@ pub(super) fn appliquer(
             }),
         ) => {
             let Ok(entete) = serde_json::from_slice::<entetes::Entrees>(trame.entete) else {
-                tracing::warn!(chemin, "en-tête Entrees illisible");
+                tracing::warn!(chemin, "unreadable Entrees header");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             };
             // **F5** — the cache memorises the RAW entries, before `preparer`.
@@ -299,11 +299,11 @@ pub(super) fn appliquer(
                     chemin,
                     correlation,
                     type_message = trame.type_message,
-                    "réponse d'un type inattendu à une écriture : jetée"
+                    "answer of an unexpected type to a write: dropped"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
-            tracing::debug!(chemin, correlation, last, "morceau d'écriture acquitté");
+            tracing::debug!(chemin, correlation, last, "write chunk acknowledged");
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
@@ -329,7 +329,7 @@ pub(super) fn appliquer(
                     correlation,
                     renommage,
                     type_message = trame.type_message,
-                    "reponse d'un type inattendu a une mutation : jetee"
+                    "answer of an unexpected type to a mutation: dropped"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
@@ -349,11 +349,11 @@ pub(super) fn appliquer(
                     chemin,
                     correlation,
                     type_message = trame.type_message,
-                    "réponse d'un type inattendu à une création : jetée"
+                    "answer of an unexpected type to a creation: dropped"
                 );
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)));
             }
-            tracing::debug!(chemin, correlation, "création acquittée");
+            tracing::debug!(chemin, correlation, "creation acknowledged");
             invalider_le_cache(etat, &chemin, None);
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
@@ -368,7 +368,7 @@ pub(super) fn appliquer(
                 type_message = trame.type_message,
                 ?attendue,
                 contexte_present = contexte.is_some(),
-                "réponse d'un type qui ne correspond pas à la commande : jetée"
+                "answer of a type that does not match the command: dropped"
             );
             Suite::Termine(HRESULT(etat.compteurs.rendre(Error::Inattendue)))
         }

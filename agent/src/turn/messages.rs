@@ -88,7 +88,7 @@ pub enum Requete {
 
 /// HMAC-SHA1, in the form `is::stun::verify` and `to_bytes` require.
 pub fn sha1_hmac(cle: &[u8], morceaux: &[&[u8]]) -> [u8; 20] {
-    let mut mac = Hmac::<sha1::Sha1>::new_from_slice(cle).expect("HMAC accepte toute longueur");
+    let mut mac = Hmac::<sha1::Sha1>::new_from_slice(cle).expect("HMAC accepts any length");
     for morceau in morceaux {
         mac.update(morceau);
     }
@@ -264,7 +264,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn la_cle_longue_duree_est_le_md5_des_trois_champs() {
+    fn the_long_term_key_is_the_md5_of_the_three_fields() {
         use md5::Digest;
 
         // Form imposed by RFC 5766 §4 (which takes up RFC 5389 §15.4):
@@ -272,38 +272,38 @@ mod tests {
         let cle = cle_longue_duree("user", "example.org", "pass");
         let attendu = md5::Md5::digest(b"user:example.org:pass");
         assert_eq!(cle.as_slice(), attendu.as_slice());
-        assert_eq!(cle.len(), 16, "un condensé MD5 fait 16 octets");
+        assert_eq!(cle.len(), 16, "an MD5 digest is 16 bytes");
     }
 
     #[test]
-    fn une_allocation_nue_porte_requested_transport_et_pas_d_integrite() {
+    fn a_bare_allocation_carries_requested_transport_and_no_integrity() {
         let trans_id = [7u8; 12];
         let paquet = encoder_requete(&Requete::AllocateNu, trans_id, None);
 
         // Header: type 0x0003 (Allocate, request class), magic cookie.
-        assert_eq!(&paquet[0..2], &[0x00, 0x03], "méthode Allocate attendue");
+        assert_eq!(&paquet[0..2], &[0x00, 0x03], "Allocate method expected");
         assert_eq!(&paquet[4..8], &[0x21, 0x12, 0xA4, 0x42], "cookie magique");
         assert_eq!(&paquet[8..20], &trans_id);
 
         // The announced length must match what follows the header.
         let length = u16::from_be_bytes([paquet[2], paquet[3]]) as usize;
-        assert_eq!(length, paquet.len() - 20, "longueur d'en-tête incohérente");
+        assert_eq!(length, paquet.len() - 20, "inconsistent header length");
 
         // REQUESTED-TRANSPORT = UDP (17), the attribute is::stun cannot
         // write and without which coturn answers 400.
         assert_eq!(
             &paquet[20..28],
             &[0x00, 0x19, 0x00, 0x04, 17, 0x00, 0x00, 0x00],
-            "REQUESTED-TRANSPORT=UDP attendu en premier attribut"
+            "REQUESTED-TRANSPORT=UDP expected as the first attribute"
         );
 
         // No integrity on the bare request: it is what provokes the
         // 401 carrying the realm and the nonce.
-        assert_eq!(paquet.len(), 28, "aucun autre attribut attendu");
+        assert_eq!(paquet.len(), 28, "no other attribute expected");
     }
 
     #[test]
-    fn une_allocation_signee_est_relue_et_verifiee_par_is_stun() {
+    fn a_signed_allocation_is_read_back_and_checked_by_is_stun() {
         // The module's most important test: our serialiser must
         // produce a message the reference parser accepts AND whose
         // integrity it validates. It is what replaces a round trip with a
@@ -327,7 +327,7 @@ mod tests {
     }
 
     #[test]
-    fn une_permission_porte_l_adresse_du_pair_en_xor() {
+    fn a_permission_carries_the_peer_address_in_xor() {
         let ids = Identifiants {
             username: "u".into(),
             realm: "r".into(),
@@ -349,7 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn un_channel_bind_porte_le_numero_et_l_adresse() {
+    fn a_channel_bind_carries_the_number_and_the_address() {
         let ids = Identifiants {
             username: "u".into(),
             realm: "r".into(),

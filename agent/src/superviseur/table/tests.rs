@@ -13,11 +13,11 @@ fn session_annoncee(effets: &[Effet]) -> IdSession {
             Effet::AnnoncerOuverture { session, .. } => Some(session.clone()),
             _ => None,
         })
-        .expect("une ouverture doit être annoncée")
+        .expect("an opening must be announced")
 }
 
 #[test]
-fn une_fenetre_qui_apparait_est_annoncee_et_rien_de_plus() {
+fn an_appearing_window_is_announced_and_nothing_more() {
     // Nothing can be created before knowing the viewport: it is what
     // gives the output's size.
     let mut t = table();
@@ -28,7 +28,7 @@ fn une_fenetre_qui_apparait_est_annoncee_et_rien_de_plus() {
 }
 
 #[test]
-fn le_viewport_declenche_la_creation_de_la_sortie() {
+fn the_viewport_triggers_the_output_creation() {
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     let effets = t.viewport_recu(&session, 1600, 900);
@@ -47,7 +47,7 @@ fn le_viewport_declenche_la_creation_de_la_sortie() {
 }
 
 #[test]
-fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
+fn the_created_output_triggers_the_child_launch() {
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
@@ -73,7 +73,7 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
 /// each other's identifier or output: each `Effet::LancerEnfant`
 /// must carry the `IdFenetre` and `nom_sortie` of ITS OWN window.
 #[test]
-fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
+fn two_windows_in_flight_each_keep_their_window_and_output() {
     let mut t = table();
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1600, 900);
@@ -94,7 +94,7 @@ fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
 }
 
 #[test]
-fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
+fn a_vanishing_window_kills_the_child_destroys_the_output_and_announces_it() {
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
@@ -120,12 +120,12 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
     assert_eq!(
         t.etat(&session),
         None,
-        "la fenêtre doit avoir quitté la table"
+        "the window must have left the table"
     );
 }
 
 #[test]
-fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
+fn a_child_dying_alone_retains_the_output_and_announces_it_without_killing_it() {
     // It is the benefit multi-process was chosen for: the
     // death of a child must take nothing else with it. Since fix
     // §7.1 of sub-block D3, it no longer hands back the output to the driver either —
@@ -151,7 +151,7 @@ fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
     assert_eq!(
         t.output_size_of(&session),
         Some((1280, 720)),
-        "la sortie est retenue, pas rendue"
+        "the output is retained, not given back"
     );
 }
 
@@ -174,7 +174,7 @@ fn a_window_vanishing_before_its_output_requests_no_destruction() {
 }
 
 #[test]
-fn le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser() {
+fn the_full_pool_refuses_the_next_window_without_breaking_anything() {
     let mut t = Table::new(2);
     for n in 1..=2u64 {
         let s = session_annoncee(&t.fenetre_apparue(IdFenetre(n), format!("F{n}")));
@@ -186,13 +186,13 @@ fn le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser() {
         effets,
         vec![Effet::AnnoncerRefus {
             titre: "F3".into(),
-            motif: "plus aucune sortie virtuelle disponible".into()
+            motif: "no virtual output available any more".into()
         }]
     );
 }
 
 #[test]
-fn une_sortie_liberee_rouvre_la_place() {
+fn a_freed_output_reopens_the_slot() {
     let mut t = Table::new(1);
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1280, 720);
@@ -211,7 +211,7 @@ fn une_sortie_liberee_rouvre_la_place() {
 }
 
 #[test]
-fn un_viewport_pour_une_session_inconnue_est_ignore() {
+fn a_viewport_for_an_unknown_session_is_ignored() {
     // The browser is an external source: a late or replayed message
     // must produce no effect.
     let mut t = table();
@@ -220,19 +220,19 @@ fn un_viewport_pour_une_session_inconnue_est_ignore() {
 }
 
 #[test]
-fn un_second_viewport_pour_la_meme_session_est_ignore() {
+fn a_second_viewport_for_the_same_session_is_ignored() {
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&session, 1600, 900);
     let effets = t.viewport_recu(&session, 800, 600);
     assert!(
         effets.is_empty(),
-        "la sortie est déjà demandée à la première taille"
+        "the output is already requested at the first size"
     );
 }
 
 #[test]
-fn les_identifiants_de_session_sont_uniques() {
+fn session_identifiers_are_unique() {
     let mut t = table();
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
@@ -240,7 +240,7 @@ fn les_identifiants_de_session_sont_uniques() {
 }
 
 #[test]
-fn la_fenetre_d_une_session_est_retrouvable() {
+fn a_session_window_can_be_found() {
     // The periodic placement check knows the output per session
     // and must get back to the window to place it again.
     let mut t = table();
@@ -250,7 +250,7 @@ fn la_fenetre_d_une_session_est_retrouvable() {
 }
 
 #[test]
-fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
+fn a_re_announced_window_creates_no_second_entry() {
     // The fixed leak case: the startup enumeration and the
     // `EVENT_OBJECT_SHOW` hook can both announce the same HWND. Without a
     // guard, the second announcement would create a second entry, unreachable
@@ -261,7 +261,7 @@ fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
     let effets_reannonce = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     assert!(
         effets_reannonce.is_empty(),
-        "aucun second effet, en particulier aucune seconde AnnoncerOuverture"
+        "no second effect, in particular no second AnnoncerOuverture"
     );
     assert_eq!(t.etat(&session), Some(&Etat::AttendLeViewport));
 
@@ -283,12 +283,12 @@ fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
             },
             Effet::AnnoncerFermeture { session },
         ],
-        "une seule sortie à détruire, pas deux"
+        "a single output to destroy, not two"
     );
 }
 
 #[test]
-fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
+fn a_re_announcement_does_not_trigger_the_refusal_even_with_a_full_table() {
     // Precedence not to invert: the idempotence guard must be
     // evaluated BEFORE the capacity check. If the order were inverted, the
     // re-announcement of an already open window, on a full table,
@@ -297,10 +297,7 @@ fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
     let mut t = Table::new(1);
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     let effets = t.fenetre_apparue(IdFenetre(1), "A".into());
-    assert!(
-        effets.is_empty(),
-        "pas de refus pour une fenêtre déjà ouverte"
-    );
+    assert!(effets.is_empty(), "no refusal for an already open window");
     assert_eq!(t.etat(&session), Some(&Etat::AttendLeViewport));
 }
 
@@ -309,11 +306,11 @@ fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
 /// could have appeared or disappeared. Hence the `no DXGI output at
 /// adapter index 0, output 5` noted during acceptance.
 #[test]
-fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
+fn the_output_is_passed_to_the_child_by_its_name() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -335,11 +332,11 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
 /// Destruction carries BOTH identifiers — the driver's to remove,
 /// the DXGI name to free the slot — and they have no computable relation.
 #[test]
-fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
+fn the_destruction_carries_the_driver_identifier_and_the_dxgi_name() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -365,7 +362,7 @@ fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
 /// separator unconditionally would therefore have given `":w-1"` without anything
 /// turning red — and `":w-1"` is the name of no existing session.
 #[test]
-fn sans_prefixe_une_session_garde_exactement_son_nom_d_aujourd_hui() {
+fn without_prefix_a_session_keeps_exactly_its_current_name() {
     let mut t = Table::new(10);
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     assert_eq!(session, IdSession("w-1".into()));
@@ -393,7 +390,7 @@ fn the_counter_never_goes_back_even_under_a_prefix() {
     assert_eq!(
         seconde,
         IdSession("Zm9vYmFy:w-2".into()),
-        "la table a REUTILISÉ un identifiant : un message tardif du navigateur \
-         s'apparierait à la mauvaise fenêtre"
+        "the table REUSED an identifier: a late message from the browser \
+         would pair with the wrong window"
     );
 }

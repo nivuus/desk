@@ -36,12 +36,12 @@ use super::tampons::{
 };
 
 macro_rules! deport {
-    ($champ:ident, $valeur:expr) => {
+    ($field:ident, $value:expr) => {
         const _: () = assert!(
-            core::mem::offset_of!(FunctionList, $champ) == $valeur,
+            core::mem::offset_of!(FunctionList, $field) == $value,
             concat!(
-                "déport ABI faux pour NV_ENCODE_API_FUNCTION_LIST.",
-                stringify!($champ)
+                "wrong ABI offset for NV_ENCODE_API_FUNCTION_LIST.",
+                stringify!($field)
             )
         );
     };
@@ -139,7 +139,7 @@ pub struct FunctionList {
 
 const _: () = assert!(
     core::mem::size_of::<FunctionList>() == 2552,
-    "taille ABI fausse pour NV_ENCODE_API_FUNCTION_LIST"
+    "wrong ABI size for NV_ENCODE_API_FUNCTION_LIST"
 );
 const _: () = assert!(
     core::mem::align_of::<FunctionList>() == 8,
@@ -195,7 +195,7 @@ mod tests {
     /// own. It is the most common first-launch failure of this
     /// API, and it reads `NV_ENC_ERR_INVALID_VERSION`.
     #[test]
-    fn un_preregleage_vierge_porte_les_deux_versions() {
+    fn a_blank_preset_carries_both_versions() {
         let mut p: PresetConfig = unsafe { core::mem::zeroed() };
         p.version = super::super::abi::PRESET_CONFIG_VER;
         p.preset_cfg.version = super::super::abi::CONFIG_VER;
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn une_config_vierge_porte_sa_version_et_rien_d_autre() {
+    fn a_blank_config_carries_its_version_and_nothing_else() {
         let c = config_vierge();
         assert_eq!(c.version, 0xF209_000C);
         assert_eq!(c.gop_length, 0);

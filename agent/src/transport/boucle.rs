@@ -27,7 +27,7 @@ impl Session {
             .rtc
             .sdp_api()
             .accept_offer(offer)
-            .map_err(|e| anyhow!("offre refusée : {e}"))?;
+            .map_err(|e| anyhow!("offer refused: {e}"))?;
 
         // Same reasoning as in `new()`: `accept_offer` mutates `Rtc`, we
         // drain before giving control back, without depending on what the

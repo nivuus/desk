@@ -254,18 +254,14 @@ mod tests {
         assert_eq!(
             (juste_x, juste_y),
             (3140, 0),
-            "la référence JUSTE vise l'origine de la sortie"
+            "the CORRECT reference targets the output origin"
         );
         assert_eq!(
             faux_x - juste_x,
             1288,
-            "le terme d'ORIGINE en x, relevé sur la VM"
+            "the ORIGIN term in x, read on the VM"
         );
-        assert_eq!(
-            faux_y - juste_y,
-            51,
-            "le terme d'ORIGINE en y, relevé sur la VM"
-        );
+        assert_eq!(faux_y - juste_y, 51, "the ORIGIN term in y, read on the VM");
     }
 
     /// 🔴 **The second term, the one a constant offset would not
@@ -304,7 +300,7 @@ mod tests {
         assert_eq!(au_coin, 1288);
         assert_ne!(
             au_bout, au_coin,
-            "l'écart CHANGE : ce n'est pas un décalage constant"
+            "the gap CHANGES: it is not a constant offset"
         );
         // Ow − Ww = 1920 − 1428 = 492: the gap shrinks by as much at the end.
         assert_eq!(au_coin - au_bout, 492);
@@ -315,7 +311,7 @@ mod tests {
     /// nothing when there was nothing to change, and therefore that the red above
     /// does come from the gap between the rectangles.
     #[test]
-    fn quand_la_fenetre_occupe_sa_sortie_les_deux_references_coincident() {
+    fn when_the_window_fills_its_output_the_two_references_coincide() {
         let bureau = Rect {
             x: 0,
             y: 0,
@@ -362,7 +358,7 @@ mod tests {
     /// 1860: **+432 px**, nil on the left, half of it halfway. In y, 1080
     /// against 1080: **zero**.
     #[test]
-    fn le_recadrage_annule_les_432_px_de_derive_en_x_et_ne_touche_pas_l_y() {
+    fn the_cropping_cancels_the_432_px_drift_in_x_and_does_not_touch_y() {
         let bureau = Rect {
             x: 0,
             y: 0,
@@ -378,7 +374,7 @@ mod tests {
         let image = (1428u32, 1080u32);
 
         // What the product computes today.
-        let juste = rectangle_capture(sortie, image).expect("taille d'image connue");
+        let juste = rectangle_capture(sortie, image).expect("image size known");
         // What batch 32Q computed: the whole output, as is.
         let formule_32q = sortie;
 
@@ -394,12 +390,12 @@ mod tests {
         assert_eq!(
             en_px(juste, 65535).0,
             3140 + 1428,
-            "le bord droit de l'IMAGE"
+            "the right edge of the IMAGE"
         );
         assert_eq!(
             en_px(formule_32q, 65535).0 - en_px(juste, 65535).0,
             432,
-            "les 432 px que la formule du lot 32Q ajoutait au bord droit"
+            "the 432 px that the batch 32Q formula added to the right edge"
         );
         // Halfway, half of it: the error is proportional, not constant.
         assert_eq!(en_px(formule_32q, 32767).0 - en_px(juste, 32767).0, 216);
@@ -407,11 +403,7 @@ mod tests {
         assert_eq!(en_px(formule_32q, 0).0 - en_px(juste, 0).0, 0);
         // In y, nothing anywhere: the output and the image are both 1080.
         for f in [0u16, 32767, 65535] {
-            assert_eq!(
-                en_px(formule_32q, f).1,
-                en_px(juste, f).1,
-                "aucune dérive en y"
-            );
+            assert_eq!(en_px(formule_32q, f).1, en_px(juste, f).1, "no drift in y");
         }
     }
 
@@ -419,7 +411,7 @@ mod tests {
     /// output, the two formulas coincide. Without it, a `rectangle_capture`
     /// that returned anything smaller would pass the red.
     #[test]
-    fn quand_l_image_occupe_toute_la_sortie_les_deux_formules_coincident() {
+    fn when_the_image_fills_the_whole_output_the_two_formulas_coincide() {
         let sortie = Rect {
             x: 3140,
             y: 0,

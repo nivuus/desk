@@ -37,7 +37,7 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
                 DIGCF_PRESENT | DIGCF_DEVICEINTERFACE,
             )
         }
-        .context("énumération des périphériques exposant l'interface SudoVDA")?,
+        .context("enumerating the devices exposing the SudoVDA interface")?,
     );
 
     // Index 0: the driver only exposes one instance of this interface (a single
@@ -49,8 +49,8 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
     };
     unsafe { SetupDiEnumDeviceInterfaces(list.0, None, &INTERFACE_PILOTE, 0, &mut interface) }
         .context(
-            "aucun périphérique ne présente l'interface SudoVDA — pilote absent, \
-             désactivé, ou device node non créé",
+            "no device presents the SudoVDA interface — driver missing, \
+             disabled, or device node not created",
         )?;
 
     // Pattern imposed by SetupAPI: a first call for the size (which always
@@ -63,7 +63,7 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
     let entete = std::mem::size_of::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>();
     anyhow::ensure!(
         requis as usize > entete,
-        "taille de détail d'interface aberrante ({requis} octets)"
+        "aberrant interface detail size ({requis} bytes)"
     );
 
     // Buffer in `u32` and not in `u8`: `SP_DEVICE_INTERFACE_DETAIL_DATA_W`
@@ -77,7 +77,7 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
     unsafe {
         SetupDiGetDeviceInterfaceDetailW(list.0, &interface, Some(detail), requis, None, None)
     }
-    .context("lecture du chemin du périphérique SudoVDA")?;
+    .context("reading the SudoVDA device path")?;
 
     // `DevicePath` is declared `[u16; 1]` but extends up to the NUL beyond
     // the nominal end of the structure: it is a C-style variable-length
@@ -100,5 +100,5 @@ pub(super) fn chemin_du_peripherique() -> Result<Vec<u16>> {
             return Ok(chemin);
         }
     }
-    anyhow::bail!("chemin de périphérique SudoVDA sans terminateur nul");
+    anyhow::bail!("SudoVDA device path without a null terminator");
 }

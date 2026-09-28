@@ -17,8 +17,8 @@
 //! check we will never see red, applied this time to a
 //! PRODUCT mechanism. F3 therefore delivers **both, or neither**.
 //!
-//! ⚠️ **Back-pressure, for its part, is on the BROWSER SIDE** (`client/src/fichiers/
-//! flux.ts`), because it is the browser that emits the large messages and
+//! ⚠️ **Back-pressure, for its part, is on the BROWSER SIDE**
+//! (`client/src/fichiers/flux.ts`), because it is the browser that emits the large messages and (policy: allow-fr, real file path)
 //! `bufferedAmount` is a property of ITS channel. The bridge does not see it and
 //! cannot see it. The two halves are inseparable: the window without
 //! back-pressure would fill the SCTP queue, back-pressure without the
@@ -26,7 +26,7 @@
 //!
 //! # THE INVARIANT THAT MAKES THE WINDOW SAFE, AND IT IS CHECKED RATHER THAN BELIEVED
 //!
-//! The channel is `ordered` (`client/src/fichiers/canal.ts`), chunks are
+//! The channel is `ordered` (`client/src/fichiers/canal.ts`), chunks are (policy: allow-fr, real file path)
 //! requested in increasing position order, so responses arrive
 //! in that order, so `PrjWriteFileData` is called in that order.
 //!
@@ -57,7 +57,7 @@
 //! `DELAI_LIRE`, and they expire. **The flow control F3 delivers has therefore
 //! never had the chance to serve in operation**; it serves on the
 //! diagnostic binary, at `ATTENTE_MAX = 1 ms`, where the 256 KiB rank completes with
-//! `lire=n:4`. See `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`.
+//! `lire=n:4`. See `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`. (policy: allow-fr, real file path)
 
 use std::collections::VecDeque;
 
@@ -71,7 +71,7 @@ use crate::pont::decoupe::Morceau;
 ///
 /// 🔴 **A VALUE OF 1 WOULD MAKE THE WINDOW INERT**, that is, would deliver a
 /// flow control unable to bite. It is what
-/// `la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue`
+/// `the_window_really_reaches_MORCEAUX_EN_VOL_on_a_long_read`
 /// denounces, and it is **the red of the deliverable itself**.
 pub const MORCEAUX_EN_VOL: usize = 4;
 

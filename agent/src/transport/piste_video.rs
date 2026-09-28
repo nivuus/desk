@@ -128,7 +128,7 @@ impl Session {
                 // `FileSource` never returns `None` and therefore never reaches
                 // this path.
                 if self.source.is_exhausted() {
-                    self.begin_ending("source vidéo épuisée");
+                    self.begin_ending("video source exhausted");
                 }
             }
         }
@@ -180,7 +180,7 @@ impl Session {
             // silently, producing a silent black screen indefinitely
             // without the slightest hint in the logs.
             self.warn_negotiation_once(
-                "aucun type de charge utile H.264 négocié (mode de paquetisation 1) : images jetées",
+                "no H.264 payload type negotiated (packetization mode 1): frames dropped",
             );
             return false;
         };
@@ -199,7 +199,7 @@ impl Session {
         // borrow of `self.clock_origin` that `capture_instant` requires.
         let capture_at = self.capture_instant(unit.pts_90k);
         let Some(writer) = self.rtc.writer(mid) else {
-            self.warn_negotiation_once("piste vidéo plus accessible en écriture : images jetées");
+            self.warn_negotiation_once("video track no longer writable: frames dropped");
             return false;
         };
         match writer.write(
@@ -222,8 +222,8 @@ impl Session {
                 // process. Only `Session::new` and `accept_offer` — before
                 // a session really exists — justify killing the
                 // whole process.
-                tracing::warn!(error = %e, "échec d'écriture de l'image, fin de session");
-                self.begin_ending("échec d'écriture vidéo");
+                tracing::warn!(error = %e, "frame write failure, end of session");
+                self.begin_ending("video write failure");
                 false
             }
         }
@@ -232,10 +232,7 @@ impl Session {
     fn warn_negotiation_once(&mut self, message: &str) {
         if !self.warned_negotiation {
             self.warned_negotiation = true;
-            tracing::warn!(
-                message,
-                "négociation vidéo incomplète (avertissement unique)"
-            );
+            tracing::warn!(message, "incomplete video negotiation (single warning)");
         }
     }
 }

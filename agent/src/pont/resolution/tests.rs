@@ -9,11 +9,11 @@ fn resolveur_complet(nom: &str) -> Option<usize> {
 }
 
 #[test]
-fn les_treize_noms_sont_distincts() {
+fn the_thirteen_names_are_distinct() {
     for (rang, nom) in NOMS.iter().enumerate() {
         assert!(
             !NOMS[..rang].contains(nom),
-            "« {nom} » figure deux fois dans NOMS : le second rang écraserait le premier"
+            "« {nom} » appears twice in NOMS: the second rank would overwrite the first"
         );
     }
 }
@@ -30,7 +30,7 @@ fn les_treize_noms_sont_distincts() {
 /// would pass.
 #[test]
 fn each_field_receives_the_address_of_its_entry() {
-    let a = resoudre(resolveur_complet).expect("les treize sont là");
+    let a = resoudre(resolveur_complet).expect("all thirteen are there");
     let attendue = |nom: &str| resolveur_complet(nom).expect("nom connu");
     assert_eq!(
         a.allouer_tampon_aligne,
@@ -56,7 +56,7 @@ fn each_field_receives_the_address_of_its_entry() {
     );
 }
 
-/// 🔴 **The check that is this module's raison d'être.** Each of the thirteen
+/// 🔴 **The check that is this module's reason to exist.** Each of the thirteen
 /// entry points, removed in turn, must produce an error that **names
 /// the entry point** — not an `Ok`, not a mute error. The sweep is exhaustive:
 /// exercising a single entry point would leave twelve paths uncovered.
@@ -70,11 +70,11 @@ fn each_missing_entry_is_named_by_the_error() {
                 resolveur_complet(nom)
             }
         })
-        .expect_err("une entrée manque : la résolution doit échouer");
+        .expect_err("an entry is missing: resolution must fail");
         assert_eq!(error.nom, manquante);
         assert!(
             error.to_string().contains(manquante),
-            "le libellé « {error} » ne nomme pas « {manquante} »"
+            "the label « {error} » does not name « {manquante} »"
         );
     }
 }
@@ -84,7 +84,7 @@ fn each_missing_entry_is_named_by_the_error() {
 /// a null pointer into a function pointer, and the first call would jump to
 /// address 0.
 #[test]
-fn une_adresse_nulle_vaut_une_entree_absente() {
+fn a_null_address_counts_as_a_missing_entry() {
     for manquante in NOMS {
         let error = resoudre(|nom| {
             if nom == manquante {
@@ -93,7 +93,7 @@ fn une_adresse_nulle_vaut_une_entree_absente() {
                 resolveur_complet(nom)
             }
         })
-        .expect_err("une adresse nulle doit être refusée");
+        .expect_err("a null address must be refused");
         assert_eq!(error.nom, manquante);
     }
 }
@@ -104,7 +104,7 @@ fn une_adresse_nulle_vaut_une_entree_absente() {
 /// absent entry point rather than the first, and the diagnosis would start from the wrong
 /// end.
 #[test]
-fn la_resolution_s_arrete_a_la_premiere_entree_manquante() {
+fn resolution_stops_at_the_first_missing_entry() {
     let mut interroges = Vec::new();
     let error = resoudre(|nom| {
         interroges.push(nom.to_string());
@@ -123,6 +123,6 @@ fn la_resolution_s_arrete_a_la_premiere_entree_manquante() {
     assert_eq!(
         interroges.len(),
         rang + 1,
-        "la résolution a continué au-delà de l'entrée manquante : {interroges:?}"
+        "resolution went on past the missing entry: {interroges:?}"
     );
 }

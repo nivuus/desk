@@ -43,8 +43,8 @@ pub(super) fn mesure_armee() -> bool {
             // makes it visible under `RUST_LOG=info` and what prevents
             // confusing it with an ordinary configuration.
             tracing::warn!(
-                "banc de latence du pont ARME (PONT_MESURE=1) : instrument de banc, \
-                 jamais une configuration livree"
+                "bridge latency bench ARMED (PONT_MESURE=1): bench instrument, \
+                 never a shipped configuration"
             );
         }
         armee
@@ -100,7 +100,7 @@ pub(super) fn recenser(etat: &Etat) {
         // read "nothing in flight" where the table is inaccessible — that is,
         // the FIRST line of the reading table, which would blame the callback.
         Err(_) => {
-            tracing::warn!("recensement impossible : le verrou de la table est empoisonne");
+            tracing::warn!("census impossible: the table lock is poisoned");
             return;
         }
     };

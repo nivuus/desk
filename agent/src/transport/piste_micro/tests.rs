@@ -44,15 +44,15 @@ fn session_nue() -> Session {
 /// incremented at the moment of `tracing::warn!`), not of the number of calls:
 /// that is what makes the assertion able to fail.
 #[test]
-fn sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois() {
+fn without_a_negotiated_mic_track_the_warning_comes_out_only_once() {
     let mut s = session_nue();
     assert!(!s.micro_disponible());
     for _ in 0..50 {
-        s.avertir_micro_une_fois("essai");
+        s.avertir_micro_une_fois("trial");
     }
     assert_eq!(
         s.journaux_micro, 1,
-        "l'avertissement de négociation est sorti {} fois",
+        "the negotiation warning came out {} times",
         s.journaux_micro
     );
 }
@@ -61,7 +61,7 @@ fn sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois() {
 /// track ignored. **The refusal comes from the SINK** (`deposer` returns `false`): the
 /// transport knows no mutex, and that is the seam E2 will fill.
 #[test]
-fn un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien() {
+fn a_refusing_sink_logs_only_once_and_kills_nothing() {
     let recues = Arc::new(Mutex::new(Vec::new()));
     let mut s = session_nue();
     s.set_puits_micro(Box::new(PuitsEspion {
@@ -80,11 +80,11 @@ fn un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien() {
     assert_eq!(
         recues.lock().unwrap().len(),
         50,
-        "les trames n'ont pas atteint le puits"
+        "the frames did not reach the sink"
     );
     assert_eq!(
         s.journaux_micro, 1,
-        "le refus a été journalisé {} fois au lieu d'une",
+        "the refusal was logged {} times instead of once",
         s.journaux_micro
     );
     // …and the session is not ending: a refused microphone
@@ -99,7 +99,7 @@ fn un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien() {
 /// could change: the session's state is intact after a sink that refuses everything,
 /// including the video track, which is what we protect.
 #[test]
-fn un_micro_refusant_ne_compromet_pas_la_video() {
+fn a_refusing_mic_does_not_compromise_the_video() {
     let mut s = session_nue();
     s.video_mid = Some("v0".into());
     s.set_puits_micro(Box::new(PuitsEspion {
@@ -113,19 +113,15 @@ fn un_micro_refusant_ne_compromet_pas_la_video() {
             echantillons: 960,
         });
     }
-    assert_eq!(
-        s.video_mid,
-        Some("v0".into()),
-        "la piste vidéo a été perdue"
-    );
-    assert!(!s.ending, "la session s'est terminée à cause du micro");
+    assert_eq!(s.video_mid, Some("v0".into()), "the video track was lost");
+    assert!(!s.ending, "the session ended because of the mic");
 }
 
 /// Probe 1 answered on bare str0m. This one answers on OUR path: an
 /// Opus packet written by the peer is found in the session's sink,
 /// with the duration READ from the packet and the peer's RTP timestamp (spec §11).
 #[test]
-fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
+fn an_upstream_opus_packet_reaches_the_session_sink() {
     use crate::opus::OpusEncoder;
 
     // A real 10 ms Opus frame: it is what gives meaning to
@@ -134,7 +130,7 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
     let pcm: Vec<i16> = (0..crate::opus::FRAME_INTERLEAVED)
         .map(|i| ((i as f32 * 0.05).sin() * 8000.0) as i16)
         .collect();
-    let charge = enc.encode(&pcm).expect("encodage");
+    let charge = enc.encode(&pcm).expect("encoding");
 
     let recues = Arc::new(Mutex::new(Vec::new()));
     let local_ip = fixtures::local_ip();
@@ -149,16 +145,16 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
     api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
     // The microphone: the BROWSER emits, so the agent receives.
     let mid_micro = api.add_media(MediaKind::Audio, Direction::SendOnly, None, None, None);
-    let (offer, pending) = api.apply().expect("offre non vide");
+    let (offer, pending) = api.apply().expect("non-empty offer");
 
     let answer_sdp = session
         .accept_offer(&offer.to_sdp_string())
-        .expect("offre acceptée");
-    let answer = str0m::change::SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP");
+        .expect("offer accepted");
+    let answer = str0m::change::SdpAnswer::from_sdp_string(&answer_sdp).expect("SDP answer");
     peer_rtc
         .sdp_api()
         .accept_answer(pending, answer)
-        .expect("réponse acceptée");
+        .expect("answer accepted");
 
     std::thread::spawn(move || {
         let mut on_input = |_| {};
@@ -172,7 +168,7 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
         let maintenant = Instant::now();
         assert!(
             maintenant < echeance,
-            "aucune trame micro n'a atteint le puits en 15 s"
+            "no mic frame reached the sink within 15 s"
         );
         match peer_rtc.poll_output().expect("poll_output du pair") {
             Output::Timeout(t) => {
@@ -217,19 +213,19 @@ fn un_paquet_opus_montant_atteint_le_puits_de_la_session() {
     let recues = recues.lock().unwrap();
     let trame = &recues[0];
     eprintln!(
-        "piste micro : {} octets, rtp_48k={}, echantillons={}",
+        "mic track: {} bytes, rtp_48k={}, samples={}",
         trame.opus.len(),
         trame.rtp_48k,
         trame.echantillons
     );
     assert_eq!(
         trame.opus, charge,
-        "la charge utile n'a pas traversé octet pour octet"
+        "the payload did not pass through byte for byte"
     );
     assert_eq!(
         trame.echantillons,
         crate::opus::FRAME_SAMPLES,
-        "la durée n'a pas été LUE du paquet"
+        "the duration was not READ from the packet"
     );
 }
 
@@ -275,7 +271,7 @@ impl PuitsMicro for PuitsPilotable {
 /// Without that, a window that loses the cable from its first packet
 /// would NEVER learn anything: `Ready.mic` has already been emitted, and it says `true`.
 #[test]
-fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
+fn the_very_first_deposit_announces_its_verdict_to_the_browser() {
     for accepte in [true, false] {
         let mut s = session_nue();
         s.set_puits_micro(Box::new(PuitsEspion {
@@ -284,7 +280,7 @@ fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
         }));
         assert!(
             verdicts_annonces(&s).is_empty(),
-            "rien avant le premier dépôt"
+            "nothing before the first deposit"
         );
         s.deposer_trame_micro_de_test(trame_muette());
         assert_eq!(verdicts_annonces(&s), vec![accepte]);
@@ -302,7 +298,7 @@ fn le_tout_premier_depot_annonce_son_verdict_au_navigateur() {
 /// ACTUALLY queued, not of a call counter: that is what makes it
 /// able to fail.
 #[test]
-fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
+fn fifty_deposits_of_the_same_verdict_make_only_one_announcement() {
     for accepte in [true, false] {
         let mut s = session_nue();
         s.set_puits_micro(Box::new(PuitsEspion {
@@ -315,7 +311,7 @@ fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
         assert_eq!(
             verdicts_annonces(&s),
             vec![accepte],
-            "cinquante dépôts de verdict {accepte} ont produit {} annonces",
+            "fifty deposits of verdict {accepte} produced {} announcements",
             verdicts_annonces(&s).len()
         );
     }
@@ -331,7 +327,7 @@ fn cinquante_depots_de_meme_verdict_ne_font_qu_une_annonce() {
 /// the first transition would then leave the exclusivity banner displayed
 /// forever on a window that has taken the microphone back.
 #[test]
-fn un_refus_leve_est_reannonce_au_navigateur() {
+fn a_lifted_refusal_is_announced_again_to_the_browser() {
     let accepte = Arc::new(Mutex::new(false));
     let mut s = session_nue();
     s.set_puits_micro(Box::new(PuitsPilotable {
@@ -344,7 +340,7 @@ fn un_refus_leve_est_reannonce_au_navigateur() {
     assert_eq!(
         verdicts_annonces(&s),
         vec![false],
-        "le refus initial, une fois"
+        "the initial refusal, once"
     );
 
     // The other window dies, the cable is given back.
@@ -355,7 +351,7 @@ fn un_refus_leve_est_reannonce_au_navigateur() {
     assert_eq!(
         verdicts_annonces(&s),
         vec![false, true],
-        "la reprise doit être annoncée, et une seule fois"
+        "the recovery must be announced, and only once"
     );
 
     // And the reverse direction too: the verdict follows transitions in BOTH
@@ -372,7 +368,7 @@ fn un_refus_leve_est_reannonce_au_navigateur() {
 /// Confusing them would give either fifty log lines per second, or
 /// a client banner that is never lifted.
 #[test]
-fn la_reprise_ne_produit_pas_une_seconde_ligne_de_journal() {
+fn the_recovery_does_not_produce_a_second_log_line() {
     let accepte = Arc::new(Mutex::new(false));
     let mut s = session_nue();
     s.set_puits_micro(Box::new(PuitsPilotable {
@@ -386,9 +382,6 @@ fn la_reprise_ne_produit_pas_une_seconde_ligne_de_journal() {
     *accepte.lock().unwrap() = false;
     s.deposer_trame_micro_de_test(trame_muette());
 
-    assert_eq!(apres_refus, 1, "le refus se journalise une fois");
-    assert_eq!(
-        s.journaux_micro, 1,
-        "deux transitions de plus n'ajoutent aucune ligne de journal"
-    );
+    assert_eq!(apres_refus, 1, "the refusal is logged once");
+    assert_eq!(s.journaux_micro, 1, "two more transitions add no log line");
 }

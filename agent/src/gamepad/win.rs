@@ -66,10 +66,8 @@ impl VirtualPad {
         let client = vigem_client::Client::connect().context("connexion au pilote ViGEmBus")?;
         let mut target =
             vigem_client::Xbox360Wired::new(client, vigem_client::TargetId::XBOX360_WIRED);
-        target
-            .plugin()
-            .context("branchement de la manette virtuelle")?;
-        target.wait_ready().context("attente de disponibilité")?;
+        target.plugin().context("plugging in the virtual gamepad")?;
+        target.wait_ready().context("waiting for availability")?;
 
         // Neutral state: this first write only serves to confirm
         // that the target really accepts an `update()`, not to reflect
@@ -92,21 +90,20 @@ impl VirtualPad {
                     tracing::warn!(
                         tentative = tentatives,
                         error = ?e,
-                        "update() pas encore prêt, nouvelle tentative"
+                        "update() not ready yet, retrying"
                     );
                     std::thread::sleep(DELAI_TENTATIVE);
                 }
                 Err(e) => {
-                    return Err(e).context(
-                        "premier envoi d'état à la manette virtuelle, après toutes les reprises",
-                    )
+                    return Err(e)
+                        .context("first state sent to the virtual gamepad, after all the retries")
                 }
             }
         }
         if tentatives > 0 {
-            tracing::info!(tentatives, "update() a fini par réussir après attente");
+            tracing::info!(tentatives, "update() finally succeeded after waiting");
         }
-        tracing::info!("manette virtuelle branchée");
+        tracing::info!("virtual gamepad plugged in");
         Ok(Self {
             target,
             derniere_seq: None,
@@ -136,7 +133,7 @@ impl VirtualPad {
         };
         self.target
             .update(&gamepad)
-            .context("application de l'état de manette")?;
+            .context("applying the gamepad state")?;
         // Recorded only after success: a failed `update()` must
         // not mark this sequence as handled, or else it could
         // never be reapplied (`plus_recent` would then
@@ -212,7 +209,7 @@ pub fn spawn_rumble(
     let requete = pad
         .target
         .request_notification()
-        .context("abonnement aux notifications de vibration")?;
+        .context("subscribing to rumble notifications")?;
 
     let (notif_tx, notif_rx) = mpsc::channel::<vigem_client::XNotification>();
     // Thread created and owned by the crate, on its own duplicated `Client`

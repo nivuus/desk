@@ -22,7 +22,7 @@
 /// **Without it, the instrument would take noise for a tone.** Quantisation
 /// noise around zero multiplies the sign changes, and it is
 /// exactly what
-/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible` sanctions.
+/// `silence_and_noise_do_not_return_a_credible_frequency` sanctions.
 const BANDE_MORTE: f32 = 0.25;
 
 /// Peak amplitude below which the signal has no frequency at all.

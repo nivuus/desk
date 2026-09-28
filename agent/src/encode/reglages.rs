@@ -83,7 +83,7 @@ pub(super) fn configure_output(
         media_type.SetUINT32(&MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Base.0 as u32)?;
         transform
             .SetOutputType(0, &media_type, 0)
-            .context("configuration du type de sortie de l'encodeur H.264 (transform matériel)")?;
+            .context("configuring the H.264 encoder output type (hardware transform)")?;
     }
     Ok(())
 }
@@ -103,7 +103,7 @@ pub(super) fn configure_input(
         media_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
         transform
             .SetInputType(0, &media_type, 0)
-            .context("configuration du type d'entrée de l'encodeur H.264 (transform matériel)")?;
+            .context("configuring the H.264 encoder input type (hardware transform)")?;
     }
     Ok(())
 }
@@ -126,7 +126,7 @@ pub(super) fn configure_rate_control(transform: &IMFTransform, bitrate: u32) -> 
         if let Err(e) = codec.SetValue(&CODECAPI_AVEncMPVGOPSize, &gop) {
             tracing::warn!(
                 error = %e,
-                "réglage CODECAPI_AVEncMPVGOPSize (groupe d'images ouvert) refusé par le pilote"
+                "CODECAPI_AVEncMPVGOPSize setting (open group of pictures) refused by the driver"
             );
         }
         let low_latency = variant_bool(true);

@@ -16,7 +16,7 @@ use super::*;
 /// it is the BROWSER that emits; in writing, it is the bridge, and pushing
 /// several chunks in advance would flood precisely what we avoid.
 #[test]
-fn un_morceau_en_vol_a_la_fois() {
+fn one_chunk_in_flight_at_a_time() {
     let bac = Bac::neuf();
     bac.poser("gros.bin", &vec![1u8; 3 * proto::files::MAX_FRAME_SIZE]);
     let mut fil = Fil::start(bac.config(true));
@@ -32,25 +32,25 @@ fn un_morceau_en_vol_a_la_fois() {
         assert_eq!(
             lot.len(),
             1,
-            "UN SEUL morceau part avant le premier acquittement"
+            "ONE SINGLE chunk leaves before the first acknowledgement"
         );
         lot[0].1
     };
     for tour in 0..2 {
         fil.traiter(Ordre::Fait { correlation });
         let lot = ecritures(&bac);
-        assert_eq!(lot.len(), 1, "tour {tour} : un seul morceau de plus");
+        assert_eq!(lot.len(), 1, "round {tour}: only one more chunk");
         correlation = lot[0].1;
     }
     fil.traiter(Ordre::Fait { correlation });
-    assert!(ecritures(&bac).is_empty(), "trois morceaux, et c'est tout");
+    assert!(ecritures(&bac).is_empty(), "three chunks, and that is all");
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
 }
 
 /// A write arriving DURING a push is replayed afterwards — and the
 /// file is reread **from the start**.
 #[test]
-fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
+fn a_write_during_a_push_is_replayed_afterwards() {
     let bac = Bac::neuf();
     bac.poser("a.txt", b"premier");
     let mut fil = Fil::start(bac.config(true));
@@ -67,30 +67,33 @@ fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
         .trames()
         .into_iter()
         .rfind(|(t, ..)| *t == proto::files::TYPE_WRITE)
-        .expect("le rejeu doit repartir");
-    assert_eq!(charge, b"SECOND CONTENU PLUS LONG", "relu DEPUIS LE DÉBUT");
+        .expect("the replay must restart");
+    assert_eq!(
+        charge, b"SECOND CONTENU PLUS LONG",
+        "read again FROM THE START"
+    );
     fil.traiter(Ordre::Fait { correlation: c2 });
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
 }
 
 /// A DIRECTORY creation produces no chunk.
 #[test]
-fn un_repertoire_cree_ne_produit_aucun_morceau() {
+fn a_created_directory_produces_no_chunk() {
     let bac = Bac::neuf();
-    std::fs::create_dir(bac.racine.join("dossier")).expect("dossier de test");
+    std::fs::create_dir(bac.racine.join("dossier")).expect("test folder");
     let mut fil = Fil::start(bac.config(true));
     fil.traiter(Ordre::Survenu(Evenement::Cree {
         chemin: "dossier".to_string(),
         repertoire: true,
     }));
     let trames = bac.trames();
-    let (type_message, c, entete, _) = trames.last().expect("une trame").clone();
+    let (type_message, c, entete, _) = trames.last().expect("one frame").clone();
     assert_eq!(type_message, proto::files::TYPE_CREATE);
-    let create: entetes::Create = serde_json::from_slice(&entete).expect("en-tête Creer");
+    let create: entetes::Create = serde_json::from_slice(&entete).expect("Creer header");
     assert!(create.repertoire);
     assert!(
         !trames.iter().any(|(t, ..)| *t == proto::files::TYPE_WRITE),
-        "aucun morceau : un répertoire n'a rien à lire"
+        "no chunk: a directory has nothing to read"
     );
     fil.traiter(Ordre::Fait { correlation: c });
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
@@ -99,7 +102,7 @@ fn un_repertoire_cree_ne_produit_aucun_morceau() {
 /// A late acknowledgement — arrived after an expiry — is **thrown away**, never
 /// applied to the next push.
 #[test]
-fn un_acquittement_tardif_est_jete() {
+fn a_late_acknowledgement_is_dropped() {
     let bac = Bac::neuf();
     bac.poser("a.txt", b"a");
     let mut fil = Fil::start(bac.config(true));
@@ -112,7 +115,7 @@ fn un_acquittement_tardif_est_jete() {
     assert_eq!(
         Journal::compte_du_brut(&bac.journal_brut()),
         1,
-        "un Fait étranger ne doit RIEN acquitter"
+        "a foreign Fait must acknowledge NOTHING"
     );
     fil.traiter(Ordre::Fait { correlation: c });
     assert_eq!(Journal::compte_du_brut(&bac.journal_brut()), 0);
@@ -127,19 +130,16 @@ fn writes_take_their_correlations_from_the_shared_table() {
     let mut fil = Fil::start(bac.config(true));
     fil.traiter(modified("a.txt"));
     assert_eq!(
-        bac.table.lock().expect("verrou").en_vol(),
+        bac.table.lock().expect("lock").en_vol(),
         1,
-        "l'écriture doit être INSCRITE dans la table du pont"
+        "the write must be REGISTERED in the bridge table"
     );
     let (_, c, _, _) = *bac.trames().last().expect("morceau");
     let (commande, _, _) = bac
         .table
         .lock()
-        .expect("verrou")
+        .expect("lock")
         .resoudre(c, Instant::now())
         .expect("inscrite");
-    assert_eq!(
-        commande, None,
-        "une écriture ne complète AUCUN rappel ProjFS"
-    );
+    assert_eq!(commande, None, "a write completes NO ProjFS callback");
 }

@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn neuve_n_a_rien_a_relancer_ni_rien_a_stabiliser() {
+fn fresh_has_nothing_to_relaunch_nor_stabilise() {
     let etat = EtatRelance::neuve();
     assert_eq!(etat.tentative(), 0);
     assert_eq!(etat.espacement_ms(), ESPACEMENT_PLANCHER_MS);
@@ -15,7 +15,7 @@ fn neuve_n_a_rien_a_relancer_ni_rien_a_stabiliser() {
 /// `REPLI_MIN_MS == ESPACEMENT_PLANCHER_MS`, and the constant's doc now
 /// says so.
 #[test]
-fn le_premier_espacement_egale_le_plancher() {
+fn the_first_spacing_equals_the_floor() {
     assert_eq!(delai_de_repli(0), ESPACEMENT_PLANCHER_MS);
 }
 
@@ -26,7 +26,7 @@ fn le_premier_espacement_egale_le_plancher() {
 /// `frein.test.ts::FENETRE_REQUETES_MS_reste_plus_courte_que_FENETRE_MS`.
 ///
 /// ⚠️ **ITS TWIN WAS REMOVED IN ROUND 4, AND IT IS SAID RATHER THAN PASSED OVER IN SILENCE**:
-/// `le_plancher_reste_strictement_sous_le_seuil_de_stabilite` fixed
+/// `the_floor_stays_strictly_below_the_stability_threshold` fixed
 /// `ESPACEMENT_PLANCHER_MS < SEUIL_STABILITE_MS` to guarantee the ORDER in
 /// which `surveiller` called `reset_the_backoff` then `stable`. That
 /// order no longer exists: both methods now live in
@@ -35,17 +35,17 @@ fn le_premier_espacement_egale_le_plancher() {
 /// false justification — which this repository pays more dearly for than one test
 /// fewer.
 #[test]
-fn le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli() {
+fn the_stability_threshold_stays_strictly_above_the_backoff_ceiling() {
     const {
         assert!(
             SEUIL_STABILITE_MS > REPLI_MAX_MS,
-            "SEUIL_STABILITE_MS n'est pas > REPLI_MAX_MS"
+            "SEUIL_STABILITE_MS is not > REPLI_MAX_MS"
         )
     };
 }
 
 #[test]
-fn doit_relancer_est_faux_juste_apres_une_tentative() {
+fn should_relaunch_is_false_right_after_an_attempt() {
     let mut etat = EtatRelance::neuve();
     etat.tentative_lancee();
     assert!(!etat.doit_relancer(0));
@@ -53,24 +53,25 @@ fn doit_relancer_est_faux_juste_apres_une_tentative() {
 }
 
 #[test]
-fn doit_relancer_devient_vrai_a_l_espacement_exact() {
+fn should_relaunch_becomes_true_at_the_exact_spacing() {
     let etat = EtatRelance::neuve();
     assert!(etat.doit_relancer(ESPACEMENT_PLANCHER_MS));
 }
 
 #[test]
-fn seul_le_premier_lancement_du_cycle_est_signale() {
+fn only_the_first_launch_of_the_cycle_is_reported() {
     let mut etat = EtatRelance::neuve();
-    assert!(
-        etat.tentative_lancee(),
-        "le premier lancement doit être signalé"
-    );
+    assert!(etat.tentative_lancee(), "the first launch must be reported");
     assert!(
         !etat.tentative_lancee(),
-        "le second, du MÊME cycle, ne doit plus l'être"
+        "the second, of the SAME cycle, must no longer be"
     );
-    assert!(!etat.tentative_lancee(), "ni le troisième");
-    assert_eq!(etat.tentative(), 3, "le COMPTE, lui, continue de croître");
+    assert!(!etat.tentative_lancee(), "nor the third");
+    assert_eq!(
+        etat.tentative(),
+        3,
+        "the COUNT, for its part, keeps growing"
+    );
 }
 
 /// 🔴 **`EtatObserve` HAS NO CONSUMER ON THE HOST** (the only three
@@ -81,7 +82,7 @@ fn seul_le_premier_lancement_du_cycle_est_signale() {
 /// `CLAUDE.md` names for extractions ("it leaves its
 /// imports behind it").
 #[test]
-fn etat_observe_distingue_mort_de_vivant_et_d_absent_par_son_issue() {
+fn observed_state_tells_dead_from_alive_and_absent_by_its_outcome() {
     let mort_propre = EtatObserve::Mort(IssueDeSortie::Propre);
     let error_death = EtatObserve::Mort(IssueDeSortie::Error);
     assert_ne!(mort_propre, error_death, "l'issue distingue deux morts");
@@ -123,13 +124,13 @@ fn a_clean_exit_rearms_the_backoff_without_any_duration_involved() {
     }
     assert!(
         etat.espacement_ms() > ESPACEMENT_PLANCHER_MS,
-        "le repli a bien grandi avant le test"
+        "the backoff did grow before the test"
     );
     etat.reset_the_backoff(IssueDeSortie::Propre);
     assert_eq!(
         etat.espacement_ms(),
         ESPACEMENT_PLANCHER_MS,
-        "une sortie PROPRE doit réarmer le repli : la panne passée est résolue"
+        "a CLEAN exit must re-arm the backoff: the past failure is resolved"
     );
 }
 
@@ -144,7 +145,7 @@ fn a_clean_exit_rearms_the_backoff_without_any_duration_involved() {
 /// 🔵 The TWO other outcomes are exercised in the same test, because
 /// they share the conclusion: neither `Error` nor `Inconnue` re-arms.
 #[test]
-fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
+fn neither_a_refusal_nor_an_unknown_outcome_re_arms_the_backoff() {
     for issue in [IssueDeSortie::Error, IssueDeSortie::Inconnue] {
         let mut etat = EtatRelance::neuve();
         for _ in 0..5 {
@@ -153,7 +154,7 @@ fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
         let before = etat.espacement_ms();
         assert!(
             before > ESPACEMENT_PLANCHER_MS,
-            "le repli a bien grandi avant le test"
+            "the backoff did grow before the test"
         );
         // A VERY long life — longer than the longest possible refusal
         // sleep — and yet no re-arming: duration does not enter
@@ -162,7 +163,7 @@ fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
         assert_eq!(
             etat.espacement_ms(),
             before,
-            "{issue:?} ne doit RIEN réarmer, quelle qu'ait été la durée de vie"
+            "{issue:?} must re-arm NOTHING, whatever the lifetime was"
         );
     }
 }
@@ -176,16 +177,16 @@ fn ni_un_refus_ni_une_issue_inconnue_ne_rearment_le_repli() {
 /// it keeps holding because `stable` never changed its
 /// guard condition.
 #[test]
-fn stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable() {
+fn stable_during_a_refusal_sleep_never_declares_stable() {
     let mut etat = EtatRelance::neuve();
     etat.tentative_lancee();
     let mut ecoule = 0u64;
     while ecoule < REPLI_MAX_MS {
         assert!(
             !etat.stable(ecoule),
-            "déclaré stable à {ecoule} ms, alors que le sommeil de refus \
-             peut durer jusqu'à {REPLI_MAX_MS} ms — c'est la boucle de \
-             trace du round de correction 2"
+            "declared stable at {ecoule} ms, while the refusal sleep \
+             can last up to {REPLI_MAX_MS} ms — this is the trace \
+             loop of correction round 2"
         );
         ecoule += 97; // a non-round step, so as not to land exactly on a case
     }
@@ -210,7 +211,7 @@ fn stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable() {
 /// `cycle_signale` fall back, so there is no longer an instant where `cycle_signale ==
 /// false` and `tentative > 0` at the same time.
 #[test]
-fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
+fn a_really_stable_process_ends_up_declared_stable_once() {
     let mut etat = EtatRelance::neuve();
     etat.tentative_lancee();
     etat.tentative_lancee(); // le repli a grandi : tentative = 2
@@ -219,10 +220,10 @@ fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
     assert_eq!(
         etat.tentative(),
         0,
-        "l'invariant qui remplace la garantie visée au round 4 : `stable() \
-         == true` remet `tentative` à zéro dans le MÊME geste qui fait \
-         retomber `cycle_signale` — l'état que ce test visait avant \
-         (cycle retombé, tentative encore positive) n'existe plus"
+        "the invariant that replaces the guarantee targeted in round 4: `stable() \
+         == true` resets `tentative` to zero in the SAME move that makes \
+         `cycle_signale` drop — the state this test targeted before \
+         (cycle dropped, tentative still positive) no longer exists"
     );
     // A second call, cycle already fallen back: nothing more to signal as long
     // as no new attempt has taken place.
@@ -233,7 +234,7 @@ fn un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois() {
 /// stability), `stable` must declare nothing, whatever `ecoule_ms`
 /// — a bridge never restarted has nothing to "become" stable "again".
 #[test]
-fn sans_cycle_en_cours_stable_ne_declare_jamais_rien() {
+fn without_a_cycle_in_progress_stable_never_declares_anything() {
     let mut etat = EtatRelance::neuve();
     assert!(!etat.stable(SEUIL_STABILITE_MS * 10));
 }
@@ -255,8 +256,8 @@ fn sans_cycle_en_cours_stable_ne_declare_jamais_rien() {
 /// FOR THE WHOLE hammering episode**, not once per
 /// cycle — exactly the module's header promise: "signal the
 /// first time, keep quiet as long as the situation repeats".
-/// **Round 4 changes nothing to this property**: `reinitialiser_le_
-/// repli` never touches `cycle_signale`, and the `Erreur` outcome does not even
+/// **Round 4 changes nothing to this property**: `reset_the_
+/// backoff` never touches `cycle_signale`, and the `Error` outcome does not even
 /// re-arm `tentative`.
 #[test]
 fn over_several_refusal_cycles_a_single_launched_line_and_no_stable_line() {
@@ -282,21 +283,21 @@ fn over_several_refusal_cycles_a_single_launched_line_and_no_stable_line() {
     }
     assert_eq!(
         lignes_lancees, 1,
-        "UNE SEULE ligne « lancé » pour tout l'épisode — jamais une par \
-         cycle : c'est la propriété de silence que le module promet déjà, \
-         et que le bug du seuil unique cassait en réarmant `cycle_signale` \
-         à chaque fausse stabilité"
+        "ONE SINGLE « launched » line for the whole episode — never one per \
+         cycle: this is the silence property the module already promises, \
+         and that the single-threshold bug broke by re-arming `cycle_signale` \
+         at every false stability"
     );
     assert_eq!(
         lignes_stables, 0,
-        "AUCUNE ligne « stable » ne doit sortir tant qu'aucun cycle n'a \
-         vraiment tenu : c'est exactement la boucle que le round de \
-         correction 2 ferme, et que ni le round 3 ni le round 4 ne rouvrent"
+        "NO « stable » line must come out as long as no cycle has \
+         really held: this is exactly the loop that correction round 2 \
+         closes, and that neither round 3 nor round 4 reopen"
     );
     assert!(
         etat.espacement_ms() > REPLI_MAX_MS / 2,
-        "après cinq refus, l'espacement doit avoir GRANDI — c'est le \
-         défaut du round 3, où il retombait au plancher à chaque cycle"
+        "after five refusals, the spacing must have GROWN — this is the \
+         round 3 defect, where it fell back to the floor at every cycle"
     );
 }
 
@@ -310,15 +311,15 @@ fn after_real_stability_the_next_cycle_becomes_noisy_again() {
     let mut etat = EtatRelance::neuve();
     assert!(
         etat.tentative_lancee(),
-        "premier lancement de l'épisode : bruyant"
+        "first launch of the episode: noisy"
     );
     assert!(
         etat.stable(SEUIL_STABILITE_MS),
-        "vraiment resté vivant assez longtemps"
+        "really stayed alive long enough"
     );
     assert!(
         etat.tentative_lancee(),
-        "un cycle NEUF, après une vraie stabilité, redevient bruyant"
+        "a NEW cycle, after real stability, becomes noisy again"
     );
 }
 
@@ -378,10 +379,10 @@ fn a_bridge_dying_in_error_after_half_a_second_does_not_hammer() {
     }
     assert_eq!(
         lancements, LANCEMENTS_MESURES,
-        "{lancements} connexions /signal en une minute pour le pont SEUL, \
-         contre un budget PARTAGÉ de {BUDGET_PARTAGE_PAR_MINUTE} et une \
-         mesure de {LANCEMENTS_MESURES} : c'est le verrouillage de la VM que \
-         ce lot existe pour fermer"
+        "{lancements} /signal connections in one minute for the bridge ALONE, \
+         against a SHARED budget of {BUDGET_PARTAGE_PAR_MINUTE} and a \
+         measurement of {LANCEMENTS_MESURES}: this is the VM lockout that \
+         this batch exists to close"
     );
 }
 
@@ -403,8 +404,8 @@ fn a_bridge_dying_in_error_after_half_a_second_does_not_hammer() {
 /// ROUND 3**: the threshold crossed is `SEUIL_STABILITE_MS` (35 s), which a
 /// sleeping refused bridge CANNOT reach — its sleep is bounded at
 /// `REPLI_MAX_MS` (30 s). The two tests holding this invariant are
-/// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
-/// and `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`.
+/// `the_stability_threshold_stays_strictly_above_the_backoff_ceiling`
+/// and `stable_during_a_refusal_sleep_never_declares_stable`.
 #[test]
 fn a_long_stable_life_then_an_error_death_restarts_at_the_floor() {
     const TROIS_JOURS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
@@ -415,14 +416,14 @@ fn a_long_stable_life_then_an_error_death_restarts_at_the_floor() {
     assert_eq!(
         etat.espacement_ms(),
         REPLI_MAX_MS,
-        "six refus : le repli est au PLAFOND"
+        "six refusals: the backoff is at the CEILING"
     );
 
     // Seventh launch — this one holds, and for long.
     etat.tentative_lancee();
     assert!(
         etat.stable(TROIS_JOURS_MS),
-        "trois jours de vie, c'est stable"
+        "three days of life, that is stable"
     );
 
     // Then the network outage: `pont::executer` returns an `Err`, hence a non-zero
@@ -432,12 +433,12 @@ fn a_long_stable_life_then_an_error_death_restarts_at_the_floor() {
     assert_eq!(
         etat.espacement_ms(),
         ESPACEMENT_PLANCHER_MS,
-        "après trois jours de service, une coupure réseau doit retomber à \
-         l'espacement PLANCHER et non rester au plafond de {REPLI_MAX_MS} ms \
-         — la RAMPE de l'épisode de refus suivant, pas la première reprise \
-         (immédiate dans les deux cas) : c'est la citation que \
-         `reinitialiser_le_repli` porte, et que seule `stable` peut tenir \
-         pour une mort EN ERREUR"
+        "after three days of service, a network cut must fall back to \
+         the FLOOR spacing and not stay at the ceiling of {REPLI_MAX_MS} ms \
+         — the RAMP of the next refusal episode, not the first reconnection \
+         (immediate in both cases): this is the quote that \
+         `reset_the_backoff` carries, and that only `stable` can hold \
+         for a death IN ERROR"
     );
     assert!(etat.doit_relancer(ESPACEMENT_PLANCHER_MS));
 }

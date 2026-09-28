@@ -130,7 +130,7 @@ pub async fn connecter(
         Ok(texte) => {
             let _ = tx_sortant.send(texte);
         }
-        Err(error) => tracing::error!(%error, "sérialisation d'un message de contrôle"),
+        Err(error) => tracing::error!(%error, "serializing a control message"),
     };
 
     Ok((rx_entrant, envoyer))
@@ -154,7 +154,7 @@ async fn ouvrir(url: &str, session: &str, jeton: Option<&str>) -> Result<Flux> {
             serde_json::json!({ "role": "agent", "session": session, "jeton": jeton }).to_string(),
         ))
         .await
-        .context("déclaration du superviseur au signaling")?;
+        .context("supervisor declaration to the signaling")?;
     // 🔴 THIS TRACE SAID "supervisor REGISTERED", AND IT WAS A
     // LIE — found by P3's acceptance run, from evidence
     // (`journaux-plateforme-p3/vm-{1,2}-agent-sans-identite-plat.log`). It
@@ -171,7 +171,7 @@ async fn ouvrir(url: &str, session: &str, jeton: Option<&str>) -> Result<Flux> {
     tracing::info!(
         session,
         jeton_present = jeton.is_some(),
-        "déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue)"
+        "supervisor declaration sent on the control session (acceptance still unknown)"
     );
     Ok(stream)
 }
@@ -220,9 +220,9 @@ async fn tenir(
                             tentative = reprise.tentative(),
                             delai_ms,
                             messages_jetes = jetes,
-                            "session de contrôle RÉTABLIE (les messages émis pendant la coupure \
-                             sont jetés, jamais rejoués : la réannonce sur pair-present est ce \
-                             qui répare l'état)"
+                            "control session RESTORED (the messages sent during the cut \
+                             are dropped, never replayed: the re-announcement on pair-present is what \
+                             repairs the state)"
                         );
                         f
                     }
@@ -232,8 +232,8 @@ async fn tenir(
                             session = %session,
                             tentative = reprise.tentative(),
                             delai_ms,
-                            "reconnexion de la session de contrôle ÉCHOUÉE : aucune fenêtre ne \
-                             peut être annoncée ni réannoncée tant qu'elle n'aboutit pas"
+                            "control session reconnection FAILED: no window can \
+                             be announced or re-announced until it succeeds"
                         );
                         continue;
                     }
@@ -247,7 +247,7 @@ async fn tenir(
         if let Fin::SuperviseurArrete = fin {
             tracing::info!(
                 session = %session,
-                "session de contrôle abandonnée : le superviseur n'est plus là"
+                "control session abandoned: the supervisor is gone"
             );
             return;
         }
@@ -261,7 +261,7 @@ async fn tenir(
             vecu_ms,
             repli_rearme = rearme,
             next_attempt_in_ms = reprise.delai_ms(),
-            "session de contrôle PERDUE : reconnexion programmée"
+            "control session LOST: reconnection scheduled"
         );
     }
 }
@@ -314,7 +314,7 @@ async fn servir(
                     // trace. Not observed in production — the connection
                     // ended with `None` — but the path existed.
                     Err(error) => {
-                        tracing::warn!(%error, "lecture de la session de contrôle en erreur");
+                        tracing::warn!(%error, "reading the control session failed");
                         return Fin::ConnexionPerdue;
                     }
                     Ok(Message::Close(_)) => return Fin::ConnexionPerdue,
@@ -331,7 +331,7 @@ async fn servir(
             a_emettre = rx_sortant.recv() => {
                 let Some(texte) = a_emettre else { return Fin::SuperviseurArrete };
                 if let Err(error) = sortant.send(Message::Text(texte)).await {
-                    tracing::warn!(%error, "émission vers la shell échouée");
+                    tracing::warn!(%error, "sending to the shell failed");
                     return Fin::ConnexionPerdue;
                 }
             }
@@ -365,12 +365,12 @@ fn analyser(texte: &str) -> Option<DepuisLaShell> {
                 tracing::warn!(
                     motif = %value.get("motif").and_then(|m| m.as_str()).unwrap_or("(absent)"),
                     raison = %value.get("reason").and_then(|r| r.as_str()).unwrap_or("(absente)"),
-                    "session de contrôle REFUSÉE par la plateforme"
+                    "control session REFUSED by the platform"
                 );
                 None
             }
             _ => {
-                tracing::debug!(texte, "message ignoré sur la session de contrôle");
+                tracing::debug!(texte, "message ignored on the control session");
                 None
             }
         },

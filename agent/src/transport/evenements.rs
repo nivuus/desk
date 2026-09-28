@@ -80,11 +80,11 @@ impl Session {
     ) -> Tick {
         match event {
             Event::IceConnectionStateChange(IceConnectionState::Disconnected) => {
-                tracing::warn!("ICE déconnecté");
+                tracing::warn!("ICE disconnected");
                 return Tick::Disconnected;
             }
             Event::IceConnectionStateChange(state) => {
-                tracing::info!(?state, elapsed = ?self.started.elapsed(), "état ICE");
+                tracing::info!(?state, elapsed = ?self.started.elapsed(), "ICE state");
             }
             Event::Closed => {
                 // I1: emitted on receiving the DTLS close_notify — typically
@@ -92,7 +92,7 @@ impl Session {
                 // event fell into `_ => {}` and the agent kept
                 // emitting until ICE expiry, long after the peer
                 // had left.
-                tracing::info!("connexion fermée par le pair (close_notify DTLS)");
+                tracing::info!("connection closed by the peer (DTLS close_notify)");
                 return Tick::Disconnected;
             }
             Event::MediaAdded(media) => {
@@ -104,7 +104,7 @@ impl Session {
                     mid = ?media.mid,
                     kind = ?media.kind,
                     direction = ?media.direction,
-                    "piste négociée"
+                    "track negotiated"
                 );
                 // ⚠️ **The direction discriminates, and without it this `match` is a
                 // SILENT defect.** It set `audio_mid` for any audio track:
@@ -151,7 +151,7 @@ impl Session {
                 // lines and avoids the fifth.
             }
             Event::ChannelOpen(id, label) => {
-                tracing::info!(%label, "canal de données ouvert");
+                tracing::info!(%label, "data channel open");
                 // 🔴 THE LABEL IS RETAINED FOR BOTH CHANNELS, no longer only
                 // for `control`. Without `input_channel`, `dispatch_channel_data`
                 // only has the binary flag to decide, and takes any binary
@@ -186,14 +186,14 @@ impl Session {
                 // `Rtc` — only the encoder (on the `VideoSource` side) is affected —
                 // so this relay respects the drain invariant documented
                 // at the head of the file even when called from `handle_event`.
-                tracing::debug!(mid = ?request.mid, "image clé demandée par le pair");
+                tracing::debug!(mid = ?request.mid, "key frame requested by the peer");
                 if let Err(e) = self.source.request_keyframe() {
                     // `cause::chain`: same `commander_simple` chain as
                     // the wake-up. See `crate::cause`.
                     tracing::warn!(
                         error = %crate::cause::chain(&e),
                         mid = ?request.mid,
-                        "échec de la demande d'image clé"
+                        "key frame request failed"
                     );
                 }
             }
@@ -237,15 +237,15 @@ impl Session {
                 if absence && !self.absence_bwe_signalee {
                     self.absence_bwe_signalee = true;
                     tracing::warn!(
-                        "aucune estimation de bande passante reçue : l'adaptation reste \
-                         indisponible et le débit demeure au plafond configuré"
+                        "no bandwidth estimate received: the adaptation stays \
+                         unavailable and the bitrate remains at the configured ceiling"
                     );
                 }
                 tracing::debug!(
                     estimation = ?observation.estimate_bps,
                     rtt = ?observation.rtt,
                     perte = ?observation.loss,
-                    "observation réseau"
+                    "network observation"
                 );
                 // `observer` MUST be called before reading `current()`
                 // below: it is what, in its branch without an
@@ -303,7 +303,7 @@ impl Session {
         match destination(data.id, self.input_channel, self.control_channel) {
             Destination::Entree => match InputMessage::decode(&data.data) {
                 Ok(message) => on_input(message),
-                Err(e) => tracing::warn!(error = %e, "message d'entrée invalide"),
+                Err(e) => tracing::warn!(error = %e, "invalid input message"),
             },
             Destination::Controle => {
                 match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
@@ -311,8 +311,8 @@ impl Session {
                         self.memoriser_controle(&message);
                         on_control(message);
                     }
-                    Ok(Err(e)) => tracing::warn!(error = %e, "message de contrôle invalide"),
-                    Err(e) => tracing::warn!(error = %e, "contrôle non UTF-8"),
+                    Ok(Err(e)) => tracing::warn!(error = %e, "invalid control message"),
+                    Err(e) => tracing::warn!(error = %e, "non-UTF-8 control"),
                 }
             }
             Destination::Ignoree => {
@@ -322,7 +322,7 @@ impl Session {
                 tracing::warn!(
                     binaire = data.binary,
                     octets = data.data.len(),
-                    "trame reçue sur un canal ni `input` ni `control`, ignorée"
+                    "frame received on a channel that is neither `input` nor `control`, ignored"
                 );
             }
         }
@@ -367,7 +367,7 @@ impl Session {
     #[cfg(test)]
     pub(super) fn dispatch_controle_de_test(&mut self, json: &str) {
         let message: ClientControl =
-            serde_json::from_str(json).expect("json de test valide dans dispatch_controle_de_test");
+            serde_json::from_str(json).expect("valid test json in dispatch_controle_de_test");
         self.memoriser_controle(&message);
     }
 }

@@ -166,7 +166,7 @@ enum Entree {
 }
 
 fn encoder(chemin: &str) -> String {
-    serde_json::to_string(chemin).expect("une chaîne se sérialise toujours en JSON")
+    serde_json::to_string(chemin).expect("a string always serializes to JSON")
 }
 
 fn decoder(brut: &str) -> Option<String> {

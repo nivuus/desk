@@ -20,7 +20,7 @@
 //! TABLE.** *(These lines announced "a lookup table
 //! fed by enumeration, which alone knows the real case of the disk",
 //! and gave it as belonging "to F3 or later".)* F3 delivers
-//! `client/src/fichiers/noms.ts`, which **enumerates the parent at EACH
+//! `client/src/fichiers/noms.ts`, which **enumerates the parent at EACH (policy: allow-fr, real file path)
 //! resolution, WITHOUT ANY CACHE** — a cache nothing invalidates is the defect
 //! of the old bridge (`src/file.js`, cache WITHOUT TTL). ✅ **`Rafraichir` IS
 //! DELIVERED SINCE F5** (21 August 2026): a button of the shell page empties the bridge's
@@ -43,7 +43,7 @@
 //! ❌ **THIS MODULE ANNOUNCED "will therefore get `Introuvable`", AND F1'S ACCEPTANCE RUN
 //! REFUTED IT: the real defect is WORSE, because it is SILENT.**
 //! Measured on the VM, **three runs out of three** (`mesure-exec{1,2,5}.txt`,
-//! under `docs/superpowers/plans/journaux-pont-fichiers/`): with `Casse.txt`
+//! under `docs/superpowers/plans/journaux-pont-fichiers/`): with `Casse.txt` (policy: allow-fr, real file path)
 //! on the local workstation, `casse.txt` **and** `CASSE.TXT` both return the
 //! CONTENT of `Casse.txt`, without error — the application receives the wrong
 //! file and cannot know it. **And the behaviour is not consistent

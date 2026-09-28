@@ -44,7 +44,7 @@ fn inventaire_de_la_vm() -> Vec<Peripherique> {
 /// `Haut-parleurs (VB-Audio Virtual Cable)`.
 #[test]
 #[allow(non_snake_case)]
-fn la_designation_integree_elit_le_cable_de_la_VM() {
+fn the_built_in_designation_elects_the_VM_cable() {
     let inv = inventaire_de_la_vm();
     match choisir(&inv, Some(DESIGNATION_CABLE)) {
         Choix::Elu {
@@ -54,7 +54,7 @@ fn la_designation_integree_elit_le_cable_de_la_VM() {
             assert_eq!(peripherique.nom, "Haut-parleurs (VB-Audio Virtual Cable)");
             assert_eq!(critere, Critere::NomPartiel);
         }
-        autre => panic!("le câble de la VM doit être élu, obtenu {autre:?}"),
+        autre => panic!("the VM's cable must be elected, got {autre:?}"),
     }
 
     // And the proof that the check can fail: the spec's designation.
@@ -63,7 +63,7 @@ fn la_designation_integree_elit_le_cable_de_la_VM() {
             choisir(&inv, Some("CABLE Input")),
             Choix::Introuvable { .. }
         ),
-        "« CABLE Input » n'est le nom d'aucun rendu de cette VM"
+        "« CABLE Input » is the name of no render device of this VM"
     );
 }
 
@@ -72,7 +72,7 @@ fn la_designation_integree_elit_le_cable_de_la_VM() {
 /// the back door — paid for in D1.
 #[test]
 #[allow(non_snake_case)]
-fn deux_cables_VB_rendent_la_designation_AMBIGUE() {
+fn two_VB_cables_make_the_designation_AMBIGUOUS() {
     let mut inv = inventaire_de_la_vm();
     inv.push(p(
         "Haut-parleurs (VB-Audio Virtual Cable B)",
@@ -81,22 +81,22 @@ fn deux_cables_VB_rendent_la_designation_AMBIGUE() {
     match choisir(&inv, Some(DESIGNATION_CABLE)) {
         Choix::Ambigu { demande, candidats } => {
             assert_eq!(demande, DESIGNATION_CABLE);
-            assert_eq!(candidats.len(), 2, "les deux câbles doivent être nommés");
+            assert_eq!(candidats.len(), 2, "both cables must be named");
             assert!(candidats.iter().any(|c| c.contains("Virtual Cable B")));
         }
-        autre => panic!("deux câbles doivent rendre Ambigu, obtenu {autre:?}"),
+        autre => panic!("two cables must return Ambigu, got {autre:?}"),
     }
 }
 
 #[test]
-fn une_demande_explicite_prime_sur_la_designation_integree() {
+fn an_explicit_request_takes_precedence_over_the_built_in_designation() {
     let inv = inventaire_de_la_vm();
     assert_eq!(demande_cable(Some("Steam")), "Steam");
     match choisir(&inv, Some(demande_cable(Some("Steam")))) {
         Choix::Elu { peripherique, .. } => {
             assert_eq!(peripherique.nom, "Haut-parleurs (Steam Streaming Speakers)");
         }
-        autre => panic!("la demande explicite doit primer, obtenu {autre:?}"),
+        autre => panic!("the explicit request must take precedence, got {autre:?}"),
     }
 }
 
@@ -105,14 +105,14 @@ fn une_demande_explicite_prime_sur_la_designation_integree() {
 /// speakers the day the default is not the cable.
 #[test]
 #[allow(non_snake_case)]
-fn la_demande_du_cable_n_est_JAMAIS_None() {
+fn the_cable_request_is_NEVER_None() {
     let inv = inventaire_de_la_vm();
     for variable in [None, Some(""), Some("   ")] {
         let demande = demande_cable(variable);
         assert_eq!(demande, DESIGNATION_CABLE, "variable {variable:?}");
         assert!(
             !matches!(choisir(&inv, Some(demande)), Choix::Defaut),
-            "Choix::Defaut est inatteignable par le chemin du câble (variable {variable:?})"
+            "Choix::Defaut is unreachable through the cable path (variable {variable:?})"
         );
     }
 }

@@ -55,17 +55,17 @@ fn closing_the_channel_alone_surfaces_channel_closed_and_only_for_the_right_id()
     assert!(traiter(Event::ChannelClose(autre), &mut canal, &tx).is_none());
     assert!(
         rx.try_recv().is_err(),
-        "la fermeture d'un autre canal ne remonte rien"
+        "closing another channel surfaces nothing"
     );
-    assert_eq!(canal, Some(bon), "et elle ne doit pas oublier le nôtre");
+    assert_eq!(canal, Some(bon), "and it must not forget ours");
 
     assert!(traiter(Event::ChannelClose(bon), &mut canal, &tx).is_none());
     assert_eq!(rx.try_recv(), Ok(DuNavigateur::CanalFerme));
-    assert_eq!(canal, None, "le canal fermé doit être oublié");
+    assert_eq!(canal, None, "the closed channel must be forgotten");
 }
 
 #[test]
-fn un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu() {
+fn a_channel_whose_label_is_not_ours_is_never_retained() {
     // The synthetic counterpart of `un_seul_canal_est_retenu_parmi_deux…`, and it
     // exercises what that one cannot: the REVERSE opening order, where the
     // foreign channel arrives LAST. Without a label filter, it is the one that
@@ -92,16 +92,13 @@ fn un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu() {
     assert_eq!(
         canal,
         Some(bon),
-        "un canal étranger ne doit jamais écraser le nôtre"
+        "a foreign channel must never overwrite ours"
     );
-    assert!(
-        rx.try_recv().is_err(),
-        "et il ne doit annoncer aucune ouverture"
-    );
+    assert!(rx.try_recv().is_err(), "and it must announce no opening");
 }
 
 #[test]
-fn la_fermeture_du_canal_remonte_canal_ferme() {
+fn closing_the_channel_surfaces_canal_ferme() {
     let (mut pair, _sortant, entrant) = monter(&[FILES_LABEL]);
 
     // The peer leaves — the tab closes. The loop must SAY so, not
@@ -122,15 +119,15 @@ fn la_fermeture_du_canal_remonte_canal_ferme() {
                 // a browser whose tab is closed does. A first
                 // draft used `disconnect()` and failed at the budget —
                 // it did not measure what it believed.
-                rtc.close().expect("close_notify émis");
+                rtc.close().expect("close_notify emitted");
             }
         },
         |remontees, _| remontees.contains(&DuNavigateur::CanalFerme),
-        "que la fermeture ne remonte",
+        "the closing surfacing",
     );
     assert!(
         remontees.contains(&DuNavigateur::CanalOuvert),
-        "le canal doit d'abord s'être ouvert, sinon le test ne mesure rien"
+        "the channel must first have opened, otherwise the test measures nothing"
     );
     assert!(remontees.contains(&DuNavigateur::CanalFerme));
 }

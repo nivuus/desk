@@ -39,7 +39,7 @@ fn dues(v: &[&str]) -> Vec<String> {
 /// **would recreate the temporary file** — the save would be lost, and a
 /// swap file would remain on the local workstation.
 #[test]
-fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
+fn a_rename_waits_for_the_due_writes_on_the_source() {
     assert_eq!(
         ordonnancer(&dues(&["doc.tmp"]), &renommer("doc.tmp", "doc.odt")),
         Ordonnancement::AttendreEcrituresDues {
@@ -53,7 +53,7 @@ fn un_renommage_attend_les_ecritures_dues_sur_la_source() {
 /// Red: return `Pousser`. The due write would recreate on the local workstation what
 /// the user has just erased.
 #[test]
-fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
+fn a_deletion_abandons_the_due_writes_on_the_path() {
     assert_eq!(
         ordonnancer(&dues(&["vieux.odt"]), &remove("vieux.odt")),
         Ordonnancement::AbandonnerEcrituresDues {
@@ -68,7 +68,7 @@ fn une_suppression_abandonne_les_ecritures_dues_sur_le_chemin() {
 /// those of a DELETION would push the file before erasing it, which would
 /// resurrect it if the deletion then fails.
 #[test]
-fn un_renommage_attend_la_ou_une_suppression_abandonne() {
+fn a_rename_waits_where_a_deletion_abandons() {
     let r = ordonnancer(&dues(&["a.txt"]), &renommer("a.txt", "b.txt"));
     let s = ordonnancer(&dues(&["a.txt"]), &remove("a.txt"));
     assert_ne!(r, s);
@@ -79,7 +79,7 @@ fn un_renommage_attend_la_ou_une_suppression_abandonne() {
 /// Red: compare by PREFIX instead of equality — every write would
 /// then block every renaming, and the bridge would freeze on the first large file.
 #[test]
-fn une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien() {
+fn a_due_write_on_another_path_delays_nothing() {
     assert_eq!(
         ordonnancer(
             &dues(&["autre.txt", "dossier/x.bin"]),
@@ -97,7 +97,7 @@ fn une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien() {
 /// directory were confused**: it is `repertoire` that decides, and that is why it is
 /// carried from the callback.
 #[test]
-fn une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde() {
+fn a_due_write_on_a_child_of_the_renamed_directory_delays() {
     assert_eq!(
         ordonnancer(
             &dues(&["projet/note.txt"]),
@@ -121,7 +121,7 @@ fn une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde() {
 /// renaming would wait for a write that does not concern it, indefinitely if
 /// it fails.
 #[test]
-fn un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien() {
+fn a_prefix_that_is_not_a_component_delays_nothing() {
     assert_eq!(
         ordonnancer(&dues(&["ab/x.txt", "a2.txt"]), &renommer_dossier("a", "z")),
         Ordonnancement::Pousser
@@ -136,7 +136,7 @@ fn un_prefixe_qui_n_est_pas_un_composant_ne_retarde_rien() {
 
 /// The deleted directory takes its due children with it, too.
 #[test]
-fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
+fn a_directory_deletion_abandons_its_children_writes() {
     assert_eq!(
         ordonnancer(
             &dues(&["d/a.txt", "d/sous/b.txt", "hors.txt"]),
@@ -152,7 +152,7 @@ fn une_suppression_de_repertoire_abandonne_les_ecritures_de_ses_enfants() {
 /// rather than treated as "everything is a child" — which would hold back every
 /// write forever, on a bridge that would appear to work.
 #[test]
-fn une_cible_vide_ne_retient_rien() {
+fn an_empty_target_retains_nothing() {
     assert_eq!(
         ordonnancer(&dues(&["a.txt", "b/c.txt"]), &remove_folder("")),
         Ordonnancement::Pousser
@@ -161,7 +161,7 @@ fn une_cible_vide_ne_retient_rien() {
 
 /// Without any due write, there is nothing to schedule.
 #[test]
-fn sans_ecriture_due_on_pousse() {
+fn without_a_due_write_we_push() {
     assert_eq!(
         ordonnancer(&[], &renommer("a", "b")),
         Ordonnancement::Pousser
@@ -175,13 +175,13 @@ fn sans_ecriture_due_on_pousse() {
 /// cross, and the order of their `Fait`s would decide the final name — that
 /// is, the network's chance.
 #[test]
-fn une_seule_mutation_en_vol_a_la_fois() {
+fn a_single_mutation_in_flight_at_a_time() {
     let mut f = FileMutations::new();
     assert_eq!(f.signaler(renommer("a", "b")), Some(renommer("a", "b")));
-    assert_eq!(f.signaler(renommer("b", "c")), None, "la seconde attend");
+    assert_eq!(f.signaler(renommer("b", "c")), None, "the second one waits");
     assert_eq!(f.en_attente(), 1);
     assert_eq!(f.terminee(), Some(renommer("b", "c")));
-    assert_eq!(f.terminee(), None, "plus rien");
+    assert_eq!(f.terminee(), None, "nothing more");
 }
 
 /// 🔴 **NO COALESCING — the order of mutations IS their meaning.**
@@ -206,23 +206,23 @@ fn two_mutations_of_the_same_path_are_both_played_in_order() {
 /// Red: put it back at the TAIL. The order of the user's gestures would be
 /// reversed — they would see the second renaming take effect before the first.
 #[test]
-fn une_mutation_differee_repasse_devant() {
+fn a_deferred_mutation_goes_first_again() {
     let mut f = FileMutations::new();
     assert_eq!(f.signaler(renommer("a", "b")), Some(renommer("a", "b")));
     f.signaler(renommer("x", "y"));
     f.differer();
-    assert!(f.en_vol().is_none(), "différer libère le vol");
+    assert!(f.en_vol().is_none(), "deferring frees the flight");
     assert_eq!(
         f.terminee(),
         Some(renommer("a", "b")),
-        "la différée repasse la PREMIÈRE"
+        "the deferred one goes FIRST again"
     );
 }
 
 /// `source()` returns the SOURCE of a renaming, never the destination: it is on
 /// it that bytes can be due.
 #[test]
-fn source_rend_le_chemin_qui_existe_encore() {
+fn source_returns_the_path_that_still_exists() {
     assert_eq!(renommer("de.txt", "vers.txt").source(), "de.txt");
     assert_eq!(remove("c.txt").source(), "c.txt");
     assert!(renommer_dossier("d", "e").repertoire());

@@ -168,7 +168,7 @@ pub(super) unsafe extern "system" fn notification(
                             tracing::warn!(
                                 de = %chemin,
                                 destination_lisible = vers.is_some(),
-                                "renommage sans destination utilisable : RIEN n'est pousse"
+                                "rename without a usable destination: NOTHING is pushed"
                             );
                             return S_OK;
                         };
@@ -176,8 +176,8 @@ pub(super) unsafe extern "system" fn notification(
                             tracing::warn!(
                                 de = %chemin,
                                 vers = %vers,
-                                "renommage dont la destination est vide ou egale a la source : \
-                                 RIEN n'est pousse"
+                                "rename whose destination is empty or equal to the source: \
+                                 NOTHING is pushed"
                             );
                             return S_OK;
                         }
@@ -245,9 +245,7 @@ pub(super) unsafe extern "system" fn notification(
                     // the absence of back-pressure the header of
                     // `pont::notifications` describes. The `warn!` is all that
                     // remains.
-                    tracing::warn!(
-                        "fil d'ecriture du pont parti : une ecriture ne sera JAMAIS poussee"
-                    );
+                    tracing::warn!("bridge write thread gone: a write will NEVER be pushed");
                 }
                 S_OK
             }
@@ -257,7 +255,7 @@ pub(super) unsafe extern "system" fn notification(
             notifications::Reponse::AccepterSansAttendre => {
                 tracing::warn!(
                     code = notification.0,
-                    "notification ProjFS non attendue par le masque de F2 : acceptee sans effet"
+                    "ProjFS notification not expected by the F2 mask: accepted without effect"
                 );
                 S_OK
             }
@@ -296,10 +294,7 @@ unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, (
     match crate::pont::chemins::normaliser_utf16(unites) {
         Ok(logique) => Some(Ok(logique)),
         Err(refus) => {
-            tracing::warn!(
-                ?refus,
-                "destination de renommage refusee par la normalisation"
-            );
+            tracing::warn!(?refus, "rename destination refused by normalisation");
             Some(Err(()))
         }
     }

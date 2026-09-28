@@ -24,7 +24,7 @@ fn live_session_of_size(
 ) -> IdSession {
     let effets = t.fenetre_apparue(IdFenetre(fenetre), titre.into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -37,7 +37,7 @@ fn the_table_keeps_the_real_output_size() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 713);
@@ -53,7 +53,7 @@ fn a_session_without_output_has_no_size() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     assert_eq!(t.output_size_of(session), None);
 }
@@ -66,7 +66,7 @@ fn the_size_survives_the_child_death() {
     assert_eq!(
         t.output_size_of(&session),
         Some((1280, 720)),
-        "la taille accompagne la sortie retenue"
+        "the size goes with the retained output"
     );
 }
 
@@ -76,7 +76,7 @@ fn the_size_survives_the_child_death() {
 /// losses absorbed; a single doomed window took the
 /// reopening counter from 6 to 38).
 #[test]
-fn la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote() {
+fn the_child_death_no_longer_gives_the_output_back_to_the_driver() {
     let mut t = Table::new(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
 
@@ -86,7 +86,7 @@ fn la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote() {
         !effets
             .iter()
             .any(|e| matches!(e, Effet::DetruireSortie { .. })),
-        "la sortie est retenue pour la relance, reçu {effets:?}"
+        "the output is retained for the relaunch, got {effets:?}"
     );
     assert!(effets.contains(&Effet::AnnoncerFermeture {
         session: session.clone()
@@ -94,35 +94,35 @@ fn la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote() {
 }
 
 #[test]
-fn l_entree_relancee_porte_encore_sa_sortie() {
+fn the_relaunched_entry_still_carries_its_output() {
     let mut t = Table::new(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
     t.enfant_mort(&session);
 
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let neuve = neuve.clone();
 
     assert_ne!(
         neuve, session,
-        "un identifiant réutilisé apparierait un message tardif"
+        "a reused identifier would pair a late message"
     );
     assert_eq!(
         t.nom_sortie_de(&neuve),
         Some("\\\\.\\DISPLAY7"),
-        "la sortie suit la fenêtre dans sa nouvelle session"
+        "the output follows the window into its new session"
     );
     assert_eq!(t.output_size_of(&neuve), Some((1280, 720)));
 }
 
 #[test]
-fn sans_sortie_retenue_le_viewport_en_demande_une() {
+fn without_a_retained_output_the_viewport_requests_one() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
 
@@ -149,7 +149,7 @@ fn a_compatible_retained_output_is_reused_without_creating_anything() {
     t.enfant_mort(&session);
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let neuve = neuve.clone();
 
@@ -163,7 +163,7 @@ fn a_compatible_retained_output_is_reused_without_creating_anything() {
             nom_sortie: "\\\\.\\DISPLAY7".into(),
             size: (1280, 720),
         }],
-        "ni DetruireSortie ni CreerSortie : c'est tout l'objet du correctif"
+        "neither DetruireSortie nor CreerSortie: that is the whole point of the fix"
     );
     assert_eq!(t.etat(&neuve), Some(&Etat::Vivante));
 }
@@ -173,14 +173,14 @@ fn a_compatible_retained_output_is_reused_without_creating_anything() {
 /// mutex at each restart — exactly the recreation sub-block
 /// D3 exists to remove, and the cause of its 32 spurious reopenings.
 #[test]
-fn une_sortie_retenue_plus_grande_est_reutilisee() {
+fn a_larger_retained_output_is_reused() {
     let mut t = Table::new(4);
     let session =
         live_session_of_size(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY8", (3840, 2160));
     t.enfant_mort(&session);
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let neuve = neuve.clone();
 
@@ -194,19 +194,19 @@ fn une_sortie_retenue_plus_grande_est_reutilisee() {
             nom_sortie: "\\\\.\\DISPLAY8".into(),
             size: (1280, 720),
         }],
-        "une sortie retenue assez grande ne doit être ni détruite ni recréée"
+        "a retained output that is big enough must be neither destroyed nor recreated"
     );
 }
 
 /// The tolerance is the pairing one — four pixels — and no more.
 #[test]
-fn une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee() {
+fn a_retained_output_within_four_pixels_is_reused() {
     let mut t = Table::new(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
     t.enfant_mort(&session);
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let neuve = neuve.clone();
 
@@ -214,7 +214,7 @@ fn une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee() {
 
     assert!(
         matches!(effets.first(), Some(Effet::LancerEnfant { .. })),
-        "reçu {effets:?}"
+        "got {effets:?}"
     );
 }
 
@@ -222,13 +222,13 @@ fn une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee() {
 /// no longer fits, it must be handed back BEFORE requesting another — otherwise
 /// it would stay captive from the pool of ten.
 #[test]
-fn une_sortie_retenue_incompatible_est_rendue_puis_remplacee() {
+fn an_incompatible_retained_output_is_given_back_then_replaced() {
     let mut t = Table::new(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
     t.enfant_mort(&session);
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let neuve = neuve.clone();
 
@@ -248,12 +248,12 @@ fn une_sortie_retenue_incompatible_est_rendue_puis_remplacee() {
                 hauteur: 1080
             },
         ],
-        "la destruction précède la demande, et dans cet ordre"
+        "the destruction precedes the request, and in that order"
     );
     assert_eq!(
         t.nom_sortie_de(&neuve),
         None,
-        "l'entrée ne retient plus rien"
+        "the entry no longer retains anything"
     );
     assert_eq!(t.etat(&neuve), Some(&Etat::AttendLaSortie));
 }
@@ -269,10 +269,10 @@ fn une_sortie_retenue_incompatible_est_rendue_puis_remplacee() {
 /// This test asserts that the effect IS produced, and with the requested size:
 /// it is the one that turns red if the `Vivante` branch disappears.
 #[test]
-fn un_viewport_sur_une_session_vivante_demande_de_suivre() {
+fn a_viewport_on_a_live_session_asks_to_follow() {
     let mut t = Table::new(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
-    assert_eq!(t.etat(&session), Some(&Etat::Vivante), "précondition");
+    assert_eq!(t.etat(&session), Some(&Etat::Vivante), "precondition");
 
     let effets = t.viewport_recu(&session, 1600, 900);
 
@@ -285,7 +285,7 @@ fn un_viewport_sur_une_session_vivante_demande_de_suivre() {
             assert_eq!(s, &session);
             assert_eq!((*largeur, *hauteur), (1600, 900));
         }
-        autre => panic!("un seul suivi de viewport attendu, reçu {autre:?}"),
+        autre => panic!("a single viewport follow-up expected, got {autre:?}"),
     }
     // The table advanced nothing: it is the loop that measures and applies.
     assert_eq!(t.etat(&session), Some(&Etat::Vivante));
@@ -306,12 +306,12 @@ fn a_hidpi_viewport_on_a_live_session_is_clamped_before_leaving() {
         largeur, hauteur, ..
     }] = effets.as_slice()
     else {
-        panic!("un suivi de viewport attendu, reçu {effets:?}");
+        panic!("a viewport follow-up expected, got {effets:?}");
     };
     assert_eq!(
         (*largeur, *hauteur),
         crate::windows_source_sortie::MAX_OUTPUT_SIZE,
-        "le plafond doit être appliqué AVANT que l'effet ne parte"
+        "the ceiling must be applied BEFORE the effect leaves"
     );
 }
 
@@ -341,7 +341,7 @@ fn a_replayed_viewport_advances_no_state_machine() {
     t.enfant_mort(&session);
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let neuve = neuve.clone();
     t.viewport_recu(&neuve, 1280, 720);
@@ -355,18 +355,18 @@ fn a_replayed_viewport_advances_no_state_machine() {
         rejeu
             .iter()
             .all(|e| matches!(e, Effet::SuivreLeViewport { .. })),
-        "un rejeu ne doit produire qu'un suivi de viewport, reçu {rejeu:?}"
+        "a replay must only produce a viewport follow-up, got {rejeu:?}"
     );
     assert_eq!(
         t.etat(&neuve),
         Some(&Etat::Vivante),
-        "l'état ne doit pas avancer"
+        "the state must not advance"
     );
     assert_eq!(
         t.output_size_of(&neuve),
         before,
-        "la TABLE ne borne pas elle-même : c'est la boucle qui écrit la taille retenue, \
-         après avoir lu la zone de travail — un rejeu ne doit rien changer ici"
+        "the TABLE does not bound by itself: it is the loop that writes the retained size, \
+         after reading the work area — a replay must change nothing here"
     );
 }
 
@@ -374,7 +374,7 @@ fn a_replayed_viewport_advances_no_state_machine() {
 /// which never happened before D3. Forgetting it would empty the driver's
 /// pool of ten, silently, until supervisor shutdown.
 #[test]
-fn l_abandon_apres_relances_max_rend_la_sortie() {
+fn abandonment_after_max_relaunches_gives_the_output_back() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     let mut session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
@@ -395,23 +395,23 @@ fn l_abandon_apres_relances_max_rend_la_sortie() {
                 sortie_pilote: 42,
                 nom_sortie: "\\\\.\\DISPLAY7".into()
             }),
-            "la sortie retenue doit être rendue à l'abandon, reçu {effets:?}"
+            "the retained output must be given back on abandonment, got {effets:?}"
         );
         assert!(
             effets
                 .iter()
                 .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
-            "reçu {effets:?}"
+            "got {effets:?}"
         );
         return;
     }
-    panic!("l'abandon n'est jamais survenu");
+    panic!("the abandonment never happened");
 }
 
 /// Second abandonment path: the shell page never answers after the restart.
 /// The entry still carries its retained output — same requirement.
 #[test]
-fn l_abandon_d_une_entree_figee_rend_la_sortie() {
+fn abandoning_a_frozen_entry_gives_the_output_back() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
@@ -429,7 +429,7 @@ fn l_abandon_d_une_entree_figee_rend_la_sortie() {
             sortie_pilote: 42,
             nom_sortie: "\\\\.\\DISPLAY7".into()
         }),
-        "la sortie retenue doit être rendue, reçu {effets:?}"
+        "the retained output must be given back, got {effets:?}"
     );
 }
 
@@ -469,7 +469,7 @@ fn refresh_size_invents_nothing_without_a_retained_output() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     // Neither `viewport_recu` nor `sortie_creee` has run yet: no output
@@ -480,7 +480,7 @@ fn refresh_size_invents_nothing_without_a_retained_output() {
     assert_eq!(
         t.output_size_of(&session),
         None,
-        "rien à rafraîchir, rien n'a dû apparaître"
+        "nothing to refresh, nothing should have appeared"
     );
 
     // A totally unknown session must not panic nor create

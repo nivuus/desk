@@ -52,7 +52,7 @@ pub fn find_window_by_title(fragment: &str) -> Result<HWND> {
 
     context
         .found
-        .ok_or_else(|| anyhow!("aucune fenêtre visible dont le titre contient « {fragment} »"))
+        .ok_or_else(|| anyhow!("no visible window whose title contains « {fragment} »"))
 }
 
 unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
@@ -91,7 +91,7 @@ pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
     let width = (rect.right - rect.left).max(0) as u32;
     let height = (rect.bottom - rect.top).max(0) as u32;
     if width == 0 || height == 0 {
-        bail!("la fenêtre a une zone client vide");
+        bail!("the window has an empty client area");
     }
 
     // The client area origin (0, 0) is enough: GetClientRect guarantees that
@@ -221,7 +221,7 @@ pub fn zones_du_moniteur_de(hwnd: HWND) -> Result<(Rect, Rect)> {
 
 fn zones_de_l_hmoniteur(moniteur: HMONITOR) -> Result<(Rect, Rect)> {
     if moniteur.is_invalid() {
-        bail!("aucun moniteur pour ce repère");
+        bail!("no monitor for this frame of reference");
     }
     let mut info = MONITORINFO {
         cbSize: std::mem::size_of::<MONITORINFO>() as u32,
@@ -230,7 +230,7 @@ fn zones_de_l_hmoniteur(moniteur: HMONITOR) -> Result<(Rect, Rect)> {
     // `GetMonitorInfoW` returns a raw `BOOL`: a `false` is not a
     // `windows::core::Error`, and a `?` would not catch it.
     if !unsafe { GetMonitorInfoW(moniteur, &mut info) }.as_bool() {
-        bail!("GetMonitorInfoW a refusé");
+        bail!("GetMonitorInfoW refused");
     }
     Ok((depuis_rect(info.rcMonitor), depuis_rect(info.rcWork)))
 }

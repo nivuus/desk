@@ -225,7 +225,7 @@ fn correspond(peripherique: &Peripherique, cible: &str, critere: Critere) -> boo
 /// saying what existed forces the operator into a second run.
 pub fn inventaire(disponibles: &[Peripherique]) -> String {
     if disponibles.is_empty() {
-        return "(aucun)".to_string();
+        return "(none)".to_string();
     }
     disponibles
         .iter()
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn sans_demande_on_garde_le_defaut_de_windows() {
+    fn without_a_request_the_windows_default_is_kept() {
         assert_eq!(choisir(&vm(), None), Choix::Defaut);
         assert_eq!(choisir(&vm(), Some("")), Choix::Defaut);
         assert_eq!(choisir(&vm(), Some("   ")), Choix::Defaut);
@@ -268,7 +268,7 @@ mod tests {
     /// `Defaut` is NOT a fallback: nothing was requested, so nothing
     /// failed. The distinction governs the log level on the caller side.
     #[test]
-    fn le_defaut_n_est_pas_un_repli_mais_l_echec_en_est_un() {
+    fn the_default_is_not_a_fallback_but_the_failure_is_one() {
         assert!(!choisir(&vm(), None).est_repli());
         assert!(!choisir(&vm(), Some("Steam")).est_repli());
         assert!(choisir(&vm(), Some("Casque Bluetooth")).est_repli());
@@ -289,7 +289,7 @@ mod tests {
                 assert_eq!(peripherique.identifiant, "{0.0.0.00000000}.{steam}");
                 assert_eq!(critere, Critere::NomPartiel);
             }
-            autre => panic!("attendu un élu, obtenu {autre:?}"),
+            autre => panic!("expected an elected one, got {autre:?}"),
         }
     }
 
@@ -300,7 +300,7 @@ mod tests {
             Choix::Elu { peripherique, .. } => {
                 assert_eq!(peripherique.identifiant, "{0.0.0.00000000}.{steam}")
             }
-            autre => panic!("attendu un élu, obtenu {autre:?}"),
+            autre => panic!("expected an elected one, got {autre:?}"),
         }
     }
 
@@ -312,14 +312,14 @@ mod tests {
             Some("Haut-parleurs (Steam Streaming Speakers)"),
         ) {
             Choix::Elu { critere, .. } => assert_eq!(critere, Critere::NomExact),
-            autre => panic!("attendu un élu, obtenu {autre:?}"),
+            autre => panic!("expected an elected one, got {autre:?}"),
         }
     }
 
     /// The identifier wins over the name, and it settles a case the name
     /// cannot settle: two devices with the same name.
     #[test]
-    fn l_identifiant_tranche_la_ou_le_nom_est_ambigu() {
+    fn the_identifier_decides_where_the_name_is_ambiguous() {
         let jumeaux = vec![
             Peripherique {
                 nom: "Haut-parleurs".into(),
@@ -342,7 +342,7 @@ mod tests {
                 assert_eq!(peripherique.identifiant, "{0.0.0.00000000}.{b}");
                 assert_eq!(critere, Critere::Identifiant);
             }
-            autre => panic!("attendu un élu par identifiant, obtenu {autre:?}"),
+            autre => panic!("expected one elected by identifier, got {autre:?}"),
         }
     }
 
@@ -369,7 +369,7 @@ mod tests {
                 assert_eq!(peripherique.nom, "Sortie ligne");
                 assert_eq!(critere, Critere::Identifiant);
             }
-            autre => panic!("attendu l'élu par identifiant, obtenu {autre:?}"),
+            autre => panic!("expected the one elected by identifier, got {autre:?}"),
         }
     }
 
@@ -396,7 +396,7 @@ mod tests {
                 assert_eq!(peripherique.identifiant, "{a}");
                 assert_eq!(critere, Critere::NomExact);
             }
-            autre => panic!("attendu l'élu par nom exact, obtenu {autre:?}"),
+            autre => panic!("expected the one elected by exact name, got {autre:?}"),
         }
     }
 
@@ -417,15 +417,15 @@ mod tests {
                     ]
                 );
             }
-            autre => panic!("attendu une ambiguïté, obtenu {autre:?}"),
+            autre => panic!("expected an ambiguity, got {autre:?}"),
         }
     }
 
     #[test]
-    fn un_nom_absent_est_introuvable_et_reporte_la_demande_rognee() {
+    fn a_missing_name_is_not_found_and_reports_the_trimmed_request() {
         match choisir(&vm(), Some("  Casque Bluetooth  ")) {
             Choix::Introuvable { demande } => assert_eq!(demande, "Casque Bluetooth"),
-            autre => panic!("attendu introuvable, obtenu {autre:?}"),
+            autre => panic!("expected not found, got {autre:?}"),
         }
     }
 
@@ -445,11 +445,11 @@ mod tests {
         assert!(texte.contains("«Haut-parleurs (Steam Streaming Speakers)»"));
         assert!(texte.contains("{0.0.0.00000000}.{cable-input}"));
         assert!(texte.contains("{0.0.0.00000000}.{nvidia}"));
-        assert_eq!(inventaire(&[]), "(aucun)");
+        assert_eq!(inventaire(&[]), "(none)");
     }
 
     #[test]
-    fn le_libelle_du_critere_distingue_les_trois_cas() {
+    fn the_criterion_label_tells_the_three_cases_apart() {
         assert_eq!(Critere::Identifiant.libelle(), "identifiant");
         assert_eq!(Critere::NomExact.libelle(), "nom exact");
         assert_eq!(Critere::NomPartiel.libelle(), "nom partiel");

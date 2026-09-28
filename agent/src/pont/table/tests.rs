@@ -11,7 +11,7 @@ pub(super) fn attributs(chemin: &str) -> Attendue {
 }
 
 #[test]
-fn une_reponse_arrivee_apres_annulation_est_jetee() {
+fn an_answer_arriving_after_cancellation_is_dropped() {
     // ⚠️ The test spec §4.4 names. ProjFS cancels a command when
     // the calling application gives up; the browser's response, for its part, is
     // already in flight. Applying it would write into a buffer the system has taken back.
@@ -20,16 +20,16 @@ fn une_reponse_arrivee_apres_annulation_est_jetee() {
     assert_eq!(t.en_vol(), 1);
 
     assert_eq!(t.annuler(42), vec![c]);
-    assert_eq!(t.en_vol(), 0, "l'annulation doit retirer l'entrée");
+    assert_eq!(t.en_vol(), 0, "the cancellation must remove the entry");
     assert_eq!(
         t.resoudre(c, Instant::now()),
         None,
-        "la réponse tardive doit être JETÉE"
+        "the late answer must be DROPPED"
     );
 }
 
 #[test]
-fn une_commande_expiree_ne_reste_pas_en_table() {
+fn an_expired_command_does_not_stay_in_the_table() {
     let debut = maintenant();
     let mut t = Table::new();
     let c = t.inscrire(7, attributs("a.txt"), debut + DELAI_ATTRIBUTS);
@@ -41,13 +41,13 @@ fn une_commande_expiree_ne_reste_pas_en_table() {
     // At the EXACT deadline: it expires. Making expiry depend on a
     // strict overrun would make it depend on the clock's granularity.
     assert_eq!(t.expirees(debut + DELAI_ATTRIBUTS), vec![(Some(7), c)]);
-    assert_eq!(t.en_vol(), 0, "en_vol() doit être décrémenté");
+    assert_eq!(t.en_vol(), 0, "en_vol() must be decremented");
     // …and a second pass does not return it twice.
     assert!(t.expirees(debut + DELAI_LISTER).is_empty());
 }
 
 #[test]
-fn une_reponse_arrivee_apres_expiration_est_jetee() {
+fn an_answer_arriving_after_expiry_is_dropped() {
     let debut = maintenant();
     let mut t = Table::new();
     let c = t.inscrire(9, attributs("a.txt"), debut + DELAI_ATTRIBUTS);
@@ -56,7 +56,7 @@ fn une_reponse_arrivee_apres_expiration_est_jetee() {
 }
 
 #[test]
-fn les_correlations_sont_monotones_et_ne_se_reutilisent_pas() {
+fn correlations_are_monotonic_and_never_reused() {
     let mut t = Table::new();
     let e = maintenant() + DELAI_LIRE;
     let a = t.inscrire(1, attributs("a"), e);
@@ -82,7 +82,7 @@ fn drain_returns_everything_and_leaves_the_table_empty() {
     let c3 = t.inscrire(33, attributs("c"), e);
 
     let tout = t.drain();
-    assert_eq!(tout.len(), 3, "vider doit rendre TOUT");
+    assert_eq!(tout.len(), 3, "drain must return EVERYTHING");
     assert_eq!(tout, vec![(Some(11), c1), (Some(22), c2), (Some(33), c3)]);
     assert_eq!(t.en_vol(), 0);
     assert!(t.drain().is_empty());
@@ -91,7 +91,7 @@ fn drain_returns_everything_and_leaves_the_table_empty() {
 }
 
 #[test]
-fn une_correlation_inconnue_rend_none_sans_paniquer() {
+fn an_unknown_correlation_returns_none_without_panicking() {
     let mut t = Table::new();
     assert_eq!(t.resoudre(12_345, Instant::now()), None);
     assert!(t.annuler(999).is_empty());
@@ -99,7 +99,7 @@ fn une_correlation_inconnue_rend_none_sans_paniquer() {
 }
 
 #[test]
-fn deux_enumerations_du_meme_chemin_coexistent() {
+fn two_enumerations_of_the_same_path_coexist() {
     // ⚠️ The enumeration session is indexed by the callback's enumeration GUID,
     // NOT by the path (spec §7.2): two applications listing the
     // same directory at the same time open two distinct sessions. Indexing
@@ -127,11 +127,11 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
     );
 
     assert_ne!(c1, c2);
-    assert_eq!(t.en_vol(), 2, "les deux sessions doivent COEXISTER");
+    assert_eq!(t.en_vol(), 2, "the two sessions must COEXIST");
     // …and each resolves on ITS session, not on the other's.
     let (id1, quoi1, _) = t
         .resoudre(c1, Instant::now())
-        .expect("la première session existe");
+        .expect("the first session exists");
     assert_eq!(id1, Some(100));
     assert_eq!(
         quoi1,
@@ -154,7 +154,7 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
 }
 
 #[test]
-fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en_vol() {
+fn a_correlation_counter_overflow_does_not_reuse_a_correlation_in_flight() {
     // ⚠️ This test is the only one that cannot be written naively: wrapping
     // a `u32` would require four billion registrations. It goes
     // through the `new_from` seam, which makes it reachable in three
@@ -168,13 +168,9 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
 
     assert_eq!(a, u32::MAX - 1);
     assert_eq!(b, u32::MAX);
-    assert_eq!(c, 0, "le compteur doit reboucler, pas paniquer");
+    assert_eq!(c, 0, "the counter must wrap around, not panic");
     assert_eq!(d, 1);
-    assert_eq!(
-        t.en_vol(),
-        4,
-        "aucune des quatre ne doit en écraser une autre"
-    );
+    assert_eq!(t.en_vol(), 4, "none of the four must overwrite another");
 
     // …and the case that really bites: a correlation STILL IN FLIGHT is
     // stepped over, not overwritten. We start again from 0 while 0 and 1 are taken.
@@ -187,7 +183,7 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
     let apres = t.inscrire(12, attributs("v"), e);
     assert!(
         apres != zero && apres != un,
-        "la corrélation rebouclée {apres} écrase une commande en vol"
+        "the wrapped correlation {apres} overwrites a command in flight"
     );
     assert_eq!(t.en_vol(), 3);
     // The original command still answers for ITSELF.

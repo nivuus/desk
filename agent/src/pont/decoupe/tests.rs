@@ -46,19 +46,19 @@ fn the_sum_of_lengths_equals_the_requested_length() {
             .iter()
             .map(|m| u64::from(m.length))
             .sum();
-        assert_eq!(somme, length, "longueur demandée {length}");
+        assert_eq!(somme, length, "requested length {length}");
     }
 }
 
 #[test]
-fn les_morceaux_sont_contigus_et_croissants() {
+fn chunks_are_contiguous_and_increasing() {
     // Neither hole (the file would be truncated in the middle), nor overlap (some
     // bytes would be written twice).
     let morceaux = decouper(1_000, 10_000, 3_000);
     assert_eq!(morceaux.len(), 4);
     let mut attendu = 1_000u64;
     for m in &morceaux {
-        assert_eq!(m.position, attendu, "trou ou recouvrement avant {m:?}");
+        assert_eq!(m.position, attendu, "gap or overlap before {m:?}");
         attendu += u64::from(m.length);
     }
     assert_eq!(attendu, 11_000);
@@ -67,7 +67,7 @@ fn les_morceaux_sont_contigus_et_croissants() {
 }
 
 #[test]
-fn le_premier_morceau_part_de_la_position_demandee() {
+fn the_first_chunk_starts_at_the_requested_position() {
     // The position is ignored by any implementation that would restart from 0:
     // ProjFS commonly requests a range IN THE MIDDLE of a file.
     assert_eq!(decouper(1_234_567, 10, 4)[0].position, 1_234_567);
@@ -93,7 +93,7 @@ fn a_length_above_u32_max_is_split_anyway() {
 }
 
 #[test]
-fn un_max_plus_grand_que_u32_max_ne_deborde_pas_a_la_conversion() {
+fn a_max_larger_than_u32_max_does_not_overflow_on_conversion() {
     // On a 64-bit target, `usize` is wider than `u32`: a `max` received
     // beyond `u32::MAX` would make the length conversion overflow. The
     // module bounds it BEFORE converting, and this test is the only thing that

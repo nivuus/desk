@@ -11,8 +11,8 @@
 //! hand on the TypeScript side.
 //!
 //! They now live in [`proto::files::entetes`], pinned by
-//! `proto/fichiers-vectors.json`, which **both** implementations read —
-//! `proto/src/files/entetes/tests.rs` and `proto/ts/fichiers-entetes.test.ts`.
+//! `proto/fichiers-vectors.json`, which **both** implementations read — (policy: allow-fr, real file path)
+//! `proto/src/files/entetes/tests.rs` and `proto/ts/fichiers-entetes.test.ts`. (policy: allow-fr, real file path)
 //! A renaming now has only one side to break to be seen RED.
 //!
 //! This module therefore only keeps what is NOT a wire shape: **what
@@ -38,7 +38,7 @@
 /// - **getting the FACTOR wrong** (10⁷ instead of 10⁶, or the reverse) yields
 ///   plausible and wrong dates, which no one will ever notice.
 ///
-/// Both are pinned by `l_epoque_unix_devient_l_epoque_filetime`.
+/// Both are pinned by `the_unix_epoch_becomes_the_filetime_epoch`.
 ///
 /// A date before 1601 is brought back to **zero**: a negative FILETIME is
 /// interpreted by Windows as a **relative** time, which would give a

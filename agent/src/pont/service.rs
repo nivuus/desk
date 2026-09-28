@@ -100,11 +100,11 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
                 // `ERROR_IO_DEVICE` — the only moment an application can
                 // still learn that the browser is not there.
                 etat.canal_ouvert.store(true, Ordering::Relaxed);
-                tracing::info!("canal du pont ouvert : le navigateur peut servir les requêtes");
+                tracing::info!("bridge channel open: the browser can serve requests");
             }
             Ok(DuNavigateur::CanalFerme) => {
                 etat.canal_ouvert.store(false, Ordering::Relaxed);
-                tracing::warn!("canal du pont fermé : les commandes en vol sont abandonnées");
+                tracing::warn!("bridge channel closed: the in-flight commands are abandoned");
                 // 🔴 A command **IN FLIGHT** IS ABANDONED; A COMMAND THAT
                 // ARRIVES AFTER IS REFUSED. They are two distinct moments, and
                 // they carry two distinct codes — `ERROR_OPERATION_ABORTED`
@@ -133,7 +133,7 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => {
-                tracing::info!("transport du pont arrêté : le fil du pont s'arrête");
+                tracing::info!("bridge transport stopped: the bridge thread stops");
                 tout_completer(&etat, Error::CanalFerme);
                 recenser(&etat);
                 return;
@@ -187,7 +187,7 @@ fn balayer(etat: &Etat) {
         tracing::warn!(
             ?commande,
             correlation,
-            "commande expirée : le navigateur n'a pas répondu"
+            "command expired: the browser did not answer"
         );
         oublier_contexte(etat, correlation);
         prevenir_l_ecriture(etat, commande, correlation, Error::DelaiDepasse);
@@ -209,7 +209,7 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
     let trame = match proto::files::decoder(octets) {
         Ok(trame) => trame,
         Err(error) => {
-            tracing::warn!(correlation, %error, "réponse du navigateur illisible, jetée");
+            tracing::warn!(correlation, %error, "unreadable browser answer, dropped");
             return;
         }
     };
@@ -261,7 +261,7 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
         .ok()
         .and_then(|mut t| t.resoudre(correlation, Instant::now()))
     else {
-        tracing::debug!(correlation, "réponse tardive ou inconnue : jetée");
+        tracing::debug!(correlation, "late or unknown answer: dropped");
         return;
     };
     // **F4** — the only traversal the bridge can measure, and it is
@@ -273,7 +273,7 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
         let code = match serde_json::from_slice::<entetes::Echec>(trame.entete) {
             Ok(echec) => Some(echec.code),
             Err(error) => {
-                tracing::warn!(correlation, %error, "échec au code illisible");
+                tracing::warn!(correlation, %error, "failure with an unreadable code");
                 None
             }
         };
@@ -300,13 +300,7 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
         //    survives where it serves — diagnosis —, and the §5.1 line is
         //    respected in its intention (the old bridge returned `EPERM` at nine
         //    sites) without being so in its letter.
-        tracing::warn!(
-            ?commande,
-            correlation,
-            ?code,
-            ?cause,
-            "le navigateur refuse"
-        );
+        tracing::warn!(?commande, correlation, ?code, ?cause, "the browser refuses");
         // A refused write: the protocol code travels AS IS to the
         // thread, which names it in the log. Translating it into an `Error` first
         // would lose the distinction between "disk full" and "ambiguous case",

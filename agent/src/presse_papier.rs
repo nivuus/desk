@@ -93,8 +93,8 @@ pub fn actif() -> bool {
         let actif = std::env::var("PRESSE_PAPIER").as_deref() != Ok("0");
         if !actif {
             tracing::warn!(
-                "presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM \
-                 n'est plus pousse au navigateur"
+                "clipboard DISARMED (PRESSE_PAPIER=0): the content copied in the VM \
+                 is no longer pushed to the browser"
             );
         }
         actif
@@ -137,8 +137,8 @@ pub(super) fn gardes_armes() -> bool {
         let armes = std::env::var("PRESSE_PAPIER_GARDE").as_deref() != Ok("0");
         if !armes {
             tracing::warn!(
-                "garde anti-echo du presse-papier DESARME (PRESSE_PAPIER_GARDE=0) : \
-                 bras de banc, jamais une configuration livree"
+                "clipboard anti-echo guard DISARMED (PRESSE_PAPIER_GARDE=0): \
+                 bench arm, never a shipped configuration"
             );
         }
         armes
@@ -250,7 +250,7 @@ pub fn write_platform(texte: &str) -> anyhow::Result<u32> {
 /// silent failure mode D6 exists entirely to avoid.
 #[cfg(not(windows))]
 pub fn write_platform(_texte: &str) -> anyhow::Result<u32> {
-    anyhow::bail!("le presse-papier de la VM n'existe pas hors de Windows")
+    anyhow::bail!("the VM clipboard does not exist outside Windows")
 }
 
 /// `Sondeur`, extracted VERBATIM in sub-block P3 (task 3), BEFORE the addition that

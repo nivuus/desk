@@ -54,7 +54,7 @@
 //! that "eight out of thirteen are covered".
 //!
 //! ⚠️ **It is not a fear, it is a MEASURED fact** (August 20th, 2026, log
-//! `journaux-pont-fichiers/f1-tache12-mutations.txt`): three ABI mutations
+//! `journaux-pont-fichiers/f1-tache12-mutations.txt`): three ABI mutations (policy: allow-fr, real file path)
 //! played on the declarations below — removing the fifth parameter of
 //! `PrjStartVirtualizing`, giving `PrjStopVirtualizing` an `HRESULT` return,
 //! changing the return of `PrjAllocateAlignedBuffer` to
@@ -222,7 +222,7 @@ unsafe fn depuis_adresse<T: Copy>(adresse: usize) -> T {
     assert_eq!(
         std::mem::size_of::<T>(),
         std::mem::size_of::<usize>(),
-        "la cible d'une transcription ProjFS n'est pas un pointeur de fonction nu"
+        "the target of a ProjFS transcription is not a bare function pointer"
     );
     // SAFETY: the sizes are equal (assertion above), and the caller
     // guarantees the signature match.
@@ -312,8 +312,8 @@ pub fn charger() -> Result<ProjFs> {
     })
     .with_context(|| {
         format!(
-            "{BIBLIOTHEQUE} est chargée mais n'exporte pas les treize entrées que le pont \
-             fichiers appelle : cette VM porte probablement une génération antérieure de ProjFS"
+            "{BIBLIOTHEQUE} is loaded but does not export the thirteen entries the file \
+             bridge calls: this VM probably carries an earlier generation of ProjFS"
         )
     })?;
 

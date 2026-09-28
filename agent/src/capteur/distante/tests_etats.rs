@@ -101,7 +101,7 @@ fn the_trait_default_refuses_to_write_rather_than_pretend() {
         .write_clipboard("colle")
         .expect_err("le défaut du trait DOIT rendre Err, jamais Ok(())");
     assert!(
-        error.to_string().contains("aucun capteur"),
+        error.to_string().contains("no sensor"),
         "le motif doit nommer la cause : {error}"
     );
 }

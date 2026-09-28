@@ -15,149 +15,149 @@ str0m = "0.21"
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
 opus = "0.3.1"
-# Codec STUN de str0m, en dépendance DIRECTE plutôt que par le module
-# `str0m::ice` qui est `#[doc(hidden)]` — on ne bâtit pas sur une porte que
-# l'auteur a explicitement fermée. Version alignée sur celle que Cargo.lock
-# verrouille déjà comme dépendance transitive de str0m : aucun doublon dans
-# l'arbre. Même précédent que `windows-core` plus bas.
+# str0m's STUN codec, as a DIRECT dependency rather than through the
+# `str0m::ice` module, which is `#[doc(hidden)]` — we do not build on a door
+# the author explicitly closed. Version aligned on the one Cargo.lock
+# already locks as a transitive dependency of str0m: no duplicate in
+# the tree. Same precedent as `windows-core` below.
 is = "0.10"
-# MESSAGE-INTEGRITY des requêtes TURN.
+# MESSAGE-INTEGRITY of the TURN requests.
 hmac = "0.12"
 sha1 = "0.10"
-# Clé longue durée : MD5(user:realm:pass), imposé par la RFC 5766. MD5 n'est
-# employé ici QUE comme dérivation de clé normative, jamais comme primitive
-# de sécurité.
+# Long-term key: MD5(user:realm:pass), imposed by RFC 5766. MD5 is
+# used here ONLY as a normative key derivation, never as a security
+# primitive.
 #
-# `md-5` (RustCrypto, API `Md5::digest`) et NON le crate `md5` d'Ivan Ukhov
-# (API `md5::compute`) : le premier partage le trait `Digest` avec `sha1`
-# déclaré juste au-dessus, donc une seule famille d'API dans ce module.
+# `md-5` (RustCrypto, API `Md5::digest`) and NOT Ivan Ukhov's `md5` crate
+# (API `md5::compute`): the former shares the `Digest` trait with `sha1`
+# declared just above, hence a single API family in this module.
 md-5 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
-# Dépendance directe requise par la macro `#[windows::core::implement]`
-# (tâche 10, sonde process loopback) : elle génère du code qui référence
-# `windows_core::...` directement, un chemin non résolu si seul le crate
-# `windows` (qui ne fait que RÉ-EXPORTER `windows_core` sous le nom `core`)
-# est déclaré en dépendance. Version alignée sur celle que verrouille déjà
-# Cargo.lock comme dépendance transitive de `windows`.
+# Direct dependency required by the `#[windows::core::implement]` macro
+# (task 10, process loopback probe): it generates code that references
+# `windows_core::...` directly, a path left unresolved if only the `windows`
+# crate (which only RE-EXPORTS `windows_core` under the name `core`)
+# is declared as a dependency. Version aligned on the one Cargo.lock
+# already locks as a transitive dependency of `windows`.
 windows-core = "0.62"
 windows = { version = "0.62", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
-    # `QueryDisplayConfig` / `DisplayConfigGetDeviceInfo` : la seule
-    # correspondance EXPOSEE entre l'identifiant de cible que rend le pilote
-    # d'affichage virtuel et le nom GDI (`\\.\DISPLAYn`) que DXGI enumere.
-    # `placement.rs` a affirme le contraire de D1 au lot 32, et cette feature
-    # est ce qui rend la correction verifiable. Voir
+    # `QueryDisplayConfig` / `DisplayConfigGetDeviceInfo`: the only
+    # EXPOSED correspondence between the target identifier the virtual display
+    # driver returns and the GDI name (`\\.\DISPLAYn`) DXGI enumerates.
+    # `placement.rs` asserted the opposite of D1 in batch 32, and this feature
+    # is what makes the correction verifiable. See
     # `moniteurs_virtuels/config_affichage.rs`.
     "Win32_Devices_Display",
-    # `PKEY_Device_FriendlyName` : le nom convivial d'un point de terminaison
-    # audio, sur lequel porte la sélection explicite d'`AUDIO_PERIPHERIQUE`
-    # (correction « A-bis », `wasapi/rendu.rs`). La clé de propriété vit dans
-    # FunctionDiscovery, pas dans `Win32_Media_Audio`.
+    # `PKEY_Device_FriendlyName`: the friendly name of an audio endpoint,
+    # on which the explicit selection of `AUDIO_PERIPHERIQUE` bears
+    # (correction « A-bis », `wasapi/rendu.rs`). The property key lives in
+    # FunctionDiscovery, not in `Win32_Media_Audio`.
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Graphics_Direct3D",
     "Win32_Graphics_Direct3D11",
-    # `DwmGetWindowAttribute` / `DWMWA_CLOAKED` du hook de détection des
-    # fenêtres (`superviseur::hook`) : sans ce filtre, les fenêtres UWP
-    # fantômes (masquées par DWM sans jamais s'afficher) seraient annoncées.
+    # `DwmGetWindowAttribute` / `DWMWA_CLOAKED` of the window detection hook
+    # (`superviseur::hook`): without this filter, ghost UWP windows
+    # (cloaked by DWM without ever showing) would be announced.
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Dxgi",
     "Win32_Graphics_Dxgi_Common",
     "Win32_Graphics_Gdi",
-    # Sous-bloc G2 : l'encodage PNG des icones passe par WIC, et JAMAIS par une
-    # conversion qui perd le canal alpha. `IWICImagingFactory`,
-    # `CreateBitmapFromHBITMAP`, `WICBitmapUseAlpha` et `GUID_ContainerFormatPng`
-    # vivent tous ici, derriere cette fonctionnalite
-    # (`Win32/Graphics/mod.rs`, le `#[cfg(feature = "Win32_Graphics_Imaging")]`).
-    # Aucune dependance nouvelle : c'est une fonctionnalite d'un crate deja
-    # present, comme `Win32_System_Environment` pour G1 et
-    # `Win32_System_DataExchange` pour le presse-papier.
+    # Sub-block G2: the PNG encoding of icons goes through WIC, and NEVER through a
+    # conversion that loses the alpha channel. `IWICImagingFactory`,
+    # `CreateBitmapFromHBITMAP`, `WICBitmapUseAlpha` and `GUID_ContainerFormatPng`
+    # all live here, behind this feature
+    # (`Win32/Graphics/mod.rs`, the `#[cfg(feature = "Win32_Graphics_Imaging")]`).
+    # No new dependency: it is a feature of a crate already
+    # present, like `Win32_System_Environment` for G1 and
+    # `Win32_System_DataExchange` for the clipboard.
     #
-    # HYPOTHESE A LA REDACTION, CONFIRMEE PAR LA COMPILATION : le plan G2
-    # (divergence E11) annoncait celle-ci seule, et rappelait que G1 avait paye
-    # exactement cette affirmation — `Win32_UI_Shell` annoncee seule pour
-    # `ShellExecuteExW`, refutee par `cargo check --target x86_64-pc-windows-gnu`.
-    # Ici la compilation croisee a confirme : elle suffit.
+    # ASSUMPTION WHEN WRITING, CONFIRMED BY COMPILATION: the G2 plan
+    # (divergence E11) announced this one alone, and recalled that G1 had paid for
+    # exactly this claim — `Win32_UI_Shell` announced alone for
+    # `ShellExecuteExW`, refuted by `cargo check --target x86_64-pc-windows-gnu`.
+    # Here the cross-compilation confirmed it: it is enough.
     "Win32_Graphics_Imaging",
     "Win32_Media_Audio",
     "Win32_Media_MediaFoundation",
     "Win32_Media_Multimedia",
-    # `CreateFileW` est gardée derrière `Win32_Security` dans windows-rs 0.62 :
-    # sa signature mentionne `SECURITY_ATTRIBUTES`, même quand on lui passe
-    # `None`. Sans cette fonctionnalité, l'import ne résout pas.
+    # `CreateFileW` is gated behind `Win32_Security` in windows-rs 0.62:
+    # its signature mentions `SECURITY_ATTRIBUTES`, even when passed
+    # `None`. Without this feature, the import does not resolve.
     "Win32_Security",
     "Win32_Storage_FileSystem",
-    # Les TYPES de ProjFS (`PRJ_CALLBACKS`, `PRJ_CALLBACK_DATA`, les huit
-    # `PRJ_*_CB`, les constantes de notification…), et EUX SEULS. Les
-    # enveloppes `Prj*` de ce module passent par `windows_core::link!`, qui se
-    # développe en `#[link(kind = "raw-dylib")]` (`windows-link-0.2.1/src/lib.rs:22`
-    # pour x86_64) : les appeler poserait un import STATIQUE de
-    # `ProjectedFSLib.dll` dans le PE. Or `agent.exe` est un seul binaire pour
-    # tous les modes (`main.rs`) — un import non résolu ne tuerait pas « le
-    # pont », il tuerait la capture, la vidéo et l'entrée sur toute VM dépourvue
-    # de ProjFS. D'où la décision D1 : les treize entrées sont résolues à
-    # l'EXÉCUTION (`pont/projfs/chargement.rs`), et RIEN du crate ne doit
-    # appeler une enveloppe `Prj*`. Le contrôle est un `objdump` sur le binaire
-    # bâti — voir l'en-tête de `chargement.rs`.
+    # The ProjFS TYPES (`PRJ_CALLBACKS`, `PRJ_CALLBACK_DATA`, the eight
+    # `PRJ_*_CB`, the notification constants…), and THEM ALONE. The
+    # `Prj*` wrappers of this module go through `windows_core::link!`, which
+    # expands to `#[link(kind = "raw-dylib")]` (`windows-link-0.2.1/src/lib.rs:22`
+    # for x86_64): calling them would put a STATIC import of
+    # `ProjectedFSLib.dll` in the PE. Yet `agent.exe` is a single binary for
+    # all modes (`main.rs`) — an unresolved import would not kill « the
+    # bridge », it would kill capture, video and input on any VM lacking
+    # ProjFS. Hence decision D1: the thirteen entries are resolved at
+    # RUN TIME (`pont/projfs/chargement.rs`), and NOTHING in the crate may
+    # call a `Prj*` wrapper. The check is an `objdump` of the built
+    # binary — see the header of `chargement.rs`.
     "Win32_Storage_ProjectedFileSystem",
     "Win32_Storage_Xps",
     "Win32_System_Com",
     "Win32_System_Com_StructuredStorage",
-    # `GetClipboardSequenceNumber`, `OpenClipboard`, `GetClipboardData` et leurs
-    # voisines vivent ici ; `GlobalLock` / `GlobalAlloc` dans `Win32_System_Memory`
-    # juste en dessous. C'est la SEULE addition de P1 (presse-papier) à ce
-    # fichier, et ce sont deux fonctionnalités d'un crate DÉJÀ présent :
-    # **P1 n'ajoute aucune dépendance**, ni Rust ni TypeScript.
+    # `GetClipboardSequenceNumber`, `OpenClipboard`, `GetClipboardData` and their
+    # neighbours live here; `GlobalLock` / `GlobalAlloc` in `Win32_System_Memory`
+    # just below. It is the ONLY addition of P1 (clipboard) to this
+    # file, and they are two features of a crate ALREADY present:
+    # **P1 adds no dependency**, neither Rust nor TypeScript.
     "Win32_System_DataExchange",
-    # Filtre d'exception de `diagnostics::exceptions` : `EXCEPTION_POINTERS` et
-    # `CONTEXT` vivent dans `Diagnostics_Debug` mais sont gardés derrière
-    # `System_Kernel` (ils y référencent `FLOATING_SAVE_AREA`) — les deux
-    # fonctionnalités sont nécessaires, pas l'une ou l'autre. `ToolHelp` sert
-    # à photographier la table des modules à l'installation, pour situer les
-    # adresses de retour en `module+décalage` sans allouer au moment de la faute.
+    # Exception filter of `diagnostics::exceptions`: `EXCEPTION_POINTERS` and
+    # `CONTEXT` live in `Diagnostics_Debug` but are gated behind
+    # `System_Kernel` (they reference `FLOATING_SAVE_AREA` there) — both
+    # features are needed, not one or the other. `ToolHelp` is used
+    # to snapshot the module table at install time, to locate the
+    # return addresses as `module+offset` without allocating when the fault hits.
     "Win32_System_Diagnostics_Debug",
     "Win32_System_Diagnostics_ToolHelp",
-    # `ExpandEnvironmentStringsW` : les raccourcis d'installeurs stockent
-    # `%ProgramFiles%\…` et `SLGP_RAWPATH` les rend tels quels, sans les
-    # développer. Sans ce développement, la règle « le fichier cible existe »
-    # les écarterait tous. C'est la SEULE addition de G1 à ce fichier, et
-    # c'est une fonctionnalité d'un crate déjà présent — aucune dépendance
-    # nouvelle, ni ici ni ailleurs.
+    # `ExpandEnvironmentStringsW`: installer shortcuts store
+    # `%ProgramFiles%\…` and `SLGP_RAWPATH` returns them as is, without
+    # expanding them. Without this expansion, the « target file exists » rule
+    # would discard them all. It is the ONLY addition of G1 to this file, and
+    # it is a feature of a crate already present — no new dependency,
+    # neither here nor elsewhere.
     "Win32_System_Environment",
     "Win32_System_Kernel",
     "Win32_System_IO",
-    # `GlobalLock` / `GlobalUnlock` / `GlobalAlloc` : le presse-papier Windows
-    # rend un `HGLOBAL`, jamais un pointeur — voir `Win32_System_DataExchange`.
+    # `GlobalLock` / `GlobalUnlock` / `GlobalAlloc`: the Windows clipboard
+    # returns an `HGLOBAL`, never a pointer — see `Win32_System_DataExchange`.
     "Win32_System_Memory",
-    # Job Object des enfants du superviseur : `KILL_ON_JOB_CLOSE` fait mourir
-    # les N processus agent avec le superviseur, y compris si celui-ci est tué
-    # net — aucun code en espace utilisateur ne couvre ce cas.
+    # Job Object of the supervisor's children: `KILL_ON_JOB_CLOSE` makes
+    # the N agent processes die with the supervisor, including if it is killed
+    # outright — no user-space code covers that case.
     "Win32_System_JobObjects",
     "Win32_System_LibraryLoader",
     "Win32_System_Ole",
-    # Tube nommé du capteur (`capteur::serveur`) : `CreateNamedPipeW` et
-    # `ConnectNamedPipe` vivent ici, distinct de `Win32_System_IO` qui ne
-    # porte que `OVERLAPPED`.
-    # `ShellExecuteExW` est gardee derriere `Win32_System_Registry` dans
-    # windows-rs 0.62 : `SHELLEXECUTEINFOW` porte un champ `hkeyClass: HKEY`,
-    # donc la STRUCTURE ENTIERE et la fonction qui la prend le sont aussi
-    # (`Win32/UI/Shell/mod.rs`, le `#[cfg(feature = "Win32_System_Registry")]`
-    # pose juste au-dessus de la fonction). RELU DANS LES BINDINGS, pas
-    # suppose : le plan G1 (divergence E10) annoncait `Win32_UI_Shell` seule,
-    # et la compilation l'a refute — `unresolved imports`. Aucune dependance
-    # nouvelle pour autant : c'est la SECONDE fonctionnalite d'un crate deja
-    # present, et G1 n'en ajoute pas d'autre.
+    # Named pipe of the sensor (`capteur::serveur`): `CreateNamedPipeW` and
+    # `ConnectNamedPipe` live here, distinct from `Win32_System_IO` which only
+    # carries `OVERLAPPED`.
+    # `ShellExecuteExW` is gated behind `Win32_System_Registry` in
+    # windows-rs 0.62: `SHELLEXECUTEINFOW` carries an `hkeyClass: HKEY` field,
+    # so the WHOLE STRUCTURE and the function taking it are gated too
+    # (`Win32/UI/Shell/mod.rs`, the `#[cfg(feature = "Win32_System_Registry")]`
+    # set just above the function). READ IN THE BINDINGS, not
+    # assumed: the G1 plan (divergence E10) announced `Win32_UI_Shell` alone,
+    # and compilation refuted it — `unresolved imports`. No new dependency
+    # for all that: it is the SECOND feature of a crate already
+    # present, and G1 adds no other.
     "Win32_System_Registry",
     "Win32_System_Pipes",
     "Win32_System_Performance",
     "Win32_System_Threading",
     "Win32_System_Variant",
     "Win32_UI_Accessibility",
-    # `IMMDevice::OpenPropertyStore` rend un `IPropertyStore`, qui vit ici :
-    # sans cette fonctionnalité la méthode elle-même n'existe pas sur
-    # `IMMDevice` (windows-rs la remplace par un `usize` dans la vtable).
-    # Nécessaire à la lecture du nom convivial (`wasapi/rendu.rs`).
+    # `IMMDevice::OpenPropertyStore` returns an `IPropertyStore`, which lives here:
+    # without this feature the method itself does not exist on
+    # `IMMDevice` (windows-rs replaces it with a `usize` in the vtable).
+    # Needed to read the friendly name (`wasapi/rendu.rs`).
     "Win32_UI_Shell_PropertiesSystem",
     "Win32_UI_HiDpi",
     "Win32_UI_Input_KeyboardAndMouse",
@@ -168,18 +168,18 @@ windows = { version = "0.62", features = [
     "Win32_System_WinRT_Direct3D11",
     "Win32_System_WinRT_Graphics_Capture",
 ] }
-# Pilote de manette virtuelle. Crate Rust pur : il parle au pilote noyau
-# ViGEmBus par IOCTL, sans SDK C à embarquer. La fonctionnalité
-# "unstable_xtarget_notification" est nécessaire pour recevoir les rappels
-# de vibration — sans elle, `request_notification` n'existe même pas sur
-# `Xbox360Wired` (vérifié sur le code source publié, docs.rs 0.1.4).
+# Virtual gamepad driver. Pure Rust crate: it talks to the ViGEmBus kernel
+# driver through IOCTL, without a C SDK to embed. The
+# "unstable_xtarget_notification" feature is needed to receive the rumble
+# callbacks — without it, `request_notification` does not even exist on
+# `Xbox360Wired` (checked on the published source code, docs.rs 0.1.4).
 vigem-client = { version = "0.1", features = ["unstable_xtarget_notification"] }
 
 [dev-dependencies]
-# `test-util` : horloge tokio GELÉE (`#[tokio::test(start_paused = true)]`),
-# nécessaire aux tests de `signaling::honorer_retry_suggere` (round de
-# correction 1) — sans elle, éprouver un délai de plusieurs secondes
-# attendrait réellement ces secondes. `full`, ci-dessus, ne l'inclut PAS :
-# c'est une fonctionnalité de TEST, jamais liée dans un binaire de
-# production, d'où sa place ici plutôt que dans `[dependencies]`.
+# `test-util`: FROZEN tokio clock (`#[tokio::test(start_paused = true)]`),
+# needed by the tests of `signaling::honour_suggested_retry` (correction
+# round 1) — without it, testing a delay of several seconds
+# would really wait those seconds. `full`, above, does NOT include it:
+# it is a TEST feature, never linked into a production binary,
+# hence its place here rather than in `[dependencies]`.
 tokio = { version = "1", features = ["test-util"] }

@@ -32,7 +32,7 @@ pub(super) fn video_test_source() -> crate::source::FileSource {
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-        .expect("chargement du flux de test")
+        .expect("loading the test stream")
 }
 
 /// Builds the second str0m `Rtc` representing the "browser" peer on
@@ -40,7 +40,7 @@ pub(super) fn video_test_source() -> crate::source::FileSource {
 /// negotiation (tracks, channels) stays specific to each test, which negotiates
 /// different combinations of tracks.
 pub(super) fn local_peer(local_ip: IpAddr, enable_opus: bool) -> (UdpSocket, SocketAddr, Rtc) {
-    let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
+    let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("peer socket");
     let peer_addr = peer_socket.local_addr().unwrap();
     let mut builder = Rtc::builder().clear_codecs().enable_h264(true);
     if enable_opus {

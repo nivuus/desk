@@ -52,7 +52,7 @@ pub(super) fn rafraichir(etat: &Etat) {
         repertoires_oublies = memorises,
         cache_negatif_purge = purgees,
         cache_arme = etat.cache_arme,
-        "rafraichissement demande par le navigateur"
+        "refresh requested by the browser"
     );
 }
 
@@ -71,7 +71,7 @@ fn clear_negative_cache(etat: &Etat) -> i64 {
     // virtualisation runs; `total` is a local stack slot valid for the call.
     let hr = unsafe { (etat.projfs.clear_negative_path_cache)(contexte.0, &mut total) };
     if hr.is_err() {
-        tracing::warn!(code = hr.0, "PrjClearNegativePathCache a echoue");
+        tracing::warn!(code = hr.0, "PrjClearNegativePathCache failed");
         return -1;
     }
     i64::from(total)
@@ -88,14 +88,14 @@ pub(super) fn bonjour(etat: &Etat, entete: &[u8]) {
             // 🔴 **A `warn!`, never a `debug!`.** An unreadable announcement means
             // that no due write will ever go out — a silence, hence
             // worse than the thirty seconds F2 measured.
-            tracing::warn!(%error, "annonce Bonjour illisible : aucune ecriture due ne partira");
+            tracing::warn!(%error, "unreadable Bonjour announcement: no due write will go out");
             return;
         }
     };
     tracing::info!(
         racine = %annonce.racine,
         forcer = annonce.forcer,
-        "bonjour du navigateur"
+        "browser hello"
     );
     let _ = etat
         .vers_ecriture

@@ -158,15 +158,15 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&VersLaShell::Refus {
                 titre: "Bloc-notes".into(),
-                motif: "plus aucune sortie".into(),
+                motif: "no output left".into(),
             })
             .unwrap(),
-            r#"{"type":"refus","titre":"Bloc-notes","motif":"plus aucune sortie"}"#
+            r#"{"type":"refus","titre":"Bloc-notes","motif":"no output left"}"#
         );
     }
 
     #[test]
-    fn un_viewport_de_la_shell_se_lit() {
+    fn a_shell_viewport_is_read() {
         let message: DepuisLaShell = serde_json::from_str(
             r#"{"type":"viewport","session":"w-1","largeur":1600,"hauteur":900}"#,
         )
@@ -177,19 +177,19 @@ mod tests {
             hauteur,
         } = message
         else {
-            panic!("un viewport doit se lire comme un viewport")
+            panic!("a viewport must read as a viewport")
         };
         assert_eq!((session.as_str(), largeur, hauteur), ("w-1", 1600, 900));
     }
 
     #[test]
-    fn un_message_inconnu_de_la_shell_est_refuse_plutot_qu_ignore() {
+    fn an_unknown_shell_message_is_refused_rather_than_ignored() {
         let result: Result<DepuisLaShell, _> = serde_json::from_str(r#"{"type":"autre-chose"}"#);
         assert!(result.is_err());
     }
 
     #[test]
-    fn un_prefixe_vide_restitue_exactement_le_nom_d_aujourd_hui() {
+    fn an_empty_prefix_gives_back_exactly_the_current_name() {
         // 🔴 THE MOST IMPORTANT TEST OF THIS FILE. Without it, setting the
         // separator unconditionally would give `":bureau"` and `":w-1"` —
         // which are the name of NO existing session, and nothing would
@@ -214,13 +214,13 @@ mod tests {
         assert_eq!(session_du_pont(""), "fichiers");
         assert_eq!(session_du_pont("Zm9vYmFy"), "Zm9vYmFy:fichiers");
         // …and the two sessions of the same VM stay DISTINCT, which is
-        // this constant's whole raison d'être.
+        // this constant's whole reason to exist.
         assert_ne!(session_du_pont("Zm9vYmFy"), session_de_controle("Zm9vYmFy"));
         assert_ne!(session_du_pont(""), session_de_controle(""));
     }
 
     #[test]
-    fn un_prefixe_pose_precede_le_nom_et_le_separe_par_deux_points() {
+    fn a_set_prefix_precedes_the_name_separated_by_a_colon() {
         assert_eq!(composer("Zm9vYmFy", "w-1"), "Zm9vYmFy:w-1");
         assert_eq!(session_de_controle("Zm9vYmFy"), "Zm9vYmFy:bureau");
     }
@@ -237,7 +237,7 @@ mod tests {
     /// `rename` would make the message mute, which is exactly the defect
     /// this batch fixes, replayed one notch lower.
     #[test]
-    fn les_messages_de_service_du_signaling_ne_sont_pas_des_viewports() {
+    fn signaling_service_messages_are_not_viewports() {
         assert!(serde_json::from_str::<DepuisLaShell>(r#"{"type":"peer-gone"}"#).is_err());
         assert!(
             serde_json::from_str::<DepuisLaShell>(r#"{"type":"ice-config","urls":[]}"#).is_err()
@@ -251,7 +251,7 @@ mod tests {
     /// has drifted — and a drift of this name makes the mechanism MUTE, without
     /// any error, on both sides.
     #[test]
-    fn l_arrivee_d_un_pair_se_lit_sur_la_session_de_controle() {
+    fn a_peer_arrival_is_read_on_the_control_session() {
         let message: DepuisLaShell = serde_json::from_str(r#"{"type":"pair-present"}"#).unwrap();
         assert!(matches!(message, DepuisLaShell::PairPresent));
         // …and a superfluous field does not break it: the relay can add

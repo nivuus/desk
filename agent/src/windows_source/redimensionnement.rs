@@ -195,7 +195,7 @@ impl WindowsSource {
                 let new_capture = DesktopCapture::new_sans_attente()?;
                 let (dw, dh) = new_capture.desktop_size();
                 let region = crop_region(window_rect, dw, dh)
-                    .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
+                    .ok_or_else(|| anyhow::anyhow!("the window is off screen"))?;
                 let mut encoder = H264Encoder::new(
                     new_capture.device(),
                     (region.width, region.height),
@@ -231,7 +231,7 @@ impl WindowsSource {
                 // New encoder: its very first output falls into the
                 // same case as the initial startup (see `SUBMIT_POLL_BUDGET`).
                 self.encoder_warmed_up = false;
-                tracing::info!(self.width, self.height, "chaîne d'encodage reconstruite");
+                tracing::info!(self.width, self.height, "encoding chain rebuilt");
                 Ok(())
             }
             RebuildOutcome::Recovered(new_capture, primary_error) => {
@@ -244,7 +244,7 @@ impl WindowsSource {
                 // is possible until the next successful resize —
                 // far preferable to an agent that crashes.
                 self.capture = Some(new_capture);
-                tracing::warn!(error = %primary_error, "reconstruction de la chaîne d'encodage échouée, capture de secours restaurée");
+                tracing::warn!(error = %primary_error, "rebuilding the encoding chain failed, fallback capture restored");
                 Err(primary_error)
             }
             RebuildOutcome::Fatal(primary_error) => {
@@ -255,7 +255,7 @@ impl WindowsSource {
                 // `is_exhausted()` will make the session close cleanly at the next
                 // round, rather than a panic on the empty field.
                 self.fatal = true;
-                tracing::error!(error = %primary_error, "reconstruction de la chaîne d'encodage et capture de secours toutes deux échouées, source déclarée épuisée");
+                tracing::error!(error = %primary_error, "rebuilding the encoding chain and the fallback capture both failed, source declared exhausted");
                 Err(primary_error)
             }
         }
@@ -287,7 +287,7 @@ impl WindowsSource {
         // panic crosses `spawn_blocking` and takes down the WHOLE process —
         // hence the sensor's eight other windows with it.
         if self.fatal {
-            anyhow::bail!("source épuisée : recadrage inchangé");
+            anyhow::bail!("source exhausted: cropping unchanged");
         }
 
         // The bound comes from the WORK AREA of the monitor carrying the
@@ -317,7 +317,7 @@ impl WindowsSource {
                 (borne.0.min(texture.0), borne.1.min(texture.1))
             }
             Err(error) => {
-                tracing::warn!(%error, "zone de travail illisible : recadrage borné par la texture");
+                tracing::warn!(%error, "unreadable work area: cropping bounded by the texture");
                 texture
             }
         };
@@ -340,7 +340,7 @@ impl WindowsSource {
             retenue = format!("{l}x{h}"),
             courante = format!("{}x{}", self.width, self.height),
             change = (l, h) != (self.width, self.height),
-            "Resize recu par le capteur"
+            "Resize received by the sensor"
         );
         // Short-circuit BEFORE any destruction, and it is not cosmetic:
         // the client's `ResizeObserver` emits every 200 ms while an edge
@@ -396,13 +396,13 @@ impl WindowsSource {
             Err(error) => {
                 self.fatal = true;
                 return Err(error).context(
-                    "encodeur neuf refusé après destruction de l'ancien : source épuisée",
+                    "fresh encoder refused after destroying the old one: source exhausted",
                 );
             }
         };
         if let Err(error) = encoder.request_keyframe() {
             self.fatal = true;
-            return Err(error).context("image clé refusée par l'encodeur neuf : source épuisée");
+            return Err(error).context("key frame refused by the fresh encoder: source exhausted");
         }
 
         self.region = region;
@@ -416,7 +416,7 @@ impl WindowsSource {
             demande = format!("{width}x{height}"),
             borne = format!("{}x{}", borne.0, borne.1),
             retenue = format!("{l}x{h}"),
-            "recadrage et fenêtre alignés sur le viewport (la sortie, elle, n'a pas bougé)"
+            "cropping and window aligned on the viewport (the output, for its part, did not move)"
         );
         Ok(())
     }

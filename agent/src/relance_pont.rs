@@ -128,8 +128,8 @@
 //! has one: `SEUIL_STABILITE_MS` (35 s) is **structurally
 //! unreachable by a sleeping refused bridge**, since that sleep is bounded
 //! at 30 s — it is the invariant that
-//! `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
-//! and `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable` already
+//! `the_stability_threshold_stays_strictly_above_the_backoff_ceiling`
+//! and `stable_during_a_refusal_sleep_never_declares_stable` already
 //! hold. Round 4 had removed duration **wholesale**, taking with it the only case
 //! it handled right; round 5 gives it back, and **`stable()` resets
 //! `tentative` to zero** (see its doc).
@@ -184,7 +184,7 @@ use crate::plateforme::repli::{delai_de_repli, REPLI_MAX_MS};
 ///    bridge's startup by as much, which cannot be read here.
 ///
 /// ⚠️ **IT IS WELDED TO `plateforme::repli::REPLI_MIN_MS` BY A TEST**
-/// (`le_premier_espacement_egale_le_plancher`, which requires
+/// (`the_first_spacing_equals_the_floor`, which requires
 /// `delai_de_repli(0) == ESPACEMENT_PLANCHER_MS`, that is,
 /// `REPLI_MIN_MS == ESPACEMENT_PLANCHER_MS`): **it therefore CANNOT be
 /// raised alone**. Raising it requires raising `REPLI_MIN_MS` — which also governs
@@ -233,8 +233,8 @@ pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 /// `REPLI_MAX_MS + 5 s` = 35 s, and `honour_suggested_retry`'s sleep is
 /// bounded at 30 s: **a refused bridge STRUCTURALLY cannot reach it**
 /// — it is the invariant that
-/// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
-/// sets, and that `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`
+/// `the_stability_threshold_stays_strictly_above_the_backoff_ceiling`
+/// sets, and that `stable_during_a_refusal_sleep_never_declares_stable`
 /// exercises tick by tick. **Cost measured on the bench: ZERO** — the hammering
 /// table of the header doc does not move by a single unit, for any lifetime
 /// less than or equal to `REPLI_MAX_MS`.
@@ -281,7 +281,7 @@ pub struct EtatRelance {
     /// leave `tentative` at zero. So **`tentative > 0` implies
     /// `cycle_signale == true`**, and the guard can only refuse a
     /// re-arming that would have nothing to re-arm. Exercised by
-    /// `un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois`.
+    /// `a_really_stable_process_ends_up_declared_stable_once`.
     cycle_signale: bool,
 }
 
@@ -396,7 +396,7 @@ impl EtatRelance {
     /// the threshold here was `ESPACEMENT_PLANCHER_MS` (500 ms), so that a
     /// refused process asleep up to `REPLI_MAX_MS` (30 s) before
     /// dying was declared stable from 500 ms — see
-    /// `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`, the
+    /// `stable_during_a_refusal_sleep_never_declares_stable`, the
     /// exact red of that defect, below.
     ///
     /// 🔴 **AND IT RESETS `tentative` TO ZERO, SINCE FIX ROUND

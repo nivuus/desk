@@ -115,14 +115,14 @@ impl PuitsMicro for PuitsCable {
             Issue::Accepte => {}
             Issue::AccepteApresRefus => tracing::info!(
                 session = %self.session,
-                "micro : cable acquis apres un refus — une autre fenetre l'a relache"
+                "mic: cable acquired after a refusal — another window released it"
             ),
             Issue::RefusePremierement => {
                 tracing::warn!(
                     session = %self.session,
-                    "micro : une autre fenetre tient deja le cable, cette session restera muette \
-                     tant qu'elle le tiendra. Le navigateur L'APPREND (bloc E3) : ce refus \
-                     remonte en un message de controle mic-state a granted=false"
+                    "mic: another window already holds the cable, this session will stay silent \
+                     as long as it holds it. The browser IS TOLD (block E3): this refusal \
+                     surfaces as a mic-state control message with granted=false"
                 );
                 return false;
             }
@@ -150,7 +150,7 @@ impl PuitsMicro for PuitsCable {
 /// browser's button does not appear.
 pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
     let lecteur = Arc::new(Mutex::new(
-        LecteurMicro::new().context("creation du lecteur de micro")?,
+        LecteurMicro::new().context("creating the mic player")?,
     ));
 
     // ⚠️ The question "does the loopback capture an endpoint?" is
@@ -174,7 +174,7 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
         Ok(Ok(v)) => v,
         Ok(Err(e)) => return Err(e),
         Err(_) => bail!(
-            "le fil de rendu du micro n'a rendu aucun verdict en {:?} : pas de micro",
+            "the mic render thread returned no verdict within {:?}: no mic",
             DELAI_VERDICT
         ),
     };
@@ -186,7 +186,7 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
         format = %verdict.format,
         reveil = verdict.reveil.libelle(),
         espace_mutex = mutex.espace(),
-        "micro : ecriture sur le cable ARMEE"
+        "mic: write to the cable ARMED"
     );
 
     Ok(PuitsCable {
@@ -243,7 +243,7 @@ fn fil_de_rendu(
                 tracing::warn!(
                     session = %session,
                     error = %e,
-                    "micro : attente de place sur le cable echouee, fil de rendu arrete"
+                    "mic: waiting for room on the cable failed, render thread stopped"
                 );
                 return;
             }
@@ -264,7 +264,7 @@ fn fil_de_rendu(
                 let Ok(mut lecteur) = lecteur.lock() else {
                     tracing::warn!(
                         session = %session,
-                        "micro : verrou du lecteur empoisonne, fil de rendu arrete"
+                        "mic: player lock poisoned, render thread stopped"
                     );
                     return;
                 };
@@ -331,7 +331,7 @@ fn write(
             tracing::warn!(
                 session = %session,
                 error = %e,
-                "micro : ecriture sur le cable echouee, fil de rendu arrete"
+                "mic: write to the cable failed, render thread stopped"
             );
             Err(())
         }
@@ -346,7 +346,7 @@ fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> 
     // above refuses if it already belonged to an STA).
     let enumerateur: IMMDeviceEnumerator =
         unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }
-            .context("creation de l'enumerateur de peripheriques audio (micro)")?;
+            .context("creating the audio device enumerator (mic)")?;
 
     let capte = if loopback_de_session {
         Some(rendu::identifiant_capte(&enumerateur)?)
@@ -369,9 +369,9 @@ fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> 
         // added. The remedy is NAMED, on the pattern of the `Choix::Ambigu` arm
         // of `resoudre`, which already lists its candidates.
         bail!(
-            "micro DESACTIVE : le loopback audio de cette session capte le cable meme sur lequel \
-             le micro ecrirait ({identifiant}) — l'utilisateur s'entendrait lui-meme. Remede : \
-             posez AUDIO_PERIPHERIQUE sur un AUTRE rendu. Disponibles : {}",
+            "mic DISABLED: this session's audio loopback captures the very cable on which \
+             the mic would write ({identifiant}) — the user would hear themselves. Remedy: \
+             set AUDIO_PERIPHERIQUE to ANOTHER render device. Available: {}",
             inventaire(&disponibles)
         );
     }
@@ -466,6 +466,6 @@ fn tracer(
         // JUDGED.
         famines = d(compteurs.famines, precedents.famines),
         occupation_ms = occupation.as_millis(),
-        "micro ecrit sur le cable"
+        "mic writes to the cable"
     );
 }

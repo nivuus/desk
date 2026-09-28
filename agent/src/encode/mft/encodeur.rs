@@ -40,7 +40,7 @@ impl EncodeurMft {
                     NEED_INPUT_EVENTS.fetch_add(1, Ordering::Relaxed);
                     tracing::trace!(
                         pending_input_requests = self.pending_input_requests,
-                        "événement METransformNeedInput reçu"
+                        "METransformNeedInput event received"
                     );
                 }
                 ME_TRANSFORM_HAVE_OUTPUT => {
@@ -50,7 +50,7 @@ impl EncodeurMft {
                         .fetch_add(1, Ordering::Relaxed);
                     tracing::trace!(
                         pending_outputs = self.pending_outputs,
-                        "événement METransformHaveOutput reçu"
+                        "METransformHaveOutput event received"
                     );
                 }
                 _ => {}
@@ -109,7 +109,7 @@ impl EncodeurMft {
         self.publish_state();
         let elapsed = t.elapsed();
         if elapsed > SLOW_CALL {
-            tracing::warn!(?elapsed, "drainage des événements de l'encodeur lent");
+            tracing::warn!(?elapsed, "draining the slow encoder's events");
         }
 
         // Media Foundation counts in 100 ns units; our timestamps are
@@ -148,7 +148,7 @@ impl EncodeurMft {
             let fed = unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) };
             self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
             ENC_IN_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
-            fed.context("soumission de l'image NV12 à l'encodeur")?;
+            fed.context("submitting the NV12 frame to the encoder")?;
             self.telemetry
                 .encoder_inputs
                 .fetch_add(1, Ordering::Relaxed);
@@ -216,7 +216,7 @@ impl EncodeurMft {
         let incomplete = buffers[0].dwStatus & MFT_OUTPUT_DATA_BUFFER_INCOMPLETE.0 as u32 != 0;
         let taken = unsafe { take_output_sample(&mut buffers[0]) };
         ENC_OUT_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
-        produced.context("récupération de l'image encodée")?;
+        produced.context("retrieving the encoded frame")?;
         self.telemetry
             .encoder_outputs
             .fetch_add(1, Ordering::Relaxed);
@@ -229,7 +229,7 @@ impl EncodeurMft {
             self.pending_outputs += 1;
         }
 
-        let sample = taken.ok_or_else(|| anyhow!("échantillon de sortie absent"))?;
+        let sample = taken.ok_or_else(|| anyhow!("output sample missing"))?;
 
         let media_buffer = unsafe { sample.ConvertToContiguousBuffer() }?;
         let mut data_ptr: *mut u8 = std::ptr::null_mut();
@@ -277,7 +277,7 @@ impl EncodeurMft {
             let t = std::time::Instant::now();
             let fed = unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) };
             ENC_IN_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
-            fed.context("soumission différée de l'image NV12 à l'encodeur")?;
+            fed.context("deferred submission of the NV12 frame to the encoder")?;
             self.telemetry
                 .encoder_inputs
                 .fetch_add(1, Ordering::Relaxed);

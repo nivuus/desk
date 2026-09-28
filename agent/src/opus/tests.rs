@@ -48,7 +48,7 @@ fn ton(freq: f64, depuis: usize, n: usize) -> Vec<i16> {
 }
 
 #[test]
-fn une_trame_de_10_ms_vaut_480_echantillons_par_canal() {
+fn a_10_ms_frame_is_480_samples_per_channel() {
     assert_eq!(FRAME_SAMPLES, 480);
     assert_eq!(FRAME_INTERLEAVED, 960);
 }
@@ -59,12 +59,12 @@ fn refuses_a_frame_of_wrong_size() {
     let err = encodeur.encode(&vec![0i16; 1000]).unwrap_err();
     assert!(
         err.to_string().contains("960"),
-        "le message doit nommer la taille attendue, obtenu : {err}"
+        "the message must name the expected size, got: {err}"
     );
 }
 
 #[test]
-fn un_ton_encode_puis_decode_reste_le_meme_ton() {
+fn an_encoded_then_decoded_tone_stays_the_same_tone() {
     // Checking that the encoder returns bytes would prove nothing:
     // noise would return just as many. We decode back and check
     // that the energy stays concentrated on the original frequency.
@@ -88,19 +88,19 @@ fn un_ton_encode_puis_decode_reste_le_meme_ton() {
     let a_1500 = energie_a(&sortie, 1500.0);
     assert!(
         a_440 > 100.0 * a_1500,
-        "l'énergie doit rester concentrée sur 440 Hz : 440 Hz = {a_440:.1}, 1500 Hz = {a_1500:.1}"
+        "the energy must stay concentrated on 440 Hz: 440 Hz = {a_440:.1}, 1500 Hz = {a_1500:.1}"
     );
 
     let entree = energie_a(&ton(440.0, 0, 20 * FRAME_SAMPLES), 440.0);
     let rapport = a_440 / entree;
     assert!(
         (0.8..=1.2).contains(&rapport),
-        "l'amplitude restituée doit rester proche de l'originale, rapport = {rapport:.3}"
+        "the restored amplitude must stay close to the original, ratio = {rapport:.3}"
     );
 }
 
 #[test]
-fn le_silence_prolonge_retombe_a_quelques_octets_par_trame() {
+fn prolonged_silence_falls_back_to_a_few_bytes_per_frame() {
     // DTX takes several frames to converge: the first five are
     // still 217 then 161 bytes. Measuring too early would wrongly conclude that
     // DTX does not work. We therefore look at the TAIL, not the beginning.
@@ -113,28 +113,28 @@ fn le_silence_prolonge_retombe_a_quelques_octets_par_trame() {
     let queue = &sizes[35..];
     assert!(
         queue.iter().all(|&t| t <= 8),
-        "en régime établi, une trame de silence doit tenir en quelques octets, obtenu : {queue:?}"
+        "in steady state, a silence frame must fit in a few bytes, got: {queue:?}"
     );
 }
 
 #[test]
-fn le_pourcentage_de_perte_est_borne() {
+fn the_loss_percentage_is_bounded() {
     let mut enc = OpusEncoder::new().expect("encodeur");
 
-    enc.set_packet_loss_perc(0).expect("0 accepté");
-    enc.set_packet_loss_perc(25).expect("25 accepté");
+    enc.set_packet_loss_perc(0).expect("0 accepted");
+    enc.set_packet_loss_perc(25).expect("25 accepted");
 
     // Out of bounds: clamped rather than refused. The controller already clamps,
     // but this function is public and must not let through a
     // value libopus would reject with an opaque error.
     enc.set_packet_loss_perc(-5)
-        .expect("valeur négative bornée");
+        .expect("negative value clamped");
     enc.set_packet_loss_perc(300)
-        .expect("valeur excessive bornée");
+        .expect("excessive value clamped");
 }
 
 #[test]
-fn une_perte_declaree_change_reellement_l_encodage() {
+fn a_declared_loss_really_changes_the_encoding() {
     // Proof that in-band FEC is no longer inert.
     //
     // CAREFUL with the direction: this test does NOT measure a size
@@ -157,25 +157,25 @@ fn une_perte_declaree_change_reellement_l_encodage() {
 
     let mut sans = OpusEncoder::new().expect("encodeur");
     let mut with = OpusEncoder::new().expect("encodeur");
-    with.set_packet_loss_perc(20).expect("perte déclarée");
+    with.set_packet_loss_perc(20).expect("declared loss");
 
     let mut total_sans = 0usize;
     let mut total_with = 0usize;
     for _ in 0..100 {
-        total_sans += sans.encode(&pcm).expect("encodage").len();
-        total_with += with.encode(&pcm).expect("encodage").len();
+        total_sans += sans.encode(&pcm).expect("encoding").len();
+        total_with += with.encode(&pcm).expect("encoding").len();
     }
 
     assert_ne!(
         total_with, total_sans,
-        "sortie identique ({total_sans} octets des deux côtés) : \
-         `decide_fec` a pris son retour anticipé, donc aucune redondance \
-         LBRR n'est codée — c'est le symptôme du mode CELT seul"
+        "identical output ({total_sans} bytes on both sides): \
+         `decide_fec` took its early return, so no LBRR redundancy \
+         is encoded — this is the symptom of the CELT-only mode"
     );
 }
 
 #[test]
-fn lbrr_est_reellement_decodable() {
+fn lbrr_is_really_decodable() {
     // Test that the coded LBRR redundancy is really present and
     // decodable. It is the semantic proof that FEC is effective:
     // we encode declaring a loss, take a packet in steady
@@ -195,14 +195,14 @@ fn lbrr_est_reellement_decodable() {
 
     let mut enc_sans = OpusEncoder::new().expect("encodeur");
     let mut enc_with = OpusEncoder::new().expect("encodeur");
-    enc_with.set_packet_loss_perc(20).expect("perte déclarée");
+    enc_with.set_packet_loss_perc(20).expect("declared loss");
 
     // Encode 100 frames to reach steady state.
     let mut paquets_sans = Vec::new();
     let mut packets_with = Vec::new();
     for _ in 0..100 {
-        paquets_sans.push(enc_sans.encode(&pcm).expect("encodage sans"));
-        packets_with.push(enc_with.encode(&pcm).expect("encodage avec"));
+        paquets_sans.push(enc_sans.encode(&pcm).expect("encoding without"));
+        packets_with.push(enc_with.encode(&pcm).expect("encoding with"));
     }
 
     // Take the last packet in steady state.
@@ -213,9 +213,9 @@ fn lbrr_est_reellement_decodable() {
     // FEC frame (the decoder reconstructs from the redundancy of the
     // NEXT packet, or simply tries to mask the loss).
     let mut dec_pour_sans =
-        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("décodeur");
+        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("decoder");
     let mut dec_for_with =
-        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("décodeur");
+        ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo).expect("decoder");
 
     let mut sortie_sans = vec![0i16; FRAME_INTERLEAVED];
     let mut output_with = vec![0i16; FRAME_INTERLEAVED];
@@ -223,10 +223,10 @@ fn lbrr_est_reellement_decodable() {
     // Decode with the FEC flag (simulates a lost frame).
     dec_pour_sans
         .decode(last_without, &mut sortie_sans, true)
-        .expect("décodage sans avec FEC");
+        .expect("decoding without, with FEC");
     dec_for_with
         .decode(last_with, &mut output_with, true)
-        .expect("décodage avec avec FEC");
+        .expect("decoding with, with FEC");
 
     // Measure the energy (normalised sum of squares).
     let energie_sans: f64 = sortie_sans
@@ -241,7 +241,7 @@ fn lbrr_est_reellement_decodable() {
         / (FRAME_INTERLEAVED as f64);
 
     eprintln!(
-        "Énergie reconstruite : sans FEC = {:.2}, avec FEC = {:.2}",
+        "Reconstructed energy: without FEC = {:.2}, with FEC = {:.2}",
         energie_sans, energy_with
     );
 
@@ -249,9 +249,9 @@ fn lbrr_est_reellement_decodable() {
     // If it is present, energy_with >> energie_sans.
     assert!(
         energy_with > energie_sans,
-        "pas de redondance LBRR décodable : \
-         énergie sans FEC = {:.2}, énergie avec FEC = {:.2} — \
-         le FEC n'a rien apporté à la reconstruction",
+        "no decodable LBRR redundancy: \
+         energy without FEC = {:.2}, energy with FEC = {:.2} — \
+         the FEC brought nothing to the reconstruction",
         energie_sans,
         energy_with
     );
@@ -268,7 +268,7 @@ fn lbrr_est_reellement_decodable() {
 /// — spec §7 described it as work to be done ("mono → stereo
 /// by duplication").
 #[test]
-fn un_flux_mono_ressort_stereo_par_duplication() {
+fn a_mono_stream_comes_out_stereo_by_duplication() {
     let mut enc = ::opus::Encoder::new(
         SAMPLE_RATE_HZ,
         ::opus::Channels::Mono,
@@ -287,11 +287,14 @@ fn un_flux_mono_ressort_stereo_par_duplication() {
     // Interleaved: both channels are IDENTICAL sample by sample.
     let (paires, _) = sortie.as_chunks::<2>();
     for paire in paires {
-        assert_eq!(paire[0], paire[1], "canaux gauche et droit dissemblables");
+        assert_eq!(paire[0], paire[1], "dissimilar left and right channels");
     }
     // …and the signal is not zero: a decoder that returned silence
     // would pass the equality above without decoding anything.
-    assert!(sortie.iter().any(|&e| e.abs() > 500), "signal décodé nul");
+    assert!(
+        sortie.iter().any(|&e| e.abs() > 500),
+        "decoded signal is zero"
+    );
 }
 
 /// "No frame duration is assumed" (spec §7). Chrome emits
@@ -319,13 +322,13 @@ fn frames_of_ten_twenty_and_forty_milliseconds_all_pass() {
         assert_eq!(
             dec.echantillons_de(&paquet).unwrap(),
             par_canal,
-            "durée {ms} ms"
+            "duration {ms} ms"
         );
         let mut sortie = vec![0i16; par_canal * CHANNELS];
         assert_eq!(
             dec.decoder(&paquet, &mut sortie).unwrap(),
             par_canal,
-            "durée {ms} ms"
+            "duration {ms} ms"
         );
     }
 }
@@ -335,7 +338,7 @@ fn frames_of_ten_twenty_and_forty_milliseconds_all_pass() {
 /// of samples, and this number comes from the LAST DECODED FRAME — not
 /// from a constant.
 #[test]
-fn la_dissimulation_rend_la_duree_de_la_derniere_trame() {
+fn concealment_returns_the_duration_of_the_last_frame() {
     let par_canal = (SAMPLE_RATE_HZ / 1000 * 40) as usize; // 40 ms → 1920
     let mut enc = ::opus::Encoder::new(
         SAMPLE_RATE_HZ,
@@ -354,7 +357,7 @@ fn la_dissimulation_rend_la_duree_de_la_derniere_trame() {
     assert_eq!(
         dec.derniere_duree().unwrap(),
         par_canal,
-        "la durée relue n'est pas celle de la trame qui vient d'être décodée"
+        "the duration read back is not that of the frame just decoded"
     );
 
     // ⚠️ The buffer is DELIBERATELY larger than the frame — 60 ms for
@@ -366,7 +369,7 @@ fn la_dissimulation_rend_la_duree_de_la_derniere_trame() {
     assert_eq!(
         dec.dissimuler(&mut plc).unwrap(),
         par_canal,
-        "la dissimulation n'a pas rendu la durée de la dernière trame décodée"
+        "the concealment did not return the duration of the last decoded frame"
     );
 
     // And a FRESH decoder has no duration to conceal: it returns 0, up to
@@ -376,35 +379,35 @@ fn la_dissimulation_rend_la_duree_de_la_derniere_trame() {
 }
 
 /// The exact counterpart of the ENCODER's FEC energy test
-/// (`lbrr_est_reellement_decodable`), taken the other way round: the NEXT frame
+/// (`lbrr_is_really_decodable`), taken the other way round: the NEXT frame
 /// restores a signal CORRELATED with the original, not only bytes.
 ///
 /// The criterion is an energy RATIO between two streams that only differ in the loss
 /// declared to the encoder: without it, libopus emits no
 /// LBRR redundancy and the FEC decoder can only mask.
 #[test]
-fn la_reconstruction_fec_restitue_un_signal_correle_a_l_original() {
+fn fec_reconstruction_restores_a_signal_correlated_with_the_original() {
     let pcm: Vec<i16> = (0..FRAME_INTERLEAVED)
         .map(|i| ((i as f32 * 0.05).sin() * 8000.0) as i16)
         .collect();
 
     let mut enc_sans = OpusEncoder::new().expect("encodeur");
     let mut enc_with = OpusEncoder::new().expect("encodeur");
-    enc_with.set_packet_loss_perc(20).expect("perte déclarée");
+    enc_with.set_packet_loss_perc(20).expect("declared loss");
 
     let mut paquets_sans = Vec::new();
     let mut packets_with = Vec::new();
     for _ in 0..100 {
-        paquets_sans.push(enc_sans.encode(&pcm).expect("encodage sans"));
-        packets_with.push(enc_with.encode(&pcm).expect("encodage avec"));
+        paquets_sans.push(enc_sans.encode(&pcm).expect("encoding without"));
+        packets_with.push(enc_with.encode(&pcm).expect("encoding with"));
     }
 
     let energie = |paquet: &[u8]| -> f64 {
         // FRESH decoder, hence without history: what comes out can only come
         // from the redundancy carried by this very packet.
-        let mut dec = OpusDecoder::new().expect("décodeur");
+        let mut dec = OpusDecoder::new().expect("decoder");
         let mut sortie = vec![0i16; FRAME_INTERLEAVED];
-        let n = dec.decoder_fec(paquet, &mut sortie).expect("décodage FEC");
+        let n = dec.decoder_fec(paquet, &mut sortie).expect("FEC decoding");
         sortie[..n * CHANNELS]
             .iter()
             .map(|&e| (e as f64) * (e as f64))
@@ -414,7 +417,7 @@ fn la_reconstruction_fec_restitue_un_signal_correle_a_l_original() {
 
     let with = energie(&packets_with[99]);
     let sans = energie(&paquets_sans[99]);
-    eprintln!("FEC décodé : énergie avec perte déclarée={with:.2}, sans={sans:.2}");
+    eprintln!("FEC decoded: energy with declared loss={with:.2}, without={sans:.2}");
     // ⚠️ TWO assertions, and the second is the one that makes the test
     // discriminating. The energy ratio alone does NOT prove that the FEC
     // path was taken: decoding these two packets NORMALLY (fec
@@ -426,11 +429,11 @@ fn la_reconstruction_fec_restitue_un_signal_correle_a_l_original() {
     // invents nothing. A normal decoding, for its part, returns the packet's signal.
     assert!(
         with > sans * 10.0 + 1.0,
-        "la reconstruction FEC ne restitue rien de corrélé : avec={with:.2}, sans={sans:.2}"
+        "FEC reconstruction restores nothing correlated: with={with:.2}, without={sans:.2}"
     );
     assert!(
         sans < 1.0,
-        "sans redondance LBRR, le décodage FEC devrait rendre du SILENCE et rend {sans:.2} : \
-         le drapeau FEC n'a pas été honoré, et ce paquet a été décodé normalement"
+        "without LBRR redundancy, FEC decoding should return SILENCE and returns {sans:.2}: \
+         the FEC flag was not honoured, and this packet was decoded normally"
     );
 }

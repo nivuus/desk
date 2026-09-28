@@ -30,7 +30,7 @@
 //! `DISPLAY\SMKD1CE\…UID256` to `UID265` noting that "the driver's
 //! identifiers (256…265) go round in circles", and the `UIDnnnn` suffix of a
 //! monitor instance path IS the CCD target `id`
-//! (`docs/superpowers/plans/2026-08-30-lot22-hub-session-resultats.md`).
+//! (`docs/superpowers/plans/2026-08-30-lot22-hub-session-resultats.md`). (policy: allow-fr, real file path)
 //! The numbers coincide; that the returned LUID is the one CCD uses is not
 //! measured.
 //!
@@ -154,8 +154,8 @@ mod win {
             derniere = Some(statut);
         }
         Err(anyhow::anyhow!(
-            "QueryDisplayConfig a rendu {:#010x} après {ATTEMPTS} essais — la \
-             configuration d'affichage change plus vite qu'on ne la lit",
+            "QueryDisplayConfig returned {:#010x} after {ATTEMPTS} attempts — the \
+             display configuration changes faster than we can read it",
             derniere.map(|e| e.0).unwrap_or(0)
         ))
     }
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn la_cible_creee_donne_le_nom_gdi_de_sa_source() {
+    fn the_created_target_gives_the_gdi_name_of_its_source() {
         let chemins = vec![
             chemin((7, 0), 4096, "\\\\.\\DISPLAY1"),
             chemin((9, 0), 256, "\\\\.\\DISPLAY5"),
@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn un_identifiant_de_cible_ne_suffit_pas_sans_son_adaptateur() {
+    fn a_target_identifier_is_not_enough_without_its_adapter() {
         // The SAME target identifier on TWO adapters: it is the case
         // the pair exists to decide, and the reason why batch 32
         // stopped throwing away the LUID.
@@ -248,13 +248,13 @@ mod tests {
     }
 
     #[test]
-    fn une_cible_absente_rend_none_et_non_un_choix_au_hasard() {
+    fn a_missing_target_returns_none_not_a_random_choice() {
         let chemins = vec![chemin((7, 0), 4096, "\\\\.\\DISPLAY1")];
         assert_eq!(nom_gdi_de_la_cible(&chemins, (9, 0), 256), None);
     }
 
     #[test]
-    fn une_paire_ambigue_refuse_de_trancher() {
+    fn an_ambiguous_pair_refuses_to_decide() {
         // Two paths for the same pair: Windows should not produce
         // this state. We return `None` — hence the caller's fallback — rather than
         // designating the first, which would be a disguised enumeration rank.

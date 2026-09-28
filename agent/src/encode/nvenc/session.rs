@@ -113,7 +113,7 @@ impl SessionNvenc {
         let ouvrir = porte
             .fonctions
             .ouvrir_session_ex
-            .ok_or_else(|| anyhow!("emplacement nvEncOpenEncodeSessionEx vide"))?;
+            .ok_or_else(|| anyhow!("nvEncOpenEncodeSessionEx slot empty"))?;
         verify(
             unsafe { ouvrir(&mut params, &mut encodeur) },
             "nvEncOpenEncodeSessionEx",
@@ -148,7 +148,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .config_preregleage_ex
-            .ok_or_else(|| anyhow!("emplacement nvEncGetEncodePresetConfigEx vide"))?;
+            .ok_or_else(|| anyhow!("nvEncGetEncodePresetConfigEx slot empty"))?;
         verify(
             unsafe {
                 config_preregleage(
@@ -213,7 +213,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .initialize_encoder
-            .ok_or_else(|| anyhow!("emplacement nvEncInitializeEncoder vide"))?;
+            .ok_or_else(|| anyhow!("nvEncInitializeEncoder slot empty"))?;
         verify(
             unsafe { initialize(self.encodeur, &mut init) },
             "nvEncInitializeEncoder",
@@ -229,7 +229,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .create_bitstream_buffer
-            .ok_or_else(|| anyhow!("emplacement nvEncCreateBitstreamBuffer vide"))?;
+            .ok_or_else(|| anyhow!("nvEncCreateBitstreamBuffer slot empty"))?;
         verify(
             unsafe { create_buffer(self.encodeur, &mut tampon) },
             "nvEncCreateBitstreamBuffer",
@@ -241,7 +241,7 @@ impl SessionNvenc {
             hauteur = self.hauteur,
             fps,
             debit_bps,
-            "session NVENC native initialisée (P1, ultra faible latence, CBR)"
+            "native NVENC session initialised (P1, ultra low latency, CBR)"
         );
         Ok(())
     }
@@ -265,7 +265,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .register_resource
-            .ok_or_else(|| anyhow!("emplacement nvEncRegisterResource vide"))?;
+            .ok_or_else(|| anyhow!("nvEncRegisterResource slot empty"))?;
         verify(
             unsafe { register(self.encodeur, &mut demande) },
             "nvEncRegisterResource",
@@ -314,7 +314,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .reconfigurer_encodeur
-            .ok_or_else(|| anyhow!("emplacement nvEncReconfigureEncoder vide"))?;
+            .ok_or_else(|| anyhow!("nvEncReconfigureEncoder slot empty"))?;
         verify(
             unsafe { reconfigurer(self.encodeur, &mut params) },
             "nvEncReconfigureEncoder",
@@ -341,7 +341,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .projeter_ressource
-            .ok_or_else(|| anyhow!("emplacement nvEncMapInputResource vide"))?;
+            .ok_or_else(|| anyhow!("nvEncMapInputResource slot empty"))?;
         verify(
             unsafe { projeter(self.encodeur, &mut projection) },
             "nvEncMapInputResource",
@@ -383,7 +383,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .encoder_image
-            .ok_or_else(|| anyhow!("emplacement nvEncEncodePicture vide"))?;
+            .ok_or_else(|| anyhow!("nvEncEncodePicture slot empty"))?;
         let statut = unsafe { encoder(self.encodeur, &mut image) };
         // 17 = NV_ENC_ERR_NEED_MORE_INPUT: the encoder buffered the
         // image. It is NOT an error.
@@ -399,7 +399,7 @@ impl SessionNvenc {
             .porte
             .fonctions
             .verrouiller_flux
-            .ok_or_else(|| anyhow!("emplacement nvEncLockBitstream vide"))?;
+            .ok_or_else(|| anyhow!("nvEncLockBitstream slot empty"))?;
         verify(
             unsafe { verrouiller(self.encodeur, &mut verrou) },
             "nvEncLockBitstream",

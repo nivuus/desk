@@ -40,14 +40,14 @@ fn vm() -> Vec<Peripherique> {
 /// No request: it is Windows' default that will be captured, and only a
 /// COM call can name it.
 #[test]
-fn sans_demande_le_capte_est_le_defaut_de_windows() {
+fn without_a_request_the_captured_one_is_the_windows_default() {
     assert_eq!(identifiant_capte(&vm(), None), None);
     assert_eq!(identifiant_capte(&vm(), Some("   ")), None);
 }
 
 /// A request that elects: it is the elected one's identifier.
 #[test]
-fn une_demande_qui_elit_rend_son_identifiant() {
+fn an_electing_request_returns_its_identifier() {
     assert_eq!(
         identifiant_capte(&vm(), Some("Steam")),
         Some("{0.0.0.00000000}.{8695a111}".to_string())

@@ -75,31 +75,31 @@ mod tests_appartenance {
     use super::*;
 
     #[test]
-    fn une_fenetre_a_nous_est_gardee() {
+    fn a_window_of_ours_is_kept() {
         assert!(!ecartee_pour_non_appartenance(Some(true), true));
     }
 
     /// 🔴 THE USEFUL RED: Steam, Apollo, `cmd.exe` — everything `desk` did not
     /// launch.
     #[test]
-    fn une_fenetre_qui_n_est_pas_a_nous_est_ecartee() {
+    fn a_window_not_ours_is_discarded() {
         assert!(ecartee_pour_non_appartenance(Some(false), true));
     }
 
     /// 🔴 A failure of the QUESTION is not an answer: we keep.
     #[test]
-    fn un_echec_de_la_question_garde_la_fenetre() {
+    fn a_failure_of_the_query_keeps_the_window() {
         assert!(!ecartee_pour_non_appartenance(None, true));
     }
 
     /// The `APPARTENANCE=0` bench arm: the product from before the rule,
     /// exactly. It is the WITNESS that makes the rule discriminating.
     #[test]
-    fn desarmee_la_regle_n_ecarte_plus_rien() {
+    fn disarmed_the_rule_discards_nothing() {
         for a in [Some(true), Some(false), None] {
             assert!(
                 !ecartee_pour_non_appartenance(a, false),
-                "{a:?} ne doit plus être écartée"
+                "{a:?} must no longer be discarded"
             );
         }
     }
@@ -123,12 +123,12 @@ mod tests {
     }
 
     #[test]
-    fn une_fenetre_ordinaire_merite_une_fenetre_navigateur() {
+    fn an_ordinary_window_deserves_a_browser_window() {
         assert!(merite_une_fenetre(&ordinaire()));
     }
 
     #[test]
-    fn une_fenetre_invisible_est_ecartee() {
+    fn an_invisible_window_is_discarded() {
         let d = DescriptionFenetre {
             visible: false,
             ..ordinaire()
@@ -137,7 +137,7 @@ mod tests {
     }
 
     #[test]
-    fn une_fenetre_possedee_est_ecartee() {
+    fn an_owned_window_is_discarded() {
         // Modal dialogs, palettes: they stay composed in their
         // parent, which already has its browser window.
         let d = DescriptionFenetre {
@@ -148,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn une_tool_window_est_ecartee() {
+    fn a_tool_window_is_discarded() {
         let d = DescriptionFenetre {
             tool_window: true,
             ..ordinaire()
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn une_tool_window_qui_est_aussi_app_window_est_gardee() {
+    fn a_tool_window_that_is_also_app_window_is_kept() {
         // WS_EX_APPWINDOW forces presence in Alt-Tab: it is the
         // exact exemption the framing's criterion provides.
         let d = DescriptionFenetre {
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn une_fenetre_masquee_par_dwm_est_ecartee() {
+    fn a_dwm_cloaked_window_is_discarded() {
         // Without this filter we pick up ghost UWP windows, which exist
         // without ever showing.
         let d = DescriptionFenetre {
@@ -180,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn une_fenetre_sans_titre_est_ecartee() {
+    fn an_untitled_window_is_discarded() {
         let d = DescriptionFenetre {
             titre: String::new(),
             ..ordinaire()
@@ -189,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn le_masquage_dwm_prime_sur_app_window() {
+    fn dwm_cloaking_takes_precedence_over_app_window() {
         // A ghost window carrying WS_EX_APPWINDOW must not
         // come back through the exemption: the order of tests matters here.
         let d = DescriptionFenetre {

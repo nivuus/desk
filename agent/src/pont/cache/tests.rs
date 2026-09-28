@@ -14,18 +14,18 @@ fn t0() -> Instant {
 }
 
 #[test]
-fn un_chemin_jamais_pose_n_est_pas_memorise() {
+fn a_never_set_path_is_not_memorised() {
     let mut c = CacheEnumeration::new();
     assert!(c.lire("dossier", t0()).is_none());
     assert_eq!(c.size(), 0);
 }
 
 #[test]
-fn ce_qui_est_pose_est_relu_a_l_identique() {
+fn what_is_set_is_read_back_identically() {
     let mut c = CacheEnumeration::new();
     let t = t0();
     c.poser("dossier".into(), vec![e("a.txt"), e("b.txt")], t);
-    let lues = c.lire("dossier", t).expect("mémorisé");
+    let lues = c.lire("dossier", t).expect("memorised");
     assert_eq!(lues.len(), 2);
     assert_eq!(lues[0].nom, "a.txt");
     assert_eq!(lues[1].nom, "b.txt");
@@ -55,24 +55,20 @@ fn an_expired_memory_is_removed_not_merely_ignored() {
     c.poser("dossier".into(), vec![e("a.txt")], t);
     assert_eq!(c.size(), 1);
     let _ = c.lire("dossier", t + TTL_ENUMERATION);
-    assert_eq!(
-        c.size(),
-        0,
-        "l'entrée expirée doit être retirée, pas gardée"
-    );
+    assert_eq!(c.size(), 0, "the expired entry must be removed, not kept");
 }
 
 #[test]
-fn poser_deux_fois_ecrase_et_rearme_l_horloge() {
+fn setting_twice_overwrites_and_re_arms_the_clock() {
     let mut c = CacheEnumeration::new();
     let t = t0();
     c.poser("dossier".into(), vec![e("vieux.txt")], t);
     let tard = t + TTL_ENUMERATION - Duration::from_millis(1);
     c.poser("dossier".into(), vec![e("neuf.txt")], tard);
-    assert_eq!(c.size(), 1, "la seconde pose écrase, elle n'ajoute pas");
+    assert_eq!(c.size(), 1, "the second set overwrites, it does not add");
     let lues = c
         .lire("dossier", tard + Duration::from_millis(1))
-        .expect("réarmée");
+        .expect("re-armed");
     assert_eq!(lues[0].nom, "neuf.txt");
 }
 
@@ -84,12 +80,15 @@ fn poser_deux_fois_ecrase_et_rearme_l_horloge() {
 /// would keep being served from memory, and the created file
 /// would never appear.
 #[test]
-fn invalider_oublie_le_repertoire_parent_du_chemin_mute() {
+fn invalidating_forgets_the_parent_directory_of_the_mutated_path() {
     let mut c = CacheEnumeration::new();
     let t = t0();
     c.poser("dossier".into(), vec![e("a.txt")], t);
     c.invalider("dossier/neuf.txt");
-    assert!(c.lire("dossier", t).is_none(), "le PARENT doit être oublié");
+    assert!(
+        c.lire("dossier", t).is_none(),
+        "the PARENT must be forgotten"
+    );
 }
 
 /// ⚠️ **The parent of a path without a separator is the ROOT, `""`** — the key
@@ -97,7 +96,7 @@ fn invalider_oublie_le_repertoire_parent_du_chemin_mute() {
 /// a creation at the root invisible: it is exactly the gesture of
 /// criterion ① of F5's acceptance run.
 #[test]
-fn le_parent_d_un_chemin_de_premier_niveau_est_la_racine() {
+fn the_parent_of_a_first_level_path_is_the_root() {
     assert_eq!(parent_de("note.txt"), "");
     assert_eq!(parent_de("dossier/note.txt"), "dossier");
     assert_eq!(parent_de("a/b/c.txt"), "a/b");
@@ -108,28 +107,28 @@ fn le_parent_d_un_chemin_de_premier_niveau_est_la_racine() {
     c.invalider("neuf.txt");
     assert!(
         c.lire("", t).is_none(),
-        "la racine doit être oubliée sur une création de premier niveau"
+        "the root must be forgotten on a first-level creation"
     );
 }
 
 /// Invalidating a directory touches **no other**: a cache that would
 /// empty itself entirely at each write would not be a cache.
 #[test]
-fn invalider_ne_touche_pas_les_repertoires_voisins() {
+fn invalidating_does_not_touch_neighbouring_directories() {
     let mut c = CacheEnumeration::new();
     let t = t0();
     c.poser("a".into(), vec![e("x.txt")], t);
     c.poser("b".into(), vec![e("y.txt")], t);
     c.invalider("a/neuf.txt");
     assert!(c.lire("a", t).is_none());
-    assert!(c.lire("b", t).is_some(), "le voisin doit survivre");
+    assert!(c.lire("b", t).is_some(), "the neighbour must survive");
 }
 
 /// Invalidating a path never memorised must do **nothing**, and above all not
 /// panic: ProjFS notifications arrive for paths the bridge
 /// has never listed.
 #[test]
-fn invalider_un_chemin_inconnu_est_inoffensif() {
+fn invalidating_an_unknown_path_is_harmless() {
     let mut c = CacheEnumeration::new();
     let t = t0();
     c.poser("a".into(), vec![e("x.txt")], t);
@@ -161,6 +160,6 @@ fn a_remembered_empty_directory_is_served_as_such() {
     let mut c = CacheEnumeration::new();
     let t = t0();
     c.poser("vide".into(), Vec::new(), t);
-    let lues = c.lire("vide", t).expect("mémorisé, quoique vide");
+    let lues = c.lire("vide", t).expect("memorised, although empty");
     assert!(lues.is_empty());
 }

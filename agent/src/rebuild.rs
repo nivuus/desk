@@ -65,11 +65,11 @@ mod tests {
     use anyhow::anyhow;
 
     #[test]
-    fn reussite_de_la_fabrique_principale_produit_rebuilt() {
+    fn success_of_the_primary_factory_produces_rebuilt() {
         let outcome = rebuild_or_recover(|| Ok::<_, Error>(42), || Ok::<_, Error>(0));
         match outcome {
             RebuildOutcome::Rebuilt(v) => assert_eq!(v, 42),
-            _ => panic!("attendu Rebuilt"),
+            _ => panic!("expected Rebuilt"),
         }
     }
 
@@ -80,32 +80,32 @@ mod tests {
         // succeeds — the caller must be able to keep producing frames
         // with its old parameters rather than stay without capture.
         let outcome = rebuild_or_recover(
-            || Err::<i32, _>(anyhow!("échec principal")),
+            || Err::<i32, _>(anyhow!("primary failure")),
             || Ok::<_, Error>("secours"),
         );
         match outcome {
             RebuildOutcome::Recovered(v, e) => {
                 assert_eq!(v, "secours");
-                assert!(e.to_string().contains("échec principal"));
+                assert!(e.to_string().contains("primary failure"));
             }
-            _ => panic!("attendu Recovered"),
+            _ => panic!("expected Recovered"),
         }
     }
 
     #[test]
-    fn echec_des_deux_fabriques_produit_fatal() {
+    fn failure_of_both_factories_produces_fatal() {
         let outcome = rebuild_or_recover(
-            || Err::<i32, _>(anyhow!("échec principal")),
-            || Err::<i32, _>(anyhow!("échec de secours")),
+            || Err::<i32, _>(anyhow!("primary failure")),
+            || Err::<i32, _>(anyhow!("fallback failure")),
         );
         match outcome {
-            RebuildOutcome::Fatal(e) => assert!(e.to_string().contains("échec principal")),
-            _ => panic!("attendu Fatal"),
+            RebuildOutcome::Fatal(e) => assert!(e.to_string().contains("primary failure")),
+            _ => panic!("expected Fatal"),
         }
     }
 
     #[test]
-    fn la_fabrique_de_secours_n_est_jamais_appelee_si_la_principale_reussit() {
+    fn the_fallback_factory_is_never_called_if_the_primary_succeeds() {
         // Direct proof of the constraint that motivates this mechanism: never
         // build both resources at the same time (DXGI
         // only allows a single live instance at a time for the duplicated

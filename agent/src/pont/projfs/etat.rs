@@ -318,7 +318,7 @@ impl Etat {
             position: morceau.position,
             length: morceau.length,
         })
-        .expect("un en-tête Lire se sérialise toujours");
+        .expect("a Lire header always serializes");
         let poursuivie = self.demander(
             commande,
             Attendue::Lire {
@@ -338,7 +338,7 @@ impl Etat {
             tracing::warn!(
                 chemin,
                 commande,
-                "lecture interrompue : le canal du pont est parti"
+                "read interrupted: the bridge channel is gone"
             );
             let contexte = self.contexte();
             if let Some(Contexte(contexte)) = contexte {
@@ -384,9 +384,9 @@ impl Etat {
     /// single word would suggest eviction has come.*
     pub fn tracer_hydratation(&self) {
         tracing::info!(
-            octets = self.octets_hydrates.load(Ordering::Relaxed),
-            entrees = self.entrees_hydratees.load(Ordering::Relaxed),
-            "racine hydratee (par CETTE execution du pont, pas par le disque)"
+            bytes = self.octets_hydrates.load(Ordering::Relaxed),
+            entries = self.entrees_hydratees.load(Ordering::Relaxed),
+            "root hydrated (by THIS bridge run, not by the disk)"
         );
     }
 }

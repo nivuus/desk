@@ -101,24 +101,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn un_etat_plus_recent_est_accepte() {
+    fn a_newer_state_is_accepted() {
         assert!(plus_recent(11, 10));
         assert!(plus_recent(1000, 1));
     }
 
     #[test]
-    fn un_etat_plus_ancien_est_rejete() {
+    fn an_older_state_is_rejected() {
         assert!(!plus_recent(9, 10));
         assert!(!plus_recent(1, 1000));
     }
 
     #[test]
-    fn un_etat_identique_est_rejete() {
+    fn an_identical_state_is_rejected() {
         assert!(!plus_recent(10, 10));
     }
 
     #[test]
-    fn le_bouclage_de_la_sequence_est_franchi_correctement() {
+    fn the_sequence_wrap_is_crossed_correctly() {
         // The point of the `seq` field: at 250 Hz, the u16 wraps every
         // 4 minutes. A naive comparison `new > current` would then
         // reject all states for half a loop — that is two minutes
@@ -129,14 +129,14 @@ mod tests {
     }
 
     #[test]
-    fn la_premiere_vibration_passe_immediatement() {
+    fn the_first_rumble_goes_through_immediately() {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         assert_eq!(limiteur.observer(t0, (200, 100)), Some((200, 100)));
     }
 
     #[test]
-    fn un_etat_identique_n_est_pas_reemis() {
+    fn an_identical_state_is_not_re_emitted() {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         limiteur.observer(t0, (200, 100));
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn un_changement_trop_rapproche_est_differe_puis_emis() {
+    fn a_too_close_change_is_deferred_then_emitted() {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         limiteur.observer(t0, (10, 0));

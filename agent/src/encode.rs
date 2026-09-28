@@ -150,12 +150,12 @@ pub fn phase_name(phase: u64) -> &'static str {
         PHASE_ENCODER_PROCESS_INPUT => "encodeur/ProcessInput",
         PHASE_POLL_DRAIN_EVENTS => "poll_output/GetEvent",
         PHASE_ENCODER_PROCESS_OUTPUT => "encodeur/ProcessOutput",
-        PHASE_ENCODER_READ_BUFFER => "encodeur/lecture du tampon",
+        PHASE_ENCODER_READ_BUFFER => "encoder/buffer read",
         PHASE_CAPTURE => "capture/next_frame",
         PHASE_CAPTURE_ACQUIRE => "capture/AcquireNextFrame",
         PHASE_CAPTURE_CROP => "capture/CopySubresourceRegion",
         PHASE_CAPTURE_RELEASE => "capture/ReleaseFrame",
-        _ => "inconnu",
+        _ => "unknown",
     }
 }
 
@@ -279,7 +279,7 @@ fn start_media_foundation() -> Result<()> {
         Ok(()) => Ok(()),
         // A failure is remembered: retrying it at each encoder would only
         // repeat the same failure, and `MFStartup` is not a call to retry.
-        Err(message) => bail!("démarrage de Media Foundation : {message}"),
+        Err(message) => bail!("Media Foundation startup: {message}"),
     }
 }
 
@@ -318,7 +318,7 @@ fn start_media_foundation() -> Result<()> {
 /// ```
 ///
 /// Detail, raw surveys and **three remedies refuted by measurement**:
-/// `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`.
+/// `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`. (policy: allow-fr, real file path)
 pub enum H264Encoder {
     /// L'API NVENC native — la porte qu'Apollo emprunte.
     ///
@@ -357,7 +357,7 @@ impl H264Encoder {
                 Err(error) => tracing::warn!(
                     %error,
                     adaptateur = %vu.nom,
-                    "NVENC natif indisponible : repli sur la MFT Media Foundation"
+                    "native NVENC unavailable: falling back to the Media Foundation MFT"
                 ),
             }
         }

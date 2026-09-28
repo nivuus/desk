@@ -23,11 +23,11 @@ fn instant(base: std::time::Instant, ms: u64) -> std::time::Instant {
 /// and that is what left the shell page empty while the four
 /// applications were still running.
 #[test]
-fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
+fn a_window_whose_child_dies_is_offered_again() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -38,7 +38,7 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
         !effets
             .iter()
             .any(|e| matches!(e, Effet::DetruireSortie { .. })),
-        "depuis D3 §7.1 la sortie est retenue pour la relance, reçu {effets:?}"
+        "since D3 §7.1 the output is retained for the relaunch, got {effets:?}"
     );
 
     // The window, for its part, is not forgotten: the periodic check
@@ -49,11 +49,11 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
         titre,
     }) = effets.first()
     else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     assert_ne!(
         *neuve, session,
-        "un identifiant réutilisé apparierait un message tardif"
+        "a reused identifier would pair a late message"
     );
     assert_eq!(titre, "Bloc-notes");
 }
@@ -62,7 +62,7 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
 /// window whose child systematically dies produces the loop
 /// `w-5, w-6, w-7, w-8…` observed during acceptance.
 #[test]
-fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
+fn a_window_failing_endlessly_ends_up_abandoned() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     let mut effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
@@ -80,7 +80,7 @@ fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
     // independent.
     for _ in 0..=RELANCES_MAX {
         let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-            panic!("ouverture attendue, reçu {effets:?}");
+            panic!("opening expected, got {effets:?}");
         };
         let session = session.clone();
         t.enfant_mort(&session);
@@ -88,22 +88,22 @@ fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
     }
     assert!(
         matches!(effets.first(), Some(Effet::AnnoncerRefus { titre, .. }) if titre == "Bloc-notes"),
-        "au-delà du plafond, un refus annoncé et non une relance de plus, reçu {effets:?}"
+        "beyond the ceiling, an announced refusal and not one more relaunch, got {effets:?}"
     );
     assert!(
         t.relancer_les_orphelines(instant(base, 0)).is_empty(),
-        "une fenêtre abandonnée ne doit plus rien produire"
+        "an abandoned window must no longer produce anything"
     );
 }
 
 /// A window that closes for good leaves the table, orphaned or not:
 /// otherwise `relancer_les_orphelines` would resurrect it indefinitely.
 #[test]
-fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
+fn an_orphan_window_that_closes_leaves_the_table() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     t.enfant_mort(&session.clone());
     t.fenetre_disparue(IdFenetre(1));
@@ -119,11 +119,11 @@ fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
 /// precise risk disappeared with the `.take()` that prevented it. What remains to
 /// guarantee is that a second death does not leak the retained output.
 #[test]
-fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
+fn a_second_dead_child_does_not_leak_the_retained_output() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -134,7 +134,7 @@ fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
         !premier
             .iter()
             .any(|e| matches!(e, Effet::DetruireSortie { .. })),
-        "depuis D3 §7.1 la première mort ne rend déjà plus la sortie, reçu {premier:?}"
+        "since D3 §7.1 the first death no longer gives the output back, got {premier:?}"
     );
 
     let second = t.enfant_mort(&session);
@@ -142,12 +142,12 @@ fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
         !second
             .iter()
             .any(|e| matches!(e, Effet::DetruireSortie { .. })),
-        "une seconde mort ne doit pas non plus la rendre, reçu {second:?}"
+        "a second death must not give it back either, got {second:?}"
     );
     assert_eq!(
         t.nom_sortie_de(&session),
         Some("\\\\.\\DISPLAY7"),
-        "la sortie doit toujours être retenue après deux morts"
+        "the output must still be retained after two deaths"
     );
 }
 
@@ -159,12 +159,12 @@ fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
 /// `Vivante`. Without this safeguard, its place would stay lost until the
 /// supervisor's shutdown.
 #[test]
-fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
+fn a_relaunch_stalling_without_a_viewport_ends_up_abandoned() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     t.enfant_mort(&session.clone());
 
@@ -174,7 +174,7 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
         session: relancee, ..
     }) = effets.first()
     else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let relancee = relancee.clone();
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLeViewport));
@@ -182,7 +182,7 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     // No viewport ever comes. Well before the delay, nothing happens.
     assert!(
         t.relancer_les_orphelines(instant(base, 100)).is_empty(),
-        "une entrée qui n'a pas encore stagné ne doit rien produire"
+        "an entry that has not stalled yet must produce nothing"
     );
 
     // Past the delay, the entry is abandoned — and removed from the table.
@@ -190,24 +190,24 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     let effets = t.relancer_les_orphelines(instant(base, apres_delai));
     assert!(
         matches!(effets.first(), Some(Effet::AnnoncerRefus { titre, .. }) if titre == "Bloc-notes"),
-        "au-delà du délai, un refus plutôt qu'un silence indéfini, reçu {effets:?}"
+        "beyond the delay, a refusal rather than an indefinite silence, got {effets:?}"
     );
     assert_eq!(
         t.etat(&relancee),
         None,
-        "l'entrée figée doit avoir quitté la table"
+        "the frozen entry must have left the table"
     );
 }
 
 /// The counterpart of the previous test: a restarted entry that receives its viewport
 /// IN TIME must never be abandoned, even long after.
 #[test]
-fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
+fn a_relaunch_answering_in_time_is_not_abandoned() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     t.enfant_mort(&session.clone());
 
@@ -216,7 +216,7 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
         session: relancee, ..
     }) = effets.first()
     else {
-        panic!("réouverture attendue, reçu {effets:?}");
+        panic!("reopening expected, got {effets:?}");
     };
     let relancee = relancee.clone();
 
@@ -224,7 +224,7 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     let effets = t.viewport_recu(&relancee, 1280, 720);
     assert!(
         !effets.is_empty(),
-        "le viewport doit déclencher la création de sortie"
+        "the viewport must trigger the output creation"
     );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
 
@@ -234,7 +234,7 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     assert!(
         t.relancer_les_orphelines(instant(base, bien_plus_tard))
             .is_empty(),
-        "une entrée qui a répondu à temps ne doit jamais être abandonnée"
+        "an entry that answered in time must never be abandoned"
     );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
 }
@@ -244,7 +244,7 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
 /// abandoned: neither `SansSession`, nor `Vivante`. Its place was lost until
 /// the supervisor's shutdown.
 #[test]
-fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() {
+fn a_new_window_whose_shell_never_answers_ends_up_abandoned() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
@@ -259,7 +259,7 @@ fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() 
         effets
             .iter()
             .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
-        "la place doit être libérée, reçu {effets:?}"
+        "the slot must be freed, got {effets:?}"
     );
     assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
 }
@@ -271,7 +271,7 @@ fn a_new_window_answering_in_time_is_not_abandoned() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
 
@@ -279,7 +279,7 @@ fn a_new_window_answering_in_time_is_not_abandoned() {
     t.viewport_recu(&session, 1280, 720);
 
     let effets = t.relancer_les_orphelines(instant(base, 30_001));
-    assert!(effets.is_empty(), "reçu {effets:?}");
+    assert!(effets.is_empty(), "got {effets:?}");
 }
 
 /// 🔴 THE PRODUCTION DEFECT OF AUGUST 30TH, 2026, PLAYED ON THE PURE TABLE.
@@ -300,7 +300,7 @@ fn a_shell_page_arriving_late_receives_the_pending_windows() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     // This announcement is LOST: no `client` peer is connected.
@@ -313,17 +313,17 @@ fn a_shell_page_arriving_late_receives_the_pending_windows() {
         titre,
     }) = effets.first()
     else {
-        panic!("réannonce attendue, reçu {effets:?}");
+        panic!("re-announcement expected, got {effets:?}");
     };
     assert_eq!(
         *redite, session,
-        "la session ne change pas : la fenêtre non plus"
+        "the session does not change: neither does the window"
     );
     assert_eq!(titre, "Bloc-notes");
     assert_eq!(
         effets.len(),
         1,
-        "une seule fenêtre, une seule annonce : {effets:?}"
+        "a single window, a single announcement: {effets:?}"
     );
 }
 
@@ -335,7 +335,7 @@ fn a_shell_page_arriving_late_receives_the_pending_windows() {
 /// 10 s to open its pop-up and send back the viewport; here it has a full
 /// thirty.
 #[test]
-fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
+fn the_re_announcement_resets_the_countdown() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
@@ -350,7 +350,7 @@ fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
         !effets
             .iter()
             .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
-        "la fenêtre a 25 s d'attente depuis l'arrivée de la shell, reçu {effets:?}"
+        "the window has 25 s of waiting since the shell arrived, got {effets:?}"
     );
 }
 
@@ -374,7 +374,7 @@ fn a_present_but_silent_shell_always_loses_its_window() {
         effets
             .iter()
             .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
-        "30 s après l'arrivée de la shell, l'abandon doit avoir lieu : {effets:?}"
+        "30 s after the shell arrived, the abandonment must take place: {effets:?}"
     );
     // The place is really handed back: the table offered only ONE.
     assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
@@ -388,7 +388,7 @@ fn the_retained_output_is_always_released_on_abandon_after_a_reannounce() {
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -409,7 +409,7 @@ fn the_retained_output_is_always_released_on_abandon_after_a_reannounce() {
                 ..
             }
         )),
-        "la sortie retenue doit repartir au pilote, reçu {effets:?}"
+        "the retained output must go back to the driver, got {effets:?}"
     );
 }
 
@@ -422,12 +422,12 @@ fn the_retained_output_is_always_released_on_abandon_after_a_reannounce() {
 /// **It is a named legacy**: a reload of the shell page does not recover
 /// already live windows.
 #[test]
-fn une_fenetre_vivante_n_est_pas_redite() {
+fn a_live_window_is_not_said_again() {
     let base = std::time::Instant::now();
     let mut t = Table::new(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
-        panic!("ouverture attendue, reçu {effets:?}");
+        panic!("opening expected, got {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
@@ -439,7 +439,7 @@ fn une_fenetre_vivante_n_est_pas_redite() {
     let effets = t.reannoncer_les_attentes(instant(base, 1_000));
     assert!(
         effets.is_empty(),
-        "une session vivante ne se redit pas, reçu {effets:?}"
+        "a live session is not said again, got {effets:?}"
     );
 }
 
@@ -447,7 +447,7 @@ fn une_fenetre_vivante_n_est_pas_redite() {
 /// **The negative witness of the test above** — without it, `is_empty()` would be
 /// true of a method that NEVER returns anything.
 #[test]
-fn la_reannonce_sur_une_table_vide_ne_rend_rien() {
+fn the_re_announcement_on_an_empty_table_returns_nothing() {
     let mut t = Table::new(4);
     assert!(t
         .reannoncer_les_attentes(std::time::Instant::now())

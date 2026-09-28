@@ -73,12 +73,12 @@ pub enum DuNavigateur {
 /// to match.
 pub fn build_data_rtc(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
     let socket =
-        UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("ouverture du socket UDP du pont")?;
+        UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("opening the bridge UDP socket")?;
     socket
         .set_nonblocking(true)
-        .context("passage du socket UDP du pont en non bloquant")?;
+        .context("switching the bridge UDP socket to non-blocking")?;
     let addr = socket.local_addr()?;
-    tracing::info!(%addr, "socket UDP du pont fichiers");
+    tracing::info!(%addr, "file bridge UDP socket");
 
     // Idempotent: `OnceLock::set` silently ignores a second call. The
     // bridge is a separate process, so in practice it is the first — but
@@ -87,7 +87,7 @@ pub fn build_data_rtc(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
 
     let mut rtc = Rtc::builder().clear_codecs().build(Instant::now());
     rtc.add_local_candidate(
-        Candidate::host(addr, "udp").map_err(|e| anyhow!("candidat hôte invalide : {e}"))?,
+        Candidate::host(addr, "udp").map_err(|e| anyhow!("invalid host candidate: {e}"))?,
     );
     Ok((socket, rtc))
 }
@@ -105,7 +105,7 @@ pub fn tourner(
 ) -> Result<()> {
     let adresse = socket
         .local_addr()
-        .context("adresse locale du socket du pont")?;
+        .context("local address of the bridge socket")?;
     let mut canal: Option<ChannelId> = None;
     let mut tampon = vec![0u8; TAMPON_UDP];
 
@@ -123,7 +123,7 @@ pub fn tourner(
         let echeance = loop {
             match rtc
                 .poll_output()
-                .map_err(|e| anyhow!("poll_output du pont : {e}"))?
+                .map_err(|e| anyhow!("bridge poll_output: {e}"))?
             {
                 Output::Timeout(t) => break t,
                 Output::Transmit(t) => {
@@ -156,7 +156,7 @@ pub fn tourner(
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => {
-                tracing::info!("plus personne n'émet de requête : arrêt du transport du pont");
+                tracing::info!("nobody emits requests any more: stopping the bridge transport");
                 return Ok(());
             }
         }
@@ -166,15 +166,15 @@ pub fn tourner(
         match socket.recv_from(&mut tampon) {
             Ok((size, source)) => {
                 let recu = Receive::new(Protocol::Udp, source, adresse, &tampon[..size])
-                    .map_err(|e| anyhow!("datagramme illisible : {e}"))?;
+                    .map_err(|e| anyhow!("unreadable datagram: {e}"))?;
                 rtc.handle_input(Input::Receive(Instant::now(), recu))
-                    .map_err(|e| anyhow!("handle_input du pont : {e}"))?;
+                    .map_err(|e| anyhow!("bridge handle_input: {e}"))?;
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 rtc.handle_input(Input::Timeout(Instant::now()))
-                    .map_err(|e| anyhow!("handle_input(Timeout) du pont : {e}"))?;
+                    .map_err(|e| anyhow!("bridge handle_input(Timeout): {e}"))?;
             }
-            Err(e) => return Err(e).context("lecture du socket UDP du pont"),
+            Err(e) => return Err(e).context("reading the bridge UDP socket"),
         }
     }
 }
@@ -187,7 +187,7 @@ fn traiter(
 ) -> Option<Result<()>> {
     match evenement {
         Event::Connected => {
-            tracing::info!("pont fichiers connecté au navigateur");
+            tracing::info!("file bridge connected to the browser");
         }
         // 🔴 **Defect found by the closing test, not by
         // review.** Without these two arms, the loop only noticed the peer's
@@ -199,12 +199,12 @@ fn traiter(
         // would have been the fifth time this repository paid for an event fallen
         // into a catch-all arm.
         Event::Closed => {
-            tracing::info!("connexion du pont fermée par le pair (close_notify DTLS)");
+            tracing::info!("bridge connection closed by the peer (DTLS close_notify)");
             let _ = entrant.send(DuNavigateur::CanalFerme);
             return Some(Ok(()));
         }
         Event::IceConnectionStateChange(str0m::IceConnectionState::Disconnected) => {
-            tracing::warn!("ICE déconnecté sur le pont fichiers");
+            tracing::warn!("ICE disconnected on the file bridge");
             let _ = entrant.send(DuNavigateur::CanalFerme);
             return Some(Ok(()));
         }
@@ -221,19 +221,19 @@ fn traiter(
             // everything else, costs three lines now and a whole acceptance
             // run later.
             if label == FILES_LABEL {
-                tracing::info!(%label, "canal du pont fichiers ouvert");
+                tracing::info!(%label, "file bridge channel open");
                 *canal = Some(id);
                 let _ = entrant.send(DuNavigateur::CanalOuvert);
             } else {
                 tracing::warn!(
                     %label, ?id,
-                    "canal de données ignoré : le pont ne sert que le label attendu"
+                    "data channel ignored: the bridge only serves the expected label"
                 );
             }
         }
         Event::ChannelClose(id) => {
             if *canal == Some(id) {
-                tracing::info!(?id, "canal du pont fichiers fermé");
+                tracing::info!(?id, "file bridge channel closed");
                 *canal = None;
                 let _ = entrant.send(DuNavigateur::CanalFerme);
             }
@@ -246,7 +246,7 @@ fn traiter(
                 // re-attribution" (D6).
                 tracing::warn!(
                     id = ?data.id, attendu = ?canal, octets = data.data.len(),
-                    "données reçues sur un canal qui n'est pas celui du pont : ignorées"
+                    "data received on a channel that is not the bridge's: ignored"
                 );
                 return None;
             }
@@ -260,14 +260,14 @@ fn traiter(
                         })
                         .is_err()
                     {
-                        tracing::info!("plus personne ne lit les réponses : arrêt du transport");
+                        tracing::info!("nobody reads the answers any more: stopping the transport");
                         return Some(Ok(()));
                     }
                 }
                 // An unreadable frame is THROWN AWAY, never guessed: its
                 // correlation is precisely what cannot be read, so
                 // nothing would allow linking it to a command.
-                Err(error) => tracing::warn!(%error, "trame du navigateur illisible, jetée"),
+                Err(error) => tracing::warn!(%error, "unreadable browser frame, dropped"),
             }
         }
         _ => {}
@@ -282,17 +282,14 @@ fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u
         // between a command's registration and its emission. The caller
         // will learn it through its table's expiry — it is what the table
         // exists to cover.
-        tracing::warn!(
-            correlation,
-            "requête non émise : aucun canal du pont ouvert"
-        );
+        tracing::warn!(correlation, "request not emitted: no bridge channel open");
         return;
     };
     let Some(mut sortie) = rtc.channel(id) else {
         tracing::warn!(
             correlation,
             ?id,
-            "requête non émise : canal introuvable côté str0m"
+            "request not emitted: channel not found on the str0m side"
         );
         return;
     };
@@ -300,7 +297,7 @@ fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u
     // a files frame's payload is made of raw bytes, and writing it
     // in text mode would put it through UTF-8 validation on the browser side.
     if let Err(error) = sortie.write(true, trame) {
-        tracing::warn!(%error, correlation, "écriture d'une requête du pont échouée");
+        tracing::warn!(%error, correlation, "writing a bridge request failed");
     }
 }
 

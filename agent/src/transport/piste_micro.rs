@@ -93,7 +93,7 @@ impl Session {
             // Spec §10: "upstream track not negotiated → no packet expected,
             // SINGLE warning". Modelled on `warn_audio_negotiation_once`.
             self.avertir_micro_une_fois(
-                "piste micro négociée mais aucun puits installé, paquet abandonné",
+                "mic track negotiated but no sink installed, packet dropped",
             );
             return;
         }
@@ -103,7 +103,7 @@ impl Session {
         // would make the timeline drift without any error saying so.
         if data.time.denom() != SAMPLE_RATE_HZ {
             self.avertir_micro_une_fois(
-                "horloge RTP de la piste micro différente de 48 kHz, paquets abandonnés",
+                "mic track RTP clock different from 48 kHz, packets dropped",
             );
             return;
         }
@@ -113,7 +113,7 @@ impl Session {
             Ok(n) if n > 0 => n,
             _ => {
                 self.avertir_micro_une_fois(
-                    "paquet micro dont la durée Opus est illisible, paquets abandonnés",
+                    "mic packet whose Opus duration is unreadable, packets dropped",
                 );
                 return;
             }
@@ -143,7 +143,7 @@ impl Session {
             Some(puits) => puits.deposer(trame),
             None => {
                 self.avertir_micro_une_fois(
-                    "piste micro négociée mais aucun puits installé, paquet abandonné",
+                    "mic track negotiated but no sink installed, packet dropped",
                 );
                 return;
             }
@@ -167,8 +167,8 @@ impl Session {
             // resumption, for its part, has its own line on the sink side
             // (mic: cable acquired after a refusal).
             tracing::warn!(
-                "le puits micro refuse les trames (exclusivité non acquise) : \
-                 une autre fenêtre porte déjà le micro"
+                "the mic sink refuses the frames (exclusivity not acquired): \
+                 another window already carries the mic"
             );
         }
 

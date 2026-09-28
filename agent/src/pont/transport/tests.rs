@@ -41,9 +41,9 @@ pub(super) struct Pair {
 /// `enable_*` does negotiate a data-only connection.
 pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigateur>) {
     let local_ip = "127.0.0.1".parse().unwrap();
-    let (socket_pont, mut rtc_pont) = build_data_rtc(local_ip).expect("pont construit");
+    let (socket_pont, mut rtc_pont) = build_data_rtc(local_ip).expect("bridge built");
 
-    let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
+    let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("peer socket");
     let adresse = socket.local_addr().unwrap();
     let mut rtc = Rtc::builder().clear_codecs().build(Instant::now());
     rtc.add_local_candidate(Candidate::host(adresse, "udp").unwrap());
@@ -54,16 +54,16 @@ pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver
         .iter()
         .map(|l| api.add_channel((*l).to_string()))
         .collect();
-    let (offre, en_attente) = api.apply().expect("offre non vide");
+    let (offre, en_attente) = api.apply().expect("non-empty offer");
 
     let reponse = rtc_pont
         .sdp_api()
         .accept_offer(offre)
-        .expect("le pont accepte une offre de données seules");
-    let reponse = SdpAnswer::from_sdp_string(&reponse.to_sdp_string()).expect("réponse SDP valide");
+        .expect("the bridge accepts a data-only offer");
+    let reponse = SdpAnswer::from_sdp_string(&reponse.to_sdp_string()).expect("valid SDP answer");
     rtc.sdp_api()
         .accept_answer(en_attente, reponse)
-        .expect("réponse acceptée");
+        .expect("answer accepted");
 
     let (tx_sortant, rx_sortant) = channel();
     let (tx_entrant, rx_entrant) = channel();
@@ -119,7 +119,7 @@ pub(super) fn echanger(
         let maintenant = Instant::now();
         assert!(
             maintenant < limite,
-            "budget dépassé sans {quoi} (remontées : {remontees:?}, reçues : {})",
+            "budget exceeded without {quoi} (surfaced: {remontees:?}, received: {})",
             recus.len()
         );
         agir(&mut pair.rtc, &remontees);
@@ -172,7 +172,7 @@ pub(super) fn canal_ouvert(remontees: &[DuNavigateur]) -> bool {
 }
 
 #[test]
-fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
+fn a_frame_emitted_by_the_bridge_reaches_the_peer_as_binary() {
     let (mut pair, sortant, entrant) = monter(&[FILES_LABEL]);
 
     let trame = proto::files::encoder(
@@ -201,15 +201,15 @@ fn une_trame_emise_par_le_pont_arrive_au_pair_en_binaire() {
             }
         },
         |_, recus| !recus.is_empty(),
-        "que la trame du pont n'arrive au pair",
+        "the bridge frame reaching the peer",
     );
 
-    let (_, binaire, octets) = recus.first().expect("une trame reçue").clone();
+    let (_, binaire, octets) = recus.first().expect("one frame received").clone();
     // ⚠️ `binary = true`, unlike the `control` channel which writes `false`: the
     // payload is made of raw bytes, and text mode would put it through
     // UTF-8 validation on the browser side — 0x00 and 0xFF would not survive it.
-    assert!(binaire, "la trame doit être écrite en BINAIRE");
-    assert_eq!(octets, trame, "la trame doit arriver octet pour octet");
+    assert!(binaire, "the frame must be written as BINARY");
+    assert_eq!(octets, trame, "the frame must arrive byte for byte");
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn a_peer_frame_surfaces_with_its_correlation() {
                 .iter()
                 .any(|m| matches!(m, DuNavigateur::Reponse { .. }))
         },
-        "que la réponse du pair ne remonte",
+        "the peer's answer surfacing",
     );
 
     let reponse_recue = remontees
@@ -244,19 +244,19 @@ fn a_peer_frame_surfaces_with_its_correlation() {
             DuNavigateur::Reponse { correlation, trame } => Some((*correlation, trame.clone())),
             _ => None,
         })
-        .expect("une réponse remontée");
+        .expect("one answer surfaced");
     assert_eq!(
         reponse_recue.0, 0x0BAD_F00D,
-        "la corrélation doit traverser intacte"
+        "the correlation must pass through intact"
     );
     assert_eq!(
         reponse_recue.1, reponse,
-        "la trame doit remonter octet pour octet"
+        "the frame must surface byte for byte"
     );
 }
 
 #[test]
-fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
+fn a_channeldata_from_another_channel_is_refused_and_logged() {
     // ⚠️ This test can only be seen RED if TWO channels are negotiated: without
     // the second, there is nothing to send on the wrong one, and the test would be
     // VACUOUS — it would pass on a bridge that routes on nothing at all.
@@ -298,7 +298,7 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
                 .iter()
                 .any(|m| matches!(m, DuNavigateur::Reponse { .. }))
         },
-        "que la trame légitime ne remonte",
+        "the legitimate frame surfacing",
     );
 
     let correlations: Vec<u32> = remontees
@@ -311,18 +311,18 @@ fn un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise() {
     assert_eq!(
         correlations,
         vec![0x0000_BEEF],
-        "seule la trame du canal `fichiers` doit remonter : la présence de \
-         0xDEAD0000 signifierait que le mauvais canal a été traité"
+        "only the frame of the `fichiers` channel must surface: the presence of \
+         0xDEAD0000 would mean that the wrong channel was processed"
     );
     // …and the intruder does not arrive afterwards either.
     assert!(
         entrant.recv_timeout(Duration::from_millis(200)).is_err(),
-        "aucune autre trame ne doit remonter : l'intrus a été jeté"
+        "no other frame must surface: the intruder was dropped"
     );
 }
 
 #[test]
-fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
+fn a_single_channel_is_retained_out_of_two_and_it_is_the_label_one() {
     // 🔴 **THE label routing test, and it was born from a SURVIVING
     // MUTATION.** Replacing `if label == FILES_LABEL` with `if true`
     // left the first four tests GREEN: the intruder one negotiates
@@ -382,7 +382,7 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
             }
         }
     }
-    assert_eq!(ouverts, 2, "le pair doit avoir ouvert ses DEUX canaux");
+    assert_eq!(ouverts, 2, "the peer must have opened its TWO channels");
 
     // Give the bridge time to announce a possible second opening.
     let fin = Instant::now() + Duration::from_millis(300);
@@ -399,7 +399,7 @@ fn un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label() {
         .count();
     assert_eq!(
         ouvertures, 1,
-        "deux canaux négociés, UNE seule ouverture annoncée : \
-         en voir deux signifie que le label n'est pas filtré (remontées : {remontees:?})"
+        "two channels negotiated, ONE single opening announced: \
+         seeing two means the label is not filtered (surfaced: {remontees:?})"
     );
 }

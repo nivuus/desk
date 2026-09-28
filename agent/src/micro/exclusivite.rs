@@ -125,14 +125,14 @@ mod tests {
     }
 
     #[test]
-    fn un_verrou_libre_accepte_sans_rien_journaliser() {
+    fn a_free_lock_accepts_without_logging_anything() {
         let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
         assert_eq!(e.arbitrer(), Issue::Accepte);
         assert!(e.tenue());
     }
 
     #[test]
-    fn un_refus_ne_se_journalise_qu_une_fois() {
+    fn a_refusal_is_logged_only_once() {
         let mut e = Exclusivite::new(VerrouFactice::new(&[false]));
         assert_eq!(e.arbitrer(), Issue::RefusePremierement);
         for _ in 0..10 {
@@ -146,21 +146,21 @@ mod tests {
     /// a microphone for the life of its process after window A's death.
     #[test]
     #[allow(non_snake_case)]
-    fn la_tentative_est_REFAITE_apres_un_refus() {
+    fn the_attempt_is_REDONE_after_a_refusal() {
         let mut e = Exclusivite::new(VerrouFactice::new(&[false]));
         for _ in 0..20 {
             e.arbitrer();
         }
         assert_eq!(
             e.verrou.appels, 20,
-            "la tentative doit être refaite à CHAQUE dépôt, refus compris"
+            "the attempt must be redone on EVERY deposit, refusals included"
         );
     }
 
     /// 🔴 Without this announcement, the refusal's `warn!` would stay true forever.
     #[test]
     #[allow(non_snake_case)]
-    fn une_acquisition_tardive_est_ANNONCEE() {
+    fn a_late_acquisition_is_ANNOUNCED() {
         let mut e = Exclusivite::new(VerrouFactice::new(&[false, false, false, true]));
         assert_eq!(e.arbitrer(), Issue::RefusePremierement);
         assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
@@ -173,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn une_acquisition_deja_tenue_ne_reannonce_rien() {
+    fn an_already_held_acquisition_announces_nothing_again() {
         let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
         for _ in 0..10 {
             assert_eq!(e.arbitrer(), Issue::Accepte);

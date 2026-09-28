@@ -107,7 +107,7 @@ impl EncodeurMft {
         let bgra_sample = unsafe { MFCreateSample() }?;
         let bgra_buffer =
             unsafe { MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, &frame.texture, 0, false) }
-                .context("enveloppement de la texture BGRA pour le convertisseur")?;
+                .context("wrapping the BGRA texture for the converter")?;
         let t = std::time::Instant::now();
         self.telemetry
             .phase
@@ -132,7 +132,7 @@ impl EncodeurMft {
                 return Ok(());
             }
         }
-        result.context("soumission de l'image au convertisseur BGRA→NV12")?;
+        result.context("submitting the frame to the BGRA→NV12 converter")?;
         self.telemetry
             .converter_inputs
             .fetch_add(1, Ordering::Relaxed);
@@ -282,7 +282,7 @@ impl EncodeurMft {
                 Ok(ConverterPoll::NeedMoreInput)
             }
             Err(e) if e.code() == MF_E_SAMPLEALLOCATOR_EMPTY => Ok(ConverterPoll::Busy),
-            Err(e) => Err(e).context("récupération de l'image convertie en NV12"),
+            Err(e) => Err(e).context("retrieving the frame converted to NV12"),
         }
     }
 }

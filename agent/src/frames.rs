@@ -110,7 +110,7 @@ impl FrameAssembler {
     /// during the interruption — instead of a single due frame as in the
     /// nominal case. It is the same burst as the one the lazy anchoring
     /// of the first call already protects against (see
-    /// `s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale`); it
+    /// `anchors_on_elapsed_time_rather_than_emitting_a_burst`); it
     /// is simply not the same occasion to trigger it.
     pub fn reancrer(&mut self) {
         self.emis_par_canal = None;
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn emet_une_trame_pleine_quand_les_echantillons_sont_la() {
+    fn emits_a_full_frame_when_the_samples_are_there() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine); // anchoring at 0
@@ -206,7 +206,7 @@ mod tests {
     }
 
     #[test]
-    fn les_horodatages_avancent_de_480_sans_trou() {
+    fn timestamps_advance_by_480_without_gaps() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn une_trame_partielle_est_completee_par_du_silence_en_fin() {
+    fn a_partial_frame_is_completed_with_trailing_silence() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn l_instant_de_capture_se_deduit_de_l_horodatage() {
+    fn the_capture_instant_is_deduced_from_the_timestamp() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale() {
+    fn anchors_on_elapsed_time_rather_than_emitting_a_burst() {
         // The clock origin is created before the initialisation of WASAPI, which
         // takes a non-zero time. Without lazy anchoring, the first call
         // would produce at once all the frames elapsed since the origin.
@@ -276,7 +276,7 @@ mod tests {
         let sorties = a.drain_due(origine + Duration::from_millis(500));
         assert!(
             sorties.is_empty(),
-            "le premier appel ancre, il ne rattrape pas : {} trames émises",
+            "the first call anchors, it does not catch up: {} frames emitted",
             sorties.len()
         );
 
@@ -287,8 +287,8 @@ mod tests {
     }
 
     #[test]
-    fn se_reancre_sur_le_temps_ecoule_plutot_que_de_rattraper_une_coupure() {
-        // The counterpart of `s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale`
+    fn re_anchors_on_elapsed_time_rather_than_catching_up_a_cut() {
+        // The counterpart of `anchors_on_elapsed_time_rather_than_emitting_a_burst`
         // for an interruption DURING THE LIFETIME rather than at construction: a
         // disabling then re-enabling of the capture (per-window audio,
         // sub-block D7) lets the wall clock advance without anything being
@@ -306,7 +306,7 @@ mod tests {
         let sorties = a.drain_due(longue_coupure);
         assert!(
             sorties.is_empty(),
-            "le premier drain_due après reancrer() ancre, il ne rattrape pas : {} trames émises",
+            "the first drain_due after reancrer() anchors, it does not catch up: {} frames emitted",
             sorties.len()
         );
 
@@ -317,7 +317,7 @@ mod tests {
     }
 
     #[test]
-    fn jette_les_echantillons_les_plus_anciens_au_dela_du_retard_tolere() {
+    fn drops_the_oldest_samples_beyond_the_tolerated_delay() {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
@@ -332,7 +332,7 @@ mod tests {
         assert_eq!(
             a.echantillons_jetes(),
             1120,
-            "première poussée jette 1120 échantillons (4000 - 2880)"
+            "first push drops 1120 samples (4000 - 2880)"
         );
 
         // Second push: beyond again, with a different value
@@ -343,16 +343,16 @@ mod tests {
         assert_eq!(
             a.echantillons_jetes(),
             4320,
-            "deuxième poussée jette les 3200 anciens (100s) du tampon"
+            "second push drops the 3200 old ones (100s) from the buffer"
         );
 
         // The emitted frame must contain the -100s (the most recent kept),
         // not the 100s (the oldest, now thrown away).
         let sorties = a.drain_due(origine + trames(1));
-        assert_eq!(sorties.len(), 1, "une seule trame est due après 10 ms");
+        assert_eq!(sorties.len(), 1, "a single frame is due after 10 ms");
         assert!(
             sorties[0].pcm.iter().all(|&v| v == -100),
-            "la trame doit contenir les données les plus récentes (-100), pas les anciennes (100)"
+            "the frame must hold the most recent data (-100), not the old data (100)"
         );
     }
 }

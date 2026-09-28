@@ -22,7 +22,7 @@
 //! on the root would go through ProjFS, hence would trigger our own enumeration
 //! callbacks, which register a command that **this thread** must complete:
 //! **it would wait for itself**". **The same sentence holds here, and it is the
-//! raison d'être of this thread.**
+//! reason to exist of this thread.**
 //!
 //! # The order of the sequence is NOT negotiable
 //!
@@ -44,7 +44,7 @@
 //!    requesting several chunks in advance would make no sense, and pushing
 //!    several would flood the SCTP queue, which F1 already decided to avoid. The
 //!    `bufferedAmount` back-pressure, for its part, lives on the browser side
-//!    (`client/src/fichiers/flux.ts`) and therefore does not cover this direction;
+//!    (`client/src/fichiers/flux.ts`) and therefore does not cover this direction; (policy: allow-fr, real file path)
 //! 6. on the `Fait` of the **last** chunk: `journal.retirer`, **then**
 //!    `TYPE_DUES` announced again;
 //! 7. on an `Echec` or an expiry: **the entry STAYS in the journal**, a
@@ -89,7 +89,7 @@ const CORRELATION_ANNONCE: u32 = u32::MAX;
 /// `PRE_CONVERT_TO_FULL` — but there only the size **from BEFORE**
 /// the write is known, which does not bound the size after. A ceiling applied to
 /// write-back, for its part, would be **invisible**: the handle has been closed for
-/// a long time. Spec §3.5.2 prescribed `TAILLE_MAX_FICHIER` with
+/// a long time. Spec §3.5.2 prescribed a maximum file size with
 /// `ERROR_DISK_FULL`; **that error code would reach no one.**
 ///
 /// ⚠️ **NOT CALIBRATED.**
@@ -105,7 +105,7 @@ pub fn tourner(config: Config, ordres: Receiver<Ordre>) {
     while let Ok(ordre) = ordres.recv() {
         fil.traiter(ordre);
     }
-    tracing::info!("fil d'ecriture du pont arrete");
+    tracing::info!("bridge write thread stopped");
 }
 
 // ⚠️ `pub(super)` BECAUSE THE FIELD CARRYING IT IS, and not the reverse.
@@ -151,8 +151,8 @@ impl Fil {
     fn start(config: Config) -> Self {
         if !config.armee {
             tracing::warn!(
-                "poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une \
-                 configuration livree"
+                "write push DISARMED (PONT_ECRITURE=0): bench arm, never a \
+                 shipped configuration"
             );
         }
         let contenu = std::fs::read_to_string(&config.chemin_journal).unwrap_or_default();
@@ -163,7 +163,7 @@ impl Fil {
             // keeping quiet about it would suggest an intact journal.
             tracing::warn!(
                 ignorees,
-                "lignes illisibles jetees au rechargement du journal"
+                "unreadable lines dropped when reloading the journal"
             );
         }
         let fil = Self {
@@ -224,8 +224,10 @@ impl Fil {
                 self.write_journal(&ligne);
                 if octets > REPORTED_WRITE_SIZE {
                     tracing::warn!(
-                        chemin, octets, seuil = REPORTED_WRITE_SIZE,
-                        "ecriture due volumineuse : elle restera longtemps dans la fenetre de perte"
+                        chemin,
+                        octets,
+                        seuil = REPORTED_WRITE_SIZE,
+                        "large due write: it will stay a long time in the loss window"
                     );
                 }
                 // STEP 3.
@@ -300,7 +302,7 @@ impl Fil {
             chemin: chemin.to_string(),
             repertoire,
         })
-        .expect("un en-tete Creer se serialise toujours");
+        .expect("a Creer header always serializes");
         let correlation = self.inscrire(Attendue::Create {
             chemin: chemin.to_string(),
         });
@@ -333,12 +335,12 @@ impl Fil {
             premier,
             last,
         })
-        .expect("un en-tete Ecrire se serialise toujours");
+        .expect("a Write header always serializes");
 
         let octets = match disque::lire(&self.config.racine, &chemin, morceau) {
             Ok(octets) => octets,
             Err(error) => {
-                tracing::warn!(chemin, %error, "lecture du fichier local echouee : ecriture due RETENUE");
+                tracing::warn!(chemin, %error, "reading the local file failed: due write HELD");
                 self.terminer(&chemin, false);
                 return;
             }
@@ -359,13 +361,16 @@ impl Fil {
             length = morceau.length,
             premier,
             last,
-            "ecriture poussee"
+            "write pushed"
         );
     }
 
     fn acquitte(&mut self, correlation: u32) {
         if self.mutation_en_vol == Some(correlation) {
-            tracing::info!(correlation, "mutation acquittee : le poste local a suivi");
+            tracing::info!(
+                correlation,
+                "mutation acknowledged: the local machine followed"
+            );
             self.terminer_mutation(true);
             return;
         }
@@ -375,7 +380,7 @@ impl Fil {
         if en_cours.correlation != correlation {
             // A late `Fait`, arrived after an expiry. Throwing it away is
             // the invariant of `Table::resoudre`, transposed.
-            tracing::debug!(correlation, "acquittement tardif ou inconnu : jete");
+            tracing::debug!(correlation, "late or unknown acknowledgement: dropped");
             return;
         }
         if !en_cours.last_sent {
@@ -390,7 +395,7 @@ impl Fil {
             chemin,
             octets,
             duree_ms,
-            "ecriture acquittee : les octets sont sur le poste local"
+            "write acknowledged: the bytes are on the local machine"
         );
         self.terminer(&chemin, true);
     }
@@ -405,7 +410,7 @@ impl Fil {
             tracing::warn!(
                 correlation,
                 ?code,
-                "MUTATION REFUSEE : le poste local n'a PAS suivi, et rien ne le rejouera"
+                "MUTATION REFUSED: the local machine did NOT follow, and nothing will replay it"
             );
             self.terminer_mutation(false);
             return;
@@ -422,7 +427,7 @@ impl Fil {
         tracing::warn!(
             chemin,
             ?code,
-            "ecriture due retenue : le navigateur a refuse, l'entree reste au journal"
+            "due write held: the browser refused, the entry stays in the journal"
         );
         self.terminer(&chemin, false);
     }

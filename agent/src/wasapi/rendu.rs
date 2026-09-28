@@ -115,16 +115,16 @@ pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
             ouvrir_par_identifiant(enumerateur, &peripherique.identifiant)?,
             critere.libelle(),
         ),
-        Choix::Defaut => (defaut(enumerateur)?, "défaut de Windows"),
+        Choix::Defaut => (defaut(enumerateur)?, "Windows default"),
         Choix::Introuvable { demande } => {
             tracing::warn!(
                 variable = VARIABLE,
                 demande = %demande,
                 disponibles = %inventaire(&disponibles),
-                "aucun périphérique audio de rendu ne correspond : REPLI sur le défaut de Windows, \
-                 qui n'est pas forcément celui qu'on veut capter"
+                "no render audio device matches: FALLING BACK to the Windows default, \
+                 which is not necessarily the one we want to capture"
             );
-            (defaut(enumerateur)?, "défaut de Windows (repli)")
+            (defaut(enumerateur)?, "Windows default (fallback)")
         }
         Choix::Ambigu { demande, candidats } => {
             tracing::warn!(
@@ -132,11 +132,11 @@ pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
                 demande = %demande,
                 candidats = %candidats.join(" | "),
                 disponibles = %inventaire(&disponibles),
-                "plusieurs périphériques audio de rendu correspondent, la désignation est trop \
-                 large pour trancher : REPLI sur le défaut de Windows. Précisez la demande, ou \
-                 donnez l'identifiant d'endpoint"
+                "several render audio devices match, the designation is too \
+                 broad to decide: FALLING BACK to the Windows default. Narrow the request, or \
+                 give the endpoint identifier"
             );
-            (defaut(enumerateur)?, "défaut de Windows (repli)")
+            (defaut(enumerateur)?, "Windows default (fallback)")
         }
     };
 
@@ -147,12 +147,12 @@ pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
     let retenu = decrire(&peripherique);
     tracing::info!(
         variable = VARIABLE,
-        demande = demande.as_deref().unwrap_or("(aucune)"),
+        demande = demande.as_deref().unwrap_or("(none)"),
         retenu = %retenu.0,
         identifiant = %retenu.1,
         critere,
         repli = choix.est_repli(),
-        "périphérique audio de rendu retenu"
+        "render audio device retained"
     );
 
     Ok(peripherique)
@@ -192,13 +192,13 @@ pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, S
         ),
         Choix::Introuvable { demande } => {
             bail!(
-                "aucun peripherique de rendu ne correspond a « {demande} » ({VARIABLE_CABLE}) :                  pas de micro. Disponibles : {}. Le cable virtuel est-il installe ?",
+                "no render device matches « {demande} » ({VARIABLE_CABLE}):                  no mic. Available: {}. Is the virtual cable installed?",
                 inventaire(&disponibles)
             );
         }
         Choix::Ambigu { demande, candidats } => {
             bail!(
-                "« {demande} » ({VARIABLE_CABLE}) designe plusieurs peripheriques de rendu et la                  regle refuse de trancher : pas de micro, plutot qu'un micro dans le mauvais                  tuyau. Candidats : {}. Disponibles : {}. Precisez la demande, ou donnez                  l'identifiant d'endpoint",
+                "« {demande} » ({VARIABLE_CABLE}) designates several render devices and the                  rule refuses to decide: no mic, rather than a mic in the wrong                  pipe. Candidates: {}. Available: {}. Narrow the request, or give                  the endpoint identifier",
                 candidats.join(" | "),
                 inventaire(&disponibles)
             );
@@ -210,7 +210,7 @@ pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, S
         // default, which is exactly the leak this path exists to
         // prevent.
         Choix::Defaut => bail!(
-            "incoherence interne : la demande de cable ne peut pas etre vide              (voir wasapi_peripherique::demande_cable)"
+            "internal inconsistency: the cable request cannot be empty              (see wasapi_peripherique::demande_cable)"
         ),
     };
 
@@ -225,7 +225,7 @@ pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, S
         retenu = %nom,
         identifiant = %identifiant,
         critere,
-        "cable de rendu retenu pour l'ecriture du micro"
+        "render cable retained for mic writing"
     );
 
     Ok((peripherique, identifiant))
@@ -267,7 +267,7 @@ fn defaut(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
     // SAFETY: the enumerator comes from a successful `CoCreateInstance` on a thread
     // that is a member of the MTA (guaranteed by the caller, `LoopbackCapture::open`).
     unsafe { enumerateur.GetDefaultAudioEndpoint(eRender, eConsole) }
-        .context("aucun périphérique de rendu audio par défaut")
+        .context("no default render audio device")
 }
 
 /// Reopens a device by its endpoint identifier.
@@ -288,7 +288,7 @@ fn ouvrir_par_identifiant(
     // SAFETY: `large` stays alive during the whole call, and ends with
     // the zero `PCWSTR` requires.
     unsafe { enumerateur.GetDevice(PCWSTR(large.as_ptr())) }
-        .with_context(|| format!("ouverture du périphérique audio {identifiant}"))
+        .with_context(|| format!("opening audio device {identifiant}"))
 }
 
 /// Snapshots the ACTIVE render devices.
@@ -309,10 +309,10 @@ pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> 
     unsafe {
         let collection = enumerateur
             .EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
-            .context("énumération des périphériques audio de rendu")?;
+            .context("enumerating the render audio devices")?;
         let count = collection
             .GetCount()
-            .context("comptage des périphériques audio de rendu")?;
+            .context("counting the render audio devices")?;
         let mut peripheriques = Vec::with_capacity(count as usize);
         for index in 0..count {
             // A device we fail to describe does not interrupt the
@@ -321,7 +321,7 @@ pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> 
             // empty strings, which will match no non-empty request.
             let peripherique = collection
                 .Item(index)
-                .with_context(|| format!("lecture du périphérique audio n°{index}"))?;
+                .with_context(|| format!("reading audio device no. {index}"))?;
             let (nom, identifiant) = decrire(&peripherique);
             peripheriques.push(Peripherique { nom, identifiant });
         }

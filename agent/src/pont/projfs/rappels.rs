@@ -78,8 +78,8 @@ pub(super) fn garde(
         Err(_) => {
             tracing::error!(
                 rappel,
-                "panique dans un rappel ProjFS : rattrapée avant la frontière FFI, \
-                 E_UNEXPECTED rendu à l'application"
+                "panic in a ProjFS callback: caught before the FFI boundary, \
+                 E_UNEXPECTED returned to the application"
             );
             E_UNEXPECTED
         }
@@ -127,7 +127,7 @@ pub(super) unsafe fn chemins_de(data: *const PRJ_CALLBACK_DATA) -> Option<(Strin
     let logique = match chemins::normaliser_utf16(&unites) {
         Ok(logique) => logique,
         Err(refus) => {
-            tracing::warn!(?refus, "chemin ProjFS refusé par la normalisation");
+            tracing::warn!(?refus, "ProjFS path refused by normalisation");
             return None;
         }
     };
@@ -333,11 +333,7 @@ unsafe extern "system" fn annulation(data: *const PRJ_CALLBACK_DATA) {
         // would make `PrjCompleteCommand` be called on an ALREADY completed command,
         // when its budget expires — a system call on an
         // identifier that belongs to someone else.
-        let correlations = etat
-            .table
-            .lock()
-            .expect("verrou de la table")
-            .annuler(commande);
+        let correlations = etat.table.lock().expect("table lock").annuler(commande);
         for correlation in &correlations {
             // ⚠️ **The ProjFS context leaves WITH the table entry, otherwise it
             // leaks.** `Table::annuler` only knows the table — it is PURE
@@ -352,14 +348,14 @@ unsafe extern "system" fn annulation(data: *const PRJ_CALLBACK_DATA) {
             tracing::debug!(
                 commande,
                 en_vol = correlations.len(),
-                "commande ProjFS annulée par l'application"
+                "ProjFS command cancelled by the application"
             );
         }
     });
     if issue.is_err() {
         tracing::error!(
             rappel = "CancelCommand",
-            "panique dans un rappel ProjFS : rattrapée avant la frontière FFI"
+            "panic in a ProjFS callback: caught before the FFI boundary"
         );
     }
 }

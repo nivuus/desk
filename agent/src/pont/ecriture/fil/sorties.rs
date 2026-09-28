@@ -20,7 +20,7 @@ impl Fil {
             dues,
             retenues: self.retenues,
         })
-        .expect("un en-tete Dues se serialise toujours");
+        .expect("a Dues header always serializes");
         self.emettre(proto::files::TYPE_DUES, CORRELATION_ANNONCE, &entete, &[]);
     }
 
@@ -34,7 +34,7 @@ impl Fil {
         {
             tracing::warn!(
                 correlation,
-                "transport du pont parti : trame d'ecriture non emise"
+                "bridge transport gone: write frame not emitted"
             );
         }
     }
@@ -59,8 +59,8 @@ impl Fil {
         if let Err(error) = disque::add(&self.config.chemin_journal, ligne) {
             tracing::warn!(
                 %error, chemin = %self.config.chemin_journal.display(),
-                "journal des ecritures dues non ecrit : une reprise apres arret brutal perdrait \
-                 cette entree"
+                "due-write journal not written: a resume after a hard stop would lose \
+                 this entry"
             );
             return;
         }

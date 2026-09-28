@@ -119,7 +119,7 @@ mod tests {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "splash".into(), t0);
-        assert!(s.retirer(f(1)), "elle était bien en sursis");
+        assert!(s.retirer(f(1)), "it was indeed in its grace period");
         assert!(s.murs(t0 + DUREE_SURSIS).is_empty());
     }
 
@@ -127,7 +127,7 @@ mod tests {
     /// a structurally empty `murs` would pass for a working
     /// debounce.
     #[test]
-    fn une_fenetre_qui_survit_est_bien_rendue() {
+    fn a_surviving_window_is_indeed_returned() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);
@@ -154,23 +154,23 @@ mod tests {
     /// regularly would stay on probation indefinitely and would never
     /// appear.
     #[test]
-    fn un_second_depot_ne_repousse_pas_l_echeance() {
+    fn a_second_deposit_does_not_push_back_the_deadline() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);
         s.deposer(f(1), "Steam".into(), t0 + Duration::from_millis(400));
-        assert_eq!(s.en_attente(), 1, "aucun doublon");
+        assert_eq!(s.en_attente(), 1, "no duplicate");
         assert_eq!(
             s.murs(t0 + DUREE_SURSIS).len(),
             1,
-            "l'échéance est celle du PREMIER dépôt"
+            "the deadline is that of the FIRST deposit"
         );
     }
 
     /// Removing a window that was not expected does not lie: it is the case
     /// of an already announced window, whose disappearance is the `Table`'s business.
     #[test]
-    fn retirer_une_inconnue_rend_faux() {
+    fn removing_an_unknown_one_returns_false() {
         let mut s = Sursis::new();
         assert!(!s.retirer(f(42)));
     }
@@ -178,7 +178,7 @@ mod tests {
     /// Several windows, distinct deadlines: only the ripe ones
     /// come out, in the order they were deposited.
     #[test]
-    fn seules_les_mures_sortent() {
+    fn only_the_ripe_ones_come_out() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "tot".into(), t0);

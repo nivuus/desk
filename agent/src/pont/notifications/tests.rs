@@ -34,7 +34,7 @@ const ALL_STATES: [Etat; 4] = [OUVERT, LECTURE_SEULE, CANAL_FERME, MUTATIONS_DES
 /// pushing it — the silent loss this whole sub-project exists to
 /// forbid.
 #[test]
-fn une_ecriture_sur_racine_non_inscriptible_est_refusee() {
+fn a_write_on_a_non_writable_root_is_refused() {
     assert_eq!(
         decider(PRE_CONVERT_TO_FULL, LECTURE_SEULE, Cible::SansObjet),
         Reponse::Refuser(Error::ProtegeEnEcriture)
@@ -63,7 +63,7 @@ fn a_write_on_a_closed_channel_is_refused_as_an_io_error() {
 /// Writing is ALLOWED in the nominal state — it is the only line of F2
 /// that changes what an application gets.
 #[test]
-fn une_ecriture_est_autorisee_quand_la_racine_est_inscriptible_et_le_canal_ouvert() {
+fn a_write_is_allowed_when_the_root_is_writable_and_the_channel_open() {
     assert_eq!(
         decider(PRE_CONVERT_TO_FULL, OUVERT, Cible::SansObjet),
         Reponse::Autoriser
@@ -96,7 +96,7 @@ fn a_mutation_is_refused_in_each_of_the_four_states_that_prevent_it() {
         assert_eq!(
             decider(code, LECTURE_SEULE, Cible::InRoot),
             Reponse::Refuser(Error::ProtegeEnEcriture),
-            "racine en lecture seule, code {code}"
+            "read-only root, code {code}"
         );
         // 🔴 **TWO CAUSES NEVER SHARE A CODE** (spec §5.1): a closed
         // channel returns `ERROR_IO_DEVICE`, not `ERROR_WRITE_PROTECT`. "The tab
@@ -105,7 +105,7 @@ fn a_mutation_is_refused_in_each_of_the_four_states_that_prevent_it() {
         assert_eq!(
             decider(code, CANAL_FERME, Cible::InRoot),
             Reponse::Refuser(Error::CanalFerme),
-            "canal fermé, code {code}"
+            "channel closed, code {code}"
         );
     }
     // The fourth state only applies to renaming: a deletion has no
@@ -113,7 +113,7 @@ fn a_mutation_is_refused_in_each_of_the_four_states_that_prevent_it() {
     assert_eq!(
         decider(PRE_RENAME, OUVERT, Cible::HorsRacine),
         Reponse::Refuser(Error::NonSupporte),
-        "une cible hors racine n'est pas un refus de DROIT"
+        "a target outside the root is not a PERMISSION refusal"
     );
 }
 
@@ -124,7 +124,7 @@ fn a_mutation_is_refused_in_each_of_the_four_states_that_prevent_it() {
 /// forbids — and the user would look for a permission where there is
 /// simply no handle.
 #[test]
-fn un_renommage_hors_racine_est_nonsupporte_et_pas_protegeenecriture() {
+fn a_rename_outside_the_root_is_nonsupporte_not_protegeenecriture() {
     let hors = decider(PRE_RENAME, OUVERT, Cible::HorsRacine);
     assert_eq!(hors, Reponse::Refuser(Error::NonSupporte));
     assert_ne!(hors, Reponse::Refuser(Error::ProtegeEnEcriture));
@@ -153,7 +153,7 @@ fn a_mutation_is_allowed_in_the_nominal_state() {
 /// work: the application sees its renaming succeed in the VM, and the local
 /// workstation keeps the old name.
 #[test]
-fn les_deux_post_de_f3_declenchent_chacune_sa_poussee() {
+fn both_f3_posts_each_trigger_their_push() {
     assert_eq!(
         decider(FILE_RENAMED, OUVERT, Cible::InRoot),
         Reponse::Pousser(Poussee::Renommage)
@@ -176,12 +176,12 @@ fn les_deux_post_de_f3_declenchent_chacune_sa_poussee() {
 /// the gesture has happened in the VM — and pushing nothing would let the local workstation
 /// diverge silently, which is worse than pushing.
 #[test]
-fn une_post_de_f3_part_quel_que_soit_l_etat() {
+fn an_f3_post_goes_out_whatever_the_state() {
     for etat in ALL_STATES {
         for code in [FILE_RENAMED, FILE_HANDLE_CLOSED_FILE_DELETED] {
             assert!(
                 matches!(decider(code, etat, Cible::InRoot), Reponse::Pousser(_)),
-                "code {code} dans l'état {etat:?}"
+                "code {code} in state {etat:?}"
             );
         }
     }
@@ -194,7 +194,7 @@ fn une_post_de_f3_part_quel_que_soit_l_etat() {
 /// ⚠️ `HARDLINK_CREATED` is a **POST**: the refusal prevents nothing, it
 /// logs. The test pins the decision, not an effect.
 #[test]
-fn les_liens_durs_sont_refuses_en_non_supporte() {
+fn hard_links_are_refused_as_unsupported() {
     for code in [PRE_SET_HARDLINK, HARDLINK_CREATED] {
         assert_eq!(
             decider(code, OUVERT, Cible::SansObjet),
@@ -211,7 +211,7 @@ fn les_liens_durs_sont_refuses_en_non_supporte() {
 /// closing the handle on a modification — that is, a good share of
 /// "in place" saves.
 #[test]
-fn les_deux_post_de_contenu_declenchent_une_poussee() {
+fn both_content_posts_trigger_a_push() {
     for code in [FILE_OVERWRITTEN, FILE_HANDLE_CLOSED_FILE_MODIFIED] {
         assert_eq!(
             decider(code, OUVERT, Cible::SansObjet),
@@ -232,7 +232,7 @@ fn a_new_file_is_pushed_as_a_creation() {
     assert_ne!(
         decider(NEW_FILE_CREATED, OUVERT, Cible::SansObjet),
         Reponse::Pousser(Poussee::Contenu),
-        "une création n'est pas un contenu : un répertoire n'a rien à lire"
+        "a creation is not content: a directory has nothing to read"
     );
 }
 
@@ -242,14 +242,14 @@ fn a_new_file_is_pushed_as_a_creation() {
 /// refusal returned on a POST prevents anything. A push goes out even with the
 /// channel closed — the write thread journals it and will hold it back.
 #[test]
-fn une_poussee_part_meme_canal_ferme_car_une_post_ne_se_refuse_pas() {
+fn a_push_goes_out_even_with_the_channel_closed_since_a_post_cannot_be_refused() {
     for etat in ALL_STATES {
         assert!(
             matches!(
                 decider(FILE_HANDLE_CLOSED_FILE_MODIFIED, etat, Cible::SansObjet),
                 Reponse::Pousser(_)
             ),
-            "état {etat:?}"
+            "state {etat:?}"
         );
     }
 }
@@ -276,9 +276,9 @@ fn each_mask_bit_has_a_named_decision() {
                 assert_ne!(
                     decider(drapeau as i32, etat, cible),
                     Reponse::AccepterSansAttendre,
-                    "le bit 0x{drapeau:X} est DEMANDÉ par le masque et retombe dans le bras \
-                 fourre-tout dans l'état {etat:?} / cible {cible:?} : il serait accepté \
-                 en silence"
+                    "bit 0x{drapeau:X} is REQUESTED by the mask and falls into the \
+                 catch-all arm in state {etat:?} / target {cible:?}: it would be accepted \
+                 silently"
                 );
             }
         }
@@ -301,7 +301,7 @@ fn each_mask_bit_has_a_named_decision() {
 /// would see its renaming succeed, and the local workstation would keep the old name
 /// forever. It is the mute failure this test exists to forbid.
 #[test]
-fn le_masque_demande_exactement_les_neuf_notifications_de_f3() {
+fn the_mask_requests_exactly_the_nine_f3_notifications() {
     assert_eq!(MASQUE.count_ones(), 9, "masque 0x{MASQUE:X}");
     assert_eq!(
         MASQUE,
@@ -326,7 +326,7 @@ fn le_masque_demande_exactement_les_neuf_notifications_de_f3() {
 /// two pairs F3 adds — the only ones whose divergence would produce a
 /// notification requested and never recognised.
 #[test]
-fn les_deux_familles_de_constantes_de_f3_s_accordent() {
+fn the_two_f3_constant_families_agree() {
     assert_eq!(FILE_RENAMED as u32, NOTIFY_FILE_RENAMED);
     assert_eq!(
         FILE_HANDLE_CLOSED_FILE_DELETED as u32,
@@ -340,7 +340,7 @@ fn les_deux_familles_de_constantes_de_f3_s_accordent() {
 /// Without this test, adding it to the mask "to complete the family" would pass
 /// for progress.
 #[test]
-fn la_fermeture_sans_modification_n_est_pas_demandee() {
+fn closing_without_modification_is_not_requested() {
     // 512, `mod.rs:382` on the PRJ_NOTIFY side.
     assert_eq!(MASQUE & 512, 0, "masque 0x{MASQUE:X}");
     // And if it arrived anyway, it would fall back into the catch-all,
@@ -355,7 +355,7 @@ fn la_fermeture_sans_modification_n_est_pas_demandee() {
 /// if it did, accepting it SILENTLY would let a mask widened by
 /// mistake go unnoticed.
 #[test]
-fn une_notification_hors_masque_est_acceptee_sans_attendre() {
+fn an_out_of_mask_notification_is_accepted_without_waiting() {
     // `FILE_OPENED` (mod.rs:338): never requested.
     assert_eq!(
         decider(2, OUVERT, Cible::SansObjet),

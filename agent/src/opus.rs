@@ -64,10 +64,10 @@ pub struct OpusEncoder {
 impl OpusEncoder {
     pub fn new() -> Result<Self> {
         let mut inner = Encoder::new(SAMPLE_RATE_HZ, Channels::Stereo, Application::Audio)
-            .context("création de l'encodeur Opus")?;
+            .context("creating the Opus encoder")?;
         inner
             .set_bitrate(Bitrate::Bits(BITRATE_BPS))
-            .context("réglage du débit Opus")?;
+            .context("setting the Opus bitrate")?;
         // In-band FEC: the decoder can reconstruct a lost frame from
         // the next one. On an arbitrary link, it is what avoids
         // audible micro-cuts.
@@ -77,7 +77,7 @@ impl OpusEncoder {
         // DTX: digital silence falls to 1 byte per frame in steady
         // state (measured). Without it, it would cost 3 bytes — variable bitrate
         // encoding already spends little. The gain is modest, the cost nil.
-        inner.set_dtx(true).context("activation du DTX")?;
+        inner.set_dtx(true).context("enabling DTX")?;
         Ok(Self { inner })
     }
 
@@ -94,7 +94,7 @@ impl OpusEncoder {
     pub fn set_packet_loss_perc(&mut self, perc: i32) -> Result<()> {
         self.inner
             .set_packet_loss_perc(perc.clamp(0, 100))
-            .context("réglage du taux de perte déclaré à Opus")
+            .context("setting the loss rate declared to Opus")
     }
 
     /// Encodes exactly one 10 ms frame.
@@ -106,13 +106,13 @@ impl OpusEncoder {
     pub fn encode(&mut self, pcm: &[i16]) -> Result<Vec<u8>> {
         if pcm.len() != FRAME_INTERLEAVED {
             bail!(
-                "trame de {} échantillons entrelacés, {FRAME_INTERLEAVED} attendus",
+                "frame of {} interleaved samples, {FRAME_INTERLEAVED} expected",
                 pcm.len()
             );
         }
         self.inner
             .encode_vec(pcm, MAX_PACKET_BYTES)
-            .context("encodage Opus")
+            .context("Opus encoding")
     }
 }
 
@@ -127,7 +127,7 @@ impl OpusEncoder {
 /// 10 ms, and nothing forces a peer to stick to that.
 pub fn echantillons_de(paquet: &[u8]) -> Result<usize> {
     ::opus::packet::get_nb_samples(paquet, SAMPLE_RATE_HZ)
-        .context("lecture de la durée d'un paquet Opus")
+        .context("reading the duration of an Opus packet")
 }
 
 /// Opus decoder of the upstream track (work stream E).
@@ -136,7 +136,7 @@ pub fn echantillons_de(paquet: &[u8]) -> Result<usize> {
 /// actually encoded: Chrome encodes the microphone in mono, and libopus then duplicates
 /// the single channel onto both outputs. Spec §7 described this
 /// conversion as work to be written; it is done by the library,
-/// and `un_flux_mono_ressort_stereo_par_duplication` CHECKS it rather than
+/// and `a_mono_stream_comes_out_stereo_by_duplication` CHECKS it rather than
 /// assuming it.
 ///
 /// **No frame duration is assumed** (spec §7). Chrome emits 20 ms,
@@ -150,7 +150,7 @@ pub struct OpusDecoder {
 impl OpusDecoder {
     pub fn new() -> Result<Self> {
         let inner =
-            Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo).context("création du décodeur Opus")?;
+            Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo).context("creating the Opus decoder")?;
         Ok(Self { inner })
     }
 
@@ -168,7 +168,7 @@ impl OpusDecoder {
     pub fn decoder(&mut self, paquet: &[u8], sortie: &mut [i16]) -> Result<usize> {
         self.inner
             .decode(paquet, sortie, false)
-            .context("décodage Opus")
+            .context("Opus decoding")
     }
 
     /// Reconstructs the PREVIOUS frame from the LBRR redundancy carried
@@ -181,7 +181,7 @@ impl OpusDecoder {
     pub fn decoder_fec(&mut self, suivante: &[u8], sortie: &mut [i16]) -> Result<usize> {
         self.inner
             .decode(suivante, sortie, true)
-            .context("décodage Opus par reconstruction FEC")
+            .context("Opus decoding through FEC reconstruction")
     }
 
     /// Loss concealment: no packet is available, not even its
@@ -197,7 +197,7 @@ impl OpusDecoder {
     /// would drift by 30 ms at each loss.
     ///
     /// This defect was found by MUTATING
-    /// `la_dissimulation_rend_la_duree_de_la_derniere_trame` (task 3,
+    /// `concealment_returns_the_duration_of_the_last_frame` (task 3,
     /// step 2): the first draft delegated the duration to libopus, and the
     /// test still passed when the PLC was preceded by a 10 ms frame
     /// instead of 40. It measured nothing.
@@ -213,7 +213,7 @@ impl OpusDecoder {
         let voulu = par_canal * CHANNELS;
         if sortie.len() < voulu {
             bail!(
-                "tampon de dissimulation de {} échantillons, {voulu} attendus                  (durée de la dernière trame décodée : {par_canal} par canal)",
+                "concealment buffer of {} samples, {voulu} expected                  (duration of the last decoded frame: {par_canal} per channel)",
                 sortie.len()
             );
         }
@@ -231,7 +231,7 @@ impl OpusDecoder {
         let n = self
             .inner
             .get_last_packet_duration()
-            .context("lecture de la durée de la dernière trame Opus")?;
+            .context("reading the duration of the last Opus frame")?;
         Ok(n as usize)
     }
 }

@@ -76,7 +76,7 @@ pub fn armee() -> bool {
         // not served.
         if !armee {
             tracing::warn!(
-                "designation de sortie DESARMEE (SORTIE_DESIGNEE=0) : bras de banc, jamais une configuration livree"
+                "output designation DISARMED (SORTIE_DESIGNEE=0): bench arm, never a shipped configuration"
             );
         }
         armee
@@ -167,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn la_sortie_qui_remplace_une_cible_forcee_est_retenue() {
+    fn the_output_replacing_a_forced_target_is_retained() {
         let (all, before) = montage_du_lot_30();
         assert_eq!(candidates(&all, Some(NOTRE), &before).len(), 1);
     }
@@ -187,8 +187,8 @@ mod tests {
         let (all, before) = montage_du_lot_30();
         assert!(
             candidates(&all, None, &before).is_empty(),
-            "la différence d'ensembles rend un vecteur VIDE sur une sortie \
-             parfaitement utilisable — c'est le défaut mesuré par le lot 30"
+            "the set difference returns an EMPTY vector on a perfectly \
+             usable output — this is the defect measured by batch 30"
         );
     }
 
@@ -198,7 +198,7 @@ mod tests {
     /// could have silently extended to `deja_prises`, and two windows
     /// would have shown the same image.
     #[test]
-    fn la_designation_ne_court_circuite_pas_le_filtre_des_prises() {
+    fn the_designation_does_not_bypass_the_plug_filter() {
         let (all, before) = montage_du_lot_30();
         let candidates = candidates(&all, Some(NOTRE), &before);
         assert!(
@@ -210,7 +210,7 @@ mod tests {
                 None,
             )
             .is_none(),
-            "une sortie déjà attribuée à une session vivante reste refusée"
+            "an output already assigned to a live session stays refused"
         );
     }
 
@@ -219,7 +219,7 @@ mod tests {
     /// chosen. The inequality of `sortie_assez_grande` (D10) makes this risk larger,
     /// not smaller — a 4K monitor fits any viewport.
     #[test]
-    fn sans_designation_un_ecran_preexistant_reste_refuse() {
+    fn without_designation_a_pre_existing_screen_stays_refused() {
         let physique = "\\\\.\\DISPLAY1";
         let all = vec![sortie(physique, 3840, 2160)];
         let before = vec![physique.to_string()];
@@ -235,18 +235,15 @@ mod tests {
     /// process could not reset, and a test setting an
     /// environment variable would poison its neighbours.
     #[test]
-    fn seul_le_zero_desarme_la_designation() {
+    fn only_zero_disarms_the_designation() {
         assert!(crate::apps::desarme(Some("0")));
         for value in [None, Some(""), Some("1"), Some("0 "), Some("oui")] {
-            assert!(
-                !crate::apps::desarme(value),
-                "{value:?} ne doit PAS désarmer"
-            );
+            assert!(!crate::apps::desarme(value), "{value:?} must NOT disarm");
         }
     }
 
     #[test]
-    fn une_sortie_detachee_n_est_pas_designee() {
+    fn a_detached_output_is_not_designated() {
         let mut detachee = sortie(NOTRE, 1860, 1080);
         detachee.attachee_au_bureau = false;
         let before = vec![NOTRE.to_string()];

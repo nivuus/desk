@@ -17,7 +17,7 @@ fn morceaux(n: usize) -> VecDeque<Morceau> {
 /// would become the latency source of everything else — which this module exists
 /// precisely to prevent.
 #[test]
-fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
+fn the_window_never_requests_more_chunks_in_flight() {
     let mut f = Fenetre::new(morceaux(50));
     let lot = f.a_demander();
     assert_eq!(lot.len(), MORCEAUX_EN_VOL);
@@ -26,7 +26,7 @@ fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
     // of the total would make sixteen in flight here.
     assert!(
         f.a_demander().is_empty(),
-        "aucun morceau de plus tant que rien n'est reçu"
+        "no more chunks as long as nothing is received"
     );
     assert_eq!(f.en_vol(), MORCEAUX_EN_VOL);
 }
@@ -43,11 +43,11 @@ fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
 /// stops filling after a receipt.
 #[test]
 #[allow(non_snake_case)]
-fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
+fn the_window_really_reaches_MORCEAUX_EN_VOL_on_a_long_read() {
     const {
         assert!(
             MORCEAUX_EN_VOL > 1,
-            "une fenêtre de 1 est INERTE : voir la doc du module"
+            "a window of 1 is INERT: see the module doc"
         )
     };
     let mut f = Fenetre::new(morceaux(50));
@@ -55,13 +55,13 @@ fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
         for m in f.a_demander() {
             let _ = m;
         }
-        let position = *f.en_vol.front().expect("il en reste");
-        f.recu(position).expect("dans l'ordre");
+        let position = *f.en_vol.front().expect("some remain");
+        f.recu(position).expect("in order");
     }
     assert_eq!(
         f.en_vol_max(),
         MORCEAUX_EN_VOL,
-        "la fenêtre n'a jamais été pleine : le mécanisme est inerte"
+        "the window was never full: the mechanism is inert"
     );
 }
 
@@ -71,12 +71,10 @@ fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
 /// order, and **the SHA-256 digest would be the only criterion to catch it**
 /// — the one F1 NEVER established.
 #[test]
-fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
+fn an_out_of_order_answer_is_denounced_and_not_applied() {
     let mut f = Fenetre::new(morceaux(10));
     f.a_demander();
-    let error = f
-        .recu(4096)
-        .expect_err("la position 4096 n'est pas la plus ancienne");
+    let error = f.recu(4096).expect_err("position 4096 is not the oldest");
     assert_eq!(
         error,
         HorsOrdre {
@@ -94,11 +92,11 @@ fn une_reponse_hors_ordre_est_denoncee_et_pas_appliquee() {
 /// An **unknown** position is denounced too, and the message says what
 /// we expected.
 #[test]
-fn une_position_inconnue_est_denoncee() {
+fn an_unknown_position_is_denounced() {
     let mut f = Fenetre::new(morceaux(2));
     f.a_demander();
     assert_eq!(
-        f.recu(999_999).expect_err("position jamais demandée"),
+        f.recu(999_999).expect_err("position never requested"),
         HorsOrdre {
             recue: 999_999,
             attendue: Some(0)
@@ -113,9 +111,9 @@ fn une_position_inconnue_est_denoncee() {
 fn a_reply_with_nothing_in_flight_is_reported_with_expected_none() {
     let mut f = Fenetre::new(morceaux(1));
     f.a_demander();
-    f.recu(0).expect("la seule");
+    f.recu(0).expect("the only one");
     assert_eq!(
-        f.recu(0).expect_err("plus rien en vol"),
+        f.recu(0).expect_err("nothing in flight any more"),
         HorsOrdre {
             recue: 0,
             attendue: None
@@ -126,7 +124,7 @@ fn a_reply_with_nothing_in_flight_is_reported_with_expected_none() {
 /// The window empties and fills: after a receipt, one more chunk
 /// is requested, and not two.
 #[test]
-fn une_reception_libere_exactement_une_place() {
+fn a_reception_frees_exactly_one_slot() {
     let mut f = Fenetre::new(morceaux(10));
     f.a_demander();
     f.recu(0).unwrap();
@@ -151,7 +149,7 @@ fn pieces_are_requested_in_increasing_order() {
     }
     let mut triees = vues.clone();
     triees.sort_unstable();
-    assert_eq!(vues, triees, "les positions doivent être croissantes");
+    assert_eq!(vues, triees, "positions must be increasing");
     assert_eq!(vues.len(), 12);
 }
 
@@ -161,7 +159,7 @@ fn pieces_are_requested_in_increasing_order() {
 /// length. Without this case, the window would wait for a response that would never
 /// come, and the ProjFS command would expire on a perfectly read file.
 #[test]
-fn une_lecture_sans_morceau_est_terminee_d_emblee() {
+fn a_read_without_chunks_is_finished_at_once() {
     let mut f = Fenetre::new(VecDeque::new());
     assert!(f.terminee());
     assert!(f.a_demander().is_empty());
@@ -175,12 +173,12 @@ fn une_lecture_sans_morceau_est_terminee_d_emblee() {
 /// four chunks are still in flight, and the file would be truncated by
 /// four frames — without any error being returned.
 #[test]
-fn terminee_exige_que_le_vol_soit_vide_aussi() {
+fn finished_requires_the_flight_to_be_empty_too() {
     let mut f = Fenetre::new(morceaux(2));
     f.a_demander();
-    assert!(!f.terminee(), "deux morceaux sont en vol");
+    assert!(!f.terminee(), "two chunks are in flight");
     f.recu(0).unwrap();
-    assert!(!f.terminee(), "un morceau est encore en vol");
+    assert!(!f.terminee(), "one chunk is still in flight");
     f.recu(4096).unwrap();
     assert!(f.terminee());
 }

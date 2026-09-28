@@ -90,7 +90,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn les_tours_intermediaires_reessaient_sur_la_meme_sortie() {
+    fn intermediate_rounds_retry_on_the_same_output() {
         assert_eq!(
             apres_un_tour(1, 3, REPIT),
             Suite::Reessayer {
@@ -120,7 +120,7 @@ mod tests {
     /// A turn beyond the bound gives up too: no arithmetic can
     /// restart the loop.
     #[test]
-    fn au_dela_de_la_borne_on_renonce_encore() {
+    fn beyond_the_bound_we_still_give_up() {
         assert_eq!(
             apres_un_tour(9, 3, REPIT),
             Suite::Renoncer { tours_epuises: 9 }
@@ -129,7 +129,7 @@ mod tests {
 
     /// ⚠️ The degenerate case: `tours = 0` must not read as "unbounded".
     #[test]
-    fn zero_tour_renonce_immediatement_et_jamais_a_l_infini() {
+    fn zero_rounds_gives_up_immediately_and_never_endlessly() {
         assert_eq!(
             apres_un_tour(1, 0, REPIT),
             Suite::Renoncer { tours_epuises: 1 }
@@ -154,7 +154,7 @@ mod tests {
     /// The worst case is BOUNDED and computable: it is what the supervisor
     /// loop can spend without handling anything else.
     #[test]
-    fn le_pire_cas_est_borne_et_calculable() {
+    fn the_worst_case_is_bounded_and_computable() {
         let mut tours = 0;
         let mut attente = Duration::ZERO;
         let limite = Duration::from_secs(5);
@@ -169,7 +169,7 @@ mod tests {
                 }
                 Suite::Renoncer { .. } => break,
             }
-            assert!(tours <= TOURS, "la reprise doit être bornée");
+            assert!(tours <= TOURS, "the retry must be bounded");
         }
         assert_eq!(tours, TOURS);
         assert_eq!(attente, Duration::from_secs(17));

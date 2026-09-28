@@ -50,12 +50,12 @@ impl Table {
             .collect();
         let mut effets = Vec::new();
         for ancienne in orphelines {
-            let entree = self.entrees.remove(&ancienne).expect("relevée à l'instant");
+            let entree = self.entrees.remove(&ancienne).expect("read just now");
             if entree.relances >= RELANCES_MAX {
                 effets.extend(rendre_la_sortie_de(&entree));
                 effets.push(Effet::AnnoncerRefus {
                     titre: entree.titre,
-                    motif: format!("la session n'a pas tenu après {RELANCES_MAX} tentatives"),
+                    motif: format!("the session did not hold after {RELANCES_MAX} attempts"),
                 });
                 continue;
             }
@@ -120,11 +120,11 @@ impl Table {
             .map(|(s, _)| s.clone())
             .collect();
         for figee in figees {
-            let entree = self.entrees.remove(&figee).expect("relevée à l'instant");
+            let entree = self.entrees.remove(&figee).expect("read just now");
             effets.extend(rendre_la_sortie_de(&entree));
             effets.push(Effet::AnnoncerRefus {
                 titre: entree.titre,
-                motif: "la page-shell n'a jamais répondu après la relance".into(),
+                motif: "the shell page never answered after the relaunch".into(),
             });
         }
 

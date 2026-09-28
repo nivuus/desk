@@ -40,8 +40,8 @@ pub const BITS: u16 = 32;
 /// that both halves of the sound read the same way in `agent.log`.
 pub fn decrire(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> String {
     format!(
-        "{frequence} Hz, {canaux} canaux, {bits} bits, {}",
-        if flottant { "flottant" } else { "entier" }
+        "{frequence} Hz, {canaux} channels, {bits} bits, {}",
+        if flottant { "float" } else { "integer" }
     )
 }
 
@@ -60,27 +60,27 @@ pub fn verify(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Resul
     let attendu = crate::opus::SAMPLE_RATE_HZ;
     if frequence != attendu {
         bail!(
-            "format de mixage a {frequence} Hz : seul {attendu} Hz est supporte pour l'ecriture \
-             du micro (aucun reechantillonneur n'est embarque, spec §4) [{description}]"
+            "mix format at {frequence} Hz: only {attendu} Hz is supported for mic \
+             writing (no resampler is embedded, spec §4) [{description}]"
         );
     }
     if canaux != CANAUX {
         bail!(
-            "format de mixage a {canaux} canaux : seul le stereo ({CANAUX} canaux) est supporte \
-             pour l'ecriture du micro, `LecteurMicro::remplir` ne produisant que cela \
+            "mix format with {canaux} channels: only stereo ({CANAUX} channels) is supported \
+             for mic writing, `LecteurMicro::remplir` producing only that \
              [{description}]"
         );
     }
     if !flottant {
         bail!(
-            "format de mixage entier {bits} bits non supporte pour l'ecriture du micro : \
-             `LecteurMicro::remplir` rend des flottants normalises [{description}]"
+            "integer {bits}-bit mix format not supported for mic writing: \
+             `LecteurMicro::remplir` returns normalised floats [{description}]"
         );
     }
     if bits != BITS {
         bail!(
-            "format de mixage flottant {bits} bits non supporte pour l'ecriture du micro : \
-             seul le {BITS} bits l'est [{description}]"
+            "{bits}-bit float mix format not supported for mic writing: \
+             only {BITS}-bit is [{description}]"
         );
     }
     Ok(())
@@ -119,9 +119,9 @@ mod tests {
     /// The format NOTED on the VM on August 20th, 2026 for
     /// "Haut-parleurs (VB-Audio Virtual Cable)".
     #[test]
-    fn le_format_releve_sur_la_vm_est_accepte() {
+    fn the_format_read_on_the_vm_is_accepted() {
         assert!(verify(48_000, 2, 32, true).is_ok());
-        assert_eq!(SAMPLE_RATE_HZ, 48_000, "la constante du codec a changé");
+        assert_eq!(SAMPLE_RATE_HZ, 48_000, "the codec constant changed");
     }
 
     /// 🔴 The case of CABLE Output, the other end: 44,100 Hz. The message must
@@ -129,15 +129,15 @@ mod tests {
     /// refused" and does not know what to fix.
     #[test]
     #[allow(non_snake_case)]
-    fn une_frequence_autre_est_refusee_EN_LA_NOMMANT() {
+    fn another_frequency_is_refused_BY_NAMING_IT() {
         let e = verify(44_100, 2, 32, true).unwrap_err().to_string();
         assert!(
             e.contains("44100"),
-            "la fréquence rencontrée doit être nommée : {e}"
+            "the encountered frequency must be named: {e}"
         );
         assert!(
             e.contains("48000"),
-            "la fréquence attendue doit être nommée : {e}"
+            "the expected frequency must be named: {e}"
         );
         // ⚠️ Mutation M4 ("the reason no longer names the frequency
         // encountered") first SURVIVED: `[{description}]` carried it
@@ -161,26 +161,26 @@ mod tests {
     /// the description, not from the reason. `(48 000, 2, 32, integer)` can only be
     /// refused by the float guard.
     #[test]
-    fn un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant() {
+    fn a_32_bit_integer_format_is_refused_by_the_float_guard_alone() {
         let e = verify(48_000, 2, 32, false).unwrap_err().to_string();
         assert!(
-            e.contains("entier"),
-            "le motif doit nommer le format entier : {e}"
+            e.contains("integer"),
+            "the reason must name the integer format: {e}"
         );
         assert!(
-            !e.contains("flottant 32"),
-            "ce n'est pas la garde des bits qui doit refuser ce cas : {e}"
+            !e.contains("32-bit float"),
+            "it is not the bits guard that must refuse this case: {e}"
         );
     }
 
     /// And 16-bit integer stays refused too.
     #[test]
-    fn un_format_entier_16_bits_est_refuse() {
+    fn a_16_bit_integer_format_is_refused() {
         assert!(verify(48_000, 2, 16, false).is_err());
     }
 
     #[test]
-    fn un_flottant_qui_n_est_pas_32_bits_est_refuse() {
+    fn a_float_that_is_not_32_bits_is_refused() {
         assert!(verify(48_000, 2, 64, true).is_err());
     }
 
@@ -188,16 +188,16 @@ mod tests {
     /// on a mono endpoint would play every other channel at double
     /// speed: not degraded sound, wrong sound.
     #[test]
-    fn le_mono_est_refuse_plutot_que_converti() {
+    fn mono_is_refused_rather_than_converted() {
         let e = verify(48_000, 1, 32, true).unwrap_err().to_string();
         assert!(
             e.contains('1'),
-            "le nombre de canaux rencontré doit être nommé : {e}"
+            "the encountered channel count must be named: {e}"
         );
     }
 
     #[test]
-    fn le_multicanal_est_refuse() {
+    fn multichannel_is_refused() {
         assert!(verify(48_000, 6, 32, true).is_err());
     }
 
@@ -205,7 +205,7 @@ mod tests {
     /// frames written" does not distinguish a microphone that speaks from a microphone
     /// that is silent — and `remplir` fills with silence without ever saying so.
     #[test]
-    fn le_silence_pur_est_compte_trame_par_trame() {
+    fn pure_silence_is_counted_frame_by_frame() {
         assert_eq!(trames_de_silence(&[0.0; 8], 2), 4);
     }
 
@@ -219,7 +219,7 @@ mod tests {
     /// not silence, and counting it as such would mask exactly
     /// that defect.
     #[test]
-    fn une_trame_dont_un_seul_canal_parle_n_est_pas_du_silence() {
+    fn a_frame_where_a_single_channel_speaks_is_not_silence() {
         assert_eq!(trames_de_silence(&[0.0, 0.3, 0.0, 0.0], 2), 1);
     }
 
@@ -227,7 +227,7 @@ mod tests {
     /// comparison that distinguished them would make the counter wrong without
     /// any sound changing.
     #[test]
-    fn le_zero_negatif_est_du_silence() {
+    fn negative_zero_is_silence() {
         assert_eq!(trames_de_silence(&[-0.0, -0.0], 2), 1);
     }
 
@@ -244,11 +244,11 @@ mod tests {
     fn the_description_reads_like_the_loopback_one() {
         assert_eq!(
             decrire(48_000, 2, 32, true),
-            "48000 Hz, 2 canaux, 32 bits, flottant"
+            "48000 Hz, 2 channels, 32 bits, float"
         );
         assert_eq!(
             decrire(44_100, 2, 16, false),
-            "44100 Hz, 2 canaux, 16 bits, entier"
+            "44100 Hz, 2 channels, 16 bits, integer"
         );
     }
 }

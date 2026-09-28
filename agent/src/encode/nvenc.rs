@@ -31,7 +31,7 @@
 //!   **no** Media Foundation module.
 //!
 //! **Redo the measurement** (detail and raw surveys:
-//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`):
+//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`): (policy: allow-fr, real file path)
 //!
 //! ```text
 //! # Apollo's modules while it encodes, in session 1:
@@ -163,7 +163,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn une_machine_nvidia_prend_la_voie_native() {
+    fn an_nvidia_machine_takes_the_native_path() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
         assert_eq!(choisir_voie(&vus), Voie::Nvenc(0));
     }
@@ -172,7 +172,7 @@ mod tests {
     /// If this assertion fell to `Nvenc`, the machine would lose ANY
     /// hardware encoder — it is the regression this test pins.
     #[test]
-    fn une_machine_sans_nvidia_garde_la_mft() {
+    fn a_machine_without_nvidia_keeps_the_mft() {
         let vus = vec![
             adaptateur("Intel(R) UHD Graphics 770", 0x8086),
             adaptateur("Microsoft Basic Render Driver", 0x1414),
@@ -181,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn aucun_adaptateur_du_tout_garde_la_mft() {
+    fn no_adapter_at_all_keeps_the_mft() {
         assert_eq!(choisir_voie(&[]), Voie::Mft);
     }
 
@@ -191,7 +191,7 @@ mod tests {
     /// nevertheless be NVENC, and target the first NVIDIA — that is
     /// index **1**, not index 0.
     #[test]
-    fn la_topologie_mesuree_de_la_vm_vise_le_premier_nvidia() {
+    fn the_measured_vm_topology_targets_the_first_nvidia() {
         let vus = vec![
             adaptateur("Microsoft Basic Render Driver", 0x1414),
             adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA),
@@ -205,7 +205,7 @@ mod tests {
     /// be named "NVIDIA …" without carrying `0x10DE` must not lead to
     /// a DLL its machine does not have.
     #[test]
-    fn le_nom_ne_decide_pas_le_vendeur_decide() {
+    fn the_name_does_not_decide_the_vendor_does() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", 0x1414)];
         assert_eq!(choisir_voie(&vus), Voie::Mft);
     }
@@ -235,24 +235,24 @@ pub const ECHEC_CATASTROPHIQUE: i32 = 0x8000_FFFFu32 as i32;
 pub fn diagnostic_activation(code: i32, error: &str, adaptateurs: &[Adaptateur]) -> String {
     let noms: Vec<&str> = adaptateurs.iter().map(|a| a.nom.as_str()).collect();
     let mut message = format!(
-        "activation de l'encodeur H.264 matériel (ActivateObject) : {error} \
-         — adaptateurs vus : [{}]",
+        "activating the hardware H.264 encoder (ActivateObject): {error} \
+         — adapters seen: [{}]",
         noms.join(" | ")
     );
     if code == ECHEC_CATASTROPHIQUE && matches!(choisir_voie(adaptateurs), Voie::Nvenc(_)) {
         message.push_str(
-            " — CAUSE CONNUE, MESUREE LE 30 AOUT 2026 (lot 31) : la MFT \
-             « NVIDIA H.264 Encoder MFT » rend 0x8000FFFF en SESSION 1 sur cette \
-             machine, alors qu'elle s'active en session 0. Ce n'est ni le pilote \
-             absent, ni Media Foundation en panne : dans la meme execution, \
-             l'encodeur H.264 LOGICIEL et le processeur video LOGICIEL s'activent \
-             tous deux. Poser MFT_ENUM_ADAPTER_LUID, tenir un peripherique D3D11 \
-             NVIDIA vivant, ou lier l'affichage virtuel au GPU NVIDIA sont TROIS \
-             remedes deja REFUTES PAR LA MESURE — ne pas les reessayer. La voie \
-             qui fonctionne ici est l'API NVENC native. Detail, releves bruts et \
-             remedes refutes : \
-             docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md",
+            " — KNOWN CAUSE, MEASURED ON 30 AUGUST 2026 (batch 31): the MFT \
+             « NVIDIA H.264 Encoder MFT » returns 0x8000FFFF in SESSION 1 on this \
+             machine, while it activates in session 0. It is neither a missing \
+             driver nor a broken Media Foundation: in the same run, \
+             the SOFTWARE H.264 encoder and the SOFTWARE video processor both \
+             activate. Setting MFT_ENUM_ADAPTER_LUID, keeping an NVIDIA D3D11 \
+             device alive, or binding the virtual display to the NVIDIA GPU are THREE \
+             remedies already REFUTED BY MEASUREMENT — do not retry them. The path \
+             that works here is the native NVENC API. Details, raw readings and \
+             refuted remedies: ",
         );
+        message.push_str("docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md");
     }
     message
 }
@@ -265,7 +265,7 @@ mod tests_diagnostic {
     const AUTRE_CODE: i32 = 0x8007_0057u32 as i32; // E_INVALIDARG
 
     #[test]
-    fn nomme_les_adaptateurs_vus() {
+    fn names_the_adapters_seen() {
         let vus = vec![
             adaptateur("Microsoft Basic Render Driver", 0x1414),
             adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA),
@@ -281,7 +281,7 @@ mod tests_diagnostic {
     fn adds_the_known_cause_when_both_conditions_are_met() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
-        assert!(m.contains("CAUSE CONNUE"), "{m}");
+        assert!(m.contains("KNOWN CAUSE"), "{m}");
         assert!(
             m.contains("2026-08-30-encodeur-porte-apollo-resultats.md"),
             "{m}"
@@ -291,25 +291,25 @@ mod tests_diagnostic {
     /// 🔴 The arm that prevents asserting our diagnosis where it does not
     /// apply: same code, machine WITHOUT NVIDIA.
     #[test]
-    fn se_tait_sur_la_cause_quand_aucun_nvidia_n_est_present() {
+    fn stays_silent_on_the_cause_when_no_nvidia_is_present() {
         let vus = vec![adaptateur("Intel(R) UHD Graphics 770", 0x8086)];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
-        assert!(!m.contains("CAUSE CONNUE"), "{m}");
+        assert!(!m.contains("KNOWN CAUSE"), "{m}");
         assert!(m.contains("Intel(R) UHD Graphics 770"), "{m}");
     }
 
     /// The other arm: NVIDIA machine, but ANOTHER error code.
     #[test]
-    fn se_tait_sur_la_cause_pour_un_autre_code() {
+    fn stays_silent_on_the_cause_for_another_code() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
-        let m = diagnostic_activation(AUTRE_CODE, "Paramètre incorrect", &vus);
-        assert!(!m.contains("CAUSE CONNUE"), "{m}");
+        let m = diagnostic_activation(AUTRE_CODE, "The parameter is incorrect", &vus);
+        assert!(!m.contains("KNOWN CAUSE"), "{m}");
     }
 
     #[test]
-    fn sans_aucun_adaptateur_le_message_reste_lisible() {
+    fn without_any_adapter_the_message_stays_readable() {
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &[]);
-        assert!(m.contains("adaptateurs vus : []"), "{m}");
-        assert!(!m.contains("CAUSE CONNUE"), "{m}");
+        assert!(m.contains("adapters seen: []"), "{m}");
+        assert!(!m.contains("KNOWN CAUSE"), "{m}");
     }
 }

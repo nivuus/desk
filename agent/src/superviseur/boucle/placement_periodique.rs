@@ -35,7 +35,7 @@ pub(super) fn borne_de(sortie: &SortieDxgi) -> (u32, u32) {
             Some((travail.width, travail.height)),
         ),
         Err(error) => {
-            tracing::warn!(%error, nom = %sortie.nom_sortie, "zone de travail illisible : la sortie entière sert de borne");
+            tracing::warn!(%error, nom = %sortie.nom_sortie, "unreadable work area: the whole output serves as the bound");
             moniteur
         }
     }
@@ -88,12 +88,12 @@ pub(super) fn suivre_le_viewport(
         borne.map(|b| crate::windows_source_sortie::size_for_viewport((largeur, hauteur), b));
 
     let decision = match (&nom, &sortie, retenue) {
-        (None, _, _) => "AUCUNE sortie retenue pour cette session",
-        (Some(_), None, _) => "sortie ABSENTE de la topologie DXGI",
+        (None, _, _) => "NO output retained for this session",
+        (Some(_), None, _) => "output ABSENT from the DXGI topology",
         (Some(_), Some(_), Some(r)) if Some(r) == precedente => {
-            "taille INCHANGEE : rien a reposer (viewport sature la borne, ou geste sans effet)"
+            "size UNCHANGED: nothing to place again (viewport saturates the bound, or gesture without effect)"
         }
-        _ => "taille CHANGEE : la table est corrigee et la fenetre reposee",
+        _ => "size CHANGED: the table is corrected and the window placed again",
     };
     tracing::info!(
         session = %session.0,
@@ -103,7 +103,7 @@ pub(super) fn suivre_le_viewport(
         retenue = retenue.map(|r| format!("{}x{}", r.0, r.1)).unwrap_or_default(),
         precedente = precedente.map(|p| format!("{}x{}", p.0, p.1)).unwrap_or_default(),
         decision,
-        "viewport recu par le superviseur"
+        "viewport received by the supervisor"
     );
 
     let (Some(_), Some(retenue)) = (sortie, retenue) else {
@@ -228,10 +228,10 @@ pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, all: &[Sort
             fenetre_vivante,
             de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
             vers = format!("{}x{}+{}+{}", cible.width, cible.height, cible.x, cible.y),
-            "fenêtre sortie de sa sortie, replacement"
+            "window left its output, placing it again"
         );
         if let Err(error) = placement::poser(hwnd, &cible) {
-            tracing::warn!(session = %session.0, %error, "replacement échoué");
+            tracing::warn!(session = %session.0, %error, "placing again failed");
         }
     }
 }

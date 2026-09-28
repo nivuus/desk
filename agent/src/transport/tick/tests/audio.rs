@@ -10,7 +10,7 @@ use injection::verrou_injection;
 
 /// Remède à la réserve I1 de la revue de la tâche 9 (sous-bloc D9) : la
 /// branche a1sexies n'avait aucun test — exactement le risque que le
-/// commentaire d'`une_part_en_attente_est_appliquee_par_act_on_timeout`
+/// commentaire d'`a_pending_share_is_applied_by_act_on_timeout`
 /// nomme pour a1quater (« supprimer tout le bloc laissait les autres tests
 /// verts »). Séquence complète, vue ROUGE avant remède (voir le rapport de
 /// tâche) : `capture_morte()` devient vraie → `AudioMort` part UNE fois →
@@ -39,34 +39,34 @@ fn a_dead_audio_capture_is_reported_once_then_again_after_a_reattach() {
     // Capture vivante : rien à signaler.
     session
         .act_on_timeout(Instant::now())
-        .expect("un tour sans capture morte ne doit jamais faire échouer la session");
+        .expect("a round without a dead capture must never make the session fail");
     assert_eq!(
         *signalements.lock().unwrap(),
         0,
-        "aucun signalement tant que la capture est vivante"
+        "no report as long as the capture is alive"
     );
 
     // La capture meurt : le tour SUIVANT doit signaler exactement une fois.
     morte.store(true, std::sync::atomic::Ordering::Relaxed);
     session
         .act_on_timeout(Instant::now())
-        .expect("signaler une capture morte ne doit jamais faire échouer la session");
+        .expect("reporting a dead capture must never make the session fail");
     assert_eq!(
         *signalements.lock().unwrap(),
         1,
-        "la capture morte doit être signalée exactement une fois"
+        "the dead capture must be reported exactly once"
     );
 
     // Tour suivant, capture toujours morte, AUCUN rattachement : le verrou
     // doit empêcher toute réémission.
     session
         .act_on_timeout(Instant::now())
-        .expect("un tour sous verrou ne doit jamais faire échouer la session");
+        .expect("a round under lock must never make the session fail");
     assert_eq!(
         *signalements.lock().unwrap(),
         1,
-        "le verrou audio_mort_signale doit empêcher une réémission tant qu'aucun \
-         rattachement n'a eu lieu"
+        "the audio_mort_signale lock must prevent a re-emission as long as no \
+         reattachment took place"
     );
 
     // Un rattachement survient (capteur relancé, ou reconnexion de canal) :
@@ -74,11 +74,11 @@ fn a_dead_audio_capture_is_reported_once_then_again_after_a_reattach() {
     rattachement.store(true, std::sync::atomic::Ordering::Relaxed);
     session
         .act_on_timeout(Instant::now())
-        .expect("re-signaler après un rattachement ne doit jamais faire échouer la session");
+        .expect("reporting again after a reattachment must never make the session fail");
     assert_eq!(
         *signalements.lock().unwrap(),
         2,
-        "un rattachement doit remettre le verrou à zéro et permettre un nouveau signalement"
+        "a reattachment must reset the lock and allow a new report"
     );
 }
 
@@ -172,13 +172,10 @@ fn a_dead_capture_is_rebuilt_before_any_report() {
     let t0 = std::time::Instant::now();
     assert!(
         !session.reconstruire_ou_signaler(t0),
-        "rien à signaler : on reconstruit"
+        "nothing to report: we rebuild"
     );
     assert_eq!(attempts.load(std::sync::atomic::Ordering::Relaxed), 1);
-    assert!(
-        !session.capture_audio_morte(),
-        "la source neuve est vivante"
-    );
+    assert!(!session.capture_audio_morte(), "the fresh source is alive");
 }
 
 /// Le budget épuisé fait retomber sur le signalement : c'est là que la
@@ -189,26 +186,26 @@ fn a_rebuilder_that_always_fails_ends_up_reporting() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
-    session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("plus d'arbre de processus")));
+    session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("no process tree any more")));
 
     let mut t = std::time::Instant::now();
     for attempt in 0..crate::audio::RECONSTRUCTIONS_MAX {
         assert!(
             !session.reconstruire_ou_signaler(t),
-            "essai {attempt} : budget restant"
+            "attempt {attempt}: budget remaining"
         );
         t += crate::audio::REPIT_RECONSTRUCTION;
     }
     assert!(
         session.reconstruire_ou_signaler(t),
-        "budget épuisé : il faut signaler"
+        "budget exhausted: must report"
     );
 }
 
 /// Le répit est respecté : sans lui, la boucle de tick tenterait une
 /// ouverture WASAPI à chaque tour.
 #[test]
-fn le_repit_espace_les_tentatives() {
+fn the_respite_spaces_the_attempts() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -216,7 +213,7 @@ fn le_repit_espace_les_tentatives() {
     let compte = std::sync::Arc::clone(&attempts);
     session.set_audio_reconstructeur(Box::new(move || {
         compte.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        anyhow::bail!("pas encore")
+        anyhow::bail!("not yet")
     }));
 
     let t0 = std::time::Instant::now();
@@ -225,7 +222,7 @@ fn le_repit_espace_les_tentatives() {
     assert_eq!(
         attempts.load(std::sync::atomic::Ordering::Relaxed),
         1,
-        "deux appels dans le même instant ne font qu'une tentative"
+        "two calls in the same instant make only one attempt"
     );
 }
 
@@ -242,11 +239,11 @@ fn le_repit_espace_les_tentatives() {
 /// Le mono-fenêtre a bien un reconstructeur, et son défaut propre (la
 /// source reconstruite était réarmée à `false`) ✅ **est le leg n°4 de D10,
 /// corrigé au sous-bloc D11 — et il est désormais couvert, dans CE fichier,
-/// par `l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible`
+/// par `the_public_accessor_makes_a_session_carrier_and_its_rebuild_audible`
 /// (plus bas).** « N'est couvert par aucun test » a donc été rendu faux par
 /// un test ajouté deux cents lignes plus bas dans le même fichier.
 #[test]
-fn sans_reconstructeur_on_signale_immediatement() {
+fn without_a_rebuilder_we_report_immediately() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -264,7 +261,7 @@ fn sans_reconstructeur_on_signale_immediatement() {
 /// que dupliquée — peut porter l'`Arc<AtomicBool>` que ce test lit, sans
 /// downcast sur `Box<dyn VideoSource>`.
 #[test]
-fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
+fn live_audio_is_announced_only_after_a_real_packet() {
     let _verrou = verrou_injection();
     let annonces = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let source = Box::new(SourceWithDeadAudio {
@@ -303,17 +300,17 @@ fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
     // chance réelle d'échouer si le drapeau était posé au mauvais endroit.
     session
         .act_on_timeout(std::time::Instant::now())
-        .expect("un tour sans paquet ne doit jamais faire échouer la session");
+        .expect("a round without a packet must never make the session fail");
     assert!(
         !annonces.load(std::sync::atomic::Ordering::Relaxed),
-        "reconstruite n'est pas entendue : aucune preuve encore (sans_paquet ne produit rien)"
+        "rebuilt is not heard: no proof yet (sans_paquet produces nothing)"
     );
 
     session.set_audio_source(Box::new(SourceVivante::with_one_packet()));
     session.brancher_audio(); // le paquet qui repart EST la preuve
     session
         .act_on_timeout(std::time::Instant::now())
-        .expect("annoncer une reprise audio ne doit jamais faire échouer la session");
+        .expect("announcing an audio recovery must never make the session fail");
     assert!(annonces.load(std::sync::atomic::Ordering::Relaxed));
 }
 
@@ -327,11 +324,11 @@ fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
 /// test le fait tourner deux fois, explicitement : c'est le seul moyen de
 /// savoir que la chaîne est réellement refermée.
 #[test]
-fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
+fn a_re_election_replenishes_the_budget_and_lifts_the_lock() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
-    session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("jamais")));
+    session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("never")));
 
     // Premier cycle : `RECONSTRUCTIONS_MAX` tentatives, toutes en échec,
     // espacées de `REPIT_RECONSTRUCTION` (horloge avancée à la main, comme
@@ -340,13 +337,13 @@ fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
     for attempt in 0..crate::audio::RECONSTRUCTIONS_MAX {
         assert!(
             !session.reconstruire_ou_signaler(t),
-            "premier cycle, essai {attempt}"
+            "first cycle, attempt {attempt}"
         );
         t += crate::audio::REPIT_RECONSTRUCTION;
     }
     assert!(
         session.reconstruire_ou_signaler(t),
-        "premier épuisement : il faut signaler"
+        "first exhaustion: must report"
     );
     // C'est ce que fait `act_on_timeout` (branche a1sexies) au moment de
     // signaler `AudioMort` — reproduit ici pour ne pas dépendre du reste de
@@ -358,21 +355,21 @@ fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
     session.appliquer_audio(true);
     assert!(
         !session.audio_mort_signale,
-        "une réélection doit lever le verrou, sinon a1sexies ne rappelle plus jamais \
-         reconstruire_ou_signaler"
+        "a re-election must lift the lock, otherwise a1sexies never calls \
+         reconstruire_ou_signaler again"
     );
 
     // Second cycle : le budget doit être de nouveau plein.
     for attempt in 0..crate::audio::RECONSTRUCTIONS_MAX {
         assert!(
             !session.reconstruire_ou_signaler(t),
-            "second cycle, essai {attempt} : le budget devait avoir été réapprovisionné"
+            "second cycle, attempt {attempt}: the budget should have been replenished"
         );
         t += crate::audio::REPIT_RECONSTRUCTION;
     }
     assert!(
         session.reconstruire_ou_signaler(t),
-        "second épuisement : le cycle a bien tourné une seconde fois"
+        "second exhaustion: the cycle did run a second time"
     );
 }
 
@@ -391,7 +388,7 @@ fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
 /// (avant ce correctif) `SourceVivante` avaient toutes deux un `set_actif`
 /// no-op.
 #[test]
-fn une_session_porteuse_reconstruite_recoit_set_actif_true() {
+fn a_rebuilt_carrier_session_receives_set_actif_true() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -411,10 +408,10 @@ fn une_session_porteuse_reconstruite_recoit_set_actif_true() {
     assert_eq!(
         *actif_recu.lock().unwrap(),
         Some(true),
-        "une session porteuse dont la capture est reconstruite doit être \
-         réémise IMMÉDIATEMENT (avant tout paquet) : sans quoi elle reste \
-         muette pour toujours (aucun paquet -> aucune preuve -> aucune \
-         réélection -> muette)"
+        "a carrier session whose capture is rebuilt must be \
+         re-emitted IMMEDIATELY (before any packet): otherwise it stays \
+         silent forever (no packet -> no proof -> no \
+         re-election -> silent)"
     );
 }
 
@@ -424,7 +421,7 @@ fn une_session_porteuse_reconstruite_recoit_set_actif_true() {
 /// correctif appelle `set_actif(self.audio_porteuse)` sans condition), mais
 /// ce test le PROUVE plutôt que de le supposer.
 #[test]
-fn une_session_non_porteuse_reconstruite_reste_muette() {
+fn a_rebuilt_non_carrier_session_stays_silent() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -437,7 +434,7 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
     // `audio_porteuse` reste à son défaut de construction : `false`.
     assert!(
         !session.audio_porteuse,
-        "précondition : cette session ne porte pas le son"
+        "precondition: this session does not carry the sound"
     );
 
     session.reconstruire_ou_signaler(std::time::Instant::now());
@@ -445,8 +442,8 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
     assert_eq!(
         *actif_recu.lock().unwrap(),
         Some(false),
-        "une session qui ne porte pas le son ne doit pas être rallumée par sa \
-         propre reconstruction"
+        "a session that does not carry the sound must not be switched back on by its \
+         own rebuild"
     );
 }
 
@@ -472,7 +469,7 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
 /// recette ① joué sur le binaire de `main` — le seul contrôle capable de
 /// montrer le silence.
 #[test]
-fn l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible() {
+fn the_public_accessor_makes_a_session_carrier_and_its_rebuild_audible() {
     let _verrou = verrou_injection();
     let mut session = test_session();
     session.set_audio_source(Box::new(SourceMorte::new()));
@@ -492,9 +489,9 @@ fn l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible() {
     assert_eq!(
         *actif_recu.lock().unwrap(),
         Some(true),
-        "une session déclarée porteuse par l'accesseur public doit voir sa \
-         capture reconstruite RÉÉMISE : sans quoi le remède de reconstruction \
-         de D10 reste inerte dans le cas majoritaire (une application, une \
-         fenêtre)"
+        "a session declared carrier by the public accessor must see its \
+         rebuilt capture RE-EMITTED: otherwise D10's rebuild remedy \
+         stays inert in the majority case (one application, one \
+         window)"
     );
 }

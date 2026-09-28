@@ -179,7 +179,7 @@ pub fn tourner(
                         nom_sortie,
                         size,
                     }) {
-                        tracing::error!(session = %session.0, %error, "lancement de l'enfant échoué");
+                        tracing::error!(session = %session.0, %error, "child launch failed");
                         // The `Lanceur` trait's contract is atomic: `Err`
                         // means no process is running. Nothing to kill
                         // then; the output, for its part, is RETAINED by `enfant_mort`
@@ -217,7 +217,7 @@ pub fn tourner(
         // 2. Beat the driver's watchdog.
         if last_ping.elapsed() >= PERIODE_PING {
             if let Err(error) = pilote.pinguer() {
-                tracing::warn!(%error, "ping du chien de garde du pilote échoué");
+                tracing::warn!(%error, "driver watchdog ping failed");
             }
             last_ping = std::time::Instant::now();
         }
@@ -245,7 +245,7 @@ pub fn tourner(
                     if sursis.retirer(fenetre) {
                         tracing::info!(
                             hwnd = format!("{:#x}", fenetre.0),
-                            "fenetre disparue pendant son sursis : aucun onglet n'a ete ouvert"
+                            "window vanished during its grace period: no tab was opened"
                         );
                     }
                     effets.extend(table.fenetre_disparue(fenetre));
@@ -270,7 +270,7 @@ pub fn tourner(
                 tracing::info!(
                     hwnd = format!("{:#x}", fenetre.0),
                     %titre,
-                    "fenetre ECARTEE a l'echeance de son sursis : elle ne merite plus d'onglet"
+                    "window DISCARDED when its grace period expired: it no longer deserves a tab"
                 );
             }
         }
@@ -300,7 +300,7 @@ pub fn tourner(
                         demande = format!("{largeur}x{hauteur}"),
                         effets = suite.len(),
                         etat = ?table.etat(&session),
-                        "viewport recu de la page-shell"
+                        "viewport received from the shell page"
                     );
                     effets.extend(suite);
                 }
@@ -331,7 +331,7 @@ pub fn tourner(
                 // window) the window it has just opened.
                 DepuisLaShell::PairPresent => {
                     tracing::info!(
-                        "une page-shell a rejoint la session de contrôle : les fenêtres sont réannoncées"
+                        "a shell page joined the control session: the windows are announced again"
                     );
                     effets.extend(table.reannoncer_les_attentes(std::time::Instant::now()));
                     effets.extend(recenser_les_fenetres_existantes(&mut table));

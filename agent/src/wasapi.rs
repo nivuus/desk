@@ -161,16 +161,16 @@ impl LoopbackCapture {
             let hr = CoInitializeEx(None, COINIT_MULTITHREADED);
             if hr == RPC_E_CHANGED_MODE {
                 bail!(
-                    "ouverture du loopback audio refusée : le fil appelant appartient déjà \
-                     à un appartement à thread unique (STA), pas à l'appartement \
-                     multi-thread (MTA) qu'exige `LoopbackCapture`. `WindowsAudioSource::new` \
-                     (agent/src/windows_audio.rs) déplace cet objet, par `move`, vers un fil \
-                     de capture dédié qui rejoint la MTA : migrer un objet COM d'une STA vers \
-                     un autre appartement sans marshaling est un comportement indéfini, pas \
-                     seulement une erreur de type. Vérifiez qu'aucun \
-                     `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` (ni aucune autre \
-                     initialisation qui lie ce fil à une STA, par exemple une init WinRT \
-                     implicite) n'a précédé cet appel sur ce même fil."
+                    "opening the audio loopback refused: the calling thread already belongs \
+                     to a single-threaded apartment (STA), not to the multi-threaded \
+                     apartment (MTA) that `LoopbackCapture` requires. `WindowsAudioSource::new` \
+                     (agent/src/windows_audio.rs) moves this object, through `move`, to a dedicated \
+                     capture thread that joins the MTA: migrating a COM object from an STA to \
+                     another apartment without marshaling is undefined behaviour, not \
+                     merely a type error. Check that no \
+                     `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` (nor any other \
+                     initialisation binding this thread to an STA, for instance an implicit \
+                     WinRT init) preceded this call on this same thread."
                 );
             }
 
@@ -194,7 +194,7 @@ impl LoopbackCapture {
 
             let enumerateur: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
-                    .context("création de l'énumérateur de périphériques audio")?;
+                    .context("creating the audio device enumerator")?;
             // Fix "A-bis": no more hardcoded `GetDefaultAudioEndpoint`
             // here. `rendu::resoudre` honours `AUDIO_PERIPHERIQUE` when it
             // is set, falls back to Windows' default otherwise (behaviour
@@ -205,11 +205,7 @@ impl LoopbackCapture {
                 .Activate(CLSCTX_ALL, None)
                 .context("activation du client audio")?;
 
-            let mix = FormatMixage(
-                client
-                    .GetMixFormat()
-                    .context("lecture du format de mixage")?,
-            );
+            let mix = FormatMixage(client.GetMixFormat().context("reading the mix format")?);
             let canaux = mix.nChannels as usize;
             let frequence = mix.nSamplesPerSec;
             let bits = mix.wBitsPerSample;
@@ -226,21 +222,21 @@ impl LoopbackCapture {
             };
 
             let description = format!(
-                "{frequence} Hz, {canaux} canaux, {bits} bits, {}",
-                if flottant { "flottant" } else { "entier" }
+                "{frequence} Hz, {canaux} channels, {bits} bits, {}",
+                if flottant { "float" } else { "integer" }
             );
 
             if frequence != SAMPLE_RATE_HZ {
                 bail!(
-                    "format de mixage à {frequence} Hz : seul {SAMPLE_RATE_HZ} Hz est supporté \
-                     (aucun rééchantillonneur n'est embarqué)"
+                    "mix format at {frequence} Hz: only {SAMPLE_RATE_HZ} Hz is supported \
+                     (no resampler is embedded)"
                 );
             }
             if !flottant && bits != 16 {
-                bail!("format de mixage entier {bits} bits non supporté ({description})");
+                bail!("integer {bits}-bit mix format not supported ({description})");
             }
             if flottant && bits != 32 {
-                bail!("format de mixage flottant {bits} bits non supporté ({description})");
+                bail!("{bits}-bit float mix format not supported ({description})");
             }
 
             client
@@ -260,8 +256,8 @@ impl LoopbackCapture {
 
             let capture: IAudioCaptureClient = client
                 .GetService()
-                .context("obtention du service de capture")?;
-            client.Start().context("démarrage de la capture")?;
+                .context("obtaining the capture service")?;
+            client.Start().context("starting the capture")?;
 
             Ok(Self {
                 client,
@@ -286,7 +282,7 @@ impl LoopbackCapture {
             let dispo = self
                 .capture
                 .GetNextPacketSize()
-                .context("interrogation du paquet suivant")?;
+                .context("querying the next packet")?;
             if dispo == 0 {
                 return Ok(None);
             }
@@ -296,7 +292,7 @@ impl LoopbackCapture {
             let mut drapeaux: u32 = 0;
             self.capture
                 .GetBuffer(&mut data, &mut images, &mut drapeaux, None, None)
-                .context("lecture du tampon de capture")?;
+                .context("reading the capture buffer")?;
 
             let muet = drapeaux & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0;
             let sortie = if muet {
@@ -314,7 +310,7 @@ impl LoopbackCapture {
 
             self.capture
                 .ReleaseBuffer(images)
-                .context("libération du tampon de capture")?;
+                .context("releasing the capture buffer")?;
             Ok(Some(sortie))
         }
     }

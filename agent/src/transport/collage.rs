@@ -50,7 +50,7 @@ impl Session {
                 session = %self.session_id,
                 octets = normalise.len(),
                 borne = crate::presse_papier::PRESSE_PAPIER_MAX,
-                "collage refusé : au-dessus de la borne, il n'est ni tronqué ni écrit"
+                "paste refused: above the bound, it is neither truncated nor written"
             ),
             Some(borne) => {
                 let pour_windows = crate::presse_papier::denormaliser(&borne);
@@ -65,14 +65,14 @@ impl Session {
                         tracing::debug!(
                             session = %self.session_id,
                             octets = borne.len(),
-                            "collage écrit dans le presse-papier de la VM"
+                            "paste written to the VM clipboard"
                         );
                         self.collage_a_injecter = true;
                     }
                     Err(error) => tracing::warn!(
                         session = %self.session_id,
                         error = %format!("{error:#}"),
-                        "collage NON écrit : la touche V est perdue, pas reportée"
+                        "paste NOT written: the V key is lost, not deferred"
                     ),
                 }
             }

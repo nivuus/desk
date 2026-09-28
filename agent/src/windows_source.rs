@@ -168,7 +168,7 @@ impl WindowsSource {
         // `crop_region` already aligns dimensions on even values,
         // required by the H.264 encoder.
         let region = crop_region(window_rect, dw, dh)
-            .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
+            .ok_or_else(|| anyhow::anyhow!("the window is off screen"))?;
         let (width, height) = (region.width, region.height);
 
         let mut encoder = H264Encoder::new(
@@ -259,7 +259,7 @@ impl WindowsSource {
     fn capture_mut(&mut self) -> &mut DesktopCapture {
         self.capture
             .as_mut()
-            .expect("capture toujours présente quand fatal est faux")
+            .expect("capture always present when fatal is false")
     }
 
     /// Current encoder, mutable — or an **error**, never a panic.
@@ -275,7 +275,7 @@ impl WindowsSource {
     fn encoder_mut(&mut self) -> Result<&mut H264Encoder> {
         self.encoder
             .as_mut()
-            .ok_or_else(|| anyhow::anyhow!("source épuisée : encodeur détruit"))
+            .ok_or_else(|| anyhow::anyhow!("source exhausted: encoder destroyed"))
     }
 
     /// True as long as the captured window exists.
@@ -338,7 +338,7 @@ impl WindowsSource {
                 }
                 Some(Ok(None)) | None => break,
                 Some(Err(e)) => {
-                    tracing::warn!(error = %crate::cause::chain(&e), "récupération de l'image encodée échouée");
+                    tracing::warn!(error = %crate::cause::chain(&e), "retrieving the encoded frame failed");
                     break;
                 }
             }
@@ -349,7 +349,7 @@ impl WindowsSource {
             .encoder_mut()
             .and_then(H264Encoder::flush_pending_inputs)
         {
-            tracing::warn!(error = %crate::cause::chain(&e), "réalimentation de l'encodeur échouée");
+            tracing::warn!(error = %crate::cause::chain(&e), "refeeding the encoder failed");
         }
         self.ready.pop_front()
     }

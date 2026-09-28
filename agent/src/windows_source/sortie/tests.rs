@@ -32,7 +32,7 @@ fn a_4k_size_is_brought_down_to_the_ceiling() {
 }
 
 #[test]
-fn le_bornage_preserve_le_rapport_d_aspect() {
+fn bounding_preserves_the_aspect_ratio() {
     // A 21:9 bounded independently on each axis would distort the image.
     let (l, h) = clamp_to_max_size((3440, 1440));
     assert!(l <= MAX_OUTPUT_SIZE.0 && h <= MAX_OUTPUT_SIZE.1, "{l}x{h}");
@@ -41,7 +41,7 @@ fn le_bornage_preserve_le_rapport_d_aspect() {
 }
 
 #[test]
-fn le_bornage_rend_des_dimensions_paires() {
+fn bounding_returns_even_dimensions() {
     // A Windows window imposes even dimensions, and so does an NV12
     // encoder.
     let (l, h) = clamp_to_max_size((3441, 1441));
@@ -65,7 +65,7 @@ fn le_bornage_rend_des_dimensions_paires() {
 /// It is the repository's doctrine applied to a test: **a check never
 /// seen red is not a check** (D7, F1).
 #[test]
-fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
+fn even_alignment_is_really_exercised_by_an_odd_input() {
     assert_eq!(clamp_to_max_size((1281, 721)), (1280, 720));
 }
 
@@ -74,12 +74,12 @@ fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
 /// `.max(2)`. `(0, 0)` is its real degenerate case: a video box
 /// reduced to nothing (collapsed window, fullscreen transition) emits it.
 #[test]
-fn le_bornage_ne_rend_jamais_une_dimension_nulle() {
+fn bounding_never_returns_a_zero_dimension() {
     assert_eq!(clamp_to_max_size((0, 0)), (2, 2));
 }
 
 #[test]
-fn la_region_part_de_l_origine_de_la_sortie() {
+fn the_region_starts_at_the_output_origin() {
     assert_eq!(
         region_de_sortie(1600, 900),
         Some(Rect {
@@ -92,7 +92,7 @@ fn la_region_part_de_l_origine_de_la_sortie() {
 }
 
 #[test]
-fn les_dimensions_impaires_sont_alignees_vers_le_bas() {
+fn odd_dimensions_are_aligned_downward() {
     assert_eq!(
         region_de_sortie(1601, 901),
         Some(Rect {
@@ -115,7 +115,7 @@ fn a_degenerate_output_gives_no_region() {
 /// the physical desktop's for it — the leak of one monitor's content into
 /// someone else's session.
 #[test]
-fn seul_le_mode_recadre_recapture_le_bureau() {
+fn only_the_cropped_mode_recaptures_the_desktop() {
     assert!(ModeCapture::FenetreRecadree.recapture_le_bureau());
     assert!(!ModeCapture::SortieEntiere.recapture_le_bureau());
 }
@@ -126,14 +126,14 @@ fn seul_le_mode_recadre_recapture_le_bureau() {
 /// `suit_le_viewport` return `false` for both would bring back yesterday's
 /// `no-op` without any test flinching.
 #[test]
-fn seul_le_mode_sortie_entiere_suit_le_viewport() {
+fn only_the_whole_output_mode_follows_the_viewport() {
     assert!(ModeCapture::SortieEntiere.suit_le_viewport());
     assert!(!ModeCapture::FenetreRecadree.suit_le_viewport());
     // Exclusive, and exhaustive: every mode takes exactly one path.
     for mode in [ModeCapture::FenetreRecadree, ModeCapture::SortieEntiere] {
         assert!(
             mode.recapture_le_bureau() ^ mode.suit_le_viewport(),
-            "{mode:?} doit prendre exactement un des deux chemins"
+            "{mode:?} must take exactly one of the two paths"
         );
     }
 }
@@ -161,7 +161,7 @@ fn seul_le_mode_sortie_entiere_suit_le_viewport() {
 /// aspect, but from the fact that the retained size is **FROZEN at opening** and
 /// that any later request is dropped. It is that freeze this batch lifts.
 #[test]
-fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
+fn the_most_frequent_request_is_now_honoured_up_to_the_aspect() {
     // Under the bound on both axes: it goes through as is (up to
     // evenness), so the image matches EXACTLY the requested ratio.
     assert_eq!(size_for_viewport((778, 491), (1428, 1032)), (778, 490));
@@ -183,12 +183,12 @@ fn la_demande_la_plus_frequente_est_desormais_honoree_a_l_aspect_pres() {
 ///
 /// What stays true, and what this test guards: we never exceed the bound.
 #[test]
-fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
+fn a_viewport_wider_than_the_bound_is_reduced_without_distortion() {
     let borne = (1428, 1032);
     let (l, h) = size_for_viewport((5118, 1438), borne);
     assert!(
         l <= borne.0 && h <= borne.1,
-        "{l}x{h} doit tenir dans {borne:?}"
+        "{l}x{h} must fit in {borne:?}"
     );
     let ecart = ((l as f64 / h as f64) - (5118.0 / 1438.0)).abs() / (5118.0 / 1438.0);
     assert!(
@@ -201,7 +201,7 @@ fn un_viewport_plus_large_que_la_borne_est_reduit_sans_etre_deforme() {
 /// of the crop. Measurement of August 31st, 2026: `mon=1428x1080`, `work=1428x1032`,
 /// `Shell_SecondaryTrayWnd rect=(1280,1032)-(2708,1080)` — 48 rows.
 #[test]
-fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
+fn the_work_area_removes_the_forty_eight_taskbar_rows() {
     assert_eq!(
         borne_de_la_sortie((1428, 1080), Some((1428, 1032))),
         (1428, 1032)
@@ -222,7 +222,7 @@ fn la_zone_de_travail_retire_les_quarante_huit_rangees_de_la_barre() {
 /// monitor's rectangle again — hence yesterday's framing, taskbar included,
 /// rather than a two-pixel window.
 #[test]
-fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
+fn a_missing_or_degenerate_work_area_returns_the_monitor_rectangle() {
     assert_eq!(borne_de_la_sortie((1428, 1080), None), (1428, 1080));
     assert_eq!(borne_de_la_sortie((1428, 1080), Some((0, 0))), (1428, 1080));
     assert_eq!(
@@ -235,7 +235,7 @@ fn une_zone_de_travail_absente_ou_degeneree_rend_le_rectangle_du_moniteur() {
 /// must not make the region leave the texture: the `min` is a net,
 /// and nothing else holds it.
 #[test]
-fn une_zone_de_travail_plus_grande_que_le_moniteur_est_ramenee_a_lui() {
+fn a_work_area_larger_than_the_monitor_is_brought_back_to_it() {
     assert_eq!(
         borne_de_la_sortie((1428, 1080), Some((4096, 4096))),
         (1428, 1080)
@@ -256,7 +256,7 @@ fn the_rule_is_stable_on_its_own_result() {
 /// rule must never return a zero dimension, which the NV12 encoder
 /// would refuse.
 #[test]
-fn une_boite_video_repliee_ne_rend_jamais_une_dimension_nulle() {
+fn a_folded_video_box_never_returns_a_zero_dimension() {
     assert_eq!(size_for_viewport((0, 0), (1860, 1080)), (2, 2));
 }
 
@@ -301,7 +301,7 @@ fn ecart_de_rapport(servi: (u32, u32), demande: (u32, u32)) -> f64 {
 }
 
 #[test]
-fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
+fn the_eight_measured_viewports_are_served_at_their_own_ratio() {
     // The bound noted on THEIR session (output 1860×1080, work area
     // minus the taskbar's 48 rows).
     let borne = (1860, 1032);
@@ -310,13 +310,13 @@ fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
         let ecart = ecart_de_rapport(servi, demande);
         assert!(
             ecart < ECART_D_ARRONDI_MAX,
-            "{demande:?} servi {servi:?} : ecart de rapport {:.3} % — c'est une bande de \
-             --video-letterbox le long d'une paire de bords",
+            "{demande:?} served {servi:?}: ratio gap of {:.3} % — this is a \
+             --video-letterbox band along a pair of edges",
             ecart * 100.0
         );
         assert!(
             servi.0 <= borne.0 && servi.1 <= borne.1,
-            "{servi:?} doit tenir dans {borne:?}"
+            "{servi:?} must fit in {borne:?}"
         );
     }
 }
@@ -328,7 +328,7 @@ fn les_huit_viewports_mesures_sont_servis_a_leur_propre_rapport() {
 /// comes from `borne_de`, every time, and never from a number written
 /// somewhere. This repository has paid nine times for the 487 wreck.
 #[test]
-fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
+fn the_rule_honours_whatever_bound_it_is_given() {
     for borne in [
         (1428, 1032),
         (1860, 1032),
@@ -340,11 +340,11 @@ fn la_regle_honore_la_borne_qu_on_lui_donne_quelle_qu_elle_soit() {
             let servi = size_for_viewport(demande, borne);
             assert!(
                 servi.0 <= borne.0 && servi.1 <= borne.1,
-                "{demande:?} sur {borne:?} rend {servi:?}, qui DÉBORDE"
+                "{demande:?} on {borne:?} returns {servi:?}, which OVERFLOWS"
             );
             assert!(
                 ecart_de_rapport(servi, demande) < ECART_D_ARRONDI_MAX,
-                "{demande:?} sur {borne:?} rend {servi:?}, au mauvais rapport"
+                "{demande:?} on {borne:?} returns {servi:?}, at the wrong ratio"
             );
         }
     }
@@ -376,8 +376,8 @@ fn the_served_height_never_exceeds_the_given_work_area() {
             let servi = size_for_viewport(demande, travail);
             assert!(
                 servi.1 <= travail.1,
-                "{demande:?} sur une zone de travail {travail:?} rend une hauteur de {} : \
-                 les rangées de la barre des tâches rentreraient dans le cadre",
+                "{demande:?} on a work area {travail:?} returns a height of {}: \
+                 the taskbar rows would enter the frame",
                 servi.1
             );
         }
@@ -393,13 +393,13 @@ fn the_served_height_never_exceeds_the_given_work_area() {
 /// 900×500 viewport would be encoded at 1854×1030, that is four times the
 /// macroblocks for pixels the page cannot display.
 #[test]
-fn une_demande_plus_petite_que_la_borne_n_est_jamais_agrandie() {
+fn a_request_smaller_than_the_bound_is_never_enlarged() {
     let borne = (1860, 1032);
     for demande in [(900u32, 500u32), (640, 480), (1280, 720)] {
         let servi = size_for_viewport(demande, borne);
         assert!(
             servi.0 <= demande.0 && servi.1 <= demande.1,
-            "{demande:?} servi {servi:?} : plus grand que ce que le navigateur a demandé"
+            "{demande:?} served {servi:?}: bigger than what the browser requested"
         );
     }
 }

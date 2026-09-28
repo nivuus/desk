@@ -149,7 +149,7 @@ pub(super) fn tourner(
                 tracing::warn!(
                     fautes_a_injecter = v,
                     fenetre_ms = fenetre.map(|f| f.as_millis() as u64),
-                    "injection de fautes de lecture audio ARMEE (banc)"
+                    "audio read fault injection ARMED (bench)"
                 );
             }
             (
@@ -232,7 +232,7 @@ pub(super) fn tourner(
                 rejetes = ring_fil.rejetes(),
                 complements = assembleur.complements(),
                 echantillons_jetes = assembleur.echantillons_jetes(),
-                "compteurs audio"
+                "audio counters"
             );
         }
 
@@ -267,7 +267,7 @@ pub(super) fn tourner(
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
             .is_ok()
         {
-            Err(anyhow::anyhow!("faute injectée (AUDIO_FAUTE_LECTURE)"))
+            Err(anyhow::anyhow!("injected fault (AUDIO_FAUTE_LECTURE)"))
         } else {
             capture.read()
         };
@@ -292,7 +292,7 @@ pub(super) fn tourner(
                     tracing::warn!(
                         error = %e,
                         consecutives = lectures_echouees,
-                        "lecture audio échouée, nouvelle tentative"
+                        "audio read failed, retrying"
                     );
                     std::thread::sleep(temporisation_de_reprise(lectures_echouees));
                     continue;
@@ -314,7 +314,7 @@ pub(super) fn tourner(
                     rejetes = ring_fil.rejetes(),
                     complements = assembleur.complements(),
                     echantillons_jetes = assembleur.echantillons_jetes(),
-                    "lecture audio échouée, capture arrêtée définitivement"
+                    "audio read failed, capture stopped for good"
                 );
                 // ⚠️ **THIS COMMENT ANNOUNCED A GAP ALREADY FILLED AT THE
                 // MOMENT IT WAS WRITTEN HERE** — orphan found by
@@ -352,7 +352,7 @@ pub(super) fn tourner(
                         tracing::warn!(
                             error = %e,
                             value = voulue,
-                            "réglage du taux de perte Opus refusé"
+                            "Opus loss rate setting refused"
                         );
                     }
                 }
@@ -381,7 +381,7 @@ pub(super) fn tourner(
                         rejetes = ring_fil.rejetes(),
                         complements = assembleur.complements(),
                         echantillons_jetes = assembleur.echantillons_jetes(),
-                        "encodage Opus échoué, capture arrêtée définitivement"
+                        "Opus encoding failed, capture stopped for good"
                     );
                     return;
                 }

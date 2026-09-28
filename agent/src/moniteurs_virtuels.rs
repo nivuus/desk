@@ -128,7 +128,9 @@ impl<'p> Sorties<'p> {
             .creees
             .iter()
             .position(|connu| *connu == id)
-            .with_context(|| format!("sortie {id} non tenue par cette garde — rien à rendre"))?;
+            .with_context(|| {
+                format!("output {id} not held by this guard — nothing to give back")
+            })?;
         self.pilote.detruire(id)?;
         self.creees.remove(rang);
         Ok(())
@@ -146,7 +148,7 @@ impl Drop for Sorties<'_> {
                 tracing::error!(
                     id,
                     %error,
-                    "sortie virtuelle NON détruite — purge manuelle requise"
+                    "virtual output NOT destroyed — manual purge required"
                 );
             }
         }
@@ -205,7 +207,7 @@ pub fn vers_texture(region: Rect, sortie: Rect, facteur: (f64, f64)) -> Rect {
 pub fn places_texture_par_sortie(sorties: &[Rect], textures: &[(u32, u32)]) -> Result<Vec<Rect>> {
     anyhow::ensure!(
         sorties.len() == textures.len(),
-        "{} sorties pour {} textures : l'appariement serait arbitraire",
+        "{} outputs for {} textures: the pairing would be arbitrary",
         sorties.len(),
         textures.len()
     );
@@ -217,8 +219,8 @@ pub fn places_texture_par_sortie(sorties: &[Rect], textures: &[(u32, u32)]) -> R
             let facteur =
                 facteur_echelle((sortie.width, sortie.height), *texture).with_context(|| {
                     format!(
-                        "sortie {index} annoncée {}x{} : dimension nulle, aucun facteur \
-                         d'échelle n'a de sens",
+                        "output {index} announced {}x{}: zero dimension, no scale \
+                         factor makes sense",
                         sortie.width, sortie.height
                     )
                 })?;

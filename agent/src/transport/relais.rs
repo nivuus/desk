@@ -28,11 +28,11 @@ impl Session {
     /// (I2 of the milestone 1 review).
     pub(super) fn envoyer(&mut self, transmit: &str0m::net::Transmit) {
         let (data, destination) = match self.route_relayee(transmit) {
-            Some(trame) => (trame, self.turn.as_ref().expect("relais présent").serveur()),
+            Some(trame) => (trame, self.turn.as_ref().expect("relay present").serveur()),
             None => (transmit.contents.to_vec(), transmit.destination),
         };
         if let Err(e) = self.socket.send_to(&data, destination) {
-            tracing::warn!(error = %e, "échec d'envoi UDP, ignoré");
+            tracing::warn!(error = %e, "UDP send failure, ignored");
         }
     }
 
@@ -77,7 +77,7 @@ impl Session {
         if !crate::turn::est_channel_data(recu) {
             if let Some(turn) = self.turn.as_mut() {
                 if let Err(e) = turn.handle_packet(recu) {
-                    tracing::warn!(error = %e, "message TURN illisible, ignoré");
+                    tracing::warn!(error = %e, "unreadable TURN message, ignored");
                 }
             }
             return Ok(());
@@ -86,9 +86,9 @@ impl Session {
         let turn = self
             .turn
             .as_ref()
-            .expect("présent, testé par l'appelant avant de router ici");
+            .expect("present, tested by the caller before routing here");
         let Some((pair, charge)) = turn.desencapsuler(recu) else {
-            tracing::debug!("trame ChannelData illisible, ignorée");
+            tracing::debug!("unreadable ChannelData frame, ignored");
             return Ok(());
         };
         // The payload is copied: `charge` borrows `self.turn`, and
@@ -112,10 +112,10 @@ impl Session {
                 };
                 self.rtc
                     .handle_input(Input::Receive(Instant::now(), receive))
-                    .map_err(|e| anyhow!("handle_input relayé : {e}"))?;
+                    .map_err(|e| anyhow!("relayed handle_input: {e}"))?;
             }
             Err(e) => {
-                tracing::debug!(error = %e, "charge relayée non reconnue");
+                tracing::debug!(error = %e, "unrecognised relayed payload");
             }
         }
         Ok(())
@@ -132,7 +132,7 @@ impl Session {
         let paquet = turn.poll_transmit()?;
         let serveur = turn.serveur();
         if let Err(e) = self.socket.send_to(&paquet, serveur) {
-            tracing::warn!(error = %e, "échec d'envoi vers le serveur TURN, ignoré");
+            tracing::warn!(error = %e, "send failure to the TURN server, ignored");
         }
         Some(Tick::Continue)
     }
@@ -165,12 +165,12 @@ impl Session {
                 break a;
             }
             if Instant::now() >= echeance {
-                anyhow::bail!("aucune allocation TURN obtenue en {:?}", delai);
+                anyhow::bail!("no TURN allocation obtained within {:?}", delai);
             }
             match self.socket.recv_from(&mut buffer) {
                 Ok((n, source)) if source == config.serveur => {
                     if let Err(e) = turn.handle_packet(&buffer[..n]) {
-                        tracing::debug!(error = %e, "paquet TURN ignoré pendant l'allocation");
+                        tracing::debug!(error = %e, "TURN packet ignored during the allocation");
                     }
                 }
                 // A datagram coming from elsewhere during allocation is
@@ -179,13 +179,13 @@ impl Session {
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     std::thread::sleep(Duration::from_millis(5));
                 }
-                Err(e) => return Err(e).context("réception pendant l'allocation TURN"),
+                Err(e) => return Err(e).context("receiving during the TURN allocation"),
             }
         };
 
         self.rtc.add_local_candidate(
             Candidate::relayed(allocation.relayee, local, "udp")
-                .map_err(|e| anyhow!("candidat relayé invalide : {e}"))?,
+                .map_err(|e| anyhow!("invalid relayed candidate: {e}"))?,
         );
         if let Some(reflexive) = allocation.reflexive {
             // The same Allocate response carries the reflexive address: one more
@@ -194,7 +194,7 @@ impl Session {
                 Ok(c) => {
                     self.rtc.add_local_candidate(c);
                 }
-                Err(e) => tracing::warn!(error = %e, "candidat réflexif invalide, ignoré"),
+                Err(e) => tracing::warn!(error = %e, "invalid reflexive candidate, ignored"),
             }
         }
         self.turn = Some(turn);

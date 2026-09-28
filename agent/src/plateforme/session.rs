@@ -35,7 +35,7 @@ pub(super) async fn une_session(
     let mut socket = match connecter(url).await {
         Ok(socket) => socket,
         Err(error) => {
-            tracing::warn!(url, %error, "ouverture du canal /agent échouée");
+            tracing::warn!(url, %error, "opening the /agent channel failed");
             return Fin::Reprenable;
         }
     };
@@ -45,12 +45,12 @@ pub(super) async fn une_session(
         // A serialisation that fails is a code defect, not a random event:
         // retrying it would return the same error indefinitely.
         Err(error) => {
-            tracing::error!(%error, "sérialisation de l'enrôlement impossible");
+            tracing::error!(%error, "cannot serialize the enrolment");
             return Fin::Definitive;
         }
     };
     if let Err(error) = socket.send(Message::Text(enroler)).await {
-        tracing::warn!(url, %error, "envoi de l'enrôlement échoué");
+        tracing::warn!(url, %error, "sending the enrolment failed");
         return Fin::Reprenable;
     }
 
@@ -69,11 +69,11 @@ pub(super) async fn une_session(
             // empty, and NOTHING would say so.
             Some(message) = a_emettre.recv() => {
                 let Ok(texte) = serde_json::to_string(&message) else {
-                    tracing::error!("sérialisation d'un message montant impossible");
+                    tracing::error!("cannot serialize an upstream message");
                     continue;
                 };
                 if let Err(error) = socket.send(Message::Text(texte)).await {
-                    tracing::warn!(url, %error, "message montant non émis");
+                    tracing::warn!(url, %error, "upstream message not sent");
                     return Fin::Reprenable;
                 }
             }
@@ -82,7 +82,7 @@ pub(super) async fn une_session(
                     return Fin::Definitive;
                 };
                 if let Err(error) = socket.send(Message::Text(texte)).await {
-                    tracing::warn!(url, %error, "battement de cœur non émis");
+                    tracing::warn!(url, %error, "heartbeat not sent");
                     return Fin::Reprenable;
                 }
             }
@@ -90,22 +90,22 @@ pub(super) async fn une_session(
                 let texte = match recu {
                     Some(Ok(Message::Text(texte))) => texte,
                     Some(Ok(Message::Close(cadre))) => {
-                        tracing::warn!(url, ?cadre, "canal /agent fermé par la plateforme");
+                        tracing::warn!(url, ?cadre, "/agent channel closed by the platform");
                         return Fin::Reprenable;
                     }
                     Some(Ok(_)) => continue,
                     Some(Err(error)) => {
-                        tracing::warn!(url, %error, "canal /agent perdu");
+                        tracing::warn!(url, %error, "/agent channel lost");
                         return Fin::Reprenable;
                     }
                     None => {
-                        tracing::warn!(url, "canal /agent clos sans message de fermeture");
+                        tracing::warn!(url, "/agent channel closed without a close message");
                         return Fin::Reprenable;
                     }
                 };
                 match serde_json::from_str::<DepuisLaPlateforme>(&texte) {
                     Ok(DepuisLaPlateforme::Enrole { prefixe: p, jeton, expire_a, .. }) => {
-                        tracing::info!(url, prefixe = %p, expire_a, "agent enrôlé auprès de la plateforme");
+                        tracing::info!(url, prefixe = %p, expire_a, "agent enrolled with the platform");
                         prefixe = Some(p.clone());
                         let _ = tx.send(Some(Identite { prefixe: p, jeton, expire_a }));
                     }
@@ -114,10 +114,10 @@ pub(super) async fn une_session(
                         // prefix to carry: ignore it rather than invent a
                         // nameless identity.
                         let Some(prefixe) = prefixe.clone() else {
-                            tracing::warn!(url, "battement reçu avant tout enrôlement, ignoré");
+                            tracing::warn!(url, "heartbeat received before any enrolment, ignored");
                             continue;
                         };
-                        tracing::debug!(url, expire_a, "jeton d'agent rafraîchi");
+                        tracing::debug!(url, expire_a, "agent token refreshed");
                         let _ = tx.send(Some(Identite { prefixe, jeton, expire_a }));
                     }
                     Ok(DepuisLaPlateforme::Refus { version, motif }) => {
@@ -130,13 +130,13 @@ pub(super) async fn une_session(
                     // each user click, and the trace would accuse a
                     // version divergence that does not exist.
                     Ok(DepuisLaPlateforme::Lancer { demande, cle, .. }) => {
-                        tracing::info!(url, %demande, %cle, "ordre de lancement reçu");
+                        tracing::info!(url, %demande, %cle, "launch order received");
                         // A send that fails means the consumer
                         // is no longer there — the agent is stopping, or no one
                         // took the queue. We log it without killing the channel:
                         // the heartbeat must continue.
                         if ordres.send(Ordre::Lancer { demande, cle }).is_err() {
-                            tracing::warn!(url, "aucun consommateur d'ordres, lancement abandonné");
+                            tracing::warn!(url, "no order consumer, launch abandoned");
                         }
                     }
                     // 🔴 THIS ARM MUST EXIST, FOR THE EXACT REASON OF THE ARM
@@ -148,7 +148,7 @@ pub(super) async fn une_session(
                     Ok(DepuisLaPlateforme::IconesManquantes { empreintes, .. }) => {
                         tracing::info!(
                             url, manquantes = empreintes.len(),
-                            "inventaire d'icones manquantes reçu"
+                            "missing icon inventory received"
                         );
                         if ordres.send(Ordre::IconesManquantes { empreintes }).is_err() {
                             tracing::warn!(
@@ -178,7 +178,7 @@ pub(super) async fn une_session(
                     }) => {
                         tracing::info!(
                             url, %installation, %nom, size,
-                            "ordre d'installation reçu"
+                            "install order received"
                         );
                         let ordre = Installation {
                             id: installation, url: source, nom, size, sha256,
@@ -204,7 +204,7 @@ pub(super) async fn une_session(
                     Err(error) => {
                         tracing::warn!(
                             url, %error, texte,
-                            "message de la plateforme illisible (version divergente ?)"
+                            "unreadable message from the platform (diverging version?)"
                         );
                         return Fin::Reprenable;
                     }
@@ -242,8 +242,8 @@ pub(super) fn sur_refus(url: &str, version_recue: u8, motif: &str) -> Fin {
                 url,
                 version_emise = proto::plateforme::PLATEFORME_VERSION,
                 version_recue,
-                "la plateforme REFUSE la version du canal /agent : aucune reprise, \
-                 il faut rebâtir l'agent ou la plateforme"
+                "the platform REFUSES the version of the /agent channel: no reconnection, \
+                 the agent or the platform must be rebuilt"
             );
             Fin::Definitive
         }
@@ -252,7 +252,7 @@ pub(super) fn sur_refus(url: &str, version_recue: u8, motif: &str) -> Fin {
                 url,
                 ?autre,
                 version_recue,
-                "canal /agent refusé par la plateforme"
+                "/agent channel refused by the platform"
             );
             Fin::Reprenable
         }
@@ -269,8 +269,8 @@ pub(super) fn sur_refus(url: &str, version_recue: u8, motif: &str) -> Fin {
                 motif,
                 version_recue,
                 version_emise = proto::plateforme::PLATEFORME_VERSION,
-                "canal /agent refusé pour un motif que cette version de l'agent ne \
-                 connaît pas : réessai, et le motif est journalisé tel quel"
+                "/agent channel refused for a reason this agent version does not \
+                 know: retrying, and the reason is logged as is"
             );
             Fin::Reprenable
         }
@@ -284,6 +284,6 @@ async fn connecter(
 > {
     let (flux, _) = tokio_tungstenite::connect_async(url)
         .await
-        .with_context(|| format!("connexion au canal {url}"))?;
+        .with_context(|| format!("connecting to channel {url}"))?;
     Ok(flux)
 }

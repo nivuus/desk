@@ -123,7 +123,7 @@ impl Session {
         match writer.write(pt, packet.captured_at, rtp_time, packet.data) {
             Ok(()) => true,
             Err(e) => {
-                tracing::warn!(error = %e, "échec d'écriture audio, paquet abandonné");
+                tracing::warn!(error = %e, "audio write failure, packet dropped");
                 false
             }
         }
@@ -241,7 +241,7 @@ impl Session {
     /// Setting `true` here on an arbitrated session would make a window speak that
     /// must stay silent — two windows would then play the same mix
     /// out of sync, the audible echo that defect F2 of sub-block D7 describes.
-    /// `une_session_non_porteuse_reconstruite_reste_muette` keeps it red.
+    /// `a_rebuilt_non_carrier_session_stays_silent` keeps it red.
     ///
     /// Its only production caller is `demarrage/audio.rs::brancher`,
     /// in its ONLY branch `config.fenetre_hwnd == None`.
@@ -293,7 +293,7 @@ impl Session {
     /// safe form: forcing unconditionally here would reintroduce the
     /// WORSE defect that going through `audio_porteuse` avoids in multi-window (a
     /// sound leak to a window that must stay silent), and
-    /// `une_session_non_porteuse_reconstruite_reste_muette` keeps it red.
+    /// `a_rebuilt_non_carrier_session_stays_silent` keeps it red.
     /// The fix distinguishes the two modes **at wiring time**, where the mode
     /// is known, never here where it is not.
     ///
@@ -357,7 +357,7 @@ impl Session {
                 // which re-arms) as well as for a silent session (`false`, which
                 // explicitly confirms the silence rather than
                 // assuming it) — see
-                // `une_session_non_porteuse_reconstruite_reste_muette`.
+                // `a_rebuilt_non_carrier_session_stays_silent`.
                 source.set_actif(self.audio_porteuse);
                 self.audio_source = Some(source);
                 self.audio_reconstruit_sans_preuve = true;
@@ -379,7 +379,7 @@ impl Session {
                 tracing::warn!(
                     error = format!("{error:#}"),
                     restantes = self.reconstructions_restantes,
-                    "reconstruction de la capture audio refusée"
+                    "audio capture rebuild refused"
                 );
                 false
             }
@@ -403,7 +403,7 @@ impl Session {
         if !self.warned_audio_negotiation {
             self.warned_audio_negotiation = true;
             tracing::warn!(
-                "aucun type de charge utile Opus négocié : paquets audio jetés (avertissement unique)"
+                "no Opus payload type negotiated: audio packets dropped (single warning)"
             );
         }
     }
@@ -424,7 +424,7 @@ mod tests {
     // wrong by a constant factor — a silent synchronisation
     // defect. This test fails if they diverge.
     #[test]
-    fn la_frequence_rtp_audio_correspond_au_taux_d_echantillonnage_opus() {
+    fn the_audio_rtp_frequency_matches_the_opus_sample_rate() {
         assert_eq!(
             Frequency::FORTY_EIGHT_KHZ.get(),
             crate::opus::SAMPLE_RATE_HZ
@@ -432,7 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn borne_l_attente_quand_l_audio_est_negocie() {
+    fn bounds_the_wait_when_audio_is_negotiated() {
         // Without this ceiling, the waiting branch would sleep until the deadline
         // `Rtc` asks for — up to a whole second — and would thus
         // go through a hundred or so due audio packets. It is the same defect as
@@ -466,15 +466,15 @@ mod tests {
 
         let cause = anyhow::anyhow!("0x88890004");
         let e = Err::<(), _>(cause)
-            .context("ouverture du process loopback du PID 42")
+            .context("opening the process loopback of PID 42")
             .unwrap_err();
         assert!(
             !format!("{e}").contains("0x88890004"),
-            "le Display simple perd la cause"
+            "the plain Display loses the cause"
         );
         assert!(
             format!("{e:#}").contains("0x88890004"),
-            "{{:#}} doit la rendre"
+            "{{:#}} must return it"
         );
     }
 }

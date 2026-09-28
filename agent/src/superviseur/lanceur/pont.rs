@@ -52,7 +52,7 @@ impl LanceurDeProcessus {
             // CAPTURER, and not for a bridge: `main.rs` tests `CAPTEUR` BEFORE
             // everything else and would hand control to `capteur::executer`. The bridge
             // would never start, **without a single line saying so** —
-            // and the `Mes Fichiers` drive would stay absent with no readable
+            // and the `Mes Fichiers` drive would stay absent with no readable (policy: allow-fr, real Windows folder name)
             // cause.
             .env_remove("CAPTEUR")
             // Same reason as for a child and for the capturer: these two
@@ -80,7 +80,7 @@ impl LanceurDeProcessus {
         // decided on this real use: **no enrolment**, and the parent's
         // token through `AGENT_JETON`.
         self.identite_heritee(&mut commande);
-        let mut pont = commande.spawn().context("lancement du pont fichiers")?;
+        let mut pont = commande.spawn().context("launching the file bridge")?;
         let pid = pont.id();
         let handle = HANDLE(pont.as_raw_handle());
         if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
@@ -89,13 +89,13 @@ impl LanceurDeProcessus {
             // ProjFS virtualisation root, which nothing would unmount.
             if let Err(mise_a_mort) = pont.kill() {
                 tracing::error!(pid, %mise_a_mort,
-                    "pont fichiers NON rattaché au job ET NON tué — il survivra au superviseur");
+                    "file bridge NOT attached to the job AND NOT killed — it will outlive the supervisor");
             }
             let _ = pont.wait();
             return Err(anyhow::Error::new(error)
-                .context(format!("rattachement du pont fichiers {pid} au job object")));
+                .context(format!("attaching file bridge {pid} to the job object")));
         }
-        tracing::info!(pid, session, "pont fichiers lancé");
+        tracing::info!(pid, session, "file bridge launched");
         *self.pont() = Some(Enfant {
             processus: pont,
             etat_illisible_signale: false,
@@ -149,7 +149,7 @@ impl LanceurDeProcessus {
                     pid = en_cours.processus.id(),
                     ?code,
                     ?issue,
-                    "pont fichiers terminé"
+                    "file bridge finished"
                 );
                 *pont = None;
                 EtatObserve::Mort(issue)
@@ -159,8 +159,8 @@ impl LanceurDeProcessus {
                     en_cours.etat_illisible_signale = true;
                     tracing::warn!(
                         %error,
-                        "état du pont fichiers illisible, tenu pour vivant \
-                         (signalé une seule fois tant que l'état reste illisible)"
+                        "file bridge state unreadable, taken as alive \
+                         (reported only once as long as the state stays unreadable)"
                     );
                 }
                 EtatObserve::Vivant

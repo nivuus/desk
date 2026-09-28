@@ -82,13 +82,13 @@ pub(super) fn create_output(
     // inherits the previous name, hence never appears, and this set
     // difference refused a perfectly usable output. See the header
     // of `superviseur::designation`.
-    let before = match relever_topologie("avant création de sortie") {
+    let before = match relever_topologie("before output creation") {
         Ok(before) => noms_attaches(&before),
         Err(error) => {
-            tracing::error!(session = %session.0, %error, "topologie DXGI illisible avant création");
+            tracing::error!(session = %session.0, %error, "DXGI topology unreadable before creation");
             envoyer(&VersLaShell::Refus {
                 titre: titre.clone(),
-                motif: "topologie d'affichage illisible".into(),
+                motif: "display topology unreadable".into(),
             });
             // No output was created: nothing to hand back to the driver. But
             // the entry must leave `AttendLaSortie` — `enfant_mort`
@@ -102,7 +102,7 @@ pub(super) fn create_output(
     let id_pilote = match sorties.create(largeur, hauteur, 60) {
         Ok(id) => id,
         Err(error) => {
-            tracing::error!(session = %session.0, %error, "création de sortie refusée");
+            tracing::error!(session = %session.0, %error, "output creation refused");
             envoyer(&VersLaShell::Refus {
                 titre,
                 motif: format!("{error}"),
@@ -168,12 +168,12 @@ pub(super) fn create_output(
                 .iter()
                 .map(|s| format!("{} {}x{}", s.nom_sortie, s.rect.width, s.rect.height))
                 .collect::<Vec<_>>(),
-            "aucune sortie candidate ne peut servir ce viewport — elle est rendue au pilote"
+            "no candidate output can serve this viewport — it is given back to the driver"
         );
         rendre_sans_apparier(sorties, id_pilote);
         envoyer(&VersLaShell::Refus {
             titre,
-            motif: "aucune sortie d'affichage ne peut servir cette fenêtre".into(),
+            motif: "no display output can serve this window".into(),
         });
         return table.enfant_mort(&session);
     };
@@ -197,7 +197,7 @@ pub(super) fn create_output(
         demande = format!("{largeur}x{hauteur}"),
         sortie_reelle = format!("{}x{}", cible.rect.width, cible.rect.height),
         exemptee,
-        "sortie retenue pour cette fenetre"
+        "output retained for this window"
     );
 
     // The output can be much larger than the window: it is the nominal
@@ -238,7 +238,7 @@ pub(super) fn create_output(
     if suite.is_empty() {
         tracing::error!(
             session = %session.0, id_pilote,
-            "la table n'attendait plus cette sortie — elle est rendue au pilote"
+            "the table no longer expected this output — it is given back to the driver"
         );
         rendre_sans_apparier(sorties, id_pilote);
         prises.retain(|p| *p != cible.nom_sortie);
@@ -262,7 +262,7 @@ pub(super) fn create_output(
             height: retenue.1,
         };
         if let Err(error) = placement::poser(hwnd, &rect) {
-            tracing::warn!(session = %session.0, %error, "placement de la fenêtre échoué");
+            tracing::warn!(session = %session.0, %error, "window placement failed");
         }
     }
     suite
@@ -276,7 +276,7 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
     if let Err(error) = sorties.detruire(id_pilote) {
         tracing::error!(
             id_pilote, %error,
-            "sortie orpheline NON rendue — la garde la retentera à l'arrêt"
+            "orphan output NOT given back — the guard will retry it at shutdown"
         );
     }
 }
@@ -337,7 +337,7 @@ fn attendre_notre_sortie(
     let mut echeance = std::time::Instant::now() + limite;
     loop {
         if let Err(error) = pilote.pinguer() {
-            tracing::warn!(%error, "ping du chien de garde pendant l'attente de rattachement");
+            tracing::warn!(%error, "watchdog ping while waiting for attachment");
         }
         let all = enumerer_sorties_silencieux().unwrap_or_default();
 
@@ -374,13 +374,13 @@ fn attendre_notre_sortie(
                     id_pilote,
                     ?adaptateur,
                     nom_designe = nom,
-                    "sortie DESIGNEE par son identifiant de cible (chemin ① — \
-                     la correspondance CCD a rendu son nom GDI)"
+                    "output DESIGNATED by its target identifier (path ① — \
+                     the CCD correspondence returned its GDI name)"
                 ),
                 None => tracing::info!(
                     id_pilote,
-                    "sortie retenue par DIFFERENCE D'ENSEMBLES (chemin ② de repli — \
-                     la designation n'a rien rendu)"
+                    "output retained by SET DIFFERENCE (fallback path ② — \
+                     the designation returned nothing)"
                 ),
             }
             return (designee, candidates);
@@ -399,8 +399,8 @@ fn attendre_notre_sortie(
                     tours = reprise::TOURS,
                     limite_ms = limite.as_millis() as u64,
                     repit_ms = apres.as_millis() as u64,
-                    "la sortie ne s'est pas attachée dans ce tour — on RÉESSAIE \
-                     sur la MÊME sortie (l'attachement est intermittent, pas lent)"
+                    "the output did not attach in this round — RETRYING \
+                     on the SAME output (attachment is intermittent, not slow)"
                 );
                 std::thread::sleep(apres);
                 tour = next_round;
@@ -410,14 +410,14 @@ fn attendre_notre_sortie(
             tracing::error!(
                 tours_epuises = tour,
                 limite_ms = limite.as_millis() as u64,
-                "aucune sortie neuve n'est apparue — TOUS LES TOURS DE REPRISE \
-                 SONT ÉPUISÉS"
+                "no new output appeared — ALL THE RETRY ROUNDS \
+                 ARE EXHAUSTED"
             );
             // Complete, named survey, ONCE — on this failure path only.
             // It is here, and only here, that this diagnosis is worth anything: see the
             // function's doc.
-            if let Err(error) = relever_topologie("attente de rattachement expirée") {
-                tracing::error!(%error, "topologie DXGI illisible au moment de l'expiration");
+            if let Err(error) = relever_topologie("attachment wait expired") {
+                tracing::error!(%error, "DXGI topology unreadable at expiry time");
             }
             // The complete survey above does not say WHY designation
             // went quiet. This line says it, once, on this failure path
@@ -426,12 +426,12 @@ fn attendre_notre_sortie(
             match adaptateur {
                 None => tracing::error!(
                     id_pilote,
-                    "le pilote ne connaît pas l'adaptateur de cette sortie — la désignation n'a pas pu être tentée, seul le repli a couru"
+                    "the driver does not know this output's adapter — the designation could not be attempted, only the fallback ran"
                 ),
                 Some(adaptateur) => tracing::error!(
                     id_pilote,
                     ?adaptateur,
-                    "la cible n'a jamais été nommée par la configuration d'affichage dans la limite — voir moniteurs_virtuels::config_affichage"
+                    "the target was never named by the display configuration within the limit — see moniteurs_virtuels::config_affichage"
                 ),
             }
             return (None, Vec::new());
@@ -449,7 +449,7 @@ pub(super) fn rendre_la_sortie(
 ) {
     match sorties.detruire(sortie_pilote) {
         Ok(()) => {
-            tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote");
+            tracing::info!(sortie_pilote, "virtual output given back to the driver");
             prises.retain(|p| *p != nom_sortie);
         }
         // The DXGI place stays RESERVED on failure, and that is the fundamental point.
@@ -464,8 +464,8 @@ pub(super) fn rendre_la_sortie(
         // until shutdown; freeing it costs an identity confusion.
         Err(error) => tracing::error!(
             sortie_pilote, %nom_sortie, %error,
-            "sortie virtuelle NON rendue — la garde la retentera à l'arrêt, \
-             et sa place DXGI reste réservée d'ici là"
+            "virtual output NOT given back — the guard will retry it at shutdown, \
+             and its DXGI slot stays reserved until then"
         ),
     }
 }
