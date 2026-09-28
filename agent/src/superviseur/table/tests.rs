@@ -4,8 +4,8 @@ fn table() -> Table {
     Table::nouvelle(10)
 }
 
-/// Récupère l'identifiant de session attribué à la fenêtre, en lisant
-/// l'effet d'annonce — c'est la seule sortie publique qui le porte.
+/// Gets the session identifier assigned to the window, by reading
+/// the announcement effect — it is the only public output that carries it.
 fn session_annoncee(effets: &[Effet]) -> IdSession {
     effets
         .iter()
@@ -18,8 +18,8 @@ fn session_annoncee(effets: &[Effet]) -> IdSession {
 
 #[test]
 fn une_fenetre_qui_apparait_est_annoncee_et_rien_de_plus() {
-    // Rien ne peut être créé avant de connaître le viewport : c'est lui
-    // qui donne la taille de la sortie.
+    // Nothing can be created before knowing the viewport: it is what
+    // gives the output's size.
     let mut t = table();
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     assert_eq!(effets.len(), 1);
@@ -36,8 +36,8 @@ fn le_viewport_declenche_la_creation_de_la_sortie() {
         effets,
         vec![Effet::CreerSortie {
             session: session.clone(),
-            // Le titre suit la demande : un refus de sortie s'affiche à un
-            // humain, et « w-1 » ne lui désigne rien.
+            // The title follows the request: an output refusal is shown to a
+            // human, and "w-1" designates nothing to them.
             titre: "Bloc-notes".into(),
             largeur: 1600,
             hauteur: 900,
@@ -51,10 +51,10 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
-    // Deux identifiants distincts, et c'est le fond du sujet : `7` est
-    // l'identifiant que le PILOTE a rendu, `"\\.\DISPLAY4"` le nom de la
-    // même sortie dans l'énumération DXGI. Le pilote ne détruit que par
-    // le premier ; l'enfant ne sait capturer que par le second.
+    // Two distinct identifiers, and it is the heart of the matter: `7` is
+    // the identifier the DRIVER returned, `"\\.\DISPLAY4"` the name of the
+    // same output in the DXGI enumeration. The driver only destroys through
+    // the first; the child only knows how to capture through the second.
     let effets = t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
     assert_eq!(
         effets,
@@ -69,9 +69,9 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY4"));
 }
 
-/// Deux fenêtres en vol en même temps ne doivent jamais se faire attribuer
-/// l'identifiant ou la sortie l'une de l'autre : chaque `Effet::LancerEnfant`
-/// doit porter le `IdFenetre` et le `nom_sortie` de SA PROPRE fenêtre.
+/// Two windows in flight at the same time must never be assigned
+/// each other's identifier or output: each `Effet::LancerEnfant`
+/// must carry the `IdFenetre` and `nom_sortie` of ITS OWN window.
 #[test]
 fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
     let mut t = table();
@@ -107,7 +107,7 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
             Effet::TuerEnfant {
                 session: session.clone()
             },
-            // L'identifiant du PILOTE, seul avec lequel il sait retirer.
+            // The DRIVER's identifier, the only one it knows how to remove with.
             Effet::DetruireSortie {
                 sortie_pilote: 7,
                 nom_sortie: "\\\\.\\DISPLAY4".into()
@@ -126,12 +126,12 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
 
 #[test]
 fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
-    // C'est le bénéfice pour lequel le multi-processus a été choisi : la
-    // mort d'un enfant ne doit rien emporter d'autre. Depuis le correctif
-    // §7.1 du sous-bloc D3, elle ne rend plus non plus la sortie au pilote —
-    // c'est justement sa RECRÉATION à la relance qui abandonnait le mutex des
-    // duplications DXGI voisines (D2, 6 → 38 réouvertures pour une seule
-    // fenêtre condamnée).
+    // It is the benefit multi-process was chosen for: the
+    // death of a child must take nothing else with it. Since fix
+    // §7.1 of sub-block D3, it no longer hands back the output to the driver either —
+    // it is precisely its RECREATION at restart that made the neighbouring DXGI
+    // duplications abandon the mutex (D2, 6 → 38 reopenings for a single
+    // doomed window).
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
@@ -144,9 +144,9 @@ fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
             session: session.clone()
         }]
     );
-    // La fenêtre reste dans la table, orpheline : c'est le contrôle
-    // périodique (`relancer_les_orphelines`) qui la reproposera, plutôt
-    // qu'un `SHOW` fortuit de Windows — voir la tâche 10.
+    // The window stays in the table, orphaned: it is the periodic
+    // check (`relancer_les_orphelines`) that will offer it again, rather
+    // than a chance `SHOW` from Windows — see task 10.
     assert_eq!(t.etat(&session), Some(&Etat::SansSession));
     assert_eq!(
         t.taille_sortie_de(&session),
@@ -157,8 +157,8 @@ fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
 
 #[test]
 fn une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction() {
-    // Fermée pendant qu'on attendait son viewport : aucune sortie
-    // n'existe, et demander d'en détruire une ferait échouer le pilote.
+    // Closed while we waited for its viewport: no output
+    // exists, and asking to destroy one would make the driver fail.
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     let effets = t.fenetre_disparue(IdFenetre(1));
@@ -212,8 +212,8 @@ fn une_sortie_liberee_rouvre_la_place() {
 
 #[test]
 fn un_viewport_pour_une_session_inconnue_est_ignore() {
-    // Le navigateur est une source externe : un message tardif ou rejoué
-    // ne doit produire aucun effet.
+    // The browser is an external source: a late or replayed message
+    // must produce no effect.
     let mut t = table();
     let effets = t.viewport_recu(&IdSession("w-inconnue".into()), 800, 600);
     assert!(effets.is_empty());
@@ -241,8 +241,8 @@ fn les_identifiants_de_session_sont_uniques() {
 
 #[test]
 fn la_fenetre_d_une_session_est_retrouvable() {
-    // Le contrôle périodique de placement connaît la sortie par session
-    // et doit remonter à la fenêtre pour la replacer.
+    // The periodic placement check knows the output per session
+    // and must get back to the window to place it again.
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(42), "A".into()));
     assert_eq!(t.fenetre_de(&session), Some(IdFenetre(42)));
@@ -251,11 +251,11 @@ fn la_fenetre_d_une_session_est_retrouvable() {
 
 #[test]
 fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
-    // Le cas de fuite corrigé : l'énumération de démarrage et le hook
-    // `EVENT_OBJECT_SHOW` peuvent tous deux annoncer le même HWND. Sans
-    // garde, la seconde annonce créerait une seconde entrée, inatteignable
-    // à la fermeture (Windows n'émet qu'un événement de fermeture par HWND)
-    // — et sa sortie pilote fuirait indéfiniment.
+    // The fixed leak case: the startup enumeration and the
+    // `EVENT_OBJECT_SHOW` hook can both announce the same HWND. Without a
+    // guard, the second announcement would create a second entry, unreachable
+    // at closing (Windows only emits one closing event per HWND)
+    // — and its driver output would leak indefinitely.
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     let effets_reannonce = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
@@ -275,8 +275,8 @@ fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
             Effet::TuerEnfant {
                 session: session.clone()
             },
-            // Une seule DetruireSortie : la fuite serait une seconde
-            // sortie jamais détruite parce que jamais retrouvée.
+            // A single DetruireSortie: the leak would be a second
+            // output never destroyed because never found.
             Effet::DetruireSortie {
                 sortie_pilote: 7,
                 nom_sortie: "\\\\.\\DISPLAY4".into()
@@ -289,11 +289,11 @@ fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
 
 #[test]
 fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
-    // Précédence à ne pas inverser : la garde d'idempotence doit être
-    // évaluée AVANT le contrôle de capacité. Si l'ordre était inversé, la
-    // réannonce d'une fenêtre déjà ouverte, sur une table pleine,
-    // produirait à tort un `AnnoncerRefus` pour une fenêtre qui est
-    // pourtant déjà ouverte.
+    // Precedence not to invert: the idempotence guard must be
+    // evaluated BEFORE the capacity check. If the order were inverted, the
+    // re-announcement of an already open window, on a full table,
+    // would wrongly produce an `AnnoncerRefus` for a window that is
+    // nevertheless already open.
     let mut t = Table::nouvelle(1);
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     let effets = t.fenetre_apparue(IdFenetre(1), "A".into());
@@ -304,10 +304,10 @@ fn une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine() {
     assert_eq!(t.etat(&session), Some(&Etat::AttendLeViewport));
 }
 
-/// Le défaut §3.3 bis de D1 : l'enfant recevait `(adaptateur, sortie)`, un
-/// couple POSITIONNEL qu'il résolvait plus tard — après que d'autres sorties
-/// avaient pu apparaître ou disparaître. D'où les `aucune sortie DXGI à
-/// l'index adaptateur 0, sortie 5` relevés en recette.
+/// Defect §3.3 bis of D1: the child received `(adaptateur, sortie)`, a
+/// POSITIONAL pair it resolved later — after other outputs
+/// could have appeared or disappeared. Hence the `no DXGI output at
+/// adapter index 0, output 5` noted during acceptance.
 #[test]
 fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
     let mut t = Table::nouvelle(4);
@@ -332,8 +332,8 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY7"));
 }
 
-/// La destruction porte les DEUX identifiants — celui du pilote pour retirer,
-/// le nom DXGI pour libérer la place — et ils n'ont aucune relation calculable.
+/// Destruction carries BOTH identifiers — the driver's to remove,
+/// the DXGI name to free the slot — and they have no computable relation.
 #[test]
 fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
     let mut t = Table::nouvelle(4);
@@ -353,17 +353,17 @@ fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
     }));
 }
 
-// Les tests de la tâche 10 (relance après mort d'enfant, garde-fous de
-// RELANCES_MAX et de staleness du viewport) sont extraits dans un fichier
-// voisin : leur ajout a fait franchir à ce fichier le plafond de 500 lignes
-// du projet. Voir `table/tests_relance.rs`.
+// Task 10's tests (restart after a child's death, safeguards of
+// RELANCES_MAX and of viewport staleness) are extracted into a neighbouring
+// file: adding them made this file cross the project's 500-line
+// ceiling. See `table/tests_relance.rs`.
 
-// ---- Le préfixe de VM (sous-bloc P3, tâche 19) --------------------------
+// ---- The VM prefix (sub-block P3, task 19) ------------------------------
 
-/// 🔴 **AUCUN test ne figeait le nom `w-1` avant celui-ci** : tous passent par
-/// `session_annoncee`, qui rend l'identifiant quel qu'il soit. Poser le
-/// séparateur inconditionnellement aurait donc donné `":w-1"` sans rien
-/// rougir — et `":w-1"` n'est le nom d'aucune session existante.
+/// 🔴 **NO test froze the name `w-1` before this one**: all go through
+/// `session_annoncee`, which returns the identifier whatever it is. Setting the
+/// separator unconditionally would therefore have given `":w-1"` without anything
+/// turning red — and `":w-1"` is the name of no existing session.
 #[test]
 fn sans_prefixe_une_session_garde_exactement_son_nom_d_aujourd_hui() {
     let mut t = Table::nouvelle(10);
@@ -378,11 +378,11 @@ fn avec_un_prefixe_la_session_le_porte_devant_son_nom() {
     assert_eq!(session, IdSession("Zm9vYmFy:w-1".into()));
 }
 
-/// 🔴 La propriété ACQUISE que P3 ne doit pas perdre en passant : le compteur
-/// croît sans jamais reculer, « un identifiant réutilisé apparierait un
-/// message tardif du navigateur à la mauvaise fenêtre » (`table.rs`). Le
-/// préfixe rend l'espace de noms global sans rien changer au mécanisme qui la
-/// porte — mutation qui rougit : dériver le compteur d'`entrees.len()`.
+/// 🔴 The ACQUIRED property P3 must not lose along the way: the counter
+/// grows without ever going back, "a reused identifier would pair a
+/// late browser message with the wrong window" (`table.rs`). The
+/// prefix makes the namespace global without changing anything in the mechanism
+/// carrying it — mutation that turns red: deriving the counter from `entrees.len()`.
 #[test]
 fn le_compteur_ne_recule_jamais_meme_sous_un_prefixe() {
     let mut t = Table::avec_prefixe(10, "Zm9vYmFy".into());

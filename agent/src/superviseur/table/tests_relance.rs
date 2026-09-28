@@ -1,27 +1,27 @@
-//! Tests de la tâche 10 : relance d'une fenêtre dont l'enfant est mort, et
-//! les deux garde-fous de capacité qui l'accompagnent (`RELANCES_MAX`,
+//! Task 10's tests: restart of a window whose child is dead, and
+//! the two capacity safeguards that come with it (`RELANCES_MAX`,
 //! `DELAI_ATTENTE_VIEWPORT_MAX`).
 //!
-//! Extrait de `table/tests.rs` : l'ajout de ces tests l'a fait franchir le
-//! plafond de 500 lignes du projet. Ces tests lisent `AnnoncerOuverture`
-//! directement (le pattern `let Some(Effet::AnnoncerOuverture { .. }) = ...`)
-//! plutôt que via le helper `session_annoncee` de `tests.rs` — celui-ci
-//! n'aurait servi à rien ici, la session étant systématiquement reprise pour
-//! des assertions ultérieures dans le même effet.
+//! Extracted from `table/tests.rs`: adding these tests made it cross the
+//! project's 500-line ceiling. These tests read `AnnoncerOuverture`
+//! directly (the pattern `let Some(Effet::AnnoncerOuverture { .. }) = ...`)
+//! rather than through the `session_annoncee` helper of `tests.rs` — that one
+//! would have been of no use here, the session being systematically reused for
+//! later assertions in the same effect.
 
 use super::*;
 
-/// Une base d'instants qui ne lit pas l'horloge du système : `Table` n'en lit
-/// aucune, c'est tout l'intérêt (même montage que `agent/src/capture/reprise.rs`).
+/// A base of instants that does not read the system clock: `Table` reads
+/// none, that is the whole point (same setup as `agent/src/capture/reprise.rs`).
 fn instant(base: std::time::Instant, ms: u64) -> std::time::Instant {
     base + std::time::Duration::from_millis(ms)
 }
 
-/// Le second défaut de conception du §3.3 de D1 : `enfant_mort` retirait
-/// l'entrée, et plus rien ne rappelait la fenêtre — sauf un `SHOW` fortuit de
-/// Windows. Une fenêtre bien vivante disparaissait de la shell pour toujours,
-/// et c'est ce qui laissait la page-shell vide alors que les quatre
-/// applications tournaient encore.
+/// The second design defect of D1 §3.3: `enfant_mort` removed
+/// the entry, and nothing recalled the window any more — except a chance `SHOW` from
+/// Windows. A very much alive window disappeared from the shell forever,
+/// and that is what left the shell page empty while the four
+/// applications were still running.
 #[test]
 fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
     let mut t = Table::nouvelle(4);
@@ -41,8 +41,8 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
         "depuis D3 §7.1 la sortie est retenue pour la relance, reçu {effets:?}"
     );
 
-    // La fenêtre, elle, n'est pas oubliée : le contrôle périodique la
-    // repropose sous une session NEUVE.
+    // The window, for its part, is not forgotten: the periodic check
+    // offers it again under a NEW session.
     let effets = t.relancer_les_orphelines(std::time::Instant::now());
     let Some(Effet::AnnoncerOuverture {
         session: neuve,
@@ -58,26 +58,26 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
     assert_eq!(titre, "Bloc-notes");
 }
 
-/// Le garde-fou que l'emballement de D1 rend obligatoire : sans lui, une
-/// fenêtre dont l'enfant meurt systématiquement produit la boucle
-/// `w-5, w-6, w-7, w-8…` observée en recette.
+/// The safeguard D1's runaway makes mandatory: without it, a
+/// window whose child systematically dies produces the loop
+/// `w-5, w-6, w-7, w-8…` observed during acceptance.
 #[test]
 fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
     let base = std::time::Instant::now();
     let mut t = Table::nouvelle(4);
     let mut effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
-    // `RELANCES_MAX` relances TOLÉRÉES (w-1→w-2→w-3→w-4, trois relances
-    // réussies) et c'est la relance suivante, la quatrième, qui essuie le
-    // refus : il faut donc `RELANCES_MAX + 1` cycles mort+relance pour
-    // observer ce refus, pas `RELANCES_MAX`. Une brique du plan qui bornait
-    // la boucle à `0..RELANCES_MAX` s'arrêtait sur la dernière relance
-    // réussie (w-4) sans jamais la faire mourir à son tour — l'assertion de
-    // refus ne pouvait alors jamais être atteinte.
+    // `RELANCES_MAX` TOLERATED restarts (w-1→w-2→w-3→w-4, three successful
+    // restarts) and it is the next restart, the fourth, that meets the
+    // refusal: `RELANCES_MAX + 1` death+restart cycles are therefore needed to
+    // observe this refusal, not `RELANCES_MAX`. A plan brick that bounded
+    // the loop to `0..RELANCES_MAX` stopped at the last successful restart
+    // (w-4) without ever making it die in turn — the refusal
+    // assertion could then never be reached.
     //
-    // Même instant `instant(base, 0)` à chaque tour : ce test épingle le plafond de
-    // RELANCES, pas le délai de staleness (`DELAI_ATTENTE_VIEWPORT_MAX`, très
-    // au-dessus de la durée de ce test), les deux garde-fous sont
-    // indépendants.
+    // Same instant `instant(base, 0)` at each round: this test pins the ceiling of
+    // RESTARTS, not the staleness delay (`DELAI_ATTENTE_VIEWPORT_MAX`, far
+    // above this test's duration), the two safeguards are
+    // independent.
     for _ in 0..=RELANCES_MAX {
         let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
             panic!("ouverture attendue, reçu {effets:?}");
@@ -96,8 +96,8 @@ fn une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee() {
     );
 }
 
-/// Une fenêtre qui se ferme pour de bon quitte la table, orpheline ou non :
-/// sans quoi `relancer_les_orphelines` la ressusciterait indéfiniment.
+/// A window that closes for good leaves the table, orphaned or not:
+/// otherwise `relancer_les_orphelines` would resurrect it indefinitely.
 #[test]
 fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
     let mut t = Table::nouvelle(4);
@@ -112,12 +112,12 @@ fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
         .is_empty());
 }
 
-/// Deuxième moitié d'`enfant_mort`, jusqu'ici non affirmée. Avant le
-/// correctif §7.1 de D3, un `.take()` sur `sortie_pilote`/`nom_sortie`
-/// évitait qu'un second appel ne redemande au pilote de détruire une sortie
-/// déjà rendue. Depuis §7.1, `enfant_mort` ne détruit plus jamais rien : ce
-/// risque précis a disparu avec le `.take()` qui le prévenait. Ce qui reste à
-/// garantir, c'est qu'une seconde mort ne fait pas fuir la sortie retenue.
+/// Second half of `enfant_mort`, not asserted until now. Before
+/// D3's fix §7.1, a `.take()` on `sortie_pilote`/`nom_sortie`
+/// prevented a second call from asking the driver again to destroy an output
+/// already handed back. Since §7.1, `enfant_mort` never destroys anything: that
+/// precise risk disappeared with the `.take()` that prevented it. What remains to
+/// guarantee is that a second death does not leak the retained output.
 #[test]
 fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
     let mut t = Table::nouvelle(4);
@@ -151,13 +151,13 @@ fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
     );
 }
 
-/// Le second risque de capacité de la tâche 10 : une entrée relancée reste
-/// `AttendLeViewport`, et si la page-shell ne répond jamais (pop-up bloqué,
-/// shell déconnectée — `CLAUDE.md` documente ce cas nommément), rien ne la
-/// relève : elle n'est plus `SansSession` (le premier filtre de
-/// `relancer_les_orphelines` ne la voit plus) et elle n'atteindra jamais
-/// `Vivante`. Sans ce garde-fou, sa place resterait perdue jusqu'à l'arrêt du
-/// superviseur.
+/// Task 10's second capacity risk: a restarted entry stays
+/// `AttendLeViewport`, and if the shell page never answers (pop-up blocked,
+/// shell disconnected — `CLAUDE.md` documents this case by name), nothing picks it
+/// up: it is no longer `SansSession` (the first filter of
+/// `relancer_les_orphelines` no longer sees it) and it will never reach
+/// `Vivante`. Without this safeguard, its place would stay lost until the
+/// supervisor's shutdown.
 #[test]
 fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     let base = std::time::Instant::now();
@@ -168,7 +168,7 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     };
     t.enfant_mort(&session.clone());
 
-    // La relance a lieu à instant(base, 0) : l'entrée neuve porte cet instant.
+    // The restart happens at instant(base, 0): the new entry carries that instant.
     let effets = t.relancer_les_orphelines(instant(base, 0));
     let Some(Effet::AnnoncerOuverture {
         session: relancee, ..
@@ -179,13 +179,13 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     let relancee = relancee.clone();
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLeViewport));
 
-    // Aucun viewport ne vient jamais. Bien avant le délai, rien ne se passe.
+    // No viewport ever comes. Well before the delay, nothing happens.
     assert!(
         t.relancer_les_orphelines(instant(base, 100)).is_empty(),
         "une entrée qui n'a pas encore stagné ne doit rien produire"
     );
 
-    // Passé le délai, l'entrée est abandonnée — et retirée de la table.
+    // Past the delay, the entry is abandoned — and removed from the table.
     let apres_delai = DELAI_ATTENTE_VIEWPORT_MAX.as_millis() as u64 + 1;
     let effets = t.relancer_les_orphelines(instant(base, apres_delai));
     assert!(
@@ -199,8 +199,8 @@ fn une_relance_qui_stagne_sans_viewport_finit_abandonnee() {
     );
 }
 
-/// Le pendant du test précédent : une entrée relancée qui reçoit son viewport
-/// À TEMPS ne doit jamais être abandonnée, même longtemps après.
+/// The counterpart of the previous test: a restarted entry that receives its viewport
+/// IN TIME must never be abandoned, even long after.
 #[test]
 fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     let base = std::time::Instant::now();
@@ -220,7 +220,7 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     };
     let relancee = relancee.clone();
 
-    // Le viewport arrive avant le délai.
+    // The viewport arrives before the delay.
     let effets = t.viewport_recu(&relancee, 1280, 720);
     assert!(
         !effets.is_empty(),
@@ -228,8 +228,8 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
 
-    // Longtemps après, largement au-delà du délai : l'entrée n'est plus
-    // `AttendLeViewport`, le garde-fou ne la concerne plus.
+    // Long after, well beyond the delay: the entry is no longer
+    // `AttendLeViewport`, the safeguard no longer concerns it.
     let bien_plus_tard = DELAI_ATTENTE_VIEWPORT_MAX.as_millis() as u64 * 10;
     assert!(
         t.relancer_les_orphelines(instant(base, bien_plus_tard))
@@ -239,20 +239,20 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
 }
 
-/// §7.3 du sous-bloc D2, corrigé en D3. Une fenêtre NEUVE dont la page-shell
-/// ne répond jamais restait `AttendLeViewport` sans être ni relancée ni
-/// abandonnée : ni `SansSession`, ni `Vivante`. Sa place était perdue jusqu'à
-/// l'arrêt du superviseur.
+/// §7.3 of sub-block D2, fixed in D3. A NEW window whose shell page
+/// never answers stayed `AttendLeViewport` without being either restarted or
+/// abandoned: neither `SansSession`, nor `Vivante`. Its place was lost until
+/// the supervisor's shutdown.
 #[test]
 fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() {
     let base = std::time::Instant::now();
     let mut t = Table::nouvelle(4);
     t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
 
-    // Premier passage : le tampon est posé, rien n'est abandonné.
+    // First pass: the timestamp is set, nothing is abandoned.
     assert!(t.relancer_les_orphelines(base).is_empty());
 
-    // Le délai court à partir du premier passage, pas du démarrage.
+    // The delay runs from the first pass, not from startup.
     let effets = t.relancer_les_orphelines(instant(base, 30_001));
 
     assert!(
@@ -264,7 +264,7 @@ fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() 
     assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
 }
 
-/// Le tampon ne doit pas abandonner une fenêtre qui répond dans le délai.
+/// The timestamp must not abandon a window that answers within the delay.
 #[test]
 fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
     let base = std::time::Instant::now();
@@ -282,18 +282,18 @@ fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
     assert!(effets.is_empty(), "reçu {effets:?}");
 }
 
-/// 🔴 LE DÉFAUT DE PRODUCTION DU 30 AOÛT 2026, JOUÉ SUR LA TABLE PURE.
+/// 🔴 THE PRODUCTION DEFECT OF AUGUST 30TH, 2026, PLAYED ON THE PURE TABLE.
 ///
-/// Le superviseur annonce ses fenêtres à un relais où personne n'écoute ;
-/// l'annonce est perdue, et trente secondes plus tard la fenêtre est
-/// abandonnée. Quand la page-shell arrive enfin, elle ne doit PAS trouver un
-/// bureau vide.
+/// The supervisor announces its windows to a relay where no one listens;
+/// the announcement is lost, and thirty seconds later the window is
+/// abandoned. When the shell page finally arrives, it must NOT find an
+/// empty desktop.
 ///
-/// ⚠️ **Ce test éprouve la moitié « redite » (`reannoncer_les_attentes`) ; la
-/// moitié « rattrapage des abandonnées » vit dans `boucle.rs`, qui rejoue
-/// l'énumération Windows — donc hors de portée d'un test d'hôte.** Le test
-/// suivant éprouve que ce rattrapage-là est bien possible : une fenêtre
-/// abandonnée peut RENTRER dans la table.
+/// ⚠️ **This test exercises the "tell again" half (`reannoncer_les_attentes`); the
+/// "catching up abandoned ones" half lives in `boucle.rs`, which replays
+/// the Windows enumeration — hence out of reach of a host test.** The
+/// next test exercises that this catching up is indeed possible: an
+/// abandoned window can COME BACK into the table.
 #[test]
 fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
     let base = std::time::Instant::now();
@@ -303,10 +303,10 @@ fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
         panic!("ouverture attendue, reçu {effets:?}");
     };
     let session = session.clone();
-    // Cette annonce-là est PERDUE : aucun pair `client` n'est connecté.
+    // This announcement is LOST: no `client` peer is connected.
     t.relancer_les_orphelines(base);
 
-    // La shell arrive 20 s plus tard, avant l'abandon.
+    // The shell arrives 20 s later, before abandonment.
     let effets = t.reannoncer_les_attentes(instant(base, 20_000));
     let Some(Effet::AnnoncerOuverture {
         session: redite,
@@ -327,13 +327,13 @@ fn une_page_shell_qui_arrive_apres_coup_reçoit_les_fenetres_en_attente() {
     );
 }
 
-/// 🔴 L'HORLOGE REPART DE L'ARRIVÉE DE LA SHELL, ET NON DU DÉMARRAGE — c'est
-/// la différence entre corriger le défaut et rallonger le délai, que la
-/// consigne interdisait nommément.
+/// 🔴 THE CLOCK RESTARTS FROM THE SHELL'S ARRIVAL, AND NOT FROM STARTUP — it is
+/// the difference between fixing the defect and lengthening the delay, which the
+/// instruction forbade by name.
 ///
-/// Sans la remise à zéro, une shell qui arrive à 20 s ne disposerait que de
-/// 10 s pour ouvrir sa pop-up et renvoyer le viewport ; ici elle en a bien
-/// trente pleines.
+/// Without the reset, a shell arriving at 20 s would only have
+/// 10 s to open its pop-up and send back the viewport; here it has a full
+/// thirty.
 #[test]
 fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
     let base = std::time::Instant::now();
@@ -343,8 +343,8 @@ fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
 
     t.reannoncer_les_attentes(instant(base, 20_000));
 
-    // 20 s + 25 s = 45 s après le démarrage : l'ancien compte aurait
-    // abandonné depuis longtemps.
+    // 20 s + 25 s = 45 s after startup: the old count would have
+    // abandoned long ago.
     let effets = t.relancer_les_orphelines(instant(base, 45_000));
     assert!(
         !effets
@@ -354,13 +354,13 @@ fn la_reannonce_remet_le_compte_a_rebours_a_zero() {
     );
 }
 
-/// 🔴 CE QUE LA BORNE PROTÉGEAIT RESTE PROTÉGÉ : la réannonce ne la
-/// supprime pas, elle la fait courir depuis un instant qui a un sens. Une
-/// page-shell PRÉSENTE mais muette perd toujours sa fenêtre au bout de
-/// trente secondes, et la place est rendue.
+/// 🔴 WHAT THE BOUND PROTECTED STAYS PROTECTED: the re-announcement does not
+/// remove it, it makes it run from an instant that makes sense. A
+/// PRESENT but silent shell page still loses its window after
+/// thirty seconds, and the place is handed back.
 ///
-/// **Sans ce test, la correction serait indiscernable d'une suppression de
-/// la borne** — le patron « un contrôle qu'on n'a jamais vu rouge ».
+/// **Without this test, the fix would be indistinguishable from removing
+/// the bound** — the pattern "a check never seen red".
 #[test]
 fn une_shell_presente_mais_muette_perd_toujours_sa_fenetre() {
     let base = std::time::Instant::now();
@@ -376,12 +376,12 @@ fn une_shell_presente_mais_muette_perd_toujours_sa_fenetre() {
             .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
         "30 s après l'arrivée de la shell, l'abandon doit avoir lieu : {effets:?}"
     );
-    // La place est réellement rendue : la table n'en offrait qu'UNE.
+    // The place is really handed back: the table offered only ONE.
     assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
 }
 
-/// 🔴 LA SORTIE VIRTUELLE RETENUE — la ressource COÛTEUSE que la borne
-/// protège — est toujours rendue à l'abandon, réannonce ou pas.
+/// 🔴 THE RETAINED VIRTUAL OUTPUT — the COSTLY resource the bound
+/// protects — is always handed back on abandonment, re-announcement or not.
 #[test]
 fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
     let base = std::time::Instant::now();
@@ -393,8 +393,8 @@ fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
     t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
-    // L'enfant meurt : l'entrée retient sa sortie (§7.1 de D3) et repasse en
-    // attente de viewport à la relance.
+    // The child dies: the entry retains its output (§7.1 of D3) and goes back to
+    // waiting for a viewport at restart.
     t.enfant_mort(&session);
     t.relancer_les_orphelines(base);
 
@@ -413,14 +413,14 @@ fn la_sortie_retenue_est_toujours_rendue_a_l_abandon_apres_une_reannonce() {
     );
 }
 
-/// 🔴 UNE FENÊTRE **VIVANTE** N'EST PAS REDITE, ET C'EST DÉLIBÉRÉ : son
-/// enfant consomme UNE offre et ne renégocie jamais
-/// (`agent/src/demarrage.rs`), donc la page rouverte enverrait une offre que
-/// personne ne prendrait. Redire une session vivante ouvrirait une fenêtre
-/// définitivement muette — pire que de ne rien dire.
+/// 🔴 A **LIVE** WINDOW IS NOT TOLD AGAIN, AND IT IS DELIBERATE: its
+/// child consumes ONE offer and never renegotiates
+/// (`agent/src/demarrage.rs`), so the reopened page would send an offer
+/// no one would take. Telling a live session again would open a
+/// permanently silent window — worse than saying nothing.
 ///
-/// **C'est un legs nommé** : un rechargement de la page-shell ne récupère
-/// pas les fenêtres déjà vivantes.
+/// **It is a named legacy**: a reload of the shell page does not recover
+/// already live windows.
 #[test]
 fn une_fenetre_vivante_n_est_pas_redite() {
     let base = std::time::Instant::now();
@@ -431,8 +431,8 @@ fn une_fenetre_vivante_n_est_pas_redite() {
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    // `sortie_creee` fait passer l'entrée en `Vivante` : c'est le seul
-    // chemin, et l'assertion ci-dessous le vérifie plutôt que de le croire.
+    // `sortie_creee` moves the entry to `Vivante`: it is the only
+    // path, and the assertion below checks it rather than trusting it.
     t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
     assert_eq!(t.etat(&session), Some(&Etat::Vivante));
 
@@ -443,9 +443,9 @@ fn une_fenetre_vivante_n_est_pas_redite() {
     );
 }
 
-/// La réannonce n'invente rien : sur une table vide elle ne rend rien.
-/// **Le témoin négatif du test ci-dessus** — sans lui, `is_empty()` serait
-/// vrai d'une méthode qui ne rend JAMAIS rien.
+/// The re-announcement invents nothing: on an empty table it returns nothing.
+/// **The negative witness of the test above** — without it, `is_empty()` would be
+/// true of a method that NEVER returns anything.
 #[test]
 fn la_reannonce_sur_une_table_vide_ne_rend_rien() {
     let mut t = Table::nouvelle(4);

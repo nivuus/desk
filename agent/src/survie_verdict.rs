@@ -1,42 +1,42 @@
-//! Le prédicat PUR de PERSISTANCE (tâche 2bis, sous-bloc D9, revue du
-//! coordinateur, correction n°14) : deux mesures, potentiellement absentes
-//! chacune, disent-elles la même taille ?
+//! The PURE PERSISTENCE predicate (task 2bis, sub-block D9, coordinator's
+//! review, fix no. 14): do two measurements, each potentially absent,
+//! say the same size?
 //!
-//! Extrait de `diagnostics::multifenetre::mode_sortie::persistance`, qui
-//! reste `#[cfg(windows)]` (par le `#[cfg(windows)]` posé sur `mod multifenetre`
-//! dans `diagnostics.rs`, qui gate tout ce qui vit dessous — un prédicat pur
-//! niché plus profond dans cet arbre ne compilerait donc jamais sur l'hôte,
-//! quels que soient ses propres attributs). Ce prédicat-ci ne touche aucun
-//! type Windows — seulement des `Option<(u32, u32)>` — et PEUT donc se
-//! compiler et se tester sur l'hôte Linux : même précédent que
-//! `geometry.rs` et `sortie_dxgi.rs`, extraits pour la même raison.
+//! Extracted from `diagnostics::multifenetre::mode_sortie::persistance`, which
+//! stays `#[cfg(windows)]` (through the `#[cfg(windows)]` set on `mod multifenetre`
+//! in `diagnostics.rs`, which gates everything living below it — a pure predicate
+//! nested deeper in this tree would therefore never compile on the host,
+//! whatever its own attributes). This predicate touches no
+//! Windows type — only `Option<(u32, u32)>` — and CAN therefore
+//! compile and be tested on the Linux host: same precedent as
+//! `geometry.rs` and `sortie_dxgi.rs`, extracted for the same reason.
 //!
-//! **Racine nue, et non `#[path]` chez un parent** (convention tranchée
-//! tâche 17, sous-bloc D10, voir `CLAUDE.md` §« Convention de module
-//! enfant ») : un module dont le nom s'écrit `<parent>_<enfant>`
+//! **Bare root, and not `#[path]` under a parent** (convention settled in
+//! task 17, sub-block D10, see `CLAUDE.md` §"Child module
+//! convention"): a module whose name is written `<parent>_<child>`
 //! (`capture_reprise`, `windows_source_sortie`, `windows_source_telemetrie`)
-//! reste physiquement chez ce parent et se hisse par
-//! `#[path]` dans `main.rs`. Un module dont le nom se comprend SANS
-//! préfixer un parent — c'est le cas ici, `survie_verdict` ne porte le nom
-//! d'aucun module de premier niveau — vit à la racine nue, comme
-//! `geometry.rs` et `sortie_dxgi.rs`. La profondeur d'où on l'extrait
-//! (`diagnostics::multifenetre::mode_sortie::persistance`, quatre niveaux)
-//! n'y change rien : il n'y a de toute façon aucun nom de parent court et
-//! unique à préfixer.
+//! stays physically under that parent and is hoisted through
+//! `#[path]` in `main.rs`. A module whose name is understood WITHOUT
+//! prefixing a parent — the case here, `survie_verdict` carries the name
+//! of no top-level module — lives at the bare root, like
+//! `geometry.rs` and `sortie_dxgi.rs`. The depth it is extracted from
+//! (`diagnostics::multifenetre::mode_sortie::persistance`, four levels)
+//! changes nothing: there is in any case no short and
+//! unique parent name to prefix.
 //!
-//! C'est le prédicat même qui portait l'Important I4 de la revue de la
-//! tâche 2bis : l'ancienne version repliait une taille introuvable sur
-//! `(0, 0)`, si bien qu'une sortie disparue AVANT et APRÈS rendait
-//! `(0, 0) == (0, 0)` → `survit=true` — l'instrument annonçait « le
-//! changement a survécu » exactement quand la sortie s'était volatilisée.
-//! Isolé ici, ce défaut aurait été visible dans un test dès le premier
-//! essai — doctrine du dépôt : un contrôle qu'on n'a jamais vu ROUGE n'en
-//! est pas un.
+//! It is the very predicate that carried Important I4 of the review of
+//! task 2bis: the old version folded a size not found onto
+//! `(0, 0)`, so that an output gone BEFORE and AFTER returned
+//! `(0, 0) == (0, 0)` → `survit=true` — the instrument announced "the
+//! change survived" exactly when the output had vanished.
+//! Isolated here, this defect would have been visible in a test from the first
+//! try — the repository's doctrine: a check never seen RED is not
+//! one.
 
-/// Rend `"true"` ou `"false"` quand LES DEUX mesures existent et qu'on peut
-/// donc les comparer, `"indetermine (sortie disparue)"` dès que l'UNE des
-/// deux manque — jamais une comparaison sur une sentinelle numérique
-/// confondable avec un succès.
+/// Returns `"true"` or `"false"` when BOTH measurements exist and can
+/// therefore be compared, `"indetermine (sortie disparue)"` as soon as EITHER
+/// one is missing — never a comparison on a numeric sentinel
+/// that could be confused with a success.
 pub(crate) fn verdict_persistance(
     avant: Option<(u32, u32)>,
     apres: Option<(u32, u32)>,
@@ -68,9 +68,9 @@ mod tests {
         );
     }
 
-    /// Le cas que l'ancienne version confondait avec `"true"` : les DEUX
-    /// mesures absentes (sortie disparue avant ET après) ne doivent JAMAIS
-    /// se lire comme une survie -- ni comme une comparaison sur `(0, 0)`.
+    /// The case the old version confused with `"true"`: BOTH
+    /// measurements absent (output gone before AND after) must NEVER
+    /// read as a survival -- nor as a comparison on `(0, 0)`.
     #[test]
     fn une_mesure_absente_de_chaque_cote_rend_indetermine() {
         assert_eq!(
