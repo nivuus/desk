@@ -1,37 +1,37 @@
-// Le seul endroit du client qui sache OÙ vit le jeton et s'il est encore
-// frais. Tout le reste du navigateur passe par ici.
+// The only place in the client that knows WHERE the token lives and whether it is still
+// fresh. The rest of the browser goes through here.
 //
-// 🔴 CE MODULE EST PUR ET SANS DOM. Relevé le 19 août 2026 : `client/` n'a
-// aucun `vitest.config.*`, donc l'environnement de test est le Node par
-// défaut — il n'y a ni `window` ni `localStorage`. Le `Coffre` est un
-// PARAMÈTRE ; `globalThis.localStorage` n'est touché que dans le défaut d'un
-// argument, à l'appel, jamais au chargement du module. Un `const coffre =
-// localStorage` en tête de fichier suffirait à rendre ce module impossible à
-// charger sous Node, et donc impossible à tester.
+// 🔴 THIS MODULE IS PURE AND DOM-FREE. Noted on August 19th, 2026: `client/` has
+// no `vitest.config.*`, so the test environment is the default
+// Node — there is neither `window` nor `localStorage`. The `Coffre` is a
+// PARAMETER; `globalThis.localStorage` is only touched as an argument's
+// default, at call time, never at module load. A `const coffre =
+// localStorage` at the top of the file would suffice to make this module impossible to
+// load under Node, hence impossible to test.
 //
-// 🔴 LE STOCKAGE EST `localStorage`, ET LE COÛT EST ICI PLUTÔT QUE DÉCOUVERT :
-// un jeton en `localStorage` est lisible par TOUT script de la page, donc par
-// une injection de script. `sessionStorage` ne convient pas — la page-shell
-// ouvre ses fenêtres par `window.open` (`bureau/porteur-dom.ts`, `shell-page.ts`
-// avant que le hub ne devienne la seule surface, 31 août 2026), et le stockage
-// de session n'est pas garanti partagé avec elles, ce qui obligerait chaque
-// fenêtre à se reconnecter. C'est un ARBITRAGE, pas un oubli.
+// 🔴 THE STORAGE IS `localStorage`, AND THE COST IS STATED HERE RATHER THAN DISCOVERED:
+// a token in `localStorage` is readable by ANY script of the page, hence by
+// a script injection. `sessionStorage` does not fit — the shell page
+// opens its windows through `window.open` (`bureau/porteur-dom.ts`, `shell-page.ts`
+// before the hub became the only surface, August 31st, 2026), and session
+// storage is not guaranteed to be shared with them, which would force each
+// window to reconnect. It is a TRADE-OFF, not an oversight.
 //
-// ⚠️ **P5 EST PASSÉ, ET L'ARBITRAGE N'A PAS ÉTÉ ROUVERT** (revue transverse,
-// 20 août 2026). Cette phrase annonçait qu'« il se rouvrira[it] [au] sous-bloc
-// P5, avec les en-têtes de sécurité » : les en-têtes ont été livrés — deux par
-// le service (`plateforme/src/http/entetes.ts`), le reste par le proxy
-// (`deploiement/nginx.conf`, dont une CSP à `script-src 'self'`) — et **le
-// stockage n'a pas changé**. Ce n'est pas un oubli non plus : une CSP réduit
-// la surface d'injection sans la supprimer, et le remède réel — un cookie
-// `HttpOnly` — reste **hors du périmètre de ⑤**, qui n'a livré aucun cookie.
-// **L'arbitrage tient, et il est désormais DÛ plutôt qu'ANNONCÉ.**
+// ⚠️ **P5 HAS PASSED, AND THE TRADE-OFF WAS NOT REOPENED** (cross-cutting review,
+// August 20th, 2026). This sentence announced that "it w[ould] reopen [at] sub-block
+// P5, with the security headers": the headers were delivered — two by
+// the service (`plateforme/src/http/entetes.ts`), the rest by the proxy
+// (`deploiement/nginx.conf`, including a CSP with `script-src 'self'`) — and **the
+// storage has not changed**. It is not an oversight either: a CSP reduces
+// the injection surface without removing it, and the real remedy — an
+// `HttpOnly` cookie — stays **outside ⑤'s scope**, which delivered no cookie.
+// **The trade-off holds, and it is now OWED rather than ANNOUNCED.**
 //
-// ⚠️ `exp` EST EN MILLISECONDES, et ce n'est pas une erreur de lecture :
-// `plateforme/src/identite/jeton.ts` déclare cette divergence délibérée avec
-// la RFC 7519, pour qu'il n'y ait qu'une seule unité de temps dans tout le
-// service. Ce fichier en est le miroir côté navigateur ; changer l'un sans
-// l'autre casserait la fraîcheur en silence.
+// ⚠️ `exp` IS IN MILLISECONDS, and it is not a misreading:
+// `plateforme/src/identite/jeton.ts` declares this deliberate divergence from
+// RFC 7519, so that there is only one time unit in the whole
+// service. This file is its browser-side mirror; changing one without
+// the other would silently break freshness.
 
 export interface Coffre {
     getItem(cle: string): string | null;
@@ -47,9 +47,9 @@ export interface Paire {
 export const CLE_ACCES = 'guac.jeton.acces';
 export const CLE_RAFRAICHISSEMENT = 'guac.jeton.rafraichissement';
 
-/// Le coffre par défaut, lu À L'APPEL et jamais au chargement. Rend
-/// `undefined` hors navigateur, ce qui laisse l'appelant décider — plutôt que
-/// de lever au premier `import` sous Node.
+/// The default vault, read AT CALL TIME and never at load. Returns
+/// `undefined` outside a browser, which lets the caller decide — rather than
+/// throwing at the first `import` under Node.
 function coffreParDefaut(): Coffre | undefined {
     const global = globalThis as { localStorage?: Coffre };
     return global.localStorage;
@@ -60,82 +60,82 @@ export function poser(coffre: Coffre, paire: Paire): void {
     coffre.setItem(CLE_RAFRAICHISSEMENT, paire.rafraichissement);
 }
 
-/// Efface LES DEUX clés. N'en effacer qu'une laisserait un rafraîchissement
-/// utilisable derrière une déconnexion.
+/// Erases BOTH keys. Erasing only one would leave a usable refresh
+/// behind a sign-out.
 export function vider(coffre: Coffre): void {
     coffre.removeItem(CLE_ACCES);
     coffre.removeItem(CLE_RAFRAICHISSEMENT);
 }
 
-/// Pose le seul jeton d'accès, et EFFACE celui de rafraîchissement.
+/// Sets the access token alone, and ERASES the refresh token.
 ///
-/// 🔴 L'EFFACEMENT EST LE POINT, PAS UN NETTOYAGE DE CONFORT. Le mode
-/// `pomerium` ne délivre aucun jeton de rafraîchissement. Un jeton laissé par
-/// un montage `motdepasse` antérieur serait présenté à une route qui rend
-/// désormais 404, et le symptôme serait une déconnexion inexpliquée dix minutes
-/// après chaque ouverture de page.
+/// 🔴 THE ERASURE IS THE POINT, NOT A COMFORT CLEAN-UP. The `pomerium`
+/// mode delivers no refresh token. A token left by an
+/// earlier `motdepasse` setup would be presented to a route that now returns
+/// 404, and the symptom would be an unexplained sign-out ten minutes
+/// after each page opening.
 ///
-/// ⚠️ CE QUE FAIT LE PRODUIT À L'EXPIRATION, ET NON CE QU'ON VOUDRAIT QU'IL
-/// FASSE — ET CE PARAGRAPHE A ÉTÉ FAUX PENDANT DIX JOURS, PUIS DE NOUVEAU
-/// PENDANT UNE JOURNÉE. Il a d'abord écrit « à l'expiration, le client
-/// rappelle `GET /auth/moi` » alors qu'**aucun code ne le faisait**, et la
-/// revue transverse du chantier `auth-pomerium` l'a relevé. Il a ensuite
-/// affirmé l'inverse — que `rafraichirSiNecessaire` (plus bas) « n'a aucun
-/// appelant de production », que le `grep` ci-dessous « rend CINQ lignes, une
-/// définition et quatre usages de test, pas un appel », et que le seul chemin
-/// vers `/auth/moi` était un rechargement à la main. 🔴 **LES TROIS SONT
-/// DEVENUES FAUSSES LE 31 AOÛT 2026**, quand `assurerAccesFrais` (plus bas) a
-/// pris `rafraichirSiNecessaire` pour son étape ② et `accesParPomerium` pour
-/// son étape ③, et que `hub/page.ts` a appelé `assurerAccesFrais` avant chaque
-/// usage. **Relancer la commande, ne jamais recopier son chiffre :**
+/// ⚠️ WHAT THE PRODUCT DOES ON EXPIRY, AND NOT WHAT ONE WOULD LIKE IT TO
+/// DO — AND THIS PARAGRAPH WAS WRONG FOR TEN DAYS, THEN AGAIN
+/// FOR ONE DAY. It first wrote "on expiry, the client
+/// calls `GET /auth/moi` again" whereas **no code did so**, and the
+/// cross-cutting review of the `auth-pomerium` workstream flagged it. It then
+/// asserted the opposite — that `rafraichirSiNecessaire` (below) "has no
+/// production caller", that the `grep` below "returns FIVE lines, one
+/// definition and four test uses, not one call", and that the only path
+/// to `/auth/moi` was a manual reload. 🔴 **ALL THREE
+/// BECAME FALSE ON AUGUST 31ST, 2026**, when `assurerAccesFrais` (below)
+/// took `rafraichirSiNecessaire` for its step ② and `accesParPomerium` for
+/// its step ③, and `hub/page.ts` called `assurerAccesFrais` before each
+/// use. **Rerun the command, never copy its figure:**
 ///
 ///     grep -rn 'rafraichirSiNecessaire(' client/src --include='*.ts' | grep -v '///'
 ///
-/// ⚠️ LE SECOND `grep` N'EST PAS DÉCORATIF : sans lui, la commande compte LES
-/// LIGNES DE CE COMMENTAIRE, et le chiffre annoncé cesse d'être celui qu'elle
-/// rend. La vague de correction du 21 août 2026 a payé ce patron QUATRE fois
-/// dans la même ronde — un `grep` cité s'ancre sur la syntaxe, jamais sur un
-/// nom que la prose environnante répète.
+/// ⚠️ THE SECOND `grep` IS NOT DECORATIVE: without it, the command counts THE
+/// LINES OF THIS COMMENT, and the announced figure stops being the one it
+/// returns. The correction wave of August 21st, 2026 paid for this pattern FOUR times
+/// in the same round — a quoted `grep` anchors on syntax, never on a
+/// name the surrounding prose repeats.
 ///
-/// **CE QUE FAIT LE PRODUIT AUJOURD'HUI**, en mode `pomerium` : le jeton du
-/// coffre est éprouvé par `assurerAccesFrais` **avant chaque usage** ; s'il
-/// est périmé à `MARGE_FRAICHEUR_MS` près, `/auth/moi` est rappelé sans qu'un
-/// geste soit nécessaire. Le cookie Pomerium vivant 8640 h, cet aller-retour
-/// est silencieux. ⚠️ Ce qui n'a PAS changé : `tenterPomerium`
-/// (`connexion.ts`) ne court toujours **qu'au chargement de la page de
-/// connexion**, et `poserAcces` — la fonction ci-dessous — reste le seul
-/// endroit qui efface le jeton de rafraîchissement.
+/// **WHAT THE PRODUCT DOES TODAY**, in `pomerium` mode: the vault's token
+/// is tested by `assurerAccesFrais` **before each use**; if it
+/// is stale within `MARGE_FRAICHEUR_MS`, `/auth/moi` is called again without any
+/// gesture being needed. The Pomerium cookie living 8640 h, this round trip
+/// is silent. ⚠️ What has NOT changed: `tenterPomerium`
+/// (`connexion.ts`) still runs **only when the sign-in page
+/// loads**, and `poserAcces` — the function below — stays the only
+/// place that erases the refresh token.
 export function poserAcces(coffre: Coffre, acces: string): void {
     coffre.setItem(CLE_ACCES, acces);
     coffre.removeItem(CLE_RAFRAICHISSEMENT);
 }
 
-/// Le jeton d'accès porté par le corps de `GET /auth/moi`, ou `undefined` si
-/// ce corps n'en porte pas d'utilisable.
+/// The access token carried by the body of `GET /auth/moi`, or `undefined` if
+/// that body carries no usable one.
 ///
-/// 🔴 C'EST UNE RÈGLE, PAS DU CÂBLAGE, ET C'EST POURQUOI ELLE VIT ICI ET NON
-/// DANS `connexion.ts`. Le critère de ce dépôt est reproductible — « une
-/// condition est une règle si la CHANGER change ce que le PRODUIT décide ; elle
-/// est du câblage si elle ne fait que router une décision déjà prise ailleurs,
-/// et testée là-bas ». Celle-ci ne route RIEN : elle VALIDE une valeur que le
-/// service est contractuellement tenu de fournir, et personne d'autre ne la
-/// valide. **Ce qu'un retrait produit, mesuré plutôt que supposé** : le corps
-/// `{}` fait écrire la chaîne `"undefined"` au coffre, puis envoyer
-/// `Bearer undefined` à `POST /session`, puis afficher une erreur de session
-/// au lieu du formulaire de connexion — **et le coffre reste empoisonné** pour
-/// tous les chargements suivants. Le produit décide autre chose ; c'est donc
-/// bien une règle, et elle est tenue par les tests de ce fichier.
+/// 🔴 IT IS A RULE, NOT WIRING, AND THAT IS WHY IT LIVES HERE AND NOT
+/// IN `connexion.ts`. This repository's criterion is reproducible — "a
+/// condition is a rule if CHANGING it changes what the PRODUCT decides; it
+/// is wiring if it only routes a decision already taken elsewhere,
+/// and tested there". This one routes NOTHING: it VALIDATES a value the
+/// service is contractually bound to supply, and no one else
+/// validates it. **What a removal produces, measured rather than assumed**: the body
+/// `{}` makes the string `"undefined"` written to the vault, then
+/// `Bearer undefined` sent to `POST /session`, then a session error displayed
+/// instead of the sign-in form — **and the vault stays poisoned** for
+/// all subsequent loads. The product decides something else; it is therefore
+/// indeed a rule, and it is held by this file's tests.
 ///
-/// 🔴 LA CHAÎNE VIDE EST REFUSÉE SÉPARÉMENT DU NON-CHAÎNE, et le test de la
-/// chaîne vide n'est pas redondant : `typeof '' === 'string'`. C'est le même
-/// piège que `plateforme/src/config.ts` a payé — `env.X ?? 'defaut'` ne
-/// rattrape pas `''`. Un `''` posé au coffre serait un jeton qu'aucun
-/// `Authorization` ne peut porter, et `jetonAcces` le rendrait comme s'il
-/// valait quelque chose.
+/// 🔴 THE EMPTY STRING IS REFUSED SEPARATELY FROM THE NON-STRING, and the empty
+/// string test is not redundant: `typeof '' === 'string'`. It is the same
+/// trap `plateforme/src/config.ts` paid for — `env.X ?? 'defaut'` does not
+/// catch `''`. A `''` set in the vault would be a token no
+/// `Authorization` can carry, and `jetonAcces` would return it as if it
+/// were worth something.
 ///
-/// ⚠️ PURE, ET SANS COFFRE : elle ne pose rien elle-même. Poser est le geste de
-/// `poserAcces` juste au-dessus, et les garder distincts est ce qui permet à
-/// l'appelant de ne RIEN toucher quand la réponse est mauvaise.
+/// ⚠️ PURE, AND WITHOUT A VAULT: it sets nothing itself. Setting is the gesture of
+/// `poserAcces` just above, and keeping them distinct is what lets
+/// the caller touch NOTHING when the answer is bad.
 export function accesDeReponse(corps: unknown): string | undefined {
     if (typeof corps !== 'object' || corps === null) return undefined;
     const acces = (corps as { acces?: unknown }).acces;
@@ -143,24 +143,24 @@ export function accesDeReponse(corps: unknown): string | undefined {
     return acces;
 }
 
-/// La paire portée par le corps de `POST /auth/rafraichir`, ou `undefined` si
-/// ce corps n'en porte pas d'utilisable.
+/// The pair carried by the body of `POST /auth/rafraichir`, or `undefined` if
+/// that body carries no usable one.
 ///
-/// 🔴 **RÉUTILISE `accesDeReponse` POUR LA MOITIÉ `acces`, NE LA RECOPIE PAS**
-/// — les deux routes partagent la même forme pour ce champ, et une seconde
-/// validation à tenir d'accord serait de la dette. Le même critère (chaîne,
-/// NON VIDE) est appliqué à `rafraichissement` : `typeof '' === 'string'`, le
-/// piège déjà payé par `plateforme/src/config.ts` et par `accesDeReponse`
-/// elle-même — une chaîne vide y échapperait sinon.
+/// 🔴 **REUSES `accesDeReponse` FOR THE `acces` HALF, DOES NOT COPY IT**
+/// — both routes share the same shape for that field, and a second
+/// validation to keep in agreement would be debt. The same criterion (string,
+/// NOT EMPTY) is applied to `rafraichissement`: `typeof '' === 'string'`, the
+/// trap already paid for by `plateforme/src/config.ts` and by `accesDeReponse`
+/// itself — an empty string would otherwise slip through.
 ///
-/// 🔴 **AJOUTÉE EN CORRECTION DE REVUE (round 1), PAS AU PREMIER JET** :
-/// `assurerAccesFrais` (ci-dessous) est le PREMIER appelant de production de
-/// `rafraichirSiNecessaire`, qui écrit tout ce que son `appel` lui rend
-/// directement au coffre (`poser`, dans `rafraichirSiNecessaire`). Sans cette
-/// garde, un corps `{ acces: 'X' }` sans `rafraichissement` — ou l'inverse —
-/// aurait empoisonné le coffre exactement comme le défaut qu'`accesDeReponse`
-/// existe pour empêcher sur `/auth/moi`, sans qu'aucun test ne le voie : ce
-/// chemin était resté SANS appelant de production jusqu'à cette tâche.
+/// 🔴 **ADDED AS A REVIEW FIX (round 1), NOT IN THE FIRST DRAFT**:
+/// `assurerAccesFrais` (below) is the FIRST production caller of
+/// `rafraichirSiNecessaire`, which writes everything its `appel` returns
+/// directly to the vault (`poser`, in `rafraichirSiNecessaire`). Without this
+/// guard, a body `{ acces: 'X' }` without `rafraichissement` — or the reverse —
+/// would have poisoned the vault exactly like the defect `accesDeReponse`
+/// exists to prevent on `/auth/moi`, without any test seeing it: this
+/// path had stayed WITHOUT a production caller until this task.
 export function paireDeReponse(corps: unknown): Paire | undefined {
     const acces = accesDeReponse(corps);
     if (acces === undefined) return undefined;
@@ -173,23 +173,23 @@ export function jetonAcces(coffre: Coffre | undefined = coffreParDefaut()): stri
     return coffre?.getItem(CLE_ACCES) ?? undefined;
 }
 
-/* ── L'ACCÈS AUTOMATIQUE — AJOUTÉ LE 30 AOÛT 2026, POUR FERMER UNE
-   INCOMPLÉTUDE TROUVÉE EN PRODUCTION CE MATIN-LÀ ─────────────────────────
+/* ── AUTOMATIC ACCESS — ADDED ON AUGUST 30TH, 2026, TO CLOSE AN
+   INCOMPLETENESS FOUND IN PRODUCTION THAT MORNING ─────────────────────────
 
-   Le hub (`hub/page.ts`), servi à la racine depuis la veille, se contentait
-   de LIRE le coffre et de se plaindre s'il était vide ("Aucun jeton :
-   connectez-vous d'abord.", sans rien à faire). Le seul code qui savait
-   obtenir un jeton par Pomerium était `connexion.ts::tenterPomerium`, et il
-   ne courait QU'AU CHARGEMENT DE LA PAGE DE CONNEXION. Tant que la racine
-   servait la page de session, personne n'avait vu un visiteur atterrir
-   DIRECTEMENT sur le hub sans être passé par cet écran : le lot qui a mis le
-   hub à la racine avait vérifié que `/` SERT le hub, jamais qu'un visiteur
-   SANS JETON puisse s'en servir — un contrôle qu'on n'a jamais vu rougir.
+   The hub (`hub/page.ts`), served at the root since the day before, merely
+   READ the vault and complained if it was empty ("No token:
+   sign in first.", with nothing to do). The only code that knew how to
+   obtain a token through Pomerium was `connexion.ts::tenterPomerium`, and it
+   ran ONLY WHEN THE SIGN-IN PAGE LOADED. As long as the root
+   served the session page, no one had seen a visitor land
+   DIRECTLY on the hub without having gone through that screen: the batch that put the
+   hub at the root had checked that `/` SERVES the hub, never that a visitor
+   WITHOUT A TOKEN could use it — a check never seen turning red.
 
-   Les deux fonctions ci-dessous DESCENDENT ici, où elles sont testées, pour
-   que `connexion.ts` (qui appelle toujours Pomerium au chargement) ET
-   `hub/page.ts` (qui ne doit l'appeler QUE si le coffre est vide) les
-   PARTAGENT au lieu de la recopier — la clause que ce correctif s'impose. */
+   The two functions below MOVE DOWN here, where they are tested, so
+   that `connexion.ts` (which still calls Pomerium on load) AND
+   `hub/page.ts` (which must call it ONLY if the vault is empty)
+   SHARE them instead of copying it — the clause this fix imposes on itself. */
 
 export interface ReponseAuthMoi {
     ok: boolean;
@@ -197,18 +197,18 @@ export interface ReponseAuthMoi {
 }
 export type AppelAuthMoi = (url: string) => Promise<ReponseAuthMoi>;
 
-/// Demande un jeton d'accès frais à Pomerium — le CHEMIN qu'avait
-/// `tenterPomerium` (`connexion.ts`), EXTRAIT ici tel quel (mêmes trois
-/// gestes : appeler, vérifier `ok`, valider le corps par `accesDeReponse`).
+/// Asks Pomerium for a fresh access token — the PATH
+/// `tenterPomerium` (`connexion.ts`) had, EXTRACTED here as is (the same three
+/// gestures: call, check `ok`, validate the body through `accesDeReponse`).
 ///
-/// Rend `undefined` sur toute issue qui n'est PAS un jeton exploitable : un
-/// réseau injoignable, un corps illisible, et — le cas du mode
-/// `motdepasse` — un `404`, que `routes-identite.ts::servirIdentite` rend
-/// LUI-MÊME pour porter le mode jusqu'au client (voir l'en-tête de
-/// `connexion.ts` autour de `tenterPomerium`). Cette fonction ne distingue
-/// PAS ces issues entre elles : c'est à l'APPELANT de décider quoi en faire
-/// (rediriger vers l'écran de connexion, par exemple), jamais à elle de
-/// choisir à sa place.
+/// Returns `undefined` on any outcome that is NOT a usable token: an
+/// unreachable network, an unreadable body, and — the case of the
+/// `motdepasse` mode — a `404`, which `routes-identite.ts::servirIdentite` returns
+/// ITSELF to carry the mode to the client (see the header of
+/// `connexion.ts` around `tenterPomerium`). This function does NOT distinguish
+/// these outcomes from one another: it is up to the CALLER to decide what to do with them
+/// (redirect to the sign-in screen, for instance), never up to it to
+/// choose in its place.
 export async function accesParPomerium(
     base: string,
     appel: AppelAuthMoi,
@@ -222,40 +222,40 @@ export async function accesParPomerium(
     }
 }
 
-/// La marge de fraîcheur : un jeton qui expire dans moins que cela est
-/// traité comme périmé.
+/// The freshness margin: a token expiring in less than this is
+/// treated as stale.
 ///
-/// ⚠️ **CONSTANTE NON CALIBRÉE, ET DÉCLARÉE COMME TELLE** — comme les
-/// quarante autres de ce dépôt (`CLAUDE.md`, « aucune constante n'est
-/// calibrée »). Elle vaut assez pour qu'un appel parti avec un jeton valide
-/// n'arrive pas expiré, sans forcer un aller-retour à chaque geste.
+/// ⚠️ **UNCALIBRATED CONSTANT, AND DECLARED AS SUCH** — like the
+/// forty others of this repository (`CLAUDE.md`, "no constant is
+/// calibrated"). It is enough for a call sent with a valid token
+/// not to arrive expired, without forcing a round trip at each gesture.
 export const MARGE_FRAICHEUR_MS = 30_000;
 
-/// Assure qu'un jeton d'accès **UTILISABLE** est disponible, en l'obtenant
-/// si besoin.
+/// Ensures a **USABLE** access token is available, obtaining it
+/// if needed.
 ///
-/// 🔴 **CE QUI LA DISTINGUE D'`assurerAcces`, QU'ELLE REMPLACE : elle regarde
-/// si le jeton du coffre est PÉRIMÉ.** `assurerAcces` rendait le contenu du
-/// coffre dès qu'il n'était pas vide — un jeton expiré était donc rendu tel
-/// quel, et chaque appel échouait ensuite sans que rien ne relie l'échec à
-/// l'expiration. C'est la seconde moitié de la demande du 31 août 2026
-/// (« si je vais sur hub.html, ça valide et rafraîchit ma connexion »).
+/// 🔴 **WHAT DISTINGUISHES IT FROM `assurerAcces`, WHICH IT REPLACES: it checks
+/// whether the vault's token is STALE.** `assurerAcces` returned the vault's
+/// content as soon as it was not empty — an expired token was therefore returned as
+/// is, and each call then failed without anything linking the failure to
+/// the expiry. It is the second half of the request of August 31st, 2026
+/// ("if I go to hub.html, it validates and refreshes my connection").
 ///
-/// Quatre étapes, dans cet ordre, chacune tentée seulement si la précédente
-/// échoue :
-///   ① le coffre porte un jeton encore frais à `margeMs` près → le rendre,
-///      **sans aucun réseau** : un aller-retour à chaque geste serait un coût
-///      pour un cas qui n'en a pas besoin ;
-///   ② `rafraichirSiNecessaire` — le chemin du mode `motdepasse` ;
-///   ③ `accesParPomerium` → `GET /auth/moi` — le mode `pomerium`, celui de
-///      la production ;
-///   ④ `undefined`, **coffre vidé** : à l'appelant de renvoyer vers l'écran
-///      de connexion.
+/// Four steps, in this order, each attempted only if the previous one
+/// fails:
+///   ① the vault carries a token still fresh within `margeMs` → return it,
+///      **without any network**: a round trip at each gesture would be a cost
+///      for a case that does not need it;
+///   ② `rafraichirSiNecessaire` — the path of the `motdepasse` mode;
+///   ③ `accesParPomerium` → `GET /auth/moi` — the `pomerium` mode, the one of
+///      production;
+///   ④ `undefined`, **vault emptied**: up to the caller to send back to the sign-in
+///      screen.
 ///
-/// 🔴 **ELLE NE VÉRIFIE AUCUNE SIGNATURE**, et `expireAvant` le dit déjà : le
-/// navigateur n'a pas le secret. Ce qu'on évite ici est un aller-retour
-/// inutile et un échec inexpliqué, jamais une décision d'autorisation —
-/// celle-ci reste au service, sur chaque poignée de main.
+/// 🔴 **IT VERIFIES NO SIGNATURE**, and `expireAvant` already says so: the
+/// browser does not have the secret. What is avoided here is a useless round trip
+/// and an unexplained failure, never an authorisation decision —
+/// that stays with the service, on each handshake.
 export async function assurerAccesFrais(
     coffre: Coffre,
     base: string,

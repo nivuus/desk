@@ -1,43 +1,43 @@
-// L'orchestration du téléversement d'un installeur, côté navigateur :
-// empreindre, créer, déposer les tranches MANQUANTES, sceller.
+// Orchestrating an installer's upload, browser side:
+// fingerprint, create, upload the MISSING slices, seal.
 //
-// 🔴 AUCUN DOM, ET AUCUNE DÉPENDANCE IMPLICITE. `fetch`, l'horloge et
-// l'`AbortSignal` sont des PARAMÈTRES — aucun n'est lu ici, ni au chargement ni
-// à l'appel. C'est ce qui rend la séquence éprouvable sur l'hôte sans
-// navigateur, et surtout ce qui permet au pilote de recette (D14) d'exécuter LE
-// CODE DU PRODUIT plutôt qu'une réimplémentation `curl` qui n'éprouverait
-// qu'elle-même.
+// 🔴 NO DOM, AND NO IMPLICIT DEPENDENCY. `fetch`, the clock and
+// the `AbortSignal` are PARAMETERS — none is read here, neither at load nor
+// at call time. That is what makes the sequence testable on the host without a
+// browser, and above all what lets the acceptance driver (D14) execute THE
+// PRODUCT'S CODE rather than a `curl` reimplementation that would only test
+// itself.
 //
-// 🔴 L'ARITHMÉTIQUE DES TRANCHES ET LE CONDENSAT VIENNENT DE `proto/ts/`, parce
-// que la plateforme les emploie AUSSI : deux découpages divergents produiraient
-// un scellement qui refuse sans qu'on sache lequel des deux bouts a tort (D6).
+// 🔴 THE SLICE ARITHMETIC AND THE DIGEST COME FROM `proto/ts/`, because
+// the platform uses them TOO: two divergent splittings would produce
+// a sealing that refuses without anyone knowing which of the two ends is wrong (D6).
 //
-// ⚠️ UN REFUS ATTENDU EST UNE `Issue`, JAMAIS UNE EXCEPTION — l'arbitrage de
-// `plateforme/src/orchestration/refus.ts`. Une panne d'ENVIRONNEMENT (le `fetch`
-// qui rejette hors interruption) remonte telle quelle : la déguiser en refus la
-// ferait passer pour une décision de protocole.
+// ⚠️ AN EXPECTED REFUSAL IS AN `Issue`, NEVER AN EXCEPTION — the arbitration of
+// `plateforme/src/orchestration/refus.ts`. An ENVIRONMENT failure (the `fetch`
+// that rejects outside an interruption) propagates as is: disguising it as a refusal
+// would pass it off as a protocol decision.
 import { plan, verdict, type Tranche } from '../../../proto/ts/tranches';
 import { Sha256 } from '../../../proto/ts/sha256';
-/* ── LES DÉPENDANCES, TOUTES INJECTÉES ────────────────────────────────── */
+/* ── THE DEPENDENCIES, ALL INJECTED ────────────────────────────────── */
 
-/// La forme de réponse dont ce module a besoin, et rien de plus. DÉCLARÉE
-/// plutôt qu'empruntée à `Response` : un `fetch` factice n'a aucune chance d'en
-/// satisfaire les trente membres, et l'exiger rendrait ce fichier intestable.
-/// Que la VRAIE `fetch` satisfasse `Fetch` est vérifié par le typage, au test.
+/// The response shape this module needs, and nothing more. DECLARED
+/// rather than borrowed from `Response`: a fake `fetch` has no chance of
+/// satisfying its thirty members, and requiring it would make this file untestable.
+/// That the REAL `fetch` satisfies `Fetch` is checked by typing, in the test.
 export interface ReponseHttp {
     ok: boolean;
     status: number;
     json(): Promise<unknown>;
 }
 
-/// Ce que ce module passe à `fetch` — un sous-ensemble strict de `RequestInit`.
+/// What this module passes to `fetch` — a strict subset of `RequestInit`.
 export interface InitHttp {
     method?: string;
     headers?: Record<string, string>;
-    /// 🔵 `BufferSource` ET NON `Uint8Array` : ce dernier vaut désormais
-    /// `Uint8Array<ArrayBufferLike>` — possiblement adossé à un `SharedArrayBuffer` —
-    /// et n'est PAS un `BodyInit`, si bien que la vraie `fetch` cessait de satisfaire
-    /// `Fetch`. Trouvé par le contrôle de forme du test, À LA COMPILATION.
+    /// 🔵 `BufferSource` AND NOT `Uint8Array`: the latter now means
+    /// `Uint8Array<ArrayBufferLike>` — possibly backed by a `SharedArrayBuffer` —
+    /// and is NOT a `BodyInit`, so that the real `fetch` stopped satisfying
+    /// `Fetch`. Found by the test's shape check, AT COMPILE TIME.
     body?: string | BufferSource;
     signal?: AbortSignal;
 }
@@ -45,56 +45,56 @@ export type Fetch = (url: string, init?: InitHttp) => Promise<ReponseHttp>;
 export type Phase = 'empreinte' | 'transfert' | 'scellement';
 export interface Progression {
     phase: Phase;
-    /// ⚠️ EN PHASE `scellement`, `octets` VAUT `total` : la plateforme relit tout en
-    /// flux et n'annonce rien en chemin — une progression figée n'est pas un blocage.
+    /// ⚠️ IN THE `scellement` PHASE, `octets` EQUALS `total`: the platform rereads everything as a
+    /// stream and announces nothing along the way — a frozen progress is not a blockage.
     octets: number;
     total: number;
 }
 export interface DepsTeleversement {
-    /// L'origine de la plateforme, SANS barre oblique finale.
+    /// The platform's origin, WITHOUT a trailing slash.
     base: string;
-    /// Le jeton porteur, tel que `client/src/jeton.ts` le rend.
+    /// The bearer token, as `client/src/jeton.ts` returns it.
     jeton: string;
     fetch: Fetch;
-    /// L'horloge, en millisecondes. Elle CADENCE la progression, et c'est son seul
-    /// emploi : sans elle, empreindre 800 Mo émettrait des milliers d'événements.
+    /// The clock, in milliseconds. It PACES the progress, and that is its only
+    /// use: without it, fingerprinting 800 MB would emit thousands of events.
     maintenant: () => number;
     signal?: AbortSignal;
     progression?: (p: Progression) => void;
-    /// L'identifiant d'un téléversement à REPRENDRE. Absent, on crée.
+    /// The identifier of an upload to RESUME. Absent, we create.
     reprise?: string;
 }
 /* ── LES ISSUES ───────────────────────────────────────────────────────── */
 
 export type MotifLocal = 'fichier-different' | 'tranches-incoherentes' | 'etat-illisible' | 'interrompu';
 export type Etape = 'creation' | 'etat' | 'tranche' | 'scellement';
-/// 🔴 LE MOTIF DU SERVICE EST UNE `string`, PAS UNE UNION, ET C'EST DÉLIBÉRÉ.
-/// Son vocabulaire lui appartient et vit dans `plateforme/`, que `client/` ne
-/// peut pas importer. Le recopier en union serait EXACTEMENT le défaut que
-/// `client/src/connexion.ts` déclare sur `aucune-vm` : une copie qu'aucun type
-/// ne confronte à sa source, silencieusement fausse au renommage.
+/// 🔴 THE SERVICE'S REASON IS A `string`, NOT A UNION, AND IT IS DELIBERATE.
+/// Its vocabulary belongs to it and lives in `plateforme/`, which `client/`
+/// cannot import. Copying it into a union would be EXACTLY the defect
+/// `client/src/connexion.ts` declares about `aucune-vm`: a copy no type
+/// confronts with its source, silently wrong on renaming.
 export type Refus =
     | { source: 'client'; motif: MotifLocal; detail: string }
     | { source: 'service'; etape: Etape; statut: number; motif: string };
 
-/// 🔴 UNE UNION DISCRIMINÉE, NI UN BOOLÉEN NI UNE EXCEPTION. Le compilateur
-/// interdit de lire `id` sans avoir regardé `etat` : un appelant ne peut pas
-/// prendre un refus pour un succès en oubliant un `if`, ce qu'un booléen ignoré
-/// permettrait — l'argument de `prefixe.ts::poserPrefixe`, tenu ici par le typage.
+/// 🔴 A DISCRIMINATED UNION, NEITHER A BOOLEAN NOR AN EXCEPTION. The compiler
+/// forbids reading `id` without having looked at `etat`: a caller cannot
+/// take a refusal for a success by forgetting an `if`, which an ignored boolean
+/// would allow — the argument of `prefixe.ts::poserPrefixe`, held here by typing.
 export type Issue =
     | { etat: 'scelle'; id: string; taille: number; sha256: string; deposees: number[] }
     | { etat: 'refus'; refus: Refus; id?: string };
 
-/// La taille d'un morceau lu pour empreindre. NON CALIBRÉE. ⚠️ AUCUN RAPPORT
-/// AVEC `taille_tranche`, qui vient du service et n'est pas encore connue quand
-/// on empreint : leur donner la même valeur laisserait croire à une dérivation,
-/// alors qu'elles se recalibreraient séparément. Elle échange de la mémoire
-/// d'onglet contre la durée pendant laquelle le fil est bloqué à condenser
-/// (≈ 54 ms par morceau, au débit mesuré de 74,7 Mo/s de `proto/ts/sha256.ts`).
+/// The size of a chunk read to fingerprint. NOT CALIBRATED. ⚠️ NO RELATION
+/// TO `taille_tranche`, which comes from the service and is not yet known when
+/// we fingerprint: giving them the same value would suggest a derivation,
+/// whereas they would be recalibrated separately. It trades tab
+/// memory for the time the thread is blocked hashing
+/// (≈ 54 ms per chunk, at the measured throughput of 74.7 MB/s of `proto/ts/sha256.ts`).
 const OCTETS_LECTURE = 4 * 1024 * 1024;
-/// La cadence de la progression. NON CALIBRÉE : c'est un confort d'affichage.
+/// The progress cadence. NOT CALIBRATED: it is a display comfort.
 const PERIODE_PROGRESSION_MS = 250;
-/* ── LA SÉQUENCE ──────────────────────────────────────────────────────── */
+/* ── THE SEQUENCE ──────────────────────────────────────────────────────── */
 
 function entetes(deps: DepsTeleversement, type?: string): Record<string, string> {
     const en: Record<string, string> = { authorization: `Bearer ${deps.jeton}` };
@@ -102,10 +102,10 @@ function entetes(deps: DepsTeleversement, type?: string): Record<string, string>
     return en;
 }
 
-/// Appelle le service. Rend `null` — et seulement `null` — QUAND LE SIGNAL DIT
-/// QU'ON A ÉTÉ INTERROMPU : une interruption est un geste de l'utilisateur, donc
-/// un refus, jamais une panne. La condition porte sur `signal.aborted`, non sur
-/// la forme de l'exception : sinon une panne réseau se déguiserait en annulation.
+/// Calls the service. Returns `null` — and only `null` — WHEN THE SIGNAL SAYS
+/// WE WERE INTERRUPTED: an interruption is a user gesture, hence
+/// a refusal, never a failure. The condition bears on `signal.aborted`, not on
+/// the shape of the exception: otherwise a network failure would disguise itself as a cancellation.
 async function appeler(deps: DepsTeleversement, url: string, init: InitHttp): Promise<ReponseHttp | null> {
     try {
         return await deps.fetch(url, { ...init, signal: deps.signal });
@@ -120,30 +120,30 @@ async function motifDuService(reponse: ReponseHttp): Promise<string> {
     return typeof corps?.refus === 'string' ? corps.refus : `http-${reponse.status}`;
 }
 type Emettre = (p: Phase, octets: number, total: number, force: boolean) => void;
-/// Le cadenceur de progression — le seul lecteur de l'horloge.
+/// The progress pacer — the clock's only reader.
 function cadenceur(deps: DepsTeleversement): Emettre {
     let dernier = Number.NEGATIVE_INFINITY;
     return (phase, octets, total, force) => {
         if (deps.progression === undefined) return;
         const instant = deps.maintenant();
-        // Un changement de phase passe TOUJOURS : sans quoi un petit fichier
-        // n'afficherait qu'une phase sur trois, et la passe de lecture complète
-        // resterait invisible.
+        // A phase change ALWAYS goes through: otherwise a small file
+        // would only display one phase out of three, and the complete read pass
+        // would stay invisible.
         if (!force && instant - dernier < PERIODE_PROGRESSION_MS) return;
         dernier = instant;
         deps.progression({ phase, octets, total });
     };
 }
 
-/// L'empreinte du fichier entier. Rend `null` si le signal a coupé.
+/// The fingerprint of the whole file. Returns `null` if the signal cut it.
 ///
-/// 🔴 `File.slice` PLUTÔT QUE TOUT LE FICHIER : on ne tient jamais plus
-/// d'`OCTETS_LECTURE` en mémoire, là où `crypto.subtle.digest` exigerait de
-/// tenir les 800 Mo — la lacune d'API que `proto/ts/sha256.ts` contourne.
-/// ⚠️ L'`await` DE `arrayBuffer()` EST LA CESSION, et il faut être exact sur ce
-/// qu'elle achète : l'onglet reprend la main ENTRE deux morceaux, il reste bloqué
-/// PENDANT la condensation de chacun — une suite de pauses courtes, pas un gel
-/// silencieux, et la phase est affichée.
+/// 🔴 `File.slice` RATHER THAN THE WHOLE FILE: we never hold more
+/// than `OCTETS_LECTURE` in memory, whereas `crypto.subtle.digest` would require
+/// holding the 800 MB — the API gap `proto/ts/sha256.ts` works around.
+/// ⚠️ THE `await` OF `arrayBuffer()` IS THE YIELD, and one must be exact about
+/// what it buys: the tab regains control BETWEEN two chunks, it stays blocked
+/// WHILE hashing each one — a series of short pauses, not a silent
+/// freeze, and the phase is displayed.
 async function empreindre(fichier: File, deps: DepsTeleversement, emettre: Emettre): Promise<string | null> {
     const condensat = new Sha256();
     for (let debut = 0; debut < fichier.size; debut += OCTETS_LECTURE) {
@@ -152,27 +152,27 @@ async function empreindre(fichier: File, deps: DepsTeleversement, emettre: Emett
         condensat.absorber(new Uint8Array(await fichier.slice(debut, fin).arrayBuffer()));
         emettre('empreinte', fin, fichier.size, false);
     }
-    // Un fichier vide n'entre pas dans la boucle et rend l'empreinte du message vide :
-    // la valeur juste, pas un cas particulier ajouté à la main.
+    // An empty file does not enter the loop and returns the fingerprint of the empty message:
+    // the right value, not a special case added by hand.
     return condensat.terminer();
 }
 
-/// Met les tranches annoncées par le service sous la forme que `verdict` attend.
+/// Puts the slices announced by the service into the shape `verdict` expects.
 ///
-/// 🔴 UNE SEULE FORME EST ACCEPTÉE : `{n, octets}`, celle que la route rend.
+/// 🔴 ONLY ONE SHAPE IS ACCEPTED: `{n, octets}`, the one the route returns.
 ///
-/// ⚠️ ELLE EN TOLÉRAIT DEUX pendant l'écriture — un rang NU était accepté, et
-/// sa taille était alors **empruntée au plan local**. La route étant arrêtée
-/// (`routes-televersement.ts` rend le LISTAGE du magasin, donc des
-/// `{n, octets}`), la tolérance est retirée, et pas seulement parce qu'elle est
-/// devenue morte : **elle faisait croire le service sur une taille qu'il n'avait
-/// jamais annoncée.** Un rang présent dont la taille aurait dérivé serait passé
-/// pour conforme, et le scellement aurait refusé plus tard, ailleurs, sans que
-/// rien ne relie les deux — alors que `verdict` sait dire `incoherentes`.
+/// ⚠️ IT TOLERATED TWO while being written — a BARE rank was accepted, and
+/// its size was then **borrowed from the local plan**. The route being settled
+/// (`routes-televersement.ts` returns the store's LISTING, hence
+/// `{n, octets}`), the tolerance is removed, and not only because it had
+/// become dead: **it made the service believed about a size it had
+/// never announced.** A present rank whose size had drifted would have passed
+/// as compliant, and sealing would have refused later, elsewhere, without
+/// anything linking the two — whereas `verdict` can say `incoherentes`.
 ///
-/// ⚠️ TOUTE AUTRE FORME EST UN REFUS TYPÉ, JAMAIS UN SILENCE : c'est ce qui
-/// distingue « le service parle une autre version » de « il n'y a rien à
-/// reprendre », et les deux appellent des gestes opposés.
+/// ⚠️ ANY OTHER SHAPE IS A TYPED REFUSAL, NEVER A SILENCE: it is what
+/// distinguishes "the service speaks another version" from "there is nothing to
+/// resume", and the two call for opposite gestures.
 function normaliserPresentes(brut: unknown): Tranche[] | null {
     if (!Array.isArray(brut)) return null;
     const sortie: Tranche[] = [];
@@ -187,18 +187,18 @@ function normaliserPresentes(brut: unknown): Tranche[] | null {
 export async function televerser(fichier: File, deps: DepsTeleversement): Promise<Issue> {
     const taille = fichier.size;
     const emettre = cadenceur(deps);
-    // 🔴 L'IDENTIFIANT EST CAPTURÉ, PAS PASSÉ À CHAQUE REFUS : c'est ce qui garantit
-    // qu'aucun refus ne l'oublie — un appelant qui perdrait l'`id` sur un scellement
-    // refusé ne pourrait plus reprendre, et redéposerait tout. `''` = pas encore créé.
+    // 🔴 THE IDENTIFIER IS CAPTURED, NOT PASSED AT EACH REFUSAL: that is what guarantees
+    // no refusal forgets it — a caller losing the `id` on a refused sealing
+    // could no longer resume, and would upload everything again. `''` = not created yet.
     let id = deps.reprise ?? '';
     const refuse = (refus: Refus): Issue => ({ etat: 'refus', refus, id: id === '' ? undefined : id });
     const nonLocal = (motif: MotifLocal, detail: string): Issue => refuse({ source: 'client', motif, detail });
     const nonService = async (etape: Etape, r: ReponseHttp): Promise<Issue> =>
         refuse({ source: 'service', etape, statut: r.status, motif: await motifDuService(r) });
 
-    // ① RELIRE L'ÉTAT, ET COMPARER LA TAILLE AVANT D'EMPREINDRE (D5). L'ordre est
-    // un gain réel : un fichier manifestement différent est refusé sans payer la
-    // passe de lecture complète — onze secondes pour 800 Mo — ni déposer un octet.
+    // ① REREAD THE STATE, AND COMPARE THE SIZE BEFORE FINGERPRINTING (D5). The order is
+    // a real gain: a manifestly different file is refused without paying the
+    // complete read pass — eleven seconds for 800 MB — nor uploading a byte.
     let etat: Record<string, unknown> | undefined;
     if (deps.reprise !== undefined) {
         const url = `${deps.base}/televersement/${encodeURIComponent(id)}`;
@@ -206,10 +206,10 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         if (r === null) return nonLocal('interrompu', 'pendant la relecture');
         if (!r.ok) return await nonService('etat', r);
         etat = (await r.json().catch(() => undefined)) as Record<string, unknown> | undefined;
-        // 🔴 UN ÉTAT QUI N'ANNONCE PAS `{taille, sha256}` FAIT REFUSER LA REPRISE, il
-        // ne la fait pas reprendre à l'aveugle : sans ces deux valeurs, rien ne dit
-        // que le fichier re-choisi est LE MÊME, les tranches de deux fichiers se
-        // mélangeraient, et le scellement échouerait sans que rien ne dise pourquoi.
+        // 🔴 A STATE THAT DOES NOT ANNOUNCE `{taille, sha256}` MAKES THE RESUMPTION REFUSED, it
+        // does not make it resume blindly: without these two values, nothing says
+        // the re-chosen file is THE SAME, the slices of two files would
+        // mix, and sealing would fail without anything saying why.
         if (typeof etat?.taille !== 'number' || typeof etat.sha256 !== 'string') {
             return nonLocal('etat-illisible', 'état sans taille ni empreinte : reprise invérifiable');
         }
@@ -218,8 +218,8 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         }
     }
 
-    // ② L'EMPREINTE, À LA CRÉATION ET NON AU SCELLEMENT (D5) : c'est elle qui
-    // rend la reprise sûre, et la seule valeur que les trois étages comparent.
+    // ② THE FINGERPRINT, AT CREATION AND NOT AT SEALING (D5): it is what
+    // makes resumption safe, and the only value the three stages compare.
     emettre('empreinte', 0, taille, true);
     const sha256 = await empreindre(fichier, deps, emettre);
     if (sha256 === null) return nonLocal('interrompu', "pendant l'empreinte");
@@ -228,7 +228,7 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         return nonLocal('fichier-different', `empreinte ${sha256} contre ${String(etat.sha256)} retenue`);
     }
 
-    // ③ CRÉER, SI L'ON NE REPREND PAS.
+    // ③ CREATE, IF WE ARE NOT RESUMING.
     let tailleTranche: unknown;
     let presentesBrut: unknown;
     if (etat !== undefined) {
@@ -249,9 +249,9 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         presentesBrut = c.tranches_presentes;
     }
 
-    // ④ LE DÉCOUPAGE. `plan` et `verdict` LÈVENT sur un contrat absurde — leur garde
-    // vise un défaut de programme. Or `taille_tranche` vient du FIL : la valider ici
-    // empêche une réponse déréglée de faire tomber le tout par une exception.
+    // ④ THE SPLITTING. `plan` and `verdict` THROW on an absurd contract — their guard
+    // targets a programming defect. Yet `taille_tranche` comes from the WIRE: validating it here
+    // prevents a deranged answer from bringing everything down through an exception.
     if (!Number.isInteger(tailleTranche) || (tailleTranche as number) <= 0) {
         return nonLocal('etat-illisible', `taille_tranche ${String(tailleTranche)}`);
     }
@@ -260,16 +260,16 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
     const presentes = normaliserPresentes(presentesBrut);
     if (presentes === null) return nonLocal('etat-illisible', 'tranches_presentes de forme inconnue');
 
-    // 🔴 `incoherentes` NE SE RECOMPLÈTE PAS : les deux bouts ne s'accordent plus
-    // sur le découpage, et redéposer rendrait la même chose indéfiniment. On
-    // refuse, on nomme les rangs, l'appelant décide.
+    // 🔴 `incoherentes` IS NOT FILLED IN AGAIN: the two ends no longer agree
+    // on the splitting, and uploading again would return the same thing indefinitely. We
+    // refuse, we name the ranks, the caller decides.
     const v = verdict(taille, pas, presentes);
     if (v.etat === 'incoherentes') return nonLocal('tranches-incoherentes', `rangs ${v.n.join(', ')}`);
     const aDeposer = v.etat === 'manquantes' ? v.n : [];
 
-    // ⑤ LE DÉPÔT DES SEULES MANQUANTES. Recommencer à zéro passerait un test qui
-    // ne regarde que le résultat : c'est le critère ③ de la spec, et c'est
-    // pourquoi le test COMPTE LES OCTETS ENVOYÉS.
+    // ⑤ UPLOADING ONLY THE MISSING ONES. Starting from zero would pass a test that
+    // only looks at the result: it is the spec's criterion ③, and that is
+    // why the test COUNTS THE BYTES SENT.
     let envoyes = taille - aDeposer.reduce((s, n) => s + attendu[n].octets, 0);
     emettre('transfert', envoyes, taille, true);
     for (const n of aDeposer) {
@@ -288,9 +288,9 @@ export async function televerser(fichier: File, deps: DepsTeleversement): Promis
         emettre('transfert', envoyes, taille, false);
     }
 
-    // ⑥ LE SCELLEMENT. La plateforme RECALCULE l'empreinte et refuse si elle diffère
-    // (D4). Ce refus remonte tel quel : ni avalé, ni réessayé — une empreinte qui
-    // diverge ne converge pas, et une boucle de réessai téléverserait sans fin.
+    // ⑥ THE SEALING. The platform RECOMPUTES the fingerprint and refuses if it differs
+    // (D4). This refusal propagates as is: neither swallowed nor retried — a fingerprint that
+    // diverges does not converge, and a retry loop would upload endlessly.
     emettre('scellement', taille, taille, true);
     const url = `${deps.base}/televersement/${encodeURIComponent(id)}/sceller`;
     const r = await appeler(deps, url, { method: 'POST', headers: entetes(deps) });

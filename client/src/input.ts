@@ -1,8 +1,8 @@
-// Capture des entrées et envoi sur le canal binaire.
+// Input capture and sending on the binary channel.
 //
-// Les coordonnées sont normalisées sur 0..65535 par rapport à la zone d'image
-// réellement affichée : `object-fit: contain` laisse des bandes noires qu'il
-// faut exclure, sans quoi le pointeur dérive.
+// Coordinates are normalised over 0..65535 relative to the image area
+// actually displayed: `object-fit: contain` leaves black bars that
+// must be excluded, otherwise the pointer drifts.
 
 import {
     encodeKey,
@@ -14,15 +14,15 @@ import {
 import { estUnRaccourciDeCollage } from './raccourcis';
 import { SCANCODES } from './scancodes';
 
-/// Ce dont ce module a besoin de la fenêtre : les deux événements clavier, et
-/// rien d'autre. `window` s'y conforme.
+/// What this module needs from the window: the two keyboard events, and
+/// nothing else. `window` conforms to it.
 ///
-/// **Injectée plutôt que prise du global**, comme `CibleFocus`
-/// (`presse-papier-dom.ts`) et `CibleEcran` (`fullscreen.ts`). Sans cela
-/// l'exception de collage ci-dessous ne serait couverte par RIEN : la suite de
-/// tests du client tourne en environnement `node`, sans DOM, et un
-/// `window.addEventListener` y lève. Le prédicat serait bien testé, sa LIAISON
-/// à l'écouteur ne le serait pas — et c'est la liaison qui porte le risque R5.
+/// **Injected rather than taken from the global**, like `CibleFocus`
+/// (`presse-papier-dom.ts`) and `CibleEcran` (`fullscreen.ts`). Without that
+/// the paste exception below would be covered by NOTHING: the client's
+/// test suite runs in a `node` environment, without a DOM, and a
+/// `window.addEventListener` throws there. The predicate would indeed be tested, its BINDING
+/// to the listener would not — and it is the binding that carries risk R5.
 export interface CibleClavier {
     addEventListener(nom: 'keydown' | 'keyup', rappel: (event: KeyboardEvent) => void): void;
     removeEventListener(nom: 'keydown' | 'keyup', rappel: (event: KeyboardEvent) => void): void;
@@ -31,24 +31,24 @@ export interface CibleClavier {
 export interface InputOptions {
     video: HTMLVideoElement;
     channel: RTCDataChannel;
-    /// La source des événements clavier — `window`, en production.
+    /// The source of keyboard events — `window`, in production.
     clavier: CibleClavier;
-    /// L'agent a-t-il annoncé `Capabilities.clipboard` ?
+    /// Has the agent announced `Capabilities.clipboard`?
     ///
-    /// 🔴 **Une FERMETURE, jamais un booléen capturé à l'attache**, et c'est
-    /// portant : `Capabilities` arrive AVANT `Ready` mais rien ne garantit
-    /// qu'il précède `attachInput`. Un booléen figé au moment de l'attache
-    /// vaudrait `false` à jamais si le message arrivait une milliseconde plus
-    /// tard, et le collage serait mort sans qu'aucune trace ne le dise.
+    /// 🔴 **A CLOSURE, never a boolean captured at attach time**, and it
+    /// matters: `Capabilities` arrives BEFORE `Ready` but nothing guarantees
+    /// it precedes `attachInput`. A boolean frozen at attach time
+    /// would be `false` forever if the message arrived a millisecond
+    /// later, and paste would be dead without any trace saying so.
     ///
-    /// **Sans ce gate, `PRESSE_PAPIER=0` produirait le PIRE DES DEUX MONDES** :
-    /// le client retiendrait le `Ctrl+V` — il ne l'enverrait plus sur le canal
-    /// d'entrées — alors que personne ne l'injecterait côté VM. La touche
-    /// serait perdue, et l'utilisateur verrait un raccourci mort.
+    /// **Without this gate, `PRESSE_PAPIER=0` would produce the WORST OF BOTH WORLDS**:
+    /// the client would hold back `Ctrl+V` — it would no longer send it on the
+    /// input channel — while no one would inject it on the VM side. The key
+    /// would be lost, and the user would see a dead shortcut.
     collageArme: () => boolean;
 }
 
-/** Zone occupée par l'image dans l'élément vidéo, bandes noires exclues. */
+/** Area occupied by the image in the video element, black bars excluded. */
 function contentRect(video: HTMLVideoElement): DOMRect {
     const element = video.getBoundingClientRect();
     const sourceWidth = video.videoWidth;
@@ -82,23 +82,23 @@ export function attachInput({
     collageArme,
 }: InputOptions): () => void {
     const send = (payload: Uint8Array): void => {
-        // Assertion nécessaire depuis TypeScript 5.7 : `Uint8Array` est
-        // désormais générique sur son tampon sous-jacent, par défaut
-        // `ArrayBufferLike` (qui inclut `SharedArrayBuffer`), alors que
-        // `RTCDataChannel.send` exige spécifiquement `ArrayBuffer`. Les
-        // tampons produits par `proto/ts/input.ts` (`new Uint8Array(n)`)
-        // sont toujours adossés à un vrai `ArrayBuffer` en pratique — seul
-        // le typage est trop large.
+        // Assertion needed since TypeScript 5.7: `Uint8Array` is
+        // now generic over its underlying buffer, by default
+        // `ArrayBufferLike` (which includes `SharedArrayBuffer`), whereas
+        // `RTCDataChannel.send` specifically requires `ArrayBuffer`. The
+        // buffers produced by `proto/ts/input.ts` (`new Uint8Array(n)`)
+        // are always backed by a real `ArrayBuffer` in practice — only
+        // the typing is too broad.
         if (channel.readyState === 'open') channel.send(payload as Uint8Array<ArrayBuffer>);
     };
 
     const onPointerMove = (event: PointerEvent): void => {
-        // Sous Pointer Lock, `pointer.ts` émet les deltas relatifs : émettre
-        // AUSSI une position absolue téléporterait le curseur Windows entre
-        // deux déplacements relatifs.
+        // Under Pointer Lock, `pointer.ts` emits the relative deltas: emitting
+        // AN absolute position AS WELL would teleport the Windows cursor between
+        // two relative moves.
         if (document.pointerLockElement === video) return;
-        // getCoalescedEvents restitue les positions intermédiaires que le
-        // navigateur a regroupées : le tracé reste fidèle à haute fréquence.
+        // getCoalescedEvents restores the intermediate positions the
+        // browser grouped: the trace stays faithful at high frequency.
         const events = event.getCoalescedEvents?.() ?? [event];
         for (const sample of events) {
             const [x, y] = normalize(video, sample.clientX, sample.clientY);
@@ -119,7 +119,7 @@ export function attachInput({
 
     const onWheel = (event: WheelEvent): void => {
         event.preventDefault();
-        // Windows compte 120 unités par cran ; deltaMode 0 est en pixels.
+        // Windows counts 120 units per notch; deltaMode 0 is in pixels.
         const factor = event.deltaMode === 0 ? -120 / 100 : -120;
         send(encodeWheel(event.deltaX * -factor, event.deltaY * factor));
     };
@@ -127,26 +127,26 @@ export function attachInput({
     const onContextMenu = (event: Event): void => event.preventDefault();
 
     const onKeyDown = (event: KeyboardEvent): void => {
-        // 🔴 **L'EXCEPTION ÉTROITE DU SOUS-BLOC P2, ET LA SEULE DE TOUT LE
-        // CHANTIER.** Sans `preventDefault`, le navigateur produit un événement
-        // `paste` DE CONFIANCE, que `presse-papier-dom` capte — c'est la seule
-        // façon de lire le presse-papier de l'utilisateur sans lui demander
-        // aucune permission.
+        // 🔴 **THE NARROW EXCEPTION OF SUB-BLOCK P2, AND THE ONLY ONE OF THE WHOLE
+        // WORKSTREAM.** Without `preventDefault`, the browser produces a TRUSTED
+        // `paste` event, which `presse-papier-dom` catches — it is the only
+        // way to read the user's clipboard without asking them for
+        // any permission.
         //
-        // **Mesuré, deux exécutions**, focus sur le `<video>` :
+        // **Measured, two runs**, focus on the `<video>`:
         // `docs/superpowers/plans/journaux-presse-papier-p2/p2-paste-video-*.json`.
-        // Le régime « produit » de la sonde — ce `preventDefault` sans
-        // condition — rend ZÉRO `paste` sur ses huit cellules ; le régime
-        // « étroit » en rend un, `isTrusted: true`, `types: ["text/plain"]`,
+        // The probe's "product" regime — this unconditional `preventDefault` —
+        // returns ZERO `paste` on its eight cells; the
+        // "narrow" regime returns one, `isTrusted: true`, `types: ["text/plain"]`,
         // `e.target` = `VIDEO#remote`.
         //
-        // **Le scancode ne part PAS sur le canal d'entrées** (D6 point 2) : ce
-        // n'est pas la frappe du navigateur qui colle, c'est l'agent qui
-        // injecte les quatre touches lui-même, APRÈS avoir écrit le
-        // presse-papier de la VM. `ControlLeft`, lui, part normalement — le
-        // retenir ferait perdre à la VM un modificateur que l'utilisateur tient
-        // peut-être pour autre chose, et la sonde établit que son
-        // `preventDefault` n'empêche PAS le `paste` d'arriver.
+        // **The scancode does NOT go out on the input channel** (D6 point 2): it is
+        // not the browser's keystroke that pastes, it is the agent that
+        // injects the four keys itself, AFTER writing the VM's
+        // clipboard. `ControlLeft`, for its part, goes out normally — holding
+        // it back would make the VM lose a modifier the user may be holding
+        // for something else, and the probe establishes that its
+        // `preventDefault` does NOT prevent the `paste` from arriving.
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         event.preventDefault();
         const mapped = SCANCODES[event.code];
@@ -155,14 +155,14 @@ export function attachInput({
 
     const onKeyUp = (event: KeyboardEvent): void => {
         event.preventDefault();
-        // Le relâchement est retenu lui aussi — mais AVEC son
-        // `preventDefault` : le `paste` est déjà né du `keydown`, et il n'y a
-        // aucune raison de rendre ce relâchement-là au navigateur.
+        // The release is held back too — but WITH its
+        // `preventDefault`: the `paste` was already born from the `keydown`, and there is
+        // no reason to give that release back to the browser.
         //
-        // Laisser partir le seul `V`↑ ferait voir à la VM un relâchement sans
-        // enfoncement correspondant, ce qui peut débloquer une répétition
-        // clavier — et il arriverait de surcroît APRÈS les quatre touches que
-        // l'agent injecte, donc au pire moment.
+        // Letting the lone `V`↑ go would show the VM a release without a
+        // matching press, which can unblock a keyboard
+        // repeat — and it would moreover arrive AFTER the four keys
+        // the agent injects, hence at the worst moment.
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         const mapped = SCANCODES[event.code];
         if (mapped) send(encodeKey(mapped.scancode, false, mapped.extended));

@@ -140,20 +140,20 @@ async function traiterUnFichier(fichier: File): Promise<void> {
     dire(resume.ton, resume.texte);
 }
 
-/* ── LA LISTE ─────────────────────────────────────────────────────────── */
+/* ── THE LIST ─────────────────────────────────────────────────────────── */
 
 function entree(application: ApplicationListee): DocumentFragment {
     return batirCarte(application, {
         modele: document.querySelector<HTMLTemplateElement>('#modele-application')!,
         urlIcone: application.icone_url === null ? null : `${base}${application.icone_url}`,
         lancer: () => {
-            // 🔴 LE HUB EST DÉSORMAIS LA SEULE SURFACE (décision du
-            //    propriétaire, 31 août 2026) : il tient lui-même la session de
-            //    contrôle (`installerLeBureau`, en pied de fichier), et la
-            //    fenêtre lancée paraîtra dans la section « Mes fenêtres » de
-            //    CETTE page — plus besoin d'en ouvrir une seconde depuis ce
-            //    clic. Le correctif du 30 août (ouvrir `shell.html` depuis ce
-            //    même geste) n'a donc plus d'objet.
+            // 🔴 THE HUB IS NOW THE ONLY SURFACE (the owner's
+            //    decision, August 31st, 2026): it holds the control
+            //    session itself (`installerLeBureau`, at the foot of the file), and the
+            //    launched window will appear in the "My windows" section of
+            //    THIS page — no need any more to open a second one from this
+            //    click. The fix of August 30th (opening `shell.html` from this
+            //    same gesture) therefore has no purpose any more.
             dire('neutre', `Lancement de ${application.nom}…`);
             void jetonFrais().then((frais) => {
                 if (frais === undefined) {
@@ -181,9 +181,9 @@ function entree(application: ApplicationListee): DocumentFragment {
 }
 
 async function peupler(): Promise<void> {
-    // ⚠️ AUCUNE GARDE SUR LE JETON ICI : `peupler` n'est appelée par
-    // `demarrer()` (pied de fichier) qu'APRÈS que `assurerAccesFrais` en a
-    // rendu un — c'est cette fonction-là qui décide, et `jeton.test.ts` la tient.
+    // ⚠️ NO GUARD ON THE TOKEN HERE: `peupler` is only called by
+    // `demarrer()` (foot of the file) AFTER `assurerAccesFrais` has
+    // returned one — it is that function that decides, and `jeton.test.ts` holds it.
     const vms = await listerVms(deps);
     if (vms.etat !== 'ok') {
         dire('danger', `Les machines n'ont pas pu être lues : ${vms.refus.motif}.`);
@@ -195,23 +195,23 @@ async function peupler(): Promise<void> {
     }
     const vm = vms.valeur[0];
 
-    // 🔴 **LE PRÉFIXE DE LA VM EST RETENU ICI, ET IL NE L'ÉTAIT NULLE PART**
-    // (critique ② de la revue finale du 31 août 2026). `poserPrefixe` n'avait
-    // qu'un appelant de production — `connexion.ts::chercherLaSession` —, qui
-    // ne court **que sur la page de connexion**. Or ce chantier fait
-    // précisément qu'un visiteur derrière Pomerium obtienne son jeton SUR LE
-    // HUB (`assurerAccesFrais` → `/auth/moi`) sans jamais passer par cet
-    // écran : `lirePrefixe()` rendait `''`, le hub écoutait la session
-    // `bureau` pendant que l'agent annonçait sur `<prefixe>:bureau`, et
-    // **aucun `fenetre-ouverte` n'arrivait jamais**. La valeur était pourtant
-    // là, à trois lignes : `routes-vm.ts` la renvoie, `catalogue.ts` la parse
-    // déjà dans `VmListee.prefixe`.
+    // 🔴 **THE VM'S PREFIX IS RETAINED HERE, AND IT WAS RETAINED NOWHERE**
+    // (critical ② of the final review of August 31st, 2026). `poserPrefixe` had
+    // only one production caller — `connexion.ts::chercherLaSession` —, which
+    // runs **only on the sign-in page**. Yet this workstream makes
+    // precisely a visitor behind Pomerium obtain their token ON THE
+    // HUB (`assurerAccesFrais` → `/auth/moi`) without ever going through that
+    // screen: `lirePrefixe()` returned `''`, the hub listened on the session
+    // `bureau` while the agent announced on `<prefixe>:bureau`, and
+    // **no `fenetre-ouverte` ever arrived**. The value was there all along,
+    // three lines away: `routes-vm.ts` returns it, `catalogue.ts` already parses it
+    // into `VmListee.prefixe`.
     //
-    // 🔴 **L'ORDRE EST LE POINT** : `demarrer()` n'installe le bureau
-    // qu'APRÈS cet appel, pour que `lirePrefixe()` compose les bons noms de
-    // session et de verrou. La décision « quel préfixe retenir ? » vit dans
-    // `prefixe.ts::prefixeDeLaVm`, pure et testée ; ce qui reste ici est du
-    // câblage.
+    // 🔴 **THE ORDER IS THE POINT**: `demarrer()` only installs the desktop
+    // AFTER this call, so that `lirePrefixe()` composes the right session
+    // and lock names. The decision "which prefix to retain?" lives in
+    // `prefixe.ts::prefixeDeLaVm`, pure and tested; what remains here is
+    // wiring.
     retenirLePrefixe(window.localStorage, vm.prefixe);
 
     const applications = await listerApplications(vm.id, deps);
@@ -222,8 +222,8 @@ async function peupler(): Promise<void> {
     elListe.replaceChildren(...applications.valeur.map(entree));
     dire('neutre', `${String(applications.valeur.length)} application(s) sur ${vm.nom}.`);
 
-    // `?app=<uuid>` : la page publie le manifeste de CETTE application, ce qui
-    // la rend installable. C'est aussi ce que `start_url` rouvrira.
+    // `?app=<uuid>`: the page publishes THIS application's manifest, which
+    // makes it installable. It is also what `start_url` will reopen.
     const demandee = params.get('app');
     if (demandee !== null) {
         const cible = applications.valeur.find((a) => a.id === demandee);
@@ -232,7 +232,7 @@ async function peupler(): Promise<void> {
     }
 }
 
-/* ── LES DEUX CHEMINS DE DÉPÔT ────────────────────────────────────────── */
+/* ── THE TWO DROP PATHS ────────────────────────────────────────── */
 
 elDepot.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -256,11 +256,11 @@ elChoisir.addEventListener('click', () => {
     saisie.click();
 });
 
-// 🔴 `launchQueue` N'EXISTE PAS HORS D'UNE PWA INSTALLÉE, et le test de sa
-// présence est un `in` EXPLICITE, jamais un `try` : une exception silencieuse
-// rendrait les deux chemins indiscernables, et c'est précisément ce que le
-// critère ② doit pouvoir distinguer. **Le glisser-déposer ci-dessus ne dépend
-// de rien de ce qui suit** — c'est l'amendement du 28/07/2026.
+// 🔴 `launchQueue` DOES NOT EXIST OUTSIDE AN INSTALLED PWA, and the test of its
+// presence is an EXPLICIT `in`, never a `try`: a silent exception
+// would make the two paths indistinguishable, and that is precisely what
+// criterion ② must be able to tell apart. **The drag-and-drop above depends
+// on nothing of what follows** — it is the amendment of 28/07/2026.
 if ('launchQueue' in window) {
     interface FileLaunchParams {
         files: { getFile(): Promise<File> }[];
@@ -275,29 +275,29 @@ if ('launchQueue' in window) {
     });
 }
 
-/* ── L'ACCÈS : LE COFFRE D'ABORD, POMERIUM ENSUITE, LA CONNEXION EN DERNIER
-   RECOURS ────────────────────────────────────────────────────────────────
+/* ── ACCESS: THE VAULT FIRST, POMERIUM NEXT, SIGN-IN AS A LAST
+   RESORT ────────────────────────────────────────────────────────────────
 
-   🔴 CE QUE CE BLOC RÉPARE — DÉFAUT TROUVÉ EN PRODUCTION LE 30 AOÛT 2026 :
-   ce fichier se contentait, la veille, de LIRE le coffre et de se plaindre
-   s'il était vide ("Aucun jeton : connectez-vous d'abord.", sans bouton, sans
-   lien, sans rien à faire). Le seul code qui savait obtenir un jeton par
-   Pomerium (`connexion.ts::tenterPomerium`) ne courait QU'AU CHARGEMENT DE
-   LA PAGE DE CONNEXION. Tant que la racine servait la page de session,
-   personne n'avait vu un visiteur atterrir DIRECTEMENT sur le hub sans être
-   passé par cet écran — le lot qui a mis le hub à la racine avait vérifié
-   que `/` SERT le hub, jamais qu'un visiteur SANS JETON puisse s'en servir :
-   encore un contrôle incapable de rougir.
+   🔴 WHAT THIS BLOCK REPAIRS — A DEFECT FOUND IN PRODUCTION ON AUGUST 30TH, 2026:
+   the day before, this file merely READ the vault and complained
+   if it was empty ("No token: sign in first.", no button, no
+   link, nothing to do). The only code that knew how to obtain a token through
+   Pomerium (`connexion.ts::tenterPomerium`) ran ONLY WHEN THE SIGN-IN PAGE
+   LOADED. As long as the root served the session page,
+   no one had seen a visitor land DIRECTLY on the hub without having
+   gone through that screen — the batch that put the hub at the root had checked
+   that `/` SERVES the hub, never that a visitor WITHOUT A TOKEN could use it:
+   yet another check unable to turn red.
 
-   🔴 LA RÈGLE (« essayer le coffre, puis le rafraîchissement, puis Pomerium,
-   sinon renvoyer vers la connexion ») VIT DANS `jeton.ts::assurerAccesFrais`,
-   PAS ICI : au sens du critère posé en tête de ce fichier, la changer
-   changerait ce que le produit DÉCIDE, ce n'est donc pas du câblage.
-   `assurerAccesFrais` réutilise `rafraichirSiNecessaire` et
-   `accesParPomerium` — le second est le chemin de
-   `connexion.ts::tenterPomerium`, EXTRAIT plutôt que recopié — et les trois
-   sont tenus par `jeton.test.ts`. Ce qui reste ICI est du câblage pur : lire
-   le résultat, et soit peupler, soit rediriger. */
+   🔴 THE RULE ("try the vault, then the refresh, then Pomerium,
+   otherwise send back to sign-in") LIVES IN `jeton.ts::assurerAccesFrais`,
+   NOT HERE: in the sense of the criterion set at the head of this file, changing it
+   would change what the product DECIDES, so it is not wiring.
+   `assurerAccesFrais` reuses `rafraichirSiNecessaire` and
+   `accesParPomerium` — the latter is the path of
+   `connexion.ts::tenterPomerium`, EXTRACTED rather than copied — and all three
+   are held by `jeton.test.ts`. What remains HERE is pure wiring: read
+   the result, and either populate or redirect. */
 async function demarrer(): Promise<void> {
     dire('neutre', 'identification…');
     const acces = await jetonFrais();
@@ -309,40 +309,40 @@ async function demarrer(): Promise<void> {
     deps = { base, jeton: acces, fetch: window.fetch.bind(window) };
     dire('neutre', '');
 
-    // 🔴 **LE BUREAU EST INSTALLÉ MÊME SI LE CATALOGUE ÉCHOUE** (Important ④
-    // de la revue finale). `await peupler()` précédait `installerLeBureau`
-    // sans garde : une panne réseau sur `GET /vm` remontait non rattrapée —
-    // `catalogue.ts` déclare qu'une panne d'ENVIRONNEMENT remonte telle
-    // quelle —, `#message` avait déjà été vidé deux lignes plus haut, et
-    // l'utilisateur voyait une page **blanche, sans bureau et sans
-    // explication**. Avant ce chantier le bureau vivait ailleurs et survivait
-    // à une panne du catalogue : **ce couplage est neuf**.
+    // 🔴 **THE DESKTOP IS INSTALLED EVEN IF THE CATALOGUE FAILS** (Important ④
+    // of the final review). `await peupler()` preceded `installerLeBureau`
+    // without a guard: a network failure on `GET /vm` propagated uncaught —
+    // `catalogue.ts` declares that an ENVIRONMENT failure propagates as
+    // is —, `#message` had already been emptied two lines above, and
+    // the user saw a **blank page, without a desktop and without
+    // explanation**. Before this workstream the desktop lived elsewhere and survived
+    // a catalogue failure: **this coupling is new**.
     //
-    // ⚠️ **L'INTERACTION AVEC LA CRITIQUE ② EST LE POINT DÉLICAT** : le
-    // préfixe DOIT être connu avant l'installation (voir `peupler`), et il
-    // vient justement de l'appel qui peut échouer. Le remède est donc
-    // d'attraper et d'installer **avec ce qu'on sait** — c'est-à-dire le
-    // préfixe déjà au coffre, posé par un chargement antérieur ou par
-    // `connexion.ts` —, jamais de renoncer au bureau.
+    // ⚠️ **THE INTERACTION WITH CRITICAL ② IS THE DELICATE POINT**: the
+    // prefix MUST be known before installation (see `peupler`), and it
+    // comes precisely from the call that can fail. The remedy is therefore
+    // to catch and install **with what we know** — that is, the
+    // prefix already in the vault, set by an earlier load or by
+    // `connexion.ts` —, never to give up the desktop.
     try {
         await peupler();
     } catch (e) {
         dire('danger', `Le catalogue n'a pas pu être lu : ${(e as Error).message}.`);
     }
 
-    // ── LE BUREAU, DANS CETTE PAGE ────────────────────────────────────────
-    // 🔴 LE HUB EST DÉSORMAIS LA SEULE SURFACE (décision du propriétaire,
-    // 31 août 2026). Le lien « Mon bureau » et l'ouverture au clic sur
-    // « Lancer » étaient les correctifs du 30 août ; ils n'ont plus d'objet.
+    // ── THE DESKTOP, IN THIS PAGE ────────────────────────────────────────
+    // 🔴 THE HUB IS NOW THE ONLY SURFACE (the owner's decision,
+    // August 31st, 2026). The "My desktop" link and opening on clicking
+    // "Launch" were the fixes of August 30th; they have no purpose any more.
     installerLeBureau({
         signalingUrl: adresseSignaling(window.location, params.get('signaling')),
-        // 🔴 **UN FOURNISSEUR, JAMAIS `acces`** (critique ① de la revue
-        // finale) : `ouvrirLaSession` ne court, pour un suiveur, qu'au moment
-        // de sa PROMOTION — potentiellement des heures plus tard —, et un
-        // jeton d'accès vit dix minutes.
+        // 🔴 **A PROVIDER, NEVER `acces`** (critical ① of the final
+        // review): `ouvrirLaSession` only runs, for a follower, at the moment
+        // of its PROMOTION — potentially hours later —, and an
+        // access token lives ten minutes.
         jetonFrais,
-        // 🔴 **LU ICI, DONC APRÈS `peupler()`** : c'est ce qui donne au verrou
-        // et à la session de contrôle le préfixe de la VM (critique ②).
+        // 🔴 **READ HERE, HENCE AFTER `peupler()`**: that is what gives the lock
+        // and the control session the VM's prefix (critical ②).
         prefixe: lirePrefixe(),
         fautesArmees: params.get('faute-fichiers') === '1',
         elements: {
@@ -361,10 +361,10 @@ async function demarrer(): Promise<void> {
     });
 }
 
-/// 🔴 **APPELÉE AVANT CHAQUE USAGE, ET C'EST LE POINT DE LA DÉCISION DU
-/// 31 AOÛT 2026.** Un test local d'expiration, un appel réseau seulement s'il
-/// est périmé : le chargement, chaque lancement et chaque lecture d'icône
-/// passent par ici, sans aucune minuterie à calibrer.
+/// 🔴 **CALLED BEFORE EACH USE, AND IT IS THE POINT OF THE DECISION OF
+/// AUGUST 31ST, 2026.** A local expiry test, a network call only if it
+/// is stale: the load, each launch and each icon read
+/// go through here, without any timer to calibrate.
 async function jetonFrais(): Promise<string | undefined> {
     const acces = await assurerAccesFrais(
         window.localStorage,
@@ -372,15 +372,15 @@ async function jetonFrais(): Promise<string | undefined> {
         window.fetch.bind(window),
         Date.now(),
         async (corps) => {
-            // 🔴 **ENVELOPPÉ, LÀ OÙ `accesParPomerium` (`jeton.ts:175-186`)
-            // L'EST DEPUIS TOUJOURS** : ce chemin-ci était resté SANS APPELANT
-            // DE PRODUCTION jusqu'à cette tâche, donc jamais mis à l'épreuve
-            // d'un réseau injoignable. Sans ce `try/catch`, une exception
-            // (hors ligne, DNS, CORS) remonterait non rattrapée à travers
-            // `assurerAccesFrais` → `jetonFrais()` → `demarrer()` (rejet non
-            // géré sur `void demarrer()`) ou le gestionnaire de clic, et la
-            // page resterait bloquée sur « identification… » au lieu de
-            // retomber sur Pomerium (étape ③ d'`assurerAccesFrais`).
+            // 🔴 **WRAPPED, WHERE `accesParPomerium` (`jeton.ts:175-186`)
+            // HAS ALWAYS BEEN**: this path had stayed WITHOUT A PRODUCTION
+            // CALLER until this task, hence never put to the test
+            // of an unreachable network. Without this `try/catch`, an exception
+            // (offline, DNS, CORS) would propagate uncaught through
+            // `assurerAccesFrais` → `jetonFrais()` → `demarrer()` (unhandled rejection
+            // on `void demarrer()`) or the click handler, and the
+            // page would stay stuck on "identifying…" instead of
+            // falling back to Pomerium (step ③ of `assurerAccesFrais`).
             try {
                 const reponse = await fetch(`${base}/auth/rafraichir`, {
                     method: 'POST',
@@ -388,10 +388,10 @@ async function jetonFrais(): Promise<string | undefined> {
                     body: JSON.stringify(corps),
                 });
                 if (!reponse.ok) return undefined;
-                // La forme est VALIDÉE, jamais affirmée : un corps `ok: true`
-                // mais incomplet écrirait tel quel au coffre (`poser`, dans
-                // `rafraichirSiNecessaire`) — le scénario « coffre empoisonné »
-                // qu'`accesDeReponse` existe pour empêcher sur `/auth/moi`.
+                // The shape is VALIDATED, never asserted: an `ok: true`
+                // but incomplete body would be written as is to the vault (`poser`, in
+                // `rafraichirSiNecessaire`) — the "poisoned vault" scenario
+                // `accesDeReponse` exists to prevent on `/auth/moi`.
                 return paireDeReponse(await reponse.json().catch(() => undefined));
             } catch {
                 return undefined;
