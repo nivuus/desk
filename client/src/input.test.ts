@@ -1,21 +1,21 @@
-// Tests de l'exception clavier du sous-bloc P2 — et d'elle seule.
+// Tests of the keyboard exception of sub-block P2 — and of it alone.
 //
-// ⚠️ **Ce fichier ne couvre PAS le pointeur, la molette ni le menu
-// contextuel** : ces chemins touchent `document.pointerLockElement`,
-// `getBoundingClientRect` et `setPointerCapture`, et la suite du client tourne
-// en environnement `node`, sans DOM. Ils restaient sans couverture avant P2 et
-// le restent — déclaré, pas dissimulé.
+// ⚠️ **This file does NOT cover the pointer, the wheel or the context
+// menu**: those paths touch `document.pointerLockElement`,
+// `getBoundingClientRect` and `setPointerCapture`, and the client suite runs
+// in a `node` environment, without a DOM. They had no coverage before P2 and
+// still have none — declared, not hidden.
 //
-// Le clavier, lui, est couvert parce que P2 a **injecté sa cible**
-// (`CibleClavier`) au lieu de la prendre du global : c'est ce qui rend la
-// LIAISON entre `raccourcis.ts` et l'écouteur éprouvable, et c'est la liaison
-// qui porte le risque R5 de la spec.
+// The keyboard, on the other hand, is covered because P2 **injected its target**
+// (`CibleClavier`) instead of taking it from the global: that is what makes the
+// LINK between `raccourcis.ts` and the listener testable, and it is the link
+// that carries risk R5 of the spec.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { attachInput, type CibleClavier } from './input';
 
-/// Cible clavier factice : retient les rappels et les rejoue à la demande.
+/// Fake keyboard target: keeps the callbacks and replays them on demand.
 class ClavierFactice implements CibleClavier {
     private rappels = new Map<string, (event: KeyboardEvent) => void>();
 
@@ -25,7 +25,7 @@ class ClavierFactice implements CibleClavier {
     removeEventListener(nom: 'keydown' | 'keyup', rappel: (event: KeyboardEvent) => void): void {
         if (this.rappels.get(nom) === rappel) this.rappels.delete(nom);
     }
-    /// Rejoue un événement, et rend l'espion de `preventDefault`.
+    /// Replays an event, and returns the `preventDefault` spy.
     frapper(nom: 'keydown' | 'keyup', touche: Partial<KeyboardEvent> & { code: string }) {
         const preventDefault = vi.fn();
         const event = {
@@ -57,8 +57,8 @@ function monter(): void {
         readyState: 'open',
         send: (p: Uint8Array) => envois.push(p),
     } as unknown as RTCDataChannel;
-    // Aucun de ces membres n'est touché par les chemins clavier : le seul
-    // usage du `video` est le pointeur, que ce fichier n'exerce pas.
+    // None of these members is touched by the keyboard paths: the only
+    // use of the `video` is the pointer, which this file does not exercise.
     const video = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as
         HTMLVideoElement;
     detacher = attachInput({ video, channel, clavier, collageArme: () => arme });
@@ -67,39 +67,39 @@ function monter(): void {
 beforeEach(monter);
 
 describe("the narrow paste exception", () => {
-    // 🔴 **LA ROUGE CENTRALE DE P2.** Jusqu'au commit `4cf2206`, `onKeyDown`
-    // appelait `preventDefault()` SANS CONDITION : aucun événement `paste` ne
-    // pouvait naître dans la fenêtre de session. Le §0 du plan établit par
-    // mesure (deux exécutions) que retirer ce `preventDefault` sur le seul
-    // `KeyV` suffit à faire naître un `paste` de confiance sur un `<video>`
-    // focalisé — et ce test est ce qui garde la propriété désormais.
+    // 🔴 **THE CENTRAL RED OF P2.** Until commit `4cf2206`, `onKeyDown`
+    // called `preventDefault()` UNCONDITIONALLY: no `paste` event could
+    // arise in the session window. §0 of the plan establishes by
+    // measurement (two runs) that removing this `preventDefault` on `KeyV`
+    // alone is enough to give rise to a trusted `paste` on a focused
+    // `<video>` — and this test is what guards the property from now on.
     it('Ctrl+V: neither preventDefault, nor byte sent', () => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' });
         expect(pd).not.toHaveBeenCalled();
         expect(envois).toHaveLength(0);
     });
 
-    // 🔴 **C'EST LE RISQUE R5.** Une condition élargie rendrait le navigateur
-    // au clavier, et `Ctrl+W` fermerait la fenêtre de session.
+    // 🔴 **THIS IS RISK R5.** A widened condition would hand the keyboard back to the browser,
+    // and `Ctrl+W` would close the session window.
     it.each(['KeyW', 'KeyT', 'KeyN'])('Ctrl+%s: preventDefault AND byte sent', (code) => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code });
         expect(pd).toHaveBeenCalledOnce();
         expect(envois).toHaveLength(1);
     });
 
-    // Le modificateur lui-même part normalement : le retenir ferait perdre à
-    // la VM un `Ctrl` que l'utilisateur tient peut-être pour autre chose. La
-    // sonde établit que son `preventDefault` n'empêche PAS le `paste`.
+    // The modifier itself goes out normally: holding it back would make
+    // the VM lose a `Ctrl` the user may be holding for something else. The
+    // probe establishes that its `preventDefault` does NOT prevent the `paste`.
     it('ControlLeft alone: preventDefault AND byte sent', () => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'ControlLeft' });
         expect(pd).toHaveBeenCalledOnce();
         expect(envois).toHaveLength(1);
     });
 
-    // 🔴 Le relâchement est retenu AVEC son `preventDefault`. Laisser partir le
-    // seul `V`↑ ferait voir à la VM un relâchement sans enfoncement — ce qui
-    // peut débloquer une répétition clavier —, et il arriverait APRÈS les
-    // quatre touches que l'agent injecte.
+    // 🔴 The release is held back WITH its `preventDefault`. Letting only
+    // `V`↑ go out would make the VM see a release without a press — which
+    // can unblock a keyboard repeat —, and it would arrive AFTER the
+    // four keys the agent injects.
     it('keyup of V under Ctrl: preventDefault, but no byte', () => {
         const pd = clavier.frapper('keyup', { ctrlKey: true, code: 'KeyV' });
         expect(pd).toHaveBeenCalledOnce();
@@ -114,10 +114,10 @@ describe("the narrow paste exception", () => {
 });
 
 describe('the gate on Capabilities.clipboard', () => {
-    // 🔴 **SANS CE GATE, `PRESSE_PAPIER=0` DONNERAIT LE PIRE DES DEUX MONDES** :
-    // le client retiendrait le `Ctrl+V` alors que personne ne l'injecterait
-    // côté VM. La touche serait perdue, et l'utilisateur verrait un raccourci
-    // mort.
+    // 🔴 **WITHOUT THIS GATE, `PRESSE_PAPIER=0` WOULD GIVE THE WORST OF BOTH WORLDS**:
+    // the client would hold back the `Ctrl+V` while nobody would inject it
+    // on the VM side. The key would be lost, and the user would see a dead
+    // shortcut.
     it("disarmed, Ctrl+V gets back its pre-P2 behaviour", () => {
         arme = false;
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' });
@@ -125,11 +125,11 @@ describe('the gate on Capabilities.clipboard', () => {
         expect(envois).toHaveLength(1);
     });
 
-    // 🔴 **UNE FERMETURE, PAS UN BOOLÉEN CAPTURÉ À L'ATTACHE.** `Capabilities`
-    // peut arriver après `attachInput` ; un booléen figé vaudrait `false` à
-    // jamais, et le collage serait mort sans qu'aucune trace ne le dise.
+    // 🔴 **A CLOSURE, NOT A BOOLEAN CAPTURED AT ATTACH TIME.** `Capabilities`
+    // can arrive after `attachInput`; a frozen boolean would be `false`
+    // forever, and pasting would be dead without any trace saying so.
     //
-    // ROUGE si `collageArme` était lu une seule fois, au montage.
+    // RED if `collageArme` were read only once, at mount.
     it("the arming is re-read on EACH keystroke, not captured on mount", () => {
         arme = false;
         expect(clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' })).toHaveBeenCalledOnce();
@@ -139,8 +139,8 @@ describe('the gate on Capabilities.clipboard', () => {
 });
 
 describe('detaching', () => {
-    // ROUGE si `detacher` retirait les écouteurs de `window` alors qu'ils ont
-    // été posés sur la cible injectée : ils survivraient à la fin de session.
+    // RED if `detacher` removed the listeners from `window` whereas they were
+    // set on the injected target: they would survive the end of the session.
     it('removes both listeners from the injected target', () => {
         expect(clavier.attaches).toBe(2);
         detacher();

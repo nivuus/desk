@@ -4,11 +4,11 @@ import { suivreMontant } from './stats';
 
 describe('suivreMontant — the mic measurements (work item E)', () => {
     it("tells « no upstream track » from an upstream track at zero", () => {
-        // ⚠️ LA DISTINCTION EST LE FOND DU TEST, pas une coquetterie
-        // d'affichage. `stats.ts` la fait déjà pour l'audio DESCENDANTE, et le
-        // commentaire qui l'accompagne dit pourquoi : sans elle, une session
-        // sans micro négocié se lit exactement comme un micro dont le débit est
-        // simplement nul, et un défaut de négociation devient indiagnosticable.
+        // ⚠️ THE DISTINCTION IS THE CRUX OF THE TEST, not a display
+        // nicety. `stats.ts` already makes it for DOWNSTREAM audio, and the
+        // comment that goes with it says why: without it, a session
+        // without a negotiated microphone reads exactly like a microphone whose bitrate is
+        // simply zero, and a negotiation defect becomes undiagnosable.
         const absente = suivreMontant(undefined, undefined);
         expect(absente.ligne).toBe('mic absent');
 
@@ -22,9 +22,9 @@ describe('suivreMontant — the mic measurements (work item E)', () => {
         const before = { octets: 1_000, paquets: 10, horodatage: 1_000 };
         const apres = { octets: 3_000, paquets: 60, horodatage: 2_000 };
 
-        // 2 000 octets en 1 s = 16 000 bits/s = 16 kb/s. Un affichage du CUMUL
-        // rendrait 24 kb/s ici, ce qui passerait inaperçu sur une première
-        // lecture et croîtrait sans fin.
+        // 2,000 bytes in 1 s = 16,000 bits/s = 16 kb/s. Displaying the TOTAL
+        // would give 24 kb/s here, which would go unnoticed on a first
+        // read and would grow without end.
         const { ligne } = suivreMontant(before, apres);
         expect(ligne).toMatch(/^mic 16 kb\/s/);
         expect(ligne).toMatch(/packets 60/);
@@ -41,10 +41,10 @@ describe('suivreMontant — the mic measurements (work item E)', () => {
     });
 
     it('the disappearance of the track FORGETS the previous snapshot', () => {
-        // Même défaut que celui déjà corrigé sur l'audio descendante : sans
-        // l'oubli, une piste qui disparaît puis revient (SSRC renégocié,
-        // compteurs repartis de zéro) calculerait son premier débit contre les
-        // compteurs d'un AUTRE flux — delta absurde, voire négatif.
+        // Same defect as the one already fixed on downstream audio: without
+        // forgetting, a track that disappears then comes back (SSRC renegotiated,
+        // counters restarted from zero) would compute its first bitrate against the
+        // counters of ANOTHER stream — an absurd, even negative, delta.
         const { memoire } = suivreMontant({ octets: 9_000, paquets: 90, horodatage: 1_000 }, undefined);
         expect(memoire).toBeUndefined();
     });

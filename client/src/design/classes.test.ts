@@ -9,9 +9,9 @@ import {
 } from './classes';
 
 /**
- * Des textes de DÉMONSTRATION, jamais les vrais fichiers. Ces tests éprouvent
- * les FONCTIONS ; que l'arbre soit conforme est éprouvé par
- * `client/outils/classes-employees.mjs`, qui le lit.
+ * DEMONSTRATION texts, never the real files. These tests exercise
+ * the FUNCTIONS; that the tree complies is exercised by
+ * `client/outils/classes-employees.mjs`, which reads it.
  */
 
 describe('classesDeclarees', () => {
@@ -41,17 +41,17 @@ describe('classesDeclarees', () => {
     });
 
     it("invents NO class from a declaration body", () => {
-        // 🔴 SANS L'ÉCART DES CORPS, ce contrôle deviendrait permissif : une
-        // longueur `.5rem` ou un `content: ".x"` se lirait comme une classe
-        // déclarée, et n'importe quelle faute de frappe finirait par se
-        // trouver « déclarée » quelque part.
+        // 🔴 WITHOUT SETTING THE BODIES ASIDE, this check would become permissive: a
+        // length `.5rem` or a `content: ".x"` would read as a declared
+        // class, and any typo would end up being
+        // "declared" somewhere.
         const css = `.a { margin: .5rem; content: ".fantome"; background: url(x.y); }`;
         expect([...classesDeclarees(css)]).toEqual(['a']);
     });
 
     it('BLANKS the comments before searching', () => {
-        // Le patron que ce dépôt a payé trois fois : un garde satisfait par le
-        // commentaire du fichier qu'il analyse.
+        // The pattern this repository has paid for three times: a guard satisfied by the
+        // comment of the file it analyses.
         const css = `/* .bouton--principale is a typo */ .bouton { color: red; }`;
         expect([...classesDeclarees(css)]).toEqual(['bouton']);
     });
@@ -81,9 +81,9 @@ describe('classesEmployeesHtml', () => {
 
 describe('classesDeclareesEnLigne', () => {
     it('reads the classes of inline <style> blocks', () => {
-        // 🔴 OBLIGATOIRE : `client/design.html` déclare en ligne six classes que
-        // `galerie.ts` emploie. Les omettre ferait naître §7.9 ROUGE sur du
-        // code correct, c'est-à-dire la pression à l'assouplissement.
+        // 🔴 MANDATORY: `client/design.html` declares inline six classes that
+        // `galerie.ts` uses. Omitting them would make §7.9 RED on
+        // correct code, that is, pressure to loosen it.
         const html = `<style>.pastille { color: red; } .barre { width: 0; }</style>`;
         expect([...classesDeclareesEnLigne(html)].sort()).toEqual(['barre', 'pastille']);
     });
@@ -117,19 +117,19 @@ describe('classesEmployeesTs', () => {
     });
 
     it("is not unbalanced by a REGEX LITERAL", () => {
-        // 🔴 TROUVÉ EN LANÇANT LE CONTRÔLE SUR `classes.ts` LUI-MÊME. Une regex
-        // qui porte des guillemets rompait la parité du suivi de chaîne : tout
-        // le reste du fichier était lu comme une chaîne, donc plus AUCUN
-        // commentaire n'y était blanchi, et le contrôle rendait `NON DÉCLARÉE`
-        // sur la prose d'un commentaire. C'est le patron « un garde satisfait
-        // par le commentaire du fichier qu'il analyse », en creux.
+        // 🔴 FOUND BY RUNNING THE CHECK ON `classes.ts` ITSELF. A regex
+        // that carries quotes broke the parity of the string tracking: all
+        // the rest of the file was read as a string, so NO
+        // comment was blanked any more, and the check returned `UNDECLARED`
+        // on the prose of a comment. It is the pattern "a guard satisfied
+        // by the comment of the file it analyses", in reverse.
         //
-        // ⚠️ LE VECTEUR PORTE UN NOMBRE IMPAIR DE GUILLEMETS, ET C'EST LA
-        // CONDITION POUR QU'IL DISCRIMINE. Une première rédaction employait
-        // `/['"]([^'"]*)['"]/g` — SIX guillemets, donc une parité qui se
-        // referme toute seule : la mutation qui retire la reconnaissance des
-        // regex laissait alors ce test VERT. Une perturbation qui ne perturbe
-        // rien se lit exactement comme un contrôle qui ne mord pas.
+        // ⚠️ THE VECTOR CARRIES AN ODD NUMBER OF QUOTES, AND THAT IS THE
+        // CONDITION FOR IT TO DISCRIMINATE. A first draft used
+        // `/['"]([^'"]*)['"]/g` — SIX quotes, so a parity that closes
+        // by itself: the mutation that removes regex recognition
+        // then left this test GREEN. A perturbation that perturbs
+        // nothing reads exactly like a check that does not bite.
         const ts = `
             const morceaux = texte.split(/[',]/);
             // el.className = 'fantome-apres-regex';
@@ -139,10 +139,10 @@ describe('classesEmployeesTs', () => {
     });
 
     it("does NOT blank what lives in a string — the silent false negative", () => {
-        // ⚠️ Un `'https://x'` blanchi naïvement perdrait la fin de sa ligne, et
-        // la classe écrite après lui deviendrait invisible : un faux NÉGATIF,
-        // donc exactement la faute de frappe que §7.9 existe pour attraper,
-        // mais silencieuse.
+        // ⚠️ A naively blanked `'https://x'` would lose the end of its line, and
+        // the class written after it would become invisible: a false NEGATIVE,
+        // so exactly the typo §7.9 exists to catch,
+        // but silent.
         const ts = `const u = 'https://exemple.test'; el.className = 'apres-url';`;
         expect([...classesEmployeesTs(ts)]).toEqual(['apres-url']);
     });
@@ -150,10 +150,10 @@ describe('classesEmployeesTs', () => {
 
 describe('the blankers, separately', () => {
     it('sansCommentairesHtml keeps the line breaks', () => {
-        // `<!--x` vaut CINQ caractères et `y-->` en vaut QUATRE : le compte
-        // est celui des caractères blanchis, pas une approximation. Cette
-        // assertion a été écrite fausse une première fois, et c'est
-        // l'implémentation qui avait raison.
+        // `<!--x` is FIVE characters and `y-->` is FOUR: the count
+        // is that of the blanked characters, not an approximation. This
+        // assertion was written wrong a first time, and it was
+        // the implementation that was right.
         expect(sansCommentairesHtml('a<!--x\ny-->b')).toBe('a     \n    b');
     });
 

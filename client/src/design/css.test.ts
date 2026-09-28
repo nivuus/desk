@@ -2,28 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { blocApres, compounds, declarationsDe, preludes, sansCommentaires } from './css';
 
 /**
- * Les tests du LECTEUR DE FEUILLE — sous-projet ⑥, sous-bloc S4, tâche 1.
+ * The tests of the STYLESHEET READER — sub-project ⑥, sub-block S4, task 1.
  *
- * 🔴 CE MODULE EST L'OUTIL DE TOUS LES GARDES DE FORME DU SOUS-PROJET, et c'est
- * pour cela qu'il est testé à part. `primitives.test.ts` le portait en propre ;
- * les gardes neufs de S4 (§7.10, `style.test.ts`) le réemploient au lieu de le
- * recopier — et une machinerie recopiée diverge sans qu'aucune commande ne le
- * dise.
+ * 🔴 THIS MODULE IS THE TOOL OF ALL THE SUB-PROJECT'S SHAPE GUARDS, and that is
+ * why it is tested on its own. `primitives.test.ts` carried it privately;
+ * the new guards of S4 (§7.10, `style.test.ts`) reuse it instead of
+ * copying it — and copied machinery drifts without any command
+ * saying so.
  *
- * 🔴 LE BLANCHIMENT EST LA PROPRIÉTÉ QUI COMPTE, ET CE DÉPÔT L'A PAYÉE TROIS
- * FOIS : un garde qui cherche une sous-chaîne dans le texte brut est satisfait
- * par le COMMENTAIRE du fichier qu'il analyse — S1 sur `CLE_THEME`, S2 sur G1
- * et G5, S3 sur sa rouge n°16. Le test ① ci-dessous est celui qui la tient.
+ * 🔴 BLANKING IS THE PROPERTY THAT MATTERS, AND THIS REPOSITORY HAS PAID FOR IT THREE
+ * TIMES: a guard that looks for a substring in the raw text is satisfied
+ * by the COMMENT of the file it analyses — S1 on `CLE_THEME`, S2 on G1
+ * and G5, S3 on its red no. 16. Test ① below is the one that holds it.
  */
 describe('css.ts — the stylesheet reader', () => {
     it('① a comment declares NOTHING: blanking removes it before analysis', () => {
-        // 🔴 LE COMMENTAIRE EST DANS LE BLOC, ET C'EST TOUT CE QUI FAIT LA
-        // VALEUR DE CE TEST. Une première rédaction le posait AU-DESSUS de la
-        // règle : `declarationsDe` ne lit que l'intérieur des `{ … }`, si bien
-        // que la déclaration fantôme n'était de toute façon jamais lue — le
-        // test passait VERT sur un blanchiment neutralisé, mesuré. C'est le
-        // patron du contrôle vacueux, attrapé ici sur le test lui-même, et le
-        // dépôt le paie assez souvent pour qu'il soit écrit à sa place.
+        // 🔴 THE COMMENT IS INSIDE THE BLOCK, AND THAT IS ALL THAT GIVES THIS TEST ITS
+        // VALUE. A first draft placed it ABOVE the
+        // rule: `declarationsDe` only reads the inside of `{ … }`, so
+        // the ghost declaration was never read anyway — the
+        // test passed GREEN on a neutralised blanking, measured. It is the
+        // pattern of the vacuous check, caught here on the test itself, and the
+        // repository pays for it often enough for it to be written in its place.
         const css = `
             .a {
                 /* padding: 6px; — a value quoted in PROSE, not a rule */
@@ -45,8 +45,8 @@ describe('css.ts — the stylesheet reader', () => {
     });
 
     it('② bis — the body of an at-rule is never taken for a declaration', () => {
-        // `[^{}]*` ne franchit ni `{` ni `}` : seuls les blocs les plus
-        // intérieurs rendent des déclarations.
+        // `[^{}]*` crosses neither `{` nor `}`: only the innermost blocks
+        // return declarations.
         expect(declarationsDe('@media (min-width: 30rem) { .a { padding: var(--e-2) } }')).toEqual([
             { propriete: 'padding', value: 'var(--e-2)' },
         ]);
@@ -70,11 +70,11 @@ describe('css.ts — the stylesheet reader', () => {
     });
 
     it('reachability — the reader returns emptiness on emptiness, and says so here', () => {
-        // 🔴 SANS CETTE LIGNE, LES TESTS CI-DESSUS NE DISENT RIEN DU CAS VIDE, et
-        // c'est ce cas-là qui rend VERT un garde d'absence en ne mesurant rien
-        // (G5 de `primitives.test.ts`). Le lecteur n'a pas à s'en défendre : ce
-        // sont ses APPELANTS qui portent leur assertion d'atteignabilité, et ce
-        // test existe pour que cette répartition soit écrite quelque part.
+        // 🔴 WITHOUT THIS LINE, THE TESTS ABOVE SAY NOTHING ABOUT THE EMPTY CASE, and
+        // it is that case that makes an absence guard GREEN by measuring nothing
+        // (G5 of `primitives.test.ts`). The reader does not have to defend against it: it is
+        // its CALLERS that carry their reachability assertion, and this
+        // test exists so that this split is written down somewhere.
         expect(declarationsDe('')).toEqual([]);
         expect(preludes('')).toEqual([]);
     });

@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { FilesError } from './adaptateur';
 import { createWriter, type FluxInscriptible, type RacineInscriptible } from './ecriture';
 
-/* ── UN FAUX SYSTÈME DE FICHIERS, INSENSIBLE À LA CASSE PAR CONSTRUCTION ──
-   🔴 L'INSENSIBILITÉ EST LE POINT, ET NON UN DÉTAIL DE COMMODITÉ. C'est ce que
-   font Windows et macOS par défaut, et c'est ce qui rend la perte possible :
-   `getFileHandle('CASSE.TXT', { create: true })` y ouvre `Casse.txt`. Un faux
-   SENSIBLE à la casse rendrait le test de la garde VACUEUX — il créerait
-   simplement un second fichier, et rien ne serait jamais écrasé. */
+/* ── A FAKE FILE SYSTEM, CASE-INSENSITIVE BY CONSTRUCTION ─────────────────
+   🔴 INSENSITIVITY IS THE POINT, NOT A DETAIL OF CONVENIENCE. It is what
+   Windows and macOS do by default, and it is what makes the loss possible:
+   `getFileHandle('CASSE.TXT', { create: true })` opens `Casse.txt` there. A
+   case-SENSITIVE fake would make the guard's test VACUOUS — it would
+   simply create a second file, and nothing would ever be overwritten. */
 
 interface Noeud {
     kind: 'file' | 'directory';
@@ -25,7 +25,7 @@ class Faux {
     fermes = 0;
     racineNoeud = dossier();
 
-    /** Recherche INSENSIBLE à la casse, comme un poste local ordinaire. */
+    /** Case-INSENSITIVE lookup, like an ordinary local workstation. */
     private trouver(parent: Noeud, nom: string): Noeud | undefined {
         for (const enfant of parent.enfants.values()) {
             if (enfant.name.toLowerCase() === nom.toLowerCase()) return enfant;
@@ -99,10 +99,10 @@ class Faux {
                     },
                     async createWritable(options): Promise<FluxInscriptible> {
                         faux.ouverts += 1;
-                        // 🔴 SANS `keepExistingData`, LE FICHIER PART DE ZÉRO.
-                        // C'est ce que le vrai `createWritable()` fait, et c'est
-                        // ce qui empêche qu'un fichier réécrit plus court garde
-                        // sa queue d'octets.
+                        // 🔴 WITHOUT `keepExistingData`, THE FILE STARTS FROM ZERO.
+                        // It is what the real `createWritable()` does, and it is
+                        // what keeps a file rewritten shorter from keeping
+                        // its tail of bytes.
                         const tampon = options?.keepExistingData ? [...cible.contenu] : [];
                         return {
                             async write({ position, data }) {
@@ -140,13 +140,13 @@ describe('the case guard', () => {
     });
 
     it('🔴 …AND `Casse.txt` IS NOT OVERWRITTEN — this is THE F2 test', async () => {
-        // 🔴 **UN TEST SÉPARÉ, ET C'EST LA LEÇON ①A-bis DE P2.** `expect`
-        // interrompt un test à sa PREMIÈRE assertion en échec : mettre le refus
-        // et le non-écrasement dans le même test ferait que le second ne serait
-        // ÉPROUVÉ PAR RIEN dès que le premier tombe — et c'est le second qui
-        // porte la perte de données. La rouge le montre : sans la garde, celui
-        // du dessus échoue sur « promise resolved instead of rejecting », et
-        // celui-ci sur le CONTENU.
+        // 🔴 **A SEPARATE TEST, AND IT IS LESSON ①A-bis OF P2.** `expect`
+        // stops a test at its FIRST failing assertion: putting the refusal
+        // and the non-overwrite in the same test would mean the second would be
+        // EXERCISED BY NOTHING as soon as the first falls — and it is the second that
+        // carries the data loss. The red shows it: without the guard, the one
+        // above fails on "promise resolved instead of rejecting", and
+        // this one on the CONTENT.
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
         const e = createWriter(faux.racine());
@@ -155,9 +155,9 @@ describe('the case guard', () => {
     });
 
     it('🔴 …AND NO STREAM IS EVEN OPENED', async () => {
-        // Troisième assertion, troisième test, même raison. « Rien n'est
-        // écrit » et « rien n'est même ouvert » ne se déduisent pas l'un de
-        // l'autre : un flux ouvert puis abandonné laisse un fichier d'échange.
+        // Third assertion, third test, same reason. "Nothing is
+        // written" and "nothing is even opened" do not follow from one
+        // another: a stream opened then abandoned leaves a swap file.
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
         const e = createWriter(faux.racine());
@@ -176,8 +176,8 @@ describe('the case guard', () => {
         expect(error).toBeInstanceOf(FilesError);
         if (error === undefined) throw new Error('inatteignable');
         expect(error.code).toBe('casse-ambigue');
-        // Le message reste dans la console et dans la page-shell ; il doit dire
-        // ce que l'utilisateur peut faire, c'est-à-dire renommer l'un des deux.
+        // The message stays in the console and in the shell page; it must say
+        // what the user can do, that is, rename one of the two.
         expect(error.message).toContain('CASSE.TXT');
         expect(error.message).toContain('Casse.txt');
     });
@@ -190,8 +190,8 @@ describe('the case guard', () => {
     });
 
     it('writes into the EXACT name when it exists', async () => {
-        // 🔴 Une garde trop stricte ferait échouer TOUTE écriture : ce test est
-        // ce qui l'empêche.
+        // 🔴 A guard that is too strict would make ALL writes fail: this test is
+        // what prevents it.
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
         const e = createWriter(faux.racine());
@@ -210,10 +210,10 @@ describe('the case guard', () => {
 
 describe('les flux', () => {
     it('🔴 a file rewritten SHORTER does not keep its tail of bytes', async () => {
-        // 🔴 C'est le défaut EXACT de l'ancien pont (spec §12) : il employait
-        // `keepExistingData: true` sans `truncate`. Passer `true` ici fait
-        // survivre la queue, et le fichier local porte alors un contenu que la
-        // VM n'a JAMAIS eu.
+        // 🔴 It is the EXACT defect of the old bridge (spec §12): it used
+        // `keepExistingData: true` without `truncate`. Passing `true` here makes
+        // the tail survive, and the local file then carries a content the
+        // VM NEVER had.
         const faux = new Faux();
         faux.poser('note.txt', [1, 2, 3, 4, 5, 6, 7, 8]);
         const e = createWriter(faux.racine());
@@ -232,13 +232,13 @@ describe('les flux', () => {
     });
 
     it('writes NOTHING until the last chunk has arrived', async () => {
-        // 🔵 L'ATOMICITÉ de `createWritable()` : la committaison est au
-        // `close()`. Une poussée interrompue laisse le fichier local INCHANGÉ.
+        // 🔵 The ATOMICITY of `createWritable()`: the commit happens at
+        // `close()`. An interrupted push leaves the local file UNCHANGED.
         const faux = new Faux();
         faux.poser('note.txt', [42]);
         const e = createWriter(faux.racine());
         await e.write('note.txt', 0, octets(1, 2), true, false);
-        // Inchangé AVANT le `close()` : c'est l'atomicité.
+        // Unchanged BEFORE the `close()`: that is atomicity.
         expect(faux.lire('note.txt')?.contenu).toEqual([42]);
         await e.write('note.txt', 2, octets(3), false, true);
         expect(faux.lire('note.txt')?.contenu).toEqual([1, 2, 3]);
@@ -250,8 +250,8 @@ describe('les flux', () => {
         await e.write('a.txt', 0, octets(1), true, false);
         expect(faux.fermes).toBe(0);
         e.abandonner();
-        // `abandonner` est SYNCHRONE : le `close()` est lancé sans être attendu,
-        // parce qu'il est appelé depuis la fermeture du canal, qui l'est aussi.
+        // `abandonner` is SYNCHRONOUS: the `close()` is started without being awaited,
+        // because it is called from the closing of the channel, which is too.
         await Promise.resolve();
         expect(faux.fermes).toBe(1);
     });
@@ -260,15 +260,15 @@ describe('les flux', () => {
         const faux = new Faux();
         const e = createWriter(faux.racine());
         await e.write('a.txt', 0, octets(1), true, false);
-        // La poussée est interrompue, puis relancée depuis le début.
+        // The push is interrupted, then restarted from the beginning.
         await e.write('a.txt', 0, octets(7, 7), true, true);
         expect([faux.ouverts, faux.fermes]).toEqual([2, 2]);
         expect(faux.lire('a.txt')?.contenu).toEqual([7, 7]);
     });
 
     it('🔴 refuses a NON-initial chunk without an open stream', async () => {
-        // Ouvrir ici écrirait un fichier TRONQUÉ à ce morceau-ci : la
-        // troncature serait silencieuse, ce qui est pire qu'un refus.
+        // Opening here would write a file TRUNCATED to this chunk: the
+        // truncation would be silent, which is worse than a refusal.
         const faux = new Faux();
         const e = createWriter(faux.racine());
         await expect(e.write('a.txt', 64, octets(1), false, true)).rejects.toThrow(/stream/);
@@ -283,9 +283,9 @@ describe('the creations', () => {
         const e = createWriter(faux.racine());
         await e.create('dossier', true);
         await e.create('deja.txt', false);
-        // 🔴 UNE CRÉATION N'OUVRE AUCUN FLUX : en ouvrir un TRONQUERAIT le
-        // fichier local existant, alors qu'une création est sans effet sur ce
-        // qui est déjà là.
+        // 🔴 A CREATION OPENS NO STREAM: opening one would TRUNCATE the
+        // existing local file, whereas a creation has no effect on what
+        // is already there.
         expect(faux.lire('deja.txt')?.contenu).toEqual([1, 2, 3]);
         expect(faux.ouverts).toBe(0);
     });
@@ -300,9 +300,9 @@ describe('the creations', () => {
 
 describe('the classification of failures', () => {
     it('🔴 an exceeded quota returns `disque-plein`, and not `interne`', async () => {
-        // Le laisser tomber dans le `default` de `classer` ferait `interne`, et
-        // le journal ne dirait plus POURQUOI : l'utilisateur ne saurait pas
-        // qu'il doit libérer de la place.
+        // Letting it fall into the `default` of `classer` would give `interne`, and
+        // the log would no longer say WHY: the user would not know
+        // they have to free up space.
         const faux = new Faux();
         const racine = faux.racine();
         const vraiGetFileHandle = racine.getFileHandle.bind(racine);

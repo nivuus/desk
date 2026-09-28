@@ -1,87 +1,87 @@
 #!/usr/bin/env node
-// Contrôle §7.6 de la spec ⑥ — AUCUN TOKEN ORPHELIN, AUCUN `var()` NON DÉCLARÉ.
+// Check §7.6 of spec ⑥ — NO ORPHAN TOKEN, NO UNDECLARED `var()`.
 //
-// TROIS assertions — deux inclusions dans les deux sens entre les tokens
-// DÉCLARÉS par `tokens/couleurs.css` et `tokens/echelles.css` (`tokens.css`
-// avant l'extraction de la tâche 6, 25 août 2026 — ce contrôle a besoin des
-// DEUX, la liste d'orphelins portant aussi bien des couleurs que des
-// échelles) et les tokens EMPLOYÉS par les feuilles de production, plus une
-// sur la liste d'attente elle-même :
+// THREE assertions — two inclusions in both directions between the tokens
+// DECLARED by `tokens/couleurs.css` and `tokens/echelles.css` (`tokens.css`
+// before the extraction of task 6, August 25th, 2026 — this check needs
+// BOTH, the orphan list carrying colours as well as
+// scales) and the tokens USED by the production sheets, plus one
+// about the waiting list itself:
 //
-//   ① employé ⊆ déclaré — un `var(--fond-O)` (lettre O au lieu du zéro) est une
-//      faute de frappe que le navigateur avale en silence : la propriété prend
-//      sa valeur de repli, ou rien, et la page reste debout mais fausse ;
-//   ② déclaré ⊆ employé — un token que personne n'appelle est du code mort, et
-//      un code mort dans une source unique de valeurs se recopie longtemps ;
-//   ③ aucune entrée de la liste d'attente ne nomme un sous-bloc DÉJÀ CLOS —
-//      la mitigation partielle du re-étiquetage, bâtie au sous-bloc S3, et que
-//      le plan de S2 déclarait impossible TROIS fois. Sa doctrine et son
-//      objection vivent auprès de la liste.
+//   ① used ⊆ declared — a `var(--fond-O)` (letter O instead of zero) is a
+//      typo the browser silently swallows: the property takes
+//      its fallback value, or nothing, and the page stays up but wrong;
+//   ② declared ⊆ used — a token nobody calls is dead code, and
+//      dead code in a single source of values gets copied for a long time;
+//   ③ no entry of the waiting list names an ALREADY CLOSED sub-block —
+//      the partial mitigation of re-labelling, built in sub-block S3, and which
+//      the S2 plan declared impossible THREE times. Its doctrine and its
+//      objection live next to the list.
 //
-// 🔴 « EMPLOYÉ » A DEUX SOURCES DEPUIS LA TÂCHE 7 D'A1 (25 août 2026), PAS UNE
-// SEULE : un `var(--…)` dans du CSS (ci-dessous), ET un `poserToken(...)`
-// TypeScript hors tests (`tokens-orphelins/js.mjs`, avec sa doctrine et sa
-// règle de sélection). Sans la seconde, un token posé À L'EXÉCUTION et
-// référencé par AUCUN CSS — le cas exact d'`--accent-fenetre` — n'avait que
-// deux issues, TOUTES DEUX FAUSSES : NON DÉCLARÉ DU TOUT, et le token reste
-// invisible aux deux inclusions (le legs réel, choisi par `accent-dom.ts`
-// plutôt que l'autre) ; ou DÉCLARÉ SANS EMPLOYEUR CSS, et ② le signale
-// ORPHELIN — pour la MAUVAISE raison, puisque le JS l'emploie bel et bien.
-// Voir `accent-dom.ts` pour le legs que ce trou a forcé.
+// 🔴 "USED" HAS TWO SOURCES SINCE TASK 7 OF A1 (August 25th, 2026), NOT ONE:
+// a `var(--…)` in CSS (below), AND a TypeScript `poserToken(...)`
+// outside tests (`tokens-orphelins/js.mjs`, with its doctrine and its
+// selection rule). Without the second, a token set AT RUN TIME and
+// referenced by NO CSS — the exact case of `--accent-fenetre` — had only
+// two outcomes, BOTH WRONG: NOT DECLARED AT ALL, and the token stays
+// invisible to both inclusions (the real legacy item, chosen by `accent-dom.ts`
+// rather than the other); or DECLARED WITHOUT A CSS USER, and ② reports it as
+// an ORPHAN — for the WRONG reason, since the JS does use it.
+// See `accent-dom.ts` for the legacy item this hole forced.
 //
-// Il ne porte AUCUNE règle de parsing : `tokensDeclares` et `tokensReferences`
-// vivent dans `client/src/design/tokens.ts`, qui est typechecké et testé.
+// It carries NO parsing rule: `tokensDeclares` and `tokensReferences`
+// live in `client/src/design/tokens.ts`, which is typechecked and tested.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔴 `client/design.html` EST EXCLU DE LA MOITIÉ « EMPLOYÉ », ET C'EST CE QUI
-// REND CE CONTRÔLE CAPABLE D'ÉCHOUER.
+// 🔴 `client/design.html` IS EXCLUDED FROM THE "USED" HALF, AND THAT IS WHAT
+// MAKES THIS CHECK ABLE TO FAIL.
 //
-// La galerie rend TOUS les tokens par construction — c'est sa raison d'être.
-// L'inclure dans le périmètre « employé » rendrait l'inclusion ② vraie pour
-// toujours : le contrôle validerait la galerie et rien d'autre. La spec §7.6
-// le dit, et ce dépôt a attrapé quatre contrôles incapables d'échouer sur le
-// seul sous-bloc D10, dont trois écrits par un plan.
+// The gallery renders ALL the tokens by construction — that is its raison d'être.
+// Including it in the "used" scope would make inclusion ② true
+// forever: the check would validate the gallery and nothing else. Spec §7.6
+// says so, and this repository caught four checks unable to fail in
+// sub-block D10 alone, three of which were written by a plan.
 //
-// ⚠️ L'EXCLUSION EST PORTEUSE, PAS DÉCORATIVE, et cela se mesure : le périmètre
-// ci-dessous balaie les SURFACES HTML autant que les feuilles `.css`, parce
-// qu'une page peut référencer un token depuis un `<style>` en ligne — ce que
-// la galerie fait précisément. Retirer `design.html` de `EXCLUS` fait passer
-// la rouge A au vert (rouge C de la tâche 12).
+// ⚠️ THE EXCLUSION IS LOAD-BEARING, NOT DECORATIVE, and it can be measured: the scope
+// below scans the HTML SURFACES as much as the `.css` sheets, because
+// a page can reference a token from an inline `<style>` — which is what
+// the gallery does precisely. Removing `design.html` from `EXCLUS` turns
+// red A green (red C of task 12).
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// ⚠️ TAILLE DE CE FICHIER — LA PRÉDICTION DU PLAN S2 EST FAUSSE, ET C'EST DIT
-// PLUTÔT QUE RABOTÉ. Le plan attendait de la tâche 8 un fichier « plus court
-// qu'à `56b975a` (233) », les 18 entrées retirées de la liste d'attente devant
-// le faire maigrir. Relevé par la commande à la tâche 8 de S2 :
+// ⚠️ SIZE OF THIS FILE — THE PREDICTION OF THE S2 PLAN IS WRONG, AND IT IS SAID
+// RATHER THAN PLANED DOWN. The plan expected from task 8 a file "shorter
+// than at `56b975a` (233)", the 18 entries removed from the waiting list being
+// supposed to slim it down. Measured by the command at task 8 of S2:
 //
-//   entrées de liste  28 → 10   (−18)
-//   commentaires     104 → 153  (+49)
-//   code              87 →  93  (+6 : la seconde exclusion et `--sans-exclusion`)
-//   lignes vides      14 →  14
+//   list entries      28 → 10   (−18)
+//   comments         104 → 153  (+49)
+//   code              87 →  93  (+6: the second exclusion and `--sans-exclusion`)
+//   blank lines       14 →  14
 //   TOTAL            233 → 270  (+37)
 //
-// **Les 18 entrées retirées ont été plus qu'annulées par du commentaire.**
-// C'est, en petit, la leçon que ce dépôt a payée en grand : « une addition de
-// commentaire peut annuler une extraction ». Les +49 ne sont pas du remplissage
-// — ce sont la raison MESURÉE de la seconde exclusion (tâche 7), l'encadré des
-// re-tags que rien ne contrôle, et le relevé de S1 refait au lieu d'être
-// effacé, trois blocs que le plan EXIGE. **Les raboter échangerait une vérité
-// contre un nombre**, ce que `CLAUDE.md` interdit nommément.
+// **The 18 removed entries were more than cancelled out by comment.**
+// It is, in small, the lesson this repository paid for in large: "an addition of
+// comment can cancel an extraction". The +49 is not padding
+// — it is the MEASURED reason for the second exclusion (task 7), the box about
+// the re-tags nothing checks, and the S1 report redone instead of being
+// erased, three blocks the plan REQUIRES. **Planing them down would trade a truth
+// for a number**, which `CLAUDE.md` explicitly forbids.
 //
-// 🔴 « 270 contre 300 » (tâche 8 de S2) ÉTAIT DÉJÀ FAUX AVANT CETTE TÂCHE
-// (256 depuis la tâche 6 de S2/A1) ; la tâche 7 d'A1 (moitié « posé par le
-// JS », `tokens-orphelins/js.mjs`) le fait remonter encore. AUCUN NOMBRE
-// N'EST PLUS ÉCRIT ICI : `wc -l client/outils/tokens-orphelins.mjs`, RELANCÉ,
-// est la seule source de vérité.
+// 🔴 "270 versus 300" (task 8 of S2) WAS ALREADY WRONG BEFORE THIS TASK
+// (256 since task 6 of S2/A1); task 7 of A1 (the "set by the
+// JS" half, `tokens-orphelins/js.mjs`) makes it go up again. NO NUMBER
+// IS WRITTEN HERE ANY MORE: `wc -l client/outils/tokens-orphelins.mjs`, RERUN,
+// is the only source of truth.
 //
-// ⚠️ PORTE ARMÉE À 300 LIGNES (auto-imposée, comme ses deux voisins des
-// jetons) : à ce seuil, séparer LE RAPPORT — les `console.log` des trois
-// inclusions et du total — dans `tokens-orphelins/rapport.mjs` (paramètres :
+// ⚠️ GATE ARMED AT 300 LINES (self-imposed, like its two token
+// neighbours): at that threshold, split THE REPORT — the `console.log` of the three
+// inclusions and of the total — into `tokens-orphelins/rapport.mjs` (parameters:
 // `declares`, `employePar`, `orphelins`, `nonDeclares`,
-// `EN_ATTENTE_D_APPELANT`, `SOUS_BLOCS_CLOS`), en ne gardant ici que la
-// COLLECTE (CSS, surfaces, JS) et le CALCUL des écarts — le point de chute
-// de la tâche 8 de S2 (`attente.mjs`) est déjà atteint, celui-ci est le
-// SUIVANT. AVANT l'addition qui franchirait, jamais après.
+// `EN_ATTENTE_D_APPELANT`, `SOUS_BLOCS_CLOS`), keeping here only the
+// COLLECTION (CSS, surfaces, JS) and the COMPUTATION of the gaps — the landing point
+// of task 8 of S2 (`attente.mjs`) is already reached, this one is the
+// NEXT. BEFORE the addition that would cross, never after.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -93,11 +93,11 @@ import { SOUS_BLOCS_CLOS } from './tokens-orphelins/sous-blocs-clos.mjs';
 import { tokensPosesParLeJs } from './tokens-orphelins/js.mjs';
 
 /**
- * 🔴 DEUX SOURCES DEPUIS L'EXTRACTION DE LA TÂCHE 6 (25 août 2026), PAS UNE :
- * elles DÉCLARENT, elles n'emploient pas. Hors du périmètre — comme
- * `tokens.css`, leur porte d'entrée commune, qui n'en déclare plus aucun
- * lui-même (il ne fait plus qu'IMPORTER les deux) et rejoint donc l'exclusion
- * pour la même raison, ci-dessous.
+ * 🔴 TWO SOURCES SINCE THE EXTRACTION OF TASK 6 (August 25th, 2026), NOT ONE:
+ * they DECLARE, they do not use. Outside the scope — like
+ * `tokens.css`, their common entry point, which no longer declares any
+ * itself (it now only IMPORTS the two) and therefore joins the exclusion
+ * for the same reason, below.
  */
 const SOURCES = [
     'client/src/design/tokens/couleurs.css',
@@ -106,10 +106,10 @@ const SOURCES = [
 const PORTE = 'client/src/design/tokens.css';
 
 /**
- * 🔴 LA SEULE EXCLUSION DU PÉRIMÈTRE « EMPLOYÉ ». Voir l'encadré ci-dessus.
- * Toute addition à cette liste doit porter la raison pour laquelle le fichier
- * ne peut pas faire échouer le contrôle — pas la raison pour laquelle il est
- * gênant.
+ * 🔴 THE ONLY EXCLUSION FROM THE "USED" SCOPE. See the box above.
+ * Any addition to this list must carry the reason why the file
+ * cannot make the check fail — not the reason why it is
+ * in the way.
  */
 const EXCLUS = new Map([
     [
@@ -118,13 +118,13 @@ const EXCLUS = new Map([
             'the inclusion “declared ⊆ used” true forever',
     ],
     [
-        // 🔴 LA RAISON POUR LAQUELLE CE FICHIER NE PEUT PAS FAIRE ÉCHOUER LE
-        // CONTRÔLE, et non celle pour laquelle il gênerait — c'est la clause de
-        // l'encadré ci-dessus. Mesurée, non supposée : avant cette entrée, la
-        // page faisait tomber CINQ lignes « À RETIRER DE LA LISTE » (--e-5,
-        // --e-6, --e-7, --lh-large, --t-3xl), toutes employées par sa SEULE
-        // mise en page de démonstration. La liste d'attente aurait rétréci de
-        // cinq sans que le produit ait gagné un seul appelant.
+        // 🔴 THE REASON WHY THIS FILE CANNOT MAKE THE CHECK
+        // FAIL, and not the reason why it would be in the way — it is the clause of
+        // the box above. Measured, not assumed: before this entry, the
+        // page brought down FIVE "TO REMOVE FROM THE LIST" lines (--e-5,
+        // --e-6, --e-7, --lh-large, --t-3xl), all used by its ONLY
+        // demonstration layout. The waiting list would have shrunk by
+        // five without the product gaining a single caller.
         'client/primitives.html',
         'a demonstration page uses tokens by construction, in its ' +
             'own layout; including it would take out of the waiting list ' +
@@ -133,12 +133,12 @@ const EXCLUS = new Map([
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔴 LA LISTE D'ATTENTE VIT DANS `tokens-orphelins/attente.mjs`, AVEC TOUTE SA
-// DOCTRINE — extraite par la tâche 8 de S2, la donnée et sa justification
-// ensemble. Ce qu'il faut savoir ici tient en un mot : le contrôle exige
-// l'ÉGALITÉ entre l'ensemble des orphelins et cette liste, donc il échoue dans
-// LES DEUX SENS — un orphelin absent de la liste, comme une entrée de la liste
-// qui a gagné un appelant. C'est la seconde moitié qui la rend AUTO-NETTOYANTE.
+// 🔴 THE WAITING LIST LIVES IN `tokens-orphelins/attente.mjs`, WITH ALL ITS
+// DOCTRINE — extracted by task 8 of S2, the data and its justification
+// together. What one needs to know here fits in one word: the check requires
+// EQUALITY between the set of orphans and this list, so it fails in
+// BOTH DIRECTIONS — an orphan absent from the list, as well as an entry of the list
+// that gained a caller. It is the second half that makes it SELF-CLEANING.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const args = process.argv.slice(2);
@@ -165,21 +165,21 @@ for (const [i, chemin] of sources.entries()) {
 }
 const porte = join(racine, PORTE);
 
-// Le périmètre « employé » : toute feuille de `client/src/` sauf les sources
-// (et leur porte d'entrée commune, `tokens.css`), et
-// toute surface HTML sauf celles d'`EXCLUS`. Les surfaces sont incluses parce
-// qu'un `<style>` en ligne emploie des tokens comme une feuille.
+// The "used" scope: every sheet of `client/src/` except the sources
+// (and their common entry point, `tokens.css`), and
+// every HTML surface except those of `EXCLUS`. The surfaces are included because
+// an inline `<style>` uses tokens just like a sheet.
 //
-// 🔴 LES SURFACES VIENNENT DES ENTRÉES VITE, JAMAIS D'UN `client/*.html`.
-// Un balayage du répertoire attrape `probe-coalesced.html`,
-// `recette/latency-test.html` et `recette/scroll-test.html`, qui sont des
-// INSTRUMENTS DE BANC : ils ne sortent pas du build, ils ne reçoivent pas
-// l'amorce, et un `var(--…)` écrit dans l'un d'eux ne doit pas compter comme
-// un appelant de production. `client/vite.config.ts:9-13` porte déjà cet
-// avertissement, mesuré sur `connexion.html`.
-// ⚠️ La liste est LUE depuis `vite.config.ts`, pas recopiée : c'est la même
-// raison qui interdit à ce script d'avoir sa propre copie des valeurs. Node
-// v24.9.0 importe le `.ts` nativement, comme pour `tokens.ts`.
+// 🔴 THE SURFACES COME FROM THE VITE ENTRIES, NEVER FROM A `client/*.html`.
+// A scan of the directory catches `probe-coalesced.html`,
+// `recette/latency-test.html` and `recette/scroll-test.html`, which are
+// BENCH INSTRUMENTS: they do not come out of the build, they do not receive
+// the bootstrap, and a `var(--…)` written in one of them must not count as
+// a production caller. `client/vite.config.ts:9-13` already carries this
+// warning, measured on `connexion.html`.
+// ⚠️ The list is READ from `vite.config.ts`, not copied: it is the same
+// reason that forbids this script from having its own copy of the values. Node
+// v24.9.0 imports the `.ts` natively, as for `tokens.ts`.
 const feuilles = fichiersCss(join(racine, 'client/src')).filter(
     (f) => !sources.includes(f) && f !== porte,
 );
@@ -199,13 +199,13 @@ for (const chemin of [...feuilles, ...surfaces]) {
     }
 }
 
-// 🔴 LA SECONDE FAÇON D'« EMPLOYER » UN TOKEN — posé par le JS, jamais lu par
-// un `var()`. Voir `tokens-orphelins/js.mjs` pour la règle de sélection (et
-// pourquoi elle exclut les `*.test.ts`) et pour la raison d'être de ce bloc :
-// sans lui, un token DÉCLARÉ et posé par `poserToken(...)` mais référencé par
-// AUCUN CSS reste invisible aux deux inclusions ci-dessous — c'est
-// exactement l'angle mort qui a empêché `accent-dom.ts` de déclarer
-// `--accent-fenetre` (D-A1-2, sonde H1 du 21 août 2026).
+// 🔴 THE SECOND WAY TO "USE" A TOKEN — set by the JS, never read by
+// a `var()`. See `tokens-orphelins/js.mjs` for the selection rule (and
+// why it excludes the `*.test.ts`) and for the raison d'être of this block:
+// without it, a token DECLARED and set by `poserToken(...)` but referenced by
+// NO CSS stays invisible to the two inclusions below — it is
+// exactly the blind spot that kept `accent-dom.ts` from declaring
+// `--accent-fenetre` (D-A1-2, probe H1 of August 21st, 2026).
 const posesJs = tokensPosesParLeJs(racine);
 for (const [token, files] of posesJs) {
     if (!employePar.has(token)) employePar.set(token, []);
@@ -230,13 +230,13 @@ for (const [chemin, raison] of EXCLUS) {
     console.log(`  ${sansExclusion ? 'INCLUDED (--sans-exclusion)' : 'excluded'} : ${chemin} — ${raison}`);
 }
 
-// ① employé ⊆ déclaré
+// ① used ⊆ declared
 console.log(`\ninclusion ① — every var(--…) is declared: ${nonDeclares.length} gap(s)`);
 for (const token of nonDeclares) {
     console.log(`  UNDECLARED  ${token}  used by ${employePar.get(token).join(', ')}`);
 }
 
-// ② déclaré ⊆ employé, à la liste d'attente près — et l'ÉGALITÉ, pas l'inclusion.
+// ② declared ⊆ used, up to the waiting list — and EQUALITY, not inclusion.
 const nouveaux = orphelins.filter((t) => !EN_ATTENTE_D_APPELANT.has(t));
 const aRetirer = [...EN_ATTENTE_D_APPELANT.keys()].filter((t) => employePar.has(t)).sort();
 console.log(
@@ -253,20 +253,20 @@ for (const token of aRetirer) {
     );
 }
 
-// ③ AUCUNE ENTRÉE NE NOMME UN SOUS-BLOC DÉJÀ CLOS — la mitigation partielle du
-//   re-étiquetage, bâtie au sous-bloc S3 (tâche 7).
+// ③ NO ENTRY NAMES AN ALREADY CLOSED SUB-BLOCK — the partial mitigation of
+//   re-labelling, built in sub-block S3 (task 7).
 //
-// 🔴 CE QU'ELLE ATTRAPE, ET QU'AUCUNE AUTRE ASSERTION NE VOIT : les deux
-// inclusions ci-dessus comparent des ENSEMBLES DE NOMS DE TOKENS. Déplacer une
-// entrée de « S2 » à « S3 » ne les fait bouger ni l'une ni l'autre — c'est le
-// point le plus faible du dispositif, et la porte par laquelle une liste
-// d'attente s'assouplit indéfiniment sans qu'aucune commande ne le dise.
+// 🔴 WHAT IT CATCHES, AND WHAT NO OTHER ASSERTION SEES: the two
+// inclusions above compare SETS OF TOKEN NAMES. Moving an
+// entry from "S2" to "S3" moves neither of them — it is the
+// weakest point of the arrangement, and the door through which a waiting
+// list loosens indefinitely without any command saying so.
 //
-// ⚠️ ELLE EST PARTIELLE, et le mot est pesé : elle juge le SOUS-BLOC NOMMÉ,
-// jamais le CONTENU de la raison, et elle dépend d'une liste de sous-blocs clos
-// TENUE À LA MAIN — un sous-bloc qui ne s'y déclare pas la neutralise. La
-// doctrine complète, et l'objection qu'elle ne garde qu'une entrée après S3,
-// vivent auprès de la liste, dans `tokens-orphelins/attente.mjs`.
+// ⚠️ IT IS PARTIAL, and the word is weighed: it judges the NAMED SUB-BLOCK,
+// never the CONTENT of the reason, and it depends on a list of closed sub-blocks
+// KEPT BY HAND — a sub-block that does not declare itself there neutralises it. The
+// full doctrine, and the objection that it only guards one entry after S3,
+// live next to the list, in `tokens-orphelins/attente.mjs`.
 const surSousBlocClos = [...EN_ATTENTE_D_APPELANT.entries()]
     .filter(([, entree]) => SOUS_BLOCS_CLOS.has(entree.sousBloc))
     .sort(([a], [b]) => a.localeCompare(b));

@@ -6,14 +6,14 @@ describe('sessionIdDepuisParametres', () => {
         expect(sessionIdFromParams(new URLSearchParams('session=abc'))).toBe('abc');
     });
 
-    // 🔴 LA ROUGE DE LA CORRECTION DU 30 AOÛT 2026. Avant l'extraction,
-    // `main.ts` portait `params.get('session') ?? 'demo'` : ce test rougit
-    // si cette forme revient un jour, sous quelque nom que ce soit — une
-    // absence de paramètre doit rendre `undefined`, jamais une valeur
-    // inventée. Vérifié rouge en substituant temporairement le corps de
-    // `sessionIdFromParams` par l'ancienne ligne (voir le rapport de
-    // ce lot pour la sortie réelle) : `expect(undefined).toBe('demo')`
-    // échoue comme attendu.
+    // 🔴 THE RED OF THE FIX OF AUGUST 30TH, 2026. Before the extraction,
+    // `main.ts` carried `params.get('session') ?? 'demo'`: this test goes red
+    // if that form ever comes back, under whatever name — an
+    // absent parameter must return `undefined`, never an invented
+    // value. Checked red by temporarily substituting the body of
+    // `sessionIdFromParams` with the old line (see the report of
+    // this batch for the real output): `expect(undefined).toBe('demo')`
+    // fails as expected.
     it("does NOT invent a 'demo' session when the parameter is absent", () => {
         expect(sessionIdFromParams(new URLSearchParams())).toBeUndefined();
     });

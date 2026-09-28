@@ -9,7 +9,7 @@ afterEach(async () => {
     serveur = undefined;
 });
 
-// Attend le premier message JSON reçu sur le socket, ou échoue après 2 s.
+// Waits for the first JSON message received on the socket, or fails after 2 s.
 function premierMessage(socket: WebSocket): Promise<unknown> {
     return new Promise((resolve, reject) => {
         const minuteur = setTimeout(() => reject(new Error('no message received')), 2000);
@@ -76,16 +76,16 @@ describe('spike server', () => {
         expect(reponse.status).toBe(404);
     });
 
-    // I5 — le spike tourne sur un poste exposé à internet, derrière un proxy
-    // d'authentification qui l'atteint sur la boucle locale. Une écoute sur
-    // 0.0.0.0 le rendrait joignable hors du proxy.
+    // I5 — the spike runs on a workstation exposed to the internet, behind an
+    // authentication proxy that reaches it over loopback. Listening on
+    // 0.0.0.0 would make it reachable outside the proxy.
     it("listens only on the loopback", async () => {
         serveur = await createSpikeServer(0);
         expect(serveur.hote).toBe('127.0.0.1');
     });
 
-    // I3 — sans ce compte, un socket tombé donnerait un déclenchement « réussi »
-    // que personne n'a reçu : une mesure silencieusement vide.
+    // I3 — without this count, a dropped socket would give a "successful" trigger
+    // nobody received: a silently empty measurement.
     it('reports the number of clients reached by /fire', async () => {
         serveur = await createSpikeServer(0);
 
@@ -112,9 +112,9 @@ describe('spike server', () => {
         second.close();
     });
 
-    // I7 — le nonce est l'identité du passage. Le serveur ne l'interprète pas,
-    // mais il doit le recopier fidèlement, sans quoi la page ne peut pas
-    // distinguer le signal de sa fenêtre de celui d'une fenêtre étrangère.
+    // I7 — the nonce is the identity of the pass. The server does not interpret it,
+    // but it must copy it faithfully, otherwise the page cannot
+    // tell the signal of its window from that of a foreign window.
     it('copies the nonce of the life signal into the broadcast', async () => {
         serveur = await createSpikeServer(0);
         const socket = new WebSocket(`ws://127.0.0.1:${serveur.port}/ws`);
@@ -135,8 +135,8 @@ describe('spike server', () => {
         expect(reponse.status).toBe(400);
     });
 
-    // I4 — le service worker rapporte ici que clients.openWindow() n'a rien
-    // ouvert : c'est ce qui distingue un blocage d'une fenêtre partie sur l'IdP.
+    // I4 — the service worker reports here that clients.openWindow() opened
+    // nothing: it is what tells a block from a window that went off to the IdP.
     it('broadcasts the block reported by the service worker', async () => {
         serveur = await createSpikeServer(0);
         const socket = new WebSocket(`ws://127.0.0.1:${serveur.port}/ws`);
@@ -155,8 +155,8 @@ describe('spike server', () => {
         expect(reponse.status).toBe(400);
     });
 
-    // I7 — une route documentée en GET qui accepte POST est une route qu'on peut
-    // déclencher par accident, et un déclenchement accidentel fausse la mesure.
+    // I7 — a route documented as GET that accepts POST is a route that can be
+    // triggered by accident, and an accidental trigger skews the measurement.
     it('refuses the undocumented methods on /alive, /bloque and /fire', async () => {
         serveur = await createSpikeServer(0);
         const base = `http://127.0.0.1:${serveur.port}`;

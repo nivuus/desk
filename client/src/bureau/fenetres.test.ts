@@ -11,18 +11,18 @@ describe('lignes', () => {
     });
 
     it('the open boolean tells the two states apart: it drives the class on the wiring side', () => {
-        // 🔴 LA REGLE PURE NE DECIDE PLUS DU NOM DE CLASSE : un nom qui
-        // transiterait par une variable serait invisible au controle §7.9,
-        // qui ne voit que les litteraux passes a `classList.add('…')`. Ce que
-        // la regle pure decide, c est l ETAT ; le nom litteral de la classe
-        // vit dans fenetres-dom.ts.
+        // 🔴 THE PURE RULE NO LONGER DECIDES THE CLASS NAME: a name that
+        // went through a variable would be invisible to check §7.9,
+        // which only sees the literals passed to `classList.add('…')`. What
+        // the pure rule decides is the STATE; the literal class name
+        // lives in fenetres-dom.ts.
         const ouverte = lignes([{ session: 'a', titre: 'x', ouverte: true }])[0];
         const fermee = lignes([{ session: 'b', titre: 'x', ouverte: false }])[0];
         expect([ouverte.ouverte, fermee.ouverte]).toEqual([true, false]);
     });
 
     it('the badge word is emphasised on the CLOSED side', () => {
-        // `fermée`, pas `fermee` : c est du texte montre a un humain.
+        // `closed` is text shown to a human, not an internal code.
         expect(lignes([{ session: 's', titre: 'x', ouverte: false }])[0].etat).toBe('closed');
     });
 
@@ -41,15 +41,15 @@ describe('lignes', () => {
 
 describe('sectionVisible', () => {
     it('no window: the section is ABSENT', () => {
-        // 🔴 ABSENTE, PAS VIDE. Une section montrant en permanence « aucune
-        // fenetre ouverte » serait du bruit sur l etat NOMINAL d un hub qu on
-        // vient d ouvrir (spec 4.1).
+        // 🔴 ABSENT, NOT EMPTY. A section permanently showing "no
+        // open window" would be noise on the NOMINAL state of a hub that was
+        // just opened (spec 4.1).
         expect(sectionVisible([])).toBe(false);
     });
 
     it('a window, even CLOSED: the section is visible', () => {
-        // Une fenetre fermee a quelque chose a offrir -- son bouton Rouvrir --
-        // donc la cacher priverait l utilisateur du seul geste qui la ramene.
+        // A closed window has something to offer -- its Reopen button --
+        // so hiding it would deprive the user of the only gesture that brings it back.
         expect(sectionVisible([{ session: 's', titre: 'x', ouverte: false }])).toBe(true);
     });
 });

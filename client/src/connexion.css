@@ -1,73 +1,73 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LA FEUILLE DE L'ÉCRAN DE CONNEXION, ET DE LUI SEUL — sous-bloc S3.
+   THE SHEET OF THE SIGN-IN SCREEN, AND OF IT ALONE — sub-block S3.
 
-   Trois surfaces, trois feuilles, une convention : `style.css` pour la fenêtre
-   de session, `bureau/bureau.css` pour le bureau (`shell.css` jusqu'au 31 août
-   2026, renommée avec la page), celle-ci pour la connexion. ⚠️ Une QUATRIÈME
-   feuille existe depuis G5, `hub/hub.css` — cette phrase est un énoncé de S3
-   dont seul le NOMBRE a vieilli, et la convention, elle, tient. Aucune ne
-   connaît les autres, et aucun sélecteur d'élément nu n'y apparaît — c'est
-   ce qui garantit qu'elle ne peut RIEN changer aux deux autres surfaces.
+   Three surfaces, three sheets, one convention: `style.css` for the session
+   window, `bureau/bureau.css` for the desktop (`shell.css` until August 31st,
+   2026, renamed with the page), this one for the sign-in. ⚠️ A FOURTH
+   sheet has existed since G5, `hub/hub.css` — this sentence is an S3 statement
+   of which only the NUMBER has aged, and the convention itself holds. None
+   knows the others, and no bare element selector appears in it — that is
+   what guarantees it can change NOTHING in the other two surfaces.
 
-   🔴 ELLE SE LIE DEPUIS `connexion.html`, ELLE NE S'IMPORTE JAMAIS —
-   l'arrangement B mesuré par S1 : un `@import` ré-inline, un `<link>` laisse
-   Vite partager.
+   🔴 IT IS LINKED FROM `connexion.html`, IT IS NEVER IMPORTED —
+   arrangement B measured by S1: an `@import` re-inlines, a `<link>` lets
+   Vite share.
 
-   ⚠️ CET ÉCRAN EST SOUVENT LA PREMIÈRE SURFACE, ET PARFOIS LA SEULE, qu'un
-   utilisateur non authentifié voie : `hub/page.ts` y redirige tout visiteur
-   sans jeton (`shell-page.ts` le faisait jusqu'au 31 août 2026 ; depuis que le
-   hub est la SEULE surface, cette page n'est plus qu'une redirection vers `/`). C'est la raison pour laquelle le sélecteur de thème y figure,
-   alors que la spec §5.2 ne le nomme que pour la page-shell et le hub —
-   extension raisonnée, déclarée au §6.2 du plan S3.
+   ⚠️ THIS SCREEN IS OFTEN THE FIRST SURFACE, AND SOMETIMES THE ONLY ONE, that an
+   unauthenticated user sees: `hub/page.ts` redirects every visitor
+   without a token there (`shell-page.ts` did so until August 31st, 2026; since the
+   hub is the ONLY surface, that page is only a redirect to `/`). That is why the theme selector appears on it,
+   although spec §5.2 only names it for the shell page and the hub —
+   a reasoned extension, declared in §6.2 of the S3 plan.
 
-   ── DEUX MESURES DE CONTENANT, DONT UNE EST DEVENUE UN TOKEN ─────────────
-   ✅ La largeur maximale de la carte passe désormais par `--contenant-carte`
-   (sous-bloc S4, tâche 8), à valeur strictement égale.
-   ❌ « La hauteur de la scène (`100dvh`) et la largeur maximale de la carte
-   (26rem) NE PASSENT PAR AUCUN CRAN D'ÉCHELLE … et les inventer en tokens
-   changerait le compte de 48 que trois documents publient » — écrit ici par
-   S3, vrai à sa date pour la première moitié, et FAUX au présent pour la
-   seconde. Le constat de fond tient et c'est lui qui a justifié le token : les
-   échelles du §4.4 couvrent l'ESPACEMENT et la TYPOGRAPHIE, jamais une mesure
-   de contenant. L'argument DE COMPTE, lui, ne pouvait pas tenir — un compte
-   n'est pas une raison de ne pas nommer une valeur, et les contrôles
-   impriment le leur à chaque exécution.
-   ⚠️ `100dvh` RESTE LITTÉRALE, ET C'EST LA MÊME RÈGLE QU'AVANT : un
-   REMPLISSAGE DE FENÊTRE n'est pas une mesure de contenant, aucune échelle ne
-   prétend couvrir « toute la fenêtre », et un token qui vaudrait `100dvh` ne
-   serait qu'un alias. C'est l'exception ① de §7.10, nommée et close.
-   Le token est déclaré par `tokens.css` et non en propriété personnalisée
-   LOCALE : l'inclusion ① du §7.6 exige qu'un `var(--…)` soit déclaré par la
-   source unique — leçon payée par `shell.css` à la tâche 4 de S3, qui avait
-   affirmé le contraire et que le contrôle a réfuté.
+   ── TWO CONTAINER MEASURES, ONE OF WHICH BECAME A TOKEN ──────────────────
+   ✅ The maximum width of the card now goes through `--contenant-carte`
+   (sub-block S4, task 8), with a strictly equal value.
+   ❌ "The height of the scene (`100dvh`) and the maximum width of the card
+   (26rem) GO THROUGH NO SCALE STEP … and inventing them as tokens
+   would change the count of 48 that three documents publish" — written here by
+   S3, true at its date for the first half, and WRONG in the present for the
+   second. The substantive finding holds and it is what justified the token: the
+   scales of §4.4 cover SPACING and TYPOGRAPHY, never a container
+   measure. The COUNT argument, on the other hand, could not hold — a count
+   is not a reason not to name a value, and the checks
+   print theirs on every run.
+   ⚠️ `100dvh` STAYS LITERAL, AND IT IS THE SAME RULE AS BEFORE: a
+   WINDOW FILL is not a container measure, no scale
+   claims to cover "the whole window", and a token worth `100dvh` would only
+   be an alias. It is exception ① of §7.10, named and closed.
+   The token is declared by `tokens.css` and not as a LOCAL custom
+   property: inclusion ① of §7.6 requires a `var(--…)` to be declared by the
+   single source — a lesson paid for by `shell.css` at task 4 of S3, which had
+   claimed the opposite and which the check refuted.
 
-   ⚠️ UNE SEULE DES DEUX COMPTE DANS LA CLAUSE « aucune longueur hors échelle »
-   DU §8 DE LA SPEC, ET C'EST `26rem` (revue transverse de S3). La règle de
-   compte est celle que `style.css` applique depuis S1 : un REMPLISSAGE DE
-   FENÊTRE n'est pas une valeur hors échelle — `style.css` ne compte ni son
-   `100vw` ni son `100vh` dans ses trois, et `100dvh` est de même nature.
-   L'étiquette « hors échelle » posée deux fois plus bas est donc plus LARGE
-   que le compte : elle dit « ne vient d'aucun cran », ce qui est vrai des
-   deux ; le compte, lui, en retient une. Total à la fin de S3 : SIX, énuméré
-   dans l'en-tête de `bureau/bureau.css` (`shell.css` à l'époque de cet
-   énoncé — le fichier a été renommé le 31 août 2026, pas déplacé de contenu).
-   ⚠️ CE BLOC EST UN ÉNONCÉ DATÉ, ET IL RESTE VRAI COMME HISTOIRE : le barrer
-   le rendrait faux. Annotation datée du sous-bloc S4, tâche 8 : `26rem` est
-   devenue `--contenant-carte` et le total est tombé à ZÉRO ; il ne reste
-   sous cette étiquette que `100dvh`, dont ce bloc dit déjà qu'elle ne compte
-   pas. ⚠️ Et « posée deux fois plus bas » ne vaut plus que POUR UNE FOIS —
-   celle de `100dvh` : l'autre est partie avec le littéral qu'elle
-   étiquetait.
+   ⚠️ ONLY ONE OF THE TWO COUNTS IN THE CLAUSE "no length outside the scale"
+   OF §8 OF THE SPEC, AND IT IS `26rem` (S3 cross review). The counting
+   rule is the one `style.css` has applied since S1: a WINDOW
+   FILL is not an out-of-scale value — `style.css` counts neither its
+   `100vw` nor its `100vh` among its three, and `100dvh` is of the same nature.
+   The "outside the scale" label set twice further down is therefore WIDER
+   than the count: it says "comes from no step", which is true of
+   both; the count, for its part, keeps one. Total at the end of S3: SIX, enumerated
+   in the header of `bureau/bureau.css` (`shell.css` at the time of this
+   statement — the file was renamed on August 31st, 2026, no content moved).
+   ⚠️ THIS BLOCK IS A DATED STATEMENT, AND IT STAYS TRUE AS HISTORY: striking it out
+   would make it wrong. Dated annotation from sub-block S4, task 8: `26rem`
+   became `--contenant-carte` and the total fell to ZERO; all that remains
+   under that label is `100dvh`, which this block already says does not count.
+   ⚠️ And "set twice further down" now only holds ONCE —
+   that of `100dvh`: the other one left with the literal it
+   labelled.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ⚠️ LA CARTE EST CENTRÉE, ET SA LARGEUR EST UN JUGEMENT HUMAIN : aucune
-   commande ne dira qu'elle est bonne. Seules sa gouttière et ses marges
-   viennent de l'échelle. */
+/* ⚠️ THE CARD IS CENTRED, AND ITS WIDTH IS A HUMAN JUDGEMENT: no
+   command will say it is right. Only its gutter and its margins
+   come from the scale. */
 .connexion {
     display: grid;
     place-items: center;
     box-sizing: border-box;
-    /* Mesure de CONTENANT, hors échelle — voir l'en-tête. */
+    /* CONTAINER measure, outside the scale — see the header. */
     min-block-size: 100dvh;
     padding: var(--e-5);
 }
@@ -80,12 +80,12 @@
 .connexion__titre {
     margin-block: 0 var(--e-5);
     color: var(--texte-fort);
-    /* `--t-3xl` : le titre de l'ÉCRAN DE CONNEXION (spec §4.4).
-       ⚠️ La liste d'attente attribuait ce cran au « titre du hub », que le
-       sous-projet ⑥ ne livre PAS et dont la spec §6 exclut explicitement le
-       découpage. Les deux crans y étaient INTERVERTIS par rapport à la spec ;
-       la spec l'emporte, et l'annotation a été corrigée dans le commit qui
-       retire l'entrée. */
+    /* `--t-3xl`: the title of the SIGN-IN SCREEN (spec §4.4).
+       ⚠️ The waiting list attributed this step to the "title of the hub", which
+       sub-project ⑥ does NOT deliver and whose breakdown spec §6 explicitly
+       excludes. The two steps were SWAPPED there relative to the spec;
+       the spec wins, and the annotation was corrected in the commit that
+       removes the entry. */
     font-size: var(--t-3xl);
     line-height: var(--lh-serre);
 }
@@ -95,15 +95,15 @@
     gap: var(--e-4);
 }
 
-/* ⚠️ `--lh-large` EST APPLIQUÉ ICI, ET LE CHOIX SE JUSTIFIE PLUTÔT QU'IL NE
-   VIDE UNE LIGNE DE LISTE. Ce bandeau porte les plus longues proses du
-   produit : le motif d'un refus, l'état d'une VM et l'aveu que la plateforme
-   ne sait pas la redémarrer, ou une cause réseau citée en entier — des phrases
-   qui courent sur plusieurs lignes, là où les bandeaux de la page-shell tiennent
-   sur une. `.message` pose `--lh-normal` pour le cas court ; ce cran-ci est
-   celui des paragraphes longs, ce que l'annotation de la liste d'attente lui
-   assignait. Fabriquer un paragraphe pour consommer le token aurait été vider
-   un contrôle pour en verdir un autre ; celui-ci existait déjà. */
+/* ⚠️ `--lh-large` IS APPLIED HERE, AND THE CHOICE IS JUSTIFIED RATHER THAN
+   EMPTYING A LIST LINE. This banner carries the longest prose of the
+   product: the reason for a refusal, the state of a VM and the admission that the platform
+   cannot restart it, or a network cause quoted in full — sentences
+   that run over several lines, where the banners of the shell page fit
+   on one. `.message` sets `--lh-normal` for the short case; this step is
+   that of long paragraphs, which the waiting list's annotation
+   assigned to it. Making up a paragraph to consume the token would have been emptying
+   one check to turn another green; this one already existed. */
 .connexion__message {
     margin-block-start: var(--e-4);
     line-height: var(--lh-large);
@@ -113,11 +113,11 @@
     margin-block-start: var(--e-5);
 }
 
-/* Le groupe des trois boutons de thème. Même forme que `.bureau__actions` de
-   `bureau/bureau.css` (`shell.css` avant le 31 août 2026) — mais la règle
-   N'EST PAS IDENTIQUE (celle-ci porte en plus
-   l'alignement centré propre à une carte), donc elle ne remonte pas dans les
-   primitives : le §6.3 ne fait remonter que ce qui est écrit PAREIL. */
+/* The group of the three theme buttons. Same shape as `.bureau__actions` of
+   `bureau/bureau.css` (`shell.css` before August 31st, 2026) — but the rule
+   IS NOT IDENTICAL (this one additionally carries
+   the centred alignment specific to a card), so it does not move up into the
+   primitives: §6.3 only moves up what is written THE SAME. */
 .connexion__actions {
     display: flex;
     flex-wrap: wrap;

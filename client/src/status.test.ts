@@ -1,7 +1,7 @@
-// Tests du bandeau de statut : priorité d'un message terminal sur les
-// messages ordinaires qui le suivraient.
+// Tests of the status banner: priority of a terminal message over the
+// ordinary messages that would follow it.
 //
-// Comme `audio.test.ts`, testé par injection, sans DOM.
+// Like `audio.test.ts`, tested by injection, without a DOM.
 
 import { describe, expect, it } from 'vitest';
 
@@ -33,9 +33,9 @@ describe('creerStatut', () => {
     });
 
     it('an ordinary message arriving after a terminal one does not overwrite it', () => {
-        // Le cas réel qui a motivé ce module : `connectionstatechange` sur
-        // `disconnected` se déclenche juste après `session-end`, et écrivait
-        // par-dessus « session terminée : … » avant ce correctif.
+        // The real case that motivated this module: `connectionstatechange` on
+        // `disconnected` fires right after `session-end`, and wrote
+        // over "session ended: …" before this fix.
         const element = faireCible();
         const statut = createStatus(element);
 
@@ -77,10 +77,10 @@ describe('creerStatut', () => {
     });
 
     it('masquer() does not erase a displayed persistent message', () => {
-        // Cas réel : une alerte réseau (`link`, `alerte: true`) affichée
-        // pendant la fenêtre de tir du minuteur anonyme d'un bandeau voisin
-        // (« prêt », « manette détectée »…) ne doit pas disparaître quand ce
-        // minuteur se déclenche — ce module ne sait rien de son existence.
+        // Real case: a network alert (`link`, `alerte: true`) displayed
+        // during the firing window of the anonymous timer of a neighbouring banner
+        // ("ready", "gamepad detected"…) must not disappear when that
+        // timer fires — this module knows nothing of its existence.
         const element = faireCible();
         const statut = createStatus(element);
 
@@ -94,10 +94,10 @@ describe('creerStatut', () => {
     });
 
     it('an ordinary message following a persistent one lifts the persistence: masquer() applies again', () => {
-        // Symétrique du cas ci-dessus : un retour à un état normal (par
-        // exemple `link` avec `alerte: false` après une amélioration du
-        // réseau) doit pouvoir se masquer normalement, sans que l'ancienne
-        // alerte ne le bloque indéfiniment.
+        // Symmetric to the case above: a return to a normal state (for
+        // example `link` with `alerte: false` after the network
+        // improves) must be able to hide normally, without the old
+        // alert blocking it indefinitely.
         const element = faireCible();
         const statut = createStatus(element);
 
@@ -111,10 +111,10 @@ describe('creerStatut', () => {
     });
 
     it('expirer() lifts the persistence of a persistent message and hides it', () => {
-        // Cas réel qui a motivé cette méthode : le réveil d'une fenêtre
-        // endormie doit effacer le bandeau « image figée : … » affiché avec
-        // `persistant: true` à l'endormissement — `masquer()` seul ne le
-        // peut pas, par construction.
+        // The real case that motivated this method: waking up an
+        // asleep window must clear the "image frozen: …" banner displayed with
+        // `persistant: true` when it fell asleep — `masquer()` alone cannot
+        // do it, by construction.
         const element = faireCible();
         const statut = createStatus(element);
 
@@ -125,8 +125,8 @@ describe('creerStatut', () => {
     });
 
     it('expirer() does not erase a terminal message: the terminal guard is not weakened', () => {
-        // Même exigence que pour masquer() : `expirer()` ne lève QUE la
-        // persistance, jamais la protection terminale.
+        // Same requirement as for masquer(): `expirer()` ONLY lifts
+        // persistence, never the terminal protection.
         const element = faireCible();
         const statut = createStatus(element);
 
@@ -138,9 +138,9 @@ describe('creerStatut', () => {
     });
 
     it('a terminal message keeps priority over a persistent one: the terminal guard is not weakened', () => {
-        // Ce test compte particulièrement : `persistant` est un drapeau ajouté
-        // à côté de `terminal`, exactement le genre d'endroit où l'on
-        // affaiblit une garde existante sans le voir.
+        // This test matters particularly: `persistant` is a flag added
+        // next to `terminal`, exactly the kind of place where one
+        // weakens an existing guard without seeing it.
         const element = faireCible();
         const statut = createStatus(element);
 

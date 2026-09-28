@@ -19,8 +19,8 @@ describe('classer', () => {
             .toBe('ouverte-mais-perdue');
     });
 
-    // La garde qui empêche de conclure à tort : un « succès » obtenu dans les 5 s
-    // suivant un clic ne prouve rien, l'activation transitoire pouvait encore courir.
+    // The guard that prevents a wrong conclusion: a "success" obtained within the 5 s
+    // following a click proves nothing, transient activation could still be running.
     it('refuses to conclude when the user gesture is too recent', () => {
         expect(classer({ poigneeNulle: false, vivante: true, msDepuisGeste: 1200 }))
             .toBe('non-concluant');

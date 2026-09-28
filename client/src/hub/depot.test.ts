@@ -22,8 +22,8 @@ describe('resumer', () => {
         };
         const r = resumer(FILE, issue);
         expect(r.ton).toBe('danger');
-        // 🔴 LE MOTIF DOIT APPARAÎTRE MOT POUR MOT : le traduire en ferait une
-        //    copie qu'aucun type ne confronte à sa source.
+        // 🔴 THE REASON MUST APPEAR WORD FOR WORD: translating it would make it a
+        //    copy no type confronts with its source.
         expect(r.texte).toContain('empreinte-divergente');
         expect(r.id).toBe('t-2');
     });
@@ -42,10 +42,10 @@ describe('resumer', () => {
 });
 
 describe('deposer — the convergence point', () => {
-    /// 🔴 CE TEST EST CELUI QUI REND LA ROUGE DU CRITÈRE ② HONNÊTE : il éprouve
-    ///    que `deposer` mène RÉELLEMENT au téléversement, et pas seulement
-    ///    qu'il rend un objet. Les deux chemins du hub — glisser-déposer et
-    ///    `launchQueue` — appellent CETTE fonction, et aucune autre.
+    /// 🔴 THIS TEST IS THE ONE THAT MAKES THE RED OF CRITERION ② HONEST: it exercises
+    ///    that `deposer` REALLY leads to the upload, and not only
+    ///    that it returns an object. Both paths of the hub — drag and drop and
+    ///    `launchQueue` — call THIS function, and no other.
     it('takes a file all the way to sealing, and reports it', async () => {
         const vus: string[] = [];
         const deps: DepsTeleversement = {
@@ -55,11 +55,11 @@ describe('deposer — the convergence point', () => {
             fetch: async (url, init) => {
                 vus.push(`${init?.method ?? 'GET'} ${url.replace('https://x', '')}`);
                 if (url.endsWith('/televersement')) {
-                    // ⚠️ `taille_tranche` EST UN CONTRAT, pas un ornement :
-                    //    `televerser` refuse en `etat-illisible` sans lui. Un
-                    //    premier jet de ce factice l'omettait, et le test a
-                    //    rougi — il éprouve donc bien la séquence RÉELLE.
-                    //    À 2 octets par tranche, un fichier de 3 en fait DEUX.
+                    // ⚠️ `taille_tranche` IS A CONTRACT, not an ornament:
+                    //    `televerser` refuses with `etat-illisible` without it. A
+                    //    first draft of this fake omitted it, and the test went
+                    //    red — so it does exercise the REAL sequence.
+                    //    At 2 bytes per chunk, a file of 3 makes TWO.
                     return {
                         ok: true,
                         status: 201,
@@ -71,7 +71,7 @@ describe('deposer — the convergence point', () => {
         };
         const resume = await deposer(FILE, deps);
         expect(resume.ton).toBe('succes');
-        // La séquence RÉELLE : création, une tranche, scellement.
+        // The REAL sequence: creation, one chunk, sealing.
         expect(vus[0]).toBe('POST /televersement');
         expect(vus.filter((v) => v.startsWith('PUT /televersement/t-9/tranche/'))).toEqual([
             'PUT /televersement/t-9/tranche/0',

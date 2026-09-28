@@ -12,8 +12,8 @@ import {
     type ReponseHttp,
 } from './catalogue';
 
-/// Un `fetch` factice qui MÉMORISE ce qu'on lui demande — c'est ce qui permet
-/// d'éprouver l'URL et l'en-tête, et pas seulement le retour.
+/// A fake `fetch` that MEMORISES what it is asked — that is what makes it possible
+/// to exercise the URL and the header, and not only the return value.
 function faux(reponses: Record<string, Partial<ReponseHttp>>): {
     fetch: Fetch;
     appels: { url: string; init?: InitHttp }[];
@@ -33,13 +33,13 @@ function faux(reponses: Record<string, Partial<ReponseHttp>>): {
     return { fetch, appels };
 }
 
-/// 🔴 AUCUNE COULEUR N'EST ÉCRITE DANS CE FICHIER, ET §7.2 L'EXIGE : son
-/// balayage couvre les `.ts` autant que les `.css`, et il a relevé deux
-/// littérales que ce test portait. **Élargir son exclusion aurait satisfait le
-/// contrôle en le VIDANT** ; la valeur est donc LUE sur `tokens/couleurs.css`
-/// (`tokens.css` avant l'extraction de la tâche 6, 25 août 2026), comme
-/// dans `manifeste.test.ts` — il n'existe qu'une source de vérité pour une
-/// couleur.
+/// 🔴 NO COLOUR IS WRITTEN IN THIS FILE, AND §7.2 REQUIRES IT: its
+/// scan covers the `.ts` as much as the `.css`, and it reported two
+/// literals this test carried. **Widening its exclusion would have satisfied the
+/// check by EMPTYING it**; the value is therefore READ from `tokens/couleurs.css`
+/// (`tokens.css` before the extraction of task 6, August 25th, 2026), as
+/// in `manifeste.test.ts` — there is only one source of truth for a
+/// colour.
 const ACCENT = (() => {
     const racine = tokensCss.slice(tokensCss.indexOf(':root'));
     const trouve = /--accent:\s*([^;]+);/.exec(racine);
@@ -47,10 +47,10 @@ const ACCENT = (() => {
     return trouve[1].trim();
 })();
 
-/// L'URL SIGNÉE telle que la plateforme la frappe. ⚠️ ELLE EST ÉCRITE ICI EN
-/// DUR, ET C'EST CORRECT : `client/` ne peut pas importer `plateforme/`, et ce
-/// module ne la FABRIQUE pas — il la RELAIE. Ce qu'on éprouve est justement
-/// qu'il la relaie sans y toucher.
+/// The SIGNED URL as the platform mints it. ⚠️ IT IS WRITTEN HERE
+/// HARDCODED, AND THAT IS CORRECT: `client/` cannot import `plateforme/`, and this
+/// module does not MAKE it — it RELAYS it. What is exercised is precisely
+/// that it relays it without touching it.
 const URL_SIGNEE = '/application/u-1/icone?e=abc123&v=vm-1&x=1787136780000&s=une-signature';
 
 const APP: ApplicationListee = {
@@ -89,22 +89,22 @@ describe('listerApplications', () => {
         if (issue.etat !== 'ok') return;
         expect(issue.value.map((a) => a.nom)).toEqual(['Bloc-notes', 'Paint']);
         expect(issue.value[1].icone).toBeNull();
-        // 🔴 L'URL SIGNÉE TRAVERSE, ET UNE ENTRÉE SANS ELLE REND `null` —
-        //    jamais `undefined`, jamais une URL fabriquée ici. Le hub ne doit
-        //    pas avoir à distinguer « pas d'icône » de « champ absent », et il
-        //    ne doit surtout pas se croire capable d'en écrire une.
+        // 🔴 THE SIGNED URL GOES THROUGH, AND AN ENTRY WITHOUT IT RETURNS `null` —
+        //    never `undefined`, never a URL made up here. The hub must not
+        //    have to tell "no icon" from "absent field", and above all it
+        //    must not believe itself able to write one.
         expect(issue.value[0].icone_url).toBe(URL_SIGNEE);
         expect(issue.value[1].icone_url).toBeNull();
         expect(issue.value[0].accent).toBe(ACCENT);
         expect(issue.value[0].associations).toEqual(['.txt', '.log']);
-        // ⚠️ UNE ENTRÉE SANS LES DEUX CHAMPS RETOMBE SUR DES VALEURS NEUTRES,
-        //    et non sur `undefined` : le hub ne doit pas avoir à distinguer
-        //    « aucune association » de « champ absent ».
+        // ⚠️ AN ENTRY WITHOUT BOTH FIELDS FALLS BACK TO NEUTRAL VALUES,
+        //    and not to `undefined`: the hub must not have to tell
+        //    "no association" from "absent field".
         expect(issue.value[1].accent).toBeNull();
         expect(issue.value[1].associations).toEqual([]);
-        // 🔴 L'EN-TÊTE EST LA MOITIÉ QUI COMPTE : toute la voie V1 repose sur
-        //    le fait que la page lit AUTHENTIFIÉE ce que le navigateur ne
-        //    saurait pas aller chercher lui-même.
+        // 🔴 THE HEADER IS THE HALF THAT MATTERS: the whole V1 route rests on
+        //    the fact that the page reads AUTHENTICATED what the browser could not
+        //    fetch by itself.
         expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
     });
 
@@ -162,10 +162,10 @@ describe('listerApplications', () => {
 
 describe('lireIcone', () => {
     it("🔴 follows the SIGNED URL, and sends NO header", async () => {
-        // 🔴 C'EST LA PROPRIÉTÉ QUE LE LOT DU 30 AOÛT 2026 LIVRE : la même URL
-        // se pose dans un `<img src>`, qui ne peut rien porter d'autre. Un
-        // `authorization` envoyé quand même ferait vivre une seconde voie
-        // d'autorisation que la plateforme a retirée.
+        // 🔴 IT IS THE PROPERTY THE BATCH OF AUGUST 30TH, 2026 DELIVERS: the same URL
+        // goes into an `<img src>`, which can carry nothing else. An
+        // `authorization` sent anyway would keep alive a second authorisation
+        // route the platform removed.
         const octets = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
         const { fetch, appels } = faux({
             [`https://x${URL_SIGNEE}`]: {
@@ -176,8 +176,8 @@ describe('lireIcone', () => {
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
         expect(Array.from(issue.value)).toEqual([0x89, 0x50, 0x4e, 0x47]);
-        // 🔴 L'URL EST RELAYÉE TELLE QUELLE, jamais reconstruite : le client
-        // n'a pas la clé, et une URL qu'il fabriquerait serait refusée.
+        // 🔴 THE URL IS RELAYED AS IS, never rebuilt: the client
+        // does not have the key, and a URL it made up would be refused.
         expect(appels[0].url).toBe(`https://x${URL_SIGNEE}`);
         expect(appels[0].init?.headers).toBeUndefined();
     });
@@ -189,9 +189,9 @@ describe('lireIcone', () => {
             { base: 'https://x', jeton: 'J', fetch },
         );
         expect(issue.etat).toBe('refus');
-        // 🔴 ZÉRO APPEL : le contrôle qui vaut n'est pas le refus, c'est
-        //    l'ABSENCE de requête. Un refus rendu APRÈS un aller-retour
-        //    inutile passerait la première assertion et pas celle-ci.
+        // 🔴 ZERO CALLS: the check that counts is not the refusal, it is the
+        //    ABSENCE of a request. A refusal returned AFTER a useless
+        //    round trip would pass the first assertion and not this one.
         expect(appels).toHaveLength(0);
     });
 });
@@ -216,8 +216,8 @@ describe('lancerApplication', () => {
 
 describe('shape check', () => {
     it('the REAL fetch satisfies the Fetch type', () => {
-        // Aucune requête n'est émise : c'est une assertion de TYPAGE, jouée à
-        // la compilation. Le même geste que `televersement.test.ts`.
+        // No request is emitted: it is a TYPING assertion, played at
+        // compile time. The same gesture as `televersement.test.ts`.
         const _: Fetch = globalThis.fetch as unknown as Fetch;
         expect(typeof _).toBe('function');
     });
@@ -240,9 +240,9 @@ describe('listerVms', () => {
     });
 
     it('returns an EMPTY list rather than a refusal when no VM is assigned', async () => {
-        // ⚠️ AUCUNE VM N'EST UN ÉTAT NORMAL, pas une panne : `routes-vm.ts` rend
-        //    200 avec un tableau vide. Le confondre avec un refus ferait dire au
-        //    hub qu'il est cassé là où il n'a rien à montrer.
+        // ⚠️ NO VM IS A NORMAL STATE, not a failure: `routes-vm.ts` returns
+        //    200 with an empty array. Confusing it with a refusal would make the
+        //    hub say it is broken where it has nothing to show.
         const { fetch } = faux({ 'https://x/vm': { json: async () => ({ vms: [] }) } });
         const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
         expect(issue).toEqual({ etat: 'ok', value: [] });
@@ -265,9 +265,9 @@ describe('listerVms', () => {
 
 describe('the two fields of slice F', () => {
     it("DISCARDS an `associations` entry that is not a string", async () => {
-        // ⚠️ Une entrée non textuelle atterrirait dans un `accept` de
-        //    manifeste, où le navigateur la rejetterait sans qu'on sache d'où
-        //    elle vient.
+        // ⚠️ A non-text entry would land in a manifest `accept`,
+        //    where the browser would reject it without anyone knowing where
+        //    it came from.
         const { fetch } = faux({
             'https://x/applications?vm=v': {
                 json: async () => ({

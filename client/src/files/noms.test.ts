@@ -10,18 +10,18 @@ import {
 } from './noms';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DEUX FAUX SYSTÈMES DE FICHIERS, ET C'EST LE CŒUR DE CE FICHIER
+   TWO FAKE FILE SYSTEMS, AND THAT IS THE HEART OF THIS FILE
 
-   🔴 L'UN EST SENSIBLE À LA CASSE — comme OPFS et comme Linux, donc comme
-   l'INSTRUMENT de recette. L'autre est INSENSIBLE — comme Windows et comme
-   macOS par défaut, donc comme le POSTE LOCAL RÉEL.
+   🔴 ONE IS CASE-SENSITIVE — like OPFS and like Linux, hence like
+   the acceptance INSTRUMENT. The other is INSENSITIVE — like Windows and like
+   macOS by default, hence like the REAL LOCAL WORKSTATION.
 
-   **Le même canonicaliseur doit rendre la même réponse sur les deux**, et
-   c'est la seule façon d'éprouver sur l'hôte une moitié de phénomène que le
-   montage de recette ne peut pas produire (voir l'en-tête de `noms.ts`).
+   **The same canonicaliser must give the same answer on both**, and
+   it is the only way to exercise on the host one half of a phenomenon the
+   acceptance setup cannot produce (see the header of `noms.ts`).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Un répertoire dont `values()` rend les noms donnés. Rien d'autre. */
+/** A directory whose `values()` returns the given names. Nothing else. */
 function parentWith(noms: string[]): PoigneeRepertoire {
     return {
         kind: 'directory',
@@ -43,11 +43,11 @@ function parentWith(noms: string[]): PoigneeRepertoire {
 }
 
 /**
- * Un répertoire INSENSIBLE à la casse : `getFileHandle('CASSE.TXT')` y rend
- * `Casse.txt`, exactement comme Windows.
+ * A case-INSENSITIVE directory: `getFileHandle('CASSE.TXT')` returns
+ * `Casse.txt` there, exactly like Windows.
  *
- * 🔴 C'EST LUI QUI REPRODUIT LA MOITIÉ NAVIGATEUR DU DÉFAUT DE F1, celle qui
- * n'a JAMAIS été observée parce que l'instrument de recette est OPFS.
+ * 🔴 IT IS THE ONE THAT REPRODUCES THE BROWSER HALF OF THE F1 DEFECT, the one that
+ * was NEVER observed because the acceptance instrument is OPFS.
  */
 function parentInsensible(noms: string[]): PoigneeRepertoire & {
     ouvertures: string[];
@@ -74,7 +74,7 @@ describe('folding', () => {
     });
 
     it('🔵 folds the UNICODE NORMALISATION, which F2 declared NOT HANDLED', () => {
-        // `é` en un seul point de code (NFC) contre `e` + accent combinant (NFD).
+        // `é` as a single code point (NFC) versus `e` + combining accent (NFD).
         const nfc = 'été.txt';
         const nfd = 'été.txt';
         expect(nfc).not.toBe(nfd);
@@ -88,12 +88,12 @@ describe('folding', () => {
 
 describe('le canonicaliseur', () => {
     it('🔴 on an INSENSITIVE fake, `casse.txt` does NOT return `Casse.txt` without canonicalisation', async () => {
-        // C'EST LE ROUGE LE PLUS IMPORTANT DE F3, et il se lit dans les deux
-        // sens sur la MÊME assertion :
-        //   - le faux insensible, interrogé DIRECTEMENT, rend bien le mauvais
-        //     fichier — c'est la moitié navigateur du défaut de F1, reproduite
-        //     sur l'hôte ;
-        //   - le canonicaliseur, lui, rend le nom STOCKÉ.
+        // IT IS THE MOST IMPORTANT RED OF F3, and it reads both
+        // ways on the SAME assertion:
+        //   - the insensitive fake, queried DIRECTLY, does return the wrong
+        //     file — it is the browser half of the F1 defect, reproduced
+        //     on the host;
+        //   - the canonicaliser, for its part, returns the STORED name.
         const parent = parentInsensible(['Casse.txt']);
         await parent.getFileHandle('casse.txt');
         expect(parent.ouvertures).toEqual(['Casse.txt']);
@@ -103,33 +103,33 @@ describe('le canonicaliseur', () => {
     });
 
     it('🔴 on a SENSITIVE fake, `GROS.BIN` returns `gros.bin` under its STORED name', async () => {
-        // C'est l'incohérence que F1 relève : dans la MÊME exécution,
-        // `casse.txt` passait (NTFS) et `GROS.BIN` échouait (OPFS). Elle
-        // disparaît.
+        // It is the inconsistency F1 reports: in the SAME run,
+        // `casse.txt` passed (NTFS) and `GROS.BIN` failed (OPFS). It
+        // disappears.
         const r = await canoniser(parentWith(['gros.bin', 'autre.txt']), 'GROS.BIN');
         expect(r).toEqual({ sorte: 'trouve', nom: 'gros.bin' });
     });
 
     it('🔴 returns the STORED name, never the REQUESTED name', async () => {
-        // Rouge : rendre `demande`. Le substitut serait créé sous un nom qui
-        // n'existe pas côté poste local, et une écriture ultérieure le créerait
-        // POUR DE BON — un fichier fantôme, à côté du vrai.
+        // Red: returning `demande`. The substitute would be created under a name that
+        // does not exist on the local workstation side, and a later write would create it
+        // FOR REAL — a ghost file, next to the real one.
         const r = await canoniser(parentWith(['Rapport Final.PDF']), 'rapport final.pdf');
         expect(r).toEqual({ sorte: 'trouve', nom: 'Rapport Final.PDF' });
         expect(r).not.toEqual({ sorte: 'trouve', nom: 'rapport final.pdf' });
     });
 
     it('🔴 two homonyms return `ambigu`, and NOTHING else', async () => {
-        // Rouge : choisir le premier. On écraserait l'un des deux, et le choix
-        // dépendrait de l'ordre d'énumération — c'est-à-dire du hasard.
+        // Red: picking the first. One of the two would be overwritten, and the choice
+        // would depend on the enumeration order — that is, on chance.
         const r = await canoniser(parentWith(['note.txt', 'Note.txt']), 'NOTE.TXT');
         expect(r).toEqual({ sorte: 'ambigu', noms: ['note.txt', 'Note.txt'] });
     });
 
     it('🔴 an EXACT name short-circuits the ambiguity', async () => {
-        // Rouge : ne pas privilégier l'exact. `note.txt` deviendrait ambigu sur
-        // un poste qui porte AUSSI `Note.txt`, alors qu'il est parfaitement
-        // désigné — et on refuserait une lecture légitime.
+        // Red: not favouring the exact match. `note.txt` would become ambiguous on
+        // a workstation that ALSO carries `Note.txt`, even though it is perfectly
+        // designated — and a legitimate read would be refused.
         const r = await canoniser(parentWith(['note.txt', 'Note.txt']), 'note.txt');
         expect(r).toEqual({ sorte: 'trouve', nom: 'note.txt' });
     });
@@ -139,9 +139,9 @@ describe('le canonicaliseur', () => {
     });
 
     it('🔵 resolves a UNICODE NORMALISATION divergence', async () => {
-        // macOS stocke en NFD, Windows en NFC. Sans le pliage, la garde de F2
-        // créerait un DOUBLON au lieu d'écraser — moins grave que la perte,
-        // mais faux, et F2 le déclare tel quel.
+        // macOS stores in NFD, Windows in NFC. Without folding, F2's guard
+        // would create a DUPLICATE instead of overwriting — less serious than a loss,
+        // but wrong, and F2 declares it as such.
         const stocke = 'été.txt'; // NFD
         const r = await canoniser(parentWith([stocke]), 'été.txt'); // NFC
         expect(r).toEqual({ sorte: 'trouve', nom: stocke });
@@ -158,8 +158,8 @@ describe('canoniserOuLever', () => {
     });
 
     it('🔴 tells the TWO ways of being missing apart', async () => {
-        // ProjFS les distingue (`ERROR_FILE_NOT_FOUND` contre
-        // `ERROR_PATH_NOT_FOUND`), et l'Explorateur n'en dit pas la même chose.
+        // ProjFS tells them apart (`ERROR_FILE_NOT_FOUND` versus
+        // `ERROR_PATH_NOT_FOUND`), and Explorer does not say the same thing about them.
         await expect(canoniserOuLever(parentWith([]), 'x', 'introuvable')).rejects.toMatchObject({
             code: 'introuvable',
         });
@@ -173,14 +173,14 @@ describe('canoniserOuLever', () => {
             .catch((e: unknown) => e as FilesError)
             .then((e) => e as FilesError)
             .catch(() => undefined);
-        // Le nom demandé ne se replie sur rien : c'est `absent`, pas `ambigu`.
+        // The requested name folds onto nothing: it is `absent`, not `ambigu`.
         expect(error?.code).toBe('introuvable');
 
         const ambigu = await canoniserOuLever(parentWith(['a', 'A']), 'A', 'introuvable').then(
             (n) => n,
             (e: unknown) => e as FilesError,
         );
-        // 'A' est EXACT : la règle 1 prime, et il n'y a pas d'ambiguïté.
+        // 'A' is EXACT: rule 1 wins, and there is no ambiguity.
         expect(ambigu).toBe('A');
 
         const vrai = await canoniserOuLever(parentWith(['a', 'A']), 'à', 'introuvable').then(
@@ -193,9 +193,9 @@ describe('canoniserOuLever', () => {
 
 describe('fault injection', () => {
     it('🔴 is INERT when it is not armed', async () => {
-        // Rouge : la lire depuis le module. Un utilisateur qui créerait un
-        // dossier `.faute-disque-plein` casserait son propre pont — et le
-        // module cesserait d'être testable, puisqu'il lirait `location`.
+        // Red: reading it from the module. A user who created a
+        // `.faute-disque-plein` folder would break their own bridge — and the
+        // module would stop being testable, since it would read `location`.
         await expect(injecterFaute(['.faute-disque-plein', 'x'], false)).resolves.toBeUndefined();
     });
 
@@ -209,17 +209,17 @@ describe('fault injection', () => {
     });
 
     it('🔴 looks ONLY at the first component', async () => {
-        // Un balayage de tous les composants ferait qu'un chemin traversant un
-        // dossier ainsi nommé — même en profondeur — échouerait, ce qui rendrait
-        // l'injection impossible à désarmer par le geste.
+        // Scanning all components would make a path crossing a folder
+        // named that way — even deep down — fail, which would make
+        // the injection impossible to disarm by the gesture.
         await expect(
             injecterFaute(['normal', '.faute-acces-refuse'], true),
         ).resolves.toBeUndefined();
     });
 
     it('🔴 `.faute-silence` NEVER RESOLVES', async () => {
-        // C'est le seul moyen d'exercer `DelaiDepasse` : une réponse, quelle
-        // qu'elle soit, empêcherait le pont d'expirer.
+        // It is the only way to exercise `DelaiDepasse`: an answer, whatever
+        // it is, would keep the bridge from timing out.
         let resolue = false;
         void injecterFaute([`${PREFIXE_FAUTE}${FAUTE_SILENCE}`], true).then(() => {
             resolue = true;
@@ -229,9 +229,9 @@ describe('fault injection', () => {
     });
 
     it('🔴 an UNKNOWN suffix is SAID, never swallowed', async () => {
-        // Sans cela, une coquille de recette produirait un « introuvable »
-        // ordinaire, et l'opérateur croirait avoir exercé un code qu'il n'a pas
-        // exercé.
+        // Without it, an acceptance typo would produce an ordinary "introuvable",
+        // and the operator would think they had exercised code they had not
+        // exercised.
         await expect(injecterFaute(['.faute-typo'], true)).rejects.toMatchObject({
             code: 'interne',
         });

@@ -26,8 +26,8 @@ describe('texteLien', () => {
         const t = texteLien(lien({ quality: 'degradee', width: 1280, height: 720 }));
         expect(t.alerte).toBe(true);
         expect(t.resume).toContain('1280×720');
-        // Le texte doit nommer la CAUSE, pas seulement l'effet : un
-        // utilisateur qui lit « 1280×720 » sans explication croit à un bug.
+        // The text must name the CAUSE, not only the effect: a
+        // user who reads "1280×720" without explanation thinks it is a bug.
         expect(t.resume.toLowerCase()).toContain('network');
     });
 
@@ -39,7 +39,7 @@ describe('texteLien', () => {
 
     it('tells an unavailable adaptation from a degraded link', () => {
         const t = texteLien(lien({ adaptation: 'indisponible' }));
-        // Pas une alerte : le lien peut très bien être excellent.
+        // Not an alert: the link may very well be excellent.
         expect(t.alerte).toBe(false);
         expect(t.resume.toLowerCase()).toContain('adaptation unavailable');
     });

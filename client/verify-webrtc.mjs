@@ -1,32 +1,32 @@
 #!/usr/bin/env node
-// Harnais de vérification de bout en bout : pilote Chrome en mode sans
-// interface via le protocole DevTools (CDP) et lit les statistiques réelles
-// de la connexion WebRTC (`RTCPeerConnection.getStats()`), telles que le
-// navigateur les calcule — pas une auto-évaluation du client sous test.
+// End-to-end verification harness: drives Chrome in headless
+// mode through the DevTools protocol (CDP) and reads the real statistics
+// of the WebRTC connection (`RTCPeerConnection.getStats()`), as the
+// browser computes them — not a self-assessment of the client under test.
 //
-// Pourquoi CDP en WebSocket brut plutôt que Puppeteer/Playwright : aucune
-// dépendance supplémentaire à installer, Node 24 fournit `WebSocket` et
-// `fetch` nativement, ce qui suffit à piloter Chrome par le protocole
-// documenté (https://chromedevtools.github.io/devtools-protocol/).
+// Why CDP over a raw WebSocket rather than Puppeteer/Playwright: no
+// extra dependency to install, Node 24 provides `WebSocket` and
+// `fetch` natively, which is enough to drive Chrome through the
+// documented protocol (https://chromedevtools.github.io/devtools-protocol/).
 //
 // Usage :
 //   node client/verify-webrtc.mjs [url] [--duration=8000]
 //   EXPECT_AUDIO=1 node client/verify-webrtc.mjs [url] [--duration=8000]
 //
-// ⚠️ Depuis P2, il faut AUSSI `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE` et, hors
-// http://127.0.0.1:8080, `PLATEFORME_URL` : sans jeton, un pair `client` est
-// refusé. Le pourquoi et le comment sont dans `recette/jeton-recette.mjs`.
+// ⚠️ Since P2, `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE` and, outside
+// http://127.0.0.1:8080, `PLATEFORME_URL` are ALSO required: without a token, a `client` peer is
+// refused. The why and the how are in `recette/jeton-recette.mjs`.
 
 
 //
-// Sortie : deux relevés de `getStats()` espacés de `duration` ms, pour
-// prouver que `framesDecoded`/`framesReceived` (vidéo) et
-// `bytesReceived`/`packetsReceived` (audio, s'il y en a) augmentent — et pas
-// seulement non nuls. Code de sortie 0 si la preuve vidéo est faite (et,
-// avec `EXPECT_AUDIO=1`, que l'audio est également vu), 1 sinon — avec le
-// diagnostic (état ICE, état de connexion, erreurs de page) dans les deux cas.
-// Sans `EXPECT_AUDIO=1`, une session sans piste audio active (recette vidéo
-// pure) ne fait jamais échouer le harnais.
+// Output: two `getStats()` readings `duration` ms apart, to
+// prove that `framesDecoded`/`framesReceived` (video) and
+// `bytesReceived`/`packetsReceived` (audio, if any) increase — and not
+// merely that they are non-zero. Exit code 0 if the video proof is made (and,
+// with `EXPECT_AUDIO=1`, if the audio is seen as well), 1 otherwise — with the
+// diagnosis (ICE state, connection state, page errors) in both cases.
+// Without `EXPECT_AUDIO=1`, a session without an active audio track (pure video
+// acceptance) never makes the harness fail.
 
 import { spawn } from 'node:child_process';
 import { attendreDevtools } from './recette/devtools.mjs';
@@ -39,17 +39,17 @@ const url = process.argv[2] ?? 'http://localhost:5173/?session=demo';
 const durationArg = process.argv.find((a) => a.startsWith('--duration='));
 const sampleDelayMs = durationArg ? Number(durationArg.split('=')[1]) : 8000;
 const chromeBin = process.env.CHROME_BIN ?? 'google-chrome';
-// Opt-in (revue de la tâche 10) : par défaut, une session sans piste audio
-// active ne fait jamais échouer le harnais (il sert aussi à la recette
-// vidéo pure, `TEST_FILE`). `EXPECT_AUDIO=1` renverse ce choix pour une
-// recette où l'audio EST attendu : l'absence totale d'audio devient alors
-// un échec, exactement comme un flux figé après avoir démarré. Sans cet
-// opt-in, une régression qui couperait totalement l'audio serait
-// indiscernable d'une session vidéo seule et laisserait le harnais vert.
+// Opt-in (review of task 10): by default, a session without an active audio
+// track never makes the harness fail (it also serves pure video
+// acceptance, `TEST_FILE`). `EXPECT_AUDIO=1` reverses that choice for an
+// acceptance run where audio IS expected: the total absence of audio then becomes
+// a failure, exactly like a stream frozen after it started. Without this
+// opt-in, a regression that cut the audio entirely would be
+// indistinguishable from a video-only session and would leave the harness green.
 const expectAudio = process.env.EXPECT_AUDIO === '1';
 
-/// Client CDP minimal : une connexion WebSocket vers l'endpoint « page »,
-/// avec appariement requête/réponse par identifiant.
+/// Minimal CDP client: a WebSocket connection to the "page" endpoint,
+/// with request/response matching by identifier.
 class Cdp {
     constructor(wsUrl) {
         this.ws = new WebSocket(wsUrl);
@@ -107,26 +107,26 @@ class Cdp {
     }
 }
 
-/// Extrait les compteurs `inbound-rtp` de la piste vidéo depuis un rapport
-/// `RTCStatsReport` sérialisé (tableau d'entrées `[id, stats]`).
+/// Extracts the `inbound-rtp` counters of the video track from a serialised
+/// `RTCStatsReport` (array of `[id, stats]` entries).
 function extractVideoInboundStats(statsEntries) {
     const entry = statsEntries.find(([, stats]) => stats.type === 'inbound-rtp' && stats.kind === 'video');
     return entry ? entry[1] : null;
 }
 
-/// Pendant audio de `extractVideoInboundStats` (tâche 10 du chantier A) :
-/// rend `bytesReceived`, `packetsReceived`, `packetsLost`, `jitter` et
-/// `estimatedPlayoutTimestamp` de la piste `inbound-rtp` audio — ou `null` si
-/// aucune entrée audio n'existe dans le rapport.
+/// Audio counterpart of `extractVideoInboundStats` (task 10 of project A):
+/// returns `bytesReceived`, `packetsReceived`, `packetsLost`, `jitter` and
+/// `estimatedPlayoutTimestamp` of the audio `inbound-rtp` track — or `null` if
+/// no audio entry exists in the report.
 ///
-/// Le client négocie TOUJOURS un transceiver audio `recvonly`
-/// (`client/src/webrtc.ts`), mais Chrome ne MATÉRIALISE l'entrée
-/// `inbound-rtp` correspondante qu'après réception d'au moins un paquet sur
-/// cette piste — vérifié en recette (§4 du rapport de résultats) : une
-/// session `TEST_FILE` (aucune source audio côté agent) rend `null` ici, pas
-/// une entrée à `bytesReceived: 0`. Les deux cas (entrée absente, entrée
-/// présente à zéro) sont donc possibles et doivent être traités de façon
-/// équivalente par l'appelant — c'est le rôle des `?? 0` dans `main()`.
+/// The client ALWAYS negotiates a `recvonly` audio transceiver
+/// (`client/src/webrtc.ts`), but Chrome only MATERIALISES the matching
+/// `inbound-rtp` entry after receiving at least one packet on
+/// that track — verified during acceptance (§4 of the results report): a
+/// `TEST_FILE` session (no audio source on the agent side) returns `null` here, not
+/// an entry with `bytesReceived: 0`. Both cases (entry absent, entry
+/// present at zero) are therefore possible and must be handled
+/// equivalently by the caller — that is the role of the `?? 0` in `main()`.
 function extractAudioInboundStats(statsEntries) {
     const entry = statsEntries.find(([, stats]) => stats.type === 'inbound-rtp' && stats.kind === 'audio');
     return entry ? entry[1] : null;
@@ -147,13 +147,13 @@ async function main() {
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--autoplay-policy=no-user-gesture-required',
-            // L'agent est un pair natif, pas un navigateur : il ne sait pas
-            // résoudre les noms mDNS (`*.local`) par lesquels Chrome
-            // anonymise ses candidats ICE « host » par défaut. Sans ce
-            // drapeau, l'offre du client n'annonce que des candidats en
-            // `xxxxxxxx-xxxx-....local`, injoignables par l'agent : ICE reste
-            // bloqué en `checking` indéfiniment (diagnostiqué en tâche 8 —
-            // voir le rapport de tâche pour le détail des symptômes).
+            // The agent is a native peer, not a browser: it cannot
+            // resolve the mDNS names (`*.local`) with which Chrome
+            // anonymises its "host" ICE candidates by default. Without this
+            // flag, the client's offer only announces candidates in
+            // `xxxxxxxx-xxxx-....local`, unreachable by the agent: ICE stays
+            // stuck in `checking` indefinitely (diagnosed in task 8 —
+            // see the task report for the details of the symptoms).
             '--disable-features=WebRtcHideLocalIpsWithMdns',
             'about:blank',
         ],
@@ -164,10 +164,10 @@ async function main() {
     try {
         await attendreDevtools(port);
 
-        // Crée un onglet vierge puis s'y connecte, pour pouvoir injecter le
-        // script de capture AVANT la navigation réelle vers `url`.
-        // Chrome 150 exige la méthode PUT pour `/json/new` (GET est refusé
-        // avec « Using unsafe HTTP verb GET », un corps texte et pas JSON).
+        // Creates a blank tab then connects to it, to be able to inject the
+        // capture script BEFORE the real navigation to `url`.
+        // Chrome 150 requires the PUT method for `/json/new` (GET is refused
+        // with "Using unsafe HTTP verb GET", a text body and not JSON).
         const created = await (
             await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })
         ).json();
@@ -175,9 +175,9 @@ async function main() {
         await cdp.send('Page.enable');
         await cdp.send('Runtime.enable');
 
-        // Intercepte la première `RTCPeerConnection` créée par la page : c'est
-        // par elle qu'on lira `getStats()`, sans dépendre du code interne de
-        // `webrtc.ts` (qui n'expose rien globalement).
+        // Intercepts the first `RTCPeerConnection` created by the page: it is
+        // through it that `getStats()` will be read, without depending on the internal code of
+        // `webrtc.ts` (which exposes nothing globally).
         await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
             source: `
                 window.__pc = null;
@@ -191,40 +191,40 @@ async function main() {
             `,
         });
 
-        // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
+        // Sub-block P2: without a token, the `client` handshake is refused.
         await semerJeton(cdp);
         console.log(`Navigating to ${url} (Chrome DevTools on port ${port})`);
         await cdp.send('Page.navigate', { url });
 
-        // Attend que `connectSession` ait créé la RTCPeerConnection.
+        // Waits for `connectSession` to have created the RTCPeerConnection.
         const pcAppeared = await pollUntil(() => cdp.eval('window.__pc !== null && window.__pc !== undefined'), 10_000);
         if (!pcAppeared) {
             throw new Error("no RTCPeerConnection created in the page after 10s — the client script did not start");
         }
 
-        // Attendre que la vidéo coule VRAIMENT avant d'ouvrir la fenêtre de
-        // mesure. Sans cela, le relevé 1 est pris pendant la négociation
-        // (ICE, DTLS, premier keyframe) : le delta rapporté couvre alors une
-        // période où le flux n'existait pas encore, et sous-estime le débit
-        // en régime établi d'autant plus que la fenêtre est courte — sur
-        // 10 s, plusieurs secondes de négociation suffisent à faire passer
-        // un débit réel de 55 i/s pour 20 i/s.
+        // Wait for the video to REALLY flow before opening the measurement
+        // window. Without that, reading 1 is taken during negotiation
+        // (ICE, DTLS, first keyframe): the reported delta then covers a
+        // period where the stream did not exist yet, and underestimates the
+        // steady-state rate all the more as the window is short — over
+        // 10 s, a few seconds of negotiation are enough to make
+        // a real rate of 55 fps pass for 20 fps.
         const videoFlowing = await pollUntil(async () => {
             const s = await sampleStats(cdp);
             return s && s.framesDecoded > 0;
         }, 20_000);
         if (!videoFlowing) {
-            // Ne PAS interrompre ici : les compteurs qui distinguent « rien
-            // n'arrive » (framesReceived=0, problème de transport) de « ça
-            // arrive mais rien ne se décode » (framesReceived>0,
-            // framesDecoded=0, problème de flux H.264 — typiquement une image
-            // clé manquante) ne sont imprimés que par les relevés ci-dessous.
-            // Sortir avant de les lire, c'est jeter la seule information qui
-            // permette de trancher.
+            // Do NOT abort here: the counters that tell "nothing
+            // arrives" (framesReceived=0, transport problem) from "it
+            // arrives but nothing decodes" (framesReceived>0,
+            // framesDecoded=0, H.264 stream problem — typically a missing
+            // keyframe) are only printed by the readings below.
+            // Exiting before reading them throws away the only information that
+            // allows deciding.
             console.log('WARNING: no image decoded after 20s — readings taken anyway for diagnosis');
         }
-        // Laisser le régime s'établir (premier keyframe absorbé, tampon de
-        // gigue stabilisé) avant de chronométrer.
+        // Let the steady state settle (first keyframe absorbed, jitter
+        // buffer stabilised) before timing.
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
         const first = await sampleStats(cdp);
@@ -239,59 +239,59 @@ async function main() {
 
         const framesDecodedDelta = (second.stats?.framesDecoded ?? 0) - (first.stats?.framesDecoded ?? 0);
         const framesReceivedDelta = (second.stats?.framesReceived ?? 0) - (first.stats?.framesReceived ?? 0);
-        // La source est une fenêtre capturée (Desktop Duplication + recadrage
-        // sur la fenêtre, pas le bureau), pas un fichier de test à résolution
-        // fixe : selon la taille de la fenêtre côté agent, les dimensions
-        // réelles varient d'une session à l'autre (784x592, 764x484... jamais
-        // une valeur figée — voir la recette du jalon 1, critère 1). Ce qui
-        // compte ici est qu'une image ait été décodée avec des dimensions
-        // plausibles, pas qu'elles correspondent à une résolution attendue à
-        // l'avance.
+        // The source is a captured window (Desktop Duplication + cropping
+        // to the window, not the desktop), not a fixed-resolution test
+        // file: depending on the window size on the agent side, the actual
+        // dimensions vary from one session to another (784x592, 764x484... never
+        // a fixed value — see milestone 1 acceptance, criterion 1). What
+        // matters here is that an image was decoded with plausible
+        // dimensions, not that they match a resolution expected
+        // in advance.
         const width = second.stats?.frameWidth;
         const height = second.stats?.frameHeight;
-        const PLAUSIBLE_MAX_DIMENSION = 8192; // largement au-delà de tout écran réaliste ici
+        const PLAUSIBLE_MAX_DIMENSION = 8192; // well beyond any realistic screen here
         const dimensionsOk =
             Number.isInteger(width) && Number.isInteger(height) &&
             width > 0 && height > 0 &&
             width <= PLAUSIBLE_MAX_DIMENSION && height <= PLAUSIBLE_MAX_DIMENSION;
 
-        // --- Audio (tâche 10 du chantier A) ---
+        // --- Audio (task 10 of project A) ---
         //
-        // Le client négocie TOUJOURS un transceiver audio `recvonly`
-        // (`client/src/webrtc.ts`), mais Chrome ne matérialise l'entrée
-        // `inbound-rtp` audio dans `getStats()` qu'après réception d'au
-        // moins un paquet sur cette piste — une session `TEST_FILE` (aucune
-        // source audio côté agent) rend `sample.audioStats === null`, pas une
-        // entrée à `bytesReceived: 0` (vérifié en recette). D'où les `?? 0`
-        // ci-dessous : ils traitent « entrée absente » et « entrée présente à
-        // zéro » de façon équivalente, ce qui est le comportement voulu dans
-        // les deux cas. On distingue donc « pas de son » (aucun octet reçu ni
-        // au relevé 1 ni au relevé 2 : silence attendu, PAS un échec) de « du
-        // son est arrivé une fois puis plus rien » (compteur figé après avoir
-        // bougé : c'est précisément le faux positif que le brief met en garde
-        // contre — un paquet isolé ne prouve pas un flux).
+        // The client ALWAYS negotiates a `recvonly` audio transceiver
+        // (`client/src/webrtc.ts`), but Chrome only materialises the audio
+        // `inbound-rtp` entry in `getStats()` after receiving at
+        // least one packet on that track — a `TEST_FILE` session (no
+        // audio source on the agent side) returns `sample.audioStats === null`, not an
+        // entry with `bytesReceived: 0` (verified during acceptance). Hence the `?? 0`
+        // below: they treat "entry absent" and "entry present at
+        // zero" equivalently, which is the wanted behaviour in
+        // both cases. We therefore tell "no sound" (no byte received either
+        // at reading 1 or at reading 2: expected silence, NOT a failure) from "some
+        // sound arrived once then nothing more" (counter frozen after having
+        // moved: that is precisely the false positive the brief warns
+        // against — an isolated packet does not prove a stream).
         const audioBytesFirst = first.audioStats?.bytesReceived ?? 0;
         const audioBytesSecond = second.audioStats?.bytesReceived ?? 0;
         const audioPacketsFirst = first.audioStats?.packetsReceived ?? 0;
         const audioPacketsSecond = second.audioStats?.packetsReceived ?? 0;
         const audioBytesDelta = audioBytesSecond - audioBytesFirst;
         const audioPacketsDelta = audioPacketsSecond - audioPacketsFirst;
-        // Absence honnête : aucun octet observé à aucun des deux relevés.
-        // Sans cette double condition, une session qui démarre tout juste à
-        // recevoir du son entre les deux relevés (bytesFirst=0,
-        // bytesSecond>0, delta>0) serait à tort classée « absente » alors
-        // qu'elle prouve exactement ce qu'on cherche.
+        // Honest absence: no byte observed at either of the two readings.
+        // Without this double condition, a session that just starts to
+        // receive sound between the two readings (bytesFirst=0,
+        // bytesSecond>0, delta>0) would wrongly be classified "absent" while
+        // it proves exactly what we are looking for.
         const audioAbsent = audioBytesFirst === 0 && audioBytesSecond === 0;
         const audioGrowing = audioBytesDelta > 0 && audioPacketsDelta > 0;
 
-        // Décalage A/V (tâche 7 : le `wallclock` RTCP annonce l'instant de
-        // CAPTURE, pas d'écriture — cette mesure est la seule vérification
-        // objective de cette correction). `estimatedPlayoutTimestamp` est sur
-        // une horloge commune aux deux pistes : leur différence est le
-        // décalage tel que le récepteur le voit. Positif ⇒ l'audio est en
-        // AVANCE sur la vidéo (seuil de gêne ITU-R BT.1359 : 45 ms) ; négatif
-        // ⇒ l'audio est en RETARD (seuil : 125 ms, la gêne d'un retard étant
-        // tolérée presque trois fois plus longtemps que celle d'une avance).
+        // A/V offset (task 7: the RTCP `wallclock` announces the instant of
+        // CAPTURE, not of writing — this measurement is the only objective
+        // verification of that fix). `estimatedPlayoutTimestamp` is on
+        // a clock shared by both tracks: their difference is the
+        // offset as the receiver sees it. Positive ⇒ the audio is
+        // AHEAD of the video (ITU-R BT.1359 annoyance threshold: 45 ms); negative
+        // ⇒ the audio is LATE (threshold: 125 ms, a delay being
+        // tolerated almost three times longer than an advance).
         let avSkewMs = null;
         if (!audioAbsent && second.audioStats?.estimatedPlayoutTimestamp != null && second.stats?.estimatedPlayoutTimestamp != null) {
             avSkewMs = second.audioStats.estimatedPlayoutTimestamp - second.stats.estimatedPlayoutTimestamp;
@@ -319,13 +319,13 @@ async function main() {
             console.log('audio: bytes arrived but the counters stopped advancing (frozen) — this is NOT a proof of a continuous stream.');
         }
         if (avSkewMs === null) {
-            // Deux causes distinctes à ne pas confondre (revue de la tâche
-            // 10) : pas de piste audio du tout (rien à comparer), ou piste
-            // audio qui traverse mais dont l'entrée getStats() n'expose pas
-            // (encore) `estimatedPlayoutTimestamp` sur ce navigateur/cette
-            // plateforme — un message unique aurait pu laisser croire, dans
-            // ce second cas, que l'audio ne traverse pas du tout alors que
-            // la ligne juste au-dessus prouve le contraire.
+            // Two distinct causes not to be confused (review of task
+            // 10): no audio track at all (nothing to compare), or an audio
+            // track that goes through but whose getStats() entry does not (yet)
+            // expose `estimatedPlayoutTimestamp` on this browser/this
+            // platform — a single message could have suggested, in
+            // that second case, that the audio does not go through at all while
+            // the line just above proves the opposite.
             if (audioAbsent) {
                 console.log('A/V offset: not measurable (no active audio track in this reading).');
             } else {
@@ -337,9 +337,9 @@ async function main() {
             }
         } else {
             const sens = avSkewMs > 0 ? 'audio ahead of the video' : avSkewMs < 0 ? 'audio behind the video' : 'no offset measured';
-            // Seuils de gêne ITU-R BT.1359 : 45 ms si l'audio devance l'image,
-            // 125 ms s'il la retarde — le signe compte, l'avance gêne presque
-            // trois fois plus tôt que le retard.
+            // ITU-R BT.1359 annoyance thresholds: 45 ms if the audio leads the image,
+            // 125 ms if it lags it — the sign matters, an advance annoys almost
+            // three times sooner than a delay.
             const seuil = avSkewMs > 0 ? 45 : 125;
             const dansLeSeuil = Math.abs(avSkewMs) <= seuil;
             console.log(
@@ -360,19 +360,19 @@ async function main() {
 
         if (framesDecodedDelta > 0 && framesReceivedDelta > 0 && dimensionsOk) {
             console.log('\nPROOF: the video goes through the chain (framesDecoded and framesReceived increase, plausible dimensions).');
-            // La vidéo est prouvée : c'est ici, et seulement ici, que l'audio
-            // peut faire échouer le harnais. Par défaut, seul un flux VU
-            // (au moins un octet reçu) puis figé fait échouer — une session
-            // sans piste audio active (`audioAbsent`) ne fait jamais échouer
-            // le harnais : il sert aussi à la recette vidéo pure
-            // (`TEST_FILE`), qui n'a par construction aucun son à faire
-            // traverser. `EXPECT_AUDIO=1` (opt-in, revue de la tâche 10)
-            // renverse ce choix pour une recette où l'audio EST attendu :
-            // l'absence devient alors, elle aussi, un échec — sans quoi une
-            // régression qui couperait tout l'audio serait indiscernable
-            // d'une session vidéo seule et laisserait le harnais vert. Le
-            // décalage A/V, lui, n'intervient jamais dans ce choix (voir
-            // plus haut : mesure, pas encore critère éprouvé).
+            // The video is proven: it is here, and only here, that the audio
+            // can make the harness fail. By default, only a stream SEEN
+            // (at least one byte received) then frozen fails — a session
+            // without an active audio track (`audioAbsent`) never makes
+            // the harness fail: it also serves pure video acceptance
+            // (`TEST_FILE`), which by construction has no sound to push
+            // through. `EXPECT_AUDIO=1` (opt-in, review of task 10)
+            // reverses that choice for an acceptance run where audio IS expected:
+            // absence then becomes a failure too — otherwise a
+            // regression that cut all the audio would be indistinguishable
+            // from a video-only session and would leave the harness green. The
+            // A/V offset never takes part in that choice (see
+            // above: a measurement, not yet a proven criterion).
             if (audioAbsent && expectAudio) {
                 console.log(
                     "\nFAILURE (audio): EXPECT_AUDIO=1 but no audio track was seen in the two readings. " +
@@ -438,14 +438,14 @@ async function sampleStats(cdp) {
     };
 }
 
-/// Décrit le champ `estimatedPlayoutTimestamp` d'une entrée `getStats()` de
-/// façon à distinguer les deux causes possibles de `avSkewMs === null`
-/// (revue de la tâche 10) : la **clé** peut être totalement absente de
-/// l'objet (le navigateur ne l'implémente pas), ou présente mais valant
-/// `null`/`undefined` (implémentée mais pas encore produite pour cette
-/// piste). `a.estimatedPlayoutTimestamp ?? 'absent'` confondait ces deux cas
-/// — un seul des deux soutient la conclusion « champ non exposé par ce
-/// navigateur ».
+/// Describes the `estimatedPlayoutTimestamp` field of a `getStats()` entry
+/// so as to tell apart the two possible causes of `avSkewMs === null`
+/// (review of task 10): the **key** can be entirely absent from
+/// the object (the browser does not implement it), or present but equal to
+/// `null`/`undefined` (implemented but not yet produced for this
+/// track). `a.estimatedPlayoutTimestamp ?? 'absent'` conflated these two cases
+/// — only one of the two supports the conclusion "field not exposed by this
+/// browser".
 function decrireEstimatedPlayoutTimestamp(entry) {
     if (!entry) return 'n/a (entry absent)';
     const clePresente = 'estimatedPlayoutTimestamp' in entry;
@@ -467,9 +467,9 @@ function printSample(sample) {
         console.log(
             `  [video] estimatedPlayoutTimestamp: ${decrireEstimatedPlayoutTimestamp(s)}`,
         );
-        // Diagnostic demandé en revue : la liste complète des clés de
-        // l'entrée, pour vérifier par les faits plutôt que par déduction
-        // quels champs ce navigateur produit réellement sur `inbound-rtp`.
+        // Diagnosis requested in review: the complete list of the keys of
+        // the entry, to check by facts rather than by deduction
+        // which fields this browser actually produces on `inbound-rtp`.
         console.log(`  [video] keys of the getStats() entry: ${Object.keys(s).sort().join(', ')}`);
     }
 

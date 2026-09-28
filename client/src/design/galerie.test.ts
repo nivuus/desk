@@ -4,72 +4,72 @@ import couleursCss from './tokens/couleurs.css?raw';
 import echellesCss from './tokens/echelles.css?raw';
 
 /**
- * LA LISTE DES CAS QUE `galerie.ts` EST CENSÉE MONTRER — jamais SON RENDU.
+ * THE LIST OF CASES `galerie.ts` IS SUPPOSED TO SHOW — never ITS RENDERING.
  *
- * 🔴 CE FICHIER N'IMPORTE PAS `./galerie` ET NE L'EXÉCUTERA JAMAIS.
- * `galerie.ts` touche `document.documentElement` (sa toute première ligne
- * exécutable), puis `document.getElementById` et `getComputedStyle`, SANS
- * AUCUNE DÉPENDANCE INJECTÉE — à l'inverse de la convention que ce dépôt
- * applique ailleurs pour rendre un module qui touche le DOM testable
- * (`client/src/accent-dom.ts`, `client/src/presse-papier-dom.ts`, et
- * `installThemeSelectorInDOM` dans `./selecteur-theme.ts`, qui séparent
- * chacun une fonction PURE, à dépendances injectées, d'une COUTURE — seule à
- * toucher `document`/`window`/`localStorage` réels). `galerie.ts` n'a pas
- * cette couture, et `client/` n'a NI jsdom NI happy-dom (`client/package.json`
- * ne porte que `typescript`, `vite`, `vitest` — le même relevé que
- * `selecteur-theme.ts` fait pour lui-même). L'importer ici ferait planter le
- * module AU CHARGEMENT (`document is not defined`), avant la moindre
- * assertion. Rendre ce module testable appartient à un refactor que cette
- * tâche n'a pas mandat de faire ; ce fichier le dit plutôt que de forcer un
- * double DOM maison qui ne prouverait rien de plus que le texte qu'on lui
- * aurait donné.
+ * 🔴 THIS FILE DOES NOT IMPORT `./galerie` AND WILL NEVER RUN IT.
+ * `galerie.ts` touches `document.documentElement` (its very first
+ * executable line), then `document.getElementById` and `getComputedStyle`, WITH
+ * NO INJECTED DEPENDENCY — the opposite of the convention this repository
+ * applies elsewhere to make a module that touches the DOM testable
+ * (`client/src/accent-dom.ts`, `client/src/presse-papier-dom.ts`, and
+ * `installThemeSelectorInDOM` in `./selecteur-theme.ts`, which each separate
+ * a PURE function, with injected dependencies, from a SEAM — the only one to
+ * touch the real `document`/`window`/`localStorage`). `galerie.ts` does not have
+ * this seam, and `client/` has NEITHER jsdom NOR happy-dom (`client/package.json`
+ * only carries `typescript`, `vite`, `vitest` — the same finding
+ * `selecteur-theme.ts` makes for itself). Importing it here would crash the
+ * module ON LOAD (`document is not defined`), before the slightest
+ * assertion. Making this module testable belongs to a refactor this
+ * task has no mandate to do; this file says so rather than forcing a
+ * home-made DOM double that would prove nothing more than the text it
+ * had been given.
  *
- * ⚠️ CE QU'IL PEUT ÉTABLIR À LA PLACE. `galerie.ts` déclare, dans son propre
- * en-tête : « la liste des tokens n'est pas écrite ici : elle est PARSÉE de
- * `tokens/couleurs.css` et `tokens/echelles.css` ». Le contrat entre le
- * module et `design.html` tient donc tout entier dans CE QUE CES DEUX
- * FICHIERS DÉCLARENT — figer ce contrat, c'est figer les huit sections que
- * `rendre()` construit (relu dans `galerie.ts`, jamais exécuté ici) : la
- * liste explicite des 14 couleurs de thème, et sept familles par préfixe
+ * ⚠️ WHAT IT CAN ESTABLISH INSTEAD. `galerie.ts` declares, in its own
+ * header: "the list of tokens is not written here: it is PARSED from
+ * `tokens/couleurs.css` and `tokens/echelles.css`". The contract between the
+ * module and `design.html` therefore lies entirely in WHAT THESE TWO
+ * FILES DECLARE — freezing this contract means freezing the eight sections that
+ * `rendre()` builds (read again in `galerie.ts`, never run here): the
+ * explicit list of the 14 theme colours, and seven families by prefix
  * (`--video-`/`--voile-`, `--t-`, `--lh-`, `--e-`, `--r-`, `--trait`,
- * `--police-`). Chaque test compare une liste ATTENDUE, écrite ici EN DUR et
- * INDÉPENDANTE de `galerie.ts` (jamais réimportée depuis lui — sans quoi un
- * nom retiré À LA FOIS de `galerie.ts` et de sa source resterait invisible,
- * exactement le patron d'« une copie qui valide sa copie » que ce dépôt
- * s'interdit), au texte RÉEL des deux fichiers de tokens.
+ * `--police-`). Each test compares an EXPECTED list, written here HARDCODED and
+ * INDEPENDENT of `galerie.ts` (never re-imported from it — otherwise a
+ * name removed BOTH from `galerie.ts` and from its source would stay invisible,
+ * exactly the pattern of "a copy that validates its copy" this repository
+ * forbids itself), to the REAL text of the two token files.
  *
- * 🔴 LA ROUGE QUE CE FICHIER SAIT RENDRE : retirer un token de
- * `tokens/couleurs.css` ou `tokens/echelles.css` fait tomber le test de sa
- * section — la primitive a disparu de ce que la galerie est censée montrer,
- * et le test le réclame.
+ * 🔴 THE RED THIS FILE CAN PRODUCE: removing a token from
+ * `tokens/couleurs.css` or `tokens/echelles.css` brings down the test of its
+ * section — the primitive has disappeared from what the gallery is supposed to show,
+ * and the test asks for it.
  *
- * ⚠️ CE QU'IL NE PEUT PAS ÉTABLIR : que `galerie.ts` respecte encore ce
- * contrat aujourd'hui — si son code de sélection divergeait de la liste
- * ci-dessous SANS QUE LES TOKENS EUX-MÊMES NE BOUGENT, rien ici ne le
- * verrait, faute de pouvoir exécuter le module. Et rien ici ne porte de
- * JUGEMENT VISUEL : que la palette soit sobre, que `#7aa2f7` soit le bon
- * bleu, que le ratio 1,2 soit le bon — les huit jugements humains que la
- * spec ⑥ §8 nomme, et qu'aucun sous-bloc n'a rendus mesurables. C'est le
- * lot 4, pas celui-ci.
+ * ⚠️ WHAT IT CANNOT ESTABLISH: that `galerie.ts` still honours this
+ * contract today — if its selection code diverged from the list
+ * below WITHOUT THE TOKENS THEMSELVES MOVING, nothing here would
+ * see it, since the module cannot be run. And nothing here carries any
+ * VISUAL JUDGEMENT: that the palette is sober, that `#7aa2f7` is the right
+ * blue, that the ratio 1.2 is the right one — the eight human judgements the
+ * spec ⑥ §8 names, and that no sub-block has made measurable. That is
+ * batch 4, not this one.
  */
 
 const tokensCss = `${couleursCss}\n${echellesCss}`;
 const TOKENS = tokensDeclares(tokensCss);
 
-/** Les noms déclarés dont le nom commence par un des préfixes, triés. */
+/** The declared names that start with one of the prefixes, sorted. */
 function parPrefixe(...prefixes: string[]): string[] {
     return [...TOKENS].filter((n) => prefixes.some((p) => n.startsWith(p))).sort();
 }
 
 describe("galerie.ts — the list of cases it is meant to show (see the header)", () => {
     it('« Colours »: the fourteen tokens redeclared by the THREE theme blocks', () => {
-        // Définition STRUCTURELLE, pas une copie de `galerie.ts::COULEURS` :
-        // un token « de thème » est celui que les trois blocs redéclarent
-        // TOUS — c'est la règle que l'en-tête de `tokens/couleurs.css` écrit
-        // lui-même (« la palette CLAIRE est écrite deux fois »). Les tokens
-        // hors thème (`--voile-*`, `--sur-voile`, `--accent-fenetre`) et les
-        // échelles ne vivent que dans le bloc `racine` : ils n'entrent jamais
-        // dans cette intersection.
+        // STRUCTURAL definition, not a copy of `galerie.ts::COULEURS`:
+        // a "theme" token is one that ALL three blocks redeclare
+        // — that is the rule the header of `tokens/couleurs.css` writes
+        // itself ("the LIGHT palette is written twice"). The tokens
+        // outside the theme (`--voile-*`, `--sur-voile`, `--accent-fenetre`) and the
+        // scales only live in the `racine` block: they never enter
+        // this intersection.
         const blocs = lireBlocsDeTheme(tokensCss);
         const parBloc = new Map(blocs.map((b) => [b.nom, new Set(b.tokens.keys())]));
         const racine = parBloc.get('racine');

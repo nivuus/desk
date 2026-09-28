@@ -8,16 +8,16 @@ import {
     type TrancheLisible,
 } from './adaptateur';
 
-/* ── UN FAUX SYSTÈME DE FICHIERS EN MÉMOIRE ───────────────────────────────
-   La File System Access API n'existe pas sous Node : sans l'injection de la
-   racine (spec §4.4), AUCUN de ces tests n'existerait.
+/* ── A FAKE IN-MEMORY FILE SYSTEM ─────────────────────────────────────────
+   The File System Access API does not exist under Node: without injecting the
+   root (spec §4.4), NONE of these tests would exist.
 
-   🔴 LE FAUX `File` COMPTE SES APPELS, et c'est ce qui donne sa valeur au test
-   de plage. Un faux qui rendrait simplement les bons octets passerait aussi
-   bien avec `slice(o, o+n).arrayBuffer()` qu'avec `arrayBuffer()` suivi d'une
-   découpe côté appelant — c'est-à-dire serait VACUEUX. Le défaut visé est
-   relevé, pas imaginé : `web/index.js:562-564` lisait le fichier ENTIER pour en
-   rendre une plage. */
+   🔴 THE FAKE `File` COUNTS ITS CALLS, and that is what gives the range test
+   its value. A fake that simply returned the right bytes would pass just as
+   well with `slice(o, o+n).arrayBuffer()` as with `arrayBuffer()` followed by a
+   cut on the caller's side — that is, it would be VACUOUS. The targeted defect is
+   observed, not imagined: `web/index.js:562-564` read the WHOLE file to
+   return a range of it. */
 
 interface Compteurs {
     arrayBufferEntier: number;
@@ -46,7 +46,7 @@ function isFile(n: Arbre[string]): n is { octets: Uint8Array; modifie: number } 
     return 'octets' in n && n.octets instanceof Uint8Array;
 }
 
-/** `DOMException` est disponible sous Node ≥ 17 ; on s'en sert telle quelle. */
+/** `DOMException` is available under Node ≥ 17; we use it as is. */
 function absent(nom: string): never {
     throw new DOMException(`« ${nom} » cannot be found`, 'NotFoundError');
 }
@@ -103,7 +103,7 @@ function monter() {
     return { compteurs, adaptateur: createAdapter(repertoire('', arbre, compteurs)) };
 }
 
-/** Le même arbre, avec l'injection de fautes ARMÉE. */
+/** The same tree, with fault injection ARMED. */
 function monterArme() {
     const compteurs: Compteurs = { arrayBufferEntier: 0, slice: 0 };
     const arbre: Arbre = { 'note.txt': { octets: new Uint8Array([1]), modifie: 0 } };
@@ -123,8 +123,8 @@ describe('File System Access API adapter', () => {
 
     it('listing the root takes the empty path', async () => {
         const { adaptateur } = monter();
-        // La racine n'a pas de nom : le chemin logique vide la désigne, et
-        // c'est ce que `pont::chemins` normalise côté agent.
+        // The root has no name: the empty logical path designates it, and
+        // that is what `pont::chemins` normalises on the agent side.
         expect((await adaptateur.lister('')).length).toBe(3);
         expect((await adaptateur.lister('dossier')).map((e) => e.nom)).toEqual(['dedans.txt']);
     });
@@ -143,7 +143,7 @@ describe('File System Access API adapter', () => {
             taille: 0,
             modifie: 0,
         });
-        // ⚠️ La RACINE n'a pas de nom.
+        // ⚠️ The ROOT has no name.
         expect(await adaptateur.attributs('')).toEqual({
             nom: '',
             repertoire: true,
@@ -156,7 +156,7 @@ describe('File System Access API adapter', () => {
         const { adaptateur, compteurs } = monter();
         const octets = await adaptateur.lire('gros.bin', 4, 3);
         expect([...octets]).toEqual([4, 5, 6]);
-        // 🔴 LE CŒUR DU TEST : le fichier entier n'est JAMAIS matérialisé.
+        // 🔴 THE HEART OF THE TEST: the whole file is NEVER materialised.
         expect(compteurs.arrayBufferEntier).toBe(0);
         expect(compteurs.slice).toBe(1);
     });
@@ -165,7 +165,7 @@ describe('File System Access API adapter', () => {
         const { adaptateur } = monter();
         const octets = await adaptateur.lire('gros.bin', 8, 100);
         expect([...octets]).toEqual([8, 9]);
-        // Entièrement au-delà : zéro octet, toujours sans lever.
+        // Entirely beyond: zero bytes, still without throwing.
         expect((await adaptateur.lire('gros.bin', 50, 10)).length).toBe(0);
     });
 
@@ -182,8 +182,8 @@ describe('File System Access API adapter', () => {
 
     it('tells a missing final component from a missing PARENT', async () => {
         const { adaptateur } = monter();
-        // ProjFS distingue ERROR_FILE_NOT_FOUND d'ERROR_PATH_NOT_FOUND, et
-        // l'Explorateur ne dit pas la même chose des deux.
+        // ProjFS tells ERROR_FILE_NOT_FOUND from ERROR_PATH_NOT_FOUND, and
+        // Explorer does not say the same thing about the two.
         await expect(adaptateur.attributs('nulle-part/note.txt')).rejects.toMatchObject({
             code: 'chemin-introuvable',
         });
@@ -194,19 +194,19 @@ describe('File System Access API adapter', () => {
 
     it('🔴 an FSA error becomes a CODE, never a string', async () => {
         const { adaptateur } = monter();
-        // 🔴 LE DÉFAUT EXACT DE L'ANCIEN PONT, éprouvé ici même :
-        // `web/index.js:669` faisait `JSON.stringify(e)` d'une `Error`, ce qui
-        // rend `"{}"`, et `src/file.js:127` le reconstruisait en
-        // `new Error("{}")`. Toute la cause était détruite À L'ÉMISSION.
+        // 🔴 THE EXACT DEFECT OF THE OLD BRIDGE, exercised right here:
+        // `web/index.js:669` did `JSON.stringify(e)` of an `Error`, which
+        // returns `"{}"`, and `src/file.js:127` rebuilt it as
+        // `new Error("{}")`. The whole cause was destroyed AT EMISSION.
         expect(JSON.stringify(new Error('permission refused'))).toBe('{}');
 
         const echec = await adaptateur.attributs('absent.txt').catch((e: unknown) => e);
         expect(echec).toBeInstanceOf(FilesError);
-        // Ce que l'adaptateur produit à la place : un membre de l'énumération
-        // PARTAGÉE, qui traverse le fil sans rien perdre.
+        // What the adapter produces instead: a member of the SHARED
+        // enumeration, which crosses the wire without losing anything.
         expect((echec as FilesError).code).toBe('introuvable');
-        // Et le message reste lisible pour un humain, côté navigateur — il ne
-        // traverse pas le fil, mais il est ce qu'on lit dans la console.
+        // And the message stays readable for a human, on the browser side — it does
+        // not cross the wire, but it is what one reads in the console.
         expect((echec as FilesError).message).toMatch(/absent\.txt/);
     });
 
@@ -250,19 +250,19 @@ describe('File System Access API adapter', () => {
 });
 
 describe('case on READ, fixed by F3', () => {
-    // 🔴 CE FAUX EST SENSIBLE À LA CASSE — comme OPFS, donc comme l'INSTRUMENT
-    // de recette. C'est précisément là que F1 a mesuré son incohérence :
-    // `casse.txt` passait (résolu par NTFS sans nous) et `GROS.BIN` échouait
-    // (il atteignait le pont et butait sur OPFS), DANS LA MÊME EXÉCUTION.
+    // 🔴 THIS FAKE IS CASE-SENSITIVE — like OPFS, hence like the acceptance
+    // INSTRUMENT. That is precisely where F1 measured its inconsistency:
+    // `casse.txt` passed (resolved by NTFS without us) and `GROS.BIN` failed
+    // (it reached the bridge and hit OPFS), IN THE SAME RUN.
 
     it('🔴 `GROS.BIN` returns `gros.bin`, and the F1 inconsistency DISAPPEARS', async () => {
-        // Rouge : garder la résolution directe (`getFileHandle(last)`).
-        // `GROS.BIN` rendrait `introuvable`, ce qui est exactement l'état que
-        // F1 relève.
+        // Red: keeping direct resolution (`getFileHandle(last)`).
+        // `GROS.BIN` would return `introuvable`, which is exactly the state
+        // F1 reports.
         const { adaptateur } = monter();
         const meta = await adaptateur.attributs('GROS.BIN');
         expect(meta.repertoire).toBe(false);
-        // 🔴 ET LE NOM RENDU EST LE NOM STOCKÉ, jamais celui qu'on a demandé.
+        // 🔴 AND THE NAME RETURNED IS THE STORED NAME, never the one requested.
         expect(meta.nom).toBe('gros.bin');
     });
 
@@ -275,9 +275,9 @@ describe('case on READ, fixed by F3', () => {
     it('resolves an INTERMEDIATE component by case, and tells it apart', async () => {
         const { adaptateur } = monter();
         expect(await adaptateur.lister('DOSSIER')).toHaveLength(1);
-        // Un composant intermédiaire absent rend `chemin-introuvable`, jamais
-        // `introuvable` : ProjFS distingue les deux, et l'Explorateur n'en dit
-        // pas la même chose.
+        // An absent intermediate component returns `chemin-introuvable`, never
+        // `introuvable`: ProjFS tells the two apart, and Explorer does not say
+        // the same thing about them.
         await expect(adaptateur.lire('ABSENT/x.txt', 0, 1)).rejects.toMatchObject({
             code: 'chemin-introuvable',
         });
@@ -286,12 +286,12 @@ describe('case on READ, fixed by F3', () => {
 
 describe('fault injection, DISARMED by default', () => {
     it('🔴 is INERT when it is not armed', async () => {
-        // Rouge : la lire depuis le module au lieu de la recevoir en argument.
-        // Un utilisateur qui créerait un dossier `.faute-disque-plein`
-        // casserait son propre pont.
+        // Red: reading it from the module instead of receiving it as an argument.
+        // A user who created a `.faute-disque-plein` folder
+        // would break their own bridge.
         const { adaptateur } = monter();
         await expect(adaptateur.lister('.faute-disque-plein')).rejects.toMatchObject({
-            // Pas de faute : c'est un chemin ordinaire, donc absent.
+            // No fault: it is an ordinary path, hence absent.
             code: 'introuvable',
         });
     });

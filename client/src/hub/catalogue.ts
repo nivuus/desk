@@ -98,7 +98,7 @@ export type Refus =
 
 export type Issue<T> = { etat: 'ok'; value: T } | { etat: 'refus'; refus: Refus };
 
-/* ── L'INTERNE ────────────────────────────────────────────────────────── */
+/* ── THE INTERNALS ────────────────────────────────────────────────────── */
 
 function entetes(deps: DepsCatalogue): Record<string, string> {
     return { authorization: `Bearer ${deps.jeton}` };
@@ -176,7 +176,7 @@ function illisible<T>(detail: string): Issue<T> {
     return { etat: 'refus', refus: { source: 'client', motif: 'reponse-illisible', detail } };
 }
 
-/* ── LA VM ────────────────────────────────────────────────────────────── */
+/* ── THE VM ───────────────────────────────────────────────────────────── */
 
 /// A VM, as `GET /vm` returns it — and NOTHING more.
 ///
@@ -253,7 +253,7 @@ export async function lireIcone(
     return { etat: 'ok', value: new Uint8Array(await r.arrayBuffer()) };
 }
 
-/* ── LE LANCEMENT ─────────────────────────────────────────────────────── */
+/* ── THE LAUNCH ───────────────────────────────────────────────────────── */
 
 /// `POST /application/:id/lancer`.
 export async function lancerApplication(

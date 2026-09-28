@@ -14,9 +14,9 @@ import {
 
 describe('elire', () => {
     it('without a lock API, the tab becomes holder: the fallback is OPTIMISTIC', () => {
-        // ⚠️ Optimiste et non pessimiste : sans verrou, se declarer suiveur
-        // ferait qu AUCUN onglet n ouvrirait jamais la session. La plateforme
-        // tranchera, et `estPlacePrise` rattrapera le perdant.
+        // ⚠️ Optimistic and not pessimistic: without a lock, declaring itself a follower
+        // would mean NO tab would ever open the session. The platform
+        // will decide, and `estPlacePrise` will catch the loser.
         let role = '';
         elire('v', {
             devenirPorteur: () => { role = 'porteur'; },
@@ -29,14 +29,14 @@ describe('elire', () => {
         let role = '';
         let relacher: (() => void) | undefined;
         elire('v', {
-            // Un verrou qui n appelle JAMAIS `pendant` : le verrou n est pas
-            // obtenu, donc cet onglet n est pas porteur.
+            // A lock that NEVER calls `pendant`: the lock is not
+            // obtained, so this tab is not the holder.
             verrou: (_nom, pendant) => { relacher = () => void pendant(); },
             devenirPorteur: () => { role = 'porteur'; },
             devenirSuiveur: () => { role = 'suiveur'; },
         });
         expect(role).toBe('suiveur');
-        // Puis le verrou se libere : l onglet en attente est promu.
+        // Then the lock is released: the waiting tab is promoted.
         relacher!();
         expect(role).toBe('porteur');
     });
@@ -48,14 +48,14 @@ describe('estPlacePrise', () => {
     });
 
     it('does NOT recognise a refusal for another cause', () => {
-        // 🔴 CE CAS EST LE POINT : un frein de volume doit rester VISIBLE.
-        // L avaler ferait de ce lot la panne muette qu il pretend eviter.
+        // 🔴 THIS CASE IS THE POINT: a volume brake must stay VISIBLE.
+        // Swallowing it would make this batch the silent failure it claims to avoid.
         expect(estPlacePrise({ type: 'error', reason: 'too many requests', motif: 'trop-de-requetes' })).toBe(false);
     });
 
     it('does NOT recognise a refusal without a reason, even if its sentence says so', () => {
-        // ⚠️ Le piege de F1 : une phrase francaise se reformule. On ne
-        // devine pas, on lit le motif -- ou on affiche.
+        // ⚠️ The F1 trap: a sentence in prose gets reworded. We do not
+        // guess, we read the reason code -- or we display.
         expect(estPlacePrise({ type: 'error', reason: 'a client is already connected to session s' })).toBe(false);
     });
 
@@ -72,8 +72,8 @@ describe('lireEtat', () => {
     });
 
     it('returns undefined on a message from ANOTHER sender', () => {
-        // Un `BroadcastChannel` est partage par origine : tout ce qui y passe
-        // n est pas forcement de nous.
+        // A `BroadcastChannel` is shared per origin: not everything that goes through it
+        // necessarily comes from us.
         expect(lireEtat({ type: 'autre-chose', fenetres: [] })).toBeUndefined();
     });
 
@@ -99,12 +99,12 @@ describe('fenetresAPeindre', () => {
         'a follower that received N windows keeps them on the next timer tick, ' +
             'EVEN WHEN ITS OWN LIST IS EMPTY',
         () => {
-            // 🔴 C EST CE CAS QUI ATTRAPE LE DEFAUT DU ROUND 1 (critique ①) :
-            // la minuterie repeint a 1 Hz depuis `bureau.list()`, qui est
-            // STRUCTURELLEMENT VIDE chez un suiveur -- aucun socket, donc
-            // aucun `fenetreOuverte` ne l alimente jamais. Une regle qui
-            // peindrait `ownList` chez un suiveur effacerait donc, au
-            // tour SUIVANT une diffusion, ce qu elle venait de montrer.
+            // 🔴 IT IS THIS CASE THAT CATCHES THE ROUND 1 DEFECT (critique ①):
+            // the timer repaints at 1 Hz from `bureau.list()`, which is
+            // STRUCTURALLY EMPTY for a follower -- no socket, so
+            // no `fenetreOuverte` ever feeds it. A rule that
+            // painted `ownList` for a follower would therefore erase, on the
+            // round FOLLOWING a broadcast, what it had just shown.
             const recues = [{ session: 's', titre: 'Bloc-notes', ouverte: true }];
             expect(fenetresAPeindre('suiveur', [], recues)).toEqual(recues);
         },
@@ -117,18 +117,18 @@ describe('fenetresAPeindre', () => {
     });
 });
 
-/* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
+/* ══ WHAT THE FINAL REVIEW OF AUGUST 31ST 2026 ADDED ═════════════════════ */
 
 describe('promote: the promotion cycle', () => {
     it(
         'requests a FRESH token again, then installs the bridge, THEN opens the socket',
         async () => {
-            // 🔴 C EST LA JONCTION QUI ETAIT FAUSSE, PAS LA REGLE DE
-            // FRAICHEUR. Le socket etait ouvert avec `deps.jeton`, une chaine
-            // FIGEE AU CHARGEMENT ; or un suiveur n est promu qu a la mort du
-            // porteur, potentiellement des heures plus tard, et un jeton d
-            // acces vit DIX MINUTES. Un test d `assurerAccesFrais` ne pouvait
-            // pas voir ce defaut : il ne vit qu ici.
+            // 🔴 IT IS THE JUNCTION THAT WAS WRONG, NOT THE FRESHNESS
+            // RULE. The socket was opened with `deps.jeton`, a string
+            // FROZEN AT LOAD TIME; yet a follower is only promoted at the death of the
+            // holder, potentially hours later, and an access token
+            // lives TEN MINUTES. A test of `assurerAccesFrais` could
+            // not see this defect: it only lives here.
             const ordre: string[] = [];
             let demandes = 0;
             await promouvoir({
@@ -143,9 +143,9 @@ describe('promote: the promotion cycle', () => {
     );
 
     it('without an obtainable token, opens NO socket and SAYS so', async () => {
-        // ⚠️ Ouvrir un socket voue au refus afficherait un refus que
-        // `canalDeControlePerdu` ecraserait aussitot par « Rechargez la
-        // page » : l utilisateur ne saurait pas que sa session a expire.
+        // ⚠️ Opening a socket doomed to refusal would display a refusal that
+        // `canalDeControlePerdu` would immediately overwrite with "Reload the
+        // page": the user would not know their session had expired.
         const ordre: string[] = [];
         await promouvoir({
             jetonFrais: () => Promise.resolve(undefined),
@@ -159,10 +159,10 @@ describe('promote: the promotion cycle', () => {
 
 describe('elire: the lock is RELEASED', () => {
     it('a dismissed holder gives back its lock, and its partition can elect another one', async () => {
-        // 🔴 IMPORTANT ③ : la promesse tenue etait un `Promise<never>` que
-        // rien ne resolvait -- un porteur demis par `estPlacePrise` gardait
-        // le verrou POUR TOUJOURS, et sa partition n aurait PLUS JAMAIS eu de
-        // porteur.
+        // 🔴 IMPORTANT ③: the held promise was a `Promise<never>` that
+        // nothing resolved -- a holder dismissed by `estPlacePrise` kept
+        // the lock FOREVER, and its partition would NEVER AGAIN have had a
+        // holder.
         let rendu = false;
         let tenue: Promise<void> | undefined;
         const election = elire('v', {
@@ -171,22 +171,22 @@ describe('elire: the lock is RELEASED', () => {
             devenirSuiveur: () => {},
         });
         void tenue!.then(() => { rendu = true; });
-        // Tant que personne ne relache, la promesse ne se regle pas.
+        // As long as nobody releases, the promise does not settle.
         await Promise.resolve();
         expect(rendu, 'the lock is NOT released by itself').toBe(false);
         election.relacher();
-        // ⚠️ ON N ATTEND PAS `tenue` : un `await` sur une promesse qui pourrait
-        // ne JAMAIS se regler rougirait par EXPIRATION, et une expiration ne
-        // dit pas QUELLE assertion a echoue. On laisse courir les microtaches
-        // du `then`, puis on ASSERTE.
+        // ⚠️ WE DO NOT AWAIT `tenue`: an `await` on a promise that might
+        // NEVER settle would go red by TIMEOUT, and a timeout does not
+        // say WHICH assertion failed. We let the microtasks of the
+        // `then` run, then we ASSERT.
         await Promise.resolve();
         await Promise.resolve();
         expect(rendu, 'the lock must be RELEASED when it is let go').toBe(true);
     });
 
     it('release is IDEMPOTENT, and inert without a held lock', () => {
-        // Le repli sans `navigator.locks` ne detient aucun verrou : il n y a
-        // rien a rendre, et le dire ne doit pas lever.
+        // The fallback without `navigator.locks` holds no lock: there is
+        // nothing to give back, and saying so must not throw.
         const election = elire('v', { devenirPorteur: () => {}, devenirSuiveur: () => {} });
         expect(() => { election.relacher(); election.relacher(); }).not.toThrow();
     });
@@ -194,9 +194,9 @@ describe('elire: the lock is RELEASED', () => {
 
 describe('estDemandeEtat', () => {
     it('recognises the request a new tab makes on mount', () => {
-        // 🔴 IMPORTANT ① : `diffuserSiChange` ne poste que sur CHANGEMENT. En
-        // regime -- trois fenetres, rien qui bouge -- un onglet qui rejoint
-        // montrait une liste VIDE POUR TOUJOURS.
+        // 🔴 IMPORTANT ①: `diffuserSiChange` only posts on CHANGE. In
+        // steady state -- three windows, nothing moving -- a joining tab
+        // showed an EMPTY list FOREVER.
         expect(estDemandeEtat(batirDemande())).toBe(true);
     });
 
@@ -216,14 +216,14 @@ describe('lireTrame', () => {
     });
 
     it('returns undefined on a NON-JSON frame, instead of throwing', () => {
-        // 🔴 MINOR ③ : `JSON.parse(evenement.data)` etait NU dans l ecouteur
-        // du socket de controle.
+        // 🔴 MINOR ③: `JSON.parse(evenement.data)` was BARE in the listener
+        // of the control socket.
         expect(lireTrame('not json')).toBeUndefined();
     });
 
     it('returns undefined on `null`, `42` and an ARRAY -- which JSON.parse accepts', () => {
-        // `null.type` leve une `TypeError` ; un tableau et un nombre ont bien
-        // un `.type` `undefined`, mais ne sont pas des trames.
+        // `null.type` throws a `TypeError`; an array and a number do have
+        // an `undefined` `.type`, but they are not frames.
         expect(lireTrame('null')).toBeUndefined();
         expect(lireTrame('42')).toBeUndefined();
         expect(lireTrame('[1,2]')).toBeUndefined();

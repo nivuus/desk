@@ -1,109 +1,109 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LES ÉCHELLES — extraites de `design/tokens.css` (spec ⑥, §4.3 et §4.4), qui
-   l'IMPORTE et reste la porte d'entrée du socle. Voir son en-tête pour ce que
-   ce découpage change et ce qu'il ne change pas.
+   THE SCALES — extracted from `design/tokens.css` (spec ⑥, §4.3 and §4.4), which
+   IMPORTS it and remains the entry point of the base layer. See its header for what
+   this split changes and what it does not change.
 
-   Aucune longueur d'échelle ne s'écrit ailleurs qu'ici. UN SEUL BLOC, SANS
-   CONDITION : ces valeurs ne suivent aucun thème, clair ou sombre — à la
-   différence de `tokens/couleurs.css`, son voisin, qui en porte trois.
+   No scale length is written anywhere other than here. A SINGLE,
+   UNCONDITIONAL BLOCK: these values follow no theme, light or dark — unlike
+   `tokens/couleurs.css`, its neighbour, which carries three.
 
-   ⚠️ CE FICHIER NE PORTE AUCUNE COULEUR. `tokens/couleurs.css` en est la
-   source unique, et le contrôle §7.2 (`client/outils/couleurs-litterales.mjs`)
-   ne l'exclut PAS, lui : une couleur qui s'y glisserait serait détectée comme
-   n'importe où ailleurs dans `client/src/`.
+   ⚠️ THIS FILE CARRIES NO COLOUR. `tokens/couleurs.css` is their
+   single source, and check §7.2 (`client/outils/couleurs-litterales.mjs`)
+   does NOT exclude this one: a colour that slipped in here would be detected as
+   anywhere else in `client/src/`.
 
-   ⚠️ `:root {}` ICI SE FUSIONNE, CÔTÉ LECTURE, AVEC CELUI DE
-   `tokens/couleurs.css` : les deux fichiers déclarent chacun un `:root {}`
-   SANS CONDITION, et le navigateur les unit par le cascade — c'est le même
-   mécanisme qui unit déjà les blocs `:root`, `@media` et `:root[data-theme]`
-   au sein d'un seul fichier. `tokens.ts::lireBlocsDeTheme` en fait autant :
-   deux `:root {}` sans condition sont FUSIONNÉS en un seul bloc logique
-   nommé `racine`, tokens et corps unis. Voir `tokens.test.ts` pour la preuve,
-   et `reprise.test.ts` pour l'exercice réel : il lit `--fond-0` (une couleur,
-   déclarée dans `couleurs.css`) et `--e-3` (une échelle, déclarée ici) sur le
-   MÊME bloc `racine`.
-   🔴 CETTE FUSION BORNE À 3 LE COMPTE DE BLOCS LOGIQUES : elle ne peut donc
-   plus dénoncer un `:root {}` de trop ajouté ici par erreur.
-   `tokens.ts::lireBlocsBruts` (SANS fusion) est le compte qui varie encore
-   avec le nombre d'occurrences physiques ; `tokens.test.ts` l'éprouve sur le
-   contenu RÉEL des deux fichiers.
+   ⚠️ THE `:root {}` HERE MERGES, ON THE READING SIDE, WITH THAT OF
+   `tokens/couleurs.css`: the two files each declare an UNCONDITIONAL
+   `:root {}`, and the browser unites them through the cascade — it is the same
+   mechanism that already unites the `:root`, `@media` and `:root[data-theme]` blocks
+   within a single file. `tokens.ts::lireBlocsDeTheme` does the same:
+   two unconditional `:root {}` are MERGED into a single logical block
+   named `racine`, tokens and bodies united. See `tokens.test.ts` for the proof,
+   and `reprise.test.ts` for the real exercise: it reads `--fond-0` (a colour,
+   declared in `couleurs.css`) and `--e-3` (a scale, declared here) on the
+   SAME `racine` block.
+   🔴 THIS MERGE BOUNDS THE COUNT OF LOGICAL BLOCKS TO 3: it can therefore
+   no longer denounce an extra `:root {}` added here by mistake.
+   `tokens.ts::lireBlocsBruts` (WITHOUT merging) is the count that still varies
+   with the number of physical occurrences; `tokens.test.ts` exercises it on the
+   REAL content of the two files.
 
-   ⚠️ CET ORDRE (APRÈS `couleurs.css`, donc après les deux blocs clairs dans
-   le document) EST NOUVEAU depuis ce découpage — avant, ces 31 tokens
-   vivaient dans le PREMIER `:root {}` du fichier unique, donc AVANT les
-   blocs clairs. Mesuré : AUCUN nom n'est commun aux deux fichiers, donc SANS
-   EFFET aujourd'hui — mais un token d'échelle qu'un futur bloc clair
-   surchargerait serait désormais défait par le cascade dans l'autre sens.
-   Voir la même note, plus détaillée, dans `tokens.css`.
+   ⚠️ THIS ORDER (AFTER `couleurs.css`, hence after the two light blocks in
+   the document) IS NEW since this split — before, these 31 tokens
+   lived in the FIRST `:root {}` of the single file, hence BEFORE the
+   light blocks. Measured: NO name is common to the two files, so WITH NO
+   EFFECT today — but a scale token a future light block
+   overrode would now be defeated by the cascade in the other direction.
+   See the same note, more detailed, in `tokens.css`.
 
-   ⚠️ PORTE ARMÉE À 300 LIGNES : si ce fichier les atteint, séparer
-   `tokens/typographie.css` (polices, échelle typographique, interlignes) de
-   `tokens/dimensions.css` (espacement, contenants, rayons, durées,
-   épaisseurs de trait) — AVANT l'addition qui franchirait, jamais après.
+   ⚠️ GATE ARMED AT 300 LINES: if this file reaches them, separate
+   `tokens/typographie.css` (fonts, typographic scale, line heights) from
+   `tokens/dimensions.css` (spacing, containers, radii, durations,
+   stroke widths) — BEFORE the addition that would cross, never after.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-    /* ── Deux piles de polices SYSTÈME — zéro octet embarqué (spec §4.3) ───
-       Aucun fichier de police, aucun CDN. Le produit entier pèse quelques
-       dizaines de kilo-octets ; une police variable en WOFF2 le doublerait
-       pour un gain purement esthétique. Le coût assumé : le rendu DIFFÈRE
-       d'une machine à l'autre, ce qui interdit toute recette par comparaison
-       d'images (§7.8).
-       ✅ `--police-mono` EST CÂBLÉ, et son sort n'est plus ouvert : sous-bloc
-       S4, tâche 6, sur `#stats` (`client/src/style.css`) — son unique appelant
-       prévu depuis S1, celui que le §4.3 de la spec désigne. Trois sous-blocs se
-       sont passé la décision « le câbler ou le retirer », faute d'avoir le droit
-       de changer l'apparence de la fenêtre de session ; S4 l'a, et il câble. Le
-       retirer aurait emporté ses deux appelants de galerie
-       (`client/design.html`) et fait perdre au design system sa pile monospace
-       ENTIÈRE, pour vider une ligne de liste.
-       ⚠️ ET LA LISTE D'ATTENTE EST DÉSORMAIS VIDE — sans disparaître : c'est
-       l'ÉGALITÉ de §7.6 qui vaut, pas la liste, et S4 déclare quatre tokens de
-       plus qu'elle garde. Voir l'encadré de tête de
+    /* ── Two SYSTEM font stacks — zero embedded bytes (spec §4.3) ─────────
+       No font file, no CDN. The whole product weighs a few
+       tens of kilobytes; a variable WOFF2 font would double it
+       for a purely aesthetic gain. The accepted cost: rendering DIFFERS
+       from one machine to the next, which forbids any acceptance by image
+       comparison (§7.8).
+       ✅ `--police-mono` IS WIRED, and its fate is no longer open: sub-block
+       S4, task 6, on `#stats` (`client/src/style.css`) — its only caller
+       planned since S1, the one §4.3 of the spec designates. Three sub-blocks
+       passed on the decision "wire it or remove it", for lack of the right
+       to change the appearance of the session window; S4 has it, and it wires. Removing
+       it would have taken away its two gallery callers
+       (`client/design.html`) and made the design system lose its ENTIRE
+       monospace stack, to empty a list line.
+       ⚠️ AND THE WAITING LIST IS NOW EMPTY — without disappearing: it is
+       the EQUALITY of §7.6 that counts, not the list, and S4 declares four more
+       tokens that it guards. See the top box of
        `client/outils/tokens-orphelins/attente.mjs`.
-       ❌ « Sans appelant, le token sort » — écrit ici par la tâche 7 de S1 — a
-       été RÉFUTÉ par la tâche 12 de la MÊME branche : le token n'est pas sorti.
-       Il ne sortira plus : il a un appelant.
-       ⚠️ DEUX CHIFFRES ET UN CHEMIN ONT VIEILLI ICI, corrigés par la revue
-       transverse de S2 (20 août 2026) : ils disaient « 28 tokens en attente »
-       et « les 27 autres », et renvoyaient à `client/outils/tokens-orphelins.mjs`.
-       La liste vaut **10** entrées depuis S2, et elle a été EXTRAITE vers
-       `client/outils/tokens-orphelins/attente.mjs` avec toute sa doctrine.
-       S2 N'A PAS ROUVERT ce token : aucune de ses quatre familles n'a besoin
-       d'une pile monospace. */
+       ❌ "Without a caller, the token leaves" — written here by task 7 of S1 — was
+       REFUTED by task 12 of the SAME branch: the token did not leave.
+       It will not leave any more: it has a caller.
+       ⚠️ TWO FIGURES AND A PATH AGED HERE, corrected by the cross
+       review of S2 (August 20th, 2026): they said "28 tokens waiting"
+       and "the other 27", and pointed to `client/outils/tokens-orphelins.mjs`.
+       The list has held **10** entries since S2, and it was EXTRACTED to
+       `client/outils/tokens-orphelins/attente.mjs` with all its doctrine.
+       S2 DID NOT REOPEN this token: none of its four families needs
+       a monospace stack. */
     --police-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI",
         Roboto, "Helvetica Neue", Arial, sans-serif;
     --police-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono",
         "JetBrains Mono", Menlo, Consolas, monospace;
 
-    /* ── Échelle typographique — sept crans, ratio ≈ 1,2 (spec §4.4) ───────
-       En `rem`, sur une racine JAMAIS forcée : `base.css` retire la taille de
-       police de `html` précisément pour cela. Les équivalents en pixels valent
-       à racine 16 px, c'est-à-dire au réglage par défaut du navigateur.
-       ⚠️ PLANCHER DUR : rien sous `--t-xs`. Toute taille inférieure est un
-       défaut, pas un choix de densité. */
+    /* ── Typographic scale — seven steps, ratio ≈ 1.2 (spec §4.4) ──────────
+       In `rem`, on a root NEVER forced: `base.css` removes the font size
+       from `html` precisely for that. The pixel equivalents hold
+       at a 16 px root, that is, at the browser's default setting.
+       ⚠️ HARD FLOOR: nothing below `--t-xs`. Any smaller size is a
+       defect, not a density choice. */
     --t-xs: 0.6875rem;  /* 11 px */
-    --t-s: 0.75rem;     /* 12 px — #stats, métadonnées */
-    --t-m: 0.875rem;    /* 14 px — le corps, la valeur d'avant le socle */
+    --t-s: 0.75rem;     /* 12 px — #stats, metadata */
+    --t-m: 0.875rem;    /* 14 px — the body, the value from before the base layer */
     --t-l: 1rem;        /* 16 px */
     --t-xl: 1.25rem;    /* 20 px */
     --t-2xl: 1.5rem;    /* 24 px */
     --t-3xl: 2rem;      /* 32 px */
 
     /* ── Interlignes ──────────────────────────────────────────────────────── */
-    --lh-serre: 1.25;   /* titres, à partir de --t-xl */
-    --lh-normal: 1.5;   /* le corps, la valeur d'avant le socle */
+    --lh-serre: 1.25;   /* titles, from --t-xl up */
+    --lh-normal: 1.5;   /* the body, the value from before the base layer */
     --lh-large: 1.7;    /* paragraphes longs */
 
-    /* ── Échelle d'espacement — pas de 4 px, huit crans (spec §4.4) ────────
-       ⚠️ `--e-3` VAUT 12 px À RACINE 16, et c'est la reprise exacte des
-       décalages des bandeaux d'avant le socle. Cette égalité DÉPEND de ce que
-       `base.css` ne force pas la racine : avec le `font: 14px` que `style.css`
-       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des neuf
-       contrôles ne mesure CETTE longueur-ci. ❌ « aucun ne mesure une
-       longueur » n'est plus vrai depuis S4 : §7.10 en mesure une, mais
-       ce fichier, comme `tokens/couleurs.css`, est son exception ③ — ses
-       littéraux SONT l'échelle. */
+    /* ── Spacing scale — 4 px step, eight steps (spec §4.4) ────────────────
+       ⚠️ `--e-3` IS 12 px AT A 16 ROOT, and it is the exact carry-over of the
+       banner offsets from before the base layer. This equality DEPENDS on
+       `base.css` not forcing the root: with the `font: 14px` that `style.css`
+       set on `html`, `0.75rem` would be 10.5 px — and NONE of the nine
+       checks measures THIS length. ❌ "none measures a
+       length" is no longer true since S4: §7.10 measures one, but
+       this file, like `tokens/couleurs.css`, is its exception ③ — its
+       literals ARE the scale. */
     --e-1: 0.25rem;     /* 4 px */
     --e-2: 0.5rem;      /* 8 px */
     --e-3: 0.75rem;     /* 12 px */
@@ -113,55 +113,55 @@
     --e-7: 3rem;        /* 48 px */
     --e-8: 4rem;        /* 64 px */
 
-    /* ── Trois mesures de CONTENANT — une famille NOMMÉE, pas une échelle ──
-       Sous-bloc S4, tâche 8, à valeur STRICTEMENT ÉGALE aux littéraux qu'elles
-       remplacent : aucune valeur ne change, donc aucune apparence.
+    /* ── Three CONTAINER measures — a NAMED family, not a scale ────────────
+       Sub-block S4, task 8, with a value STRICTLY EQUAL to the literals they
+       replace: no value changes, hence no appearance.
 
-       🔴 POURQUOI ELLES MÉRITENT DES TOKENS, ET POURQUOI CE N'EST PAS UNE
-       ÉCHELLE. Les échelles du §4.4 couvrent l'ESPACEMENT et la TYPOGRAPHIE ;
-       AUCUNE ne prétend couvrir une mesure de contenant — la plus grande,
-       `--e-8`, vaut 4rem, soit une carte de 64 px. `shell.css` et
-       `connexion.css` l'ont chacune relevé sans en tirer de conséquence, et
-       le journal de S3 note de lui-même que « l'étiquette de `connexion.css`
-       est plus large qu'elle ». Un design system qui n'a pas de nom pour la
-       largeur de ses pages en manque un ; et c'est la DERNIÈRE OCCASION de le
-       lui donner, ⑥ finissant à S4.
+       🔴 WHY THEY DESERVE TOKENS, AND WHY IT IS NOT A
+       SCALE. The scales of §4.4 cover SPACING and TYPOGRAPHY;
+       NONE claims to cover a container measure — the largest,
+       `--e-8`, is 4rem, that is, a 64 px card. `shell.css` and
+       `connexion.css` each noticed it without drawing any consequence, and
+       the S3 log notes by itself that "the label of `connexion.css`
+       is wider than it". A design system that has no name for the
+       width of its pages lacks one; and it is the LAST OPPORTUNITY to
+       give it one, ⑥ ending at S4.
 
-       ⚠️ TROIS TOKENS POUR TROIS APPELANTS : ce n'est pas une échelle, c'est
-       une FAMILLE NOMMÉE À TROIS MEMBRES, et le dire est plus honnête que de
-       prétendre à un pas. ⚠️ QU'ELLES MÉRITENT DES TOKENS EST UN JUGEMENT
-       HUMAIN (spec §8), et que ces trois LARGEURS soient les bonnes en est un
-       autre — il l'était déjà, et S4 ne le tranche pas.
+       ⚠️ THREE TOKENS FOR THREE CALLERS: it is not a scale, it is
+       a NAMED FAMILY WITH THREE MEMBERS, and saying so is more honest than
+       claiming a step. ⚠️ THAT THEY DESERVE TOKENS IS A HUMAN
+       JUDGEMENT (spec §8), and that these three WIDTHS are the right ones is
+       another — it already was, and S4 does not settle it.
 
-       ⚠️ ELLES VIVENT DANS LA RACINE SEULE, comme les échelles, et la clause ③
-       de §7.4 NE LES CONCERNE PAS : elle est restreinte aux COULEURS, et
-       `estUneCouleur` (`tokens.ts`) décide SUR LA VALEUR — `72rem` n'en est
-       pas une. Vérifié par la sortie du contrôle, pas par lecture seule.
+       ⚠️ THEY LIVE IN THE ROOT ALONE, like the scales, and clause ③
+       of §7.4 DOES NOT CONCERN THEM: it is restricted to COLOURS, and
+       `estUneCouleur` (`tokens.ts`) decides ON THE VALUE — `72rem` is
+       not one. Checked through the output of the check, not by reading alone.
 
-       ⚠️ L'ALTERNATIVE ÉCARTÉE, ET POURQUOI. Laisser les trois littérales et
-       CORRIGER la clause §8 — écrire qu'« aucune longueur hors échelle » ne
-       porte que sur la typographie et l'espacement. Écartée parce que
-       REDÉFINIR UNE RÈGLE POUR PUBLIER UN ZÉRO est exactement le geste que ce
-       dépôt combat : S3 a publié six *et* neuf plutôt que de choisir la règle
-       qui l'arrangeait. */
-    --contenant-page: 72rem;      /* la largeur maximale d'une page          */
-    --contenant-colonne: 18rem;   /* la largeur minimale d'une colonne       */
-    --contenant-carte: 26rem;     /* la largeur d'une carte centrée          */
+       ⚠️ THE ALTERNATIVE SET ASIDE, AND WHY. Leaving the three literals and
+       CORRECTING the §8 clause — writing that "no length outside the scale" only
+       concerns typography and spacing. Set aside because
+       REDEFINING A RULE TO PUBLISH A ZERO is exactly the gesture this
+       repository fights: S3 published six *and* nine rather than choosing the rule
+       that suited it. */
+    --contenant-page: 72rem;      /* the maximum width of a page           */
+    --contenant-colonne: 18rem;   /* the minimum width of a column       */
+    --contenant-carte: 26rem;     /* the width of a centred card          */
 
-    /* ── Rayons — en PIXELS, délibérément ──────────────────────────────────
-       Un rayon qui grandit avec le réglage de police déforme les petits
-       éléments. `--r-2` est la valeur d'avant le socle. */
+    /* ── Radii — in PIXELS, deliberately ───────────────────────────────────
+       A radius that grows with the font setting distorts small
+       elements. `--r-2` is the value from before the base layer. */
     --r-1: 4px;
     --r-2: 6px;
     --r-3: 10px;
     --r-plein: 999px;
 
-    /* ── Durées — rien au-delà de 300 ms ───────────────────────────────────
-       `--duree-2` est la valeur d'avant le socle (`transition: opacity 0.3s`). */
-    --duree-1: 120ms;   /* survol, focus */
-    --duree-2: 300ms;   /* apparition/disparition d'un bandeau */
+    /* ── Durations — nothing beyond 300 ms ─────────────────────────────────
+       `--duree-2` is the value from before the base layer (`transition: opacity 0.3s`). */
+    --duree-1: 120ms;   /* hover, focus */
+    --duree-2: 300ms;   /* appearance/disappearance of a banner */
 
-    /* ── Épaisseurs de trait ───────────────────────────────────────────────── */
+    /* ── Stroke widths ───────────────────────────────────────────────────── */
     --trait: 1px;
     --trait-focus: 2px;
 }

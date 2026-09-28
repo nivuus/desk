@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import tokensCss from '../design/tokens/couleurs.css?raw';
 import { accepterDepuis, batirManifeste, cotePng, mimeDe, versDataUrl, type Sujet } from './manifeste';
 
-/// Un vrai PNG d'un côté donné — signature, IHDR, et rien d'autre. Il suffit à
-/// `cotePng`, qui ne lit que l'en-tête, et il est CONSTRUIT plutôt que collé en
-/// base64 : un littéral opaque ne dirait pas ce qu'il porte.
+/// A real PNG of a given side — signature, IHDR, and nothing else. It is enough for
+/// `cotePng`, which only reads the header, and it is BUILT rather than pasted as
+/// base64: an opaque literal would not say what it carries.
 function pngDe(cote: number): Uint8Array {
     const o = new Uint8Array(24);
     o.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
@@ -22,14 +22,14 @@ function pngDe(cote: number): Uint8Array {
 
 const APP: Sujet = { id: 'u-1', nom: 'Bloc-notes' };
 
-/// 🔴 AUCUNE COULEUR N'EST ÉCRITE DANS CE FICHIER, ET C'EST §7.2 QUI L'EXIGE :
-/// son balayage couvre les `.ts` autant que les `.css`, et son exclusion ne
-/// couvre que `client/src/design/*.test.ts` — pas ce fichier-ci. Un premier
-/// jet y posait deux littérales et le contrôle les a relevées. **Élargir son
-/// exclusion aurait satisfait le contrôle en le VIDANT** ; les valeurs sont
-/// donc LUES sur `tokens/couleurs.css` (`tokens.css` avant l'extraction de la
-/// tâche 6, 25 août 2026), ce qui est un meilleur test : il rougirait
-/// aussi le jour où le token changerait de valeur sans que ce fichier bouge.
+/// 🔴 NO COLOUR IS WRITTEN IN THIS FILE, AND IT IS §7.2 THAT REQUIRES IT:
+/// its scan covers the `.ts` as much as the `.css`, and its exclusion only
+/// covers `client/src/design/*.test.ts` — not this file. A first
+/// draft put two literals here and the check reported them. **Widening its
+/// exclusion would have satisfied the check by EMPTYING it**; the values are
+/// therefore READ from `tokens/couleurs.css` (`tokens.css` before the extraction of
+/// task 6, August 25th, 2026), which is a better test: it would go red
+/// too the day the token changed value without this file moving.
 function tokenSombre(nom: string): string {
     const racine = tokensCss.slice(tokensCss.indexOf(':root'));
     const trouve = new RegExp(`${nom}:\\s*([^;]+);`).exec(racine);
@@ -42,9 +42,9 @@ const ACCENT = tokenSombre('--accent');
 describe('batirManifeste', () => {
     it('returns ABSOLUTE URLs — the constraint the P0 gate measured', () => {
         const m = batirManifeste(APP, 'https://exemple.test', FOND);
-        // 🔴 SI CES TROIS-LÀ REDEVIENNENT RELATIVES, le manifeste `blob:` est
-        //    refusé par Chromium et l'application cesse d'être installable.
-        //    Mesuré 2 exécutions, sonde `f` de `instrument/porte-p0.mjs`.
+        // 🔴 IF THESE THREE BECOME RELATIVE AGAIN, the `blob:` manifest is
+        //    refused by Chromium and the application stops being installable.
+        //    Measured over 2 runs, probe `f` of `instrument/porte-p0.mjs`.
         expect(m.start_url).toBe('https://exemple.test/?app=u-1');
         expect(m.scope).toBe('https://exemple.test/');
         expect(m.id).toBe('https://exemple.test/shell.html?app=u-1');
@@ -102,11 +102,11 @@ describe('batirManifeste', () => {
     });
 
     it('declares 128x128 on a 128 PNG — what the RED of criterion ① requires', () => {
-        // 🔴 LE DÉFAUT QUE LA RECETTE A TROUVÉ : un premier jet prenait la
-        //    taille de l'APPELANT, qui la laissait à 256 par défaut, et le
-        //    manifeste du témoin annonçait donc `256x256` en portant un PNG de
-        //    128. Chromium l'a attrapé (`no-acceptable-icon`) — mais un
-        //    manifeste qui ment sur ce qu'il porte est un défaut même rattrapé.
+        // 🔴 THE DEFECT ACCEPTANCE FOUND: a first draft took the
+        //    size from the CALLER, which left it at 256 by default, and the
+        //    witness's manifest therefore announced `256x256` while carrying a PNG of
+        //    128. Chromium caught it (`no-acceptable-icon`) — but a
+        //    manifest that lies about what it carries is a defect even when caught.
         expect(batirManifeste({ ...APP, icone: pngDe(128) }, 'https://x', FOND).icons[0].sizes).toBe('128x128');
     });
 
@@ -115,7 +115,7 @@ describe('batirManifeste', () => {
     });
 
     it("ASSERTS NOTHING about bytes that are not a PNG: no icon declared", () => {
-        // Poser `256x256` par défaut serait affirmer ce qu'on ne sait pas.
+        // Setting `256x256` by default would be claiming what we do not know.
         expect(batirManifeste({ ...APP, icone: new Uint8Array([1, 2, 3]) }, 'https://x', FOND).icons).toEqual([]);
     });
 });
@@ -127,10 +127,10 @@ describe('start_url and id DIVERGE since 31 August 2026', () => {
     });
 
     it('id DOES NOT MOVE: it carries the identity of the installed PWA', () => {
-        // 🔴 CHANGER `id` N EST PAS UNE MISE A JOUR : c est une SECONDE
-        // application, la premiere devenant orpheline. Et comme le manifeste est
-        // publie en blob:, une PWA installee ne le relit JAMAIS -- elle
-        // continuera d ouvrir shell.html, que la redirection rattrape.
+        // 🔴 CHANGING `id` IS NOT AN UPDATE: it is a SECOND
+        // application, the first one becoming orphaned. And since the manifest is
+        // published as blob:, an installed PWA NEVER reads it again -- it
+        // will keep opening shell.html, which the redirect catches.
         const m = batirManifeste({ id: 'u-1', nom: 'x' }, 'https://exemple.test', FOND);
         expect(m.id).toBe('https://exemple.test/shell.html?app=u-1');
     });
@@ -154,20 +154,20 @@ describe('start_url and id DIVERGE since 31 August 2026', () => {
 
 describe('versDataUrl', () => {
     it('encodes in base64 without a dependency', () => {
-        // « PNG\r » — les quatre premiers octets d'un vrai PNG.
+        // "PNG\r" — the first four bytes of a real PNG.
         expect(versDataUrl(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(
             'data:image/png;base64,iVBORw==',
         );
     });
 
     it('encodes a buffer longer than the packet without overflowing the stack', () => {
-        // 0x2000 est la taille de paquet : on la dépasse franchement, comme le
-        // fait une vraie icône de 256×256.
+        // 0x2000 is the packet size: we clearly exceed it, as a
+        // real 256×256 icon does.
         const gros = new Uint8Array(0x2000 * 3 + 7).fill(0x41);
         const url = versDataUrl(gros);
         expect(url.startsWith('data:image/png;base64,')).toBe(true);
-        // Le décodage rend EXACTEMENT ce qu'on a encodé : c'est ce qui
-        // éprouve la découpe, et pas seulement l'absence d'exception.
+        // Decoding returns EXACTLY what was encoded: that is what
+        // exercises the splitting, and not only the absence of an exception.
         const decode = atob(url.slice('data:image/png;base64,'.length));
         expect(decode.length).toBe(gros.length);
         expect(decode.charCodeAt(0)).toBe(0x41);
@@ -177,11 +177,11 @@ describe('versDataUrl', () => {
 
 describe('the background colour', () => {
     it("is a PARAMETER, and the manifest returns EXACTLY what it is given", () => {
-        // 🔴 IL N'Y A PLUS DE CONSTANTE DE COULEUR À CONFRONTER : `manifeste.ts`
-        //    n'en porte aucune, et c'est la page qui lit le thème vivant par
-        //    `getComputedStyle`. Ce test éprouve donc ce qui reste éprouvable —
-        //    que la valeur traverse sans être réécrite —, et il le fait avec
-        //    une valeur LUE sur `tokens.css`, jamais écrite ici.
+        // 🔴 THERE IS NO COLOUR CONSTANT LEFT TO CONFRONT: `manifeste.ts`
+        //    carries none, and it is the page that reads the live theme through
+        //    `getComputedStyle`. This test therefore exercises what remains testable —
+        //    that the value goes through without being rewritten —, and it does so with
+        //    a value READ from `tokens.css`, never written here.
         expect(batirManifeste(APP, 'https://x', FOND).background_color).toBe(FOND);
     });
 
@@ -216,24 +216,24 @@ describe('cotePng', () => {
     });
 
     it("returns undefined on a NON-SQUARE image rather than describing a false one", () => {
-        // ⚠️ Le manifeste emploie la largeur pour les DEUX dimensions : une
-        //    image non carrée y serait mal décrite. Que le magasin n'en produise
-        //    que des carrées est une propriété de l'AGENT, pas de ce module.
+        // ⚠️ The manifest uses the width for BOTH dimensions: a
+        //    non-square image would be badly described there. That the store only produces
+        //    square ones is a property of the AGENT, not of this module.
         const rect = pngDe(256);
         rect[23] = 0x80; // hauteur 128, largeur 256
         expect(cotePng(rect)).toBeUndefined();
     });
 
     it('reads a size over FOUR bytes, not only over the last one', () => {
-        // 4096 = 0x1000 : le troisième octet porte l'information.
+        // 4096 = 0x1000: the third byte carries the information.
         expect(cotePng(pngDe(4096))).toBe(4096);
     });
 });
 
 describe('the per-application file_handlers (slice F)', () => {
     it("OMITS `file_handlers` when the application opens nothing", () => {
-        // ⚠️ Le cas le plus fréquent. Déclarer un handler qui n'accepte rien
-        //    serait une entrée sans objet, et Chromium ANALYSE ce membre.
+        // ⚠️ The most frequent case. Declaring a handler that accepts nothing
+        //    would be a pointless entry, and Chromium PARSES this member.
         expect('file_handlers' in batirManifeste(APP, 'https://x', FOND)).toBe(false);
         expect(
             'file_handlers' in batirManifeste({ ...APP, associations: [] }, 'https://x', FOND),
@@ -241,21 +241,21 @@ describe('the per-application file_handlers (slice F)', () => {
     });
 
     it("sets an `action` INSIDE THE SCOPE, which Chromium requires", () => {
-        // 🔴 MESURÉ : une `action` hors scope fait rendre à Chromium
-        //    « property 'action' ignored, should be within scope of the
-        //    manifest. » puis « FileHandler ignored. » — c'est la sonde qui a
-        //    établi que Chromium analyse bel et bien ce membre.
+        // 🔴 MEASURED: an `action` outside the scope makes Chromium return
+        //    "property 'action' ignored, should be within scope of the
+        //    manifest." then "FileHandler ignored." — it is the probe that
+        //    established that Chromium does parse this member.
         const m = batirManifeste({ ...APP, associations: ['.txt'] }, 'https://x', FOND);
         expect(m.file_handlers).toHaveLength(1);
         expect(m.file_handlers![0].action.startsWith(m.scope)).toBe(true);
     });
 
     it('GROUPS the extensions that share a MIME', () => {
-        // 🔴 `.txt` et `.log` sont tous deux `text/plain`. Une entrée par
-        //    extension écraserait la précédente, et une application qui ouvre
-        //    les deux n'en verrait qu'une.
-        // ROUGE : `accept[mime] = [extension]` sans le regroupement ⟹ ne reste
-        //    que `.log`.
+        // 🔴 `.txt` and `.log` are both `text/plain`. One entry per
+        //    extension would overwrite the previous one, and an application that opens
+        //    both would only see one.
+        // RED: `accept[mime] = [extension]` without grouping ⟹ only `.log`
+        //    remains.
         const m = batirManifeste({ ...APP, associations: ['.txt', '.log', '.pdf'] }, 'https://x', FOND);
         expect(m.file_handlers![0].accept).toEqual({
             'text/plain': ['.txt', '.log'],
@@ -276,9 +276,9 @@ describe('mimeDe and accepterDepuis', () => {
     });
 
     it("returns the UNKNOWN-bytes type rather than omitting the entry", () => {
-        // ⚠️ `application/octet-stream` est le type HONNÊTE pour « des octets
-        //    dont on ne sait rien ». Omettre l'entrée ferait disparaître
-        //    l'extension du manifeste sans que rien ne le dise.
+        // ⚠️ `application/octet-stream` is the HONEST type for "bytes
+        //    we know nothing about". Omitting the entry would make the
+        //    extension disappear from the manifest without anything saying so.
         expect(mimeDe('.qqch')).toBe('application/octet-stream');
         expect(accepterDepuis(['.qqch', '.autre'])).toEqual({
             'application/octet-stream': ['.qqch', '.autre'],

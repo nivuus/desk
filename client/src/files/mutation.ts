@@ -122,7 +122,7 @@ import { copyFile, copierRepertoire, ouvrirRepertoire, retirerArbre } from './co
 /** What we can do with a file handle we want to move. */
 export interface MutableFileHandle extends FileHandle {
     createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
-    /** **NON STANDARD** — extension Chromium. Absente ⇒ le repli local. */
+    /** **NON STANDARD** — Chromium extension. Absent ⇒ the local fallback. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
 }
 

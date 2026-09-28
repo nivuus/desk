@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Sonde jetable (tâche 12) : lit directement les compteurs FEC/dissimulation
-// de l'entrée inbound-rtp AUDIO (fecPacketsReceived, fecPacketsDiscarded,
-// concealedSamples, concealmentEvents, packetsLost) à deux instants espacés
-// — preuve plus directe que le débit agrégé (voir tâche 8 : LBRR redistribue
-// les octets sous un débit cible, il ne les ajoute pas nécessairement).
+// Throwaway probe (task 12): directly reads the FEC/concealment counters
+// of the AUDIO inbound-rtp entry (fecPacketsReceived, fecPacketsDiscarded,
+// concealedSamples, concealmentEvents, packetsLost) at two spaced instants
+// — a more direct proof than the aggregate bitrate (see task 8: LBRR redistributes
+// the bytes under a target bitrate, it does not necessarily add them).
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -96,8 +96,8 @@ async function main() {
             if (await cdp.eval('window.__pc != null')) break;
             await new Promise((r) => setTimeout(r, 200));
         }
-        // Attendre une vraie entrée audio (pas seulement la création du PC) :
-        // Chrome ne matérialise inbound-rtp audio qu'après le premier paquet.
+        // Wait for a real audio entry (not only the creation of the PC):
+        // Chrome only materialises inbound-rtp audio after the first packet.
         let s1 = null;
         for (let i = 0; i < 40; i += 1) {
             s1 = await sample(cdp);

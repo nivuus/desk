@@ -1,19 +1,19 @@
-// Les tests de l'orchestration du téléversement — SUR L'HÔTE, SANS DOM.
+// The tests of the upload orchestration — ON THE HOST, WITHOUT A DOM.
 //
-// 🔴 CE FICHIER N'EXISTE QUE PARCE QUE LES TROIS DÉPENDANCES SONT INJECTÉES.
-// `fetch`, l'horloge et l'`AbortSignal` étant des paramètres, la séquence
-// entière s'éprouve sans navigateur ni serveur — et c'est la même propriété qui
-// permettra au pilote de recette (D14) de lancer LE CODE DU PRODUIT sous Node.
+// 🔴 THIS FILE ONLY EXISTS BECAUSE THE THREE DEPENDENCIES ARE INJECTED.
+// `fetch`, the clock and the `AbortSignal` being parameters, the whole
+// sequence is exercised without a browser or a server — and it is the same property that
+// will let the acceptance driver (D14) run THE PRODUCT'S CODE under Node.
 //
-// ⚠️ `Buffer` EST INTERDIT ICI : `client/` n'a pas `@types/node`, et un test qui
-// l'emploierait passerait sous Vitest en CASSANT `npm run typecheck`
-// (`TS2580`). Piège déjà payé par ce dépôt — d'où `Uint8Array` partout.
+// ⚠️ `Buffer` IS FORBIDDEN HERE: `client/` does not have `@types/node`, and a test that
+// used it would pass under Vitest while BREAKING `npm run typecheck`
+// (`TS2580`). A trap this repository already paid for — hence `Uint8Array` everywhere.
 import { describe, expect, it } from 'vitest';
 import { condenserHex } from '../../../proto/ts/sha256';
 import { televerser, type DepsTeleversement, type Fetch, type Issue } from './televersement';
 
-/// Un contenu déterministe — un générateur congruentiel, jamais `Math.random` :
-/// un test dont les octets changent d'une exécution à l'autre ne se rejoue pas.
+/// Deterministic content — a congruential generator, never `Math.random`:
+/// a test whose bytes change from one run to the next cannot be replayed.
 function octetsDe(size: number, graine = 7) {
     const sortie = new Uint8Array(size);
     let x = graine;
@@ -45,10 +45,10 @@ function routeDe(url: string, methode: string): Route {
     return methode === 'POST' ? 'creation' : 'etat';
 }
 
-/// Un service factice qui ENREGISTRE ce qu'on lui envoie. C'est l'enregistrement
-/// qui compte : le critère ③ de la spec se juge aux OCTETS RÉELLEMENT ÉMIS, pas
-/// au verdict final — « recommencer à zéro passerait un test qui ne regarde que
-/// le résultat ».
+/// A fake service that RECORDS what it is sent. It is the recording
+/// that counts: criterion ③ of the spec is judged on the bytes ACTUALLY EMITTED, not
+/// on the final verdict — "starting over from zero would pass a test that only looks at
+/// the result".
 function serveur(reponses: Partial<Record<Route, Reponse>>) {
     const appels: Appel[] = [];
     const fetch: Fetch = async (url, init) => {
@@ -78,19 +78,19 @@ function deps(fetch: Fetch, extra: Partial<DepsTeleversement> = {}): DepsTelever
     return { base: 'https://p', jeton: 'j-1', fetch, maintenant: () => 0, ...extra };
 }
 
-/// Un fichier de 16 octets découpé par 4 : quatre tranches, le cas de la rouge n°1.
+/// A 16-byte file cut by 4: four chunks, the case of red no. 1.
 const OCTETS = octetsDe(16);
 const SHA = condenserHex(OCTETS);
 const file = (o: BlobPart = OCTETS, nom = 'setup.exe'): File => new File([o], nom);
 const creation = { status: 200, corps: { id: 't-1', taille_tranche: 4, tranches_presentes: [] } };
-/// 🔴 LA FORME QUE LA ROUTE REND, ET LA SEULE : `{n, octets}`.
+/// 🔴 THE SHAPE THE ROUTE RETURNS, AND THE ONLY ONE: `{n, octets}`.
 ///
-/// ⚠️ CES CAS PORTAIENT DES RANGS NUS pendant que `routes-televersement.ts`
-/// s'écrivait en parallèle, et le module les tolérait. La route étant arrêtée —
-/// elle rend le LISTAGE du magasin —, la tolérance est retirée : elle faisait
-/// **croire le service sur une taille qu'il n'avait jamais annoncée**, si bien
-/// qu'un rang présent à la MAUVAISE taille serait passé pour conforme et que le
-/// scellement aurait refusé plus tard, ailleurs, sans que rien ne relie les deux.
+/// ⚠️ THESE CASES CARRIED BARE RANKS while `routes-televersement.ts`
+/// was being written in parallel, and the module tolerated them. The route being settled —
+/// it returns the store's LISTING —, the tolerance is removed: it made
+/// **the service be believed about a size it had never announced**, so
+/// that a rank present at the WRONG size would have passed as compliant and
+/// sealing would have refused later, elsewhere, with nothing linking the two.
 const presente = (n: number, octets = 4) => ({ n, octets });
 
 const etatDe = (presentes: unknown, extra: Record<string, unknown> = {}): Reponse => ({
@@ -105,16 +105,16 @@ describe('the nominal path', () => {
         expect(issue).toEqual({ etat: 'scelle', id: 't-1', size: 16, sha256: SHA, deposees: [0, 1, 2, 3] });
         expect(s.rangs()).toEqual([0, 1, 2, 3]);
         expect(s.octetsEmis()).toBe(16);
-        // L'ordre du protocole : créer, déposer, sceller — et une seule création.
+        // The protocol order: create, deposit, seal — and a single creation.
         expect(s.appels.map((a) => routeDe(a.url, a.methode))).toEqual([
             'creation', 'tranche', 'tranche', 'tranche', 'tranche', 'sceller',
         ]);
     });
 
     it("announces the name, the size and the fingerprint from the CREATION on (D5)", async () => {
-        // 🔴 C'est cette annonce, et elle seule, qui rendra une reprise
-        // vérifiable : sans `{size, sha256}` posés d'avance, rien ne dira que
-        // le fichier re-choisi après un rechargement d'onglet est LE MÊME.
+        // 🔴 It is this announcement, and it alone, that will make a resumption
+        // verifiable: without `{size, sha256}` set beforehand, nothing will say that
+        // the file chosen again after a tab reload is THE SAME.
         const s = serveur({ creation });
         await televerser(file(OCTETS, 'programme.msi'), deps(s.fetch));
         expect(s.appels[0].url).toBe('https://p/televersement');
@@ -123,11 +123,11 @@ describe('the nominal path', () => {
     });
 
     it("the runtime platform's `fetch` satisfies the `Fetch` type", () => {
-        // 🔵 LE CONTRÔLE QUI EMPÊCHE `Fetch` DE DÉRIVER. Il est déclaré à la main
-        // — une `Response` complète serait infabricable dans un test —, donc rien
-        // ne garantirait qu'une VRAIE `fetch` le satisfasse encore après une
-        // retouche. Cette affectation est vérifiée par `tsc --noEmit`, et elle
-        // rougirait à la COMPILATION le jour où les deux formes divergeraient.
+        // 🔵 THE CHECK THAT KEEPS `Fetch` FROM DRIFTING. It is declared by hand
+        // — a complete `Response` could not be built in a test —, so nothing
+        // would guarantee a REAL `fetch` still satisfies it after an
+        // edit. This assignment is checked by `tsc --noEmit`, and it
+        // would go red at COMPILE TIME the day the two shapes diverged.
         const preuve: Fetch = globalThis.fetch;
         expect(typeof preuve).toBe('function');
     });
@@ -152,16 +152,16 @@ describe('the nominal path', () => {
 
 describe('🔴 resuming deposits again ONLY the missing chunks', () => {
     it('on four chunks of which two are present, emits TWO — not four', async () => {
-        // 🔴 C'est la rouge du critère ③ : un produit qui recommencerait à zéro
-        // rendrait le MÊME verdict `scelle`. Seul le COMPTE D'OCTETS le sépare
-        // d'un produit correct — d'où l'assertion sur `octetsEmis`, et non sur
-        // la seule issue.
+        // 🔴 It is the red of criterion ③: a product that started over from zero
+        // would return the SAME `scelle` verdict. Only the BYTE COUNT separates it
+        // from a correct product — hence the assertion on `octetsEmis`, and not on
+        // the outcome alone.
         const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
-        // ⚠️ LE COMPTE D'OCTETS PASSE EN PREMIER, ET CE N'EST PAS COSMÉTIQUE :
-        // `deposees` est un champ que le PRODUIT déclare, donc falsifiable par un
-        // produit qui redéposerait tout en annonçant le contraire. Les octets
-        // réellement émis, eux, ne se déclarent pas.
+        // ⚠️ THE BYTE COUNT COMES FIRST, AND IT IS NOT COSMETIC:
+        // `deposees` is a field the PRODUCT declares, hence falsifiable by a
+        // product that deposited everything again while announcing the opposite. The bytes
+        // actually emitted, on the other hand, are not declared.
         expect(s.octetsEmis()).toBe(8);
         expect(s.rangs()).toEqual([2, 3]);
         expect(s.puts()).toHaveLength(2);
@@ -184,8 +184,8 @@ describe('🔴 resuming deposits again ONLY the missing chunks', () => {
     });
 
     it('refuses a badly SIZED chunk instead of requesting it again endlessly', async () => {
-        // `incoherentes` n'est pas `manquantes` : redéposer ne réparerait rien,
-        // et boucler serait le vrai défaut.
+        // `incoherentes` is not `manquantes`: depositing again would fix nothing,
+        // and looping would be the real defect.
         const s = serveur({ etat: etatDe([{ n: 0, octets: 3 }]) });
         const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toEqual({
@@ -199,14 +199,14 @@ describe('🔴 resuming deposits again ONLY the missing chunks', () => {
 
 describe("🔴 resuming checks the identity of the file BEFORE resuming", () => {
     it("refuses a different SIZE BEFORE fingerprinting, and emits NO PUT", async () => {
-        // 🔴 LA PREMIÈRE ASSERTION EST LA SEULE QUI DISTINGUE LE GARDE DE TAILLE
-        // DU GARDE D'EMPREINTE, et elle a été ajoutée APRÈS avoir vu la rouge
-        // correspondante rester VERTE : un fichier de 12 octets a de toute façon
-        // une empreinte différente, donc le verdict `fichier-different` sortait
-        // même sans le garde de taille. Ce que ce garde achète n'est pas le
-        // verdict — c'est de ne PAS payer la passe de lecture complète, onze
-        // secondes pour 800 Mo. Une phase `empreinte` observée prouve qu'elle a
-        // été payée.
+        // 🔴 THE FIRST ASSERTION IS THE ONLY ONE THAT TELLS THE SIZE GUARD
+        // FROM THE FINGERPRINT GUARD, and it was added AFTER seeing the
+        // corresponding red stay GREEN: a 12-byte file has a different
+        // fingerprint anyway, so the `fichier-different` verdict came out
+        // even without the size guard. What this guard buys is not the
+        // verdict — it is NOT paying for the full read pass, eleven
+        // seconds for 800 MB. An observed `empreinte` phase proves it was
+        // paid.
         const phases: string[] = [];
         const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(
@@ -230,8 +230,8 @@ describe("🔴 resuming checks the identity of the file BEFORE resuming", () => 
     });
 
     it("refuses to resume a state that announces NEITHER size NOR fingerprint", async () => {
-        // Reprendre à l'aveugle mélangerait les tranches de deux fichiers, et le
-        // scellement échouerait sans que rien ne dise pourquoi.
+        // Resuming blindly would mix the chunks of two files, and
+        // sealing would fail without anything saying why.
         const s = serveur({ etat: { status: 200, corps: { taille_tranche: 4, tranches_presentes: [] } } });
         const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'etat-illisible' } });
@@ -248,9 +248,9 @@ describe('🔴 the service refusals come back TYPED', () => {
             id: 't-1',
             refus: { source: 'service', etape: 'scellement', statut: 409, motif: 'empreinte' },
         });
-        // ⚠️ LES DEUX ASSERTIONS QUI SUIVENT SONT LE CŒUR DE CETTE ROUGE : une
-        // boucle de réessai téléverserait sans fin, et un `id` perdu obligerait
-        // l'appelant à tout redéposer.
+        // ⚠️ THE TWO ASSERTIONS THAT FOLLOW ARE THE HEART OF THIS RED: a
+        // retry loop would upload endlessly, and a lost `id` would force
+        // the caller to deposit everything again.
         expect(s.appels.filter((a) => a.url.endsWith('/sceller'))).toHaveLength(1);
         expect(s.octetsEmis()).toBe(16);
     });
@@ -282,8 +282,8 @@ describe('🔴 the service refusals come back TYPED', () => {
     });
 
     it("on an absurd `taille_tranche`, refuses instead of THROWING", async () => {
-        // `plan` lève sur un pas nul — sa garde vise un défaut de programme, pas
-        // une donnée de fil. La valider ici est ce qui rend un refus nommé.
+        // `plan` throws on a zero step — its guard targets a program defect, not
+        // wire data. Validating it here is what makes the refusal named.
         const s = serveur({ creation: { status: 200, corps: { id: 't-1', taille_tranche: 0 } } });
         const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'refus', id: 't-1', refus: { motif: 'etat-illisible' } });
@@ -300,10 +300,10 @@ describe("interruption is a refusal, never a failure", () => {
     it('stops the deposit between two chunks and returns `interrompu` with its `id`', async () => {
         const s = serveur({ creation });
         const arret = new AbortController();
-        // ⚠️ L'HORLOGE DOIT AVANCER : figée, le cadenceur ne laisserait passer que
-        // le premier événement de chaque phase — celui qui est forcé — et
-        // l'abandon ne serait jamais déclenché. Ce test a été VU VERT À TORT
-        // pour cette raison avant d'être corrigé.
+        // ⚠️ THE CLOCK MUST MOVE FORWARD: frozen, the pacer would only let through
+        // the first event of each phase — the forced one — and
+        // abandonment would never be triggered. This test was SEEN WRONGLY GREEN
+        // for this reason before being fixed.
         let horloge = 0;
         const issue = await televerser(
             file(),
@@ -327,9 +327,9 @@ describe("interruption is a refusal, never a failure", () => {
         arret.abort();
         const issue = await televerser(file(), deps(casse, { signal: arret.signal }));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'interrompu' } });
-        // Sans signal levé, la même panne REMONTE : ce module n'a rien d'utile à
-        // dire d'une panne d'environnement, et la déguiser en refus la ferait
-        // passer pour une décision de protocole.
+        // Without a raised signal, the same failure GOES UP: this module has nothing useful to
+        // say about an environment failure, and disguising it as a refusal would make it
+        // pass for a protocol decision.
         await expect(televerser(file(), deps(casse))).rejects.toThrow('cut');
     });
 });
@@ -354,8 +354,8 @@ describe("progress, paced by the injected clock", () => {
     });
 
     it('holds back NON-forced events when the period has not elapsed', async () => {
-        // L'horloge figée : seuls les changements de phase, qui passent toujours,
-        // doivent sortir. Sans cadence, empreindre 800 Mo en émettrait des milliers.
+        // The frozen clock: only phase changes, which always go through,
+        // must come out. Without pacing, fingerprinting 800 MB would emit thousands.
         const s = serveur({ creation });
         const vues: string[] = [];
         await televerser(file(), deps(s.fetch, { progression: (p) => void vues.push(p.phase) }));

@@ -1,34 +1,34 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SURFACE — la carte, et le séparateur.
+   SURFACE — the card, and the separator.
 
-   🔴 LE TRAIT DE LA CARTE EST `--bord`, ET C'EST UNE DÉCISION, PAS UN DÉFAUT
-   DE CHOIX. Une carte INERTE est un conteneur décoratif, que WCAG 1.4.11
-   exempte explicitement ; `--bord` rend 1,45 en sombre et 1,40 en clair sur
-   `--fond-0`, et il est hors des 52 paires du §7.1 pour cette raison même.
+   🔴 THE STROKE OF THE CARD IS `--bord`, AND IT IS A DECISION, NOT A DEFAULT
+   CHOICE. An INERT card is a decorative container, which WCAG 1.4.11
+   explicitly exempts; `--bord` gives 1.45 in dark and 1.40 in light on
+   `--fond-0`, and it is outside the 52 pairs of §7.1 for that very reason.
 
-   ⚠️ UNE CARTE CLIQUABLE, ELLE, PORTERAIT `--bord-fort` : son contour
-   deviendrait alors le contour d'un contrôle, et il est mesuré au seuil 3.
-   ❌ S3 N'EN A PAS POSÉ, ET CET ENCADRÉ ANNONÇAIT LE CONTRAIRE : il disait
-   « c'est S3 qui en aura besoin pour la liste de fenêtres de la page-shell, et
-   c'est à lui de poser `--bord-fort` ». S3 a fait AUTREMENT — la carte reste
-   INERTE, et c'est un `.bouton--discret` POSÉ DANS la carte qui porte l'action
-   « Rouvrir » (`client/hub.html`, `<template id="modele-fenetre">` —
-   `client/shell.html` jusqu'à la tâche 9 du 31 août 2026, qui l'a vidée).
-   ⚠️ **DEUX MESURES, PARCE QUE LA PHRASE EN AFFIRME DEUX** : où vit le
-   gabarit — `grep -ln 'modele-fenetre' client/*.html` ne rend plus que le
-   hub — ET quelle classe porte réellement le bouton, qui est l'affirmation
-   que cet encadré fait vraiment : `client/hub.html:199` rend
+   ⚠️ A CLICKABLE CARD, ON THE OTHER HAND, WOULD CARRY `--bord-fort`: its outline
+   would then become the outline of a control, and it is measured at threshold 3.
+   ❌ S3 DID NOT SET ONE, AND THIS BOX ANNOUNCED THE OPPOSITE: it said
+   "it is S3 that will need it for the window list of the shell page, and
+   it is up to it to set `--bord-fort`". S3 did OTHERWISE — the card stays
+   INERT, and it is a `.bouton--discret` SET INSIDE the card that carries the
+   "Reopen" action (`client/hub.html`, `<template id="modele-fenetre">` —
+   `client/shell.html` until task 9 of August 31st, 2026, which emptied it).
+   ⚠️ **TWO MEASUREMENTS, BECAUSE THE SENTENCE CLAIMS TWO THINGS**: where the
+   template lives — `grep -ln 'modele-fenetre' client/*.html` now only returns the
+   hub — AND which class the button really carries, which is the claim
+   this box really makes: `client/hub.html:199` returns
    `<button type="button" class="bouton bouton--discret" data-rouvrir>`.
-   Le premier relevé seul aurait laissé la seconde moitié non établie. Le
-   contour cliquable est donc celui du bouton, que `bouton.css` mesure déjà ;
-   la carte reste le conteneur décoratif que WCAG 1.4.11 exempte, et
-   `--bord-fort` N'EST TOUJOURS PAS POSÉ ICI. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE
-   CHOIX : le §4.5 le déclare règle de revue, et le §8 le range parmi les
-   jugements humains.
+   The first report alone would have left the second half unestablished. The
+   clickable outline is therefore that of the button, which `bouton.css` already measures;
+   the card stays the decorative container WCAG 1.4.11 exempts, and
+   `--bord-fort` IS STILL NOT SET HERE. ⚠️ NO COMMAND CHECKS THIS
+   CHOICE: §4.5 declares it a review rule, and §8 files it among the
+   human judgements.
 
-   ⚠️ LE SÉPARATEUR N'EST PAS UN `<hr>` : c'est une classe, comme tout ici. Un
-   sélecteur d'élément nu changerait l'apparence de surfaces que S2 s'interdit
-   de toucher — voir la règle ① de l'en-tête de `primitives.css`.
+   ⚠️ THE SEPARATOR IS NOT AN `<hr>`: it is a class, like everything here. A
+   bare element selector would change the appearance of surfaces S2 forbids itself
+   to touch — see rule ① of the header of `primitives.css`.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .carte {
