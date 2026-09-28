@@ -1,11 +1,11 @@
-// Les sondes de la recette du sous-bloc P3. Un sous-commande par critère.
+// The probes of sub-block P3's acceptance run. One subcommand per criterion.
 //
 //     tsx sonde.ts <critere-1|critere-2|critere-3|critere-4|e2-ferme> <sqlite|postgres> <commit>
 //
-// 🔴 CHAQUE SONDE ÉCRIT SON RELEVÉ SUR LA SORTIE STANDARD, et rend un code de
-// sortie NON NUL si son critère n'est pas tenu. Un journal qui se contenterait
-// d'imprimer sans juger ne pourrait pas rougir — c'est le patron que ce dépôt
-// a payé quatre fois au sous-bloc D10.
+// 🔴 EACH PROBE WRITES ITS READING ON STANDARD OUTPUT, and returns a NON-ZERO
+// exit code if its criterion is not met. A log that merely
+// printed without judging could not turn red — it is the pattern this repository
+// paid for four times in sub-block D10.
 //
 // ⚠️ AUCUN SECRET N'EST ÉCRIT EN CLAIR. Les secrets d'enrôlement sont tirés au
 // sort par `enrolerLaVm` et n'apparaissent dans aucun journal versé : seules

@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Joue UNE exécution du banc S1 / S1bis.
+# Plays ONE run of bench S1 / S1bis.
 #
 #     jouer-banc.sh <s1|s1bis> <etiquette> [--xvfb]
 #
-# 🔴 LE NETTOYAGE EST DANS UN `trap`, JAMAIS DANS LA DERNIÈRE LIGNE : la salle
-# et les défauts audio de l'utilisateur sont rendus même si le banc échoue,
-# même s'il est interrompu.
+# 🔴 THE CLEAN-UP IS IN A `trap`, NEVER IN THE LAST LINE: the room
+# and the user's audio defaults are given back even if the bench fails,
+# even if it is interrupted.
 set -uo pipefail
 MODE="${1:?s1 ou s1bis}"; ETIQ="${2:?etiquette}"; XV="${3:-}"
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-micro-e3/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-micro-e3"
 export XDG_RUNTIME_DIR=/run/user/1000
-# 🔴 `PULSE_SERVER` EXPLICITE : en root, la bibliothèque PulseAudio refuse un
-# `XDG_RUNTIME_DIR` qui ne lui appartient pas, et TOUT le banc s'en trouve
-# faussé sans le dire — voir le § de `banc-aec.mjs`.
+# 🔴 EXPLICIT `PULSE_SERVER`: as root, the PulseAudio library refuses an
+# `XDG_RUNTIME_DIR` that does not belong to it, and the WHOLE bench is
+# skewed by it without saying so — see the § of `banc-aec.mjs`.
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 mkdir -p /tmp/e3
 
@@ -44,9 +44,9 @@ nettoyer() {
     [ -n "$SALLE" ] && kill "$SALLE" 2>/dev/null
     [ -n "$XPID" ] && kill "$XPID" 2>/dev/null
     sleep 1
-    # ⚠️ Les défauts sont RESTAURÉS À LEUR VALEUR RELEVÉE, jamais à une valeur
-    # supposée : `auto_null` est le défaut de CETTE machine aujourd'hui, il
-    # pourrait ne pas l'être demain.
+    # ⚠️ The defaults are RESTORED TO THEIR READ VALUE, never to an assumed
+    # value: `auto_null` is THIS machine's default today, it
+    # might not be tomorrow.
     [ "$DEF_SINK" != "?" ] && pactl set-default-sink "$DEF_SINK" 2>/dev/null
     [ "$DEF_SRC" != "?" ] && pactl set-default-source "$DEF_SRC" 2>/dev/null
     noms > /tmp/e3/graphe-apres.txt
@@ -64,12 +64,12 @@ pw-loopback \
 SALLE=$!
 sleep 2
 noms | grep -qE '^salle_e3$' || { echo "🔴 [$ETIQ] la salle n'existe pas"; cat /tmp/e3/salle.log; exit 2; }
-# ⚠️ **wireplumber ÉLIT LA SALLE COMME DÉFAUT TOUT SEUL** — c'est le risque n°1
-# de la Décision 5, et il SE PRODUIT. Il est bénin ici (le défaut d'avant est
-# `auto_null`, une sortie de repli, et rien ne jouait), et **il se défait tout
-# seul à la mort du processus** : mesuré, `auto_null` redevient le défaut.
-# On pose quand même les défauts explicitement — une élection automatique n'est
-# pas une garantie —, et on les RESTAURE à leur valeur RELEVÉE dans le `trap`.
+# ⚠️ **wireplumber ELECTS THE ROOM AS DEFAULT ON ITS OWN** — it is risk no. 1
+# of Decision 5, and it DOES HAPPEN. It is benign here (the previous default is
+# `auto_null`, a fallback output, and nothing was playing), and **it undoes itself
+# when the process dies**: measured, `auto_null` becomes the default again.
+# We still set the defaults explicitly — an automatic election is
+# not a guarantee —, and we RESTORE them to their READ value in the `trap`.
 pactl set-default-sink salle_e3 2>/dev/null
 pactl set-default-source salle_e3_micro 2>/dev/null
 echo "=== [$ETIQ] salle posée ; défauts : sink=$(pactl get-default-sink) source=$(pactl get-default-source)"

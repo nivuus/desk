@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Joue une sonde de la recette P3 et écrit son journal.
+# Plays one probe of acceptance run P3 and writes its log.
 #
-#     instrument/jouer.sh <sonde> <sqlite|postgres> <fichier-de-sortie>
+#     instrument/jouer.sh <probe> <sqlite|postgres> <output-file>
 #
-# 🔴 TURN_URL ET TURN_SECRET SONT POSÉS ICI, ET CE N'EST PAS DE LA
-# CONFIGURATION DE CONFORT. Sans eux, le relais n'envoie AUCUNE `ice-config` à
-# personne, et l'assertion « l'intrus n'en a pas reçu » serait VRAIE sur un
-# service dont la garde aurait été entièrement retirée — un contrôle incapable
-# d'échouer, le mode de défaillance que ce dépôt a payé quatre fois au
-# sous-bloc D10. Les valeurs sont celles de la recette P2, reprises telles
-# quelles pour que les deux journaux `e2-*` se lisent ligne à ligne.
+# 🔴 TURN_URL AND TURN_SECRET ARE SET HERE, AND IT IS NOT COMFORT
+# CONFIGURATION. Without them, the relay sends NO `ice-config` to
+# anyone, and the assertion "the intruder did not receive one" would be TRUE on a
+# service whose guard had been entirely removed — a check unable
+# to fail, the failure mode this repository paid for four times in
+# sub-block D10. The values are those of acceptance run P2, taken as
+# is so that the two `e2-*` logs can be read line by line.
 #
-# ⚠️ La sortie d'erreur du service est CONSERVÉE, dans une section à part : la
-# ligne `poignée de main refusée : … elle ne porte pas son préfixe` est la
-# moitié « journalisée » que la spec exige du refus, et elle ne vit que là.
+# ⚠️ The service's error output is KEPT, in a separate section: the
+# line `handshake refused: … it does not carry its prefix` is the
+# "logged" half the spec requires of the refusal, and it only lives there.
 set -uo pipefail
 
 SONDE="$1"

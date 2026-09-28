@@ -1,5 +1,5 @@
-# R2b : LA MEME mutation, cote TYPESCRIPT -- la cle `type` de `MicStateMessage`
-# passe de 'mic-state' a 'micstate', dans l'interface ET dans `TOUS_AGENT`.
+# R2b: THE SAME mutation, on the TYPESCRIPT side -- the `type` key of `MicStateMessage`
+# goes from 'mic-state' to 'micstate', in the interface AND in `TOUS_AGENT`.
 python3 - "$1" <<'PY'
 import sys
 p=sys.argv[1]

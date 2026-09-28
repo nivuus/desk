@@ -1,10 +1,10 @@
-# R2a : la cle `type` de MicState passe de `mic-state` a `micstate`, cote RUST.
+# R2a: MicState's `type` key goes from `mic-state` to `micstate`, on the RUST side.
 #
-# ⚠️ Le geste choisi est un `#[serde(rename)]` sur la variante, PAS un renommage
-# de la variante elle-meme : renommer l'identifiant Rust casserait `redaction.rs`
-# et `transport/controle.rs`, et la rouge rougirait alors sur une ERREUR DE
-# COMPILATION -- c'est-a-dire pour la mauvaise raison. Ce qu'on veut faire
-# tomber est l'assertion de FORME DE FIL, et elle seule.
+# ⚠️ The chosen gesture is a `#[serde(rename)]` on the variant, NOT a renaming
+# of the variant itself: renaming the Rust identifier would break `redaction.rs`
+# and `transport/controle.rs`, and the red run would then turn red on a
+# COMPILATION ERROR -- that is, for the wrong reason. What we want to bring
+# down is the WIRE SHAPE assertion, and it alone.
 python3 - "$1" <<'PY'
 import sys
 p=sys.argv[1]

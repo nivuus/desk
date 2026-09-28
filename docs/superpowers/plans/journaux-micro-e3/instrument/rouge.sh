@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Harnais de rouge du bloc E3.
+# Red-run harness of block E3.
 #
-# Doctrine appliquée, et chaque clause a coûté une rouge restée verte dans ce
-# dépôt :
+# Doctrine applied, and each clause cost a red run that stayed green in this
+# repository:
 #
-#  - on compare à une COPIE NOMMÉE, jamais à HEAD. Un contrôle fondé sur
-#    `git diff` contre HEAD ne distingue pas « la mutation n'a rien changé » de
-#    « le fichier était déjà modifié » ;
-#  - `git checkout --` restaure HEAD, PAS l'état d'avant. Sur un arbre partagé
-#    il détruirait le travail non commité. La restauration se fait depuis la
-#    copie nommée, et son empreinte est vérifiée ;
-#  - ROUGE 0 : une mutation qui ne change RIEN doit être REFUSÉE. C'est le
-#    contrôle du harnais lui-même ; sans lui, aucune autre rouge ne compte.
+#  - we compare with a NAMED COPY, never with HEAD. A check based on
+#    `git diff` against HEAD does not distinguish "the mutation changed nothing" from
+#    "the file was already modified";
+#  - `git checkout --` restores HEAD, NOT the state from before. On a shared tree
+#    it would destroy uncommitted work. Restoration is done from the
+#    named copy, and its fingerprint is checked;
+#  - RED 0: a mutation that changes NOTHING must be REFUSED. It is the
+#    check of the harness itself; without it, no other red run counts.
 #
-# Usage : rouge.sh <étiquette> <fichier> <script-de-mutation> <commande-de-verif>
-#   le script de mutation reçoit le chemin du fichier en $1.
+# Usage: rouge.sh <label> <file> <mutation-script> <check-command>
+#   the mutation script receives the file's path as $1.
 
 set -uo pipefail
 
@@ -26,13 +26,13 @@ verif="${4:?commande de vérification}"
 racine="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 cd "$racine" || exit 2
 
-# 🔴 Le chemin est rendu ABSOLU, et la vérification tourne dans un SOUS-SHELL.
-# Défaut trouvé PAR L'EXÉCUTION, à la rouge R2b : sa commande de vérification
-# commençait par `cd client`, le `cd` a survécu à la commande, et la
-# restauration par chemin relatif a échoué — « Aucun fichier ou dossier de ce
-# nom ». La copie nommée était intacte et le fichier a été restauré à la main,
-# empreinte vérifiée ; le harnais, lui, avait un mode de panne qui laissait
-# une mutation dans l'arbre en annonçant un verdict.
+# 🔴 The path is made ABSOLUTE, and the check runs in a SUBSHELL.
+# A defect found BY RUNNING, at red run R2b: its check command
+# started with `cd client`, the `cd` outlived the command, and the
+# restoration by relative path failed — "No such file or
+# directory". The named copy was intact and the file was restored by hand,
+# fingerprint checked; the harness, for its part, had a failure mode that left
+# a mutation in the tree while announcing a verdict.
 fichier="$(readlink -f "$fichier")"
 
 copie="$(mktemp "/tmp/rouge-${etiquette}-XXXXXX")"
@@ -59,7 +59,7 @@ trap restaurer EXIT
 
 bash "$mutation" "$fichier"
 
-# ROUGE 0 : la mutation a-t-elle réellement changé le fichier ?
+# RED 0: did the mutation really change the file?
 lignes="$(diff <(cat "$copie") <(cat "$fichier") | grep -c '^[<>]' || true)"
 echo "lignes changées par la mutation : ${lignes}"
 if [ "$lignes" -eq 0 ]; then

@@ -1,6 +1,6 @@
-# R4 : l'annonce ne suit QUE la premiere transition -- un refus leve n'est
-# jamais reannonce. C'est litteralement ce que le commentaire faux de E1
-# ("condition PERMANENTE") laissait croire suffisant.
+# R4: the announcement only follows the FIRST transition -- a lifted refusal is
+# never announced again. It is literally what E1's wrong comment
+# ("PERMANENT condition") suggested was enough.
 python3 - "$1" <<'PY'
 import sys
 p=sys.argv[1]

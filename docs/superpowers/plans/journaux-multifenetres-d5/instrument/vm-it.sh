@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Exécute un script PowerShell dans la SESSION INTERACTIVE de la VM (session 1),
-# par tâche planifiée /IT — même mécanisme que scripts/run-agent.sh.
-# WinRM tourne en session 0 : une fenêtre ouverte depuis là ne serait pas
-# visible de la session de l'utilisateur, et le superviseur ne la verrait pas.
+# Runs a PowerShell script in the VM's INTERACTIVE SESSION (session 1),
+# through an /IT scheduled task — same mechanism as scripts/run-agent.sh.
+# WinRM runs in session 0: a window opened from there would not be
+# visible from the user's session, and the supervisor would not see it.
 set -euo pipefail
 NOM="$1"
 PS="$2"
