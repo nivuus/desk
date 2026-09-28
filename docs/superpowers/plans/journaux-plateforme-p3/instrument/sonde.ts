@@ -7,10 +7,10 @@
 // printed without judging could not turn red — it is the pattern this repository
 // paid for four times in sub-block D10.
 //
-// ⚠️ AUCUN SECRET N'EST ÉCRIT EN CLAIR. Les secrets d'enrôlement sont tirés au
-// sort par `enrolerLaVm` et n'apparaissent dans aucun journal versé : seules
-// leur LONGUEUR et leur égalité/différence sont relevées. Les jetons signés ne
-// sont montrés que par leur préfixe d'en-tête et leur longueur.
+// ⚠️ NO SECRET IS WRITTEN IN CLEAR. The enrolment secrets are drawn at
+// random by `enrolerLaVm` and appear in no filed log: only
+// their LENGTH and their equality/difference are recorded. Signed tokens are
+// only shown by their header prefix and their length.
 
 import { enrolerLaVm } from '../../../../../plateforme/src/admin/enroler-agent';
 import { lireParVm } from '../../../../../plateforme/src/depot/agent';
@@ -24,7 +24,7 @@ import {
 } from '../../../../../proto/ts/plateforme';
 import { demarrerService, entete, ligne, Pair, poignee, type Moteur } from './socle';
 
-/// Le titre que porte l'en-tête de chaque journal.
+/// The title each log's header carries.
 const TITRES: Record<string, string> = {
     'critere-1': 'CRITÈRE ① — deux agents simulés, deux VMs, aucun conflit ; et chacun ne voit que sa session',
     'critere-2': 'CRITÈRE ② — un agent au mauvais secret est refusé, sans distinguer « VM inconnue » de « secret faux »',
@@ -51,8 +51,8 @@ function juger(nom: string, tenu: boolean): void {
     if (!tenu) echecs += 1;
 }
 
-/// Rend les revendications d'un jeton — elles ne portent aucun secret, et ce
-/// sont elles qui montrent le claim de type `sty` et le sujet = préfixe.
+/// Returns a token's claims — they carry no secret, and it is
+/// they that show the `sty` type claim and the subject = prefix.
 function decoderCharge(jeton: string): unknown {
     const charge = jeton.split('.')[1];
     if (charge === undefined) return '<illisible>';
@@ -63,13 +63,13 @@ function decoderCharge(jeton: string): unknown {
     }
 }
 
-/// Cache le corps d'un jeton : sa présence et sa forme suffisent au relevé.
+/// Hides a token's body: its presence and its shape are enough for the reading.
 function jetonAbrege(jeton: string): string {
     const parts = jeton.split('.');
     return `${parts[0]}.<charge:${parts[1]?.length ?? 0}>.<sig:${parts[2]?.length ?? 0}>`;
 }
 
-/// Enrôle une VM et ouvre son canal `/agent`. Rend l'identité délivrée.
+/// Enrols a VM and opens its `/agent` channel. Returns the delivered identity.
 async function enrolerEtOuvrir(
     port: number,
     base: Parameters<typeof lireParVm>[0],
@@ -87,10 +87,10 @@ async function enrolerEtOuvrir(
     return { vmId, secret, prefixe, jeton: message.jeton, canal };
 }
 
-/// Ouvre une poignée de main de rôle `agent` sur le relais et relève ce
-/// qu'elle obtient. ⚠️ ON RELÈVE `ice-config` SÉPARÉMENT du refus : un service
-/// qui refuserait APRÈS avoir envoyé la configuration TURN aurait déjà tout
-/// donné (c'est ce que `garde-fil.test.ts` tient de son côté).
+/// Opens an `agent`-role handshake on the relay and records what
+/// it obtains. ⚠️ WE RECORD `ice-config` SEPARATELY from the refusal: a service
+/// refusing AFTER having sent the TURN configuration would already have given
+/// everything away (that is what `garde-fil.test.ts` holds on its side).
 async function tenterSession(
     port: number,
     session: string,
@@ -105,10 +105,10 @@ async function tenterSession(
         .map((b) => JSON.parse(b) as Record<string, unknown>)
         .filter((m) => m.type === 'error');
     const iceConfig = brut.some((b) => (JSON.parse(b) as { type?: string }).type === 'ice-config');
-    // ⚠️ « ACCEPTÉE » NE PEUT PAS SE LIRE SUR LA SEULE PRÉSENCE D'`ice-config` :
-    // sans TURN_URL, le relais n'en envoie AUCUNE et le pair accepté ne reçoit
-    // rien du tout. L'acceptation se lit donc à l'ABSENCE de refus, socket
-    // toujours ouvert — et `ice-config` est relevé à part.
+    // ⚠️ "ACCEPTED" CANNOT BE READ FROM THE MERE PRESENCE OF `ice-config`:
+    // without TURN_URL, the relay sends NONE and the accepted peer receives
+    // nothing at all. Acceptance is therefore read from the ABSENCE of a refusal, socket
+    // still open — and `ice-config` is recorded separately.
     const acceptee = erreurs.length === 0 && pair.fermeture === undefined;
     return {
         acceptee,
@@ -154,9 +154,9 @@ async function critere1(): Promise<void> {
     juger('jetons DISTINCTS', p.jeton !== q.jeton);
     dire();
 
-    // Chaque agent ouvre SA session de contrôle et SA première fenêtre.
-    // 🔴 C'est ici que le binaire de P2 se casse : sans préfixe, les deux
-    // nomment leur session de contrôle `bureau`, et le second est refusé.
+    // Each agent opens ITS control session and ITS first window.
+    // 🔴 It is here that P2's binary breaks: without a prefix, both
+    // name their control session `bureau`, and the second is refused.
     const sessions: Record<string, Awaited<ReturnType<typeof tenterSession>>> = {};
     for (const [nom, ident] of [
         ['P', p],
@@ -172,27 +172,27 @@ async function critere1(): Promise<void> {
     }
     dire();
     dire(ligne('aucun refus « déjà connecté »', Object.values(sessions).every((s) => s.refus === undefined)));
-    // 🔴 LE TÉMOIN POSITIF DE L'ASSERTION SUIVANTE. Sans TURN_URL/TURN_SECRET,
-    // le relais n'envoie AUCUNE `ice-config` à PERSONNE, et « l'intrus n'en a
-    // pas reçu » deviendrait vacueux — vrai sur un service dont la garde
-    // aurait été entièrement retirée. Cette ligne établit que la sonde tourne
-    // avec un TURN configuré, donc que l'assertion d'en dessous PEUT échouer.
+    // 🔴 THE POSITIVE CONTROL OF THE NEXT ASSERTION. Without TURN_URL/TURN_SECRET,
+    // the relay sends NO `ice-config` to ANYONE, and "the intruder did not
+    // receive one" would become vacuous — true on a service whose guard
+    // had been entirely removed. This line establishes that the probe runs
+    // with a configured TURN, hence that the assertion below CAN fail.
     juger(
         'un agent ACCEPTÉ reçoit bien une ice-config (témoin)',
         Object.values(sessions).every((s) => s.iceConfig),
     );
 
-    // Le second volet du critère : chacun ne voit QUE sa session.
+    // The second part of the criterion: each one sees ONLY its own session.
     //
-    // 🔴 LA SESSION VISÉE EST VIERGE, ET C'EST TOUTE LA DIFFÉRENCE. Viser
-    // `<Q>:bureau` — que l'agent de Q occupe déjà — donnerait un refus même
-    // sans garde du tout : l'appariement s'en chargerait, avec « un agent est
-    // déjà connecté ». L'assertion « P est refusé » serait alors VRAIE sur un
-    // service dont la comparaison de préfixe aurait été retirée, c'est-à-dire
-    // incapable d'échouer. MESURÉ : c'est ce que la première rédaction de
-    // cette sonde a produit, et la rouge ①B l'a démasquée. On vise donc
-    // `<Q>:w-9`, que PERSONNE n'occupe — le seul refus possible y est celui de
-    // la garde.
+    // 🔴 THE TARGETED SESSION IS PRISTINE, AND THAT MAKES ALL THE DIFFERENCE. Targeting
+    // `<Q>:bureau` — which Q's agent already occupies — would give a refusal even
+    // without any guard at all: pairing would take care of it, with "an agent is
+    // already connected". The assertion "P is refused" would then be TRUE on a
+    // service whose prefix comparison had been removed, that is,
+    // unable to fail. MEASURED: it is what the first wording of
+    // this probe produced, and red run ①B unmasked it. We therefore target
+    // `<Q>:w-9`, which NO ONE occupies — the only possible refusal there is the
+    // guard's.
     dire();
     const vierge = `${q.prefixe}:w-9`;
     const intrusion = await tenterSession(port, vierge, p.jeton);
@@ -205,8 +205,8 @@ async function critere1(): Promise<void> {
         intrusion.refus === 'accès refusé à la session demandée',
     );
 
-    // Et sur la session OCCUPÉE, la garde tranche AVANT l'appariement : le
-    // motif le prouve, puisque ce n'est pas « un agent est déjà connecté ».
+    // And on the OCCUPIED session, the guard decides BEFORE pairing: the
+    // reason proves it, since it is not "an agent is already connected".
     const occupee = await tenterSession(port, `${q.prefixe}:bureau`, p.jeton);
     dire();
     dire(ligne('agent P -> <Q>:bureau (OCCUPÉE)', occupee.refus ?? 'ACCEPTÉ'));
@@ -225,13 +225,13 @@ async function critere2(): Promise<void> {
     dire(ligne('longueur du secret tiré', secret.length));
     dire();
 
-    // Cas A — la VM n'existe pas.
+    // Case A — the VM does not exist.
     const inconnue = await Pair.ouvrir(`ws://127.0.0.1:${port}/agent`);
     inconnue.envoyer(encodeEnroler('11111111-2222-3333-4444-555555555555', secret));
     await inconnue.attendre(1);
     const refusA = inconnue.recues[0]?.brut ?? '<AUCUNE RÉPONSE>';
 
-    // Cas B — la VM existe, le secret est faux.
+    // Case B — the VM exists, the secret is wrong.
     const mauvais = await Pair.ouvrir(`ws://127.0.0.1:${port}/agent`);
     mauvais.envoyer(encodeEnroler(vmId, `${secret}-faux`));
     await mauvais.attendre(1);
@@ -240,7 +240,7 @@ async function critere2(): Promise<void> {
     dire(ligne('A — VM inconnue, refus BRUT', refusA));
     dire(ligne('B — secret faux,  refus BRUT', refusB));
     dire(ligne('longueurs (A, B)', [refusA.length, refusB.length]));
-    // La comparaison CARACTÈRE POUR CARACTÈRE que le critère exige.
+    // The CHARACTER FOR CHARACTER comparison the criterion requires.
     const premierEcart = [...refusA].findIndex((c, i) => c !== refusB[i]);
     dire(ligne('premier caractère divergent', premierEcart === -1 ? 'aucun' : premierEcart));
     juger('les deux refus sont IDENTIQUES', refusA === refusB);
@@ -253,8 +253,8 @@ async function critere2(): Promise<void> {
     );
     dire();
 
-    // Et le bon secret passe : sans cette ligne, un service qui refuserait
-    // TOUT passerait le critère ② sans rien authentifier.
+    // And the right secret passes: without this line, a service refusing
+    // EVERYTHING would pass criterion ② without authenticating anything.
     const bonne = await Pair.ouvrir(`ws://127.0.0.1:${port}/agent`);
     bonne.envoyer(encodeEnroler(vmId, secret));
     await bonne.attendre(1);
@@ -290,10 +290,10 @@ async function critere3(): Promise<void> {
     juger('TS (depuis) LÈVE sur la version suivante', leve?.includes('version de plateforme non supportée') === true);
     dire();
 
-    // ③ Le SERVICE lui-même, sur le fil : un message de version future doit
-    // recevoir `refus/version` PUIS voir son socket fermé — le motif `version`
-    // est fermant (`agents/canal.ts`), et ce n'est pas la même chose que
-    // `forme`, qui laisse le pair se reprendre.
+    // ③ The SERVICE itself, on the wire: a message of a future version must
+    // receive `refus/version` THEN see its socket closed — the `version` reason
+    // is closing (`agents/canal.ts`), and it is not the same thing as
+    // `forme`, which lets the peer recover.
     const pair = await Pair.ouvrir(`ws://127.0.0.1:${port}/agent`);
     pair.envoyer(JSON.stringify({ type: 'enroler', v: suivante, vm: 'w1', secret: 'chut' }));
     await pair.attendre(1);
@@ -314,9 +314,9 @@ async function critere3(): Promise<void> {
 
 async function critere4(): Promise<void> {
     const p = await enrolerEtOuvrir(port, service.base, 'vm-muette');
-    // `vu_a` est posé par l'ENRÔLEMENT lui-même : il est le premier signe de
-    // vie. On l'attend plutôt que de le supposer — l'écriture part par un
-    // `void … .catch()` dans `canal.ts`, donc elle n'est pas synchrone.
+    // `vu_a` is set by the ENROLMENT itself: it is the first sign of
+    // life. We wait for it rather than assume it — the write goes out through a
+    // `void … .catch()` in `canal.ts`, so it is not synchronous.
     const vuApresEnrolement = await attendreVuA(p.vmId);
     dire(ligne("vu_a après l'enrôlement", vuApresEnrolement));
     juger("l'enrôlement pose vu_a", vuApresEnrolement !== null);
@@ -336,20 +336,20 @@ async function critere4(): Promise<void> {
     juger('le battement rend un jeton FRAIS', battement.type === 'battement-recu');
     dire();
 
-    // 🔴 L'AGENT SE TAIT. On ne dort pas 90 s : l'horloge est un PARAMÈTRE
-    // (`agents/fraicheur.ts`), et c'est précisément ce qui rend la transition
-    // OBSERVABLE. Le relevé ci-dessous fait VARIER l'instant et assiège le
-    // seuil des deux côtés — figer l'horloge est la rouge de ce critère.
-    // 🔴 DIVERGENCE ENTRE LES DEUX MOTEURS, TROUVÉE PAR CETTE RECETTE ET
-    // RELEVÉE PLUTÔT QUE CONTOURNÉE EN SILENCE. `LigneAgent.vu_a` est déclaré
-    // `number | null` (`depot/agent.ts:29`), et il l'est bien sur SQLite ; sur
-    // Postgres, `pg` rend les colonnes BIGINT (OID 20) sous forme de CHAÎNE
-    // pour ne pas perdre de précision, et `pilote-postgres.ts` n'enregistre
-    // aucun `setTypeParser`. Le type déclaré est donc faux sur l'un des deux
-    // moteurs. `etatDe` n'en souffre pas — son `maintenant - vuA` force la
-    // conversion numérique —, mais tout `+`, tout `===` ou tout `>` sur cette
-    // valeur se comporterait différemment selon le moteur. La sonde CONVERTIT
-    // explicitement, et le relevé ci-dessous nomme le type reçu.
+    // 🔴 THE AGENT GOES QUIET. We do not sleep 90 s: the clock is a PARAMETER
+    // (`agents/fraicheur.ts`), and that is precisely what makes the transition
+    // OBSERVABLE. The reading below VARIES the instant and besieges the
+    // threshold from both sides — freezing the clock is this criterion's red run.
+    // 🔴 DIVERGENCE BETWEEN THE TWO ENGINES, FOUND BY THIS ACCEPTANCE RUN AND
+    // RECORDED RATHER THAN SILENTLY WORKED AROUND. `LigneAgent.vu_a` is declared
+    // `number | null` (`depot/agent.ts:29`), and it is so on SQLite; on
+    // Postgres, `pg` returns BIGINT columns (OID 20) as a STRING
+    // so as not to lose precision, and `pilote-postgres.ts` registers
+    // no `setTypeParser`. The declared type is therefore wrong on one of the two
+    // engines. `etatDe` does not suffer from it — its `maintenant - vuA` forces the
+    // numeric conversion —, but any `+`, any `===` or any `>` on this
+    // value would behave differently depending on the engine. The probe CONVERTS
+    // explicitly, and the reading below names the type received.
     dire(ligne('typeof vu_a rendu par le dépôt', typeof vuApresBattement));
     const vuA = vuApresBattement === null ? null : Number(vuApresBattement);
     dire(ligne('SEUIL_INJOIGNABLE_MS', SEUIL_INJOIGNABLE_MS));
@@ -368,8 +368,8 @@ async function critere4(): Promise<void> {
     }
     juger('la borne exacte est encore « prete »', etats[2] === 'prete');
     juger('une milliseconde de plus bascule', etats[3] === 'injoignable');
-    // 🔴 LA TRANSITION EST VUE, PAS DÉDUITE : deux états distincts se
-    // succèdent dans le même relevé.
+    // 🔴 THE TRANSITION IS SEEN, NOT DEDUCED: two distinct states
+    // follow each other in the same reading.
     juger('le relevé VOIT la transition prete -> injoignable', new Set(etats).size === 2);
     dire();
     dire(ligne('une VM jamais vue (vu_a = null)', etatDe(null, Date.now())));
@@ -377,9 +377,9 @@ async function critere4(): Promise<void> {
     p.canal.fermer();
 }
 
-/// Relit `vu_a` jusqu'à ce qu'il dépasse `plancher`, ou expiration.
-/// ⚠️ Rend la valeur TELLE QU'ELLE EST à l'expiration, sans lever : c'est
-/// l'assertion appelante qui doit rougir, pas la sonde qui doit planter.
+/// Rereads `vu_a` until it exceeds `plancher`, or expiry.
+/// ⚠️ Returns the value AS IT IS at expiry, without throwing: it is
+/// the calling assertion that must turn red, not the probe that must crash.
 async function attendreVuA(vmId: string, plancher = -1): Promise<number | null> {
     const fin = Date.now() + 2000;
     let vu: number | null = null;
@@ -414,18 +414,18 @@ async function e2Ferme(): Promise<void> {
     dire('# refusé = false, identifiants TURN présents et valables 86 400 s.');
 }
 
-/// 🔴 L'HYPOTHÈSE QUE P3 A LAISSÉE NON MESURÉE, et elle est éliminatoire pour
-/// le multi-fenêtres. Depuis la tâche 19, `agent/src/main.rs` ouvre un canal
-/// `/agent` dans CHAQUE processus qui porte `AGENT_VM`/`AGENT_SECRET` — donc
-/// dans le superviseur ET dans chacun de ses enfants, qui en héritent
-/// (`superviseur/lanceur.rs` ne les retire pas). À N fenêtres, ce sont N+1
-/// enrôlements concurrents pour la MÊME VM. L'implémenteur l'a déduit d'une
-/// LECTURE de `canal.ts` ; ce qui suit le MESURE.
+/// 🔴 THE HYPOTHESIS P3 LEFT UNMEASURED, and it is eliminating for
+/// multi-window. Since task 19, `agent/src/main.rs` opens an `/agent`
+/// channel in EACH process carrying `AGENT_VM`/`AGENT_SECRET` — hence
+/// in the supervisor AND in each of its children, which inherit them
+/// (`superviseur/lanceur.rs` does not remove them). With N windows, that makes N+1
+/// concurrent enrolments for the SAME VM. The implementer deduced it from a
+/// READING of `canal.ts`; what follows MEASURES it.
 ///
-/// La sonde n'ouvre pas seulement N canaux : elle vérifie ensuite que le
-/// PREMIER est toujours vivant et servi, car une plateforme qui n'accepterait
-/// qu'un enrôlement à la fois pourrait tout aussi bien couper le précédent —
-/// ce qui se lirait comme un succès si l'on ne regardait que le dernier.
+/// The probe does not only open N channels: it then checks that the
+/// FIRST is still alive and served, because a platform that only accepted
+/// one enrolment at a time could just as well cut the previous one —
+/// which would read as a success if one only looked at the last.
 async function enrolementsConcurrents(): Promise<void> {
     const N = 4;
     const { vmId, secret, prefixe } = await enrolerLaVm(
@@ -440,8 +440,8 @@ async function enrolementsConcurrents(): Promise<void> {
     dire('# chantier D à trois fenêtres.');
     dire();
 
-    // OUVERTS DE FRONT, pas l'un après l'autre : c'est la concurrence qui est
-    // en cause, et une ouverture séquentielle ne l'éprouverait pas.
+    // OPENED SIDE BY SIDE, not one after the other: it is concurrency that is
+    // at stake, and a sequential opening would not test it.
     const canaux = await Promise.all(
         Array.from({ length: N }, () => Pair.ouvrir(`ws://127.0.0.1:${port}/agent`)),
     );
@@ -468,23 +468,23 @@ async function enrolementsConcurrents(): Promise<void> {
     dire(ligne('longueurs de jeton', jetons.map((j) => j.length)));
     dire();
 
-    // Le PREMIER canal est-il toujours servi une fois les trois autres
-    // enrôlés ? Un battement le dit — et `sequence` serait la réponse d'un
-    // service qui l'aurait désenrôlé.
+    // Is the FIRST channel still served once the three others are
+    // enrolled? A heartbeat says so — and `sequence` would be the answer of a
+    // service that had unenrolled it.
     canaux[0].envoyer(encodeBattement());
     await canaux[0].attendre(2);
     const suite = canaux[0].recues[1]?.brut ?? '<AUCUNE>';
     const recu = JSON.parse(suite) as { type?: string; jeton?: string; expire_a?: number };
     dire(ligne('battement du PREMIER canal', recu.type ?? '<sans type>'));
     dire(ligne('jeton rendu (corps masqué)', jetonAbrege(recu.jeton ?? '..')));
-    // Les revendications du jeton sont LISIBLES : elles ne portent aucun
-    // secret, et c'est ici qu'on voit `sty:agent` et le sujet = préfixe, les
-    // deux choses que la garde exige (`identite/garde.ts`).
+    // The token's claims are READABLE: they carry no
+    // secret, and it is here that one sees `sty:agent` and the subject = prefix, the
+    // two things the guard requires (`identite/garde.ts`).
     dire(ligne('revendications', decoderCharge(recu.jeton ?? '')));
     juger('le premier canal est toujours enrôlé', recu.type === 'battement-recu');
     dire();
 
-    // Et les N jetons ouvrent-ils N sessions distinctes de la même VM ?
+    // And do the N tokens open N distinct sessions of the same VM?
     const locales = ['bureau', 'w-1', 'w-2', 'w-3'];
     const issues: string[] = [];
     for (let i = 0; i < N; i += 1) {

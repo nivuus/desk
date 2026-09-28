@@ -1,13 +1,13 @@
-// Les quatre critères de la recette P4, joués contre un service RÉEL.
+// The four criteria of acceptance run P4, played against a REAL service.
 //
 //     tsx sonde.ts <1|2|3|4> <sqlite|postgres> <commit>
 //
-// 🔴 CHAQUE ASSERTION A SON PROPRE VERDICT, ET SA PROPRE ROUGE. C'est la leçon
-// que P2 a payée : sa rouge ①A devait faire tomber « les DEUX assertions » du
-// critère ①, et n'en faisait tomber qu'une, `expect` s'interrompant à la
-// première. Ici rien ne s'interrompt : `Verdicts.juger` n'est pas un `expect`,
-// il enregistre et poursuit, si bien qu'une mutation montre TOUT ce qu'elle
-// casse plutôt que la première chose.
+// 🔴 EACH ASSERTION HAS ITS OWN VERDICT, AND ITS OWN RED RUN. It is the lesson
+// P2 paid for: its red run ①A had to bring down "BOTH assertions" of
+// criterion ①, and only brought down one, `expect` stopping at the
+// first. Here nothing stops: `Verdicts.juger` is not an `expect`,
+// it records and carries on, so that a mutation shows EVERYTHING it
+// breaks rather than the first thing.
 
 import { lister, attribuerSiLibre } from '../../../../../plateforme/src/depot/vm';
 import type { LigneVm } from '../../../../../plateforme/src/depot/vm';
@@ -22,27 +22,27 @@ import {
 
 const [critere, moteur, commit] = process.argv.slice(2) as [string, Moteur, string];
 
-/// 🔴 LA BORNE DU CRITÈRE ③ EST MESURÉE, PAS CHOISIE, et les rapports qui la
-/// justifient sont écrits plutôt qu'affirmés. Le relevé qui la fonde est versé
-/// — `mesure-borne-3.log`, 100 refus par moteur — et il donne un pire cas de
-/// 7,5 ms (sqlite) et 12,9 ms (postgres) HORS démarrage à froid, ce dernier
-/// coûtant à lui seul 78,7 et 39,9 ms. Les vingt appels chronométrés ci-dessous
-/// viennent tous après un premier appel déjà fait : ils ne paient jamais ce
-/// démarrage. 250 ms est donc environ 19 fois le pire cas comparable — assez
-/// pour ne pas rougir sur une machine chargée —, et huit fois SOUS la rouge
-/// prescrite (`setTimeout(2000)`). C'est ce dernier rapport qui rend le critère
-/// discriminant ; le premier dit seulement qu'il ne rougira pas sans raison.
-/// ⚠️ « DEUX ORDRES DE GRANDEUR » avait été écrit ici d'abord, et le relevé le
-/// réfutait. Corrigé sur pièces.
-/// ⚠️ ELLE NE MESURE PAS LA LATENCE DU PRODUIT — elle établit seulement que le
-/// refus est IMMÉDIAT, c'est-à-dire qu'il ne comporte ni attente, ni tentative
-/// de réveil, ni scrutation. C'est cela, et rien d'autre, que le critère énonce.
+/// 🔴 CRITERION ③'S BOUND IS MEASURED, NOT CHOSEN, and the ratios that
+/// justify it are written rather than asserted. The reading that grounds it is filed
+/// — `mesure-borne-3.log`, 100 refusals per engine — and it gives a worst case of
+/// 7.5 ms (sqlite) and 12.9 ms (postgres) OUTSIDE cold start, the latter
+/// costing 78.7 and 39.9 ms on its own. The twenty timed calls below
+/// all come after a first call already made: they never pay that
+/// start. 250 ms is therefore about 19 times the comparable worst case — enough
+/// not to turn red on a loaded machine —, and eight times BELOW the prescribed
+/// red run (`setTimeout(2000)`). It is the latter ratio that makes the criterion
+/// discriminating; the former only says it will not turn red without reason.
+/// ⚠️ "TWO ORDERS OF MAGNITUDE" had been written here first, and the reading
+/// refuted it. Fixed on the evidence.
+/// ⚠️ IT DOES NOT MEASURE THE PRODUCT'S LATENCY — it only establishes that the
+/// refusal is IMMEDIATE, that is, that it involves neither waiting, nor wake-up
+/// attempt, nor polling. That, and nothing else, is what the criterion states.
 const BORNE_REFUS_MS = 250;
 
-/// Le tee de `console.warn`. Il FORWARDE vers la vraie sortie d'erreur — que
-/// `jouer.sh` verse dans le journal — et retient ce qui passe. C'est de
-/// l'observation, pas une substitution : la ligne réelle est dans le journal,
-/// et le compteur permet d'en faire un verdict.
+/// The tee of `console.warn`. It FORWARDS to the real error output — which
+/// `jouer.sh` pours into the log — and remembers what goes by. It is
+/// observation, not substitution: the real line is in the log,
+/// and the counter allows turning it into a verdict.
 const journalises: string[] = [];
 const warnReel = console.warn.bind(console);
 console.warn = (...args: unknown[]) => {
@@ -50,19 +50,19 @@ console.warn = (...args: unknown[]) => {
     warnReel(...args);
 };
 
-/// Un pilote qui rejoue la COURSE de la décision D5, sur le moteur RÉEL.
+/// A driver replaying the RACE of decision D5, on the REAL engine.
 ///
-/// 🔴 CE QUI EST SIMULÉ, ET CE QUI NE L'EST PAS. Simulé : la PÉREMPTION de la
-/// lecture préalable — sa première réponse est un instantané pris avant que
-/// l'utilisateur n'acquière sa VM, ce qu'aucune transaction ne peut voir
-/// autrement. Réel : TOUT le reste — l'`UPDATE` frappe la vraie table, c'est
-/// le vrai index partiel `vm_un_utilisateur` qui lève, c'est le vrai message du
-/// vrai moteur, et c'est la vraie relecture d'après `ROLLBACK` qui l'explique.
+/// 🔴 WHAT IS SIMULATED, AND WHAT IS NOT. Simulated: the STALENESS of the
+/// prior read — its first answer is a snapshot taken before
+/// the user acquires their VM, which no transaction can see
+/// otherwise. Real: EVERYTHING else — the `UPDATE` hits the real table, it is
+/// the real partial index `vm_un_utilisateur` that throws, it is the real message of the
+/// real engine, and it is the real reread after `ROLLBACK` that explains it.
 ///
-/// Sans cette péremption, le chemin est INATTEIGNABLE : la lecture préalable
-/// voit la VM que l'utilisateur vient d'acquérir et refuse avant d'écrire. Une
-/// mutation qui rendrait le `catch` entièrement relançant resterait donc VERTE
-/// — c'est mesuré, et c'est la raison d'être de cette sonde.
+/// Without this staleness, the path is UNREACHABLE: the prior read
+/// sees the VM the user has just acquired and refuses before writing. A
+/// mutation making the `catch` entirely rethrowing would therefore stay GREEN
+/// — it is measured, and it is the reason this probe exists.
 function enCourse(reelRacine: Pilote, perime: LigneVm[]): { pilote: Pilote; lectures: () => number } {
     let lectures = 0;
     const habiller = (reel: Pilote): Pilote => ({
@@ -95,7 +95,7 @@ try {
         const avant = journalises.length;
         const r = await appeler(service.port, `/vm/${vm.vmId}/instantane`, 'POST', jetonDe(alice));
 
-        // ①a — LE CODE ET LE CORPS TYPÉ.
+        // ①a — THE CODE AND THE TYPED BODY.
         v.dire(ligne('code HTTP rendu', r.code));
         v.dire(ligne('corps rendu', r.corps));
         v.juger('①a le code est 501, jamais 500', r.code, 501);
@@ -105,8 +105,8 @@ try {
         v.juger('①a et 501 est bien ce que la table de codes dit de ce motif',
             CODE_HTTP['non-supporte'], 501);
 
-        // ①b — LA LIGNE DE JOURNAL. `it()` distinct de ①a : sans quoi le
-        // premier verdict masquerait le second.
+        // ①b — THE LOG LINE. An `it()` distinct from ①a: otherwise the
+        // first verdict would mask the second.
         const neuves = journalises.slice(avant);
         v.dire(ligne('lignes de journal émises pendant l’appel', neuves.length));
         for (const l of neuves) v.dire(ligne('  ligne', l));
@@ -122,10 +122,10 @@ try {
         const v1 = await enroler(base, 'w-1');
         const v2 = await enroler(base, 'w-2');
 
-        // ②a — LE VOL. La lecture préalable de l'orchestrateur refuserait
-        // AVANT d'écrire : c'est donc `attribuerSiLibre` qu'on frappe
-        // directement, seul endroit où la clause conditionnelle est éprouvée.
-        // Sans cela, retirer `AND utilisateur_id IS NULL` resterait VERT.
+        // ②a — THE THEFT. The orchestrator's prior read would refuse
+        // BEFORE writing: it is therefore `attribuerSiLibre` that is hit
+        // directly, the only place where the conditional clause is tested.
+        // Without that, removing `AND utilisateur_id IS NULL` would stay GREEN.
         v.juger('mise en place : v1 est à alice', await orch.attribuer(v1.vmId, alice), { ok: true });
         const volees = await attribuerSiLibre(base, v1.vmId, bob);
         const apresVol = (await lister(base)).find((l) => l.id === v1.vmId)!;
@@ -136,8 +136,8 @@ try {
         v.juger('②a l’orchestrateur, lui, refuse par un TYPE', await orch.attribuer(v1.vmId, bob),
             { ok: false, motif: 'vm-deja-attribuee', operation: 'attribuer', backend: BACKEND_STATIQUE });
 
-        // ②b — LA SECONDE VM. Même raison : au dépôt, c'est l'index partiel
-        // seul qui garde, et son retrait doit rougir.
+        // ②b — THE SECOND VM. Same reason: at the repository, it is the partial index
+        // alone that guards, and its removal must turn red.
         let leve: string | undefined;
         let lignes: number | undefined;
         try {
@@ -152,7 +152,7 @@ try {
             await orch.attribuer(v2.vmId, alice),
             { ok: false, motif: 'utilisateur-servi', operation: 'attribuer', backend: BACKEND_STATIQUE });
 
-        // ②c — LA COURSE, seul chemin qui atteigne le `catch`. Voir `enCourse`.
+        // ②c — THE RACE, the only path that reaches the `catch`. See `enCourse`.
         const v3 = await enroler(base, 'w-3');
         const perime = (await lister(base)).map((l) =>
             l.id === v3.vmId || l.id === v1.vmId ? { ...l, utilisateur_id: null } : l);
@@ -180,9 +180,9 @@ try {
     if (critere === '3') {
         v.dire(entete("CRITÈRE ③ — un utilisateur sans VM reçoit un refus IMMÉDIAT", moteur, commit));
         const carol = await creerCompte(base, 'carol@essai.local');
-        // Une VM existe, et elle N'EST PAS à carol : le refus doit être
-        // `aucune-vm`, pas « aucune VM au monde ». Sans cette VM, le critère
-        // passerait sur un inventaire vide, cas plus faible.
+        // A VM exists, and it does NOT belong to carol: the refusal must be
+        // `aucune-vm`, not "no VM in the world". Without this VM, the criterion
+        // would pass on an empty inventory, a weaker case.
         const autre = await creerCompte(base, 'autre@essai.local');
         const vm = await enroler(base, 'w-autre');
         v.juger('mise en place : la VM est à quelqu’un d’AUTRE', await orch.attribuer(vm.vmId, autre), { ok: true });
@@ -191,14 +191,14 @@ try {
         const r = await appeler(service.port, '/session', 'POST', jeton);
         v.dire(ligne('code HTTP rendu', r.code));
         v.dire(ligne('corps rendu', r.corps));
-        // ③a — LE REFUS TYPÉ.
+        // ③a — THE TYPED REFUSAL.
         v.juger('③a le code est 409, jamais 200', r.code, 409);
         v.juger('③a et 409 est ce que la table de codes dit d’`aucune-vm`', CODE_HTTP['aucune-vm'], 409);
         v.juger('③a le corps porte le motif, et AUCUN préfixe', r.corps, { motif: 'aucune-vm' });
         v.juger('③a le corps ne porte pas de champ `prefixe` — un préfixe vide au coffre serait la panne muette',
             'prefixe' in (r.corps ?? {}), false);
 
-        // ③b — L'IMMÉDIATETÉ. Vingt appels, et c'est le PIRE qui est jugé.
+        // ③b — IMMEDIACY. Twenty calls, and it is the WORST that is judged.
         const durees: number[] = [];
         for (let i = 0; i < 20; i += 1) {
             durees.push((await appeler(service.port, '/session', 'POST', jeton)).dureeMs);
@@ -219,7 +219,7 @@ try {
         const jeton = jetonDe(dave);
         v.dire(ligne('SEUIL_INJOIGNABLE_MS', SEUIL_INJOIGNABLE_MS));
 
-        // ④c, premier côté de la borne : l'agent vient d'être vu.
+        // ④c, first side of the bound: the agent has just been seen.
         await poserVuA(base, vm.vmId, Date.now());
         const frais = await appeler(service.port, '/session', 'POST', jeton);
         v.dire(ligne('vu_a = maintenant — code HTTP', frais.code));
@@ -228,7 +228,7 @@ try {
         v.juger('④c avant la transition : `prete`', frais.corps?.etat, 'prete');
         v.juger('④c et le préfixe est délivré', frais.corps?.prefixe, vm.prefixe);
 
-        // ④a / ④b : le même agent, muet depuis une milliseconde de trop.
+        // ④a / ④b: the same agent, silent for one millisecond too many.
         await poserVuA(base, vm.vmId, Date.now() - SEUIL_INJOIGNABLE_MS - 1);
         const muet = await appeler(service.port, '/session', 'POST', jeton);
         v.dire(ligne('vu_a = maintenant − SEUIL − 1 — code HTTP', muet.code));
@@ -236,17 +236,17 @@ try {
         v.juger('④a l’état annoncé est `injoignable`', muet.corps?.etat, 'injoignable');
         v.juger('④a et le code est 503 — un état du monde, pas une erreur de requête', muet.code, 503);
         v.juger('④a le préfixe est rendu QUAND MÊME — il est connu et juste', muet.corps?.prefixe, vm.prefixe);
-        // ④b — L'AVEU. `it()` distinct de ④a : le plan l'exige nommément,
-        // sans quoi le premier verdict s'arrêterait avant celui-ci.
+        // ④b — THE ADMISSION. An `it()` distinct from ④a: the plan requires it by name,
+        // otherwise the first verdict would stop before this one.
         v.juger('④b le champ `redemarrage` EXISTE', muet.corps?.redemarrage !== undefined, true);
         v.juger('④b et il AVOUE, avec son motif et son backend', muet.corps?.redemarrage,
             { possible: false, motif: 'non-supporte', backend: BACKEND_STATIQUE });
 
-        // ④c — LA TRANSITION VUE, et la borne assiégée EXACTEMENT. `Date.now`
-        // n'est pas injectable à travers le service ; elle l'est à
-        // l'orchestrateur, sur la MÊME base réelle et la MÊME ligne.
-        // Une époque RÉALISTE, jamais un `1_000` de commodité : c'est la leçon
-        // la plus chère de P1.
+        // ④c — THE TRANSITION SEEN, and the bound besieged EXACTLY. `Date.now`
+        // is not injectable through the service; it is at the
+        // orchestrator, on the SAME real database and the SAME row.
+        // A REALISTIC epoch, never a convenient `1_000`: it is P1's most
+        // expensive lesson.
         const vuA = INSTANT;
         await poserVuA(base, vm.vmId, vuA);
         const aLaBorne = inventaireStatique(base, () => vuA + SEUIL_INJOIGNABLE_MS);
@@ -259,7 +259,7 @@ try {
         v.juger('④c une milliseconde plus tard, `injoignable`', etatApres, 'injoignable');
         v.juger('④c la TRANSITION est donc VUE, des deux côtés',
             `${etatBorne}->${etatApres}`, 'prete->injoignable');
-        // Et le cas qu'aucune horloge ne rattrape : jamais vue du tout.
+        // And the case no clock catches up with: never seen at all.
         await poserVuA(base, vm.vmId, null);
         v.juger('④c une VM JAMAIS vue est `injoignable`, pas « peut-être »',
             await orch.etat(vm.vmId), 'injoignable');

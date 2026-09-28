@@ -1,22 +1,22 @@
-// LE SERVICE QUE LA CORROBORATION NAVIGATEUR PILOTE — un vrai service, une
-// vraie base, trois utilisateurs dans trois situations.
+// THE SERVICE THE BROWSER CORROBORATION DRIVES — a real service, a
+// real database, three users in three situations.
 //
 //     tsx corroboration-navigateur.ts <port> <origine-client>
 //
-// 🔴 POURQUOI CETTE PIÈCE EXISTE ALORS QUE LA TÂCHE 14 N'A PAS DE TEST. Elle
-// n'en a pas par construction : `connexion.ts` est du câblage DOM, et la
-// convention du répertoire veut que ce qui s'y trouve soit du câblage ou rien.
-// Mais deux défauts CORS ont été trouvés dans ce même sous-bloc — l'en-tête
-// `Authorization` non permis, et la requête préalable `OPTIONS` non traitée —
-// et AUCUN test de Node ne pouvait les voir : ils ne se manifestent que sous
-// la politique d'origine d'un vrai navigateur. La classe « ce qu'un navigateur
-// exige et qu'un test serveur ne voit pas » est donc OUVERTE, et la tâche 14
-// est précisément côté navigateur.
+// 🔴 WHY THIS PIECE EXISTS ALTHOUGH TASK 14 HAS NO TEST. It
+// has none by construction: `connexion.ts` is DOM wiring, and the
+// directory's convention wants what lives there to be wiring or nothing.
+// But two CORS defects were found in this same sub-block — the
+// `Authorization` header not allowed, and the `OPTIONS` preflight request not handled —
+// and NO Node test could see them: they only show up under
+// a real browser's origin policy. The class "what a browser
+// requires and a server test does not see" is therefore OPEN, and task 14
+// is precisely on the browser side.
 //
-// ⚠️ CE N'EST PAS UN CRITÈRE DE LA RECETTE, et ce n'est pas non plus la
-// corroboration sur VM réelle de la tâche 16 : aucune VM Windows n'est
-// allumée, aucun agent ne bat. C'est une corroboration de CÂBLAGE, sur les
-// trois issues que `connexion.ts` distingue.
+// ⚠️ IT IS NOT A CRITERION OF THE ACCEPTANCE RUN, and it is not the
+// corroboration on a real VM of task 16 either: no Windows VM is
+// powered on, no agent beats. It is a WIRING corroboration, on the
+// three outcomes `connexion.ts` distinguishes.
 
 import { hacher } from '../../../../../plateforme/src/identite/mot-de-passe';
 import { creerUtilisateur } from '../../../../../plateforme/src/depot/utilisateur';
@@ -43,16 +43,16 @@ const service = await demarrer(
 const empreinte = await hacher(MDP);
 const orch = inventaireStatique(service.base, Date.now);
 
-// ① Un utilisateur À QUI UNE VM EST ATTRIBUÉE, et dont l'agent bat.
+// ① A user WHO HAS A VM ASSIGNED, and whose agent beats.
 const prete = await creerUtilisateur(service.base, 'prete@essai.local', empreinte, INSTANT);
 const vmPrete = await enroler(service.base, 'w-prete');
 await orch.attribuer(vmPrete.vmId, prete);
 await poserVuA(service.base, vmPrete.vmId, Date.now());
 
-// ② Un utilisateur SANS aucune VM.
+// ② A user WITHOUT any VM.
 await creerUtilisateur(service.base, 'sansvm@essai.local', empreinte, INSTANT);
 
-// ③ Un utilisateur dont la VM est là mais dont l'agent s'est TU.
+// ③ A user whose VM is there but whose agent has gone QUIET.
 const muette = await creerUtilisateur(service.base, 'muette@essai.local', empreinte, INSTANT);
 const vmMuette = await enroler(service.base, 'w-muette');
 await orch.attribuer(vmMuette.vmId, muette);
@@ -61,4 +61,4 @@ await poserVuA(service.base, vmMuette.vmId, Date.now() - SEUIL_INJOIGNABLE_MS - 
 process.stdout.write(
     `${JSON.stringify({ port: service.port, origine, prefixePrete: vmPrete.prefixe, prefixeMuette: vmMuette.prefixe, mdp: MDP })}\n`,
 );
-// Le service reste debout jusqu'au signal : c'est le pilote qui décide.
+// The service stays up until the signal: it is the driver that decides.

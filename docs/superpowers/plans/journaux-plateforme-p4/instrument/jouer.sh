@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Joue un critère de la recette P4 et écrit son journal.
+# Plays one criterion of acceptance run P4 and writes its log.
 #
-#     instrument/jouer.sh <1|2|3|4> <sqlite|postgres> <fichier-de-sortie>
+#     instrument/jouer.sh <1|2|3|4> <sqlite|postgres> <output-file>
 #
-# ⚠️ LA SORTIE D'ERREUR DU SERVICE EST CONSERVÉE, dans une section à part : la
-# ligne `opération refusée : instantane n'est pas supportée…` est la moitié
-# « journalisée » que le critère ① exige, et la sonde n'en juge que le PASSAGE
-# par son tee. Les deux vues doivent concorder, et c'est vérifiable ici.
+# ⚠️ THE SERVICE'S ERROR OUTPUT IS KEPT, in a separate section: the
+# line `operation refused: instantane is not supported…` is the
+# "logged" half criterion ① requires, and the probe only judges its GOING
+# THROUGH its tee. The two views must agree, and it can be checked here.
 set -uo pipefail
 
 CRITERE="$1"

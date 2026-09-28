@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Rend LOCALEMENT le `.ps1` que `scripts/run-agent.sh` écrit sur la VM.
+# Renders LOCALLY the `.ps1` that `scripts/run-agent.sh` writes on the VM.
 #
-# 🔴 CE N'EST PAS UNE RÉÉCRITURE DU HEREDOC : il est EXTRAIT du script réel, de
-# la ligne `cat > /media/vm/dev/run-agent.ps1 <<PS1` jusqu'à son `PS1` de
-# fermeture, et évalué tel quel. Une copie recopiée à la main éprouverait la
-# copie, pas le script — c'est exactement le patron du `TYPES_AGENT` écrit à la
-# main que ce dépôt paie depuis P1.
+# 🔴 IT IS NOT A REWRITE OF THE HEREDOC: it is EXTRACTED from the real script, from
+# the line `cat > /media/vm/dev/run-agent.ps1 <<PS1` up to its closing `PS1`,
+# and evaluated as is. A hand-copied copy would test the
+# copy, not the script — it is exactly the pattern of the hand-written `TYPES_AGENT`
+# this repository has been paying for since P1.
 #
 # ⚠️ CE QUE CELA N'ÉTABLIT PAS : que le fichier ARRIVE sur la VM, ni que la
 # tâche planifiée le lise. Cela n'établit que la SUBSTITUTION du shell — c'est

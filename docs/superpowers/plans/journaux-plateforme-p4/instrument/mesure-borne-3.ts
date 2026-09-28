@@ -1,17 +1,17 @@
-// La MESURE qui fonde la borne du critère ③, prise AVANT que la borne ne soit
-// jugée digne de foi.
+// The MEASUREMENT that grounds criterion ③'s bound, taken BEFORE the bound is
+// deemed trustworthy.
 //
 //     tsx mesure-borne-3.ts <sqlite|postgres> <commit>
 //
-// 🔴 ELLE NE MESURE PAS « LA LATENCE DU PRODUIT », et le dire importe : elle
-// mesure un aller-retour HTTP sur la boucle locale, contre un service en cours
-// de démarrage à froid, sur une machine qui porte par ailleurs une VM et un
-// chantier concurrent. Ce qu'elle établit est un ORDRE DE GRANDEUR — celui
-// d'un refus qui ne comporte ni attente, ni tentative de réveil, ni
-// scrutation. La borne du critère est posée deux ordres de grandeur au-dessus
-// du pire cas RELEVÉ HORS DÉMARRAGE À FROID, pour qu'elle ne puisse pas rougir
-// sur une machine chargée tout en restant huit fois sous la rouge prescrite
-// (`setTimeout(2000)`). Les deux rapports sont écrits dans le journal.
+// 🔴 IT DOES NOT MEASURE "THE PRODUCT'S LATENCY", and saying so matters: it
+// measures an HTTP round trip on the loopback, against a service in the middle
+// of a cold start, on a machine that also carries a VM and a
+// concurrent workstream. What it establishes is an ORDER OF MAGNITUDE — that
+// of a refusal involving neither waiting, nor wake-up attempt, nor
+// polling. The criterion's bound is set two orders of magnitude above
+// the worst case RECORDED OUTSIDE COLD START, so that it cannot turn red
+// on a loaded machine while staying eight times below the prescribed red run
+// (`setTimeout(2000)`). Both ratios are written in the log.
 
 import { appeler, creerCompte, demarrerService, enroler, jetonDe, ligne, type Moteur } from './socle';
 import { inventaireStatique } from '../../../../../plateforme/src/orchestration/inventaire-statique';
@@ -42,12 +42,12 @@ process.stdout.write(
         `# Prise le ${new Date().toISOString()}, commit ${commit}`,
         '#',
         ligne('appels', N),
-        // 🔴 LE PREMIER APPEL EST SORTI DU LOT, et ce n'est pas pour flatter le
-        // chiffre : il paie le démarrage à froid (compilation du chemin,
-        // première connexion), et le CRITÈRE ne le mesure jamais — ses vingt
-        // appels chronométrés viennent tous après un premier appel déjà fait.
-        // Le confondre avec les autres majorerait la borne pour une raison qui
-        // ne se produit pas dans ce qu'on juge.
+        // 🔴 THE FIRST CALL IS TAKEN OUT OF THE BATCH, and not to flatter the
+        // figure: it pays the cold start (path compilation,
+        // first connection), and the CRITERION never measures it — its twenty
+        // timed calls all come after a first call already made.
+        // Mixing it with the others would inflate the bound for a reason that
+        // does not happen in what is judged.
         ligne('PREMIER appel, à froid (ms)', Number(durees[0].toFixed(3))),
         ligne('maximum des 99 SUIVANTS (ms)', Number(Math.max(...durees.slice(1)).toFixed(3))),
         ligne('minimum (ms)', q(0)),
