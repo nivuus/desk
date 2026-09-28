@@ -16,26 +16,26 @@
 // The original body stays below, readable, as a historical record.
 {
     const successeur = [
-        '🔴 VOIE MORTE : scripts/winrm.js',
+        '🔴 DEAD PATH: scripts/winrm.js',
         '',
-        "  Ce script exécutait une commande PowerShell sur la VM Windows en WinRM,",
-        '  transport BASIC, compte « Administrateur ».',
+        '  This script ran a PowerShell command on the Windows VM over WinRM,',
+        '  BASIC transport, account "Administrateur".',
         '',
-        "  L'invité n'offre plus que Negotiate depuis la bascule appliance du",
-        '  29 août 2026 (chantier package-nivuus).',
+        '  The guest only offers Negotiate since the appliance switch of',
+        '  29 August 2026 (package-nivuus work item).',
         '',
-        '  CE QUI LE REMPLACE :',
-        '     python3 ../installer/console/guest/winrm_exec.py {cmd|ps} <commande>',
-        '       transport NTLM, compte « Administrator » (l\'invité est en anglais),',
-        '       mot de passe lu depuis /root/.config/nivuus/windows-admin.pass et',
-        "       JAMAIS sur l'argv. Il rend un code de sortie non nul sur échec de",
-        '       transport — ce que celui-ci ne faisait pas.',
+        '  WHAT REPLACES IT:',
+        '     python3 ../installer/console/guest/winrm_exec.py {cmd|ps} <command>',
+        '       NTLM transport, account "Administrator" (the guest is in English),',
+        '       password read from /root/.config/nivuus/windows-admin.pass and',
+        '       NEVER on argv. It returns a non-zero exit code on a transport',
+        '       failure — which this one did not.',
         '',
-        "     Dans une séquence du lot 3, passer par le harnais, qui l'enveloppe :",
+        '     In a batch 3 sequence, go through the harness, which wraps it:',
         '       source docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh',
         '',
-        '  Voir CLAUDE.md § « Cycle de vie de la VM Windows ».',
-        "  ⚠️ Ce script n'est PAS supprimé : `cat $0` pour le lire sans l'exécuter.",
+        '  See CLAUDE.md § "Windows VM lifecycle".',
+        "  ⚠️ This script is NOT deleted: `cat $0` to read it without running it.",
     ].join('\n');
     console.error(successeur);
     process.exit(78);   // EX_CONFIG
@@ -52,11 +52,11 @@ const PASS = process.env.WINDOWS_ADMIN_PASSWORD;
 async function main() {
     const command = process.argv.slice(2).join(' ');
     if (!command) {
-        console.error('usage : node scripts/winrm.js <commande powershell>');
+        console.error('usage: node scripts/winrm.js <powershell command>');
         process.exit(2);
     }
     if (!PASS) {
-        console.error('WINDOWS_ADMIN_PASSWORD non défini');
+        console.error('WINDOWS_ADMIN_PASSWORD not set');
         process.exit(2);
     }
     const output = await winrm.runCommand(command, HOST, USER, PASS, 5985, true);

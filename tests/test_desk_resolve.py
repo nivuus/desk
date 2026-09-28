@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Tests du hook resolve du package desk.
+"""Tests of the resolve hook of the desk package.
 
-Le hook est éprouvé par son VRAIE interface — un sous-processus nourri de
-{"hw":…, "answers":…} sur stdin, qui répond en jsonl sur stdout — et non par
-un import : c'est ainsi que le moteur l'appelle, et un package doit pouvoir
-tourner sur une Debian qui n'a jamais vu ce moteur.
+The hook is exercised through its REAL interface — a subprocess fed
+{"hw":…, "answers":…} on stdin, which answers in jsonl on stdout — and not through
+an import: that is how the engine calls it, and a package must be able to
+run on a Debian that has never seen this engine.
 
 Run: python3 tests/test_desk_resolve.py
 """
@@ -29,7 +29,7 @@ def check(label, got, want):
 
 
 def appeler(hw=None, answers=None, env=None):
-    """Appelle le hook comme le moteur : stdin JSON, stdout jsonl."""
+    """Calls the hook like the engine: stdin JSON, stdout jsonl."""
     contexte = json.dumps({"hw": hw or {}, "answers": answers or {}})
     r = subprocess.run([sys.executable, str(HOOK)], input=contexte,
                        capture_output=True, text=True, env=env)
@@ -41,7 +41,7 @@ def appeler(hw=None, answers=None, env=None):
         try:
             evenements.append(json.loads(ligne))
         except json.JSONDecodeError:
-            pass          # le moteur relaie ces lignes en progress
+            pass          # the engine relays these lines as progress
     return r.returncode, evenements
 
 
@@ -53,123 +53,123 @@ def refus(evenements):
     return [e for e in evenements if e.get("event") == "refuse"]
 
 
-# 🔴 CE FICHIER NE POSE PLUS AUCUNE CLÉ `hw` — ET C'EST LA CORRECTION DE LA
-# CRITIQUE DE LA REVUE FINALE DE BRANCHE (30 août 2026). Chaque appel
-# ci-dessous posait une clé `vm_windows` vraie, et un scénario de tête
-# éprouvait le refus sur la même clé fausse. Les deux étaient VERTS, et les
-# deux étaient faux du monde réel : **aucun producteur de cette clé n'existe**
-# (`installer/installer/common/hardware.py::detect_all()` en rend huit, aucune
-# de ce nom), donc le hook refusait TOUJOURS chez le moteur — un refus que
-# `steps/packages.py` traduit en `StepError`, c'est-à-dire l'arrêt de
-# l'installation ENTIÈRE. La suite ne pouvait pas le voir parce qu'elle
-# FABRIQUAIT elle-même le fait dont elle vérifiait la consommation.
+# 🔴 THIS FILE NO LONGER SETS ANY `hw` KEY — AND THAT IS THE FIX OF THE
+# CRITICAL FINDING OF THE FINAL BRANCH REVIEW (30 August 2026). Every call
+# below set a truthy `vm_windows` key, and a leading scenario
+# exercised the refusal on the same key set false. Both were GREEN, and
+# both were false to the real world: **no producer of that key exists**
+# (`installer/installer/common/hardware.py::detect_all()` returns eight, none
+# of that name), so the hook ALWAYS refused in the engine — a refusal that
+# `steps/packages.py` turns into a `StepError`, that is, stopping
+# the WHOLE installation. The suite could not see it because it
+# BUILT itself the fact whose consumption it checked.
 #
-# La porte a migré vers `hooks/activate.py` (la seule phase où la VM peut
-# exister), et le contrat de `hw` est désormais figé par une suite dédiée :
-# `tests/test_desk_contrat_hw.py`, qui lit les clés du PRODUCTEUR au lieu de
-# les inventer. `hw={}` ci-dessous n'est pas une commodité : c'est ce que
-# `resolve` doit savoir accepter.
+# The gate moved to `hooks/activate.py` (the only phase where the VM can
+# exist), and the `hw` contract is now frozen by a dedicated suite:
+# `tests/test_desk_contrat_hw.py`, which reads the keys of the PRODUCER instead of
+# inventing them. `hw={}` below is not a convenience: it is what
+# `resolve` must be able to accept.
 
-# --- Le cas nominal : des faits, aucun refus ------------------------------
+# --- The nominal case: facts, no refusal ------------------------------
 rc, ev = appeler(hw={}, answers=REPONSES)
-check("hw sans aucune clé : aucun refus", refus(ev), [])
-check("hw sans aucune clé : code de sortie 0", rc, 0)
+check("hw without any key: no refusal", refus(ev), [])
+check("hw without any key: exit code 0", rc, 0)
 faits = [e for e in ev if e.get("event") == "facts"]
-check("hw sans aucune clé : un événement facts", len(faits), 1)
+check("hw without any key: one facts event", len(faits), 1)
 mesures = faits[0]["facts"] if faits else {}
-check("les DEUX adresses TURN sont dérivées",
+check("BOTH TURN addresses are derived",
       all(k in mesures for k in ("turn_ecoute", "turn_relais")), True)
 
-# 🔴 docker-compose.coturn.yml exige TURN_LISTENING_IP **et** TURN_RELAY_IP,
-# toutes deux obligatoires : borner la seule écoute laisserait les allocations
-# de relais sur toutes les interfaces — mesuré le 21 août 2026, 23 adresses
-# distinctes dont l'adresse publique.
+# 🔴 docker-compose.coturn.yml requires TURN_LISTENING_IP **and** TURN_RELAY_IP,
+# both mandatory: bounding the listen address alone would leave the relay allocations
+# on every interface — measured on 21 August 2026, 23 distinct addresses
+# including the public address.
 
-# --- L'adresse d'écoute de la plateforme (hote), et le proxy de confiance --
-# 🔴 CORRIGE UN BUG RÉEL TROUVÉ AU LOT 10A (29 août 2026) : `hote` DOIT être
-# DIFFÉRENTE de `turn_ecoute` — les deux étaient confondues avant ce
-# correctif (voir commun.py::HOTE_DEFAUT), ce qui aurait fait écouter le
-# service sur l'adresse PUBLIQUE dérivée pour TURN. Ce test aurait dû
-# rougir avant le correctif (un contrôle qu'on n'a jamais vu rouge n'est
-# pas un contrôle) : il ne le pouvait pas, faute d'assertion sur `hote` du
-# tout — c'est précisément ce que cette addition ferme.
-check("hote est présente et non vide", bool(mesures.get("hote")), True)
-check("hote vaut le défaut fixe (jamais la route par défaut)",
+# --- The platform listen address (hote), and the trusted proxy --
+# 🔴 FIXES A REAL BUG FOUND IN BATCH 10A (29 August 2026): `hote` MUST be
+# DIFFERENT from `turn_ecoute` — the two were conflated before this
+# fix (see commun.py::HOTE_DEFAUT), which would have made the
+# service listen on the PUBLIC address derived for TURN. This test should have
+# gone red before the fix (a check never seen red is not
+# a check): it could not, for lack of any assertion on `hote` at
+# all — which is precisely what this addition closes.
+check("hote is present and non-empty", bool(mesures.get("hote")), True)
+check("hote is the fixed default (never the default route)",
       mesures.get("hote"), HOTE_DEFAUT)
-check("hote n'est JAMAIS l'adresse TURN (les deux dérivations sont séparées)",
+check("hote is NEVER the TURN address (the two derivations are separate)",
       mesures.get("hote") == mesures.get("turn_ecoute"), False)
-check("proxy_confiance est présente et non vide",
+check("proxy_confiance is present and non-empty",
       bool(mesures.get("proxy_confiance")), True)
-check("proxy_confiance vaut le défaut (raisonné, voir commun.py)",
+check("proxy_confiance is the default (reasoned, see commun.py)",
       mesures.get("proxy_confiance"), PROXY_DEFAUT)
 
-# --- Le mode pomerium est ACCEPTÉ depuis le lot 10A (problème C) ----------
-# Choisi explicitement par le propriétaire du dépôt pour la mise en service
-# réelle. Le proxy de confiance est DÉRIVÉ (commun.py::lire_proxy_confiance),
-# jamais demandé : aucun refus ne doit plus mordre ici.
+# --- The pomerium mode is ACCEPTED since batch 10A (problem C) ----------
+# Chosen explicitly by the repository owner for the real
+# commissioning. The trusted proxy is DERIVED (commun.py::lire_proxy_confiance),
+# never asked: no refusal must bite here any more.
 rc, ev = appeler(hw={},
                  answers={**REPONSES, "auth_mode": "pomerium"})
-check("pomerium : aucun refus (proxy dérivé, plus demandé)", refus(ev), [])
+check("pomerium: no refusal (derived proxy, no longer asked)", refus(ev), [])
 faits_pomerium = [e for e in ev if e.get("event") == "facts"]
 mesures_pomerium = faits_pomerium[0]["facts"] if faits_pomerium else {}
-check("pomerium : facts porte proxy_confiance",
+check("pomerium: facts carries proxy_confiance",
       bool(mesures_pomerium.get("proxy_confiance")), True)
 
-# --- Mais le refus MORD TOUJOURS si l'adresse dérivée est inutilisable ----
-# 🔴 UN CONTRÔLE QU'ON N'A JAMAIS VU ROUGE N'EST PAS UN CONTRÔLE : ce
-# scénario force `DESK_HOTE` vers une écoute universelle et vérifie que
-# `resolve` refuse AVANT l'installation plutôt que de laisser
-# `plateforme/src/config.ts::lireConfig` échouer plus tard sur un disque
-# déjà partitionné.
+# --- But the refusal STILL BITES if the derived address is unusable ----
+# 🔴 A CHECK NEVER SEEN RED IS NOT A CHECK: this
+# scenario forces `DESK_HOTE` to a universal listen address and checks that
+# `resolve` refuses BEFORE the installation rather than letting
+# `plateforme/src/config.ts::lireConfig` fail later on an already
+# partitioned disk.
 env_hote_universelle = dict(os.environ)
 env_hote_universelle["DESK_HOTE"] = "0.0.0.0"
 rc, ev = appeler(hw={},
                  answers={**REPONSES, "auth_mode": "pomerium"},
                  env=env_hote_universelle)
 r = refus(ev)
-check("DESK_HOTE=0.0.0.0 : refus", len(r), 1)
-check("DESK_HOTE=0.0.0.0 : le refus nomme l'écoute universelle",
-      bool(r and "universelle" in r[0].get("reason", "").lower()), True)
+check("DESK_HOTE=0.0.0.0: refusal", len(r), 1)
+check("DESK_HOTE=0.0.0.0: the refusal names the universal listen address",
+      bool(r and "universal listen" in r[0].get("reason", "").lower()), True)
 
-# --- Une valeur de mode inconnue LÈVE, elle ne se replie pas -------------
+# --- An unknown mode value RAISES, it does not fall back -------------
 rc, ev = appeler(hw={},
                  answers={**REPONSES, "auth_mode": "motdepass"})
-check("mode inconnu : refus", len(refus(ev)), 1)
+check("unknown mode: refusal", len(refus(ev)), 1)
 
-# --- vb_audio=true : REFUS avant l'installation, jamais un blocage APRÈS —
-# ronde de correction 1 sur la tâche 6. Aucune charge VB-Audio n'est fournie
-# par ce package (licence personnelle) : `poser_vb_audio(armee=True)` lève
-# `NotImplementedError` dans `hooks/vm.py`, mais APRÈS que le compte et
-# l'enrôlement de l'agent aient déjà été tentés (voir hooks/activate.py) —
-# une activation qui ne passerait alors plus JAMAIS. Le refus doit arriver
-# ICI, avant qu'un octet touche le disque.
+# --- vb_audio=true: REFUSAL before the installation, never a block AFTER —
+# correction round 1 on task 6. No VB-Audio payload is supplied
+# by this package (personal licence): `poser_vb_audio(armee=True)` raises
+# `NotImplementedError` in `hooks/vm.py`, but AFTER the account and
+# the agent enrolment have already been attempted (see hooks/activate.py) —
+# an activation that would then NEVER pass again. The refusal must come
+# HERE, before a single byte touches the disk.
 rc, ev = appeler(hw={}, answers={**REPONSES, "vb_audio": True})
 r = refus(ev)
-check("vb_audio=true : refus", len(r), 1)
-check("vb_audio=true : code de sortie 0", rc, 0)
-check("vb_audio=true : la phrase nomme VB-Audio",
+check("vb_audio=true: refusal", len(r), 1)
+check("vb_audio=true: exit code 0", rc, 0)
+check("vb_audio=true: the sentence names VB-Audio",
       bool(r and "VB-Audio" in r[0].get("reason", "")), True)
-check("vb_audio=true : la phrase dit la licence personnelle",
-      bool(r and "personnelle" in r[0].get("reason", "").lower()), True)
-check("vb_audio=true : la phrase invite à décocher l'option",
-      bool(r and "décoch" in r[0].get("reason", "").lower()), True)
+check("vb_audio=true: the sentence states the personal licence",
+      bool(r and "personal" in r[0].get("reason", "").lower()), True)
+check("vb_audio=true: the sentence suggests unticking the option",
+      bool(r and "untick" in r[0].get("reason", "").lower()), True)
 
-# --- vb_audio=false (le défaut du wizard) : aucun refus lié à VB-Audio ----
+# --- vb_audio=false (the wizard default): no VB-Audio refusal ----
 rc, ev = appeler(hw={}, answers={**REPONSES, "vb_audio": False})
-check("vb_audio=false : aucun refus", refus(ev), [])
+check("vb_audio=false: no refusal", refus(ev), [])
 
-# --- Une entrée mal formée est un refus, jamais une exception ------------
-# Ronde de correction 1 (29 août 2026) : le hook laissait ces trois entrées
-# lever telles quelles (JSONDecodeError ou AttributeError, code de sortie 1,
-# trace complète) — l'invariant central de ce hook cassé par un chemin
-# trivialement atteignable. Chaque contrôle éprouve les DEUX choses à la
-# fois : le code de sortie 0 ET la présence d'un `refuse` portant une
-# phrase — un contrôle qui ne vérifierait que le code de sortie passerait
-# sur un hook devenu muet.
+# --- A malformed input is a refusal, never an exception ------------
+# Correction round 1 (29 August 2026): the hook let these three inputs
+# raise as is (JSONDecodeError or AttributeError, exit code 1,
+# full traceback) — the central invariant of this hook broken by a
+# trivially reachable path. Each check exercises BOTH things at
+# once: exit code 0 AND the presence of a `refuse` carrying a
+# sentence — a check that only verified the exit code would pass
+# on a hook gone silent.
 def appeler_brut(stdin_texte):
-    """Comme appeler(), mais envoie stdin_texte TEL QUEL — pas du JSON
-    ré-encodé — pour éprouver les entrées que json.dumps ne peut pas
-    produire (JSON illisible, racine qui n'est pas un objet)."""
+    """Like appeler(), but sends stdin_texte AS IS — not re-encoded
+    JSON — to exercise inputs json.dumps cannot
+    produce (unreadable JSON, a root that is not an object)."""
     r = subprocess.run([sys.executable, str(HOOK)], input=stdin_texte,
                        capture_output=True, text=True)
     evenements = []
@@ -185,48 +185,48 @@ def appeler_brut(stdin_texte):
 
 
 for label, stdin_texte in [
-    ("JSON illisible", "ceci nest pas du json"),
-    ("racine qui n'est pas un objet", "[1,2,3]"),
-    ("hw mal typé", json.dumps({"hw": "pas un dict", "answers": {}})),
+    ("unreadable JSON", "this is not json"),
+    ("root that is not an object", "[1,2,3]"),
+    ("mistyped hw", json.dumps({"hw": "not a dict", "answers": {}})),
 ]:
     rc, ev = appeler_brut(stdin_texte)
     r = refus(ev)
-    check(f"{label} : code de sortie 0", rc, 0)
-    check(f"{label} : un refus est émis", len(r), 1)
-    check(f"{label} : le refus porte une phrase", bool(r and r[0].get("reason")), True)
+    check(f"{label}: exit code 0", rc, 0)
+    check(f"{label}: a refusal is emitted", len(r), 1)
+    check(f"{label}: the refusal carries a sentence", bool(r and r[0].get("reason")), True)
 
-# --- Le garde GÉNÉRIQUE : ce qu'AUCUN chemin n'a prévu -------------------
-# 🔴 MINEURE #4 DE LA TÂCHE 3, RECOMMANDÉE AVANT FUSION PAR LE DOCUMENT DE
-# RÉSULTATS ET CONFIRMÉE PAR LA REVUE FINALE DE BRANCHE. Les trois entrées
-# ci-dessus tombent toutes dans les cas que `charger_contexte()` sait NOMMER
-# — elles n'éprouvent donc PAS le `try/except Exception` de `main()`, qui est
-# l'invariant central de ce hook (« un refus est une donnée, jamais une
-# exception »). Le seul témoin de sa rouge était un `RecursionError` joué à
-# la main par un relecteur, dans une session qui n'existe plus.
+# --- The GENERIC guard: what NO path anticipated -------------------
+# 🔴 MINOR #4 OF TASK 3, RECOMMENDED BEFORE MERGE BY THE RESULTS
+# DOCUMENT AND CONFIRMED BY THE FINAL BRANCH REVIEW. The three inputs
+# above all fall into the cases that `charger_contexte()` knows how to NAME
+# — they therefore do NOT exercise the `try/except Exception` of `main()`, which is
+# the central invariant of this hook ("a refusal is data, never an
+# exception"). The only witness of its red was a `RecursionError` played by
+# hand by a reviewer, in a session that no longer exists.
 #
-# Les DEUX entrées ci-dessous lèvent DANS `json.load` lui-même, chacune par
-# une exception qui n'est PAS `json.JSONDecodeError` — donc hors de tout
-# `except` nommé de `charger_contexte()` :
-#   - des octets qui ne sont pas de l'UTF-8 : `UnicodeDecodeError`, levée
-#     par le décodeur du flux AVANT que le moindre caractère JSON existe ;
-#   - un entier littéral de plus de 4 300 chiffres : `ValueError` levée par
-#     la conversion entière de CPython (limite `sys.set_int_max_str_digits`),
-#     sur un JSON pourtant parfaitement BIEN FORMÉ.
-# Aucune des deux n'est un cas que ce hook a anticipé, et c'est le point :
-# un garde générique qui ne serait éprouvé que par des entrées qu'on lui a
-# dictées ne prouverait rien de ce qu'il existe pour couvrir.
+# The TWO inputs below raise INSIDE `json.load` itself, each through
+# an exception that is NOT `json.JSONDecodeError` — hence outside every
+# named `except` of `charger_contexte()`:
+#   - bytes that are not UTF-8: `UnicodeDecodeError`, raised
+#     by the stream decoder BEFORE a single JSON character exists;
+#   - an integer literal of more than 4,300 digits: `ValueError` raised by
+#     CPython's integer conversion (limit `sys.set_int_max_str_digits`),
+#     on a JSON that is nevertheless perfectly WELL FORMED.
+# Neither is a case this hook anticipated, and that is the point:
+# a generic guard only exercised by inputs dictated to it
+# would prove nothing of what it exists to cover.
 #
-# ⚠️ CE QUE J'AI ESSAYÉ D'ABORD, ET QUI NE MORD PLUS : un JSON de profondeur
-# excessive (le `RecursionError` du relecteur). Mesuré le 30 août 2026 sur
-# cet interpréteur : `json.load` avale sans broncher une profondeur de
-# 4 × `sys.getrecursionlimit()`, et l'entrée retombe alors dans le cas NOMMÉ
-# « la racine n'est pas un objet ». Le test aurait été vert sans jamais
-# atteindre le garde — exactement le patron « un contrôle qu'on n'a jamais vu
-# rouge ». Il est remplacé, pas rafistolé.
+# ⚠️ WHAT I TRIED FIRST, AND WHICH NO LONGER BITES: a JSON of excessive
+# depth (the reviewer's `RecursionError`). Measured on 30 August 2026 on
+# this interpreter: `json.load` swallows without a blink a depth of
+# 4 × `sys.getrecursionlimit()`, and the input then falls back into the NAMED case
+# "the root is not an object". The test would have been green without ever
+# reaching the guard — exactly the "a check never seen
+# red" pattern. It is replaced, not patched.
 def appeler_octets(data: bytes):
-    """Comme `appeler_brut`, mais envoie des OCTETS bruts — nécessaire pour
-    éprouver une entrée qui n'est pas décodable en UTF-8, ce que le mode
-    texte de `subprocess` ne peut pas exprimer."""
+    """Like `appeler_brut`, but sends raw BYTES — needed to
+    exercise an input that cannot be decoded as UTF-8, which the
+    text mode of `subprocess` cannot express."""
     r = subprocess.run([sys.executable, str(HOOK)], input=data,
                        capture_output=True)
     evenements = []
@@ -242,24 +242,24 @@ def appeler_octets(data: bytes):
 
 
 for label, octets in [
-    ("octets non décodables en UTF-8", b"\xff\xfe\x00{"),
-    ("entier littéral de 5 000 chiffres", b'{"hw":' + b"1" * 5000 + b"}"),
+    ("bytes not decodable as UTF-8", b"\xff\xfe\x00{"),
+    ("integer literal of 5,000 digits", b'{"hw":' + b"1" * 5000 + b"}"),
 ]:
     rc, ev = appeler_octets(octets)
     r = refus(ev)
-    check(f"garde générique ({label}) : code de sortie 0", rc, 0)
-    check(f"garde générique ({label}) : un refus est émis", len(r), 1)
-    check(f"garde générique ({label}) : le refus nomme l'imprévu",
-          bool(r and "inattendue" in r[0].get("reason", "").lower()), True)
+    check(f"generic guard ({label}): exit code 0", rc, 0)
+    check(f"generic guard ({label}): a refusal is emitted", len(r), 1)
+    check(f"generic guard ({label}): the refusal names the unexpected",
+          bool(r and "unexpected" in r[0].get("reason", "").lower()), True)
 
-# Témoin négatif de CE contrôle : une entrée mal formée que le hook sait
-# NOMMER ne doit PAS finir dans le garde générique — sinon l'assertion
-# ci-dessus passerait pour n'importe quelle entrée et ne prouverait rien du
-# chemin imprévu.
+# Negative control of THIS check: a malformed input the hook knows how to
+# NAME must NOT end up in the generic guard — otherwise the assertion
+# above would pass for any input and would prove nothing about the
+# unexpected path.
 rc_temoin, ev_temoin = appeler_brut("[1,2,3]")
 r_temoin = refus(ev_temoin)
-check("témoin négatif : une entrée NOMMÉE ne passe pas par le garde générique",
-      bool(r_temoin and "inattendue" not in r_temoin[0].get("reason", "").lower()),
+check("negative control: a NAMED input does not go through the generic guard",
+      bool(r_temoin and "unexpected" not in r_temoin[0].get("reason", "").lower()),
       True)
 
 if failures:
@@ -267,4 +267,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests du hook resolve passés")
+print("OK - resolve hook tests passed")

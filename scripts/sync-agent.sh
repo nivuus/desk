@@ -4,10 +4,10 @@
 
 # ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
-voie_morte "rsynchronisait les sources Rust vers C:\\dev, à travers le montage CIFS /media/vm" \
-"     Rien ne le remplace, et rien n'en a besoin : l'appliance ne compile plus.
-     Le binaire se bâtit sur l'hôte (scripts/build-agent-croise.sh) et se
-     dépose par HTTP. Voir le successeur de scripts/build-agent.sh."
+voie_morte "rsynced the Rust sources to C:\\dev, through the CIFS mount /media/vm" \
+"     Nothing replaces it, and nothing needs to: the appliance no longer builds.
+     The binary is built on the host (scripts/build-agent-croise.sh) and
+     dropped over HTTP. See the successor of scripts/build-agent.sh."
 # ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="/media/vm/dev"
 
 if ! mountpoint -q /media/vm; then
-    echo "erreur : /media/vm n'est pas monté" >&2
+    echo "error: /media/vm is not mounted" >&2
     exit 1
 fi
 
@@ -51,12 +51,12 @@ cd "$ROOT"
 # unstaged draft may be tested on purpose, but not unknowingly.
 untracked="$(git ls-files --others --exclude-standard -- agent proto)"
 if [ -n "$untracked" ]; then
-    echo "attention : fichiers non suivis par git sous agent/ ou proto/ — ils ne seront PAS synchronisés vers la VM :" >&2
+    echo "warning: files not tracked by git under agent/ or proto/ — they will NOT be synced to the VM:" >&2
     echo "$untracked" | sed 's/^/  /' >&2
-    echo "  (lancez « git add » si ces fichiers doivent faire partie de la compilation Windows)" >&2
+    echo "  (run \"git add\" if these files must be part of the Windows build)" >&2
 fi
 
 git ls-files -z -- Cargo.toml Cargo.lock rust-toolchain.toml agent proto |
     rsync -a --from0 --files-from=- "$ROOT/" "$DEST/"
 
-echo "sources synchronisées vers $DEST"
+echo "sources synced to $DEST"

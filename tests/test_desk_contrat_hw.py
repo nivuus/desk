@@ -1,51 +1,51 @@
 #!/usr/bin/env python3
-"""Le contrat de `hw` : ce que le MOTEUR envoie, jamais ce qu'un test invente.
+"""The `hw` contract: what the ENGINE sends, never what a test invents.
 
-🔴 CETTE SUITE EXISTE À CAUSE D'UNE CRITIQUE DE LA REVUE FINALE DE BRANCHE
-(30 août 2026). `hooks/resolve.py` refusait sur `hw.get("vm_windows")` —
-une clé qu'AUCUN producteur du moteur ne pose. Le package ne pouvait donc
-pas s'installer : le refus devient un `StepError` côté moteur
-(`installer/installer/install-engine/steps/packages.py`), qui arrête
-l'installation ENTIÈRE.
+🔴 THIS SUITE EXISTS BECAUSE OF A CRITICAL FINDING OF THE FINAL BRANCH REVIEW
+(30 August 2026). `hooks/resolve.py` refused on `hw.get("vm_windows")` —
+a key that NO producer of the engine sets. The package therefore could
+not install: the refusal becomes a `StepError` on the engine side
+(`installer/installer/install-engine/steps/packages.py`), which stops
+the WHOLE installation.
 
-**Les huit suites existantes ne pouvaient pas le voir, et c'est la leçon** :
-elles FABRIQUENT le contexte qu'elles envoient (`{"hw": {"vm_windows":
-True}}`), donc elles produisaient elles-mêmes le fait dont elles vérifiaient
-la consommation. Un test qui invente son entrée ne peut jamais découvrir que
-personne ne la produit.
+**The eight existing suites could not see it, and that is the lesson**:
+they BUILD the context they send (`{"hw": {"vm_windows":
+True}}`), so they themselves produced the fact whose consumption they
+checked. A test that invents its input can never discover that
+nobody produces it.
 
-Ce que cette suite fige, et que rien d'autre ne fige :
+What this suite freezes, and nothing else freezes:
 
-  ① l'ensemble des clés que `installer/installer/common/hardware.py::
-     detect_all()` RETOURNE réellement — lu dans le dépôt voisin, par
-     analyse syntaxique (`ast`), jamais exécuté (la détection réelle
-     invoque `lsblk`, `lspci`… : on veut le CONTRAT, pas la machine) ;
-  ② que `hooks/resolve.py` ne lit AUCUNE clé de `hw` absente de cet
-     ensemble — c'est exactement la Critique, figée ;
-  ③ que `hooks/activate.py` ne lit aucune clé de `hw` absente de cet
-     ensemble ÉLARGI aux `facts` que `resolve` émet lui-même : le moteur
-     les fusionne dans `hw` avant d'appeler `activate`
+  ① the set of keys that `installer/installer/common/hardware.py::
+     detect_all()` really RETURNS — read in the sibling repository, by
+     syntax analysis (`ast`), never run (the real detection
+     invokes `lsblk`, `lspci`…: we want the CONTRACT, not the machine);
+  ② that `hooks/resolve.py` reads NO `hw` key absent from this
+     set — it is exactly the Critical finding, frozen;
+  ③ that `hooks/activate.py` reads no `hw` key absent from this
+     set WIDENED to the `facts` that `resolve` emits itself: the engine
+     merges them into `hw` before calling `activate`
      (`installer/installer/packages/runner.py::run_activate`,
-     `merge_into_hw`) ;
-  ④ qu'un `resolve` nourri du contexte que le MOTEUR enverrait — un `hw`
-     portant exactement les clés de `detect_all()`, et rien de plus —
-     n'émet AUCUN refus ;
-  ⑤ qu'AUCUN fait émis par `resolve` n'est un LITTÉRAL codé en dur dans le
-     dict d'émission — c'est le TROU que ③ laissait ouvert, sous un nom
-     voisin de la Critique : ③ autorise `activate` à lire toute clé
-     PRÉSENTE dans `CLES_FACTS`, mais ne dit RIEN sur la façon dont cette
-     clé a été obtenue. Un fait posé en dur (`"vm_repond": True`) est une
-     clé de `CLES_FACTS` comme une autre, et ③ le laisserait donc passer
-     tel quel — c'est exactement la forme du défaut réel trouvé le 30 août
-     2026 (`hooks/resolve.py:393`, avant correction), et le motif pour
-     lequel la Critique ci-dessus a pu se reproduire sous un nom différent
-     malgré ③ déjà en place.
+     `merge_into_hw`);
+  ④ that a `resolve` fed the context the ENGINE would send — an `hw`
+     carrying exactly the keys of `detect_all()`, and nothing more —
+     emits NO refusal;
+  ⑤ that NO fact emitted by `resolve` is a LITERAL hardcoded in the
+     emission dict — it is the HOLE that ③ left open, under a name
+     close to the Critical finding: ③ allows `activate` to read any key
+     PRESENT in `CLES_FACTS`, but says NOTHING about how that
+     key was obtained. A hardcoded fact (`"vm_repond": True`) is a
+     key of `CLES_FACTS` like any other, and ③ would therefore let it
+     through as is — it is exactly the shape of the real defect found on 30 August
+     2026 (`hooks/resolve.py:393`, before the fix), and the reason
+     the Critical finding above could reappear under a different name
+     despite ③ already being in place.
 
-⚠️ SI LE DÉPÔT VOISIN EST ABSENT, CETTE SUITE ÉCHOUE, elle ne se saute pas :
-un contrat qu'on ne peut pas vérifier n'est pas un contrat vérifié, et « un
-`||` de repli transforme fichier absent en contrôle vert ». Le chemin est
-surchargeable par `DESK_INSTALLER_RACINE` — même convention que
-`tests/test_desk_manifeste.py`, qui importe déjà le moteur voisin.
+⚠️ IF THE SIBLING REPOSITORY IS ABSENT, THIS SUITE FAILS, it does not skip itself:
+a contract that cannot be checked is not a checked contract, and "a
+fallback `||` turns a missing file into a green check". The path is
+overridable through `DESK_INSTALLER_RACINE` — same convention as
+`tests/test_desk_manifeste.py`, which already imports the sibling engine.
 
 Run: python3 tests/test_desk_contrat_hw.py
 """
@@ -69,14 +69,14 @@ def check(label, got, want):
         failures.append(f"{label}: got {got!r}, want {want!r}")
 
 
-# --- ① Les clés que le moteur produit RÉELLEMENT --------------------------
+# --- ① The keys the engine REALLY produces --------------------------
 
 def cles_de_detect_all(chemin: pathlib.Path) -> set:
-    """Les clés du dict littéral que `detect_all()` retourne.
+    """The keys of the literal dict that `detect_all()` returns.
 
-    Lu par `ast`, jamais exécuté : `detect_all()` shelle vers `lsblk`,
-    `lspci`, `/proc/meminfo`… — on veut la FORME du contrat, pas l'état de
-    la machine qui fait tourner ces tests.
+    Read through `ast`, never run: `detect_all()` shells out to `lsblk`,
+    `lspci`, `/proc/meminfo`… — we want the SHAPE of the contract, not the state of
+    the machine running these tests.
     """
     arbre = ast.parse(chemin.read_text(encoding="utf-8"))
     for noeud in ast.walk(arbre):
@@ -90,23 +90,23 @@ def cles_de_detect_all(chemin: pathlib.Path) -> set:
 
 if not HARDWARE.is_file():
     failures.append(
-        f"le producteur de `hw` est introuvable : {HARDWARE} — cette suite "
-        "ne peut PAS vérifier le contrat sans lui, et un contrôle qui se "
-        "saute quand sa pièce manque est un contrôle vert par accident. "
-        "Surcharger DESK_INSTALLER_RACINE si le dépôt voisin vit ailleurs."
+        f"the producer of `hw` is not found: {HARDWARE} — this suite "
+        "can NOT check the contract without it, and a check that "
+        "skips itself when its part is missing is a green check by accident. "
+        "Override DESK_INSTALLER_RACINE if the sibling repository lives elsewhere."
     )
     CLES_MOTEUR = set()
 else:
     CLES_MOTEUR = cles_de_detect_all(HARDWARE)
 
-check("detect_all() rend un ensemble de clés non vide", bool(CLES_MOTEUR), True)
+check("detect_all() returns a non-empty set of keys", bool(CLES_MOTEUR), True)
 
 
-# --- Ce qu'un hook LIT dans `hw`, et ce que `resolve` ÉMET en facts -------
+# --- What a hook READS from `hw`, and what `resolve` EMITS as facts -------
 
 def keys_read_in(chemin: pathlib.Path, nom_variable: str) -> set:
-    """Les clés littérales lues sur `<nom_variable>` — `x.get("k")` et
-    `x["k"]` — dans le fichier donné."""
+    """The literal keys read on `<nom_variable>` — `x.get("k")` and
+    `x["k"]` — in the given file."""
     arbre = ast.parse(chemin.read_text(encoding="utf-8"))
     cles = set()
     for noeud in ast.walk(arbre):
@@ -128,7 +128,7 @@ def keys_read_in(chemin: pathlib.Path, nom_variable: str) -> set:
 
 
 def cles_des_facts(chemin: pathlib.Path) -> set:
-    """Les clés du dict `facts` que `resolve.py` émet."""
+    """The keys of the `facts` dict that `resolve.py` emits."""
     arbre = ast.parse(chemin.read_text(encoding="utf-8"))
     for noeud in ast.walk(arbre):
         if not isinstance(noeud, ast.Dict):
@@ -142,33 +142,33 @@ def cles_des_facts(chemin: pathlib.Path) -> set:
 
 
 CLES_FACTS = cles_des_facts(RACINE / "hooks" / "resolve.py")
-check("resolve.py émet bien un dict `facts` non vide", bool(CLES_FACTS), True)
+check("resolve.py does emit a non-empty `facts` dict", bool(CLES_FACTS), True)
 
 
-# --- ② `resolve` ne lit que ce que `detect_all()` produit -----------------
-# 🔴 C'EST LA CRITIQUE, FIGÉE. Avant le 30 août 2026, cette assertion
-# aurait rendu {'vm_windows'} — une clé introuvable dans TOUT le dépôt
-# voisin (`grep -rn vm_windows ../installer/` : aucune sortie).
+# --- ② `resolve` only reads what `detect_all()` produces -----------------
+# 🔴 IT IS THE CRITICAL FINDING, FROZEN. Before 30 August 2026, this assertion
+# would have returned {'vm_windows'} — a key found nowhere in the WHOLE sibling
+# repository (`grep -rn vm_windows ../installer/`: no output).
 lues_resolve = keys_read_in(RACINE / "hooks" / "resolve.py", "hw")
-check("resolve ne lit dans hw aucune clé que detect_all() ne produit pas",
+check("resolve reads no hw key that detect_all() does not produce",
       sorted(lues_resolve - CLES_MOTEUR), [])
 
 
-# --- ③ `activate` : detect_all() ÉLARGI aux facts de resolve --------------
-# Le moteur fusionne les facts DANS hw avant d'appeler activate
-# (runner.py::run_activate -> merge_into_hw), donc une clé de facts y est
-# légitime — et une clé qui n'est NI dans detect_all() NI dans facts ne
-# peut venir de nulle part.
+# --- ③ `activate`: detect_all() WIDENED to resolve's facts --------------
+# The engine merges the facts INTO hw before calling activate
+# (runner.py::run_activate -> merge_into_hw), so a facts key is
+# legitimate there — and a key that is NEITHER in detect_all() NOR in facts
+# can come from nowhere.
 lues_activate = keys_read_in(RACINE / "hooks" / "activate.py", "hw")
-check("activate ne lit dans hw que detect_all() ou les facts de resolve",
+check("activate only reads detect_all() or resolve's facts from hw",
       sorted(lues_activate - (CLES_MOTEUR | CLES_FACTS)), [])
 
 
-# --- ④ Le contexte que le MOTEUR envoie ne fait refuser personne ----------
-# 🔴 CE N'EST PAS UN CONTEXTE FABRIQUÉ : ses clés sont exactement celles que
-# `detect_all()` retourne, relevées ci-dessus. Les VALEURS sont vides (aucun
-# disque, aucun GPU…) — c'est le pire cas, et c'est celui qu'une machine
-# neuve où rien n'est encore partitionné ressemble le plus.
+# --- ④ The context the ENGINE sends makes nobody refuse ----------
+# 🔴 THIS IS NOT A BUILT CONTEXT: its keys are exactly those that
+# `detect_all()` returns, read above. The VALUES are empty (no
+# disk, no GPU…) — it is the worst case, and the one that a fresh
+# machine where nothing is partitioned yet resembles most.
 contexte_moteur = {cle: [] for cle in sorted(CLES_MOTEUR)}
 REPONSES = {"admin_email": "a@b.c", "admin_password": "x",
             "auth_mode": "motdepasse", "vb_audio": False}
@@ -186,22 +186,22 @@ for ligne in proc.stdout.splitlines():
     except json.JSONDecodeError:
         pass
 refus = [e for e in evenements if e.get("event") == "refuse"]
-check("contexte du MOTEUR : code de sortie 0", proc.returncode, 0)
-check("contexte du MOTEUR : AUCUN refus", [e.get("reason") for e in refus], [])
-check("contexte du MOTEUR : un événement facts est émis",
+check("ENGINE context: exit code 0", proc.returncode, 0)
+check("ENGINE context: NO refusal", [e.get("reason") for e in refus], [])
+check("ENGINE context: a facts event is emitted",
       len([e for e in evenements if e.get("event") == "facts"]), 1)
 
 
-# --- ⑤ Aucun fait émis n'est un littéral codé en dur -----------------------
-# 🔴 CE QUI A ÉCHAPPÉ À ③ CI-DESSUS : ③ vérifie que la clé est CONNUE
-# (présente dans `CLES_FACTS`), jamais que sa VALEUR a été MESURÉE. Une
-# valeur mesurée vient toujours d'une EXPRESSION (une variable déjà validée
-# plus haut dans le hook, un appel) ; une constante écrite à la main
-# directement dans le dict d'émission (`True`, `None`, un nombre, une
-# chaîne littérale) ne peut PAS être une mesure — par construction, elle ne
-# dépend d'aucune entrée. C'est exactement la forme de `"vm_repond": True`.
+# --- ⑤ No emitted fact is a hardcoded literal -----------------------
+# 🔴 WHAT ESCAPED ③ ABOVE: ③ checks that the key is KNOWN
+# (present in `CLES_FACTS`), never that its VALUE was MEASURED. A
+# measured value always comes from an EXPRESSION (a variable already validated
+# earlier in the hook, a call); a constant written by hand
+# directly in the emission dict (`True`, `None`, a number, a
+# string literal) can NOT be a measurement — by construction, it
+# depends on no input. It is exactly the shape of `"vm_repond": True`.
 def facts_with_literals(chemin: pathlib.Path) -> list:
-    """Les clés du dict `facts` dont la valeur est un littéral en dur."""
+    """The keys of the `facts` dict whose value is a hardcoded literal."""
     arbre = ast.parse(chemin.read_text(encoding="utf-8"))
     for noeud in ast.walk(arbre):
         if not isinstance(noeud, ast.Dict):
@@ -216,7 +216,7 @@ def facts_with_literals(chemin: pathlib.Path) -> list:
     return []
 
 
-check("aucun fait émis par resolve n'est un littéral codé en dur",
+check("no fact emitted by resolve is a hardcoded literal",
       facts_with_literals(RACINE / "hooks" / "resolve.py"), [])
 
 if failures:
@@ -224,5 +224,5 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print(f"OK - contrat de hw : {len(CLES_MOTEUR)} cles produites par "
-      f"detect_all(), {len(CLES_FACTS)} facts emis par resolve")
+print(f"OK - hw contract: {len(CLES_MOTEUR)} keys produced by "
+      f"detect_all(), {len(CLES_FACTS)} facts emitted by resolve")

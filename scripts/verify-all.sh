@@ -19,7 +19,7 @@
 # ⚠️ THIS SCRIPT DEPENDS ON A POSTGRES INSTANCE, and that is INTENDED. `plateforme`
 # exercises its SQL subset against BOTH engines, and a skip is a
 # failure (spec §7.1 of sub-project ⑤): if the instance is missing, the step
-# `plateforme : npm run test:postgres` FAILS — it is not skipped with a
+# `plateforme: npm run test:postgres` FAILS — it is not skipped with a
 # warning. A test that vanishes when its dependency is missing turns green a
 # state it did not measure. To launch it:
 #
@@ -42,7 +42,7 @@ etape() {
 
 # 🔴 THE SCRIPT NO LONGER STOPS AT THE FIRST FAILURE, AND THAT IS A TRADE-OFF, NOT
 # A GIVEN. It used to stop; on 20 August 2026, a single red step
-# (`plateforme : npm run test:sqlite`) hid the LAST TWO —
+# (`plateforme: npm run test:sqlite`) hid the LAST TWO —
 # `test:postgres` and `typecheck` — for the whole duration of the defect. Nobody
 # knew whether they were green: they were not measured. An early
 # failure thus cost TWO losses, its own and that of everything downstream.
@@ -60,7 +60,7 @@ etape() {
 echecs=()
 
 echec() {
-    echo "ÉCHEC : $1" >&2
+    echo "FAILED: $1" >&2
     echecs+=("$1")
 }
 
@@ -79,44 +79,44 @@ etape "cargo clippy --workspace"
 # would be even less so — we leave them visible, without blocking on them.
 cargo clippy --workspace || echec "cargo clippy --workspace"
 
-etape "client : npm test"
-(cd client && npm test) || echec "client : npm test"
+etape "client: npm test"
+(cd client && npm test) || echec "client: npm test"
 
-etape "client : npm run typecheck"
-(cd client && npm run typecheck) || echec "client : npm run typecheck"
+etape "client: npm run typecheck"
+(cd client && npm run typecheck) || echec "client: npm run typecheck"
 
 # The seven checks of the visual foundation (sub-project ⑥, spec §7). Six of them
 # are scripts and live here; the seventh, §7.5 (the theme switch), is
-# a unit test and runs in the `client : npm test` step above — that is
+# a unit test and runs in the `client: npm test` step above — that is
 # why we read six verdicts and not seven.
 #
 # ⚠️ Without this step, "applied continuously" (framing §5 ⑥) would remain a wish:
 # the checks would exist, and nothing would run them.
-etape "client : npm run design:verifier"
-(cd client && npm run design:verifier) || echec "client : npm run design:verifier"
+etape "client: npm run design:verifier"
+(cd client && npm run design:verifier) || echec "client: npm run design:verifier"  # policy: allow-fr - npm script name
 
-etape "proto : npm test"
-(cd proto && npm test) || echec "proto : npm test"
+etape "proto: npm test"
+(cd proto && npm test) || echec "proto: npm test"
 
-etape "proto : npm run typecheck"
-(cd proto && npm run typecheck) || echec "proto : npm run typecheck"
+etape "proto: npm run typecheck"
+(cd proto && npm run typecheck) || echec "proto: npm run typecheck"
 
-etape "plateforme : npm run test:sqlite"
-(cd plateforme && npm run test:sqlite) || echec "plateforme : npm run test:sqlite"
+etape "plateforme: npm run test:sqlite"
+(cd plateforme && npm run test:sqlite) || echec "plateforme: npm run test:sqlite"
 
-etape "plateforme : npm run test:postgres"
-(cd plateforme && npm run test:postgres) || echec "plateforme : npm run test:postgres"
+etape "plateforme: npm run test:postgres"
+(cd plateforme && npm run test:postgres) || echec "plateforme: npm run test:postgres"
 
-etape "plateforme : npm run typecheck"
-(cd plateforme && npm run typecheck) || echec "plateforme : npm run typecheck"
+etape "plateforme: npm run typecheck"
+(cd plateforme && npm run typecheck) || echec "plateforme: npm run typecheck"
 
 echo
 if [ ${#echecs[@]} -eq 0 ]; then
-    echo "Les 10 étapes sont passées."
+    echo "All 10 steps passed."
     exit 0
 fi
 
-echo "══ ${#echecs[@]} étape(s) sur 10 en ÉCHEC ══" >&2
+echo "══ ${#echecs[@]} step(s) out of 10 FAILED ══" >&2
 for e in "${echecs[@]}"; do
     echo "  - $e" >&2
 done

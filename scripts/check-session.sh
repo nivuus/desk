@@ -15,10 +15,10 @@
 
 # ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
-voie_morte "vérifiait que l'agent tourne en session 1, en lisant /media/vm" \
-"     L'appliance atteste sa session elle-même : C:\nivuus\state\agent-session.txt,
-     écrit par run-agent.ps1 juste avant de lancer l'agent, donc seulement si le
-     lancement a réellement eu lieu."
+voie_morte "checked that the agent runs in session 1, by reading /media/vm" \
+"     The appliance attests its session itself: C:\nivuus\state\agent-session.txt,
+     written by run-agent.ps1 right before launching the agent, hence only if the
+     launch really happened."
 # ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
@@ -26,10 +26,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_NAME="guacamole-agent-check-session"
 USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"
-: "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD non défini}"
+: "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD not set}"
 
 if ! mountpoint -q /media/vm; then
-    echo "erreur : /media/vm n'est pas monté" >&2
+    echo "error: /media/vm is not mounted" >&2
     exit 1
 fi
 
@@ -66,7 +66,7 @@ done
 node "$ROOT/scripts/winrm.js" "schtasks /delete /tn $TASK_NAME /f" >/dev/null 2>&1 || true
 
 if [ "$FOUND" -ne 1 ]; then
-    echo "erreur : aucun résultat de vérification de session après 10s (le fichier $RESULT_FILE n'a jamais été créé)" >&2
+    echo "error: no session check result after 10s (the file $RESULT_FILE was never created)" >&2
     exit 1
 fi
 
@@ -74,10 +74,10 @@ SESSION_ID="$(tr -d '[:space:]' < "$RESULT_FILE")"
 rm -f /media/vm/dev/check-session.ps1 "$RESULT_FILE"
 
 if [ "$SESSION_ID" = "1" ]; then
-    echo "OK : l'agent démarre en session 1 (session interactive)"
+    echo "OK: the agent starts in session 1 (interactive session)"
     exit 0
 fi
 
-echo "erreur : l'agent démarre en session '${SESSION_ID:-inconnue}', pas 1." >&2
-echo "vérifier la présence du drapeau /it dans la tâche planifiée et qu'un utilisateur est bien connecté sur la console (node scripts/winrm.js quser)." >&2
+echo "error: the agent starts in session '${SESSION_ID:-unknown}', not 1." >&2
+echo "check that the scheduled task carries the /it flag and that a user is logged in on the console (node scripts/winrm.js quser)." >&2
 exit 1

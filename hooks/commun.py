@@ -115,14 +115,14 @@ def deriver_adresse_turn() -> str:
     interface = interface_de_route_par_defaut()
     if not interface:
         raise RuntimeError(
-            "aucune route IPv4 par défaut : impossible de dériver l'adresse "
-            "sur laquelle coturn doit écouter et relayer"
+            "no default IPv4 route: cannot derive the address "
+            "coturn must listen and relay on"
         )
     adresse = adresse_ipv4_de(interface)
     if not adresse:
         raise RuntimeError(
-            f"aucune adresse IPv4 lisible sur l'interface {interface} (route "
-            "par défaut) : impossible de dériver TURN_LISTENING_IP/"
+            f"no readable IPv4 address on interface {interface} (default "
+            "route): cannot derive TURN_LISTENING_IP/"
             "TURN_RELAY_IP"
         )
     return adresse
@@ -211,10 +211,10 @@ def valider_hote(brut: str, origine: str = "DESK_HOTE"):
     """
     if _est_universelle(brut):
         return None, (
-            f"{origine}={brut!r} est une écoute universelle : PLATEFORME_HOTE "
-            "ne doit jamais l'être (voir plateforme/src/config.ts, la garde du "
-            "mode pomerium — et la doctrine de ce package, plus stricte : "
-            "aucune écoute universelle, dans aucun mode)"
+            f"{origine}={brut!r} is a universal listen address: PLATEFORME_HOTE "
+            "must never be one (see plateforme/src/config.ts, the guard of "
+            "the pomerium mode — and this package's doctrine, stricter: "
+            "no universal listen address, in any mode)"
         )
     return brut, None
 
@@ -352,13 +352,13 @@ def valider_adresse_de_facts(brut, origine: str, role: str, consequence: str):
     """
     if not isinstance(brut, str) or not brut.strip():
         return None, (
-            f"{origine}={brut!r} n'est pas une adresse exploitable pour "
-            f"{role} : une chaîne non vide est attendue"
+            f"{origine}={brut!r} is not a usable address for "
+            f"{role}: a non-empty string is expected"
         )
     if _est_universelle(brut):
         return None, (
-            f"{origine}={brut!r} est une écoute universelle : {role} ne doit "
-            f"jamais l'être — {consequence}"
+            f"{origine}={brut!r} is a universal listen address: {role} must "
+            f"never be one — {consequence}"
         )
     return brut.strip(), None
 
@@ -373,16 +373,16 @@ def valider_port_de_facts(brut, origine: str = 'facts["port"]'):
     `1`, a perfectly valid and perfectly absurd port.
     """
     if isinstance(brut, bool):
-        return None, f"{origine}={brut!r} est un booléen, pas un port"
+        return None, f"{origine}={brut!r} is a boolean, not a port"
     if isinstance(brut, str):
         brut_nettoye = brut.strip()
         if not brut_nettoye.isdigit():
-            return None, f"{origine}={brut!r} n'est pas un entier"
+            return None, f"{origine}={brut!r} is not an integer"
         value = int(brut_nettoye)
     elif isinstance(brut, int):
         value = brut
     else:
-        return None, f"{origine}={brut!r} n'est pas un entier"
+        return None, f"{origine}={brut!r} is not an integer"
     if not 1 <= value <= 65535:
-        return None, f"{origine}={value} est hors de la plage 1-65535"
+        return None, f"{origine}={value} is outside the range 1-65535"
     return value, None

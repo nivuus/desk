@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Tests du hook install du package desk.
+"""Tests of the install hook of the desk package.
 
-Le hook est éprouvé par son VRAIE interface — un sous-processus appelé
-`--phase install --root <racine>`, nourri de {"hw":…, "answers":…,
-"facts":…} sur stdin — exactement comme `installer/packages/runner.py`
-l'invoque (`cmd = [sys.executable, hook, "--phase", phase]` puis
-`cmd += ["--root", root]` si une racine est fournie), et exactement comme
-`console/hooks/install.py` se teste déjà dans le dépôt voisin
-(`installer/console/tests/test_console_install.py`) : ce précédent est la
-source de la convention `--root`, préférée à une variable d'environnement ou
-une clé de contexte parce que c'est ce que le moteur RÉEL envoie.
+The hook is exercised through its REAL interface — a subprocess called
+`--phase install --root <root>`, fed {"hw":…, "answers":…,
+"facts":…} on stdin — exactly as `installer/packages/runner.py`
+invokes it (`cmd = [sys.executable, hook, "--phase", phase]` then
+`cmd += ["--root", root]` if a root is supplied), and exactly as
+`console/hooks/install.py` is already tested in the sibling repository
+(`installer/console/tests/test_console_install.py`): that precedent is the
+source of the `--root` convention, preferred to an environment variable or
+a context key because it is what the REAL engine sends.
 
-Chaque test pose sa PROPRE racine sous `tempfile.TemporaryDirectory()` :
-jamais `/opt`, `/etc` ou `/etc/systemd/system` du poste qui fait tourner ces
+Each test lays down its OWN root under `tempfile.TemporaryDirectory()`:
+never `/opt`, `/etc` or `/etc/systemd/system` of the machine running these
 tests.
 
 Run: python3 tests/test_desk_install.py
 """
-# ⚠️ `configparser`, `json`, `subprocess` et `HOOK` ont suivi les fixtures
-# dans `desk_install_fixtures.py` : une extraction n'est jamais rigoureusement
-# verbatim, elle laisse ses imports derrière elle — et un import inutilisé est
-# une famille d'échec, pas un détail.
+# ⚠️ `configparser`, `json`, `subprocess` and `HOOK` followed the fixtures
+# into `desk_install_fixtures.py`: an extraction is never strictly
+# verbatim, it leaves its imports behind — and an unused import is
+# a failure family, not a detail.
 import os
 import pathlib
 import sys
@@ -49,447 +49,447 @@ from desk_install_fixtures import (  # noqa: E402
     poser_source_minimale,
 )
 
-# --- Installation 1 : AVEC facts (le cas où le moteur les fournirait) -----
+# --- Installation 1: WITH facts (the case where the engine would supply them) -----
 with tempfile.TemporaryDirectory() as tmp1:
     root1 = pathlib.Path(tmp1)
     r1 = appeler(root1, facts=FACTS)
-    check("installation 1 : code de sortie 0", r1.returncode, 0)
+    check("installation 1: exit code 0", r1.returncode, 0)
 
     env1, chemin_env1 = lire_env(root1)
 
-    # 🔴 Le secret de jeton est TIRÉ AU SORT, jamais demandé ni constant.
-    check("le secret fait au moins 32 caracteres",
+    # 🔴 The token secret is DRAWN AT RANDOM, never asked nor constant.
+    check("the secret is at least 32 characters long",
           len(env1.get("PLATEFORME_SECRET_JETON", "")) >= 32, True)
 
-    check("le fichier d'environnement est en 600",
+    check("the environment file is in 600",
           oct(os.stat(chemin_env1).st_mode & 0o777), oct(0o600))
 
-    # PLATEFORME_PAGE est ce qui rend nginx facultatif : la plateforme sert
-    # elle-même la page batie depuis le 22 aout 2026.
-    check("la page est servie depuis client/dist",
+    # PLATEFORME_PAGE is what makes nginx optional: the platform serves
+    # the built page itself since 22 August 2026.
+    check("the page is served from client/dist",
           env1.get("PLATEFORME_PAGE", "").endswith("client/dist"), True)
 
-    # 🔴 PLATEFORME_HOTE : en mode pomerium, les quatre ecoutes universelles
-    # font REFUSER le demarrage. L'installation ne doit jamais en poser une.
-    check("l'ecoute n'est jamais universelle",
+    # 🔴 PLATEFORME_HOTE: in pomerium mode, the four universal listen addresses
+    # make the start REFUSE. The installation must never set one.
+    check("the listen address is never universal",
           env1.get("PLATEFORME_HOTE") in ("0.0.0.0", "::", "[::]", "*"), False)
-    check("l'ecoute est non vide", bool(env1.get("PLATEFORME_HOTE")), True)
+    check("the listen address is non-empty", bool(env1.get("PLATEFORME_HOTE")), True)
 
-    # Avec facts fournis : le port et l'adresse TURN viennent d'EUX, pas du
-    # defaut ni d'une derivation independante.
-    check("le port vient des facts quand ils sont fournis",
+    # With facts supplied: the port and the TURN address come from THEM, not from the
+    # default nor from an independent derivation.
+    check("the port comes from the facts when they are supplied",
           env1.get("PLATEFORME_PORT"), str(FACTS["port"]))
 
-    # 🔴 REGRESSION FERMEE AU LOT 10A (29 aout 2026) : PLATEFORME_HOTE DOIT
-    # venir de facts["hote"], JAMAIS de facts["turn_ecoute"] — les deux
-    # etaient confondues avant ce correctif (voir hooks/commun.py::
-    # HOTE_DEFAUT pour le bug reel que la separation corrige : sur la
-    # machine de developpement, la derivation TURN rend l'adresse PUBLIQUE
-    # de la route par defaut, et PLATEFORME_HOTE en heritait). FACTS pose
-    # deux valeurs DIFFERENTES pour "hote" et "turn_ecoute" precisement pour
-    # que ce test ne puisse pas rester vert par accident si la confusion
-    # revenait.
-    check("PLATEFORME_HOTE vient de facts['hote'], jamais de turn_ecoute",
+    # 🔴 REGRESSION CLOSED IN BATCH 10A (29 August 2026): PLATEFORME_HOTE MUST
+    # come from facts["hote"], NEVER from facts["turn_ecoute"] — the two
+    # were conflated before this fix (see hooks/commun.py::
+    # HOTE_DEFAUT for the real bug the separation fixes: on the
+    # development machine, the TURN derivation returns the PUBLIC address
+    # of the default route, and PLATEFORME_HOTE inherited it). FACTS sets
+    # two DIFFERENT values for "hote" and "turn_ecoute" precisely so
+    # that this test cannot stay green by accident if the confusion
+    # came back.
+    check("PLATEFORME_HOTE comes from facts['hote'], never from turn_ecoute",
           env1.get("PLATEFORME_HOTE"), FACTS["hote"])
-    check("PLATEFORME_HOTE n'est PAS l'adresse TURN (les deux sont decouplees)",
+    check("PLATEFORME_HOTE is NOT the TURN address (the two are decoupled)",
           env1.get("PLATEFORME_HOTE") == FACTS["turn_ecoute"], False)
-    check("PLATEFORME_PROXY_DE_CONFIANCE vient de facts['proxy_confiance']",
+    check("PLATEFORME_PROXY_DE_CONFIANCE comes from facts['proxy_confiance']",
           env1.get("PLATEFORME_PROXY_DE_CONFIANCE"), FACTS["proxy_confiance"])
 
-    # PLATEFORME_AUTH vient de la reponse auth_mode, telle quelle.
-    check("PLATEFORME_AUTH vient de la reponse auth_mode",
+    # PLATEFORME_AUTH comes from the auth_mode answer, as is.
+    check("PLATEFORME_AUTH comes from the auth_mode answer",
           env1.get("PLATEFORME_AUTH"), "motdepasse")
 
-    # 🔴 Ronde de correction 1, trouvaille ① : DynamicUser=yes rend
-    # /opt/nivuus/desk/plateforme EN LECTURE SEULE (ProtectSystem=strict
-    # implicite) — le defaut relatif de PLATEFORME_ICONES/
+    # 🔴 Correction round 1, finding ①: DynamicUser=yes makes
+    # /opt/nivuus/desk/plateforme READ ONLY (implied ProtectSystem=strict)
+    # — the relative default of PLATEFORME_ICONES/
     # PLATEFORME_TELEVERSEMENTS ("donnees/icones"/"donnees/televersements",
-    # sous WorkingDirectory) y echouerait en EROFS au premier usage. Les
-    # deux DOIVENT pointer sous /var/lib/nivuus-desk, le seul repertoire que
-    # StateDirectory= rend inscriptible.
-    check("PLATEFORME_ICONES pointe sous le repertoire d'etat inscriptible",
+    # under WorkingDirectory) would fail there with EROFS on first use. Both
+    # MUST point under /var/lib/nivuus-desk, the only directory that
+    # StateDirectory= makes writable.
+    check("PLATEFORME_ICONES points under the writable state directory",
           env1.get("PLATEFORME_ICONES"), "/var/lib/nivuus-desk/icones")
-    check("PLATEFORME_TELEVERSEMENTS pointe sous le repertoire d'etat inscriptible",
+    check("PLATEFORME_TELEVERSEMENTS points under the writable state directory",
           env1.get("PLATEFORME_TELEVERSEMENTS"),
           "/var/lib/nivuus-desk/televersements")
-    check("les deux repertoires ne sont PAS le defaut relatif sous WorkingDirectory",
+    check("the two directories are NOT the relative default under WorkingDirectory",
           any(v.startswith("donnees/")
               for v in (env1.get("PLATEFORME_ICONES", ""),
                         env1.get("PLATEFORME_TELEVERSEMENTS", ""))),
           False)
 
-    # La configuration coturn (TURN_URL/TURN_SECRET) que `plateforme/src/
-    # signaling/ice.ts::configurationIce` exige TOUTES LES DEUX pour annoncer
-    # un relais.
-    check("TURN_URL porte l'adresse ecoute des facts",
+    # The coturn configuration (TURN_URL/TURN_SECRET) that `plateforme/src/
+    # signaling/ice.ts::configurationIce` requires BOTH OF to announce
+    # a relay.
+    check("TURN_URL carries the listen address of the facts",
           env1.get("TURN_URL"), f"turn:{FACTS['turn_ecoute']}:3478")
-    check("TURN_SECRET est pose et non vide",
+    check("TURN_SECRET is set and non-empty",
           bool(env1.get("TURN_SECRET")), True)
 
-    # --- Ce qui vit sous /opt/nivuus/desk/ --------------------------------
+    # --- What lives under /opt/nivuus/desk/ --------------------------------
     plateforme_dep = root1 / "opt" / "nivuus" / "desk" / "plateforme"
-    check("plateforme/package.json est copie",
+    check("plateforme/package.json is copied",
           (plateforme_dep / "package.json").is_file(), True)
-    check("plateforme/src est copie",
+    check("plateforme/src is copied",
           (plateforme_dep / "src").is_dir(), True)
-    check("les donnees de DEV ne sont PAS copiees (icones/televersements)",
+    check("the DEV data is NOT copied (icons/uploads)",
           (plateforme_dep / "donnees").exists(), False)
 
     client_dep = root1 / "opt" / "nivuus" / "desk" / "client" / "dist"
-    check("client/dist/index.html est copie",
+    check("client/dist/index.html is copied",
           (client_dep / "index.html").is_file(), True)
 
-    # 🔴 TROUVAILLE RÉELLE DU LOT 10A (29 août 2026) : `proto/ts/` n'était
-    # PAS copié du tout, et `npm start` échouait dès le premier module qui
-    # l'importe (`ERR_MODULE_NOT_FOUND` sur `../../../proto/ts/plateforme`,
-    # mesuré sur le vrai service). `proto/ts/` doit être un FRÈRE de
-    # `plateforme/` sous la racine déployée, exactement comme dans ce
-    # dépôt de développement — jamais sous `plateforme/`.
+    # 🔴 REAL FINDING OF BATCH 10A (29 August 2026): `proto/ts/` was
+    # NOT copied at all, and `npm start` failed on the first module that
+    # imports it (`ERR_MODULE_NOT_FOUND` on `../../../proto/ts/plateforme`,
+    # measured on the real service). `proto/ts/` must be a SIBLING of
+    # `plateforme/` under the deployed root, exactly as in this
+    # development repository — never under `plateforme/`.
     proto_dep = root1 / "opt" / "nivuus" / "desk" / "proto" / "ts"
-    check("proto/ts/plateforme.ts est copie (le service en depend a l'execution)",
+    check("proto/ts/plateforme.ts is copied (the service depends on it at run time)",
           (proto_dep / "plateforme.ts").is_file(), True)
-    check("proto/ts/*.test.ts n'est PAS copie (jamais execute par le service)",
+    check("proto/ts/*.test.ts is NOT copied (never run by the service)",
           list(proto_dep.glob("*.test.ts")), [])
 
-    # 🔴 BUG RÉEL TROUVÉ AU LOT 10A (29 août 2026), EN LANÇANT LE VRAI
-    # SERVICE : sous l'umask 027 du root de la machine, /opt/nivuus/desk et
-    # /opt/nivuus/desk/plateforme naissaient en drwxr-x---, inaccessibles à
-    # l'UID ÉPHÉMÈRE que `DynamicUser=yes` crée à chaque démarrage — CHDIR
-    # échouait avant la moindre ligne de JavaScript (voir
-    # hooks/install.py::make_world_readable). Ce test verifie que TOUT
-    # repertoire sous opt/nivuus/desk (le PARENT compris) est traversable
-    # par "autre" — le bit precis que DynamicUser exige, distinct du mode
-    # LECTURE SEULE que ProtectSystem=strict impose par ailleurs.
+    # 🔴 REAL BUG FOUND IN BATCH 10A (29 August 2026), BY STARTING THE REAL
+    # SERVICE: under the 027 umask of the machine's root, /opt/nivuus/desk and
+    # /opt/nivuus/desk/plateforme were born as drwxr-x---, inaccessible to
+    # the EPHEMERAL UID that `DynamicUser=yes` creates at each start — CHDIR
+    # failed before a single line of JavaScript (see
+    # hooks/install.py::make_world_readable). This test checks that EVERY
+    # directory under opt/nivuus/desk (the PARENT included) is traversable
+    # by "other" — the precise bit DynamicUser requires, distinct from the
+    # READ-ONLY mode that ProtectSystem=strict imposes elsewhere.
     desk_dep = root1 / "opt" / "nivuus" / "desk"
     repertoires_non_traversables = [
         d for d, _dn, _fn in os.walk(desk_dep)
         if (os.stat(d).st_mode & 0o005) != 0o005
     ]
-    check("tout repertoire sous opt/nivuus/desk est o+rx (DynamicUser)",
+    check("every directory under opt/nivuus/desk is o+rx (DynamicUser)",
           repertoires_non_traversables, [])
 
-    # --- L'unite systemd ----------------------------------------------------
+    # --- The systemd unit ----------------------------------------------------
     unite = root1 / "etc" / "systemd" / "system" / "desk-plateforme.service"
-    check("l'unite est deposee", unite.is_file(), True)
+    check("the unit is dropped", unite.is_file(), True)
     ini = load_unit(unite)
-    # 🔴 PROBLEME A DU LOT 10A : l'unite livree portait "/usr/bin/npm start",
-    # un chemin qui n'existe sur AUCUNE Debian sans paquet nodejs (verifie le
-    # 29 aout 2026 sur cette machine). Le defaut attendu est desormais
-    # NODE_BIN_DEFAUT/npm — voir commun.py::lire_node_bin.
-    check("l'unite lance npm depuis NODE_BIN_DEFAUT (jamais /usr/bin/npm)",
+    # 🔴 PROBLEM A OF BATCH 10A: the shipped unit carried "/usr/bin/npm start",
+    # a path that exists on NO Debian without the nodejs package (checked on
+    # 29 August 2026 on this machine). The expected default is now
+    # NODE_BIN_DEFAUT/npm — see commun.py::lire_node_bin.
+    check("the unit launches npm from NODE_BIN_DEFAUT (never /usr/bin/npm)",
           ini.get("Service", "ExecStart", fallback=""),
           f"{NODE_BIN_DEFAUT}/npm start")
-    check("l'unite pose un PATH qui contient NODE_BIN_DEFAUT (npm est un "
-          "script #!/usr/bin/env node, il doit retrouver node)",
+    check("the unit sets a PATH that contains NODE_BIN_DEFAUT (npm is a "
+          "#!/usr/bin/env node script, it must find node)",
           NODE_BIN_DEFAUT in ini.get("Service", "Environment", fallback=""),
           True)
-    check("l'unite pointe sur /opt/nivuus/desk/plateforme",
+    check("the unit points to /opt/nivuus/desk/plateforme",
           ini.get("Service", "WorkingDirectory", fallback=""),
           "/opt/nivuus/desk/plateforme")
-    check("l'unite lit /etc/nivuus/desk.env",
+    check("the unit reads /etc/nivuus/desk.env",
           ini.get("Service", "EnvironmentFile", fallback=""),
           "/etc/nivuus/desk.env")
-    check("l'unite redemarre sur echec",
+    check("the unit restarts on failure",
           ini.get("Service", "Restart", fallback=""), "on-failure")
-    check("l'unite arme un utilisateur dedie (DynamicUser)",
+    check("the unit arms a dedicated user (DynamicUser)",
           ini.get("Service", "DynamicUser", fallback=""), "yes")
-    # ⚠️ Ce champ n'est PAS armé (`systemctl enable`) ici : c'est le travail
-    # de la tâche 5 (`activate`), par un LIEN — jamais un `systemctl enable`
-    # qui échoue en silence. install ne fait que POSER l'unité.
+    # ⚠️ This field is NOT armed (`systemctl enable`) here: that is the job
+    # of task 5 (`activate`), through a LINK — never a `systemctl enable`
+    # that fails silently. install only LAYS DOWN the unit.
 
-    # --- La configuration coturn --------------------------------------------
+    # --- The coturn configuration --------------------------------------------
     turnconf = root1 / "etc" / "turnserver.conf"
-    check("turnserver.conf est depose", turnconf.is_file(), True)
+    check("turnserver.conf is dropped", turnconf.is_file(), True)
     contenu_turn = turnconf.read_text(encoding="utf-8")
-    check("turnserver.conf porte l'adresse d'ecoute",
+    check("turnserver.conf carries the listen address",
           f"listening-ip={FACTS['turn_ecoute']}" in contenu_turn, True)
-    check("turnserver.conf porte l'adresse de relais",
+    check("turnserver.conf carries the relay address",
           f"relay-ip={FACTS['turn_relais']}" in contenu_turn, True)
-    check("turnserver.conf porte le MEME secret que TURN_SECRET",
+    check("turnserver.conf carries the SAME secret as TURN_SECRET",
           f"static-auth-secret={env1['TURN_SECRET']}" in contenu_turn, True)
-    check("turnserver.conf est en 600 (il porte un secret)",
+    check("turnserver.conf is in 600 (it carries a secret)",
           oct(os.stat(turnconf).st_mode & 0o777), oct(0o600))
 
-# --- Installation 2, SANS facts : la derivation independante ---------------
+# --- Installation 2, WITHOUT facts: the independent derivation ---------------
 with tempfile.TemporaryDirectory() as tmp2:
     root2 = pathlib.Path(tmp2)
     r2 = appeler(root2, facts=None)
-    check("installation 2 (sans facts) : code de sortie 0", r2.returncode, 0)
+    check("installation 2 (without facts): exit code 0", r2.returncode, 0)
     env2, chemin_env2 = lire_env(root2)
 
-    # 🔴 Le port par defaut est 3445 : /etc/pomerium/config.yaml route
-    # https://app.allanic.me vers 3445, et rien d'autre ne fait marcher la
-    # route deja en place (voir hooks/resolve.py::PORT_DEFAUT, la meme
-    # raison, dupliquee a dessein — voir le commentaire d'install.py).
-    check("sans facts : le port retombe sur le defaut 3445",
+    # 🔴 The default port is 3445: /etc/pomerium/config.yaml routes
+    # https://app.allanic.me to 3445, and nothing else makes the route
+    # already in place work (see hooks/resolve.py::PORT_DEFAUT, the same
+    # reason, duplicated on purpose — see the comment of install.py).
+    check("without facts: the port falls back to the default 3445",
           env2.get("PLATEFORME_PORT"), "3445")
-    check("sans facts : PLATEFORME_HOTE est quand meme derive, jamais vide",
+    check("without facts: PLATEFORME_HOTE is still derived, never empty",
           bool(env2.get("PLATEFORME_HOTE")), True)
-    check("sans facts : l'ecoute n'est toujours pas universelle",
+    check("without facts: the listen address is still not universal",
           env2.get("PLATEFORME_HOTE") in ("0.0.0.0", "::", "[::]", "*"), False)
 
-    # 🔴 LA REGRESSION LA PLUS IMPORTANTE DE CE FICHIER — SANS FACTS, C'EST
-    # LE CHEMIN REELLEMENT EMPRUNTE PAR LE MOTEUR (« install NE reçoit PAS
-    # les facts de resolve », voir le docstring de tête d'install.py). Avant
-    # le lot 10A (29 août 2026), ce chemin dérivait PLATEFORME_HOTE par
-    # `deriver_adresse_hote()` = l'interface de la route IPv4 PAR DÉFAUT —
-    # qui, sur CETTE machine, mesurée avec /usr/bin/ip hors de tout alias de
-    # shell, est `ppp0` (PPPoE), une adresse PUBLIQUE (90.87.35.18).
-    # `install.py` aurait donc posé PLATEFORME_HOTE=90.87.35.18 lors d'une
-    # VRAIE installation sans facts sur CET hôte — exposant le bureau
-    # distant sur l'internet public sans Pomerium devant lui. Ce contrôle
-    # n'existait PAS avant ce lot (l'ancien ne vérifiait que « non vide,
-    # jamais universelle » — 90.87.35.18 n'est ni vide ni universelle, donc
-    # passait sans rien détecter). Il DOIT désormais valoir le défaut FIXE.
-    check("sans facts : PLATEFORME_HOTE vaut le defaut FIXE, jamais la "
-          "route par defaut (regression du 29 aout 2026, voir commun.py)",
+    # 🔴 THE MOST IMPORTANT REGRESSION OF THIS FILE — WITHOUT FACTS, IT IS
+    # THE PATH REALLY TAKEN BY THE ENGINE ("install DOES NOT receive
+    # resolve's facts", see the head docstring of install.py). Before
+    # batch 10A (29 August 2026), this path derived PLATEFORME_HOTE through
+    # `deriver_adresse_hote()` = the interface of the DEFAULT IPv4 route —
+    # which, on THIS machine, measured with /usr/bin/ip outside any shell
+    # alias, is `ppp0` (PPPoE), a PUBLIC address (90.87.35.18).
+    # `install.py` would therefore have set PLATEFORME_HOTE=90.87.35.18 during a
+    # REAL installation without facts on THIS host — exposing the remote
+    # desktop on the public internet with no Pomerium in front of it. This check
+    # did NOT exist before this batch (the old one only checked "non-empty,
+    # never universal" — 90.87.35.18 is neither empty nor universal, so it
+    # passed without detecting anything). It MUST now be the FIXED default.
+    check("without facts: PLATEFORME_HOTE is the FIXED default, never the "
+          "default route (regression of 29 August 2026, see commun.py)",
           env2.get("PLATEFORME_HOTE"), HOTE_DEFAUT)
-    check("sans facts : PLATEFORME_PROXY_DE_CONFIANCE vaut le defaut",
+    check("without facts: PLATEFORME_PROXY_DE_CONFIANCE is the default",
           env2.get("PLATEFORME_PROXY_DE_CONFIANCE"), PROXY_DEFAUT)
 
-    # 🔴 Deux installations distinctes NE PARTAGENT PAS le secret.
-    check("deux installations ne partagent pas PLATEFORME_SECRET_JETON",
+    # 🔴 Two distinct installations DO NOT SHARE the secret.
+    check("two installations do not share PLATEFORME_SECRET_JETON",
           env1["PLATEFORME_SECRET_JETON"] == env2["PLATEFORME_SECRET_JETON"],
           False)
-    check("deux installations ne partagent pas TURN_SECRET",
+    check("two installations do not share TURN_SECRET",
           env1["TURN_SECRET"] == env2["TURN_SECRET"], False)
 
-# --- Installation 3 : DESK_NODE_BIN configure le chemin de l'interprete -----
-# 🔴 PROBLEME A DU LOT 10A : prouve que le chemin est bien CONFIGURABLE
-# (jamais un second /usr/bin/npm code en dur ailleurs), avec son propre
-# temoin negatif — le defaut de l'installation 1/2 ci-dessus, DIFFERENT de
-# cette valeur.
+# --- Installation 3: DESK_NODE_BIN configures the interpreter path -----
+# 🔴 PROBLEM A OF BATCH 10A: proves that the path is indeed CONFIGURABLE
+# (never a second /usr/bin/npm hardcoded elsewhere), with its own
+# negative control — the default of installation 1/2 above, DIFFERENT from
+# this value.
 with tempfile.TemporaryDirectory() as tmp3:
     root3 = pathlib.Path(tmp3)
     env_override = dict(os.environ)
     env_override["DESK_NODE_BIN"] = "/opt/nivuus-test/node/bin"
     r3 = appeler(root3, facts=FACTS, env=env_override)
-    check("installation 3 (DESK_NODE_BIN) : code de sortie 0", r3.returncode, 0)
+    check("installation 3 (DESK_NODE_BIN): exit code 0", r3.returncode, 0)
     unite3 = root3 / "etc" / "systemd" / "system" / "desk-plateforme.service"
     ini3 = load_unit(unite3)
-    check("DESK_NODE_BIN change bien ExecStart",
+    check("DESK_NODE_BIN does change ExecStart",
           ini3.get("Service", "ExecStart", fallback=""),
           "/opt/nivuus-test/node/bin/npm start")
-    check("DESK_NODE_BIN change bien le PATH pose",
+    check("DESK_NODE_BIN does change the PATH set",
           "/opt/nivuus-test/node/bin" in ini3.get("Service", "Environment", fallback=""),
           True)
-    check("DESK_NODE_BIN : ExecStart n'est PLUS le defaut (temoin negatif)",
+    check("DESK_NODE_BIN: ExecStart is NO LONGER the default (negative control)",
           ini3.get("Service", "ExecStart", fallback="") == f"{NODE_BIN_DEFAUT}/npm start",
           False)
 
-# --- Installation 5 : REJOUER install DEUX FOIS SUR LA MÊME RACINE ---------
-# 🔴 BUG RÉEL TROUVÉ AU LOT 10A (29 août 2026) : une réinstallation réelle
-# sur `--root /`, avec un `plateforme/node_modules/.bin/` qui porte des
-# symlinks (tsx, vite, tsc, …), levait `shutil.Error` — `dirs_exist_ok=True`
-# ne couvre que les RÉPERTOIRES, jamais les liens qu'ils contiennent. Aucun
-# scénario précédent de ce fichier ne rejouait install DEUX FOIS sur la
-# MÊME racine : c'est exactement le patron « un contrôle qu'on n'a jamais
-# vu rouge n'est pas un contrôle ». Ce scénario fabrique une racine SOURCE
-# minimale portant un VRAI symlink sous node_modules/.bin (reproduisant le
-# cas réel), installe deux fois de suite sur la MÊME racine cible, et
-# vérifie que la SECONDE installation réussit aussi.
+# --- Installation 5: REPLAYING install TWICE ON THE SAME ROOT ---------
+# 🔴 REAL BUG FOUND IN BATCH 10A (29 August 2026): a real reinstallation
+# on `--root /`, with a `plateforme/node_modules/.bin/` carrying
+# symlinks (tsx, vite, tsc, …), raised `shutil.Error` — `dirs_exist_ok=True`
+# only covers DIRECTORIES, never the links they contain. No
+# previous scenario of this file replayed install TWICE on the
+# SAME root: it is exactly the pattern "a check never
+# seen red is not a check". This scenario builds a minimal SOURCE root
+# carrying a REAL symlink under node_modules/.bin (reproducing the
+# real case), installs twice in a row on the SAME target root, and
+# checks that the SECOND installation succeeds too.
 with tempfile.TemporaryDirectory() as tmp5src, tempfile.TemporaryDirectory() as tmp5dst:
     source5 = pathlib.Path(tmp5src)
     poser_source_minimale(source5)
-    (source5 / "plateforme" / "node_modules" / "un-paquet").mkdir(parents=True)
-    (source5 / "plateforme" / "node_modules" / "un-paquet" / "cli.js").write_text(
+    (source5 / "plateforme" / "node_modules" / "a-package").mkdir(parents=True)
+    (source5 / "plateforme" / "node_modules" / "a-package" / "cli.js").write_text(
         "#!/usr/bin/env node\n", encoding="utf-8")
     bin_dir5 = source5 / "plateforme" / "node_modules" / ".bin"
     bin_dir5.mkdir(parents=True)
-    (bin_dir5 / "tsx").symlink_to("../un-paquet/cli.js")
+    (bin_dir5 / "tsx").symlink_to("../a-package/cli.js")
 
     root5 = pathlib.Path(tmp5dst)
     env_source5 = dict(os.environ)
     env_source5["DESK_SOURCE_RACINE"] = str(source5)
 
     r5a = appeler(root5, facts=FACTS, env=env_source5)
-    check("premiere installation (avec symlink) : code de sortie 0",
+    check("first installation (with symlink): exit code 0",
           r5a.returncode, 0)
     if r5a.returncode != 0:
-        failures.append(f"stderr premiere installation : {r5a.stderr!r}")
+        failures.append(f"first installation stderr: {r5a.stderr!r}")
 
     r5b = appeler(root5, facts=FACTS, env=env_source5)
-    check("seconde installation SUR LA MEME RACINE : code de sortie 0 "
-          "(regression du 29 aout 2026 : shutil.Error sur les symlinks "
-          "de node_modules/.bin)", r5b.returncode, 0)
+    check("second installation ON THE SAME ROOT: exit code 0 "
+          "(regression of 29 August 2026: shutil.Error on the symlinks "
+          "of node_modules/.bin)", r5b.returncode, 0)
     if r5b.returncode != 0:
-        failures.append(f"stderr seconde installation : {r5b.stderr!r}")
+        failures.append(f"second installation stderr: {r5b.stderr!r}")
 
     lien5 = root5 / "opt" / "nivuus" / "desk" / "plateforme" / "node_modules" / ".bin" / "tsx"
-    check("le symlink survit a la reinstallation, toujours un lien",
+    check("the symlink survives the reinstallation, still a link",
           lien5.is_symlink(), True)
 
-# --- Installation 7 : LE RUNTIME NODE EST DÉPOSÉ, PAS SUPPOSÉ -------------
-# 🔴 IMPORTANTE DE LA REVUE FINALE DE BRANCHE (30 août 2026) : `commun.py::
-# NODE_BIN_DEFAUT` désigne `/opt/nivuus/node/bin`, et AUCUN hook n'y déposait
-# quoi que ce soit — l'arbre présent sur la machine de développement y avait
-# été copié À LA MAIN pendant le lot 10A, par une commande qui ne vivait que
-# dans un rapport gitignoré. Une installation neuve posait donc un service
-# structurellement incapable de démarrer, sans un mot.
-# Ce scénario emploie le VRAI runtime de cette machine (`node_source=False`),
-# c'est-à-dire le chemin de production : un préfixe dérivé de
-# `process.execPath`, ses vrais liens relatifs, ses ~144 Mio. Les autres
-# scénarios emploient un préfixe factice — ils n'ont pas à repayer la copie.
+# --- Installation 7: THE NODE RUNTIME IS DROPPED, NOT ASSUMED -------------
+# 🔴 IMPORTANT FINDING OF THE FINAL BRANCH REVIEW (30 August 2026): `commun.py::
+# NODE_BIN_DEFAUT` designates `/opt/nivuus/node/bin`, and NO hook dropped
+# anything there — the tree present on the development machine had
+# been copied there BY HAND during batch 10A, by a command that only lived
+# in a gitignored report. A fresh installation therefore laid down a service
+# structurally unable to start, without a word.
+# This scenario uses the REAL runtime of this machine (`node_source=False`),
+# that is the production path: a prefix derived from
+# `process.execPath`, its real relative links, its ~144 MiB. The other
+# scenarios use a fake prefix — they need not pay for the copy again.
 with tempfile.TemporaryDirectory() as tmp7:
     root7 = pathlib.Path(tmp7)
     r7 = appeler(root7, facts=FACTS, node_source=False)
-    check("installation 7 (vrai runtime) : code de sortie 0", r7.returncode, 0)
+    check("installation 7 (real runtime): exit code 0", r7.returncode, 0)
     if r7.returncode != 0:
-        failures.append(f"stderr installation 7 : {r7.stderr!r}")
+        failures.append(f"installation 7 stderr: {r7.stderr!r}")
     node_dep = root7 / NODE_BIN_DEFAUT.lstrip("/")
-    check("bin/node est depose", (node_dep / "node").is_file(), True)
-    check("bin/npm est depose", (node_dep / "npm").exists(), True)
-    # 🔴 `npm` DOIT RESTER UN LIEN : sa cible est RELATIVE et pointe dans
-    # l'arbre deposé. Le suivre deposerait une COPIE de npm-cli.js sous un
-    # nom qui pretend etre npm, et `npm` cesserait de retrouver ses modules.
-    check("bin/npm est un LIEN, jamais une copie suivie",
+    check("bin/node is dropped", (node_dep / "node").is_file(), True)
+    check("bin/npm is dropped", (node_dep / "npm").exists(), True)
+    # 🔴 `npm` MUST STAY A LINK: its target is RELATIVE and points into
+    # the dropped tree. Following it would drop a COPY of npm-cli.js under a
+    # name that pretends to be npm, and `npm` would stop finding its modules.
+    check("bin/npm is a LINK, never a followed copy",
           (node_dep / "npm").is_symlink(), True)
-    check("le paquet global npm est depose",
+    check("the global npm package is dropped",
           (node_dep.parent / "lib" / "node_modules" / "npm").is_dir(), True)
-    # 🔴 `DynamicUser=yes` fait tourner le service sous un UID ephemere : un
-    # `bin/node` en rwxr-x--- ferait echouer ExecStart avant la premiere
-    # ligne de JavaScript (bug reel du lot 10A sur /opt/nivuus/desk).
-    check("bin/node est executable par autrui (DynamicUser)",
+    # 🔴 `DynamicUser=yes` runs the service under an ephemeral UID: a
+    # `bin/node` in rwxr-x--- would make ExecStart fail before the first
+    # line of JavaScript (real bug of batch 10A on /opt/nivuus/desk).
+    check("bin/node is executable by others (DynamicUser)",
           bool(os.stat(node_dep / "node").st_mode & 0o001), True)
-    # Temoin negatif : l'unite deposee pointe bien sur CE chemin-la.
+    # Negative control: the dropped unit does point to THAT very path.
     ini7 = load_unit(root7 / "etc" / "systemd" / "system" / "desk-plateforme.service")
-    check("ExecStart pointe sur le npm reellement depose",
+    check("ExecStart points to the npm really dropped",
           ini7.get("Service", "ExecStart", fallback=""),
           f"{NODE_BIN_DEFAUT}/npm start")
 
-# --- lire_secret_persiste : les cinq cas au niveau unite -------------------
-# 🔴 BUG RÉEL TROUVÉ ET CORRIGÉ LE 2026-09-08 : `install.py` tirait
-# `PLATEFORME_SECRET_JETON` et `TURN_SECRET` SANS CONDITION à chaque appel
-# (`write_secret()` deux fois, jamais de relecture), en contradiction avec
-# le docstring d'`write_secret` qui promettait « tiré une seule fois,
-# jamais recalculé » — l'idempotence gate du plan de release a détecté la
-# non-idempotence (etc/nivuus/desk.env et etc/turnserver.conf changent entre
-# deux passes). `lire_secret_persiste` (hooks/installed_files.py) est la
-# fonction qui porte désormais réellement cet invariant ; ces cinq
-# scénarios éprouvent CHAQUE cas, séparément d'une installation complète,
-# parce qu'un seul hook subprocess ne peut pas facilement distinguer "clé
-# absente" de "valeur vide" de "fichier absent" dans une seule assertion
-# lisible.
+# --- lire_secret_persiste: the five cases at unit level -------------------
+# 🔴 REAL BUG FOUND AND FIXED ON 2026-09-08: `install.py` drew
+# `PLATEFORME_SECRET_JETON` and `TURN_SECRET` UNCONDITIONALLY on every call
+# (`write_secret()` twice, never read back), contradicting
+# the docstring of `write_secret` that promised "drawn only once,
+# never recomputed" — the idempotence gate of the release plan detected the
+# non-idempotence (etc/nivuus/desk.env and etc/turnserver.conf change between
+# two passes). `lire_secret_persiste` (hooks/installed_files.py) is the
+# function that now really carries this invariant; these five
+# scenarios exercise EACH case, separately from a complete installation,
+# because a single subprocess hook cannot easily tell "key
+# absent" from "empty value" from "file absent" in a single readable
+# assertion.
 with tempfile.TemporaryDirectory() as tmp_ls:
     dossier_ls = pathlib.Path(tmp_ls)
 
-    # Cas 1 : le fichier n'existe pas du tout (premier install).
-    absent = dossier_ls / "n-existe-pas.env"
-    check("lire_secret_persiste : fichier absent -> None",
+    # Case 1: the file does not exist at all (first install).
+    absent = dossier_ls / "does-not-exist.env"
+    check("lire_secret_persiste: file absent -> None",
           lire_secret_persiste(absent, "PLATEFORME_SECRET_JETON"), None)
 
-    # Cas 2 : le fichier existe mais ne porte pas la cle demandee (une
-    # installation anterieure d'une version qui n'ecrivait pas encore
-    # cette cle).
-    sans_cle = dossier_ls / "sans-cle.env"
-    sans_cle.write_text("AUTRE_CLE=une-valeur\n", encoding="utf-8")
-    check("lire_secret_persiste : cle absente du fichier -> None",
+    # Case 2: the file exists but does not carry the requested key (an
+    # earlier installation of a version that did not write
+    # this key yet).
+    sans_cle = dossier_ls / "without-key.env"
+    sans_cle.write_text("OTHER_KEY=a-value\n", encoding="utf-8")
+    check("lire_secret_persiste: key absent from the file -> None",
           lire_secret_persiste(sans_cle, "PLATEFORME_SECRET_JETON"), None)
 
-    # Cas 3 : la cle est presente mais sa valeur est vide, ou faite
-    # uniquement d'espaces (fichier tronque ou modifie a la main) — les
-    # DEUX formes comptent comme "rien a reutiliser".
-    empty_value = dossier_ls / "valeur-vide.env"
+    # Case 3: the key is present but its value is empty, or made
+    # only of spaces (truncated file or edited by hand) — BOTH
+    # forms count as "nothing to reuse".
+    empty_value = dossier_ls / "empty-value.env"
     empty_value.write_text(
         "PLATEFORME_SECRET_JETON=\nTURN_SECRET=   \n", encoding="utf-8")
-    check("lire_secret_persiste : valeur vide -> None",
+    check("lire_secret_persiste: empty value -> None",
           lire_secret_persiste(empty_value, "PLATEFORME_SECRET_JETON"), None)
-    check("lire_secret_persiste : valeur faite d'espaces -> None",
+    check("lire_secret_persiste: value made of spaces -> None",
           lire_secret_persiste(empty_value, "TURN_SECRET"), None)
 
-    # Cas 4 : la cle est presente avec une valeur utilisable -> reutilisee
-    # telle quelle.
-    real_value = dossier_ls / "valeur-reelle.env"
+    # Case 4: the key is present with a usable value -> reused
+    # as is.
+    real_value = dossier_ls / "real-value.env"
     real_value.write_text(
         "PLATEFORME_SECRET_JETON=abc123\nAUTRE=x\n", encoding="utf-8")
-    check("lire_secret_persiste : valeur presente -> reutilisee telle quelle",
+    check("lire_secret_persiste: value present -> reused as is",
           lire_secret_persiste(real_value, "PLATEFORME_SECRET_JETON"),
           "abc123")
 
-    # Cas 5 : le fichier EXISTE mais sa LECTURE echoue (permissions faussees
-    # par une migration partielle, erreur disque, ...) — PAS "absent", donc
-    # PAS "rien a reutiliser". 🔴 REVUE DU 2026-09-08 : un `except OSError:
-    # return None` trop large avalait CE cas exactement comme le cas 1, et
-    # aurait fait tirer un secret NEUF EN SILENCE — la meme rotation
-    # silencieuse que le bug d'origine, par une porte plus etroite. Cette
-    # fonction doit LEVER, jamais rendre None, pour que install.py puisse
-    # refuser au lieu d'halluciner un secret.
+    # Case 5: the file EXISTS but reading it fails (permissions skewed
+    # by a partial migration, disk error, ...) — NOT "absent", hence
+    # NOT "nothing to reuse". 🔴 REVIEW OF 2026-09-08: a too broad `except OSError:
+    # return None` swallowed THIS case exactly like case 1, and
+    # would have drawn a NEW secret SILENTLY — the same silent
+    # rotation as the original bug, through a narrower door. This
+    # function must RAISE, never return None, so that install.py can
+    # refuse instead of hallucinating a secret.
     #
-    # Un DOUBLE minimal plutot qu'un vrai fichier chmod'e : ces suites
-    # tournent en root sur cette machine, qui outrepasse les permissions
-    # POSIX — un vrai `chmod 000` ne produirait donc PAS de PermissionError
-    # ici, et le scenario resterait vert par accident. `CheminIllisible`
-    # n'imite QUE les deux methodes que `lire_secret_persiste` emploie,
-    # dans le meme esprit que les autres doubles factices de ce dossier
-    # (`poser_faux_node_source`, etc.) : is_file() dit "present", read_text()
-    # leve — exactement la forme d'un fichier reel mais illisible.
+    # A minimal DOUBLE rather than a real chmod'ed file: these suites
+    # run as root on this machine, which overrides the POSIX
+    # permissions — a real `chmod 000` would therefore NOT produce a PermissionError
+    # here, and the scenario would stay green by accident. `CheminIllisible`
+    # ONLY imitates the two methods that `lire_secret_persiste` uses,
+    # in the same spirit as the other fake doubles of this directory
+    # (`poser_faux_node_source`, etc.): is_file() says "present", read_text()
+    # raises — exactly the shape of a real but unreadable file.
     class CheminIllisible:
         def is_file(self):
             return True
 
         def read_text(self, encoding="utf-8"):
             raise PermissionError(
-                "permission refusee (factice, cas 5 de ce scenario)")
+                "permission denied (fake, case 5 of this scenario)")
 
     illisible = CheminIllisible()
     try:
         obtained_value = lire_secret_persiste(illisible, "PLATEFORME_SECRET_JETON")
         failures.append(
-            "lire_secret_persiste : fichier illisible aurait du LEVER une "
-            f"OSError, a rendu {obtained_value!r} sans lever (secret neuf "
-            "tire en silence si ceci arrivait dans install.py)")
+            "lire_secret_persiste: an unreadable file should have RAISED an "
+            f"OSError, returned {obtained_value!r} without raising (a new secret "
+            "drawn silently if this happened in install.py)")
     except FileNotFoundError:
         failures.append(
-            "lire_secret_persiste : fichier illisible ne doit PAS etre "
-            "confondu avec FileNotFoundError (le fichier EST present)")
+            "lire_secret_persiste: an unreadable file must NOT be "
+            "confused with FileNotFoundError (the file IS present)")
     except OSError:
-        pass  # attendu : la panne de lecture se propage.
+        pass  # expected: the read failure propagates.
 
-# --- Installation 8 : REJOUER install PROUVE la reutilisation des secrets --
-# La propriete que le bug du 2026-09-08 violait, eprouvee de bout en bout
-# par le VRAI hook (subprocess complet), pas seulement par
-# lire_secret_persiste en isolation : un premier install sur une racine
-# VIDE produit bien les deux secrets (rien a reutiliser encore), et un
-# SECOND install sur la MEME racine les laisse INCHANGES.
+# --- Installation 8: REPLAYING install PROVES the reuse of the secrets --
+# The property the bug of 2026-09-08 violated, exercised end to end
+# by the REAL hook (complete subprocess), not only by
+# lire_secret_persiste in isolation: a first install on an EMPTY
+# root does produce both secrets (nothing to reuse yet), and a
+# SECOND install on the SAME root leaves them UNCHANGED.
 with tempfile.TemporaryDirectory() as tmp8:
     root8 = pathlib.Path(tmp8)
 
     r8a = appeler(root8, facts=FACTS)
-    check("installation 8, premiere passe : code de sortie 0",
+    check("installation 8, first pass: exit code 0",
           r8a.returncode, 0)
     if r8a.returncode != 0:
-        failures.append(f"stderr installation 8 (1ere passe) : {r8a.stderr!r}")
+        failures.append(f"installation 8 stderr (1st pass): {r8a.stderr!r}")
     env8a, _chemin_env8a = lire_env(root8)
     turnconf8 = root8 / "etc" / "turnserver.conf"
 
-    # Premiere passe sur une racine vide : rien a reutiliser -> les deux
-    # secrets SONT produits (le cas que le bug ne cassait pas).
-    check("premiere passe : PLATEFORME_SECRET_JETON est produit (>= 32 car.)",
+    # First pass on an empty root: nothing to reuse -> both
+    # secrets ARE produced (the case the bug did not break).
+    check("first pass: PLATEFORME_SECRET_JETON is produced (>= 32 chars)",
           len(env8a.get("PLATEFORME_SECRET_JETON", "")) >= 32, True)
-    check("premiere passe : TURN_SECRET est produit (>= 32 car.)",
+    check("first pass: TURN_SECRET is produced (>= 32 chars)",
           len(env8a.get("TURN_SECRET", "")) >= 32, True)
 
     r8b = appeler(root8, facts=FACTS)
-    check("installation 8, seconde passe SUR LA MEME RACINE : code de sortie 0",
+    check("installation 8, second pass ON THE SAME ROOT: exit code 0",
           r8b.returncode, 0)
     if r8b.returncode != 0:
-        failures.append(f"stderr installation 8 (2e passe) : {r8b.stderr!r}")
+        failures.append(f"installation 8 stderr (2nd pass): {r8b.stderr!r}")
     env8b, _ = lire_env(root8)
 
-    # 🔴 LA REGRESSION QUE CE SCENARIO GARDE : avant le correctif, ces deux
-    # egalites echouaient a chaque replay (secrets.token_hex(32) tire deux
-    # valeurs differentes avec une probabilite ecrasante).
-    check("PLATEFORME_SECRET_JETON est REUTILISE, jamais redessine au replay",
+    # 🔴 THE REGRESSION THIS SCENARIO GUARDS: before the fix, these two
+    # equalities failed on every replay (secrets.token_hex(32) draws two
+    # different values with overwhelming probability).
+    check("PLATEFORME_SECRET_JETON is REUSED, never redrawn on replay",
           env8b.get("PLATEFORME_SECRET_JETON"),
           env8a.get("PLATEFORME_SECRET_JETON"))
-    check("TURN_SECRET est REUTILISE, jamais redessine au replay",
+    check("TURN_SECRET is REUSED, never redrawn on replay",
           env8b.get("TURN_SECRET"), env8a.get("TURN_SECRET"))
 
-    # turnserver.conf reste coherent avec TURN_SECRET apres le replay
-    # (les deux ecrivains doivent toujours s'accorder, replay ou non).
+    # turnserver.conf stays consistent with TURN_SECRET after the replay
+    # (both writers must always agree, replay or not).
     contenu_turn8 = turnconf8.read_text(encoding="utf-8")
-    check("turnserver.conf porte TOUJOURS le meme secret que TURN_SECRET "
-          "apres un replay",
+    check("turnserver.conf STILL carries the same secret as TURN_SECRET "
+          "after a replay",
           f"static-auth-secret={env8b['TURN_SECRET']}" in contenu_turn8, True)
 
 if failures:
@@ -497,4 +497,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests du hook install passés")
+print("OK - install hook tests passed")

@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Copie d'arbres de fichiers vers la cible d'installation, et les
-permissions dont `DynamicUser=yes` a besoin — extrait de `hooks/install.py`
-au lot 10A (29 août 2026, réinstallation réelle sur `--root /`), qui
-frôlait le plafond de 500 lignes après l'ajout du dépôt de `proto/ts/`
-(trouvaille réelle : le service ne démarre pas sans lui, voir
+"""Copy of file trees to the installation target, and the
+permissions `DynamicUser=yes` needs — extracted from `hooks/install.py`
+in batch 10A (29 August 2026, real reinstallation on `--root /`), which
+was brushing the 500-line ceiling after adding the drop of `proto/ts/`
+(real finding: the service does not start without it, see
 `hooks/install.py`).
 
-Comme `hooks/vm.py`, `hooks/administration.py` et `hooks/env_file.py`,
-ce module N'EST PAS un hook exécutable seul (pas de `--phase`/stdin JSON) :
-`hooks/install.py` l'importe (`from depot_arbre import copier_arbre,
-rendre_lisible_par_tous`) — Python ajoute automatiquement le répertoire du
-script LANCÉ (`hooks/`) à `sys.path`, donc cet import résout sans
-manipulation supplémentaire.
+Like `hooks/vm.py`, `hooks/administration.py` and `hooks/env_file.py`,
+this module IS NOT a hook runnable on its own (no `--phase`/stdin JSON):
+`hooks/install.py` imports it (`from depot_arbre import copier_arbre,
+make_world_readable`) — Python automatically adds the directory of the
+LAUNCHED script (`hooks/`) to `sys.path`, so this import resolves without
+any extra manipulation.
 
-Les DEUX fonctions ci-dessous portent des bugs RÉELS trouvés en lançant le
-VRAI service sur cette machine, jamais vus par la suite de tests avant ce
-lot — voir leurs docstrings respectifs pour le détail complet.
+BOTH functions below carry REAL bugs found by running the
+REAL service on this machine, never seen by the test suite before this
+batch — see their respective docstrings for the full detail.
 """
 import os
 import pathlib

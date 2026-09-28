@@ -1,81 +1,82 @@
 #!/usr/bin/env python3
-"""La chaîne resolve → install → activate, JOUÉE PAR L'API DU MOTEUR.
+"""The resolve → install → activate chain, PLAYED THROUGH THE ENGINE'S API.
 
-🔴 POURQUOI CETTE SUITE EXISTE. La revue finale de branche (30 août 2026) a
-désigné comme CAUSE RACINE de son unique Critique le fait qu'« aucune
-installation n'a jamais été jouée par le moteur réel ». Le défaut concret
-était `hooks/resolve.py` refusant sur `hw["vm_windows"]`, une clé qu'AUCUN
-producteur du moteur ne pose : le hook refusait donc TOUJOURS, et
+🔴 WHY THIS SUITE EXISTS. The final branch review (30 August 2026)
+named as the ROOT CAUSE of its only Critical finding the fact that "no
+installation was ever played by the real engine". The concrete defect
+was `hooks/resolve.py` refusing on `hw["vm_windows"]`, a key that NO
+producer of the engine sets: the hook therefore ALWAYS refused, and
 `installer/installer/install-engine/steps/packages.py::plan_packages`
-traduit un refus en `StepError`, ce qui arrête l'installation ENTIÈRE. Neuf
-revues et huit suites de tests ne l'ont pas vu, pour UNE seule raison :
-**toutes fabriquaient elles-mêmes le contexte d'entrée**
-(`{"hw": {"vm_windows": True}}`). Un test qui invente son entrée ne peut pas
-découvrir que personne ne la produit.
+turns a refusal into a `StepError`, which stops the WHOLE installation. Nine
+reviews and eight test suites did not see it, for ONE single reason:
+**all of them built the input context themselves**
+(`{"hw": {"vm_windows": True}}`). A test that invents its input cannot
+discover that nobody produces it.
 
-`tests/test_desk_contrat_hw.py` a posé le garde STATIQUE (les clés du
-producteur, lues par `ast`). Cette suite-ci est le cran au-dessus : elle ne
-lit pas le contrat, elle le FAIT COURIR — `hw` vient de
-`installer/installer/common/hardware.py::detect_all()`, le manifeste de
-`packages/manifest.py::load_manifest`, les réponses de
-`packages/wizard.py::validate_answers`, et les trois hooks sont lancés par
-`packages/runner.py`, en sous-processus, par le protocole jsonl réel.
+`tests/test_desk_contrat_hw.py` set up the STATIC guard (the keys of the
+producer, read through `ast`). This suite is the notch above: it does not
+read the contract, it RUNS it — `hw` comes from
+`installer/installer/common/hardware.py::detect_all()`, the manifest from
+`packages/manifest.py::load_manifest`, the answers from
+`packages/wizard.py::validate_answers`, and the three hooks are launched by
+`packages/runner.py`, as subprocesses, through the real jsonl protocol.
 
---- 🔴 CE QUE CETTE SUITE S'INTERDIT, ET POURQUOI ------------------------
+--- 🔴 WHAT THIS SUITE FORBIDS ITSELF, AND WHY ------------------------
 
-Le moteur complet PARTITIONNE ET EFFACE DES DISQUES : `install-engine/run.py`
-appelle `partition.partition_and_format()` (ligne 82) juste après
-`plan_packages()` (ligne 72). Cette suite N'APPELLE JAMAIS `run.py`, ni
-`plan_packages()`, ni `apply_packages()` — ce dernier fait en plus
-`chroot_run(target, ["apt-get", ...])` et `os.symlink` dans
-`<target>/etc/systemd/system/multi-user.target.wants/`. Elle appelle les
-TROIS fonctions de `packages/runner.py` qui exécutent les hooks, et elles
-seules.
+The complete engine PARTITIONS AND WIPES DISKS: `install-engine/run.py`
+calls `partition.partition_and_format()` (line 82) right after
+`plan_packages()` (line 72). This suite NEVER CALLS `run.py`, nor
+`plan_packages()`, nor `apply_packages()` — the latter also does
+`chroot_run(target, ["apt-get", ...])` and `os.symlink` in
+`<target>/etc/systemd/system/multi-user.target.wants/`. It calls the
+THREE functions of `packages/runner.py` that run the hooks, and them
+alone.
 
-🔴 UNE SEULE SUBSTITUTION, ET ELLE EST NOMMÉE : `run_activate` NE PASSE
-AUCUN `--root` (voir `runner.py::run_activate`, qui appelle `_run_hook(...)`
-sans le paramètre `root`, dont le défaut est `""`), donc en production le
-hook `activate` travaille sur `/`. Sur CETTE machine, `/etc/systemd/system/
-desk-plateforme.service` EXISTE (l'installation réelle du lot 10A) : appeler
-`run_activate` tel quel y créerait le lien `multi-user.target.wants/` puis
-lancerait `systemctl daemon-reload` et `systemctl start` — sur le systemd du
-propriétaire, en root. Cette suite appelle donc `runner._run_hook(...,
-root=<racine temporaire>)`, la fonction que `run_activate` emploie
-elle-même, avec le MÊME contexte (`merge_into_hw(hw, facts)`, la vraie
-fusion du moteur) et un seul argument de plus. L'étape ⑦ ci-dessous mesure
-que l'hôte n'a pas bougé, et le contrat de `run_activate` (aucun `root`
-dans sa signature) est éprouvé à l'étape ⑥ plutôt que supposé.
+🔴 A SINGLE SUBSTITUTION, AND IT IS NAMED: `run_activate` PASSES NO
+`--root` (see `runner.py::run_activate`, which calls `_run_hook(...)`
+without the `root` parameter, whose default is `""`), so in production the
+`activate` hook works on `/`. On THIS machine, `/etc/systemd/system/
+desk-plateforme.service` EXISTS (the real installation of batch 10A): calling
+`run_activate` as is would create the `multi-user.target.wants/` link there then
+launch `systemctl daemon-reload` and `systemctl start` — on the owner's
+systemd, as root. This suite therefore calls `runner._run_hook(...,
+root=<temporary root>)`, the function that `run_activate` itself
+uses, with the SAME context (`merge_into_hw(hw, facts)`, the real
+merge of the engine) and a single extra argument. Step ⑦ below measures
+that the host has not moved, and the contract of `run_activate` (no `root`
+in its signature) is exercised in step ⑥ rather than assumed.
 
-⚠️ `NIVUUS_PACKAGES_DIR` est délibérément pointé vers un répertoire VIDE
-avant la phase `activate` : `hooks/vm.py::chemin_winrm_exec` y cherche
-`console/guest/winrm_exec.py`, et un `console` réellement trouvé ferait
-partir un vrai échange WinRM vers la VM Windows. Le refus attendu est donc
-DÉTERMINISTE, et aucun paquet ne quitte cette machine.
+⚠️ `NIVUUS_PACKAGES_DIR` is deliberately pointed to an EMPTY directory
+before the `activate` phase: `hooks/vm.py::chemin_winrm_exec` looks there for
+`console/guest/winrm_exec.py`, and a `console` really found would send
+a real WinRM exchange to the Windows VM. The expected refusal is therefore
+DETERMINISTIC, and no packet leaves this machine.
 
---- Ce que cette suite NE COUVRE PAS (nommé plutôt que laissé croire) -----
+--- What this suite DOES NOT COVER (named rather than implied) -----
 
-  - le PARTITIONNEMENT et le formatage (`partition_and_format`), le
-    debootstrap, le bootloader : jamais appelés, par construction ;
-  - `apply_packages()` lui-même — l'`apt-get` en chroot, l'unité
-    d'activation du premier boot, l'écriture de `etc/nivuus/packages.json` ;
-  - le PREMIER DÉMARRAGE RÉEL : aucun `systemctl` ne court ici, donc rien
-    n'établit que le service démarre — c'est ce que le lot 10A avait établi
-    à la main, sur cette machine, et qu'aucun test ne rejoue ;
-  - le MATÉRIEL de la cible : `detect_all()` décrit la machine qui fait
-    tourner ces tests, jamais l'appliance ;
-  - la fin d'`activate` (compte administrateur, enrôlement, attribution de
-    la VM) : elle est INATTEIGNABLE sans VM Windows, et l'étape ⑥ mesure
-    précisément qu'on s'arrête à cette porte-là.
+  - PARTITIONING and formatting (`partition_and_format`),
+    debootstrap, the bootloader: never called, by construction;
+  - `apply_packages()` itself — the chrooted `apt-get`, the first-boot
+    activation unit, the writing of `etc/nivuus/packages.json`;
+  - the REAL FIRST BOOT: no `systemctl` runs here, so nothing
+    establishes that the service starts — that is what batch 10A had established
+    by hand, on this machine, and that no test replays;
+  - the target HARDWARE: `detect_all()` describes the machine running
+    these tests, never the appliance;
+  - the end of `activate` (administrator account, enrolment, assignment of
+    the VM): it is UNREACHABLE without a Windows VM, and step ⑥ measures
+    precisely that we stop at that very gate.
 
---- CE QUI A ÉTÉ MESURÉ, LE 30 AOÛT 2026 (porté ICI, pas dans un rapport
-    gitignoré : « une preuve ne doit jamais vivre dans un rapport
-    gitignoré ») ------------------------------------------------------------
+--- WHAT WAS MEASURED, ON 30 AUGUST 2026 (carried HERE, not in a gitignored
+    report: "a proof must never live in a gitignored
+    report") ------------------------------------------------------------
 
-La ROUGE a été jouée en réinsérant la porte d'origine —
-`if not hw.get("vm_windows"): refuser(...)` — dans une COPIE HORS DE
-L'ARBRE SUIVI (`/var/tmp/desk-rouge-vm-windows/paquet`, `hooks/` copié en
-dur, `plateforme/`, `client/`, `proto/` et les deux YAML par liens), puis en
-pointant cette suite dessus par `DESK_PAQUET_RACINE`. Sortie :
+The RED was played by reinserting the original gate —
+`if not hw.get("vm_windows"): refuser(...)` — into a COPY OUTSIDE THE
+TRACKED TREE (`/var/tmp/desk-rouge-vm-windows/paquet`, `hooks/` copied
+outright, `plateforme/`, `client/`, `proto/` and the two YAML files through links), then
+pointing this suite at it through `DESK_PAQUET_RACINE`. Output (recorded
+verbatim at the time, when the messages were still in French):
 
     FAIL (3)
       - resolve accepte cette machine: got False, want True
@@ -85,16 +86,16 @@ pointant cette suite dessus par `DESK_PAQUET_RACINE`. Sortie :
         (StepError). Raison rendue par le hook : 'aucune VM Windows
         detectee sur cette machine'
 
-🔴 ET LA PREUVE QUI COMPTE VRAIMENT : sur LA MÊME copie mutée, la suite
-`tests/test_desk_resolve.py` **telle qu'elle était la veille de la
-correction** (`git show dd263bb~1:tests/test_desk_resolve.py`, celle qui
-appelle `appeler(hw={"vm_windows": True}, ...)` à sept endroits) rend
-`OK - tests du hook resolve passés`, code 0. Le défaut d'hier, la suite
-d'hier : VERTE. C'est le patron entier de la Critique, reproduit et mesuré.
+🔴 AND THE PROOF THAT REALLY COUNTS: on THE SAME mutated copy, the suite
+`tests/test_desk_resolve.py` **as it was the day before the
+fix** (`git show dd263bb~1:tests/test_desk_resolve.py`, the one that
+calls `appeler(hw={"vm_windows": True}, ...)` in seven places) returned
+`OK - tests du hook resolve passés`, code 0. Yesterday's defect, yesterday's
+suite: GREEN. It is the whole pattern of the Critical finding, reproduced and measured.
 
-VERTE sur le produit d'aujourd'hui : `make test` rend les onze suites
-vertes, dont `OK - chaine resolve/install/activate jouee par l'API du
-moteur`.
+GREEN on today's product: `make test` returns the eleven suites
+green, including `OK - resolve/install/activate chain played through the
+engine's API`.
 
 Run: python3 tests/test_desk_moteur_reel.py
 """
@@ -107,17 +108,17 @@ import sys
 import tempfile
 
 RACINE_DEPOT = pathlib.Path(__file__).resolve().parents[1]
-# Surchargeable — MÊME CONVENTION que `DESK_INSTALLER_RACINE` ci-dessous, et
-# c'est par elle que la ROUGE de cette suite se joue : on pointe une COPIE
-# hors de l'arbre suivi, dans laquelle la porte `hw["vm_windows"]` d'origine
-# a été réinsérée. Voir le § « Ce que cette suite s'interdit ».
+# Overridable — SAME CONVENTION as `DESK_INSTALLER_RACINE` below, and
+# it is through it that the RED of this suite is played: we point to a COPY
+# outside the tracked tree, into which the original `hw["vm_windows"]` gate
+# was reinserted. See the § "What this suite forbids itself".
 PAQUET = pathlib.Path(os.environ.get("DESK_PAQUET_RACINE") or RACINE_DEPOT)
 INSTALLER = pathlib.Path(os.environ.get("DESK_INSTALLER_RACINE")
                          or (RACINE_DEPOT.parent / "installer"))
 sys.path.insert(0, str(INSTALLER / "installer"))
 
-# ⚠️ SI LE DÉPÔT VOISIN EST ABSENT, CETTE SUITE ÉCHOUE, elle ne se saute
-# pas : « un `||` de repli transforme fichier absent en contrôle vert ».
+# ⚠️ IF THE SIBLING REPOSITORY IS ABSENT, THIS SUITE FAILS, it does not skip
+# itself: "a fallback `||` turns a missing file into a green check".
 from common import hardware                                    # noqa: E402
 from packages import runner                                    # noqa: E402
 from packages.dependencies import missing_dependencies         # noqa: E402
@@ -136,11 +137,11 @@ def check(label, got, want):
 
 def check_vrai(label, condition, detail=""):
     if not condition:
-        failures.append(f"{label}: faux{(' — ' + detail) if detail else ''}")
+        failures.append(f"{label}: false{(' — ' + detail) if detail else ''}")
 
 
 def terminer(base):
-    """Efface la racine temporaire, imprime le verdict, sort."""
+    """Erases the temporary root, prints the verdict, exits."""
     if base is not None and str(base).startswith(tempfile.gettempdir()):
         shutil.rmtree(base, ignore_errors=True)
     if failures:
@@ -148,18 +149,18 @@ def terminer(base):
         for f in failures:
             print("  -", f)
         sys.exit(1)
-    print("OK - chaine resolve/install/activate jouee par l'API du moteur")
+    print("OK - resolve/install/activate chain played through the engine's API")
     sys.exit(0)
 
 
 class Collecteur:
-    """Le puits de progression que le moteur attend d'un appelant.
+    """The progress sink the engine expects from a caller.
 
-    C'est la SEULE pièce que cette suite fournit elle-même, et elle ne porte
-    aucune donnée d'entrée : le vrai `emit` est celui du portail
-    (`install-engine/progress.py`), un observateur, jamais une source de
-    contexte. Il est gardé pour que la trace jsonl des hooks soit lisible
-    quand un contrôle rougit.
+    It is the ONLY piece this suite supplies itself, and it carries
+    no input data: the real `emit` is the portal's
+    (`install-engine/progress.py`), an observer, never a source of
+    context. It is kept so that the jsonl trace of the hooks is readable
+    when a check goes red.
     """
 
     def __init__(self):
@@ -172,131 +173,131 @@ class Collecteur:
         self.lignes.append(("warn", etape, pct, msg))
 
 
-# --- ⓪ La garde de sûreté, avant toute chose ------------------------------
-# Elle ne protège pas d'une erreur d'inattention : elle protège du cas où
-# `tempfile` serait détourné. Une racine cible qui ne serait pas sous le
-# répertoire temporaire fait échouer la suite AVANT d'écrire un octet.
+# --- ⓪ The safety guard, before anything else ------------------------------
+# It does not protect from a careless mistake: it protects from the case where
+# `tempfile` would be diverted. A target root that is not under the
+# temporary directory makes the suite fail BEFORE writing a single byte.
 
 base = pathlib.Path(tempfile.mkdtemp(prefix="desk-moteur-reel-"))
 cible = base / "cible"
 cible.mkdir()
-sans_console = base / "sans-console"
+sans_console = base / "without-console"
 sans_console.mkdir()
-catalogue = base / "paquets"
+catalogue = base / "packages"
 catalogue.mkdir()
 
 if not str(cible.resolve()).startswith(tempfile.gettempdir()):
-    print(f"REFUS : la racine cible {cible} n'est pas sous "
-          f"{tempfile.gettempdir()} ; rien n'a ete ecrit.", file=sys.stderr)
+    print(f"REFUSED: the target root {cible} is not under "
+          f"{tempfile.gettempdir()}; nothing was written.", file=sys.stderr)
     sys.exit(1)
-check_vrai("la racine cible n'est jamais /", str(cible.resolve()) != "/")
+check_vrai("the target root is never /", str(cible.resolve()) != "/")
 
-# --- ① Le `hw` vient du MOTEUR, jamais de nous ----------------------------
-# `install-engine/run.py:68` fait `hw = hardware.detect_all()` et le passe
-# VERBATIM à `plan_packages` (`:72`) puis à `run_resolve`. C'est cet appel-là
-# qu'on refait — la détection est entièrement en LECTURE (lsblk, ip, lspci,
-# /proc), aucune commande n'écrit.
+# --- ① `hw` comes from the ENGINE, never from us ----------------------------
+# `install-engine/run.py:68` does `hw = hardware.detect_all()` and passes it
+# VERBATIM to `plan_packages` (`:72`) then to `run_resolve`. It is that very call
+# we replay — the detection is entirely READ-ONLY (lsblk, ip, lspci,
+# /proc), no command writes.
 
 hw = hardware.detect_all()
 
-check_vrai("detect_all() rend un mapping", isinstance(hw, dict))
-check("les huit cles du producteur", sorted(hw), sorted([
+check_vrai("detect_all() returns a mapping", isinstance(hw, dict))
+check("the eight keys of the producer", sorted(hw), sorted([
     "disks", "ethernet", "wifi", "gpus", "cpu", "iommu", "memory_mib",
     "passthrough_candidates"]))
-# 🔴 LE CONTRÔLE QUI PORTE LA CRITIQUE : la clé sur laquelle `resolve.py`
-# refusait n'est produite par PERSONNE. Ce n'est pas une opinion sur le code,
-# c'est le producteur réel, exécuté.
-check_vrai("aucun producteur ne pose vm_windows", "vm_windows" not in hw,
-           f"cles rendues : {sorted(hw)}")
+# 🔴 THE CHECK THAT CARRIES THE CRITICAL FINDING: the key on which `resolve.py`
+# refused is produced by NOBODY. This is not an opinion about the code,
+# it is the real producer, run.
+check_vrai("no producer sets vm_windows", "vm_windows" not in hw,
+           f"keys returned: {sorted(hw)}")
 
-# --- ② Le manifeste et le catalogue, par le moteur ------------------------
-# `discover()` est la fonction que `plan_packages` appelle ; on lui donne un
-# catalogue temporaire (lien vers ce dépôt, lien vers `console`) plutôt que
-# de poser `NIVUUS_PACKAGES_DIR` dans l'environnement — cette variable est
-# aussi celle que `hooks/vm.py` lit, et un `console` trouvé ferait partir un
-# vrai échange WinRM (voir le docstring de tête).
+# --- ② The manifest and the catalogue, through the engine ------------------------
+# `discover()` is the function `plan_packages` calls; we give it a
+# temporary catalogue (a link to this repository, a link to `console`) rather than
+# setting `NIVUUS_PACKAGES_DIR` in the environment — that variable is
+# also the one `hooks/vm.py` reads, and a `console` found would send a
+# real WinRM exchange (see the head docstring).
 
 os.symlink(PAQUET, catalogue / "desk")
 if (INSTALLER / "console" / "nivuus-package.yaml").is_file():
     os.symlink(INSTALLER / "console", catalogue / "console")
 
 manifestes, errors = discover(root=str(catalogue))
-check("aucun manifeste refuse par discover()", errors, [])
+check("no manifest refused by discover()", errors, [])
 noms = sorted(m.name for m in manifestes)
-check_vrai("le moteur decouvre desk", "desk" in noms, f"decouverts : {noms}")
-check_vrai("le moteur decouvre console (pre-requis dur)", "console" in noms,
-           f"decouverts : {noms}")
+check_vrai("the engine discovers desk", "desk" in noms, f"discovered: {noms}")
+check_vrai("the engine discovers console (hard prerequisite)", "console" in noms,
+           f"discovered: {noms}")
 
 manifeste = load_manifest(str(PAQUET / "nivuus-package.yaml"))
-check("le manifeste joue est bien desk", manifeste.name, "desk")
+check("the manifest played is indeed desk", manifeste.name, "desk")
 
-# La porte de dépendance du moteur, éprouvée DANS LES DEUX SENS — un contrôle
-# qu'on n'a jamais vu rouge n'est pas un contrôle.
+# The dependency gate of the engine, exercised IN BOTH DIRECTIONS — a check
+# never seen red is not a check.
 seul = missing_dependencies([manifeste], manifestes)
-check_vrai("desk seul manque console",
+check_vrai("desk alone lacks console",
            [m.requires for m in seul] == ["console"],
-           f"manquants : {[m.requires for m in seul]}")
+           f"missing: {[m.requires for m in seul]}")
 with_ = missing_dependencies(manifestes, manifestes)
-check("desk avec console ne manque rien", with_, [])
+check("desk with console lacks nothing", with_, [])
 
-# --- ③ Les réponses, validées par le VRAI wizard --------------------------
-# Les réponses BRUTES sont celles d'un opérateur (c'est leur nature : le
-# wizard les lui demande). Ce qui vient du moteur est leur VALIDATION et le
-# remplissage des défauts — `vb_audio` n'est pas écrit ici, c'est
-# `validate_answers` qui doit le poser à `False` depuis `wizard.yaml`.
+# --- ③ The answers, validated by the REAL wizard --------------------------
+# The RAW answers are those of an operator (that is their nature: the
+# wizard asks them). What comes from the engine is their VALIDATION and the
+# filling of defaults — `vb_audio` is not written here, it is
+# `validate_answers` that must set it to `False` from `wizard.yaml`.
 
 questions = load_questions(str(PAQUET / manifeste.questions_file))
 answers = validate_answers(questions, {
     "admin_email": "operateur@example.test",
-    "admin_password": "un mot de passe de recette, jamais un secret reel",
+    "admin_password": "an acceptance password, never a real secret",
     "auth_mode": "motdepasse",
 })
-check("le wizard pose le defaut vb_audio", answers.get("vb_audio"), False)
-check("quatre reponses validees", sorted(answers), sorted(
+check("the wizard sets the vb_audio default", answers.get("vb_audio"), False)
+check("four validated answers", sorted(answers), sorted(
     ["admin_email", "admin_password", "auth_mode", "vb_audio"]))
 
-# --- ④ resolve, par `run_resolve` ----------------------------------------
-# 🔴 C'EST LE CONTRÔLE QUI ROUGIT SUR LE DÉFAUT D'ORIGINE. Avec la porte
-# `hw["vm_windows"]` en place, `resolution.ok` vaut False et `reason` porte
-# la phrase de refus — et côté moteur ce refus devient un `StepError` qui
-# arrête l'installation entière (`steps/packages.py:206-207`).
+# --- ④ resolve, through `run_resolve` ----------------------------------------
+# 🔴 IT IS THE CHECK THAT GOES RED ON THE ORIGINAL DEFECT. With the
+# `hw["vm_windows"]` gate in place, `resolution.ok` is False and `reason` carries
+# the refusal sentence — and on the engine side this refusal becomes a `StepError` that
+# stops the whole installation (`steps/packages.py:206-207`).
 
 emetteur = Collecteur()
 resolution = runner.run_resolve(manifeste, hw, answers, emetteur)
 
-check("resolve accepte cette machine", resolution.ok, True)
-check("resolve ne donne aucune raison de refus", resolution.reason, "")
+check("resolve accepts this machine", resolution.ok, True)
+check("resolve gives no refusal reason", resolution.reason, "")
 if not resolution.ok:
     failures.append(
-        "resolve a REFUSE : l'installation entiere s'arreterait ici "
-        f"(StepError). Raison rendue par le hook : {resolution.reason!r}")
+        "resolve REFUSED: the whole installation would stop here "
+        f"(StepError). Reason returned by the hook: {resolution.reason!r}")
     terminer(base)
 
-# tier `userspace` : le moteur doit rendre un bloc plateforme vide.
-check("aucun module noyau resolu", resolution.platform.modules, ())
-check("aucune ligne de commande noyau resolue",
+# `userspace` tier: the engine must return an empty platform block.
+check("no kernel module resolved", resolution.platform.modules, ())
+check("no kernel command line resolved",
       resolution.platform.kernel_cmdline, ())
 
-# Les facts sont ceux que le hook a émis, relus par `parse_facts_event`.
-check("les six faits du canal resolve -> activate", sorted(resolution.facts),
+# The facts are those the hook emitted, read back by `parse_facts_event`.
+check("the six facts of the resolve -> activate channel", sorted(resolution.facts),
       sorted(["node_version", "turn_ecoute", "turn_relais", "hote",
               "proxy_confiance", "port"]))
-check_vrai("le hook a parle le protocole de progression",
+check_vrai("the hook spoke the progress protocol",
            any(l[3].startswith("[desk]") for l in emetteur.lignes),
-           f"lignes : {emetteur.lignes}")
+           f"lines: {emetteur.lignes}")
 
-# --- ⑤ install, par `run_install`, sur une racine temporaire --------------
-# ⚠️ `run_install` NE REÇOIT PAS LES `facts` : c'est ce que fait
-# `apply_packages` (`run_install(manifest, hw, answers, target, emit)`), et
-# c'est reproduit tel quel. Le hook DÉRIVE donc lui-même ce dont il a besoin.
+# --- ⑤ install, through `run_install`, on a temporary root --------------
+# ⚠️ `run_install` DOES NOT RECEIVE THE `facts`: that is what
+# `apply_packages` does (`run_install(manifest, hw, answers, target, emit)`), and
+# it is reproduced as is. The hook therefore DERIVES what it needs itself.
 
 emetteur_install = Collecteur()
 runner.run_install(manifeste, hw, answers, str(cible), emetteur_install)
 
 env_pose = cible / "etc" / "nivuus" / "desk.env"
-check_vrai("desk.env est pose sous la racine cible", env_pose.is_file(),
+check_vrai("desk.env is laid down under the target root", env_pose.is_file(),
            str(env_pose))
-check("desk.env n'est lisible que par son proprietaire",
+check("desk.env is only readable by its owner",
       oct(env_pose.stat().st_mode & 0o777), "0o600")
 
 values = {}
@@ -305,59 +306,59 @@ for ligne in env_pose.read_text(encoding="utf-8").splitlines():
         cle, _, value = ligne.partition("=")
         values[cle.strip()] = value.strip()
 
-check("PLATEFORME_AUTH vient de la reponse validee",
+check("PLATEFORME_AUTH comes from the validated answer",
       values.get("PLATEFORME_AUTH"), answers["auth_mode"])
-check_vrai("PLATEFORME_HOTE n'est jamais une ecoute universelle",
+check_vrai("PLATEFORME_HOTE is never a universal listen address",
            values.get("PLATEFORME_HOTE") not in
            ("0.0.0.0", "::", "[::]", "*", None),
-           f"valeur : {values.get('PLATEFORME_HOTE')!r}")
-check_vrai("le secret de jeton fait au moins 32 caracteres",
+           f"value: {values.get('PLATEFORME_HOTE')!r}")
+check_vrai("the token secret is at least 32 characters long",
            len(values.get("PLATEFORME_SECRET_JETON", "")) >= 32)
 
 unite = cible / "etc" / "systemd" / "system" / "desk-plateforme.service"
-check_vrai("l'unite systemd est POSEE", unite.is_file(), str(unite))
-check_vrai("le jeton __NODE_BIN__ est substitue",
+check_vrai("the systemd unit is LAID DOWN", unite.is_file(), str(unite))
+check_vrai("the __NODE_BIN__ token is substituted",
            "__NODE_BIN__" not in unite.read_text(encoding="utf-8"))
-check_vrai("l'unite n'est PAS armee par install",
+check_vrai("the unit is NOT armed by install",
            not (cible / "etc" / "systemd" / "system" /
                 "multi-user.target.wants" / "desk-plateforme.service").exists())
-check_vrai("proto/ts est deploye (ERR_MODULE_NOT_FOUND sinon)",
+check_vrai("proto/ts is deployed (ERR_MODULE_NOT_FOUND otherwise)",
            (cible / "opt/nivuus/desk/proto/ts/plateforme.ts").is_file())
-check_vrai("tsx est deploye (npm start = tsx src/index.ts)",
+check_vrai("tsx is deployed (npm start = tsx src/index.ts)",
            (cible / "opt/nivuus/desk/plateforme/node_modules/.bin/tsx").exists())
-check_vrai("le runtime node est DEPOSE, pas suppose",
+check_vrai("the node runtime is DROPPED, not assumed",
            (cible / "opt/nivuus/node/bin/node").is_file())
-check_vrai("turnserver.conf est pose",
+check_vrai("turnserver.conf is laid down",
            (cible / "etc" / "turnserver.conf").is_file())
 
-# --- ⑥ activate : le contrat de `run_activate`, puis la chaine ------------
-# 🔴 LE CONTRAT EST ÉPROUVÉ, PAS SUPPOSÉ : c'est parce que `run_activate` ne
-# prend aucun `root` que cette suite ne peut pas l'appeler telle quelle sur
-# cette machine (voir le docstring de tête).
+# --- ⑥ activate: the contract of `run_activate`, then the chain ------------
+# 🔴 THE CONTRACT IS EXERCISED, NOT ASSUMED: it is because `run_activate`
+# takes no `root` that this suite cannot call it as is on
+# this machine (see the head docstring).
 
 signature = inspect.signature(runner.run_activate)
-check_vrai("run_activate ne prend AUCUN parametre root",
+check_vrai("run_activate takes NO root parameter",
            "root" not in signature.parameters,
-           f"parametres : {list(signature.parameters)}")
-check_vrai("run_activate recoit bien les facts",
+           f"parameters: {list(signature.parameters)}")
+check_vrai("run_activate does receive the facts",
            "facts" in signature.parameters)
-check_vrai("run_install ne recoit AUCUN facts",
+check_vrai("run_install receives NO facts",
            "facts" not in inspect.signature(runner.run_install).parameters)
 
-# La fusion est celle du moteur, pas la nôtre.
+# The merge is the engine's, not ours.
 hw_active = merge_into_hw(hw, resolution.facts)
-check("aucun fait n'est masque par la detection fraiche",
+check("no fact is shadowed by the fresh detection",
       shadowed_facts(hw, resolution.facts), [])
-check("le port mesure par resolve survit la fusion",
+check("the port measured by resolve survives the merge",
       hw_active.get("port"), resolution.facts["port"])
 
-# Aucun `console` ici : la porte VM refuse sans jamais toucher le réseau.
+# No `console` here: the VM gate refuses without ever touching the network.
 os.environ["NIVUUS_PACKAGES_DIR"] = str(sans_console)
 
 before = {
-    "unite hote": os.lstat("/etc/systemd/system/desk-plateforme.service")
+    "host unit": os.lstat("/etc/systemd/system/desk-plateforme.service")
     if os.path.exists("/etc/systemd/system/desk-plateforme.service") else None,
-    "env hote": os.lstat("/etc/nivuus/desk.env")
+    "host env": os.lstat("/etc/nivuus/desk.env")
     if os.path.exists("/etc/nivuus/desk.env") else None,
 }
 
@@ -369,40 +370,40 @@ try:
 except runner.HookError as exc:
     activate_error = str(exc)
 
-# 🔴 CE QUE LA CHAÎNE ÉTABLIT ICI : `activate` ARME l'unité (un lien, sous la
-# racine temporaire), puis S'ARRÊTE À LA PORTE DE LA VM — la porte que la
-# revue finale a fait migrer de `resolve` vers `activate`. Un refus est le
-# résultat JUSTE sur une machine sans VM Windows ; ce qui compte est QUELLE
-# assertion refuse, pas le seul code de sortie.
+# 🔴 WHAT THE CHAIN ESTABLISHES HERE: `activate` ARMS the unit (a link, under the
+# temporary root), then STOPS AT THE VM GATE — the gate the
+# final review moved from `resolve` to `activate`. A refusal is the
+# RIGHT result on a machine without a Windows VM; what counts is WHICH
+# assertion refuses, not the exit code alone.
 lien = (cible / "etc" / "systemd" / "system" / "multi-user.target.wants"
         / "desk-plateforme.service")
-check_vrai("activate a ARME l'unite, sous la racine temporaire",
+check_vrai("activate ARMED the unit, under the temporary root",
            lien.is_symlink(), str(lien))
-check("le lien arme est RELATIF", os.readlink(lien),
+check("the armed link is RELATIVE", os.readlink(lien),
       "../desk-plateforme.service")
-check_vrai("activate refuse a la porte de la VM Windows",
+check_vrai("activate refuses at the Windows VM gate",
            activate_error is not None
-           and "la VM Windows ne repond pas" in activate_error,
-           f"erreur rendue : {activate_error!r}")
-check_vrai("le refus nomme winrm_exec.py, jamais un echec reseau",
+           and "the Windows VM does not answer" in activate_error,
+           f"error returned: {activate_error!r}")
+check_vrai("the refusal names winrm_exec.py, never a network failure",
            activate_error is not None
-           and "winrm_exec.py introuvable" in activate_error,
-           f"erreur rendue : {activate_error!r}")
+           and "winrm_exec.py not found" in activate_error,
+           f"error returned: {activate_error!r}")
 
-# --- ⑦ L'HÔTE N'A PAS BOUGÉ ----------------------------------------------
-# Le contrôle qui vaut : si cette suite avait appelé `run_activate` comme la
-# production le fait, le lien `multi-user.target.wants/` de CETTE machine et
-# `systemctl start` auraient couru. On mesure l'inverse.
+# --- ⑦ THE HOST HAS NOT MOVED ----------------------------------------------
+# The check that counts: had this suite called `run_activate` the way
+# production does, the `multi-user.target.wants/` link of THIS machine and
+# `systemctl start` would have run. We measure the opposite.
 
 apres = {
-    "unite hote": os.lstat("/etc/systemd/system/desk-plateforme.service")
+    "host unit": os.lstat("/etc/systemd/system/desk-plateforme.service")
     if os.path.exists("/etc/systemd/system/desk-plateforme.service") else None,
-    "env hote": os.lstat("/etc/nivuus/desk.env")
+    "host env": os.lstat("/etc/nivuus/desk.env")
     if os.path.exists("/etc/nivuus/desk.env") else None,
 }
 for nom in before:
     a, b = before[nom], apres[nom]
-    check(f"{nom} : mtime inchange",
+    check(f"{nom}: mtime unchanged",
           None if a is None else a.st_mtime_ns,
           None if b is None else b.st_mtime_ns)
 terminer(base)

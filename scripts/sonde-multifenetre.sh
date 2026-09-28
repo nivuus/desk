@@ -9,10 +9,10 @@
 
 # ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
-voie_morte "enchaînait les sondes du chantier D, une par exécution, à travers /media/vm" \
-"     Rien ne le remplace tel quel. Les sondes se lancent aujourd'hui en posant
-     leur variable (MULTIFENETRE_*) dans C:\nivuus\agent\run-agent.ps1 —
-     voir le successeur de scripts/run-agent.sh."
+voie_morte "chained the work item D probes, one per run, through /media/vm" \
+"     Nothing replaces it as such. Probes are launched today by setting
+     their variable (MULTIFENETRE_*) in C:\nivuus\agent\run-agent.ps1 —
+     see the successor of scripts/run-agent.sh."
 # ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
@@ -35,12 +35,12 @@ executer() {
     # Read on EVERY call: the phase 2 bench raises SONDE_SECS for its
     # own passes, without the short phase 1 probes inheriting it.
     local secs="${SONDE_SECS:-25}"
-    echo "── sonde : $nom ─────────────────────────────"
+    echo "── probe: $nom ─────────────────────────────"
     rm -f /media/vm/dev/agent.log
     env "$@" "$ROOT/scripts/run-agent.sh"
     sleep "$secs"
     cp /media/vm/dev/agent.log "$JOURNAUX/$nom.log" 2>/dev/null \
-        || echo "AUCUN JOURNAL — la sonde a-t-elle planté au démarrage ?"
+        || echo "NO LOG — did the probe crash at startup?"
     # The log comes out of PowerShell in UTF-16LE: without this decoding, each
     # ASCII character is displayed spaced by a null byte ("t e x t" instead of
     # "text"), making `tail` unreadable over the whole log, not only

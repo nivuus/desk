@@ -16,9 +16,9 @@ CIBLE_RUST="${CIBLE_RUST:-x86_64-pc-windows-gnu}"
 DESTINATION="${1:-}"
 
 if [ -z "${DESTINATION}" ]; then
-    echo "usage : $0 <destination>   (le répertoire où déposer agent.exe)" >&2
-    echo "aucune destination par défaut : un défaut déposerait 20 Mio à un" >&2
-    echo "endroit que personne n'a demandé." >&2
+    echo "usage: $0 <destination>   (the directory to drop agent.exe into)" >&2
+    echo "no default destination: a default would drop 20 MiB at a" >&2
+    echo "place nobody asked for." >&2
     exit 2
 fi
 
@@ -26,23 +26,23 @@ RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${RACINE}"
 
 if ! rustup target list --installed 2>/dev/null | grep -qx "${CIBLE_RUST}"; then
-    echo "🔴 cible rustup absente : ${CIBLE_RUST}" >&2
-    echo "   l'installer : rustup target add ${CIBLE_RUST}" >&2
+    echo "🔴 rustup target missing: ${CIBLE_RUST}" >&2
+    echo "   install it: rustup target add ${CIBLE_RUST}" >&2
     exit 1
 fi
 
 if [ "${CIBLE_RUST}" = "x86_64-pc-windows-gnu" ] \
    && ! command -v x86_64-w64-mingw32-gcc >/dev/null 2>&1; then
-    echo "🔴 éditeur de liens absent : x86_64-w64-mingw32-gcc" >&2
-    echo "   l'installer : apt install gcc-mingw-w64-x86-64" >&2
+    echo "🔴 linker missing: x86_64-w64-mingw32-gcc" >&2
+    echo "   install it: apt install gcc-mingw-w64-x86-64" >&2
     exit 1
 fi
 
 cargo build --release --target "${CIBLE_RUST}" -p agent
 
 BINAIRE="target/${CIBLE_RUST}/release/agent.exe"
-[ -f "${BINAIRE}" ] || { echo "🔴 cargo a réussi mais ${BINAIRE} est absent" >&2; exit 1; }
+[ -f "${BINAIRE}" ] || { echo "🔴 cargo succeeded but ${BINAIRE} is absent" >&2; exit 1; }
 
 mkdir -p "${DESTINATION}"
 cp "${BINAIRE}" "${DESTINATION}/agent.exe"
-echo "agent.exe déposé : ${DESTINATION}/agent.exe ($(stat -c%s "${BINAIRE}") octets)"
+echo "agent.exe dropped: ${DESTINATION}/agent.exe ($(stat -c%s "${BINAIRE}") bytes)"
