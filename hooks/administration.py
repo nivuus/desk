@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
-"""Les deux commandes d'administration `npm` que `hooks/activate.py` invoque
-pour armer la plateforme : création du compte administrateur, enrôlement de
-l'agent Windows.
+"""The two `npm` administration commands that `hooks/activate.py` invokes
+to arm the platform: creation of the administrator account, enrolment of
+the Windows agent.
 
-Extrait de `hooks/activate.py` par la tâche 7 (2026-08-29), AVANT que cette
-dernière n'ajoute le dépôt de `agent.exe` pour `console` : `activate.py`
-pesait 479 lignes sur un plafond de 500, et cet ajout l'aurait fait
-franchir. Ce dépôt interdit de comprimer pour éviter une extraction
-(« ce dépôt l'a payé douze fois ») — l'extraction est jouée D'ABORD, dans son
-propre commit, sans changement de comportement : les mêmes fonctions, le
-même corps, le même docstring, seulement déplacés.
+Extracted from `hooks/activate.py` by task 7 (2026-08-29), BEFORE that task
+added the drop of `agent.exe` for `console`: `activate.py`
+weighed 479 lines against a ceiling of 500, and that addition would have made it
+cross it. This repository forbids compressing code to avoid an extraction
+("this repository paid for it twelve times") — the extraction is played FIRST, in its
+own commit, with no behaviour change: the same functions, the
+same body, the same docstring, only moved.
 
-Comme `hooks/vm.py` (tâche 6), ce module N'EST PAS un hook exécutable seul
-(pas de `--phase`/stdin JSON) : `hooks/activate.py` l'importe
-(`from administration import creer_compte_admin, enroler_agent_plateforme`),
-exactement comme il importe déjà `vm.py` — Python ajoute automatiquement le
-répertoire du SCRIPT LANCÉ (`hooks/`) à `sys.path`, donc cet import résout
-sans manipulation supplémentaire, ni ici ni chez l'appelant. Les tests le
-chargent par chemin de fichier explicite (`importlib`), comme
-`tests/test_desk_vm.py` le fait déjà pour `vm.py`, s'ils veulent l'éprouver
-seul ; en pratique, ce module est déjà entièrement couvert au travers du
-hook complet par `tests/test_desk_activate.py` (Scénario 1), qui n'a pas
-changé de comportement.
+Like `hooks/vm.py` (task 6), this module IS NOT a hook runnable on its own
+(no `--phase`/stdin JSON): `hooks/activate.py` imports it
+(`from administration import create_admin_account, enroler_agent_plateforme`),
+exactly as it already imports `vm.py` — Python automatically adds the
+directory of the LAUNCHED SCRIPT (`hooks/`) to `sys.path`, so this import
+resolves without any extra manipulation, neither here nor in the caller. Tests
+load it by explicit file path (`importlib`), as
+`tests/test_desk_vm.py` already does for `vm.py`, if they want to exercise it
+alone; in practice, this module is already fully covered through the
+complete hook by `tests/test_desk_activate.py` (Scenario 1), whose
+behaviour did not change.
 """
 import os
 import pathlib
@@ -65,13 +65,13 @@ def lancer_npm(cwd: pathlib.Path, subcommand: str, arguments: list,
         proc = subprocess.run(commande, cwd=str(cwd), env=env_complet,
                                input=entree, capture_output=True, text=True)
     except OSError as exc:
-        return 127, "", f"impossible de lancer {' '.join(commande)} : {exc}"
+        return 127, "", f"cannot launch {' '.join(commande)}: {exc}"
     return proc.returncode, proc.stdout, proc.stderr
 
 
 def create_admin_account(plateforme_dir: pathlib.Path, email: str,
                         mot_de_passe: str, env: dict):
-    """`npm run admin:user -- --email <email>`, password on
+    """`npm run admin:utilisateur -- --email <email>`, password on  # policy: allow-fr - npm script name
     STDIN — never in argv (see the top docstring of `activate.py`).
     Returns `(identifier, None)` on success, `(None, reason)` otherwise.
     """
@@ -79,7 +79,7 @@ def create_admin_account(plateforme_dir: pathlib.Path, email: str,
                                  ["--email", email], env,
                                  entree=f"{mot_de_passe}\n")
     if code != 0:
-        return None, (err or out).strip() or f"code de sortie {code}"
+        return None, (err or out).strip() or f"exit code {code}"
     return out.strip(), None
 
 
@@ -94,7 +94,7 @@ def enroler_agent_plateforme(plateforme_dir: pathlib.Path, nom_vm: str,
     code, out, err = lancer_npm(plateforme_dir, "admin:agent",
                                  ["--vm", nom_vm, "--adresse", adresse_vm], env)
     if code != 0:
-        return None, (err or out).strip() or f"code de sortie {code}"
+        return None, (err or out).strip() or f"exit code {code}"
 
     values = {}
     for ligne in out.splitlines():
@@ -104,7 +104,7 @@ def enroler_agent_plateforme(plateforme_dir: pathlib.Path, nom_vm: str,
     vm_id = values.get("vm_id")
     secret = values.get("AGENT_SECRET")
     if not vm_id or not secret:
-        return None, f"sortie d'enrolement illisible (vm_id/AGENT_SECRET absents) : {out!r}"
+        return None, f"unreadable enrolment output (vm_id/AGENT_SECRET absent): {out!r}"
     return (vm_id, secret), None
 
 
@@ -126,5 +126,5 @@ def assign_vm_to_user(plateforme_dir: pathlib.Path, email: str,
     code, out, err = lancer_npm(plateforme_dir, "admin:attribuer",
                                  ["--email", email, "--vm", vm_id], env)
     if code != 0:
-        return None, (err or out).strip() or f"code de sortie {code}"
+        return None, (err or out).strip() or f"exit code {code}"
     return out.strip(), None

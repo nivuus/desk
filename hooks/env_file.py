@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Lecture et enrichissement de `etc/nivuus/desk.env`, le fichier
-d'environnement que `hooks/install.py` pose et que `hooks/activate.py`
-complète (`AGENT_VM`, `AGENT_SECRET`) une fois l'enrôlement réussi.
+"""Reading and extending `etc/nivuus/desk.env`, the environment
+file that `hooks/install.py` lays down and that `hooks/activate.py`
+completes (`AGENT_VM`, `AGENT_SECRET`) once enrolment has succeeded.
 
-Extrait de `hooks/activate.py` par la tâche 7 (2026-08-29), pour la MÊME
-raison que `hooks/administration.py` (voir son propre docstring de tête) :
-faire de la place, dans un commit SÉPARÉ et SANS changement de
-comportement, avant que la tâche n'ajoute le dépôt de `agent.exe` pour
-`console`. Importé comme `vm.py` et `administration.py` — Python ajoute le
-répertoire du script LANCÉ à `sys.path`, aucune manipulation nécessaire.
+Extracted from `hooks/activate.py` by task 7 (2026-08-29), for the SAME
+reason as `hooks/administration.py` (see its own head docstring):
+making room, in a SEPARATE commit and WITHOUT any behaviour change,
+before the task adds the drop of `agent.exe` for
+`console`. Imported like `vm.py` and `administration.py` — Python adds the
+directory of the LAUNCHED script to `sys.path`, no manipulation needed.
 """
 import os
 import pathlib

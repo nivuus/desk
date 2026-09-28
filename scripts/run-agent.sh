@@ -8,13 +8,13 @@
 
 # ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
-voie_morte "écrivait /media/vm/dev/run-agent.ps1 puis lançait C:\\dev\\target\\...\\agent.exe" \
-"     L'agent de l'appliance est lancé par la tâche planifiée « guacamole-agent »,
-     qui exécute C:\nivuus\agent\run-agent.ps1 — un fichier du package console.
-     Pour poser une variable de banc, l'insérer dans CE fichier APRÈS l'ancre
-     env:SUPERVISEUR (donc AVANT l'invocation de l'agent) :
+voie_morte "wrote /media/vm/dev/run-agent.ps1 then launched C:\\dev\\target\\...\\agent.exe" \
+"     The appliance's agent is launched by the scheduled task \"guacamole-agent\",
+     which runs C:\nivuus\agent\run-agent.ps1 — a file of the console package.
+     To set a bench variable, insert it in THAT file AFTER the
+     env:SUPERVISEUR anchor (hence BEFORE the agent is invoked):
        docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh
-       (fonctions variable_de_banc, agent_arreter, agent_relancer)."
+       (functions variable_de_banc, agent_arreter, agent_relancer)."
 # ─── Below, the original body, kept as a historical record. ──────
 
 set -euo pipefail
@@ -22,7 +22,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_NAME="guacamole-agent"
 USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"
-: "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD non défini}"
+: "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD not set}"
 
 # Path of the executable, assembled HERE rather than in the heredoc below:
 # the latter is not quoted (it must interpolate variables), and a
@@ -61,13 +61,13 @@ ${INSTALLATION_FAUTE:+\$env:INSTALLATION_FAUTE = '$INSTALLATION_FAUTE'}
 ${APPS_SURVEILLANCE:+\$env:APPS_SURVEILLANCE = '$APPS_SURVEILLANCE'}
 ${APPS_FAUTE:+\$env:APPS_FAUTE = '$APPS_FAUTE'}
 ${MICRO_MESURE:+\$env:MICRO_MESURE = '$MICRO_MESURE'}
-# Chantier E, bloc E2 — les TROIS variables du microphone, plus
-# MICRO_MESURE ci-dessus. Sans ces lignes l'agent demarre sans elles ET
-# SANS RIEN SIGNALER : piege paye en D1 (SUPERVISEUR), D2
-# (MULTIFENETRE_REPRISE) et D7 (AUDIO). Le controle qui vaut n'est pas la
-# lecture de ce script mais la TRACE — pour MICRO_PERIPHERIQUE, la ligne
-# « cable de rendu retenu pour l'ecriture du micro » porte la valeur
-# RETENUE, jamais la seule presence d'une ligne.
+# Work item E, block E2 — the THREE microphone variables, plus
+# MICRO_MESURE above. Without these lines the agent starts without them AND
+# WITHOUT REPORTING ANYTHING: a trap paid for in D1 (SUPERVISEUR), D2
+# (MULTIFENETRE_REPRISE) and D7 (AUDIO). The check that counts is not
+# reading this script but the TRACE — for MICRO_PERIPHERIQUE, the line
+# "render cable retained for mic writing" carries the RETAINED
+# value, never the mere presence of a line.
 ${MICRO:+\$env:MICRO = '$MICRO'}
 ${MICRO_PERIPHERIQUE:+\$env:MICRO_PERIPHERIQUE = '$MICRO_PERIPHERIQUE'}
 ${MICRO_FAUTE_ECRITURE:+\$env:MICRO_FAUTE_ECRITURE = '$MICRO_FAUTE_ECRITURE'}
@@ -123,36 +123,36 @@ ${MULTIFENETRE_POINTEUR:+\$env:MULTIFENETRE_POINTEUR = '$MULTIFENETRE_POINTEUR'}
 ${PRESSE_PAPIER_SONDE:+\$env:PRESSE_PAPIER_SONDE = '$PRESSE_PAPIER_SONDE'}
 ${SUPERVISEUR_HOOK:+\$env:SUPERVISEUR_HOOK = '$SUPERVISEUR_HOOK'}
 ${AGENT_TRACE_EXCEPTIONS:+\$env:AGENT_TRACE_EXCEPTIONS = '$AGENT_TRACE_EXCEPTIONS'}
-${AGENT_TRACE_EXCEPTIONS_FICHIER:+\$env:AGENT_TRACE_EXCEPTIONS_FICHIER = '$AGENT_TRACE_EXCEPTIONS_FICHIER'}
+${AGENT_TRACE_EXCEPTIONS_FICHIER:+\$env:AGENT_TRACE_EXCEPTIONS_FICHIER = '$AGENT_TRACE_EXCEPTIONS_FICHIER'} # policy: allow-fr - env var read by agent.exe
 ${AGENT_TRACE_EXCEPTIONS_AUTOTEST:+\$env:AGENT_TRACE_EXCEPTIONS_AUTOTEST = '$AGENT_TRACE_EXCEPTIONS_AUTOTEST'}
 ${AGENT_VM:+\$env:AGENT_VM = '$AGENT_VM'}
 ${AGENT_SECRET:+\$env:AGENT_SECRET = '$AGENT_SECRET'}
-# 🔴 AGENT_JETON N'EST PAS TRANSMIS ICI, ET C'EST DÉLIBÉRÉ — le seul manquement
-# volontaire de ce fichier, écrit plutôt que subi. Ce dépôt a payé trois fois
-# l'oubli d'une variable neuve dans ce script (SUPERVISEUR en D1,
-# MULTIFENETRE_REPRISE en D2, AUDIO en D7) ; celle-ci n'est pas du même genre.
-# AGENT_JETON est une variable de PASSATION entre processus, posée par le
-# superviseur sur ses enfants et sur le pont (agent/src/superviseur/lanceur.rs)
-# pour qu'un seul processus par VM ouvre le canal /agent. La poser à la main
-# ferait SAUTER l'enrôlement du processus racine : il ne battrait plus le cœur
-# de la VM, ne pousserait aucun catalogue, ne recevrait aucun ordre de
-# lancement, et son jeton mourrait au bout de dix minutes sans se renouveler.
-# Un opérateur pose AGENT_VM et AGENT_SECRET ; la passation ne le regarde pas.
-# Le StreamWriter ci-dessous règle l'ÉCRITURE du fichier en UTF-8, mais pas la
-# LECTURE de la sortie de l'enfant : PowerShell décode le flux d'agent.exe
-# selon \$OutputEncoding / [Console]::OutputEncoding, qui vaut par défaut la
-# page de code OEM de la console (CP850/CP437), alors que agent.exe écrit de
-# l'UTF-8 — sans ce réglage, les caractères accentués ressortent en mojibake
-# même une fois le fichier réécrit proprement. Les deux réglages sont
-# nécessaires : celui-ci pour la lecture, le StreamWriter pour l'écriture.
+# 🔴 AGENT_JETON IS NOT PASSED HERE, AND THAT IS DELIBERATE — the only deliberate
+# omission of this file, written rather than suffered. This repository paid three times
+# for forgetting a new variable in this script (SUPERVISEUR in D1,
+# MULTIFENETRE_REPRISE in D2, AUDIO in D7); this one is not of the same kind.
+# AGENT_JETON is a HAND-OVER variable between processes, set by the
+# supervisor on its children and on the bridge (agent/src/superviseur/lanceur.rs)
+# so that a single process per VM opens the /agent channel. Setting it by hand
+# would SKIP the enrolment of the root process: it would no longer beat the heart
+# of the VM, would push no catalogue, would receive no launch
+# order, and its token would die after ten minutes without renewing itself.
+# An operator sets AGENT_VM and AGENT_SECRET; the hand-over is none of their business.
+# The StreamWriter below settles the WRITING of the file in UTF-8, but not the
+# READING of the child's output: PowerShell decodes the stream of agent.exe
+# according to \$OutputEncoding / [Console]::OutputEncoding, which defaults to the
+# OEM code page of the console (CP850/CP437), whereas agent.exe writes
+# UTF-8 — without this setting, accented characters come out as mojibake
+# even once the file is rewritten cleanly. Both settings are
+# needed: this one for reading, the StreamWriter for writing.
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding(\$false)
 
-# UTF-8 SANS BOM, et sans le retour à la ligne que \`Out-File\` insère à la
-# largeur de console : \`Tee-Object\` (PS 5.1) écrit en UTF-16LE et n'a pas de
-# paramètre -Encoding, ce qui rendait les journaux de la sonde précédente
-# illisibles au \`grep\`. \`Out-File -Encoding utf8\` corrigerait l'encodage mais
-# reformaterait les lignes longues. Un StreamWriter explicite ne fait ni l'un
-# ni l'autre.
+# UTF-8 WITHOUT BOM, and without the line break that \`Out-File\` inserts at the
+# console width: \`Tee-Object\` (PS 5.1) writes UTF-16LE and has no
+# -Encoding parameter, which made the logs of the previous probe
+# unreadable to \`grep\`. \`Out-File -Encoding utf8\` would fix the encoding but
+# would reformat long lines. An explicit StreamWriter does neither
+# one nor the other.
 \$flux = New-Object System.IO.StreamWriter('C:\dev\agent.log', \$false, (New-Object System.Text.UTF8Encoding(\$false)))
 try {
   & '${AGENT_EXE}' *>&1 | ForEach-Object { \$flux.WriteLine([string]\$_); \$flux.Flush() }
@@ -176,4 +176,4 @@ node "$ROOT/scripts/winrm.js" \
        /tr 'powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File C:\\dev\\run-agent.ps1'; \
      schtasks /run /tn $TASK_NAME"
 
-echo "agent lancé en session interactive ; journal : /media/vm/dev/agent.log"
+echo "agent launched in the interactive session; log: /media/vm/dev/agent.log"

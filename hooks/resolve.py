@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""Hook resolve du package desk.
+"""Resolve hook of the desk package.
 
-🔴 CE HOOK COURT AVANT partition() : à l'instant où le moteur l'appelle, le
-disque cible n'existe pas encore. C'est ce qui donne sa valeur au refus — il
-arrive à l'assistant, jamais sur un disque déjà effacé. Voir le module
-`packages.runner` du moteur (dépôt voisin `installer`) : resolve est
-strictement en lecture seule PAR CONVENTION, pas par bac à sable — rien
-n'empêche techniquement une écriture, mais le moteur ne lit et n'utilise
-jamais rien que ce hook aurait écrit.
+🔴 THIS HOOK RUNS BEFORE partition(): at the moment the engine calls it, the
+target disk does not exist yet. That is what gives the refusal its value — it
+reaches the wizard, never an already wiped disk. See the
+`packages.runner` module of the engine (sibling repository `installer`): resolve is
+strictly read-only BY CONVENTION, not by sandbox — nothing
+technically prevents a write, but the engine never reads or uses
+anything this hook would have written.
 
-UN REFUS EST UNE DONNÉE, JAMAIS UNE EXCEPTION. Tout chemin qui peut échouer
-ici finit par un événement `{"event":"refuse","reason":"…"}` et un code de
-sortie 0 — jamais une exception non rattrapée : une trace donne à l'opérateur
-un code de sortie qu'il ne peut pas exploiter, une phrase lui donne une
-raison qu'il peut lire avant que son disque soit touché.
+A REFUSAL IS DATA, NEVER AN EXCEPTION. Every path that can fail
+here ends with a `{"event":"refuse","reason":"…"}` event and an exit
+code of 0 — never an uncaught exception: a traceback gives the operator
+an exit code they cannot act on, a sentence gives them a
+reason they can read before their disk is touched.
 
-Protocole (voir `installer/packages/runner.py` du dépôt voisin) : lit
-{"hw":…, "answers":…} sur stdin, écrit un objet JSON par ligne sur stdout.
-Ce hook n'émet jamais d'événement `platform` : le tier de desk est
-`userspace` (voir `nivuus-package.yaml`), qui interdit kernel-cmdline,
-modules et hugepages — desk n'a rien à poser sur la ligne de commande noyau.
+Protocol (see `installer/packages/runner.py` in the sibling repository): reads
+{"hw":…, "answers":…} on stdin, writes one JSON object per line on stdout.
+This hook never emits a `platform` event: desk's tier is
+`userspace` (see `nivuus-package.yaml`), which forbids kernel-cmdline,
+modules and hugepages — desk has nothing to put on the kernel command line.
 """
 import json
 import os
@@ -72,10 +72,10 @@ def lire_borne_node():
     try:
         contenu = json.loads(chemin.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        return None, f"impossible de lire {chemin} : {exc}"
+        return None, f"cannot read {chemin}: {exc}"
     borne = (contenu.get("engines") or {}).get("node")
     if not borne or not isinstance(borne, str):
-        return None, f"{chemin} ne déclare aucune borne engines.node exploitable"
+        return None, f"{chemin} declares no usable engines.node bound"
     return borne, None
 
 
@@ -128,19 +128,19 @@ def valider_node():
         return None, raison
     bornes = parser_borne(borne_brute)
     if bornes is None:
-        return None, f"borne engines.node illisible : {borne_brute!r}"
+        return None, f"unreadable engines.node bound: {borne_brute!r}"
     mini, maxi = bornes
     version = version_node_locale()
     if version is None:
-        return None, "node est introuvable sur cette machine ; plateforme/ l'exige"
+        return None, "node is not found on this machine; plateforme/ requires it"
     try:
         version_tuple = tuple(int(x) for x in version.split(".")[:3])
     except ValueError:
-        return None, f"version de node illisible : {version!r}"
+        return None, f"unreadable node version: {version!r}"
     if not (mini <= version_tuple < maxi):
         return None, (
-            f"node {version} ne satisfait pas engines.node={borne_brute!r} "
-            "déclaré par plateforme/package.json"
+            f"node {version} does not satisfy engines.node={borne_brute!r} "
+            "declared by plateforme/package.json"
         )
     return version, None
 
@@ -164,14 +164,14 @@ def deriver_adresses_turn():
     interface = interface_de_route_par_defaut()
     if not interface:
         return None, None, (
-            "aucune route IPv4 par défaut : impossible de dériver l'interface "
-            "sur laquelle coturn doit écouter et relayer"
+            "no default IPv4 route: cannot derive the interface "
+            "coturn must listen and relay on"
         )
     adresse = adresse_ipv4_de(interface)
     if not adresse:
         return None, None, (
-            f"aucune adresse IPv4 lisible sur l'interface {interface} (route "
-            "par défaut) : impossible de dériver TURN_LISTENING_IP/TURN_RELAY_IP"
+            f"no readable IPv4 address on interface {interface} (default "
+            "route): cannot derive TURN_LISTENING_IP/TURN_RELAY_IP"
         )
     return adresse, adresse, None
 
@@ -184,7 +184,7 @@ def lire_port():
     try:
         return int(brut), None
     except ValueError:
-        return None, f"DESK_PORT={brut!r} n'est pas un entier"
+        return None, f"DESK_PORT={brut!r} is not an integer"
 
 
 def valider_auth_mode(answers: dict):
@@ -212,9 +212,9 @@ def valider_auth_mode(answers: dict):
     mode = answers.get("auth_mode")
     if mode not in MODES_CONNUS:
         return (
-            f"auth_mode inconnu : {mode!r} ; valeurs attendues "
-            f"{' ou '.join(MODES_CONNUS)} — un repli silencieux ferait tourner "
-            "un mode sous le nom de l'autre"
+            f"unknown auth_mode: {mode!r}; expected values "
+            f"{' or '.join(MODES_CONNUS)} — a silent fallback would run "
+            "one mode under the name of the other"
         )
     return None
 
@@ -239,12 +239,12 @@ def valider_vb_audio(answers: dict):
     if not answers.get("vb_audio"):
         return None
     return (
-        "vb_audio demandé, mais ce package ne fournit aucune charge "
-        "VB-Audio : sa licence est personnelle seulement, et aucune tâche "
-        "de ce lot n'en dépose dans l'arborescence que console construit. "
-        "Laisser l'option décochée — le micro se signale alors de lui-même "
-        "côté produit (mic: false dans le message ready, le bouton du "
-        "navigateur ne paraît pas)."
+        "vb_audio requested, but this package supplies no VB-Audio "
+        "payload: its licence is personal only, and no task "
+        "of this batch drops one into the tree that console builds. "
+        "Leave the option unticked — the microphone then reports itself "
+        "on the product side (mic: false in the ready message, the browser "
+        "button does not appear)."
     )
 
 
@@ -261,23 +261,23 @@ def charger_contexte():
     try:
         contexte = json.load(sys.stdin)
     except json.JSONDecodeError as exc:
-        return None, None, f"entrée illisible : stdin n'est pas du JSON valide ({exc})"
+        return None, None, f"unreadable input: stdin is not valid JSON ({exc})"
     if not isinstance(contexte, dict):
         return None, None, (
-            "entrée malformée : la racine JSON doit être un objet portant "
-            f"'hw' et 'answers', reçu {type(contexte).__name__}"
+            "malformed input: the JSON root must be an object carrying "
+            f"'hw' and 'answers', got {type(contexte).__name__}"
         )
     hw = contexte.get("hw")
     if hw is None:
         hw = {}
     elif not isinstance(hw, dict):
-        return None, None, f"entrée malformée : 'hw' doit être un objet, reçu {type(hw).__name__}"
+        return None, None, f"malformed input: 'hw' must be an object, got {type(hw).__name__}"
     answers = contexte.get("answers")
     if answers is None:
         answers = {}
     elif not isinstance(answers, dict):
         return None, None, (
-            f"entrée malformée : 'answers' doit être un objet, reçu {type(answers).__name__}"
+            f"malformed input: 'answers' must be an object, got {type(answers).__name__}"
         )
     return hw, answers, None
 
@@ -290,7 +290,7 @@ def resoudre(hw: dict, answers: dict) -> int:
     anticipated becomes a refusal there again, never a traceback for the operator.
     """
     emettre({"event": "progress", "pct": 10,
-             "msg": "Vérification du mode d'authentification"})
+             "msg": "Checking the authentication mode"})
 
     # 🔴 THERE IS NO "WINDOWS VM" GATE HERE ANY MORE, AND THAT IS THE FIX
     # FOR THE CRITICAL FINDING OF THE FINAL BRANCH REVIEW (30 August 2026). This hook
@@ -346,7 +346,7 @@ def resoudre(hw: dict, answers: dict) -> int:
         refuser(raison_vb_audio)
         return 0
 
-    emettre({"event": "progress", "pct": 40, "msg": "Vérification de node"})
+    emettre({"event": "progress", "pct": 40, "msg": "Checking node"})
 
     # --- Node, against the bound DECLARED by plateforme/package.json ----------
     version_node, raison_node = valider_node()
@@ -354,7 +354,7 @@ def resoudre(hw: dict, answers: dict) -> int:
         refuser(raison_node)
         return 0
 
-    emettre({"event": "progress", "pct": 70, "msg": "Dérivation des adresses TURN"})
+    emettre({"event": "progress", "pct": 70, "msg": "Deriving the TURN addresses"})
 
     # --- The two TURN addresses, derived, never asked for ------------------
     turn_ecoute, turn_relais, raison_turn = deriver_adresses_turn()
@@ -386,7 +386,7 @@ def resoudre(hw: dict, answers: dict) -> int:
         refuser(raison_port)
         return 0
 
-    emettre({"event": "progress", "pct": 90, "msg": "Faits résolus"})
+    emettre({"event": "progress", "pct": 90, "msg": "Facts resolved"})
     emettre({
         "event": "facts",
         "facts": {
@@ -428,7 +428,7 @@ def main() -> int:
             return 0
         return resoudre(hw, answers)
     except Exception as exc:  # noqa: BLE001 — this is the generic guard itself
-        refuser(f"erreur inattendue dans resolve : {exc}")
+        refuser(f"unexpected error in resolve: {exc}")
         return 0
 
 

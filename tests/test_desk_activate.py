@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
-"""Tests du hook activate du package desk.
+"""Tests of the activate hook of the desk package.
 
-Le hook est éprouvé par son VRAIE interface — un sous-processus appelé
-`--phase activate --root <racine>`, nourri de {"hw":…, "answers":…} sur
-stdin — exactement comme `installer/packages/runner.py::run_activate`
-l'invoque (`hw` porte les facts de resolve, FUSIONNÉS ; aucun `--root`
-n'est passé en production, mais `argparse` lui donne le même défaut `/`
-que `console/hooks/activate.py`, ce qui rend le hook appelable de la même
-façon dans un test).
+The hook is exercised through its REAL interface — a subprocess called
+`--phase activate --root <root>`, fed {"hw":…, "answers":…} on
+stdin — exactly as `installer/packages/runner.py::run_activate`
+invokes it (`hw` carries resolve's facts, MERGED; no `--root`
+is passed in production, but `argparse` gives it the same default `/`
+as `console/hooks/activate.py`, which makes the hook callable the same
+way in a test).
 
-Chaque test pose sa PROPRE racine sous `tempfile.TemporaryDirectory()` :
-jamais `/etc/systemd/system`, `/opt` ou le PATH réel du poste qui fait
-tourner ces tests. `npm` et `systemctl` sont remplacés par des scripts
-factices posés sur un `PATH` reconstruit pour chaque appel — jamais le
-`npm`/`systemctl` du système réel.
+Each test lays down its OWN root under `tempfile.TemporaryDirectory()`:
+never `/etc/systemd/system`, `/opt` or the real PATH of the machine running
+these tests. `npm` and `systemctl` are replaced by fake scripts
+laid down on a `PATH` rebuilt for each call — never the
+`npm`/`systemctl` of the real system.
 
-🔴 TÂCHE 6 — depuis le câblage de `hooks/vm.py::poser_projfs`/
-`poser_vb_audio` dans `main()`, CE HOOK RÉSOUT `winrm_exec.py` PAR
-`NIVUUS_PACKAGES_DIR` À CHAQUE APPEL, AVANT MÊME LA VÉRIFICATION DE
-`plateforme/`. `appeler()` fabrique donc, PAR DÉFAUT, un faux
-`console/guest/winrm_exec.py` FONCTIONNEL (jamais le vrai, jamais un appel
-réseau) sous un `NIVUUS_PACKAGES_DIR` de test — sans quoi TOUS les
-scénarios ci-dessous échoueraient sur « console absent » avant d'atteindre
-la raison qu'ils veulent réellement éprouver. `packages_dir=False` simule
-`console` absent, pour les scénarios dédiés qui éprouvent CE refus.
+🔴 TASK 6 — since `hooks/vm.py::poser_projfs`/`poser_vb_audio` were wired
+into `main()`, THIS HOOK RESOLVES `winrm_exec.py` THROUGH
+`NIVUUS_PACKAGES_DIR` ON EVERY CALL, EVEN BEFORE CHECKING
+`plateforme/`. `appeler()` therefore builds, BY DEFAULT, a WORKING fake
+`console/guest/winrm_exec.py` (never the real one, never a network
+call) under a test `NIVUUS_PACKAGES_DIR` — otherwise ALL the
+scenarios below would fail on "console absent" before reaching
+the reason they really want to exercise. `packages_dir=False` simulates
+`console` absent, for the dedicated scenarios that exercise THAT refusal.
 
 Run: python3 tests/test_desk_activate.py
 """
@@ -57,21 +57,21 @@ def check(label, got, want):
         failures.append(f"{label}: got {got!r}, want {want!r}")
 
 
-# --- L'unité RÉELLEMENT posée par la tâche 4 pointe-t-elle où ce hook croit ?
-# ⚠️ Garde de synchronisation : si `hooks/assets/desk-plateforme.service`
-# changeait de cible (WantedBy=), `WANTS_SUBDIR` d'`activate.py` doit suivre
-# — ce test rougirait avant que le lien ne se pose au mauvais endroit.
+# --- Does the unit REALLY laid down by task 4 point where this hook thinks?
+# ⚠️ Synchronisation guard: if `hooks/assets/desk-plateforme.service`
+# changed its target (WantedBy=), `WANTS_SUBDIR` of `activate.py` must follow
+# — this test would go red before the link gets laid in the wrong place.
 ini_unite = load_unit(RACINE / "hooks" / "assets" / "desk-plateforme.service")
-check("l'unite est WantedBy=multi-user.target (hypothese d'activate.py)",
+check("the unit is WantedBy=multi-user.target (assumption of activate.py)",
       ini_unite.get("Install", "WantedBy", fallback=""), "multi-user.target")
 
 
-# === Scénario 1 : activation complète, réussie ============================
+# === Scenario 1: complete, successful activation ============================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
 
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     log_npm = root / "npm.log"
     poser_faux_npm(bin_dir, log_npm)
@@ -79,116 +79,116 @@ with tempfile.TemporaryDirectory() as tmp:
     poser_faux_systemctl(bin_dir, log_systemctl)
 
     r = appeler(root, bin_dir)
-    check("le hook reussit (rc=0)", r.returncode, 0)
+    check("the hook succeeds (rc=0)", r.returncode, 0)
     if r.returncode != 0:
-        failures.append(f"stderr du hook : {r.stderr!r}")
+        failures.append(f"hook stderr: {r.stderr!r}")
 
-    # --- L'armement : un lien, jamais un enable ---------------------------
+    # --- Arming: a link, never an enable ---------------------------
     lien = root / "etc" / "systemd" / "system" / "multi-user.target.wants" / "desk-plateforme.service"
-    check("le service est arme par un lien", os.path.islink(lien), True)
-    check("le lien pointe vers une unite qui existe",
+    check("the service is armed by a link", os.path.islink(lien), True)
+    check("the link points to a unit that exists",
           os.path.exists(os.path.realpath(lien)), True)
-    check("le lien pointe bien VERS l'unite posee par install",
+    check("the link does point TO the unit laid down by install",
           os.path.realpath(lien),
           os.path.realpath(root / "etc" / "systemd" / "system" / "desk-plateforme.service"))
 
-    # --- systemctl JAMAIS invoque sous un --root de test -------------------
-    check("aucun daemon-reload/start sous --root != /",
+    # --- systemctl NEVER invoked under a test --root -------------------
+    check("no daemon-reload/start under --root != /",
           log_systemctl.exists(), False)
 
-    # --- Le mot de passe ne transite QUE par stdin --------------------------
+    # --- The password ONLY travels through stdin --------------------------
     commandes_vues = [c["argv"] for c in lire_commandes(log_npm)]
     reponses = REPONSES
-    check("aucun mot de passe dans la ligne de commande",
+    check("no password on the command line",
           any("--password" in c or reponses["admin_password"] in " ".join(c)
               for c in commandes_vues), False)
 
-    # --- Il a bien ete recu, mais sur stdin -----------------------------
+    # --- It was indeed received, but on stdin -----------------------------
     entrees = lire_commandes(log_npm)
     user_call = next(c for c in entrees if "admin:utilisateur" in c["argv"])
-    check("le mot de passe arrive sur stdin de admin:utilisateur",
+    check("the password arrives on the stdin of admin:utilisateur",
           user_call["stdin"].strip(), reponses["admin_password"])
-    check("--email est passe en argv (lui n'est pas un secret)",
+    check("--email is passed in argv (it is not a secret)",
           "ada@exemple.test" in user_call["argv"], True)
 
-    # --- L'ordre : compte AVANT enrolement ----------------------------------
+    # --- The order: account BEFORE enrolment ----------------------------------
     ordre = [c["argv"] for c in entrees]
     idx_compte = next(i for i, c in enumerate(ordre) if "admin:utilisateur" in c)
     idx_agent = next(i for i, c in enumerate(ordre) if "admin:agent" in c)
-    check("le compte est cree AVANT l'enrolement de l'agent", idx_compte < idx_agent, True)
+    check("the account is created BEFORE the agent enrolment", idx_compte < idx_agent, True)
 
-    # --- admin:agent : mode ENROLEMENT, --vm est un NOM, --adresse posee ---
+    # --- admin:agent: ENROLMENT mode, --vm is a NAME, --adresse set ---
     appel_agent = next(c for c in entrees if "admin:agent" in c["argv"])
-    check("--vm est present", "--vm" in appel_agent["argv"], True)
-    check("--adresse est present", "--adresse" in appel_agent["argv"], True)
-    check("--roter n'est PAS employe (ce hook n'enrole qu'une fois)",
+    check("--vm is present", "--vm" in appel_agent["argv"], True)
+    check("--adresse is present", "--adresse" in appel_agent["argv"], True)
+    check("--roter is NOT used (this hook enrols only once)",
           "--roter" in appel_agent["argv"], False)
 
-    # --- TACHE 13 : la VM tout juste enrolee est ATTRIBUEE au compte cree --
-    # Trou trouve en production le 29 aout 2026 : sans cet appel,
-    # `vm.utilisateur_id` reste NULL et `GET /vm` rend `{"vms":[]}` pour
-    # l'utilisateur pourtant bien cree - voir le commentaire d'activate.py.
+    # --- TASK 13: the VM just enrolled is ASSIGNED to the created account --
+    # Hole found in production on 29 August 2026: without this call,
+    # `vm.utilisateur_id` stays NULL and `GET /vm` returns `{"vms":[]}` for
+    # the user nevertheless created - see the comment of activate.py.
     appel_attribuer = next((c for c in entrees if "admin:attribuer" in c["argv"]), None)
-    check("admin:attribuer est invoque apres l'enrolement (attribution de la VM)",
+    check("admin:attribuer is invoked after enrolment (VM assignment)",
           appel_attribuer is not None, True)
     if appel_attribuer is not None:
-        check("--email est passe a l'attribution (le compte tout juste cree)",
+        check("--email is passed to the assignment (the account just created)",
               "ada@exemple.test" in appel_attribuer["argv"], True)
-        check("--vm est passe a l'attribution, et c'est le vm_id rendu par "
-              "admin:agent (jamais le nom, jamais invente)",
+        check("--vm is passed to the assignment, and it is the vm_id returned by "
+              "admin:agent (never the name, never invented)",
               "vm-test-uuid" in appel_attribuer["argv"], True)
         idx_attribuer = ordre.index(appel_attribuer["argv"])
-        check("l'attribution est lancee APRES l'enrolement, jamais avant",
+        check("the assignment is launched AFTER enrolment, never before",
               idx_attribuer > idx_agent, True)
-        check("aucun secret dans l'appel d'attribution (email/vm ne le sont pas)",
+        check("no secret in the assignment call (email/vm are not secrets)",
               appel_attribuer["stdin"], "")
 
-    # --- L'environnement transmis a npm porte la config de desk.env --------
-    # 🔴 CORRECTION, RONDE 1 : la version precedente de ce controle regardait
-    # "cwd" sous une etiquette qui parlait de PLATEFORME_BASE_URL — il ne
-    # pouvait pas rougir, cwd est pose INCONDITIONNELLEMENT par lancer_npm(),
-    # que la fusion d'environnement soit correcte ou non. Le faux npm
-    # journalise desormais la valeur REELLEMENT recue par le processus fils
-    # (env_base_url, voir FAUX_NPM) ; on la compare a celle ecrite par
-    # poser_racine_installee() dans desk.env.
+    # --- The environment passed to npm carries the config of desk.env --------
+    # 🔴 FIX, ROUND 1: the previous version of this check looked at
+    # "cwd" under a label that talked about PLATEFORME_BASE_URL — it
+    # could not go red, cwd is set UNCONDITIONALLY by lancer_npm(),
+    # whether the environment merge is correct or not. The fake npm
+    # now logs the value REALLY received by the child process
+    # (env_base_url, see FAUX_NPM); we compare it with the one written by
+    # poser_racine_installee() into desk.env.
     expected_value = "/var/lib/nivuus-desk/plateforme.sqlite"
-    check("PLATEFORME_BASE_URL de desk.env atteint le processus npm (admin:utilisateur)",
+    check("PLATEFORME_BASE_URL from desk.env reaches the npm process (admin:utilisateur)",
           user_call.get("env_base_url"), expected_value)
-    check("PLATEFORME_BASE_URL de desk.env atteint le processus npm (admin:agent)",
+    check("PLATEFORME_BASE_URL from desk.env reaches the npm process (admin:agent)",
           appel_agent.get("env_base_url"), expected_value)
 
-    # --- AGENT_VM / AGENT_SECRET ecrits dans desk.env, APRES le contenu deja
-    # la ------------------------------------------------------------------
+    # --- AGENT_VM / AGENT_SECRET written into desk.env, AFTER the content already
+    # there ------------------------------------------------------------------
     env_final = lire_env(root / "etc" / "nivuus" / "desk.env")
-    check("AGENT_VM est le vm_id rendu par admin:agent (jamais le nom passe)",
+    check("AGENT_VM is the vm_id returned by admin:agent (never the name passed)",
           env_final.get("AGENT_VM"), "vm-test-uuid")
-    check("AGENT_SECRET est le secret rendu par admin:agent",
-          env_final.get("AGENT_SECRET"), "secret-de-test-0123456789abcdef")
-    check("le contenu deja la (pose par install) est toujours present",
+    check("AGENT_SECRET is the secret returned by admin:agent",
+          env_final.get("AGENT_SECRET"), "test-secret-0123456789abcdef")
+    check("the content already there (laid down by install) is still present",
           env_final.get("PLATEFORME_SECRET_JETON"), "x" * 64)
-    check("desk.env reste en mode 600 (il porte des secrets)",
+    check("desk.env stays in mode 600 (it carries secrets)",
           oct(os.stat(root / "etc" / "nivuus" / "desk.env").st_mode & 0o777), oct(0o600))
 
-    # --- Idempotence : un second appel ne rejoue NI le compte NI
-    # l'enrolement (AGENT_VM/AGENT_SECRET deja presents) ---------------------
-    # 🔴 vm.nom n'a AUCUNE contrainte d'unicite : sans la garde d'idempotence,
-    # ce second appel creerait une VM ORPHELINE de plus au lieu de refuser.
-    # C'est le controle qui la rend visible : zero nouvelle commande npm.
+    # --- Idempotence: a second call replays NEITHER the account NOR
+    # the enrolment (AGENT_VM/AGENT_SECRET already present) ---------------------
+    # 🔴 vm.nom has NO uniqueness constraint: without the idempotence guard,
+    # this second call would create one more ORPHAN VM instead of refusing.
+    # It is the check that makes it visible: zero new npm command.
     log_npm.unlink()
     r2 = appeler(root, bin_dir)
-    check("un second passage reussit aussi (idempotent)", r2.returncode, 0)
-    check("le lien reste un lien apres un second passage", os.path.islink(lien), True)
-    check("le second passage ne relance AUCUNE commande npm (deja active)",
+    check("a second pass also succeeds (idempotent)", r2.returncode, 0)
+    check("the link stays a link after a second pass", os.path.islink(lien), True)
+    check("the second pass relaunches NO npm command (already activated)",
           log_npm.exists(), False)
     env_apres_second_passage = lire_env(root / "etc" / "nivuus" / "desk.env")
-    check("AGENT_VM est inchange apres le second passage",
+    check("AGENT_VM is unchanged after the second pass",
           env_apres_second_passage.get("AGENT_VM"), "vm-test-uuid")
-    check("AGENT_SECRET est inchange apres le second passage",
-          env_apres_second_passage.get("AGENT_SECRET"), "secret-de-test-0123456789abcdef")
+    check("AGENT_SECRET is unchanged after the second pass",
+          env_apres_second_passage.get("AGENT_SECRET"), "test-secret-0123456789abcdef")
 
 
-# === Scénario 2 : desk.env n'existe pas encore (install n'a pas ete
-# complete) — refus propre, jamais une trace Python =========================
+# === Scenario 2: desk.env does not exist yet (install has not been
+# completed) — clean refusal, never a Python traceback =========================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     unite_dir = root / "etc" / "systemd" / "system"
@@ -197,31 +197,31 @@ with tempfile.TemporaryDirectory() as tmp:
         (RACINE / "hooks" / "assets" / "desk-plateforme.service").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
-    # Pas de plateforme/, pas de desk.env : install n'a jamais tourne sur
-    # cette racine.
-    bin_dir = root / "faux-bin"
+    # No plateforme/, no desk.env: install never ran on
+    # this root.
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
     r = appeler(root, bin_dir)
-    check("racine non installee : le hook refuse proprement (rc != 0)",
+    check("root not installed: the hook refuses cleanly (rc != 0)",
           r.returncode != 0, True)
-    check("le refus nomme le repertoire plateforme absent",
+    check("the refusal names the missing plateforme directory",
           "plateforme" in (r.stderr or ""), True)
-    check("aucune trace Python (Traceback) n'atteint l'operateur",
+    check("no Python traceback reaches the operator",
           "Traceback" in (r.stderr or ""), False)
-    # L'armement, lui, a quand meme du se faire : il precede la creation du
-    # compte dans l'ordre du hook.
+    # Arming, for its part, must still have happened: it precedes the account
+    # creation in the hook's order.
     lien = unite_dir / "multi-user.target.wants" / "desk-plateforme.service"
-    check("l'armement a quand meme eu lieu avant le refus", os.path.islink(lien), True)
+    check("arming still happened before the refusal", os.path.islink(lien), True)
 
 
-# === Scénario 2bis (CORRECTION, RONDE 1) : plateforme/ posee, desk.env
-# ABSENT — le cas precis que la revue a nomme : install partielle, ou un
-# operateur qui a supprime le fichier. Le hook doit REFUSER plutot que
-# recreer desk.env en silence — c'est ce refus qui empeche
-# add_env_variables() d'ecrire un fichier NEUF (fenetre ecriture-puis-
-# chmod), puisqu'il ne l'atteint jamais dans ce cas. ========================
+# === Scenario 2bis (FIX, ROUND 1): plateforme/ laid down, desk.env
+# ABSENT — the precise case the review named: partial install, or an
+# operator who deleted the file. The hook must REFUSE rather than
+# recreate desk.env silently — it is this refusal that prevents
+# add_env_variables() from writing a NEW file (write-then-chmod
+# window), since it never reaches it in this case. ========================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     unite_dir = root / "etc" / "systemd" / "system"
@@ -230,51 +230,51 @@ with tempfile.TemporaryDirectory() as tmp:
         (RACINE / "hooks" / "assets" / "desk-plateforme.service").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
-    # plateforme/ EST posee (install partiellement joue) ...
+    # plateforme/ IS laid down (install partially played) ...
     (root / "opt" / "nivuus" / "desk" / "plateforme").mkdir(parents=True)
-    # ... mais etc/nivuus/desk.env n'existe PAS.
+    # ... but etc/nivuus/desk.env does NOT exist.
     env_absent = root / "etc" / "nivuus" / "desk.env"
-    check("precondition du scenario : desk.env n'existe pas", env_absent.exists(), False)
+    check("scenario precondition: desk.env does not exist", env_absent.exists(), False)
 
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
     r = appeler(root, bin_dir)
-    check("desk.env absent (plateforme present) : refus propre (rc != 0)",
+    check("desk.env absent (plateforme present): clean refusal (rc != 0)",
           r.returncode != 0, True)
-    check("le refus nomme desk.env, pas seulement plateforme",
+    check("the refusal names desk.env, not only plateforme",
           "desk.env" in (r.stderr or ""), True)
-    check("aucune trace Python", "Traceback" in (r.stderr or ""), False)
-    check("desk.env n'a PAS ete cree a sa place (aucune ecriture en silence)",
+    check("no Python traceback", "Traceback" in (r.stderr or ""), False)
+    check("desk.env was NOT created in its place (no silent write)",
           env_absent.exists(), False)
-    check("aucune commande npm n'a ete lancee (le refus precede tout appel)",
+    check("no npm command was launched (the refusal precedes every call)",
           (root / "npm.log").exists(), False)
-    # L'armement, lui, precede ce refus : il a quand meme du se faire.
+    # Arming, for its part, precedes this refusal: it must still have happened.
     lien = unite_dir / "multi-user.target.wants" / "desk-plateforme.service"
-    check("l'armement a quand meme eu lieu avant ce refus aussi",
+    check("arming still happened before this refusal too",
           os.path.islink(lien), True)
 
 
-# === Scénario 3 : reponses manquantes — refus propre =======================
+# === Scenario 3: missing answers — clean refusal =======================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
     r = appeler(root, bin_dir, answers={"auth_mode": "motdepasse"})
-    check("sans admin_email/admin_password : refus propre (rc != 0)",
+    check("without admin_email/admin_password: clean refusal (rc != 0)",
           r.returncode != 0, True)
-    check("aucune trace Python", "Traceback" in (r.stderr or ""), False)
+    check("no Python traceback", "Traceback" in (r.stderr or ""), False)
 
 
-# === Scénario 4 : entree stdin malformee — refus propre, jamais une trace ==
+# === Scenario 4: malformed stdin input — clean refusal, never a traceback ==
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
@@ -282,26 +282,26 @@ with tempfile.TemporaryDirectory() as tmp:
     env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
     r = subprocess.run([sys.executable, str(HOOK), "--phase", "activate",
                          "--root", str(root)],
-                        input="ceci n'est pas du JSON", env=env,
+                        input="this is not JSON", env=env,
                         capture_output=True, text=True)
-    check("stdin illisible : refus propre (rc != 0)", r.returncode != 0, True)
-    check("aucune trace Python sur une entree malformee",
+    check("unreadable stdin: clean refusal (rc != 0)", r.returncode != 0, True)
+    check("no Python traceback on a malformed input",
           "Traceback" in (r.stderr or ""), False)
 
 
-# === La ROUGE — Step 5 : un lien vers une unite absente doit LEVER =========
-# Racine SANS l'unite systemd (install n'a pas ete jusqu'au bout, ou un
-# disque corrompu) : armer_unite() doit lever plutot que poser un lien mort.
+# === The RED — Step 5: a link to a missing unit must RAISE =========
+# Root WITHOUT the systemd unit (install did not go all the way, or a
+# corrupted disk): armer_unite() must raise rather than lay a dead link.
 
-# --- Bras 1 : la fonction elle-meme, appelee directement -------------------
+# --- Arm 1: the function itself, called directly -------------------
 import importlib.util  # noqa: E402
 
-# 🔴 TÂCHE 6 : `activate.py` fait désormais `from vm import ...`, et `vm.py`
-# vit à côté de lui dans `hooks/` — exactement comme `commun.py`. Un import
-# par CHEMIN (`spec_from_file_location`) ne passe PAS par le mécanisme qui
-# ajoute automatiquement le répertoire du script à `sys.path` (ça, c'est
-# l'interprète qui le fait pour un script LANCÉ, pas pour un module chargé
-# ainsi) : sans cette ligne, `exec_module` lève `ModuleNotFoundError: vm`.
+# 🔴 TASK 6: `activate.py` now does `from vm import ...`, and `vm.py`
+# lives next to it in `hooks/` — exactly like `commun.py`. An import
+# by PATH (`spec_from_file_location`) does NOT go through the mechanism that
+# automatically adds the script's directory to `sys.path` (that is
+# done by the interpreter for a LAUNCHED script, not for a module loaded
+# this way): without this line, `exec_module` raises `ModuleNotFoundError: vm`.
 sys.path.insert(0, str(HOOK.parent))
 
 spec = importlib.util.spec_from_file_location("desk_activate", HOOK)
@@ -311,146 +311,146 @@ spec.loader.exec_module(activate)
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     (root / "etc" / "systemd" / "system").mkdir(parents=True)
-    # L'unite N'EST PAS posee : c'est le cas que la tache doit rougir.
+    # The unit is NOT laid down: it is the case the task must turn red.
     a_leve = False
     try:
         activate.armer_unite(root, "desk-plateforme.service")
     except FileNotFoundError:
         a_leve = True
-    check("armer_unite() leve sur une unite absente (jamais un lien mort)",
+    check("armer_unite() raises on a missing unit (never a dead link)",
           a_leve, True)
     lien_mort = (root / "etc" / "systemd" / "system" / "multi-user.target.wants"
                  / "desk-plateforme.service")
-    check("aucun lien mort n'a ete cree", os.path.lexists(lien_mort), False)
+    check("no dead link was created", os.path.lexists(lien_mort), False)
 
-# --- Bras 2 : le hook complet, en sous-processus, meme scenario ------------
+# --- Arm 2: the complete hook, as a subprocess, same scenario ------------
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     (root / "etc" / "systemd" / "system").mkdir(parents=True)
     (root / "opt" / "nivuus" / "desk" / "plateforme").mkdir(parents=True)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
     r = appeler(root, bin_dir)
-    check("ROUGE : le hook complet echoue (rc != 0) sur unite absente",
+    check("RED: the complete hook fails (rc != 0) on a missing unit",
           r.returncode != 0, True)
-    check("ROUGE : le refus nomme l'unite absente",
+    check("RED: the refusal names the missing unit",
           "desk-plateforme.service" in (r.stderr or ""), True)
     lien_mort = (root / "etc" / "systemd" / "system" / "multi-user.target.wants"
                  / "desk-plateforme.service")
-    check("ROUGE : aucun lien mort n'est laisse derriere", os.path.lexists(lien_mort), False)
-    # Preuve que ce chemin d'echec precede TOUT le reste : aucune commande
-    # npm n'a jamais ete lancee.
-    check("ROUGE : aucune commande npm n'a ete lancee",
+    check("RED: no dead link is left behind", os.path.lexists(lien_mort), False)
+    # Proof that this failure path precedes EVERYTHING else: no npm
+    # command was ever launched.
+    check("RED: no npm command was launched",
           (root / "npm.log").exists(), False)
 
 
-# === Tâche 6 : le câblage de hooks/vm.py dans main() — B éprouve
-# poser_projfs (via l'absence du contrat inter-packages), C éprouve
-# poser_vb_audio (via son armement sans payload). Leur comportement PROPRE
-# (redemarrage_requis, l'exécuteur factice, le contrat de winrm_exec.py) est
-# déjà éprouvé en détail par tests/test_desk_vm.py ; ici, seul le CÂBLAGE
-# dans main() compte. ========================================================
+# === Task 6: the wiring of hooks/vm.py into main() — B exercises
+# poser_projfs (through the absence of the inter-package contract), C exercises
+# poser_vb_audio (through arming it without a payload). Their OWN behaviour
+# (redemarrage_requis, the fake executor, the winrm_exec.py contract) is
+# already exercised in detail by tests/test_desk_vm.py; here, only the WIRING
+# into main() counts. ========================================================
 
-def _racine_pour_tache6(tmp):
-    """Racine installée + faux npm, communs aux deux scénarios ci-dessous."""
+def _root_for_task6(tmp):
+    """Installed root + fake npm, shared by the two scenarios below."""
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
     return root, bin_dir
 
 
-def _check_refus_propre(prefix, r, doit_contenir, root):
-    """Un refus propre : code de sortie non nul, la raison nommée dans
-    stderr, aucune trace Python, et aucune commande npm lancée — le refus
-    doit précéder toute tentative de création de compte ou d'enrôlement."""
-    check(f"{prefix} : refus propre (rc != 0)", r.returncode != 0, True)
-    check(f"{prefix} : le refus nomme {doit_contenir!r}",
+def _check_clean_refusal(prefix, r, doit_contenir, root):
+    """A clean refusal: non-zero exit code, the reason named in
+    stderr, no Python traceback, and no npm command launched — the refusal
+    must precede any attempt at account creation or enrolment."""
+    check(f"{prefix}: clean refusal (rc != 0)", r.returncode != 0, True)
+    check(f"{prefix}: the refusal names {doit_contenir!r}",
           doit_contenir in (r.stderr or ""), True)
-    check(f"{prefix} : aucune trace Python", "Traceback" in (r.stderr or ""), False)
-    check(f"{prefix} : aucun npm lance", (root / "npm.log").exists(), False)
+    check(f"{prefix}: no Python traceback", "Traceback" in (r.stderr or ""), False)
+    check(f"{prefix}: no npm launched", (root / "npm.log").exists(), False)
 
 
-# --- B : `console` absent (aucun winrm_exec.py sous NIVUUS_PACKAGES_DIR) —
-# refus propre du hook COMPLET, pas seulement du module hooks/vm.py isolé --
+# --- B: `console` absent (no winrm_exec.py under NIVUUS_PACKAGES_DIR) —
+# clean refusal of the COMPLETE hook, not only of the isolated hooks/vm.py module --
 with tempfile.TemporaryDirectory() as tmp:
-    root, bin_dir = _racine_pour_tache6(tmp)
+    root, bin_dir = _root_for_task6(tmp)
     r = appeler(root, bin_dir, packages_dir=False)
-    chemin_attendu = str(root / "console-absent-ici" / "console" / "guest" / "winrm_exec.py")
-    _check_refus_propre("console absent", r, chemin_attendu, root)
-    # L'armement du service, lui, précède la résolution WinRM dans main() :
-    # il a quand même dû se faire avant ce refus.
+    chemin_attendu = str(root / "console-absent-here" / "console" / "guest" / "winrm_exec.py")
+    _check_clean_refusal("console absent", r, chemin_attendu, root)
+    # Arming the service precedes the WinRM resolution in main():
+    # it must still have happened before this refusal.
     lien = (root / "etc" / "systemd" / "system" / "multi-user.target.wants"
             / "desk-plateforme.service")
-    check("console absent : l'armement a quand meme eu lieu", os.path.islink(lien), True)
+    check("console absent: arming still happened", os.path.islink(lien), True)
 
 
-# --- B-bis : LA PORTE DE LA VM WINDOWS, MIGRÉE DEPUIS `resolve` -----------
-# 🔴 CORRECTION DE LA CRITIQUE DE LA REVUE FINALE DE BRANCHE (30 août 2026).
-# `hooks/resolve.py` portait `if not hw.get("vm_windows"): refuser(...)` :
-# une clé qu'AUCUN producteur du moteur ne pose, éprouvée à une phase où la
-# VM ne peut pas encore exister. La porte vit désormais ICI, et elle est une
-# MESURE — un échange WinRM réel. Ce scénario est sa ROUGE : `console` EST
-# installé (le contrat inter-packages se résout), mais le guest ne répond
-# pas. Il se distingue du scénario B ci-dessus, où c'est `console` qui
-# manque : deux causes différentes, deux messages différents.
+# --- B-bis: THE WINDOWS VM GATE, MOVED FROM `resolve` -----------
+# 🔴 FIX OF THE CRITICAL FINDING OF THE FINAL BRANCH REVIEW (30 August 2026).
+# `hooks/resolve.py` carried `if not hw.get("vm_windows"): refuser(...)`:
+# a key that NO producer of the engine sets, tested at a phase where the
+# VM cannot exist yet. The gate now lives HERE, and it is a
+# MEASUREMENT — a real WinRM exchange. This scenario is its RED: `console` IS
+# installed (the inter-package contract resolves), but the guest does not
+# answer. It differs from scenario B above, where it is `console` that
+# is missing: two different causes, two different messages.
 with tempfile.TemporaryDirectory() as tmp:
-    root, bin_dir = _racine_pour_tache6(tmp)
-    packages_dir = root / "faux-packages-dir"
+    root, bin_dir = _root_for_task6(tmp)
+    packages_dir = root / "fake-packages-dir"
     guest = packages_dir / "console" / "guest"
     guest.mkdir(parents=True)
     (guest / "fetch_payload.py").write_text("", encoding="utf-8")
     (guest / "winrm_exec.py").write_text(
         "#!/usr/bin/env python3\n"
         "import sys\n"
-        # Le texte DIT qu'il est factice : voir la meme precaution dans
-        # tests/test_desk_vm.py, ou un message imitant une vraie panne
-        # reseau avait trompe une relectrice.
-        "sys.stderr.write('FAUX winrm_exec.py de test : echec simule, "
-        "aucune VM contactee\\n')\n"
+        # The text SAYS it is fake: see the same precaution in
+        # tests/test_desk_vm.py, where a message imitating a real network
+        # failure had misled a reviewer.
+        "sys.stderr.write('FAKE test winrm_exec.py: simulated failure, "
+        "no VM contacted\\n')\n"
         "sys.exit(1)\n", encoding="utf-8")
     (guest / "winrm_exec.py").chmod(0o755)
 
     r = appeler(root, bin_dir, packages_dir=packages_dir)
-    _check_refus_propre("VM injoignable", r, "echec simule", root)
-    check("VM injoignable : le refus nomme la VM Windows, pas ProjFS",
-          "la VM Windows ne repond pas" in (r.stderr or ""), True)
-    check("VM injoignable : le refus dit que console la provisionne",
-          "console la provisionne" in (r.stderr or ""), True)
-    check("VM injoignable : le refus dit que ce n'est PAS le role de resolve",
-          "jamais dans resolve" in (r.stderr or ""), True)
+    _check_clean_refusal("VM unreachable", r, "simulated failure", root)
+    check("VM unreachable: the refusal names the Windows VM, not ProjFS",
+          "the Windows VM does not answer" in (r.stderr or ""), True)
+    check("VM unreachable: the refusal says console provisions it",
+          "console provisions it" in (r.stderr or ""), True)
+    check("VM unreachable: the refusal says it is NOT resolve's role",
+          "never in resolve" in (r.stderr or ""), True)
 
 
-# --- C : VB-Audio ARMÉ (vb_audio=true), aucun payload — refus propre du
-# hook complet. ⚠️ Depuis la ronde de correction 1, `hooks/resolve.py`
-# refuse déjà ce cas PLUS TÔT, avant l'installation (voir
-# tests/test_desk_resolve.py) : ce scénario-ci reste utile en DÉFENSE EN
-# PROFONDEUR — il éprouve qu'`activate.py`, appelé seul (comme le ferait un
-# rejeu direct du moteur, sans repasser par resolve), ne prétend jamais
-# avoir installé VB-Audio quand aucun payload n'existe. ---------------------
+# --- C: VB-Audio ARMED (vb_audio=true), no payload — clean refusal of the
+# complete hook. ⚠️ Since correction round 1, `hooks/resolve.py`
+# already refuses this case EARLIER, before the installation (see
+# tests/test_desk_resolve.py): this scenario stays useful as DEFENCE IN
+# DEPTH — it exercises that `activate.py`, called alone (as a direct
+# replay by the engine would do, without going through resolve again), never claims
+# to have installed VB-Audio when no payload exists. ---------------------
 with tempfile.TemporaryDirectory() as tmp:
-    root, bin_dir = _racine_pour_tache6(tmp)
-    packages_dir, log_winrm = root / "faux-packages-dir", root / "winrm.log"
-    poser_faux_winrm_exec(packages_dir, log_winrm)  # ProjFS reussit (sortie vide)
+    root, bin_dir = _root_for_task6(tmp)
+    packages_dir, log_winrm = root / "fake-packages-dir", root / "winrm.log"
+    poser_faux_winrm_exec(packages_dir, log_winrm)  # ProjFS succeeds (empty output)
     r = appeler(root, bin_dir, answers=dict(REPONSES, vb_audio=True),
                 packages_dir=packages_dir)
-    _check_refus_propre("vb_audio arme sans payload", r, "VB-Audio", root)
-    # ProjFS précède : vb_audio lève avant même d'atteindre le faux
-    # winrm_exec.py, donc une seule commande (celle de ProjFS) a été vue.
-    check("ProjFS pose avant le refus vb_audio (leve avant winrm_exec.py)",
+    _check_clean_refusal("vb_audio armed without payload", r, "VB-Audio", root)
+    # ProjFS comes first: vb_audio raises before even reaching the fake
+    # winrm_exec.py, so a single command (ProjFS's) was seen.
+    check("ProjFS set up before the vb_audio refusal (raises before winrm_exec.py)",
           len(lire_commandes(log_winrm)), 1)
 
 
-# === Scenario 5 (TACHE 13) : l'attribution est REFUSEE (VM deja attribuee
-# a un autre compte) - le hook doit echouer proprement, nommer la cause, et
-# ne PAS ecrire AGENT_VM/AGENT_SECRET comme si de rien n'etait. ============
+# === Scenario 5 (TASK 13): the assignment is REFUSED (VM already assigned
+# to another account) - the hook must fail cleanly, name the cause, and
+# NOT write AGENT_VM/AGENT_SECRET as if nothing happened. ============
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
@@ -460,13 +460,13 @@ with tempfile.TemporaryDirectory() as tmp:
     finally:
         del os.environ["FAUX_NPM_ATTRIBUER_ECHEC"]
 
-    check("attribution refusee : le hook echoue proprement (rc != 0)",
+    check("assignment refused: the hook fails cleanly (rc != 0)",
           r.returncode != 0, True)
-    check("aucune trace Python", "Traceback" in (r.stderr or ""), False)
-    check("le refus nomme l'attribution",
-          "attribution" in (r.stderr or ""), True)
+    check("no Python traceback", "Traceback" in (r.stderr or ""), False)
+    check("the refusal names the assignment",
+          "assignment" in (r.stderr or ""), True)
     entrees = lire_commandes(root / "npm.log")
-    check("compte ET enrolement ont bien tourne avant le refus d'attribution",
+    check("account AND enrolment did run before the assignment refusal",
           any("admin:agent" in c["argv"] for c in entrees), True)
 
 
@@ -475,4 +475,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests du hook activate passés")
+print("OK - activate hook tests passed")

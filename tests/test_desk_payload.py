@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""Tests de la tâche 7 : déposer `agent.exe` là où `console` va le chercher.
+"""Tests of task 7: dropping `agent.exe` where `console` looks for it.
 
-`console/guest/fetch_payload.py:61` définit
+`console/guest/fetch_payload.py:61` defines
 `PACKAGED_AGENT_EXE = Path(__file__).resolve().parent / "payload" / "agent"
-/ "agent.exe"` — un chemin FIXE, vendorisé dans le dépôt `console` lui-même
-(voir `console/guest/payload/agent/README.md`), retrouvé sous
-`<NIVUUS_PACKAGES_DIR>/console/` (même convention que
-`hooks/vm.py::chemin_winrm_exec`). C'est cette cible, et NULLE PART
-ailleurs, qu'`activate.py::chemin_agent_console()`/`deposer_agent_console()`
-visent. Ce n'est PAS `<drivers_dir>/agent/agent.exe` (la racine de
-construction de l'ISO) : ce chemin dépend de la réponse de wizard
-`guest_workdir` DE `console`, que ce hook ne reçoit jamais (voir le
-docstring de tête d'`activate.py` pour le détail de cette élimination).
+/ "agent.exe"` — a FIXED path, vendored in the `console` repository itself
+(see `console/guest/payload/agent/README.md`), found under
+`<NIVUUS_PACKAGES_DIR>/console/` (same convention as
+`hooks/vm.py::chemin_winrm_exec`). It is this target, and NOWHERE
+else, that `activate.py::chemin_agent_console()`/`deposer_agent_console()`
+aim at. It is NOT `<drivers_dir>/agent/agent.exe` (the build root
+of the ISO): that path depends on the wizard answer
+`guest_workdir` OF `console`, which this hook never receives (see the
+head docstring of `activate.py` for the detail of this elimination).
 
-🔴 AUCUNE COMPILATION RÉELLE ICI. Les tests unitaires injectent un
-`construire` Python factice directement dans `deposer_agent_console()` ;
-le test de bout en bout (sous-processus) emploie `DESK_BUILD_AGENT_SCRIPT`
-(posé par `desk_activate_fixtures.appeler()`) pour remplacer
-`scripts/build-agent-croise.sh` par un script qui ne compile rien — jamais
-le vrai script, qui prendrait ~40 s et exigerait une boîte à outils croisée.
+🔴 NO REAL BUILD HERE. The unit tests inject a fake Python
+`construire` directly into `deposer_agent_console()`;
+the end-to-end test (subprocess) uses `DESK_BUILD_AGENT_SCRIPT`
+(set by `desk_activate_fixtures.appeler()`) to replace
+`scripts/build-agent-croise.sh` with a script that builds nothing — never
+the real script, which would take ~40 s and require a cross toolchain.
 
 Run: python3 tests/test_desk_payload.py
 """
@@ -45,11 +45,11 @@ def check(label, got, want):
         failures.append(f"{label}: got {got!r}, want {want!r}")
 
 
-# `hooks/activate.py` fait `from vm import ...` / `from env_file import
-# ...` / `from administration import ...` : un import par CHEMIN
-# (spec_from_file_location) ne passe pas par le mécanisme qui ajoute
-# automatiquement le répertoire du script à sys.path (précédent de
-# test_desk_activate.py, tâche 6).
+# `hooks/activate.py` does `from vm import ...` / `from env_file import
+# ...` / `from administration import ...`: an import by PATH
+# (spec_from_file_location) does not go through the mechanism that
+# automatically adds the script's directory to sys.path (precedent of
+# test_desk_activate.py, task 6).
 sys.path.insert(0, str(HOOK.parent))
 spec = importlib.util.spec_from_file_location("desk_activate_payload", HOOK)
 activate = importlib.util.module_from_spec(spec)
@@ -57,10 +57,10 @@ spec.loader.exec_module(activate)
 
 
 class _EnvTemporaire:
-    """Pose une variable d'environnement pour la durée du bloc `with`, la
-    restaure exactement à sa valeur (ou son absence) d'avant. Évite de
-    polluer les tests suivants avec `NIVUUS_PACKAGES_DIR` d'un scénario
-    précédent."""
+    """Sets an environment variable for the duration of the `with` block, and
+    restores it exactly to its previous value (or absence). Avoids
+    polluting the following tests with the `NIVUUS_PACKAGES_DIR` of a previous
+    scenario."""
 
     def __init__(self, **values):
         self.values = values
@@ -80,7 +80,7 @@ class _EnvTemporaire:
                 os.environ[cle] = ancienne
 
 
-# === chemin_agent_console() : résolution, le nom et le sous-répertoire ====
+# === chemin_agent_console(): resolution, the name and the subdirectory ====
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     packages_dir = root / "packages"
@@ -90,18 +90,18 @@ with tempfile.TemporaryDirectory() as tmp:
     with _EnvTemporaire(NIVUUS_PACKAGES_DIR=str(packages_dir)):
         cible = activate.chemin_agent_console()
 
-    check("nom du fichier resolu", cible.name, "agent.exe")
-    check("sous-repertoire resolu (contrat REQUIRED_BINARIES)", cible.parent.name, "agent")
-    check("chemin complet resolu",
+    check("resolved file name", cible.name, "agent.exe")
+    check("resolved subdirectory (REQUIRED_BINARIES contract)", cible.parent.name, "agent")
+    check("resolved full path",
           cible,
           packages_dir / "console" / "guest" / "payload" / "agent" / "agent.exe")
 
 
-# === ROUGE du contrat inter-packages : console absent (fetch_payload.py
-# absent) -> chemin_agent_console() LÈVE, jamais une invention de chemin ===
+# === RED of the inter-package contract: console absent (fetch_payload.py
+# absent) -> chemin_agent_console() RAISES, never an invented path ===
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
-    packages_dir = root / "packages-sans-console"
+    packages_dir = root / "packages-without-console"
 
     with _EnvTemporaire(NIVUUS_PACKAGES_DIR=str(packages_dir)):
         a_leve = False
@@ -111,11 +111,11 @@ with tempfile.TemporaryDirectory() as tmp:
             a_leve = True
             message = str(exc)
 
-    check("chemin_agent_console() leve si fetch_payload.py absent", a_leve, True)
-    check("le message nomme fetch_payload.py", "fetch_payload.py" in message, True)
+    check("chemin_agent_console() raises if fetch_payload.py is absent", a_leve, True)
+    check("the message names fetch_payload.py", "fetch_payload.py" in message, True)
 
 
-# === deposer_agent_console() : le fichier depose EST agent.exe/agent/ =====
+# === deposer_agent_console(): the dropped file IS agent.exe/agent/ =====
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     packages_dir = root / "packages"
@@ -127,23 +127,23 @@ with tempfile.TemporaryDirectory() as tmp:
     def faux_construire(destination):
         appels.append(destination)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(b"faux-binaire-de-test")
+        destination.write_bytes(b"fake-test-binary")
 
     with _EnvTemporaire(NIVUUS_PACKAGES_DIR=str(packages_dir)):
         cible = activate.deposer_agent_console(construire=faux_construire)
 
-    check("un seul appel a construire", len(appels), 1)
-    check("le nom du fichier depose est agent.exe (contrat REQUIRED_BINARIES)",
+    check("a single call to construire", len(appels), 1)
+    check("the dropped file name is agent.exe (REQUIRED_BINARIES contract)",
           cible.name, "agent.exe")
-    check("le sous-repertoire est bien 'agent'", cible.parent.name, "agent")
-    check("le fichier existe reellement sur le disque", cible.is_file(), True)
-    check("le contenu est celui depose par construire()",
-          cible.read_bytes(), b"faux-binaire-de-test")
+    check("the subdirectory is indeed 'agent'", cible.parent.name, "agent")
+    check("the file really exists on disk", cible.is_file(), True)
+    check("the content is the one dropped by construire()",
+          cible.read_bytes(), b"fake-test-binary")
 
 
-# === ROUGE : construire() qui ne depose rien -> RuntimeError, jamais une
-# reussite silencieuse ("un controle qu'on n'a jamais vu rouge n'est pas
-# un controle") ============================================================
+# === RED: a construire() that drops nothing -> RuntimeError, never a
+# silent success ("a check never seen red is not
+# a check") ============================================================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     packages_dir = root / "packages"
@@ -151,7 +151,7 @@ with tempfile.TemporaryDirectory() as tmp:
     poser_faux_fetch_payload(packages_dir)
 
     def construire_muet(_destination):
-        pass  # ne cree jamais le fichier : simule un script silencieusement no-op
+        pass  # never creates the file: simulates a silently no-op script
 
     with _EnvTemporaire(NIVUUS_PACKAGES_DIR=str(packages_dir)):
         a_leve = False
@@ -160,20 +160,20 @@ with tempfile.TemporaryDirectory() as tmp:
         except RuntimeError:
             a_leve = True
 
-    check("deposer_agent_console() leve si construire() n'a rien depose", a_leve, True)
+    check("deposer_agent_console() raises if construire() dropped nothing", a_leve, True)
 
 
-# === construire_agent_reel() : le VRAI sous-processus, mais un script
-# FACTICE (DESK_BUILD_AGENT_SCRIPT) — jamais build-agent-croise.sh reel ====
+# === construire_agent_reel(): the REAL subprocess, but a FAKE
+# script (DESK_BUILD_AGENT_SCRIPT) — never the real build-agent-croise.sh ====
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
-    script = root / "faux-build.py"
+    script = root / "fake-build.py"
     script.write_text(
         "#!/usr/bin/env python3\n"
         "import pathlib, sys\n"
         "d = pathlib.Path(sys.argv[1])\n"
         "d.mkdir(parents=True, exist_ok=True)\n"
-        "(d / 'agent.exe').write_bytes(b'faux-pe32-de-test')\n",
+        "(d / 'agent.exe').write_bytes(b'fake-test-pe32')\n",
         encoding="utf-8")
     script.chmod(0o755)
 
@@ -181,17 +181,17 @@ with tempfile.TemporaryDirectory() as tmp:
         cible = root / "cible" / "agent" / "agent.exe"
         activate.construire_agent_reel(cible)
 
-    check("construire_agent_reel() invoque le script factice et depose le fichier",
+    check("construire_agent_reel() invokes the fake script and drops the file",
           cible.is_file(), True)
-    check("le contenu vient bien du script factice",
-          cible.read_bytes(), b"faux-pe32-de-test")
+    check("the content does come from the fake script",
+          cible.read_bytes(), b"fake-test-pe32")
 
-# --- ROUGE : le script echoue (code non nul) -> RuntimeError, portant sa
-# sortie -----------------------------------------------------------------
+# --- RED: the script fails (non-zero code) -> RuntimeError, carrying its
+# output -----------------------------------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
-    script = root / "faux-build-echoue.sh"
-    script.write_text("#!/bin/sh\necho 'erreur simulee de build' >&2\nexit 1\n",
+    script = root / "fake-build-fails.sh"
+    script.write_text("#!/bin/sh\necho 'simulated build error' >&2\nexit 1\n",
                        encoding="utf-8")
     script.chmod(0o755)
 
@@ -203,55 +203,55 @@ with tempfile.TemporaryDirectory() as tmp:
             a_leve = True
             detail = str(exc)
 
-    check("construire_agent_reel() leve si le script echoue", a_leve, True)
-    check("le message nomme l'erreur du script", "erreur simulee de build" in detail, True)
+    check("construire_agent_reel() raises if the script fails", a_leve, True)
+    check("the message names the script's error", "simulated build error" in detail, True)
 
 
-# === Le hook COMPLET, en sous-processus : console PARTIELLEMENT present
-# (winrm_exec.py present, fetch_payload.py absent) -> refus propre, APRES
-# que ProjFS/VB-Audio (tache 6) aient reussi ================================
+# === The COMPLETE hook, as a subprocess: console PARTIALLY present
+# (winrm_exec.py present, fetch_payload.py absent) -> clean refusal, AFTER
+# ProjFS/VB-Audio (task 6) succeeded ================================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
-    packages_dir = root / "packages-incomplets"
-    poser_faux_winrm_exec(packages_dir, root / "winrm.log")  # console PARTIEL
+    packages_dir = root / "incomplete-packages"
+    poser_faux_winrm_exec(packages_dir, root / "winrm.log")  # PARTIAL console
 
     r = appeler(root, bin_dir, packages_dir=packages_dir)
-    check("hook complet: refus propre si fetch_payload.py absent (rc != 0)",
+    check("complete hook: clean refusal if fetch_payload.py is absent (rc != 0)",
           r.returncode != 0, True)
-    check("le refus nomme fetch_payload.py",
+    check("the refusal names fetch_payload.py",
           "fetch_payload.py" in (r.stderr or ""), True)
-    check("aucune trace Python (Traceback) n'atteint l'operateur",
+    check("no Python traceback reaches the operator",
           "Traceback" in (r.stderr or ""), False)
-    check("aucune commande npm lancee (le refus precede la creation du compte)",
+    check("no npm command launched (the refusal precedes the account creation)",
           (root / "npm.log").exists(), False)
-    # ProjFS a quand meme du reussir avant ce refus (un seul appel, le
-    # sien) : la preuve que l'ordre place bien le depot APRES la tache 6.
-    check("ProjFS a quand meme tourne avant le refus (chemin WinRM present)",
+    # ProjFS must still have succeeded before this refusal (a single call, its
+    # own): the proof that the order does put the drop AFTER task 6.
+    check("ProjFS still ran before the refusal (WinRM path present)",
           (root / "winrm.log").exists(), True)
 
 
-# === Le hook COMPLET, en sous-processus : succes de bout en bout, avec le
-# script de build FACTICE pose par defaut par appeler() =====================
+# === The COMPLETE hook, as a subprocess: end-to-end success, with the
+# FAKE build script set by default by appeler() =====================
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     poser_racine_installee(root)
-    bin_dir = root / "faux-bin"
+    bin_dir = root / "fake-bin"
     bin_dir.mkdir()
     poser_faux_npm(bin_dir, root / "npm.log")
 
     r = appeler(root, bin_dir)
-    check("hook complet: succes de bout en bout (rc == 0)", r.returncode, 0)
+    check("complete hook: end-to-end success (rc == 0)", r.returncode, 0)
     if r.returncode != 0:
-        failures.append(f"stderr du hook : {r.stderr!r}")
-    packages_dir_defaut = root / "faux-packages-dir"
+        failures.append(f"hook stderr: {r.stderr!r}")
+    packages_dir_defaut = root / "fake-packages-dir"
     cible = (packages_dir_defaut / "console" / "guest" / "payload" / "agent"
              / "agent.exe")
-    check("agent.exe est bien depose au chemin attendu", cible.is_file(), True)
+    check("agent.exe is indeed dropped at the expected path", cible.is_file(), True)
 
 
 if failures:
@@ -259,4 +259,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests du depot de agent.exe (tache 7) passes")
+print("OK - agent.exe drop tests (task 7) passed")

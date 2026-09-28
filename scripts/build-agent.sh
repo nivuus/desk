@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Synchronise puis compile l'agent sur la VM Windows.
+# Synchronises then builds the agent on the Windows VM.
 
 # ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ───────────────────
 . "$(dirname "$0")/voie-morte.sh"
-voie_morte "synchronisait les sources Rust vers C:\\dev via /media/vm, puis les compilait SUR la VM" \
+voie_morte "synchronised the Rust sources to C:\\dev through /media/vm, then built them ON the VM" \
 "     scripts/build-agent-croise.sh <destination>
-       bâtit agent.exe en croisé (mingw, x86_64-pc-windows-gnu) SUR L'HÔTE,
-       sans la VM. Le déposer ensuite sur l'invité par un serveur HTTP local
-       et Invoke-WebRequest, en COMPARANT LES DEUX sha256 — l'idiome est dans
+       cross-builds agent.exe (mingw, x86_64-pc-windows-gnu) ON THE HOST,
+       without the VM. Then drop it on the guest through a local HTTP server
+       and Invoke-WebRequest, COMPARING THE TWO sha256 — the idiom is in
        docs/superpowers/plans/journaux-lot32t/instrument/fenetre-e1.sh."
 # ─── Below, the original body, kept as a historical record. ──────
 
@@ -29,11 +29,11 @@ MIN_SHELL_MB=4096
 CURRENT_SHELL_MB="$(node "$ROOT/scripts/winrm.js" \
     '(Get-Item WSMan:\localhost\Shell\MaxMemoryPerShellMB).Value' 2>/dev/null | tr -dc '0-9')"
 if ! [[ "$CURRENT_SHELL_MB" =~ ^[0-9]+$ ]] || [ "$CURRENT_SHELL_MB" -lt "$MIN_SHELL_MB" ]; then
-    echo "quota WinRM MaxMemoryPerShellMB insuffisant (${CURRENT_SHELL_MB:-inconnu} Mo) : relèvement à ${MIN_SHELL_MB} Mo" >&2
+    echo "WinRM MaxMemoryPerShellMB quota insufficient (${CURRENT_SHELL_MB:-unknown} MB): raising to ${MIN_SHELL_MB} MB" >&2
     node "$ROOT/scripts/winrm.js" \
         "Set-Item -Path WSMan:\\localhost\\Shell\\MaxMemoryPerShellMB -Value $MIN_SHELL_MB" >/dev/null
 else
-    echo "quota WinRM MaxMemoryPerShellMB déjà suffisant (${CURRENT_SHELL_MB} Mo)" >&2
+    echo "WinRM MaxMemoryPerShellMB quota already sufficient (${CURRENT_SHELL_MB} MB)" >&2
 fi
 
 # `release` by default: the milestone 1 measurements (throughput ~30 fps, median

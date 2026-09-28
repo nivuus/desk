@@ -36,26 +36,27 @@
 
 voie_morte() {
     local faisait="$1" successeur="$2"
+    local rapport="docs/superpowers/plans/2026-09-05-lot3-campagne-vm-resultats-partiels.md"  # policy: allow-fr - real file name
     cat >&2 <<FIN
-🔴 VOIE MORTE : $(basename "${0}")
+🔴 DEAD PATH: $(basename "${0}")
 
-  Ce script $(printf '%s' "${faisait}").
+  This script $(printf '%s' "${faisait}").
 
-  Il vise la VM de DÉVELOPPEMENT, qui n'existe plus sous cette forme depuis la
-  bascule appliance du 29 août 2026 (chantier package-nivuus) : \`C:\\dev\`, la
-  chaîne Rust de l'invité et le montage CIFS \`/media/vm\` ont été retirés
-  DÉLIBÉRÉMENT. Relevé le 5 septembre 2026 : \`mount | grep media/vm\` ne rend
-  rien, \`/media/vm\` est un répertoire vide, \`Get-ChildItem C:\\\` ne liste
-  aucun \`dev\`, et WinRM refuse le transport Basic.
+  It targets the DEVELOPMENT VM, which no longer exists in that form since the
+  appliance switch of 29 August 2026 (package-nivuus work item): \`C:\\dev\`, the
+  guest's Rust toolchain and the CIFS mount \`/media/vm\` were removed
+  DELIBERATELY. Checked on 5 September 2026: \`mount | grep media/vm\` returns
+  nothing, \`/media/vm\` is an empty directory, \`Get-ChildItem C:\\\` lists
+  no \`dev\`, and WinRM refuses the Basic transport.
 
-  CE QUI LE REMPLACE :
+  WHAT REPLACES IT:
 ${successeur}
 
-  Voir CLAUDE.md § « Cycle de vie de la VM Windows », et
-  docs/superpowers/plans/2026-09-05-lot3-campagne-vm-resultats-partiels.md § 1.
+  See CLAUDE.md § "Windows VM lifecycle", and
+  ${rapport} § 1.
 
-  ⚠️ Ce script n'est PAS supprimé : son corps reste lisible sous ce garde,
-  comme relevé historique. Pour le lire sans l'exécuter : \`cat \$0\`.
+  ⚠️ This script is NOT deleted: its body stays readable under this guard,
+  as a historical record. To read it without running it: \`cat \$0\`.
 FIN
     exit 78   # EX_CONFIG: the configuration of the world does not allow this gesture.
 }

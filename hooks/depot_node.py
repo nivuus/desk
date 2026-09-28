@@ -1,54 +1,54 @@
 #!/usr/bin/env python3
-"""Le runtime Node.js sur la cible : ce que le lot 10A avait posé À LA MAIN.
+"""The Node.js runtime on the target: what batch 10A had laid down BY HAND.
 
-🔴 CE MODULE FERME UN TROU NOMMÉ PAR LA REVUE FINALE DE BRANCHE (30 août
-2026). `hooks/assets/desk-plateforme.service` lance
-`__NODE_BIN__/npm start`, et `commun.py::NODE_BIN_DEFAUT` pointe ce jeton
-vers `/opt/nivuus/node/bin` — mais AUCUN hook ne déposait quoi que ce soit à
-cet emplacement. L'arbre qui s'y trouve sur la machine de développement a
-été copié à la main pendant le lot 10A, et la commande ne vivait que dans un
-rapport gitignoré. Une installation neuve aurait donc posé un service
-structurellement incapable de démarrer, et `install.py` — qui REFUSE avec
-une phrase quand `node_modules/.bin/tsx` manque, et quand
-`proto/ts/plateforme.ts` manque — n'aurait rien dit du tout sur celui-ci.
+🔴 THIS MODULE CLOSES A HOLE NAMED BY THE FINAL BRANCH REVIEW (30 August
+2026). `hooks/assets/desk-plateforme.service` launches
+`__NODE_BIN__/npm start`, and `commun.py::NODE_BIN_DEFAUT` points that token
+to `/opt/nivuus/node/bin` — but NO hook dropped anything at
+that location. The tree found there on the development machine had
+been copied by hand during batch 10A, and the command only lived in a
+gitignored report. A fresh installation would therefore have laid down a service
+structurally unable to start, and `install.py` — which REFUSES with
+a sentence when `node_modules/.bin/tsx` is missing, and when
+`proto/ts/plateforme.ts` is missing — would have said nothing at all about this one.
 
-**Tranché : le hook POSE Node, il ne se contente pas de refuser.** Les deux
-issues que la revue laissait ouvertes ne sont pas équivalentes :
+**Settled: the hook LAYS DOWN Node, it does not merely refuse.** The two
+outcomes the review left open are not equivalent:
 
-  - refuser SEULEMENT aurait reproduit la Critique de cette même revue —
-    une porte qu'aucune installation ne peut franchir, puisque rien, nulle
-    part, ne provisionne Node sur la cible. Un package qui refuse toujours
-    ne s'installe jamais ;
-  - poser est possible, et sans deviner : `hooks/resolve.py` a DÉJÀ validé
-    le `node` de la machine qui exécute les hooks contre la borne
-    `engines.node` que `plateforme/package.json` déclare. C'est ce
-    `node`-là qu'on dépose. **Effet de bord recherché** : la version que
-    `resolve` a validée devient la version que le service exécute — ce qui
-    ferme au passage la mineure #6 de la tâche 3 (« le contrôle de Node
-    interroge la machine qui exécute le hook, jamais la cible »). Les deux
-    machines n'étaient pas la même ; désormais le runtime voyage de l'une
-    à l'autre, donc la mesure porte sur ce qui tournera.
+  - ONLY refusing would have reproduced the Critical finding of that same review —
+    a gate no installation can pass, since nothing, anywhere,
+    provisions Node on the target. A package that always refuses
+    never installs;
+  - laying it down is possible, and without guessing: `hooks/resolve.py` has ALREADY validated
+    the `node` of the machine running the hooks against the
+    `engines.node` bound that `plateforme/package.json` declares. It is that
+    very `node` that gets dropped. **Intended side effect**: the version that
+    `resolve` validated becomes the version the service runs — which
+    incidentally closes minor #6 of task 3 ("the Node check
+    queries the machine running the hook, never the target"). The two
+    machines were not the same; from now on the runtime travels from one
+    to the other, so the measurement bears on what will run.
 
-Ce qui est déposé, et rien de plus — la forme EXACTE relevée sur l'arbre
-posé à la main le 29 août 2026 (`ls -la /opt/nivuus/node/bin`,
-`ls /opt/nivuus/node/lib/node_modules`) :
+What is dropped, and nothing more — the EXACT shape read on the tree
+laid down by hand on 29 August 2026 (`ls -la /opt/nivuus/node/bin`,
+`ls /opt/nivuus/node/lib/node_modules`):
 
-    <préfixe>/bin/node              (le binaire, ~124 Mio)
-    <préfixe>/bin/npm  -> ../lib/node_modules/npm/bin/npm-cli.js
-    <préfixe>/bin/npx  -> ../lib/node_modules/npm/bin/npx-cli.js
-    <préfixe>/lib/node_modules/npm  (~20 Mio)
+    <prefix>/bin/node              (the binary, ~124 MiB)
+    <prefix>/bin/npm  -> ../lib/node_modules/npm/bin/npm-cli.js
+    <prefix>/bin/npx  -> ../lib/node_modules/npm/bin/npx-cli.js
+    <prefix>/lib/node_modules/npm  (~20 MiB)
 
-⚠️ LES PAQUETS GLOBAUX SANS RAPPORT AVEC CE DÉPÔT NE SONT PAS COPIÉS
-(`bats`, `corepack`, `@github/copilot`, `@google/gemini-cli` : 237 Mio à eux
-seuls, mesurés au lot 10A). Le besoin se résume à `bin/node` et à `npm`.
+⚠️ THE GLOBAL PACKAGES UNRELATED TO THIS REPOSITORY ARE NOT COPIED
+(`bats`, `corepack`, `@github/copilot`, `@google/gemini-cli`: 237 MiB on their
+own, measured in batch 10A). The need boils down to `bin/node` and `npm`.
 
-⚠️ LES DEUX LIENS SONT RECRÉÉS COMME LIENS, jamais suivis : leur cible est
-RELATIVE et pointe à l'intérieur de l'arbre déposé, donc elle se résout
-correctement à la destination. Les suivre déposerait deux copies du même
-script sous un nom qui prétendrait être `npm`.
+⚠️ THE TWO LINKS ARE RECREATED AS LINKS, never followed: their target is
+RELATIVE and points inside the dropped tree, so it resolves
+correctly at the destination. Following them would drop two copies of the same
+script under a name that would pretend to be `npm`.
 
-Comme `commun.py`, `depot_arbre.py` et `vm.py`, ce module n'est pas un hook
-exécutable seul : `hooks/install.py` l'importe.
+Like `commun.py`, `depot_arbre.py` and `vm.py`, this module is not a hook
+runnable on its own: `hooks/install.py` imports it.
 """
 import os
 import pathlib
@@ -89,15 +89,15 @@ def racine_node_source():
                 capture_output=True, text=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired) as exc:
             return None, (
-                f"node est introuvable ou muet sur cette machine ({exc}) : "
-                "impossible de déposer un runtime Node sur la cible, alors "
-                "que l'unité systemd de desk lance npm"
+                f"node is missing or silent on this machine ({exc}): "
+                "cannot drop a Node runtime on the target, even though "
+                "desk's systemd unit launches npm"
             )
         if r.returncode != 0 or not r.stdout.strip():
             return None, (
-                "`node -e process.execPath` n'a rien rendu d'exploitable "
-                f"(code {r.returncode}) : impossible de localiser le runtime "
-                "Node à déposer sur la cible"
+                "`node -e process.execPath` returned nothing usable "
+                f"(code {r.returncode}): cannot locate the Node runtime "
+                "to drop on the target"
             )
         prefixe = pathlib.Path(r.stdout.strip()).resolve().parents[1]
 
@@ -105,9 +105,9 @@ def racine_node_source():
                  if not (prefixe / nom).exists()]
     if manquants:
         return None, (
-            f"le runtime Node source {prefixe} est incomplet : "
-            f"{', '.join(manquants)} manque(nt). Un service desk sans "
-            "`node` ni `npm` déposés ne peut pas démarrer (voir "
+            f"the source Node runtime {prefixe} is incomplete: "
+            f"{', '.join(manquants)} missing. A desk service without "
+            "`node` or `npm` dropped cannot start (see "
             "hooks/assets/desk-plateforme.service::ExecStart)."
         )
     return prefixe, None

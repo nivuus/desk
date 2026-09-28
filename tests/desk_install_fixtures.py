@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Fixtures partagées par `tests/test_desk_install.py`.
+"""Fixtures shared by `tests/test_desk_install.py`.
 
-Extrait de ce dernier le 30 août 2026, dans un commit DÉDIÉ et AVANT que la
-revue finale de branche n'y ajoute ses scénarios (le pré-vol qui refuse avant
-tout secret, le dépôt du runtime Node) : le fichier était à 465 lignes sur
-500. Ce dépôt interdit de comprimer pour éviter une extraction — précédent
-exact : `tests/desk_activate_fixtures.py`, extrait pour la même raison à la
-tâche 6.
+Extracted from the latter on 30 August 2026, in a DEDICATED commit and BEFORE the
+final branch review added its scenarios there (the pre-flight that refuses before
+any secret, the drop of the Node runtime): the file was at 465 lines out of
+500. This repository forbids compressing code to avoid an extraction — exact
+precedent: `tests/desk_activate_fixtures.py`, extracted for the same reason in
+task 6.
 
-Ce module porte les CONSTANTES (les réponses du wizard, les facts) et les
-AUXILIAIRES (l'appel du hook, la lecture de `desk.env` et d'une unité systemd,
-la fabrique d'une racine source minimale) ; `test_desk_install.py` porte les
-SCÉNARIOS et les assertions. Aucune fixture d'ici n'a de valeur seule.
+This module carries the CONSTANTS (the wizard answers, the facts) and the
+HELPERS (calling the hook, reading `desk.env` and a systemd unit,
+building a minimal source root); `test_desk_install.py` carries the
+SCENARIOS and the assertions. No fixture here has any value on its own.
 
-⚠️ Ce fichier ne s'appelle PAS `test_*.py` : il n'est pas une suite, et le
-`Makefile` ne le découvre donc pas — même convention, et même raison, que
+⚠️ This file is NOT named `test_*.py`: it is not a suite, and the
+`Makefile` therefore does not discover it — same convention, and same reason, as
 `desk_activate_fixtures.py`.
 """
 import configparser
@@ -31,24 +31,24 @@ HOOK = RACINE / "hooks" / "install.py"
 REPONSES = {"admin_email": "a@b.c", "admin_password": "hunter2hunter2",
             "auth_mode": "motdepasse", "vb_audio": False}
 
-# Les facts que la tâche 3 (resolve) mesure et que le moteur RENDRAIT à
-# activate au premier démarrage — voir `installer/installer/install-engine/
-# steps/packages.py::apply_packages` : `run_install` ne reçoit PAS ces facts
-# (seul `run_activate` les reçoit, mergées dans `hw`). install.py ne peut
-# donc pas en dépendre pour fonctionner dans le moteur réel ; il les accepte
-# ici en fallback défensif (si un jour le contrat change, ou pour ce test),
-# et DÉRIVE lui-même sinon — exactement ce qu'il fait dans les deux appels
-# ci-dessous, l'un AVEC facts, l'autre SANS.
-# 🔴 `hote` et `proxy_confiance` sont VOLONTAIREMENT DIFFÉRENTES de
-# `turn_ecoute` ci-dessous : c'est ce qui rend le test capable de détecter
-# une régression vers le bug réel corrigé au lot 10A (29 août 2026) — avant
-# ce correctif, `install.py` posait `PLATEFORME_HOTE = turn_ecoute`, ce qui
-# aurait fait écouter le service sur l'adresse dérivée pour TURN (publique,
-# sur la machine réelle) plutôt que sur une adresse interne.
-# 🔴 `vm_repond` A DISPARU DU CONTRAT (revue finale de branche, 30 août
-# 2026) : ce n'était pas un fait mesuré mais un littéral (`True` en dur
-# dans `hooks/resolve.py`), à une phase qui ne peut rien savoir de la VM.
-# Voir `tests/test_desk_contrat_hw.py` (garde ⑤).
+# The facts that task 3 (resolve) measures and that the engine WOULD HAND BACK to
+# activate at first boot — see `installer/installer/install-engine/
+# steps/packages.py::apply_packages`: `run_install` does NOT receive these facts
+# (only `run_activate` receives them, merged into `hw`). install.py therefore
+# cannot depend on them to work in the real engine; it accepts them
+# here as a defensive fallback (if the contract changes one day, or for this test),
+# and DERIVES them itself otherwise — exactly what it does in the two calls
+# below, one WITH facts, the other WITHOUT.
+# 🔴 `hote` and `proxy_confiance` are DELIBERATELY DIFFERENT from
+# `turn_ecoute` below: that is what makes the test able to detect
+# a regression towards the real bug fixed in batch 10A (29 August 2026) — before
+# that fix, `install.py` set `PLATEFORME_HOTE = turn_ecoute`, which
+# would have made the service listen on the address derived for TURN (public,
+# on the real machine) rather than on an internal address.
+# 🔴 `vm_repond` HAS DISAPPEARED FROM THE CONTRACT (final branch review, 30 August
+# 2026): it was not a measured fact but a literal (`True` hardcoded
+# in `hooks/resolve.py`), at a phase that can know nothing about the VM.
+# See `tests/test_desk_contrat_hw.py` (guard ⑤).
 FACTS = {"node_version": "24.9.0",
          "turn_ecoute": "203.0.113.9", "turn_relais": "203.0.113.9",
          "hote": "198.51.100.1", "proxy_confiance": "198.51.100.1",
@@ -56,23 +56,23 @@ FACTS = {"node_version": "24.9.0",
 
 
 def poser_faux_node_source(racine: pathlib.Path) -> pathlib.Path:
-    """Un préfixe Node FACTICE : `bin/node`, `bin/npm` (un VRAI lien
-    relatif, comme le vrai arbre), et `lib/node_modules/npm/`.
+    """A FAKE Node prefix: `bin/node`, `bin/npm` (a REAL relative
+    link, like the real tree), and `lib/node_modules/npm/`.
 
-    ⚠️ POURQUOI UN FACTICE PAR DÉFAUT, ET PAS LE VRAI : le runtime réel pèse
-    144 Mio (mesuré le 29 août 2026 sur `/opt/nivuus/node`), et chaque
-    scénario de cette suite le recopierait. Le scénario dédié
-    « installation 7 » ci-dessous emploie, LUI, le VRAI runtime de cette
-    machine — c'est lui qui éprouve le chemin de production, les autres n'ont
-    pas à le repayer.
+    ⚠️ WHY A FAKE BY DEFAULT, AND NOT THE REAL ONE: the real runtime weighs
+    144 MiB (measured on 29 August 2026 on `/opt/nivuus/node`), and every
+    scenario of this suite would copy it. The dedicated scenario
+    "installation 7" below uses, for its part, the REAL runtime of this
+    machine — it is the one that exercises the production path, the others need
+    not pay for it again.
     """
-    prefixe = racine / "faux-node"
+    prefixe = racine / "fake-node"
     (prefixe / "bin").mkdir(parents=True, exist_ok=True)
     (prefixe / "bin" / "node").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     (prefixe / "bin" / "node").chmod(0o755)
     npm_cli = prefixe / "lib" / "node_modules" / "npm" / "bin"
     npm_cli.mkdir(parents=True, exist_ok=True)
-    (npm_cli / "npm-cli.js").write_text("// factice\n", encoding="utf-8")
+    (npm_cli / "npm-cli.js").write_text("// fake\n", encoding="utf-8")
     for nom, cible in (("npm", "../lib/node_modules/npm/bin/npm-cli.js"),):
         lien = prefixe / "bin" / nom
         if not lien.is_symlink():
@@ -82,17 +82,17 @@ def poser_faux_node_source(racine: pathlib.Path) -> pathlib.Path:
 
 def appeler(root, hw=None, answers=None, facts=None, env=None,
             node_source=True):
-    """Appelle le hook comme le moteur : --phase/--root, stdin JSON.
+    """Calls the hook like the engine: --phase/--root, stdin JSON.
 
-    `node_source` (30 août 2026) : `True` pose `DESK_NODE_SOURCE` vers un
-    préfixe Node FACTICE fabriqué sous `root` (voir
-    `poser_faux_node_source`) ; `False` laisse le hook dériver le VRAI
-    runtime de cette machine ; une chaîne la pose telle quelle (scénarios de
-    refus)."""
-    # `hw` par défaut VIDE : le moteur envoie `detect_all()` verbatim, et
-    # `install.py` n'y lit rien — voir tests/test_desk_contrat_hw.py, qui
-    # fige ce contrat. Il portait `{"vm_windows": True}`, une clé qu'aucun
-    # producteur ne pose (Critique de la revue finale de branche).
+    `node_source` (30 August 2026): `True` sets `DESK_NODE_SOURCE` to a
+    FAKE Node prefix built under `root` (see
+    `poser_faux_node_source`); `False` lets the hook derive the REAL
+    runtime of this machine; a string sets it as is (refusal
+    scenarios)."""
+    # `hw` EMPTY by default: the engine sends `detect_all()` verbatim, and
+    # `install.py` reads nothing from it — see tests/test_desk_contrat_hw.py, which
+    # freezes this contract. It carried `{"vm_windows": True}`, a key no
+    # producer sets (Critical finding of the final branch review).
     contexte = {"hw": hw if hw is not None else {},
                 "answers": answers if answers is not None else REPONSES}
     if facts is not None:
@@ -109,7 +109,7 @@ def appeler(root, hw=None, answers=None, facts=None, env=None,
 
 
 def lire_env(racine):
-    """Parse `etc/nivuus/desk.env` (KEY=VALUE, une ligne par variable)."""
+    """Parses `etc/nivuus/desk.env` (KEY=VALUE, one line per variable)."""
     chemin = pathlib.Path(racine) / "etc" / "nivuus" / "desk.env"
     values = {}
     for ligne in chemin.read_text(encoding="utf-8").splitlines():
@@ -122,15 +122,15 @@ def lire_env(racine):
 
 
 def poser_source_minimale(racine: pathlib.Path) -> None:
-    """Fabrique une racine SOURCE minimale (`plateforme/`, `client/dist/`,
-    `proto/ts/`) sous laquelle `DESK_SOURCE_RACINE` peut pointer — utilisée
-    par les scénarios qui éprouvent `install` SANS emprunter le vrai dépôt.
+    """Builds a minimal SOURCE root (`plateforme/`, `client/dist/`,
+    `proto/ts/`) that `DESK_SOURCE_RACINE` can point to — used
+    by the scenarios that exercise `install` WITHOUT going through the real repository.
 
-    🔴 `proto/ts/plateforme.ts` DOIT EXISTER : depuis le lot 10A
-    (29 août 2026, trouvaille réelle), `install.py` copie aussi `proto/ts/`
-    et REFUSE si `plateforme.ts` n'y est pas retrouvé après coup (voir
-    `hooks/install.py::main`) — sans ce fichier, ces scénarios refuseraient
-    tous pour une raison qu'ils n'ont pas l'intention d'éprouver.
+    🔴 `proto/ts/plateforme.ts` MUST EXIST: since batch 10A
+    (29 August 2026, real finding), `install.py` also copies `proto/ts/`
+    and REFUSES if `plateforme.ts` is not found there afterwards (see
+    `hooks/install.py::main`) — without this file, these scenarios would all refuse
+    for a reason they do not intend to exercise.
     """
     (racine / "plateforme").mkdir(parents=True, exist_ok=True)
     (racine / "plateforme" / "package.json").write_text("{}", encoding="utf-8")
@@ -143,12 +143,12 @@ def poser_source_minimale(racine: pathlib.Path) -> None:
 
 
 def load_unit(path):
-    """Parse un fichier d'unité systemd (INI, clés sensibles à la casse).
+    """Parses a systemd unit file (INI, case-sensitive keys).
 
-    Même patron que `console/tests/test_console_install.py::load_unit` :
-    `strict=False` (systemd tolère une clé répétée, la dernière gagne) et
-    `optionxform=str` (systemd est sensible à la casse, configparser
-    minusculise par défaut).
+    Same pattern as `console/tests/test_console_install.py::load_unit`:
+    `strict=False` (systemd tolerates a repeated key, the last one wins) and
+    `optionxform=str` (systemd is case-sensitive, configparser
+    lowercases by default).
     """
     parser = configparser.ConfigParser(strict=False, interpolation=None)
     parser.optionxform = str

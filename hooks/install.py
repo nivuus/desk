@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
-"""Hook install du package desk : ce qui se pose sur l'hôte.
+"""Install hook of the desk package: what gets laid down on the host.
 
-Protocole (voir `installer/packages/runner.py` du dépôt voisin, et
-`hooks/resolve.py` de ce package) : lit {"hw":…, "answers":…} sur stdin,
-écrit un objet JSON par ligne sur stdout. Contrairement à `resolve`, ce
-hook n'a aucun canal `refuse` — une erreur ici se traduit par un code de
-sortie non nul (`HookError` côté moteur), parce que `install` court APRÈS
-que `resolve` a déjà validé la machine : un échec à ce stade est une
-anomalie, pas une décision à motiver pour l'opérateur.
+Protocol (see `installer/packages/runner.py` in the sibling repository, and
+`hooks/resolve.py` in this package): reads {"hw":…, "answers":…} on stdin,
+writes one JSON object per line on stdout. Unlike `resolve`, this
+hook has no `refuse` channel — an error here becomes a non-zero exit
+code (`HookError` on the engine side), because `install` runs AFTER
+`resolve` has already validated the machine: a failure at this stage is an
+anomaly, not a decision to justify to the operator.
 
-🔴 `install` NE REÇOIT PAS LES `facts` DE `resolve`, DANS LE MOTEUR RÉEL.
+🔴 `install` DOES NOT RECEIVE THE `facts` OF `resolve`, IN THE REAL ENGINE.
 `installer/installer/install-engine/steps/packages.py::apply_packages`
-appelle `run_install(manifest, hw, answers, target, emit)` — sans facts.
-Seul `run_activate` les reçoit, mergées dans `hw`
-(`packages/runner.py::run_activate`). Ce hook les accepte quand même, sous
-une clé `facts` optionnelle du contexte stdin (défensif : un futur moteur,
-ou ce fichier de tests, peut les fournir) et, à défaut, DÉRIVE lui-même les
-mêmes valeurs — par les fonctions de `commun.py` (module FRÈRE, voir son
-docstring), partagées avec `resolve.py` plutôt que dupliquées : la ronde de
-correction 1 sur cette tâche a extrait `interface_de_route_par_defaut()`,
-`adresse_ipv4_de()` et `PORT_DEFAUT`, relevés identiques octet pour octet
-entre les deux hooks.
+calls `run_install(manifest, hw, answers, target, emit)` — without facts.
+Only `run_activate` receives them, merged into `hw`
+(`packages/runner.py::run_activate`). This hook accepts them anyway, under
+an optional `facts` key of the stdin context (defensive: a future engine,
+or this test file, may supply them) and, failing that, DERIVES the
+same values itself — through the functions of `commun.py` (SIBLING module, see its
+docstring), shared with `resolve.py` rather than duplicated: correction
+round 1 on this task extracted `interface_de_route_par_defaut()`,
+`adresse_ipv4_de()` and `PORT_DEFAUT`, found identical byte for byte
+between the two hooks.
 
-RACINE CIBLE : `--root` (défaut `/`), jamais une variable d'environnement.
-C'est ce que le moteur envoie réellement
-(`cmd += ["--root", root]` dans `packages/runner.py::_run_hook`), et c'est
-la convention déjà éprouvée par `console/hooks/install.py` et son test
-(`installer/console/tests/test_console_install.py`). Les CONTENUS écrits
-dans les fichiers posés (unité systemd, `desk.env`) portent les chemins
-RÉELS de la cible (`/opt/nivuus/desk/…`), jamais préfixés par cette racine
-— seule leur PLACEMENT l'est, exactement comme pour les unités que
-`console` dépose.
+TARGET ROOT: `--root` (default `/`), never an environment variable.
+It is what the engine really sends
+(`cmd += ["--root", root]` in `packages/runner.py::_run_hook`), and it is
+the convention already proven by `console/hooks/install.py` and its test
+(`installer/console/tests/test_console_install.py`). The CONTENTS written
+into the laid-down files (systemd unit, `desk.env`) carry the REAL paths
+of the target (`/opt/nivuus/desk/…`), never prefixed by this root
+— only their PLACEMENT is, exactly as for the units that
+`console` drops.
 """
 import argparse
 import json
@@ -117,24 +117,24 @@ def raisons_de_pre_vol(racine_source: pathlib.Path, prefixe_node) -> list:
     raisons = []
     exigences = [
         (racine_source / "plateforme" / "node_modules" / ".bin" / "tsx",
-         "`npm start` vaut `tsx src/index.ts` (plateforme/package.json) : "
-         "lancer `npm install` dans plateforme/ avant d'empaqueter ou "
-         "d'installer ce dépôt"),
+         "`npm start` means `tsx src/index.ts` (plateforme/package.json): "
+         "run `npm install` in plateforme/ before packaging or "
+         "installing this repository"),
         (racine_source / "client" / "dist",
-         "la plateforme sert elle-même la page bâtie (PLATEFORME_PAGE) : "
-         "lancer `npm run build` dans client/ avant d'empaqueter ou "
-         "d'installer ce dépôt — ce répertoire est gitignoré, un clone frais "
-         "ne le porte jamais"),
+         "the platform itself serves the built page (PLATEFORME_PAGE): "
+         "run `npm run build` in client/ before packaging or "
+         "installing this repository — this directory is gitignored, a fresh clone "
+         "never carries it"),
         (racine_source / "proto" / "ts" / "plateforme.ts",
-         "plateforme/src importe `../../../proto/ts/…` à l'exécution : sans "
-         "ces sources, `npm start` échoue en ERR_MODULE_NOT_FOUND"),
+         "plateforme/src imports `../../../proto/ts/…` at run time: without "
+         "these sources, `npm start` fails with ERR_MODULE_NOT_FOUND"),
     ]
     for chemin, pourquoi in exigences:
         if not chemin.exists():
-            raisons.append(f"{chemin} est absent — {pourquoi}")
+            raisons.append(f"{chemin} is absent — {pourquoi}")
     if prefixe_node is None:
-        raisons.append("aucun runtime Node à déposer (voir la raison "
-                       "ci-dessus)")
+        raisons.append("no Node runtime to drop (see the reason "
+                       "above)")
     return raisons
 
 
@@ -155,13 +155,13 @@ def main() -> int:
     # first `.get()` — a traceback where this hook writes sentences.
     for nom, value in (("answers", answers), ("facts", facts)):
         if not isinstance(value, dict):
-            print(f"desk install : {nom} doit etre un objet, recu "
+            print(f"desk install: {nom} must be an object, got "
                   f"{type(value).__name__}", file=sys.stderr)
             return 1
 
     auth_mode = answers.get("auth_mode")
     if not auth_mode:
-        print("desk install : answers.auth_mode est requis et absent",
+        print("desk install: answers.auth_mode is required and absent",
               file=sys.stderr)
         return 1
     # 🔴 PLATEFORME_AUTH comes from the auth_mode answer, AS IS, without
@@ -170,7 +170,7 @@ def main() -> int:
     # mode under the name of the other.
 
     emettre({"event": "progress", "pct": 10,
-             "msg": "Dérivation des adresses et du port"})
+             "msg": "Deriving the addresses and the port"})
 
     # 🔴 MINOR #7, OVERTURNED BY THE FINAL BRANCH REVIEW: a value
     # coming from `facts` goes through the SAME validator as a derived value —
@@ -184,17 +184,17 @@ def main() -> int:
             continue
         adresses_turn[cle], raison = valider_adresse_de_facts(
             brut, f'facts["{cle}"]', "coturn (TURN_LISTENING_IP/TURN_RELAY_IP)",
-            "borner la seule écoute laisserait de surcroît les allocations "
-            "de relais sur toutes les interfaces (mesuré le 21 août 2026 : "
-            "23 adresses distinctes, dont l'adresse publique)")
+            "bounding the listen address alone would additionally leave the relay "
+            "allocations on every interface (measured on 21 August 2026: "
+            "23 distinct addresses, including the public address)")
         if raison:
-            print(f"desk install : {raison}", file=sys.stderr)
+            print(f"desk install: {raison}", file=sys.stderr)
             return 1
     if "turn_ecoute" not in adresses_turn:
         try:
             adresses_turn["turn_ecoute"] = deriver_adresse_turn()
         except RuntimeError as exc:
-            print(f"desk install : {exc}", file=sys.stderr)
+            print(f"desk install: {exc}", file=sys.stderr)
             return 1
     turn_ecoute = adresses_turn["turn_ecoute"]
     turn_relais = adresses_turn.get("turn_relais") or turn_ecoute
@@ -224,7 +224,7 @@ def main() -> int:
     else:
         hote_plateforme, raison_hote = lire_hote()
     if raison_hote:
-        print(f"desk install : {raison_hote}", file=sys.stderr)
+        print(f"desk install: {raison_hote}", file=sys.stderr)
         return 1
 
     # PLATEFORME_PROXY_DE_CONFIANCE — see `commun.py::lire_proxy_confiance`
@@ -239,14 +239,14 @@ def main() -> int:
         proxy_confiance, raison_proxy = valider_adresse_de_facts(
             brut_proxy, 'facts["proxy_confiance"]',
             "PLATEFORME_PROXY_DE_CONFIANCE",
-            "`pairDeConfiance` (plateforme/src/http/adresse-source.ts) compare "
-            "cette valeur à l'adresse RÉELLE d'un pair (`req.socket."
-            "remoteAddress`), jamais à une interface d'écoute : aucun pair "
-            "ne se présente jamais sous l'une de ces quatre valeurs, donc la "
-            "poser ici ne fait QUE casser la garde du mode pomerium (personne "
-            "n'y correspondra jamais), sans rien ouvrir")
+            "`pairDeConfiance` (plateforme/src/http/adresse-source.ts) compares "
+            "this value to the REAL address of a peer (`req.socket."
+            "remoteAddress`), never to a listening interface: no peer "
+            "ever shows up under one of these four values, so "
+            "setting it here ONLY breaks the guard of the pomerium mode (nobody "
+            "will ever match it), without opening anything")
         if raison_proxy:
-            print(f"desk install : {raison_proxy}", file=sys.stderr)
+            print(f"desk install: {raison_proxy}", file=sys.stderr)
             return 1
 
     brut_port = facts.get("port")
@@ -255,7 +255,7 @@ def main() -> int:
     else:
         port, raison_port = valider_port_de_facts(brut_port)
         if raison_port:
-            print(f"desk install : {raison_port}", file=sys.stderr)
+            print(f"desk install: {raison_port}", file=sys.stderr)
             return 1
 
     # --- THE PRE-FLIGHT, BEFORE THE FIRST SECRET -----------------------------
@@ -265,11 +265,11 @@ def main() -> int:
     prefixe_node, raison_node = racine_node_source()
     raisons = raisons_de_pre_vol(RACINE, prefixe_node)
     if raison_node:
-        raisons = [r for r in raisons if not r.startswith("aucun runtime")]
+        raisons = [r for r in raisons if not r.startswith("no Node runtime")]
         raisons.append(raison_node)
     if raisons:
-        print("desk install : refus AVANT toute ecriture (aucun secret n'a "
-              "ete tire, desk.env n'existe pas) :", file=sys.stderr)
+        print("desk install: refused BEFORE any write (no secret has "
+              "been drawn, desk.env does not exist):", file=sys.stderr)
         for raison in raisons:
             print(f"  - {raison}", file=sys.stderr)
         return 1
@@ -307,16 +307,16 @@ def main() -> int:
         jeton_existant = lire_secret_persiste(env_existant, "PLATEFORME_SECRET_JETON")
         turn_existant = lire_secret_persiste(env_existant, "TURN_SECRET")
     except OSError as exc:
-        print(f"desk install : {env_existant} existe mais n'a pas pu etre "
-              f"lu ({exc}) - refus AVANT de tirer un secret neuf, pour ne "
-              "pas faire tourner PLATEFORME_SECRET_JETON/TURN_SECRET en "
-              "silence pendant une panne de lecture passagere.",
+        print(f"desk install: {env_existant} exists but could not be "
+              f"read ({exc}) - refused BEFORE drawing a new secret, so as not "
+              "to rotate PLATEFORME_SECRET_JETON/TURN_SECRET "
+              "silently during a transient read failure.",
               file=sys.stderr)
         return 1
     secret_jeton = jeton_existant or write_secret()
     secret_turn = turn_existant or write_secret()
 
-    emettre({"event": "progress", "pct": 30, "msg": "Écriture de desk.env"})
+    emettre({"event": "progress", "pct": 30, "msg": "Writing desk.env"})
 
     env = {
         "PLATEFORME_HOTE": hote_plateforme,
@@ -337,8 +337,8 @@ def main() -> int:
         # in pomerium mode, harmless in password mode.
         "PLATEFORME_PROXY_DE_CONFIANCE": proxy_confiance,
         # 🔴 SET EXPLICITLY, AND IT IS MANDATORY (correction round
-        # 1, task 4): their product default (`donnees/icones`,
-        # `donnees/televersements`, relative to `WorkingDirectory`) would land
+        # 1, task 4): their product default (`donnees/icones`,  # policy: allow-fr - real directory name
+        # `donnees/televersements`, relative to `WorkingDirectory`) would land  # policy: allow-fr - real directory name
         # under `/opt/nivuus/desk/plateforme`, a path that `DynamicUser=yes`
         # makes READ ONLY (implicit `ProtectSystem=strict` — see
         # `hooks/assets/desk-plateforme.service`). Without this pair,
@@ -358,9 +358,9 @@ def main() -> int:
     write_env(sub("etc/nivuus/desk.env"), env)
 
     emettre({"event": "progress", "pct": 55,
-             "msg": "Copie de la plateforme et du client bâti"})
+             "msg": "Copying the platform and the built client"})
 
-    # `donnees/` is a DEVELOPMENT directory (icons and
+    # `donnees/` is a DEVELOPMENT directory (icons and  # policy: allow-fr - real directory name
     # uploads piled up by previous acceptance runs): copying it
     # would give birth to a new installation carrying the past of the development
     # workstation. The platform recreates it itself on first access —
@@ -390,9 +390,9 @@ def main() -> int:
     proto_plateforme_ts = sub("opt/nivuus/desk/proto/ts/plateforme.ts")
     if not proto_plateforme_ts.is_file():
         print(
-            f"desk install : {proto_plateforme_ts} est absent apres la copie "
-            "de proto/ts ; le service ne demarrera pas "
-            "(ERR_MODULE_NOT_FOUND sur '../../../proto/ts/plateforme').",
+            f"desk install: {proto_plateforme_ts} is absent after copying "
+            "proto/ts; the service will not start "
+            "(ERR_MODULE_NOT_FOUND on '../../../proto/ts/plateforme').",
             file=sys.stderr,
         )
         return 1
@@ -407,7 +407,7 @@ def main() -> int:
 
     # 🔴 PROBLEM B OF BATCH 10A: `npm start` REQUIRES `node_modules`, AND NOTHING
     # GUARANTEED IT. `copier_arbre()` above copies all of `plateforme/`
-    # (only `donnees/` is excluded), so `node_modules` IS copied in practice
+    # (only `donnees/` is excluded), so `node_modules` IS copied in practice  # policy: allow-fr - real directory name
     # AS SOON AS IT IS PRESENT on the source side — checked on 29 August 2026: 56
     # packages, the relative link `node_modules/.bin/tsx` still resolves
     # correctly under the copied root. But that is only a SIDE EFFECT
@@ -424,10 +424,10 @@ def main() -> int:
     tsx_bin = sub("opt/nivuus/desk/plateforme/node_modules/.bin/tsx")
     if not tsx_bin.exists():
         print(
-            f"desk install : {tsx_bin} est absent ; `npm start` "
-            "(= `tsx src/index.ts`, voir plateforme/package.json) ne pourra "
-            "pas demarrer. Executer `npm install` dans plateforme/ AVANT "
-            "d'empaqueter/d'installer ce depot.",
+            f"desk install: {tsx_bin} is absent; `npm start` "
+            "(= `tsx src/index.ts`, see plateforme/package.json) will not be able "
+            "to start. Run `npm install` in plateforme/ BEFORE "
+            "packaging/installing this repository.",
             file=sys.stderr,
         )
         return 1
@@ -441,11 +441,11 @@ def main() -> int:
     # deployed. The target prefix is the PARENT of the `bin/` that
     # `lire_node_bin()` returns, so that the two cannot diverge.
     emettre({"event": "progress", "pct": 70,
-             "msg": "Dépôt du runtime Node (node, npm, npx)"})
+             "msg": "Dropping the Node runtime (node, npm, npx)"})
     prefixe_cible = pathlib.PurePosixPath(lire_node_bin()).parent
     deposer_node(prefixe_node, sub(str(prefixe_cible).lstrip("/")))
 
-    emettre({"event": "progress", "pct": 80, "msg": "Dépôt de l'unité systemd"})
+    emettre({"event": "progress", "pct": 80, "msg": "Dropping the systemd unit"})
 
     # 🔴 PROBLEM A OF BATCH 10A: THE UNIT CARRIED `ExecStart=/usr/bin/npm
     # start`, A PATH THAT EXISTS ON NO DEBIAN WITHOUT THE `nodejs` PACKAGE.
@@ -463,9 +463,9 @@ def main() -> int:
     gabarit_unite = (ASSETS / "desk-plateforme.service").read_text(encoding="utf-8")
     if "__NODE_BIN__" not in gabarit_unite:
         print(
-            "desk install : hooks/assets/desk-plateforme.service ne porte "
-            "plus le jeton __NODE_BIN__ ; le gabarit a-t-il change de forme "
-            "sans que install.py ne suive ?",
+            "desk install: hooks/assets/desk-plateforme.service no longer "
+            "carries the __NODE_BIN__ token; did the template change shape "
+            "without install.py following?",
             file=sys.stderr,
         )
         return 1
@@ -478,7 +478,7 @@ def main() -> int:
     os.chmod(unite_dest, 0o644)  # a unit is DATA, not a program
 
     emettre({"event": "progress", "pct": 95,
-             "msg": "Configuration coturn"})
+             "msg": "coturn configuration"})
     write_turnserver_conf(sub("etc/turnserver.conf"), turn_ecoute,
                             turn_relais, secret_turn)
 

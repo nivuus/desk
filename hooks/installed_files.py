@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Les fichiers de configuration que `install` POSE, et les secrets qu'il tire.
+"""The configuration files that `install` LAYS DOWN, and the secrets it draws.
 
-Extrait de `hooks/install.py` le 30 août 2026, dans un commit DÉDIÉ et
-AVANT tout ajout — jamais en comprimant après coup. Motif : la revue finale
-de branche exige d'`install.py` deux gardes de plus (un pré-vol qui refuse
-avant qu'un secret soit écrit, et la pose du runtime Node), et le fichier
-était à 454 lignes sur 500. Ce dépôt a payé douze fois la compression
-rétroactive ; la règle est « EXTRAIRE, JAMAIS COMPRIMER, dans une tâche
-dédiée AVANT celle qui ajoute ».
+Extracted from `hooks/install.py` on 30 August 2026, in a DEDICATED commit and
+BEFORE any addition — never by compressing afterwards. Reason: the final branch
+review requires two more guards of `install.py` (a pre-flight that refuses
+before a secret is written, and the drop of the Node runtime), and the file
+was at 454 lines out of 500. This repository paid twelve times for retroactive
+compression; the rule is "EXTRACT, NEVER COMPRESS, in a task
+dedicated to it BEFORE the one that adds".
 
-Comme `hooks/commun.py`, `hooks/depot_arbre.py` et `hooks/vm.py`, ce module
-N'EST PAS un hook exécutable seul (pas de `--phase`, pas de stdin JSON) :
-`hooks/install.py` l'importe, et Python ajoute automatiquement le répertoire
-du script LANCÉ (`hooks/`) en tête de `sys.path`, donc l'import résout sans
-manipulation supplémentaire.
+Like `hooks/commun.py`, `hooks/depot_arbre.py` and `hooks/vm.py`, this module
+IS NOT a hook runnable on its own (no `--phase`, no stdin JSON):
+`hooks/install.py` imports it, and Python automatically adds the directory
+of the LAUNCHED script (`hooks/`) at the head of `sys.path`, so the import resolves without
+any extra manipulation.
 
-⚠️ EXTRACTION VERBATIM : les trois fonctions et la constante ci-dessous sont
-déplacées SANS UNE MODIFICATION DE COMPORTEMENT — leurs docstrings, qui
-portent la raison de chaque choix (le mode 0600 atomique, le format coturn
-extrapolé), voyagent avec elles. Seuls les déictiques « ci-dessus » /
-« ce fichier » qui pointaient vers `install.py` ont été renommés pour ne pas
-mentir à leur nouvel emplacement.
+⚠️ VERBATIM EXTRACTION: the three functions and the constant below are
+moved WITHOUT A SINGLE BEHAVIOUR CHANGE — their docstrings, which
+carry the reason for each choice (the atomic 0600 mode, the extrapolated coturn
+format), travel with them. Only the deictics "above" /
+"this file" that pointed to `install.py` were renamed so as not to
+lie in their new location.
 """
 import os
 import pathlib
@@ -160,9 +160,9 @@ def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
     laying down is not arming. No task of this plan arms coturn; it is a
     named legacy, not an oversight — see the results document of the project.
     """
-    corps = f"""# turnserver.conf — posé par le hook install du package desk.
-# Format extrapolé de docker-compose.coturn.yml, NON VÉRIFIÉ sur ce disque
-# (coturn n'y est pas installé) — voir le docstring d'ecrire_turnserver_conf.
+    corps = f"""# turnserver.conf — laid down by the install hook of the desk package.
+# Format extrapolated from docker-compose.coturn.yml, NOT VERIFIED on this disk
+# (coturn is not installed there) — see the docstring of write_turnserver_conf.
 listening-port={PORT_TURN}
 listening-ip={turn_ecoute}
 relay-ip={turn_relais}
