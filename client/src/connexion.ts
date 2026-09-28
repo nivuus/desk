@@ -154,52 +154,52 @@ async function chercherLaSession(acces: string): Promise<void> {
     afficher('recherche de votre machine…', 'neutre');
     const session = await fetch(`${plateformeUrl}/session`, {
         method: 'POST',
-        // 🔴 L'EN-TÊTE `Authorization` REND LA REQUÊTE NON SIMPLE, donc
-        // soumise à une requête préalable `OPTIONS`. C'est le défaut que la
-        // recette de la tâche 8 a trouvé et fermé côté service ; il est
-        // rappelé ici parce qu'aucun test de ce répertoire ne peut le voir.
+        // 🔴 THE `Authorization` HEADER MAKES THE REQUEST NON-SIMPLE, hence
+        // subject to an `OPTIONS` preflight request. It is the defect task 8's
+        // acceptance run found and closed on the service side; it is
+        // recalled here because no test in this directory can see it.
         headers: { authorization: `Bearer ${acces}` },
     });
     const sien = await session.json().catch(() => undefined);
 
-    // ① Un préfixe est un préfixe, qu'il vienne d'un 200 ou d'un 503.
+    // ① A prefix is a prefix, whether it comes from a 200 or a 503.
     if (typeof sien?.prefixe === 'string') {
-        // ⚠️ CE `poserPrefixe` PEUT LEVER, et c'est voulu : il ne le fait que
-        // sur une chaîne vide, c'est-à-dire sur un service qui aurait
-        // délivré un préfixe qui n'en est pas un. L'exception traverse alors
-        // vers l'appelant (`submit`), dont le `catch` réseau attrape le
-        // message qui CITE la cause en entier — le mot « injoignable » est
-        // alors imprécis, la phrase qu'il encadre ne l'est pas. Déclaré
-        // plutôt que découvert.
+        // ⚠️ THIS `poserPrefixe` CAN THROW, and that is intended: it only does so
+        // on an empty string, that is, on a service that would have
+        // delivered a prefix that is not one. The exception then crosses
+        // to the caller (`submit`), whose network `catch` catches the
+        // message that QUOTES the cause in full — the word "unreachable" is
+        // then imprecise, the sentence it frames is not. Declared
+        // rather than discovered.
         poserPrefixe(window.localStorage, sien.prefixe);
     } else if (sien?.motif === 'aucune-vm') {
-        // ② Aucune VM : le coffre est nettoyé, sans quoi le préfixe d'hier
-        // survivrait à l'attribution qu'on vient de perdre.
+        // ② No VM: the vault is cleaned, otherwise yesterday's prefix
+        // would outlive the assignment just lost.
         //
-        // 🔴 CE LITTÉRAL EST UNE COPIE, ET RIEN NE LA CONFRONTE À SA
-        // SOURCE (relevé à la revue transverse de P4, non corrigé). Sa
-        // source canonique est `MOTIFS` dans
-        // `plateforme/src/orchestration/refus.ts`, un tableau `as const`
-        // dont le type DÉRIVE, précisément pour qu'ajouter un motif sans
-        // lui donner son code HTTP soit une erreur de compilation. Cette
-        // propriété s'arrête à la frontière du paquet : `client/` ne peut
-        // pas importer de `plateforme/`, et le seul paquet partagé est
-        // `proto/`, que P4 s'interdit de toucher (sa version appartient au
-        // sous-bloc G1). CONSÉQUENCE À CONNAÎTRE : renommer `aucune-vm`
-        // côté service laisserait ce test toujours faux, donc le préfixe
-        // périmé au coffre — une panne MUETTE, que ni `npm run typecheck`
-        // ni aucun test de ce dépôt ne verrait. Le remède est de faire
-        // descendre `MOTIFS` dans `proto/ts` ; il est LÉGUÉ, pas fait.
+        // 🔴 THIS LITERAL IS A COPY, AND NOTHING CONFRONTS IT WITH ITS
+        // SOURCE (noted at P4's cross-cutting review, not fixed). Its
+        // canonical source is `MOTIFS` in
+        // `plateforme/src/orchestration/refus.ts`, an `as const` array
+        // whose type DERIVES, precisely so that adding a reason without
+        // giving it its HTTP code is a compile error. That
+        // property stops at the package boundary: `client/` cannot
+        // import from `plateforme/`, and the only shared package is
+        // `proto/`, which P4 forbids itself to touch (its version belongs to
+        // sub-block G1). CONSEQUENCE TO KNOW: renaming `aucune-vm`
+        // on the service side would leave this test always false, hence the stale
+        // prefix in the vault — a SILENT failure, which neither `npm run typecheck`
+        // nor any test of this repository would see. The remedy is to move
+        // `MOTIFS` down into `proto/ts`; it is LEFT AS LEGACY, not done.
         effacerPrefixe(window.localStorage);
     }
 
     if (!session.ok) {
-        // Le motif du service, tel quel — et pour `agent-injoignable`, ce
-        // que le service AVOUE ne pas savoir faire. Le cadrage promet « VM
-        // injoignable -> le hub l'indique, propose redémarrage » ; avec le
-        // backend statique le hub indique, et dit qu'il ne sait pas
-        // redémarrer. Taire cet aveu ferait attendre un bouton qui n'existe
-        // pas.
+        // The service's reason, as is — and for `agent-injoignable`, what
+        // the service ADMITS it cannot do. The framing promises "VM
+        // unreachable -> the hub says so, offers a restart"; with the
+        // static backend the hub says so, and says it cannot
+        // restart. Keeping that admission quiet would make one wait for a button that does not
+        // exist.
         const etat = sien?.etat ? ` (état : ${sien.etat})` : '';
         const aveu =
             sien?.redemarrage?.possible === false
@@ -212,39 +212,39 @@ async function chercherLaSession(acces: string): Promise<void> {
     window.location.href = suite;
 }
 
-/// Demande l'identité au service AVANT de montrer le formulaire.
+/// Asks the service for the identity BEFORE showing the form.
 ///
-/// 🔴 C'EST LE 404 QUI PORTE LE MODE JUSQU'ICI, et c'est pourquoi cette page
-/// n'a aucune variable de mode à connaître. Elle est bâtie statiquement par
-/// Vite et ne peut lire aucune configuration du serveur : elle DEMANDE. Un
-/// 404 signifie « ce montage authentifie par mot de passe » ; un 200, « le
-/// proxy m'a déjà identifié ».
+/// 🔴 IT IS THE 404 THAT CARRIES THE MODE UP TO HERE, and that is why this page
+/// has no mode variable to know. It is built statically by
+/// Vite and cannot read any server configuration: it ASKS. A
+/// 404 means "this deployment authenticates by password"; a 200, "the
+/// proxy has already identified me".
 ///
-/// 🔴 CETTE PROMESSE A ÉTÉ MORTE SANS BRUIT, ET ELLE EST RÉPARÉE CÔTÉ SERVICE,
-/// PAS ICI (22 août 2026). Le servant de fichiers statiques de la plateforme,
-/// chaîné en dernier, replie tout chemin sans extension sur `index.html` :
-/// avec `PLATEFORME_PAGE` armée, `/auth/moi` rendait `200 text/html` en mode
-/// `motdepasse` — donc « le proxy m'a déjà identifié », ce qui est FAUX. Cette
-/// page ne cassait que par ACCIDENT : le `.catch(() => undefined)` de
-/// `reponse.json()` faisait retomber `accesDeReponse` sur `undefined`, donc le
-/// formulaire, au bon endroit pour une mauvaise raison. La garde de mode de
-/// `plateforme/src/http/routes-identite.ts` rend désormais le `404`
-/// ELLE-MÊME ; rien ne change ici.
+/// 🔴 THIS PROMISE DIED SILENTLY, AND IT IS REPAIRED ON THE SERVICE SIDE,
+/// NOT HERE (August 22nd, 2026). The platform's static file server,
+/// chained last, folds any path without an extension onto `index.html`:
+/// with `PLATEFORME_PAGE` armed, `/auth/moi` returned `200 text/html` in
+/// `motdepasse` mode — hence "the proxy has already identified me", which is WRONG. This
+/// page only broke by ACCIDENT: the `.catch(() => undefined)` of
+/// `reponse.json()` made `accesDeReponse` fall back to `undefined`, hence the
+/// form, in the right place for a wrong reason. The mode guard of
+/// `plateforme/src/http/routes-identite.ts` now returns the `404`
+/// ITSELF; nothing changes here.
 ///
-/// ⚠️ TOUT ÉCHEC RETOMBE SUR LE FORMULAIRE, y compris un échec réseau. C'est
-/// le repli le moins surprenant : l'utilisateur voit un écran sur lequel il
-/// peut agir, plutôt qu'une page vide dont rien ne dit ce qu'elle attend.
+/// ⚠️ ANY FAILURE FALLS BACK TO THE FORM, including a network failure. It is
+/// the least surprising fallback: the user sees a screen they
+/// can act on, rather than an empty page with nothing saying what it expects.
 ///
-/// 🔴 LE CORPS DE CETTE FONCTION A DESCENDU DANS `jeton.ts::accesParPomerium`
-/// LE 30 AOÛT 2026 — la fonction, PAS la décision qui l'entoure. Le hub
-/// (`hub/page.ts`) avait le MÊME besoin (obtenir un jeton par Pomerium) sans
-/// pouvoir courir au chargement inconditionnellement comme cette page-ci
-/// (lui ne doit appeler le réseau QUE si le coffre est vide) : recopier ce
-/// bloc aurait laissé deux copies dériver, exactement le patron que
-/// `CLAUDE.md` interdit. Ce qui reste ICI — appeler, poser, enchaîner sur
-/// `chercherLaSession` — est du câblage propre à CETTE page ; la validation
-/// du corps (`accesDeReponse`, dans `jeton.ts` depuis le 21 août 2026) et
-/// désormais l'appel réseau lui-même sont partagés, testés là-bas.
+/// 🔴 THIS FUNCTION'S BODY MOVED DOWN INTO `jeton.ts::accesParPomerium`
+/// ON AUGUST 30th, 2026 — the function, NOT the decision surrounding it. The hub
+/// (`hub/page.ts`) had the SAME need (obtaining a token through Pomerium) without
+/// being able to run unconditionally at load like this page
+/// (it must call the network ONLY if the vault is empty): copying this
+/// block would have let two copies drift, exactly the pattern
+/// `CLAUDE.md` forbids. What stays HERE — calling, setting, chaining on to
+/// `chercherLaSession` — is wiring specific to THIS page; validating
+/// the body (`accesDeReponse`, in `jeton.ts` since August 21st, 2026) and
+/// now the network call itself are shared, tested there.
 async function tenterPomerium(): Promise<boolean> {
     const acces = await accesParPomerium(plateformeUrl, window.fetch.bind(window));
     if (acces === undefined) return false;
@@ -270,7 +270,7 @@ formulaire.addEventListener('submit', async (evenement) => {
         const corps = await reponse.json().catch(() => undefined);
 
         if (!reponse.ok) {
-            // Le motif du service, tel quel — voir l'en-tête.
+            // The service's reason, as is — see the header.
             afficher(`refusé : ${corps?.refus ?? reponse.status}`, 'danger');
             return;
         }
@@ -279,26 +279,26 @@ formulaire.addEventListener('submit', async (evenement) => {
             acces: corps.acces,
             rafraichissement: corps.rafraichissement,
         });
-        // Le mot de passe ne survit pas à la connexion : le champ est vidé
-        // avant de quitter la page, pour qu'un retour arrière du navigateur ne
-        // le retrouve pas rempli.
+        // The password does not survive login: the field is emptied
+        // before leaving the page, so that the browser's back button does not
+        // find it filled in.
         champMotDePasse.value = '';
 
         await chercherLaSession(corps.acces);
     } catch (cause) {
-        // Un échec RÉSEAU se dit comme tel : sur une autre origine, c'est le
-        // symptôme d'une `PLATEFORME_ORIGINE_CLIENT` absente côté service
-        // (`plateforme/src/config.ts`), et le confondre avec un refus
-        // d'identifiants enverrait chercher le défaut au mauvais endroit.
+        // A NETWORK failure is stated as such: on another origin, it is the
+        // symptom of a `PLATEFORME_ORIGINE_CLIENT` missing on the service side
+        // (`plateforme/src/config.ts`), and confusing it with a credentials
+        // refusal would send one looking for the defect in the wrong place.
         afficher(`plateforme injoignable (${String(cause)})`, 'danger');
     } finally {
         bouton.disabled = false;
     }
 });
 
-// ⚠️ Le formulaire est CACHÉ le temps de la tentative, puis remontré si elle
-// échoue : l'afficher d'abord ferait clignoter un écran de connexion sur un
-// montage qui n'en demande aucun.
+// ⚠️ The form is HIDDEN for the duration of the attempt, then shown again if it
+// fails: showing it first would flash a login screen on a
+// deployment that requires none.
 formulaire.hidden = true;
 afficher('identification…', 'neutre');
 void tenterPomerium().then((abouti) => {

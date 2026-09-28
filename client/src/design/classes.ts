@@ -1,68 +1,68 @@
 /**
- * Parseur des CLASSES CSS — PUR : ni DOM, ni `fs`, ni chemin.
+ * CSS CLASS parser — PURE: no DOM, no `fs`, no path.
  *
- * Il sert le contrôle §7.9 (`client/outils/classes-employees.mjs`), qui compare
- * les classes DÉCLARÉES par les feuilles aux classes EMPLOYÉES par les surfaces
- * et par le TypeScript. La lecture du disque appartient au `.mjs`, comme pour
- * `tokens.ts` : « un contrôle qui a sa propre copie des valeurs valide sa
- * copie » (spec §7.1).
+ * It serves check §7.9 (`client/outils/classes-employees.mjs`), which compares
+ * the classes DECLARED by the stylesheets with the classes USED by the surfaces
+ * and by the TypeScript. Reading the disk belongs to the `.mjs`, as for
+ * `tokens.ts`: "a check that has its own copy of the values validates its
+ * copy" (spec §7.1).
  *
- * ⚠️ CE MODULE EST IMPORTÉ PAR DU `.mjs` NON TYPECHECKÉ, via le retrait de
- * types natif de Node. Il doit rester du TypeScript « EFFAÇABLE » : aucun
- * `enum`, aucun `namespace`, aucune propriété de constructeur, aucun
- * décorateur. Même contrainte que `tokens.ts`, même raison.
+ * ⚠️ THIS MODULE IS IMPORTED BY UNTYPECHECKED `.mjs`, through Node's native
+ * type stripping. It must stay "ERASABLE" TypeScript: no
+ * `enum`, no `namespace`, no constructor property, no
+ * decorator. Same constraint as `tokens.ts`, same reason.
  *
- * 🔴 TOUTES LES FONCTIONS D'ICI BLANCHISSENT LES COMMENTAIRES AVANT DE
- * CHERCHER. Ce dépôt a payé TROIS fois qu'un garde soit satisfait par le
- * commentaire du fichier qu'il analyse — dont une rouge restée VERTE parce que
- * la chaîne mutée apparaissait d'abord dans le commentaire qui la justifiait.
- * Un `/* .bouton--principale *​/` ne doit compter ni comme déclaration ni comme
- * emploi.
+ * 🔴 ALL THE FUNCTIONS HERE BLANK OUT COMMENTS BEFORE
+ * SEARCHING. This repository paid THREE times for a guard being satisfied by the
+ * comment of the file it analyses — including a red that stayed GREEN because
+ * the mutated string appeared first in the comment justifying it.
+ * A `/* .bouton--principale *​/` must count neither as a declaration nor as a
+ * use.
  */
 
-/** Blanchit les commentaires CSS et HTML en gardant les sauts de ligne. */
+/** Blanks out CSS and HTML comments while keeping line breaks. */
 function sansCommentairesCss(texte: string): string {
     return texte.replace(/\/\*[\s\S]*?\*\//g, (bloc) => bloc.replace(/[^\n]/g, ' '));
 }
 
-/** Blanchit les commentaires HTML `<!-- … -->` en gardant les sauts de ligne. */
+/** Blanks out HTML comments `<!-- … -->` while keeping line breaks. */
 export function sansCommentairesHtml(html: string): string {
     return html.replace(/<!--[\s\S]*?-->/g, (bloc) => bloc.replace(/[^\n]/g, ' '));
 }
 
 /**
- * Blanchit les commentaires TypeScript — `//` et `/* … *​/` — SANS toucher à ce
- * qui vit dans une chaîne.
+ * Blanks out TypeScript comments — `//` and `/* … *​/` — WITHOUT touching what
+ * lives inside a string.
  *
- * ⚠️ L'ÉTAT DE CHAÎNE EST SUIVI, et ce n'est pas du zèle : un
- * `const u = 'https://exemple'` blanchi naïvement perdrait la fin de sa ligne,
- * et une classe écrite après lui deviendrait invisible au contrôle — un faux
- * NÉGATIF, c'est-à-dire exactement la faute de frappe que §7.9 existe pour
- * attraper, mais silencieuse.
+ * ⚠️ THE STRING STATE IS TRACKED, and it is not overzealousness: a
+ * `const u = 'https://exemple'` blanked naively would lose the end of its line,
+ * and a class written after it would become invisible to the check — a false
+ * NEGATIVE, that is, exactly the typo §7.9 exists to
+ * catch, but silent.
  */
 /**
- * Les caractères après lesquels un `/` ouvre une LITTÉRALE D'EXPRESSION
- * RÉGULIÈRE plutôt qu'une division. `''` couvre le début du fichier.
+ * The characters after which a `/` opens a REGULAR EXPRESSION
+ * LITERAL rather than a division. `''` covers the start of the file.
  *
- * 🔴 CE CAS N'EST PAS THÉORIQUE, ET IL A ÉTÉ TROUVÉ EN LANÇANT LE CONTRÔLE SUR
- * CE FICHIER-CI. `classesEmployeesTs` contient `/['"]([^'"]*)['"]/g` : six
- * guillemets dans une regex. Sans cette reconnaissance, le suivi d'état de
- * chaîne les prend pour des ouvertures, la parité se rompt, et TOUT LE RESTE
- * DU FICHIER est lu comme une chaîne — donc plus aucun commentaire n'y est
- * blanchi. Le contrôle rendait alors `NON DÉCLARÉE …` sur la prose d'un
- * commentaire qui décrit `className = '…'`, ce qui est exactement le patron
- * « un garde satisfait par le commentaire du fichier qu'il analyse » que ce
- * dépôt a déjà payé trois fois.
+ * 🔴 THIS CASE IS NOT THEORETICAL, AND IT WAS FOUND BY RUNNING THE CHECK ON
+ * THIS VERY FILE. `classesEmployeesTs` contains `/['"]([^'"]*)['"]/g`: six
+ * quotes in a regex. Without this recognition, the string state
+ * tracking takes them for openings, parity breaks, and THE WHOLE REST
+ * OF THE FILE is read as a string — so no comment in it is
+ * blanked any more. The check then returned `UNDECLARED …` on the prose of a
+ * comment describing `className = '…'`, which is exactly the pattern
+ * "a guard satisfied by the comment of the file it analyses" this
+ * repository has already paid for three times.
  *
- * ⚠️ C'EST UNE HEURISTIQUE, PAS UN LEXEUR JAVASCRIPT. Elle ne distingue pas
- * `a /b/ c` (deux divisions) d'une regex ; le cas ne se présente pas dans ce
- * dépôt, et le prix d'un vrai lexeur serait sans commune mesure avec ce que ce
- * contrôle mesure. La conséquence d'une erreur est bornée : un ensemble
- * « employé » légèrement faux, jamais un plantage.
+ * ⚠️ IT IS A HEURISTIC, NOT A JAVASCRIPT LEXER. It does not distinguish
+ * `a /b/ c` (two divisions) from a regex; the case does not occur in this
+ * repository, and the price of a real lexer would be out of all proportion with what this
+ * check measures. The consequence of a mistake is bounded: a slightly wrong
+ * "used" set, never a crash.
  */
 const OUVRE_UNE_REGEX = ['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+'];
 
-/** Index juste après la littérale de regex qui commence à `debut`. */
+/** Index just after the regex literal starting at `debut`. */
 function finDeRegex(ts: string, debut: number): number {
     let i = debut + 1;
     let dansUneClasse = false;
@@ -85,7 +85,7 @@ export function sansCommentairesTs(ts: string): string {
     let sortie = '';
     let i = 0;
     let delimiteur: string | null = null;
-    /** Le dernier caractère SIGNIFICATIF émis — il décide si `/` ouvre une regex. */
+    /** The last SIGNIFICANT character emitted — it decides whether `/` opens a regex. */
     let precedent = '';
     while (i < ts.length) {
         const c = ts[i];
@@ -134,14 +134,14 @@ export function sansCommentairesTs(ts: string): string {
 }
 
 /**
- * Les classes des SÉLECTEURS d'un texte CSS.
+ * The classes of the SELECTORS of a CSS text.
  *
- * 🔴 LES CORPS DE DÉCLARATION SONT ÉCARTÉS, et c'est nécessaire : un
- * `margin: .5rem` ou un `content: ".x"` porte un point suivi de caractères, et
- * les compter comme des classes déclarées rendrait le contrôle §7.9 permissif
- * — n'importe quelle faute de frappe finirait par se trouver « déclarée »
- * quelque part. Un bloc dont le prélude commence par `@` (`@media`,
- * `@supports`) contient des RÈGLES et non des déclarations : on y descend.
+ * 🔴 DECLARATION BODIES ARE DISCARDED, and it is necessary: a
+ * `margin: .5rem` or a `content: ".x"` carries a dot followed by characters, and
+ * counting them as declared classes would make check §7.9 permissive
+ * — any typo would end up being "declared"
+ * somewhere. A block whose prelude starts with `@` (`@media`,
+ * `@supports`) contains RULES and not declarations: we descend into it.
  */
 export function classesDeclarees(css: string): Set<string> {
     const classes = new Set<string>();
@@ -180,7 +180,7 @@ export function classesDeclarees(css: string): Set<string> {
     return classes;
 }
 
-/** Les classes déclarées par les blocs `<style>` en ligne d'une page. */
+/** The classes declared by a page's inline `<style>` blocks. */
 export function classesDeclareesEnLigne(html: string): Set<string> {
     const classes = new Set<string>();
     for (const m of sansCommentairesHtml(html).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)) {
@@ -189,7 +189,7 @@ export function classesDeclareesEnLigne(html: string): Set<string> {
     return classes;
 }
 
-/** Les classes employées par les attributs `class="…"` d'une page. */
+/** The classes used by a page's `class="…"` attributes. */
 export function classesEmployeesHtml(html: string): Set<string> {
     const classes = new Set<string>();
     const propre = sansCommentairesHtml(html);
@@ -202,15 +202,15 @@ export function classesEmployeesHtml(html: string): Set<string> {
 }
 
 /**
- * Les classes employées en LITTÉRAL par du TypeScript — `classList.add('…')`
- * et `className = '…'`.
+ * The classes used as a LITERAL by TypeScript — `classList.add('…')`
+ * and `className = '…'`.
  *
- * ⚠️ UNE CLASSE CALCULÉE À L'EXÉCUTION EST INVISIBLE ICI, par construction :
- * `el.className = variable`, une concaténation, un `classList.toggle(nom)`.
- * C'est le prix de l'analyse statique, et la contrepartie est la convention
- * §6.4 du plan S3 — les classes s'écrivent en littéral, dans le HTML de
- * préférence. Le contrôle ne peut pas forcer cette convention ; il la
- * récompense.
+ * ⚠️ A CLASS COMPUTED AT RUNTIME IS INVISIBLE HERE, by construction:
+ * `el.className = variable`, a concatenation, a `classList.toggle(nom)`.
+ * It is the price of static analysis, and the counterpart is convention
+ * §6.4 of plan S3 — classes are written as literals, preferably in the HTML.
+ * The check cannot enforce this convention; it
+ * rewards it.
  */
 export function classesEmployeesTs(ts: string): Set<string> {
     const classes = new Set<string>();

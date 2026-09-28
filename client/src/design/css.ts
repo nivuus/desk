@@ -1,47 +1,47 @@
 /**
- * LE LECTEUR DE FEUILLE — l'outil commun des gardes de forme de ⑥.
+ * THE STYLESHEET READER — the common tool of ⑥'s shape guards.
  *
- * PUR : ni DOM, ni `fs`, ni chemin. Il ne connaît AUCUNE règle de design — il
- * blanchit, il découpe, il nomme. Toute règle appartient à son appelant.
+ * PURE: no DOM, no `fs`, no path. It knows NO design rule — it
+ * blanks, it cuts, it names. Every rule belongs to its caller.
  *
- * 🔴 EXTRAIT DE `primitives.test.ts` PAR LA TÂCHE 1 DU SOUS-BLOC S4, ET AVANT
- * TOUTE ADDITION. Ce fichier-là était à 283 lignes pour une porte à 300 (spec
- * §10), marge 17 — la plus serrée de `client/` après `verify-webrtc.mjs` —, et
- * S4 lui ajoute deux gardes qui lisent des feuilles. « On extrait avant
- * d'ajouter » : c'est la doctrine de `CLAUDE.md` (tâche 6 de D9, tâches 1 à 3
- * de D10), et ce dépôt a payé deux fois « une addition de commentaire annule
- * une extraction ».
+ * 🔴 EXTRACTED FROM `primitives.test.ts` BY TASK 1 OF SUB-BLOCK S4, AND BEFORE
+ * ANY ADDITION. That file was at 283 lines for a gate at 300 (spec
+ * §10), margin 17 — the tightest of `client/` after `verify-webrtc.mjs` —, and
+ * S4 adds two guards to it that read stylesheets. "We extract before
+ * adding": it is `CLAUDE.md`'s doctrine (task 6 of D9, tasks 1 to 3
+ * of D10), and this repository has twice paid for "a comment addition cancels
+ * an extraction".
  *
- * ⚠️ DIVERGENCE DÉCLARÉE. Le point de chute que S2 puis S3 nomment pour
- * `primitives.test.ts` est « scinder par objet — les gardes de forme d'un côté,
- * les gardes de famille de l'autre, sans séparer G5 de sa source ». Cette
- * extraction-ci est DIFFÉRENTE : elle sort l'OUTIL, pas les gardes, et laisse
- * G5 auprès de sa source. Elle est COMPLÉMENTAIRE, pas substitutive — le point
- * de chute nommé reste ouvert, et reste le bon si le fichier regrossit.
+ * ⚠️ DECLARED DIVERGENCE. The landing point S2 then S3 name for
+ * `primitives.test.ts` is "split by object — the shape guards on one side,
+ * the family guards on the other, without separating G5 from its source". This
+ * extraction is DIFFERENT: it moves out the TOOL, not the guards, and leaves
+ * G5 next to its source. It is COMPLEMENTARY, not a substitute — the named
+ * landing point stays open, and stays the right one if the file grows again.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 POURQUOI LE BLANCHIMENT VIT ICI, ET PAS DANS CHAQUE GARDE.
+ * 🔴 WHY BLANKING LIVES HERE, AND NOT IN EACH GUARD.
  *
- * Un garde qui cherche une sous-chaîne dans le texte BRUT est satisfait par le
- * commentaire du fichier qu'il analyse — les feuilles de ce dépôt écrivent
- * longuement POURQUOI telle valeur y est interdite, donc elles écrivent cette
- * valeur. Trois occurrences payées : S1 sur `CLE_THEME`, S2 sur G1 et G5, S3
- * sur sa rouge n°16. Le recopier dans chaque garde le ferait diverger d'un
- * garde à l'autre sans qu'aucune commande ne le dise.
+ * A guard looking for a substring in the RAW text is satisfied by the
+ * comment of the file it analyses — this repository's stylesheets write
+ * at length WHY a given value is forbidden there, so they write that
+ * value. Three occurrences paid for: S1 on `CLE_THEME`, S2 on G1 and G5, S3
+ * on its red no. 16. Copying it into each guard would make it diverge from one
+ * guard to another without any command saying so.
  *
- * ⚠️ CE QU'IL NE FAIT PAS : il ne comprend ni les chaînes CSS (`content: "/*"`),
- * ni les `url()` non citées, ni l'imbrication native. Aucune feuille de
- * `client/src/` n'en porte — relevé, pas supposé —, et le jour où l'une en
- * portera, c'est ici qu'il faudra le dire plutôt que dans son appelant.
+ * ⚠️ WHAT IT DOES NOT DO: it understands neither CSS strings (`content: "/*"`),
+ * nor unquoted `url()`s, nor native nesting. No stylesheet of
+ * `client/src/` carries any — noted, not assumed —, and the day one
+ * does, it is here that it must be said rather than in its caller.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-/** Retire les commentaires `/* … *​/` — voir l'en-tête. */
+/** Removes `/* … *​/` comments — see the header. */
 export function sansCommentaires(css: string): string {
     return css.replace(/\/\*[\s\S]*?\*\//g, ' ');
 }
 
-/** Tout ce qui précède un `{`. Les at-rules (`@media …`) commencent par `@`. */
+/** Everything preceding a `{`. At-rules (`@media …`) start with `@`. */
 export function preludes(css: string): string[] {
     return [...css.matchAll(/([^{}]+)\{/g)].map((m) => m[1].trim()).filter(Boolean);
 }
@@ -52,8 +52,8 @@ export interface Declaration {
 }
 
 /**
- * Les déclarations des blocs les plus intérieurs. `[^{}]*` ne franchit ni `{`
- * ni `}` : le corps d'un `@media` n'est donc jamais pris pour une déclaration.
+ * The declarations of the innermost blocks. `[^{}]*` crosses neither `{`
+ * nor `}`: the body of an `@media` is therefore never taken for a declaration.
  */
 export function declarationsDe(css: string): Declaration[] {
     const sortie: Declaration[] = [];
@@ -70,7 +70,7 @@ export function declarationsDe(css: string): Declaration[] {
     return sortie;
 }
 
-/** Le corps du bloc qui suit `index`, accolades appariées. */
+/** The body of the block following `index`, braces matched. */
 export function blocApres(css: string, index: number): string {
     const debut = css.indexOf('{', index);
     if (debut === -1) return '';

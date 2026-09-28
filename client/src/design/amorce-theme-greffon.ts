@@ -1,54 +1,54 @@
-// La FORME de la balise que le greffon Vite injecte pour l'amorce anti-FOUC —
-// extraite de `client/vite.config.ts` pour une seule raison : RESTER
-// TYPECHECKÉE.
+// The SHAPE of the tag the Vite plugin injects for the anti-FOUC bootstrap —
+// extracted from `client/vite.config.ts` for a single reason: to STAY
+// TYPECHECKED.
 //
-// 🔴 `vite.config.ts` N'EST JAMAIS TYPECHECKÉ (voir son en-tête) : il est hors
-// des deux motifs de `client/tsconfig.json:12` (`src/**/*.ts`,
-// `../proto/ts/**/*.ts`). Un test qui l'importerait DIRECTEMENT traînerait ses
-// erreurs de type dans `npx tsc --noEmit` — qui DOIT rester une étape
-// DISTINCTE de `npx vitest run`, `CLAUDE.md` le dit noir sur blanc : « VITEST
-// TRANSPILE SANS VÉRIFIER LES TYPES ». Ce fichier-ci vit sous `src/`, DONC il
-// est typechecké, et `vite.config.ts` l'IMPORTE — le sens inverse ne pose
-// aucun problème, Rollup ne typechecke jamais son propre fichier de config.
+// 🔴 `vite.config.ts` IS NEVER TYPECHECKED (see its header): it is outside
+// both patterns of `client/tsconfig.json:12` (`src/**/*.ts`,
+// `../proto/ts/**/*.ts`). A test importing it DIRECTLY would drag its
+// type errors into `npx tsc --noEmit` — which MUST stay a step
+// DISTINCT from `npx vitest run`, `CLAUDE.md` says so in black and white: "VITEST
+// TRANSPILES WITHOUT CHECKING TYPES". This file lives under `src/`, SO it
+// is typechecked, and `vite.config.ts` IMPORTS it — the reverse direction poses
+// no problem, Rollup never typechecks its own config file.
 //
-// ⚠️ CE FICHIER N'EST DÉLIBÉRÉMENT PAS CELUI QUI LIT LE CONTENU DE L'AMORCE.
-// `vite.config.ts` doit lire `amorce-theme.js` par `node:fs` — un import
-// `?raw` NE RÉSOUT PAS quand Vite bundle SA PROPRE configuration (mesuré :
-// `npm run build` échoue avec « No matching export … for import "default" »,
-// esbuild traitant `?raw` comme un chemin de fichier littéral hors du
-// pipeline de greffons que ce mode de chargement n'active pas). Et
-// `client/` n'a pas `@types/node` (`src/presse-papier.test.ts` porte le même
-// constat), donc un `readFileSync` ICI casserait `npx tsc --noEmit`. D'où la
-// scission : `vite.config.ts` garde SA lecture `node:fs` (non typechecké,
-// comme avant ce lot), et ce module-ci ne porte que ce qui n'a besoin
-// d'AUCUNE lecture disque — le NOM du fichier émis et la FORME de la balise
-// qui le référence. Le contenu lui-même, `amorce-theme.csp.test.ts` le lit
-// par `?raw` (qui, LUI, résout très bien sous Vitest).
+// ⚠️ THIS FILE IS DELIBERATELY NOT THE ONE THAT READS THE BOOTSTRAP'S CONTENT.
+// `vite.config.ts` must read `amorce-theme.js` through `node:fs` — a `?raw`
+// import DOES NOT RESOLVE when Vite bundles ITS OWN configuration (measured:
+// `npm run build` fails with "No matching export … for import "default"",
+// esbuild treating `?raw` as a literal file path outside the
+// plugin pipeline that this loading mode does not enable). And
+// `client/` does not have `@types/node` (`src/presse-papier.test.ts` carries the same
+// finding), so a `readFileSync` HERE would break `npx tsc --noEmit`. Hence the
+// split: `vite.config.ts` keeps ITS `node:fs` read (not typechecked,
+// as before this batch), and this module only carries what needs
+// NO disk read — the NAME of the emitted file and the SHAPE of the tag
+// that references it. The content itself, `amorce-theme.csp.test.ts` reads it
+// through `?raw` (which, for its part, resolves perfectly well under Vitest).
 //
-// Voir `client/vite.config.ts` (le grand commentaire au-dessus de
-// `NOM_FICHIER_AMORCE`) pour le RAISONNEMENT COMPLET du lot `csp-amorce`
-// (29 août 2026) : pourquoi l'amorce est un fichier externe `'self'` et non
-// un hash `sha256-…` dans la CSP.
+// See `client/vite.config.ts` (the big comment above
+// `NOM_FICHIER_AMORCE`) for the FULL REASONING of batch `csp-amorce`
+// (August 29th, 2026): why the bootstrap is an external `'self'` file and not
+// a `sha256-…` hash in the CSP.
 
-/// Le nom sous lequel l'amorce est émise dans `dist/` — un nom STABLE, hors
-/// de `assets/` (le seul répertoire que Vite empreinte), donc jamais un an
-/// d'`immutable` sur un contenu qui change sans que le nom ne bouge.
+/// The name under which the bootstrap is emitted into `dist/` — a STABLE name, outside
+/// `assets/` (the only directory Vite fingerprints), hence never a year
+/// of `immutable` on content that changes without the name moving.
 export const NOM_FICHIER_AMORCE = 'amorce-theme.js';
 
-/// La balise que le greffon Vite injecte dans le `<head>` de CHAQUE page.
+/// The tag the Vite plugin injects into the `<head>` of EVERY page.
 ///
-/// 🔴 `src`, JAMAIS `children` — un script en LIGNE, ET C'EST TOUT LE DÉFAUT
-/// mesuré le 29 août 2026 (`https://app.allanic.me`, Chrome) : la CSP de la
-/// plateforme (`plateforme/src/http/page/entetes-page.ts::CSP`) porte
-/// `script-src 'self'` sans `'unsafe-inline'` ni hash, et bloquait ce script
-/// tant qu'il partait en ligne.
+/// 🔴 `src`, NEVER `children` — an INLINE script, AND THAT IS THE WHOLE DEFECT
+/// measured on August 29th, 2026 (`https://app.allanic.me`, Chrome): the
+/// platform's CSP (`plateforme/src/http/page/entetes-page.ts::CSP`) carries
+/// `script-src 'self'` without `'unsafe-inline'` or a hash, and blocked this script
+/// as long as it went out inline.
 ///
-/// 🔴 NI `async`, NI `defer`, NI `type: 'module'` — les trois DIFFÉRERAIENT
-/// l'exécution après l'analyse de `<body>`, donc après la première peinture,
-/// et casseraient l'anti-FOUC que cette amorce existe pour éviter. Un
-/// `<script src>` CLASSIQUE bloque l'analyse du document jusqu'à son
-/// exécution, exactement comme le script en ligne qu'il remplace — à un
-/// aller-retour réseau près, sur la MÊME origine.
+/// 🔴 NEITHER `async`, NOR `defer`, NOR `type: 'module'` — all three would DEFER
+/// execution until after `<body>` is parsed, hence after first paint,
+/// and would break the anti-FOUC this bootstrap exists to avoid. A
+/// CLASSIC `<script src>` blocks document parsing until its
+/// execution, exactly like the inline script it replaces — give or take one
+/// network round trip, on the SAME origin.
 export function baliseAmorce() {
     return {
         tag: 'script' as const,
