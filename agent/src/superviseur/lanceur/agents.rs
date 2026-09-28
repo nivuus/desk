@@ -1,8 +1,8 @@
-//! `impl Lanceur for LanceurDeProcessus` : lancer un agent de fenêtre sur sa
-//! consigne, dire s'il vit, le tuer.
+//! `impl Lanceur for LanceurDeProcessus`: start a window agent from its
+//! instruction, tell whether it is alive, kill it.
 //!
-//! Extrait de `lanceur.rs` quand ce fichier a franchi les 500 lignes au passage
-//! de `cargo fmt`. `#![cfg(windows)]` hérité de `lanceur.rs`, comme `pont.rs`.
+//! Split out of `lanceur.rs` when `cargo fmt` pushed that file past 500 lines.
+//! `#![cfg(windows)]` is inherited from `lanceur.rs`, as for `pont.rs`.
 
 use super::*;
 

@@ -387,8 +387,8 @@ pub enum AgentControl {
 #[path = "control/redaction.rs"]
 mod redaction;
 
-/// Les constructeurs des deux enums, à la version courante du protocole —
-/// extraits vers `control/constructeurs.rs` pour tenir sous 500 lignes.
+/// Constructors of both enums at the current protocol version, split out to
+/// `control/constructeurs.rs` to stay under 500 lines.
 #[path = "control/constructeurs.rs"]
 mod constructeurs;
 

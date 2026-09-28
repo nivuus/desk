@@ -83,7 +83,7 @@ pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver
     )
 }
 
-/// Un message reçu par le pair : son canal, s'il est binaire, ses octets.
+/// A message the peer received: its channel, whether it is binary, its bytes.
 type Recu = (ChannelId, bool, Vec<u8>);
 
 /// **LE** pilote de ces tests : il pompe le pair ET récolte ce que le pont

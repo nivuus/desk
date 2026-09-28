@@ -1,5 +1,5 @@
-//! Cohérence entre la région capturée et la région d'injection, et bornage
-//! du redimensionnement.
+//! Consistency between the captured region and the injection region, and
+//! clamping of resizes.
 
 use super::*;
 

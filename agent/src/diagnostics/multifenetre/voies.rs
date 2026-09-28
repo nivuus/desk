@@ -25,8 +25,8 @@ use windows::Win32::Storage::Xps::PrintWindow;
 use crate::capture::{CapturedFrame, DesktopCapture};
 use crate::geometry::Rect;
 
-/// Des voies ouvertes, une par fenêtre, et la région que chacune retient —
-/// celle dont ses images porteront les dimensions.
+/// Open capture paths, one per window, and the region each one keeps: the
+/// dimensions its frames will carry.
 pub(super) type VoiesOuvertes = (Vec<Box<dyn VoieDeCapture>>, Vec<Rect>);
 
 pub(super) trait VoieDeCapture {

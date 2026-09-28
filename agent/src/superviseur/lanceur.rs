@@ -50,8 +50,8 @@ use windows::Win32::System::JobObjects::{
 use super::enfants::{Consigne, Lanceur};
 
 mod pont;
-// `impl Lanceur` : ce que la boucle du superviseur demande à ce lanceur —
-// lancer un agent de fenêtre, dire s'il vit, le tuer.
+// `impl Lanceur`: what the supervisor loop asks of this launcher - start a
+// window agent, tell whether it is alive, kill it.
 mod agents;
 
 /// Un enfant suivi, et le peu d'état qu'il faut retenir sur lui.

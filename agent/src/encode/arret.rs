@@ -11,7 +11,7 @@ use windows::Win32::Media::MediaFoundation::{
     MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_TYPE,
 };
 
-// La file de travail sérialisée imposée à la MFT, et sa barrière.
+// The serialized work queue imposed on the MFT, and its barrier.
 mod file;
 pub(super) use file::FileMft;
 

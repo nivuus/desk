@@ -53,8 +53,8 @@
 mod disque;
 mod mutations;
 mod reprise;
-// Ce que le fil émet : trames vers le navigateur, lignes au journal,
-// inscriptions dans la table partagée.
+// What the thread emits: frames to the browser, journal lines,
+// registrations in the shared table.
 mod sorties;
 
 use std::collections::VecDeque;

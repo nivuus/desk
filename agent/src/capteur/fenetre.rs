@@ -44,7 +44,7 @@ mod accent_fenetre;
 // D10 : la tâche 8 et la tâche 9 avaient porté ce fichier à 505 lignes,
 // au-dessus du plafond de 500.
 mod ouverture;
-// Le fil écrivain de la connexion média, et ce qu'on lui confie.
+// The media connection's writer thread, and what it is handed.
 mod media;
 // `trace` porte la trace périodique des compteurs de capture
 // (`SOURCE_TRACE=1`) — troisième module enfant sur le même patron que les

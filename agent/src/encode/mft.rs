@@ -67,10 +67,10 @@ pub struct EncodeurMft {
     /// `awaiting_drain`) : le pilotage s'appuie désormais sur `GetInputStatus`,
     /// qui décrit l'état réel du convertisseur au lieu de le déduire.
     converter_output_pending: bool,
-    /// Taille réellement encodée et transportée — la sortie du convertisseur
-    /// et l'entrée de l'encodeur. Peut être plus petite que la capture : c'est
-    /// le levier de résolution adaptative, et il ne touche pas à la fenêtre
-    /// Windows (contrairement à `WindowsSource::resize`).
+    /// Size actually encoded and sent: the converter's output and the
+    /// encoder's input. It can be smaller than the captured textures; it is
+    /// the adaptive-resolution lever, and it never touches the Windows window
+    /// (unlike `WindowsSource::resize`).
     encode: (u32, u32),
     fps: u32,
     /// Nombre de demandes d'entrée non encore satisfaites.

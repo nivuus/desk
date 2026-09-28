@@ -1,8 +1,7 @@
-//! Le recadrage : copier la région demandée d'une image dupliquée dans une
-//! texture dédiée, sur le GPU, sans jamais repasser par la mémoire centrale.
+//! Cropping: copy the requested region of a duplicated frame into a dedicated
+//! texture, on the GPU, never going through main memory.
 //!
-//! Extrait de `capture.rs` quand ce fichier a franchi les 500 lignes au
-//! passage de `cargo fmt`.
+//! Split out of `capture.rs` when `cargo fmt` pushed that file past 500 lines.
 
 use super::*;
 

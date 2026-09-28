@@ -1,5 +1,5 @@
-//! Tests du presse-papier dans le sens navigateur → VM (sous-bloc P2) et de la
-//! seconde prise de D-P3-6, à part de `tests.rs` pour tenir sous 500 lignes.
+//! Clipboard tests for the browser → VM direction (sub-block P2) and for the
+//! second catch of D-P3-6, apart from `tests.rs` to stay under 500 lines.
 
 use super::tests::amorce;
 use super::*;

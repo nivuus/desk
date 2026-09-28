@@ -89,7 +89,7 @@ fn luma(r: u8, g: u8, b: u8) -> u8 {
 /// filtre absurde sans qu'aucun test ne le dise.
 ///
 /// Une tranche dont la longueur n'est pas un multiple de 4 voit son reste
-/// **laissé tel quel** — `as_chunks_mut` le rend à part, et il est ignoré. Ce n'est pas un silence
+/// **laissé tel quel** — `as_chunks_mut` returns it apart and it is ignored. Ce n'est pas un silence
 /// commode : un tampon mal dimensionné est refusé plus loin par [`dominante`],
 /// qui compare la longueur au produit `largeur × hauteur × 4`.
 pub fn bgra_en_rgba(tampon: &mut [u8]) {
@@ -128,7 +128,7 @@ pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
         return None;
     }
 
-    // clé de seau -> (somme_r, somme_g, somme_b, compte)
+    // bucket key -> (sum_r, sum_g, sum_b, count)
     type Cle = (u16, u16, u16);
     type Sommes = (u64, u64, u64, u64);
     let mut seaux: std::collections::BTreeMap<Cle, Sommes> = std::collections::BTreeMap::new();

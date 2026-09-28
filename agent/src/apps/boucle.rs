@@ -94,8 +94,8 @@ fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
     issue
 }
 
-/// Où la boucle parle, à quel rythme, et ce qu'elle partage avec les fils de
-/// surveillance et d'installation.
+/// Where the loop talks, how often, and what it shares with the watch and
+/// install threads.
 pub struct Reglages {
     pub base_plateforme: String,
     pub periode: std::time::Duration,

@@ -1,5 +1,5 @@
-//! `impl VideoSource for WindowsSource` : un essai de capture par appel, et le
-//! court réessai borné réservé au premier démarrage de l'encodeur.
+//! `impl VideoSource for WindowsSource`: one capture attempt per call, and the
+//! short bounded retry kept for the encoder's very first start.
 
 use super::*;
 

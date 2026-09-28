@@ -421,7 +421,7 @@ impl Drop for DesktopCapture {
 // au type portable pour tout le code qui, lui, ne compile que sous Windows.
 pub use crate::sortie_dxgi::SortieDxgi;
 
-// Le recadrage d'une image dupliquée dans une texture dédiée, sur le GPU.
+// Cropping a duplicated frame into a dedicated texture, on the GPU.
 mod recadrage;
 
 // `enumerer_sorties`, `enumerer_sorties_silencieux` et le reste de

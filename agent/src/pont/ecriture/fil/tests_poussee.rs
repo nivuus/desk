@@ -1,6 +1,6 @@
-//! Tests du fil d'écriture : la poussée des morceaux — un en vol à la fois, les
-//! écritures pendant une poussée, les acquittements tardifs — à part de
-//! `tests.rs` pour tenir sous 500 lignes.
+//! Write thread tests for pushing chunks - one in flight at a time, writes
+//! during a push, late acknowledgements - apart from `tests.rs` to stay under
+//! 500 lines.
 
 use super::tests::{modifie, Bac};
 use super::*;

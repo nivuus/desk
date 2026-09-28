@@ -122,11 +122,11 @@ impl Condensateur {
     pub fn absorber(&mut self, mut bloc: &[u8]) {
         self.bits = self.bits.wrapping_add((bloc.len() as u64) * 8);
 
-        // D'abord compléter le résidu, s'il y en a un. S'il ne suffit pas à
-        // remplir un bloc, `bloc` est épuisé PAR CONSTRUCTION et il faut
-        // sortir ici : la suite écraserait sinon `en_residu` avec le reste
-        // vide d'un `as_chunks` sur une tranche vide, et le résidu déjà
-        // reçu serait perdu sans un mot.
+        // First top up the residue, if there is one. If that does not fill a
+        // block, `bloc` is exhausted BY CONSTRUCTION and we must return here:
+        // otherwise the code below would overwrite `en_residu` with the empty
+        // remainder of `as_chunks` on an empty slice, and the residue already
+        // received would be lost without a word.
         if self.en_residu > 0 {
             let manque = (64 - self.en_residu).min(bloc.len());
             self.residu[self.en_residu..self.en_residu + manque].copy_from_slice(&bloc[..manque]);

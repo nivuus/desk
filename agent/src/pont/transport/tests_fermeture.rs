@@ -1,5 +1,5 @@
-//! Tests du transport du pont : la fermeture du canal, et le label qui décide
-//! du canal retenu — à part de `tests.rs` pour tenir sous 500 lignes.
+//! Bridge transport tests: channel closing, and the label that decides which
+//! channel is kept, apart from `tests.rs` to stay under 500 lines.
 
 use super::tests::{canal_ouvert, echanger, monter};
 use super::*;

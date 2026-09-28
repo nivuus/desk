@@ -1,8 +1,7 @@
-//! Ce que le fil d'écriture émet : les trames vers le navigateur, les lignes du
-//! journal des écritures dues, et les inscriptions dans la table partagée.
+//! What the write thread emits: frames to the browser, lines of the journal
+//! of pending writes, and registrations in the shared table.
 //!
-//! Extrait de `fil.rs` quand ce fichier a franchi les 500 lignes au passage de
-//! `cargo fmt`.
+//! Split out of `fil.rs` when `cargo fmt` pushed that file past 500 lines.
 
 use super::*;
 

@@ -1,8 +1,7 @@
-//! Le fil écrivain de la connexion média : ce que le fil de fenêtre lui
-//! confie, la profondeur bornée de leur file, et l'écriture elle-même.
+//! The media connection's writer thread: what the window thread hands it, the
+//! bounded depth of their queue, and the writing itself.
 //!
-//! Extrait de `fenetre.rs` quand ce fichier a franchi les 500 lignes au
-//! passage de `cargo fmt`.
+//! Split out of `fenetre.rs` when `cargo fmt` pushed that file past 500 lines.
 
 use std::io::Write;
 use std::sync::mpsc::Receiver;

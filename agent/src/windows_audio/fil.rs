@@ -11,10 +11,9 @@
 
 use super::*;
 
-/// Ce que le fil partage avec `WindowsAudioSource` : la file de paquets et les
-/// quatre drapeaux atomiques. Les champs portent le nom des variables `_fil`
-/// de l'appelant, pour que la correspondance reste lisible d'un fichier à
-/// l'autre.
+/// What the thread shares with `WindowsAudioSource`: the packet ring and the
+/// four atomic flags. Fields keep the names of the caller's `_fil` variables so
+/// the two files still read side by side.
 pub(super) struct PartageFil {
     pub(super) ring_fil: PacketRing,
     pub(super) arret_fil: Arc<AtomicBool>,
@@ -25,8 +24,7 @@ pub(super) struct PartageFil {
 
 /// Corps du fil de capture audio, lancé par `WindowsAudioSource::demarrer`.
 ///
-/// Toutes les valeurs sont passées explicitement — aucune n'est plus
-/// capturée par une fermeture.
+/// Every value is passed explicitly; none is captured by a closure any more.
 pub(super) fn tourner(
     mut capture: Capture,
     mut encodeur: OpusEncoder,

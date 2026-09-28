@@ -1,5 +1,5 @@
-//! Tests de la table : les écritures, les commandes ProjFS, l'âge et les
-//! budgets — à part de `tests.rs` pour tenir sous 500 lignes.
+//! Table tests: writes, ProjFS commands, age and budgets, apart from
+//! `tests.rs` to stay under 500 lines.
 
 use super::tests::{attributs, maintenant};
 use super::*;

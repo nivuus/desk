@@ -1,9 +1,8 @@
-//! La file de travail Media Foundation sérialisée imposée à la MFT de
-//! l'encodeur, et la barrière qui attend qu'elle se vide — la seconde moitié
-//! du couple arrêt + barrière décrit dans `arret.rs`.
+//! The serialized Media Foundation work queue imposed on the encoder's MFT,
+//! and the barrier that waits for it to drain: the second half of the
+//! stop + barrier pair described in `arret.rs`.
 //!
-//! Extrait de `arret.rs` quand ce fichier a franchi les 500 lignes au passage
-//! de `cargo fmt`.
+//! Split out of `arret.rs` when `cargo fmt` pushed that file past 500 lines.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};

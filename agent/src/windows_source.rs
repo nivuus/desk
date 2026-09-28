@@ -42,8 +42,8 @@ mod redimensionnement;
 /// dette de taille gelée, ne pouvait pas absorber.
 mod encodage;
 
-// `impl VideoSource` et le réessai borné du tout premier démarrage de
-// l'encodeur, extraits pour tenir sous 500 lignes.
+// `impl VideoSource` and the bounded retry of the encoder's very first
+// start, split out to stay under 500 lines.
 mod source_video;
 
 pub struct WindowsSource {

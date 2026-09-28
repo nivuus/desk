@@ -1,5 +1,5 @@
-//! Constructeurs de [`ClientControl`] et [`AgentControl`] : chacun pose la
-//! version courante du protocole, pour qu'aucun site d'appel n'ait à le faire.
+//! Constructors for [`ClientControl`] and [`AgentControl`]: each one sets the
+//! current protocol version, so no call site has to.
 
 use super::*;
 
