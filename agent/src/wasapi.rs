@@ -1,47 +1,47 @@
-//! Capture du son que joue la machine, par WASAPI en mode loopback.
+//! Capturing the sound the machine plays, through WASAPI in loopback mode.
 //!
-//! Le périphérique visé est **celui que désigne `AUDIO_PERIPHERIQUE`**, ou le
-//! rendu par défaut de la session à défaut : on capte ce qui sortirait de ce
-//! périphérique, quelle que soit l'application qui le produit.
+//! The targeted device is **the one `AUDIO_PERIPHERIQUE` designates**, or the
+//! session's default render device failing that: we capture what would come out of that
+//! device, whatever application produces it.
 //!
-//! ⚠️ **Ce fichier a longtemps dit « le rendu par défaut » sans condition, et
-//! c'était une dépendance implicite qui s'est retournée** : l'installation de
-//! VB-Cable sur la VM (19 août 2026, préparation du chantier E) a fait
-//! basculer ce défaut sur un câble virtuel que rien n'alimente, et le produit
-//! s'est mis à capter du silence sans qu'aucune ligne ne le dise. La
-//! résolution vit désormais dans `wasapi/rendu.rs`, et la règle qui élit —
-//! pure, éprouvée sur l'hôte — dans `wasapi/peripherique.rs`.
+//! ⚠️ **This file long said "the default render device" unconditionally, and
+//! it was an implicit dependency that turned around**: installing
+//! VB-Cable on the VM (August 19th, 2026, preparation of workstream E) switched
+//! that default to a virtual cable nothing feeds, and the product
+//! started capturing silence without any line saying so. The
+//! resolution now lives in `wasapi/rendu.rs`, and the rule that elects —
+//! pure, tested on the host — in `wasapi/peripherique.rs`.
 //!
-//! **Sondage, pas événement.** `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` n'est pas
-//! supporté en combinaison avec `AUDCLNT_STREAMFLAGS_LOOPBACK` : Microsoft
-//! documente la capture loopback comme devant être pilotée par minuterie. Un
-//! flux de rendu inactif ne signalerait d'ailleurs aucun événement, ce qui est
-//! le cas fréquent ici — rien ne joue la plupart du temps. Le sondage est donc
-//! la seule forme correcte, et il sert directement le complément de silence de
+//! **Polling, not events.** `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` is not
+//! supported in combination with `AUDCLNT_STREAMFLAGS_LOOPBACK`: Microsoft
+//! documents loopback capture as having to be timer-driven. An
+//! idle render stream would moreover signal no event, which is
+//! the frequent case here — nothing plays most of the time. Polling is therefore
+//! the only correct form, and it directly serves the silence fill of
 //! `frames.rs`.
 
 #![cfg(windows)]
 
-/// L'ÉCRITURE d'échantillons sur un point de terminaison de rendu : la moitié
-/// Windows du microphone (bloc E2). Miroir de `LoopbackCapture` ci-dessous —
-/// celui-ci lit ce que la machine joue, celui-là fait jouer à la machine ce
-/// que le navigateur envoie.
+/// WRITING samples to a render endpoint: the Windows half
+/// of the microphone (block E2). Mirror of `LoopbackCapture` below —
+/// that one reads what the machine plays, this one makes the machine play what
+/// the browser sends.
 pub mod ecriture;
 pub mod process_loopback;
-/// Résolution d'un point de terminaison audio de **rendu** — celui que capte
-/// le loopback (correction « A-bis »), **et** celui du câble sur lequel le
-/// micro écrit (bloc E2). Deux consommateurs, deux politiques de repli
-/// opposées — le premier se replie, le second refuse : voir l'en-tête du
-/// module, qui porte la table et la raison.
+/// Resolution of an audio **render** endpoint — the one the
+/// loopback captures (fix "A-bis"), **and** that of the cable the
+/// microphone writes to (block E2). Two consumers, two opposite fallback
+/// policies — the first falls back, the second refuses: see the module
+/// header, which carries the table and the reason.
 pub mod rendu;
 
 use anyhow::{bail, Context, Result};
+use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
 use windows::Win32::Media::Audio::{
     IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator,
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK,
     WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
 };
-use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
 use windows::Win32::Media::Multimedia::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_MULTITHREADED,
@@ -49,40 +49,40 @@ use windows::Win32::System::Com::{
 
 use crate::opus::{CHANNELS, SAMPLE_RATE_HZ};
 
-/// Durée du tampon demandé à WASAPI, en unités de 100 ns. 200 ms : large
-/// marge pour absorber un tour de boucle en retard sans jamais perdre
-/// d'échantillon.
+/// Duration of the buffer requested from WASAPI, in 100 ns units. 200 ms: a wide
+/// margin to absorb a late loop round without ever losing a
+/// sample.
 const BUFFER_DURATION_100NS: i64 = 2_000_000;
 
-/// Étiquette `WAVE_FORMAT_EXTENSIBLE` du champ `wFormatTag`.
+/// `WAVE_FORMAT_EXTENSIBLE` tag of the `wFormatTag` field.
 const WAVE_FORMAT_EXTENSIBLE: u16 = 0xFFFE;
-/// Étiquette `WAVE_FORMAT_IEEE_FLOAT`.
+/// `WAVE_FORMAT_IEEE_FLOAT` tag.
 const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
 
-/// Garde RAII pour le pointeur rendu par `IAudioClient::GetMixFormat`.
+/// RAII guard for the pointer returned by `IAudioClient::GetMixFormat`.
 ///
-/// Ce pointeur est alloué par COM via `CoTaskMemAlloc` (documentation de
-/// `GetMixFormat`) : l'appelant doit le libérer par `CoTaskMemFree`, ce que
-/// ce garde fait dans son `Drop`. `IAudioClient::Initialize` copie le format
-/// en interne, donc libérer *après* son appel est toujours correct — y
-/// compris à la sortie normale de `open()`, où ce garde n'est libéré qu'en
-/// toute fin de fonction.
+/// This pointer is allocated by COM through `CoTaskMemAlloc` (documentation of
+/// `GetMixFormat`): the caller must free it with `CoTaskMemFree`, which
+/// this guard does in its `Drop`. `IAudioClient::Initialize` copies the format
+/// internally, so freeing *after* its call is always correct —
+/// including at the normal exit of `open()`, where this guard is only released at
+/// the very end of the function.
 ///
-/// L'intérêt d'un garde plutôt qu'une libération explicite : entre
-/// `GetMixFormat` et `Initialize`, `open()` peut sortir en erreur par deux
-/// `bail!` (fréquence ou largeur de format refusée) — exactement les
-/// chemins qu'on emprunte le jour où la VM change de configuration audio.
-/// Une libération posée seulement en fin de fonction heureuse les
-/// manquerait ; un garde RAII les couvre par construction, quel que soit le
-/// chemin de sortie (`return`, `?`, `bail!`).
+/// The point of a guard rather than an explicit free: between
+/// `GetMixFormat` and `Initialize`, `open()` can exit with an error through two
+/// `bail!`s (refused frequency or format width) — exactly the
+/// paths taken the day the VM changes audio configuration.
+/// A free placed only at the end of the happy function would
+/// miss them; an RAII guard covers them by construction, whatever the
+/// exit path (`return`, `?`, `bail!`).
 struct FormatMixage(*mut WAVEFORMATEX);
 
 impl std::ops::Deref for FormatMixage {
     type Target = WAVEFORMATEX;
     fn deref(&self) -> &WAVEFORMATEX {
-        // SAFETY : le pointeur vient d'un `GetMixFormat` réussi et n'est
-        // libéré que dans `Drop`, donc valide pour toute la durée de vie du
-        // garde.
+        // SAFETY: the pointer comes from a successful `GetMixFormat` and is only
+        // freed in `Drop`, hence valid for the whole lifetime of the
+        // guard.
         unsafe { &*self.0 }
     }
 }
@@ -101,146 +101,142 @@ pub struct LoopbackCapture {
     description: String,
 }
 
-// SÉCURITÉ : `LoopbackCapture` enveloppe des interfaces COM (`IAudioClient`,
-// `IAudioCaptureClient`) que `windows-core` ne marque pas `Send` par défaut —
-// un objet COM générique peut être lié à un appartement mono-thread (STA), et
-// le déplacer vers un autre fil serait alors un comportement indéfini. Ce
-// n'est pas le cas ici : `open()` (ci-dessous) *vérifie*, plutôt que de
-// supposer, que le fil appelant rejoint l'appartement multi-thread (MTA) via
-// `CoInitializeEx(None, COINIT_MULTITHREADED)`, et refuse d'ouvrir si ce fil
-// appartient déjà à un autre appartement (`RPC_E_CHANGED_MODE`).
-// `WindowsAudioSource::new` (agent/src/windows_audio.rs) déplace ensuite cet
-// objet, par `move`, vers un fil de capture dédié qui rejoint à son tour
-// cette même MTA avant tout appel COM (voir son commentaire). Un objet créé
-// dans une MTA est par construction appelable depuis n'importe quel fil qui
-// en est membre, sans marshaling — c'est cette propriété, garantie par la
-// vérification d'`open()`, qui rend le transfert sûr.
+// SAFETY: `LoopbackCapture` wraps COM interfaces (`IAudioClient`,
+// `IAudioCaptureClient`) that `windows-core` does not mark `Send` by default —
+// a generic COM object may be bound to a single-threaded apartment (STA), and
+// moving it to another thread would then be undefined behaviour. That
+// is not the case here: `open()` (below) *checks*, rather than
+// assuming, that the calling thread joins the multi-threaded apartment (MTA) through
+// `CoInitializeEx(None, COINIT_MULTITHREADED)`, and refuses to open if this thread
+// already belongs to another apartment (`RPC_E_CHANGED_MODE`).
+// `WindowsAudioSource::new` (agent/src/windows_audio.rs) then moves this
+// object, by `move`, to a dedicated capture thread which in turn joins
+// that same MTA before any COM call (see its comment). An object created
+// in an MTA is by construction callable from any thread that
+// is a member of it, without marshaling — it is this property, guaranteed by
+// `open()`'s check, that makes the transfer safe.
 //
-// Cette promesse porte sur le **struct entier, champs futurs compris** : si
-// un futur champ ajoute un `HANDLE` d'événement, un pointeur brut, ou tout
-// autre état lié à un fil précis plutôt qu'à l'appartement, cet `unsafe impl`
-// cesserait d'être valide sans que rien ne le signale. Quiconque ajoute un
-// champ à `LoopbackCapture` doit vérifier qu'il reste utilisable depuis
-// n'importe quel fil membre de la MTA avant de le faire — sans quoi ce
-// `Send` doit être retiré ou restreint.
+// This promise covers the **whole struct, future fields included**: if
+// a future field adds an event `HANDLE`, a raw pointer, or any
+// other state tied to a specific thread rather than to the apartment, this `unsafe impl`
+// would stop being valid without anything flagging it. Whoever adds a
+// field to `LoopbackCapture` must check that it stays usable from
+// any member thread of the MTA before doing so — otherwise this
+// `Send` must be removed or restricted.
 //
-// Alternative écartée : `windows_core::AgileReference<T>`, le mécanisme
-// officiellement prévu par `windows-core` 0.62 pour transporter un objet COM
-// entre fils sans supposer son modèle de threading. Non retenu ici : il exige
-// une résolution (`resolve()`, un `QueryInterface` interne) à chaque
-// récupération, un coût et une complexité inutiles alors que ce processus n'a,
-// sous ce plan, aucune STA — la vérification d'`open()` suffit et reste bon
-// marché.
+// Rejected alternative: `windows_core::AgileReference<T>`, the mechanism
+// officially provided by `windows-core` 0.62 to carry a COM object
+// between threads without assuming its threading model. Not chosen here: it requires
+// a resolution (`resolve()`, an internal `QueryInterface`) at each
+// retrieval, a cost and complexity that are useless when this process has,
+// under this plan, no STA — `open()`'s check is enough and stays
+// cheap.
 unsafe impl Send for LoopbackCapture {}
 
 impl LoopbackCapture {
-    /// Ouvre le loopback sur le périphérique qu'élit `rendu::resoudre` — celui
-    /// que désigne `AUDIO_PERIPHERIQUE`, ou le rendu par défaut de Windows à
-    /// défaut — et démarre la capture.
+    /// Opens the loopback on the device `rendu::resoudre` elects — the one
+    /// `AUDIO_PERIPHERIQUE` designates, or Windows' default render device failing
+    /// that — and starts capture.
     ///
-    /// ⚠️ Cette ligne a dit « le périphérique de rendu par défaut » jusqu'à la
-    /// clôture du chantier E, alors que l'en-tête de ce module, douze lignes
-    /// plus haut, disait déjà l'inverse depuis la correction « A-bis ».
+    /// ⚠️ This line said "the default render device" until the
+    /// closing of workstream E, whereas this module's header, twelve lines
+    /// higher, already said the opposite since fix "A-bis".
     pub fn open() -> Result<Self> {
         unsafe {
-            // `CoInitializeEx` doit être **vérifié**, pas ignoré : c'est la
-            // précondition dont dépend `unsafe impl Send for LoopbackCapture`
-            // ci-dessus (lire son commentaire d'abord si ce n'est pas fait).
-            // `S_OK` (ce fil vient de rejoindre la MTA) et `S_FALSE` (il en
-            // était déjà membre) sont tous deux acceptables : dans les deux
-            // cas, ce fil est membre de l'appartement multi-thread — le même
-            // que rejoindra le fil de capture de `windows_audio.rs`. Seul
-            // `RPC_E_CHANGED_MODE` — ce fil appartient déjà à un autre
-            // appartement, typiquement une STA liée par un appel antérieur à
-            // `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` sur ce même fil
-            // — doit faire échouer l'ouverture : sans ce refus,
-            // `LoopbackCapture` migrerait d'une STA vers la MTA du fil de
-            // capture sans marshaling, un comportement indéfini qu'aucun test
-            // ne révèle puisque l'appel par vtable directe « marche » la
-            // plupart du temps même quand c'est interdit.
+            // `CoInitializeEx` must be **checked**, not ignored: it is the
+            // precondition `unsafe impl Send for LoopbackCapture`
+            // above depends on (read its comment first if not done yet).
+            // `S_OK` (this thread has just joined the MTA) and `S_FALSE` (it
+            // was already a member) are both acceptable: in both
+            // cases, this thread is a member of the multi-threaded apartment — the same
+            // one the capture thread of `windows_audio.rs` will join. Only
+            // `RPC_E_CHANGED_MODE` — this thread already belongs to another
+            // apartment, typically an STA bound by an earlier call to
+            // `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` on this same thread
+            // — must make the opening fail: without this refusal,
+            // `LoopbackCapture` would migrate from an STA to the capture thread's MTA
+            // without marshaling, undefined behaviour no test
+            // reveals since the direct vtable call "works" most
+            // of the time even when it is forbidden.
             let hr = CoInitializeEx(None, COINIT_MULTITHREADED);
             if hr == RPC_E_CHANGED_MODE {
                 bail!(
-                    "ouverture du loopback audio refusée : le fil appelant appartient déjà \
-                     à un appartement à thread unique (STA), pas à l'appartement \
-                     multi-thread (MTA) qu'exige `LoopbackCapture`. `WindowsAudioSource::new` \
-                     (agent/src/windows_audio.rs) déplace cet objet, par `move`, vers un fil \
-                     de capture dédié qui rejoint la MTA : migrer un objet COM d'une STA vers \
-                     un autre appartement sans marshaling est un comportement indéfini, pas \
-                     seulement une erreur de type. Vérifiez qu'aucun \
-                     `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` (ni aucune autre \
-                     initialisation qui lie ce fil à une STA, par exemple une init WinRT \
-                     implicite) n'a précédé cet appel sur ce même fil."
+                    "opening the audio loopback refused: the calling thread already belongs \
+                     to a single-threaded apartment (STA), not to the multi-threaded \
+                     apartment (MTA) that `LoopbackCapture` requires. `WindowsAudioSource::new` \
+                     (agent/src/windows_audio.rs) moves this object, through `move`, to a dedicated \
+                     capture thread that joins the MTA: migrating a COM object from an STA to \
+                     another apartment without marshaling is undefined behaviour, not \
+                     merely a type error. Check that no \
+                     `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` (nor any other \
+                     initialisation binding this thread to an STA, for instance an implicit \
+                     WinRT init) preceded this call on this same thread."
                 );
             }
 
-            // Pas de `CoUninitialize` en regard, et c'est délibéré : ce fil
-            // n'est pas forcément celui qui utilisera ni celui qui libérera
-            // l'objet rendu. La tâche 6 (`windows_audio.rs`) appelle `open()`
-            // sur le fil appelant de `WindowsAudioSource::new()`, puis
-            // déplace le `LoopbackCapture` obtenu par `move` vers un fil de
-            // capture dédié — c'est CE fil-là qui appelle `read()` en boucle
-            // et qui exécute `Drop` en sortant. Appeler `CoUninitialize` dans
-            // `Drop` s'exécuterait donc sur un fil différent de celui qui a
-            // appelé `CoInitializeEx`, ce que COM interdit explicitement.
-            // Conséquence acceptée : si le fil appelant de `open()` est
-            // recyclé entre sessions (fil d'un pool, par ex. les workers
-            // bloquants de tokio), son compte de références COM croît d'une
-            // unité par session — jamais celui du fil de capture, qui lui
-            // n'est jamais recyclé (créé et détruit une fois par session). Un
-            // futur rééquilibrage devra se faire là où l'appel est
-            // réellement possédé : autour du fil de `WindowsAudioSource::new`,
-            // pas ici.
+            // No matching `CoUninitialize`, and that is deliberate: this thread
+            // is not necessarily the one that will use nor the one that will release
+            // the returned object. Task 6 (`windows_audio.rs`) calls `open()`
+            // on the calling thread of `WindowsAudioSource::new()`, then
+            // moves the obtained `LoopbackCapture` by `move` to a dedicated
+            // capture thread — it is THAT thread that calls `read()` in a loop
+            // and runs `Drop` when leaving. Calling `CoUninitialize` in
+            // `Drop` would therefore run on a thread different from the one that
+            // called `CoInitializeEx`, which COM explicitly forbids.
+            // Accepted consequence: if the calling thread of `open()` is
+            // recycled between sessions (pool thread, e.g. tokio's blocking
+            // workers), its COM reference count grows by one
+            // per session — never that of the capture thread, which for its part
+            // is never recycled (created and destroyed once per session). A
+            // future rebalancing will have to happen where the call is
+            // really owned: around the thread of `WindowsAudioSource::new`,
+            // not here.
 
             let enumerateur: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
-                    .context("création de l'énumérateur de périphériques audio")?;
-            // Correction « A-bis » : plus de `GetDefaultAudioEndpoint` en dur
-            // ici. `rendu::resoudre` honore `AUDIO_PERIPHERIQUE` quand elle
-            // est posée, retombe sur le défaut de Windows sinon (comportement
-            // d'avant, inchangé), et TRACE dans tous les cas le périphérique
-            // réellement retenu — y compris quand il s'agit d'un repli.
+                    .context("creating the audio device enumerator")?;
+            // Fix "A-bis": no more hardcoded `GetDefaultAudioEndpoint`
+            // here. `rendu::resoudre` honours `AUDIO_PERIPHERIQUE` when it
+            // is set, falls back to Windows' default otherwise (behaviour
+            // from before, unchanged), and TRACES in all cases the device
+            // actually retained — including when it is a fallback.
             let peripherique = rendu::resoudre(&enumerateur)?;
             let client: IAudioClient = peripherique
                 .Activate(CLSCTX_ALL, None)
                 .context("activation du client audio")?;
 
-            let mix = FormatMixage(
-                client
-                    .GetMixFormat()
-                    .context("lecture du format de mixage")?,
-            );
+            let mix = FormatMixage(client.GetMixFormat().context("reading the mix format")?);
             let canaux = mix.nChannels as usize;
             let frequence = mix.nSamplesPerSec;
             let bits = mix.wBitsPerSample;
 
             let flottant = if mix.wFormatTag == WAVE_FORMAT_EXTENSIBLE {
-                // WAVEFORMATEXTENSIBLE est repr(packed) : prendre une
-                // référence sur SubFormat — ce que fait `==` sur un GUID —
-                // est un accès non aligné, donc un comportement indéfini.
+                // WAVEFORMATEXTENSIBLE is repr(packed): taking a
+                // reference on SubFormat — which `==` on a GUID does —
+                // is an unaligned access, hence undefined behaviour.
                 let ext = mix.0 as *const WAVEFORMATEXTENSIBLE;
-                let sous_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
-                sous_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
+                let sub_format = std::ptr::addr_of!((*ext).SubFormat).read_unaligned();
+                sub_format == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
             } else {
                 mix.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
             };
 
             let description = format!(
-                "{frequence} Hz, {canaux} canaux, {bits} bits, {}",
-                if flottant { "flottant" } else { "entier" }
+                "{frequence} Hz, {canaux} channels, {bits} bits, {}",
+                if flottant { "float" } else { "integer" }
             );
 
             if frequence != SAMPLE_RATE_HZ {
                 bail!(
-                    "format de mixage à {frequence} Hz : seul {SAMPLE_RATE_HZ} Hz est supporté \
-                     (aucun rééchantillonneur n'est embarqué)"
+                    "mix format at {frequence} Hz: only {SAMPLE_RATE_HZ} Hz is supported \
+                     (no resampler is embedded)"
                 );
             }
             if !flottant && bits != 16 {
-                bail!("format de mixage entier {bits} bits non supporté ({description})");
+                bail!("integer {bits}-bit mix format not supported ({description})");
             }
             if flottant && bits != 32 {
-                bail!("format de mixage flottant {bits} bits non supporté ({description})");
+                bail!("{bits}-bit float mix format not supported ({description})");
             }
 
             client
@@ -253,15 +249,15 @@ impl LoopbackCapture {
                     None,
                 )
                 .context("initialisation du client audio en loopback")?;
-            // `mix` (le garde `FormatMixage`) sort de portée en fin de bloc
-            // `unsafe` et libère alors le format par `CoTaskMemFree` — après
-            // `Initialize`, qui en a fait sa propre copie interne, comme
-            // l'exige la documentation de `GetMixFormat`.
+            // `mix` (the `FormatMixage` guard) goes out of scope at the end of the
+            // `unsafe` block and then frees the format through `CoTaskMemFree` — after
+            // `Initialize`, which made its own internal copy of it, as
+            // `GetMixFormat`'s documentation requires.
 
             let capture: IAudioCaptureClient = client
                 .GetService()
-                .context("obtention du service de capture")?;
-            client.Start().context("démarrage de la capture")?;
+                .context("obtaining the capture service")?;
+            client.Start().context("starting the capture")?;
 
             Ok(Self {
                 client,
@@ -273,30 +269,30 @@ impl LoopbackCapture {
         }
     }
 
-    /// Format réellement obtenu, pour le journal et la sonde.
+    /// Format actually obtained, for the log and the probe.
     pub fn description(&self) -> String {
         self.description.clone()
     }
 
-    /// Lit le paquet disponible suivant, converti en entiers 16 bits
-    /// entrelacés stéréo. Rend `None` quand rien n'est disponible — le cas
-    /// courant quand aucune application ne joue.
+    /// Reads the next available packet, converted to interleaved stereo
+    /// 16-bit integers. Returns `None` when nothing is available — the
+    /// common case when no application is playing.
     pub fn read(&mut self) -> Result<Option<Vec<i16>>> {
         unsafe {
             let dispo = self
                 .capture
                 .GetNextPacketSize()
-                .context("interrogation du paquet suivant")?;
+                .context("querying the next packet")?;
             if dispo == 0 {
                 return Ok(None);
             }
 
-            let mut donnees: *mut u8 = std::ptr::null_mut();
+            let mut data: *mut u8 = std::ptr::null_mut();
             let mut images: u32 = 0;
             let mut drapeaux: u32 = 0;
             self.capture
-                .GetBuffer(&mut donnees, &mut images, &mut drapeaux, None, None)
-                .context("lecture du tampon de capture")?;
+                .GetBuffer(&mut data, &mut images, &mut drapeaux, None, None)
+                .context("reading the capture buffer")?;
 
             let muet = drapeaux & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0;
             let sortie = if muet {
@@ -304,17 +300,17 @@ impl LoopbackCapture {
             } else {
                 let brut = images as usize * self.canaux;
                 if self.flottant {
-                    let source = std::slice::from_raw_parts(donnees as *const f32, brut);
+                    let source = std::slice::from_raw_parts(data as *const f32, brut);
                     convertir_flottant(source, self.canaux)
                 } else {
-                    let source = std::slice::from_raw_parts(donnees as *const i16, brut);
+                    let source = std::slice::from_raw_parts(data as *const i16, brut);
                     convertir_entier(source, self.canaux)
                 }
             };
 
             self.capture
                 .ReleaseBuffer(images)
-                .context("libération du tampon de capture")?;
+                .context("releasing the capture buffer")?;
             Ok(Some(sortie))
         }
     }
@@ -328,14 +324,14 @@ impl Drop for LoopbackCapture {
     }
 }
 
-/// Convertit des échantillons flottants en entiers 16 bits stéréo entrelacés.
+/// Converts float samples to interleaved stereo 16-bit integers.
 ///
-/// Mono : le canal est dupliqué. Plus de deux canaux : **troncature**, pas
-/// sous-mixage — seuls les deux premiers canaux (gauche et droite d'un flux
-/// multicanal, par convention WAVE_FORMAT_EXTENSIBLE) sont conservés tels
-/// quels ; l'énergie des canaux surround n'est mélangée dans aucun des deux,
-/// elle est simplement ignorée. Sans conséquence en pratique : le format
-/// réel de cette VM est déjà stéréo.
+/// Mono: the channel is duplicated. More than two channels: **truncation**, not
+/// downmixing — only the first two channels (left and right of a
+/// multichannel stream, by WAVE_FORMAT_EXTENSIBLE convention) are kept as
+/// they are; the energy of the surround channels is mixed into neither,
+/// it is simply ignored. Without consequence in practice: this VM's real
+/// format is already stereo.
 fn convertir_flottant(source: &[f32], canaux: usize) -> Vec<i16> {
     let images = source.len() / canaux.max(1);
     let mut sortie = Vec::with_capacity(images * CHANNELS);
@@ -349,7 +345,7 @@ fn convertir_flottant(source: &[f32], canaux: usize) -> Vec<i16> {
     sortie
 }
 
-/// Même conversion, pour une source déjà en entiers 16 bits.
+/// Same conversion, for a source already in 16-bit integers.
 fn convertir_entier(source: &[i16], canaux: usize) -> Vec<i16> {
     let images = source.len() / canaux.max(1);
     let mut sortie = Vec::with_capacity(images * CHANNELS);
@@ -363,17 +359,17 @@ fn convertir_entier(source: &[i16], canaux: usize) -> Vec<i16> {
     sortie
 }
 
-/// Flottant normalisé → entier 16 bits, avec écrêtage explicite.
+/// Normalised float → 16-bit integer, with explicit clipping.
 ///
-/// WASAPI ne garantit pas que les échantillons restent dans [-1, 1] : un
-/// mixage de plusieurs flux peut dépasser. Le cast `as` sature déjà
-/// nativement depuis Rust 1.45 (une valeur hors bornes est ramenée à
-/// `i16::MIN`/`i16::MAX`, jamais enroulée) : le `clamp` explicite ne sert
-/// donc pas à éviter un dépassement silencieux, mais à fixer la borne haute
-/// exactement sur `i16::MAX` — le cast seul, sans clamp, saturerait vers le
-/// bas jusqu'à `i16::MIN`, un LSB plus loin que `-i16::MAX` — et à rendre
-/// l'intention explicite plutôt que de reposer sur ce détail de sémantique
-/// de `as`.
+/// WASAPI does not guarantee that samples stay within [-1, 1]: a
+/// mix of several streams can exceed it. The `as` cast already saturates
+/// natively since Rust 1.45 (an out-of-bounds value is brought back to
+/// `i16::MIN`/`i16::MAX`, never wrapped): the explicit `clamp` therefore
+/// does not serve to avoid a silent overflow, but to set the upper bound
+/// exactly at `i16::MAX` — the cast alone, without clamp, would saturate
+/// downwards to `i16::MIN`, one LSB further than `-i16::MAX` — and to make
+/// the intention explicit rather than relying on that semantic detail
+/// of `as`.
 fn vers_i16(v: f32) -> i16 {
     (v.clamp(-1.0, 1.0) * i16::MAX as f32) as i16
 }

@@ -1,37 +1,37 @@
-//! Lancement d'un processus agent par fenêtre, et contrôle de sa vie.
+//! Launching an agent process per window, and controlling its life.
 //!
-//! Séparé de `boucle.rs` : c'est la seule partie du superviseur qui parle de
-//! processus Windows, et elle satisfait un trait dont `enfants.rs` porte les
-//! tests avec un lanceur factice.
+//! Separated from `boucle.rs`: it is the only part of the supervisor that talks about
+//! Windows processes, and it satisfies a trait whose tests `enfants.rs` carries
+//! with a fake launcher.
 //!
-//! **Deux invariants tiennent ce fichier**, et ils se lisent tous deux dans le
-//! `Child` retenu et dans le Job Object.
+//! **Two invariants hold this file**, and both are read in the
+//! retained `Child` and in the Job Object.
 //!
-//! 1. **Un PID seul ne désigne rien de durable.** Windows ne recycle le numéro
-//!    d'un processus mort que lorsque le dernier handle sur l'objet processus
-//!    est fermé — or `drop` d'un `std::process::Child` ferme ce handle.
-//!    Relâcher le `Child` et ne garder que le PID, c'est accepter qu'un
-//!    `est_vivant` rende `true` sur un processus étranger et, bien pire, qu'un
-//!    `tuer` appelle `TerminateProcess` sur un tiers. On retient donc le
-//!    `Child` : le handle reste ouvert, le numéro reste réservé, et toutes les
-//!    opérations passent par ce handle-là.
-//! 2. **Un superviseur mort ne doit pas laisser N agents derrière lui.**
-//!    `Command::spawn` ne rattache l'enfant à rien : à la mort du superviseur,
-//!    chaque agent continuerait de tourner avec sa duplication DXGI, son
-//!    encodeur et son inscription au signaling. Le démarrage suivant
-//!    attribuerait alors des identifiants de session qui entrent en collision
-//!    avec les leurs (`Table::compteur` repart de zéro), et sa purge
-//!    détruirait des sorties SOUS des enfants encore vivants. Le Job Object
-//!    avec `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` ferme cela au niveau du noyau :
-//!    la mort du superviseur ferme ses handles, donc le job, donc les enfants —
-//!    y compris s'il a été tué net, cas qu'aucun code en espace utilisateur ne
-//!    peut couvrir.
+//! 1. **A PID alone designates nothing durable.** Windows only recycles the number
+//!    of a dead process when the last handle to the process object
+//!    is closed — and `drop` of a `std::process::Child` closes that handle.
+//!    Releasing the `Child` and keeping only the PID means accepting that an
+//!    `est_vivant` returns `true` on a foreign process and, far worse, that a
+//!    `tuer` calls `TerminateProcess` on a third party. We therefore keep the
+//!    `Child`: the handle stays open, the number stays reserved, and all
+//!    operations go through that handle.
+//! 2. **A dead supervisor must not leave N agents behind it.**
+//!    `Command::spawn` attaches the child to nothing: when the supervisor dies,
+//!    each agent would keep running with its DXGI duplication, its
+//!    encoder and its signaling registration. The next startup
+//!    would then assign session identifiers colliding
+//!    with theirs (`Table::compteur` restarts from zero), and its purge
+//!    would destroy outputs UNDER still-living children. The Job Object
+//!    with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` closes this at kernel level:
+//!    the supervisor's death closes its handles, hence the job, hence the children —
+//!    including if it was killed outright, a case no user-space code
+//!    can cover.
 //!
-//! **Le contrat de `Lanceur::lancer` est atomique** (voir sa documentation sur
-//! le trait) : `Err` doit signifier qu'aucun processus ne tourne. Le
-//! rattachement au job est le seul post-traitement faillible d'ici, et il tue
-//! donc lui-même l'enfant avant de rendre `Err`. **Toute addition après le
-//! `spawn` doit faire de même.**
+//! **The contract of `Lanceur::lancer` is atomic** (see its documentation on
+//! the trait): `Err` must mean no process is running. Attaching
+//! to the job is the only fallible post-processing here, and it therefore
+//! kills the child itself before returning `Err`. **Any addition after the
+//! `spawn` must do the same.**
 
 #![cfg(windows)]
 
@@ -50,21 +50,24 @@ use windows::Win32::System::JobObjects::{
 use super::enfants::{Consigne, Lanceur};
 
 mod pont;
+// `impl Lanceur`: what the supervisor loop asks of this launcher - start a
+// window agent, tell whether it is alive, kill it.
+mod agents;
 
-/// Un enfant suivi, et le peu d'état qu'il faut retenir sur lui.
+/// A tracked child, and the little state to keep about it.
 struct Enfant {
-    /// Retenu pour son HANDLE, pas pour son numéro — voir l'invariant 1 en
-    /// tête de module.
+    /// Kept for its HANDLE, not for its number — see invariant 1 at the
+    /// module head.
     processus: std::process::Child,
-    /// Vrai dès qu'un état illisible a été signalé pour cet enfant.
+    /// True as soon as an unreadable state has been signalled for this child.
     ///
-    /// **Correctif I2 de la revue finale.** `est_vivant` est appelé à CHAQUE
-    /// tour de boucle du superviseur, via `Enfants::morts()` : une erreur
-    /// persistante de `try_wait` y produisait une dizaine de lignes par
-    /// seconde et PAR ENFANT, sur un partage CIFS. Un signalement unique
-    /// suffit — l'état étant persistant par hypothèse, le répéter n'apprend
-    /// rien de neuf. Remis à faux si l'état redevient lisible, pour qu'une
-    /// seconde occurrence, elle, se voie.
+    /// **Fix I2 of the final review.** `est_vivant` is called at EACH
+    /// supervisor loop turn, via `Enfants::morts()`: a persistent
+    /// `try_wait` error produced about ten lines per
+    /// second and PER CHILD there, on a CIFS share. A single report
+    /// is enough — the state being persistent by assumption, repeating it teaches
+    /// nothing new. Reset to false if the state becomes readable again, so that a
+    /// second occurrence, for its part, shows.
     etat_illisible_signale: bool,
 }
 
@@ -72,56 +75,57 @@ pub struct LanceurDeProcessus {
     executable: std::path::PathBuf,
     signaling_url: String,
     local_ip: String,
-    /// Les enfants vivants, par PID.
+    /// The living children, by PID.
     ///
-    /// `Mutex` et non `RefCell` : `Lanceur` prend `&self`, et rien ne promet
-    /// que ce lanceur restera consulté depuis un seul fil.
+    /// `Mutex` and not `RefCell`: `Lanceur` takes `&self`, and nothing promises
+    /// this launcher will stay consulted from a single thread.
     enfants: Mutex<HashMap<u32, Enfant>>,
-    /// Le capteur unique de capture mutualisée (sous-bloc D4), suivi à part
-    /// des enfants : il n'a pas de session, donc pas sa place dans `enfants`.
-    /// `None` tant qu'aucun capteur n'a encore été lancé, ou juste après que
-    /// le précédent a été constaté mort par `capteur_vivant`.
+    /// The single pooled-capture capturer (sub-block D4), tracked apart
+    /// from the children: it has no session, hence no place in `enfants`.
+    /// `None` as long as no capturer has been launched yet, or right after
+    /// the previous one was observed dead by `capteur_vivant`.
     capteur: Mutex<Option<Enfant>>,
-    /// Le pont fichiers unique (sous-projet ③), suivi à part pour la même
-    /// raison que le capteur : il n'a pas de fenêtre, donc pas de place dans
-    /// `enfants`. Voir `lanceur/pont.rs`.
+    /// The single files bridge (sub-project ③), tracked apart for the same
+    /// reason as the capturer: it has no window, hence no place in
+    /// `enfants`. See `lanceur/pont.rs`.
     pont: Mutex<Option<Enfant>>,
-    /// Le préfixe de session de cette VM, délivré à l'enrôlement (sous-bloc
-    /// P3). `Table` le porte déjà pour composer les sessions des enfants ; le
-    /// lanceur en a besoin pour la seule session qu'il compose lui-même,
-    /// celle du pont.
+    /// This VM's session prefix, delivered at enrolment (sub-block
+    /// P3). `Table` already carries it to compose the children's sessions; the
+    /// launcher needs it for the only session it composes itself,
+    /// the bridge's.
     prefixe: String,
-    /// La veille sur l'identité de plateforme — le jeton d'agent COURANT.
+    /// The watch on the platform identity — the CURRENT agent token.
     ///
-    /// 🔴 UNE VEILLE, ET NON UNE CHAÎNE FIGÉE : le jeton dure dix minutes et
-    /// se renouvelle à chaque battement de cœur, quand un superviseur vit des
-    /// heures. Un instantané pris au démarrage ferait qu'une fenêtre ouverte
-    /// plus tard recevrait un jeton MORT, et sa session ne s'établirait pas.
+    /// 🔴 A WATCH, AND NOT A FROZEN STRING: the token lasts ten minutes and
+    /// renews at each heartbeat, whereas a supervisor lives for
+    /// hours. A snapshot taken at startup would make a window opened
+    /// later receive a DEAD token, and its session would not be established.
     ///
-    /// `None` quand ce superviseur n'a pas de canal (`AGENT_VM`/`AGENT_SECRET`
-    /// absents) : ses enfants n'auront pas de jeton non plus, ce qui est
-    /// exactement l'état d'avant — annoncé par un `warn!`, jamais silencieux.
+    /// `None` when this supervisor has no channel (`AGENT_VM`/`AGENT_SECRET`
+    /// absent): its children will have no token either, which is
+    /// exactly the previous state — announced by a `warn!`, never silent.
     identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
-    /// Le job auquel tout enfant — le capteur et le pont compris — est
-    /// rattaché. Sa fermeture les tue tous.
+    /// The job every child — the capturer and the bridge included — is
+    /// attached to. Closing it kills them all.
     job: HANDLE,
 }
 
 impl LanceurDeProcessus {
-    pub fn nouveau(
+    pub fn new(
         executable: std::path::PathBuf,
         signaling_url: String,
         local_ip: String,
         prefixe: String,
         identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
     ) -> Result<Self> {
-        let job =
-            unsafe { CreateJobObjectW(None, None) }.context("création du job object des enfants")?;
+        let job = unsafe { CreateJobObjectW(None, None) }
+            .context("creating the children's job object")?;
         let limites = JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
-            BasicLimitInformation: windows::Win32::System::JobObjects::JOBOBJECT_BASIC_LIMIT_INFORMATION {
-                LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-                ..Default::default()
-            },
+            BasicLimitInformation:
+                windows::Win32::System::JobObjects::JOBOBJECT_BASIC_LIMIT_INFORMATION {
+                    LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                    ..Default::default()
+                },
             ..Default::default()
         };
         unsafe {
@@ -132,7 +136,7 @@ impl LanceurDeProcessus {
                 std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
             )
         }
-        .context("pose de KILL_ON_JOB_CLOSE sur le job object des enfants")?;
+        .context("setting KILL_ON_JOB_CLOSE on the children's job object")?;
         Ok(Self {
             executable,
             signaling_url,
@@ -146,89 +150,95 @@ impl LanceurDeProcessus {
         })
     }
 
-    /// Accès à la table sans paniquer sur un verrou empoisonné.
+    /// Access to the table without panicking on a poisoned lock.
     ///
-    /// Le verrou s'empoisonne dès qu'une panique traverse un porteur — et il y
-    /// en a un : `lancer` peut paniquer entre le `spawn` et l'insertion. Après
-    /// quoi un `.expect(…)` ferait paniquer **tous** les appels suivants,
-    /// c'est-à-dire `est_vivant` et `tuer` : le superviseur perdrait d'un coup
-    /// la capacité de constater une mort et celle de mettre à mort. Le job
-    /// object rattraperait les enfants à la fin, mais bien plus tard et sans
-    /// que rien ne l'explique. `into_inner` rend la table telle quelle : au
-    /// pire une insertion interrompue y manque.
+    /// The lock gets poisoned as soon as a panic crosses a holder — and there
+    /// is one: `lancer` can panic between the `spawn` and the insertion. After
+    /// which an `.expect(…)` would make **all** following calls panic,
+    /// that is, `est_vivant` and `tuer`: the supervisor would lose at once
+    /// the ability to observe a death and the ability to kill. The job
+    /// object would catch the children at the end, but much later and without
+    /// anything explaining it. `into_inner` returns the table as is: at
+    /// worst an interrupted insertion is missing from it.
     ///
-    /// (`Drop` ne passe PAS par ici : il ne touche que le handle de job.)
+    /// (`Drop` does NOT go through here: it only touches the job handle.)
     fn enfants(&self) -> std::sync::MutexGuard<'_, HashMap<u32, Enfant>> {
-        self.enfants.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.enfants
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
-    /// Même raison que `enfants` ci-dessus : ne pas paniquer sur un verrou
-    /// empoisonné, sans quoi une panique isolée dans `lancer_capteur` rendrait
-    /// `capteur_vivant` inutilisable pour toujours, et le superviseur ne
-    /// pourrait plus jamais constater ni relancer le capteur.
+    /// Same reason as `enfants` above: do not panic on a poisoned
+    /// lock, otherwise an isolated panic in `lancer_capteur` would make
+    /// `capteur_vivant` unusable forever, and the supervisor could
+    /// never again observe nor restart the capturer.
     fn capteur(&self) -> std::sync::MutexGuard<'_, Option<Enfant>> {
-        self.capteur.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.capteur
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
-    /// Même raison que `capteur` ci-dessus, pour le pont fichiers.
+    /// Same reason as `capteur` above, for the files bridge.
     fn pont(&self) -> std::sync::MutexGuard<'_, Option<Enfant>> {
-        self.pont.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+        self.pont
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
-    /// Le jeton d'agent COURANT, relu à chaque lancement.
+    /// The CURRENT agent token, reread at each launch.
     ///
-    /// `None` si ce superviseur n'a pas de canal, ou si l'enrôlement n'a pas
-    /// encore abouti. La veille conserve la dernière identité connue même
-    /// canal coupé : un jeton peut donc être périmé, et c'est assumé — un
-    /// jeton périmé se refuse bruyamment à la poignée de main, là où l'absence
-    /// de jeton la refuse tout autant. Le remède réel d'une coupure longue est
-    /// la reprise du canal, pas une abstention ici.
-    fn jeton_courant(&self) -> Option<String> {
+    /// `None` if this supervisor has no channel, or if enrolment has not
+    /// succeeded yet. The watch keeps the last known identity even with the
+    /// channel cut: a token can therefore be stale, and that is accepted — a
+    /// stale token is refused loudly at the handshake, where the absence
+    /// of a token refuses it just as much. The real remedy for a long outage is
+    /// the channel's resumption, not an abstention here.
+    fn current_token(&self) -> Option<String> {
         let veille = self.identite.as_ref()?;
         let courante = veille.borrow();
         courante.as_ref().map(|identite| identite.jeton.clone())
     }
 
-    /// Pose sur un processus enfant l'identité HÉRITÉE, et retire celle du père.
+    /// Sets the INHERITED identity on a child process, and removes the parent's.
     ///
-    /// 🔴 **LE SECRET D'ENRÔLEMENT NE FRANCHIT JAMAIS CETTE LIGNE**, et c'est
-    /// le correctif du 20 août 2026. Un enfant qui héritait de `AGENT_VM` et
-    /// `AGENT_SECRET` ouvrait SON PROPRE canal `/agent` sous la même identité
-    /// que son père : la plateforme n'admettant qu'un socket par VM, chacun
-    /// évinçait l'autre, l'évincé reprenait aussitôt, et le cycle n'avait
-    /// aucun terme — **95 enrôlements et 94 évictions en 64 s**, relevés sur
-    /// la VM avec deux processus seulement, le superviseur et le pont.
+    /// 🔴 **THE ENROLMENT SECRET NEVER CROSSES THIS LINE**, and it is
+    /// the fix of August 20th, 2026. A child inheriting `AGENT_VM` and
+    /// `AGENT_SECRET` opened ITS OWN `/agent` channel under the same identity
+    /// as its parent: the platform only admitting one socket per VM, each
+    /// evicted the other, the evicted one resumed at once, and the cycle had
+    /// no end — **95 enrolments and 94 evictions in 64 s**, recorded on
+    /// the VM with only two processes, the supervisor and the bridge.
     ///
-    /// Ce qui se transmet est le JETON, parce qu'un enfant et le pont en ont
-    /// besoin — chacun ouvre sa propre `PeerConnection`, et la garde refuse une
-    /// poignée de main d'agent sans jeton depuis P3 — et parce qu'ils n'ont
-    /// besoin de RIEN d'autre du canal : ils ne battent aucun cœur, ne
-    /// poussent aucun catalogue, ne reçoivent aucun ordre de lancement.
+    /// What is passed on is the TOKEN, because a child and the bridge
+    /// need it — each opens its own `PeerConnection`, and the guard refuses an
+    /// agent handshake without a token since P3 — and because they need
+    /// NOTHING else from the channel: they beat no heart, push
+    /// no catalogue, receive no launch order.
     ///
-    /// ⚠️ **`AGENT_JETON` EST RETIRÉ QUAND IL N'Y EN A PAS**, plutôt que laissé
-    /// à l'héritage : un superviseur lancé à la main dans un environnement qui
-    /// en porterait un vieux le repasserait sinon à tous ses enfants, et la
-    /// panne — poignées de main refusées, aucune session — n'aurait aucune
-    /// trace qui la rattache à une variable d'environnement oubliée.
+    /// ⚠️ **`AGENT_JETON` IS REMOVED WHEN THERE IS NONE**, rather than left
+    /// to inheritance: a supervisor launched by hand in an environment that
+    /// carried an old one would otherwise pass it to all its children, and the
+    /// failure — refused handshakes, no session — would have no
+    /// trace linking it to a forgotten environment variable.
     fn identite_heritee(&self, commande: &mut std::process::Command) {
         commande.env_remove("AGENT_VM").env_remove("AGENT_SECRET");
-        match self.jeton_courant() {
+        match self.current_token() {
             Some(jeton) => commande.env("AGENT_JETON", jeton),
             None => commande.env_remove("AGENT_JETON"),
         };
     }
 
-    /// Retire TOUTE identité de plateforme — pour le seul processus qui n'en a
-    /// aucun besoin, le capteur.
+    /// Removes ALL platform identity — for the only process that has
+    /// no need for it, the capturer.
     ///
-    /// ⚠️ **LE CAPTEUR N'ÉTAIT PAS EN CAUSE**, et c'est vérifié plutôt que
-    /// supposé : `main.rs` lui rend la main AVANT l'enrôlement, donc un
-    /// capteur portant `AGENT_VM` ne s'est jamais enrôlé. On les retire quand
-    /// même, par la règle que ce fichier s'impose déjà trois fois pour
-    /// `SUPERVISEUR`, `CAPTEUR` et `PONT` : **un ordre de test est une
-    /// propriété qui change, un `env_remove` non.** Le jour où un capteur
-    /// aurait besoin de parler au signaling, il traverserait l'enrôlement et
-    /// rouvrirait le défaut, sans que rien ne l'ait annoncé.
+    /// ⚠️ **THE CAPTURER WAS NOT AT FAULT**, and it is checked rather than
+    /// assumed: `main.rs` returns control to it BEFORE enrolment, so a
+    /// capturer carrying `AGENT_VM` never enrolled. We remove them
+    /// anyway, by the rule this file already imposes on itself three times for
+    /// `SUPERVISEUR`, `CAPTEUR` and `PONT`: **a test order is a
+    /// property that changes, an `env_remove` is not.** The day a capturer
+    /// needed to talk to signaling, it would go through enrolment and
+    /// reopen the defect, with nothing having announced it.
     fn sans_identite(commande: &mut std::process::Command) {
         commande
             .env_remove("AGENT_VM")
@@ -236,253 +246,106 @@ impl LanceurDeProcessus {
             .env_remove("AGENT_JETON");
     }
 
-    /// Lance le capteur unique de capture mutualisée (`agent/src/capteur.rs`) :
-    /// même exécutable, `CAPTEUR=1`, **rattaché au même job object** que les
-    /// enfants — sans quoi il survivrait au superviseur en tenant N
-    /// duplications DXGI et N sorties virtuelles captives du vivier qui n'en
-    /// compte que dix.
+    /// Launches the single pooled-capture capturer (`agent/src/capteur.rs`):
+    /// same executable, `CAPTEUR=1`, **attached to the same job object** as the
+    /// children — otherwise it would outlive the supervisor while holding N
+    /// DXGI duplications and N virtual outputs captive from a pool that only
+    /// counts ten.
     ///
-    /// **Même contrat atomique que `lancer`** (voir la doc du trait) : `Err`
-    /// signifie qu'aucun processus ne tourne. Le rattachement au job est le
-    /// seul post-traitement faillible, et il tue donc lui-même le capteur
-    /// avant de rendre `Err`.
+    /// **Same atomic contract as `lancer`** (see the trait's doc): `Err`
+    /// means no process is running. Attaching to the job is the
+    /// only fallible post-processing, and it therefore kills the capturer itself
+    /// before returning `Err`.
     pub fn lancer_capteur(&self) -> Result<u32> {
         let mut commande = std::process::Command::new(&self.executable);
         commande
             .env("CAPTEUR", "1")
-            // Même motif que pour un enfant (voir `lancer` ci-dessous) : un
-            // capteur qui hériterait de `SUPERVISEUR` se prendrait pour un
-            // superviseur et lancerait ses propres enfants, indéfiniment.
+            // Same reason as for a child (see `lancer` below): a
+            // capturer inheriting `SUPERVISEUR` would take itself for a
+            // supervisor and launch its own children, indefinitely.
             .env_remove("SUPERVISEUR")
-            // Et `PONT` par la même règle de symétrie. Le cas est INOFFENSIF
-            // aujourd'hui — `main.rs` teste `CAPTEUR` AVANT `PONT`, donc un
-            // capteur portant `PONT` reste un capteur —, à l'inverse exact du
-            // cas d'un pont qui hériterait de `CAPTEUR`, lui FATAL. On la
-            // retire quand même : **un ordre de test est une propriété qui
-            // change, un `env_remove` non**, et c'est le raisonnement que ce
-            // fichier tient déjà pour `SUPERVISEUR` ici et pour `CAPTEUR` dans
-            // `lancer`. Une dissymétrie est un piège dormant.
+            // And `PONT` by the same symmetry rule. The case is HARMLESS
+            // today — `main.rs` tests `CAPTEUR` BEFORE `PONT`, so a
+            // capturer carrying `PONT` stays a capturer —, the exact opposite of the
+            // case of a bridge inheriting `CAPTEUR`, which is FATAL. We
+            // remove it anyway: **a test order is a property that
+            // changes, an `env_remove` is not**, and it is the reasoning this
+            // file already holds for `SUPERVISEUR` here and for `CAPTEUR` in
+            // `lancer`. An asymmetry is a dormant trap.
             .env_remove("PONT")
-            // Même motif que pour un enfant : ces deux variables changent le
-            // SENS d'une source (un fichier de test à diffuser, une fenêtre à
-            // chercher par titre) — et le capteur n'a pas de source unique
-            // désignée par elles, il en tient N, chacune décrite par l'enfant
-            // qui s'y rattache via le tube nommé.
+            // Same reason as for a child: these two variables change the
+            // MEANING of a source (a test file to broadcast, a window to
+            // look up by title) — and the capturer has no single source
+            // designated by them, it holds N, each described by the child
+            // attaching to it via the named pipe.
             .env_remove("TEST_FILE")
             .env_remove("WINDOW_TITLE");
         Self::sans_identite(&mut commande);
-        let mut capteur = commande.spawn().context("lancement du capteur")?;
+        let mut capteur = commande.spawn().context("launching the sensor")?;
         let pid = capteur.id();
-        let handle = HANDLE(capteur.as_raw_handle() as *mut core::ffi::c_void);
-        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
-            // Même contrat atomique que `lancer` : un capteur non rattaché au
-            // job survivrait au superviseur EN TENANT N duplications.
+        let handle = HANDLE(capteur.as_raw_handle());
+        if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
+            // Same atomic contract as `lancer`: a capturer not attached to the
+            // job would outlive the supervisor WHILE HOLDING N duplications.
             if let Err(mise_a_mort) = capteur.kill() {
                 tracing::error!(pid, %mise_a_mort,
-                    "capteur NON rattaché au job ET NON tué — il survivra au superviseur");
+                    "sensor NOT attached to the job AND NOT killed — it will outlive the supervisor");
             }
             let _ = capteur.wait();
-            return Err(anyhow::Error::new(erreur)
-                .context(format!("rattachement du capteur {pid} au job object")));
+            return Err(anyhow::Error::new(error)
+                .context(format!("attaching sensor {pid} to the job object")));
         }
-        tracing::info!(pid, "capteur lancé");
-        *self.capteur() = Some(Enfant { processus: capteur, etat_illisible_signale: false });
+        tracing::info!(pid, "sensor launched");
+        *self.capteur() = Some(Enfant {
+            processus: capteur,
+            etat_illisible_signale: false,
+        });
         Ok(pid)
     }
 
-    /// Vrai tant que le capteur lancé par le dernier `lancer_capteur` réussi
-    /// est vivant. Rend `false` si aucun capteur n'a jamais été lancé, ou si
-    /// le précédent est mort — aux appelants de rappeler `lancer_capteur`.
+    /// True as long as the capturer launched by the last successful `lancer_capteur`
+    /// is alive. Returns `false` if no capturer was ever launched, or if
+    /// the previous one died — callers must call `lancer_capteur` again.
     ///
-    /// Même logique qu'`est_vivant` (voir plus bas) : un état illisible n'est
-    /// PAS traité comme une mort — le déclarer mort ferait relancer un
-    /// capteur qui tourne peut-être encore, doublant les duplications DXGI —
-    /// et n'est journalisé qu'une fois tant qu'il persiste.
+    /// Same logic as `est_vivant` (see below): an unreadable state is
+    /// NOT treated as a death — declaring it dead would restart a
+    /// capturer that may still be running, doubling the DXGI duplications —
+    /// and is only logged once as long as it persists.
     pub fn capteur_vivant(&self) -> bool {
         let mut capteur = self.capteur();
-        let Some(en_cours) = capteur.as_mut() else { return false };
+        let Some(en_cours) = capteur.as_mut() else {
+            return false;
+        };
         match en_cours.processus.try_wait() {
             Ok(None) => {
                 en_cours.etat_illisible_signale = false;
                 true
             }
             Ok(Some(code)) => {
-                tracing::info!(pid = en_cours.processus.id(), ?code, "capteur terminé");
+                tracing::info!(pid = en_cours.processus.id(), ?code, "sensor finished");
                 *capteur = None;
                 false
             }
-            Err(erreur) => {
+            Err(error) => {
                 if !en_cours.etat_illisible_signale {
                     en_cours.etat_illisible_signale = true;
                     tracing::warn!(
-                        %erreur,
-                        "état du capteur illisible, tenu pour vivant \
-                         (signalé une seule fois tant que l'état reste illisible)"
+                        %error,
+                        "sensor state unreadable, taken as alive \
+                         (reported only once as long as the state stays unreadable)"
                     );
                 }
                 true
             }
         }
-    }
-}
-
-impl Lanceur for LanceurDeProcessus {
-    fn lancer(&self, consigne: &Consigne) -> Result<u32> {
-        let mut commande = std::process::Command::new(&self.executable);
-        commande
-            .env("SESSION_ID", &consigne.session.0)
-            .env("SIGNALING_URL", &self.signaling_url)
-            .env("LOCAL_IP", &self.local_ip)
-            .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
-            .env("SORTIE_DXGI", &consigne.nom_sortie)
-            // La taille RETENUE (`Consigne::taille`), pas celle de la
-            // sortie — voir sa doc. Lue par `demarrage`, redite au capteur à
-            // l'attache (tâche 9 du sous-bloc D10).
-            .env("TAILLE_FENETRE", format!("{}x{}", consigne.taille.0, consigne.taille.1))
-            // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
-            // variable se prendrait pour un superviseur et lancerait ses
-            // propres enfants, indéfiniment.
-            .env_remove("SUPERVISEUR")
-            // **Correctif I6 de la revue finale.** `SUPERVISEUR` n'était pas
-            // la seule variable héritable qui change le SENS d'un enfant.
-            // `scripts/run-agent.sh:32` pose `$env:TEST_FILE` dès que la
-            // variable est définie dans l'environnement d'appel : un
-            // superviseur lancé ainsi ferait que CHAQUE enfant diffuse le
-            // fichier de test et ne capture rien (`Config::test_file`, lu par
-            // `demarrage`), sans le moindre avertissement.
-            //
-            // `WINDOW_TITLE` par la même règle : la consigne impose la fenêtre
-            // par `FENETRE_HWND`, et `demarrage::source` ne retombe sur la
-            // recherche par titre que si celui-là manque. Inoffensive tant que
-            // `FENETRE_HWND` est posé — ce que fait la ligne ci-dessus — mais
-            // la laisser entretiendrait l'idée qu'un enfant peut chercher sa
-            // fenêtre par titre, ce qui est faux par construction.
-            //
-            // Les modes diagnostic (`CAPTURE_TEST`, `AUDIO_PROBE`,
-            // `MULTIFENETRE_*`…) ne sont volontairement PAS retirés : ils sont
-            // aiguillés par `diagnostics::aiguiller()`, qui court AVANT la
-            // branche superviseur de `main` — un superviseur qui en porterait
-            // un ne serait jamais devenu superviseur, et n'aurait donc jamais
-            // lancé d'enfant. `BITRATE`, `ENCODER_FPS` et `SOURCE_TRACE`
-            // restent hérités à dessein : ce sont des réglages, pas des
-            // changements de mode.
-            .env_remove("TEST_FILE")
-            .env_remove("WINDOW_TITLE")
-            // **I7 de la revue finale de branche du sous-bloc D4**, par la
-            // même règle de symétrie que le bloc I6 ci-dessus : `CAPTEUR` est
-            // une variable héritable qui change le SENS d'un processus — un
-            // enfant qui la porterait deviendrait un second capteur, ne
-            // diffuserait rien, et se disputerait le tube nommé avec le vrai.
-            //
-            // Le cas est INATTEIGNABLE aujourd'hui : `main.rs` prend la
-            // branche capteur AVANT la branche superviseur, donc un
-            // superviseur portant `CAPTEUR` ne serait jamais devenu
-            // superviseur et n'aurait jamais lancé d'enfant. On la retire
-            // quand même, exactement comme `lancer_capteur` retire
-            // `SUPERVISEUR` par ce même raisonnement : ce qui protège l'enfant
-            // ne doit pas dépendre de l'ordre de deux `if` dans un autre
-            // fichier.
-            .env_remove("CAPTEUR")
-            // 🔴 **Et `PONT` — le seul des trois oublis qui casserait le
-            // produit.** La branche `PONT` de `main.rs` est placée APRÈS
-            // `CAPTEUR`, mais AVANT `config.superviseur` : un enfant qui
-            // hériterait de `PONT` se prendrait donc pour un pont, tiendrait
-            // une racine de virtualisation ProjFS, et ne capturerait JAMAIS
-            // rien. Contrairement aux deux autres, ce cas-là est atteignable
-            // dès aujourd'hui — il suffit qu'un superviseur soit lancé avec
-            // `PONT` dans son environnement, ce que `scripts/run-agent.sh`
-            // rend possible d'une variable.
-            .env_remove("PONT");
-        // 🔴 ET L'IDENTITÉ, dont l'oubli est le défaut du 20 août 2026. Un
-        // enfant traverse l'enrôlement de `main.rs` exactement comme le pont :
-        // la recette G1 ne l'a pas vu parce qu'aucune fenêtre n'était ouverte,
-        // donc aucun enfant lancé — le défaut y était invisible sur cette
-        // moitié-là, et il aurait mordu à la première fenêtre.
-        self.identite_heritee(&mut commande);
-        let mut enfant = commande
-            .spawn()
-            .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
-        let pid = enfant.id();
-
-        // Le seul post-traitement faillible de cette fonction. Le contrat
-        // atomique du trait exige donc qu'il tue lui-même l'enfant avant de
-        // rendre `Err` — sans quoi celui-ci tournerait sans être suivi et sa
-        // sortie virtuelle resterait captive du vivier de dix.
-        let handle = HANDLE(enfant.as_raw_handle() as *mut core::ffi::c_void);
-        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
-            if let Err(mise_a_mort) = enfant.kill() {
-                tracing::error!(
-                    pid, %mise_a_mort,
-                    "enfant NON rattaché au job ET NON tué — il survivra au superviseur"
-                );
-            }
-            let _ = enfant.wait();
-            return Err(anyhow::Error::new(erreur)
-                .context(format!("rattachement de l'enfant {pid} au job object")));
-        }
-
-        self.enfants()
-            .insert(pid, Enfant { processus: enfant, etat_illisible_signale: false });
-        Ok(pid)
-    }
-
-    fn est_vivant(&self, pid: u32) -> bool {
-        let mut enfants = self.enfants();
-        let Some(enfant) = enfants.get_mut(&pid) else {
-            // Inconnu de ce lanceur : jamais lancé par nous, ou mort déjà
-            // constatée. Dans les deux cas il n'est pas vivant *pour nous*, et
-            // c'est la seule question posée.
-            return false;
-        };
-        match enfant.processus.try_wait() {
-            Ok(None) => {
-                enfant.etat_illisible_signale = false;
-                true
-            }
-            Ok(Some(code)) => {
-                tracing::info!(pid, ?code, "enfant terminé");
-                // Le `Child` part avec son handle : le PID redevient
-                // recyclable, mais plus personne ne s'en sert.
-                enfants.remove(&pid);
-                false
-            }
-            Err(erreur) => {
-                // Un état illisible n'est PAS une mort : le déclarer mort ferait
-                // détruire la sortie d'un enfant qui capture encore.
-                //
-                // Signalé UNE fois par enfant, et pas à chaque tour de boucle :
-                // voir `Enfant::etat_illisible_signale`.
-                if !enfant.etat_illisible_signale {
-                    enfant.etat_illisible_signale = true;
-                    tracing::warn!(
-                        pid, %erreur,
-                        "état de l'enfant illisible, tenu pour vivant \
-                         (signalé une seule fois tant que l'état reste illisible)"
-                    );
-                }
-                true
-            }
-        }
-    }
-
-    fn tuer(&self, pid: u32) -> Result<()> {
-        let mut enfant = self
-            .enfants()
-            .remove(&pid)
-            .with_context(|| format!("processus {pid} inconnu de ce lanceur — rien à tuer"))?;
-        // `Child::kill` passe par le HANDLE retenu, jamais par le numéro : même
-        // si Windows avait recyclé ce PID, aucun tiers ne peut être visé.
-        let issue = enfant.processus.kill();
-        let _ = enfant.processus.wait();
-        issue.with_context(|| format!("terminaison du processus {pid}"))
     }
 }
 
 impl Drop for LanceurDeProcessus {
     fn drop(&mut self) {
-        // Fermer le job tue ce qu'il contient (`KILL_ON_JOB_CLOSE`). Les
-        // `Child` restants partent avec la table et leurs handles se ferment
-        // aussi ; l'ordre n'importe pas, le job est la garantie de fond.
+        // Closing the job kills what it contains (`KILL_ON_JOB_CLOSE`). The
+        // remaining `Child`ren go with the table and their handles close
+        // too; the order does not matter, the job is the underlying guarantee.
         let _ = unsafe { CloseHandle(self.job) };
     }
 }

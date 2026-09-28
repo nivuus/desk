@@ -1,22 +1,22 @@
-// Les critères ①, ② et ③ AU NIVEAU DU SOCKET, sur de vrais `WebSocket`.
+// Criteria ①, ② and ③ AT SOCKET LEVEL, on real `WebSocket`s.
 //
-// 🔴 `TURN_URL` et `TURN_SECRET` sont posées ici, et c'est indispensable :
-// sans elles `configurationIce` rend `undefined` et le relais n'envoie
-// JAMAIS d'`ice-config` (`ice.ts`). L'assertion « aucun `ice-config` avant la
-// fermeture » serait alors VRAIE quoi qu'il arrive — un contrôle incapable
-// d'échouer, le patron que ce dépôt a payé quatre fois. Le TÉMOIN du premier
-// test le prouve dans la même exécution : un client AUTHENTIFIÉ, lui, en
-// reçoit un.
+// 🔴 `TURN_URL` and `TURN_SECRET` are set here, and it is indispensable:
+// without them `configurationIce` returns `undefined` and the relay NEVER sends
+// an `ice-config` (`ice.ts`). The assertion "no `ice-config` before the
+// close" would then be TRUE whatever happened — a check unable
+// to fail, the pattern this repository has paid for four times. The WITNESS of the first
+// test proves it in the same run: an AUTHENTICATED client, for its part,
+// receives one.
 //
-// L'horloge du service de test est INJECTÉE : le critère ② exige qu'elle
-// avance entre deux poignées de main, et `demarrerServeur` ne prend pas
-// d'horloge. Ce fichier construit donc sa garde lui-même et appelle
-// `createSignalingServer(port, garde, frein, proxyDeConfiance)` — 🔴 QUATRE
-// ARGUMENTS DÉSORMAIS, PAS DEUX : `frein` et `proxyDeConfiance` l'ont
-// rejointe au sous-bloc P5 puis au round de correction 1 (budget « toute
-// requête »), et cette ligne disait encore « (port, garde) » alors que
-// l'appel plus bas en prend quatre — choix d'implémentation assumé, la forme
-// `port` étant celle qu'éprouve `server.test.ts` depuis le jalon 1.
+// The clock of the test service is INJECTED: criterion ② requires it
+// to move between two handshakes, and `startServer` takes no
+// clock. This file therefore builds its guard itself and calls
+// `createSignalingServer(port, garde, frein, proxyDeConfiance)` — 🔴 FOUR
+// ARGUMENTS NOW, NOT TWO: `frein` and `proxyDeConfiance` joined it
+// in sub-block P5 then in correction round 1 (the "any
+// request" budget), and this line still said "(port, garde)" while
+// the call further down takes four — an acknowledged implementation choice, the
+// `port` form being the one `server.test.ts` has tested since milestone 1.
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
@@ -29,23 +29,23 @@ import { poserTurnAmbiant } from './turn-harnais';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const T0 = 1_787_000_000_000;
-/// Le préfixe d'une VM simulée, de la VRAIE longueur que
-/// `agents/prefixe.ts` produit (22 caractères base64url). La garde exige
-/// que le sujet d'un jeton d'agent PRÉFIXE la session demandée.
+/// The prefix of a simulated VM, of the REAL length that
+/// `agents/prefixe.ts` produces (22 base64url characters). The guard requires
+/// the subject of an agent token to PREFIX the requested session.
 const P = 'RhH1x2QmTz9kLpVbNc7dAw';
 
 let serveur: ReturnType<typeof createSignalingServer> | undefined;
 let maintenant = T0;
 let proprietes: ProprieteDeSession;
 let garde: Garde;
-/// ⚠️ LA RESTAURATION PASSE PAR LE HARNAIS, ET CE N'EST PAS DU CONFORT.
-/// Écrite à la main, elle réaffectait `process.env.TURN_URL = turnAvant.url`,
-/// où `turnAvant.url` vaut `undefined` sur une machine sans TURN — et
-/// `process.env` coerce en chaîne : la variable ressortait à `"undefined"`,
-/// TRUTHY, donc `configurationIce` délivrait ensuite une configuration ICE
-/// dont l'URL était le mot `undefined`. Mesuré, jamais observé mordant :
-/// l'ordre des fichiers place aujourd'hui `server.test.ts` AVANT celui-ci, et
-/// il aurait suffi que l'un des deux change de taille pour l'inverser.
+/// ⚠️ THE RESTORE GOES THROUGH THE HARNESS, AND IT IS NOT FOR COMFORT.
+/// Written by hand, it reassigned `process.env.TURN_URL = turnAvant.url`,
+/// where `turnAvant.url` is `undefined` on a machine without TURN — and
+/// `process.env` coerces to a string: the variable came out as `"undefined"`,
+/// TRUTHY, so `configurationIce` then delivered an ICE configuration
+/// whose URL was the word `undefined`. Measured, never observed biting:
+/// the file order today puts `server.test.ts` BEFORE this one, and
+/// it would have been enough for one of the two to change size to reverse it.
 let restaurerTurn: () => void;
 
 beforeAll(() => {
@@ -59,15 +59,15 @@ afterAll(() => {
     restaurerTurn();
 });
 
-function demarrer(): number {
+function start(): number {
     maintenant = T0;
     proprietes = new ProprieteDeSession();
     garde = fabriquerGarde(SECRET, () => maintenant, proprietes);
-    // Un frein NEUF par appel, comme `garde` et `proprietes` juste au-dessus :
-    // ce fichier fait plusieurs poignées de main par test, très en dessous du
-    // budget « toute requête » (`securite/frein.ts::BUDGET_REQUETES`), mais
-    // un frein partagé entre tests ferait dériver un compte d'un test à
-    // l'autre.
+    // A FRESH brake per call, like `garde` and `proprietes` just above:
+    // this file makes several handshakes per test, far below the
+    // "any request" budget (`securite/frein.ts::BUDGET_REQUETES`), but
+    // a brake shared between tests would make a count drift from one test to
+    // the other.
     serveur = createSignalingServer(0, garde, new Frein(), new Set());
     return serveur.port;
 }
@@ -80,9 +80,9 @@ afterEach(async () => {
 
 interface Suivi {
     messages: any[];
-    /// L'ordre RÉEL des évènements : `message` et `close` s'y suivent tels
-    /// qu'ils sont arrivés. C'est ce qui permet d'asserter que le refus est
-    /// parvenu AVANT la fermeture, et non l'inverse.
+    /// The REAL order of events: `message` and `close` follow each other as
+    /// they arrived. It is what allows asserting that the refusal
+    /// arrived BEFORE the close, and not the reverse.
     ordre: string[];
     ferme: Promise<void>;
     socket: WebSocket;
@@ -97,7 +97,7 @@ function poignee(port: number, corps: unknown): Promise<Suivi> {
             socket: w,
             ferme: new Promise((r) => w.once('close', () => r())),
         };
-        const minuteur = setTimeout(() => reject(new Error('aucune issue en 3000 ms')), 3000);
+        const minuteur = setTimeout(() => reject(new Error('no outcome within 3000 ms')), 3000);
         w.on('message', (brut) => {
             suivi.messages.push(JSON.parse(brut.toString()));
             suivi.ordre.push('message');
@@ -106,8 +106,8 @@ function poignee(port: number, corps: unknown): Promise<Suivi> {
         w.once('open', () => {
             clearTimeout(minuteur);
             w.send(JSON.stringify(corps));
-            // Laisse au serveur le temps de répondre et, le cas échéant, de
-            // fermer. Une borne, jamais une attente infinie.
+            // Gives the server time to answer and, if need be, to
+            // close. A bound, never an infinite wait.
             setTimeout(() => resolve(suivi), 250);
         });
         w.once('error', () => {
@@ -117,23 +117,23 @@ function poignee(port: number, corps: unknown): Promise<Suivi> {
     });
 }
 
-describe('la garde, au niveau du socket', () => {
-    it('CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config', async () => {
-        const port = demarrer();
+describe('the guard, at the socket level', () => {
+    it('CRITERION ①: a client without a token is refused, and sees NO ice-config', async () => {
+        const port = start();
         const refuse = await poignee(port, { role: 'client', session: 's-1' });
 
-        // Première assertion : le refus est typé.
+        // First assertion: the refusal is typed.
         expect(refuse.messages).toContainEqual(
             expect.objectContaining({ type: 'error', motif: 'jeton-absent' }),
         );
-        // 🔴 Seconde assertion, EXIGÉE par la spec au même titre que la
-        // première : un service qui refuserait APRÈS avoir envoyé
-        // `ice-config` passerait la première et laisserait fuir des
-        // identifiants TURN de 24 h.
+        // 🔴 Second assertion, REQUIRED by the spec just like the
+        // first: a service that refused AFTER sending
+        // `ice-config` would pass the first and would leak 24-hour
+        // TURN credentials.
         expect(refuse.messages.map((m) => m.type)).not.toContain('ice-config');
 
-        // TÉMOIN, dans la même exécution : un client AUTHENTIFIÉ en reçoit un.
-        // Sans lui, l'assertion ci-dessus serait vraie quoi qu'il arrive.
+        // WITNESS, in the same run: an AUTHENTICATED client receives one.
+        // Without it, the assertion above would be true whatever happened.
         const admis = await poignee(port, {
             role: 'client',
             session: 's-temoin',
@@ -143,25 +143,25 @@ describe('la garde, au niveau du socket', () => {
         admis.socket.terminate();
     });
 
-    it('le socket est FERMÉ après le refus, et le message est arrivé AVANT', async () => {
-        const port = demarrer();
+    it('the socket is CLOSED after the refusal, and the message arrived BEFORE', async () => {
+        const port = start();
         const refuse = await poignee(port, { role: 'client', session: 's-1' });
         await refuse.ferme;
-        // Fermer avant d'envoyer tronquerait le message : le pair verrait une
-        // fermeture sans motif.
+        // Closing before sending would truncate the message: the peer would see a
+        // close with no reason.
         expect(refuse.ordre).toEqual(['message', 'close']);
         expect(refuse.socket.readyState).toBe(WebSocket.CLOSED);
     });
 
-    it('CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire', async () => {
-        const port = demarrer();
+    it('CRITERION ②: a token whose duration has elapsed is refused jeton-expire', async () => {
+        const port = start();
         const jeton = signer('u1', SECRET, T0);
-        // Le même jeton passe à t0…
+        // The same token passes at t0…
         const admis = await poignee(port, { role: 'client', session: 's-2', jeton });
         expect(admis.messages.map((m) => m.type)).not.toContain('error');
         admis.socket.terminate();
 
-        // 🔴 …et l'horloge du service AVANCE. La figer rendrait ce test inerte.
+        // 🔴 …and the service's clock MOVES. Freezing it would make this test inert.
         maintenant = T0 + DUREE_JETON_ACCES_MS;
         const expire = await poignee(port, { role: 'client', session: 's-3', jeton });
         expect(expire.messages).toContainEqual(
@@ -169,8 +169,8 @@ describe('la garde, au niveau du socket', () => {
         );
     });
 
-    it('CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme', async () => {
-        const port = demarrer();
+    it('CRITERION ③: u2 is refused the session of u1, and the LOG names it', async () => {
+        const port = start();
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         const un = await poignee(port, {
@@ -185,14 +185,14 @@ describe('la garde, au niveau du socket', () => {
             session: 's-privee',
             jeton: signer('u2', SECRET, T0),
         });
-        const erreur = deux.messages.find((m) => m.type === 'error');
-        expect(erreur).toBeDefined();
-        expect(erreur.motif).toBe('session-refusee');
-        // Le message SUR LE FIL ne nomme ni la session ni son propriétaire.
-        expect(erreur.reason).not.toContain('s-privee');
-        expect(erreur.reason).not.toContain('u1');
+        const error = deux.messages.find((m) => m.type === 'error');
+        expect(error).toBeDefined();
+        expect(error.motif).toBe('session-refusee');
+        // The message ON THE WIRE names neither the session nor its owner.
+        expect(error.reason).not.toContain('s-privee');
+        expect(error.reason).not.toContain('u1');
 
-        // Le JOURNAL, lui, porte le nom de session ET le demandeur.
+        // The LOG, for its part, carries the session name AND the requester.
         const lignes = journal.mock.calls.map((c) => String(c[0])).join('\n');
         expect(lignes).toContain('s-privee');
         expect(lignes).toContain('u2');
@@ -200,8 +200,8 @@ describe('la garde, au niveau du socket', () => {
         un.socket.terminate();
     });
 
-    it('après le départ des deux pairs, u2 PEUT prendre la session', async () => {
-        const port = demarrer();
+    it('after both peers left, u2 CAN take the session', async () => {
+        const port = start();
         const un = await poignee(port, {
             role: 'client',
             session: 's-rendue',
@@ -212,7 +212,7 @@ describe('la garde, au niveau du socket', () => {
         un.socket.close();
         await un.ferme;
         await new Promise((r) => setTimeout(r, 100));
-        // Ne jamais libérer perdrait le nom de session à vie.
+        // Never releasing would lose the session name for life.
         expect(proprietes.proprietaire('s-rendue')).toBeUndefined();
 
         const deux = await poignee(port, {
@@ -225,42 +225,42 @@ describe('la garde, au niveau du socket', () => {
         deux.socket.terminate();
     });
 
-    it('🔴 un pair `agent` SANS jeton est REFUSÉ — la fenêtre de E2 est FERMÉE', async () => {
-        // 🔴 CE TEST EST L'INVERSE EXACT DE CELUI QUE P2 LIVRAIT, et P2 l'avait
-        // prévu : « Le jour où P3 l'inversera, il faudra le réécrire À DESSEIN,
-        // pas par surprise. » C'est fait, à dessein, et la rouge est GRATUITE —
-        // le binaire de P2 la porte.
-        const port = demarrer();
+    it('🔴 an `agent` peer WITHOUT a token is REFUSED — the E2 window is CLOSED', async () => {
+        // 🔴 THIS TEST IS THE EXACT INVERSE OF THE ONE P2 SHIPPED, and P2 had
+        // foreseen it: "The day P3 inverts it, it will have to be rewritten ON PURPOSE,
+        // not by surprise." It is done, on purpose, and the red is FREE —
+        // P2's binary carries it.
+        const port = start();
         const agent = await poignee(port, { role: 'agent', session: 'bureau' });
         expect(agent.messages.map((m) => m.type)).toContain('error');
         agent.socket.terminate();
     });
 
-    it('🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée', async () => {
-        // 🔴 CE TEST EST LA SUBSTANCE D'E12, et le refus ci-dessus n'en était
-        // que la moitié. Un service qui refuserait APRÈS avoir envoyé
-        // `ice-config` passerait le test précédent mot pour mot, et laisserait
-        // pourtant fuir vers un ANONYME des identifiants TURN valables 86 400 s
-        // (`ice.ts`) — c'est-à-dire exactement ce que P2 avait nommé et laissé
-        // ouvert.
+    it('🔴 …and it receives NO `ice-config` — THE LEAK of E12 is closed', async () => {
+        // 🔴 THIS TEST IS THE SUBSTANCE OF E12, and the refusal above was
+        // only half of it. A service that refused AFTER sending
+        // `ice-config` would pass the previous test word for word, and would
+        // still leak to an ANONYMOUS peer TURN credentials valid for 86,400 s
+        // (`ice.ts`) — that is, exactly what P2 had named and left
+        // open.
         //
-        // 🔴 IL VIT DANS UN TEST DISTINCT, jamais comme seconde assertion du
-        // précédent : `expect` interrompt à la première, et cette fuite-ci —
-        // la seule que P3 ferme réellement — ne serait alors éprouvée par
-        // rien. C'est la leçon ①A-bis de P2, appliquée d'avance.
-        const port = demarrer();
+        // 🔴 IT LIVES IN A DISTINCT TEST, never as the second assertion of the
+        // previous one: `expect` interrupts at the first, and this leak —
+        // the only one P3 really closes — would then be tested by
+        // nothing. It is P2's lesson ①A-bis, applied in advance.
+        const port = start();
         const agent = await poignee(port, { role: 'agent', session: 'bureau' });
         expect(agent.messages.map((m) => m.type)).not.toContain('ice-config');
         agent.socket.terminate();
 
-        // TÉMOIN, DANS LA MÊME EXÉCUTION ET SUR LE MÊME RÔLE : un agent
-        // AUTHENTIFIÉ, lui, en reçoit un. Sans lui, l'assertion ci-dessus
-        // serait vraie quoi qu'il arrive le jour où `ice-config` cesserait
-        // d'être envoyé aux agents — et `TURN_URL`/`TURN_SECRET`, posées en
-        // `beforeAll`, ne prouvent que la moitié de cette non-vacuité.
+        // WITNESS, IN THE SAME RUN AND ON THE SAME ROLE: an
+        // AUTHENTICATED agent, for its part, receives one. Without it, the assertion above
+        // would be true whatever happened the day `ice-config` stopped
+        // being sent to agents — and `TURN_URL`/`TURN_SECRET`, set in
+        // `beforeAll`, only prove half of this non-vacuity.
         //
-        // Le jeton est de TYPE `agent` et son sujet est le PRÉFIXE de la VM :
-        // la garde exige les deux (`identite/garde.ts`).
+        // The token is of TYPE `agent` and its subject is the VM's PREFIX:
+        // the guard requires both (`identite/garde.ts`).
         const admis = await poignee(port, {
             role: 'agent',
             session: `${P}:bureau`,

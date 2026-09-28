@@ -1,39 +1,39 @@
 import { describe, expect, it } from 'vitest';
 import vecteurs from '../fichiers-vectors.json';
-import { FICHIERS_VERSION, type CodeEchec } from './fichiers';
+import { FILES_VERSION, type CodeEchec } from './fichiers';
 import {
     encodeChemin,
-    encodeCreer,
-    encodeDonnees,
+    encodeCreate,
+    encodeData,
     encodeBonjour,
     encodeDues,
     encodeEchec,
-    encodeEcrire,
+    encodeWrite,
     encodeEntrees,
     encodeLire,
     encodeMeta,
     encodeRenommer,
-    encodeSupprimer,
+    encodeDelete,
     parseChemin,
-    parseCreer,
-    parseDonnees,
+    parseCreate,
+    parseData,
     parseBonjour,
     parseDues,
     parseEchec,
-    parseEcrire,
+    parseWrite,
     parseEntrees,
     parseLire,
     parseMeta,
     parseRenommer,
-    parseSupprimer,
+    parseDelete,
     type Due,
     type EntreeJson,
 } from './fichiers-entetes';
 
 /**
- * Typage local des cas : le JSON mélange des champs propres à chaque `forme`,
- * tous optionnels ici puisqu'aucun cas ne les porte tous. Même choix que
- * `plateforme.test.ts` et `input.test.ts`, pour la même raison.
+ * Local typing of the cases: the JSON mixes fields specific to each `forme`,
+ * all optional here since no case carries them all. Same choice as
+ * `plateforme.test.ts` and `input.test.ts`, for the same reason.
  */
 interface CasVecteur {
     name: string;
@@ -60,7 +60,7 @@ interface CasVecteur {
 
 const cas: CasVecteur[] = vecteurs.cases as CasVecteur[];
 
-/** Produit la chaîne JSON d'un cas, quelle que soit sa forme. */
+/** Produces the JSON string of a case, whatever its shape. */
 function encoder(c: CasVecteur): string {
     switch (c.forme) {
         case 'chemin':
@@ -72,15 +72,15 @@ function encoder(c: CasVecteur): string {
         case 'meta':
             return encodeMeta(c.nom!, c.repertoire!, c.taille!, c.modifie!);
         case 'donnees':
-            return encodeDonnees(c.position!, c.longueur!);
+            return encodeData(c.position!, c.longueur!);
         case 'ecrire':
-            return encodeEcrire(c.chemin!, c.position!, c.longueur!, c.premier!, c.dernier!);
+            return encodeWrite(c.chemin!, c.position!, c.longueur!, c.premier!, c.dernier!);
         case 'creer':
-            return encodeCreer(c.chemin!, c.repertoire!);
+            return encodeCreate(c.chemin!, c.repertoire!);
         case 'renommer':
             return encodeRenommer(c.de!, c.vers!, c.repertoire!);
         case 'supprimer':
-            return encodeSupprimer(c.chemin!, c.repertoire!);
+            return encodeDelete(c.chemin!, c.repertoire!);
         case 'dues':
             return encodeDues(c.dues!, c.retenues!);
         case 'bonjour':
@@ -88,11 +88,11 @@ function encoder(c: CasVecteur): string {
         case 'echec':
             return encodeEchec(c.code as CodeEchec);
         default:
-            throw new Error(`forme inconnue dans les vecteurs : ${c.forme}`);
+            throw new Error(`unknown shape in the vectors: ${c.forme}`);
     }
 }
 
-/** Relit la chaîne JSON d'un cas par le parseur de sa forme. */
+/** Reads the JSON string of a case back through the parser of its shape. */
 function analyser(c: CasVecteur): unknown {
     const brut: unknown = JSON.parse(c.json);
     switch (c.forme) {
@@ -105,15 +105,15 @@ function analyser(c: CasVecteur): unknown {
         case 'meta':
             return parseMeta(brut);
         case 'donnees':
-            return parseDonnees(brut);
+            return parseData(brut);
         case 'ecrire':
-            return parseEcrire(brut);
+            return parseWrite(brut);
         case 'creer':
-            return parseCreer(brut);
+            return parseCreate(brut);
         case 'renommer':
             return parseRenommer(brut);
         case 'supprimer':
-            return parseSupprimer(brut);
+            return parseDelete(brut);
         case 'dues':
             return parseDues(brut);
         case 'bonjour':
@@ -121,113 +121,113 @@ function analyser(c: CasVecteur): unknown {
         case 'echec':
             return parseEchec(brut);
         default:
-            throw new Error(`forme inconnue dans les vecteurs : ${c.forme}`);
+            throw new Error(`unknown shape in the vectors: ${c.forme}`);
     }
 }
 
-describe('vecteurs partagés des en-têtes du pont fichiers', () => {
-    it('🔴 déclare la MÊME version que le protocole', () => {
-        // 🔴 La rouge : l'omettre. C'est la lacune que `vectors.json` traîne
-        // côté Rust — `input.rs` ne vérifie jamais `doc["version"]`. Ici les
-        // DEUX côtés la vérifient.
-        expect(FICHIERS_VERSION).toBe(vecteurs.version);
+describe('shared vectors of the file bridge headers', () => {
+    it('🔴 declares the SAME version as the protocol', () => {
+        // 🔴 The red: omitting it. It is the gap `vectors.json` drags along
+        // on the Rust side — `input.rs` never checks `doc["version"]`. Here
+        // BOTH sides check it.
+        expect(FILES_VERSION).toBe(vecteurs.version);
     });
 
-    it('🔴 porte au moins un cas', () => {
-        // 🔴 ANTI-TAUTOLOGIE : un fichier vide ferait passer toutes les boucles
-        // ci-dessous sans rien éprouver.
+    it('🔴 carries at least one case', () => {
+        // 🔴 ANTI-TAUTOLOGY: an empty file would make all the loops
+        // below pass without testing anything.
         expect(cas.length).toBeGreaterThan(0);
     });
 
-    it.each(cas)('encode « $name » exactement comme le vecteur', (c) => {
+    it.each(cas)('encodes « $name » exactly like the vector', (c) => {
         expect(encoder(c)).toBe(c.json);
     });
 
-    it.each(cas)('relit « $name » depuis le vecteur, sans le déformer', (c) => {
-        // Aller-retour : ce qui est relu doit se ré-encoder à l'identique. Un
-        // champ renommé casse ici, un champ perdu aussi.
+    it.each(cas)('re-reads « $name » from the vector, without distorting it', (c) => {
+        // Round trip: what is read back must re-encode identically. A
+        // renamed field breaks here, a lost field too.
         expect(JSON.stringify(analyser(c))).toBe(c.json);
     });
 });
 
-describe('les en-têtes incomplets sont rejetés', () => {
-    // Doctrine de version de `control` appliquée aux en-têtes : rien n'est
-    // silencieusement complété. Le jumeau Rust est
-    // `un_entete_incomplet_est_rejete_plutot_que_complete`.
-    it('refuse un Meta sans `modifie`', () => {
+describe('incomplete headers are rejected', () => {
+    // `control`'s version doctrine applied to headers: nothing is
+    // silently completed. The Rust twin is
+    // `an_incomplete_header_is_rejected_rather_than_completed`.
+    it('refuses a Meta without `modifie`', () => {
         expect(() => parseMeta({ nom: 'a', repertoire: false, taille: 1 })).toThrow(/modifie/);
     });
 
-    it('🔴 refuse un Meta sans `nom` — le nom CANONIQUE', () => {
-        // Sans lui, le substitut serait créé sous le nom que l'application a
-        // TAPÉ, et non sous celui qui existe sur le poste local.
+    it('🔴 refuses a Meta without `nom` — the CANONICAL name', () => {
+        // Without it, the placeholder would be created under the name the application
+        // TYPED, and not under the one that exists on the local machine.
         expect(() => parseMeta({ repertoire: false, taille: 1, modifie: 0 })).toThrow(/nom/);
     });
 
-    it('refuse un Donnees sans `longueur`', () => {
-        expect(() => parseDonnees({ position: 0 })).toThrow(/longueur/);
+    it('refuses a Donnees without `longueur`', () => {
+        expect(() => parseData({ position: 0 })).toThrow(/longueur/);
     });
 
-    it('refuse un Lire sans `longueur`', () => {
+    it('refuses a Lire without `longueur`', () => {
         expect(() => parseLire({ chemin: 'a', position: 0 })).toThrow(/longueur/);
     });
 
-    it('refuse un champ du mauvais TYPE, pas seulement un champ absent', () => {
-        // Un `taille` en chaîne passerait un contrôle de présence et
-        // produirait une taille de fichier absurde côté ProjFS.
+    it('refuses a field of the wrong TYPE, not only an absent field', () => {
+        // A `size` as a string would pass a presence check and
+        // would produce an absurd file size on the ProjFS side.
         expect(() => parseMeta({ nom: 'a', repertoire: false, taille: '1', modifie: 0 })).toThrow(
             /taille/,
         );
     });
 
-    it('🔴 refuse un Renommer sans `vers` — le seul champ dont l’absence DÉTRUIT', () => {
-        // Complété en silence par une chaîne vide, il ferait renommer vers la
-        // racine — ou, si l'appelant sautait sa garde, écraserait la source par
-        // elle-même. C'est le seul en-tête de ce protocole dont un champ
-        // manquant a une conséquence destructrice.
+    it('🔴 refuses a Renommer without `vers` — the only field whose absence DESTROYS', () => {
+        // Silently completed with an empty string, it would rename to the
+        // root — or, if the caller skipped its guard, would overwrite the source with
+        // itself. It is the only header of this protocol whose missing
+        // field has a destructive consequence.
         expect(() => parseRenommer({ de: 'a', repertoire: false })).toThrow(/vers/);
     });
 
-    it('refuse un Supprimer sans `repertoire`', () => {
-        expect(() => parseSupprimer({ chemin: 'a' })).toThrow(/repertoire/);
+    it('refuses a Supprimer without `repertoire`', () => {
+        expect(() => parseDelete({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
-    it('refuse un code d’échec inconnu', () => {
-        expect(() => parseEchec({ code: 'inventé' })).toThrow(/code/);
+    it('refuses an unknown failure code', () => {
+        expect(() => parseEchec({ code: 'invented' })).toThrow(/code/);
     });
 
-    it('🔴 refuse un Ecrire sans `premier`', () => {
-        // Sans `premier`, le flux s'ouvrirait avec `keepExistingData` : un
-        // fichier réécrit plus court garderait sa queue d'octets, ce qui est le
-        // défaut EXACT de l'ancien pont (spec §12).
+    it('🔴 refuses an Ecrire without `premier`', () => {
+        // Without `premier`, the stream would open with `keepExistingData`: a
+        // file rewritten shorter would keep its tail of bytes, which is the
+        // EXACT defect of the old bridge (spec §12).
         expect(() =>
-            parseEcrire({ chemin: 'a', position: 0, longueur: 1, dernier: true }),
+            parseWrite({ chemin: 'a', position: 0, longueur: 1, dernier: true }),
         ).toThrow(/premier/);
     });
 
-    it('🔴 refuse un Ecrire sans `dernier`', () => {
-        // Sans `dernier`, le `close()` ne viendrait jamais : rien ne serait
-        // jamais commis côté poste local, et l'entrée resterait due à jamais.
+    it('🔴 refuses an Ecrire without `dernier`', () => {
+        // Without `last`, the `close()` would never come: nothing would
+        // ever be committed on the local machine side, and the entry would stay due forever.
         expect(() =>
-            parseEcrire({ chemin: 'a', position: 0, longueur: 1, premier: true }),
+            parseWrite({ chemin: 'a', position: 0, longueur: 1, premier: true }),
         ).toThrow(/dernier/);
     });
 
-    it('refuse un Creer sans `repertoire`', () => {
-        expect(() => parseCreer({ chemin: 'a' })).toThrow(/repertoire/);
+    it('refuses a Creer without `repertoire`', () => {
+        expect(() => parseCreate({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
-    it('refuse une due incomplète', () => {
+    it('refuses an incomplete due', () => {
         expect(() => parseDues({ dues: [{ chemin: 'a' }] })).toThrow(/octets/);
-        // 🔴 **F5 — l'ABSENCE de défaut, épinglée.** Un `Dues` sans `retenues`
-        // complété en silence vaudrait « le pont pousse », c'est-à-dire
-        // l'inverse de ce que `Bonjour` existe pour empêcher.
+        // 🔴 **F5 — the ABSENCE of a default, pinned.** A `Dues` without `retenues`
+        // silently completed would mean "the bridge pushes", that is,
+        // the opposite of what `Bonjour` exists to prevent.
         expect(() => parseDues({ dues: [] })).toThrow(/retenues/);
         expect(() => parseBonjour({ racine: 'Documents' })).toThrow(/forcer/);
         expect(() => parseBonjour({ forcer: false })).toThrow(/racine/);
     });
 
-    it('refuse une entrée de répertoire incomplète', () => {
+    it('refuses an incomplete directory entry', () => {
         expect(() => parseEntrees({ entrees: [{ nom: 'a', repertoire: false }] })).toThrow(
             /taille/,
         );

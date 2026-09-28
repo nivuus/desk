@@ -28,10 +28,10 @@ use crate::transport::fixtures;
 /// interdit délibérément sa construction hors du crate) tout en exerçant
 /// exactement le même chemin de mémorisation que `dispatch_channel_data`.
 #[test]
-fn un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ() {
+fn a_visibility_message_is_memorised_not_applied_at_once() {
     let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     let json = r#"{"type":"visibility","v":3,"visible":false,"focused":false}"#;
     session.dispatch_controle_de_test(json);
@@ -47,10 +47,10 @@ fn un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ() {
 /// pas : le `match` de `memoriser_controle` est exhaustif, et c'est le
 /// compilateur qui l'a exigé au moment où la variante est née.
 #[test]
-fn un_message_de_collage_est_memorise_et_non_applique_sur_le_champ() {
+fn a_paste_message_is_memorised_not_applied_at_once() {
     let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"bonjour"}"#);
 
@@ -68,10 +68,10 @@ fn un_message_de_collage_est_memorise_et_non_applique_sur_le_champ() {
 /// premier ou les deux. Ce test ne dit pas que l'écrasement est bon — il dit
 /// que c'est bien ce que le produit fait, et la doc du champ en porte le coût.
 #[test]
-fn deux_collages_successifs_ne_laissent_que_le_second() {
+fn two_successive_pastes_leave_only_the_second() {
     let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"premier"}"#);
     session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"second"}"#);

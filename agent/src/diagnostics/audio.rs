@@ -1,13 +1,13 @@
-//! Sondes audio du chantier A : périphérique de rendu de la session et format
-//! de mixage (`AUDIO_PROBE`), et isolation de l'audio d'un seul processus
-//! (`PROCESS_LOOPBACK_PROBE`, requis par le chantier D).
+//! Audio probes of work stream A: the session's render device and mix
+//! format (`AUDIO_PROBE`), and isolating the audio of a single process
+//! (`PROCESS_LOOPBACK_PROBE`, required by work stream D).
 //!
-//! ⚠️ **`AUDIO_PROBE` ne sonde plus « le périphérique par défaut » mais celui
-//! que `LoopbackCapture::open` retient** — c'est-à-dire celui que désigne
-//! `AUDIO_PERIPHERIQUE`, ou le défaut de Windows à défaut (correction
-//! « A-bis », `wasapi/rendu.rs`). C'est ce qui en fait l'instrument de mesure
-//! de cette correction : lancée deux fois, avec et sans la variable, elle
-//! rend deux relevés opposés sur la même machine.
+//! ⚠️ **`AUDIO_PROBE` no longer probes "the default device" but the one
+//! `LoopbackCapture::open` keeps** — that is, the one designated by
+//! `AUDIO_PERIPHERIQUE`, or Windows' default otherwise ("A-bis"
+//! fix, `wasapi/rendu.rs`). That is what makes it the measuring instrument
+//! of this fix: run twice, with and without the variable, it
+//! returns two opposite readings on the same machine.
 
 use anyhow::{Context, Result};
 
@@ -20,18 +20,18 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
         .unwrap_or(10);
 
     let mut capture = wasapi::LoopbackCapture::open()?;
-    tracing::info!(format = %capture.description(), "loopback ouvert");
+    tracing::info!(format = %capture.description(), "loopback opened");
 
     let debut = std::time::Instant::now();
     let mut echantillons = 0u64;
     let mut crete = 0i16;
     let mut lectures_vides = 0u64;
-    // Fenêtre d'analyse spectrale : les DERNIÈRES `FENETRE_ANALYSE` valeurs
-    // entrelacées. Bornée à dessein — accumuler dix secondes de son pour n'en
-    // analyser que la fin coûterait de la mémoire sans rien apporter, et
-    // garder le DÉBUT ferait juger la sonde sur ce qui précède la tonalité
-    // qu'on vient de jouer.
-    const FENETRE_ANALYSE: usize = 48_000 * 2 * 2; // 2 s de stéréo à 48 kHz
+    // Spectral analysis window: the LAST `FENETRE_ANALYSE` interleaved
+    // values. Bounded on purpose — accumulating ten seconds of sound to only
+    // analyse the end would cost memory without bringing anything, and
+    // keeping the BEGINNING would judge the probe on what precedes the tone
+    // just played.
+    const FENETRE_ANALYSE: usize = 48_000 * 2 * 2; // 2 s of stereo at 48 kHz
     let mut fenetre: std::collections::VecDeque<i16> = std::collections::VecDeque::new();
     while debut.elapsed() < std::time::Duration::from_secs(secondes) {
         match capture.read()? {
@@ -50,10 +50,10 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
 
-    // La CRÊTE distingue « du son » de « rien ». Elle ne distingue pas « MON
-    // son » d'un autre — ce dépôt a établi au sous-bloc D7 que l'instrument
-    // qui le fait est la FRÉQUENCE DOMINANTE. Les deux sont donc rendues, et
-    // c'est la seconde qui juge (correction « A-bis »).
+    // The PEAK distinguishes "sound" from "nothing". It does not distinguish "MY
+    // sound" from another — this repository established in sub-block D7 that the instrument
+    // that does is the DOMINANT FREQUENCY. Both are therefore returned, and
+    // it is the second that judges ("A-bis" fix).
     let mono = crate::spectre::mono(&Vec::from(fenetre), 2);
     let dominante = crate::spectre::dominante(&mono, 48_000.0, 100.0, 4_000.0, 1.0);
 
@@ -65,7 +65,7 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
         dominante_hz = dominante.map(|d| d.frequence_hz),
         dominante_magnitude = dominante.map(|d| d.magnitude),
         resolution_hz = dominante.map(|d| d.resolution_hz),
-        "sonde audio terminée"
+        "audio probe finished"
     );
     Ok(())
 }
@@ -73,34 +73,34 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
 pub(super) fn executer_process_loopback(pid_texte: &str) -> Result<()> {
     let pid: u32 = pid_texte
         .parse()
-        .context("PROCESS_LOOPBACK_PROBE doit être un identifiant de processus")?;
+        .context("PROCESS_LOOPBACK_PROBE must be a process identifier")?;
     match wasapi::process_loopback::probe_process_loopback(pid) {
-        Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
-        Err(e) => tracing::warn!(pid, erreur = %e, "sonde process loopback échouée"),
+        Ok(rapport) => tracing::info!(pid, rapport, "process loopback probe"),
+        Err(e) => tracing::warn!(pid, error = %e, "process loopback probe failed"),
     }
     Ok(())
 }
 
-/// `PROCESS_LOOPBACK_CAPTURE=<pid>` — la mesure pivot du sous-bloc D7.
+/// `PROCESS_LOOPBACK_CAPTURE=<pid>` — the pivotal measurement of sub-block D7.
 ///
-/// Va jusqu'où `probe_process_loopback` s'arrête : `Initialize`,
-/// `GetService`, `Start`, et une lecture réelle. **Le relevé qui compte n'est
-/// pas la crête non nulle** — une capture qui rendrait en réalité le mix global
-/// la produirait aussi — **mais la crête NULLE pendant qu'un autre processus
-/// joue.** Les deux moitiés se jouent par deux exécutions successives, et le
-/// protocole est au §3 de la conception.
+/// Goes as far as where `probe_process_loopback` stops: `Initialize`,
+/// `GetService`, `Start`, and a real read. **The reading that matters is
+/// not the non-zero peak** — a capture that actually returned the global mix
+/// would produce it too — **but the ZERO peak while another process
+/// plays.** The two halves are played by two successive runs, and the
+/// protocol is in §3 of the design.
 pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
     let pid: u32 = pid_texte
         .parse()
-        .context("PROCESS_LOOPBACK_CAPTURE doit être un identifiant de processus")?;
+        .context("PROCESS_LOOPBACK_CAPTURE must be a process identifier")?;
     let secondes: u64 = std::env::var("PROCESS_LOOPBACK_SECS")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(15);
 
     let mut capture = wasapi::process_loopback::CaptureProcessus::ouvrir(pid)?;
-    tracing::info!(pid, format = %capture.description(), "process loopback ouvert");
-    capture.demarrer()?;
+    tracing::info!(pid, format = %capture.description(), "process loopback opened");
+    capture.start()?;
 
     let debut = std::time::Instant::now();
     let mut echantillons = 0u64;
@@ -125,31 +125,31 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
         lectures_vides,
         crete,
         silencieux = crete == 0,
-        "sonde de capture process loopback : premiere moitie"
+        "process loopback capture probe: first half"
     );
 
-    // Le cycle Stop/Start, dont dépend l'approche retenue au §4.4 de la spec.
-    // Un refus ici fait replier sur l'approche B — c'est un relevé, pas un
+    // The Stop/Start cycle, on which the approach chosen in §4.4 of the spec depends.
+    // A refusal here falls back on approach B — it is a reading, not an
     // incident.
     capture.arreter()?;
     std::thread::sleep(std::time::Duration::from_millis(500));
-    match capture.demarrer() {
-        Ok(()) => tracing::info!(pid, "cycle Stop puis Start accepte"),
-        Err(e) => tracing::warn!(pid, erreur = %e, "cycle Stop puis Start REFUSE"),
+    match capture.start() {
+        Ok(()) => tracing::info!(pid, "Stop then Start cycle accepted"),
+        Err(e) => tracing::warn!(pid, error = %e, "Stop then Start cycle REFUSED"),
     }
 
-    // La seconde moitié journalise les MÊMES quatre champs que la première
-    // (echantillons, lectures_vides, crete, silencieux), pas la seule crête.
-    // Sans echantillons_apres/lectures_vides_apres, une crete_apres a 0 est
-    // ambiguë entre trois causes bien distinctes : le flux a bien repris mais
-    // la source est redevenue silencieuse (echantillons_apres > 0) ; le flux a
-    // repris mais ne rend jamais rien (echantillons_apres = 0, lectures_vides_apres
-    // proche du plafond) ; ou `demarrer()` a été refusé et cette boucle a
-    // interrogé un flux resté arrêté pendant 5 s (même signature que le cas
-    // précédent, mais pour une tout autre raison). Or c'est précisément cette
-    // distinction que la tâche 3 doit trancher pour la décision du §4.4 de la
-    // spec : un « `Start` accepté » ne garantit que le HRESULT, pas que
-    // l'audio a réellement repris.
+    // The second half logs the SAME four fields as the first
+    // (samples, empty reads, peak, silent), not the peak alone.
+    // Without echantillons_apres/lectures_vides_apres, a crete_apres at 0 is
+    // ambiguous between three quite distinct causes: the stream did resume but
+    // the source went silent again (echantillons_apres > 0); the stream
+    // resumed but never returns anything (echantillons_apres = 0, lectures_vides_apres
+    // close to the cap); or `start()` was refused and this loop
+    // polled a stream that stayed stopped for 5 s (same signature as the
+    // previous case, but for a completely different reason). Yet it is precisely this
+    // distinction that task 3 must settle for the decision of §4.4 of the
+    // spec: a "`Start` accepted" only guarantees the HRESULT, not that
+    // audio has actually resumed.
     let debut = std::time::Instant::now();
     let mut echantillons_apres = 0u64;
     let mut lectures_vides_apres = 0u64;
@@ -172,7 +172,7 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
         lectures_vides_apres,
         crete_apres,
         silencieux_apres = crete_apres == 0,
-        "sonde de capture process loopback terminee"
+        "process loopback capture probe finished"
     );
     Ok(())
 }

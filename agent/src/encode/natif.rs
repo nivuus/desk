@@ -1,45 +1,45 @@
-//! Le dos **NVENC natif** derrière la façade `H264Encoder`.
+//! The **native NVENC** back end behind the `H264Encoder` facade.
 //!
-//! Ce fichier ne parle pas à NVENC : il traduit. D'un côté les huit verbes
-//! que le dépôt consomme depuis toujours (`submit`, `poll_output`, …), de
-//! l'autre `encode_nvenc::session::SessionNvenc`. Tout ce qui touche à l'ABI
-//! vit sous `encode_nvenc`, et **rien de la notice de licence ne déborde
-//! ici**.
+//! This file does not talk to NVENC: it translates. On one side the eight verbs
+//! the repository has always consumed (`submit`, `poll_output`, …), on
+//! the other `encode_nvenc::session::SessionNvenc`. Everything touching the ABI
+//! lives under `encode_nvenc`, and **nothing of the licence notice spills
+//! over here**.
 //!
-//! 🟢 **CE CHEMIN A ENCODÉ**, mesuré sur la VM le 30 août 2026 : **1195
-//! unités d'accès en 10 s** sur le périphérique de capture réel, porté par
-//! l'adaptateur NVIDIA — là où la MFT rendait `0x8000FFFF` et **aucune**
-//! unité. (§ 11.1 du document de résultats.)
+//! 🟢 **THIS PATH HAS ENCODED**, measured on the VM on 30 August 2026: **1195
+//! access units in 10 s** on the real capture device, carried by
+//! the NVIDIA adapter — where the MFT returned `0x8000FFFF` and **no**
+//! unit. (§ 11.1 of the results document.)
 //!
-//! 🟢 **ET SES IMAGES ARRIVENT AU NAVIGATEUR** — `framesDecoded` **+494** et
-//! **+484** sur 25 s, deux exécutions, contre **0** sur une source statique
-//! dont l'audio coulait pourtant dans le même relevé.
-//! 🔴 **CETTE MESURE EST CELLE DU LOT 32, PAS DU LOT 31** : elle a été jouée
-//! avec DEUX remèdes en place — ce chemin natif, et la désignation de sortie
-//! du lot voisin. Elle établit que ce chemin produit des images qui
-//! traversent ; elle n'est pas à porter au crédit de ce fichier seul.
+//! 🟢 **AND ITS IMAGES REACH THE BROWSER** — `framesDecoded` **+494** and
+//! **+484** over 25 s, two runs, versus **0** on a static source
+//! whose audio was nevertheless flowing in the same survey.
+//! 🔴 **THIS MEASUREMENT IS THAT OF BATCH 32, NOT OF BATCH 31**: it was played
+//! with TWO remedies in place — this native path, and the output designation
+//! of the neighbouring batch. It establishes that this path produces images that
+//! get through; it is not to be credited to this file alone.
 //!
-//! ⚠️ **CE QUI N'EST TOUJOURS PAS ÉTABLI**, et qu'il ne faut pas lire dans
-//! les lignes ci-dessus : le plafond à **N fenêtres** n'est pas mesuré — le
-//! banc n'ouvre qu'un encodeur — et **personne n'a regardé une image**.
-//! `framesDecoded` compte des images décodées, il ne dit **rien** de la
-//! justesse de ce qui s'affiche.
+//! ⚠️ **WHAT IS STILL NOT ESTABLISHED**, and must not be read into
+//! the lines above: the ceiling at **N windows** is not measured — the
+//! bench only opens one encoder — and **no one has looked at an image**.
+//! `framesDecoded` counts decoded images, it says **nothing** about the
+//! correctness of what is displayed.
 //!
-//! ## Deux différences de fond avec le chemin MFT, et pourquoi elles sont sûres
+//! ## Two fundamental differences from the MFT path, and why they are safe
 //!
-//! 1. **Pas de convertisseur.** NVENC accepte `NV_ENC_BUFFER_FORMAT_ARGB`,
-//!    c'est-à-dire exactement ce que rend la duplication DXGI
-//!    (`DXGI_FORMAT_B8G8R8A8_UNORM`). L'étage BGRA→NV12 disparaît du chemin
-//!    chaud. ⚠️ **Ce n'est pas un gain mesuré** : personne n'a chiffré ce que
-//!    cet étage coûtait, et le lot 31 a seulement établi qu'il est
-//!    **logiciel** sur cette machine, faute de MFT matérielle de traitement
-//!    vidéo. Le gain est **plausible, pas mesuré**, et ne doit pas être
-//!    annoncé autrement.
-//! 2. **Pas de file d'événements.** La session est ouverte en mode
-//!    synchrone : une image soumise rend sa sortie tout de suite, ou signale
-//!    qu'elle a été mise en tampon. `submit` range donc la sortie, et
-//!    `poll_output` la rend — ce qui remplit le contrat de la façade sans
-//!    qu'aucun appelant ne change.
+//! 1. **No converter.** NVENC accepts `NV_ENC_BUFFER_FORMAT_ARGB`,
+//!    that is exactly what DXGI duplication returns
+//!    (`DXGI_FORMAT_B8G8R8A8_UNORM`). The BGRA→NV12 stage disappears from the hot
+//!    path. ⚠️ **It is not a measured gain**: no one put a figure on what
+//!    this stage cost, and batch 31 only established that it is
+//!    **software** on this machine, for lack of a hardware video processing
+//!    MFT. The gain is **plausible, not measured**, and must not be
+//!    announced otherwise.
+//! 2. **No event queue.** The session is opened in synchronous
+//!    mode: a submitted image returns its output right away, or signals
+//!    that it was buffered. `submit` therefore stores the output, and
+//!    `poll_output` returns it — which fulfils the facade's contract without
+//!    any caller changing.
 
 use std::collections::VecDeque;
 use std::sync::atomic::Ordering;
@@ -53,11 +53,11 @@ use crate::encode::{EncoderTelemetry, PHASE_IDLE};
 use crate::encode_nvenc::session::SessionNvenc;
 use crate::h264::{group_access_units, AccessUnit};
 
-/// Combien d'unités d'accès on garde entre `submit` et `poll_output`.
+/// How many access units we keep between `submit` and `poll_output`.
 ///
-/// ⚠️ **Une seule**, comme `MAX_PENDING_NV12` du chemin MFT et pour la même
-/// raison : servir une image périmée, c'est payer en latence le débit qu'on
-/// vient de gagner. Le dépassement est **compté**, pas silencieux.
+/// ⚠️ **Only one**, like the MFT path's `MAX_PENDING_NV12` and for the same
+/// reason: serving a stale image is paying in latency for the throughput just
+/// gained. Overflow is **counted**, not silent.
 const MAX_UNITES_EN_ATTENTE: usize = 1;
 
 pub struct EncodeurNatif {
@@ -88,7 +88,7 @@ impl EncodeurNatif {
     }
 
     pub fn encode_size(&self) -> (u32, u32) {
-        self.session.taille()
+        self.session.size()
     }
 
     pub fn request_keyframe(&mut self) -> Result<()> {
@@ -103,24 +103,24 @@ impl EncodeurNatif {
         self.session.regler_debit(bitrate)
     }
 
-    /// ⚠️ **Sans objet ici, et ce n'est PAS un oubli.** Ce verbe existe pour
-    /// la MFT asynchrone, dont les entrées attendent un événement
-    /// `METransformNeedInput`. Le mode synchrone n'a rien qui attende : une
-    /// image soumise est encodée à l'appel. Rendre `Ok(())` est donc le
-    /// comportement JUSTE, pas un silence de complaisance.
+    /// ⚠️ **Not applicable here, and it is NOT an oversight.** This verb exists for
+    /// the asynchronous MFT, whose inputs wait for a
+    /// `METransformNeedInput` event. Synchronous mode has nothing waiting: a
+    /// submitted image is encoded at the call. Returning `Ok(())` is therefore the
+    /// RIGHT behaviour, not a complacent silence.
     pub fn flush_pending_inputs(&mut self) -> Result<()> {
         Ok(())
     }
 
-    /// ⚠️ **Sans objet ici non plus** : ce verbe bouche la file de travail
-    /// que la MFT asynchrone impose, et le mode synchrone n'en a aucune.
+    /// ⚠️ **Not applicable here either**: this verb clogs the work queue
+    /// the asynchronous MFT imposes, and synchronous mode has none.
     pub fn eprouver_file(&self, _duree: std::time::Duration) {}
 
     pub fn submit(&mut self, frame: &CapturedFrame, pts_90k: u64) -> Result<()> {
         self.telemetry.submit_calls.fetch_add(1, Ordering::Relaxed);
-        // Media Foundation comptait en 100 ns ; NVENC prend ce qu'on lui
-        // donne et le rend tel quel. On garde l'unité de la façade — 1/90000 s
-        // — pour que `poll_output` n'ait rien à reconvertir.
+        // Media Foundation counted in 100 ns; NVENC takes what it is
+        // given and returns it as is. We keep the facade's unit — 1/90000 s
+        // — so that `poll_output` has nothing to convert back.
         let octets = self.session.encoder(&frame.texture, pts_90k)?;
         self.telemetry
             .encoder_inputs
@@ -128,7 +128,7 @@ impl EncodeurNatif {
         crate::encode::ENCODER_INPUTS.fetch_add(1, Ordering::Relaxed);
 
         let Some(octets) = octets else {
-            // L'encodeur a mis l'image en tampon : cas normal, pas une perte.
+            // The encoder buffered the image: normal case, not a loss.
             return Ok(());
         };
         let mut unites = group_access_units(&octets, self.fps);
@@ -142,9 +142,9 @@ impl EncodeurNatif {
             .encoder_outputs
             .fetch_add(1, Ordering::Relaxed);
 
-        // Ne garder que la plus récente, et COMPTER ce qu'on écarte : un
-        // rejet muet ferait lire « l'encodeur suit » à qui regarde les
-        // compteurs, alors qu'il décroche.
+        // Keep only the most recent, and COUNT what we discard: a
+        // silent rejection would make whoever looks at the counters read "the encoder keeps up",
+        // while it is falling behind.
         while self.en_attente.len() > MAX_UNITES_EN_ATTENTE {
             self.en_attente.pop_front();
             self.telemetry

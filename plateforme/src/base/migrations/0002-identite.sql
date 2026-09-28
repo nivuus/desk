@@ -1,31 +1,31 @@
--- L'identite des humains : la chaine de rafraichissement, rotative et
--- detectrice de rejeu.
+-- The identity of humans: the refresh chain, rotating and
+-- replay-detecting.
 --
--- La table `utilisateur` existe deja (0001-socle.sql) : P1 l'a creee vide,
--- P2 lui donne son comportement et non sa table. Rien n'est ajoute ici a son
+-- The `utilisateur` table already exists (0001-socle.sql): P1 created it empty,
+-- P2 gives it its behaviour and not its table. Nothing is added here to its
 -- schema.
 --
--- 🔴 `famille` ET `remplace_par` NAISSENT AVEC LA TABLE, et ce n'est pas de la
--- prevoyance : sans elles, rien ne relie un jeton tourne a son successeur, et
--- la presentation d'un jeton deja tourne ne pourrait revoquer QUE la ligne
--- deja revoquee. Le voleur qui a tourne le premier garderait son jeton neuf,
--- et la detection de rejeu ne protegerait rien.
+-- 🔴 `famille` AND `remplace_par` ARE BORN WITH THE TABLE, and it is not
+-- foresight: without them, nothing links a rotated token to its successor, and
+-- presenting an already rotated token could revoke ONLY the row
+-- already revoked. The thief who rotated first would keep their new token,
+-- and replay detection would protect nothing.
 --
--- Elles ne peuvent pas etre ajoutees plus tard avec leurs contraintes :
--- SQLite ne sait pas ajouter une contrainte par ALTER TABLE -- mesure par P1
--- le 19 aout 2026 sur SQLite 3.50.4 : near "CONSTRAINT": syntax error. Une
--- cle etrangere naît avec sa table ou n'existe jamais. Meme raison pour
--- `REFERENCES utilisateur(id)` ci-dessous.
+-- They cannot be added later with their constraints:
+-- SQLite cannot add a constraint through ALTER TABLE -- measured by P1
+-- on 19 August 2026 on SQLite 3.50.4: near "CONSTRAINT": syntax error. A
+-- foreign key is born with its table or never exists. Same reason for
+-- `REFERENCES utilisateur(id)` below.
 --
--- Les trois horodatages sont BIGINT et non INTEGER, et c'est MESURE par P1 :
--- INTEGER vaut 4 octets sur Postgres, ou un Date.now() rendait
+-- The three timestamps are BIGINT and not INTEGER, and it is MEASURED by P1:
+-- INTEGER is 4 bytes on Postgres, where a Date.now() returned
 --     value "1787136773742" is out of range for type integer
--- et le service ne pouvait pas appliquer ses PROPRES migrations. Ils portent
--- tous la convention de nommage `_a`, sans laquelle le lint statique de
--- `sous-ensemble.test.ts` ne pourrait pas les voir.
+-- and the service could not apply its OWN migrations. They all carry
+-- the `_a` naming convention, without which the static lint of
+-- `sous-ensemble.test.ts` could not see them.
 --
--- Aucune valeur litterale, pas meme un DEFAUT : `rendreMarqueurs` refuse tout
--- SQL portant une apostrophe ou un guillemet.
+-- No literal value, not even a DEFAULT: `rendreMarqueurs` refuses any
+-- SQL carrying an apostrophe or a double quote.
 
 CREATE TABLE jeton_rafraichissement (
     id             TEXT PRIMARY KEY,
@@ -38,10 +38,10 @@ CREATE TABLE jeton_rafraichissement (
     revoque_a      BIGINT NULL
 );
 
--- UNIQUE : l'empreinte est la CLE DE RECHERCHE d'un jeton presente. Deux
--- lignes de meme empreinte rendraient la rotation ambigue, et le choix de
--- celle a revoquer arbitraire.
+-- UNIQUE: the hash is the LOOKUP KEY of a presented token. Two
+-- rows with the same hash would make the rotation ambiguous, and the choice of
+-- the one to revoke arbitrary.
 CREATE UNIQUE INDEX jeton_empreinte ON jeton_rafraichissement(empreinte);
 
--- La famille est parcourue d'un coup a la detection d'un rejeu.
+-- The family is walked in one go when a replay is detected.
 CREATE INDEX jeton_famille ON jeton_rafraichissement(famille);

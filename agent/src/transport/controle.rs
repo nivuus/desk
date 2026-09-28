@@ -1,5 +1,5 @@
-//! Le canal de contrôle : mise en file des messages sortants, drainage de
-//! ceux produits hors de la boucle, et fin de session.
+//! The control channel: queueing outgoing messages, draining
+//! those produced outside the loop, and session end.
 
 use anyhow::Result;
 use proto::control::AgentControl;
@@ -8,35 +8,35 @@ use super::tick::Tick;
 use super::Session;
 
 impl Session {
-    /// Met en file un message de contrôle à envoyer dès que le canal est
-    /// disponible. Ne mute jamais `Rtc` : l'envoi effectif a lieu dans
-    /// `run()`, seul endroit qui mute la session une fois la boucle démarrée.
+    /// Queues a control message to send as soon as the channel is
+    /// available. Never mutates `Rtc`: the actual sending happens in
+    /// `run()`, the only place that mutates the session once the loop has started.
     pub(super) fn queue_control(&mut self, message: AgentControl) {
         self.pending_control.push_back(message);
     }
 
-    /// Branche une source externe de messages de contrôle. Même patron que
-    /// `set_audio_source` : la session tire, elle n'est jamais poussée.
+    /// Wires an external source of control messages. Same pattern as
+    /// `set_audio_source`: the session pulls, it is never pushed.
     pub fn set_control_source(&mut self, rx: std::sync::mpsc::Receiver<AgentControl>) {
         self.outbound_control = Some(rx);
     }
 
-    /// Branche `a0bis` de la liste de priorités (voir `tick`) : un message de
-    /// contrôle produit hors de la boucle attend.
+    /// Branch `a0bis` of the priority list (see `tick`): a control
+    /// message produced outside the loop is waiting.
     ///
-    /// `try_recv` ne bloque jamais. On rend la main immédiatement après
-    /// l'avoir mis en file, comme les branches a1 et a2 : `queue_control` ne
-    /// mute pas `Rtc`, mais garder une seule action par tour est ce qui rend
-    /// la liste de priorités lisible.
+    /// `try_recv` never blocks. We give control back immediately after
+    /// queueing it, like branches a1 and a2: `queue_control` does not
+    /// mutate `Rtc`, but keeping a single action per round is what makes
+    /// the priority list readable.
     ///
-    /// La file est bornée : si le canal de contrôle n'est pas encore ouvert,
-    /// les messages s'y accumuleraient sans limite. Au-delà du plafond on
-    /// cesse de drainer — les producteurs (curseur, vibration) émettent des
-    /// ÉTATS, dont seul le dernier compte, et le canal mpsc fera tampon en
-    /// attendant.
+    /// The queue is bounded: if the control channel is not open yet,
+    /// messages would pile up in it without limit. Beyond the ceiling we
+    /// stop draining — the producers (cursor, rumble) emit
+    /// STATES, of which only the last counts, and the mpsc channel will buffer
+    /// meanwhile.
     ///
-    /// Rend `None` quand rien n'attendait : aucune mutation, ni de `Rtc` ni
-    /// de la file, n'a alors eu lieu.
+    /// Returns `None` when nothing was waiting: no mutation, neither of `Rtc` nor
+    /// of the queue, then took place.
     pub(super) fn drainer_controle_externe(&mut self) -> Option<Tick> {
         const PLAFOND_CONTROLE_EN_FILE: usize = 32;
         if self.pending_control.len() >= PLAFOND_CONTROLE_EN_FILE {
@@ -47,54 +47,54 @@ impl Session {
         Some(Tick::Continue)
     }
 
-    /// Branche `a` de la liste de priorités (voir `tick`) : émet le premier
-    /// message de contrôle en file.
+    /// Branch `a` of the priority list (see `tick`): emits the first
+    /// queued control message.
     ///
-    /// Rend `Some(Tick::Continue)` après avoir écrit un message — l'écriture
-    /// sur le canal est une mutation de `Rtc`, qui conclut donc le tour.
-    /// Rend `Some(Tick::Disconnected)` quand la session se clôt sans pouvoir
-    /// en informer le navigateur. Rend `None` — sans avoir muté `Rtc` — quand
-    /// la file est vide, ou que le canal n'est pas encore ouvert alors que la
-    /// session n'est pas en clôture : le message reste alors en file, on
-    /// retente au tour suivant, et la liste de priorités peut passer à la
-    /// branche suivante sans rompre l'invariant de drainage.
+    /// Returns `Some(Tick::Continue)` after writing a message — writing
+    /// on the channel is a mutation of `Rtc`, which therefore concludes the round.
+    /// Returns `Some(Tick::Disconnected)` when the session closes without being able
+    /// to inform the browser. Returns `None` — without having mutated `Rtc` — when
+    /// the queue is empty, or the channel is not open yet while the
+    /// session is not closing: the message then stays queued, we
+    /// retry at the next round, and the priority list can move on to the
+    /// next branch without breaking the drain invariant.
     pub(super) fn brancher_controle_en_file(&mut self) -> Result<Option<Tick>> {
-        // Le test de vacuité est ICI et non chez l'appelant : c'est lui qui
-        // garantit le `expect` du `pop_front` plus bas. Une précondition
-        // laissée dans `tick` serait tenue par convention, alors qu'elle l'est
-        // par construction tant qu'elle reste dans la méthode qu'elle protège.
+        // The emptiness test is HERE and not at the caller: it is what
+        // guarantees the `expect` of the `pop_front` below. A precondition
+        // left in `tick` would be held by convention, whereas it is held
+        // by construction as long as it stays in the method it protects.
         //
-        // Il précède le test du canal : sur une file VIDE, il n'y a rien à
-        // annoncer au navigateur, donc rien à regretter de ne pas pouvoir lui
-        // envoyer — l'avertissement du `else` plus bas n'aurait pas lieu
-        // d'être. La clôture d'une session sans rien en file est traitée par
-        // le `if self.ending` de `tick`, juste après cette branche.
+        // It precedes the channel test: on an EMPTY queue, there is nothing to
+        // announce to the browser, hence nothing to regret not being able to
+        // send it — the warning of the `else` below would have no reason
+        // to be. Closing a session with nothing queued is handled by
+        // the `if self.ending` of `tick`, right after this branch.
         if self.pending_control.is_empty() {
             return Ok(None);
         }
 
         let Some(id) = self.control_channel else {
             if self.ending {
-                // Fin de session demandée mais canal de contrôle
-                // indisponible (jamais ouvert, ou fermé) : impossible d'en
-                // informer le navigateur, mais on n'attend pas indéfiniment
-                // un canal qui ne s'ouvrira pas.
+                // Session end requested but control channel
+                // unavailable (never opened, or closed): impossible to
+                // inform the browser, but we do not wait indefinitely
+                // for a channel that will not open.
                 tracing::warn!(
-                    "fin de session sans canal de contrôle disponible pour en informer le navigateur"
+                    "end of session without a control channel available to tell the browser"
                 );
                 return Ok(Some(Tick::Disconnected));
             }
-            // Canal pas encore ouvert, session pas en cours de clôture : le
-            // message reste en file, on retente au tour suivant.
+            // Channel not open yet, session not closing: the
+            // message stays queued, we retry at the next round.
             return Ok(None);
         };
 
-        let message = self.pending_control.pop_front().expect("non vide");
-        // Nom du variant à des fins de journal uniquement : la recette du
-        // chantier B (mesures 3 et 5) a dû contourner l'observabilité de ce
-        // chemin par une instrumentation client temporaire, faute d'une ligne
-        // ici — ce `tracing::debug!` existe pour que le prochain diagnostic
-        // n'ait plus besoin de ce contournement.
+        let message = self.pending_control.pop_front().expect("not empty");
+        // Variant name for logging purposes only: workstream B's
+        // acceptance run (measurements 3 and 5) had to work around this
+        // path's observability with temporary client instrumentation, for lack of a line
+        // here — this `tracing::debug!` exists so that the next diagnosis
+        // no longer needs that workaround.
         let type_message = match &message {
             AgentControl::Ready { .. } => "ready",
             AgentControl::SessionEnd { .. } => "session-end",
@@ -112,26 +112,27 @@ impl Session {
         if let Some(mut channel) = self.rtc.channel(id) {
             match channel.write(false, json.as_bytes()) {
                 Ok(_) => {
-                    tracing::debug!(type_message, "message de contrôle écrit");
+                    tracing::debug!(type_message, "control message written");
                 }
                 Err(e) => {
-                    tracing::warn!(erreur = %e, "échec d'écriture sur le canal de contrôle");
+                    tracing::warn!(error = %e, "write failure on the control channel");
                 }
             }
         }
         Ok(Some(Tick::Continue))
     }
 
-    /// Amorce une fin de session propre : met en file un
-    /// `AgentControl::session_end` et arrête l'envoi de nouvelles images.
+    /// Starts a clean session end: queues an
+    /// `AgentControl::session_end` and stops sending new images.
     /// Idempotent.
     pub(super) fn begin_ending(&mut self, reason: &str) {
         if self.ending {
             return;
         }
         self.ending = true;
-        self.pending_control.push_back(AgentControl::session_end(reason));
-        tracing::info!(reason, "clôture de session amorcée");
+        self.pending_control
+            .push_back(AgentControl::session_end(reason));
+        tracing::info!(reason, "session closing started");
     }
 }
 
@@ -145,16 +146,17 @@ mod tests {
     use crate::transport::fixtures;
 
     #[test]
-    fn relaie_au_pair_un_controle_pousse_depuis_l_exterieur_de_la_boucle() {
+    fn relays_to_the_peer_a_control_pushed_from_outside_the_loop() {
+        use proto::control::CursorShape;
         use std::sync::mpsc;
         use std::thread;
         use str0m::change::SdpAnswer;
         use str0m::media::{Direction, MediaKind};
-        use proto::control::CursorShape;
 
         let local_ip = fixtures::local_ip();
         let source = Box::new(fixtures::video_test_source());
-        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
+        let mut session =
+            Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, false);
 
@@ -162,18 +164,23 @@ mod tests {
         api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
         api.add_channel("control".to_string());
         api.add_channel("input".to_string());
-        let (offer, pending) = api.apply().expect("offre non vide");
-        let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
-        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
-        peer_rtc.sdp_api().accept_answer(pending, answer).expect("réponse acceptée");
+        let (offer, pending) = api.apply().expect("non-empty offer");
+        let answer_sdp = session
+            .accept_offer(&offer.to_sdp_string())
+            .expect("offer accepted");
+        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
+        peer_rtc
+            .sdp_api()
+            .accept_answer(pending, answer)
+            .expect("answer accepted");
 
-        // C'est le point du test : le message n'est produit NI par la boucle,
-        // NI par un événement str0m — il vient d'un tiers, comme le fera le
-        // fil de sondage du curseur.
+        // That is the point of the test: the message is produced NEITHER by the loop,
+        // NOR by a str0m event — it comes from a third party, as the
+        // cursor polling thread will.
         let (tx, rx) = mpsc::channel();
         session.set_control_source(rx);
         tx.send(AgentControl::pointer(false, CursorShape::Default))
-            .expect("envoi dans le canal");
+            .expect("sending on the channel");
 
         thread::spawn(move || {
             let mut on_input = |_| {};
@@ -181,29 +188,26 @@ mod tests {
             let _ = session.run(&mut on_input, &mut on_control);
         });
 
-        // Boucle du pair : pilote son `Rtc` et guette le message attendu sur
-        // le canal de contrôle. Borne dure pour ne pas pendre si rien n'arrive.
+        // The peer's loop: drives its `Rtc` and watches for the expected message on
+        // the control channel. Hard bound so as not to hang if nothing arrives.
         peer_socket
             .set_read_timeout(Some(Duration::from_millis(50)))
-            .expect("délai de lecture");
+            .expect("read timeout");
         let mut buf = vec![0u8; 4096];
         let debut = Instant::now();
         let mut recu = false;
         while !recu && debut.elapsed() < Duration::from_secs(15) {
-            match peer_socket.recv_from(&mut buf) {
-                Ok((n, from)) => {
-                    let contents: str0m::net::DatagramRecv = buf[..n].try_into().unwrap();
-                    let _ = peer_rtc.handle_input(Input::Receive(
-                        Instant::now(),
-                        str0m::net::Receive {
-                            proto: str0m::net::Protocol::Udp,
-                            source: from,
-                            destination: peer_addr,
-                            contents,
-                        },
-                    ));
-                }
-                Err(_) => {}
+            if let Ok((n, from)) = peer_socket.recv_from(&mut buf) {
+                let contents: str0m::net::DatagramRecv = buf[..n].try_into().unwrap();
+                let _ = peer_rtc.handle_input(Input::Receive(
+                    Instant::now(),
+                    str0m::net::Receive {
+                        proto: str0m::net::Protocol::Udp,
+                        source: from,
+                        destination: peer_addr,
+                        contents,
+                    },
+                ));
             }
             while let Ok(output) = peer_rtc.poll_output() {
                 match output {
@@ -223,6 +227,6 @@ mod tests {
             }
         }
 
-        assert!(recu, "le message de pointeur n'est jamais parvenu au pair");
+        assert!(recu, "the pointer message never reached the peer");
     }
 }

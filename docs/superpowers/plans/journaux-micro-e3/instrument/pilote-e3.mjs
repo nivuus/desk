@@ -128,7 +128,7 @@ async function obtenirPaire() {
     return corps;
 }
 
-const resultat = { prefixe: PREFIXE, wav: WAV, journal, phases: [], erreurs: [] };
+const result = { prefixe: PREFIXE, wav: WAV, journal, phases: [], errors: [] };
 let chrome;
 try {
     const paire = await obtenirPaire();
@@ -157,7 +157,7 @@ try {
     ]);
     const ver = await attendreDevtools(PORT_CDP);
     dire(`chrome : ${ver.Browser}`);
-    resultat.chrome = ver.Browser;
+    result.chrome = ver.Browser;
 
     const cdp = new Cdp(ver.webSocketDebuggerUrl);
     const sessions = new Map();       // targetId -> sessionId
@@ -201,7 +201,7 @@ try {
         console_pages.push({ t: Date.now(), sid: m.sessionId, niveau: m.params.type, texte: String(t).slice(0, 300) });
         if (console_pages.length > 600) console_pages.shift();
     });
-    resultat.console_pages = console_pages;
+    result.console_pages = console_pages;
 
     const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}`;
     dire(`navigation : ${url}`);
@@ -210,7 +210,7 @@ try {
     const jetonVu = await cdp.evalBorne(sessionShell,
         `JSON.stringify({ href: location.href, jeton: !!localStorage.getItem('guac.jeton.acces') })`, 8000, false);
     dire(`etat de la shell : ${jetonVu}`);
-    resultat.etat_shell = jetonVu;
+    result.etat_shell = jetonVu;
     if (!String(jetonVu).includes('"jeton":true')) throw new Error(`la page-shell n est pas dans l etat attendu : ${jetonVu}`);
 
     // 🔴 LA SHELL D'ABORD, L'AGENT ENSUITE (D1/D3).
@@ -237,7 +237,7 @@ try {
         if (pages.length >= 2) { dire(`${pages.length} fenetre(s) d application apres ${i} s`); break; }
         await dodo(1000);
     }
-    resultat.fenetres_ouvertes = pages.length;
+    result.fenetres_ouvertes = pages.length;
     if (pages.length < 2) throw new Error(`seulement ${pages.length} fenetre(s) d application : le livrable ② exige DEUX enfants`);
 
     // Les deux sessions CDP, appariées à leur nom de session de produit.
@@ -249,7 +249,7 @@ try {
         fen.push({ nom, sid, url: p.url });
     }
     dire(`fenetres : ${fen.map((f) => f.nom).join(' , ')}`);
-    resultat.fenetres = fen.map((f) => f.nom);
+    result.fenetres = fen.map((f) => f.nom);
     if (fen.some((f) => !f.sid)) throw new Error('une fenetre sans session CDP');
 
     // 🔴 `evalBorne` REND UN OBJET quand elle expire (`{__timeout}`) ou échoue
@@ -290,7 +290,7 @@ try {
         for (const f of fen) etats.push({ fenetre: f.nom, ...(await etatDe(f)) });
         const juge = secondesJuge ? await juger(nom, secondesJuge) : null;
         const phase = { phase: nom, t: new Date().toISOString(), etats, juge };
-        resultat.phases.push(phase);
+        result.phases.push(phase);
         for (const e of etats) {
             dire(`  [${nom}] ${e.fenetre} etat=${e.etat} cache=${e.cache} mic-state=${(e.micState||[]).length} titre=${JSON.stringify(String(e.titre).slice(0,80))}`);
         }
@@ -326,25 +326,25 @@ try {
                 })`, 8000, false))));
             }
             dire(`  [attente ${i}s] ${JSON.stringify(diag)}`);
-            resultat.diagnostic_bouton = diag;
+            result.diagnostic_bouton = diag;
         }
         await dodo(1000);
     }
-    resultat.boutons_visibles = visibles;
+    result.boutons_visibles = visibles;
     if (visibles < fen.length) throw new Error(`${visibles}/${fen.length} bouton(s) micro visible(s) : ready.mic est faux, ou la session n a pas abouti`);
 
     // ── Phase 0 : rien n'est allumé. Le témoin NÉGATIF de tout ce qui suit.
     await dodo(2000);
-    resultat.t_avant_tout_clic = Date.now();
+    result.t_avant_tout_clic = Date.now();
     await relever('0-repos', 0);
 
     // ── Phase A : le micro de la PREMIÈRE fenêtre, seul.
-    resultat.t_clic_A = await allumer(fen[0]);
+    result.t_clic_A = await allumer(fen[0]);
     await dodo(8000);
     await relever('A-une-seule', 10);
 
     // ── Phase B : le micro de la SECONDE. C'est le livrable ②.
-    resultat.t_clic_B = await allumer(fen[1]);
+    result.t_clic_B = await allumer(fen[1]);
     await dodo(8000);
     await relever('B-les-deux', 10);
 
@@ -379,16 +379,16 @@ try {
         for (const m of plat.matchAll(/enfant lancé session=(\S+) pid=(\d+)/g)) pids[m[1]] = m[2];
         const perdantes = new Set([...plat.matchAll(/session=(\S+)[^\n]*micro : une autre fenetre tient deja le cable/g)].map((m) => m[1]));
         for (const m of plat.matchAll(/micro : une autre fenetre tient deja le cable[^\n]*?session=(\S+)/g)) perdantes.add(m[1]);
-        resultat.sessions_refusees = [...perdantes];
+        result.sessions_refusees = [...perdantes];
         const candidates = fen.map((f) => f.nom).filter((n) => !perdantes.has(n));
         const gagnante = perdantes.size > 0 && candidates.length === 1 ? candidates[0] : undefined;
-        resultat.session_gagnante = gagnante ?? null;
-        resultat.pids_enfants = pids;
+        result.session_gagnante = gagnante ?? null;
+        result.pids_enfants = pids;
         dire(`gagnante = ${gagnante ?? '<non trouvée>'} ; pids = ${JSON.stringify(pids)}`);
         const pid = gagnante ? pids[gagnante] : undefined;
         if (!pid) {
             dire('phase C NON JOUÉE : aucun PID d enfant apparié à la session gagnante');
-            resultat.reprise_non_jouee = 'aucun PID apparié à la session gagnante';
+            result.reprise_non_jouee = 'aucun PID apparié à la session gagnante';
         } else {
             dire(`phase C : mise a mort de l enfant gagnant, PID RELEVÉ ${pid} (session ${gagnante})`);
             try {
@@ -396,7 +396,7 @@ try {
                     `Stop-Process -Id ${pid} -Force; Start-Sleep 2; (Get-Process agent -ErrorAction SilentlyContinue | Measure-Object).Count`],
                     { encoding: 'utf8', timeout: 90000, cwd: RACINE });
                 dire(`mise a mort : agents restants = ${String(stdout).trim().split('\n').pop()}`);
-                resultat.mise_a_mort = { pid, session: gagnante, sortie: String(stdout).trim().slice(-200) };
+                result.mise_a_mort = { pid, session: gagnante, sortie: String(stdout).trim().slice(-200) };
             } catch (e) { dire(`mise a mort : ${String(e).slice(0, 200)}`); }
         }
         await dodo(20000);
@@ -405,17 +405,17 @@ try {
 
     dire('mesure terminee');
 } catch (e) {
-    resultat.erreurs.push(caviarder(e?.stack ?? e).slice(0, 2000));
+    result.errors.push(caviarder(e?.stack ?? e).slice(0, 2000));
     dire(`ERREUR : ${caviarder(e).slice(0, 400)}`);
 } finally {
     try { chrome?.kill(); } catch (e) { /* deja mort */ }
     fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
     // 🔴 LA CEINTURE PORTE SUR LE JSON ENTIER, pas champ par champ : c'est la
     // seule forme qui couvre un champ qu'une évolution future ajouterait.
-    fs.writeFileSync(SORTIE, caviarder(JSON.stringify(resultat, null, 2)));
+    fs.writeFileSync(SORTIE, caviarder(JSON.stringify(result, null, 2)));
     dire(`sortie : ${SORTIE}`);
     // 🔴 SORTIE EXPLICITE : la WebSocket CDP tient la boucle d'événements après
     // la mort de Chrome, et sans cela le harnais bascule en arrière-plan alors
     // que tout est fini — ce qui se lit comme une mesure interminable.
-    process.exit(resultat.erreurs.length === 0 ? 0 : 1);
+    process.exit(result.errors.length === 0 ? 0 : 1);
 }

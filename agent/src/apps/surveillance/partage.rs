@@ -1,103 +1,104 @@
-//! Ce que le fil de surveillance partage avec la boucle de découverte : **deux
-//! compteurs monotones et un drapeau d'arrêt**, et rien d'autre.
+//! What the watch thread shares with the discovery loop: **two
+//! monotonic counters and a stop flag**, and nothing else.
 //!
-//! 🔴 CE MODULE N'A AUCUN `cfg`, ET C'EST LE POINT — c'est la forme exacte
-//! qu'`apps/installation/partage.rs` a posée, et son en-tête en donne la
-//! raison : *« le fil d'installation est Windows ; ce qu'il partage avec la
-//! découverte ne l'est pas […]. C'est aussi ce qui rend ces deux mécanismes
-//! observables sur l'hôte. »* Ici de même : le fil est
-//! `ReadDirectoryChangesW`, ce qu'il publie est deux entiers.
+//! 🔴 THIS MODULE HAS NO `cfg`, AND THAT IS THE POINT — it is the exact shape
+//! `apps/installation/partage.rs` set down, and its header gives the
+//! reason: *"the installation thread is Windows; what it shares with
+//! discovery is not […]. It is also what makes these two mechanisms
+//! observable on the host."* Likewise here: the thread is
+//! `ReadDirectoryChangesW`, what it publishes is two integers.
 //!
-//! ⚠️ **DEUX ÉTATS PARTAGÉS DISTINCTS, ET C'EST VOULU.** `installation::partage`
-//! porte la demande d'installation ; celui-ci porte la notification de fichier.
-//! Les deux n'ont ni la même cause, ni la même sémantique, ni le même
-//! consommateur d'écriture — l'un est écrit par une tâche `tokio` à la sortie
-//! d'un installeur, l'autre par un fil Windows à chaque complétion d'E/S. Les
-//! fusionner ferait un objet qui ment sur les deux.
+//! ⚠️ **TWO DISTINCT SHARED STATES, AND IT IS INTENDED.** `installation::partage`
+//! carries the installation request; this one carries the file notification.
+//! The two have neither the same cause, nor the same semantics, nor the same
+//! writing consumer — one is written by a `tokio` task at the exit
+//! of an installer, the other by a Windows thread at every I/O completion. Merging
+//! them would make an object that lies about both.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-/// Les compteurs de la surveillance, partagés par clonage d'`Arc`.
+/// The watch counters, shared by cloning an `Arc`.
 #[derive(Clone, Default)]
 pub struct Veille {
-    /// 🔴 **MONOTONE, JAMAIS REMIS À ZÉRO.** La boucle compare à la valeur
-    /// qu'elle a retenue au tour précédent ; un incrément survenu **pendant**
-    /// une réconciliation est donc vu au sondage suivant.
+    /// 🔴 **MONOTONIC, NEVER RESET.** The loop compares with the value
+    /// it kept at the previous round; an increment occurring **during**
+    /// a reconciliation is therefore seen at the next poll.
     ///
-    /// **Un booléen échangé le perdrait**, et perdrait avec lui exactement la
-    /// notification qui compte : celle qui arrive alors qu'on est déjà en train
-    /// de lire le disque, c'est-à-dire pendant une installation.
+    /// **A swapped boolean would lose it**, and with it exactly the
+    /// notification that matters: the one arriving while we are already
+    /// reading the disk, that is during an installation.
     notifications: Arc<AtomicU64>,
-    /// Monotone aussi. C'est lui qui rend le critère ② lisible **sur la ligne
-    /// `catalogue reconcilie`**, en plus du `warn!` par occurrence : un compte
-    /// cumulé porté par une ligne périodique se lit après coup, là où un `warn!`
-    /// isolé se cherche.
+    /// Monotonic too. It is what makes criterion ② readable **on the
+    /// `catalogue reconcilie` line**, in addition to the per-occurrence `warn!`: a cumulative
+    /// count carried by a periodic line is read after the fact, where an isolated
+    /// `warn!` has to be searched for.
     debordements: Arc<AtomicU64>,
-    /// Posé une fois pour toutes à l'extinction. Le fil le relit à chaque tour
-    /// d'attente, ce qui borne le délai d'arrêt par la durée du `Wait`.
+    /// Set once and for all at shutdown. The thread re-reads it at every wait
+    /// round, which bounds the stop delay by the duration of the `Wait`.
     arret: Arc<AtomicBool>,
 }
 
 impl Veille {
-    /// Le cumul des notifications reçues depuis le démarrage du fil.
+    /// The cumulative number of notifications received since the thread started.
     pub fn notifications(&self) -> u64 {
         self.notifications.load(Ordering::Relaxed)
     }
 
-    /// Le cumul des débordements de tampon depuis le démarrage du fil.
+    /// The cumulative number of buffer overflows since the thread started.
     pub fn debordements(&self) -> u64 {
         self.debordements.load(Ordering::Relaxed)
     }
 
-    /// Quelque chose a bougé sous l'une des racines.
+    /// Something moved under one of the roots.
     pub fn signaler(&self) {
         self.notifications.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Le tampon a débordé : le contenu est perdu, mais **l'événement ne l'est
-    /// pas**.
+    /// The buffer overflowed: the content is lost, but **the event is
+    /// not**.
     ///
-    /// 🔴 LES DEUX COMPTEURS MONTENT, ET C'EST DÉLIBÉRÉ. Un débordement **EST**
-    /// un événement : le tampon déborde, `lpBytesReturned` vaut 0, et **la
-    /// complétion se produit quand même**. Le compter comme une notification est
-    /// ce qui déclenche la réconciliation qui répare — et une réconciliation
-    /// relit le disque ENTIER, donc elle rattrape tout ce que le tampon a jeté.
+    /// 🔴 BOTH COUNTERS GO UP, AND IT IS DELIBERATE. An overflow **IS**
+    /// an event: the buffer overflows, `lpBytesReturned` is 0, and **the
+    /// completion happens anyway**. Counting it as a notification is
+    /// what triggers the reconciliation that repairs — and a reconciliation
+    /// re-reads the WHOLE disk, so it catches up on everything the buffer threw away.
     ///
-    /// 🔴 NE L'INCRÉMENTER QUE DANS `debordements` **OUVRIRAIT** LE CHEMIN DE
-    /// PERTE QUE CETTE CONCEPTION EXISTE POUR FERMER : le seul signal disant
-    /// « quelque chose a changé » serait consommé par un compteur que personne
-    /// ne sonde pour décider, et la réparation attendrait la période.
+    /// 🔴 INCREMENTING ONLY `debordements` WOULD **OPEN** THE LOSS PATH
+    /// THIS DESIGN EXISTS TO CLOSE: the only signal saying
+    /// "something changed" would be consumed by a counter nobody
+    /// polls to decide, and the repair would wait for the period.
     pub fn signaler_debordement(&self) {
         self.debordements.fetch_add(1, Ordering::Relaxed);
         self.notifications.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Demande l'arrêt du fil.
+    /// Requests the thread to stop.
     ///
-    /// 🔴 **CETTE MÉTHODE N'A AUCUN APPELANT DE PRODUCTION, ET C'EST DÉCLARÉ
-    /// PLUTÔT QUE DISSIMULÉ** — elle est l'unique avertissement `dead_code` que
-    /// G4 ajoute aux vingt-deux du dépôt, et le retirer par commodité
-    /// masquerait un fait au lieu de le régler.
+    /// 🔴 **THIS METHOD HAS NO PRODUCTION CALLER, AND IT IS DECLARED
+    /// RATHER THAN HIDDEN** — it is the only `dead_code` warning
+    /// G4 adds to the repository's twenty-two, and removing it for convenience
+    /// would mask a fact instead of settling it.
     ///
-    /// **Le mécanisme, lui, est VIVANT** : `fil::boucler` relit `arretee()` à
-    /// chaque tour d'attente, donc au plus une seconde après qu'elle serait
-    /// posée. Ce qui manque est son DÉCLENCHEUR, et il manque pour une raison
-    /// qui dépasse ce sous-bloc : **l'agent n'a aucun chemin d'extinction
-    /// propre** — les fils de découverte et d'installation ne sont pas arrêtés
-    /// davantage, et `CLAUDE.md` écrit depuis le sous-bloc D1 que ce chemin
-    /// « n'a toujours jamais été exercé ».
+    /// **The mechanism itself is ALIVE**: `fil::boucler` re-reads `arretee()` at
+    /// every wait round, hence at most one second after it would be
+    /// set. What is missing is its TRIGGER, and it is missing for a reason
+    /// beyond this sub-block: **the agent has no clean shutdown
+    /// path** — the discovery and installation threads are not stopped
+    /// either, and `CLAUDE.md` has written since sub-block D1 that this path
+    /// "has still never been exercised".
     ///
-    /// ⚠️ La construire quand même est un choix, et l'alternative était de
-    /// laisser `fil::boucler` sans condition de sortie. Un fil qui ne PEUT pas
-    /// s'arrêter est un fil qu'on ne saura pas arrêter le jour où le chemin
-    /// existera ; celui-ci attend son appelant, et `Drop for Racine` ferme déjà
-    /// les handles quel que soit le chemin de sortie.
+    /// ⚠️ Building it anyway is a choice, and the alternative was to
+    /// leave `fil::boucler` without an exit condition. A thread that CANNOT
+    /// stop is a thread nobody will know how to stop the day the path
+    /// exists; this one waits for its caller, and `Drop for Racine` already closes
+    /// the handles whatever the exit path.
+    #[cfg(test)]
     pub fn arreter(&self) {
         self.arret.store(true, Ordering::Relaxed);
     }
 
-    /// L'arrêt a-t-il été demandé ?
+    /// Has a stop been requested?
     pub fn arretee(&self) -> bool {
         self.arret.load(Ordering::Relaxed)
     }
@@ -115,24 +116,24 @@ mod tests {
         assert!(!v.arretee());
     }
 
-    /// 🔴 MONOTONE : la boucle compare à la valeur qu'elle a RETENUE, jamais à
-    /// zéro. Un compteur qui se remettrait à zéro à la lecture perdrait toute
-    /// notification arrivée pendant une réconciliation — c'est-à-dire pendant
-    /// une installation, le seul moment où elles arrivent en rafale.
+    /// 🔴 MONOTONIC: the loop compares with the value it KEPT, never with
+    /// zero. A counter reset on read would lose any
+    /// notification arriving during a reconciliation — that is, during
+    /// an installation, the only time they arrive in bursts.
     #[test]
     fn les_notifications_sont_monotones_et_la_lecture_ne_consomme_rien() {
         let v = Veille::default();
         v.signaler();
         v.signaler();
         assert_eq!(v.notifications(), 2);
-        assert_eq!(v.notifications(), 2, "lire ne doit RIEN consommer");
+        assert_eq!(v.notifications(), 2, "reading must consume NOTHING");
         v.signaler();
         assert_eq!(v.notifications(), 3);
     }
 
-    /// 🔴 UN DÉBORDEMENT EST UN ÉVÉNEMENT. Si seul `debordements` montait, rien
-    /// ne déclencherait la réconciliation qui répare, et le tampon jeté serait
-    /// une perte au lieu d'un retard.
+    /// 🔴 AN OVERFLOW IS AN EVENT. If only `debordements` went up, nothing
+    /// would trigger the reconciliation that repairs, and the discarded buffer would be
+    /// a loss instead of a delay.
     #[test]
     fn un_debordement_monte_les_deux_compteurs() {
         let v = Veille::default();
@@ -141,22 +142,26 @@ mod tests {
         assert_eq!(
             v.notifications(),
             1,
-            "un débordement DOIT aussi déclencher : c'est ce qui ferme le chemin de perte"
+            "an overflow MUST fire too: that is what closes the loss path"
         );
         v.signaler();
         assert_eq!(v.notifications(), 2);
-        assert_eq!(v.debordements(), 1, "une notification simple n'est pas un débordement");
+        assert_eq!(
+            v.debordements(),
+            1,
+            "a simple notification is not an overflow"
+        );
     }
 
     #[test]
-    fn l_arret_se_voit_de_tous_les_clones() {
+    fn the_stop_is_seen_from_all_clones() {
         let v = Veille::default();
         let jumelle = v.clone();
         assert!(!jumelle.arretee());
         v.arreter();
-        assert!(jumelle.arretee(), "les clones partagent l'Arc, pas une copie");
-        // Et les compteurs aussi : c'est ce qui permet au fil d'écrire et à la
-        // boucle de lire sans qu'aucun canal ne les relie.
+        assert!(jumelle.arretee(), "the clones share the Arc, not a copy");
+        // And the counters too: that is what lets the thread write and the
+        // loop read without any channel linking them.
         jumelle.signaler();
         assert_eq!(v.notifications(), 1);
     }

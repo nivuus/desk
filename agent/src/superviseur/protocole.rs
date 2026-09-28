@@ -1,50 +1,50 @@
-//! Messages de la session de contrôle, entre le superviseur et la page-shell.
+//! Control session messages, between the supervisor and the shell page.
 //!
-//! Le signaling ne fait que relayer : c'est ici que la forme des messages est
-//! décidée, et elle doit correspondre exactement à ce que `client/src/shell.ts`
-//! attend — et à ce que `plateforme/src/signaling/relais.ts` accepte de
-//! relayer (`TYPES_RELAYES`).
+//! Signaling only relays: it is here that the shape of messages is
+//! decided, and it must match exactly what `client/src/shell.ts`
+//! expects — and what `plateforme/src/signaling/relais.ts` accepts to
+//! relay (`TYPES_RELAYES`).
 //!
-//! ❌ **Ce chemin disait `signaling/src/server.ts`, et ce fichier n'existe
-//! plus** : le paquet `signaling/` a été absorbé par `plateforme/` au
-//! sous-bloc P1 du sous-projet ⑤. **La propriété énoncée, elle, reste
-//! VRAIE** — `TYPES_RELAYES` porte toujours les mêmes six types (`offer`,
+//! ❌ **This path said `signaling/src/server.ts`, and that file no longer
+//! exists**: the `signaling/` package was absorbed by `plateforme/` in
+//! sub-block P1 of sub-project ⑤. **The stated property, for its part, stays
+//! TRUE** — `TYPES_RELAYES` still carries the same six types (`offer`,
 //! `answer`, `fenetre-ouverte`, `fenetre-fermee`, `refus`, `viewport`),
-//! relus le 19 août 2026. Dette d'une ligne, laissée par P1 parce que
-//! `agent/` était alors le périmètre d'un travail concurrent, et soldée
-//! ici.
+//! reread on August 19th, 2026. A one-line debt, left by P1 because
+//! `agent/` was then the scope of concurrent work, and settled
+//! here.
 //!
-//! **Pas de `#[cfg(windows)]`** : ces messages sont de la sérialisation pure,
-//! et c'est justement le genre de contrat qui doit être éprouvé sur l'hôte —
-//! un nom de champ qui dérive du côté agent ne se voit autrement qu'en session
-//! réelle, sur la VM.
+//! **No `#[cfg(windows)]`**: these messages are pure serialisation,
+//! and it is precisely the kind of contract that must be exercised on the host —
+//! a field name drifting on the agent side is otherwise only seen in a real
+//! session, on the VM.
 
 use serde::{Deserialize, Serialize};
 
-/// Nom réservé de la session de contrôle. Le superviseur s'y déclare en
-/// `agent`, la page-shell en `client`.
+/// Reserved name of the control session. The supervisor declares itself there as
+/// `agent`, the shell page as `client`.
 ///
-/// ⚠️ **CE N'EST PLUS UN IDENTIFIANT DE SESSION À LUI SEUL** (sous-bloc P3) :
-/// c'est le nom qui suit le préfixe de la VM. Passer par
-/// [`session_de_controle`], jamais par cette constante nue — deux VMs qui
-/// ouvriraient toutes deux `bureau` se disputeraient la même session sur la
-/// plateforme, et la seconde serait refusée en « un agent est déjà connecté ».
+/// ⚠️ **IT IS NO LONGER A SESSION IDENTIFIER ON ITS OWN** (sub-block P3):
+/// it is the name that follows the VM's prefix. Go through
+/// [`session_de_controle`], never through this bare constant — two VMs that
+/// both opened `bureau` would contend for the same session on the
+/// platform, and the second would be refused with "an agent is already connected".
 pub const NOM_SESSION_DE_CONTROLE: &str = "bureau";
 
-/// Le séparateur du préfixe, tel que la spec §3.4 l'écrit.
+/// The prefix separator, as spec §3.4 writes it.
 ///
-/// ⚠️ Il apparaît aussi dans l'identifiant TURN que la plateforme dérive
-/// (`<expiration>:<session>`), qui devient donc à trois segments. Le préfixe
-/// étant en `base64url` il ne peut pas en contenir : la première borne reste
-/// non ambiguë. **Propriété non éprouvée contre un coturn vivant.**
+/// ⚠️ It also appears in the TURN identifier the platform derives
+/// (`<expiry>:<session>`), which therefore becomes three segments. The prefix
+/// being `base64url` it cannot contain one: the first bound stays
+/// unambiguous. **Property not exercised against a live coturn.**
 pub const SEPARATEUR_PREFIXE: char = ':';
 
-/// Compose un identifiant de session : `<préfixe>:<nom>`, ou `<nom>` seul
-/// quand aucun préfixe n'est connu.
+/// Composes a session identifier: `<prefix>:<name>`, or `<name>` alone
+/// when no prefix is known.
 ///
-/// 🔴 **Le préfixe vide doit restituer EXACTEMENT le nom d'aujourd'hui.** Un
-/// `":bureau"` silencieux n'est le nom d'aucune session existante, et rien ne
-/// le signalerait.
+/// 🔴 **The empty prefix must give back EXACTLY today's name.** A
+/// silent `":bureau"` is the name of no existing session, and nothing would
+/// signal it.
 pub fn composer(prefixe: &str, nom: &str) -> String {
     if prefixe.is_empty() {
         return nom.to_string();
@@ -52,33 +52,33 @@ pub fn composer(prefixe: &str, nom: &str) -> String {
     format!("{prefixe}{SEPARATEUR_PREFIXE}{nom}")
 }
 
-/// L'identifiant complet de la session de contrôle pour un préfixe donné.
+/// The full identifier of the control session for a given prefix.
 pub fn session_de_controle(prefixe: &str) -> String {
     composer(prefixe, NOM_SESSION_DE_CONTROLE)
 }
 
-/// Nom réservé de la session de signaling du **pont fichiers**.
+/// Reserved name of the **files bridge** signaling session.
 ///
-/// DISTINCT de [`NOM_SESSION_DE_CONTROLE`] : le relais n'accepte qu'un `agent`
-/// et un `client` par identifiant (`plateforme/src/signaling/appariement.ts`),
-/// et la page-shell occupe déjà le rôle `client` de `bureau`. Deux
-/// `PeerConnection` vers la même VM exigent donc deux identifiants.
+/// DISTINCT from [`NOM_SESSION_DE_CONTROLE`]: the relay only accepts one `agent`
+/// and one `client` per identifier (`plateforme/src/signaling/appariement.ts`),
+/// and the shell page already holds the `client` role of `bureau`. Two
+/// `PeerConnection`s to the same VM therefore require two identifiers.
 ///
-/// ⚠️ **CE N'EST PAS UN IDENTIFIANT DE SESSION À LUI SEUL**, exactement comme
-/// son voisin depuis le sous-bloc P3 : passer par [`session_du_pont`], jamais
-/// par cette constante nue. Deux VMs qui ouvriraient toutes deux `fichiers` se
-/// disputeraient la même session sur la plateforme, et la seconde serait
-/// refusée en « un agent est déjà connecté ».
+/// ⚠️ **IT IS NOT A SESSION IDENTIFIER ON ITS OWN**, exactly like
+/// its neighbour since sub-block P3: go through [`session_du_pont`], never
+/// through this bare constant. Two VMs that both opened `files` would
+/// contend for the same session on the platform, and the second would be
+/// refused with "an agent is already connected".
 ///
-/// *(Le plan de F1 écrivait `pub const SESSION_DU_PONT: &str = "fichiers"`,
-/// employée telle quelle, et notait que l'identifiant « n'est pas namespacé
-/// par utilisateur ». Il a été écrit avant que P3 ne pose le préfixe : la
-/// remarque est donc CADUQUE — le préfixe est ce namespace — et la forme nue
-/// aurait réintroduit le défaut que P3 venait de corriger, sur la seule
-/// session qui l'aurait échappé.)*
+/// *(F1's plan wrote `pub const SESSION_DU_PONT: &str = "files"`,
+/// used as is, and noted that the identifier "is not namespaced
+/// per user". It was written before P3 set the prefix: the
+/// remark is therefore OBSOLETE — the prefix is that namespace — and the bare form
+/// would have reintroduced the defect P3 had just fixed, on the only
+/// session that would have escaped it.)*
 pub const NOM_SESSION_DU_PONT: &str = "fichiers";
 
-/// L'identifiant complet de la session du pont fichiers pour un préfixe donné.
+/// The full identifier of the files bridge session for a given prefix.
 pub fn session_du_pont(prefixe: &str) -> String {
     composer(prefixe, NOM_SESSION_DU_PONT)
 }
@@ -98,26 +98,30 @@ pub enum VersLaShell {
 #[serde(tag = "type")]
 pub enum DepuisLaShell {
     #[serde(rename = "viewport")]
-    Viewport { session: String, largeur: u32, hauteur: u32 },
-    /// **Un pair `client` vient de rejoindre la session de contrôle** —
-    /// émis par le RELAIS, jamais par la page
-    /// (`plateforme/src/signaling/pair-present.ts`). Ce n'est donc pas un
-    /// message « de la shell » au sens strict, mais il arrive par le même
-    /// socket et se lit par le même désérialiseur : le loger ailleurs
-    /// obligerait `signalisation.rs` à tenir deux chemins de lecture pour
-    /// une seule connexion.
+    Viewport {
+        session: String,
+        largeur: u32,
+        hauteur: u32,
+    },
+    /// **A `client` peer has just joined the control session** —
+    /// emitted by the RELAY, never by the page
+    /// (`plateforme/src/signaling/pair-present.ts`). It is therefore not a
+    /// message "from the shell" in the strict sense, but it arrives through the same
+    /// socket and is read by the same deserialiser: putting it elsewhere
+    /// would force `signalisation.rs` to hold two read paths for
+    /// a single connection.
     ///
-    /// 🔴 CE QU'IL DÉCLENCHE, ET POURQUOI IL EXISTE : le superviseur
-    /// annonce ses fenêtres AU MOMENT OÙ IL LES DÉCOUVRE, dans une session
-    /// où personne n'écoute encore — le relais laisse alors tomber
-    /// l'annonce sans une trace, et trente secondes plus tard l'agent
-    /// refuse ses propres fenêtres faute de `viewport` en retour
-    /// (`table/orphelines.rs`). Ce message est le signal qui dit « quelqu'un
-    /// écoute MAINTENANT, redis-lui ce que tu sais ». Mesure de production
-    /// du 30 août 2026 : voir `pair-present.ts`.
+    /// 🔴 WHAT IT TRIGGERS, AND WHY IT EXISTS: the supervisor
+    /// announces its windows WHEN IT DISCOVERS THEM, in a session
+    /// where no one is listening yet — the relay then drops
+    /// the announcement without a trace, and thirty seconds later the agent
+    /// refuses its own windows for lack of a `viewport` in return
+    /// (`table/orphelines.rs`). This message is the signal saying "someone
+    /// is listening NOW, tell them again what you know". Production measurement
+    /// of August 30th, 2026: see `pair-present.ts`.
     ///
-    /// **Aucun champ**, à dessein : le relais ne sait rien de plus que
-    /// l'arrivée, et l'agent n'a besoin de rien de plus.
+    /// **No field**, on purpose: the relay knows nothing more than
+    /// the arrival, and the agent needs nothing more.
     #[serde(rename = "pair-present")]
     PairPresent,
 }
@@ -127,7 +131,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn une_ouverture_se_serialise_comme_la_shell_l_attend() {
+    fn an_open_serialises_as_the_shell_expects_it() {
         let json = serde_json::to_string(&VersLaShell::FenetreOuverte {
             session: "w-1".into(),
             titre: "Bloc-notes".into(),
@@ -140,114 +144,120 @@ mod tests {
     }
 
     #[test]
-    fn une_fermeture_et_un_refus_se_serialisent_comme_la_shell_les_attend() {
-        // `shell-page.ts` lit `message.session` sur une fermeture et
-        // `message.titre`/`message.motif` sur un refus : ces noms-là sont le
-        // contrat, pas une commodité de nommage côté Rust.
+    fn a_close_and_a_refusal_serialise_as_the_shell_expects_them() {
+        // `shell-page.ts` reads `message.session` on a closing and
+        // `message.titre`/`message.motif` on a refusal: those names are the
+        // contract, not a naming convenience on the Rust side.
         assert_eq!(
-            serde_json::to_string(&VersLaShell::FenetreFermee { session: "w-2".into() }).unwrap(),
+            serde_json::to_string(&VersLaShell::FenetreFermee {
+                session: "w-2".into()
+            })
+            .unwrap(),
             r#"{"type":"fenetre-fermee","session":"w-2"}"#
         );
         assert_eq!(
             serde_json::to_string(&VersLaShell::Refus {
                 titre: "Bloc-notes".into(),
-                motif: "plus aucune sortie".into(),
+                motif: "no output left".into(),
             })
             .unwrap(),
-            r#"{"type":"refus","titre":"Bloc-notes","motif":"plus aucune sortie"}"#
+            r#"{"type":"refus","titre":"Bloc-notes","motif":"no output left"}"#
         );
     }
 
     #[test]
-    fn un_viewport_de_la_shell_se_lit() {
+    fn a_shell_viewport_is_read() {
         let message: DepuisLaShell = serde_json::from_str(
             r#"{"type":"viewport","session":"w-1","largeur":1600,"hauteur":900}"#,
         )
         .unwrap();
-        let DepuisLaShell::Viewport { session, largeur, hauteur } = message else {
-            panic!("un viewport doit se lire comme un viewport")
+        let DepuisLaShell::Viewport {
+            session,
+            largeur,
+            hauteur,
+        } = message
+        else {
+            panic!("a viewport must read as a viewport")
         };
         assert_eq!((session.as_str(), largeur, hauteur), ("w-1", 1600, 900));
     }
 
     #[test]
-    fn un_message_inconnu_de_la_shell_est_refuse_plutot_qu_ignore() {
-        let resultat: Result<DepuisLaShell, _> =
-            serde_json::from_str(r#"{"type":"autre-chose"}"#);
-        assert!(resultat.is_err());
+    fn an_unknown_shell_message_is_refused_rather_than_ignored() {
+        let result: Result<DepuisLaShell, _> = serde_json::from_str(r#"{"type":"autre-chose"}"#);
+        assert!(result.is_err());
     }
 
     #[test]
-    fn un_prefixe_vide_restitue_exactement_le_nom_d_aujourd_hui() {
-        // 🔴 LE TEST LE PLUS IMPORTANT DE CE FICHIER. Sans lui, poser le
-        // séparateur inconditionnellement donnerait `":bureau"` et `":w-1"` —
-        // qui ne sont le nom d'AUCUNE session existante, et rien ne le
-        // signalerait : la page-shell attendrait une fenêtre qui ne vient pas.
+    fn an_empty_prefix_gives_back_exactly_the_current_name() {
+        // 🔴 THE MOST IMPORTANT TEST OF THIS FILE. Without it, setting the
+        // separator unconditionally would give `":bureau"` and `":w-1"` —
+        // which are the name of NO existing session, and nothing would
+        // signal it: the shell page would wait for a window that does not come.
         assert_eq!(composer("", NOM_SESSION_DE_CONTROLE), "bureau");
         assert_eq!(composer("", "w-1"), "w-1");
         assert_eq!(session_de_controle(""), "bureau");
     }
 
     #[test]
-    fn la_session_du_pont_suit_le_prefixe_comme_celle_de_controle() {
-        // 🔴 Le pont a sa PROPRE session parce que le relais n'accepte qu'un
-        // `agent` et un `client` par identifiant, et que la page-shell occupe
-        // déjà le rôle `client` de `bureau`.
+    fn the_bridge_session_follows_the_prefix_like_the_control_one() {
+        // 🔴 The bridge has its OWN session because the relay only accepts one
+        // `agent` and one `client` per identifier, and the shell page already holds
+        // the `client` role of `bureau`.
         //
-        // Elle doit suivre le préfixe exactement comme sa voisine : le plan de
-        // F1, écrit avant le sous-bloc P3, prescrivait une constante NUE
-        // employée telle quelle. Deux VMs auraient alors ouvert toutes deux
-        // `fichiers`, et la seconde aurait été refusée en « un agent est déjà
-        // connecté » — le défaut même que P3 venait de corriger, réintroduit
-        // sur la seule session qui l'aurait échappé.
+        // It must follow the prefix exactly like its neighbour: F1's
+        // plan, written before sub-block P3, prescribed a BARE constant
+        // used as is. Two VMs would then both have opened
+        // `files`, and the second would have been refused with "an agent is already
+        // connected" — the very defect P3 had just fixed, reintroduced
+        // on the only session that would have escaped it.
         assert_eq!(session_du_pont(""), "fichiers");
         assert_eq!(session_du_pont("Zm9vYmFy"), "Zm9vYmFy:fichiers");
-        // …et les deux sessions d'une même VM restent DISTINCTES, ce qui est
-        // toute la raison d'être de cette constante.
+        // …and the two sessions of the same VM stay DISTINCT, which is
+        // this constant's whole reason to exist.
         assert_ne!(session_du_pont("Zm9vYmFy"), session_de_controle("Zm9vYmFy"));
         assert_ne!(session_du_pont(""), session_de_controle(""));
     }
 
     #[test]
-    fn un_prefixe_pose_precede_le_nom_et_le_separe_par_deux_points() {
+    fn a_set_prefix_precedes_the_name_separated_by_a_colon() {
         assert_eq!(composer("Zm9vYmFy", "w-1"), "Zm9vYmFy:w-1");
         assert_eq!(session_de_controle("Zm9vYmFy"), "Zm9vYmFy:bureau");
     }
 
-    /// Le signaling relaie aussi `ice-config` et `peer-gone` sur cette
-    /// connexion : ils doivent tomber du côté « refusé » de cette frontière,
-    /// pour que `signalisation.rs` les ignore sans les prendre pour un
+    /// Signaling also relays `ice-config` and `peer-gone` on this
+    /// connection: they must fall on the "refused" side of this boundary,
+    /// so that `signalisation.rs` ignores them without taking them for a
     /// viewport.
     ///
-    /// ⚠️ **`pair-present` EST DÉSORMAIS DE L'AUTRE CÔTÉ DE CETTE
-    /// FRONTIÈRE**, et c'est le seul message de service qui y soit passé :
-    /// il est émis par le relais comme ces deux-là, mais l'agent doit AGIR
-    /// dessus. Le test suivant le tient — sans lui, une coquille dans le
-    /// `rename` rendrait le message muet, ce qui est exactement le défaut
-    /// que ce lot corrige, rejoué un cran plus bas.
+    /// ⚠️ **`pair-present` IS NOW ON THE OTHER SIDE OF THIS
+    /// BOUNDARY**, and it is the only service message to have crossed it:
+    /// it is emitted by the relay like those two, but the agent must ACT
+    /// on it. The next test holds it — without it, a typo in the
+    /// `rename` would make the message mute, which is exactly the defect
+    /// this batch fixes, replayed one notch lower.
     #[test]
-    fn les_messages_de_service_du_signaling_ne_sont_pas_des_viewports() {
+    fn signaling_service_messages_are_not_viewports() {
         assert!(serde_json::from_str::<DepuisLaShell>(r#"{"type":"peer-gone"}"#).is_err());
         assert!(
             serde_json::from_str::<DepuisLaShell>(r#"{"type":"ice-config","urls":[]}"#).is_err()
         );
     }
 
-    /// 🔴 LE NOM SUR LE FIL EST LE CONTRAT, ET IL EST ÉCRIT DANS DEUX
-    /// DÉPÔTS DE MOTS DIFFÉRENTS : ici en Rust, et dans
-    /// `plateforme/src/signaling/pair-present.ts::TYPE_PAIR_PRESENT`. Ce
-    /// test fige la moitié Rust ; s'il rougissait, c'est que le `rename`
-    /// a dérivé — et une dérive de ce nom rend le mécanisme MUET, sans
-    /// aucune erreur, des deux côtés.
+    /// 🔴 THE NAME ON THE WIRE IS THE CONTRACT, AND IT IS WRITTEN IN TWO
+    /// DIFFERENT WORD STORES: here in Rust, and in
+    /// `plateforme/src/signaling/pair-present.ts::TYPE_PAIR_PRESENT`. This
+    /// test freezes the Rust half; if it turned red, the `rename`
+    /// has drifted — and a drift of this name makes the mechanism MUTE, without
+    /// any error, on both sides.
     #[test]
-    fn l_arrivee_d_un_pair_se_lit_sur_la_session_de_controle() {
-        let message: DepuisLaShell =
-            serde_json::from_str(r#"{"type":"pair-present"}"#).unwrap();
+    fn a_peer_arrival_is_read_on_the_control_session() {
+        let message: DepuisLaShell = serde_json::from_str(r#"{"type":"pair-present"}"#).unwrap();
         assert!(matches!(message, DepuisLaShell::PairPresent));
-        // …et un champ superflu ne le casse pas : le relais peut en ajouter
-        // un demain sans rendre l'agent sourd.
-        let avec_extra: DepuisLaShell =
+        // …and a superfluous field does not break it: the relay can add
+        // one tomorrow without making the agent deaf.
+        let with_extra: DepuisLaShell =
             serde_json::from_str(r#"{"type":"pair-present","role":"client"}"#).unwrap();
-        assert!(matches!(avec_extra, DepuisLaShell::PairPresent));
+        assert!(matches!(with_extra, DepuisLaShell::PairPresent));
     }
 }

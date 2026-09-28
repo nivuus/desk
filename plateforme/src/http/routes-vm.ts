@@ -1,48 +1,48 @@
-// `GET /vm` et `POST /vm/:id/:operation` — la surface HTTP de l'inventaire.
+// `GET /vm` and `POST /vm/:id/:operation` — the HTTP surface of the inventory.
 //
-// 🔴 LE CONTRAT EST CELUI DE `routes-auth.ts` : `Promise<boolean>`, `true` =
-// servie, `false` = pas mon chemin. Le 404 générique de `http/serveur.ts` est
-// alors seul à répondre, et il n'est pas dupliqué ici.
+// 🔴 THE CONTRACT IS THAT OF `routes-auth.ts`: `Promise<boolean>`, `true` =
+// served, `false` = not my path. The generic 404 of `http/serveur.ts` is
+// then alone in answering, and it is not duplicated here.
 //
-// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
-// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
-// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
-// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
-// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
-// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
-// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+// ⚠️ "THEN ALONE" HAS NOT BEEN UNCONDITIONALLY TRUE SINCE 22 AUGUST 2026, and
+// the sentence is left as is because it stays right in the nginx
+// setup: when `PLATEFORME_PAGE` is armed, a TENTH router — the page
+// server — is chained AFTER all the others, and it resolves any
+// path. On a `GET`/`HEAD`, IT is what answers `200 text/html` to the `false`
+// returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
+// over again. See `http/chaine.ts`, which holds the count and the rule. (policy: allow-fr - file name)
 //
-// 🔴 `attribuer` N'EST PAS EXPOSÉE, et ce n'est pas un oubli. Il n'existe AUCUN
-// rôle d'administration dans ce service : `identite/jeton.ts` ne connaît que
-// `utilisateur` et `agent`, et `config.ts` n'a aucune variable
-// d'administrateur. Une route d'attribution serait donc, au mieux, ouverte à
-// tout utilisateur authentifié — une escalade de privilège offerte.
-// L'attribution passe par `npm run admin:attribuer` (D8). La liste blanche
-// `OPERATIONS_HTTP` est IMPORTÉE, jamais recopiée, et un test asserte
-// nommément qu'`attribuer` n'y figure pas.
+// 🔴 `attribuer` IS NOT EXPOSED, and it is not an oversight. There is NO
+// administration role in this service: `identite/jeton.ts` only knows
+// `user` and `agent`, and `config.ts` has no administrator
+// variable. An assignment route would therefore be, at best, open to
+// any authenticated user — a privilege escalation on a plate.
+// Assignment goes through `npm run admin:attribuer` (D8). The allow list
+// `OPERATIONS_HTTP` is IMPORTED, never copied, and a test asserts
+// by name that `attribuer` is not in it.
 //
-// 🔴 `vm-inconnue` COUVRE DEUX CAS — la VM n'existe pas, OU elle appartient à
-// quelqu'un d'autre — et le corps est le MÊME, caractère pour caractère.
-// Distinguer les deux ferait un ORACLE D'ÉNUMÉRATION : un utilisateur
-// apprendrait quelles VMs existent en lisant le code de retour. Troisième
-// application de la règle après `routes-auth.ts` et `agents/enrolement.ts`.
+// 🔴 `vm-inconnue` COVERS TWO CASES — the VM does not exist, OR it belongs to
+// someone else — and the body is the SAME, character for character.
+// Telling the two apart would make an ENUMERATION ORACLE: a user
+// would learn which VMs exist by reading the status code. Third
+// application of the rule after `routes-auth.ts` and `agents/enrolement.ts`.
 //
-// 🔴 LA DIVERGENCE AVEC LE SOUS-BLOC G1 EST TRANCHÉE, PAR LE PROPRIÉTAIRE DU
-// DÉPÔT, EN FAVEUR DE CE FICHIER — et ce module n'a donc pas changé d'une
-// ligne. Sa décision D9 retenait `403 {refus:'vm-etrangere'}` sur une VM
-// appartenant à autrui, c'est-à-dire un ORACLE D'ÉNUMÉRATION distinct du 404
-// d'une VM inconnue ; `http/routes-applications.ts` s'est aligné sur le refus
-// indistinguable ci-dessus, et le motif `vm-etrangere` n'existe plus nulle
-// part dans le service.
+// 🔴 THE DIVERGENCE WITH SUB-BLOCK G1 IS SETTLED, BY THE REPOSITORY
+// OWNER, IN FAVOUR OF THIS FILE — and this module therefore did not change by a single
+// line. Its decision D9 kept `403 {refus:'vm-etrangere'}` on a VM
+// belonging to someone else, that is an ENUMERATION ORACLE distinct from the 404
+// of an unknown VM; `http/routes-applications.ts` aligned on the
+// indistinguishable refusal above, and the `vm-etrangere` reason no longer exists anywhere
+// in the service.
 //
-// ⚠️ LA CONTREPARTIE VIT LÀ-BAS, PAS ICI, et c'est une asymétrie assumée :
-// `routes-applications.ts` pose une ligne de journal qui nomme le cas réel,
-// pour que l'exploitant garde le diagnostic que la réponse HTTP lui refuse.
-// CE FICHIER N'EN A PAS, et pas par oubli — il ne SAIT pas distinguer les deux
-// cas : sa recherche se fait dans `siennes`, où une VM d'autrui est absente
-// exactement comme une VM inexistante. Il n'y a ici aucun verdict à
-// journaliser, et en fabriquer un demanderait une seconde lecture de la base
-// dont le seul usage serait la trace.
+// ⚠️ THE COUNTERPART LIVES OVER THERE, NOT HERE, and it is a deliberate asymmetry:
+// `routes-applications.ts` writes a log line that names the real case,
+// so the operator keeps the diagnosis that the HTTP response denies them.
+// THIS FILE HAS NONE, and not by oversight — it CANNOT tell the two
+// cases apart: its lookup is done in `siennes`, where someone else's VM is missing
+// exactly like a nonexistent VM. There is no verdict here to
+// log, and making one up would require a second database read
+// whose only use would be the trace.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
@@ -63,19 +63,19 @@ export interface DependancesVm {
     secretJeton: string;
     origineClient?: string;
     maintenant: () => number;
-    /// 🔴 LE FREIN « TOUTE REQUÊTE », PARTAGÉ avec `routes-session.ts` ET
-    /// `signaling/relais.ts` — voir `securite/frein.ts::BUDGET_REQUETES`. Ni
-    /// `GET /vm` ni `POST /session` n'ont de notion d'échec : leur abus est
-    /// un VOLUME, jamais une suite de tentatives ratées, et c'est ce budget
-    /// qui le borne — jamais `BUDGET_COMPTE` ni `BUDGET_ADRESSE`, qui
-    /// comptent des ÉCHECS d'authentification et n'ont donc rien à voir ici.
+    /// 🔴 THE "ANY REQUEST" BRAKE, SHARED with `routes-session.ts` AND
+    /// `signaling/relais.ts` — see `securite/frein.ts::BUDGET_REQUETES`. Neither
+    /// `GET /vm` nor `POST /session` has any notion of failure: their abuse is
+    /// a VOLUME, never a run of failed attempts, and it is this budget
+    /// that bounds it — never `BUDGET_COMPTE` nor `BUDGET_ADRESSE`, which
+    /// count authentication FAILURES and therefore have nothing to do here.
     frein: Frein;
-    /// Les proxys dont on croit l'en-tête `X-Forwarded-For` — même ensemble
-    /// que `routes-auth.ts`, jamais un second : voir `http/adresse-source.ts`.
+    /// The proxies whose `X-Forwarded-For` header we believe — same set
+    /// as `routes-auth.ts`, never a second one: see `http/adresse-source.ts`.
     proxyDeConfiance: ReadonlySet<string>;
 }
 
-const CHEMIN_LISTE = '/vm';
+const LIST_PATH = '/vm';
 
 function repondre(
     rep: ServerResponse,
@@ -85,30 +85,30 @@ function repondre(
 ): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, et posés sur TOUTE réponse — y compris les
-        // réponses d'ERREUR (401, 405, 413, 429, 500, 503), qui portent
-        // souvent plus d'information qu'une réponse normale. Ils sont étalés
-        // AVANT `cors` pour que la politique d'origine, qui est facultative,
-        // ne puisse jamais les écraser par mégarde.
+        // ⚠️ UNCONDITIONAL, and set on EVERY response — including the
+        // ERROR responses (401, 405, 413, 429, 500, 503), which often carry
+        // more information than a normal response. They are spread
+        // BEFORE `cors` so that the origin policy, which is optional,
+        // can never overwrite them by mistake.
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(JSON.stringify(corps));
 }
 
-/// Reconnaît `/vm/:id/:operation`, et RIEN d'autre.
+/// Recognises `/vm/:id/:operation`, and NOTHING else.
 ///
-/// 🔴 LE CHEMIN EST DÉCOUPÉ PAR SEGMENTS, JAMAIS PAR `startsWith` — la règle
-/// que `http/serveur.ts` s'impose déjà pour le routage des montées : un
-/// préfixe ouvrirait une famille entière de chemins que personne n'a décidés.
+/// 🔴 THE PATH IS SPLIT BY SEGMENTS, NEVER BY `startsWith` — the rule
+/// that `http/serveur.ts` already follows for routing upgrades: a
+/// prefix would open a whole family of paths that nobody decided on.
 ///
-/// 🔴 ET L'OPÉRATION EST FILTRÉE ICI, AVANT TOUT LE RESTE. Un verbe absent de
-/// la liste blanche ne produit PAS un refus : il produit `undefined`, la route
-/// rend `false`, et le 404 générique s'applique. Un 501 sur un verbe inventé
-/// affirmerait que l'opération existe et n'est pas supportée, ce qui est faux.
-/// ⚠️ Le servant de page ne le supplante pas ICI, et pour une raison précise
-/// plutôt que par chance : ces chemins n'arrivent que par `POST`, et le
-/// servant se retire hors `GET`/`HEAD`. Voir `http/chaine.ts`.
+/// 🔴 AND THE OPERATION IS FILTERED HERE, BEFORE EVERYTHING ELSE. A verb missing from
+/// the allow list does NOT produce a refusal: it produces `undefined`, the route
+/// returns `false`, and the generic 404 applies. A 501 on a made-up verb
+/// would claim that the operation exists and is not supported, which is false.
+/// ⚠️ The page server does not override it HERE, and for a precise reason
+/// rather than by luck: these paths only arrive via `POST`, and the
+/// page server steps aside outside `GET`/`HEAD`. See `http/chaine.ts`. (policy: allow-fr - file name)
 function operationDe(chemin: string): { vmId: string; operation: Operation } | undefined {
     const segments = chemin.split('/');
     // ['', 'vm', '<id>', '<operation>'] — exactement quatre, ni plus ni moins.
@@ -121,27 +121,27 @@ function operationDe(chemin: string): { vmId: string; operation: Operation } | u
     return operation === undefined ? undefined : { vmId, operation };
 }
 
-/// Enregistre la requête sur le budget « toute requête », et journalise SI ET
-/// SEULEMENT SI le frein vient de mordre — même règle et même raison que
-/// `routes-auth.ts::compterLEchec` : la requête suivante sera refusée tout en
-/// haut de `servirVm`, avant de jamais rappeler cette fonction.
+/// Records the request on the "any request" budget, and logs IF AND
+/// ONLY IF the brake has just bitten — same rule and same reason as
+/// `routes-auth.ts::compterLEchec`: the next request will be refused at the very
+/// top of `servirVm`, before ever calling this function again.
 ///
-/// ⚠️ **CETTE LIGNE JOURNALISE À LA TRANSITION, ET NON À CHAQUE REQUÊTE
-/// ADMISE — c'est ce qui la distingue d'une trace par paquet.** Une ligne à
-/// CHAQUE requête, même après que le frein a commencé à refuser, ferait
-/// écrire le service à un rythme que l'attaquant contrôle sans plus rien lui
-/// coûter — la règle du chantier TURN (`CLAUDE.md`) : « compter ou
-/// échantillonner, jamais tracer par paquet ». Journaliser à la transition
-/// ferme cela : une adresse martelée écrit UNE ligne, jamais une par requête.
+/// ⚠️ **THIS LINE LOGS ON THE TRANSITION, AND NOT ON EVERY ADMITTED
+/// REQUEST — that is what sets it apart from a per-packet trace.** A line on
+/// EVERY request, even after the brake has started refusing, would make
+/// the service write at a rate the attacker controls at no further
+/// cost — the rule of the TURN work (`CLAUDE.md`): "count or
+/// sample, never trace per packet". Logging on the transition
+/// closes that: a hammered address writes ONE line, never one per request.
 function compterLaRequete(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
     adresse: string,
     instant: number,
-    // 🔴 MINEUR CORRIGÉ (round de correction 1) : ce paramètre manquait, et
-    // la ligne journalisait INCONDITIONNELLEMENT `CHEMIN_LISTE` (`/vm`),
-    // y compris pour `POST /vm/:id/:operation` — la trace nommait la
-    // mauvaise route.
+    // 🔴 MINOR FIXED (correction round 1): this parameter was missing, and
+    // the line UNCONDITIONALLY logged `LIST_PATH` (`/vm`),
+    // including for `POST /vm/:id/:operation` — the trace named the
+    // wrong route.
     chemin: string,
 ): void {
     frein.echec(cles, instant);
@@ -152,7 +152,7 @@ function compterLaRequete(
             route: chemin,
             adresse,
             retry_apres_s: apres.retryApresS,
-            entrees: frein.taille(),
+            entrees: frein.size(),
             evictions: frein.evictions(),
         }),
     );
@@ -165,30 +165,30 @@ export async function servirVm(
 ): Promise<boolean> {
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     const action = operationDe(chemin);
-    const estListe = chemin === CHEMIN_LISTE;
-    if (!estListe && action === undefined) return false;
+    const isList = chemin === LIST_PATH;
+    if (!isList && action === undefined) return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
-    // 🔴 LA REQUÊTE PRÉALABLE EST SERVIE, ET SANS ELLE RIEN N'EST ATTEIGNABLE.
-    // Les deux routes exigent `Authorization: Bearer`, ce qui rend la requête
-    // NON SIMPLE : le navigateur émet d'abord un `OPTIONS`, et un 404 lui
-    // ferait abandonner sans jamais envoyer la vraie requête. ⚠️ Le plan de P4
-    // ne le prescrivait pas ; c'est un défaut relevé, pas recopié — jumeau de
-    // celui de `Access-Control-Allow-Headers` (voir `cors.ts`).
+    // 🔴 THE PREFLIGHT REQUEST IS SERVED, AND WITHOUT IT NOTHING IS REACHABLE.
+    // Both routes require `Authorization: Bearer`, which makes the request
+    // NON SIMPLE: the browser first sends an `OPTIONS`, and a 404 would
+    // make it give up without ever sending the real request. ⚠️ The P4 plan
+    // did not prescribe it; it is a defect spotted, not copied — twin of
+    // the `Access-Control-Allow-Headers` one (see `cors.ts`).
     //
-    // 204 même sans en-tête CORS : la requête préalable est servie, mais sans
-    // autorisation le navigateur refusera la vraie requête — un refus BRUYANT,
-    // que l'opérateur voit. Même choix que `routes-auth.ts`.
+    // 204 even without a CORS header: the preflight is served, but without
+    // permission the browser will refuse the real request — a NOISY refusal,
+    // which the operator sees. Same choice as `routes-auth.ts`.
     if (req.method === 'OPTIONS') {
         rep.writeHead(204, { ...ENTETES_SECURITE, ...(cors ?? {}) });
         rep.end();
         return true;
     }
 
-    if (estListe && req.method !== 'GET') {
-        // Le chemin EXISTE, c'est la méthode qui ne convient pas : un 404
-        // ferait chercher une route absente.
+    if (isList && req.method !== 'GET') {
+        // The path EXISTS, it is the method that does not fit: a 404
+        // would send people looking for a missing route.
         repondre(rep, 405, { refus: 'methode' }, cors);
         return true;
     }
@@ -197,12 +197,12 @@ export async function servirVm(
         return true;
     }
 
-    // 🔴 LE FREIN « TOUTE REQUÊTE » EST CONSULTÉ ICI — AVANT `lirePorteur`,
-    // donc avant la moindre vérification HMAC et avant tout accès à la base.
-    // Même position que le frein d'ÉCHECS de `routes-auth.ts`, et la même
-    // raison : compter APRÈS le travail qu'on cherche à borner ne le borne
-    // pas. `OPTIONS` ne consomme rien — la requête préalable ne coûte que
-    // 204 octets et ne doit pas priver le navigateur de sa vraie requête.
+    // 🔴 THE "ANY REQUEST" BRAKE IS CONSULTED HERE — BEFORE `lirePorteur`,
+    // hence before any HMAC check and before any database access.
+    // Same position as the FAILURES brake of `routes-auth.ts`, and the same
+    // reason: counting AFTER the work one seeks to bound does not bound
+    // it. `OPTIONS` consumes nothing — the preflight only costs
+    // 204 bytes and must not deprive the browser of its real request.
     const adresseRequete = adresseSource(
         req.socket.remoteAddress,
         Array.isArray(req.headers['x-forwarded-for'])
@@ -210,67 +210,67 @@ export async function servirVm(
             : req.headers['x-forwarded-for'],
         deps.proxyDeConfiance,
     );
-    // 🔴 **LA GRAVITÉ D'UNE `PLATEFORME_PROXY_DE_CONFIANCE` MAL POSÉE A
-    // CHANGÉ AVEC CE LOT (round de correction 1, critique ③), ET C'EST ICI
-    // QU'IL FAUT LE DIRE — c'est la première des trois consultations de
-    // `BUDGET_REQUETES` (`routes-session.ts`, `signaling/relais.ts` la
-    // renvoient à ce paragraphe).**
+    // 🔴 **THE SEVERITY OF A WRONGLY SET `PLATEFORME_PROXY_DE_CONFIANCE`
+    // CHANGED WITH THIS BATCH (correction round 1, criticism ③), AND THIS IS
+    // WHERE IT MUST BE SAID — this is the first of the three consultations of
+    // `BUDGET_REQUETES` (`routes-session.ts`, `signaling/relais.ts` point
+    // back to this paragraph).**
     //
-    // Le piège lui-même n'est pas neuf : `adresseSource` (`http/
-    // adresse-source.ts`) ne croit `X-Forwarded-For` QUE d'un pair dont
-    // `remoteAddress` figure dans `proxyDeConfiance`. Un ensemble trop
-    // large — ou une valeur qui n'est plus celle du proxy — fait que
-    // `adresseRequete` devient la MÊME chaîne pour tout le monde : celle
-    // que le premier arrivant a bien voulu écrire dans l'en-tête, ou celle
-    // du proxy lui-même. Le frein par adresse dégénère alors en frein
-    // GLOBAL.
+    // The trap itself is not new: `adresseSource` (`http/
+    // adresse-source.ts`) only believes `X-Forwarded-For` FROM a peer whose
+    // `remoteAddress` is in `proxyDeConfiance`. A set that is too
+    // wide — or a value that is no longer the proxy's — makes
+    // `adresseRequete` become the SAME string for everyone: the one
+    // the first comer chose to write into the header, or the one
+    // of the proxy itself. The per-address brake then degenerates into a
+    // GLOBAL brake.
     //
-    // 🔴 **ET IL FAUT LE DIRE SANS ATTAQUANT — CE PARAGRAPHE ÉCRIVAIT « et
-    // le premier attaquant bloque tout le monde », CE QUI EST FAUX DEPUIS
-    // QUE CE LOT FREINE LE VOLUME** (falsifié par la revue, round de
-    // correction 4). **AUCUN ATTAQUANT N'EST REQUIS** : dans le montage que
-    // ce dépôt LIVRE (`docker-compose.plateforme.yml`, nginx devant la
-    // plateforme même en mode `motdepasse`), `remoteAddress` est TOUJOURS
-    // l'adresse du conteneur nginx pour toute requête réelle — la
-    // dégénérescence est donc AUTOMATIQUE dès que ce montage existe, et le
-    // trafic ORDINAIRE suffit à épuiser le budget commun. Ce que la phrase
-    // fausse laissait croire, c'est qu'il fallait une malveillance pour
-    // l'atteindre ; il ne faut que des usagers.
+    // 🔴 **AND IT MUST BE SAID WITHOUT AN ATTACKER — THIS PARAGRAPH SAID "and
+    // the first attacker blocks everyone", WHICH HAS BEEN FALSE SINCE
+    // THIS BATCH STARTED BRAKING THE VOLUME** (falsified by the review, correction
+    // round 4). **NO ATTACKER IS REQUIRED**: in the setup that
+    // this repository SHIPS (`docker-compose.plateforme.yml`, nginx in front of the
+    // platform even in `motdepasse` mode), `remoteAddress` is ALWAYS
+    // the address of the nginx container for any real request — the
+    // degeneration is therefore AUTOMATIC as soon as this setup exists, and
+    // ORDINARY traffic is enough to exhaust the common budget. What the false
+    // sentence suggested is that malice was needed to
+    // reach it; users are all it takes.
     //
-    // ⚠️ **CETTE CORRECTION VAUT POUR LES TROIS CONSULTATIONS**, ce
-    // paragraphe étant celui auquel `routes-session.ts` et
-    // `signaling/relais.ts` renvoient : l'erreur s'y propageait par
-    // référence, sans y être écrite.
+    // ⚠️ **THIS CORRECTION HOLDS FOR ALL THREE CONSULTATIONS**, this
+    // paragraph being the one that `routes-session.ts` and
+    // `signaling/relais.ts` point to: the error spread there by
+    // reference, without being written there.
     //
-    // 🔴 CE QUI EST NEUF : AVANT CE LOT, cette dégénérescence ne plafonnait
-    // que `ECHECS_MAX_ADRESSE` = 50 échecs D'AUTHENTIFICATION par quart
-    // d'heure à cette adresse fusionnée — gênant, borné aux routes
-    // `/auth/*` et `/agent`. **DEPUIS CE LOT, LA MÊME DÉGÉNÉRESCENCE
-    // PLAFONNE LE SERVICE ENTIER À `REQUETES_MAX_ADRESSE` ÉVÉNEMENTS PAR
-    // FENÊTRE, HTTP ET WebSocket CONFONDUS** : `GET /vm`, `POST /session`
-    // ET le relais `/signal` partagent ce même compteur (`cleRequetes`), à
-    // cette même adresse fusionnée. Un pair anonyme ouvre ou consomme ce
-    // budget commun, et plus personne — authentifié ou non — ne peut plus
-    // ouvrir de VM, de session, ni de connexion `/signal` derrière ce proxy.
+    // 🔴 WHAT IS NEW: BEFORE THIS BATCH, this degeneration only capped
+    // `ECHECS_MAX_ADRESSE` = 50 AUTHENTICATION failures per quarter
+    // hour at that merged address — annoying, limited to the
+    // `/auth/*` and `/agent` routes. **SINCE THIS BATCH, THE SAME DEGENERATION
+    // CAPS THE WHOLE SERVICE AT `REQUETES_MAX_ADRESSE` EVENTS PER
+    // WINDOW, HTTP AND WebSocket COMBINED**: `GET /vm`, `POST /session`
+    // AND the `/signal` relay share that same counter (`cleRequetes`), at
+    // that same merged address. An anonymous peer opens or consumes this
+    // common budget, and nobody else — authenticated or not — can then
+    // open a VM, a session, or a `/signal` connection behind that proxy.
     //
-    // ⚠️ **AGGRAVANT, ET IL FAUT LE DIRE AUSSI** : le profil livré
-    // (`docker-compose.plateforme.yml`) pose `PLATEFORME_AUTH: motdepasse`,
-    // mode où `PLATEFORME_PROXY_DE_CONFIANCE` est FACULTATIVE — rien
-    // n'oblige à la poser correctement, ni même à la poser du tout ; elle
-    // vit dans un fichier `.env` NON VERSIONNÉ, donc invisible à toute revue
-    // de dépôt ; et sa valeur correcte est l'IP de CONTENEUR de nginx, qui
-    // CHANGE quand le réseau docker est recréé — une valeur juste hier peut
-    // être fausse aujourd'hui sans qu'aucun déploiement n'ait touché au
+    // ⚠️ **AGGRAVATING, AND IT MUST BE SAID TOO**: the shipped profile
+    // (`docker-compose.plateforme.yml`) sets `PLATEFORME_AUTH: motdepasse`,
+    // a mode where `PLATEFORME_PROXY_DE_CONFIANCE` is OPTIONAL — nothing
+    // forces anyone to set it correctly, or even to set it at all; it
+    // lives in an UNVERSIONED `.env` file, hence invisible to any repository
+    // review; and its correct value is the CONTAINER IP of nginx, which
+    // CHANGES when the docker network is recreated — a value right yesterday can
+    // be wrong today without any deployment having touched the
     // code.
     //
-    // 🔴 **LE SEUL TÉMOIN** : la ligne `frein-requetes` que `compterLaRequete`
-    // émet plus bas (et ses jumelles de `routes-session.ts` et
-    // `relais.ts`), qui NOMME l'adresse retenue — voir son champ `adresse`.
-    // Une même adresse sur toutes les lignes, tous chemins confondus, EST le
-    // signal. Voir aussi `PLATEFORME_PROXY_DE_CONFIANCE` dans `CLAUDE.md`,
-    // qui documente le second rôle de cette variable (l'autorisation
-    // d'`X-Pomerium-Claim-Email`) — cette note-ci ne porte que sur le
-    // premier, le crédit d'`X-Forwarded-For`.
+    // 🔴 **THE ONLY WITNESS**: the `frein-requetes` line that `compterLaRequete`
+    // emits below (and its twins in `routes-session.ts` and
+    // `relais.ts`), which NAMES the retained address — see its `adresse` field.
+    // One same address on every line, all paths combined, IS the
+    // signal. See also `PLATEFORME_PROXY_DE_CONFIANCE` in `CLAUDE.md`,
+    // which documents the second role of this variable (the authorisation
+    // of `X-Pomerium-Claim-Email`) — this note only concerns the
+    // first, the credit given to `X-Forwarded-For`.
     const clesRequetes: readonly (readonly [string, Budget])[] = [
         [cleRequetes(adresseRequete), BUDGET_REQUETES],
     ];
@@ -282,48 +282,48 @@ export async function servirVm(
     }
     compterLaRequete(deps.frein, clesRequetes, adresseRequete, deps.maintenant(), chemin);
 
-    // 🔴 L'AUTHENTIFICATION VIENT AVANT TOUTE LECTURE DE BASE. Une route qui
-    // lirait l'inventaire puis refuserait le jeton ne fuiterait rien par sa
-    // réponse, mais elle offrirait un travail gratuit à un pair anonyme.
+    // 🔴 AUTHENTICATION COMES BEFORE ANY DATABASE READ. A route that
+    // read the inventory then refused the token would leak nothing through its
+    // response, but it would offer free work to an anonymous peer.
     const porteur = lirePorteur(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) {
-        // ⚠️ LES EN-TÊTES CORS SONT POSÉS SUR LE REFUS AUSSI : une 401 que le
-        // navigateur ne peut pas lire s'affiche comme une panne réseau, pas
-        // comme une invitation à se reconnecter.
+        // ⚠️ THE CORS HEADERS ARE SET ON THE REFUSAL TOO: a 401 that the
+        // browser cannot read shows up as a network failure, not
+        // as an invitation to sign in again.
         repondre(rep, porteur.code, { refus: porteur.motif }, cors);
         return true;
     }
 
     const orchestrateur = inventaireStatique(deps.base, deps.maintenant);
-    // Le filtrage est fait par le module PUR, jamais par une clause SQL écrite
-    // ici : un défaut de filtre qui vivrait dans cette couche fuiterait
-    // l'inventaire entier, et il n'y aurait aucun endroit où le rougir sans
-    // monter un serveur.
-    const siennes = vmsDe(await orchestrateur.lister(), porteur.utilisateurId);
+    // Filtering is done by the PURE module, never by an SQL clause written
+    // here: a filter defect living in this layer would leak
+    // the whole inventory, and there would be no place to make it fail without
+    // standing up a server.
+    const siennes = vmsDe(await orchestrateur.lister(), porteur.userId);
 
-    if (estListe) {
-        // ⚠️ LE COMPTE EST CELUI DE L'UTILISATEUR, PAS CELUI DE LA VM, et il
-        // n'est exact par VM que parce que l'index partiel `vm_un_utilisateur`
-        // garantit AU PLUS UNE VM par utilisateur. Le jour où cet invariant
-        // tomberait, ce champ deviendrait le total de l'utilisateur reporté sur
-        // chaque ligne — donc faux. C'est écrit ici plutôt que découvert plus
-        // tard ; `depot/session.ts` ne sait rien des VMs, sa table ne portant
-        // `vm_id` que depuis P3 et pour la trace.
-        const ouvertes = await compterOuvertesDe(deps.base, porteur.utilisateurId);
+    if (isList) {
+        // ⚠️ THE COUNT IS THE USER'S, NOT THE VM'S, and it
+        // is only exact per VM because the partial index `vm_un_utilisateur` (policy: allow-fr - frozen wire key or SQLite column)
+        // guarantees AT MOST ONE VM per user. The day that invariant
+        // falls, this field would become the user's total copied onto
+        // every row — hence wrong. It is written here rather than discovered
+        // later; `depot/session.ts` knows nothing about VMs, its table only carrying
+        // `vm_id` since P3 and for the trace.
+        const ouvertes = await compterOuvertesDe(deps.base, porteur.userId);
         const vms = [];
         for (const v of siennes) {
             vms.push({
                 id: v.id,
                 nom: v.nom,
-                // L'état est DEMANDÉ à l'orchestrateur, seul détenteur de
-                // l'horloge et du seuil : le recalculer ici dupliquerait la
-                // règle, et les deux copies divergeraient le jour où l'une
-                // changerait.
+                // The state is ASKED of the orchestrator, the sole holder of
+                // the clock and the threshold: recomputing it here would duplicate the
+                // rule, and the two copies would diverge the day one
+                // changed.
                 etat: await orchestrateur.etat(v.id),
                 prefixe: v.prefixe,
-                // ⚠️ NI `adresse`, NI `utilisateurId` : la première est de la
-                // topologie interne dont le navigateur n'a aucun usage (D7), la
-                // seconde est celle du demandeur, qu'il connaît déjà.
+                // ⚠️ NEITHER `adresse` NOR `userId`: the first is internal
+                // topology the browser has no use for (D7), the
+                // second is the requester's own, which it already knows.
                 sessions_ouvertes: ouvertes,
             });
         }
@@ -332,13 +332,13 @@ export async function servirVm(
     }
 
     const { vmId, operation } = action!;
-    // 🔴 « INCONNUE » ET « À QUELQU'UN D'AUTRE » SONT LE MÊME REFUS : la
-    // recherche se fait dans `siennes`, donc une VM d'autrui est absente
-    // exactement comme une VM inexistante, et le corps est produit par le même
-    // chemin — il ne PEUT donc pas différer.
-    // ⚠️ `BACKEND_STATIQUE` vient de `refus.ts`, jamais d'un littéral recopié :
-    // c'est la MÊME constante que celle que l'orchestrateur met dans ses
-    // refus, si bien que les deux corps ne peuvent pas diverger.
+    // 🔴 "UNKNOWN" AND "SOMEONE ELSE'S" ARE THE SAME REFUSAL: the
+    // lookup is done in `siennes`, so someone else's VM is missing
+    // exactly like a nonexistent VM, and the body is produced by the same
+    // path — so it CANNOT differ.
+    // ⚠️ `BACKEND_STATIQUE` comes from `refus.ts`, never from a copied literal:
+    // it is the SAME constant the orchestrator puts in its
+    // refusals, so the two bodies cannot diverge.
     if (!siennes.some((v) => v.id === vmId)) {
         repondre(
             rep,
@@ -349,19 +349,19 @@ export async function servirVm(
         return true;
     }
 
-    // Les trois verbes refusent tous, et c'est le critère ①. Le `Resultat`
-    // n'est pas reconstruit ici : il vient de l'orchestrateur, dont il porte le
-    // nom de backend.
+    // The three verbs all refuse, and that is criterion ①. The `Outcome`
+    // is not rebuilt here: it comes from the orchestrator, whose backend
+    // name it carries.
     const issue =
         operation === 'demarrer'
-            ? await orchestrateur.demarrer(vmId)
+            ? await orchestrateur.start(vmId)
             : operation === 'arreter'
               ? await orchestrateur.arreter(vmId)
               : await orchestrateur.instantane(vmId, '');
     if (issue.ok) {
-        // Inatteignable avec le backend v1 — les trois verbes refusent. Écrit
-        // quand même : le jour où un backend d'hyperviseur réussira, cette
-        // branche existe et rend 200 plutôt qu'un `undefined` silencieux.
+        // Unreachable with the v1 backend — the three verbs refuse. Written
+        // anyway: the day a hypervisor backend succeeds, this
+        // branch exists and returns 200 rather than a silent `undefined`.
         repondre(rep, 200, { ok: true }, cors);
         return true;
     }

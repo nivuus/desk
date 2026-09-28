@@ -19,7 +19,7 @@ const texte = (f) => {
     try { return readFileSync(path.join(sortie, f), 'utf8'); } catch { return ''; }
 };
 
-const avant = lire('session-avant-attribution.json');
+const before = lire('session-avant-attribution.json');
 const muet = lire('session-agent-muet.json');
 const vivant = lire('session-agent-vivant.json');
 const vms = lire('vm.json');
@@ -39,8 +39,8 @@ const dire = (libelle, obtenu, attendu) => {
 
 console.log('');
 console.log('    --- ⓐ la chaîne de refus, sur le service réel ---');
-dire('ⓐ sans attribution, la route refuse `aucune-vm`', avant?.motif, 'aucune-vm');
-dire('ⓐ et elle ne délivre AUCUN préfixe', avant?.prefixe, undefined);
+dire('ⓐ sans attribution, la route refuse `aucune-vm`', before?.motif, 'aucune-vm');
+dire('ⓐ et elle ne délivre AUCUN préfixe', before?.prefixe, undefined);
 console.log('    --- ⓑ attribuée mais agent MUET : l’aveu, pas la fonction ---');
 dire('ⓑ l’état annoncé est `injoignable`', muet?.etat, 'injoignable');
 dire('ⓑ la plateforme AVOUE ne pas savoir redémarrer', muet?.redemarrage?.possible, false);

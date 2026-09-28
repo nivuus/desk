@@ -1,59 +1,59 @@
-// L'écouteur qui empêche une trame trop grosse d'abattre le service.
+// The listener that keeps an oversized frame from bringing the service down.
 //
-// 🔴 EXTRAIT DE `serveur.ts` LE 25 AOÛT 2026 (round de correction 1, chantier
-// « legs sans VM »), POUR LUI FAIRE DE LA PLACE — sans changer une ligne de
-// comportement. `serveur.ts` était à 494/500 ; le câblage du nettoyage de
-// fond des magasins (`apps/nettoyage.ts`) l'aurait porté au-delà. La règle du
-// dépôt est EXTRAIRE, jamais comprimer.
+// 🔴 EXTRACTED FROM `serveur.ts` ON 25 AUGUST 2026 (fix round 1, the
+// « legacy without a VM » work), TO MAKE ROOM IN IT — without changing a line of
+// behaviour. `serveur.ts` was at 494/500; wiring the background cleanup
+// of the stores (`apps/nettoyage.ts`) would have pushed it past. The repository
+// rule is EXTRACT, never compress.
 
 import type { WebSocketServer } from 'ws';
 
-/// 🔴 SANS CETTE FONCTION, `TRAME_MAX_OCTETS` (`serveur.ts`) DONNE UN DÉNI DE
-/// SERVICE PIRE QUE CELUI QU'IL FERME, et ce n'est pas une conjecture :
-/// MESURÉ le 20 août 2026 sur le vrai point d'entrée, `connect ECONNREFUSED`
-/// — LE PROCESS ÉTAIT MORT, tué par UNE SEULE TRAME ANONYME.
+/// 🔴 WITHOUT THIS FUNCTION, `TRAME_MAX_OCTETS` (`serveur.ts`) GIVES A DENIAL OF
+/// SERVICE WORSE THAN THE ONE IT CLOSES, and this is no guess:
+/// MEASURED on 20 August 2026 on the real entry point, `connect ECONNREFUSED`
+/// — THE PROCESS WAS DEAD, killed by ONE SINGLE ANONYMOUS FRAME.
 ///
-/// LA CHAÎNE, en trois maillons dont chacun est banal : `ws` refuse une trame
-/// au-delà de `maxPayload` et ÉMET `error` sur le socket serveur ; aucun
-/// socket serveur de ce service n'avait d'écouteur `error` (vérifié :
-/// `grep -n "on('error'" relais.ts canal.ts serveur.ts` ne rendait que le
-/// `http.once('error', reject)` du démarrage) ; et un `EventEmitter` qui émet
-/// `error` sans écouteur LÈVE. L'exception traverse alors un gestionnaire
-/// d'évènement Node, qui n'a personne pour l'attraper — le mode de défaillance
-/// exact que `signaling/relais.ts` et `signaling/trace.ts` documentent tous
-/// deux, atteint ici par une porte neuve.
+/// THE CHAIN, in three links each of them mundane: `ws` refuses a frame
+/// beyond `maxPayload` and EMITS `error` on the server socket; no
+/// server socket of this service had an `error` listener (checked:
+/// `grep -n "on('error'" relais.ts canal.ts serveur.ts` only returned the
+/// `http.once('error', reject)` of the startup); and an `EventEmitter` that emits
+/// `error` without a listener THROWS. The exception then crosses a Node
+/// event handler, which has nobody to catch it — the exact failure mode
+/// that `signaling/relais.ts` and `signaling/trace.ts` both
+/// document, reached here through a new door.
 ///
-/// ⚠️ AUCUN TEST « DANS » VITEST NE POUVAIT LE VOIR : vitest installe son
-/// propre gestionnaire d'exceptions non interceptées, si bien que les tests de
-/// `http/serveur.test.ts` restaient VERTS pendant que le service réel mourait
-/// (ils signalaient seulement « Vitest caught N unhandled errors »). La preuve
-/// vit donc dans `signaling/resilience.test.ts`, qui lance `index.ts` comme un
-/// vrai process enfant — c'est précisément la raison d'être de ce fichier-là,
-/// et son en-tête l'écrivait avant P5.
+/// ⚠️ NO TEST « INSIDE » VITEST COULD SEE IT: vitest installs its
+/// own handler for uncaught exceptions, so that the tests of
+/// `http/serveur.test.ts` stayed GREEN while the real service was dying
+/// (they merely reported « Vitest caught N unhandled errors »). The proof
+/// therefore lives in `signaling/resilience.test.ts`, which launches `index.ts` as a
+/// real child process — that is precisely the reason that file exists,
+/// and its header said so before P5.
 ///
-/// ⚠️ ELLE NE JOURNALISE RIEN, ET C'EST UN CHOIX MOTIVÉ, PAS UNE NÉGLIGENCE.
-/// `CLAUDE.md` porte la règle depuis le chantier TURN : « ne jamais tracer par
-/// paquet dans la boucle de transport — compter ou échantillonner, jamais
-/// tracer par paquet », après qu'une trace par `Transmit` a écrit 18 619
-/// lignes en quelques secondes et détruit la mesure qu'elle servait. Une ligne
-/// par socket fautif rendrait ici le service à nouveau amplificateur : un
-/// attaquant ouvrant N sockets ferait écrire N lignes, sur le chemin même que
-/// `TRAME_MAX_OCTETS` vient de fermer.
+/// ⚠️ IT LOGS NOTHING, AND THAT IS A REASONED CHOICE, NOT NEGLIGENCE.
+/// `CLAUDE.md` has carried the rule since the TURN work: « never trace per
+/// packet in the transport loop — count or sample, never
+/// trace per packet », after a trace per `Transmit` wrote 18 619
+/// lines in a few seconds and destroyed the measurement it served. One line
+/// per faulty socket would make the service an amplifier again: an
+/// attacker opening N sockets would get N lines written, on the very path that
+/// `TRAME_MAX_OCTETS` has just closed.
 ///
-/// ⚠️ LE COÛT EST NOMMÉ : une erreur de socket est donc INVISIBLE à
-/// l'exploitant. Ce qui reste observable est la FERMETURE, que le pair voit
-/// (code 1009), et le fait que le service continue de servir. Le jour où il
-/// faudra les compter, c'est un compteur qu'il faudra — pas une trace.
-export function encaisserLesErreursDeSocket(wss: WebSocketServer): void {
-    // Enregistré AVANT `createSignalingServer` et `servirLeCanalAgent`, qui
-    // posent leurs propres gestionnaires `connection` : les écouteurs courent
-    // dans leur ordre d'enregistrement, et celui-ci doit être attaché au
-    // socket avant que quoi que ce soit d'autre ne lui parle.
+/// ⚠️ THE COST IS NAMED: a socket error is therefore INVISIBLE to
+/// the operator. What stays observable is the CLOSE, which the peer sees
+/// (code 1009), and the fact that the service keeps serving. The day they
+/// need to be counted, a counter is what will be needed — not a trace.
+export function absorbSocketErrors(wss: WebSocketServer): void {
+    // Registered BEFORE `createSignalingServer` and `servirLeCanalAgent`, which
+    // set their own `connection` handlers: the listeners run
+    // in their order of registration, and this one must be attached to the
+    // socket before anything else talks to it.
     wss.on('connection', (socket) => {
         socket.on('error', () => {
-            // Volontairement vide — voir ci-dessus. La seule chose qui compte
-            // est qu'un écouteur EXISTE : c'est lui, et lui seul, qui empêche
-            // `EventEmitter` de lever.
+            // Deliberately empty — see above. The only thing that matters
+            // is that a listener EXISTS: it is that, and that alone, which keeps
+            // `EventEmitter` from throwing.
         });
     });
 }

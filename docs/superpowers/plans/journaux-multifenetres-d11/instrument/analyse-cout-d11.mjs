@@ -51,17 +51,17 @@ for (const chemin of process.argv.slice(2)) {
         const m = l.match(/session=([^}]+)\}.*duplication de sortie établie desktop_width=(\d+) desktop_height=(\d+)/);
         if (m) naissances.set(m[1], `${m[2]}x${m[3]}`);
     }
-    const valeurs = [...new Set(naissances.values())];
+    const values = [...new Set(naissances.values())];
     console.log(`  surfaces dupliquées : ${JSON.stringify([...naissances])}`);
-    console.log(`  ADMISSION du bras : ${valeurs.length === 1
-        ? `OBTENU (une seule valeur, ${valeurs[0]})`
-        : `NON OBTENU — ${valeurs.length} valeurs distinctes ${JSON.stringify(valeurs)}. `
+    console.log(`  ADMISSION du bras : ${values.length === 1
+        ? `OBTENU (une seule valeur, ${values[0]})`
+        : `NON OBTENU — ${values.length} valeurs distinctes ${JSON.stringify(values)}. `
           + 'MESURE DEUX BRAS DÉCLARÉE NON PRISE.'}`);
 
     // ---- 2. La mesure appariée intra-exécution. ----
     const t0 = Date.parse(d.utile_debut), t1 = Date.parse(d.utile_fin);
     const cadences = new Map();
-    const tailles = new Map();
+    const sizes = new Map();
     for (const l of brut.split('\n')) {
         const h = l.match(/^(\S+Z)/);
         if (!h) continue;
@@ -72,12 +72,12 @@ for (const chemin of process.argv.slice(2)) {
             cadences.get(c[1]).hz.push(Number(c[4]));
         }
         const e = l.match(/session=([^}]+)\}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=(\d+) height=(\d+)/);
-        if (e) tailles.set(e[1], `${e[2]}x${e[3]}`);
+        if (e) sizes.set(e[1], `${e[2]}x${e[3]}`);
     }
     const lignes = [];
     for (const [s, v] of cadences) {
         lignes.push({
-            session: s, surface: naissances.get(s) ?? '?', encodage: tailles.get(s) ?? '?',
+            session: s, surface: naissances.get(s) ?? '?', encodage: sizes.get(s) ?? '?',
             n: v.hz.length, cadence: Number(moy(v.hz).toFixed(1)), endormie: v.endormie,
         });
     }

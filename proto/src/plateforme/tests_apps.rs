@@ -1,25 +1,25 @@
-//! Tests du module [`crate::plateforme`] — la GESTION D'APPLICATIONS.
+//! Tests of the [`crate::plateforme`] module — APPLICATION MANAGEMENT.
 //!
-//! Extrait de `proto/src/plateforme/tests.rs` VERBATIM (sous-bloc G2, tâche 1) :
-//! ce fichier était à 561 lignes et figurait au tableau de dette de
-//! `CLAUDE.md` SANS POINT DE CHUTE, avec cette phrase — « c'est au chantier
-//! qui les rouvrira de le choisir ». G2 les rouvre, et la règle du dépôt est
-//! que le découpage rétroactif se fait au moment où l'on travaille dedans.
-//! **Aucun test n'a été ajouté, retiré ni réécrit par ce déplacement** ; le
-//! compte de `cargo test -p proto` a été annoncé AVANT d'être mesuré, et il est
-//! resté à 83.
+//! Extracted from `proto/src/plateforme/tests.rs` VERBATIM (sub-block G2, task 1):
+//! this file was at 561 lines and appeared in the debt table of
+//! `CLAUDE.md` WITH NO LANDING POINT, with this sentence — "it is up to the workstream
+//! that reopens them to choose it". G2 reopens them, and the repository's rule is
+//! that the retroactive split happens when one works in it.
+//! **No test was added, removed or rewritten by this move**; the
+//! count of `cargo test -p proto` was announced BEFORE being measured, and it
+//! stayed at 83.
 //!
-//! **La frontière est celle que le protocole porte déjà** : le cycle de vie
-//! (version, refus, enrôlement, battement) reste chez `tests.rs`, la gestion
-//! d'apps vient ici. ⚠️ `les_variantes_de_p3_rejettent_desormais_la_version_1`
-//! est RESTÉ chez `tests.rs` bien qu'il vécût dans la section G1 : il n'éprouve
-//! que des variantes du cycle de vie, et le ranger ici l'aurait classé sur son
-//! adresse plutôt que sur son objet.
+//! **The boundary is the one the protocol already carries**: the lifecycle
+//! (version, refusal, enrolment, heartbeat) stays in `tests.rs`, app
+//! management comes here. ⚠️ `the_p3_variants_now_reject_version_1`
+//! STAYED in `tests.rs` although it lived in the G1 section: it only tests
+//! lifecycle variants, and filing it here would have classified it by its
+//! address rather than by its object.
 
 use super::*;
 
 // ---------------------------------------------------------------------------
-// Sous-bloc G1 — catalogue d'applications et lancement (v2).
+// Sub-block G1 — application catalogue and launch (v2).
 // ---------------------------------------------------------------------------
 
 fn app_temoin() -> Application {
@@ -32,24 +32,24 @@ fn app_temoin() -> Application {
         repertoire: r"c:\windows\system32".into(),
         icone: Some("a1b2".repeat(16)),
         source_max: SourceMax::Pixels(256),
-        // ⚠️ LES DEUX SONT RENSEIGNÉS DANS LE TÉMOIN, ET NON LAISSÉS À LEUR
-        // VALEUR NEUTRE : un encodeur qui OMETTRAIT l'un des deux rendrait le
-        // même JSON qu'un témoin où ils vaudraient `None` et `[]`, et le test
-        // de round-trip ne pourrait pas le voir. Le cas neutre est éprouvé à
-        // part, par `app_sans_icone`.
+        // ⚠️ BOTH ARE FILLED IN IN THE WITNESS, AND NOT LEFT AT THEIR
+        // NEUTRAL VALUE: an encoder that OMITTED either of them would render the
+        // same JSON as a witness where they were `None` and `[]`, and the
+        // round-trip test could not see it. The neutral case is tested
+        // separately, by `app_sans_icone`.
         accent: Some("#3f2a7a".into()),
         associations: vec![".txt".into(), ".log".into()],
     }
 }
 
-/// Le cas que le sous-bloc G2 doit rendre INDOLORE : une application dont
-/// l'extraction d'icône a échoué. **Une application sans icône vaut mieux
-/// qu'une application absente** (spec §7).
+/// The case sub-block G2 must make PAINLESS: an application whose
+/// icon extraction failed. **An application without an icon is better
+/// than an absent application** (spec §7).
 fn app_sans_icone() -> Application {
     Application {
         icone: None,
         source_max: SourceMax::NonMesuree,
-        // Sans icône, il n'y a aucune dominante à calculer : `accent` suit.
+        // Without an icon, there is no dominant to compute: `accent` follows.
         accent: None,
         associations: Vec::new(),
         ..app_temoin()
@@ -57,13 +57,13 @@ fn app_sans_icone() -> Application {
 }
 
 #[test]
-fn serialise_le_catalogue() {
+fn serialises_the_catalogue() {
     let json = serde_json::to_string(&VersLaPlateforme::catalogue(
         true,
         vec![app_temoin()],
         vec!["disparue-1".into()],
     ))
-    .expect("sér.");
+    .expect("ser.");
     assert_eq!(
         json,
         r##"{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32","icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2","source_max":{"pixels":256},"accent":"#3f2a7a","associations":[".txt",".log"]}],"disparues":["disparue-1"]}"##
@@ -71,30 +71,33 @@ fn serialise_le_catalogue() {
 }
 
 #[test]
-fn serialise_le_lancer() {
-    let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("sér.");
-    assert_eq!(json, r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#);
+fn serialises_the_lancer() {
+    let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("ser.");
+    assert_eq!(
+        json,
+        r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#
+    );
 }
 
 #[test]
-fn serialise_la_lancee() {
+fn serialises_the_lancee() {
     let json = serde_json::to_string(&VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci))
-        .expect("sér.");
+        .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}"#
     );
 }
 
-/// ⚠️ LACUNE ATTENDUE, ÉCRITE PLUTÔT QUE DÉCOUVERTE : aucune des quatre
-/// issues n'a DEUX mots, donc `kebab-case` et `snake_case` ne diffèrent sur
-/// aucune d'elles. Ce test fige les quatre chaînes, mais il ne peut pas
-/// rougir sur un changement de `rename_all` — contrairement à
-/// `battement-recu`, qui est le seul témoin de ce genre dans ce module. Le
-/// jour où une issue à deux mots apparaîtra, elle devra porter son propre
-/// test de casse, sans quoi elle divergera du miroir TypeScript en silence.
+/// ⚠️ EXPECTED GAP, WRITTEN RATHER THAN DISCOVERED: none of the four
+/// outcomes has TWO words, so `kebab-case` and `snake_case` differ on
+/// none of them. This test freezes the four strings, but it cannot
+/// turn red on a change of `rename_all` — unlike
+/// `battement-recu`, which is the only witness of that kind in this module. The
+/// day a two-word outcome appears, it will have to carry its own
+/// case test, otherwise it will diverge from the TypeScript mirror silently.
 #[test]
-fn serialise_les_quatre_issues() {
+fn serialises_the_four_outcomes() {
     let attendus = [
         (IssueLancement::Raccourci, "raccourci"),
         (IssueLancement::Cible, "cible"),
@@ -103,14 +106,14 @@ fn serialise_les_quatre_issues() {
     ];
     for (issue, attendu) in attendus {
         assert_eq!(
-            serde_json::to_string(&issue).expect("sér."),
+            serde_json::to_string(&issue).expect("ser."),
             format!("\"{attendu}\"")
         );
     }
 }
 
 #[test]
-fn rejette_une_version_absente_sur_catalogue() {
+fn rejects_an_absent_version_on_catalogue() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"catalogue","complet":true,"applications":[],"disparues":[]}"#
     )
@@ -118,15 +121,17 @@ fn rejette_une_version_absente_sur_catalogue() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_catalogue() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"catalogue","v":0,"complet":true,"applications":[],"disparues":[]}"#)
-    )
-    .is_err());
+fn rejects_the_next_version_on_catalogue() {
+    assert!(
+        serde_json::from_str::<VersLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"catalogue","v":0,"complet":true,"applications":[],"disparues":[]}"#
+        ))
+        .is_err()
+    );
 }
 
 #[test]
-fn rejette_une_version_absente_sur_lancee() {
+fn rejects_an_absent_version_on_lancee() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"lancee","demande":"d","issue":"echec"}"#
     )
@@ -134,15 +139,17 @@ fn rejette_une_version_absente_sur_lancee() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_lancee() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"lancee","v":0,"demande":"d","issue":"echec"}"#)
-    )
-    .is_err());
+fn rejects_the_next_version_on_lancee() {
+    assert!(
+        serde_json::from_str::<VersLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"lancee","v":0,"demande":"d","issue":"echec"}"#
+        ))
+        .is_err()
+    );
 }
 
 #[test]
-fn rejette_une_version_absente_sur_lancer() {
+fn rejects_an_absent_version_on_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"lancer","demande":"d","cle":"c"}"#
     )
@@ -150,15 +157,17 @@ fn rejette_une_version_absente_sur_lancer() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_lancer() {
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"lancer","v":0,"demande":"d","cle":"c"}"#)
-    )
-    .is_err());
+fn rejects_the_next_version_on_lancer() {
+    assert!(
+        serde_json::from_str::<DepuisLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"lancer","v":0,"demande":"d","cle":"c"}"#
+        ))
+        .is_err()
+    );
 }
 
 #[test]
-fn rejette_un_champ_inconnu_sur_lancer() {
+fn rejects_an_unknown_field_on_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"lancer","v":5,"demande":"d","cle":"c","bonus":1}"#
     )
@@ -166,77 +175,81 @@ fn rejette_un_champ_inconnu_sur_lancer() {
 }
 
 // ---------------------------------------------------------------------------
-// Sous-bloc G2 — les icônes, leur provenance, et l'inventaire des manquantes.
+// Sub-block G2 — the icons, their provenance, and the inventory of the missing ones.
 // ---------------------------------------------------------------------------
 
-/// 🔴 LA FORME DE `SourceMax` SUR LE FIL, FIGÉE OCTET POUR OCTET.
+/// 🔴 THE WIRE SHAPE OF `SourceMax`, FROZEN BYTE FOR BYTE.
 ///
-/// C'est le critère ④ à sa source : `NonMesuree` ne peut structurellement pas
-/// être un nombre. Représenter la valeur par `0` ou par `256` — ce qu'un
-/// entier nullable inviterait à faire — ferait dire à une provenance INCONNUE
-/// qu'elle vaut 256, c'est-à-dire exactement ce que tout le sous-bloc existe
-/// pour distinguer.
+/// It is criterion ④ at its source: `NonMesuree` cannot structurally
+/// be a number. Representing the value by `0` or by `256` — which a
+/// nullable integer would invite — would make an UNKNOWN provenance say
+/// it is 256, that is exactly what the whole sub-block exists
+/// to distinguish.
 #[test]
-fn serialise_les_deux_formes_de_source_max() {
+fn serialises_both_shapes_of_source_max() {
     assert_eq!(
-        serde_json::to_string(&SourceMax::Pixels(256)).expect("sér."),
+        serde_json::to_string(&SourceMax::Pixels(256)).expect("ser."),
         r#"{"pixels":256}"#
     );
     assert_eq!(
-        serde_json::to_string(&SourceMax::NonMesuree).expect("sér."),
+        serde_json::to_string(&SourceMax::NonMesuree).expect("ser."),
         r#""non-mesuree""#
     );
-    // Et l'aller-retour, dans les deux sens.
-    for valeur in [SourceMax::Pixels(48), SourceMax::Pixels(256), SourceMax::NonMesuree] {
-        let json = serde_json::to_string(&valeur).expect("sér.");
-        let relu: SourceMax = serde_json::from_str(&json).expect("désér.");
-        assert_eq!(valeur, relu);
+    // And the round trip, in both directions.
+    for value in [
+        SourceMax::Pixels(48),
+        SourceMax::Pixels(256),
+        SourceMax::NonMesuree,
+    ] {
+        let json = serde_json::to_string(&value).expect("ser.");
+        let relu: SourceMax = serde_json::from_str(&json).expect("deser.");
+        assert_eq!(value, relu);
     }
 }
 
-/// 🔴 LE TEST QUI NOMME LA LACUNE REFERMÉE, ET IL EST LE SEUL DE CE MODULE À
-/// POUVOIR ROUGIR SUR `rename_all`.
+/// 🔴 THE TEST THAT NAMES THE CLOSED GAP, AND IT IS THE ONLY ONE IN THIS MODULE
+/// ABLE TO TURN RED ON `rename_all`.
 ///
-/// `IssueLancement` porte quatre variantes d'UN SEUL MOT : `kebab-case` et
-/// `snake_case` y produisent les mêmes chaînes, et son propre commentaire
-/// inscrit cette lacune — mutation mesurée, `cargo test -p proto` restait
-/// vert. `NonMesuree` a DEUX mots, donc `non-mesuree` contre `non_mesuree` :
-/// muter le `rename_all` de [`SourceMax`] en `snake_case` fait ÉCHOUER ce
-/// test, et c'est la démonstration que la convention y est OBSERVABLE.
+/// `IssueLancement` carries four SINGLE-WORD variants: `kebab-case` and
+/// `snake_case` produce the same strings there, and its own comment
+/// records this gap — measured mutation, `cargo test -p proto` stayed
+/// green. `NonMesuree` has TWO words, hence `non-mesuree` against `non_mesuree`:
+/// mutating the `rename_all` of [`SourceMax`] to `snake_case` makes this
+/// test FAIL, and it is the demonstration that the convention is OBSERVABLE there.
 ///
-/// ⚠️ La lacune reste OUVERTE pour `IssueLancement`, qu'aucune tâche de G2 ne
-/// touche.
+/// ⚠️ The gap stays OPEN for `IssueLancement`, which no G2 task
+/// touches.
 #[test]
-fn la_convention_de_nommage_de_source_max_est_observable() {
+fn the_naming_convention_of_source_max_is_observable() {
     assert_eq!(
-        serde_json::to_string(&SourceMax::NonMesuree).expect("sér."),
+        serde_json::to_string(&SourceMax::NonMesuree).expect("ser."),
         r#""non-mesuree""#,
-        "un tiret, pas un tiret bas : c'est ce que le miroir TypeScript lit"
+        "a hyphen, not an underscore: it is what the TypeScript mirror reads"
     );
     assert!(serde_json::from_str::<SourceMax>(r#""non_mesuree""#).is_err());
 }
 
-/// Une application SANS icône traverse le fil, et son absence est explicite.
+/// An application WITHOUT an icon crosses the wire, and its absence is explicit.
 #[test]
-fn serialise_une_application_sans_icone() {
-    let json = serde_json::to_string(&app_sans_icone()).expect("sér.");
+fn serialises_an_application_without_icon() {
+    let json = serde_json::to_string(&app_sans_icone()).expect("ser.");
     assert!(
         json.contains(r#""icone":null"#),
-        "l'absence d'icône s'ÉCRIT, elle ne se tait pas : {json}"
+        "the absence of an icon is WRITTEN, it does not stay silent: {json}"
     );
     assert!(json.contains(r#""source_max":"non-mesuree""#), "{json}");
-    let relu: Application = serde_json::from_str(&json).expect("désér.");
+    let relu: Application = serde_json::from_str(&json).expect("deser.");
     assert_eq!(relu, app_sans_icone());
 }
 
-/// 🔴 AUCUN `#[serde(default)]` SUR LES DEUX CHAMPS NEUFS.
+/// 🔴 NO `#[serde(default)]` ON THE TWO NEW FIELDS.
 ///
-/// Un `default` ferait accepter en silence le catalogue d'un agent v2 — et
-/// c'est précisément le déguisement que le bump de version existe pour
-/// empêcher : la rupture doit se dire `version`, jamais `forme`, et surtout
-/// pas rien du tout.
+/// A `default` would silently accept the catalogue of a v2 agent — and
+/// that is precisely the disguise the version bump exists to
+/// prevent: the break must say `version`, never `forme`, and above all
+/// not nothing at all.
 #[test]
-fn rejette_une_application_a_qui_il_manque_un_champ_neuf() {
+fn rejects_an_application_missing_a_new_field() {
     let sans_icone = r#"{"cle":"a","nom":"n","chemin":"c","cible":"t","arguments":"","repertoire":"r","source_max":"non-mesuree"}"#;
     assert!(serde_json::from_str::<Application>(sans_icone).is_err());
     let sans_source = r#"{"cle":"a","nom":"n","chemin":"c","cible":"t","arguments":"","repertoire":"r","icone":null}"#;
@@ -244,17 +257,17 @@ fn rejette_une_application_a_qui_il_manque_un_champ_neuf() {
 }
 
 #[test]
-fn serialise_les_icones_manquantes() {
+fn serialises_the_missing_icons() {
     let json = serde_json::to_string(&DepuisLaPlateforme::icones_manquantes(vec![
         "a1b2".into(),
         "c3d4".into(),
     ]))
-    .expect("sér.");
+    .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"icones-manquantes","v":5,"empreintes":["a1b2","c3d4"]}"#
     );
-    let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
+    let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("deser.");
     assert_eq!(
         relu,
         DepuisLaPlateforme::icones_manquantes(vec!["a1b2".into(), "c3d4".into()])
@@ -262,7 +275,7 @@ fn serialise_les_icones_manquantes() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_icones_manquantes() {
+fn rejects_an_absent_version_on_icones_manquantes() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"icones-manquantes","empreintes":[]}"#
     )
@@ -270,18 +283,20 @@ fn rejette_une_version_absente_sur_icones_manquantes() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_icones_manquantes() {
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        &super::tests::etrangere(r#"{"type":"icones-manquantes","v":0,"empreintes":[]}"#)
-    )
-    .is_err());
+fn rejects_the_next_version_on_icones_manquantes() {
+    assert!(
+        serde_json::from_str::<DepuisLaPlateforme>(&super::tests::etrangere(
+            r#"{"type":"icones-manquantes","v":0,"empreintes":[]}"#
+        ))
+        .is_err()
+    );
 }
 
-/// 🔴 LA ROUGE DU BUMP DE G2. Un agent v2 émet un catalogue sans les deux
-/// champs neufs, et une plateforme v3 doit le REFUSER — pas le compléter, pas
-/// l'ignorer.
+/// 🔴 THE RED OF THE G2 BUMP. A v2 agent emits a catalogue without the two
+/// new fields, and a v3 platform must REFUSE it — not complete it, not
+/// ignore it.
 #[test]
-fn le_catalogue_d_un_agent_v2_est_refuse() {
+fn the_catalogue_of_a_v2_agent_is_refused() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"catalogue","v":2,"complet":true,"applications":[],"disparues":[]}"#
     )

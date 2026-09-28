@@ -1,25 +1,25 @@
-// Le registre d'appartenance de session, pur et synchrone.
+// The session ownership registry, pure and synchronous.
 
 import { describe, expect, it } from 'vitest';
 import { ProprieteDeSession } from './propriete';
 
 describe('ProprieteDeSession', () => {
-    it('une session libre n’a pas de propriétaire', () => {
+    it('a free session has no owner', () => {
         expect(new ProprieteDeSession().proprietaire('s-1')).toBeUndefined();
     });
 
-    it('revendiquée par u1, elle rend u1 — et pas u2', () => {
-        // 🔴 La seconde assertion est le point : un registre qui rendrait
-        // `undefined` quoi qu'il arrive passerait la première, et plus
-        // personne ne serait jamais refusé.
+    it('claimed by u1, it returns u1 — and not u2', () => {
+        // 🔴 The second assertion is the point: a registry that returned
+        // `undefined` whatever happened would pass the first, and nobody
+        // would ever be refused again.
         const r = new ProprieteDeSession();
         r.revendiquer('s-1', 'u1');
         expect(r.proprietaire('s-1')).toBe('u1');
         expect(r.proprietaire('s-1')).not.toBe('u2');
     });
 
-    it('revendiquer deux fois par le MÊME utilisateur est sans effet, jamais une erreur', () => {
-        // Une reconnexion du même utilisateur casserait sinon sa propre
+    it('claiming twice by the SAME user has no effect, never an error', () => {
+        // A reconnection of the same user would otherwise break their own
         // session.
         const r = new ProprieteDeSession();
         r.revendiquer('s-1', 'u1');
@@ -27,8 +27,8 @@ describe('ProprieteDeSession', () => {
         expect(r.proprietaire('s-1')).toBe('u1');
     });
 
-    it('libérer rend la session à nouveau libre, et revendicable par un autre', () => {
-        // Ne jamais libérer perdrait un nom de session à vie.
+    it('releasing makes the session free again, and claimable by another', () => {
+        // Never releasing would lose a session name for life.
         const r = new ProprieteDeSession();
         r.revendiquer('s-1', 'u1');
         r.liberer('s-1');
@@ -37,7 +37,7 @@ describe('ProprieteDeSession', () => {
         expect(r.proprietaire('s-1')).toBe('u2');
     });
 
-    it('deux sessions ne se mélangent pas', () => {
+    it('two sessions do not mix', () => {
         const r = new ProprieteDeSession();
         r.revendiquer('s-1', 'u1');
         r.revendiquer('s-2', 'u2');

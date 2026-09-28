@@ -1,110 +1,112 @@
-//! Classer un échec d'acquisition DXGI, et borner les reprises.
+//! Classifying a DXGI acquisition failure, and bounding the resumptions.
 //!
-//! **Pur à dessein.** `capture.rs` est `#![cfg(windows)]` dans son ensemble :
-//! un module ENFANT n'y serait pas compilable sur l'hôte Linux, donc pas
-//! testable. Ce fichier est donc déclaré en module FRÈRE dans `main.rs`
-//! (`#[path = "capture/reprise.rs"] mod capture_reprise;`), hors de tout
-//! `cfg` — le même montage que `windows_source/sortie.rs`, et pour la même
-//! raison.
+//! **Pure on purpose.** `capture.rs` is `#![cfg(windows)]` as a whole:
+//! a CHILD module there would not be compilable on the Linux host, hence not
+//! testable. This file is therefore declared as a SIBLING module in `main.rs`
+//! (`#[path = "capture/reprise.rs"] mod capture_reprise;`), outside any
+//! `cfg` — the same set-up as `windows_source/sortie.rs`, and for the same
+//! reason.
 //!
-//! Il ne connaît que des `i32` : les codes DXGI nus. Aucun type `windows-rs`
-//! ne franchit cette frontière, sans quoi elle ne tiendrait pas.
+//! It only knows `i32`s: the bare DXGI codes. No `windows-rs` type
+//! crosses this boundary, otherwise it would not hold.
 
-/// `DXGI_ERROR_ACCESS_LOST`. DXGI révoque l'accès à une duplication quand la
-/// topologie d'affichage change — et **la création d'une sortie virtuelle en
-/// est un cas**, relevé par le sous-bloc D1 sur trois exécutions sur trois.
-/// La documentation Desktop Duplication décrit cet état comme récupérable :
-/// relâcher l'`IDXGIOutputDuplication` et en créer une nouvelle.
+/// `DXGI_ERROR_ACCESS_LOST`. DXGI revokes access to a duplication when the
+/// display topology changes — and **creating a virtual output is
+/// one such case**, recorded by sub-block D1 over three runs out of three.
+/// The Desktop Duplication documentation describes this state as recoverable:
+/// release the `IDXGIOutputDuplication` and create a new one.
 pub const ACCES_PERDU: i32 = 0x887A0026u32 as i32;
 
-/// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`. Rendu par `DuplicateOutput` quand la
-/// sortie ne peut pas être dupliquée **à cet instant**. Deux causes très
-/// différentes se présentent sous ce même code, et le code ne les distingue
-/// pas : une reconfiguration de topologie en cours — passagère —, et un plafond
-/// de duplications concurrentes — durable. C'est pourquoi la fenêtre de
-/// réessai est courte et son abandon bruyant.
+/// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`. Returned by `DuplicateOutput` when the
+/// output cannot be duplicated **at this instant**. Two very
+/// different causes show up under this same code, and the code does not distinguish
+/// them: a topology reconfiguration in progress — transient —, and a cap
+/// on concurrent duplications — lasting. That is why the retry window
+/// is short and its abandonment loud.
 pub const NON_DISPONIBLE: i32 = 0x887A0022u32 as i32;
 
-/// `DXGI_ERROR_DEVICE_REMOVED`. Le périphérique lui-même est perdu : rouvrir
-/// la seule duplication ne servirait à rien. Reste définitif.
+/// `DXGI_ERROR_DEVICE_REMOVED`. The device itself is lost: reopening
+/// the duplication alone would be useless. Remains definitive.
+#[cfg(test)]
 pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
 
-/// `DXGI_ERROR_WAIT_TIMEOUT`. Pas un échec : le bureau n'a simplement pas
-/// changé. Traité en amont de la classification, mais nommé ici pour que le
-/// test puisse vérifier qu'il n'est PAS pris pour une perte d'accès.
+/// `DXGI_ERROR_WAIT_TIMEOUT`. Not a failure: the desktop simply has not
+/// changed. Handled upstream of the classification, but named here so that the
+/// test can check it is NOT taken for an access loss.
+#[cfg(test)]
 pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
 
-/// Durée pendant laquelle une perte d'accès est retentée avant d'être déclarée
-/// définitive.
+/// Duration during which an access loss is retried before being declared
+/// definitive.
 ///
-/// **Majorante et non calibrée, et il faut le dire.** La mesure du
-/// 1ᵉʳ août 2026 (`plans/journaux-multifenetres-d2/`) établit deux points et
-/// deux seulement : trois tentatives enchaînées sans délai, soit 14 à 21 ms,
-/// **ne suffisent pas** ; et une réouverture tentée 3 s après le remaniement
-/// **réussit**, sur 7 sondes sur 7. Le seuil réel est quelque part entre les
-/// deux et n'a pas été cherché. Huit secondes le couvrent largement.
+/// **An upper bound, not calibrated, and it must be said.** The measurement of
+/// 1 August 2026 (`plans/journaux-multifenetres-d2/`) establishes two points and
+/// two only: three attempts chained without delay, that is 14 to 21 ms,
+/// **are not enough**; and a reopening attempted 3 s after the reshuffle
+/// **succeeds**, on 7 probes out of 7. The real threshold is somewhere between the
+/// two and was not searched for. Eight seconds cover it amply.
 ///
-/// Ce qui borne le coût d'une valeur trop grande : la fenêtre ne bloque rien
-/// (voir `Tentative::Patienter`), elle ne fait que retarder l'aveu d'échec
-/// d'une source qui, de toute façon, ne rendrait plus d'image.
+/// What bounds the cost of a value too large: the window blocks nothing
+/// (see `Tentative::Patienter`), it only delays the admission of failure
+/// of a source that would not return a frame anyway.
 pub const DUREE_FENETRE_REPRISE: std::time::Duration = std::time::Duration::from_secs(8);
 
-/// Intervalle minimal entre deux tentatives de réouverture.
+/// Minimum interval between two reopening attempts.
 ///
-/// Petit devant la fenêtre, pour ne pas retarder la reprise réelle ; assez
-/// grand pour que la trace `info!` de chaque tentative reste rare — au plus
-/// ~7 tentatives par seconde et par source (1000 ms / 150 ms), soit jusqu'à
-/// ~13 lignes par seconde quand chaque réouverture échoue (une ligne de
-/// tentative, une ligne d'échec), contre une par appel de `next_frame`
-/// (~90/s) si le pas n'existait pas. Le dépôt a déjà payé deux fois pour une
-/// trace émise à la cadence de la boucle de capture.
+/// Small compared to the window, so as not to delay the real resumption; large
+/// enough for the `info!` trace of each attempt to stay rare — at most
+/// ~7 attempts per second and per source (1000 ms / 150 ms), that is up to
+/// ~13 lines per second when every reopening fails (one attempt
+/// line, one failure line), against one per `next_frame` call
+/// (~90/s) if the step did not exist. The repository has already paid twice for a
+/// trace emitted at the cadence of the capture loop.
 pub const PAS_REPRISE: std::time::Duration = std::time::Duration::from_millis(150);
 
-/// Durée pendant laquelle l'ouverture d'une duplication est retentée.
+/// Duration during which opening a duplication is retried.
 ///
-/// **Plus courte que `DUREE_FENETRE_REPRISE`**, et pour une raison de
-/// diagnostic : quand la cause est un plafond de concurrence, patienter
-/// davantage ne change pas le résultat et retarde la lecture. Trois secondes
-/// couvrent la reconfiguration de topologie que le dépôt admet par ailleurs
+/// **Shorter than `DUREE_FENETRE_REPRISE`**, and for a diagnostic
+/// reason: when the cause is a concurrency cap, waiting
+/// longer does not change the result and delays the reading. Three seconds
+/// cover the topology reconfiguration the repository admits elsewhere
 /// (`DELAI_TOPOLOGIE`).
 ///
-/// **Majorante et non calibrée**, comme `DUREE_FENETRE_REPRISE`.
+/// **An upper bound, not calibrated**, like `DUREE_FENETRE_REPRISE`.
 pub const DUREE_FENETRE_OUVERTURE: std::time::Duration = std::time::Duration::from_secs(3);
 
 pub fn est_acces_perdu(code: i32) -> bool {
     code == ACCES_PERDU
 }
 
-/// Vrai si un échec d'ouverture de duplication mérite d'être retenté.
+/// True if a duplication opening failure deserves to be retried.
 pub fn est_ouverture_retentable(code: i32) -> bool {
     code == NON_DISPONIBLE || code == ACCES_PERDU
 }
 
-/// Ce que la fenêtre demande à l'appelant de faire, maintenant.
+/// What the window asks the caller to do, now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tentative {
-    /// Retenter la réouverture tout de suite.
+    /// Retry the reopening right away.
     Rouvrir,
-    /// Ne rien faire de ce tour-ci. L'appelant rend « rien de neuf » — **sans
-    /// dormir** : c'est ce qui distingue cette forme d'une boucle de reprise
-    /// bloquante, et ce qui laisse la boucle de session continuer de tourner.
+    /// Do nothing this round. The caller returns "nothing new" — **without
+    /// sleeping**: that is what distinguishes this form from a blocking resumption
+    /// loop, and what lets the session loop keep running.
     Patienter,
-    /// La fenêtre est close : la perte d'accès est définitive.
+    /// The window is closed: the access loss is definitive.
     Expiree,
 }
 
-/// Fenêtre de reprise, ouverte à la première perte d'accès et refermée par le
-/// premier succès.
+/// Resumption window, opened at the first access loss and closed by the
+/// first success.
 ///
-/// **Elle ne lit aucune horloge** : l'instant lui est passé. C'est ce qui la
-/// rend testable sur l'hôte Linux, où tout le reste de ce chemin est invisible.
+/// **It reads no clock**: the instant is passed to it. That is what
+/// makes it testable on the Linux host, where all the rest of this path is invisible.
 ///
-/// **Elle a remplacé un budget en nombre de tentatives**, que la mesure a
-/// réfuté : créer une sortie virtuelle rend `ACCESS_LOST`, la réouverture
-/// réussit, et la duplication rouverte rend **aussitôt** `ACCESS_LOST` à son
-/// tour tant que Windows n'a pas fini de reconfigurer sa topologie. Trois
-/// tentatives sans délai étaient donc brûlées avant que le phénomène ne se
-/// termine. Le compte de tentatives ne mesurait pas la bonne grandeur.
+/// **It replaced a budget in number of attempts**, which measurement
+/// refuted: creating a virtual output returns `ACCESS_LOST`, the reopening
+/// succeeds, and the reopened duplication **immediately** returns `ACCESS_LOST` in
+/// turn as long as Windows has not finished reconfiguring its topology. Three
+/// attempts without delay were therefore burnt before the phenomenon
+/// ended. The attempt count did not measure the right quantity.
 pub struct FenetreDeReprise {
     ouverte_a: Option<std::time::Instant>,
     derniere_tentative: Option<std::time::Instant>,
@@ -112,8 +114,12 @@ pub struct FenetreDeReprise {
 }
 
 impl FenetreDeReprise {
-    pub fn nouvelle() -> Self {
-        Self { ouverte_a: None, derniere_tentative: None, tentatives: 0 }
+    pub fn new() -> Self {
+        Self {
+            ouverte_a: None,
+            derniere_tentative: None,
+            tentatives: 0,
+        }
     }
 
     pub fn tenter(&mut self, maintenant: std::time::Instant) -> Tentative {
@@ -131,8 +137,8 @@ impl FenetreDeReprise {
         Tentative::Rouvrir
     }
 
-    /// Referme la fenêtre. Appelée sur tout succès d'acquisition, `Ok(None)`
-    /// compris : dès que DXGI cesse de refuser, le remaniement est terminé.
+    /// Closes the window. Called on any acquisition success, `Ok(None)`
+    /// included: as soon as DXGI stops refusing, the reshuffle is over.
     pub fn succes(&mut self) {
         self.ouverte_a = None;
         self.derniere_tentative = None;
@@ -151,44 +157,53 @@ mod tests {
     #[test]
     fn seule_la_perte_d_acces_est_recuperable() {
         assert!(est_acces_perdu(ACCES_PERDU));
-        assert!(!est_acces_perdu(DEVICE_REMOVED), "périphérique perdu : rouvrir ne sert à rien");
-        assert!(!est_acces_perdu(ATTENTE_EXPIREE), "attente expirée n'est même pas un échec");
+        assert!(
+            !est_acces_perdu(DEVICE_REMOVED),
+            "device lost: reopening is useless"
+        );
+        assert!(
+            !est_acces_perdu(ATTENTE_EXPIREE),
+            "an expired wait is not even a failure"
+        );
         assert!(!est_acces_perdu(0), "S_OK");
         assert!(!est_acces_perdu(0x80070057u32 as i32), "E_INVALIDARG");
     }
 
-    /// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` dit dans son propre libellé que la
-    /// ressource « pourra l'être ultérieurement ». C'est ce que rend une
-    /// `DuplicateOutput` tentée pendant que Windows reconfigure sa topologie —
-    /// le cas nominal quand une autre fenêtre s'ouvre au même instant.
+    /// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` says in its own label that the
+    /// resource "may be later". That is what a
+    /// `DuplicateOutput` attempted while Windows reconfigures its topology returns —
+    /// the nominal case when another window opens at the same instant.
     #[test]
     fn une_ouverture_est_retentable_sur_indisponibilite_ou_perte_d_acces() {
         assert!(est_ouverture_retentable(NON_DISPONIBLE));
         assert!(est_ouverture_retentable(ACCES_PERDU));
     }
 
-    /// Un périphérique perdu ne reviendra pas, et un argument invalide n'est
-    /// pas une question de patience : les retenter ne ferait que retarder le
-    /// diagnostic de trois secondes.
+    /// A lost device will not come back, and an invalid argument is
+    /// not a matter of patience: retrying them would only delay the
+    /// diagnosis by three seconds.
     #[test]
     fn une_ouverture_n_est_pas_retentable_sur_une_panne_franche() {
         assert!(!est_ouverture_retentable(DEVICE_REMOVED));
-        assert!(!est_ouverture_retentable(0x80070057u32 as i32), "E_INVALIDARG");
+        assert!(
+            !est_ouverture_retentable(0x80070057u32 as i32),
+            "E_INVALIDARG"
+        );
         assert!(!est_ouverture_retentable(0), "S_OK");
     }
 
-    /// La fenêtre d'ouverture est plus COURTE que celle de la capture, et c'est
-    /// délibéré : un échec durable à l'ouverture doit se lire vite, la vraie
-    /// cause pouvant être un plafond de concurrence que nulle patience ne
-    /// franchit.
+    /// The opening window is SHORTER than the capture one, and it is
+    /// deliberate: a lasting failure at opening must show quickly, the real
+    /// cause possibly being a concurrency cap no patience
+    /// gets past.
     #[test]
     fn la_fenetre_d_ouverture_est_plus_courte_que_celle_de_la_capture() {
         assert!(DUREE_FENETRE_OUVERTURE < DUREE_FENETRE_REPRISE);
         assert!(DUREE_FENETRE_OUVERTURE >= std::time::Duration::from_secs(2));
     }
 
-    /// Une base d'instants qui ne lit pas l'horloge du système : le type sous
-    /// test n'en lit aucune, c'est tout l'intérêt.
+    /// A base of instants that does not read the system clock: the type under
+    /// test reads none, that is the whole point.
     fn t(base: std::time::Instant, ms: u64) -> std::time::Instant {
         base + std::time::Duration::from_millis(ms)
     }
@@ -196,69 +211,65 @@ mod tests {
     #[test]
     fn la_premiere_perte_fait_rouvrir_tout_de_suite() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         assert_eq!(fenetre.tenter(t(base, 0)), Tentative::Rouvrir);
         assert_eq!(fenetre.tentatives(), 1);
     }
 
-    /// Le défaut que la mesure a relevé : trois tentatives sans délai étaient
-    /// brûlées en 14 à 21 ms, alors que la topologie met jusqu'à 3 s à se
-    /// stabiliser. Le pas d'attente est ce qui empêche cela.
+    /// The defect the measurement found: three attempts without delay were
+    /// burnt in 14 to 21 ms, while the topology takes up to 3 s to
+    /// stabilise. The wait step is what prevents that.
     #[test]
     fn une_seconde_tentative_trop_proche_fait_patienter() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         assert_eq!(fenetre.tenter(t(base, 5)), Tentative::Patienter);
         assert_eq!(fenetre.tenter(t(base, 20)), Tentative::Patienter);
-        assert_eq!(
-            fenetre.tentatives(),
-            1,
-            "patienter n'est pas une tentative"
-        );
+        assert_eq!(fenetre.tentatives(), 1, "waiting is not an attempt");
     }
 
     #[test]
-    fn le_pas_ecoule_fait_rouvrir_a_nouveau() {
+    fn the_elapsed_step_reopens_again() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         let apres_le_pas = PAS_REPRISE.as_millis() as u64;
         assert_eq!(fenetre.tenter(t(base, apres_le_pas)), Tentative::Rouvrir);
         assert_eq!(fenetre.tentatives(), 2);
     }
 
-    /// La fenêtre doit couvrir largement les 3 s que ce dépôt admet déjà pour
-    /// qu'une topologie se stabilise (`DELAI_TOPOLOGIE`).
+    /// The window must amply cover the 3 s this repository already admits for
+    /// a topology to stabilise (`DELAI_TOPOLOGIE`).
     #[test]
     fn la_fenetre_couvre_largement_la_stabilisation_de_la_topologie() {
         assert!(
             DUREE_FENETRE_REPRISE >= std::time::Duration::from_secs(6),
-            "la sonde post-mortem a réussi à 3 s ; une fenêtre qui ne les \
-             couvrirait pas au double reproduirait le défaut mesuré"
+            "the post-mortem probe succeeded at 3 s; a window that would not \
+             cover twice that would reproduce the measured defect"
         );
         assert!(
             PAS_REPRISE < DUREE_FENETRE_REPRISE / 10,
-            "un pas trop grand devant la fenêtre retarderait la reprise réelle"
+            "a step too large relative to the window would delay the real recovery"
         );
     }
 
     #[test]
     fn la_fenetre_expire_au_bout_de_sa_duree() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         let apres = DUREE_FENETRE_REPRISE.as_millis() as u64 + 1;
         assert_eq!(fenetre.tenter(t(base, apres)), Tentative::Expiree);
     }
 
-    /// L'expiration se compte depuis l'OUVERTURE de la fenêtre, pas depuis la
-    /// dernière tentative : sans quoi une reprise qui échoue indéfiniment ne
-    /// finirait jamais.
+    /// Expiry is counted from the window's OPENING, not from the
+    /// last attempt: otherwise a resumption that fails indefinitely would
+    /// never end.
     #[test]
     fn l_expiration_se_compte_depuis_l_ouverture_et_non_depuis_la_derniere_tentative() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         let pas = PAS_REPRISE.as_millis() as u64;
         let mut instant = 0;
         while instant < DUREE_FENETRE_REPRISE.as_millis() as u64 {
@@ -268,15 +279,15 @@ mod tests {
         assert_eq!(fenetre.tenter(t(base, instant)), Tentative::Expiree);
     }
 
-    /// La fenêtre se referme sur un succès d'acquisition, `Ok(None)` compris —
-    /// c'est-à-dire dès que DXGI cesse de refuser, même sans image neuve. Un
-    /// bureau immobile ne produit aucune image pendant de longues périodes, et
-    /// une fenêtre qui ne se refermerait que sur une image livrée
-    /// transformerait des pertes rares et sans rapport en une usure.
+    /// The window closes on an acquisition success, `Ok(None)` included —
+    /// that is as soon as DXGI stops refusing, even without a new frame. An
+    /// idle desktop produces no frame for long periods, and
+    /// a window that only closed on a delivered frame
+    /// would turn rare and unrelated losses into wear.
     #[test]
     fn un_succes_referme_la_fenetre_qui_rouvre_alors_pleine() {
         let base = std::time::Instant::now();
-        let mut fenetre = FenetreDeReprise::nouvelle();
+        let mut fenetre = FenetreDeReprise::new();
         fenetre.tenter(t(base, 0));
         fenetre.succes();
         assert_eq!(fenetre.tentatives(), 0);
@@ -285,12 +296,12 @@ mod tests {
         assert_eq!(
             fenetre.tenter(t(base, tard)),
             Tentative::Rouvrir,
-            "une perte d'accès bien plus tard ouvre une fenêtre NEUVE"
+            "an access loss much later opens a FRESH window"
         );
         assert_eq!(
             fenetre.tenter(t(base, tard + DUREE_FENETRE_REPRISE.as_millis() as u64 + 1)),
             Tentative::Expiree,
-            "et cette fenêtre neuve court depuis SA propre ouverture"
+            "and this fresh window runs from ITS own opening"
         );
     }
 }

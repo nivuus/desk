@@ -1,105 +1,105 @@
--- Le televersement d un installeur, et l installation qui en decoule.
+-- The upload of an installer, and the installation that follows from it.
 --
--- ⚠️ CE FICHIER NE PORTE NI APOSTROPHE NI GUILLEMET, y compris dans ses
--- commentaires : `rendreMarqueurs` (base/pilote.ts) REFUSE tout SQL qui en
--- porte, et la migration ne serait pas jouable. C est la convention de ses
--- cinq voisines, et elle explique la prose sans elisions qui suit.
+-- ⚠️ THIS FILE CARRIES NEITHER APOSTROPHE NOR DOUBLE QUOTE, including in its
+-- comments: `rendreMarqueurs` (base/pilote.ts) REFUSES any SQL that
+-- carries one, and the migration could not be played. It is the convention of its
+-- five neighbours, and it explains the contraction-free prose that follows.
 --
--- 🔴 POURQUOI TOUTES LES COLONNES NAISSENT ICI. Un ALTER TABLE ADD COLUMN NOT
--- NULL sans DEFAUT est REFUSE par SQLite des que la table porte une ligne, et
--- un DEFAUT litteral est impossible (voir ci-dessus). Toute colonne
--- obligatoire qu un sous-bloc ULTERIEUR voudrait ajouter serait donc
--- inajoutable des le premier televersement : elles naissent toutes maintenant.
+-- 🔴 WHY ALL THE COLUMNS ARE BORN HERE. An ALTER TABLE ADD COLUMN NOT
+-- NULL without a DEFAULT is REFUSED by SQLite as soon as the table carries a row, and
+-- a literal DEFAULT is impossible (see above). Any mandatory
+-- column a LATER sub-block wanted to add would therefore be
+-- impossible to add from the first upload: they are all born now.
 --
--- 🔴 LES CLES ETRANGERES NAISSENT AVEC LEURS TABLES, ET SANS ON DELETE. SQLite
--- ne sait pas ajouter une contrainte par ALTER TABLE : une cle etrangere nait
--- avec sa table ou n existe jamais (leg n°2 du sous-bloc P1). Et elles sont
--- APPLIQUEES des deux cotes -- pilote-sqlite.ts pose PRAGMA foreign_keys = ON.
+-- 🔴 THE FOREIGN KEYS ARE BORN WITH THEIR TABLES, AND WITHOUT ON DELETE. SQLite
+-- cannot add a constraint through ALTER TABLE: a foreign key is born
+-- with its table or never exists (legacy item no. 2 of sub-block P1). And they are
+-- ENFORCED on both sides -- pilote-sqlite.ts sets PRAGMA foreign_keys = ON.
 --
--- ⚠️ L ABSENCE d ON DELETE est le choix de `application.vm_id`, reconduit : une
--- ligne orpheline n est inserable NULLE PART, et supprimer un televersement
--- qu une installation reference est REFUSE. C est voulu -- l historique d une
--- installation doit rester lisible, et les TRANCHES du disque, elles, sont
--- balayees par ailleurs.
+-- ⚠️ The ABSENCE of ON DELETE is the choice of `application.vm_id`, carried over: an
+-- orphan row can be inserted NOWHERE, and deleting an upload
+-- that an installation references is REFUSED. It is intended -- the history of an
+-- installation must stay readable, and the CHUNKS on disk, for their part, are
+-- swept elsewhere.
 --
--- Les horodatages sont BIGINT et non INTEGER : INTEGER vaut 4 octets sur
--- Postgres, ou un Date.now() deborde. Ils portent tous la convention `_a`,
--- sans laquelle le lint statique de sous-ensemble.test.ts ne peut pas les
--- voir.
+-- The timestamps are BIGINT and not INTEGER: INTEGER is 4 bytes on
+-- Postgres, where a Date.now() overflows. They all carry the `_a` convention,
+-- without which the static lint of sous-ensemble.test.ts cannot
+-- see them.
 
--- Un fichier depose par un utilisateur, decoupe en tranches sur le disque du
--- service. Les tranches ne sont JAMAIS assemblees : le scellement est une
--- passe de flux qui recalcule le SHA-256, et la reprise est un LISTAGE de
--- repertoire -- jamais une comptabilite qui pourrait diverger du disque.
+-- A file dropped by a user, cut into chunks on the disk of the
+-- service. The chunks are NEVER assembled: sealing is a
+-- stream pass that recomputes the SHA-256, and resumption is a directory
+-- LISTING -- never a bookkeeping that could diverge from the disk.
 CREATE TABLE televersement (
     id              TEXT PRIMARY KEY,
-    -- Le proprietaire. Toute route verifie cette colonne et rend le MEME refus
-    -- indistinguable qu une ressource inconnue : distinguer les deux serait un
-    -- oracle d enumeration, et le proprietaire du depot a tranche ce point
-    -- pour le sous-bloc G1.
+    -- The owner. Every route checks this column and returns the SAME refusal,
+    -- indistinguishable from an unknown resource: telling the two apart would be an
+    -- enumeration oracle, and the owner of the repository settled this point
+    -- for sub-block G1.
     utilisateur_id  TEXT NOT NULL REFERENCES utilisateur(id),
-    -- Le nom tel que le NAVIGATEUR l annonce. Il est ASSAINI cote agent avant
-    -- de devenir un chemin -- jamais ici, ou il n est qu une donnee.
+    -- The name as the BROWSER announces it. It is SANITISED on the agent side before
+    -- becoming a path -- never here, where it is only data.
     nom             TEXT NOT NULL,
     taille          BIGINT NOT NULL,
-    -- L empreinte du fichier ENTIER, annoncee a la creation par le navigateur
-    -- et RECALCULEE au scellement. Une seule valeur, comparable partout, y
-    -- compris par un humain avec un sha256sum.
+    -- The hash of the WHOLE file, announced at creation by the browser
+    -- and RECOMPUTED at sealing. A single value, comparable everywhere,
+    -- including by a human with a sha256sum.
     sha256          TEXT NOT NULL,
-    -- Fige a la creation : le decoupage ne doit pas changer sous les tranches
-    -- deja deposees.
+    -- Frozen at creation: the split must not change under the chunks
+    -- already dropped.
     taille_tranche  BIGINT NOT NULL,
     cree_a          BIGINT NOT NULL,
-    -- NULL tant que le scellement n a pas eu lieu. Un televersement non scelle
-    -- n est JAMAIS servi a un agent : il recevrait un fichier partiel dont
-    -- l empreinte echouerait, et un refus au bon endroit vaut mieux qu un
-    -- refus au bon moment.
+    -- NULL until the sealing has taken place. An unsealed upload
+    -- is NEVER served to an agent: it would receive a partial file whose
+    -- hash would fail, and a refusal at the right place is better than a
+    -- refusal at the right time.
     scelle_a        BIGINT NULL
 );
 
 CREATE INDEX televersement_par_utilisateur ON televersement(utilisateur_id);
 
--- Une demande d installation, sur une VM nommee, d un televersement scelle.
+-- A request to install, on a named VM, a sealed upload.
 CREATE TABLE installation (
     id               TEXT PRIMARY KEY,
     vm_id            TEXT NOT NULL REFERENCES vm(id),
     televersement_id TEXT NOT NULL REFERENCES televersement(id),
     demandee_a       BIGINT NOT NULL,
-    -- en_attente | en_cours | terminee. La plateforme cesse de REEMETTRE
-    -- l ordre des qu il n est plus en_attente : c est la premiere des deux
-    -- ceintures contre une double execution, la seconde etant le marqueur sur
-    -- le disque de la VM.
+    -- en_attente | en_cours | terminee. The platform stops RE-EMITTING
+    -- the order as soon as it is no longer en_attente: it is the first of the two
+    -- belts against a double execution, the second being the marker on
+    -- the disk of the VM.
     etat             TEXT NOT NULL,
-    -- transfert | execution | reconciliation, ou la chaine vide tant que rien
-    -- n a commence. ⚠️ `empreinte` n est PAS une phase de ce canal : elle se
-    -- deroule dans le navigateur, avant que ce service n ait une ligne a
-    -- ecrire.
+    -- transfert | execution | reconciliation, or the empty string as long as nothing
+    -- has started. ⚠️ `empreinte` is NOT a phase of this channel: it takes
+    -- place in the browser, before this service has a row to
+    -- write.
     phase            TEXT NOT NULL,
     octets_faits     BIGINT NOT NULL,
-    -- Vaut zero en phase `execution`, ou il n y a rien a totaliser : un
-    -- installeur ne publie aucun pourcentage, et en inventer un serait mentir.
+    -- Is zero in the `execution` phase, where there is nothing to total: an
+    -- installer publishes no percentage, and inventing one would be lying.
     octets_total     BIGINT NOT NULL,
     ecoule_ms        BIGINT NOT NULL,
-    -- 🔴 NULL veut dire QUE LE CODE N A PAS PU ETRE RECUEILLI, et c est un fait
-    -- different de tout code entier. Une sentinelle -1 les confondrait. Il est
-    -- RAPPORTE, jamais interprete : msiexec rend 3010 pour un succes qui
-    -- demande un redemarrage, et beaucoup d installeurs rendent 0 apres une
-    -- annulation.
+    -- 🔴 NULL means THAT THE CODE COULD NOT BE COLLECTED, and that is a fact
+    -- different from any integer code. A -1 sentinel would conflate them. It is
+    -- REPORTED, never interpreted: msiexec returns 3010 for a success that
+    -- requests a restart, and many installers return 0 after a
+    -- cancellation.
     code_sortie      INTEGER NULL,
-    -- reussie | sans-effet | issue-inconnue | refusee. NULL tant que
-    -- l installation n est pas terminee.
+    -- reussie | sans-effet | issue-inconnue | refusee. NULL as long as
+    -- the installation is not finished.
     issue            TEXT NULL,
-    -- Le motif d un refus, et NULL autrement.
+    -- The reason for a refusal, and NULL otherwise.
     motif            TEXT NULL,
-    -- La QUEUE du journal de l installeur, bornee. ⚠️ Un journal vide est le
-    -- cas NORMAL : la plupart des installeurs Windows sont graphiques et
-    -- n ecrivent rien sur les flux standard.
+    -- The TAIL of the installer log, bounded. ⚠️ An empty log is the
+    -- NORMAL case: most Windows installers are graphical and
+    -- write nothing to the standard streams.
     journal          TEXT NULL,
     journal_tronque  INTEGER NOT NULL,
     terminee_a       BIGINT NULL,
     maj_a            BIGINT NOT NULL
 );
 
--- C est la requete de la reemission a l enrolement : les installations
--- en_attente d une VM donnee.
+-- It is the query of the re-emission at enrolment: the installations
+-- en_attente for a given VM.
 CREATE INDEX installation_par_vm_et_etat ON installation(vm_id, etat);

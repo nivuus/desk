@@ -1,13 +1,13 @@
-// L'unique implémentation d'`Orchestrateur` de la v1, sous les DEUX moteurs.
+// The only `Orchestrateur` implementation of v1, under BOTH engines.
 //
-// 🔴 L'HORLOGE EST INJECTÉE, et c'est ce qui rend la borne du critère ④
-// assiégeable des deux côtés. Un `Date.now()` lu dans le module ne laisserait
-// qu'un seul instant observable, et le seuil ne serait jamais franchi dans une
-// exécution de test.
+// 🔴 THE CLOCK IS INJECTED, and it is what makes the bound of criterion ④
+// besiegeable from both sides. A `Date.now()` read in the module would leave
+// only one observable instant, and the threshold would never be crossed in a
+// test run.
 //
-// ⚠️ SEIZE TESTS ET NON LES QUINZE DU PLAN, annoncé avant d'être lu : le plan
-// ne donne aucune ligne à `lister`, alors que la conversion `LigneVm` -> `Vm`
-// (snake_case vers camelCase) est du code qui peut casser en silence.
+// ⚠️ SIXTEEN TESTS AND NOT THE PLAN'S FIFTEEN, announced before being read: the plan
+// gives no line to `lister`, whereas the `LigneVm` -> `Vm` conversion
+// (snake_case to camelCase) is code that can break silently.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
@@ -15,7 +15,7 @@ import type { Pilote } from '../base/pilote';
 import { SEUIL_INJOIGNABLE_MS } from '../agents/fraicheur';
 import { enroler, marquerVu } from '../depot/agent';
 import { lireParId } from '../depot/vm';
-import { creerUtilisateur } from '../depot/utilisateur';
+import { createUser } from '../depot/utilisateur';
 import { BACKEND_STATIQUE } from './refus';
 import { inventaireStatique } from './inventaire-statique';
 
@@ -33,24 +33,24 @@ async function poserVm(p: Pilote, id: string, nom: string): Promise<void> {
     await p.executer('INSERT INTO vm(id, nom, adresse) VALUES(?, ?, ?)', [id, nom, '192.168.3.2']);
 }
 
-async function poserUtilisateur(p: Pilote, email: string): Promise<string> {
-    return creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+async function seedUser(p: Pilote, email: string): Promise<string> {
+    return createUser(p, email, 'empreinte-opaque-de-test', MS);
 }
 
-/// Une horloge FIGÉE mais réglable : chaque test pose l'instant qu'il éprouve.
+/// A FROZEN but adjustable clock: each test sets the instant it tests.
 function horlogeA(instant: number): () => number {
     return () => instant;
 }
 
-describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
-    it('🔴 `instantane` REFUSE par un type — motif, opération, backend', async () => {
-        // 🔴 La rouge : le remplacer par un `return` silencieux. C'est
-        // LITTÉRALEMENT le critère ① — « une opération que le backend ne sait
-        // pas faire rend un refus typé, jamais un silence ».
+describe(`inventaireStatique, engine=${MOTEUR}`, () => {
+    it('🔴 `instantane` REFUSES with a type — reason, operation, backend', async () => {
+        // 🔴 The red: replacing it with a silent `return`. It is
+        // LITERALLY criterion ① — "an operation the backend does not know
+        // how to do returns a typed refusal, never silence".
         base = await baseNeuve('inv-instantane');
         await poserVm(base, 'v1', 'w1');
         const o = inventaireStatique(base, horlogeA(MS));
-        expect(await o.instantane('v1', 'avant-mise-a-jour')).toEqual({
+        expect(await o.instantane('v1', 'before-update')).toEqual({
             ok: false,
             motif: 'non-supporte',
             operation: 'instantane',
@@ -58,34 +58,34 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 `instantane` JOURNALISE son refus', async () => {
-        // 🔴 La rouge : retirer le `console.warn`. ⚠️ `it()` DISTINCT du
-        // précédent, et c'est la leçon ①A/①A-bis de P2 : `expect` interrompt
-        // un test à sa première assertion fausse, si bien qu'une seconde
-        // assertion placée ici ne serait éprouvée par RIEN.
+    it('🔴 `instantane` LOGS its refusal', async () => {
+        // 🔴 The red: removing the `console.warn`. ⚠️ `it()` DISTINCT from the
+        // previous one, and it is P2's lesson ①A/①A-bis: `expect` interrupts
+        // a test at its first false assertion, so that a second
+        // assertion placed here would be tested by NOTHING.
         base = await baseNeuve('inv-instantane-journal');
         await poserVm(base, 'v1', 'w1');
         const avertir = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const o = inventaireStatique(base, horlogeA(MS));
-        await o.instantane('v1', 'avant-mise-a-jour');
+        await o.instantane('v1', 'before-update');
         expect(avertir).toHaveBeenCalledTimes(1);
-        // La ligne nomme l'opération ET le backend : un refus qu'on lit dans un
-        // journal sans savoir de quoi il parle n'informe pas.
+        // The line names the operation AND the backend: a refusal read in a
+        // log without knowing what it is about does not inform.
         const ligne = String(avertir.mock.calls[0][0]);
         expect(ligne).toContain('instantane');
         expect(ligne).toContain(BACKEND_STATIQUE);
     });
 
-    it('`demarrer` refuse de même', async () => {
-        // ⚠️ Les trois verbes partagent UNE SEULE fonction `refuser…`, si bien
-        // que ce test éprouve la même ligne que le précédent. Il existe quand
-        // même : un verbe qui cesserait un jour de passer par elle ne se
-        // verrait pas autrement. Le coût est deux tests presque identiques, et
-        // il est payé.
-        base = await baseNeuve('inv-demarrer');
+    it('`demarrer` refuses the same way', async () => {
+        // ⚠️ The three verbs share ONE SINGLE `refuser…` function, so
+        // that this test tests the same line as the previous one. It exists
+        // anyway: a verb that one day stopped going through it would not be
+        // seen otherwise. The cost is two almost identical tests, and
+        // it is paid.
+        base = await baseNeuve('inv-start');
         await poserVm(base, 'v1', 'w1');
         const o = inventaireStatique(base, horlogeA(MS));
-        expect(await o.demarrer('v1')).toEqual({
+        expect(await o.start('v1')).toEqual({
             ok: false,
             motif: 'non-supporte',
             operation: 'demarrer',
@@ -93,11 +93,11 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('`arreter` refuse de même', async () => {
-        // ⚠️ `arreter` n'est nommé par AUCUN critère de la spec — `instantane`
-        // seul l'est. Il est refusé quand même, pour la raison de §3.6 : une
-        // opération que le backend ne sait pas faire rend un refus typé. Le
-        // dire ici évite qu'un lecteur croie à un oubli.
+    it('`arreter` refuses the same way', async () => {
+        // ⚠️ `arreter` is named by NO criterion of the spec — `instantane`
+        // alone is. It is refused anyway, for the reason of §3.6: an
+        // operation the backend does not know how to do returns a typed refusal. Saying
+        // so here prevents a reader from believing it an oversight.
         base = await baseNeuve('inv-arreter');
         await poserVm(base, 'v1', 'w1');
         const o = inventaireStatique(base, horlogeA(MS));
@@ -109,16 +109,16 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 `lister` convertit la ligne en `Vm`, sans perdre un champ', async () => {
-        // 🔴 La rouge : oublier un champ dans la conversion `LigneVm` -> `Vm`.
-        // `prefixe_session` -> `prefixe` et `vu_a` -> `vuA` sont deux
-        // renommages, donc deux occasions de rendre `undefined` en silence —
-        // et `undefined` n'est pas `null` : `etatDe` distingue le second.
+    it('🔴 `lister` converts the row into a `Vm`, without losing a field', async () => {
+        // 🔴 The red: forgetting a field in the `LigneVm` -> `Vm` conversion.
+        // `prefixe_session` -> `prefixe` and `vu_a` -> `vuA` are two
+        // renames, hence two opportunities to return `undefined` silently —
+        // and `undefined` is not `null`: `etatDe` distinguishes the latter.
         base = await baseNeuve('inv-lister');
         await poserVm(base, 'v1', 'w1');
         await enroler(base, 'v1', 'empreinte-opaque', 'PREFIXEv1');
         await marquerVu(base, 'v1', MS);
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         await inventaireStatique(base, horlogeA(MS)).attribuer('v1', alice);
 
         const [vm] = await inventaireStatique(base, horlogeA(MS)).lister();
@@ -126,18 +126,18 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
             id: 'v1',
             nom: 'w1',
             adresse: '192.168.3.2',
-            utilisateurId: alice,
+            userId: alice,
             prefixe: 'PREFIXEv1',
             vuA: MS,
         });
     });
 
-    it('🔴 `etat` : `prete` à vu_a + SEUIL EXACTEMENT, `injoignable` une ms plus tard', async () => {
-        // 🔴 La rouge : figer l'horloge injectée (par exemple lire `Date.now()`
-        // dans le module). La borne ne serait plus assiégée des deux côtés, et
-        // un seuil jamais atteint ne prouve rien. La borne est FRANCHE et du
-        // côté de `prete` — `agents/fraicheur.ts` l'écrit ainsi précisément
-        // pour cela.
+    it('🔴 `etat`: `prete` at vu_a + THRESHOLD EXACTLY, `injoignable` one ms later', async () => {
+        // 🔴 The red: freezing the injected clock (for example reading `Date.now()`
+        // in the module). The bound would no longer be besieged from both sides, and
+        // a threshold never reached proves nothing. The bound is STRICT and on the
+        // `prete` side — `agents/fraicheur.ts` writes it that way precisely
+        // for this.
         base = await baseNeuve('inv-etat-borne');
         await poserVm(base, 'v1', 'w1');
         await enroler(base, 'v1', 'empreinte-opaque', 'PREFIXEv1');
@@ -149,51 +149,51 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
             .toBe('injoignable');
     });
 
-    it('🔴 `etat` d’une VM JAMAIS VUE rend `injoignable`', async () => {
-        // 🔴 La rouge : rendre `prete`. `vu_a` naît `null` à l'enrôlement
-        // (`depot/agent.ts`) : une VM enrôlée mais jamais démarrée serait
-        // annoncée prête, et l'erreur ne se verrait qu'au moment d'ouvrir une
-        // session sur une machine éteinte.
+    it('🔴 `etat` of a NEVER SEEN VM returns `injoignable`', async () => {
+        // 🔴 The red: returning `prete`. `vu_a` is born `null` at enrolment
+        // (`depot/agent.ts`): a VM enrolled but never started would be
+        // announced ready, and the error would only show when opening a
+        // session on a switched-off machine.
         base = await baseNeuve('inv-etat-jamais-vue');
         await poserVm(base, 'v1', 'w1');
         await enroler(base, 'v1', 'empreinte-opaque', 'PREFIXEv1');
         expect(await inventaireStatique(base, horlogeA(MS)).etat('v1')).toBe('injoignable');
     });
 
-    it('`etat` d’une VM INCONNUE rend `injoignable`, jamais une exception', async () => {
-        // 🔴 La rouge : lever. Une exception remonterait en 500 là où il n'y a
-        // rien d'anormal — et sur une route ce serait un oracle d'énumération.
+    it('`etat` of an UNKNOWN VM returns `injoignable`, never an exception', async () => {
+        // 🔴 The red: throwing. An exception would bubble up as a 500 where there is
+        // nothing abnormal — and on a route it would be an enumeration oracle.
         base = await baseNeuve('inv-etat-inconnue');
         expect(await inventaireStatique(base, horlogeA(MS)).etat('v-inexistante'))
             .toBe('injoignable');
     });
 
-    it('🔴 `attribuer` sur une VM libre rend `{ok:true}`', async () => {
+    it('🔴 `attribuer` on a free VM returns `{ok:true}`', async () => {
         base = await baseNeuve('inv-attrib-ok');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         expect(await inventaireStatique(base, horlogeA(MS)).attribuer('v1', alice))
             .toEqual({ ok: true });
     });
 
-    it('🔴 …et la LIGNE porte le propriétaire', async () => {
-        // ⚠️ `it()` DISTINCT : le verdict et l'état relu sont deux assertions,
-        // et un `attribuer` qui rendrait `{ok:true}` sans rien écrire passerait
-        // la première.
+    it('🔴 …and the ROW carries the owner', async () => {
+        // ⚠️ `it()` DISTINCT: the verdict and the reread state are two assertions,
+        // and an `attribuer` that returned `{ok:true}` without writing anything would pass
+        // the first.
         base = await baseNeuve('inv-attrib-ok-etat');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         await inventaireStatique(base, horlogeA(MS)).attribuer('v1', alice);
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
     });
 
-    it('🔴 `attribuer` sur une VM DÉJÀ PRISE rend `vm-deja-attribuee`', async () => {
-        // 🔴 La rouge : retirer la clause `AND utilisateur_id IS NULL` de
-        // `depot/vm.ts`. MESURÉ sur les deux moteurs : le vol passe alors.
+    it('🔴 `attribuer` on an ALREADY TAKEN VM returns `vm-deja-attribuee`', async () => {
+        // 🔴 The red: removing the `AND utilisateur_id IS NULL` clause from
+        // `depot/vm.ts`. MEASURED on both engines: the theft then passes.
         base = await baseNeuve('inv-attrib-prise');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         const o = inventaireStatique(base, horlogeA(MS));
         await o.attribuer('v1', alice);
         expect(await o.attribuer('v1', bob)).toEqual({
@@ -204,28 +204,28 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('🔴 …et le propriétaire N’A PAS changé', async () => {
-        // ⚠️ `it()` DISTINCT : c'est la propriété ②a elle-même, et elle porte
-        // sur l'ÉTAT, pas sur le verdict.
+    it('🔴 …and the owner has NOT changed', async () => {
+        // ⚠️ `it()` DISTINCT: it is property ②a itself, and it bears
+        // on the STATE, not on the verdict.
         base = await baseNeuve('inv-attrib-prise-etat');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         const o = inventaireStatique(base, horlogeA(MS));
         await o.attribuer('v1', alice);
         await o.attribuer('v1', bob);
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
     });
 
-    it('🔴 `attribuer` à qui a DÉJÀ une VM rend `utilisateur-servi` et NE LÈVE PAS', async () => {
-        // 🔴 La rouge : supprimer la traduction. L'exception d'unicité
-        // remonterait, et la couche HTTP rendrait **500** — c'est la troisième
-        // assertion du critère ②, « violation d'index traduite en refus typé,
-        // jamais en 500 ».
+    it('🔴 `attribuer` to someone who ALREADY has a VM returns `utilisateur-servi` and DOES NOT THROW', async () => {
+        // 🔴 The red: removing the translation. The uniqueness exception
+        // would bubble up, and the HTTP layer would return **500** — it is the third
+        // assertion of criterion ②, "index violation translated into a typed refusal,
+        // never into a 500".
         base = await baseNeuve('inv-attrib-servi');
         await poserVm(base, 'v1', 'w1');
         await poserVm(base, 'v2', 'w2');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         const o = inventaireStatique(base, horlogeA(MS));
         await o.attribuer('v1', alice);
         expect(await o.attribuer('v2', alice)).toEqual({
@@ -237,9 +237,9 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, 'v2'))?.utilisateur_id).toBeNull();
     });
 
-    it('`attribuer` sur une VM INCONNUE rend `vm-inconnue`', async () => {
+    it('`attribuer` on an UNKNOWN VM returns `vm-inconnue`', async () => {
         base = await baseNeuve('inv-attrib-inconnue');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
         expect(await inventaireStatique(base, horlogeA(MS)).attribuer('v-inexistante', alice))
             .toEqual({
                 ok: false,
@@ -249,18 +249,18 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
             });
     });
 
-    it('🔴 une exception ÉTRANGÈRE à l’unicité est RELANCÉE, jamais traduite', async () => {
-        // 🔴 La rouge : traduire TOUTE exception en `utilisateur-servi`. Une
-        // base injoignable serait alors présentée comme un refus métier — la
-        // panne muette exacte que la spec §6 interdit (« il ne démarre pas
-        // dégradé »). C'est le SEUL endroit du service où une exception est
-        // rattrapée, et ce `catch` ne doit jamais devenir muet.
+    it('🔴 an exception FOREIGN to uniqueness is RETHROWN, never translated', async () => {
+        // 🔴 The red: translating EVERY exception into `utilisateur-servi`. An
+        // unreachable database would then be presented as a business refusal — the exact
+        // silent failure spec §6 forbids ("it does not start
+        // degraded"). It is the ONLY place in the service where an exception is
+        // caught, and this `catch` must never become silent.
         //
-        // Le pilote factice répond aux lectures et LÈVE à l'écriture.
+        // The fake driver answers reads and THROWS on write.
         const factice: Pilote = {
             async interroger<T>(): Promise<T[]> {
-                // Une VM libre, et l'utilisateur n'en a aucune : les trois
-                // contrôles préalables passent, et l'on atteint l'écriture.
+                // A free VM, and the user has none: the three
+                // prior checks pass, and the write is reached.
                 return [
                     {
                         id: 'v1',
@@ -273,7 +273,7 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
                 ] as unknown as T[];
             },
             async executer() {
-                throw new Error('base injoignable');
+                throw new Error('database unreachable');
             },
             async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
                 return corps(factice);
@@ -282,25 +282,25 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         };
         await expect(
             inventaireStatique(factice, horlogeA(MS)).attribuer('v1', 'u-ada'),
-        ).rejects.toThrow(/base injoignable/);
+        ).rejects.toThrow(/database unreachable/);
     });
 
-    it('🔴 la VIOLATION D’INDEX est traduite en `utilisateur-servi`, jamais relancée', async () => {
-        // 🔴 CE TEST EXISTE PARCE QU'UNE MUTATION EST RESTÉE VERTE SANS LUI, et
-        // c'est le seul qui atteigne le `catch`. Le test « attribuer à qui a
-        // déjà une VM » passe par la LECTURE PRÉALABLE et n'arrive jamais à
-        // l'écriture : rendre le `catch` entièrement relançant laissait donc
-        // les seize tests verts, et la troisième assertion du critère ② —
-        // « violation d'index traduite en refus typé, JAMAIS en 500 » —
-        // n'était éprouvée par RIEN. MESURÉ, puis réparé ici.
+    it('🔴 the INDEX VIOLATION is translated into `utilisateur-servi`, never rethrown', async () => {
+        // 🔴 THIS TEST EXISTS BECAUSE A MUTATION STAYED GREEN WITHOUT IT, and
+        // it is the only one that reaches the `catch`. The test "assigning to someone who
+        // already has a VM" goes through the PRIOR READ and never reaches
+        // the write: making the `catch` entirely rethrowing therefore left
+        // all sixteen tests green, and the third assertion of criterion ② —
+        // "index violation translated into a typed refusal, NEVER into a 500" —
+        // was tested by NOTHING. MEASURED, then repaired here.
         //
-        // Le cas est celui de la COURSE : entre la lecture et l'écriture,
-        // l'utilisateur a acquis une autre VM ailleurs. La lecture préalable ne
-        // peut structurellement pas le voir ; c'est l'index partiel qui LÈVE, et
-        // c'est la relecture d'après `ROLLBACK` qui l'explique.
+        // The case is that of the RACE: between the read and the write,
+        // the user acquired another VM elsewhere. The prior read
+        // structurally cannot see it; it is the partial index that THROWS, and
+        // it is the reread after `ROLLBACK` that explains it.
         //
-        // 🔴 La rouge : faire relancer le `catch` sans traduire. La couche HTTP
-        // rendrait alors 500 sur ce qui est un refus métier.
+        // 🔴 The red: making the `catch` rethrow without translating. The HTTP layer
+        // would then return 500 on what is a business refusal.
         let lectures = 0;
         const enCourse: Pilote = {
             async interroger<T>(): Promise<T[]> {
@@ -309,10 +309,10 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
                     id: 'v1', nom: 'w1', adresse: '192.168.3.2',
                     utilisateur_id: null, prefixe_session: 'PREFIXEv1', vu_a: MS,
                 };
-                // La PREMIÈRE lecture, celle de la transaction, ne voit rien à
-                // l'utilisateur : les trois contrôles passent.
-                // La SECONDE, celle d'après le `ROLLBACK`, voit la VM qu'il
-                // vient d'acquérir — et c'est elle qui explique l'exception.
+                // The FIRST read, that of the transaction, sees nothing for the
+                // user: the three checks pass.
+                // The SECOND, that after the `ROLLBACK`, sees the VM they
+                // have just acquired — and it is what explains the exception.
                 const v2 = {
                     id: 'v2', nom: 'w2', adresse: '192.168.3.2',
                     utilisateur_id: lectures === 1 ? null : 'u-ada',
@@ -321,9 +321,9 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
                 return [v1, v2] as unknown as T[];
             },
             async executer() {
-                // Le texte imite un moteur, et AUCUN code ne le lit : les deux
-                // moteurs n'écrivent pas le même, et c'est l'état relu qui
-                // tranche.
+                // The text imitates an engine, and NO code reads it: the two
+                // engines do not write the same one, and it is the reread state that
+                // decides.
                 throw new Error('UNIQUE constraint failed: vm.utilisateur_id');
             },
             async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
@@ -338,23 +338,23 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
             operation: 'attribuer',
             backend: BACKEND_STATIQUE,
         });
-        // La relecture a bien EU LIEU : sans elle, le motif serait deviné.
+        // The reread did TAKE PLACE: without it, the reason would be guessed.
         expect(lectures).toBe(2);
     });
 
-    it('le PERDANT d’une course séquentielle reçoit `vm-deja-attribuee`', async () => {
-        // ⚠️ CE TEST EST SÉQUENTIEL ET NE MESURE PAS LA SÉRIALISATION : le
-        // perdant joue APRÈS le gagnant. Il éprouve la TRADUCTION du refus, pas
-        // le verrou. La sérialisation, elle, a été mesurée hors suite, sur
-        // PostgreSQL 16.15 seul, sur UNE paire de transactions — B bloque sur
-        // le verrou de ligne de A puis rend `0 ligne` après son `COMMIT`. Rien
-        // n'est établi au-delà de deux concurrents, et le cas ne peut pas être
-        // mesuré utilement sur `node:sqlite`, ouvert en `:memory:` dans un
-        // processus unique.
+    it('the LOSER of a sequential race receives `vm-deja-attribuee`', async () => {
+        // ⚠️ THIS TEST IS SEQUENTIAL AND DOES NOT MEASURE SERIALISATION: the
+        // loser plays AFTER the winner. It tests the TRANSLATION of the refusal, not
+        // the lock. The serialisation, for its part, was measured outside the suite, on
+        // PostgreSQL 16.15 alone, on ONE pair of transactions — B blocks on
+        // A's row lock then returns `0 rows` after its `COMMIT`. Nothing
+        // is established beyond two concurrent ones, and the case cannot be
+        // usefully measured on `node:sqlite`, opened as `:memory:` in a
+        // single process.
         base = await baseNeuve('inv-course');
         await poserVm(base, 'v1', 'w1');
-        const alice = await poserUtilisateur(base, 'alice@exemple.test');
-        const bob = await poserUtilisateur(base, 'bob@exemple.test');
+        const alice = await seedUser(base, 'alice@exemple.test');
+        const bob = await seedUser(base, 'bob@exemple.test');
         const gagnant = inventaireStatique(base, horlogeA(MS));
         const perdant = inventaireStatique(base, horlogeA(MS));
         expect(await gagnant.attribuer('v1', alice)).toEqual({ ok: true });

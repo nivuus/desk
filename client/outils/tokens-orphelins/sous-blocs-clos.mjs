@@ -1,59 +1,59 @@
-// LA MITIGATION DE LA CLAUSE ③ DU CONTRÔLE §7.6, ET TOUTE SA DOCTRINE.
+// THE MITIGATION OF CLAUSE ③ OF CHECK §7.6, AND ALL ITS DOCTRINE.
 //
-// 🔴 EXTRAIT DE `attente.mjs` PAR LA TÂCHE 6 DU SOUS-BLOC S4, ET LA DOCTRINE
-// EST PARTIE AVEC SA DONNÉE — la règle que `attente.mjs` porte lui-même, et que
-// `CLAUDE.md` exige nommément (« extraire, jamais compresser » ;
-// `serveur/instances.rs` a emporté `TAMPON` avec le commentaire qui le
-// justifie). Ce qui a forcé l'extraction est MESURÉ, et la mesure est écrite
-// ici plutôt qu'ailleurs :
+// 🔴 EXTRACTED FROM `attente.mjs` BY TASK 6 OF SUB-BLOCK S4, AND THE DOCTRINE
+// LEFT WITH ITS DATA — the rule `attente.mjs` itself carries, and that
+// `CLAUDE.md` explicitly requires ("extract, never compress";
+// `serveur/instances.rs` took `TAMPON` with the comment that
+// justifies it). What forced the extraction is MEASURED, and the measurement is written
+// here rather than elsewhere:
 //
-//   La tâche 6 devait faire MAIGRIR `attente.mjs` en en retirant la dernière
-//   entrée. Relevé par la commande le 20 août 2026 :
+//   Task 6 was supposed to SLIM DOWN `attente.mjs` by removing its last
+//   entry. Measured by the command on August 20th, 2026:
 //
-//     227  avant la tâche
-//     243  après le retrait de l'entrée ET l'écriture de ce qu'il signifie
-//          (+16, alors que le seuil d'extraction conditionnel vaut 240)
+//     227  before the task
+//     243  after removing the entry AND writing what it means
+//          (+16, whereas the conditional extraction threshold is 240)
 //
-//   L'entrée sortie pesait ~18 lignes ; ce qu'il fallait écrire pour que le
-//   fichier ne se fasse pas supprimer par le sous-bloc suivant en pesait
-//   davantage. C'est, EN PETIT, la leçon que ce dépôt a payée en grand — « une
-//   addition de commentaire peut annuler une extraction ». Le plan de S4
-//   prescrivait l'issue d'avance et sans ambiguïté : « si, contre toute
-//   attente, la tâche le fait croître au-delà, ELLE EXTRAIT, ELLE NE COMPRESSE
-//   PAS ». Aucune ligne de doctrine n'a été raccourcie pour atteindre un
-//   nombre : raboter aurait échangé une vérité contre un compte.
+//   The entry that left weighed ~18 lines; what had to be written for the
+//   file not to be deleted by the next sub-block weighed
+//   more. It is, IN SMALL, the lesson this repository paid for in large — "an
+//   addition of comment can cancel an extraction". The S4 plan
+//   prescribed the outcome in advance and unambiguously: "if, against all
+//   expectations, the task makes it grow beyond, IT EXTRACTS, IT DOES NOT
+//   COMPRESS". No line of doctrine was shortened to reach a
+//   number: planing it down would have traded a truth for a count.
 //
-// ⚠️ CE FICHIER N'A PAS DE TEST, et il n'en a pas besoin : il ne porte AUCUNE
-// logique, seulement une donnée et sa justification. Ce qui l'emploie est
-// `tokens-orphelins.mjs`, dont la clause ③ échoue quand une entrée nomme un
-// sous-bloc d'ici.
+// ⚠️ THIS FILE HAS NO TEST, and it does not need one: it carries NO
+// logic, only data and its justification. What uses it is
+// `tokens-orphelins.mjs`, whose clause ③ fails when an entry names a
+// sub-block from here.
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * LES SOUS-BLOCS CLOS DE ⑥ — aucune entrée de la liste ci-dessous n'a le droit
- * d'en nommer un.
+ * THE CLOSED SUB-BLOCKS OF ⑥ — no entry of the list below has the right
+ * to name one.
  *
- * 🔴 SA CLAUSE DE TENUE EST CELLE DE LA LISTE ELLE-MÊME : « ce nombre est tenu
- * à jour par la tâche qui le rend faux, jamais par une tâche de ménage plus
- * tard ». Un sous-bloc s'y inscrit dans le commit qui achève son
- * implémentation.
+ * 🔴 ITS UPKEEP CLAUSE IS THAT OF THE LIST ITSELF: "this number is kept
+ * up to date by the task that makes it wrong, never by a clean-up task
+ * later". A sub-block registers itself in the commit that completes its
+ * implementation.
  *
- * ⚠️ `S4` S'Y INSCRIT À SON TOUR, ET AVEC LA MÊME PROPRIÉTÉ QUE `S3` : la
- * recette et la revue transverse de S4 n'ont pas encore tourné quand cette
- * ligne s'écrit. Si l'une des deux devait ré-étiqueter une entrée vers « S4 »,
- * le contrôle rougirait — comportement voulu, un token que S4 n'a PAS consommé
- * ne doit pas réclamer S4. ⚠️ ET LA CLAUSE ③ EST DÉSORMAIS LA SEULE DES TROIS
- * QUI PUISSE ENCORE MORDRE SUR CE FICHIER, la liste étant vide : c'est
- * exactement la raison pour laquelle il reste.
+ * ⚠️ `S4` REGISTERS ITSELF IN TURN, AND WITH THE SAME PROPERTY AS `S3`: the
+ * acceptance run and the cross review of S4 have not run yet when this
+ * line is written. If either of them were to re-label an entry towards "S4",
+ * the check would go red — intended behaviour, a token S4 did NOT consume
+ * must not claim S4. ⚠️ AND CLAUSE ③ IS NOW THE ONLY ONE OF THE THREE
+ * THAT CAN STILL BITE ON THIS FILE, the list being empty: that is
+ * exactly the reason why it stays.
  *
- * ⚠️ `S3` S'Y EST INSCRIT LUI-MÊME, ET IL FAUT DIRE CE QUE CELA VEUT DIRE : au
- * moment où cette ligne est écrite, la recette et la revue transverse de S3
- * n'ont pas encore tourné. C'est délibéré, et la propriété obtenue est la
- * bonne — si l'une des deux devait re-étiqueter une entrée vers « S3 », le
- * contrôle rougirait, ce qui est exactement le comportement voulu : un token
- * que S3 n'a PAS consommé ne doit pas réclamer S3. Aucune des deux ne
- * re-étiquette quoi que ce soit ; la tâche 7 elle-même n'en re-étiquette
- * aucune — elle change la FORME, pas le contenu.
+ * ⚠️ `S3` REGISTERED ITSELF, AND ONE MUST SAY WHAT THAT MEANS: at the
+ * moment this line is written, the acceptance run and the cross review of S3
+ * have not run yet. It is deliberate, and the property obtained is the
+ * right one — if either of them were to re-label an entry towards "S3", the
+ * check would go red, which is exactly the intended behaviour: a token
+ * S3 did NOT consume must not claim S3. Neither of them
+ * re-labels anything; task 7 itself re-labels
+ * none — it changes the FORM, not the content.
  */
 const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3', 'S4']);
 

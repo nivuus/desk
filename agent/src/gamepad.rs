@@ -1,45 +1,45 @@
-//! Manette virtuelle : trois fichiers de nature différente.
+//! Virtual gamepad: three files of different natures.
 //!
-//! - `gamepad.rs` (ici) porte les logiques pures d'ordonnancement des états
-//!   reçus (`plus_recent`) et de limitation du débit des vibrations
-//!   (`LimiteurVibration`). Rien n'y est spécifique à Windows : elles vivent
-//!   hors de tout `#[cfg(windows)]` et se testent sur cette machine Linux.
-//! - `gamepad/win.rs` porte le module ViGEmBus définitif (`win`, sous
-//!   `#[cfg(windows)]`, tâche 10) : `VirtualPad` branche une manette Xbox
-//!   360 virtuelle et lui applique les états reçus, `spawn_rumble` relaie
-//!   ses notifications de vibration vers le client via le canal de
-//!   contrôle.
-//! - `gamepad/probe.rs` porte la sonde du chantier B (`probe`) : ViGEmBus
-//!   est-il utilisable, et son rappel de vibration restitue-t-il les
-//!   magnitudes ? **Gardée volontairement** malgré l'arrivée du module
-//!   définitif : elle reste appelée par `agent/src/diagnostics.rs`
-//!   (`VIGEM_PROBE`), et la tâche 16 (recette) prévoit explicitement de la
-//!   réutiliser pour relire l'état de la manette par `XInputGetState`.
+//! - `gamepad.rs` (here) carries the pure logic ordering the received
+//!   states (`plus_recent`) and limiting the rate of vibrations
+//!   (`LimiteurVibration`). Nothing in it is Windows-specific: they live
+//!   outside any `#[cfg(windows)]` and are tested on this Linux machine.
+//! - `gamepad/win.rs` carries the final ViGEmBus module (`win`, under
+//!   `#[cfg(windows)]`, task 10): `VirtualPad` plugs in a virtual Xbox
+//!   360 gamepad and applies the received states to it, `spawn_rumble` relays
+//!   its vibration notifications to the client through the control
+//!   channel.
+//! - `gamepad/probe.rs` carries the work stream B probe (`probe`): is ViGEmBus
+//!   usable, and does its vibration callback restore the
+//!   magnitudes? **Kept on purpose** despite the arrival of the final
+//!   module: it is still called by `agent/src/diagnostics.rs`
+//!   (`VIGEM_PROBE`), and task 16 (acceptance) explicitly plans to
+//!   reuse it to read the gamepad's state back through `XInputGetState`.
 
 use std::time::{Duration, Instant};
 
-/// Débit maximal des messages de vibration vers le client. Le canal de
-/// contrôle est FIABLE : l'inonder lui ferait accumuler du retard exactement
-/// quand le jeu produit le plus de vibrations.
+/// Maximum rate of vibration messages to the client. The control
+/// channel is RELIABLE: flooding it would make it accumulate delay exactly
+/// when the game produces the most vibrations.
 pub const PERIODE_MIN: Duration = Duration::from_millis(20);
 
-/// Vrai si `nouveau` succède à `courant` dans l'espace des séquences.
+/// True if `new` follows `current` in the sequence space.
 ///
-/// La soustraction en `u16` puis la relecture en `i16` traite le bouclage
-/// sans cas particulier : 0 succède bien à 65535.
-pub fn plus_recent(nouveau: u16, courant: u16) -> bool {
-    (nouveau.wrapping_sub(courant)) as i16 > 0
+/// Subtracting in `u16` then rereading as `i16` handles wraparound
+/// without a special case: 0 does follow 65535.
+pub fn plus_recent(new: u16, current: u16) -> bool {
+    (new.wrapping_sub(current)) as i16 > 0
 }
 
-/// Limite le débit des vibrations sans jamais perdre l'état courant.
+/// Limits the rate of vibrations without ever losing the current state.
 ///
-/// `observer` rend l'état à émettre immédiatement, ou `None` s'il est
-/// mémorisé. `echu`, appelée périodiquement, rend l'état mémorisé une fois le
-/// délai écoulé. Un état mémorisé écrase le précédent : seul le dernier
-/// décrit ce que le jeu demande.
+/// `observer` returns the state to emit immediately, or `None` if it is
+/// memorised. `echu`, called periodically, returns the memorised state once the
+/// delay has elapsed. A memorised state overwrites the previous one: only the last
+/// describes what the game asks for.
 pub struct LimiteurVibration {
-    dernier_emis: Option<(u8, u8)>,
-    dernier_envoi: Option<Instant>,
+    last_emitted: Option<(u8, u8)>,
+    last_send: Option<Instant>,
     en_attente: Option<(u8, u8)>,
 }
 
@@ -52,18 +52,18 @@ impl Default for LimiteurVibration {
 impl LimiteurVibration {
     pub fn new() -> Self {
         Self {
-            dernier_emis: None,
-            dernier_envoi: None,
+            last_emitted: None,
+            last_send: None,
             en_attente: None,
         }
     }
 
     pub fn observer(&mut self, maintenant: Instant, etat: (u8, u8)) -> Option<(u8, u8)> {
-        if self.dernier_emis == Some(etat) && self.en_attente.is_none() {
+        if self.last_emitted == Some(etat) && self.en_attente.is_none() {
             return None;
         }
         let assez_tot = self
-            .dernier_envoi
+            .last_send
             .is_none_or(|precedent| maintenant.duration_since(precedent) >= PERIODE_MIN);
         if assez_tot {
             self.emettre(maintenant, etat)
@@ -76,21 +76,21 @@ impl LimiteurVibration {
     pub fn echu(&mut self, maintenant: Instant) -> Option<(u8, u8)> {
         let etat = self.en_attente?;
         let assez_tot = self
-            .dernier_envoi
+            .last_send
             .is_none_or(|precedent| maintenant.duration_since(precedent) >= PERIODE_MIN);
         if !assez_tot {
             return None;
         }
         self.en_attente = None;
-        if self.dernier_emis == Some(etat) {
+        if self.last_emitted == Some(etat) {
             return None;
         }
         self.emettre(maintenant, etat)
     }
 
     fn emettre(&mut self, maintenant: Instant, etat: (u8, u8)) -> Option<(u8, u8)> {
-        self.dernier_emis = Some(etat);
-        self.dernier_envoi = Some(maintenant);
+        self.last_emitted = Some(etat);
+        self.last_send = Some(maintenant);
         self.en_attente = None;
         Some(etat)
     }
@@ -101,42 +101,42 @@ mod tests {
     use super::*;
 
     #[test]
-    fn un_etat_plus_recent_est_accepte() {
+    fn a_newer_state_is_accepted() {
         assert!(plus_recent(11, 10));
         assert!(plus_recent(1000, 1));
     }
 
     #[test]
-    fn un_etat_plus_ancien_est_rejete() {
+    fn an_older_state_is_rejected() {
         assert!(!plus_recent(9, 10));
         assert!(!plus_recent(1, 1000));
     }
 
     #[test]
-    fn un_etat_identique_est_rejete() {
+    fn an_identical_state_is_rejected() {
         assert!(!plus_recent(10, 10));
     }
 
     #[test]
-    fn le_bouclage_de_la_sequence_est_franchi_correctement() {
-        // Le point du champ `seq` : à 250 Hz, l'u16 boucle toutes les
-        // 4 minutes. Une comparaison naïve `nouveau > courant` rejetterait
-        // alors tous les états pendant une demi-boucle — soit deux minutes
-        // de manette figée.
+    fn the_sequence_wrap_is_crossed_correctly() {
+        // The point of the `seq` field: at 250 Hz, the u16 wraps every
+        // 4 minutes. A naive comparison `new > current` would then
+        // reject all states for half a loop — that is two minutes
+        // of frozen gamepad.
         assert!(plus_recent(0, 65535));
         assert!(plus_recent(3, 65533));
         assert!(!plus_recent(65535, 0));
     }
 
     #[test]
-    fn la_premiere_vibration_passe_immediatement() {
+    fn the_first_rumble_goes_through_immediately() {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         assert_eq!(limiteur.observer(t0, (200, 100)), Some((200, 100)));
     }
 
     #[test]
-    fn un_etat_identique_n_est_pas_reemis() {
+    fn an_identical_state_is_not_re_emitted() {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         limiteur.observer(t0, (200, 100));
@@ -144,20 +144,23 @@ mod tests {
     }
 
     #[test]
-    fn un_changement_trop_rapproche_est_differe_puis_emis() {
+    fn a_too_close_change_is_deferred_then_emitted() {
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         limiteur.observer(t0, (10, 0));
-        assert_eq!(limiteur.observer(t0 + Duration::from_millis(5), (20, 0)), None);
+        assert_eq!(
+            limiteur.observer(t0 + Duration::from_millis(5), (20, 0)),
+            None
+        );
         assert_eq!(limiteur.echu(t0 + Duration::from_millis(10)), None);
         assert_eq!(limiteur.echu(t0 + PERIODE_MIN), Some((20, 0)));
     }
 
     #[test]
-    fn seul_le_dernier_etat_differe_est_emis() {
-        // Une rafale de vibrations pendant la fenêtre de limitation ne doit
-        // pas produire une file d'états périmés : c'est le DERNIER qui décrit
-        // ce que le jeu demande maintenant.
+    fn only_the_last_deferred_state_is_emitted() {
+        // A burst of vibrations during the limiting window must
+        // not produce a queue of stale states: it is the LAST one that describes
+        // what the game asks for now.
         let t0 = Instant::now();
         let mut limiteur = LimiteurVibration::new();
         limiteur.observer(t0, (10, 0));

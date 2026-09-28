@@ -1,223 +1,222 @@
-//! Messages du canal plateforme <-> agent (`/agent`).
+//! Messages of the platform <-> agent channel (`/agent`).
 //!
-//! Format JSON versionné : `{"type":"...","v":2,...}` (`type` sert de tag
-//! interne à l'enum et est toujours émis en premier par serde). Le champ `v`
-//! est obligatoire et vérifié à la désérialisation : un message sans `v`, ou
-//! avec un `v` différent de [`PLATEFORME_VERSION`], est rejeté.
+//! Versioned JSON format: `{"type":"...","v":2,...}` (`type` serves as the internal
+//! tag of the enum and is always emitted first by serde). The `v` field
+//! is mandatory and checked on deserialization: a message without `v`, or
+//! with a `v` other than [`PLATEFORME_VERSION`], is rejected.
 //!
-//! ⚠️ CE MODULE EST DISTINCT DE [`crate::control`], ET CE N'EST PAS UN HASARD.
-//! `control` versionne le canal de données **agent <-> navigateur** ; celui-ci
-//! versionne le canal **agent <-> plateforme**. Les deux évoluent pour des
-//! raisons sans rapport, et une constante partagée forcerait chacun à bouger
-//! quand l'autre change — ce qui rendrait tout bump illisible.
+//! ⚠️ THIS MODULE IS DISTINCT FROM [`crate::control`], AND IT IS NO ACCIDENT.
+//! `control` versions the **agent <-> browser** data channel; this one
+//! versions the **agent <-> platform** channel. The two evolve for
+//! unrelated reasons, and a shared constant would force each to move
+//! when the other changes — which would make any bump unreadable.
 //!
-//! 🔴 CE QUI SE PASSE QUAND LES VERSIONS DIVERGENT N'EST PAS SYMÉTRIQUE, parce
-//! que les deux bouts n'ont pas le même pouvoir :
-//!   - l'agent envoie une version que la plateforme ne connaît pas : elle
-//!     répond `{v, type:"refus", motif:"version"}`, journalise AVEC la version
-//!     reçue, et ferme le socket. Aucune négociation à la baisse : il n'y a
-//!     qu'une version ;
-//!   - la plateforme envoie une version que l'agent ne connaît pas :
-//!     `serde_json::from_str` échoue, l'agent journalise avec le texte de
-//!     l'erreur et ferme le canal.
+//! 🔴 WHAT HAPPENS WHEN THE VERSIONS DIVERGE IS NOT SYMMETRIC, because
+//! the two ends do not have the same power:
+//!   - the agent sends a version the platform does not know: it
+//!     answers `{v, type:"refus", motif:"version"}`, logs WITH the version
+//!     received, and closes the socket. No downward negotiation: there is
+//!     only one version;
+//!   - the platform sends a version the agent does not know:
+//!     `serde_json::from_str` fails, the agent logs with the text of
+//!     the error and closes the channel.
 //!
-//! 🔴 UNE DIVERGENCE DE VERSION NE DOIT JAMAIS SE LIRE COMME UNE PANNE RÉSEAU.
-//! Un refus `version` NE SE RÉESSAIE PAS ; une chute de socket, si. Deux
-//! comportements, deux traces distinctes — sans quoi une incompatibilité de
-//! version se déguiserait en boucle de reconnexion infinie, qui est le mode de
-//! panne le plus coûteux à diagnostiquer.
+//! 🔴 A VERSION DIVERGENCE MUST NEVER READ AS A NETWORK FAILURE.
+//! A `version` refusal IS NOT RETRIED; a socket drop is. Two
+//! behaviours, two distinct traces — otherwise a version incompatibility
+//! would disguise itself as an infinite reconnection loop, which is the most
+//! costly failure mode to diagnose.
 //!
-//! ⚠️ **CE PARAGRAPHE A ÉTÉ RÉFUTÉ PAR LA MESURE, ET IL EST REDEVENU VRAI PAR
-//! LA CORRECTION DU 20 AOÛT 2026.** Le relevé qui l'a réfuté (recette du
-//! sous-bloc G1, UNE exécution, journal
-//! `docs/superpowers/plans/journaux-gestion-apps/step3-version-v1-contre-v2-plat.log`) :
-//! un agent v1 opposé à une plateforme v2 a journalisé **0** ligne « la
-//! plateforme REFUSE la version » et **10** couples « message de la plateforme
-//! illisible (version divergente ?) » / « reprise du canal /agent », jusqu'au
-//! palier de 30 s, sans terme.
+//! ⚠️ **THIS PARAGRAPH WAS REFUTED BY MEASUREMENT, AND IT BECAME TRUE AGAIN THROUGH
+//! THE FIX OF 20 AUGUST 2026.** The survey that refuted it (acceptance run of
+//! sub-block G1, ONE run, log
+//! `docs/superpowers/plans/journaux-gestion-apps/step3-version-v1-contre-v2-plat.log`):
+//! a v1 agent facing a v2 platform logged **0** line "the
+//! platform REFUSES the version" and **10** pairs "unreadable message from the platform
+//! (diverging version?)" / "resuming the /agent channel", up to
+//! the 30 s step, with no end.
 //!
-//! **La cause était dans ce fichier**, et elle était structurelle :
-//! `verifie_version` est un `deserialize_with` posé sur le champ `v` de
-//! **tout** message, et la plateforme émet son refus avec SA version —
-//! `{"type":"refus","v":2,"motif":"version"}`. Un agent de version N ne
-//! pouvait donc JAMAIS LIRE le refus d'une plateforme de version M ≠ N : il
-//! tombait dans la branche « illisible », qui est reprenable, et le bras
-//! `version` de `sur_refus` n'était atteignable que si les deux bouts
-//! s'accordaient déjà sur `v` — c'est-à-dire jamais dans le seul cas pour
-//! lequel il existe.
+//! **The cause was in this file**, and it was structural:
+//! `check_version` is a `deserialize_with` set on the `v` field of
+//! **every** message, and the platform emits its refusal with ITS version —
+//! `{"type":"refus","v":2,"motif":"version"}`. An agent of version N
+//! could therefore NEVER READ the refusal of a platform of version M ≠ N: it
+//! fell into the "unreadable" branch, which is resumable, and the
+//! `version` arm of `sur_refus` was reachable only if both ends
+//! already agreed on `v` — that is, never in the only case
+//! for which it exists.
 //!
-//! 🔴 **LA DÉCISION DE PROTOCOLE, ET SON PRIX.** Le refus n'est plus un message
-//! versionné comme les autres : c'est une **ENVELOPPE MINIMALE HORS
-//! VERSIONNEMENT**, et cela se lit en trois clauses.
+//! 🔴 **THE PROTOCOL DECISION, AND ITS PRICE.** The refusal is no longer a message
+//! versioned like the others: it is a **MINIMAL ENVELOPE OUTSIDE
+//! VERSIONING**, and that reads in three clauses.
 //!
-//!   1. **Son champ `v` est TOLÉRÉ, jamais vérifié** (`version_toleree`). Il
-//!      reste OBLIGATOIRE et reste un entier — il dit qui parle, et c'est
-//!      journalisé — mais aucune valeur ne le fait rejeter. Un refus est le
-//!      seul message dont le sens ne dépend d'aucune version : il dit « je ne
-//!      te servirai pas », et cela se comprend sans négociation.
-//!   2. **Son champ `motif` est un MOT LIBRE sur le fil** (`String`), pas un
-//!      enum fermé. Sans cette seconde clause le remède ne tiendrait que
-//!      jusqu'au premier motif ajouté par une version future : le refus
-//!      redeviendrait illisible, dans la branche « illisible », et le mode de
-//!      panne reviendrait à l'identique. La table des motifs connus vit dans
-//!      [`MotifCanal::depuis_mot`] ; ce qu'elle ne reconnaît pas est
-//!      journalisé **verbatim** plutôt que perdu.
-//!   3. 🔴 **SA FORME EST GELÉE : `type`, `v`, `motif`, ET RIEN D'AUTRE,
-//!      JAMAIS.** Cet enum porte `deny_unknown_fields` ; un champ ajouté au
-//!      refus par une version future serait rejeté par les versions
-//!      antérieures, et rendrait à lui seul les clauses 1 et 2 sans effet.
-//!      C'est le prix de la décision, et il est écrit ici parce que rien dans
-//!      le type ne l'empêche.
+//!   1. **Its `v` field is TOLERATED, never checked** (`version_toleree`). It
+//!      stays MANDATORY and stays an integer — it says who is speaking, and that is
+//!      logged — but no value makes it rejected. A refusal is the
+//!      only message whose meaning depends on no version: it says "I will not
+//!      serve you", and that is understood without negotiation.
+//!   2. **Its `motif` field is a FREE WORD on the wire** (`String`), not a
+//!      closed enum. Without this second clause the remedy would only hold
+//!      until the first reason added by a future version: the refusal
+//!      would become unreadable again, in the "unreadable" branch, and the
+//!      failure mode would come back identically. The table of known reasons lives in
+//!      [`MotifCanal::depuis_mot`]; what it does not recognise is
+//!      logged **verbatim** rather than lost.
+//!   3. 🔴 **ITS SHAPE IS FROZEN: `type`, `v`, `motif`, AND NOTHING ELSE,
+//!      EVER.** This enum carries `deny_unknown_fields`; a field added to the
+//!      refusal by a future version would be rejected by the earlier
+//!      versions, and would on its own render clauses 1 and 2 ineffective.
+//!      That is the price of the decision, and it is written here because nothing in
+//!      the type prevents it.
 //!
-//! **Ce qui n'a PAS changé, et ne doit pas changer** : tous les autres
-//! messages restent strictement versionnés. Un `enrole` d'une version inconnue
-//! peut donner à un champ connu un sens que nous ignorons ; l'accepter serait
-//! pire que le rejeter. Deux tests gardent chaque moitié, sur chacun des deux
-//! bouts.
+//! **What has NOT changed, and must not change**: all the other
+//! messages stay strictly versioned. An `enrole` of an unknown version
+//! may give a known field a meaning we are unaware of; accepting it would be
+//! worse than rejecting it. Two tests guard each half, on each of the two
+//! ends.
 
 use serde::{Deserialize, Serialize};
 
-/// Version du protocole du canal plateforme <-> agent. Incrémenter à tout
-/// changement de format.
+/// Version of the platform <-> agent channel protocol. Increment on any
+/// format change.
 ///
-/// v1 (sous-bloc P3) : enrôlement, battement de cœur, jeton d'agent.
-/// v2 (sous-bloc G1) : catalogue d'applications, ordre de lancement.
-/// v3 (sous-bloc G2) : icônes 256, leur provenance, et l'inventaire des
-///                     manquantes.
-/// v4 (sous-bloc G3) : l'installation — `installer` descendante, `progression`
-///                     et `termine` montantes, et les deux énumérations
-///                     [`Phase`] et [`Issue`] qu'elles portent.
+/// v1 (sub-block P3): enrolment, heartbeat, agent token.
+/// v2 (sub-block G1): application catalogue, launch order.
+/// v3 (sub-block G2): 256 icons, their provenance, and the inventory of the
+///                     missing ones.
+/// v4 (sub-block G3): installation — `installer` downstream, `progression`
+///                     and `termine` upstream, and the two enumerations
+///                     [`Phase`] and [`Issue`] they carry.
 ///
-/// 🔴 CETTE LISTE N'EST PAS DÉCORATIVE : SANS SA LIGNE, LA CONSTANTE MENT. Un
-/// lecteur qui vient y chercher ce que porte la version courante repartirait
-/// avec l'avant-dernière, et croirait le protocole plus petit qu'il n'est.
+/// 🔴 THIS SET IS NOT DECORATIVE: WITHOUT ITS LINE, THE CONSTANT LIES. A
+/// reader who comes looking for what the current version carries would leave
+/// with the one before last, and would believe the protocol smaller than it is.
 ///
-/// 🔴 **TOUT** PASSAGE REND PÉRIMÉ TOUT AGENT DÉJÀ DÉPLOYÉ — le raisonnement
-/// ci-dessous est écrit pour le passage à 2, il vaut mot pour mot pour ceux à
-/// 3 et à 4, et il n'est PAS réécrit à chaque bump : le relire au présent est
-/// ce qu'on veut, le renuméroter à chaque fois ne dirait rien de plus.
+/// 🔴 **EVERY** STEP UP MAKES EVERY ALREADY DEPLOYED AGENT OBSOLETE — the reasoning
+/// below is written for the step to 2, it holds word for word for those to
+/// 3 and to 4, and it is NOT rewritten at each bump: rereading it in the present is
+/// what we want, renumbering it each time would say nothing more.
 ///
-/// 🔴 LE PASSAGE À 2 REND PÉRIMÉ TOUT AGENT DÉJÀ DÉPLOYÉ, et c'est une
-/// décision, pas un effet de bord. Un agent v1 reçoit `refus{motif:version}`
-/// et NE SE RÉESSAIE PAS (en-tête de ce module) : agent et plateforme se
-/// déploient AU MÊME COMMIT, sans quoi la VM se tait sans boucler, ce qui est
-/// exactement le comportement voulu — un silence franc plutôt qu'une
-/// reconnexion infinie.
+/// 🔴 THE STEP TO 2 MAKES EVERY ALREADY DEPLOYED AGENT OBSOLETE, and it is a
+/// decision, not a side effect. A v1 agent receives `refus{motif:version}`
+/// and DOES NOT RETRY (header of this module): agent and platform are
+/// deployed AT THE SAME COMMIT, otherwise the VM falls silent without looping, which is
+/// exactly the intended behaviour — a frank silence rather than an infinite
+/// reconnection.
 ///
-/// ❌ **« LA VM SE TAIT SANS BOUCLER » EST FAUX, MESURÉ** — voir l'encadré de
-/// l'en-tête de ce module. La VM boucle, à 30 s d'intervalle et sans terme.
-/// L'obligation de déployer les deux bouts au même commit, elle, est
-/// INCHANGÉE et même renforcée : c'est la seule parade qui existe aujourd'hui.
+/// ❌ **"THE VM FALLS SILENT WITHOUT LOOPING" IS FALSE, MEASURED** — see the box in
+/// the header of this module. The VM loops, at 30 s intervals and with no end.
+/// The obligation to deploy both ends at the same commit, however, is
+/// UNCHANGED and even reinforced: it is the only safeguard that exists today.
 ///
-/// ✅ **CET ENCADRÉ EST UN RELEVÉ DATÉ (recette G1), ET IL A ÉTÉ RÉFUTÉ LE
-/// 20 AOÛT 2026 — il est ANNOTÉ plutôt qu'effacé.** La correction du même
-/// jour (commit `457a7f8`, les trois clauses en tête de ce module) a sorti le
-/// refus du versionnement : un agent périmé LIT désormais le refus qui lui
-/// apprend qu'il l'est, le journalise avec les deux versions, et RENONCE. Il
-/// ne boucle plus. **La rupture reste une rupture ; elle est seulement
-/// devenue DIAGNOSTICABLE**, et le passage à 3 du sous-bloc G2 est le premier
-/// bump depuis cette correction — donc le premier à pouvoir le PROUVER.
-/// L'obligation de déployer les deux bouts au même commit est, elle,
-/// strictement inchangée.
+/// ✅ **THIS BOX IS A DATED SURVEY (G1 acceptance run), AND IT WAS REFUTED ON
+/// 20 AUGUST 2026 — it is ANNOTATED rather than erased.** The fix of the same
+/// day (commit `457a7f8`, the three clauses at the top of this module) took the
+/// refusal out of versioning: an obsolete agent now READS the refusal that
+/// tells it so, logs it with both versions, and GIVES UP. It
+/// no longer loops. **The break is still a break; it has only
+/// become DIAGNOSABLE**, and the step to 3 of sub-block G2 is the first
+/// bump since that fix — hence the first able to PROVE it.
+/// The obligation to deploy both ends at the same commit is, for its part,
+/// strictly unchanged.
 pub const PLATEFORME_VERSION: u8 = 5;
 
-/// Les trois lecteurs de champ appelés par `deserialize_with`, extraits pour
-/// que ce fichier ne franchisse pas 500 lignes en accueillant le sous-bloc G3.
+/// The three field readers called by `deserialize_with`, extracted so
+/// that this file does not cross 500 lines when welcoming sub-block G3.
 ///
-/// 🔴 LE `use` N'EST PAS COSMÉTIQUE : `serde` résout le chemin d'un
-/// `deserialize_with = "verifie_version"` **dans la portée du module qui porte
-/// l'attribut**. C'est lui qui permet à l'extraction de ne toucher AUCUN des
-/// attributs des structures ci-dessous, donc d'être une transposition pure.
+/// 🔴 THE `use` IS NOT COSMETIC: `serde` resolves the path of a
+/// `deserialize_with = "check_version"` **in the scope of the module carrying
+/// the attribute**. It is what lets the extraction touch NONE of the
+/// attributes of the structures below, hence be a pure transposition.
 mod champs;
-use champs::{icone_obligatoire, option_obligatoire, verifie_version, version_toleree};
+use champs::{check_version, icone_obligatoire, option_obligatoire, version_toleree};
 
-/// La table des motifs de refus, extraite pour la même raison.
+/// The table of refusal reasons, extracted for the same reason.
 mod motifs;
 pub use motifs::MotifCanal;
 
-
-/// Les types de la GESTION D'APPLICATIONS vivent dans un module enfant.
+/// The APPLICATION MANAGEMENT types live in a child module.
 ///
-/// 🔴 EXTRAITS PARCE QUE CE FICHIER A FRANCHI 500 LIGNES — 588 —, et la
-/// doctrine de `CLAUDE.md` est de rattraper par une EXTRACTION, jamais par une
-/// compression. ⚠️ **Elle aurait dû PRÉCÉDER l'addition** : le plan de G2 avait
-/// nommé trois extractions à jouer d'avance, les trois ont été jouées, et
-/// celle-ci n'était pas prévue. Le franchissement est DÉCLARÉ.
+/// 🔴 EXTRACTED BECAUSE THIS FILE CROSSED 500 LINES — 588 —, and the
+/// doctrine of `CLAUDE.md` is to catch up through an EXTRACTION, never through a
+/// compression. ⚠️ **It should have PRECEDED the addition**: the G2 plan had
+/// named three extractions to carry out in advance, all three were carried out, and
+/// this one was not planned. The crossing is DECLARED.
 ///
-/// ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
-/// les modules extraits d'un parent `#[cfg(windows)]` : c'est le même mécanisme
-/// employé pour l'autre raison — la règle des 500 lignes.
+/// ⚠️ It is NOT the "Child module convention" of `CLAUDE.md`, which targets
+/// modules extracted from a `#[cfg(windows)]` parent: it is the same mechanism
+/// used for the other reason — the 500-line rule.
 mod apps;
 pub use apps::{Application, IssueLancement, SourceMax};
 
-/// Les types de charge utile de l'INSTALLATION, dans un module frère de `apps`,
-/// pour la même raison et par le même mécanisme.
+/// The INSTALLATION payload types, in a sibling module of `apps`,
+/// for the same reason and by the same mechanism.
 mod installation;
 pub use installation::{Issue, Phase};
 
-/// Les constructeurs des deux enums, extraits pour que ce fichier ne dépasse
-/// pas 500 lignes. Voir l'en-tête du module — c'est son SECOND franchissement.
+/// The builders of both enums, extracted so that this file does not exceed
+/// 500 lines. See the module header — it is its SECOND crossing.
 mod constructeurs;
 
-/// Message de l'agent vers la plateforme.
+/// Message from the agent to the platform.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum VersLaPlateforme {
-    /// S'enrôler : présenter le nom de VM et le secret d'enrôlement.
+    /// Enrol: present the VM name and the enrolment secret.
     Enroler {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         vm: String,
         secret: String,
     },
-    /// Battre le cœur. Fait avancer `vu_a`, et rend un jeton frais.
+    /// Heartbeat. Advances `vu_a`, and returns a fresh token.
     Battement {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
     },
-    /// Le catalogue d'applications de la VM, en DIFF.
+    /// The VM's application catalogue, as a DIFF.
     ///
-    /// 🔴 `complet` A UNE SÉMANTIQUE NOMMÉE, et c'est la seule qui rende
-    /// l'état de la plateforme reconstructible : à `true`, la plateforme
-    /// marque disparue TOUTE ligne de cette VM absente d'`applications` et
-    /// ignore `disparues` ; à `false`, elle applique le delta.
+    /// 🔴 `complet` HAS A NAMED SEMANTICS, and it is the only one that makes
+    /// the platform state rebuildable: at `true`, the platform
+    /// marks as gone EVERY row of this VM absent from `applications` and
+    /// ignores `disparues`; at `false`, it applies the delta.
     ///
-    /// L'agent émet `complet = true` à chaque (ré)enrôlement. C'est ce qui
-    /// rend la perte d'un message montant sans conséquence : ce canal est un
-    /// `push` WebSocket, sans garantie de livraison, et sans ce renvoi
-    /// complet un `Catalogue` perdu pendant une coupure laisserait la
-    /// plateforme divergente SANS TERME.
+    /// The agent emits `complet = true` at each (re)enrolment. That is what
+    /// makes the loss of an upstream message harmless: this channel is a
+    /// WebSocket `push`, with no delivery guarantee, and without this complete
+    /// resend a `Catalogue` lost during an outage would leave the
+    /// platform divergent WITH NO END.
     Catalogue {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         complet: bool,
         applications: Vec<Application>,
-        /// Des CLÉS, jamais des objets : la plateforme n'a besoin que de
-        /// l'identité pour marquer une disparition.
+        /// KEYS, never objects: the platform only needs
+        /// the identity to mark a disappearance.
         disparues: Vec<String>,
     },
-    /// L'issue d'un ordre de lancement, appariée par `demande`.
+    /// The outcome of a launch order, matched by `demande`.
     Lancee {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         demande: String,
         issue: IssueLancement,
     },
-    /// Où en est une installation en cours.
+    /// Where a running installation stands.
     ///
-    /// 🔴 **ÉCHANTILLONNÉE, ET C'EST UNE CONTRAINTE DE SÛRETÉ, PAS DE
-    /// CONFORT.** La file montante de l'agent est bornée à `FILE_EMISSION`
-    /// (32) et **abandonne ce qui déborde**. Une progression émise par tranche
-    /// de 64 Kio la saturerait et noierait le journal partagé — c'est la
-    /// doctrine que ce dépôt a payée au chantier TURN : *compter ou
-    /// échantillonner, jamais tracer par paquet*. La règle vit dans
-    /// `agent/src/apps/installation/cadence.rs`, horloge en paramètre.
+    /// 🔴 **SAMPLED, AND IT IS A SAFETY CONSTRAINT, NOT A
+    /// CONVENIENCE ONE.** The agent's upstream queue is bounded to `FILE_EMISSION`
+    /// (32) and **drops whatever overflows**. A progress update emitted per slice
+    /// of 64 KiB would saturate it and drown the shared log — it is the
+    /// doctrine this repository paid for in the TURN workstream: *count or
+    /// sample, never trace per packet*. The rule lives in
+    /// `agent/src/apps/installation/cadence.rs`, clock as a parameter.
     ///
-    /// ⚠️ `octets_total` VAUT ZÉRO EN PHASE `Execution`, où il n'y a rien à
-    /// totaliser : c'est `ecoule_ms` qui porte l'information, et l'interface
-    /// affiche un état indéterminé.
+    /// ⚠️ `octets_total` IS ZERO IN THE `Execution` PHASE, where there is nothing to
+    /// total: it is `ecoule_ms` that carries the information, and the interface
+    /// shows an indeterminate state.
     Progression {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         installation: String,
         phase: Phase,
@@ -225,30 +224,30 @@ pub enum VersLaPlateforme {
         octets_total: u64,
         ecoule_ms: u64,
     },
-    /// L'installation est finie, et voici ce qui s'est réellement passé.
+    /// The installation is finished, and here is what really happened.
     ///
-    /// 🔴 **`code_sortie` EST UNE `Option`, JAMAIS UN `i32` AVEC UN `-1`
-    /// SENTINELLE** : « pas de code » et « code −1 » sont deux faits
-    /// différents, et une sentinelle les confondrait exactement comme un
-    /// `source_max_px` à `0` confondrait « inconnu » et « nul ». Il est
-    /// RAPPORTÉ, jamais interprété — voir [`Issue`].
+    /// 🔴 **`code_sortie` IS AN `Option`, NEVER AN `i32` WITH A `-1`
+    /// SENTINEL**: "no code" and "code −1" are two different
+    /// facts, and a sentinel would conflate them exactly as a
+    /// `source_max_px` at `0` would conflate "unknown" and "zero". It is
+    /// REPORTED, never interpreted — see [`Issue`].
     ///
-    /// ⚠️ **UN `journal` VIDE EST LE CAS NORMAL**, pas un échec : la plupart
-    /// des installeurs Windows sont graphiques et n'écrivent rien sur les flux
-    /// standard. L'interface ne doit pas le présenter comme une panne.
+    /// ⚠️ **AN EMPTY `journal` IS THE NORMAL CASE**, not a failure: most
+    /// Windows installers are graphical and write nothing on the standard
+    /// streams. The interface must not present it as a failure.
     ///
-    /// ⚠️ `journal_tronque` DIT QUE LA QUEUE A ÉTÉ COUPÉE, et il est distinct
-    /// d'un journal vide : sans lui, un utilisateur lirait les derniers
-    /// 64 Kio en croyant lire tout.
+    /// ⚠️ `journal_tronque` SAYS THE TAIL WAS CUT, and it is distinct
+    /// from an empty log: without it, a user would read the last
+    /// 64 KiB believing they read everything.
     Termine {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         installation: String,
         issue: Issue,
-        /// Obligatoire sur le fil — voir `champs::option_obligatoire`.
+        /// Mandatory on the wire — see `champs::option_obligatoire`.
         #[serde(deserialize_with = "option_obligatoire")]
         motif: Option<String>,
-        /// Idem. `None` = « le code n'a pas pu être recueilli ».
+        /// Likewise. `None` = "the code could not be collected".
         #[serde(deserialize_with = "option_obligatoire")]
         code_sortie: Option<i32>,
         journal: String,
@@ -256,152 +255,151 @@ pub enum VersLaPlateforme {
     },
 }
 
-
-/// Message de la plateforme vers l'agent.
+/// Message from the platform to the agent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum DepuisLaPlateforme {
-    /// L'enrôlement est accepté : voici le préfixe de session et le jeton.
+    /// The enrolment is accepted: here is the session prefix and the token.
     Enrole {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         prefixe: String,
         jeton: String,
-        /// En MILLISECONDES, comme tout horodatage de ce service.
+        /// In MILLISECONDS, like every timestamp of this service.
         expire_a: i64,
     },
-    /// Le battement est enregistré : voici un jeton FRAIS.
+    /// The heartbeat is recorded: here is a FRESH token.
     ///
-    /// ⚠️ Un jeton frais À CHAQUE battement, et non le même : le jeton d'accès
-    /// dure dix minutes, et un agent qui garderait le premier tomberait à son
-    /// expiration sans le voir venir.
+    /// ⚠️ A fresh token AT EACH heartbeat, and not the same one: the access token
+    /// lasts ten minutes, and an agent that kept the first would fall at its
+    /// expiry without seeing it coming.
     BattementRecu {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         jeton: String,
         expire_a: i64,
     },
-    /// Refus, avec son motif. Le socket se ferme ensuite.
+    /// Refusal, with its reason. The socket then closes.
     ///
-    /// 🔴 **LA SEULE VARIANTE HORS VERSIONNEMENT DE TOUT CE PROTOCOLE**, et
-    /// les trois clauses qui la gouvernent sont en tête de module. En deux
-    /// mots : `v` est toléré, `motif` est un mot libre, et **la forme est
-    /// gelée — aucun champ ne doit jamais s'y ajouter**.
+    /// 🔴 **THE ONLY VARIANT OUTSIDE VERSIONING IN THIS WHOLE PROTOCOL**, and
+    /// the three clauses that govern it are at the top of the module. In two
+    /// words: `v` is tolerated, `motif` is a free word, and **the shape is
+    /// frozen — no field must ever be added to it**.
     Refus {
-        /// La version de l'ÉMETTEUR, telle qu'elle arrive. Peut différer de
-        /// [`PLATEFORME_VERSION`] : c'est même le seul cas pour lequel cette
-        /// variante existe.
+        /// The SENDER's version, as it arrives. May differ from
+        /// [`PLATEFORME_VERSION`]: it is even the only case for which this
+        /// variant exists.
         #[serde(rename = "v", deserialize_with = "version_toleree")]
         version: u8,
-        /// Le mot brut. [`MotifCanal::depuis_mot`] l'interprète quand elle le
-        /// peut ; l'appelant journalise le mot lui-même quand elle ne le peut
-        /// pas.
+        /// The raw word. [`MotifCanal::depuis_mot`] interprets it when it
+        /// can; the caller logs the word itself when it
+        /// cannot.
         motif: String,
     },
-    /// Lancer une application de la VM.
+    /// Launch an application of the VM.
     ///
-    /// ⚠️ L'ORDRE NE PORTE PAS LE CHEMIN DU RACCOURCI, il porte la clé, et
-    /// l'agent la résout dans SON PROPRE catalogue — celui qu'il vient de
-    /// lire sur le disque. La copie de la plateforme peut être vieille d'une
-    /// réconciliation ; celle de l'agent ne l'est jamais.
+    /// ⚠️ THE ORDER DOES NOT CARRY THE SHORTCUT PATH, it carries the key, and
+    /// the agent resolves it in ITS OWN catalogue — the one it just
+    /// read from disk. The platform's copy may be one reconciliation
+    /// old; the agent's never is.
     ///
-    /// `demande` apparie l'ordre à sa [`VersLaPlateforme::Lancee`], la route
-    /// HTTP attendant cette réponse.
+    /// `demande` matches the order to its [`VersLaPlateforme::Lancee`], the HTTP
+    /// route awaiting that answer.
     Lancer {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         demande: String,
         cle: String,
     },
-    /// Les empreintes que la plateforme n'a PAS, parmi celles que le dernier
-    /// [`VersLaPlateforme::Catalogue`] a annoncées.
+    /// The fingerprints the platform does NOT have, among those the last
+    /// [`VersLaPlateforme::Catalogue`] announced.
     ///
-    /// 🔴 ELLE N'EST PAS ÉMISE QUAND L'ENSEMBLE EST VIDE : une liste vide
-    /// coûterait un message par réconciliation sur un disque au repos, ce que
-    /// le diff du sous-bloc G1 existe précisément pour éviter.
+    /// 🔴 IT IS NOT EMITTED WHEN THE SET IS EMPTY: an empty set
+    /// would cost one message per reconciliation on an idle disk, which is what
+    /// the diff of sub-block G1 exists precisely to avoid.
     ///
-    /// ⚠️ **LES OCTETS NE L'EMPRUNTENT JAMAIS** : ce message ne porte qu'un
-    /// inventaire. Les images passent par `PUT /icone/:sha256`, exactement
-    /// comme les installeurs de G3 (spec D7) — le canal est en JSON, il porte
-    /// le battement de cœur, et 4,4 Mo en base64 y coûteraient +33 % et
-    /// bloqueraient ce battement.
+    /// ⚠️ **THE BYTES NEVER TAKE IT**: this message only carries an
+    /// inventory. The images go through `PUT /icone/:sha256`, exactly
+    /// like the installers of G3 (spec D7) — the channel is JSON, it carries
+    /// the heartbeat, and 4.4 MB in base64 would cost +33 % there and
+    /// would block that heartbeat.
     ///
-    /// ⚠️ **Un `IconesManquantes` perdu ne casse rien** : le canal est un
-    /// `push` sans garantie de livraison, et la réconciliation suivante
-    /// rejoue l'annonce. C'est le même filet que `complet = true` à chaque
-    /// réenrôlement (décision D3 de G1), et la recette de G1 l'a vu
-    /// fonctionner sur le chemin réel.
+    /// ⚠️ **A lost `IconesManquantes` breaks nothing**: the channel is a
+    /// `push` without delivery guarantee, and the next reconciliation
+    /// replays the announcement. It is the same net as `complet = true` at each
+    /// re-enrolment (decision D3 of G1), and the G1 acceptance run saw it
+    /// work on the real path.
     IconesManquantes {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         empreintes: Vec<String>,
     },
-    /// Installer un logiciel que l'utilisateur a téléversé.
+    /// Install a piece of software the user uploaded.
     ///
-    /// 🔴 **LES OCTETS N'EMPRUNTENT JAMAIS CE MESSAGE**, et c'est la même
-    /// règle que pour [`Self::IconesManquantes`] : ce canal est en JSON, il
-    /// porte le battement de cœur, et une tranche de 8 Mio y coûterait +33 %
-    /// en base64 tout en bloquant ce battement. L'ordre porte une **URL**, et
-    /// l'agent va tirer les octets en HTTP, avec son jeton d'agent.
+    /// 🔴 **THE BYTES NEVER TAKE THIS MESSAGE**, and it is the same
+    /// rule as for [`Self::IconesManquantes`]: this channel is JSON, it
+    /// carries the heartbeat, and an 8 MiB slice would cost +33 % there
+    /// in base64 while blocking that heartbeat. The order carries a **URL**, and
+    /// the agent pulls the bytes over HTTP, with its agent token.
     ///
-    /// ⚠️ `sha256` EST L'EMPREINTE DU FICHIER ENTIER, la même valeur que le
-    /// navigateur a annoncée et que la plateforme a recalculée au scellement.
-    /// **Une seule valeur, comparable partout** — y compris par un humain avec
-    /// un `sha256sum`. C'est pourquoi ce n'est PAS une empreinte d'arbre sur
-    /// les tranches, qui aurait été native et gratuite côté navigateur mais
-    /// incomparable partout ailleurs.
+    /// ⚠️ `sha256` IS THE FINGERPRINT OF THE WHOLE FILE, the same value the
+    /// browser announced and the platform recomputed at sealing.
+    /// **One single value, comparable everywhere** — including by a human with
+    /// a `sha256sum`. That is why it is NOT a tree fingerprint over
+    /// the slices, which would have been native and free on the browser side but
+    /// incomparable everywhere else.
     ///
-    /// 🔴 **L'AGENT RECALCULE CETTE EMPREINTE APRÈS ÉCRITURE**, et c'est la
-    /// TROISIÈME des trois vérifications : le navigateur peut mentir, le
-    /// disque de la plateforme peut se corrompre, le transfert peut tronquer.
-    /// **Aucun saut ne fait confiance au précédent.**
+    /// 🔴 **THE AGENT RECOMPUTES THIS FINGERPRINT AFTER WRITING**, and it is the
+    /// THIRD of the three checks: the browser can lie, the
+    /// platform's disk can get corrupted, the transfer can truncate.
+    /// **No hop trusts the previous one.**
     ///
-    /// ⚠️ **CE MESSAGE EST RÉÉMIS À CHAQUE ENRÔLEMENT** tant que l'installation
-    /// est en attente : un `push` WebSocket n'a aucune garantie de livraison,
-    /// et sans cette réémission un ordre émis pendant une coupure serait perdu
-    /// SANS TERME. C'est le même filet que `complet = true` du catalogue.
-    /// **L'agent déduplique donc par `installation`, et sa mémoire est SUR LE
-    /// DISQUE** — voir `agent/src/apps/installation/depot.rs`.
+    /// ⚠️ **THIS MESSAGE IS RE-EMITTED AT EACH ENROLMENT** as long as the installation
+    /// is pending: a WebSocket `push` has no delivery guarantee,
+    /// and without this re-emission an order emitted during an outage would be lost
+    /// WITH NO END. It is the same net as the catalogue's `complet = true`.
+    /// **The agent therefore deduplicates by `installation`, and its memory is ON
+    /// DISK** — see `agent/src/apps/installation/depot.rs`.
     Installer {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         installation: String,
         url: String,
         nom: String,
-        taille: u64,
+        #[serde(rename = "taille")]
+        size: u64,
         sha256: String,
     },
 }
-
 
 #[cfg(test)]
 #[path = "plateforme/tests.rs"]
 mod tests;
 
-// 🔴 LE SECOND FICHIER DE TESTS EST NÉ D'UNE DETTE INSCRITE, PAS D'UN GOÛT.
-// `plateforme/tests.rs` était à 561 lignes — au-dessus du plafond de 500 de
-// `CLAUDE.md`, qui l'inscrivait au tableau de dette SANS point de chute. Le
-// sous-bloc G2 travaille dedans, donc il l'a découpé : cycle de vie ici,
-// gestion d'apps là. C'est le même mécanisme `#[path]` que la ligne ci-dessus,
-// employé pour la même raison — la règle des 500 lignes —, et NON la
-// « Convention de module enfant » de `CLAUDE.md`, qui vise les modules extraits
-// d'un parent `#[cfg(windows)]`.
+// 🔴 THE SECOND TEST FILE WAS BORN FROM A RECORDED DEBT, NOT FROM A TASTE.
+// `plateforme/tests.rs` was at 561 lines — above the 500 ceiling of
+// `CLAUDE.md`, which recorded it in the debt table WITH NO landing point. The
+// sub-block G2 works in it, so it split it: lifecycle here,
+// app management there. It is the same `#[path]` mechanism as the line above,
+// used for the same reason — the 500-line rule —, and NOT the
+// "Child module convention" of `CLAUDE.md`, which targets modules extracted
+// from a `#[cfg(windows)]` parent.
 #[cfg(test)]
 #[path = "plateforme/tests_apps.rs"]
 mod tests_apps;
 
-// 🔴 UN TROISIÈME FICHIER DE TESTS, ET IL A SA RAISON PROPRE : les vecteurs
-// partagés sont un jeu de ROUND-TRIPS, qui ne dit rien de ce qui doit être
-// REFUSÉ. La garde la plus fragile de v4 — un `termine` dont une clé
-// facultative MANQUE — n'y est donc pas éprouvable, et elle vit ici.
+// 🔴 A THIRD TEST FILE, AND IT HAS ITS OWN REASON: the shared
+// vectors are a set of ROUND-TRIPS, which says nothing of what must be
+// REFUSED. The most fragile guard of v4 — a `termine` whose optional
+// key is MISSING — therefore cannot be tested there, and it lives here.
 #[cfg(test)]
 #[path = "plateforme/tests_installation.rs"]
 mod tests_installation;
 
-// 🔴 UN QUATRIÈME FICHIER DE TESTS, NÉ D'UN SECOND FRANCHISSEMENT. `tests.rs`
-// est repassé au-dessus de 500 sous les additions de G3, et les deux tests que
-// `plateforme-vectors.json` PILOTE en sont sortis — c'est la frontière de la
-// source de vérité, pas un découpage de commodité.
+// 🔴 A FOURTH TEST FILE, BORN FROM A SECOND CROSSING. `tests.rs`
+// went back above 500 under the additions of G3, and the two tests that
+// `plateforme-vectors.json` DRIVES left it — it is the boundary of the
+// source of truth, not a convenience split.
 #[cfg(test)]
 #[path = "plateforme/tests_vecteurs.rs"]
 mod tests_vecteurs;

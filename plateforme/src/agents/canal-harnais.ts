@@ -1,37 +1,37 @@
-// Le harnais partagé des tests du canal `/agent` : constantes, pair de test, et
-// l'enrôlement d'une VM en base.
+// The shared harness of the `/agent` channel tests: constants, test peer, and
+// enrolling a VM in the database.
 //
-// 🔴 IL EST EXTRAIT AVANT L'ADDITION QU'IL SERT, jamais après. `canal.test.ts`
-// portait ces quatre-vingts lignes et pesait 361 ; le sous-bloc G1 y ajoute une
-// seconde famille de cas (le catalogue et le lancement), qui lui aurait fait
-// franchir la porte de 450 lignes que `CLAUDE.md` fixe. Les recopier dans le
-// fichier neuf aurait produit deux `ouvrirUrl` qui divergeraient à la première
-// correction portée sur un seul des deux.
+// 🔴 IT IS EXTRACTED BEFORE THE ADDITION IT SERVES, never after. `canal.test.ts`
+// held these eighty lines and weighed 361; sub-block G1 adds a
+// second family of cases to it (the catalogue and the launch), which would have made it
+// cross the 450-line gate that `CLAUDE.md` sets. Copying them into the
+// new file would have produced two `ouvrirUrl` that would diverge at the first
+// fix applied to only one of the two.
 //
-// ⚠️ CE MODULE VIT DANS `src/`, ET C'EST LA CONVENTION DU DÉPÔT pour un harnais
-// de test : `base/harnais.ts` y est depuis P1, pour la même raison — un helper
-// que plusieurs fichiers de test importent n'a pas d'autre endroit où vivre.
+// ⚠️ THIS MODULE LIVES IN `src/`, AND THAT IS THE REPOSITORY CONVENTION for a test
+// harness: `base/harnais.ts` has been there since P1, for the same reason — a helper
+// that several test files import has nowhere else to live.
 
 import { WebSocket } from 'ws';
 import type { Pilote } from '../base/pilote';
 import { enroler, lireParVm } from '../depot/agent';
 import { hacher } from '../identite/mot-de-passe';
 
-/// Le secret de signature du SERVICE — celui des jetons. À ne pas confondre
-/// avec le secret d'ENRÔLEMENT ci-dessous : ils n'ont ni la même durée de vie,
-/// ni le même détenteur, et les confondre dans un test rendrait le second
-/// vérifiable par le premier.
+/// The signing secret of the SERVICE — the token one. Not to be confused
+/// with the ENROLMENT secret below: they have neither the same lifetime,
+/// nor the same holder, and mixing them up in a test would make the second
+/// verifiable by the first.
 export const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
-/// Le secret d'enrôlement de la VM, celui que `npm run admin:agent` tire.
+/// The enrolment secret of the VM, the one `npm run admin:agent` draws.
 export const SECRET_VM = 'un-secret-d-enrolement-de-la-vraie-longueur';
-/// Une époque réelle : les petites valeurs ne mesurent rien (leçon de P1).
+/// A real epoch: small values measure nothing (lesson of P1).
 export const T0 = 1_787_000_000_000;
-/// Un préfixe de la VRAIE longueur que `agents/prefixe.ts` produit.
+/// A prefix of the REAL length that `agents/prefixe.ts` produces.
 export const P = 'RhH1x2QmTz9kLpVbNc7dAw';
 
-/// Enrôle une VM, ligne `vm` comprise : `agent_enrole.vm_id` la RÉFÉRENCE
-/// (`0003-agents.sql`), et SQLite applique la clé étrangère. L'empreinte est
-/// une VRAIE empreinte `scrypt`, jamais une chaîne courte.
+/// Enrols a VM, `vm` row included: `agent_enrole.vm_id` REFERENCES it
+/// (`0003-agents.sql`), and SQLite enforces the foreign key. The digest is
+/// a REAL `scrypt` digest, never a short string.
 export async function enrolerUneVm(p: Pilote, vmId: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [
         vmId,
@@ -43,27 +43,27 @@ export async function enrolerUneVm(p: Pilote, vmId: string): Promise<void> {
 
 export interface Pair {
     socket: WebSocket;
-    /// L'ordre RÉEL des évènements, `message` et `close` tels qu'ils sont
-    /// arrivés : c'est ce qui permet d'asserter qu'un refus est PARVENU avant
-    /// la fermeture, et non l'inverse.
+    /// The REAL order of events, `message` and `close` as they
+    /// arrived: that is what lets us assert that a refusal ARRIVED before
+    /// the close, and not the reverse.
     ordre: string[];
     ferme: Promise<void>;
-    /// Envoie un message brut et rend la réponse. BORNÉE, jamais une attente
-    /// infinie : un canal muet doit rougir, pas pendre.
+    /// Sends a raw message and returns the answer. BOUNDED, never an endless
+    /// wait: a mute channel must turn red, not hang.
     dire(brut: string): Promise<Record<string, unknown>>;
-    /// Attend le prochain message POUSSÉ par le canal, SANS rien envoyer.
+    /// Waits for the next message PUSHED by the channel, WITHOUT sending anything.
     ///
-    /// 🔴 ELLE N'EST PAS UN `dire('')`. Le canal `/agent` pousse désormais des
-    /// ordres que rien n'a demandés au pair (`lancer`), et les attendre par un
-    /// envoi bidon serait une COURSE : `dire` n'envoie que si aucun message
-    /// n'est déjà arrivé, si bien que le test enverrait — ou n'enverrait pas —
-    /// selon l'ordonnancement, et provoquerait un refus `forme` une fois sur
-    /// deux. Bornée pour la même raison que `dire`.
+    /// 🔴 IT IS NOT A `dire('')`. The `/agent` channel now pushes
+    /// orders the peer never asked for (`lancer`), and waiting for them through a
+    /// dummy send would be a RACE: `dire` only sends if no message
+    /// has already arrived, so the test would send — or would not send —
+    /// depending on scheduling, and would provoke a `forme` refusal one time out
+    /// of two. Bounded for the same reason as `dire`.
     recevoir(): Promise<Record<string, unknown>>;
 }
 
-/// Ouvre un pair sur une URL complète — le chemin compte, le service en
-/// routant deux (`http/serveur.ts`).
+/// Opens a peer on a full URL — the path matters, the service
+/// routing two of them (`http/serveur.ts`).
 export function ouvrirUrl(url: string): Promise<Pair> {
     return new Promise((resolve, reject) => {
         const w = new WebSocket(url);
@@ -76,7 +76,7 @@ export function ouvrirUrl(url: string): Promise<Pair> {
             recevoir() {
                 return new Promise((r, rej) => {
                     const minuteur = setTimeout(
-                        () => rej(new Error('aucun message poussé par le canal en 2000 ms')),
+                        () => rej(new Error('no message pushed by the channel within 2000 ms')),
                         2000,
                     );
                     enAttente.push((m) => {
@@ -90,7 +90,7 @@ export function ouvrirUrl(url: string): Promise<Pair> {
             dire(brut) {
                 return new Promise((r, rej) => {
                     const minuteur = setTimeout(
-                        () => rej(new Error(`aucune réponse du canal en 2000 ms à ${brut}`)),
+                        () => rej(new Error(`no answer from the channel within 2000 ms to ${brut}`)),
                         2000,
                     );
                     enAttente.push((m) => {
@@ -120,13 +120,13 @@ export function ouvrir(port: number): Promise<Pair> {
     return ouvrirUrl(`ws://127.0.0.1:${port}`);
 }
 
-/// Attend que `vu_a` satisfasse `predicat`, ou ÉCHOUE au bout de `borneMs`.
+/// Waits for `vu_a` to satisfy `predicat`, or FAILS after `borneMs`.
 ///
-/// ⚠️ BORNÉE, ET ÉCHOUANT SUR EXPIRATION. L'écriture de `vu_a` est délibérément
-/// lancée SANS être attendue (règle de P1 : une promesse rejetée dans un
-/// gestionnaire `ws` abat tout le process), donc une écriture perdue ne se
-/// manifeste que par une valeur qui n'arrive pas. Une boucle sans borne
-/// pendrait au lieu de rougir.
+/// ⚠️ BOUNDED, AND FAILING ON EXPIRY. The write of `vu_a` is deliberately
+/// launched WITHOUT being awaited (P1 rule: a promise rejected in a
+/// `ws` handler takes down the whole process), so a lost write only
+/// shows as a value that never arrives. An unbounded loop
+/// would hang instead of turning red.
 export async function attendreVu(
     p: Pilote,
     vmId: string,
@@ -140,7 +140,7 @@ export async function attendreVu(
         const vu = ligne?.vu_a === undefined || ligne.vu_a === null ? null : Number(ligne.vu_a);
         if (predicat(vu)) return vu;
         if (Date.now() > fin) {
-            throw new Error(`vu_a ${quoi} jamais atteint pour ${vmId} en ${borneMs} ms (vu=${vu})`);
+            throw new Error(`vu_a ${quoi} never reached for ${vmId} within ${borneMs} ms (seen=${vu})`);
         }
         await new Promise((r) => setTimeout(r, 25));
     }

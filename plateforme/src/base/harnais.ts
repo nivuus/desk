@@ -1,12 +1,12 @@
-// Le harnais de la double passe : il ouvre le pilote que `PLATEFORME_BASE`
-// désigne, sur une base NEUVE, et applique les migrations.
+// The harness of the double pass: it opens the driver that `PLATEFORME_BASE`
+// designates, on a FRESH database, and applies the migrations.
 //
-// 🔴 UN SAUT EST UN ÉCHEC (spec §7.1). Si `PLATEFORME_BASE=postgres` et que
-// l'instance est injoignable, les tests ÉCHOUENT avec la cause. Il n'y a ici
-// ni `it.skipIf`, ni `describe.skip`, ni `if (!disponible) return`. Ce dépôt a
-// payé plusieurs fois pour un contrôle qui ne pouvait pas échouer ; un test qui
-// DISPARAÎT quand sa dépendance manque est la même erreur sous une autre
-// forme — il rend vert un état qu'il n'a pas mesuré.
+// 🔴 A SKIP IS A FAILURE (spec §7.1). If `PLATEFORME_BASE=postgres` and
+// the instance is unreachable, the tests FAIL with the cause. There is here
+// no `it.skipIf`, no `describe.skip`, no `if (!disponible) return`. This repository has
+// paid several times for a check that could not fail; a test that
+// VANISHES when its dependency is missing is the same mistake in another
+// form — it turns green a state it has not measured.
 
 import type { Pilote } from './pilote';
 import { ouvrirPostgres } from './pilote-postgres';
@@ -15,47 +15,47 @@ import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from './migrations';
 
 export const MOTEUR = (process.env.PLATEFORME_BASE ?? 'sqlite') as 'sqlite' | 'postgres';
 
-/// URL de l'instance de test, celle de `docker-compose.plateforme.yml`.
-/// Surchargeable par `PLATEFORME_BASE_URL` pour viser une autre instance.
+/// URL of the test instance, the one of `docker-compose.plateforme.yml`.
+/// Overridable through `PLATEFORME_BASE_URL` to target another instance.
 const URL_POSTGRES =
     process.env.PLATEFORME_BASE_URL ??
     'postgres://plateforme:plateforme-test@127.0.0.1:5433/plateforme_test';
 
-/// L'instant auquel les migrations de test sont appliquées.
+/// The instant at which the test migrations are applied.
 ///
-/// 🔴 C'est une valeur de la MAGNITUDE D'UNE ÉPOQUE EN MILLISECONDES, et non
-/// un petit nombre commode, parce qu'un petit nombre ne mesure rien.
-/// `1_000` tenait dans un entier 4 octets ; `Date.now()` n'y tient pas. Le
-/// service de production n'écrit que des `Date.now()` : une suite qui n'écrit
-/// que des `1_000` déclare portable un schéma qui refuse toute écriture réelle
-/// sur l'un des deux moteurs, sans qu'aucun test ne rougisse.
+/// 🔴 It is a value of the MAGNITUDE OF AN EPOCH IN MILLISECONDS, and not
+/// a convenient small number, because a small number measures nothing.
+/// `1_000` fit in a 4-byte integer; `Date.now()` does not. The
+/// production service writes only `Date.now()` values: a suite that writes
+/// only `1_000` declares portable a schema that refuses any real write
+/// on one of the two engines, without any test going red.
 export const INSTANT_MIGRATION = 1_700_000_000_000;
 
-/// Le nombre de connexions qu'UNE base de test garde ouvertes.
+/// The number of connections that ONE test database keeps open.
 ///
-/// 🔴 SANS CETTE BORNE, LA SUITE FAIT TOMBER SON INSTANCE — mesuré le 20 août
-/// 2026. Le défaut de `pg` est DIX clients par pilote ; la suite ouvre
-/// cent vingt-huit bases sur vingt-deux fichiers que vitest exécute EN
-/// PARALLÈLE, et chaque `baseNeuve` ouvre DEUX pilotes. Dix bases concurrentes
-/// suffisent alors à atteindre le `max_connections = 100` de l'instance :
-/// elle a rendu `FATAL: sorry, too many clients already`, puis un backend a
-/// été `terminated by signal 11: Segmentation fault` en pleine migration, et
-/// la suite est repassée en 181 échecs sur un code parfaitement sain.
+/// 🔴 WITHOUT THIS BOUND, THE SUITE BRINGS ITS INSTANCE DOWN — measured on 20 August
+/// 2026. The `pg` default is TEN clients per driver; the suite opens
+/// one hundred and twenty-eight databases over twenty-two files that vitest runs IN
+/// PARALLEL, and each `baseNeuve` opens TWO drivers. Ten concurrent databases
+/// are then enough to reach the `max_connections = 100` of the instance:
+/// it returned `FATAL: sorry, too many clients already`, then a backend was
+/// `terminated by signal 11: Segmentation fault` in the middle of a migration, and
+/// the suite went back to 181 failures on perfectly healthy code.
 ///
-/// ⚠️ DEUX, ET NON UN : `transaction` PREND un client pour toute la durée de
-/// son corps (voir le piège nommé dans `pilote-postgres.ts`), et une requête
-/// émise sur le pool pendant ce temps-là attendrait indéfiniment un second
-/// client si le pool n'en avait qu'un. ⚠️ NON CALIBRÉE au-delà de ce
-/// raisonnement : aucune mesure n'a cherché la valeur optimale.
+/// ⚠️ TWO, AND NOT ONE: `transaction` TAKES a client for the whole duration of
+/// its body (see the trap named in `pilote-postgres.ts`), and a query
+/// issued on the pool meanwhile would wait forever for a second
+/// client if the pool had only one. ⚠️ UNCALIBRATED beyond this
+/// reasoning: no measurement has looked for the optimal value.
 const MAX_CLIENTS_TEST = 2;
 
-/// Ouvre une base VIERGE et y applique les migrations.
+/// Opens a BLANK database and applies the migrations to it.
 ///
-/// SQLite : une base en mémoire, donc neuve par construction.
-/// Postgres : un SCHÉMA jetable, propre à l'appel, posé en tête du
-/// `search_path`. C'est ce qui permet à plusieurs fichiers de test de tourner
-/// de front sans se marcher dessus, là où un `DROP SCHEMA public` global les
-/// ferait s'entre-détruire.
+/// SQLite: an in-memory database, hence fresh by construction.
+/// Postgres: a throwaway SCHEMA, specific to the call, put at the head of the
+/// `search_path`. That is what lets several test files run
+/// side by side without stepping on each other, where a global `DROP SCHEMA public`
+/// would make them destroy one another.
 export async function baseNeuve(nom: string): Promise<Pilote> {
     if (MOTEUR === 'sqlite') {
         const p = ouvrirSqlite(':memory:');
@@ -64,10 +64,10 @@ export async function baseNeuve(nom: string): Promise<Pilote> {
     }
 
     const schema = `t_${nom.replace(/[^a-z0-9]/gi, '_')}_${process.pid}_${compteur()}`;
-    // Le schéma est interpolé, jamais paramétré : un identifiant SQL ne peut
-    // pas être un paramètre de requête, sur aucun moteur. Il est construit
-    // ici, à partir de valeurs que seul ce fichier fournit, et filtré sur
-    // [a-z0-9_] — aucune entrée extérieure n'y arrive.
+    // The schema is interpolated, never parameterised: an SQL identifier cannot
+    // be a query parameter, on any engine. It is built
+    // here, from values that only this file provides, and filtered on
+    // [a-z0-9_] — no outside input reaches it.
     const admin = ouvrirPostgres(URL_POSTGRES, MAX_CLIENTS_TEST);
     await admin.executer(`DROP SCHEMA IF EXISTS ${schema} CASCADE`, []);
     await admin.executer(`CREATE SCHEMA ${schema}`, []);
@@ -86,20 +86,20 @@ function compteur(): number {
     return ++n;
 }
 
-/// Un DÉCORATEUR autour d'un pilote réel, qui COMPTE les accès à la base.
+/// A DECORATOR around a real driver, which COUNTS the database accesses.
 ///
-/// 🔴 CE N'EST PAS UN FAUX, ET C'EST LE POINT. Un pilote factice mesurerait
-/// autre chose que la production ; celui-ci délègue TOUT, et n'ajoute qu'un
-/// compteur. C'est ce qui rend décidable l'assertion « le refus freiné ne
-/// touche pas la base » — donc « il ne dérive aucun `scrypt` » —, là où la
-/// mesurer en TEMPS serait instable et où la mesurer par un faux ne dirait
-/// rien du chemin réel.
+/// 🔴 IT IS NOT A FAKE, AND THAT IS THE POINT. A dummy driver would measure
+/// something other than production; this one delegates EVERYTHING, and adds only a
+/// counter. That is what makes the assertion "the throttled refusal does not
+/// touch the database" decidable — hence "it derives no `scrypt`" —, where
+/// measuring it in TIME would be unstable and where measuring it through a fake would say
+/// nothing about the real path.
 ///
-/// ⚠️ IL VIT ICI PLUTÔT QUE DANS UN FICHIER DE TEST parce que DEUX fichiers
-/// l'emploient — `http/routes-auth.test.ts` et `agents/canal.test.ts` — et que
-/// deux copies divergeraient à la première correction portée sur une seule.
-/// C'est la raison exacte pour laquelle `agents/canal-harnais.ts` a été
-/// extrait au sous-bloc G1.
+/// ⚠️ IT LIVES HERE RATHER THAN IN A TEST FILE because TWO files
+/// use it — `http/routes-auth.test.ts` and `agents/canal.test.ts` — and
+/// two copies would diverge at the first fix made to only one of them.
+/// That is the exact reason why `agents/canal-harnais.ts` was
+/// extracted in sub-block G1.
 export function piloteCompteur(reel: Pilote): {
     pilote: Pilote;
     acces: () => number;

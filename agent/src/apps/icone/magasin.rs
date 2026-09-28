@@ -1,53 +1,55 @@
-//! Le magasin d'icônes de l'agent : des octets ADRESSÉS PAR LEUR CONTENU.
+//! The agent's icon store: bytes ADDRESSED BY THEIR CONTENT.
 //!
-//! **PUR, sans aucun `cfg`.** Il ne connaît ni Windows, ni COM, ni le système
-//! de fichiers : il tient une table `empreinte -> octets` pour le catalogue
-//! COURANT, et il sait dire lesquelles d'un ensemble annoncé manquent à un
-//! autre.
+//! **PURE, with no `cfg`.** It knows neither Windows, nor COM, nor the file
+//! system: it holds a `empreinte -> octets` table for the CURRENT
+//! catalogue, and it can tell which of an announced set are missing from
+//! another.
 //!
-//! 🔴 POURQUOI L'ADRESSAGE PAR CONTENU PAIE, ET CE N'EST PAS UNE CONJECTURE.
-//! Mesuré le 20 août 2026 sur le corpus réel de la VM de développement :
-//! **153 applications rendent 99 PNG DISTINCTS**, soit **54 téléversements
-//! évités (35,3 %)**. Douze empreintes sont partagées, dont une par **vingt-sept**
-//! applications — un même `runcmdu.exe` visé par vingt-sept raccourcis
-//! d'arguments différents. La décision D4 de la spécification sépare bien ces
-//! vingt-sept APPLICATIONS ; elles partagent UNE icône, et c'est exactement ce
-//! que ce module existe pour ne pas payer vingt-sept fois.
+//! 🔴 WHY CONTENT ADDRESSING PAYS OFF, AND IT IS NOT A CONJECTURE.
+//! Measured on 20 August 2026 on the real corpus of the development VM:
+//! **153 applications yield 99 DISTINCT PNGs**, i.e. **54 uploads
+//! avoided (35.3 %)**. Twelve fingerprints are shared, one of them by **twenty-seven**
+//! applications — the same `runcmdu.exe` targeted by twenty-seven shortcuts
+//! with different arguments. Decision D4 of the specification does separate these
+//! twenty-seven APPLICATIONS; they share ONE icon, and that is exactly what
+//! this module exists to avoid paying for twenty-seven times.
 //!
-//! ⚠️ **Le poids DÉDUPLIQUÉ n'a PAS été mesuré** : la sonde somme les 153 PNG
-//! (4 576 398 octets, 29 911 o/icône), jamais les 99 distincts. Ne pas le
-//! déduire d'une règle de trois — les icônes n'ont pas la même taille.
+//! ⚠️ **The DEDUPLICATED weight has NOT been measured**: the probe sums the 153 PNGs
+//! (4,576,398 bytes, 29,911 B/icon), never the 99 distinct ones. Do not
+//! deduce it by the rule of three — icons do not all have the same size.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+#[cfg(test)]
+use std::collections::BTreeSet;
 
 use crate::apps::sha256;
 
-/// L'empreinte SHA-256 d'un PNG, en hexadécimal minuscule.
+/// The SHA-256 fingerprint of a PNG, in lowercase hexadecimal.
 ///
-/// 🔴 C'EST L'EMPREINTE DES OCTETS PNG, ET NON CELLE DES PIXELS, et le maillon
-/// suivant est ce qui décide. La plateforme RECALCULE l'empreinte de ce
-/// qu'elle reçoit (« aucun saut ne fait confiance au précédent ») : adresser
-/// par les PIXELS l'obligerait à DÉCODER le PNG pour vérifier, c'est-à-dire à
-/// embarquer un décodeur PNG en TypeScript — une dépendance de production
-/// neuve, que ce sous-bloc refuse. Adresser par les octets rend la
-/// vérification exacte et gratuite : `sha256(corps) === :sha256`.
+/// 🔴 IT IS THE FINGERPRINT OF THE PNG BYTES, NOT OF THE PIXELS, and the next
+/// link is what decides. The platform RECOMPUTES the fingerprint of what
+/// it receives ("no hop trusts the previous one"): addressing
+/// by PIXELS would force it to DECODE the PNG to check, that is to
+/// ship a PNG decoder in TypeScript — a new production
+/// dependency, which this sub-block refuses. Addressing by bytes makes the
+/// check exact and free: `sha256(corps) === :sha256`.
 ///
-/// ⚠️ **LE PRIX DE CE CHOIX EST LA DÉTERMINATION DE L'ENCODEUR**, et il est
-/// nommé. Si l'encodeur n'écrivait pas deux fois les mêmes octets pour la même
-/// image — un chunk `tIME`, un `tEXt` de logiciel —, l'empreinte changerait à
-/// chaque réconciliation et l'agent retéléverserait tout, indéfiniment. **Ce
-/// n'est PAS une porte éliminatoire** : le catalogue resterait juste et les
-/// icônes resteraient servies ; seul le coût monterait. Le remède est nommé
-/// d'avance et vit **dans ce module-ci, qui est pur** — n'empreindre que les
-/// chunks `IHDR`/`PLTE`/`IDAT`/`IEND`, en écartant les auxiliaires.
+/// ⚠️ **THE PRICE OF THIS CHOICE IS THE ENCODER'S DETERMINISM**, and it is
+/// named. If the encoder did not write the same bytes twice for the same
+/// image — a `tIME` chunk, a software `tEXt` —, the fingerprint would change at
+/// every reconciliation and the agent would re-upload everything, indefinitely. **It
+/// is NOT a blocking gate**: the catalogue would stay correct and the
+/// icons would still be served; only the cost would rise. The remedy is named
+/// in advance and lives **in this very module, which is pure** — fingerprint only the
+/// `IHDR`/`PLTE`/`IDAT`/`IEND` chunks, discarding the ancillary ones.
 ///
-/// 🔵 AUCUNE LIGNE DE CRYPTOGRAPHIE NEUVE : `apps::sha256` est déjà écrit,
-/// pur, et éprouvé sur les vecteurs de réponse connue de FIPS 180-4.
+/// 🔵 NO NEW LINE OF CRYPTOGRAPHY: `apps::sha256` is already written,
+/// pure, and tested against the FIPS 180-4 known-answer vectors.
 pub fn empreinte(png: &[u8]) -> String {
     sha256::hex(png)
 }
 
-/// Les octets du catalogue COURANT, une entrée par empreinte distincte.
+/// The bytes of the CURRENT catalogue, one entry per distinct fingerprint.
 #[derive(Debug, Default)]
 pub struct Magasin {
     par_empreinte: BTreeMap<String, Vec<u8>>,
@@ -58,17 +60,18 @@ impl Magasin {
         Self::default()
     }
 
-    /// Ajoute un PNG et rend son empreinte. **Idempotent.**
+    /// Adds a PNG and returns its fingerprint. **Idempotent.**
     ///
-    /// 🔴 DEUX AJOUTS DU MÊME CONTENU NE FONT QU'UNE ENTRÉE, et c'est
-    /// l'essentiel : sur ce corpus, l'accumulation coûterait 153 entrées là où
-    /// 99 suffisent.
-    pub fn ajouter(&mut self, png: Vec<u8>) -> String {
+    /// 🔴 TWO ADDITIONS OF THE SAME CONTENT MAKE ONLY ONE ENTRY, and that is
+    /// the essential point: on this corpus, accumulating would cost 153 entries where
+    /// 99 are enough.
+    pub fn add(&mut self, png: Vec<u8>) -> String {
         let e = empreinte(&png);
         self.par_empreinte.entry(e.clone()).or_insert(png);
         e
     }
 
+    #[cfg(test)]
     pub fn contient(&self, empreinte: &str) -> bool {
         self.par_empreinte.contains_key(empreinte)
     }
@@ -77,6 +80,7 @@ impl Magasin {
         self.par_empreinte.get(empreinte).map(Vec::as_slice)
     }
 
+    #[cfg(test)]
     pub fn empreintes(&self) -> BTreeSet<String> {
         self.par_empreinte.keys().cloned().collect()
     }
@@ -85,39 +89,41 @@ impl Magasin {
         self.par_empreinte.len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.par_empreinte.is_empty()
     }
 
-    /// 🔴 JETTE TOUT LE CONTENU PRÉCÉDENT. Le magasin porte le catalogue
-    /// COURANT, jamais l'histoire : fusionner le ferait croître sans terme
-    /// d'une réconciliation à l'autre, sur un processus qui vit des jours.
+    /// 🔴 DISCARDS ALL THE PREVIOUS CONTENT. The store carries the CURRENT
+    /// catalogue, never the history: merging it would make it grow with no end
+    /// from one reconciliation to the next, on a process that lives for days.
     pub fn remplacer(&mut self, neuf: Magasin) {
         self.par_empreinte = neuf.par_empreinte;
     }
 }
 
-/// Celles des `annoncees` que `connues` ne porte pas, **dans l'ordre
-/// d'annonce** et sans doublon.
+/// Those of `annoncees` that `connues` does not carry, **in the order
+/// of announcement** and without duplicates.
 ///
-/// ⚠️ **ELLE N'A AUCUN APPELANT DE PRODUCTION DANS L'AGENT, ET C'EST DÉCLARÉ
-/// PLUTÔT QUE DISSIMULÉ.** C'est la PLATEFORME qui décide ce qui lui manque —
-/// en interrogeant son DISQUE, jamais une table —, et l'agent ne fait
-/// qu'honorer la liste qu'elle lui pousse. Cette fonction est le jumeau
-/// HÔTE-TESTABLE de cette règle : elle existe pour que la règle soit éprouvée
-/// là où elle est pure, et pour que le jour où l'agent devra filtrer lui-même,
-/// il n'ait pas à la réécrire.
+/// ⚠️ **IT HAS NO PRODUCTION CALLER IN THE AGENT, AND IT IS DECLARED
+/// RATHER THAN HIDDEN.** It is the PLATFORM that decides what it is missing —
+/// by querying its DISK, never a table —, and the agent merely
+/// honours the list it pushes to it. This function is the
+/// HOST-TESTABLE twin of that rule: it exists so that the rule is tested
+/// where it is pure, and so that the day the agent has to filter by itself,
+/// it does not have to rewrite it.
 ///
-/// ⚠️ Ce dépôt n'a pas de doctrine sur le code orphelin — le sous-bloc D10 a
-/// SUPPRIMÉ `taille_compatible` et CONSERVÉ `rafraichir_taille_sortie` sans
-/// énoncer de règle. Le choix est fait ici dans le sens de la conservation, et
-/// il est écrit.
+/// ⚠️ This repository has no doctrine on orphan code — sub-block D10
+/// DELETED the size-compatibility check and KEPT `refresh_output_size` without
+/// stating a rule. The choice is made here in favour of keeping it, and
+/// it is written down.
 ///
-/// C'est la règle que la plateforme applique aussi, écrite une fois du côté où
-/// elle est PURE.
+/// It is the rule the platform applies too, written once on the side where
+/// it is PURE.
 ///
-/// ⚠️ L'ORDRE D'ANNONCE EST PRÉSERVÉ plutôt que trié : c'est celui du
-/// catalogue, donc celui dans lequel l'utilisateur verra les icônes arriver.
+/// ⚠️ THE ORDER OF ANNOUNCEMENT IS PRESERVED rather than sorted: it is the
+/// catalogue's, hence the one in which the user will see the icons arrive.
+#[cfg(test)]
 pub fn manquantes(annoncees: &[String], connues: &BTreeSet<String>) -> Vec<String> {
     let mut vues = BTreeSet::new();
     annoncees

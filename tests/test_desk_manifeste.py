@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests du manifeste et du wizard du package desk.
+"""Tests of the manifest and the wizard of the desk package.
 
 Run: python3 tests/test_desk_manifeste.py
 """
@@ -23,37 +23,37 @@ def check(label, got, want):
 
 m = load_manifest(str(RACINE / "nivuus-package.yaml"))
 
-check("le nom est desk", m.name, "desk")
-check("le tier est userspace", m.tier, "userspace")
+check("the name is desk", m.name, "desk")
+check("the tier is userspace", m.tier, "userspace")
 
-# 🔴 Le tier n'est pas cosmétique : `userspace` INTERDIT de déclarer
-# kernel-cmdline, modules et hugepages. console a déjà pris VFIO, le GPU et le
-# NVMe ; desk n'ajoute qu'un service. La garantie est vérifiée par le moteur,
-# pas promise par nous.
-check("aucun module noyau", m.platform.modules, ())
-check("aucune ligne de commande noyau", m.platform.kernel_cmdline, ())
+# 🔴 The tier is not cosmetic: `userspace` FORBIDS declaring
+# kernel-cmdline, modules and hugepages. console has already taken VFIO, the GPU and the
+# NVMe; desk only adds a service. The guarantee is checked by the engine,
+# not promised by us.
+check("no kernel module", m.platform.modules, ())
+check("no kernel command line", m.platform.kernel_cmdline, ())
 
-# La dépendance dure : desk ne doit pas pouvoir s'installer sans console.
-check("console est un pré-requis", m.packages, ("console",))
+# The hard dependency: desk must not be installable without console.
+check("console is a prerequisite", m.packages, ("console",))
 
 questions = load_questions(str(RACINE / "wizard.yaml"))
 par_cle = {q.key: q for q in questions}
 
-check("quatre questions, pas une de plus", len(questions), 4)
-check("le courriel du compte initial", par_cle["admin_email"].type, "texte")
-check("le mot de passe est un secret", par_cle["admin_password"].type, "secret")
-check("le mode d'authentification est un choix", par_cle["auth_mode"].type, "choix")
-check("ses deux valeurs", tuple(sorted(par_cle["auth_mode"].choices)),
+check("four questions, not one more", len(questions), 4)
+check("the email of the initial account", par_cle["admin_email"].type, "texte")
+check("the password is a secret", par_cle["admin_password"].type, "secret")
+check("the authentication mode is a choice", par_cle["auth_mode"].type, "choix")
+check("its two values", tuple(sorted(par_cle["auth_mode"].choices)),
       ("motdepasse", "pomerium"))
 
-# 🔴 VB-Audio a une licence PERSONNELLE seulement : sa pose est une option
-# que l'opérateur arme, jamais un défaut.
-check("vb_audio est un booléen", par_cle["vb_audio"].type, "bool")
-check("vb_audio est DÉSARMÉ par défaut", par_cle["vb_audio"].default, False)
+# 🔴 VB-Audio has a PERSONAL licence only: installing it is an option
+# the operator arms, never a default.
+check("vb_audio is a boolean", par_cle["vb_audio"].type, "bool")
+check("vb_audio is DISARMED by default", par_cle["vb_audio"].default, False)
 
-# Le secret de jeton n'est PAS demandé : il se tire au sort à l'installation.
-# Le demander, c'est le faire choisir court.
-check("aucune question ne demande le secret de jeton",
+# The token secret is NOT asked for: it is drawn at random at installation.
+# Asking for it means getting a short one chosen.
+check("no question asks for the token secret",
       [q.key for q in questions if "jeton" in q.key or "token" in q.key], [])
 
 # The release source `nivuus update` follows: removing or misspelling it
@@ -65,4 +65,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests du manifeste et du wizard passés")
+print("OK - manifest and wizard tests passed")

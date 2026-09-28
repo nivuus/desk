@@ -1,28 +1,28 @@
-// Les deux dépôts du téléversement, sous `test:sqlite` ET sous `test:postgres`.
+// The two upload repositories, under `test:sqlite` AND under `test:postgres`.
 //
-// 🔴 LES VALEURS SONT RÉALISTES, JAMAIS COMMODES : les horodatages portent une
-// MAGNITUDE D'ÉPOQUE et les tailles celle d'un vrai installeur. C'est la leçon
-// la plus chère de P1 — la double passe n'écrivait que des `1_000`, et
-// déclarait portable un schéma que Postgres refusait pour toute écriture réelle.
+// 🔴 THE VALUES ARE REALISTIC, NEVER CONVENIENT: the timestamps carry an
+// EPOCH MAGNITUDE and the sizes that of a real installer. It is the most
+// expensive lesson of P1 — the double pass only wrote `1_000`s, and
+// declared portable a schema Postgres refused for every real write.
 //
-// 🔴 CE FICHIER PORTE LES TROIS ROUGES DE LA MIGRATION `0006`, et sans lui elle
-// n'en aurait aucune : une migration seule ne peut pas échouer autrement qu'en
-// ne s'appliquant pas.
+// 🔴 THIS FILE CARRIES THE THREE REDS OF MIGRATION `0006`, and without it
+// it would have none: a migration alone cannot fail other than by
+// not applying.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import {
     compterEnCours,
-    creer as creerTeleversement,
+    create as createUpload,
     lireParId as lireTeleversement,
     lirePlusVieuxQue,
     sceller,
-    supprimer,
+    remove,
 } from './televersement';
 import {
     avancer,
-    creer as creerInstallation,
+    create as createInstallation,
     lireEnAttentePourVm,
     lireParId as lireInstallation,
     terminer,
@@ -30,9 +30,9 @@ import {
 
 let base: Pilote | undefined;
 
-/// La magnitude qui a réellement cassé Postgres en P1.
+/// The magnitude that really broke Postgres in P1.
 const MS = 1_787_136_773_742;
-/// Un installeur de 3 Go : au-delà de l'entier 32 bits de Postgres.
+/// A 3 GB installer: beyond Postgres' 32-bit integer.
 const TROIS_GO = 3_221_225_472;
 
 afterEach(async () => {
@@ -40,7 +40,7 @@ afterEach(async () => {
     base = undefined;
 });
 
-async function socle(p: Pilote): Promise<{ utilisateur: string; vm: string }> {
+async function socle(p: Pilote): Promise<{ user: string; vm: string }> {
     await p.executer(
         'INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
         ['u-1', 'a@b.c', 'scrypt$1$1$1$x$y', MS],
@@ -50,21 +50,21 @@ async function socle(p: Pilote): Promise<{ utilisateur: string; vm: string }> {
         'g3',
         '192.168.3.2',
     ]);
-    return { utilisateur: 'u-1', vm: 'v-1' };
+    return { user: 'u-1', vm: 'v-1' };
 }
 
-describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
-    it('crée, relit, et scelle', async () => {
+describe(`upload repository, engine=${MOTEUR}`, () => {
+    it('creates, re-reads, and seals', async () => {
         base = await baseNeuve('tel-cree');
-        const { utilisateur } = await socle(base);
-        const ligne = await creerTeleversement(
+        const { user } = await socle(base);
+        const ligne = await createUpload(
             base,
             {
-                utilisateurId: utilisateur,
+                userId: user,
                 nom: 'Firefox Setup 130.0.exe',
                 taille: TROIS_GO,
                 sha256: 'a'.repeat(64),
-                tailleTranche: 8 * 1024 * 1024,
+                chunkSize: 8 * 1024 * 1024,
             },
             MS,
         );
@@ -80,29 +80,29 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
         expect((await lireTeleversement(base, ligne.id))?.scelle_a).toBe(MS + 5_000);
     });
 
-    // 🔴 LA ROUGE DU `BIGINT`, ET ELLE NE SE VOIT QUE SUR LA PASSE POSTGRES.
-    // `INTEGER` vaut 8 octets sur SQLite et EXACTEMENT 4 sur Postgres : une
-    // taille de 3 Go et un `Date.now()` y débordent tous les deux. C'est le
-    // défaut que P1 a trouvé en recette, sur ses PROPRES migrations, et dont
-    // les deux gardes existants — le lint lexical et la double passe — ne
-    // pouvaient rien voir : `INTEGER` est un type licite, et la suite
-    // n'écrivait que des petites valeurs.
+    // 🔴 THE `BIGINT` RED, AND IT ONLY SHOWS ON THE POSTGRES PASS.
+    // `INTEGER` is 8 bytes on SQLite and EXACTLY 4 on Postgres: a
+    // 3 GB size and a `Date.now()` both overflow it. It is the
+    // defect P1 found at acceptance, in its OWN migrations, and which
+    // the two existing guards — the lexical lint and the double pass — could
+    // see nothing of: `INTEGER` is a legal type, and the suite
+    // only wrote small values.
     //
-    // ⚠️ ET LE TEST COMPARE `typeof`, PAS SEULEMENT LA VALEUR : `pg` rend tout
-    // `int8` en TEXTE, et `interroger<T>` fait un `as T[]` — aucun typage ne
-    // l'attraperait. C'est le second défaut que P3 a trouvé, de classe, et le
-    // remède vit AU PILOTE (`setTypeParser`), jamais dans une rustine locale.
-    it('🔴 rend des NOMBRES, pas des chaînes, sur des magnitudes réelles', async () => {
+    // ⚠️ AND THE TEST COMPARES `typeof`, NOT ONLY THE VALUE: `pg` returns every
+    // `int8` as TEXT, and `interroger<T>` does an `as T[]` — no typing would
+    // catch it. It is the second defect P3 found, one of class, and the
+    // remedy lives IN THE DRIVER (`setTypeParser`), never in a local patch.
+    it('🔴 returns NUMBERS, not strings, on real magnitudes', async () => {
         base = await baseNeuve('tel-nombres');
-        const { utilisateur } = await socle(base);
-        const ligne = await creerTeleversement(
+        const { user } = await socle(base);
+        const ligne = await createUpload(
             base,
             {
-                utilisateurId: utilisateur,
+                userId: user,
                 nom: 'gros.msi',
                 taille: TROIS_GO,
                 sha256: 'b'.repeat(64),
-                tailleTranche: 8 * 1024 * 1024,
+                chunkSize: 8 * 1024 * 1024,
             },
             MS,
         );
@@ -115,73 +115,73 @@ describe(`dépôt televersement, moteur=${MOTEUR}`, () => {
         expect(relu?.taille).toBe(TROIS_GO);
     });
 
-    it('compte les EN COURS, et un scellé n’en est plus un', async () => {
+    it('counts the IN PROGRESS ones, and a sealed one no longer is', async () => {
         base = await baseNeuve('tel-quota');
-        const { utilisateur } = await socle(base);
-        const a = await creerTeleversement(
+        const { user } = await socle(base);
+        const a = await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'a.exe', taille: 1, sha256: 'c'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'a.exe', taille: 1, sha256: 'c'.repeat(64), chunkSize: 8 },
             MS,
         );
-        await creerTeleversement(
+        await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'b.exe', taille: 1, sha256: 'd'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'b.exe', taille: 1, sha256: 'd'.repeat(64), chunkSize: 8 },
             MS,
         );
-        expect(await compterEnCours(base, utilisateur)).toBe(2);
+        expect(await compterEnCours(base, user)).toBe(2);
         await sceller(base, a.id, MS + 1);
-        expect(await compterEnCours(base, utilisateur)).toBe(1);
-        // Un autre utilisateur n'entre pas dans le quota.
+        expect(await compterEnCours(base, user)).toBe(1);
+        // Another user does not count toward the quota.
         expect(await compterEnCours(base, 'u-inconnu')).toBe(0);
     });
 
-    it('le balayage d’âge rend ce qui est plus vieux que la borne', async () => {
+    it('the age sweep returns what is older than the bound', async () => {
         base = await baseNeuve('tel-age');
-        const { utilisateur } = await socle(base);
-        const vieux = await creerTeleversement(
+        const { user } = await socle(base);
+        const vieux = await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'v.exe', taille: 1, sha256: 'e'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'v.exe', taille: 1, sha256: 'e'.repeat(64), chunkSize: 8 },
             MS - 100_000,
         );
-        await creerTeleversement(
+        await createUpload(
             base,
-            { utilisateurId: utilisateur, nom: 'n.exe', taille: 1, sha256: 'f'.repeat(64), tailleTranche: 8 },
+            { userId: user, nom: 'n.exe', taille: 1, sha256: 'f'.repeat(64), chunkSize: 8 },
             MS,
         );
         const a_purger = await lirePlusVieuxQue(base, MS - 1);
         expect(a_purger.map((l) => l.id)).toEqual([vieux.id]);
-        await supprimer(base, vieux.id);
+        await remove(base, vieux.id);
         expect(await lireTeleversement(base, vieux.id)).toBeUndefined();
     });
 
-    // 🔴 LA ROUGE DE LA CLÉ ÉTRANGÈRE, PREMIÈRE MOITIÉ. Sans
-    // `REFERENCES utilisateur(id)`, cette insertion PASSERAIT — et un
-    // téléversement orphelin n'appartiendrait à personne, donc échapperait à
-    // toute vérification de propriétaire. Les clés étrangères sont APPLIQUÉES
-    // des deux côtés : `pilote-sqlite.ts` pose `PRAGMA foreign_keys = ON`.
-    it('🔴 REFUSE un téléversement dont l’utilisateur n’existe pas', async () => {
+    // 🔴 THE FOREIGN KEY RED, FIRST HALF. Without
+    // `REFERENCES user(id)`, this insertion WOULD PASS — and an
+    // orphan upload would belong to nobody, hence would escape
+    // any owner check. Foreign keys are ENFORCED
+    // on both sides: `pilote-sqlite.ts` sets `PRAGMA foreign_keys = ON`.
+    it('🔴 REFUSES an upload whose user does not exist', async () => {
         base = await baseNeuve('tel-orphelin');
         await expect(
-            creerTeleversement(
+            createUpload(
                 base,
-                { utilisateurId: 'u-fantome', nom: 'x.exe', taille: 1, sha256: 'g'.repeat(64), tailleTranche: 8 },
+                { userId: 'u-fantome', nom: 'x.exe', taille: 1, sha256: 'g'.repeat(64), chunkSize: 8 },
                 MS,
             ),
         ).rejects.toThrow();
     });
 });
 
-describe(`dépôt installation, moteur=${MOTEUR}`, () => {
-    async function avecTeleversement(p: Pilote): Promise<{ vm: string; tel: string }> {
-        const { utilisateur, vm } = await socle(p);
-        const tel = await creerTeleversement(
+describe(`installation repository, engine=${MOTEUR}`, () => {
+    async function withUpload(p: Pilote): Promise<{ vm: string; tel: string }> {
+        const { user, vm } = await socle(p);
+        const tel = await createUpload(
             p,
             {
-                utilisateurId: utilisateur,
+                userId: user,
                 nom: 'setup.exe',
                 taille: TROIS_GO,
                 sha256: 'a'.repeat(64),
-                tailleTranche: 8 * 1024 * 1024,
+                chunkSize: 8 * 1024 * 1024,
             },
             MS,
         );
@@ -189,10 +189,10 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         return { vm, tel: tel.id };
     }
 
-    it('naît en attente, avance, puis se termine', async () => {
+    it('is born pending, advances, then finishes', async () => {
         base = await baseNeuve('inst-cycle');
-        const { vm, tel } = await avecTeleversement(base);
-        const inst = await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        const { vm, tel } = await withUpload(base);
+        const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         expect(inst.etat).toBe('en_attente');
         expect((await lireEnAttentePourVm(base, vm)).map((l) => l.id)).toEqual([inst.id]);
 
@@ -205,8 +205,8 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         const enCours = await lireInstallation(base, inst.id);
         expect(enCours?.etat).toBe('en_cours');
         expect(enCours?.octets_total).toBe(TROIS_GO);
-        // 🔴 ET LA RÉÉMISSION S'ARRÊTE : c'est la PREMIÈRE des deux ceintures
-        // contre une double exécution.
+        // 🔴 AND THE RE-EMISSION STOPS: it is the FIRST of the two belts
+        // against a double execution.
         expect(await lireEnAttentePourVm(base, vm)).toEqual([]);
 
         await terminer(
@@ -218,21 +218,21 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         const fini = await lireInstallation(base, inst.id);
         expect(fini?.etat).toBe('terminee');
         expect(fini?.issue).toBe('reussie');
-        // ⚠️ 3010 EST UN SUCCÈS QUI DEMANDE UN REDÉMARRAGE, et la base le
-        // RAPPORTE à côté de l'issue sans en rien déduire.
+        // ⚠️ 3010 IS A SUCCESS THAT ASKS FOR A REBOOT, and the database
+        // REPORTS it next to the outcome without deducing anything from it.
         expect(fini?.code_sortie).toBe(3010);
         expect(fini?.terminee_a).toBe(MS + 9_000);
     });
 
-    // 🔴 LA ROUGE QUI COMPTE POUR LA RÉÉMISSION. La plateforme RÉÉMET, donc un
-    // agent peut rapporter deux fois — et une progression tardive arrivant
-    // après l'issue effacerait celle-ci ET remettrait l'état à `en_cours`,
-    // c'est-à-dire hors de `terminee`. Le garde est `AND etat <> 'terminee'`
-    // sur les DEUX écritures ; sans lui, ce test voit l'issue disparaître.
-    it('🔴 une progression TARDIVE n’efface pas une issue déjà posée', async () => {
+    // 🔴 THE RED THAT MATTERS FOR RE-EMISSION. The platform RE-EMITS, so an
+    // agent can report twice — and a late progress arriving
+    // after the outcome would erase it AND set the state back to `en_cours`,
+    // that is, out of `terminee`. The guard is `AND etat <> 'terminee'`
+    // on BOTH writes; without it, this test sees the outcome disappear.
+    it('🔴 a LATE progress does not erase an outcome already set', async () => {
         base = await baseNeuve('inst-tardive');
-        const { vm, tel } = await avecTeleversement(base);
-        const inst = await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        const { vm, tel } = await withUpload(base);
+        const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         await terminer(
             base,
             inst.id,
@@ -251,10 +251,10 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         expect(relu?.phase).toBe('');
     });
 
-    it('un code de sortie NON RECUEILLI reste null, jamais une sentinelle', async () => {
+    it('an exit code NOT COLLECTED stays null, never a sentinel', async () => {
         base = await baseNeuve('inst-sans-code');
-        const { vm, tel } = await avecTeleversement(base);
-        const inst = await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        const { vm, tel } = await withUpload(base);
+        const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         await terminer(
             base,
             inst.id,
@@ -262,7 +262,7 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
                 issue: 'issue-inconnue',
                 motif: null,
                 codeSortie: null,
-                journal: 'derniere ligne',
+                journal: 'last line',
                 journalTronque: true,
             },
             MS + 1,
@@ -272,33 +272,33 @@ describe(`dépôt installation, moteur=${MOTEUR}`, () => {
         expect(relu?.journal_tronque).toBeTruthy();
     });
 
-    // 🔴 LA ROUGE DE LA CLÉ ÉTRANGÈRE, SECONDE MOITIÉ — et c'est celle que le
-    // plan nomme : « l'insertion d'une installation pour une VM inexistante
-    // PASSE au lieu d'échouer ».
-    it('🔴 REFUSE une installation pour une VM inexistante', async () => {
+    // 🔴 THE FOREIGN KEY RED, SECOND HALF — and it is the one the
+    // plan names: "the insertion of an installation for a nonexistent VM
+    // PASSES instead of failing".
+    it('🔴 REFUSES an installation for a non-existent VM', async () => {
         base = await baseNeuve('inst-vm-fantome');
-        const { tel } = await avecTeleversement(base);
+        const { tel } = await withUpload(base);
         await expect(
-            creerInstallation(base, { vmId: 'v-fantome', televersementId: tel }, MS),
+            createInstallation(base, { vmId: 'v-fantome', televersementId: tel }, MS),
         ).rejects.toThrow();
     });
 
-    it('🔴 REFUSE une installation pour un téléversement inexistant', async () => {
+    it('🔴 REFUSES an installation for a non-existent upload', async () => {
         base = await baseNeuve('inst-tel-fantome');
-        const { vm } = await avecTeleversement(base);
+        const { vm } = await withUpload(base);
         await expect(
-            creerInstallation(base, { vmId: vm, televersementId: 't-fantome' }, MS),
+            createInstallation(base, { vmId: vm, televersementId: 't-fantome' }, MS),
         ).rejects.toThrow();
     });
 
-    // ⚠️ CE REFUS EST VOULU, et il est le pendant de l'absence d'`ON DELETE` :
-    // l'historique d'une installation doit rester lisible. Les TRANCHES du
-    // disque, elles, sont balayées par ailleurs — ce sont elles qui coûtent de
-    // la place, pas la ligne.
-    it('🔴 REFUSE de supprimer un téléversement qu’une installation référence', async () => {
+    // ⚠️ THIS REFUSAL IS WANTED, and it is the counterpart of the absence of `ON DELETE`:
+    // the history of an installation must stay readable. The CHUNKS on
+    // disk, for their part, are swept elsewhere — they are what costs
+    // space, not the row.
+    it('🔴 REFUSES to delete an upload that an installation references', async () => {
         base = await baseNeuve('inst-fk-refus');
-        const { vm, tel } = await avecTeleversement(base);
-        await creerInstallation(base, { vmId: vm, televersementId: tel }, MS);
-        await expect(supprimer(base, tel)).rejects.toThrow();
+        const { vm, tel } = await withUpload(base);
+        await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
+        await expect(remove(base, tel)).rejects.toThrow();
     });
 });

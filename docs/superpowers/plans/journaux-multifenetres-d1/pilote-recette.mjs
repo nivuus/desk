@@ -287,11 +287,11 @@ async function main() {
 
         // ---- Point 5 : son
         log('>>> POINT 5 : lecture d’un son sur la VM');
-        const avant = await statsToutes(cdp, 'POINT 5 avant son');
+        const before = await statsToutes(cdp, 'POINT 5 avant son');
         vmIt('sonner', `1..4 | ForEach-Object { (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Ding.wav').PlaySync(); Start-Sleep -Milliseconds 300 }`);
         await dodo(9000);
         const apres = await statsToutes(cdp, 'POINT 5 après son');
-        log('DELTA AUDIO :', JSON.stringify(deltaAudio(avant, apres)));
+        log('DELTA AUDIO :', JSON.stringify(deltaAudio(before, apres)));
 
         // ---- Point 3 : frappe clavier ciblée
         log('>>> POINT 3 : frappe clavier dans la fenêtre du Bloc-notes');
@@ -394,7 +394,7 @@ async function statsToutes(cdp, etiquette) {
               rtt: paire?.currentRoundTripTime,
               viewport: window.innerWidth + 'x' + window.innerHeight,
             };
-        })()`, true).catch((e) => ({ erreur: String(e).slice(0, 200) }));
+        })()`, true).catch((e) => ({ error: String(e).slice(0, 200) }));
         out[p.url] = s;
     }
     log(`STATS (${etiquette}) ` + JSON.stringify(out, null, 1));

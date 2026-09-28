@@ -1,79 +1,79 @@
-// Les deux routes d'icône : `PUT /icone/:sha256` (l'AGENT dépose, sous jeton
-// d'agent) et `GET /application/:id/icone?e=&v=&x=&s=` (le NAVIGATEUR lit,
-// par une URL SIGNÉE, SANS aucun en-tête — décision du propriétaire du dépôt
-// du 30 août 2026, voir plus bas).
+// The two icon routes: `PUT /icone/:sha256` (the AGENT uploads, under an agent
+// token) and `GET /application/:id/icone?e=&v=&x=&s=` (the BROWSER reads,
+// through a SIGNED URL, WITHOUT any header — decision of the repository owner
+// of 30 August 2026, see below).
 //
-// 🔴 POURQUOI L'EMPREINTE ENTRE DANS L'URL DU `GET`. La spécification écrit
-// « `GET /application/:id/icone` avec `Cache-Control` immuable clé sur
-// l'empreinte » — **et les deux moitiés se contredisent telles quelles**. Sur
-// une URL qui NE PORTE PAS l'empreinte, `immutable` est un MENSONGE : le jour
-// où l'icône change, tous les caches servent l'ancienne, POUR UN AN. Le
-// paramètre `?e=` rend l'URL véritablement adressée par contenu, et
-// `Cache-Control: private, max-age=31536000, immutable` DIT VRAI.
+// 🔴 WHY THE FINGERPRINT GOES INTO THE URL OF THE `GET`. The specification writes
+// « `GET /application/:id/icone` with an immutable `Cache-Control` keyed on
+// the fingerprint » — **and the two halves contradict each other as they stand**. On
+// a URL that DOES NOT CARRY the fingerprint, `immutable` is a LIE: the day
+// the icon changes, all caches serve the old one, FOR A YEAR. The
+// `?e=` parameter makes the URL truly content-addressed, and
+// `Cache-Control: private, max-age=31536000, immutable` TELLS THE TRUTH.
 //
-// 🔴 ET LE `404` SUR UN `e` PÉRIMÉ N'EST PAS UNE COMMODITÉ : sans lui, une
-// vieille URL servirait l'icône COURANTE sous un en-tête immuable, ce qui
-// empoisonnerait le cache pour un an avec une image qui n'est pas celle que
-// l'URL nomme.
+// 🔴 AND THE `404` ON A STALE `e` IS NOT A CONVENIENCE: without it, an
+// old URL would serve the CURRENT icon under an immutable header, which
+// would poison the cache for a year with an image that is not the one
+// the URL names.
 //
-// ⚠️ `private`, JAMAIS `public` : la réponse est authentifiée par le porteur,
-// et un cache partagé n'a rien à faire d'une icône servie sous un jeton.
+// ⚠️ `private`, NEVER `public`: the response is authenticated by the bearer,
+// and a shared cache has no business with an icon served under a token.
 //
-// 🔴 ✅ **TRANCHÉ LE 30 AOÛT 2026 PAR LE PROPRIÉTAIRE DU DÉPÔT — ET CE QUI SUIT
-// N'EST PLUS L'ÉTAT DU PRODUIT.** Tout le paragraphe barré ci-dessous décrit
-// le legs que ce lot ferme ; il est conservé parce qu'il porte le diagnostic,
-// et parce que ce dépôt barre plutôt qu'il n'efface.
+// 🔴 ✅ **SETTLED ON 30 AUGUST 2026 BY THE REPOSITORY OWNER — AND WHAT FOLLOWS
+// IS NO LONGER THE STATE OF THE PRODUCT.** The whole struck-out paragraph below describes
+// the legacy this batch closes; it is kept because it carries the diagnosis,
+// and because this repository strikes out rather than erases.
 //
-// ❌ ~~CONSÉQUENCE NOMMÉE ICI PLUTÔT QUE DÉCOUVERTE PLUS TARD, ET ELLE
-// APPARTIENT AU SOUS-BLOC G5 : un `<img src>` NE PORTE PAS D'EN-TÊTE
-// `Authorization`. Une page qui afficherait ces icônes devra les chercher par
-// `fetch()` puis `URL.createObjectURL`, et un manifeste PWA NE POURRA PAS
-// pointer cette route en l'état. G2 ne le tranche pas : le trancher
-// demanderait de décider si une icône peut être servie sans jeton, ce qui est
-// une décision de sécurité.~~
+// ❌ ~~A CONSEQUENCE NAMED HERE RATHER THAN DISCOVERED LATER, AND IT
+// BELONGS TO SUB-BLOCK G5: an `<img src>` DOES NOT CARRY AN
+// `Authorization` HEADER. A page that displayed these icons will have to fetch them through
+// `fetch()` then `URL.createObjectURL`, and a PWA manifest WILL NOT BE ABLE TO
+// point to this route as it stands. G2 does not settle it: settling it
+// would require deciding whether an icon can be served without a token, which is
+// a security decision.~~
 //
-// ✅ **LA DÉCISION, ET SES DEUX BRANCHES ÉCARTÉES** (30 août 2026). Le
-// propriétaire a retenu **l'URL SIGNÉE**, et écarté nommément :
-//   ① servir les icônes SANS jeton — cela révélerait la liste des
-//      applications installées sur la VM à quiconque atteint le port ;
-//   ② les inliner en `data:` dans le catalogue — support inégal des `data:`
-//      dans un manifeste PWA.
-// **Ce n'est pas une commodité d'implémentation** : c'est un arbitrage de
-// sécurité, et c'est pour cela que G5 l'avait laissé au propriétaire.
+// ✅ **THE DECISION, AND ITS TWO DISCARDED BRANCHES** (30 August 2026). The
+// owner kept **THE SIGNED URL**, and discarded by name:
+//   ① serving the icons WITHOUT a token — that would reveal the list of
+//      applications installed on the VM to anyone who reaches the port;
+//   ② inlining them as `data:` in the catalogue — uneven support for `data:`
+//      in a PWA manifest.
+// **This is not an implementation convenience**: it is a security
+// trade-off, and that is why G5 had left it to the owner.
 //
-// 🔴 **L'ANCIEN CHEMIN À `Authorization` NE SURVIT PAS, ET C'EST TRANCHÉ.**
-// Deux chemins pour une même ressource, ce sont deux gardes d'autorisation à
-// tenir — et ce dépôt a écrit dix fois que deux copies d'une garde de
-// sécurité divergent en silence, « celle qu'on corrige et celle qu'on
-// oublie » (`agents/canal.ts`, `porteur-agent.ts`). Le `GET` n'accepte donc
-// plus que l'URL signée, et **aucune autorité n'est perdue** : l'URL n'est
-// frappée que par `routes-applications.ts::servirApplications`, qui exige le
-// jeton porteur ET vérifie l'appartenance de la VM avant de la rendre.
+// 🔴 **THE OLD `Authorization` PATH DOES NOT SURVIVE, AND THAT IS SETTLED.**
+// Two paths for the same resource are two authorisation guards to
+// keep — and this repository has written ten times that two copies of a
+// security guard drift silently, « the one being fixed and the one being
+// forgotten » (`agents/canal.ts`, `porteur-agent.ts`). The `GET` therefore only
+// accepts the signed URL, and **no authority is lost**: the URL is
+// only minted by `routes-applications.ts::servirApplications`, which requires the
+// bearer token AND checks the ownership of the VM before returning it.
 //
-// ⚠️ **CE QUE LE CHANGEMENT COÛTE, DIT PLUTÔT QUE TU.**
-//   ① **La fraîcheur de l'autorisation.** L'appartenance de la VM est
-//      vérifiée à la FRAPPE, plus à la lecture : une VM réattribuée laisse
-//      les URL déjà frappées valides jusqu'à leur expiration (5 à 6 min).
-//      C'est le prix d'une capacité au porteur, et c'est ce que la durée
-//      courte borne.
-//   ② **La réponse n'identifie plus personne.** Elle ne le peut pas : un
-//      `<img src>` ne porte rien d'autre que son URL. Ce qu'une URL fuitée
-//      donne est **une icône, celle d'une application, pendant cinq
-//      minutes** — jamais le catalogue, jamais un lancement, jamais une
+// ⚠️ **WHAT THE CHANGE COSTS, SAID RATHER THAN KEPT QUIET.**
+//   ① **The freshness of the authorisation.** The ownership of the VM is
+//      checked at MINTING, no longer at reading: a reassigned VM leaves
+//      the URLs already minted valid until they expire (5 to 6 min).
+//      It is the price of a bearer capability, and it is what the short
+//      lifetime bounds.
+//   ② **The response no longer identifies anybody.** It cannot: an
+//      `<img src>` carries nothing but its URL. What a leaked URL
+//      gives is **an icon, that of one application, for five
+//      minutes** — never the catalogue, never a launch, never a
 //      session.
 //
-// ⚠️ **CE QUE CE LOT N'ÉTABLIT PAS, ET IL FAUT LE LIRE AVANT DE S'EN
-// RÉCLAMER.** Derrière Pomerium, un `<img src>` posé par une page
-// authentifiée voyage avec les cookies de session (sous-ressource de même
-// origine) et passe. **Un `icons[].src` de MANIFESTE, lui, est allé chercher
-// SANS les cookies** — c'est ce que `client/src/hub/manifeste-hub-greffon.ts`
-// a mesuré sur `<link rel="manifest">`, et le même mécanisme vaut pour les
-// icônes qu'un manifeste nomme. Une URL signée placée dans un manifeste
-// exigerait donc que la politique du proxy l'ouvre : elle ne finit ni par
-// `.png`, ni par `.ico`, ni par `manifest.json`, les trois seuls suffixes que
-// `config.yaml` laisse passer. **Ce lot NE TOUCHE PAS à Pomerium**, et c'est
-// pourquoi le manifeste par application continue de porter son icône en
-// `data:` (`client/src/hub/manifeste.ts`), forme que G5 a mesurée
+// ⚠️ **WHAT THIS BATCH DOES NOT ESTABLISH, AND IT MUST BE READ BEFORE
+// INVOKING IT.** Behind Pomerium, an `<img src>` placed by an
+// authenticated page travels with the session cookies (same-origin
+// sub-resource) and gets through. **A MANIFEST `icons[].src`, however, was fetched
+// WITHOUT the cookies** — that is what `client/src/hub/manifeste-hub-greffon.ts`
+// measured on `<link rel="manifest">`, and the same mechanism holds for the
+// icons a manifest names. A signed URL placed in a manifest
+// would therefore require the proxy policy to open it: it ends neither with
+// `.png`, nor with `.ico`, nor with `manifest.json`, the only three suffixes that
+// `config.yaml` lets through. **This batch DOES NOT TOUCH Pomerium**, and that is
+// why the per-application manifest keeps carrying its icon as
+// `data:` (`client/src/hub/manifeste.ts`), a form G5 measured as
 // installable.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -84,7 +84,7 @@ import { lireParId } from '../depot/application';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import { lirePorteurAgent } from './porteur-agent';
-import { verifierUrlIcone } from '../apps/url-icone';
+import { verifyIconUrl } from '../apps/url-icone';
 
 export interface DependancesIcone {
     base: Pilote;
@@ -94,15 +94,15 @@ export interface DependancesIcone {
     maintenant: () => number;
 }
 
-/// ⚠️ **MAJORANTE À VUE, ET NON CALIBRÉE.** La plus grosse icône mesurée pèse
-/// moins de 30 Kio en moyenne et le corpus entier 4,4 Mo pour 153 — **mais
-/// AUCUNE taille individuelle n'a été relevée**, seulement une moyenne. Le
-/// dire vaut mieux que de la présenter comme réglée.
+/// ⚠️ **AN UPPER BOUND BY EYE, AND NOT CALIBRATED.** The largest icon measured weighs
+/// under 30 KiB on average and the whole corpus 4.4 MB for 153 — **but
+/// NO individual size was recorded**, only an average. Saying
+/// so beats presenting it as settled.
 ///
-/// ⚠️ ELLE N'A RIEN À VOIR AVEC LE PLAFOND DE CORPS DE `routes-auth.ts`
-/// (4 Kio), QUI NE DOIT PAS ÊTRE RELEVÉ : une route qui accepte des images a
-/// son propre plafond, et confondre les deux ouvrirait le corps des routes
-/// d'authentification à un mégaoctet.
+/// ⚠️ IT HAS NOTHING TO DO WITH THE BODY CEILING OF `routes-auth.ts`
+/// (4 KiB), WHICH MUST NOT BE RAISED: a route that accepts images has
+/// its own ceiling, and mixing the two up would open the body of the
+/// authentication routes to a megabyte.
 export const ICONE_MAX_OCTETS = 1_048_576;
 
 const CHEMIN_PUT = '/icone/';
@@ -115,31 +115,31 @@ function repondre(
 ): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, et posés sur TOUTE réponse — y compris les
-        // refus. Étalés AVANT `cors`, dont la politique est facultative et ne
-        // doit jamais pouvoir les écraser.
+        // ⚠️ UNCONDITIONAL, and set on EVERY response — including the
+        // refusals. Spread BEFORE `cors`, whose policy is optional and must
+        // never be able to overwrite them.
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(corps === undefined ? undefined : JSON.stringify(corps));
 }
 
-/// Reconnaît `/icone/:sha256`, et RIEN d'autre.
+/// Matches `/icone/:sha256`, and NOTHING else.
 ///
-/// 🔴 DÉCOUPÉ PAR SEGMENTS, JAMAIS PAR `startsWith`. G1 a MESURÉ qu'un
-/// `startsWith('/application')` laissait ses dix-sept tests VERTS : la route
-/// mangeait toute la famille et rendait SON PROPRE 404 typé, indiscernable du
-/// 404 générique tant qu'on ne lisait que le statut. Le motif est ancré des
-/// DEUX bouts.
+/// 🔴 SPLIT BY SEGMENTS, NEVER BY `startsWith`. G1 MEASURED that a
+/// `startsWith('/application')` left its seventeen tests GREEN: the route
+/// swallowed the whole family and returned ITS OWN typed 404, indistinguishable from the
+/// generic 404 as long as one only read the status. The pattern is anchored at
+/// BOTH ends.
 function empreinteDe(chemin: string): string | undefined {
     const segments = chemin.split('/');
-    // ['', 'icone', '<sha256>'] — exactement trois.
+    // ['', 'icone', '<sha256>'] — exactly three.
     if (segments.length !== 3) return undefined;
     if (segments[1] !== 'icone') return undefined;
     return segments[2] === '' ? undefined : segments[2];
 }
 
-/// Reconnaît `/application/:id/icone`, et RIEN d'autre.
+/// Matches `/application/:id/icone`, and NOTHING else.
 function iconeDe(chemin: string): string | undefined {
     const segments = chemin.split('/');
     // ['', 'application', '<id>', 'icone'] — exactement quatre.
@@ -148,11 +148,11 @@ function iconeDe(chemin: string): string | undefined {
     return segments[2] === '' ? undefined : segments[2];
 }
 
-/// Lit le corps, en s'arrêtant DÈS le dépassement.
+/// Reads the body, stopping AS SOON AS it overflows.
 ///
-/// 🔴 LE PLAFOND EST VÉRIFIÉ PENDANT LA LECTURE, PAS APRÈS : accumuler
-/// d'abord et mesurer ensuite laisserait un pair remplir la mémoire du service
-/// avant que le refus n'arrive.
+/// 🔴 THE CEILING IS CHECKED DURING THE READ, NOT AFTER: piling up
+/// first and measuring afterwards would let a peer fill the memory of the service
+/// before the refusal arrives.
 async function lireCorps(req: IncomingMessage): Promise<Buffer | 'trop-gros'> {
     const morceaux: Buffer[] = [];
     let total = 0;
@@ -177,19 +177,19 @@ export async function servirIcone(
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
-    // ⚠️ LE `PUT` EXIGE `Authorization`, DONC LA REQUÊTE EST NON SIMPLE : le
-    // navigateur envoie d'abord un `OPTIONS`, et **abandonne sans jamais
-    // envoyer la vraie requête** si la réponse ne lui convient pas. C'est le
-    // défaut exact que la corroboration navigateur du sous-bloc P4 a trouvé,
-    // et qu'aucun test de Node ne pouvait voir.
+    // ⚠️ THE `PUT` REQUIRES `Authorization`, SO THE REQUEST IS NOT SIMPLE: the
+    // browser first sends an `OPTIONS`, and **gives up without ever
+    // sending the real request** if the response does not suit it. That is the
+    // exact defect that the browser corroboration of sub-block P4 found,
+    // and that no Node test could see.
     //
-    // ⚠️ LE `GET`, LUI, N'EN A PLUS BESOIN DEPUIS L'URL SIGNÉE — il ne porte
-    // aucun en-tête, donc un `<img src>` n'émet aucune requête préalable.
-    // **La réponse préalable reste servie pour les deux**, et ce n'est pas de
-    // la négligence : un `fetch` porteur reste possible côté page (c'est ce
-    // que fait `client/src/hub/catalogue.ts::lireIcone` pour lire les octets
-    // du PNG), et lui déclenche bien un `OPTIONS` dès qu'il vient d'une autre
-    // origine — le montage `PLATEFORME_ORIGINE_CLIENT`.
+    // ⚠️ THE `GET`, FOR ITS PART, NO LONGER NEEDS IT SINCE THE SIGNED URL — it carries
+    // no header, so an `<img src>` emits no preflight request.
+    // **The preflight response is still served for both**, and that is not
+    // negligence: a bearer `fetch` is still possible on the page side (that is
+    // what `client/src/hub/catalogue.ts::lireIcone` does to read the bytes
+    // of the PNG), and it does trigger an `OPTIONS` as soon as it comes from another
+    // origin — the `PLATEFORME_ORIGINE_CLIENT` deployment.
     if (req.method === 'OPTIONS') {
         repondre(rep, 204, undefined, cors);
         return true;
@@ -210,7 +210,7 @@ export async function servirIcone(
     return service(req, rep, deps, cors, idApplication!);
 }
 
-/// `PUT /icone/:sha256` — l'agent dépose.
+/// `PUT /icone/:sha256` — the agent uploads.
 async function depot(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -218,36 +218,36 @@ async function depot(
     cors: Record<string, string> | undefined,
     empreinte: string,
 ): Promise<boolean> {
-    // 🔴 UN JETON D'AGENT, PAS UN JETON D'HUMAIN, et le refus est le
-    // SYMÉTRIQUE de celui de `porteur.ts` : `403` et non `401`, parce que le
-    // jeton est VALIDE — il n'est simplement pas celui d'un agent. Un `401`
-    // inviterait à se reconnecter pour rien.
+    // 🔴 AN AGENT TOKEN, NOT A HUMAN TOKEN, and the refusal is the
+    // MIRROR of that of `porteur.ts`: `403` and not `401`, because the
+    // token is VALID — it simply is not an agent one. A `401`
+    // would invite signing in again for nothing.
     //
-    // 🔴 CETTE LECTURE VIVAIT ICI EN LIGNE, RECOPIÉE DE `porteur.ts`, ET ELLE
-    // EST PASSÉE DANS `porteur-agent.ts` (G3). La raison n'est pas
-    // l'esthétique : `GET /televersement/:id/contenu` a besoin de la MÊME
-    // lecture, et deux copies d'une garde de sécurité divergent en silence —
-    // celle qu'on corrige et celle qu'on oublie. Le module rend en outre le
-    // PRÉFIXE DE SESSION, dont cette route-ci n'a pas l'emploi et que l'autre
-    // résoudra en VM par `depot/agent.ts::lireParPrefixe`.
+    // 🔴 THIS READING LIVED HERE INLINE, COPIED FROM `porteur.ts`, AND IT
+    // MOVED INTO `porteur-agent.ts` (G3). The reason is not
+    // aesthetics: `GET /televersement/:id/contenu` needs the SAME
+    // reading, and two copies of a security guard drift silently —
+    // the one being fixed and the one being forgotten. The module moreover yields the
+    // SESSION PREFIX, which this route has no use for and which the other one
+    // will resolve into a VM through `depot/agent.ts::lireParPrefixe`.
     //
-    // ⚠️ LES QUATRE MOTIFS ET LEURS CODES SONT INCHANGÉS, à la lettre :
+    // ⚠️ THE FOUR REASONS AND THEIR CODES ARE UNCHANGED, to the letter:
     // `jeton-absent` 401, `jeton-invalide` 401, `jeton-expire` 401,
-    // `jeton-utilisateur` 403, et dans cet ordre. La SEULE différence de
-    // comportement est un en-tête `Authorization` RÉPÉTÉ, que la copie rangeait
-    // avec `jeton-absent` et que le module refuse en `jeton-invalide` — une
-    // requête ambiguë n'est pas une requête vide. **Elle est INATTEIGNABLE
-    // depuis une vraie requête HTTP, et c'est MESURÉ** : sur Node v24.9.0, deux
-    // en-têtes `Authorization` rendent `typeof req.headers.authorization ===
-    // 'string'`, le parseur gardant le premier et jetant le second.
+    // `jeton-utilisateur` 403, and in that order. The ONLY behaviour (policy: allow-fr - frozen wire key or SQLite column)
+    // difference is a REPEATED `Authorization` header, which the copy filed
+    // with `jeton-absent` and which the module refuses as `jeton-invalide` — an
+    // ambiguous request is not an empty request. **It is UNREACHABLE
+    // from a real HTTP request, and that is MEASURED**: on Node v24.9.0, two
+    // `Authorization` headers yield `typeof req.headers.authorization ===
+    // 'string'`, the parser keeping the first and dropping the second.
     const porteur = lirePorteurAgent(req.headers, deps.secretJeton, deps.maintenant());
     if (!porteur.ok) {
         repondre(rep, porteur.code, { refus: porteur.motif }, cors);
         return true;
     }
 
-    // 🔴 LA GARDE DE FORME PASSE AVANT TOUTE LECTURE DE CORPS. `:sha256` est
-    // un COMPOSANT DE CHEMIN FOURNI PAR LE RÉSEAU, et `..` y est significatif.
+    // 🔴 THE SHAPE GUARD COMES BEFORE ANY BODY READ. `:sha256` is
+    // a PATH COMPONENT SUPPLIED BY THE NETWORK, and `..` is meaningful in it.
     if (!empreinteValide(empreinte)) {
         repondre(rep, 400, { refus: 'empreinte-invalide' }, cors);
         return true;
@@ -255,18 +255,18 @@ async function depot(
 
     const corps = await lireCorps(req);
     if (corps === 'trop-gros') {
-        // ⚠️ TYPÉ ET JOURNALISÉ, JAMAIS SILENCIEUX : l'application entrera au
-        // catalogue SANS icône, et il faut pouvoir le savoir.
-        console.warn(`icone refusee, corps au-dela de ${ICONE_MAX_OCTETS} octets : ${empreinte}`);
+        // ⚠️ TYPED AND LOGGED, NEVER SILENT: the application will enter the
+        // catalogue WITHOUT an icon, and one must be able to know it.
+        console.warn(`icon refused, body beyond ${ICONE_MAX_OCTETS} bytes: ${empreinte}`);
         repondre(rep, 413, { refus: 'taille' }, cors);
         return true;
     }
 
     try {
-        // 🔴 LE MAGASIN RECALCULE L'EMPREINTE. C'est la troisième des trois
-        // vérifications — « aucun saut ne fait confiance au précédent ». Sans
-        // elle, l'adressage par contenu n'en serait pas un.
-        deps.magasin.ecrire(empreinte, corps);
+        // 🔴 THE STORE RECOMPUTES THE FINGERPRINT. It is the third of the three
+        // checks — « no hop trusts the previous one ». Without
+        // it, content addressing would not be content addressing.
+        deps.magasin.write(empreinte, corps);
     } catch (cause) {
         repondre(rep, 400, { refus: 'empreinte' }, cors);
         return true;
@@ -275,15 +275,15 @@ async function depot(
     return true;
 }
 
-/// `GET /application/:id/icone?e=&v=&x=&s=` — le NAVIGATEUR lit, par une URL
-/// SIGNÉE, sans en-tête.
+/// `GET /application/:id/icone?e=&v=&x=&s=` — the BROWSER reads, through a
+/// SIGNED URL, with no header.
 ///
-/// 🔴 L'ORDRE DES CONTRÔLES EST CELUI DE `routes-applications.ts` : LA FORME,
-/// PUIS LA SIGNATURE, PUIS SEULEMENT LA BASE. « Une route qui lirait le
-/// catalogue puis refuserait le jeton ne fuiterait rien par sa réponse, mais
-/// elle offrirait un travail gratuit à un pair anonyme » — c'est pour tenir
-/// cette règle que la VM voyage dans l'URL (`v=`) plutôt que d'être lue en
-/// base pour vérifier la signature.
+/// 🔴 THE ORDER OF THE CHECKS IS THAT OF `routes-applications.ts`: THE SHAPE,
+/// THEN THE SIGNATURE, THEN ONLY THE DATABASE. « A route that read the
+/// catalogue and then refused the token would leak nothing through its response, but
+/// it would offer free work to an anonymous peer » — it is to keep
+/// that rule that the VM travels in the URL (`v=`) rather than being read from the
+/// database to check the signature.
 async function service(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -298,35 +298,35 @@ async function service(
         return true;
     }
 
-    // 🔴 LA SIGNATURE EST VÉRIFIÉE EN TEMPS CONSTANT, ET L'EXPIRATION CONTRE
-    // L'HORLOGE DU SERVEUR — jamais en croyant un champ du client. Les deux
-    // règles vivent dans `apps/url-icone.ts`, avec leurs raisons ; cette
-    // route ne fait que traduire le verdict en réponse HTTP.
-    const verdict = verifierUrlIcone(
+    // 🔴 THE SIGNATURE IS CHECKED IN CONSTANT TIME, AND THE EXPIRY AGAINST
+    // THE SERVER CLOCK — never by trusting a client field. Both
+    // rules live in `apps/url-icone.ts`, with their reasons; this
+    // route only translates the verdict into an HTTP response.
+    const verdict = verifyIconUrl(
         idApplication,
         url.searchParams,
         deps.secretJeton,
         deps.maintenant(),
     );
     if (!verdict.ok) {
-        // ⚠️ `400` POUR UNE FORME INCOMPLÈTE, `403` POUR UN REFUS : une URL à
-        // laquelle il manque un paramètre n'est pas une URL refusée, c'est
-        // une URL qu'on n'a pas fini d'écrire — et le dire évite de chercher
-        // une autorisation là où il manque un morceau.
+        // ⚠️ `400` FOR AN INCOMPLETE SHAPE, `403` FOR A REFUSAL: a URL
+        // missing a parameter is not a refused URL, it is
+        // a URL nobody has finished writing — and saying so avoids looking for
+        // an authorisation where a piece is missing.
         if (verdict.motif === 'parametre-absent') {
             repondre(rep, 400, { refus: 'signature-absente' }, cors);
             return true;
         }
-        // 🔴 `url-expiree` EST DISTINGUÉ DE `signature-invalide`, ET CE N'EST
-        // PAS UN ORACLE. Les deux motifs supposent déjà connu l'identifiant
-        // d'application, et aucun ne dit rien de l'existence ni de
-        // l'appartenance d'une VM — ce que l'uniformisation du `404` protège.
-        // Ce qu'ils distinguent est ACTIONNABLE côté client : une URL expirée
-        // se répare en relisant le catalogue, une signature fausse jamais.
-        // ⚠️ L'INVERSE SERAIT UN ORACLE, et `url-icone.ts` s'en garde :
-        // une URL forgée ET périmée s'entend dire « signature », jamais
-        // « expirée » — sans quoi le refus renseignerait un faussaire sur la
-        // moitié de son travail qui a abouti.
+        // 🔴 `url-expiree` IS TOLD APART FROM `signature-invalide`, AND IT IS
+        // NOT AN ORACLE. Both reasons already assume the application
+        // id is known, and neither says anything about the existence or
+        // the ownership of a VM — what making the `404` uniform protects.
+        // What they tell apart is ACTIONABLE on the client side: an expired URL
+        // is repaired by reading the catalogue again, a false signature never.
+        // ⚠️ THE REVERSE WOULD BE AN ORACLE, and `url-icone.ts` guards against it:
+        // a forged AND stale URL is told « signature », never
+        // « expired » — without which the refusal would inform a forger about the
+        // half of their work that succeeded.
         repondre(rep, 403, { refus: verdict.motif }, cors);
         return true;
     }
@@ -337,28 +337,28 @@ async function service(
         return true;
     }
 
-    // 🔴 LA VM SIGNÉE EST RECONFRONTÉE À CELLE DE LA BASE. Sans cela, la
-    // couvrir par la signature serait un ornement : une signature qui ne
-    // vérifie pas ce qu'elle prétend autoriser n'autorise rien. C'est ce
-    // contrôle qui fait qu'une application repointée vers une AUTRE VM cesse
-    // d'être servie par les URL déjà frappées.
+    // 🔴 THE SIGNED VM IS CHECKED AGAIN AGAINST THE ONE IN THE DATABASE. Without that,
+    // covering it with the signature would be an ornament: a signature that does not
+    // check what it claims to authorise authorises nothing. It is this
+    // check that makes an application repointed to ANOTHER VM stop
+    // being served by the URLs already minted.
     //
-    // ⚠️ LE REFUS EST CELUI DE G1, MOT POUR MOT — `404 vm-inconnue` : le
-    // même code et le même motif que la route du catalogue, pour ne pas
-    // rouvrir par une porte de derrière l'oracle d'énumération que le
-    // propriétaire a retiré.
+    // ⚠️ THE REFUSAL IS THAT OF G1, WORD FOR WORD — `404 vm-inconnue`: the
+    // same code and the same reason as the catalogue route, so as not to
+    // reopen through a back door the enumeration oracle the
+    // owner removed.
     if (application.vm_id !== verdict.vm) {
         repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
 
-    // 🔴 UN `e` QUI NE CORRESPOND PAS À L'EMPREINTE COURANTE REND `404`, et
-    // c'est ce qui rend `immutable` honnête : sans ce refus, une vieille URL
-    // servirait l'icône COURANTE sous un en-tête immuable, empoisonnant le
-    // cache pour un an avec une image qui n'est pas celle que l'URL nomme.
+    // 🔴 AN `e` THAT DOES NOT MATCH THE CURRENT FINGERPRINT RETURNS `404`, and
+    // that is what makes `immutable` honest: without that refusal, an old URL
+    // would serve the CURRENT icon under an immutable header, poisoning the
+    // cache for a year with an image that is not the one the URL names.
     //
-    // ⚠️ L'EMPREINTE N'EST PAS SIGNÉE, ET C'EST VOULU : elle est une VERSION,
-    // pas une autorisation. Voir `apps/url-icone.ts::PorteeIcone`.
+    // ⚠️ THE FINGERPRINT IS NOT SIGNED, AND THAT IS INTENDED: it is a VERSION,
+    // not an authorisation. See `apps/url-icone.ts::PorteeIcone`.
     if (application.icone === null || application.icone !== attendue) {
         repondre(rep, 404, { refus: 'icone-inconnue' }, cors);
         return true;
@@ -366,54 +366,54 @@ async function service(
 
     const octets = deps.magasin.lire(attendue);
     if (octets === undefined) {
-        // La base connaît l'empreinte, le disque ne l'a pas encore : c'est
-        // l'état NORMAL entre l'annonce et le téléversement, et c'est aussi
-        // celui d'un magasin perdu. Les deux se réparent seuls.
+        // The database knows the fingerprint, the disk does not have it yet: that is
+        // the NORMAL state between the announcement and the upload, and it is also
+        // that of a lost store. Both repair themselves.
         repondre(rep, 404, { refus: 'icone-inconnue' }, cors);
         return true;
     }
 
-    // 🔴 L'ORDRE EST INVERSE DE CELUI DE `repondre`, ET C'EST UNE EXCEPTION
-    // DÉCLARÉE, LA SEULE DU SERVICE.
+    // 🔴 THE ORDER IS THE REVERSE OF THAT OF `repondre`, AND IT IS A DECLARED
+    // EXCEPTION, THE ONLY ONE IN THE SERVICE.
     //
-    // `ENTETES_SECURITE` porte `Cache-Control: no-store`, posé pour les
-    // réponses JSON — dont `/auth/*`, qui rend des jetons. Cette réponse-ci
-    // n'est pas du JSON : c'est une image ADRESSÉE PAR CONTENU, dont l'URL
-    // porte l'empreinte, et la mettre en cache est tout l'objet de la route.
-    // Les deux en-têtes sont donc étalés D'ABORD et `cache-control` est
-    // écrasé ENSUITE, délibérément.
+    // `ENTETES_SECURITE` carries `Cache-Control: no-store`, set for the
+    // JSON responses — among them `/auth/*`, which yields tokens. This response
+    // is not JSON: it is a CONTENT-ADDRESSED image, whose URL
+    // carries the fingerprint, and caching it is the whole point of the route.
+    // The two headers are therefore spread FIRST and `cache-control` is
+    // overwritten AFTERWARDS, deliberately.
     //
-    // ⚠️ CE QUI N'EST PAS ÉCRASÉ EST `X-Content-Type-Options: nosniff`, et
-    // c'est le seul des deux qui soit une garde de sécurité : sans lui, un
-    // navigateur pourrait deviner un type autre que `image/png` sur des
-    // octets qu'un pair a déposés. Un test l'assère nommément sur la réponse
-    // 200, pour que cette exception ne puisse pas s'élargir en silence.
+    // ⚠️ WHAT IS NOT OVERWRITTEN IS `X-Content-Type-Options: nosniff`, and
+    // it is the only one of the two that is a security guard: without it, a
+    // browser could guess a type other than `image/png` on
+    // bytes a peer uploaded. A test asserts it by name on the 200
+    // response, so that this exception cannot widen silently.
     rep.writeHead(200, {
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
         'content-type': 'image/png',
         'content-length': String(octets.length),
-        // ⚠️ `private` ET NON `public`, ET LA RAISON A CHANGÉ LE 30 AOÛT
-        // 2026 SANS QUE LA VALEUR CHANGE : la réponse n'est plus authentifiée
-        // par un porteur mais par une URL SIGNÉE, c'est-à-dire par une
-        // capacité que son URL porte tout entière. Un cache PARTAGÉ la
-        // servirait donc à quiconque rejoue cette URL — ce qui est vrai de
-        // toute façon, mais un cache partagé la garderait **après
-        // l'expiration**, c'est-à-dire au-delà de la borne qui donne son sens
-        // au mécanisme. `private` la confine au navigateur qui l'a demandée.
+        // ⚠️ `private` AND NOT `public`, AND THE REASON CHANGED ON 30 AUGUST
+        // 2026 WITHOUT THE VALUE CHANGING: the response is no longer authenticated
+        // by a bearer but by a SIGNED URL, that is, by a
+        // capability its URL carries entirely. A SHARED cache would
+        // therefore serve it to anyone who replays that URL — which is true
+        // anyway, but a shared cache would keep it **after
+        // expiry**, that is, beyond the bound that gives the mechanism
+        // its meaning. `private` confines it to the browser that asked for it.
         //
-        // ⚠️ `immutable` DIT VRAI parce que l'URL porte l'empreinte — et il ne
-        // remplit pas le cache d'entrées mortes parce que l'expiration est
-        // ARRONDIE : deux frappes de la même minute rendent la MÊME URL. Sans
-        // cet arrondi, la clé de cache aurait changé à chaque lecture du
-        // catalogue. Voir `apps/url-icone.ts::PAS_URL_ICONE_MS`.
+        // ⚠️ `immutable` TELLS THE TRUTH because the URL carries the fingerprint — and it does not
+        // fill the cache with dead entries because the expiry is
+        // ROUNDED: two mints within the same minute yield the SAME URL. Without
+        // that rounding, the cache key would have changed on each read of the
+        // catalogue. See `apps/url-icone.ts::PAS_URL_ICONE_MS`.
         //
-        // 🔴 LA CASSE DE CETTE CLÉ N'EST PAS LIBRE : elle doit être CELLE
-        // D'`ENTETES_SECURITE`, à la lettre. Un objet JavaScript distingue
-        // `Cache-Control` de `cache-control`, et `writeHead` émet ALORS LES
-        // DEUX — le client lit `no-store, private, max-age=…`, c'est-à-dire
-        // une réponse qui se dit à la fois non stockable et immuable. Trouvé
-        // par l'exécution, pas par la relecture.
+        // 🔴 THE CASE OF THIS KEY IS NOT FREE: it must be THAT OF
+        // `ENTETES_SECURITE`, to the letter. A JavaScript object tells
+        // `Cache-Control` from `cache-control`, and `writeHead` THEN emits
+        // BOTH — the client reads `no-store, private, max-age=…`, that is,
+        // a response that calls itself both non-storable and immutable. Found
+        // by execution, not by rereading.
         'Cache-Control': 'private, max-age=31536000, immutable',
     });
     rep.end(octets);

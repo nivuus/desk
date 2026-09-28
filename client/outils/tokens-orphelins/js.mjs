@@ -1,66 +1,66 @@
-// LA MOITIÉ « POSÉ PAR LE JS » DU CONTRÔLE §7.6 — sous-bloc A1, tâche 7 du
-// chantier `legs-sans-vm` (25 août 2026).
+// THE "SET BY THE JS" HALF OF CHECK §7.6 — sub-block A1, task 7 of the
+// `legs-sans-vm` project (August 25th, 2026).
 //
-// 🔴 CE QUE `tokens-orphelins.mjs` NE POUVAIT PAS VOIR, ET QUI LUI RENDAIT LE
-// LEGS D'`accent-dom.ts` INVISIBLE. Le contrôle §7.6 ne connaissait qu'UNE
-// façon d'« employer » un token : un `var(--…)` dans du CSS (ou dans un
-// `<style>` en ligne d'une surface HTML). Mais `accent-dom.ts` pose
-// `--accent-fenetre` par `acces.poserToken(TOKEN_ACCENT, …)`, qui appelle
-// `document.documentElement.style.setProperty(nom, valeur)` — AUCUN `var()`
-// n'apparaît nulle part dans ce chemin. Un token DÉCLARÉ, posé à l'exécution,
-// et référencé par AUCUN `var()`, était donc un ORPHELIN au sens de l'ancien
-// contrôle, alors qu'il ne l'était pas : le commentaire d'`accent-dom.ts`
-// l'avait vu (D-A1-2, sonde H1 du 21 août 2026) et avait choisi de NE PAS
-// déclarer le token plutôt que de vivre avec un contrôle aveugle en
-// permanence. Ce fichier ferme ce trou : il donne au contrôle une SECONDE
-// façon d'« employer » un token, symétrique de la première.
+// 🔴 WHAT `tokens-orphelins.mjs` COULD NOT SEE, AND WHAT MADE THE
+// LEGACY ITEM OF `accent-dom.ts` INVISIBLE TO IT. Check §7.6 only knew ONE
+// way to "use" a token: a `var(--…)` in CSS (or in an
+// inline `<style>` of an HTML surface). But `accent-dom.ts` sets
+// `--accent-fenetre` through `acces.poserToken(TOKEN_ACCENT, …)`, which calls
+// `document.documentElement.style.setProperty(nom, value)` — NO `var()`
+// appears anywhere on this path. A token DECLARED, set at run time,
+// and referenced by NO `var()`, was therefore an ORPHAN in the sense of the old
+// check, although it was not: the comment of `accent-dom.ts`
+// had seen it (D-A1-2, probe H1 of August 21st, 2026) and had chosen NOT to
+// declare the token rather than live with a permanently blind
+// check. This file closes that hole: it gives the check a SECOND
+// way to "use" a token, symmetric to the first.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔴 RÈGLE DE SÉLECTION, ÉNONCÉE AVANT LE BALAYAGE — ET LA RAISON QUI EXCLUT
-// LES TESTS.
+// 🔴 SELECTION RULE, STATED BEFORE THE SCAN — AND THE REASON THAT EXCLUDES
+// THE TESTS.
 //
-// Deux passes, sur le MÊME périmètre de fichiers :
+// Two passes, over the SAME scope of files:
 //
-//   ① COLLECTER LES CONSTANTES DE TOKEN : toute déclaration
-//      `const <NOM> = '<--jeton>'` (ou en double quotes), n'importe où dans
-//      ce périmètre — c'est le patron `export const TOKEN_ACCENT =
-//      '--accent-fenetre';` d'`accent-dom.ts`. La table obtenue associe un
-//      IDENTIFIANT (`TOKEN_ACCENT`) à un NOM DE TOKEN (`--accent-fenetre`).
+//   ① COLLECT THE TOKEN CONSTANTS: any declaration
+//      `const <NOM> = '<--token>'` (or in double quotes), anywhere in
+//      this scope — it is the pattern `export const TOKEN_ACCENT =
+//      '--accent-fenetre';` of `accent-dom.ts`. The resulting table maps an
+//      IDENTIFIER (`TOKEN_ACCENT`) to a TOKEN NAME (`--accent-fenetre`).
 //
-//   ② TROUVER LES APPELS : tout `poserToken(` suivi soit d'un littéral
-//      `'--jeton'` directement, soit d'un identifiant que ① a résolu. C'est
-//      la trace d'un `setProperty` en devenir — la SEULE trace, puisque
-//      `poserToken` est un nom de méthode d'interface
-//      (`AccesTokens::poserToken`, `accent-dom.ts`), jamais un mot-clé du
-//      langage : un futur second appelant (un autre `…-dom.ts`) serait
-//      attrapé par la MÊME règle, sans modification.
+//   ② FIND THE CALLS: any `poserToken(` followed either by a
+//      `'--token'` literal directly, or by an identifier ① resolved. It is
+//      the trace of a `setProperty` to come — the ONLY trace, since
+//      `poserToken` is an interface method name
+//      (`AccesTokens::poserToken`, `accent-dom.ts`), never a keyword of the
+//      language: a future second caller (another `…-dom.ts`) would be
+//      caught by the SAME rule, without modification.
 //
-// 🔴 LE PÉRIMÈTRE EST `client/src/**/*.ts`, **MOINS TOUT `*.test.ts`**, ET
-// C'EST LE PIÈGE NOMMÉ PAR LE BRIEF DE LA TÂCHE : `accent-dom.test.ts` pose
-// SA PROPRE fausse implémentation de `poserToken` pour espionner les appels
-// (`poserToken: (nom, valeur) => { … }`, une DÉFINITION de propriété
-// d'objet, jamais un APPEL — elle ne matche donc déjà pas ①, `poserToken(`
-// exigeant une PARENTHÈSE immédiatement après le nom, là où le test écrit
-// `poserToken:`). Mais un futur test pourrait très bien écrire
-// `objet.poserToken('--jeton-de-test', 'x')` pour exercer un cas limite, et
-// CE SERAIT UN APPEL — la même forme textuelle qu'un vrai. Un contrôle qui
-// rougirait sur son PROPRE test serait « pire que pas de contrôle » (brief de
-// la tâche) : personne ne le croirait la fois où il aurait raison. D'où
-// l'exclusion du périmètre entier, pas une liste de motifs à reconnaître et
-// écarter au cas par cas.
+// 🔴 THE SCOPE IS `client/src/**/*.ts`, **MINUS EVERY `*.test.ts`**, AND
+// IT IS THE TRAP NAMED BY THE TASK BRIEF: `accent-dom.test.ts` sets
+// ITS OWN fake implementation of `poserToken` to spy on the calls
+// (`poserToken: (nom, value) => { … }`, an object property DEFINITION,
+// never a CALL — it therefore already does not match ①, `poserToken(`
+// requiring a PARENTHESIS right after the name, where the test writes
+// `poserToken:`). But a future test could very well write
+// `objet.poserToken('--test-token', 'x')` to exercise an edge case, and
+// THAT WOULD BE A CALL — the same textual form as a real one. A check that
+// went red on its OWN test would be "worse than no check" (task
+// brief): nobody would believe it the time it was right. Hence
+// excluding the whole scope, not a list of patterns to recognise and
+// set aside case by case.
 //
-// ⚠️ CE QUE CETTE RÈGLE NE VOIT PAS, ET C'EST UNE LIMITE ASSUMÉE : un appel
-// par un ALIAS (`const p = acces.poserToken; p(TOKEN_ACCENT, …)`) ou par
-// DÉSTRUCTURATION (`const { poserToken: pose } = acces; pose(…)`) resterait
-// invisible — la règle cherche le TEXTE `poserToken(`, jamais une analyse de
-// flux. Le seul appelant de production à ce jour (`accent-dom.ts`) n'emploie
-// ni l'un ni l'autre.
+// ⚠️ WHAT THIS RULE DOES NOT SEE, AND IT IS AN ACCEPTED LIMIT: a call
+// through an ALIAS (`const p = acces.poserToken; p(TOKEN_ACCENT, …)`) or through
+// DESTRUCTURING (`const { poserToken: pose } = acces; pose(…)`) would stay
+// invisible — the rule looks for the TEXT `poserToken(`, never a flow
+// analysis. The only production caller to date (`accent-dom.ts`) uses
+// neither.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-/** Tous les `.ts` sous `repertoire`, hors `*.test.ts`. */
+/** All the `.ts` under `repertoire`, excluding `*.test.ts`. */
 function fichiersTs(repertoire, acc = []) {
     if (!existsSync(repertoire)) return acc;
     for (const entree of readdirSync(repertoire, { withFileTypes: true })) {
@@ -75,28 +75,28 @@ const RE_CONSTANTE = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*['"](--[\w-]+)['"]/g;
 const RE_APPEL = /\bposerToken\(\s*(?:['"](--[\w-]+)['"]|([A-Za-z_$][\w$]*))/g;
 
 /**
- * Les tokens posés par `poserToken(...)` dans le périmètre de PRODUCTION
- * (`client/src/**\/*.ts`, `*.test.ts` exclus) → la liste des fichiers,
- * relatifs à `racine`, où l'appel a été trouvé.
+ * The tokens set by `poserToken(...)` in the PRODUCTION scope
+ * (`client/src/**\/*.ts`, `*.test.ts` excluded) → the list of files,
+ * relative to `racine`, where the call was found.
  *
- * ⚠️ LA RÉSOLUTION D'IDENTIFIANT EST GLOBALE AU PÉRIMÈTRE, PAS PAR FICHIER :
- * une constante déclarée dans un fichier et un appel dans un autre (un futur
- * import partagé) sont réconciliés. Ce dépôt n'a aujourd'hui qu'un seul
- * appelant et une seule constante, TOUS DEUX dans `accent-dom.ts` — la
- * portée globale n'y change rien, mais la restreindre au fichier romprait le
- * jour où un second module importerait la constante d'un premier.
+ * ⚠️ IDENTIFIER RESOLUTION IS GLOBAL TO THE SCOPE, NOT PER FILE:
+ * a constant declared in one file and a call in another (a future
+ * shared import) are reconciled. This repository today has only one
+ * caller and one constant, BOTH in `accent-dom.ts` — the
+ * global scope changes nothing there, but restricting it to the file would break the
+ * day a second module imported the constant of a first one.
  */
 export function tokensPosesParLeJs(racine) {
-    const fichiers = fichiersTs(join(racine, 'client/src'));
+    const files = fichiersTs(join(racine, 'client/src'));
 
     const constantes = new Map();
-    for (const chemin of fichiers) {
+    for (const chemin of files) {
         const texte = readFileSync(chemin, 'utf8');
         for (const m of texte.matchAll(RE_CONSTANTE)) constantes.set(m[1], m[2]);
     }
 
     const poses = new Map();
-    for (const chemin of fichiers) {
+    for (const chemin of files) {
         const relatif = relative(racine, chemin).split('\\').join('/');
         const texte = readFileSync(chemin, 'utf8');
         for (const m of texte.matchAll(RE_APPEL)) {

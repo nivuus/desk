@@ -1,20 +1,20 @@
-// Le dépôt `session` : ouvrir une ligne à l'appariement, la clore au départ
-// des deux pairs, balayer celles qu'un arrêt brutal a laissées ouvertes.
+// The `session` repository: open a row on pairing, close it when
+// both peers leave, sweep those that an abrupt stop left open.
 //
-// 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais lue ici. C'est la règle du
-// sous-ensemble portable (spec §3.2 : les horodatages sont « toujours écrites
-// par l'application ») ET le précédent du dépôt : `src/signaling/ice.ts:32-42`
-// prend déjà `maintenant` en paramètre pour la même raison. Ce qui rend le
-// choix vérifiable plutôt que déclaratif : `session.test.ts` asserte des
-// VALEURS EXACTES, qu'un `Date.now()` caché ferait toutes échouer.
+// 🔴 THE CLOCK IS A PARAMETER, never read here. It is the rule of the
+// portable subset (spec §3.2: timestamps are "always written
+// by the application") AND the precedent of the repository: `src/signaling/ice.ts:32-42`
+// already takes `maintenant` as a parameter for the same reason. What makes the
+// choice checkable rather than declarative: `session.test.ts` asserts
+// EXACT VALUES, which a hidden `Date.now()` would make all fail.
 //
-// ⚠️ CE QUE CETTE TABLE N'EST PAS, et il faut le lire avant de s'y fier : une
-// ligne `session` est une trace de l'APPARIEMENT, pas un état de vérité du
-// média. Le flux WebRTC ne dépend plus du signaling une fois l'offre et la
-// réponse échangées (`agent/src/demarrage.rs` le journalise explicitement) :
-// une session peut être VIVANTE alors que le balayage de démarrage vient de
-// clore sa ligne. Le balayage MENT donc sur les sessions qui ont réellement
-// survécu. C'est une limite de P1, nommée, pas un défaut à corriger ici.
+// ⚠️ WHAT THIS TABLE IS NOT, and it must be read before relying on it: a
+// `session` row is a trace of the PAIRING, not a state of truth of the
+// media. The WebRTC stream no longer depends on signaling once the offer and the
+// answer are exchanged (`agent/src/demarrage.rs` logs it explicitly):
+// a session can be ALIVE while the startup sweep has just
+// closed its row. The sweep therefore LIES about the sessions that really
+// survived. It is a limit of P1, named, not a defect to fix here.
 
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
@@ -22,72 +22,72 @@ import type { Pilote } from '../base/pilote';
 export interface LigneSession {
     id: string;
     nom_session: string;
-    utilisateur_id: string | null;
+    utilisateur_id: string | null; // policy: allow-fr - frozen wire key or SQLite column
     vm_id: string | null;
     ouverte_a: number;
     fermee_a: number | null;
     motif: string | null;
 }
 
-/// Motif posé aux lignes qu'un arrêt brutal a laissées ouvertes.
+/// Reason set on the rows that an abrupt stop left open.
 ///
-/// Il est passé en PARAMÈTRE de la requête, jamais écrit dans le SQL : une
-/// valeur littérale ferait lever `rendreMarqueurs` côté Postgres.
-export const MOTIF_BALAYAGE = 'plateforme redémarrée';
+/// It is passed as a PARAMETER of the query, never written into the SQL: a
+/// literal value would make `rendreMarqueurs` throw on the Postgres side.
+export const MOTIF_BALAYAGE = 'platform restarted';
 
-/// Ouvre une ligne et rend son identifiant.
+/// Opens a row and returns its identifier.
 ///
-/// L'identifiant est un UUID v4, jamais le nom de session : ce dernier n'est
-/// PAS unique dans le temps — `bureau` revient à chaque démarrage d'agent.
+/// The identifier is a v4 UUID, never the session name: the latter is
+/// NOT unique over time — `bureau` comes back at every agent startup.
 ///
-/// ⚠️ `utilisateurId` est FACULTATIF, et il doit le rester. Le rendre requis
-/// casserait les appelants de P1, et surtout il n'existe pas toujours : une
-/// session appariée par un pair `agent` seul — la session de contrôle
-/// `bureau` au démarrage d'une VM — n'a personne à inscrire. ⚠️ LA RAISON A
-/// CHANGÉ AU SOUS-BLOC P3, la conséquence non : l'agent a désormais une
-/// identité (le canal `/agent` la lui délivre), mais il ne REVENDIQUE
-/// toujours rien — sa session doit rester revendicable par le client humain
-/// qui la rejoindra (`identite/garde.ts`). La colonne naît donc NULL,
-/// exactement comme P1 l'écrivait.
+/// ⚠️ `userId` is OPTIONAL, and it must stay so. Making it required
+/// would break the P1 callers, and above all it does not always exist: a
+/// session paired by an `agent` peer alone — the `bureau` control
+/// session at the startup of a VM — has nobody to record. ⚠️ THE REASON
+/// CHANGED IN SUB-BLOCK P3, the consequence did not: the agent now has an
+/// identity (the `/agent` channel hands it out), but it still CLAIMS
+/// nothing — its session must stay claimable by the human client
+/// who will join it (`identite/garde.ts`). The column is therefore born NULL,
+/// exactly as P1 wrote it.
 ///
-/// C'est cet argument qui rend le mot « enregistrée » du critère ③
-/// littéralement vrai : la DÉCISION est prise par le registre en mémoire
-/// (`signaling/propriete.ts`), l'ENREGISTREMENT durable se fait ici, et c'est
-/// de lui que P4 aura besoin.
+/// It is this argument that makes the word "recorded" of criterion ③
+/// literally true: the DECISION is made by the in-memory registry
+/// (`signaling/propriete.ts`), the durable RECORDING happens here, and it is
+/// what P4 will need.
 ///
-/// ✅ P4 EN A EU BESOIN : `compterOuvertesDe`, plus bas dans ce fichier, est
-/// son lecteur de production, et `GET /vm` en rend `sessions_ouvertes`. Le
-/// futur de la phrase ci-dessus est du passé depuis le 20 août 2026.
+/// ✅ P4 DID NEED IT: `compterOuvertesDe`, further down in this file, is
+/// its production reader, and `GET /vm` returns `sessions_ouvertes` from it. The
+/// future tense of the sentence above has been past since 20 August 2026.
 ///
-/// ⚠️ `vmId` est FACULTATIF POUR LA MÊME RAISON, et il vient APRÈS
-/// `utilisateurId` pour ne déplacer aucun appelant existant. C'est la trace
-/// (`signaling/trace.ts`) qui le résout, en découpant le préfixe du nom de
-/// session puis en le cherchant dans `agent_enrole`. Une session `bureau`
-/// SANS préfixe — le mode d'essai local que la spec §10 pose comme légitime —
-/// n'a aucune VM honnête à inscrire, et une session à préfixe INCONNU non
-/// plus : dans les deux cas la colonne reste `null`, jamais une chaîne vide
-/// qui mentirait sur ce qu'on sait.
+/// ⚠️ `vmId` is OPTIONAL FOR THE SAME REASON, and it comes AFTER
+/// `userId` so as to move no existing caller. It is the trace
+/// (`signaling/trace.ts`) that resolves it, by cutting the prefix off the
+/// session name then looking it up in `agent_enrole`. A `bureau` session
+/// WITHOUT a prefix — the local trial mode that spec §10 sets as legitimate —
+/// has no honest VM to record, and a session with an UNKNOWN prefix neither:
+/// in both cases the column stays `null`, never an empty string
+/// that would lie about what we know.
 export async function ouvrirSession(
     p: Pilote,
     nomSession: string,
     maintenant: number,
-    utilisateurId?: string,
+    userId?: string,
     vmId?: string,
 ): Promise<string> {
     const id = randomUUID();
-    // Les colonnes sont TOUJOURS nommées, et leurs valeurs TOUJOURS passées en
-    // paramètre — `null` compris. Écrire deux requêtes selon la présence de
-    // l'identifiant en ferait diverger une le jour où la table changerait.
+    // The columns are ALWAYS named, and their values ALWAYS passed as a
+    // parameter — `null` included. Writing two queries depending on the presence of
+    // the identifier would make one of them diverge the day the table changed.
     await p.executer(
         'INSERT INTO session(id, nom_session, utilisateur_id, vm_id, ouverte_a) VALUES(?, ?, ?, ?, ?)',
-        [id, nomSession, utilisateurId ?? null, vmId ?? null, maintenant],
+        [id, nomSession, userId ?? null, vmId ?? null, maintenant],
     );
     return id;
 }
 
-/// Clôt une ligne. La clause `fermee_a IS NULL` rend l'appel IDEMPOTENT : une
-/// seconde clôture ne déplace ni l'instant ni le motif de la première — sans
-/// elle, une déconnexion tardive réécrirait une trace déjà juste.
+/// Closes a row. The `fermee_a IS NULL` clause makes the call IDEMPOTENT: a
+/// second closing moves neither the instant nor the reason of the first — without
+/// it, a late disconnection would rewrite an already correct trace.
 export async function clore(
     p: Pilote,
     id: string,
@@ -100,10 +100,10 @@ export async function clore(
     );
 }
 
-/// Clôt toutes les lignes restées ouvertes et rend leur NOMBRE.
+/// Closes all the rows left open and returns their NUMBER.
 ///
-/// Voir l'avertissement de tête : ce balayage ment sur les sessions qui ont
-/// réellement survécu à l'arrêt du service.
+/// See the header warning: this sweep lies about the sessions that
+/// really survived the service stop.
 export async function balayerLesOuvertes(p: Pilote, maintenant: number): Promise<number> {
     const r = await p.executer(
         'UPDATE session SET fermee_a = ?, motif = ? WHERE fermee_a IS NULL',
@@ -112,8 +112,8 @@ export async function balayerLesOuvertes(p: Pilote, maintenant: number): Promise
     return r.lignes;
 }
 
-/// Toutes les lignes portant ce nom de session, de la plus ancienne à la plus
-/// récente. Il peut y en avoir plusieurs : le nom n'est pas une identité.
+/// All the rows carrying this session name, from the oldest to the most
+/// recent. There can be several: the name is not an identity.
 export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSession[]> {
     return p.interroger<LigneSession>(
         'SELECT id, nom_session, utilisateur_id, vm_id, ouverte_a, fermee_a, motif FROM session WHERE nom_session = ? ORDER BY ouverte_a',
@@ -121,38 +121,38 @@ export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSe
     );
 }
 
-/// Combien de sessions de cet utilisateur sont OUVERTES.
+/// How many sessions of this user are OPEN.
 ///
-/// 🔴 C'EST LE PREMIER LECTEUR DE PRODUCTION DE `session.utilisateur_id`. La
-/// colonne est écrite depuis P2 par la chaîne `identite/garde.ts` →
-/// `signaling/relais.ts` → `signaling/trace.ts` → `ouvrirSession` ci-dessus, et
-/// le seul `SELECT` qui la ramenait était `lireParNom`, dont aucun appelant
-/// n'est du code de production. C'est le legs n°4 de P2 / n°3 de P3.
+/// 🔴 IT IS THE FIRST PRODUCTION READER OF `session.utilisateur_id`. The (policy: allow-fr - frozen wire key or SQLite column)
+/// column has been written since P2 by the chain `identite/garde.ts` →
+/// `signaling/relais.ts` → `signaling/trace.ts` → `ouvrirSession` above, and
+/// the only `SELECT` that brought it back was `lireParNom`, none of whose callers
+/// is production code. It is legacy item no. 4 of P2 / no. 3 of P3.
 ///
-/// ⚠️ CE QUE CE COMPTE N'ÉTABLIT PAS, et c'est pourquoi le champ que la route
-/// en tire s'appelle `sessions_ouvertes` et non `sessions_actives` : il compte
-/// des LIGNES non closes, jamais des sessions média vivantes. L'avertissement
-/// de tête de ce fichier dit l'écart dans les deux sens — le média survit au
-/// redémarrage du service alors que `balayerLesOuvertes` a clos sa ligne, et
-/// une ligne peut rester ouverte pour un pair parti sans que sa déconnexion
-/// ait été vue. Le nom porte la réserve ; ne pas le renommer sans la lever.
+/// ⚠️ WHAT THIS COUNT DOES NOT ESTABLISH, and that is why the field the route
+/// derives from it is called `sessions_ouvertes` and not `sessions_actives`: it counts
+/// unclosed ROWS, never live media sessions. The header warning
+/// of this file states the gap in both directions — the media survives the
+/// restart of the service while `balayerLesOuvertes` has closed its row, and
+/// a row can stay open for a peer that left without its disconnection
+/// having been seen. The name carries the caveat; do not rename it without lifting it.
 ///
-/// ⚠️ UNE LIGNE À `utilisateur_id` NUL N'EST COMPTÉE POUR PERSONNE. C'est le
-/// cas NOMINAL d'une session de contrôle appariée par l'agent seul
-/// (`identite/garde.ts`, et le commentaire d'`ouvrirSession` ci-dessus) :
-/// l'égalité SQL avec `NULL` ne rend jamais vrai, et cette propriété est tenue
-/// par un test plutôt que laissée à la sémantique du moteur.
-export async function compterOuvertesDe(p: Pilote, utilisateurId: string): Promise<number> {
+/// ⚠️ A ROW WITH A NULL `utilisateur_id` IS COUNTED FOR NOBODY. It is the (policy: allow-fr - frozen wire key or SQLite column)
+/// NOMINAL case of a control session paired by the agent alone
+/// (`identite/garde.ts`, and the comment of `ouvrirSession` above):
+/// SQL equality with `NULL` never yields true, and this property is held
+/// by a test rather than left to the semantics of the engine.
+export async function compterOuvertesDe(p: Pilote, userId: string): Promise<number> {
     const lignes = await p.interroger<{ n: number }>(
         'SELECT COUNT(*) AS n FROM session WHERE utilisateur_id = ? AND fermee_a IS NULL',
-        [utilisateurId],
+        [userId],
     );
-    // ⚠️ AUCUN `Number(...)` ICI, DÉLIBÉRÉMENT. Un `COUNT(*)` est un `int8` sur
-    // Postgres, que `pg` rendrait en CHAÎNE sans le `setTypeParser` de
-    // `base/pilote-postgres.ts` — mesuré à travers le pilote du service :
-    // `[{"n":1}] typeof = number`. Envelopper d'un `Number()` rendrait le
-    // compte juste ET masquerait la disparition du parseur, dont dépendent
-    // sept colonnes ailleurs. Le test asserte donc le TYPE, pas seulement la
-    // valeur, et c'est cette assertion qui tient le remède du pilote.
+    // ⚠️ NO `Number(...)` HERE, DELIBERATELY. A `COUNT(*)` is an `int8` on
+    // Postgres, which `pg` would return as a STRING without the `setTypeParser` of
+    // `base/pilote-postgres.ts` — measured through the service driver:
+    // `[{"n":1}] typeof = number`. Wrapping it in a `Number()` would make the
+    // count right AND would mask the disappearance of the parser, on which
+    // seven columns elsewhere depend. The test therefore asserts the TYPE, not just the
+    // value, and it is this assertion that holds the driver remedy.
     return lignes[0].n;
 }

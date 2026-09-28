@@ -1,47 +1,47 @@
-//! La QUEUE du journal d'un installeur, bornée — et pourquoi elle est PURE.
+//! The TAIL of an installer's log, bounded — and why it is PURE.
 //!
-//! 🔴 CE MODULE EST NÉ D'UN DÉFAUT DE CE SOUS-BLOC MÊME, TROUVÉ EN RELISANT.
-//! La borne était écrite DEUX FOIS — une fois sur des octets dans
-//! `execution.rs`, une fois sur une `String` dans `fil.rs` — et la seconde
-//! **PANIQUAIT** : `&texte[texte.len() - N..]` sur un `&str` exige que
-//! l'indice tombe sur une frontière de caractère UTF-8, sinon Rust panique.
+//! 🔴 THIS MODULE WAS BORN FROM A DEFECT OF THIS VERY SUB-BLOCK, FOUND WHILE RE-READING.
+//! The bound was written TWICE — once on bytes in
+//! `execution.rs`, once on a `String` in `fil.rs` — and the second
+//! **PANICKED**: `&texte[texte.len() - N..]` on a `&str` requires the
+//! index to fall on a UTF-8 character boundary, otherwise Rust panics.
 //!
-//! 🔴 ET CE CHEMIN ÉTAIT ATTEIGNABLE, ce qui est le point. `String::from_utf8_lossy`
-//! **AGRANDIT** : chaque octet invalide devient un U+FFFD de TROIS octets. Un
-//! journal d'installeur coupé à 64 Kio d'octets bruts peut donc rendre une
-//! `String` de plus de 64 Kio — et la seconde borne, croyant n'avoir rien à
-//! faire, coupait alors au milieu d'un caractère. **Un installeur qui écrit du
-//! Latin-1 sur sa sortie standard aurait suffi**, et le symptôme aurait été un
-//! fil d'installation qui meurt sans rapporter d'issue.
+//! 🔴 AND THAT PATH WAS REACHABLE, which is the point. `String::from_utf8_lossy`
+//! **ENLARGES**: every invalid byte becomes a THREE-byte U+FFFD. An
+//! installer log cut at 64 KiB of raw bytes can therefore yield a
+//! `String` of more than 64 KiB — and the second bound, believing it had nothing
+//! to do, then cut in the middle of a character. **An installer writing
+//! Latin-1 on its standard output would have been enough**, and the symptom would have been an
+//! installation thread that dies without reporting an outcome.
 //!
-//! ⚠️ LA LEÇON N'EST PAS « ATTENTION À L'UTF-8 » : c'est qu'une borne écrite
-//! deux fois est une borne qui diverge. Elle est écrite ici, une fois, PURE, et
-//! **les deux appelants s'en servent** — celui qui a des octets et celui qui a
-//! une chaîne.
+//! ⚠️ THE LESSON IS NOT "BEWARE OF UTF-8": it is that a bound written
+//! twice is a bound that diverges. It is written here, once, PURE, and
+//! **both callers use it** — the one that has bytes and the one that has
+//! a string.
 
-/// La queue du journal de l'installeur qu'on remonte.
+/// The tail of the installer's log that is sent up.
 ///
-/// ⚠️ **NON CALIBRÉE**, elle rejoint la liste que ce dépôt tient depuis
+/// ⚠️ **NOT CALIBRATED**, it joins the list this repository has kept since
 /// `BPP_MIN`.
 pub const JOURNAL_MAX_OCTETS: usize = 64 * 1024;
 
-/// La FIN d'un journal, et non sa tête.
+/// The END of a log, not its head.
 ///
-/// 🔴 LA FIN, PARCE QUE C'EST LÀ QUE VIT LE MESSAGE D'ERREUR d'un installeur
-/// qui a échoué. Le second membre dit `tronqué`, ce qui distingue « coupé » de
-/// « vide » — sans quoi un utilisateur lirait les derniers 64 Kio en croyant
-/// lire tout.
+/// 🔴 THE END, BECAUSE THAT IS WHERE THE ERROR MESSAGE of an installer
+/// that failed lives. The second member says whether it was truncated, which distinguishes "cut" from
+/// "empty" — otherwise a user would read the last 64 KiB believing they
+/// were reading everything.
 ///
-/// ⚠️ **UN JOURNAL VIDE EST LE CAS NORMAL**, pas un échec : la plupart des
-/// installeurs Windows sont graphiques et n'écrivent rien sur les flux
-/// standard. L'interface ne doit pas le présenter comme une panne.
+/// ⚠️ **AN EMPTY LOG IS THE NORMAL CASE**, not a failure: most
+/// Windows installers are graphical and write nothing on the standard
+/// streams. The interface must not present it as a failure.
 pub fn queue(texte: &str) -> (&str, bool) {
     if texte.len() <= JOURNAL_MAX_OCTETS {
         return (texte, false);
     }
-    // 🔴 ON AVANCE JUSQU'À LA PROCHAINE FRONTIÈRE DE CARACTÈRE, on ne recule
-    // pas : reculer rendrait plus que la borne, et la borne est ce qu'on
-    // promet. Au pire on rend trois octets de moins.
+    // 🔴 WE MOVE FORWARD TO THE NEXT CHARACTER BOUNDARY, we do not move
+    // back: moving back would return more than the bound, and the bound is what we
+    // promise. At worst we return three bytes less.
     let mut coupe = texte.len() - JOURNAL_MAX_OCTETS;
     while coupe < texte.len() && !texte.is_char_boundary(coupe) {
         coupe += 1;
@@ -49,21 +49,21 @@ pub fn queue(texte: &str) -> (&str, bool) {
     (&texte[coupe..], true)
 }
 
-/// La même règle, sur des octets bruts — le cas de celui qui vient de lire un
-/// fichier.
+/// The same rule, on raw bytes — the case of whoever has just read a
+/// file.
 ///
-/// ⚠️ ELLE COUPE AVANT DE CONVERTIR, et l'ordre compte : convertir d'abord
-/// obligerait à tenir en mémoire un journal d'installeur de taille inconnue,
-/// que rien ne borne côté Windows.
+/// ⚠️ IT CUTS BEFORE CONVERTING, and the order matters: converting first
+/// would force holding in memory an installer log of unknown size,
+/// which nothing bounds on the Windows side.
 pub fn queue_octets(octets: &[u8]) -> (String, bool) {
     if octets.len() <= JOURNAL_MAX_OCTETS {
         return (String::from_utf8_lossy(octets).into_owned(), false);
     }
     let texte = String::from_utf8_lossy(&octets[octets.len() - JOURNAL_MAX_OCTETS..]).into_owned();
-    // ⚠️ ON REBORNE APRÈS LA CONVERSION : `from_utf8_lossy` AGRANDIT — un octet
-    // invalide devient un U+FFFD de trois octets —, si bien que couper
-    // `JOURNAL_MAX_OCTETS` octets bruts peut rendre une chaîne PLUS LONGUE que
-    // la borne. C'est précisément ce que le second appelant supposait faux.
+    // ⚠️ WE RE-BOUND AFTER THE CONVERSION: `from_utf8_lossy` ENLARGES — an invalid
+    // byte becomes a three-byte U+FFFD —, so that cutting
+    // `JOURNAL_MAX_OCTETS` raw bytes can yield a string LONGER than
+    // the bound. That is precisely what the second caller assumed false.
     let (queue, _) = queue(&texte);
     (queue.to_string(), true)
 }
@@ -81,56 +81,63 @@ mod tests {
     }
 
     #[test]
-    fn un_journal_long_rend_sa_FIN_et_se_declare_tronque() {
+    fn un_journal_long_rend_sa_fin_et_se_declare_tronque() {
         let long = format!("{}FIN", "a".repeat(JOURNAL_MAX_OCTETS));
         let (q, tronque) = queue(&long);
         assert!(tronque);
-        assert!(q.ends_with("FIN"), "c'est la FIN qu'on garde, pas la tête");
+        assert!(
+            q.ends_with("FIN"),
+            "it is the END that we keep, not the head"
+        );
         assert!(q.len() <= JOURNAL_MAX_OCTETS);
     }
 
-    /// 🔴 LA ROUGE DU DÉFAUT QUI A FAIT NAÎTRE CE MODULE.
+    /// 🔴 THE RED OF THE DEFECT THAT GAVE BIRTH TO THIS MODULE.
     ///
-    /// L'implémentation d'origine faisait `&texte[texte.len() - N..]` sans
-    /// vérifier la frontière de caractère : sur un journal dont l'octet à cette
-    /// position est au milieu d'un caractère multi-octet, **Rust PANIQUE**. Le
-    /// fil d'installation serait mort sans rapporter d'issue, et le hub aurait
-    /// affiché « en cours » pour l'éternité.
+    /// The original implementation did `&texte[texte.len() - N..]` without
+    /// checking the character boundary: on a log whose byte at that
+    /// position is in the middle of a multi-byte character, **Rust PANICS**. The
+    /// installation thread would have died without reporting an outcome, and the hub would have
+    /// shown "in progress" forever.
     #[test]
-    fn ne_panique_JAMAIS_au_milieu_d_un_caractere_multi_octet() {
-        // « é » fait deux octets ; en répéter assez place la coupe au milieu
-        // d'un caractère une fois sur deux, quel que soit le rembourrage.
+    fn ne_panique_jamais_au_milieu_d_un_caractere_multi_octet() {
+        // U+00E9 (e acute) is two bytes; repeating it enough puts the cut in the middle
+        // of a character one time in two, whatever the padding.
         for rembourrage in 0..4 {
-            let texte = format!("{}{}", "x".repeat(rembourrage), "é".repeat(JOURNAL_MAX_OCTETS));
+            let texte = format!(
+                "{}{}",
+                "x".repeat(rembourrage),
+                "é".repeat(JOURNAL_MAX_OCTETS)
+            );
             let (q, tronque) = queue(&texte);
             assert!(tronque);
             assert!(q.len() <= JOURNAL_MAX_OCTETS);
-            // Et le résultat est du texte VALIDE : c'est ce que le typage
-            // garantit, et ce que la panique remplaçait.
+            // And the result is VALID text: that is what the typing
+            // guarantees, and what the panic replaced.
             assert!(q.chars().all(|c| c == 'é' || c == 'x'));
         }
     }
 
-    /// 🔴 LE CHEMIN QUI REND LA PANIQUE ATTEIGNABLE : `from_utf8_lossy` AGRANDIT.
+    /// 🔴 THE PATH THAT MAKES THE PANIC REACHABLE: `from_utf8_lossy` ENLARGES.
     ///
-    /// Chaque octet invalide devient un U+FFFD de trois octets. Couper
-    /// `JOURNAL_MAX_OCTETS` octets BRUTS peut donc rendre une chaîne bien plus
-    /// longue que la borne — et c'est exactement ce que l'appelant supposait
-    /// faux quand il rebornait sans vérifier la frontière.
+    /// Every invalid byte becomes a three-byte U+FFFD. Cutting
+    /// `JOURNAL_MAX_OCTETS` RAW bytes can therefore yield a string much
+    /// longer than the bound — and that is exactly what the caller assumed
+    /// false when it re-bounded without checking the boundary.
     #[test]
-    fn from_utf8_lossy_AGRANDIT_donc_on_reborne_apres_la_conversion() {
-        // Que des octets invalides : chacun coûte trois octets une fois converti.
+    fn from_utf8_lossy_agrandit_donc_on_reborne_apres_la_conversion() {
+        // Only invalid bytes: each one costs three bytes once converted.
         let octets = vec![0xFFu8; JOURNAL_MAX_OCTETS + 10];
         let brut = String::from_utf8_lossy(&octets[octets.len() - JOURNAL_MAX_OCTETS..]);
         assert!(
             brut.len() > JOURNAL_MAX_OCTETS,
-            "la conversion doit AGRANDIR, sinon ce test n'éprouve rien"
+            "the conversion must GROW, otherwise this test exercises nothing"
         );
         let (q, tronque) = queue_octets(&octets);
         assert!(tronque);
         assert!(
             q.len() <= JOURNAL_MAX_OCTETS,
-            "la borne est ce qu'on promet : {} octets",
+            "the bound is what we promise: {} bytes",
             q.len()
         );
     }

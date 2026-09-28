@@ -1,29 +1,29 @@
-// Le harnais des variables TURN AMBIANTES, pour les fichiers de test qui
-// ouvrent un vrai relais.
+// The harness for the AMBIENT TURN variables, for the test files that
+// open a real relay.
 //
-// 🔴 POURQUOI IL EXISTE. `relais.ts` lit `process.env` à CHAQUE déclaration de
-// pair (`configurationIce(process.env, …)`) et, si `TURN_URL` et `TURN_SECRET`
-// sont tous deux posés, envoie un `ice-config` au pair AVANT tout autre
-// message. Un test qui lit « le message suivant » reçoit alors cet
-// `ice-config` à la place de ce qu'il attendait. La conséquence n'est pas
-// théorique : `scripts/verify-all.sh` lancé depuis un shell où l'on a fait
-// `set -a && source .env && set +a` — la séquence que `CLAUDE.md` prescrit
-// pour tout le reste du dépôt — faisait échouer SIX tests de
-// `server.test.ts`, quand le même script depuis un shell nu sortait à 0.
-// Le service était sain, les tests mesuraient l'environnement du développeur.
+// 🔴 WHY IT EXISTS. `relais.ts` reads `process.env` at EACH peer
+// declaration (`configurationIce(process.env, …)`) and, if `TURN_URL` and `TURN_SECRET`
+// are both set, sends an `ice-config` to the peer BEFORE any other
+// message. A test that reads "the next message" then receives this
+// `ice-config` in place of what it expected. The consequence is not
+// theoretical: `scripts/verify-all.sh` launched from a shell where one had run
+// `set -a && source .env && set +a` — the sequence that `CLAUDE.md` prescribes
+// for all the rest of the repository — made SIX tests of
+// `server.test.ts` fail, when the same script from a bare shell exited 0.
+// The service was healthy, the tests were measuring the developer's environment.
 //
-// 🔴 ET POURQUOI ON NE RESTAURE PAS « À LA MAIN ». La restauration naïve
+// 🔴 AND WHY WE DO NOT RESTORE "BY HAND". The naive restoration
 //
-//     const avant = process.env.TURN_URL;   // undefined si absente
+//     const prior = process.env.TURN_URL;   // undefined if absent
 //     …
-//     process.env.TURN_URL = avant;         // ⚠️ écrit la CHAÎNE "undefined"
+//     process.env.TURN_URL = prior;         // ⚠️ writes the STRING "undefined"
 //
-// ne rend pas la variable à son absence : `process.env` coerce tout en chaîne,
-// et `"undefined"` est TRUTHY. Une variable ainsi « restaurée » fait donc
-// délivrer une configuration ICE dont l'URL est le mot `undefined` — mesuré.
-// Seul `delete` rend une variable absente.
+// does not return the variable to its absence: `process.env` coerces everything to a string,
+// and `"undefined"` is TRUTHY. A variable "restored" this way thus makes the relay
+// deliver an ICE configuration whose URL is the word `undefined` — measured.
+// Only `delete` makes a variable absent.
 
-/// Les deux variables que `configurationIce` lit, et elles seules.
+/// The two variables that `configurationIce` reads, and only those.
 const CLES = ['TURN_URL', 'TURN_SECRET'] as const;
 
 export interface TurnAmbiant {
@@ -31,25 +31,25 @@ export interface TurnAmbiant {
     secret?: string;
 }
 
-/// Pose l'état TURN ambiant demandé et rend la fonction qui rétablit l'état
-/// d'avant — `delete` compris, pour les clés qui étaient absentes.
+/// Sets the requested ambient TURN state and returns the function that restores the
+/// previous state — `delete` included, for the keys that were absent.
 ///
-/// Appelé sans argument (ou avec `{}`), il NEUTRALISE : le relais se comporte
-/// alors comme sur une machine sans serveur TURN configuré, ce qui est la
-/// seule façon pour un test de « message suivant » d'être hermétique à
-/// l'environnement de celui qui le lance.
-export function poserTurnAmbiant(valeurs: TurnAmbiant = {}): () => void {
-    const avant = CLES.map((cle) => [cle, process.env[cle]] as const);
+/// Called without an argument (or with `{}`), it NEUTRALISES: the relay then behaves
+/// as on a machine with no TURN server configured, which is the
+/// only way for a "next message" test to be sealed off from
+/// the environment of whoever runs it.
+export function poserTurnAmbiant(values: TurnAmbiant = {}): () => void {
+    const before = CLES.map((cle) => [cle, process.env[cle]] as const);
 
-    appliquer('TURN_URL', valeurs.url);
-    appliquer('TURN_SECRET', valeurs.secret);
+    appliquer('TURN_URL', values.url);
+    appliquer('TURN_SECRET', values.secret);
 
     return () => {
-        for (const [cle, valeur] of avant) appliquer(cle, valeur);
+        for (const [cle, value] of before) appliquer(cle, value);
     };
 }
 
-function appliquer(cle: (typeof CLES)[number], valeur: string | undefined): void {
-    if (valeur === undefined) delete process.env[cle];
-    else process.env[cle] = valeur;
+function appliquer(cle: (typeof CLES)[number], value: string | undefined): void {
+    if (value === undefined) delete process.env[cle];
+    else process.env[cle] = value;
 }

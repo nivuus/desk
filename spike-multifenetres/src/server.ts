@@ -1,12 +1,12 @@
-// Serveur du spike multi-fenêtres. Sert `public/` et relaie trois événements :
-// `fire` (ordre d'ouverture, émis par POST /fire), `alive` (signal de vie de la
-// fenêtre ouverte, émis par GET /alive) et `bloque` (le service worker rapporte
-// que clients.openWindow() n'a rien ouvert, émis par GET /bloque). Aucun état
-// persistant.
+// Server of the multi-window spike. Serves `public/` and relays three events:
+// `fire` (open order, emitted by POST /fire), `alive` (sign of life of the
+// opened window, emitted by GET /alive) and `bloque` (the service worker reports
+// that clients.openWindow() opened nothing, emitted by GET /bloque). No
+// persistent state.
 //
-// Le déclenchement passe délibérément par le réseau et non par un clic dans la
-// page : c'est toute la condition testée — un message serveur n'est pas une
-// activation utilisateur transitoire.
+// Triggering deliberately goes through the network and not through a click in the
+// page: that is the whole condition under test — a server message is not a
+// transient user activation.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -24,36 +24,36 @@ const TYPES_MIME: Record<string, string> = {
     '.ico': 'image/x-icon',
 };
 
-// Adresse d'écoute. Voir le commentaire sur `listen` plus bas : ce n'est pas un
-// réglage, c'est une garde.
+// Listen address. See the comment on `listen` below: it is not a
+// setting, it is a guard.
 const HOTE = '127.0.0.1';
 
 export interface SpikeServer {
     port: number;
-    /** Adresse effectivement liée — exposée pour que la garde soit vérifiable. */
+    /** Address actually bound — exposed so the guard can be checked. */
     hote: string;
     close(): Promise<void>;
 }
 
-function estVarianteValide(valeur: unknown): valeur is number {
-    return typeof valeur === 'number' && Number.isInteger(valeur) && valeur >= 1 && valeur <= 4;
+function estVarianteValide(value: unknown): value is number {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 4;
 }
 
-// Identifiant de passage forgé par la page. Le serveur ne l'interprète pas — il
-// le recopie tel quel dans la diffusion, c'est la page qui tranche. Il le borne
-// tout de même : sans cela n'importe qui pourrait faire diffuser une chaîne
-// arbitrairement longue à tous les clients WebSocket.
+// Run identifier forged by the page. The server does not interpret it — it
+// copies it as is into the broadcast, the page is the one that decides. It bounds it
+// all the same: without that anyone could have an arbitrarily long string
+// broadcast to all WebSocket clients.
 const MOTIF_NONCE = /^[A-Za-z0-9_-]{1,64}$/;
 
-// Lit le corps d'une requête, borné à 4 Kio : le serveur est exposé via Pomerium,
-// et une requête sans fin immobiliserait le process.
+// Reads the body of a request, bounded to 4 KiB: the server is exposed via Pomerium,
+// and an endless request would tie up the process.
 function lireCorps(requete: IncomingMessage): Promise<string> {
     return new Promise((resolve, reject) => {
         let corps = '';
         requete.on('data', (morceau) => {
             corps += morceau;
             if (corps.length > 4096) {
-                reject(new Error('corps trop volumineux'));
+                reject(new Error('body too large'));
                 requete.destroy();
             }
         });
@@ -65,9 +65,9 @@ function lireCorps(requete: IncomingMessage): Promise<string> {
 export async function createSpikeServer(port: number): Promise<SpikeServer> {
     const clients = new Set<WebSocket>();
 
-    // Rend le nombre de clients réellement touchés : POST /fire le renvoie à la
-    // page, faute de quoi un socket tombé produirait une mesure silencieusement
-    // vide — un 204 rassurant sans que personne n'ait reçu l'ordre.
+    // Returns the number of clients actually reached: POST /fire sends it back to the
+    // page, otherwise a dropped socket would produce a silently
+    // empty measurement — a reassuring 204 without anyone having received the order.
     function diffuser(charge: Record<string, unknown>): number {
         const texte = JSON.stringify({ ...charge, at: Date.now() });
         let touches = 0;
@@ -80,19 +80,19 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
         return touches;
     }
 
-    async function servirFichier(chemin: string, reponse: ServerResponse): Promise<void> {
-        // `normalize` puis vérification du préfixe : sans cela, `/../.env` sortirait
-        // de public/. Le serveur est exposé sur internet via Pomerium.
+    async function serveFile(chemin: string, reponse: ServerResponse): Promise<void> {
+        // `normalize` then prefix check: without it, `/../.env` would escape
+        // public/. The server is exposed on the internet via Pomerium.
         const absolu = normalize(join(RACINE_PUBLIQUE, chemin));
         if (!absolu.startsWith(RACINE_PUBLIQUE)) {
-            reponse.writeHead(403).end('interdit');
+            reponse.writeHead(403).end('forbidden');
             return;
         }
         try {
             const contenu = await readFile(absolu);
             const type = TYPES_MIME[extname(absolu)] ?? 'application/octet-stream';
-            // Aucun cache : un spike relancé plusieurs fois avec des pages modifiées
-            // donnerait sinon des verdicts obtenus sur du code périmé.
+            // No cache: a spike rerun several times with changed pages
+            // would otherwise yield verdicts obtained on stale code.
             reponse.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
             reponse.end(contenu);
         } catch {
@@ -104,22 +104,22 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
         const url = new URL(requete.url ?? '/', `http://${requete.headers.host ?? 'localhost'}`);
 
         if (url.pathname === '/fire') {
-            // Contrôle de méthode explicite : une route documentée qui accepte
-            // n'importe quel verbe est une route qu'on peut déclencher par
-            // accident, et un déclenchement accidentel fausse la mesure.
+            // Explicit method check: a documented route that accepts
+            // any verb is a route that can be triggered by
+            // accident, and an accidental trigger skews the measurement.
             if (requete.method !== 'POST') {
-                reponse.writeHead(405, { allow: 'POST' }).end('méthode non autorisée');
+                reponse.writeHead(405, { allow: 'POST' }).end('method not allowed');
                 return;
             }
             let variante: unknown;
             try {
                 variante = (JSON.parse(await lireCorps(requete)) as { variant?: unknown }).variant;
             } catch {
-                reponse.writeHead(400).end('JSON invalide');
+                reponse.writeHead(400).end('invalid JSON');
                 return;
             }
             if (!estVarianteValide(variante)) {
-                reponse.writeHead(400).end('variante invalide');
+                reponse.writeHead(400).end('invalid variant');
                 return;
             }
             const touches = diffuser({ type: 'fire', variant: variante });
@@ -128,22 +128,22 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
             return;
         }
 
-        // `/alive` et `/bloque` ne diffèrent que par le type diffusé : le premier
-        // dit « la fenêtre existe », le second « le service worker n'a rien pu
-        // ouvrir ». Même contrat d'entrée, donc même garde.
+        // `/alive` and `/bloque` differ only by the type broadcast: the first
+        // says "the window exists", the second "the service worker could not
+        // open anything". Same input contract, hence the same guard.
         if (url.pathname === '/alive' || url.pathname === '/bloque') {
             if (requete.method !== 'GET') {
-                reponse.writeHead(405, { allow: 'GET' }).end('méthode non autorisée');
+                reponse.writeHead(405, { allow: 'GET' }).end('method not allowed');
                 return;
             }
             const variante = Number(url.searchParams.get('variant'));
             if (!estVarianteValide(variante)) {
-                reponse.writeHead(400).end('variante invalide');
+                reponse.writeHead(400).end('invalid variant');
                 return;
             }
             const nonce = url.searchParams.get('nonce');
             if (nonce !== null && !MOTIF_NONCE.test(nonce)) {
-                reponse.writeHead(400).end('nonce invalide');
+                reponse.writeHead(400).end('invalid nonce');
                 return;
             }
             diffuser({ type: url.pathname === '/alive' ? 'alive' : 'bloque', variant: variante, nonce });
@@ -151,23 +151,23 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
             return;
         }
 
-        await servirFichier(url.pathname === '/' ? 'index.html' : url.pathname, reponse);
+        await serveFile(url.pathname === '/' ? 'index.html' : url.pathname, reponse);
     });
 
     const wss = new WebSocketServer({ server: http, path: '/ws' });
     wss.on('connection', (socket) => {
         clients.add(socket);
         socket.on('close', () => clients.delete(socket));
-        // Un socket en erreur qui n'est pas retiré du Set ferait grossir la
-        // diffusion indéfiniment.
+        // A socket in error that is not removed from the Set would make the
+        // broadcast grow indefinitely.
         socket.on('error', () => clients.delete(socket));
     });
 
-    // Liaison explicite à la boucle locale. Le spike tourne sur un poste
-    // délibérément exposé à internet le temps du test, et il n'est censé être
-    // joignable qu'à travers le proxy d'authentification qui l'atteint sur
-    // 127.0.0.1 : écouter sur 0.0.0.0 le rendrait accessible hors du proxy, alors
-    // que le WebSocket n'est soumis à aucun CORS et ne vérifie aucune origine.
+    // Explicit binding to the loopback. The spike runs on a machine
+    // deliberately exposed to the internet for the duration of the test, and it is only meant to be
+    // reachable through the authentication proxy that reaches it on
+    // 127.0.0.1: listening on 0.0.0.0 would make it reachable outside the proxy, whereas
+    // the WebSocket is subject to no CORS and checks no origin.
     await new Promise<void>((resolve) => http.listen(port, HOTE, resolve));
     const adresse = http.address();
     const portEffectif = typeof adresse === 'object' && adresse ? adresse.port : port;

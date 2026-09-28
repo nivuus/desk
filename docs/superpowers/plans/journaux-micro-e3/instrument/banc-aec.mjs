@@ -52,7 +52,7 @@ const TON_A = 440, TON_B = 660;
 
 const journal = [];
 const dire = (m) => { const l = `[${new Date().toISOString()}] ${m}`; journal.push(l); console.log(l); };
-const r = { mode: MODE, affichage: AFFICHAGE || '<sans interface>', journal, etapes: [], erreurs: [] };
+const r = { mode: MODE, affichage: AFFICHAGE || '<sans interface>', journal, etapes: [], errors: [] };
 
 // 🔴 LE JUGE EXTERNE : `pw-record` sur le MONITEUR de la salle, puis la
 // fréquence dominante. Il est indépendant de la page — sans lui, « Chrome ne
@@ -68,7 +68,7 @@ async function enregistrerSalle(etiquette, secondes) {
     try {
         const { stdout } = await execFileAsync('node', [path.join(ICI, 'dominante.mjs'), wav], { encoding: 'utf8' });
         return JSON.parse(stdout);
-    } catch (e) { return { erreur: String(e).slice(0, 200) }; }
+    } catch (e) { return { error: String(e).slice(0, 200) }; }
 }
 
 let serveur, chrome;
@@ -299,7 +299,7 @@ try {
     dire('mesure terminée');
 } catch (e) {
     if (String(e).includes('pas-de-rendu')) { /* déjà déclaré */ }
-    else { r.erreurs.push(String(e?.stack ?? e).slice(0, 1500)); dire(`ERREUR : ${String(e).slice(0, 300)}`); }
+    else { r.errors.push(String(e?.stack ?? e).slice(0, 1500)); dire(`ERREUR : ${String(e).slice(0, 300)}`); }
 } finally {
     try { chrome?.kill(); } catch (e) { /* mort */ }
     try { serveur?.close(); } catch (e) { /* fermé */ }

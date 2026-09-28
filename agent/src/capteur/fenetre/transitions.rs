@@ -1,15 +1,15 @@
-//! Les deux transitions du fil de fenêtre : relâcher sa source, la
-//! reconstruire.
+//! The window thread's two transitions: releasing its source,
+//! rebuilding it.
 //!
-//! **Ce module EXÉCUTE ce que `crate::capteur::sommeil` DÉCIDE.** Il ne porte
-//! pas ce nom-là exprès : deux modules `sommeil` dans le même sous-arbre se
-//! confondraient à la lecture, et l'import du registre depuis `fenetre.rs`
-//! entrerait en collision avec l'enfant.
+//! **This module EXECUTES what `crate::capteur::sommeil` DECIDES.** It is
+//! deliberately not named that: two `sommeil` modules in the same subtree would
+//! be confused when reading, and the registry import from `fenetre.rs`
+//! would collide with the child.
 //!
-//! **Extrait de `fenetre.rs` et non ajouté dedans** : le sous-bloc D5 y aurait
-//! porté le fichier au-delà du plafond de 500 lignes du projet. Le dépôt a le
-//! précédent (`vivier.rs` et `vivier/tests.rs`), et la règle qui l'impose est
-//! « extraction, jamais compression ».
+//! **Extracted from `fenetre.rs` and not added into it**: sub-block D5 would have
+//! taken the file beyond the project's 500-line cap. The repository has the
+//! precedent (`vivier.rs` and `vivier/tests.rs`), and the rule imposing it is
+//! "extraction, never compression".
 
 use std::sync::mpsc::SyncSender;
 use std::time::Instant;
@@ -27,73 +27,73 @@ use super::commandes::deposer;
 use super::{AEcrire, Contexte, Fenetre, Fin};
 
 impl Fenetre {
-    /// Relâche l'encodeur et la duplication. **Sur CE fil**, jamais ailleurs :
-    /// `Drop for H264Encoder` peut geler (risque observé, non attribué), et
-    /// ici il ne gèlerait que cette fenêtre.
+    /// Releases the encoder and the duplication. **On THIS thread**, never elsewhere:
+    /// `Drop for H264Encoder` can freeze (risk observed, not attributed), and
+    /// here it would only freeze this window.
     fn dormir(&mut self) {
         if self.source.take().is_some() {
             tracing::info!(
                 session = %self.session,
-                "fenêtre endormie, encodeur et duplication relâchés"
+                "window asleep, encoder and duplication released"
             );
         }
     }
 
-    /// Construit la source à partir des paramètres retenus, puis force une
-    /// image clé.
+    /// Builds the source from the kept parameters, then forces a
+    /// key frame.
     ///
-    /// **C'est le SEUL endroit du capteur qui construise un `WindowsSource`**
-    /// depuis le sous-bloc D5 : `Fenetre::ouvrir` n'en construit plus, et une
-    /// fenêtre naît endormie. Ce chemin sert donc aussi bien la première
-    /// construction que toutes les reconstructions — et cela n'exige rien de
-    /// particulier, `Parametres` portant exactement ce qu'`ouvrir` savait.
+    /// **It is the ONLY place in the sensor that builds a `WindowsSource`**
+    /// since sub-block D5: `Fenetre::ouvrir` no longer builds one, and a
+    /// window is born asleep. This path therefore serves the first
+    /// construction as well as all rebuilds — and that requires nothing
+    /// special, `Parameters` carrying exactly what `ouvrir` knew.
     ///
-    /// **Peut échouer, et c'est le cas NOMINAL** quand le plafond matériel
-    /// d'encodeurs est atteint : l'appelant doit alors le dire au vivier (voir
+    /// **Can fail, and it is the NOMINAL case** when the hardware cap
+    /// of encoders is reached: the caller must then tell the pool (see
     /// `appliquer_les_ordres`).
     ///
-    /// `sur_sortie` retente la duplication pendant `DUREE_FENETRE_OUVERTURE` :
-    /// c'est le chemin de reprise du sous-bloc D2, et le réveil l'emprunte donc
-    /// sans avoir à réapprendre la même leçon — une sortie créée par le
-    /// superviseur au même instant fait abandonner le mutex des duplications
-    /// voisines.
+    /// `sur_sortie` retries the duplication during `DUREE_FENETRE_OUVERTURE`:
+    /// it is the resumption path of sub-block D2, and wake-up therefore takes it
+    /// without having to relearn the same lesson — an output created by the
+    /// supervisor at the same instant makes neighbouring duplications abandon
+    /// the mutex.
     ///
-    /// `duree_ms` est journalisée parce que le délai de réveil est l'un des
-    /// relevés attendus de la recette, et qu'il n'existe aucun autre endroit
-    /// où le prendre côté agent.
+    /// `duree_ms` is logged because the wake-up delay is one of the
+    /// readings expected by the acceptance run, and there is no other place
+    /// to take it on the agent side.
     fn reveiller(&mut self) -> Result<()> {
         if self.source.is_some() {
             return Ok(());
         }
         let debut = Instant::now();
-        // `self.dimensions()` : la taille RETENUE, celle que `ouvrir` a
-        // résolue — jamais celle de la sortie, qui peut être plus grande
-        // (registre pollué, D9 §9).
+        // `self.dimensions()`: the KEPT size, the one `ouvrir`
+        // resolved — never that of the output, which may be larger
+        // (polluted registry, D9 §9).
         //
-        // ❌ **CE PARAGRAPHE DISAIT « `resize` ne la met JAMAIS à jour : il
-        // est un no-op en mode `SortieEntiere` … un réveil relit donc toujours
-        // la même valeur que le précédent », ET LE LOT 33 L'A RENDU FAUX.**
-        // `resize` fait désormais suivre le recadrage et la fenêtre au
-        // viewport (`ModeCapture::suit_le_viewport`), donc `self.largeur` et
-        // `self.hauteur` PEUVENT changer entre deux réveils. Une fenêtre
-        // retaillée puis endormie se serait réveillée à sa taille
-        // d'ouverture, effaçant le redimensionnement sans une trace — c'est
-        // pourquoi `boucler` écrit désormais ces deux champs au changement
-        // d'état (voir son point 3). **Ce que `dimensions()` rend reste donc
-        // la taille RETENUE la plus fraîche**, ce qui est exactement ce dont
-        // ce réveil a besoin ; c'est la RAISON qui a changé, pas la valeur
-        // attendue.
-        let taille = self.dimensions();
-        let p = &self.parametres;
+        // ❌ **THIS PARAGRAPH SAID "`resize` NEVER updates it: it
+        // is a no-op in `SortieEntiere` mode … a wake-up therefore always re-reads
+        // the same value as the previous one", AND BATCH 33 MADE IT FALSE.**
+        // `resize` now makes the crop and the window follow the
+        // viewport (`ModeCapture::suit_le_viewport`), so `self.largeur` and
+        // `self.hauteur` CAN change between two wake-ups. A window
+        // resized then put to sleep would have woken up at its opening
+        // size, erasing the resize without a trace — that is
+        // why `boucler` now writes these two fields on state
+        // change (see its point 3). **What `dimensions()` returns therefore remains
+        // the freshest KEPT size**, which is exactly what
+        // this wake-up needs; it is the REASON that changed, not the expected
+        // value.
+        let size = self.dimensions();
+        let p = &self.params;
         let mut source =
-            WindowsSource::sur_sortie(p.hwnd, &p.sortie, taille, p.fps, p.debit, p.clock_origin)
-                .with_context(|| format!("réveil de la session {}", self.session))?;
-        // `sur_sortie` en demande déjà une à la construction. Ce second appel
-        // est une ceinture : sans image clé, le décodeur du navigateur n'aurait
-        // aucun point d'entrée dans le flux neuf et rendrait un écran gris
-        // jusqu'à la prochaine — le groupe d'images de l'encodeur matériel est
-        // ouvert. Le réveil ne dépend ainsi d'aucun détail de `sur_sortie`.
-        source.request_keyframe().context("image clé au réveil")?;
+            WindowsSource::sur_sortie(p.hwnd, &p.sortie, size, p.fps, p.debit, p.clock_origin)
+                .with_context(|| format!("waking session {}", self.session))?;
+        // `sur_sortie` already requests one at construction. This second call
+        // is a belt: without a key frame, the browser's decoder would have
+        // no entry point into the new stream and would render a grey screen
+        // until the next one — the hardware encoder's group of pictures is
+        // open. Wake-up thus depends on no detail of `sur_sortie`.
+        source.request_keyframe().context("key frame on wake-up")?;
         let (largeur, hauteur) = source.dimensions();
         self.largeur = largeur;
         self.hauteur = hauteur;
@@ -103,23 +103,23 @@ impl Fenetre {
             largeur,
             hauteur,
             duree_ms = debut.elapsed().as_millis() as u64,
-            "fenêtre réveillée"
+            "window woken up"
         );
         Ok(())
     }
 
-    /// Applique les ordres du vivier en attente.
+    /// Applies the pending pool orders.
     ///
-    /// **Appelée en tête de tour, avant tout le reste** : dormir libère un
-    /// encodeur, et il n'y a aucune raison d'en solliciter un de plus quand
-    /// l'ordre de le rendre est déjà là.
+    /// **Called at the head of the round, before everything else**: sleeping frees an
+    /// encoder, and there is no reason to ask for one more when
+    /// the order to give it back is already there.
     ///
-    /// ⚠️ Le contrat « tous les `Dormir` précèdent tout `Reveiller` » du vivier
-    /// ne vaut qu'à l'ÉMISSION : les fils de fenêtre sont indépendants et
-    /// consomment des canaux distincts, donc rien n'ordonne le TRAITEMENT entre
-    /// deux fenêtres. Aucune décision ici ne suppose qu'un sommeil voisin a
-    /// déjà eu lieu ; le filet est `echec_de_reveil`, qui fait reproposer un
-    /// réveil arrivé trop tôt.
+    /// ⚠️ The pool's contract "all `Dormir` precede any `Reveiller`"
+    /// only holds at EMISSION: window threads are independent and
+    /// consume distinct channels, so nothing orders the HANDLING between
+    /// two windows. No decision here assumes that a neighbouring sleep has
+    /// already happened; the safety net is `echec_de_reveil`, which makes a
+    /// wake-up that arrived too early be proposed again.
     pub(super) fn appliquer_les_ordres(
         &mut self,
         ordres: &ReceveurSession,
@@ -131,11 +131,14 @@ impl Fenetre {
                 Ok(Message::Sommeil(Ordre::Dormir(raison))) => {
                     self.dormir();
                     let raison = crate::capteur::sommeil::raison_en_texte(raison);
-                    let etat = DepuisCapteur::Sommeil { endormie: true, raison: raison.into() };
-                    // `deposer` et non un `send` bloquant : la file peut être
-                    // pleine, et attendre dessus sans servir les commandes
-                    // recréerait l'interblocage à six maillons de la tâche 10
-                    // du sous-bloc D4.
+                    let etat = DepuisCapteur::Sommeil {
+                        endormie: true,
+                        raison: raison.into(),
+                    };
+                    // `deposer` and not a blocking `send`: the queue may be
+                    // full, and waiting on it without serving the commands
+                    // would recreate the six-link deadlock of task 10
+                    // of sub-block D4.
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(etat), ecritures, self.source.as_mut(), ctx)
                     {
@@ -143,32 +146,35 @@ impl Fenetre {
                     }
                 }
                 Ok(Message::Sommeil(Ordre::Reveiller)) => {
-                    if let Err(erreur) = self.reveiller() {
+                    if let Err(error) = self.reveiller() {
                         tracing::warn!(
                             session = %ctx.session,
-                            // `cause::chaine` et NON `%erreur` : le `Display`
-                            // simple d'`anyhow` ne rendait que le
-                            // `with_context` posé quinze lignes plus haut
-                            // (« réveil de la session … »), et jetait la
-                            // cause — donc le HRESULT. Le lot 25 a compté 74
-                            // puis 52 refus d'affilée sans pouvoir dire
-                            // pourquoi. Voir `crate::cause`.
-                            erreur = %crate::cause::chaine(&erreur),
-                            "réveil refusé, la fenêtre reste endormie"
+                            // `cause::chain` and NOT `%error`: `anyhow`'s plain
+                            // `Display` only rendered the
+                            // `with_context` set fifteen lines above
+                            // ("waking session …"), and threw away the
+                            // cause — hence the HRESULT. Batch 25 counted 74
+                            // then 52 refusals in a row without being able to say
+                            // why. See `crate::cause`.
+                            error = %crate::cause::chain(&error),
+                            "wake-up refused, the window stays asleep"
                         );
-                        // **Indispensable, et rien d'autre ne le remplace.** Le
-                        // vivier pose `eveillee = true` AVANT que le réveil ait
-                        // lieu : sans ce chemin de retour il croirait la fenêtre
-                        // éveillée pour toujours, ne rendrait jamais sa place et
-                        // ne la reproposerait jamais — fenêtre perdue
-                        // définitivement, pour un refus qui est le cas nominal
-                        // quand le plafond matériel est atteint. L'appel est
-                        // court et hors de tout emprunt sur `self.source` : le
-                        // registre prend un verrou global.
+                        // **Indispensable, and nothing else replaces it.** The
+                        // pool sets `eveillee = true` BEFORE the wake-up has
+                        // happened: without this return path it would believe the window
+                        // awake forever, would never give back its place and
+                        // would never propose it again — window lost
+                        // for good, for a refusal that is the nominal case
+                        // when the hardware cap is reached. The call is
+                        // short and outside any borrow of `self.source`: the
+                        // registry takes a global lock.
                         crate::capteur::sommeil::echec_de_reveil(ctx.session);
                         continue;
                     }
-                    let etat = DepuisCapteur::Sommeil { endormie: false, raison: String::new() };
+                    let etat = DepuisCapteur::Sommeil {
+                        endormie: false,
+                        raison: String::new(),
+                    };
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(etat), ecritures, self.source.as_mut(), ctx)
                     {
@@ -176,8 +182,8 @@ impl Fenetre {
                     }
                 }
                 Ok(Message::Audio { actif }) => {
-                    // Rien à faire localement : le capteur ne capte pas de son.
-                    // Il n'est ici que le facteur, comme pour les parts.
+                    // Nothing to do locally: the sensor does not capture sound.
+                    // It is only the postman here, as for the shares.
                     let message = DepuisCapteur::Audio { actif };
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), ctx)
@@ -186,11 +192,11 @@ impl Fenetre {
                     }
                 }
                 Ok(Message::Part { bps }) => {
-                    // Rien à faire localement : le capteur ne règle PAS son
-                    // encodeur sur cette part. C'est l'enfant qui décide de
-                    // son débit d'encodage (il a le BWE), et la part n'est
-                    // qu'une borne qu'on lui transmet. Le capteur n'est ici
-                    // que le facteur.
+                    // Nothing to do locally: the sensor does NOT tune its
+                    // encoder on this share. It is the child that decides
+                    // its encoding bitrate (it has the BWE), and the share is
+                    // only a bound passed on to it. The sensor is only
+                    // the postman here.
                     let message = DepuisCapteur::Part { bps };
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), ctx)
@@ -199,21 +205,21 @@ impl Fenetre {
                     }
                 }
                 Ok(Message::PressePapier { texte, octets }) => {
-                    // Rien à faire localement — même régime que `Audio` et
-                    // `Part` ci-dessus : le capteur DÉTIENT le presse-papier
-                    // (il est le seul à le sonder et à porter le garde
-                    // anti-écho, D1), mais il n'a rien à en faire pour
-                    // lui-même. Il n'est ici que le facteur.
+                    // Nothing to do locally — same regime as `Audio` and
+                    // `Part` above: the sensor HOLDS the clipboard
+                    // (it is the only one polling it and carrying the
+                    // anti-echo guard, D1), but it has nothing to do with it for
+                    // itself. It is only the postman here.
                     let message = DepuisCapteur::PressePapier { texte, octets };
-                    // `deposer` et non un `send` bloquant : c'est le cinquième
-                    // ingrédient du patron, et il compte davantage ici
-                    // qu'ailleurs — ce message peut peser jusqu'à 64 Kio, là
-                    // où `Sommeil`, `Part` et `Audio` pèsent quelques octets,
-                    // donc il remplit la file plus vite. Attendre sur une file
-                    // pleine sans servir les commandes recréerait
-                    // l'interblocage à six maillons de la tâche 10 du
-                    // sous-bloc D4. Voir le commentaire du bras `Dormir` plus
-                    // haut, qui le dit en toutes lettres.
+                    // `deposer` and not a blocking `send`: it is the fifth
+                    // ingredient of the pattern, and it matters more here
+                    // than elsewhere — this message may weigh up to 64 KiB, where
+                    // `Sommeil`, `Part` and `Audio` weigh a few bytes,
+                    // so it fills the queue faster. Waiting on a full queue
+                    // without serving the commands would recreate
+                    // the six-link deadlock of task 10 of
+                    // sub-block D4. See the comment on the `Dormir` arm
+                    // above, which says so in so many words.
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), ctx)
                     {
@@ -221,9 +227,9 @@ impl Fenetre {
                     }
                 }
                 Err(VideOuFerme::Vide) => return Fin::Continuer,
-                // Le registre a laissé tomber notre émetteur : la fenêtre n'est
-                // plus arbitrée. On continue de servir plutôt que de clore —
-                // perdre l'arbitrage n'est pas perdre la session.
+                // The registry dropped our sender: the window is no longer
+                // arbitrated. We keep serving rather than closing —
+                // losing arbitration is not losing the session.
                 Err(VideOuFerme::Ferme) => return Fin::Continuer,
             }
         }

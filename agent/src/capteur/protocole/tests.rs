@@ -10,59 +10,85 @@ fn une_attache_fait_l_aller_retour() {
         sortie: r"\\.\DISPLAY8".into(),
         fps: 90,
         debit: 8_000_000,
-        taille: (1280, 720),
+        size: (1280, 720),
         origine_qpc: 123_456_789,
     };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }
 
-/// L'identité est la trame qui apparie la connexion média à la session
-/// déjà attachée sur la connexion de commandes : un nom de champ qui
-/// dériverait ferait échouer l'appariement en session réelle seulement.
+/// The identity is the frame that pairs the media connection with the session
+/// already attached on the command connection: a field name that
+/// drifted would make pairing fail in a real session only.
 #[test]
 fn une_identite_fait_l_aller_retour() {
-    let message = VersCapteur::Identite { session: "w-1".into() };
+    let message = VersCapteur::Identite {
+        session: "w-1".into(),
+    };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }
 
 #[test]
-fn chaque_reponse_fait_l_aller_retour() {
+fn each_reply_makes_the_round_trip() {
     for message in [
-        DepuisCapteur::Attachee { largeur: 1280, hauteur: 720 },
-        DepuisCapteur::Refus { motif: "sortie inconnue".into() },
-        DepuisCapteur::Taille { largeur: 1280, hauteur: 720 },
+        DepuisCapteur::Attachee {
+            largeur: 1280,
+            hauteur: 720,
+        },
+        DepuisCapteur::Refus {
+            motif: "unknown output".into(),
+        },
+        DepuisCapteur::Size {
+            largeur: 1280,
+            hauteur: 720,
+        },
         DepuisCapteur::Fait,
-        DepuisCapteur::Erreur { motif: "encodeur perdu".into() },
-        DepuisCapteur::Etat { vivante: true, epuisee: false, largeur: 1280, hauteur: 720 },
+        DepuisCapteur::Error {
+            motif: "encoder lost".into(),
+        },
+        DepuisCapteur::Etat {
+            vivante: true,
+            epuisee: false,
+            largeur: 1280,
+            hauteur: 720,
+        },
     ] {
         let mut tampon = Vec::new();
-        ecrire_json(&mut tampon, &message).unwrap();
+        write_json(&mut tampon, &message).unwrap();
         let mut lecteur = Cursor::new(tampon);
         let Trame::Json(octets) = lire_trame(&mut lecteur).unwrap() else {
-            panic!("attendu du JSON")
+            panic!("expected JSON")
         };
-        assert_eq!(serde_json::from_slice::<DepuisCapteur>(&octets).unwrap(), message);
+        assert_eq!(
+            serde_json::from_slice::<DepuisCapteur>(&octets).unwrap(),
+            message
+        );
     }
 }
 
-/// L'unité d'accès voyage en BINAIRE BRUT, jamais en base64 : c'est le
-/// seul message dont le volume compte (8 Mb/s par fenêtre).
+/// The access unit travels as RAW BINARY, never as base64: it is the
+/// only message whose volume matters (8 Mb/s per window).
 #[test]
 fn une_unite_d_acces_fait_l_aller_retour_sans_reencodage() {
     let unite = AccessUnit {
@@ -71,23 +97,27 @@ fn une_unite_d_acces_fait_l_aller_retour_sans_reencodage() {
         pts_90k: 90_000,
     };
     let mut tampon = Vec::new();
-    ecrire_image(&mut tampon, &unite).unwrap();
-    // 4 (longueur) + 1 (étiquette) + 8 (pts) + 1 (clé) + 8 (données)
-    assert_eq!(tampon.len(), 22, "cadrage inattendu : {tampon:?}");
+    write_image(&mut tampon, &unite).unwrap();
+    // 4 (length) + 1 (tag) + 8 (pts) + 1 (key) + 8 (data)
+    assert_eq!(tampon.len(), 22, "unexpected framing: {tampon:?}");
     let mut lecteur = Cursor::new(tampon);
     match lire_trame(&mut lecteur).unwrap() {
         Trame::Image(rendue) => assert_eq!(rendue, unite),
-        autre => panic!("attendu une image, reçu {autre:?}"),
+        autre => panic!("expected an image, got {autre:?}"),
     }
 }
 
 #[test]
-fn deux_trames_a_la_suite_se_lisent_dans_l_ordre() {
+fn two_frames_in_a_row_are_read_in_order() {
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
-    ecrire_image(
+    write_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
+    write_image(
         &mut tampon,
-        &AccessUnit { data: vec![9, 9], is_keyframe: false, pts_90k: 7 },
+        &AccessUnit {
+            data: vec![9, 9],
+            is_keyframe: false,
+            pts_90k: 7,
+        },
     )
     .unwrap();
     let mut lecteur = Cursor::new(tampon);
@@ -95,8 +125,8 @@ fn deux_trames_a_la_suite_se_lisent_dans_l_ordre() {
     assert!(matches!(lire_trame(&mut lecteur).unwrap(), Trame::Image(_)));
 }
 
-/// Une étiquette inconnue est REFUSÉE, jamais ignorée : un flux mal
-/// aligné doit tuer le canal plutôt que de faire dériver la lecture.
+/// An unknown tag is REFUSED, never ignored: a misaligned
+/// stream must kill the channel rather than make the read drift.
 #[test]
 fn une_etiquette_inconnue_est_refusee() {
     let mut tampon = Vec::new();
@@ -109,51 +139,57 @@ fn une_etiquette_inconnue_est_refusee() {
 #[test]
 fn une_trame_tronquee_est_refusee() {
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
+    write_json(&mut tampon, &DepuisCapteur::Fait).unwrap();
     tampon.truncate(tampon.len() - 1);
     assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
 }
 
-/// Sans cette borne, une longueur corrompue ferait réserver des gigaoctets
-/// avant même de lire un octet de corps.
+/// Without this bound, a corrupted length would reserve gigabytes
+/// before even reading one byte of body.
 #[test]
-fn une_longueur_aberrante_est_refusee_avant_toute_allocation() {
+fn an_aberrant_length_is_refused_before_any_allocation() {
     let mut tampon = Vec::new();
-    tampon.extend_from_slice(&(TAILLE_MAX as u32 + 1).to_le_bytes());
+    tampon.extend_from_slice(&(MAX_SIZE as u32 + 1).to_le_bytes());
     tampon.push(1);
     assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
 }
 
 #[test]
 fn une_visibilite_traverse_le_canal_du_capteur() {
-    let message = VersCapteur::Visibilite { visible: true, focalisee: false };
-    let json = serde_json::to_string(&message).expect("sérialisation");
-    let relu: VersCapteur = serde_json::from_str(&json).expect("désérialisation");
+    let message = VersCapteur::Visibilite {
+        visible: true,
+        focalisee: false,
+    };
+    let json = serde_json::to_string(&message).expect("serialisation");
+    let relu: VersCapteur = serde_json::from_str(&json).expect("deserialisation");
     assert_eq!(relu, message);
 }
 
 #[test]
 fn un_sommeil_traverse_le_canal_du_capteur() {
-    let message = DepuisCapteur::Sommeil { endormie: true, raison: "masquee".into() };
-    let json = serde_json::to_string(&message).expect("sérialisation");
-    let relu: DepuisCapteur = serde_json::from_str(&json).expect("désérialisation");
+    let message = DepuisCapteur::Sommeil {
+        endormie: true,
+        raison: "masquee".into(),
+    };
+    let json = serde_json::to_string(&message).expect("serialisation");
+    let relu: DepuisCapteur = serde_json::from_str(&json).expect("deserialisation");
     assert_eq!(relu, message);
 }
 
 #[test]
 fn une_part_traverse_l_encodage_json() {
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
+    write_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
     let mut lecture = &tampon[..];
     let Trame::Json(corps) = lire_trame(&mut lecture).unwrap() else {
-        panic!("une trame JSON était attendue");
+        panic!("a JSON frame was expected");
     };
     let message: DepuisCapteur = serde_json::from_slice(&corps).unwrap();
     assert_eq!(message, DepuisCapteur::Part { bps: 4_000_000 });
 }
 
-/// Une image de zéro octet n'existe pas : elle signalerait un cadrage
-/// perdu, pas une image vide.
+/// A zero-byte frame does not exist: it would signal lost framing,
+/// not an empty frame.
 #[test]
 fn une_image_sans_en_tete_complet_est_refusee() {
     let mut tampon = Vec::new();
@@ -163,47 +199,55 @@ fn une_image_sans_en_tete_complet_est_refusee() {
     assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
 }
 
-/// ROUGE si la variante est absente. Le patron est celui des tests
-/// aller-retour voisins de ce fichier.
+/// RED if the variant is missing. The pattern is that of the neighbouring
+/// round-trip tests of this file.
 #[test]
 fn aller_retour_de_l_ecriture_du_presse_papier() {
-    let message = VersCapteur::PressePapierEcrire { texte: String::from("une\r\ndeux") };
+    let message = VersCapteur::ClipboardWrite {
+        texte: String::from("one\r\ntwo"),
+    };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }
 
-/// 🔴 **La borne du tube capteur↔enfant n'est PAS le facteur contraignant**,
-/// et ce test le MESURE là où la spec l'affirmait.
+/// 🔴 **The sensor↔child pipe's bound is NOT the constraining factor**,
+/// and this test MEASURES it where the spec asserted it.
 ///
-/// `PRESSE_PAPIER_MAX` vaut 64 Kio ; `TAILLE_MAX` vaut 8 Mio, soit cent
-/// vingt-huit fois plus. Un texte de la taille maximale que le produit accepte
-/// traverse donc ce tube sans l'approcher.
+/// `PRESSE_PAPIER_MAX` is 64 KiB; `MAX_SIZE` is 8 MiB, a hundred and
+/// twenty-eight times more. A text of the maximum size the product accepts
+/// therefore crosses this pipe without coming near it.
 ///
-/// ROUGE si `TAILLE_MAX` descendait sous 64 Kio, ou si l'encodage du texte
-/// gonflait d'un facteur imprévu — le JSON échappe `\r` et `\n` en deux
-/// caractères chacun, et un texte fait entièrement de sauts de ligne double
-/// donc de taille.
+/// RED if `MAX_SIZE` went below 64 KiB, or if the text's encoding
+/// inflated by an unforeseen factor — JSON escapes `\r` and `\n` as two
+/// characters each, and a text made entirely of line breaks therefore doubles
+/// in size.
 #[test]
-fn un_texte_de_la_taille_maximale_du_produit_traverse_le_tube() {
+fn a_text_of_the_product_maximum_size_crosses_the_pipe() {
     let texte = "a".repeat(crate::presse_papier::PRESSE_PAPIER_MAX);
-    let message = VersCapteur::PressePapierEcrire { texte };
+    let message = VersCapteur::ClipboardWrite { texte };
     let mut tampon = Vec::new();
-    ecrire_json(&mut tampon, &message).unwrap();
+    write_json(&mut tampon, &message).unwrap();
     assert!(
-        tampon.len() < TAILLE_MAX,
-        "{} octets sur le tube, borne {TAILLE_MAX}",
+        tampon.len() < MAX_SIZE,
+        "{} bytes on the pipe, bound {MAX_SIZE}",
         tampon.len()
     );
     match lire_trame(&mut Cursor::new(tampon)).unwrap() {
         Trame::Json(octets) => {
-            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            assert_eq!(
+                serde_json::from_slice::<VersCapteur>(&octets).unwrap(),
+                message
+            )
         }
-        autre => panic!("attendu du JSON, reçu {autre:?}"),
+        autre => panic!("expected JSON, got {autre:?}"),
     }
 }

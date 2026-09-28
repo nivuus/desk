@@ -1,94 +1,94 @@
-// La fusion de catalogue : décider, SANS BASE ET SANS HORLOGE, ce qu'il faut
-// écrire quand un agent annonce ce qu'il voit sur son disque.
+// The catalogue merge: deciding, WITHOUT A DATABASE AND WITHOUT A CLOCK, what to
+// write when an agent announces what it sees on its disk.
 //
-// 🔴 CE MODULE EST PUR, et c'est ce qui rend ses trois règles éprouvables. Il
-// ne lit aucune horloge — l'instant de disparition est écrit par le dépôt, qui
-// le reçoit en paramètre — et il ne connaît aucun pilote. La même figure que
-// `agents/fraicheur.ts` et `orchestration/selection.ts` : la règle vit là où
-// un test peut la rougir sans ouvrir de moteur SQL. `catalogue.test.ts` le
-// vérifie mécaniquement, en BLANCHISSANT les commentaires de ce fichier avant
-// de chercher — sans quoi cette phrase-ci suffirait à faire mentir le contrôle.
+// 🔴 THIS MODULE IS PURE, and that is what makes its three rules testable. It
+// reads no clock — the disappearance instant is written by the repository layer, which
+// receives it as a parameter — and it knows no driver. The same figure as
+// `agents/fraicheur.ts` and `orchestration/selection.ts`: the rule lives where
+// a test can turn it red without opening an SQL engine. `catalogue.test.ts`
+// checks it mechanically, by BLANKING the comments of this file before
+// searching — otherwise this very sentence would be enough to make the check lie.
 //
-// 🔴 L'APPARIEMENT SE FAIT SUR LA CLÉ, JAMAIS SUR L'IDENTIFIANT. L'agent ne
-// connaît pas les identifiants de la plateforme et ne les a jamais vus : il
-// n'annonce que des clés, qui sont l'empreinte du triplet (cible, arguments,
-// répertoire). Les identifiants ne sortent d'ici que dans les trois listes
-// d'écriture, pour désigner des lignes que la plateforme connaît déjà.
+// 🔴 PAIRING IS DONE ON THE KEY, NEVER ON THE IDENTIFIER. The agent does not
+// know the platform identifiers and has never seen them: it
+// only announces keys, which are the digest of the triple (target, arguments,
+// directory). Identifiers only leave here in the three write
+// lists, to designate rows the platform already knows.
 //
-// 🔴 UNE LIGNE N'EST JAMAIS SUPPRIMÉE, seulement marquée disparue. Une
-// application installée côté navigateur porte l'identifiant de sa ligne ; la
-// supprimer et la ré-insérer à la réapparition lui en donnerait un autre, et
-// l'installation pointerait dans le vide. C'est pour la même raison qu'une
-// ligne disparue qui revient est RESSUSCITÉE plutôt qu'insérée.
+// 🔴 A ROW IS NEVER DELETED, only marked gone. An
+// application installed on the browser side carries the identifier of its row;
+// deleting and re-inserting it on reappearance would give it another one, and
+// the installation would point into the void. It is for the same reason that a
+// gone row that comes back is RESURRECTED rather than inserted.
 
 import type { Application, CatalogueMessage } from '../../../proto/ts/plateforme';
 
-/// Ce que la plateforme sait déjà d'une application de cette VM.
+/// What the platform already knows about an application of this VM.
 ///
-/// ⚠️ TROIS CHAMPS, ET PAS UN DE PLUS. La fusion n'a besoin de rien d'autre :
-/// l'identité pour désigner la ligne, la clé pour l'apparier à ce que l'agent
-/// annonce, et l'état de disparition pour distinguer une mise à jour d'une
-/// résurrection. Lui passer la ligne entière lui donnerait les moyens de
-/// décider sur des champs dont la règle ne parle pas.
+/// ⚠️ THREE FIELDS, AND NOT ONE MORE. The merge needs nothing else:
+/// the identity to designate the row, the key to pair it with what the agent
+/// announces, and the disappearance state to tell an update from a
+/// resurrection. Passing it the whole row would give it the means to
+/// decide on fields the rule does not talk about.
 export interface Connue {
     id: string;
     cle: string;
-    /// `null` = vivante. Non nul = l'instant où elle a cessé d'être vue.
+    /// `null` = alive. Non-null = the instant it stopped being seen.
     disparue_a: number | null;
 }
 
-/// Ce qu'il faut écrire. Quatre listes, que le dépôt applique dans l'ordre
-/// qu'il veut : elles sont DISJOINTES par construction sur `aInserer`,
-/// `aMarquerDisparues` et `aRessusciter`.
+/// What to write. Four lists, which the repository layer applies in the order
+/// it wants: they are DISJOINT by construction on `aInserer`,
+/// `aMarquerDisparues` and `aRessusciter`.
 ///
-/// ⚠️ `aRessusciter` ET `aMettreAJour` SE RECOUVRENT DÉLIBÉRÉMENT : une ligne
-/// qui revient est dans les deux. Ressusciter remet `disparue_a` à NULL ;
-/// mettre à jour rafraîchit le nom, le chemin et les trois champs
-/// d'identité. Une résurrection seule rendrait de nouveau visible une ligne
-/// aux champs périmés — le raccourci a pu être renommé pendant son absence.
+/// ⚠️ `aRessusciter` AND `toUpdate` OVERLAP DELIBERATELY: a row
+/// that comes back is in both. Resurrecting resets `disparue_a` to NULL;
+/// updating refreshes the name, the path and the three identity
+/// fields. A resurrection alone would make visible again a row
+/// with stale fields — the shortcut may have been renamed during its absence.
 export interface Fusion {
-    /// Des applications entières : la plateforme ne les connaît pas encore et
-    /// leur attribuera un identifiant.
+    /// Whole applications: the platform does not know them yet and
+    /// will assign them an identifier.
     aInserer: Application[];
-    aMettreAJour: Array<{ id: string; app: Application }>;
-    /// Des IDENTIFIANTS, jamais des clés — ce sont des lignes que la
-    /// plateforme connaît, et c'est par son identifiant qu'on désigne une
-    /// ligne qu'on ne veut surtout pas confondre.
+    toUpdate: Array<{ id: string; app: Application }>;
+    /// IDENTIFIERS, never keys — these are rows the
+    /// platform knows, and a row we really do not want to confuse
+    /// is designated by its identifier.
     aMarquerDisparues: string[];
-    /// Des identifiants aussi, pour la même raison.
+    /// Identifiers too, for the same reason.
     aRessusciter: string[];
 }
 
-/// Fusionne ce que la plateforme sait avec ce que l'agent annonce.
+/// Merges what the platform knows with what the agent announces.
 ///
-/// 🔴 `complet` DÉCIDE DE LA SEULE RÈGLE QUI PUISSE PERDRE DES DONNÉES, et les
-/// deux sens sont dangereux dans des directions opposées :
+/// 🔴 `complet` DECIDES THE ONLY RULE THAT CAN LOSE DATA, and both
+/// directions are dangerous in opposite ways:
 ///
-///   - à `true`, TOUTE ligne connue absente d'`applications` est marquée
-///     disparue, et `disparues` est ignoré. Sans cela, une application
-///     désinstallée pendant que le canal était coupé resterait au catalogue
-///     POUR TOUJOURS : sa clé ne figurerait dans aucun delta, personne ne
-///     l'ayant vue partir. C'est ce renvoi complet à chaque (ré)enrôlement qui
-///     donne un TERME à la divergence, sur un canal qui ne garantit aucune
-///     livraison ;
-///   - à `false`, AUCUNE disparition n'est inventée : seules les clés de
-///     `disparues` sont marquées. Traiter un delta comme un état complet
-///     viderait le catalogue à chaque message ne portant qu'une apparition.
+///   - at `true`, EVERY known row absent from `applications` is marked
+///     gone, and `disparues` is ignored. Without that, an application
+///     uninstalled while the channel was down would stay in the catalogue
+///     FOREVER: its key would appear in no delta, nobody having
+///     seen it leave. It is this full resend at each (re)enrolment that
+///     gives an END to the divergence, on a channel that guarantees no
+///     delivery;
+///   - at `false`, NO disappearance is invented: only the keys of
+///     `disparues` are marked. Treating a delta as a complete state
+///     would empty the catalogue at every message carrying only an appearance.
 ///
-/// ⚠️ UNE LIGNE DÉJÀ DISPARUE N'EST PAS RE-MARQUÉE. `disparue_a` est posée,
-/// jamais déplacée : la réécrire à chaque tour ferait dire à la colonne
-/// « disparue il y a trente secondes » d'une application partie depuis un
-/// mois, et le seul lecteur possible de cette date serait trompé.
+/// ⚠️ A ROW ALREADY GONE IS NOT MARKED AGAIN. `disparue_a` is set,
+/// never moved: rewriting it at every round would make the column say
+/// "gone thirty seconds ago" of an application gone for a
+/// month, and the only possible reader of that date would be misled.
 ///
-/// ⚠️ UNE CLÉ INCONNUE DE `disparues` EST IGNORÉE, jamais une exception :
-/// l'agent peut annoncer la disparition d'une application que la plateforme
-/// n'a jamais enregistrée — un seul message montant perdu suffit. Lever
-/// abattrait le canal d'un agent qui va très bien.
+/// ⚠️ AN UNKNOWN KEY IN `disparues` IS IGNORED, never an exception:
+/// the agent may announce the disappearance of an application the platform
+/// never recorded — a single lost upstream message is enough. Raising
+/// would take down the channel of an agent that is perfectly fine.
 export function fusionner(connues: Connue[], message: CatalogueMessage): Fusion {
     const parCle = new Map(connues.map((c) => [c.cle, c]));
     const fusion: Fusion = {
         aInserer: [],
-        aMettreAJour: [],
+        toUpdate: [],
         aMarquerDisparues: [],
         aRessusciter: [],
     };
@@ -101,14 +101,14 @@ export function fusionner(connues: Connue[], message: CatalogueMessage): Fusion 
             fusion.aInserer.push(app);
             continue;
         }
-        fusion.aMettreAJour.push({ id: connue.id, app });
+        fusion.toUpdate.push({ id: connue.id, app });
         if (connue.disparue_a !== null) fusion.aRessusciter.push(connue.id);
     }
 
     if (message.complet) {
-        // ⚠️ L'ORDRE EST CELUI DE `connues`, et il est stable : le dépôt écrit
-        // dans cet ordre, et un test qui compare des tableaux a besoin d'un
-        // ordre décidé plutôt que de celui d'un `Set`.
+        // ⚠️ THE ORDER IS THAT OF `connues`, and it is stable: the repository layer writes
+        // in that order, and a test comparing arrays needs a
+        // decided order rather than that of a `Set`.
         for (const c of connues) {
             if (annoncees.has(c.cle)) continue;
             if (c.disparue_a !== null) continue;
@@ -119,7 +119,7 @@ export function fusionner(connues: Connue[], message: CatalogueMessage): Fusion 
 
     for (const cle of message.disparues) {
         const c = parCle.get(cle);
-        // Inconnue, ou déjà disparue : rien à faire, et surtout pas d'erreur.
+        // Unknown, or already gone: nothing to do, and above all no error.
         if (c === undefined || c.disparue_a !== null) continue;
         fusion.aMarquerDisparues.push(c.id);
     }

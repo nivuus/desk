@@ -1,73 +1,73 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LA PALETTE — extraite de `design/tokens.css` (spec ⑥, §4.2 et §4.5), qui
-   l'IMPORTE et reste la porte d'entrée du socle. Voir son en-tête pour ce que
-   ce découpage change et ce qu'il ne change pas.
+   THE PALETTE — extracted from `design/tokens.css` (spec ⑥, §4.2 and §4.5), which
+   IMPORTS it and remains the entry point of the base layer. See its header for what
+   this split changes and what it does not change.
 
-   Aucune couleur ne s'écrit ailleurs que dans CE fichier. Le contrôle §7.2
-   (`client/outils/couleurs-litterales.mjs`) balaie tout `client/src/` SAUF
-   lui, et refuse la moindre valeur littérale hors d'ici.
+   No colour is written anywhere other than in THIS file. Check §7.2
+   (`client/outils/couleurs-litterales.mjs`) scans all of `client/src/` EXCEPT
+   it, and refuses the slightest literal value outside of here.
 
-   ⚠️ IL N'Y A PAS DE MIROIR TYPESCRIPT DE CES VALEURS, et c'est délibéré : les
-   contrôles §7.1 et §7.4 PARSENT CE FICHIER SEUL (les trois blocs de thème y
-   vivent en entier — `tokens/echelles.css` n'a aucune couleur à leur offrir),
-   §7.6 le PARSE CONCATÉNÉ à `tokens/echelles.css` (il a besoin de la liste
-   complète des tokens déclarés, couleurs et échelles). Aucun des trois ne
-   recopie ces valeurs. « Un contrôle qui a sa propre copie des valeurs valide
-   sa copie » (spec §7.1).
+   ⚠️ THERE IS NO TYPESCRIPT MIRROR OF THESE VALUES, and it is deliberate: the
+   checks §7.1 and §7.4 PARSE THIS FILE ALONE (the three theme blocks
+   live there entirely — `tokens/echelles.css` has no colour to offer them),
+   §7.6 PARSES IT CONCATENATED with `tokens/echelles.css` (it needs the complete
+   list of declared tokens, colours and scales). None of the three
+   copies these values. "A check that has its own copy of the values validates
+   its copy" (spec §7.1).
 
-   ⚠️ PORTE ARMÉE À 350 LIGNES : si ce fichier les atteint, séparer le bloc
-   `:root` SANS CONDITION (palette sombre + sept tokens hors thème) des deux
-   blocs clairs, dans un `tokens/couleurs-claire.css` voisin — les deux blocs
-   clairs restent byte-identiques entre eux par construction (voir §7.4
-   ci-dessous), donc solidaires l'un de l'autre, jamais du bloc sombre. AVANT
-   l'addition qui franchirait, jamais après — la leçon que ce fichier
-   applique à lui-même depuis qu'il existe.
+   ⚠️ GATE ARMED AT 350 LINES: if this file reaches them, separate the
+   UNCONDITIONAL `:root` block (dark palette + seven out-of-theme tokens) from the two
+   light blocks, into a neighbouring `tokens/couleurs-claire.css` — the two
+   light blocks stay byte-identical to each other by construction (see §7.4
+   below), hence bound to one another, never to the dark block. BEFORE
+   the addition that would cross, never after — the lesson this file
+   has applied to itself since it has existed.
 
-   ── TROIS BLOCS, ET L'ORDRE COMPTE — ENTIÈREMENT DANS CE FICHIER ──────────
-   ① `:root`                                        palette SOMBRE, sans condition
-   ② `@media (prefers-color-scheme: light)`         palette CLAIRE, par préférence système
-      avec `:root:not([data-theme="sombre"])`
-   ③ `:root[data-theme="clair"]`                    palette CLAIRE, par choix explicite
+   ── THREE BLOCKS, AND THE ORDER MATTERS — ENTIRELY IN THIS FILE ──────────
+   ① `:root`                                        DARK palette, unconditional
+   ② `@media (prefers-color-scheme: light)`         LIGHT palette, by system preference
+      with `:root:not([data-theme="sombre"])`
+   ③ `:root[data-theme="clair"]`                    LIGHT palette, by explicit choice
 
-   Le sombre est le bloc SANS condition : c'est lui qui porte aussi les sept
-   tokens hors thème, que les deux blocs clairs ne redéclarent jamais.
-   L'ABSENCE de `data-theme` signifie « systeme » — voir `theme.ts`.
+   Dark is the UNCONDITIONAL block: it is the one that also carries the seven
+   out-of-theme tokens, which the two light blocks never redeclare.
+   The ABSENCE of `data-theme` means "systeme" — see `theme.ts`.
 
-   ⚠️ LA PALETTE CLAIRE EST ÉCRITE DEUX FOIS, ce qui est le coût du choix à
-   trois états du §4.2. Rien d'autre que le contrôle §7.4
-   (`client/outils/blocs-de-theme.mjs`) n'empêche les deux copies de diverger :
-   toute modification de l'une va dans l'autre, sans exception.
+   ⚠️ THE LIGHT PALETTE IS WRITTEN TWICE, which is the cost of the three-state
+   choice of §4.2. Nothing but check §7.4
+   (`client/outils/blocs-de-theme.mjs`) keeps the two copies from diverging:
+   any change to one goes into the other, without exception.
 
-   ⚠️ `color-scheme` SUIT LE THÈME (divergence D9) et n'est PAS un token `--*` :
-   il ne compte ni dans l'égalité d'ensembles de §7.4, ni dans les orphelins de
-   §7.6, et il est vérifié à part par un test de `tokens.ts`. Il décide de
-   l'apparence NATIVE des contrôles de formulaire — `client/connexion.html`
-   porte deux `<input>` dont un `type="password"` —, donc une page claire dont
-   les champs resteraient en rendu sombre serait le défaut le plus visible que
-   ce socle puisse introduire.
+   ⚠️ `color-scheme` FOLLOWS THE THEME (divergence D9) and is NOT a `--*` token:
+   it counts neither in the set equality of §7.4, nor in the orphans of
+   §7.6, and it is checked separately by a test of `tokens.ts`. It decides
+   the NATIVE appearance of form controls — `client/connexion.html`
+   carries two `<input>`, one of which is `type="password"` —, so a light page whose
+   fields stayed rendered dark would be the most visible defect
+   this base layer could introduce.
 
-   ⚠️ CE FICHIER NE PORTE AUCUNE ÉCHELLE : les crans typographiques,
-   l'espacement, les rayons, les durées, les épaisseurs de trait et les piles
-   de polices vivent dans `tokens/echelles.css`, son voisin. Les deux sont
-   déclarés dans un `:root {}` SÉPARÉ chacun ; le navigateur les fusionne par
-   le cascade, comme il fusionnait déjà les trois blocs ci-dessus au sein d'un
-   seul fichier avant ce découpage. `tokens.ts::lireBlocsDeTheme` en fait
-   autant côté lecture : deux occurrences de `:root {}` SANS CONDITION portant
-   le même nom `racine` sont FUSIONNÉES en un seul bloc logique, tokens et
-   corps unis — c'est ce que `client/src/design/tokens.test.ts` éprouve
-   directement, et ce que `reprise.test.ts` exerce en lisant un token de
-   COULEUR et un token d'ÉCHELLE sur le MÊME bloc `racine`.
+   ⚠️ THIS FILE CARRIES NO SCALE: the typographic steps,
+   spacing, radii, durations, stroke widths and font
+   stacks live in `tokens/echelles.css`, its neighbour. Both are
+   declared in a SEPARATE `:root {}` each; the browser merges them through
+   the cascade, as it already merged the three blocks above within a
+   single file before this split. `tokens.ts::lireBlocsDeTheme` does
+   the same on the reading side: two UNCONDITIONAL `:root {}` occurrences carrying
+   the same name `racine` are MERGED into a single logical block, tokens and
+   bodies united — that is what `client/src/design/tokens.test.ts` exercises
+   directly, and what `reprise.test.ts` exercises by reading a
+   COLOUR token and a SCALE token on the SAME `racine` block.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
     color-scheme: dark;
 
-    /* ── Palette SOMBRE — quatorze couleurs (§4.5, plus `--accent-survol`) ────
-       ⚠️ `--fond-0` et `--texte-fort` reprennent EXACTEMENT les deux valeurs
-       déjà en place avant le socle (`style.css:3-4` : `--surface: #0b0d10` et
-       `--text: #e6e8eb`). Le thème sombre du produit ne change pas de teinte,
-       il gagne des voisins. `client/src/design/reprise.test.ts` le compare
-       caractère pour caractère — ce n'est pas une affirmation. */
+    /* ── DARK palette — fourteen colours (§4.5, plus `--accent-survol`) ───────
+       ⚠️ `--fond-0` and `--texte-fort` take over EXACTLY the two values
+       already in place before the base layer (`style.css:3-4`: `--surface: #0b0d10` and
+       `--text: #e6e8eb`). The product's dark theme does not change tint,
+       it gains neighbours. `client/src/design/reprise.test.ts` compares it
+       character by character — it is not a claim. */
     --fond-0: #0b0d10;
     --fond-1: #14171c;
     --fond-2: #1c2027;
@@ -77,116 +77,116 @@
     --texte: #c3c8d0;
     --texte-faible: #8b94a3;
     --accent: #7aa2f7;
-    /* ⚠️ LA QUATORZIÈME COULEUR, ajoutée par S2 là où la spec §4.5 en fixait
-       treize, et la raison est un CONTRÔLE, pas un goût : la spec exige un état
-       de survol pour le bouton principal et ne donne aucune couleur pour le
-       dire. Les trois voies sans token neuf — `filter: brightness()`,
-       `opacity`, `color-mix(…, black)` — composent toutes la couleur AU RENDU,
-       donc hors de portée du §7.1 qui « ne vérifie pas les couleurs composées à
-       l'exécution » ; et la troisième est en outre REFUSÉE par le §7.2, qui
-       attrape le mot-clé `black` du côté valeur (mesuré sur un arbre jetable).
-       L'état le plus fréquent du produit serait alors le seul non mesuré.
-       Ici il l'est : deux paires de plus, 50 → 52, et le survol contraste
-       PLUS que le repos — 7,73 → 9,39 en sombre, 5,72 → 7,27 en clair.
-       ⚠️ Le CHOIX des deux teintes reste un jugement humain, comme celui de
-       `#7aa2f7` (§8) ; seul leur contraste est mesuré.
-       ⚠️ IL N'Y A PAS DE TOKEN D'ÉTAT ACTIF : l'appui se dit par le RETOUR au
-       repos — voir `design/primitives.css`. */
+    /* ⚠️ THE FOURTEENTH COLOUR, added by S2 where spec §4.5 set
+       thirteen, and the reason is a CHECK, not a taste: the spec requires a hover
+       state for the primary button and gives no colour to
+       express it. The three routes without a new token — `filter: brightness()`,
+       `opacity`, `color-mix(…, black)` — all compose the colour AT RENDERING,
+       hence out of reach of §7.1, which "does not check colours composed at
+       run time"; and the third is moreover REFUSED by §7.2, which
+       catches the `black` keyword on the value side (measured on a throwaway tree).
+       The most frequent state of the product would then be the only unmeasured one.
+       Here it is measured: two more pairs, 50 → 52, and the hover contrasts
+       MORE than rest — 7.73 → 9.39 in dark, 5.72 → 7.27 in light.
+       ⚠️ The CHOICE of the two tints remains a human judgement, like that of
+       `#7aa2f7` (§8); only their contrast is measured.
+       ⚠️ THERE IS NO ACTIVE STATE TOKEN: pressing is expressed by the RETURN to
+       rest — see `design/primitives.css`. */
     --accent-survol: #93b4f9;
     --sur-accent: #0b0d10;
     --succes: #6ec08a;
     --alerte: #e0b55c;
     --danger: #f07a7a;
 
-    /* ── `--accent-fenetre` — posé PAR FENÊTRE, jamais par thème (sous-bloc
-       A1, tâche 7 du chantier `legs-sans-vm`) ────────────────────────────
-       Ce n'est ni une couleur de thème (les quatorze ci-dessus, redéclarées
-       dans les deux blocs clairs) ni un hors-thème IDENTIQUE dans les deux
-       thèmes (les sept ci-dessous) : c'est une RÉFÉRENCE, écrite `var(--accent)`
-       et non un littéral, donc jamais attrapée par `estUneCouleur` de
-       `tokens.ts` (elle ne commence ni par `#`, ni par `rgb(`/`rgba(`, ni par
-       `hsl(`/`hsla(`) — l'inclusion ③ de §7.4 (`ecartsEntreBlocs`) ne l'exige
-       donc PAS dans les blocs clairs, et il n'y a AUCUNE redéclaration à tenir
-       à jour ici. Une seule ligne, dans le bloc SANS condition, qui se
-       résout contre le thème courant PAR CASCADE.
+    /* ── `--accent-fenetre` — set PER WINDOW, never per theme (sub-block
+       A1, task 7 of the `legs-sans-vm` project) ──────────────────────────
+       It is neither a theme colour (the fourteen above, redeclared
+       in the two light blocks) nor an out-of-theme one IDENTICAL in both
+       themes (the seven below): it is a REFERENCE, written `var(--accent)`
+       and not a literal, hence never caught by `estUneCouleur` of
+       `tokens.ts` (it starts neither with `#`, nor with `rgb(`/`rgba(`, nor with
+       `hsl(`/`hsla(`) — inclusion ③ of §7.4 (`ecartsEntreBlocs`) therefore does NOT
+       require it in the light blocks, and there is NO redeclaration to keep
+       up to date here. A single line, in the UNCONDITIONAL block, which
+       resolves against the current theme BY CASCADE.
 
-       `client/src/accent-dom.ts` (`TOKEN_ACCENT`) la RÉÉCRIT à l'exécution, une
-       fois par icône de fenêtre annoncée par l'agent — c'est le premier
-       `setProperty` du dépôt (A1). Cette ligne-ci n'est que sa valeur AVANT le
-       premier message, et sur un REFUS de lisibilité (`accent-dom.ts` pose
-       alors explicitement `--accent`) : sans elle, `var(--accent-fenetre)` est
-       INDÉFINI, et `client/src/style.css` — la seule feuille qui la peint —
-       doit de toute façon porter son propre repli
-       (`var(--accent-fenetre, var(--accent))`), au cas où cette déclaration
-       venait à disparaître par erreur.
+       `client/src/accent-dom.ts` (`TOKEN_ACCENT`) REWRITES it at run time, once
+       per window icon announced by the agent — it is the first
+       `setProperty` of the repository (A1). This line is only its value BEFORE the
+       first message, and on a readability REFUSAL (`accent-dom.ts` then sets
+       `--accent` explicitly): without it, `var(--accent-fenetre)` is
+       UNDEFINED, and `client/src/style.css` — the only sheet that paints it —
+       must carry its own fallback anyway
+       (`var(--accent-fenetre, var(--accent))`), in case this declaration
+       were to disappear by mistake.
 
-       🔴 **DÉCLARER SANS PEINDRE A ÉTÉ ESSAYÉ ET MESURÉ FAUX** (D-A1-2, sonde
-       H1 du 21 août 2026, relevé dans `accent-dom.ts`) : le contrôle §7.6
-       de CETTE ÉPOQUE ne voyait qu'un `var(--…)` dans du CSS, jamais un
-       `poserToken(...)` en TypeScript — déclarer sans qu'aucune feuille ne
-       l'emploie rendait le token ORPHELIN. C'est cette tâche qui ferme les
-       deux moitiés à la fois : `style.css` peint, et
-       `client/outils/tokens-orphelins.mjs` voit désormais aussi l'appel JS
-       (voir `tokens-orphelins/js.mjs`) — la déclaration seule ne suffirait
-       toujours pas à l'une des deux lectures si l'autre manquait. */
+       🔴 **DECLARING WITHOUT PAINTING WAS TRIED AND MEASURED WRONG** (D-A1-2, probe
+       H1 of August 21st, 2026, recorded in `accent-dom.ts`): check §7.6
+       AT THAT TIME only saw a `var(--…)` in CSS, never a
+       TypeScript `poserToken(...)` — declaring without any sheet
+       using it made the token an ORPHAN. It is this task that closes the
+       two halves at once: `style.css` paints, and
+       `client/outils/tokens-orphelins.mjs` now also sees the JS call
+       (see `tokens-orphelins/js.mjs`) — the declaration alone would still
+       not satisfy one of the two readings if the other were missing. */
     --accent-fenetre: var(--accent);
 
-    /* ── Sept tokens HORS THÈME — déclarés une fois, jamais redéfinis ─────
-       Ils sont posés SUR LA VIDÉO, dont le contenu ne suit aucun thème : un
-       encadrement clair autour d'une image vidéo se lit comme un défaut
-       d'affichage. Ils sont donc identiques dans les deux thèmes, et c'est
-       l'exception nommée au point 2 de §3.
+    /* ── Seven OUT-OF-THEME tokens — declared once, never redefined ───────
+       They are laid OVER THE VIDEO, whose content follows no theme: a
+       light frame around a video image reads as a display
+       defect. They are therefore identical in both themes, and it is
+       the exception named in point 2 of §3.
 
-       ⚠️ LES SIX VOILES SONT HORS DES PAIRES DE CONTRASTE, et pas par oubli :
-       leur lisibilité dépend de la vidéo qui est dessous, qui n'est pas
-       connaissable. La spec §11 le déclare déjà — « `--voile-flottant` ne
-       suffit pas sur une vidéo très claire, non mesuré ».
-       ❌ ET CET ARGUMENT N'EST JUSTE QU'À MOITIÉ — réfuté par le sous-bloc S4,
-       tâche 4. Il vaut DU VOILE ; il ne vaut pas de L'ENCRE qu'on y pose, qui
-       est parfaitement connaissable dès que le fond l'est. Tant que personne
-       ne l'avait relevé, `base.css` posait `color: var(--texte-fort)` sur
-       `body`, `--texte-fort` valait `#10131a` en thème clair, et les cinq
-       éléments de la fenêtre de session écrivaient du quasi-noir sur un voile
-       quasi-noir. AUCUN des neuf contrôles ne pouvait le voir (le « huit »
-       d'origine était faux à la date même où la tâche 4 l'a écrit : voir
-       `design/contraste.ts`, qui porte le relevé).
-       ✅ D'où `--sur-voile`, le SEPTIÈME hors-thème, et la 53ᵉ paire de
-       contraste : `--sur-voile` sur `--video-letterbox`, la SEULE région où le
-       fond sous l'encre soit connu — les bandes que laisse `object-fit:
-       contain`. Au-dessus de l'image, le fond reste inconnaissable et la
-       réserve du §11 tient entière.
+       ⚠️ THE SIX VEILS ARE OUTSIDE THE CONTRAST PAIRS, and not by oversight:
+       their readability depends on the video underneath, which cannot be
+       known. Spec §11 already declares it — "`--voile-flottant` is not
+       enough on a very light video, not measured".
+       ❌ AND THIS ARGUMENT IS ONLY HALF RIGHT — refuted by sub-block S4,
+       task 4. It holds for THE VEIL; it does not hold for THE INK laid on it, which
+       is perfectly knowable as soon as the background is. As long as nobody
+       had noticed, `base.css` set `color: var(--texte-fort)` on
+       `body`, `--texte-fort` was `#10131a` in light theme, and the five
+       elements of the session window wrote near-black on a
+       near-black veil. NONE of the nine checks could see it (the original
+       "eight" was wrong on the very date task 4 wrote it: see
+       `design/contraste.ts`, which carries the report).
+       ✅ Hence `--sur-voile`, the SEVENTH out-of-theme token, and the 53rd contrast
+       pair: `--sur-voile` on `--video-letterbox`, the ONLY region where the
+       background under the ink is known — the bands that `object-fit:
+       contain` leaves. Above the image, the background remains unknowable and the
+       reservation of §11 holds entirely.
 
-       ⚠️ LES DEUX DERNIERS NE SONT PAS DES NOIRS, et ils ne se raccordent PAS
-       à `--danger` / `--alerte` (divergence D3). Les employer ferait CHANGER
-       DE COULEUR le bouton micro, et sa couleur suivrait le thème du produit
-       alors qu'elle est posée sur une vidéo qui n'en suit aucun. Ce serait un
-       changement d'apparence, que ce socle s'interdit.
-       ❌ « Le raccordement sémantique du micro appartient au sous-bloc S4 » —
-       écrit ici par S1, et S4 LE CORRIGE PLUTÔT QUE DE L'EXÉCUTER. Raccorder
-       `--voile-micro-actif` à `--danger` ferait suivre au bouton LE THÈME DU
-       PRODUIT alors qu'il est posé sur une vidéo qui n'en suit aucun : c'est
-       MOT POUR MOT l'argument que les six lignes ci-dessus emploient pour
-       tenir les six voiles hors thème. La phrase promettait donc ce que sa
-       propre page réfute. ✅ TRANCHÉ, et tranché NON : le micro reste hors
-       thème, et c'est sa raison — non pas une dette reportée. */
+       ⚠️ THE LAST TWO ARE NOT BLACKS, and they are NOT tied
+       to `--danger` / `--alerte` (divergence D3). Using them would make the
+       microphone button CHANGE COLOUR, and its colour would follow the product theme
+       whereas it is laid over a video that follows none. It would be an
+       appearance change, which this base layer forbids itself.
+       ❌ "The semantic tie of the microphone belongs to sub-block S4" —
+       written here by S1, and S4 CORRECTS IT RATHER THAN CARRYING IT OUT. Tying
+       `--voile-micro-actif` to `--danger` would make the button follow THE PRODUCT'S
+       THEME whereas it is laid over a video that follows none: it is
+       WORD FOR WORD the argument the six lines above use to
+       keep the six veils out of the theme. The sentence therefore promised what its
+       own page refutes. ✅ SETTLED, and settled NO: the microphone stays out of the
+       theme, and that is its reason — not a postponed debt. */
     --video-letterbox: #000;
     --voile-flottant: rgb(0 0 0 / 0.72);
     --voile-bouton: rgb(0 0 0 / 0.55);
     --voile-bouton-survol: rgb(0 0 0 / 0.75);
     --voile-micro-actif: rgb(220 38 38 / 0.85);
     --voile-micro-refuse: rgb(120 53 15 / 0.85);
-    /* L'ENCRE POSÉE SUR LES VOILES — hors thème pour la même raison qu'eux, et
-       AUCUN changement d'apparence en SOMBRE : `#e6e8eb` est exactement
-       `--texte-fort` de la racine, soixante-quinze lignes plus haut, et
-       exactement l'encre que la fenêtre de session portait avant le socle
-       (`style.css:4`, `--text: #e6e8eb`). En CLAIR, c'est la réparation du
-       défaut ci-dessus. */
+    /* THE INK LAID ON THE VEILS — out of the theme for the same reason as them, and
+       NO appearance change in DARK: `#e6e8eb` is exactly
+       `--texte-fort` of the root, seventy-five lines above, and
+       exactly the ink the session window carried before the base layer
+       (`style.css:4`, `--text: #e6e8eb`). In LIGHT, it is the repair of the
+       defect above. */
     --sur-voile: #e6e8eb;
 }
 
-/* Palette CLAIRE ①/② — par préférence système.
-   Le `:not([data-theme="sombre"])` laisse un choix explicite de sombre
-   l'emporter sur la préférence du système. */
+/* LIGHT palette ①/② — by system preference.
+   The `:not([data-theme="sombre"])` lets an explicit choice of dark
+   win over the system preference. */
 @media (prefers-color-scheme: light) {
     :root:not([data-theme="sombre"]) {
         color-scheme: light;
@@ -208,12 +208,12 @@
     }
 }
 
-/* Palette CLAIRE ②/② — par choix explicite, l'attribut posé par `theme.ts`.
-   ⚠️ CE BLOC DOIT ÊTRE MOT POUR MOT IDENTIQUE À CELUI CI-DESSUS. Le contrôle
-   §7.4 vérifie l'égalité des ENSEMBLES DE NOMS dans les deux sens ; il ne
-   compare pas les VALEURS — deux copies aux mêmes noms mais aux teintes
-   divergentes passeraient. C'est une règle de revue, comme le §8 en nomme
-   d'autres. */
+/* LIGHT palette ②/② — by explicit choice, the attribute set by `theme.ts`.
+   ⚠️ THIS BLOCK MUST BE WORD FOR WORD IDENTICAL TO THE ONE ABOVE. Check
+   §7.4 checks the equality of the SETS OF NAMES in both directions; it does not
+   compare the VALUES — two copies with the same names but diverging
+   tints would pass. It is a review rule, like others §8
+   names. */
 :root[data-theme="clair"] {
     color-scheme: light;
 

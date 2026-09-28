@@ -1,79 +1,79 @@
 #!/usr/bin/env node
-// Contrôle §7.9 — TOUTE CLASSE EMPLOYÉE EST DÉCLARÉE, ET UNE PRIMITIVE ATTEINT
-// LE PRODUIT.
+// Check §7.9 — EVERY CLASS USED IS DECLARED, AND A PRIMITIVE REACHES
+// THE PRODUCT.
 //
-// 🔴 CE CONTRÔLE N'EST PAS DANS LA SPEC : c'est une ADDITION du sous-bloc S3,
-// déclarée comme telle. Il existe parce qu'AUCUN des sept contrôles précédents
-// ne peut voir l'écart que S2 a lui-même nommé — « les dix-huit tokens sortis
-// de la liste ont un appelant ÉCRIT, pas un pixel RENDU ». Et ce n'est pas une
-// lacune de rédaction, c'est structurel :
+// 🔴 THIS CHECK IS NOT IN THE SPEC: it is an ADDITION of sub-block S3,
+// declared as such. It exists because NONE of the seven previous checks
+// can see the gap S2 itself named — "the eighteen tokens taken out
+// of the list have a WRITTEN caller, not a RENDERED pixel". And it is not a
+// drafting gap, it is structural:
 //
-//   - §7.6 compte des `var(--…)` dans des FICHIERS. Poser
-//     `class="bouton bouton--principal"` sur une page n'ajoute aucun `var()` :
-//     le contrôle compte exactement les mêmes tokens employés avant et après.
-//   - §7.3 ne vérifie que le CHARGEMENT d'une feuille, jamais son emploi — son
-//     propre en-tête le dit.
-//   - §7.2 ne voit que des couleurs.
+//   - §7.6 counts `var(--…)` in FILES. Setting
+//     `class="bouton bouton--principal"` on a page adds no `var()`:
+//     the check counts exactly the same used tokens before and after.
+//   - §7.3 only checks the LOADING of a sheet, never its use — its
+//     own header says so.
+//   - §7.2 only sees colours.
 //
-// ── LES TROIS ASSERTIONS, COMPTÉES SÉPARÉMENT ─────────────────────────────
+// ── THE THREE ASSERTIONS, COUNTED SEPARATELY ──────────────────────────────
 //
-//   ① employé ⊆ déclaré — un `class="bouton--principale"` (faute de frappe)
-//      est une règle qui ne s'applique à rien, et le navigateur ne dit RIEN :
-//      la page reste debout et fausse. Aucun autre contrôle ne le voit.
-//   ② A — ATTEIGNABILITÉ : CHACUNE des trois surfaces du produit emploie au
-//      moins une famille de primitives. C'est cette assertion, et elle seule,
-//      qui referme l'écart de S2. Elle est née ROUGE sur l'arbre intact —
-//      mesuré le 20 août 2026, `grep -n 'class=' client/{index,shell,connexion}
-//      .html` ne rendait AUCUNE ligne.
+//   ① used ⊆ declared — a `class="bouton--principale"` (typo)
+//      is a rule that applies to nothing, and the browser says NOTHING:
+//      the page stays up and wrong. No other check sees it.
+//   ② A — REACHABILITY: EACH of the three surfaces of the product uses at
+//      least one family of primitives. It is this assertion, and it alone,
+//      that closes S2's gap. It was born RED on the untouched tree —
+//      measured on August 20th, 2026, `grep -n 'class=' client/{index,shell,connexion}
+//      .html` returned NO line.
 //
-//      🔴 DURCIE PAR LA TÂCHE 3 DU SOUS-BLOC S4, ET ELLE RENAÎT ROUGE. Elle
-//      exigeait « AU MOINS UNE surface, AU MOINS UNE famille » : ce quantifieur
-//      était juste tant qu'une seule surface avait été reprise, et il est devenu
-//      un plafond dès la deuxième — deux surfaces sur trois habillées le
-//      laissaient vert, et la troisième pouvait rester nue pour toujours sans
-//      qu'aucune commande ne le dise. C'est exactement ce qui s'est passé : à la
-//      fin de S3, `client/index.html` rendait « aucune famille », et le contrôle
-//      était VERT. La fenêtre de session est reprise par S4 ; le quantifieur
-//      suit.
+//      🔴 HARDENED BY TASK 3 OF SUB-BLOCK S4, AND IT IS BORN RED AGAIN. It
+//      required "AT LEAST ONE surface, AT LEAST ONE family": that quantifier
+//      was right as long as only one surface had been reworked, and it became
+//      a ceiling from the second — two surfaces out of three dressed left it
+//      green, and the third could stay bare forever without
+//      any command saying so. That is exactly what happened: at the
+//      end of S3, `client/index.html` returned "no family", and the check
+//      was GREEN. The session window is reworked by S4; the quantifier
+//      follows.
 //
-//      ⚠️ ELLE EST DURCIE AVANT LA TÂCHE QUI L'ÉTEINT, ET C'EST LE POINT. La
-//      durcir dans le même commit que l'habillage la rendrait verte dès sa
-//      naissance, donc jamais vue rouge sur l'arbre — un contrôle qu'on n'a
-//      jamais vu rouge n'est pas un contrôle. L'arbre lui-même est sa preuve
-//      d'atteignabilité, comme en S3.
+//      ⚠️ IT IS HARDENED BEFORE THE TASK THAT TURNS IT OFF, AND THAT IS THE POINT.
+//      Hardening it in the same commit as the dressing would make it green from its
+//      birth, hence never seen red on the tree — a check never
+//      seen red is not a check. The tree itself is its proof
+//      of reachability, as in S3.
 //
-//      ⚠️ LA SORTIE NOMME LA SURFACE QUI N'EMPLOIE RIEN, pas seulement le fait
-//      qu'il en existe une : « la surface X n'emploie aucune famille » est
-//      actionnable, « aucune surface n'en emploie » ne l'était pas.
-//   ③ B — chacune des familles de primitives apparaît dans la galerie
-//      `client/primitives.html`. Elle prend une part du legs n°4 de S2 : « une
-//      galerie qui cesserait de rendre une famille entière ne serait attrapée
-//      par aucun contrôle ».
+//      ⚠️ THE OUTPUT NAMES THE SURFACE THAT USES NOTHING, not only the fact
+//      that one exists: "surface X uses no family" is
+//      actionable, "no surface uses any" was not.
+//   ③ B — each of the primitive families appears in the gallery
+//      `client/primitives.html`. It takes a share of S2's legacy item no. 4: "a
+//      gallery that stopped rendering a whole family would be caught
+//      by no check".
 //
-// ⚠️ Il ne porte AUCUNE RÈGLE DE PARSING : `classesDeclarees`,
-// `classesEmployeesHtml`, `classesEmployeesTs` et `classesDeclareesEnLigne`
-// vivent dans `client/src/design/classes.ts`, qui est typechecké et testé.
-// C'est la convention de `tokens-orphelins.mjs`, et la même raison.
+// ⚠️ It carries NO PARSING RULE: `classesDeclarees`,
+// `classesEmployeesHtml`, `classesEmployeesTs` and `classesDeclareesEnLigne`
+// live in `client/src/design/classes.ts`, which is typechecked and tested.
+// It is the convention of `tokens-orphelins.mjs`, and the same reason.
 //
-// ⚠️ LES FAMILLES NE SONT PAS ÉNUMÉRÉES ICI : elles sont DÉRIVÉES des fichiers
-// de `client/src/design/primitives/`, un fichier par famille. Une cinquième
-// famille entre donc dans ② et ③ sans qu'une ligne de ce script ne change, et
-// une liste recopiée ne peut pas diverger de ce qu'elle décrit.
+// ⚠️ THE FAMILIES ARE NOT ENUMERATED HERE: they are DERIVED from the files
+// of `client/src/design/primitives/`, one file per family. A fifth
+// family therefore enters ② and ③ without a line of this script changing, and
+// a copied list cannot diverge from what it describes.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔴 CE QUE CE CONTRÔLE NE DIT PAS.
+// 🔴 WHAT THIS CHECK DOES NOT SAY.
 //
-//   - LE SENS INVERSE — toute classe déclarée est employée — N'EST PAS PRIS.
-//     Il exigerait une SECONDE liste d'attente (`.bouton--discret` peut n'avoir
-//     aucun appelant), et une liste de plus pour une famille déjà gardée par sa
-//     galerie serait un coût sans contrepartie. C'est `primitives.html` et
-//     l'œil qui tiennent ce sens-là (spec §7.8).
-//   - UNE CLASSE CALCULÉE À L'EXÉCUTION EST INVISIBLE — `el.className = x`,
-//     une concaténation, un `classList.toggle(nom)`. La règle qui rend ce
-//     contrôle utile est la convention : les classes s'écrivent en LITTÉRAL,
-//     dans le HTML de préférence.
-//   - IL NE JUGE D'AUCUNE APPARENCE. Qu'une classe soit posée ne dit pas
-//     qu'elle rende bien. Le jugement humain reste entier.
+//   - THE REVERSE DIRECTION — every declared class is used — IS NOT TAKEN.
+//     It would require a SECOND waiting list (`.bouton--discret` may have
+//     no caller), and one more list for a family already guarded by its
+//     gallery would be a cost with no return. It is `primitives.html` and
+//     the eye that hold that direction (spec §7.8).
+//   - A CLASS COMPUTED AT RUN TIME IS INVISIBLE — `el.className = x`,
+//     a concatenation, a `classList.toggle(nom)`. The rule that makes this
+//     check useful is the convention: classes are written as LITERALS,
+//     preferably in the HTML.
+//   - IT JUDGES NO APPEARANCE. That a class is set does not say
+//     it renders well. Human judgement remains whole.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -91,28 +91,28 @@ const args = process.argv.slice(2);
 const iRacine = args.indexOf('--racine');
 const racine = iRacine === -1 ? process.cwd() : args[iRacine + 1];
 
-/** Les surfaces du PRODUIT — celles qu'un utilisateur voit.
+/** The surfaces of the PRODUCT — those a user sees.
  *
- * 🔴 `client/hub.html` Y EST ENTRÉ LE 31 AOÛT 2026, ET IL N'Y ÉTAIT PAS : le
- * hub est servi à la racine depuis le lot 14, donc c'est LA surface que
- * l'utilisateur atteint, et elle était pourtant hors de tout contrôle §7.9.
+ * 🔴 `client/hub.html` ENTERED IT ON AUGUST 31ST, 2026, AND IT WAS NOT THERE: the
+ * hub has been served at the root since batch 14, so it is THE surface
+ * the user reaches, and yet it was outside any §7.9 check.
  *
- * 🔴 ET `client/shell.html` EN EST SORTI LE MÊME JOUR (tâche 9) : la page-shell
- * est devenue une simple redirection — le corps de `shell-page.ts` tient en un
- * `import` et un `location.replace`, tout le reste y étant du commentaire ;
- * `wc -l` pour la taille, jamais un nombre recopié ici. Elle ne
- * porte plus AUCUNE classe — ni sur `<html>`, ni sur `<body>`, qui ne contient
- * qu'un `<script>`. La garder ici la ferait compter comme une surface NUE
- * (aucune famille de primitives employée), ce qui échouerait l'assertion ②
- * pour une page qui ne peint plus rien : ce n'est pas un manque de primitive,
- * c'est l'absence de tout balisage.
+ * 🔴 AND `client/shell.html` LEFT IT THE SAME DAY (task 9): the shell page
+ * became a mere redirect — the body of `shell-page.ts` fits in one
+ * `import` and one `location.replace`, everything else in it being comment;
+ * `wc -l` for the size, never a number copied here. It
+ * no longer carries ANY class — neither on `<html>`, nor on `<body>`, which only contains
+ * a `<script>`. Keeping it here would make it count as a BARE surface
+ * (no primitive family used), which would fail assertion ②
+ * for a page that paints nothing any more: it is not a missing primitive,
+ * it is the absence of any markup.
  */
 const SURFACES_PRODUIT = [
     'client/index.html',
     'client/hub.html',
     'client/connexion.html',
 ];
-/** La galerie du jugement humain, celle que ③ interroge. */
+/** The gallery of human judgement, the one ③ queries. */
 const GALERIE_PRIMITIVES = 'client/primitives.html';
 
 const rel = (chemin) => relative(racine, chemin).split('\\').join('/');
@@ -129,7 +129,7 @@ function fichiersSuffixes(repertoire, suffixe, acc = []) {
 
 const src = join(racine, 'client/src');
 if (!existsSync(src)) {
-    console.error("client/src est absent : rien n'a été mesuré, ce n'est pas un succès.");
+    console.error("client/src is missing: nothing was measured, this is not a success.");
     process.exit(2);
 }
 
@@ -137,7 +137,7 @@ const surfaces = Object.values(configVite.build.rollupOptions.input).map((n) =>
     join(racine, 'client', n),
 );
 
-// ── L'ENSEMBLE DÉCLARÉ ────────────────────────────────────────────────────
+// ── THE DECLARED SET ──────────────────────────────────────────────────────
 const declarePar = new Map();
 const ajouterDeclarees = (classes, source) => {
     for (const nom of classes) {
@@ -149,15 +149,15 @@ const ajouterDeclarees = (classes, source) => {
 for (const chemin of fichiersSuffixes(src, '.css')) {
     ajouterDeclarees(classesDeclarees(readFileSync(chemin, 'utf8')), rel(chemin));
 }
-// ⚠️ LES `<style>` EN LIGNE SONT OBLIGATOIRES DANS CET ENSEMBLE :
-// `client/design.html` déclare en ligne les six classes que `galerie.ts`
-// emploie. Les omettre ferait naître ce contrôle ROUGE sur du code correct,
-// c'est-à-dire la pression à l'assouplissement que ce dépôt écarte.
+// ⚠️ INLINE `<style>` ARE MANDATORY IN THIS SET:
+// `client/design.html` declares inline the six classes that `galerie.ts`
+// uses. Omitting them would make this check be born RED on correct code,
+// that is, the pressure to loosen that this repository rules out.
 for (const chemin of surfaces) {
     ajouterDeclarees(classesDeclareesEnLigne(readFileSync(chemin, 'utf8')), rel(chemin));
 }
 
-// ── L'ENSEMBLE EMPLOYÉ ────────────────────────────────────────────────────
+// ── THE USED SET ──────────────────────────────────────────────────────────
 const employePar = new Map();
 const ajouterEmployees = (classes, source) => {
     for (const nom of classes) {
@@ -174,7 +174,7 @@ for (const chemin of fichiersSuffixes(src, '.ts')) {
     ajouterEmployees(classesEmployeesTs(readFileSync(chemin, 'utf8')), rel(chemin));
 }
 
-// ── LES FAMILLES, DÉRIVÉES DES FICHIERS ───────────────────────────────────
+// ── THE FAMILIES, DERIVED FROM THE FILES ──────────────────────────────────
 const familles = fichiersSuffixes(join(src, 'design/primitives'), '.css')
     .sort()
     .map((chemin) => ({
@@ -183,27 +183,27 @@ const familles = fichiersSuffixes(join(src, 'design/primitives'), '.css')
     }));
 const classesDePrimitive = new Set(familles.flatMap((f) => [...f.classes]));
 
-// ── LE RELEVÉ, TOUJOURS IMPRIMÉ, SUCCÈS COMPRIS ───────────────────────────
-// « Un contrôle de dérive dont on ne lit jamais la valeur ne sert qu'à passer »
+// ── THE REPORT, ALWAYS PRINTED, SUCCESS INCLUDED ──────────────────────────
+// "A drift check whose value is never read only serves to pass"
 // (`poids-css.mjs`).
-console.log(`déclarées : ${declarePar.size} classe(s)`);
-console.log(`employées : ${employePar.size} classe(s)`);
-console.log(`familles de primitives : ${familles.map((f) => f.nom).join(', ')}`);
+console.log(`declared: ${declarePar.size} class(es)`);
+console.log(`used: ${employePar.size} class(es)`);
+console.log(`primitive families: ${familles.map((f) => f.nom).join(', ')}`);
 
-// ① employé ⊆ déclaré
+// ① used ⊆ declared
 const nonDeclarees = [...employePar.keys()].filter((n) => !declarePar.has(n)).sort();
-console.log(`\n① toute classe employée est déclarée : ${nonDeclarees.length} écart(s)`);
+console.log(`\n① every used class is declared: ${nonDeclarees.length} gap(s)`);
 for (const nom of nonDeclarees) {
-    console.log(`  NON DÉCLARÉE  ${nom}  employée par ${employePar.get(nom).join(', ')}`);
+    console.log(`  UNDECLARED  ${nom}  used by ${employePar.get(nom).join(', ')}`);
 }
 
-// ② A — une primitive atteint une surface du produit
-console.log('\n② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :');
+// ② A — a primitive reaches a surface of the product
+console.log('\n② A — the primitives reach the PRODUCT, EACH of the three surfaces:');
 const nues = [];
 for (const surface of SURFACES_PRODUIT) {
     const chemin = join(racine, surface);
     if (!existsSync(chemin)) {
-        console.log(`  ${surface} : INTROUVABLE`);
+        console.log(`  ${surface}: NOT FOUND`);
         nues.push(surface);
         continue;
     }
@@ -213,36 +213,36 @@ for (const surface of SURFACES_PRODUIT) {
         .map((f) => f.nom);
     if (parFamille.length === 0) nues.push(surface);
     console.log(
-        `  ${surface} : ${parFamille.length === 0 ? 'aucune famille' : parFamille.join(', ')}`,
+        `  ${surface}: ${parFamille.length === 0 ? 'no family' : parFamille.join(', ')}`,
     );
 }
-// 🔴 UNE SURFACE NUE EST UN ÉCHEC, ET ELLE EST NOMMÉE. Le compte est celui des
-// surfaces SANS famille, plus celui des surfaces INTROUVABLES : une surface
-// retirée de `SURFACES_PRODUIT` sans être retirée du disque rendrait `0 écart`
-// en ne mesurant plus rien, et c'est le patron du contrôle vacueux.
+// 🔴 A BARE SURFACE IS A FAILURE, AND IT IS NAMED. The count is that of the
+// surfaces WITHOUT a family, plus that of the surfaces NOT FOUND: a surface
+// removed from `SURFACES_PRODUIT` without being removed from disk would return `0 gaps`
+// while measuring nothing any more, and that is the pattern of the vacuous check.
 const echecA = nues.length;
 for (const surface of nues) {
     console.log(
-        `  ${surface} n'emploie AUCUNE famille de primitives : ` +
-            'les primitives y ont un appelant ÉCRIT, pas un pixel RENDU',
+        `  ${surface} uses NO primitive family: ` +
+            'the primitives have a WRITTEN caller there, not a RENDERED pixel',
     );
 }
 
-// ③ B — chaque famille est rendue par la galerie
+// ③ B — each family is rendered by the gallery
 const galerie = join(racine, GALERIE_PRIMITIVES);
 const employeesGalerie = existsSync(galerie)
     ? classesEmployeesHtml(readFileSync(galerie, 'utf8'))
     : new Set();
 const absentes = familles.filter((f) => ![...f.classes].some((c) => employeesGalerie.has(c)));
-console.log(`\n③ B — chaque famille est rendue par ${GALERIE_PRIMITIVES} :`);
+console.log(`\n③ B — each family is rendered by ${GALERIE_PRIMITIVES}:`);
 for (const f of familles) {
     const rendues = [...f.classes].filter((c) => employeesGalerie.has(c)).length;
-    console.log(`  ${f.nom} : ${rendues} classe(s) employée(s) sur ${f.classes.size} déclarée(s)`);
+    console.log(`  ${f.nom}: ${rendues} class(es) used out of ${f.classes.size} declared`);
 }
 for (const f of absentes) {
-    console.log(`  famille ${f.nom.toUpperCase()} absente de ${GALERIE_PRIMITIVES}`);
+    console.log(`  family ${f.nom.toUpperCase()} missing from ${GALERIE_PRIMITIVES}`);
 }
 
 const echecs = nonDeclarees.length + echecA + absentes.length;
-console.log(`\ntotal : ${echecs} écart(s)`);
+console.log(`\ntotal: ${echecs} gap(s)`);
 process.exit(echecs > 0 ? 1 : 0);

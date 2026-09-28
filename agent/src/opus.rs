@@ -1,62 +1,62 @@
-//! Codec Opus des deux pistes audio : l'ENCODEUR de la piste descendante
-//! (chantier A, agent → navigateur) et le DÉCODEUR de la piste montante
-//! (chantier E, navigateur → agent).
+//! Opus codec of both audio tracks: the ENCODER of the downstream track
+//! (work stream A, agent → browser) and the DECODER of the upstream track
+//! (work stream E, browser → agent).
 //!
-//! Media Foundation n'expose aucun encodeur Opus, et aucun codec que Chrome
-//! accepte en WebRTC n'est disponible nativement sous Windows : on passe donc
-//! par libopus, dont la source C est vendorée dans `audiopus_sys` et bâtie par
-//! cmake à la compilation (voir `scripts/build-agent.sh`).
+//! Media Foundation exposes no Opus encoder, and no codec Chrome
+//! accepts in WebRTC is available natively under Windows: we therefore go
+//! through libopus, whose C source is vendored in `audiopus_sys` and built by
+//! cmake at compile time (see `scripts/build-agent.sh`).
 //!
-//! Ce module ne référence jamais le crate `windows` : il se compile et se teste
-//! sous Linux.
+//! This module never references the `windows` crate: it compiles and is tested
+//! under Linux.
 
 use anyhow::{bail, Context, Result};
-// Le `::` initial force la résolution du crate externe `opus`. Ce module s'appelle
-// lui-même `opus` (édition 2021), donc sans le `::`, un `use opus::...` désignerait
-// le module courant, pas le crate externe — d'où la compilation échouerait. Le `::` initial
-// force le parcours de la racine du crate, d'où le crate externe.
+// The leading `::` forces resolution of the external `opus` crate. This module is itself
+// called `opus` (edition 2021), so without the `::`, a `use opus::...` would designate
+// the current module, not the external crate — hence compilation would fail. The leading `::`
+// forces the path through the crate root, hence the external crate.
 use ::opus::{Application, Bitrate, Channels, Decoder, Encoder};
 
-/// Fréquence d'échantillonnage de la piste audio, en hertz. C'est aussi la
-/// fréquence d'horloge RTP du type de charge utile Opus.
+/// Sampling frequency of the audio track, in hertz. It is also the
+/// RTP clock frequency of the Opus payload type.
 pub const SAMPLE_RATE_HZ: u32 = 48_000;
 
-/// Nombre de canaux transmis.
+/// Number of channels transmitted.
 pub const CHANNELS: usize = 2;
 
-/// Durée d'une trame, en millisecondes.
+/// Duration of a frame, in milliseconds.
 pub const FRAME_MS: u64 = 10;
 
-/// Échantillons par canal dans une trame.
+/// Samples per channel in a frame.
 pub const FRAME_SAMPLES: usize = (SAMPLE_RATE_HZ as u64 * FRAME_MS / 1000) as usize;
 
-/// Échantillons entrelacés dans une trame — la taille exacte que `encode`
-/// exige.
+/// Interleaved samples in a frame — the exact size `encode`
+/// requires.
 pub const FRAME_INTERLEAVED: usize = FRAME_SAMPLES * CHANNELS;
 
-/// Débit cible, en bits par seconde.
+/// Target bitrate, in bits per second.
 ///
-/// `pub` depuis la revue finale de branche (I5) : `transport.rs` la référence
-/// pour le budget audio du contrôleur de congestion (`congestion::Config::
-/// audio_bps`), plutôt que de dupliquer `128_000` en dur sans lien avec cette
-/// constante.
+/// `pub` since the final branch review (I5): `transport.rs` references it
+/// for the audio budget of the congestion controller (`congestion::Config::
+/// audio_bps`), rather than hardcoding a duplicate `128_000` unlinked to this
+/// constant.
 pub const BITRATE_BPS: i32 = 128_000;
 
-/// Borne haute d'un paquet encodé. Une trame de 10 ms à 128 kbps fait ~160
-/// octets ; 4 000 laisse toute la marge nécessaire sans jamais tronquer.
+/// Upper bound of an encoded packet. A 10 ms frame at 128 kbps is ~160
+/// bytes; 4,000 leaves all the needed margin without ever truncating.
 const MAX_PACKET_BYTES: usize = 4_000;
 
-/// Encodeur Opus configuré une fois pour toutes.
+/// Opus encoder configured once and for all.
 ///
-/// **`Application::Audio`** est choisi pour rendre possible le FEC in-band.
-/// `OPUS_APPLICATION_RESTRICTED_LOWDELAY` force `MODE_CELT_ONLY`
-/// (`opus/src/opus_encoder.c:1349`), dans lequel `decide_fec` retourne zéro
-/// (`opus/src/opus_encoder.c:721`) — la redondance LBRR n'existe que dans SILK.
-/// Le coût est un pré-délai qui passe de 120 échantillons (2,5 ms) en
-/// `RESTRICTED_LOWDELAY` à 312 (6,5 ms) en `Audio`, mesure établie au
-/// chantier A. Ces 4 ms supplémentaires se comparent aux ~48 ms de latence
-/// vidéo médiane du pipeline — l'audio reste largement en avance sur l'image.
-/// L'arbitrage a été tranché en faveur de la résilience réseau.
+/// **`Application::Audio`** is chosen to make in-band FEC possible.
+/// `OPUS_APPLICATION_RESTRICTED_LOWDELAY` forces `MODE_CELT_ONLY`
+/// (`opus/src/opus_encoder.c:1349`), in which `decide_fec` returns zero
+/// (`opus/src/opus_encoder.c:721`) — LBRR redundancy only exists in SILK.
+/// The cost is a pre-delay that goes from 120 samples (2.5 ms) in
+/// `RESTRICTED_LOWDELAY` to 312 (6.5 ms) in `Audio`, a measurement established in
+/// work stream A. These extra 4 ms compare with the ~48 ms of median video
+/// latency of the pipeline — audio stays well ahead of the image.
+/// The trade-off was settled in favour of network resilience.
 pub struct OpusEncoder {
     inner: Encoder,
 }
@@ -64,144 +64,146 @@ pub struct OpusEncoder {
 impl OpusEncoder {
     pub fn new() -> Result<Self> {
         let mut inner = Encoder::new(SAMPLE_RATE_HZ, Channels::Stereo, Application::Audio)
-            .context("création de l'encodeur Opus")?;
+            .context("creating the Opus encoder")?;
         inner
             .set_bitrate(Bitrate::Bits(BITRATE_BPS))
-            .context("réglage du débit Opus")?;
-        // FEC in-band : le décodeur peut reconstruire une trame perdue à
-        // partir de la suivante. Sur un lien quelconque, c'est ce qui évite
-        // les micro-coupures audibles.
-        inner.set_inband_fec(true).context("activation du FEC in-band")?;
-        // DTX : le silence numérique retombe à 1 octet par trame en régime
-        // établi (mesuré). Sans lui, il coûterait 3 octets — l'encodage à
-        // débit variable dépense déjà peu. Le gain est modeste, le coût nul.
-        inner.set_dtx(true).context("activation du DTX")?;
+            .context("setting the Opus bitrate")?;
+        // In-band FEC: the decoder can reconstruct a lost frame from
+        // the next one. On an arbitrary link, it is what avoids
+        // audible micro-cuts.
+        inner
+            .set_inband_fec(true)
+            .context("activation du FEC in-band")?;
+        // DTX: digital silence falls to 1 byte per frame in steady
+        // state (measured). Without it, it would cost 3 bytes — variable bitrate
+        // encoding already spends little. The gain is modest, the cost nil.
+        inner.set_dtx(true).context("enabling DTX")?;
         Ok(Self { inner })
     }
 
-    /// Déclare à l'encodeur le taux de perte observé sur le lien, en pour
-    /// cent.
+    /// Declares to the encoder the loss rate observed on the link, in
+    /// percent.
     ///
-    /// **C'est ce réglage qui rend le FEC in-band opérant.** `set_inband_fec`
-    /// seul ne fait qu'autoriser la redondance LBRR ; libopus ne l'émet que si
-    /// une perte non nulle est déclarée. Sans cet appel, le FEC activé à la
-    /// construction ne produit rien.
+    /// **It is this setting that makes in-band FEC effective.** `set_inband_fec`
+    /// alone only allows LBRR redundancy; libopus only emits it if
+    /// a non-zero loss is declared. Without this call, the FEC enabled at
+    /// construction produces nothing.
     ///
-    /// La valeur est bornée à [0, 100] : libopus refuse le reste avec une
-    /// erreur opaque, et l'appelant n'a pas à connaître cette borne.
+    /// The value is clamped to [0, 100]: libopus refuses the rest with an
+    /// opaque error, and the caller does not have to know this bound.
     pub fn set_packet_loss_perc(&mut self, perc: i32) -> Result<()> {
         self.inner
             .set_packet_loss_perc(perc.clamp(0, 100))
-            .context("réglage du taux de perte déclaré à Opus")
+            .context("setting the loss rate declared to Opus")
     }
 
-    /// Encode exactement une trame de 10 ms.
+    /// Encodes exactly one 10 ms frame.
     ///
-    /// `pcm` doit contenir `FRAME_INTERLEAVED` échantillons entrelacés
-    /// (gauche, droite, gauche, ...). libopus refuse toute autre taille avec
-    /// `BadArg` ; on refuse ici plus tôt, avec un message qui nomme la taille
-    /// attendue plutôt que de laisser remonter une erreur opaque.
+    /// `pcm` must contain `FRAME_INTERLEAVED` interleaved samples
+    /// (left, right, left, ...). libopus refuses any other size with
+    /// `BadArg`; we refuse here earlier, with a message that names the expected
+    /// size rather than letting an opaque error go up.
     pub fn encode(&mut self, pcm: &[i16]) -> Result<Vec<u8>> {
         if pcm.len() != FRAME_INTERLEAVED {
             bail!(
-                "trame de {} échantillons entrelacés, {FRAME_INTERLEAVED} attendus",
+                "frame of {} interleaved samples, {FRAME_INTERLEAVED} expected",
                 pcm.len()
             );
         }
         self.inner
             .encode_vec(pcm, MAX_PACKET_BYTES)
-            .context("encodage Opus")
+            .context("Opus encoding")
     }
 }
 
-/// Échantillons PAR CANAL que porte un paquet Opus, lus de son en-tête (TOC).
+/// Samples PER CHANNEL an Opus packet carries, read from its header (TOC).
 ///
-/// Fonction LIBRE, et c'est délibéré : la boucle de transport a besoin de cette
-/// lecture pour construire une `TrameMicro`, et elle n'a aucune raison de
-/// posséder un décodeur pour cela — le décodeur vit dans `LecteurMicro`, sur le
-/// fil qui décode. `OpusDecoder::echantillons_de` y délègue.
+/// FREE function, and it is deliberate: the transport loop needs this
+/// reading to build a `TrameMicro`, and it has no reason to
+/// own a decoder for that — the decoder lives in `LecteurMicro`, on the
+/// thread that decodes. `OpusDecoder::echantillons_de` delegates to it.
 ///
-/// **Jamais supposé** (spec §7) : Chrome émet du 20 ms, le chantier A du
-/// 10 ms, et rien n'oblige un pair à s'y tenir.
+/// **Never assumed** (spec §7): Chrome emits 20 ms, work stream A
+/// 10 ms, and nothing forces a peer to stick to that.
 pub fn echantillons_de(paquet: &[u8]) -> Result<usize> {
     ::opus::packet::get_nb_samples(paquet, SAMPLE_RATE_HZ)
-        .context("lecture de la durée d'un paquet Opus")
+        .context("reading the duration of an Opus packet")
 }
 
-/// Décodeur Opus de la piste montante (chantier E).
+/// Opus decoder of the upstream track (work stream E).
 ///
-/// **Toujours STÉRÉO**, quel que soit le nombre de canaux qu'a réellement
-/// encodé le pair : Chrome encode le micro en mono, et libopus duplique alors
-/// le canal unique sur les deux sorties. La spec §7 décrivait cette
-/// conversion comme un travail à écrire ; elle est faite par la bibliothèque,
-/// et `un_flux_mono_ressort_stereo_par_duplication` le VÉRIFIE plutôt que de
-/// le supposer.
+/// **Always STEREO**, whatever the number of channels the peer
+/// actually encoded: Chrome encodes the microphone in mono, and libopus then duplicates
+/// the single channel onto both outputs. Spec §7 described this
+/// conversion as work to be written; it is done by the library,
+/// and `a_mono_stream_comes_out_stereo_by_duplication` CHECKS it rather than
+/// assuming it.
 ///
-/// **Aucune durée de trame n'est supposée** (spec §7). Chrome émet du 20 ms,
-/// le chantier A du 10 ms, et rien n'oblige un pair à s'y tenir : la durée se
-/// LIT du paquet (`echantillons_de`) avant toute allocation, et celle du PLC
-/// se lit de la dernière trame décodée (`derniere_duree`).
+/// **No frame duration is assumed** (spec §7). Chrome emits 20 ms,
+/// work stream A 10 ms, and nothing forces a peer to stick to that: the duration is
+/// READ from the packet (`echantillons_de`) before any allocation, and that of the PLC
+/// is read from the last decoded frame (`derniere_duree`).
 pub struct OpusDecoder {
     inner: Decoder,
 }
 
 impl OpusDecoder {
     pub fn new() -> Result<Self> {
-        let inner = Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo)
-            .context("création du décodeur Opus")?;
+        let inner =
+            Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo).context("creating the Opus decoder")?;
         Ok(Self { inner })
     }
 
-    /// Échantillons PAR CANAL que porte ce paquet, lus de son en-tête (TOC).
+    /// Samples PER CHANNEL this packet carries, read from its header (TOC).
     ///
-    /// **Jamais supposé** : c'est cette fonction qui dimensionne le tampon de
-    /// sortie, et une constante à sa place tronquerait toute trame plus
-    /// longue que celle qu'on aurait devinée.
+    /// **Never assumed**: it is this function that sizes the output
+    /// buffer, and a constant in its place would truncate any frame
+    /// longer than the one we would have guessed.
     pub fn echantillons_de(&self, paquet: &[u8]) -> Result<usize> {
         echantillons_de(paquet)
     }
 
-    /// Décode une trame normale. Rend le nombre d'échantillons PAR CANAL
-    /// écrits ; `sortie` doit en contenir au moins autant fois `CHANNELS`.
+    /// Decodes a normal frame. Returns the number of samples PER CHANNEL
+    /// written; `sortie` must hold at least that many times `CHANNELS`.
     pub fn decoder(&mut self, paquet: &[u8], sortie: &mut [i16]) -> Result<usize> {
         self.inner
             .decode(paquet, sortie, false)
-            .context("décodage Opus")
+            .context("Opus decoding")
     }
 
-    /// Reconstruit la trame PRÉCÉDENTE à partir de la redondance LBRR portée
-    /// par `suivante`.
+    /// Reconstructs the PREVIOUS frame from the LBRR redundancy carried
+    /// by `suivante`.
     ///
-    /// C'est le sens du FEC in-band, et il est contre-intuitif : on ne
-    /// reconstruit jamais une trame depuis elle-même — on la reconstruit
-    /// depuis celle qui la SUIT. D'où la règle du tampon de gigue
-    /// (`micro.rs`) : le FEC ne sert que si la suivante est DÉJÀ arrivée.
+    /// It is the direction of in-band FEC, and it is counter-intuitive: a frame is
+    /// never reconstructed from itself — it is reconstructed
+    /// from the one that FOLLOWS it. Hence the jitter buffer's rule
+    /// (`micro.rs`): FEC is only useful if the next one has ALREADY arrived.
     pub fn decoder_fec(&mut self, suivante: &[u8], sortie: &mut [i16]) -> Result<usize> {
         self.inner
             .decode(suivante, sortie, true)
-            .context("décodage Opus par reconstruction FEC")
+            .context("Opus decoding through FEC reconstruction")
     }
 
-    /// Dissimulation de perte : aucun paquet n'est disponible, et pas même sa
-    /// suivante. libopus extrapole depuis son état interne.
+    /// Loss concealment: no packet is available, not even its
+    /// successor. libopus extrapolates from its internal state.
     ///
-    /// **La durée produite est celle de la DERNIÈRE TRAME DÉCODÉE, et c'est
-    /// NOUS qui l'imposons — pas libopus.** Le geste n'est pas cosmétique :
-    /// `opus_decode` appelé avec un paquet vide prend pour `frame_size` la
-    /// TAILLE DU TAMPON qu'on lui tend, et produit donc autant de PLC qu'on
-    /// lui offre de place, sans aucun rapport avec ce qui a été décodé avant.
-    /// Un appelant qui tendrait un tampon de 40 ms après une trame de 10 ms
-    /// obtiendrait 40 ms de dissimulation, et la ligne de temps de `micro.rs`
-    /// dériverait de 30 ms à chaque perte.
+    /// **The duration produced is that of the LAST DECODED FRAME, and it is
+    /// WE who impose it — not libopus.** The gesture is not cosmetic:
+    /// `opus_decode` called with an empty packet takes as `frame_size` the
+    /// SIZE OF THE BUFFER handed to it, and therefore produces as much PLC as
+    /// the room offered, unrelated to what was decoded before.
+    /// A caller handing a 40 ms buffer after a 10 ms frame
+    /// would get 40 ms of concealment, and `micro.rs`'s timeline
+    /// would drift by 30 ms at each loss.
     ///
-    /// Ce défaut a été trouvé par la MUTATION de
-    /// `la_dissimulation_rend_la_duree_de_la_derniere_trame` (tâche 3,
-    /// step 2) : la première rédaction déléguait la durée à libopus, et le
-    /// test passait encore quand on faisait précéder le PLC d'une trame de
-    /// 10 ms au lieu de 40. Il ne mesurait rien.
+    /// This defect was found by MUTATING
+    /// `concealment_returns_the_duration_of_the_last_frame` (task 3,
+    /// step 2): the first draft delegated the duration to libopus, and the
+    /// test still passed when the PLC was preceded by a 10 ms frame
+    /// instead of 40. It measured nothing.
     ///
-    /// Rend `Ok(0)` sans rien écrire tant qu'aucune trame n'a été décodée :
-    /// il n'y a alors pas de durée à dissimuler, et l'appelant doit rendre du
+    /// Returns `Ok(0)` without writing anything as long as no frame has been decoded:
+    /// there is then no duration to conceal, and the caller must return
     /// silence.
     pub fn dissimuler(&mut self, sortie: &mut [i16]) -> Result<usize> {
         let par_canal = self.derniere_duree()?;
@@ -211,7 +213,7 @@ impl OpusDecoder {
         let voulu = par_canal * CHANNELS;
         if sortie.len() < voulu {
             bail!(
-                "tampon de dissimulation de {} échantillons, {voulu} attendus                  (durée de la dernière trame décodée : {par_canal} par canal)",
+                "concealment buffer of {} samples, {voulu} expected                  (duration of the last decoded frame: {par_canal} per channel)",
                 sortie.len()
             );
         }
@@ -220,16 +222,16 @@ impl OpusDecoder {
             .context("dissimulation de perte Opus")
     }
 
-    /// Durée de la dernière trame décodée, en échantillons PAR CANAL.
+    /// Duration of the last decoded frame, in samples PER CHANNEL.
     ///
-    /// Vaut 0 tant que rien n'a été décodé : il n'y a alors pas de durée à
-    /// dissimuler, et l'appelant doit rendre du silence plutôt que d'appeler
+    /// Is 0 as long as nothing has been decoded: there is then no duration to
+    /// conceal, and the caller must return silence rather than calling
     /// `dissimuler`.
     pub fn derniere_duree(&mut self) -> Result<usize> {
         let n = self
             .inner
             .get_last_packet_duration()
-            .context("lecture de la durée de la dernière trame Opus")?;
+            .context("reading the duration of the last Opus frame")?;
         Ok(n as usize)
     }
 }

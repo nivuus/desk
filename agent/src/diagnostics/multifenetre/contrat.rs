@@ -1,58 +1,62 @@
-//! Sonde `MULTIFENETRE_CONTRAT` : le contrat lu en amont correspond-il au
-//! pilote d'affichage virtuel réellement installé sur cette VM ?
+//! `MULTIFENETRE_CONTRAT` probe: does the contract read upstream match the
+//! virtual display driver actually installed on this VM?
 //!
-//! **Pourquoi cette sonde existe, alors que le plan ne la prévoyait pas.** Le
-//! plan s'arrêtait à une vérification de compilation : rien, dans son
-//! périmètre, n'appelait jamais le pilote. Or seuls le GUID d'interface et deux
-//! des six codes IOCTL sont confirmés octet pour octet dans la DLL installée ;
-//! la disposition de toutes les structures vient d'un en-tête amont antérieur
-//! de onze mois au pilote (canal-de-controle.md §5.2, réserve). S'en tenir là
-//! ferait découvrir un contrat faux à la tâche suivante **en même temps**
-//! qu'elle prend sa mesure — et les deux échecs seraient indiscernables.
+//! **Why this probe exists, although the plan did not provide for it.** The
+//! plan stopped at a compilation check: nothing, within its
+//! scope, ever called the driver. Yet only the interface GUID and two
+//! of the six IOCTL codes are confirmed byte for byte in the installed DLL;
+//! the layout of all structures comes from an upstream header eleven months
+//! older than the driver (canal-de-controle.md §5.2, caveat). Stopping there
+//! would make the next task discover a wrong contract **at the same time**
+//! as it takes its measurement — and the two failures would be indistinguishable.
 //!
-//! Elle ne crée AUCUN moniteur, et n'appelle que les deux IOCTL sans effet de
-//! bord aux tampons les plus simples : 4 puis 8 octets de sortie, aucune
-//! entrée. C'est la piste que recommande la fin du §5.3 du même document.
+//! It creates NO monitor, and only calls the two side-effect-free IOCTLs
+//! with the simplest buffers: 4 then 8 bytes of output, no
+//! input. It is the lead recommended by the end of §5.3 of the same document.
 
 use anyhow::Result;
 
 use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::moniteurs_virtuels::sudovda::{Veille, VersionProtocole};
 
-/// `VDAProtocolVersion = { 0, 2, 1, true }`, la constante de l'en-tête amont de
-/// septembre 2024.
+/// `VDAProtocolVersion = { 0, 2, 1, true }`, the constant of the upstream header of
+/// September 2024.
 ///
-/// Elle est confrontée au relevé, et non seulement journalisée à côté : sans
-/// cette comparaison, `conforme` ne porterait que des TAILLES, et une taille ne
-/// dit rien du contenu. C'est le seul élément du relevé qui corrobore autre
-/// chose qu'un dimensionnement.
-const VERSION_AMONT: VersionProtocole =
-    VersionProtocole { majeure: 0, mineure: 2, increment: 1, version_de_test: 1 };
+/// It is compared with the survey, and not merely logged alongside: without
+/// this comparison, `conforme` would only bear on SIZES, and a size
+/// says nothing about the content. It is the only element of the survey that corroborates anything
+/// other than a sizing.
+const VERSION_AMONT: VersionProtocole = VersionProtocole {
+    majeure: 0,
+    mineure: 2,
+    increment: 1,
+    version_de_test: 1,
+};
 
-/// Ce qu'un succès établit : que le GUID d'interface ouvre bien un périphérique
-/// vivant, que la formule `CTL_CODE` employée pour les quatre codes NON
-/// confirmés par octets est la bonne (`IOCTL_LIRE_VERSION_PROTOCOLE` en fait
-/// partie), que le pilote rend exactement le nombre d'octets que suppose la
-/// traduction `#[repr(C)]` de ces deux structures, et que les quatre octets de
-/// version coïncident avec la constante amont.
+/// What a success establishes: that the interface GUID does open a live
+/// device, that the `CTL_CODE` formula used for the four codes NOT
+/// confirmed by bytes is the right one (`IOCTL_LIRE_VERSION_PROTOCOLE` is one
+/// of them), that the driver returns exactly the number of bytes assumed by the
+/// `#[repr(C)]` translation of these two structures, and that the four
+/// version bytes coincide with the upstream constant.
 ///
-/// Ce qu'un succès n'établit PAS. D'abord, rien sur
-/// `VIRTUAL_DISPLAY_ADD_PARAMS`, dont les 56 octets d'entrée restent une
-/// lecture amont non confirmée. Ensuite, l'ORDRE des champs n'est éprouvé que
-/// PARTIELLEMENT, et inégalement selon la structure :
+/// What a success does NOT establish. First, nothing about
+/// `VIRTUAL_DISPLAY_ADD_PARAMS`, whose 56 input bytes remain an
+/// unconfirmed upstream reading. Then, the ORDER of the fields is only tested
+/// PARTIALLY, and unevenly depending on the structure:
 ///
-/// - une taille rendue, elle, ne dit jamais rien des offsets ;
-/// - `VersionProtocole` est en revanche bien contrainte par la comparaison des
-///   quatre octets : sur les 24 permutations de `{0, 2, 1, 1}`, 22 donnent un
-///   quadruplet différent et seraient donc détectées. Seule celle qui échange
-///   les deux derniers champs — `increment` et `version_de_test`, tous deux à
-///   `1` — passerait inaperçue ;
-/// - `Veille` est la seule à être hors d'atteinte d'un tel test : elle rend
-///   `delai` = `decompte`, deux valeurs identiques, donc l'ordre de ses deux
-///   champs est structurellement indiscernable.
+/// - a returned size, for its part, never says anything about offsets;
+/// - `VersionProtocole` on the other hand is well constrained by the comparison of the
+///   four bytes: out of the 24 permutations of `{0, 2, 1, 1}`, 22 give a
+///   different quadruplet and would therefore be detected. Only the one that swaps
+///   the last two fields — `increment` and `version_de_test`, both at
+///   `1` — would go unnoticed;
+/// - `Veille` is the only one out of reach of such a test: it returns
+///   `delai` = `decompte`, two identical values, so the order of its two
+///   fields is structurally indistinguishable.
 pub(super) fn valider_contrat() -> Result<()> {
     let pilote = ouvrir_pilote()?;
-    tracing::info!("périphérique SudoVDA ouvert — le GUID d'interface est le bon");
+    tracing::info!("SudoVDA device opened — the interface GUID is the right one");
 
     let (version, rendus_version) = pilote.version_protocole()?;
     tracing::info!(
@@ -62,7 +66,7 @@ pub(super) fn valider_contrat() -> Result<()> {
         version_de_test = version.version_de_test,
         octets_rendus = rendus_version,
         attendus = std::mem::size_of::<VersionProtocole>(),
-        "version de protocole annoncée par le pilote"
+        "protocol version announced by the driver"
     );
 
     let (veille, rendus_veille) = pilote.veille()?;
@@ -71,34 +75,34 @@ pub(super) fn valider_contrat() -> Result<()> {
         decompte = veille.decompte,
         octets_rendus = rendus_veille,
         attendus = std::mem::size_of::<Veille>(),
-        "watchdog du pilote (unité non documentée en amont — nombres bruts)"
+        "driver watchdog (unit not documented upstream — raw numbers)"
     );
 
-    // Le verdict est énoncé ici plutôt que laissé à la lecture du journal : ce
-    // qui compte n'est pas que les appels aient réussi, mais que ce qu'ils
-    // rendent corresponde à ce qu'on suppose. Un pilote ayant gagné un champ
-    // depuis l'en-tête amont réussirait l'appel tout en rendant un compte
-    // différent.
+    // The verdict is stated here rather than left to reading the log: what
+    // matters is not that the calls succeeded, but that what they
+    // return matches what we assume. A driver that gained a field
+    // since the upstream header would succeed the call while returning a different
+    // count.
     //
-    // Les deux critères sont énoncés SÉPARÉMENT, et le message dit exactement
-    // ce que chacun teste — ni plus. Faire porter à un seul booléen le mot
-    // « disposition » alors qu'il ne compare que des tailles serait affirmer
-    // au-delà du relevé.
-    let tailles_conformes = rendus_version as usize == std::mem::size_of::<VersionProtocole>()
+    // The two criteria are stated SEPARATELY, and the message says exactly
+    // what each one tests — no more. Having a single boolean carry the word
+    // "layout" while it only compares sizes would be asserting
+    // beyond the survey.
+    let sizes_match = rendus_version as usize == std::mem::size_of::<VersionProtocole>()
         && rendus_veille as usize == std::mem::size_of::<Veille>();
     let version_conforme = version == VERSION_AMONT;
     tracing::info!(
-        tailles_conformes,
+        sizes_match,
         version_conforme,
-        conforme = tailles_conformes && version_conforme,
-        // Les tailles chiffrées ici sont les SUPPOSÉES, pas les rendues : ce
-        // message est constant, il sera émis à l'identique quand
-        // `tailles_conformes` vaut `false`. Y annoncer « les tailles rendues
-        // (4 et 8) » affirmerait alors exactement ce que le verdict dément.
-        "verdict : les tailles rendues sont confrontées aux tailles supposées \
-         (4 et 8), et les quatre octets de version à la constante amont \
-         {{0, 2, 1, true}} — l'ordre des champs, lui, n'est testé que \
-         partiellement"
+        conforme = sizes_match && version_conforme,
+        // The sizes given in figures here are the ASSUMED ones, not the returned ones: this
+        // message is constant, it will be emitted identically when
+        // `sizes_match` is `false`. Announcing "the returned sizes
+        // (4 and 8)" there would then assert exactly what the verdict denies.
+        "verdict: the returned sizes are compared with the assumed sizes \
+         (4 and 8), and the four version bytes with the upstream constant \
+         {{0, 2, 1, true}} — the field order, for its part, is only \
+         partially tested"
     );
     Ok(())
 }

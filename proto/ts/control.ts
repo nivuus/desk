@@ -1,13 +1,13 @@
-// Messages du canal de contrôle. Doit rester aligné sur proto/src/control.rs.
+// Control channel messages. Must stay aligned with proto/src/control.rs.
 //
-// Canal fiable et ordonné, à faible débit : JSON versionné, lisible dans les
-// journaux (contrairement au canal d'entrées binaire de proto/ts/input.ts).
-// Le champ `v` est obligatoire et vérifié à l'analyse : un message absent de
-// `v`, ou dont la version diffère de CONTROL_VERSION, est rejeté.
+// Reliable, ordered, low-rate channel: versioned JSON, readable in the
+// logs (unlike the binary input channel of proto/ts/input.ts).
+// The `v` field is mandatory and checked at parse time: a message missing
+// `v`, or whose version differs from CONTROL_VERSION, is rejected.
 
 export const CONTROL_VERSION = 3;
 
-/** Valeurs de la propriété CSS `cursor` que l'agent sait produire. */
+/** Values of the CSS `cursor` property the agent knows how to produce. */
 export type CursorShape =
     | 'default' | 'text' | 'wait' | 'progress' | 'crosshair' | 'pointer'
     | 'move' | 'not-allowed' | 'help'
@@ -27,18 +27,18 @@ export interface VisibilityMessage {
     focused: boolean;
 }
 
-/// L'utilisateur a collé dans la fenêtre de session (sous-bloc P2).
+/// The user pasted into the session window (sub-block P2).
 ///
-/// ⚠️ **Le nom porte `Client` là où son jumeau descendant porte `Agent`**
-/// (`ClipboardAgentMessage`), et les DEUX portent le même tag `'clipboard'` :
-/// c'est le sens qui les distingue, pas le tag. P1 avait réservé ce nom avec
-/// sa raison, deux interfaces plus bas ; P2 l'occupe.
+/// ⚠️ **The name carries `Client` where its downstream twin carries `Agent`**
+/// (`ClipboardAgentMessage`), and BOTH carry the same tag `'clipboard'`:
+/// the direction tells them apart, not the tag. P1 had reserved this name with
+/// its reason, two interfaces below; P2 takes it.
 ///
-/// ⚠️ **`text` est un `string`, jamais `string | null`, et l'asymétrie avec
-/// `ClipboardAgentMessage` est voulue** : là-bas le `null` PORTE le refus de
-/// taille, que le bandeau doit dire. Ici c'est le client qui borne AVANT
-/// d'émettre — il a le bandeau sous la main —, donc il n'a jamais de refus à
-/// exprimer dans le message.
+/// ⚠️ **`text` is a `string`, never `string | null`, and the asymmetry with
+/// `ClipboardAgentMessage` is intended**: over there the `null` CARRIES the
+/// size refusal, which the banner must show. Here the client bounds BEFORE
+/// emitting — it has the banner at hand —, so it never has a refusal to
+/// express in the message.
 export interface ClipboardClientMessage {
     v: number;
     type: 'clipboard';
@@ -53,13 +53,13 @@ export interface ReadyMessage {
     width: number;
     height: number;
     /**
-     * Le micro est-il disponible pour cette session (chantier E) ?
+     * Is the mic available for this session (work item E)?
      *
-     * OPTIONNEL à dessein, et sans bump de `CONTROL_VERSION` : face à un agent
-     * ancien le champ vaut `undefined`, donc falsy, donc aucun bouton n'est
-     * proposé — la règle de la spec §10, obtenue gratuitement. Ne jamais le
-     * rendre obligatoire : ce serait une rupture de compatibilité que le
-     * numéro de version ne signalerait pas.
+     * OPTIONAL on purpose, and without a `CONTROL_VERSION` bump: facing an old
+     * agent the field is `undefined`, hence falsy, hence no button is
+     * offered — the rule of spec §10, obtained for free. Never make it
+     * mandatory: that would be a compatibility break the
+     * version number would not signal.
      */
     mic?: boolean;
 }
@@ -88,12 +88,12 @@ export interface CapabilitiesMessage {
     v: number;
     type: 'capabilities';
     gamepad: boolean;
-    /// Le collage navigateur → VM est-il disponible (sous-bloc P2) ?
+    /// Is browser → VM paste available (sub-block P2)?
     ///
-    /// **OPTIONNEL, et c'est le point** : un agent d'avant P2 ne porte pas ce
-    /// champ, et `undefined` vaut alors `false` gratuitement — le client
-    /// n'arme rien, exactement comme `ReadyMessage.mic`. Le rendre obligatoire
-    /// ferait échouer `tsc` sur un message parfaitement légitime.
+    /// **OPTIONAL, and that is the point**: an agent from before P2 does not carry this
+    /// field, and `undefined` then equals `false` for free — the client
+    /// arms nothing, exactly like `ReadyMessage.mic`. Making it mandatory
+    /// would make `tsc` fail on a perfectly legitimate message.
     clipboard?: boolean;
 }
 
@@ -123,24 +123,24 @@ export interface FullscreenMessage {
     active: boolean;
 }
 
-/// Le presse-papier de la VM a changé.
+/// The VM clipboard has changed.
 ///
-/// L'interface s'appelle `ClipboardAgentMessage` et non `ClipboardMessage`
-/// parce qu'elle a un jumeau dans l'autre sens, `ClipboardClientMessage`,
-/// portant le MÊME tag `'clipboard'`. Aucune collision réelle —
-/// `parseAgentControl` n'analyse que `AgentControl`, et un message client ne
-/// passe jamais par là — mais les deux interfaces ne peuvent pas porter le
-/// même nom.
+/// The interface is called `ClipboardAgentMessage` and not `ClipboardMessage`
+/// because it has a twin in the other direction, `ClipboardClientMessage`,
+/// carrying the SAME tag `'clipboard'`. No real collision —
+/// `parseAgentControl` only parses `AgentControl`, and a client message never
+/// goes through there — but the two interfaces cannot carry the
+/// same name.
 ///
-/// ✅ **Ce paragraphe disait « alors qu'elle est SEULE aujourd'hui : le
-/// sous-bloc P2 AJOUTERA un `ClipboardClientMessage` […] Nommer celle-ci
-/// maintenant évite à P2 de renommer du code livré ». P2 a eu lieu, et le pari
-/// a tenu : rien n'a été renommé.** Corrigé par la revue transverse du 21 août
-/// 2026 — un pronostic qui se réalise cesse d'être un pronostic.
+/// ✅ **This paragraph said "while it is ALONE today: the
+/// sub-block P2 WILL ADD a `ClipboardClientMessage` […] Naming this one
+/// now spares P2 from renaming shipped code". P2 happened, and the bet
+/// held: nothing was renamed.** Fixed by the cross-cutting review of 21 August
+/// 2026 — a prediction that comes true stops being a prediction.
 ///
-/// ⚠️ **`text` est `string | null`, jamais optionnel.** L'agent l'émet
-/// toujours ; un `?` ferait passer un message tronqué en route pour un refus.
-/// `null` EST le refus, et `bytes` en porte alors la taille.
+/// ⚠️ **`text` is `string | null`, never optional.** The agent always
+/// emits it; a `?` would pass a message truncated in transit off as a refusal.
+/// `null` IS the refusal, and `bytes` then carries its size.
 export interface ClipboardAgentMessage {
     v: number;
     type: 'clipboard';
@@ -148,57 +148,57 @@ export interface ClipboardAgentMessage {
     bytes: number;
 }
 
-/// La couleur d'accent de la fenêtre Windows — la teinte dominante de son
-/// icône (sous-bloc A1). Émise **au changement seulement**, et **sa PREMIÈRE
-/// lecture comprise** : sans elle, `--accent-fenetre` ne serait jamais posé de
-/// la session.
+/// The accent colour of the Windows window — the dominant hue of its
+/// icon (sub-block A1). Emitted **on change only**, and **its FIRST
+/// reading included**: without it, `--accent-fenetre` would never be set for
+/// the session.
 ///
-/// ⚠️ **`couleur` est `#rrggbb`, minuscule, et le client NE FAIT PAS
-/// CONFIANCE** : `client/src/accent.ts::conformer` contrôle la forme **avant**
-/// d'appeler `rapportDeContraste`, qui **LÈVE** sur tout ce qui n'est pas
-/// `#rgb`, `#rgba`, `#rrggbb` ou `#rrggbbaa`. Une exception dans un
-/// gestionnaire de message de canal de données tue une session sans rien dire.
+/// ⚠️ **`couleur` is `#rrggbb`, lowercase, and the client DOES NOT
+/// TRUST it**: `client/src/accent.ts::conformer` checks the shape **before**
+/// calling `rapportDeContraste`, which **THROWS** on anything that is not
+/// `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`. An exception in a
+/// data channel message handler kills a session without a word.
 ///
-/// ⚠️ **Aucun `hwnd`, aucun PID, aucun titre de fenêtre** — voir la doc de la
-/// variante Rust jumelle : c'est la leçon de la fuite de presse-papier de P2,
-/// et elle s'applique **au TYPE, pas au site de journalisation**.
+/// ⚠️ **No `hwnd`, no PID, no window title** — see the doc of the
+/// twin Rust variant: that is the lesson of the P2 clipboard leak,
+/// and it applies **to the TYPE, not to the logging site**.
 export interface AccentAgentMessage {
     v: number;
     type: 'accent';
     couleur: string;
 }
 
-/// Le micro de CETTE fenêtre est-il entendu par la VM ? (bloc E3)
+/// Is the mic of THIS window heard by the VM? (block E3)
 ///
-/// **Émis SUR TRANSITION, jamais à chaque dépôt** — le micro dépose une trame
-/// toutes les 20 ms, et le canal de contrôle est le canal *fiable, ordonné,
-/// faible débit*.
+/// **Emitted ON TRANSITION, never on every write** — the mic writes a frame
+/// every 20 ms, and the control channel is the *reliable, ordered,
+/// low-rate* channel.
 ///
-/// 🔴 **Ce message existe parce que `ReadyMessage.mic` ne peut PAS l'exprimer**
-/// : `mic` est décidé à l'établissement, alors que l'exclusivité du câble de la
-/// VM s'acquiert au premier paquet montant. Sans cette variante, à deux
-/// fenêtres **le bouton de la perdante s'allume et rien ne sort** — mesuré par
-/// le bloc E2, confirmé par lecture du code en E3.
+/// 🔴 **This message exists because `ReadyMessage.mic` CANNOT express it**
+/// : `mic` is decided at setup, whereas exclusive ownership of the VM
+/// cable is acquired at the first upstream packet. Without this variant, with two
+/// windows **the losing one's button lights up and nothing comes out** — measured by
+/// block E2, confirmed by reading the code in E3.
 ///
-/// ⚠️ **`granted: true` NE VEUT PAS DIRE « le micro est ouvert »** — c'est
-/// `mic` et l'état du bouton qui le disent. Confondre les deux ferait éteindre
-/// le bouton d'une fenêtre dont le navigateur émet réellement, ce que la spec
-/// §9 « Vie privée » interdit : l'indicateur de Chrome, lui, reste allumé.
+/// ⚠️ **`granted: true` DOES NOT MEAN "the mic is open"** — it is
+/// `mic` and the button state that say so. Confusing the two would switch off
+/// the button of a window whose browser is really emitting, which spec
+/// §9 "Privacy" forbids: the Chrome indicator, for its part, stays lit.
 ///
-/// 🔴 **ET IL NE VEUT PAS DIRE « CE MICRO EST ENTENDU » NON PLUS.** Cette
-/// phrase disait « il veut dire : ce que ce micro capte atteint la VM », et la
-/// recette du bloc E3 l'a RÉFUTÉE en armant `MICRO_FAUTE_ECRITURE` : le fil de
-/// rendu WASAPI meurt (`micro : ecriture sur le cable echouee, fil de rendu
-/// arrete`), le juge sur CABLE Output relève une amplitude de **0,000000**, et
-/// la fenêtre reçoit pourtant `granted: true` — le mutex vit dans
-/// `PuitsCable::deposer`, le fil de rendu est ailleurs.
+/// 🔴 **AND IT DOES NOT MEAN "THIS MIC IS HEARD" EITHER.** This
+/// sentence said "it means: what this mic picks up reaches the VM", and the
+/// block E3 acceptance REFUTED it by arming `MICRO_FAUTE_ECRITURE`: the WASAPI
+/// render thread dies (`mic: write to the cable failed, render thread
+/// stopped`), the judge on CABLE Output records an amplitude of **0.000000**, and
+/// the window still receives `granted: true` — the mutex lives in
+/// `PuitsCable::deposer`, the render thread is elsewhere.
 ///
-/// **Ce que ce champ dit exactement : « aucune AUTRE fenêtre ne tient le câble
-/// de la VM ».** C'est un verdict d'EXCLUSIVITÉ, jamais un accusé de
-/// réception. Un `false` est donc concluant — quelqu'un d'autre l'a — quand un
-/// `true` ne l'est pas : il écarte une cause de silence, il n'en écarte pas
-/// deux autres (la panne WASAPI, que `mic` ne voit pas non plus une fois la
-/// session établie, et le micro simplement fermé).
+/// **What this field says exactly: "no OTHER window holds the VM
+/// cable".** It is a verdict of EXCLUSIVITY, never an acknowledgement of
+/// receipt. A `false` is therefore conclusive — someone else has it — whereas a
+/// `true` is not: it rules out one cause of silence, it does not rule out
+/// two others (the WASAPI failure, which `mic` does not see either once the
+/// session is set up, and the mic simply closed).
 export interface MicStateMessage {
     v: number;
     type: 'mic-state';
@@ -211,18 +211,18 @@ export type AgentControl =
     | AsleepMessage | FullscreenMessage | ClipboardAgentMessage | AccentAgentMessage
     | MicStateMessage;
 
-/// 🔴 Écrit comme un enregistrement EXHAUSTIF typé par l'union, jamais comme
-/// un littéral : ajouter une variante à `AgentControl` sans ajouter sa clé
-/// ici fait échouer `npm run typecheck`, parce qu'un `Record<K, true>` dont
-/// une clé manque est une erreur `tsc`.
+/// 🔴 Written as an EXHAUSTIVE record typed by the union, never as
+/// a literal: adding a variant to `AgentControl` without adding its key
+/// here makes `npm run typecheck` fail, because a `Record<K, true>` with
+/// a missing key is a `tsc` error.
 ///
-/// **Avant ce remède, l'oubli ne cassait NI la compilation NI aucun test.**
-/// `parseAgentControl` levait, `client/src/webrtc.ts` interceptait, et le
-/// message était simplement perdu contre un `console.warn` — un mode de
-/// défaillance entièrement silencieux, sur le fichier qui définit le
-/// protocole. C'est le même remède que celui du chantier de gestion d'apps,
-/// appliqué ici à sa source.
-const TOUS_AGENT: Record<AgentControl['type'], true> = {
+/// **Before this remedy, the omission broke NEITHER the build NOR any test.**
+/// `parseAgentControl` threw, `client/src/webrtc.ts` caught it, and the
+/// message was simply lost against a `console.warn` — an entirely silent
+/// failure mode, in the file that defines the
+/// protocol. It is the same remedy as the one from the app management work,
+/// applied here at its source.
+const ALL_AGENT: Record<AgentControl['type'], true> = {
     ready: true,
     'session-end': true,
     pointer: true,
@@ -236,11 +236,11 @@ const TOUS_AGENT: Record<AgentControl['type'], true> = {
     'mic-state': true,
 };
 
-/// Exporté pour que la dérivation ait un témoin d'EXÉCUTION, et pas seulement
-/// un témoin de compilation. Élargissement de surface assumé et déclaré :
-/// sans lui, `TOUS_AGENT` n'est gardé que par `tsc`, et un test ne peut pas
-/// constater que la liste et l'union coïncident.
-export const TYPES_AGENT = Object.keys(TOUS_AGENT) as AgentControl['type'][];
+/// Exported so the derivation has a RUNTIME witness, and not only
+/// a compile-time witness. A widening of surface, assumed and declared:
+/// without it, `ALL_AGENT` is guarded only by `tsc`, and a test cannot
+/// observe that the list and the union match.
+export const TYPES_AGENT = Object.keys(ALL_AGENT) as AgentControl['type'][];
 
 export function encodeResize(width: number, height: number): string {
     const message: ResizeMessage = {
@@ -262,17 +262,17 @@ export function encodeVisibility(visible: boolean, focused: boolean): string {
     return JSON.stringify(message);
 }
 
-/// Encode un collage venu du navigateur.
+/// Encodes a paste coming from the browser.
 ///
-/// 🔴 **Il n'existe délibérément AUCUN `TYPES_CLIENT` pour garder cette union
-/// exhaustive, et ce n'est pas un oubli.** `TOUS_AGENT` existe parce que
-/// `parseAgentControl` PARSE `AgentControl` côté TypeScript : une variante
-/// oubliée y était perdue contre un `console.warn`, en silence. Dans ce
-/// sens-ci il n'y a rien à parser — le client ENCODE, et c'est `serde` qui
-/// désérialise côté Rust, avec un `match` exhaustif que le compilateur garde
-/// (il l'a d'ailleurs exigé au moment où la variante est née). Un témoin
-/// d'exhaustivité écrit ici serait **incapable d'échouer**, c'est-à-dire le
-/// mode de défaillance que ce dépôt paie depuis D7.
+/// 🔴 **There is deliberately NO `TYPES_CLIENT` to keep this union
+/// exhaustive, and it is not an oversight.** `ALL_AGENT` exists because
+/// `parseAgentControl` PARSES `AgentControl` on the TypeScript side: a forgotten
+/// variant was lost there against a `console.warn`, silently. In this
+/// direction there is nothing to parse — the client ENCODES, and it is `serde` that
+/// deserialises on the Rust side, with an exhaustive `match` the compiler guards
+/// (it in fact demanded it when the variant was born). An
+/// exhaustiveness witness written here would be **unable to fail**, that is the
+/// failure mode this repository has been paying for since D7.
 export function encodeClipboard(text: string): string {
     const message: ClipboardClientMessage = {
         v: CONTROL_VERSION,
@@ -282,20 +282,20 @@ export function encodeClipboard(text: string): string {
     return JSON.stringify(message);
 }
 
-/// ⚠️ **Ce parseur ne valide QUE `v` et `type`**, puis CASTE. Il ne regarde
-/// aucun autre champ, et un test qui prétendrait vérifier qu'il « accepte un
-/// `capabilities` sans `clipboard` » serait donc décoratif : il ne pourrait
-/// pas échouer. C'est le TYPAGE (`clipboard?: boolean`) qui porte cette
-/// propriété, et une annotation explicite de `control.test.ts` qui la mesure —
-/// dont la rouge est `tsc`, jamais vitest, qui transpile par esbuild sans
-/// vérifier les types.
+/// ⚠️ **This parser validates ONLY `v` and `type`**, then CASTS. It looks at
+/// no other field, and a test that claimed to check that it "accepts a
+/// `capabilities` without `clipboard`" would thus be decorative: it could
+/// not fail. It is the TYPING (`clipboard?: boolean`) that carries this
+/// property, and an explicit annotation of `control.test.ts` that measures it —
+/// whose red is `tsc`, never vitest, which transpiles through esbuild without
+/// checking types.
 export function parseAgentControl(raw: string): AgentControl {
     const parsed = JSON.parse(raw) as Partial<AgentControl>;
     if (parsed.v !== CONTROL_VERSION) {
-        throw new Error(`version de contrôle non supportée : ${parsed.v}`);
+        throw new Error(`unsupported control version: ${parsed.v}`);
     }
     if (!TYPES_AGENT.includes(parsed.type as AgentControl['type'])) {
-        throw new Error(`type de contrôle inconnu : ${parsed.type}`);
+        throw new Error(`unknown control type: ${parsed.type}`);
     }
     return parsed as AgentControl;
 }

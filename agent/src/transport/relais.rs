@@ -1,14 +1,14 @@
-//! Relais TURN : allocation avant la réponse SDP, et routage des paquets entre
-//! le socket direct et le serveur de relais.
+//! TURN relay: allocation before the SDP answer, and routing packets between
+//! the direct socket and the relay server.
 //!
-//! Bloc `impl Session` dans un module frère — même découpage que
-//! `redimensionnement` ou `adaptation`, et pour la même raison : `transport.rs`
-//! ne porte que l'état et la boucle, et la limite de 500 lignes par fichier
-//! interdit de l'y ajouter.
+//! `impl Session` block in a sibling module — same split as
+//! `redimensionnement` or `adaptation`, and for the same reason: `transport.rs`
+//! only carries the state and the loop, and the 500-lines-per-file limit
+//! forbids adding it there.
 //!
-//! Tout ce que porte ce module est inerte quand `Session::turn` vaut `None` —
-//! c'est-à-dire quand aucun relais n'est configuré. Une panne d'allocation
-//! dégrade la session (candidats hôtes seuls), elle ne la tue jamais.
+//! Everything this module carries is inert when `Session::turn` is `None` —
+//! that is, when no relay is configured. An allocation failure
+//! degrades the session (host candidates only), it never kills it.
 
 use std::time::{Duration, Instant};
 
@@ -20,67 +20,64 @@ use super::tick::Tick;
 use super::Session;
 
 impl Session {
-    /// Point d'émission unique. Route vers le socket direct ou vers le relais
-    /// TURN selon ce que str0m indique comme source.
+    /// Single emission point. Routes to the direct socket or to the TURN
+    /// relay depending on what str0m indicates as source.
     ///
-    /// Une erreur d'envoi transitoire est journalisée et ignorée, jamais
-    /// remontée : le pair qui ferme son port ne doit pas terminer la session
-    /// (I2 de la revue du jalon 1).
+    /// A transient send error is logged and ignored, never
+    /// propagated: the peer closing its port must not end the session
+    /// (I2 of the milestone 1 review).
     pub(super) fn envoyer(&mut self, transmit: &str0m::net::Transmit) {
-        let (donnees, destination) = match self.route_relayee(transmit) {
-            Some(trame) => (
-                trame,
-                self.turn.as_ref().expect("relais présent").serveur(),
-            ),
+        let (data, destination) = match self.route_relayee(transmit) {
+            Some(trame) => (trame, self.turn.as_ref().expect("relay present").serveur()),
             None => (transmit.contents.to_vec(), transmit.destination),
         };
-        if let Err(e) = self.socket.send_to(&donnees, destination) {
-            tracing::warn!(erreur = %e, "échec d'envoi UDP, ignoré");
+        if let Err(e) = self.socket.send_to(&data, destination) {
+            tracing::warn!(error = %e, "UDP send failure, ignored");
         }
     }
 
-    /// Trame ChannelData à envoyer au serveur TURN, ou `None` si ce paquet
-    /// part en direct.
+    /// ChannelData frame to send to the TURN server, or `None` if this packet
+    /// goes direct.
     fn route_relayee(&mut self, transmit: &str0m::net::Transmit) -> Option<Vec<u8>> {
         let turn = self.turn.as_mut()?;
         let allocation = turn.allocation()?;
-        // str0m nomme comme source l'adresse du candidat local employé, donc
-        // l'adresse relayée pour un paquet qui doit passer par le relais.
+        // str0m names as source the address of the local candidate used, hence
+        // the relayed address for a packet that must go through the relay.
         //
-        // CONSTATÉ, pas supposé (tâche 6, étape 1) : sur une session réelle du
-        // 30/07/2026, les `Transmit` portaient deux sources distinctes —
-        // `192.168.3.2:60303` (le socket local de la VM) pour le chemin direct,
-        // et `192.168.3.1:49183` pour le chemin relayé, une adresse de la plage
-        // de relais de coturn (49160-49200), donc l'adresse relayée elle-même.
+        // OBSERVED, not assumed (task 6, step 1): on a real session of
+        // 07/30/2026, the `Transmit`s carried two distinct sources —
+        // `192.168.3.2:60303` (the VM's local socket) for the direct path,
+        // and `192.168.3.1:49183` for the relayed path, an address in coturn's
+        // relay range (49160-49200), hence the relayed address itself.
         if transmit.source != allocation.relayee {
             return None;
         }
-        // Cas courant, sur le chemin média : le canal est déjà lié, une seule
-        // encapsulation a lieu. Le plan encapsulait une première fois pour
-        // TESTER puis une seconde pour produire — soit une trame complète
-        // construite puis jetée à chaque paquet, 60 fois par seconde.
+        // Common case, on the media path: the channel is already bound, a single
+        // encapsulation happens. The plan encapsulated a first time to
+        // TEST then a second to produce — that is, a complete frame
+        // built then thrown away at every packet, 60 times per second.
         if let Some(trame) = turn.encapsuler(transmit.destination, &transmit.contents) {
             return Some(trame);
         }
-        // Pair encore sans canal : le lier à la volée. Le tout premier paquet
-        // vers un pair neuf part alors en direct et sera probablement perdu —
-        // ICE réémet ses contrôles de connectivité, donc ce n'est pas un trou,
-        // seulement un aller-retour de retard.
+        // Peer still without a channel: bind it on the fly. The very first packet
+        // to a new peer then goes direct and will probably be lost —
+        // ICE re-sends its connectivity checks, so it is not a gap,
+        // only one round trip of delay.
         turn.lier_canal(transmit.destination);
         turn.encapsuler(transmit.destination, &transmit.contents)
     }
 
-    /// Traite un datagramme venu du serveur TURN : soit un message de service
-    /// (réponse d'allocation, 401, 438), soit des données relayées à
-    /// désencapsuler avant de les présenter à str0m comme venant du pair.
+    /// Handles a datagram coming from the TURN server: either a service message
+    /// (allocation response, 401, 438), or relayed data to
+    /// decapsulate before presenting it to str0m as coming from the peer.
     ///
-    /// Extrait de la boucle de réception de `socket.rs`, qui n'appelle ceci
-    /// que lorsque la source du datagramme EST le serveur de relais.
+    /// Extracted from the receive loop of `socket.rs`, which only calls this
+    /// when the datagram's source IS the relay server.
     pub(super) fn traiter_paquet_turn(&mut self, recu: &[u8]) -> Result<()> {
         if !crate::turn::est_channel_data(recu) {
             if let Some(turn) = self.turn.as_mut() {
                 if let Err(e) = turn.handle_packet(recu) {
-                    tracing::warn!(erreur = %e, "message TURN illisible, ignoré");
+                    tracing::warn!(error = %e, "unreadable TURN message, ignored");
                 }
             }
             return Ok(());
@@ -89,13 +86,13 @@ impl Session {
         let turn = self
             .turn
             .as_ref()
-            .expect("présent, testé par l'appelant avant de router ici");
+            .expect("present, tested by the caller before routing here");
         let Some((pair, charge)) = turn.desencapsuler(recu) else {
-            tracing::debug!("trame ChannelData illisible, ignorée");
+            tracing::debug!("unreadable ChannelData frame, ignored");
             return Ok(());
         };
-        // La charge utile est recopiée : `charge` emprunte `self.turn`, et
-        // `handle_input` a besoin de `&mut self.rtc`.
+        // The payload is copied: `charge` borrows `self.turn`, and
+        // `handle_input` needs `&mut self.rtc`.
         let charge = charge.to_vec();
         let allocation_relayee = turn.allocation().map(|a| a.relayee);
 
@@ -104,9 +101,9 @@ impl Session {
                 let receive = Receive {
                     proto: Protocol::Udp,
                     source: pair,
-                    // La destination est l'adresse RELAYÉE, pas celle du
-                    // socket local : c'est le candidat auquel le pair a écrit,
-                    // et str0m apparie ses paires là-dessus.
+                    // The destination is the RELAYED address, not the
+                    // local socket's: it is the candidate the peer wrote to,
+                    // and str0m pairs its candidate pairs on that.
                     destination: match allocation_relayee {
                         Some(relayee) => relayee,
                         None => self.socket.local_addr()?,
@@ -115,36 +112,36 @@ impl Session {
                 };
                 self.rtc
                     .handle_input(Input::Receive(Instant::now(), receive))
-                    .map_err(|e| anyhow!("handle_input relayé : {e}"))?;
+                    .map_err(|e| anyhow!("relayed handle_input: {e}"))?;
             }
             Err(e) => {
-                tracing::debug!(erreur = %e, "charge relayée non reconnue");
+                tracing::debug!(error = %e, "unrecognised relayed payload");
             }
         }
         Ok(())
     }
 
-    /// Émet la prochaine requête TURN en attente, s'il y en a une.
+    /// Emits the next pending TURN request, if there is one.
     ///
-    /// Ne mute jamais `Rtc` : c'est un échange avec le serveur de relais,
-    /// invisible de str0m. Rend `Some(Tick::Continue)` quand un paquet est
-    /// parti, pour que le tour de boucle s'arrête là.
+    /// Never mutates `Rtc`: it is an exchange with the relay server,
+    /// invisible to str0m. Returns `Some(Tick::Continue)` when a packet
+    /// went out, so that the loop round stops there.
     pub(super) fn emettre_requete_turn(&mut self) -> Option<Tick> {
         let turn = self.turn.as_mut()?;
         turn.avancer(Instant::now());
         let paquet = turn.poll_transmit()?;
         let serveur = turn.serveur();
         if let Err(e) = self.socket.send_to(&paquet, serveur) {
-            tracing::warn!(erreur = %e, "échec d'envoi vers le serveur TURN, ignoré");
+            tracing::warn!(error = %e, "send failure to the TURN server, ignored");
         }
         Some(Tick::Continue)
     }
-    /// Alloue un relais TURN et ajoute le candidat correspondant, en bloquant
-    /// jusqu'au succès ou jusqu'au délai.
+    /// Allocates a TURN relay and adds the matching candidate, blocking
+    /// until success or until the timeout.
     ///
-    /// Bloquer est ici volontaire et borné : sans trickle ICE, le candidat
-    /// doit exister avant la réponse SDP (voir l'appelant). Un échec n'est
-    /// pas fatal — la session continue avec les candidats hôtes.
+    /// Blocking here is deliberate and bounded: without trickle ICE, the candidate
+    /// must exist before the SDP answer (see the caller). A failure is
+    /// not fatal — the session continues with host candidates.
     pub fn allouer_relais(
         &mut self,
         config: crate::signaling::ConfigIce,
@@ -168,41 +165,41 @@ impl Session {
                 break a;
             }
             if Instant::now() >= echeance {
-                anyhow::bail!("aucune allocation TURN obtenue en {:?}", delai);
+                anyhow::bail!("no TURN allocation obtained within {:?}", delai);
             }
             match self.socket.recv_from(&mut buffer) {
                 Ok((n, source)) if source == config.serveur => {
                     if let Err(e) = turn.handle_packet(&buffer[..n]) {
-                        tracing::debug!(erreur = %e, "paquet TURN ignoré pendant l'allocation");
+                        tracing::debug!(error = %e, "TURN packet ignored during the allocation");
                     }
                 }
-                // Un datagramme venu d'ailleurs pendant l'allocation est du
-                // bruit : le socket n'est pas encore connu du pair.
+                // A datagram coming from elsewhere during allocation is
+                // noise: the socket is not yet known to the peer.
                 Ok(_) => {}
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     std::thread::sleep(Duration::from_millis(5));
                 }
-                Err(e) => return Err(e).context("réception pendant l'allocation TURN"),
+                Err(e) => return Err(e).context("receiving during the TURN allocation"),
             }
         };
 
         self.rtc.add_local_candidate(
             Candidate::relayed(allocation.relayee, local, "udp")
-                .map_err(|e| anyhow!("candidat relayé invalide : {e}"))?,
+                .map_err(|e| anyhow!("invalid relayed candidate: {e}"))?,
         );
         if let Some(reflexive) = allocation.reflexive {
-            // La même réponse Allocate porte l'adresse réflexive : un
-            // candidat de plus, sans échange supplémentaire.
+            // The same Allocate response carries the reflexive address: one more
+            // candidate, without an extra exchange.
             match Candidate::server_reflexive(reflexive, local, "udp") {
                 Ok(c) => {
                     self.rtc.add_local_candidate(c);
                 }
-                Err(e) => tracing::warn!(erreur = %e, "candidat réflexif invalide, ignoré"),
+                Err(e) => tracing::warn!(error = %e, "invalid reflexive candidate, ignored"),
             }
         }
         self.turn = Some(turn);
-        // `add_local_candidate` mute `Rtc` : drainer avant de rendre la main,
-        // comme le fait déjà `Session::new`.
+        // `add_local_candidate` mutates `Rtc`: drain before giving control back,
+        // as `Session::new` already does.
         self.drain_quietly()?;
         Ok(())
     }

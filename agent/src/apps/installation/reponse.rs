@@ -1,105 +1,105 @@
-//! Lire une réponse HTTP/1.1 : son statut, sa longueur, et où commence le corps.
+//! Reading an HTTP/1.1 response: its status, its length, and where the body starts.
 //!
-//! 🔴 CE MODULE EST PUR : aucun `#[cfg]`, aucun socket, aucune lecture. Il
-//! reçoit un `&[u8]` et rend une décision ; `installation::telechargement`
-//! tient la connexion. C'est ce qui permet de juger l'analyse sur l'hôte
-//! Linux, là où `execution.rs` n'a aucune épreuve possible.
+//! 🔴 THIS MODULE IS PURE: no `#[cfg]`, no socket, no read. It
+//! receives a `&[u8]` and returns a decision; `installation::telechargement`
+//! holds the connection. That is what lets the parsing be judged on the Linux
+//! host, where `execution.rs` has no possible test.
 //!
-//! ⚠️ POURQUOI CE MODULE PLUTÔT QU'UN CRATE HTTP. L'agent n'a **aucun** client
-//! HTTP et `tokio-tungstenite` y est verrouillé sans TLS : `reqwest`
-//! apporterait une pile TLS entière et romprait l'invariant « aucune
-//! dépendance de production » que G1 et G2 tiennent tous deux. Ce dépôt a déjà
-//! écrit son client TURN, son codec STUN et son SHA-256 pour la même raison.
+//! ⚠️ WHY THIS MODULE RATHER THAN AN HTTP CRATE. The agent has **no** HTTP
+//! client and `tokio-tungstenite` is locked without TLS there: `reqwest`
+//! would bring an entire TLS stack and break the invariant "no
+//! production dependency" that G1 and G2 both hold. This repository has already
+//! written its TURN client, its STUN codec and its SHA-256 for the same reason.
 //!
-//! 🔴 « PAS ENCORE COMPLET » EST UN ÉTAT À PART ENTIÈRE, ET NON UN REFUS. Le
-//! tampon d'un appelant qui lit un socket porte un en-tête **coupé** une fois
-//! sur deux : un analyseur qui ne saurait pas le dire conclurait sur
-//! `Content-Len` et rendrait « longueur absente » sur une réponse parfaitement
-//! valide, à laquelle il manquait quatre octets. Le refus serait bruyant,
-//! typé, et **faux**.
+//! 🔴 "NOT COMPLETE YET" IS A STATE IN ITS OWN RIGHT, NOT A REFUSAL. The
+//! buffer of a caller reading a socket carries a **cut** header one time
+//! in two: a parser unable to say so would conclude on
+//! `Content-Len` and return "length missing" on a perfectly
+//! valid response that was four bytes short. The refusal would be loud,
+//! typed, and **wrong**.
 //!
-//! 🔴 REFUS TYPÉS, JAMAIS D'INTERPRÉTATION. *Un refus nommé se diagnostique en
-//! une ligne de journal ; un analyseur qui devine se diagnostique en une
-//! campagne.* Ce module ne réassemble aucune tranche, ne suit aucune
-//! redirection et ne décompresse rien : il refuse, en disant quoi.
+//! 🔴 TYPED REFUSALS, NEVER INTERPRETATION. *A named refusal is diagnosed in
+//! one log line; a parser that guesses is diagnosed in a
+//! campaign.* This module reassembles no chunk, follows no
+//! redirect and decompresses nothing: it refuses, saying what.
 
-/// Le plafond de l'en-tête, en octets.
+/// The header cap, in bytes.
 ///
-/// ⚠️ **NON CALIBRÉE**, elle rejoint la liste tenue depuis `BPP_MIN`. Elle
-/// n'est pas un réglage fin : sans elle, un serveur qui n'enverrait **jamais**
-/// son `\r\n\r\n` ferait grossir le tampon de l'appelant sans terme, et le
-/// seul symptôme serait de la mémoire qui monte.
+/// ⚠️ **NOT CALIBRATED**, it joins the list kept since `BPP_MIN`. It
+/// is not fine tuning: without it, a server that **never** sent
+/// its `\r\n\r\n` would make the caller's buffer grow without end, and the
+/// only symptom would be rising memory.
 pub const ENTETE_MAX_OCTETS: usize = 16 * 1024;
 
-/// Le seul codage de transfert que l'on sache lire : aucun.
+/// The only transfer coding we can read: none.
 const TRANSFERT_ACCEPTE: &str = "identity";
 
-/// Les deux statuts qui portent un corps qu'on sache écrire : `200` la réponse
-/// pleine, `206` celle à un `Range`. **Les deux voyagent**, l'appelant en
-/// faisant deux choses opposées — un `200` reçu en réponse à un `Range` fait
-/// **repartir de zéro**, jamais concaténer, ce qui produirait un fichier plus
-/// long que sa taille et une empreinte fausse.
+/// The two statuses that carry a body we can write: `200` the full
+/// response, `206` the one to a `Range`. **Both travel**, the caller
+/// doing two opposite things with them — a `200` received in reply to a `Range` makes it
+/// **start over from zero**, never concatenate, which would produce a file
+/// longer than its size and a wrong fingerprint.
 const STATUTS_RETENUS: &[u16] = &[200, 206];
 
-/// Ce qui empêche de retenir une réponse.
+/// What prevents keeping a response.
 ///
-/// ⚠️ CHAQUE VARIANTE PORTE DE QUOI LA DIAGNOSTIQUER SANS ROUVRIR LE PRODUIT :
-/// le statut refusé, le codage refusé, la valeur illisible.
+/// ⚠️ EACH VARIANT CARRIES WHAT IS NEEDED TO DIAGNOSE IT WITHOUT REOPENING THE PRODUCT:
+/// the refused status, the refused coding, the unreadable value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Refus {
-    /// La première ligne n'est pas une ligne de statut HTTP/1.x.
+    /// The first line is not an HTTP/1.x status line.
     LigneDeStatut(String),
-    /// Un statut hors `200` et `206` — il voyage tel quel.
+    /// A status other than `200` and `206` — it travels as is.
     Statut(u16),
-    /// Un `Transfer-Encoding` que l'on ne sait pas lire ; la valeur observée
-    /// voyage, de sorte que le journal **nomme `chunked`**.
+    /// A `Transfer-Encoding` we cannot read; the observed value
+    /// travels, so that the log **names `chunked`**.
     TransfertCode(String),
-    /// Aucun `Content-Length`. Le service en pose un ; qu'un intermédiaire
-    /// puisse le retirer **n'a pas été mesuré**.
-    LongueurAbsente,
-    /// Un `Content-Length` qui n'est pas un nombre.
-    LongueurIllisible(String),
-    /// Deux `Content-Length` qui ne s'accordent pas — le vecteur classique de
-    /// contrebande de requêtes. En retenir un serait choisir au hasard la
-    /// lecture de l'un des deux intermédiaires.
-    LongueurContradictoire { premiere: u64, seconde: u64 },
-    /// L'en-tête n'est pas de l'UTF-8 — donc pas de l'ASCII, que la RFC impose.
+    /// No `Content-Length`. The service sets one; that an intermediary
+    /// might remove it **has not been measured**.
+    MissingLength,
+    /// A `Content-Length` that is not a number.
+    UnreadableLength(String),
+    /// Two `Content-Length` that disagree — the classic request
+    /// smuggling vector. Keeping one would mean picking at random the
+    /// reading of one of the two intermediaries.
+    ConflictingLength { premiere: u64, seconde: u64 },
+    /// The header is not UTF-8 — hence not ASCII, which the RFC mandates.
     EnteteIllisible,
-    /// L'en-tête dépasse `ENTETE_MAX_OCTETS` sans jamais se terminer.
+    /// The header exceeds `ENTETE_MAX_OCTETS` without ever ending.
     EnteteTropLongue(usize),
 }
 
-/// Ce qu'une réponse retenue apprend à l'appelant.
+/// What a kept response tells the caller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Entete {
-    /// `200` ou `206`, et l'appelant en a besoin des deux : voir
+    /// `200` or `206`, and the caller needs both: see
     /// `STATUTS_RETENUS`.
     pub statut: u16,
-    /// ⚠️ SUR UN `206`, C'EST LA LONGUEUR DE LA TRANCHE, PAS CELLE DU FICHIER.
-    /// Un appelant qui la prendrait pour la taille finale déclarerait le
-    /// téléchargement fini au premier octet de la reprise.
-    pub longueur: u64,
-    /// L'indice, dans le tampon analysé, du **premier octet du corps** —
-    /// en-tête et début de corps arrivant dans la même lecture. Sans lui,
-    /// l'appelant referait la recherche du séparateur, donc la referait
-    /// différemment un jour.
+    /// ⚠️ ON A `206`, IT IS THE LENGTH OF THE RANGE, NOT THAT OF THE FILE.
+    /// A caller taking it for the final size would declare the
+    /// download finished at the first byte of the resumption.
+    pub length: u64,
+    /// The index, in the parsed buffer, of the **first byte of the body** —
+    /// header and start of body arriving in the same read. Without it,
+    /// the caller would redo the separator search, hence one day redo it
+    /// differently.
     pub debut_du_corps: usize,
 }
 
-/// L'état d'une analyse, hors refus.
+/// The state of a parse, refusals aside.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Etat {
-    /// Le séparateur `\r\n\r\n` n'est pas encore arrivé. **Ce n'est pas un
-    /// refus** : il faut relire le socket et rappeler.
+    /// The `\r\n\r\n` separator has not arrived yet. **This is not a
+    /// refusal**: the socket must be read again and this called again.
     Incomplet,
     Prete(Entete),
 }
 
-/// La règle entière, sur le tampon tel qu'il vient du socket.
+/// The whole rule, on the buffer as it comes from the socket.
 pub fn analyser(tampon: &[u8]) -> Result<Etat, Refus> {
-    // 🔴 LA COMPLÉTUDE SE TRANCHE AVANT TOUT LE RESTE, et c'est le seul ordre
-    // qui tienne : chercher le séparateur sans vérifier qu'il est là ferait
-    // conclure sur un en-tête partiel.
+    // 🔴 COMPLETENESS IS DECIDED BEFORE EVERYTHING ELSE, and it is the only order
+    // that holds: looking for the separator without checking it is there would
+    // conclude on a partial header.
     let Some(fin) = position_du_separateur(tampon) else {
         return if tampon.len() > ENTETE_MAX_OCTETS {
             Err(Refus::EnteteTropLongue(tampon.len()))
@@ -116,44 +116,44 @@ pub fn analyser(tampon: &[u8]) -> Result<Etat, Refus> {
         return Err(Refus::Statut(statut));
     }
 
-    let mut longueur: Option<u64> = None;
+    let mut length: Option<u64> = None;
     let mut transfert: Option<String> = None;
     for ligne in lignes {
-        // Une ligne sans deux-points n'est pas un champ : les continuations
-        // pliées de la RFC 7230 sont dépréciées, et aucun des trois champs que
-        // l'on lit ne s'en sert.
-        let Some((nom, valeur)) = ligne.split_once(':') else {
+        // A line without a colon is not a field: the folded continuations
+        // of RFC 7230 are deprecated, and none of the three fields
+        // we read uses them.
+        let Some((nom, value)) = ligne.split_once(':') else {
             continue;
         };
-        let valeur = valeur.trim();
-        // La RFC impose l'insensibilité à la casse sur le NOM ; la valeur d'un
-        // codage de transfert est un jeton, donc repliée elle aussi.
+        let value = value.trim();
+        // The RFC mandates case insensitivity on the NAME; the value of a
+        // transfer coding is a token, so it is folded too.
         match nom.trim().to_ascii_lowercase().as_str() {
             "content-length" => {
-                let lue = valeur
+                let lue = value
                     .parse::<u64>()
-                    .map_err(|_| Refus::LongueurIllisible(valeur.to_string()))?;
-                match longueur {
+                    .map_err(|_| Refus::UnreadableLength(value.to_string()))?;
+                match length {
                     Some(premiere) if premiere != lue => {
-                        return Err(Refus::LongueurContradictoire {
+                        return Err(Refus::ConflictingLength {
                             premiere,
                             seconde: lue,
                         });
                     }
-                    _ => longueur = Some(lue),
+                    _ => length = Some(lue),
                 }
             }
-            "transfer-encoding" => transfert = Some(valeur.to_ascii_lowercase()),
+            "transfer-encoding" => transfert = Some(value.to_ascii_lowercase()),
             _ => {}
         }
     }
 
-    // 🔴 LE CODAGE DE TRANSFERT SE JUGE AVANT LA LONGUEUR, et c'est la RFC qui
-    // l'impose : quand les deux sont présents, `Transfer-Encoding` gagne et le
-    // `Content-Length` doit être ignoré. Juger la longueur d'abord rendrait
-    // « longueur absente » sur une réponse en tranches, c'est-à-dire le mauvais
-    // motif — celui qui envoie chercher un intermédiaire fautif au lieu du
-    // codage qu'on ne sait pas lire.
+    // 🔴 THE TRANSFER CODING IS JUDGED BEFORE THE LENGTH, and it is the RFC that
+    // mandates it: when both are present, `Transfer-Encoding` wins and the
+    // `Content-Length` must be ignored. Judging the length first would return
+    // "length missing" on a chunked response, that is the wrong
+    // reason — the one that sends you looking for a faulty intermediary instead of the
+    // coding we cannot read.
     if let Some(code) = transfert {
         if code != TRANSFERT_ACCEPTE {
             return Err(Refus::TransfertCode(code));
@@ -162,12 +162,12 @@ pub fn analyser(tampon: &[u8]) -> Result<Etat, Refus> {
 
     Ok(Etat::Prete(Entete {
         statut,
-        longueur: longueur.ok_or(Refus::LongueurAbsente)?,
+        length: length.ok_or(Refus::MissingLength)?,
         debut_du_corps: fin + 4,
     }))
 }
 
-/// L'indice du `\r\n\r\n`, s'il est arrivé.
+/// The index of the `\r\n\r\n`, if it has arrived.
 fn position_du_separateur(tampon: &[u8]) -> Option<usize> {
     tampon.windows(4).position(|f| f == b"\r\n\r\n")
 }
@@ -195,50 +195,56 @@ mod tests {
     fn prete(brut: &str) -> Entete {
         match lire(brut) {
             Ok(Etat::Prete(entete)) => entete,
-            autre => panic!("attendu une réponse retenue, obtenu {autre:?}"),
+            autre => panic!("expected a retained response, got {autre:?}"),
         }
     }
 
     #[test]
-    fn une_reponse_complete_rend_son_statut_sa_longueur_et_le_debut_du_corps() {
+    fn a_complete_response_returns_its_status_its_length_and_the_start_of_the_body() {
         let brut = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\nabc";
         let entete = prete(brut);
-        assert_eq!((entete.statut, entete.longueur), (200, 42));
-        // Le corps commence APRÈS le séparateur, et le tampon en porte déjà
-        // trois octets : c'est le cas nominal d'une lecture de socket.
+        assert_eq!((entete.statut, entete.length), (200, 42));
+        // The body starts AFTER the separator, and the buffer already carries
+        // three bytes of it: that is the nominal case of a socket read.
         assert_eq!(&brut.as_bytes()[entete.debut_du_corps..], b"abc");
     }
 
-    /// 🔴 LA ROUGE DE CETTE TÂCHE. Le tampon s'arrête au milieu du nom de
-    /// l'en-tête ; l'analyseur doit dire « pas encore », **jamais** conclure.
+    /// 🔴 THE RED OF THIS TASK. The buffer stops in the middle of the header
+    /// name; the parser must say "not yet", **never** conclude.
     #[test]
     fn un_entete_coupe_en_deux_lectures_dit_incomplet_et_ne_conclut_pas() {
         assert_eq!(lire("HTTP/1.1 200 OK\r\nContent-Len"), Ok(Etat::Incomplet));
         assert_eq!(lire("HTTP/1.1 200 OK\r\n"), Ok(Etat::Incomplet));
         assert_eq!(lire(""), Ok(Etat::Incomplet));
-        // Et la seconde lecture, elle, conclut — sans quoi « incomplet »
-        // serait rendu par un analyseur entièrement mort.
-        assert_eq!(prete("HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n").longueur, 42);
+        // And the second read does conclude — otherwise "incomplete"
+        // would be returned by an entirely dead parser.
+        assert_eq!(
+            prete("HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n").length,
+            42
+        );
     }
 
     #[test]
     fn le_206_est_retenu_et_son_statut_voyage_pour_que_l_appelant_le_distingue() {
-        assert_eq!(prete("HTTP/1.1 206 Partial Content\r\nContent-Length: 7\r\n\r\n").statut, 206);
+        assert_eq!(
+            prete("HTTP/1.1 206 Partial Content\r\nContent-Length: 7\r\n\r\n").statut,
+            206
+        );
     }
 
     #[test]
-    fn un_statut_inattendu_est_refuse_en_portant_son_nombre() {
+    fn an_unexpected_status_is_refused_carrying_its_number() {
         for code in [302u16, 404, 500] {
             let brut = format!("HTTP/1.1 {code} X\r\nContent-Length: 0\r\n\r\n");
             assert_eq!(lire(&brut), Err(Refus::Statut(code)));
         }
     }
 
-    /// Le codage se juge AVANT la longueur : sans `Content-Length`, une
-    /// réponse en tranches doit dénoncer le codage, pas la longueur absente —
-    /// le second motif enverrait chercher un intermédiaire fautif.
+    /// The coding is judged BEFORE the length: without `Content-Length`, a
+    /// chunked response must denounce the coding, not the missing length —
+    /// the second reason would send you looking for a faulty intermediary.
     #[test]
-    fn chunked_est_refuse_le_motif_le_nomme_et_il_prime_sur_la_longueur() {
+    fn chunked_is_refused_the_reason_names_it_and_it_wins_over_the_length() {
         for brut in [
             "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 9\r\n\r\n",
             "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
@@ -247,36 +253,53 @@ mod tests {
         }
         let gzip = "HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip\r\n\r\n";
         assert_eq!(lire(gzip), Err(Refus::TransfertCode("gzip".into())));
-        // `identity` ne code rien : il passe, et la casse ne compte pas.
+        // `identity` encodes nothing: it passes, and case does not matter.
         let brut = "HTTP/1.1 200 OK\r\nTransfer-Encoding: IDENTITY\r\nContent-Length: 3\r\n\r\n";
-        assert_eq!(prete(brut).longueur, 3);
+        assert_eq!(prete(brut).length, 3);
     }
 
     #[test]
-    fn l_absence_de_longueur_est_un_refus_nomme_et_non_une_longueur_nulle() {
-        assert_eq!(lire("HTTP/1.1 200 OK\r\nServer: x\r\n\r\n"), Err(Refus::LongueurAbsente));
-        // Une longueur nulle est une réponse retenue, une longueur illisible
-        // porte ce qu'on a lu : trois motifs, jamais confondus.
-        assert_eq!(prete("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").longueur, 0);
-        let flou = "HTTP/1.1 200 OK\r\nContent-Length: beaucoup\r\n\r\n";
-        assert_eq!(lire(flou), Err(Refus::LongueurIllisible("beaucoup".into())));
+    fn a_missing_length_is_a_named_refusal_not_a_zero_length() {
+        assert_eq!(
+            lire("HTTP/1.1 200 OK\r\nServer: x\r\n\r\n"),
+            Err(Refus::MissingLength)
+        );
+        // A zero length is a kept response, an unreadable length
+        // carries what was read: three reasons, never confused.
+        assert_eq!(
+            prete("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").length,
+            0
+        );
+        let flou = "HTTP/1.1 200 OK\r\nContent-Length: plenty\r\n\r\n";
+        assert_eq!(lire(flou), Err(Refus::UnreadableLength("plenty".into())));
     }
 
     #[test]
-    fn les_noms_sont_insensibles_a_la_casse_et_les_valeurs_rognees() {
-        for champ in ["CONTENT-LENGTH:   42  ", "content-length:42", "Content-Length:\t42"] {
-            assert_eq!(prete(&format!("HTTP/1.1 200 OK\r\n{champ}\r\n\r\n")).longueur, 42);
+    fn names_are_case_insensitive_and_values_trimmed() {
+        for champ in [
+            "CONTENT-LENGTH:   42  ",
+            "content-length:42",
+            "Content-Length:\t42",
+        ] {
+            assert_eq!(
+                prete(&format!("HTTP/1.1 200 OK\r\n{champ}\r\n\r\n")).length,
+                42
+            );
         }
     }
 
     #[test]
-    fn deux_longueurs_contradictoires_sont_refusees_et_deux_identiques_passent() {
-        let deux = |a, b| format!("HTTP/1.1 200 OK\r\nContent-Length: {a}\r\nContent-Length: {b}\r\n\r\n");
+    fn two_conflicting_lengths_are_refused_and_two_identical_ones_pass() {
+        let deux =
+            |a, b| format!("HTTP/1.1 200 OK\r\nContent-Length: {a}\r\nContent-Length: {b}\r\n\r\n");
         assert_eq!(
             lire(&deux(42, 9)),
-            Err(Refus::LongueurContradictoire { premiere: 42, seconde: 9 })
+            Err(Refus::ConflictingLength {
+                premiere: 42,
+                seconde: 9
+            })
         );
-        assert_eq!(prete(&deux(42, 42)).longueur, 42);
+        assert_eq!(prete(&deux(42, 42)).length, 42);
     }
 
     #[test]
@@ -287,13 +310,13 @@ mod tests {
         }
     }
 
-    /// Un en-tête malformé se refuse, il ne se devine pas — et sans borne, le
-    /// tampon de l'appelant grossirait sans terme.
+    /// A malformed header is refused, not guessed — and without a bound, the
+    /// caller's buffer would grow without end.
     #[test]
     fn un_entete_sans_fin_est_borne_et_un_entete_non_ascii_est_refuse() {
         let trop = "HTTP/1.1 200 OK\r\n".to_string() + &"X: y\r\n".repeat(ENTETE_MAX_OCTETS / 4);
         assert!(matches!(lire(&trop), Err(Refus::EnteteTropLongue(_))));
-        // Sous le plafond, le même en-tête inachevé reste « incomplet ».
+        // Under the cap, the same unfinished header stays "incomplete".
         assert_eq!(lire("HTTP/1.1 200 OK\r\nX: y\r\n"), Ok(Etat::Incomplet));
         let brut = b"HTTP/1.1 200 OK\r\nX: \xff\r\nContent-Length: 1\r\n\r\n";
         assert_eq!(analyser(brut), Err(Refus::EnteteIllisible));

@@ -1,24 +1,24 @@
-// La séquence de démarrage du service, et son refus de démarrer dégradé.
+// The startup sequence of the service, and its refusal to start degraded.
 //
-// 🔴 L'ORDRE EST NON NÉGOCIABLE :
+// 🔴 THE ORDER IS NON-NEGOTIABLE:
 //     lireConfig -> ouvrirBase -> appliquerMigrations -> balayerLesOuvertes
-//     -> demarrerServeur
+//     -> startServer
 //
-// LE PORT NE S'OUVRE QU'EN DERNIER. Un pair ne doit jamais atteindre un
-// service dont la base n'est pas prête : spec §6, « un signaling qui apparie
-// sans rien enregistrer serait indiscernable du bon fonctionnement ». Le
-// service REFUSE de démarrer, avec la cause, plutôt que de servir à moitié.
+// THE PORT OPENS ONLY LAST. A peer must never reach a
+// service whose database is not ready: spec §6, "a signaling that pairs
+// without recording anything would be indistinguishable from working correctly". The
+// service REFUSES to start, with the cause, rather than serving halfway.
 //
-// Ce module est séparé de `index.ts` pour être testable : `index.ts` lit
-// `process.env` et s'exécute à l'import, ce qu'un test ne peut pas faire
-// plusieurs fois.
+// This module is separate from `index.ts` to be testable: `index.ts` reads
+// `process.env` and runs on import, which a test cannot do
+// several times.
 
 import type { Config } from './config';
 import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from './base/migrations';
 import { ouvrirBase } from './base/ouvrir';
 import type { Pilote } from './base/pilote';
 import { balayerLesOuvertes } from './depot/session';
-import { demarrerServeur, type ServicePlateforme } from './http/serveur';
+import { startServer, type ServicePlateforme } from './http/serveur';
 
 export interface Service {
     port: number;
@@ -26,29 +26,29 @@ export interface Service {
     arreter(): Promise<void>;
 }
 
-export async function demarrer(config: Config, maintenant = Date.now()): Promise<Service> {
+export async function start(config: Config, maintenant = Date.now()): Promise<Service> {
     let base: Pilote;
     try {
         base = await ouvrirBase(config);
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, maintenant);
     } catch (cause) {
-        // Aucun port n'a été ouvert à ce stade, et c'est le point : le rejet
-        // laisse le service ENTIÈREMENT absent, jamais à moitié présent.
-        throw new Error(`base injoignable ou migrations en échec : ${String(cause)}`, { cause });
+        // No port has been opened at this stage, and that is the point: the rejection
+        // leaves the service ENTIRELY absent, never half present.
+        throw new Error(`database unreachable or migrations failed: ${String(cause)}`, { cause });
     }
 
     const balayees = await balayerLesOuvertes(base, maintenant);
     if (balayees > 0) {
-        console.log(`${balayees} session(s) restée(s) ouverte(s) closes au démarrage`);
+        console.log(`${balayees} session(s) left open closed at startup`);
     }
 
-    // LE PORT NE S'OUVRE QU'ICI, après la base et ses migrations.
+    // THE PORT OPENS ONLY HERE, after the database and its migrations.
     let service: ServicePlateforme;
     try {
-        service = await demarrerServeur(config, base);
+        service = await startServer(config, base);
     } catch (cause) {
-        // La base est déjà ouverte : la refermer plutôt que de laisser une
-        // connexion pendante derrière un démarrage avorté.
+        // The database is already open: close it again rather than leaving a
+        // dangling connection behind an aborted startup.
         await base.fermer();
         throw cause;
     }

@@ -1,286 +1,286 @@
-//! Sources vidéo produisant des unités d'accès H.264 prêtes à être envoyées.
+//! Video sources producing H.264 access units ready to be sent.
 
 use crate::h264::{group_access_units, AccessUnit, CLOCK_RATE_HZ};
 use anyhow::{bail, Result};
 
-/// Producteur d'unités d'accès H.264.
+/// Producer of H.264 access units.
 ///
-/// L'implémentation Windows (capture + encodage) et la source fichier de test
-/// se substituent l'une à l'autre derrière ce trait.
+/// The Windows implementation (capture + encoding) and the test file source
+/// substitute for each other behind this trait.
 pub trait VideoSource {
-    /// Unité d'accès suivante, ou `None` si rien n'est prêt ce tour-ci.
+    /// Next access unit, or `None` if nothing is ready this turn.
     ///
-    /// `None` ne signifie **pas** systématiquement « source épuisée » : pour
-    /// une capture en direct, l'absence de nouvelle image est le cas courant
-    /// et normal (rien n'a changé à l'écran depuis le dernier appel). C'est
-    /// `is_exhausted()`, interrogée séparément par l'appelant après un
-    /// `None`, qui distingue ce cas normal d'un arrêt définitif.
+    /// `None` does **not** systematically mean "source exhausted": for
+    /// a live capture, the absence of a new frame is the common
+    /// and normal case (nothing changed on screen since the last call). It is
+    /// `is_exhausted()`, queried separately by the caller after a
+    /// `None`, that distinguishes this normal case from a definitive stop.
     fn next_frame(&mut self) -> Option<AccessUnit>;
-    /// Dimensions de la vidéo produite, en pixels.
+    /// Dimensions of the produced video, in pixels.
     fn dimensions(&self) -> (u32, u32);
-    /// Vrai si la source ne produira plus jamais aucune image (périphérique
-    /// disparu, erreur non récupérable...) et que la session doit se clore.
+    /// True if the source will never produce any frame again (device
+    /// gone, unrecoverable error...) and the session must close.
     ///
-    /// Uniquement consultée après un `next_frame()` ayant renvoyé `None`.
-    /// Par défaut, une source n'est jamais épuisée : c'est le cas exact de
-    /// `FileSource`, qui boucle indéfiniment et ne renvoie jamais `None`, et
-    /// le cas nominal de `WindowsSource` tant que la fenêtre capturée existe
-    /// — un bureau immobile ne doit jamais, à lui seul, clore la session
-    /// (voir `transport/piste_video.rs`).
+    /// Only consulted after a `next_frame()` that returned `None`.
+    /// By default, a source is never exhausted: it is exactly the case of
+    /// `FileSource`, which loops indefinitely and never returns `None`, and
+    /// the nominal case of `WindowsSource` as long as the captured window exists
+    /// — a still desktop must never, on its own, close the session
+    /// (see `transport/piste_video.rs`).
     fn is_exhausted(&self) -> bool {
         false
     }
 
-    /// Redimensionne la source, si elle le permet.
+    /// Resizes the source, if it allows it.
     ///
-    /// Par défaut sans effet : une source fichier ignore la demande. La source
-    /// Windows, elle, redimensionne la fenêtre et reconstruit sa chaîne.
+    /// No effect by default: a file source ignores the request. The Windows
+    /// source, for its part, resizes the window and rebuilds its chain.
     fn resize(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
         Ok(())
     }
 
-    /// Faux quand la source a définitivement disparu — fenêtre fermée, par
-    /// exemple. À distinguer de `is_exhausted`, qui signale l'épuisement d'un
-    /// flux fini.
+    /// False when the source has definitively disappeared — window closed, for
+    /// example. To be distinguished from `is_exhausted`, which signals the exhaustion of a
+    /// finite stream.
     fn is_alive(&self) -> bool {
         true
     }
 
-    /// Force la production d'une image clé sur la prochaine image produite.
+    /// Forces a keyframe to be produced on the next produced frame.
     ///
-    /// Le groupe d'images de l'encodeur matériel est ouvert (voir
-    /// `encode::configure_rate_control`) : sans appel explicite ici, plus
-    /// aucune image clé n'est jamais reproduite après le démarrage ou un
-    /// redimensionnement, et la moindre perte de paquet corrompt la vidéo
-    /// définitivement jusqu'à reconnexion. Câblé sur `Event::KeyframeRequest`
-    /// de str0m dans `transport/evenements.rs`, qui relaie la demande du navigateur
-    /// après une perte détectée côté décodeur.
+    /// The hardware encoder's group of pictures is open (see
+    /// `encode::configure_rate_control`): without an explicit call here, no
+    /// keyframe is ever produced again after startup or a
+    /// resize, and the slightest packet loss corrupts the video
+    /// definitively until reconnection. Wired to str0m's `Event::KeyframeRequest`
+    /// in `transport/evenements.rs`, which relays the browser's request
+    /// after a loss detected on the decoder side.
     ///
-    /// Par défaut sans effet : `FileSource` rejoue un flux pré-découpé où le
-    /// bouclage lui-même repart déjà sur une image clé (voir
-    /// `group_access_units`) ; une demande de plus n'aurait rien à changer.
+    /// No effect by default: `FileSource` replays a pre-split stream where the
+    /// looping itself already restarts on a keyframe (see
+    /// `group_access_units`); one more request would change nothing.
     fn request_keyframe(&mut self) -> Result<()> {
         Ok(())
     }
 
-    /// Change le débit d'encodage sans reconstruire quoi que ce soit.
+    /// Changes the encoding bitrate without rebuilding anything.
     ///
-    /// Sans effet par défaut : une source fichier n'encode rien.
+    /// No effect by default: a file source encodes nothing.
     fn set_bitrate(&mut self, _bitrate: u32) -> anyhow::Result<()> {
         Ok(())
     }
 
-    /// Change la taille RÉELLEMENT ENCODÉE, sans toucher à la fenêtre
-    /// capturée.
+    /// Changes the size ACTUALLY ENCODED, without touching the captured
+    /// window.
     ///
-    /// À ne pas confondre avec `resize`, qui redimensionne la vraie fenêtre
-    /// Windows parce que l'utilisateur a tiré un bord. Ici la fenêtre ne
-    /// bouge pas : seul le flux transporté maigrit, parce que le lien ne
-    /// porte plus la pleine résolution.
+    /// Not to be confused with `resize`, which resizes the real Windows
+    /// window because the user dragged an edge. Here the window does not
+    /// move: only the carried stream slims down, because the link no longer
+    /// carries full resolution.
     ///
-    /// Sans effet par défaut.
+    /// No effect by default.
     fn set_encode_size(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
         Ok(())
     }
 
-    /// Annonce au producteur si la fenêtre est visible pour l'utilisateur, et
-    /// si elle a le focus.
+    /// Tells the producer whether the window is visible to the user, and
+    /// whether it has focus.
     ///
-    /// Par défaut sans effet : une source fichier n'a personne à qui plaire.
-    /// La source distante la relaie au capteur, qui arbitre GLOBALEMENT — la
-    /// décision qui s'ensuit peut donc concerner une autre fenêtre que
-    /// celle-ci, et ne revient jamais par la valeur de retour.
+    /// No effect by default: a file source has no one to please.
+    /// The remote source relays it to the capturer, which arbitrates GLOBALLY — the
+    /// resulting decision can therefore concern a window other than
+    /// this one, and never comes back through the return value.
     fn set_awake(&mut self, _visible: bool, _focalisee: bool) -> anyhow::Result<()> {
         Ok(())
     }
 
-    /// Rend le changement de sommeil en attente d'annonce au navigateur, et le
-    /// consomme.
+    /// Returns the sleep change awaiting announcement to the browser, and
+    /// consumes it.
     ///
-    /// **État courant, pas un historique** : deux changements arrivés entre
-    /// deux lectures s'écrasent, seul le dernier survit. La boucle de
-    /// transport interroge cette méthode à chaque tour (~100 Hz) ; comme elle
-    /// consomme, aucun message n'est jamais réémis — sans quoi le canal de
-    /// contrôle du navigateur serait inondé.
+    /// **Current state, not a history**: two changes arriving between
+    /// two reads overwrite each other, only the last survives. The transport
+    /// loop queries this method at each turn (~100 Hz); since it
+    /// consumes, no message is ever re-emitted — otherwise the browser's
+    /// control channel would be flooded.
     ///
-    /// Par défaut sans effet : une source fichier ne dort ni ne se réveille
-    /// jamais. Seule `SourceDistante` redéfinit cette méthode — c'est elle
-    /// qui relaie le sommeil décidé GLOBALEMENT par le vivier du capteur.
+    /// No effect by default: a file source never sleeps nor wakes
+    /// up. Only `SourceDistante` redefines this method — it is the one
+    /// that relays the sleep decided GLOBALLY by the capturer's pool.
     fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
         None
     }
 
-    /// Rend la part de budget de débit en attente d'application, et la
-    /// consomme.
+    /// Returns the bitrate budget share awaiting application, and
+    /// consumes it.
     ///
-    /// **État courant, pas un historique** : deux parts arrivées entre deux
-    /// lectures s'écrasent — même régime que `sommeil_a_annoncer` juste
-    /// au-dessus. Comme elle consomme, la branche de transport qui
-    /// l'interroge à chaque tour ne peut pas reconfigurer en boucle.
+    /// **Current state, not a history**: two shares arriving between two
+    /// reads overwrite each other — same regime as `sommeil_a_annoncer` just
+    /// above. Since it consumes, the transport branch that
+    /// queries it at each turn cannot reconfigure in a loop.
     ///
-    /// Par défaut sans effet : une source fichier ne partage le lien avec
-    /// personne. Seule `SourceDistante` la redéfinit.
+    /// No effect by default: a file source shares the link with
+    /// no one. Only `SourceDistante` redefines it.
     fn part_a_appliquer(&mut self) -> Option<u32> {
         None
     }
 
-    /// Rend l'ordre audio en attente d'application, et le consomme.
+    /// Returns the audio order awaiting application, and consumes it.
     ///
-    /// **État courant, pas un historique** : deux ordres arrivés entre deux
-    /// lectures s'écrasent — même régime que `part_a_appliquer` juste
-    /// au-dessus. Comme elle consomme, la branche de transport qui l'interroge
-    /// à ~100 Hz ne peut pas rejouer `Start()`/`Stop()` en boucle.
+    /// **Current state, not a history**: two orders arriving between two
+    /// reads overwrite each other — same regime as `part_a_appliquer` just
+    /// above. Since it consumes, the transport branch that queries it
+    /// at ~100 Hz cannot replay `Start()`/`Stop()` in a loop.
     ///
-    /// Par défaut sans effet : une source fichier n'a pas de son, et une
-    /// `WindowsSource` tenue en direct par son propre processus est
-    /// mono-fenêtre, donc jamais arbitrée. Seule `SourceDistante` la redéfinit.
+    /// No effect by default: a file source has no sound, and a
+    /// `WindowsSource` held live by its own process is
+    /// single-window, hence never arbitrated. Only `SourceDistante` redefines it.
     fn audio_a_appliquer(&mut self) -> Option<bool> {
         None
     }
 
-    /// Rend le changement de plein écran en attente d'annonce, et le consomme.
+    /// Returns the full-screen change awaiting announcement, and consumes it.
     ///
-    /// **État courant, pas un historique** : deux changements arrivés entre
-    /// deux lectures s'écrasent — même régime que `sommeil_a_annoncer`. Comme
-    /// elle consomme, la branche de transport qui l'interroge à ~100 Hz ne peut
-    /// pas inonder le canal de contrôle.
+    /// **Current state, not a history**: two changes arriving between
+    /// two reads overwrite each other — same regime as `sommeil_a_annoncer`. Since
+    /// it consumes, the transport branch that queries it at ~100 Hz cannot
+    /// flood the control channel.
     ///
-    /// Par défaut sans effet : une source fichier n'a pas de fenêtre Windows,
-    /// et une `WindowsSource` tenue en direct par son propre processus n'a
-    /// personne pour la lui pousser.
+    /// No effect by default: a file source has no Windows window,
+    /// and a `WindowsSource` held live by its own process has
+    /// no one to push it.
     fn plein_ecran_a_annoncer(&mut self) -> Option<bool> {
         None
     }
 
-    /// Rend le presse-papier de la VM en attente d'annonce, et le consomme.
+    /// Returns the VM's clipboard awaiting announcement, and consumes it.
     ///
-    /// `None` dans le premier membre du couple signale un REFUS de taille : le
-    /// contenu dépassait `presse_papier::PRESSE_PAPIER_MAX` et a été refusé,
-    /// jamais tronqué. Le second membre porte alors la taille refusée, en
-    /// octets d'UTF-8 après normalisation des fins de ligne.
+    /// `None` in the pair's first member signals a size REFUSAL: the
+    /// content exceeded `presse_papier::PRESSE_PAPIER_MAX` and was refused,
+    /// never truncated. The second member then carries the refused size, in
+    /// UTF-8 bytes after line-ending normalisation.
     ///
-    /// **État courant, pas un historique** : deux copies arrivées entre deux
-    /// lectures s'écrasent — même régime que `plein_ecran_a_annoncer` juste
-    /// au-dessus. Comme elle consomme, la branche `a1septies` de
-    /// `transport/tick.rs`, qui l'interroge à ~100 Hz, ne peut pas inonder le
-    /// canal de contrôle.
+    /// **Current state, not a history**: two copies arriving between two
+    /// reads overwrite each other — same regime as `plein_ecran_a_annoncer` just
+    /// above. Since it consumes, the `a1septies` branch of
+    /// `transport/tick.rs`, which queries it at ~100 Hz, cannot flood the
+    /// control channel.
     ///
-    /// Par défaut sans effet : une source fichier n'a pas de presse-papier, et
-    /// une `WindowsSource` tenue en direct par son propre processus n'a pas de
-    /// capteur pour le lui pousser — c'est le capteur qui détient le
-    /// presse-papier de la VM, et lui seul (sous-bloc P1).
+    /// No effect by default: a file source has no clipboard, and
+    /// a `WindowsSource` held live by its own process has no
+    /// capturer to push it — it is the capturer that holds the
+    /// VM's clipboard, and it alone (sub-block P1).
     fn presse_papier_a_annoncer(&mut self) -> Option<(Option<String>, u32)> {
         None
     }
 
-    /// Rend la couleur d'accent de la fenêtre à annoncer au navigateur, et la
-    /// CONSOMME. `#rrggbb`, minuscule (sous-bloc A1).
+    /// Returns the window's accent colour to announce to the browser, and
+    /// CONSUMES it. `#rrggbb`, lowercase (sub-block A1).
     ///
-    /// Par défaut sans effet, comme `presse_papier_a_annoncer` juste au-dessus :
-    /// une source fichier n'a pas d'icône, et une `WindowsSource` tenue en
-    /// direct par son propre processus n'a pas de capteur pour la lui pousser.
+    /// No effect by default, like `presse_papier_a_annoncer` just above:
+    /// a file source has no icon, and a `WindowsSource` held
+    /// live by its own process has no capturer to push it.
     ///
-    /// ⚠️ **La lecture de l'icône vit sur le FIL DE FENÊTRE du capteur**, jamais
-    /// sur son tour de roue : le registre n'a pas le `hwnd`, et l'accent est PAR
-    /// FENÊTRE là où le presse-papier est GLOBAL à la window station.
+    /// ⚠️ **Reading the icon lives on the capturer's WINDOW THREAD**, never
+    /// on its wheel turn: the registry does not have the `hwnd`, and the accent is PER
+    /// WINDOW where the clipboard is GLOBAL to the window station.
     fn accent_a_annoncer(&mut self) -> Option<String> {
         None
     }
 
-    /// Vrai tant que le capteur tient cette fenêtre pour ENDORMIE — encodeur
-    /// et duplication relâchés (sous-bloc D5), aucune image produite.
+    /// True as long as the capturer holds this window to be ASLEEP — encoder
+    /// and duplication released (sub-block D5), no frame produced.
     ///
-    /// **État courant, et il NE SE CONSOMME PAS.** C'est exactement ce qui la
-    /// distingue de `sommeil_a_annoncer` juste au-dessus, qui rend un
-    /// CHANGEMENT une seule fois : `Session::appliquer_part` a besoin de relire
-    /// cet état à chaque part qu'elle applique, et une annonce qui s'épuise ne
-    /// saurait pas le lui dire. Deviner l'état en comparant la part reçue à
-    /// `PART_DORMANTE_BPS` ne conviendrait pas davantage : ce serait un
-    /// couplage de valeur entre deux processus, muet le jour où l'un des deux
-    /// changerait de constante.
+    /// **Current state, and it IS NOT CONSUMED.** It is exactly what
+    /// distinguishes it from `sommeil_a_annoncer` just above, which returns a
+    /// CHANGE only once: `Session::appliquer_part` needs to reread
+    /// this state at each share it applies, and an announcement that runs out could
+    /// not tell it. Guessing the state by comparing the received share to
+    /// `PART_DORMANTE_BPS` would not do either: it would be a
+    /// value coupling between two processes, mute the day one of the two
+    /// changed its constant.
     ///
-    /// **Pourquoi la boucle de transport le demande** : la part d'une endormie
-    /// est un plancher (`capteur::repartiteur::PART_DORMANTE_BPS`, 256 kb/s),
-    /// très en dessous du barreau le plus bas de l'échelle. L'appliquer comme
-    /// plafond d'ENCODAGE y ferait descendre `video_bitrate_bps` sans qu'aucun
-    /// chemin ne le remonte au réveil — voir `Session::appliquer_part`.
+    /// **Why the transport loop asks for it**: a sleeping window's share
+    /// is a floor (`capteur::repartiteur::PART_DORMANTE_BPS`, 256 kb/s),
+    /// far below the lowest rung of the ladder. Applying it as an ENCODING
+    /// ceiling would make `video_bitrate_bps` drop there without any
+    /// path raising it again on wake-up — see `Session::appliquer_part`.
     ///
-    /// Faux par défaut : une source fichier, comme une `WindowsSource` tenue
-    /// en direct par son propre processus, ne dort jamais. Seule
-    /// `SourceDistante` la redéfinit.
+    /// False by default: a file source, like a `WindowsSource` held
+    /// live by its own process, never sleeps. Only
+    /// `SourceDistante` redefines it.
     fn est_endormie(&self) -> bool {
         false
     }
 
-    /// Signale au capteur que la capture audio de cette fenêtre est morte.
+    /// Signals to the capturer that this window's audio capture is dead.
     ///
-    /// **Défaut inerte**, comme `est_endormie` : une source qui n'a pas de
-    /// capteur en face n'a personne à prévenir. Seule `SourceDistante`
-    /// l'implémente réellement.
+    /// **Inert default**, like `est_endormie`: a source without a
+    /// capturer facing it has no one to warn. Only `SourceDistante`
+    /// really implements it.
     fn signaler_audio_mort(&mut self) {}
 
-    /// Annonce au capteur que la capture audio de cette fenêtre a repris.
+    /// Tells the capturer that this window's audio capture has resumed.
     ///
-    /// Défaut INERTE, comme les deux méthodes voisines : les sources qui ne
-    /// parlent à aucun capteur (test, mono-fenêtre) n'ont rien à annoncer.
+    /// INERT default, like the two neighbouring methods: sources that
+    /// talk to no capturer (test, single-window) have nothing to announce.
     fn signaler_audio_vivant(&mut self) {}
 
-    /// Écrit `texte` dans le presse-papier de la VM (sens navigateur → VM,
-    /// sous-bloc P2). Le texte arrive **déjà normalisé, borné et dénormalisé**
-    /// (`\r\n`) : cette méthode ne décide rien de son contenu.
+    /// Writes `texte` into the VM's clipboard (browser → VM direction,
+    /// sub-block P2). The text arrives **already normalised, bounded and denormalised**
+    /// (`\r\n`): this method decides nothing about its content.
     ///
-    /// 🔴 **DÉFAUT `Err`, ET C'EST UNE RUPTURE DE PATRON DANS CE FICHIER** —
+    /// 🔴 **`Err` DEFAULT, AND IT IS A PATTERN BREAK IN THIS FILE** —
     /// `est_endormie`, `signaler_audio_mort`, `signaler_audio_vivant`,
-    /// `presse_papier_a_annoncer` et `accent_a_annoncer` ont tous un défaut
-    /// INERTE. **Ne pas l'aligner sur ses voisines.**
+    /// `presse_papier_a_annoncer` and `accent_a_annoncer` all have an
+    /// INERT default. **Do not align it with its neighbours.**
     ///
-    /// ⚠️ *`accent_a_annoncer` a été ajouté à cette liste par la revue
-    /// transverse du sous-bloc A1 : l'inventaire était devenu INCOMPLET, ce qui
-    /// est la forme la plus discrète du défaut que cette revue traque — la
-    /// phrase reste vraie de ce qu'elle nomme, et fausse de ce qu'elle omet.*
+    /// ⚠️ *`accent_a_annoncer` was added to this list by the cross-cutting
+    /// review of sub-block A1: the inventory had become INCOMPLETE, which
+    /// is the most discreet form of the defect this review hunts — the
+    /// sentence stays true of what it names, and false of what it omits.*
     ///
-    /// La raison est que l'appelant n'utilise pas ce retour pour décider s'il
-    /// *journalise*, mais s'il **INJECTE `Ctrl+V`**. Un `Ok(())` inerte ferait
-    /// injecter la touche sur un presse-papier Windows **inchangé**, donc
-    /// coller le contenu PRÉCÉDENT — le mode de défaillance silencieux que D6
-    /// existe entièrement pour éviter, et le seul qui donne à l'utilisateur un
-    /// résultat FAUX plutôt qu'absent. Un `Err` fait journaliser l'échec et ne
-    /// rien injecter, ce que D6 prescrit en toutes lettres pour ce cas : « si
-    /// le presse-papier ne peut pas être écrit, la touche `V` est PERDUE, pas
-    /// reportée ».
+    /// The reason is that the caller does not use this return to decide whether it
+    /// *logs*, but whether it **INJECTS `Ctrl+V`**. An inert `Ok(())` would make
+    /// the key be injected on an **unchanged** Windows clipboard, hence
+    /// paste the PREVIOUS content — the silent failure mode D6
+    /// exists entirely to avoid, and the only one giving the user a
+    /// WRONG result rather than an absent one. An `Err` makes the failure logged and
+    /// nothing injected, which D6 prescribes in so many words for this case: "if
+    /// the clipboard cannot be written, the `V` key is LOST, not
+    /// postponed".
     ///
-    /// ⚠️ **Conséquence assumée : le mode MONO-FENÊTRE n'a pas de collage, et
-    /// il le DIT.** Sans capteur, `SourceDistante` n'existe pas et c'est ce
-    /// défaut qui court. Le propriétaire mono-fenêtre reste le legs n°1 de P1,
-    /// non comblé ; P2 le rend bruyant au lieu de silencieux.
-    fn ecrire_le_presse_papier(&mut self, _texte: &str) -> anyhow::Result<()> {
-        anyhow::bail!("aucun capteur : le presse-papier de la VM n'est pas accessible")
+    /// ⚠️ **Accepted consequence: SINGLE-WINDOW mode has no paste, and
+    /// it SAYS so.** Without a capturer, `SourceDistante` does not exist and it is this
+    /// default that runs. The single-window owner stays P1's legacy no. 1,
+    /// not filled; P2 makes it loud instead of silent.
+    fn write_clipboard(&mut self, _texte: &str) -> anyhow::Result<()> {
+        anyhow::bail!("no sensor: the VM clipboard is not accessible")
     }
 
-    /// Vrai une seule fois, juste après que le canal vers le capteur s'est
-    /// RATTACHÉ (capteur relancé, ou perte d'accès DXGI encaissée par la
-    /// fenêtre de reprise). Consommé, comme `sommeil_a_annoncer`.
+    /// True only once, right after the channel to the capturer has
+    /// REATTACHED (capturer restarted, or DXGI access loss absorbed by the
+    /// resumption window). Consumed, like `sommeil_a_annoncer`.
     ///
-    /// **Pourquoi la boucle de transport en a besoin** : le registre
-    /// d'inaptitudes audio vit en mémoire, dans le CAPTEUR
-    /// (`capteur/sommeil.rs`) — un capteur relancé n'a plus la moindre trace
-    /// d'un `AudioMort` signalé avant sa mort. `Session::audio_mort_signale`
-    /// doit donc retomber à `false` pour que la prochaine détection de
-    /// `capture_morte` (`transport/tick.rs`) le réinforme.
+    /// **Why the transport loop needs it**: the audio unfitness
+    /// registry lives in memory, in the CAPTURER
+    /// (`capteur/sommeil.rs`) — a restarted capturer no longer has the slightest trace
+    /// of an `AudioMort` signalled before its death. `Session::audio_mort_signale`
+    /// must therefore fall back to `false` so that the next detection of
+    /// `capture_morte` (`transport/tick.rs`) informs it again.
     ///
-    /// Défaut inerte : une source qui ne se rattache jamais (fichier, ou
-    /// `WindowsSource` tenue en direct par son propre processus) n'a rien à
-    /// signaler.
+    /// Inert default: a source that never reattaches (file, or
+    /// `WindowsSource` held live by its own process) has nothing to
+    /// signal.
     fn rattachement_survenu(&mut self) -> bool {
         false
     }
 }
 
-/// Source de test rejouant un fichier H.264 Annex-B en boucle.
+/// Test source replaying an Annex-B H.264 file in a loop.
 ///
-/// Sert à valider le transport sans dépendre de Windows : le flux est découpé
-/// une fois au chargement, puis rejoué indéfiniment avec des horodatages
-/// strictement croissants (un décodeur rejetterait un retour en arrière).
+/// Serves to validate the transport without depending on Windows: the stream is split
+/// once at load time, then replayed indefinitely with strictly
+/// increasing timestamps (a decoder would reject going backwards).
 #[derive(Debug)]
 pub struct FileSource {
     units: Vec<AccessUnit>,
@@ -294,14 +294,14 @@ pub struct FileSource {
 impl FileSource {
     pub fn from_annex_b(data: Vec<u8>, width: u32, height: u32, fps: u32) -> Result<Self> {
         if fps == 0 {
-            bail!("le nombre d'images par seconde doit être supérieur à zéro");
+            bail!("the number of frames per second must be greater than zero");
         }
         let units = group_access_units(&data, fps);
         if units.is_empty() {
-            bail!("flux invalide : aucune unité d'accès trouvée");
+            bail!("invalid stream: no access unit found");
         }
         if !units.iter().any(|u| u.is_keyframe) {
-            bail!("flux invalide : aucune image clé trouvée");
+            bail!("invalid stream: no key frame found");
         }
         Ok(Self {
             tick_90k: CLOCK_RATE_HZ / fps as u64,
@@ -313,7 +313,7 @@ impl FileSource {
         })
     }
 
-    /// Charge un fichier `.264` depuis le disque.
+    /// Loads a `.264` file from disk.
     pub fn from_path(path: &std::path::Path, width: u32, height: u32, fps: u32) -> Result<Self> {
         let data = std::fs::read(path)?;
         Self::from_annex_b(data, width, height, fps)
@@ -343,11 +343,15 @@ impl VideoSource for FileSource {
 mod tests {
     use super::*;
 
-    /// Construit un flux Annex-B de `frames` images, la première étant une IDR.
+    /// Builds an Annex-B stream of `frames` frames, the first being an IDR.
     fn flux_de_test(frames: usize) -> Vec<u8> {
         let mut stream = Vec::new();
         for i in 0..frames {
-            let nal: Vec<u8> = if i == 0 { vec![0x65, 0x88] } else { vec![0x41, 0x9A] };
+            let nal: Vec<u8> = if i == 0 {
+                vec![0x65, 0x88]
+            } else {
+                vec![0x41, 0x9A]
+            };
             stream.extend_from_slice(&[0, 0, 0, 1]);
             stream.extend_from_slice(&nal);
         }
@@ -355,19 +359,19 @@ mod tests {
     }
 
     #[test]
-    fn expose_ses_dimensions() {
+    fn exposes_its_dimensions() {
         let source = FileSource::from_annex_b(flux_de_test(2), 1280, 720, 60).unwrap();
         assert_eq!(source.dimensions(), (1280, 720));
     }
 
     #[test]
-    fn rejette_un_flux_sans_image() {
+    fn rejects_a_stream_without_frames() {
         let err = FileSource::from_annex_b(vec![0xFF, 0xFE], 1280, 720, 60).unwrap_err();
-        assert!(err.to_string().contains("aucune unité d'accès"));
+        assert!(err.to_string().contains("no access unit"));
     }
 
     #[test]
-    fn rejette_un_flux_sans_image_cle() {
+    fn rejects_a_stream_without_a_key_frame() {
         let stream = {
             let mut s = Vec::new();
             s.extend_from_slice(&[0, 0, 0, 1]);
@@ -375,49 +379,51 @@ mod tests {
             s
         };
         let err = FileSource::from_annex_b(stream, 1280, 720, 60).unwrap_err();
-        assert!(err.to_string().contains("aucune image clé"));
+        assert!(err.to_string().contains("no key frame"));
     }
 
     #[test]
-    fn rejoue_en_boucle_avec_des_horodatages_croissants() {
+    fn replays_in_a_loop_with_increasing_timestamps() {
         let mut source = FileSource::from_annex_b(flux_de_test(3), 640, 480, 60).unwrap();
         let mut horodatages = Vec::new();
         for _ in 0..7 {
             horodatages.push(source.next_frame().unwrap().pts_90k);
         }
-        // 1500 ticks par image à 60 fps ; les horodatages ne redémarrent jamais.
+        // 1500 ticks per frame at 60 fps; timestamps never restart.
         assert_eq!(horodatages, vec![0, 1500, 3000, 4500, 6000, 7500, 9000]);
     }
 
     #[test]
-    fn la_premiere_image_de_chaque_boucle_est_une_image_cle() {
+    fn the_first_frame_of_each_loop_is_a_keyframe() {
         let mut source = FileSource::from_annex_b(flux_de_test(3), 640, 480, 60).unwrap();
         assert!(source.next_frame().unwrap().is_keyframe);
         assert!(!source.next_frame().unwrap().is_keyframe);
         assert!(!source.next_frame().unwrap().is_keyframe);
-        assert!(source.next_frame().unwrap().is_keyframe); // début de la boucle suivante
+        assert!(source.next_frame().unwrap().is_keyframe); // start of the next loop
     }
 
     #[test]
-    fn charge_le_flux_de_test_reel() {
-        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
-        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
+    fn loads_the_real_test_stream() {
+        let path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("loading the stream");
         assert_eq!(source.dimensions(), (1280, 720));
 
         let first = source.next_frame().unwrap();
-        assert!(first.is_keyframe, "la première unité doit être une image clé");
-        assert!(first.data.len() > 100, "une image clé réelle n'est pas minuscule");
+        assert!(first.is_keyframe, "the first unit must be a key frame");
+        assert!(first.data.len() > 100, "a real key frame is not tiny");
     }
 
     #[test]
-    fn boucle_avec_300_images_reelles_et_horodatages_strictement_croissants() {
-        // Vérification de non-régression sur le bug de sur-découpage : le
-        // fichier réel contient 300 images malgré ses 2400 tranches, donc le
-        // compteur de boucles doit incrémenter après 300 appels, pas 2400.
-        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
-        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
+    fn loops_with_300_real_frames_and_strictly_increasing_timestamps() {
+        // Non-regression check on the over-splitting bug: the
+        // real file contains 300 frames despite its 2400 slices, so the
+        // loop counter must increment after 300 calls, not 2400.
+        let path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("loading the stream");
 
-        // Une boucle complète (300 images), plus la première image du tour suivant.
+        // A complete loop (300 frames), plus the first frame of the next turn.
         let mut horodatages = Vec::with_capacity(301);
         let mut keyframes = Vec::with_capacity(301);
         for _ in 0..301 {
@@ -426,34 +432,40 @@ mod tests {
             keyframes.push(unit.is_keyframe);
         }
 
-        assert!(keyframes[0], "la première image du fichier est une IDR");
+        assert!(keyframes[0], "the first frame of the file is an IDR");
         assert!(
             keyframes[300],
-            "la première image de la boucle suivante doit aussi être une IDR"
+            "the first frame of the next loop must also be an IDR"
         );
         assert!(
             horodatages.windows(2).all(|w| w[0] < w[1]),
-            "les horodatages doivent être strictement croissants, y compris au bouclage"
+            "timestamps must be strictly increasing, including at the loop point"
         );
-        // 300 images à 1500 ticks (90000 / 60) : l'horodatage au bouclage
-        // continue la progression linéaire au lieu de redémarrer à zéro.
+        // 300 frames at 1500 ticks (90000 / 60): the timestamp at wraparound
+        // continues the linear progression instead of restarting at zero.
         assert_eq!(horodatages[300], 300 * (CLOCK_RATE_HZ / 60));
     }
 
     #[test]
-    fn resize_par_defaut_ignore_la_demande_et_ne_change_pas_les_dimensions() {
-        // `FileSource` ne redéfinit pas `resize` : la méthode par défaut du
-        // trait doit être un no-op qui réussit, sans jamais toucher aux
-        // dimensions de la source fichier (tâche 13, source.rs).
+    fn default_resize_ignores_the_request_and_keeps_the_dimensions() {
+        // `FileSource` does not redefine `resize`: the trait's default
+        // method must be a no-op that succeeds, without ever touching the
+        // file source's dimensions (task 13, source.rs).
         let mut source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();
-        source.resize(1920, 1080).expect("le no-op par défaut ne doit jamais échouer");
-        assert_eq!(source.dimensions(), (640, 480), "les dimensions ne doivent pas bouger");
+        source
+            .resize(1920, 1080)
+            .expect("the default no-op must never fail");
+        assert_eq!(
+            source.dimensions(),
+            (640, 480),
+            "the dimensions must not move"
+        );
     }
 
     #[test]
-    fn is_alive_par_defaut_vaut_toujours_vrai() {
-        // `FileSource` boucle indéfiniment et ne « meurt » jamais : la
-        // méthode par défaut du trait doit refléter cela.
+    fn is_alive_defaults_to_always_true() {
+        // `FileSource` loops indefinitely and never "dies": the
+        // trait's default method must reflect that.
         let source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();
         assert!(source.is_alive());
     }

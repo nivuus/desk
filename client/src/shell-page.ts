@@ -1,16 +1,16 @@
-// L'ANCIENNE PAGE-SHELL — devenue une simple redirection le 31 août 2026.
+// THE OLD SHELL PAGE — turned into a mere redirect on August 31st, 2026.
 //
-// 🔴 CE FICHIER PORTAIT 500 LIGNES ET LA MOITIÉ DU PRODUIT. Son contenu vit
-// désormais dans `bureau/porteur-dom.ts`, `bureau/fenetres-dom.ts` et
-// `bureau/fichiers-dom.ts`, employés par le hub — la SEULE surface depuis
-// cette date. La règle métier `shell.ts`, elle, n'a pas bougé d'une ligne :
-// elle était déjà pure et testée, et elle est réutilisée telle quelle.
+// 🔴 THIS FILE CARRIED 500 LINES AND HALF THE PRODUCT. Its content now lives
+// in `bureau/porteur-dom.ts`, `bureau/fenetres-dom.ts` and
+// `bureau/files-dom.ts`, used by the hub — the ONLY surface since
+// that date. The business rule `shell.ts`, for its part, has not moved by a line:
+// it was already pure and tested, and it is reused as is.
 //
-// ⚠️ NE PAS SUPPRIMER CE FICHIER NI SA PAGE. Voir `bureau/redirection.ts`
-// pour la raison — elle tient aux PWA déjà installées, pas à la prudence.
+// ⚠️ DO NOT DELETE THIS FILE NOR ITS PAGE. See `bureau/redirection.ts`
+// for the reason — it has to do with already installed PWAs, not with caution.
 
 import { cibleDeRedirection } from './bureau/redirection';
 
-// `replace` et non `href` : un retour arrière ramènerait sur cette page qui
-// redirigerait de nouveau, et l'utilisateur serait piégé dans l'historique.
+// `replace` and not `href`: going back would return to this page, which
+// would redirect again, and the user would be trapped in the history.
 window.location.replace(cibleDeRedirection(window.location.search));

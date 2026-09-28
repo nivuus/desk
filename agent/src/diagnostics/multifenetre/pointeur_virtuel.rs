@@ -1,10 +1,10 @@
-//! Sonde : le bureau virtuel s'étend-il jusqu'à une sortie virtuelle, et le
-//! pointeur y arrive-t-il ?
+//! Probe: does the virtual desktop extend to a virtual output, and does the
+//! pointer get there?
 //!
-//! `input.rs` pose déjà `MOUSEEVENTF_VIRTUALDESK` et calcule ses coordonnées
-//! sur `SM_*VIRTUALSCREEN` : rien n'est à écrire côté produit. Ce qui n'est
-//! établi par aucune lecture de code, c'est que Windows compte une sortie
-//! virtuelle dans ces métriques. Cette sonde le tranche par une mesure.
+//! `input.rs` already sets `MOUSEEVENTF_VIRTUALDESK` and computes its coordinates
+//! on `SM_*VIRTUALSCREEN`: nothing is to be written on the product side. What is
+//! established by no reading of code is that Windows counts a virtual
+//! output in these metrics. This probe settles it by a measurement.
 
 use anyhow::{Context, Result};
 use windows::Win32::Foundation::POINT;
@@ -17,11 +17,11 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SM_YVIRTUALSCREEN,
 };
 
-use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::capture::enumerer_sorties;
+use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::moniteurs_virtuels::Sorties;
 
-/// Rectangle du bureau virtuel, tel que Windows le déclare.
+/// Rectangle of the virtual desktop, as Windows declares it.
 fn bureau_virtuel() -> (i32, i32, i32, i32) {
     unsafe {
         (
@@ -34,53 +34,62 @@ fn bureau_virtuel() -> (i32, i32, i32, i32) {
 }
 
 pub(super) fn sonder() -> Result<()> {
-    let avant = bureau_virtuel();
+    let before = bureau_virtuel();
     tracing::info!(
-        x = avant.0, y = avant.1, largeur = avant.2, hauteur = avant.3,
-        "bureau virtuel AVANT création de la sortie"
+        x = before.0,
+        y = before.1,
+        largeur = before.2,
+        hauteur = before.3,
+        "virtual desktop BEFORE creating the output"
     );
 
     let pilote = ouvrir_pilote()?;
     let mut sorties = Sorties::nouvelles(&pilote);
-    let id = sorties.creer(1280, 720, 60).context("création de la sortie virtuelle")?;
+    let id = sorties
+        .create(1280, 720, 60)
+        .context("creating the virtual output")?;
 
-    // Le pilote crée la sortie de façon asynchrone du point de vue de
-    // l'espace de bureau : Windows doit encore la rattacher. On laisse
-    // le temps à la topologie de s'établir, puis on relit.
+    // The driver creates the output asynchronously from the point of view of
+    // the desktop space: Windows still has to attach it. We give
+    // the topology time to settle, then read again.
     std::thread::sleep(std::time::Duration::from_secs(3));
     pilote.pinguer()?;
 
     let apres = bureau_virtuel();
     tracing::info!(
-        id, x = apres.0, y = apres.1, largeur = apres.2, hauteur = apres.3,
-        elargi = (apres != avant),
-        "bureau virtuel APRÈS création de la sortie"
+        id,
+        x = apres.0,
+        y = apres.1,
+        largeur = apres.2,
+        hauteur = apres.3,
+        elargi = (apres != before),
+        "virtual desktop AFTER creating the output"
     );
 
-    // Retrouver la sortie virtuelle parmi les sorties DXGI : c'est son
-    // rectangle qui donne la cible à viser. `GetDesc`/`DesktopCoordinates`
-    // est la source de vérité — WMI ment (champ vu périmé de 68 s).
-    let toutes = enumerer_sorties()?;
-    for s in &toutes {
+    // Find the virtual output among the DXGI outputs: it is its
+    // rectangle that gives the target to aim at. `GetDesc`/`DesktopCoordinates`
+    // is the source of truth — WMI lies (field seen 68 s stale).
+    let all = enumerer_sorties()?;
+    for s in &all {
         tracing::info!(
             adaptateur = %s.adaptateur, nom = %s.nom_sortie,
             attachee = s.attachee_au_bureau,
             x = s.rect.x, y = s.rect.y, l = s.rect.width, h = s.rect.height,
-            "sortie DXGI énumérée"
+            "DXGI output enumerated"
         );
     }
-    let cible = toutes
+    let cible = all
         .iter()
         .filter(|s| s.attachee_au_bureau && s.rect.width == 1280 && s.rect.height == 720)
         .max_by_key(|s| s.rect.x)
         .context(
-            "aucune sortie attachée de 1280x720 : la sortie virtuelle n'est pas \
-             entrée dans la topologie du bureau",
+            "no attached 1280x720 output: the virtual output did not \
+             enter the desktop topology",
         )?;
 
-    // Centre de la sortie, en coordonnées du bureau virtuel, converti dans
-    // l'espace normalisé 0..65535 que `MOUSEEVENTF_ABSOLUTE` attend — la
-    // conversion exacte de `input.rs`.
+    // Centre of the output, in virtual desktop coordinates, converted into
+    // the normalised 0..65535 space that `MOUSEEVENTF_ABSOLUTE` expects — the
+    // exact conversion of `input.rs`.
     let vise_x = cible.rect.x + (cible.rect.width / 2) as i32;
     let vise_y = cible.rect.y + (cible.rect.height / 2) as i32;
     let normalise = |v: i32, origine: i32, etendue: i32| -> i32 {
@@ -107,12 +116,20 @@ pub(super) fn sonder() -> Result<()> {
     let ecart = ((ou.x - vise_x).abs(), (ou.y - vise_y).abs());
     tracing::info!(
         envoyes,
-        vise_x, vise_y, obtenu_x = ou.x, obtenu_y = ou.y,
-        ecart_x = ecart.0, ecart_y = ecart.1,
-        // Deux pixels de tolérance : la conversion normalisée n'est pas
-        // exactement réversible, et ce n'est pas ce qu'on mesure ici.
-        verdict = if ecart.0 <= 2 && ecart.1 <= 2 { "ATTEINTE" } else { "NON ATTEINTE" },
-        "injection absolue vers le centre de la sortie virtuelle"
+        vise_x,
+        vise_y,
+        obtenu_x = ou.x,
+        obtenu_y = ou.y,
+        ecart_x = ecart.0,
+        ecart_y = ecart.1,
+        // Two pixels of tolerance: the normalised conversion is not
+        // exactly reversible, and that is not what we measure here.
+        verdict = if ecart.0 <= 2 && ecart.1 <= 2 {
+            "ATTEINTE"
+        } else {
+            "NON ATTEINTE"
+        },
+        "absolute injection towards the centre of the virtual output"
     );
 
     Ok(())

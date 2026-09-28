@@ -1,24 +1,24 @@
-//! Mesure ① de la spec : combien de sorties virtuelles simultanées un pilote
-//! d'affichage indirect accepte-t-il, et une fenêtre posée dessus est-elle
-//! capturée correctement.
+//! Measurement ① of the spec: how many simultaneous virtual outputs does an indirect
+//! display driver accept, and is a window placed on one captured
+//! correctly.
 //!
-//! Ce module ne contient QUE de la logique pure : le trait que doit remplir
-//! un pilote, la garde qui détruit ce qui a été créé, et les conversions de
-//! coordonnées. La glue Windows vit dans les sous-modules `pilote`,
-//! `sudovda`, `peripherique` et `purge`, promus depuis
-//! `diagnostics/multifenetre/` au sous-bloc D1.
+//! This module contains ONLY pure logic: the trait a driver
+//! must fulfil, the guard that destroys what was created, and coordinate
+//! conversions. The Windows glue lives in the submodules `pilote`,
+//! `sudovda`, `peripherique` and `purge`, promoted from
+//! `diagnostics/multifenetre/` in sub-block D1.
 //!
-//! Il n'est PAS sous `#[cfg(windows)]`, délibérément : une sortie virtuelle
-//! survit au processus, donc la garde ci-dessous est le seul rempart contre
-//! une VM laissée avec des moniteurs fantômes — c'est exactement le genre de
-//! code qui doit avoir des tests, et ils ne tourneraient pas sous
+//! It is NOT under `#[cfg(windows)]`, deliberately: a virtual output
+//! outlives the process, so the guard below is the only bulwark against
+//! a VM left with ghost monitors — it is exactly the kind of
+//! code that must have tests, and they would not run under
 //! `#[cfg(windows)]`.
 
-// Glue Windows du pilote SudoVDA, promue depuis `diagnostics/multifenetre/`
-// au sous-bloc D1 : ce n'est plus de l'outillage de mesure, c'est le chemin
-// par lequel le produit fait paraître ses sorties. Le module parent reste
-// hors `#[cfg(windows)]` — c'est ce qui permet à sa garde `Sorties` d'avoir
-// des tests, et cette raison n'a pas changé.
+// Windows glue of the SudoVDA driver, promoted from `diagnostics/multifenetre/`
+// in sub-block D1: it is no longer measurement tooling, it is the path
+// through which the product makes its outputs appear. The parent module stays
+// outside `#[cfg(windows)]` — it is what lets its `Sorties` guard have
+// tests, and that reason has not changed.
 #[cfg(windows)]
 pub mod guid;
 #[cfg(windows)]
@@ -30,59 +30,59 @@ pub mod purge;
 #[cfg(windows)]
 pub mod sudovda;
 
-// Hors `#[cfg(windows)]`, comme le module parent et pour la même raison :
-// l'attribution des numéros de GUID décide si une sortie virtuelle orpheline
-// reste récupérable, et ce genre de code doit avoir des tests. Voir son
-// commentaire de tête (correctif I1).
+// Outside `#[cfg(windows)]`, like the parent module and for the same reason:
+// the allocation of GUID numbers decides whether an orphaned virtual output
+// stays recoverable, and this kind of code must have tests. See its
+// header comment (fix I1).
 pub mod numeros;
 
-// Hors `#[cfg(windows)]` pour la même raison encore : la RÈGLE qui échange un
-// identifiant de cible contre un nom GDI décide de l'appariement de TOUTE
-// fenêtre, et elle doit avoir des tests. Sa moitié Win32 est dans son `mod
-// win` interne — patron de `superviseur/placement.rs`.
+// Outside `#[cfg(windows)]` for the same reason again: the RULE that exchanges a
+// target identifier for a GDI name decides the pairing of EVERY
+// window, and it must have tests. Its Win32 half is in its internal `mod
+// win` — the pattern of `superviseur/placement.rs`.
 pub mod config_affichage;
 
-// Hors `#[cfg(windows)]` pour la même raison : le VERDICT d'une purge est une
-// règle pure, et un `ERROR` qui crie à tort à chaque démarrage est un `ERROR`
-// que plus personne ne lit. Voir son commentaire de tête.
+// Outside `#[cfg(windows)]` for the same reason: the VERDICT of a purge is a
+// pure rule, and an `ERROR` that wrongly cries at each start-up is an `ERROR`
+// no one reads anymore. See its header comment.
 pub mod verdict_purge;
 
 use anyhow::{Context, Result};
 
 use crate::geometry::Rect;
 
-/// Identifiant d'une sortie virtuelle, tel que le pilote le rend.
+/// Identifier of a virtual output, as the driver returns it.
 pub type IdSortie = u32;
 
-/// L'adaptateur sur lequel le pilote a créé une sortie : un `LUID` Win32,
-/// écrit en deux moitiés — exactement comme `sudovda::SortieAjoutee` l'écrit
-/// déjà, et pour la même raison (la disposition supposée doit être lisible là
-/// où elle est en jeu).
+/// The adapter on which the driver created an output: a Win32 `LUID`,
+/// written in two halves — exactly as `sudovda::SortieAjoutee` already
+/// writes it, and for the same reason (the assumed layout must be readable where
+/// it is at stake).
 ///
-/// 🔴 **Le pilote rend TROIS nombres, et le produit n'en gardait qu'UN.**
-/// `SortieAjoutee` porte `(adaptateur_bas, adaptateur_haut, identifiant_cible)`
-/// ; jusqu'au lot 32 seul le troisième survivait à `creer`, les deux autres
-/// n'étant que journalisés. Or c'est le COUPLE qui désigne une cible
-/// d'affichage sans ambiguïté : un identifiant de cible n'est unique que PAR
-/// adaptateur, et cette VM en a plus d'un (SudoVDA, plus le VGA de QEMU quand
-/// il est présent).
+/// 🔴 **The driver returns THREE numbers, and the product only kept ONE.**
+/// `SortieAjoutee` carries `(adaptateur_bas, adaptateur_haut, identifiant_cible)`
+/// ; until batch 32 only the third survived `create`, the other two
+/// only being logged. Yet it is the PAIR that designates a display
+/// target unambiguously: a target identifier is only unique PER
+/// adapter, and this VM has more than one (SudoVDA, plus QEMU's VGA when
+/// it is present).
 pub type Adaptateur = (u32, i32);
 
-/// Ce que ce bloc attend d'un pilote d'affichage virtuel, quel qu'il soit.
+/// What this block expects from a virtual display driver, whichever it is.
 ///
-/// L'indirection existe pour deux raisons. La spec §6.4 acte un repli —
-/// changer de pilote si celui de la VM résiste — et ce repli ne doit faire
-/// réécrire ni la montée en N ni la garde. Et la garde ci-dessous doit
-/// pouvoir être éprouvée sans Windows.
+/// The indirection exists for two reasons. Spec §6.4 records a fallback —
+/// changing driver if the VM's resists — and this fallback must require rewriting
+/// neither the scale-up in N nor the guard. And the guard below must
+/// be testable without Windows.
 pub trait PiloteAffichageVirtuel {
-    fn creer(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie>;
+    fn create(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie>;
     fn detruire(&self, id: IdSortie) -> Result<()>;
 }
 
-/// Détruit les sorties créées quoi qu'il arrive, y compris si le fil panique.
+/// Destroys the created outputs whatever happens, including if the thread panics.
 ///
-/// Sans elle, une sonde qui plante à la cinquième création laisse cinq
-/// moniteurs derrière elle, et l'état survit au processus.
+/// Without it, a probe that crashes at the fifth creation leaves five
+/// monitors behind it, and the state outlives the process.
 pub struct Sorties<'p> {
     pilote: &'p dyn PiloteAffichageVirtuel,
     creees: Vec<IdSortie>,
@@ -90,41 +90,47 @@ pub struct Sorties<'p> {
 
 impl<'p> Sorties<'p> {
     pub fn nouvelles(pilote: &'p dyn PiloteAffichageVirtuel) -> Self {
-        Self { pilote, creees: Vec::new() }
+        Self {
+            pilote,
+            creees: Vec::new(),
+        }
     }
 
-    /// Un refus du pilote ressort tel quel et ne compte pas comme création :
-    /// détruire un identifiant que le pilote n'a jamais rendu ferait au mieux
-    /// une erreur de plus au journal, au pire détruirait la sortie d'autrui.
-    pub fn creer(&mut self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
-        let id = self.pilote.creer(largeur, hauteur, hertz)?;
+    /// A driver refusal comes out as is and does not count as a creation:
+    /// destroying an identifier the driver never returned would at best add
+    /// one more error to the log, at worst destroy someone else's output.
+    pub fn create(&mut self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
+        let id = self.pilote.create(largeur, hauteur, hertz)?;
         self.creees.push(id);
         Ok(id)
     }
 
-    pub fn nombre(&self) -> usize {
+    #[cfg(test)]
+    pub fn count(&self) -> usize {
         self.creees.len()
     }
 
-    /// Rend une sortie au pilote **pendant** l'exécution, et cesse de la
-    /// tenir.
+    /// Returns an output to the driver **during** execution, and stops
+    /// holding it.
     ///
-    /// Sans cette méthode, une sortie n'est rendue qu'à la destruction de la
-    /// garde, c'est-à-dire à l'arrêt du superviseur : le vivier du pilote
-    /// (dix sorties, mesuré) se consommerait alors à chaque OUVERTURE de
-    /// fenêtre et non par fenêtre simultanée, et une dizaine
-    /// d'ouvertures-fermetures suffirait à bloquer toute nouvelle fenêtre.
+    /// Without this method, an output is only returned at the destruction of the
+    /// guard, that is when the supervisor stops: the driver's pool
+    /// (ten outputs, measured) would then be consumed at each window OPENING
+    /// and not per simultaneous window, and about ten
+    /// openings-closings would be enough to block any new window.
     ///
-    /// Sur refus du pilote, la sortie **reste tenue** : elle est encore due,
-    /// et la garde la retentera à la destruction. L'oublier ici la rendrait
-    /// irrécupérable — le pilote ne retire que par un GUID dont lui seul et
-    /// `PiloteParIoctl` gardent la trace.
+    /// On a driver refusal, the output **stays held**: it is still due,
+    /// and the guard will retry it at destruction. Forgetting it here would make it
+    /// unrecoverable — the driver only removes through a GUID of which only it and
+    /// `PiloteParIoctl` keep track.
     pub fn detruire(&mut self, id: IdSortie) -> Result<()> {
         let rang = self
             .creees
             .iter()
             .position(|connu| *connu == id)
-            .with_context(|| format!("sortie {id} non tenue par cette garde — rien à rendre"))?;
+            .with_context(|| {
+                format!("output {id} not held by this guard — nothing to give back")
+            })?;
         self.pilote.detruire(id)?;
         self.creees.remove(rang);
         Ok(())
@@ -133,31 +139,31 @@ impl<'p> Sorties<'p> {
 
 impl Drop for Sorties<'_> {
     fn drop(&mut self) {
-        // En ordre inverse de création : si le pilote a un état d'ordre, le
-        // défaire dans l'ordre où il a été construit est le seul choix sûr.
-        // `Drop` court aussi pendant le déroulement d'une panique — c'est
-        // précisément le cas que la garde existe pour couvrir.
+        // In reverse order of creation: if the driver has an order-dependent state,
+        // undoing it in the order it was built is the only safe choice.
+        // `Drop` also runs during the unwinding of a panic — it is
+        // precisely the case the guard exists to cover.
         for id in self.creees.drain(..).rev() {
-            if let Err(erreur) = self.pilote.detruire(id) {
+            if let Err(error) = self.pilote.detruire(id) {
                 tracing::error!(
                     id,
-                    %erreur,
-                    "sortie virtuelle NON détruite — purge manuelle requise"
+                    %error,
+                    "virtual output NOT destroyed — manual purge required"
                 );
             }
         }
     }
 }
 
-/// Rapport entre les dimensions ANNONCÉES par la sortie
-/// (`DXGI_OUTPUT_DESC::DesktopCoordinates`) et celles de la texture
-/// RÉELLEMENT rendue par l'acquisition.
+/// Ratio between the dimensions ANNOUNCED by the output
+/// (`DXGI_OUTPUT_DESC::DesktopCoordinates`) and those of the texture
+/// ACTUALLY returned by the acquisition.
 ///
-/// La sonde a relevé une sortie virtuelle annoncée 3413×960 par DXGI quand
-/// WMI la disait 5120×1440 — rapport 1,5006, la mise à l'échelle DPI à 150 %.
-/// Si un recadrage est calculé sur le rectangle annoncé alors que la texture
-/// est aux dimensions physiques, il est décalé d'autant. Rend `None` si
-/// l'annonce est dégénérée : un rapport n'y aurait aucun sens.
+/// The probe noted a virtual output announced as 3413×960 by DXGI while
+/// WMI said 5120×1440 — ratio 1.5006, DPI scaling at 150 %.
+/// If a crop is computed on the announced rectangle while the texture
+/// is at physical dimensions, it is shifted by as much. Returns `None` if
+/// the announcement is degenerate: a ratio would make no sense there.
 pub fn facteur_echelle(annonce: (u32, u32), texture: (u32, u32)) -> Option<(f64, f64)> {
     if annonce.0 == 0 || annonce.1 == 0 {
         return None;
@@ -168,12 +174,12 @@ pub fn facteur_echelle(annonce: (u32, u32), texture: (u32, u32)) -> Option<(f64,
     ))
 }
 
-/// Convertit un rectangle exprimé en coordonnées du bureau virtuel — celles
-/// où vivent les fenêtres — vers les coordonnées de la texture rendue par
-/// l'acquisition de `sortie`.
+/// Converts a rectangle expressed in virtual desktop coordinates — those
+/// where windows live — into the coordinates of the texture returned by
+/// the acquisition of `sortie`.
 ///
-/// Deux corrections en une : le décalage de l'origine de la sortie dans le
-/// bureau virtuel, et le facteur d'échelle de `facteur_echelle`.
+/// Two corrections in one: the offset of the output's origin in the
+/// virtual desktop, and the scale factor of `facteur_echelle`.
 pub fn vers_texture(region: Rect, sortie: Rect, facteur: (f64, f64)) -> Rect {
     let x = (region.x - sortie.x) as f64 * facteur.0;
     let y = (region.y - sortie.y) as f64 * facteur.1;
@@ -185,26 +191,23 @@ pub fn vers_texture(region: Rect, sortie: Rect, facteur: (f64, f64)) -> Rect {
     }
 }
 
-/// La place plein cadre de chaque sortie, exprimée dans le repère de SA
+/// The full-frame slot of each output, expressed in the frame of reference of ITS
 /// texture.
 ///
-/// Le montage « une fenêtre par sortie » du chantier D pose une fenêtre qui
-/// couvre toute sa sortie ; la région à recadrer est donc toute la texture.
-/// Le calcul n'en est pas trivial pour autant : chaque sortie porte son propre
-/// facteur d'échelle DPI, et appliquer à toutes celui de la première décalerait
-/// silencieusement les recadrages des autres. Le banc mono-sortie n'avait qu'un
-/// facteur à connaître ; celui-ci en a N.
+/// Work stream D's "one window per output" set-up places a window that
+/// covers its whole output; the region to crop is therefore the whole texture.
+/// The computation is not trivial for all that: each output carries its own
+/// DPI scale factor, and applying the first one's to all would silently shift
+/// the crops of the others. The single-output bench only had one
+/// factor to know; this one has N.
 ///
-/// `sorties` porte les rectangles annoncés par DXGI
-/// (`DXGI_OUTPUT_DESC::DesktopCoordinates`), `textures` les dimensions
-/// réellement rendues par l'acquisition de chacune, dans le même ordre.
-pub fn places_texture_par_sortie(
-    sorties: &[Rect],
-    textures: &[(u32, u32)],
-) -> Result<Vec<Rect>> {
+/// `sorties` carries the rectangles announced by DXGI
+/// (`DXGI_OUTPUT_DESC::DesktopCoordinates`), `textures` the dimensions
+/// actually returned by the acquisition of each, in the same order.
+pub fn places_texture_par_sortie(sorties: &[Rect], textures: &[(u32, u32)]) -> Result<Vec<Rect>> {
     anyhow::ensure!(
         sorties.len() == textures.len(),
-        "{} sorties pour {} textures : l'appariement serait arbitraire",
+        "{} outputs for {} textures: the pairing would be arbitrary",
         sorties.len(),
         textures.len()
     );
@@ -213,11 +216,11 @@ pub fn places_texture_par_sortie(
         .zip(textures)
         .enumerate()
         .map(|(index, (sortie, texture))| {
-            let facteur = facteur_echelle((sortie.width, sortie.height), *texture)
-                .with_context(|| {
+            let facteur =
+                facteur_echelle((sortie.width, sortie.height), *texture).with_context(|| {
                     format!(
-                        "sortie {index} annoncée {}x{} : dimension nulle, aucun facteur \
-                         d'échelle n'a de sens",
+                        "output {index} announced {}x{}: zero dimension, no scale \
+                         factor makes sense",
                         sortie.width, sortie.height
                     )
                 })?;
@@ -227,247 +230,4 @@ pub fn places_texture_par_sortie(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::cell::RefCell;
-
-    /// Pilote factice : il compte les sorties vivantes, il n'en crée aucune.
-    struct PiloteFactice {
-        vivantes: RefCell<Vec<IdSortie>>,
-        suivant: RefCell<IdSortie>,
-        plafond: usize,
-        /// Sorties effectivement rendues par `detruire`, dans l'ordre — ce que
-        /// `Sorties::detruire` teste, distinctement de `vivantes` qui ne dit
-        /// que ce qui reste.
-        detruites: RefCell<Vec<IdSortie>>,
-        /// Fait échouer toute destruction tant que levé, sans toucher
-        /// `vivantes` : c'est le cas où le pilote refuse, et où la sortie
-        /// doit rester tenue par la garde.
-        refuse_les_destructions: RefCell<bool>,
-    }
-
-    impl PiloteFactice {
-        fn avec_plafond(plafond: usize) -> Self {
-            Self {
-                vivantes: RefCell::new(Vec::new()),
-                suivant: RefCell::new(1),
-                plafond,
-                detruites: RefCell::new(Vec::new()),
-                refuse_les_destructions: RefCell::new(false),
-            }
-        }
-    }
-
-    impl Default for PiloteFactice {
-        /// Aucun plafond : les tests de `detruire` ne portent pas sur le
-        /// vivier, `usize::MAX` évite qu'ils s'en soucient.
-        fn default() -> Self {
-            Self::avec_plafond(usize::MAX)
-        }
-    }
-
-    impl PiloteAffichageVirtuel for PiloteFactice {
-        fn creer(&self, _largeur: u32, _hauteur: u32, _hertz: u32) -> Result<IdSortie> {
-            let mut vivantes = self.vivantes.borrow_mut();
-            anyhow::ensure!(vivantes.len() < self.plafond, "plafond du pilote factice");
-            let mut suivant = self.suivant.borrow_mut();
-            let id = *suivant;
-            *suivant += 1;
-            vivantes.push(id);
-            Ok(id)
-        }
-
-        fn detruire(&self, id: IdSortie) -> Result<()> {
-            anyhow::ensure!(
-                !*self.refuse_les_destructions.borrow(),
-                "le pilote factice refuse cette destruction"
-            );
-            self.vivantes.borrow_mut().retain(|vivante| *vivante != id);
-            self.detruites.borrow_mut().push(id);
-            Ok(())
-        }
-    }
-
-    #[test]
-    fn la_garde_detruit_tout_ce_qu_elle_a_cree() {
-        let pilote = PiloteFactice::avec_plafond(8);
-        {
-            let mut sorties = Sorties::nouvelles(&pilote);
-            sorties.creer(1920, 1080, 60).unwrap();
-            sorties.creer(1920, 1080, 60).unwrap();
-            sorties.creer(1920, 1080, 60).unwrap();
-            assert_eq!(sorties.nombre(), 3);
-            assert_eq!(pilote.vivantes.borrow().len(), 3);
-        }
-        assert!(
-            pilote.vivantes.borrow().is_empty(),
-            "la garde a laissé des sorties derrière elle"
-        );
-    }
-
-    /// Le cas qui justifie la garde : ces API échouent par plantage, et un
-    /// moniteur virtuel survit au processus.
-    #[test]
-    fn la_garde_detruit_meme_quand_le_fil_panique() {
-        let pilote = PiloteFactice::avec_plafond(8);
-        let issue = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let mut sorties = Sorties::nouvelles(&pilote);
-            sorties.creer(1920, 1080, 60).unwrap();
-            sorties.creer(1920, 1080, 60).unwrap();
-            panic!("panique simulée au milieu de la montée en N");
-        }));
-        assert!(issue.is_err(), "la panique aurait dû se propager");
-        assert!(
-            pilote.vivantes.borrow().is_empty(),
-            "des moniteurs fantômes survivent à une panique"
-        );
-    }
-
-    #[test]
-    fn detruire_rend_la_sortie_au_pilote_et_l_oublie() {
-        let pilote = PiloteFactice::default();
-        let mut sorties = Sorties::nouvelles(&pilote);
-        let a = sorties.creer(1280, 720, 60).unwrap();
-        let b = sorties.creer(1600, 900, 60).unwrap();
-
-        sorties.detruire(a).unwrap();
-        assert_eq!(*pilote.detruites.borrow(), vec![a]);
-        assert_eq!(sorties.nombre(), 1);
-
-        // La garde ne doit pas redétruire `a` : le pilote refuserait, et le
-        // journal accuserait une purge due qui n'existe pas.
-        drop(sorties);
-        assert_eq!(*pilote.detruites.borrow(), vec![a, b]);
-    }
-
-    #[test]
-    fn detruire_une_sortie_inconnue_echoue_sans_rien_toucher() {
-        let pilote = PiloteFactice::default();
-        let mut sorties = Sorties::nouvelles(&pilote);
-        let a = sorties.creer(1280, 720, 60).unwrap();
-
-        assert!(sorties.detruire(a + 1000).is_err());
-        assert!(pilote.detruites.borrow().is_empty());
-        assert_eq!(sorties.nombre(), 1, "la sortie légitime reste tenue");
-    }
-
-    #[test]
-    fn une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie() {
-        // Le GUID est la seule prise du projet sur ce moniteur : l'oublier
-        // sur échec le rendrait irrécupérable, et la garde ne le retenterait
-        // jamais.
-        let pilote = PiloteFactice::default();
-        let mut sorties = Sorties::nouvelles(&pilote);
-        let a = sorties.creer(1280, 720, 60).unwrap();
-        *pilote.refuse_les_destructions.borrow_mut() = true;
-
-        assert!(sorties.detruire(a).is_err());
-        assert_eq!(sorties.nombre(), 1, "la sortie reste due tant qu'elle n'est pas rendue");
-    }
-
-    #[test]
-    fn un_refus_du_pilote_ne_perd_pas_les_sorties_deja_creees() {
-        let pilote = PiloteFactice::avec_plafond(2);
-        {
-            let mut sorties = Sorties::nouvelles(&pilote);
-            sorties.creer(1920, 1080, 60).unwrap();
-            sorties.creer(1920, 1080, 60).unwrap();
-            assert!(sorties.creer(1920, 1080, 60).is_err(), "le plafond aurait dû refuser");
-            assert_eq!(sorties.nombre(), 2, "un refus ne doit pas compter comme une création");
-        }
-        assert!(pilote.vivantes.borrow().is_empty());
-    }
-
-    #[test]
-    fn des_dimensions_identiques_donnent_un_facteur_unite() {
-        assert_eq!(facteur_echelle((2400, 1080), (2400, 1080)), Some((1.0, 1.0)));
-    }
-
-    /// Le piège relevé par la sonde : sortie annoncée 3413×960 par DXGI,
-    /// 5120×1440 par WMI — rapport 1,5, la mise à l'échelle DPI à 150 %.
-    #[test]
-    fn le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi() {
-        let (horizontal, vertical) = facteur_echelle((3413, 960), (5120, 1440)).unwrap();
-        assert!((horizontal - 1.5).abs() < 0.001, "horizontal = {horizontal}");
-        assert!((vertical - 1.5).abs() < 0.001, "vertical = {vertical}");
-    }
-
-    #[test]
-    fn une_annonce_degeneree_ne_donne_aucun_facteur() {
-        assert_eq!(facteur_echelle((0, 960), (5120, 1440)), None);
-        assert_eq!(facteur_echelle((3413, 0), (5120, 1440)), None);
-    }
-
-    #[test]
-    fn sans_echelle_ni_decalage_la_region_ne_bouge_pas() {
-        let sortie = Rect { x: 0, y: 0, width: 2400, height: 1080 };
-        let region = Rect { x: 100, y: 200, width: 300, height: 400 };
-        assert_eq!(vers_texture(region, sortie, (1.0, 1.0)), region);
-    }
-
-    #[test]
-    fn une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture() {
-        let sortie = Rect { x: 2400, y: 0, width: 3413, height: 960 };
-        let region = Rect { x: 2500, y: 100, width: 200, height: 200 };
-        assert_eq!(
-            vers_texture(region, sortie, (1.0, 1.0)),
-            Rect { x: 100, y: 100, width: 200, height: 200 }
-        );
-    }
-
-    /// Le cas qui compte : recadrer sur le rectangle annoncé alors que la
-    /// texture est aux dimensions physiques décalerait tout d'un facteur 1,5.
-    #[test]
-    fn le_facteur_dpi_agrandit_la_region_et_son_origine() {
-        let sortie = Rect { x: 0, y: 0, width: 3413, height: 960 };
-        let region = Rect { x: 100, y: 100, width: 200, height: 200 };
-        assert_eq!(
-            vers_texture(region, sortie, (1.5, 1.5)),
-            Rect { x: 150, y: 150, width: 300, height: 300 }
-        );
-    }
-
-    /// Le piège que cette fonction existe pour éviter : appliquer à toutes les
-    /// sorties le facteur d'échelle de la première. Deux sorties virtuelles
-    /// peuvent porter deux DPI différents, et un recadrage calculé au mauvais
-    /// facteur est décalé sans que rien ne le signale.
-    #[test]
-    fn chaque_sortie_est_convertie_avec_son_propre_facteur() {
-        let sorties = vec![
-            Rect { x: 0, y: 0, width: 1280, height: 720 },
-            Rect { x: 1280, y: 0, width: 853, height: 480 },
-        ];
-        let textures = vec![(1280, 720), (1280, 720)];
-        let places = places_texture_par_sortie(&sorties, &textures).unwrap();
-        assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
-        // Facteur 1280/853 ≈ 1,5 : la seconde sortie couvre TOUTE sa texture.
-        // C'est le test qui compte : avec le facteur de la sortie 0 (l'unité),
-        // on obtiendrait 853×480 dans un coin d'une texture 1280×720.
-        assert_eq!(places[1], Rect { x: 0, y: 0, width: 1280, height: 720 });
-    }
-
-    /// Chaque place est ramenée à l'origine de SA texture : c'est ce qui
-    /// distingue N sorties de N tuiles sur une sortie.
-    #[test]
-    fn une_sortie_decalee_dans_le_bureau_virtuel_part_de_l_origine_de_sa_texture() {
-        let sorties = vec![Rect { x: 3840, y: 200, width: 1280, height: 720 }];
-        let places = places_texture_par_sortie(&sorties, &[(1280, 720)]).unwrap();
-        assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
-    }
-
-    #[test]
-    fn un_desaccord_de_longueur_est_refuse() {
-        let sorties = vec![Rect { x: 0, y: 0, width: 1280, height: 720 }];
-        assert!(places_texture_par_sortie(&sorties, &[]).is_err());
-        assert!(places_texture_par_sortie(&[], &[(1280, 720)]).is_err());
-    }
-
-    /// Une annonce dégénérée ne donne aucun facteur (`facteur_echelle` rend
-    /// `None`) : le refus doit ressortir, pas un facteur unité silencieux qui
-    /// décalerait tous les recadrages de cette sortie.
-    #[test]
-    fn une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite() {
-        let sorties = vec![Rect { x: 0, y: 0, width: 0, height: 720 }];
-        assert!(places_texture_par_sortie(&sorties, &[(1280, 720)]).is_err());
-    }
-}
+mod tests;

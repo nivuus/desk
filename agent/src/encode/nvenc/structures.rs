@@ -1,98 +1,98 @@
-//! Les dispositions de structures NVENC que l'on configure **une fois** par
-//! session : ouverture, initialisation, réglages, préréglages.
+//! The NVENC structure layouts configured **once** per
+//! session: opening, initialisation, settings, presets.
 //!
-//! 🔴 **NOTICE DE LICENCE, PROVENANCE ET COMMANDE DE RELECTURE : voir
-//! `super::abi`.** Ce fichier prolonge la même transcription et relève de la
-//! même notice ; elle n'est pas recopiée ici pour qu'il n'y ait **qu'un seul**
-//! endroit à tenir à jour, mais la frontière d'attribution englobe bien ce
-//! fichier. Son pendant est `super::tampons`, qui porte ce qui s'échange
-//! **par image**.
+//! 🔴 **LICENCE NOTICE, PROVENANCE AND REREAD COMMAND: see
+//! `super::abi`.** This file extends the same transcription and falls under the
+//! same notice; it is not copied here so that there is **only one**
+//! place to keep up to date, but the attribution boundary does encompass this
+//! file. Its counterpart is `super::tampons`, which carries what is exchanged
+//! **per image**.
 //!
-//! ## Ce qui rend cette transcription vérifiable
+//! ## What makes this transcription checkable
 //!
-//! Chaque structure porte une assertion de **taille** et d'**alignement**
-//! évaluée à la compilation, et les structures dont un champ est atteint par
-//! calcul portent en plus des assertions de **déport**. Les valeurs viennent
-//! d'une mesure faite **sur la cible** `x86_64-pc-windows-gnu` par
-//! `x86_64-w64-mingw32-gcc` sur l'en-tête réel — pas d'une mesure d'hôte
-//! supposée transposable.
+//! Each structure carries a **size** and **alignment** assertion
+//! evaluated at compile time, and the structures one of whose fields is reached by
+//! computation also carry **offset** assertions. The values come
+//! from a measurement made **on the target** `x86_64-pc-windows-gnu` by
+//! `x86_64-w64-mingw32-gcc` on the real header — not from a host measurement
+//! assumed to carry over.
 //!
-//! 🔴 **Le message de chaque assertion NOMME la structure**, sans quoi un
-//! rouge ferait chercher.
+//! 🔴 **Each assertion's message NAMES the structure**, otherwise a
+//! red would send one searching.
 //!
-//! ## Ce que ces assertions attrapent, et ce qu'il est INUTILE d'en attendre
+//! ## What these assertions catch, and what it is USELESS to expect from them
 //!
-//! 🔴 **Une correction que j'ai failli écrire à l'envers, et qui vaut d'être
-//! consignée telle quelle.** En cherchant à faire rougir ce contrôle, j'ai
-//! ramené `NV_ENC_CONFIG::reserved` de 278 à 277 `u32` : **rien n'a rougi**,
-//! ni la taille ni le déport. J'ai d'abord conclu que le contrôle était
-//! faible, et j'ai écrit ici qu'il « restait vert sur une disposition
-//! fausse ». **C'était faux, et mesuré comme tel** (`equiv.c`, compilé) :
+//! 🔴 **A correction I nearly wrote the wrong way round, and which is worth
+//! recording as is.** Trying to make this check go red, I
+//! reduced `NV_ENC_CONFIG::reserved` from 278 to 277 `u32`: **nothing went red**,
+//! neither size nor offset. I first concluded that the check was
+//! weak, and I wrote here that it "stayed green on a wrong
+//! layout". **That was false, and measured as such** (`equiv.c`, compiled):
 //!
 //! ```text
-//! 278 : taille=3584 deport_reserved2=3072
-//! 277 : taille=3584 deport_reserved2=3072   <-- IDENTIQUE
-//! 276 : taille=3576 deport_reserved2=3064   <-- attrapé
+//! 278 : size=3584 offset_reserved2=3072
+//! 277 : size=3584 offset_reserved2=3072   <-- IDENTICAL
+//! 276 : size=3576 offset_reserved2=3064   <-- caught
 //! ```
 //!
-//! Le tableau finit à 3072 et `reserved2` est aligné sur 8 : les 4 octets
-//! retirés sont **entièrement repris par le remplissage**, et la disposition
-//! obtenue est **octet pour octet la même**. Ce n'est donc pas un défaut que
-//! le contrôle laisse passer — **c'est un non-défaut**, et rester vert est la
-//! bonne réponse. La leçon n'est pas « renforcer le contrôle » mais **« une
-//! rouge qui reste verte se DIAGNOSTIQUE, elle ne se classe pas »**.
+//! The array ends at 3072 and `reserved2` is aligned on 8: the 4 bytes
+//! removed are **entirely taken back by padding**, and the resulting layout
+//! is **byte for byte the same**. It is therefore not a defect the
+//! check lets through — **it is a non-defect**, and staying green is the
+//! right answer. The lesson is not "strengthen the check" but **"a
+//! red that stays green gets DIAGNOSED, it does not get filed"**.
 //!
-//! ✅ **Ce qui EST attrapé, et vérifié** : un champ manquant ou déplacé au
-//! milieu d'une structure (`mv_precision` retiré ⇒ *« déport ABI faux pour
-//! NV_ENC_CONFIG.rcParams »*), et tout écart de réservés assez grand pour
-//! franchir la frontière d'alignement (276 au lieu de 278).
+//! ✅ **What IS caught, and checked**: a missing or moved field in the
+//! middle of a structure (`mv_precision` removed ⇒ *"wrong ABI offset for
+//! NV_ENC_CONFIG.rcParams"*), and any gap in reserved fields large enough to
+//! cross the alignment boundary (276 instead of 278).
 //!
-//! ⚠️ **Les déports des réservés de queue sont assertés quand même** : ils ne
-//! coûtent rien, et ils ferment le cas « écart de plus d'un mot ».
+//! ⚠️ **The offsets of the trailing reserved fields are asserted anyway**: they
+//! cost nothing, and they close the "gap of more than one word" case.
 //!
-//! ## Trois conventions de transcription, et pourquoi
+//! ## Three transcription conventions, and why
 //!
-//! 1. **Les énumérations C deviennent des `u32`.** Elles pèsent 4 octets dans
-//!    cet en-tête, et un `enum` Rust avec des variantes manquantes serait un
-//!    comportement indéfini dès qu'un pilote plus récent en rendrait une
-//!    inconnue.
-//! 2. **Les champs de bits deviennent UN `u32` et des masques nommés.** Rust
-//!    n'a pas de champs de bits, et surtout : l'ordre d'attribution des bits
-//!    n'est pas garanti par le langage. Un `u32` explicite met cet ordre entre
-//!    nos mains, où il est relisible.
-//! 3. **Les réservés gardent leur compte réel.** Les dimensionner « pour que
-//!    la taille tombe juste » rendrait l'assertion de taille **tautologique**,
-//!    donc incapable d'échouer — un contrôle qui ne peut pas rougir n'en est
-//!    pas un.
+//! 1. **C enumerations become `u32`s.** They weigh 4 bytes in
+//!    this header, and a Rust `enum` with missing variants would be
+//!    undefined behaviour as soon as a more recent driver returned an
+//!    unknown one.
+//! 2. **Bit fields become ONE `u32` and named masks.** Rust
+//!    has no bit fields, and above all: the bit allocation order
+//!    is not guaranteed by the language. An explicit `u32` puts this order in
+//!    our hands, where it is re-readable.
+//! 3. **Reserved fields keep their real count.** Sizing them "so that
+//!    the size comes out right" would make the size assertion **tautological**,
+//!    hence unable to fail — a check that cannot go red is not
+//!    one.
 
 #![allow(dead_code)]
 
 use core::ffi::c_void;
 
 macro_rules! forme {
-    ($t:ty, $taille:expr, $alignement:expr, $nom:literal) => {
+    ($t:ty, $size:expr, $alignment:expr, $name:literal) => {
         const _: () = assert!(
-            core::mem::size_of::<$t>() == $taille,
-            concat!("taille ABI fausse pour ", $nom)
+            core::mem::size_of::<$t>() == $size,
+            concat!("wrong ABI size for ", $name)
         );
         const _: () = assert!(
-            core::mem::align_of::<$t>() == $alignement,
-            concat!("alignement ABI faux pour ", $nom)
+            core::mem::align_of::<$t>() == $alignment,
+            concat!("wrong ABI alignment for ", $name)
         );
     };
 }
 
 macro_rules! deport {
-    ($t:ty, $champ:ident, $valeur:expr, $nom:literal) => {
+    ($t:ty, $field:ident, $value:expr, $name:literal) => {
         const _: () = assert!(
-            core::mem::offset_of!($t, $champ) == $valeur,
-            concat!("déport ABI faux pour ", $nom)
+            core::mem::offset_of!($t, $field) == $value,
+            concat!("wrong ABI offset for ", $name)
         );
     };
 }
 
-/// `GUID` de l'en-tête. **Transcrit plutôt qu'emprunté à `windows-core`** :
-/// ce module doit compiler sur l'hôte Linux, où ce crate n'existe pas.
+/// The header's `GUID`. **Transcribed rather than borrowed from `windows-core`**:
+/// this module must compile on the Linux host, where that crate does not exist.
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Guid {
@@ -113,11 +113,11 @@ pub const CODEC_H264: Guid = Guid {
 
 /// `NV_ENC_PRESET_P1_GUID` — `{FC0A8D3E-45F8-4CF8-80C7-298871590EBF}`.
 ///
-/// ⚠️ **P1, le plus rapide.** L'en-tête le dit : la qualité monte et la
-/// performance descend de P1 vers P7. C'est aussi le préréglage qu'Apollo
-/// emploie sur cette machine — relevé dans son journal :
-/// `NvEnc: created encoder H.264 P1 async two-pass rfi`. **Ce n'est pas une
-/// calibration** : rien dans ce dépôt n'a mesuré P1 contre P4.
+/// ⚠️ **P1, the fastest.** The header says it: quality goes up and
+/// performance goes down from P1 to P7. It is also the preset Apollo
+/// uses on this machine — noted in its log:
+/// `NvEnc: created encoder H.264 P1 async two-pass rfi`. **It is not a
+/// calibration**: nothing in this repository has measured P1 against P4.
 pub const PRESET_P1: Guid = Guid {
     data1: 0xfc0a_8d3e,
     data2: 0x45f8,
@@ -127,10 +127,10 @@ pub const PRESET_P1: Guid = Guid {
 
 /// `NV_ENC_H264_PROFILE_BASELINE_GUID` — `{0727BCAA-78C4-4c83-8C2F-EF3DFF267C6A}`.
 ///
-/// ⚠️ **L'en-tête l'écrit `0x727bcaa`, sans le zéro de tête** ; la valeur est
-/// bien `0x0727BCAA`. Plusieurs octets de `data4` y sont aussi écrits courts
-/// (`0x3` pour `0x03`). C ne s'en soucie pas, une transcription à la main si.
-/// La forme `{…}` du commentaire est le recoupement.
+/// ⚠️ **The header writes it `0x727bcaa`, without the leading zero**; the value is
+/// indeed `0x0727BCAA`. Several bytes of `data4` are also written short there
+/// (`0x3` for `0x03`). C does not care, a hand transcription does.
+/// The `{…}` form of the comment is the cross-check.
 pub const PROFILE_H264_BASELINE: Guid = Guid {
     data1: 0x0727_bcaa,
     data2: 0x78c4,
@@ -140,9 +140,9 @@ pub const PROFILE_H264_BASELINE: Guid = Guid {
 
 /// `NV_ENC_QP`.
 ///
-/// ⚠️ L'en-tête le dit lui-même : ces champs sont `uint32_t` « for legacy
-/// reasons » et doivent être **traités comme signés** quand une valeur
-/// négative est visée.
+/// ⚠️ The header says it itself: these fields are `uint32_t` "for legacy
+/// reasons" and must be **treated as signed** when a negative
+/// value is intended.
 #[repr(C)]
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Qp {
@@ -213,13 +213,13 @@ pub struct ConfigH264Vui {
 }
 forme!(ConfigH264Vui, 112, 4, "NV_ENC_CONFIG_H264_VUI_PARAMETERS");
 
-/// `NV_ENC_CONFIG_H264`. ⚠️ **Aucun champ `version`** : c'est un membre
-/// d'union, versionné par son parent `Config`.
+/// `NV_ENC_CONFIG_H264`. ⚠️ **No `version` field**: it is a union
+/// member, versioned by its parent `Config`.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ConfigH264 {
-    /// Champ de bits : `enableTemporalSVC`(1) … `reservedBitFields`(10).
-    /// Voir les masques `H264_*` plus bas.
+    /// Bit field: `enableTemporalSVC`(1) … `reservedBitFields`(10).
+    /// See the `H264_*` masks below.
     pub drapeaux: u32,
     pub level: u32,
     pub idr_period: u32,
@@ -256,29 +256,29 @@ deport!(ConfigH264, vui, 72, "NV_ENC_CONFIG_H264.h264VUIParameters");
 deport!(ConfigH264, reserved1, 220, "NV_ENC_CONFIG_H264.reserved1");
 deport!(ConfigH264, reserved2, 1280, "NV_ENC_CONFIG_H264.reserved2");
 
-/// `outputAUD`, 7ᵉ bit du champ de bits de `ConfigH264`.
+/// `outputAUD`, 7th bit of the `ConfigH264` bit field.
 pub const H264_OUTPUT_AUD: u32 = 1 << 6;
-/// `repeatSPSPPS`, 13ᵉ bit — **indispensable en diffusion** : sans lui, un
-/// pair qui arrive en cours de route n'a jamais de SPS/PPS.
+/// `repeatSPSPPS`, 13th bit — **indispensable for broadcasting**: without it, a
+/// peer arriving midway never gets SPS/PPS.
 pub const H264_REPEAT_SPS_PPS: u32 = 1 << 12;
 
-/// `NV_ENC_CODEC_CONFIG`, réduite au seul membre que ce produit écrit.
+/// `NV_ENC_CODEC_CONFIG`, reduced to the only member this product writes.
 ///
-/// ⚠️ **L'union amont porte CINQ membres** (H.264, HEVC, AV1, et deux
-/// « MEOnly ») plus un `reserved[320]`. On n'en transcrit qu'un : une union C
-/// n'est que du stockage aligné, et transcrire quatre variantes que rien
-/// n'écrit serait quatre occasions de se tromper sans contrepartie. Le
-/// remplissage porte la taille, et l'assertion la vérifie.
+/// ⚠️ **The upstream union carries FIVE members** (H.264, HEVC, AV1, and two
+/// "MEOnly") plus a `reserved[320]`. We only transcribe one: a C union
+/// is only aligned storage, and transcribing four variants that nothing
+/// writes would be four opportunities to get it wrong for nothing in return. The
+/// padding carries the size, and the assertion checks it.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub union CodecConfig {
     pub h264: ConfigH264,
-    /// `[u64; 224]` = 1792 octets. ⚠️ **L'alignement de 8 ne vient PAS de
-    /// ce remplissage** — je l'ai d'abord écrit, c'était faux : l'alignement
-    /// d'une union est le maximum de celui de ses membres, et `h264` porte
-    /// déjà 8 (il contient des pointeurs). Un `[u32; 448]` donnerait donc
-    /// exactement la même union. Le `u64` est ici pour dire l'intention, pas
-    /// pour la produire.
+    /// `[u64; 224]` = 1792 bytes. ⚠️ **The alignment of 8 does NOT come from
+    /// this padding** — I first wrote that, it was wrong: the alignment
+    /// of a union is the maximum of its members', and `h264` already carries
+    /// 8 (it contains pointers). A `[u32; 448]` would therefore give
+    /// exactly the same union. The `u64` is here to state the intent, not
+    /// to produce it.
     pub _remplissage: [u64; 224],
 }
 forme!(CodecConfig, 1792, 8, "NV_ENC_CODEC_CONFIG");
@@ -290,7 +290,7 @@ pub struct Config {
     pub version: u32,
     pub profile_guid: Guid,
     pub gop_length: u32,
-    /// ⚠️ **Signé** dans l'en-tête.
+    /// ⚠️ **Signed** in the header.
     pub frame_interval_p: i32,
     pub mono_chrome_encoding: u32,
     pub frame_field_mode: u32,
@@ -302,7 +302,12 @@ pub struct Config {
 }
 forme!(Config, 3584, 8, "NV_ENC_CONFIG");
 deport!(Config, rc_params, 40, "NV_ENC_CONFIG.rcParams");
-deport!(Config, encode_codec_config, 168, "NV_ENC_CONFIG.encodeCodecConfig");
+deport!(
+    Config,
+    encode_codec_config,
+    168,
+    "NV_ENC_CONFIG.encodeCodecConfig"
+);
 deport!(Config, reserved, 1960, "NV_ENC_CONFIG.reserved");
 deport!(Config, reserved2, 3072, "NV_ENC_CONFIG.reserved2");
 
@@ -352,12 +357,42 @@ pub struct InitializeParams {
     pub reserved2: [*mut c_void; 64],
 }
 forme!(InitializeParams, 1800, 8, "NV_ENC_INITIALIZE_PARAMS");
-deport!(InitializeParams, encode_guid, 4, "NV_ENC_INITIALIZE_PARAMS.encodeGUID");
-deport!(InitializeParams, encode_config, 88, "NV_ENC_INITIALIZE_PARAMS.encodeConfig");
-deport!(InitializeParams, tuning_info, 136, "NV_ENC_INITIALIZE_PARAMS.tuningInfo");
-deport!(InitializeParams, buffer_format, 140, "NV_ENC_INITIALIZE_PARAMS.bufferFormat");
-deport!(InitializeParams, reserved1, 152, "NV_ENC_INITIALIZE_PARAMS.reserved1");
-deport!(InitializeParams, reserved2, 1288, "NV_ENC_INITIALIZE_PARAMS.reserved2");
+deport!(
+    InitializeParams,
+    encode_guid,
+    4,
+    "NV_ENC_INITIALIZE_PARAMS.encodeGUID"
+);
+deport!(
+    InitializeParams,
+    encode_config,
+    88,
+    "NV_ENC_INITIALIZE_PARAMS.encodeConfig"
+);
+deport!(
+    InitializeParams,
+    tuning_info,
+    136,
+    "NV_ENC_INITIALIZE_PARAMS.tuningInfo"
+);
+deport!(
+    InitializeParams,
+    buffer_format,
+    140,
+    "NV_ENC_INITIALIZE_PARAMS.bufferFormat"
+);
+deport!(
+    InitializeParams,
+    reserved1,
+    152,
+    "NV_ENC_INITIALIZE_PARAMS.reserved1"
+);
+deport!(
+    InitializeParams,
+    reserved2,
+    1288,
+    "NV_ENC_INITIALIZE_PARAMS.reserved2"
+);
 
 /// `NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS`.
 #[repr(C)]
@@ -367,7 +402,7 @@ pub struct OpenEncodeSessionExParams {
     pub device_type: u32,
     pub device: *mut c_void,
     pub reserved: *mut c_void,
-    /// ⚠️ **`NVENCAPI_VERSION`, pas une version de structure.**
+    /// ⚠️ **`NVENCAPI_VERSION`, not a structure version.**
     pub api_version: u32,
     pub reserved1: [u32; 253],
     pub reserved2: [*mut c_void; 64],
@@ -378,14 +413,24 @@ forme!(
     8,
     "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS"
 );
-deport!(OpenEncodeSessionExParams, reserved1, 28, "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved1");
-deport!(OpenEncodeSessionExParams, reserved2, 1040, "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved2");
+deport!(
+    OpenEncodeSessionExParams,
+    reserved1,
+    28,
+    "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved1"
+);
+deport!(
+    OpenEncodeSessionExParams,
+    reserved2,
+    1040,
+    "NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS.reserved2"
+);
 
 /// `NV_ENC_PRESET_CONFIG`.
 ///
-/// 🔴 **Sa `presetCfg.version` doit être posée EN PLUS de la sienne**, sans
-/// quoi `nvEncGetEncodePresetConfigEx` rend `NV_ENC_ERR_INVALID_VERSION`.
-/// C'est l'échec de premier lancement le plus courant de cette API.
+/// 🔴 **Its `presetCfg.version` must be set IN ADDITION to its own**, otherwise
+/// `nvEncGetEncodePresetConfigEx` returns `NV_ENC_ERR_INVALID_VERSION`.
+/// It is the most common first-launch failure of this API.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PresetConfig {
@@ -396,20 +441,30 @@ pub struct PresetConfig {
     pub reserved2: [*mut c_void; 64],
 }
 forme!(PresetConfig, 5128, 8, "NV_ENC_PRESET_CONFIG");
-deport!(PresetConfig, reserved1, 3592, "NV_ENC_PRESET_CONFIG.reserved1");
-deport!(PresetConfig, reserved2, 4616, "NV_ENC_PRESET_CONFIG.reserved2");
+deport!(
+    PresetConfig,
+    reserved1,
+    3592,
+    "NV_ENC_PRESET_CONFIG.reserved1"
+);
+deport!(
+    PresetConfig,
+    reserved2,
+    4616,
+    "NV_ENC_PRESET_CONFIG.reserved2"
+);
 
-/// `NV_ENC_RECONFIGURE_PARAMS` — change le débit d'un encodeur VIVANT.
+/// `NV_ENC_RECONFIGURE_PARAMS` — changes the bitrate of a LIVE encoder.
 ///
-/// 🔴 **Transcrite plutôt que de laisser `set_bitrate` sans effet.** Le dépôt
-/// pilote le débit vidéo par cette voie (`transport/adaptation.rs`) ; un
-/// second dos qui accepterait l'appel sans rien faire rendrait toute
-/// l'adaptation de bande passante **invisiblement inopérante** — la panne
-/// muette exactement.
+/// 🔴 **Transcribed rather than leaving `set_bitrate` without effect.** The repository
+/// drives the video bitrate through this path (`transport/adaptation.rs`); a
+/// second back end that accepted the call without doing anything would make all
+/// bandwidth adaptation **invisibly inoperative** — exactly the silent
+/// failure.
 ///
-/// ⚠️ Elle porte une `InitializeParams` ENTIÈRE : reconfigurer, c'est
-/// re-soumettre l'initialisation, débit modifié. D'où le fait que la session
-/// garde sa configuration d'origine.
+/// ⚠️ It carries a WHOLE `InitializeParams`: reconfiguring means
+/// resubmitting the initialisation, with the bitrate modified. Hence the session
+/// keeping its original configuration.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ReconfigureParams {
@@ -421,7 +476,12 @@ pub struct ReconfigureParams {
     pub reserved2: u32,
 }
 forme!(ReconfigureParams, 1816, 8, "NV_ENC_RECONFIGURE_PARAMS");
-deport!(ReconfigureParams, re_init_encode_params, 8, "NV_ENC_RECONFIGURE_PARAMS.reInitEncodeParams");
+deport!(
+    ReconfigureParams,
+    re_init_encode_params,
+    8,
+    "NV_ENC_RECONFIGURE_PARAMS.reInitEncodeParams"
+);
 
 /// `resetEncoder`, 1ᵉʳ bit.
 pub const RECONFIGURE_RESET: u32 = 1 << 0;

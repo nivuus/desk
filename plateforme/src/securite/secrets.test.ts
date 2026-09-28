@@ -1,23 +1,23 @@
-// Le balayage « aucun secret dans un fichier versionné ».
+// The sweep "no secret in a versioned file".
 //
-// 🔴 POURQUOI LES NOMS ET NON LES VALEURS. Chercher des VALEURS est
-// indécidable — un secret est une chaîne quelconque, et rien ne la distingue
-// d'un identifiant de test. Chercher une AFFECTATION D'UN NOM CONNU est
-// décidable, et c'est exactement le geste qu'un humain fait par inadvertance :
-// coller la valeur de `TURN_SECRET` dans un journal, un plan, ou un fichier de
-// composition.
+// 🔴 WHY NAMES AND NOT VALUES. Searching for VALUES is
+// undecidable — a secret is an arbitrary string, and nothing distinguishes it
+// from a test identifier. Searching for an ASSIGNMENT OF A KNOWN NAME is
+// decidable, and it is exactly the gesture a human makes inadvertently:
+// pasting the value of `TURN_SECRET` into a log, a plan, or a
+// compose file.
 //
-// 🔴 CE TEST NE DOIT JAMAIS IMPRIMER UNE VALEUR. Son message d'échec nomme le
-// FICHIER, la LIGNE et le NOM — jamais ce qui suit le signe égal. Un test de
-// sécurité qui recopierait le secret dans la sortie de la suite de tests
-// l'écrirait dans tous les journaux de CI qui la capturent, et le fuirait par
-// la porte qu'il gardait. C'est la même règle que
-// `docker compose … config`, dont le plan de P5 relève qu'il imprime
-// `--static-auth-secret` en clair.
+// 🔴 THIS TEST MUST NEVER PRINT A VALUE. Its failure message names the
+// FILE, the LINE and the NAME — never what follows the equals sign. A
+// security test that copied the secret into the output of the test suite
+// would write it into every CI log that captures it, and would leak it through
+// the door it guarded. It is the same rule as
+// `docker compose … config`, which P5's plan notes prints
+// `--static-auth-secret` in clear.
 //
-// ⚠️ IL BALAIE `git ls-files` À LA RACINE DU DÉPÔT, `docs/` COMPRIS. C'est
-// délibéré et c'est même le cas le plus probable : les journaux de recette
-// sont ce qu'on verse le plus vite et ce qu'on relit le moins.
+// ⚠️ IT SWEEPS `git ls-files` AT THE ROOT OF THE REPOSITORY, `docs/` INCLUDED. It is
+// deliberate and it is even the most likely case: acceptance logs
+// are what one pours in the fastest and rereads the least.
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -28,7 +28,7 @@ import { describe, expect, it } from 'vitest';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
-/// Les noms dont une affectation littérale est un secret fuité.
+/// The names whose literal assignment is a leaked secret.
 const NOMS = [
     'TURN_SECRET',
     'PLATEFORME_SECRET_JETON',
@@ -39,235 +39,235 @@ const NOMS = [
     'RECETTE_MOTDEPASSE',
 ] as const;
 
-/// L'empreinte d'une valeur — jamais la valeur.
+/// The fingerprint of a value — never the value.
 ///
-/// 🔴 C'EST CE QUI REND UNE EXCEPTION HONNÊTE. Une exception nommée seulement
-/// par `<fichier>:<NOM>` autoriserait N'IMPORTE QUELLE valeur future à cet
-/// endroit : le jour où quelqu'un remplacerait la fixture de recette par un
-/// vrai secret, l'exception le couvrirait EN SILENCE. En épinglant
-/// l'empreinte, tout changement de valeur fait ROUGIR le test, et il faut
-/// alors regarder.
+/// 🔴 IT IS WHAT MAKES AN EXCEPTION HONEST. An exception named only
+/// by `<file>:<NAME>` would authorise ANY future value at that
+/// place: the day someone replaced the acceptance fixture with a
+/// real secret, the exception would cover it SILENTLY. By pinning
+/// the fingerprint, any change of value turns the test RED, and one must
+/// then look.
 ///
-/// ⚠️ ELLE NE SERT PAS À CACHER, ET IL FAUT LE DIRE : les valeurs exemptées
-/// ci-dessous sont des fixtures publiques, et plusieurs de leurs empreintes
-/// sont devinables en une seconde (`ba7816bf8f01cfea` est le SHA-256 de
-/// « abc »). L'empreinte sert à DÉTECTER UN CHANGEMENT, pas à protéger un
-/// secret — et c'est exactement ce qu'on lui demande, puisqu'aucune valeur
-/// exemptée n'est un secret.
-function empreinte(valeur: string): string {
-    return createHash('sha256').update(valeur, 'utf8').digest('hex').slice(0, 16);
+/// ⚠️ IT IS NOT THERE TO HIDE, AND IT MUST BE SAID: the values exempted
+/// below are public fixtures, and several of their fingerprints
+/// can be guessed in a second (`ba7816bf8f01cfea` is the SHA-256 of
+/// "abc"). The fingerprint serves to DETECT A CHANGE, not to protect a
+/// secret — and it is exactly what is asked of it, since no exempted
+/// value is a secret.
+function empreinte(value: string): string {
+    return createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 16);
 }
 
 interface Exception {
-    fichier: string;
+    file: string;
     nom: string;
-    /// L'empreinte de la valeur AUTORISÉE, et d'elle seule.
+    /// The fingerprint of the ALLOWED value, and of it alone.
     empreinte: string;
     raison: string;
 }
 
-/// Les exceptions, CHACUNE AVEC SA RAISON ÉCRITE — sur le patron de
-/// `DRAPEAUX_INTERDITS` d'`admin/enroler-agent.ts`.
+/// The exceptions, EACH WITH ITS WRITTEN REASON — on the pattern of
+/// `DRAPEAUX_INTERDITS` in `admin/enroler-agent.ts`.
 ///
-/// ⚠️ AUCUNE N'EST UN SECRET RÉEL. Le balayage a été joué sur l'état du dépôt
-/// au 20 août 2026, et les treize affectations qu'il a d'abord dénoncées ont
-/// été LUES UNE PAR UNE : deux étaient des faux positifs de l'expression
-/// régulière (l'idiome `${VAR:?message}`, corrigé depuis), et les onze autres
-/// sont des fixtures — de test, de recette, ou des exemples de documentation.
-/// Aucun secret de production n'a jamais été versionné dans ce dépôt.
+/// ⚠️ NONE IS A REAL SECRET. The sweep was played on the state of the repository
+/// as of 20 August 2026, and the thirteen assignments it first denounced were
+/// READ ONE BY ONE: two were false positives of the regular
+/// expression (the `${VAR:?message}` idiom, fixed since), and the other eleven
+/// are fixtures — test ones, acceptance ones, or documentation examples.
+/// No production secret has ever been versioned in this repository.
 const EXCEPTIONS: readonly Exception[] = [
     {
-        fichier: 'docker-compose.plateforme.yml',
+        file: 'docker-compose.plateforme.yml',
         nom: 'POSTGRES_PASSWORD',
         empreinte: '3b132f52b3b4ad4d',
         raison:
-            "L'instance Postgres de TEST, jetable, dont l'en-tête du fichier déclare " +
-            "en toutes lettres qu'« une base de production n'emploiera JAMAIS ce " +
-            'fichier ». La valeur est la même pour tout le monde et ne protège rien.',
+            "The TEST Postgres instance, disposable, whose file header declares " +
+            "in plain words that « a production database will NEVER use this " +
+            'file ». The value is the same for everybody and protects nothing.',
     },
     {
-        fichier: 'docs/superpowers/plans/2026-08-19-plateforme-p5.md',
+        file: 'docs/superpowers/plans/2026-08-19-plateforme-p5.md',
         nom: 'POSTGRES_PASSWORD',
-        // La MÊME empreinte que la ligne du fichier de composition : c'est la
-        // même valeur, et l'épinglage le montre plutôt que de l'affirmer.
+        // The SAME fingerprint as the line of the compose file: it is the
+        // same value, and the pinning shows it rather than asserting it.
         empreinte: '3b132f52b3b4ad4d',
         raison:
-            'Le plan de P5 CITE la ligne du fichier de composition ci-dessus, pour ' +
-            "expliquer pourquoi elle est exemptée. C'est la même valeur de fixture, " +
-            'recopiée dans une phrase.',
+            'The P5 plan QUOTES the line of the composition file above, to ' +
+            "explain why it is exempted. It is the same fixture value, " +
+            'copied into a sentence.',
     },
-    // ❌ **UNE EXCEPTION PAR CHEMIN A ÉTÉ RETIRÉE ICI AU LOT 33** :
+    // ❌ **A PER-PATH EXCEPTION WAS REMOVED HERE IN BATCH 33**:
     // `docs/superpowers/plans/2026-07-27-jalon1-tranche-verticale.md` /
-    // `WINDOWS_ADMIN_PASSWORD` / empreinte `ab5df625bc76dbd4`. Sa raison
-    // écrite était « une valeur littéralement « ... », un OBJET DE
-    // REMPLACEMENT » — c'est-à-dire exactement ce que la branche `...` d'
-    // `inoffensive` couvre désormais, pour TOUS les chemins. La retirer est
-    // ce qui prouve que la branche mord : si elle ne mordait pas, ce fichier
-    // rougirait.
+    // `WINDOWS_ADMIN_PASSWORD` / fingerprint `ab5df625bc76dbd4`. Its written
+    // reason was "a value that is literally "...", a
+    // PLACEHOLDER" — that is, exactly what the `...` branch of
+    // `inoffensive` now covers, for ALL paths. Removing it is
+    // what proves the branch bites: if it did not bite, this file
+    // would turn red.
     {
-        fichier: 'docs/superpowers/plans/2026-07-29-traversee-nat.md',
+        file: 'docs/superpowers/plans/2026-07-29-traversee-nat.md',
         nom: 'TURN_SECRET',
         empreinte: '2bb80d537b1da3e3',
         raison:
-            "Une fixture de test recopiée dans le plan : la valeur est le mot " +
-            '« secret » lui-même, et le même littéral vit dans `signaling/ice.test.ts`.',
+            "A test fixture copied into the plan: the value is the word " +
+            '« secret » itself, and the same literal lives in `signaling/ice.test.ts`.',
     },
     {
-        fichier: 'plateforme/src/signaling/ice.test.ts',
+        file: 'plateforme/src/signaling/ice.test.ts',
         nom: 'TURN_SECRET',
         empreinte: '2bb80d537b1da3e3',
         raison:
-            'La fixture du test de `configurationIce` : la valeur est le mot ' +
-            "« secret ». Un vrai secret y serait inutile — le test vérifie la FORME " +
-            "de l'identifiant dérivé, pas sa résistance.",
+            'The fixture of the `configurationIce` test: the value is the word ' +
+            "« secret ». A real secret would be useless there — the test checks the SHAPE " +
+            "of the derived identifier, not its strength.",
     },
     {
-        fichier: 'docs/superpowers/plans/2026-08-19-plateforme-p3.md',
+        file: 'docs/superpowers/plans/2026-08-19-plateforme-p3.md',
         nom: 'AGENT_SECRET',
         empreinte: 'ba7816bf8f01cfea',
         raison:
-            "Une valeur de trois lettres dans une commande de contrôle de SYNTAXE " +
-            "(`bash -n`) : le script n'est jamais exécuté, et la valeur n'atteint " +
-            'aucune VM.',
+            "A three-letter value in a SYNTAX check command " +
+            "(`bash -n`): the script is never run, and the value reaches " +
+            'no VM.',
     },
     {
-        fichier: 'docs/superpowers/plans/journaux-corrections/instrument/compter-enrolements.sh',
+        file: 'docs/superpowers/plans/journaux-corrections/instrument/compter-enrolements.sh',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '6b82a0dca0d6fa4d',
         raison:
-            "Le secret de signature d'un instrument de RECETTE, tiré pour cette " +
-            "recette-là et mort avec elle. Il ne signe aucun jeton d'un service vivant.",
+            "The signing secret of an ACCEPTANCE instrument, drawn for that " +
+            "acceptance run and dead with it. It signs no token of a live service.",
     },
     {
-        fichier: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/jouer.sh',
+        file: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/jouer.sh',
         nom: 'TURN_SECRET',
         empreinte: '20e73cf9ccbda64a',
         raison:
-            "Le secret TURN d'un instrument de recette P3, nommé « recette-p3-… » " +
-            "précisément pour qu'on ne le confonde pas avec celui du relais réel.",
+            "The TURN secret of a P3 acceptance instrument, named « recette-p3-… » " +
+            "precisely so that it is not mistaken for the one of the real relay.",
     },
     {
-        fichier: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/rouge-1a.ts',
+        file: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/rouge-1a.ts',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '2923f1439452d95c',
         raison:
-            'Idem : la fixture de signature de la rouge ①A de P3, nommée ' +
-            '« recette-p3-… », morte avec sa recette.',
+            'Likewise: the signing fixture of red run ①A of P3, named ' +
+            '« recette-p3-… », dead with its acceptance run.',
     },
     {
-        fichier: 'plateforme/src/config.test.ts',
+        file: 'plateforme/src/config.test.ts',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '94e4c4bc7d176bd9',
         raison:
-            "La valeur est littéralement « trop-court » : c'est le test qui vérifie " +
-            "que `lireConfig` REFUSE un secret sous `LONGUEUR_SECRET_MIN`.",
+            "The value is literally « trop-court »: it is the test that checks " +
+            "that `lireConfig` REFUSES a secret under `LONGUEUR_SECRET_MIN`.",
     },
     {
-        fichier: 'tests/desk_activate_fixtures.py',
+        file: 'tests/desk_activate_fixtures.py',
         nom: 'AGENT_SECRET',
         empreinte: 'fc66b5649cf2782e',
         raison:
-            "La sortie SIMULÉE d'un faux `npm run admin:agent`, dans les tests du " +
-            "package `desk` : ce script factice imprime cette ligne pour que le hook " +
-            "activate.py sous test croie avoir enrôlé un agent, sans jamais parler à " +
-            "une vraie plateforme. Ce n'est l'identifiant d'AUCUN agent réel. " +
-            "Réécrire la fixture ne servirait à rien — le détecteur cherche des NOMS, " +
-            "jamais des valeurs (voir l'en-tête du fichier), donc une valeur changée " +
-            "resterait tout autant dénoncée ; et concaténer la chaîne pour esquiver " +
-            "l'expression régulière serait pire que le mal : la fixture deviendrait " +
-            "invisible à tout audit futur, alors qu'elle est ici visible et discutée.",
+            "The SIMULATED output of a fake `npm run admin:agent`, in the tests of the " +
+            "`desk` package: this dummy script prints this line so that the " +
+            "activate.py hook under test believes it enrolled an agent, without ever talking to " +
+            "a real platform. It is the identifier of NO real agent. " +
+            "Rewriting the fixture would be pointless — the detector looks for NAMES, " +
+            "never for values (see the file header), so a changed value " +
+            "would be reported just the same; and concatenating the string to dodge " +
+            "the regular expression would be worse than the harm: the fixture would become " +
+            "invisible to any future audit, whereas here it is visible and discussed.",
     },
 ];
 
-/// Une valeur est INOFFENSIVE si elle ne peut pas être un secret collé.
+/// A value is HARMLESS if it cannot be a pasted secret.
 ///
-/// ⚠️ CHAQUE BRANCHE EST UN TROU POTENTIEL, et c'est pourquoi elles sont
-/// énumérées ici plutôt que noyées dans une expression régulière : un
-/// successeur qui en ajoutera une devra écrire pourquoi.
-function inoffensive(valeur: string): boolean {
-    // Vide : `TURN_SECRET=` ne porte rien.
-    if (valeur === '') return true;
-    // Interpolation shell, docker compose ou Windows : la valeur vient
-    // d'ailleurs, et « ailleurs » n'est pas versionné.
-    if (/^[$%]/.test(valeur)) return true;
-    // Une SUBSTITUTION de commande : `$(openssl rand -hex 32)`.
-    if (valeur.startsWith('(')) return true;
-    // Un IDENTIFIANT de code, en majuscules : `PLATEFORME_SECRET_JETON: SECRET`
-    // désigne une constante TypeScript, pas une valeur. Un secret réel en
-    // majuscules pures et sans chiffre minuscule serait un secret risible.
-    if (/^[A-Z][A-Z0-9_]*$/.test(valeur)) return true;
-    // Un OBJET de remplacement explicite : `<généré>`, `<votre secret>`.
-    if (valeur.startsWith('<')) return true;
-    // 🔴 L'ELLIPSE, QUI EST LE MÊME OBJET DE REMPLACEMENT SOUS UN AUTRE
-    // SIGNE — ajoutée au lot 33, après que le contrôle a CRIÉ À TORT.
+/// ⚠️ EACH BRANCH IS A POTENTIAL HOLE, and that is why they are
+/// enumerated here rather than drowned in a regular expression: a
+/// successor who adds one will have to write why.
+function inoffensive(value: string): boolean {
+    // Empty: `TURN_SECRET=` carries nothing.
+    if (value === '') return true;
+    // Shell, docker compose or Windows interpolation: the value comes
+    // from elsewhere, and "elsewhere" is not versioned.
+    if (/^[$%]/.test(value)) return true;
+    // A command SUBSTITUTION: `$(openssl rand -hex 32)`.
+    if (value.startsWith('(')) return true;
+    // A code IDENTIFIER, in upper case: `PLATEFORME_SECRET_JETON: SECRET`
+    // designates a TypeScript constant, not a value. A real secret in
+    // pure upper case with no lower-case digit would be a laughable secret.
+    if (/^[A-Z][A-Z0-9_]*$/.test(value)) return true;
+    // An explicit PLACEHOLDER: `<generated>`, `<your secret>`.
+    if (value.startsWith('<')) return true;
+    // 🔴 THE ELLIPSIS, WHICH IS THE SAME PLACEHOLDER UNDER ANOTHER
+    // SIGN — added in batch 33, after the check CRIED WOLF.
     //
-    // `RECETTE_MOTDEPASSE=...` dans une ligne d'usage
-    // (`journaux-lot31/instrument/pilote-lot31.mjs:19`) faisait rougir tout
-    // `verify-all.sh`, deux étapes durant, sur une ligne qui ne porte aucune
-    // valeur. **Ce n'était pas un faux positif isolé : c'était une CLASSE**,
-    // et elle était traitée exception par exception, PAR CHEMIN — donc un
-    // nouvel exemple d'usage, dans n'importe quel document ou instrument de
-    // recette, la rouvrait.
+    // `RECETTE_MOTDEPASSE=...` in a usage line
+    // (`journaux-lot31/instrument/pilote-lot31.mjs:19`) turned all of
+    // `verify-all.sh` red, for two steps, on a line that carries no
+    // value. **It was not an isolated false positive: it was a CLASS**,
+    // and it was handled exception by exception, PER PATH — so a
+    // new usage example, in any document or acceptance
+    // instrument, reopened it.
     //
-    // ⚠️ **UN CONTRÔLE QU'IL FAUT AMENDER À CHAQUE NON-TROUVAILLE APPREND À
-    // SES LECTEURS À LE BALAYER D'UN REVERS DE MAIN** — et c'est ainsi qu'une
-    // vraie trouvaille finit balayée aussi. Fermer la classe au niveau de la
-    // VALEUR vaut mieux que d'allonger la liste des chemins.
+    // ⚠️ **A CHECK THAT MUST BE AMENDED AT EVERY NON-FINDING TEACHES
+    // ITS READERS TO BRUSH IT ASIDE** — and that is how a
+    // real finding ends up brushed aside too. Closing the class at the level of the
+    // VALUE is better than lengthening the list of paths.
     //
-    // ⚠️ **CE QUE CETTE BRANCHE N'OUVRE PAS** : elle n'accepte que la valeur
-    // ENTIÈRE `...` (ou `…`), jamais un préfixe ni un suffixe. `abc...` reste
-    // dénoncé, et un secret réel qui vaudrait exactement trois points n'est
-    // pas un secret.
-    if (valeur === '...' || valeur === '…') return true;
+    // ⚠️ **WHAT THIS BRANCH DOES NOT OPEN**: it only accepts the
+    // WHOLE value `...` (or `…`), never a prefix or a suffix. `abc...` stays
+    // denounced, and a real secret that was exactly three dots is
+    // not a secret.
+    if (value === '...' || value === '…') return true;
     return false;
 }
 
 interface Trouvaille {
-    fichier: string;
+    file: string;
     ligne: number;
     nom: string;
-    /// L'empreinte de la valeur — jamais la valeur.
+    /// The fingerprint of the value — never the value.
     empreinte: string;
 }
 
-/// Extrait la valeur affectée, sans jamais la rendre à l'appelant autrement
-/// que pour la classer.
-function valeurApres(reste: string): string {
+/// Extracts the assigned value, without ever returning it to the caller other
+/// than to classify it.
+function valueAfter(reste: string): string {
     const t = reste.trimStart();
-    // Une chaîne citée : on lit jusqu'au guillemet fermant.
+    // A quoted string: we read up to the closing quote.
     const cite = /^(['"`])(.*?)\1/.exec(t);
     if (cite) return cite[2];
-    // Sinon, jusqu'au premier séparateur.
+    // Otherwise, up to the first separator.
     //
-    // ⚠️ L'ACCENT GRAVE EST UN SÉPARATEUR, ET CE N'EST PAS UN DÉTAIL : il
-    // ferme une portion de code en Markdown, et ce dépôt est écrit en
-    // Markdown. Sans lui, la phrase « `TURN_SECRET=` ne porte rien » d'un
-    // commentaire fait extraire la valeur « ` », qu'aucune branche
-    // d'`inoffensive` ne rattrape — et le balayage se dénonce LUI-MÊME.
+    // ⚠️ THE BACKTICK IS A SEPARATOR, AND IT IS NOT A DETAIL: it
+    // closes a code span in Markdown, and this repository is written in
+    // Markdown. Without it, the sentence "`TURN_SECRET=` carries nothing" of a
+    // comment makes the value "`" be extracted, which no branch
+    // of `inoffensive` catches — and the sweep denounces ITSELF.
     //
-    // 🔴 C'EST ARRIVÉ, ET LA FAÇON DONT CE FUT MANQUÉ EST LA LEÇON. Le test
-    // est passé VERT avant d'être commité — donc avant d'être suivi par git,
-    // donc AVANT QUE `git ls-files` NE LE VOIE. Un balayage qui lit
-    // `git ls-files` ne se mesure lui-même qu'une fois SUIVI : le vert
-    // d'avant le commit ne mesurait pas le dépôt d'après. Il n'a rougi qu'à
-    // la rouge de `essai-secret.env`, qui l'a révélé par accident.
+    // 🔴 IT HAPPENED, AND THE WAY IT WAS MISSED IS THE LESSON. The test
+    // went GREEN before being committed — hence before being tracked by git,
+    // hence BEFORE `git ls-files` SAW IT. A sweep that reads
+    // `git ls-files` only measures itself once TRACKED: the green
+    // from before the commit did not measure the repository after it. It only turned red at
+    // the red of `essai-secret.env`, which revealed it by accident.
     //
-    // ⚠️ CETTE TOLÉRANCE NE CRÉE PAS DE TROU. Un nom suivi de « = » puis
-    // d'une vraie valeur, à l'intérieur d'une portion de code Markdown, rend
-    // toujours cette valeur, qui reste dénoncée. Seule une affectation
-    // IMMÉDIATEMENT suivie d'un accent grave — donc VIDE — devient
-    // inoffensive, et une affectation vide l'est de toute façon.
+    // ⚠️ THIS TOLERANCE CREATES NO HOLE. A name followed by "=" then
+    // by a real value, inside a Markdown code span, still returns
+    // that value, which stays denounced. Only an assignment
+    // IMMEDIATELY followed by a backtick — hence EMPTY — becomes
+    // harmless, and an empty assignment is harmless anyway.
     //
-    // ⚠️ ET CE COMMENTAIRE-CI EN A FAIT LA DÉMONSTRATION : sa première
-    // rédaction portait l'exemple littéral, le balayage l'a dénoncé, et il a
-    // fallu le reformuler. Le test se surveille donc lui-même, ce qui est la
-    // propriété qu'on lui demande — mais cela oblige à ÉCRIRE ses exemples
-    // sans jamais les composer.
+    // ⚠️ AND THIS VERY COMMENT DEMONSTRATED IT: its first
+    // draft carried the literal example, the sweep denounced it, and it had
+    // to be rephrased. The test therefore watches itself, which is the
+    // property asked of it — but it forces one to WRITE its examples
+    // without ever composing them.
     return /^[^\s,;)}\]`]*/.exec(t)?.[0] ?? '';
 }
 
 function balayer(): Trouvaille[] {
-    const fichiers = execFileSync('git', ['ls-files', '-z'], {
+    const files = execFileSync('git', ['ls-files', '-z'], {
         cwd: RACINE,
         maxBuffer: 64 * 1024 * 1024,
     })
@@ -275,34 +275,34 @@ function balayer(): Trouvaille[] {
         .split('\0')
         .filter((f) => f !== '');
 
-    // `(?:=(?!=))` : `===` et `==` sont des COMPARAISONS, pas des
-    // affectations. Sans cette garde, `AGENT_SECRET === x` serait dénoncé.
-    // `(?<!\$)\{` : dans `${VAR:?message}` ou `${VAR:+…}`, le `:` fait partie
-    // d'une INTERPOLATION, pas d'une affectation. Sans cette garde, l'idiome
-    // `\${VAR:?message}` — celui-là même que le déploiement emploie pour rendre
-    // une variable obligatoire — serait dénoncé comme un secret. MESURÉ : il
-    // produisait 3 des 13 premières trouvailles.
+    // `(?:=(?!=))`: `===` and `==` are COMPARISONS, not
+    // assignments. Without this guard, `AGENT_SECRET === x` would be denounced.
+    // `(?<!\$)\{`: in `${VAR:?message}` or `${VAR:+…}`, the `:` is part
+    // of an INTERPOLATION, not of an assignment. Without this guard, the idiom
+    // `\${VAR:?message}` — the very one the deployment uses to make
+    // a variable mandatory — would be denounced as a secret. MEASURED: it
+    // produced 3 of the first 13 findings.
     //
-    // `(?:=(?!=))` : `===` et `==` sont des COMPARAISONS. Sans cette garde,
-    // `AGENT_SECRET === x` serait dénoncé.
+    // `(?:=(?!=))`: `===` and `==` are COMPARISONS. Without this guard,
+    // `AGENT_SECRET === x` would be denounced.
     const motif = new RegExp(
         `(?:^|[\\s"'\`(,;]|(?<!\\$)\\{)(${NOMS.join('|')})\\s*(?::|=(?!=))(.*)$`,
     );
 
     const trouvailles: Trouvaille[] = [];
-    for (const fichier of fichiers) {
-        const chemin = path.join(RACINE, fichier);
-        let taille: number;
+    for (const file of files) {
+        const chemin = path.join(RACINE, file);
+        let size: number;
         try {
-            taille = statSync(chemin).size;
+            size = statSync(chemin).size;
         } catch {
-            // Un fichier suivi mais absent du disque (suppression non
-            // commitée) : il n'y a rien à lire, et ce n'est pas notre sujet.
+            // A file tracked but absent from disk (uncommitted
+            // deletion): there is nothing to read, and it is not our subject.
             continue;
         }
-        // Les binaires volumineux n'ont pas d'affectation lisible, et les lire
-        // coûterait sans rien apprendre.
-        if (taille > 4 * 1024 * 1024) continue;
+        // Large binaries have no readable assignment, and reading them
+        // would cost without teaching anything.
+        if (size > 4 * 1024 * 1024) continue;
         let contenu: string;
         try {
             contenu = readFileSync(chemin, 'utf8');
@@ -315,77 +315,77 @@ function balayer(): Trouvaille[] {
         for (let i = 0; i < lignes.length; i++) {
             const m = motif.exec(lignes[i]);
             if (!m) continue;
-            const valeur = valeurApres(m[2]);
-            if (inoffensive(valeur)) continue;
+            const value = valueAfter(m[2]);
+            if (inoffensive(value)) continue;
             trouvailles.push({
-                fichier,
+                file,
                 ligne: i + 1,
                 nom: m[1],
-                empreinte: empreinte(valeur),
+                empreinte: empreinte(value),
             });
         }
     }
     return trouvailles;
 }
 
-describe('aucun secret dans un fichier versionné', () => {
-    it('🔴 ne trouve aucune affectation littérale hors des exceptions déclarées', () => {
+describe('no secret in a versioned file', () => {
+    it('🔴 finds no literal assignment outside the declared exceptions', () => {
         const trouvailles = balayer();
         const autorisees = new Set(
-            EXCEPTIONS.map((e) => `${e.fichier}:${e.nom}:${e.empreinte}`),
+            EXCEPTIONS.map((e) => `${e.file}:${e.nom}:${e.empreinte}`),
         );
         const hors = trouvailles.filter(
-            (t) => !autorisees.has(`${t.fichier}:${t.nom}:${t.empreinte}`),
+            (t) => !autorisees.has(`${t.file}:${t.nom}:${t.empreinte}`),
         );
-        // ⚠️ LE MESSAGE NOMME LE FICHIER, LA LIGNE ET LE NOM — JAMAIS LA
-        // VALEUR. Voir l'en-tête : un test de sécurité qui imprimerait le
-        // secret le fuirait par la porte qu'il garde.
+        // ⚠️ THE MESSAGE NAMES THE FILE, THE LINE AND THE NAME — NEVER THE
+        // VALUE. See the header: a security test that printed the
+        // secret would leak it through the door it guards.
         expect(
-            hors.map((t) => `${t.fichier}:${t.ligne} affecte ${t.nom} [empreinte ${t.empreinte}]`),
-            "des secrets sont affectés en clair dans des fichiers versionnés " +
-                "(la valeur n'est volontairement pas affichée)",
+            hors.map((t) => `${t.file}:${t.ligne} assigns ${t.nom} [fingerprint ${t.empreinte}]`),
+            "secrets are assigned in plaintext in versioned files " +
+                "(the value is deliberately not shown)",
         ).toEqual([]);
     });
 
-    it('chaque exception porte une RAISON non vide', () => {
-        // Sans cette assertion, la liste deviendrait en deux chantiers une
-        // liste de choses qu'on a renoncé à comprendre.
+    it('each exception carries a non-empty REASON', () => {
+        // Without this assertion, within two workstreams the list would become a
+        // list of things one gave up understanding.
         for (const e of EXCEPTIONS) {
-            expect(e.raison.trim().length, `l'exception ${e.fichier}:${e.nom} n'a pas de raison`)
+            expect(e.raison.trim().length, `the exception ${e.file}:${e.nom} has no reason`)
                 .toBeGreaterThan(30);
-            expect(e.empreinte, `l'exception ${e.fichier}:${e.nom} n'épingle aucune valeur`)
+            expect(e.empreinte, `the exception ${e.file}:${e.nom} pins no value`)
                 .toMatch(/^[0-9a-f]{16}$/);
         }
     });
 
-    it('🔴 chaque exception correspond à une trouvaille RÉELLE', () => {
-        // 🔴 UNE EXCEPTION QUI NE COUVRE PLUS RIEN EST UN MENSONGE QUI DORT :
-        // le jour où le fichier change, elle continue d'autoriser un chemin
-        // que personne ne relit. Cette assertion la fait tomber le jour où
-        // elle cesse d'être nécessaire.
+    it('🔴 each exception matches a REAL finding', () => {
+        // 🔴 AN EXCEPTION THAT NO LONGER COVERS ANYTHING IS A SLEEPING LIE:
+        // the day the file changes, it keeps authorising a path
+        // nobody rereads. This assertion brings it down the day
+        // it stops being necessary.
         const reelles = new Set(
-            balayer().map((t) => `${t.fichier}:${t.nom}:${t.empreinte}`),
+            balayer().map((t) => `${t.file}:${t.nom}:${t.empreinte}`),
         );
         for (const e of EXCEPTIONS) {
-            const cle = `${e.fichier}:${e.nom}:${e.empreinte}`;
-            expect(reelles.has(cle), `l'exception ${e.fichier}:${e.nom} ne couvre plus rien`)
+            const cle = `${e.file}:${e.nom}:${e.empreinte}`;
+            expect(reelles.has(cle), `the exception ${e.file}:${e.nom} no longer covers anything`)
                 .toBe(true);
         }
     });
 
-    it('le balayage voit RÉELLEMENT des fichiers — il ne peut pas être vide par accident', () => {
-        // ⚠️ CONTRÔLE DU CONTRÔLE. Un `git ls-files` qui rendrait zéro fichier
-        // — mauvais `cwd`, dépôt absent — ferait passer le test principal en
-        // vert sans avoir rien balayé. C'est le patron du contrôle vacueux,
-        // que ce dépôt a payé quatre fois.
-        const fichiers = execFileSync('git', ['ls-files', '-z'], {
+    it('the sweep REALLY sees files — it cannot be empty by accident', () => {
+        // ⚠️ CHECK OF THE CHECK. A `git ls-files` that returned zero files
+        // — wrong `cwd`, absent repository — would make the main test pass
+        // green without having swept anything. It is the pattern of the vacuous check,
+        // which this repository has paid for four times.
+        const files = execFileSync('git', ['ls-files', '-z'], {
             cwd: RACINE,
             maxBuffer: 64 * 1024 * 1024,
         })
             .toString('utf8')
             .split('\0')
             .filter((f) => f !== '');
-        expect(fichiers.length).toBeGreaterThan(500);
-        expect(fichiers).toContain('docker-compose.plateforme.yml');
+        expect(files.length).toBeGreaterThan(500);
+        expect(files).toContain('docker-compose.plateforme.yml');
     });
 });

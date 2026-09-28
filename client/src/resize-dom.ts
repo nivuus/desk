@@ -1,56 +1,56 @@
-// Le branchement du redimensionnement sur le DOM : `ResizeObserver`, lissage
-// de 200 ms, émission sur le canal de contrôle, et l'instrumentation du legs
-// n°7 de D9.
+// Plugging resizing into the DOM: `ResizeObserver`, 200 ms
+// smoothing, emission on the control channel, and the instrumentation of D9's
+// legacy no. 7.
 //
-// **Extrait de `main.ts` VERBATIM le 20 août 2026**, tâche 15 du sous-bloc P1
-// du presse-papier. Le plan posait une PORTE DE MESURE sur `main.ts` — « si
-// l'après dépasse 480 lignes, extraire » — en la calculant sur un fichier à
-// 451 lignes. Il en faisait 460 au moment de l'addition, et le câblage du
-// presse-papier, pourtant déjà réduit à sa portion congrue par l'extraction de
-// `presse-papier-dom.ts` que le plan nommait, laissait `main.ts` à 487 : la
-// porte était franchie. Ce fichier-ci est la seconde extraction, et elle suit
-// la doctrine du dépôt — **extraire, jamais comprimer**.
+// **Extracted from `main.ts` VERBATIM on August 20th, 2026**, task 15 of the
+// clipboard's sub-block P1. The plan set a MEASUREMENT GATE on `main.ts` — "if
+// the after exceeds 480 lines, extract" — computing it on a file at
+// 451 lines. It had 460 at the time of the addition, and the clipboard
+// wiring, although already reduced to a minimum by the extraction of
+// `presse-papier-dom.ts` the plan named, left `main.ts` at 487: the
+// gate was crossed. This file is the second extraction, and it follows
+// the repository's doctrine — **extract, never compress**.
 //
-// Le partage est celui, déjà employé, de `presse-papier.ts` /
-// `presse-papier-dom.ts` : `resize.ts` porte la règle PURE (`RejeuResize`,
-// sans DOM, testée), ce fichier-ci porte sa seule branche sur le navigateur.
+// The split is the one already used by `presse-papier.ts` /
+// `presse-papier-dom.ts`: `resize.ts` carries the PURE rule (`RejeuResize`,
+// DOM-free, tested), this file carries its only branch onto the browser.
 //
-// 🔴 **L'INVARIANT DE SYNCHRONICITÉ TRAVERSE CETTE EXTRACTION, ET IL FALLAIT LE
-// VÉRIFIER** (leg n°12 de D9, texte intégral plus bas) : le `.then()` de
-// `main.ts` doit s'exécuter sans `await` intercalé jusqu'à l'`addEventListener`
-// final. La fonction ci-dessous est appelée SYNCHRONEMENT depuis ce `.then()`
-// et n'attend rien elle-même, donc l'invariant est préservé — le déplacer dans
-// une fonction `async` ou l'appeler derrière un `await` le romprait
-// exactement comme un `await` intercalé.
+// 🔴 **THE SYNCHRONICITY INVARIANT CROSSES THIS EXTRACTION, AND IT HAD TO BE
+// CHECKED** (D9's legacy no. 12, full text below): the `.then()` of
+// `main.ts` must run without an interposed `await` up to the final
+// `addEventListener`. The function below is called SYNCHRONOUSLY from that `.then()`
+// and awaits nothing itself, so the invariant is preserved — moving it into
+// an `async` function or calling it behind an `await` would break it
+// exactly like an interposed `await`.
 
 import { RejeuResize } from './resize';
 import { encodeResize } from '../../proto/ts/control';
 
-/// Ce dont ce module a besoin de la session : le canal de contrôle, et rien
-/// d'autre. L'objet rendu par `connectSession` s'y conforme.
+/// What this module needs from the session: the control channel, and nothing
+/// else. The object returned by `connectSession` conforms to it.
 export interface SessionResize {
     controlChannel: RTCDataChannel;
 }
 
-/// Branche le suivi de taille. **À appeler SYNCHRONEMENT** — voir l'en-tête.
-/// Ce que ce module fait de l'annonce de viewport, quand on lui en donne une.
+/// Plugs in size tracking. **To call SYNCHRONOUSLY** — see the header.
+/// What this module does with the viewport announcement, when it is given one.
 ///
-/// 🔴 **POURQUOI LE VIEWPORT REPART D'ICI, ET NON DE `main.ts`.** `main.ts`
-/// annonce le viewport **une seule fois, au chargement**, à la page-shell qui
-/// l'a ouvert (`window.opener.postMessage`) : c'est cette annonce qui décide
-/// la taille de la sortie virtuelle. Rien ne le réannonçait ensuite — si bien
-/// que le SUPERVISEUR, qui ne connaît la taille voulue QUE par ce message,
-/// gardait pour toujours celle du jour de l'ouverture, et reposait la fenêtre
-/// dessus chaque seconde.
+/// 🔴 **WHY THE VIEWPORT GOES BACK FROM HERE, AND NOT FROM `main.ts`.** `main.ts`
+/// announces the viewport **only once, at load**, to the shell page that
+/// opened it (`window.opener.postMessage`): it is that announcement that decides
+/// the size of the virtual output. Nothing re-announced it afterwards — so
+/// that the SUPERVISOR, which only knows the desired size through that message,
+/// kept forever the one of the opening day, and put the window back
+/// onto it every second.
 ///
-/// 🔴 **ET IL DOIT PARTIR DE LA MÊME MESURE QUE LE `Resize`, C'EST TOUT
-/// L'INTÉRÊT.** Le `Resize` du canal de contrôle va au CAPTEUR (recadrage et
-/// encodeur) ; le `viewport` du `postMessage` va au SUPERVISEUR (fenêtre
-/// Windows et taille retenue). Les deux processus appliquent la même règle
-/// pure (`windows_source_sortie::taille_pour_viewport`) sur la même borne : si
-/// on leur donnait deux NOMBRES différents — `video.clientWidth` ici et
-/// `window.innerWidth` là-bas —, ils calculeraient deux tailles et se
-/// battraient à 1 Hz. Une seule mesure, deux destinataires.
+/// 🔴 **AND IT MUST START FROM THE SAME MEASUREMENT AS THE `Resize`, THAT IS THE WHOLE
+/// POINT.** The control channel's `Resize` goes to the SENSOR (cropping and
+/// encoder); the `postMessage`'s `viewport` goes to the SUPERVISOR (Windows
+/// window and retained size). Both processes apply the same pure
+/// rule (`windows_source_sortie::size_for_viewport`) on the same bound: if
+/// they were given two different NUMBERS — `video.clientWidth` here and
+/// `window.innerWidth` there —, they would compute two sizes and fight
+/// at 1 Hz. One measurement, two recipients.
 export interface AnnonceViewport {
     (largeur: number, hauteur: number): void;
 }
@@ -60,69 +60,69 @@ export function attacherResizeAuDOM(
     session: SessionResize,
     annoncerViewport?: AnnonceViewport,
 ): void {
-    // Le redimensionnement reconstruit la chaîne d'encodage côté agent :
-    // on n'émet donc qu'une fois le geste terminé, pas à chaque pixel
-    // parcouru pendant que l'utilisateur tire un bord.
+    // Resizing rebuilds the encoding chain on the agent side:
+    // we therefore only emit once the gesture is over, not at each pixel
+    // covered while the user drags an edge.
     const rejeu = new RejeuResize();
     const emettreSiPossible = () => {
-        const taille = rejeu.aEmettre();
-        if (!taille) return;
+        const size = rejeu.aEmettre();
+        if (!size) return;
         if (session.controlChannel.readyState !== 'open') {
-            // Tracé, et non plus muet : c'est ce `return` silencieux qui perdait
-            // les `Resize` sans laisser la moindre trace (leg 10).
-            console.warn('Resize différé : canal de contrôle non ouvert');
+            // Traced, and no longer mute: it is this silent `return` that lost
+            // the `Resize`s without leaving the slightest trace (leg 10).
+            console.warn('Resize deferred: control channel not open');
             return;
         }
-        // Instrumentation du legs n°7 de D9 (tâche 18, D10) — confirmation au
-        // point d'émission. Grille de lecture complète sur le log
-        // « declenchement ResizeObserver » ci-dessous ; celui-ci ne fait que
-        // confirmer, pour CETTE tentative de `Resize`, laquelle des trois
-        // issues s'est produite.
+        // Instrumentation of D9's legacy no. 7 (task 18, D10) — confirmation at the
+        // emission point. Full reading grid on the
+        // "ResizeObserver trigger" log below; this one only
+        // confirms, for THIS `Resize` attempt, which of the three
+        // outcomes happened.
         console.debug('[instrumentation resize] emission', {
-            taille,
+            size,
             clientWidth: video.clientWidth,
             clientHeight: video.clientHeight,
             innerWidth: window.innerWidth,
             innerHeight: window.innerHeight,
         });
-        session.controlChannel.send(encodeResize(taille.largeur, taille.hauteur));
-        // MÊME TAILLE, MÊME INSTANT, DEUX DESTINATAIRES — voir l'en-tête
-        // d'`AnnonceViewport`. Émise APRÈS le `Resize` et non avant : le
-        // capteur est le chemin court (canal de données puis tube nommé), le
-        // superviseur le chemin long (relais de la plateforme), et il n'y a
-        // aucune raison de retarder le premier pour le second. **L'ordre
-        // d'arrivée n'a de toute façon aucune importance** : les deux
-        // convergent sur la même valeur, et le geste du second est alors sans
-        // effet.
-        annoncerViewport?.(taille.largeur, taille.hauteur);
-        rejeu.confirmer(taille);
+        session.controlChannel.send(encodeResize(size.largeur, size.hauteur));
+        // SAME SIZE, SAME INSTANT, TWO RECIPIENTS — see the header
+        // of `AnnonceViewport`. Emitted AFTER the `Resize` and not before: the
+        // sensor is the short path (data channel then named pipe), the
+        // supervisor the long path (the platform's relay), and there is
+        // no reason to delay the first for the second. **The order
+        // of arrival does not matter anyway**: both
+        // converge on the same value, and the second's gesture is then without
+        // effect.
+        annoncerViewport?.(size.largeur, size.hauteur);
+        rejeu.confirmer(size);
     };
 
     let resizeTimer: number | undefined;
     const observer = new ResizeObserver(() => {
-        // Instrumentation du legs n°7 de D9 (tâche 18, D10) : le sous-bloc D8
-        // avait désigné ce maillon — entre `window.innerWidth` (ce que la page
-        // annonce à l'ouverture) et l'émission réelle du `Resize`, « leg 10 »
-        // dans la numérotation de D8 — sans jamais l'avoir mesuré. Trois
-        // issues sont lisibles depuis ce log et celui d'émission ci-dessus,
-        // dans CET ORDRE de lecture — aucune ne conclut au-delà de ce
-        // qu'elle établit, et le canal de contrôle reste une hypothèse à
-        // part entière (voir le `console.warn` ci-dessus) :
-        //   1. AUCUN log « declenchement » pour une session qui n'émet
-        //      jamais de `Resize` (cas D9 : w-2, w-5) ⟹ l'observateur ne
-        //      s'arme jamais ou n'est jamais rappelé — le maillon est EN
-        //      AMONT de la mise en page, dans le câblage de
-        //      `observer.observe(video)` ou la construction de la session.
-        //   2. Log présent, `clientWidth`/`clientHeight` SUIT
-        //      `innerWidth`/`innerHeight` ⟹ ni l'observateur ni la mise en
-        //      page ne sont en cause ; le maillon est ailleurs.
-        //   3. Log présent, `clientWidth`/`clientHeight` NE SUIT PAS
-        //      `innerWidth`/`innerHeight` ⟹ la mise en page CSS de
-        //      l'élément `<video>` est en cause.
-        // Ce log-ci, pris avant le lissage de 200 ms, tranche le cas 1 ;
-        // le log d'émission ci-dessus confirme 2 ou 3 pour la tentative
-        // qui aboutit réellement.
-        console.debug('[instrumentation resize] declenchement ResizeObserver', {
+        // Instrumentation of D9's legacy no. 7 (task 18, D10): sub-block D8
+        // had designated this link — between `window.innerWidth` (what the page
+        // announces at opening) and the actual emission of the `Resize`, "leg 10"
+        // in D8's numbering — without ever having measured it. Three
+        // outcomes can be read from this log and the emission one above,
+        // in THIS reading ORDER — none concludes beyond what
+        // it establishes, and the control channel stays a hypothesis in
+        // its own right (see the `console.warn` above):
+        //   1. NO "trigger" log for a session that never emits
+        //      a `Resize` (case D9: w-2, w-5) ⟹ the observer never
+        //      arms or is never called back — the link is
+        //      UPSTREAM of layout, in the wiring of
+        //      `observer.observe(video)` or the session's construction.
+        //   2. Log present, `clientWidth`/`clientHeight` FOLLOWS
+        //      `innerWidth`/`innerHeight` ⟹ neither the observer nor
+        //      layout are at fault; the link is elsewhere.
+        //   3. Log present, `clientWidth`/`clientHeight` DOES NOT FOLLOW
+        //      `innerWidth`/`innerHeight` ⟹ the CSS layout of
+        //      the `<video>` element is at fault.
+        // This log, taken before the 200 ms smoothing, settles case 1;
+        // the emission log above confirms 2 or 3 for the attempt
+        // that actually succeeds.
+        console.debug('[resize instrumentation] ResizeObserver trigger', {
             clientWidth: video.clientWidth,
             clientHeight: video.clientHeight,
             innerWidth: window.innerWidth,
@@ -138,22 +138,22 @@ export function attacherResizeAuDOM(
         }, 200);
     });
     observer.observe(video);
-    // Le rejeu : à l'ouverture du canal, la taille retenue repart.
+    // The replay: when the channel opens, the retained size goes out again.
     //
-    // ⚠️ INVARIANT NON ÉVIDENT (leg n°12 de D9) : ce `.then()` doit
-    // s'exécuter INTÉGRALEMENT DE FAÇON SYNCHRONE, sans `await` intercalé
-    // entre la construction de `rejeu` / du `ResizeObserver` ci-dessus et
-    // cet `addEventListener`. Un `await` glissé là rendrait la main à la
-    // boucle d'événements : si le canal s'ouvrait pendant l'attente,
-    // l'écouteur serait posé APRÈS l'événement `open`, il ne serait jamais
-    // appelé, et le rejeu serait rompu EN SILENCE — aucune erreur, aucun
-    // log, juste une taille perdue. C'est exactement le mode de
-    // défaillance que le rejeu existe pour réparer.
+    // ⚠️ NON-OBVIOUS INVARIANT (D9's legacy no. 12): this `.then()` must
+    // run ENTIRELY SYNCHRONOUSLY, without an interposed `await`
+    // between the construction of `rejeu` / of the `ResizeObserver` above and
+    // this `addEventListener`. An `await` slipped there would yield to the
+    // event loop: if the channel opened during the wait,
+    // the listener would be set AFTER the `open` event, it would never be
+    // called, and the replay would be broken SILENTLY — no error, no
+    // log, just a lost size. It is exactly the failure
+    // mode the replay exists to repair.
     //
-    // Aucun test ne garde cet invariant, et c'est une décision, pas un
-    // oubli : le voir rouge exigerait de simuler `RTCDataChannel` et tout
-    // le cycle de `createSession`, c'est-à-dire de mocker la session
-    // entière. Un test qu'on ne peut pas voir rouge à coût raisonnable
-    // n'ajouterait rien à ce que ce commentaire dit déjà.
+    // No test guards this invariant, and it is a decision, not an
+    // oversight: seeing it red would require simulating `RTCDataChannel` and the whole
+    // cycle of `createSession`, that is, mocking the entire
+    // session. A test that cannot be seen red at a reasonable cost
+    // would add nothing to what this comment already says.
     session.controlChannel.addEventListener('open', emettreSiPossible);
 }

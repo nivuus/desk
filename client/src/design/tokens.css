@@ -1,63 +1,63 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LA PORTE D'ENTRÉE DE LA SOURCE UNIQUE DE VALEURS VISUELLES DU PRODUIT
-   (spec ⑥, §4.2 à §4.5). Aucune couleur, aucune longueur d'échelle ne s'écrit
-   ailleurs que dans les deux fichiers importés ci-dessous.
+   THE ENTRY POINT OF THE SINGLE SOURCE OF VISUAL VALUES OF THE PRODUCT
+   (spec ⑥, §4.2 to §4.5). No colour, no scale length is written
+   anywhere other than in the two files imported below.
 
-   🔴 EXTRAIT LE 25 août 2026 (branche `legs-sans-vm`, tâche 6), sur constat
-   simple : ce fichier tenait 300 lignes pour une porte armée à 300 (§10, plan
-   S1) — MARGE NULLE, écrite ici même depuis S1 : « si ce fichier les atteint,
-   le scinder en `design/tokens/couleurs.css` et `design/tokens/echelles.css`
-   AVANT l'addition qui franchirait, jamais après. » C'est cette tâche.
-   AUCUNE VALEUR N'A CHANGÉ : c'est une EXTRACTION, pas une réécriture — la
-   tâche 7, qui suit, est celle qui ajoute un token, et qui ne pouvait pas le
-   faire tant que la marge restait nulle.
+   🔴 EXTRACTED ON August 25th, 2026 (branch `legs-sans-vm`, task 6), on a simple
+   finding: this file held 300 lines for a gate armed at 300 (§10, plan
+   S1) — ZERO MARGIN, written right here since S1: "if this file reaches them,
+   split it into `design/tokens/couleurs.css` and `design/tokens/echelles.css`
+   BEFORE the addition that would cross, never after." That is this task.
+   NO VALUE CHANGED: it is an EXTRACTION, not a rewrite — task
+   7, which follows, is the one that adds a token, and which could not do it
+   as long as the margin stayed zero.
 
-   ── DEUX FICHIERS, UN AXE CHACUN ──────────────────────────────────────────
-   `tokens/couleurs.css`   la palette : les trois blocs de thème (spec §4.2),
-                            SANS CONDITION, préférence système, attribut
-                            explicite — et les sept tokens hors thème
-   `tokens/echelles.css`   tout le reste : polices, typographie, interlignes,
-                            espacement, contenants, rayons, durées, épaisseurs
-                            de trait (spec §4.3, §4.4) — UN SEUL bloc, aucun
-                            thème
+   ── TWO FILES, ONE AXIS EACH ─────────────────────────────────────────────
+   `tokens/couleurs.css`   the palette: the three theme blocks (spec §4.2),
+                            UNCONDITIONAL, system preference, explicit
+                            attribute — and the seven out-of-theme tokens
+   `tokens/echelles.css`   everything else: fonts, typography, line heights,
+                            spacing, containers, radii, durations, stroke
+                            widths (spec §4.3, §4.4) — A SINGLE block, no
+                            theme
 
-   Chacun documente sa propre part dans son en-tête — ⚠️ ne PAS chercher ici
-   le détail d'un token : il vit désormais à côté de sa déclaration.
+   Each documents its own share in its header — ⚠️ do NOT look here
+   for the detail of a token: it now lives next to its declaration.
 
-   ⚠️ CÔTÉ LECTURE (Node, pas navigateur) : les deux fichiers déclarent chacun
-   leur propre `:root {}` SANS CONDITION. `tokens.ts::lireBlocsDeTheme`
-   FUSIONNE deux occurrences de même nom en un seul bloc logique — c'est ce
-   découpage qui l'exige, et `tokens.test.ts` l'éprouve nommément. 🔴 CETTE
-   FUSION BORNE LE COMPTE DE BLOCS LOGIQUES À 3 PAR CONSTRUCTION : elle ne
-   peut donc plus dénoncer un `:root {}` de trop ajouté par erreur —
-   `tokens.ts::lireBlocsBruts` (SANS fusion) existe pour ça, et
-   `tokens.test.ts` porte l'assertion qui compte ses occurrences PHYSIQUES
-   (4 aujourd'hui). Les lecteurs par chemin (`client/outils/*.mjs`,
-   `vite.config.ts`, les tests du socle) lisent DÉSORMAIS l'un des deux
-   fichiers, les deux concaténés, ou plus jamais celui-ci selon ce dont
-   chacun a besoin — chaque lecteur EXPLIQUE SON CHOIX DANS SON PROPRE
-   EN-TÊTE, pas ici : ce fichier ne recopie pas une liste qui vieillirait
-   plus vite que le code qu'elle décrit.
+   ⚠️ ON THE READING SIDE (Node, not browser): the two files each declare
+   their own unconditional `:root {}`. `tokens.ts::lireBlocsDeTheme`
+   MERGES two occurrences of the same name into a single logical block — it is this
+   split that requires it, and `tokens.test.ts` exercises it by name. 🔴 THIS
+   MERGE BOUNDS THE COUNT OF LOGICAL BLOCKS TO 3 BY CONSTRUCTION: it
+   can therefore no longer denounce an extra `:root {}` added by mistake —
+   `tokens.ts::lireBlocsBruts` (WITHOUT merging) exists for that, and
+   `tokens.test.ts` carries the assertion that counts its PHYSICAL occurrences
+   (4 today). The readers by path (`client/outils/*.mjs`,
+   `vite.config.ts`, the base layer tests) NOW read one of the two
+   files, both concatenated, or never this one again depending on what
+   each one needs — each reader EXPLAINS ITS CHOICE IN ITS OWN
+   HEADER, not here: this file does not copy a list that would age
+   faster than the code it describes.
 
-   ⚠️ L'ORDRE DE CASCADE A CHANGÉ, SANS EFFET AUJOURD'HUI MAIS À SURVEILLER.
-   Avant ce découpage, les 31 tokens d'échelle vivaient dans le PREMIER
-   `:root {}` du fichier, donc AVANT les deux blocs clairs de la palette.
-   Depuis, ils vivent dans le `:root {}` d'`echelles.css`, importé APRÈS
-   `couleurs.css` — donc APRÈS les deux blocs clairs dans l'ordre du
-   document. Mesuré (`tokensDeclares` sur chaque fichier) : AUCUN nom n'est
-   commun aux 21 tokens de `couleurs.css` et aux 31 d'`echelles.css`, donc
-   cette inversion n'a aujourd'hui AUCUN effet — mais une future surcharge
-   d'un token d'échelle par un bloc clair serait désormais DÉFAITE EN
-   SILENCE par le cascade (l'échelle, plus spécifique dans l'ordre du
-   document, l'emporterait), alors que l'ordre d'avant l'aurait laissée
-   gagner. Aucun bloc clair ne surcharge d'échelle aujourd'hui ; si l'un
-   commence à le faire, relire cette note avant de s'étonner du résultat.
+   ⚠️ THE CASCADE ORDER HAS CHANGED, WITH NO EFFECT TODAY BUT TO BE WATCHED.
+   Before this split, the 31 scale tokens lived in the FIRST
+   `:root {}` of the file, hence BEFORE the two light blocks of the palette.
+   Since then, they live in the `:root {}` of `echelles.css`, imported AFTER
+   `couleurs.css` — hence AFTER the two light blocks in document
+   order. Measured (`tokensDeclares` on each file): NO name is
+   common to the 21 tokens of `couleurs.css` and the 31 of `echelles.css`, so
+   this inversion has NO effect today — but a future override
+   of a scale token by a light block would now be DEFEATED
+   SILENTLY by the cascade (the scale, later in document
+   order, would win), whereas the former order would have let it
+   win. No light block overrides a scale today; if one
+   starts doing so, reread this note before being surprised by the result.
 
-   ⚠️ CE FICHIER RESTE LA SEULE CIBLE `@import` DEPUIS LE CSS DU PRODUIT
-   (`design/socle.css`) : `@import './tokens.css';` continue de fonctionner
-   sans modification, Vite suivant la chaîne d'imports jusqu'aux deux
-   fichiers ci-dessous. C'est la seule raison pour laquelle ce fichier
-   continue d'exister plutôt que de disparaître au profit de ses deux enfants.
+   ⚠️ THIS FILE REMAINS THE ONLY `@import` TARGET FROM THE PRODUCT'S CSS
+   (`design/socle.css`): `@import './tokens.css';` keeps working
+   without modification, Vite following the import chain down to the two
+   files below. That is the only reason why this file
+   keeps existing rather than disappearing in favour of its two children.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @import './tokens/couleurs.css';

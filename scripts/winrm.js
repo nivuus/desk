@@ -1,41 +1,41 @@
-// Exécute une commande PowerShell sur la VM Windows via WinRM.
-// Usage : node scripts/winrm.js "Get-ChildItem C:\\"
-// ── VOIE MORTE, 29 août 2026 — voir scripts/voie-morte.sh ──────────────────
+// Runs a PowerShell command on the Windows VM through WinRM.
+// Usage: node scripts/winrm.js "Get-ChildItem C:\\"
+// ── DEAD PATH, 29 August 2026 — see scripts/voie-morte.sh ──────────────────
 //
-// 🔴 CE SCRIPT NE FONCTIONNE PLUS, ET IL AVAIT L'AIR DE FONCTIONNER.
-// Il parle à la VM en transport **Basic**, que l'invité n'offre plus depuis
-// `Enable-PSRemoting` (401 mesuré le 22 août 2026 ; « Failed to process the
-// request, status Code: » mesuré le 5 septembre 2026).
+// 🔴 THIS SCRIPT NO LONGER WORKS, AND IT LOOKED LIKE IT WORKED.
+// It talks to the VM over **Basic** transport, which the guest no longer offers since
+// `Enable-PSRemoting` (401 measured on 22 August 2026; "Failed to process the
+// request, status Code:" measured on 5 September 2026).
 //
-// ⚠️ SON ÉCHEC ÉTAIT TRAÎTRE : il imprimait la pile de l'erreur sur STDOUT et
-// sortait avec le code 0. Un appelant qui faisait `| tr -dc '0-9'` y ramassait
-// les numéros de ligne de la pile et rendait un compte absurde — vu réellement
-// sur la VM le 28 août 2026 : « 🔴 22246232650828772271221761422508285591251033905
-// agent(s) survivant(s) ». C'est exactement le patron que ce garde supprime.
+// ⚠️ ITS FAILURE WAS TREACHEROUS: it printed the error stack on STDOUT and
+// exited with code 0. A caller doing `| tr -dc '0-9'` picked up
+// the stack line numbers and reported an absurd count — actually seen
+// on the VM on 28 August 2026: "🔴 22246232650828772271221761422508285591251033905
+// surviving agent(s)". That is exactly the pattern this guard removes.
 //
-// Le corps d'origine reste dessous, lisible, comme relevé historique.
+// The original body stays below, readable, as a historical record.
 {
     const successeur = [
-        '🔴 VOIE MORTE : scripts/winrm.js',
+        '🔴 DEAD PATH: scripts/winrm.js',
         '',
-        "  Ce script exécutait une commande PowerShell sur la VM Windows en WinRM,",
-        '  transport BASIC, compte « Administrateur ».',
+        '  This script ran a PowerShell command on the Windows VM over WinRM,',
+        '  BASIC transport, account "Administrateur".',
         '',
-        "  L'invité n'offre plus que Negotiate depuis la bascule appliance du",
-        '  29 août 2026 (chantier package-nivuus).',
+        '  The guest only offers Negotiate since the appliance switch of',
+        '  29 August 2026 (package-nivuus work item).',
         '',
-        '  CE QUI LE REMPLACE :',
-        '     python3 ../installer/console/guest/winrm_exec.py {cmd|ps} <commande>',
-        '       transport NTLM, compte « Administrator » (l\'invité est en anglais),',
-        '       mot de passe lu depuis /root/.config/nivuus/windows-admin.pass et',
-        "       JAMAIS sur l'argv. Il rend un code de sortie non nul sur échec de",
-        '       transport — ce que celui-ci ne faisait pas.',
+        '  WHAT REPLACES IT:',
+        '     python3 ../installer/console/guest/winrm_exec.py {cmd|ps} <command>',
+        '       NTLM transport, account "Administrator" (the guest is in English),',
+        '       password read from /root/.config/nivuus/windows-admin.pass and',
+        '       NEVER on argv. It returns a non-zero exit code on a transport',
+        '       failure — which this one did not.',
         '',
-        "     Dans une séquence du lot 3, passer par le harnais, qui l'enveloppe :",
+        '     In a batch 3 sequence, go through the harness, which wraps it:',
         '       source docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh',
         '',
-        '  Voir CLAUDE.md § « Cycle de vie de la VM Windows ».',
-        "  ⚠️ Ce script n'est PAS supprimé : `cat $0` pour le lire sans l'exécuter.",
+        '  See CLAUDE.md § "Windows VM lifecycle".',
+        "  ⚠️ This script is NOT deleted: `cat $0` to read it without running it.",
     ].join('\n');
     console.error(successeur);
     process.exit(78);   // EX_CONFIG
@@ -44,19 +44,19 @@
 const winrm = require('nodejs-winrm');
 
 const HOST = process.env.WINDOWS_HOSTNAME || '192.168.3.2';
-// Windows en français : le compte est « Administrateur ». « Administrator »
-// échoue à l'authentification sur cette machine.
+// French-language Windows: the account is "Administrateur". "Administrator"
+// fails authentication on this machine. policy: allow-fr
 const USER = process.env.WINDOWS_ADMIN_USERNAME || 'Administrateur';
 const PASS = process.env.WINDOWS_ADMIN_PASSWORD;
 
 async function main() {
     const command = process.argv.slice(2).join(' ');
     if (!command) {
-        console.error('usage : node scripts/winrm.js <commande powershell>');
+        console.error('usage: node scripts/winrm.js <powershell command>');
         process.exit(2);
     }
     if (!PASS) {
-        console.error('WINDOWS_ADMIN_PASSWORD non défini');
+        console.error('WINDOWS_ADMIN_PASSWORD not set');
         process.exit(2);
     }
     const output = await winrm.runCommand(command, HOST, USER, PASS, 5985, true);

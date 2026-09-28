@@ -139,7 +139,7 @@ async function marqueurs(etiquette) {
         compteurs_audio_actif_true: compte('compteurs audio[^\\n]*actif=true'),
         ordre_audio_actif_true: compte('ordre audio applique[^\\n]*actif=true'),
         ordre_audio_actif_false: compte('ordre audio applique[^\\n]*actif=false'),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -380,12 +380,12 @@ async function main() {
         // MEME_PROCESSUS de D7) : c'est ce qui fait le groupe de PID unique.
         const dossierPartage = 'C:\\dev\\chrome-d10c2-groupe';
         const ouvrirFenetreTon = async (n, hz, gain) => {
-            const avant = appPages().length;
-            const fichier = `ton-${hz}.html`;
-            log(`  · ouverture fenêtre ${n} (${fichier}?hz=${hz}&gain=${gain}, profil PARTAGÉ)`);
+            const before = appPages().length;
+            const file = `ton-${hz}.html`;
+            log(`  · ouverture fenêtre ${n} (${file}?hz=${hz}&gain=${gain}, profil PARTAGÉ)`);
             vmIt(`ouvrird10c2-${ETIQUETTE}-${n}`, [
                 `$a = @(`,
-                `  "--app=file:///C:/dev/${fichier}?hz=${hz}&gain=${gain}",`,
+                `  "--app=file:///C:/dev/${file}?hz=${hz}&gain=${gain}",`,
                 `  "--user-data-dir=${dossierPartage}",`,
                 `  '--no-first-run','--no-default-browser-check','--disable-session-crashed-bubble',`,
                 `  '--window-size=1280,720','--window-position=${30 + n * 40},${30 + n * 40}',`,
@@ -398,7 +398,7 @@ async function main() {
             ].join('\n'));
             for (let i = 0; i < 30; i += 1) {
                 await dodo(2000);
-                if (appPages().length > avant) return true;
+                if (appPages().length > before) return true;
             }
             log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
             return false;

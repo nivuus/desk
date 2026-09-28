@@ -1,31 +1,31 @@
-//! Les constructeurs des deux enums de message.
+//! The builders of the two message enums.
 //!
-//! 🔴 EXTRAITS PARCE QUE CE FICHIER A FRANCHI 500 LIGNES — 528 —, ET C'EST LA
-//! DEUXIÈME FOIS DANS CE SOUS-BLOC QUE CE FICHIER LE FRANCHIT. G3 lui avait
-//! rendu 104 lignes AVANT toute addition (`champs.rs`, `motifs.rs`, 468 → 364) ;
-//! les cinq variantes en ont repris 92, et la revue transverse 72 de plus.
+//! 🔴 EXTRACTED BECAUSE THIS FILE CROSSED 500 LINES — 528 —, AND IT IS THE
+//! SECOND TIME IN THIS SUB-BLOCK THAT THIS FILE CROSSES IT. G3 had given it back
+//! 104 lines BEFORE any addition (`champs.rs`, `motifs.rs`, 468 → 364);
+//! the five variants took back 92 of them, and the cross-cutting review 72 more.
 //!
-//! ⚠️ **C'EST LA LEÇON QUE CE DÉPÔT ÉCRIT DEPUIS D6, PAYÉE UNE FOIS DE PLUS :
-//! la marge regagnée par une extraction se reperd si on la traite comme
-//! acquise.** Elle avait été jouée d'avance, correctement, et elle n'a pas
-//! suffi — parce qu'une revue transverse est elle aussi une source de
-//! croissance, ce que S2 et S3 ont tous deux mesuré.
+//! ⚠️ **IT IS THE LESSON THIS REPOSITORY HAS BEEN WRITING SINCE D6, PAID ONCE MORE:
+//! the margin regained by an extraction is lost again if treated as
+//! settled.** It had been carried out in advance, correctly, and it was not
+//! enough — because a cross-cutting review is also a source of
+//! growth, which S2 and S3 both measured.
 //!
-//! **Le franchissement est DÉCLARÉ, et rattrapé par une EXTRACTION, jamais par
-//! une compression** — ce qui aurait ici voulu dire raccourcir les réfutations
-//! que la revue venait d'écrire.
+//! **The crossing is DECLARED, and caught up through an EXTRACTION, never through
+//! a compression** — which here would have meant shortening the rebuttals
+//! the review had just written.
 //!
-//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
-//! les modules extraits d'un parent `#[cfg(windows)]` : c'est le même mécanisme
-//! employé pour l'autre raison — la règle des 500 lignes.
+//! ⚠️ It is NOT the "Child module convention" of `CLAUDE.md`, which targets
+//! modules extracted from a `#[cfg(windows)]` parent: it is the same mechanism
+//! used for the other reason — the 500-line rule.
 //!
-//! 🔴 UN `impl` INHÉRENT PEUT VIVRE DANS N'IMPORTE QUEL MODULE DU MÊME CRATE,
-//! et c'est ce qui rend cette extraction PUREMENT DE FORME : aucun appelant, ni
-//! ici ni dans `agent/` ou `plateforme/`, n'a eu à bouger d'un caractère.
+//! 🔴 AN INHERENT `impl` CAN LIVE IN ANY MODULE OF THE SAME CRATE,
+//! and that is what makes this extraction PURELY FORMAL: no caller, neither
+//! here nor in `agent/` or `plateforme/`, had to move by one character.
 
 use super::{
-    Application, DepuisLaPlateforme, Issue, IssueLancement, MotifCanal, Phase,
-    VersLaPlateforme, PLATEFORME_VERSION,
+    Application, DepuisLaPlateforme, Issue, IssueLancement, MotifCanal, Phase, VersLaPlateforme,
+    PLATEFORME_VERSION,
 };
 
 impl VersLaPlateforme {
@@ -43,7 +43,11 @@ impl VersLaPlateforme {
         }
     }
 
-    pub fn catalogue(complet: bool, applications: Vec<Application>, disparues: Vec<String>) -> Self {
+    pub fn catalogue(
+        complet: bool,
+        applications: Vec<Application>,
+        disparues: Vec<String>,
+    ) -> Self {
         Self::Catalogue {
             version: PLATEFORME_VERSION,
             complet,
@@ -115,10 +119,10 @@ impl DepuisLaPlateforme {
         }
     }
 
-    /// ⚠️ PREND LA VARIANTE TYPÉE, ET NON UN MOT : c'est ce qui garantit que la
-    /// plateforme ne peut pas mettre sur le fil un motif que sa propre table
-    /// ne connaît pas. La tolérance de la clause 2 est une tolérance de
-    /// LECTURE ; en écriture, rien n'est libre.
+    /// ⚠️ TAKES THE TYPED VARIANT, AND NOT A WORD: that is what guarantees that the
+    /// platform cannot put on the wire a reason its own table
+    /// does not know. The tolerance of clause 2 is a READ
+    /// tolerance; on write, nothing is free.
     pub fn refus(motif: MotifCanal) -> Self {
         Self::Refus {
             version: PLATEFORME_VERSION,
@@ -134,9 +138,9 @@ impl DepuisLaPlateforme {
         }
     }
 
-    /// ⚠️ L'APPELANT DOIT VÉRIFIER QUE `empreintes` N'EST PAS VIDE avant
-    /// d'émettre : ce constructeur ne le fait pas pour lui, parce qu'il ne
-    /// saurait pas quoi rendre à la place. La règle vit du côté qui décide —
+    /// ⚠️ THE CALLER MUST CHECK THAT `empreintes` IS NOT EMPTY before
+    /// emitting: this builder does not do it for them, because it would not
+    /// know what to return in its place. The rule lives on the side that decides —
     /// `plateforme/src/agents/canal.ts`.
     pub fn icones_manquantes(empreintes: Vec<String>) -> Self {
         Self::IconesManquantes {
@@ -149,7 +153,7 @@ impl DepuisLaPlateforme {
         installation: impl Into<String>,
         url: impl Into<String>,
         nom: impl Into<String>,
-        taille: u64,
+        size: u64,
         sha256: impl Into<String>,
     ) -> Self {
         Self::Installer {
@@ -157,7 +161,7 @@ impl DepuisLaPlateforme {
             installation: installation.into(),
             url: url.into(),
             nom: nom.into(),
-            taille,
+            size,
             sha256: sha256.into(),
         }
     }

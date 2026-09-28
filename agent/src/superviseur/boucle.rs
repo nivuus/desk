@@ -1,90 +1,90 @@
-//! La boucle du superviseur : elle consomme les événements, fait avancer la
-//! table, et exécute les effets que celle-ci rend.
+//! The supervisor loop: it consumes events, advances the
+//! table, and executes the effects it returns.
 //!
-//! Aucune décision ici — la table décide, cette boucle agit. C'est ce qui
-//! rend les règles éprouvables sans Windows, et ce fichier lisible.
+//! No decision here — the table decides, this loop acts. It is what
+//! makes the rules exercisable without Windows, and this file readable.
 
 #![cfg(windows)]
 
 use anyhow::Result;
 
+use super::designation;
 use super::enfants::{Consigne, Enfants};
 use super::hook;
 use super::lanceur::LanceurDeProcessus;
-use super::designation;
 use super::placement;
-use super::reprise;
 use super::protocole::{DepuisLaShell, VersLaShell};
+use super::reprise;
 use super::table::{Effet, IdSession, Table};
 use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
-// `relever_topologie` plutôt qu'`enumerer_sorties` sur le chemin de création :
-// elle journalise la topologie sortie par sortie, et c'est ce relevé qui rend
-// diagnosticable un appariement qui échoue. Le contrôle périodique de
-// placement, lui, emploie `enumerer_sorties_silencieux` — il court chaque
-// seconde et ne doit rien journaliser.
+// `relever_topologie` rather than `enumerer_sorties` on the creation path:
+// it logs the topology output by output, and it is this survey that makes
+// a failing pairing diagnosable. The periodic placement check,
+// for its part, uses `enumerer_sorties_silencieux` — it runs every
+// second and must log nothing.
 //
-// **Correctif I2 de la revue finale** : cette dernière phrase était fausse.
-// `enumerer_sorties` porte un `tracing::info!` inconditionnel par adaptateur
-// dépourvu de sortie, soit deux lignes par seconde indéfiniment sur cette VM,
-// écrites sur un partage CIFS. La variante silencieuse existe pour ce seul
-// appelant ; toute nouvelle boucle périodique doit l'employer aussi.
+// **Fix I2 of the final review**: this last sentence was wrong.
+// `enumerer_sorties` carries an unconditional `tracing::info!` per adapter
+// without output, i.e. two lines per second indefinitely on this VM,
+// written to a CIFS share. The silent variant exists for this single
+// caller; any new periodic loop must use it too.
 //
-// **Nuance apportée à la tâche 7** : le chemin de création comporte
-// maintenant une troisième étape, la scrutation d'`attendre_une_sortie_neuve`
-// — et ELLE emploie `enumerer_sorties_silencieux`, pas `relever_topologie`,
-// bien qu'elle reste sur le chemin de création. Ce n'est pas une entorse à la
-// règle ci-dessus : cette étape tourne à 10 Hz, jusqu'à 5 s, et
-// `relever_topologie` journalisant une ligne par sortie à CHAQUE appel, ce
-// serait le même défaut que celui que le correctif I2 a corrigé, rejoué à une
-// cadence pire. Le relevé nommé et journalisé reste fait une fois avant la
-// création, et une fois de plus si l'attente expire (voir la doc
-// d'`attendre_une_sortie_neuve`) — jamais à chaque tour de la scrutation.
+// **Nuance added in task 7**: the creation path now has
+// a third step, the polling of `attendre_une_sortie_neuve`
+// — and IT uses `enumerer_sorties_silencieux`, not `relever_topologie`,
+// although it stays on the creation path. It is not a breach of the
+// rule above: this step runs at 10 Hz, for up to 5 s, and
+// `relever_topologie` logging one line per output at EACH call, it
+// would be the same defect fix I2 corrected, replayed at a
+// worse cadence. The named and logged survey is still done once before
+// creation, and once more if the wait expires (see the doc
+// of `attendre_une_sortie_neuve`) — never at each polling turn.
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{config_affichage, pilote::PiloteParIoctl, Sorties};
 
-/// Nombre maximal de fenêtres servies simultanément.
+/// Maximum number of windows served simultaneously.
 ///
-/// **10, soit le vivier de sorties virtuelles du pilote** (mesure ① du
-/// 31 juillet 2026 : refus à la 11ᵉ création, `ERROR_TOO_MANY_NAMES`). Ce
-/// n'est plus le plafond d'ENCODEURS, et c'est le changement de D5 : jusqu'ici
-/// les deux se confondaient à 8, faute de pouvoir ouvrir plus de fenêtres qu'on
-/// ne pouvait en encoder. Le vivier (`capteur::vivier`) les sépare — au plus
-/// `vivier::PLAFOND_EVEIL` (8) fenêtres sont éveillées à la fois, les autres
-/// dorment en gardant leur sortie virtuelle et leur session.
+/// **10, i.e. the driver's pool of virtual outputs** (measurement ① of
+/// July 31st, 2026: refusal at the 11th creation, `ERROR_TOO_MANY_NAMES`). It
+/// is no longer the ENCODER ceiling, and that is D5's change: until now
+/// the two coincided at 8, since one could not open more windows than one
+/// could encode. The pool (`capteur::vivier`) separates them — at most
+/// `vivier::PLAFOND_EVEIL` (8) windows are awake at once, the others
+/// sleep while keeping their virtual output and their session.
 ///
-/// Les deux plafonds ne viennent donc plus de la même couche : celui-ci du
-/// **pilote de sorties virtuelles**, `PLAFOND_EVEIL` du **matériel
-/// d'encodage**. Les faire suivre l'un l'autre serait une erreur.
+/// The two ceilings therefore no longer come from the same layer: this one from the
+/// **virtual output driver**, `PLAFOND_EVEIL` from the **encoding
+/// hardware**. Making them follow each other would be a mistake.
 ///
-/// ⚠️ **Valeur mesurée sur cette VM, non prouvée être une borne du système** —
-/// et la cause du refus à la 11ᵉ création n'est pas isolée (on ignore même si le
-/// vivier de 10 est global au pilote ou par client : Apollo pingue le même).
+/// ⚠️ **Value measured on this VM, not proven to be a system bound** —
+/// and the cause of the refusal at the 11th creation is not isolated (we do not even know whether the
+/// pool of 10 is global to the driver or per client: Apollo pings the same one).
 const CAPACITE: usize = 10;
 
-/// Cadence du battement du chien de garde du pilote. Le pilote retire les
-/// sorties d'un client qui cesse de pinguer ; l'unité de son délai n'est PAS
-/// connue (aucune n'est exclue, pas même la seconde), d'où un battement
-/// franchement plus rapide que toute unité plausible.
+/// Cadence of the driver watchdog's heartbeat. The driver removes the
+/// outputs of a client that stops pinging; the unit of its delay is NOT
+/// known (none is excluded, not even the second), hence a heartbeat
+/// clearly faster than any plausible unit.
 const PERIODE_PING: std::time::Duration = std::time::Duration::from_millis(500);
 
-/// Cadence du contrôle « chaque fenêtre est-elle encore sur sa sortie ».
-/// Une seconde de retard sur un déplacement est imperceptible ; en revanche
-/// ce contrôle énumère les sorties DXGI, ce qui n'est pas gratuit — il ne
-/// doit pas courir à chaque tour de boucle.
+/// Cadence of the "is each window still on its output" check.
+/// A second of delay on a move is imperceptible; on the other hand
+/// this check enumerates DXGI outputs, which is not free — it must not
+/// run at each loop turn.
 const PERIODE_PLACEMENT: std::time::Duration = std::time::Duration::from_secs(1);
 
-/// Temps maximal laissé à Windows pour rattacher une sortie fraîchement créée.
+/// Maximum time left to Windows to attach a freshly created output.
 ///
-/// **Une borne, pas une durée d'attente.** La version précédente dormait 1500 ms
-/// plats, et la recette D1 a montré que ce n'était pas toujours assez : la
-/// sortie n'était pas encore dans la topologie quand on l'y cherchait, et la
-/// fenêtre ne s'ouvrait jamais. On attend désormais le FAIT — qu'une sortie
-/// neuve apparaisse — et cette constante ne fait qu'empêcher d'attendre
-/// indéfiniment.
+/// **A bound, not a waiting time.** The previous version slept a flat 1500 ms,
+/// and acceptance run D1 showed it was not always enough: the
+/// output was not yet in the topology when we looked for it there, and the
+/// window never opened. We now wait for the FACT — that a new output
+/// appears — and this constant only prevents waiting
+/// indefinitely.
 const LIMITE_RATTACHEMENT: std::time::Duration = std::time::Duration::from_secs(5);
 
-/// Pas de scrutation plus serrée : chaque tour énumère toutes les sorties DXGI,
-/// ce qui n'est pas gratuit.
+/// No tighter polling: each turn enumerates all DXGI outputs,
+/// which is not free.
 const PAS_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(100);
 
 pub fn tourner(
@@ -93,91 +93,116 @@ pub fn tourner(
     rx_hook: std::sync::mpsc::Receiver<hook::EvenementFenetre>,
     rx_shell: std::sync::mpsc::Receiver<DepuisLaShell>,
     envoyer: impl Fn(&VersLaShell),
-    // Le préfixe de la VM, délivré par la plateforme (sous-bloc P3). Vide
-    // quand aucun enrôlement n'a eu lieu — les sessions gardent alors
-    // exactement le nom qu'elles avaient avant P3.
+    // The VM's prefix, delivered by the platform (sub-block P3). Empty
+    // when no enrolment took place — sessions then keep
+    // exactly the name they had before P3.
     prefixe: String,
 ) -> Result<()> {
-    // Forcé ICI, et non au premier appariement : la trace de désarmement doit
-    // sortir AVANT la première fenêtre, sinon une recette courte se termine
-    // sans elle. Leçon payée par `PONT_MESURE` au sous-bloc F4.
+    // Forced HERE, and not at the first pairing: the disarming trace must
+    // come out BEFORE the first window, otherwise a short acceptance run ends
+    // without it. Lesson paid for by `PONT_MESURE` in sub-block F4.
     let _ = designation::armee();
 
     let mut sorties = Sorties::nouvelles(pilote);
     let mut enfants = Enfants::nouveaux(lanceur);
-    let mut table = Table::avec_prefixe(CAPACITE, prefixe);
+    let mut table = Table::with_prefix(CAPACITE, prefixe);
 
-    // Le capteur, avant la moindre fenêtre — `surveillance_capteur::EtatCapteur`.
-    let mut etat_capteur = surveillance_capteur::EtatCapteur::demarrer(lanceur)?;
-    // Le pont fichiers, juste après — et son démarrage N'EST PAS FATAL, à la
-    // différence de celui du capteur : pas de `?` ici, et ce n'est pas un
-    // oubli. Le cadrage §4 principe 4 exige qu'une panne du côté fichiers ne
-    // touche jamais le flux vidéo ; `EtatPont::demarrer` ne rend donc aucun
-    // `Result`, et retente indéfiniment depuis `surveiller`.
-    let mut etat_pont = surveillance_pont::EtatPont::demarrer(lanceur);
-    // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
-    // se voient pas donner la même. La table porte déjà la correspondance
-    // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
-    // leur nom DXGI (stable), et non plus par un couple d'index (positionnel).
+    // The capturer, before any window — `surveillance_capteur::EtatCapteur`.
+    let mut etat_capteur = surveillance_capteur::EtatCapteur::start(lanceur)?;
+    // The files bridge, right after — and its startup IS NOT FATAL, unlike
+    // the capturer's: no `?` here, and it is not an
+    // oversight. Framing §4 principle 4 requires that a failure on the files side
+    // never touches the video stream; `EtatPont::start` therefore returns no
+    // `Result`, and retries indefinitely from `surveiller`.
+    let mut etat_pont = surveillance_pont::EtatPont::start(lanceur);
+    // DXGI outputs already assigned, so that two windows with the same viewport are not
+    // given the same one. The table already carries the
+    // session -> output mapping; this is only the set of occupied outputs, by
+    // their (stable) DXGI name, and no longer by a (positional) pair of indexes.
     let mut prises: Vec<String> = Vec::new();
-    // Les fenêtres en sursis : voir `superviseur::sursis`.
+    // Windows on probation: see `superviseur::sursis`.
     let mut sursis = super::sursis::Sursis::new();
 
-    // Les fenêtres déjà ouvertes : le hook ne rapporte que les changements.
+    // Windows already open: the hook only reports changes.
     let mut effets = recenser_les_fenetres_existantes(&mut table);
 
-    let mut dernier_ping = std::time::Instant::now();
-    let mut dernier_controle_placement = std::time::Instant::now();
+    let mut last_ping = std::time::Instant::now();
+    let mut last_placement_check = std::time::Instant::now();
     loop {
-        // 1. Exécuter les effets en attente.
+        // 1. Execute pending effects.
         let a_faire = std::mem::take(&mut effets);
         for effet in a_faire {
             match effet {
                 Effet::AnnoncerOuverture { session, titre } => {
-                    envoyer(&VersLaShell::FenetreOuverte { session: session.0.clone(), titre });
+                    envoyer(&VersLaShell::FenetreOuverte {
+                        session: session.0.clone(),
+                        titre,
+                    });
                 }
-                Effet::CreerSortie { session, titre, largeur, hauteur } => {
-                    effets.extend(creer_sortie(
+                Effet::CreateOutput {
+                    session,
+                    titre,
+                    largeur,
+                    hauteur,
+                } => {
+                    effets.extend(create_output(
                         pilote,
                         &mut sorties,
                         &mut table,
                         &mut prises,
                         &envoyer,
-                        Demande { session, titre, largeur, hauteur },
+                        Demande {
+                            session,
+                            titre,
+                            largeur,
+                            hauteur,
+                        },
                     ));
-                    // `creer_sortie` a battu le chien de garde pendant son
-                    // attente de rattachement : ne pas le recompter en retard.
-                    dernier_ping = std::time::Instant::now();
+                    // `create_output` beat the watchdog during its
+                    // attach wait: do not count it again as late.
+                    last_ping = std::time::Instant::now();
                 }
-                Effet::LancerEnfant { session, fenetre, nom_sortie, taille } => {
-                    // Le chemin de réutilisation d'une sortie retenue ne passe
-                    // pas par `creer_sortie`, donc la fenêtre n'a pas été
-                    // reposée. Une seule énumération, sur ce seul bras.
-                    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
-                    replacer_si_besoin(&table, &session, &toutes);
-                    if let Err(erreur) = enfants.lancer(Consigne {
+                Effet::LancerEnfant {
+                    session,
+                    fenetre,
+                    nom_sortie,
+                    size,
+                } => {
+                    // The path reusing a retained output does not go
+                    // through `create_output`, so the window was not
+                    // placed again. A single enumeration, on this arm only.
+                    let all = enumerer_sorties_silencieux().unwrap_or_default();
+                    replacer_si_besoin(&table, &session, &all);
+                    if let Err(error) = enfants.lancer(Consigne {
                         session: session.clone(),
                         fenetre: fenetre.0,
                         nom_sortie,
-                        taille,
+                        size,
                     }) {
-                        tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
-                        // Le contrat du trait `Lanceur` est atomique : `Err`
-                        // signifie qu'aucun processus ne tourne. Rien à tuer
-                        // donc ; la sortie, elle, est RETENUE par `enfant_mort`
-                        // (§7.1 de D3), et rendue par un chemin d'abandon.
+                        tracing::error!(session = %session.0, %error, "child launch failed");
+                        // The `Lanceur` trait's contract is atomic: `Err`
+                        // means no process is running. Nothing to kill
+                        // then; the output, for its part, is RETAINED by `enfant_mort`
+                        // (§7.1 of D3), and released by an abandonment path.
                         effets.extend(table.enfant_mort(&session));
                     }
                 }
                 Effet::TuerEnfant { session } => enfants.tuer(&session),
-                Effet::DetruireSortie { sortie_pilote, nom_sortie } => {
-                    // Rendue MAINTENANT, pas à l'arrêt du superviseur : le
-                    // vivier du pilote se consomme à chaque ouverture de
-                    // fenêtre, et une dizaine d'ouvertures-fermetures
-                    // suffirait sinon à bloquer toute nouvelle fenêtre.
+                Effet::DetruireSortie {
+                    sortie_pilote,
+                    nom_sortie,
+                } => {
+                    // Released NOW, not at supervisor shutdown: the
+                    // driver's pool is consumed at each window
+                    // opening, and a dozen open-close cycles
+                    // would otherwise be enough to block any new window.
                     rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, nom_sortie);
                 }
-                Effet::SuivreLeViewport { session, largeur, hauteur } => {
+                Effet::SuivreLeViewport {
+                    session,
+                    largeur,
+                    hauteur,
+                } => {
                     suivre_le_viewport(&mut table, &session, largeur, hauteur);
                 }
                 Effet::AnnoncerFermeture { session } => {
@@ -189,38 +214,38 @@ pub fn tourner(
             }
         }
 
-        // 2. Battre le chien de garde du pilote.
-        if dernier_ping.elapsed() >= PERIODE_PING {
-            if let Err(erreur) = pilote.pinguer() {
-                tracing::warn!(%erreur, "ping du chien de garde du pilote échoué");
+        // 2. Beat the driver's watchdog.
+        if last_ping.elapsed() >= PERIODE_PING {
+            if let Err(error) = pilote.pinguer() {
+                tracing::warn!(%error, "driver watchdog ping failed");
             }
-            dernier_ping = std::time::Instant::now();
+            last_ping = std::time::Instant::now();
         }
 
-        // 3. Événements de fenêtres.
+        // 3. Window events.
         //
-        // 🔴 **UNE FENÊTRE N'EST PLUS ANNONCÉE À SA NAISSANCE : ELLE PASSE PAR
-        // UN SURSIS.** Un seul lancement de Steam a fait servir 23 fenêtres en
-        // trois minutes, dont six mortes en 110 à 150 ms — chacune ayant ouvert
-        // une pop-up qui, elle, survit à la fenêtre Windows. Voir
-        // `superviseur::sursis`, qui porte la mesure et le raisonnement, et
-        // notamment POURQUOI durcir le critère statique aurait été la mauvaise
-        // correction (25 des 26 fenêtres de Steam sont déjà écartées par lui).
+        // 🔴 **A WINDOW IS NO LONGER ANNOUNCED AT BIRTH: IT GOES THROUGH
+        // PROBATION.** A single Steam launch served 23 windows in
+        // three minutes, six of which died within 110 to 150 ms — each having opened
+        // a pop-up that, for its part, outlives the Windows window. See
+        // `superviseur::sursis`, which carries the measurement and the reasoning, and
+        // notably WHY hardening the static criterion would have been the wrong
+        // fix (25 of Steam's 26 windows are already set aside by it).
         while let Ok(evenement) = rx_hook.try_recv() {
             match evenement {
                 hook::EvenementFenetre::Apparue { fenetre, titre } => {
                     sursis.deposer(fenetre, titre, std::time::Instant::now());
                 }
                 hook::EvenementFenetre::Disparue { fenetre } => {
-                    // Retirée du sursis ET signalée à la table : les deux, car
-                    // une fenêtre peut disparaître avant son échéance (le
-                    // premier mord) ou bien après avoir été annoncée (le
-                    // second). `retirer` rend faux dans ce cas, et ne ment donc
-                    // pas sur l'onglet évité.
+                    // Removed from probation AND signalled to the table: both, since
+                    // a window can disappear before its deadline (the
+                    // first bites) or after having been announced (the
+                    // second). `retirer` returns false in that case, and therefore does not lie
+                    // about the avoided tab.
                     if sursis.retirer(fenetre) {
                         tracing::info!(
                             hwnd = format!("{:#x}", fenetre.0),
-                            "fenetre disparue pendant son sursis : aucun onglet n'a ete ouvert"
+                            "window vanished during its grace period: no tab was opened"
                         );
                     }
                     effets.extend(table.fenetre_disparue(fenetre));
@@ -228,42 +253,46 @@ pub fn tourner(
             }
         }
 
-        // 3 bis. Les fenêtres qui ont fait la preuve qu'elles durent.
+        // 3 bis. Windows that have proven they last.
         //
-        // ⚠️ **`murs` ne suffit PAS à annoncer** : il établit qu'une fenêtre a
-        // DURÉ, jamais qu'elle est encore présentable. `merite_encore` est la
-        // seconde moitié, et sans elle le sursis ne serait qu'un retard.
+        // ⚠️ **`murs` is NOT enough to announce**: it establishes that a window has
+        // LASTED, never that it is still presentable. `merite_encore` is the
+        // second half, and without it probation would only be a delay.
         for (fenetre, titre) in sursis.murs(std::time::Instant::now()) {
             if hook::merite_encore(fenetre) {
                 effets.extend(table.fenetre_apparue(fenetre, titre));
             } else {
-                // 🔴 LA BRANCHE PRISE, NOMMÉE. Sans cette trace, une fenêtre
-                // légitime écartée à tort par le sursis serait indiscernable
-                // d'une fenêtre qui n'est jamais apparue — et le symptôme
-                // serait « mon application ne s'ouvre pas », sans une ligne
-                // pour le dire.
+                // 🔴 THE BRANCH TAKEN, NAMED. Without this trace, a legitimate
+                // window wrongly set aside by probation would be indistinguishable
+                // from a window that never appeared — and the symptom
+                // would be "my application does not open", without a line
+                // to say so.
                 tracing::info!(
                     hwnd = format!("{:#x}", fenetre.0),
                     %titre,
-                    "fenetre ECARTEE a l'echeance de son sursis : elle ne merite plus d'onglet"
+                    "window DISCARDED when its grace period expired: it no longer deserves a tab"
                 );
             }
         }
 
-        // 4. Messages de la shell.
+        // 4. Messages from the shell.
         //
-        // Le champ `session` vient du navigateur et n'est pas fiable : le
-        // signaling relaie les messages de contrôle entiers, un pair peut y
-        // écrire ce qu'il veut. C'est `viewport_recu` qui garde — elle ignore
-        // une session inconnue, et une session qui n'attend plus son viewport.
+        // The `session` field comes from the browser and is not trustworthy: the
+        // signaling relays whole control messages, a peer can
+        // write whatever it wants there. It is `viewport_recu` that guards — it ignores
+        // an unknown session, and a session no longer waiting for its viewport.
         while let Ok(message) = rx_shell.try_recv() {
             match message {
-                DepuisLaShell::Viewport { session, largeur, hauteur } => {
-                    // 🔴 **LE POINT LE PLUS EN AMONT, ET IL EST INCONDITIONNEL.**
-                    // Il distingue « le message n'arrive JAMAIS » (rien ici) de
-                    // « il arrive et la table n'en fait rien » (ligne ici,
-                    // `effets=0`). Sans lui, les deux se lisent pareil, et
-                    // c'est ce qui a bloqué le diagnostic du premier envoi.
+                DepuisLaShell::Viewport {
+                    session,
+                    largeur,
+                    hauteur,
+                } => {
+                    // 🔴 **THE MOST UPSTREAM POINT, AND IT IS UNCONDITIONAL.**
+                    // It distinguishes "the message NEVER arrives" (nothing here) from
+                    // "it arrives and the table does nothing with it" (line here,
+                    // `effets=0`). Without it, both read the same, and
+                    // it is what blocked the diagnosis of the first send.
                     let session = IdSession(session);
                     let suite = table.viewport_recu(&session, largeur, hauteur);
                     tracing::info!(
@@ -271,38 +300,38 @@ pub fn tourner(
                         demande = format!("{largeur}x{hauteur}"),
                         effets = suite.len(),
                         etat = ?table.etat(&session),
-                        "viewport recu de la page-shell"
+                        "viewport received from the shell page"
                     );
                     effets.extend(suite);
                 }
-                // 🔴 UNE PAGE-SHELL VIENT DE REJOINDRE LA SESSION DE
-                // CONTRÔLE. Tout ce que le superviseur a annoncé avant cet
-                // instant est PERDU — le relais laisse tomber sans une trace
-                // ce qu'il n'a personne à qui remettre — et c'est le défaut
-                // mesuré en production le 30 août 2026 : l'agent tournait
-                // depuis plusieurs minutes, ses trois fenêtres avaient été
-                // annoncées à t = 12 s puis refusées à t = 43 s, et
-                // l'utilisateur, retenu par l'authentification du proxy,
-                // n'a jamais rien vu.
+                // 🔴 A SHELL PAGE HAS JUST JOINED THE CONTROL
+                // SESSION. Everything the supervisor announced before this
+                // instant is LOST — the relay drops without a trace
+                // what it has no one to deliver to — and it is the defect
+                // measured in production on August 30th, 2026: the agent had been running
+                // for several minutes, its three windows had been
+                // announced at t = 12 s then refused at t = 43 s, and
+                // the user, held back by the proxy's authentication,
+                // never saw anything.
                 //
-                // 🔴 L'ORDRE DES DEUX GESTES EST LA CORRECTION, PAS UN
-                // DÉTAIL :
-                //   ① redire les entrées ENCORE en attente
-                //      (`reannoncer_les_attentes`), qui remet aussi leur
-                //      compte à rebours à zéro — l'horloge des 30 s repart
-                //      du moment où une shell est là, ce qui est ce que la
-                //      constante prétend mesurer ;
-                //   ② rejouer l'énumération de démarrage, dont
-                //      `fenetre_apparue` est idempotente par `HWND` : elle
-                //      ne rattrape donc que les fenêtres ABANDONNÉES entre
-                //      temps, qui ne sont plus dans la table.
-                // Inverser les deux annoncerait DEUX fois une entrée encore
-                // en attente, et la page-shell rechargerait
-                // (`window.open(url, "guac-<session>")` vise une fenêtre
-                // NOMMÉE) la fenêtre qu'elle vient d'ouvrir.
+                // 🔴 THE ORDER OF THE TWO GESTURES IS THE FIX, NOT A
+                // DETAIL:
+                //   ① repeat the entries STILL pending
+                //      (`reannoncer_les_attentes`), which also resets their
+                //      countdown to zero — the 30 s clock restarts
+                //      from the moment a shell is there, which is what the
+                //      constant claims to measure;
+                //   ② replay the startup enumeration, whose
+                //      `fenetre_apparue` is idempotent by `HWND`: it
+                //      therefore only catches up the windows ABANDONED in the
+                //      meantime, which are no longer in the table.
+                // Reversing the two would announce TWICE an entry still
+                // pending, and the shell page would reload
+                // (`window.open(url, "guac-<session>")` targets a NAMED
+                // window) the window it has just opened.
                 DepuisLaShell::PairPresent => {
                     tracing::info!(
-                        "une page-shell a rejoint la session de contrôle : les fenêtres sont réannoncées"
+                        "a shell page joined the control session: the windows are announced again"
                     );
                     effets.extend(table.reannoncer_les_attentes(std::time::Instant::now()));
                     effets.extend(recenser_les_fenetres_existantes(&mut table));
@@ -310,34 +339,34 @@ pub fn tourner(
             }
         }
 
-        // 5. Enfants morts d'eux-mêmes.
+        // 5. Children dead by themselves.
         for session in enfants.morts() {
             effets.extend(table.enfant_mort(&session));
         }
 
-        // 5bis. Le capteur, même tour que les enfants — `EtatCapteur::surveiller`.
+        // 5bis. The capturer, same turn as the children — `EtatCapteur::surveiller`.
         etat_capteur.surveiller(lanceur);
 
-        // 5ter. Le pont fichiers, même tour — `EtatPont::surveiller`. Ne
-        // touche ni à la table, ni aux enfants, ni aux sorties : une panne du
-        // pont doit rester sans effet sur les sessions vidéo.
+        // 5ter. The files bridge, same turn — `EtatPont::surveiller`. Touches
+        // neither the table, nor the children, nor the outputs: a bridge
+        // failure must stay without effect on video sessions.
         etat_pont.surveiller(lanceur);
 
-        // 6. Les fenêtres sont-elles encore sur leur sortie ?
+        // 6. Are the windows still on their output?
         //
-        // Une application peut se déplacer ou se retailler d'elle-même, et une
-        // fenêtre qui déborde de sa sortie donne une capture tronquée sans que
-        // rien ne le signale. Le contrôle est PÉRIODIQUE et non branché sur
-        // `EVENT_OBJECT_LOCATIONCHANGE` : cet événement se déclenche à chaque
-        // pixel de déplacement, sur toutes les fenêtres du bureau, et noierait
-        // le canal du hook pour un besoin qui tolère très bien une seconde de
-        // retard.
-        if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
-            dernier_controle_placement = std::time::Instant::now();
+        // An application can move or resize itself, and a
+        // window overflowing its output gives a truncated capture without
+        // anything signalling it. The check is PERIODIC and not hooked to
+        // `EVENT_OBJECT_LOCATIONCHANGE`: that event fires at each
+        // pixel of movement, on all desktop windows, and would drown
+        // the hook's channel for a need that tolerates a second of delay
+        // very well.
+        if last_placement_check.elapsed() >= PERIODE_PLACEMENT {
+            last_placement_check = std::time::Instant::now();
             controler_le_placement(&table);
-            // 7. Fenêtres dont l'enfant est mort mais qui existent toujours
-            // côté Windows : on les repropose plutôt que de les laisser
-            // disparaître de la shell (voir `Etat::SansSession`).
+            // 7. Windows whose child is dead but which still exist
+            // on the Windows side: we offer them again rather than let them
+            // disappear from the shell (see `Etat::SansSession`).
             effets.extend(table.relancer_les_orphelines(std::time::Instant::now()));
         }
 
@@ -347,19 +376,19 @@ pub fn tourner(
     }
 }
 
-/// Fait entrer dans la table toutes les fenêtres Windows déjà ouvertes.
+/// Brings into the table all the already open Windows windows.
 ///
-/// Appelée à DEUX moments, et c'est ce qui lui vaut d'exister plutôt que
-/// d'être recopiée : au démarrage du superviseur (le hook ne rapporte que
-/// les CHANGEMENTS, donc rien de ce qui existait avant lui), et à l'arrivée
-/// d'une page-shell, pour rattraper les fenêtres que le délai d'attente a
-/// abandonnées entre temps.
+/// Called at TWO moments, and that is why it exists rather than
+/// being copied: at supervisor startup (the hook only reports
+/// CHANGES, hence nothing that existed before it), and when a
+/// shell page arrives, to catch up the windows the waiting delay
+/// abandoned in the meantime.
 ///
-/// ⚠️ **Elle ne dédouble rien** : `Table::fenetre_apparue` est idempotente
-/// par `HWND` et rend un vecteur VIDE pour une fenêtre déjà connue, quel que
-/// soit son état. C'est cette idempotence — posée pour une tout autre raison
-/// (le recouvrement entre l'énumération et le hook) — qui rend le second
-/// appel gratuit.
+/// ⚠️ **It duplicates nothing**: `Table::fenetre_apparue` is idempotent
+/// by `HWND` and returns an EMPTY vector for an already known window, whatever
+/// its state. It is this idempotence — set for a completely different reason
+/// (the overlap between the enumeration and the hook) — that makes the second
+/// call free.
 fn recenser_les_fenetres_existantes(table: &mut Table) -> Vec<Effet> {
     let mut effets = Vec::new();
     for (fenetre, titre) in hook::enumerer_existantes() {
@@ -368,9 +397,9 @@ fn recenser_les_fenetres_existantes(table: &mut Table) -> Vec<Effet> {
     effets
 }
 
-/// Ce qu'une demande de sortie porte. Un `struct` plutôt que quatre
-/// paramètres : le titre est venu s'ajouter (il est ce qu'un refus dit à
-/// l'utilisateur) et la liste d'arguments passait le seuil du lisible.
+/// What an output request carries. A `struct` rather than four
+/// parameters: the title was added (it is what a refusal tells
+/// the user) and the argument list crossed the readability threshold.
 struct Demande {
     session: IdSession,
     titre: String,
@@ -378,29 +407,29 @@ struct Demande {
     hauteur: u32,
 }
 
-// Contrôle périodique de placement (`controler_le_placement`,
-// `replacer_si_besoin`) : extrait côté production, pour rester sous le
-// plafond de 500 lignes du projet — la tâche 7 du sous-bloc D3 a fait
-// franchir ce plafond à ce fichier. Extraire plutôt que compresser, même
-// raison et même schéma que `superviseur/table/attribution.rs`.
+// Periodic placement check (`controler_le_placement`,
+// `replacer_si_besoin`): extracted on the production side, to stay under the
+// project's 500-line ceiling — task 7 of sub-block D3 made this file
+// cross that ceiling. Extract rather than compress, same
+// reason and same scheme as `superviseur/table/attribution.rs`.
 mod placement_periodique;
 use placement_periodique::{controler_le_placement, replacer_si_besoin, suivre_le_viewport};
 
-// Lancement et surveillance du capteur (tâche 7 du sous-bloc D4) : extrait
-// côté production, pour la même raison et le même schéma que
-// `placement_periodique` ci-dessus. Nommé `surveillance_capteur` et non
-// `capteur` — voir l'en-tête de ce fichier (I7).
+// Launching and supervising the capturer (task 7 of sub-block D4): extracted
+// on the production side, for the same reason and with the same scheme as
+// `placement_periodique` above. Named `surveillance_capteur` and not
+// `capteur` — see this file's header (I7).
 mod surveillance_capteur;
 
-// Lancement et surveillance du pont fichiers (tâche 10 du sous-bloc F1) :
-// jumeau du module ci-dessus, extrait pour la même raison et le même schéma.
-// Nommé `surveillance_pont` et non `pont` — `crate::pont` désigne le processus
-// lui-même, et ce fichier fait `use super::*`.
+// Launching and supervising the files bridge (task 10 of sub-block F1):
+// twin of the module above, extracted for the same reason and with the same scheme.
+// Named `surveillance_pont` and not `pont` — `crate::pont` designates the process
+// itself, and this file does `use super::*`.
 mod surveillance_pont;
 
-// Création d'une sortie virtuelle et restitution au pilote (tâche 1 du
-// sous-bloc D10) : extrait côté production, pour la même raison et le même
-// schéma que les deux modules ci-dessus, et avant l'addition qui l'aurait
-// autrement fait franchir le plafond.
+// Creating a virtual output and handing it back to the driver (task 1 of
+// sub-block D10): extracted on the production side, for the same reason and with the same
+// scheme as the two modules above, and before the addition that would
+// otherwise have made it cross the ceiling.
 mod creation_sortie;
-use creation_sortie::{creer_sortie, rendre_la_sortie};
+use creation_sortie::{create_output, rendre_la_sortie};

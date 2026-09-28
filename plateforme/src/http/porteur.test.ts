@@ -1,12 +1,12 @@
-// L'extraction du jeton porteur, PURE.
+// Extracting the bearer token, PURE.
 //
-// 🔴 LES DEUX SENS DE LA CONFUSION SONT NOMMÉS, UN SEUL EST ÉPROUVÉ ICI.
-// `identite/jeton.ts` énumère les deux et dit qu'elles sont graves toutes les
-// deux : un jeton HUMAIN ouvrant un rôle `agent`, et un jeton d'AGENT ouvrant
-// un rôle humain. Le premier sens est fermé par `identite/garde.ts` et éprouvé
-// par P3 ; c'est le SECOND que ce fichier tient, parce que c'est le seul que
-// P4 ouvre — une route HTTP qui accepterait un jeton d'agent lui montrerait
-// l'inventaire d'un humain.
+// 🔴 BOTH DIRECTIONS OF THE CONFUSION ARE NAMED, ONLY ONE IS TESTED HERE.
+// `identite/jeton.ts` lists both and says they are both
+// serious: a HUMAN token opening an `agent` role, and an AGENT token opening
+// a human role. The first direction is closed by `identite/garde.ts` and tested
+// by P3; it is the SECOND this file holds, because it is the only one
+// P4 opens — an HTTP route that accepted an agent token would show it
+// a human's inventory.
 
 import { describe, expect, it } from 'vitest';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
@@ -15,22 +15,22 @@ import { lirePorteur } from './porteur';
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const MS = 1_787_136_773_742;
 
-function entetes(valeur: string | string[] | undefined): Record<string, string | string[] | undefined> {
-    // Node met les noms d'en-tête en MINUSCULES : `req.headers.authorization`
-    // est la seule graphie qui existe côté serveur.
-    return valeur === undefined ? {} : { authorization: valeur };
+function entetes(value: string | string[] | undefined): Record<string, string | string[] | undefined> {
+    // Node puts header names in LOWER CASE: `req.headers.authorization`
+    // is the only spelling that exists on the server side.
+    return value === undefined ? {} : { authorization: value };
 }
 
 describe('lirePorteur', () => {
-    it('en-tête ABSENT → jeton-absent, 401', () => {
-        // 🔴 La rouge : rendre `ok:true` avec un sujet vide. Toute route
-        // deviendrait publique, au nom d'un utilisateur qui n'existe pas.
+    it('header ABSENT → jeton-absent, 401', () => {
+        // 🔴 The red: returning `ok:true` with an empty subject. Every route
+        // would become public, in the name of a user who does not exist.
         expect(lirePorteur(entetes(undefined), SECRET, MS)).toEqual({
             ok: false,
             motif: 'jeton-absent',
             code: 401,
         });
-        // Une valeur vide n'est pas davantage un jeton.
+        // An empty value is not a token either.
         expect(lirePorteur(entetes(''), SECRET, MS)).toEqual({
             ok: false,
             motif: 'jeton-absent',
@@ -38,23 +38,23 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('`Bearer <jeton d’utilisateur valide>` → le sujet', () => {
+    it('`Bearer <valid user token>` → the subject', () => {
         const jeton = signer('u-ada', SECRET, MS);
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, MS)).toEqual({
             ok: true,
-            utilisateurId: 'u-ada',
+            userId: 'u-ada',
         });
     });
 
     it('🔴 `Bearer <jeton d’AGENT>` → jeton-agent, 403', () => {
-        // 🔴 La rouge : accepter le type `agent`. Les deux jetons sont signés
-        // par le MÊME secret et portent la même charge `{sub, exp}` : sans le
-        // claim `sty`, ils sont littéralement interchangeables
-        // (`identite/jeton.ts`). Un agent verrait l'inventaire d'un humain.
+        // 🔴 The red: accepting the `agent` type. The two tokens are signed
+        // by the SAME secret and carry the same payload `{sub, exp}`: without the
+        // `sty` claim, they are literally interchangeable
+        // (`identite/jeton.ts`). An agent would see a human's inventory.
         //
-        // ⚠️ 403 ET NON 401 : le jeton est VALIDE, il n'est simplement pas
-        // celui d'un humain. Un 401 inviterait à se reconnecter, ce qui ne
-        // changerait rien.
+        // ⚠️ 403 AND NOT 401: the token is VALID, it simply is not
+        // a human's. A 401 would invite reconnecting, which would
+        // change nothing.
         const jetonAgent = signer('PREFIXEdelaVM', SECRET, MS, undefined, 'agent');
         expect(lirePorteur(entetes(`Bearer ${jetonAgent}`), SECRET, MS)).toEqual({
             ok: false,
@@ -63,19 +63,19 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('🔴 jeton EXPIRÉ → jeton-expire, et l’horloge VARIE', () => {
-        // 🔴 La rouge : figer l'horloge. Le test deviendrait inerte — il n'y
-        // aurait qu'un instant observable et le seuil ne serait jamais
-        // franchi. La borne d'`identite/jeton.ts` est FRANCHE (`maintenant >=
-        // exp`) précisément pour qu'on puisse l'assiéger des deux côtés.
+    it('🔴 EXPIRED token → jeton-expire, and the clock VARIES', () => {
+        // 🔴 The red: freezing the clock. The test would become inert — there
+        // would be only one observable instant and the threshold would never be
+        // crossed. The bound of `identite/jeton.ts` is STRICT (`maintenant >=
+        // exp`) precisely so that it can be besieged from both sides.
         const jeton = signer('u-ada', SECRET, MS);
         const exp = MS + DUREE_JETON_ACCES_MS;
-        // Une milliseconde AVANT : encore valide.
+        // One millisecond BEFORE: still valid.
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, exp - 1)).toEqual({
             ok: true,
-            utilisateurId: 'u-ada',
+            userId: 'u-ada',
         });
-        // À la borne EXACTE : expiré.
+        // At the EXACT bound: expired.
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, exp)).toEqual({
             ok: false,
             motif: 'jeton-expire',
@@ -83,12 +83,12 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('🔴 un schéma autre que `Bearer` → jeton-invalide', () => {
-        // 🔴 La rouge : accepter n'importe quel schéma. Et la casse est
-        // comparée STRICTEMENT — voir le commentaire de `porteur.ts`, qui
-        // déclare la divergence avec la RFC 7235 plutôt que de la subir. Le
-        // contrôle doit être explicite dans un sens ou dans l'autre ; ici il
-        // l'est dans le sens strict.
+    it('🔴 a scheme other than `Bearer` → jeton-invalide', () => {
+        // 🔴 The red: accepting any scheme. And the case is
+        // compared STRICTLY — see the comment of `porteur.ts`, which
+        // declares the divergence from RFC 7235 rather than suffering it. The
+        // check must be explicit in one direction or the other; here it
+        // is in the strict direction.
         const jeton = signer('u-ada', SECRET, MS);
         for (const brut of [
             `Basic ${jeton}`,
@@ -96,7 +96,7 @@ describe('lirePorteur', () => {
             `BEARER ${jeton}`,
             jeton,
             `Bearer`,
-            `Bearer ${jeton} de-trop`,
+            `Bearer ${jeton} too-much`,
         ]) {
             const v = lirePorteur(entetes(brut), SECRET, MS);
             expect(v.ok).toBe(false);
@@ -104,7 +104,7 @@ describe('lirePorteur', () => {
             expect(v.motif).toBe('jeton-invalide');
             expect(v.code).toBe(401);
         }
-        // Une signature fausse est invalide de la même façon — jamais 500.
+        // A wrong signature is invalid the same way — never 500.
         expect(lirePorteur(entetes(`Bearer ${jeton}x`), SECRET, MS)).toEqual({
             ok: false,
             motif: 'jeton-invalide',
@@ -112,12 +112,12 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('🔴 un en-tête RÉPÉTÉ (string[]) → jeton-invalide', () => {
-        // 🔴 La rouge : prendre `entetes.authorization[0]` en silence. Deux
-        // en-têtes d'autorisation est une requête AMBIGUË, pas une requête à
-        // interpréter — et choisir l'un des deux est exactement le genre de
-        // décision qu'un attaquant exploite quand deux couches n'en choisissent
-        // pas le même.
+    it('🔴 a REPEATED header (string[]) → jeton-invalide', () => {
+        // 🔴 The red: taking `entetes.authorization[0]` silently. Two
+        // authorization headers make an AMBIGUOUS request, not a request to
+        // interpret — and choosing one of the two is exactly the kind of
+        // decision an attacker exploits when two layers do not choose
+        // the same one.
         const bon = signer('u-ada', SECRET, MS);
         const agent = signer('PREFIXEdelaVM', SECRET, MS, undefined, 'agent');
         expect(lirePorteur(entetes([`Bearer ${bon}`, `Bearer ${agent}`]), SECRET, MS)).toEqual({
@@ -125,8 +125,8 @@ describe('lirePorteur', () => {
             motif: 'jeton-invalide',
             code: 401,
         });
-        // Même un tableau d'UN SEUL élément : la forme est ambiguë, pas la
-        // valeur. Node ne produit un tableau que s'il a vu plusieurs en-têtes.
+        // Even a SINGLE-element array: the shape is ambiguous, not the
+        // value. Node only produces an array if it saw several headers.
         expect(lirePorteur(entetes([`Bearer ${bon}`]), SECRET, MS).ok).toBe(false);
     });
 });

@@ -1,31 +1,31 @@
 #!/usr/bin/env node
-// Pilote de la recette E1 (chantier E — microphone), tâche 14 du plan
+// Driver of acceptance run E1 (project E — microphone), task 14 of the plan
 // `docs/superpowers/plans/2026-08-19-micro.md`.
 //
-// 🔵 AUCUN MICROPHONE. La source montante est un `OscillatorNode` routé vers un
-// `MediaStreamAudioDestinationNode`, passé au `sender` du transceiver `sendonly`
-// par `replaceTrack` — décision 8 du plan. Aucune permission n'est demandée,
-// aucun périphérique d'entrée n'est requis : la VM n'en a aucun, et ce pilote
-// tourne sur un Chrome sans interface.
+// 🔵 NO MICROPHONE. The upstream source is an `OscillatorNode` routed to a
+// `MediaStreamAudioDestinationNode`, passed to the `sender` of the `sendonly` transceiver
+// through `replaceTrack` — decision 8 of the plan. No permission is requested,
+// no input device is required: the VM has none, and this driver
+// runs on a headless Chrome.
 //
-// 🔵 LE VERDICT SE LIT DANS `agent.log`, PAS ICI. Ce pilote établit la session,
-// injecte le ton, et relève ce que le NAVIGATEUR voit (`getStats`) ; la
-// fréquence retrouvée est jugée côté agent, sur le PCM décodé
-// (`demarrage/micro.rs`, trace « micro mesuré »). Un compte d'octets ne
-// distingue pas « du son » de « MON son » — doctrine payée au sous-bloc D7.
+// 🔵 THE VERDICT IS READ IN `agent.log`, NOT HERE. This driver establishes the session,
+// injects the tone, and reads what the BROWSER sees (`getStats`); the
+// recovered frequency is judged on the agent side, on the decoded PCM
+// (`demarrage/micro.rs`, trace "mic measured"). A byte count does not
+// tell "some sound" from "MY sound" — a doctrine paid for in sub-block D7.
 //
-// ⚠️ LE `sender` NE VIENT PAS D'UNE MODIFICATION DU CLIENT. Le constructeur
-// `RTCPeerConnection` est intercepté dans la page (même technique que
-// `FORCER_RELAIS` de `paire-candidats.mjs`), et le transceiver est retrouvé par
-// sa DIRECTION `sendonly`, seule de son espèce — jamais par un index de
-// position, que l'ordre des `addTransceiver` rendrait fragile.
+// ⚠️ THE `sender` DOES NOT COME FROM A CHANGE TO THE CLIENT. The
+// `RTCPeerConnection` constructor is intercepted in the page (same technique as
+// `FORCER_RELAIS` of `paire-candidats.mjs`), and the transceiver is found by
+// its `sendonly` DIRECTION, the only one of its kind — never by a position
+// index, which the order of the `addTransceiver` calls would make fragile.
 //
-// Usage :
+// Usage:
 //   node recette/micro-e1.mjs --scenario ton|silence --session <id> --freq <Hz> \
-//        --duree <ms> [--url <url>] [--sortie <fichier.json>]
+//        --duree <ms> [--url <url>] [--sortie <file.json>]
 //
-// ⚠️ Poser `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE` et au besoin `PLATEFORME_URL` :
-// depuis le sous-bloc P2 un pair `client` sans jeton est REFUSÉ par la garde.
+// ⚠️ Set `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE` and if needed `PLATEFORME_URL`:
+// since sub-block P2 a `client` peer without a token is REFUSED by the guard.
 
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -105,10 +105,10 @@ async function jusqua(predicat, plafondMs) {
     return false;
 }
 
-/// L'interception : elle doit courir AVANT le script de la page, donc par
-/// `Page.addScriptToEvaluateOnNewDocument` et non par une évaluation après
-/// navigation. ⚠️ Elle ne courrait PAS sur une page ouverte par `window.open`
-/// (piège mesuré au sous-bloc D5) — ce pilote navigue directement.
+/// The interception: it must run BEFORE the page script, hence through
+/// `Page.addScriptToEvaluateOnNewDocument` and not through an evaluation after
+/// navigation. ⚠️ It would NOT run on a page opened by `window.open`
+/// (a trap measured in sub-block D5) — this driver navigates directly.
 const INTERCEPTION = `
     window.__pc = null;
     const Natif = window.RTCPeerConnection;
@@ -120,10 +120,10 @@ const INTERCEPTION = `
     window.RTCPeerConnection.prototype = Natif.prototype;
 `;
 
-/// Allume un oscillateur à `hz` et le pose sur le `sender` du transceiver
-/// `sendonly`. Rend un compte rendu, jamais un objet `Window` — un
-/// `Runtime.evaluate` qui rendrait une référence de fenêtre échoue en
-/// « Object reference chain is too long » (piège du sous-bloc D5).
+/// Starts an oscillator at `hz` and sets it on the `sender` of the
+/// `sendonly` transceiver. Returns a report, never a `Window` object — a
+/// `Runtime.evaluate` that returned a window reference fails with
+/// "Object reference chain is too long" (trap of sub-block D5).
 const allumer = (hz) => `
     (async () => {
         const pc = window.__pc;
@@ -158,9 +158,9 @@ const allumer = (hz) => `
     })()
 `;
 
-/// Coupe l'oscillateur SANS toucher à la piste : `replaceTrack(null)` couperait
-/// le flux RTP tout entier, alors que le critère ③ éprouve précisément ce que
-/// fait l'agent quand le NAVIGATEUR se tait (DTX) sur une piste toujours en
+/// Stops the oscillator WITHOUT touching the track: `replaceTrack(null)` would cut
+/// the whole RTP stream, whereas criterion ③ exercises precisely what
+/// the agent does when the BROWSER goes quiet (DTX) on a track still in
 /// place.
 const eteindre = `
     (() => {
@@ -221,12 +221,12 @@ async function avecChrome(fn) {
             '--no-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            // Sans lui, l'`AudioContext` naît « suspended » et l'oscillateur ne
-            // produit rien : la mesure lirait un silence de l'INSTRUMENT.
+            // Without it, the `AudioContext` is born "suspended" and the oscillator
+            // produces nothing: the measurement would read a silence of the INSTRUMENT.
             '--autoplay-policy=no-user-gesture-required',
             '--disable-features=WebRtcHideLocalIpsWithMdns',
-            // Une page jamais mise au premier plan gèle au bout de 5 minutes
-            // (piège du chantier TURN) : ces trois drapeaux l'en empêchent.
+            // A page never brought to the foreground freezes after 5 minutes
+            // (trap of the TURN project): these three flags prevent it.
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
             '--disable-renderer-backgrounding',
@@ -249,13 +249,13 @@ async function avecChrome(fn) {
         }
     } finally {
         chrome.kill();
-        // ⚠️ `rm` COURT APRÈS `kill`, ET CHROME ÉCRIT ENCORE : un `rmdir` sur
-        // `Default/` a levé `ENOTEMPTY` et emporté le compte rendu d'une
-        // exécution entière, alors que la mesure, elle, avait abouti. Le
-        // ménage d'un répertoire temporaire ne doit jamais coûter un relevé.
+        // ⚠️ `rm` RUNS AFTER `kill`, AND CHROME IS STILL WRITING: an `rmdir` on
+        // `Default/` threw `ENOTEMPTY` and took away the report of a
+        // whole run, although the measurement itself had succeeded. Cleaning
+        // up a temporary directory must never cost a report.
         await dormir(1500);
         await rm(profil, { recursive: true, force: true }).catch((e) => {
-            console.warn(`ménage du profil Chrome incomplet (sans effet sur la mesure) : ${e.message}`);
+            console.warn(`incomplete Chrome profile clean-up (no effect on the measurement): ${e.message}`);
         });
     }
 }
@@ -264,10 +264,10 @@ async function principal() {
     const journal = { scenario, session, freq, duree, url, etapes: [], stats: [] };
     const code = await avecChrome(async (cdp) => {
         await cdp.send('Page.navigate', { url });
-        // On attend le FAIT — une piste vidéo qui décode —, pas une durée.
-        // `Session::run()` est la seule boucle qui draine `poll_output`, donc la
-        // seule qui verra jamais un `MediaData` montant : sans session vivante,
-        // la mesure ne dit rien (piège du sous-bloc D8).
+        // We wait for the FACT — a video track that decodes —, not a duration.
+        // `Session::run()` is the only loop that drains `poll_output`, hence the
+        // only one that will ever see an upstream `MediaData`: without a live session,
+        // the measurement says nothing (trap of sub-block D8).
         const vivante = await jusqua(async () => {
             const brut = await cdp.eval(RELEVE_STATS, true);
             const s = JSON.parse(brut ?? '{}');
@@ -275,7 +275,7 @@ async function principal() {
         }, 90000);
         journal.sessionVivante = vivante;
         if (!vivante) {
-            journal.etapes.push({ quoi: 'session', issue: 'aucune image decodee en 90 s' });
+            journal.etapes.push({ quoi: 'session', issue: 'no image decoded in 90 s' });
             return 1;
         }
         journal.etapes.push({ quoi: 'session', issue: 'vivante', quand: new Date().toISOString() });
@@ -285,7 +285,7 @@ async function principal() {
             s.etiquette = etiquette;
             journal.stats.push(s);
         };
-        await releverStats('avant-injection');
+        await releverStats('before-injection');
 
         journal.etapes.push({
             quoi: 'allumage',
@@ -297,10 +297,10 @@ async function principal() {
             await dormir(duree);
             await releverStats('fin-ton');
         } else if (scenario === 'silence') {
-            // 20 s de ton, 60 s de silence, 30 s de ton : le critère ③ se lit
-            // sur la CONTINUITÉ des lignes « micro mesuré » pendant le creux.
+            // 20 s of tone, 60 s of silence, 30 s of tone: criterion ③ is read
+            // on the CONTINUITY of the "mic measured" lines during the gap.
             await dormir(20000);
-            await releverStats('avant-silence');
+            await releverStats('before-silence');
             journal.etapes.push({
                 quoi: 'extinction',
                 quand: new Date().toISOString(),
@@ -316,7 +316,7 @@ async function principal() {
             await dormir(30000);
             await releverStats('fin-reprise');
         } else {
-            throw new Error(`scénario inconnu : ${scenario}`);
+            throw new Error(`unknown scenario: ${scenario}`);
         }
         journal.console = cdp.consoleLines.slice(-40);
         journal.erreursPage = cdp.pageErrors;

@@ -1,14 +1,14 @@
-//! Détection des fenêtres par `SetWinEventHook`, et sa pompe de messages.
+//! Window detection through `SetWinEventHook`, and its message pump.
 //!
-//! **Le hook `WINEVENT_OUTOFCONTEXT` n'appelle son rappel que depuis un fil
-//! qui pompe des messages.** Sans `GetMessageW` en boucle, le hook se pose
-//! sans erreur et ne se déclenche jamais — c'est le mode de défaillance
-//! muet de cette API, et la raison du fil dédié.
+//! **The `WINEVENT_OUTOFCONTEXT` hook only calls its callback from a thread
+//! that pumps messages.** Without `GetMessageW` in a loop, the hook is set
+//! without error and never fires — it is this API's mute failure
+//! mode, and the reason for the dedicated thread.
 //!
-//! Le rappel ne fait qu'une chose : traduire et envoyer. Aucune décision n'est
-//! prise ici (voir `fenetres`), aucun état n'y est tenu (voir `table`) : un
-//! rappel de hook global s'exécute dans un contexte contraint, et tout ce
-//! qu'on peut y faire de long retarde tout le bureau.
+//! The callback does only one thing: translate and send. No decision is
+//! made here (see `fenetres`), no state is held here (see `table`): a
+//! global hook callback runs in a constrained context, and anything
+//! long done there delays the whole desktop.
 
 #![cfg(windows)]
 
@@ -23,9 +23,8 @@ use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVE
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, GetMessageW, GetWindow, GetWindowLongPtrW, GetWindowTextLengthW,
     GetWindowTextW, GetWindowThreadProcessId, IsWindow, IsWindowVisible, PostThreadMessageW,
-    TranslateMessage, EVENT_OBJECT_DESTROY,
-    EVENT_OBJECT_HIDE, EVENT_OBJECT_SHOW, GWL_EXSTYLE, GW_OWNER, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
-    WM_QUIT, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    TranslateMessage, EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE, EVENT_OBJECT_SHOW, GWL_EXSTYLE,
+    GW_OWNER, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT, WM_QUIT, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 
 use super::fenetres::{ecartee_pour_non_appartenance, merite_une_fenetre, DescriptionFenetre};
@@ -37,14 +36,14 @@ pub enum EvenementFenetre {
     Disparue { fenetre: IdFenetre },
 }
 
-/// Émetteur global du rappel.
+/// Global sender of the callback.
 ///
-/// Un rappel `extern "system"` ne porte aucune donnée utilisateur : Windows ne
-/// passe rien qui nous appartienne. C'est la raison de ce global, et non un
-/// choix de commodité. Il est écrit une fois par `poser` et lu par le rappel.
+/// An `extern "system"` callback carries no user data: Windows
+/// passes nothing that belongs to us. That is the reason for this global, and not a
+/// choice of convenience. It is written once by `poser` and read by the callback.
 static EMETTEUR: Mutex<Option<Sender<EvenementFenetre>>> = Mutex::new(None);
 
-/// Garde : retire le hook et arrête la pompe à la destruction.
+/// Guard: removes the hook and stops the pump on destruction.
 pub struct Hook {
     hook: HWINEVENTHOOK,
     fil: Option<std::thread::JoinHandle<()>>,
@@ -55,10 +54,11 @@ impl Drop for Hook {
     fn drop(&mut self) {
         unsafe {
             let _ = UnhookWinEvent(self.hook);
-            // Réveiller la pompe pour qu'elle sorte de `GetMessageW`, sans
-            // quoi le fil ne se termine jamais et la jointure ci-dessous
-            // bloquerait indéfiniment.
-            let _ = PostThreadMessageW(self.fil_id, WM_QUIT, Default::default(), Default::default());
+            // Wake the pump so it leaves `GetMessageW`, otherwise
+            // the thread never ends and the join below
+            // would block indefinitely.
+            let _ =
+                PostThreadMessageW(self.fil_id, WM_QUIT, Default::default(), Default::default());
         }
         if let Some(fil) = self.fil.take() {
             let _ = fil.join();
@@ -67,21 +67,21 @@ impl Drop for Hook {
     }
 }
 
-/// Relève l'état d'une fenêtre, pour le soumettre au critère de `fenetres`.
+/// Records a window's state, to submit it to the `fenetres` criterion.
 ///
-/// `None` si la fenêtre a déjà disparu entre l'événement et cet appel — cas
-/// courant et normal, pas une erreur.
-/// La fenêtre mérite-t-elle TOUJOURS un onglet, à l'échéance de son sursis ?
+/// `None` if the window has already disappeared between the event and this call — a
+/// common and normal case, not an error.
+/// Does the window STILL deserve a tab, when its probation expires?
 ///
-/// 🔴 **C'EST LA SECONDE MOITIÉ DE L'ANTI-REBOND, ET SANS ELLE LE SURSIS NE
-/// SERAIT QU'UN RETARD.** `superviseur::sursis` établit qu'une fenêtre a
-/// DURÉ ; celle-ci établit qu'elle est encore présentable. Une fenêtre peut
-/// parfaitement survivre 500 ms et avoir entre-temps perdu son titre, été
-/// masquée par DWM, ou reçu un propriétaire — c'est le cas des écrans de
-/// démarrage qui se muent en dialogue enfant.
+/// 🔴 **IT IS THE SECOND HALF OF THE DEBOUNCE, AND WITHOUT IT PROBATION WOULD
+/// ONLY BE A DELAY.** `superviseur::sursis` establishes that a window has
+/// LASTED; this one establishes that it is still presentable. A window can
+/// perfectly survive 500 ms and meanwhile have lost its title, been
+/// cloaked by DWM, or received an owner — it is the case of splash
+/// screens that turn into a child dialog.
 ///
-/// `IsWindow` d'abord : `decrire` sur un `HWND` mort rendrait une description
-/// de valeurs par défaut, que `merite_une_fenetre` pourrait juger recevable.
+/// `IsWindow` first: `decrire` on a dead `HWND` would return a description
+/// of default values, which `merite_une_fenetre` could judge acceptable.
 pub fn merite_encore(fenetre: IdFenetre) -> bool {
     let hwnd = HWND(fenetre.0 as *mut std::ffi::c_void);
     if !unsafe { IsWindow(Some(hwnd)) }.as_bool() {
@@ -92,9 +92,9 @@ pub fn merite_encore(fenetre: IdFenetre) -> bool {
 
 pub fn decrire(hwnd: HWND) -> Option<DescriptionFenetre> {
     unsafe {
-        let longueur = GetWindowTextLengthW(hwnd);
-        let titre = if longueur > 0 {
-            let mut tampon = vec![0u16; longueur as usize + 1];
+        let length = GetWindowTextLengthW(hwnd);
+        let titre = if length > 0 {
+            let mut tampon = vec![0u16; length as usize + 1];
             let ecrits = GetWindowTextW(hwnd, &mut tampon);
             if ecrits > 0 {
                 String::from_utf16_lossy(&tampon[..ecrits as usize])
@@ -134,8 +134,8 @@ unsafe extern "system" fn rappel(
     _fil: u32,
     _instant: u32,
 ) {
-    // `OBJID_WINDOW` seul : sans ce filtre, chaque contrôle enfant, chaque
-    // barre de défilement et chaque curseur remontent ici.
+    // `OBJID_WINDOW` alone: without this filter, each child control, each
+    // scroll bar and each cursor comes up here.
     if id_objet != OBJID_WINDOW.0 || hwnd.is_invalid() {
         return;
     }
@@ -145,9 +145,9 @@ unsafe extern "system" fn rappel(
                 Some(d) if merite_une_fenetre(&d) => d,
                 _ => return,
             };
-            // La porte d'appartenance est CONSULTÉE ICI et dans l'énumération
-            // initiale — les deux chemins d'entrée, jamais un seul. Ce dépôt a
-            // déjà payé un garde qui ne mordait que sur l'un des deux.
+            // The ownership gate is CONSULTED HERE and in the initial
+            // enumeration — both entry paths, never just one. This repository has
+            // already paid for a guard that only bit on one of the two.
             if refusee_pour_appartenance(hwnd, &description.titre) {
                 return;
             }
@@ -156,27 +156,27 @@ unsafe extern "system" fn rappel(
                 titre: description.titre,
             }
         }
-        // `HIDE` autant que `DESTROY` : une fenêtre masquée ne se distingue
-        // pas d'une fenêtre fermée du point de vue de l'utilisateur, et une
-        // application qui masque sa fenêtre principale au lieu de la détruire
-        // (barre de notification) laisserait sinon un flux vivant sur une
-        // fenêtre invisible.
-        EVENT_OBJECT_HIDE | EVENT_OBJECT_DESTROY => {
-            EvenementFenetre::Disparue { fenetre: IdFenetre(hwnd.0 as u64) }
-        }
+        // `HIDE` as much as `DESTROY`: a hidden window cannot be told apart
+        // from a closed window from the user's point of view, and an
+        // application hiding its main window instead of destroying it
+        // (notification area) would otherwise leave a live stream on an
+        // invisible window.
+        EVENT_OBJECT_HIDE | EVENT_OBJECT_DESTROY => EvenementFenetre::Disparue {
+            fenetre: IdFenetre(hwnd.0 as u64),
+        },
         _ => return,
     };
     if let Some(tx) = EMETTEUR.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        // L'échec d'envoi signifie que le superviseur s'arrête : rien à
-        // journaliser depuis un rappel de hook global.
+        // A send failure means the supervisor is stopping: nothing to
+        // log from a global hook callback.
         let _ = tx.send(message);
     }
 }
 
-/// Énumère les fenêtres déjà ouvertes au démarrage du superviseur.
+/// Enumerates the windows already open at supervisor startup.
 ///
-/// Le hook ne rapporte que les changements : sans cette énumération, les
-/// fenêtres antérieures au superviseur n'existeraient jamais pour lui.
+/// The hook only reports changes: without this enumeration, the
+/// windows predating the supervisor would never exist for it.
 pub fn enumerer_existantes() -> Vec<(IdFenetre, String)> {
     let mut trouvees: Vec<(IdFenetre, String)> = Vec::new();
     unsafe {
@@ -198,22 +198,22 @@ unsafe extern "system" fn rappel_enumeration(hwnd: HWND, lparam: LPARAM) -> BOOL
     TRUE
 }
 
-/// La porte d'APPARTENANCE, et **sa trace**.
+/// The OWNERSHIP gate, and **its trace**.
 ///
-/// 🔴 **CETTE TRACE EST UNE EXIGENCE, PAS UN CONFORT.** Sans elle, une
-/// application que `desk` n'a pas pu adopter serait **muette** : elle ne
-/// paraîtrait jamais, et rien nulle part ne dirait pourquoi. Ce dépôt paie une
-/// panne muette plus cher qu'un défaut bruyant, et le cas est RÉEL — une
-/// application du **Windows Store** paraît sous un intermédiaire du système
-/// (`ApplicationFrameHost`) qui ne descend pas de nous. Aucune du catalogue
-/// n'est dans ce cas aujourd'hui (mesuré, 41 raccourcis Win32) ; **le risque
-/// est repoussé, pas supprimé.**
+/// 🔴 **THIS TRACE IS A REQUIREMENT, NOT A COMFORT.** Without it, an
+/// application `desk` could not adopt would be **mute**: it would never
+/// appear, and nothing anywhere would say why. This repository pays for a
+/// mute failure more dearly than a loud defect, and the case is REAL — a
+/// **Windows Store** application appears under a system intermediary
+/// (`ApplicationFrameHost`) that does not descend from us. None in the catalogue
+/// is in that case today (measured, 41 Win32 shortcuts); **the risk
+/// is pushed back, not removed.**
 ///
-/// ⚠️ **`info!`, jamais `error!`** : écarter une fenêtre qui n'est pas à nous
-/// est le fonctionnement NORMAL de la règle, pas une panne. Ce lot vient de
-/// corriger une fausse alerte pour cette raison exacte
-/// (`moniteurs_virtuels::verdict_purge`), et un `error!` qui crie à chaque
-/// fenêtre de Steam serait la même faute.
+/// ⚠️ **`info!`, never `error!`**: setting aside a window that is not ours
+/// is the rule's NORMAL operation, not a failure. This batch has just
+/// fixed a false alarm for this exact reason
+/// (`moniteurs_virtuels::verdict_purge`), and an `error!` shouting at each
+/// Steam window would be the same mistake.
 fn refusee_pour_appartenance(hwnd: HWND, titre: &str) -> bool {
     let armee = crate::appartenance::armee();
     let mut pid = 0u32;
@@ -226,44 +226,49 @@ fn refusee_pour_appartenance(hwnd: HWND, titre: &str) -> bool {
         titre,
         pid,
         processus = %nom_du_processus(pid).unwrap_or_else(|| "?".into()),
-        "fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). \
-         Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant"
+        "window DISCARDED: desk did not launch it (ownership rule). \
+         Disarm with APPARTENANCE=0 to get the previous behaviour back"
     );
     true
 }
 
-/// Le nom du processus, pour que la trace ci-dessus soit lisible sans une
-/// seconde enquête. `None` si on ne peut pas l'obtenir — la trace le dit
-/// plutôt que de taire la ligne entière.
+/// The process name, so that the trace above is readable without a
+/// second investigation. `None` if it cannot be obtained — the trace says so
+/// rather than dropping the whole line.
 fn nom_du_processus(pid: u32) -> Option<String> {
-    // ⚠️ `QueryFullProcessImageNameW` et non `GetModuleBaseNameW` : la seconde
-    // vit dans `Win32_System_ProcessStatus`, une feature que ce crate n'active
-    // pas. La première est dans `Win32_System_Threading`, déjà active — et
-    // ajouter une feature pour un nom de journal serait payer cher un confort.
+    // ⚠️ `QueryFullProcessImageNameW` and not `GetModuleBaseNameW`: the latter
+    // lives in `Win32_System_ProcessStatus`, a feature this crate does not
+    // enable. The former is in `Win32_System_Threading`, already enabled — and
+    // adding a feature for a log name would be paying dearly for a comfort.
     use windows::core::PWSTR;
     use windows::Win32::System::Threading::{
         OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
         PROCESS_QUERY_LIMITED_INFORMATION,
     };
-    let processus =
-        unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    let processus = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
     let mut tampon = [0u16; 260];
-    let mut taille = tampon.len() as u32;
+    let mut size = tampon.len() as u32;
     let issue = unsafe {
         QueryFullProcessImageNameW(
             processus,
             PROCESS_NAME_WIN32,
             PWSTR(tampon.as_mut_ptr()),
-            &mut taille,
+            &mut size,
         )
     };
     let _ = unsafe { windows::Win32::Foundation::CloseHandle(processus) };
     issue.ok()?;
-    let chemin = String::from_utf16_lossy(&tampon[..taille as usize]);
-    Some(chemin.rsplit(['\\', '/']).next().unwrap_or(&chemin).to_string())
+    let chemin = String::from_utf16_lossy(&tampon[..size as usize]);
+    Some(
+        chemin
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or(&chemin)
+            .to_string(),
+    )
 }
 
-/// Pose le hook global et lance sa pompe de messages sur un fil dédié.
+/// Sets the global hook and starts its message pump on a dedicated thread.
 pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
     *EMETTEUR.lock().unwrap_or_else(|e| e.into_inner()) = Some(tx);
 
@@ -271,12 +276,12 @@ pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
     let fil = std::thread::spawn(move || {
         let hook = unsafe {
             SetWinEventHook(
-                // Bornes basse et haute : DESTROY=0x8001, SHOW=0x8002,
-                // HIDE=0x8003. `(DESTROY, SHOW)` — l'ordre du brief d'origine
-                // — exclurait HIDE, situé juste au-dessus de la borne haute.
-                // `(DESTROY, HIDE)` couvre les trois, SHOW tombant entre les
-                // deux : c'est la correction faite ici, pas un choix
-                // arbitraire de bornes plus larges.
+                // Low and high bounds: DESTROY=0x8001, SHOW=0x8002,
+                // HIDE=0x8003. `(DESTROY, SHOW)` — the original brief's order
+                // — would exclude HIDE, located just above the high bound.
+                // `(DESTROY, HIDE)` covers all three, SHOW falling between
+                // them: it is the fix made here, not an arbitrary choice
+                // of wider bounds.
                 EVENT_OBJECT_DESTROY,
                 EVENT_OBJECT_HIDE,
                 None,
@@ -287,14 +292,14 @@ pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
             )
         };
         if hook.is_invalid() {
-            let _ = prete.send(Err("SetWinEventHook a échoué".into()));
+            let _ = prete.send(Err("SetWinEventHook failed".into()));
             return;
         }
         let id = unsafe { windows::Win32::System::Threading::GetCurrentThreadId() };
         let _ = prete.send(Ok((hook.0 as isize, id)));
 
-        // La pompe. `GetMessageW` rend 0 sur `WM_QUIT` : c'est ainsi que
-        // `Hook::drop` fait sortir ce fil.
+        // The pump. `GetMessageW` returns 0 on `WM_QUIT`: that is how
+        // `Hook::drop` makes this thread exit.
         let mut message = MSG::default();
         while unsafe { GetMessageW(&mut message, None, 0, 0) }.as_bool() {
             unsafe {
@@ -311,6 +316,8 @@ pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
             fil_id,
         }),
         Ok(Err(e)) => Err(anyhow!(e)),
-        Err(_) => Err(anyhow!("le fil du hook s'est terminé avant de rendre son état")),
+        Err(_) => Err(anyhow!(
+            "the hook thread finished before returning its state"
+        )),
     }
 }

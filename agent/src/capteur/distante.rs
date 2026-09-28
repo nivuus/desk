@@ -1,9 +1,9 @@
-//! `SourceDistante` — la source vidéo d'un enfant, alimentée par le capteur.
+//! `SourceDistante` — a child's video source, fed by the sensor.
 //!
-//! **Pas de `#[cfg(windows)]`** : le tube réel est gaté (`capteur/tube.rs`),
-//! mais la décision de clore ou non une session vit ici, et c'est la pièce la
-//! plus coûteuse à se tromper. Elle est donc écrite contre un `Canal`
-//! injecté et un `Receiver`, tous deux triviaux à simuler sur l'hôte.
+//! **No `#[cfg(windows)]`**: the real pipe is gated (`capteur/tube.rs`),
+//! but the decision whether or not to close a session lives here, and it is the
+//! piece that costs most to get wrong. It is therefore written against an injected
+//! `Canal` and a `Receiver`, both trivial to simulate on the host.
 
 use std::sync::mpsc::Receiver;
 
@@ -13,154 +13,173 @@ use crate::capteur::protocole::{DepuisCapteur, VersCapteur};
 use crate::capteur::reprise::FenetreCanal;
 use crate::h264::AccessUnit;
 
-/// Ce que l'enfant peut demander au capteur, et le moyen de s'y rattacher
-/// quand le canal se rompt.
+/// What the child can ask of the sensor, and the means to re-attach to it
+/// when the channel breaks.
 pub trait Canal {
     fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur>;
-    /// Rouvre un canal vers le capteur et s'y réattache. L'implémentation
-    /// remplace son propre état interne d'écriture ; elle rend la file
-    /// d'images neuve et les dimensions annoncées à l'attache.
+    /// Reopens a channel to the sensor and re-attaches to it. The implementation
+    /// replaces its own internal write state; it returns the new frame
+    /// queue and the dimensions announced at attach time.
     fn rattacher(&mut self) -> Result<Rattachee>;
 }
 
-/// Le fruit d'un rattachement réussi.
+/// The fruit of a successful re-attachment.
 pub struct Rattachee {
     pub images: Receiver<Recu>,
     pub largeur: u32,
     pub hauteur: u32,
 }
 
-/// Ce que le capteur pousse, non sollicité.
+/// What the sensor pushes, unsolicited.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Recu {
     Image(AccessUnit),
-    Etat { vivante: bool, epuisee: bool, largeur: u32, hauteur: u32 },
-    /// Changement de sommeil poussé par le capteur, non sollicité. Retenu par
-    /// `SourceDistante::sommeil` jusqu'à ce que `sommeil_a_annoncer` le
-    /// consomme.
-    Sommeil { endormie: bool, raison: String },
-    /// Part du budget de débit accordée par le capteur, poussée non
-    /// sollicitée. Retenue par `SourceDistante::part` jusqu'à ce que
-    /// `part_a_appliquer` la consomme.
-    Part { bps: u32 },
-    /// Ordre audio poussé par le capteur, non sollicité. Retenu par
-    /// `SourceDistante::audio` jusqu'à ce que `audio_a_appliquer` le consomme.
-    Audio { actif: bool },
-    /// Changement de plein écran poussé par le capteur, non sollicité. Retenu
-    /// par `SourceDistante::plein_ecran` jusqu'à ce que
-    /// `plein_ecran_a_annoncer` le consomme.
-    PleinEcran { actif: bool },
-    /// Le presse-papier de la VM a changé (sous-bloc P1). Poussé non
-    /// sollicité, **au changement seulement** : c'est le capteur qui détient
-    /// le presse-papier et qui sonde son numéro de séquence.
+    Etat {
+        vivante: bool,
+        epuisee: bool,
+        largeur: u32,
+        hauteur: u32,
+    },
+    /// Sleep change pushed by the sensor, unsolicited. Held by
+    /// `SourceDistante::sommeil` until `sommeil_a_annoncer`
+    /// consumes it.
+    Sommeil {
+        endormie: bool,
+        raison: String,
+    },
+    /// Share of the bitrate budget granted by the sensor, pushed
+    /// unsolicited. Held by `SourceDistante::part` until
+    /// `part_a_appliquer` consumes it.
+    Part {
+        bps: u32,
+    },
+    /// Audio order pushed by the sensor, unsolicited. Held by
+    /// `SourceDistante::audio` until `audio_a_appliquer` consumes it.
+    Audio {
+        actif: bool,
+    },
+    /// Fullscreen change pushed by the sensor, unsolicited. Held
+    /// by `SourceDistante::plein_ecran` until
+    /// `plein_ecran_a_annoncer` consumes it.
+    PleinEcran {
+        actif: bool,
+    },
+    /// The VM's clipboard changed (sub-block P1). Pushed
+    /// unsolicited, **on change only**: it is the sensor that holds
+    /// the clipboard and polls its sequence number.
     ///
-    /// `texte` vaut `None` sur un REFUS de taille (au-delà de
-    /// `presse_papier::PRESSE_PAPIER_MAX`) — le contenu est refusé, jamais
-    /// tronqué —, et `octets` porte alors la taille refusée, pour que le
-    /// bandeau du navigateur puisse la dire. Retenu par
-    /// `SourceDistante::presse_papier` jusqu'à ce que
-    /// `presse_papier_a_annoncer` le consomme.
-    PressePapier { texte: Option<String>, octets: u32 },
-    /// La couleur d'accent de la fenêtre Windows, poussée par le capteur au
-    /// changement — **première lecture comprise**. Retenue dans
-    /// `SourceDistante::accent` jusqu'à ce que `accent_a_annoncer` la consomme.
-    Accent { couleur: String },
+    /// `texte` is `None` on a size REFUSAL (beyond
+    /// `presse_papier::PRESSE_PAPIER_MAX`) — the content is refused, never
+    /// truncated —, and `octets` then carries the refused size, so that the
+    /// browser's banner can state it. Held by
+    /// `SourceDistante::presse_papier` until
+    /// `presse_papier_a_annoncer` consumes it.
+    PressePapier {
+        texte: Option<String>,
+        octets: u32,
+    },
+    /// The Windows window's accent colour, pushed by the sensor on
+    /// change — **first reading included**. Held in
+    /// `SourceDistante::accent` until `accent_a_annoncer` consumes it.
+    Accent {
+        couleur: String,
+    },
 }
 
 pub struct SourceDistante {
     canal: Box<dyn Canal + Send>,
     images: Receiver<Recu>,
-    /// 🔴 **LA TAILLE DE L'IMAGE, ET ELLE EST PARTAGÉE — voir
-    /// [`crate::entrees::TailleImage`].** Ce n'était qu'un couple de `u32`
-    /// jusqu'au lot 32T ; l'injecteur d'entrées en avait besoin, et le seul
-    /// moyen de ne PAS avoir deux descriptions du même rectangle est de
-    /// n'avoir qu'un stockage. `dimensions()` la relit, l'injecteur la relit.
+    /// 🔴 **THE FRAME SIZE, AND IT IS SHARED — see
+    /// [`crate::entrees::FrameSize`].** It was only a pair of `u32`
+    /// until batch 32T; the input injector needed it, and the only
+    /// way NOT to have two descriptions of the same rectangle is to
+    /// have only one storage. `dimensions()` re-reads it, the injector re-reads it.
     ///
-    /// ⚠️ **Les trois écritures sont celles de `video_source.rs`** (attache,
-    /// `Etat`, `Taille`), plus la valeur initiale. En ajouter une quatrième
-    /// ailleurs, sans passer par ici, réintroduirait exactement le défaut du
-    /// lot 32M.
-    taille: std::sync::Arc<crate::entrees::TailleImage>,
+    /// ⚠️ **The three writes are those of `video_source.rs`** (attach,
+    /// `Etat`, `Size`), plus the initial value. Adding a fourth
+    /// elsewhere, without going through here, would reintroduce exactly the defect of
+    /// batch 32M.
+    size: std::sync::Arc<crate::entrees::FrameSize>,
     vivante: bool,
     epuisee: bool,
-    /// Rupture du canal en cours. Une rupture n'épuise pas la source tant que
-    /// cette fenêtre n'a pas expiré : c'est ce qui fait survivre les sessions
-    /// à une relance du capteur.
+    /// Channel break in progress. A break does not exhaust the source as long as
+    /// this window has not expired: that is what makes sessions survive
+    /// a sensor restart.
     fenetre: FenetreCanal,
-    /// Dernier changement de sommeil reçu du capteur, en attente d'être
-    /// annoncé au navigateur. Consommé par `sommeil_a_annoncer`.
+    /// Last sleep change received from the sensor, waiting to be
+    /// announced to the browser. Consumed by `sommeil_a_annoncer`.
     ///
-    /// **État courant, pas un historique** : deux `Sommeil` reçus avant
-    /// qu'une lecture n'intervienne s'écrasent, seul le dernier survit — même
-    /// régime que `Etat` juste au-dessus, dont les champs s'écrasent aussi
-    /// sans accumulation.
+    /// **Current state, not a history**: two `Sommeil` received before
+    /// a read happens overwrite each other, only the last survives — same
+    /// regime as `Etat` just above, whose fields also overwrite each other
+    /// without accumulating.
     sommeil: Option<(bool, String)>,
-    /// Dernière part de budget de débit reçue du capteur, en attente
-    /// d'application. Consommée par `part_a_appliquer`. Même régime
-    /// d'écrasement que `sommeil`.
+    /// Last bitrate budget share received from the sensor, waiting to be
+    /// applied. Consumed by `part_a_appliquer`. Same overwrite
+    /// regime as `sommeil`.
     part: Option<u32>,
-    /// Dernier ordre audio reçu du capteur, en attente d'application. Consommé
-    /// par `audio_a_appliquer`. Même régime d'écrasement que `part`.
+    /// Last audio order received from the sensor, waiting to be applied. Consumed
+    /// by `audio_a_appliquer`. Same overwrite regime as `part`.
     ///
-    /// ⚠️ **`None` à la naissance, et ce n'est pas « pas d'ordre » mais « rien
-    /// à changer »** : l'enfant naît MUET (voir `demarrage.rs`), et le capteur
-    /// lui envoie son premier ordre dès l'attache. Partir d'un `Some(true)`
-    /// implicite ferait porter le son aux deux fenêtres d'un même processus
-    /// pendant les millisecondes qui précèdent le premier arbitrage.
+    /// ⚠️ **`None` at birth, and it does not mean "no order" but "nothing
+    /// to change"**: the child is born SILENT (see `demarrage.rs`), and the sensor
+    /// sends it its first order at attach time. Starting from an implicit `Some(true)`
+    /// would make both windows of the same process carry the sound
+    /// during the milliseconds before the first arbitration.
     audio: Option<bool>,
-    /// Dernier changement de plein écran reçu du capteur, en attente d'être
-    /// annoncé au navigateur. Consommé par `plein_ecran_a_annoncer`.
+    /// Last fullscreen change received from the sensor, waiting to be
+    /// announced to the browser. Consumed by `plein_ecran_a_annoncer`.
     ///
-    /// **Même régime d'écrasement que `sommeil`** : deux changements arrivés
-    /// entre deux lectures s'écrasent, seul le dernier survit. Il n'y a pas
-    /// d'état courant jumeau ici, contrairement à `sommeil`/`endormie` : rien
-    /// dans l'enfant n'a besoin de relire le plein écran hors de l'annonce.
+    /// **Same overwrite regime as `sommeil`**: two changes arriving
+    /// between two reads overwrite each other, only the last survives. There is no
+    /// twin current state here, unlike `sommeil`/`endormie`: nothing
+    /// in the child needs to re-read the fullscreen state outside the announcement.
     plein_ecran: Option<bool>,
-    /// Dernier presse-papier reçu du capteur, en attente d'être annoncé au
-    /// navigateur. Consommé par `presse_papier_a_annoncer`.
+    /// Last clipboard received from the sensor, waiting to be announced to the
+    /// browser. Consumed by `presse_papier_a_annoncer`.
     ///
-    /// **Même régime d'écrasement que `plein_ecran`** : deux copies arrivées
-    /// entre deux lectures s'écrasent, seule la dernière survit. C'est correct
-    /// — le presse-papier EST un état, pas un historique, et le navigateur
-    /// n'aurait rien à faire d'une copie que l'utilisateur a déjà remplacée.
+    /// **Same overwrite regime as `plein_ecran`**: two copies arriving
+    /// between two reads overwrite each other, only the last survives. That is correct
+    /// — the clipboard IS a state, not a history, and the browser
+    /// would have nothing to do with a copy the user has already replaced.
     presse_papier: Option<(Option<String>, u32)>,
-    /// Dernière couleur d'accent reçue du capteur, en attente d'être annoncée
-    /// au navigateur. Consommée par `accent_a_annoncer`.
+    /// Last accent colour received from the sensor, waiting to be announced
+    /// to the browser. Consumed by `accent_a_annoncer`.
     ///
-    /// **Même régime d'écrasement que `presse_papier`** : deux changements
-    /// arrivés entre deux lectures s'écrasent, seul le dernier survit. C'est
-    /// correct — l'accent EST un état, pas un historique, et le navigateur
-    /// n'aurait rien à faire d'une teinte que l'icône a déjà remplacée.
+    /// **Same overwrite regime as `presse_papier`**: two changes
+    /// arriving between two reads overwrite each other, only the last survives. That is
+    /// correct — the accent IS a state, not a history, and the browser
+    /// would have nothing to do with a tint the icon has already replaced.
     accent: Option<String>,
-    /// État de sommeil COURANT, tel que le capteur le décrit.
+    /// CURRENT sleep state, as the sensor describes it.
     ///
-    /// **Distinct de `sommeil` juste au-dessus, et non redondant avec lui** :
-    /// celui-là est l'annonce à faire au navigateur, rendue une seule fois ;
-    /// celui-ci est l'état, relu à chaque part appliquée par
-    /// `Session::appliquer_part` — qui ne doit pas propager le plancher d'une
-    /// endormie au contrôleur de congestion. Les deux se posent au même
-    /// endroit, sur le même message ; seule leur durée de vie diffère.
+    /// **Distinct from `sommeil` just above, and not redundant with it**:
+    /// that one is the announcement to make to the browser, returned only once;
+    /// this one is the state, re-read at every share applied by
+    /// `Session::appliquer_part` — which must not propagate a sleeping window's
+    /// floor to the congestion controller. Both are set at the same
+    /// place, on the same message; only their lifetime differs.
     ///
-    /// ⚠️ **Vrai à la naissance, et ce n'est pas un choix prudent mais un
-    /// fait** : depuis le sous-bloc D5 une fenêtre naît ENDORMIE côté capteur
-    /// (`Fenetre::ouvrir` ne construit plus de `WindowsSource`, voir sa doc),
-    /// et aucun `Sommeil { endormie: true }` n'est jamais poussé pour cette
-    /// naissance — il n'y a pas de transition à annoncer. La toute première
-    /// part reçue, envoyée par `sommeil::inscrire` dès l'attache, est donc le
-    /// plancher `PART_DORMANTE_BPS`. Partir de `false` la ferait appliquer
-    /// comme plafond d'encodage, précisément le défaut que ce champ existe
-    /// pour éviter.
+    /// ⚠️ **True at birth, and it is not a cautious choice but a
+    /// fact**: since sub-block D5 a window is born ASLEEP on the sensor side
+    /// (`Fenetre::ouvrir` no longer builds a `WindowsSource`, see its doc),
+    /// and no `Sommeil { endormie: true }` is ever pushed for this
+    /// birth — there is no transition to announce. The very first
+    /// share received, sent by `sommeil::inscrire` at attach time, is therefore the
+    /// `PART_DORMANTE_BPS` floor. Starting from `false` would make it apply
+    /// as an encoding ceiling, precisely the defect this field exists
+    /// to avoid.
     endormie: bool,
-    /// Vrai une seule fois, juste après un rattachement réussi. Consommé par
-    /// `rattachement_survenu`, sur le même régime que `sommeil`/`part`/
-    /// `audio`/`plein_ecran` : c'est ce qui permet à `Session` de remettre à
-    /// zéro `audio_mort_signale` — un capteur relancé a perdu la mémoire de
-    /// tout signalement antérieur.
+    /// True only once, right after a successful re-attachment. Consumed by
+    /// `rattachement_survenu`, on the same regime as `sommeil`/`part`/
+    /// `audio`/`plein_ecran`: it is what lets `Session` reset
+    /// `audio_mort_signale` — a restarted sensor has lost the memory of
+    /// any earlier report.
     rattache: bool,
 }
 
 impl SourceDistante {
-    pub fn nouvelle(
+    pub fn new(
         canal: Box<dyn Canal + Send>,
         images: Receiver<Recu>,
         largeur: u32,
@@ -169,10 +188,10 @@ impl SourceDistante {
         Self {
             canal,
             images,
-            taille: std::sync::Arc::new(crate::entrees::TailleImage::nouvelle(largeur, hauteur)),
+            size: std::sync::Arc::new(crate::entrees::FrameSize::new(largeur, hauteur)),
             vivante: true,
             epuisee: false,
-            fenetre: FenetreCanal::nouvelle(),
+            fenetre: FenetreCanal::new(),
             sommeil: None,
             part: None,
             audio: None,
@@ -184,50 +203,50 @@ impl SourceDistante {
         }
     }
 
-    /// La cellule de taille, à confier à l'injecteur d'entrées.
+    /// The size cell, to hand to the input injector.
     ///
-    /// 🔴 **Un CLONE d'`Arc`, jamais une copie de la valeur** : c'est la
-    /// différence entre « le même rectangle » et « deux rectangles qui se
-    /// ressemblaient au démarrage ».
-    pub fn taille_partagee(&self) -> std::sync::Arc<crate::entrees::TailleImage> {
-        std::sync::Arc::clone(&self.taille)
+    /// 🔴 **An `Arc` CLONE, never a copy of the value**: it is the
+    /// difference between "the same rectangle" and "two rectangles that looked
+    /// alike at start-up".
+    pub fn shared_size(&self) -> std::sync::Arc<crate::entrees::FrameSize> {
+        std::sync::Arc::clone(&self.size)
     }
 
-    /// Émet une commande et n'accepte que `Fait` comme succès.
+    /// Sends a command and accepts only `Fait` as success.
     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
         match self.canal.commander(message)? {
             DepuisCapteur::Fait => Ok(()),
-            DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
-            autre => bail!("réponse inattendue du capteur : {autre:?}"),
+            DepuisCapteur::Error { motif } => bail!("the sensor refused: {motif}"),
+            autre => bail!("unexpected answer from the sensor: {autre:?}"),
         }
     }
 
-    /// Fait vieillir la fenêtre de reprise, pour les seuls tests : sans elle,
-    /// éprouver l'expiration exigerait d'attendre réellement 15 secondes.
+    /// Ages the resumption window, for tests only: without it,
+    /// testing the expiry would require actually waiting 15 seconds.
     #[cfg(test)]
     pub fn vieillir_pour_test(&mut self, ecart: std::time::Duration) {
         self.fenetre.vieillir_pour_test(ecart);
     }
 }
 
-// L'implémentation de `VideoSource` vit dans un fichier voisin : ce fichier-ci
-// était à 472 lignes pour un plafond de projet à 500, et le sous-bloc A1 devait
-// y greffer le patron `PressePapier`, qui pèse une trentaine de lignes.
-// L'extraction est jouée AVANT l'addition qui la rend nécessaire, jamais après
-// — et jamais par une compression. Voir l'en-tête de `distante/video_source.rs`.
+// The `VideoSource` implementation lives in a sibling file: this file
+// was at 472 lines for a project cap of 500, and sub-block A1 had to
+// graft the `PressePapier` pattern onto it, which weighs some thirty lines.
+// The extraction is done BEFORE the addition that makes it necessary, never after
+// — and never by compression. See the header of `distante/video_source.rs`.
 #[path = "distante/video_source.rs"]
 mod video_source;
 
-// Les tests vivent dans un fichier voisin : ce fichier-ci était à 487 lignes
-// pour un plafond de projet à 500. Voir l'en-tête de `distante/tests.rs`.
+// The tests live in a sibling file: this file was at 487 lines
+// for a project cap of 500. See the header of `distante/tests.rs`.
 #[cfg(test)]
 mod tests;
 
-// Les tests des ÉTATS poussés par le capteur (visibilité, sommeil, part,
-// audio, plein écran, presse-papier) vivent dans un TROISIÈME fichier :
-// `distante/tests.rs` était à 474 lignes pour ce même plafond de 500, et le
-// test du presse-papier (sous-bloc P1, tâche 10) en aurait entamé la marge.
-// Voir l'en-tête de `distante/tests_etats.rs`.
+// The tests of the STATES pushed by the sensor (visibility, sleep, share,
+// audio, fullscreen, clipboard) live in a THIRD file:
+// `distante/tests.rs` was at 474 lines for the same cap of 500, and the
+// clipboard test (sub-block P1, task 10) would have eaten into the margin.
+// See the header of `distante/tests_etats.rs`.
 #[cfg(test)]
 #[path = "distante/tests_etats.rs"]
 mod tests_etats;

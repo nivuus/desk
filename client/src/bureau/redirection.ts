@@ -1,32 +1,32 @@
-// LA REDIRECTION DE L'ANCIENNE PAGE-SHELL — une règle, pure et testée.
+// THE REDIRECTION OF THE OLD SHELL PAGE — a rule, pure and tested.
 //
-// 🔴 POURQUOI `shell.html` SURVIT COMME REDIRECTION PLUTÔT QUE D'ÊTRE
-// SUPPRIMÉ (décision du propriétaire, 31 août 2026).
+// 🔴 WHY `shell.html` SURVIVES AS A REDIRECT RATHER THAN BEING
+// DELETED (owner's decision, August 31st, 2026).
 //
-// ⚠️ CORRIGÉ LE 31 AOÛT 2026 (fix round 1 de cette même tâche) : cette phrase
-// nommait `start_url` — vrai au moment où elle a été écrite, FAUX depuis que
-// cette tâche a fait migrer `start_url` vers la racine (`hub/manifeste.ts`,
-// commit `a100e46`). C'est désormais **`id`**, PAS `start_url`, qui porte
-// `shell.html?app=<id>` (`hub/manifeste.ts:265`) — `id` est l'IDENTITÉ figée
-// de l'application installée, jamais mise à jour (voir son commentaire).
+// ⚠️ FIXED ON AUGUST 31st, 2026 (fix round 1 of this same task): this sentence
+// named `start_url` — true when it was written, WRONG since
+// this task migrated `start_url` to the root (`hub/manifeste.ts`,
+// commit `a100e46`). It is now **`id`**, NOT `start_url`, that carries
+// `shell.html?app=<id>` (`hub/manifeste.ts:265`) — `id` is the frozen IDENTITY
+// of the installed application, never updated (see its comment).
 //
-// Les manifestes des PWA **DÉJÀ installées** portent donc encore, dans leur
-// `id`, `shell.html?app=<id>` — et comme le manifeste est publié en `blob:`
-// (`hub/manifeste.ts`, legs G5 déclaré), une telle PWA **ne relira jamais son
-// manifeste** : c'est son `start_url` (figé, lui aussi, au moment de
-// l'installation) qui décide où elle s'ouvre, et pour une installation faite
-// AVANT ce lot, il valait encore `shell.html?app=<id>`. Elle ouvrira donc
-// cette adresse pour toujours, et c'est pour CES installations-là — les
-// installations déjà faites, pas les futures — que la redirection existe.
-// Une installation faite à partir de maintenant porte le `start_url` migré
-// vers la racine et n'atteindra plus jamais `shell.html` par ce chemin.
-// Supprimer le fichier casserait donc définitivement les premières. Ce n'est
-// pas une transition : c'est le chemin définitif de ces installations-là.
+// The manifests of **ALREADY installed** PWAs therefore still carry, in their
+// `id`, `shell.html?app=<id>` — and since the manifest is published as `blob:`
+// (`hub/manifeste.ts`, declared G5 legacy), such a PWA **will never reread its
+// manifest**: it is its `start_url` (frozen too, at the moment of
+// installation) that decides where it opens, and for an installation made
+// BEFORE this batch, it was still `shell.html?app=<id>`. It will therefore open
+// that address forever, and it is for THOSE installations — the
+// installations already made, not future ones — that the redirect exists.
+// An installation made from now on carries the `start_url` migrated
+// to the root and will never again reach `shell.html` through this path.
+// Deleting the file would therefore break the former for good. It is not
+// a transition: it is the permanent path of those installations.
 
-/// L'adresse vers laquelle rediriger, chaîne de requête CONSERVÉE.
+/// The address to redirect to, query string KEPT.
 ///
-/// ⚠️ `?app=` EST LE POINT : le perdre casserait les PWA aussi sûrement que
-/// supprimer le fichier.
-export function cibleDeRedirection(recherche: string): string {
-    return `/${recherche}`;
+/// ⚠️ `?app=` IS THE POINT: losing it would break PWAs as surely as
+/// deleting the file.
+export function cibleDeRedirection(search: string): string {
+    return `/${search}`;
 }

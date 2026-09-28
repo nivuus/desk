@@ -1,13 +1,13 @@
-// Le canal `/agent`, côté INSTALLATION : la réémission à l'enrôlement, et les
-// deux montantes que l'agent rapporte.
+// The `/agent` channel, INSTALLATION side: re-emission at enrolment, and the
+// two upstream messages the agent reports.
 //
-// 🔴 UN FICHIER À PART, PAS UNE ADDITION À `canal-apps.test.ts`. Celui-ci est à
-// 373 lignes ; y ajouter cent vingt lignes l'aurait porté à portée du plafond,
-// et ce dépôt écrit quatre fois que la marge regagnée par une extraction se
-// reperd si on la traite comme acquise. Le harnais est PARTAGÉ
-// (`canal-harnais.ts`, extrait par G2 pour cette raison exacte) : le recopier
-// aurait produit deux `ouvrirUrl` qui divergeraient à la première correction
-// portée sur un seul des deux.
+// 🔴 A SEPARATE FILE, NOT AN ADDITION TO `canal-apps.test.ts`. That one is at
+// 373 lines; adding a hundred and twenty lines would have brought it within reach of the cap,
+// and this repository writes four times that the margin regained by an extraction is
+// lost again if treated as granted. The harness is SHARED
+// (`canal-harnais.ts`, extracted by G2 for this exact reason): copying it
+// would have produced two `ouvrirUrl` that would diverge at the first fix
+// applied to only one of the two.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocketServer } from 'ws';
@@ -20,8 +20,8 @@ import {
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { Frein } from '../securite/frein';
-import { creer as creerInstallation, lireParId } from '../depot/installation';
-import { creer as creerTeleversement, sceller } from '../depot/televersement';
+import { create as createInstallation, lireParId } from '../depot/installation';
+import { create as createUpload, sceller } from '../depot/televersement';
 import { servirLeCanalAgent } from './canal';
 import { enrolerUneVm, ouvrir, SECRET, SECRET_VM, T0, type Pair } from './canal-harnais';
 import { RegistreAgents } from './registre';
@@ -42,7 +42,7 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-async function demarrer(p: Pilote): Promise<number> {
+async function start(p: Pilote): Promise<number> {
     maintenant = T0;
     registre = new RegistreAgents();
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
@@ -65,44 +65,44 @@ async function enrole(pair: Pair): Promise<void> {
     expect(rep.type).toBe('enrole');
 }
 
-/// Un téléversement scellé, et une installation `en_attente` pour la VM `v-1`.
+/// A sealed upload, and an `en_attente` installation for VM `v-1`.
 async function unOrdreEnAttente(p: Pilote): Promise<{ installation: string; tel: string }> {
     await p.executer(
         'INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
         ['u-1', 'a@b.c', 'scrypt$1$1$1$x$y', T0],
     );
-    const tel = await creerTeleversement(
+    const tel = await createUpload(
         p,
         {
-            utilisateurId: 'u-1',
+            userId: 'u-1',
             nom: 'Firefox Setup 130.0.exe',
             taille: 3_221_225_472,
             sha256: 'a'.repeat(64),
-            tailleTranche: 8 * 1024 * 1024,
+            chunkSize: 8 * 1024 * 1024,
         },
         T0,
     );
     await sceller(p, tel.id, T0 + 1);
-    const inst = await creerInstallation(p, { vmId: 'v-1', televersementId: tel.id }, T0 + 2);
+    const inst = await createInstallation(p, { vmId: 'v-1', televersementId: tel.id }, T0 + 2);
     return { installation: inst.id, tel: tel.id };
 }
 
-describe('la réémission des installations à l’enrôlement', () => {
-    // 🔴 LA ROUGE DU CRITÈRE ④, ET ELLE EST GRATUITE SUR LE BINAIRE DE G1 —
-    // qui n'a aucune variante `installer` du tout. Un `push` WebSocket n'a
-    // AUCUNE garantie de livraison : sans cette réémission, un ordre émis
-    // pendant une coupure serait perdu SANS TERME, et l'utilisateur
-    // attendrait une installation que personne ne relancerait jamais.
+describe('re-sending the installations at enrolment', () => {
+    // 🔴 THE RED OF CRITERION ④, AND IT IS FREE ON G1'S BINARY —
+    // which has no `installer` variant at all. A WebSocket `push` has
+    // NO delivery guarantee: without this re-emission, an order emitted
+    // during an outage would be lost WITH NO END, and the user
+    // would wait for an installation nobody would ever relaunch.
     //
-    // ⚠️ CE TEST N'ENVOIE RIEN APRÈS L'ENRÔLEMENT, et c'est le point : il
-    // attend un message que le canal POUSSE de lui-même. `recevoir()` existe
-    // pour cela — l'attendre par un `dire('')` serait une course, et
-    // provoquerait un refus `forme` une fois sur deux.
-    it('🔴 POUSSE l’ordre en attente, sans que le pair ait rien demandé', async () => {
+    // ⚠️ THIS TEST SENDS NOTHING AFTER ENROLMENT, and that is the point: it
+    // waits for a message the channel PUSHES on its own. `recevoir()` exists
+    // for that — waiting for it through a `dire('')` would be a race, and
+    // would cause a `forme` refusal one time in two.
+    it('🔴 PUSHES the pending order, without the peer asking for anything', async () => {
         base = await baseNeuve('canal-inst-reemission');
         await enrolerUneVm(base, 'v-1');
         const { installation, tel } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         await enrole(pair);
         const ordre = await pair.recevoir();
@@ -110,10 +110,10 @@ describe('la réémission des installations à l’enrôlement', () => {
             type: 'installer',
             v: PLATEFORME_VERSION,
             installation,
-            // ⚠️ L'URL EST RELATIVE, et c'est délibéré : l'agent la résout
-            // contre l'adresse de son propre canal, comme il dérive déjà celle
-            // du téléversement d'icônes. Deux variables pour la même adresse
-            // divergeraient le jour où l'une des deux serait changée.
+            // ⚠️ THE URL IS RELATIVE, and that is deliberate: the agent resolves it
+            // against the address of its own channel, as it already derives that
+            // of the icon upload. Two variables for the same address
+            // would diverge the day one of the two was changed.
             url: `/televersement/${tel}/contenu`,
             nom: 'Firefox Setup 130.0.exe',
             taille: 3_221_225_472,
@@ -122,67 +122,67 @@ describe('la réémission des installations à l’enrôlement', () => {
         pair.socket.terminate();
     });
 
-    // 🔴 LA MOITIÉ QUI EMPÊCHE LA DOUBLE EXÉCUTION, et sans elle le test
-    // ci-dessus serait vrai d'un service qui rejoue INDÉFINIMENT. Dès qu'un
-    // agent a rapporté une progression, la ligne passe `en_cours` et cesse
-    // d'être réémise. C'est la PREMIÈRE des deux ceintures ; la seconde est le
-    // marqueur sur le disque de la VM, et elle protège du cas où la première a
-    // perdu sa base.
-    it('🔴 NE RÉÉMET PLUS une installation déjà commencée', async () => {
+    // 🔴 THE HALF THAT PREVENTS DOUBLE EXECUTION, and without it the test
+    // above would hold for a service that replays FOREVER. As soon as an
+    // agent has reported a progress, the row goes `en_cours` and stops
+    // being re-emitted. It is the FIRST of the two belts; the second is the
+    // marker on the VM's disk, and it protects against the case where the first has
+    // lost its database.
+    it('🔴 NO LONGER RE-SENDS an installation already started', async () => {
         base = await baseNeuve('canal-inst-pas-deux-fois');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const premier = await ouvrir(await demarrer(base));
+        const premier = await ouvrir(await start(base));
         await enrole(premier);
-        // Le premier enrôlement le reçoit bien — c'est le témoin sans lequel
-        // l'assertion suivante serait vraie d'un service entièrement muet.
+        // The first enrolment does receive it — it is the witness without which
+        // the next assertion would hold for an entirely silent service.
         expect((await premier.recevoir()).installation).toBe(installation);
 
-        // L'agent rapporte une progression : la ligne quitte `en_attente`.
-        // ⚠️ `send`, JAMAIS `dire` : une progression n'appelle AUCUNE réponse,
-        // et `dire` l'attendrait deux secondes avant de rougir pour la mauvaise
-        // raison. C'est ce que fait déjà le test du catalogue, pour la même
-        // raison — on attend l'EFFET en base, pas un accusé qui n'existe pas.
+        // The agent reports a progress: the row leaves `en_attente`.
+        // ⚠️ `send`, NEVER `dire`: a progress calls for NO answer,
+        // and `dire` would wait for it two seconds before turning red for the wrong
+        // reason. It is what the catalogue test already does, for the same
+        // reason — we wait for the EFFECT in the database, not an acknowledgement that does not exist.
         premier.socket.send(encodeProgression(installation, 'transfert', 8_388_608, 3_221_225_472, 1_200));
-        // ⚠️ L'ÉCRITURE N'EST PAS ATTENDUE PAR LE CANAL (c'est la règle du
-        // fichier), donc on attend l'EFFET plutôt qu'une durée.
+        // ⚠️ THE WRITE IS NOT AWAITED BY THE CHANNEL (that is the rule of the
+        // file), so we wait for the EFFECT rather than a duration.
         await attendreEtat(base, installation, 'en_cours');
         premier.socket.terminate();
 
-        // Un second enrôlement ne doit RIEN recevoir.
-        const second = await ouvrir(await demarrer(base));
+        // A second enrolment must receive NOTHING.
+        const second = await ouvrir(await start(base));
         await enrole(second);
-        await expect(second.recevoir()).rejects.toThrow(/aucun message poussé/);
+        await expect(second.recevoir()).rejects.toThrow(/no message pushed/);
         second.socket.terminate();
     });
 });
 
-describe('les deux montantes de l’installation', () => {
-    // 🔴 NI PROGRESSION NI ISSUE SANS ENRÔLEMENT. Les accepter laisserait un
-    // pair anonyme écrire dans la table `installation` d'une VM qui n'est pas
-    // la sienne — donc DÉCLARER RÉUSSIE, OU REFUSÉE, L'INSTALLATION D'AUTRUI.
-    // C'est le trou que le refus `sequence` du battement ferme déjà, par deux
-    // autres portes.
-    it('🔴 une `progression` avant tout enrôlement est refusée, motif `sequence`', async () => {
+describe('the two upstream messages of the installation', () => {
+    // 🔴 NEITHER PROGRESS NOR OUTCOME WITHOUT ENROLMENT. Accepting them would let an
+    // anonymous peer write into the `installation` table of a VM that is not
+    // its own — hence DECLARE SOMEONE ELSE'S INSTALLATION SUCCEEDED, OR REFUSED.
+    // It is the hole that the heartbeat's `sequence` refusal already closes, through two
+    // other doors.
+    it('🔴 a `progression` before any enrolment is refused, reason `sequence`', async () => {
         base = await baseNeuve('canal-inst-seq-progression');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(encodeProgression(installation, 'transfert', 1, 2, 3));
         expect(rep).toEqual({ type: 'refus', v: PLATEFORME_VERSION, motif: 'sequence' });
-        // Et RIEN n'a été écrit : c'est la moitié qui décide. Un refus qui
-        // aurait quand même laissé passer l'écriture serait une porte ouverte
-        // avec un panneau « fermé ».
+        // And NOTHING was written: that is the half that decides. A refusal that
+        // still let the write through would be an open door
+        // with a "closed" sign.
         expect((await lireParId(base, installation))?.etat).toBe('en_attente');
         pair.socket.terminate();
     });
 
-    it('🔴 un `termine` avant tout enrôlement est refusé, motif `sequence`', async () => {
+    it('🔴 a `termine` before any enrolment is refused, reason `sequence`', async () => {
         base = await baseNeuve('canal-inst-seq-termine');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
 
         const rep = await pair.dire(
             encodeTermine(installation, 'reussie', null, 0, '', false),
@@ -192,21 +192,21 @@ describe('les deux montantes de l’installation', () => {
         pair.socket.terminate();
     });
 
-    it('un `termine` valide écrit l’issue, le motif et le code de sortie', async () => {
+    it('a valid `termine` writes the outcome, the reason and the exit code', async () => {
         base = await baseNeuve('canal-inst-termine');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
-        await pair.recevoir(); // l'ordre réémis
+        await pair.recevoir(); // the re-emitted order
 
         maintenant = T0 + 90_000;
         pair.socket.send(
-            // ⚠️ 3010 EST UN SUCCÈS QUI DEMANDE UN REDÉMARRAGE, et il est
-            // RAPPORTÉ à côté de l'issue sans que rien n'en déduise quoi que ce
-            // soit : c'est l'agent, et lui seul, qui a compté les applications
-            // apparues pendant sa fenêtre.
-            encodeTermine(installation, 'reussie', null, 3010, 'Redemarrage requis.', false),
+            // ⚠️ 3010 IS A SUCCESS THAT ASKS FOR A REBOOT, and it is
+            // REPORTED next to the outcome without anything deducing anything
+            // from it: it is the agent, and the agent alone, that counted the applications
+            // that appeared during its window.
+            encodeTermine(installation, 'reussie', null, 3010, 'Restart required.', false),
         );
         await attendreEtat(base, installation, 'terminee');
         const ligne = await lireParId(base, installation);
@@ -216,26 +216,26 @@ describe('les deux montantes de l’installation', () => {
         pair.socket.terminate();
     });
 
-    // ⚠️ UN `termine` DONT L'ÉCRITURE ÉCHOUE NE DOIT PAS ABATTRE LA CONNEXION.
-    // Un `await` sur le chemin d'un message ferait qu'une base momentanément
-    // indisponible tuerait le canal d'un agent qui va très bien, et une
-    // promesse rejetée sans `catch` abattrait tout le process Node.
-    it("🔴 l'écriture de l'issue n'est PAS ATTENDUE, et son échec n'abat pas la connexion", async () => {
+    // ⚠️ A `termine` WHOSE WRITE FAILS MUST NOT TAKE DOWN THE CONNECTION.
+    // An `await` on the path of a message would mean that a momentarily
+    // unavailable database would kill the channel of an agent that is perfectly fine, and a
+    // promise rejected without `catch` would take down the whole Node process.
+    it("🔴 writing the outcome is NOT AWAITED, and its failure does not bring the connection down", async () => {
         base = await baseNeuve('canal-inst-echec-ecriture');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
-        const pair = await ouvrir(await demarrer(base));
+        const pair = await ouvrir(await start(base));
         await enrole(pair);
         await pair.recevoir();
 
-        vi.spyOn(base, 'executer').mockRejectedValue(new Error('base indisponible'));
+        vi.spyOn(base, 'executer').mockRejectedValue(new Error('database unavailable'));
         vi.spyOn(console, 'error').mockImplementation(() => {});
         pair.socket.send(encodeTermine(installation, 'reussie', null, 0, '', false));
-        // On laisse le gestionnaire courir : l'écriture est lancée sans être
-        // attendue, et c'est précisément la propriété qu'on éprouve.
+        // We let the handler run: the write is launched without being
+        // awaited, and that is precisely the property under test.
         await new Promise((r) => setTimeout(r, 50));
 
-        // La connexion vit toujours : le battement suivant obtient sa réponse.
+        // The connection is still alive: the next heartbeat gets its answer.
         vi.restoreAllMocks();
         const rep = await pair.dire(JSON.stringify({ type: 'battement', v: PLATEFORME_VERSION }));
         expect(rep.type).toBe('battement-recu');
@@ -243,17 +243,17 @@ describe('les deux montantes de l’installation', () => {
     });
 });
 
-/// Attend que l'état d'une installation atteigne `attendu`, BORNÉ.
+/// Waits until the state of an installation reaches `attendu`, BOUNDED.
 ///
-/// 🔴 ON ATTEND LE FAIT, JAMAIS UNE DURÉE. Les écritures de ce canal sont
-/// délibérément NON ATTENDUES (`void … .catch(…)`), donc un `await` sur une
-/// durée arbitraire serait une course : trop court il rougirait sur une base
-/// lente, trop long il ralentirait toute la suite.
+/// 🔴 WE WAIT FOR THE FACT, NEVER A DURATION. This channel's writes are
+/// deliberately NOT AWAITED (`void … .catch(…)`), so an `await` on an
+/// arbitrary duration would be a race: too short it would turn red on a slow
+/// database, too long it would slow down the whole suite.
 async function attendreEtat(p: Pilote, id: string, attendu: string): Promise<void> {
     for (let i = 0; i < 200; i += 1) {
         const ligne = await lireParId(p, id);
         if (ligne?.etat === attendu) return;
         await new Promise((r) => setTimeout(r, 10));
     }
-    throw new Error(`l'installation ${id} n'a pas atteint l'état ${attendu} en 2000 ms`);
+    throw new Error(`installation ${id} did not reach the state ${attendu} within 2000 ms`);
 }

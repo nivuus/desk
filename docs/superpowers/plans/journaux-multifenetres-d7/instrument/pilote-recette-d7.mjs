@@ -327,15 +327,15 @@ async function journalPlat() {
 export function dernierEtatActifParSession(platLog, nomsCdp) {
     const brut = (nom) => nom.replace(/^w:/, '');
     const cible = new Set(nomsCdp.map(brut));
-    const dernier = {};
+    const last = {};
     const re = /ordre audio applique session=(\S+) actif=(true|false)/g;
     let m;
     while ((m = re.exec(platLog))) {
-        if (cible.has(m[1])) dernier[m[1]] = m[2] === 'true';
+        if (cible.has(m[1])) last[m[1]] = m[2] === 'true';
     }
     // Reprojette sur les noms CDP d'origine pour que l'appelant n'ait pas à
     // refaire la correspondance lui-même.
-    return Object.fromEntries(nomsCdp.map((nom) => [nom, dernier[brut(nom)] ?? null]));
+    return Object.fromEntries(nomsCdp.map((nom) => [nom, last[brut(nom)] ?? null]));
 }
 
 /// Les marqueurs de fin, dans l'esprit de D6 : un décompte de lignes-clé pour
@@ -351,7 +351,7 @@ async function marqueurs(etiquette) {
         audio_active: compte('audio activé'),
         ordre_audio_actif_true: compte('ordre audio applique[^\\n]*actif=true'),
         ordre_audio_actif_false: compte('ordre audio applique[^\\n]*actif=false'),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -1032,7 +1032,7 @@ async function main() {
         // à une confusion future, même si le scoping JS les distingue déjà
         // correctement.
         const ouvrirFenetreTon = async (n, hz, gain, profilChromeVm) => {
-            const avant = appPages().length;
+            const before = appPages().length;
             // FINDING 9 (round 3) : la légende de fenêtre relayée par le
             // superviseur pour une fenêtre Chrome `--app` sur `file://` est
             // le CHEMIN DE FICHIER, pas `document.title` — mesuré sur la VM,
@@ -1045,12 +1045,12 @@ async function main() {
             // côté produit, pas à paramétrer `ton.html`. Ceci reste vrai à
             // l'identique en mode `MEME_PROCESSUS` : le nom de fichier ne
             // dépend d'aucune notion de PID.
-            const fichier = `ton-${hz}.html`;
-            spawnSync('bash', ['-c', `cp ${join(AIDE, 'ton.html')} /media/vm/dev/${fichier}`]);
-            log(`  · ouverture fenêtre ${n} (${fichier}?hz=${hz}&gain=${gain}, profil=${profilChromeVm})`);
+            const file = `ton-${hz}.html`;
+            spawnSync('bash', ['-c', `cp ${join(AIDE, 'ton.html')} /media/vm/dev/${file}`]);
+            log(`  · ouverture fenêtre ${n} (${file}?hz=${hz}&gain=${gain}, profil=${profilChromeVm})`);
             await vmIt(`ouvrird7-${n}`, [
                 `$a = @(`,
-                `  "--app=file:///C:/dev/${fichier}?hz=${hz}&gain=${gain}",`,
+                `  "--app=file:///C:/dev/${file}?hz=${hz}&gain=${gain}",`,
                 `  "--user-data-dir=${profilChromeVm}",`,
                 `  '--no-first-run','--no-default-browser-check','--disable-session-crashed-bubble',`,
                 `  '--window-size=1280,720','--window-position=${30 + n * 12},${30 + n * 12}',`,
@@ -1068,9 +1068,9 @@ async function main() {
             ].join('\n'));
             for (let i = 0; i < 30; i += 1) {
                 await dodo(2000);
-                if (appPages().length > avant) {
-                    const nouveau = nomsTries().find((nom) => !(nom in assignation));
-                    if (nouveau) assignation[nouveau] = hz;
+                if (appPages().length > before) {
+                    const newValue = nomsTries().find((nom) => !(nom in assignation));
+                    if (newValue) assignation[newValue] = hz;
                     return true;
                 }
             }

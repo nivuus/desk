@@ -1,5 +1,5 @@
-// Encodeur binaire des messages d'entrée. Doit rester strictement aligné sur
-// proto/src/input.rs — les vecteurs de vectors.json vérifient les deux côtés.
+// Binary encoder of input messages. Must stay strictly aligned with
+// proto/src/input.rs — the vectors of vectors.json check both sides.
 
 export const PROTOCOL_VERSION = 2;
 
@@ -12,7 +12,7 @@ const TYPE_GAMEPAD_STATE = 6;
 
 export type MouseButtonCode = 0 | 1 | 2; // gauche, droit, milieu
 
-/** État complet d'une manette, calqué sur XINPUT_GAMEPAD. */
+/** Full state of a gamepad, modelled on XINPUT_GAMEPAD. */
 export interface GamepadStateFields {
     seq: number;
     buttons: number;

@@ -1,88 +1,88 @@
-//! La part **PURE** du chemin NVENC : le choix de la voie, la traduction de
-//! nos réglages vers ceux de NVENC, et l'arithmétique de version des
-//! structures. Aucun `cfg`, aucun appel Windows, **testée sur l'hôte Linux**.
+//! The **PURE** part of the NVENC path: the choice of path, the translation of
+//! our settings into NVENC's, and the version arithmetic of
+//! structures. No `cfg`, no Windows call, **tested on the Linux host**.
 //!
-//! ⚠️ **`#[path]` chez le parent, et c'est vérifié contre la convention**
-//! (§ « Convention de module enfant », tête de `CLAUDE.md`) : ce module est
-//! extrait d'`encode.rs`, qui est `#![cfg(windows)]`, précisément pour que sa
-//! logique pure compile et se teste sur l'hôte. Son nom, `encode_nvenc`,
-//! porte le préfixe `encode_` d'un module de premier niveau existant
-//! (`mod encode;`, `main.rs`), donc la règle le range **chez son parent** :
-//! fichier `encode/nvenc.rs`, déclaration
-//! `#[path = "encode/nvenc.rs"] mod encode_nvenc;` dans `main.rs`.
-//! Aucun autre module de premier niveau n'en est un préfixe — la clause du
-//! « préfixe le plus long » ne change donc rien ici. Même précédent que
-//! `wasapi_format`, hissé pour exactement la même raison.
+//! ⚠️ **`#[path]` in the parent, and it is checked against the convention**
+//! (§ "Child module convention", head of `CLAUDE.md`): this module is
+//! extracted from `encode.rs`, which is `#![cfg(windows)]`, precisely so that its
+//! pure logic compiles and is tested on the host. Its name, `encode_nvenc`,
+//! carries the `encode_` prefix of an existing top-level module
+//! (`mod encode;`, `main.rs`), so the rule places it **in its parent**:
+//! file `encode/nvenc.rs`, declaration
+//! `#[path = "encode/nvenc.rs"] mod encode_nvenc;` in `main.rs`.
+//! No other top-level module is a prefix of it — the "longest prefix"
+//! clause therefore changes nothing here. Same precedent as
+//! `wasapi_format`, hoisted for exactly the same reason.
 //!
-//! 🔴 **POURQUOI NVENC AVANT LA MFT, ET POURQUOI LA MFT RESTE.** Ce n'est
-//! pas une préférence, c'est une mesure, et les commandes qui l'établissent
-//! sont données pour qu'on puisse la refaire sans croire personne — le
-//! précédent que ce dépôt paie en ce moment même est un commentaire faux qui
-//! a fait concevoir un défaut (`placement.rs`).
+//! 🔴 **WHY NVENC BEFORE THE MFT, AND WHY THE MFT STAYS.** It is
+//! not a preference, it is a measurement, and the commands that establish it
+//! are given so that it can be redone without believing anyone — the
+//! precedent this repository is paying for right now is a wrong comment that
+//! led to designing a defect (`placement.rs`).
 //!
-//! - Sur la VM cible, le 30 août 2026, la MFT `NVIDIA H.264 Encoder MFT`
-//!   s'active en **session 0** et rend `0x8000FFFF` en **session 1**, sur
-//!   les quatre arrangements que Media Foundation permet d'essayer. Deux
-//!   témoins verts posés dans la même exécution — l'encodeur H.264
-//!   **logiciel** et le processeur vidéo **logiciel** s'activent, eux, dans
-//!   les deux sessions — établissent que la machinerie n'est pas en cause.
-//! - Apollo, sur la MÊME machine, dans la MÊME session 1, fabrique six
-//!   encodeurs NVENC par la porte **native** : son processus vivant ne porte
-//!   **aucun** module Media Foundation.
+//! - On the target VM, on 30 August 2026, the `NVIDIA H.264 Encoder MFT`
+//!   activates in **session 0** and returns `0x8000FFFF` in **session 1**, on
+//!   the four arrangements Media Foundation allows trying. Two
+//!   green controls set up in the same run — the **software** H.264 encoder
+//!   and the **software** video processor do activate in
+//!   both sessions — establish that the machinery is not at fault.
+//! - Apollo, on the SAME machine, in the SAME session 1, builds six
+//!   NVENC encoders through the **native** door: its live process carries
+//!   **no** Media Foundation module.
 //!
-//! **Refaire la mesure** (détail et relevés bruts :
-//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`) :
+//! **Redo the measurement** (detail and raw surveys:
+//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`): (policy: allow-fr, real file path)
 //!
 //! ```text
-//! # les modules d'Apollo pendant qu'il encode, en session 1 :
+//! # Apollo's modules while it encodes, in session 1:
 //! (Get-Process sunshine).Modules | ? { $_.ModuleName -match 'mfplat|nvEnc' }
-//! # les encodeurs qu'il a fabriqués :
+//! # the encoders it built:
 //! Select-String 'NvEnc: created encoder' 'C:\Program Files\Apollo\config\sunshine.log'
 //! ```
 //!
-//! 🔴 **ET LA MFT NE DOIT PAS ÊTRE RETIRÉE.** `MFTEnumEx` n'énumère pas
-//! « l'encodeur NVIDIA » : il énumère **les encodeurs H.264 matériels**,
-//! Intel Quick Sync et AMD VCE compris. Une machine sans NVIDIA n'a aucun
-//! NVENC ; lui retirer la MFT la priverait de **tout** encodeur matériel.
-//! La MFT est donc le repli **générique**, et elle reste inchangée.
+//! 🔴 **AND THE MFT MUST NOT BE REMOVED.** `MFTEnumEx` does not enumerate
+//! "the NVIDIA encoder": it enumerates **the hardware H.264 encoders**,
+//! Intel Quick Sync and AMD VCE included. A machine without NVIDIA has no
+//! NVENC; taking the MFT away from it would deprive it of **any** hardware encoder.
+//! The MFT is therefore the **generic** fallback, and it stays unchanged.
 
-/// La transcription de l'ABI amont, isolée dans son propre fichier parce
-/// qu'elle porte une notice de licence qui ne s'applique qu'à elle.
+/// The transcription of the upstream ABI, isolated in its own file because
+/// it carries a licence notice that only applies to it.
 ///
-/// ⚠️ **Le `#[path]` ci-dessous N'EST PAS celui de la convention du dépôt,
-/// et les confondre embrouillerait le prochain lecteur.** La convention vise
-/// les modules qu'on extrait d'un parent **non portable** pour les compiler
-/// sur l'hôte ; `abi` n'a rien à fuir, son parent est déjà pur. Ce `#[path]`
-/// est imposé par une règle de **rustc** : quand un module est lui-même
-/// chargé par `#[path = "encode/nvenc.rs"]`, ses enfants sont cherchés dans
-/// le répertoire de CE fichier — `encode/` — et non dans un `encode/nvenc/`
-/// homonyme. Sans la ligne explicite, rustc réclame `encode/abi.rs`
-/// (mesuré : `error[E0583]: file not found for module 'abi'`). C'est le même
-/// mécanisme employé pour une autre raison, exactement comme `table.rs` s'en
-/// sert pour scinder ses tests.
+/// ⚠️ **The `#[path]` below is NOT the one of the repository's convention,
+/// and confusing them would muddle the next reader.** The convention targets
+/// modules extracted from a **non-portable** parent to compile them
+/// on the host; `abi` has nothing to flee, its parent is already pure. This `#[path]`
+/// is imposed by a **rustc** rule: when a module is itself
+/// loaded through `#[path = "encode/nvenc.rs"]`, its children are looked up in
+/// the directory of THIS file — `encode/` — and not in a same-named `encode/nvenc/`.
+/// Without the explicit line, rustc asks for `encode/abi.rs`
+/// (measured: `error[E0583]: file not found for module 'abi'`). It is the same
+/// mechanism used for another reason, exactly as `table.rs` uses it
+/// to split its tests.
 #[path = "nvenc/abi.rs"]
 pub mod abi;
 
-/// Les dispositions de structures, même frontière d'attribution qu'`abi`.
-/// Même raison pour le `#[path]` — c'est rustc qui l'impose, pas la
-/// convention de nommage du dépôt.
+/// The structure layouts, same attribution boundary as `abi`.
+/// Same reason for the `#[path]` — it is rustc that imposes it, not the
+/// repository's naming convention.
 #[path = "nvenc/structures.rs"]
 pub mod structures;
 
-/// Les dispositions qui s'echangent par image. Meme frontiere
-/// d'attribution, meme raison de `#[path]`.
+/// The layouts exchanged per image. Same attribution
+/// boundary, same reason for the `#[path]`.
 #[path = "nvenc/tampons.rs"]
 pub mod tampons;
 
-/// La table de fonctions du pilote. Meme frontiere, meme raison de `#[path]`.
+/// The driver's function table. Same boundary, same reason for the `#[path]`.
 #[path = "nvenc/fonctions.rs"]
 pub mod fonctions;
 
-/// La session d'encodage elle-meme. **Le SEUL fichier du sous-arbre NVENC
-/// qui ait besoin de Windows** : tout le reste -- regle de choix, ABI,
-/// dispositions -- se teste sur l'hote. Il vit ici plutot que sous
-/// `encode.rs` pour que la frontiere d'attribution de la notice de licence
-/// reste UN seul sous-arbre.
+/// The encoding session itself. **The ONLY file of the NVENC subtree
+/// that needs Windows**: everything else -- choice rule, ABI,
+/// layouts -- is tested on the host. It lives here rather than under
+/// `encode.rs` so that the attribution boundary of the licence notice
+/// remains ONE single subtree.
 #[cfg(windows)]
 #[path = "nvenc/porte.rs"]
 pub mod porte;
@@ -91,63 +91,60 @@ pub mod porte;
 #[path = "nvenc/session.rs"]
 pub mod session;
 
-/// L'identifiant de vendeur PCI de NVIDIA.
+/// NVIDIA's PCI vendor identifier.
 ///
-/// Relevé sur la VM cible plutôt que recopié d'une liste : la sonde du lot 31
-/// a lu `vendeur=0x10DE peripherique=0x2786` sur `NVIDIA GeForce RTX 4070`,
-/// et `0x1414` (Microsoft) sur le `Basic Render Driver` du VGA QEMU.
+/// Surveyed on the target VM rather than copied from a list: the batch 31 probe
+/// read `vendeur=0x10DE peripherique=0x2786` on `NVIDIA GeForce RTX 4070`,
+/// and `0x1414` (Microsoft) on the `Basic Render Driver` of the QEMU VGA.
 pub const VENDEUR_NVIDIA: u32 = 0x10DE;
 
-/// Un adaptateur graphique, réduit à ce dont la décision a besoin.
+/// A graphics adapter, reduced to what the decision needs.
 ///
-/// Volontairement **sans type Windows** : c'est ce qui permet à la règle
-/// ci-dessous d'être éprouvée sur l'hôte. L'appelant `#[cfg(windows)]`
-/// remplit ces champs depuis `IDXGIAdapter1::GetDesc1`.
+/// Deliberately **without a Windows type**: it is what lets the rule
+/// below be tested on the host. The `#[cfg(windows)]` caller
+/// fills these fields from `IDXGIAdapter1::GetDesc1`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Adaptateur {
     pub nom: String,
     pub vendeur: u32,
-    /// Le LUID DXGI, à plat. NVENC ne s'en sert pas pour choisir — c'est le
-    /// périphérique D3D11 qui porte le choix — mais le tracer permet de dire
-    /// **lequel** des adaptateurs homonymes a été retenu, et cette VM en
-    /// présente deux qui portent le même nom et le même identifiant de
-    /// périphérique.
+    /// The DXGI LUID, flattened. NVENC does not use it to choose — it is the
+    /// D3D11 device that carries the choice — but tracing it makes it possible to say
+    /// **which** of the same-named adapters was retained, and this VM
+    /// presents two that carry the same name and the same device
+    /// identifier.
     pub luid: (i32, u32),
 }
 
 /// La voie d'encodage retenue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Voie {
-    /// L'API NVENC native (`nvEncodeAPI64.dll`), sur l'adaptateur d'indice
-    /// donné.
+    /// The native NVENC API (`nvEncodeAPI64.dll`), on the adapter of the given
+    /// index.
     Nvenc(usize),
-    /// La MFT Media Foundation — le repli **générique**, pour Intel, AMD, et
-    /// pour la session 0 où la MFT NVIDIA fonctionne.
+    /// The Media Foundation MFT — the **generic** fallback, for Intel, AMD, and
+    /// for session 0 where the NVIDIA MFT works.
     Mft,
 }
 
-/// Choisit la voie à partir des seuls adaptateurs présents.
+/// Chooses the path from the present adapters alone.
 ///
-/// **Le premier adaptateur NVIDIA l'emporte, et l'ordre d'énumération DXGI
-/// fait foi.** ⚠️ Ce n'est PAS le piège des index positionnels payé en D1 :
-/// on ne mémorise ni ne transporte cet indice d'une exécution à l'autre, il
-/// n'est qu'un renvoi dans la liste qu'on vient de lire, dans le même appel.
-/// Le nom et le LUID sont rendus avec, pour que la trace dise **lequel**.
+/// **The first NVIDIA adapter wins, and the DXGI enumeration order
+/// is authoritative.** ⚠️ This is NOT the positional index trap paid for in D1:
+/// this index is neither memorised nor carried from one run to another, it
+/// is only a reference into the list just read, in the same call.
+/// The name and the LUID are returned with it, so that the trace says **which one**.
 ///
-/// **Aucun adaptateur NVIDIA ⇒ `Mft`**, et c'est le cas nominal d'une machine
-/// Intel ou AMD : voir le commentaire de module, la MFT est le repli
-/// générique et non un pis-aller.
+/// **No NVIDIA adapter ⇒ `Mft`**, and it is the nominal case of an Intel
+/// or AMD machine: see the module comment, the MFT is the generic
+/// fallback and not a last resort.
 pub fn choisir_voie(adaptateurs: &[Adaptateur]) -> Voie {
-    match adaptateurs
-        .iter()
-        .position(|a| a.vendeur == VENDEUR_NVIDIA)
-    {
+    match adaptateurs.iter().position(|a| a.vendeur == VENDEUR_NVIDIA) {
         Some(index) => Voie::Nvenc(index),
         None => Voie::Mft,
     }
 }
 
-/// Fabrique d'appui partagée par les deux modules de tests de ce fichier.
+/// Support factory shared by the two test modules of this file.
 #[cfg(test)]
 mod tests_appui {
     use super::Adaptateur;
@@ -166,16 +163,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn une_machine_nvidia_prend_la_voie_native() {
+    fn an_nvidia_machine_takes_the_native_path() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
         assert_eq!(choisir_voie(&vus), Voie::Nvenc(0));
     }
 
-    /// 🔴 Le cas qui interdit de retirer la MFT : une machine sans NVIDIA.
-    /// Si cette assertion tombait à `Nvenc`, la machine perdrait TOUT
-    /// encodeur matériel — c'est la régression que ce test fige.
+    /// 🔴 The case that forbids removing the MFT: a machine without NVIDIA.
+    /// If this assertion fell to `Nvenc`, the machine would lose ANY
+    /// hardware encoder — it is the regression this test pins.
     #[test]
-    fn une_machine_sans_nvidia_garde_la_mft() {
+    fn a_machine_without_nvidia_keeps_the_mft() {
         let vus = vec![
             adaptateur("Intel(R) UHD Graphics 770", 0x8086),
             adaptateur("Microsoft Basic Render Driver", 0x1414),
@@ -184,17 +181,17 @@ mod tests {
     }
 
     #[test]
-    fn aucun_adaptateur_du_tout_garde_la_mft() {
+    fn no_adapter_at_all_keeps_the_mft() {
         assert_eq!(choisir_voie(&[]), Voie::Mft);
     }
 
-    /// La topologie EXACTE de la VM cible, relevée par la sonde du lot 31 en
-    /// session 1 : le VGA QEMU est l'adaptateur **0** et porte le seul
-    /// affichage attaché ; les deux NVIDIA n'en portent aucun. La voie doit
-    /// néanmoins être NVENC, et viser le premier NVIDIA — c'est-à-dire
-    /// l'indice **1**, pas l'indice 0.
+    /// The EXACT topology of the target VM, surveyed by the batch 31 probe in
+    /// session 1: the QEMU VGA is adapter **0** and carries the only
+    /// attached display; the two NVIDIA ones carry none. The path must
+    /// nevertheless be NVENC, and target the first NVIDIA — that is
+    /// index **1**, not index 0.
     #[test]
-    fn la_topologie_mesuree_de_la_vm_vise_le_premier_nvidia() {
+    fn the_measured_vm_topology_targets_the_first_nvidia() {
         let vus = vec![
             adaptateur("Microsoft Basic Render Driver", 0x1414),
             adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA),
@@ -204,58 +201,58 @@ mod tests {
         assert_eq!(choisir_voie(&vus), Voie::Nvenc(1));
     }
 
-    /// ⚠️ Le nom ne décide de RIEN : c'est le vendeur. Un adaptateur qui se
-    /// nommerait « NVIDIA … » sans porter `0x10DE` ne doit pas emmener vers
-    /// une DLL que sa machine n'a pas.
+    /// ⚠️ The name decides NOTHING: the vendor does. An adapter that would
+    /// be named "NVIDIA …" without carrying `0x10DE` must not lead to
+    /// a DLL its machine does not have.
     #[test]
-    fn le_nom_ne_decide_pas_le_vendeur_decide() {
+    fn the_name_does_not_decide_the_vendor_does() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", 0x1414)];
         assert_eq!(choisir_voie(&vus), Voie::Mft);
     }
 }
 
-/// `E_UNEXPECTED` — « Catastrophic failure ». Le code que la MFT NVIDIA rend
-/// en session 1 sur la VM cible, mesuré le 30 août 2026.
+/// `E_UNEXPECTED` — "Catastrophic failure". The code the NVIDIA MFT returns
+/// in session 1 on the target VM, measured on 30 August 2026.
 pub const ECHEC_CATASTROPHIQUE: i32 = 0x8000_FFFFu32 as i32;
 
-/// **Étage ③ des trois du lot 31 : rendre l'échec LISIBLE.**
+/// **Stage ③ of batch 31's three: make the failure READABLE.**
 ///
-/// 🔴 **CECI NE FAIT PAS MARCHER LE PRODUIT, et n'est pas écrit comme si ça
-/// le faisait.** Quand les deux étages utiles ont échoué, il reste à ne pas
-/// laisser remonter un `0x8000FFFF` nu : les lots 30 et 31 ont coûté deux
-/// journées à établir ce que ce message dit en quelques lignes, et sans lui
-/// le prochain lecteur les repaierait.
+/// 🔴 **THIS DOES NOT MAKE THE PRODUCT WORK, and is not written as if it
+/// did.** When the two useful stages have failed, what remains is not to
+/// let a bare `0x8000FFFF` go up: batches 30 and 31 cost two
+/// days to establish what this message says in a few lines, and without it
+/// the next reader would pay for them again.
 ///
-/// Le message nomme trois choses, dans cet ordre : le code rendu, ce que la
-/// machine porte comme adaptateurs (c'est la variable qui décide), et le
-/// document qui porte la mesure.
+/// The message names three things, in this order: the returned code, what
+/// adapters the machine carries (it is the deciding variable), and the
+/// document that carries the measurement.
 ///
-/// ⚠️ **Le paragraphe de cause connue n'est ajouté QUE si les deux
-/// conditions mesurées sont réunies** — le code exact ET un adaptateur
-/// NVIDIA. Sur une machine Intel ou AMD, le même code voudrait dire autre
-/// chose, et affirmer notre diagnostic y serait une affirmation fausse
-/// présentée comme un fait.
-pub fn diagnostic_activation(code: i32, erreur: &str, adaptateurs: &[Adaptateur]) -> String {
+/// ⚠️ **The known-cause paragraph is only added if both
+/// measured conditions are met** — the exact code AND an NVIDIA
+/// adapter. On an Intel or AMD machine, the same code would mean something
+/// else, and asserting our diagnosis there would be a false assertion
+/// presented as a fact.
+pub fn diagnostic_activation(code: i32, error: &str, adaptateurs: &[Adaptateur]) -> String {
     let noms: Vec<&str> = adaptateurs.iter().map(|a| a.nom.as_str()).collect();
     let mut message = format!(
-        "activation de l'encodeur H.264 matériel (ActivateObject) : {erreur} \
-         — adaptateurs vus : [{}]",
+        "activating the hardware H.264 encoder (ActivateObject): {error} \
+         — adapters seen: [{}]",
         noms.join(" | ")
     );
     if code == ECHEC_CATASTROPHIQUE && matches!(choisir_voie(adaptateurs), Voie::Nvenc(_)) {
         message.push_str(
-            " — CAUSE CONNUE, MESUREE LE 30 AOUT 2026 (lot 31) : la MFT \
-             « NVIDIA H.264 Encoder MFT » rend 0x8000FFFF en SESSION 1 sur cette \
-             machine, alors qu'elle s'active en session 0. Ce n'est ni le pilote \
-             absent, ni Media Foundation en panne : dans la meme execution, \
-             l'encodeur H.264 LOGICIEL et le processeur video LOGICIEL s'activent \
-             tous deux. Poser MFT_ENUM_ADAPTER_LUID, tenir un peripherique D3D11 \
-             NVIDIA vivant, ou lier l'affichage virtuel au GPU NVIDIA sont TROIS \
-             remedes deja REFUTES PAR LA MESURE — ne pas les reessayer. La voie \
-             qui fonctionne ici est l'API NVENC native. Detail, releves bruts et \
-             remedes refutes : \
-             docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md",
+            " — KNOWN CAUSE, MEASURED ON 30 AUGUST 2026 (batch 31): the MFT \
+             « NVIDIA H.264 Encoder MFT » returns 0x8000FFFF in SESSION 1 on this \
+             machine, while it activates in session 0. It is neither a missing \
+             driver nor a broken Media Foundation: in the same run, \
+             the SOFTWARE H.264 encoder and the SOFTWARE video processor both \
+             activate. Setting MFT_ENUM_ADAPTER_LUID, keeping an NVIDIA D3D11 \
+             device alive, or binding the virtual display to the NVIDIA GPU are THREE \
+             remedies already REFUTED BY MEASUREMENT — do not retry them. The path \
+             that works here is the native NVENC API. Details, raw readings and \
+             refuted remedies: ",
         );
+        message.push_str("docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md");
     }
     message
 }
@@ -268,45 +265,51 @@ mod tests_diagnostic {
     const AUTRE_CODE: i32 = 0x8007_0057u32 as i32; // E_INVALIDARG
 
     #[test]
-    fn nomme_les_adaptateurs_vus() {
+    fn names_the_adapters_seen() {
         let vus = vec![
             adaptateur("Microsoft Basic Render Driver", 0x1414),
             adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA),
         ];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
-        assert!(m.contains("Microsoft Basic Render Driver | NVIDIA GeForce RTX 4070"), "{m}");
+        assert!(
+            m.contains("Microsoft Basic Render Driver | NVIDIA GeForce RTX 4070"),
+            "{m}"
+        );
     }
 
     #[test]
-    fn ajoute_la_cause_connue_quand_les_deux_conditions_sont_reunies() {
+    fn adds_the_known_cause_when_both_conditions_are_met() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
-        assert!(m.contains("CAUSE CONNUE"), "{m}");
-        assert!(m.contains("2026-08-30-encodeur-porte-apollo-resultats.md"), "{m}");
+        assert!(m.contains("KNOWN CAUSE"), "{m}");
+        assert!(
+            m.contains("2026-08-30-encodeur-porte-apollo-resultats.md"),
+            "{m}"
+        );
     }
 
-    /// 🔴 Le bras qui empêche d'affirmer notre diagnostic là où il ne
-    /// s'applique pas : même code, machine SANS NVIDIA.
+    /// 🔴 The arm that prevents asserting our diagnosis where it does not
+    /// apply: same code, machine WITHOUT NVIDIA.
     #[test]
-    fn se_tait_sur_la_cause_quand_aucun_nvidia_n_est_present() {
+    fn stays_silent_on_the_cause_when_no_nvidia_is_present() {
         let vus = vec![adaptateur("Intel(R) UHD Graphics 770", 0x8086)];
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &vus);
-        assert!(!m.contains("CAUSE CONNUE"), "{m}");
+        assert!(!m.contains("KNOWN CAUSE"), "{m}");
         assert!(m.contains("Intel(R) UHD Graphics 770"), "{m}");
     }
 
-    /// L'autre bras : machine NVIDIA, mais un AUTRE code d'erreur.
+    /// The other arm: NVIDIA machine, but ANOTHER error code.
     #[test]
-    fn se_tait_sur_la_cause_pour_un_autre_code() {
+    fn stays_silent_on_the_cause_for_another_code() {
         let vus = vec![adaptateur("NVIDIA GeForce RTX 4070", VENDEUR_NVIDIA)];
-        let m = diagnostic_activation(AUTRE_CODE, "Paramètre incorrect", &vus);
-        assert!(!m.contains("CAUSE CONNUE"), "{m}");
+        let m = diagnostic_activation(AUTRE_CODE, "The parameter is incorrect", &vus);
+        assert!(!m.contains("KNOWN CAUSE"), "{m}");
     }
 
     #[test]
-    fn sans_aucun_adaptateur_le_message_reste_lisible() {
+    fn without_any_adapter_the_message_stays_readable() {
         let m = diagnostic_activation(ECHEC_CATASTROPHIQUE, "Catastrophic failure", &[]);
-        assert!(m.contains("adaptateurs vus : []"), "{m}");
-        assert!(!m.contains("CAUSE CONNUE"), "{m}");
+        assert!(m.contains("adapters seen: []"), "{m}");
+        assert!(!m.contains("KNOWN CAUSE"), "{m}");
     }
 }

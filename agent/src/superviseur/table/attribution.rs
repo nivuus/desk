@@ -1,103 +1,107 @@
-//! Le chemin d'attribution d'une sortie virtuelle à une session : de la
-//! demande de viewport à la sortie effectivement créée.
+//! The path assigning a virtual output to a session: from the
+//! viewport request to the output actually created.
 //!
-//! Extrait de `table.rs` (tâche 4 du sous-bloc D3) pour rester sous le
-//! plafond de 500 lignes du projet — pas pour une raison de conception : ces
-//! deux méthodes restent des méthodes de `Table` comme les autres, dans le
-//! même module logique, juste dans un fichier voisin.
+//! Extracted from `table.rs` (task 4 of sub-block D3) to stay under the
+//! project's 500-line ceiling — not for a design reason: these
+//! two methods stay methods of `Table` like the others, in the
+//! same logical module, just in a neighbouring file.
 
 use super::*;
 
 impl Table {
-    /// Décide, à réception du viewport annoncé par le navigateur, s'il faut
-    /// créer une sortie ou réutiliser celle que la fenêtre a gardée de sa vie
-    /// précédente.
+    /// Decides, on receiving the viewport announced by the browser, whether to
+    /// create an output or reuse the one the window kept from its
+    /// previous life.
     pub fn viewport_recu(&mut self, session: &IdSession, largeur: u32, hauteur: u32) -> Vec<Effet> {
-        // Un message du navigateur est une source externe : tardif, rejoué ou
-        // inventé, il ne doit jamais faire avancer la machine deux fois.
+        // A browser message is an external source: late, replayed or
+        // invented, it must never advance the machine twice.
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
         };
-        // 🔴 **UNE SESSION DÉJÀ VIVANTE N'EST PLUS IGNORÉE, ET C'EST LE LOT
-        // 33.** Ce `return Vec::new()` valait pour TOUT état autre
-        // qu'`AttendLeViewport`, donc aussi pour `Vivante` — si bien qu'un
-        // viewport annoncé après l'ouverture ne faisait **rien**, et que la
-        // fenêtre restait servie pour toujours à la taille du jour de son
-        // ouverture. Le navigateur, lui, n'en réannonçait aucun (le
-        // `postMessage` de `client/src/main.ts` ne partait qu'au chargement) :
-        // les deux moitiés du défaut se couvraient l'une l'autre, et aucune
-        // n'était visible depuis l'autre.
+        // 🔴 **AN ALREADY LIVE SESSION IS NO LONGER IGNORED, AND THAT IS BATCH
+        // 33.** This `return Vec::new()` held for ANY state other
+        // than `AttendLeViewport`, hence also for `Vivante` — so that a
+        // viewport announced after opening did **nothing**, and the
+        // window stayed served forever at the size of its opening
+        // day. The browser, for its part, re-announced none (the
+        // `postMessage` of `client/src/main.ts` only went out at load time):
+        // the two halves of the defect covered each other, and neither
+        // was visible from the other.
         //
-        // Le bornage ci-dessous n'a pas encore couru : on le refait ici plutôt
-        // que de déplacer la ligne, pour que les deux chemins restent lisibles
-        // séparément.
+        // The bounding below has not run yet: we redo it here rather
+        // than move the line, so that both paths stay readable
+        // separately.
         if entree.etat == Etat::Vivante && entree.nom_sortie.is_some() {
             let (largeur, hauteur) =
-                crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
-            return vec![Effet::SuivreLeViewport { session: session.clone(), largeur, hauteur }];
+                crate::windows_source_sortie::clamp_to_max_size((largeur, hauteur));
+            return vec![Effet::SuivreLeViewport {
+                session: session.clone(),
+                largeur,
+                hauteur,
+            }];
         }
         if entree.etat != Etat::AttendLeViewport {
             return Vec::new();
         }
-        // Passé ce point, l'entrée n'attend plus le navigateur : le garde-fou
-        // de staleness de `relancer_les_orphelines` ne la concerne plus.
+        // Past this point, the entry no longer waits for the browser: the
+        // staleness safeguard of `relancer_les_orphelines` no longer concerns it.
         entree.attente_depuis = None;
 
-        // Même bornage qu'à la création (`creation_sortie::creer_sortie`), et
-        // pour la même raison : le viewport arrive en pixels périphériques
-        // depuis D9, et sans ce bornage une sortie retenue serait jugée assez
-        // grande — ou trop petite — contre une demande qui dépasse le plafond
-        // que la création s'impose. Le poser ici plutôt que chez l'appelant
-        // (`boucle.rs`) garde les deux chemins symétriques.
+        // Same bounding as at creation (`creation_sortie::create_output`), and
+        // for the same reason: the viewport arrives in device pixels
+        // since D9, and without this bounding a retained output would be judged large
+        // enough — or too small — against a request exceeding the ceiling
+        // creation imposes on itself. Setting it here rather than at the caller
+        // (`boucle.rs`) keeps both paths symmetric.
         let (largeur, hauteur) =
-            crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+            crate::windows_source_sortie::clamp_to_max_size((largeur, hauteur));
 
-        // **Chemin de réutilisation (§7.1 du sous-bloc D3).** Une fenêtre
-        // relancée a gardé sa sortie ; si le viewport annoncé lui correspond,
-        // il n'y a RIEN à créer — et c'est précisément la création qui fait
-        // abandonner le mutex des duplications DXGI voisines.
-        if let (Some(nom), Some(taille)) = (entree.nom_sortie.clone(), entree.taille_sortie) {
-            // Même prédicat que l'appariement à la création
-            // (`placement::sortie_pour_viewport`), et c'est le point : deux
-            // règles distinctes feraient détruire à la relance une sortie que
-            // la création venait d'accepter. La sortie retenue est réutilisée
-            // dès qu'elle est ASSEZ GRANDE ; elle n'est rendue que si elle est
-            // trop petite, seul cas où la recréer peut apporter des pixels.
-            if crate::superviseur::placement::sortie_assez_grande(taille, (largeur, hauteur)) {
+        // **Reuse path (§7.1 of sub-block D3).** A restarted window
+        // kept its output; if the announced viewport matches it,
+        // there is NOTHING to create — and it is precisely creation that makes
+        // the neighbouring DXGI duplications abandon the mutex.
+        if let (Some(nom), Some(size)) = (entree.nom_sortie.clone(), entree.output_size) {
+            // Same predicate as pairing at creation
+            // (`placement::sortie_pour_viewport`), and that is the point: two
+            // distinct rules would make the restart destroy an output
+            // creation had just accepted. The retained output is reused
+            // as soon as it is LARGE ENOUGH; it is only handed back if it is
+            // too small, the only case where recreating it can bring pixels.
+            if crate::superviseur::placement::sortie_assez_grande(size, (largeur, hauteur)) {
                 entree.etat = Etat::Vivante;
                 let retenue =
-                    crate::superviseur::placement::taille_retenue((largeur, hauteur), taille);
-                entree.taille_sortie = Some(retenue);
+                    crate::superviseur::placement::retained_size((largeur, hauteur), size);
+                entree.output_size = Some(retenue);
                 return vec![Effet::LancerEnfant {
                     session: session.clone(),
                     fenetre: entree.fenetre,
                     nom_sortie: nom,
-                    taille: retenue,
+                    size: retenue,
                 }];
             }
         }
 
         entree.etat = Etat::AttendLaSortie;
         let mut effets = Vec::new();
-        // La sortie retenue ne convient plus (le navigateur a retaillé sa
-        // fenêtre entre-temps). La rendre AVANT d'en demander une autre :
-        // laissée en place, elle resterait captive du vivier de dix, et
-        // l'entrée n'en garderait plus l'identifiant.
-        // Les trois champs se posent ensemble dans `sortie_creee` et se vident
-        // ensemble ici : c'est l'invariant sur lequel repose tout le chemin de
-        // réutilisation ci-dessus, qui exige `nom_sortie` ET `taille_sortie`
-        // pour reconnaître une sortie retenue. Le `unwrap_or_default` n'est donc
-        // pas atteignable ; s'il l'était, il produirait un `nom_sortie: ""`,
-        // c'est-à-dire une destruction visant une sortie sans nom. Même repli et
-        // même invariant que `rendre_la_sortie_de` (`table.rs`), qui le note.
+        // The retained output no longer fits (the browser resized its
+        // window meanwhile). Hand it back BEFORE requesting another:
+        // left in place, it would stay captive from the pool of ten, and
+        // the entry would no longer keep its identifier.
+        // The three fields are set together in `sortie_creee` and cleared
+        // together here: it is the invariant on which the whole reuse path
+        // above rests, which requires `nom_sortie` AND `output_size`
+        // to recognise a retained output. The `unwrap_or_default` is therefore
+        // not reachable; if it were, it would produce a `nom_sortie: ""`,
+        // that is, a destruction targeting a nameless output. Same fallback and
+        // same invariant as `rendre_la_sortie_de` (`table.rs`), which notes it.
         if let Some(sortie_pilote) = entree.sortie_pilote.take() {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,
                 nom_sortie: entree.nom_sortie.take().unwrap_or_default(),
             });
-            entree.taille_sortie = None;
+            entree.output_size = None;
         }
-        effets.push(Effet::CreerSortie {
+        effets.push(Effet::CreateOutput {
             session: session.clone(),
             titre: entree.titre.clone(),
             largeur,
@@ -106,16 +110,16 @@ impl Table {
         effets
     }
 
-    /// `sortie_pilote` est ce que le pilote a rendu à la création (il ne sait
-    /// détruire que par là) ; `nom_sortie` est le nom DXGI de la même sortie
-    /// (l'enfant ne sait capturer que par là). Aucune relation calculable
-    /// entre les deux : les deux sont retenus.
+    /// `sortie_pilote` is what the driver returned at creation (it only knows how to
+    /// destroy through that); `nom_sortie` is the DXGI name of the same output
+    /// (the child only knows how to capture through that). No computable relation
+    /// between the two: both are kept.
     pub fn sortie_creee(
         &mut self,
         session: &IdSession,
         sortie_pilote: u32,
         nom_sortie: String,
-        taille: (u32, u32),
+        size: (u32, u32),
     ) -> Vec<Effet> {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
@@ -126,12 +130,12 @@ impl Table {
         entree.etat = Etat::Vivante;
         entree.sortie_pilote = Some(sortie_pilote);
         entree.nom_sortie = Some(nom_sortie.clone());
-        entree.taille_sortie = Some(taille);
+        entree.output_size = Some(size);
         vec![Effet::LancerEnfant {
             session: session.clone(),
             fenetre: entree.fenetre,
             nom_sortie,
-            taille,
+            size,
         }]
     }
 }

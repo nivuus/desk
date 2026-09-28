@@ -1,7 +1,7 @@
-//! La piste audio : négociation du payload type Opus, et écriture des
-//! paquets vers str0m. L'audio passe AVANT la vidéo dans la liste de
-//! priorités de `tick` — une coupure sonore s'entend, une image en retard
-//! de 10 ms ne se voit pas.
+//! The audio track: negotiation of the Opus payload type, and writing
+//! packets to str0m. Audio comes BEFORE video in `tick`'s priority
+//! list — a sound dropout is heard, an image 10 ms
+//! late is not seen.
 
 use std::time::Duration;
 
@@ -12,50 +12,50 @@ use super::tick::Tick;
 use super::Session;
 use crate::audio::{AudioPacket, AudioSource};
 
-/// L'injection de fautes de reconstruction (variable de banc
-/// `AUDIO_FAUTE_RECONSTRUCTION`), extraite ici parce que son addition portait
-/// `piste_audio.rs` à 513 lignes — au-dessus du plafond de 500 du dépôt. La
-/// règle est sans exception : **extraction, jamais compression**.
+/// Rebuild fault injection (bench variable
+/// `AUDIO_FAUTE_RECONSTRUCTION`), extracted here because adding it took
+/// `piste_audio.rs` to 513 lines — above the repository's 500 ceiling. The
+/// rule has no exception: **extraction, never compression**.
 ///
-/// Pas de frontière `#[cfg(windows)]` ici, donc la convention `#[path]` de
-/// `CLAUDE.md` ne s'applique pas : un `mod` ordinaire suffit.
+/// No `#[cfg(windows)]` boundary here, so `CLAUDE.md`'s `#[path]` convention
+/// does not apply: an ordinary `mod` is enough.
 pub(in crate::transport) mod injection;
 
-/// Plafond d'attente quand une piste audio est négociée.
+/// Wait ceiling when an audio track is negotiated.
 ///
-/// Les paquets audio arrivent d'un fil de capture indépendant : cette boucle
-/// n'a aucun moyen de prévoir leur instant d'arrivée, elle ne peut que se
-/// réveiller assez souvent pour ne pas les laisser vieillir. 2 ms pour une
-/// cadence de trames de 10 ms — un cinquième de trame de retard au pire.
+/// Audio packets arrive from an independent capture thread: this loop
+/// has no way to predict their arrival instant, it can only
+/// wake up often enough not to let them age. 2 ms for a
+/// 10 ms frame cadence — a fifth of a frame of delay at worst.
 pub(super) const AUDIO_POLL_INTERVAL: Duration = Duration::from_millis(2);
 
 impl Session {
-    /// Fournit la source audio. Sans appel, la session reste muette et la
-    /// vidéo fonctionne normalement.
+    /// Provides the audio source. Without a call, the session stays silent and
+    /// video works normally.
     pub fn set_audio_source(&mut self, source: Box<dyn AudioSource + Send>) {
         self.audio_source = Some(source);
     }
 
-    /// Plafond d'attente de la branche `c` : uniquement quand une source ET
-    /// une piste audio existent, sinon rien ne justifie de se réveiller plus
-    /// souvent.
+    /// Wait ceiling of branch `c`: only when a source AND
+    /// an audio track exist, otherwise nothing justifies waking up more
+    /// often.
     pub(super) fn audio_wait_cap(&self) -> Option<Duration> {
         (self.audio_source.is_some() && self.audio_mid.is_some() && !self.ending)
             .then_some(AUDIO_POLL_INTERVAL)
     }
 
-    /// Branche `a3` de la liste de priorités (voir `tick`) : émet un paquet
-    /// audio si la piste est négociée et qu'un paquet attend.
+    /// Branch `a3` of the priority list (see `tick`): emits an audio
+    /// packet if the track is negotiated and a packet is waiting.
     ///
-    /// Pas d'échéance à surveiller ici : le fil de capture dépose dans un
-    /// tampon, il suffit de regarder s'il y a quelque chose. Le réveil
-    /// régulier vient d'`AUDIO_POLL_INTERVAL`, appliqué en branche `c`.
+    /// No deadline to watch here: the capture thread deposits into a
+    /// buffer, it is enough to look whether there is something. The regular
+    /// wake-up comes from `AUDIO_POLL_INTERVAL`, applied in branch `c`.
     ///
-    /// Rend `Some(Tick::Continue)` quand elle a conclu le tour — un paquet
-    /// écrit est une mutation de `Rtc`, qui doit être suivie du drainage
-    /// différé de la branche `a0`. Rend `None` quand il n'y avait rien à
-    /// émettre, et n'a alors rien muté : la liste de priorités peut passer à
-    /// la branche suivante sans rompre l'invariant de drainage.
+    /// Returns `Some(Tick::Continue)` when it has concluded the round — a written
+    /// packet is a mutation of `Rtc`, which must be followed by the deferred
+    /// drain of branch `a0`. Returns `None` when there was nothing to
+    /// emit, and has then mutated nothing: the priority list can move on to
+    /// the next branch without breaking the drain invariant.
     pub(super) fn brancher_audio(&mut self) -> Option<Tick> {
         let (Some(mid), false) = (self.audio_mid, self.ending) else {
             return None;
@@ -64,11 +64,11 @@ impl Session {
             .audio_source
             .as_mut()
             .and_then(|source| source.next_packet())?;
-        // Le leg 6 de D9 : la remise à zéro du compteur de réarmements se fait
-        // sur une PREUVE de son — ce paquet-ci —, jamais sur la décision
-        // d'arbitrage qui, elle, ne peut pas mordre dans le cas majoritaire
-        // (`sommeil/porteurs.rs`, une fenêtre seule de son groupe de PID
-        // redevient porteuse automatiquement à la sortie de répit).
+        // D9's legacy 6: resetting the re-arming counter happens
+        // on a PROOF of sound — this very packet —, never on the arbitration
+        // decision which, for its part, cannot bite in the majority case
+        // (`sommeil/porteurs.rs`, a window alone in its PID group
+        // automatically becomes carrier again when leaving respite).
         if self.audio_reconstruit_sans_preuve {
             self.audio_reconstruit_sans_preuve = false;
             self.audio_vivant_a_annoncer = true;
@@ -79,19 +79,19 @@ impl Session {
         Some(Tick::Continue)
     }
 
-    /// Sélectionne le type de charge utile Opus négocié pour `mid`.
+    /// Selects the Opus payload type negotiated for `mid`.
     ///
-    /// Appel séparé de `write_audio` pour que l'emprunt sur `self` via
-    /// `Rtc::writer` se termine avant tout appel `&mut self` ultérieur — même
-    /// raison que `select_negotiated_h264_pt`.
+    /// A call separate from `write_audio` so that the borrow on `self` through
+    /// `Rtc::writer` ends before any later `&mut self` call — same
+    /// reason as `select_negotiated_h264_pt`.
     fn select_negotiated_opus_pt(&mut self, mid: Mid) -> Option<Pt> {
         let writer = self.rtc.writer(mid)?;
-        // Lié à une variable plutôt que renvoyé directement : le type anonyme
-        // rendu par `payload_params()` (capturant la durée de vie de
-        // `writer`, voir sa signature) resterait sinon un temporaire vivant
-        // jusqu'à la fin du bloc, après la destruction de `writer` — rejeté
-        // par l'emprunteur (« `writer` does not live long enough ») alors que
-        // la valeur finale (`Option<Pt>`, `Copy`) n'emprunte plus rien.
+        // Bound to a variable rather than returned directly: the anonymous type
+        // returned by `payload_params()` (capturing the lifetime of
+        // `writer`, see its signature) would otherwise remain a temporary living
+        // until the end of the block, after `writer` is dropped — rejected
+        // by the borrow checker ("`writer` does not live long enough") whereas
+        // the final value (`Option<Pt>`, `Copy`) no longer borrows anything.
         let pt = writer
             .payload_params()
             .find(|p| p.spec().codec == Codec::Opus)
@@ -99,14 +99,14 @@ impl Session {
         pt
     }
 
-    /// Écrit un paquet Opus sur la piste audio.
+    /// Writes an Opus packet on the audio track.
     ///
-    /// Renvoie `true` si `writer.write()` a réellement empilé le paquet — donc
-    /// qu'un drainage différé est nécessaire.
+    /// Returns `true` if `writer.write()` actually pushed the packet — hence
+    /// that a deferred drain is needed.
     ///
-    /// Contrairement à `write_frame`, un échec d'écriture ne clôt **pas** la
-    /// session : un défaut audio ne doit jamais tuer une session vidéo qui
-    /// fonctionne.
+    /// Unlike `write_frame`, a write failure does **not** close the
+    /// session: an audio defect must never kill a video session that
+    /// works.
     pub(super) fn write_audio(&mut self, mid: Mid, packet: AudioPacket) -> bool {
         let Some(pt) = self.select_negotiated_opus_pt(mid) else {
             self.warn_audio_negotiation_once();
@@ -117,76 +117,76 @@ impl Session {
             return false;
         };
 
-        // `captured_at` est l'instant réel correspondant à `pts_48k` : c'est
-        // lui qui part dans les RTCP Sender Reports et porte la synchro A/V.
+        // `captured_at` is the real instant matching `pts_48k`: it is
+        // what goes into the RTCP Sender Reports and carries A/V sync.
         let rtp_time = MediaTime::new(packet.pts_48k, Frequency::FORTY_EIGHT_KHZ);
         match writer.write(pt, packet.captured_at, rtp_time, packet.data) {
             Ok(()) => true,
             Err(e) => {
-                tracing::warn!(erreur = %e, "échec d'écriture audio, paquet abandonné");
+                tracing::warn!(error = %e, "audio write failure, packet dropped");
                 false
             }
         }
     }
 
-    /// Applique l'arbitrage audio du capteur : porter le son, ou se taire.
+    /// Applies the sensor's audio arbitration: carry the sound, or stay silent.
     ///
-    /// **Deux effets, et le second est facile à oublier** : la source cesse
-    /// d'émettre, ET le budget audio retenu par le contrôleur de congestion
-    /// tombe à zéro. Sans le second, une fenêtre muette continuerait d'amputer
-    /// son budget vidéo de 128 kb/s pour une piste qui n'émet rien — c'est le
-    /// défaut préexistant que D7 corrige (spec §5).
+    /// **Two effects, and the second is easy to forget**: the source stops
+    /// emitting, AND the audio budget retained by the congestion controller
+    /// drops to zero. Without the second, a silent window would keep cutting
+    /// 128 kb/s off its video budget for a track that emits nothing — that is the
+    /// pre-existing defect D7 fixes (spec §5).
     ///
-    /// ⚠️ **Le budget se conditionne à l'EXISTENCE d'une source, pas au seul
-    /// ordre** (F4, revue finale de branche du sous-bloc D7). `actif` seul
-    /// ratait les deux chemins où la session n'a aucune source audio alors que
-    /// le capteur l'élit porteuse : l'échec d'ouverture du *process loopback*,
-    /// dont la spec §6 fait explicitement un repli silencieux, et `AUDIO=0` —
-    /// où, à une fenêtre par PID, **toutes** les fenêtres sont porteuses et le
-    /// défaut préexistant revenait intact.
+    /// ⚠️ **The budget depends on the EXISTENCE of a source, not on the order
+    /// alone** (F4, final branch review of sub-block D7). `actif` alone
+    /// missed the two paths where the session has no audio source while
+    /// the sensor elects it carrier: failure to open the *process loopback*,
+    /// which spec §6 explicitly makes a silent fallback, and `AUDIO=0` —
+    /// where, at one window per PID, **all** windows are carriers and the
+    /// pre-existing defect came back intact.
     pub(super) fn appliquer_audio(&mut self, actif: bool) {
-        // Correction apportée en revue de la tâche 12 (sous-bloc D10) : le
-        // budget de reconstruction (`reconstructions_restantes`) n'était posé
-        // qu'UNE FOIS, à la construction de la `Session`, et jamais
-        // réapprovisionné — le cycle mort → reconstruit → prouvé ne pouvait
-        // donc tourner qu'une seule fois par session (voir la doc du champ
+        // Fix made during the review of task 12 (sub-block D10): the
+        // rebuild budget (`reconstructions_restantes`) was only set
+        // ONCE, at the construction of the `Session`, and never
+        // replenished — the dead → rebuilt → proven cycle could
+        // therefore only turn once per session (see the doc of the field
         // `audio_porteuse`, `transport.rs`).
         //
-        // Une RÉÉLECTION — une TRANSITION vers `actif: true` — est
-        // littéralement le capteur qui dit « retente » : c'est le seul point
-        // de réapprovisionnement retenu. **Une transition, pas la seule
-        // présence d'un ordre `actif: true`** : le capteur ne réémet déjà que
-        // sur changement (`sommeil::porteurs::distribuer_l_audio`), mais s'y
-        // fier seul reporterait cette garantie sur un module distant, sur
-        // lequel ce fichier n'a aucune prise ; `audio_porteuse` la rend locale
-        // et vérifiable ici, sans dépendre de cette discipline distante. Sans
-        // cette restriction à la seule transition, un flot d'ordres `actif:
-        // true` identiques rendrait le budget infini.
+        // A RE-ELECTION — a TRANSITION to `actif: true` — is
+        // literally the sensor saying "retry": it is the only
+        // replenishment point retained. **A transition, not the mere
+        // presence of an `actif: true` order**: the sensor already only re-emits
+        // on change (`sommeil::porteurs::distribuer_l_audio`), but relying
+        // on that alone would shift this guarantee onto a remote module, over
+        // which this file has no hold; `audio_porteuse` makes it local
+        // and checkable here, without depending on that remote discipline. Without
+        // this restriction to the transition alone, a stream of identical `actif:
+        // true` orders would make the budget infinite.
         if actif && !self.audio_porteuse {
             self.reconstructions_restantes = crate::audio::RECONSTRUCTIONS_MAX;
-            // ⚠️ **Résidu trouvé en re-revue (sous-bloc D10), documenté et non
-            // corrigé : cette remise à `None` ANNULE l'espacement
-            // `REPIT_RECONSTRUCTION` à chaque réélection.** Pour une session
-            // déjà latchée morte, chaque transition `false → true` achète
-            // donc une tentative de reconstruction IMMÉDIATE au prochain tour
-            // — c'est-à-dire une ouverture *process loopback* bloquante sur
-            // le fil de `Session::run`, exactement le coût que le répit
-            // existe pour espacer. `REARMEMENTS_MAX` ne le borne pas : il ne
-            // compte que les cycles qui atteignent `AudioMort`, jamais les
-            // réélections elles-mêmes — un groupe qui bascule entre deux
-            // fenêtres du même PID peut donc réélire plus vite qu'un budget
-            // ne s'épuise. **Ce n'est pas une régression** : le débit reste
-            // borné par `PERIODE_REARBITRAGE` (250 ms, `capteur/sommeil.rs`),
-            // qui borne la fréquence à laquelle le registre peut faire
-            // basculer `actif`. Mais c'est un couplage NEUF entre le
-            // va-et-vient de l'arbitrage audio et du travail bloquant sur le
-            // fil de drainage, que rien n'empêchait avant que cette remise à
-            // zéro n'existe.
+            // ⚠️ **Residue found in re-review (sub-block D10), documented and not
+            // fixed: this reset to `None` CANCELS the
+            // `REPIT_RECONSTRUCTION` spacing at each re-election.** For a session
+            // already latched dead, each `false → true` transition therefore
+            // buys an IMMEDIATE rebuild attempt at the next round
+            // — that is, a blocking *process loopback* opening on
+            // the `Session::run` thread, exactly the cost the respite
+            // exists to space out. `REARMEMENTS_MAX` does not bound it: it only
+            // counts cycles that reach `AudioMort`, never the
+            // re-elections themselves — a group toggling between two
+            // windows of the same PID can therefore re-elect faster than a budget
+            // runs out. **It is not a regression**: the rate stays
+            // bounded by `PERIODE_REARBITRAGE` (250 ms, `capteur/sommeil.rs`),
+            // which bounds how often the registry can toggle
+            // `actif`. But it is a NEW coupling between the
+            // back-and-forth of audio arbitration and blocking work on the
+            // drain thread, which nothing prevented before this reset
+            // existed.
             self.prochaine_reconstruction = None;
-            // Lève le verrou qui, sinon, empêcherait `act_on_timeout`
-            // (branche a1sexies) de rappeler `reconstruire_ou_signaler` :
-            // sans cette ligne, le réapprovisionnement du budget ci-dessus
-            // serait sans effet, puisque la porte d'entrée resterait fermée.
+            // Lifts the latch that would otherwise prevent `act_on_timeout`
+            // (branch a1sexies) from calling `reconstruire_ou_signaler` again:
+            // without this line, replenishing the budget above
+            // would have no effect, since the entry door would stay closed.
             self.audio_mort_signale = false;
         }
         self.audio_porteuse = actif;
@@ -202,28 +202,28 @@ impl Session {
             } else {
                 0
             });
-        // `session` : sans ce champ la trace n'est PAS attribuable — tous les
-        // enfants héritent le même `agent.log` depuis D4. Même motif et même
-        // champ que « part de budget appliquee ».
+        // `session`: without this field the trace is NOT attributable — all
+        // children inherit the same `agent.log` since D4. Same reason and same
+        // field as "budget share applied".
         //
-        // `capture_morte` : sans lui cette ligne MENTIRAIT (F3). Un fil de
-        // capture qui a définitivement abandonné laisse `set_actif` réussir —
-        // il n'écrit qu'un atomique que plus personne ne lit —, et la trace
-        // annonçait alors `actif=true` pour une fenêtre qui ne produira plus
-        // jamais un paquet. ~~C'est le seul endroit du produit où cet état
-        // devienne observable ; le capteur, lui, ne le voit pas.~~
+        // `capture_morte`: without it this line WOULD LIE (F3). A capture
+        // thread that has given up for good lets `set_actif` succeed —
+        // it only writes an atomic no one reads any more —, and the trace
+        // then announced `actif=true` for a window that will never
+        // produce a packet again. ~~It is the only place in the product where this state
+        // becomes observable; the sensor, for its part, does not see it.~~
         //
-        // ❌ **Les deux clauses barrées sont fausses depuis le sous-bloc
-        // D10** (revue transverse). `capture_morte` est relu à CHAQUE tour par
-        // `capture_audio_morte` → `reconstruire_ou_signaler` (branche
-        // a1sexies), qui journalise « capture audio reconstruite » ou
-        // « reconstruction de la capture audio refusée » et pousse `AudioMort`
-        // en repli — le capteur le voit donc, l'inscrit dans ses `inaptes` et
-        // le journalise à son tour. Cette trace-ci n'est plus ni le seul
-        // observatoire ni la seule voie ; elle reste utile pour ce qu'elle
-        // est, un état lu au point d'application de l'ordre. Le renvoi au
-        // « commentaire d'abandon dans `windows_audio.rs` » a en outre suivi
-        // l'extraction de la tâche 3 : il vit dans `windows_audio/fil.rs`.
+        // ❌ **The two struck-out clauses have been wrong since sub-block
+        // D10** (cross-cutting review). `capture_morte` is reread at EVERY round by
+        // `capture_audio_morte` → `reconstruire_ou_signaler` (branch
+        // a1sexies), which logs "audio capture rebuilt" or
+        // "audio capture rebuild refused" and pushes `AudioMort`
+        // as a fallback — the sensor therefore sees it, records it in its `inaptes` and
+        // logs it in turn. This trace is no longer either the only
+        // observatory or the only path; it stays useful for what it
+        // is, a state read at the point where the order is applied. The reference to
+        // the "abandonment comment in `windows_audio.rs`" has moreover followed
+        // task 3's extraction: it lives in `windows_audio/fil.rs`.
         tracing::info!(
             session = %self.session_id,
             actif,
@@ -232,76 +232,76 @@ impl Session {
         );
     }
 
-    /// Déclare que cette session porte le son **sans qu'aucun capteur ne le
-    /// lui dise**. Réservé au mode MONO-FENÊTRE.
+    /// Declares that this session carries the sound **without any sensor
+    /// telling it so**. Reserved for SINGLE-WINDOW mode.
     ///
-    /// ⚠️ **Ne JAMAIS appeler depuis une session servie par un capteur.** Le
-    /// capteur arbitre qui porte le son entre les fenêtres d'un même groupe de
-    /// PID, et `appliquer_audio` est le seul chemin légitime dans ce mode.
-    /// Poser `true` ici sur une session arbitrée ferait parler une fenêtre qui
-    /// doit se taire — deux fenêtres joueraient alors le même mix
-    /// désynchronisé, l'écho audible que le défaut F2 du sous-bloc D7 décrit.
-    /// `une_session_non_porteuse_reconstruite_reste_muette` le garde rouge.
+    /// ⚠️ **NEVER call from a session served by a sensor.** The
+    /// sensor arbitrates who carries the sound between the windows of the same PID
+    /// group, and `appliquer_audio` is the only legitimate path in that mode.
+    /// Setting `true` here on an arbitrated session would make a window speak that
+    /// must stay silent — two windows would then play the same mix
+    /// out of sync, the audible echo that defect F2 of sub-block D7 describes.
+    /// `a_rebuilt_non_carrier_session_stays_silent` keeps it red.
     ///
-    /// Son unique appelant de production est `demarrage/audio.rs::brancher`,
-    /// dans sa SEULE branche `config.fenetre_hwnd == None`.
+    /// Its only production caller is `demarrage/audio.rs::brancher`,
+    /// in its ONLY branch `config.fenetre_hwnd == None`.
     pub fn set_audio_porteuse(&mut self, porteuse: bool) {
         self.audio_porteuse = porteuse;
     }
 
-    /// Confie de quoi refabriquer la source audio après la mort de sa capture.
+    /// Hands over what is needed to rebuild the audio source after its capture died.
     pub fn set_audio_reconstructeur(&mut self, r: crate::audio::Reconstructeur) {
         self.audio_reconstructeur = Some(r);
     }
 
-    /// Rend `true` s'il faut signaler `AudioMort` au capteur — c'est-à-dire
-    /// quand il n'y a plus rien à reconstruire.
+    /// Returns `true` if `AudioMort` must be reported to the sensor — that is,
+    /// when there is nothing left to rebuild.
     ///
-    /// **La reconstruction passe AVANT le signalement**, et c'est l'inversion
-    /// que D10 apporte : le signal au capteur cesse d'être le premier geste
-    /// pour devenir le repli. La promotion d'une voisine (la seule moitié de
-    /// D9 qui fonctionnait) garde alors son rôle exact — celui du cas où
-    /// l'arbre de processus a réellement disparu.
+    /// **Rebuilding comes BEFORE reporting**, and it is the inversion
+    /// D10 brings: the signal to the sensor stops being the first gesture
+    /// and becomes the fallback. Promoting a neighbour (the only half of
+    /// D9 that worked) then keeps its exact role — that of the case where
+    /// the process tree has really disappeared.
     ///
-    /// ⚠️ **Une reconstruction réussie RÉARME aussi la source, sur
-    /// `audio_porteuse`** (défaut trouvé en recette VM, corrigé dans le corps
-    /// ci-dessous) : `WindowsAudioSource::pour_processus` naît toujours
-    /// MUETTE, et sans ce réarmement une session porteuse dont la capture
-    /// vient d'être reconstruite ne produirait plus jamais aucun paquet, donc
-    /// aucune PREUVE, donc aucune réélection : un état ABSORBANT.
+    /// ⚠️ **A successful rebuild ALSO RE-ARMS the source, on
+    /// `audio_porteuse`** (defect found during VM acceptance, fixed in the body
+    /// below): `WindowsAudioSource::pour_processus` is always born
+    /// SILENT, and without this re-arming a carrier session whose capture
+    /// has just been rebuilt would never produce any packet again, hence
+    /// no PROOF, hence no re-election: an ABSORBING state.
     ///
-    /// ❌ **« Le seul chemin qu'emprunte un reconstructeur » était écrit ici,
-    /// et c'est FAUX — relevé par la revue transverse de fin de branche, et
-    /// c'est le défaut le plus lourd qu'elle ait trouvé, parce qu'il a une
-    /// conséquence de comportement.** `demarrage/audio.rs::brancher` pose un
-    /// reconstructeur dans les DEUX modes : sa branche `None`
-    /// (`config.fenetre_hwnd` absent — le chemin MONO-FENÊTRE) appelle
-    /// `WindowsAudioSource::new`, qui s'auto-émet.
+    /// ❌ **"The only path a rebuilder takes" was written here,
+    /// and it is WRONG — found by the cross-cutting end-of-branch review, and
+    /// it is the heaviest defect it found, because it has a
+    /// behavioural consequence.** `demarrage/audio.rs::brancher` sets a
+    /// rebuilder in BOTH modes: its `None` branch
+    /// (`config.fenetre_hwnd` absent — the SINGLE-WINDOW path) calls
+    /// `WindowsAudioSource::new`, which enables its own emission.
     ///
-    /// ✅ **La conséquence que D10 léguait ici — « en mono-fenêtre, le remède
-    /// de reconstruction est INERTE » — est CORRIGÉE (sous-bloc D11, leg 4).**
-    /// Elle tenait à ce qu'`audio_porteuse` naisse `false` (`transport.rs`)
-    /// avec `appliquer_audio` pour unique écrivain, c'est-à-dire un ordre
-    /// `Audio` du capteur qu'un agent mono-fenêtre ne reçoit jamais : une
-    /// capture reconstruite y était auto-émise à `true` par `new()`, puis
-    /// **remise à `false`** par la ligne de réarmement ci-dessous.
-    /// `demarrage/audio.rs::brancher` appelle désormais `set_audio_porteuse`
-    /// dans sa seule branche mono-fenêtre, et le champ a donc un second
-    /// écrivain — hors de ce module.
+    /// ✅ **The consequence D10 left as legacy here — "in single-window mode, the rebuild
+    /// remedy is INERT" — is FIXED (sub-block D11, legacy 4).**
+    /// It came from `audio_porteuse` being born `false` (`transport.rs`)
+    /// with `appliquer_audio` as sole writer, that is, an `Audio` order
+    /// from the sensor that a single-window agent never receives: a
+    /// rebuilt capture there had its emission enabled at `true` by `new()`, then
+    /// **reset to `false`** by the re-arming line below.
+    /// `demarrage/audio.rs::brancher` now calls `set_audio_porteuse`
+    /// in its single-window branch only, and the field therefore has a second
+    /// writer — outside this module.
     ///
-    /// ⚠️ **Le remède ne force PAS `true` sans arbitrage**, et c'est la seule
-    /// forme sûre : forcer inconditionnellement ici réintroduirait le défaut
-    /// PIRE que le passage de `audio_porteuse` évite en multi-fenêtres (une
-    /// fuite de son vers une fenêtre qui doit se taire), et
-    /// `une_session_non_porteuse_reconstruite_reste_muette` l'y garde rouge.
-    /// Le correctif distingue les deux modes **au branchement**, là où le mode
-    /// est connu, jamais ici où il ne l'est pas.
+    /// ⚠️ **The remedy does NOT force `true` without arbitration**, and it is the only
+    /// safe form: forcing unconditionally here would reintroduce the
+    /// WORSE defect that going through `audio_porteuse` avoids in multi-window (a
+    /// sound leak to a window that must stay silent), and
+    /// `a_rebuilt_non_carrier_session_stays_silent` keeps it red.
+    /// The fix distinguishes the two modes **at wiring time**, where the mode
+    /// is known, never here where it is not.
     ///
-    /// ⚠️ **Cette méthode court sur le fil de `Session::run`**, et ouvrir une
-    /// source WASAPI y est un appel bloquant de durée non bornée. D'où le
-    /// répit : au plus une tentative par `REPIT_RECONSTRUCTION`. Si la mesure
-    /// montre qu'elle retarde le drainage, elle passera sur un fil — même
-    /// risque que `Drop for H264Encoder` porte déjà sur ce fil.
+    /// ⚠️ **This method runs on the `Session::run` thread**, and opening a
+    /// WASAPI source there is a blocking call of unbounded duration. Hence the
+    /// respite: at most one attempt per `REPIT_RECONSTRUCTION`. If measurement
+    /// shows it delays draining, it will move to a thread — same
+    /// risk `Drop for H264Encoder` already carries on this thread.
     pub(super) fn reconstruire_ou_signaler(&mut self, maintenant: std::time::Instant) -> bool {
         if !self.capture_audio_morte() {
             return false;
@@ -312,93 +312,98 @@ impl Session {
         if self.reconstructions_restantes == 0 {
             return true;
         }
-        if self.prochaine_reconstruction.is_some_and(|t| maintenant < t) {
+        if self
+            .prochaine_reconstruction
+            .is_some_and(|t| maintenant < t)
+        {
             return false;
         }
         self.reconstructions_restantes -= 1;
         self.prochaine_reconstruction = Some(maintenant + crate::audio::REPIT_RECONSTRUCTION);
-        // L'injection de faute de banc est interposée devant le
-        // reconstructeur — voir `injection`, qui porte le budget, sa raison
-        // d'être globale au processus, et le contrat de ce point d'appel.
+        // The bench fault injection is interposed in front of the
+        // rebuilder — see `injection`, which carries the budget, its reason
+        // for being process-global, and the contract of this call site.
         //
-        // ⚠️ Le bras `Err` qui s'ensuit est CELUI DU LEG 6 (`{erreur:#}`) : la
-        // faute injectée emprunte le même `warn!`, et le journal de recette
-        // porte donc `erreur=faute injectée (AUDIO_FAUTE_RECONSTRUCTION)`.
-        // C'est le contrôle d'ATTEIGNABILITÉ de ce leg — si cette chaîne
-        // n'apparaît pas alors que l'injection est armée, c'est le format qui
-        // ne marche pas, pas la cause qui manque.
-        let tentative = injection::intercepter(|| reconstructeur());
+        // ⚠️ The `Err` arm that follows is LEGACY 6's (`{error:#}`): the
+        // injected fault goes through the same `warn!`, and the acceptance log
+        // therefore carries the injected-fault error naming `AUDIO_FAUTE_RECONSTRUCTION`.
+        // It is the REACHABILITY check of this legacy — if that string
+        // does not appear while injection is armed, it is the format that
+        // does not work, not the cause that is missing.
+        let tentative = injection::intercepter(reconstructeur);
         match tentative {
             Ok(mut source) => {
                 tracing::info!(
                     restantes = self.reconstructions_restantes,
                     "capture audio reconstruite"
                 );
-                // Trouvé en recette VM (deux exécutions : `capture audio
-                // reconstruite` = 2, `compteurs_audio_actif_true` = 0 aux
-                // deux) : une source reconstruite par
-                // `WindowsAudioSource::pour_processus` NAÎT MUETTE
-                // (`windows_audio.rs::demarrer`) — à la différence du mode
-                // mono-fenêtre `new()`, qui s'émet lui-même. Sans cette
-                // ligne, RIEN ne réarme la source reconstruite : elle ne
-                // produit aucun paquet, donc aucune PREUVE
-                // (`audio_vivant_a_annoncer`), donc aucune réélection —
-                // muette pour toujours. Un état ABSORBANT, pas un retard.
+                // Found during VM acceptance (two runs: "audio capture
+                // rebuilt" = 2, `compteurs_audio_actif_true` = 0 in
+                // both): a source rebuilt by
+                // `WindowsAudioSource::pour_processus` IS BORN SILENT
+                // (`windows_audio.rs::start`) — unlike the
+                // single-window `new()`, which enables its own emission. Without this
+                // line, NOTHING re-arms the rebuilt source: it
+                // produces no packet, hence no PROOF
+                // (`audio_vivant_a_annoncer`), hence no re-election —
+                // silent forever. An ABSORBING state, not a delay.
                 //
-                // `audio_porteuse` — jamais l'ordre `actif` du dernier appel
-                // à `appliquer_audio`, capturé AVANT que cette fonction n'ait
-                // pu le modifier — est le miroir LOCAL du dernier ordre reçu
-                // du capteur (voir `appliquer_audio`) : la garantie ne dépend
-                // ainsi d'aucune discipline distante. Appliqué SANS
-                // condition, aussi bien pour une session porteuse (`true`,
-                // qui réarme) que pour une session muette (`false`, qui
-                // confirme explicitement le silence plutôt que de le
-                // supposer) — voir
-                // `une_session_non_porteuse_reconstruite_reste_muette`.
+                // `audio_porteuse` — never the `actif` order of the last call
+                // to `appliquer_audio`, captured BEFORE this function could
+                // have changed it — is the LOCAL mirror of the last order received
+                // from the sensor (see `appliquer_audio`): the guarantee thus depends
+                // on no remote discipline. Applied WITHOUT
+                // condition, for a carrier session (`true`,
+                // which re-arms) as well as for a silent session (`false`, which
+                // explicitly confirms the silence rather than
+                // assuming it) — see
+                // `a_rebuilt_non_carrier_session_stays_silent`.
                 source.set_actif(self.audio_porteuse);
                 self.audio_source = Some(source);
                 self.audio_reconstruit_sans_preuve = true;
                 false
             }
-            Err(erreur) => {
-                // `{erreur:#}` et non `%erreur` : le `Display` simple
-                // d'`anyhow` ne rend que le contexte le plus EXTERNE, et
-                // `windows_audio.rs` en pose justement un
-                // (« ouverture du process loopback du PID … »). Le HRESULT —
-                // seule donnée qui réponde au leg 6 de D10, « la cause du
-                // refus de reconstruction n'est pas identifiée » — restait
-                // donc dans les causes, jetée à l'écriture. La pièce est
-                // versée : `journaux-multifenetres-d10/agent-critere-2-1-plat.log`
-                // l. 97 porte `erreur=ouverture du process loopback du PID
-                // 27544` et rien d'autre. Même doctrine que
-                // `diagnostics/multifenetre/plafond/sonde.rs`, qui l'explique
-                // mot pour mot sur un HRESULT perdu de la même façon.
+            Err(error) => {
+                // `{error:#}` and not `%error`: `anyhow`'s plain `Display`
+                // only renders the OUTERMOST context, and
+                // `windows_audio.rs` sets precisely one
+                // (the process loopback opening for the PID …). The HRESULT —
+                // the only datum that answers D10's legacy 6, "the cause of the
+                // rebuild refusal is not identified" — therefore stayed
+                // in the causes, thrown away at write time. The evidence is
+                // filed: `journaux-multifenetres-d10/agent-critere-2-1-plat.log`
+                // l. 97 carries only that outer context (process loopback opening for PID
+                // 27544) and nothing else. Same doctrine as
+                // `diagnostics/multifenetre/plafond/sonde.rs`, which explains it
+                // word for word about an HRESULT lost the same way.
                 tracing::warn!(
-                    erreur = format!("{erreur:#}"),
+                    error = format!("{error:#}"),
                     restantes = self.reconstructions_restantes,
-                    "reconstruction de la capture audio refusée"
+                    "audio capture rebuild refused"
                 );
                 false
             }
         }
     }
 
-    /// Vrai si la capture audio de cette fenêtre a définitivement abandonné
-    /// (`AudioSource::capture_morte`, posé après
-    /// `crate::audio::LECTURES_ECHOUEES_MAX` erreurs de lecture WASAPI
-    /// consécutives, `windows_audio.rs`).
+    /// True if this window's audio capture has given up for good
+    /// (`AudioSource::capture_morte`, set after
+    /// `crate::audio::LECTURES_ECHOUEES_MAX` consecutive WASAPI read
+    /// errors, `windows_audio.rs`).
     ///
-    /// Sans source (pas de piste audio pour cette session, ou `AUDIO=0`),
-    /// jamais morte : il n'y a rien à signaler.
+    /// Without a source (no audio track for this session, or `AUDIO=0`),
+    /// never dead: there is nothing to report.
     pub(super) fn capture_audio_morte(&self) -> bool {
-        self.audio_source.as_deref().is_some_and(|source| source.capture_morte())
+        self.audio_source
+            .as_deref()
+            .is_some_and(|source| source.capture_morte())
     }
 
     fn warn_audio_negotiation_once(&mut self) {
         if !self.warned_audio_negotiation {
             self.warned_audio_negotiation = true;
             tracing::warn!(
-                "aucun type de charge utile Opus négocié : paquets audio jetés (avertissement unique)"
+                "no Opus payload type negotiated: audio packets dropped (single warning)"
             );
         }
     }
@@ -410,25 +415,28 @@ mod tests {
 
     // -- horloge RTP audio --------------------------------------------------
     //
-    // `write_audio` construit `MediaTime::new(pts_48k, Frequency::FORTY_EIGHT_KHZ)` :
-    // la fréquence d'horloge RTP du type de charge utile Opus est câblée en
-    // dur ici, séparément de `opus::SAMPLE_RATE_HZ`, qui documente pourtant
-    // explicitement être « la fréquence d'horloge RTP du type de charge
-    // utile Opus ». Rien ne lie ces deux constantes : modifier l'une sans
-    // l'autre compilerait sans avertissement et produirait des horodatages
-    // RTP faux d'un facteur constant — un défaut de synchronisation
-    // silencieux. Ce test échoue si elles divergent.
+    // `write_audio` builds `MediaTime::new(pts_48k, Frequency::FORTY_EIGHT_KHZ)`:
+    // the RTP clock rate of the Opus payload type is hardcoded
+    // here, separately from `opus::SAMPLE_RATE_HZ`, which nevertheless explicitly
+    // documents being "the RTP clock rate of the Opus payload
+    // type". Nothing ties these two constants: changing one without
+    // the other would compile without warning and produce RTP timestamps
+    // wrong by a constant factor — a silent synchronisation
+    // defect. This test fails if they diverge.
     #[test]
-    fn la_frequence_rtp_audio_correspond_au_taux_d_echantillonnage_opus() {
-        assert_eq!(Frequency::FORTY_EIGHT_KHZ.get(), crate::opus::SAMPLE_RATE_HZ);
+    fn the_audio_rtp_frequency_matches_the_opus_sample_rate() {
+        assert_eq!(
+            Frequency::FORTY_EIGHT_KHZ.get(),
+            crate::opus::SAMPLE_RATE_HZ
+        );
     }
 
     #[test]
-    fn borne_l_attente_quand_l_audio_est_negocie() {
-        // Sans ce plafond, la branche d'attente dormirait jusqu'à l'échéance
-        // que réclame `Rtc` — jusqu'à la seconde entière — et traverserait
-        // ainsi une centaine de paquets audio dus. C'est le même défaut que
-        // C1 côté vidéo, transposé.
+    fn bounds_the_wait_when_audio_is_negotiated() {
+        // Without this ceiling, the waiting branch would sleep until the deadline
+        // `Rtc` asks for — up to a whole second — and would thus
+        // go through a hundred or so due audio packets. It is the same defect as
+        // C1 on the video side, transposed.
         use std::time::Instant;
 
         use crate::transport::socket::bounded_wait;
@@ -439,33 +447,34 @@ mod tests {
         let sans_audio = bounded_wait(maintenant, echeance_rtc, None, None);
         assert_eq!(sans_audio, Duration::from_secs(1));
 
-        let avec_audio = bounded_wait(maintenant, echeance_rtc, None, Some(AUDIO_POLL_INTERVAL));
-        assert_eq!(avec_audio, AUDIO_POLL_INTERVAL);
+        let with_audio = bounded_wait(maintenant, echeance_rtc, None, Some(AUDIO_POLL_INTERVAL));
+        assert_eq!(with_audio, AUDIO_POLL_INTERVAL);
 
-        // Le plafond ne doit jamais ALLONGER une attente déjà plus courte.
+        // The ceiling must never LENGTHEN an already shorter wait.
         let echeance_proche = maintenant + Duration::from_micros(200);
-        let court = bounded_wait(
-            maintenant,
-            echeance_proche,
-            None,
-            Some(AUDIO_POLL_INTERVAL),
-        );
+        let court = bounded_wait(maintenant, echeance_proche, None, Some(AUDIO_POLL_INTERVAL));
         assert_eq!(court, Duration::from_micros(200));
     }
 
-    /// Éprouve le FORMAT, pas le site d'appel : `{erreur:#}` rend la chaîne de
-    /// causes là où `{erreur}` ne rend que le contexte le plus externe. Le site
-    /// lui-même n'est pas observable sur l'hôte (c'est un `warn!` de
-    /// `tracing`) ; sa preuve est le journal de recette, pas ce test.
+    /// Exercises the FORMAT, not the call site: `{error:#}` renders the chain of
+    /// causes where `{error}` only renders the outermost context. The site
+    /// itself is not observable on the host (it is a `tracing`
+    /// `warn!`); its proof is the acceptance log, not this test.
     #[test]
-    fn le_format_diese_rend_la_chaine_de_causes() {
+    fn the_alternate_format_renders_the_cause_chain() {
         use anyhow::Context;
 
         let cause = anyhow::anyhow!("0x88890004");
         let e = Err::<(), _>(cause)
-            .context("ouverture du process loopback du PID 42")
+            .context("opening the process loopback of PID 42")
             .unwrap_err();
-        assert!(!format!("{e}").contains("0x88890004"), "le Display simple perd la cause");
-        assert!(format!("{e:#}").contains("0x88890004"), "{{:#}} doit la rendre");
+        assert!(
+            !format!("{e}").contains("0x88890004"),
+            "the plain Display loses the cause"
+        );
+        assert!(
+            format!("{e:#}").contains("0x88890004"),
+            "{{:#}} must return it"
+        );
     }
 }

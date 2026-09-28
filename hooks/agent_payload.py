@@ -1,42 +1,42 @@
 #!/usr/bin/env python3
-"""Où `console` va chercher `agent.exe`, jamais deviné : construction croisée
-et dépôt du binaire, tâche 7 (2026-08-29).
+"""Where `console` looks for `agent.exe`, never guessed: cross build
+and drop of the binary, task 7 (2026-08-29).
 
-Extrait de `hooks/activate.py` par la tâche 13 (2026-08-29), pour la MÊME
-raison que `hooks/administration.py` et `hooks/env_fichier.py` (voir leurs
-propres docstrings de tête) : `activate.py` atteignait 509 lignes après
-l'ajout de l'attribution de la VM au compte administrateur (tâche 13,
-trou trouvé en production), et ce dépôt interdit de comprimer pour éviter
-une extraction (« ce dépôt l'a payé douze fois »). Ce module porte donc,
-VERBATIM, ce que la tâche 7 avait écrit : le même corps, le même docstring,
-seulement déplacés dans un commit DÉDIÉ, AVANT celui qui ajoute l'attribution.
+Extracted from `hooks/activate.py` by task 13 (2026-08-29), for the SAME
+reason as `hooks/administration.py` and `hooks/env_file.py` (see their
+own head docstrings): `activate.py` had reached 509 lines after
+adding the assignment of the VM to the administrator account (task 13,
+a gap found in production), and this repository forbids compressing code to avoid
+an extraction ("this repository paid for it twelve times"). This module therefore
+carries, VERBATIM, what task 7 had written: the same body, the same docstring,
+only moved in a DEDICATED commit, BEFORE the one that adds the assignment.
 
-Comme `hooks/vm.py`, `hooks/administration.py` et `hooks/env_fichier.py`, ce
-module N'EST PAS un hook exécutable seul (pas de `--phase`/stdin JSON) :
-`hooks/activate.py` l'importe (`from agent_payload import chemin_agent_console,
-construire_agent_reel, deposer_agent_console`) — Python ajoute automatiquement
-le répertoire du script LANCÉ (`hooks/`) à `sys.path`, donc cet import résout
-sans manipulation supplémentaire, ni ici ni chez l'appelant. `tests/
-test_desk_payload.py` continue de les atteindre par `activate.chemin_agent_console`
-etc. : un nom importé PAR NOM dans `activate.py` devient un attribut du module
-`activate` au même titre qu'un nom défini localement — aucun changement de
-test n'était nécessaire pour cette extraction.
+Like `hooks/vm.py`, `hooks/administration.py` and `hooks/env_file.py`, this
+module IS NOT a hook runnable on its own (no `--phase`/stdin JSON):
+`hooks/activate.py` imports it (`from agent_payload import chemin_agent_console,
+construire_agent_reel, deposer_agent_console`) — Python automatically adds
+the directory of the LAUNCHED script (`hooks/`) to `sys.path`, so this import
+resolves without any extra manipulation, neither here nor in the caller. `tests/
+test_desk_payload.py` still reaches them through `activate.chemin_agent_console`
+etc.: a name imported BY NAME into `activate.py` becomes an attribute of the
+`activate` module just like a locally defined name — no test change
+was needed for this extraction.
 
-🔴 Pas `<drivers_dir>/agent/agent.exe` (dérivé de `guest_workdir`, réponse DE
-`console` que ce hook ne reçoit jamais — `activate_cli.py:107-108` n'indexe
-que les réponses du package appelant ; `/etc/nivuus/packages.json` est
-d'ailleurs absent sur cette machine). Le chemin RÉEL, fixe, que `console` lit
-lui-même : `console/guest/fetch_payload.py:61` —
+🔴 Not `<drivers_dir>/agent/agent.exe` (derived from `guest_workdir`, an answer OF
+`console` that this hook never receives — `activate_cli.py:107-108` only indexes
+the answers of the calling package; `/etc/nivuus/packages.json` is
+absent on this machine anyway). The REAL, fixed path that `console` reads
+itself: `console/guest/fetch_payload.py:61` —
 `PACKAGED_AGENT_EXE = Path(__file__).resolve().parent/"payload"/"agent"
-/"agent.exe"`, un fichier VENDORISÉ (voir `console/guest/payload/agent/
-README.md`) qu'`install_packaged_agent()` recopie vers `<drivers_dir>/
-agent/agent.exe` à chaque `fetch_payload.py`. Ce hook rafraîchit CETTE
-source, retrouvée sous `<NIVUUS_PACKAGES_DIR>/console/` (même convention
-que `hooks/vm.py::chemin_winrm_exec`, sa constante importée ici).
-⚠️ RÉSERVE : `console` s'active AVANT `desk` (dépendance) — le TOUT
-PREMIER provisionnement consomme l'image déjà committée ; ce dépôt ne
-garantit que les RECONSTRUCTIONS futures. Voir le rapport de la tâche 7,
-§ Réserves.
+/"agent.exe"`, a VENDORED file (see `console/guest/payload/agent/
+README.md`) that `install_packaged_agent()` copies to `<drivers_dir>/
+agent/agent.exe` on every `fetch_payload.py`. This hook refreshes THAT
+source, found under `<NIVUUS_PACKAGES_DIR>/console/` (same convention
+as `hooks/vm.py::chemin_winrm_exec`, whose constant is imported here).
+⚠️ CAVEAT: `console` activates BEFORE `desk` (dependency) — the VERY
+FIRST provisioning consumes the image already committed; this drop only
+guarantees FUTURE rebuilds. See the report of task 7,
+§ Caveats.
 """
 import os
 import pathlib
@@ -51,28 +51,28 @@ FETCH_PAYLOAD_RELATIF = pathlib.Path("console") / "guest" / "fetch_payload.py"
 
 
 def chemin_agent_console() -> pathlib.Path:
-    """Vise `<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe`
-    (relu par `fetch_payload.py:61`) ; lève `FileNotFoundError`, nommant le
-    chemin, si `console/guest/fetch_payload.py` est absent — un échec
-    silencieux serait indiscernable d'un no-op (doctrine de
+    """Targets `<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe`
+    (reread by `fetch_payload.py:61`); raises `FileNotFoundError`, naming the
+    path, if `console/guest/fetch_payload.py` is absent — a silent
+    failure would be indistinguishable from a no-op (doctrine of
     `hooks/vm.py::chemin_winrm_exec`)."""
     packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR", NIVUUS_PACKAGES_DIR_DEFAUT)
     fetch_payload = pathlib.Path(packages_dir) / FETCH_PAYLOAD_RELATIF
     if not fetch_payload.is_file():
         raise FileNotFoundError(
-            f"fetch_payload.py introuvable a l'emplacement attendu : {fetch_payload} "
-            "(le package console est-il installe ? NIVUUS_PACKAGES_DIR="
-            f"{packages_dir!r} - voir hooks/activate.py pour la convention)"
+            f"fetch_payload.py not found at the expected location: {fetch_payload} "
+            "(is the console package installed? NIVUUS_PACKAGES_DIR="
+            f"{packages_dir!r} - see hooks/activate.py for the convention)"
         )
     return pathlib.Path(packages_dir) / AGENT_EXE_CONSOLE_RELATIF
 
 
 def construire_agent_reel(destination: pathlib.Path) -> None:
-    """Invoque `scripts/build-agent-croise.sh <destination.parent>` (un
-    RÉPERTOIRE, jamais un nom de fichier) ; lève `RuntimeError` (sortie du
-    script) sur un code non nul. Chemin surchargeable par
-    `DESK_BUILD_AGENT_SCRIPT` (jamais en production) pour que les tests ne
-    compilent jamais l'agent réel (~40 s) — voir `tests/test_desk_payload.py`.
+    """Invokes `scripts/build-agent-croise.sh <destination.parent>` (a
+    DIRECTORY, never a file name); raises `RuntimeError` (the script's
+    output) on a non-zero code. Path overridable through
+    `DESK_BUILD_AGENT_SCRIPT` (never in production) so that tests never
+    compile the real agent (~40 s) — see `tests/test_desk_payload.py`.
     """
     defaut = RACINE / "scripts" / "build-agent-croise.sh"
     script = pathlib.Path(os.environ.get("DESK_BUILD_AGENT_SCRIPT") or defaut)
@@ -80,20 +80,20 @@ def construire_agent_reel(destination: pathlib.Path) -> None:
                           capture_output=True, text=True)
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "").strip()
-        raise RuntimeError(f"{script} a echoue (code {proc.returncode}) : {detail or 'aucune sortie'}")
+        raise RuntimeError(f"{script} failed (code {proc.returncode}): {detail or 'no output'}")
 
 
 def deposer_agent_console(construire=None) -> pathlib.Path:
-    """Construit `agent.exe` et le dépose où `console` le cherche.
-    `construire` : factice en test, `construire_agent_reel` par défaut.
-    🔴 Vérifie APRÈS COUP que le fichier existe (lève sinon) : un
-    `construire` muet serait une réussite silencieuse (« un contrôle qu'on
-    n'a jamais vu rouge n'est pas un contrôle », payé sur `AUDIO_FAUTE_LECTURE`).
+    """Builds `agent.exe` and drops it where `console` looks for it.
+    `construire`: fake in tests, `construire_agent_reel` by default.
+    🔴 Checks AFTERWARDS that the file exists (raises otherwise): a mute
+    `construire` would be a silent success ("a check never
+    seen red is not a check", paid for on `AUDIO_FAUTE_LECTURE`).
     """
     cible = chemin_agent_console()
     construire = construire or construire_agent_reel
     cible.parent.mkdir(parents=True, exist_ok=True)
     construire(cible)
     if not cible.is_file():
-        raise RuntimeError(f"construire() a rendu la main mais {cible} est absent : aucun agent.exe n'a ete depose")
+        raise RuntimeError(f"construire() returned but {cible} is absent: no agent.exe was dropped")
     return cible

@@ -1,16 +1,16 @@
-//! Codec binaire des messages d'entrée (souris, clavier).
+//! Binary codec of input messages (mouse, keyboard).
 //!
-//! Format : `version: u8 | type: u8 | charge utile`, entiers en petit-boutiste.
-//! Chaque message est autonome et de taille fixe : le canal de transport est
-//! non fiable et non ordonné, aucun message ne dépend d'un autre.
+//! Format: `version: u8 | type: u8 | payload`, integers in little-endian.
+//! Each message is self-contained and of fixed size: the transport channel is
+//! unreliable and unordered, no message depends on another.
 
-/// Version du protocole d'entrée. Incrémenter à tout changement de format.
+/// Version of the input protocol. Increment on any format change.
 ///
-/// v2 (chantier B) : ajout de `MouseMoveRelative` (type 5) et `Gamepad`
-/// (type 6). Agent et client étant déployés ensemble, le rejet mutuel des
-/// versions est le comportement souhaitable — un client v1 qui parlerait à
-/// un agent v2 n'aurait de toute façon aucun moyen d'annoncer un mode
-/// relatif.
+/// v2 (workstream B): added `MouseMoveRelative` (type 5) and `Gamepad`
+/// (type 6). Agent and client being deployed together, mutual rejection of
+/// versions is the desirable behaviour — a v1 client talking to
+/// a v2 agent would have no way anyway to announce a relative
+/// mode.
 pub const PROTOCOL_VERSION: u8 = 2;
 
 const TYPE_MOUSE_MOVE: u8 = 1;
@@ -20,11 +20,11 @@ const TYPE_KEY: u8 = 4;
 const TYPE_MOUSE_MOVE_RELATIVE: u8 = 5;
 const TYPE_GAMEPAD_STATE: u8 = 6;
 
-/// État complet d'une manette, calqué sur `XINPUT_GAMEPAD` : aucune
-/// conversion côté agent, donc aucune occasion de se tromper de convention.
+/// Complete state of a gamepad, modelled on `XINPUT_GAMEPAD`: no
+/// conversion on the agent side, hence no chance of getting the convention wrong.
 ///
-/// `seq` croît d'un message à l'autre. Le canal est non ordonné : il permet
-/// de rejeter un état plus ancien arrivé après un plus récent.
+/// `seq` grows from one message to the next. The channel is unordered: it makes it possible
+/// to reject an older state that arrived after a more recent one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GamepadState {
     pub seq: u16,
@@ -63,32 +63,50 @@ impl MouseButton {
     }
 }
 
-/// Message d'entrée du client vers l'agent.
+/// Input message from the client to the agent.
 ///
-/// Les coordonnées `x`/`y` sont normalisées sur `0..=65535` par rapport à la
-/// zone vidéo : cet espace est indépendant de la résolution courante et
-/// correspond directement au mode absolu de `SendInput`.
+/// The `x`/`y` coordinates are normalised on `0..=65535` relative to the
+/// video area: this space is independent of the current resolution and
+/// maps directly onto the absolute mode of `SendInput`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMessage {
-    MouseMove { x: u16, y: u16 },
-    MouseButton { button: MouseButton, pressed: bool, x: u16, y: u16 },
-    Wheel { delta_x: i16, delta_y: i16 },
-    Key { scancode: u16, pressed: bool, extended: bool },
-    /// Déplacement relatif, en pixels bruts. Émis sous Pointer Lock, quand
-    /// l'agent a annoncé un curseur masqué.
-    MouseMoveRelative { dx: i16, dy: i16 },
+    MouseMove {
+        x: u16,
+        y: u16,
+    },
+    MouseButton {
+        button: MouseButton,
+        pressed: bool,
+        x: u16,
+        y: u16,
+    },
+    Wheel {
+        delta_x: i16,
+        delta_y: i16,
+    },
+    Key {
+        scancode: u16,
+        pressed: bool,
+        extended: bool,
+    },
+    /// Relative movement, in raw pixels. Emitted under Pointer Lock, when
+    /// the agent announced a hidden cursor.
+    MouseMoveRelative {
+        dx: i16,
+        dy: i16,
+    },
     Gamepad(GamepadState),
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DecodeError {
-    #[error("version de protocole non supportée : {0}")]
+    #[error("unsupported protocol version: {0}")]
     UnsupportedVersion(u8),
-    #[error("type de message inconnu : {0}")]
+    #[error("unknown message type: {0}")]
     UnknownType(u8),
-    #[error("bouton de souris inconnu : {0}")]
+    #[error("unknown mouse button: {0}")]
     UnknownButton(u8),
-    #[error("message tronqué : {actual} octets reçus, {expected} attendus")]
+    #[error("truncated message: {actual} bytes received, {expected} expected")]
     Truncated { expected: usize, actual: usize },
 }
 
@@ -102,7 +120,12 @@ impl InputMessage {
                 out.extend_from_slice(&x.to_le_bytes());
                 out.extend_from_slice(&y.to_le_bytes());
             }
-            InputMessage::MouseButton { button, pressed, x, y } => {
+            InputMessage::MouseButton {
+                button,
+                pressed,
+                x,
+                y,
+            } => {
                 out.push(TYPE_MOUSE_BUTTON);
                 out.push(button.to_u8());
                 out.push(pressed as u8);
@@ -114,7 +137,11 @@ impl InputMessage {
                 out.extend_from_slice(&delta_x.to_le_bytes());
                 out.extend_from_slice(&delta_y.to_le_bytes());
             }
-            InputMessage::Key { scancode, pressed, extended } => {
+            InputMessage::Key {
+                scancode,
+                pressed,
+                extended,
+            } => {
                 out.push(TYPE_KEY);
                 out.extend_from_slice(&scancode.to_le_bytes());
                 out.push(pressed as u8);
@@ -148,7 +175,10 @@ impl InputMessage {
         match header[1] {
             TYPE_MOUSE_MOVE => {
                 let p = take(bytes, 2, 4)?;
-                Ok(InputMessage::MouseMove { x: le_u16(p, 0), y: le_u16(p, 2) })
+                Ok(InputMessage::MouseMove {
+                    x: le_u16(p, 0),
+                    y: le_u16(p, 2),
+                })
             }
             TYPE_MOUSE_BUTTON => {
                 let p = take(bytes, 2, 6)?;
@@ -202,7 +232,10 @@ impl InputMessage {
 fn take(bytes: &[u8], offset: usize, len: usize) -> Result<&[u8], DecodeError> {
     bytes
         .get(offset..offset + len)
-        .ok_or(DecodeError::Truncated { expected: offset + len, actual: bytes.len() })
+        .ok_or(DecodeError::Truncated {
+            expected: offset + len,
+            actual: bytes.len(),
+        })
 }
 
 fn le_u16(bytes: &[u8], offset: usize) -> u16 {
@@ -215,7 +248,7 @@ mod tests {
 
     fn round_trip(msg: InputMessage) {
         let encoded = msg.encode();
-        let decoded = InputMessage::decode(&encoded).expect("décodage réussi");
+        let decoded = InputMessage::decode(&encoded).expect("successful decoding");
         assert_eq!(msg, decoded);
     }
 
@@ -243,43 +276,61 @@ mod tests {
 
     #[test]
     fn round_trip_wheel() {
-        round_trip(InputMessage::Wheel { delta_x: 0, delta_y: 120 });
-        round_trip(InputMessage::Wheel { delta_x: -240, delta_y: -120 });
+        round_trip(InputMessage::Wheel {
+            delta_x: 0,
+            delta_y: 120,
+        });
+        round_trip(InputMessage::Wheel {
+            delta_x: -240,
+            delta_y: -120,
+        });
     }
 
     #[test]
     fn round_trip_key() {
-        round_trip(InputMessage::Key { scancode: 0x1E, pressed: true, extended: false });
-        round_trip(InputMessage::Key { scancode: 0x48, pressed: false, extended: true });
+        round_trip(InputMessage::Key {
+            scancode: 0x1E,
+            pressed: true,
+            extended: false,
+        });
+        round_trip(InputMessage::Key {
+            scancode: 0x48,
+            pressed: false,
+            extended: true,
+        });
     }
 
     #[test]
-    fn encodage_petit_boutiste() {
-        // MouseMove x=0x0201, y=0x0403 : version, type, puis octets faibles en tête.
-        let encoded = InputMessage::MouseMove { x: 0x0201, y: 0x0403 }.encode();
+    fn little_endian_encoding() {
+        // MouseMove x=0x0201, y=0x0403: version, type, then low bytes first.
+        let encoded = InputMessage::MouseMove {
+            x: 0x0201,
+            y: 0x0403,
+        }
+        .encode();
         assert_eq!(encoded, vec![PROTOCOL_VERSION, 1, 0x01, 0x02, 0x03, 0x04]);
     }
 
     #[test]
-    fn rejette_version_inconnue() {
+    fn rejects_unknown_version() {
         let err = InputMessage::decode(&[99, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnsupportedVersion(99)));
     }
 
     #[test]
-    fn rejette_type_inconnu() {
+    fn rejects_unknown_type() {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 42, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnknownType(42)));
     }
 
     #[test]
-    fn rejette_message_tronque() {
+    fn rejects_truncated_message() {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 1, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::Truncated { .. }));
     }
 
     #[test]
-    fn rejette_message_vide() {
+    fn rejects_empty_message() {
         assert!(matches!(
             InputMessage::decode(&[]).unwrap_err(),
             DecodeError::Truncated { .. }
@@ -287,19 +338,22 @@ mod tests {
     }
 
     #[test]
-    fn rejette_bouton_inconnu() {
+    fn rejects_unknown_button() {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 2, 9, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnknownButton(9)));
     }
 
     #[test]
-    fn round_trip_mouvement_relatif() {
+    fn round_trip_relative_motion() {
         round_trip(InputMessage::MouseMoveRelative { dx: 0, dy: 0 });
-        round_trip(InputMessage::MouseMoveRelative { dx: -32768, dy: 32767 });
+        round_trip(InputMessage::MouseMoveRelative {
+            dx: -32768,
+            dy: 32767,
+        });
     }
 
     #[test]
-    fn round_trip_manette() {
+    fn round_trip_gamepad() {
         round_trip(InputMessage::Gamepad(GamepadState {
             seq: 65535,
             buttons: 0xF00D,
@@ -313,17 +367,17 @@ mod tests {
     }
 
     #[test]
-    fn rejette_la_version_1_devenue_obsolete() {
+    fn rejects_version_1_now_obsolete() {
         let err = InputMessage::decode(&[1, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnsupportedVersion(1)));
     }
 
     #[test]
-    fn conformite_aux_vecteurs_partages() {
+    fn conformance_to_the_shared_vectors() {
         let raw = include_str!("../vectors.json");
-        let doc: serde_json::Value = serde_json::from_str(raw).expect("vectors.json valide");
-        let cases = doc["cases"].as_array().expect("tableau de cas");
-        assert!(!cases.is_empty(), "au moins un vecteur attendu");
+        let doc: serde_json::Value = serde_json::from_str(raw).expect("valid vectors.json");
+        let cases = doc["cases"].as_array().expect("array of cases");
+        assert!(!cases.is_empty(), "at least one vector expected");
 
         for case in cases {
             let name = case["name"].as_str().unwrap();
@@ -368,14 +422,14 @@ mod tests {
                     thumb_rx: case["thumb_rx"].as_i64().unwrap() as i16,
                     thumb_ry: case["thumb_ry"].as_i64().unwrap() as i16,
                 }),
-                other => panic!("type de vecteur inconnu : {other}"),
+                other => panic!("unknown vector type: {other}"),
             };
 
-            assert_eq!(msg.encode(), expected, "encodage du vecteur « {name} »");
+            assert_eq!(msg.encode(), expected, "encoding of vector « {name} »");
             assert_eq!(
-                InputMessage::decode(&expected).expect("décodage du vecteur"),
+                InputMessage::decode(&expected).expect("decoding of the vector"),
                 msg,
-                "décodage du vecteur « {name} »"
+                "decoding of vector « {name} »"
             );
         }
     }

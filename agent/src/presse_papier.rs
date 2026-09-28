@@ -1,156 +1,156 @@
-//! Le presse-papier de la VM, sens **VM → navigateur** : détecter qu'il a
-//! changé, en lire le texte, et décider ce qu'on annonce.
+//! The VM's clipboard, **VM → browser** direction: detect that it has
+//! changed, read its text, and decide what to announce.
 //!
-//! **Pur, sans aucun `cfg`** — comme `capteur/plein_ecran.rs`,
-//! `capteur/audio.rs` et `capteur/repartiteur.rs` avant lui. Toute la
-//! décision vit ici et s'éprouve sur l'hôte Linux ; les deux appels Win32
-//! vivent dans `presse_papier/win32.rs`, gaté, et **ne décident rien**.
+//! **Pure, without any `cfg`** — like `capteur/plein_ecran.rs`,
+//! `capteur/audio.rs` and `capteur/repartiteur.rs` before it. The whole
+//! decision lives here and is exercised on the Linux host; the two Win32 calls
+//! live in `presse_papier/win32.rs`, gated, and **decide nothing**.
 //!
-//! Le module est à la **racine nue** (`mod presse_papier;` dans `main.rs`) et
-//! non sous `capteur/`, alors que le propriétaire est aujourd'hui le capteur
-//! et lui seul. La raison n'est pas celle que la spec avance — la « Convention
-//! de module enfant » de `CLAUDE.md` déclare elle-même sa portée et ne couvre
-//! pas ce cas, ce module n'étant extrait de rien. C'est que la décision D1 pose
-//! que le propriétaire est « le capteur quand il existe, l'enfant sinon » : un
-//! module rangé sous `capteur/` porterait un nom faux le jour où le
-//! propriétaire mono-fenêtre arrivera.
+//! The module is at the **bare root** (`mod presse_papier;` in `main.rs`) and
+//! not under `capteur/`, although its owner is today the capturer
+//! and it alone. The reason is not the one the spec puts forward — the "Child
+//! module convention" of `CLAUDE.md` declares its own scope and does not cover
+//! this case, this module being extracted from nothing. It is that decision D1 states
+//! that the owner is "the capturer when it exists, the child otherwise": a
+//! module filed under `capteur/` would carry a wrong name the day the
+//! single-window owner arrives.
 //!
-//! ❌ **Ce module disait « il n'écrit JAMAIS le presse-papier Windows ; le sens
-//! navigateur → VM est le sous-bloc P2, et c'est lui qui portera les gardes
-//! anti-écho de D5 ; le seul garde livré ici est le n°2 ». LES TROIS CLAUSES
-//! SONT PÉRIMÉES : ce sous-bloc a eu lieu.** Relevé par la revue transverse du
-//! 21 août 2026. La règle qu'il énonçait tient toujours, mais autrement :
+//! ❌ **This module said "it NEVER writes the Windows clipboard; the
+//! browser → VM direction is sub-block P2, and it is the one that will carry D5's
+//! anti-echo guards; the only guard delivered here is no. 2". ALL THREE CLAUSES
+//! ARE OUTDATED: that sub-block took place.** Found by the cross-cutting review of
+//! August 21st, 2026. The rule it stated still holds, but differently:
 //!
-//! - **il n'écrit toujours pas lui-même** — l'appel Win32 vit dans
-//!   `presse_papier/win32.rs`, gaté, et `ecrire_la_plateforme` n'est que
-//!   l'aiguillage de plateforme, jumeau de `Sondeur::lire_la_plateforme` ;
-//! - **les gardes n°1 et n°2 sont ici**, tous deux posés par
-//!   `Sondeur::apres_notre_ecriture` sur NOTRE PROPRE écriture. Le n°3 vit
-//!   côté page (`client/src/presse-papier.ts`), le seul endroit d'où un écho
-//!   pourrait repartir ;
-//! - **le n°2 absorbe toujours le faux positif du compteur** — celui-ci **bouge
-//!   sur une réécriture identique**, mesuré (sonde P0, `q2="bouge"`, deux
-//!   exécutions du 20 août 2026) — mais il ferme désormais AUSSI l'aller-retour
-//!   d'un collage, ce que P1 ne pouvait pas produire.
+//! - **it still does not write itself** — the Win32 call lives in
+//!   `presse_papier/win32.rs`, gated, and `write_platform` is only
+//!   the platform switch, twin of `Sondeur::lire_la_plateforme`;
+//! - **guards no. 1 and no. 2 are here**, both set by
+//!   `Sondeur::apres_notre_ecriture` on OUR OWN write. No. 3 lives
+//!   on the page side (`client/src/presse-papier.ts`), the only place from which an echo
+//!   could set off again;
+//! - **no. 2 still absorbs the counter's false positive** — the counter **moves
+//!   on an identical rewrite**, measured (probe P0, `q2` answered "moves", two
+//!   runs of August 20th, 2026) — but it now ALSO closes the round trip
+//!   of a paste, which P1 could not produce.
 //!
-//! ⚠️ **Et « il ne ferme aucune boucle (il n'y en a pas) » reste VRAI**, contre
-//! toute attente : dans l'architecture livrée, aucune oscillation
-//! auto-entretenue n'est possible, chaque tour exigeant un geste humain — le
-//! client n'émet vers l'agent que sur un `paste`. Ce que les gardes suppriment
-//! est **un aller-retour par collage**, pas une divergence. Voir `gardes_armes`,
-//! qui porte la démonstration et la conséquence sur la rouge du critère ④.
+//! ⚠️ **And "it closes no loop (there is none)" stays TRUE**, against
+//! all expectations: in the shipped architecture, no self-sustained
+//! oscillation is possible, each turn requiring a human gesture — the
+//! client only emits towards the agent on a `paste`. What the guards remove
+//! is **one round trip per paste**, not a divergence. See `gardes_armes`,
+//! which carries the demonstration and its consequence on criterion ④'s red.
 
 use std::time::Duration;
 
-/// Taille maximale, en octets d'UTF-8 **après normalisation**, d'un contenu
-/// que l'on accepte de pousser au navigateur.
+/// Maximum size, in UTF-8 bytes **after normalisation**, of a content
+/// we agree to push to the browser.
 ///
-/// ⚠️ **NON CALIBRÉE.** Elle rejoint `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS` et `TAILLE_MAX_SORTIE` : aucun jugement
-/// d'usage n'a été porté sur sa valeur. 64 KiB tient un document texte
-/// ordinaire et refuse un presse-papier chargé d'un fichier entier.
+/// ⚠️ **NOT CALIBRATED.** It joins `BPP_MIN`, `FACTEUR_FOCUS`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS` and `MAX_OUTPUT_SIZE`: no judgement
+/// in use has been made on its value. 64 KiB holds an ordinary text
+/// document and refuses a clipboard loaded with a whole file.
 ///
-/// **Au-delà, on REFUSE — on ne tronque pas.** Un collage silencieusement
-/// amputé est le pire résultat possible, et il est pire que pas de collage du
-/// tout : l'utilisateur ne peut pas voir qu'il lui manque la fin.
+/// **Beyond it, we REFUSE — we do not truncate.** A silently
+/// truncated paste is the worst possible outcome, and it is worse than no paste at
+/// all: the user cannot see that the end is missing.
 pub const PRESSE_PAPIER_MAX: usize = 64 * 1024;
 
-/// Période minimale entre deux lectures du compteur de séquence.
+/// Minimum period between two reads of the sequence counter.
 ///
-/// ⚠️ **Ce n'est PAS `PERIODE_REARBITRAGE`**, qui cadence le tour de roue du
-/// registre de sommeil. La valeur est du même ordre, délibérément, mais la
-/// constante est propre à ce module : les faire suivre l'une l'autre
-/// coupleraient deux mécanismes que rien ne lie — c'est exactement l'argument
-/// que `plein_ecran::PERIODE_STYLE` porte déjà pour la relecture du style.
+/// ⚠️ **It is NOT `PERIODE_REARBITRAGE`**, which paces the wheel turn of the
+/// sleep registry. The value is of the same order, deliberately, but the
+/// constant is specific to this module: making them follow each other
+/// would couple two mechanisms nothing links — it is exactly the argument
+/// `plein_ecran::PERIODE_STYLE` already makes for rereading the style.
 ///
-/// `Sondeur::tour` porte donc son propre minuteur et rend `None` sans rien
-/// lire tant qu'il n'est pas échu, **même si le tour de roue l'appelle plus
-/// souvent**.
+/// `Sondeur::tour` therefore carries its own timer and returns `None` without
+/// reading anything as long as it has not elapsed, **even if the wheel turn calls it more
+/// often**.
 pub const PERIODE_PRESSE_PAPIER: Duration = Duration::from_millis(250);
 
-/// Ce que le sondeur a décidé d'annoncer.
+/// What the poller decided to announce.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Annonce {
-    /// Le texte à pousser, **déjà normalisé et sous la borne**.
+    /// The text to push, **already normalised and under the bound**.
     Texte(String),
-    /// Un contenu de `octets` octets d'UTF-8, **après normalisation**, a été
-    /// REFUSÉ — jamais tronqué. Le compte sert au bandeau côté client, qui
-    /// doit pouvoir dire *combien* plutôt que « trop grand ».
+    /// A content of `octets` UTF-8 bytes, **after normalisation**, was
+    /// REFUSED — never truncated. The count serves the client-side banner, which
+    /// must be able to say *how much* rather than "too large".
     Refus { octets: u32 },
 }
 
-/// `PRESSE_PAPIER=0` désarme le mécanisme entier.
+/// `PRESSE_PAPIER=0` disarms the whole mechanism.
 ///
-/// **`=0` DÉSACTIVE, une simple présence n'active pas**, exactement comme
-/// `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR` et `CAPTEUR` : tester `is_ok()`
-/// armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper.
+/// **`=0` DISABLES, mere presence does not enable**, exactly like
+/// `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR` and `CAPTEUR`: testing `is_ok()`
+/// would arm the mechanism by writing `PRESSE_PAPIER=0` to cut it.
 ///
-/// `OnceLock` et non une lecture par appel : le sondage court à 4 Hz, et
-/// l'environnement ne change pas en cours de processus.
+/// `OnceLock` and not a read per call: polling runs at 4 Hz, and
+/// the environment does not change during the process.
 pub fn actif() -> bool {
     static ACTIF: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ACTIF.get_or_init(|| {
         let actif = std::env::var("PRESSE_PAPIER").as_deref() != Ok("0");
         if !actif {
             tracing::warn!(
-                "presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM \
-                 n'est plus pousse au navigateur"
+                "clipboard DISARMED (PRESSE_PAPIER=0): the content copied in the VM \
+                 is no longer pushed to the browser"
             );
         }
         actif
     })
 }
 
-/// `PRESSE_PAPIER_GARDE=0` désarme les gardes anti-écho de `apres_notre_ecriture`.
+/// `PRESSE_PAPIER_GARDE=0` disarms the anti-echo guards of `apres_notre_ecriture`.
 ///
-/// ⚠️ **VARIABLE DE BANC, JAMAIS UNE CONFIGURATION LIVRÉE** — même statut que
-/// `PART_SONDAGE`. Elle existe pour un seul usage : rendre ATTEIGNABLE la rouge
-/// du critère ④ de P2, qui compte les messages `clipboard` revenant vers la
-/// fenêtre après un collage.
+/// ⚠️ **BENCH VARIABLE, NEVER A SHIPPED CONFIGURATION** — same status as
+/// `PART_SONDAGE`. It exists for a single use: making REACHABLE the red
+/// of P2's criterion ④, which counts the `clipboard` messages coming back to the
+/// window after a paste.
 ///
-/// **`=0` DÉSARME ; une simple présence n'arme pas.** Les gardes sont armés par
-/// défaut, et tester `is_ok()` les désarmerait en écrivant
-/// `PRESSE_PAPIER_GARDE=0` pour... les désarmer. Convention de `PLEIN_ECRAN`,
-/// `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE` et `PRESSE_PAPIER`.
+/// **`=0` DISARMS; mere presence does not arm.** The guards are armed by
+/// default, and testing `is_ok()` would disarm them by writing
+/// `PRESSE_PAPIER_GARDE=0` to... disarm them. Convention of `PLEIN_ECRAN`,
+/// `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE` and `PRESSE_PAPIER`.
 ///
-/// 🔴 **ELLE DÉSARME LES DEUX GARDES, PAS LE SEUL N°1, ET C'EST LE POINT.**
-/// La spécification prescrivait de désarmer le n°1 et d'attendre un compte qui
-/// « croît sans borne » ; **il reste à un, et la spec avait prévu ce cas**.
-/// Sans armement du n°2, le `Sondeur` relit notre texte, l'annonce **une**
-/// fois, puis pose lui-même `dernier_emis` et `reference` — au tour suivant
-/// `observer` sort sur sa première ligne. Et rien ne relance : le client
-/// n'émet vers l'agent que sur un `paste`, donc sur un GESTE HUMAIN, jamais à
-/// la réception d'un `clipboard`. Désarmer le seul n°1 rendrait donc **zéro
-/// message aussi**, et la rouge serait vacueuse une seconde fois.
+/// 🔴 **IT DISARMS BOTH GUARDS, NOT JUST NO. 1, AND THAT IS THE POINT.**
+/// The specification prescribed disarming no. 1 and expecting a count that
+/// "grows without bound"; **it stays at one, and the spec had foreseen this case**.
+/// Without no. 2 armed, the `Sondeur` rereads our text, announces it **once**,
+/// then itself sets `last_emitted` and `reference` — at the next turn
+/// `observer` exits on its first line. And nothing restarts it: the client
+/// only emits towards the agent on a `paste`, hence on a HUMAN GESTURE, never on
+/// receiving a `clipboard`. Disarming no. 1 alone would therefore return **zero
+/// messages too**, and the red would be vacuous a second time.
 ///
-/// 🔵 **Conséquence de conception, et elle contredit une phrase de D5** : dans
-/// l'architecture livrée, **aucune oscillation auto-entretenue n'est
-/// possible**, chaque tour exigeant un geste humain. Ce que les gardes
-/// suppriment est **un aller-retour par collage**, pas une divergence.
-/// ⚠️ Déduit du code, pas d'une mesure : `client/src/presse-papier-dom.ts`
-/// n'écrit que localement à la réception et n'émet rien. La condition qui
-/// rendrait la boucle réelle est nommée — un client qui réémettrait ce qu'il
-/// reçoit —, et c'est précisément ce que le garde n°3 empêche côté page.
+/// 🔵 **Design consequence, and it contradicts a sentence of D5**: in
+/// the shipped architecture, **no self-sustained oscillation is
+/// possible**, each turn requiring a human gesture. What the guards
+/// remove is **one round trip per paste**, not a divergence.
+/// ⚠️ Deduced from the code, not from a measurement: `client/src/presse-papier-dom.ts`
+/// only writes locally on receipt and emits nothing. The condition that
+/// would make the loop real is named — a client that re-emitted what it
+/// receives —, and it is precisely what guard no. 3 prevents on the page side.
 pub(super) fn gardes_armes() -> bool {
     static ARMES: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ARMES.get_or_init(|| {
         let armes = std::env::var("PRESSE_PAPIER_GARDE").as_deref() != Ok("0");
         if !armes {
             tracing::warn!(
-                "garde anti-echo du presse-papier DESARME (PRESSE_PAPIER_GARDE=0) : \
-                 bras de banc, jamais une configuration livree"
+                "clipboard anti-echo guard DISARMED (PRESSE_PAPIER_GARDE=0): \
+                 bench arm, never a shipped configuration"
             );
         }
         armes
     })
 }
 
-/// Ramène toutes les fins de ligne à `\n`.
+/// Brings all line endings back to `\n`.
 ///
-/// Windows écrit `\r\n` ; d'anciennes applications écrivent un `\r` **seul**.
-/// Les deux doivent devenir `\n`, sans quoi l'aller-retour de P2 doublerait
-/// les lignes à chaque tour. La fonction est **idempotente** : la rejouer sur
-/// son propre résultat ne change rien.
+/// Windows writes `\r\n`; older applications write a **lone** `\r`.
+/// Both must become `\n`, otherwise P2's round trip would double
+/// lines at each turn. The function is **idempotent**: replaying it on
+/// its own result changes nothing.
 pub fn normaliser(texte: &str) -> String {
     let mut sortie = String::with_capacity(texte.len());
     let mut precedent_cr = false;
@@ -161,7 +161,7 @@ pub fn normaliser(texte: &str) -> String {
                 precedent_cr = true;
             }
             '\n' => {
-                // Le `\n` d'un `\r\n` a déjà été rendu par le `\r`.
+                // The `\n` of a `\r\n` has already been emitted by the `\r`.
                 if !precedent_cr {
                     sortie.push('\n');
                 }
@@ -176,15 +176,15 @@ pub fn normaliser(texte: &str) -> String {
     sortie
 }
 
-/// `\n` → `\r\n`, la réciproque de `normaliser`. **Windows attend `\r\n`.**
+/// `\n` → `\r\n`, the reciprocal of `normaliser`. **Windows expects `\r\n`.**
 ///
-/// Elle n'est PAS un `replace("\n", "\r\n")` : le texte qui arrive du
-/// navigateur peut porter DÉJÀ des `\r\n` — un copier depuis un éditeur
-/// Windows local en porte —, et le remplacement naïf rendrait alors `\r\r\n`,
-/// donc une ligne vide de plus à chaque collage. La fonction est **idempotente**
-/// exactement comme `normaliser` l'est dans l'autre sens, et l'aller-retour
-/// `normaliser(denormaliser(x)) == x` est ce qu'un test doit voir rouge en
-/// premier (spec §7.1).
+/// It is NOT a `replace("\n", "\r\n")`: the text arriving from the
+/// browser can ALREADY carry `\r\n`s — a copy from a local Windows
+/// editor carries them —, and the naive replacement would then return `\r\r\n`,
+/// hence one more empty line at each paste. The function is **idempotent**
+/// exactly as `normaliser` is in the other direction, and the round trip
+/// `normaliser(denormaliser(x)) == x` is what a test must see red
+/// first (spec §7.1).
 pub fn denormaliser(texte: &str) -> String {
     let mut sortie = String::with_capacity(texte.len() + texte.len() / 16);
     let mut precedent_cr = false;
@@ -195,7 +195,7 @@ pub fn denormaliser(texte: &str) -> String {
                 precedent_cr = true;
             }
             '\n' => {
-                // Le `\n` d'un `\r\n` a déjà été rendu par le `\r`.
+                // The `\n` of a `\r\n` has already been emitted by the `\r`.
                 if !precedent_cr {
                     sortie.push_str("\r\n");
                 }
@@ -210,69 +210,71 @@ pub fn denormaliser(texte: &str) -> String {
     sortie
 }
 
-/// Borne le texte ENTRANT, en octets d'UTF-8. **On REFUSE, on ne tronque pas.**
+/// Bounds the INCOMING text, in UTF-8 bytes. **We REFUSE, we do not truncate.**
 ///
-/// ⚠️ **Ce n'est pas la même borne que celle du sens sortant, et l'asymétrie
-/// est voulue.** Côté sortant, `PRESSE_PAPIER_MAX` protège le **canal de
-/// contrôle** (D4) : le texte n'y est pas encore passé. Côté entrant, le texte
-/// a **déjà** traversé ce canal quand l'agent le voit — la borne y protège le
-/// tube capteur↔enfant et la mémoire, pas le canal. C'est le client qui doit
-/// appliquer la sienne AVANT d'émettre ; celle-ci est la ceinture.
+/// ⚠️ **It is not the same bound as the outgoing direction's, and the asymmetry
+/// is intended.** On the outgoing side, `PRESSE_PAPIER_MAX` protects the **control
+/// channel** (D4): the text has not gone through it yet. On the incoming side, the text
+/// has **already** crossed that channel when the agent sees it — the bound there protects the
+/// capturer↔child pipe and memory, not the channel. It is the client that must
+/// apply its own BEFORE emitting; this one is the belt.
 ///
-/// **Le refus entrant se journalise et ne remonte aucun bandeau** : le client a
-/// déjà refusé et dit pourquoi, et un second bandeau pour le même geste serait
-/// du bruit.
+/// **The incoming refusal is logged and raises no banner**: the client has
+/// already refused and said why, and a second banner for the same gesture would be
+/// noise.
 ///
-/// La borne porte sur `len()`, c'est-à-dire des **octets**, jamais sur
-/// `chars().count()` : c'est l'unité du canal, et un texte d'emojis dont le
-/// compte de caractères tient déborde de quatre fois en octets.
+/// The bound bears on `len()`, that is, **bytes**, never on
+/// `chars().count()`: it is the channel's unit, and a text of emojis whose
+/// character count fits overflows fourfold in bytes.
 pub fn borner_entrant(texte: &str) -> Option<String> {
     (texte.len() <= PRESSE_PAPIER_MAX).then(|| texte.to_owned())
 }
 
-
-/// Écrit le presse-papier de la VM, et rend le numéro de séquence relu APRÈS
-/// la fermeture — celui qu'il faut passer à `Sondeur::apres_notre_ecriture`.
+/// Writes the VM's clipboard, and returns the sequence number reread AFTER
+/// closing — the one to pass to `Sondeur::apres_notre_ecriture`.
 ///
-/// **Jumelle exacte de `Sondeur::lire_la_plateforme`**, et posée au même
-/// endroit pour la même raison : l'appelant (`capteur/sommeil/presse_papier.rs`)
-/// n'est pas gaté et doit compiler sur l'hôte Linux.
+/// **Exact twin of `Sondeur::lire_la_plateforme`**, and placed at the same
+/// spot for the same reason: the caller (`capteur/sommeil/presse_papier.rs`)
+/// is not gated and must compile on the Linux host.
 ///
-/// ⚠️ **Le texte doit arriver DÉJÀ dénormalisé** (`\r\n`) : cette fonction ne
-/// décide rien, elle transmet.
+/// ⚠️ **The text must arrive ALREADY denormalised** (`\r\n`): this function
+/// decides nothing, it passes through.
 #[cfg(windows)]
-pub fn ecrire_la_plateforme(texte: &str) -> anyhow::Result<u32> {
-    win32::ecrire_texte(texte)
+pub fn write_platform(texte: &str) -> anyhow::Result<u32> {
+    win32::write_text(texte)
 }
 
-/// Repli non-Windows. **Un `Err`, jamais un `Ok`** : rendre `Ok(0)` ferait
-/// croire à un succès, et l'appelant injecterait `Ctrl+V` sur un
-/// presse-papier inchangé — c'est-à-dire collerait le contenu PRÉCÉDENT, le
-/// mode de défaillance silencieux que D6 existe entièrement pour éviter.
+/// Non-Windows fallback. **An `Err`, never an `Ok`**: returning `Ok(0)` would suggest
+/// a success, and the caller would inject `Ctrl+V` on an
+/// unchanged clipboard — that is, would paste the PREVIOUS content, the
+/// silent failure mode D6 exists entirely to avoid.
 #[cfg(not(windows))]
-pub fn ecrire_la_plateforme(_texte: &str) -> anyhow::Result<u32> {
-    anyhow::bail!("le presse-papier de la VM n'existe pas hors de Windows")
+pub fn write_platform(_texte: &str) -> anyhow::Result<u32> {
+    anyhow::bail!("the VM clipboard does not exist outside Windows")
 }
 
-/// `Sondeur`, extrait VERBATIM au sous-bloc P3 (tâche 3), AVANT l'addition qui
-/// l'a rendu nécessaire. Un `mod` ORDINAIRE, et non un `#[path]` : la
-/// « Convention de module enfant » de `CLAUDE.md` ne vise que les modules
-/// extraits d'un parent `#[cfg(windows)]`, et ce fichier n'est pas gaté.
+/// `Sondeur`, extracted VERBATIM in sub-block P3 (task 3), BEFORE the addition that
+/// made it necessary. An ORDINARY `mod`, and not a `#[path]`: the
+/// "Child module convention" of `CLAUDE.md` only targets modules
+/// extracted from a `#[cfg(windows)]` parent, and this file is not gated.
 mod sondeur;
 pub use sondeur::Sondeur;
 
 #[cfg(windows)]
 mod win32;
 
-// Les tests de ce module vivent à part depuis le sous-bloc P2 du chantier
-// presse-papier : le fichier était à 428 lignes pour un plafond de 500, et P2 y
-// ajoute le garde n°1 de D5, la réciproque de `normaliser` et leurs tests.
-// L'extraction précède l'addition, comme la règle du dépôt l'exige.
+// This module's tests have lived apart since sub-block P2 of the
+// clipboard work item: the file was at 428 lines for a ceiling of 500, and P2
+// adds D5's guard no. 1, the reciprocal of `normaliser` and their tests.
+// The extraction precedes the addition, as the repository's rule requires.
 //
-// ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de module
-// enfant » de `CLAUDE.md` : c'est le même mécanisme Rust employé pour une autre
-// raison — la règle des 500 lignes —, exactement comme `superviseur/table.rs`.
-// Ce module ne se hisse PAS à la racine du crate.
+// ⚠️ This use of `#[path]` is OUTSIDE the scope of `CLAUDE.md`'s "Child module
+// convention": it is the same Rust mechanism used for another
+// reason — the 500-line rule —, exactly like `superviseur/table.rs`.
+// This module is NOT hoisted to the crate root.
 #[cfg(test)]
 #[path = "presse_papier/tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "presse_papier/tests_entrant.rs"]
+mod tests_entrant;

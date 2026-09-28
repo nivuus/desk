@@ -8,33 +8,33 @@ use crate::transport::fixtures;
 /// Ferme la réserve ouverte par la tâche 8 : le test du brief ne couvre
 /// que la MÉMORISATION (`dispatch_controle_de_test` → `pending_visibility`
 /// dans `evenements.rs`). Ce test-ci couvre l'APPLICATION, symétrique à
-/// `un_redimensionnement_recalibre_le_controleur_sur_la_taille_obtenue`
+/// `a_resize_recalibrates_the_controller_on_the_obtained_size`
 /// dans `redimensionnement.rs` pour `pending_resize`.
 #[test]
-fn une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee() {
+fn a_pending_visibility_is_applied_to_the_source_then_released() {
     let inner = fixtures::video_test_source();
     let awake_recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let source = Box::new(SourceAvecSommeil {
+    let source = Box::new(SourceWithSleep {
         inner,
         awake_recus: awake_recus.clone(),
         sommeil_prepare: None,
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session.pending_visibility = Some((false, true));
     session
         .act_on_timeout(Instant::now())
-        .expect("appliquer une visibilité ne doit jamais faire échouer la session");
+        .expect("applying a visibility must never make the session fail");
 
     assert_eq!(
         *awake_recus.lock().unwrap(),
         vec![(false, true)],
-        "set_awake doit avoir reçu exactement la visibilité mémorisée"
+        "set_awake must have received exactly the memorised visibility"
     );
     assert_eq!(
         session.pending_visibility, None,
-        "la demande appliquée ne doit pas rester en attente indéfiniment"
+        "the applied request must not stay pending forever"
     );
 }
 
@@ -43,19 +43,19 @@ fn une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee() {
 /// fois, puisque `sommeil_a_annoncer` consomme (voir son commentaire sur
 /// le trait `VideoSource`).
 #[test]
-fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
+fn a_source_sleep_change_is_translated_into_an_asleep_message() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecSommeil {
+    let source = Box::new(SourceWithSleep {
         inner,
         awake_recus: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         sommeil_prepare: Some((true, "masquee".to_string())),
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
-        .expect("annoncer un sommeil ne doit jamais faire échouer la session");
+        .expect("announcing sleep must never make the session fail");
 
     assert!(
         session.pending_control.iter().any(|message| matches!(
@@ -63,7 +63,7 @@ fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
             proto::control::AgentControl::Asleep { asleep: true, reason, .. }
                 if reason == "masquee"
         )),
-        "le message Asleep attendu n'est pas en file : {:?}",
+        "the expected Asleep message is not queued: {:?}",
         session.pending_control
     );
 
@@ -83,27 +83,30 @@ fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
 /// `act_on_timeout` les laissait verts — seule la disparition d'un
 /// avertissement `dead_code` aurait trahi l'absence de câblage. Ce test-ci
 /// pilote `act_on_timeout` à travers une source factice, comme
-/// `une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee` et
-/// `un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep`
+/// `a_pending_visibility_is_applied_to_the_source_then_released` et
+/// `a_source_sleep_change_is_translated_into_an_asleep_message`
 /// ci-dessus le font pour leurs branches respectives.
 #[test]
-fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
+fn a_pending_share_is_applied_by_act_on_timeout() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecPart { inner, part_preparee: Some(3_000_000) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceWithShare {
+        inner,
+        part_preparee: Some(3_000_000),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
-        .expect("appliquer une part ne doit jamais faire échouer la session");
+        .expect("applying a share must never make the session fail");
 
     assert_eq!(
-        session.congestion.courant().video_bitrate_bps, 3_000_000,
-        "la part rendue par la source doit avoir été appliquée au contrôleur par la branche a1quater"
+        session.congestion.current().video_bitrate_bps, 3_000_000,
+        "the share returned by the source must have been applied to the controller by branch a1quater"
     );
     assert!(
         session.pending_decision.is_some(),
-        "la décision issue de la part doit être mémorisée pour que a0ter l'applique au tour suivant"
+        "the decision stemming from the share must be memorised so that a0ter applies it at the next round"
     );
 }
 
@@ -121,7 +124,7 @@ fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
 /// RTCP/statistiques) au lieu d'être bornée par `next_frame_at` : ce test
 /// aurait alors mesuré environ 1 image/s au lieu de ~60.
 #[test]
-fn atteint_la_cadence_video_visee_avec_un_pair_local() {
+fn reaches_the_target_video_cadence_with_a_local_peer() {
     use std::thread;
     use str0m::change::SdpAnswer;
     use str0m::media::{Direction, MediaKind};
@@ -184,14 +187,16 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
     api.add_media(MediaKind::Audio, Direction::RecvOnly, None, None, None);
     api.add_channel("control".to_string());
     api.add_channel("input".to_string());
-    let (offer, pending) = api.apply().expect("offre non vide");
+    let (offer, pending) = api.apply().expect("non-empty offer");
 
-    let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
-    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+    let answer_sdp = session
+        .accept_offer(&offer.to_sdp_string())
+        .expect("offer accepted");
+    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
     peer_rtc
         .sdp_api()
         .accept_answer(pending, answer)
-        .expect("réponse acceptée par le pair");
+        .expect("answer accepted by the peer");
 
     // Ronde de correction 1 (revue) : la première version de ce test
     // faisait écrire le PAIR lui-même sur `audio_mid`, ce qui ne passait
@@ -245,7 +250,7 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
     loop {
         let now = Instant::now();
         if now >= hard_deadline {
-            panic!("le pair local ne s'est jamais connecté dans le délai imparti");
+            panic!("the local peer never connected within the allotted delay");
         }
         if let Some(connected_at) = connected_at {
             if now >= connected_at + measure_window {
@@ -259,7 +264,9 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
                     Some(c) => hard_deadline.min(c + measure_window),
                     None => hard_deadline,
                 };
-                let wait = t.saturating_duration_since(now).min(cap.saturating_duration_since(now));
+                let wait = t
+                    .saturating_duration_since(now)
+                    .min(cap.saturating_duration_since(now));
                 if fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, now, wait) {
                     continue;
                 }
@@ -285,7 +292,7 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
 
     let per_second = video_count as f64 / measure_window.as_secs_f64();
     eprintln!(
-        "cadence mesurée : {video_count} images vidéo et {audio_count} paquets audio reçus en {measure_window:?} ({per_second:.1} images/s)"
+        "measured cadence: {video_count} video frames and {audio_count} audio packets received in {measure_window:?} ({per_second:.1} frames/s)"
     );
 
     // Preuve de C1 : au rythme voulu (~60 Hz), on attend nettement plus
@@ -295,7 +302,7 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
     // test lente ou une CI chargée.
     assert!(
         per_second > 10.0,
-        "cadence trop basse : {per_second:.1} images/s (attendu très supérieur à 1/s, la marque du bug de cadence C1)"
+        "cadence too low: {per_second:.1} frames/s (expected far above 1/s, the mark of cadence bug C1)"
     );
 
     // Preuve de la tâche 8 (ronde de correction 1) : une `Session` munie
@@ -306,31 +313,31 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
     // constaté en la retirant temporairement (voir le rapport de tâche).
     assert!(
         audio_count > 0,
-        "aucun paquet audio reçu par le pair : la Session, munie d'une source audio, \
-         n'a émis aucun paquet Opus (la branche a3 d'act_on_timeout est-elle bien avant b, \
-         ou write_audio échoue-t-il silencieusement ?)"
+        "no audio packet received by the peer: the Session, equipped with an audio source, \
+         emitted no Opus packet (is branch a3 of act_on_timeout really before b, \
+         or does write_audio fail silently?)"
     );
 }
 
 /// Branche a1septies (sous-bloc P1) : un presse-papier rendu par la source
 /// doit être traduit en `AgentControl::Clipboard` mis en file pour le
 /// navigateur. Même patron que
-/// `un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep` et
-/// `une_part_en_attente_est_appliquee_par_act_on_timeout` ci-dessus : la
+/// `a_source_sleep_change_is_translated_into_an_asleep_message` et
+/// `a_pending_share_is_applied_by_act_on_timeout` ci-dessus : la
 /// source factice consomme son annonce, exactement comme `SourceDistante`.
 #[test]
-fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
+fn a_source_clipboard_is_translated_into_a_clipboard_message() {
     let inner = fixtures::video_test_source();
-    let source = Box::new(SourceAvecPressePapier {
+    let source = Box::new(SourceWithClipboard {
         inner,
         presse_papier_prepare: Some((Some("bonjour".to_string()), 7)),
     });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
-        .expect("annoncer un presse-papier ne doit jamais faire échouer la session");
+        .expect("announcing a clipboard must never make the session fail");
 
     assert!(
         session.pending_control.iter().any(|message| matches!(
@@ -338,7 +345,7 @@ fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
             proto::control::AgentControl::Clipboard { text: Some(texte), bytes: 7, .. }
                 if texte == "bonjour"
         )),
-        "le message Clipboard attendu n'est pas en file : {:?}",
+        "the expected Clipboard message is not queued: {:?}",
         session.pending_control
     );
 }
@@ -348,23 +355,29 @@ fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
 /// navigateur ne saurait jamais qu'une copie a été refusée — et un refus
 /// silencieux est exactement ce que la spécification interdit.
 #[test]
-fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
+fn a_size_refusal_is_translated_into_a_clipboard_message_without_text() {
     let inner = fixtures::video_test_source();
-    let source =
-        Box::new(SourceAvecPressePapier { inner, presse_papier_prepare: Some((None, 100_000)) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceWithClipboard {
+        inner,
+        presse_papier_prepare: Some((None, 100_000)),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
-        .expect("annoncer un refus ne doit jamais faire échouer la session");
+        .expect("announcing a refusal must never make the session fail");
 
     assert!(
         session.pending_control.iter().any(|message| matches!(
             message,
-            proto::control::AgentControl::Clipboard { text: None, bytes: 100_000, .. }
+            proto::control::AgentControl::Clipboard {
+                text: None,
+                bytes: 100_000,
+                ..
+            }
         )),
-        "le refus attendu n'est pas en file : {:?}",
+        "the expected refusal is not queued: {:?}",
         session.pending_control
     );
 }
@@ -376,23 +389,25 @@ fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
 /// « NON gardé par le compilateur — un `if let` oublié compile ». Sans ces deux
 /// tests, retirer tout le bloc a1nonies laisserait `cargo test` VERT.
 #[test]
-fn un_accent_de_la_source_est_traduit_en_message_accent() {
+fn a_source_accent_is_translated_into_an_accent_message() {
     let inner = fixtures::video_test_source();
-    let source =
-        Box::new(SourceAvecAccent { inner, accent_prepare: Some("#7aa2f7".to_string()) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceWithAccent {
+        inner,
+        accent_prepare: Some("#7aa2f7".to_string()),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
     session
         .act_on_timeout(Instant::now())
-        .expect("annoncer un accent ne doit jamais faire échouer la session");
+        .expect("announcing an accent must never make the session fail");
 
     assert!(
         session.pending_control.iter().any(|message| matches!(
             message,
             proto::control::AgentControl::Accent { couleur, .. } if couleur == "#7aa2f7"
         )),
-        "le message Accent attendu n'est pas en file : {:?}",
+        "the expected Accent message is not queued: {:?}",
         session.pending_control
     );
 }
@@ -405,24 +420,29 @@ fn un_accent_de_la_source_est_traduit_en_message_accent() {
 /// palier de 60 s » — deviendrait indémontrable. C'est le régime que ce fichier
 /// documente déjà pour a1ter-bis et a1septies.
 #[test]
-fn l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant() {
+fn the_announced_accent_is_consumed_and_not_resent_next_round() {
     let inner = fixtures::video_test_source();
-    let source =
-        Box::new(SourceAvecAccent { inner, accent_prepare: Some("#fa8c16".to_string()) });
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
+    let source = Box::new(SourceWithAccent {
+        inner,
+        accent_prepare: Some("#fa8c16".to_string()),
+    });
+    let mut session =
+        Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000).expect("session");
 
-    session.act_on_timeout(Instant::now()).expect("premier tour");
+    session.act_on_timeout(Instant::now()).expect("first round");
     let apres_le_premier = session
         .pending_control
         .iter()
         .filter(|message| matches!(message, proto::control::AgentControl::Accent { .. }))
         .count();
-    assert_eq!(apres_le_premier, 1, "le premier tour doit mettre EXACTEMENT une annonce en file");
+    assert_eq!(
+        apres_le_premier, 1,
+        "the first round must queue EXACTLY one announcement"
+    );
 
     // Dix tours de plus : la source n'a plus rien à annoncer.
     for _ in 0..10 {
-        session.act_on_timeout(Instant::now()).expect("tour suivant");
+        session.act_on_timeout(Instant::now()).expect("next round");
     }
     let total = session
         .pending_control
@@ -431,6 +451,6 @@ fn l_accent_annonce_est_consomme_et_ne_repart_pas_au_tour_suivant() {
         .count();
     assert_eq!(
         total, 1,
-        "onze tours n'ont produit qu'UNE annonce : l'accent est consommé, jamais relu"
+        "eleven rounds produced only ONE announcement: the accent is consumed, never read again"
     );
 }

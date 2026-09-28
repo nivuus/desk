@@ -1,10 +1,10 @@
-// Les deux routes d'icône, éprouvées À TRAVERS un serveur HTTP réel.
+// The two icon routes, tested THROUGH a real HTTP server.
 //
-// 🔴 LE CONTRÔLE DE CHEMIN COMPARE LE CORPS, JAMAIS LE SEUL STATUT, et ce
-// n'est pas une précaution : G1 a MESURÉ qu'un `startsWith('/application')`
-// laissait ses tests VERTS — la route mangeait toute la famille et rendait SON
-// PROPRE 404 typé, indiscernable du 404 générique tant qu'on ne lisait que le
-// statut (commit `a97f902`).
+// 🔴 THE PATH CHECK COMPARES THE BODY, NEVER THE STATUS ALONE, and it is
+// not a precaution: G1 MEASURED that a `startsWith('/application')`
+// left its tests GREEN — the route ate the whole family and returned ITS
+// OWN typed 404, indistinguishable from the generic 404 as long as one only read the
+// status (commit `a97f902`).
 
 import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -15,7 +15,7 @@ import { ouvrirMagasin, type Magasin } from '../apps/icones';
 import { MOTEUR } from '../base/harnais';
 import {
     attribuer,
-    avec,
+    withIt,
     demonter,
     jetonDe,
     monterRoute,
@@ -58,11 +58,11 @@ async function servir(nom: string): Promise<string> {
     return montage.url;
 }
 
-describe(`routes d'icône, moteur=${MOTEUR}`, () => {
-    it('🔴 ne mange QUE ses deux chemins — le corps du 404 est comparé', async () => {
-        // 🔴 SI CETTE MUTATION SURVIT, LE TEST EST FAUX, PAS LA MUTATION.
-        // Quatre chemins déclinés, dont deux qui n'existaient dans aucune
-        // première rédaction.
+describe(`icon routes, engine=${MOTEUR}`, () => {
+    it('🔴 eats ONLY its two paths — the body of the 404 is compared', async () => {
+        // 🔴 IF THIS MUTATION SURVIVES, THE TEST IS WRONG, NOT THE MUTATION.
+        // Four declined paths, two of which existed in no
+        // first draft.
         const url = await servir('icone-chemins');
         for (const chemin of [
             '/iconedetournee',
@@ -74,41 +74,41 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
         ]) {
             const r = await fetch(`${url}${chemin}`);
             expect(r.status, chemin).toBe(404);
-            // Le 404 GÉNÉRIQUE de `serveur.ts`, mot pour mot — pas un 404 typé
-            // que ce routeur aurait rendu.
-            expect(await r.text(), chemin).toBe('introuvable\n');
+            // The GENERIC 404 of `serveur.ts`, word for word — not a typed 404
+            // this router would have returned.
+            expect(await r.text(), chemin).toBe('not found\n');
         }
     });
 
-    it('sert `/application/:id/icone` SANS `?e=` par un 400 typé', async () => {
+    it('serves `/application/:id/icone` WITHOUT `?e=` with a typed 400', async () => {
         const url = await servir('icone-sans-e');
         const jeton = jetonDe('u1');
-        const r = await fetch(`${url}/application/x/icone`, { headers: avec(jeton) });
-        // Le chemin EST reconnu — donc pas le 404 générique.
+        const r = await fetch(`${url}/application/x/icone`, { headers: withIt(jeton) });
+        // The path IS recognised — hence not the generic 404.
         expect(r.status).toBe(400);
         expect(await r.json()).toEqual({ refus: 'empreinte-absente' });
     });
 
-    describe('PUT /icone/:sha256 — l’agent dépose', () => {
-        it('accepte un jeton d’AGENT et rend 204', async () => {
+    describe('PUT /icone/:sha256 — the agent drops off', () => {
+        it('accepts an AGENT token and returns 204', async () => {
             const url = await servir('icone-put');
             const r = await fetch(`${url}/icone/${EMPREINTE}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: PNG,
             });
             expect(r.status).toBe(204);
             expect(magasin.lire(EMPREINTE)).toEqual(PNG);
         });
 
-        it('🔴 REFUSE un jeton d’UTILISATEUR en 403, jamais 401', async () => {
-            // 🔴 SYMÉTRIQUE DU `jeton-agent` de `porteur.ts`, et argumenté de
-            // la même façon : le jeton est VALIDE, il n'est simplement pas
-            // celui d'un agent. Un 401 inviterait à se reconnecter pour rien.
+        it('🔴 REFUSES a USER token with 403, never 401', async () => {
+            // 🔴 SYMMETRICAL TO `jeton-agent` in `porteur.ts`, and argued the
+            // same way: the token is VALID, it simply is not
+            // an agent's. A 401 would invite reconnecting for nothing.
             const url = await servir('icone-put-humain');
             const r = await fetch(`${url}/icone/${EMPREINTE}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('u1')),
+                headers: withIt(jetonDe('u1')),
                 body: PNG,
             });
             expect(r.status).toBe(403);
@@ -116,28 +116,28 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             expect(magasin.lire(EMPREINTE)).toBeUndefined();
         });
 
-        it('refuse sans jeton, et avec un jeton illisible', async () => {
+        it('refuses without a token, and with an unreadable token', async () => {
             const url = await servir('icone-put-nu');
             const sans = await fetch(`${url}/icone/${EMPREINTE}`, { method: 'PUT', body: PNG });
             expect(sans.status).toBe(401);
             expect(await sans.json()).toEqual({ refus: 'jeton-absent' });
             const faux = await fetch(`${url}/icone/${EMPREINTE}`, {
                 method: 'PUT',
-                headers: { authorization: 'Bearer pas-un-jeton' },
+                headers: { authorization: 'Bearer not-a-token' },
                 body: PNG,
             });
             expect(faux.status).toBe(401);
             expect(await faux.json()).toEqual({ refus: 'jeton-invalide' });
         });
 
-        it('🔴 RECALCULE l’empreinte et REFUSE si elle ment', async () => {
-            // 🔴 SANS CE RECALCUL, L'ADRESSAGE PAR CONTENU N'EN SERAIT PAS UN,
-            // et `Cache-Control: immutable` rendrait l'empoisonnement PERMANENT
-            // dans les caches. Éprouvé au magasin, REJOUÉ ICI de bout en bout.
+        it('🔴 RECOMPUTES the fingerprint and REFUSES if it lies', async () => {
+            // 🔴 WITHOUT THIS RECOMPUTATION, CONTENT ADDRESSING WOULD NOT BE ONE,
+            // and `Cache-Control: immutable` would make the poisoning PERMANENT
+            // in the caches. Tested at the store, REPLAYED HERE end to end.
             const url = await servir('icone-put-menteur');
             const r = await fetch(`${url}/icone/${AUTRE}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: PNG,
             });
             expect(r.status).toBe(400);
@@ -145,39 +145,39 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             expect(magasin.lire(AUTRE)).toBeUndefined();
         });
 
-        it('🔴 REFUSE une empreinte qui pourrait sortir du magasin', async () => {
+        it('🔴 REFUSES a fingerprint that could escape the store', async () => {
             const url = await servir('icone-put-chemin');
-            // `..%2f..%2fx` : le chemin décodé sortirait du répertoire.
+            // `..%2f..%2fx`: the decoded path would go out of the directory.
             const r = await fetch(`${url}/icone/..%2f..%2fx`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: PNG,
             });
             expect(r.status).toBe(400);
             expect(await r.json()).toEqual({ refus: 'empreinte-invalide' });
         });
 
-        it('refuse un corps au-delà du plafond, en 413 TYPÉ', async () => {
+        it('refuses a body beyond the ceiling, with a TYPED 413', async () => {
             const url = await servir('icone-put-gros');
             const gros = Buffer.alloc(ICONE_MAX_OCTETS + 1, 7);
             const r = await fetch(`${url}/icone/${createHash('sha256').update(gros).digest('hex')}`, {
                 method: 'PUT',
-                headers: avec(jetonDe('vm-1', 'agent')),
+                headers: withIt(jetonDe('vm-1', 'agent')),
                 body: gros,
             });
             expect(r.status).toBe(413);
             expect(await r.json()).toEqual({ refus: 'taille' });
         });
 
-        it('refuse une autre méthode que PUT en 405', async () => {
+        it('refuses a method other than PUT with 405', async () => {
             const url = await servir('icone-put-methode');
-            const r = await fetch(`${url}/icone/${EMPREINTE}`, { headers: avec(jetonDe('u1')) });
+            const r = await fetch(`${url}/icone/${EMPREINTE}`, { headers: withIt(jetonDe('u1')) });
             expect(r.status).toBe(405);
             expect(await r.json()).toEqual({ refus: 'methode' });
         });
     });
 
-    describe('GET /application/:id/icone — l’URL SIGNÉE, sans en-tête', () => {
+    describe('GET /application/:id/icone — the SIGNED URL, without a header', () => {
         async function poser(nom: string): Promise<{ url: string; id: string; u: string }> {
             const url = await servir(nom);
             const base = montage!.base;
@@ -186,39 +186,39 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             const id = await poserApp(base, 'vm-1', 'Bloc-notes', 'a1b2', EMPREINTE, {
                 pixels: 256,
             });
-            magasin.ecrire(EMPREINTE, PNG);
+            magasin.write(EMPREINTE, PNG);
             return { url, id, u };
         }
 
-        /// L'URL signée telle que `routes-applications.ts` la frappe — la MÊME
-        /// fonction que le produit, jamais une réimplémentation `fetch` qui
-        /// n'éprouverait qu'elle-même.
+        /// The signed URL as `routes-applications.ts` mints it — the SAME
+        /// function as the product, never a `fetch` reimplementation that
+        /// would only test itself.
         function signee(id: string, vm = 'vm-1', empreinte = EMPREINTE, t = MS): string {
             return signerUrlIcone(id, vm, empreinte, SECRET, t);
         }
 
-        it('🔴 sert le PNG SANS AUCUN EN-TÊTE — c’est tout l’objet du lot', async () => {
-            // 🔴 LE CONTRÔLE QUI VAUT EST L'ABSENCE D'`Authorization`, PAS LE
-            // 200 : un `<img src>` ne peut rien porter d'autre que son URL, et
-            // c'est exactement ce que cette requête reproduit.
+        it('🔴 serves the PNG WITHOUT ANY HEADER — that is the whole point of the batch', async () => {
+            // 🔴 THE CHECK THAT MATTERS IS THE ABSENCE OF `Authorization`, NOT THE
+            // 200: an `<img src>` can carry nothing other than its URL, and
+            // it is exactly what this request reproduces.
             const { url, id } = await poser('icone-get-signee');
             const r = await fetch(`${url}${signee(id)}`);
             expect(r.status).toBe(200);
             expect(r.headers.get('content-type')).toBe('image/png');
             expect(r.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
-            // 🔴 L'EXCEPTION NE S'ÉLARGIT PAS : `cache-control` est écrasé,
-            // `nosniff` NE L'EST PAS. C'est le seul des deux en-têtes de
-            // sécurité qui soit une garde — sans lui, un navigateur pourrait
-            // deviner un type autre que `image/png` sur des octets qu'un pair
-            // a déposés.
+            // 🔴 THE EXCEPTION DOES NOT WIDEN: `cache-control` is overridden,
+            // `nosniff` IS NOT. It is the only one of the two security headers
+            // that is a guard — without it, a browser could
+            // guess a type other than `image/png` on bytes a peer
+            // dropped.
             expect(r.headers.get('x-content-type-options')).toBe('nosniff');
             expect(Buffer.from(await r.arrayBuffer())).toEqual(PNG);
         });
 
-        it('🔴 REFUSE une signature FALSIFIÉE, en 403 typé', async () => {
+        it('🔴 REFUSES a FORGED signature, with a typed 403', async () => {
             const { url, id } = await poser('icone-get-faussaire');
             const chemin = signee(id);
-            // Un seul caractère de la signature change, et il change vraiment.
+            // A single character of the signature changes, and it really changes.
             const p = new URL(chemin, 'http://interne');
             const vraie = p.searchParams.get('s')!;
             p.searchParams.set('s', (vraie[0] === 'a' ? 'b' : 'a') + vraie.slice(1));
@@ -227,87 +227,87 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             expect(await r.json()).toEqual({ refus: 'signature-invalide' });
         });
 
-        it('🔴 REFUSE une URL EXPIRÉE, en 403 typé', async () => {
-            // 🔴 L'EXPIRATION EST JUGÉE CÔTÉ SERVEUR, contre `deps.maintenant`
-            // — jamais en croyant le champ `x` du client. L'URL est frappée
-            // pour un instant assez ancien pour être morte à `MS`.
+        it('🔴 REFUSES an EXPIRED URL, with a typed 403', async () => {
+            // 🔴 THE EXPIRY IS JUDGED ON THE SERVER SIDE, against `deps.maintenant`
+            // — never by trusting the client's `x` field. The URL is minted
+            // for an instant old enough to be dead at `MS`.
             const { url, id } = await poser('icone-get-expiree');
             const r = await fetch(`${url}${signee(id, 'vm-1', EMPREINTE, MS - 3_600_000)}`);
             expect(r.status).toBe(403);
             expect(await r.json()).toEqual({ refus: 'url-expiree' });
-            // Le TÉMOIN, sans lequel le refus ne prouverait rien : la MÊME
-            // URL frappée à l'instant courant est servie.
+            // The WITNESS, without which the refusal would prove nothing: the SAME
+            // URL minted at the current instant is served.
             expect((await fetch(`${url}${signee(id)}`)).status).toBe(200);
         });
 
-        it('🔴 une URL signée pour une APPLICATION ne vaut pas pour une AUTRE', async () => {
-            // 🔴 LA ROUGE DE SÉCURITÉ N°3, DE BOUT EN BOUT : deux applications
-            // de la MÊME VM, du MÊME utilisateur, avec la MÊME icône — donc
-            // rien d'autre que l'identifiant ne les sépare.
+        it('🔴 a URL signed for one APPLICATION is not valid for ANOTHER', async () => {
+            // 🔴 SECURITY RED NO. 3, END TO END: two applications
+            // of the SAME VM, of the SAME user, with the SAME icon — hence
+            // nothing but the identifier separates them.
             const { url, id } = await poser('icone-get-permutee');
             const autre = await poserApp(montage!.base, 'vm-1', 'Autre', 'c3d4', EMPREINTE, {
                 pixels: 256,
             });
             expect(autre).not.toBe(id);
-            // L'URL de `id`, servie sur le chemin d'`autre`.
+            // The URL of `id`, served on the path of `autre`.
             const p = new URL(signee(id), 'http://interne');
             const r = await fetch(`${url}/application/${autre}/icone${p.search}`);
             expect(r.status).toBe(403);
             expect(await r.json()).toEqual({ refus: 'signature-invalide' });
-            // Les DEUX témoins : chacune sur SA propre URL est servie.
+            // BOTH witnesses: each on ITS own URL is served.
             expect((await fetch(`${url}${signee(id)}`)).status).toBe(200);
             expect((await fetch(`${url}${signee(autre)}`)).status).toBe(200);
         });
 
-        it('🔴 une URL signée pour une AUTRE VM rend 404 vm-inconnue', async () => {
-            // La signature est BONNE — elle est frappée avec `vm-2` — mais la
-            // base dit que l'application vit sur `vm-1`. C'est le contrôle qui
-            // empêche que couvrir la VM soit un ornement.
+        it('🔴 a URL signed for ANOTHER VM returns 404 vm-inconnue', async () => {
+            // The signature is GOOD — it is minted with `vm-2` — but the
+            // database says the application lives on `vm-1`. It is the check that
+            // prevents covering the VM from being an ornament.
             const { url, id } = await poser('icone-get-vm-permutee');
             const r = await fetch(`${url}${signee(id, 'vm-2')}`);
             expect(r.status).toBe(404);
             expect(await r.json()).toEqual({ refus: 'vm-inconnue' });
         });
 
-        it('🔴 un `?e=` PÉRIMÉ rend 404, et c’est ce qui rend `immutable` HONNÊTE', async () => {
-            // 🔴 SANS CE REFUS, une vieille URL servirait l'icône COURANTE
-            // sous un en-tête immuable — le cache serait empoisonné POUR UN AN
-            // avec une image qui n'est pas celle que l'URL nomme.
+        it('🔴 a STALE `?e=` returns 404, and that is what makes `immutable` HONEST', async () => {
+            // 🔴 WITHOUT THIS REFUSAL, an old URL would serve the CURRENT icon
+            // under an immutable header — the cache would be poisoned FOR A YEAR
+            // with an image that is not the one the URL names.
             const { url, id } = await poser('icone-get-perime');
-            magasin.ecrire(AUTRE, Buffer.from('autre'));
+            magasin.write(AUTRE, Buffer.from('autre'));
             const r = await fetch(`${url}${signee(id, 'vm-1', AUTRE)}`);
             expect(r.status).toBe(404);
             expect(await r.json()).toEqual({ refus: 'icone-inconnue' });
         });
 
-        it('un jeton porteur ne suffit PLUS — l’ancien chemin est RETIRÉ', async () => {
-            // 🔴 LE PROPRIÉTAIRE A TRANCHÉ : UN SEUL CHEMIN. Deux surfaces
-            // pour une même ressource, ce sont deux gardes d'autorisation qui
-            // divergent en silence. Ce test fige le retrait — sans lui, on
-            // pourrait rouvrir la porte sans que rien ne le dise.
+        it('a bearer token is NO LONGER enough — the old path is REMOVED', async () => {
+            // 🔴 THE OWNER RULED: A SINGLE PATH. Two surfaces
+            // for the same resource are two authorisation guards that
+            // diverge silently. This test pins the withdrawal — without it, one
+            // could reopen the door without anything saying so.
             const { url, id, u } = await poser('icone-get-porteur-retire');
             const r = await fetch(`${url}/application/${id}/icone?e=${EMPREINTE}`, {
-                headers: avec(jetonDe(u)),
+                headers: withIt(jetonDe(u)),
             });
             expect(r.status).toBe(400);
             expect(await r.json()).toEqual({ refus: 'signature-absente' });
         });
 
-        it('sans `?e=` du tout : 400 typé, distinct du refus de signature', async () => {
+        it('without any `?e=`: typed 400, distinct from the signature refusal', async () => {
             const url = await servir('icone-sans-e-signee');
             const r = await fetch(`${url}/application/x/icone`);
             expect(r.status).toBe(400);
             expect(await r.json()).toEqual({ refus: 'empreinte-absente' });
         });
 
-        it('une application INCONNUE rend 404, même sous une signature valide', async () => {
+        it('an UNKNOWN application returns 404, even under a valid signature', async () => {
             const url = await servir('icone-get-app-inconnue');
-            const r = await fetch(`${url}${signee('pas-un-id')}`);
+            const r = await fetch(`${url}${signee('not-an-id')}`);
             expect(r.status).toBe(404);
             expect(await r.json()).toEqual({ refus: 'application-inconnue' });
         });
 
-        it('une application SANS icône rend 404, pas une image vide', async () => {
+        it('an application WITHOUT an icon returns 404, not an empty image', async () => {
             const url = await servir('icone-get-sans');
             const base = montage!.base;
             await poserVm(base, 'vm-1');
@@ -318,21 +318,21 @@ describe(`routes d'icône, moteur=${MOTEUR}`, () => {
             expect(await r.json()).toEqual({ refus: 'icone-inconnue' });
         });
 
-        it('la base connaît l’empreinte, le DISQUE ne l’a pas : 404, et cela se répare seul', async () => {
+        it('the database knows the fingerprint, the DISK does not have it: 404, and this heals by itself', async () => {
             const { url, id } = await poser('icone-get-disque-vide');
             rmSync(join(magasin.repertoire, EMPREINTE));
             const r = await fetch(`${url}${signee(id)}`);
             expect(r.status).toBe(404);
-            // Et l'inventaire la redemande : c'est l'auto-reconstruction.
+            // And the inventory asks for it again: that is the self-rebuild.
             expect(magasin.manquantes([EMPREINTE])).toEqual([EMPREINTE]);
         });
 
-        it('sert la réponse préalable OPTIONS', async () => {
-            // ⚠️ LES DEUX ROUTES EXIGENT `Authorization`, DONC LA REQUÊTE EST
-            // NON SIMPLE : le navigateur envoie d'abord un `OPTIONS` et
-            // ABANDONNE sans jamais envoyer la vraie requête si la réponse ne
-            // lui convient pas. C'est le défaut exact que la corroboration
-            // navigateur de P4 a trouvé, et qu'aucun test de Node ne voyait.
+        it('serves the OPTIONS preflight response', async () => {
+            // ⚠️ BOTH ROUTES REQUIRE `Authorization`, SO THE REQUEST IS
+            // NON-SIMPLE: the browser first sends an `OPTIONS` and
+            // GIVES UP without ever sending the real request if the response does not
+            // suit it. It is the exact defect P4's browser corroboration
+            // found, and which no Node test saw.
             const url = await servir('icone-options');
             for (const chemin of [`/icone/${EMPREINTE}`, '/application/x/icone']) {
                 const r = await fetch(`${url}${chemin}`, { method: 'OPTIONS' });

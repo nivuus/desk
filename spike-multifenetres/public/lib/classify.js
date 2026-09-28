@@ -1,12 +1,12 @@
-// Classement des issues d'une tentative d'ouverture de fenêtre.
+// Classification of the outcomes of a window opening attempt.
 //
-// Trois issues, pas deux. Derrière Pomerium, une session expirée renvoie une
-// redirection d'authentification : la fenêtre s'ouvre bel et bien, mais part sur
-// l'IdP et ne signale jamais sa vie. Confondre ce cas avec un blocage produirait
-// un faux négatif très convaincant — exactement le type de conclusion hâtive que
-// les rondes de diagnostic du jalon 1 ont dû défaire quatre fois.
+// Three outcomes, not two. Behind Pomerium, an expired session returns an
+// authentication redirect: the window does open, but goes off to
+// the IdP and never signals it is alive. Confusing this case with a block would produce
+// a very convincing false negative — exactly the kind of hasty conclusion that
+// the milestone 1 diagnostic rounds had to undo four times.
 
-// Durée approximative de l'activation utilisateur transitoire dans Chromium.
+// Approximate duration of transient user activation in Chromium.
 export const SEUIL_ACTIVATION_MS = 5000;
 
 /**
@@ -19,8 +19,8 @@ export const SEUIL_ACTIVATION_MS = 5000;
 export function classer(observation) {
     const { poigneeNulle, vivante, msDepuisGeste, gesteAttendu = false } = observation;
 
-    // La variante 3 s'appuie délibérément sur un clic : pour elle seule, un geste
-    // récent est le mécanisme testé et non un biais.
+    // Variant 3 deliberately relies on a click: for it alone, a recent
+    // gesture is the mechanism under test and not a bias.
     if (!gesteAttendu && msDepuisGeste <= SEUIL_ACTIVATION_MS) return 'non-concluant';
 
     if (poigneeNulle === true) return 'bloque';

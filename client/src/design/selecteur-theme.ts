@@ -1,63 +1,63 @@
 /**
- * LES TROIS BOUTONS DE THÈME — le sélecteur de thème DU PRODUIT.
+ * THE THREE THEME BUTTONS — the PRODUCT's theme selector.
  *
- * ✅ CE MODULE EST DU PRODUIT DEPUIS LE SOUS-BLOC S3, et il a des tests.
- * Il était né en S1 comme code d'INSTRUMENT — il ne servait alors que les
- * pages du jugement humain du §8 — et son en-tête déclarait « ce n'est pas le
- * sélecteur de thème du produit : celui-là appartient à S3, qui décidera s'il
- * le réemploie tel quel ou le réécrit ». S3 a décidé : il le RÉEMPLOIE. Il n'y
- * a pas de seconde copie — c'est la règle que le §4.1 de la spec applique aux
- * valeurs, et il n'y a pas de raison de l'accorder aux modules.
+ * ✅ THIS MODULE HAS BEEN PART OF THE PRODUCT SINCE SUB-BLOCK S3, and it has tests.
+ * It was born in S1 as INSTRUMENT code — it then only served the
+ * pages of §8's human judgement — and its header declared "this is not the
+ * product's theme selector: that one belongs to S3, which will decide whether to
+ * reuse it as is or rewrite it". S3 decided: it REUSES it. There
+ * is no second copy — it is the rule §4.1 of the spec applies to
+ * values, and there is no reason to grant it to modules.
  *
- * ── OÙ IL VIT, ET OÙ IL NE VIT PAS ────────────────────────────────────────
- * Sur le HUB — la surface que la spec §5.2 appelle « la page-shell », et qui
- * l'a absorbée le 31 août 2026 — et sur l'ÉCRAN DE CONNEXION, que la spec ne
- * nomme pas parce qu'il n'existait pas quand elle a été écrite (son §2.5 le
- * dit) — EXTENSION RAISONNÉE, déclarée : `hub/page.ts` y redirige tout
- * visiteur sans jeton, si bien que c'est aujourd'hui la première surface, et
- * parfois la seule, qu'un utilisateur non authentifié voie. Un défaut sombre
- * qu'on ne peut pas changer avant de s'être connecté est ce que la spec §11
- * range sous « réversible par un utilisateur en un clic dès S3 ».
+ * ── WHERE IT LIVES, AND WHERE IT DOES NOT ─────────────────────────────────
+ * On the HUB — the surface spec §5.2 calls "the shell page", and which
+ * absorbed it on August 31st, 2026 — and on the LOGIN SCREEN, which the spec does not
+ * name because it did not exist when it was written (its §2.5 says
+ * so) — REASONED EXTENSION, declared: `hub/page.ts` redirects every
+ * visitor without a token there, so that it is today the first surface, and
+ * sometimes the only one, an unauthenticated user sees. A dark default
+ * that cannot be changed before logging in is what spec §11
+ * files under "reversible by a user in one click from S3".
  *
- * ⚠️ CE PARAGRAPHE DISAIT « Sur la PAGE-SHELL … `shell-page.ts` y redirige »
- * jusqu'à la revue finale du 31 août 2026. Les DEUX moitiés étaient fausses :
- * le sélecteur est câblé depuis `hub/page.ts` (`#themes`), et c'est
- * `hub/page.ts::demarrer` qui renvoie vers `connexion.html`.
+ * ⚠️ THIS PARAGRAPH SAID "On the SHELL PAGE … `shell-page.ts` redirects there"
+ * until the final review of August 31st, 2026. BOTH halves were wrong:
+ * the selector is wired from `hub/page.ts` (`#themes`), and it is
+ * `hub/page.ts::start` that sends back to `connexion.html`.
  *
- * ⛔ JAMAIS DANS LA FENÊTRE DE SESSION. La spec §5.2 l'interdit nommément :
- * une barre d'outils sur un jeu en plein écran est une régression. « La
- * fenêtre de session SUIT, elle ne choisit pas. »
+ * ⛔ NEVER IN THE SESSION WINDOW. Spec §5.2 forbids it by name:
+ * a toolbar on a fullscreen game is a regression. "The
+ * session window FOLLOWS, it does not choose."
  *
- * ── LES DÉPENDANCES SONT INJECTÉES ────────────────────────────────────────
- * ⚠️ NI `window`, NI `document`, NI `localStorage` NE SONT LUS DANS LE CHEMIN
- * TESTÉ. `client/` n'a NI jsdom NI happy-dom (mesuré : `client/package.json`
- * ne porte que `typescript`, `vite`, `vitest`, et aucun `@vitest-environment`
- * n'existe dans `client/src/`). Un module de produit qui lirait un global en
- * tête serait impossible à charger sous Node, donc impossible à tester. C'est
- * le patron de `theme.ts` et de `fullscreen.ts`, et `installerSelecteurDeTheme
- * AuDOM` est la couture qui les relie aux vrais objets — comme
+ * ── DEPENDENCIES ARE INJECTED ─────────────────────────────────────────────
+ * ⚠️ NEITHER `window`, NOR `document`, NOR `localStorage` IS READ ON THE TESTED
+ * PATH. `client/` has NEITHER jsdom NOR happy-dom (measured: `client/package.json`
+ * only carries `typescript`, `vite`, `vitest`, and no `@vitest-environment`
+ * exists in `client/src/`). A product module reading a global at the
+ * top would be impossible to load under Node, hence impossible to test. It is
+ * the pattern of `theme.ts` and `fullscreen.ts`, and `installThemeSelector
+ * AuDOM` is the seam linking them to the real objects — like
  * `armerPleinEcranAuDOM`.
  *
- * ⚠️ `Coffre` et `Racine` sont IMPORTÉS de `theme.ts`, jamais redéclarés ici.
- * Deux copies d'un contrat divergent en silence.
+ * ⚠️ `Coffre` and `Racine` are IMPORTED from `theme.ts`, never redeclared here.
+ * Two copies of a contract diverge silently.
  */
-import { CLE_THEME, appliquer, choisir, surStockageModifie, themeStocke } from './theme';
+import { CLE_THEME, appliquer, choisir, onStorageChanged, themeStocke } from './theme';
 import type { Coffre, Racine, Theme } from './theme';
 
-/** Ce qu'un bouton de thème doit savoir faire — rien de plus. */
+/** What a theme button must be able to do — nothing more. */
 export interface BoutonDeTheme {
     dataset: { theme?: string };
     textContent: string | null;
-    setAttribute(nom: string, valeur: string): void;
+    setAttribute(nom: string, value: string): void;
     addEventListener(type: 'click', ecouteur: () => void): void;
 }
 
-/** L'hôte qui reçoit les trois boutons. */
+/** The host that receives the three buttons. */
 export interface HoteDeSelecteur {
     append(bouton: BoutonDeTheme): void;
 }
 
-/** La source des événements `storage` — `window` en production. */
+/** The source of `storage` events — `window` in production. */
 export interface SourceDeStockage {
     addEventListener(
         type: 'storage',
@@ -70,72 +70,72 @@ export interface OptionsSelecteurDeTheme {
     racine: Racine;
     coffre: Coffre;
     source: SourceDeStockage;
-    /** Fabrique un bouton VIERGE ; l'appelant y met ce qu'il veut de visuel. */
-    creerBouton(): BoutonDeTheme;
-    /** Rappelé après CHAQUE changement de thème, quelle qu'en soit l'origine. */
+    /** Makes a BLANK button; the caller puts whatever visuals it wants in it. */
+    createButton(): BoutonDeTheme;
+    /** Called back after EACH theme change, whatever its origin. */
     apres: () => void;
 }
 
 /**
- * Pose les trois boutons dans `hote`, applique l'état stocké, et branche
- * l'écoute de `storage`.
+ * Places the three buttons in `hote`, applies the stored state, and wires
+ * listening to `storage`.
  *
- * ⚠️ `hote` N'EST PAS VIDÉ : deux appels sur le même élément y poseraient six
- * boutons. C'est l'appelant qui décide.
+ * ⚠️ `hote` IS NOT EMPTIED: two calls on the same element would place six
+ * buttons there. It is the caller that decides.
  */
-export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): void {
-    const { hote, racine, coffre, source, creerBouton, apres } = options;
+export function installThemeSelector(options: OptionsSelecteurDeTheme): void {
+    const { hote, racine, coffre, source, createButton, apres } = options;
     const etats: Theme[] = ['systeme', 'clair', 'sombre'];
 
-    // 🔴 LES BOUTONS SONT RETENUS ICI, ET NON RELUS PAR `querySelectorAll`.
-    // La version d'instrument interrogeait le DOM de l'hôte ; outre qu'aucun
-    // double ne peut le faire sans jsdom, elle marquait aussi les boutons d'une
-    // installation ANTÉRIEURE sur le même hôte.
+    // 🔴 THE BUTTONS ARE KEPT HERE, AND NOT REREAD THROUGH `querySelectorAll`.
+    // The instrument version queried the host's DOM; besides the fact that no
+    // double can do so without jsdom, it also marked the buttons of an
+    // EARLIER installation on the same host.
     const boutons: BoutonDeTheme[] = [];
     const marquer = () => {
-        const courant = themeStocke(coffre);
+        const current = themeStocke(coffre);
         for (const bouton of boutons) {
-            bouton.setAttribute('aria-pressed', String(bouton.dataset.theme === courant));
+            bouton.setAttribute('aria-pressed', String(bouton.dataset.theme === current));
         }
     };
 
-    // L'amorce a déjà posé l'attribut avant la première peinture ; ce rappel
-    // couvre le cas où le stockage a changé entre l'amorce et l'exécution de ce
+    // The bootstrap has already set the attribute before first paint; this call
+    // covers the case where storage changed between the bootstrap and the execution of this
     // module.
     appliquer(racine, themeStocke(coffre));
 
-    // La bascule venue d'une AUTRE fenêtre — c'est la moitié que `choisir()` ne
-    // peut pas couvrir, `storage` ne se déclenchant jamais chez l'écrivain.
+    // The switch coming from ANOTHER window — it is the half `choisir()`
+    // cannot cover, `storage` never firing in the writer.
     //
-    // ✅ IL RAPPELLE `marquer()`, ET C'EST UNE CORRECTION DU SOUS-BLOC S3.
-    // Jusque-là il ne le faisait pas, et ce module DÉCLARAIT le défaut :
-    // « un `aria-pressed` posé ici reste celui du thème d'avant tant que
-    // l'utilisateur ne clique pas dans CETTE fenêtre. Le défaut est réel et il
-    // est PRÉEXISTANT ». Il l'était en effet — la tâche d'extraction de S1
-    // avait raison de ne pas le corriger, une extraction qui corrige rendant
-    // fausse sa propre preuve que rien n'a bougé.
+    // ✅ IT CALLS `marquer()` AGAIN, AND IT IS A FIX OF SUB-BLOCK S3.
+    // Until then it did not, and this module DECLARED the defect:
+    // "an `aria-pressed` set here stays that of the previous theme as long as
+    // the user does not click in THIS window. The defect is real and it
+    // is PRE-EXISTING". It was indeed — S1's extraction task
+    // was right not to fix it, an extraction that fixes making
+    // its own proof that nothing moved false.
     //
-    // 🔴 CE QUI A CHANGÉ N'EST PAS LE DÉFAUT, C'EST CE QUE CE MODULE EST. Sur
-    // un INSTRUMENT, un `aria-pressed` périmé est une gêne. Sur le PRODUIT,
-    // c'est une interface qui MENT sur son propre état — et le cas d'une
-    // fenêtre voisine qui change le thème n'est pas un cas limite : c'est le
-    // cas NOMINAL du multi-fenêtres, qui est la raison d'être même du
-    // mécanisme `storage` (spec §4.2). La page-shell ouvre N fenêtres de
-    // session sur la même origine ; toutes reçoivent cet événement.
+    // 🔴 WHAT CHANGED IS NOT THE DEFECT, IT IS WHAT THIS MODULE IS. On
+    // an INSTRUMENT, a stale `aria-pressed` is a nuisance. On the PRODUCT,
+    // it is an interface that LIES about its own state — and the case of a
+    // neighbouring window changing the theme is not an edge case: it is the
+    // NOMINAL case of multi-window, which is the very reason for being of the
+    // `storage` mechanism (spec §4.2). The shell page opens N session
+    // windows on the same origin; all receive this event.
     //
-    // ⚠️ `marquer()` LIT le coffre, il ne l'écrit pas. Écrire ici renverrait un
-    // `storage` aux fenêtres voisines, qui le renverraient à leur tour, sans
-    // terme — `selecteur-theme.test.ts` garde cette propriété par un test qui
-    // PEUT tomber, la fermeture détenant bien le coffre.
+    // ⚠️ `marquer()` READS the vault, it does not write it. Writing here would send a
+    // `storage` back to the neighbouring windows, which would send it back in turn, without
+    // end — `selecteur-theme.test.ts` guards this property with a test that
+    // CAN fail, the closure indeed holding the vault.
     source.addEventListener('storage', (evenement) => {
         if (evenement.key !== CLE_THEME) return;
-        surStockageModifie(racine, evenement.key, evenement.newValue);
+        onStorageChanged(racine, evenement.key, evenement.newValue);
         marquer();
         apres();
     });
 
     for (const etat of etats) {
-        const bouton = creerBouton();
+        const bouton = createButton();
         bouton.dataset.theme = etat;
         bouton.textContent = etat;
         bouton.addEventListener('click', () => {
@@ -150,40 +150,40 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
 }
 
 /**
- * LA COUTURE VERS LE VRAI DOM — la seule fonction de ce module qui touche
- * `document`, `window` et `localStorage`, et donc la seule qui ne soit pas
- * testable sans navigateur. Elle ne porte AUCUNE règle : elle ne fait que
- * fournir les objets réels à la fonction ci-dessus. Même partage que
- * `armerPleinEcran` / `armerPleinEcranAuDOM` dans `client/src/fullscreen.ts`.
+ * THE SEAM TO THE REAL DOM — the only function of this module that touches
+ * `document`, `window` and `localStorage`, and hence the only one that is not
+ * testable without a browser. It carries NO rule: it only
+ * provides the real objects to the function above. Same split as
+ * `armerPleinEcran` / `armerPleinEcranAuDOM` in `client/src/fullscreen.ts`.
  *
- * ⚠️ LES DEUX CLASSES SONT ÉCRITES EN LITTÉRAL, un `classList.add` par classe.
- * Le contrôle §7.9 ne voit que les littéraux ; une classe composée
- * (`` `bouton--${variante}` ``) lui serait invisible, et la convention §6.4 du
- * plan S3 est ce qui rend ce contrôle utile.
+ * ⚠️ THE TWO CLASSES ARE WRITTEN AS LITERALS, one `classList.add` per class.
+ * Check §7.9 only sees literals; a composed class
+ * (`` `bouton--${variante}` ``) would be invisible to it, and convention §6.4 of
+ * plan S3 is what makes this check useful.
  *
- * ⚠️ LES BOUTONS N'ONT PAS DE LIBELLÉ ACCESSIBLE AUTRE QUE LEUR TEXTE
- * (`systeme`, `clair`, `sombre`) et leur `aria-pressed`. Aucune primitive ne
- * porte de rôle ARIA — les primitives sont du CSS, la sémantique reste au
- * balisage —, et un groupe `role="group"` avec son libellé appartiendrait au
- * balisage de chaque page. Déclaré plutôt que supposé fait.
+ * ⚠️ THE BUTTONS HAVE NO ACCESSIBLE LABEL OTHER THAN THEIR TEXT
+ * (`systeme`, `clair`, `sombre`) and their `aria-pressed`. No primitive
+ * carries an ARIA role — primitives are CSS, semantics stay in the
+ * markup —, and a `role="group"` with its label would belong to the
+ * markup of each page. Declared rather than assumed done.
  */
-export function installerSelecteurDeThemeAuDOM(
+export function installThemeSelectorInDOM(
     hote: HTMLElement,
     apres: () => void = () => {},
 ): void {
-    installerSelecteurDeTheme({
-        // ⚠️ L'HÔTE EST ADAPTÉ PLUTÔT QUE `HTMLElement` N'ÉLARGISSE LE
-        // CONTRAT. `HTMLElement.append` accepte `(...nodes: (string|Node)[])`,
-        // que `HoteDeSelecteur.append(bouton: BoutonDeTheme)` ne satisfait
-        // pas — et c'est TypeScript qui l'a dit, pas une supposition. Élargir
-        // `BoutonDeTheme` jusqu'à `Node` pour faire taire l'erreur aurait rendu
-        // le double de test impossible à écrire sans jsdom, c'est-à-dire aurait
-        // rendu ce module intestable pour satisfaire le compilateur.
+    installThemeSelector({
+        // ⚠️ THE HOST IS ADAPTED RATHER THAN `HTMLElement` WIDENING THE
+        // CONTRACT. `HTMLElement.append` accepts `(...nodes: (string|Node)[])`,
+        // which `HoteDeSelecteur.append(bouton: BoutonDeTheme)` does not
+        // satisfy — and it is TypeScript that said so, not an assumption. Widening
+        // `BoutonDeTheme` up to `Node` to silence the error would have made
+        // the test double impossible to write without jsdom, that is, would have
+        // made this module untestable to satisfy the compiler.
         hote: { append: (bouton) => hote.append(bouton as unknown as HTMLElement) },
         racine: document.documentElement,
         coffre: localStorage,
         source: window,
-        creerBouton: () => {
+        createButton: () => {
             const bouton = document.createElement('button');
             bouton.type = 'button';
             bouton.classList.add('bouton');

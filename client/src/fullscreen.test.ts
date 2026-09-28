@@ -1,7 +1,7 @@
-// Tests du plein écran et du Keyboard Lock.
+// Tests of fullscreen and of Keyboard Lock.
 //
-// Comme pour pointer.ts, le module est testé par injection : ni `document`,
-// ni `navigator`, ni un vrai HTMLElement ne sont nécessaires.
+// As for pointer.ts, the module is tested by injection: neither `document`,
+// nor `navigator`, nor a real HTMLElement are needed.
 
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -13,42 +13,42 @@ import {
     type DocumentPleinEcran,
 } from './fullscreen';
 
-describe('verrouillage du clavier', () => {
-    it("appelle lock quand l'API est disponible", async () => {
+describe('keyboard lock', () => {
+    it("calls lock when the API is available", async () => {
         const lock = vi.fn().mockResolvedValue(undefined);
         await verrouillerClavier({ keyboard: { lock, unlock: vi.fn() } });
         expect(lock).toHaveBeenCalledOnce();
-        // Sans argument : c'est le mode jeu, toutes les touches vont au jeu,
-        // et l'utilisateur sort par appui long sur Échap.
+        // Without an argument: it is game mode, all keys go to the game,
+        // and the user exits with a long press on Escape.
         expect(lock).toHaveBeenCalledWith();
     });
 
-    it("ne fait rien et ne lève pas quand l'API est absente", async () => {
-        // Firefox et Safari : limite documentée, non corrigée.
+    it("does nothing and does not throw when the API is absent", async () => {
+        // Firefox and Safari: documented limitation, not fixed.
         await expect(verrouillerClavier({})).resolves.toBeUndefined();
     });
 
-    it('avale un rejet de lock sans le propager', async () => {
-        const lock = vi.fn().mockRejectedValue(new Error('refusé'));
+    it('swallows a lock rejection without propagating it', async () => {
+        const lock = vi.fn().mockRejectedValue(new Error('refused'));
         await expect(
             verrouillerClavier({ keyboard: { lock, unlock: vi.fn() } }),
         ).resolves.toBeUndefined();
     });
 });
 
-/** Double de test pour le bouton de bascule : un HTMLElement minimal. */
+/** Test double for the toggle button: a minimal HTMLElement. */
 function faireBouton() {
     const ecouteurs = new Map<string, EventListener[]>();
     return {
         dataset: {} as { actif?: string },
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         declencher(type: string) {
             for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
@@ -64,7 +64,7 @@ function faireBouton() {
     };
 }
 
-/** Double de test pour la cible du plein écran : compte les demandes reçues. */
+/** Test double for the fullscreen target: counts the requests received. */
 function faireCible(): CibleEcran & { demandes: number } {
     return {
         demandes: 0,
@@ -76,9 +76,9 @@ function faireCible(): CibleEcran & { demandes: number } {
 }
 
 /**
- * Double de test pour le document : garde l'élément actuellement en plein
- * écran, comme le ferait `document.fullscreenElement` réel, et permet de
- * simuler `fullscreenchange`.
+ * Test double for the document: keeps the element currently in
+ * fullscreen, as the real `document.fullscreenElement` would, and makes it possible to
+ * simulate `fullscreenchange`.
  */
 function faireDocument() {
     const ecouteurs = new Map<string, EventListener[]>();
@@ -100,13 +100,13 @@ function faireDocument() {
             return sorties;
         },
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         declencher(type: string) {
             for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
@@ -124,7 +124,7 @@ function faireDocument() {
 }
 
 describe('attachFullscreen', () => {
-    it("un clic sur le bouton demande le plein écran quand on n'y est pas déjà", () => {
+    it("a click on the button requests fullscreen when not already in it", () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const doc = faireDocument();
@@ -136,7 +136,7 @@ describe('attachFullscreen', () => {
         expect(doc.sorties).toBe(0);
     });
 
-    it("un clic sur le bouton quitte le plein écran quand on y est déjà", () => {
+    it("a click on the button leaves fullscreen when already in it", () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const doc = faireDocument();
@@ -149,7 +149,7 @@ describe('attachFullscreen', () => {
         expect(cible.demandes).toBe(0);
     });
 
-    it("l'entrée en plein écran déclenche le verrouillage clavier", async () => {
+    it("entering fullscreen triggers the keyboard lock", async () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const doc = faireDocument();
@@ -164,7 +164,7 @@ describe('attachFullscreen', () => {
         expect(lock).toHaveBeenCalledWith();
     });
 
-    it('la sortie du plein écran libère le clavier', async () => {
+    it('leaving fullscreen releases the keyboard', async () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const doc = faireDocument();
@@ -172,20 +172,20 @@ describe('attachFullscreen', () => {
         const lock = vi.fn().mockResolvedValue(undefined);
         attachFullscreen({ bouton, cible, doc, navigateur: { keyboard: { lock, unlock } } });
 
-        // Entrée : verrouille.
+        // Entering: locks.
         doc.fullscreenElement = cible;
         doc.declencher('fullscreenchange');
         await Promise.resolve();
         expect(unlock).not.toHaveBeenCalled();
 
-        // Sortie : libère.
+        // Leaving: releases.
         doc.fullscreenElement = null;
         doc.declencher('fullscreenchange');
 
         expect(unlock).toHaveBeenCalledOnce();
     });
 
-    it('le bouton bascule data-actif dans les deux sens', () => {
+    it('the button toggles data-actif both ways', () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const doc = faireDocument();
@@ -199,13 +199,13 @@ describe('attachFullscreen', () => {
         doc.declencher('fullscreenchange');
         expect(bouton.dataset.actif).toBe('false');
 
-        // Ce test échoue si onChange compare autre chose que `fullscreenElement
-        // === cible`, par exemple s'il se contente de vérifier que
-        // fullscreenElement est non nul (un AUTRE élément en plein écran
-        // marquerait alors ce bouton actif à tort).
+        // This test fails if onChange compares anything other than `fullscreenElement
+        // === cible`, for example if it merely checks that
+        // fullscreenElement is not null (ANOTHER element in fullscreen
+        // would then wrongly mark this button active).
     });
 
-    it("le bouton ne se marque pas actif quand un AUTRE élément passe en plein écran", () => {
+    it("the button does not mark itself active when ANOTHER element goes fullscreen", () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const autreCible = faireCible();
@@ -218,7 +218,7 @@ describe('attachFullscreen', () => {
         expect(bouton.dataset.actif).toBe('false');
     });
 
-    it('detacher retire tous les écouteurs posés', () => {
+    it('detacher removes all the listeners it set', () => {
         const bouton = faireBouton();
         const cible = faireCible();
         const doc = faireDocument();
@@ -232,13 +232,13 @@ describe('attachFullscreen', () => {
         expect(bouton.compte('click')).toBe(0);
         expect(doc.compte('fullscreenchange')).toBe(0);
 
-        // Les événements ultérieurs ne doivent plus rien déclencher.
+        // Later events must no longer trigger anything.
         bouton.declencher('click');
         expect(cible.demandes).toBe(0);
     });
 });
 
-/** Double de test pour une cible d'événements. */
+/** Test double for an event target. */
 function faireEcouteurs() {
     const ecouteurs = new Map<string, EventListener[]>();
     return {
@@ -259,10 +259,10 @@ function faireEcouteurs() {
     };
 }
 
-describe('armement du plein écran', () => {
-    it("n'entre pas en plein écran avant un geste utilisateur", () => {
-        // `requestFullscreen()` exige une activation transitoire : appeler
-        // depuis le message serait rejeté par le navigateur.
+describe('arming fullscreen', () => {
+    it("does not enter fullscreen before a user gesture", () => {
+        // `requestFullscreen()` requires transient activation: calling
+        // from the message would be rejected by the browser.
         const requestFullscreen = vi.fn().mockResolvedValue(undefined);
         const cible = { requestFullscreen };
         const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
@@ -271,7 +271,7 @@ describe('armement du plein écran', () => {
         expect(requestFullscreen).not.toHaveBeenCalled();
     });
 
-    it('entre en plein écran au premier pointerdown', () => {
+    it('enters fullscreen on the first pointerdown', () => {
         const requestFullscreen = vi.fn().mockResolvedValue(undefined);
         const cible = { requestFullscreen };
         const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
@@ -281,8 +281,8 @@ describe('armement du plein écran', () => {
         expect(requestFullscreen).toHaveBeenCalledOnce();
     });
 
-    it('entre en plein écran au premier keydown, sans clic', () => {
-        // Un joueur à la manette ou au clavier n'a aucune raison de cliquer.
+    it('enters fullscreen on the first keydown, without a click', () => {
+        // A player on a gamepad or a keyboard has no reason to click.
         const requestFullscreen = vi.fn().mockResolvedValue(undefined);
         const cible = { requestFullscreen };
         const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
@@ -292,7 +292,7 @@ describe('armement du plein écran', () => {
         expect(requestFullscreen).toHaveBeenCalledOnce();
     });
 
-    it("n'entre qu'une fois, et retire ses écouteurs après", () => {
+    it("enters only once, and removes its listeners afterwards", () => {
         const requestFullscreen = vi.fn().mockResolvedValue(undefined);
         const cible = { requestFullscreen };
         const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
@@ -305,7 +305,7 @@ describe('armement du plein écran', () => {
         expect(ecouteurs.compte('keydown')).toBe(0);
     });
 
-    it("n'arme rien si la page est déjà en plein écran", () => {
+    it("arms nothing if the page is already fullscreen", () => {
         const cible = { requestFullscreen: vi.fn().mockResolvedValue(undefined) };
         const doc = { fullscreenElement: cible, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
         const ecouteurs = faireEcouteurs();
@@ -313,8 +313,8 @@ describe('armement du plein écran', () => {
         expect(ecouteurs.compte('pointerdown')).toBe(0);
     });
 
-    it('la fonction de détachement retire les écouteurs sans avoir armé', () => {
-        // Fin de session avant tout geste : rien ne doit survivre.
+    it('the detach function removes the listeners without having armed', () => {
+        // Session end before any gesture: nothing must survive.
         const cible = { requestFullscreen: vi.fn().mockResolvedValue(undefined) };
         const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
         const ecouteurs = faireEcouteurs();

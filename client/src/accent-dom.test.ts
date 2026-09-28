@@ -1,14 +1,14 @@
 /// <reference types="vite/client" />
 /**
- * Tests du branchement DOM de l'accent.
+ * Tests of the accent DOM wiring.
  *
- * ⚠️ `client/` n'a **ni jsdom ni happy-dom** : les dépendances sont injectées,
- * et c'est ce qui rend ce module éprouvable là où `main.ts` ne l'est pas.
+ * ⚠️ `client/` has **neither jsdom nor happy-dom**: dependencies are injected,
+ * and that is what makes this module testable where `main.ts` is not.
  *
- * 🔴 **Aucune couleur en littéral** — voir l'en-tête d'`accent.test.ts` : §7.2
- * balaie les `.ts` de `client/src/`, et son exclusion ne couvre que le socle.
- * Tout est LU dans `tokens/couleurs.css` (`tokens.css` avant l'extraction de
- * la tâche 6, 25 août 2026).
+ * 🔴 **No colour as a literal** — see the header of `accent.test.ts`: §7.2
+ * scans the `.ts` files of `client/src/`, and its exclusion only covers the base layer.
+ * Everything is READ from `tokens/couleurs.css` (`tokens.css` before the extraction of
+ * task 6, August 25th, 2026).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -28,99 +28,99 @@ const theme = (t: Map<string, string>, repli: Map<string, string>): Record<strin
 const SOMBRE = theme(sombre, sombre);
 const CLAIR = theme(clairBrut, sombre);
 
-/// `--succes` du bloc sombre : **8,867 / 8,186 / 7,446** sur les fonds
-/// SOMBRES, et **2,194 / 2,047 / 1,889** sur les fonds CLAIRS — mesuré le
-/// 21 août 2026. C'est ce qui fait de lui le fixture exact du test de bascule :
-/// la MÊME couleur est acceptée dans un thème et refusée dans l'autre.
-const LISIBLE_EN_SOMBRE_SEULEMENT = sombre.get('--succes')!;
+/// `--succes` of the dark block: **8.867 / 8.186 / 7.446** on the DARK
+/// backgrounds, and **2.194 / 2.047 / 1.889** on the LIGHT ones — measured on
+/// August 21st, 2026. That is what makes it the exact fixture of the switch test:
+/// the SAME colour is accepted in one theme and refused in the other.
+const READABLE_IN_DARK_ONLY = sombre.get('--succes')!;
 
-/// Une racine factice qui compte ses lectures : c'est ce compteur qui distingue
-/// « les fonds sont relus » de « les fonds ont été mémorisés au montage ».
+/// A fake root that counts its reads: this counter is what tells
+/// "the backgrounds are re-read" from "the backgrounds were memorised at mount".
 function racine(depart: Record<string, string>) {
     const poses: Array<[string, string]> = [];
     const lus: string[] = [];
-    let courant = depart;
+    let current = depart;
     const acces: AccesTokens = {
         lireToken: (nom) => {
             lus.push(nom);
-            return courant[nom] ?? '';
+            return current[nom] ?? '';
         },
-        poserToken: (nom, valeur) => {
-            poses.push([nom, valeur]);
+        poserToken: (nom, value) => {
+            poses.push([nom, value]);
         },
     };
-    return { acces, poses, lus, basculer: (t: Record<string, string>) => (courant = t) };
+    return { acces, poses, lus, basculer: (t: Record<string, string>) => (current = t) };
 }
 
 describe('attacherAccentAuDOM', () => {
-    it('une couleur CONFORME est posée sur la racine', () => {
-        // ROUGE : l'arbre intact avant que le module n'existe.
+    it('a COMPLIANT colour is set on the root', () => {
+        // RED: the untouched tree before the module existed.
         const r = racine(SOMBRE);
-        attacherAccentAuDOM(r.acces).recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
-        expect(r.poses).toEqual([[TOKEN_ACCENT, LISIBLE_EN_SOMBRE_SEULEMENT]]);
+        attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
+        expect(r.poses).toEqual([[TOKEN_ACCENT, READABLE_IN_DARK_ONLY]]);
     });
 
-    it('une couleur REFUSÉE fait poser l\'accent du thème, jamais rien', () => {
-        // ROUGE : ne rien poser sur refus ⟹ le token garderait sa valeur
-        // PRÉCÉDENTE, c'est-à-dire la teinte d'une icône qui n'est plus celle
-        // de cette fenêtre — un état périmé, plus trompeur qu'un repli visible.
+    it('a REFUSED colour makes the theme accent be set, never nothing', () => {
+        // RED: setting nothing on refusal ⟹ the token would keep its PREVIOUS
+        // value, that is the tint of an icon that is no longer the one
+        // of this window — a stale state, more misleading than a visible fallback.
         const r = racine(SOMBRE);
         const a = attacherAccentAuDOM(r.acces);
-        a.recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        a.recevoir(READABLE_IN_DARK_ONLY);
         a.recevoir(sombre.get('--bord')!); // 1,447 / 1,336 / 1,215 : illisible
         expect(r.poses).toEqual([
-            [TOKEN_ACCENT, LISIBLE_EN_SOMBRE_SEULEMENT],
+            [TOKEN_ACCENT, READABLE_IN_DARK_ONLY],
             [TOKEN_ACCENT, SOMBRE['--accent']],
         ]);
     });
 
-    it('les TROIS fonds et l\'accent sont relus À CHAQUE message', () => {
-        // 🔴 ROUGE : mémoriser les fonds au montage ⟹ une bascule de thème
-        // laisserait l'accent jugé contre l'ANCIEN thème. La MÊME couleur est
-        // acceptée en sombre et refusée en clair : sans la relecture, le second
-        // message poserait la couleur au lieu de l'accent clair.
+    it('the THREE backgrounds and the accent are re-read on EACH message', () => {
+        // 🔴 RED: memorising the backgrounds at mount ⟹ a theme switch
+        // would leave the accent judged against the OLD theme. The SAME colour is
+        // accepted in dark and refused in light: without the re-read, the second
+        // message would set the colour instead of the light accent.
         const r = racine(SOMBRE);
         const a = attacherAccentAuDOM(r.acces);
-        a.recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        a.recevoir(READABLE_IN_DARK_ONLY);
         expect(r.lus).toEqual(['--fond-0', '--fond-1', '--fond-2', '--accent']);
 
         r.basculer(CLAIR);
-        a.recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        a.recevoir(READABLE_IN_DARK_ONLY);
         expect(r.lus).toHaveLength(8);
         expect(r.poses[1]).toEqual([TOKEN_ACCENT, CLAIR['--accent']]);
         expect(CLAIR['--accent']).not.toBe(SOMBRE['--accent']);
     });
 
-    it('le token est posé sur la RACINE, et le module ne connaît aucun élément', () => {
-        // 🔴 C'EST LA ROUGE DE REMPLACEMENT DU CRITÈRE ② (E7 du plan) : la rouge
-        // que la spec prescrivait — « poser le token sans le déclarer dans les
-        // trois blocs, §7.4 échoue » — est VACUEUSE sous D-A1-2, où il n'y a
-        // AUCUNE déclaration : §7.4 ne verrait rien.
+    it('the token is set on the ROOT, and the module knows no element', () => {
+        // 🔴 THIS IS THE REPLACEMENT RED OF CRITERION ② (E7 of the plan): the red
+        // the spec prescribed — "set the token without declaring it in the
+        // three blocks, §7.4 fails" — is VACUOUS under D-A1-2, where there is
+        // NO declaration: §7.4 would see nothing.
         //
-        // La rouge jouable est de poser sur `document.body`. Alors
+        // The playable red is to set it on `document.body`. Then
         // `getComputedStyle(document.documentElement).getPropertyValue(...)`
-        // rend la CHAÎNE VIDE, et le critère ② rougit sur l'assertion qu'il
-        // énonce. Ce test-ci en est la moitié éprouvable sur l'hôte : le module
-        // ne reçoit AUCUN moyen de désigner un élément — son interface n'en
-        // porte pas —, donc il ne peut pas en acquérir un par accident.
+        // returns the EMPTY STRING, and criterion ② goes red on the assertion it
+        // states. This test is the half of it that can be exercised on the host: the module
+        // receives NO means of designating an element — its interface does not
+        // carry one —, so it cannot acquire one by accident.
         //
-        // ⚠️ Une rouge qui n'enverrait AUCUN message serait moins bonne : elle
-        // rendrait aussi la chaîne vide, et la chaîne vide est ce que rend un
-        // mécanisme entièrement mort. C'est la leçon de la rouge ① de P3.
+        // ⚠️ A red that sent NO message would be worse: it
+        // would also return the empty string, and the empty string is what an
+        // entirely dead mechanism returns. That is the lesson of red ① of P3.
         const r = racine(SOMBRE);
-        attacherAccentAuDOM(r.acces).recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
         expect(r.poses.every(([nom]) => nom === TOKEN_ACCENT)).toBe(true);
         expect(Object.keys(r.acces)).toEqual(['lireToken', 'poserToken']);
     });
 
-    it('une racine dont les tokens sont ABSENTS fait poser la chaîne vide, sans lever', () => {
-        // ROUGE : ne pas contrôler la forme des fonds dans `conformer` ⟹
-        // `rapportDeContraste` LÈVE sur la chaîne vide, et une exception dans un
-        // gestionnaire de message de canal de données tue la session sans rien
-        // dire. Le cas est RÉEL : `getComputedStyle` rend la chaîne vide pour un
-        // token absent — donc pour toute page dont le socle n'est pas encore lié.
+    it('a root whose tokens are ABSENT makes the empty string be set, without throwing', () => {
+        // RED: not checking the shape of the backgrounds in `conformer` ⟹
+        // `rapportDeContraste` THROWS on the empty string, and an exception in a
+        // data channel message handler kills the session without a
+        // word. The case is REAL: `getComputedStyle` returns the empty string for an
+        // absent token — so for any page whose base layer is not linked yet.
         const r = racine({});
-        attacherAccentAuDOM(r.acces).recevoir(LISIBLE_EN_SOMBRE_SEULEMENT);
+        attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
         expect(r.poses).toEqual([[TOKEN_ACCENT, '']]);
     });
 });

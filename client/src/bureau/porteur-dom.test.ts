@@ -1,70 +1,70 @@
-// ⚠️ AUCUNE directive `@vitest-environment` : ces deux fonctions sont PURES,
-// et `client/` n'a ni jsdom ni happy-dom — par convention, pas par oubli
-// (`accent-dom.test.ts`). C'est pour cela qu'elles sont exportées séparément
-// du reste du module, qui, lui, touche le DOM et n'est pas testé.
+// ⚠️ NO `@vitest-environment` directive: these two functions are PURE,
+// and `client/` has neither jsdom nor happy-dom — by convention, not by oversight
+// (`accent-dom.test.ts`). That is why they are exported separately
+// from the rest of the module, which touches the DOM and is not tested.
 import { describe, expect, it } from 'vitest';
 import { diffuserSiChange, nomDuVerrou, type DepsBureauPage } from './porteur-dom';
 
 describe('nomDuVerrou', () => {
-    it('porte le PREFIXE de VM', () => {
-        // 🔴 SANS LUI, DEUX VMs OUVERTES DANS DEUX ONGLETS S EXCLURAIENT L UNE
-        // L AUTRE -- le defaut que P3 a corrige sur le nom de session,
-        // reintroduit par la porte de derriere.
+    it('carries the VM PREFIX', () => {
+        // 🔴 WITHOUT IT, TWO VMs OPEN IN TWO TABS WOULD EXCLUDE EACH
+        // OTHER -- the defect P3 fixed on the session name,
+        // reintroduced through the back door.
         expect(nomDuVerrou('vm-7')).toBe('vm-7:nivuus-bureau');
     });
 
-    it('sans prefixe connu, rend le nom nu', () => {
+    it('without a known prefix, returns the bare name', () => {
         expect(nomDuVerrou('')).toBe('nivuus-bureau');
     });
 });
 
 describe('diffuserSiChange', () => {
-    it('ne diffuse RIEN quand l etat est identique', () => {
-        // ⚠️ Le porteur redessine a 1 Hz : diffuser a chaque tour reveillerait
-        // tous les onglets une fois par seconde pour rien.
+    it('broadcasts NOTHING when the state is identical', () => {
+        // ⚠️ The holder redraws at 1 Hz: broadcasting on every round would wake
+        // all tabs once per second for nothing.
         const envoyes: unknown[] = [];
         const canal = { postMessage: (m: unknown) => void envoyes.push(m) };
-        const liste = [{ session: 's', titre: 'x', ouverte: true }];
-        let dernier = '';
-        dernier = diffuserSiChange(canal, liste, dernier);
-        dernier = diffuserSiChange(canal, liste, dernier);
+        const list = [{ session: 's', titre: 'x', ouverte: true }];
+        let last = '';
+        last = diffuserSiChange(canal, list, last);
+        last = diffuserSiChange(canal, list, last);
         expect(envoyes.length).toBe(1);
-        // ⚠️ MINOR round 1 : `dernier` reaffecte et jamais relu suggerait une
-        // assertion absente. Elle porte l empreinte -- verifier qu elle EST
-        // celle de la liste stable, jamais une chaine vide oubliee.
-        expect(dernier).toBe(JSON.stringify(liste));
+        // ⚠️ MINOR round 1: `last` reassigned and never read again suggested an
+        // absent assertion. It carries the fingerprint -- check that it IS
+        // the one of the stable list, never a forgotten empty string.
+        expect(last).toBe(JSON.stringify(list));
     });
 
-    it('diffuse quand une fenetre change d etat', () => {
+    it('broadcasts when a window changes state', () => {
         const envoyes: unknown[] = [];
         const canal = { postMessage: (m: unknown) => void envoyes.push(m) };
-        let dernier = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: true }], '');
-        dernier = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: false }], dernier);
+        let last = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: true }], '');
+        last = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: false }], last);
         expect(envoyes.length).toBe(2);
-        // Meme raison que ci-dessus : l empreinte rendue suit la DERNIERE
-        // diffusion, pas la premiere.
-        expect(dernier).toBe(JSON.stringify([{ session: 's', titre: 'x', ouverte: false }]));
+        // Same reason as above: the fingerprint returned follows the LAST
+        // broadcast, not the first.
+        expect(last).toBe(JSON.stringify([{ session: 's', titre: 'x', ouverte: false }]));
     });
 });
 
-/* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
+/* ══ WHAT THE FINAL REVIEW OF AUGUST 31ST 2026 ADDED ═════════════════════ */
 
-describe('DepsBureauPage : le jeton est un FOURNISSEUR, jamais une chaine', () => {
-    // 🔴 CE QUI EST FIGE ICI N EST PAS LA REGLE DE FRAICHEUR -- `jeton.test.ts`
-    // la tient depuis la tache 1 -- MAIS LA JONCTION. Le champ portait une
-    // CHAINE, capturee au chargement de la page ; or `ouvrirLaSession` ne
-    // court, pour un suiveur, qu au moment de sa PROMOTION, potentiellement
-    // des heures plus tard, et `DUREE_JETON_ACCES_MS` vaut DIX MINUTES
-    // (`plateforme/src/identite/jeton.ts`). Un test d `assurerAccesFrais`
-    // n aurait rien vu : c est ce couplage-la qui etait faux.
+describe('DepsBureauPage: the token is a PROVIDER, never a string', () => {
+    // 🔴 WHAT IS FROZEN HERE IS NOT THE FRESHNESS RULE -- `jeton.test.ts`
+    // has held it since task 1 -- BUT THE JUNCTION. The field carried a
+    // STRING, captured when the page loaded; yet `ouvrirLaSession` only
+    // runs, for a follower, at the moment of its PROMOTION, potentially
+    // hours later, and `DUREE_JETON_ACCES_MS` is TEN MINUTES
+    // (`plateforme/src/identite/jeton.ts`). A test of `assurerAccesFrais`
+    // would have seen nothing: it is this coupling that was wrong.
     //
-    // ⚠️ CES ELEMENTS NE SONT JAMAIS TOUCHES : `installerLeBureau` n est PAS
-    // appele ici, et ne peut pas l etre -- `client/` n a ni jsdom ni
-    // happy-dom, par convention. Ce test fige un CONTRAT DE TYPE, et son juge
-    // est `tsc --noEmit`, pas Vitest (qui transpile sans verifier les types).
+    // ⚠️ THESE ELEMENTS ARE NEVER TOUCHED: `installerLeBureau` is NOT
+    // called here, and cannot be -- `client/` has neither jsdom nor
+    // happy-dom, by convention. This test freezes a TYPE CONTRACT, and its judge
+    // is `tsc --noEmit`, not Vitest (which transpiles without checking types).
     const elements = {} as DepsBureauPage['elements'];
 
-    it('expose `jetonFrais`, une FONCTION que la promotion peut rappeler', async () => {
+    it('exposes `jetonFrais`, a FUNCTION the promotion can call again', async () => {
         const deps: DepsBureauPage = {
             signalingUrl: 'ws://exemple/signal',
             jetonFrais: () => Promise.resolve('frais'),
@@ -76,20 +76,20 @@ describe('DepsBureauPage : le jeton est un FOURNISSEUR, jamais une chaine', () =
         await expect(deps.jetonFrais()).resolves.toBe('frais');
     });
 
-    it('REFUSE un jeton scalaire -- assertion tenue par `tsc --noEmit`', () => {
+    it('REFUSES a scalar token -- assertion held by `tsc --noEmit`', () => {
         const deps: DepsBureauPage = {
             signalingUrl: 'ws://exemple/signal',
             jetonFrais: () => Promise.resolve(undefined),
             prefixe: '',
             fautesArmees: false,
             elements,
-            // 🔴 LA DIRECTIVE EST L ASSERTION. `tsc` ECHOUE sur un
-            // « Unused '@ts-expect-error' directive » le jour ou ce champ
-            // redeviendrait licite -- c est-a-dire le jour ou l on
-            // reintroduirait le defaut. Vitest, lui, ne verifie aucun type :
-            // c est `npm run typecheck` qui juge, et il est obligatoire.
-            // @ts-expect-error un jeton FIGE n a plus sa place dans ces deps
-            jeton: 'une chaine capturee au chargement',
+            // 🔴 THE DIRECTIVE IS THE ASSERTION. `tsc` FAILS on an
+            // "Unused '@ts-expect-error' directive" the day this field
+            // became legal again -- that is, the day the defect were
+            // reintroduced. Vitest checks no types at all:
+            // it is `npm run typecheck` that judges, and it is mandatory.
+            // @ts-expect-error a FROZEN token no longer belongs in these deps
+            jeton: 'a string captured at load time',
         };
         expect('jeton' in deps).toBe(true);
     });

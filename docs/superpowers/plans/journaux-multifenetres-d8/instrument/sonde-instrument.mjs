@@ -74,8 +74,8 @@ async function main() {
     let cible;
     for (let i = 0; i < 50; i++) {
         try {
-            const liste = await fetch('http://127.0.0.1:9333/json/list').then((r) => r.json());
-            cible = liste.find((t) => t.type === 'page');
+            const list = await fetch('http://127.0.0.1:9333/json/list').then((r) => r.json());
+            cible = list.find((t) => t.type === 'page');
             if (cible) break;
         } catch {}
         await new Promise((r) => setTimeout(r, 200));

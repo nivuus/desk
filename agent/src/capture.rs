@@ -1,10 +1,10 @@
-//! Capture de l'écran par DXGI Desktop Duplication, recadrée sur une fenêtre.
+//! Screen capture through DXGI Desktop Duplication, cropped to a window.
 //!
-//! `Windows.Graphics.Capture` aurait permis de capturer directement la fenêtre,
-//! mais cette API est inutilisable sur Windows Server 2022 : le service système
-//! qui l'implémente plante sur `CreateForWindow`. On duplique donc la sortie
-//! écran et on recadre. Les images restent sur le GPU : le recadrage se fait
-//! par `CopySubresourceRegion`, sans aller-retour en mémoire centrale.
+//! `Windows.Graphics.Capture` would have allowed capturing the window directly,
+//! but this API is unusable on Windows Server 2022: the system service
+//! implementing it crashes on `CreateForWindow`. We therefore duplicate the screen
+//! output and crop. Frames stay on the GPU: cropping is done
+//! through `CopySubresourceRegion`, without a round trip through main memory.
 
 #![cfg(windows)]
 
@@ -25,20 +25,20 @@ use windows::Win32::Graphics::Dxgi::{
 
 use crate::geometry::Rect;
 
-/// Compteurs de diagnostic de l'acquisition DXGI (voir `SOURCE_TRACE`).
+/// Diagnostic counters of DXGI acquisition (see `SOURCE_TRACE`).
 ///
-/// `ACCUMULATED` est la somme de `DXGI_OUTDUPL_FRAME_INFO::AccumulatedFrames`,
-/// c'est-à-dire le nombre de mises à jour du bureau que DXGI a fusionnées dans
-/// les images qu'il nous a rendues. C'est la seule mesure qui distingue les
-/// deux explications d'un `captured_hz` bas : si `ACCUMULATED` est nettement
-/// supérieur à `HITS`, le bureau se met bien à jour vite et c'est nous qui
-/// l'interrogeons trop rarement ; s'il le suit de près, c'est la source
-/// (la fenêtre capturée) qui ne produit pas davantage.
+/// `ACCUMULATED` is the sum of `DXGI_OUTDUPL_FRAME_INFO::AccumulatedFrames`,
+/// that is the number of desktop updates DXGI merged into
+/// the frames it returned to us. It is the only measurement that distinguishes the
+/// two explanations of a low `captured_hz`: if `ACCUMULATED` is clearly
+/// above `HITS`, the desktop does update fast and it is we who
+/// query it too rarely; if it follows it closely, it is the source
+/// (the captured window) that produces no more.
 pub static ATTEMPTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static HITS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static ACCUMULATED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// Une image capturée et recadrée, résidente sur le GPU.
+/// A captured and cropped frame, resident on the GPU.
 pub struct CapturedFrame {
     pub texture: ID3D11Texture2D,
     pub width: u32,
@@ -48,69 +48,72 @@ pub struct CapturedFrame {
 pub struct DesktopCapture {
     device: ID3D11Device,
     context: ID3D11DeviceContext,
-    /// Posée à `None` par `rouvrir`, et PEUT y rester si sa réouverture
-    /// échoue : plus un défaut, voir `duplication()` et `types::lire`.
+    /// Set to `None` by `rouvrir`, and MAY stay so if its reopening
+    /// fails: no longer a defect, see `duplication()` and `types::lire`.
     duplication: Option<IDXGIOutputDuplication>,
-    /// Dernier HRESULT de perte d'accès, lu par `duplication()` si le champ
-    /// ci-dessus est `None`.
-    dernier_code_perdu: i32,
-    /// Ce qu'il faut rouvrir après une perte d'accès. Retenu à l'ouverture :
-    /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
-    /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
+    /// Last access-loss HRESULT, read by `duplication()` if the field
+    /// above is `None`.
+    last_lost_code: i32,
+    /// What must be reopened after an access loss. Kept at opening:
+    /// at the moment access is lost, the topology has already changed and nothing
+    /// in the DXGI objects still held says what we were capturing.
     cible: CibleCapture,
-    /// Fenêtre de reprise en cours (voir `next_frame`) : « ouverte à la
-    /// première perte d'accès et **refermée par le premier succès** »
-    /// (`capture::reprise`). `succes()` étant appelée sur `Ok(None)`, toute
-    /// acquisition non refusée la referme — la durée court donc depuis le
-    /// DERNIER refus. Est définitive une perte ININTERROMPUE au-delà d'elle.
+    /// Resumption window in progress (see `next_frame`): "opened at the
+    /// first access loss and **closed by the first success**"
+    /// (`capture::reprise`). `succes()` being called on `Ok(None)`, any
+    /// non-refused acquisition closes it — the duration therefore runs from the
+    /// LAST refusal. An UNINTERRUPTED loss beyond it is definitive.
     fenetre: crate::capture_reprise::FenetreDeReprise,
     desktop_width: u32,
     desktop_height: u32,
-    /// Texture de destination, réallouée seulement quand la taille change.
+    /// Destination texture, reallocated only when the size changes.
     target: Option<(ID3D11Texture2D, u32, u32)>,
-    /// Vrai tant qu'une image acquise n'a pas été relâchée.
+    /// True as long as an acquired frame has not been released.
     frame_held: bool,
-    /// Étape courante publiée pour le fil de surveillance (voir
-    /// `encode::PHASE_CAPTURE_*`). Absente hors mode diagnostic.
+    /// Current step published for the watchdog thread (see
+    /// `encode::PHASE_CAPTURE_*`). Absent outside diagnostic mode.
     phase: Option<Arc<AtomicU64>>,
 }
 
 impl DesktopCapture {
-    /// Ouvre au DÉMARRAGE : la fenêtre de réessai est pleine, et l'appel peut
-    /// donc bloquer jusqu'à `DUREE_FENETRE_OUVERTURE`.
+    /// Opens at START-UP: the retry window is full, and the call can
+    /// therefore block for up to `DUREE_FENETRE_OUVERTURE`.
     ///
-    /// **N'employer que là où bloquer est légitime** — voir `ouvrir`. Pour la
-    /// reconstruction d'une capture en cours de session, c'est
-    /// `new_sans_attente` qu'il faut.
+    /// **Use only where blocking is legitimate** — see `ouvrir`. For
+    /// rebuilding a capture during a session, it is
+    /// `new_sans_attente` that is needed.
     pub fn new() -> Result<Self> {
-        Self::ouvrir(CibleCapture::Bureau, crate::capture_reprise::DUREE_FENETRE_OUVERTURE)
+        Self::ouvrir(
+            CibleCapture::Bureau,
+            crate::capture_reprise::DUREE_FENETRE_OUVERTURE,
+        )
     }
 
-    /// Ouvre SANS attendre : un refus est rendu au premier essai.
+    /// Opens WITHOUT waiting: a refusal is returned at the first attempt.
     ///
-    /// Pour les appelants qui courent sur un fil dont l'immobilisation se
-    /// paierait — `WindowsSource::resize`, qui reconstruit sa capture depuis
-    /// le fil bloquant de `Session::run`. Y dormir suspendrait du même coup
-    /// les demandes de keyframe, l'adaptation réseau et les
-    /// redimensionnements suivants : exactement l'arbitrage que `next_frame`
-    /// refuse déjà (voir son commentaire « Pas de boucle interne »).
+    /// For callers running on a thread whose immobilisation would
+    /// be costly — `WindowsSource::resize`, which rebuilds its capture from
+    /// the blocking thread of `Session::run`. Sleeping there would at the same time suspend
+    /// keyframe requests, network adaptation and the
+    /// following resizes: exactly the trade-off `next_frame`
+    /// already refuses (see its comment "No internal loop").
     ///
-    /// Comportement **identique à celui d'avant l'ajout du réessai** : rien
-    /// n'est retenté, seule la trace d'abandon est neuve.
+    /// Behaviour **identical to the one before the retry was added**: nothing
+    /// is retried, only the abandonment trace is new.
     pub fn new_sans_attente() -> Result<Self> {
         Self::ouvrir(CibleCapture::Bureau, std::time::Duration::ZERO)
     }
 
-    /// Duplique une sortie DXGI précise, désignée par son nom
-    /// (`\\.\DISPLAYn`, tel que `enumerer_sorties` le rend).
+    /// Duplicates a specific DXGI output, designated by its name
+    /// (`\\.\DISPLAYn`, as `enumerer_sorties` returns it).
     ///
-    /// **Par le nom et non par des index d'énumération** : ceux-ci sont
-    /// positionnels et changent dès qu'une sortie apparaît ou disparaît — ce
-    /// qui est le cas nominal en multi-fenêtres, où le superviseur crée une
-    /// sortie par ouverture de fenêtre.
+    /// **By name and not by enumeration indices**: those are
+    /// positional and change as soon as an output appears or disappears — which
+    /// is the nominal case in multi-window mode, where the supervisor creates one
+    /// output per window opening.
     ///
-    /// Fenêtre de réessai pleine : cette forme n'est appelée qu'au démarrage
-    /// d'un enfant du superviseur.
+    /// Full retry window: this form is only called at the start-up
+    /// of a supervisor child.
     pub fn sur_sortie(nom: &str) -> Result<Self> {
         Self::ouvrir(
             CibleCapture::Sortie(nom.to_string()),
@@ -118,36 +121,40 @@ impl DesktopCapture {
         )
     }
 
-    /// `fenetre_ouverture` : durée pendant laquelle une duplication refusée
-    /// pour indisponibilité passagère est retentée. **Un ARGUMENT et non la
-    /// constante lue sur place, parce que le droit de bloquer se décide chez
-    /// l'appelant** — `ouvrir` ne court pas qu'au démarrage d'un enfant. Voir
-    /// `ouverture::dupliquer_avec_reprise` pour l'arbitrage complet.
+    /// `fenetre_ouverture`: duration during which a duplication refused
+    /// for temporary unavailability is retried. **An ARGUMENT and not the
+    /// constant read on the spot, because the right to block is decided by
+    /// the caller** — `ouvrir` does not only run at a child's start-up. See
+    /// `ouverture::duplicate_with_retry` for the complete trade-off.
     fn ouvrir(cible: CibleCapture, fenetre_ouverture: std::time::Duration) -> Result<Self> {
         let factory: IDXGIFactory1 =
-            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
+            unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory")?;
 
-        // Sans cible (`new()`, `CibleCapture::Bureau`), on retient le premier
-        // adaptateur possédant une sortie attachée au bureau : c'est celui qui
-        // compose l'écran, et donc le seul duplicable. Sur la VM cible c'est la
-        // RTX 4070, ce qui donne du même coup le bon périphérique pour
-        // l'encodeur matériel de la tâche 10. Avec une cible
-        // (`CibleCapture::Sortie`), c'est celle-ci qui est ouverte telle quelle.
+        // Without a target (`new()`, `CibleCapture::Bureau`), we keep the first
+        // adapter that has an output attached to the desktop: it is the one that
+        // composes the screen, and hence the only one that can be duplicated. On the target VM it is the
+        // RTX 4070, which at the same time gives the right device for
+        // the hardware encoder of task 10. With a target
+        // (`CibleCapture::Sortie`), it is that one that is opened as is.
         let (adapter, output) = ouvrir_sortie(&factory, &cible)?;
 
-        let (device, context) = creer_peripherique(&adapter)?;
+        let (device, context) = create_device_and_context(&adapter)?;
 
         let (duplication, desktop_width, desktop_height) =
-            dupliquer_avec_reprise(&device, &output, &cible, fenetre_ouverture)?;
-        tracing::info!(desktop_width, desktop_height, "duplication de sortie établie");
+            duplicate_with_retry(&device, &output, &cible, fenetre_ouverture)?;
+        tracing::info!(
+            desktop_width,
+            desktop_height,
+            "output duplication established"
+        );
 
         Ok(Self {
             device,
             context,
             duplication: Some(duplication),
-            dernier_code_perdu: 0,
+            last_lost_code: 0,
             cible,
-            fenetre: crate::capture_reprise::FenetreDeReprise::nouvelle(),
+            fenetre: crate::capture_reprise::FenetreDeReprise::new(),
             desktop_width,
             desktop_height,
             target: None,
@@ -160,59 +167,59 @@ impl DesktopCapture {
         &self.device
     }
 
-    /// Reconstruit la duplication après une perte d'accès, **en conservant le
-    /// périphérique D3D11**.
+    /// Rebuilds the duplication after an access loss, **keeping the
+    /// D3D11 device**.
     ///
-    /// Ce n'est pas une économie, c'est une nécessité. L'encodeur H.264 est lié
-    /// à ce périphérique par l'`IMFDXGIDeviceManager` (`encode::share_device`) :
-    /// en créer un neuf obligerait à détruire l'encodeur, donc à emprunter
-    /// `Drop for H264Encoder`, dont le pire cas est borné à 8 s et où un gel a
-    /// déjà été observé (`CLAUDE.md`). Une reprise censée passer inaperçue ne
-    /// peut pas payer ce prix. La protection multifil posée sur le contexte à
-    /// l'ouverture n'est pas rejouée : elle porte sur le contexte immédiat,
-    /// qu'on conserve.
+    /// It is not a saving, it is a necessity. The H.264 encoder is bound
+    /// to this device through the `IMFDXGIDeviceManager` (`encode::share_device`):
+    /// creating a new one would force destroying the encoder, hence going through
+    /// `Drop for H264Encoder`, whose worst case is bounded at 8 s and where a freeze has
+    /// already been observed (`CLAUDE.md`). A resumption meant to go unnoticed
+    /// cannot pay that price. The multithread protection set on the context at
+    /// opening is not replayed: it concerns the immediate context,
+    /// which we keep.
     ///
-    /// **L'ancienne duplication est relâchée AVANT que la neuve ne soit
-    /// demandée, et l'ordre est le fond de cette méthode.** DXGI n'autorise
-    /// qu'**une** duplication par sortie. La version précédente appelait
-    /// `dupliquer()` alors que `self.duplication` détenait encore l'objet
-    /// périmé : l'appel réussissait — 378 fois sur 378 au relevé du
-    /// 1ᵉʳ août 2026 — et rendait une duplication **mort-née**, qui refusait
-    /// aussitôt toute acquisition. Huit secondes de réessais toutes les 150 ms
-    /// n'en sortaient jamais.
+    /// **The old duplication is released BEFORE the new one is
+    /// requested, and the order is the substance of this method.** DXGI only allows
+    /// **one** duplication per output. The previous version called
+    /// `dupliquer()` while `self.duplication` still held the stale
+    /// object: the call succeeded — 378 times out of 378 in the reading of
+    /// 1 August 2026 — and returned a **stillborn** duplication, which immediately
+    /// refused any acquisition. Eight seconds of retries every 150 ms
+    /// never got out of it.
     pub fn rouvrir(&mut self) -> Result<()> {
-        // L'image détenue d'abord : `release_frame` appelle `ReleaseFrame` sur
-        // la duplication qu'on s'apprête à relâcher.
+        // The held frame first: `release_frame` calls `ReleaseFrame` on
+        // the duplication we are about to release.
         self.release_frame();
 
-        // PUIS la duplication elle-même, et c'est cette ligne qui compte.
-        // `None` la fait relâcher ici, pas à l'affectation d'après.
+        // THEN the duplication itself, and it is this line that matters.
+        // `None` makes it be released here, not at the following assignment.
         self.duplication = None;
 
         let factory: IDXGIFactory1 =
-            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI (réouverture)")?;
-        let (_adapter, output) = ouvrir_sortie(&factory, &self.cible)
-            .context("résolution de la sortie à rouvrir")?;
+            unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory (reopening)")?;
+        let (_adapter, output) =
+            ouvrir_sortie(&factory, &self.cible).context("resolving the output to reopen")?;
         let (duplication, largeur, hauteur) = dupliquer(&self.device, &output)?;
 
-        // Les dimensions peuvent avoir changé : la texture de destination est
-        // dimensionnée sur la RÉGION demandée par l'appelant, pas sur celles-ci,
-        // mais `desktop_size()` est lue ailleurs et doit rester juste.
+        // The dimensions may have changed: the destination texture is
+        // sized on the REGION requested by the caller, not on these,
+        // but `desktop_size()` is read elsewhere and must stay right.
         self.duplication = Some(duplication);
         self.desktop_width = largeur;
         self.desktop_height = hauteur;
         Ok(())
     }
 
-    /// La duplication courante, ou le dernier HRESULT perdu si absente — voir `types::lire`.
+    /// The current duplication, or the last lost HRESULT if absent — see `types::lire`.
     fn duplication(&self) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
-        types::lire(&self.duplication, self.dernier_code_perdu)
+        types::lire(&self.duplication, self.last_lost_code)
     }
 
-    /// Branche le marqueur d'étape partagé avec le fil de surveillance.
+    /// Plugs in the step marker shared with the watchdog thread.
     ///
-    /// Sans lui, un blocage dans `next_frame` reste anonyme : les trois appels
-    /// Windows qu'elle enchaîne se confondent en une seule étape.
+    /// Without it, a block in `next_frame` stays anonymous: the three Windows
+    /// calls it chains merge into a single step.
     pub fn set_phase_marker(&mut self, phase: Arc<AtomicU64>) {
         self.phase = Some(phase);
     }
@@ -227,14 +234,14 @@ impl DesktopCapture {
         (self.desktop_width, self.desktop_height)
     }
 
-    /// Acquiert l'image suivante et la recadre sur `region`, **en se rouvrant
-    /// si DXGI lui a révoqué l'accès**.
+    /// Acquires the next frame and crops it to `region`, **reopening itself
+    /// if DXGI revoked its access**.
     ///
-    /// La reprise est ici, et non chez l'appelant, à dessein : le banc
-    /// multi-fenêtres capture par cette fonction sans passer par
-    /// `WindowsSource` (`diagnostics/multifenetre/voies.rs`). Une reprise logée
-    /// plus haut laisserait le banc hors du chemin de production, et la mesure
-    /// qui doit valider cette voie ne vaudrait rien.
+    /// The resumption is here, and not with the caller, on purpose: the
+    /// multi-window bench captures through this function without going through
+    /// `WindowsSource` (`diagnostics/multifenetre/voies.rs`). A resumption placed
+    /// higher up would leave the bench off the production path, and the measurement
+    /// meant to validate this path would be worthless.
     pub fn next_frame(
         &mut self,
         region: Rect,
@@ -245,43 +252,43 @@ impl DesktopCapture {
                 Ok(issue)
             }
             Err(EchecAcquisition::AccesPerdu(code_perdu)) => {
-                // Pas de boucle interne, et c'est le point de conception :
-                // cette fonction est appelée depuis la boucle de
-                // `Session::run`, et y dormir plusieurs secondes suspendrait
-                // du même coup les demandes de keyframe, les changements de
-                // barreau de l'adaptation réseau et les redimensionnements.
-                // La reprise s'étale donc sur plusieurs appels.
+                // No internal loop, and that is the design point:
+                // this function is called from the loop of
+                // `Session::run`, and sleeping there for several seconds would at the same time suspend
+                // keyframe requests, network adaptation rung
+                // changes and resizes.
+                // The resumption is therefore spread over several calls.
                 match self.fenetre.tenter(std::time::Instant::now()) {
                     crate::capture_reprise::Tentative::Rouvrir => {
-                        // `info!` et non `debug!`, pour les deux traces de
-                        // cette branche : l'exploitation tourne en
-                        // RUST_LOG=info, et une mitigation muette n'en est pas
-                        // une (même règle que `encode/arret.rs`, `CLAUDE.md`
-                        // — ne pas les redescendre).
+                        // `info!` and not `debug!`, for both traces of
+                        // this branch: operations run at
+                        // RUST_LOG=info, and a silent mitigation is not
+                        // one (same rule as `encode/arret.rs`, `CLAUDE.md`
+                        // — do not bring them back down).
                         //
-                        // Le HRESULT nu, et non seulement inféré à la lecture
-                        // du code (comme a dû le faire le rapport de la
-                        // mesure du 1ᵉʳ août 2026) : c'est la seule pièce qui
-                        // dit CE QUI a été perdu.
+                        // The bare HRESULT, and not only inferred from reading
+                        // the code (as the report of the
+                        // measurement of 1 August 2026 had to do): it is the only piece that
+                        // says WHAT was lost.
                         tracing::info!(
                             tentative = self.fenetre.tentatives(),
                             cible = ?self.cible,
                             hresult = format!("{code_perdu:#010x}"),
-                            "accès à la duplication perdu, réouverture"
+                            "access to the duplication lost, reopening"
                         );
-                        if let Err(erreur) = self.rouvrir() {
-                            // Un échec de réouverture n'est PAS définitif : la
-                            // sortie peut n'être pas encore réapparue dans la
-                            // topologie. On le dit et on laisse la fenêtre
-                            // courir — c'est elle qui tranchera. VRAI depuis
-                            // le correctif de relecture de la tâche 6 quater
-                            // (`types::lire`) seulement : avant lui, l'appel
-                            // suivant trouvait `self.duplication` à `None` et
-                            // rompait la fenêtre en panne malgré ce texte.
+                        if let Err(error) = self.rouvrir() {
+                            // A reopening failure is NOT definitive: the
+                            // output may not yet have reappeared in the
+                            // topology. We say so and let the window
+                            // run — it is what will decide. TRUE since
+                            // the re-read fix of task 6 quater
+                            // (`types::lire`) only: before it, the following
+                            // call found `self.duplication` as `None` and
+                            // broke the window down despite this text.
                             tracing::info!(
-                                erreur = %crate::cause::chaine(&erreur),
+                                error = %crate::cause::chain(&error),
                                 cible = ?self.cible,
-                                "réouverture de la duplication échouée, la fenêtre de reprise court toujours"
+                                "reopening the duplication failed, the recovery window is still running"
                             );
                         }
                         Ok(None)
@@ -296,10 +303,10 @@ impl DesktopCapture {
         }
     }
 
-    /// Acquiert l'image suivante et la recadre sur `region`, sans reprise.
+    /// Acquires the next frame and crops it to `region`, without resumption.
     ///
-    /// Renvoie `Ok(None)` si aucune image nouvelle n'est disponible — cas
-    /// courant et normal : le bureau ne change pas à chaque appel.
+    /// Returns `Ok(None)` if no new frame is available — common
+    /// and normal case: the desktop does not change at every call.
     fn tenter_acquisition(
         &mut self,
         region: Rect,
@@ -309,17 +316,17 @@ impl DesktopCapture {
         let mut info = DXGI_OUTDUPL_FRAME_INFO::default();
         let mut resource: Option<IDXGIResource> = None;
         ATTEMPTS.fetch_add(1, Ordering::Relaxed);
-        // `duplication()` D'ABORD, la phase ENSUITE — et non l'inverse. Ce `?`
-        // sort de la fonction à chaque tour de la fenêtre de reprise (jusqu'à
-        // `DUREE_FENETRE_REPRISE`, 8 s), sans jamais atteindre le retour à
-        // `PHASE_CAPTURE` posé après l'acquisition : le fil de surveillance
-        // journalisait `étape = capture/AcquireNextFrame` pendant ces 8 s alors
-        // que l'appel n'était pas fait une seule fois. Ce dépôt a déjà perdu
-        // une campagne à attribuer un blocage au mauvais appel — une étape
-        // publiée ne doit désigner que du code réellement en cours.
+        // `duplication()` FIRST, the phase NEXT — and not the reverse. This `?`
+        // exits the function at every round of the resumption window (up to
+        // `DUREE_FENETRE_REPRISE`, 8 s), without ever reaching the return to
+        // `PHASE_CAPTURE` set after the acquisition: the watchdog thread
+        // logged the `capture/AcquireNextFrame` step during those 8 s while
+        // the call was not made a single time. This repository has already lost
+        // a campaign attributing a block to the wrong call — a published step
+        // must only designate code actually running.
         let duplication = self.duplication()?;
-        // Attente nulle : la cadence est pilotée par la boucle appelante, pas
-        // par un blocage ici.
+        // Zero wait: the cadence is driven by the calling loop, not
+        // by blocking here.
         self.set_phase(crate::encode::PHASE_CAPTURE_ACQUIRE);
         let acquired = unsafe { duplication.AcquireNextFrame(0, &mut info, &mut resource) };
         self.set_phase(crate::encode::PHASE_CAPTURE);
@@ -333,47 +340,49 @@ impl DesktopCapture {
             if e.code() == DXGI_ERROR_WAIT_TIMEOUT {
                 return Ok(None);
             }
-            // Classer sur le CODE, jamais sur le texte du message : `CLAUDE.md`
-            // porte le précédent d'un libellé Windows qui a fait attribuer un
-            // refus au mauvais appel pendant tout un chantier.
+            // Classify on the CODE, never on the message text: `CLAUDE.md`
+            // carries the precedent of a Windows label that got a
+            // refusal attributed to the wrong call for a whole work stream.
             if crate::capture_reprise::est_acces_perdu(e.code().0) {
-                self.dernier_code_perdu = e.code().0;
+                self.last_lost_code = e.code().0;
                 return Err(EchecAcquisition::AccesPerdu(e.code().0));
             }
-            return Err(EchecAcquisition::Panne(anyhow!("acquisition d'image : {e}")));
+            return Err(EchecAcquisition::Panne(anyhow!(
+                "acquisition d'image : {e}"
+            )));
         }
         self.frame_held = true;
 
-        // À partir d'ici l'image est détenue : tout chemin de sortie doit la
-        // relâcher, sans quoi la duplication refuse toute acquisition
-        // ultérieure. `release_frame` en tête de la prochaine itération ne
-        // couvre pas le cas d'une erreur qui remonte et arrête la boucle,
-        // ni celui d'un appelant qui réessaie après avoir avalé l'erreur.
+        // From here on the frame is held: every exit path must
+        // release it, otherwise the duplication refuses any later
+        // acquisition. `release_frame` at the head of the next iteration does not
+        // cover the case of an error that bubbles up and stops the loop,
+        // nor that of a caller that retries after swallowing the error.
         let cropped: Result<CapturedFrame> = (|| {
-            let resource = resource.ok_or_else(|| anyhow!("ressource d'image absente"))?;
+            let resource = resource.ok_or_else(|| anyhow!("image resource absent"))?;
             let desktop: ID3D11Texture2D = resource.cast()?;
             self.crop(&desktop, region)
         })();
         match cropped {
             Ok(frame) => {
-                // Relâcher TOUT DE SUITE, pas au tour suivant.
+                // Release RIGHT AWAY, not at the next round.
                 //
-                // `crop` a déjà recopié les pixels dans notre propre texture
-                // (`CopySubresourceRegion` vers `self.target`) : l'image du
-                // bureau ne sert plus à rien passé cette ligne. La garder
-                // jusqu'à l'appel suivant, comme le faisait la version
-                // précédente via le seul `release_frame()` en tête de
-                // fonction, immobilisait la duplication pendant tout
-                // l'intervalle entre deux tours — soit ~16,7 ms sur 16,7 à la
-                // cadence de `Session::run`.
+                // `crop` has already copied the pixels into our own texture
+                // (`CopySubresourceRegion` to `self.target`): the desktop
+                // frame is of no use past this line. Keeping it
+                // until the next call, as the previous version
+                // did via the sole `release_frame()` at the head of the
+                // function, immobilised the duplication for the whole
+                // interval between two rounds — that is ~16.7 ms out of 16.7 at the
+                // cadence of `Session::run`.
                 //
-                // Mesuré : la même fenêtre Firefox, avec le même contenu,
-                // rendait 74 images/s à `CAPTURE_TEST` (boucle serrée, donc
-                // relâchement toutes les ~2 ms) contre seulement 22 images/s
-                // dans `Session::run` (relâchement toutes les ~16,7 ms). Ce
-                // n'était donc ni la composition du bureau, ni le pilote, ni
-                // la contention GPU avec l'encodeur (`ENCODE_TEST` tient
-                // 66 i/s encodeur compris) : c'était la durée de détention.
+                // Measured: the same Firefox window, with the same content,
+                // yielded 74 fps at `CAPTURE_TEST` (tight loop, hence
+                // release every ~2 ms) against only 22 fps
+                // in `Session::run` (release every ~16.7 ms). It
+                // was therefore neither desktop composition, nor the driver, nor
+                // GPU contention with the encoder (`ENCODE_TEST` holds
+                // 66 fps encoder included): it was the holding duration.
                 self.release_frame();
                 Ok(Some(frame))
             }
@@ -384,65 +393,13 @@ impl DesktopCapture {
         }
     }
 
-    /// Copie la région demandée dans une texture dédiée, sur le GPU.
-    fn crop(&mut self, source: &ID3D11Texture2D, region: Rect) -> Result<CapturedFrame> {
-        let (width, height) = (region.width, region.height);
-        if width == 0 || height == 0 {
-            bail!("région de recadrage vide");
-        }
-
-        // Réallouer seulement si la taille a changé : un redimensionnement est
-        // rare, une image ne l'est pas.
-        let need_alloc = !matches!(self.target, Some((_, w, h)) if w == width && h == height);
-        if need_alloc {
-            let desc = D3D11_TEXTURE2D_DESC {
-                Width: width,
-                Height: height,
-                MipLevels: 1,
-                ArraySize: 1,
-                Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-                SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
-                Usage: D3D11_USAGE_DEFAULT,
-                BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
-                CPUAccessFlags: 0,
-                MiscFlags: 0,
-            };
-            let mut texture: Option<ID3D11Texture2D> = None;
-            unsafe { self.device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-                .context("allocation de la texture de recadrage")?;
-            self.target = Some((
-                texture.ok_or_else(|| anyhow!("texture de recadrage absente"))?,
-                width,
-                height,
-            ));
-        }
-
-        let (texture, _, _) = self.target.as_ref().expect("texture allouée");
-        let box_ = D3D11_BOX {
-            left: region.x.max(0) as u32,
-            top: region.y.max(0) as u32,
-            front: 0,
-            right: region.x.max(0) as u32 + width,
-            bottom: region.y.max(0) as u32 + height,
-            back: 1,
-        };
-        self.set_phase(crate::encode::PHASE_CAPTURE_CROP);
-        unsafe {
-            self.context
-                .CopySubresourceRegion(texture, 0, 0, 0, 0, source, 0, Some(&box_));
-        }
-        self.set_phase(crate::encode::PHASE_CAPTURE);
-
-        Ok(CapturedFrame { texture: texture.clone(), width, height })
-    }
-
     fn release_frame(&mut self) {
         if self.frame_held {
             self.set_phase(crate::encode::PHASE_CAPTURE_RELEASE);
-            // Défensif plutôt que `duplication()` (qui rend un `Result`) :
-            // cette méthode tourne aussi dans `Drop`, où rien ne doit remonter.
+            // Defensive rather than `duplication()` (which returns a `Result`):
+            // this method also runs in `Drop`, where nothing must bubble up.
             if let Some(duplication) = self.duplication.as_ref() {
-                // Un échec ici n'est pas récupérable et ne doit pas masquer la suite.
+                // A failure here is not recoverable and must not mask what follows.
                 let _ = unsafe { duplication.ReleaseFrame() };
             }
             self.set_phase(crate::encode::PHASE_CAPTURE);
@@ -457,36 +414,39 @@ impl Drop for DesktopCapture {
     }
 }
 
-// `SortieDxgi` vit dans `crate::sortie_dxgi` (portable, hors `#[cfg(windows)]`)
-// pour que `superviseur::placement::sortie_par_dimensions` (tâche 7) puisse la
-// consommer sur l'hôte Linux — `crate::capture` n'existe pas du tout hors
-// Windows. Ce réexport garde `crate::capture::SortieDxgi` valide et identique
-// au type portable pour tout le code qui, lui, ne compile que sous Windows.
+// `SortieDxgi` lives in `crate::sortie_dxgi` (portable, outside `#[cfg(windows)]`)
+// so that `superviseur::placement::sortie_par_dimensions` (task 7) can
+// consume it on the Linux host — `crate::capture` does not exist at all outside
+// Windows. This re-export keeps `crate::capture::SortieDxgi` valid and identical
+// to the portable type for all the code that only compiles under Windows.
 pub use crate::sortie_dxgi::SortieDxgi;
 
-// `enumerer_sorties`, `enumerer_sorties_silencieux` et le reste de
-// l'énumération DXGI vivent dans ce module enfant, extrait à la tâche 2 du
-// sous-bloc D2 pour ramener ce fichier sous le plafond de 500 lignes
-// (`CLAUDE.md`) — voir l'en-tête de `capture/enumeration.rs`. Réexportées ici
-// pour que `crate::capture::enumerer_sorties` reste valide sans toucher à un
-// seul appelant.
+// Cropping a duplicated frame into a dedicated texture, on the GPU.
+mod recadrage;
+
+// `enumerer_sorties`, `enumerer_sorties_silencieux` and the rest of
+// DXGI enumeration live in this child module, extracted in task 2 of
+// sub-block D2 to bring this file back under the 500-line cap
+// (`CLAUDE.md`) — see the header of `capture/enumeration.rs`. Re-exported here
+// so that `crate::capture::enumerer_sorties` stays valid without touching a
+// single caller.
 mod enumeration;
 pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 
-// `ouvrir_sortie` et `dupliquer` vivent dans ce module enfant, extrait à la
-// tâche 3 du sous-bloc D2 pour ramener ce fichier sous le plafond de 500
-// lignes (`CLAUDE.md`) après l'ajout d'`EchecAcquisition` et de la reprise
-// dans `next_frame` — voir l'en-tête de `capture/ouverture.rs`.
-// `creer_peripherique` et `dupliquer_avec_reprise` les y ont rejointes à la
-// tâche 11 bis, la seconde portant le réessai d'ouverture et la première n'y
-// étant descendue que pour rendre au fichier parent la marge que ce réessai
-// lui prenait.
+// `ouvrir_sortie` and `dupliquer` live in this child module, extracted in
+// task 3 of sub-block D2 to bring this file back under the 500-line
+// cap (`CLAUDE.md`) after adding `EchecAcquisition` and the resumption
+// in `next_frame` — see the header of `capture/ouverture.rs`.
+// `create_device_and_context` and `duplicate_with_retry` joined them in
+// task 11 bis, the second carrying the opening retry and the first having
+// moved down only to give the parent file back the margin that retry
+// took from it.
 pub mod ouverture;
-use ouverture::{creer_peripherique, dupliquer, dupliquer_avec_reprise, ouvrir_sortie};
+use ouverture::{create_device_and_context, duplicate_with_retry, dupliquer, ouvrir_sortie};
 
-// `EchecAcquisition`, `CibleCapture` et l'aide `lire` vivent dans ce module
-// enfant, extrait à la tâche 6 quater du sous-bloc D2 — voir l'en-tête de
-// `capture/types.rs`. `capture/ouverture.rs` continue de résoudre
-// `super::CibleCapture` sans changement.
+// `EchecAcquisition`, `CibleCapture` and the `lire` helper live in this child
+// module, extracted in task 6 quater of sub-block D2 — see the header of
+// `capture/types.rs`. `capture/ouverture.rs` keeps resolving
+// `super::CibleCapture` without change.
 mod types;
 pub use types::{CibleCapture, EchecAcquisition};

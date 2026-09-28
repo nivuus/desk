@@ -2,20 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { cibleDeRedirection } from './redirection';
 
 describe('cibleDeRedirection', () => {
-    it('conserve la chaine de requete', () => {
-        // 🔴 LE POINT DE TOUTE LA TACHE : les PWA DEJA installees portent
-        // `shell.html?app=<id>` dans leur id (fige, jamais mis a jour -- voir
-        // hub/manifeste.ts), pas dans start_url depuis ce lot, et le
-        // manifeste blob: qu elles portent ne sera jamais relu. Perdre
-        // `?app=` les casserait aussi surement que supprimer le fichier.
+    it('keeps the query string', () => {
+        // 🔴 THE POINT OF THE WHOLE TASK: ALREADY installed PWAs carry
+        // `shell.html?app=<id>` in their id (frozen, never updated -- see
+        // hub/manifeste.ts), not in start_url since this batch, and the
+        // blob: manifest they carry will never be read again. Losing
+        // `?app=` would break them as surely as deleting the file.
         expect(cibleDeRedirection('?app=u-1')).toBe('/?app=u-1');
     });
 
-    it('sans requete, mene a la racine nue', () => {
+    it('without a query, leads to the bare root', () => {
         expect(cibleDeRedirection('')).toBe('/');
     });
 
-    it('conserve PLUSIEURS parametres', () => {
+    it('keeps SEVERAL parameters', () => {
         expect(cibleDeRedirection('?app=u-1&plateforme=https%3A%2F%2Fx')).toBe(
             '/?app=u-1&plateforme=https%3A%2F%2Fx',
         );

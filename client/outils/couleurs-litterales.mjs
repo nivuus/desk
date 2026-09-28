@@ -1,110 +1,110 @@
 #!/usr/bin/env node
-// Contrôle §7.2 de la spec ⑥ — AUCUNE COULEUR LITTÉRALE HORS DE
-// `tokens/couleurs.css` (`tokens.css` avant l'extraction de la tâche 6,
-// 25 août 2026).
+// Check §7.2 of spec ⑥ — NO LITERAL COLOUR OUTSIDE
+// `tokens/couleurs.css` (`tokens.css` before the extraction of task 6,
+// August 25th, 2026).
 //
-// Sort 1 dès qu'une couleur est écrite en dur ailleurs que dans la source
-// unique. Ce script ne porte AUCUNE règle de design : il balaie, il compte, il
-// nomme. Toute règle appartiendrait à `client/src/design/*.ts`, qui est
-// typechecké et testé (même clause que `client/src/connexion.ts:5-9`).
+// Exits 1 as soon as a colour is hardcoded anywhere other than in the single
+// source. This script carries NO design rule: it scans, it counts, it
+// names. Any rule would belong to `client/src/design/*.ts`, which is
+// typechecked and tested (same clause as `client/src/connexion.ts:5-9`).
 //
 // ────────────────────────────────────────────────────────────────────────────
-// POURQUOI CE CONTRÔLE PORTE TROIS GARDES, ET CE QUE CHACUN TIENT RÉELLEMENT
-// (divergence D8 du plan S1, puis mutations jouées le 19 août 2026).
+// WHY THIS CHECK CARRIES THREE GUARDS, AND WHAT EACH ONE REALLY HOLDS
+// (divergence D8 of the S1 plan, then mutations played on August 19th, 2026).
 //
-// Le §7.2 de la spec prescrit de chercher les mots-clés `black`/`white`/`red`.
-// Sur l'arbre intact, la recherche brute lève deux faux positifs, tous deux du
-// FRANÇAIS :
+// §7.2 of the spec prescribes looking for the keywords `black`/`white`/`red`.
+// On the untouched tree, the raw search raises two false positives, both of them
+// FRENCH prose (the comments were in French at the time):
 //
 //     $ grep -rnoE 'black|white|\bred\b' client/src --include="*.css" --include="*.ts"
 //     client/src/resize.ts:7:red
 //     client/src/resize.test.ts:30:red
 //
-// `resize.ts:7` dit « re**d**éclenche que si l'élément change encore de
-// taille » : le `\b` qui suit `red` est satisfait parce que le caractère
-// suivant est `é`, que les classes de mots ASCII ne comptent pas comme lettre.
-// Un contrôle qui naît rouge sur deux commentaires innocents est un contrôle
-// qu'on assouplira — et la spec §11 nomme ce mode de défaillance.
+// `resize.ts:7` said « re**d**éclenche que si l'élément change encore de
+// taille »: the `\b` following `red` is satisfied because the next
+// character is `é`, which ASCII word classes do not count as a letter.
+// A check born red on two innocent comments is a check
+// that will be loosened — and spec §11 names this failure mode.
 //
-// ⚠️ TROIS gardes le tiennent, et ils SE RECOUVRENT sur ce cas précis :
+// ⚠️ THREE guards hold it, and they OVERLAP on this precise case:
 //
-//   ① blanchiment des commentaires — les `/* … */` partout, et en TypeScript
-//     les `//` qui ne suivent pas un `:` (sans cette réserve, `http://`
-//     effacerait du code réel, donc pourrait CACHER une couleur au lieu d'en
-//     révéler une). Les sauts de ligne sont conservés : les numéros restent
-//     justes.
-//   ② les mots-clés ne sont JAMAIS cherchés dans un `.ts`.
-//   ③ les mots-clés ne sont cherchés que du côté VALEUR d'une déclaration CSS
-//     (`propriété: …;`).
+//   ① blanking comments — the `/* … */` everywhere, and in TypeScript
+//     the `//` that do not follow a `:` (without this reservation, `http://`
+//     would erase real code, and could therefore HIDE a colour instead of
+//     revealing one). Line breaks are kept: the line numbers stay
+//     right.
+//   ② keywords are NEVER looked for in a `.ts`.
+//   ③ keywords are only looked for on the VALUE side of a CSS declaration
+//     (`property: …;`).
 //
-// Mutations jouées, avec leur relevé — c'est la seule façon de savoir lequel
-// porte quoi, et la première a DÉMENTI la rédaction initiale de cet en-tête,
-// qui créditait ① du traitement de D8 :
+// Mutations played, with their report — it is the only way to know which one
+// carries what, and the first one CONTRADICTED the initial draft of this header,
+// which credited ① with handling D8:
 //
-//   ① retiré seul              → 11 occurrences, `resize.ts` TOUJOURS absent
-//   ② retiré seul              → 11 occurrences, `resize.ts` TOUJOURS absent
-//   ① et ② retirés ensemble    → 11 occurrences, `resize.ts` TOUJOURS absent
-//   ①, ② et ③ retirés          → 13, avec `resize.ts:7` ET `resize.test.ts:30`
-//                                — les deux occurrences exactes de D8
-//   ① retiré, cas CSS dédié    → un `/* background: #ff0000; */` commenté
-//                                remonte
+//   ① removed alone            → 11 occurrences, `resize.ts` STILL absent
+//   ② removed alone            → 11 occurrences, `resize.ts` STILL absent
+//   ① and ② removed together   → 11 occurrences, `resize.ts` STILL absent
+//   ①, ② and ③ removed         → 13, with `resize.ts:7` AND `resize.test.ts:30`
+//                                — the two exact occurrences of D8
+//   ① removed, dedicated CSS case → a commented-out `/* background: #ff0000; */`
+//                                comes up
 //
-// Autrement dit : ① existe pour les couleurs COMMENTÉES en CSS — pas pour D8,
-// que ② et ③ couvrent déjà. Aucun des trois n'est mort, et aucun ne se retire
-// « puisque les autres couvrent » : c'est vrai un par un, faux tous ensemble.
+// In other words: ① exists for COMMENTED colours in CSS — not for D8,
+// which ② and ③ already cover. None of the three is dead, and none is removed
+// "since the others cover it": that is true one at a time, false all together.
 //
-// Les notations `#rrggbb`, `rgb(`, `hsl(` sont, elles, cherchées PARTOUT :
-// aucune ne collisionne avec du français.
+// The `#rrggbb`, `rgb(`, `hsl(` notations, for their part, are looked for EVERYWHERE:
+// none collides with French prose.
 //
 // ────────────────────────────────────────────────────────────────────────────
-// PORTÉE DÉCLARÉE, ET CE QUE CE CONTRÔLE NE VOIT PAS.
+// DECLARED SCOPE, AND WHAT THIS CHECK DOES NOT SEE.
 //
-// • Dans un `.ts`, un `red` nu est indiscernable d'une prose française ou d'un
-//   identifiant : les mots-clés n'y sont pas cherchés. Un
-//   `el.style.background = 'red'` passerait donc. C'est une limite mesurée
-//   (D8), pas un oubli — et les notations hexadécimales, elles, y sont vues.
-// • Les HTML balayés sont les ENTRÉES VITE, lues dans `vite.config.ts`, et non
-//   tous les `client/*.html`. `client/probe-coalesced.html` porte quatre
-//   couleurs littérales (`#222`, `#eee`, `#f4f4f4`) et n'est PAS du produit :
-//   ce n'est pas une entrée Vite, il ne sort pas dans `dist/`, et le plan S1
-//   (D11) le range avec `client/recette/*.html` parmi les instruments de banc.
-//   Le balayer ferait naître ce contrôle rouge sur du code hors périmètre —
-//   exactement la pression à l'assouplissement que la mesure D8 écarte.
-//   ⚠️ Corollaire : une page neuve non déclarée dans `vite.config.ts` n'est
-//   balayée par rien. C'est le même angle mort que `vite.config.ts:9-13`
-//   documente déjà pour le build lui-même.
-// • ⚠️ CE CONTRÔLE COMPTE ONZE, LÀ OÙ LE PLAN S1 EN ANNONÇAIT NEUF, et les
-//   deux de l'écart sont `style.css:3-4` — `--surface: #0b0d10` et
-//   `--text: #e6e8eb`. Ce sont bien des DÉCLARATIONS de token, mais elles
-//   vivent dans `style.css`, pas dans `tokens.css` : l'exclusion du §7.2 est
-//   par FICHIER, jamais par rôle, et une déclaration hors de la source unique
-//   est précisément la dérive que ce contrôle existe pour voir. ✅ Le vert EST
-//   ARRIVÉ à la tâche 9 (`ab9e9b9`), qui a fait migrer les deux déclarations :
-//   ce contrôle rend ZÉRO sur 46 fichiers depuis. Le plan attribuait par ailleurs
-//   un compte de onze à un défaut de traitement des commentaires : les
-//   mutations ci-dessus le réfutent — un tel défaut rendrait TREIZE.
-// • 🔴 QUATRE EXIGENCES QUI NE PEUVENT PAS TENIR ENSEMBLE, et la quatrième
-//   cède. Le plan S1 demande à la fois : (T1) que les `*.test.ts` soient
-//   BALAYÉS, « une couleur codée en dur dans un test étant une valeur en
-//   double comme une autre » ; (T5) que `contraste.test.ts` porte les vecteurs
-//   `#000000`, `#ffffff` et `#808080`, dont la valeur est fixée par WCAG 2.1
-//   et non par nos tokens — c'est ce qui l'empêche de valider le produit
-//   contre lui-même ; (T9) que `reprise.test.ts` compare `--fond-0` à
-//   `#0b0d10` EXACTEMENT, ce qui est la comparaison qui PROUVE la reprise ;
-//   et (T9) que ce contrôle rende ZÉRO à la fin du sous-bloc. Les vecteurs de
-//   T5 et la comparaison de T9 sont des littéraux OBLIGATOIRES : les interdire
-//   rendrait ces deux tâches impossibles.
-//   ⚠️ L'exclusion est donc posée AU PLUS ÉTROIT : `client/src/design/*.test.ts`
-//   seulement. Tout autre test du paquet reste balayé — une couleur dans
-//   `resize.test.ts` ou `webrtc.test.ts` est toujours refusée, et aucun n'en
-//   porte aujourd'hui. Relevé de l'écart, sur l'arbre du 19 août 2026 : sans
-//   cette exclusion le contrôle rend 46, dont 35 viennent des deux seuls
-//   fichiers de test du socle et 11 de `style.css`, la vraie cible.
-//   ⚠️ Ce que cela coûte : un test du socle qui recopierait une couleur du
-//   produit sans raison ne serait plus attrapé. C'est une règle de revue, au
-//   même titre que « employer `--bord-fort` là où il porte une information ».
-// • Ce contrôle dit qu'aucune couleur n'est écrite en dur. Il ne dit RIEN de
-//   la justesse du token employé à la place — c'est une règle de revue
+// • In a `.ts`, a bare `red` is indistinguishable from prose or from an
+//   identifier: keywords are not looked for there. An
+//   `el.style.background = 'red'` would therefore pass. It is a measured limit
+//   (D8), not an oversight — and hexadecimal notations, for their part, are seen there.
+// • The scanned HTML files are the VITE ENTRIES, read from `vite.config.ts`, and not
+//   all the `client/*.html`. `client/probe-coalesced.html` carries four
+//   literal colours (`#222`, `#eee`, `#f4f4f4`) and is NOT part of the product:
+//   it is not a Vite entry, it does not go out into `dist/`, and the S1 plan
+//   (D11) files it with `client/recette/*.html` among the bench instruments.
+//   Scanning it would make this check be born red on out-of-scope code —
+//   exactly the pressure to loosen that measurement D8 rules out.
+//   ⚠️ Corollary: a new page not declared in `vite.config.ts` is
+//   scanned by nothing. It is the same blind spot `vite.config.ts:9-13`
+//   already documents for the build itself.
+// • ⚠️ THIS CHECK COUNTS ELEVEN, WHERE THE S1 PLAN ANNOUNCED NINE, and the
+//   two of the gap are `style.css:3-4` — `--surface: #0b0d10` and
+//   `--text: #e6e8eb`. They are indeed token DECLARATIONS, but they
+//   live in `style.css`, not in `tokens.css`: the exclusion of §7.2 is
+//   by FILE, never by role, and a declaration outside the single source
+//   is precisely the drift this check exists to see. ✅ Green DID
+//   ARRIVE at task 9 (`ab9e9b9`), which migrated the two declarations:
+//   this check has returned ZERO on 46 files since. The plan also attributed
+//   a count of eleven to a comment handling defect: the
+//   mutations above refute it — such a defect would return THIRTEEN.
+// • 🔴 FOUR REQUIREMENTS THAT CANNOT HOLD TOGETHER, and the fourth
+//   gives way. The S1 plan asks at the same time: (T1) that the `*.test.ts` be
+//   SCANNED, "a colour hardcoded in a test being a duplicated
+//   value like any other"; (T5) that `contraste.test.ts` carry the vectors
+//   `#000000`, `#ffffff` and `#808080`, whose value is set by WCAG 2.1
+//   and not by our tokens — that is what keeps it from validating the product
+//   against itself; (T9) that `reprise.test.ts` compare `--fond-0` to
+//   `#0b0d10` EXACTLY, which is the comparison that PROVES the carry-over;
+//   and (T9) that this check return ZERO at the end of the sub-block. The vectors of
+//   T5 and the comparison of T9 are MANDATORY literals: forbidding them
+//   would make those two tasks impossible.
+//   ⚠️ The exclusion is therefore set AS NARROWLY AS POSSIBLE: `client/src/design/*.test.ts`
+//   only. Every other test of the package stays scanned — a colour in
+//   `resize.test.ts` or `webrtc.test.ts` is still refused, and none
+//   carries one today. Report of the gap, on the tree of August 19th, 2026: without
+//   this exclusion the check returns 46, of which 35 come from the only two
+//   test files of the base layer and 11 from `style.css`, the real target.
+//   ⚠️ What it costs: a base-layer test that copied a product colour
+//   for no reason would no longer be caught. It is a review rule, in the
+//   same way as "use `--bord-fort` where it carries information".
+// • This check says no colour is hardcoded. It says NOTHING about
+//   the correctness of the token used instead — it is a review rule
 //   (spec §8).
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -114,7 +114,7 @@ const NOTATIONS = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/g;
 const MOTS_CLES = /\b(black|white|red)\b/g;
 const DECLARATION = /(?:^|[;{])\s*[-a-zA-Z][-a-zA-Z0-9]*\s*:\s*([^;{}]*)/g;
 
-/** Blanchit un intervalle en gardant les sauts de ligne, donc les numéros. */
+/** Blanks an interval while keeping the line breaks, hence the line numbers. */
 function blanchir(texte, debut, fin) {
     const morceau = texte.slice(debut, fin).replace(/[^\n]/g, ' ');
     return texte.slice(0, debut) + morceau + texte.slice(fin);
@@ -123,7 +123,7 @@ function blanchir(texte, debut, fin) {
 function sansCommentaires(texte, extension) {
     let sortie = texte;
     const blocs = [];
-    // `/* … */`, commun au CSS, au TypeScript et aux `<style>` du HTML.
+    // `/* … */`, common to CSS, TypeScript and the HTML `<style>`.
     for (const m of texte.matchAll(/\/\*[\s\S]*?\*\//g)) {
         blocs.push([m.index, m.index + m[0].length]);
     }
@@ -133,9 +133,9 @@ function sansCommentaires(texte, extension) {
         }
     }
     if (extension === '.ts') {
-        // ⚠️ Le `(?<![:/])` écarte `http://` et `ws://` : blanchir jusqu'au
-        // bout de ligne à partir d'un `//` de schéma d'URL effacerait du code
-        // réel, donc pourrait CACHER une couleur au lieu d'en révéler une.
+        // ⚠️ The `(?<![:/])` sets aside `http://` and `ws://`: blanking up to the
+        // end of the line from the `//` of a URL scheme would erase real
+        // code, and could therefore HIDE a colour instead of revealing one.
         for (const m of texte.matchAll(/(?<![:/])\/\/[^\n]*/g)) {
             blocs.push([m.index, m.index + m[0].length]);
         }
@@ -154,12 +154,12 @@ function occurrences(texte, extension) {
     for (const m of propre.matchAll(NOTATIONS)) {
         trouvees.push({ ligne: ligneDe(propre, m.index), motif: m[0] });
     }
-    // Les mots-clés : côté valeur d'une déclaration, et jamais dans un `.ts`.
+    // The keywords: on the value side of a declaration, and never in a `.ts`.
     if (extension !== '.ts') {
         for (const d of propre.matchAll(DECLARATION)) {
-            const valeur = d[1];
-            const debutValeur = d.index + d[0].length - valeur.length;
-            for (const m of valeur.matchAll(MOTS_CLES)) {
+            const value = d[1];
+            const debutValeur = d.index + d[0].length - value.length;
+            for (const m of value.matchAll(MOTS_CLES)) {
                 trouvees.push({
                     ligne: ligneDe(propre, debutValeur + m.index),
                     motif: m[0],
@@ -186,7 +186,7 @@ function fichiersSous(repertoire, extensions) {
     return trouves.sort();
 }
 
-/** Les HTML de PRODUIT : les entrées déclarées à Vite, et rien d'autre. */
+/** The PRODUCT HTML files: the entries declared to Vite, and nothing else. */
 function entreesVite(racine) {
     const config = join(racine, 'vite.config.ts');
     if (!existsSync(config)) return [];
@@ -202,18 +202,18 @@ const args = process.argv.slice(2);
 const iRacine = args.indexOf('--racine');
 const racine = iRacine === -1 ? 'client' : args[iRacine + 1];
 
-// ⚠️ DEUX EXCLUSIONS, ET LA SECONDE EST UNE DIVERGENCE ASSUMÉE AVEC LE PLAN.
-// Voir l'encadré « QUATRE EXIGENCES QUI NE PEUVENT PAS TENIR ENSEMBLE ».
+// ⚠️ TWO EXCLUSIONS, AND THE SECOND IS A DELIBERATE DIVERGENCE FROM THE PLAN.
+// See the box "FOUR REQUIREMENTS THAT CANNOT HOLD TOGETHER".
 //
-// 🔴 `tokens/couleurs.css` SEUL, DEPUIS L'EXTRACTION DE LA TÂCHE 6
-// (25 août 2026) : c'est désormais le seul fichier où une couleur littérale
-// est LÉGITIME. `tokens.css` (la porte d'entrée, qui ne fait plus qu'importer
-// ses deux enfants) et `tokens/echelles.css` (aucune couleur, seulement des
-// longueurs et des durées) n'ont besoin d'aucune exclusion : ni l'un ni
-// l'autre ne porte de notation `#…`/`rgb(`/`hsl(`, donc les exclure serait
-// inerte — mais ce serait aussi FAUX PAR CONSTRUCTION : l'exclusion est « par
-// FICHIER, jamais par rôle » (voir l'encadré ci-dessus), et le rôle qui la
-// justifie n'appartient plus qu'à `couleurs.css`.
+// 🔴 `tokens/couleurs.css` ALONE, SINCE THE EXTRACTION OF TASK 6
+// (August 25th, 2026): it is now the only file where a literal colour
+// is LEGITIMATE. `tokens.css` (the entry point, which now only imports
+// its two children) and `tokens/echelles.css` (no colour, only
+// lengths and durations) need no exclusion: neither one nor
+// the other carries a `#…`/`rgb(`/`hsl(` notation, so excluding them would be
+// inert — but it would also be WRONG BY CONSTRUCTION: the exclusion is "by
+// FILE, never by role" (see the box above), and the role that
+// justifies it now belongs to `couleurs.css` alone.
 const exclus = new Set([join(racine, 'src/design/tokens/couleurs.css')]);
 const estTestDuSocle = (chemin) =>
     chemin.startsWith(join(racine, 'src/design/')) && chemin.endsWith('.test.ts');
@@ -232,9 +232,9 @@ for (const chemin of aBalayer) {
     }
 }
 
-console.log(`fichiers balayés : ${aBalayer.length}`);
-console.log(`couleurs littérales : ${total}`);
+console.log(`files scanned: ${aBalayer.length}`);
+console.log(`literal colours: ${total}`);
 if (total > 0) {
-    console.log('→ elles doivent vivre dans client/src/design/tokens/couleurs.css');
+    console.log('→ they must live in client/src/design/tokens/couleurs.css');
 }
 process.exit(total > 0 ? 1 : 0);

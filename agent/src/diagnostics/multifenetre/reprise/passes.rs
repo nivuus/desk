@@ -1,38 +1,38 @@
-//! Les deux passes du banc de reprise, et la perturbation qui les sépare.
+//! The two passes of the recovery bench, and the disruption that separates them.
 //!
-//! Séparé de `reprise.rs`, qui est *le pilote des sorties* — même découpage que
-//! `paralleles`, et pour la même raison (plafond de 500 lignes du projet). Le
-//! diagnostic qui départage les deux façons de mourir vit à côté, dans
+//! Separated from `reprise.rs`, which is *the output driver* — same split as
+//! `paralleles`, and for the same reason (the project's 500-line ceiling). The
+//! diagnostic that decides between the two ways of dying lives next to it, in
 //! `post_mortem.rs`.
 //!
-//! Ce qui vit ici tourne SOUS la garde `moniteurs_virtuels::Sorties` tenue par
-//! l'appelant : toute erreur qui en ressort passe par la destruction des
-//! sorties, perturbatrice comprise.
+//! What lives here runs UNDER the `moniteurs_virtuels::Sorties` guard held by
+//! the caller: any error that comes out of it goes through the destruction of the
+//! outputs, disruptor included.
 //!
-//! # Clé de lecture du journal — deux mots y ont un sens qu'ils n'ont pas ici
+//! # Key for reading the log — two words there have a meaning they do not have here
 //!
-//! `compteurs::journaliser` porte les libellés du protocole MONO-SORTIE, et ils
-//! sont conservés tels quels pour que ces relevés restent `grep`-ables avec ceux
-//! déjà versés dans `docs/`. Sur ce banc :
+//! `compteurs::journaliser` carries the labels of the SINGLE-OUTPUT protocol, and they
+//! are kept as is so that these surveys stay `grep`-able together with those
+//! already committed in `docs/`. On this bench:
 //!
-//! - **`mire0_avant_recouvrement` est toujours vide**, et
-//!   `mire0_apres_recouvrement` porte **TOUS** les verdicts de la rotation, sur
-//!   toutes les voies — pas ceux de la seule mire 0. Aucun recouvrement n'est
-//!   mis en scène ici : une fenêtre par sortie, rien ne peut en cacher une
-//!   autre. Il n'y a donc **aucune porte éliminatoire**, et un verdict faux ne
-//!   disqualifie pas la passe, il la qualifie.
-//! - **« avant / après » n'est PAS « avant / après recouvrement ».** Le champ
-//!   `passe` de ces lignes vaut « avant perturbation » / « après
-//!   perturbation », et la perturbation dont il s'agit est la **création d'une
-//!   sortie virtuelle de plus**. Les deux vocabulaires se ressemblent et ne
-//!   parlent pas de la même chose.
-//! - **`unites` reste à zéro** : ce banc n'encode pas.
+//! - **`pattern0_before_overlap` is always empty**, and
+//!   `mire0_apres_recouvrement` carries **ALL** the verdicts of the rotation, on
+//!   all paths — not only those of test pattern 0. No covering is
+//!   staged here: one window per output, nothing can hide
+//!   another. There is therefore **no elimination gate**, and a wrong verdict does not
+//!   disqualify the pass, it qualifies it.
+//! - **"before / after" is NOT "before / after covering".** The
+//!   `passe` field of these lines is "before disturbance" / "after
+//!   disturbance", and the disruption in question is the **creation of one
+//!   more virtual output**. The two vocabularies look alike and do not
+//!   speak of the same thing.
+//! - **`unites` stays at zero**: this bench does not encode.
 //!
-//! Le libellé de voie est `duplication-reprise`, jamais `duplication` : les
-//! séries du banc à aire fixe et celles de ce montage-ci ne se comparent
-//! d'aucun chiffre (`CLAUDE.md`), et un même seau de `grep` inviterait
-//! précisément à les comparer. `paralleles` s'est nommé `duplication-parallele`
-//! pour cette raison exacte.
+//! The path label is `duplication-reprise`, never `duplication`: the
+//! series of the fixed-area bench and those of this set-up are comparable
+//! on no figure (`CLAUDE.md`), and a single `grep` bucket would invite
+//! precisely comparing them. `paralleles` named itself `duplication-parallele`
+//! for this exact reason.
 
 use std::collections::HashSet;
 use std::time::Instant;
@@ -42,68 +42,73 @@ use anyhow::{Context, Result};
 use super::super::compteurs::{self, Compteurs, Garde, DUREE_PASSE, PERIODE_JOURNAL};
 use super::super::mires::Mires;
 use super::super::montee::RESOLUTION;
-use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication};
+use super::super::voies::{create_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
 use super::constater_places;
 use crate::capture::SortieDxgi;
 use crate::geometry::Rect;
 use crate::mire;
 
-/// Ce qu'une passe rend : ses compteurs, **et** la liste des voies mortes.
+/// What a pass returns: its counters, **and** the list of dead paths.
 ///
-/// Les deux séparément, à dessein. Un `Result<Compteurs>` jetterait les
-/// compteurs dès qu'une voie meurt — or c'est précisément le cas que ce banc
-/// existe pour observer. Combien d'images chaque voie a rendues avant de
-/// mourir, et laquelle est morte, EST le résultat de la mesure.
+/// Both separately, on purpose. A `Result<Compteurs>` would throw away the
+/// counters as soon as a path dies — yet that is precisely the case this bench
+/// exists to observe. How many images each path returned before
+/// dying, and which one died, IS the result of the measurement.
 struct Passe {
     compteurs: Compteurs,
-    /// Voies dont la capture s'est perdue définitivement pendant cette passe,
-    /// donc qui ont cessé d'être sollicitées. Vide = aucune n'est morte.
+    /// Paths whose capture was permanently lost during this pass,
+    /// hence which stopped being solicited. Empty = none died.
     perdues: Vec<usize>,
-    /// Vrai si la passe a tourné en mode dégradé (peinture des mires ou lecture
-    /// de pixel perdue). Porté jusqu'au bilan : un bilan lu seul doit dire
-    /// qu'il ne décrit pas une passe nominale.
+    /// True if the pass ran in degraded mode (test pattern painting or pixel
+    /// reading lost). Carried up to the summary: a summary read alone must say
+    /// that it does not describe a nominal pass.
     degradee: bool,
 }
 
-/// Les deux passes et la perturbation qui les sépare.
+/// The two passes and the disruption that separates them.
 pub(super) fn eprouver(
     garde: &mut Garde<'_>,
     sorties: &mut crate::moniteurs_virtuels::Sorties<'_>,
     virtuelles: &[SortieDxgi],
     connues: &HashSet<String>,
 ) -> Result<()> {
-    // Le périphérique des mires ne vient PAS d'une `DesktopCapture`
-    // provisoire : DXGI n'autorise qu'une duplication par sortie, et la
-    // provisoire ferait échouer la vraie en 0x80070057.
-    let (device, _contexte) = creer_device()?;
-    // Les mires vivent en coordonnées du BUREAU VIRTUEL — les rectangles
-    // annoncés par DXGI. Les voies recadrent en coordonnées de TEXTURE, que
-    // `ouvrir_duplications` calcule. Les confondre décalerait tout d'un
-    // facteur DPI.
+    // The test patterns' device does NOT come from a provisional
+    // `DesktopCapture`: DXGI only allows one duplication per output, and the
+    // provisional one would make the real one fail with 0x80070057.
+    let (device, _contexte) = create_device()?;
+    // The test patterns live in VIRTUAL DESKTOP coordinates — the rectangles
+    // announced by DXGI. The paths crop in TEXTURE coordinates, which
+    // `ouvrir_duplications` computes. Confusing them would shift everything by a
+    // DPI factor.
     let places_bureau: Vec<Rect> = virtuelles.iter().map(|sortie| sortie.rect).collect();
     let mut mires = Mires::ouvrir(&device, &places_bureau)?;
 
     let (mut voies, places_texture) = ouvrir_duplications(garde, virtuelles, &mires)?;
-    let nombre = voies.len();
-    tracing::info!(nombre, ?places_bureau, ?places_texture, "les k duplications sont ouvertes");
+    let count = voies.len();
+    tracing::info!(
+        count,
+        ?places_bureau,
+        ?places_texture,
+        "the k duplications are open"
+    );
 
-    // --- Passe A : le témoin. Elle mesure ce que rendent des duplications que
-    // rien ne dérange, et c'est la seule référence à laquelle la passe B
-    // s'oppose.
+    // --- Pass A: the control. It measures what duplications that
+    // nothing disturbs return, and it is the only reference that pass B
+    // is set against.
     let passe_a = passe(garde, &mut mires, &mut voies, virtuelles, None)?;
     compteurs::journaliser(
-        "avant perturbation",
+        "before disturbance",
         "duplication-reprise",
-        nombre as u8,
+        count as u8,
         &passe_a.compteurs,
     );
-    // Une voie déjà morte AVANT toute perturbation invalide la mesure : ce qui
-    // suivrait ne serait plus imputable à la création de sortie. Le refus se
-    // prend ici, où il se lit.
+    // A path already dead BEFORE any disruption invalidates the measurement: what
+    // followed would no longer be attributable to the output creation. The refusal is
+    // taken here, where it can be read.
     anyhow::ensure!(
         passe_a.perdues.is_empty(),
-        "{:?} : ces voies ont perdu leur capture AVANT toute perturbation — rien n'a été \
-         perturbé, ce banc n'a rien éprouvé",
+        "{:?}: these paths lost their capture BEFORE any disturbance — nothing was \
+         disturbed, this bench tested nothing",
         passe_a.perdues
     );
 
@@ -111,167 +116,174 @@ pub(super) fn eprouver(
     let (largeur, hauteur, hertz) = RESOLUTION;
     tracing::info!(
         duplications_ouvertes = voies.len(),
-        "création d'une sortie de PLUS pendant que les duplications tournent — c'est la \
-         perturbation mesurée"
+        "creating ONE MORE output while the duplications run — that is the \
+         measured disturbance"
     );
     let id_perturbatrice = sorties
-        .creer(largeur, hauteur, hertz)
-        .context("création de la sortie perturbatrice")?;
+        .create(largeur, hauteur, hertz)
+        .context("creating the disturbing output")?;
     let instant_perturbation = Instant::now();
-    tracing::info!(id = id_perturbatrice, "sortie perturbatrice créée");
+    tracing::info!(id = id_perturbatrice, "disturbing output created");
 
-    // --- Passe B : identique à la passe A, sur un bureau qui vient de changer.
-    let passe_b = passe(garde, &mut mires, &mut voies, virtuelles, Some(instant_perturbation))?;
+    // --- Pass B: identical to pass A, on a desktop that has just changed.
+    let passe_b = passe(
+        garde,
+        &mut mires,
+        &mut voies,
+        virtuelles,
+        Some(instant_perturbation),
+    )?;
     compteurs::journaliser(
-        "après perturbation",
+        "after disturbance",
         "duplication-reprise",
-        nombre as u8,
+        count as u8,
         &passe_b.compteurs,
     );
-    // Deux constats qui décident de ce que le bilan veut dire : la
-    // perturbatrice s'est-elle attachée (sinon rien n'a pu perturber), et les k
-    // sorties ont-elles bougé sous leurs mires (sinon une image noire serait
-    // imputable au déplacement et non à la reprise).
-    constater_places("après perturbation", virtuelles, connues);
+    // Two findings that decide what the summary means: did the
+    // disruptor attach (otherwise nothing could have disrupted), and did the k
+    // outputs move under their test patterns (otherwise a black image would be
+    // attributable to the move and not to recovery).
+    constater_places("after disturbance", virtuelles, connues);
 
-    // Les duplications sont relâchées AVANT la sonde post-mortem : DXGI
-    // n'autorise qu'une duplication par sortie, et l'objet d'une voie morte —
-    // invalide mais bien vivant — ferait refuser la réouverture que la sonde
-    // tente. La sonde conclurait alors « la sortie ne se redupliquait pas »
-    // pour une raison qui n'a rien à voir avec la reprise.
-    tracing::info!("libération des voies de capture : avant");
+    // The duplications are released BEFORE the post-mortem probe: DXGI
+    // only allows one duplication per output, and the object of a dead path —
+    // invalid but very much alive — would make the reopening the probe
+    // attempts be refused. The probe would then conclude "the output would not re-duplicate"
+    // for a reason that has nothing to do with recovery.
+    tracing::info!("releasing the capture paths: before");
     drop(voies);
-    tracing::info!("libération des voies de capture : après");
-    // Borne de comptage, émise INCONDITIONNELLEMENT pour que la commande de la
-    // clé de lecture n°1 vaille dans tous les cas. La sonde post-mortem capture
-    // elle aussi par `next_frame`, qui pose la même trace de réouverture : sans
-    // cette borne, un `grep -c` global mélangerait les reprises DE LA MESURE et
-    // celles de la sonde, qui lui sont postérieures et ne prouvent rien de la
-    // perturbation.
+    tracing::info!("releasing the capture paths: after");
+    // Counting boundary, emitted UNCONDITIONALLY so that the command of
+    // reading key no. 1 holds in all cases. The post-mortem probe also captures
+    // through `next_frame`, which sets the same reopening trace: without
+    // this boundary, a global `grep -c` would mix the recoveries OF THE MEASUREMENT and
+    // those of the probe, which come after it and prove nothing about the
+    // disruption.
     tracing::info!(
-        "borne de comptage des reprises — au-dessus de cette ligne, les lignes de réouverture \
-         appartiennent à la MESURE ; en dessous, à la sonde post-mortem et aux clés de lecture"
+        "recovery counting bound — above this line, the reopening lines \
+         belong to the MEASUREMENT; below it, to the post-mortem probe and to the reading keys"
     );
     if !passe_b.perdues.is_empty() {
         super::post_mortem::sonder(garde, &mut mires, virtuelles, &passe_b.perdues);
     }
 
-    // --- Le bilan, la seule sortie qui compte.
+    // --- The summary, the only output that counts.
     //
-    // Le chiffre décisif est le nombre de voies qui rendent ENCORE des images
-    // après la perturbation, voie par voie : un total masquerait une voie
-    // morte compensée par une autre.
+    // The decisive figure is the number of paths that STILL return images
+    // after the disruption, path by path: a total would mask a dead
+    // path compensated by another.
     let vivantes_apres = passe_b.compteurs.images.iter().filter(|n| **n > 0).count();
     tracing::info!(
-        images_avant = ?passe_a.compteurs.images,
+        frames_before = ?passe_a.compteurs.images,
         images_apres = ?passe_b.compteurs.images,
         voies_vivantes_apres = vivantes_apres,
-        voies_totales = nombre,
+        voies_totales = count,
         voies_perdues_apres = ?passe_b.perdues,
-        verdicts_faux_avant = passe_a.compteurs.apres_recouvrement.faux(),
+        false_verdicts_before = passe_a.compteurs.apres_recouvrement.faux(),
         verdicts_faux_apres = passe_b.compteurs.apres_recouvrement.faux(),
-        passe_avant_degradee = passe_a.degradee,
+        pass_before_degraded = passe_a.degradee,
         passe_apres_degradee = passe_b.degradee,
-        "bilan de la reprise"
+        "recovery summary"
     );
     if passe_a.degradee || passe_b.degradee {
         tracing::error!(
-            passe_avant_degradee = passe_a.degradee,
+            pass_before_degraded = passe_a.degradee,
             passe_apres_degradee = passe_b.degradee,
-            "une passe au moins a tourné en mode DÉGRADÉ — dans ce bilan, `images_*`, les \
-             cadences et les `verdicts_faux_*` de la ou des passes concernées sont \
-             INEXPLOITABLES, et `voies_vivantes_apres` ne se lit qu'avec `voies_perdues_apres`. \
-             Voir la ligne d'erreur qui nomme ce qui a été perdu"
+            "at least one pass ran in DEGRADED mode — in this summary, `images_*`, the \
+             cadences and the `verdicts_faux_*` of the pass or passes concerned are \
+             UNUSABLE, and `voies_vivantes_apres` is only read together with `voies_perdues_apres`. \
+             See the error line that names what was lost"
         );
     }
     journaliser_cle_de_lecture();
     Ok(())
 }
 
-/// Ce qu'il faut avoir lu avant de conclure quoi que ce soit du bilan.
+/// What must have been read before concluding anything from the summary.
 ///
-/// Le banc est un point d'arrêt : ses deux lectures fausses possibles coûtent
-/// cher **dans les deux sens**, et aucune ne se voit sur les seuls chiffres du
-/// bilan. Cette ligne les nomme.
+/// The bench is a stop point: its two possible wrong readings are costly
+/// **in both directions**, and neither shows in the summary's figures
+/// alone. This line names them.
 ///
-/// Le nombre de reprises n'est PAS compté ici, à dessein : il est déjà dans les
-/// lignes que `DesktopCapture::next_frame` pose à chaque réouverture, et un
-/// second compteur dirait la même chose d'une autre façon — donc un jour autre
-/// chose. La ventilation **par voie** que demande la spec §6.1 se fait sur le
-/// champ `cible` de ces mêmes lignes, qui porte `Sortie("\\.\DISPLAYn")`, à
-/// rapprocher du `nom_sortie` des lignes de mort.
+/// The number of recoveries is NOT counted here, on purpose: it is already in the
+/// lines `DesktopCapture::next_frame` sets at each reopening, and a
+/// second counter would say the same thing in another way — hence one day something
+/// else. The **per-path** breakdown spec §6.1 asks for is done on the
+/// `cible` field of these same lines, which carries `Sortie("\\.\DISPLAYn")`, to
+/// be matched with the `nom_sortie` of the death lines.
 fn journaliser_cle_de_lecture() {
     tracing::info!(
-        "clé de lecture n°1 — ce bilan ne vaut QUE si la perturbation a perturbé. Compter les \
-         reprises DE LA MESURE, et elles seules : \
-         `sed '/borne de comptage des reprises/q' <journal> | grep -c \"perdu, réouverture\"`. \
-         Un `grep -c` sur le journal ENTIER serait faux dans le sens dangereux : il compterait \
-         aussi les réouvertures de la sonde post-mortem, postérieures à la mesure, plus cette \
-         clé de lecture elle-même. ZÉRO ligne signifie qu'aucune duplication n'a perdu son \
-         accès, donc que ce banc n'a RIEN éprouvé, et son bilan ne se lit alors PAS comme un \
-         succès de la reprise. Contrôler aussi la ligne « sorties tierces relevées » : sans \
-         perturbatrice ATTACHÉE, rien n'a pu perturber"
+        "reading key no. 1 — this summary only holds IF the disturbance did disturb. Count the \
+         recoveries OF THE MEASUREMENT, and only those: \
+         `sed '/recovery counting bound/q' <log> | grep -c \"lost, reopening\"`. \
+         A `grep -c` over the WHOLE log would be wrong in the dangerous direction: it would also count \
+         the reopenings of the post-mortem probe, after the measurement, plus this \
+         reading key itself. ZERO lines means that no duplication lost its \
+         access, hence that this bench tested NOTHING, and its summary is then NOT read as a \
+         success of the recovery. Also check the \"third-party outputs recorded\" line: without \
+         an ATTACHED disturbing output, nothing could disturb"
     );
     tracing::info!(
-        "clé de lecture n°2 — des voies mortes ne réfutent PAS la reprise à elles seules. La \
-         reprise est désormais une FENÊTRE de DUREE_FENETRE_REPRISE (8 s), retentée au plus \
-         toutes les PAS_REPRISE (150 ms) ; l'expiration se compte depuis l'OUVERTURE de la \
-         fenêtre, pas depuis la dernière tentative, et tout succès d'acquisition — « rien de \
-         neuf » compris — la referme. Une réouverture qui échoue à retrouver la sortie n'est PLUS \
-         définitive : elle consomme une tentative ET écrit désormais sa propre ligne d'échec, la \
-         fenêtre continuant de courir. Sur une fenêtre pleine, jusqu'à 54 tentatives sont \
-         possibles (8000 ms / 150 ms), chacune pouvant poser jusqu'à deux lignes (tentative puis \
-         échec) : voir plusieurs dizaines de lignes de réouverture pour UNE SEULE voie morte n'est \
-         donc PAS un emballement, c'est la fenêtre qui court normalement jusqu'à expiration. C'est \
-         ce que départage la « sonde post-mortem », qui retente UNE fois la topologie stabilisée. \
-         Ventiler les reprises par voie avec le champ `cible` des lignes de réouverture, à \
-         rapprocher du `nom_sortie` des lignes de mort"
+        "reading key no. 2 — dead paths do NOT refute the recovery on their own. The \
+         recovery is now a WINDOW of DUREE_FENETRE_REPRISE (8 s), retried at most \
+         every PAS_REPRISE (150 ms); the expiry counts from the OPENING of the \
+         window, not from the last attempt, and any acquisition success — \"nothing \
+         new\" included — closes it. A reopening that fails to find the output is NO LONGER \
+         final: it uses up an attempt AND now writes its own failure line, the \
+         window keeping on running. Over a full window, up to 54 attempts are \
+         possible (8000 ms / 150 ms), each one able to write up to two lines (attempt then \
+         failure): seeing several dozen reopening lines for ONE SINGLE dead path is \
+         therefore NOT a runaway, it is the window running normally until expiry. That is \
+         what the \"post-mortem probe\" decides, which retries ONCE the topology has settled. \
+         Break the recoveries down by path with the `cible` field of the reopening lines, to \
+         compare with the `nom_sortie` of the death lines"
     );
 }
 
-/// Ouvre une duplication DXGI par sortie, et pose une mire sur chacune.
+/// Opens one DXGI duplication per output, and places a test pattern on each.
 ///
-/// Même boucle que `paralleles/passes.rs::ouvrir_duplications`, mais **pas la
-/// même lecture d'un échec** : là-bas, un refus de la Kᵉ `DuplicateOutput` EST
-/// le résultat mesuré (le chantier cherchait ce plafond) ; ici c'est une panne
-/// du banc, survenue avant toute perturbation, donc avant que quoi que ce soit
-/// n'ait été éprouvé. Les deux boucles ne diraient pas la même chose du même
-/// HRESULT : les partager forcerait à choisir un des deux énoncés.
+/// Same loop as `paralleles/passes.rs::ouvrir_duplications`, but **not the
+/// same reading of a failure**: there, a refusal of the Kth `DuplicateOutput` IS
+/// the measured result (the work stream was looking for this ceiling); here it is a bench
+/// failure, occurring before any disruption, hence before anything at all
+/// had been tested. The two loops would not say the same thing about the same
+/// HRESULT: sharing them would force choosing one of the two statements.
 ///
-/// Le chien de garde est battu à chaque rang, **avant** la sollicitation : le
-/// temps d'ouvrir k duplications s'ajouterait sinon au dernier trou de ping.
+/// The watchdog is beaten at each rank, **before** the solicitation: the
+/// time to open k duplications would otherwise add up to the last ping gap.
 ///
-/// **Ce que ce battement borne, et ce qu'il ne borne plus.** Il raisonnait sur
-/// une ouverture instantanée ; depuis la tâche 11 bis, `partagee_sur` passe par
-/// `DesktopCapture::sur_sortie`, qui retente pendant `DUREE_FENETRE_OUVERTURE`
-/// et peut donc **bloquer jusqu'à 3 s** sans qu'on puisse pinguer pendant ce
-/// temps. Battre juste avant remet le compteur à zéro et borne le trou à la
-/// durée d'UN rang — il ne l'annule pas, et 3 s reste du même ordre que le
-/// `delai = 3` du pilote, d'unité inconnue. C'est la borne atteignable sans
-/// changer la sémantique d'ouverture.
+/// **What this beat bounds, and what it no longer bounds.** It reasoned about
+/// an instantaneous opening; since task 11 bis, `partagee_sur` goes through
+/// `DesktopCapture::sur_sortie`, which retries during `DUREE_FENETRE_OUVERTURE`
+/// and can therefore **block for up to 3 s** without being able to ping during that
+/// time. Beating just before resets the counter and bounds the gap to the
+/// duration of ONE rank — it does not cancel it, and 3 s remains of the same order as the
+/// driver's `delai = 3`, of unknown unit. It is the bound reachable without
+/// changing the opening semantics.
 fn ouvrir_duplications(
     garde: &mut Garde<'_>,
     virtuelles: &[SortieDxgi],
     mires: &Mires,
-) -> Result<(Vec<Box<dyn VoieDeCapture>>, Vec<Rect>)> {
+) -> Result<VoiesOuvertes> {
     let mut sources = Vec::new();
     let mut textures = Vec::new();
     for (rang, sortie) in virtuelles.iter().enumerate() {
         garde.battre()?;
-        let source = VoieDuplication::partagee_sur(Some(&sortie.nom_sortie)).with_context(|| {
-            format!(
-                "ouverture de la duplication n°{} (sortie {}) — avant toute perturbation",
-                rang + 1,
-                sortie.nom_sortie
-            )
-        })?;
+        let source =
+            VoieDuplication::partagee_sur(Some(&sortie.nom_sortie)).with_context(|| {
+                format!(
+                    "opening duplication no. {} (output {}) — before any disturbance",
+                    rang + 1,
+                    sortie.nom_sortie
+                )
+            })?;
         let dimensions = source.borrow().dimensions_bureau();
         tracing::info!(
             rang = rang + 1,
             nom = %sortie.nom_sortie,
             texture_largeur = dimensions.0,
             texture_hauteur = dimensions.1,
-            "duplication ouverte"
+            "duplication opened"
         );
         textures.push(dimensions);
         sources.push(source);
@@ -282,46 +294,46 @@ fn ouvrir_duplications(
 
     let mut voies: Vec<Box<dyn VoieDeCapture>> = Vec::new();
     for (id, source) in sources.into_iter().enumerate() {
-        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::nouvelle(source));
+        let mut voie: Box<dyn VoieDeCapture> = Box::new(VoieDuplication::new(source));
         voie.ouvrir(mires.hwnd(id as u8)?, places[id])?;
         voies.push(voie);
     }
     Ok((voies, places))
 }
 
-/// Une passe de capture de `DUREE_PASSE`, en rotation de contrôle.
+/// One capture pass of `DUREE_PASSE`, with a rotating check.
 ///
-/// **Rien de ce que la turbulence DXGI peut casser n'interrompt la passe.**
-/// C'est le point de méthode de ce banc, et il vaut pour les trois appels qui
-/// peuvent échouer sous une topologie qui se remanie :
+/// **Nothing that DXGI turbulence can break interrupts the pass.**
+/// It is the methodological point of this bench, and it holds for the three calls that
+/// can fail under a topology being reshuffled:
 ///
-/// - `prochaine_image` — la voie est marquée morte et cesse d'être sollicitée,
-///   les autres continuent. Abandonner la passe entière au premier échec
-///   tronquerait les compteurs des voies survivantes à l'instant de la mort de
-///   celle-là, et le bilan les déclarerait mortes elles aussi : la confusion
-///   exacte qu'une lecture voie par voie existe pour empêcher.
-/// - `mires.peindre` (`Present` sur une swapchain) et `lire_verdict`
-///   (`read_pixel` sur une texture qui vient d'être rouverte) — signalés une
-///   fois, la passe continue en mode dégradé. Un `?` là ferait sortir
-///   `eprouver` sans jamais émettre le bilan, c'est-à-dire perdrait la mesure
-///   au moment précis où elle devient intéressante. **Ce que le mode dégradé
-///   coûte est nommé, pas minimisé** : peinture perdue rend le compte d'images
-///   et la cadence inexploitables (le bureau ne change plus) ; lecture perdue
-///   rend les verdicts inexploitables. Dans les deux cas les MORTS DE VOIES
-///   restent valables, et c'est ce dont dépend le point d'arrêt.
+/// - `prochaine_image` — the path is marked dead and stops being solicited,
+///   the others continue. Abandoning the whole pass at the first failure
+///   would truncate the counters of the surviving paths at the instant of the death of
+///   that one, and the summary would declare them dead too: the exact
+///   confusion that a path-by-path reading exists to prevent.
+/// - `mires.peindre` (`Present` on a swapchain) and `lire_verdict`
+///   (`read_pixel` on a texture that has just been reopened) — reported
+///   once, the pass continues in degraded mode. A `?` there would make
+///   `eprouver` exit without ever emitting the summary, that is it would lose the measurement
+///   at the precise moment it becomes interesting. **What degraded mode
+///   costs is named, not minimised**: lost painting makes the image count
+///   and the frame rate unusable (the desktop no longer changes); lost reading
+///   makes the verdicts unusable. In both cases the PATH DEATHS
+///   remain valid, and that is what the stop point depends on.
 ///
-/// Seul le chien de garde reste fatal : sans lui le pilote peut reprendre ses
-/// sorties sous la mesure, et plus rien de ce qui suivrait ne serait imputable.
+/// Only the watchdog remains fatal: without it the driver can take back its
+/// outputs under the measurement, and nothing that followed would be attributable.
 ///
-/// Les mires peignent à chaque tour, dans les deux passes : Desktop Duplication
-/// n'émet une image qu'au changement du bureau, et une mire immobile ferait
-/// rendre `WAIT_TIMEOUT` à toutes les acquisitions — on mesurerait zéro image
-/// et l'on conclurait à une panne.
+/// The test patterns paint at each round, in both passes: Desktop Duplication
+/// only emits an image when the desktop changes, and a still test pattern would make
+/// all acquisitions return `WAIT_TIMEOUT` — we would measure zero images
+/// and conclude to a failure.
 ///
-/// `perturbation` date l'instant où la sortie de plus a été créée, pour que
-/// chaque mort porte son `ms_depuis_perturbation` : sans lui, distinguer une
-/// rafale d'un état durable oblige à recouper des horodatages à la main.
-/// `None` pour la passe témoin, où le champ n'a pas de sens.
+/// `perturbation` dates the instant the extra output was created, so that
+/// each death carries its `ms_depuis_perturbation`: without it, distinguishing a
+/// burst from a lasting state requires cross-checking timestamps by hand.
+/// `None` for the control pass, where the field has no meaning.
 fn passe(
     garde: &mut Garde<'_>,
     mires: &mut Mires,
@@ -329,31 +341,31 @@ fn passe(
     virtuelles: &[SortieDxgi],
     perturbation: Option<Instant>,
 ) -> Result<Passe> {
-    let nombre = voies.len();
-    let mut compteurs = Compteurs::nouveaux(nombre);
-    let mut vivantes = vec![true; nombre];
+    let count = voies.len();
+    let mut compteurs = Compteurs::nouveaux(count);
+    let mut vivantes = vec![true; count];
     let mut peinture_signalee = false;
     let mut lecture_signalee = false;
-    // Le numéro de tour est tenu ICI, et non lu sur `Mires::trame`.
+    // The round number is kept HERE, and not read from `Mires::trame`.
     //
-    // **Ce n'est pas un détail de style, c'est ce qui empêche un faux
-    // POSITIF sur `voies_vivantes_apres`.** `Mires::peindre` n'incrémente sa
-    // trame qu'après avoir présenté toutes ses fenêtres : un échec la laisse
-    // FIGÉE. Une passe qui lirait `mires.trame()` rappellerait alors
-    // `prochaine_image` avec le même `tour`, où `SourceDuplication::amorcer`
-    // court-circuite — plus aucun appel à `next_frame`. Deux conséquences,
-    // toutes deux fausses dans le sens dangereux : la dernière image amorcée
-    // serait recomptée à chaque itération de la boucle serrée (`images`
-    // s'emballe au lieu de se figer), et surtout **une voie réellement morte
-    // ne pourrait plus l'apprendre** — jamais marquée perdue, comptée vivante
-    // au bilan, et jamais sondée par la sonde post-mortem. Un compteur local
-    // avance quoi qu'il arrive : `next_frame` continue d'être appelée, donc
-    // les morts restent détectées, et un bureau qui ne change plus rend
-    // simplement `Ok(None)`.
+    // **This is not a detail of style, it is what prevents a false
+    // POSITIVE on `voies_vivantes_apres`.** `Mires::peindre` only increments its
+    // frame after having presented all its windows: a failure leaves it
+    // FROZEN. A pass that read `mires.trame()` would then call
+    // `prochaine_image` again with the same `tour`, where `SourceDuplication::amorcer`
+    // short-circuits — no more calls to `next_frame`. Two consequences,
+    // both wrong in the dangerous direction: the last primed image
+    // would be recounted at each iteration of the tight loop (`images`
+    // races instead of freezing), and above all **a really dead path
+    // could no longer learn it** — never marked lost, counted alive
+    // in the summary, and never probed by the post-mortem probe. A local counter
+    // advances whatever happens: `next_frame` keeps being called, so
+    // deaths stay detected, and a desktop that no longer changes simply
+    // returns `Ok(None)`.
     //
-    // Rien ne dépend de l'égalité entre ce compteur et la trame peinte :
-    // `amorcer` n'en fait qu'une clé de cache, `mire::voie_controlee` une
-    // rotation, et `mire::verdict` accepte les deux parités de vert.
+    // Nothing depends on this counter being equal to the painted frame:
+    // `amorcer` only uses it as a cache key, `mire::voie_controlee` as a
+    // rotation, and `mire::verdict` accepts both parities of green.
     let mut tour: u64 = 0;
 
     let debut = Instant::now();
@@ -361,32 +373,32 @@ fn passe(
 
     while debut.elapsed() < DUREE_PASSE {
         tour += 1;
-        if let Err(erreur) = mires.peindre() {
+        if let Err(error) = mires.peindre() {
             if !peinture_signalee {
                 peinture_signalee = true;
                 tracing::error!(
-                    causes = %super::super::causes(erreur),
-                    // Ce message affirmait « les mires ne changent plus, DONC le
-                    // bureau non plus, donc le compte d'images cesse
-                    // d'avancer » — au-delà de son relevé. `Mires::peindre`
-                    // échoue au premier `Present` fautif, APRÈS avoir présenté
-                    // les précédentes : rien ne garantit que la duplication
-                    // cesse d'émettre pour ces voies-là. La peinture est
-                    // partielle OU nulle, et c'est tout ce qu'on en sait.
-                    "peinture des mires perdue — la passe continue en mode DÉGRADÉ. La peinture \
-                     est PARTIELLE ou NULLE à partir d'ici : `peindre` échoue au premier \
-                     `Present` fautif, après avoir présenté les mires précédentes, et rien ne dit \
-                     lesquelles changent encore. La CADENCE et le compte d'images de cette passe \
-                     ne mesurent donc plus la capture — ni justes, ni « sous-estimés » d'un \
-                     facteur connu. Ce qui reste valable : les morts de voies, `next_frame` \
-                     continuant d'être appelée à chaque tour"
+                    causes = %super::super::causes(error),
+                    // This message asserted "the test patterns no longer change, THEREFORE the
+                    // desktop does not either, so the image count stops
+                    // advancing" — beyond its survey. `Mires::peindre`
+                    // fails at the first faulty `Present`, AFTER having presented
+                    // the previous ones: nothing guarantees that the duplication
+                    // stops emitting for those paths. Painting is
+                    // partial OR nil, and that is all we know about it.
+                    "painting of the test patterns lost — the pass goes on in DEGRADED mode. The painting \
+                     is PARTIAL or NONE from here on: `peindre` fails at the first \
+                     faulty `Present`, after presenting the preceding test patterns, and nothing says \
+                     which ones still change. The CADENCE and the image count of this pass \
+                     therefore no longer measure the capture — neither right, nor \"underestimated\" by a \
+                     known factor. What remains valid: the path deaths, `next_frame` \
+                     still being called on each round"
                 );
             }
         }
         mires.pomper();
-        // La voie contrôlée à ce tour, et elle seule : une lecture par tour
-        // quel que soit k (voir `mire::voie_controlee`).
-        let controlee = mire::voie_controlee(tour, nombre);
+        // The path checked at this round, and it alone: one reading per round
+        // whatever k (see `mire::voie_controlee`).
+        let controlee = mire::voie_controlee(tour, count);
 
         for (id, voie) in voies.iter_mut().enumerate() {
             if !vivantes[id] {
@@ -394,22 +406,22 @@ fn passe(
             }
             let image = match voie.prochaine_image(tour) {
                 Ok(Some(image)) => image,
-                // Rien de neuf sur ce bureau à cet instant : le cas courant,
-                // pas une erreur.
+                // Nothing new on this desktop at this instant: the common case,
+                // not an error.
                 Ok(None) => continue,
-                Err(erreur) => {
+                Err(error) => {
                     vivantes[id] = false;
-                    // Une ligne par voie morte, au plus k pour toute la passe :
-                    // ce n'est pas une trace par image.
+                    // One line per dead path, at most k for the whole pass:
+                    // it is not a per-image trace.
                     tracing::error!(
                         voie = id,
                         nom_sortie = %virtuelles[id].nom_sortie,
                         ms_depuis_perturbation = ?perturbation.map(|t| t.elapsed().as_millis() as u64),
-                        images_avant_la_mort = compteurs.images[id],
-                        causes = %super::super::causes(erreur),
-                        "capture définitivement perdue sur cette voie — elle cesse d'être \
-                         sollicitée, les autres continuent. Ne PAS en conclure que la reprise \
-                         est impossible avant d'avoir lu la sonde post-mortem"
+                        frames_before_death = compteurs.images[id],
+                        causes = %super::super::causes(error),
+                        "capture lost for good on this path — it stops being \
+                         polled, the others go on. Do NOT conclude from it that recovery \
+                         is impossible before reading the post-mortem probe"
                     );
                     continue;
                 }
@@ -417,23 +429,23 @@ fn passe(
             compteurs.images[id] += 1;
 
             if controlee == Some(id) {
-                // L'identité ATTENDUE est celle de la mire posée sur CETTE
-                // sortie : un verdict `Voisine(j)` dit que la voie i a capturé
-                // la sortie j. Après une réouverture, c'est le contrôle qui dit
-                // si la voie est revenue sur SA sortie et non sur une autre —
-                // le risque propre à une reprise dans une topologie qui vient
-                // de changer.
+                // The EXPECTED identity is that of the test pattern placed on THIS
+                // output: a `Voisine(j)` verdict says that path i captured
+                // output j. After a reopening, it is the check that tells
+                // whether the path came back to ITS output and not to another —
+                // the risk specific to recovery in a topology that has just
+                // changed.
                 let verdict = match compteurs::lire_verdict(voie.as_mut(), &image, id as u8) {
                     Ok(verdict) => verdict,
-                    Err(erreur) => {
+                    Err(error) => {
                         if !lecture_signalee {
                             lecture_signalee = true;
                             tracing::error!(
                                 voie = id,
-                                causes = %super::super::causes(erreur),
-                                "lecture de pixel perdue — comptée « Inconnue » et la passe \
-                                 continue : les verdicts de cette passe sont DÉGRADÉS, leur \
-                                 nombre de faux ne dit plus rien de la justesse des images"
+                                causes = %super::super::causes(error),
+                                "pixel read lost — counted as \"Inconnue\" and the pass \
+                                 goes on: the verdicts of this pass are DEGRADED, their \
+                                 number of false ones no longer says anything about the correctness of the images"
                             );
                         }
                         mire::Verdict::Inconnue
@@ -444,12 +456,12 @@ fn passe(
         }
 
         garde.battre_si_du()?;
-        // Journalisation périodique, à la seconde : aucune trace par trame.
+        // Periodic logging, every second: no per-frame trace.
         if Instant::now() >= prochain_journal {
             tracing::info!(
                 images = ?compteurs.images,
                 verdicts = ?compteurs.apres_recouvrement,
-                "banc de reprise en cours"
+                "recovery bench running"
             );
             prochain_journal += PERIODE_JOURNAL;
         }
@@ -461,5 +473,9 @@ fn passe(
         .filter(|(_, vivante)| !**vivante)
         .map(|(id, _)| id)
         .collect();
-    Ok(Passe { compteurs, perdues, degradee: peinture_signalee || lecture_signalee })
+    Ok(Passe {
+        compteurs,
+        perdues,
+        degradee: peinture_signalee || lecture_signalee,
+    })
 }

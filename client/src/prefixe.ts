@@ -1,51 +1,51 @@
-// Le préfixe de VM, côté navigateur : d'où il vient, et comment il compose un
-// nom de session.
+// The VM prefix, browser side: where it comes from, and how it composes a
+// session name.
 //
-// 🔴 CE MODULE EST PUR ET SANS DOM, sur le précédent explicite de
-// `client/src/jeton.ts` : `client/` n'a aucun `vitest.config.*`, donc
-// l'environnement de test est le Node par défaut — il n'y a ni `window` ni
-// `localStorage`. Le coffre et la chaîne de requête sont des PARAMÈTRES ;
-// `globalThis` n'est touché que dans le défaut d'un argument, à l'appel,
-// jamais au chargement du module.
+// 🔴 THIS MODULE IS PURE AND DOM-FREE, on the explicit precedent of
+// `client/src/jeton.ts`: `client/` has no `vitest.config.*`, so
+// the test environment is the default Node — there is neither `window` nor
+// `localStorage`. The vault and the query string are PARAMETERS;
+// `globalThis` is only touched as an argument's default, at call time,
+// never at module load.
 //
-// ✅ LA SOURCE DÉFINITIVE DU PRÉFIXE EST LA PLATEFORME, ET ELLE EXISTE DEPUIS
-// LE SOUS-BLOC P4. `client/src/connexion.ts` appelle `POST /session`
-// (`plateforme/src/http/routes-session.ts`) une fois le jeton posé, et écrit
-// ici par `poserPrefixe`. P3 avait transformé le littéral en PARAMÈTRE et
-// laissé la source à P4 ; c'est fait, et ce module n'a eu qu'à gagner ses deux
-// écrivains. `lirePrefixe` n'a pas changé d'une ligne.
+// ✅ THE DEFINITIVE SOURCE OF THE PREFIX IS THE PLATFORM, AND IT HAS EXISTED SINCE
+// SUB-BLOCK P4. `client/src/connexion.ts` calls `POST /session`
+// (`plateforme/src/http/routes-session.ts`) once the token is set, and writes
+// here through `poserPrefixe`. P3 had turned the literal into a PARAMETER and
+// left the source to P4; it is done, and this module only had to gain its two
+// writers. `lirePrefixe` has not changed by a line.
 //
-// ⚠️ LE COÛT QUE LA SPEC §10 NOMME — « une plateforme mal configurée retombe
-// silencieusement dans un espace de noms partagé » — EST RÉDUIT, PAS SOLDÉ, et
-// il faut dire par quoi. Ce qui l'empêche désormais de passer inaperçu tient en
-// deux gardes, aux deux bouts : `poserPrefixe` LÈVE sur la chaîne vide plutôt
-// que de la coucher au coffre, et la route rend 409 `aucune-vm` au lieu d'un
-// 200 à préfixe vide. Ce qui reste : le préfixe est PAR VM et non par session,
-// et `signaling/propriete.ts` reste en mémoire — deux clients humains de la
-// même VM retrouvent le même préfixe après un redémarrage du service.
+// ⚠️ THE COST SPEC §10 NAMES — "a misconfigured platform silently falls back
+// into a shared namespace" — IS REDUCED, NOT SETTLED, and
+// one must say by what. What now keeps it from going unnoticed comes down to
+// two guards, at both ends: `poserPrefixe` THROWS on the empty string rather
+// than writing it to the vault, and the route returns 409 `aucune-vm` instead of a (policy: allow-fr, wire refusal code)
+// 200 with an empty prefix. What remains: the prefix is PER VM and not per session,
+// and `signaling/propriete.ts` stays in memory — two human clients of the
+// same VM find the same prefix again after a service restart.
 
-/// Ce dont la LECTURE a besoin, et rien de plus.
+/// What READING needs, and nothing more.
 export interface Coffre {
     getItem(cle: string): string | null;
 }
 
-/// Ce dont l'ÉCRITURE a besoin.
+/// What WRITING needs.
 ///
-/// ⚠️ DEUX INTERFACES PLUTÔT QU'UNE, contrairement à `jeton.ts` qui n'en a
-/// qu'une : élargir `Coffre` interdirait de passer à `lirePrefixe` une vue en
-/// lecture seule, sans rien lui apporter. `window.localStorage` satisfait les
-/// deux, et c'est le seul appelant de production.
+/// ⚠️ TWO INTERFACES RATHER THAN ONE, unlike `jeton.ts` which only has
+/// one: widening `Coffre` would forbid passing `lirePrefixe` a read-only
+/// view, without bringing it anything. `window.localStorage` satisfies
+/// both, and it is the only production caller.
 export interface CoffreEcrivable extends Coffre {
-    setItem(cle: string, valeur: string): void;
+    setItem(cle: string, value: string): void;
     removeItem(cle: string): void;
 }
 
 export const CLE_PREFIXE = 'guac.prefixe';
 
-/// Le séparateur, tel que la spec §3.4 l'écrit. Miroir de
-/// `SEPARATEUR_PREFIXE` dans `agent/src/superviseur/protocole.rs` : les deux
-/// bouts composent le MÊME identifiant, et une divergence ne se verrait qu'en
-/// session réelle.
+/// The separator, as spec §3.4 writes it. Mirror of
+/// `SEPARATEUR_PREFIXE` in `agent/src/superviseur/protocole.rs`: both
+/// ends compose the SAME identifier, and a divergence would only show in a
+/// real session.
 export const SEPARATEUR = ':';
 
 function coffreParDefaut(): Coffre | undefined {
@@ -58,17 +58,17 @@ function requeteParDefaut(): string {
     return global.location?.search ?? '';
 }
 
-/// Le préfixe de la VM : celui du coffre, sinon celui de la chaîne de
-/// requête, sinon la chaîne vide.
+/// The VM's prefix: the vault's, otherwise the query string's,
+/// otherwise the empty string.
 ///
-/// 🔴 LE COFFRE PASSE AVANT LA REQUÊTE. Dans l'autre ordre, un `?prefixe=`
-/// resté dans une URL mise en favori écraserait à chaque rechargement le
-/// préfixe que la plateforme a posé, et la page ouvrirait les sessions d'une
-/// autre VM.
+/// 🔴 THE VAULT COMES BEFORE THE QUERY. In the other order, a `?prefixe=`
+/// left in a bookmarked URL would overwrite at each reload the
+/// prefix the platform set, and the page would open the sessions of
+/// another VM.
 ///
-/// 🔴 L'ABSENCE REND LA CHAÎNE VIDE, jamais `undefined` et jamais une
-/// exception : la page doit retomber sur `bureau`, ce que la spec §10 pose
-/// déjà comme règle.
+/// 🔴 ABSENCE RETURNS THE EMPTY STRING, never `undefined` and never an
+/// exception: the page must fall back to `bureau`, which spec §10 already
+/// sets as a rule.
 export function lirePrefixe(
     coffre: Coffre | undefined = coffreParDefaut(),
     requete: string = requeteParDefaut(),
@@ -78,70 +78,70 @@ export function lirePrefixe(
     return new URLSearchParams(requete).get('prefixe') ?? '';
 }
 
-/// Écrit le préfixe que la plateforme vient de délivrer.
+/// Writes the prefix the platform has just delivered.
 ///
-/// 🔴 LÈVE SUR LA CHAÎNE VIDE, ET C'EST LA GARDE, PAS UNE VÉRIFICATION DE
-/// POLITESSE. Un préfixe vide écrit au coffre n'y serait pas neutre :
-/// `lirePrefixe` le traite comme une absence (l. `duCoffre !== ''`),
-/// retomberait sur `?prefixe=` puis sur `''`, et la page rejoindrait
-/// SILENCIEUSEMENT l'espace de noms partagé — la panne muette exacte que la
-/// spec §10 nomme. Un appelant qui n'a pas de préfixe n'en a pas à écrire :
-/// il appelle `effacerPrefixe`.
+/// 🔴 THROWS ON THE EMPTY STRING, AND IT IS THE GUARD, NOT A COURTESY
+/// CHECK. An empty prefix written to the vault would not be neutral there:
+/// `lirePrefixe` treats it as an absence (l. `duCoffre !== ''`),
+/// would fall back to `?prefixe=` then to `''`, and the page would SILENTLY join
+/// the shared namespace — the exact silent failure
+/// spec §10 names. A caller that has no prefix has none to write:
+/// it calls `clearPrefix`.
 ///
-/// ⚠️ ELLE LÈVE PLUTÔT QUE DE RENDRE UN `boolean` : le seul appelant est du
-/// câblage (`connexion.ts`), et un booléen ignoré y serait indiscernable d'un
-/// succès. C'est le même argument que `orchestration/refus.ts` fait valoir en
-/// sens inverse — là-bas un refus ATTENDU se rend en valeur, ici une
-/// programmation FAUSSE se dit en exception.
+/// ⚠️ IT THROWS RATHER THAN RETURNING A `boolean`: the only caller is
+/// wiring (`connexion.ts`), and an ignored boolean would be indistinguishable there from a
+/// success. It is the same argument `orchestration/refus.ts` makes in
+/// the opposite direction — there an EXPECTED refusal is returned as a value, here a
+/// WRONG programming is voiced as an exception.
 export function poserPrefixe(coffre: CoffreEcrivable, prefixe: string): void {
     if (prefixe === '') {
         throw new Error(
-            'préfixe vide refusé : le coucher au coffre ferait rejoindre ' +
-                "l'espace de noms partagé sans que rien ne le dise (spec §10). " +
-                'Une absence de VM s\'écrit par effacerPrefixe.',
+            'empty prefix refused: writing it to the store would join ' +
+                "the shared namespace without anything saying so (spec §10). " +
+                'An absence of VM is written through effacerPrefixe.',
         );
     }
     coffre.setItem(CLE_PREFIXE, prefixe);
 }
 
-/// Retire le préfixe. Appelée quand l'utilisateur n'a AUCUNE VM.
+/// Removes the prefix. Called when the user has NO VM.
 ///
-/// 🔴 NE PAS L'APPELER LAISSERAIT LE PRÉFIXE D'UNE VM QU'ON N'A PLUS, et la
-/// page ouvrirait ses sessions au nom d'une autre machine — le coffre passant
-/// avant la chaîne de requête, rien ne le corrigerait. C'est aussi ce qui rend
-/// au mode d'essai local son `?prefixe=` : tant que le coffre porte quelque
-/// chose, la requête ne sert à rien.
-export function effacerPrefixe(coffre: CoffreEcrivable): void {
+/// 🔴 NOT CALLING IT WOULD LEAVE THE PREFIX OF A VM ONE NO LONGER HAS, and the
+/// page would open its sessions in the name of another machine — the vault coming
+/// before the query string, nothing would correct it. It is also what gives
+/// the local trial mode back its `?prefixe=`: as long as the vault carries something,
+/// the query is of no use.
+export function clearPrefix(coffre: CoffreEcrivable): void {
     coffre.removeItem(CLE_PREFIXE);
 }
 
-/// Ce qu'il faut faire du préfixe qu'une VM vient d'annoncer.
+/// What to do with the prefix a VM has just announced.
 ///
-/// 🔴 **CETTE RÈGLE EXISTE PARCE QUE LE HUB NE POSAIT AUCUN PRÉFIXE** (revue
-/// finale du 31 août 2026, critique ②). `poserPrefixe` n'avait qu'UN SEUL
-/// appelant de production — `connexion.ts::chercherLaSession` —, qui ne court
-/// que sur la page de connexion. Or un visiteur derrière Pomerium obtient son
-/// jeton **sur le hub** (`jeton.ts::assurerAccesFrais` → `/auth/moi`) sans
-/// jamais passer par cet écran : `lirePrefixe()` rendait alors `''`, le hub
-/// écoutait la session `bureau` pendant que l'agent annonçait sur
-/// `<prefixe>:bureau`, et **aucun `fenetre-ouverte` n'arrivait jamais**. Le
-/// verrou d'élection, lui non plus préfixé, rendait vacueuse la protection que
-/// `bureau/porteur-dom.ts::nomDuVerrou` déclare bruyamment offrir.
-/// ⚠️ **Le défaut PRÉEXISTE au chantier `navigation-hub-unique`** — il date du
-/// correctif Pomerium du 30 août 2026, et `shell-page.ts` en souffrait aussi.
-/// Il devient critique parce que le hub est devenu la SEULE surface.
+/// 🔴 **THIS RULE EXISTS BECAUSE THE HUB SET NO PREFIX** (final
+/// review of August 31st, 2026, critical ②). `poserPrefixe` had only ONE
+/// production caller — `connexion.ts::fetchTheSession` —, which only runs
+/// on the sign-in page. Yet a visitor behind Pomerium obtains their
+/// token **on the hub** (`jeton.ts::assurerAccesFrais` → `/auth/moi`) without
+/// ever going through that screen: `lirePrefixe()` then returned `''`, the hub
+/// listened on the session `bureau` while the agent announced on
+/// `<prefixe>:bureau`, and **no `fenetre-ouverte` ever arrived**. The
+/// election lock, not prefixed either, made vacuous the protection
+/// `bureau/porteur-dom.ts::nomDuVerrou` loudly claims to offer.
+/// ⚠️ **The defect PREDATES the `navigation-hub-unique` workstream** — it dates from the
+/// Pomerium fix of August 30th, 2026, and `shell-page.ts` suffered from it too.
+/// It becomes critical because the hub became the ONLY surface.
 ///
-/// 🔴 **UNE RÈGLE, PAS DU CÂBLAGE**, au critère reproductible de ce dépôt : la
-/// changer change ce que le produit DÉCIDE (quelle session il écoute), elle ne
-/// route pas une décision prise ailleurs.
+/// 🔴 **A RULE, NOT WIRING**, by this repository's reproducible criterion: changing
+/// it changes what the product DECIDES (which session it listens on), it does not
+/// route a decision taken elsewhere.
 ///
-/// ⚠️ **LA CHAÎNE VIDE VAUT « EFFACER », ELLE NE LÈVE PAS.** `poserPrefixe`
-/// lève sur `''`, et c'est juste pour LUI : un appelant qui n'a pas de préfixe
-/// n'en a pas à écrire. Mais un service qui annoncerait `prefixe: ''` n'est pas
-/// une programmation fausse du client — c'est une VM sans préfixe, et le geste
-/// correct est d'effacer, jamais de faire lever le peuplement du catalogue.
-/// C'est ce qui distingue cette règle de la garde de `poserPrefixe`, et les
-/// deux sont écrites côte à côte pour qu'on ne les confonde pas.
+/// ⚠️ **THE EMPTY STRING MEANS "ERASE", IT DOES NOT THROW.** `poserPrefixe`
+/// throws on `''`, and that is right for IT: a caller that has no prefix
+/// has none to write. But a service announcing `prefixe: ''` is not
+/// a wrong programming of the client — it is a VM without a prefix, and the correct
+/// gesture is to erase, never to make catalogue population throw.
+/// That is what distinguishes this rule from the guard of `poserPrefixe`, and the
+/// two are written side by side so that they are not confused.
 export type ChoixPrefixe = { action: 'poser'; prefixe: string } | { action: 'effacer' };
 
 export function prefixeDeLaVm(annonce: unknown): ChoixPrefixe {
@@ -149,17 +149,17 @@ export function prefixeDeLaVm(annonce: unknown): ChoixPrefixe {
     return { action: 'effacer' };
 }
 
-/// Applique le choix ci-dessus au coffre. **Du câblage**, gardé ici pour que
-/// les deux appelants (`connexion.ts` un jour, `hub/page.ts` aujourd'hui) ne
-/// recopient pas le `if`.
+/// Applies the choice above to the vault. **Wiring**, kept here so that
+/// the two callers (`connexion.ts` one day, `hub/page.ts` today) do not
+/// copy the `if`.
 export function retenirLePrefixe(coffre: CoffreEcrivable, annonce: unknown): void {
     const choix = prefixeDeLaVm(annonce);
     if (choix.action === 'poser') poserPrefixe(coffre, choix.prefixe);
-    else effacerPrefixe(coffre);
+    else clearPrefix(coffre);
 }
 
-/// Compose un identifiant de session : `<préfixe>:<nom>`, ou `<nom>` seul
-/// quand aucun préfixe n'est connu.
+/// Composes a session identifier: `<prefix>:<name>`, or `<name>` alone
+/// when no prefix is known.
 export function composer(prefixe: string, nom: string): string {
     if (prefixe === '') return nom;
     return `${prefixe}${SEPARATEUR}${nom}`;

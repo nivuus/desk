@@ -1,67 +1,67 @@
-//! La règle de part : qui reçoit quelle fraction du budget de session.
+//! The share rule: who receives which fraction of the session budget.
 //!
-//! **Pas de `#[cfg(windows)]`, aucun objet COM, aucun canal.** Ce module ne
-//! fait que décider ; l'application vit dans `capteur/sommeil.rs` et
-//! `capteur/fenetre.rs`. C'est le patron posé par D4 pour `capteur/protocole.rs`
-//! et par D5 pour `capteur/vivier.rs` : ce qui décide se teste sur l'hôte.
+//! **No `#[cfg(windows)]`, no COM object, no channel.** This module only
+//! decides; the application lives in `capteur/sommeil.rs` and
+//! `capteur/fenetre.rs`. It is the pattern set by D4 for `capteur/protocole.rs`
+//! and by D5 for `capteur/vivier.rs`: what decides is tested on the host.
 //!
-//! **Le défaut que ce module existe pour corriger.** Depuis le sous-bloc D1,
-//! chaque fenêtre est un processus portant sa propre `PeerConnection`, donc son
-//! propre BWE, et chacune hérite `BITRATE` tel quel. À huit fenêtres, huit
-//! `set_desired_bitrate` visent 96 Mb/s cumulés sur un lien unique : personne
-//! n'arbitre, et chaque fenêtre encode comme si elle était seule.
+//! **The defect this module exists to fix.** Since sub-block D1,
+//! each window is a process carrying its own `PeerConnection`, hence its
+//! own BWE, and each inherits `BITRATE` as is. With eight windows, eight
+//! `set_desired_bitrate` aim at 96 Mb/s cumulated on a single link: nobody
+//! arbitrates, and each window encodes as if it were alone.
 //!
-//! ⚠️ **Ce n'est PAS une congestion de lien, et la prémisse d'origine du
-//! sous-bloc disait le contraire — la recette l'a réfutée.** Le pont porte
-//! **≥ 1,44 Gb/s** et `packetsLost` vaut **0 aux onze exécutions** : 96 Mb/s
-//! cumulés sont entre 15 et 27 fois moins que ce que le chemin porte, et
-//! aucune fenêtre n'a jamais lu le sondage d'une autre comme de la congestion.
-//! **Le goulot mesuré est le DÉCODEUR du navigateur**, et ce qui le soulage
-//! est le nombre de pixels : réduire les bits sans franchir de seuil de
-//! barreau ne sauve rien (23,08 % d'images jetées à surface constante), quand
-//! passer de 1280×720 à 852×480 fait tomber le taux de 18,03 % à 3,94 %.
-//! Le partage reste donc le bon mécanisme, mais **il agit par la RÉSOLUTION** :
-//! une part plus petite fait descendre l'échelle d'`congestion/echelle.rs`
-//! d'un barreau, et c'est ce barreau qui soulage le décodeur. Voir
-//! `docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`,
-//! §1 et §3.6.
+//! ⚠️ **It is NOT link congestion, and the sub-block's original premise
+//! said the opposite — the acceptance run refuted it.** The bridge carries
+//! **≥ 1.44 Gb/s** and `packetsLost` is **0 on all eleven runs**: 96 Mb/s
+//! cumulated are 15 to 27 times less than what the path carries, and
+//! no window ever read another's probing as congestion.
+//! **The measured bottleneck is the browser's DECODER**, and what relieves it
+//! is the number of pixels: cutting bits without crossing a rung
+//! threshold saves nothing (23.08 % of frames dropped at constant area), whereas
+//! going from 1280×720 to 852×480 brings the rate down from 18.03 % to 3.94 %.
+//! Sharing therefore remains the right mechanism, but **it acts through the RESOLUTION**:
+//! a smaller share moves the ladder of `congestion/echelle.rs` down
+//! one rung, and it is that rung that relieves the decoder. See
+//! `docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`, policy: allow-fr (file path)
+//! §1 and §3.6.
 
-/// Majoration accordée à la fenêtre que l'utilisateur regarde.
+/// Boost granted to the window the user is looking at.
 ///
-/// ⚠️ **NON CALIBRÉE.** Le raisonnement qui la fonde n'est pas une mesure :
-/// deux barreaux voisins de l'échelle sont dans un rapport de pixels de
-/// 1,25² ≈ 1,56 (`DIVISEURS` de `congestion/echelle.rs`), donc un facteur 2
-/// garantit plus d'un barreau d'écart en faveur de la fenêtre regardée. C'est
-/// le critère ② de la recette qui la jugera, pas cette intuition.
+/// ⚠️ **NOT CALIBRATED.** The reasoning behind it is not a measurement:
+/// two neighbouring rungs of the ladder are in a pixel ratio of
+/// 1.25² ≈ 1.56 (`DIVISEURS` in `congestion/echelle.rs`), so a factor of 2
+/// guarantees more than one rung of difference in favour of the watched window. It is
+/// criterion ② of the acceptance run that will judge it, not this intuition.
 pub const FACTEUR_FOCUS: u32 = 2;
 
-/// Part laissée à une fenêtre endormie.
+/// Share left to a sleeping window.
 ///
-/// **Jamais zéro** : elle n'encode plus rien (D5 a relâché son encodeur) mais
-/// sa `PeerConnection` vit, et `set_desired_bitrate(0)` n'est pas un réglage
-/// que str0m est censé recevoir.
+/// **Never zero**: it no longer encodes anything (D5 released its encoder) but
+/// its `PeerConnection` lives, and `set_desired_bitrate(0)` is not a setting
+/// str0m is meant to receive.
 ///
-/// ⚠️ **NON CALIBRÉE**, et l'hypothèse qui la motive n'est pas vérifiée : on
-/// ignore si str0m émet réellement du bourrage de sondage quand aucun média ne
-/// part. Si oui, ce plancher évite à des fenêtres endormies d'émettre du
-/// trafic pour rien ; si non, il ne coûte que sa ligne. **Ce n'était de toute
-/// façon jamais une question de saturation** : le lien porte ≥ 1,44 Gb/s et
-/// n'a jamais perdu un paquet (voir la doc de tête). L'ordre de grandeur
-/// couvre l'audio (`opus::BITRATE_BPS`, 128 kb/s) et laisse de la marge.
+/// ⚠️ **NOT CALIBRATED**, and the hypothesis motivating it is not verified: we
+/// do not know whether str0m actually emits probing padding when no media
+/// goes out. If it does, this floor saves sleeping windows from emitting
+/// traffic for nothing; if not, it only costs its line. **It was never
+/// a saturation question anyway**: the link carries ≥ 1.44 Gb/s and
+/// has never lost a packet (see the head doc). The order of magnitude
+/// covers audio (`opus::BITRATE_BPS`, 128 kb/s) and leaves margin.
 ///
-/// ⚠️ **Cette valeur ne doit JAMAIS atteindre `Controleur::changer_plafond`.**
-/// Elle est très en dessous du barreau le plus bas de l'échelle (691 200 bps à
-/// 1280×720/60 avec `BPP_MIN`) : appliquée comme plafond d'encodage, elle
-/// pose `video_bitrate_bps = 256_000` par le `min` de `changer_plafond`, et
-/// **rien ne le remonte au réveil** — une endormie n'émet rien, donc str0m
-/// n'émet aucun `MediaEgressStats` pour elle, donc `Controleur::observer`,
-/// seule réparation possible, n'est jamais appelé. C'est le défaut I1 de la
-/// revue finale de branche ; le remède vit dans `Session::appliquer_part`, qui
-/// n'applique une part d'endormie qu'au sondage. **Une fenêtre endormie a
-/// relâché son encodeur (D5) : il n'y a rien à borner côté encodage.**
+/// ⚠️ **This value must NEVER reach `Controleur::changer_plafond`.**
+/// It is far below the lowest rung of the ladder (691,200 bps at
+/// 1280×720/60 with `BPP_MIN`): applied as an encoding ceiling, it
+/// sets `video_bitrate_bps = 256_000` through the `min` of `changer_plafond`, and
+/// **nothing raises it again on wake-up** — a sleeping window emits nothing, so str0m
+/// emits no `MediaEgressStats` for it, so `Controleur::observer`,
+/// the only possible repair, is never called. It is defect I1 of the
+/// final branch review; the remedy lives in `Session::appliquer_part`, which
+/// applies a sleeping window's share only to probing. **A sleeping window has
+/// released its encoder (D5): there is nothing to bound on the encoding side.**
 pub const PART_DORMANTE_BPS: u32 = 256_000;
 
-/// L'état d'une fenêtre, tel que le répartiteur a besoin de le connaître.
+/// A window's state, as the distributor needs to know it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fenetre {
     pub session: String,
@@ -69,60 +69,59 @@ pub struct Fenetre {
     pub focalisee: bool,
 }
 
-/// Découpe `budget_bps` entre les fenêtres.
+/// Splits `budget_bps` among the windows.
 ///
-/// Chaque endormie reçoit `PART_DORMANTE_BPS` ; le reste se divise entre les
-/// éveillées, la focalisée recevant `FACTEUR_FOCUS` parts au lieu d'une.
+/// Each sleeping window receives `PART_DORMANTE_BPS`; the rest is divided among the
+/// awake ones, the focused one receiving `FACTEUR_FOCUS` shares instead of one.
 ///
-/// **Garanties inviolables** : aucune panique, aucune part nulle, fonction
-/// totale.
+/// **Inviolable guarantees**: no panic, no zero share, total
+/// function.
 ///
-/// **Trois régimes** selon `budget` et `diviseur` (nombre d'éveillées,
-/// majoré de `FACTEUR_FOCUS - 1` s'il y a une focalisée éveillée) :
+/// **Three regimes** depending on `budget` and `diviseur` (number of awake windows,
+/// increased by `FACTEUR_FOCUS - 1` if there is an awake focused one):
 ///
-/// **Régime 1** : `budget ≥ endormies × PART_DORMANTE_BPS` ET `reste ≥ diviseur`.
-/// La somme ne dépasse jamais le budget, et la majoration de focus est appliquée.
-/// C'est la seule garantie de non-dépassement.
+/// **Regime 1**: `budget ≥ endormies × PART_DORMANTE_BPS` AND `reste ≥ diviseur`.
+/// The sum never exceeds the budget, and the focus boost is applied.
+/// It is the only no-overrun guarantee.
 ///
-/// **Régime 2** : `budget ≥ endormies × PART_DORMANTE_BPS` MAIS `reste < diviseur`.
-/// Le `.max(1)` appliqué à chaque part finale rend `part_base = 0`. Chaque
-/// éveillée reçoit 1 bps, la majoration de focus disparaît, et la somme dépasse
-/// le budget d'au plus `diviseur − reste` bps. Les planchers des endormies sont
-/// payés en intégralité.
+/// **Regime 2**: `budget ≥ endormies × PART_DORMANTE_BPS` BUT `reste < diviseur`.
+/// The `.max(1)` applied to each final share makes `part_base = 0`. Each
+/// awake window receives 1 bps, the focus boost disappears, and the sum exceeds
+/// the budget by at most `diviseur − reste` bps. The sleeping windows' floors are
+/// paid in full.
 ///
-/// **Régime 3** : `budget < endormies × PART_DORMANTE_BPS`. Les planchers des
-/// endormies sont quand même payés (aucune part nulle), et la somme dépasse le
-/// budget de `(endormies × PART_DORMANTE_BPS − budget) + eveillees` bps, non borné
-/// par le seul nombre d'éveillées. Ce comportement est assumé : un
-/// `set_desired_bitrate(0)` serait pire qu'un dépassement sur un lien que rien
-/// ne peut satisfaire de toute façon. Ce cas est décrit en détail au commentaire
-/// du calcul de `reste` dans le corps.
+/// **Regime 3**: `budget < endormies × PART_DORMANTE_BPS`. The sleeping windows'
+/// floors are paid anyway (no zero share), and the sum exceeds the
+/// budget by `(endormies × PART_DORMANTE_BPS − budget) + eveillees` bps, not bounded
+/// by the number of awake windows alone. This behaviour is accepted: a
+/// `set_desired_bitrate(0)` would be worse than an overrun on a link nothing
+/// can satisfy anyway. This case is described in detail in the comment
+/// on the computation of `reste` in the body.
 ///
-/// **Aucun travail conservateur** : une fenêtre qui n'use pas sa part ne la
-/// rend pas aux autres. Ce serait une seconde boucle de rétroaction dont la
-/// stabilité devrait être éprouvée — hors périmètre de D6.
+/// **No work-conserving**: a window that does not use its share does not
+/// give it back to the others. That would be a second feedback loop whose
+/// stability would have to be tested — out of D6's scope.
 pub fn repartir(budget_bps: u32, fenetres: &[Fenetre]) -> Vec<(String, u32)> {
     let endormies = fenetres.iter().filter(|f| !f.eveillee).count() as u32;
     let eveillees = fenetres.iter().filter(|f| f.eveillee).count() as u32;
 
-    // `saturating_sub` : un budget inférieur au total des planchers rend un
-    // reste nul, jamais un débordement. Les endormies gardent alors leur
-    // plancher et les éveillées reçoivent le minimum d'une part, ce qui fait
-    // franchir le budget — cas dégénéré assumé, mais il ne panique pas.
+    // `saturating_sub`: a budget below the total of the floors yields a
+    // zero remainder, never an overflow. The sleeping windows then keep their
+    // floor and the awake ones receive the minimum of one share, which makes it
+    // cross the budget — accepted degenerate case, but it does not panic.
     let reste = budget_bps.saturating_sub(endormies.saturating_mul(PART_DORMANTE_BPS));
 
-    // Une seule majoration, à la PREMIÈRE focalisée éveillée rencontrée :
-    // plusieurs focalisées ne durent pas (le client émet `blur`), mais en
-    // accorder deux ferait sauter l'invariant de budget.
-    let indice_focalisee =
-        fenetres.iter().position(|f| f.eveillee && f.focalisee);
+    // A single boost, to the FIRST awake focused window encountered:
+    // several focused windows do not last (the client emits `blur`), but
+    // granting two would break the budget invariant.
+    let indice_focalisee = fenetres.iter().position(|f| f.eveillee && f.focalisee);
 
     let diviseur = match indice_focalisee {
         Some(_) => eveillees.saturating_sub(1) + FACTEUR_FOCUS,
         None => eveillees,
     };
-    // `max(1)` : sans éveillée, le diviseur vaut 0 et la division paniquerait.
-    // La valeur ne sert alors à personne — aucune fenêtre n'est éveillée.
+    // `max(1)`: without an awake window, the divisor is 0 and the division would panic.
+    // The value then serves nobody — no window is awake.
     let part_base = reste / diviseur.max(1);
 
     fenetres
@@ -136,7 +135,7 @@ pub fn repartir(budget_bps: u32, fenetres: &[Fenetre]) -> Vec<(String, u32)> {
             } else {
                 part_base
             };
-            // Aucune part nulle : un budget dérisoire ne doit pas produire un
+            // No zero share: a derisory budget must not produce a
             // `set_desired_bitrate(0)`.
             (f.session.clone(), bps.max(1))
         })

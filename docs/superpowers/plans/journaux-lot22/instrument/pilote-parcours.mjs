@@ -81,11 +81,11 @@ async function laVm(jeton) {
 /// frappe — jamais par `schtasks`. C'est ce qui rend ce pilote un parcours et
 /// non une injection.
 async function lancer(jeton, vm, motif) {
-    const liste = await fetch(`${PLATEFORME}/applications?vm=${encodeURIComponent(vm)}`, {
+    const list = await fetch(`${PLATEFORME}/applications?vm=${encodeURIComponent(vm)}`, {
         headers: { authorization: `Bearer ${jeton}` },
     });
-    const corps = await liste.json().catch(() => undefined);
-    if (!liste.ok) throw new Error(`catalogue refusé : ${liste.status} ${JSON.stringify(corps)}`);
+    const corps = await list.json().catch(() => undefined);
+    if (!list.ok) throw new Error(`catalogue refusé : ${list.status} ${JSON.stringify(corps)}`);
     const apps = corps.applications ?? corps;
     const cible =
         apps.find((a) => a.id === motif) ??
@@ -134,7 +134,7 @@ ws.addEventListener('message', (evenement) => {
         ws.send(JSON.stringify({ type: 'viewport', session: message.session, largeur, hauteur }));
     }
 });
-ws.addEventListener('error', (e) => { relevé.erreur = String(e.message ?? e.type ?? e); log('ERREUR', relevé.erreur); });
+ws.addEventListener('error', (e) => { relevé.error = String(e.message ?? e.type ?? e); log('ERREUR', relevé.error); });
 ws.addEventListener('close', (e) => {
     relevé.fermeture = { code: e.code, motif: String(e.reason ?? '') };
     log('socket fermé', JSON.stringify(relevé.fermeture));

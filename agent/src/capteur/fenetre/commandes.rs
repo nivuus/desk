@@ -1,14 +1,14 @@
-//! Le service des commandes de l'enfant, et la contre-pression du média.
+//! Serving the child's commands, and the media back-pressure.
 //!
-//! **Extrait de `fenetre.rs`** pour la même raison que `sommeil.rs` : le
-//! sous-bloc D5 aurait porté le fichier parent au-delà du plafond de 500 lignes
-//! du projet.
+//! **Extracted from `fenetre.rs`** for the same reason as `sommeil.rs`: the
+//! sub-block D5 would have taken the parent file beyond the project's 500-line
+//! cap.
 //!
-//! Toutes les fonctions d'ici prennent `source: Option<&mut WindowsSource>` :
-//! `None` signifie « la fenêtre dort ». **Elles servent les commandes dans les
-//! deux cas** — refuser tout pendant un sommeil ferait remonter des échecs
-//! jusqu'à l'adaptation réseau de l'enfant, qui clorait la session par un
-//! chemin étranger au sommeil.
+//! All functions here take `source: Option<&mut WindowsSource>`:
+//! `None` means "the window sleeps". **They serve the commands in
+//! both cases** — refusing everything during sleep would push failures up
+//! to the child's network adaptation, which would close the session through a
+//! path foreign to sleep.
 
 use std::sync::mpsc::{SyncSender, TryRecvError, TrySendError};
 
@@ -18,43 +18,45 @@ use crate::windows_source::WindowsSource;
 
 use super::{AEcrire, Contexte, Fin, PAS_A_VIDE};
 
-/// Vide la file des commandes en attente et renvoie chaque réponse au fil de
-/// commandes. **Ne bloque jamais** : `try_recv` d'un côté, `Sender` non borné
-/// de l'autre.
+/// Drains the queue of pending commands and sends each reply back to the command
+/// thread. **Never blocks**: `try_recv` on one side, an unbounded `Sender`
+/// on the other.
 pub(super) fn servir_les_commandes(source: Option<&mut WindowsSource>, ctx: &Contexte) -> Fin {
     let mut source = source;
     loop {
         match ctx.commandes.try_recv() {
             Ok(message) => {
-                // `as_deref_mut` et non `source` : l'emprunt serait consommé
-                // par l'appel, et le tour suivant en a besoin.
+                // `as_deref_mut` and not `source`: the borrow would be consumed
+                // by the call, and the next round needs it.
                 let reponse = executer_commande(source.as_deref_mut(), ctx, message);
-                // La réponse repart par le canal, jamais par une écriture
-                // directe : ce fil ne touche aucun objet fichier.
+                // The reply goes back through the channel, never through a direct
+                // write: this thread touches no file object.
                 if ctx.reponses.send(reponse).is_err() {
-                    return Fin::Terminer("le fil de commandes est parti");
+                    return Fin::Terminer("the command thread is gone");
                 }
             }
             Err(TryRecvError::Empty) => return Fin::Continuer,
-            // L'enfant a fermé sa connexion de commandes : la fenêtre est finie.
-            Err(TryRecvError::Disconnected) => return Fin::Terminer("l'enfant a fermé le canal"),
+            // The child closed its command connection: the window is finished.
+            Err(TryRecvError::Disconnected) => {
+                return Fin::Terminer("the child closed the channel")
+            }
         }
     }
 }
 
-/// Dépose une charge pour le fil écrivain de la connexion média.
+/// Drops a payload for the media connection's writer thread.
 ///
-/// ⚠️ **C'est le SEUL point où le fil de fenêtre peut attendre, et c'est ce qui
-/// garantit qu'il ne peut jamais attendre sans servir les commandes.** La file
-/// est bornée pour que la contre-pression remonte jusqu'à la capture ; quand
-/// elle est pleine, on ne bloque pas dessus — on sert les commandes, on souffle
-/// un pas, et on réessaie. Un `send` bloquant ici recréerait exactement
-/// l'interblocage que la tâche 10 du sous-bloc D4 devait supprimer : enfant
-/// figé dans `commander` → file d'images de l'enfant pleine → tampon du tube
-/// plein → écriture du capteur bloquée → commande jamais servie → enfant figé.
+/// ⚠️ **It is the ONLY point where the window thread can wait, and that is what
+/// guarantees it can never wait without serving the commands.** The queue
+/// is bounded so that back-pressure goes up to the capture; when
+/// it is full, we do not block on it — we serve the commands, take a breath
+/// for one step, and try again. A blocking `send` here would recreate exactly
+/// the deadlock task 10 of sub-block D4 was meant to remove: child
+/// frozen in `commander` → child's frame queue full → pipe buffer
+/// full → sensor's write blocked → command never served → child frozen.
 ///
-/// **Y compris pour un état poussé par le sommeil** : une fenêtre qui s'endort
-/// alors que la file est pleine attend ici, en servant ses commandes.
+/// **Including for a state pushed by sleep**: a window falling asleep
+/// while the queue is full waits here, serving its commands.
 pub(super) fn deposer(
     charge: AEcrire,
     ecritures: &SyncSender<AEcrire>,
@@ -73,9 +75,9 @@ pub(super) fn deposer(
                 }
                 std::thread::sleep(PAS_A_VIDE);
             }
-            // Le fil écrivain est mort : la connexion média est perdue.
+            // The writer thread is dead: the media connection is lost.
             Err(TrySendError::Disconnected(_)) => {
-                return Fin::Terminer("la connexion média est fermée")
+                return Fin::Terminer("the media connection is closed")
             }
         }
     }
@@ -86,183 +88,190 @@ fn executer_commande(
     ctx: &Contexte,
     message: VersCapteur,
 ) -> DepuisCapteur {
-    // Les quatre messages qui ne touchent pas la source sont traités AVANT
-    // elle, pour que leur réponse soit la même endormie et éveillée :
-    // `Visibilite` et `AudioMort` parce qu'ils COMMANDENT ou alimentent
-    // l'arbitrage du sommeil — les ignorer pendant un sommeil interdirait
-    // tout réveil ou toute promotion d'une voisine —, les deux autres parce
-    // qu'une violation de protocole n'en cesse pas d'être une pendant un
-    // sommeil.
+    // The four messages that do not touch the source are handled BEFORE
+    // it, so that their reply is the same asleep and awake:
+    // `Visibilite` and `AudioMort` because they COMMAND or feed
+    // the sleep arbitration — ignoring them during sleep would forbid
+    // any wake-up or any promotion of a neighbour —, the two others because
+    // a protocol violation does not stop being one during
+    // sleep.
     match message {
         VersCapteur::Visibilite { visible, focalisee } => {
-            // L'effet ne revient PAS par cette réponse : l'arbitrage est global
-            // et peut concerner une AUTRE fenêtre que celle-ci. Il revient par
-            // `DepuisCapteur::Sommeil`, poussé sur la connexion média.
+            // The effect does NOT come back through this reply: arbitration is global
+            // and may concern ANOTHER window than this one. It comes back through
+            // `DepuisCapteur::Sommeil`, pushed on the media connection.
             crate::capteur::sommeil::signaler(ctx.session, visible, focalisee);
             return DepuisCapteur::Fait;
         }
         VersCapteur::AudioMort => {
-            // L'effet ne revient PAS par cette réponse : l'arbitrage est global
-            // et peut concerner une AUTRE fenêtre du même groupe de PID. Il
-            // revient par `DepuisCapteur::Audio`, poussé sur la connexion
-            // média. Même patron que `Visibilite` juste au-dessus.
+            // The effect does NOT come back through this reply: arbitration is global
+            // and may concern ANOTHER window of the same PID group. It
+            // comes back through `DepuisCapteur::Audio`, pushed on the media
+            // connection. Same pattern as `Visibilite` just above.
             crate::capteur::sommeil::audio_mort(ctx.session);
             return DepuisCapteur::Fait;
         }
-        // Sous-bloc D10 : la PREUVE (un paquet réel) que la capture audio de
-        // CETTE session est repartie. Traitée au même rang qu'`AudioMort` —
-        // avant la source, pas après — pour la même raison : elle ne touche
-        // ni encodeur ni duplication, seulement le registre de sommeil.
-        // Contrairement à `AudioMort`, elle ne ré-arbitre rien et ne revient
-        // jamais par une poussée sur la connexion média — elle ne fait que
-        // remettre à zéro le compteur de réarmements de cette session.
+        // Sub-block D10: the PROOF (a real packet) that the audio capture of
+        // THIS session has restarted. Handled at the same rank as `AudioMort` —
+        // before the source, not after — for the same reason: it touches
+        // neither encoder nor duplication, only the sleep registry.
+        // Unlike `AudioMort`, it re-arbitrates nothing and never comes
+        // back through a push on the media connection — it only
+        // resets this session's re-arm counter.
         VersCapteur::AudioVivant => {
             crate::capteur::sommeil::signaler_audio_vivant(ctx.session);
             return DepuisCapteur::Fait;
         }
-        // Sous-bloc P2 : le collage venu du navigateur. Étage 0 comme ses
-        // voisines — il ne touche ni encodeur ni duplication —, et traité
-        // AVANT la source pour la même raison qu'elles : l'ignorer pendant un
-        // sommeil ferait qu'une fenêtre endormie ne pourrait plus rien coller,
-        // alors que le presse-papier de la VM est global et n'a rien à voir
-        // avec son encodeur.
+        // Sub-block P2: the paste coming from the browser. Stage 0 like its
+        // neighbours — it touches neither encoder nor duplication —, and handled
+        // BEFORE the source for the same reason as them: ignoring it during
+        // sleep would mean a sleeping window could no longer paste anything,
+        // whereas the VM's clipboard is global and has nothing to do
+        // with its encoder.
         //
-        // 🔴 **C'est la SEULE de cette famille dont le `Fait` porte l'effet**,
-        // et la seule qui puisse rendre `Erreur` : l'enfant attend cette
-        // réponse pour savoir s'il doit injecter `Ctrl+V`. Voir la doc de la
-        // variante, qui porte tout l'ordre de D6.
-        VersCapteur::PressePapierEcrire { texte } => {
-            return match crate::capteur::sommeil::ecrire_le_presse_papier(&texte) {
+        // 🔴 **It is the ONLY one of this family whose `Fait` carries the effect**,
+        // and the only one that can return `Error`: the child waits for this
+        // reply to know whether it must inject `Ctrl+V`. See the doc of the
+        // variant, which carries D6's whole ordering.
+        VersCapteur::ClipboardWrite { texte } => {
+            return match crate::capteur::sommeil::write_clipboard(&texte) {
                 Ok(()) => DepuisCapteur::Fait,
-                Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+                Err(error) => DepuisCapteur::Error {
+                    motif: format!("{error:#}"),
+                },
             };
         }
         VersCapteur::Attache { .. } => {
-            return DepuisCapteur::Erreur {
-                motif: "seconde attache sur un canal déjà attaché".into(),
+            return DepuisCapteur::Error {
+                motif: "second attach on an already attached channel".into(),
             }
         }
-        // `Identite` n'appartient qu'à la connexion média, où elle est la
-        // première et unique trame : la voir ici signale un enfant qui confond
-        // ses deux connexions.
+        // `Identite` belongs only to the media connection, where it is the
+        // first and only frame: seeing it here signals a child confusing
+        // its two connections.
         VersCapteur::Identite { session: autre } => {
-            return DepuisCapteur::Erreur {
-                motif: format!("identité de {autre} sur la connexion de commandes"),
+            return DepuisCapteur::Error {
+                motif: format!("identity of {autre} on the command connection"),
             }
         }
         _ => {}
     }
 
-    // Tout le reste exige la source. Endormie, il n'y a ni encodeur à régler ni
-    // duplication à retailler : on répond comme si c'était fait, plutôt qu'une
-    // erreur qui remonterait jusqu'à l'adaptation réseau de l'enfant et s'y
-    // journaliserait comme un refus — un bruit sans objet.
+    // Everything else requires the source. Asleep, there is neither an encoder to tune nor a
+    // duplication to resize: we reply as if it were done, rather than an
+    // error that would go up to the child's network adaptation and be
+    // logged there as a refusal — pointless noise.
     //
-    // ⚠️ **Ce qu'on accepte ainsi n'est ni appliqué ni retenu.** Le réveil
-    // reconstruit la source par `sur_sortie`, donc à la taille d'encodage
-    // pleine et au débit d'attache.
+    // ⚠️ **What is accepted this way is neither applied nor kept.** Wake-up
+    // rebuilds the source through `sur_sortie`, hence at the full encoding
+    // size and at the attach bitrate.
     //
-    // **Relu à la tâche 8 du sous-bloc D10 : toujours vrai, et « pleine »
-    // désigne désormais la taille RETENUE** (`superviseur::placement::taille_retenue`),
-    // pas la taille brute de la sortie DXGI — qui peut être plus grande sur
-    // un registre pollué. C'est même plus exact qu'avant : la « pleine
-    // résolution » reconstruite au réveil est celle que la fenêtre a
-    // réellement demandée, jamais celle, potentiellement gonflée, de la
-    // sortie. Le débit se rattrape seul —
-    // `appliquer_decision` le repousse à chaque décision du contrôleur ; la
-    // taille d'encodage, elle, ne se rattrape qu'au prochain changement de
-    // barreau, la comparaison à `encode_size_appliquee` côté enfant croyant la
-    // cible déjà appliquée. Conséquence : après un réveil, une image encodée en
-    // pleine résolution au débit d'un barreau réduit, donc dégradée — jamais un
-    // dépassement de débit.
+    // **Re-read at task 8 of sub-block D10: still true, and "full"
+    // now designates the KEPT size** (`superviseur::placement::retained_size`),
+    // not the raw size of the DXGI output — which may be larger on
+    // a polluted registry. It is even more accurate than before: the "full
+    // resolution" rebuilt on wake-up is the one the window
+    // actually asked for, never the potentially inflated one of the
+    // output. The bitrate catches up by itself —
+    // `appliquer_decision` pushes it again at every controller decision; the
+    // encoding size, on the other hand, only catches up at the next change of
+    // rung, the comparison with `encode_size_appliquee` on the child side believing the
+    // target already applied. Consequence: after a wake-up, a frame encoded at
+    // full resolution at a reduced rung's bitrate, hence degraded — never a
+    // bitrate overrun.
     //
-    // **Ce n'est PAS corrigé, et c'est une décision — mais sa raison a changé.**
-    // L'obstacle technique est tombé : `set_encode_size` détruit l'encodeur
-    // courant avant d'en construire un neuf (`windows_source/encodage.rs`,
-    // tâche 10 de D5), il ne dépasse donc plus le plafond. Reste un arbitrage de
-    // portée, plus faible : réappliquer coûterait une construction d'encodeur à
-    // l'instant du réveil — celui où la session a le plus besoin de sa première
-    // image — pour une dégradation qui se résorbe seule au prochain barreau.
-    // **À rouvrir hors de ce sous-bloc**, son obstacle n'existant plus.
+    // **It is NOT fixed, and it is a decision — but its reason has changed.**
+    // The technical obstacle has fallen: `set_encode_size` destroys the current
+    // encoder before building a new one (`windows_source/encodage.rs`,
+    // task 10 of D5), so it no longer exceeds the cap. What remains is a scope
+    // trade-off, weaker: re-applying would cost an encoder construction at
+    // the moment of wake-up — the one where the session most needs its first
+    // frame — for a degradation that resolves itself at the next rung.
+    // **To be reopened outside this sub-block**, its obstacle no longer existing.
     let Some(source) = source else {
         return match message {
-            // La taille retenue, telle quelle : une fenêtre endormie n'a plus
-            // ni capture ni encodeur, il n'y a rien à retailler. Un `Fait`
-            // ferait échouer `SourceDistante::resize`, qui attend une `Taille`.
+            // The kept size, as is: a sleeping window no longer has
+            // either capture or encoder, there is nothing to resize. A `Fait`
+            // would make `SourceDistante::resize` fail, which expects a `Size`.
             //
-            // ⚠️ **Ce commentaire a dit successivement deux choses fausses, et
-            // c'est la revue TRANSVERSE de fin de branche D9 qui l'a rattrapé —
-            // aucune revue par tâche ne le pouvait.** Il a d'abord affirmé que
-            // « `resize` est de toute façon sans effet sur une source en mode
-            // `SortieEntiere` » ; D8 l'a réfuté en faisant suivre la sortie au
-            // viewport ; le commentaire a donc été réécrit pour annoncer, comme
-            // conséquence assumée, qu'un passage en plein écran demandé pendant
-            // le sommeil serait **perdu**. ❌ **Cette seconde rédaction est
-            // périmée depuis la tâche 3 du sous-bloc D9**, qui a retiré le
-            // changement de mode de sortie sur mesure (voir le constat en tête
-            // de `capteur/plein_ecran.rs`) : `resize` était redevenu, sans
-            // réserve, sans effet en `SortieEntiere`, et il n'y avait donc
-            // plus AUCUN plein écran à perdre par ce chemin.
+            // ⚠️ **This comment has successively said two false things, and
+            // it was the CROSS-CUTTING end-of-branch review of D9 that caught it —
+            // no per-task review could.** It first claimed that
+            // "`resize` has no effect anyway on a source in
+            // `SortieEntiere` mode"; D8 refuted it by making the output follow the
+            // viewport; the comment was therefore rewritten to announce, as an
+            // accepted consequence, that a switch to fullscreen requested during
+            // sleep would be **lost**. ❌ **That second wording has been
+            // stale since task 3 of sub-block D9**, which removed the
+            // tailored output mode change (see the finding at the head
+            // of `capteur/plein_ecran.rs`): `resize` had again become, without
+            // reservation, without effect in `SortieEntiere`, and there was therefore
+            // NO fullscreen left to lose through this path.
             //
-            // ❌ **CETTE TROISIÈME RÉDACTION EST FAUSSE À SON TOUR DEPUIS LE
-            // LOT 33 — la QUATRIÈME sur ce seul commentaire, et le dépôt a
-            // prévenu que « la durée de vie d'un *cela reste vrai* est d'un
-            // sous-bloc ».** `resize` n'est plus sans effet en
-            // `SortieEntiere` : il fait suivre le recadrage et la fenêtre au
-            // viewport (`ModeCapture::suit_le_viewport`). **Un
-            // redimensionnement demandé pendant le SOMMEIL est donc à nouveau
-            // PERDU** — ce bras rend la taille retenue telle quelle, sans
-            // rien appliquer.
+            // ❌ **THIS THIRD WORDING IS IN TURN FALSE SINCE
+            // BATCH 33 — the FOURTH on this single comment, and the repository
+            // warned that "the lifetime of a *this remains true* is one
+            // sub-block".** `resize` is no longer without effect in
+            // `SortieEntiere`: it makes the crop and the window follow the
+            // viewport (`ModeCapture::suit_le_viewport`). **A
+            // resize requested during SLEEP is therefore once again
+            // LOST** — this arm returns the kept size as is, without
+            // applying anything.
             //
-            // 🔵 **Et c'est acceptable, pour une raison qui n'est pas un
-            // vœu** : le réveil reconstruit la source par `sur_sortie` sur
-            // `self.dimensions()`, que `boucler` tient désormais à jour (voir
-            // son point 3) ; et le client REJOUE — `RejeuResize` réémet toute
-            // taille observée mais non confirmée, et le `ResizeObserver` du
-            // navigateur n'a pas cessé d'observer pendant le sommeil de la
-            // VM. La taille perdue ici revient au premier `Resize` suivant.
-            // **Non mesuré** : aucune recette n'a exercé « retailler pendant
-            // le sommeil », et c'est dit comme tel.
+            // 🔵 **And it is acceptable, for a reason that is not a
+            // wish**: wake-up rebuilds the source through `sur_sortie` on
+            // `self.dimensions()`, which `boucler` now keeps up to date (see
+            // its point 3); and the client REPLAYS — `RejeuResize` re-emits any
+            // size observed but not confirmed, and the browser's `ResizeObserver`
+            // has not stopped observing during the VM's
+            // sleep. The size lost here comes back with the next `Resize`.
+            // **Not measured**: no acceptance run has exercised "resizing during
+            // sleep", and it is said as such.
             //
-            // Ce qui reste vrai, et pourquoi ce bras existe : rendre une
-            // `Taille` plutôt qu'un `Fait`, parce que `SourceDistante::resize`
-            // attend une `Taille`.
-            VersCapteur::Redimensionner { .. } => {
-                DepuisCapteur::Taille { largeur: ctx.taille.0, hauteur: ctx.taille.1 }
-            }
+            // What remains true, and why this arm exists: returning a
+            // `Size` rather than a `Fait`, because `SourceDistante::resize`
+            // expects a `Size`.
+            VersCapteur::Redimensionner { .. } => DepuisCapteur::Size {
+                largeur: ctx.size.0,
+                hauteur: ctx.size.1,
+            },
             _ => DepuisCapteur::Fait,
         };
     };
 
-    let resultat = match message {
+    let result = match message {
         VersCapteur::Redimensionner { largeur, hauteur } => {
             return match source.resize(largeur, hauteur) {
                 Ok(()) => {
                     let (largeur, hauteur) = source.dimensions();
-                    DepuisCapteur::Taille { largeur, hauteur }
+                    DepuisCapteur::Size { largeur, hauteur }
                 }
-                Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+                Err(error) => DepuisCapteur::Error {
+                    motif: format!("{error:#}"),
+                },
             }
         }
-        VersCapteur::TailleEncodage { largeur, hauteur } => source.set_encode_size(largeur, hauteur),
+        VersCapteur::EncodeSize { largeur, hauteur } => source.set_encode_size(largeur, hauteur),
         VersCapteur::Debit { bps } => source.set_bitrate(bps),
         VersCapteur::ImageCle => source.request_keyframe(),
-        // Traités plus haut, avant la source, donc jamais atteints ici. Une
-        // `Erreur` plutôt qu'un `unreachable!` : une panique sur ce fil
-        // emporterait la fenêtre pour une faute de rédaction.
+        // Handled above, before the source, hence never reached here. An
+        // `Error` rather than an `unreachable!`: a panic on this thread
+        // would take the window down for a drafting mistake.
         VersCapteur::Attache { .. }
         | VersCapteur::Identite { .. }
         | VersCapteur::Visibilite { .. }
         | VersCapteur::AudioMort
         | VersCapteur::AudioVivant
-        | VersCapteur::PressePapierEcrire { .. } => {
-            return DepuisCapteur::Erreur {
-                motif: "commande déjà traitée hors de la source".into(),
+        | VersCapteur::ClipboardWrite { .. } => {
+            return DepuisCapteur::Error {
+                motif: "command already handled outside the source".into(),
             }
         }
     };
-    match resultat {
+    match result {
         Ok(()) => DepuisCapteur::Fait,
-        Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+        Err(error) => DepuisCapteur::Error {
+            motif: format!("{error:#}"),
+        },
     }
 }

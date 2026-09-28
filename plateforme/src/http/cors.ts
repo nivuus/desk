@@ -1,22 +1,22 @@
-// Les en-têtes CORS, ou rien. Fonction PURE, aucune expression régulière, une
-// égalité de chaînes.
+// The CORS headers, or nothing. PURE function, no regular expression, one
+// string equality.
 //
-// 🔴 POURQUOI CE MODULE EXISTE, et pourquoi la spec n'en parle pas : relevé le
-// 19 août 2026, `client/vite.config.ts` sert le navigateur sur 5173 quand
-// `config.ts` écoute sur 8080. Un `POST` du navigateur vers `/auth/connexion`
-// est donc CROSS-ORIGIN, et sans `Access-Control-Allow-Origin` le navigateur
-// refuse de lire la réponse — sans qu'aucun test côté serveur ne le voie,
-// puisque les tests parlent en `fetch` Node.
+// 🔴 WHY THIS MODULE EXISTS, and why the spec does not mention it: found on
+// 19 August 2026, `client/vite.config.ts` serves the browser on 5173 while
+// `config.ts` listens on 8080. A browser `POST` to `/auth/connexion`
+// is therefore CROSS-ORIGIN, and without `Access-Control-Allow-Origin` the browser
+// refuses to read the response — without any server-side test seeing it,
+// since the tests speak through Node `fetch`.
 //
-// 🔴 LE DÉFAUT EST LE REFUS : origine autorisée absente, aucun en-tête. Et la
-// valeur `*` n'est produite SOUS AUCUNE CONDITION — un joker autoriserait
-// n'importe quel site à parler à cette API au nom du navigateur d'un
-// utilisateur connecté.
+// 🔴 THE DEFAULT IS REFUSAL: allowed origin absent, no header. And the
+// value `*` is produced UNDER NO CONDITION — a wildcard would allow
+// any site to talk to this API on behalf of the browser of a
+// signed-in user.
 //
-// ⚠️ L'origine demandée est COMPARÉE, jamais renvoyée telle quelle : renvoyer
-// l'`Origin` du demandeur revient à autoriser tout le monde en le disant d'une
-// autre façon. Et la comparaison est une ÉGALITÉ, jamais un préfixe — un
-// `startsWith` accepterait `http://127.0.0.1:5173.attaquant.test`.
+// ⚠️ The requested origin is COMPARED, never sent back as is: sending back
+// the requester's `Origin` amounts to allowing everybody while saying it in another
+// way. And the comparison is an EQUALITY, never a prefix — a
+// `startsWith` would accept `http://127.0.0.1:5173.attaquant.test`.
 
 export function entetesCors(
     origineDemandee: string | undefined,
@@ -25,54 +25,54 @@ export function entetesCors(
     if (origineAutorisee === undefined || origineAutorisee === '') return undefined;
     if (origineDemandee === undefined || origineDemandee === '') return undefined;
     if (origineDemandee !== origineAutorisee) return undefined;
-    // Jamais `*` : la valeur rendue est l'origine CONFIGURÉE, dont on vient de
-    // vérifier qu'elle est aussi celle demandée.
+    // Never `*`: the value returned is the CONFIGURED origin, which we have just
+    // verified is also the requested one.
     if (origineAutorisee === '*') return undefined;
     return {
         'Access-Control-Allow-Origin': origineAutorisee,
-        // Sans `Vary`, un cache intermédiaire servirait la réponse d'une
-        // origine à une autre.
+        // Without `Vary`, an intermediate cache would serve the response of one
+        // origin to another.
         Vary: 'Origin',
-        // `GET` depuis P4 : `GET /vm` est la première route de ce service que
-        // le navigateur atteigne autrement qu'en `POST`.
+        // `GET` since P4: `GET /vm` is the first route of this service that
+        // the browser reaches other than through `POST`.
         //
-        // ✅ ET G1 N'A RIEN EU À CHANGER ICI : `GET /applications` est le
-        // second consommateur de la même valeur, et le sous-bloc l'a trouvée
-        // déjà posée. La modification que son plan prescrivait était donc
-        // idempotente, et sa « rouge gratuite » n'était plus jouable — P4
-        // l'avait jouée, et son test l'annonçait en toutes lettres
-        // (`cors.test.ts`). Relevé plutôt que supposé fait.
+        // ✅ AND G1 HAD NOTHING TO CHANGE HERE: `GET /applications` is the
+        // second consumer of the same value, and the sub-block found it
+        // already set. The change its plan prescribed was therefore
+        // idempotent, and its "free red" was no longer playable — P4
+        // had played it, and its test announced it in so many words
+        // (`cors.test.ts`). Checked rather than assumed done.
         //
-        // 🔴 `PUT` DEPUIS G3, ET SANS LUI LE TÉLÉVERSEMENT EST INATTEIGNABLE
-        // DEPUIS UN NAVIGATEUR EN ORIGINE CROISÉE. `PUT /televersement/:id/
-        // tranche/:n` est la PREMIÈRE route `PUT` de tout le service, et son
-        // appelant EST le navigateur : c'est lui qui découpe le fichier et
-        // dépose les tranches. Un `PUT` portant `Authorization` est une requête
-        // NON SIMPLE — le navigateur envoie d'abord une préalable portant
-        // `Access-Control-Request-Method: PUT`, et **abandonne sans jamais
-        // envoyer la vraie requête** si la réponse ne l'annonce pas. Sans
-        // effet en origine unique (le profil `deploiement`, où nginx sert la
-        // page et l'API sur la même origine) ; **mordant en développement**,
-        // où `vite` sert le client sur 5173 et le service écoute sur 8080.
+        // 🔴 `PUT` SINCE G3, AND WITHOUT IT THE UPLOAD IS UNREACHABLE
+        // FROM A CROSS-ORIGIN BROWSER. `PUT /televersement/:id/
+        // tranche/:n` is the FIRST `PUT` route of the whole service, and its
+        // caller IS the browser: it is the one that slices the file and
+        // uploads the slices. A `PUT` carrying `Authorization` is a NON-SIMPLE
+        // request — the browser first sends a preflight carrying
+        // `Access-Control-Request-Method: PUT`, and **gives up without ever
+        // sending the real request** if the response does not announce it. No
+        // effect with a single origin (the `deploiement` profile, where nginx serves the
+        // page and the API on the same origin); **biting in development**,
+        // where `vite` serves the client on 5173 and the service listens on 8080.
         //
-        // ⚠️ C'EST LA CLASSE QUE P4 A NOMMÉE ET DÉCLARÉE SANS GARDE
-        // AUTOMATIQUE — « ce qu'un navigateur exige et qu'un test serveur ne
-        // voit pas ». Elle a mordu deux fois en P4 (`Authorization` non permis,
-        // préalable non traitée) et une troisième fois ici. Le seul garde
-        // possible reste une ASSERTION SUR LA VALEUR, dans `cors.test.ts` :
-        // aucun `fetch` de Node n'applique la politique d'origine, donc aucun
-        // test de bout en bout ne peut la rendre rouge.
+        // ⚠️ THIS IS THE CLASS THAT P4 NAMED AND DECLARED WITHOUT AN AUTOMATIC
+        // GUARD — « what a browser demands and a server test cannot
+        // see ». It bit twice in P4 (`Authorization` not allowed,
+        // preflight not handled) and a third time here. The only possible
+        // guard remains an ASSERTION ON THE VALUE, in `cors.test.ts`:
+        // no Node `fetch` applies the origin policy, so no
+        // end-to-end test can turn it red.
         'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-        // 🔴 `authorization` DEPUIS P4, ET SANS LUI RIEN N'EST ATTEIGNABLE.
-        // Les deux routes de P4 — et les deux de G1 — exigent
+        // 🔴 `authorization` SINCE P4, AND WITHOUT IT NOTHING IS REACHABLE.
+        // The two P4 routes — and the two G1 ones — require
         // `Authorization: Bearer`
-        // (`http/porteur.ts`), et cet en-tête rend la requête NON SIMPLE : le
-        // navigateur envoie une requête préalable portant
-        // `Access-Control-Request-Headers: authorization`, qu'un serveur ne
-        // répondant que `content-type` refuse. ⚠️ Comme tout ce que ce fichier
-        // règle, AUCUN test Node ne peut le voir — voir l'en-tête : les tests
-        // parlent en `fetch` Node, qui n'applique pas la politique d'origine.
-        // La garde est l'assertion de `cors.test.ts`, et rien d'autre.
+        // (`http/porteur.ts`), and that header makes the request NOT SIMPLE: the
+        // browser sends a preflight request carrying
+        // `Access-Control-Request-Headers: authorization`, which a server
+        // answering only `content-type` refuses. ⚠️ Like everything this file
+        // settles, NO Node test can see it — see the header: the tests
+        // speak through Node `fetch`, which does not apply the origin policy.
+        // The guard is the assertion of `cors.test.ts`, and nothing else.
         'Access-Control-Allow-Headers': 'content-type, authorization',
     };
 }

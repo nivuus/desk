@@ -1,40 +1,40 @@
-//! Les **treize** entrées de `ProjectedFSLib.dll` : leur nom, leur rang, et la
-//! résolution elle-même. **PUR** — aucun `cfg`, aucune dépendance à `windows`,
-//! entièrement testé sur l'hôte par un résolveur injecté.
+//! The **thirteen** entry points of `ProjectedFSLib.dll`: their name, their rank, and the
+//! resolution itself. **PURE** — no `cfg`, no dependency on `windows`,
+//! entirely tested on the host through an injected resolver.
 //!
-//! ⚠️ **Pourquoi ce module existe séparément de `pont/projfs/chargement.rs`.**
-//! Le plan de F1 (tâche 12, step 4a) fait porter la garde « `charger()` échoue
-//! si **une seule** des treize entrées manque, et l'erreur **nomme**
-//! l'entrée » par un test de fumée `#[cfg(windows)]`, dont il écrit lui-même
-//! qu'on ne le rend rouge qu'« en injectant un quatorzième nom bidon dans la
-//! liste, une fois, puis en le retirant » — c'est-à-dire par une manipulation
-//! manuelle, sur la VM, qu'aucune exécution ultérieure ne rejoue. Ce dépôt a
-//! attrapé cinq contrôles incapables d'échouer, dont trois écrits par un plan.
-//! La décision — qui est une décision, et pas une commodité — vit donc ici,
-//! **pure**, et son test balaie les treize entrées une à une, à chaque
-//! `cargo test`. Ce qui reste dans `chargement.rs` est ce qu'aucun test d'hôte
-//! ne peut atteindre : `LoadLibraryW`, `GetProcAddress`, et les treize
-//! `transmute`.
+//! ⚠️ **Why this module exists separately from `pont/projfs/chargement.rs`.**
+//! F1's plan (task 12, step 4a) has the guard "`charger()` fails
+//! if **a single one** of the thirteen entry points is missing, and the error **names**
+//! the entry point" carried by a `#[cfg(windows)]` smoke test, of which it writes itself
+//! that it is only made red "by injecting a fourteenth bogus name into the
+//! list, once, then removing it" — that is, by a manual
+//! manipulation, on the VM, that no later run replays. This repository has
+//! caught five checks unable to fail, three of them written by a plan.
+//! The decision — which is a decision, and not a convenience — therefore lives here,
+//! **pure**, and its test sweeps the thirteen entry points one by one, at each
+//! `cargo test`. What remains in `chargement.rs` is what no host test
+//! can reach: `LoadLibraryW`, `GetProcAddress`, and the thirteen
+//! `transmute`s.
 //!
-//! ⚠️ **Ce module ne dit RIEN de l'ABI.** Il vérifie que treize noms existent
-//! et à quel rang ; il ne peut pas vérifier qu'une signature transcrite à la
-//! main correspond à celle de la DLL. C'est le risque R7 de la spec, et il
-//! n'est pas couvert ici — voir l'en-tête de `pont/projfs/chargement.rs`.
+//! ⚠️ **This module says NOTHING about the ABI.** It checks that thirteen names exist
+//! and at which rank; it cannot check that a signature transcribed by
+//! hand matches the DLL's. It is the spec's risk R7, and it
+//! is not covered here — see the header of `pont/projfs/chargement.rs`.
 
-/// Le nombre d'entrées. Ce n'est pas une commodité : il type [`NOMS`] et le
-/// tableau que rend [`resoudre`], donc en ajouter une quatorzième sans
-/// l'inscrire dans [`NOMS`] ne compile pas.
-pub const NOMBRE: usize = 13;
+/// The number of entry points. It is not a convenience: it types [`NOMS`] and the
+/// array [`resoudre`] returns, so adding a fourteenth without
+/// listing it in [`NOMS`] does not compile.
+pub const COUNT: usize = 13;
 
-/// Les treize noms exportés, **dans l'ordre des rangs ci-dessous**.
+/// The thirteen exported names, **in the order of the ranks below**.
 ///
-/// La liste est celle de la spec §4.3, relevée présente dans
-/// `windows-0.62.2/src/Windows/Win32/Storage/ProjectedFileSystem/mod.rs` le
-/// 19 août 2026. `PrjWritePlaceholderInfo2` et `PrjFillDirEntryBuffer2` en sont
-/// **délibérément absentes** : d'une génération ultérieure, non vérifiées
-/// présentes sur cette machine (spec §2.2), et inutiles à la v1 — elles servent
-/// les liens symboliques, hors périmètre (spec §3.5.2).
-pub const NOMS: [&str; NOMBRE] = [
+/// The list is spec §4.3's, found present in
+/// `windows-0.62.2/src/Windows/Win32/Storage/ProjectedFileSystem/mod.rs` on
+/// August 19th, 2026. `PrjWritePlaceholderInfo2` and `PrjFillDirEntryBuffer2` are
+/// **deliberately absent** from it: from a later generation, not checked
+/// present on this machine (spec §2.2), and useless to v1 — they serve
+/// symbolic links, out of scope (spec §3.5.2).
+pub const NOMS: [&str; COUNT] = [
     "PrjAllocateAlignedBuffer",
     "PrjClearNegativePathCache",
     "PrjCompleteCommand",
@@ -50,43 +50,43 @@ pub const NOMS: [&str; NOMBRE] = [
     "PrjWritePlaceholderInfo",
 ];
 
-/// Les treize adresses, **nommées**.
+/// The thirteen addresses, **named**.
 ///
-/// ⚠️ **Pourquoi une structure à champs nommés et non un `[usize; 13]` plus
-/// treize constantes de rang.** La première rédaction faisait exactement cela,
-/// et une mutation jouée après le vert l'a réfutée : échanger deux rangs au
-/// site de construction de `ProjFs` (`adresses[COMPARER_NOMS]` contre
-/// `adresses[APPARIER_NOM]`) **survivait** — le test des rangs épinglait bien
-/// `NOMS[RANG]`, mais rien n'épinglait l'appariement CHAMP ↔ RANG au site
-/// d'appel, qui est précisément là où la faute se commet. Deux entrées
-/// échangées, ce sont deux `transmute` vers la mauvaise signature.
+/// ⚠️ **Why a structure with named fields and not a `[usize; 13]` plus
+/// thirteen rank constants.** The first draft did exactly that,
+/// and a mutation played after green refuted it: swapping two ranks at the
+/// `ProjFs` construction site (`adresses[COMPARER_NOMS]` against
+/// `adresses[APPARIER_NOM]`) **survived** — the ranks test did pin
+/// `NOMS[RANG]`, but nothing pinned the FIELD ↔ RANK pairing at the call
+/// site, which is precisely where the mistake is made. Two swapped
+/// entry points are two `transmute`s to the wrong signature.
 ///
-/// Avec des champs nommés, le seul appariement positionnel restant est
-/// celui-ci, dans un module **pur** — et `chaque_champ_recoit_l_adresse_de_son_entree`
-/// le balaie, les treize.
+/// With named fields, the only remaining positional pairing is
+/// this one, in a **pure** module — and `each_field_receives_the_address_of_its_entry`
+/// sweeps it, all thirteen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Adresses {
     pub allouer_tampon_aligne: usize,
-    pub vider_cache_negatif: usize,
+    pub clear_negative_path_cache: usize,
     pub completer_commande: usize,
-    pub supprimer_fichier: usize,
+    pub delete_file: usize,
     pub comparer_noms: usize,
     pub apparier_nom: usize,
     pub remplir_tampon_entrees: usize,
     pub rendre_tampon_aligne: usize,
     pub marquer_racine: usize,
-    pub demarrer_virtualisation: usize,
+    pub start_virtualizing: usize,
     pub arreter_virtualisation: usize,
-    pub ecrire_donnees: usize,
-    pub ecrire_info_marqueur: usize,
+    pub write_file_data: usize,
+    pub write_placeholder_info: usize,
 }
 
-/// Une entrée que la bibliothèque n'exporte pas.
+/// An entry point the library does not export.
 ///
-/// **Elle porte le NOM**, pas un rang ni un compte : c'est ce qui distingue
-/// « cette VM n'a pas ProjFS du tout » de « cette VM a une génération de
-/// ProjectedFSLib antérieure à celle que la v1 attend ». Un message qui dirait
-/// seulement « une entrée manque » laisserait les deux indiscernables.
+/// **It carries the NAME**, not a rank nor a count: it is what distinguishes
+/// "this VM has no ProjFS at all" from "this VM has a generation of
+/// ProjectedFSLib earlier than the one v1 expects". A message that would say
+/// only "an entry point is missing" would leave the two indistinguishable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EntreeManquante {
     pub nom: &'static str,
@@ -100,45 +100,45 @@ impl std::fmt::Display for EntreeManquante {
 
 impl std::error::Error for EntreeManquante {}
 
-/// Résout les treize entrées par le `resolveur` fourni, et rend leurs adresses
-/// **à leur rang**.
+/// Resolves the thirteen entry points through the provided `resolveur`, and returns their addresses
+/// **at their rank**.
 ///
-/// Le résolveur rend `None` — ou `Some(0)` — pour une entrée absente : c'est le
-/// contrat de `GetProcAddress`, dont le `NULL` n'est pas une adresse.
-/// Confondre les deux ferait `transmute` d'un pointeur nul en pointeur de
-/// fonction, et le premier appel sauterait à l'adresse 0.
+/// The resolver returns `None` — or `Some(0)` — for an absent entry point: it is the
+/// contract of `GetProcAddress`, whose `NULL` is not an address.
+/// Confusing the two would `transmute` a null pointer into a function
+/// pointer, and the first call would jump to address 0.
 ///
-/// **Échec immédiat à la première manquante** : la suivante n'apprendrait rien
-/// de plus, et c'est la PREMIÈRE que le journal doit nommer — une DLL d'une
-/// génération antérieure nommerait sinon sa dernière entrée absente, et le
-/// diagnostic partirait du mauvais bout.
+/// **Immediate failure at the first missing one**: the next would teach nothing
+/// more, and it is the FIRST that the log must name — a DLL of an
+/// earlier generation would otherwise name its last absent entry point, and the
+/// diagnosis would start from the wrong end.
 pub fn resoudre(
     mut resolveur: impl FnMut(&str) -> Option<usize>,
 ) -> Result<Adresses, EntreeManquante> {
-    let mut a = [0usize; NOMBRE];
+    let mut a = [0usize; COUNT];
     for (rang, nom) in NOMS.iter().enumerate() {
         match resolveur(nom) {
             Some(adresse) if adresse != 0 => a[rang] = adresse,
             _ => return Err(EntreeManquante { nom }),
         }
     }
-    // ⚠️ **L'UNIQUE appariement positionnel du pont**, et il est ici, pur et
-    // balayé par un test d'hôte — plutôt qu'au site des `transmute`, où rien
-    // ne pourrait l'éprouver. L'ordre doit suivre celui de [`NOMS`].
+    // ⚠️ **The bridge's ONLY positional pairing**, and it is here, pure and
+    // swept by a host test — rather than at the `transmute` site, where nothing
+    // could exercise it. The order must follow that of [`NOMS`].
     Ok(Adresses {
         allouer_tampon_aligne: a[0],
-        vider_cache_negatif: a[1],
+        clear_negative_path_cache: a[1],
         completer_commande: a[2],
-        supprimer_fichier: a[3],
+        delete_file: a[3],
         comparer_noms: a[4],
         apparier_nom: a[5],
         remplir_tampon_entrees: a[6],
         rendre_tampon_aligne: a[7],
         marquer_racine: a[8],
-        demarrer_virtualisation: a[9],
+        start_virtualizing: a[9],
         arreter_virtualisation: a[10],
-        ecrire_donnees: a[11],
-        ecrire_info_marqueur: a[12],
+        write_file_data: a[11],
+        write_placeholder_info: a[12],
     })
 }
 

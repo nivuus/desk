@@ -216,8 +216,8 @@ try {
     noter('relecture APRÈS l éditeur', releve.relecture_apres_editeur);
     releve.etapes_page = await hub.evaluer('(window.__item1||{}).etapes');
 } catch (e) {
-    releve.erreur = String(e && e.message ? e.message : e);
-    log('ERREUR : ' + releve.erreur);
+    releve.error = String(e && e.message ? e.message : e);
+    log('ERREUR : ' + releve.error);
 } finally {
     chrome.kill('SIGKILL');
     // 🔴 LE PROFIL CHROME PART AVEC LE PILOTE. Chaque exécution en laissait un

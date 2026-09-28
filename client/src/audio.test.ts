@@ -1,9 +1,9 @@
-// Tests du démutage au premier geste.
+// Tests of unmuting on the first gesture.
 //
-// Le module est testé par injection : ni `document`, ni `window`, ni un vrai
-// HTMLVideoElement ne sont nécessaires. C'est la technique retenue pour
-// `reset-origin.js` dans le spike multi-fenêtres, qui a permis de tester le
-// même module sous Vitest et dans le navigateur sans build.
+// The module is tested by injection: neither `document`, nor `window`, nor a real
+// HTMLVideoElement are needed. It is the technique chosen for
+// `reset-origin.js` in the multi-window spike, which made it possible to test the
+// same module under Vitest and in the browser without a build.
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -13,23 +13,23 @@ function faireCible() {
     const ecouteurs = new Map<string, EventListener[]>();
     return {
         addEventListener(type: string, ecouteur: EventListener) {
-            const liste = ecouteurs.get(type) ?? [];
-            liste.push(ecouteur);
-            ecouteurs.set(type, liste);
+            const list = ecouteurs.get(type) ?? [];
+            list.push(ecouteur);
+            ecouteurs.set(type, list);
         },
         removeEventListener(type: string, ecouteur: EventListener) {
-            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
-            ecouteurs.set(type, liste);
+            const list = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, list);
         },
         declencher(type: string) {
             for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
                 ecouteur(new Event(type));
             }
         },
-        /// `new Event(type)` ne porte pas de propriété `key` : Node n'a pas
-        /// de classe `KeyboardEvent` globale (contrairement à un vrai
-        /// navigateur), donc on la simule en l'assignant après coup sur un
-        /// `Event` ordinaire — suffisant, `audio.ts` ne lit que `.type` et
+        /// `new Event(type)` carries no `key` property: Node has no
+        /// global `KeyboardEvent` class (unlike a real
+        /// browser), so it is simulated by assigning it afterwards on an
+        /// ordinary `Event` — enough, `audio.ts` only reads `.type` and
         /// `.key`.
         declencherTouche(type: string, touche: string) {
             const evenement = new Event(type) as Event & { key: string };
@@ -44,8 +44,8 @@ function faireCible() {
     };
 }
 
-/// Un média dont le démutage est systématiquement refusé par le navigateur :
-/// `muted` reste bloqué à `true` quoi qu'on lui assigne.
+/// A media whose unmuting is systematically refused by the browser:
+/// `muted` stays stuck at `true` whatever is assigned to it.
 function faireMediaRecalcitrant() {
     const media = {};
     Object.defineProperty(media, 'muted', {
@@ -56,14 +56,14 @@ function faireMediaRecalcitrant() {
 }
 
 describe('armerLeSon', () => {
-    it('laisse le média muet tant qu’aucun geste n’est venu', () => {
+    it('leaves the media muted as long as no gesture has come', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
         expect(media.muted).toBe(true);
     });
 
-    it('démute au premier clic', () => {
+    it('unmutes on the first click', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -71,7 +71,7 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(false);
     });
 
-    it('démute aussi sur une touche du clavier', () => {
+    it('also unmutes on a keyboard key', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -79,9 +79,9 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(false);
     });
 
-    it('retire tous ses écouteurs après le premier geste', () => {
-        // Sans retrait, chaque geste ultérieur reforcerait `muted = false` et
-        // écraserait un éventuel choix de l'utilisateur de couper le son.
+    it('removes all its listeners after the first gesture', () => {
+        // Without removal, every later gesture would force `muted = false` again and
+        // would overwrite a possible user choice to turn the sound off.
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -94,7 +94,7 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(true);
     });
 
-    it('signale le changement d’état une seule fois', () => {
+    it('reports the state change only once', () => {
         const media = { muted: true };
         const cible = faireCible();
         const surEtat = vi.fn();
@@ -106,7 +106,7 @@ describe('armerLeSon', () => {
         expect(surEtat).toHaveBeenCalledTimes(2);
     });
 
-    it('l’annulation retire les écouteurs sans démuter', () => {
+    it('cancelling removes the listeners without unmuting', () => {
         const media = { muted: true };
         const cible = faireCible();
         const annuler = armerLeSon({ media, cible });
@@ -116,19 +116,19 @@ describe('armerLeSon', () => {
         expect(cible.compte('pointerdown')).toBe(0);
     });
 
-    it('un appui sur Shift seul ne démute pas et ne consomme pas l’armement', () => {
+    it('pressing Shift alone does not unmute and does not consume the arming', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
 
         cible.declencherTouche('keydown', 'Shift');
         expect(media.muted).toBe(true);
-        // L'armement n'est pas consommé : les écouteurs sont toujours là.
+        // The arming is not consumed: the listeners are still there.
         expect(cible.compte('keydown')).toBe(1);
         expect(cible.compte('pointerdown')).toBe(1);
     });
 
-    it('Control, Alt, Meta et Escape ne valent pas non plus activation', () => {
+    it('Control, Alt, Meta and Escape do not count as activation either', () => {
         for (const touche of ['Control', 'Alt', 'Meta', 'Escape']) {
             const media = { muted: true };
             const cible = faireCible();
@@ -140,7 +140,7 @@ describe('armerLeSon', () => {
         }
     });
 
-    it('une touche ordinaire qui suit un modificateur démute bien', () => {
+    it('an ordinary key following a modifier does unmute', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -154,7 +154,7 @@ describe('armerLeSon', () => {
         expect(cible.compte('pointerdown')).toBe(0);
     });
 
-    it('un média dont le démutage est refusé par le navigateur laisse les écouteurs en place', () => {
+    it('a media whose unmute is refused by the browser leaves the listeners in place', () => {
         const media = faireMediaRecalcitrant();
         const cible = faireCible();
         const surEtat = vi.fn();
@@ -165,18 +165,18 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(true);
         expect(cible.compte('pointerdown')).toBe(1);
         expect(cible.compte('keydown')).toBe(1);
-        // Ne signale pas un succès qui n'a pas eu lieu.
+        // Does not report a success that did not happen.
         expect(surEtat).not.toHaveBeenCalledWith(true);
 
-        // Un geste ultérieur peut retenter — toujours refusé ici, mais la
-        // séquence ne lève pas et les écouteurs restent disponibles.
+        // A later gesture can retry — still refused here, but the
+        // sequence does not throw and the listeners stay available.
         cible.declencher('keydown');
         expect(cible.compte('pointerdown')).toBe(1);
     });
 
-    it('l’annulation après un démutage déjà survenu ne casse rien et laisse le son actif', () => {
-        // Le geste a déjà tout retiré lui-même (voir le test précédent) :
-        // `annuler()` doit rester un no-op silencieux, pas remuter ni lever.
+    it('cancelling after an unmute that already happened breaks nothing and leaves the sound on', () => {
+        // The gesture already removed everything itself (see the previous test):
+        // `annuler()` must stay a silent no-op, neither re-muting nor throwing.
         const media = { muted: true };
         const cible = faireCible();
         const annuler = armerLeSon({ media, cible });

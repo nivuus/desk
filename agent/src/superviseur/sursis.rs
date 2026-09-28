@@ -1,9 +1,9 @@
-//! Le **SURSIS** : une fenêtre doit SURVIVRE avant de mériter un onglet.
+//! **PROBATION**: a window must SURVIVE before deserving a tab.
 //!
-//! 🔴 **MESURÉ SUR LE PRODUIT LE 31 AOÛT 2026, APRÈS QUE LE PROPRIÉTAIRE A
-//! RAPPORTÉ « j'ai plein d'onglets qui se sont ouverts ».** Un seul lancement
-//! de Steam a fait servir **23 fenêtres en trois minutes**, et le journal donne
-//! leurs durées de vie :
+//! 🔴 **MEASURED ON THE PRODUCT ON AUGUST 31ST, 2026, AFTER THE OWNER
+//! REPORTED "lots of tabs opened on me".** A single launch
+//! of Steam served **23 windows in three minutes**, and the log gives
+//! their lifetimes:
 //!
 //! ```text
 //! w-4  21:18:00.668 -> 21:18:00.776   0,11 s
@@ -14,39 +14,39 @@
 //! w-27 21:20:40.480 -> 21:20:40.589   0,11 s
 //! ```
 //!
-//! Ce sont les fenêtres transitoires du démarrage de Steam. Chacune a ouvert
-//! une pop-up dans le navigateur, et la pop-up survit à la fenêtre Windows.
+//! These are the transient windows of Steam's startup. Each one opened
+//! a pop-up in the browser, and the pop-up outlives the Windows window.
 //!
-//! 🔴 **CE N'EST PAS UN DÉFAUT DU CRITÈRE STATIQUE, ET LA MESURE L'A RÉFUTÉ
-//! AVANT QU'ON NE LE CORRIGE À TORT.** Un inventaire des fenêtres de Steam en
-//! session 1 (`GetWindowTextW`/`GetClassNameW`/styles, une fois Steam
-//! stabilisé) rend **26 fenêtres de haut niveau dont UNE SEULE** satisfait
-//! `fenetres::merite_une_fenetre` — les 25 autres sont déjà écartées, par
-//! propriétaire, par `WS_EX_TOOLWINDOW`, par titre vide ou par invisibilité.
-//! **Durcir ce critère aurait donc écarté des fenêtres légitimes sans toucher
-//! la cause.** Ce qui distingue les fausses des vraies n'est pas ce qu'elles
-//! SONT à l'instant où elles paraissent, c'est qu'elles **ne durent pas**.
+//! 🔴 **IT IS NOT A DEFECT OF THE STATIC CRITERION, AND MEASUREMENT REFUTED IT
+//! BEFORE IT WAS WRONGLY FIXED.** An inventory of Steam's windows in
+//! session 1 (`GetWindowTextW`/`GetClassNameW`/styles, once Steam had
+//! settled) returns **26 top-level windows of which ONLY ONE** satisfies
+//! `fenetres::merite_une_fenetre` — the 25 others are already set aside, by
+//! owner, by `WS_EX_TOOLWINDOW`, by empty title or by invisibility.
+//! **Hardening this criterion would therefore have set aside legitimate windows without touching
+//! the cause.** What distinguishes the false ones from the real ones is not what they
+//! ARE at the instant they appear, it is that they **do not last**.
 //!
-//! D'où la règle : on ne juge plus une fenêtre sur son seul instantané de
-//! naissance, on lui laisse un sursis et on **redemande** ensuite. Précédent
-//! du dépôt : l'anti-rebond d'`APPS_SURVEILLANCE` (G4).
+//! Hence the rule: a window is no longer judged on its birth snapshot
+//! alone, it is given probation and **asked again** afterwards. Repository
+//! precedent: the debounce of `APPS_SURVEILLANCE` (G4).
 //!
-//! ⚠️ **`DUREE_SURSIS` N'EST PAS CALIBRÉE.** C'est un garde-fou de prudence,
-//! choisi entre le plus long transitoire mesuré (0,15 s) et le délai qu'un
-//! humain remarquerait à l'ouverture d'une fenêtre. **Aucun jugement d'usage
-//! ne l'a jugée**, et elle rejoint la liste des constantes non calibrées de
-//! `CLAUDE.md`.
+//! ⚠️ **`DUREE_SURSIS` IS NOT CALIBRATED.** It is a prudence safeguard,
+//! chosen between the longest transient measured (0.15 s) and the delay a
+//! human would notice when a window opens. **No judgement in use
+//! has judged it**, and it joins `CLAUDE.md`'s list of uncalibrated
+//! constants.
 
 use super::table::IdFenetre;
 use std::time::{Duration, Instant};
 
-/// Le temps qu'une fenêtre doit survivre avant qu'on lui ouvre un onglet.
+/// The time a window must survive before a tab is opened for it.
 ///
-/// ⚠️ **Non calibrée** — voir l'en-tête. Le coût de la choisir trop GRANDE est
-/// une latence perçue à l'ouverture ; trop PETITE, des onglets fantômes.
+/// ⚠️ **Not calibrated** — see the header. The cost of choosing it too LARGE is
+/// a perceived latency at opening; too SMALL, ghost tabs.
 pub const DUREE_SURSIS: Duration = Duration::from_millis(500);
 
-/// Les fenêtres qui attendent de faire la preuve qu'elles durent.
+/// The windows waiting to prove that they last.
 #[derive(Debug, Default)]
 pub struct Sursis {
     attentes: Vec<(IdFenetre, String, Instant)>,
@@ -57,44 +57,48 @@ impl Sursis {
         Self::default()
     }
 
-    /// Met une fenêtre en sursis.
+    /// Puts a window on probation.
     ///
-    /// **Idempotente par `IdFenetre`**, comme `Table::fenetre_apparue` qu'elle
-    /// précède : le hook peut réémettre `Apparue` pour un même `HWND`, et un
-    /// second dépôt ne doit ni dédoubler l'onglet, ni **repousser l'échéance**
-    /// du premier (ce qui laisserait une fenêtre bavarde en sursis pour
-    /// toujours).
+    /// **Idempotent by `IdFenetre`**, like `Table::fenetre_apparue` which it
+    /// precedes: the hook can re-emit `Apparue` for the same `HWND`, and a
+    /// second deposit must neither duplicate the tab nor **push back the deadline**
+    /// of the first (which would leave a chatty window on probation
+    /// forever).
     pub fn deposer(&mut self, fenetre: IdFenetre, titre: String, maintenant: Instant) {
         if self.attentes.iter().any(|(f, _, _)| *f == fenetre) {
             return;
         }
-        self.attentes.push((fenetre, titre, maintenant + DUREE_SURSIS));
+        self.attentes
+            .push((fenetre, titre, maintenant + DUREE_SURSIS));
     }
 
-    /// Retire une fenêtre disparue avant son échéance.
+    /// Removes a window that disappeared before its deadline.
     ///
-    /// Rend `true` si elle était bien en sursis — c'est-à-dire **si un onglet
-    /// vient d'être évité**, et c'est ce que l'appelant journalise.
+    /// Returns `true` if it was indeed on probation — that is, **if a tab
+    /// was just avoided**, and that is what the caller logs.
     pub fn retirer(&mut self, fenetre: IdFenetre) -> bool {
-        let avant = self.attentes.len();
+        let before = self.attentes.len();
         self.attentes.retain(|(f, _, _)| *f != fenetre);
-        self.attentes.len() != avant
+        self.attentes.len() != before
     }
 
-    /// Les fenêtres dont le sursis est écoulé, retirées de l'attente.
+    /// The windows whose probation has elapsed, removed from the waiting list.
     ///
-    /// ⚠️ **Les rendre ne suffit PAS à les annoncer** : l'appelant doit encore
-    /// vérifier qu'elles méritent TOUJOURS une fenêtre (`hook::merite_encore`).
-    /// Une fenêtre peut survivre au sursis et avoir entre-temps perdu son
-    /// titre, été masquée par DWM, ou reçu un propriétaire.
+    /// ⚠️ **Returning them is NOT enough to announce them**: the caller must still
+    /// check that they STILL deserve a window (`hook::merite_encore`).
+    /// A window can survive probation and meanwhile have lost its
+    /// title, been cloaked by DWM, or received an owner.
     pub fn murs(&mut self, maintenant: Instant) -> Vec<(IdFenetre, String)> {
-        let (murs, encore): (Vec<_>, Vec<_>) =
-            self.attentes.drain(..).partition(|(_, _, echeance)| *echeance <= maintenant);
+        let (murs, encore): (Vec<_>, Vec<_>) = self
+            .attentes
+            .drain(..)
+            .partition(|(_, _, echeance)| *echeance <= maintenant);
         self.attentes = encore;
         murs.into_iter().map(|(f, t, _)| (f, t)).collect()
     }
 
-    /// Combien de fenêtres attendent — pour la trace, jamais pour décider.
+    /// How many windows are waiting — for the trace, never to decide.
+    #[cfg(test)]
     pub fn en_attente(&self) -> usize {
         self.attentes.len()
     }
@@ -108,22 +112,22 @@ mod tests {
         IdFenetre(n)
     }
 
-    /// Le cas de production : une fenêtre morte en 110 ms n'atteint jamais
-    /// `murs`, donc n'ouvre aucun onglet.
+    /// The production case: a window dead within 110 ms never reaches
+    /// `murs`, hence opens no tab.
     #[test]
-    fn une_fenetre_morte_avant_l_echeance_n_ouvre_aucun_onglet() {
+    fn a_window_dead_before_the_deadline_opens_no_tab() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "splash".into(), t0);
-        assert!(s.retirer(f(1)), "elle était bien en sursis");
+        assert!(s.retirer(f(1)), "it was indeed in its grace period");
         assert!(s.murs(t0 + DUREE_SURSIS).is_empty());
     }
 
-    /// 🔴 **LE TÉMOIN QUI REND LE TEST PRÉCÉDENT DISCRIMINANT** : sans lui,
-    /// un `murs` structurellement vide passerait pour un anti-rebond qui
-    /// marche.
+    /// 🔴 **THE WITNESS THAT MAKES THE PREVIOUS TEST DISCRIMINATING**: without it,
+    /// a structurally empty `murs` would pass for a working
+    /// debounce.
     #[test]
-    fn une_fenetre_qui_survit_est_bien_rendue() {
+    fn a_surviving_window_is_indeed_returned() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);
@@ -131,44 +135,50 @@ mod tests {
         assert_eq!(murs, vec![(f(1), "Steam".to_string())]);
     }
 
-    /// Une seconde trop tôt, rien ne sort — et la fenêtre reste en attente,
-    /// elle n'est pas perdue.
+    /// One second too early, nothing comes out — and the window stays waiting,
+    /// it is not lost.
     #[test]
-    fn avant_l_echeance_rien_ne_sort_et_rien_n_est_perdu() {
+    fn before_the_deadline_nothing_leaves_and_nothing_is_lost() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);
-        assert!(s.murs(t0 + DUREE_SURSIS - Duration::from_millis(1)).is_empty());
+        assert!(s
+            .murs(t0 + DUREE_SURSIS - Duration::from_millis(1))
+            .is_empty());
         assert_eq!(s.en_attente(), 1);
         assert_eq!(s.murs(t0 + DUREE_SURSIS).len(), 1);
     }
 
-    /// Idempotence, et surtout : **le second dépôt ne repousse pas
-    /// l'échéance**. Sans cela, une fenêtre dont le hook réémet `Apparue`
-    /// régulièrement resterait en sursis indéfiniment et n'apparaîtrait
-    /// jamais.
+    /// Idempotence, and above all: **the second deposit does not push back
+    /// the deadline**. Otherwise, a window whose hook re-emits `Apparue`
+    /// regularly would stay on probation indefinitely and would never
+    /// appear.
     #[test]
-    fn un_second_depot_ne_repousse_pas_l_echeance() {
+    fn a_second_deposit_does_not_push_back_the_deadline() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "Steam".into(), t0);
         s.deposer(f(1), "Steam".into(), t0 + Duration::from_millis(400));
-        assert_eq!(s.en_attente(), 1, "aucun doublon");
-        assert_eq!(s.murs(t0 + DUREE_SURSIS).len(), 1, "l'échéance est celle du PREMIER dépôt");
+        assert_eq!(s.en_attente(), 1, "no duplicate");
+        assert_eq!(
+            s.murs(t0 + DUREE_SURSIS).len(),
+            1,
+            "the deadline is that of the FIRST deposit"
+        );
     }
 
-    /// Retirer une fenêtre qu'on n'attendait pas ne ment pas : c'est le cas
-    /// d'une fenêtre déjà annoncée, dont la disparition regarde la `Table`.
+    /// Removing a window that was not expected does not lie: it is the case
+    /// of an already announced window, whose disappearance is the `Table`'s business.
     #[test]
-    fn retirer_une_inconnue_rend_faux() {
+    fn removing_an_unknown_one_returns_false() {
         let mut s = Sursis::new();
         assert!(!s.retirer(f(42)));
     }
 
-    /// Plusieurs fenêtres, des échéances distinctes : seules les mûres
-    /// sortent, dans l'ordre où elles ont été déposées.
+    /// Several windows, distinct deadlines: only the ripe ones
+    /// come out, in the order they were deposited.
     #[test]
-    fn seules_les_mures_sortent() {
+    fn only_the_ripe_ones_come_out() {
         let t0 = Instant::now();
         let mut s = Sursis::new();
         s.deposer(f(1), "tot".into(), t0);

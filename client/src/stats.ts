@@ -1,58 +1,58 @@
-// Overlay de mesure. Les valeurs proviennent de getStats() : ce sont celles du
-// navigateur lui-même, pas une estimation de notre part.
+// Measurement overlay. The values come from getStats(): they are the
+// browser's own, not an estimate of ours.
 //
-// Note de rigueur sur la colonne « ≈ » : c'est une APPROXIMATION de la
-// latence glass-to-glass, pas une mesure directe. Elle vaut la moitié de
-// l'aller-retour réseau (RTT/2, en supposant un chemin symétrique) plus le
-// temps passé en tampon de gigue côté récepteur. Elle OMET la capture côté
-// agent, l'encodage matériel, et le décodage côté navigateur (getStats() ne
-// donne pas d'horodatage traversant ces étages). Voir le document de recette
-// pour la mesure indépendante (motif visuel chronométré) qui comble ce trou.
+// Rigour note on the "≈" column: it is an APPROXIMATION of the
+// glass-to-glass latency, not a direct measurement. It equals half of the
+// network round trip (RTT/2, assuming a symmetric path) plus the
+// time spent in the receiver-side jitter buffer. It OMITS agent-side
+// capture, hardware encoding, and browser-side decoding (getStats() does
+// not give a timestamp crossing these stages). See the acceptance document
+// for the independent measurement (timed visual pattern) that fills this gap.
 
-/// Un relevé de la piste MONTANTE (le micro, chantier E).
+/// A reading of the UPSTREAM track (the mic, workstream E).
 export interface InstantaneMontant {
     octets: number;
     paquets: number;
     horodatage: number;
 }
 
-/// La ligne du micro, et l'instantané à mémoriser pour le tour suivant.
+/// The mic line, and the snapshot to remember for the next round.
 ///
-/// ⚠️ **`bytesSent` est un COMPTE D'OCTETS, et ce dépôt sait qu'un compte
-/// d'octets ne prouve pas qu'on entend quelque chose.** Le sous-bloc D7 a relevé
-/// un `bytesReceived` en croissance régulière sur un spectre à −1000 dB : la
-/// piste vivait, le son était absent. Ces deux nombres sont affichés **pour
-/// DIAGNOSTIQUER** — savoir si l'on émet, et à quel rythme —, **jamais pour
-/// juger un critère de recette.** Le chiffre-juge du micro est la fréquence
-/// dominante relevée côté agent (`MICRO_MESURE`), pas ce qui est écrit ici.
+/// ⚠️ **`bytesSent` is a BYTE COUNT, and this repository knows a byte
+/// count does not prove one hears anything.** Sub-block D7 recorded
+/// a steadily growing `bytesReceived` on a spectrum at −1000 dB: the
+/// track was alive, the sound was absent. These two numbers are displayed **to
+/// DIAGNOSE** — knowing whether we emit, and at what rate —, **never to
+/// judge an acceptance criterion.** The mic's judging figure is the dominant
+/// frequency recorded on the agent side (`MICRO_MESURE`), not what is written here.
 ///
-/// **`courant` absent = AUCUNE `outbound-rtp` audio**, ce qui n'est pas la même
-/// chose qu'un débit nul : la première dit que rien n'est négocié ou qu'aucun
-/// paquet n'est encore parti, la seconde qu'une piste vit et se tait. Les
-/// confondre ferait passer une session sans micro pour un micro silencieux —
-/// exactement la distinction que la ligne `audioLine` fait déjà pour l'audio
-/// descendante, et pour la même raison.
+/// **`current` absent = NO audio `outbound-rtp`**, which is not the same
+/// thing as a zero rate: the first says nothing is negotiated or no
+/// packet has gone out yet, the second that a track lives and stays silent. Confusing
+/// them would pass a session without a mic for a silent mic —
+/// exactly the distinction the `audioLine` line already makes for downstream
+/// audio, and for the same reason.
 export function suivreMontant(
     precedent: InstantaneMontant | undefined,
-    courant: InstantaneMontant | undefined,
+    current: InstantaneMontant | undefined,
 ): { ligne: string; memoire: InstantaneMontant | undefined } {
-    // La mémoire est OUBLIÉE quand la piste disparaît : sans cela, une piste
-    // renégociée (SSRC neuf, compteurs repartis de zéro) calculerait son
-    // premier débit contre les compteurs d'un autre flux.
-    if (!courant) return { ligne: 'micro absent', memoire: undefined };
+    // The memory is FORGOTTEN when the track disappears: without that, a
+    // renegotiated track (new SSRC, counters restarted from zero) would compute its
+    // first rate against the counters of another stream.
+    if (!current) return { ligne: 'mic absent', memoire: undefined };
 
     let kbps = 0;
     if (precedent) {
-        const secondes = (courant.horodatage - precedent.horodatage) / 1000;
-        // `> 0` et non `!== 0` : un horodatage figé rendrait une division par
-        // zéro, un horodatage qui recule un débit négatif.
+        const secondes = (current.horodatage - precedent.horodatage) / 1000;
+        // `> 0` and not `!== 0`: a frozen timestamp would produce a division by
+        // zero, a timestamp going backwards a negative rate.
         if (secondes > 0) {
-            kbps = ((courant.octets - precedent.octets) * 8) / secondes / 1000;
+            kbps = ((current.octets - precedent.octets) * 8) / secondes / 1000;
         }
     }
     return {
-        ligne: `micro ${kbps.toFixed(0)} kb/s  ·  paquets ${courant.paquets}`,
-        memoire: courant,
+        ligne: `mic ${kbps.toFixed(0)} kb/s  ·  packets ${current.paquets}`,
+        memoire: current,
     };
 }
 
@@ -84,9 +84,9 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             if (stat.type === 'candidate-pair' && (stat as any).nominated) {
                 pair = stat as RTCIceCandidatePairStats;
             }
-            // La piste MONTANTE (chantier E). `kind === 'audio'` discrimine :
-            // il y a aussi une `outbound-rtp` vidéo dès que l'agent émet, et
-            // sans ce filtre on afficherait son débit sous le nom du micro.
+            // The UPSTREAM track (workstream E). `kind === 'audio'` discriminates:
+            // there is also a video `outbound-rtp` as soon as the agent emits, and
+            // without this filter we would display its rate under the mic's name.
             if (stat.type === 'outbound-rtp' && (stat as any).kind === 'audio') {
                 outboundAudio = stat as RTCOutboundRtpStreamStats;
             }
@@ -129,33 +129,33 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             }
             previousAudio = currentAudio;
         } else {
-            // Sans ceci, une entrée audio qui disparaît puis revient (piste
-            // renégociée, SSRC changé) calculerait son premier débit après
-            // le retour contre un `previousAudio` périmé : compteurs d'un
-            // autre flux, delta sous-estimé ou carrément négatif si le
-            // nouveau `bytesReceived` repart de zéro.
+            // Without this, an audio entry that disappears then comes back (renegotiated
+            // track, SSRC changed) would compute its first rate after
+            // the return against a stale `previousAudio`: counters of another
+            // stream, a delta underestimated or outright negative if the
+            // new `bytesReceived` restarts from zero.
             previousAudio = undefined;
         }
 
         const rttMs = (pair?.currentRoundTripTime ?? 0) * 1000;
-        // Latence bout en bout approchée : la moitié de l'aller-retour réseau,
-        // plus l'attente en tampon de gigue et le décodage côté navigateur.
-        // Cf. l'en-tête du fichier : ceci ignore capture et encodage agent.
+        // Approximate end-to-end latency: half of the network round trip,
+        // plus the wait in the jitter buffer and browser-side decoding.
+        // Cf. the file header: this ignores agent capture and encoding.
         const jitterBufferMs = averageDelay(inbound);
         const glassToGlassMs = rttMs / 2 + jitterBufferMs;
 
         const width = (inbound as any).frameWidth ?? 0;
         const height = (inbound as any).frameHeight ?? 0;
 
-        // `verify-webrtc.mjs` distingue soigneusement une entrée `inbound-rtp`
-        // audio absente (aucune piste négociée, ou pas encore de premier
-        // paquet) d'une piste présente à zéro perte/zéro gigue : les deux ne
-        // doivent pas produire le même texte, sous peine de faire passer une
-        // session sans audio pour une session dont l'audio est simplement
-        // parfait.
+        // `verify-webrtc.mjs` carefully distinguishes an absent audio `inbound-rtp`
+        // entry (no negotiated track, or no first
+        // packet yet) from a track present with zero loss/zero jitter: the two must
+        // not produce the same text, otherwise a
+        // session without audio would pass for a session whose audio is simply
+        // perfect.
         const audioLine = inboundAudio
-            ? `audio ${audioKbps.toFixed(0)} kb/s  ·  perdus ${(inboundAudio as any).packetsLost ?? 0}  ·  gigue ${(((inboundAudio as any).jitter ?? 0) * 1000).toFixed(1)} ms`
-            : 'audio absente';
+            ? `audio ${audioKbps.toFixed(0)} kb/s  ·  lost ${(inboundAudio as any).packetsLost ?? 0}  ·  jitter ${(((inboundAudio as any).jitter ?? 0) * 1000).toFixed(1)} ms`
+            : 'audio absent';
 
         const montant = suivreMontant(
             precedentMontant,
@@ -176,7 +176,7 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             `RTT ${rttMs.toFixed(1)} ms`,
             `tampon ${jitterBufferMs.toFixed(1)} ms`,
             `≈ ${glassToGlassMs.toFixed(1)} ms`,
-            `perdues ${(inbound as any).framesDropped ?? 0}`,
+            `dropped ${(inbound as any).framesDropped ?? 0}`,
             audioLine,
             montant.ligne,
         ].join('  ·  ');
@@ -185,7 +185,7 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
     return () => window.clearInterval(timer);
 }
 
-/// Délai moyen passé en tampon de gigue, par image émise.
+/// Average delay spent in the jitter buffer, per emitted frame.
 function averageDelay(inbound: RTCInboundRtpStreamStats): number {
     const total = (inbound as any).jitterBufferDelay ?? 0;
     const count = (inbound as any).jitterBufferEmittedCount ?? 0;

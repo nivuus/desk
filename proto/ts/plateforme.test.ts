@@ -26,10 +26,10 @@ import {
 } from './plateforme';
 
 /**
- * Typage local des cas : le JSON mélange des champs propres à chaque `kind`,
- * tous optionnels ici puisqu'aucun cas ne les porte tous. Même choix que
- * `input.test.ts`, pour la même raison — éviter une union imprécise sans
- * disperser des `as any`.
+ * Local typing of the cases: the JSON mixes fields specific to each `kind`,
+ * all optional here since no case carries them all. Same choice as
+ * `input.test.ts`, for the same reason — avoiding an imprecise union without
+ * scattering `as any`.
  */
 interface CasVecteur {
     name: string;
@@ -66,11 +66,11 @@ interface CasVecteur {
 const cas: CasVecteur[] = vecteurs.cases as CasVecteur[];
 
 /**
- * 🔴 UN `kind` INCONNU LÈVE, il ne retombe pas sur un défaut. Le dispatch
- * était un ternaire dont la dernière branche servait de fourre-tout : un
- * `kind` mal orthographié y aurait été encodé par la mauvaise fonction, et le
- * seul symptôme aurait été une chaîne fausse — impossible à distinguer d'une
- * divergence d'encodage réelle. C'est le `panic!` du côté Rust, transposé.
+ * 🔴 AN UNKNOWN `kind` THROWS, it does not fall back to a default. The dispatch
+ * was a ternary whose last branch served as a catch-all: a
+ * misspelled `kind` would have been encoded there by the wrong function, and the
+ * only symptom would have been a wrong string — impossible to tell from a
+ * real encoding divergence. It is the `panic!` of the Rust side, transposed.
  */
 function encodeVers(c: CasVecteur): string {
     switch (c.kind) {
@@ -86,15 +86,15 @@ function encodeVers(c: CasVecteur): string {
         case 'termine':
             return encodeTermine(
                 c.installation!, c.issue as Issue,
-                // ⚠️ `?? null` SERAIT UNE FAUTE ICI : il confondrait « la clé
-                // manque du vecteur » avec « la clé porte null », et un vecteur
-                // amputé encoderait quand même. Le JSON les distingue, et
-                // `c.motif` vaut littéralement `null` dans les cas qui le
-                // portent — c'est ce que la lecture non typée rend.
+                // ⚠️ `?? null` WOULD BE A MISTAKE HERE: it would confuse "the key
+                // is missing from the vector" with "the key carries null", and a truncated
+                // vector would still encode. The JSON tells them apart, and
+                // `c.motif` is literally `null` in the cases that
+                // carry it — it is what the untyped read returns.
                 c.motif as string | null, c.code_sortie as number | null,
                 c.journal!, c.journal_tronque!,
             );
-        default: throw new Error(`kind inconnu dans le sens vers : ${c.kind}`);
+        default: throw new Error(`unknown kind in the vers direction: ${c.kind}`);
     }
 }
 
@@ -107,67 +107,67 @@ function encodeDepuis(c: CasVecteur): string {
         case 'icones-manquantes': return encodeIconesManquantes(c.empreintes!);
         case 'installer':
             return encodeInstaller(c.installation!, c.url!, c.nom!, c.taille!, c.sha256!);
-        default: throw new Error(`kind inconnu dans le sens depuis : ${c.kind}`);
+        default: throw new Error(`unknown kind in the depuis direction: ${c.kind}`);
     }
 }
 
-describe('vecteurs partagés du canal plateforme', () => {
-    it('🔴 déclare la MÊME version que le protocole', () => {
-        // 🔴 La rouge : l'omettre. C'est exactement la lacune que
-        // `vectors.json` traîne côté Rust — `input.rs` ne vérifie jamais
-        // `doc["version"]` —, corrigée ici DES DEUX CÔTÉS pour le fichier neuf.
+describe('shared vectors of the platform channel', () => {
+    it('🔴 declares the SAME version as the protocol', () => {
+        // 🔴 The red: omitting it. It is exactly the gap that
+        // `vectors.json` drags along on the Rust side — `input.rs` never checks
+        // `doc["version"]` —, fixed here ON BOTH SIDES for the new file.
         expect(PLATEFORME_VERSION).toBe(vecteurs.version);
     });
 
-    it('🔴 porte au moins un cas', () => {
-        // 🔴 ANTI-TAUTOLOGIE : un fichier vide ferait passer toute la boucle
-        // ci-dessous sans rien éprouver. Même garde que `input.rs:326` et que
+    it('🔴 carries at least one case', () => {
+        // 🔴 ANTI-TAUTOLOGY: an empty file would make the whole loop
+        // below pass without testing anything. Same guard as `input.rs:326` and as
         // `sous-ensemble.test.ts`.
         expect(cas.length).toBeGreaterThan(0);
     });
 
     it.each(cas.filter((c) => c.sens === 'vers'))(
-        'encode « $name » exactement comme le vecteur',
+        'encodes « $name » exactly like the vector',
         (c) => {
             expect(encodeVers(c)).toBe(c.json);
         },
     );
 
     it.each(cas.filter((c) => c.sens === 'depuis'))(
-        'relit « $name » et retrouve chacun de ses champs',
+        're-reads « $name » and finds each of its fields',
         (c) => {
             const lu = parseDepuisLaPlateforme(c.json) as unknown as Record<string, unknown>;
             expect(lu.type).toBe(c.kind);
             expect(lu.v).toBe(PLATEFORME_VERSION);
-            // Les champs propres à chaque variante, comparés un par un : un
-            // `toBe(c.kind)` seul passerait sur un message tronqué.
+            // The fields specific to each variant, compared one by one: a
+            // `toBe(c.kind)` alone would pass on a truncated message.
             for (const champ of ['prefixe', 'jeton', 'expire_a', 'motif', 'demande', 'cle'] as const) {
                 if (c[champ] !== undefined) expect(lu[champ]).toBe(c[champ]);
             }
-            // ⚠️ `empreintes` est un TABLEAU : `toBe` y comparerait les
-            // références et passerait pour la mauvaise raison sur `undefined`.
+            // ⚠️ `empreintes` is an ARRAY: `toBe` would compare the
+            // references there and would pass for the wrong reason on `undefined`.
             if (c.empreintes !== undefined) expect(lu.empreintes).toEqual(c.empreintes);
         },
     );
 
     it.each(cas.filter((c) => c.sens === 'depuis'))(
-        '🔴 ENCODE « $name » exactement comme le vecteur',
+        '🔴 ENCODES « $name » exactly like the vector',
         (c) => {
-            // 🔴 CE CONTRÔLE MANQUAIT, et son absence était une asymétrie
-            // réelle : Rust sérialise les DEUX sens et compare la chaîne
-            // exacte (`plateforme.rs`), quand TypeScript ne faisait que RELIRE
-            // le sens `depuis`. Or c'est la PLATEFORME qui émet ces
-            // messages-là, en TypeScript. Personne ne fixait donc les octets
-            // qu'elle met réellement sur le fil — un ordre de champs qui
-            // divergerait du Rust ne se serait vu nulle part.
+            // 🔴 THIS CHECK WAS MISSING, and its absence was a real
+            // asymmetry: Rust serialises BOTH directions and compares the exact
+            // string (`plateforme.rs`), whereas TypeScript only READ BACK
+            // the `depuis` direction. Yet it is the PLATFORM that emits those
+            // messages, in TypeScript. Nobody therefore pinned the bytes
+            // it really puts on the wire — a field order that
+            // diverged from the Rust one would have shown nowhere.
             expect(encodeDepuis(c)).toBe(c.json);
         },
     );
 
-    it('exerce les DEUX sens, et aucun cas n’est sauté', () => {
-        // 🔴 Sans ce compte, un `sens` mal orthographié ferait sauter des cas
-        // en silence : les deux `it.each` ci-dessus rendraient simplement moins
-        // de tests, et rien ne le dirait. Même garde que côté Rust.
+    it('exercises BOTH directions, and no case is skipped', () => {
+        // 🔴 Without this count, a misspelled `sens` would make cases disappear
+        // silently: the two `it.each` above would simply yield fewer
+        // tests, and nothing would say so. Same guard as on the Rust side.
         const vers = cas.filter((c) => c.sens === 'vers').length;
         const depuis = cas.filter((c) => c.sens === 'depuis').length;
         expect(vers).toBeGreaterThan(0);
@@ -176,11 +176,11 @@ describe('vecteurs partagés du canal plateforme', () => {
     });
 });
 
-describe('miroir TypeScript du canal plateforme', () => {
-    it('encode `enroler` exactement comme Rust', () => {
-        // La chaîne EXACTE, comparée à celle que `plateforme.rs` asserte de
-        // son côté. Une divergence d'un caractère et les deux bouts ne se
-        // parlent plus.
+describe('TypeScript mirror of the platform channel', () => {
+    it('encodes `enroler` exactly like Rust', () => {
+        // The EXACT string, compared with the one `plateforme.rs` asserts on
+        // its side. A divergence of one character and the two ends no longer
+        // talk.
         expect(encodeEnroler('w1', 'chut'))
             .toBe('{"type":"enroler","v":5,"vm":"w1","secret":"chut"}');
     });
@@ -189,7 +189,7 @@ describe('miroir TypeScript du canal plateforme', () => {
         expect(encodeBattement()).toBe('{"type":"battement","v":5}');
     });
 
-    it('lit un `enrole` bien formé', () => {
+    it('reads a well-formed `enrole`', () => {
         const m = parseDepuisLaPlateforme(
             '{"type":"enrole","v":5,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
         );
@@ -198,107 +198,107 @@ describe('miroir TypeScript du canal plateforme', () => {
         });
     });
 
-    it('🔴 REJETTE une version PLATEFORME_VERSION + 1', () => {
-        // 🔴 La rouge : ne comparer que `parsed.type`. Le message passerait, et
-        // c'est la moitié TypeScript du critère ③.
+    it('🔴 REJECTS a version PLATEFORME_VERSION + 1', () => {
+        // 🔴 The red: only comparing `parsed.type`. The message would pass, and
+        // it is the TypeScript half of criterion ③.
         //
-        // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026. Le refus est
-        // désormais la seule variante hors versionnement — voir
-        // `RefusMessage` —, il ne peut donc plus porter cette propriété. Un
-        // `lancer` la porte, et c'est le message où elle mord le plus : une
-        // version future pourrait donner à `cle` un tout autre sens.
+        // ⚠️ THIS CASE CARRIED A `refus` UNTIL 20 AUGUST 2026. The refusal is
+        // now the only variant outside versioning — see
+        // `RefusMessage` —, so it can no longer carry this property. A
+        // `lancer` carries it, and it is the message where it bites the most: a
+        // future version could give `cle` an entirely different meaning.
         expect(() => parseDepuisLaPlateforme(
             `{"type":"lancer","v":${PLATEFORME_VERSION + 1},"demande":"d","cle":"c"}`,
-        )).toThrow(/version de plateforme non supportée/);
+        )).toThrow(/unsupported platform version/);
     });
 
-    it('🔴 REJETTE une version ABSENTE', () => {
-        // 🔴 La rouge nommée par le plan est de comparer par `!=` au lieu de
-        // `!==`. ⚠️ ELLE NE ROUGIT PAS, et c'est vérifié plutôt que supposé :
-        // `undefined != 1` vaut `true` en JavaScript, donc le refus tombe
-        // quand même. La mutation qui rougit RÉELLEMENT ce test est
-        // l'inverse — accepter l'absence, par exemple `parsed.v ?? VERSION`.
-        // Le plan nous demandait de le vérifier avant de le déclarer : c'est
-        // fait, et il avait raison de douter.
+    it('🔴 REJECTS an ABSENT version', () => {
+        // 🔴 The red named by the plan is comparing with `!=` instead of
+        // `!==`. ⚠️ IT DOES NOT TURN RED, and it is checked rather than assumed:
+        // `undefined != 1` is `true` in JavaScript, so the refusal happens
+        // anyway. The mutation that REALLY turns this test red is
+        // the reverse — accepting the absence, for example `parsed.v ?? VERSION`.
+        // The plan asked us to check it before declaring it: it is
+        // done, and it was right to doubt.
         //
-        // ⚠️ LE VÉHICULE RESTE UN `refus`, ET C'EST DÉSORMAIS LE MEILLEUR
-        // ENDROIT POUR CE TEST : depuis le 20 août 2026 le refus tolère toute
-        // VALEUR de `v`, et cette assertion est ce qui garde la frontière —
-        // « toute valeur » n'est pas « pas de champ du tout ».
+        // ⚠️ THE VEHICLE STAYS A `refus`, AND IT IS NOW THE BEST
+        // PLACE FOR THIS TEST: since 20 August 2026 the refusal tolerates any
+        // VALUE of `v`, and this assertion is what guards the boundary —
+        // "any value" is not "no field at all".
         expect(() => parseDepuisLaPlateforme('{"type":"refus","motif":"version"}'))
-            .toThrow(/version de plateforme absente ou non numérique/);
+            .toThrow(/platform version absent or not numeric/);
     });
 
-    it('🔴 REJETTE une version NULLE, que `?? ` laisserait passer', () => {
-        // Complément du test précédent : `null ?? 1` vaut `1`, donc une
-        // implémentation par valeur par défaut accepterait ce message-ci sans
-        // que rien d'autre ne bouge.
+    it('🔴 REJECTS a NULL version, which `?? ` would let through', () => {
+        // Complement to the previous test: `null ?? 1` is `1`, so a
+        // default-value implementation would accept this message without
+        // anything else moving.
         expect(() => parseDepuisLaPlateforme('{"type":"refus","v":null,"motif":"version"}'))
-            .toThrow(/version de plateforme absente ou non numérique/);
+            .toThrow(/platform version absent or not numeric/);
     });
 
-    it('REJETTE un `type` inconnu', () => {
+    it('REJECTS an unknown `type`', () => {
         expect(() => parseDepuisLaPlateforme('{"type":"vol","v":5}'))
-            .toThrow(/type de message de plateforme inconnu/);
+            .toThrow(/unknown platform message type/);
     });
 
-    it('🔴 REJETTE un `type` du sens AGENT -> PLATEFORME', () => {
-        // 🔴 Le parseur ne lit QUE le sens plateforme -> agent. Accepter
-        // `enroler` ici ferait qu'un agent traiterait son propre message comme
-        // une réponse — une confusion de sens qu'aucun autre test ne verrait.
+    it('🔴 REJECTS a `type` of the AGENT -> PLATFORM direction', () => {
+        // 🔴 The parser ONLY reads the platform -> agent direction. Accepting
+        // `enroler` here would make an agent treat its own message as
+        // an answer — a confusion of direction no other test would see.
         expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":5,"vm":"w","secret":"s"}'))
-            .toThrow(/type de message de plateforme inconnu/);
+            .toThrow(/unknown platform message type/);
     });
 });
 
-describe('le parseur du sens AGENT -> PLATEFORME', () => {
-    // ⚠️ CELUI-CI LIT CE QU'UN VRAI TIERS ÉCRIT. `parseDepuisLaPlateforme`
-    // valide à la frontière puis caste, parce que son émetteur est le service
-    // lui-même ; ici l'émetteur est un pair du réseau, qui n'a aucune raison
-    // d'être bien élevé. Les champs sont donc VÉRIFIÉS, un par un.
+describe('the parser of the AGENT -> PLATFORM direction', () => {
+    // ⚠️ THIS ONE READS WHAT A REAL THIRD PARTY WRITES. `parseDepuisLaPlateforme`
+    // validates at the boundary then casts, because its emitter is the service
+    // itself; here the emitter is a network peer, which has no reason
+    // to be well behaved. The fields are therefore CHECKED, one by one.
     //
-    // ⚠️ IL REND UN VERDICT, IL NE LÈVE PAS, et c'est ce qui le distingue de
-    // son jumeau : la plateforme doit RÉPONDRE un motif typé au pair, pas
-    // seulement échouer.
+    // ⚠️ IT RETURNS A VERDICT, IT DOES NOT THROW, and that is what distinguishes it from
+    // its twin: the platform must ANSWER a typed reason to the peer, not
+    // merely fail.
 
-    it('lit un `enroler` bien formé', () => {
+    it('reads a well-formed `enroler`', () => {
         expect(parseVersLaPlateforme('{"type":"enroler","v":5,"vm":"w1","secret":"chut"}')).toEqual({
             ok: true,
             message: { type: 'enroler', v: PLATEFORME_VERSION, vm: 'w1', secret: 'chut' },
         });
     });
 
-    it('lit un `battement`', () => {
+    it('reads a `battement`', () => {
         expect(parseVersLaPlateforme('{"type":"battement","v":5}')).toEqual({
             ok: true,
             message: { type: 'battement', v: PLATEFORME_VERSION },
         });
     });
 
-    it('🔴 REJETTE une version PLATEFORME_VERSION + 1, motif `version`', () => {
-        // 🔴 C'est la moitié TypeScript du critère ③ vue depuis la PLATEFORME.
-        // Ne comparer que `type` laisserait entrer un message d'une version
-        // future, dont les champs pourraient dire tout autre chose.
+    it('🔴 REJECTS a version PLATEFORME_VERSION + 1, reason `version`', () => {
+        // 🔴 It is the TypeScript half of criterion ③ seen from the PLATFORM.
+        // Only comparing `type` would let in a message from a future
+        // version, whose fields could say something entirely different.
         expect(
             parseVersLaPlateforme(
                 `{"type":"battement","v":${PLATEFORME_VERSION + 1}}`,
             ),
         ).toEqual({ ok: false, motif: 'version' });
-        // 🔴 ET LA VERSION PASSE AVANT LE TYPE : un message qui est mauvais
-        // sur les DEUX plans doit dire `version`, pas `forme`. Sans cette
-        // assertion, l'ordre des deux contrôles ne serait fixé par rien, et le
-        // pair qui lit le motif pour décider s'il doit se METTRE À JOUR ou se
-        // CORRIGER recevrait un jour la mauvaise réponse.
+        // 🔴 AND THE VERSION GOES BEFORE THE TYPE: a message that is bad
+        // on BOTH counts must say `version`, not `forme`. Without this
+        // assertion, the order of the two checks would be fixed by nothing, and the
+        // peer that reads the reason to decide whether to UPDATE or
+        // CORRECT itself would one day receive the wrong answer.
         expect(parseVersLaPlateforme(`{"type":"vol","v":${PLATEFORME_VERSION + 1}}`)).toEqual({
             ok: false,
             motif: 'version',
         });
     });
 
-    it('🔴 REJETTE une version ABSENTE et une version NULLE', () => {
-        // La rouge réelle est d'écrire `parsed.v ?? PLATEFORME_VERSION` :
-        // `undefined ?? 1` et `null ?? 1` valent tous deux `1`. (Le `!=` au
-        // lieu de `!==` ne rougit PAS — mesuré sur l'autre parseur.)
+    it('🔴 REJECTS an ABSENT version and a NULL version', () => {
+        // The real red is writing `parsed.v ?? PLATEFORME_VERSION`:
+        // `undefined ?? 1` and `null ?? 1` both yield `1`. (The `!=` instead
+        // of `!==` does NOT turn red — measured on the other parser.)
         expect(parseVersLaPlateforme('{"type":"battement"}')).toEqual({
             ok: false,
             motif: 'version',
@@ -309,10 +309,10 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         });
     });
 
-    it('🔴 REJETTE un `type` du sens PLATEFORME -> AGENT, motif `forme`', () => {
-        // 🔴 La confusion de sens, gardée dans les DEUX directions. Accepter
-        // `enrole` ici ferait que la plateforme traiterait sa propre réponse
-        // comme une demande.
+    it('🔴 REJECTS a `type` of the PLATFORM -> AGENT direction, reason `forme`', () => {
+        // 🔴 The confusion of direction, guarded in BOTH directions. Accepting
+        // `enrole` here would make the platform treat its own answer
+        // as a request.
         for (const brut of [
             '{"type":"enrole","v":5,"prefixe":"P","jeton":"j","expire_a":1}',
             '{"type":"battement-recu","v":5,"jeton":"j","expire_a":1}',
@@ -322,22 +322,22 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         }
     });
 
-    it('REJETTE ce qui n’est pas un objet JSON, motif `forme`', () => {
-        // `null` est le cas dangereux : `null.type` LÈVE, là où un nombre ou
-        // une chaîne rendraient `undefined`. Même garde qu'`isJsonObject` du
-        // relais, et pour la même raison — une exception non rattrapée dans un
-        // gestionnaire `message` de `ws` abat tout le process Node.
-        for (const brut of ['null', '"une chaîne"', '42', '[]', 'pas du json']) {
+    it('REJECTS what is not a JSON object, reason `forme`', () => {
+        // `null` is the dangerous case: `null.type` THROWS, where a number or
+        // a string would return `undefined`. Same guard as the relay's
+        // `isJsonObject`, and for the same reason — an uncaught exception in a
+        // `ws` `message` handler takes down the whole Node process.
+        for (const brut of ['null', '"a string"', '42', '[]', 'not json']) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
     });
 
-    it('🔴 REJETTE un `enroler` dont `vm` ou `secret` manque, motif `forme`', () => {
-        // 🔴 SANS CE CONTRÔLE, `undefined` traverserait jusqu'à la requête
-        // SQL : `lireParVm(p, undefined)` ne rend rien sur SQLite mais n'est
-        // pas la même requête sur Postgres, et surtout le refus qui en
-        // sortirait dirait `enrolement` — donc « secret faux » — pour un
-        // message qui n'a jamais porté de VM.
+    it('🔴 REJECTS an `enroler` missing `vm` or `secret`, reason `forme`', () => {
+        // 🔴 WITHOUT THIS CHECK, `undefined` would go through to the SQL
+        // query: `lireParVm(p, undefined)` returns nothing on SQLite but is
+        // not the same query on Postgres, and above all the refusal that would
+        // come out of it would say `enrolement` — hence "wrong secret" — for a
+        // message that never carried a VM.
         for (const brut of [
             '{"type":"enroler","v":5,"secret":"chut"}',
             '{"type":"enroler","v":5,"vm":"w1"}',
@@ -350,46 +350,46 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
 });
 
 
-describe('la version du protocole, et les listes blanches DÉRIVÉES de l’union', () => {
-    // ⚠️ LE NUMÉRO N'EST ÉCRIT QU'UNE FOIS, dans l'assertion ci-dessous. Il
-    // vivait aussi dans le titre du `describe` et dans celui de l'`it`, qui
-    // annonçaient « la version 3 » : trois places pour un seul fait, dont deux
-    // qu'aucun test ne pouvait faire rougir. Le bump de G3 les a trouvées
-    // périmées — elles disaient « 3 » sur un protocole en 4.
-    it('🔴 annonce sa version, et REFUSE un message v1', () => {
-        // 🔴 Oublier le bump côté TypeScript ferait diverger les deux bouts EN
-        // SILENCE : le Rust émettrait `v:3`, ce parseur attendrait `v:2`, et
-        // seuls les vecteurs partagés le diraient.
-        // 🔴 LITTÉRAL DÉLIBÉRÉ, ET C'EST UN TRÉBUCHET : `toBe(PLATEFORME_VERSION)`
-        // serait une tautologie. Ce nombre existe pour qu'un bump OBLIGE une
-        // main humaine à passer ici, et le commentaire du dessus dit pourquoi.
-        // ⚠️ PASSÉ DE 4 À 5 PAR LE SOUS-BLOC G5 (tranche F), et LE TRÉBUCHET A
-        // FONCTIONNÉ : ce test a échoué, ce qui a obligé une main à venir ici
-        // constater le bump plutôt qu'à le subir. C'est le troisième bump que
-        // ce littéral attrape.
+describe('the protocol version, and the allow-lists DERIVED from the union', () => {
+    // ⚠️ THE NUMBER IS WRITTEN ONLY ONCE, in the assertion below. It
+    // also lived in the title of the `describe` and in that of the `it`, which
+    // announced "version 3": three places for a single fact, two of which
+    // no test could turn red. G3's bump found them
+    // stale — they said "3" on a protocol at 4.
+    it('🔴 announces its version, and REFUSES a v1 message', () => {
+        // 🔴 Forgetting the bump on the TypeScript side would make the two ends diverge
+        // SILENTLY: the Rust would emit `v:3`, this parser would expect `v:2`, and
+        // only the shared vectors would say so.
+        // 🔴 DELIBERATE LITERAL, AND IT IS A TRIPWIRE: `toBe(PLATEFORME_VERSION)`
+        // would be a tautology. This number exists so that a bump FORCES a
+        // human hand to come by here, and the comment above says why.
+        // ⚠️ BUMPED FROM 4 TO 5 BY SUB-BLOCK G5 (slice F), and THE TRIPWIRE
+        // WORKED: this test failed, which forced a hand to come here
+        // and acknowledge the bump rather than suffer it. It is the third bump
+        // this literal catches.
         expect(PLATEFORME_VERSION).toBe(5);
-        // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026, et il épinglait
-        // le défaut au lieu de le garder : le refus est désormais la SEULE
-        // variante hors versionnement, précisément pour qu'un agent v1 puisse
-        // lire celui qui lui apprend qu'il est périmé. La propriété gardée ici
-        // — « un message v1 est refusé » — reste éprouvée, sur une variante qui
-        // la porte encore.
+        // ⚠️ THIS CASE CARRIED A `refus` UNTIL 20 AUGUST 2026, and it pinned
+        // the defect instead of guarding against it: the refusal is now the ONLY
+        // variant outside versioning, precisely so that a v1 agent can
+        // read the one that tells it it is out of date. The property guarded here
+        // — "a v1 message is refused" — remains tested, on a variant that
+        // still carries it.
         expect(() =>
             parseDepuisLaPlateforme('{"type":"enrole","v":1,"prefixe":"P","jeton":"j","expire_a":1}'),
-        ).toThrow(/version de plateforme non supportée/);
+        ).toThrow(/unsupported platform version/);
         expect(parseVersLaPlateforme('{"type":"battement","v":1}')).toEqual({
             ok: false,
             motif: 'version',
         });
     });
 
-    it('🔴 les deux listes blanches couvrent EXACTEMENT leur union', () => {
-        // 🔴 REMÈDE STRUCTUREL, ET C'EST SA MOITIÉ OBSERVABLE À L'EXÉCUTION.
-        // L'autre moitié est le typecheck : `TOUS_DEPUIS` et `TOUS_VERS` sont
-        // des `Record<Union['type'], true>`, et `tsc` refuse une clé
-        // manquante. C'est le jumeau de `TYPES_AGENT` (`control.ts`), écrit à
-        // la main, que rien ne confronte à son union — et dont l'oubli ne
-        // casse « ni compilation ni test ». Ici l'oubli casse le typecheck.
+    it('🔴 both allow-lists cover EXACTLY their union', () => {
+        // 🔴 STRUCTURAL REMEDY, AND THIS IS ITS HALF OBSERVABLE AT RUNTIME.
+        // The other half is the typecheck: `ALL_FROM` and `ALL_TO` are
+        // `Record<Union['type'], true>`, and `tsc` refuses a
+        // missing key. It is the twin of `TYPES_AGENT` (`control.ts`), written
+        // by hand, which nothing confronts with its union — and whose omission
+        // breaks "neither compilation nor tests". Here the omission breaks the typecheck.
         expect([...typesDepuis()].sort()).toEqual(
             ['battement-recu', 'enrole', 'icones-manquantes', 'installer', 'lancer', 'refus'],
         );
@@ -400,16 +400,16 @@ describe('la version du protocole, et les listes blanches DÉRIVÉES de l’unio
 });
 
 // ---------------------------------------------------------------------------
-// Correction du 20 août 2026 — UN REFUS DOIT ÊTRE LISIBLE PAR SON DESTINATAIRE.
+// Fix of 20 August 2026 — A REFUSAL MUST BE READABLE BY ITS RECIPIENT.
 // ---------------------------------------------------------------------------
 
-describe('le refus est une enveloppe HORS versionnement', () => {
-    // 🔴 LA ROUGE DU DÉFAUT 2, côté miroir. Mesuré en recette G1 : un agent v1
-    // face à une plateforme v2 ne peut pas lire le refus qui lui dit POURQUOI
-    // il est refusé, parce que le contrôle de version s'applique aussi au
-    // refus. Les deux bouts doivent tolérer, sans quoi le miroir divergerait
-    // du Rust en silence.
-    it('🔴 se lit quelle que soit la version de son émetteur', () => {
+describe('the refusal is an envelope OUTSIDE versioning', () => {
+    // 🔴 THE RED OF DEFECT 2, on the mirror side. Measured at G1's acceptance: a v1 agent
+    // facing a v2 platform cannot read the refusal that tells it WHY
+    // it is refused, because the version check also applies to the
+    // refusal. Both ends must tolerate it, otherwise the mirror would diverge
+    // from the Rust silently.
+    it('🔴 is read whatever the version of its sender', () => {
         const futur = parseDepuisLaPlateforme('{"type":"refus","v":97,"motif":"version"}') as
             unknown as Record<string, unknown>;
         expect(futur.type).toBe('refus');
@@ -419,44 +419,44 @@ describe('le refus est une enveloppe HORS versionnement', () => {
         expect(passe.motif).toBe('enrolement');
     });
 
-    it('🔴 conserve un motif qu’aucune version de ce dépôt ne connaît', () => {
+    it('🔴 keeps a reason that no version of this repository knows', () => {
         const lu = parseDepuisLaPlateforme('{"type":"refus","v":98,"motif":"quota-depasse"}') as
             unknown as Record<string, unknown>;
         expect(lu.motif).toBe('quota-depasse');
     });
 
-    it('🔴 et les AUTRES types restent refusés sur une version divergente', () => {
-        // Sans cette moitié, la tolérance ci-dessus pourrait s'obtenir en ne
-        // vérifiant plus rien du tout.
+    it('🔴 and the OTHER types stay refused on a diverging version', () => {
+        // Without this half, the tolerance above could be obtained by no longer
+        // checking anything at all.
         for (const brut of [
             '{"type":"enrole","v":97,"prefixe":"P","jeton":"j","expire_a":1}',
             '{"type":"battement-recu","v":97,"jeton":"j","expire_a":1}',
             '{"type":"lancer","v":97,"demande":"d","cle":"c"}',
         ]) {
             expect(() => parseDepuisLaPlateforme(brut)).toThrow(
-                /version de plateforme non supportée/,
+                /unsupported platform version/,
             );
         }
     });
 });
 
-describe('les refus lisibles du fichier de vecteurs partagés', () => {
-    // 🔴 LES MÊMES CHAÎNES QUE `conformite_aux_refus_lisibles_partages` CÔTÉ
-    // RUST. Sans ce vecteur partagé, le remède pourrait ne vivre que d'un
-    // côté — c'est exactement la divergence silencieuse que
-    // `plateforme-vectors.json` existe pour fermer.
+describe('the readable refusals of the shared vectors file', () => {
+    // 🔴 THE SAME STRINGS AS `conformance_to_the_shared_readable_refusals` ON THE
+    // RUST SIDE. Without this shared vector, the remedy could live on only one
+    // side — it is exactly the silent divergence that
+    // `plateforme-vectors.json` exists to close.
     const lisibles = (vecteurs as unknown as {
         refus_lisibles: { name: string; json: string; v: number; motif: string }[];
     }).refus_lisibles;
 
-    it('🔴 en porte quatre, et pas zéro', () => {
-        // Anti-tautologie : un tableau vide ferait passer la boucle ci-dessous
-        // sans rien éprouver. Même garde que du côté Rust.
+    it('🔴 carries four of them, and not zero', () => {
+        // Anti-tautology: an empty array would make the loop below pass
+        // without testing anything. Same guard as on the Rust side.
         expect(lisibles).toHaveLength(4);
     });
 
     for (const cas of lisibles) {
-        it(`lit « ${cas.name} » quelle que soit sa version`, () => {
+        it(`reads « ${cas.name} » whatever its version`, () => {
             const lu = parseDepuisLaPlateforme(cas.json) as unknown as Record<string, unknown>;
             expect(lu.type).toBe('refus');
             expect(lu.v).toBe(cas.v);

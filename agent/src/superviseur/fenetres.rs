@@ -1,12 +1,12 @@
-//! Le critère « Alt-Tab-able » : quelles fenêtres Windows méritent une fenêtre
-//! navigateur.
+//! The "Alt-Tab-able" criterion: which Windows windows deserve a browser
+//! window.
 //!
-//! Logique pure, délibérément séparée de la glue Windows de `hook.rs` : c'est
-//! la règle produit, celle qui décide de ce que l'utilisateur voit, et elle
-//! doit être éprouvable sans Windows.
+//! Pure logic, deliberately separated from the Windows glue of `hook.rs`: it is
+//! the product rule, the one deciding what the user sees, and it
+//! must be exercisable without Windows.
 
-/// Ce qu'on a relevé d'une fenêtre. Aucun appel système ici : `hook.rs`
-/// remplit cette structure, ce module la juge.
+/// What we recorded of a window. No system call here: `hook.rs`
+/// fills this structure, this module judges it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescriptionFenetre {
     /// `WS_VISIBLE` et `IsWindowVisible`.
@@ -23,49 +23,49 @@ pub struct DescriptionFenetre {
     pub titre: String,
 }
 
-/// Vrai si cette fenêtre mérite sa propre fenêtre navigateur.
+/// True if this window deserves its own browser window.
 ///
-/// Le critère est celui du cadrage (`specs/2026-07-28-support-jeux-design.md`
-/// §4, « critère de filtrage retenu ») : tout ce qui n'est pas ici — menus
-/// déroulants, infobulles, dialogues modaux, écrans de démarrage — reste
-/// composé dans sa fenêtre parente et arrive donc par la capture de celle-ci.
+/// The criterion is the framing's (`specs/2026-07-28-support-jeux-design.md`
+/// §4, "filtering criterion retained"): everything not here — drop-down
+/// menus, tooltips, modal dialogs, splash screens — stays
+/// composed in its parent window and therefore arrives through that one's capture.
 pub fn merite_une_fenetre(d: &DescriptionFenetre) -> bool {
     if !d.visible || d.masquee_dwm || d.a_un_proprietaire {
         return false;
     }
-    // Une fenêtre sans titre n'est présentable ni dans Alt-Tab ni dans la
-    // page-shell : rien ne permettrait à l'utilisateur de la désigner.
+    // A window without a title is presentable neither in Alt-Tab nor in the
+    // shell page: nothing would allow the user to designate it.
     if d.titre.is_empty() {
         return false;
     }
-    // `WS_EX_APPWINDOW` est la dérogation explicite : elle force la présence
-    // dans Alt-Tab malgré `WS_EX_TOOLWINDOW`.
+    // `WS_EX_APPWINDOW` is the explicit exemption: it forces presence
+    // in Alt-Tab despite `WS_EX_TOOLWINDOW`.
     !d.tool_window || d.app_window
 }
 
-/// Une fenêtre doit-elle être ÉCARTÉE parce qu'elle n'est pas à nous ?
+/// Must a window be SET ASIDE because it is not ours?
 ///
-/// 🔴 **RÈGLE D'APPARTENANCE, tranchée par le propriétaire le 30 août 2026 :
-/// `desk` n'adopte que les fenêtres des applications qu'il a lui-même lancées,
-/// et de leur descendance.** Le mécanisme est un job object sans aucune limite
-/// — voir `crate::appartenance`, qui porte les mesures.
+/// 🔴 **OWNERSHIP RULE, decided by the owner on August 30th, 2026:
+/// `desk` only adopts the windows of applications it launched itself,
+/// and of their descendants.** The mechanism is a job object without any limit
+/// — see `crate::appartenance`, which carries the measurements.
 ///
-/// **Séparée de `merite_une_fenetre` À DESSEIN** : les deux refus n'ont pas la
-/// même cause, et l'appelant doit pouvoir le DIRE dans son journal. Une
-/// fenêtre écartée parce qu'elle n'est pas à nous ne se diagnostique pas
-/// comme une fenêtre-outil.
+/// **Separated from `merite_une_fenetre` ON PURPOSE**: the two refusals do not have the
+/// same cause, and the caller must be able to SAY so in its log. A
+/// window set aside because it is not ours is not diagnosed
+/// like a tool window.
 ///
-/// | `appartient` | sens | verdict |
+/// | `appartient` | meaning | verdict |
 /// | --- | --- | --- |
-/// | `Some(true)` | elle est à nous | gardée |
-/// | `Some(false)` | elle est à un autre | **écartée** |
-/// | `None` | la question a ÉCHOUÉ | **gardée** |
+/// | `Some(true)` | it is ours | kept |
+/// | `Some(false)` | it belongs to another | **set aside** |
+/// | `None` | the question FAILED | **kept** |
 ///
-/// 🔴 **`None` GARDE, ET C'EST DÉLIBÉRÉ.** Écarter faute d'avoir su demander
-/// transformerait une panne de mesure en disparition silencieuse de toutes les
-/// fenêtres — la panne muette que ce dépôt paie plus cher qu'un défaut
-/// bruyant. Même raisonnement que `installation::execution::dans_un_job`, qui
-/// répond `false` quand la question échoue.
+/// 🔴 **`None` KEEPS, AND IT IS DELIBERATE.** Setting aside for failing to ask
+/// would turn a measurement failure into the silent disappearance of all
+/// windows — the mute failure this repository pays more dearly for than a loud
+/// defect. Same reasoning as `installation::execution::in_a_job`, which
+/// answers `false` when the question fails.
 pub fn ecartee_pour_non_appartenance(appartient: Option<bool>, regle_armee: bool) -> bool {
     regle_armee && appartient == Some(false)
 }
@@ -75,29 +75,32 @@ mod tests_appartenance {
     use super::*;
 
     #[test]
-    fn une_fenetre_a_nous_est_gardee() {
+    fn a_window_of_ours_is_kept() {
         assert!(!ecartee_pour_non_appartenance(Some(true), true));
     }
 
-    /// 🔴 LA ROUGE UTILE : Steam, Apollo, `cmd.exe` — tout ce que `desk` n'a
-    /// pas lancé.
+    /// 🔴 THE USEFUL RED: Steam, Apollo, `cmd.exe` — everything `desk` did not
+    /// launch.
     #[test]
-    fn une_fenetre_qui_n_est_pas_a_nous_est_ecartee() {
+    fn a_window_not_ours_is_discarded() {
         assert!(ecartee_pour_non_appartenance(Some(false), true));
     }
 
-    /// 🔴 Un échec de la QUESTION n'est pas une réponse : on garde.
+    /// 🔴 A failure of the QUESTION is not an answer: we keep.
     #[test]
-    fn un_echec_de_la_question_garde_la_fenetre() {
+    fn a_failure_of_the_query_keeps_the_window() {
         assert!(!ecartee_pour_non_appartenance(None, true));
     }
 
-    /// Le bras de banc `APPARTENANCE=0` : le produit d'avant la règle,
-    /// exactement. C'est le TÉMOIN qui rend la règle discriminante.
+    /// The `APPARTENANCE=0` bench arm: the product from before the rule,
+    /// exactly. It is the WITNESS that makes the rule discriminating.
     #[test]
-    fn desarmee_la_regle_n_ecarte_plus_rien() {
+    fn disarmed_the_rule_discards_nothing() {
         for a in [Some(true), Some(false), None] {
-            assert!(!ecartee_pour_non_appartenance(a, false), "{a:?} ne doit plus être écartée");
+            assert!(
+                !ecartee_pour_non_appartenance(a, false),
+                "{a:?} must no longer be discarded"
+            );
         }
     }
 }
@@ -106,8 +109,8 @@ mod tests_appartenance {
 mod tests {
     use super::*;
 
-    /// Une fenêtre ordinaire d'application : tout ce qu'il faut pour mériter
-    /// une fenêtre navigateur.
+    /// An ordinary application window: everything needed to deserve
+    /// a browser window.
     fn ordinaire() -> DescriptionFenetre {
         DescriptionFenetre {
             visible: true,
@@ -120,56 +123,75 @@ mod tests {
     }
 
     #[test]
-    fn une_fenetre_ordinaire_merite_une_fenetre_navigateur() {
+    fn an_ordinary_window_deserves_a_browser_window() {
         assert!(merite_une_fenetre(&ordinaire()));
     }
 
     #[test]
-    fn une_fenetre_invisible_est_ecartee() {
-        let d = DescriptionFenetre { visible: false, ..ordinaire() };
+    fn an_invisible_window_is_discarded() {
+        let d = DescriptionFenetre {
+            visible: false,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
-    fn une_fenetre_possedee_est_ecartee() {
-        // Dialogues modaux, palettes : elles restent composées dans leur
-        // parente, qui a déjà sa fenêtre navigateur.
-        let d = DescriptionFenetre { a_un_proprietaire: true, ..ordinaire() };
+    fn an_owned_window_is_discarded() {
+        // Modal dialogs, palettes: they stay composed in their
+        // parent, which already has its browser window.
+        let d = DescriptionFenetre {
+            a_un_proprietaire: true,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
-    fn une_tool_window_est_ecartee() {
-        let d = DescriptionFenetre { tool_window: true, ..ordinaire() };
+    fn a_tool_window_is_discarded() {
+        let d = DescriptionFenetre {
+            tool_window: true,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
-    fn une_tool_window_qui_est_aussi_app_window_est_gardee() {
-        // WS_EX_APPWINDOW force la présence dans Alt-Tab : c'est la
-        // dérogation exacte que le critère du cadrage prévoit.
-        let d = DescriptionFenetre { tool_window: true, app_window: true, ..ordinaire() };
+    fn a_tool_window_that_is_also_app_window_is_kept() {
+        // WS_EX_APPWINDOW forces presence in Alt-Tab: it is the
+        // exact exemption the framing's criterion provides.
+        let d = DescriptionFenetre {
+            tool_window: true,
+            app_window: true,
+            ..ordinaire()
+        };
         assert!(merite_une_fenetre(&d));
     }
 
     #[test]
-    fn une_fenetre_masquee_par_dwm_est_ecartee() {
-        // Sans ce filtre on capte les fenêtres UWP fantômes, qui existent
-        // sans jamais s'afficher.
-        let d = DescriptionFenetre { masquee_dwm: true, ..ordinaire() };
+    fn a_dwm_cloaked_window_is_discarded() {
+        // Without this filter we pick up ghost UWP windows, which exist
+        // without ever showing.
+        let d = DescriptionFenetre {
+            masquee_dwm: true,
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
-    fn une_fenetre_sans_titre_est_ecartee() {
-        let d = DescriptionFenetre { titre: String::new(), ..ordinaire() };
+    fn an_untitled_window_is_discarded() {
+        let d = DescriptionFenetre {
+            titre: String::new(),
+            ..ordinaire()
+        };
         assert!(!merite_une_fenetre(&d));
     }
 
     #[test]
-    fn le_masquage_dwm_prime_sur_app_window() {
-        // Une fenêtre fantôme qui porterait WS_EX_APPWINDOW ne doit pas
-        // ressortir par la dérogation : l'ordre des tests compte ici.
+    fn dwm_cloaking_takes_precedence_over_app_window() {
+        // A ghost window carrying WS_EX_APPWINDOW must not
+        // come back through the exemption: the order of tests matters here.
         let d = DescriptionFenetre {
             tool_window: true,
             app_window: true,

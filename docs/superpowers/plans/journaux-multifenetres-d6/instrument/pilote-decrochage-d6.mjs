@@ -148,7 +148,7 @@ async function marqueurs(etiquette) {
         taille_changee: compte("taille d'encodage changée"),
         taille_refusee: compte("changement de taille d'encodage refusé"),
         refus_debit: compte("l'encodeur refuse le réglage du débit à chaud"),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));
     return m;
@@ -395,7 +395,7 @@ async function main() {
         await dodo(6000);
 
         const ouvrirFenetre = async (n) => {
-            const avant = appPages().length;
+            const before = appPages().length;
             log(`  · ouverture fenêtre ${n}`);
             vmIt(`ouvrird6b-${n}`, [
                 `$a = @(`,
@@ -411,7 +411,7 @@ async function main() {
             ].join('\n'));
             for (let i = 0; i < 30; i += 1) {
                 await dodo(2000);
-                if (appPages().length > avant) return true;
+                if (appPages().length > before) return true;
             }
             log(`  !! fenêtre ${n} : aucune page de plus après 60 s`);
             return false;

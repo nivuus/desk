@@ -1,53 +1,53 @@
-//! Le sens MONTANT du micro, côté agent : ce qui arrive du navigateur en
-//! Opus, remis dans l'ordre, débarrassé de ses doublons, borné en latence,
-//! décodé, et rendu prêt à jouer.
+//! The UPSTREAM direction of the microphone, on the agent side: what arrives from the browser in
+//! Opus, put back in order, rid of its duplicates, latency-bounded,
+//! decoded, and made ready to play.
 //!
-//! **Ce module est PUR : il ne référence jamais le crate `windows` et n'ouvre
-//! aucun périphérique.** C'est la ligne de partage de la spec §6, et elle est
-//! ce qui rend éprouvable sous Linux tout ce qui peut mal tourner — l'ordre,
-//! la gigue, la dérive, le décodage, le silence. Le bloc E2 n'aura qu'à
-//! réveiller un fil WASAPI et appeler `LecteurMicro::remplir`.
+//! **This module is PURE: it never references the `windows` crate and opens
+//! no device.** It is the dividing line of spec §6, and it is
+//! what makes testable under Linux everything that can go wrong — ordering,
+//! jitter, drift, decoding, silence. Block E2 will only have to
+//! wake a WASAPI thread and call `LecteurMicro::remplir`.
 //!
-//! ⚠️ **Il DÉCODE, en revanche, et l'en-tête a dit le contraire jusqu'à la
-//! clôture du chantier E** : `LecteurMicro` possède l'`OpusDecoder` (l. 278).
-//! Ce n'est pas une entorse à la pureté — libopus ne connaît ni Windows ni
-//! périphérique —, et c'est même ce qui rend le décodage, le PLC et le FEC
-//! éprouvables sous Linux. La phrase fausse datait de la tâche 4, qui n'avait
-//! que le tampon ; la tâche 6 a ajouté le décodeur sans la relire.
+//! ⚠️ **It does DECODE, however, and the header said the opposite until the
+//! closing of work stream E**: `LecteurMicro` owns the `OpusDecoder` (l. 278).
+//! It is not a breach of purity — libopus knows neither Windows nor
+//! devices —, and it is even what makes decoding, PLC and FEC
+//! testable under Linux. The false sentence dated from task 4, which only had
+//! the buffer; task 6 added the decoder without rereading it.
 //!
-//! **L'invariant du module** : `deposer` ne rend rien et ne peut donc jamais
-//! faire attendre la boucle de transport. C'est le miroir exact de la règle du
-//! chantier A — la boucle dépose, un fil dédié travaille.
+//! **The module's invariant**: `deposer` returns nothing and can therefore never
+//! make the transport loop wait. It is the exact mirror of work stream A's
+//! rule — the loop drops off, a dedicated thread works.
 
 use std::collections::VecDeque;
 use std::time::Duration;
 
 use crate::opus::{OpusDecoder, CHANNELS, SAMPLE_RATE_HZ};
 
-/// Occupation visée du tampon : le compromis latence / résistance à la gigue.
+/// Target occupancy of the buffer: the latency / jitter resistance trade-off.
 ///
-/// ⚠️ **NON CALIBRÉE.** Elle rejoint `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS` et les autres : aucun jugement d'écoute n'a jamais été
-/// porté sur une constante de ce dépôt.
+/// ⚠️ **NOT CALIBRATED.** It joins `BPP_MIN`, `FACTEUR_FOCUS`,
+/// `PART_DORMANTE_BPS` and the others: no listening judgement has ever been
+/// made on a constant of this repository.
 pub const CIBLE: Duration = Duration::from_millis(40);
 
-/// Occupation au-delà de laquelle on jette plutôt que d'accumuler. Sans elle,
-/// un navigateur qui émet plus vite que le câble ne consomme ferait croître la
-/// latence sans borne — le tampon deviendrait un retard permanent.
+/// Occupancy beyond which we throw away rather than accumulate. Without it,
+/// a browser that emits faster than the cable consumes would make
+/// latency grow without bound — the buffer would become a permanent delay.
 pub const PLAFOND: Duration = Duration::from_millis(200);
 
-/// Au-dessus, on saute une trame pour rattraper la dérive (tâche 5).
+/// Above, we skip a frame to catch up with drift (task 5).
 pub const SEUIL_SAUT: Duration = Duration::from_millis(120);
 
-/// En dessous, on en insère une (tâche 5).
+/// Below, we insert one (task 5).
 pub const SEUIL_INSERTION: Duration = Duration::from_millis(20);
 
 /// Une trame Opus telle qu'elle arrive du navigateur.
 ///
-/// `echantillons` est le nombre d'échantillons PAR CANAL que porte le paquet,
-/// **lu de son en-tête** par `OpusDecoder::echantillons_de` et jamais supposé
-/// (spec §7) : Chrome émet du 20 ms, le chantier A du 10 ms, et rien n'oblige
-/// un pair à s'y tenir.
+/// `echantillons` is the number of samples PER CHANNEL the packet carries,
+/// **read from its header** by `OpusDecoder::echantillons_de` and never assumed
+/// (spec §7): Chrome emits 20 ms, work stream A 10 ms, and nothing forces
+/// a peer to stick to that.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrameMicro {
     pub opus: Vec<u8>,
@@ -55,9 +55,9 @@ pub struct TrameMicro {
     pub echantillons: usize,
 }
 
-/// Tout ce que le tampon a rencontré. **Aucun de ces événements n'est
-/// silencieux** (spec §8) : chacun a son compteur, et c'est ce qui rend une
-/// recette lisible sans instrumenter le code à chaud.
+/// Everything the buffer has met. **None of these events is
+/// silent** (spec §8): each has its counter, and it is what makes an
+/// acceptance run readable without instrumenting the code on the fly.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CompteursMicro {
     pub deposees: u64,
@@ -69,55 +69,55 @@ pub struct CompteursMicro {
     pub insertions: u64,
     pub famines: u64,
     pub plc: u64,
-    /// Dissimulations REFUSÉES parce que `PLAFOND_DISSIMULATION` était
-    /// atteint : autant de trames rendues en SILENCE au lieu d'être
-    /// extrapolées.
+    /// Concealments REFUSED because `PLAFOND_DISSIMULATION` was
+    /// reached: as many frames returned as SILENCE instead of being
+    /// extrapolated.
     ///
-    /// ⚠️ **Il est disjoint de `plc`, et c'est tout son intérêt** : sans lui,
-    /// une recette ne pourrait pas distinguer « la dissimulation travaille »
-    /// de « le plafond a mordu et le puits se tait », et la correction ne
-    /// serait pas falsifiable. `plc` compte ce qui a été extrapolé,
-    /// `plc_plafonnees` ce qui ne l'a délibérément pas été.
+    /// ⚠️ **It is disjoint from `plc`, and that is its whole point**: without it,
+    /// an acceptance run could not distinguish "concealment is working"
+    /// from "the cap has bitten and the sink is silent", and the fix would not
+    /// be falsifiable. `plc` counts what was extrapolated,
+    /// `plc_plafonnees` what deliberately was not.
     pub plc_plafonnees: u64,
     pub fec: u64,
 }
 
-/// Ce qu'un tour de lecture réclame au décodeur.
+/// What a reading round asks of the decoder.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Retrait {
-    /// La trame due est là : décodage normal.
+    /// The due frame is there: normal decoding.
     Trame(TrameMicro),
-    /// La trame due manque mais la SUIVANTE est là : décoder avec le FEC.
+    /// The due frame is missing but the NEXT one is there: decode with FEC.
     ///
-    /// Le sens est contre-intuitif et vaut d'être redit : la redondance LBRR
-    /// d'un paquet reconstruit la trame qui le PRÉCÈDE. D'où la règle — le FEC
-    /// ne sert que si la suivante est déjà arrivée, et jamais autrement.
+    /// The direction is counter-intuitive and worth repeating: the LBRR redundancy
+    /// of a packet reconstructs the frame that PRECEDES it. Hence the rule — FEC
+    /// is only useful if the next one has already arrived, and never otherwise.
     Reconstruire { suivante: Vec<u8> },
-    /// Rien à jouer. **TROIS issues, pas deux** : dissimulation si une trame a
-    /// déjà été décodée ET que le budget de `micro/dissimulation.rs` n'est pas
-    /// épuisé ; silence dans les deux autres cas — rien n'a jamais été décodé,
-    /// ou `PLAFOND_DISSIMULATION` est atteint (compteur `plc_plafonnees`).
-    /// ⚠️ La troisième est NEUVE : sans elle, une famine prolongée dissimulait
-    /// sans fin et fabriquait un bourdon, mesuré sur 60 s par la recette E1.
+    /// Nothing to play. **THREE outcomes, not two**: concealment if a frame has
+    /// already been decoded AND the budget of `micro/dissimulation.rs` is not
+    /// exhausted; silence in the two other cases — nothing has ever been decoded,
+    /// or `PLAFOND_DISSIMULATION` is reached (counter `plc_plafonnees`).
+    /// ⚠️ The third is NEW: without it, a prolonged starvation concealed
+    /// endlessly and produced a drone, measured over 60 s by acceptance run E1.
     Manquante,
 }
 
-/// Convertit un nombre d'échantillons par canal en durée à 48 kHz.
+/// Converts a number of samples per channel into a duration at 48 kHz.
 fn duree_de(echantillons: usize) -> Duration {
     Duration::from_nanos(echantillons as u64 * 1_000_000_000 / SAMPLE_RATE_HZ as u64)
 }
 
-/// Le tampon de gigue : il ordonne, dédoublonne, borne, et rend ce qui est dû.
+/// The jitter buffer: it orders, deduplicates, bounds, and returns what is due.
 pub struct TamponGigue {
     file: VecDeque<TrameMicro>,
-    /// Horodatage RTP de la trame attendue au prochain retrait. `None` tant
-    /// qu'aucune trame n'a été jouée : la première qui se présente fait
-    /// référence, plutôt qu'un zéro arbitraire qu'un navigateur n'a aucune
-    /// raison d'employer (Chrome tire son horodatage RTP initial au hasard).
+    /// RTP timestamp of the frame expected at the next removal. `None` as long
+    /// as no frame has been played: the first one that shows up serves as
+    /// reference, rather than an arbitrary zero a browser has no
+    /// reason to use (Chrome picks its initial RTP timestamp at random).
     prochain_du: Option<u64>,
-    /// Occupation VISÉE. Retenue pour la lecture d'un futur asservissement
-    /// fin ; la correction de dérive d'aujourd'hui n'emploie que les deux
-    /// seuils, qui bornent la bande morte autour d'elle.
+    /// TARGET occupancy. Kept for the reading of a future fine
+    /// control loop; today's drift correction only uses the two
+    /// thresholds, which bound the dead band around it.
     #[allow(dead_code)]
     cible: Duration,
     plafond: Duration,
@@ -135,14 +135,14 @@ impl TamponGigue {
         }
     }
 
-    /// **NON BLOQUANT, et c'est l'invariant de ce module.** Aucune valeur de
-    /// retour, aucun `Result` : la boucle de transport ne peut structurellement
-    /// pas attendre ici, ni avoir à décider quoi que ce soit.
+    /// **NON-BLOCKING, and it is the invariant of this module.** No return
+    /// value, no `Result`: the transport loop structurally cannot
+    /// wait here, nor have to decide anything at all.
     pub fn deposer(&mut self, trame: TrameMicro) {
         self.compteurs.deposees += 1;
 
-        // Périmée : sa place est déjà passée. La jouer hors de son tour
-        // désordonnerait la ligne de temps qu'on est justement là pour tenir.
+        // Stale: its place has already passed. Playing it out of turn
+        // would disorder the timeline we are precisely here to keep.
         if let Some(du) = self.prochain_du {
             if trame.rtp_48k < du {
                 self.compteurs.jetees_perimees += 1;
@@ -150,18 +150,18 @@ impl TamponGigue {
             }
         }
 
-        // Doublon : le même horodatage RTP est déjà en file. Une
-        // retransmission ou un rejeu ne doit pas être joué deux fois.
+        // Duplicate: the same RTP timestamp is already queued. A
+        // retransmission or a replay must not be played twice.
         if self.file.iter().any(|t| t.rtp_48k == trame.rtp_48k) {
             self.compteurs.doublons += 1;
             return;
         }
 
-        // Insertion ORDONNÉE. Un simple `push_back` suffirait au cas nominal —
-        // et c'est exactement ce que la décision 2 du plan nous interdit de
-        // supposer : en ramenant `reordering_size_audio` de 15 à 2, on retire
-        // à str0m la garantie d'ordre qu'il offrait, et c'est ici qu'elle se
-        // rattrape.
+        // ORDERED insertion. A simple `push_back` would be enough for the nominal case —
+        // and that is exactly what decision 2 of the plan forbids us to
+        // assume: by bringing `reordering_size_audio` from 15 down to 2, we take away
+        // from str0m the ordering guarantee it offered, and it is here that it is
+        // made up for.
         let place = self
             .file
             .iter()
@@ -172,58 +172,58 @@ impl TamponGigue {
         }
         self.file.insert(place, trame);
 
-        // Saturation : c'est la plus ANCIENNE qui part, pas la plus récente.
-        // L'inverse de l'émission du chantier A, et pour une raison exacte —
-        // là-bas on choisit quoi envoyer, ici on subit une ligne de temps
-        // distante qu'il faut suivre en avançant, jamais en reculant.
+        // Saturation: it is the OLDEST that goes, not the most recent.
+        // The reverse of work stream A's emission, and for an exact reason —
+        // there we choose what to send, here we undergo a remote timeline
+        // that must be followed by moving forward, never backward.
         while self.occupation() > self.plafond {
             let Some(partie) = self.file.pop_front() else {
                 break;
             };
             self.compteurs.jetees_saturation += 1;
-            // On a sauté par-dessus : le prochain dû devient ce qui reste, sans
-            // quoi le tour suivant réclamerait par FEC la trame qu'on vient
-            // délibérément de jeter.
+            // We jumped over it: the next due becomes what remains, otherwise
+            // the next round would claim through FEC the frame we just
+            // deliberately threw away.
             if self.prochain_du.is_none_or(|du| du <= partie.rtp_48k) {
                 self.prochain_du = self.file.front().map(|t| t.rtp_48k);
             }
         }
     }
 
-    /// Ce qui est dû maintenant. Ne bloque jamais et rend toujours quelque
-    /// chose : à défaut de trame, une consigne de dissimulation.
+    /// What is due now. Never blocks and always returns something:
+    /// failing a frame, a concealment instruction.
     pub fn retirer(&mut self) -> Retrait {
-        // `_tete` : le `let … else` n'existe que pour son bras `else` — la
-        // valeur est relue plus bas, après la correction de dérive. Le tiret
-        // bas ferme le legs n°4 de E1, seul avertissement du crate qui ne fût
-        // pas un `dead_code`.
+        // `_tete`: the `let … else` only exists for its `else` arm — the
+        // value is read again below, after drift correction. The
+        // underscore closes legacy item no. 4 of E1, the only warning of the crate that was
+        // not a `dead_code`.
         let Some(_tete) = self.file.front().map(|t| t.rtp_48k) else {
             self.compteurs.famines += 1;
             return Retrait::Manquante;
         };
 
-        // --- correction de dérive (spec §8) ---------------------------------
+        // --- drift correction (spec §8) ---------------------------------
         //
-        // Deux horloges libres se croisent : celle du navigateur qui encode et
-        // celle du câble qui consomme. Rien ne les asservit l'une à l'autre, et
-        // l'écart, si petit soit-il, s'accumule sans terme.
+        // Two free clocks cross: that of the browser that encodes and
+        // that of the cable that consumes. Nothing slaves one to the other, and
+        // the gap, however small, accumulates endlessly.
         //
-        // Le remède est GROSSIER et assumé : on saute une trame quand on a trop
-        // de retard, on en insère une quand on a trop d'avance. « Audible une
-        // fois par plusieurs minutes » — un rééchantillonnage adaptatif serait
-        // du travail écrit avant d'avoir constaté le besoin.
+        // The remedy is CRUDE and assumed: we skip a frame when we are too
+        // late, we insert one when we are too early. "Audible once
+        // every several minutes" — adaptive resampling would be
+        // work written before having observed the need.
         //
-        // ⚠️ **Les deux seuils forment une HYSTÉRÉSIS, et son absence ferait
-        // osciller le tampon à chaque trame** : sans bande morte entre eux, la
-        // correction qui rattrape un retard créerait aussitôt l'avance que
-        // l'autre correction viendrait défaire.
+        // ⚠️ **The two thresholds form a HYSTERESIS, and its absence would make
+        // the buffer oscillate at each frame**: without a dead band between them, the
+        // correction that catches up a delay would immediately create the advance that
+        // the other correction would come to undo.
         let occupation = self.occupation();
         if occupation > SEUIL_SAUT {
-            let saute = self.file.pop_front().expect("tête relue");
+            let saute = self.file.pop_front().expect("head read back");
             self.compteurs.sauts += 1;
-            // Même raison qu'à la saturation : sans avancer le dû, le tour
-            // suivant réclamerait par FEC la trame qu'on vient délibérément de
-            // sauter, et le saut serait un no-op déguisé.
+            // Same reason as for saturation: without advancing the due, the next
+            // round would claim through FEC the frame we just deliberately
+            // skipped, and the skip would be a disguised no-op.
             if self.prochain_du.is_none_or(|du| du <= saute.rtp_48k) {
                 self.prochain_du = self.file.front().map(|t| t.rtp_48k);
             }
@@ -232,36 +232,36 @@ impl TamponGigue {
                 return Retrait::Manquante;
             };
         } else if occupation < SEUIL_INSERTION {
-            // ⚠️ **Une insertion ne CONSOMME PAS de trame.** Elle rend
-            // `Manquante` sans dépiler, ce qui laisse l'occupation croître
-            // jusqu'à la bande morte. Un `pop` accompagné d'une insertion
-            // serait un no-op déguisé — l'occupation ne bougerait pas d'un
-            // échantillon, et le test de l'hystérésis ne le verrait même pas.
+            // ⚠️ **An insertion does NOT CONSUME a frame.** It returns
+            // `Manquante` without popping, which lets the occupancy grow
+            // up to the dead band. A `pop` accompanied by an insertion
+            // would be a disguised no-op — the occupancy would not move by one
+            // sample, and the hysteresis test would not even see it.
             self.compteurs.insertions += 1;
             return Retrait::Manquante;
         }
 
-        let tete = self.file.front().expect("tête relue").rtp_48k;
+        let tete = self.file.front().expect("head read back").rtp_48k;
 
         let du = *self.prochain_du.get_or_insert(tete);
 
         if tete > du {
-            // La trame due manque, mais la suivante est là : c'est exactement
-            // la condition — et la seule — où le FEC in-band peut travailler.
+            // The due frame is missing, but the next one is there: that is exactly
+            // the condition — and the only one — where in-band FEC can work.
             self.compteurs.fec += 1;
-            let suivante = self.file.front().expect("tête relue").opus.clone();
-            // On avance jusqu'à la suivante SANS la consommer : elle se joue à
-            // son tour. Le trou est comblé par sa redondance, pas par elle.
+            let suivante = self.file.front().expect("head read back").opus.clone();
+            // We advance to the next one WITHOUT consuming it: it plays in
+            // its turn. The hole is filled by its redundancy, not by it.
             self.prochain_du = Some(tete);
             return Retrait::Reconstruire { suivante };
         }
 
-        let trame = self.file.pop_front().expect("tête relue");
+        let trame = self.file.pop_front().expect("head read back");
         self.prochain_du = Some(trame.rtp_48k + trame.echantillons as u64);
         Retrait::Trame(trame)
     }
 
-    /// Durée d'audio actuellement en attente.
+    /// Duration of audio currently waiting.
     pub fn occupation(&self) -> Duration {
         duree_de(self.file.iter().map(|t| t.echantillons).sum())
     }
@@ -273,36 +273,36 @@ impl TamponGigue {
 
 /// Puits d'un flux montant.
 ///
-/// `deposer` rend `false` quand le puits REFUSE — exclusivité non acquise
-/// (bloc E2, un mutex nommé à l'échelle de la machine). L'appelant journalise
-/// une fois et n'insiste pas. **La couche pure ne connaît aucun mutex** : ce
-/// trait est la couture, et rien de plus.
+/// `deposer` returns `false` when the sink REFUSES — exclusivity not acquired
+/// (block E2, a machine-wide named mutex). The caller logs
+/// once and does not insist. **The pure layer knows no mutex**: this
+/// trait is the seam, and nothing more.
 pub trait PuitsMicro {
     fn deposer(&mut self, trame: TrameMicro) -> bool;
 }
 
-/// Le tampon de gigue, le décodeur, et le résidu : tout ce qu'un fil WASAPI
-/// aura besoin d'appeler, et rien de plus.
+/// The jitter buffer, the decoder, and the residue: everything a WASAPI thread
+/// will need to call, and nothing more.
 ///
-/// **Pur, alors qu'il sert un fil WASAPI** — c'est la ligne de partage de la
-/// spec §6, et elle a payé : le bloc E2 appelle exactement
-/// `remplir(&mut [f32])` depuis le fil que WASAPI réveille, et **tout ce qui
-/// peut mal tourner — l'ordre, la gigue, la dérive, le décodage, le résidu, le
-/// silence — est éprouvé sous Linux.**
+/// **Pure, although it serves a WASAPI thread** — it is the dividing line of
+/// spec §6, and it paid off: block E2 calls exactly
+/// `remplir(&mut [f32])` from the thread WASAPI wakes, and **everything that
+/// can go wrong — ordering, jitter, drift, decoding, residue,
+/// silence — is tested under Linux.**
 pub struct LecteurMicro {
     tampon: TamponGigue,
     decodeur: OpusDecoder,
-    /// PCM décodé pas encore remis à l'appelant, stéréo entrelacé.
+    /// Decoded PCM not yet handed to the caller, interleaved stereo.
     ///
-    /// **Sans lui, la queue de chaque trame serait jetée.** Le paquet que
-    /// réclame WASAPI ne fait presque jamais la taille d'une trame Opus : une
-    /// trame de 20 ms rend 960 échantillons par canal, et le tampon réclamé
-    /// peut en vouloir 441, 480 ou 1024. Le résidu est la pièce qui recolle
-    /// deux découpages sans rapport.
+    /// **Without it, the tail of each frame would be thrown away.** The packet
+    /// WASAPI claims is almost never the size of an Opus frame: a
+    /// 20 ms frame yields 960 samples per channel, and the claimed buffer
+    /// may want 441, 480 or 1024 of them. The residue is the piece that glues
+    /// two unrelated splittings back together.
     residu: VecDeque<f32>,
-    /// Ce qui reste à dissimuler avant qu'on ne se taise. Voir
-    /// `micro/dissimulation.rs` pour le défaut mesuré qui l'a rendu
-    /// nécessaire, et pour ce que libopus fait — et ne fait pas — de son côté.
+    /// What remains to be concealed before we go silent. See
+    /// `micro/dissimulation.rs` for the measured defect that made it
+    /// necessary, and for what libopus does — and does not do — on its side.
     budget: BudgetDissimulation,
 }
 
@@ -324,62 +324,62 @@ impl LecteurMicro {
         self.tampon.compteurs()
     }
 
-    /// Durée d'audio déposée et pas encore rendue — c'est-à-dire la latence que
-    /// le tampon de gigue AJOUTE, à elle seule.
+    /// Duration of audio dropped off and not yet returned — that is, the latency
+    /// the jitter buffer ADDS, by itself.
     ///
-    /// ⚠️ **Ce n'est PAS la latence de bout en bout**, que ce chantier ne mesure
-    /// pas plus que les précédents : le trajet réseau, l'encodage du navigateur
-    /// et — au bloc E2 — l'écriture sur le câble en sont absents. C'est la borne
-    /// « dépôt → retrait » de la recette E1, et rien de plus. Bornée par
-    /// construction à `PLAFOND` (voir `TamponGigue::deposer`).
+    /// ⚠️ **It is NOT the end-to-end latency**, which this work stream does not measure
+    /// any more than the previous ones: the network path, the browser's encoding
+    /// and — in block E2 — writing to the cable are absent from it. It is the
+    /// "drop-off → removal" bound of acceptance run E1, and nothing more. Bounded by
+    /// construction to `PLAFOND` (see `TamponGigue::deposer`).
     pub fn occupation(&self) -> Duration {
         self.tampon.occupation()
     }
 
-    /// Remplit `sortie` (stéréo entrelacé, `f32`) avec ce qui est dû, complète
-    /// au silence, et **ne bloque JAMAIS**.
+    /// Fills `sortie` (interleaved stereo, `f32`) with what is due, completes
+    /// with silence, and **NEVER blocks**.
     ///
-    /// Spec §8 « Silence » : le câble doit être alimenté EN CONTINU. Une
-    /// application qui écoute un tampon vide ne perçoit pas du silence — elle
-    /// voit un flux qui s'interrompt, ce qui n'est pas la même chose et
-    /// s'entend.
+    /// Spec §8 "Silence": the cable must be fed CONTINUOUSLY. An
+    /// application listening to an empty buffer does not perceive silence — it
+    /// sees a stream that gets interrupted, which is not the same thing and
+    /// can be heard.
     pub fn remplir(&mut self, sortie: &mut [f32]) {
-        let mut ecrit = 0;
-        while ecrit < sortie.len() {
-            // Le résidu d'abord : c'est lui qui recolle les découpages.
-            while ecrit < sortie.len() {
+        let mut written = 0;
+        while written < sortie.len() {
+            // The residue first: it is what glues the splittings back together.
+            while written < sortie.len() {
                 let Some(e) = self.residu.pop_front() else {
                     break;
                 };
-                sortie[ecrit] = e;
-                ecrit += 1;
+                sortie[written] = e;
+                written += 1;
             }
-            if ecrit == sortie.len() {
+            if written == sortie.len() {
                 return;
             }
 
-            // Rien en réserve : réclamer au tampon de quoi continuer.
+            // Nothing in reserve: ask the buffer for something to continue with.
             if !self.produire_une_trame() {
-                // Plus rien à produire, et pas même une dissimulation. On
-                // complète au silence et on rend la main — **la boucle DOIT
-                // s'arrêter ici** : sans cette sortie, un lecteur qui n'a
-                // jamais rien décodé tournerait sans fin, `dissimuler` rendant
-                // zéro échantillon à chaque tour.
-                sortie[ecrit..].fill(0.0);
+                // Nothing more to produce, not even a concealment. We
+                // complete with silence and return — **the loop MUST
+                // stop here**: without this exit, a player that has
+                // never decoded anything would spin endlessly, `dissimuler` returning
+                // zero samples at each round.
+                sortie[written..].fill(0.0);
                 return;
             }
         }
     }
 
-    /// Décode ce qui est dû dans le résidu. Rend `false` quand rien n'a pu
-    /// être produit — à l'appelant de compléter au silence.
+    /// Decodes what is due into the residue. Returns `false` when nothing could
+    /// be produced — up to the caller to complete with silence.
     fn produire_une_trame(&mut self) -> bool {
         let (paquet, echantillons, fec) = match self.tampon.retirer() {
             Retrait::Trame(t) => (t.opus, t.echantillons, false),
             Retrait::Reconstruire { suivante } => {
-                // La durée reconstruite est celle de la trame MANQUANTE, qu'on
-                // ne connaît pas. Celle de la suivante en est le meilleur
-                // témoin disponible, et elle est LUE du paquet, jamais supposée.
+                // The reconstructed duration is that of the MISSING frame, which we
+                // do not know. That of the next one is the best available
+                // witness of it, and it is READ from the packet, never assumed.
                 let n = self.decodeur.echantillons_de(&suivante).unwrap_or(0);
                 if n == 0 {
                     return false;
@@ -387,19 +387,19 @@ impl LecteurMicro {
                 (suivante, n, true)
             }
             Retrait::Manquante => {
-                // Dissimulation : la durée vient de la dernière trame décodée,
-                // et vaut zéro tant que rien n'a été décodé — auquel cas il n'y
-                // a rien à dissimuler, et le silence est la bonne réponse.
+                // Concealment: the duration comes from the last decoded frame,
+                // and is zero as long as nothing has been decoded — in which case there
+                // is nothing to conceal, and silence is the right answer.
                 let n = self.decodeur.derniere_duree().unwrap_or(0);
                 if n == 0 {
                     return false;
                 }
-                // ⚠️ **LE PLAFOND.** Au-delà de `PLAFOND_DISSIMULATION`
-                // dissimulée d'affilée, on rend du SILENCE : libopus ne
-                // s'arrête jamais de lui-même et converge vers du bruit de
-                // confort qu'il maintient sans terme — mesuré comme un bourdon
-                // continu sur 60 s de silence du navigateur. `false` fait
-                // compléter au silence par `remplir`, qui sait déjà le faire.
+                // ⚠️ **THE CAP.** Beyond `PLAFOND_DISSIMULATION`
+                // concealed in a row, we return SILENCE: libopus never
+                // stops by itself and converges towards comfort noise
+                // that it maintains endlessly — measured as a continuous
+                // drone over 60 s of browser silence. `false` makes
+                // `remplir` complete with silence, which it already knows how to do.
                 if !self.budget.consommer(duree_de(n)) {
                     self.tampon.compteurs.plc_plafonnees += 1;
                     return false;
@@ -423,10 +423,10 @@ impl LecteurMicro {
         let Ok(rendus) = rendus else {
             return false;
         };
-        // Du vrai audio est revenu — reconstruit par le FEC ou décodé tel
-        // quel : le budget de dissimulation repart entier. Sans cette ligne,
-        // un plafond atteint une fois condamnerait la session au silence
-        // définitif.
+        // Real audio has come back — reconstructed by FEC or decoded as
+        // is: the concealment budget starts whole again. Without this line,
+        // a cap reached once would condemn the session to permanent
+        // silence.
         if rendus > 0 {
             self.budget.trame_reelle();
         }
@@ -435,41 +435,40 @@ impl LecteurMicro {
     }
 
     fn pousser(&mut self, pcm: &[i16]) {
-        self.residu
-            .extend(pcm.iter().map(|&e| e as f32 / 32_768.0));
+        self.residu.extend(pcm.iter().map(|&e| e as f32 / 32_768.0));
     }
 }
 
-/// La fréquence dominante d'un signal périodique, par passages par zéro.
+/// The dominant frequency of a periodic signal, through zero crossings.
 ///
-/// ⚠️ **Extraite vers `micro/frequence.rs`** au titre de la règle des 500
-/// lignes, et ré-exportée ici pour qu'aucun site d'appel ne bouge : elle reste
-/// `crate::micro::frequence_par_passages_a_zero` pour `demarrage/micro.rs`
-/// comme pour les tests.
+/// ⚠️ **Extracted to `micro/frequence.rs`** under the 500-line
+/// rule, and re-exported here so that no call site moves: it remains
+/// `crate::micro::frequence_par_passages_a_zero` for `demarrage/micro.rs`
+/// as for the tests.
 pub use frequence::frequence_par_passages_a_zero;
 
 mod frequence;
 
-/// La politique d'exclusivité du câble : un seul écrivain, la tentative
-/// refaite à chaque dépôt, et un journal qui ne se répète pas.
+/// The cable exclusivity policy: a single writer, the attempt
+/// redone at each drop-off, and a log that does not repeat itself.
 ///
-/// ⚠️ **`pub mod`, et NON le `pub use` + `mod` que le plan E2 prescrit
-/// (tâche 3, « Files »), et c'est une divergence assumée.** Ré-exporter trois
-/// noms que personne ne consomme encore — les tâches 7 à 10 les câbleront —
-/// lève un `unused_imports`, c'est-à-dire un avertissement d'une **catégorie
-/// neuve**, alors que le contrôle de cette même tâche exige que tous les
-/// avertissements restants soient des `dead_code`. Le plan se contredit sur ce
-/// point ; on garde son contrôle et l'on suit le patron de `wasapi.rs`
-/// (`pub mod rendu;`, `pub mod process_loopback;`). Les sites d'appel écriront
+/// ⚠️ **`pub mod`, and NOT the `pub use` + `mod` that plan E2 prescribes
+/// (task 3, "Files"), and it is an assumed divergence.** Re-exporting three
+/// names no one consumes yet — tasks 7 to 10 will wire them —
+/// raises an `unused_imports`, that is a warning of a **new
+/// category**, whereas the check of this same task requires all
+/// remaining warnings to be `dead_code`s. The plan contradicts itself on this
+/// point; we keep its check and follow the pattern of `wasapi.rs`
+/// (`pub mod rendu;`, `pub mod process_loopback;`). Call sites will write
 /// `crate::micro::exclusivite::Exclusivite`.
 pub mod exclusivite;
 
-/// La garde de boucle locale : le câble est-il ce que le loopback capte ?
-/// **Mesurée nécessaire le 20 août 2026** — la spec §3 affirmait l'inverse.
-/// `pub mod` pour la raison écrite juste au-dessus.
+/// The local loop guard: is the cable what the loopback captures?
+/// **Measured necessary on 20 August 2026** — spec §3 asserted the opposite.
+/// `pub mod` for the reason written just above.
 pub mod boucle_locale;
 
-/// Le plafond de dissimulation, et la règle pure qui le tient.
+/// The concealment cap, and the pure rule that holds it.
 pub use dissimulation::{BudgetDissimulation, PLAFOND_DISSIMULATION};
 
 mod dissimulation;

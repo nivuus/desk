@@ -3,12 +3,12 @@ import {
     CLE_THEME,
     appliquer,
     choisir,
-    surStockageModifie,
+    onStorageChanged,
     themeStocke,
 } from './theme';
 import amorce from './amorce-theme.js?raw';
 
-/** Doublure de `localStorage` — voir l'en-tête de `theme.ts`. */
+/** Stand-in for `localStorage` — see the header of `theme.ts`. */
 function coffreFactice(initial: Record<string, string> = {}) {
     const contenu = new Map(Object.entries(initial));
     return {
@@ -17,8 +17,8 @@ function coffreFactice(initial: Record<string, string> = {}) {
         getItem(cle: string) {
             return contenu.get(cle) ?? null;
         },
-        setItem(this: { ecritures: number }, cle: string, valeur: string) {
-            contenu.set(cle, valeur);
+        setItem(this: { ecritures: number }, cle: string, value: string) {
+            contenu.set(cle, value);
             this.ecritures += 1;
         },
     };
@@ -28,8 +28,8 @@ function coffreFactice(initial: Record<string, string> = {}) {
 function racineFactice() {
     return {
         attributs: new Map<string, string>(),
-        setAttribute(this: { attributs: Map<string, string> }, nom: string, valeur: string) {
-            this.attributs.set(nom, valeur);
+        setAttribute(this: { attributs: Map<string, string> }, nom: string, value: string) {
+            this.attributs.set(nom, value);
         },
         removeAttribute(this: { attributs: Map<string, string> }, nom: string) {
             this.attributs.delete(nom);
@@ -37,78 +37,78 @@ function racineFactice() {
     };
 }
 
-describe('choisir — la fenêtre ÉCRIVANTE', () => {
-    // 🔴 Les deux tests suivants sont DEUX `it()` séparés, jamais deux `expect`
-    // du même test. `expect` interrompt le test à la première assertion : un
-    // seul `it()` qui vérifierait l'écriture PUIS l'attribut s'arrêterait à
-    // l'écriture, et l'oubli de l'application locale — le défaut naturel de ce
-    // mécanisme, puisque `storage` ne se déclenche pas chez l'écrivain — se
-    // cacherait derrière elle. C'est la leçon que le sous-bloc P2 a payée.
+describe('choisir — the WRITING window', () => {
+    // 🔴 The next two tests are TWO separate `it()`, never two `expect`
+    // of the same test. `expect` stops the test at the first assertion: a
+    // single `it()` that checked the write THEN the attribute would stop at
+    // the write, and forgetting the local application — the natural defect of this
+    // mechanism, since `storage` does not fire for the writer — would
+    // hide behind it. That is the lesson sub-block P2 paid for.
 
-    it('écrit le thème dans le coffre, sous la clé préfixée', () => {
+    it('writes the theme to the store, under the prefixed key', () => {
         const coffre = coffreFactice();
         choisir(coffre, racineFactice(), 'clair');
         expect(coffre.getItem(CLE_THEME)).toBe('clair');
     });
 
-    it("applique le thème LOCALEMENT, parce que `storage` ne revient pas chez l'écrivain", () => {
+    it("applies the theme LOCALLY, because `storage` does not come back to the writer", () => {
         const racine = racineFactice();
         choisir(coffreFactice(), racine, 'clair');
         expect(racine.attributs.get('data-theme')).toBe('clair');
     });
 });
 
-describe('surStockageModifie — une fenêtre VOISINE', () => {
-    it("pose `data-theme` à partir de l'événement d'une autre fenêtre", () => {
+describe('surStockageModifie — a NEIGHBOURING window', () => {
+    it("sets `data-theme` from the event of another window", () => {
         const racine = racineFactice();
-        surStockageModifie(racine, CLE_THEME, 'sombre');
+        onStorageChanged(racine, CLE_THEME, 'sombre');
         expect(racine.attributs.get('data-theme')).toBe('sombre');
     });
 
-    it("retire l'attribut quand la voisine est repassée à « systeme »", () => {
-        // ⚠️ CE TEST REMPLACE celui que le plan prescrivait — « `surStockageModifie`
-        // n'écrit rien dans le coffre ». Ce dernier est INSATISFIABLE COMME
-        // TEST : la signature ne reçoit AUCUN `Coffre`, donc la fonction n'a
-        // rien à écrire et l'assertion ne peut pas tomber. La propriété est
-        // garantie par le TYPE, ce qui est plus fort qu'un test — elle est
-        // déclarée dans l'en-tête de `theme.ts` plutôt que mise en scène ici.
-        // Le cas ci-dessous, lui, est réel et peut échouer : une voisine
-        // remise sur « systeme » efface la clé, et l'attribut doit disparaître.
+    it("removes the attribute when the neighbour went back to « systeme »", () => {
+        // ⚠️ THIS TEST REPLACES the one the plan prescribed — "`onStorageChanged`
+        // writes nothing to the store". The latter is UNSATISFIABLE AS A
+        // TEST: the signature receives NO `Coffre`, so the function has
+        // nothing to write and the assertion cannot fall. The property is
+        // guaranteed by the TYPE, which is stronger than a test — it is
+        // declared in the header of `theme.ts` rather than staged here.
+        // The case below, on the other hand, is real and can fail: a neighbour
+        // set back to "systeme" clears the key, and the attribute must disappear.
         const racine = racineFactice();
         racine.attributs.set('data-theme', 'clair');
-        surStockageModifie(racine, CLE_THEME, null);
+        onStorageChanged(racine, CLE_THEME, null);
         expect(racine.attributs.has('data-theme')).toBe(false);
     });
 
-    it("ignore un événement portant une AUTRE clé — un jeton d'accès", () => {
-        // La clé employée ici n'est pas inventée : `client/src/connexion.ts:57`
-        // écrit RÉELLEMENT `guac.jeton.acces` au moment de la connexion, donc
-        // toute fenêtre voisine reçoit cet événement. Un gestionnaire qui ne
-        // filtrerait pas la clé poserait `data-theme` à partir d'un JWT.
+    it("ignores an event carrying ANOTHER key — an access token", () => {
+        // The key used here is not invented: `client/src/connexion.ts:57`
+        // REALLY writes `guac.jeton.acces` at sign-in time, so
+        // any neighbouring window receives this event. A handler that did not
+        // filter the key would set `data-theme` from a JWT.
         const racine = racineFactice();
         racine.attributs.set('data-theme', 'clair');
-        surStockageModifie(racine, 'guac.jeton.acces', 'eyJhbGciOiJIUzI1NiJ9.charge.signature');
+        onStorageChanged(racine, 'guac.jeton.acces', 'eyJhbGciOiJIUzI1NiJ9.charge.signature');
         expect(racine.attributs.get('data-theme')).toBe('clair');
     });
 });
 
-describe('themeStocke — robustesse', () => {
-    it("retombe sur « systeme » sur une valeur inconnue", () => {
+describe('themeStocke — robustness', () => {
+    it("falls back to « systeme » on an unknown value", () => {
         expect(themeStocke(coffreFactice({ [CLE_THEME]: 'bleu' }))).toBe('systeme');
     });
 
-    it("retombe sur « systeme » quand la clé est absente", () => {
+    it("falls back to « systeme » when the key is absent", () => {
         expect(themeStocke(coffreFactice())).toBe('systeme');
     });
 });
 
 describe('appliquer', () => {
-    it("RETIRE `data-theme` pour « systeme », au lieu de poser l'attribut", () => {
-        // Son ABSENCE signifie « systeme ». Un `data-theme="systeme"` passerait
-        // le sélecteur `:root:not([data-theme="sombre"])` de la requête média,
-        // mais pas `:root[data-theme="clair"]` — et rien ne casserait
-        // VISIBLEMENT. Un attribut inventé qui ne casse rien est exactement le
-        // genre d'écart qui survit dix sous-blocs.
+    it("REMOVES `data-theme` for « systeme », instead of setting the attribute", () => {
+        // Its ABSENCE means "systeme". A `data-theme="systeme"` would pass
+        // the `:root:not([data-theme="sombre"])` selector of the media query,
+        // but not `:root[data-theme="clair"]` — and nothing would break
+        // VISIBLY. An invented attribute that breaks nothing is exactly the
+        // kind of gap that survives ten sub-blocks.
         const racine = racineFactice();
         racine.attributs.set('data-theme', 'sombre');
         appliquer(racine, 'systeme');
@@ -117,39 +117,39 @@ describe('appliquer', () => {
 });
 
 /**
- * LE GARDE ENTRE `theme.ts` ET `amorce-theme.js` — et pourquoi il existe.
+ * THE GUARD BETWEEN `theme.ts` AND `amorce-theme.js` — and why it exists.
  *
- * `client/src/design/amorce-theme.js` s'exécute AVANT tout module, en ligne
- * dans le `<head>` : il ne peut donc RIEN importer, et il redit la chaîne
- * `guac.theme` en littéral. C'est le seul recouvrement entre les deux
- * fichiers, et il est assumé — mais un recouvrement assumé qui n'est gardé par
- * rien devient une divergence muette : l'amorce lirait une clé que plus
- * personne n'écrit, et le seul symptôme serait un éclair de mauvais thème que
- * personne ne regarde en revue.
+ * `client/src/design/amorce-theme.js` runs BEFORE any module, inline
+ * in the `<head>`: it can therefore import NOTHING, and it repeats the string
+ * `guac.theme` as a literal. It is the only overlap between the two
+ * files, and it is deliberate — but a deliberate overlap guarded by
+ * nothing becomes a silent divergence: the bootstrap would read a key that nobody
+ * writes any more, and the only symptom would be a flash of the wrong theme that
+ * nobody looks at in review.
  *
- * ⚠️ Ce test est le patron exact que P2 a employé entre `client/src/jeton.ts`
- * et `client/recette/jeton-recette.mjs`, et le garde de P2 A ÉTÉ VU LEVER.
- * Celui-ci l'a été aussi : voir le document de résultats de S1, tâche 10.
+ * ⚠️ This test is the exact pattern P2 used between `client/src/jeton.ts`
+ * and `client/recette/jeton-recette.mjs`, and P2's guard WAS SEEN THROWING.
+ * This one was too: see the S1 results document, task 10.
  *
- * ⚠️ Il compare la CHAÎNE, jamais le comportement. Que l'amorce pose bien
- * `data-theme` avant la première peinture n'est prouvé par aucun test — c'est
- * le build qui prouve l'INJECTION (tâche 10, Step 3) et rien ne prouve
- * l'absence d'éclair.
+ * ⚠️ It compares the STRING, never the behaviour. That the bootstrap does set
+ * `data-theme` before the first paint is proven by no test — it is
+ * the build that proves the INJECTION (task 10, Step 3) and nothing proves
+ * the absence of a flash.
  */
-describe('l’amorce anti-FOUC et `theme.ts` ne peuvent pas diverger sur la clé', () => {
-    it('`amorce-theme.js` LIT littéralement la valeur de `CLE_THEME`', () => {
-        // 🔴 L'assertion porte sur l'APPEL, pas sur la présence de la chaîne
-        // quelque part dans le fichier. Une première rédaction disait
-        // `toContain("'guac.theme'")` : elle était satisfaite par le
-        // commentaire d'en-tête, si bien qu'un amorce remplacé par
-        // `var t = null;` restait VERT sur les deux assertions. Vu, mesuré,
-        // et c'est pourquoi la clé ne s'écrit plus dans ce commentaire-là.
+describe('the anti-FOUC bootstrap and `theme.ts` cannot diverge on the key', () => {
+    it('`amorce-theme.js` READS the value of `CLE_THEME` literally', () => {
+        // 🔴 The assertion is about the CALL, not about the presence of the string
+        // somewhere in the file. A first draft said
+        // `toContain("'guac.theme'")`: it was satisfied by the
+        // header comment, so that a bootstrap replaced by
+        // `var t = null;` stayed GREEN on both assertions. Seen, measured,
+        // and that is why the key is no longer written in that comment.
         expect(amorce).toContain(`getItem('${CLE_THEME}')`);
     });
 
-    it('`amorce-theme.js` ne porte AUCUNE autre clé `guac.*`', () => {
-        // Sans cette seconde assertion, ajouter une clé à l'amorce sans retirer
-        // l'ancienne passerait : `toContain` ne dit rien de ce qu'il y a autour.
+    it('`amorce-theme.js` carries NO other `guac.*` key', () => {
+        // Without this second assertion, adding a key to the bootstrap without removing
+        // the old one would pass: `toContain` says nothing about what surrounds it.
         const cles = [...amorce.matchAll(/'(guac\.[a-z.]+)'/g)].map((m) => m[1]);
         expect([...new Set(cles)]).toEqual([CLE_THEME]);
     });

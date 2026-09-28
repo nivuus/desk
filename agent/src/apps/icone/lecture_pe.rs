@@ -1,16 +1,16 @@
-//! Obtenir les OCTETS BRUTS d'un répertoire d'icônes — et rien d'autre.
+//! Obtaining the RAW BYTES of an icon directory — and nothing else.
 //!
-//! 🔴 CE MODULE NE DÉCIDE RIEN. Il rend un `Vec<u8>` que
-//! `apps::icone::ressource`, qui est PUR, analyse. C'est la coupure que la
-//! spécification §6 désigne comme « le point le plus important de cette
-//! liste », et sans elle le critère ② de recette n'aurait aucun test d'hôte :
-//! sa seule preuve serait un argument de flot de contrôle — la situation
-//! exacte que le défaut F1 du sous-bloc D7 a payée.
+//! 🔴 THIS MODULE DECIDES NOTHING. It returns a `Vec<u8>` that
+//! `apps::icone::ressource`, which is PURE, parses. It is the split the
+//! specification §6 calls "the most important point of this
+//! list", and without it acceptance criterion ② would have no host test:
+//! its only proof would be a control-flow argument — the
+//! exact situation that defect F1 of sub-block D7 paid for.
 //!
-//! ⚠️ IL N'EST VÉRIFIÉ QUE PAR `cargo check --target x86_64-pc-windows-gnu`,
-//! qui couvre types, emprunts, visibilités et durées de vie — et PAS l'édition
-//! de liens, la cible réelle étant `msvc`. Aucun test d'hôte ne peut le
-//! couvrir, et c'est dit plutôt que dissimulé.
+//! ⚠️ IT IS ONLY CHECKED BY `cargo check --target x86_64-pc-windows-gnu`,
+//! which covers types, borrows, visibility and lifetimes — and NOT
+//! linking, the real target being `msvc`. No host test can
+//! cover it, and it is said rather than hidden.
 
 use std::path::Path;
 
@@ -24,37 +24,37 @@ use windows::Win32::System::LibraryLoader::{
 
 use super::super::lecture::vers_utf16;
 
-/// `RT_GROUP_ICON` — la ressource qui porte le `GRPICONDIR`.
+/// `RT_GROUP_ICON` — the resource that carries the `GRPICONDIR`.
 ///
-/// ⚠️ C'EST UN ENTIER DÉGUISÉ EN POINTEUR, et c'est le contrat de l'API : les
-/// types de ressource prédéfinis se passent comme des `PCWSTR` dont la valeur
-/// numérique est l'identifiant. `RT_ICON` vaut 3, `RT_GROUP_ICON` vaut
+/// ⚠️ IT IS AN INTEGER DISGUISED AS A POINTER, and that is the API's contract: the
+/// predefined resource types are passed as `PCWSTR` whose
+/// numeric value is the identifier. `RT_ICON` is 3, `RT_GROUP_ICON` is
 /// `3 + 11 = 14`.
 const RT_GROUP_ICON: PCWSTR = PCWSTR(14 as *const u16);
 
-/// Les octets du `GRPICONDIR` du PREMIER groupe d'icônes d'un module PE.
+/// The bytes of the `GRPICONDIR` of the FIRST icon group of a PE module.
 ///
-/// ⚠️ **LE PREMIER GROUPE, ET C'EST UNE APPROXIMATION DÉCLARÉE.** Le Shell,
-/// lui, choisit le groupe que l'`IconLocation` désigne par son index, et un
-/// index négatif désigne une ressource par son IDENTIFIANT. Ce module prend
-/// l'index quand il est positif et retombe sur le premier groupe sinon. **La
-/// conséquence est bornée et nommée** : `source_max` peut alors décrire un
-/// groupe voisin de celui que l'image montre — jamais une taille inventée, et
-/// jamais un `256` de complaisance.
+/// ⚠️ **THE FIRST GROUP, AND IT IS A DECLARED APPROXIMATION.** The Shell
+/// itself chooses the group that the `IconLocation` designates by its index, and a
+/// negative index designates a resource by its IDENTIFIER. This module takes
+/// the index when it is positive and falls back on the first group otherwise. **The
+/// consequence is bounded and named**: `source_max` may then describe a
+/// group neighbouring the one the image shows — never an invented size, and
+/// never a convenient `256`.
 ///
-/// 🔴 `LOAD_LIBRARY_AS_IMAGE_RESOURCE` S'AJOUTE À `AS_DATAFILE` ET N'EST PAS
-/// FACULTATIF : sans lui, `FindResourceW` sur un module chargé en pur fichier
-/// de données ne trouve pas toujours ses ressources. La sonde M1 du plan les a
-/// employés tous les deux, et elle a lu 110 sources sur 110 tentées.
+/// 🔴 `LOAD_LIBRARY_AS_IMAGE_RESOURCE` IS ADDED TO `AS_DATAFILE` AND IS NOT
+/// OPTIONAL: without it, `FindResourceW` on a module loaded as a pure data
+/// file does not always find its resources. Probe M1 of the plan used
+/// both, and it read 110 sources out of 110 attempted.
 ///
-/// ⚠️ **AUCUN CODE DU MODULE CHARGÉ N'EST EXÉCUTÉ** : c'est tout l'objet de
-/// `AS_DATAFILE`, et c'est ce qui rend acceptable d'ouvrir des `.exe`
-/// arbitraires du disque de la VM.
+/// ⚠️ **NO CODE OF THE LOADED MODULE IS EXECUTED**: that is the whole purpose of
+/// `AS_DATAFILE`, and it is what makes it acceptable to open arbitrary `.exe`
+/// files from the VM's disk.
 pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
     let large = vers_utf16(&module.to_string_lossy());
-    // SÉCURITÉ : appel FFI. Le chemin est un tampon UTF-16 terminé par un nul
-    // que nous possédons, et les deux drapeaux interdisent toute exécution de
-    // code du module.
+    // SAFETY: FFI call. The path is a null-terminated UTF-16 buffer
+    // that we own, and both flags forbid any execution of
+    // the module's code.
     let handle = unsafe {
         LoadLibraryExW(
             PCWSTR(large.as_ptr()),
@@ -62,24 +62,24 @@ pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
             LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE,
         )
     }
-    .with_context(|| format!("chargement du module {} en fichier de donnees", module.display()))?;
+    .with_context(|| format!("loading module {} as a data file", module.display()))?;
 
-    let resultat = lire_groupe(handle, index);
+    let result = lire_groupe(handle, index);
 
-    // 🔴 `FreeLibrary` SUR TOUS LES CHEMINS DE SORTIE, y compris d'erreur. Une
-    // fuite ici serait invisible pendant des heures, sur un processus qui
-    // réconcilie toutes les trente secondes et ouvre jusqu'à 110 modules par
-    // tour — c'est-à-dire 13 200 handles par heure.
-    // SÉCURITÉ : appel FFI. Le handle vient de `LoadLibraryExW` juste
-    // au-dessus et n'a pas été relâché ailleurs.
+    // 🔴 `FreeLibrary` ON EVERY EXIT PATH, error paths included. A
+    // leak here would be invisible for hours, on a process that
+    // reconciles every thirty seconds and opens up to 110 modules per
+    // tick — that is 13,200 handles per hour.
+    // SAFETY: FFI call. The handle comes from `LoadLibraryExW` just
+    // above and has not been released elsewhere.
     let _ = unsafe { FreeLibrary(handle) };
-    resultat
+    result
 }
 
-/// Le rappel d'énumération : il RETIENT le premier nom et s'arrête.
+/// The enumeration callback: it KEEPS the first name and stops.
 ///
-/// SÉCURITÉ : `param` est le `*mut Option<PCWSTR>` que `lire_groupe` passe à
-/// `EnumResourceNamesW`, et il vit pour toute la durée de l'appel.
+/// SAFETY: `param` is the `*mut Option<PCWSTR>` that `lire_groupe` passes to
+/// `EnumResourceNamesW`, and it lives for the whole duration of the call.
 unsafe extern "system" fn premier_nom(
     _module: HMODULE,
     _type_: PCWSTR,
@@ -90,33 +90,33 @@ unsafe extern "system" fn premier_nom(
     if !sortie.is_null() {
         unsafe { *sortie = Some(nom) };
     }
-    // `FALSE` ARRÊTE l'énumération : on ne veut que le premier.
+    // `FALSE` STOPS the enumeration: we only want the first one.
     windows::core::BOOL(0)
 }
 
 fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
-    // 🔴 UN NOM NUL N'EST PAS « LA PREMIÈRE RESSOURCE », ET C'EST LE DÉFAUT
-    // QUE LA MESURE DU 21 AOÛT 2026 A TROUVÉ. Une première rédaction passait
-    // `PCWSTR(null())` à `FindResourceW` pour un index de 0, en croyant
-    // demander le premier groupe : `FindResourceW` cherche alors une ressource
-    // dont le NOM est nul, et n'en trouve aucune. **Mesuré : 148 des 154
-    // applications rendaient `aucune ressource RT_GROUP_ICON`, y compris des
-    // modules qui en portent manifestement — `steam.exe`.** Le catalogue
-    // restait juste et les icônes étaient servies ; seule la PROVENANCE
-    // tombait à `NonMesuree`, c'est-à-dire très exactement ce que le sous-bloc
-    // existe pour mesurer.
+    // 🔴 A NULL NAME IS NOT "THE FIRST RESOURCE", AND IT IS THE DEFECT
+    // THE MEASUREMENT OF 21 AUGUST 2026 FOUND. A first draft passed
+    // `PCWSTR(null())` to `FindResourceW` for an index of 0, believing it
+    // asked for the first group: `FindResourceW` then looks for a resource
+    // whose NAME is null, and finds none. **Measured: 148 of the 154
+    // applications returned `no RT_GROUP_ICON resource`, including
+    // modules that obviously carry one — `steam.exe`.** The catalogue
+    // stayed correct and the icons were served; only the PROVENANCE
+    // fell to `NonMesuree`, which is exactly what the sub-block
+    // exists to measure.
     //
-    // Le premier groupe s'obtient donc par ÉNUMÉRATION, comme la sonde M1 du
-    // plan le faisait et comme la tâche 9 le prescrivait — `EnumResourceNamesW`
-    // figurait dans sa liste d'appels, et son omission est ce qui a produit le
-    // défaut.
+    // The first group is therefore obtained by ENUMERATION, as probe M1 of the
+    // plan did and as task 9 prescribed — `EnumResourceNamesW`
+    // was in its list of calls, and its omission is what produced the
+    // defect.
     let mut premier: Option<PCWSTR> = None;
     if index <= 0 {
-        // SÉCURITÉ : appel FFI. `handle` est vivant, et le pointeur passé en
-        // `param` vise une variable de cette pile, qui survit à l'appel.
-        // `EnumResourceNamesW` rend `Err` quand le rappel arrête l'énumération
-        // — ce que le nôtre fait toujours —, donc son résultat est ignoré au
-        // profit de ce que le rappel a RETENU.
+        // SAFETY: FFI call. `handle` is alive, and the pointer passed as
+        // `param` points to a variable on this stack, which outlives the call.
+        // `EnumResourceNamesW` returns `Err` when the callback stops the enumeration
+        // — which ours always does —, so its result is ignored in
+        // favour of what the callback KEPT.
         let _ = unsafe {
             EnumResourceNamesW(
                 Some(handle),
@@ -126,41 +126,41 @@ fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
             )
         };
     }
-    // ⚠️ Un index NÉGATIF désigne une ressource par son identifiant ; un index
-    // positif est un RANG. Ce module ne sait suivre que le second cas, et il
-    // retombe sur le premier groupe énuméré pour l'autre — voir la réserve en
-    // tête de [`grpicondir`].
+    // ⚠️ A NEGATIVE index designates a resource by its identifier; a
+    // positive index is a RANK. This module can only follow the second case, and it
+    // falls back on the first enumerated group for the other — see the caveat at
+    // the head of [`grpicondir`].
     let nom = if index > 0 {
         PCWSTR(index as usize as *const u16)
     } else {
         match premier {
             Some(n) => n,
-            None => bail!("aucun groupe d'icones enumere dans ce module"),
+            None => bail!("no icon group enumerated in this module"),
         }
     };
-    // SÉCURITÉ : appel FFI. `handle` est vivant (son `FreeLibrary` est dans
-    // l'appelant), et `nom` est soit un identifiant entier déguisé, soit nul.
+    // SAFETY: FFI call. `handle` is alive (its `FreeLibrary` is in the
+    // caller), and `nom` is either a disguised integer identifier or null.
     let bloc = unsafe { FindResourceW(Some(handle), nom, RT_GROUP_ICON) };
     if bloc.is_invalid() {
-        bail!("aucune ressource RT_GROUP_ICON dans ce module");
+        bail!("no RT_GROUP_ICON resource in this module");
     }
-    // SÉCURITÉ : appel FFI. `bloc` vient d'être validé.
-    let taille = unsafe { SizeofResource(Some(handle), bloc) } as usize;
-    if taille == 0 {
-        bail!("ressource RT_GROUP_ICON de taille nulle");
+    // SAFETY: FFI call. `bloc` has just been validated.
+    let size = unsafe { SizeofResource(Some(handle), bloc) } as usize;
+    if size == 0 {
+        bail!("RT_GROUP_ICON resource of zero size");
     }
-    // SÉCURITÉ : appel FFI.
+    // SAFETY: FFI call.
     let charge = unsafe { LoadResource(Some(handle), bloc) }.context("LoadResource")?;
-    // SÉCURITÉ : appel FFI. `LockResource` rend un pointeur sur la ressource
-    // mappée, valide tant que le module est chargé — donc jusqu'au
-    // `FreeLibrary` de l'appelant, qui court APRÈS cette fonction.
+    // SAFETY: FFI call. `LockResource` returns a pointer to the mapped
+    // resource, valid as long as the module is loaded — hence until the
+    // caller's `FreeLibrary`, which runs AFTER this function.
     let debut = unsafe { LockResource(charge) } as *const u8;
     if debut.is_null() {
-        bail!("LockResource a rendu un pointeur nul");
+        bail!("LockResource returned a null pointer");
     }
-    // SÉCURITÉ : la ressource est mappée sur `taille` octets, que
-    // `SizeofResource` vient de rendre, et la copie est faite AVANT le
-    // `FreeLibrary` de l'appelant. Le `Vec` qui en sort ne dépend plus du
+    // SAFETY: the resource is mapped over `size` bytes, which
+    // `SizeofResource` has just returned, and the copy is made BEFORE the
+    // caller's `FreeLibrary`. The resulting `Vec` no longer depends on the
     // module.
-    Ok(unsafe { std::slice::from_raw_parts(debut, taille) }.to_vec())
+    Ok(unsafe { std::slice::from_raw_parts(debut, size) }.to_vec())
 }

@@ -1,17 +1,17 @@
-// Le LINT STATIQUE du sous-ensemble SQL portable.
+// The STATIC LINT of the portable SQL subset.
 //
-// 🔴 Il n'est PAS redondant avec la double passe d'exécution, et le fait est
-// MESURÉ. Le 19 août 2026, sur SQLite 3.50.4 :
+// 🔴 It is NOT redundant with the double execution pass, and the fact is
+// MEASURED. On 19 August 2026, on SQLite 3.50.4:
 //     AUTOINCREMENT sqlite : ACCEPTE
 //     SERIAL sqlite        : ACCEPTE (type libre)
-// SQLite accepte n'importe quel nom de type par affinité. `SERIAL` y passe
-// donc sans bruit — et il passe aussi sur Postgres, où il SIGNIFIE AUTRE
-// CHOSE. Deux passes vertes, deux schémas différents : le test d'exécution ne
-// peut pas attraper `SERIAL`. Seul ce lint le peut.
+// SQLite accepts any type name by affinity. `SERIAL` therefore passes
+// there without noise — and it also passes on Postgres, where it MEANS SOMETHING
+// ELSE. Two green passes, two different schemas: the execution test
+// cannot catch `SERIAL`. Only this lint can.
 //
-// Inversement, ce lint ne peut rien contre une construction syntaxiquement
-// licite des deux côtés mais de sémantique divergente — c'est le rôle de la
-// double passe. Chacun couvre l'angle mort de l'autre.
+// Conversely, this lint can do nothing against a construct syntactically
+// legal on both sides but with diverging semantics — that is the role of the
+// double pass. Each covers the other's blind spot.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -21,105 +21,105 @@ import { describe, expect, it } from 'vitest';
 const REPERTOIRE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 const INTERDITS: Array<[RegExp, string]> = [
-    [/\bSERIAL\b/i, 'SERIAL : accepté par affinité sur SQLite, autre chose sur Postgres'],
-    [/\bAUTOINCREMENT\b/i, 'AUTOINCREMENT : spécifique à SQLite'],
-    [/\bdatetime\s*\(/i, 'datetime() : les horodatages sont écrits par l’application'],
-    [/\bnow\s*\(/i, 'now() : les horodatages sont écrits par l’application'],
-    [/\bCURRENT_TIMESTAMP\b/i, 'CURRENT_TIMESTAMP : idem'],
-    [/\bUUID\b/i, 'UUID : type Postgres, absent de SQLite — les identifiants sont TEXT'],
+    [/\bSERIAL\b/i, 'SERIAL: accepted by affinity on SQLite, something else on Postgres'],
+    [/\bAUTOINCREMENT\b/i, 'AUTOINCREMENT: specific to SQLite'],
+    [/\bdatetime\s*\(/i, 'datetime(): timestamps are written by the application'],
+    [/\bnow\s*\(/i, 'now(): timestamps are written by the application'],
+    [/\bCURRENT_TIMESTAMP\b/i, 'CURRENT_TIMESTAMP: likewise'],
+    [/\bUUID\b/i, 'UUID: Postgres type, absent from SQLite — identifiers are TEXT'],
     [/\bTIMESTAMPTZ\b/i, 'TIMESTAMPTZ : type Postgres'],
     [/\bJSONB\b/i, 'JSONB : type Postgres'],
-    [/\bBOOLEAN\b/i, 'BOOLEAN : les booléens sont INTEGER 0/1'],
-    // 🔴 MESURÉ, pas prudentiel. `INTEGER` vaut jusqu'à 8 octets sur SQLite et
-    // exactement 4 sur Postgres : le 19 août 2026, sur PostgreSQL 16.15, un
-    // `Date.now()` dans une colonne INTEGER rendait
+    [/\bBOOLEAN\b/i, 'BOOLEAN: booleans are INTEGER 0/1'],
+    // 🔴 MEASURED, not precautionary. `INTEGER` is up to 8 bytes on SQLite and
+    // exactly 4 on Postgres: on 19 August 2026, on PostgreSQL 16.15, a
+    // `Date.now()` in an INTEGER column returned
     //     value "1787136773742" is out of range for type integer
-    // et le service ne pouvait pas appliquer ses PROPRES migrations, tandis
-    // que SQLite l'acceptait sans un mot.
+    // and the service could not apply its OWN migrations, while
+    // SQLite accepted it without a word.
     //
-    // Ce que ce motif suppose, et qu'il faut savoir : la CONVENTION DE NOMMAGE
-    // `_a` pour un horodatage (cree_a, vue_a, ouverte_a, fermee_a,
-    // applique_a). Une colonne d'horodatage nommée autrement échapperait à ce
-    // lint — il ne remplace donc pas le test de magnitude de
-    // `pilotes.test.ts`, il en est le pendant lexical.
+    // What this pattern assumes, and one must know it: the NAMING CONVENTION
+    // `_a` for a timestamp (cree_a, vue_a, ouverte_a, fermee_a,
+    // applique_a). A timestamp column named otherwise would escape this
+    // lint — it therefore does not replace the magnitude test of
+    // `pilotes.test.ts`, it is its lexical counterpart.
     [
         /\b\w+_a\s+INTEGER\b/i,
-        'un horodatage `_a` en INTEGER : 4 octets sur Postgres, où un Date.now() déborde — BIGINT',
+        'an `_a` timestamp as INTEGER: 4 bytes on Postgres, where a Date.now() overflows — BIGINT',
     ],
 ];
 
-/// Retire les commentaires `--` AVANT tout contrôle.
+/// Strips `--` comments BEFORE any check.
 ///
-/// ⚠️ Sans ce retrait, le lint serait rouge sur SA PROPRE DOCUMENTATION : les
-/// commentaires SQL sont en français et portent des apostrophes, que le moteur
-/// ne voit jamais. Ils nomment aussi les jetons interdits pour expliquer
-/// pourquoi ils le sont.
+/// ⚠️ Without this stripping, the lint would be red on ITS OWN DOCUMENTATION: the
+/// SQL comments are in French and carry apostrophes, which the engine
+/// never sees. They also name the forbidden tokens to explain
+/// why they are forbidden.
 function corps(texte: string): string {
     return texte.replace(/--.*$/gm, '');
 }
 
-const fichiers = readdirSync(REPERTOIRE).filter((f) => f.endsWith('.sql')).sort();
+const files = readdirSync(REPERTOIRE).filter((f) => f.endsWith('.sql')).sort();
 
-describe('sous-ensemble SQL portable', () => {
-    it('lit au moins un fichier de migration', () => {
-        // ⚠️ Sans cette assertion, un lint qui ne lit AUCUN fichier passerait
-        // trivialement — et serait vert le jour où le répertoire serait
-        // renommé. C'est le patron du « contrôle qui ne peut pas échouer »,
-        // que ce dépôt a payé quatre fois.
-        expect(fichiers.length).toBeGreaterThan(0);
+describe('portable SQL subset', () => {
+    it('reads at least one migration file', () => {
+        // ⚠️ Without this assertion, a lint that reads NO file would pass
+        // trivially — and would be green the day the directory was
+        // renamed. It is the pattern of the "check that cannot fail",
+        // which this repository has paid for four times.
+        expect(files.length).toBeGreaterThan(0);
     });
 
-    for (const fichier of fichiers) {
-        const sql = corps(readFileSync(path.join(REPERTOIRE, fichier), 'utf8'));
+    for (const file of files) {
+        const sql = corps(readFileSync(path.join(REPERTOIRE, file), 'utf8'));
 
-        it(`${fichier} n'emploie aucun jeton hors du sous-ensemble`, () => {
+        it(`${file} uses no token outside the subset`, () => {
             const trouves = INTERDITS.filter(([motif]) => motif.test(sql)).map(([, raison]) => raison);
-            // Comparé comme une CHAÎNE et non comme un tableau : vitest tronque
-            // un tableau à `[ Array(1) ]`, message qui ne nomme pas le jeton
-            // fautif — un diagnostic qui n'aide en rien celui qui le lira.
+            // Compared as a STRING and not as an array: vitest truncates
+            // an array to `[ Array(1) ]`, a message that does not name the offending
+            // token — a diagnostic that helps whoever reads it in no way.
             expect(trouves.join(' | ')).toBe('');
         });
 
-        it(`${fichier} ne porte aucune chaîne littérale`, () => {
-            // Contrainte de `rendreMarqueurs` : toute valeur passe en
-            // paramètre, pas même un DEFAULT littéral. Une apostrophe ici
-            // ferait lever la conversion des marqueurs côté Postgres.
+        it(`${file} carries no string literal`, () => {
+            // Constraint of `rendreMarqueurs`: every value goes as a
+            // parameter, not even a literal DEFAULT. An apostrophe here
+            // would make the marker conversion throw on the Postgres side.
             expect(sql).not.toMatch(/['"]/);
         });
     }
 });
 
-describe('la définition dupliquée de schema_migration', () => {
-    // ⚠️ `migrations.ts` recrée `schema_migration` en dur, parce que la
-    // première migration a besoin de la table pour s'enregistrer. Le
-    // commentaire de ce fichier-là affirme que les deux définitions sont
-    // « à l'identique » — affirmation que RIEN ne vérifiait, et qui aurait
-    // divergé en silence : une base créée par la ligne en dur n'aurait plus
-    // ressemblé au schéma que le socle décrit.
+describe('the duplicated definition of schema_migration', () => {
+    // ⚠️ `migrations.ts` recreates `schema_migration` hardcoded, because the
+    // first migration needs the table to record itself. The
+    // comment of that file claims the two definitions are
+    // "identical" — a claim NOTHING checked, and which would have
+    // diverged silently: a database created by the hardcoded line would no longer
+    // have looked like the schema the base describes.
     const source = readFileSync(
         path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations.ts'),
         'utf8',
     );
     const socle = readFileSync(path.join(REPERTOIRE, '0001-socle.sql'), 'utf8');
 
-    /// Réduit une définition de table à `colonne type` séparés par des
-    /// virgules, pour comparer la STRUCTURE et non la mise en page.
-    function colonnes(ddl: string): string {
+    /// Reduces a table definition to `column type` separated by
+    /// commas, to compare the STRUCTURE and not the layout.
+    function columns(ddl: string): string {
         const corps = /schema_migration\s*\(([^)]*)\)/i.exec(ddl);
-        if (!corps) throw new Error(`aucune définition de schema_migration dans ce texte`);
+        if (!corps) throw new Error(`no definition of schema_migration in this text`);
         return corps[1]
             .split(',')
             .map((c) => c.replace(/\s+/g, ' ').trim().toUpperCase())
             .join(', ');
     }
 
-    it('est la même dans migrations.ts et dans 0001-socle.sql', () => {
-        expect(colonnes(source)).toBe(colonnes(corps(socle)));
+    it('is the same in migrations.ts and in 0001-socle.sql', () => {
+        expect(columns(source)).toBe(columns(corps(socle)));
     });
 
-    it("porte bien l'horodatage en BIGINT", () => {
-        // Sans cette seconde assertion, deux définitions FAUSSES et identiques
-        // passeraient la première — c'est le contrôle qui ne peut pas échouer.
-        expect(colonnes(source)).toContain('APPLIQUE_A BIGINT');
+    it('does carry the timestamp as BIGINT', () => {
+        // Without this second assertion, two WRONG and identical definitions
+        // would pass the first — it is the check that cannot fail.
+        expect(columns(source)).toContain('APPLIQUE_A BIGINT');
     });
 });

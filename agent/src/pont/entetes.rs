@@ -1,58 +1,58 @@
-//! Les en-têtes JSON des trames du pont. **PUR** — aucun `cfg`, aucune
-//! dépendance à `windows`.
+//! The JSON headers of the bridge's frames. **PURE** — no `cfg`, no
+//! dependency on `windows`.
 //!
-//! # ✅ LA DETTE DÉCLARÉE ICI EST SOLDÉE : les formes vivent dans `proto/`
+//! # ✅ THE DEBT DECLARED HERE IS SETTLED: the shapes live in `proto/`
 //!
-//! Ce module portait les sept structures d'en-tête et déclarait en toutes
-//! lettres que c'était une dette : « **tant que ce n'est pas fait, un champ
-//! renommé ici casse le pont sans casser un seul test côté client** ». Le
-//! périmètre de la tâche qui les a écrites interdisait de toucher `proto/` ;
-//! la tâche 15, qui pouvait, l'a fait plutôt que de reproduire les formes à la
-//! main côté TypeScript.
+//! This module carried the seven header structures and declared in so many
+//! words that it was a debt: "**as long as this is not done, a field
+//! renamed here breaks the bridge without breaking a single client-side test**". The
+//! scope of the task that wrote them forbade touching `proto/`;
+//! task 15, which could, did it rather than reproduce the shapes by
+//! hand on the TypeScript side.
 //!
-//! Elles sont désormais dans [`proto::fichiers::entetes`], épinglées par
-//! `proto/fichiers-vectors.json`, que **les deux** implémentations lisent —
-//! `proto/src/fichiers/entetes/tests.rs` et `proto/ts/fichiers-entetes.test.ts`.
-//! Un renommage n'a plus qu'un seul côté à casser pour être vu ROUGE.
+//! They now live in [`proto::files::entetes`], pinned by
+//! `proto/fichiers-vectors.json`, which **both** implementations read — (policy: allow-fr, real file path)
+//! `proto/src/files/entetes/tests.rs` and `proto/ts/fichiers-entetes.test.ts`. (policy: allow-fr, real file path)
+//! A renaming now has only one side to break to be seen RED.
 //!
-//! Ce module ne garde donc que ce qui n'est PAS une forme sur le fil : **ce
-//! que l'agent FAIT des en-têtes que `proto` définit**, c'est-à-dire la
-//! conversion d'époque, qui est une affaire de Windows et n'a pas de jumeau
-//! navigateur.
+//! This module therefore only keeps what is NOT a wire shape: **what
+//! the agent DOES with the headers `proto` defines**, that is the
+//! epoch conversion, which is a Windows affair and has no browser
+//! twin.
 //!
-//! ⚠️ **Il ne RÉ-EXPORTE délibérément pas les sept structures.** Un
-//! `pub use proto::fichiers::entetes::*` aurait évité de toucher les trois
-//! sites d'appel, au prix de deux choses : un avertissement `unused_imports`
-//! sur l'hôte, tous les consommateurs étant `#[cfg(windows)]`, et surtout une
-//! indirection qui cacherait au lecteur de `projfs/rappels.rs` l'endroit d'où
-//! viennent réellement ces formes. Les trois sites écrivent donc
-//! `use proto::fichiers::entetes;`, et le disent.
+//! ⚠️ **It deliberately does NOT RE-EXPORT the seven structures.** A
+//! `pub use proto::files::entetes::*` would have avoided touching the three
+//! call sites, at the cost of two things: an `unused_imports` warning
+//! on the host, all consumers being `#[cfg(windows)]`, and above all an
+//! indirection that would hide from the reader of `projfs/rappels.rs` where
+//! these shapes really come from. The three sites therefore write
+//! `use proto::files::entetes;`, and say so.
 
-/// Millisecondes depuis l'époque Unix → unités de 100 ns depuis l'époque
-/// FILETIME (1ᵉʳ janvier 1601).
+/// Milliseconds since the Unix epoch → 100 ns units since the
+/// FILETIME epoch (January 1st, 1601).
 ///
-/// ⚠️ **Deux erreurs classiques, et une seule des deux se voit :**
+/// ⚠️ **Two classic mistakes, and only one of the two shows:**
 ///
-/// - **se tromper d'ÉPOQUE** rend des dates de 1601 dans l'Explorateur — 369
-///   ans d'écart, visible, mais seulement si quelqu'un regarde ;
-/// - **se tromper de FACTEUR** (10⁷ au lieu de 10⁶, ou l'inverse) rend des
-///   dates plausibles et fausses, que personne ne remarquera jamais.
+/// - **getting the EPOCH wrong** yields dates of 1601 in Explorer — 369
+///   years off, visible, but only if someone looks;
+/// - **getting the FACTOR wrong** (10⁷ instead of 10⁶, or the reverse) yields
+///   plausible and wrong dates, which no one will ever notice.
 ///
-/// Les deux sont épinglées par `l_epoque_unix_devient_l_epoque_filetime`.
+/// Both are pinned by `the_unix_epoch_becomes_the_filetime_epoch`.
 ///
-/// Une date antérieure à 1601 est ramenée à **zéro** : un FILETIME négatif est
-/// interprété par Windows comme un temps **relatif**, ce qui donnerait à un
-/// fichier une date qui n'a rien à voir avec la sienne. Un débordement est
-/// saturé pour la même raison — en `release`, il boucle en silence.
+/// A date before 1601 is brought back to **zero**: a negative FILETIME is
+/// interpreted by Windows as a **relative** time, which would give a
+/// file a date unrelated to its own. An overflow is
+/// saturated for the same reason — in `release`, it wraps silently.
 ///
-/// ⚠️ **Elle reste ICI et non dans `proto/`**, à dessein : ce n'est pas une
-/// forme sur le fil mais une conversion propre à Windows. Le navigateur n'a
-/// jamais de FILETIME à produire ni à lire ; l'y porter donnerait à `proto` un
-/// jumeau TypeScript sans appelant.
+/// ⚠️ **It stays HERE and not in `proto/`**, on purpose: it is not a
+/// wire shape but a Windows-specific conversion. The browser never
+/// has a FILETIME to produce or read; moving it there would give `proto` a
+/// TypeScript twin without a caller.
 pub fn filetime_depuis_ms(ms: i64) -> i64 {
-    /// Millisecondes entre le 1ᵉʳ janvier 1601 et le 1ᵉʳ janvier 1970.
+    /// Milliseconds between January 1st, 1601 and January 1st, 1970.
     const DECALAGE_MS: i64 = 11_644_473_600_000;
-    /// Unités de 100 ns dans une milliseconde.
+    /// 100 ns units in a millisecond.
     const PAR_MS: i64 = 10_000;
     ms.saturating_add(DECALAGE_MS).saturating_mul(PAR_MS).max(0)
 }

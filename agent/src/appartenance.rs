@@ -1,88 +1,88 @@
-//! Le job object d'APPARTENANCE : à qui la fenêtre appartient-elle ?
+//! The OWNERSHIP job object: whom does the window belong to?
 //!
-//! 🔴 **LA RÈGLE, TRANCHÉE PAR LE PROPRIÉTAIRE (30 août 2026) : `desk` n'adopte
-//! que les fenêtres des applications qu'il a LUI-MÊME lancées, et de leur
-//! descendance.** C'est une règle d'appartenance, pas une liste noire : Apollo,
-//! Steam et le reste sont ignorés **sans être nommés nulle part**, ce qu'une
-//! liste noire ne saurait pas faire sans vieillir.
+//! 🔴 **THE RULE, SETTLED BY THE OWNER (30 August 2026): `desk` only adopts
+//! the windows of the applications it launched ITSELF, and of their
+//! descendants.** It is an ownership rule, not a deny list: Apollo,
+//! Steam and the rest are ignored **without being named anywhere**, which a
+//! deny list could not do without going stale.
 //!
-//! ⚠️ **CE QU'ELLE EMPORTE, ET C'EST ASSUMÉ, PAS UNE RÉGRESSION** : une fenêtre
-//! **déjà ouverte avant `desk`** n'est plus reprise. Mesuré le 30 août 2026 :
-//! `cmd.exe` et `Forza Horizon 6` quittent le hub, et c'est la contrepartie que
-//! le propriétaire a acceptée en connaissance de cause.
+//! ⚠️ **WHAT IT TAKES AWAY, AND IT IS ACCEPTED, NOT A REGRESSION**: a window
+//! **already open before `desk`** is no longer picked up. Measured on 30 August 2026:
+//! `cmd.exe` and `Forza Horizon 6` leave the hub, and that is the trade-off
+//! the owner accepted knowingly.
 //!
-//! ## Pourquoi un JOB et non la chaîne de parenté
+//! ## Why a JOB and not the parent chain
 //!
-//! Remonter les parents fonctionne — c'est ce que la mesure du 30 août a fait —
-//! mais **une chaîne se casse quand un intermédiaire meurt**, ce qui est le cas
-//! ordinaire d'un lanceur qui rend la main, et un PID parent est **réutilisable**
-//! après la mort du processus. L'appartenance deviendrait **intermittente**,
-//! c'est-à-dire la panne la plus coûteuse à diagnostiquer. Le job, lui, est une
-//! propriété **portée par le processus**, héritée par ses descendants, et
-//! insensible à la mort de qui l'a créé.
+//! Walking up the parents works — that is what the 30 August measurement did —
+//! but **a chain breaks when an intermediate process dies**, which is the
+//! ordinary case of a launcher that hands over, and a parent PID is **reusable**
+//! after the process dies. Ownership would become **intermittent**,
+//! i.e. the most expensive failure to diagnose. The job, on the other hand, is a
+//! property **carried by the process**, inherited by its descendants, and
+//! insensitive to the death of whoever created it.
 //!
-//! ## 🔴 CE QUI A ÉTÉ MESURÉ AVANT D'ÉCRIRE UNE LIGNE — et qui a corrigé le produit
+//! ## 🔴 WHAT WAS MEASURED BEFORE WRITING A LINE — and what corrected the product
 //!
-//! `apps/lancement.rs` affirmait que le processus lancé « n'entre dans aucun
-//! job object », **par une conséquence qu'il énonçait lui-même** : que
-//! `superviseur/lanceur.rs` « n'assigne que ses ENFANTS et jamais lui-même ».
-//! 🔴 **MESURÉ FAUX le 30 août 2026** : le superviseur **EST** dans un job —
-//! celui du **Planificateur de tâches**, qui lance l'agent — et les applications
-//! qu'il lance en **héritent** (`DANS_UN_JOB=True` pour le superviseur, ses
-//! douze enfants, et le `notepad.exe` lancé par le catalogue).
+//! `apps/lancement.rs` claimed that the launched process "enters no
+//! job object", **through a consequence it stated itself**: that
+//! `superviseur/lanceur.rs` "only assigns its CHILDREN and never itself".
+//! 🔴 **MEASURED FALSE on 30 August 2026**: the supervisor **IS** in a job —
+//! the one of the **Task Scheduler**, which launches the agent — and the applications
+//! it launches **inherit** it (in-job flag `True` for the supervisor, its
+//! twelve children, and the `notepad.exe` launched from the catalogue).
 //!
-//! **Conséquence directe pour la conception** : `IsProcessInJob(p, NULL)` ne
-//! discrimine rien du tout ici — tout est dans un job. La question qui vaut est
-//! **« dans CE job-ci »**, avec notre poignée.
+//! **Direct consequence for the design**: `IsProcessInJob(p, NULL)` does not
+//! discriminate anything here — everything is in a job. The question that matters is
+//! **"in THIS job"**, with our handle.
 //!
-//! Et la précondition qui restait, **mesurée elle aussi** :
+//! And the precondition that remained, **measured as well**:
 //!
 //! ```text
-//! CIBLE notepad dans_NOTRE_job_avant=False ASSIGNATION=True err=0
-//!               dans_NOTRE_job_apres=True
-//! SURVIE_APRES_FERMETURE notepad = 1
+//! TARGET notepad in_OUR_job_before=False ASSIGNMENT=True err=0
+//!               in_OUR_job_after=True
+//! SURVIVES_AFTER_CLOSE notepad = 1
 //! ```
 //!
-//! **L'assignation IMBRIQUÉE réussit** sur un processus déjà dans le job du
-//! Planificateur (Windows 10.0.26100), **et fermer notre job ne tue rien** —
-//! parce qu'on ne pose PAS `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. C'est ce
-//! drapeau, et non le job, que `apps/lancement.rs` avait raison de refuser :
-//! il tuerait les applications de l'utilisateur au premier redéploiement.
+//! **NESTED assignment succeeds** on a process already in the
+//! Task Scheduler's job (Windows 10.0.26100), **and closing our job kills nothing** —
+//! because we do NOT set `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. It is that
+//! flag, and not the job, that `apps/lancement.rs` was right to refuse:
+//! it would kill the user's applications at the first redeployment.
 //!
-//! ## ⚠️ La course, nommée et bornée
+//! ## ⚠️ The race, named and bounded
 //!
-//! `ShellExecuteExW` ne sait pas créer un processus **suspendu** : il n'y a pas
-//! de patron « créer suspendu, assigner, reprendre » sur ce chemin. Entre le
-//! retour de `ShellExecuteExW` et `AssignProcessToJobObject`, il s'écoule un
-//! appel système — **des microsecondes** —, et un descendant créé dans cet
-//! intervalle **n'hériterait pas** du job.
+//! `ShellExecuteExW` cannot create a **suspended** process: there is no
+//! "create suspended, assign, resume" pattern on this path. Between the
+//! return of `ShellExecuteExW` and `AssignProcessToJobObject`, one
+//! system call elapses — **microseconds** —, and a descendant created in that
+//! interval **would not inherit** the job.
 //!
-//! **Pourquoi c'est acceptable** : le processus lancé, lui, est toujours
-//! assigné (c'est son handle qu'on tient) ; seule une fenêtre créée par un
-//! petit-enfant né dans cette fenêtre de quelques microsecondes serait écartée.
-//! Elle le serait **bruyamment** — voir la trace de refus de
-//! `superviseur::hook` —, jamais en silence. **Une course nommée et bornée est
-//! un risque ; une course tue est un défaut.**
+//! **Why it is acceptable**: the launched process itself is always
+//! assigned (it is its handle we hold); only a window created by a
+//! grandchild born within those few microseconds would be discarded.
+//! It would be discarded **loudly** — see the refusal trace of
+//! `superviseur::hook` —, never silently. **A named and bounded race is
+//! a risk; a hidden race is a defect.**
 
 use std::sync::OnceLock;
 
-/// La variable de banc qui DÉSARME la règle d'appartenance.
+/// The bench variable that DISARMS the ownership rule.
 ///
-/// ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention de
+/// ⚠️ **`=0` DISARMS; mere PRESENCE does not enable** — the convention of
 /// `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`,
-/// `PRESSE_PAPIER`, `APPS`, `PONT_ECRITURE` et `SORTIE_DESIGNEE`. Le prédicat
-/// est **RÉUTILISÉ, pas recopié** : `crate::apps::desarme`.
+/// `PRESSE_PAPIER`, `APPS`, `PONT_ECRITURE` and `SORTIE_DESIGNEE`. The predicate
+/// is **REUSED, not copied**: `crate::apps::desarme`.
 ///
-/// Désarmée, le produit adopte de nouveau toute fenêtre qui passe le critère —
-/// **c'est le bras ROUGE de la recette**, et il survit au binaire d'avant.
+/// Disarmed, the product once again adopts any window that passes the criterion —
+/// **it is the RED arm of the acceptance run**, and it survives the previous binary.
 pub fn armee() -> bool {
     static ARMEE: OnceLock<bool> = OnceLock::new();
     *ARMEE.get_or_init(|| {
         let armee = !crate::apps::desarme(std::env::var("APPARTENANCE").ok().as_deref());
         if !armee {
             tracing::warn!(
-                "appartenance DESARMEE (APPARTENANCE=0) : desk adopte de nouveau les \
-                 fenetres qu'il n'a pas lancees — bras de banc, jamais une configuration livree"
+                "ownership DISARMED (APPARTENANCE=0): desk adopts again the \
+                 windows it did not launch — a bench arm, never a shipped configuration"
             );
         }
         armee
@@ -96,17 +96,15 @@ mod win {
     use windows::Win32::System::JobObjects::{
         AssignProcessToJobObject, CreateJobObjectW, IsProcessInJob,
     };
-    use windows::Win32::System::Threading::{
-        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
-    };
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 
-    /// Le job d'appartenance du processus. **Aucune limite n'y est posée**, et
-    /// c'est tout le point : il ne sert qu'à répondre « ce processus est-il des
-    /// nôtres ? ». Voir l'en-tête du module.
+    /// The process's ownership job. **No limit is set on it**, and
+    /// that is the whole point: it only serves to answer "is this process one of
+    /// ours?". See the module header.
     struct Job(HANDLE);
-    // SAFETY : un HANDLE de job est un objet noyau global au processus, sans
-    // affinité de fil. Il n'est jamais fermé — le fermer ne tue rien (mesuré),
-    // et sa durée de vie est celle du processus.
+    // SAFETY: a job HANDLE is a kernel object global to the process, with no
+    // thread affinity. It is never closed — closing it kills nothing (measured),
+    // and its lifetime is that of the process.
     unsafe impl Send for Job {}
     unsafe impl Sync for Job {}
 
@@ -115,15 +113,15 @@ mod win {
     fn job() -> Option<HANDLE> {
         JOB.get_or_init(|| match unsafe { CreateJobObjectW(None, None) } {
             Ok(h) if !h.is_invalid() => {
-                tracing::info!("job d'appartenance créé (aucune limite : il ne tue rien)");
+                tracing::info!("ownership job created (no limit: it kills nothing)");
                 Some(Job(h))
             }
             Ok(_) => {
-                tracing::error!("job d'appartenance : poignée invalide, la règle sera INERTE");
+                tracing::error!("ownership job: invalid handle, the rule will be INERT");
                 None
             }
-            Err(erreur) => {
-                tracing::error!(%erreur, "job d'appartenance NON créé — la règle sera INERTE");
+            Err(error) => {
+                tracing::error!(%error, "ownership job NOT created — the rule will be INERT");
                 None
             }
         })
@@ -131,33 +129,34 @@ mod win {
         .map(|j| j.0)
     }
 
-    /// Inscrit un processus que NOUS venons de lancer dans le job.
+    /// Registers a process WE have just launched in the job.
     ///
-    /// Journalise dans les deux sens : sans la trace d'échec, une application
-    /// qui ne paraîtrait jamais serait indiscernable d'une application qui
-    /// n'a pas démarré.
+    /// Logs both ways: without the failure trace, an application
+    /// that never showed up would be indistinguishable from an application that
+    /// did not start.
     pub fn adopter(processus: HANDLE) {
         let Some(job) = job() else { return };
         match unsafe { AssignProcessToJobObject(job, processus) } {
-            Ok(()) => tracing::info!("processus lancé inscrit au job d'appartenance"),
-            Err(erreur) => tracing::error!(
-                %erreur,
-                "processus lancé NON inscrit au job d'appartenance — ses fenêtres \
-                 seront ÉCARTÉES, et c'est une panne, pas un refus normal"
+            Ok(()) => tracing::info!("launched process added to the ownership job"),
+            Err(error) => tracing::error!(
+                %error,
+                "launched process NOT added to the ownership job — its windows \
+                 will be DISCARDED, and that is a failure, not a normal refusal"
             ),
         }
     }
 
-    /// Ce processus est-il des nôtres ?
+    /// Is this process one of ours?
     ///
-    /// ⚠️ **`Some(false)` et `None` ne sont pas la même chose** : le premier est
-    /// une réponse (« ce n'est pas à nous »), le second un échec de la question.
-    /// L'appelant les distingue, et n'écarte JAMAIS sur un échec de question —
-    /// refuser faute d'avoir su demander serait la panne que ce garde existe
-    /// pour éviter.
+    /// ⚠️ **`Some(false)` and `None` are not the same thing**: the first is
+    /// an answer ("it is not ours"), the second a failure of the question.
+    /// The caller tells them apart, and NEVER discards on a failed question —
+    /// refusing for lack of having been able to ask would be the failure this guard exists
+    /// to avoid.
     pub fn est_des_notres(pid: u32) -> Option<bool> {
         let job = job()?;
-        let processus = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+        let processus =
+            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
         let mut dedans = windows::core::BOOL(0);
         let issue = unsafe { IsProcessInJob(processus, Some(job), &mut dedans) };
         let _ = unsafe { CloseHandle(processus) };

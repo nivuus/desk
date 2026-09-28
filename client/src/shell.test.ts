@@ -1,95 +1,95 @@
 import { describe, it, expect, vi } from 'vitest';
-import { creerBureau, type Ton } from './shell';
+import { createDesktop, type Ton } from './shell';
 
 /**
- * 🔴 `afficher` COLLECTE, IL NE FAIT PLUS RIEN. La version d'avant le
- * sous-bloc S3 posait `afficher: () => {}` — un NO-OP, exactement le patron que
- * le sous-bloc D10 a nommé : « une source factice qui implémente un effet de
- * bord en NO-OP rend une famille entière de défauts invisible aux tests
- * d'hôte », 456 tests verts sur un produit muet. Tant qu'il était là, AUCUN des
- * quatre tests de ton ci-dessous ne pouvait échouer — et le bandeau lui-même
- * n'était vérifié par rien.
+ * 🔴 `show` COLLECTS, IT NO LONGER DOES NOTHING. The version from before
+ * sub-block S3 set `show: () => {}` — a NO-OP, exactly the pattern
+ * sub-block D10 named: "a fake source that implements a side
+ * effect as a NO-OP makes a whole family of defects invisible to host
+ * tests", 456 green tests on a mute product. As long as it was there, NONE of the
+ * four tone tests below could fail — and the banner itself
+ * was checked by nothing.
  */
 function bureauDeTest() {
     const ouvertes = new Map<string, { closed: boolean; close: () => void }>();
     const envoyes: unknown[] = [];
-    const etatsFichiers: string[] = [];
+    const filesStates: string[] = [];
     const bandeaux: Array<{ message: string; ton: Ton }> = [];
     const etats: Array<{ texte: string; ton: Ton }> = [];
     /**
-     * 🔴 LE COMPTEUR EST COLLECTÉ TEL QUEL — deux NOMBRES, un texte, un ton —
-     * et non reformaté ici. Le lire d'une phrase serait rejouer le piège que F1
-     * a payé neuf minutes : « Lecteur … monté » et « n'a pas pu être monté »
-     * partagent une sous-chaîne, le pilote testait `includes('mont')`, et une
-     * mesure entière a tourné sur un pont NON monté.
+     * 🔴 THE COUNTER IS COLLECTED AS IS — two NUMBERS, a text, a tone —
+     * and not reformatted here. Reading it from a sentence would replay the trap F1
+     * paid nine minutes for: "Drive … mounted" and "could not be mounted"
+     * share a substring, the driver tested `includes('mont')`, and a
+     * whole measurement ran on a bridge that was NOT mounted.
      */
     const compteurs: Array<{ dues: number; vues: number; texte: string; ton: Ton }> = [];
     const retenues: boolean[] = [];
-    const bureau = creerBureau({
+    const bureau = createDesktop({
         ouvrirFenetre: (session) => {
             const f = { closed: false, close: () => { f.closed = true; } };
             ouvertes.set(session, f);
             return f as unknown as Window;
         },
         envoyer: (message) => { envoyes.push(message); },
-        afficher: (message, ton) => { bandeaux.push({ message, ton }); },
-        afficherEtatFichiers: (texte, ton) => {
-            etatsFichiers.push(texte);
+        show: (message, ton) => { bandeaux.push({ message, ton }); },
+        showFilesState: (texte, ton) => {
+            filesStates.push(texte);
             etats.push({ texte, ton });
         },
-        afficherRetenues: (r: boolean) => {
+        showRetained: (r: boolean) => {
             retenues.push(r);
         },
-        afficherEcrituresDues: (dues, vues, texte, ton) => {
+        showPendingWrites: (dues, vues, texte, ton) => {
             compteurs.push({ dues, vues, texte, ton });
         },
     });
-    return { bureau, ouvertes, envoyes, etatsFichiers, bandeaux, etats, compteurs, retenues };
+    return { bureau, ouvertes, envoyes, filesStates, bandeaux, etats, compteurs, retenues };
 }
 
-describe('F5 — les écritures RETENUES', () => {
+describe('F5 — the HELD writes', () => {
     /**
-     * 🔴 **`retenues` REMONTE, ET IL EST FILTRÉ PAR « il y a des dues ».**
+     * 🔴 **`retenues` GOES UP, AND IT IS FILTERED BY "there are pending writes".**
      *
-     * Retenir sans aucune due n'a pas de sens : le bouton proposerait de
-     * reprendre ce qu'il n'y a pas à reprendre. Le pont ne l'émet pas ainsi,
-     * mais s'en remettre à lui ferait dépendre l'interface d'une propriété
-     * qu'aucun type ne garantit.
+     * Holding back without any pending write makes no sense: the button would offer to
+     * resume what there is nothing to resume. The bridge does not emit it that way,
+     * but relying on it would make the interface depend on a property
+     * no type guarantees.
      */
-    it('retenues avec des dues est annoncé', () => {
+    it('held with dues is announced', () => {
         const { bureau, retenues } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], true);
         expect(retenues.at(-1)).toBe(true);
     });
 
-    it('🔴 retenues SANS aucune due n’est PAS annoncé', () => {
+    it('🔴 held WITHOUT any due is NOT announced', () => {
         const { bureau, retenues } = bureauDeTest();
         bureau.ecrituresDues([], true);
         expect(retenues.at(-1)).toBe(false);
     });
 
-    it('des dues NON retenues ne l’annoncent pas', () => {
+    it('NON-held dues do not announce it', () => {
         const { bureau, retenues } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
         expect(retenues.at(-1)).toBe(false);
     });
 
     /**
-     * 🔴 **RETENIR EST UNE ALERTE, JAMAIS UN `neutre`.** Rien ne repartira sans
-     * un geste de l'utilisateur, et un ton neutre laisserait croire que le pont
-     * travaille encore.
+     * 🔴 **HOLDING BACK IS AN ALERT, NEVER A `neutre`.** Nothing will restart without
+     * a user gesture, and a neutral tone would suggest the bridge
+     * is still working.
      */
-    it('🔴 une reprise retenue porte le ton « alerte »', () => {
+    it('🔴 a held resumption carries the « alerte » tone', () => {
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], true);
         expect(compteurs.at(-1)?.ton).toBe('alerte');
     });
 
     /**
-     * L'état est celui du PONT, pas de l'interface : il tombe quand le pont
-     * cesse de retenir, et pas avant.
+     * The state is the BRIDGE's, not the interface's: it drops when the bridge
+     * stops holding back, and not before.
      */
-    it('l’état retombe quand le pont cesse de retenir', () => {
+    it('the state drops back when the bridge stops holding', () => {
         const { bureau, retenues } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], true);
         expect(retenues.at(-1)).toBe(true);
@@ -99,14 +99,14 @@ describe('F5 — les écritures RETENUES', () => {
 });
 
 describe('page-shell', () => {
-    it('ouvre une fenêtre navigateur quand le superviseur annonce une fenêtre', () => {
+    it('opens a browser window when the supervisor announces a window', () => {
         const { bureau, ouvertes } = bureauDeTest();
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         expect(ouvertes.has('w-1')).toBe(true);
-        expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: true }]);
+        expect(bureau.list()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: true }]);
     });
 
-    it('transmet au superviseur le viewport que la page annonce', () => {
+    it('passes on to the supervisor the viewport the page announces', () => {
         const { bureau, envoyes } = bureauDeTest();
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         bureau.viewportRecu('w-1', 1600, 900);
@@ -115,184 +115,184 @@ describe('page-shell', () => {
         });
     });
 
-    it("ignore un viewport pour une session qu'elle n'a pas ouverte", () => {
-        // Le message vient de `postMessage` : n'importe quelle page de même
-        // origine peut en émettre un. Ne relayer que ce qu'on a demandé.
+    it("ignores a viewport for a session it did not open", () => {
+        // The message comes from `postMessage`: any page of the same
+        // origin can emit one. Only relay what was asked for.
         const { bureau, envoyes } = bureauDeTest();
         bureau.viewportRecu('w-inventee', 800, 600);
         expect(envoyes).toHaveLength(0);
     });
 
-    it('ferme la fenêtre navigateur quand la fenêtre Windows disparaît', () => {
+    it('closes the browser window when the Windows window disappears', () => {
         const { bureau, ouvertes } = bureauDeTest();
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         bureau.fenetreFermee('w-1');
         expect(ouvertes.get('w-1')!.closed).toBe(true);
-        expect(bureau.liste()).toEqual([]);
+        expect(bureau.list()).toEqual([]);
     });
 
-    it('garde la fenêtre dans sa liste quand seule la page a été fermée', () => {
-        // Décision de D1 : fermer une page ne ferme pas l'application
-        // Windows. La shell doit donc pouvoir la rouvrir.
+    it('keeps the window in its list when only the page was closed', () => {
+        // D1's decision: closing a page does not close the Windows
+        // application. The shell must therefore be able to reopen it.
         const { bureau, ouvertes } = bureauDeTest();
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         ouvertes.get('w-1')!.closed = true;
-        expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: false }]);
+        expect(bureau.list()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: false }]);
     });
 
-    it('rouvre une fenêtre dont la page a été fermée', () => {
+    it('reopens a window whose page was closed', () => {
         const { bureau, ouvertes } = bureauDeTest();
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         ouvertes.get('w-1')!.closed = true;
         bureau.rouvrir('w-1');
         expect(ouvertes.get('w-1')!.closed).toBe(false);
-        expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: true }]);
+        expect(bureau.list()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: true }]);
     });
 
-    it('affiche un refus sans rien ouvrir', () => {
-        const affiche = vi.fn();
-        const bureau = creerBureau({
-            ouvrirFenetre: () => { throw new Error('rien ne doit être ouvert'); },
+    it('displays a refusal without opening anything', () => {
+        const show = vi.fn();
+        const bureau = createDesktop({
+            ouvrirFenetre: () => { throw new Error('nothing must be opened'); },
             envoyer: () => {},
-            afficher: affiche,
-            afficherEtatFichiers: () => {},
-            afficherEcrituresDues: () => {},
-            afficherRetenues: () => {},
+            show: show,
+            showFilesState: () => {},
+            showPendingWrites: () => {},
+            showRetained: () => {},
         });
-        bureau.refus('F9', 'plus aucune sortie virtuelle disponible');
-        // Le motif du refus est REPRIS TEL QUEL, et le ton l'accompagne : le
-        // sous-bloc S3 a ajouté le second argument, et une assertion à un seul
-        // argument cesserait de décrire l'appel réel.
-        expect(affiche).toHaveBeenCalledWith(
-            expect.stringContaining('plus aucune sortie virtuelle disponible'),
+        bureau.refus('F9', 'no virtual output available any more');
+        // The refusal reason is TAKEN AS IS, and the tone goes with it: the
+        // sub-block S3 added the second argument, and a one-argument assertion
+        // would stop describing the real call.
+        expect(show).toHaveBeenCalledWith(
+            expect.stringContaining('no virtual output available any more'),
             'danger',
         );
     });
 
-    it("signale un blocage de pop-up plutôt que de l'ignorer", () => {
-        // `window.open` rend `null` quand le navigateur bloque : sans ce
-        // traitement, l'utilisateur verrait une fenêtre listée « ouverte »
-        // qui n'existe pas.
-        const affiche = vi.fn();
-        const bureau = creerBureau({
+    it("reports a pop-up block rather than ignoring it", () => {
+        // `window.open` returns `null` when the browser blocks: without this
+        // handling, the user would see a window listed as "open"
+        // that does not exist.
+        const show = vi.fn();
+        const bureau = createDesktop({
             ouvrirFenetre: () => null,
             envoyer: () => {},
-            afficher: affiche,
-            afficherEtatFichiers: () => {},
-            afficherEcrituresDues: () => {},
-            afficherRetenues: () => {},
+            show: show,
+            showFilesState: () => {},
+            showPendingWrites: () => {},
+            showRetained: () => {},
         });
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
-        expect(affiche).toHaveBeenCalledWith(expect.stringContaining('pop-up'), 'danger');
-        expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: false }]);
+        expect(show).toHaveBeenCalledWith(expect.stringContaining('pop-up'), 'danger');
+        expect(bureau.list()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: false }]);
     });
 });
 
-describe('état du lecteur de fichiers', () => {
-    it('monter le lecteur affiche le nom du dossier', () => {
-        const { bureau, etatsFichiers } = bureauDeTest();
+describe('file drive state', () => {
+    it('mounting the drive displays the folder name', () => {
+        const { bureau, filesStates } = bureauDeTest();
         bureau.lecteurMonte('Mes documents');
-        expect(etatsFichiers.at(-1)).toContain('Mes documents');
+        expect(filesStates.at(-1)).toContain('Mes documents');
     });
 
-    it('🔴 démonter le lecteur EFFACE l’état', () => {
-        // 🔴 C'est le défaut relevé en D5 : le bandeau `#status` gardait son
-        // `textContent` après `expirer()`, si bien que lire le texte prouvait
-        // qu'un message était ARRIVÉ, jamais qu'il était AFFICHÉ. Une recette
-        // entière a lu un bandeau périmé en croyant lire l'état courant.
+    it('🔴 unmounting the drive ERASES the state', () => {
+        // 🔴 It is the defect found in D5: the `#status` banner kept its
+        // `textContent` after `expirer()`, so that reading the text proved
+        // that a message had ARRIVED, never that it was DISPLAYED. A whole
+        // acceptance run read a stale banner believing it was reading the current state.
         //
-        // La chaîne vide n'est donc pas un détail de présentation : c'est
-        // l'assertion elle-même.
-        const { bureau, etatsFichiers } = bureauDeTest();
+        // The empty string is therefore not a presentation detail: it is
+        // the assertion itself.
+        const { bureau, filesStates } = bureauDeTest();
         bureau.lecteurMonte('Mes documents');
         bureau.lecteurDemonte();
-        expect(etatsFichiers.at(-1)).toBe('');
+        expect(filesStates.at(-1)).toBe('');
     });
 
-    it('un échec de montage se distingue d’un démontage', () => {
-        // « rien n'est partagé » et « le partage a raté, voici pourquoi »
-        // n'appellent pas le même geste de l'utilisateur : le second lui dit
-        // quoi corriger, le premier lui dit seulement de recommencer.
-        const { bureau, etatsFichiers } = bureauDeTest();
-        bureau.lecteurEchoue('signaling injoignable');
-        expect(etatsFichiers.at(-1)).toContain('signaling injoignable');
-        expect(etatsFichiers.at(-1)).not.toBe('');
+    it('a mount failure is told apart from an unmount', () => {
+        // "nothing is shared" and "sharing failed, here is why"
+        // do not call for the same user gesture: the second tells them
+        // what to fix, the first only tells them to start over.
+        const { bureau, filesStates } = bureauDeTest();
+        bureau.lecteurEchoue('signaling unreachable');
+        expect(filesStates.at(-1)).toContain('signaling unreachable');
+        expect(filesStates.at(-1)).not.toBe('');
     });
 
-    it('un remontage remplace le nom précédent au lieu de s’y ajouter', () => {
-        const { bureau, etatsFichiers } = bureauDeTest();
+    it('a remount replaces the previous name instead of adding to it', () => {
+        const { bureau, filesStates } = bureauDeTest();
         bureau.lecteurMonte('Premier');
         bureau.lecteurMonte('Second');
-        expect(etatsFichiers.at(-1)).toContain('Second');
-        expect(etatsFichiers.at(-1)).not.toContain('Premier');
+        expect(filesStates.at(-1)).toContain('Second');
+        expect(filesStates.at(-1)).not.toContain('Premier');
     });
 });
 
-describe('page-shell — le TON du bandeau', () => {
-    // La règle est ICI, dans `shell.ts`, et non dans le câblage : `shell-page.ts`
-    // ne fait que relayer. Une condition qui apparaîtrait là-bas serait au
-    // mauvais endroit.
+describe('shell page — the banner TONE', () => {
+    // The rule is HERE, in `shell.ts`, and not in the wiring: `shell-page.ts`
+    // only relays. A condition that appeared there would be in the
+    // wrong place.
 
-    it('donne le ton DANGER à un refus', () => {
+    it('gives the DANGER tone to a refusal', () => {
         const { bureau, bandeaux } = bureauDeTest();
-        bureau.refus('Bloc-notes', 'plus aucune sortie disponible');
+        bureau.refus('Bloc-notes', 'no output available any more');
         expect(bandeaux).toHaveLength(1);
         expect(bandeaux[0].ton).toBe('danger');
     });
 
-    it('donne le ton DANGER à une pop-up bloquée', () => {
-        // L'utilisateur doit AGIR — autoriser les pop-ups. Un bandeau neutre
-        // dirait que la fenêtre est en route ; elle n'existera jamais.
+    it('gives the DANGER tone to a blocked pop-up', () => {
+        // The user must ACT — allow pop-ups. A neutral banner
+        // would say the window is on its way; it will never exist.
         const bandeaux: Array<{ message: string; ton: Ton }> = [];
-        const sansPopup = creerBureau({
+        const sansPopup = createDesktop({
             ouvrirFenetre: () => null,
             envoyer: () => {},
-            afficher: (message, ton) => { bandeaux.push({ message, ton }); },
-            afficherEtatFichiers: () => {},
-            afficherEcrituresDues: () => {},
-            afficherRetenues: () => {},
+            show: (message, ton) => { bandeaux.push({ message, ton }); },
+            showFilesState: () => {},
+            showPendingWrites: () => {},
+            showRetained: () => {},
         });
         sansPopup.fenetreOuverte('w-1', 'Bloc-notes');
         expect(bandeaux).toHaveLength(1);
         expect(bandeaux[0].ton).toBe('danger');
-        expect(bandeaux[0].message).toContain('bloqué la pop-up');
+        expect(bandeaux[0].message).toContain('blocked the pop-up');
     });
 
-    it('distingue le montage RÉUSSI de l’ÉCHEC par le ton, pas seulement par le texte', () => {
-        // `shell.ts` exige déjà que les deux textes soient distincts ; le ton
-        // ne doit pas défaire cette distinction en les rendant identiques à
-        // l'œil.
+    it('tells a SUCCESSFUL mount from a FAILURE by the tone, not only by the text', () => {
+        // `shell.ts` already requires the two texts to be distinct; the tone
+        // must not undo that distinction by making them identical to
+        // the eye.
         const { bureau, etats } = bureauDeTest();
         bureau.lecteurMonte('Documents');
-        bureau.lecteurEchoue('permission refusée');
+        bureau.lecteurEchoue('permission refused');
         expect(etats.map((e) => e.ton)).toEqual(['succes', 'danger']);
     });
 
-    it('sur un démontage, la chaîne reste VIDE', () => {
+    it('on an unmount, the string stays EMPTY', () => {
         const { bureau, etats } = bureauDeTest();
         bureau.lecteurDemonte();
         expect(etats).toHaveLength(1);
         expect(etats[0].texte).toBe('');
     });
 
-    it("sur un démontage, le bandeau ne prend AUCUN ton — assertion séparée", () => {
-        // 🔴 SÉPARÉE DE LA PRÉCÉDENTE À DESSEIN : la vacuité du texte et la
-        // neutralité du ton sont deux propriétés, et `expect` interrompt au
-        // premier échec. Les fondre ferait qu'un ton `danger` sur un bandeau
-        // vide — une couleur sans message — passerait inaperçu dès que
-        // l'assertion de texte tomberait la première.
+    it("on an unmount, the banner takes NO tone — separate assertion", () => {
+        // 🔴 SEPARATED FROM THE PREVIOUS ONE ON PURPOSE: the emptiness of the text and the
+        // neutrality of the tone are two properties, and `expect` stops at the
+        // first failure. Merging them would mean a `danger` tone on an empty
+        // banner — a colour without a message — would go unnoticed as soon as
+        // the text assertion fell first.
         const { bureau, etats } = bureauDeTest();
         bureau.lecteurDemonte();
         expect(etats[0].ton).toBe('neutre');
     });
 });
 
-describe('le compteur d’écritures dues', () => {
-    it('🔴 rend DEUX nombres, dont un CUMULATIF qui ne redescend jamais', () => {
-        // 🔴 Le remettre à zéro rendrait un verdict négatif INDISCERNABLE d'une
-        // mesure non prise : `dues = 0` est aussi ce que rend une machine où
-        // rien n'a encore eu lieu. *Un verdict négatif exige que la chose
-        // mesurée soit ABSENTE, pas seulement nulle.*
+describe('the due writes counter', () => {
+    it('🔴 returns TWO numbers, one of them CUMULATIVE that never goes down', () => {
+        // 🔴 Resetting it to zero would make a negative verdict INDISTINGUISHABLE from a
+        // measurement not taken: `dues = 0` is also what a machine where
+        // nothing has happened yet returns. *A negative verdict requires the measured
+        // thing to be ABSENT, not merely zero.*
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 3 }], false);
         bureau.ecrituresDues([], false);
@@ -302,9 +302,9 @@ describe('le compteur d’écritures dues', () => {
         ]);
     });
 
-    it('l’annonce ÉCRASE l’état, elle ne s’y ajoute pas', () => {
-        // Le pont envoie l'ÉTAT complet de son journal à chaque changement :
-        // cumuler ferait qu'un chemin acquitté resterait affiché POUR TOUJOURS.
+    it('the announcement OVERWRITES the state, it does not add to it', () => {
+        // The bridge sends the full STATE of its log on each change:
+        // accumulating would mean an acknowledged path would stay displayed FOREVER.
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues(
             [
@@ -319,17 +319,17 @@ describe('le compteur d’écritures dues', () => {
         expect(compteurs.at(-1)?.texte).not.toContain('a.txt');
     });
 
-    it('🔴 NOMME les fichiers, parce que `beforeunload` ne le peut pas', () => {
-        // ⛔ Le message personnalisé de `beforeunload` est IGNORÉ par tous les
-        // navigateurs modernes. Les nommer DANS LA PAGE est ce qui reste.
+    it('🔴 NAMES the files, because `beforeunload` cannot', () => {
+        // ⛔ The custom `beforeunload` message is IGNORED by all
+        // modern browsers. Naming them IN THE PAGE is what remains.
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'dossier/rapport final.docx', octets: 12 }], false);
         expect(compteurs.at(-1)?.texte).toContain('dossier/rapport final.docx');
     });
 
-    it('🔴 un échec NOMME le fichier ET la cause', () => {
-        // « Une écriture a échoué » ne dit pas à l'utilisateur quel document
-        // rouvrir, ni s'il doit libérer de la place ou rendre une permission.
+    it('🔴 a failure NAMES the file AND the cause', () => {
+        // "A write failed" does not tell the user which document
+        // to reopen, nor whether they must free up space or grant a permission back.
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'note.txt', octets: 3 }], false);
         bureau.ecritureEchouee('note.txt', 'disque-plein');
@@ -338,11 +338,11 @@ describe('le compteur d’écritures dues', () => {
         expect(compteurs.at(-1)?.ton).toBe('danger');
     });
 
-    it('🔴 zéro due efface le texte ET pose le ton neutre', () => {
-        // 🔴 C'EST LE DÉFAUT DE D5, que `lecteurDemonte` documente déjà contre
-        // lui-même : un bandeau qui garde son texte fait lire un état PÉRIMÉ
-        // comme l'état courant. Et un ton coloré sans texte serait une alarme
-        // sans énoncé — les deux propriétés sont éprouvées SÉPARÉMENT.
+    it('🔴 zero due erases the text AND sets the neutral tone', () => {
+        // 🔴 IT IS THE DEFECT OF D5, which `lecteurDemonte` already documents against
+        // itself: a banner that keeps its text makes a STALE state read
+        // as the current state. And a coloured tone without text would be an alarm
+        // without a statement — the two properties are exercised SEPARATELY.
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
         bureau.ecrituresDues([], false);
@@ -350,7 +350,7 @@ describe('le compteur d’écritures dues', () => {
         expect(compteurs.at(-1)?.ton).toBe('neutre');
     });
 
-    it('une écriture qui finit par arriver efface son échec', () => {
+    it('a write that finally arrives erases its failure', () => {
         const { bureau, compteurs } = bureauDeTest();
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
         bureau.ecritureEchouee('a.txt', 'interne');
@@ -359,10 +359,10 @@ describe('le compteur d’écritures dues', () => {
         expect(compteurs.at(-1)?.texte).toBe('');
     });
 
-    it('🔴 ne prévient PAS quand il n’y a rien à perdre', () => {
-        // Prévenir TOUJOURS apprendrait à l'utilisateur à ignorer
-        // l'avertissement, ce qui le rendrait inutile exactement le jour où il
-        // compte.
+    it('🔴 does NOT warn when there is nothing to lose', () => {
+        // Warning ALWAYS would teach the user to ignore
+        // the warning, which would make it useless exactly on the day it
+        // matters.
         const { bureau } = bureauDeTest();
         expect(bureau.doitPrevenir()).toBe(false);
         bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }], false);
@@ -372,7 +372,7 @@ describe('le compteur d’écritures dues', () => {
     });
 });
 
-/** Le harnais des tests de mutation : `bureauDeTest` plus un accès au dernier compteur. */
+/** The harness of the mutation tests: `bureauDeTest` plus access to the last counter. */
 function vues() {
     const h = bureauDeTest();
     return {
@@ -381,31 +381,31 @@ function vues() {
     };
 }
 
-describe('les mutations en échec (F3)', () => {
-    it('🔴 sont NOMMÉES, et un renommage porte SES DEUX chemins', () => {
-        // « impossible de renommer X » ne dit pas vers quoi — et c'est
-        // précisément ce que l'utilisateur doit vérifier : la destination
-        // existe peut-être déjà.
+describe('the failed mutations (F3)', () => {
+    it('🔴 are NAMED, and a rename carries ITS TWO paths', () => {
+        // "cannot rename X" does not say to what — and that is
+        // precisely what the user must check: the destination
+        // may already exist.
         const v = vues();
         v.bureau.mutationEchouee('brouillon.txt → note.txt', 'deja-present');
         expect(v.dernieresDues()?.texte).toContain('brouillon.txt → note.txt');
         expect(v.dernieresDues()?.texte).toContain('deja-present');
     });
 
-    it('🔴 sont un DANGER même sans aucune écriture due', () => {
-        // C'est ce qui les distingue d'une écriture en échec : les deux côtés
-        // ont divergé, et rien ne les réconciliera tout seul.
+    it('🔴 are a DANGER even without any due write', () => {
+        // That is what sets them apart from a failed write: the two sides
+        // have diverged, and nothing will reconcile them on its own.
         const v = vues();
         v.bureau.mutationEchouee('a → b', 'introuvable');
         expect(v.dernieresDues()?.ton).toBe('danger');
         expect(v.dernieresDues()?.dues).toBe(0);
     });
 
-    it('🔴 NE DISPARAISSENT PAS quand les écritures dues redescendent à zéro', () => {
-        // Rouge : les effacer dans `ecrituresDues`, comme les échecs
-        // d'écriture. Une divergence définitive s'effacerait alors toute seule,
-        // et l'utilisateur ne saurait jamais qu'un fichier n'a pas été renommé
-        // sur son poste.
+    it('🔴 DO NOT DISAPPEAR when the due writes drop back to zero', () => {
+        // Red: erasing them in `ecrituresDues`, like write
+        // failures. A permanent divergence would then erase itself,
+        // and the user would never know a file was not renamed
+        // on their workstation.
         const v = vues();
         v.bureau.ecrituresDues([{ chemin: 'x.txt', octets: 1 }], false);
         v.bureau.mutationEchouee('a → b', 'introuvable');
@@ -414,7 +414,7 @@ describe('les mutations en échec (F3)', () => {
         expect(v.dernieresDues()?.ton).toBe('danger');
     });
 
-    it('sont effacées au REMONTAGE du lecteur, et là seulement', () => {
+    it('are erased when the drive is REMOUNTED, and only then', () => {
         const v = vues();
         v.bureau.mutationEchouee('a → b', 'introuvable');
         v.bureau.lecteurDemonte();
@@ -422,58 +422,58 @@ describe('les mutations en échec (F3)', () => {
         expect(v.dernieresDues()?.ton).toBe('neutre');
     });
 
-    it('s’accumulent, à l’inverse des écritures dues qui écrasent', () => {
+    it('accumulate, unlike the due writes which overwrite', () => {
         const v = vues();
         v.bureau.mutationEchouee('a → b', 'x');
         v.bureau.mutationEchouee('c', 'y');
         const texte = v.dernieresDues()?.texte ?? '';
         expect(texte).toContain('a → b');
         expect(texte).toContain('c');
-        expect(texte).toContain('2 renommages ou suppressions');
+        expect(texte).toContain('2 renames or removals');
     });
 });
 
-// 🔴 CORRECTIF DU LEGS DES FREINS MANQUANTS (round de correction 1,
-// critique ④), 25 août 2026 — AVANT CE LOT, `type:'error'` ne correspondait à
-// AUCUNE branche de l'aiguillage de `shell-page.ts`, et le socket
-// n'installait ni `close` ni `error` : un refus arrivé sur `/signal` (le
-// budget « toute requête » que ce même lot ouvre, `signaling/relais.ts`)
-// laissait la page affichée « bureau connecté », morte en silence.
-describe('page-shell — le refus et la perte du canal de contrôle', () => {
-    it('un refus du canal affiche la RAISON, en DANGER', () => {
+// 🔴 FIX OF THE MISSING-BRAKES LEGACY ITEM (correction round 1,
+// critique ④), August 25th, 2026 — BEFORE THIS BATCH, `type:'error'` matched
+// NO branch of the dispatch of `shell-page.ts`, and the socket
+// installed neither `close` nor `error`: a refusal arriving on `/signal` (the
+// "any request" budget this same batch opens, `signaling/relais.ts`)
+// left the page showing "desktop connected", silently dead.
+describe('shell page — the refusal and the loss of the control channel', () => {
+    it('a channel refusal displays the REASON, as DANGER', () => {
         const { bureau, bandeaux } = bureauDeTest();
-        bureau.canalDeControleRefuse('trop de requêtes', 'trop-de-requetes', undefined);
+        bureau.canalDeControleRefuse('too many requests', 'trop-de-requetes', undefined);
         expect(bandeaux).toHaveLength(1);
         expect(bandeaux[0].ton).toBe('danger');
-        expect(bandeaux[0].message).toContain('trop de requêtes');
+        expect(bandeaux[0].message).toContain('too many requests');
     });
 
-    it('le refus de VOLUME porte le délai suggéré, quand il est fourni', () => {
-        // `retryApresS` n'accompagne QUE `trop-de-requetes` (`relais.ts`) —
-        // c'est la moitié la moins chère du remède au verrouillage que
-        // `agent/src/superviseur/boucle/surveillance_pont.rs` documente.
+    it('the VOLUME refusal carries the suggested delay, when supplied', () => {
+        // `retryApresS` ONLY accompanies `trop-de-requetes` (`relais.ts`) —
+        // it is the cheapest half of the remedy to the lock-out that
+        // `agent/src/superviseur/boucle/surveillance_pont.rs` documents.
         const { bureau, bandeaux } = bureauDeTest();
-        bureau.canalDeControleRefuse('trop de requêtes', 'trop-de-requetes', 42);
+        bureau.canalDeControleRefuse('too many requests', 'trop-de-requetes', 42);
         expect(bandeaux[0].message).toContain('42');
     });
 
-    it("un refus de poignée de main SANS délai ne promet aucune attente", () => {
+    it("a handshake refusal WITHOUT a delay promises no wait", () => {
         const { bureau, bandeaux } = bureauDeTest();
-        bureau.canalDeControleRefuse('jeton invalide', 'jeton-invalide', undefined);
-        expect(bandeaux[0].message).not.toMatch(/tentative/);
+        bureau.canalDeControleRefuse('invalid token', 'jeton-invalide', undefined);
+        expect(bandeaux[0].message).not.toMatch(/attempt/);
     });
 
-    it('à défaut de `reason`, le `motif` sert de repli', () => {
+    it('without a `reason`, the `motif` serves as fallback', () => {
         const { bureau, bandeaux } = bureauDeTest();
         bureau.canalDeControleRefuse(undefined, 'trop-de-requetes', undefined);
         expect(bandeaux[0].message).toContain('trop-de-requetes');
     });
 
-    it('la perte du canal est annoncée, en DANGER — jamais en silence', () => {
+    it('losing the channel is announced, as DANGER — never silently', () => {
         const { bureau, bandeaux } = bureauDeTest();
         bureau.canalDeControlePerdu();
         expect(bandeaux).toHaveLength(1);
         expect(bandeaux[0].ton).toBe('danger');
-        expect(bandeaux[0].message).toMatch(/perdue|rechargez/i);
+        expect(bandeaux[0].message).toMatch(/lost|reload/i);
     });
 });

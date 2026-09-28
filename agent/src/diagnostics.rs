@@ -1,14 +1,14 @@
-//! Aiguillage des modes diagnostic, tous activés par variable
-//! d'environnement. Aucun n'ouvre de session WebRTC : ils observent et
-//! consignent, ils ne construisent rien.
+//! Routing of the diagnostic modes, all enabled by environment
+//! variable. None opens a WebRTC session: they observe and
+//! record, they build nothing.
 //!
-//! « Observer » ne veut pas dire « sans effet » pour autant : deux sondes
-//! perturbent délibérément l'état de la session Windows, parce que c'est le
-//! seul moyen d'obtenir la mesure. `INPUT_LINEARITY_PROBE` injecte de vrais
-//! déplacements de souris et repositionne le curseur (`SetCursorPos`), et
-//! `CAPTURE_TEST` déplace la fenêtre observée d'un pixel en boucle
-//! (`SetWindowPos`) pour forcer la recomposition du bureau. Ne pas les
-//! lancer sur une session dont on veut préserver l'état.
+//! "Observe" does not mean "without effect" though: two probes
+//! deliberately disturb the state of the Windows session, because it is the
+//! only way to obtain the measurement. `INPUT_LINEARITY_PROBE` injects real
+//! mouse movements and repositions the cursor (`SetCursorPos`), and
+//! `CAPTURE_TEST` moves the observed window by one pixel in a loop
+//! (`SetWindowPos`) to force the desktop to recompose. Do not
+//! run them on a session whose state you want to preserve.
 
 use anyhow::Result;
 
@@ -19,10 +19,10 @@ mod capture;
 mod entree;
 #[cfg(windows)]
 pub(crate) mod exceptions;
-// `pub(crate)` et non privé : `moniteurs_virtuels::purge` (production, promue
-// hors de cet arbre) lit encore `multifenetre::montee` pour la topologie DXGI
-// et le plafond de recherche — seul lien restant dans ce sens, assumé, voir
-// le commentaire de `moniteurs_virtuels/purge.rs`.
+// `pub(crate)` and not private: `moniteurs_virtuels::purge` (production, promoted
+// out of this tree) still reads `multifenetre::montee` for the DXGI topology
+// and the search cap — the only remaining link in that direction, accepted, see
+// the comment of `moniteurs_virtuels/purge.rs`.
 #[cfg(windows)]
 pub(crate) mod multifenetre;
 #[cfg(windows)]
@@ -30,155 +30,155 @@ pub(crate) mod pixels;
 #[cfg(windows)]
 mod presse_papier;
 
-/// Renvoie `true` si une sonde a tourné — `main` doit alors s'arrêter là.
+/// Returns `true` if a probe ran — `main` must then stop there.
 ///
-/// L'ordre des sondes reproduit exactement celui qu'avait `main()`
-/// avant le découpage (à l'exception de `PROCESS_LOOPBACK_CAPTURE`, ajoutée
-/// par le sous-bloc D7 directement avant sa voisine `PROCESS_LOOPBACK_PROBE`,
-/// les deux variables partageant un préfixe), et il n'est pas indifférent :
+/// The order of the probes reproduces exactly the one `main()` had
+/// before the split (except for `PROCESS_LOOPBACK_CAPTURE`, added
+/// by sub-block D7 directly before its neighbour `PROCESS_LOOPBACK_PROBE`,
+/// the two variables sharing a prefix), and it is not indifferent:
 /// `INPUT_LINEARITY_PROBE`
-/// (la dernière) lit `INPUT_LINEARITY_NEUTRALISER`, dont l'effet dépend de la
-/// neutralisation SPI que `main()` a déjà — ou non — appliquée avant
-/// d'appeler cette fonction. Voir le commentaire de `main()` à ce sujet.
+/// (the last) reads `INPUT_LINEARITY_NEUTRALISER`, whose effect depends on the
+/// SPI neutralisation that `main()` has already — or not — applied before
+/// calling this function. See the comment of `main()` on this.
 pub(crate) fn aiguiller() -> Result<bool> {
-    // Mode diagnostic : CAPTURE_TEST=firefox vérifie le repérage et la capture.
+    // Diagnostic mode: CAPTURE_TEST=firefox checks window finding and capture.
     #[cfg(windows)]
     if let Ok(fragment) = std::env::var("CAPTURE_TEST") {
         capture::executer(&fragment)?;
         return Ok(true);
     }
 
-    // Sonde audio (`AUDIO_PROBE=1`) : répond aux questions n°1 et n°2 de la
-    // spécification du chantier A — quel est le périphérique de rendu RETENU
-    // pour CETTE session, quel est son format de mixage, et un loopback y
-    // capte-t-il bien ce que jouent les applications.
+    // Audio probe (`AUDIO_PROBE=1`): answers questions no. 1 and no. 2 of the
+    // specification of work stream A — which render device is KEPT
+    // for THIS session, what is its mix format, and does a loopback there
+    // really capture what the applications play.
     //
-    // ⚠️ « Retenu », plus « par défaut », depuis la correction « A-bis » : la
-    // sonde passe par `LoopbackCapture::open`, donc par `AUDIO_PERIPHERIQUE`
-    // quand elle est posée. Elle rend en outre la FRÉQUENCE DOMINANTE de ce
-    // qu'elle capte, et pas seulement une crête — c'est ce qui en fait
-    // l'instrument de mesure d'A-bis, lancée deux fois, avec et sans la
-    // variable, sur la même machine.
+    // ⚠️ "Kept", no longer "default", since the "A-bis" fix: the
+    // probe goes through `LoopbackCapture::open`, hence through `AUDIO_PERIPHERIQUE`
+    // when it is set. It moreover returns the DOMINANT FREQUENCY of what
+    // it captures, and not only a peak — that is what makes it
+    // A-bis's measuring instrument, run twice, with and without the
+    // variable, on the same machine.
     #[cfg(windows)]
     if std::env::var("AUDIO_PROBE").is_ok() {
         audio::executer_sonde_audio()?;
         return Ok(true);
     }
 
-    // Mesure pivot du sous-bloc D7 : `PROCESS_LOOPBACK_CAPTURE=<pid>` va
-    // jusqu'où `PROCESS_LOOPBACK_PROBE` (juste en dessous) s'arrête —
-    // `Initialize`, `GetService`, `Start`, et une lecture réelle. Placée
-    // AVANT ce bras : les deux variables partagent un préfixe
-    // (`PROCESS_LOOPBACK_`), le piège exact de `MULTIFENETRE_NVENC_CYCLES` en
-    // D5, où la variable la plus spécifique doit être testée en premier.
+    // Pivotal measurement of sub-block D7: `PROCESS_LOOPBACK_CAPTURE=<pid>` goes
+    // as far as where `PROCESS_LOOPBACK_PROBE` (just below) stops —
+    // `Initialize`, `GetService`, `Start`, and a real read. Placed
+    // BEFORE this arm: the two variables share a prefix
+    // (`PROCESS_LOOPBACK_`), the exact trap of `MULTIFENETRE_NVENC_CYCLES` in
+    // D5, where the more specific variable must be tested first.
     #[cfg(windows)]
     if let Ok(pid_texte) = std::env::var("PROCESS_LOOPBACK_CAPTURE") {
         audio::executer_capture_process_loopback(&pid_texte)?;
         return Ok(true);
     }
 
-    // Sonde n°4 de la spec du chantier A : le *process loopback*
-    // (Windows 10 build 19041+) isole l'audio d'un seul processus, ce
-    // qu'exige le modèle multi-fenêtres du chantier D. La VM est en build
-    // 20348, donc éligible sur le papier. RIEN N'EST CONSTRUIT DESSUS ici :
-    // on observe seulement si l'activation réussit, et le résultat est
-    // consigné pour le chantier D.
+    // Probe no. 4 of work stream A's spec: *process loopback*
+    // (Windows 10 build 19041+) isolates the audio of a single process, which
+    // the multi-window model of work stream D requires. The VM is on build
+    // 20348, hence eligible on paper. NOTHING IS BUILT ON IT here:
+    // we only observe whether activation succeeds, and the result is
+    // recorded for work stream D.
     #[cfg(windows)]
     if let Ok(pid_texte) = std::env::var("PROCESS_LOOPBACK_PROBE") {
         audio::executer_process_loopback(&pid_texte)?;
         return Ok(true);
     }
 
-    // Sonde du chantier B (§11, inconnues n°1 et n°2) : ViGEmBus accepte-t-il
-    // de brancher une manette Xbox 360 virtuelle, et son rappel de
-    // notification restitue-t-il bien les magnitudes de vibration qu'un jeu
-    // demande ? RIEN N'EST CONSTRUIT DESSUS ici : on observe, et le résultat
-    // fige l'API réellement disponible pour la tâche 10.
+    // Probe of work stream B (§11, unknowns no. 1 and no. 2): does ViGEmBus accept
+    // plugging in a virtual Xbox 360 gamepad, and does its
+    // notification callback faithfully return the vibration magnitudes a game
+    // requests? NOTHING IS BUILT ON IT here: we observe, and the result
+    // pins the API actually available for task 10.
     #[cfg(windows)]
     if std::env::var("VIGEM_PROBE").is_ok() {
         entree::executer_vigem()?;
         return Ok(true);
     }
 
-    // Sonde n°1 de la recette du chantier B : la visée est-elle linéaire
-    // 1:1 ? On injecte une somme connue de déplacements relatifs et on
-    // compare au déplacement réel du curseur.
+    // Probe no. 1 of work stream B's acceptance run: is aiming linear
+    // 1:1? We inject a known sum of relative movements and
+    // compare with the cursor's real movement.
     //
-    // `INPUT_LINEARITY_NEUTRALISER=0` saute la neutralisation SPI — ici ET
-    // au tout début de `main()` (voir le commentaire là-bas) : c'est ce qui
-    // rend la mesure démonstrative plutôt que rassurante — l'écart observé
-    // sans neutralisation chiffre ce que la neutralisation apporte. Sauter
-    // seulement l'appel ci-dessous, sans toucher à celui du démarrage,
-    // aurait laissé ce dernier neutraliser la session avant même que la
-    // sonde ne s'exécute (bogue réel de la première version de cette
-    // tâche, corrigé en ronde de revue 1).
+    // `INPUT_LINEARITY_NEUTRALISER=0` skips the SPI neutralisation — here AND
+    // at the very start of `main()` (see the comment there): that is what
+    // makes the measurement demonstrative rather than reassuring — the gap observed
+    // without neutralisation quantifies what neutralisation brings. Skipping
+    // only the call below, without touching the start-up one,
+    // would have let the latter neutralise the session even before the
+    // probe runs (a real bug of the first version of this
+    // task, fixed in review round 1).
     #[cfg(windows)]
     if std::env::var("INPUT_LINEARITY_PROBE").is_ok() {
         entree::executer_linearite()?;
         return Ok(true);
     }
 
-    // Sonde P0 du sous-bloc P1 (presse-papier) : `PRESSE_PAPIER_SONDE=<secondes>`
-    // mesure ce que la spécification (§8) déclare NON MESURÉ — le compteur
-    // `GetClipboardSequenceNumber` existe-t-il, est-il stable au repos, bouge-t-il
-    // sur une copie, et bouge-t-il sur une RÉÉCRITURE IDENTIQUE. C'est une porte
-    // éliminatoire : trois de ses cinq verdicts rendent le mécanisme de détection
-    // retenu non livrable en l'état.
+    // Probe P0 of sub-block P1 (clipboard): `PRESSE_PAPIER_SONDE=<secondes>`
+    // measures what the specification (§8) declares NOT MEASURED — does the
+    // `GetClipboardSequenceNumber` counter exist, is it stable at rest, does it move
+    // on a copy, and does it move on an IDENTICAL REWRITE. It is an eliminatory
+    // gate: three of its five verdicts make the chosen detection mechanism
+    // non-shippable as is.
     //
-    // ⚠️ Cette sonde ÉCRIT le presse-papier de la VM (phases C et D) et le détruit
-    // donc. Le produit, lui, ne l'écrit jamais en P1.
+    // ⚠️ This probe WRITES the VM's clipboard (phases C and D) and therefore destroys
+    // it. The product, for its part, never writes it in P1.
     //
-    // 🔴 **Cette variable ne doit JAMAIS coexister avec `SUPERVISEUR`** — c'est la
-    // divergence E10 du plan. `main()` appelle `diagnostics::aiguiller()` en
-    // `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`), avant l'enrôlement,
-    // avant `PONT` (`:279`) et avant la branche superviseur : **quel que soit le
-    // mode demandé**, un agent qui porte cette variable exécute la sonde et
-    // s'arrête.
+    // 🔴 **This variable must NEVER coexist with `SUPERVISEUR`** — it is
+    // the plan's divergence E10. `main()` calls `diagnostics::aiguiller()` at
+    // `main.rs:172`, BEFORE the `CAPTEUR` branch (`:180`), before enrolment,
+    // before `PONT` (`:279`) and before the supervisor branch: **whatever the
+    // requested mode**, an agent carrying this variable runs the probe and
+    // stops.
     //
-    // ❌ **LE MÉCANISME QUE E10 DÉCRIT N'EST PAS ATTEIGNABLE, et l'écrire ici
-    // vaut mieux que de laisser courir une menace fausse** (tâche 14, 20 août
-    // 2026). E10 annonce que la sonde serait exécutée « par le processus
-    // CAPTEUR, qui s'arrêterait aussitôt — et le superviseur le relancerait en
-    // boucle ». Cela supposerait que l'ENFANT porte la variable et pas son PÈRE.
-    // Or `superviseur/lanceur.rs` lance ses enfants par `std::process::Command`,
-    // qui hérite de l'environnement du père : si le capteur la porte, le
-    // superviseur la portait déjà — et il s'est donc arrêté à `main.rs:172`,
-    // AVANT d'avoir lancé quoi que ce soit. Il n'existe aucun chemin, dans ce
-    // dépôt, qui pose cette variable sur un enfant sans l'avoir posée sur son
-    // père : `run-agent.sh` écrit un unique script d'amorçage, et `lanceur.rs`
-    // n'ajoute jamais de variable de diagnostic.
+    // ❌ **THE MECHANISM E10 DESCRIBES IS NOT REACHABLE, and writing it here
+    // is better than letting a false threat run** (task 14, 20 August
+    // 2026). E10 announces that the probe would be run "by the SENSOR
+    // process, which would stop at once — and the supervisor would restart it in
+    // a loop". That would assume the CHILD carries the variable and not its PARENT.
+    // Yet `superviseur/lanceur.rs` launches its children through `std::process::Command`,
+    // which inherits the parent's environment: if the sensor carries it, the
+    // supervisor already carried it — and so it stopped at `main.rs:172`,
+    // BEFORE having launched anything. There is no path, in this
+    // repository, that sets this variable on a child without having set it on its
+    // parent: `run-agent.sh` writes a single bootstrap script, and `lanceur.rs`
+    // never adds a diagnostic variable.
     //
-    // ✅ **CE QUI EST VRAI, ET SUFFIT À JUSTIFIER LA MÊME CONSIGNE** : la
-    // variable dégénère TOUT lancement d'agent en sonde, superviseur compris.
-    // Le symptôme n'est pas une boucle mais un silence — aucune session ne
-    // s'établit, et la sortie de la sonde est le seul indice. **La sonde se
-    // lance SEULE**, sans `SUPERVISEUR`.
+    // ✅ **WHAT IS TRUE, AND IS ENOUGH TO JUSTIFY THE SAME INSTRUCTION**: the
+    // variable degenerates ANY agent launch into a probe, supervisor included.
+    // The symptom is not a loop but a silence — no session
+    // is established, and the probe's output is the only clue. **The probe is
+    // run ALONE**, without `SUPERVISEUR`.
     //
-    // ⚠️ Le plan ne pose PAS d'`env_remove` pour cette variable, et sa raison
-    // (« ce serait une convention que les huit `MULTIFENETRE_*` ne suivent
-    // pas ») est faible au regard de la doctrine que `lanceur.rs` porte dans son
-    // propre code — « un ordre de test est une propriété qui change, un
-    // `env_remove` non », écrite le 20 août 2026 en retirant l'identité de
-    // plateforme aux enfants. **Mais la conclusion tient pour une AUTRE raison,
-    // et elle est décisive** : le père s'arrête avant d'atteindre `lanceur.rs`,
-    // donc un `env_remove` posé là ne préviendrait RIEN. Le seul remède qui
-    // mordrait serait de déplacer l'aiguillage des sondes après les branches de
-    // mode, ce qui changerait le contrat de `diagnostics::aiguiller` pour
-    // TOUTES ses variables — sept lues ici même, plus celles que
-    // `multifenetre::aiguiller` lit en queue. Hors périmètre de P1, et nommé
-    // ici plutôt que dormant. ⚠️ Cette phrase annonçait « ses douze
-    // variables » : aucun décompte ne donne douze, et un nombre qu'on ne peut
-    // pas refaire est pire qu'une absence de nombre (revue transverse,
-    // 20 août 2026).
+    // ⚠️ The plan sets NO `env_remove` for this variable, and its reason
+    // ("it would be a convention the eight `MULTIFENETRE_*` do not
+    // follow") is weak in view of the doctrine `lanceur.rs` carries in its
+    // own code — "a test order is a property that changes, an
+    // `env_remove` is not", written on 20 August 2026 when removing the platform
+    // identity from the children. **But the conclusion holds for ANOTHER reason,
+    // and it is decisive**: the parent stops before reaching `lanceur.rs`,
+    // so an `env_remove` set there would prevent NOTHING. The only remedy that
+    // would bite would be to move the probe routing after the mode
+    // branches, which would change the contract of `diagnostics::aiguiller` for
+    // ALL its variables — seven read right here, plus those
+    // `multifenetre::aiguiller` reads at the end. Out of P1's scope, and named
+    // here rather than dormant. ⚠️ This sentence announced "its twelve
+    // variables": no count gives twelve, and a number that cannot be
+    // redone is worse than no number (cross-cutting review,
+    // 20 August 2026).
     #[cfg(windows)]
     if let Ok(secondes) = std::env::var("PRESSE_PAPIER_SONDE") {
         presse_papier::executer(&secondes)?;
         return Ok(true);
     }
 
-    // Sondes du chantier D (capture multi-fenêtres). Placées en dernier :
-    // elles créent leurs propres fenêtres et n'interfèrent avec aucune des
-    // sondes ci-dessus, mais elles perturbent la disposition du bureau.
+    // Probes of work stream D (multi-window capture). Placed last:
+    // they create their own windows and interfere with none of the
+    // probes above, but they disturb the desktop layout.
     #[cfg(windows)]
     if multifenetre::aiguiller()? {
         return Ok(true);

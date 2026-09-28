@@ -1,20 +1,20 @@
-//! Les tests du client de canal, contre un VRAI serveur WebSocket local.
+//! The tests of the channel client, against a REAL local WebSocket server.
 //!
-//! Extraits dans un fichier voisin sur le précédent de
-//! `superviseur/table.rs` : le client tient déjà 285 lignes, et ces tests en
-//! ajoutent autant. Même mécanisme, même raison.
+//! Extracted into a neighbouring file on the precedent of
+//! `superviseur/table.rs`: the client already holds 285 lines, and these tests
+//! add as many. Same mechanism, same reason.
 //!
-//! 🔴 **LA COUPURE EST RÉELLE, ET C'EST TOUT L'INTÉRÊT.** Le faux canal lâche
-//! son socket sans trame de fermeture — un câble arraché, pas un `Close`
-//! poli. Un test qui n'exercerait que le chemin nominal ne dirait RIEN de la
-//! reprise, qui est le seul comportement neuf de ce fichier.
+//! 🔴 **THE CUT IS REAL, AND THAT IS THE WHOLE POINT.** The fake channel drops
+//! its socket without a close frame — a pulled cable, not a polite
+//! `Close`. A test that only exercised the nominal path would say NOTHING about
+//! reconnection, which is the only new behaviour of this file.
 
 use super::*;
-// ⚠️ CES DEUX NOMS ÉTAIENT HÉRITÉS PAR `use super::*`. L'extraction de
-// `session.rs` (sous-bloc G3) a sorti du parent les seuls emplois de production
-// qui les justifiaient, et le parent a cessé de les importer : le module de
-// tests doit donc les nommer lui-même. C'est le prix, minuscule et déclaré,
-// d'un `use super::*` — il rend invisible ce dont on dépend.
+// ⚠️ THESE TWO NAMES WERE INHERITED THROUGH `use super::*`. The extraction of
+// `session.rs` (sub-block G3) took out of the parent the only production uses
+// that justified them, and the parent stopped importing them: the test
+// module must therefore name them itself. It is the price, tiny and declared,
+// of a `use super::*` — it makes invisible what one depends on.
 use futures_util::{SinkExt, StreamExt};
 use proto::plateforme::{DepuisLaPlateforme, IssueLancement, MotifCanal};
 use tokio_tungstenite::tungstenite::Message;
@@ -22,50 +22,54 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
-/// Ce que le faux canal joue sur une connexion donnée.
+/// What the fake channel plays on a given connection.
 enum Scenario {
-    /// Enrôle, puis COUPE net.
+    /// Enrols, then CUTS abruptly.
     EnroleEtCoupe(&'static str),
-    /// Enrôle et tient la connexion ouverte indéfiniment.
+    /// Enrols and keeps the connection open indefinitely.
     EnroleEtTient(&'static str),
-    /// Refuse, avec son motif, puis ferme.
+    /// Refuses, with its reason, then closes.
     Refuse(MotifCanal),
-    /// Refuse en écrivant la trame BRUTE, sans passer par nos encodeurs.
+    /// Refuses by writing the RAW frame, without going through our encoders.
     ///
-    /// 🔴 C'EST LE SEUL MOYEN DE JOUER UNE PLATEFORME D'UNE AUTRE VERSION QUE
-    /// LA NÔTRE. `DepuisLaPlateforme::refus` pose toujours
-    /// `PLATEFORME_VERSION` : un scénario qui l'emploierait ne pourrait pas
-    /// rougir sur le défaut mesuré en recette G1, où les deux bouts ont
-    /// justement des versions différentes.
+    /// 🔴 IT IS THE ONLY WAY TO PLAY A PLATFORM OF A VERSION OTHER THAN
+    /// OURS. `DepuisLaPlateforme::refus` always sets
+    /// `PLATEFORME_VERSION`: a scenario that used it could not
+    /// go red on the defect measured in acceptance run G1, where both ends have
+    /// precisely different versions.
     RefuseBrut(&'static str),
 }
 
-/// Un faux canal `/agent`. Rend son URL et la file des messages
-/// d'enrôlement reçus — un par connexion, ce qui rend le NOMBRE de
-/// connexions observable, et donc la reprise assertable.
+/// A fake `/agent` channel. Returns its URL and the queue of received enrolment
+/// messages — one per connection, which makes the NUMBER of
+/// connections observable, and hence reconnection assertable.
 async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedReceiver<String>) {
-    let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+    let ecoute = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("local listener");
     let port = ecoute.local_addr().expect("adresse locale").port();
     let (tx, rx) = mpsc::unbounded_channel();
     scenarios.reverse();
     tokio::spawn(async move {
         loop {
-            let Ok((flux, _)) = ecoute.accept().await else { return };
+            let Ok((flux, _)) = ecoute.accept().await else {
+                return;
+            };
             let scenario = scenarios.pop();
             let tx = tx.clone();
             tokio::spawn(async move {
                 let mut ws = tokio_tungstenite::accept_async(flux)
                     .await
-                    .expect("montée WebSocket");
+                    .expect("WebSocket upgrade");
                 if let Some(Ok(Message::Text(texte))) = ws.next().await {
                     let _ = tx.send(texte);
                 }
                 match scenario {
                     Some(Scenario::EnroleEtCoupe(prefixe)) => {
                         envoyer_enrole(&mut ws, prefixe).await;
-                        // Laisser l'octet partir avant d'arracher le câble :
-                        // sans cette pause, le test mesurerait une course de
-                        // TCP et non la reprise.
+                        // Let the byte go before pulling the cable:
+                        // without this pause, the test would measure a
+                        // TCP race and not reconnection.
                         tokio::time::sleep(Duration::from_millis(50)).await;
                         drop(ws);
                     }
@@ -80,14 +84,14 @@ async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedRec
                     }
                     Some(Scenario::Refuse(motif)) => {
                         let texte = serde_json::to_string(&DepuisLaPlateforme::refus(motif))
-                            .expect("sérialisation du refus");
+                            .expect("serializing the refusal");
                         let _ = ws.send(Message::Text(texte)).await;
                         tokio::time::sleep(Duration::from_millis(50)).await;
                         drop(ws);
                     }
-                    // Connexion en trop : le test l'observe par la file, et
-                    // c'est justement ce qu'un refus de version ne doit
-                    // jamais produire.
+                    // One connection too many: the test observes it through the queue, and
+                    // it is precisely what a version refusal must
+                    // never produce.
                     None => std::future::pending::<()>().await,
                 }
             });
@@ -100,19 +104,25 @@ async fn envoyer_enrole<S>(ws: &mut tokio_tungstenite::WebSocketStream<S>, prefi
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
-    let texte = serde_json::to_string(&DepuisLaPlateforme::enrole(prefixe, "jeton-jwt", 1_787_136_774_000))
-        .expect("sérialisation de l'enrôlement");
-    ws.send(Message::Text(texte)).await.expect("envoi de l'enrôlement");
+    let texte = serde_json::to_string(&DepuisLaPlateforme::enrole(
+        prefixe,
+        "jeton-jwt",
+        1_787_136_774_000,
+    ))
+    .expect("serializing the enrolment");
+    ws.send(Message::Text(texte))
+        .await
+        .expect("sending the enrolment");
 }
 
-/// Attend que l'identité prenne une valeur différente de celle déjà lue.
+/// Waits for the identity to take a value different from the one already read.
 async fn prochain_prefixe(canal: &mut Canal) -> String {
     loop {
         canal
             .identite
             .changed()
             .await
-            .expect("le fil de reprise a renoncé au lieu de reprendre");
+            .expect("the reconnection thread gave up instead of reconnecting");
         let courante = canal.identite.borrow_and_update().clone();
         if let Some(identite) = courante {
             return identite.prefixe;
@@ -121,18 +131,18 @@ async fn prochain_prefixe(canal: &mut Canal) -> String {
 }
 
 #[test]
-fn l_url_du_canal_ne_double_jamais_la_barre() {
+fn the_channel_url_never_doubles_the_slash() {
     assert_eq!(url_du_canal("ws://h:8080"), "ws://h:8080/agent");
     assert_eq!(url_du_canal("ws://h:8080/"), "ws://h:8080/agent");
 }
 
-/// 🔴 LE TEST DE LA REPRISE. Mutation qui le rougit : remplacer la boucle de
-/// `ouvrir` par un seul appel à `une_session` — l'agent perdrait son canal à
-/// la première coupure, `vu_a` cesserait d'avancer, et la plateforme
-/// déclarerait la VM `injoignable` **définitivement**, alors que le réseau
-/// est revenu depuis longtemps.
+/// 🔴 THE RECONNECTION TEST. Mutation that turns it red: replace the loop of
+/// `ouvrir` with a single call to `une_session` — the agent would lose its channel at
+/// the first cut, `vu_a` would stop advancing, and the platform
+/// would declare the VM `injoignable` **permanently**, while the network
+/// has been back for a long time.
 #[tokio::test]
-async fn une_coupure_reelle_du_socket_fait_reprendre_le_canal() {
+async fn a_real_socket_cut_makes_the_channel_reconnect() {
     let (url, mut connexions) = faux_canal(vec![
         Scenario::EnroleEtCoupe("PREMIER"),
         Scenario::EnroleEtTient("SECOND"),
@@ -142,66 +152,75 @@ async fn une_coupure_reelle_du_socket_fait_reprendre_le_canal() {
 
     let premiere = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
         .await
-        .expect("aucune identité en 5 s")
-        .expect("la boucle a renoncé avant tout enrôlement");
+        .expect("no identity within 5 s")
+        .expect("the loop gave up before any enrolment");
     assert_eq!(premiere.prefixe, "PREMIER");
 
     let seconde = tokio::time::timeout(Duration::from_secs(5), prochain_prefixe(&mut canal))
         .await
-        .expect("aucune reprise en 5 s après la coupure : le canal ne se reprend PAS");
+        .expect("no reconnection within 5 s after the cut: the channel does NOT reconnect");
     assert_eq!(seconde, "SECOND");
 
-    // Et c'est bien une SECONDE connexion, avec le même enrôlement : la
-    // reprise se re-présente, elle ne se contente pas de battre.
-    let premier = connexions.recv().await.expect("premier enrôlement");
-    let second = connexions.recv().await.expect("second enrôlement");
-    assert!(premier.contains(r#""vm":"vm-1""#), "enrôlement reçu : {premier}");
-    assert_eq!(premier, second, "la reprise doit re-présenter le MÊME enrôlement");
+    // And it is indeed a SECOND connection, with the same enrolment: the
+    // reconnection presents itself again, it does not merely beat.
+    let premier = connexions.recv().await.expect("first enrolment");
+    let second = connexions.recv().await.expect("second enrolment");
+    assert!(
+        premier.contains(r#""vm":"vm-1""#),
+        "enrolment received: {premier}"
+    );
+    assert_eq!(
+        premier, second,
+        "the reconnection must present the SAME enrolment again"
+    );
 }
 
-/// 🔴 L'EXCEPTION DE D4, sens 1. Mutation qui le rougit : rendre
-/// `Fin::Reprenable` sur `MotifCanal::Version` — une incompatibilité de
-/// version se déguiserait alors en boucle de reconnexion, qui est le mode de
-/// panne le plus coûteux à diagnostiquer de tout ce dépôt.
+/// 🔴 D4'S EXCEPTION, direction 1. Mutation that turns it red: return
+/// `Fin::Reprenable` on `MotifCanal::Version` — a version incompatibility
+/// would then disguise itself as a reconnection loop, which is the most
+/// costly failure mode to diagnose in this whole repository.
 ///
-/// ⚠️ **DEUX TESTS ET NON UN SEUL À DEUX ASSERTIONS** : `expect` interrompt au
-/// premier échec, et la seconde moitié — « aucune seconde connexion » — ne
-/// serait alors JAMAIS éprouvée seule. C'est la leçon ①A-bis de P2, appliquée
-/// d'avance. Mesuré : sous la mutation, les deux rougissent, chacun sur son
-/// propre message.
+/// ⚠️ **TWO TESTS AND NOT A SINGLE ONE WITH TWO ASSERTIONS**: `expect` stops at
+/// the first failure, and the second half — "no second connection" — would
+/// then NEVER be tested alone. It is lesson ①A-bis of P2, applied
+/// in advance. Measured: under the mutation, both go red, each on its
+/// own message.
 #[tokio::test]
-async fn un_refus_de_version_rend_l_attente_vaine() {
+async fn a_version_refusal_makes_the_wait_pointless() {
     let (url, _connexions) = faux_canal(vec![Scenario::Refuse(MotifCanal::Version)]).await;
     let mut canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
     let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
         .await
-        .expect("la boucle doit RENONCER, pas attendre indéfiniment");
-    assert!(verdict.is_none(), "un refus de version doit rendre l'attente vaine");
-}
-
-/// L'autre moitié : le canal ne se rouvre pas.
-#[tokio::test]
-async fn un_refus_de_version_n_ouvre_aucune_seconde_connexion() {
-    let (url, mut connexions) = faux_canal(vec![Scenario::Refuse(MotifCanal::Version)]).await;
-    let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
-
-    connexions.recv().await.expect("premier enrôlement");
-    // Le repli minimal (500 ms) est écoulé trois fois : s'il devait y avoir
-    // une seconde tentative, elle serait là.
-    tokio::time::sleep(Duration::from_millis(1_500)).await;
+        .expect("the loop must GIVE UP, not wait forever");
     assert!(
-        connexions.try_recv().is_err(),
-        "une seconde connexion a eu lieu : le refus de version a été réessayé"
+        verdict.is_none(),
+        "a version refusal must make the wait pointless"
     );
 }
 
-/// 🔴 L'EXCEPTION DE D4, sens 2 — et c'est l'autre moitié, sans laquelle
-/// « ne pas réessayer » pourrait être obtenu en ne réessayant JAMAIS rien.
-/// Un enrôlement refusé cesse de l'être dès que l'exploitant enrôle la VM,
-/// sans que personne ne redémarre l'agent.
+/// The other half: the channel does not reopen.
 #[tokio::test]
-async fn un_refus_d_enrolement_se_reessaie() {
+async fn a_version_refusal_opens_no_second_connection() {
+    let (url, mut connexions) = faux_canal(vec![Scenario::Refuse(MotifCanal::Version)]).await;
+    let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
+
+    connexions.recv().await.expect("first enrolment");
+    // The minimal backoff (500 ms) has elapsed three times: if there were to be
+    // a second attempt, it would be there.
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    assert!(
+        connexions.try_recv().is_err(),
+        "a second connection took place: the version refusal was retried"
+    );
+}
+
+/// 🔴 D4'S EXCEPTION, direction 2 — and it is the other half, without which
+/// "not retrying" could be obtained by NEVER retrying anything.
+/// A refused enrolment stops being refused as soon as the operator enrols the VM,
+/// without anyone restarting the agent.
+#[tokio::test]
+async fn an_enrolment_refusal_is_retried() {
     let (url, _connexions) = faux_canal(vec![
         Scenario::Refuse(MotifCanal::Enrolement),
         Scenario::EnroleEtTient("APRES-ENROLEMENT"),
@@ -211,30 +230,40 @@ async fn un_refus_d_enrolement_se_reessaie() {
 
     let identite = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
         .await
-        .expect("aucune reprise en 5 s après un refus d'enrôlement")
-        .expect("la boucle a renoncé sur un refus qui n'est PAS `version`");
+        .expect("no reconnection within 5 s after an enrolment refusal")
+        .expect("the loop gave up on a refusal that is NOT `version`");
     assert_eq!(identite.prefixe, "APRES-ENROLEMENT");
 }
 
 // ---------------------------------------------------------------------------
-// Sous-bloc G1 — le canal devient BIDIRECTIONNEL.
+// Sub-block G1 — the channel becomes BIDIRECTIONAL.
 // ---------------------------------------------------------------------------
 
-/// Un scénario qui enrôle, tient, et RENVOIE tout ce que l'agent lui pousse.
+/// A scenario that enrols, holds, and SENDS BACK everything the agent pushes to it.
 ///
-/// Le harnais ci-dessus ne lit qu'UN message par connexion — celui de
-/// l'enrôlement — et ne peut donc rien dire d'un catalogue émis après coup.
-/// Celui-ci ouvre en plus un canal d'ordres que le test alimente.
+/// The harness above only reads ONE message per connection — the one of
+/// enrolment — and can therefore say nothing about a catalogue emitted afterwards.
+/// This one additionally opens an order channel that the test feeds.
 pub(super) async fn faux_canal_bidirectionnel(
     prefixe: &'static str,
-) -> (String, mpsc::UnboundedReceiver<String>, mpsc::UnboundedSender<String>) {
-    let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+) -> (
+    String,
+    mpsc::UnboundedReceiver<String>,
+    mpsc::UnboundedSender<String>,
+) {
+    let ecoute = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("local listener");
     let port = ecoute.local_addr().expect("adresse locale").port();
     let (recus_tx, recus_rx) = mpsc::unbounded_channel();
     let (ordres_tx, mut ordres_rx) = mpsc::unbounded_channel::<String>();
     tokio::spawn(async move {
-        let Ok((flux, _)) = ecoute.accept().await else { return };
-        let mut ws = tokio_tungstenite::accept_async(flux).await.expect("montée WebSocket");
+        let Ok((flux, _)) = ecoute.accept().await else {
+            return;
+        };
+        let mut ws = tokio_tungstenite::accept_async(flux)
+            .await
+            .expect("WebSocket upgrade");
         if let Some(Ok(Message::Text(texte))) = ws.next().await {
             let _ = recus_tx.send(texte);
         }
@@ -262,7 +291,7 @@ pub(super) async fn attendre_message(
 ) -> String {
     let attente = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
-            let texte = recus.recv().await.expect("le faux canal s'est tu");
+            let texte = recus.recv().await.expect("the fake channel went silent");
             if predicat(&texte) {
                 return texte;
             }
@@ -272,15 +301,17 @@ pub(super) async fn attendre_message(
 }
 
 #[tokio::test]
-async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
-    // 🔴 LA ROUGE : ne pas drainer la file dans le `select!`. Elle grossirait
-    // sans fin, l'agent croirait avoir émis son catalogue, et RIEN ne le
-    // dirait — ni erreur, ni trace, la plateforme resterait simplement vide.
+async fn a_message_pushed_into_the_queue_reaches_the_server() {
+    // 🔴 THE RED: not draining the queue in the `select!`. It would grow
+    // endlessly, the agent would believe it had emitted its catalogue, and NOTHING would
+    // say so — neither error nor trace, the platform would simply stay empty.
     let (url, mut recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
+    canal.attendre_identite().await.expect("enrolment");
 
-    canal.emetteur().emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
+    canal
+        .emetteur()
+        .emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
     let texte = attendre_message(&mut recus, |t| t.contains("catalogue")).await;
     assert_eq!(
         texte,
@@ -289,16 +320,16 @@ async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
 }
 
 #[tokio::test]
-async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session() {
-    // 🔴 DEUX ROUGES EN UNE. Oublier le bras `Lancer` le ferait tomber dans le
-    // bras `Err` (« message illisible »), qui FERME la session : un ordre
-    // parfaitement valide déclencherait une reprise en boucle. Le second
-    // `assert` mesure que la session survit — sans lui, un bras qui
-    // journaliserait puis reviendrait `Fin::Reprenable` passerait le premier.
+async fn a_launch_order_reaches_the_consumer_and_does_not_close_the_session() {
+    // 🔴 TWO REDS IN ONE. Forgetting the `Lancer` arm would make it fall into the
+    // `Err` arm ("unreadable message"), which CLOSES the session: a
+    // perfectly valid order would trigger a reconnection loop. The second
+    // `assert` measures that the session survives — without it, an arm that
+    // logged then returned `Fin::Reprenable` would pass the first.
     let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
-    let mut recu_ordres = canal.ordres().expect("la file d'ordres n'est prise qu'une fois");
+    canal.attendre_identite().await.expect("enrolment");
+    let mut recu_ordres = canal.ordres().expect("the order queue is taken only once");
 
     ordres
         .send(r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#.into())
@@ -306,12 +337,20 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
 
     let ordre = tokio::time::timeout(Duration::from_secs(5), recu_ordres.recv())
         .await
-        .expect("aucun ordre reçu en 5 s")
-        .expect("la file d'ordres est fermée");
-    assert_eq!(ordre, Ordre::Lancer { demande: "d-7".into(), cle: "a1b2".into() });
+        .expect("no order received within 5 s")
+        .expect("the order queue is closed");
+    assert_eq!(
+        ordre,
+        Ordre::Lancer {
+            demande: "d-7".into(),
+            cle: "a1b2".into()
+        }
+    );
 
-    // La session vit toujours : l'émission suivante arrive.
-    canal.emetteur().emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
+    // The session is still alive: the next emission arrives.
+    canal
+        .emetteur()
+        .emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
     let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
     assert_eq!(
         texte,
@@ -320,38 +359,47 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
 }
 
 #[tokio::test]
-async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tuer_le_canal() {
-    // 🔴 C'EST LE COMPORTEMENT VOULU, ET CE TEST L'ASSÈNE. Le rendre bloquant
-    // ferait de la file une fuite mémoire sur un canal qui peut rester coupé
-    // des heures ; le rendre fatal tuerait le canal sur une coupure réseau
-    // ordinaire. La perte est acceptable pour une seule raison, écrite auprès
-    // de la file : l'agent renvoie son catalogue COMPLET à chaque
-    // réenrôlement, donc toute divergence a un terme.
+async fn a_message_queued_while_the_socket_is_down_is_lost_without_killing_the_channel() {
+    // 🔴 IT IS THE INTENDED BEHAVIOUR, AND THIS TEST HAMMERS IT HOME. Making it blocking
+    // would turn the queue into a memory leak on a channel that can stay cut
+    // for hours; making it fatal would kill the channel on an ordinary network
+    // cut. The loss is acceptable for a single reason, written next to
+    // the queue: the agent sends its COMPLETE catalogue again at each
+    // re-enrolment, so any divergence has an end.
     let (url, mut recus) = faux_canal(vec![
         Scenario::EnroleEtCoupe("AAA"),
         Scenario::EnroleEtTient("BBB"),
     ])
     .await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    assert_eq!(canal.attendre_identite().await.expect("1er enrôlement").prefixe, "AAA");
+    assert_eq!(
+        canal
+            .attendre_identite()
+            .await
+            .expect("1st enrolment")
+            .prefixe,
+        "AAA"
+    );
 
-    // La coupure survient ; on pousse pendant qu'il n'y a plus de socket.
+    // The cut occurs; we push while there is no socket anymore.
     for _ in 0..64 {
-        canal.emetteur().emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
+        canal
+            .emetteur()
+            .emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
     }
 
-    // Le canal reprend malgré tout : c'est la preuve qu'aucune émission n'a
-    // été fatale, et le second enrôlement l'atteste.
+    // The channel reconnects all the same: it is the proof that no emission was
+    // fatal, and the second enrolment attests it.
     assert_eq!(prochain_prefixe(&mut canal).await, "BBB");
     let _ = recus.recv().await;
 }
 
 #[tokio::test]
-async fn l_identite_est_reannoncee_a_chaque_reenrolement() {
-    // 🔴 LA ROUGE : ne pousser l'identité qu'UNE fois. La boucle de découverte
-    // observe ce `watch` pour savoir qu'un réenrôlement a eu lieu, et c'est
-    // ce qui la fait renvoyer le catalogue COMPLET. Sans ce second envoi, une
-    // plateforme redémarrée resterait divergente SANS TERME.
+async fn the_identity_is_reannounced_at_each_reenrolment() {
+    // 🔴 THE RED: pushing the identity only ONCE. The discovery loop
+    // observes this `watch` to know that a re-enrolment took place, and it is
+    // what makes it send the COMPLETE catalogue again. Without this second send, a
+    // restarted platform would stay divergent WITHOUT END.
     let (url, _recus) = faux_canal(vec![
         Scenario::EnroleEtCoupe("AAA"),
         Scenario::EnroleEtTient("BBB"),
@@ -363,64 +411,70 @@ async fn l_identite_est_reannoncee_a_chaque_reenrolement() {
 }
 
 #[tokio::test]
-async fn la_file_d_ordres_ne_se_prend_qu_une_fois() {
-    // Deux consommateurs se voleraient les ordres l'un à l'autre, et chacun
-    // n'en verrait qu'une partie — un défaut dont le symptôme serait « un
-    // lancement sur deux ne part pas ».
+async fn the_order_queue_is_taken_only_once() {
+    // Two consumers would steal orders from one another, and each
+    // would only see part of them — a defect whose symptom would be "one
+    // launch out of two does not go".
     let (url, _recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
+    canal.attendre_identite().await.expect("enrolment");
     assert!(canal.ordres().is_some());
     assert!(canal.ordres().is_none());
 }
 
 // ---------------------------------------------------------------------------
-// Correction du 20 août 2026 — le refus d'une plateforme d'une AUTRE version.
+// Fix of 20 August 2026 — the refusal of a platform of ANOTHER version.
 // ---------------------------------------------------------------------------
 
-/// 🔴 LA ROUGE DE BOUT EN BOUT DU DÉFAUT 2. La recette G1 a relevé, sur un
-/// agent v1 face à une plateforme v2 : **0** ligne « la plateforme REFUSE la
-/// version » et **10** reprises, jusqu'au palier de 30 s, sans terme. Ce test
-/// joue la trame telle qu'elle arrive sur le fil — version de l'ÉMETTEUR, pas
-/// la nôtre — et exige que la boucle RENONCE.
+/// 🔴 THE END-TO-END RED OF DEFECT 2. Acceptance run G1 noted, on a
+/// v1 agent facing a v2 platform: **0** "the platform REFUSES the
+/// version" lines and **10** reconnections, up to the 30 s step, without end. This test
+/// plays the frame as it arrives on the wire — the SENDER's version, not
+/// ours — and requires the loop to GIVE UP.
 #[tokio::test]
-async fn un_refus_de_version_emis_dans_une_autre_version_rend_l_attente_vaine() {
-    let (url, _connexions) =
-        faux_canal(vec![Scenario::RefuseBrut(r#"{"type":"refus","v":97,"motif":"version"}"#)]).await;
+async fn a_version_refusal_sent_in_another_version_makes_the_wait_vain() {
+    let (url, _connexions) = faux_canal(vec![Scenario::RefuseBrut(
+        r#"{"type":"refus","v":97,"motif":"version"}"#,
+    )])
+    .await;
     let mut canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
     let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
         .await
-        .expect("la boucle doit RENONCER, pas boucler : c'est le défaut mesuré en recette G1");
+        .expect(
+            "the loop must GIVE UP, not loop: this is the defect measured in acceptance run G1",
+        );
     assert!(
         verdict.is_none(),
-        "un refus de version émis dans une autre version doit rendre l'attente vaine"
+        "a version refusal sent in another version must make the wait pointless"
     );
 }
 
-/// L'autre moitié, écrite en deux tests pour la raison déjà donnée plus haut
-/// (`expect` interrompt au premier échec) : aucune seconde connexion.
+/// The other half, written as two tests for the reason already given above
+/// (`expect` stops at the first failure): no second connection.
 #[tokio::test]
-async fn un_refus_de_version_emis_dans_une_autre_version_n_ouvre_aucune_seconde_connexion() {
-    let (url, mut connexions) =
-        faux_canal(vec![Scenario::RefuseBrut(r#"{"type":"refus","v":97,"motif":"version"}"#)]).await;
+async fn a_version_refusal_sent_in_another_version_opens_no_second_connection() {
+    let (url, mut connexions) = faux_canal(vec![Scenario::RefuseBrut(
+        r#"{"type":"refus","v":97,"motif":"version"}"#,
+    )])
+    .await;
     let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
-    connexions.recv().await.expect("premier enrôlement");
+    connexions.recv().await.expect("first enrolment");
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     assert!(
         connexions.try_recv().is_err(),
-        "une seconde connexion a eu lieu : c'est la boucle sans terme de la recette G1"
+        "a second connection took place: this is the endless loop of acceptance run G1"
     );
 }
 
-/// Un motif qu'AUCUNE version de ce dépôt ne connaît doit rester lisible, se
-/// journaliser tel quel, et se réessayer — c'est la classe « le pair peut s'en
-/// relever ». Sans cette tolérance, le remède ci-dessus ne tiendrait que
-/// jusqu'au premier motif ajouté par une version future, et le mode de panne
-/// reviendrait à l'identique.
+/// A reason that NO version of this repository knows must stay readable, be
+/// logged as is, and be retried — it is the "the peer can recover from it"
+/// class. Without this tolerance, the remedy above would only hold until
+/// the first reason added by a future version, and the failure mode
+/// would come back identically.
 #[tokio::test]
-async fn un_refus_a_motif_inconnu_se_reessaie_au_lieu_de_devenir_illisible() {
+async fn a_refusal_with_an_unknown_reason_is_retried_instead_of_becoming_unreadable() {
     let (url, _connexions) = faux_canal(vec![
         Scenario::RefuseBrut(r#"{"type":"refus","v":98,"motif":"quota-depasse"}"#),
         Scenario::EnroleEtTient("APRES-MOTIF-INCONNU"),
@@ -430,7 +484,7 @@ async fn un_refus_a_motif_inconnu_se_reessaie_au_lieu_de_devenir_illisible() {
 
     let identite = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
         .await
-        .expect("aucune reprise en 5 s après un refus à motif inconnu")
-        .expect("la boucle a renoncé sur un motif qui n'est PAS `version`");
+        .expect("no reconnection within 5 s after a refusal with an unknown reason")
+        .expect("the loop gave up on a reason that is NOT `version`");
     assert_eq!(identite.prefixe, "APRES-MOTIF-INCONNU");
 }

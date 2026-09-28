@@ -1,15 +1,15 @@
-//! La métrologie du banc, partagée par ses deux protocoles.
+//! The bench's metrology, shared by its two protocols.
 //!
-//! Extraite de `banc.rs` au moment où un second protocole est apparu (le
-//! montage multi-sorties de `paralleles.rs`). Le partage n'est pas un confort
-//! d'écriture : c'est ce qui rend les chiffres des deux bancs comparables. Un
-//! second banc qui aurait sa propre boucle de comptage divergerait, et l'on ne
-//! saurait plus si un écart de cadence vient de la voie mesurée ou du banc qui
-//! la mesure.
+//! Extracted from `banc.rs` when a second protocol appeared (the
+//! multi-output set-up of `paralleles.rs`). Sharing is not a writing
+//! convenience: it is what makes the figures of both benches comparable. A
+//! second bench with its own counting loop would diverge, and we would
+//! no longer know whether a frame rate gap comes from the measured path or from the bench that
+//! measures it.
 //!
-//! Ce qui n'est PAS ici : la mise en scène du recouvrement et la porte
-//! éliminatoire (propres au protocole mono-sortie, restées dans `banc.rs`), et
-//! la rotation du contrôle (propre au protocole multi-sorties, dans
+//! What is NOT here: the staging of the covering and the elimination
+//! gate (specific to the single-output protocol, left in `banc.rs`), and
+//! the rotation of the check (specific to the multi-output protocol, in
 //! `paralleles.rs`).
 
 use std::time::{Duration, Instant};
@@ -20,89 +20,93 @@ use crate::capture::CapturedFrame;
 use crate::mire;
 
 use super::mires::Mires;
-use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 use super::voies::VoieDeCapture;
+use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
-/// Durée de chaque passe.
+/// Duration of each pass.
 pub(super) const DUREE_PASSE: Duration = Duration::from_secs(10);
-/// Cadence de journalisation des compteurs.
+/// Logging cadence of the counters.
 pub(super) const PERIODE_JOURNAL: Duration = Duration::from_secs(1);
-/// Cadence de battement du chien de garde du pilote d'affichage virtuel.
+/// Beat cadence of the virtual display driver's watchdog.
 ///
-/// Une seconde est le tiers de `delai = 3` lu en secondes, la lecture la plus
-/// défavorable de ce champ d'unité inconnue (même raisonnement que
-/// `montee::CADENCE_PING`). Le garde ne change pas de nature selon la passe qui
-/// court : une seule valeur pour toutes.
+/// One second is a third of `delai = 3` read in seconds, the most
+/// unfavourable reading of this field of unknown unit (same reasoning as
+/// `montee::CADENCE_PING`). The guard does not change nature depending on the pass that
+/// is running: a single value for all.
 const CADENCE_PING: Duration = Duration::from_secs(1);
 
-/// Bat le chien de garde du pilote à cadence fixe — **et mesure ce qu'elle a
-/// réellement battu**.
+/// Beats the driver's watchdog at a fixed cadence — **and measures what it
+/// really beat**.
 ///
-/// Le second rôle n'est pas décoratif. La ronde 1 a daté sur le journal un trou
-/// de 11,1 s sans un seul ping (passe témoin et ouverture des duplications),
-/// que rien dans le programme ne signalait : les pings n'étant pas tracés, un
-/// trou ne se voyait qu'en recoupant à la main des horodatages de lignes
-/// voisines. `intervalle_max` rend ce défaut OBSERVABLE d'un seul nombre, et
-/// c'est ce nombre qui prouve — ou non — que le trou est fermé.
+/// The second role is not decorative. Round 1 dated in the log a gap
+/// of 11.1 s without a single ping (control pass and opening of the duplications),
+/// which nothing in the program reported: pings not being traced, a
+/// gap could only be seen by cross-checking by hand the timestamps of neighbouring
+/// lines. `intervalle_max` makes this defect OBSERVABLE through a single number, and
+/// it is this number that proves — or not — that the gap is closed.
 ///
-/// Un compteur agrégé, journalisé une fois en fin de mesure : tracer chaque
-/// ping donnerait une ligne par seconde pour rien.
+/// An aggregated counter, logged once at the end of the measurement: tracing each
+/// ping would give one line per second for nothing.
 pub(super) struct Garde<'p> {
     pilote: &'p PiloteParIoctl,
-    dernier: Instant,
+    last: Instant,
     intervalle_max: Duration,
 }
 
 impl<'p> Garde<'p> {
-    /// À construire juste après le dernier ping connu — typiquement au retour
-    /// d'`attendre_en_pinguant`.
+    /// To be built right after the last known ping — typically on return
+    /// from `attendre_en_pinguant`.
     ///
-    /// **Précision d'énoncé, corrigée en revue finale** : `dernier` est posé à
-    /// `Instant::now()` ICI, donc la couture entre le dernier ping réel et
-    /// cette construction **échappe au compteur** — elle n'est pas *comptée*,
-    /// elle est rendue *négligeable* par l'adjacence des deux appels (66 µs au
-    /// relevé du chantier des duplications parallèles). Compter cette couture
-    /// exigerait qu'`attendre_en_pinguant` rende l'instant de son dernier ping.
-    pub(super) fn nouvelle(pilote: &'p PiloteParIoctl) -> Self {
-        Self { pilote, dernier: Instant::now(), intervalle_max: Duration::ZERO }
+    /// **Wording precision, corrected in the final review**: `last` is set to
+    /// `Instant::now()` HERE, so the seam between the last real ping and
+    /// this construction **escapes the counter** — it is not *counted*,
+    /// it is made *negligible* by the adjacency of the two calls (66 µs in the
+    /// survey of the parallel duplications work stream). Counting this seam
+    /// would require `attendre_en_pinguant` to return the instant of its last ping.
+    pub(super) fn new(pilote: &'p PiloteParIoctl) -> Self {
+        Self {
+            pilote,
+            last: Instant::now(),
+            intervalle_max: Duration::ZERO,
+        }
     }
 
-    /// Bat sans condition, et retient l'écart depuis le battement précédent.
+    /// Beats unconditionally, and records the gap since the previous beat.
     pub(super) fn battre(&mut self) -> Result<()> {
         let maintenant = Instant::now();
-        self.intervalle_max = self.intervalle_max.max(maintenant - self.dernier);
+        self.intervalle_max = self.intervalle_max.max(maintenant - self.last);
         self.pilote.pinguer()?;
-        self.dernier = maintenant;
+        self.last = maintenant;
         Ok(())
     }
 
-    /// Bat si la cadence l'exige, sans rien faire sinon.
+    /// Beats if the cadence requires it, doing nothing otherwise.
     pub(super) fn battre_si_du(&mut self) -> Result<()> {
-        if self.dernier.elapsed() >= CADENCE_PING {
+        if self.last.elapsed() >= CADENCE_PING {
             self.battre()?;
         }
         Ok(())
     }
 
-    /// Le plus grand écart entre deux battements, **y compris celui qui court
-    /// depuis le dernier** : un trou ouvert à l'instant de la lecture compte
-    /// autant qu'un trou refermé, sans quoi le dernier segment de la mesure
-    /// échapperait au contrôle.
+    /// The largest gap between two beats, **including the one running
+    /// since the last**: a gap open at the instant of reading counts
+    /// as much as a closed gap, otherwise the last segment of the measurement
+    /// would escape the check.
     pub(super) fn intervalle_max(&self) -> Duration {
-        self.intervalle_max.max(self.dernier.elapsed())
+        self.intervalle_max.max(self.last.elapsed())
     }
 }
 
-/// Décompte des verdicts rendus sur la mire 0, par NATURE et non en bloc.
+/// Tally of the verdicts given on test pattern 0, by NATURE and not as a lump.
 ///
-/// Un simple compte de « faux » ne suffit pas à la mesure ③ : une image NOIRE
-/// et une image portant la mire du DESSUS sont deux résultats opposés. La
-/// première dirait que Windows ne compose pas une sortie virtuelle sans écran
-/// attaché — et l'hypothèse fondatrice de la voie « un moniteur virtuel par
-/// fenêtre » tomberait. La seconde dirait qu'il la compose parfaitement, et que
-/// c'est la duplication qui ne sait pas défaire un recouvrement — ce qu'on
-/// savait déjà du bureau physique. Les confondre sous un même compteur rendrait
-/// la mesure ininterprétable.
+/// A mere count of "wrong" is not enough for measurement ③: a BLACK image
+/// and an image carrying the pattern ON TOP are two opposite results. The
+/// first would say that Windows does not compose a virtual output without an attached
+/// screen — and the founding hypothesis of the "one virtual monitor per
+/// window" path would fall. The second would say that it composes it perfectly, and that
+/// it is the duplication that cannot undo a covering — which we
+/// already knew from the physical desktop. Merging them under one counter would make
+/// the measurement uninterpretable.
 #[derive(Default, Debug)]
 pub(super) struct Verdicts {
     pub(super) justes: u64,
@@ -129,36 +133,36 @@ impl Verdicts {
 pub(super) struct Compteurs {
     pub(super) images: Vec<u64>,
     pub(super) unites: Vec<u64>,
-    /// Verdicts rendus AVANT que le recouvrement ne soit posé : la mire 0 est
-    /// alors dégagée, et c'est la seule fenêtre du banc où se lise « cette voie
-    /// capture-t-elle simplement cette fenêtre ». Sur le bureau physique la
-    /// réponse allait de soi ; sur une sortie virtuelle, c'est la question.
-    pub(super) avant_recouvrement: Verdicts,
-    /// Verdicts rendus une fois la mire 0 recouverte : la porte éliminatoire.
+    /// Verdicts given BEFORE the covering is in place: test pattern 0 is
+    /// then unobstructed, and it is the only window of the bench where one reads "does this path
+    /// simply capture this window". On the physical desktop the
+    /// answer went without saying; on a virtual output, it is the question.
+    pub(super) before_overlap: Verdicts,
+    /// Verdicts given once test pattern 0 is covered: the elimination gate.
     pub(super) apres_recouvrement: Verdicts,
 }
 
 impl Compteurs {
-    pub(super) fn nouveaux(nombre: usize) -> Self {
+    pub(super) fn nouveaux(count: usize) -> Self {
         Self {
-            images: vec![0; nombre],
-            unites: vec![0; nombre],
-            avant_recouvrement: Verdicts::default(),
+            images: vec![0; count],
+            unites: vec![0; count],
+            before_overlap: Verdicts::default(),
             apres_recouvrement: Verdicts::default(),
         }
     }
 }
 
-/// Passe témoin : les mires peignent, rien ne capture.
+/// Control pass: the test patterns paint, nothing captures.
 ///
-/// `garde` bat le chien de garde du pilote pendant la passe. `None` pour le
-/// protocole mono-sortie (`banc.rs`), qui ne détient aucun pilote ; `Some` pour
-/// le protocole multi-sorties (`paralleles.rs`), dont les N sorties vivent sous
-/// un chien de garde d'unité INCONNUE — **la seconde n'est pas exclue**. Sans
-/// ce battement, cette passe est un trou de dix secondes pendant lequel le
-/// pilote peut reprendre ses sorties, et la mesure suivante capturerait du noir
-/// sans que rien ne dise pourquoi (trou de 11,1 s daté au journal de la
-/// ronde 1).
+/// `garde` beats the driver's watchdog during the pass. `None` for the
+/// single-output protocol (`banc.rs`), which holds no driver; `Some` for
+/// the multi-output protocol (`paralleles.rs`), whose N outputs live under
+/// a watchdog of UNKNOWN unit — **the second is not ruled out**. Without
+/// this beat, this pass is a ten-second gap during which the
+/// driver can take back its outputs, and the next measurement would capture black
+/// without anything saying why (11.1 s gap dated in the log of
+/// round 1).
 pub(super) fn passe_temoin(mires: &mut Mires, mut garde: Option<&mut Garde<'_>>) -> Result<()> {
     let debut = Instant::now();
     let mut trames = 0u64;
@@ -172,35 +176,39 @@ pub(super) fn passe_temoin(mires: &mut Mires, mut garde: Option<&mut Garde<'_>>)
     }
     let secondes = debut.elapsed().as_secs_f64();
     tracing::info!(
-        mires = mires.nombre(),
+        mires = mires.count(),
         trames,
         cadence = trames as f64 / secondes,
-        "passe TÉMOIN — cadence de peinture sans capture"
+        "CONTROL pass — paint cadence without capture"
     );
     Ok(())
 }
 
-pub(super) fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compteurs) {
+pub(super) fn journaliser(passe: &str, voie: &str, count: u8, compteurs: &Compteurs) {
     let secondes = DUREE_PASSE.as_secs_f64();
-    let cadences: Vec<f64> = compteurs.images.iter().map(|n| *n as f64 / secondes).collect();
+    let cadences: Vec<f64> = compteurs
+        .images
+        .iter()
+        .map(|n| *n as f64 / secondes)
+        .collect();
     tracing::info!(
         passe,
         voie,
-        nombre,
+        count,
         ?cadences,
         unites = ?compteurs.unites,
         verdicts_faux = compteurs.apres_recouvrement.faux(),
-        mire0_avant_recouvrement = ?compteurs.avant_recouvrement,
+        pattern0_before_overlap = ?compteurs.before_overlap,
         mire0_apres_recouvrement = ?compteurs.apres_recouvrement,
-        "passe terminée"
+        "pass finished"
     );
 }
 
-/// Lit le centre de l'image et rend le verdict correspondant.
+/// Reads the centre of the image and returns the corresponding verdict.
 ///
-/// `attendu` est l'identité de la mire qui DOIT s'y trouver. La lecture se
-/// fait sur le périphérique de la voie : une texture ne se lit pas depuis un
-/// autre périphérique que le sien.
+/// `attendu` is the identity of the test pattern that MUST be there. The reading is
+/// done on the path's device: a texture cannot be read from a
+/// device other than its own.
 pub(super) fn lire_verdict(
     voie: &mut dyn VoieDeCapture,
     image: &CapturedFrame,

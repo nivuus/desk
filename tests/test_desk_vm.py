@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""Tests du module `hooks/vm.py` : ce que `desk` pose DANS la VM Windows,
-par le chemin WinRM de `console` (ProjFS, VB-Audio).
+"""Tests of the `hooks/vm.py` module: what `desk` sets up INSIDE the Windows VM,
+through `console`'s WinRM path (ProjFS, VB-Audio).
 
-🔴 AUCUN APPEL WINRM RÉEL N'EST FAIT ICI, ET AUCUN PAQUET NE QUITTE CETTE
-MACHINE. La plupart des tests de comportement injectent un exécuteur FACTICE
-(`faux_winrm_rendant`), qui court-circuite tout sous-processus.
+🔴 NO REAL WINRM CALL IS MADE HERE, AND NO PACKET LEAVES THIS
+MACHINE. Most behaviour tests inject a FAKE executor
+(`faux_winrm_rendant`), which short-circuits every subprocess.
 
-⚠️ MAIS « AUCUN `subprocess.run` N'EST ATTEINT » SERAIT FAUX, et cet en-tête
-l'a écrit jusqu'au 30 août 2026 (relevé par la revue finale de branche) : les
-scénarios A et B en bas de ce fichier passent DÉLIBÉRÉMENT par
-`executer_winrm_reel`, donc par un vrai `subprocess.run`, pour éprouver son
-bras d'échec et son round-trip — deux chemins qu'aucun exécuteur factice ne
-peut couvrir. Ce qu'ils lancent est un FAUX `winrm_exec.py` de quatre lignes,
-posé sous un `NIVUUS_PACKAGES_DIR` temporaire : le sous-processus est réel,
-la VM et le réseau ne le sont jamais.
+⚠️ BUT "NO `subprocess.run` IS REACHED" WOULD BE FALSE, and this header
+said so until 30 August 2026 (spotted by the final branch review): the
+scenarios A and B at the bottom of this file DELIBERATELY go through
+`executer_winrm_reel`, hence through a real `subprocess.run`, to exercise its
+failure arm and its round trip — two paths no fake executor
+can cover. What they launch is a FAKE four-line `winrm_exec.py`,
+laid down under a temporary `NIVUUS_PACKAGES_DIR`: the subprocess is real,
+the VM and the network never are.
 
-`hooks/vm.py` n'est pas un hook exécutable seul (pas de `--phase`/stdin
-JSON) : c'est un module importé par `hooks/activate.py`, au même titre que
-`hooks/commun.py`. Il est donc chargé ici par chemin de fichier explicite
-(`importlib`), comme le fait déjà la ROUGE de `test_desk_activate.py` pour
-appeler une fonction interne du hook directement.
+`hooks/vm.py` is not a hook runnable on its own (no `--phase`/stdin
+JSON): it is a module imported by `hooks/activate.py`, just like
+`hooks/commun.py`. It is therefore loaded here by explicit file path
+(`importlib`), as the RED of `test_desk_activate.py` already does to
+call an internal function of the hook directly.
 
 Run: python3 tests/test_desk_vm.py
 """
@@ -50,8 +50,8 @@ def charger_module():
 vm = charger_module()
 
 
-# --- Le faux exécuteur : enregistre chaque commande, ne touche jamais la
-# VM ni le réseau -----------------------------------------------------------
+# --- The fake executor: records each command, never touches the
+# VM nor the network -----------------------------------------------------------
 
 class FauxWinRM:
     def __init__(self, sortie=""):
@@ -67,63 +67,63 @@ def faux_winrm_rendant(sortie=""):
     return FauxWinRM(sortie)
 
 
-# === ProjFS : le redémarrage se CONSTATE et se DIT, il ne se prend pas =====
+# === ProjFS: the reboot is NOTED and SAID, it is not taken =====
 
-# --- Bras 1 : la VM répond qu'un redémarrage est requis --------------------
+# --- Arm 1: the VM answers that a reboot is required --------------------
 faux = faux_winrm_rendant("RestartNeeded")
 etat = vm.poser_projfs(executer=faux)
-check("le redemarrage requis est rapporte", etat.redemarrage_requis, True)
-check("aucun redemarrage n'a ete demande",
+check("the required reboot is reported", etat.redemarrage_requis, True)
+check("no reboot was requested",
       any("Restart-Computer" in c for c in faux.commandes), False)
-check("une seule commande a atteint l'executeur", len(faux.commandes), 1)
-check("la commande active bien Client-ProjFS",
+check("a single command reached the executor", len(faux.commandes), 1)
+check("the command does enable Client-ProjFS",
       "Client-ProjFS" in faux.commandes[0], True)
-check("la commande porte -NoRestart (le redemarrage ne se PREND jamais)",
+check("the command carries -NoRestart (the reboot is NEVER taken)",
       "-NoRestart" in faux.commandes[0], True)
 
-# --- Bras 2 : la VM répond qu'aucun redémarrage n'est requis ---------------
+# --- Arm 2: the VM answers that no reboot is required ---------------
 faux2 = faux_winrm_rendant("")
 etat2 = vm.poser_projfs(executer=faux2)
-check("aucun redemarrage requis quand la VM ne le rapporte pas",
+check("no reboot required when the VM does not report one",
       etat2.redemarrage_requis, False)
-check("aucun redemarrage n'a ete demande (bras 2 non plus)",
+check("no reboot was requested (arm 2 either)",
       any("Restart-Computer" in c for c in faux2.commandes), False)
 
 
-# === VB-Audio : licence PERSONNELLE seulement ==============================
+# === VB-Audio: PERSONAL licence only ==============================
 
-# --- Désarmé (le défaut du wizard) : RIEN ne part vers la VM ---------------
+# --- Disarmed (the wizard default): NOTHING goes to the VM ---------------
 faux3 = faux_winrm_rendant("")
 vm.poser_vb_audio(armee=False, executer=faux3)
-check("desarme : aucune commande n'atteint la VM", faux3.commandes, [])
+check("disarmed: no command reaches the VM", faux3.commandes, [])
 
-# --- Désarmé par défaut (sans passer `armee` du tout) ----------------------
+# --- Disarmed by default (without passing `armee` at all) ----------------------
 faux4 = faux_winrm_rendant("")
 vm.poser_vb_audio(executer=faux4)
-check("desarme par defaut (armee omis) : aucune commande n'atteint la VM",
+check("disarmed by default (armee omitted): no command reaches the VM",
       faux4.commandes, [])
 
-# --- Armé : aucun payload n'existe (voir hooks/vm.py::poser_vb_audio) — le
-# lot lève FORT plutôt que de deviner un installateur qui n'existe pas.
-# Toujours AUCUNE commande ne doit atteindre l'exécuteur avant ce refus. ---
+# --- Armed: no payload exists (see hooks/vm.py::poser_vb_audio) — the
+# batch raises LOUDLY rather than guessing an installer that does not exist.
+# Still NO command must reach the executor before this refusal. ---
 faux5 = faux_winrm_rendant("")
 a_leve_vb = False
 try:
     vm.poser_vb_audio(armee=True, executer=faux5)
 except NotImplementedError:
     a_leve_vb = True
-check("arme sans payload : leve fort plutot que d'inventer un installateur",
+check("armed without payload: raises loudly rather than inventing an installer",
       a_leve_vb, True)
-check("arme sans payload : aucune commande n'a quand meme atteint la VM",
+check("armed without payload: no command still reached the VM",
       faux5.commandes, [])
 
 
-# === La ROUGE — Step 5 : le contrat inter-packages doit se voir manquer ====
-# Un `NIVUUS_PACKAGES_DIR` qui ne porte PAS `console/guest/winrm_exec.py`
-# doit faire lever `poser_projfs()` (exécuteur réel, non injecté) avec une
-# exception NOMMANT le chemin cherché — jamais un appel réseau silencieux,
-# jamais une trace Python générique. C'est le bras qui distingue « console
-# absent » de « rien à faire ».
+# === The RED — Step 5: the inter-package contract must be seen missing ====
+# A `NIVUUS_PACKAGES_DIR` that does NOT carry `console/guest/winrm_exec.py`
+# must make `poser_projfs()` raise (real executor, not injected) with an
+# exception NAMING the searched path — never a silent network call,
+# never a generic Python traceback. It is the arm that tells "console
+# absent" apart from "nothing to do".
 ancien_packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR")
 try:
     with tempfile.TemporaryDirectory() as tmp:
@@ -133,15 +133,15 @@ try:
         a_leve = False
         message = ""
         try:
-            vm.poser_projfs()  # executer=None : passe par l'exécuteur REEL
+            vm.poser_projfs()  # executer=None: goes through the REAL executor
         except FileNotFoundError as exc:
             a_leve = True
             message = str(exc)
-        check("ROUGE : winrm_exec.py absent fait lever poser_projfs()",
+        check("RED: winrm_exec.py absent makes poser_projfs() raise",
               a_leve, True)
-        check("ROUGE : l'exception nomme le chemin cherche",
+        check("RED: the exception names the searched path",
               chemin_attendu in message, True)
-        print(f"ROUGE (sortie reelle) : {message}")
+        print(f"RED (real output): {message}")
 finally:
     if ancien_packages_dir is None:
         os.environ.pop("NIVUUS_PACKAGES_DIR", None)
@@ -149,18 +149,18 @@ finally:
         os.environ["NIVUUS_PACKAGES_DIR"] = ancien_packages_dir
 
 
-# --- Contrôle positif de la résolution : winrm_exec.py PRÉSENT sous
-# NIVUUS_PACKAGES_DIR est trouvé sans lever, à l'emplacement exact --------
+# --- Positive control of the resolution: winrm_exec.py PRESENT under
+# NIVUUS_PACKAGES_DIR is found without raising, at the exact location --------
 ancien_packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR")
 try:
     with tempfile.TemporaryDirectory() as tmp:
         guest_dir = pathlib.Path(tmp) / "console" / "guest"
         guest_dir.mkdir(parents=True)
-        (guest_dir / "winrm_exec.py").write_text("# factice\n", encoding="utf-8")
+        (guest_dir / "winrm_exec.py").write_text("# fake\n", encoding="utf-8")
         os.environ["NIVUUS_PACKAGES_DIR"] = tmp
 
         chemin = vm.chemin_winrm_exec()
-        check("winrm_exec.py present est resolu sans lever",
+        check("a present winrm_exec.py is resolved without raising",
               str(chemin), str(guest_dir / "winrm_exec.py"))
 finally:
     if ancien_packages_dir is None:
@@ -169,20 +169,20 @@ finally:
         os.environ["NIVUUS_PACKAGES_DIR"] = ancien_packages_dir
 
 
-# === Ronde de correction 1 : le bras d'échec RÉEL de `executer_winrm_reel` =
-# 🔴 Jusqu'ici, AUCUN test ne passait par le vrai sous-processus : tous les
-# tests de comportement ci-dessus injectent `FauxWinRM`, qui court-circuite
-# `executer_winrm_reel` (et donc son `subprocess.run`) entièrement. Le bras
-# `if proc.returncode != 0: raise RuntimeError(...)` de `hooks/vm.py` n'était
-# donc éprouvé par RIEN — un contrôle qu'on n'a jamais vu rouge n'est pas un
-# contrôle. Les deux scénarios ci-dessous posent un VRAI fichier
-# `console/guest/winrm_exec.py` (un script Python autonome, jamais la VM) et
-# appellent `poser_projfs()` SANS exécuteur injecté (`executer=None`), pour
-# que `executer_winrm_reel` — donc `subprocess.run` — soit réellement exercé.
+# === Correction round 1: the REAL failure arm of `executer_winrm_reel` =
+# 🔴 Until then, NO test went through the real subprocess: all the
+# behaviour tests above inject `FauxWinRM`, which short-circuits
+# `executer_winrm_reel` (and hence its `subprocess.run`) entirely. The
+# `if proc.returncode != 0: raise RuntimeError(...)` arm of `hooks/vm.py` was
+# therefore exercised by NOTHING — a check never seen red is not a
+# check. The two scenarios below lay down a REAL
+# `console/guest/winrm_exec.py` file (a standalone Python script, never the VM) and
+# call `poser_projfs()` WITHOUT an injected executor (`executer=None`), so
+# that `executer_winrm_reel` — hence `subprocess.run` — is really exercised.
 
 def poser_script_winrm_reel(packages_dir: pathlib.Path, corps: str) -> None:
-    """Un VRAI fichier `console/guest/winrm_exec.py` (jamais la VM) : un
-    script Python autonome dont `corps` est le contenu intégral."""
+    """A REAL `console/guest/winrm_exec.py` file (never the VM): a
+    standalone Python script whose `corps` is the whole content."""
     guest_dir = packages_dir / "console" / "guest"
     guest_dir.mkdir(parents=True, exist_ok=True)
     script = guest_dir / "winrm_exec.py"
@@ -190,9 +190,9 @@ def poser_script_winrm_reel(packages_dir: pathlib.Path, corps: str) -> None:
     script.chmod(0o755)
 
 
-# --- A : la commande distante ÉCHOUE (code de sortie non nul, message sur
-# stderr) — `executer_winrm_reel` doit lever `RuntimeError`, et le MESSAGE
-# de cette exception doit porter la raison distante, pas seulement lever. --
+# --- A: the remote command FAILS (non-zero exit code, message on
+# stderr) — `executer_winrm_reel` must raise `RuntimeError`, and the MESSAGE
+# of that exception must carry the remote reason, not merely raise. --
 ancien_packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR")
 try:
     with tempfile.TemporaryDirectory() as tmp:
@@ -200,15 +200,15 @@ try:
         poser_script_winrm_reel(packages_dir, (
             "#!/usr/bin/env python3\n"
             "import sys\n"
-            # ⚠️ LE TEXTE DIT QU'IL EST FACTICE, ET C'EST DÉLIBÉRÉ : la
-            # version précédente imprimait « error: cannot reach guest at
-            # 192.168.3.2:5985: timeout », que `make test` affichait telle
-            # quelle en sortie NORMALE — la relectrice de la revue finale a
-            # cru, en la lisant, que la suite avait touché la VM. Un texte de
-            # banc qui ne peut pas se confondre avec une panne réelle coûte
-            # une ligne.
-            "sys.stderr.write('FAUX winrm_exec.py de test : echec simule, "
-            "aucune VM contactee\\n')\n"
+            # ⚠️ THE TEXT SAYS IT IS FAKE, AND THAT IS DELIBERATE: the
+            # previous version printed "error: cannot reach guest at
+            # 192.168.3.2:5985: timeout", which `make test` displayed as is
+            # in NORMAL output — the reviewer of the final review
+            # believed, reading it, that the suite had touched the VM. A bench
+            # text that cannot be mistaken for a real failure costs
+            # one line.
+            "sys.stderr.write('FAKE test winrm_exec.py: simulated failure, "
+            "no VM contacted\\n')\n"
             "sys.exit(1)\n"
         ))
         os.environ["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
@@ -216,16 +216,16 @@ try:
         a_leve = False
         message = ""
         try:
-            vm.poser_projfs()  # executer=None : passe par executer_winrm_reel REEL
+            vm.poser_projfs()  # executer=None: goes through the REAL executer_winrm_reel
         except RuntimeError as exc:
             a_leve = True
             message = str(exc)
-        check("executeur reel, echec : RuntimeError leve", a_leve, True)
-        check("executeur reel, echec : le message nomme le mode et le code",
-              "winrm_exec.py ps a echoue (code 1)" in message, True)
-        check("executeur reel, echec : le message porte la raison distante",
-              "echec simule" in message, True)
-        print(f"ROUGE (executeur reel, echec) : {message}")
+        check("real executor, failure: RuntimeError raised", a_leve, True)
+        check("real executor, failure: the message names the mode and the code",
+              "winrm_exec.py ps failed (code 1)" in message, True)
+        check("real executor, failure: the message carries the remote reason",
+              "simulated failure" in message, True)
+        print(f"RED (real executor, failure): {message}")
 finally:
     if ancien_packages_dir is None:
         os.environ.pop("NIVUUS_PACKAGES_DIR", None)
@@ -233,9 +233,9 @@ finally:
         os.environ["NIVUUS_PACKAGES_DIR"] = ancien_packages_dir
 
 
-# --- B (symétrique, promu de Mineure) : la commande distante RÉUSSIT en
-# émettant `RestartNeeded` — le round-trip réel stdout -> redemarrage_requis
-# est ainsi couvert directement, pas seulement par ricochet via FauxWinRM. --
+# --- B (symmetric, promoted from Minor): the remote command SUCCEEDS
+# emitting `RestartNeeded` — the real round trip stdout -> redemarrage_requis
+# is thus covered directly, not only indirectly through FauxWinRM. --
 ancien_packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR")
 try:
     with tempfile.TemporaryDirectory() as tmp:
@@ -248,8 +248,8 @@ try:
         ))
         os.environ["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
 
-        etat = vm.poser_projfs()  # executer=None : passe par executer_winrm_reel REEL
-        check("executeur reel, succes : round-trip stdout -> redemarrage_requis",
+        etat = vm.poser_projfs()  # executer=None: goes through the REAL executer_winrm_reel
+        check("real executor, success: round trip stdout -> redemarrage_requis",
               etat.redemarrage_requis, True)
 finally:
     if ancien_packages_dir is None:
@@ -263,4 +263,4 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - tests du module vm passés")
+print("OK - vm module tests passed")

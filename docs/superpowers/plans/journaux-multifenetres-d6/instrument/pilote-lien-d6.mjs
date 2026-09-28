@@ -101,7 +101,7 @@ async function marqueurs(etiquette) {
         taille_refusee: compte("changement de taille d'encodage refusé"),
         refus_debit: compte("l'encodeur refuse le réglage du débit à chaud"),
         absence_bwe: compte('aucune estimation de bande passante reçue'),
-        erreurs: compte('ERROR'),
+        errors: compte('ERROR'),
         avertissements: compte('WARN'),
     };
     log(`MARQUEURS (${etiquette}) ` + JSON.stringify(m));

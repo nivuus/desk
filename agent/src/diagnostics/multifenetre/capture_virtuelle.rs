@@ -1,75 +1,75 @@
-//! Mesure ③ : une fenêtre posée sur un moniteur virtuel est-elle capturée
-//! correctement, même recouverte par une autre ?
+//! Measurement ③: is a window placed on a virtual monitor captured
+//! correctly, even when covered by another?
 //!
-//! **C'est l'hypothèse FONDATRICE de la voie « un moniteur virtuel par
-//! fenêtre »**, celle que la sonde de capture recommandait — et elle n'avait
-//! jamais été vérifiée : la sonde ne la garantissait que « par construction »,
-//! sans jamais capturer dessus. Qu'un moniteur virtuel SANS écran attaché soit
-//! réellement composé par Windows, et que Desktop Duplication en rende autre
-//! chose que du noir, ne se déduit d'aucun document — cela se mesure.
+//! **This is the FOUNDING hypothesis of the "one virtual monitor per
+//! window" path**, the one the capture probe recommended — and it had
+//! never been verified: the probe only guaranteed it "by construction",
+//! without ever capturing on it. That a virtual monitor WITHOUT an attached screen is
+//! really composed by Windows, and that Desktop Duplication returns something
+//! other than black from it, cannot be deduced from any document — it is measured.
 //!
-//! Une image noire ici est un RÉSULTAT, pas une panne de la sonde : elle ferait
-//! tomber la voie 2 et changerait la nature du chantier suivant.
+//! A black image here is a RESULT, not a failure of the probe: it would
+//! bring down path 2 and change the nature of the next work stream.
 //!
-//! Module séparé de `moniteurs.rs`, qui est *le pilote*, et de `montee.rs`, qui
-//! est *la mesure du plafond* : ce fichier-ci est la mesure de la CAPTURE. Le
-//! découpage n'est pas cosmétique — `moniteurs.rs` est à 493 lignes et le
-//! plafond de 500 lignes du projet interdisait d'y verser quoi que ce soit.
+//! Module separate from `moniteurs.rs`, which is *the driver*, and from `montee.rs`, which
+//! is *the ceiling measurement*: this file is the measurement of CAPTURE. The
+//! split is not cosmetic — `moniteurs.rs` is at 493 lines and the
+//! project's 500-line ceiling forbade pouring anything into it.
 //!
-//! # Un seul processus, et c'est structurant
+//! # A single process, and it is structural
 //!
-//! La garde `moniteurs_virtuels::Sorties` détruit la sortie à la fin du
-//! processus. Un banc lancé séparément, après coup, ne trouverait donc plus
-//! rien à capturer. Cette sonde crée la sortie **et** fait tourner le banc
-//! dessus sans jamais rendre la main.
+//! The `moniteurs_virtuels::Sorties` guard destroys the output at the end of the
+//! process. A bench launched separately, afterwards, would therefore find nothing
+//! left to capture. This probe creates the output **and** runs the bench
+//! on it without ever giving control back.
 //!
-//! # Le piège que cette sonde a révélé — CORRIGÉ le 31 juillet 2026
+//! # The trap this probe revealed — FIXED on 31 July 2026
 //!
-//! ✅ **Ce qui suit est un récit au PASSÉ.** Le défaut décrit ici a été
-//! diagnostiqué et corrigé par le chantier des duplications parallèles
+//! ✅ **What follows is an account in the PAST tense.** The defect described here was
+//! diagnosed and fixed by the parallel duplications work stream
 //! (`agent/src/encode/arret.rs`, commits `486e182` / `beb3114`,
-//! `docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`
-//! §7). Il n'était pas déterministe mais **intermittent** (2 plantages sur 6
-//! exécutions) ; sa cause : la MFT NVIDIA gardait un élément de travail en vol
-//! quand on relâchait l'encodeur. Depuis le correctif : **0 récidive sur 20
-//! exécutions** du cas comparable — *ce qui n'est pas une preuve d'absence*.
-//! Ne pas relire les paragraphes ci-dessous comme l'état courant du code.
+//! `docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md` policy: allow-fr (file path)
+//! §7). It was not deterministic but **intermittent** (2 crashes out of 6
+//! runs); its cause: the NVIDIA MFT kept a work item in flight
+//! when the encoder was released. Since the fix: **0 recurrence over 20
+//! runs** of the comparable case — *which is not a proof of absence*.
+//! Do not reread the paragraphs below as the current state of the code.
 //!
-//! Sans recouvrement à mettre en scène, la porte éliminatoire du banc laisse
-//! passer et la passe d'encodage s'exécute — or, avant le correctif, **elle
-//! emportait le processus**, ce qui laissait une sortie virtuelle orpheline.
+//! With no covering to stage, the bench's elimination gate lets
+//! through and the encoding pass runs — yet, before the fix, **it
+//! took down the process**, which left an orphaned virtual output.
 //!
-//! **Où exactement, car c'est ce qui a orienté le diagnostic : à la SORTIE de
-//! la boucle, pas pendant.** Les deux exécutions du 31 juillet 2026 écrivaient
-//! leur dixième et DERNIÈRE ligne périodique à `debut + 10,00 s`, soit
-//! l'instant même où `while debut.elapsed() < DUREE_PASSE` cessait d'être vrai :
-//! la boucle avait tourné entière, et `journaliser` n'était jamais atteint. Ce
-//! qui courait entre les deux est la destruction du `Vec<H264Encoder>` local à
-//! `passe_capture`. Chercher du côté de `submit`/`poll_output` aurait été
-//! chercher au mauvais endroit — et ce bornage est ce qui a fait gagner la
-//! campagne de diagnostic.
+//! **Where exactly, because that is what steered the diagnosis: at the EXIT of
+//! the loop, not during it.** Both runs of 31 July 2026 wrote
+//! their tenth and LAST periodic line at `debut + 10.00 s`, that is
+//! the very instant when `while debut.elapsed() < DUREE_PASSE` stopped being true:
+//! the loop had run in full, and `journaliser` was never reached. What
+//! ran between the two is the destruction of the `Vec<H264Encoder>` local to
+//! `passe_capture`. Looking on the side of `submit`/`poll_output` would have been
+//! looking in the wrong place — and this bracketing is what won the
+//! diagnostic campaign.
 //!
-//! **Ce n'était ni la sortie virtuelle, ni l'encodeur seul — c'était le
-//! couple.** Le même banc sur le bureau physique
-//! (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) mourait au même endroit :
-//! la sortie virtuelle était hors de cause. Et `printwindow-n4.log` comme
-//! `printwindow-n8.log` portent leur ligne `passe terminée
-//! passe="capture+encodage"` : sur la voie `printwindow`, la passe d'encodage
-//! allait à son terme et le processus survivait. Le défaut était donc dans le
-//! couple « voie **duplication** + encodeur H.264 », et dans lui seul.
+//! **It was neither the virtual output, nor the encoder alone — it was the
+//! pair.** The same bench on the physical desktop
+//! (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) died at the same place:
+//! the virtual output was out of the question. And `printwindow-n4.log` as well as
+//! `printwindow-n8.log` carry their `pass finished
+//! passe="capture+encoding"` line: on the `printwindow` path, the encoding pass
+//! ran to completion and the process survived. The defect was therefore in the
+//! "**duplication** path + H.264 encoder" pair, and in it alone.
 //!
-//! Il n'avait jamais été vu avant, parce que sur cette voie la porte
-//! éliminatoire coupait toujours avant la passe d'encodage : c'est pourquoi
-//! aucune mesure d'encodage multi-fenêtres par cette voie n'existait alors.
-//! **Il en existe depuis** — les quatre rangs du chantier des duplications
-//! parallèles, dont N=8 avec huit encodeurs détruits d'affilée en 4,0 ms.
+//! It had never been seen before, because on this path the elimination
+//! gate always cut before the encoding pass: that is why
+//! no multi-window encoding measurement through this path existed then.
+//! **Some exist since** — the four ranks of the parallel duplications
+//! work stream, including N=8 with eight encoders destroyed in a row in 4.0 ms.
 //!
-//! Conséquence pratique **de l'époque** : la garde ne courait pas et la sortie
-//! virtuelle survivait au processus ; `MULTIFENETRE_VDD_PURGE=1` rattrape cet
-//! état, éprouvé sur exactement lui. La purge reste utile — un plantage,
-//! quelle qu'en soit la cause, laisse toujours la garde muette. La mesure ③
-//! elle-même se prend à `nombre = 2`, où le verdict de recouvrement coupe avant
-//! la passe d'encodage et où la garde court.
+//! Practical consequence **at the time**: the guard did not run and the virtual
+//! output outlived the process; `MULTIFENETRE_VDD_PURGE=1` recovers that
+//! state, tested on exactly it. The purge remains useful — a crash,
+//! whatever its cause, always leaves the guard silent. Measurement ③
+//! itself is taken at `count = 2`, where the covering verdict cuts before
+//! the encoding pass and where the guard runs.
 
 use anyhow::{anyhow, Result};
 
@@ -78,113 +78,120 @@ use super::montee::{
 };
 use crate::capture::SortieDxgi;
 
-/// Sonde `MULTIFENETRE_VDD_CAPTURE` : crée UNE sortie virtuelle, y pose
-/// `nombre` mires, et fait tourner le banc de la voie `duplication` dessus.
-pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
-    let avant = relever_topologie("avant création")?;
-    let noms_avant = noms_attaches(&avant);
-    let connues: std::collections::HashSet<String> =
-        avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
+/// `MULTIFENETRE_VDD_CAPTURE` probe: creates ONE virtual output, places
+/// `count` test patterns on it, and runs the `duplication` path bench on it.
+pub(super) fn capturer_sur_virtuelle(count: u8) -> Result<()> {
+    let before = relever_topologie("before creation")?;
+    let names_before = noms_attaches(&before);
+    let connues: std::collections::HashSet<String> = before
+        .iter()
+        .map(|sortie| sortie.nom_sortie.clone())
+        .collect();
 
     let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
 
-    // Portée explicite de la garde : la sortie doit être détruite AVANT le
-    // relevé final, sans quoi celui-ci décrirait un état transitoire.
+    // Explicit scope of the guard: the output must be destroyed BEFORE the
+    // final survey, otherwise the latter would describe a transient state.
     let issue = {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
-        let id = sorties.creer(largeur, hauteur, hertz)?;
-        // Battre le chien de garde pendant l'attente de reconfiguration, comme
-        // le fait la montée en N : son unité reste inconnue, et un `sleep` nu
-        // laisserait le pilote libre de retirer la sortie sous la mesure.
+        let id = sorties.create(largeur, hauteur, hertz)?;
+        // Beat the watchdog while waiting for reconfiguration, as
+        // the scale-up in N does: its unit remains unknown, and a bare `sleep`
+        // would leave the driver free to remove the output under the measurement.
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
-        let apres = relever_topologie("après création")?;
+        let apres = relever_topologie("after creation")?;
         let virtuelle = designer_sortie_neuve(&apres, &connues, id)?;
         let nom_virtuelle = virtuelle.nom_sortie.clone();
 
-        // Le facteur d'échelle est relevé et appliqué par le banc lui-même
-        // (trace « banc : coordonnées de fenêtre et de texture ») : le mesurer
-        // une seconde fois ICI obligerait à ouvrir une duplication sur cette
-        // sortie, or DXGI n'en autorise qu'UNE — celle du banc échouerait
-        // alors en 0x80070057.
+        // The scale factor is read and applied by the bench itself
+        // (trace "bench: window and texture coordinates"): measuring it
+        // a second time HERE would require opening a duplication on this
+        // output, yet DXGI only allows ONE — the bench's would then fail
+        // with 0x80070057.
         pilote.pinguer()?;
-        let issue = super::banc::executer("duplication", nombre, Some(&nom_virtuelle));
+        let issue = super::banc::executer("duplication", count, Some(&nom_virtuelle));
 
-        // Le banc ne pingue pas : il tourne trente secondes en boucle serrée.
-        // Si le chien de garde avait retiré la sortie en cours de route, la
-        // capture aurait rendu du noir ou rien du tout, et l'on aurait imputé
-        // à Windows un défaut du protocole de mesure. Ce contrôle-ci tranche
-        // entre les deux.
+        // The bench does not ping: it runs thirty seconds in a tight loop.
+        // If the watchdog had removed the output along the way, the
+        // capture would have returned black or nothing at all, and we would have blamed
+        // Windows for a defect of the measurement protocol. This check settles
+        // between the two.
         constater_survie(&nom_virtuelle);
         issue
     };
 
-    // Second essai des retraits que la garde n'a pas obtenus : dernière chance
-    // de CE processus, au-delà seule la purge inter-processus les atteindra.
+    // Second attempt at the removals the guard did not obtain: last chance
+    // of THIS process, beyond that only the inter-process purge will reach them.
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
-        tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
+        tracing::info!(
+            rejoues,
+            "due removals replayed successfully after the guard"
+        );
     }
 
-    // Une sortie virtuelle survit au processus. Ce contrôle reste celui du
-    // processus mesureur, donc juge et partie — le contrôle qui vaut est un
-    // relevé `MULTIFENETRE_DXGI=1` depuis un processus neuf, après coup.
+    // A virtual output outlives the process. This check remains that of the
+    // measuring process, hence judge and party — the check that counts is a
+    // `MULTIFENETRE_DXGI=1` survey from a fresh process, afterwards.
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let final_ = relever_topologie("après destruction")?;
+    let final_ = relever_topologie("after destruction")?;
     let noms_final = noms_attaches(&final_);
-    if noms_final == noms_avant && final_.len() == avant.len() {
-        tracing::info!(noms = ?noms_final, "état initial restauré — mêmes sorties, nommément");
+    if noms_final == names_before && final_.len() == before.len() {
+        tracing::info!(noms = ?noms_final, "initial state restored — same outputs, by name");
     } else {
         tracing::error!(
-            noms_avant = ?noms_avant,
+            names_before = ?names_before,
             noms_apres = ?noms_final,
-            total_avant = avant.len(),
+            total_before = before.len(),
             total_apres = final_.len(),
-            "la topologie n'est PAS revenue à son état initial — purge requise"
+            "the topology did NOT return to its initial state — purge required"
         );
     }
 
     issue
 }
 
-/// Retrouve, dans une topologie relevée après création, LA sortie qui n'y
-/// était pas avant.
+/// Finds, in a topology surveyed after creation, THE output that was not
+/// there before.
 ///
-/// Par le NOM et non par l'index : DXGI renumérote ses sorties à chaque
-/// reconfiguration de topologie, et un index retenu avant la création peut
-/// désigner une autre sortie après. Un ensemble de noms ne souffre pas de cette
-/// dérive.
+/// By NAME and not by index: DXGI renumbers its outputs at each
+/// topology reconfiguration, and an index retained before creation may
+/// designate another output afterwards. A set of names does not suffer from this
+/// drift.
 ///
-/// Refuse si plusieurs sorties sont neuves : quelqu'un d'autre en aurait ajouté
-/// une pendant la mesure (Apollo pilote la configuration d'affichage de cette
-/// VM), et rien ne dirait plus laquelle est la nôtre.
+/// Refuses if several outputs are new: someone else would have added
+/// one during the measurement (Apollo drives the display configuration of this
+/// VM), and nothing would tell which one is ours anymore.
 ///
-/// `pub(super)` : `mode_sortie.rs` (tâche 3 du sous-bloc D8) crée elle aussi
-/// UNE sortie et doit retrouver son nom DXGI avant de tenter un changement de
-/// mode — même besoin exact que cette mesure-ci, donc même fonction plutôt
-/// qu'une duplication de la logique d'appariement par nom.
+/// `pub(super)`: `mode_sortie.rs` (task 3 of sub-block D8) also creates
+/// ONE output and must find its DXGI name before attempting a mode
+/// change — exactly the same need as this measurement, hence the same function rather
+/// than a duplication of the name-matching logic.
 pub(super) fn designer_sortie_neuve<'s>(
     apres: &'s [SortieDxgi],
     connues: &std::collections::HashSet<String>,
     id: crate::moniteurs_virtuels::IdSortie,
 ) -> Result<&'s SortieDxgi> {
-    let neuves: Vec<&SortieDxgi> =
-        apres.iter().filter(|sortie| !connues.contains(&sortie.nom_sortie)).collect();
+    let neuves: Vec<&SortieDxgi> = apres
+        .iter()
+        .filter(|sortie| !connues.contains(&sortie.nom_sortie))
+        .collect();
     let virtuelle = match neuves.as_slice() {
         [] => {
             return Err(anyhow!(
-                "aucune sortie DXGI neuve après création de la sortie {id} — \
-                 le pilote a accepté la demande mais Windows n'a rien publié"
+                "no new DXGI output after creating output {id} — \
+                 the driver accepted the request but Windows published nothing"
             ))
         }
         [seule] => *seule,
-        plusieurs => {
-            let noms: Vec<&str> = plusieurs.iter().map(|s| s.nom_sortie.as_str()).collect();
+        several => {
+            let noms: Vec<&str> = several.iter().map(|s| s.nom_sortie.as_str()).collect();
             return Err(anyhow!(
-                "{} sorties DXGI neuves après création de la sortie {id} ({noms:?}) — \
-                 une addition externe rend la mesure inimputable",
-                plusieurs.len()
+                "{} new DXGI outputs after creating output {id} ({noms:?}) — \
+                 an external addition makes the measurement unattributable",
+                several.len()
             ));
         }
     };
@@ -199,36 +206,38 @@ pub(super) fn designer_sortie_neuve<'s>(
         y = virtuelle.rect.y,
         largeur_annoncee = virtuelle.rect.width,
         hauteur_annoncee = virtuelle.rect.height,
-        "sortie virtuelle retenue pour la capture"
+        "virtual output retained for the capture"
     );
     Ok(virtuelle)
 }
 
-/// Dit si la sortie virtuelle est encore là après le passage du banc.
+/// Tells whether the virtual output is still there after the bench has run.
 ///
-/// N'échoue pas : la mesure est faite, la nier maintenant ne la rendrait pas
-/// meilleure. Ce relevé sert à INTERPRÉTER le verdict du banc, pas à le
-/// remplacer.
+/// Does not fail: the measurement is done, denying it now would not make it
+/// better. This survey serves to INTERPRET the bench's verdict, not to
+/// replace it.
 fn constater_survie(nom_virtuelle: &str) {
     match crate::capture::enumerer_sorties() {
         Ok(sorties) => {
-            let presente = sorties.iter().any(|sortie| sortie.nom_sortie == nom_virtuelle);
+            let presente = sorties
+                .iter()
+                .any(|sortie| sortie.nom_sortie == nom_virtuelle);
             if presente {
                 tracing::info!(
                     nom = %nom_virtuelle,
-                    "la sortie virtuelle a survécu au banc — le verdict porte bien sur elle"
+                    "the virtual output survived the bench — the verdict is indeed about it"
                 );
             } else {
                 tracing::error!(
                     nom = %nom_virtuelle,
-                    "la sortie virtuelle a DISPARU pendant le banc — le verdict de capture \
-                     n'est pas imputable à Windows, la sortie n'existait plus"
+                    "the virtual output DISAPPEARED during the bench — the capture verdict \
+                     cannot be blamed on Windows, the output no longer existed"
                 );
             }
         }
-        Err(erreur) => tracing::error!(
-            causes = %super::causes(erreur),
-            "topologie illisible après le banc — survie de la sortie virtuelle inconnue"
+        Err(error) => tracing::error!(
+            causes = %super::causes(error),
+            "topology unreadable after the bench — survival of the virtual output unknown"
         ),
     }
 }

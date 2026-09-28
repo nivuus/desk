@@ -1,112 +1,112 @@
-//! Sur QUEL rectangle les coordonnées du navigateur se démappent.
+//! On WHICH rectangle the browser's coordinates are unmapped.
 //!
-//! 🔴 **LE DÉFAUT QUE CE MODULE EXISTE POUR FERMER (mesuré le 30 août 2026).**
-//! Le client normalise ses coordonnées sur **l'image qu'il reçoit**
-//! (`client/src/input.ts` : « normalisées sur 0..65535 par rapport à la zone
-//! d'image », fraction du `<video>`). L'agent, lui, les appliquait à la **zone
-//! client de la FENÊTRE**. Les deux ne parlaient plus du même rectangle depuis
-//! que la capture est passée en `ModeCapture::SortieEntiere` (sous-bloc D10) :
-//! l'image est **la sortie entière**, fond d'écran et barre des tâches
-//! compris.
+//! 🔴 **THE DEFECT THIS MODULE EXISTS TO CLOSE (measured on 30 August 2026).**
+//! The client normalises its coordinates on **the image it receives**
+//! (`client/src/input.ts`: "normalised on 0..65535 relative to the image
+//! area", a fraction of the `<video>`). The agent, for its part, applied them to the **client
+//! area of the WINDOW**. The two no longer spoke of the same rectangle since
+//! capture switched to `ModeCapture::SortieEntiere` (sub-block D10):
+//! the image is **the whole output**, wallpaper and taskbar
+//! included.
 //!
-//! **L'erreur se calcule**, et elle a deux termes — c'est pourquoi elle ne se
-//! corrige pas par un décalage :
+//! **The error can be computed**, and it has two terms — that is why it cannot be
+//! fixed by an offset:
 //!
 //! ```text
-//! erreur(f) = (Wx − Ox) + f·(Ww − Ow)
-//!             └ ORIGINE ┘   └ ÉCHELLE ┘
+//! error(f) = (Wx − Ox) + f·(Ww − Ow)
+//!            └ ORIGIN ─┘   └ SCALE ─┘
 //! ```
 //!
-//! Relevé sur la machine du propriétaire : la fenêtre à `+4428+51` pour une
-//! sortie visée à `+3140+0`, soit **+1288 en x et +51 en y** de terme
-//! d'origine — et un terme d'échelle non nul, puisque la barre des tâches est
-//! visible dans l'image (`Oh > Wh`) et que le redimensionnement est
-//! **délibérément ignoré** en `SortieEntiere`.
+//! Surveyed on the owner's machine: the window at `+4428+51` for an
+//! output aimed at `+3140+0`, that is **+1288 in x and +51 in y** of origin
+//! term — and a non-zero scale term, since the taskbar is
+//! visible in the image (`Oh > Wh`) and resizing is
+//! **deliberately ignored** in `SortieEntiere`.
 //!
-//! 🔵 **Le clavier n'était pas touché**, et ce n'est pas une coïncidence : il
-//! ne porte aucune coordonnée. Le partage clavier/souris est **prédit** par
-//! cette explication.
+//! 🔵 **The keyboard was not affected**, and it is not a coincidence: it
+//! carries no coordinate. The keyboard/mouse split is **predicted** by
+//! this explanation.
 //!
-//! ## 🔴 UNE SEULE SOURCE, ET C'EST TOUT L'OBJET DE CE MODULE
+//! ## 🔴 A SINGLE SOURCE, AND THAT IS THE WHOLE POINT OF THIS MODULE
 //!
-//! Ce défaut est né parce que **deux endroits décrivaient le même rectangle**
-//! et qu'un seul a suivi D10. Une correction qui laisserait subsister deux
-//! descriptions indépendantes se redéferait au prochain changement de mode.
+//! This defect was born because **two places described the same rectangle**
+//! and only one followed D10. A fix that let two
+//! independent descriptions remain would come undone at the next mode change.
 //!
-//! **`config.sortie_dxgi` est déjà l'unique discriminant du mode de capture**
-//! (`demarrage/source.rs` : `Some(nom)` ⇒ source distante servie par le
-//! capteur, sortie entière ; `None` ⇒ capture locale de la fenêtre recadrée).
-//! **La référence des entrées en dérive désormais, de la même valeur** — il
-//! n'y a plus rien à tenir d'accord.
+//! **`config.sortie_dxgi` is already the only discriminant of the capture mode**
+//! (`demarrage/source.rs`: `Some(nom)` ⇒ remote source served by the
+//! sensor, whole output; `None` ⇒ local capture of the cropped window).
+//! **The input reference now derives from it, from the same value** — there
+//! is nothing left to keep in agreement.
 
 //!
-//! ## 🔴 CE QUE LA PREMIÈRE CORRECTION A CORRIGÉ, ET CE QU'IL LUI MANQUAIT
+//! ## 🔴 WHAT THE FIRST FIX FIXED, AND WHAT IT WAS MISSING
 //!
-//! Le lot 32Q a fait dériver la référence de `config.sortie_dxgi` et l'a
-//! posée sur **la sortie DXGI entière**. C'était **la bonne ORIGINE et la
-//! mauvaise TAILLE**, et le propriétaire l'a vu tout de suite : « en 0 ok,
-//! totalement à droite pas bon, c'est progressif », en x seulement.
+//! Batch 32Q made the reference derive from `config.sortie_dxgi` and
+//! set it on **the whole DXGI output**. It was **the right ORIGIN and the
+//! wrong SIZE**, and the owner saw it right away: "at 0 ok,
+//! fully to the right not good, it's progressive", in x only.
 //!
-//! **La capture n'est pas la sortie : c'est un RECADRAGE de la sortie,
-//! `taille_retenue`, posé à son origine** (`windows_source/sortie.rs`,
-//! `capteur/fenetre/ouverture.rs`). Relevé sur la machine du propriétaire,
-//! dans le même journal :
+//! **The capture is not the output: it is a CROP of the output,
+//! `retained_size`, placed at its origin** (`windows_source/sortie.rs`,
+//! `capteur/fenetre/ouverture.rs`). Surveyed on the owner's machine,
+//! in the same log:
 //!
 //! ```text
-//! duplication de sortie établie  desktop_width=1860 desktop_height=1080
-//! session NVENC native initialisée   largeur=1428   hauteur=1080
+//! output duplication established     desktop_width=1860 desktop_height=1080
+//! native NVENC session initialised   width=1428   height=1080
 //! ```
 //!
-//! d'où l'erreur résiduelle, purement d'ÉCHELLE (l'origine, elle, est juste) :
+//! hence the residual error, purely one of SCALE (the origin, for its part, is right):
 //!
-//! | fraction | l'image montre | l'agent injectait | écart |
+//! | fraction | the image shows | the agent injected | gap |
 //! | --- | --- | --- | --- |
-//! | 0,00 | 0 | 0 | **0** |
-//! | 0,50 | 714 | 930 | +216 |
-//! | 1,00 | 1428 | 1860 | **+432** |
+//! | 0.00 | 0 | 0 | **0** |
+//! | 0.50 | 714 | 930 | +216 |
+//! | 1.00 | 1428 | 1860 | **+432** |
 //!
-//! En y, 1080 contre 1080 : **zéro**. C'est exactement le symptôme décrit.
+//! In y, 1080 against 1080: **zero**. It is exactly the symptom described.
 //!
-//! 🔴 **LA TAILLE N'EST PAS RECALCULÉE ICI, ELLE EST PARTAGÉE.** Recalculer
-//! `taille_retenue(taille_fenetre, taille_sortie)` dans l'enfant redonnerait
-//! **deux descriptions du même rectangle** — précisément le mécanisme qui a
-//! produit le défaut du lot 32M. La taille employée est celle que le
-//! **capteur** a retenue et qu'il a annoncée par `DepuisCapteur::Attachee`,
-//! c'est-à-dire **le seul et même stockage** que `SourceDistante::dimensions`
-//! rend au reste de l'enfant : [`TailleImage`], créée par
-//! `demarrage::source::construire` et confiée à la fois à la source et à
-//! l'injecteur. Il n'y a **rien à tenir d'accord**, parce qu'il n'y a qu'une
-//! seule valeur.
+//! 🔴 **THE SIZE IS NOT RECOMPUTED HERE, IT IS SHARED.** Recomputing
+//! `retained_size(window_size, output_size)` in the child would give back
+//! **two descriptions of the same rectangle** — precisely the mechanism that
+//! produced the defect of batch 32M. The size used is the one the
+//! **sensor** retained and announced through `DepuisCapteur::Attachee`,
+//! that is **the one and only storage** that `SourceDistante::dimensions`
+//! returns to the rest of the child: [`FrameSize`], created by
+//! `demarrage::source::construire` and handed both to the source and to the
+//! injector. There is **nothing to keep in agreement**, because there is only one
+//! value.
 //!
-//! Les commandes qui l'établissent, pour que le prochain lecteur refasse le
-//! contrôle sans croire personne :
+//! The commands that establish it, so that the next reader redoes the
+//! check without believing anyone:
 //!
 //! ```text
 //! grep -n 'Attachee { largeur, hauteur }' agent/src/capteur/tube.rs
-//! grep -n 'taille_retenue' agent/src/capteur/fenetre/ouverture.rs
-//! grep -rn 'TailleImage' agent/src/
+//! grep -n 'retained_size' agent/src/capteur/fenetre/ouverture.rs
+//! grep -rn 'FrameSize' agent/src/
 //! ```
 
-/// La taille de l'image RÉELLEMENT capturée et encodée, en pixels.
+/// The size of the image ACTUALLY captured and encoded, in pixels.
 ///
-/// 🔴 **UN SEUL STOCKAGE, DEUX LECTEURS.** `SourceDistante` la pose depuis
-/// `DepuisCapteur::Attachee` (attache), `DepuisCapteur::Etat` (changement) et
-/// `DepuisCapteur::Taille` (redimensionnement acquitté), et son
-/// `dimensions()` la relit ; l'injecteur d'entrées la relit aussi. Personne
-/// ne la recalcule — c'est tout l'objet de ce type, et la raison pour
-/// laquelle il vit dans CE module plutôt qu'à côté de la source.
+/// 🔴 **ONE STORAGE, TWO READERS.** `SourceDistante` sets it from
+/// `DepuisCapteur::Attachee` (attach), `DepuisCapteur::Etat` (change) and
+/// `DepuisCapteur::Size` (acknowledged resize), and its
+/// `dimensions()` reads it back; the input injector reads it back too. No one
+/// recomputes it — that is the whole point of this type, and the reason why
+/// it lives in THIS module rather than next to the source.
 ///
-/// **Un seul `AtomicU64` et non deux `AtomicU32`, à dessein** : une paire
-/// d'atomiques lue en deux temps peut rendre une largeur neuve avec une
-/// hauteur périmée pendant un redimensionnement, et l'événement de souris qui
-/// tomberait dans cet intervalle serait démappé sur un rectangle qui n'a
-/// jamais existé. Empaqueter les deux moitiés rend ce déchirement
-/// **impossible** au lieu de le rendre rare.
+/// **A single `AtomicU64` and not two `AtomicU32`s, on purpose**: a pair
+/// of atomics read in two steps can return a new width with a
+/// stale height during a resize, and the mouse event that
+/// fell in that interval would be unmapped on a rectangle that never
+/// existed. Packing both halves makes this tearing
+/// **impossible** instead of making it rare.
 #[derive(Debug)]
-pub struct TailleImage(std::sync::atomic::AtomicU64);
+pub struct FrameSize(std::sync::atomic::AtomicU64);
 
-impl TailleImage {
-    pub fn nouvelle(largeur: u32, hauteur: u32) -> Self {
+impl FrameSize {
+    pub fn new(largeur: u32, hauteur: u32) -> Self {
         let cellule = Self(std::sync::atomic::AtomicU64::new(0));
         cellule.poser(largeur, hauteur);
         cellule
@@ -114,7 +114,8 @@ impl TailleImage {
 
     pub fn poser(&self, largeur: u32, hauteur: u32) {
         let empaquetee = ((largeur as u64) << 32) | hauteur as u64;
-        self.0.store(empaquetee, std::sync::atomic::Ordering::Relaxed);
+        self.0
+            .store(empaquetee, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn lire(&self) -> (u32, u32) {
@@ -123,43 +124,46 @@ impl TailleImage {
     }
 }
 
-/// Le rectangle sur lequel démapper les coordonnées reçues du navigateur.
+/// The rectangle on which to unmap the coordinates received from the browser.
 ///
-/// 🔴 **LA VARIANTE MULTI-FENÊTRES PORTE LA TAILLE DE L'IMAGE, ET C'EST LE
-/// TYPE QUI L'IMPOSE.** Un `Option<&str>` d'un côté et un
-/// `Option<Arc<TailleImage>>` de l'autre auraient laissé représentable l'état
-/// « une sortie nommée sans sa taille », c'est-à-dire exactement le repli
-/// silencieux que ce module existe pour interdire. Ici, on ne peut pas
-/// construire la variante sans la taille.
+/// 🔴 **THE MULTI-WINDOW VARIANT CARRIES THE IMAGE SIZE, AND IT IS THE
+/// TYPE THAT ENFORCES IT.** An `Option<&str>` on one side and an
+/// `Option<Arc<FrameSize>>` on the other would have left representable the state
+/// "a named output without its size", that is exactly the silent
+/// fallback this module exists to forbid. Here, the variant cannot be
+/// built without the size.
 #[derive(Debug, Clone)]
 pub enum Reference {
-    /// La zone client de la fenêtre : ce que la capture montre quand elle
-    /// recadre la fenêtre (`ModeCapture::FenetreRecadree`, chemin
-    /// mono-fenêtre). La zone client EST le recadrage : il n'y a pas de
-    /// seconde taille à porter.
+    /// The window's client area: what the capture shows when it
+    /// crops the window (`ModeCapture::FenetreRecadree`, single-window
+    /// path). The client area IS the crop: there is no
+    /// second size to carry.
     ZoneClientDeLaFenetre,
-    /// Le recadrage de la sortie DXGI nommée : **son origine, et la taille de
-    /// l'image** (`ModeCapture::SortieEntiere`, chemin multi-fenêtres).
+    /// The crop of the named DXGI output: **its origin, and the size of the
+    /// image** (`ModeCapture::SortieEntiere`, multi-window path).
     ///
-    /// ⚠️ Le nom de la variante dit « sortie » et ce n'est **pas** la sortie
-    /// entière : c'est la sortie qui donne l'ORIGINE, et `image` qui donne la
-    /// TAILLE. Les confondre est le défaut du lot 32Q, corrigé ici.
-    SortieCapturee { nom: String, image: std::sync::Arc<TailleImage> },
+    /// ⚠️ The variant's name says "output" and it is **not** the whole
+    /// output: it is the output that gives the ORIGIN, and `image` that gives the
+    /// SIZE. Confusing them is the defect of batch 32Q, fixed here.
+    SortieCapturee {
+        nom: String,
+        image: std::sync::Arc<FrameSize>,
+    },
 }
 
-/// Le rectangle de la région capturée : **l'origine de la sortie, la taille
-/// de l'image**.
+/// The rectangle of the captured region: **the output's origin, the size
+/// of the image**.
 ///
-/// Rend `None` quand la taille de l'image n'est pas encore connue (une des
-/// deux moitiés nulle). ⚠️ **Aucun repli sur la sortie entière** : ce serait
-/// réintroduire en silence l'erreur d'échelle que cette fonction supprime, et
-/// le symptôme redeviendrait « la souris dérive vers la droite » sans qu'une
-/// seule trace ne le dise. L'appelant doit en faire une erreur nommée.
+/// Returns `None` when the image size is not yet known (one of the
+/// two halves is zero). ⚠️ **No fallback to the whole output**: that would
+/// silently reintroduce the scale error this function removes, and
+/// the symptom would again become "the mouse drifts to the right" without a
+/// single trace saying so. The caller must turn it into a named error.
 ///
-/// ⚠️ **Aucun bornage à la sortie non plus.** `taille_retenue` garantit déjà
-/// que l'image tient dans la texture (`capteur/fenetre/ouverture.rs`) ; un
-/// `min` ici serait une SECONDE règle, qui masquerait une divergence au lieu
-/// de la montrer.
+/// ⚠️ **No clamping to the output either.** `retained_size` already guarantees
+/// that the image fits in the texture (`capteur/fenetre/ouverture.rs`); a
+/// `min` here would be a SECOND rule, which would mask a divergence instead
+/// of showing it.
 pub fn rectangle_capture(
     sortie: crate::geometry::Rect,
     image: (u32, u32),
@@ -168,7 +172,12 @@ pub fn rectangle_capture(
     if largeur == 0 || hauteur == 0 {
         return None;
     }
-    Some(crate::geometry::Rect { x: sortie.x, y: sortie.y, width: largeur, height: hauteur })
+    Some(crate::geometry::Rect {
+        x: sortie.x,
+        y: sortie.y,
+        width: largeur,
+        height: hauteur,
+    })
 }
 
 #[cfg(test)]
@@ -176,42 +185,62 @@ mod tests {
     use super::*;
     use crate::geometry::{to_virtual_desktop, Rect};
 
-    /// La cellule partagée : ce qu'on pose est ce qu'on relit, et les deux
-    /// moitiés ne se mélangent pas.
+    /// The shared cell: what we set is what we read back, and the two
+    /// halves do not mix.
     #[test]
-    fn la_taille_partagee_rend_ce_qu_on_y_pose() {
-        let taille = TailleImage::nouvelle(1428, 1080);
-        assert_eq!(taille.lire(), (1428, 1080));
-        taille.poser(640, 360);
-        assert_eq!(taille.lire(), (640, 360));
-        // Les deux moitiés sont bien séparées, y compris sur les extrêmes.
-        taille.poser(u32::MAX, 1);
-        assert_eq!(taille.lire(), (u32::MAX, 1));
+    fn the_shared_size_returns_what_is_stored_in_it() {
+        let size = FrameSize::new(1428, 1080);
+        assert_eq!(size.lire(), (1428, 1080));
+        size.poser(640, 360);
+        assert_eq!(size.lire(), (640, 360));
+        // The two halves are well separated, including at the extremes.
+        size.poser(u32::MAX, 1);
+        assert_eq!(size.lire(), (u32::MAX, 1));
     }
 
-    /// Une taille pas encore connue ne doit **pas** produire un rectangle :
-    /// c'est ce refus qui empêche un repli silencieux sur la sortie entière.
+    /// A size not yet known must **not** produce a rectangle:
+    /// it is this refusal that prevents a silent fallback to the whole output.
     #[test]
-    fn sans_taille_d_image_il_n_y_a_pas_de_rectangle() {
-        let sortie = Rect { x: 3140, y: 0, width: 1860, height: 1080 };
+    fn without_a_frame_size_there_is_no_rectangle() {
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1860,
+            height: 1080,
+        };
         assert_eq!(rectangle_capture(sortie, (0, 1080)), None);
         assert_eq!(rectangle_capture(sortie, (1428, 0)), None);
     }
 
-    /// 🔴 **LA ROUGE, ET ELLE PORTE LES CHIFFRES DU RELEVÉ.**
+    /// 🔴 **THE RED, AND IT CARRIES THE FIGURES OF THE SURVEY.**
     ///
-    /// Le montage est celui de la machine du propriétaire : la fenêtre est à
-    /// `+4428+51` (relevé de `placement_periodique`), la sortie capturée à
-    /// `+3140+0`. Un clic au coin **haut-gauche** de l'image — donc à
-    /// l'origine de la SORTIE — doit atterrir sur `(3140, 0)`.
+    /// The set-up is that of the owner's machine: the window is at
+    /// `+4428+51` (survey of `placement_periodique`), the captured output at
+    /// `+3140+0`. A click in the **top-left** corner of the image — hence at
+    /// the origin of the OUTPUT — must land on `(3140, 0)`.
     ///
-    /// La formule d'AVANT, qui démappe sur la fenêtre, rend `(4428, 51)` :
-    /// **+1288 en x et +51 en y**, exactement le décalage dérivé du journal.
+    /// The formula from BEFORE, which unmaps on the window, returns `(4428, 51)`:
+    /// **+1288 in x and +51 in y**, exactly the offset derived from the log.
     #[test]
-    fn la_formule_d_avant_rend_le_decalage_releve_de_1288_et_51() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let fenetre = Rect { x: 4428, y: 51, width: 1428, height: 1080 };
-        let sortie = Rect { x: 3140, y: 0, width: 1920, height: 1200 };
+    fn the_former_formula_yields_the_measured_offset_of_1288_and_51() {
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let fenetre = Rect {
+            x: 4428,
+            y: 51,
+            width: 1428,
+            height: 1080,
+        };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1920,
+            height: 1200,
+        };
 
         let vise = |r: Rect| {
             let (nx, ny) = to_virtual_desktop(0, 0, r, bureau);
@@ -222,20 +251,43 @@ mod tests {
         };
         let (juste_x, juste_y) = vise(sortie);
         let (faux_x, faux_y) = vise(fenetre);
-        assert_eq!((juste_x, juste_y), (3140, 0), "la référence JUSTE vise l'origine de la sortie");
-        assert_eq!(faux_x - juste_x, 1288, "le terme d'ORIGINE en x, relevé sur la VM");
-        assert_eq!(faux_y - juste_y, 51, "le terme d'ORIGINE en y, relevé sur la VM");
+        assert_eq!(
+            (juste_x, juste_y),
+            (3140, 0),
+            "the CORRECT reference targets the output origin"
+        );
+        assert_eq!(
+            faux_x - juste_x,
+            1288,
+            "the ORIGIN term in x, read on the VM"
+        );
+        assert_eq!(faux_y - juste_y, 51, "the ORIGIN term in y, read on the VM");
     }
 
-    /// 🔴 **Le second terme, celui que le décalage constant ne corrigerait
-    /// pas.** Au coin BAS-DROITE, l'écart n'est plus le même qu'au coin
-    /// haut-gauche : c'est le terme d'ÉCHELLE, et c'est pourquoi ce défaut ne
-    /// se répare pas en soustrayant 1288.
+    /// 🔴 **The second term, the one a constant offset would not
+    /// fix.** At the BOTTOM-RIGHT corner, the gap is no longer the same as at the
+    /// top-left corner: it is the SCALE term, and that is why this defect cannot
+    /// be repaired by subtracting 1288.
     #[test]
-    fn l_erreur_n_est_pas_un_simple_decalage_elle_croit_avec_la_distance() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let fenetre = Rect { x: 4428, y: 51, width: 1428, height: 1080 };
-        let sortie = Rect { x: 3140, y: 0, width: 1920, height: 1200 };
+    fn the_error_is_not_a_plain_offset_it_grows_with_distance() {
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let fenetre = Rect {
+            x: 4428,
+            y: 51,
+            width: 1428,
+            height: 1080,
+        };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1920,
+            height: 1200,
+        };
         let ecart = |f: u16| {
             let en_px = |r: Rect| {
                 let (nx, _) = to_virtual_desktop(f, 0, r, bureau);
@@ -246,21 +298,37 @@ mod tests {
         let au_coin = ecart(0);
         let au_bout = ecart(65535);
         assert_eq!(au_coin, 1288);
-        assert_ne!(au_bout, au_coin, "l'écart CHANGE : ce n'est pas un décalage constant");
-        // Ow − Ww = 1920 − 1428 = 492 : l'écart se réduit d'autant au bout.
+        assert_ne!(
+            au_bout, au_coin,
+            "the gap CHANGES: it is not a constant offset"
+        );
+        // Ow − Ww = 1920 − 1428 = 492: the gap shrinks by as much at the end.
         assert_eq!(au_coin - au_bout, 492);
     }
 
-    /// Le cas où les deux références COÏNCIDENT : la fenêtre occupe exactement
-    /// sa sortie. C'est le témoin — il montre que la correction ne change
-    /// rien quand il n'y avait rien à changer, et donc que la rouge ci-dessus
-    /// vient bien de l'écart des rectangles.
+    /// The case where both references COINCIDE: the window exactly occupies
+    /// its output. It is the control — it shows that the fix changes
+    /// nothing when there was nothing to change, and therefore that the red above
+    /// does come from the gap between the rectangles.
     #[test]
-    fn quand_la_fenetre_occupe_sa_sortie_les_deux_references_coincident() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let meme = Rect { x: 3140, y: 0, width: 1920, height: 1200 };
+    fn when_the_window_fills_its_output_the_two_references_coincide() {
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let meme = Rect {
+            x: 3140,
+            y: 0,
+            width: 1920,
+            height: 1200,
+        };
         for f in [0u16, 12345, 65535] {
-            assert_eq!(to_virtual_desktop(f, f, meme, bureau), to_virtual_desktop(f, f, meme, bureau));
+            assert_eq!(
+                to_virtual_desktop(f, f, meme, bureau),
+                to_virtual_desktop(f, f, meme, bureau)
+            );
         }
         let (nx, ny) = to_virtual_desktop(0, 0, meme, bureau);
         assert_eq!(
@@ -271,33 +339,43 @@ mod tests {
             (3140, 0)
         );
     }
-    /// 🔴 **LA ROUGE DE E1, ET ELLE PORTE LES CHIFFRES DU JOURNAL DE LA VM.**
+    /// 🔴 **E1'S RED, AND IT CARRIES THE FIGURES OF THE VM'S LOG.**
     ///
-    /// Relevé dans le même `agent.log`, la même session :
+    /// Surveyed in the same `agent.log`, the same session:
     ///
     /// ```text
-    /// duplication de sortie établie  desktop_width=1860 desktop_height=1080
-    /// session NVENC native initialisée   largeur=1428   hauteur=1080
+    /// output duplication established     desktop_width=1860 desktop_height=1080
+    /// native NVENC session initialised   width=1428   height=1080
     /// ```
     ///
-    /// L'attendu est écrit **AVANT** toute mesure sur la VM, et il ne dérive
-    /// d'aucun point mesuré : il vient de ces deux lignes seules. C'est la
-    /// condition posée après la mesure circulaire du lot 32R — voir le § « son
-    /// piège le plus traître » de `CLAUDE.md`.
+    /// The expected value is written **BEFORE** any measurement on the VM, and it derives
+    /// from no measured point: it comes from these two lines alone. It is the
+    /// condition set after the circular measurement of batch 32R — see the § "its
+    /// most treacherous trap" of `CLAUDE.md`.
     ///
-    /// **Le fond droit de l'image est à 1428 px de l'origine de la sortie.**
-    /// La formule du lot 32Q, qui démappait sur la sortie ENTIÈRE, y visait
-    /// 1860 : **+432 px**, nul à gauche, la moitié à mi-course. En y, 1080
-    /// contre 1080 : **zéro**.
+    /// **The right edge of the image is 1428 px from the output's origin.**
+    /// Batch 32Q's formula, which unmapped on the WHOLE output, aimed there at
+    /// 1860: **+432 px**, nil on the left, half of it halfway. In y, 1080
+    /// against 1080: **zero**.
     #[test]
-    fn le_recadrage_annule_les_432_px_de_derive_en_x_et_ne_touche_pas_l_y() {
-        let bureau = Rect { x: 0, y: 0, width: 8192, height: 2160 };
-        let sortie = Rect { x: 3140, y: 0, width: 1860, height: 1080 };
+    fn the_cropping_cancels_the_432_px_drift_in_x_and_does_not_touch_y() {
+        let bureau = Rect {
+            x: 0,
+            y: 0,
+            width: 8192,
+            height: 2160,
+        };
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1860,
+            height: 1080,
+        };
         let image = (1428u32, 1080u32);
 
-        // Ce que le produit calcule aujourd'hui.
-        let juste = rectangle_capture(sortie, image).expect("taille d'image connue");
-        // Ce que le lot 32Q calculait : la sortie entière, telle quelle.
+        // What the product computes today.
+        let juste = rectangle_capture(sortie, image).expect("image size known");
+        // What batch 32Q computed: the whole output, as is.
         let formule_32q = sortie;
 
         let en_px = |r: Rect, f: u16| {
@@ -308,30 +386,38 @@ mod tests {
             )
         };
 
-        // Le bord DROIT de l'image : 3140 + 1428.
-        assert_eq!(en_px(juste, 65535).0, 3140 + 1428, "le bord droit de l'IMAGE");
+        // The RIGHT edge of the image: 3140 + 1428.
+        assert_eq!(
+            en_px(juste, 65535).0,
+            3140 + 1428,
+            "the right edge of the IMAGE"
+        );
         assert_eq!(
             en_px(formule_32q, 65535).0 - en_px(juste, 65535).0,
             432,
-            "les 432 px que la formule du lot 32Q ajoutait au bord droit"
+            "the 432 px that the batch 32Q formula added to the right edge"
         );
-        // À mi-course, la moitié : l'erreur est proportionnelle, pas constante.
+        // Halfway, half of it: the error is proportional, not constant.
         assert_eq!(en_px(formule_32q, 32767).0 - en_px(juste, 32767).0, 216);
-        // À gauche, rien : c'est pourquoi le propriétaire disait « en 0 ok ».
+        // On the left, nothing: that is why the owner said "at 0 ok".
         assert_eq!(en_px(formule_32q, 0).0 - en_px(juste, 0).0, 0);
-        // En y, rien nulle part : la sortie et l'image font 1080 toutes deux.
+        // In y, nothing anywhere: the output and the image are both 1080.
         for f in [0u16, 32767, 65535] {
-            assert_eq!(en_px(formule_32q, f).1, en_px(juste, f).1, "aucune dérive en y");
+            assert_eq!(en_px(formule_32q, f).1, en_px(juste, f).1, "no drift in y");
         }
     }
 
-    /// Le témoin négatif de la rouge ci-dessus : quand l'image occupe TOUTE la
-    /// sortie, les deux formules coïncident. Sans lui, un `rectangle_capture`
-    /// qui rendrait n'importe quoi de plus petit passerait la rouge.
+    /// The negative control of the red above: when the image occupies the WHOLE
+    /// output, the two formulas coincide. Without it, a `rectangle_capture`
+    /// that returned anything smaller would pass the red.
     #[test]
-    fn quand_l_image_occupe_toute_la_sortie_les_deux_formules_coincident() {
-        let sortie = Rect { x: 3140, y: 0, width: 1860, height: 1080 };
+    fn when_the_image_fills_the_whole_output_the_two_formulas_coincide() {
+        let sortie = Rect {
+            x: 3140,
+            y: 0,
+            width: 1860,
+            height: 1080,
+        };
         assert_eq!(rectangle_capture(sortie, (1860, 1080)), Some(sortie));
     }
-
 }

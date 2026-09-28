@@ -1,21 +1,21 @@
-//! Le chemin **Media Foundation** : l'objet `EncodeurMft`, sa construction et
-//! sa destruction.
+//! The **Media Foundation** path: the `EncodeurMft` object, its construction and
+//! its destruction.
 //!
-//! Extrait d'`encode.rs` le 30 août 2026 (lot 31), dans une tâche DÉDIÉE et
-//! **avant** le branchement qu'il prépare — la doctrine du dépôt : *extraire,
-//! jamais comprimer*, et *l'extraction jouée AVANT celle qui ajoute*.
+//! Extracted from `encode.rs` on 30 August 2026 (batch 31), in a DEDICATED task and
+//! **before** the wiring it prepares — the repository's doctrine: *extract,
+//! never compress*, and *the extraction played BEFORE the one that adds*.
 //!
-//! 🔴 **POURQUOI TROIS FICHIERS ET NON DEUX.** Les seules méthodes de la
-//! pompe pèsent **487 lignes** (mesuré, pas estimé) : elles ne tiennent pas
-//! sous le plafond de 500 avec leur en-tête et leurs imports. Et la règle de
-//! visibilité de Rust interdit de les loger ailleurs que **sous** le module
-//! qui définit la structure — un frère ne voit pas les champs privés. La
-//! pompe est donc scindée **par responsabilité** — `convertisseur` (BGRA→NV12)
-//! et `encodeur` (la MFT asynchrone) — et non tranchée au hasard.
+//! 🔴 **WHY THREE FILES AND NOT TWO.** The pump's methods alone
+//! weigh **487 lines** (measured, not estimated): they do not fit
+//! under the 500 ceiling with their header and imports. And Rust's
+//! visibility rule forbids housing them anywhere other than **under** the module
+//! that defines the structure — a sibling does not see private fields. The
+//! pump is therefore split **by responsibility** — `convertisseur` (BGRA→NV12)
+//! and `encodeur` (the asynchronous MFT) — and not cut at random.
 //!
-//! ⚠️ **Ce module n'est PAS la façade.** `encode.rs` réexporte
-//! `EncodeurMft` : les ~10 appelants du dépôt n'ont pas bougé d'une ligne, et
-//! aucun des huit verbes n'a changé de signature.
+//! ⚠️ **This module is NOT the facade.** `encode.rs` re-exports
+//! `EncodeurMft`: the repository's ~10 callers have not moved by one line, and
+//! none of the eight verbs changed signature.
 
 use std::collections::VecDeque;
 use std::sync::atomic::Ordering;
@@ -24,10 +24,9 @@ use std::sync::Arc;
 use anyhow::{bail, Context, Result};
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct3D11::ID3D11Device;
-use windows::Win32::Media::MediaFoundation::*;
 
-// Même raison que chez ses enfants : ce fichier est la continuation
-// d'`encode.rs`, pas un module indépendant qui en consommerait l'interface.
+// Same reason as in its children: this file is the continuation
+// of `encode.rs`, not an independent module that would consume its interface.
 use crate::encode::*;
 use crate::encode::{arret, fabrique, reglages};
 
@@ -38,64 +37,61 @@ pub struct EncodeurMft {
     transform: IMFTransform,
     events: IMFMediaEventGenerator,
     device_manager: IMFDXGIDeviceManager,
-    /// Convertisseur BGRA→NV12 (MFT synchrone). Toujours présent : la capture
-    /// ne produit que du BGRA, l'encodeur n'accepte que du NV12 (voir le
-    /// commentaire de module).
+    /// BGRA→NV12 converter (synchronous MFT). Always present: the capture
+    /// only produces BGRA, the encoder only accepts NV12 (see the
+    /// module comment).
     converter: IMFTransform,
-    /// Vrai si le convertisseur alloue lui-même ses échantillons de sortie
-    /// (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES`). Déterminé une fois à la
-    /// construction : fournir un échantillon alors que le flag est positionné
-    /// (ou l'inverse) est une erreur `ProcessOutput` documentée par MF.
+    /// True if the converter allocates its output samples itself
+    /// (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES`). Determined once at
+    /// construction: providing a sample while the flag is set
+    /// (or the reverse) is a `ProcessOutput` error documented by MF.
     converter_provides_samples: bool,
-    /// Périphérique D3D11 de la capture, conservé pour allouer des textures
-    /// NV12 de sortie quand le convertisseur ne s'auto-alloue pas.
+    /// The capture's D3D11 device, kept to allocate NV12 output
+    /// textures when the converter does not self-allocate.
     device: ID3D11Device,
-    /// Horodatages (temps, durée) des entrées BGRA soumises au convertisseur
-    /// mais dont la sortie n'a pas encore été récupérée, dans l'ordre de
-    /// soumission. Un convertisseur vidéo ne réordonne jamais les images :
-    /// la sortie la plus ancienne pas encore récupérée correspond toujours
-    /// à l'entrée la plus ancienne pas encore ressortie (voir la ronde de
-    /// correction 1/5 — le convertisseur peut rendre, lors du drainage
-    /// d'une entrée, la sortie d'une entrée antérieure encore en attente ;
-    /// il faut alors lui associer SON horodatage d'origine, pas celui de
-    /// l'entrée qui vient d'être soumise).
+    /// Timestamps (time, duration) of the BGRA inputs submitted to the converter
+    /// but whose output has not yet been retrieved, in submission
+    /// order. A video converter never reorders images:
+    /// the oldest output not yet retrieved always corresponds
+    /// to the oldest input not yet come out (see fix
+    /// round 1/5 — the converter may return, while draining
+    /// an input, the output of an earlier input still pending;
+    /// it must then be associated with ITS original timestamp, not that of
+    /// the input just submitted).
     pending_conversion_timestamps: VecDeque<(i64, i64)>,
-    /// Échantillons NV12 déjà produits par le convertisseur mais pas encore
-    /// soumis à l'encodeur (celui-ci n'en réclamait pas encore).
+    /// NV12 samples already produced by the converter but not yet
+    /// submitted to the encoder (it was not claiming any yet).
     pending_nv12: VecDeque<IMFSample>,
-    /// Vrai si le convertisseur doit encore rendre la sortie d'une entrée déjà
-    /// consommée. Purement diagnostic depuis le 28/07 (publié en
-    /// `awaiting_drain`) : le pilotage s'appuie désormais sur `GetInputStatus`,
-    /// qui décrit l'état réel du convertisseur au lieu de le déduire.
+    /// True if the converter must still return the output of an already
+    /// consumed input. Purely diagnostic since 28/07 (published as
+    /// `awaiting_drain`): driving now relies on `GetInputStatus`,
+    /// which describes the converter's real state instead of deducing it.
     converter_output_pending: bool,
-    /// Taille des textures BGRA remises par la capture — l'entrée du
-    /// convertisseur.
-    capture: (u32, u32),
-    /// Taille réellement encodée et transportée — la sortie du convertisseur
-    /// et l'entrée de l'encodeur. Peut être plus petite que `capture` : c'est
-    /// le levier de résolution adaptative, et il ne touche pas à la fenêtre
-    /// Windows (contrairement à `WindowsSource::resize`).
+    /// Size actually encoded and sent: the converter's output and the
+    /// encoder's input. It can be smaller than the captured textures; it is
+    /// the adaptive-resolution lever, and it never touches the Windows window
+    /// (unlike `WindowsSource::resize`).
     encode: (u32, u32),
     fps: u32,
-    /// Nombre de demandes d'entrée non encore satisfaites.
+    /// Number of input requests not yet satisfied.
     pending_input_requests: u32,
-    /// Nombre d'images prêtes à être récupérées.
+    /// Number of images ready to be retrieved.
     pending_outputs: u32,
-    /// Compteur diagnostic : occasions où le pool de sortie du convertisseur
-    /// était momentanément épuisé (voir `collect_converter_output`). Exposé
-    /// pour mesurer l'ampleur réelle de ce contournement, pas consommé par
-    /// la logique de pilotage elle-même.
+    /// Diagnostic counter: occasions where the converter's output pool
+    /// was momentarily exhausted (see `collect_converter_output`). Exposed
+    /// to measure the real extent of this workaround, not consumed by
+    /// the driving logic itself.
     skipped_busy: u64,
-    /// Compteurs et étape courante, lisibles depuis un autre fil (voir
+    /// Counters and current step, readable from another thread (see
     /// `EncoderTelemetry`).
     telemetry: Arc<EncoderTelemetry>,
-    /// File de travail sérialisée imposée à la MFT encodeur, et barrière de sa
-    /// mise au repos (voir `arret::FileMft` ; le convertisseur n'en a pas, et
-    /// `arret::mettre_au_repos` dit pourquoi).
+    /// Serialised work queue imposed on the encoder MFT, and barrier of its
+    /// putting at rest (see `arret::FileMft`; the converter has none, and
+    /// `arret::put_to_rest` says why).
     ///
-    /// **Déclarée en dernier volontairement** : les champs sont détruits dans
-    /// l'ordre de déclaration, après l'exécution de `Drop for EncodeurMft`.
-    /// La file ne doit être rendue qu'une fois relâchée la MFT qui la détient.
+    /// **Declared last on purpose**: fields are destroyed in
+    /// declaration order, after `Drop for EncodeurMft` has run.
+    /// The queue must only be released once the MFT holding it has been released.
     file_encodeur: arret::FileMft,
 }
 
@@ -107,32 +103,32 @@ impl EncodeurMft {
         fps: u32,
         bitrate: u32,
     ) -> Result<Self> {
-        demarrer_media_foundation()?;
+        start_media_foundation()?;
 
-        // Allouée ICI, avant toute MFT : les locales sont détruites dans
-        // l'ordre INVERSE de déclaration, donc celle-ci l'est en dernier si un
-        // `?` plus bas interrompt la construction. Une file rendue avant la MFT
-        // qui la détient serait exactement l'inversion que l'ordre des champs
-        // ci-dessus évite. Voir `arret::FileMft::allouer`.
+        // Allocated HERE, before any MFT: locals are destroyed in
+        // REVERSE declaration order, so this one is destroyed last if a
+        // `?` further down interrupts the construction. A queue released before the MFT
+        // holding it would be exactly the inversion the field order
+        // above avoids. See `arret::FileMft::allouer`.
         let mut file_encodeur = arret::FileMft::allouer();
 
         let transform = fabrique::find_hardware_encoder()?;
         let attributes = unsafe { transform.GetAttributes() }?;
 
-        // Débloquer le mode asynchrone : obligatoire pour toute MFT matérielle.
+        // Unlock asynchronous mode: mandatory for any hardware MFT.
         let is_async = unsafe { attributes.GetUINT32(&MF_TRANSFORM_ASYNC) }.unwrap_or(0);
         if is_async == 0 {
-            bail!("l'encodeur trouvé n'est pas asynchrone : configuration inattendue");
+            bail!("the encoder found is not asynchronous: unexpected configuration");
         }
         unsafe { attributes.SetUINT32(&MF_TRANSFORM_ASYNC_UNLOCK, 1) }?;
-        // Mode faible latence : pas de mise en tampon multi-images.
+        // Low-latency mode: no multi-frame buffering.
         unsafe { attributes.SetUINT32(&MF_LOW_LATENCY, 1) }?;
 
-        // Preuve empirique (voir commentaire de module) : la liste réelle des
-        // types d'entrée annoncés par cet encodeur, avant toute configuration.
+        // Empirical proof (see module comment): the real list of
+        // input types advertised by this encoder, before any configuration.
         fabrique::log_supported_input_types(&transform);
 
-        // Partager le périphérique D3D11 pour recevoir des textures GPU.
+        // Share the D3D11 device to receive GPU textures.
         let device_manager = fabrique::share_device(device)?;
         unsafe {
             transform.ProcessMessage(
@@ -140,7 +136,7 @@ impl EncodeurMft {
                 device_manager.as_raw() as usize,
             )
         }
-        .context("partage du périphérique D3D avec l'encodeur")?;
+        .context("sharing the D3D device with the encoder")?;
 
         reglages::configure_output(&transform, encode.0, encode.1, fps, bitrate)?;
         reglages::configure_input(&transform, encode.0, encode.1, fps)?;
@@ -148,49 +144,48 @@ impl EncodeurMft {
 
         let events: IMFMediaEventGenerator = transform.cast()?;
 
-        // AVANT tout démarrage de flux : imposer à la MFT la file sur laquelle
-        // elle déposera son travail asynchrone, seul moyen d'obtenir plus tard
-        // une barrière sur ce travail (voir `arret::FileMft`).
+        // BEFORE any stream start: impose on the MFT the queue on which
+        // it will drop its asynchronous work, the only way to later obtain
+        // a barrier on that work (see `arret::FileMft`).
         file_encodeur.confier(&transform, "encodeur");
 
-        // `NOTIFY_BEGIN_STREAMING` est le point où une MFT matérielle réserve
-        // ses ressources de session GPU : candidat au refus quand plusieurs
-        // encodeurs coexistent, à ne pas confondre avec les deux autres.
+        // `NOTIFY_BEGIN_STREAMING` is the point where a hardware MFT reserves
+        // its GPU session resources: a candidate for refusal when several
+        // encoders coexist, not to be confused with the two others.
         unsafe {
             transform
                 .ProcessMessage(MFT_MESSAGE_COMMAND_FLUSH, 0)
-                .context("purge initiale de l'encodeur H.264 (transform matériel)")?;
+                .context("initial flush of the H.264 encoder (hardware transform)")?;
             transform
                 .ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)
-                .context("démarrage du flux de l'encodeur H.264 (transform matériel)")?;
+                .context("starting the H.264 encoder stream (hardware transform)")?;
             transform
                 .ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)
-                .context("début de flux de l'encodeur H.264 (transform matériel)")?;
+                .context("start of stream of the H.264 encoder (hardware transform)")?;
         }
 
-        // Convertisseur BGRA→NV12, partageant le même périphérique D3D.
+        // BGRA→NV12 converter, sharing the same D3D device.
         let converter = fabrique::create_color_converter(&device_manager, capture, encode, fps)?;
         let converter_stream_info = unsafe { converter.GetOutputStreamInfo(0) }
-            .context("interrogation du flux de sortie du convertisseur")?;
-        let converter_provides_samples = converter_stream_info.dwFlags
-            & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32
-            != 0;
+            .context("querying the converter output stream")?;
+        let converter_provides_samples =
+            converter_stream_info.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32 != 0;
         tracing::info!(
             converter_provides_samples,
-            "convertisseur BGRA→NV12 (Video Processor MFT) configuré"
+            "BGRA→NV12 converter (Video Processor MFT) configured"
         );
-        // Essai mené (investigation débit) : fournir systématiquement notre
-        // propre échantillon de sortie, y compris quand
-        // `converter_provides_samples` est vrai, pour voir si cela évite
-        // l'attente d'~1 s mesurée dans `drain_converter_output`. Rejeté
-        // immédiatement par le convertisseur (`Output Sample is Invalid`,
-        // `0x80070057`) : le contrat documenté (ne jamais fournir de tampon
-        // quand ce drapeau est positionné) doit être respecté, il n'y a pas
-        // de contournement possible ici.
+        // Attempt made (throughput investigation): systematically provide our
+        // own output sample, including when
+        // `converter_provides_samples` is true, to see whether it avoids
+        // the ~1 s wait measured in `drain_converter_output`. Rejected
+        // immediately by the converter (`Output Sample is Invalid`,
+        // `0x80070057`): the documented contract (never provide a buffer
+        // when this flag is set) must be respected, there is no possible
+        // workaround here.
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }
-            .context("démarrage du flux du convertisseur de couleur (Video Processor MFT)")?;
+            .context("starting the colour converter stream (Video Processor MFT)")?;
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }
-            .context("début de flux du convertisseur de couleur (Video Processor MFT)")?;
+            .context("start of stream of the colour converter (Video Processor MFT)")?;
 
         Ok(Self {
             transform,
@@ -205,7 +200,6 @@ impl EncodeurMft {
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
             file_encodeur,
-            capture,
             encode,
             fps,
             pending_input_requests: 0,
@@ -213,13 +207,13 @@ impl EncodeurMft {
         })
     }
 
-    /// Poignée de télémétrie, à partager avec un fil de surveillance.
+    /// Telemetry handle, to be shared with a watchdog thread.
     pub fn telemetry(&self) -> Arc<EncoderTelemetry> {
         self.telemetry.clone()
     }
 
-    /// Recopie les compteurs « d'état » (longueurs de file) dans la
-    /// télémétrie. Appelée aux points de respiration du chemin chaud.
+    /// Copies the "state" counters (queue lengths) into the
+    /// telemetry. Called at the breathing points of the hot path.
     fn publish_state(&self) {
         self.telemetry
             .queued_nv12
@@ -230,24 +224,23 @@ impl EncodeurMft {
         self.telemetry
             .skipped_busy
             .store(self.skipped_busy, Ordering::Relaxed);
-        self.telemetry.awaiting_drain.store(
-            self.converter_output_pending as u64,
-            Ordering::Relaxed,
-        );
+        self.telemetry
+            .awaiting_drain
+            .store(self.converter_output_pending as u64, Ordering::Relaxed);
     }
 
-    /// Occupe la file de travail imposée à la MFT encodeur pendant `duree`.
+    /// Occupies the work queue imposed on the encoder MFT for `duree`.
     ///
-    /// **Sonde de mesure, jamais appelée en exploitation** : elle éprouve si le
-    /// travail asynchrone de la MFT transite réellement par la file qu'on lui
-    /// impose. Si oui, la boucher doit arrêter l'encodeur ; si l'encodeur
-    /// continue, la barrière de `arret::FileMft` ne barre rien et il faut le
-    /// savoir. Voir le mode d'échec résiduel documenté sur `arret::FileMft`.
+    /// **Measurement probe, never called in operation**: it tests whether the
+    /// MFT's asynchronous work really goes through the queue imposed on
+    /// it. If so, clogging it must stop the encoder; if the encoder
+    /// continues, the barrier of `arret::FileMft` bars nothing and we must
+    /// know it. See the residual failure mode documented on `arret::FileMft`.
     pub fn eprouver_file(&self, duree: std::time::Duration) {
         self.file_encodeur.bloquer(duree);
     }
 
-    /// Force la production d'une image clé sur l'image suivante.
+    /// Forces the production of a key frame on the next image.
     pub fn request_keyframe(&mut self) -> Result<()> {
         let codec: ICodecAPI = self.transform.cast()?;
         let value = reglages::variant_bool(true);
@@ -255,25 +248,25 @@ impl EncodeurMft {
         Ok(())
     }
 
-    /// Change le débit cible sans reconstruire l'encodeur.
+    /// Changes the target bitrate without rebuilding the encoder.
     ///
-    /// `ICodecAPI::SetValue` à chaud est déjà éprouvé sur ce pilote par
-    /// `request_keyframe`, qui écrit `AVEncVideoForceKeyFrame` en cours de
-    /// session sur ce même objet.
+    /// Hot `ICodecAPI::SetValue` is already tested on this driver by
+    /// `request_keyframe`, which writes `AVEncVideoForceKeyFrame` during a
+    /// session on this same object.
     ///
-    /// Un refus du pilote est rendu à l'appelant plutôt que journalisé ici :
-    /// c'est `WindowsSource` qui sait s'il doit continuer par la résolution
-    /// (voir tâche 7).
+    /// A refusal by the driver is returned to the caller rather than logged here:
+    /// it is `WindowsSource` that knows whether it must continue with the resolution
+    /// (see task 7).
     pub fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
         let codec: ICodecAPI = self.transform.cast()?;
         let rate = reglages::variant_u32(bitrate);
         unsafe { codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate) }
-            .context("réglage à chaud du débit d'encodage")?;
+            .context("live adjustment of the encoding bitrate")?;
         Ok(())
     }
 
-    /// Taille réellement encodée. Distincte de la taille capturée depuis que
-    /// la résolution s'adapte au lien.
+    /// Size actually encoded. Distinct from the captured size since
+    /// the resolution adapts to the link.
     pub fn encode_size(&self) -> (u32, u32) {
         self.encode
     }
@@ -284,18 +277,18 @@ impl Drop for EncodeurMft {
         if self.skipped_busy > 0 {
             tracing::debug!(
                 skipped_busy = self.skipped_busy,
-                "images renoncées faute de confirmation du convertisseur (diagnostic)"
+                "frames given up for lack of converter confirmation (diagnostic)"
             );
         }
-        // Mise au repos AVANT le relâchement des références COM : rien
-        // ne demandait jamais à la MFT matérielle de cesser ses traitements
-        // asynchrones, et c'est la course que la tâche 2bis a relevée. Voir
-        // `arret::mettre_au_repos` pour le détail et le relevé qui le motive.
-        arret::mettre_au_repos(&self.converter, &self.transform, &self.file_encodeur);
+        // Putting at rest BEFORE releasing the COM references: nothing
+        // ever asked the hardware MFT to stop its asynchronous
+        // processing, and that is the race task 2bis noted. See
+        // `arret::put_to_rest` for the detail and the survey that motivates it.
+        arret::put_to_rest(&self.converter, &self.transform, &self.file_encodeur);
 
-        // `MFShutdown` n'est appelé nulle part, et c'est délibéré : voir
-        // `demarrer_media_foundation`. La ligne ci-dessous est INERTE (emprunt
-        // aussitôt jeté, zéro code machine) : à retirer hors branche de mesure.
+        // `MFShutdown` is called nowhere, and it is deliberate: see
+        // `start_media_foundation`. The line below is INERT (borrow
+        // immediately thrown away, zero machine code): to be removed outside the measurement branch.
         let _ = &self.device_manager;
     }
 }

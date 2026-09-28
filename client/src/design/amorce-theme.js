@@ -1,28 +1,28 @@
-/* L'amorce anti-FOUC : elle pose `data-theme` avant la première peinture.
+/* The anti-FOUC bootstrap: it sets `data-theme` before first paint.
 
-   🔴 CE FICHIER PART VERBATIM DANS CHAQUE PAGE BÂTIE, COMMENTAIRES COMPRIS.
-   Il n'est passé par AUCUN transform : le greffon `guac-amorce-theme` de
-   `client/vite.config.ts` lit son texte brut et le rend tel quel en ligne dans
-   le `<head>`. À l'inverse des commentaires de `theme.ts`, que le bundler
-   retire, ceux-ci sont livrés — mesuré le 19 août 2026 : un en-tête de
-   raisonnement de 1 921 octets pesait 1 921 octets DANS CHACUNE des pages, et
-   aucun des neuf contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
-   C'est pourquoi le raisonnement vit là où il est GRATUIT : le greffon, dans
-   `vite.config.ts`, qui n'est que du temps de build, et `theme.ts`.
+   🔴 THIS FILE GOES VERBATIM INTO EVERY BUILT PAGE, COMMENTS INCLUDED.
+   It goes through NO transform: the `guac-amorce-theme` plugin of
+   `client/vite.config.ts` reads its raw text and renders it as is inline in
+   the `<head>`. Unlike the comments of `theme.ts`, which the bundler
+   strips, these are shipped — measured on August 19th, 2026: a
+   1,921-byte reasoning header weighed 1,921 bytes IN EACH of the pages, and
+   none of the nine checks would have said so (§7.7 only weighs CSS).
+   That is why the reasoning lives where it is FREE: the plugin, in
+   `vite.config.ts`, which is build time only, and `theme.ts`.
 
-   Ce qu'il faut savoir ici, et rien de plus : aucune règle n'est portée par ce
-   fichier — il ignore les trois états et ce que l'absence d'attribut signifie
-   (voir `theme.ts`) ; sa chaîne de clé est la seule duplication du sous-bloc,
-   inévitable puisqu'un script en ligne ne peut rien importer, et
-   `theme.test.ts` refuse qu'elle diverge.
-   ⚠️ CETTE CLÉ N'EST NOMMÉE NULLE PART DANS CE COMMENTAIRE, ET C'EST VOULU.
-   Une première rédaction l'y écrivait entre quotes ; le garde de
-   `theme.test.ts` devenait alors VACUEUX — mesuré le 19 août 2026 en
-   remplaçant tout l'appel par `var t = null;` : les deux assertions
-   restaient VERTES, satisfaites par le commentaire seul. Un contrôle qu'on
-   peut satisfaire depuis un commentaire n'en est pas un.
-   Enfin, le `try` couvre l'ACCÈS à
-   `localStorage`, qui lève lui-même en mode privé strict. */
+   What must be known here, and nothing more: no rule is carried by this
+   file — it ignores the three states and what the attribute's absence means
+   (see `theme.ts`); its key string is the sub-block's only duplication,
+   unavoidable since an inline script cannot import anything, and
+   `theme.test.ts` refuses to let it diverge.
+   ⚠️ THIS KEY IS NAMED NOWHERE IN THIS COMMENT, AND THAT IS INTENDED.
+   A first draft wrote it there in quotes; the guard of
+   `theme.test.ts` then became VACUOUS — measured on August 19th, 2026 by
+   replacing the whole call with `var t = null;`: both assertions
+   stayed GREEN, satisfied by the comment alone. A check that
+   can be satisfied from a comment is not one.
+   Finally, the `try` covers ACCESS to
+   `localStorage`, which itself throws in strict private mode. */
 (function () {
     try {
         var t = localStorage.getItem('guac.theme');
@@ -30,6 +30,6 @@
             document.documentElement.setAttribute('data-theme', t);
         }
     } catch (_) {
-        /* stockage indisponible : on reste sur la préférence du système. */
+        /* storage unavailable: we stay on the system preference. */
     }
 })();

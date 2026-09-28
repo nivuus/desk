@@ -1,31 +1,31 @@
 /**
- * Retient la dernière taille observée et dit s'il faut l'émettre.
+ * Retains the last observed size and says whether it must be emitted.
  *
- * **Pourquoi cet objet existe** : le `ResizeObserver` de `main.ts` abandonnait
- * en silence quand le canal de contrôle n'était pas ouvert au moment où sa
- * temporisation expirait, et ne réémettait JAMAIS — l'observateur ne se
- * redéclenche que si l'élément change encore de taille. Une taille perdue
- * l'était donc à jamais (leg 10 du sous-bloc D8 : deux `Resize` relevés pour
- * cinq sessions).
+ * **Why this object exists**: `main.ts`'s `ResizeObserver` gave up
+ * silently when the control channel was not open at the moment its
+ * debounce expired, and NEVER re-emitted — the observer only
+ * fires again if the element changes size again. A lost size
+ * was therefore lost forever (leg 10 of sub-block D8: two `Resize`s recorded for
+ * five sessions).
  *
- * **Pur, sans DOM** : c'est ce qui le rend éprouvable.
+ * **Pure, DOM-free**: that is what makes it testable.
  */
-export interface Taille {
+export interface Size {
     largeur: number;
     hauteur: number;
 }
 
 export class RejeuResize {
-    private derniere: Taille | undefined;
-    private emise: Taille | undefined;
+    private derniere: Size | undefined;
+    private emise: Size | undefined;
 
-    /** Le `ResizeObserver` a vu une taille. */
-    observer(taille: Taille): void {
-        this.derniere = taille;
+    /** The `ResizeObserver` saw a size. */
+    observer(size: Size): void {
+        this.derniere = size;
     }
 
-    /** La taille à émettre, ou `undefined` s'il n'y a rien de neuf. */
-    aEmettre(): Taille | undefined {
+    /** The size to emit, or `undefined` if there is nothing new. */
+    aEmettre(): Size | undefined {
         const derniere = this.derniere;
         if (!derniere) return undefined;
         if (
@@ -38,8 +38,8 @@ export class RejeuResize {
         return derniere;
     }
 
-    /** L'émission a réellement eu lieu. */
-    confirmer(taille: Taille): void {
-        this.emise = taille;
+    /** The emission really took place. */
+    confirmer(size: Size): void {
+        this.emise = size;
     }
 }

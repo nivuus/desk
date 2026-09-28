@@ -2,35 +2,35 @@ import { describe, expect, it } from 'vitest';
 import { lignes, sectionVisible } from './fenetres';
 
 describe('lignes', () => {
-    it('une fenetre OUVERTE n est pas rouvrable : il n y a rien a suggerer', () => {
+    it('an OPEN window cannot be reopened: there is nothing to suggest', () => {
         expect(lignes([{ session: 's', titre: 'Bloc-notes', ouverte: true }])[0].rouvrable).toBe(false);
     });
 
-    it('une fenetre FERMEE est rouvrable', () => {
+    it('a CLOSED window can be reopened', () => {
         expect(lignes([{ session: 's', titre: 'Paint', ouverte: false }])[0].rouvrable).toBe(true);
     });
 
-    it('le booleen ouverte distingue les deux etats : c est lui qui pilote la classe cote cablage', () => {
-        // 🔴 LA REGLE PURE NE DECIDE PLUS DU NOM DE CLASSE : un nom qui
-        // transiterait par une variable serait invisible au controle §7.9,
-        // qui ne voit que les litteraux passes a `classList.add('…')`. Ce que
-        // la regle pure decide, c est l ETAT ; le nom litteral de la classe
-        // vit dans fenetres-dom.ts.
+    it('the open boolean tells the two states apart: it drives the class on the wiring side', () => {
+        // 🔴 THE PURE RULE NO LONGER DECIDES THE CLASS NAME: a name that
+        // went through a variable would be invisible to check §7.9,
+        // which only sees the literals passed to `classList.add('…')`. What
+        // the pure rule decides is the STATE; the literal class name
+        // lives in fenetres-dom.ts.
         const ouverte = lignes([{ session: 'a', titre: 'x', ouverte: true }])[0];
         const fermee = lignes([{ session: 'b', titre: 'x', ouverte: false }])[0];
         expect([ouverte.ouverte, fermee.ouverte]).toEqual([true, false]);
     });
 
-    it('le mot de la pastille est accentue du cote FERME', () => {
-        // `fermée`, pas `fermee` : c est du texte montre a un humain.
-        expect(lignes([{ session: 's', titre: 'x', ouverte: false }])[0].etat).toBe('fermée');
+    it('the badge word is emphasised on the CLOSED side', () => {
+        // `closed` is text shown to a human, not an internal code.
+        expect(lignes([{ session: 's', titre: 'x', ouverte: false }])[0].etat).toBe('closed');
     });
 
-    it('la session est reconduite telle quelle : c est elle qui rouvre', () => {
+    it('the session is carried over as is: it is the one that reopens', () => {
         expect(lignes([{ session: 's-7', titre: 'x', ouverte: false }])[0].session).toBe('s-7');
     });
 
-    it('l ordre des fenetres est PRESERVE', () => {
+    it('the order of the windows is PRESERVED', () => {
         const rendu = lignes([
             { session: 'a', titre: 'Un', ouverte: true },
             { session: 'b', titre: 'Deux', ouverte: false },
@@ -40,16 +40,16 @@ describe('lignes', () => {
 });
 
 describe('sectionVisible', () => {
-    it('aucune fenetre : la section est ABSENTE', () => {
-        // 🔴 ABSENTE, PAS VIDE. Une section montrant en permanence « aucune
-        // fenetre ouverte » serait du bruit sur l etat NOMINAL d un hub qu on
-        // vient d ouvrir (spec 4.1).
+    it('no window: the section is ABSENT', () => {
+        // 🔴 ABSENT, NOT EMPTY. A section permanently showing "no
+        // open window" would be noise on the NOMINAL state of a hub that was
+        // just opened (spec 4.1).
         expect(sectionVisible([])).toBe(false);
     });
 
-    it('une fenetre, meme FERMEE : la section est visible', () => {
-        // Une fenetre fermee a quelque chose a offrir -- son bouton Rouvrir --
-        // donc la cacher priverait l utilisateur du seul geste qui la ramene.
+    it('a window, even CLOSED: the section is visible', () => {
+        // A closed window has something to offer -- its Reopen button --
+        // so hiding it would deprive the user of the only gesture that brings it back.
         expect(sectionVisible([{ session: 's', titre: 'x', ouverte: false }])).toBe(true);
     });
 });

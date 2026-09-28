@@ -1,13 +1,13 @@
-//! Distribution des ordres audio — la branche de `capteur::audio::arbitrer`
-//! sur le registre de `capteur::sommeil`.
+//! Distribution of audio orders — the branch of `capteur::audio::arbitrer`
+//! on the registry of `capteur::sommeil`.
 //!
-//! **Extrait de `sommeil.rs` et non ajouté dedans**, exactement comme
-//! `parts.rs` : ce fichier-là est proche de son plafond, et la règle du dépôt
-//! veut qu'une addition substantielle s'accompagne d'une extraction.
+//! **Extracted from `sommeil.rs` and not added into it**, exactly like
+//! `parts.rs`: that file is close to its cap, and the repository's rule
+//! requires a substantial addition to come with an extraction.
 //!
-//! Il ne s'appelle pas `audio` : ce nom est déjà pris par le module qui porte
-//! la RÈGLE pure. Celui-ci ne porte que sa BRANCHE sur ce registre — même
-//! distinction que `repartiteur` / `parts`.
+//! It is not called `audio`: that name is already taken by the module carrying
+//! the pure RULE. This one only carries its BRANCH on this registry — same
+//! distinction as `repartiteur` / `parts`.
 
 use std::sync::MutexGuard;
 
@@ -16,43 +16,43 @@ use crate::capteur::audio::{arbitrer, FenetreAudio};
 use super::file::Envoi;
 use super::{oublier, Etat, Message};
 
-/// Recalcule qui porte le son et n'envoie que ce qui a changé.
+/// Recomputes who carries the sound and sends only what changed.
 ///
-/// **Appelée APRÈS `distribuer_les_parts`**, en dernière position de tous les
-/// chemins d'entrée du registre. L'ordre importe peu vis-à-vis des parts — le
-/// son et le débit sont orthogonaux — mais un ordre unique et documenté vaut
-/// mieux qu'un ordre qui dépend de l'appelant.
+/// **Called AFTER `distribuer_les_parts`**, in last position on all the
+/// registry's entry paths. The order matters little with respect to shares —
+/// sound and bitrate are orthogonal — but a single, documented order is
+/// better than an order that depends on the caller.
 ///
-/// Un canal rompu ici est retiré par `oublier`, exactement comme dans
-/// `distribuer` et `distribuer_les_parts` : c'est le point de passage unique du
-/// registre, et le contourner laisserait des entrées fantômes au vivier.
+/// A channel broken here is removed by `oublier`, exactly as in
+/// `distribuer` and `distribuer_les_parts`: it is the registry's single passage point,
+/// and bypassing it would leave phantom entries in the pool.
 pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
     let fenetres: Vec<FenetreAudio> = garde
         .canaux
         .keys()
         .filter_map(|session| {
-            // Une session sans PID ou sans rang d'arrivée connu n'existe pas
-            // : `inscrire` pose les deux ensemble. Le `filter_map` est un
-            // filet, pas un cas nominal.
+            // A session without a known PID or arrival rank does not exist
+            // : `inscrire` sets both together. The `filter_map` is a
+            // safety net, not a nominal case.
             //
-            // ⚠️ `arrivee` et `dernier_focus` ne sont PAS symétriques malgré
-            // l'air qu'elles en ont : `0` est le sentinelle DOCUMENTÉ de
-            // `dernier_focus` (« jamais focalisée », la priorité la plus
-            // basse — voir `FenetreAudio`), donc `unwrap_or(0)` y est le bon
-            // repli. Pour `arrivee`, `0` BAT toute fenêtre réelle de son
-            // groupe de PID (`l_emporte` compare `candidat.arrivee <
-            // actuel.arrivee`) : un repli à 0 y serait donc le pire choix
-            // possible, pas un choix neutre. Aucun chemin vivant ne produit
-            // ce cas — `inscrire` pose toujours `arrivees` avant tout appel
-            // à `distribuer_l_audio` —, mais le rendre par `?` plutôt que par
-            // un défaut le rend impossible à mal lire.
+            // ⚠️ `arrivee` and `last_focus` are NOT symmetric despite
+            // appearances: `0` is the DOCUMENTED sentinel of
+            // `last_focus` ("never focused", the lowest
+            // priority — see `FenetreAudio`), so `unwrap_or(0)` is the right
+            // fallback there. For `arrivee`, `0` BEATS any real window of its
+            // PID group (`l_emporte` compares `candidat.arrivee <
+            // actuel.arrivee`): a fallback to 0 would therefore be the worst possible
+            // choice there, not a neutral one. No live path produces
+            // this case — `inscrire` always sets `arrivees` before any call
+            // to `distribuer_l_audio` —, but returning it through `?` rather than through
+            // a default makes it impossible to misread.
             let pid = *garde.pids.get(session)?;
             let arrivee = *garde.arrivees.get(session)?;
             Some(FenetreAudio {
                 session: session.clone(),
                 pid,
                 arrivee,
-                dernier_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
+                last_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
                 inapte: garde.inaptes.contains_key(session),
             })
         })
@@ -62,70 +62,72 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
 
     let vivantes: std::collections::HashSet<&String> =
         decisions.iter().map(|(session, _)| session).collect();
-    garde.derniers_audio.retain(|session, _| vivantes.contains(session));
+    garde
+        .derniers_audio
+        .retain(|session, _| vivantes.contains(session));
 
-    // Les ordres de SE TAIRE partent d'abord, les ordres de PORTER ensuite.
-    // Cet ordre RÉDUIT la fenêtre de recouvrement, il ne la ferme pas : les
-    // deux ordres empruntent deux canaux DISTINCTS (`file.rs` depuis le
-    // 25 août 2026, `mpsc` avant lui), lus chacun par le
-    // fil de SA fenêtre. L'ordre d'ENVOI est garanti, pas celui de
-    // TRAITEMENT — si le fil qui doit se taire est déclassé par
-    // l'ordonnanceur avant de lire son message, les deux fenêtres restent
-    // audibles ensemble le temps qu'il reprenne la main. La borne réelle est
-    // donc l'ordonnancement des deux fils, pas ce canal.
+    // The orders to GO SILENT go out first, the orders to CARRY next.
+    // This order REDUCES the overlap window, it does not close it: the
+    // two orders take two DISTINCT channels (`file.rs` since
+    // 25 August 2026, `mpsc` before it), each read by the
+    // thread of ITS window. The SENDING order is guaranteed, not the
+    // HANDLING order — if the thread that must go silent is descheduled by
+    // the scheduler before reading its message, both windows stay
+    // audible together until it gets control back. The real bound is
+    // therefore the scheduling of the two threads, not this channel.
     let (a_porter, a_taire): (Vec<_>, Vec<_>) =
         decisions.into_iter().partition(|(_, actif)| *actif);
 
-    // ⚠️ Un canal rompu ici n'est PAS ré-arbitré dans la même passe : si la
-    // session rompue portait le son de son groupe, sa voisine ne le
-    // reprendra qu'au TOUR DE ROUE SUIVANT — borne `PERIODE_REARBITRAGE`,
-    // 250 ms. Même résidu, et même borne, que le chemin `rompus` de
-    // `distribuer_les_parts` (voir la doc du `Message` juste au-dessus), mais
-    // le symptôme n'est pas de même nature : là, un plancher de débit
-    // transitoire ; ici, un silence PERCEPTIBLE par l'utilisateur pendant
-    // jusqu'à 250 ms.
+    // ⚠️ A channel broken here is NOT re-arbitrated in the same pass: if the
+    // broken session carried its group's sound, its neighbour will only
+    // take it over at the NEXT WHEEL ROUND — bound `PERIODE_REARBITRAGE`,
+    // 250 ms. Same residue, and same bound, as the `rompus` path of
+    // `distribuer_les_parts` (see the doc of `Message` just above), but
+    // the symptom is not of the same nature: there, a transient bitrate
+    // floor; here, a silence NOTICEABLE by the user for
+    // up to 250 ms.
     let mut rompus = Vec::new();
     for (session, actif) in a_taire.into_iter().chain(a_porter) {
-        // ⚠️ La remise à zéro vivait ICI jusqu'à D10, sur la DÉCISION
-        // d'arbitrage — et la revue transverse de D9 a établi qu'elle ne
-        // pouvait alors PAS mordre dans le cas majoritaire : pour une fenêtre
-        // seule de son groupe de PID, la sortie de répit la rend
-        // automatiquement porteuse, donc remet le compteur à zéro à chaque
-        // tour. Le garde-fou était décoratif. Il repart désormais de
-        // `sommeil::signaler_audio_vivant`, sur une PREUVE de son.
+        // ⚠️ The reset lived HERE until D10, on the arbitration
+        // DECISION — and D9's cross-cutting review established that it could
+        // then NOT bite in the majority case: for a window
+        // alone in its PID group, leaving the respite makes it
+        // automatically the carrier, hence resets the counter at every
+        // round. The safeguard was decorative. It now restarts from
+        // `sommeil::signaler_audio_vivant`, on a PROOF of sound.
         if garde.derniers_audio.get(&session) == Some(&actif) {
             continue;
         }
-        // ⚠️ **`None` N'EST PAS UNE RUPTURE, et le round 3 a corrigé cette
-        // rédaction** — même grief que `registre::distribuer` au round 2.
-        // C'est inatteignable aujourd'hui (les sessions sortent de
-        // `canaux.keys()` sous le MÊME verrou, quelques lignes plus haut),
-        // donc sans conséquence ; mais ce lot s'était donné pour règle de ne
-        // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
-        // session sur un fait qui n'a pas eu lieu si cette invariance venait à
-        // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
-        let issue = match garde.canaux.get(&session) {
-            Some(canal) => Some(canal.envoyer(Message::Audio { actif })),
-            None => None,
-        };
+        // ⚠️ **`None` IS NOT A BREAK, and round 3 fixed this
+        // wording** — same grievance as `registre::distribuer` in round 2.
+        // It is unreachable today (the sessions come out of
+        // `canaux.keys()` under the SAME lock, a few lines above),
+        // hence without consequence; but this batch had set itself the rule of no
+        // longer FABRICATING an outcome, and writing it as `Envoi::Rompu` would purge a
+        // session on a fact that did not happen if that invariance were to
+        // fall. An `Option` names the thing: there was no send.
+        let issue = garde
+            .canaux
+            .get(&session)
+            .map(|canal| canal.envoyer(Message::Audio { actif }));
         match issue {
-            // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
-            // session n'est déjà plus dans `canaux`.
+            // No channel: nothing went out, and there is nothing to purge — the
+            // session is already no longer in `canaux`.
             None => {}
             Some(Envoi::Depose(_)) => {
                 garde.derniers_audio.insert(session, actif);
             }
-            // 🔴 REFUSÉ : ON NE MÉMORISE PAS. Même correctif que
-            // `parts::distribuer_les_parts`, et **le plus coûteux des deux** :
-            // mémoriser un ordre audio jamais parti fait juger l'état « déjà
-            // livré » par le garde d'écrasement en tête de boucle, et la
-            // fenêtre reste sur son état précédent — donc potentiellement
-            // MUETTE, ou audible en même temps qu'une voisine, **sans borne**.
-            // ⚠️ Le commentaire ci-dessus s'inquiète d'un silence perceptible
-            // pendant jusqu'à 250 ms sur le chemin du canal rompu ; ce
-            // résidu-ci n'était borné par rien du tout.
+            // 🔴 REFUSED: WE DO NOT MEMORISE. Same fix as
+            // `parts::distribuer_les_parts`, and **the costlier of the two**:
+            // memorising an audio order that never went out makes the overwrite guard at the head of the loop
+            // judge the state "already delivered", and the
+            // window stays in its previous state — hence potentially
+            // SILENT, or audible at the same time as a neighbour, **without bound**.
+            // ⚠️ The comment above worries about a noticeable silence
+            // of up to 250 ms on the broken channel path; this
+            // residue was bounded by nothing at all.
             //
-            // ⚠️ **Et surtout PAS `rompus.push`** : la session est VIVANTE.
+            // ⚠️ **And above all NOT `rompus.push`**: the session is ALIVE.
             Some(Envoi::Refuse) => {}
             Some(Envoi::Rompu) => rompus.push(session),
         }
@@ -147,22 +149,22 @@ mod tests {
     use crate::capteur::sommeil::{etat, inscrire, retirer, signaler, Message};
     use crate::capteur::vivier::Ordre;
 
-    /// Dernier ordre audio reçu sur un canal, en vidant ce qui s'y trouve.
+    /// Last audio order received on a channel, draining what is there.
     ///
-    /// **Vit ici, pas dans `sommeil::tests`** : `sommeil.rs` est proche de son
-    /// plafond de 500 lignes, et cette suite couvre la branche de CE
-    /// module — même montage que `parts::tests`, qui importe
-    /// `verrouiller_pour_le_test` de la même façon plutôt que d'ajouter ses
-    /// propres tests au fichier parent.
-    fn dernier_audio(canal: &ReceveurSession) -> Option<bool> {
+    /// **Lives here, not in `sommeil::tests`**: `sommeil.rs` is close to its
+    /// 500-line cap, and this suite covers the branch of THIS
+    /// module — same set-up as `parts::tests`, which imports
+    /// `verrouiller_pour_le_test` the same way rather than adding its
+    /// own tests to the parent file.
+    fn last_audio(canal: &ReceveurSession) -> Option<bool> {
         canal
-            .vider()
+            .drain()
             .into_iter()
             .filter_map(|m| match m {
                 Message::Audio { actif } => Some(actif),
                 _ => None,
             })
-            .last()
+            .next_back()
     }
 
     #[test]
@@ -171,107 +173,133 @@ mod tests {
         let (a, generation_a) = inscrire("t9-a", 4242);
         let (b, generation_b) = inscrire("t9-b", 4242);
 
-        // Aucune focalisée : la première arrivée porte le son.
-        assert_eq!(dernier_audio(&a), Some(true), "la premiere arrivee porte le son");
-        assert_eq!(dernier_audio(&b), Some(false), "la seconde se tait");
+        // No focused window: the first arrival carries the sound.
+        assert_eq!(
+            last_audio(&a),
+            Some(true),
+            "the first to arrive carries the sound"
+        );
+        assert_eq!(last_audio(&b), Some(false), "the second one goes quiet");
 
-        // "b" prend le focus : le son bascule, et "a" reçoit l'ordre de se
-        // taire — sans quoi les deux seraient audibles en même temps.
+        // "b" takes the focus: the sound switches, and "a" receives the order to go
+        // silent — otherwise both would be audible at the same time.
         signaler("t9-b", true, true);
-        assert_eq!(dernier_audio(&b), Some(true), "la focalisee prend le son");
-        assert_eq!(dernier_audio(&a), Some(false), "la precedente porteuse se tait");
+        assert_eq!(
+            last_audio(&b),
+            Some(true),
+            "the focused one takes the sound"
+        );
+        assert_eq!(
+            last_audio(&a),
+            Some(false),
+            "the previous carrier goes quiet"
+        );
 
-        // "b" disparaît : "a" doit reprendre le son, sinon le groupe devient
-        // definitivement muet.
+        // "b" disappears: "a" must take the sound back, otherwise the group becomes
+        // permanently silent.
         retirer("t9-b", generation_b);
-        assert_eq!(dernier_audio(&a), Some(true), "le son revient a la survivante");
+        assert_eq!(
+            last_audio(&a),
+            Some(true),
+            "the sound goes back to the survivor"
+        );
 
         retirer("t9-a", generation_a);
     }
 
     #[test]
-    fn deux_pid_distincts_portent_chacun_leur_son() {
+    fn two_distinct_pids_each_carry_their_sound() {
         let _verrou = verrouiller_pour_le_test();
         let (a, generation_a) = inscrire("t9-c", 111);
         let (b, generation_b) = inscrire("t9-d", 222);
-        assert_eq!(dernier_audio(&a), Some(true));
-        assert_eq!(dernier_audio(&b), Some(true));
+        assert_eq!(last_audio(&a), Some(true));
+        assert_eq!(last_audio(&b), Some(true));
         retirer("t9-c", generation_a);
         retirer("t9-d", generation_b);
     }
 
     #[test]
     fn un_ordre_audio_inchange_n_est_pas_reemis() {
-        // Sans le filtre d'écrasement, le tour de roue (250 ms) enverrait
-        // quatre ordres par seconde et par fenêtre, à vie. Même rempart que
+        // Without the overwrite filter, the wheel round (250 ms) would send
+        // four orders per second and per window, for life. Same rampart as
         // `dernieres_parts`.
         let _verrou = verrouiller_pour_le_test();
         let (a, generation) = inscrire("t9-e", 333);
-        let _ = a.vider();
+        let _ = a.drain();
         signaler("t9-e", true, true);
         let ordres: Vec<Message> = a
-            .vider()
+            .drain()
             .into_iter()
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
-        assert!(ordres.is_empty(), "ordre audio inchange reemis : {ordres:?}");
+        assert!(
+            ordres.is_empty(),
+            "unchanged audio order re-emitted: {ordres:?}"
+        );
         retirer("t9-e", generation);
     }
-    /// 🔴 LA ROUGE DU CRITIQUE DU ROUND 1, CÔTÉ AUDIO — LE MÊME PATRON QUE
-    /// `parts.rs`, ET LE PLUS COÛTEUX DES DEUX : une fenêtre pouvait rester
-    /// MUETTE indéfiniment.
+    /// 🔴 THE RED OF ROUND 1'S CRITICAL, AUDIO SIDE — THE SAME PATTERN AS
+    /// `parts.rs`, AND THE COSTLIER OF THE TWO: a window could stay
+    /// SILENT indefinitely.
     ///
-    /// `envoyer(...).is_ok()` valait « livré » sous `mpsc` ; depuis la file
-    /// bornée il ne vaut plus que « pas déconnecté ». Un `Audio` refusé était
-    /// donc écrit dans `derniers_audio`, et le garde d'écrasement en tête de
-    /// boucle (`if derniers_audio.get(&session) == Some(&actif) { continue }`)
-    /// supprimait toute réémission — la fenêtre restait sur son état audio
-    /// précédent **sans borne**.
+    /// `envoyer(...).is_ok()` meant "delivered" under `mpsc`; since the bounded
+    /// queue it only means "not disconnected". A refused `Audio` was
+    /// therefore written into `derniers_audio`, and the overwrite guard at the head of the
+    /// loop (`if derniers_audio.get(&session) == Some(&actif) { continue }`)
+    /// suppressed any re-emission — the window stayed in its previous audio
+    /// state **without bound**.
     ///
-    /// ⚠️ **Le commentaire de `distribuer_l_audio` s'inquiète d'un silence
-    /// perceptible pendant jusqu'à 250 ms sur un autre chemin ; ce résidu-ci
-    /// n'était borné par rien.**
+    /// ⚠️ **The comment on `distribuer_l_audio` worries about a noticeable silence
+    /// of up to 250 ms on another path; this residue
+    /// was bounded by nothing.**
     ///
-    /// **Ce test échoue sur sa DERNIÈRE assertion avant le correctif.**
+    /// **This test fails on its LAST assertion before the fix.**
     #[test]
-    fn un_ordre_audio_refuse_n_est_pas_memorise_et_repart_au_tour_suivant() {
+    fn a_refused_audio_order_is_not_remembered_and_goes_again_next_round() {
         let _verrou = verrouiller_pour_le_test();
         let (a, generation_a) = inscrire("t9-refus-a", 4300);
-        // "a" est seule de son PID : elle porte le son, et `derniers_audio`
-        // retient `true`.
-        assert_eq!(dernier_audio(&a), Some(true), "précondition : la seule du PID porte le son");
+        // "a" is alone in its PID: it carries the sound, and `derniers_audio`
+        // keeps `true`.
+        assert_eq!(
+            last_audio(&a),
+            Some(true),
+            "precondition: the only one of the PID carries the sound"
+        );
 
-        // Sature la file de "a" par des messages INCOALESCABLES.
+        // Saturates "a"'s queue with NON-COALESCABLE messages.
         {
             let garde = etat();
-            let emetteur = garde.canaux.get("t9-refus-a").expect("la session est inscrite");
+            let emetteur = garde
+                .canaux
+                .get("t9-refus-a")
+                .expect("the session is registered");
             for _ in 0..PROFONDEUR_MAX {
                 let _ = emetteur.envoyer(Message::Sommeil(Ordre::Reveiller));
             }
         }
 
-        // "b" arrive sur le MÊME PID et prend le focus : "a" doit recevoir
-        // l'ordre de se taire — qui est REFUSÉ, sa file étant pleine.
+        // "b" arrives on the SAME PID and takes the focus: "a" must receive
+        // the order to go silent — which is REFUSED, its queue being full.
         let (b, generation_b) = inscrire("t9-refus-b", 4300);
         signaler("t9-refus-b", true, true);
 
         // "a" reprend sa lecture. Aucun ordre audio ne s'y trouve.
-        let recus = a.vider();
+        let recus = a.drain();
         assert!(
             !recus.iter().any(|m| matches!(m, Message::Audio { .. })),
-            "précondition : l'ordre de se taire n'a PAS été livré : {recus:?}"
+            "precondition: the order to go quiet was NOT delivered: {recus:?}"
         );
 
-        // Le tour suivant : l'ordre doit repartir, sans quoi "a" reste
-        // audible en même temps que "b", pour toujours.
+        // The next round: the order must go out again, otherwise "a" stays
+        // audible at the same time as "b", forever.
         {
             let mut garde = etat();
             super::distribuer_l_audio(&mut garde);
         }
         assert_eq!(
-            dernier_audio(&a),
+            last_audio(&a),
             Some(false),
-            "un ordre audio refusé doit être RÉÉMIS au tour suivant : il n'a jamais été livré"
+            "a refused audio order must be RE-EMITTED on the next round: it was never delivered"
         );
 
         retirer("t9-refus-b", generation_b);
@@ -279,4 +307,3 @@ mod tests {
         drop(b);
     }
 }
-

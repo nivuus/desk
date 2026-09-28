@@ -1,54 +1,54 @@
-//! L'état que le fil d'installation et la boucle de découverte se partagent.
+//! The state the installation thread and the discovery loop share.
 //!
-//! 🔴 CE MODULE N'A AUCUN `cfg`, ET C'EST LE POINT. Le fil d'installation est
-//! Windows ; ce qu'il partage avec la découverte ne l'est pas, et le ranger
-//! derrière le `cfg` obligerait `apps::brancher` — qui a une variante hôte — à
-//! porter deux signatures. C'est aussi ce qui rend ces deux mécanismes
-//! observables sur l'hôte.
+//! 🔴 THIS MODULE HAS NO `cfg`, AND THAT IS THE POINT. The installation thread is
+//! Windows; what it shares with discovery is not, and putting it
+//! behind the `cfg` would force `apps::brancher` — which has a host variant — to
+//! carry two signatures. It is also what makes these two mechanisms
+//! observable on the host.
 //!
-//! 🔴 IL N'Y A QUE DEUX POINTS DE CONTACT ENTRE `apps` ET `installation`, et
-//! les voici tous les deux. `apps::boucle` n'a rien d'autre à connaître des
-//! installations — c'est ce qui permet à la décision D11 de tenir : deux
-//! familles, deux consommateurs, chacune avec un seul.
+//! 🔴 THERE ARE ONLY TWO POINTS OF CONTACT BETWEEN `apps` AND `installation`, and
+//! here they both are. `apps::boucle` has nothing else to know about
+//! installations — that is what lets decision D11 hold: two
+//! families, two consumers, each with a single one.
 
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use super::fenetre::Fenetres;
 
-/// Ce que le fil partage avec la boucle de découverte.
+/// What the thread shares with the discovery loop.
 #[derive(Clone)]
 pub struct Partage {
-    /// Les fenêtres ouvertes. La boucle y verse `diff.apparues.len()` à chaque
-    /// réconciliation ; le fil les ouvre et les ferme.
+    /// The open windows. The loop pours `diff.apparues.len()` into them at every
+    /// reconciliation; the thread opens and closes them.
     pub fenetres: Arc<Mutex<Fenetres>>,
-    /// 🔴 « RÉCONCILIE MAINTENANT ». À la sortie de l'installeur, l'agent
-    /// **force** une réconciliation plutôt que d'attendre les trente secondes
-    /// suivantes : sans cela, le verdict d'une installation de dix secondes
-    /// arriverait une demi-minute plus tard.
+    /// 🔴 "RECONCILE NOW". When the installer exits, the agent
+    /// **forces** a reconciliation rather than waiting for the next thirty
+    /// seconds: without it, the verdict of a ten-second installation
+    /// would arrive half a minute later.
     ///
-    /// ⚠️ **LE FUTUR EST PASSÉ** (sous-bloc G4) : cette phrase disait « c'est ce
-    /// que G4 RENDRA immédiat », et `apps::surveillance` existe. **G3 n'en
-    /// dépendait pas** — sa fenêtre fonctionne à `PERIODE_RECONCILIATION` —, et
-    /// c'est exactement la garantie que l'ordre des sous-blocs existait pour
-    /// préserver.
+    /// ⚠️ **THE FUTURE IS PAST** (sub-block G4): this sentence said "this is what
+    /// G4 WILL MAKE immediate", and `apps::surveillance` exists. **G3 did not
+    /// depend on it** — its window works at `PERIODE_RECONCILIATION` —, and
+    /// that is exactly the guarantee the ordering of the sub-blocks existed to
+    /// preserve.
     ///
-    /// 🔴 **CE QUE G4 A TROUVÉ ICI, ET QUI N'ÉTAIT PAS UNE ACCÉLÉRATION** : la
-    /// poignée de main `reconcilier` / `reconciliee` portait une COURSE. Le
-    /// drapeau était lu et baissé **après** la réconciliation, si bien qu'une
-    /// réconciliation périodique DÉJÀ EN COURS quand l'installeur sortait
-    /// déclarait `reconciliee` pour un tour commencé AVANT que l'installeur
-    /// n'ait fini d'écrire — un `sans-effet` FAUX. La fenêtre valait ≈ 0,2 % des
-    /// sorties d'installeur, et **G4 l'aurait élargie d'un ordre de grandeur**
-    /// puisque tout son objet est de rendre les réconciliations plus fréquentes
-    /// pendant une installation. Corrigée dans `apps/boucle.rs`, qui porte le
-    /// détail.
+    /// 🔴 **WHAT G4 FOUND HERE, AND IT WAS NOT A SPEED-UP**: the
+    /// `reconcilier` / `reconciliee` handshake carried a RACE. The
+    /// flag was read and lowered **after** the reconciliation, so that a
+    /// periodic reconciliation ALREADY RUNNING when the installer exited
+    /// declared `reconciliee` for a round started BEFORE the installer
+    /// had finished writing — a FALSE `sans-effet`. The window was ≈ 0.2 % of
+    /// installer exits, and **G4 would have widened it by an order of magnitude**
+    /// since its whole purpose is to make reconciliations more frequent
+    /// during an installation. Fixed in `apps/boucle.rs`, which carries the
+    /// detail.
     ///
-    /// ⚠️ **LA CORRECTION N'A POUR PREUVE QU'UN ARGUMENT DE FLOT DE CONTRÔLE** :
-    /// `boucle.rs` est `#[cfg(windows)]`, et la recette de G4 ne lance aucune
-    /// installation. Mesure LÉGUÉE, et déclarée manquante.
+    /// ⚠️ **THE FIX HAS ONLY A CONTROL-FLOW ARGUMENT AS PROOF**:
+    /// `boucle.rs` is `#[cfg(windows)]`, and the G4 acceptance run launches no
+    /// installation. Measurement HANDED OVER, and declared missing.
     pub reconcilier: Arc<AtomicBool>,
-    /// Posé par le fil quand une réconciliation forcée a eu lieu.
+    /// Set by the thread when a forced reconciliation has taken place.
     pub reconciliee: Arc<AtomicBool>,
 }
 

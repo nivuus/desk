@@ -1,154 +1,168 @@
-//! La file des écritures dues : **quoi** pousser, **dans quel ordre**, et ce
-//! qu'on fait d'une notification qui arrive pendant une poussée. **PUR** —
-//! aucun `cfg`, aucune E/S, aucune horloge.
+//! The queue of due writes: **what** to push, **in which order**, and what
+//! to do with a notification that arrives during a push. **PURE** —
+//! no `cfg`, no I/O, no clock.
 //!
-//! # Les cinq règles, et ce que chacune empêche
+//! # The five rules, and what each prevents
 //!
-//! 1. **UNE SEULE POUSSÉE EN VOL À LA FOIS.** Deux flux `createWritable()`
-//!    concurrents sur le même fichier s'écraseraient l'un l'autre ; deux flux
-//!    sur des fichiers distincts satureraient la file SCTP, ce que F1 a déjà
-//!    décidé d'éviter (« un morceau en vol à la fois »).
-//! 2. **UNE NOTIFICATION QUI ARRIVE PENDANT UNE POUSSÉE EST REJOUÉE APRÈS**,
-//!    et le fichier est alors **relu depuis le début**. La jeter perdrait les
-//!    derniers octets écrits par l'utilisateur, **silencieusement** ; pousser
-//!    la suite sans relire mêlerait des morceaux de deux époques du même
-//!    fichier, ce qu'aucun condensat ne rattraperait.
-//! 3. **ORDRE FIFO D'INSCRIPTION entre chemins distincts.** Un `HashSet` en
-//!    rendrait un différent à chaque exécution, et la reprise d'un lot
-//!    deviendrait irreproductible.
-//! 4. **UNE CRÉATION DE RÉPERTOIRE NE PORTE AUCUN CONTENU.** Lui faire lire un
-//!    fichier rendrait `IsADirectory` sur le chemin le plus banal qui soit.
-//! 5. **UNE CRÉATION DE FICHIER EST SUIVIE, EN GÉNÉRAL, D'UNE POUSSÉE DE
-//!    CONTENU** — à la fermeture du handle. Un fichier créé et jamais écrit
-//!    reste vide des deux côtés, ce qui est juste.
+//! 1. **ONLY ONE PUSH IN FLIGHT AT A TIME.** Two concurrent `createWritable()`
+//!    streams on the same file would overwrite one another; two streams
+//!    on distinct files would saturate the SCTP queue, which F1 already
+//!    decided to avoid ("one chunk in flight at a time").
+//! 2. **A NOTIFICATION ARRIVING DURING A PUSH IS REPLAYED AFTER**,
+//!    and the file is then **reread from the start**. Throwing it away would lose the
+//!    last bytes written by the user, **silently**; pushing
+//!    the rest without rereading would mix chunks from two eras of the same
+//!    file, which no digest would catch.
+//! 3. **FIFO REGISTRATION ORDER between distinct paths.** A `HashSet` would
+//!    return a different one at each run, and resuming a batch
+//!    would become irreproducible.
+//! 4. **A DIRECTORY CREATION CARRIES NO CONTENT.** Making it read a
+//!    file would return `IsADirectory` on the most mundane path there is.
+//! 5. **A FILE CREATION IS FOLLOWED, IN GENERAL, BY A CONTENT
+//!    PUSH** — at handle close. A file created and never written
+//!    stays empty on both sides, which is right.
 //!
-//! # ⚠️ Ce que F3 attend de ce module, et qu'il ne faut pas lui retirer
+//! # ⚠️ What F3 expects from this module, and which must not be taken away from it
 //!
-//! Le plan de F3 (« le renommage sans renommage ») pose deux règles dont
-//! l'oubli produit une perte de données, et **les deux supposent une file
-//! indexée par CHEMIN** :
+//! F3's plan ("renaming without renaming") sets two rules whose
+//! omission produces a data loss, and **both assume a queue
+//! indexed by PATH**:
 //!
-//! - `Renommer { de, vers }` doit **pousser d'abord** les écritures dues sur
-//!   `de` — sans quoi une poussée en retard arriverait **après** le renommage,
-//!   sur un chemin qui n'existe plus, et le navigateur **recréerait le fichier
-//!   temporaire** : l'enregistrement serait perdu ;
-//! - `Supprimer { chemin }` doit **retirer** les écritures dues sur `chemin` —
-//!   les pousser **recréerait ce que l'utilisateur efface**.
+//! - `Renommer { de, vers }` must **push first** the writes due on
+//!   `de` — otherwise a late push would arrive **after** the renaming,
+//!   on a path that no longer exists, and the browser **would recreate the temporary
+//!   file**: the save would be lost;
+//! - `Delete { chemin }` must **remove** the writes due on `chemin` —
+//!   pushing them **would recreate what the user erases**.
 //!
-//! **Chacun des deux sous-blocs est correct seul ; c'est leur interaction qui
-//! détruit.** F2 ne les implémente pas — il n'a ni renommage ni suppression —,
-//! mais il expose ce qu'elles exigent : [`File::en_vol`], [`File::attend`] et
+//! **Each of the two sub-blocks is correct alone; it is their interaction that
+//! destroys.** F2 does not implement them — it has neither renaming nor deletion —,
+//! but it exposes what they require: [`File::en_vol`], [`File::attend`] and
 //! [`File::oublier`].
 
 pub mod fil;
 
-/// Ce qui déclenche une poussée.
+/// What triggers a push.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Evenement {
-    /// Un fichier a été refermé après modification, ou tronqué à l'ouverture.
-    Modifie { chemin: String },
-    /// Une entrée vient d'apparaître dans la racine.
+    /// A file was closed after modification, or truncated at opening.
+    Modified { chemin: String },
+    /// An entry has just appeared in the root.
     Cree { chemin: String, repertoire: bool },
-    /// **F3** — une entrée a été renommée dans la VM.
+    /// **F3** — an entry was renamed in the VM.
     ///
-    /// 🔴 **`de` EST LA SOURCE, `vers` LA DESTINATION**, et s'y tromper
-    /// détruit. Le rappel refuse de construire cette variante si `vers` est
-    /// vide ou égal à `de`.
-    Renomme { de: String, vers: String, repertoire: bool },
-    /// **F3** — une entrée a été supprimée dans la VM.
-    Supprime { chemin: String, repertoire: bool },
+    /// 🔴 **`de` IS THE SOURCE, `vers` THE DESTINATION**, and getting it wrong
+    /// destroys. The callback refuses to build this variant if `vers` is
+    /// empty or equal to `de`.
+    Renomme {
+        de: String,
+        vers: String,
+        repertoire: bool,
+    },
+    /// **F3** — an entry was deleted in the VM.
+    Deleted { chemin: String, repertoire: bool },
 }
 
 impl Evenement {
-    /// Le chemin que cet événement CONCERNE.
+    /// The path this event CONCERNS.
     ///
-    /// ⚠️ **Pour un renommage, c'est la SOURCE**, et c'est ce qui fait tenir la
-    /// coalescence de [`File`] : deux gestes sur le même fichier — l'écrire
-    /// puis le renommer — se sérialisent sous le même chemin, ce qui est
-    /// exactement ce que la règle §0.3 du plan de F3 exige.
+    /// ⚠️ **For a renaming, it is the SOURCE**, and it is what makes the
+    /// coalescing of [`File`] hold: two gestures on the same file — writing it
+    /// then renaming it — are serialised under the same path, which is
+    /// exactly what rule §0.3 of F3's plan requires.
     pub fn chemin(&self) -> &str {
         match self {
-            Evenement::Modifie { chemin }
+            Evenement::Modified { chemin }
             | Evenement::Cree { chemin, .. }
-            | Evenement::Supprime { chemin, .. } => chemin,
+            | Evenement::Deleted { chemin, .. } => chemin,
             Evenement::Renomme { de, .. } => de,
         }
     }
 
-    /// Un répertoire n'a **aucun octet** à lire.
+    /// A directory has **no byte** to read.
     ///
-    /// ⚠️ **Un renommage et une suppression n'en ont pas non plus**, quelle que
-    /// soit leur nature : ce ne sont pas des poussées de CONTENU. Ce prédicat
-    /// ne sert qu'à la fusion de [`fusionner`], où seule la création de
-    /// répertoire a une conséquence — et l'élargir aux mutations ferait qu'un
-    /// renommage suivi d'une écriture ne pousserait jamais les octets.
+    /// ⚠️ **A renaming and a deletion have none either**, whatever
+    /// their nature: they are not CONTENT pushes. This predicate
+    /// only serves the merging of [`fusionner`], where only directory creation
+    /// has a consequence — and widening it to mutations would mean that a
+    /// renaming followed by a write would never push the bytes.
     pub fn est_repertoire(&self) -> bool {
-        matches!(self, Evenement::Cree { repertoire: true, .. })
+        matches!(
+            self,
+            Evenement::Cree {
+                repertoire: true,
+                ..
+            }
+        )
     }
 
-    /// Cet événement est-il une **mutation** — un renommage ou une suppression ?
+    /// Is this event a **mutation** — a renaming or a deletion?
     ///
-    /// 🔴 **Une mutation ne se COALESCE PAS avec une écriture** : renommer puis
-    /// écrire, ou écrire puis supprimer, sont deux gestes dont l'ordre est le
-    /// sens même. C'est [`crate::pont::mutation`] qui les ordonnance, et ce
-    /// prédicat est ce qui permet de les distinguer sans lire la variante.
+    /// 🔴 **A mutation DOES NOT COALESCE with a write**: renaming then
+    /// writing, or writing then deleting, are two gestures whose order is the
+    /// very meaning. It is [`crate::pont::mutation`] that schedules them, and this
+    /// predicate is what makes it possible to distinguish them without reading the variant.
     pub fn est_mutation(&self) -> bool {
-        matches!(self, Evenement::Renomme { .. } | Evenement::Supprime { .. })
+        matches!(self, Evenement::Renomme { .. } | Evenement::Deleted { .. })
     }
 }
 
-/// La file des écritures dues.
+/// The queue of due writes.
 ///
-/// ⚠️ **Un `Vec` et non un `HashMap`, pour la raison de la règle 3** : l'ordre
-/// est la seule chose qui rende la reprise déterministe.
+/// ⚠️ **A `Vec` and not a `HashMap`, for the reason of rule 3**: the order
+/// is the only thing that makes resumption deterministic.
 #[derive(Debug, Default)]
 pub struct File {
-    /// La poussée en cours, s'il y en a une.
+    /// The push in progress, if there is one.
     en_vol: Option<Evenement>,
-    /// ⚠️ **Ce que la poussée en cours devra REJOUER à sa fin.** Il ne suffit
-    /// pas d'un booléen : l'événement rejoué peut être d'une autre nature que
-    /// celui en vol (une création suivie d'une modification).
+    /// ⚠️ **What the push in progress will have to REPLAY at its end.** A
+    /// boolean is not enough: the replayed event can be of another nature than
+    /// the one in flight (a creation followed by a modification).
     a_rejouer: Option<Evenement>,
-    /// Les chemins en attente, dans leur ordre d'inscription.
+    /// The waiting paths, in their registration order.
     attente: Vec<Evenement>,
 }
 
 impl File {
-    pub fn nouvelle() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    /// Signale un événement, et rend **ce qu'il faut pousser MAINTENANT**.
+    /// Signals an event, and returns **what must be pushed NOW**.
     ///
-    /// `None` veut dire « rien à commencer » : ou bien une poussée est déjà en
-    /// vol, ou bien le chemin attendait déjà son tour.
+    /// `None` means "nothing to start": either a push is already in
+    /// flight, or the path was already waiting its turn.
     ///
-    /// ⚠️ **DIVERGENCE DÉCLARÉE AVEC LE PLAN DE F2.** Sa signature annonce
-    /// « `None` si déjà en vol → marque `a_rejouer` », et donne à
-    /// [`File::terminee`] le seul rôle de « rendre l'événement à rejouer ».
-    /// Pris à la lettre, **un chemin distinct mis en attente pendant une
-    /// poussée ne serait jamais démarré** : rien ne le sortirait de la file. Les
-    /// deux méthodes rendent donc *l'événement à pousser maintenant*, ce qui
-    /// couvre le rejeu ET la file d'attente.
+    /// ⚠️ **DECLARED DIVERGENCE FROM F2'S PLAN.** Its signature announces
+    /// "`None` if already in flight → marks `a_rejouer`", and gives
+    /// [`File::terminee`] the sole role of "returning the event to replay".
+    /// Taken literally, **a distinct path queued during a
+    /// push would never be started**: nothing would take it out of the queue. The
+    /// two methods therefore return *the event to push now*, which
+    /// covers the replay AND the waiting queue.
     pub fn signaler(&mut self, evenement: Evenement) -> Option<Evenement> {
         if self.en_vol.as_ref().map(Evenement::chemin) == Some(evenement.chemin()) {
-            // Règle 2 : jamais deux poussées du même chemin, jamais une
-            // notification perdue.
+            // Rule 2: never two pushes of the same path, never a
+            // lost notification.
             //
-            // 🔴 **LA BASE DE LA FUSION EST L'ÉVÉNEMENT EN VOL quand aucun
-            // rejeu n'est encore posé, et un test l'a attrapé ROUGE.** Prendre
-            // `a_rejouer` seul — qui vaut `None` la première fois — perdait le
-            // fait qu'un RÉPERTOIRE était en vol : une modification arrivée
-            // pendant sa création l'aurait remplacé, et le fil aurait tenté de
-            // LIRE un répertoire.
+            // 🔴 **THE BASE OF THE MERGE IS THE EVENT IN FLIGHT when no
+            // replay is set yet, and a test caught it RED.** Taking
+            // `a_rejouer` alone — which is `None` the first time — lost the
+            // fact that a DIRECTORY was in flight: a modification arriving
+            // during its creation would have replaced it, and the thread would have tried to
+            // READ a directory.
             let base = self.a_rejouer.take().or_else(|| self.en_vol.clone());
             self.a_rejouer = Some(fusionner(base, evenement));
             return None;
         }
-        match self.attente.iter().position(|e| e.chemin() == evenement.chemin()) {
-            // Coalescence **en place** : le chemin garde son rang. Le faire
-            // remonter en queue ferait passer devant lui des entrées plus
-            // jeunes, alors qu'il attend depuis plus longtemps.
+        match self
+            .attente
+            .iter()
+            .position(|e| e.chemin() == evenement.chemin())
+        {
+            // Coalescing **in place**: the path keeps its rank. Moving it
+            // back to the tail would let younger entries pass ahead of it,
+            // whereas it has been waiting longer.
             Some(i) => {
                 let ancien = self.attente.remove(i);
                 self.attente.insert(i, fusionner(Some(ancien), evenement));
@@ -156,48 +170,49 @@ impl File {
             }
             None => {
                 self.attente.push(evenement);
-                self.demarrer()
+                self.start()
             }
         }
     }
 
-    /// La poussée du chemin est finie — **quelle qu'en soit l'issue**.
+    /// The path's push is over — **whatever its outcome**.
     ///
-    /// 🔴 **ÉCHEC COMPRIS, et c'est délibéré.** Une poussée qui échoue libère
-    /// le vol : l'entrée reste due AU JOURNAL, mais la file doit pouvoir
-    /// avancer, sans quoi un seul échec bloquerait toutes les écritures
-    /// suivantes. C'est le journal qui n'oublie pas, pas cette file.
+    /// 🔴 **FAILURE INCLUDED, and it is deliberate.** A push that fails frees
+    /// the flight slot: the entry stays due IN THE JOURNAL, but the queue must be able to
+    /// advance, otherwise a single failure would block all following
+    /// writes. It is the journal that does not forget, not this queue.
     pub fn terminee(&mut self, chemin: &str) -> Option<Evenement> {
         if self.en_vol.as_ref().map(Evenement::chemin) != Some(chemin) {
             return None;
         }
         self.en_vol = None;
         if let Some(rejeu) = self.a_rejouer.take() {
-            // Le rejeu passe DEVANT la file : le fichier vient d'être réécrit,
-            // et ses octets sont les plus récents que quiconque attende.
+            // The replay goes AHEAD of the queue: the file has just been rewritten,
+            // and its bytes are the most recent anyone is waiting for.
             self.attente.insert(0, rejeu);
         }
-        self.demarrer()
+        self.start()
     }
 
-    /// Le chemin de la poussée en cours.
+    /// The path of the push in progress.
     pub fn en_vol(&self) -> Option<&str> {
         self.en_vol.as_ref().map(Evenement::chemin)
     }
 
-    /// Ce chemin est-il en vol ou en attente ? **Ce que F3 lira** avant de
-    /// pousser un renommage.
+    /// Is this path in flight or waiting? **What F3 will read** before
+    /// pushing a renaming.
+    #[cfg(test)]
     pub fn attend(&self, chemin: &str) -> bool {
         self.en_vol() == Some(chemin) || self.attente.iter().any(|e| e.chemin() == chemin)
     }
 
-    /// Retire un chemin de l'ATTENTE. **Ce que F3 appellera** sur une
-    /// suppression : pousser une écriture due sur un chemin supprimé
-    /// recréerait ce que l'utilisateur efface.
+    /// Removes a path from the WAITING list. **What F3 will call** on a
+    /// deletion: pushing a due write on a deleted path
+    /// would recreate what the user erases.
     ///
-    /// ⚠️ **Ne touche pas à la poussée EN VOL** : ses trames sont déjà
-    /// parties, et le fil les termine. Le supprimer d'ici ferait que son `Fait`
-    /// n'aurait plus de destinataire.
+    /// ⚠️ **Does not touch the push IN FLIGHT**: its frames have already
+    /// gone, and the thread finishes them. Deleting it from here would mean its `Fait`
+    /// would no longer have a recipient.
     pub fn oublier(&mut self, chemin: &str) {
         self.attente.retain(|e| e.chemin() != chemin);
         if self.a_rejouer.as_ref().map(Evenement::chemin) == Some(chemin) {
@@ -205,17 +220,18 @@ impl File {
         }
     }
 
+    #[cfg(test)]
     pub fn en_attente(&self) -> usize {
         self.attente.len()
     }
 
-    /// Tous les chemins que cette file retient — **EN VOL COMPRIS**.
+    /// All the paths this queue holds — **IN FLIGHT INCLUDED**.
     ///
-    /// 🔴 **C'est ce que `pont::mutation::ordonnancer` lit**, et l'inclusion du
-    /// vol est le point : ne considérer que l'attente laisserait passer le cas
-    /// le plus courant de l'idiome temp+rename — le fichier temporaire dont la
-    /// poussée vient de commencer, et que le renommage suit de quelques
-    /// millisecondes.
+    /// 🔴 **It is what `pont::mutation::ordonnancer` reads**, and including the
+    /// flight is the point: only considering the waiting list would let through the
+    /// most common case of the temp+rename idiom — the temporary file whose
+    /// push has just started, and which the renaming follows by a few
+    /// milliseconds.
     pub fn chemins_dus(&self) -> Vec<String> {
         self.en_vol()
             .into_iter()
@@ -224,26 +240,26 @@ impl File {
             .collect()
     }
 
-    fn demarrer(&mut self) -> Option<Evenement> {
+    fn start(&mut self) -> Option<Evenement> {
         if self.en_vol.is_some() || self.attente.is_empty() {
             return None;
         }
-        let suivant = self.attente.remove(0);
-        self.en_vol = Some(suivant.clone());
-        Some(suivant)
+        let next = self.attente.remove(0);
+        self.en_vol = Some(next.clone());
+        Some(next)
     }
 }
 
-/// Fusionne deux événements du **même** chemin.
+/// Merges two events of the **same** path.
 ///
-/// 🔴 **UNE CRÉATION DE RÉPERTOIRE N'EST JAMAIS REMPLACÉE.** Un répertoire ne
-/// se « modifie » pas : le laisser devenir un `Modifie` ferait lire un
-/// répertoire comme un fichier, et le poste local recevrait `IsADirectory` sur
-/// le chemin le plus banal qui soit.
+/// 🔴 **A DIRECTORY CREATION IS NEVER REPLACED.** A directory is not
+/// "modified": letting it become a `Modified` would make a
+/// directory be read like a file, and the local workstation would receive `IsADirectory` on
+/// the most mundane path there is.
 ///
-/// Partout ailleurs, **le plus récent gagne** : une création puis une
-/// modification du même fichier n'ont qu'un seul effet, écrire le contenu — et
-/// l'écrivain du navigateur crée le fichier au passage.
+/// Everywhere else, **the most recent wins**: a creation then a
+/// modification of the same file have only one effect, writing the content — and
+/// the browser's writer creates the file along the way.
 fn fusionner(ancien: Option<Evenement>, neuf: Evenement) -> Evenement {
     match ancien {
         Some(a) if a.est_repertoire() => a,

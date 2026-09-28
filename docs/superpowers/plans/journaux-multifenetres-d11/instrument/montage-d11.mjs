@@ -79,7 +79,7 @@ export function virshEtat() {
  */
 export function preparerVm(etiquette) {
     spawnSync('cp', [`${INSTRUMENT}/anim-d11.html`, '/media/vm/dev/anim-d11.html'], { encoding: 'utf8' });
-    const avant = winrm(
+    const before = winrm(
         "Get-Process agent,chrome,notepad,mspaint -ErrorAction SilentlyContinue | Stop-Process -Force; "
         + "Start-Sleep -Seconds 3; "
         + "Get-ChildItem 'C:\\dev' -Directory -Filter 'chrome-d11r-*' -ErrorAction SilentlyContinue | "
@@ -88,8 +88,8 @@ export function preparerVm(etiquette) {
         + "$c = @(Get-Process chrome -ErrorAction SilentlyContinue).Count; "
         + "$m = Test-Path 'C:\\dev\\anim-d11.html'; "
         + "Write-Output \"PREP agent=$a chrome=$c mire=$m\"");
-    journal(`préparation (${etiquette}) :`, avant.replace(/\s+/g, ' ').trim().slice(-120));
-    return avant;
+    journal(`préparation (${etiquette}) :`, before.replace(/\s+/g, ' ').trim().slice(-120));
+    return before;
 }
 
 export function tuerAgent() {
@@ -167,7 +167,7 @@ export function marqueurs(etiquette) {
         introuvable_topologie: c('introuvable dans la topologie DXGI'),
         sortie_creee: c('sortie virtuelle créée'),
         cloture: c('clôture de session amorcée'),
-        erreurs: c('ERROR'),
+        errors: c('ERROR'),
     };
     journal(`marqueurs [${etiquette}]`, JSON.stringify(m));
     return m;

@@ -56,7 +56,7 @@ async function obtenirPaire() {
     return corps;
 }
 
-const resultat = { maintien_s: MAINTIEN_S, prefixe: PREFIXE, journal, etapes: [], erreurs: [] };
+const result = { maintien_s: MAINTIEN_S, prefixe: PREFIXE, journal, etapes: [], errors: [] };
 
 let chrome;
 try {
@@ -84,7 +84,7 @@ try {
     chrome = lancerChrome(PORT_CDP, UDD);
     const ver = await attendreDevtools(PORT_CDP);
     dire(`chrome : ${ver.Browser}`);
-    resultat.chrome = ver.Browser;
+    result.chrome = ver.Browser;
 
     // 🔴 CONNEXION AU NIVEAU NAVIGATEUR, ET AUTO-ATTACHE APLATIE.
     // `Page.addScriptToEvaluateOnNewDocument` pose sur UNE cible NE COURT PAS
@@ -139,7 +139,7 @@ try {
                 texte: JSON.stringify(m.params.exceptionDetails).slice(0, 400) });
         }
     });
-    resultat.console_page = console_page;
+    result.console_page = console_page;
     // ⚠️ PAS de `Page.addScriptToEvaluateOnNewDocument` ICI : cette connexion
     // est au niveau NAVIGATEUR, ou le domaine `Page` n'existe pas (`-32601`).
     // L'injection est posee par session, dans le gestionnaire
@@ -158,13 +158,13 @@ try {
 
     const etat0 = await cdp.evalBorne(sessionShell, `JSON.stringify({ href: location.href, f1: window.__f1 ? { peuple: window.__f1.peuple, erreurs: window.__f1.erreurs } : null })`, 8000, false);
     dire(`etat initial : ${etat0}`);
-    resultat.etat_initial = etat0;
+    result.etat_initial = etat0;
 
     // Attendre que OPFS soit peuple AVANT de cliquer : le picker surcharge
     // attend de toute facon, mais on veut la trace du peuplement.
     for (let i = 0; i < 120; i += 1) {
         const p = await cdp.evalBorne(sessionShell, `String(window.__f1 && window.__f1.peuple)`, 5000, false);
-        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); resultat.opfs_entrees = Number(p); break; }
+        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); result.opfs_entrees = Number(p); break; }
         await dodo(500);
     }
 
@@ -193,10 +193,10 @@ try {
         for (let i = 0; i < 90; i += 1) {
             const cibles = await (await fetch(`http://127.0.0.1:${PORT_CDP}/json/list`)).json();
             const n = cibles.filter((c) => c.type === 'page' && c.url.includes('session=')).length;
-            if (n > 0) { dire(`${n} fenetre(s) d application ouverte(s) apres ${i} s`); resultat.fenetres_ouvertes = n; break; }
+            if (n > 0) { dire(`${n} fenetre(s) d application ouverte(s) apres ${i} s`); result.fenetres_ouvertes = n; break; }
             await dodo(1000);
         }
-        if (!resultat.fenetres_ouvertes) {
+        if (!result.fenetres_ouvertes) {
             dire('AUCUNE fenetre d application apres 90 s');
             const diag = await cdp.evalBorne(sessionShell, `JSON.stringify({
                 statut: (document.querySelector('#statut')||{}).textContent,
@@ -204,7 +204,7 @@ try {
                 nbLi: document.querySelectorAll('#liste li').length,
             })`, 5000, false);
             dire(`diagnostic page-shell : ${diag}`);
-            resultat.diagnostic_shell = diag;
+            result.diagnostic_shell = diag;
         }
     }
 
@@ -225,10 +225,10 @@ try {
         await dodo(1000);
     }
     dire(`#etat-fichiers : ${JSON.stringify(monte)}`);
-    resultat.etat_fichiers = monte;
+    result.etat_fichiers = monte;
 
     const f1 = await cdp.evalBorne(sessionShell, `JSON.stringify(window.__f1)`, 8000, false);
-    resultat.trace_page = f1 ? JSON.parse(f1) : null;
+    result.trace_page = f1 ? JSON.parse(f1) : null;
 
     // ── La mesure cote VM, PENDANT que le lecteur est monte ─────────────────
     // Elle DOIT courir ici : la racine ProjFS ne sert rien sans le navigateur
@@ -261,10 +261,10 @@ try {
         try {
             const sortie = execFileSync('bash', ['-c', process.env.PENDANT_MAINTIEN],
                 { encoding: 'utf8', timeout: 600000, maxBuffer: 64 * 1024 * 1024 });
-            resultat.mesure_vm = sortie;
+            result.mesure_vm = sortie;
             dire(`mesure VM : ${sortie.split('\n').length} lignes`);
         } catch (e) {
-            resultat.mesure_vm_erreur = String(e).slice(0, 2000);
+            result.mesure_vm_erreur = String(e).slice(0, 2000);
             dire(`mesure VM ECHOUEE : ${String(e).slice(0, 300)}`);
         }
     } else if (process.env.PENDANT_MAINTIEN) {
@@ -299,20 +299,20 @@ try {
         echantillons.push(point);
         dire(`echantillon ${n} : ${JSON.stringify(point)}`);
     }
-    resultat.echantillons = echantillons;
+    result.echantillons = echantillons;
 
     const finEtat = await cdp.evalBorne(sessionShell, `document.querySelector('#etat-fichiers').textContent`, 5000, false);
-    resultat.etat_fichiers_fin = finEtat;
+    result.etat_fichiers_fin = finEtat;
     dire(`#etat-fichiers (fin) : ${JSON.stringify(finEtat)}`);
-    resultat.ok = true;
+    result.ok = true;
 } catch (e) {
-    resultat.ok = false;
-    resultat.erreurs.push(String(e).slice(0, 1000));
+    result.ok = false;
+    result.errors.push(String(e).slice(0, 1000));
     dire(`ERREUR : ${String(e).slice(0, 500)}`);
 } finally {
-    fs.writeFileSync(SORTIE, JSON.stringify(resultat, null, 1));
+    fs.writeFileSync(SORTIE, JSON.stringify(result, null, 1));
     dire(`resultat ecrit : ${SORTIE}`);
     if (chrome) chrome.kill();
     await dodo(500);
-    process.exit(resultat.ok ? 0 : 1);
+    process.exit(result.ok ? 0 : 1);
 }

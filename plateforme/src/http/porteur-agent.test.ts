@@ -1,17 +1,17 @@
-// L'extraction du jeton porteur d'AGENT, PURE.
+// Extracting the AGENT bearer token, PURE.
 //
-// 🔴 CE FICHIER EST LE JUMEAU DE `porteur.test.ts`, ET LES DEUX SE LISENT
-// ENSEMBLE. `identite/jeton.ts` énumère les DEUX confusions et dit qu'elles
-// sont graves toutes les deux : un jeton HUMAIN ouvrant un chemin d'agent, et
-// un jeton d'AGENT ouvrant un chemin humain. Les deux jetons sont signés par
-// le MÊME secret et portent la même charge `{sub, exp}` — sans le claim `sty`
-// ils sont littéralement interchangeables.
+// 🔴 THIS FILE IS THE TWIN OF `porteur.test.ts`, AND THE TWO ARE READ
+// TOGETHER. `identite/jeton.ts` lists BOTH confusions and says they
+// are both serious: a HUMAN token opening an agent path, and
+// an AGENT token opening a human path. The two tokens are signed by
+// the SAME secret and carry the same payload `{sub, exp}` — without the `sty` claim
+// they are literally interchangeable.
 //
-// **Si l'un des deux sens se relâche, les deux identités redeviennent
-// interchangeables.** `porteur.test.ts` tient « un jeton d'AGENT est refusé
-// par le lecteur humain » ; ce fichier tient le sens INVERSE, « un jeton
-// d'UTILISATEUR est refusé par le lecteur d'agent ». Ni l'un ni l'autre n'a de
-// valeur seul : ce sont les deux moitiés d'une seule garde.
+// **If either direction is relaxed, the two identities become
+// interchangeable again.** `porteur.test.ts` holds "an AGENT token is refused
+// by the human reader"; this file holds the REVERSE direction, "a
+// USER token is refused by the agent reader". Neither has
+// value alone: they are the two halves of a single guard.
 
 import { describe, expect, it } from 'vitest';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
@@ -20,17 +20,17 @@ import { lirePorteurAgent } from './porteur-agent';
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const MS = 1_787_136_773_742;
 
-/// Le sujet d'un jeton d'agent est le PRÉFIXE DE SESSION — c'est ce que
-/// `agents/canal.ts` signe (`jetonNeuf(prefixe)`), et jamais l'identifiant de
-/// VM. Ce nom-là est donc la moitié de l'assertion.
+/// The subject of an agent token is the SESSION PREFIX — it is what
+/// `agents/canal.ts` signs (`jetonNeuf(prefixe)`), and never the VM
+/// identifier. That name is therefore half of the assertion.
 const PREFIXE = 'AAAAAAAAAAAAAAAAAAAAAA';
 
 function entetes(
-    valeur: string | string[] | undefined,
+    value: string | string[] | undefined,
 ): Record<string, string | string[] | undefined> {
-    // Node met les noms d'en-tête en MINUSCULES : `req.headers.authorization`
-    // est la seule graphie qui existe côté serveur.
-    return valeur === undefined ? {} : { authorization: valeur };
+    // Node puts header names in LOWER CASE: `req.headers.authorization`
+    // is the only spelling that exists on the server side.
+    return value === undefined ? {} : { authorization: value };
 }
 
 function jetonAgent(sujet: string = PREFIXE): string {
@@ -38,18 +38,18 @@ function jetonAgent(sujet: string = PREFIXE): string {
 }
 
 describe('lirePorteurAgent', () => {
-    it('en-tête ABSENT → jeton-absent, 401', () => {
-        // 🔴 La rouge : rendre `ok:true` avec un préfixe vide. La route de
-        // téléversement deviendrait publique, au nom d'une VM qui n'existe
-        // pas — et `depot/agent.ts::lireParPrefixe('')` ne rendrait rien, donc
-        // le refus tomberait bien plus loin, sous un motif qui ne dit pas la
+    it('header ABSENT → jeton-absent, 401', () => {
+        // 🔴 The red: returning `ok:true` with an empty prefix. The upload
+        // route would become public, in the name of a VM that does not
+        // exist — and `depot/agent.ts::lireParPrefixe('')` would return nothing, so
+        // the refusal would fall much further on, under a reason that does not state the
         // cause.
         expect(lirePorteurAgent(entetes(undefined), SECRET, MS)).toEqual({
             ok: false,
             motif: 'jeton-absent',
             code: 401,
         });
-        // Une valeur vide n'est pas davantage un jeton.
+        // An empty value is not a token either.
         expect(lirePorteurAgent(entetes(''), SECRET, MS)).toEqual({
             ok: false,
             motif: 'jeton-absent',
@@ -57,13 +57,13 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('`Bearer <jeton d’agent valide>` → le PRÉFIXE, jamais un id de VM', () => {
-        // 🔴 CE QUI EST RENDU EST LE SUJET DU JETON, ET LE SUJET EST LE
-        // PRÉFIXE. `agents/canal.ts` écrit `signer(prefixe, …, 'agent')` et
-        // son en-tête dit qu'« un canal qui signerait l'identifiant de VM au
-        // lieu du préfixe délivrerait des jetons parfaitement valides que RIEN
-        // n'accepterait ». Un module qui rendrait ici un `vmId` serait une
-        // panne muette de bout en bout : la VM se résout PLUS TARD, par
+    it('`Bearer <valid agent token>` → the PREFIX, never a VM id', () => {
+        // 🔴 WHAT IS RETURNED IS THE TOKEN'S SUBJECT, AND THE SUBJECT IS THE
+        // PREFIX. `agents/canal.ts` writes `signer(prefixe, …, 'agent')` and
+        // its header says that "a channel that signed the VM identifier instead
+        // of the prefix would deliver perfectly valid tokens that NOTHING
+        // would accept". A module that returned a `vmId` here would be a
+        // silent end-to-end failure: the VM is resolved LATER, by
         // `depot/agent.ts::lireParPrefixe`.
         expect(lirePorteurAgent(entetes(`Bearer ${jetonAgent()}`), SECRET, MS)).toEqual({
             ok: true,
@@ -71,17 +71,17 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 `Bearer <jeton d’UTILISATEUR>` → jeton-utilisateur, 403', () => {
-        // 🔴 LA ROUGE, ET ELLE VA PAR PAIRE AVEC CELLE DE `porteur.test.ts` :
-        // accepter le type `utilisateur` ici. Un humain déposerait alors des
-        // installeurs et téléchargerait ceux d'une VM dont il n'est pas
-        // l'agent, avec un jeton que le service lui a lui-même délivré. La
-        // symétrie est le point : `porteur.ts` refuse `agent`, ce module
-        // refuse `utilisateur`, et relâcher L'UN DES DEUX suffit à rendre les
-        // deux identités interchangeables (`identite/jeton.ts`).
+    it('🔴 `Bearer <USER token>` → jeton-utilisateur, 403', () => {
+        // 🔴 THE RED, AND IT GOES AS A PAIR WITH THAT OF `porteur.test.ts`:
+        // accepting the `user` type here. A human would then drop
+        // installers and download those of a VM whose agent they are
+        // not, with a token the service itself delivered to them. The
+        // symmetry is the point: `porteur.ts` refuses `agent`, this module
+        // refuses `user`, and relaxing EITHER OF THE TWO is enough to make the
+        // two identities interchangeable (`identite/jeton.ts`).
         //
-        // ⚠️ 403 ET NON 401 : le jeton est VALIDE, il n'est simplement pas
-        // celui d'un agent. Un 401 inviterait à se reconnecter pour rien.
+        // ⚠️ 403 AND NOT 401: the token is VALID, it simply is not
+        // an agent's. A 401 would invite reconnecting for nothing.
         const jetonHumain = signer('u-ada', SECRET, MS);
         expect(lirePorteurAgent(entetes(`Bearer ${jetonHumain}`), SECRET, MS)).toEqual({
             ok: false,
@@ -90,19 +90,19 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 un jeton SANS claim de type est un jeton d’utilisateur, donc refusé', () => {
-        // 🔴 L'ABSENCE DU CLAIM VAUT `utilisateur` (`identite/jeton.ts`,
-        // `TYPE_PAR_DEFAUT`) — c'est le format des jetons de P2, encore en
-        // vol. Ce test tient que le lecteur d'agent lit bien le DÉFAUT et ne
-        // se contente pas de `verdict.type !== 'utilisateur'` : un module qui
-        // testerait l'absence du claim comme « pas humain » accepterait tout
-        // jeton de P2.
+    it('🔴 a token WITHOUT a type claim is a user token, so refused', () => {
+        // 🔴 THE ABSENCE OF THE CLAIM MEANS `user` (`identite/jeton.ts`,
+        // `TYPE_PAR_DEFAUT`) — it is the format of P2's tokens, still in
+        // flight. This test holds that the agent reader does read the DEFAULT and does not
+        // settle for `verdict.type !== 'user'`: a module that
+        // tested the absence of the claim as "not human" would accept any
+        // P2 token.
         //
-        // ⚠️ Il n'est pas redondant avec le précédent : `signer` N'ÉCRIT PAS
-        // le claim pour un `utilisateur`, si bien que les deux jetons sont le
-        // même octet pour octet — c'est justement ce qui rend l'assertion
-        // solide et le commentaire nécessaire, sans quoi un lecteur croira à
-        // une copie.
+        // ⚠️ It is not redundant with the previous one: `signer` DOES NOT WRITE
+        // the claim for a `user`, so that the two tokens are the
+        // same byte for byte — it is precisely what makes the assertion
+        // solid and the comment necessary, otherwise a reader will believe it
+        // a copy.
         const sansClaim = signer('u-ada', SECRET, MS, undefined, 'utilisateur');
         expect(sansClaim.split('.').length).toBe(3);
         expect(lirePorteurAgent(entetes(`Bearer ${sansClaim}`), SECRET, MS)).toEqual({
@@ -112,19 +112,19 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 jeton EXPIRÉ → jeton-expire, et l’horloge VARIE', () => {
-        // 🔴 La rouge : figer l'horloge. Le test deviendrait inerte — il n'y
-        // aurait qu'un instant observable et le seuil ne serait jamais
-        // franchi. La borne d'`identite/jeton.ts` est FRANCHE (`maintenant >=
-        // exp`) précisément pour qu'on puisse l'assiéger des deux côtés.
+    it('🔴 EXPIRED token → jeton-expire, and the clock VARIES', () => {
+        // 🔴 The red: freezing the clock. The test would become inert — there
+        // would be only one observable instant and the threshold would never be
+        // crossed. The bound of `identite/jeton.ts` is STRICT (`maintenant >=
+        // exp`) precisely so that it can be besieged from both sides.
         const jeton = jetonAgent();
         const exp = MS + DUREE_JETON_ACCES_MS;
-        // Une milliseconde AVANT : encore valide.
+        // One millisecond BEFORE: still valid.
         expect(lirePorteurAgent(entetes(`Bearer ${jeton}`), SECRET, exp - 1)).toEqual({
             ok: true,
             prefixe: PREFIXE,
         });
-        // À la borne EXACTE : expiré.
+        // At the EXACT bound: expired.
         expect(lirePorteurAgent(entetes(`Bearer ${jeton}`), SECRET, exp)).toEqual({
             ok: false,
             motif: 'jeton-expire',
@@ -132,12 +132,12 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 un schéma autre que `Bearer` → jeton-invalide', () => {
-        // 🔴 La rouge : accepter n'importe quel schéma. La casse est comparée
-        // STRICTEMENT, divergence avec la RFC 7235 déclarée dans
-        // `porteur-agent.ts` — et elle DOIT être la même que celle de
-        // `porteur.ts` : les deux moitiés de la garde divergent sur le TYPE et
-        // sur rien d'autre.
+    it('🔴 a scheme other than `Bearer` → jeton-invalide', () => {
+        // 🔴 The red: accepting any scheme. The case is compared
+        // STRICTLY, a divergence from RFC 7235 declared in
+        // `porteur-agent.ts` — and it MUST be the same as that of
+        // `porteur.ts`: the two halves of the guard diverge on the TYPE and
+        // on nothing else.
         const jeton = jetonAgent();
         for (const brut of [
             `Basic ${jeton}`,
@@ -145,7 +145,7 @@ describe('lirePorteurAgent', () => {
             `BEARER ${jeton}`,
             jeton,
             `Bearer`,
-            `Bearer ${jeton} de-trop`,
+            `Bearer ${jeton} too-much`,
         ]) {
             const v = lirePorteurAgent(entetes(brut), SECRET, MS);
             expect(v.ok).toBe(false);
@@ -153,7 +153,7 @@ describe('lirePorteurAgent', () => {
             expect(v.motif).toBe('jeton-invalide');
             expect(v.code).toBe(401);
         }
-        // Une signature fausse est invalide de la même façon — jamais 500.
+        // A wrong signature is invalid the same way — never 500.
         expect(lirePorteurAgent(entetes(`Bearer ${jeton}x`), SECRET, MS)).toEqual({
             ok: false,
             motif: 'jeton-invalide',
@@ -161,17 +161,17 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 un en-tête RÉPÉTÉ (string[]) → jeton-invalide', () => {
-        // 🔴 La rouge : prendre `entetes.authorization[0]` en silence. Deux
-        // en-têtes d'autorisation est une requête AMBIGUË, pas une requête à
-        // interpréter.
+    it('🔴 a REPEATED header (string[]) → jeton-invalide', () => {
+        // 🔴 The red: taking `entetes.authorization[0]` silently. Two
+        // authorization headers make an AMBIGUOUS request, not a request to
+        // interpret.
         //
-        // ⚠️ CE CHEMIN EST INATTEIGNABLE DEPUIS UNE VRAIE REQUÊTE HTTP, et
-        // c'est MESURÉ : sur Node v24.9.0, deux en-têtes `Authorization`
-        // rendent une CHAÎNE — le parseur garde le premier et jette le second.
-        // Le test tient donc une propriété du module PUR, pas une défense de
-        // la route ; le dire évite qu'un successeur le lise comme la preuve
-        // que `PUT /icone/:sha256` est protégé de ce cas.
+        // ⚠️ THIS PATH IS UNREACHABLE FROM A REAL HTTP REQUEST, and
+        // it is MEASURED: on Node v24.9.0, two `Authorization` headers
+        // yield a STRING — the parser keeps the first and discards the second.
+        // The test therefore holds a property of the PURE module, not a defence of
+        // the route; saying so prevents a successor from reading it as the proof
+        // that `PUT /icone/:sha256` is protected from this case.
         expect(
             lirePorteurAgent(
                 entetes([`Bearer ${jetonAgent()}`, `Bearer ${signer('u-ada', SECRET, MS)}`]),
@@ -179,8 +179,8 @@ describe('lirePorteurAgent', () => {
                 MS,
             ),
         ).toEqual({ ok: false, motif: 'jeton-invalide', code: 401 });
-        // Même un tableau d'UN SEUL élément : la forme est ambiguë, pas la
-        // valeur. Node ne produit un tableau que s'il a vu plusieurs en-têtes.
+        // Even a SINGLE-element array: the shape is ambiguous, not the
+        // value. Node only produces an array if it saw several headers.
         expect(lirePorteurAgent(entetes([`Bearer ${jetonAgent()}`]), SECRET, MS).ok).toBe(false);
     });
 });

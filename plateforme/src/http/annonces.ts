@@ -1,31 +1,31 @@
-// Ce que le service DIT de sa configuration au démarrage, avant d'écouter.
+// What the service SAYS about its configuration at startup, before listening.
 //
-// 🔴 POURQUOI CE MODULE EXISTE, ET LA RÈGLE QU'IL APPLIQUE ÉTAIT DÉJÀ ÉCRITE
-// DANS `serveur.ts`. Les deux magasins de disque facultatifs y journalisent
-// leur chemin retenu, et la raison y est nommée : « la variable étant
-// facultative, c'est la seule chose qui rende visible à l'opérateur le magasin
-// sur lequel il travaille réellement ». Le lot « page derrière Pomerium » a
-// ajouté une TROISIÈME racine disque facultative — `PLATEFORME_PAGE` — sans
-// lui appliquer cette règle : mal posée, elle rendait `404 introuvable` sur
-// TOUTE page, ce qui est STRICTEMENT INDISCERNABLE de « variable absente », et
-// rien ne le disait, ni au démarrage ni à la requête.
+// 🔴 WHY THIS MODULE EXISTS, AND THE RULE IT APPLIES WAS ALREADY WRITTEN
+// IN `serveur.ts`. The two optional disk stores log there
+// the path they retained, and the reason is named there: "the variable being
+// optional, it is the only thing that makes visible to the operator the store
+// they are really working on". The "page behind Pomerium" batch
+// added a THIRD optional disk root — `PLATEFORME_PAGE` — without
+// applying this rule to it: set wrongly, it returned `404 introuvable` on
+// EVERY page, which is STRICTLY INDISTINGUISHABLE from "variable absent", and
+// nothing said so, neither at startup nor on the request.
 //
-// 🔴 ET L'ENSEMBLE DE CONFIANCE EST DE LA MÊME CLASSE, PAS D'UNE AUTRE : un
-// nom d'hôte écrit dans `PLATEFORME_PROXY_DE_CONFIANCE` ne correspond à
-// AUCUNE `remoteAddress` — qui est toujours une adresse IP —, si bien que
-// `pairDeConfiance` refuse TOUT LE MONDE, que `/auth/moi` rend `401
-// pair-non-de-confiance` à Pomerium lui-même, et que le service répond quand
-// même. Même panne muette, même remède : dire ce qu'on a RETENU.
+// 🔴 AND THE TRUST SET IS OF THE SAME CLASS, NOT ANOTHER ONE: a
+// host name written in `PLATEFORME_PROXY_DE_CONFIANCE` matches
+// NO `remoteAddress` — which is always an IP address —, so that
+// `pairDeConfiance` refuses EVERYBODY, `/auth/moi` returns `401
+// pair-non-de-confiance` to Pomerium itself, and the service answers
+// anyway. Same silent failure, same remedy: say what was RETAINED.
 //
-// ⚠️ ON JOURNALISE CE QUE LE SERVICE A RETENU, JAMAIS CE QU'ON LUI A DONNÉ.
-// Une trace qui recopierait la valeur brute de l'environnement ne prouverait
-// que la lecture de l'environnement ; ce que l'exploitant doit pouvoir
-// reconnaître est le chemin ABSOLU RÉSOLU et les entrées SURVIVANTES au
-// découpage — c'est-à-dire ce sur quoi le produit travaille réellement.
+// ⚠️ WE LOG WHAT THE SERVICE RETAINED, NEVER WHAT IT WAS GIVEN.
+// A trace that copied the raw value of the environment would only prove
+// that the environment was read; what the operator must be able to
+// recognise is the RESOLVED ABSOLUTE path and the entries SURVIVING the
+// splitting — that is, what the product really works on.
 //
-// ⚠️ CE MODULE REND SES LIGNES, IL NE LES ÉCRIT PAS — même convention que
-// `obs/journal.ts`, et pour la même raison : c'est ce qui les rend éprouvables
-// sans `spyOn(console)`. L'écriture est un geste séparé (`ecrire`), appelé par
+// ⚠️ THIS MODULE RETURNS ITS LINES, IT DOES NOT WRITE THEM — same convention as
+// `obs/journal.ts`, and for the same reason: it is what makes them testable
+// without `spyOn(console)`. Writing is a separate gesture (`write`), called by
 // `serveur.ts`.
 
 import { constants } from 'node:fs';
@@ -33,17 +33,17 @@ import { access, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { ligne } from '../obs/journal';
 
-/// Une ligne prête à écrire, et le NIVEAU qui la porte.
+/// A line ready to write, and the LEVEL that carries it.
 ///
-/// 🔴 LE NIVEAU EST DANS LA DONNÉE, PAS DANS L'APPELANT : une racine posée
-/// mais illisible doit être BRUYANTE (`console.error`), et laisser ce choix au
-/// site d'appel le rendrait invisible au test qui l'éprouve.
+/// 🔴 THE LEVEL IS IN THE DATA, NOT IN THE CALLER: a root that is set
+/// but unreadable must be LOUD (`console.error`), and leaving that choice to the
+/// call site would make it invisible to the test that checks it.
 export interface Annonce {
-    readonly niveau: 'info' | 'erreur';
+    readonly niveau: 'info' | 'error';
     readonly texte: string;
 }
 
-/// Ce que le service a retenu de `PLATEFORME_PAGE`, une fois le disque sondé.
+/// What the service retained from `PLATEFORME_PAGE`, once the disk has been probed.
 export type EtatRacinePage =
     | { readonly arme: false }
     | { readonly arme: true; readonly chemin: string; readonly lisible: true }
@@ -54,59 +54,59 @@ export type EtatRacinePage =
           readonly cause: string;
       };
 
-/// PURE. La ligne que `PLATEFORME_PAGE` mérite, dans les trois cas.
+/// PURE. The line that `PLATEFORME_PAGE` deserves, in the three cases.
 ///
-/// 🔴 « AUCUNE PAGE SERVIE » EST UNE INFORMATION D'EXPLOITATION, PAS UN
-/// SILENCE. C'est le montage nginx (mode `motdepasse`), où la plateforme ne
-/// doit rien servir : le dire est ce qui distingue « je ne sers rien parce
-/// qu'on ne me l'a pas demandé » de « je ne sers rien parce que ma racine est
-/// fausse ». Sans cette ligne, les deux se lisent comme un `404` identique.
+/// 🔴 "NO PAGE SERVED" IS OPERATIONAL INFORMATION, NOT A
+/// SILENCE. It is the nginx setup (`motdepasse` mode), where the platform must
+/// serve nothing: saying so is what tells "I serve nothing because
+/// nobody asked me to" apart from "I serve nothing because my root is
+/// wrong". Without this line, both read as an identical `404`.
 export function annonceRacinePage(etat: EtatRacinePage): Annonce {
     if (!etat.arme) {
         return {
             niveau: 'info',
-            texte: ligne('page servie', {
-                racine: 'aucune',
-                raison: 'PLATEFORME_PAGE absente ou vide',
-                effet: 'GET / rend 404 introuvable',
+            texte: ligne('page served', {
+                root: 'none',
+                raison: 'PLATEFORME_PAGE absent or empty',
+                effect: 'GET / returns 404 not found',
             }),
         };
     }
     if (etat.lisible) {
         return {
             niveau: 'info',
-            texte: ligne('page servie', { racine: etat.chemin, lisible: 'oui' }),
+            texte: ligne('page served', { root: etat.chemin, readable: 'yes' }),
         };
     }
-    // 🔴 `erreur`, JAMAIS `info` : c'est le cas que ce module existe pour
-    // rendre bruyant. Le service DÉMARRE quand même — refuser de démarrer
-    // couperait l'API et le signaling pour une page, ce qui serait
-    // disproportionné —, mais il ne le fait plus en silence.
+    // 🔴 `error`, NEVER `info`: it is the case this module exists to
+    // make loud. The service STARTS anyway — refusing to start
+    // would cut the API and the signaling for one page, which would be
+    // disproportionate —, but it no longer does so silently.
     return {
-        niveau: 'erreur',
-        texte: ligne('page servie', {
-            racine: etat.chemin,
-            lisible: 'non',
+        niveau: 'error',
+        texte: ligne('page served', {
+            root: etat.chemin,
+            readable: 'no',
             cause: etat.cause,
-            effet: 'toute page rendra 404 introuvable',
+            effect: 'every page will return 404 not found',
         }),
     };
 }
 
-/// PURE. La ligne de l'ensemble de confiance RETENU.
+/// PURE. The line of the RETAINED trust set.
 ///
-/// 🔴 **L'ENSEMBLE VIDE EST `info` ET NON `erreur` — MAIS PAS PARCE QUE CE
-/// SERAIT LE « DÉFAUT SÛR » DU MODE `motdepasse` : cette phrase-là a été
-/// FALSIFIÉE par la revue du round de correction 3 de `frein(pont)`.**
+/// 🔴 **THE EMPTY SET IS `info` AND NOT `error` — BUT NOT BECAUSE IT
+/// WOULD BE THE "SAFE DEFAULT" OF THE `motdepasse` MODE: that sentence was
+/// FALSIFIED by the review of correction round 3 of `frein(pont)`.**
 ///
-/// ⚠️ **CETTE DOC ANNONÇAIT « corrigée à trois endroits
-/// (`docker-compose.plateforme.yml`, `frein.ts`, ici) » : L'ÉNUMÉRATION
-/// ÉTAIT FAUSSE DANS LES DEUX SENS** (relevé par la revue du round de
-/// correction 4). `frein.ts` n'a JAMAIS porté cette affirmation — il n'en
-/// dit pas un mot —, et deux sites corrigés par ce même round manquaient à
-/// la liste. **AUCUN COMPTE N'EST ÉCRIT ICI, ET C'EST VOULU** — un compte
-/// vieillit d'une ronde à l'autre, et le round 4 en a lui-même ajouté deux
-/// sites. Les places se RELÈVENT :
+/// ⚠️ **THIS DOC ANNOUNCED "fixed in three places
+/// (`docker-compose.plateforme.yml`, `frein.ts`, here)": THE ENUMERATION
+/// WAS WRONG IN BOTH DIRECTIONS** (found by the review of correction
+/// round 4). `frein.ts` NEVER carried that claim — it says
+/// not a word about it —, and two sites fixed by that same round were missing from
+/// the list. **NO COUNT IS WRITTEN HERE, AND THIS IS INTENDED** — a count
+/// ages from one round to the next, and round 4 itself added two
+/// sites. The places are LOOKED UP:
 ///
 /// ```sh
 /// grep -rln 'aucun attaquant\|AUCUN ATTAQUANT' --include='*.ts' \
@@ -114,91 +114,91 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
 ///   plateforme deploiement docker-compose.plateforme.yml
 /// ```
 ///
-/// Une affirmation de COMPLÉTUDE dans du code de production se vérifie par
-/// une commande, jamais de mémoire.
+/// A claim of COMPLETENESS in production code is checked with
+/// a command, never from memory.
 ///
-/// Un ensemble vide veut dire « `X-Forwarded-For` n'est pas cru, et
-/// `adresseSource` retombe sur `req.socket.remoteAddress` » — sûr SEULEMENT
-/// si cette adresse est celle du CLIENT réel, c'est-à-dire seulement si la
-/// plateforme est exposée DIRECTEMENT. **Ce n'est PAS le montage que ce
-/// dépôt LIVRE** : `docker-compose.plateforme.yml` place nginx devant elle,
-/// même en mode `motdepasse`, si bien que `remoteAddress` est TOUJOURS
-/// l'adresse du conteneur nginx pour toute requête réelle — l'ensemble vide y
-/// fait dégénérer `BUDGET_ADRESSE` **et** `BUDGET_REQUETES` (celui-ci
-/// couvrant `GET /vm`, `POST /session` et `/signal`, HTTP et WebSocket
-/// confondus depuis le lot « frein(volume) ») en un budget PARTAGÉ par TOUT
-/// LE TRAFIC, sans qu'aucun attaquant n'ait à forger quoi que ce soit — la
-/// dégénérescence est automatique dès que le second proxy existe.
+/// An empty set means "`X-Forwarded-For` is not trusted, and
+/// `adresseSource` falls back on `req.socket.remoteAddress`" — safe ONLY
+/// if that address is the one of the real CLIENT, that is, only if the
+/// platform is exposed DIRECTLY. **That is NOT the setup this
+/// repository SHIPS**: `docker-compose.plateforme.yml` puts nginx in front of it,
+/// even in `motdepasse` mode, so that `remoteAddress` is ALWAYS
+/// the address of the nginx container for every real request — the empty set there
+/// makes `BUDGET_ADRESSE` **and** `BUDGET_REQUETES` degenerate (the latter
+/// covering `GET /vm`, `POST /session` and `/signal`, HTTP and WebSocket
+/// combined since the "frein(volume)" batch) into a budget SHARED by ALL
+/// THE TRAFFIC, without any attacker having to forge anything — the
+/// degeneration is automatic as soon as the second proxy exists.
 ///
-/// ⚠️ **POURQUOI CE NIVEAU RESTE `info` MALGRÉ CETTE GRAVITÉ** : cette
-/// fonction est PURE et ne reçoit que l'ensemble RETENU — elle n'a AUCUN
-/// moyen de savoir si le processus qui l'appelle tourne DERRIÈRE un proxy ou
-/// exposé directement, et c'est une question de TOPOLOGIE DE DÉPLOIEMENT,
-/// pas de configuration que `config.ts` puisse trancher pour elle. Rendre ce
-/// cas `erreur` inconditionnellement alarmerait à tort le déploiement où
-/// l'ensemble vide est légitimement sûr (exposition directe, sans proxy).
-/// **La ligne `info` reste donc le seul témoin de l'exploitant** — c'est
-/// pour cela qu'elle nomme déjà l'effet exact (`X-Forwarded-For n est pas
-/// cru, et /auth/moi refuse tout pair`) plutôt qu'un simple booléen — et
-/// c'est `deploiement/README.md` (invariant ③) qui porte la responsabilité
-/// de dire, pour LE montage que ce dépôt livre spécifiquement, que cette
-/// ligne `info` annonce en réalité un risque `erreur`.
+/// ⚠️ **WHY THIS LEVEL STAYS `info` DESPITE THIS SEVERITY**: this
+/// function is PURE and only receives the RETAINED set — it has NO
+/// way of knowing whether the process calling it runs BEHIND a proxy or
+/// exposed directly, and that is a question of DEPLOYMENT TOPOLOGY,
+/// not of configuration that `config.ts` could settle for it. Making this
+/// case `error` unconditionally would wrongly alarm the deployment where
+/// the empty set is legitimately safe (direct exposure, no proxy).
+/// **The `info` line therefore remains the operator's only witness** — that is
+/// why it already names the exact effect (`X-Forwarded-For is not
+/// trusted, and /auth/moi refuses every peer`) rather than a mere boolean — and
+/// it is `deploiement/README.md` (invariant ③) that bears the responsibility
+/// of saying, for THE setup this repository specifically ships, that this
+/// `info` line actually announces an `error` risk.
 export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce {
     if (confiance.size === 0) {
         return {
             niveau: 'info',
-            texte: ligne('proxys de confiance', {
-                retenus: 'aucun',
-                effet: 'X-Forwarded-For n est pas cru, et /auth/moi refuse tout pair',
+            texte: ligne('trusted proxies', {
+                retained: 'none',
+                effect: 'X-Forwarded-For is not trusted, and /auth/moi refuses every peer',
             }),
         };
     }
     return {
         niveau: 'info',
-        texte: ligne('proxys de confiance', {
-            // ⚠️ TOUTES LES ENTRÉES, JAMAIS UN ÉCHANTILLON NI UNE TRONCATURE :
-            // `obs/journal.ts` porte déjà la raison — une adresse tronquée est
-            // AMBIGUË, et l'exploitant ne reconnaîtrait plus la sienne. C'est
-            // aussi ce qui rend un nom d'hôte VISIBLE là où il ne le serait
-            // pas dans un compte.
-            retenus: [...confiance].join(' '),
-            nombre: confiance.size,
+        texte: ligne('trusted proxies', {
+            // ⚠️ ALL THE ENTRIES, NEVER A SAMPLE OR A TRUNCATION:
+            // `obs/journal.ts` already carries the reason — a truncated address is
+            // AMBIGUOUS, and the operator would no longer recognise their own. It is
+            // also what makes a host name VISIBLE where it would not be
+            // in a count.
+            retained: [...confiance].join(' '),
+            count: confiance.size,
         }),
     };
 }
 
-/// Le sondage RÉEL du disque. Rejette avec une cause lisible.
+/// The REAL probe of the disk. Rejects with a readable cause.
 ///
-/// ⚠️ TROIS CHOSES SONT SONDÉES, PAS UNE : que le chemin existe, que ce soit
-/// un RÉPERTOIRE, et qu'il soit LISIBLE ET TRAVERSABLE. Un fichier ordinaire
-/// posé comme racine, ou un répertoire sans bit `x`, produisent exactement le
-/// même `404` muet qu'une racine absente — les distinguer au démarrage est
-/// tout l'objet de ce module.
+/// ⚠️ THREE THINGS ARE PROBED, NOT ONE: that the path exists, that it is
+/// a DIRECTORY, and that it is READABLE AND TRAVERSABLE. An ordinary file
+/// set as the root, or a directory without the `x` bit, produce exactly the
+/// same silent `404` as a missing root — telling them apart at startup is
+/// the whole point of this module.
 export async function sonderRepertoire(chemin: string): Promise<void> {
     const infos = await stat(chemin);
-    if (!infos.isDirectory()) throw new Error('ce n est pas un repertoire');
+    if (!infos.isDirectory()) throw new Error('this is not a directory');
     await access(chemin, constants.R_OK | constants.X_OK);
 }
 
-/// Résout et sonde, sans rien écrire.
+/// Resolves and probes, without writing anything.
 ///
-/// ⚠️ `resolve()` EST APPELÉ ICI ET NULLE PART AILLEURS DANS CE MODULE : c'est
-/// le chemin RÉSOLU qui part au journal, parce que c'est lui que le servant
-/// emploie (`page/routes-page.ts` fait le même `resolve`). Journaliser la
-/// valeur brute laisserait un chemin relatif ambigu, dont l'ancrage dépend du
-/// répertoire courant du processus.
+/// ⚠️ `resolve()` IS CALLED HERE AND NOWHERE ELSE IN THIS MODULE: it is
+/// the RESOLVED path that goes to the log, because it is the one the server
+/// uses (`page/routes-page.ts` does the same `resolve`). Logging the
+/// raw value would leave an ambiguous relative path, whose anchoring depends on the
+/// working directory of the process.
 ///
-/// ⚠️ LE SONDEUR EST INJECTÉ, avec un défaut réel : c'est ce qui rend les
-/// trois états éprouvables sans fabriquer un répertoire illisible sur le
-/// disque du test — et l'injection ne coûte rien au produit, qui n'appelle
-/// jamais cette fonction autrement qu'avec son défaut.
+/// ⚠️ THE PROBE IS INJECTED, with a real default: it is what makes the
+/// three states testable without crafting an unreadable directory on the
+/// disk of the test — and the injection costs the product nothing, since it never
+/// calls this function otherwise than with its default.
 export async function etatRacinePage(
     brut: string | undefined,
     sonder: (chemin: string) => Promise<void> = sonderRepertoire,
 ): Promise<EtatRacinePage> {
-    // ⚠️ `''` EST TRAITÉ COMME L'ABSENCE, exactement comme dans
-    // `page/routes-page.ts` : `resolve('')` rend le répertoire COURANT du
-    // processus, et l'annoncer comme racine servie serait un mensonge.
+    // ⚠️ `''` IS TREATED AS ABSENCE, exactly as in
+    // `page/routes-page.ts`: `resolve('')` returns the WORKING directory of the
+    // process, and announcing it as the served root would be a lie.
     if (brut === undefined || brut === '') return { arme: false };
     const chemin = resolve(brut);
     try {
@@ -209,9 +209,9 @@ export async function etatRacinePage(
     return { arme: true, chemin, lisible: true };
 }
 
-/// L'écriture, isolée en un seul geste — le seul de ce module qui touche la
+/// Writing, isolated into a single gesture — the only one of this module that touches the
 /// console.
-export function ecrire(annonce: Annonce): void {
-    if (annonce.niveau === 'erreur') console.error(annonce.texte);
+export function write(annonce: Annonce): void {
+    if (annonce.niveau === 'error') console.error(annonce.texte);
     else console.info(annonce.texte);
 }

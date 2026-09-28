@@ -1,93 +1,93 @@
-//! La décision PURE de relance/stabilité d'un processus supervisé mais **non
-//! fatal** — extraite de `superviseur::boucle::surveillance_pont` (round de
-//! correction 2, 25 août 2026) pour compiler et se tester **sur l'hôte
-//! Linux** : ce dernier fichier vit derrière `boucle.rs::#![cfg(windows)]`,
-//! et `EtatPont` y lisait `Instant::now()` en dur — aucun des trois tests
-//! du round de correction 1 ne pouvait donc couvrir le CÂBLAGE, seulement la
-//! fonction `honorer_retry_suggere` prise isolément. La revue l'a mesuré :
-//! retirer `surveillance_pont.rs` au bug d'avant (constante fixe) ou retirer
-//! les deux appels à `honorer_retry_suggere` laissaient les DEUX `cargo test
-//! --workspace` et `cargo check --target x86_64-pc-windows-gnu` intacts.
+//! The PURE restart/stability decision of a supervised but **non-fatal**
+//! process — extracted from `superviseur::boucle::surveillance_pont` (fix
+//! round 2, August 25th, 2026) to compile and be tested **on the Linux
+//! host**: that latter file lives behind `boucle.rs::#![cfg(windows)]`,
+//! and `EtatPont` read `Instant::now()` hard-coded there — none of the three tests
+//! of fix round 1 could therefore cover the WIRING, only the
+//! function `honour_suggested_retry` taken in isolation. The review measured it:
+//! reverting `surveillance_pont.rs` to the earlier bug (fixed constant) or removing
+//! both calls to `honour_suggested_retry` left BOTH `cargo test
+//! --workspace` and `cargo check --target x86_64-pc-windows-gnu` intact.
 //!
-//! 🔴 **CE ZÉRO N'EST PAS UNE FATALITÉ DU `#[cfg(windows)]` — C'EST UN
-//! ARBITRAGE, ET LA REVUE DU ROUND DE CORRECTION 3 L'A RELEVÉ.** Le
-//! paragraphe ci-dessus se lisait comme si aucun autre découpage n'était
-//! possible ; il en existe un : `surveiller` (`surveillance_pont.rs`) est
-//! une décision à TROIS branches — vivant, mort-avec-une-issue, absent — qui
-//! pourrait s'écrire comme une fonction PURE rendant un VERDICT, ne laissant
-//! dans le fichier gaté qu'une quinzaine de lignes d'E/S (lire l'état du
-//! processus, lire l'horloge, appliquer le verdict, tracer). **Non fait, ni
-//! au round 3 ni au round 4** — la prescription porte à chaque fois sur le
-//! SENS de la décision, pas sur la frontière d'extraction. **CE QUE CE CHOIX
-//! LAISSE NON GARDÉ, ET LE ROUND 4 EN AJOUTE UNE PIÈCE** : le CÂBLAGE
-//! lui-même (quelle méthode est appelée, dans quelle branche, avec quel
-//! argument) reste `#[cfg(windows)]`, donc non exercé par
-//! `cargo test --workspace` — et il porte désormais une propriété dont TOUT
-//! ce module dépend : **[`EtatObserve::Mort`] n'est rendu QU'UNE FOIS par
-//! mort**. Elle tient au fait que `LanceurDeProcessus::etat_du_pont` pose
-//! `*pont = None` dans la branche `Ok(Some(code))` de `try_wait`, si bien
-//! qu'un second appel rend `Absent` et non une seconde `Mort` — rendre `Mort`
-//! à chaque tour ferait réarmer le repli en boucle sur une sortie propre
-//! ANCIENNE. Seule la DÉCISION, une fois l'observation connue, est éprouvée
-//! ici.
+//! 🔴 **THIS ZERO IS NOT AN INEVITABILITY OF `#[cfg(windows)]` — IT IS A
+//! TRADE-OFF, AND THE REVIEW OF FIX ROUND 3 POINTED IT OUT.** The
+//! paragraph above read as if no other split were
+//! possible; there is one: `surveiller` (`surveillance_pont.rs`) is
+//! a THREE-branch decision — alive, dead-with-an-outcome, absent — that
+//! could be written as a PURE function returning a VERDICT, leaving
+//! in the gated file only some fifteen lines of I/O (read the
+//! process state, read the clock, apply the verdict, trace). **Not done, neither
+//! in round 3 nor in round 4** — the prescription each time bears on the
+//! MEANING of the decision, not on the extraction boundary. **WHAT THIS CHOICE
+//! LEAVES UNGUARDED, AND ROUND 4 ADDS A PIECE TO IT**: the WIRING
+//! itself (which method is called, in which branch, with which
+//! argument) stays `#[cfg(windows)]`, hence not exercised by
+//! `cargo test --workspace` — and it now carries a property on which ALL of
+//! this module depends: **[`EtatObserve::Mort`] is returned ONLY ONCE per
+//! death**. It holds because `LanceurDeProcessus::etat_du_pont` sets
+//! `*pont = None` in the `Ok(Some(code))` branch of `try_wait`, so that
+//! a second call returns `Absent` and not a second `Mort` — returning `Mort`
+//! at each turn would re-arm the fallback in a loop on an OLD clean
+//! exit. Only the DECISION, once the observation is known, is exercised
+//! here.
 //!
-//! 🔴 **CONVENTION DE NOMMAGE (`CLAUDE.md`, « Convention de module enfant »),
-//! APPLIQUÉE ICI, PAS DEVINÉE.** Ce module ne porte le préfixe d'AUCUN module
-//! de premier niveau existant : `relance` n'est déclaré nulle part dans
-//! `main.rs` (`grep -n '^mod \|^pub mod ' agent/src/main.rs` ne rend aucun
-//! `mod relance;`), donc `relance_pont` ne satisfait la forme `<parent>_
-//! <enfant>` pour AUCUN `<parent>` de premier niveau — y compris `pont`
-//! lui-même, bien qu'il soit un préfixe TEXTUEL du nom : la règle exige que
-//! le préfixe soit `<parent>_`, c'est-à-dire que le nom COMMENCE par
-//! `pont_`, ce que `relance_pont` ne fait pas. Il vit donc à la RACINE NUE,
-//! `mod relance_pont;` ordinaire dans `main.rs`, exactement comme
-//! `survie_verdict` (extrait quatre niveaux plus bas, sans parent court et
-//! unique à préfixer) et pour la MÊME raison que `surveillance_pont` porte
-//! son propre nom plutôt que `pont` : les deux évitent la confusion que
-//! l'en-tête de `surveillance_pont.rs` nomme explicitement — «&nbsp;deux
-//! `pont` dans le même graphe de modules n'attendraient qu'un lecteur pressé
-//! pour se confondre&nbsp;». Un `pont_relance` aurait, lui, satisfait la
-//! forme et serait allé sous `pont/relance.rs` — délibérément écarté : ce
-//! module ne décrit rien du PONT lui-même, il décrit une politique de
-//! SUPERVISION générique (relance espacée, à seuil de stabilité), aussi
-//! indifférente au pont qu'à n'importe quel autre processus non fatal
-//! qu'un superviseur voudrait un jour suivre de la même façon.
+//! 🔴 **NAMING CONVENTION (`CLAUDE.md`, "Child module convention"),
+//! APPLIED HERE, NOT GUESSED.** This module carries the prefix of NO existing
+//! top-level module: `relance` is declared nowhere in
+//! `main.rs` (`grep -n '^mod \|^pub mod ' agent/src/main.rs` returns no
+//! `mod relance;`), so `relance_pont` does not satisfy the `<parent>_
+//! <child>` form for ANY top-level `<parent>` — including `pont`
+//! itself, although it is a TEXTUAL prefix of the name: the rule requires
+//! the prefix to be `<parent>_`, that is, the name must START with
+//! `pont_`, which `relance_pont` does not. It therefore lives at the BARE ROOT,
+//! an ordinary `mod relance_pont;` in `main.rs`, exactly like
+//! `survie_verdict` (extracted four levels down, without a short and
+//! unique parent to prefix) and for the SAME reason `surveillance_pont` carries
+//! its own name rather than `pont`: both avoid the confusion that
+//! the header of `surveillance_pont.rs` names explicitly — "two
+//! `pont`s in the same module graph would only wait for a hurried reader
+//! to be confused". A `pont_relance`, for its part, would have satisfied the
+//! form and would have gone under `pont/relance.rs` — deliberately rejected: this
+//! module describes nothing of the BRIDGE itself, it describes a generic
+//! SUPERVISION policy (spaced restart, with a stability threshold), as
+//! indifferent to the bridge as to any other non-fatal process
+//! a supervisor might one day want to follow the same way.
 //!
-//! 🔴 **CE QUE CE MODULE CORRIGE, ET QUI A JUSTIFIÉ L'EXTRACTION** : avant le
-//! round 2, le seuil de STABILITÉ (« le pont a-t-il assez vécu pour qu'une
-//! mort future soit une information neuve ? ») était LE MÊME que l'espacement
-//! PLANCHER entre deux tentatives — 500 ms — un raccourci qui tenait tant
-//! qu'un pont refusé mourait en quelques millisecondes. Le correctif du
-//! critique ② du round de correction 1 (`agent::signaling::
-//! honorer_retry_suggere`) a changé cette prémisse : un pont refusé reste
-//! désormais **vivant** (le processus tourne) pendant qu'il honore le délai
-//! suggéré par le relais, jusqu'à `plateforme::repli::REPLI_MAX_MS` (30 s).
-//! **Un pont vivant depuis 500 ms peut donc être en train de MOURIR
-//! LENTEMENT, pas d'être stable** — et le confondre rouvre exactement la
-//! boucle de trace que le commit `7a00fcb` de cette branche a payée une
-//! première fois sur un mécanisme voisin (« mon propre remède a fait de la
-//! trace une boucle ») : « pont de nouveau stable » suivi d'un « pont
-//! relancé », en boucle, à chaque cycle de refus.
+//! 🔴 **WHAT THIS MODULE FIXES, AND WHAT JUSTIFIED THE EXTRACTION**: before
+//! round 2, the STABILITY threshold ("has the bridge lived long enough for a
+//! future death to be new information?") was THE SAME as the FLOOR
+//! spacing between two attempts — 500 ms — a shortcut that held as long
+//! as a refused bridge died within a few milliseconds. The fix for
+//! critical ② of fix round 1 (`agent::signaling::
+//! honour_suggested_retry`) changed that premise: a refused bridge now stays
+//! **alive** (the process runs) while it honours the delay
+//! suggested by the relay, up to `plateforme::repli::REPLI_MAX_MS` (30 s).
+//! **A bridge alive for 500 ms can therefore be DYING
+//! SLOWLY, not stable** — and confusing them reopens exactly the
+//! trace loop that commit `7a00fcb` of this branch paid for a
+//! first time on a neighbouring mechanism ("my own remedy turned the
+//! trace into a loop"): a "bridge stable again" line followed by a "bridge
+//! restarted" line, in a loop, at each refusal cycle.
 //!
-//! `SEUIL_STABILITE_MS`, employé par [`EtatRelance::stable`], est donc
-//! STRICTEMENT SUPÉRIEUR à `REPLI_MAX_MS` — avec une marge pour le temps
-//! qu'il faut au pont pour ATTEINDRE ce sommeil (poignée de main WS, refus,
-//! lecture du message) — si bien qu'un pont qui meurt encore pendant son
-//! sommeil d'attente n'est JAMAIS déclaré stable entre-temps.
+//! `SEUIL_STABILITE_MS`, used by [`EtatRelance::stable`], is therefore
+//! STRICTLY GREATER than `REPLI_MAX_MS` — with a margin for the time
+//! the bridge needs to REACH that sleep (WS handshake, refusal,
+//! reading the message) — so that a bridge still dying during its
+//! waiting sleep is NEVER declared stable in the meantime.
 //!
-//! 🔴 **ROUND DE CORRECTION 4 : LE RÉARMEMENT DU REPLI NE SE JUGE PLUS SUR
-//! UNE DURÉE, MAIS SUR L'ISSUE DE SORTIE — ET C'EST CE QUI FERME LES DEUX
-//! DÉFAUTS À LA FOIS.** Le round 3 réarmait `tentative` dès qu'une vie
-//! dépassait `ESPACEMENT_PLANCHER_MS` (500 ms), ce qui **contredisait le
-//! paragraphe ci-dessus dans le même fichier** : une vie de 500 ms ne prouve
-//! rien, puisque c'est précisément la forme d'un refus qui dort. `tentative`
-//! retombait à zéro ~500 ms après CHAQUE lancement, et le repli ne pouvait
-//! **structurellement plus croître** pour tout mode de panne où le pont vit
-//! entre ~0,5 s et ~35 s — c'est-à-dire exactement le régime que le remède du
-//! round 1 a créé. **Mesuré au banc** (connexions `/signal` par minute contre
-//! le budget PARTAGÉ `REQUETES_MAX_ADRESSE`, 120 par 60 s) :
+//! 🔴 **FIX ROUND 4: RE-ARMING THE FALLBACK IS NO LONGER JUDGED ON
+//! A DURATION, BUT ON THE EXIT OUTCOME — AND THAT IS WHAT CLOSES BOTH
+//! DEFECTS AT ONCE.** Round 3 re-armed `tentative` as soon as a life
+//! exceeded `ESPACEMENT_PLANCHER_MS` (500 ms), which **contradicted the
+//! paragraph above in the same file**: a 500 ms life proves
+//! nothing, since it is precisely the shape of a sleeping refusal. `tentative`
+//! fell back to zero ~500 ms after EACH launch, and the fallback could
+//! **structurally no longer grow** for any failure mode where the bridge lives
+//! between ~0.5 s and ~35 s — that is, exactly the regime round 1's remedy
+//! created. **Measured on the bench** (`/signal` connections per minute against
+//! the SHARED budget `REQUETES_MAX_ADRESSE`, 120 per 60 s):
 //!
-//! | vie du pont | round 3 | round 4, mort en ERREUR | round 4, sortie PROPRE |
+//! | bridge life | round 3 | round 4, death in ERROR | round 4, CLEAN exit |
 //! | --- | --- | --- | --- |
 //! | 600 ms | **100** | 6 | **100** |
 //! | 1 s | **60** | 6 | **60** |
@@ -95,227 +95,230 @@
 //! | 5 s | **12** | 6 | **12** |
 //! | 10 s | 6 | 6 | 6 |
 //!
-//! ⚠️ **La ligne 600 ms s'atteignait SANS AUCUN `retryApresS`** : toute mort
-//! répétée après une demi-seconde de vie (panne ProjFS, plantage) suffisait —
-//! 100 connexions/minute, 83 % du budget partagé consommé par le pont seul.
+//! ⚠️ **The 600 ms line was reached WITHOUT ANY `retryApresS`**: any
+//! repeated death after half a second of life (ProjFS failure, crash) was enough —
+//! 100 connections/minute, 83% of the shared budget consumed by the bridge alone.
 //!
-//! 🔴 **LA TROISIÈME COLONNE EST UNE RÉSERVE OUVERTE, ET ELLE VIT ICI PARCE
-//! QU'UNE PREUVE QUI NE VIT QUE DANS UN RAPPORT GITIGNORÉ EST UNE PREUVE
-//! PERDUE** (`CLAUDE.md` l'interdit nommément, après en avoir perdu six).
-//! **Une sortie PROPRE réarme le repli sans aucune borne de cadence** : un
-//! pont qui se terminerait proprement toutes les 600 ms rendrait toujours
-//! 100 connexions/minute, et le plancher de 500 ms de
-//! [`EtatRelance::doit_relancer`] serait alors la SEULE borne. Ce régime est
-//! hors de portée de la boucle du superviseur seule — `pont::executer` ne
-//! rend `Ok(())` qu'après la mort de son fil de transport, ce qui exige un
-//! pair qui émette des offres, et ce pair consomme lui-même le budget
-//! `/signal`. ⚠️ **Mais l'argument est plus faible qu'il n'y paraît** : ce
-//! `Ok(())` court AUSSI sur un échec ICE survenu APRÈS l'envoi de la réponse
-//! SDP, pas seulement après une session réellement établie. **Non mesuré,
-//! non borné, et écrit ici plutôt que passé sous silence.**
+//! 🔴 **THE THIRD COLUMN IS AN OPEN CAVEAT, AND IT LIVES HERE BECAUSE
+//! A PROOF THAT ONLY LIVES IN A GITIGNORED REPORT IS A LOST
+//! PROOF** (`CLAUDE.md` forbids it by name, after losing six of them).
+//! **A CLEAN exit re-arms the fallback without any cadence bound**: a
+//! bridge that ended cleanly every 600 ms would still return
+//! 100 connections/minute, and the 500 ms floor of
+//! [`EtatRelance::doit_relancer`] would then be the ONLY bound. This regime is
+//! out of reach of the supervisor loop alone — `pont::executer` only
+//! returns `Ok(())` after its transport thread dies, which requires a
+//! peer emitting offers, and that peer itself consumes the `/signal`
+//! budget. ⚠️ **But the argument is weaker than it looks**: this
+//! `Ok(())` ALSO runs on an ICE failure occurring AFTER the SDP answer
+//! was sent, not only after a really established session. **Not measured,
+//! not bounded, and written here rather than passed over in silence.**
 //!
-//! **Ce n'était PAS un réglage de seuil, et il ne faut pas y retourner** :
-//! une session SAINE qui se termine occupe le MÊME intervalle (1 à 30 s)
-//! qu'un pont refusé qui a dormi. Seuil LONG ⇒ le défaut que le round 3
-//! corrigeait (un pont sain à sessions courtes ne réarme jamais, jusqu'à 29 s
-//! d'indisponibilité pour une panne future sans rapport) ; seuil COURT ⇒ le
-//! défaut ci-dessus.
+//! **It was NOT a threshold tuning, and one must not go back to it**:
+//! a HEALTHY session that ends occupies the SAME interval (1 to 30 s)
+//! as a refused bridge that slept. LONG threshold ⇒ the defect round 3
+//! fixed (a healthy bridge with short sessions never re-arms, up to 29 s
+//! of unavailability for an unrelated future failure); SHORT threshold ⇒ the
+//! defect above.
 //!
-//! ⚠️ **UNE DURÉE *COURTE* NE DISCRIMINE PAS — ET LA PREMIÈRE RÉDACTION DE
-//! CE PARAGRAPHE ÉCRIVAIT « la durée n'est pas le discriminant », CE QUI EST
-//! TROP FORT** (relevé par la revue du round de correction 5). Une durée
-//! **au-dessus de `REPLI_MAX_MS`** discrimine parfaitement, et ce module en
-//! possède une : `SEUIL_STABILITE_MS` (35 s) est **structurellement
-//! inatteignable par un pont refusé qui dort**, puisque ce sommeil est borné
-//! à 30 s — c'est l'invariant que
-//! `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
-//! et `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable` tiennent
-//! déjà. Le round 4 avait retiré la durée **en bloc**, emportant le seul cas
-//! qu'elle traitait juste ; le round 5 le lui rend, et **`stable()` remet
-//! `tentative` à zéro** (voir sa doc).
+//! ⚠️ **A *SHORT* DURATION DOES NOT DISCRIMINATE — AND THE FIRST DRAFT OF
+//! THIS PARAGRAPH WROTE "duration is not the discriminant", WHICH IS
+//! TOO STRONG** (pointed out by the review of fix round 5). A duration
+//! **above `REPLI_MAX_MS`** discriminates perfectly, and this module
+//! has one: `SEUIL_STABILITE_MS` (35 s) is **structurally
+//! unreachable by a sleeping refused bridge**, since that sleep is bounded
+//! at 30 s — it is the invariant that
+//! `the_stability_threshold_stays_strictly_above_the_backoff_ceiling`
+//! and `stable_during_a_refusal_sleep_never_declares_stable` already
+//! hold. Round 4 had removed duration **wholesale**, taking with it the only case
+//! it handled right; round 5 gives it back, and **`stable()` resets
+//! `tentative` to zero** (see its doc).
 //!
-//! 🔵 **LE DISCRIMINANT ÉTAIT DÉJÀ LU, PUIS JETÉ.** `pont::executer` rend
-//! `Ok(())` en fin normale et `bail!` sur refus — juste après avoir honoré
-//! `retryApresS` —, et `main() -> Result<()>` traduit l'un en code de sortie
-//! **0** et l'autre en code **non nul** ; l'ex-`pont_vivant()` recevait ce
-//! code dans `Ok(Some(code))` **pour le journaliser et le laisser tomber**.
-//! Il traverse désormais la frontière sous la forme d'une [`IssueDeSortie`],
-//! et **c'est elle, jamais une durée, qui réarme le repli** : une session
-//! saine qui se termine réarme, un pont refusé qui meurt en erreur ne réarme
-//! pas, quelle qu'ait été sa durée de vie.
+//! 🔵 **THE DISCRIMINANT WAS ALREADY READ, THEN THROWN AWAY.** `pont::executer` returns
+//! `Ok(())` on a normal end and `bail!` on refusal — right after honouring
+//! `retryApresS` —, and `main() -> Result<()>` translates one into exit code
+//! **0** and the other into a **non-zero** code; the former `pont_vivant()` received that
+//! code in `Ok(Some(code))` **to log it and drop it**.
+//! It now crosses the boundary in the form of an [`IssueDeSortie`],
+//! and **it is that, never a duration, that re-arms the fallback**: a healthy
+//! session that ends re-arms, a refused bridge dying in error does not re-arm,
+//! whatever its lifetime was.
 //!
-//! 🔵 **CE QUE LE ROUND 4 REND À `cycle_signale` ET À `SEUIL_STABILITE_MS`.**
-//! Le round 3 avait fait de `cycle_signale` une garde de
-//! [`EtatRelance::reinitialiser_le_repli`], donc un gouverneur de CADENCE —
-//! un TROISIÈME rôle que sa doc ne nommait pas, et la forme exacte du défaut
-//! que ce round-là corrigeait. La garde a disparu avec la durée : elle
-//! n'était plus seulement non nommée, elle était devenue **fausse**, un pont
-//! déclaré stable puis mort proprement ayant `cycle_signale == false` et ne
-//! réarmant donc rien. `cycle_signale` ne gouverne de nouveau QUE la trace.
+//! 🔵 **WHAT ROUND 4 GIVES BACK TO `cycle_signale` AND TO `SEUIL_STABILITE_MS`.**
+//! Round 3 had made `cycle_signale` a guard of
+//! [`EtatRelance::reset_the_backoff`], hence a CADENCE governor —
+//! a THIRD role its doc did not name, and the exact shape of the defect
+//! that round fixed. The guard disappeared with duration: it
+//! was no longer merely unnamed, it had become **wrong**, a bridge
+//! declared stable then dying cleanly having `cycle_signale == false` and thus
+//! re-arming nothing. `cycle_signale` once again governs ONLY the trace.
 //!
-//! 🔴 **EN REVANCHE, `SEUIL_STABILITE_MS` GOUVERNE DE NOUVEAU UNE CADENCE
-//! DEPUIS LE ROUND 5, ET C'EST ÉCRIT ICI PLUTÔT QUE DÉCOUVERT** — le round 4
-//! affirmait à cet endroit qu'il ne gouvernait « que la trace, sans
-//! réserve », et cette phrase serait devenue fausse en silence. La
-//! différence avec le round 3, qui avait payé exactement ce mécanisme : le
-//! seuil qui gouverne cette cadence-ci est **au-dessus de `REPLI_MAX_MS`**,
-//! donc hors d'atteinte d'un refus endormi, là où celui du round 3 était le
-//! plancher de 500 ms. Voir la doc de la constante.
+//! 🔴 **ON THE OTHER HAND, `SEUIL_STABILITE_MS` GOVERNS A CADENCE AGAIN
+//! SINCE ROUND 5, AND IT IS WRITTEN HERE RATHER THAN DISCOVERED** — round 4
+//! claimed at this spot that it governed "only the trace, without
+//! reservation", and that sentence would have silently become wrong. The
+//! difference from round 3, which had paid for exactly this mechanism: the
+//! threshold governing this cadence is **above `REPLI_MAX_MS`**,
+//! hence out of reach of a sleeping refusal, whereas round 3's was the
+//! 500 ms floor. See the constant's doc.
 
 use crate::plateforme::repli::{delai_de_repli, REPLI_MAX_MS};
 
-/// Espacement PLANCHER entre deux tentatives, ET valeur du premier terme de
-/// `delai_de_repli` (`delai_de_repli(0) == ESPACEMENT_PLANCHER_MS`, éprouvé
-/// ci-dessous). Reprise de l'ex-`PERIODE_RELANCE_PONT_MIN`.
+/// FLOOR spacing between two attempts, AND value of the first term of
+/// `delai_de_repli` (`delai_de_repli(0) == ESPACEMENT_PLANCHER_MS`, exercised
+/// below). Taken over from the former `PERIODE_RELANCE_PONT_MIN`.
 ///
-/// 🔴 **ELLE A DEUX RÔLES, ET LES VOICI TOUS LES DEUX — LE SECOND N'ÉTAIT PAS
-/// NOMMÉ AVANT LE ROUND DE CORRECTION 4** (la revue l'a relevé : la doc en
-/// énumérait deux et le code en servait trois, dont l'un — la garde du
-/// réarmement du repli — a disparu avec le round 4, voir la doc de tête).
+/// 🔴 **IT HAS TWO ROLES, AND HERE ARE BOTH — THE SECOND WAS NOT
+/// NAMED BEFORE FIX ROUND 4** (the review pointed it out: the doc
+/// listed two and the code served three, one of which — the guard of
+/// re-arming the fallback — disappeared with round 4, see the header doc).
 ///
-/// 1. **La cadence PLANCHER des tentatives** : `EtatRelance::doit_relancer`
-///    ne rend vrai qu'au-delà de `delai_de_repli(tentative)`, dont c'est le
-///    premier terme.
-/// 2. **Le RECUL de `derniere_tentative` dans `EtatPont::demarrer`**
-///    (`surveillance_pont.rs`) : l'horloge y est reculée d'exactement cette
-///    valeur pour que la TOUTE PREMIÈRE tentative ait lieu maintenant et non
-///    dans 500 ms. Ce rôle-là n'est pas une cadence, c'est une amorce — et
-///    il lie les deux fichiers : relever cette constante retarderait le
-///    démarrage du pont d'autant, ce qui ne se lit pas ici.
+/// 1. **The FLOOR cadence of attempts**: `EtatRelance::doit_relancer`
+///    only returns true beyond `delai_de_repli(tentative)`, of which it is the
+///    first term.
+/// 2. **The PULLBACK of `derniere_tentative` in `EtatPont::start`**
+///    (`surveillance_pont.rs`): the clock there is pulled back by exactly this
+///    value so that the VERY FIRST attempt happens now and not
+///    in 500 ms. That role is not a cadence, it is a primer — and
+///    it ties the two files: raising this constant would delay the
+///    bridge's startup by as much, which cannot be read here.
 ///
-/// ⚠️ **ELLE EST SOUDÉE À `plateforme::repli::REPLI_MIN_MS` PAR UN TEST**
-/// (`le_premier_espacement_egale_le_plancher`, qui exige
-/// `delai_de_repli(0) == ESPACEMENT_PLANCHER_MS`, c'est-à-dire
-/// `REPLI_MIN_MS == ESPACEMENT_PLANCHER_MS`) : **elle ne peut donc PAS être
-/// relevée seule**. La relever exige de relever `REPLI_MIN_MS` — qui gouverne
-/// aussi la reprise du canal `/agent` — ou de casser cette soudure
-/// délibérément. Ni l'une ni l'autre n'est calibrée.
+/// ⚠️ **IT IS WELDED TO `plateforme::repli::REPLI_MIN_MS` BY A TEST**
+/// (`the_first_spacing_equals_the_floor`, which requires
+/// `delai_de_repli(0) == ESPACEMENT_PLANCHER_MS`, that is,
+/// `REPLI_MIN_MS == ESPACEMENT_PLANCHER_MS`): **it therefore CANNOT be
+/// raised alone**. Raising it requires raising `REPLI_MIN_MS` — which also governs
+/// the `/agent` channel's resumption — or breaking this weld
+/// deliberately. Neither is calibrated.
 pub const ESPACEMENT_PLANCHER_MS: u64 = 500;
 
-/// Seuil de STABILITÉ — voir le commentaire de tête du module. **Distinct de
-/// `ESPACEMENT_PLANCHER_MS` depuis le round 2**, et c'est tout ce correctif :
-/// confondre les deux avec `REPLI_MAX_MS` en jeu rouvre la boucle de trace.
+/// STABILITY threshold — see the module header comment. **Distinct from
+/// `ESPACEMENT_PLANCHER_MS` since round 2**, and that is the whole fix:
+/// confusing the two with `REPLI_MAX_MS` in play reopens the trace loop.
 ///
-/// `REPLI_MAX_MS` couvre le SOMMEIL que `honorer_retry_suggere` s'impose ;
-/// la marge couvre le temps qu'il faut pour l'ATTEINDRE (connexion WS,
-/// refus, lecture du message d'erreur) — non mesuré, choisi large plutôt que
-/// juste.
+/// `REPLI_MAX_MS` covers the SLEEP `honour_suggested_retry` imposes on itself;
+/// the margin covers the time it takes to REACH it (WS connection,
+/// refusal, reading the error message) — not measured, chosen wide rather than
+/// tight.
 ///
-/// 🔴 **CE SEUIL GOUVERNE TROIS CHOSES, ET LA TROISIÈME EST UNE CADENCE.**
-/// Les rounds 3 et 4 ont écrit tour à tour qu'il ne gouvernait « que la
-/// trace » — les deux fois, c'était faux, et pas de la même façon. Voici les
-/// trois, énumérées plutôt que découvertes :
+/// 🔴 **THIS THRESHOLD GOVERNS THREE THINGS, AND THE THIRD IS A CADENCE.**
+/// Rounds 3 and 4 wrote in turn that it governed "only the
+/// trace" — both times it was wrong, and not in the same way. Here are the
+/// three, listed rather than discovered:
 ///
-/// 1. **TRACE** — le moment où la ligne « pont de nouveau stable » peut
-///    sortir ;
-/// 2. **TRACE** — le moment où `cycle_signale` retombe, donc où un épisode
-///    de martèlement redevient bruyant sur son PROCHAIN lancement ;
-/// 3. 🔴 **CADENCE, depuis le round de correction 5 — ET SA JUSTIFICATION
-///    D'ORIGINE, RÉFUTÉE PAR LA MESURE, EST CORRIGÉE ICI PAR LA REVUE
-///    FINALE.** [`EtatRelance::stable`] remet `tentative` à zéro dans sa
-///    branche vraie. **Ce n'est PAS parce que, sans cette ligne, la reprise
-///    après une coupure attendrait 30 s** : `doit_relancer` compare
-///    l'écoulé depuis le LANCEMENT, donc trois jours de vie dépassent tout
-///    repli et la PREMIÈRE reprise est immédiate dans les deux cas.
-///    **Mesuré au niveau boucle** (6 refus → vie de trois jours → coupure
-///    en erreur, relances APRÈS la coupure) : sans la ligne, 0 / 30 000 /
-///    60 000 / 90 000 ms ; avec elle, 0 / 1 000 / 3 000 / 7 000 ms. **Ce
-///    que la ligne change réellement : la RAMPE de l'épisode de refus
-///    SUIVANT repart du plancher au lieu de reprendre au plafond d'une
-///    panne déjà résolue** — utile, mais « en une demi-seconde et non en
-///    trente » n'est **jamais** observé : c'est le deuxième essai, pas le
-///    premier, que cette ligne raccourcit.
+/// 1. **TRACE** — the moment the "bridge stable again" line can
+///    come out;
+/// 2. **TRACE** — the moment `cycle_signale` falls back, hence when a hammering
+///    episode becomes noisy again on its NEXT launch;
+/// 3. 🔴 **CADENCE, since fix round 5 — AND ITS ORIGINAL
+///    JUSTIFICATION, REFUTED BY MEASUREMENT, IS CORRECTED HERE BY THE FINAL
+///    REVIEW.** [`EtatRelance::stable`] resets `tentative` to zero in its
+///    true branch. **It is NOT because, without this line, resuming
+///    after an outage would wait 30 s**: `doit_relancer` compares
+///    the time elapsed since the LAUNCH, so three days of life exceed any
+///    fallback and the FIRST resumption is immediate in both cases.
+///    **Measured at the loop level** (6 refusals → three days of life → outage
+///    in error, restarts AFTER the outage): without the line, 0 / 30,000 /
+///    60,000 / 90,000 ms; with it, 0 / 1,000 / 3,000 / 7,000 ms. **What
+///    the line really changes: the RAMP of the NEXT refusal
+///    episode starts again from the floor instead of resuming at the ceiling of an
+///    already resolved failure** — useful, but "in half a second and not in
+///    thirty" is **never** observed: it is the second attempt, not the
+///    first, that this line shortens.
 ///
-/// ⚠️ **POURQUOI CE N'EST PAS LE DÉFAUT DU ROUND 3, QUI ÉTAIT EXACTEMENT CE
-/// MÉCANISME.** Là-bas, la cadence était gouvernée par un seuil de 500 ms,
-/// qu'un pont refusé atteint TOUJOURS avant de mourir : le réarmement était
-/// donc systématique et le repli ne pouvait plus croître. Ici, le seuil est
-/// `REPLI_MAX_MS + 5 s` = 35 s, et le sommeil de `honorer_retry_suggere` est
-/// borné à 30 s : **un pont refusé ne peut STRUCTURELLEMENT pas l'atteindre**
-/// — c'est l'invariant que
-/// `le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli`
-/// fixe, et que `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`
-/// éprouve tick par tick. **Coût mesuré au banc : NUL** — la table de
-/// martèlement de la doc de tête ne bouge d'aucune unité, pour toute durée de
-/// vie inférieure ou égale à `REPLI_MAX_MS`.
+/// ⚠️ **WHY THIS IS NOT ROUND 3'S DEFECT, WHICH WAS EXACTLY THIS
+/// MECHANISM.** There, the cadence was governed by a 500 ms threshold,
+/// which a refused bridge ALWAYS reaches before dying: re-arming was
+/// therefore systematic and the fallback could no longer grow. Here, the threshold is
+/// `REPLI_MAX_MS + 5 s` = 35 s, and `honour_suggested_retry`'s sleep is
+/// bounded at 30 s: **a refused bridge STRUCTURALLY cannot reach it**
+/// — it is the invariant that
+/// `the_stability_threshold_stays_strictly_above_the_backoff_ceiling`
+/// sets, and that `stable_during_a_refusal_sleep_never_declares_stable`
+/// exercises tick by tick. **Cost measured on the bench: ZERO** — the hammering
+/// table of the header doc does not move by a single unit, for any lifetime
+/// less than or equal to `REPLI_MAX_MS`.
 ///
-/// ⚠️ **CONSÉQUENCE : « un seuil de trace trop long ne coûte qu'un `info!` en
-/// retard » REDEVIENT FAUX.** Le relever au-delà de la durée de vie réelle
-/// des sessions saines rendrait le rôle ③ inatteignable, et la reprise après
-/// une panne réseau repasserait à 30 s.
+/// ⚠️ **CONSEQUENCE: "a too-long trace threshold only costs a late `info!`"
+/// BECOMES WRONG AGAIN.** Raising it beyond the real lifetime
+/// of healthy sessions would make role ③ unreachable, and resuming after
+/// a network failure would go back to 30 s.
 pub const SEUIL_STABILITE_MS: u64 = REPLI_MAX_MS + 5_000;
 
-/// Les deux types d'observation — [`IssueDeSortie`] et [`EtatObserve`] —
-/// vivent dans leur propre fichier depuis le 25 août 2026 : voir son en-tête
-/// pour la raison (règle des 500 lignes, extraction jouée AVANT l'addition
-/// qui la rendait nécessaire). **Ré-exportés ici**, si bien qu'aucun
-/// appelant ne change de chemin : `crate::relance_pont::IssueDeSortie` reste
-/// valide.
+/// The two observation types — [`IssueDeSortie`] and [`EtatObserve`] —
+/// have lived in their own file since August 25th, 2026: see its header
+/// for the reason (500-line rule, extraction played BEFORE the addition
+/// that made it necessary). **Re-exported here**, so that no
+/// caller changes path: `crate::relance_pont::IssueDeSortie` stays
+/// valid.
 mod issue;
 pub use issue::{EtatObserve, IssueDeSortie};
 
-/// L'état, PUR, d'un processus supervisé et relancé avec repli exponentiel.
+/// The PURE state of a supervised process restarted with exponential fallback.
 ///
-/// Ne connaît ni PID, ni horloge murale, ni `LanceurDeProcessus` : ces
-/// horodatages et cette IO restent dans `surveillance_pont.rs`, qui reçoit
-/// ses décisions d'ici sous forme de millisecondes ÉCOULÉES et d'issues —
-/// c'est ce qui rend cette structure éprouvable sur l'hôte Linux
-/// (`#[cfg(windows)]` ne gate rien ici).
+/// Knows neither PID, nor wall clock, nor `LanceurDeProcessus`: those
+/// timestamps and that I/O stay in `surveillance_pont.rs`, which receives
+/// its decisions from here as ELAPSED milliseconds and outcomes —
+/// it is what makes this structure exercisable on the Linux host
+/// (`#[cfg(windows)]` gates nothing here).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct EtatRelance {
-    /// Tentatives CONSÉCUTIVES sans repli réarmé. Voir `tentative()`.
+    /// CONSECUTIVE attempts without the fallback re-armed. See `tentative()`.
     tentative: u32,
-    /// Vrai dès qu'un cycle de relance en cours a été signalé — voir la doc
-    /// de `cycle_signale` dans `surveillance_pont.rs`, qui reste la seule
-    /// responsable de la trace elle-même (ce module ne journalise rien).
+    /// True as soon as a restart cycle in progress has been signalled — see the doc
+    /// of `cycle_signale` in `surveillance_pont.rs`, which stays the only one
+    /// responsible for the trace itself (this module logs nothing).
     ///
-    /// ⚠️ **IL GARDE DE NOUVEAU UNE REMISE À ZÉRO DE `tentative` DEPUIS LE
-    /// ROUND 5, ET C'EST NOMMÉ ICI PLUTÔT QUE DÉCOUVERT** — c'est le défaut
-    /// de forme que la revue du round 4 avait relevé sur ce champ, et il ne
-    /// sera pas payé deux fois. [`EtatRelance::stable`] exige `cycle_signale`
-    /// AVANT de remettre `tentative` à zéro, donc ce booléen conditionne bel
-    /// et bien une cadence. **Il ne peut cependant jamais la BLOQUER**, par
-    /// un invariant qui se lit sur les trois seules écritures du champ :
-    /// `tentative` ne croît QUE dans `tentative_lancee`, qui pose
-    /// `cycle_signale = true` dans le même geste ; et les deux remises à zéro
-    /// laissent `tentative` nul. Donc **`tentative > 0` implique
-    /// `cycle_signale == true`**, et la garde ne peut refuser qu'un
-    /// réarmement qui n'aurait rien à réarmer. Éprouvé par
-    /// `un_processus_reellement_stable_finit_par_etre_declare_stable_une_fois`.
+    /// ⚠️ **IT AGAIN GUARDS A RESET OF `tentative` SINCE
+    /// ROUND 5, AND IT IS NAMED HERE RATHER THAN DISCOVERED** — it is the
+    /// form defect the round 4 review had pointed out on this field, and it will not
+    /// be paid twice. [`EtatRelance::stable`] requires `cycle_signale`
+    /// BEFORE resetting `tentative` to zero, so this boolean does
+    /// indeed condition a cadence. **It can however never BLOCK it**, by
+    /// an invariant that reads on the field's only three writes:
+    /// `tentative` grows ONLY in `tentative_lancee`, which sets
+    /// `cycle_signale = true` in the same gesture; and both resets
+    /// leave `tentative` at zero. So **`tentative > 0` implies
+    /// `cycle_signale == true`**, and the guard can only refuse a
+    /// re-arming that would have nothing to re-arm. Exercised by
+    /// `a_really_stable_process_ends_up_declared_stable_once`.
     cycle_signale: bool,
 }
 
 impl EtatRelance {
     pub fn neuve() -> Self {
-        Self { tentative: 0, cycle_signale: false }
+        Self {
+            tentative: 0,
+            cycle_signale: false,
+        }
     }
 
-    /// Le nombre de tentatives consécutives — pour l'annexer aux traces de
-    /// l'appelant (`tentative = self.relance.tentative()`), jamais pour
-    /// décider quoi que ce soit ici.
+    /// The number of consecutive attempts — to attach it to the
+    /// caller's traces (`tentative = self.relance.tentative()`), never to
+    /// decide anything here.
     pub fn tentative(&self) -> u32 {
         self.tentative
     }
 
-    /// L'espacement attendu avant la PROCHAINE tentative, en millisecondes —
-    /// pur ré-emballage de `delai_de_repli(self.tentative)`.
+    /// The spacing expected before the NEXT attempt, in milliseconds —
+    /// a mere rewrapping of `delai_de_repli(self.tentative)`.
     pub fn espacement_ms(&self) -> u64 {
         delai_de_repli(self.tentative)
     }
 
-    /// Est-il temps de relancer, sachant que `ecoule_ms` millisecondes se
-    /// sont écoulées depuis la dernière tentative ?
+    /// Is it time to restart, knowing that `ecoule_ms` milliseconds have
+    /// elapsed since the last attempt?
     pub fn doit_relancer(&self, ecoule_ms: u64) -> bool {
         ecoule_ms >= self.espacement_ms()
     }
 
-    /// Enregistre une tentative RÉELLEMENT lancée (un `Command::spawn`
-    /// effectué, qu'il réussisse ou non — voir la doc de `tentative` dans
-    /// `surveillance_pont.rs` pour la raison : c'est le cas où `spawn`
-    /// réussit et le processus meurt aussitôt qui doit faire croître ce
-    /// compteur). Rend `true` si c'est le PREMIER lancement du cycle en
-    /// cours — c'est ce qui doit gouverner l'émission d'une ligne de trace
-    /// chez l'appelant, jamais un second lancement du même cycle.
+    /// Records an attempt REALLY launched (a `Command::spawn`
+    /// performed, whether it succeeds or not — see the doc of `tentative` in
+    /// `surveillance_pont.rs` for the reason: it is the case where `spawn`
+    /// succeeds and the process dies right away that must make this
+    /// counter grow). Returns `true` if it is the FIRST launch of the current
+    /// cycle — it is what must govern the emission of a trace line
+    /// at the caller, never a second launch of the same cycle.
     pub fn tentative_lancee(&mut self) -> bool {
         self.tentative = self.tentative.saturating_add(1);
         let premier_du_cycle = !self.cycle_signale;
@@ -323,103 +326,103 @@ impl EtatRelance {
         premier_du_cycle
     }
 
-    /// Réarme le repli exponentiel — remet `tentative` à zéro — **si et
-    /// seulement si l'issue du processus mort prouve qu'une panne passée est
-    /// résolue**, c'est-à-dire sur une sortie PROPRE. Ne prend AUCUNE durée,
-    /// et c'est tout le round de correction 4 : voir la doc de tête pour la
-    /// mesure qui l'a exigé.
+    /// Re-arms the exponential fallback — resets `tentative` to zero — **if and
+    /// only if the dead process's outcome proves that a past failure is
+    /// resolved**, that is, on a CLEAN exit. Takes NO duration,
+    /// and that is the whole of fix round 4: see the header doc for the
+    /// measurement that required it.
     ///
-    /// 🔴 **RESTAURE UN ARGUMENT QUE LE ROUND DE CORRECTION 2 A SUPPRIMÉ SANS
-    /// LE RELOCALISER** (relevé par la revue du round de correction 3).
-    /// Avant l'extraction de ce module, ce texte vivait sur la remise à zéro
-    /// de `EtatPont::tentative`, dans `surveillance_pont.rs` :
+    /// 🔴 **RESTORES AN ARGUMENT FIX ROUND 2 DELETED WITHOUT
+    /// RELOCATING IT** (pointed out by the review of fix round 3).
+    /// Before this module was extracted, this text lived on the reset
+    /// of `EtatPont::tentative`, in `surveillance_pont.rs`:
     ///
-    /// > « REMISE À ZÉRO ICI, ET NULLE PART AILLEURS : c'est ce qui fait
-    /// > qu'une panne FUTURE reparte de l'espacement minimal plutôt que de
-    /// > rester bloquée au plafond atteint par une panne PASSÉE, déjà
-    /// > résolue […] un agent connecté depuis trois jours qui perd son
-    /// > réseau une seconde doit reprendre en une demi-seconde, pas en
-    /// > trente. »
+    /// > "RESET HERE, AND NOWHERE ELSE: it is what makes
+    /// > a FUTURE failure start again from the minimal spacing rather than
+    /// > stay stuck at the ceiling reached by a PAST, already
+    /// > resolved failure […] an agent connected for three days that loses its
+    /// > network for one second must resume in half a second, not in
+    /// > thirty."
     ///
-    /// 🔴 **CETTE MÉTHODE, SEULE, NE TIENT PAS CETTE CITATION — ET LE ROUND
-    /// 4 AFFIRMAIT LE CONTRAIRE ICI MÊME** (« la propriété tient toujours,
-    /// mais sa PREUVE a changé »). **Elle ne tenait pas** : « perdre son
-    /// réseau » est une mort EN ERREUR, pas une sortie propre. Scénario
-    /// simulé par la revue du round 5 : six refus (espacement au plafond),
-    /// puis un septième lancement qui SERT TROIS JOURS, puis une coupure
-    /// réseau — le repli restait à **30 000 ms**, exactement le défaut que le
-    /// round 3 existait pour corriger, rouvert pour le cas mort-en-erreur.
+    /// 🔴 **THIS METHOD ALONE DOES NOT HOLD THIS QUOTE — AND ROUND
+    /// 4 CLAIMED THE OPPOSITE RIGHT HERE** ("the property still holds,
+    /// but its PROOF has changed"). **It did not hold**: "losing one's
+    /// network" is a death IN ERROR, not a clean exit. Scenario
+    /// simulated by the round 5 review: six refusals (spacing at the ceiling),
+    /// then a seventh launch that SERVES FOR THREE DAYS, then a network
+    /// outage — the fallback stayed at **30,000 ms**, exactly the defect
+    /// round 3 existed to fix, reopened for the dead-in-error case.
     ///
-    /// ⚠️ **CE « 30 000 ms » EST UN `espacement_ms()` NOMINAL, PAS UNE
-    /// ATTENTE QUE LE SUPERVISEUR IMPOSE** — voir la mesure au niveau boucle
-    /// dans la doc de [`SEUIL_STABILITE_MS`] (point 3) : la PREMIÈRE reprise
-    /// après une coupure est immédiate dans les deux cas (`doit_relancer`
-    /// compare l'écoulé depuis le LANCEMENT), et c'est la RAMPE des reprises
-    /// SUIVANTES que cette remise à zéro corrige.
+    /// ⚠️ **THIS "30,000 ms" IS A NOMINAL `espacement_ms()`, NOT A
+    /// WAIT THE SUPERVISOR IMPOSES** — see the loop-level measurement
+    /// in the doc of [`SEUIL_STABILITE_MS`] (point 3): the FIRST resumption
+    /// after an outage is immediate in both cases (`doit_relancer`
+    /// compares the time elapsed since the LAUNCH), and it is the RAMP of the
+    /// FOLLOWING resumptions that this reset corrects.
     ///
-    /// **La citation est désormais tenue par DEUX portes, et il en faut
-    /// deux** : celle-ci, `IssueDeSortie::Propre`, pour une session courte
-    /// qui se termine bien ; et [`Self::stable`], qui remet `tentative` à
-    /// zéro dès qu'une vie dépasse `SEUIL_STABILITE_MS` (35 s), pour une
-    /// longue vie qui finit MAL. **Ce n'est donc plus la seule remise à zéro
-    /// du module**, et le dire faux coûtait un défaut.
+    /// **The quote is now held by TWO gates, and it takes
+    /// two**: this one, `IssueDeSortie::Propre`, for a short session
+    /// that ends well; and [`Self::stable`], which resets `tentative` to
+    /// zero as soon as a life exceeds `SEUIL_STABILITE_MS` (35 s), for a
+    /// long life that ends BADLY. **It is therefore no longer the only reset
+    /// of the module**, and saying it wrongly cost a defect.
     ///
-    /// 🔴 **AUCUNE GARDE SUR `cycle_signale`, ET C'EST DÉLIBÉRÉ.** Le round 3
-    /// en posait une ; elle serait devenue FAUSSE ici : un pont déclaré
-    /// stable (donc `cycle_signale == false`) puis terminé proprement ne
-    /// réarmerait rien, et la panne suivante hériterait d'un plafond. Elle
-    /// faisait en outre de `cycle_signale` un gouverneur de CADENCE, ce que
-    /// sa doc nie. ⚠️ **`SEUIL_STABILITE_MS`, LUI, EN GOUVERNE BIEN UNE
-    /// DEPUIS LE ROUND 5** — mais par `stable`, sur un seuil hors d'atteinte
-    /// d'un refus endormi, et sa doc l'énumère plutôt que de le nier.
+    /// 🔴 **NO GUARD ON `cycle_signale`, AND IT IS DELIBERATE.** Round 3
+    /// set one; it would have become WRONG here: a bridge declared
+    /// stable (hence `cycle_signale == false`) then ended cleanly would
+    /// re-arm nothing, and the next failure would inherit a ceiling. It
+    /// also made `cycle_signale` a CADENCE governor, which
+    /// its doc denies. ⚠️ **`SEUIL_STABILITE_MS`, FOR ITS PART, DOES GOVERN ONE
+    /// SINCE ROUND 5** — but through `stable`, on a threshold out of reach
+    /// of a sleeping refusal, and its doc lists it rather than denying it.
     ///
-    /// 🔴 **NE ROUVRE PAS LA BOUCLE DE TRACE** : cette méthode ne touche
-    /// jamais `cycle_signale`, donc ne peut jamais faire rendre `true` à
-    /// `tentative_lancee` prématurément — c'est `cycle_signale`, jamais
-    /// `tentative`, qui gouverne le silence des traces.
-    pub fn reinitialiser_le_repli(&mut self, issue: IssueDeSortie) {
+    /// 🔴 **DOES NOT REOPEN THE TRACE LOOP**: this method never touches
+    /// `cycle_signale`, so can never make `tentative_lancee` return `true`
+    /// prematurely — it is `cycle_signale`, never
+    /// `tentative`, that governs the silence of traces.
+    pub fn reset_the_backoff(&mut self, issue: IssueDeSortie) {
         if issue.prouve_une_panne_resolue() {
             self.tentative = 0;
         }
     }
 
-    /// Le processus est vu VIVANT depuis `ecoule_ms` millisecondes écoulées
-    /// depuis la dernière tentative. Rend `true` — et RÉARME `cycle_signale`
-    /// pour le prochain cycle, ET remet `tentative` à zéro (voir plus bas) —
-    /// SI ET SEULEMENT SI un cycle était en cours ET que `ecoule_ms` dépasse
-    /// `SEUIL_STABILITE_MS`, **jamais** le seul `ESPACEMENT_PLANCHER_MS`.
+    /// The process is seen ALIVE for `ecoule_ms` milliseconds elapsed
+    /// since the last attempt. Returns `true` — and RE-ARMS `cycle_signale`
+    /// for the next cycle, AND resets `tentative` to zero (see below) —
+    /// IF AND ONLY IF a cycle was in progress AND `ecoule_ms` exceeds
+    /// `SEUIL_STABILITE_MS`, **never** `ESPACEMENT_PLANCHER_MS` alone.
     ///
-    /// 🔴 **C'EST LA LIGNE QUI CORRIGE LE ROUND DE CORRECTION 2** : avant lui,
-    /// le seuil ici était `ESPACEMENT_PLANCHER_MS` (500 ms), si bien qu'un
-    /// processus refusé et endormi jusqu'à `REPLI_MAX_MS` (30 s) avant de
-    /// mourir était déclaré stable dès 500 ms — voir
-    /// `stable_pendant_un_sommeil_de_refus_ne_declare_jamais_stable`, la
-    /// rouge exacte de ce défaut, ci-dessous.
+    /// 🔴 **IT IS THE LINE THAT FIXES FIX ROUND 2**: before it,
+    /// the threshold here was `ESPACEMENT_PLANCHER_MS` (500 ms), so that a
+    /// refused process asleep up to `REPLI_MAX_MS` (30 s) before
+    /// dying was declared stable from 500 ms — see
+    /// `stable_during_a_refusal_sleep_never_declares_stable`, the
+    /// exact red of that defect, below.
     ///
-    /// 🔴 **ET ELLE REMET `tentative` À ZÉRO, DEPUIS LE ROUND DE CORRECTION
-    /// 5 — CETTE LIGNE FERME UN DÉFAUT AU LIEU DE LE DOCUMENTER.** Le round 3
-    /// faisait cette remise à zéro sur un seuil de 500 ms (donc systématique,
-    /// donc un repli qui ne pouvait plus croître) ; le round 4 l'a retirée
-    /// **en bloc**, emportant avec elle le seul cas qu'elle traitait juste :
-    /// **un pont vivant TROIS JOURS puis coupé par une panne réseau meurt EN
-    /// ERREUR**, donc `reinitialiser_le_repli` refuse — à bon droit — d'y
-    /// voir une preuve, et l'attente restait à `REPLI_MAX_MS` (30 s) si un
-    /// épisode de refus l'avait précédée. Voir la citation de
-    /// [`Self::reinitialiser_le_repli`], que ce round rend enfin vraie.
+    /// 🔴 **AND IT RESETS `tentative` TO ZERO, SINCE FIX ROUND
+    /// 5 — THIS LINE CLOSES A DEFECT INSTEAD OF DOCUMENTING IT.** Round 3
+    /// did this reset on a 500 ms threshold (hence systematic,
+    /// hence a fallback that could no longer grow); round 4 removed it
+    /// **wholesale**, taking with it the only case it handled right:
+    /// **a bridge alive for THREE DAYS then cut by a network failure dies IN
+    /// ERROR**, so `reset_the_backoff` refuses — rightly — to
+    /// see proof in it, and the wait stayed at `REPLI_MAX_MS` (30 s) if a
+    /// refusal episode had preceded it. See the quote of
+    /// [`Self::reset_the_backoff`], which this round finally makes true.
     ///
-    /// ⚠️ **CE QUI REND CETTE REMISE À ZÉRO SÛRE, LÀ OÙ CELLE DU ROUND 3 NE
-    /// L'ÉTAIT PAS** : le seuil vaut `REPLI_MAX_MS + 5 s`, qu'un pont refusé
-    /// qui dort **ne peut pas atteindre** — son sommeil est borné à 30 s. La
-    /// table de martèlement de la doc de tête ne bouge donc d'AUCUNE unité,
-    /// et c'est mesuré, pas déduit. ⚠️ Cela redonne à `SEUIL_STABILITE_MS` un
-    /// rôle de CADENCE : sa doc l'énumère, en troisième position.
+    /// ⚠️ **WHAT MAKES THIS RESET SAFE, WHERE ROUND 3'S WAS
+    /// NOT**: the threshold is `REPLI_MAX_MS + 5 s`, which a sleeping refused bridge
+    /// **cannot reach** — its sleep is bounded at 30 s. The
+    /// hammering table of the header doc therefore does not move by ANY unit,
+    /// and it is measured, not deduced. ⚠️ This gives `SEUIL_STABILITE_MS` a
+    /// CADENCE role again: its doc lists it, in third position.
     pub fn stable(&mut self, ecoule_ms: u64) -> bool {
         if self.cycle_signale && ecoule_ms >= SEUIL_STABILITE_MS {
             self.cycle_signale = false;
-            // 🔴 LA LIGNE DU ROUND 5. Voir la doc ci-dessus : une vie qui
-            // dépasse `SEUIL_STABILITE_MS` est une preuve de santé qu'aucun
-            // refus endormi ne peut fabriquer, et c'est la SEULE porte par
-            // laquelle une longue vie terminée EN ERREUR réarme le repli.
+            // 🔴 ROUND 5'S LINE. See the doc above: a life that
+            // exceeds `SEUIL_STABILITE_MS` is a proof of health no
+            // sleeping refusal can fabricate, and it is the ONLY gate through
+            // which a long life ended IN ERROR re-arms the fallback.
             self.tentative = 0;
             true
         } else {
@@ -428,19 +431,19 @@ impl EtatRelance {
     }
 }
 
-// Module de tests extrait dans son propre fichier — la règle des 500 lignes
-// (`CLAUDE.md`) l'exige : les tests de ce module, avec leurs commentaires
-// (chacun documente une propriété distincte, notamment les rouges rejouées
-// aux rounds 3 et 4), pèsent à eux seuls plus que le fichier entier avant
-// l'extraction. ⚠️ **AUCUN COMPTE N'EST ÉCRIT ICI, ET C'EST VOULU** : une
-// rédaction antérieure annonçait « les onze tests de ce module » alors qu'il
-// y en avait quinze — faux à l'octet où la phrase a été écrite. Le compte se
-// relève, il ne se recopie pas :
+// Test module extracted into its own file — the 500-line rule
+// (`CLAUDE.md`) requires it: this module's tests, with their comments
+// (each documents a distinct property, notably the reds replayed
+// in rounds 3 and 4), weigh on their own more than the whole file before
+// the extraction. ⚠️ **NO COUNT IS WRITTEN HERE, AND IT IS INTENDED**: an
+// earlier draft announced "this module's eleven tests" while there
+// were fifteen — wrong to the byte at the moment the sentence was written. The count is
+// read, it is not copied:
 // `grep -c '^#\[test\]' agent/src/relance_pont/tests.rs`.
-// Même mécanisme que `superviseur/table.rs::#[path = "table/tests.rs"] mod
-// tests;` — la clause de `CLAUDE.md` qui l'exempte de la convention de
-// nommage des modules enfants le dit explicitement : « le même mécanisme
-// Rust, employé pour une raison différente (la règle des 500 lignes) ».
+// Same mechanism as `superviseur/table.rs::#[path = "table/tests.rs"] mod
+// tests;` — the clause of `CLAUDE.md` that exempts it from the child module naming
+// convention says so explicitly: "the same Rust
+// mechanism, used for a different reason (the 500-line rule)".
 #[cfg(test)]
 #[path = "relance_pont/tests.rs"]
 mod tests;

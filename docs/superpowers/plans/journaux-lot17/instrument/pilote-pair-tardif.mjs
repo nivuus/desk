@@ -160,8 +160,8 @@ ws.addEventListener('message', (evenement) => {
     }
 });
 ws.addEventListener('error', (e) => {
-    relevé.erreur = String(e.message ?? e.type ?? e);
-    log('ERREUR socket', relevé.erreur);
+    relevé.error = String(e.message ?? e.type ?? e);
+    log('ERREUR socket', relevé.error);
 });
 // La fermeture PORTE LE MOTIF quand la plateforme refuse : sans ce bras, un
 // refus de poignée de main se lirait comme « aucun message », qui est aussi

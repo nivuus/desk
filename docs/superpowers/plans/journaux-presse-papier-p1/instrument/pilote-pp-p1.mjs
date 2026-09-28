@@ -11,7 +11,7 @@
 // 🔴 Les messages sont comptés SUR LE CANAL DE CONTRÔLE, par un écouteur
 // INDÉPENDANT du produit, jamais sur les appels à `writeText`. La raison est
 // que le critère ② serait sinon INCAPABLE D'ÉCHOUER : `PressePapierLocal`
-// dédoublonne LUI AUSSI (`aEcrire` rend `undefined` quand `enAttente ===
+// dédoublonne LUI AUSSI (`toWrite` rend `undefined` quand `enAttente ===
 // ecrit`), donc deux messages identiques ne produiraient qu'une écriture même
 // si le garde de l'AGENT était retiré. Compter les écritures mesurerait le
 // garde du client, pas celui qu'on veut juger. C'est le patron que ce dépôt
@@ -50,7 +50,7 @@
 //     ne s'établit : la première exécution de cette recette l'a rencontré, et
 //     le symptôme — « aucune page d'application attachée » — se lit exactement
 //     comme une panne du produit. Le pilote lit donc son identité dans un
-//     fichier HORS DÉPÔT (`--identite=<fichier>`), obtient un jeton de la
+//     fichier HORS DÉPÔT (`--identite=<file>`), obtient un jeton de la
 //     plateforme et le sème dans `localStorage` AVANT toute navigation.
 //     ⚠️ Ni le secret d'enrôlement ni le mot de passe ne sont versés, ni
 //     journalisés, ni écrits dans le relevé JSON.
@@ -536,8 +536,8 @@ try {
     await dodo(10000);
     await phase('5-apres-copie-bloc-notes');
 } catch (e) {
-    releve.erreur = String(e).slice(0, 500);
-    log('!! erreur', releve.erreur);
+    releve.error = String(e).slice(0, 500);
+    log('!! erreur', releve.error);
 } finally {
     try { writeFileSync('/media/vm/dev/pp-ordre.txt', '999|stop|', 'utf8'); } catch { /* VM partie */ }
     try { releve.copieur_journal = readFileSync('/media/vm/dev/pp-copieur.log', 'utf8').slice(0, 4000); }
@@ -561,5 +561,5 @@ try {
     // basculée en arrière-plan au bout de dix minutes, et le symptôme se lit
     // comme une mesure interminable alors que tout était fini depuis deux
     // minutes. Tout ce qui compte est déjà écrit ici.
-    process.exit(releve.erreur ? 1 : 0);
+    process.exit(releve.error ? 1 : 0);
 }

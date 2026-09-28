@@ -1,45 +1,51 @@
-//! Tests de `capteur::sommeil::file` — fichier voisin plutôt que module en
-//! ligne.
+//! Tests of `capteur::sommeil::file` — sibling file rather than inline
+//! module.
 //!
-//! **Extraction jouée dans une tâche DÉDIÉE, AVANT celle qui ajoute** (round
-//! de correction 1, 25 août 2026) : `file.rs` était à 445 lignes pour un
-//! plafond de projet à 500, et les correctifs qui suivent y ajoutent du code
-//! ET de la doc. La règle du dépôt est « extraire, jamais comprimer », et
-//! « la marge regagnée se reperd si on la traite comme acquise » — payé six
-//! fois.
+//! **Extraction done in a DEDICATED task, BEFORE the one that adds** (fix
+//! round 1, 25 August 2026): `file.rs` was at 445 lines for a
+//! project cap of 500, and the fixes that follow add code
+//! AND doc to it. The repository's rule is "extract, never compress", and
+//! "the regained margin is lost again if treated as settled" — paid for six
+//! times.
 //!
-//! ⚠️ **`#[path]` chez le parent, et ce n'est PAS la convention
-//! `<parent>_<enfant>`.** Celle-ci ne vise que les modules extraits d'un
-//! parent `#[cfg(windows)]` pour compiler sur l'hôte ; ici le mécanisme Rust
-//! est le même mais la raison est autre — scinder un module de TESTS trop
-//! long à l'intérieur d'un fichier par ailleurs portable. `CLAUDE.md` met ce
-//! cas explicitement HORS de la portée de cette convention, et nomme le
-//! précédent : `superviseur/table.rs`, qui déclare de la même façon
-//! `#[path = "table/tests.rs"] mod tests;` et
+//! ⚠️ **`#[path]` in the parent, and it is NOT the
+//! `<parent>_<child>` convention.** That one only targets modules extracted from a
+//! `#[cfg(windows)]` parent to compile on the host; here the Rust mechanism
+//! is the same but the reason is different — splitting a TEST module that is too
+//! long inside an otherwise portable file. `CLAUDE.md` puts this
+//! case explicitly OUTSIDE the scope of that convention, and names the
+//! precedent: `superviseur/table.rs`, which likewise declares
+//! `#[path = "table/tests.rs"] mod tests;` and
 //! `#[path = "table/tests_relance.rs"] mod tests_relance;`.
 //!
-//! **Le chemin de module reste `file::tests`** : seul l'emplacement physique
-//! du fichier change, aucune visibilité n'est touchée.
+//! **The module path stays `file::tests`**: only the physical location
+//! of the file changes, no visibility is touched.
 
 use super::*;
 use crate::capteur::sommeil::{Message, Ordre};
 use std::collections::VecDeque;
 
-/// 🔴 LE CŒUR DE LA DÉCISION : deux `Part` sans lecture n'en laissent
-/// qu'UNE, et c'est la DERNIÈRE valeur qui survit.
+/// 🔴 THE HEART OF THE DECISION: two `Part` without a read leave only
+/// ONE, and it is the LAST value that survives.
 #[test]
 fn deux_parts_se_coalescent_en_une_seule() {
     let mut f = VecDeque::new();
-    assert!(matches!(deposer(&mut f, Message::Part { bps: 1 }), Depot::Empilee));
-    assert!(matches!(deposer(&mut f, Message::Part { bps: 2 }), Depot::Coalescee));
+    assert!(matches!(
+        deposer(&mut f, Message::Part { bps: 1 }),
+        Depot::Empilee
+    ));
+    assert!(matches!(
+        deposer(&mut f, Message::Part { bps: 2 }),
+        Depot::Coalescee
+    ));
     assert_eq!(f.len(), 1);
     assert!(matches!(f[0], Message::Part { bps: 2 }));
 }
 
-/// 🔴 LE CRITÈRE QUI DISTINGUE LA COALESCENCE EN PLACE DE CELLE EN QUEUE,
-/// et c'est l'invariant que `sommeil.rs` écrit : au sein d'une session, le
-/// canal garantit l'ORDRE DE LIVRAISON entre les variantes. Coalescer en
-/// queue ferait franchir à la part un ordre de dormir déposé entre-temps.
+/// 🔴 THE CRITERION THAT DISTINGUISHES IN-PLACE COALESCING FROM TAIL COALESCING,
+/// and it is the invariant `sommeil.rs` writes: within a session, the
+/// channel guarantees the DELIVERY ORDER between variants. Coalescing at the
+/// tail would make the share cross a sleep order dropped in the meantime.
 #[test]
 fn la_coalescence_conserve_la_position() {
     let mut f = VecDeque::new();
@@ -47,54 +53,75 @@ fn la_coalescence_conserve_la_position() {
     let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
     let _ = deposer(&mut f, Message::Part { bps: 2 });
     assert_eq!(f.len(), 2);
-    assert!(matches!(f[0], Message::Part { bps: 2 }), "la part garde sa PLACE");
+    assert!(
+        matches!(f[0], Message::Part { bps: 2 }),
+        "the share keeps its PLACE"
+    );
     assert!(matches!(f[1], Message::Sommeil(Ordre::Reveiller)));
 }
 
-/// Un ordre perdu laisse une fenêtre endormie ou éveillée à tort.
+/// A lost order leaves a window wrongly asleep or awake.
 #[test]
 fn un_ordre_de_sommeil_n_est_jamais_coalesce() {
     let mut f = VecDeque::new();
     let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
-    assert!(matches!(deposer(&mut f, Message::Sommeil(Ordre::Reveiller)), Depot::Empilee));
+    assert!(matches!(
+        deposer(&mut f, Message::Sommeil(Ordre::Reveiller)),
+        Depot::Empilee
+    ));
     assert_eq!(f.len(), 2);
 }
 
-/// Un presse-papier perdu, c'est la donnée de l'utilisateur.
+/// A lost clipboard is the user's data.
 #[test]
 fn un_presse_papier_n_est_jamais_coalesce() {
     let mut f = VecDeque::new();
-    let _ = deposer(&mut f, Message::PressePapier { texte: Some("a".into()), octets: 1 });
-    let d = deposer(&mut f, Message::PressePapier { texte: Some("b".into()), octets: 1 });
+    let _ = deposer(
+        &mut f,
+        Message::PressePapier {
+            texte: Some("a".into()),
+            octets: 1,
+        },
+    );
+    let d = deposer(
+        &mut f,
+        Message::PressePapier {
+            texte: Some("b".into()),
+            octets: 1,
+        },
+    );
     assert!(matches!(d, Depot::Empilee));
     assert_eq!(f.len(), 2);
 }
 
-/// La borne dure REFUSE, elle ne tronque pas en silence.
+/// The hard bound REFUSES, it does not silently truncate.
 #[test]
 fn au_dela_de_la_borne_le_depot_est_refuse() {
     let mut f = VecDeque::new();
     for _ in 0..PROFONDEUR_MAX {
         let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
     }
-    assert!(matches!(deposer(&mut f, Message::Sommeil(Ordre::Reveiller)), Depot::Refusee));
-    assert_eq!(f.len(), PROFONDEUR_MAX, "la file n'a pas grossi");
+    assert!(matches!(
+        deposer(&mut f, Message::Sommeil(Ordre::Reveiller)),
+        Depot::Refusee
+    ));
+    assert_eq!(f.len(), PROFONDEUR_MAX, "the queue did not grow");
 }
 
-/// 🔴 LE TÉMOIN NÉGATIF, ET SA GARANTIE EXACTE : **une fois qu'une
-/// occurrence de la variante est DÉJÀ en file**, un dépôt de cette
-/// variante ne bute jamais sur la borne, quelle que soit la cadence — il
-/// coalesce, donc il ne teste même pas la borne. Sans lui, « refusée »
-/// au-dessus ne dirait pas que la coalescence borne réellement.
+/// 🔴 THE NEGATIVE WITNESS, AND ITS EXACT GUARANTEE: **once an
+/// occurrence of the variant is ALREADY queued**, a drop of that
+/// variant never hits the bound, whatever the rate — it
+/// coalesces, so it does not even test the bound. Without it, "refused"
+/// above would not say that coalescing really bounds.
 ///
-/// ⚠️ **LA GARANTIE N'EST PAS PLUS LARGE QUE CELA, et le nom d'origine
-/// (`une_variante_coalescable_ne_bute_jamais_sur_la_borne`) SUR-AFFIRMAIT.**
-/// Le PREMIER dépôt d'une variante coalescable, lui, s'empile comme les
-/// autres et se heurte à la borne si la file est pleine d'incoalescables :
-/// c'est le cas que mesure `un_premier_depot_coalescable_bute_bien_sur_la_borne`
-/// juste en dessous. Ce n'est pas un défaut — le refus est explicite,
-/// jamais une troncature — mais une sur-affirmation est la classe de
-/// défaut que ce dépôt combat en premier.
+/// ⚠️ **THE GUARANTEE IS NO BROADER THAN THAT, and the original name
+/// (`une_variante_coalescable_ne_bute_jamais_sur_la_borne`) OVER-CLAIMED.**
+/// The FIRST drop of a coalescable variant, on the other hand, stacks like the
+/// others and hits the bound if the queue is full of non-coalescables:
+/// that is the case `un_premier_depot_coalescable_bute_bien_sur_la_borne`
+/// measures just below. It is not a defect — the refusal is explicit,
+/// never a truncation — but an over-claim is the class of
+/// defect this repository fights first.
 #[test]
 fn une_variante_deja_en_file_ne_bute_jamais_sur_la_borne() {
     let mut f = VecDeque::new();
@@ -105,58 +132,77 @@ fn une_variante_deja_en_file_ne_bute_jamais_sur_la_borne() {
     assert_eq!(f.len(), 1);
 }
 
-/// 🔴 CE QUE LA REVUE DE LA TÂCHE PRÉCÉDENTE A MESURÉ, et que le témoin
-/// ci-dessus ne dit pas : le PREMIER `Part` déposé sur une file pleine de
-/// variantes INCOALESCABLES n'a rien à remplacer, donc il s'empile — donc
-/// il est REFUSÉ. **Ce n'est pas un défaut** : le refus est explicite et
-/// compté, jamais une troncature silencieuse. C'est la borne de la
-/// garantie, et elle est désormais éprouvée plutôt que supposée.
+/// 🔴 WHAT THE REVIEW OF THE PREVIOUS TASK MEASURED, and the witness
+/// above does not say: the FIRST `Part` dropped on a queue full of
+/// NON-COALESCABLE variants has nothing to replace, so it stacks — so
+/// it is REFUSED. **It is not a defect**: the refusal is explicit and
+/// counted, never a silent truncation. It is the bound of the
+/// guarantee, and it is now tested rather than assumed.
 #[test]
 fn un_premier_depot_coalescable_bute_bien_sur_la_borne() {
     let mut f = VecDeque::new();
     for _ in 0..PROFONDEUR_MAX {
         let _ = deposer(&mut f, Message::Sommeil(Ordre::Reveiller));
     }
-    assert!(matches!(deposer(&mut f, Message::Part { bps: 1 }), Depot::Refusee));
-    assert_eq!(f.len(), PROFONDEUR_MAX, "la file n'a pas grossi");
+    assert!(matches!(
+        deposer(&mut f, Message::Part { bps: 1 }),
+        Depot::Refusee
+    ));
+    assert_eq!(f.len(), PROFONDEUR_MAX, "the queue did not grow");
 }
 
-/// Le couple se comporte comme le canal qu'il remplace : ce qu'on dépose
-/// se reçoit, dans l'ordre.
+/// The pair behaves like the channel it replaces: what is dropped
+/// is received, in order.
 #[test]
-fn ce_qui_est_depose_se_recoit_dans_l_ordre() {
+fn what_is_deposited_is_received_in_order() {
     let (e, r) = canal_de_session("test");
-    assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
     assert!(matches!(
-        e.envoyer(Message::PressePapier { texte: Some("a".into()), octets: 1 }),
+        e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+        Envoi::Depose(_)
+    ));
+    assert!(matches!(
+        e.envoyer(Message::PressePapier {
+            texte: Some("a".into()),
+            octets: 1
+        }),
         Envoi::Depose(_)
     ));
     assert!(matches!(r.essayer_recevoir(), Ok(Message::Sommeil(_))));
-    assert!(matches!(r.essayer_recevoir(), Ok(Message::PressePapier { .. })));
+    assert!(matches!(
+        r.essayer_recevoir(),
+        Ok(Message::PressePapier { .. })
+    ));
     assert_eq!(r.essayer_recevoir(), Err(VideOuFerme::Vide));
 }
 
-/// 🔴 LE REFUS EST COMPTÉ. Un refus qui ne se compte pas est un refus
-/// qu'aucune exploitation ne verra jamais.
+/// 🔴 THE REFUSAL IS COUNTED. A refusal that is not counted is a refusal
+/// no operations will ever see.
 #[test]
 fn les_refus_se_comptent() {
     let (e, _r) = canal_de_session("test");
     for _ in 0..PROFONDEUR_MAX {
-        assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+        assert!(matches!(
+            e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+            Envoi::Depose(_)
+        ));
     }
-    assert_eq!(e.refuses(), 0, "aucun refus tant que la borne n'est pas atteinte");
-    // 🔴 ET L'ISSUE EST `Refuse`, PAS `Depose` : c'est la distinction qu'aucun
-    // appelant ne faisait avant le round de correction 1, et que le type
-    // impose désormais à chacun d'eux.
+    assert_eq!(
+        e.refuses(),
+        0,
+        "no refusal as long as the bound is not reached"
+    );
+    // 🔴 AND THE OUTCOME IS `Refuse`, NOT `Depose`: it is the distinction no
+    // caller made before fix round 1, and which the type
+    // now imposes on each of them.
     assert_eq!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Refuse);
     assert_eq!(e.refuses(), 1);
 }
 
-/// L'émetteur sait que plus personne ne lit.
+/// The sender knows nobody reads any more.
 ///
-/// 🔴 C'EST LE TEST QUI TIENT LA PURGE DES SESSIONS MORTES du registre :
-/// `distribuer` retire une session sur `Envoi::Rompu`, et rien d'autre ne le
-/// fait sur ce chemin.
+/// 🔴 IT IS THE TEST THAT HOLDS THE PURGE OF DEAD SESSIONS in the registry:
+/// `distribuer` removes a session on `Envoi::Rompu`, and nothing else does
+/// on this path.
 #[test]
 fn un_receveur_tombe_ferme_l_emetteur() {
     let (e, r) = canal_de_session("test");
@@ -164,49 +210,61 @@ fn un_receveur_tombe_ferme_l_emetteur() {
     assert_eq!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Rompu);
 }
 
-/// 🔴 LES TROIS ISSUES SONT DEUX À DEUX DISTINCTES, ET C'EST CE QU'IL FALLAIT
-/// ÉTABLIR : `Refuse` n'est ni `Depose` ni `Rompu`.
+/// 🔴 THE THREE OUTCOMES ARE PAIRWISE DISTINCT, AND THAT IS WHAT HAD TO BE
+/// ESTABLISHED: `Refuse` is neither `Depose` nor `Rompu`.
 ///
-/// Sous `mpsc`, `send(...).is_ok()` valait « livré » ; ici il aurait écrasé
-/// `Depose` et `Refuse` sur une seule valeur, et c'est exactement la confusion
-/// qui a coûté deux mémorisations fautives (`dernieres_parts`,
-/// `derniers_audio`). Sans ce test, rien n'interdirait à un futur `envoyer` de
-/// rendre `Refuse` sur un receveur tombé, ou l'inverse.
+/// Under `mpsc`, `send(...).is_ok()` meant "delivered"; here it would have crushed
+/// `Depose` and `Refuse` into a single value, and that is exactly the confusion
+/// that cost two faulty memorisations (`dernieres_parts`,
+/// `derniers_audio`). Without this test, nothing would forbid a future `envoyer` from
+/// returning `Refuse` on a dropped receiver, or the reverse.
 #[test]
-fn le_refus_ne_se_confond_ni_avec_la_livraison_ni_avec_la_rupture() {
+fn the_refusal_is_confused_neither_with_delivery_nor_with_breakage() {
     let (e, r) = canal_de_session("test");
     for _ in 0..PROFONDEUR_MAX {
-        assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+        assert!(matches!(
+            e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+            Envoi::Depose(_)
+        ));
     }
     // File pleine, receveur VIVANT.
     assert_eq!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Refuse);
-    // Le même envoi, receveur TOMBÉ : l'issue change, et la file n'y est pour
-    // rien — c'est ce qui distingue les deux causes.
+    // The same send, receiver DROPPED: the outcome changes, and the queue has nothing
+    // to do with it — that is what distinguishes the two causes.
     drop(r);
     assert_eq!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Rompu);
 }
 
-/// Le receveur distingue « rien à lire » de « plus personne n'écrit ».
+/// The receiver distinguishes "nothing to read" from "nobody writes any more".
 #[test]
 fn un_emetteur_tombe_se_distingue_d_une_file_vide() {
     let (e, r) = canal_de_session("test");
     assert_eq!(r.essayer_recevoir(), Err(VideOuFerme::Vide));
-    assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
+    assert!(matches!(
+        e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+        Envoi::Depose(_)
+    ));
     drop(e);
-    // Ce qui reste en file se lit ENCORE : la fermeture ne jette rien.
+    // What remains queued can STILL be read: closing throws nothing away.
     assert!(matches!(r.essayer_recevoir(), Ok(Message::Sommeil(_))));
     assert_eq!(r.essayer_recevoir(), Err(VideOuFerme::Ferme));
 }
 
-/// `vider` rend ce qui attend, dans l'ordre, et laisse la file vide.
+/// `drain` returns what is waiting, in order, and leaves the queue empty.
 #[test]
-fn vider_rend_tout_ce_qui_attend_dans_l_ordre() {
+fn drain_returns_everything_waiting_in_order() {
     let (e, r) = canal_de_session("test");
-    assert!(matches!(e.envoyer(Message::Part { bps: 7 }), Envoi::Depose(_)));
-    assert!(matches!(e.envoyer(Message::Sommeil(Ordre::Reveiller)), Envoi::Depose(_)));
-    let recus = r.vider();
+    assert!(matches!(
+        e.envoyer(Message::Part { bps: 7 }),
+        Envoi::Depose(_)
+    ));
+    assert!(matches!(
+        e.envoyer(Message::Sommeil(Ordre::Reveiller)),
+        Envoi::Depose(_)
+    ));
+    let recus = r.drain();
     assert_eq!(recus.len(), 2);
     assert!(matches!(recus[0], Message::Part { bps: 7 }));
     assert!(matches!(recus[1], Message::Sommeil(Ordre::Reveiller)));
-    assert!(r.vider().is_empty());
+    assert!(r.drain().is_empty());
 }

@@ -1,320 +1,320 @@
-//! Messages du canal de contrôle (fiable, ordonné, faible débit).
+//! Control channel messages (reliable, ordered, low throughput).
 //!
-//! Format JSON versionné : `{"type":"...","v":3,"...":...}` (`type` sert de tag
-//! interne à l'enum et est toujours émis en premier par serde). Le champ `v` est
-//! obligatoire et vérifié à la désérialisation : un message sans `v`, ou avec un
-//! `v` différent de [`CONTROL_VERSION`], est rejeté.
+//! Versioned JSON format: `{"type":"...","v":3,"...":...}` (`type` serves as the
+//! internal tag of the enum and is always emitted first by serde). The `v` field is
+//! mandatory and checked on deserialization: a message without `v`, or with a
+//! `v` other than [`CONTROL_VERSION`], is rejected.
 
 use serde::{Deserialize, Serialize};
 
-/// Version du protocole de contrôle. Incrémenter à tout changement de format.
+/// Version of the control protocol. Increment on any format change.
 ///
-/// v2 (chantier B) : ajout de `Pointer`, `Rumble` et `Capabilities`.
-/// v3 (chantier C) : ajout de `Link`.
+/// v2 (workstream B): added `Pointer`, `Rumble` and `Capabilities`.
+/// v3 (workstream C): added `Link`.
 pub const CONTROL_VERSION: u8 = 3;
 
-/// Forme du curseur — **extraite** vers `control/curseur.rs` par le sous-bloc
-/// E3, pour que la variante `MicState` tienne sous la porte des 500 lignes
-/// sans compression. Le type reste `pub` et ré-exporté ici : aucun site
-/// d'appel de `proto::control::CursorShape` n'a bougé.
+/// Cursor shape — **extracted** to `control/curseur.rs` by sub-block
+/// E3, so that the `MicState` variant fits under the 500-line gate
+/// without compression. The type stays `pub` and re-exported here: no call
+/// site of `proto::control::CursorShape` has moved.
 #[path = "control/curseur.rs"]
 mod curseur;
 pub use curseur::CursorShape;
 
-// Note : pas de `default` sur le champ `v` — un message sans champ `v` doit être
-// rejeté (champ obligatoire), pas silencieusement complété avec la version
-// courante. `default` court-circuiterait `deserialize_with` quand le champ est
-// absent, ce qui romprait la vérification.
-fn verifie_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
+// Note: no `default` on the `v` field — a message without a `v` field must be
+// rejected (mandatory field), not silently filled in with the current
+// version. `default` would short-circuit `deserialize_with` when the field is
+// absent, which would break the check.
+fn check_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     let v = u8::deserialize(deserializer)?;
     if v != CONTROL_VERSION {
         return Err(serde::de::Error::custom(format!(
-            "version de contrôle non supportée : {v}"
+            "unsupported control version: {v}"
         )));
     }
     Ok(v)
 }
 
-/// Les deux vocabulaires de l'état du lien — **extraits** vers
-/// `control/lien.rs` par la revue transverse du bloc E3, pour que ses
-/// corrections d'énoncé tiennent sous la porte des 500 lignes sans
-/// compression. Les deux types restent `pub` et ré-exportés ici : aucun site
-/// d'appel n'a bougé.
+/// The two vocabularies of the link state — **extracted** to
+/// `control/lien.rs` by the cross-cutting review of block E3, so that its
+/// wording fixes fit under the 500-line gate without
+/// compression. Both types stay `pub` and re-exported here: no call
+/// site has moved.
 #[path = "control/lien.rs"]
 mod lien;
 pub use lien::{LinkAdaptation, LinkQuality};
 
-/// Message du client web vers l'agent.
+/// Message from the web client to the agent.
 ///
-/// 🔴 **`Debug` est IMPLÉMENTÉ À LA MAIN, jamais dérivé, et c'est le seul
-/// rempart contre une fuite de presse-papier au journal.** Voir l'`impl` plus
-/// bas, qui porte la mesure qui l'a rendu nécessaire.
+/// 🔴 **`Debug` is IMPLEMENTED BY HAND, never derived, and it is the only
+/// rampart against a clipboard leak into the log.** See the `impl` further
+/// down, which carries the measurement that made it necessary.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ClientControl {
     Resize {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         width: u32,
         height: u32,
     },
-    /// Visibilité de la fenêtre navigateur, et si elle a le focus.
+    /// Visibility of the browser window, and whether it has focus.
     ///
-    /// **Deux signaux dans un seul message, et le second n'est pas
-    /// décoratif** : la visibilité seule ne suffirait pas à ordonner le vivier
-    /// du capteur quand plusieurs fenêtres sont visibles en même temps — elles
-    /// ont alors exactement la même visibilité.
+    /// **Two signals in a single message, and the second is not
+    /// decorative**: visibility alone would not be enough to order the pool
+    /// of the capturer when several windows are visible at the same time — they
+    /// then have exactly the same visibility.
     Visibility {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         visible: bool,
         focused: bool,
     },
-    /// L'utilisateur a collé dans la fenêtre de session : voici ce que porte
-    /// le presse-papier de SA machine (sous-bloc P2 du chantier presse-papier).
+    /// The user pasted into the session window: here is what the
+    /// clipboard of THEIR machine carries (sub-block P2 of the clipboard workstream).
     ///
-    /// Émis sur un événement `paste` DE CONFIANCE, jamais sur un sondage :
-    /// le client n'appelle `navigator.clipboard.readText()` nulle part, ne
-    /// demande donc aucune permission, et ne lit le presse-papier de
-    /// l'utilisateur qu'au moment exact où celui-ci exprime l'intention de
-    /// coller. Mesuré favorable sur un `<video>` focalisé, deux exécutions —
+    /// Emitted on a TRUSTED `paste` event, never on polling:
+    /// the client calls `navigator.clipboard.readText()` nowhere, therefore
+    /// requests no permission, and reads the user's clipboard
+    /// only at the exact moment the user expresses the intent to
+    /// paste. Measured favourable on a focused `<video>`, two runs —
     /// `docs/superpowers/plans/journaux-presse-papier-p2/p2-paste-video-*.json`.
     ///
-    /// ⚠️ **`text` est un `String`, PAS un `Option<String>`, et l'asymétrie
-    /// avec `AgentControl::Clipboard` est voulue** — ce n'est pas un oubli.
-    /// Là-bas, le `None` PORTE le refus de taille, parce que le refus vient de
-    /// l'agent et doit remonter au bandeau. Ici le sens est inverse : c'est le
-    /// **client** qui borne avant d'émettre (il a le bandeau sous la main), et
-    /// l'agent qui refuse en journalisant, sans rien renvoyer. Un `Option` de
-    /// ce côté n'aurait donc personne pour l'écrire ni personne pour le lire.
+    /// ⚠️ **`text` is a `String`, NOT an `Option<String>`, and the asymmetry
+    /// with `AgentControl::Clipboard` is intended** — it is not an oversight.
+    /// Over there, the `None` CARRIES the size refusal, because the refusal comes from
+    /// the agent and must climb up to the banner. Here the direction is reversed: it is the
+    /// **client** that bounds before emitting (it has the banner at hand), and
+    /// the agent that refuses by logging, without sending anything back. An `Option` on
+    /// this side would therefore have nobody to write it and nobody to read it.
     ///
-    /// **Pas de champ `bytes` non plus, pour la même raison** : il sert
-    /// là-bas à rendre le message auto-descriptif au journal ET à alimenter le
-    /// bandeau ; ici la taille se lit sur `text.len()`, et il n'y a pas de
-    /// bandeau à alimenter.
+    /// **No `bytes` field either, for the same reason**: over there it serves
+    /// to make the message self-describing in the log AND to feed the
+    /// banner; here the size is read from `text.len()`, and there is no
+    /// banner to feed.
     Clipboard {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         text: String,
     },
 }
 
-/// Message de l'agent vers le client web.
+/// Message from the agent to the web client.
 ///
-/// 🔴 **`Debug` est IMPLÉMENTÉ À LA MAIN, jamais dérivé** — même raison que
-/// pour `ClientControl` : la variante `Clipboard` porte un contenu privé.
+/// 🔴 **`Debug` is IMPLEMENTED BY HAND, never derived** — same reason as
+/// for `ClientControl`: the `Clipboard` variant carries private content.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum AgentControl {
     Ready {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         width: u32,
         height: u32,
-        /// Le micro est-il disponible pour cette session (chantier E) ?
+        /// Is the microphone available for this session (workstream E)?
         ///
-        /// **Aucun bump de `CONTROL_VERSION` n'est nécessaire**, dans les deux
-        /// sens : le parseur TypeScript vérifie `v` puis `type` puis CASTE, si
-        /// bien qu'un champ supplémentaire est ignoré par un client ancien ; et
-        /// un client récent face à un agent ancien lit `mic === undefined`,
-        /// donc falsy, donc n'affiche pas de bouton — la règle de la spec §10,
-        /// obtenue gratuitement.
+        /// **No bump of `CONTROL_VERSION` is needed**, in either
+        /// direction: the TypeScript parser checks `v` then `type` then CASTS, so
+        /// that an extra field is ignored by an old client; and
+        /// a recent client facing an old agent reads `mic === undefined`,
+        /// hence falsy, hence shows no button — the rule of spec §10,
+        /// obtained for free.
         ///
-        /// ⚠️ **`#[serde(default)]` est OBLIGATOIRE, pas décoratif** :
-        /// `AgentControl` porte `deny_unknown_fields`, ce qui n'empêche pas
-        /// d'AJOUTER un champ, mais un champ MANQUANT reste une erreur de
-        /// désérialisation côté Rust.
+        /// ⚠️ **`#[serde(default)]` is MANDATORY, not decorative**:
+        /// `AgentControl` carries `deny_unknown_fields`, which does not prevent
+        /// ADDING a field, but a MISSING field remains a
+        /// deserialization error on the Rust side.
         ///
-        /// ⚠️ **Ce drapeau est décidé à l'ÉTABLISSEMENT et ne peut pas
-        /// exprimer un refus ultérieur** : l'exclusivité du câble s'acquiert au
-        /// premier paquet montant (bloc E2), donc après ce message. **Cette
-        /// moitié-là reste entièrement vraie.**
+        /// ⚠️ **This flag is decided at ESTABLISHMENT and cannot
+        /// express a later refusal**: exclusive use of the cable is acquired on the
+        /// first upstream packet (block E2), hence after this message. **That
+        /// half stays entirely true.**
         ///
-        /// ✅ **Sa conséquence, elle, ne l'est plus.** Ce paragraphe disait :
-        /// « Un second utilisateur verra le bouton et n'aura pas le son. Lacune
-        /// NOMMÉE, pas dissimulée — le refus est journalisé une fois côté
-        /// agent ». **Le bloc E3 a fermé la lacune** : le refus remonte
-        /// désormais en [`AgentControl::MicState`], émis SUR TRANSITION, et le
-        /// bouton de la fenêtre perdante le dit. Le journal, lui, reste unique.
+        /// ✅ **Its consequence, however, no longer does.** This paragraph said:
+        /// "A second user will see the button and will not get the sound. A NAMED
+        /// gap, not a hidden one — the refusal is logged once on the agent
+        /// side". **Block E3 closed the gap**: the refusal now climbs up
+        /// as [`AgentControl::MicState`], emitted ON TRANSITION, and the
+        /// button of the losing window says so. The log, for its part, stays single.
         ///
-        /// ⚠️ **`mic` n'est PAS devenu redondant pour autant, et les deux ne
-        /// disent pas la même chose** : `mic` dit « cette session a une piste
-        /// montante et un puits » — une panne WASAPI, une piste non négociée —,
-        /// `MicState` dit « ce que ce micro capte atteint la VM ». Une session
-        /// peut parfaitement avoir `mic: true` et `granted: false`, et c'est
-        /// même le cas nominal de la fenêtre perdante.
+        /// ⚠️ **`mic` has NOT become redundant for all that, and the two do
+        /// not say the same thing**: `mic` says "this session has an upstream
+        /// track and a sink" — a WASAPI failure, an unnegotiated track —,
+        /// `MicState` says "what this microphone picks up reaches the VM". A session
+        /// can perfectly well have `mic: true` and `granted: false`, and that is
+        /// even the nominal case of the losing window.
         #[serde(default)]
         mic: bool,
     },
     SessionEnd {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         reason: String,
     },
-    /// État du pointeur. `visible: false` signifie à la fois « verrouille le
-    /// pointeur » et « n'affiche aucun curseur » : c'est une seule
-    /// observation côté agent (le curseur système est masqué), donc un seul
+    /// Pointer state. `visible: false` means both "lock the
+    /// pointer" and "show no cursor": it is a single
+    /// observation on the agent side (the system cursor is hidden), hence a single
     /// message.
     Pointer {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         visible: bool,
         shape: CursorShape,
     },
-    /// La fenêtre dort — son encodeur et sa duplication ont été relâchés.
+    /// The window is asleep — its encoder and its duplication have been released.
     ///
-    /// `reason` vaut `"masquee"` (l'utilisateur l'a voulu) ou `"evincee"` (le
-    /// vivier lui a pris sa place alors qu'il la regardait). Les deux ne se
-    /// valent pas pour lui : la seconde mérite d'être dite.
+    /// `reason` is `"masquee"` (the user wanted it) or `"evincee"` (the
+    /// pool took its place while the user was looking at it). The two do not
+    /// weigh the same for the user: the second deserves to be said.
     Asleep {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         asleep: bool,
         reason: String,
     },
     Rumble {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         left: u8,
         right: u8,
     },
-    /// Émis une seule fois par session, mais PAS après `Ready` en pratique :
-    /// `agent/src/demarrage.rs` pousse ce message dans le canal `mpsc` de contrôle
-    /// dès le démarrage du transport, avant même l'ouverture du canal de
-    /// données — le drainage (`transport/tick.rs::act_on_timeout`) le met donc en
-    /// file avant que `Event::ChannelOpen` n'y ajoute `Ready`. L'ordre réel
-    /// est `Capabilities`, éventuellement un premier `Pointer`, puis `Ready`.
-    /// Sans conséquence aujourd'hui (le client traite les types
-    /// indépendamment, voir `client/src/main.ts`), mais un client qui
-    /// gaterait son initialisation sur `Ready` perdrait ce message et le
-    /// premier `Pointer` : ne pas le faire.
+    /// Emitted once per session, but NOT after `Ready` in practice:
+    /// `agent/src/demarrage.rs` pushes this message into the control `mpsc` channel
+    /// as soon as the transport starts, even before the data channel
+    /// opens — the draining (`transport/tick.rs::act_on_timeout`) therefore queues
+    /// it before `Event::ChannelOpen` adds `Ready` there. The real order
+    /// is `Capabilities`, possibly a first `Pointer`, then `Ready`.
+    /// No consequence today (the client handles the types
+    /// independently, see `client/src/main.ts`), but a client that
+    /// gated its initialisation on `Ready` would lose this message and the
+    /// first `Pointer`: do not do that.
     Capabilities {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         gamepad: bool,
-        /// Le collage navigateur → VM est-il disponible pour cette session
-        /// (sous-bloc P2 du chantier presse-papier) ?
+        /// Is browser → VM pasting available for this session
+        /// (sub-block P2 of the clipboard workstream)?
         ///
-        /// **Le client GATE son exception clavier là-dessus.** Sans ce gate,
-        /// `PRESSE_PAPIER=0` produirait le pire des deux mondes : le client
-        /// retiendrait le `Ctrl+V` (il ne l'enverrait plus sur le canal
-        /// d'entrées) alors que personne ne l'injecterait côté VM — la touche
-        /// serait perdue, et l'utilisateur verrait un raccourci mort.
+        /// **The client GATES its keyboard exception on it.** Without this gate,
+        /// `PRESSE_PAPIER=0` would produce the worst of both worlds: the client
+        /// would hold back `Ctrl+V` (it would no longer send it on the input
+        /// channel) while nobody would inject it on the VM side — the key
+        /// would be lost, and the user would see a dead shortcut.
         ///
-        /// ⚠️ **Aucun bump de `CONTROL_VERSION`**, exactement comme `mic`, et
-        /// pour la raison que le commentaire de `mic` porte : un client ancien
-        /// ignore un champ supplémentaire, un client récent face à un agent
-        /// ancien lit `undefined`, donc falsy, donc n'arme rien.
+        /// ⚠️ **No bump of `CONTROL_VERSION`**, exactly like `mic`, and
+        /// for the reason the comment on `mic` carries: an old client
+        /// ignores an extra field, a recent client facing an old
+        /// agent reads `undefined`, hence falsy, hence arms nothing.
         ///
-        /// ⚠️ **`#[serde(default)]` est OBLIGATOIRE, et la raison n'est PAS
-        /// `deny_unknown_fields`** — celui-ci refuse un champ INCONNU, quand
-        /// c'est le défaut de serde qui refuse un champ MANQUANT. Les deux
-        /// mécanismes n'ont rien à voir ; la spec les confond, le commentaire
-        /// de `mic` dit la chose juste.
+        /// ⚠️ **`#[serde(default)]` is MANDATORY, and the reason is NOT
+        /// `deny_unknown_fields`** — that one refuses an UNKNOWN field, whereas
+        /// it is serde's default that refuses a MISSING field. The two
+        /// mechanisms have nothing to do with each other; the spec confuses them, the comment
+        /// on `mic` says the right thing.
         ///
-        /// 🔴 **CONDITION DE VALIDITÉ DE CETTE ANNONCE, à ne pas perdre.**
-        /// Elle est émise par l'ENFANT, alors que le presse-papier appartient
-        /// au CAPTEUR (D1). Elle n'est vraie que parce que les deux lisent la
-        /// **même variable d'environnement héritée** : `std::process::Command`
-        /// hérite l'environnement du père, et `superviseur/lanceur.rs` n'efface
-        /// pas `PRESSE_PAPIER` en lançant le capteur. **Le jour où le capteur
-        /// déciderait autrement qu'à la lecture de cette variable — un réglage
-        /// par session, une capacité Windows sondée à chaud —, cette annonce
-        /// deviendrait fausse EN SILENCE.** Ce n'est pas « le capteur annonce
-        /// sa capacité » ; c'est « les deux lisent la même variable ».
+        /// 🔴 **VALIDITY CONDITION OF THIS ANNOUNCEMENT, not to be lost.**
+        /// It is emitted by the CHILD, whereas the clipboard belongs
+        /// to the CAPTURER (D1). It is only true because both read the
+        /// **same inherited environment variable**: `std::process::Command`
+        /// inherits the parent's environment, and `superviseur/lanceur.rs` does not clear
+        /// `PRESSE_PAPIER` when launching the capturer. **The day the capturer
+        /// decides otherwise than by reading this variable — a per-session
+        /// setting, a Windows capability probed live —, this announcement
+        /// would become false SILENTLY.** It is not "the capturer announces
+        /// its capability"; it is "both read the same variable".
         #[serde(default)]
         clipboard: bool,
     },
-    /// L'application Windows est passée en plein écran, ou en est sortie.
+    /// The Windows application went fullscreen, or left it.
     ///
-    /// **Le client ARME, il n'agit pas** : `requestFullscreen()` exige une
-    /// activation utilisateur transitoire qu'un message de canal de données ne
-    /// fournit pas. Voir `client/src/fullscreen.ts`.
+    /// **The client ARMS, it does not act**: `requestFullscreen()` requires a
+    /// transient user activation that a data channel message does not
+    /// provide. See `client/src/fullscreen.ts`.
     ///
-    /// Le sens est UNIQUE — le navigateur ne force jamais l'état de la fenêtre
-    /// Windows —, et c'est ce qui rend toute oscillation impossible.
+    /// The direction is SINGLE — the browser never forces the state of the Windows
+    /// window —, and that is what makes any oscillation impossible.
     Fullscreen {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         active: bool,
     },
-    /// Le presse-papier de la VM a changé.
+    /// The VM clipboard has changed.
     ///
-    /// Poussé **non sollicité**, et **au changement seulement** : le
-    /// propriétaire compare le contenu au dernier émis avant d'émettre
-    /// (garde n°2 de D5), parce que le compteur de séquence Windows bouge
-    /// même sur une réécriture identique — mesuré, sonde P0 du 20 août 2026,
-    /// `q2="bouge"` sur deux exécutions.
+    /// Pushed **unsolicited**, and **on change only**: the
+    /// owner compares the content with the last one emitted before emitting
+    /// (guard no. 2 of D5), because the Windows sequence counter moves
+    /// even on an identical rewrite — measured, probe P0 of 20 August 2026,
+    /// `q2="bouge"` on two runs.
     ///
-    /// `text` vaut `None` quand le contenu dépasse la borne du propriétaire
-    /// (`agent::presse_papier::PRESSE_PAPIER_MAX`) : il est **REFUSÉ, jamais
-    /// tronqué** — un collage silencieusement amputé est le pire résultat
-    /// possible, et il est pire que pas de collage du tout, l'utilisateur ne
-    /// pouvant pas voir qu'il lui manque la fin.
+    /// `text` is `None` when the content exceeds the owner's bound
+    /// (`agent::presse_papier::PRESSE_PAPIER_MAX`): it is **REFUSED, never
+    /// truncated** — a silently amputated paste is the worst possible
+    /// outcome, and it is worse than no paste at all, the user not
+    /// being able to see that the end is missing.
     ///
-    /// `bytes` porte alors la taille refusée, en octets d'UTF-8 **après
-    /// normalisation des fins de ligne**, pour que le bandeau puisse la dire ;
-    /// dans le cas normal il porte la taille du texte émis, ce qui rend le
-    /// message auto-descriptif au journal. Il n'est donc pas redondant avec
+    /// `bytes` then carries the refused size, in UTF-8 bytes **after
+    /// line-ending normalisation**, so that the banner can state it;
+    /// in the normal case it carries the size of the emitted text, which makes the
+    /// message self-describing in the log. It is therefore not redundant with
     /// `text`.
     ///
-    /// ⚠️ **`text` n'est pas `Option` par commodité de sérialisation** : le
-    /// champ doit rester PRÉSENT et valoir `null` sur un refus. Le rendre
-    /// omissible (`skip_serializing_if`) ferait qu'un client ne pourrait plus
-    /// distinguer un refus d'un message tronqué en route.
+    /// ⚠️ **`text` is not an `Option` for serialization convenience**: the
+    /// field must stay PRESENT and be `null` on a refusal. Making it
+    /// omittable (`skip_serializing_if`) would mean a client could no longer
+    /// tell a refusal from a message truncated on the way.
     ///
-    /// **Une variante, pas deux** : le précédent du dépôt est `Asleep`
-    /// (un état plus sa raison) et `Link` (une décision plus ses grandeurs) ;
-    /// le dépôt n'a aucun précédent de deux variantes pour un seul état.
+    /// **One variant, not two**: the repository's precedent is `Asleep`
+    /// (a state plus its reason) and `Link` (a decision plus its magnitudes);
+    /// the repository has no precedent of two variants for a single state.
     Clipboard {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         text: Option<String>,
         bytes: u32,
     },
-    /// La couleur d'accent de la fenêtre Windows — la teinte dominante de son
-    /// icône (sous-bloc A1). Émise **au changement seulement**, et **sa
-    /// PREMIÈRE lecture comprise** : sans elle, `--accent-fenetre` ne serait
-    /// jamais posé de la session.
+    /// The accent colour of the Windows window — the dominant hue of its
+    /// icon (sub-block A1). Emitted **on change only**, and **its
+    /// FIRST reading included**: without it, `--accent-fenetre` would
+    /// never be set for the session.
     ///
-    /// `couleur` est **`#rrggbb`, six chiffres hexadécimaux minuscules, et rien
-    /// d'autre**. ⚠️ **Le format est une contrainte du DESIGN SYSTEM, pas du
-    /// protocole**, et l'écrire ici évite qu'un successeur le croie arbitraire
-    /// et l'élargisse : `client/src/design/contraste.ts::luminanceRelative`
-    /// n'accepte que `#rgb`, `#rgba`, `#rrggbb` et `#rrggbbaa`, et **LÈVE** sur
-    /// tout le reste. Le client se défend (`client/src/accent.ts` contrôle la
-    /// forme AVANT d'appeler `rapportDeContraste`, et **sans `try/catch`**),
-    /// mais l'agent n'a aucune raison de lui envoyer une forme qu'il jettera.
+    /// `couleur` is **`#rrggbb`, six lowercase hexadecimal digits, and nothing
+    /// else**. ⚠️ **The format is a constraint of the DESIGN SYSTEM, not of the
+    /// protocol**, and writing it here keeps a successor from believing it arbitrary
+    /// and widening it: `client/src/design/contraste.ts::luminanceRelative`
+    /// accepts only `#rgb`, `#rgba`, `#rrggbb` and `#rrggbbaa`, and **THROWS** on
+    /// everything else. The client defends itself (`client/src/accent.ts` checks the
+    /// shape BEFORE calling `rapportDeContraste`, and **without `try/catch`**),
+    /// but the agent has no reason to send it a shape it will throw away.
     ///
-    /// ⚠️ **Ce message ne porte NI le `hwnd`, NI le PID, NI le titre de la
-    /// fenêtre**, et la seconde raison est une leçon payée : la session est
-    /// déjà identifiée par le canal sur lequel il arrive, et **P2 a trouvé le
-    /// presse-papier EN CLAIR dans `agent.log`** sur un site de journalisation
-    /// antérieur, inoffensif tant qu'aucune variante ne portait de contenu
-    /// privé. Le remède s'applique **AU TYPE, pas au site** : un titre de
-    /// fenêtre ou un chemin d'exécutable ici rejouerait ce défaut à
-    /// l'identique. `transport/controle.rs` ne journalise qu'un NOM DE TYPE.
+    /// ⚠️ **This message carries NEITHER the `hwnd`, NOR the PID, NOR the title of the
+    /// window**, and the second reason is a paid lesson: the session is
+    /// already identified by the channel it arrives on, and **P2 found the
+    /// clipboard IN CLEAR in `agent.log`** at an earlier logging site,
+    /// harmless as long as no variant carried private
+    /// content. The remedy applies **TO THE TYPE, not to the site**: a window
+    /// title or an executable path here would replay that defect
+    /// identically. `transport/controle.rs` logs only a TYPE NAME.
     ///
-    /// 🔴 **`CONTROL_VERSION` NE MONTE PAS**, et c'est le raisonnement écrit de
-    /// D7 que `mic` et `Capabilities` appliquent déjà : une variante NEUVE
-    /// d'`AgentControl` n'est pas une rupture. Le client dispatche par `type`,
-    /// et un client ancien tombe dans son `else` final et ignore le message.
+    /// 🔴 **`CONTROL_VERSION` DOES NOT GO UP**, and it is the written reasoning of
+    /// D7 that `mic` and `Capabilities` already apply: a NEW variant
+    /// of `AgentControl` is not a break. The client dispatches by `type`,
+    /// and an old client falls into its final `else` and ignores the message.
     ///
-    /// ⚠️ **`Capabilities` ne gagne PAS de champ non plus** : l'accent n'est
-    /// pas une capacité que le client doive annoncer ni découvrir — il le
-    /// reçoit, ou il ne le reçoit pas.
+    /// ⚠️ **`Capabilities` does NOT gain a field either**: the accent is
+    /// not a capability the client must announce or discover — it
+    /// receives it, or it does not.
     Accent {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         couleur: String,
     },
-    /// État du lien réseau, émis à chaque changement de décision
-    /// d'adaptation — donc rarement, pas à chaque seconde.
+    /// Network link state, emitted at each change of adaptation
+    /// decision — hence rarely, not every second.
     Link {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         bitrate: u32,
         width: u32,
@@ -322,165 +322,75 @@ pub enum AgentControl {
         quality: LinkQuality,
         adaptation: LinkAdaptation,
     },
-    /// Le micro de CETTE fenêtre est-il entendu par la VM ? (bloc E3)
+    /// Is THIS window's microphone heard by the VM? (block E3)
     ///
-    /// **Émis SUR TRANSITION, jamais à chaque dépôt.** Le micro dépose une
-    /// trame toutes les 20 ms ; émettre à chaque dépôt ferait cinquante
-    /// messages par seconde sur le canal de contrôle, qui est le canal
-    /// *fiable, ordonné, faible débit* décrit en tête de ce fichier.
+    /// **Emitted ON TRANSITION, never on every deposit.** The microphone deposits a
+    /// frame every 20 ms; emitting on every deposit would make fifty
+    /// messages per second on the control channel, which is the
+    /// *reliable, ordered, low throughput* channel described at the top of this file.
     ///
-    /// 🔴 **Ce message existe parce que `Ready.mic` ne peut PAS l'exprimer**,
-    /// et la doc de ce champ le dit déjà : il est décidé à l'ÉTABLISSEMENT,
-    /// alors que l'exclusivité du câble s'acquiert au **premier paquet
-    /// montant** (bloc E2), donc après. La conséquence mesurée par E2 et
-    /// confirmée par lecture du code en E3 : à deux fenêtres, **le bouton de
-    /// la perdante s'allume et rien ne sort** —
-    /// `transport/piste_micro.rs::micro_disponible` ne consulte jamais le
-    /// mutex. C'est le legs n°2 de E2, et c'est ce que cette variante ferme.
+    /// 🔴 **This message exists because `Ready.mic` CANNOT express it**,
+    /// and the doc of that field already says so: it is decided at ESTABLISHMENT,
+    /// whereas exclusive use of the cable is acquired on the **first upstream
+    /// packet** (block E2), hence after. The consequence measured by E2 and
+    /// confirmed by reading the code in E3: with two windows, **the button of
+    /// the loser lights up and nothing comes out** —
+    /// `transport/piste_micro.rs::micro_disponible` never consults the
+    /// mutex. It is legacy no. 2 of E2, and it is what this variant closes.
     ///
-    /// ⚠️ **`granted` est un BOOLÉEN, pas un motif**, et c'est un choix : le
-    /// seul refus qui existe est l'exclusivité du câble. Un motif ouvert
-    /// inviterait à y ranger la panne WASAPI, et deux façons de dire la même
-    /// panne divergent.
+    /// ⚠️ **`granted` is a BOOLEAN, not a reason**, and it is a choice: the
+    /// only refusal that exists is exclusive use of the cable. An open reason
+    /// would invite filing the WASAPI failure there, and two ways of saying the same
+    /// failure diverge.
     ///
-    /// 🔴 **CE CHAMP EST UN VERDICT D'EXCLUSIVITÉ, JAMAIS UN ACCUSÉ DE
-    /// RÉCEPTION**, et la recette du bloc E3 l'a mesuré : sous
-    /// `MICRO_FAUTE_ECRITURE`, le fil de rendu WASAPI meurt, le juge sur CABLE
-    /// Output relève une amplitude de **0,000000**, et la fenêtre reçoit
-    /// pourtant `granted: true`. Le mutex vit dans `PuitsCable::deposer` ; le
-    /// fil de rendu est ailleurs, et rien ne les relie.
+    /// 🔴 **THIS FIELD IS AN EXCLUSIVITY VERDICT, NEVER A
+    /// RECEIPT**, and the acceptance run of block E3 measured it: under
+    /// `MICRO_FAUTE_ECRITURE`, the WASAPI render thread dies, the judge on CABLE
+    /// Output reads an amplitude of **0.000000**, and the window nevertheless
+    /// receives `granted: true`. The mutex lives in `PuitsCable::deposer`; the
+    /// render thread is elsewhere, and nothing links them.
     ///
-    /// **Un `false` est donc concluant — une autre fenêtre tient le câble —
-    /// quand un `true` ne l'est pas** : il écarte UNE cause de silence, pas
-    /// les autres. Y adosser un « vous êtes entendu » serait une promesse que
-    /// ce booléen ne peut pas tenir.
+    /// **A `false` is therefore conclusive — another window holds the cable —
+    /// whereas a `true` is not**: it rules out ONE cause of silence, not
+    /// the others. Resting a "you are heard" on it would be a promise that
+    /// this boolean cannot keep.
     ///
-    /// ⚠️ **Le nom est en DEUX mots, et ce n'est pas décoratif** : le
-    /// sous-bloc G1 a mesuré qu'un `rename_all` est **inobservable** sur un
-    /// enum dont toutes les variantes tiennent en un seul mot — la mutation
-    /// `kebab-case` → `snake_case` y laissait la suite entièrement verte.
-    /// `AgentControl` porte déjà `SessionEnd`, donc la lacune y est close ;
-    /// `MicState` la garde close plutôt que de l'y rouvrir.
+    /// ⚠️ **The name is in TWO words, and that is not decorative**: the
+    /// sub-block G1 measured that a `rename_all` is **unobservable** on an
+    /// enum whose variants all fit in a single word — the mutation
+    /// `kebab-case` → `snake_case` left the suite entirely green there.
+    /// `AgentControl` already carries `SessionEnd`, so the gap is closed there;
+    /// `MicState` keeps it closed rather than reopening it.
     ///
-    /// 🔴 **`CONTROL_VERSION` NE MONTE PAS.** Les deux vérifications de `v` —
-    /// `verifie_version` ci-dessus et `parseAgentControl` côté TypeScript —
-    /// sont des **égalités strictes** : la monter ferait rejeter **tous** les
-    /// messages, `Ready` et `SessionEnd` compris, et remplacerait une
-    /// dégradation PAR MESSAGE par une incompatibilité TOTALE. Un client
-    /// ancien dispatche par `type` et tombe dans son `else` final. C'est le
-    /// raisonnement écrit de D7, que `mic`, `Capabilities`, `Accent` et
-    /// `Clipboard` appliquent tous.
+    /// 🔴 **`CONTROL_VERSION` DOES NOT GO UP.** The two checks of `v` —
+    /// `check_version` above and `parseAgentControl` on the TypeScript side —
+    /// are **strict equalities**: raising it would reject **all**
+    /// messages, `Ready` and `SessionEnd` included, and would replace a
+    /// PER-MESSAGE degradation with a TOTAL incompatibility. An old client
+    /// dispatches by `type` and falls into its final `else`. It is the
+    /// written reasoning of D7, which `mic`, `Capabilities`, `Accent` and
+    /// `Clipboard` all apply.
     ///
-    /// ⚠️ **Aucun contenu privé** — la règle que P2 a payée en trouvant le
-    /// presse-papier en clair dans `agent.log`. Un booléen n'a rien à
-    /// divulguer, et le remède s'applique **au TYPE, pas au site de
-    /// journalisation**.
+    /// ⚠️ **No private content** — the rule P2 paid for by finding the
+    /// clipboard in clear in `agent.log`. A boolean has nothing to
+    /// disclose, and the remedy applies **to the TYPE, not to the logging
+    /// site**.
     MicState {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "check_version")]
         version: u8,
         granted: bool,
     },
 }
 
-/// La RÉDACTION au journal — les deux `impl Debug` écrites à la main, et le
-/// raisonnement qui les impose. Voir son commentaire de tête.
+/// The REDACTION in the log — the two `impl Debug` written by hand, and the
+/// reasoning that requires them. See its header comment.
 #[path = "control/redaction.rs"]
 mod redaction;
 
-impl ClientControl {
-    /// Construit un message de redimensionnement à la version courante du protocole.
-    pub fn resize(width: u32, height: u32) -> Self {
-        ClientControl::Resize { version: CONTROL_VERSION, width, height }
-    }
-
-    /// Construit un message de collage à la version courante du protocole.
-    pub fn clipboard(text: impl Into<String>) -> Self {
-        ClientControl::Clipboard { version: CONTROL_VERSION, text: text.into() }
-    }
-}
-
-impl AgentControl {
-    /// Construit un message "agent prêt" à la version courante du protocole.
-    pub fn ready(width: u32, height: u32, mic: bool) -> Self {
-        AgentControl::Ready { version: CONTROL_VERSION, width, height, mic }
-    }
-
-    /// Construit un message de fin de session à la version courante du protocole.
-    pub fn session_end(reason: impl Into<String>) -> Self {
-        AgentControl::SessionEnd { version: CONTROL_VERSION, reason: reason.into() }
-    }
-
-    pub fn pointer(visible: bool, shape: CursorShape) -> Self {
-        AgentControl::Pointer { version: CONTROL_VERSION, visible, shape }
-    }
-
-    pub fn asleep(asleep: bool, reason: &str) -> AgentControl {
-        AgentControl::Asleep {
-            version: CONTROL_VERSION,
-            asleep,
-            reason: reason.to_string(),
-        }
-    }
-
-    pub fn fullscreen(active: bool) -> AgentControl {
-        AgentControl::Fullscreen { version: CONTROL_VERSION, active }
-    }
-
-    /// Le micro de cette fenêtre est-il entendu par la VM ?
-    ///
-    /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
-    pub fn mic_state(granted: bool) -> AgentControl {
-        AgentControl::MicState { version: CONTROL_VERSION, granted }
-    }
-
-    /// Le presse-papier de la VM a changé.
-    ///
-    /// ⚠️ **`CONTROL_VERSION` NE MONTE PAS pour cette variante, et ce n'est
-    /// pas un oubli.** Les deux vérifications de `v` — `verifie_version`
-    /// ci-dessus et `parseAgentControl` côté TypeScript — sont des **égalités
-    /// strictes** : monter la version ferait rejeter **tous** les messages,
-    /// `Ready` et `SessionEnd` compris. Une incompatibilité TOTALE
-    /// remplacerait une dégradation PAR MESSAGE. Le précédent est le
-    /// constructeur `ready` de cette même `impl` (le champ `mic` a été ajouté
-    /// à `Ready` sans monter la version, pour la même raison).
-    ///
-    /// ⚠️ Cette phrase disait « à TROIS lignes d'ici » : `pub fn ready` est
-    /// trente-deux lignes plus haut, et l'était déjà à l'écriture. **Un
-    /// déictique de distance vieillit à la première insertion** ; nommer la
-    /// chose, jamais compter les lignes qui l'en séparent.
-    pub fn clipboard(text: Option<String>, bytes: u32) -> AgentControl {
-        AgentControl::Clipboard { version: CONTROL_VERSION, text, bytes }
-    }
-
-    /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
-    pub fn accent(couleur: impl Into<String>) -> AgentControl {
-        AgentControl::Accent { version: CONTROL_VERSION, couleur: couleur.into() }
-    }
-
-    pub fn rumble(left: u8, right: u8) -> Self {
-        AgentControl::Rumble { version: CONTROL_VERSION, left, right }
-    }
-
-    pub fn capabilities(gamepad: bool, clipboard: bool) -> Self {
-        AgentControl::Capabilities { version: CONTROL_VERSION, gamepad, clipboard }
-    }
-
-    pub fn link(
-        bitrate: u32,
-        taille: (u32, u32),
-        quality: LinkQuality,
-        adaptation: LinkAdaptation,
-    ) -> Self {
-        AgentControl::Link {
-            version: CONTROL_VERSION,
-            bitrate,
-            width: taille.0,
-            height: taille.1,
-            quality,
-            adaptation,
-        }
-    }
-}
+/// Constructors of both enums at the current protocol version, split out to
+/// `control/constructeurs.rs` to stay under 500 lines.
+#[path = "control/constructeurs.rs"]
+mod constructeurs;
 
 #[cfg(test)]
 #[path = "control/tests.rs"]

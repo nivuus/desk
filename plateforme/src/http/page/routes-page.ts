@@ -1,19 +1,19 @@
-// Le servant de la page bâtie. Il applique le verdict de `resolution.ts`,
-// mais NE S'ARRÊTE PAS LÀ.
+// The server of the built page. It applies the verdict of `resolution.ts`,
+// but DOES NOT STOP THERE.
 //
-// 🔴 « TOUTE LA SÉCURITÉ VIT DANS LA RÈGLE PURE » ÉTAIT FAUX, ET C'EST UNE
-// REVUE PAR EXÉCUTION QUI L'A ÉTABLI (round 2, Critique 3), PAS UNE LECTURE :
-// `resolve()`, employé plus bas, est LEXICAL — il ne suit AUCUN lien
-// symbolique. Un lien posé dans la racine bâtie (`/lien.json → ../dessus/
-// secret.json`) traverse la garde de `resolution.ts` SANS QU'AUCUN `..`
-// N'APPARAISSE JAMAIS DANS L'URL : la composition entière — règle pure PLUS
-// ce module — est la frontière, pas la règle seule. La garantie réelle contre
-// les liens est le `realpath` ci-dessous, sur le chemin CANONIQUE.
+// 🔴 « ALL THE SECURITY LIVES IN THE PURE RULE » WAS FALSE, AND IT WAS A
+// REVIEW BY EXECUTION THAT ESTABLISHED IT (round 2, Critical 3), NOT A READING:
+// `resolve()`, used further down, is LEXICAL — it follows NO symbolic
+// link. A link placed in the built root (`/lien.json → ../dessus/
+// secret.json`) goes through the guard of `resolution.ts` WITHOUT ANY `..`
+// EVER SHOWING UP IN THE URL: the whole composition — pure rule PLUS
+// this module — is the boundary, not the rule alone. The real guarantee against
+// links is the `realpath` below, on the CANONICAL path.
 //
-// 🔴 CE MODULE LIT LE DISQUE, ET C'EST CE QUI LE REND DIFFÉRENT DE
-// `resolution.ts` : un trou jugé « sans exploitabilité » là-bas (parce que
-// cette règle ne touche rien) peut être exploitable ICI. Trois fois payé dans
-// ce lot — le nom vide, le lien symbolique, et le flux non détruit ci-dessous.
+// 🔴 THIS MODULE READS THE DISK, AND THAT IS WHAT MAKES IT DIFFERENT FROM
+// `resolution.ts`: a hole judged « not exploitable » over there (because
+// that rule touches nothing) may be exploitable HERE. Paid three times in
+// this batch — the empty name, the symbolic link, and the undestroyed stream below.
 
 import { createReadStream } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
@@ -29,11 +29,11 @@ import {
 import { resoudre } from './resolution';
 
 export interface DependancesPage {
-    /// Absente OU VIDE ⇒ le servant se retire, et le 404 générique reprend
-    /// la main. ⚠️ `''` DOIT être traité identiquement à `undefined` : le
-    /// type l'autorise, et `resolve('')` rend le RÉPERTOIRE COURANT du
-    /// processus — un servant qui ne testerait que `=== undefined`
-    /// publierait le dépôt entier sur une configuration presque vide.
+    /// Missing OR EMPTY ⇒ the server steps aside, and the generic 404 takes
+    /// over. ⚠️ `''` MUST be handled the same as `undefined`: the
+    /// type allows it, and `resolve('')` yields the CURRENT DIRECTORY of the
+    /// process — a server that only tested `=== undefined`
+    /// would publish the whole repository on an almost empty configuration.
     racinePage?: string;
 }
 
@@ -42,169 +42,169 @@ export async function servirPage(
     rep: ServerResponse,
     deps: DependancesPage,
 ): Promise<boolean> {
-    return servirAvecFlux(req, rep, deps, (chemin) => createReadStream(chemin));
+    return serveWithStream(req, rep, deps, (chemin) => createReadStream(chemin));
 }
 
-/// La même route, avec le flux de LECTURE injecté — seul point d'extension
-/// par rapport à `servirPage`, qui n'appelle jamais que `createReadStream`.
-/// Il n'existe QUE pour rendre éprouvable le chemin d'erreur d'en dessous :
-/// une lecture qui casse APRÈS que les en-têtes sont partis.
+/// The same route, with the READ stream injected — the only extension point
+/// compared with `servirPage`, which only ever calls `createReadStream`.
+/// It exists ONLY to make the error path below testable:
+/// a read that breaks AFTER the headers have gone.
 ///
-/// 🔴 CE COMMENTAIRE A MENTI TROIS FOIS DE SUITE SUR CE MÊME SUJET, CHAQUE
-/// CORRECTION EN PRODUISANT UNE NEUVE — le patron que `CLAUDE.md` nomme
-/// « corriger une affirmation fausse peut en produire une autre ». D'où la
-/// forme ci-dessous : CHAQUE affirmation porte la commande qui l'établit.
-/// Ne croire aucune d'elles ; les relancer. Toutes se lancent depuis la
-/// racine du dépôt, sauf les deux `vitest`, depuis `plateforme/`.
+/// 🔴 THIS COMMENT LIED THREE TIMES IN A ROW ON THIS SAME TOPIC, EACH
+/// FIX PRODUCING A NEW ONE — the pattern `CLAUDE.md` names
+/// « fixing a false claim can produce another one ». Hence the
+/// shape below: EACH claim carries the command that establishes it.
+/// Believe none of them; rerun them. All run from the
+/// repository root, except the two `vitest` ones, from `plateforme/`.
 ///
-/// ① LE RAPPEL PAR DÉFAUT N'EST PAS UN TROU DE COUVERTURE. Le seul appelant
-/// de `servirAvecFlux` dans le produit est `servirPage` lui-même ; tout le
-/// reste passe par `chaine.ts`, qui n'appelle que `servirPage`. Dans
-/// `routes-page.test.ts`, 21 des 23 tests montent un VRAI serveur
-/// (`demarrerServeur` → `servirTout` → `servirPage`, donc un vrai
-/// `createReadStream`) ; les 2 autres sont les tests unitaires d'ici.
-///   grep -rn 'servirPage\|servirAvecFlux' plateforme/src
-///   grep -c 'await demarrerServeur(' plateforme/src/http/page/routes-page.test.ts   → 21
+/// ① THE DEFAULT CALLBACK IS NOT A COVERAGE HOLE. The only caller
+/// of `serveWithStream` in the product is `servirPage` itself; all the
+/// rest goes through `chaine.ts`, which only calls `servirPage`. In (policy: allow-fr - file name)
+/// `routes-page.test.ts`, 21 of the 23 tests stand up a REAL server
+/// (`startServer` → `servirTout` → `servirPage`, hence a real
+/// `createReadStream`); the other 2 are the unit tests of here.
+///   grep -rn 'servirPage\|serveWithStream' plateforme/src
+///   grep -c 'await startServer(' plateforme/src/http/page/routes-page.test.ts   → 21
 ///   grep -c '    it(' plateforme/src/http/page/routes-page.test.ts                  → 23
-/// ⚠️ CES DEUX COMPTES DISAIENT 18 ET 20, ET ILS ÉTAIENT JUSTES À L'HEURE OÙ
-/// ILS ONT ÉTÉ ÉCRITS : la vague de correction de la revue finale a ajouté
-/// TROIS tests de cache au même fichier. **Les relancer, jamais les
-/// recopier** — c'est le « naufrage du 487 » de `CLAUDE.md`, et ce bloc-ci
-/// existe précisément pour que le prochain lecteur refasse le contrôle.
+/// ⚠️ THESE TWO COUNTS SAID 18 AND 20, AND THEY WERE RIGHT AT THE TIME
+/// THEY WERE WRITTEN: the fix wave of the final review added
+/// THREE cache tests to the same file. **Rerun them, never
+/// copy them** — that is the « shipwreck of 487 » of `CLAUDE.md`, and this block
+/// exists precisely so the next reader redoes the check.
 ///
-/// ② CE QUE `signaling/resilience.test.ts` ÉTABLIT — le PATRON, et lui seul :
-/// éprouver la mort d'un processus EST possible dans ce dépôt. Il lance le
-/// vrai point d'entrée `src/index.ts` en processus ENFANT (`spawn(tsxBin,
-/// …)`) et observe sa SURVIE (`child.exitCode`, `child.killed`). Prétendre
-/// qu'un tel précédent manque serait faux — c'était le mensonge n°1.
+/// ② WHAT `signaling/resilience.test.ts` ESTABLISHES — the PATTERN, and that alone:
+/// testing the death of a process IS possible in this repository. It launches the
+/// real entry point `src/index.ts` as a CHILD process (`spawn(tsxBin,
+/// …)`) and watches its SURVIVAL (`child.exitCode`, `child.killed`). Claiming
+/// that such a precedent is missing would be false — that was lie no. 1.
 ///   grep -n 'spawn(tsxBin\|child.exitCode' plateforme/src/signaling/resilience.test.ts
 ///
-/// ③ 🔴 CE QU'IL N'ÉTABLIT PAS — c'était le mensonge n°2, qui lui prêtait
-/// « un vrai `createReadStream` » : il n'exerce AUCUNE lecture de fichier
-/// servie au réseau, et ne touche ni ce module ni aucune route HTTP. Ses 3
-/// tests n'ouvrent QUE des WebSocket, sur `/signal` et `/agent`, contre une
-/// trame `null` et une trame au-delà de `maxPayload`. Il n'est donc un
-/// précédent que pour la FORME du montage, jamais pour son objet.
-///   grep -n createReadStream plateforme/src/signaling/resilience.test.ts   → RIEN
+/// ③ 🔴 WHAT IT DOES NOT ESTABLISH — that was lie no. 2, which credited it with
+/// « a real `createReadStream` »: it exercises NO file read
+/// served to the network, and touches neither this module nor any HTTP route. Its 3
+/// tests open ONLY WebSockets, on `/signal` and `/agent`, against a
+/// `null` frame and a frame beyond `maxPayload`. It is therefore a
+/// precedent only for the SHAPE of the setup, never for its object.
+///   grep -n createReadStream plateforme/src/signaling/resilience.test.ts   → NOTHING
 ///   grep -n 'new WebSocket(' plateforme/src/signaling/resilience.test.ts
-///     (les 3 seules connexions du fichier ; aucun `http.get`/`http.request`)
+///     (the only 3 connections of the file; no `http.get`/`http.request`)
 ///   grep -c WebSocket        plateforme/src/signaling/resilience.test.ts   → 8
-///     (témoin négatif du même fichier : le RIEN ci-dessus est une absence
-///      mesurée, pas un grep qui ne peut pas trouver — `CLAUDE.md`, « un zéro
-///      n'est interprétable qu'avec un témoin négatif »)
+///     (negative control of the same file: the NOTHING above is a measured
+///      absence, not a grep that cannot find — `CLAUDE.md`, « a zero
+///      can only be read with a negative control »)
 ///   grep -n 'describe(' plateforme/src/signaling/resilience.test.ts
 ///
-/// ④ POURQUOI CE PATRON N'A PAS ÉTÉ REPRIS ICI — un CHOIX, pas une
-/// impossibilité (③ dit pourquoi il ne se transposerait pas tel quel, mais
-/// rien n'interdisait d'en écrire l'équivalent) : son coût, et une suite
-/// dont la durée a déjà régressé une fois dans ce lot (round 3, Neuf 4).
-/// Mesuré le 22 août 2026, depuis `plateforme/`, QUATRE passes de chaque :
+/// ④ WHY THIS PATTERN WAS NOT REUSED HERE — a CHOICE, not an
+/// impossibility (③ says why it would not carry over as is, but
+/// nothing forbade writing its equivalent): its cost, and a suite
+/// whose duration already regressed once in this batch (round 3, New 4).
+/// Measured on 22 August 2026, from `plateforme/`, FOUR runs of each:
 ///   npx vitest run src/signaling/resilience.test.ts
-///     → 3 tests, `tests` de 523 ms à 1,15 s, soit ~175 à ~385 ms par test
+///     → 3 tests, `tests` from 523 ms to 1.15 s, i.e. ~175 to ~385 ms per test
 ///   npx vitest run src/http/page/routes-page.test.ts
-///     → 20 tests, `tests` de 516 à 872 ms, soit ~26 à ~44 ms par test
-/// 🔴 NE PAS CITER UNE PASSE UNIQUE : ces durées varient du simple au double
-/// d'une passe à l'autre, et une valeur isolée se lira comme fausse au
-/// premier relanceur — la première rédaction de ce bloc a fait exactement
-/// cela. Ce qui porte l'argument est l'ORDRE DE GRANDEUR, pas un chiffre :
-/// en appariant les EXTRÊMES, le montage à processus reste de 4× (175/44)
-/// à 15× (385/26) plus cher par test — jamais moins de 4×. ⚠️ Et vitest
-/// bascule en `1.15s` au-delà de la seconde : un dépouillement qui ne
-/// cherche que `ms` PERD la passe la plus lente.
-/// Ce facteur est en outre le cas le PLUS favorable au montage à processus :
-/// `resilience.test.ts` amortit son `spawn` sur tout le fichier par un
-/// `beforeAll` unique, là où le flux fautif d'ici se refabrique par test.
+///     → 20 tests, `tests` from 516 to 872 ms, i.e. ~26 to ~44 ms per test
+/// 🔴 DO NOT QUOTE A SINGLE RUN: these durations vary up to twofold
+/// from one run to the next, and an isolated value will read as false to the
+/// first person who reruns it — the first draft of this block did exactly
+/// that. What carries the argument is the ORDER OF MAGNITUDE, not a figure:
+/// pairing the EXTREMES, the process setup stays from 4× (175/44)
+/// to 15× (385/26) more costly per test — never less than 4×. ⚠️ And vitest
+/// switches to `1.15s` beyond one second: a tally that only
+/// looks for `ms` LOSES the slowest run.
+/// This factor is moreover the MOST favourable case for the process setup:
+/// `resilience.test.ts` amortises its `spawn` over the whole file through a
+/// single `beforeAll`, whereas the faulty stream here is rebuilt per test.
 ///   grep -c '^beforeAll(' plateforme/src/signaling/resilience.test.ts   → 1
-///     (⚠️ `grep -c beforeAll` rendrait 2 : la ligne d'`import` compte aussi)
+///     (⚠️ `grep -c beforeAll` would yield 2: the `import` line counts too)
 ///
-/// ⑤ 🔴 CE QUE CE CHOIX COÛTE, ET QUE PERSONNE NE DOIT LIRE COMME COUVERT :
-/// les DEUX tests qui appellent `servirAvecFlux` (par une fabrique commune)
-/// n'observent que la FONCTION face à une erreur de flux, sur un `req`/`rep`
-/// FABRIQUÉS — ni socket, ni port, ni processus serveur. AUCUN test de
-/// `plateforme/src` n'a jamais vu une erreur de lecture MI-RÉPONSE sur un
-/// serveur HTTP réel, ni la survie du service à un VRAI `EMFILE` : la seule
-/// erreur mi-flux jamais exercée est poussée à la main, et elle le dit.
+/// ⑤ 🔴 WHAT THIS CHOICE COSTS, AND WHAT NOBODY MUST READ AS COVERED:
+/// the TWO tests that call `serveWithStream` (through a shared factory)
+/// only observe the FUNCTION facing a stream error, on a MADE-UP
+/// `req`/`rep` — no socket, no port, no server process. NO test of
+/// `plateforme/src` has ever seen a MID-RESPONSE read error on a
+/// real HTTP server, nor the survival of the service to a REAL `EMFILE`: the only
+/// mid-stream error ever exercised is pushed by hand, and it says so.
 ///   grep -rn EMFILE plateforme/src | grep -vE ':[0-9]+: *//'
-///     → UNE seule ligne, dans le test : un `this.emit('error', …)` sur un
-///       flux fabriqué. Tout le reste n'est que du commentaire.
-///     ⚠️ LE FILTRE `grep -v` N'EST PAS UN ORNEMENT : sans lui, ce grep SE
-///       COMPTE LUI-MÊME — le paragraphe que vous lisez nomme `EMFILE` trois
-///       fois. La première rédaction de ce bloc annonçait « 3 commentaires
-///       de ce fichier » et était fausse à l'instant où elle s'écrivait.
-///       N'en tirer AUCUN nombre sans le filtre.
-export async function servirAvecFlux(
+///     → ONE single line, in the test: a `this.emit('error', …)` on a
+///       made-up stream. All the rest is just comment.
+///     ⚠️ THE `grep -v` FILTER IS NOT AN ORNAMENT: without it, this grep
+///       COUNTS ITSELF — the paragraph you are reading names `EMFILE` three
+///       times. The first draft of this block announced « 3 comments
+///       of this file » and was false the instant it was written.
+///       Draw NO number from it without the filter.
+export async function serveWithStream(
     req: IncomingMessage,
     rep: ServerResponse,
     deps: DependancesPage,
     ouvrirFlux: (chemin: string) => Readable,
 ): Promise<boolean> {
     if (!deps.racinePage) return false;
-    // 🔴 HORS GET/HEAD, ON SE RETIRE — jamais un 405. Voir le § 4.3 de la spec :
-    // le repli SPA résout n'importe quel chemin, donc un 405 masquerait la
-    // faute de frappe d'un appel d'API au lieu de la nommer.
+    // 🔴 OUTSIDE GET/HEAD, WE STEP ASIDE — never a 405. See § 4.3 of the spec:
+    // the SPA fallback resolves any path, so a 405 would mask the
+    // typo of an API call instead of naming it.
     if (req.method !== 'GET' && req.method !== 'HEAD') return false;
 
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     const verdict = resoudre(chemin);
-    // Un refus rend `false` : la chaîne se termine sur le 404 générique, plutôt
-    // que d'inventer une SECONDE forme de 404 que rien ne testerait.
+    // A refusal returns `false`: the chain ends on the generic 404, rather
+    // than inventing a SECOND form of 404 that nothing would test.
     if (!verdict.ok) return false;
 
     const racine = resolve(deps.racinePage);
-    const candidat = resolve(racine, verdict.fichier);
-    // Ceinture LEXICALE. Elle ne protège que d'une composition qui sortirait
-    // par SEGMENTS (`..`) — `resolution.ts` l'a déjà refusée en amont, donc
-    // ceci ne coûte rien de plus ; elle ne protège PAS d'un lien symbolique,
-    // qui ne laisse jamais paraître de `..` ici. La garantie contre les
-    // liens est le bloc `realpath` qui suit.
+    const candidat = resolve(racine, verdict.file);
+    // LEXICAL belt. It only protects against a composition that would get out
+    // through SEGMENTS (`..`) — `resolution.ts` already refused it upstream, so
+    // this costs nothing more; it does NOT protect against a symbolic link,
+    // which never lets any `..` show here. The guarantee against
+    // links is the `realpath` block that follows.
     if (candidat !== racine && !candidat.startsWith(racine + sep)) return false;
 
     let racineReelle: string;
-    let fichierReel: string;
+    let realFile: string;
     try {
-        // 🔴 LA RACINE ELLE-MÊME PEUT LÉGITIMEMENT ÊTRE UN LIEN — la résoudre
-        // aussi, jamais seulement le fichier : comparer un chemin canonique
-        // à un chemin qui ne l'est pas rendrait la comparaison de préfixe
-        // arbitraire.
+        // 🔴 THE ROOT ITSELF MAY LEGITIMATELY BE A LINK — resolve it
+        // too, never just the file: comparing a canonical path
+        // to a path that is not would make the prefix comparison
+        // arbitrary.
         //
-        // ⚠️ COURSE `realpath` → `open` (TOCTOU), jugée et classée (round 3) :
-        // réelle, mais elle ne compte pas ici — il faudrait que l'attaquant
-        // puisse ÉCRIRE dans la racine bâtie, où il dispose déjà d'une
-        // attaque plus simple, et `createReadStream` plus bas ouvre le
-        // chemin CANONIQUE (`fichierReel`), pas le lien.
+        // ⚠️ `realpath` → `open` RACE (TOCTOU), judged and filed (round 3):
+        // real, but it does not matter here — the attacker would need to be able
+        // to WRITE into the built root, where they already have a
+        // simpler attack, and `createReadStream` below opens the
+        // CANONICAL path (`realFile`), not the link.
         racineReelle = await realpath(racine);
-        fichierReel = await realpath(candidat);
+        realFile = await realpath(candidat);
     } catch {
-        // Un lien MORT ou un fichier absent lève ici — c'est le nouveau
-        // « fichier introuvable », traité identiquement : refus silencieux,
-        // jamais un 500.
+        // A DEAD link or a missing file throws here — it is the new
+        // « file not found », handled the same way: silent refusal,
+        // never a 500.
         return false;
     }
-    // 🔴 LA GARANTIE RÉELLE CONTRE LES LIENS SYMBOLIQUES : la comparaison
-    // porte sur les DEUX chemins CANONIQUES, après résolution des liens par
-    // `realpath`. C'est ce que la ceinture lexicale ci-dessus NE pouvait pas
-    // offrir — mesuré (round 2, Critique 3) : `/lien.json → ../dessus/
-    // vole.json` et `/lien-rep/vole.html → ../dessus/vole.html` rendaient
-    // tous deux `200` avec le contenu VOLÉ avant ce bloc.
-    if (fichierReel !== racineReelle && !fichierReel.startsWith(racineReelle + sep)) {
+    // 🔴 THE REAL GUARANTEE AGAINST SYMBOLIC LINKS: the comparison
+    // applies to the TWO CANONICAL paths, after links are resolved by
+    // `realpath`. That is what the lexical belt above could NOT
+    // offer — measured (round 2, Critical 3): `/lien.json → ../dessus/
+    // vole.json` and `/lien-rep/vole.html → ../dessus/vole.html` both returned
+    // `200` with the STOLEN content before this block.
+    if (realFile !== racineReelle && !realFile.startsWith(racineReelle + sep)) {
         return false;
     }
 
     let infos;
     try {
-        infos = await stat(fichierReel);
+        infos = await stat(realFile);
     } catch {
         return false;
     }
     if (!infos.isFile()) return false;
 
-    // 🔴 TROIS JEUX D'EN-TÊTES, ET LE CHOIX SE LIT EN UNE LIGNE PARCE QUE LA
-    // RÈGLE A DÉJÀ TRANCHÉ. `verdict.empreinte` vient de `resolution.ts`, qui
-    // classe par EMPLACEMENT (le répertoire d'actifs de Vite) et non par
-    // extension : c'est ce classement-là qui empêche un an d'`immutable` sur
-    // `hub.webmanifest` ou `favicon.ico`, dont le nom ne change jamais.
-    // Décider ici, sur le disque, aurait rendu la politique inéprouvable sans
-    // disque.
+    // 🔴 THREE HEADER SETS, AND THE CHOICE READS IN ONE LINE BECAUSE THE
+    // RULE HAS ALREADY DECIDED. `verdict.empreinte` comes from `resolution.ts`, which
+    // classifies by LOCATION (the Vite assets directory) and not by
+    // extension: it is that classification that prevents a year of `immutable` on
+    // `hub.webmanifest` or `favicon.ico`, whose name never changes.
+    // Deciding here, on the disk, would have made the policy untestable without
+    // a disk.
     const entetes = verdict.document
         ? ENTETES_DOCUMENT
         : verdict.empreinte
@@ -217,62 +217,62 @@ export async function servirAvecFlux(
     }
 
     try {
-        // 🔴 `pipeline()`, JAMAIS `.pipe()` — mesuré (round 2, Critiques 1 et
-        // 2), et les deux se corrigent PAR LE MÊME CHANGEMENT :
-        // `.pipe()` NE DÉTRUIT PAS LA SOURCE quand la destination meurt
-        // (client qui abandonne — rechargement, navigation, onglet fermé) :
-        // le descripteur reste ouvert pour toujours, monotone, jamais rendu
-        // — `0 abandons → 1 fd`, `40 → 41`, `160 → 161`. `pipeline()` détruit
-        // les DEUX bouts sur une fermeture prématurée OU une erreur, des
-        // deux côtés.
-        // `.pipe()` n'attache non plus AUCUN gestionnaire d'erreur sur la
-        // source : une lecture qui casse APRÈS que les en-têtes sont partis
-        // (un `EMFILE`, atteint quand le leg ci-dessus s'est assez accumulé)
-        // émettrait alors une erreur SANS ÉCOUTEUR — et un `EventEmitter` qui
-        // émet `error` sans écouteur LÈVE, hors de toute portée qu'un
-        // `try/catch` de ce fichier pourrait attraper : mesuré, le service
-        // ENTIER meurt (signaling compris).
-        await pipeline(ouvrirFlux(fichierReel), rep);
+        // 🔴 `pipeline()`, NEVER `.pipe()` — measured (round 2, Criticals 1 and
+        // 2), and both get fixed BY THE SAME CHANGE:
+        // `.pipe()` DOES NOT DESTROY THE SOURCE when the destination dies
+        // (a client that gives up — reload, navigation, closed tab):
+        // the descriptor stays open forever, monotonic, never given back
+        // — `0 abandons → 1 fd`, `40 → 41`, `160 → 161`. `pipeline()` destroys
+        // BOTH ends on a premature close OR an error, on
+        // both sides.
+        // `.pipe()` also attaches NO error handler on the
+        // source: a read that breaks AFTER the headers have gone
+        // (an `EMFILE`, reached once the leak above has piled up enough)
+        // would then emit an error WITH NO LISTENER — and an `EventEmitter` that
+        // emits `error` with no listener THROWS, out of any scope that a
+        // `try/catch` of this file could catch: measured, the WHOLE
+        // service dies (signaling included).
+        await pipeline(ouvrirFlux(realFile), rep);
     } catch (cause) {
-        // Les en-têtes sont déjà PARTIS : le statut ne peut plus changer, il
-        // n'y a donc rien à renvoyer de plus juste qu'un refus. La seule
-        // décision qui reste est de ne PAS laisser la réponse pendre sur un
-        // corps chunked jamais terminé (`.pipe()` n'appelle `end()` que sur
-        // l'évènement `'end'`, jamais sur une erreur) : on détruit la
-        // connexion plutôt que de la laisser ouverte indéfiniment.
+        // The headers have already GONE: the status can no longer change, so
+        // there is nothing more accurate to send back than a refusal. The only
+        // decision left is NOT to leave the response hanging on a
+        // chunked body never finished (`.pipe()` only calls `end()` on
+        // the `'end'` event, never on an error): we destroy the
+        // connection rather than leave it open indefinitely.
         //
-        // 🔴 UN `catch` MUET ÉTAIT LE DÉFAUT NEUF 1 DU ROUND 3 : sans cette
-        // ligne, un `EMFILE` passait de FATAL ET BRUYANT (avant ce lot) à
-        // SILENCIEUX ET SANS TRACE — la panne la plus discrète possible, ce
-        // que `CLAUDE.md` combat en premier. Le POINT D'APPEL de `servirTout`
-        // dans `demarrerServeur` (`serveur.ts`) ne peut RIEN voir : `return
-        // true` en fin de fonction lui dit que la route a été servie. Le
-        // chemin demandé est journalisé, PAS le corps de la requête — ce
-        // dépôt n'écrit jamais dans un journal ce qui pourrait porter un
+        // 🔴 A SILENT `catch` WAS NEW DEFECT 1 OF ROUND 3: without this
+        // line, an `EMFILE` went from FATAL AND LOUD (before this batch) to
+        // SILENT AND TRACELESS — the most discreet failure possible, which
+        // `CLAUDE.md` fights first. The CALL SITE of `servirTout`
+        // in `startServer` (`serveur.ts`) can see NOTHING: `return
+        // true` at the end of the function tells it the route was served. The
+        // requested path is logged, NOT the request body — this
+        // repository never writes to a log what could carry a
         // secret.
-        // ⚠️ CE COMMENTAIRE CITAIT AUPARAVANT UN NUMÉRO DE LIGNE
-        // (`serveur.ts:308`) QUE `CLAUDE.md` PROSCRIT — ET LA CITATION N'ÉTAIT
-        // PAS FAUTIVE : elle était EXACTE au moment où elle a été posée, et
-        // ENCORE EXACTE la fois où un relevé ultérieur l'a requalifiée
-        // d'« exacte aujourd'hui ». Elle est devenue fausse APRÈS, en silence,
-        // parce qu'une tâche postérieure a ajouté des lignes plus haut dans
-        // `serveur.ts` et décalé la cible de 308 à 316 :
-        //   git show 912f1e2:plateforme/src/http/serveur.ts | grep -n "route HTTP en échec"
-        //     → 308:                console.error(`route HTTP en échec : ${String(cause)}`);
-        //   git show 9e06398:plateforme/src/http/serveur.ts | grep -n "route HTTP en échec"
-        //     → 308:                console.error(`route HTTP en échec : ${String(cause)}`);
-        //   grep -n "route HTTP en échec" plateforme/src/http/serveur.ts   # à HEAD
-        //     → 316:                console.error(`route HTTP en échec : ${String(cause)}`);
-        // C'est exactement ce que `CLAUDE.md` dit de ce patron : « un numéro
-        // de ligne est faux dès qu'on écrit au-dessus — et on écrit toujours
-        // au-dessus ». Personne n'a été négligent ; c'est ce qui rend la règle
-        // nécessaire contre le TEMPS, pas contre l'inattention. Corrigé en
-        // NOMMANT la chose plutôt qu'en comptant les lignes qui l'en séparent
-        // — revue transverse de fin de lot, 22 août 2026 (round de correction
-        // 1 : la première rédaction de ce correctif accusait à tort les deux
-        // commits ci-dessus d'avoir posé puis validé une citation fausse,
-        // faute d'avoir cherché ce texte précis sur ces commits précis).
-        console.error(`page servie en echec de lecture, chemin=${chemin} : ${String(cause)}`);
+        // ⚠️ THIS COMMENT USED TO QUOTE A LINE NUMBER
+        // (`serveur.ts:308`) THAT `CLAUDE.md` FORBIDS — AND THE QUOTE WAS NOT
+        // AT FAULT: it was ACCURATE when it was set down, and
+        // STILL ACCURATE when a later survey requalified it
+        // as « accurate today ». It became false AFTERWARDS, silently,
+        // because a later task added lines higher up in
+        // `serveur.ts` and shifted the target from 308 to 316:
+        //   git show 912f1e2:plateforme/src/http/serveur.ts | grep -n "HTTP route failed"
+        //     → 308:                console.error(`HTTP route failed: ${String(cause)}`);
+        //   git show 9e06398:plateforme/src/http/serveur.ts | grep -n "HTTP route failed"
+        //     → 308:                console.error(`HTTP route failed: ${String(cause)}`);
+        //   grep -n "HTTP route failed" plateforme/src/http/serveur.ts   # at HEAD
+        //     → 316:                console.error(`HTTP route failed: ${String(cause)}`);
+        // That is exactly what `CLAUDE.md` says of this pattern: « a line
+        // number is false as soon as someone writes above it — and someone always writes
+        // above it ». Nobody was careless; that is what makes the rule
+        // necessary against TIME, not against inattention. Fixed by
+        // NAMING the thing rather than counting the lines between them
+        // — cross-cutting review at the end of the batch, 22 August 2026 (fix round
+        // 1: the first draft of this fix wrongly accused the two
+        // commits above of having set and then approved a false quote,
+        // for not having searched for this precise text on these precise commits).
+        console.error(`page served but failed to read, path=${chemin}: ${String(cause)}`);
         if (!rep.destroyed) rep.destroy();
     }
     return true;

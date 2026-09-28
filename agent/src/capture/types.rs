@@ -1,27 +1,27 @@
-//! Les types purs de `capture.rs` qui ne touchent à aucun champ privé de
-//! `DesktopCapture` : pourquoi une acquisition échoue, ce qu'une duplication
-//! couvre, et comment lire une duplication qui peut être absente.
+//! The pure types of `capture.rs` that touch no private field of
+//! `DesktopCapture`: why an acquisition fails, what a duplication
+//! covers, and how to read a duplication that may be absent.
 //!
-//! Extrait à la tâche 6 quater du sous-bloc D2 : `EchecAcquisition` portant
-//! désormais le HRESULT nu de l'échec qui a motivé la réouverture (et sa
-//! documentation associée), le fichier parent dépassait le plafond de 500
-//! lignes (`CLAUDE.md`). Même raison d'extraction que `capture/ouverture.rs` :
-//! aucun de ces types n'a besoin d'être dans le fichier qui définit
-//! `DesktopCapture`. Renommé `types.rs` (et non plus `echec.rs`) en relecture
-//! de la même tâche : `CibleCapture` n'est pas un échec.
+//! Extracted in task 6 quater of sub-block D2: `EchecAcquisition` now
+//! carrying the bare HRESULT of the failure that motivated the reopening (and its
+//! associated documentation), the parent file exceeded the 500-line
+//! cap (`CLAUDE.md`). Same extraction reason as `capture/ouverture.rs`:
+//! none of these types needs to be in the file that defines
+//! `DesktopCapture`. Renamed `types.rs` (and no longer `echec.rs`) in review
+//! of the same task: `CibleCapture` is not a failure.
 
 use windows::Win32::Graphics::Dxgi::IDXGIOutputDuplication;
 
-/// Pourquoi une acquisition d'image a échoué, une fois les reprises épuisées.
+/// Why a frame acquisition failed, once the resumptions are exhausted.
 ///
-/// `AccesPerdu` ne remonte pas à la première perte : `next_frame` tente de se
-/// rouvrir d'abord (voir `FenetreDeReprise`). Le recevoir signifie « je n'ai
-/// pas pu revenir dans le délai imparti », pas « l'accès vient d'être perdu ».
+/// `AccesPerdu` does not come up at the first loss: `next_frame` tries to
+/// reopen first (see `FenetreDeReprise`). Receiving it means "I could
+/// not come back within the allotted time", not "access has just been lost".
 ///
-/// Porte le HRESULT nu (`e.code().0`) qui a motivé la réouverture : sans lui,
-/// diagnostiquer un épuisement de la fenêtre de reprise oblige à relire le
-/// code pour deviner le code d'erreur, comme l'a dû faire le rapport de la
-/// mesure du 1ᵉʳ août 2026.
+/// Carries the bare HRESULT (`e.code().0`) that motivated the reopening: without it,
+/// diagnosing an exhaustion of the resumption window forces re-reading the
+/// code to guess the error code, as the report of the
+/// measurement of 1 August 2026 had to do.
 pub enum EchecAcquisition {
     AccesPerdu(i32),
     Panne(anyhow::Error),
@@ -32,7 +32,7 @@ impl std::fmt::Display for EchecAcquisition {
         match self {
             Self::AccesPerdu(code) => write!(
                 f,
-                "accès à la duplication perdu (hresult={code:#010x}) et non repris en {:?}",
+                "access to the duplication lost (hresult={code:#010x}) and not recovered within {:?}",
                 crate::capture_reprise::DUREE_FENETRE_REPRISE
             ),
             Self::Panne(e) => write!(f, "{e:#}"),
@@ -40,39 +40,41 @@ impl std::fmt::Display for EchecAcquisition {
     }
 }
 
-/// Ce que cette duplication couvre — et donc ce qu'il faut rouvrir après une
-/// perte d'accès.
+/// What this duplication covers — and hence what must be reopened after an
+/// access loss.
 ///
-/// **Un nom de sortie, jamais un index.** `(index_adaptateur, index_sortie)`
-/// est positionnel : il change dès qu'une sortie apparaît ou disparaît. Or
-/// c'est exactement ce qui vient de se produire quand on rouvre. `\\.\DISPLAYn`
-/// est stable.
+/// **An output name, never an index.** `(index_adaptateur, index_sortie)`
+/// is positional: it changes as soon as an output appears or disappears. Yet
+/// that is exactly what has just happened when we reopen. `\\.\DISPLAYn`
+/// is stable.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CibleCapture {
-    /// La sortie qui compose le bureau, quelle qu'elle soit — comportement de
-    /// `DesktopCapture::new()`. Résolue à chaque ouverture, donc une
-    /// réouverture peut légitimement tomber sur une autre sortie.
+    /// The output that composes the desktop, whichever it is — the behaviour of
+    /// `DesktopCapture::new()`. Resolved at each opening, so a
+    /// reopening may legitimately land on another output.
     Bureau,
-    /// Une sortie précise, désignée par son nom.
+    /// A specific output, designated by its name.
     Sortie(String),
 }
 
-/// Lit la duplication si elle est présente, ou l'échec qui correspond à son
+/// Reads the duplication if it is present, or the failure corresponding to its
 /// absence.
 ///
-/// **Correctif de relecture, tâche 6 quater.** `rouvrir()` pose `None` puis
-/// peut sortir en erreur sur l'un de ses trois appels externes (fabrique DXGI,
-/// résolution de la sortie, duplication elle-même) : dans ce cas `None`
-/// PERSISTE au-delà de `rouvrir()`, jusqu'à la tentative suivante — un
-/// commentaire antérieur affirmait le contraire, à tort. Rendre
-/// `AccesPerdu(dernier_code_perdu)` plutôt qu'une `Panne` est ce qui permet à
-/// `next_frame` de retenter la réouverture au lieu de déclarer la source
-/// épuisée sur un échec qui n'a rien de définitif : une absence de duplication
-/// hors de `rouvrir()` n'est donc plus, depuis ce correctif, un défaut de
-/// programmation — c'est un état normal de la fenêtre de reprise.
+/// **Re-read fix, task 6 quater.** `rouvrir()` sets `None` then
+/// may exit with an error on one of its three external calls (DXGI factory,
+/// output resolution, the duplication itself): in that case `None`
+/// PERSISTS beyond `rouvrir()`, until the next attempt — an
+/// earlier comment wrongly claimed the opposite. Returning
+/// `AccesPerdu(last_lost_code)` rather than a `Panne` is what lets
+/// `next_frame` retry the reopening instead of declaring the source
+/// exhausted on a failure that is in no way definitive: an absence of duplication
+/// outside `rouvrir()` is therefore, since this fix, no longer a
+/// programming defect — it is a normal state of the resumption window.
 pub(super) fn lire(
     duplication: &Option<IDXGIOutputDuplication>,
-    dernier_code_perdu: i32,
+    last_lost_code: i32,
 ) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
-    duplication.as_ref().ok_or(EchecAcquisition::AccesPerdu(dernier_code_perdu))
+    duplication
+        .as_ref()
+        .ok_or(EchecAcquisition::AccesPerdu(last_lost_code))
 }

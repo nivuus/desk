@@ -1,93 +1,95 @@
-//! Le fil du tour de roue : la cadence du ré-arbitrage, et le sondage du
-//! presse-papier HORS du verrou global.
+//! The wheel-round thread: the re-arbitration cadence, and polling the
+//! clipboard OUTSIDE the global lock.
 //!
-//! **Extrait de `registre.rs` dans le round de correction 1 (25 août 2026),
-//! parce que ses correctifs y ont porté le fichier à 508 lignes pour un
-//! plafond de projet à 500.** Extraire, jamais comprimer — même motif et même
-//! montage que `parts.rs`, `porteurs.rs` et `presse_papier.rs`, les trois
-//! voisins déjà extraits de `sommeil.rs` pour cette raison.
+//! **Extracted from `registre.rs` in fix round 1 (25 August 2026),
+//! because its fixes had taken the file to 508 lines for a
+//! project cap of 500.** Extract, never compress — same reason and same
+//! set-up as `parts.rs`, `porteurs.rs` and `presse_papier.rs`, the three
+//! neighbours already extracted from `sommeil.rs` for that reason.
 //!
-//! **Ce qui a guidé la COUPE, et non la seule arithmétique** : `registre.rs`
-//! garde *le registre lui-même* — l'état, son point d'accès, et les quatre
-//! opérations qui le touchent (`distribuer`, `oublier`, `inscrire`,
-//! `retirer`). Ce fichier-ci est *le FIL qui les appelle en cadence*, ce qui
-//! n'est pas la même responsabilité : il porte une horloge et une E/S Win32,
-//! le registre n'en a aucune.
+//! **What guided the CUT, and not arithmetic alone**: `registre.rs`
+//! keeps *the registry itself* — the state, its access point, and the four
+//! operations touching it (`distribuer`, `oublier`, `inscrire`,
+//! `retirer`). This file is *the THREAD that calls them on a cadence*, which
+//! is not the same responsibility: it carries a clock and Win32 I/O,
+//! the registry has none.
 //!
-//! **Transposition, pas réécriture** : le bloc est déplacé à l'identique,
-//! aucune valeur, aucun ordre d'opération, aucune signature n'a changé — seule
-//! la visibilité de `demarrer_le_tour_de_roue` passe à `pub(super)` pour
-//! rester atteignable depuis `registre.rs`, qui l'appelle.
+//! **Transposition, not rewrite**: the block is moved identically,
+//! no value, no order of operations, no signature changed — only
+//! the visibility of `start_the_round` moves to `pub(super)` to
+//! stay reachable from `registre.rs`, which calls it.
 
 use std::time::Instant;
 
-use super::{distribuer, etat, parts, porteurs, presse_papier, purger_les_inaptitudes, PERIODE_REARBITRAGE};
+use super::{
+    distribuer, etat, parts, porteurs, presse_papier, purger_les_inaptitudes, PERIODE_REARBITRAGE,
+};
 
-/// **Un seul fil pour tout le processus**, démarré à la première inscription.
+/// **A single thread for the whole process**, started at the first registration.
 ///
-/// **La sûreté ne tient pas au `sleep` ci-dessous.** Ce fil est lancé DEPUIS la
-/// fermeture d'initialisation de `ETAT.get_or_init` ; c'est
-/// `OnceLock::get_or_init` lui-même qui garantit qu'un second fil appelant
-/// `etat()` pendant que cette fermeture tourne encore **bloque** jusqu'à ce
-/// qu'elle se termine — la réentrance qui paniquerait serait celle du *même*
-/// fil, qui n'a pas lieu ici. Le `sleep` n'est qu'une cadence, pas une garde.
-pub(super) fn demarrer_le_tour_de_roue() {
+/// **Safety does not rest on the `sleep` below.** This thread is launched FROM the
+/// initialisation closure of `ETAT.get_or_init`; it is
+/// `OnceLock::get_or_init` itself that guarantees that a second thread calling
+/// `etat()` while this closure is still running **blocks** until
+/// it finishes — the reentrancy that would panic would be that of the *same*
+/// thread, which does not happen here. The `sleep` is only a cadence, not a guard.
+pub(super) fn start_the_round() {
     std::thread::spawn(|| {
-        let mut sondeur = crate::presse_papier::Sondeur::nouveau();
+        let mut sondeur = crate::presse_papier::Sondeur::new();
         loop {
             std::thread::sleep(PERIODE_REARBITRAGE);
 
-            // 🔴 **HORS DU VERROU, ET C'EST TOUT L'INTÉRÊT DE CETTE LIGNE.**
-            // `sondeur.tour()` fait une E/S Win32 — `GetClipboardSequenceNumber`,
-            // puis `OpenClipboard`/`GetClipboardData` quand le compteur a bougé.
-            // `OpenClipboard` est une ressource CONTENDUE de la station de
-            // fenêtres : il échoue, ou attend, dès qu'une autre application la
-            // tient. Placée sous `etat()` — le verrou GLOBAL du registre, un
-            // unique `Mutex<Etat>` pour tout le processus —, elle bloquerait
-            // pendant tout ce temps `inscrire`, `retirer`, `signaler` et
-            // `echec_de_reveil`, c'est-à-dire l'attache et le retrait de TOUTES
-            // les fenêtres, et le retour d'un réveil refusé.
+            // 🔴 **OUTSIDE THE LOCK, AND THAT IS THE WHOLE POINT OF THIS LINE.**
+            // `sondeur.tour()` does Win32 I/O — `GetClipboardSequenceNumber`,
+            // then `OpenClipboard`/`GetClipboardData` when the counter has moved.
+            // `OpenClipboard` is a CONTENDED resource of the window
+            // station: it fails, or waits, as soon as another application
+            // holds it. Placed under `etat()` — the registry's GLOBAL lock, a
+            // single `Mutex<Etat>` for the whole process —, it would block
+            // all that time `inscrire`, `retirer`, `signaler` and
+            // `echec_de_reveil`, that is the attach and removal of ALL
+            // windows, and the return of a refused wake-up.
             //
-            // La spécification place le sondage « sur le tour de roue » sans
-            // dire de quel côté du verrou ; c'est le plan (D-P1-3, divergence
-            // E3) qui a tranché, et c'est un défaut corrigé avant d'exister.
+            // The specification places polling "on the wheel round" without
+            // saying on which side of the lock; it is the plan (D-P1-3, divergence
+            // E3) that decided, and it is a defect fixed before it existed.
             //
-            // Seul le RÉSULTAT — une `Annonce` déjà normalisée, bornée et
-            // dédupliquée — entre sous le verrou, plus bas.
+            // Only the RESULT — an `Annonce` already normalised, bounded and
+            // deduplicated — enters under the lock, below.
             //
-            // Le garde d'armement `presse_papier::actif()` vit à l'intérieur de
-            // `tour()`, AVANT toute lecture : `PRESSE_PAPIER=0` empêche donc
-            // jusqu'à la lecture du compteur, pas seulement l'envoi. Le
-            // dupliquer ici doublerait une décision déjà prise au bon endroit.
+            // The `presse_papier::actif()` arming guard lives inside
+            // `tour()`, BEFORE any read: `PRESSE_PAPIER=0` therefore prevents
+            // even reading the counter, not only the sending. Duplicating
+            // it here would duplicate a decision already taken at the right place.
             //
-            // ⚠️ **Le sens INVERSE le teste une seconde fois, et ce n'est PAS
-            // le doublon que la phrase ci-dessus interdit** : `actif()` y garde
-            // un autre point de décision — l'ÉCRITURE, servie depuis un fil de
-            // fenêtre (`sommeil::presse_papier::ecrire_avec`). Sans lui,
-            // `PRESSE_PAPIER=0` couperait la lecture et laisserait l'écriture,
-            // et « le mécanisme entier est désarmé » serait une demi-vérité.
-            // 🔴 **AVANT `tour()`, et l'ordre EST le mécanisme** (sous-bloc
-            // P2). Consomme l'écriture que le fil de FENÊTRE a posée dans
-            // `Etat` en servant un collage, et arme sur elle les gardes n°1 et
-            // n°2 de D5. Placée après `tour()`, elle arriverait trop tard : le
-            // tour aurait déjà relu notre propre texte et l'aurait renvoyé aux
-            // fenêtres.
+            // ⚠️ **The REVERSE direction tests it a second time, and it is NOT
+            // the duplicate the sentence above forbids**: `actif()` there guards
+            // another decision point — the WRITE, served from a window
+            // thread (`sommeil::presse_papier::write_with`). Without it,
+            // `PRESSE_PAPIER=0` would cut reading and leave writing,
+            // and "the whole mechanism is disarmed" would be a half-truth.
+            // 🔴 **BEFORE `tour()`, and the order IS the mechanism** (sub-block
+            // P2). Consumes the write the WINDOW thread put into
+            // `Etat` while serving a paste, and arms D5's guards no. 1 and
+            // no. 2 on it. Placed after `tour()`, it would arrive too late: the
+            // round would already have re-read our own text and sent it back to the
+            // windows.
             presse_papier::armer_les_gardes(&mut sondeur);
 
             let annonce = sondeur.tour();
 
-            // 🔴 **LA SECONDE PRISE (D-P3-6), APRÈS `tour()` ET AVANT
-            // `distribuer`.** `armer_les_gardes` ci-dessus a consommé
-            // l'écriture qui EXISTAIT avant le tour ; celle-ci consomme celle
-            // qui est ARRIVÉE PENDANT. Sans elle, un second collage survenu
-            // entre l'armement et la lecture passe les DEUX gardes de D5 — le
-            // n°1 parce que le compteur a rebougé, le n°2 parce que le texte
-            // mémorisé est celui du collage PRÉCÉDENT — et son propre texte
-            // repart vers les N fenêtres.
+            // 🔴 **THE SECOND TAKE (D-P3-6), AFTER `tour()` AND BEFORE
+            // `distribuer`.** `armer_les_gardes` above consumed
+            // the write that EXISTED before the round; this one consumes the one
+            // that ARRIVED DURING it. Without it, a second paste happening
+            // between arming and reading passes BOTH of D5's guards — no. 1
+            // because the counter moved again, no. 2 because the memorised text
+            // is that of the PREVIOUS paste — and its own text
+            // goes back out to the N windows.
             //
-            // La course a été MESURÉE avant d'être fermée, par un test rouge
-            // sur l'arbre intact et sans aucune mutation ; sa démonstration et
-            // le résidu qui subsiste vivent auprès de
+            // The race was MEASURED before being closed, by a red test
+            // on the intact tree and without any mutation; its demonstration and
+            // the remaining residue live next to
             // `Sondeur::ecarter_notre_ecriture`.
             let annonce = presse_papier::filtrer_nos_ecritures_tardives(&mut sondeur, annonce);
 

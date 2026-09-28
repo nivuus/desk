@@ -1,46 +1,46 @@
 //! Boucle WebRTC : ICE, DTLS, SRTP et SCTP via str0m.
 //!
-//! str0m est une bibliothèque sans entrées-sorties : nous possédons le socket
-//! UDP et la boucle d'événements. Règle impérative documentée par str0m :
-//! après chaque mutation, drainer `poll_output` jusqu'à `Output::Timeout`
-//! avant la mutation suivante — mais str0m précise aussi qu'une mutation émise
-//! **depuis l'intérieur** de la boucle de drainage (avant qu'elle ait rendu la
-//! main) est correcte. C'est le choix structurel de ce fichier : `Session::run`
-//! est une unique boucle continue autour de `Rtc::poll_output`, et chaque
-//! mutation (écriture d'image, de message de contrôle, `handle_input`) a lieu
-//! à l'intérieur de cette boucle, immédiatement suivie d'un retour à
-//! `poll_output`. Rien en dehors de `run()` ne mute jamais `Rtc` pendant que
-//! la boucle tourne : il n'y a tout simplement aucun autre endroit qui le
-//! pourrait, ce qui rend l'invariant structurel plutôt que dépendant de la
-//! discipline de l'appelant.
+//! str0m is a library without I/O: we own the UDP
+//! socket and the event loop. Imperative rule documented by str0m:
+//! after each mutation, drain `poll_output` until `Output::Timeout`
+//! before the next mutation — but str0m also states that a mutation issued
+//! **from inside** the drain loop (before it has given control
+//! back) is correct. That is this file's structural choice: `Session::run`
+//! is a single continuous loop around `Rtc::poll_output`, and each
+//! mutation (image write, control message write, `handle_input`) happens
+//! inside that loop, immediately followed by a return to
+//! `poll_output`. Nothing outside `run()` ever mutates `Rtc` while
+//! the loop runs: there is simply no other place that
+//! could, which makes the invariant structural rather than dependent on the
+//! caller's discipline.
 //!
-//! `run()` bloque volontairement (socket UDP non bloquant, sondé par petites
-//! tranches de sommeil plutôt que par un `recv_from` bloquant à échéance —
-//! voir `RECV_POLL_INTERVAL`) et doit donc être appelée depuis un thread
-//! dédié — `tokio::task::spawn_blocking` côté `demarrage.rs` — jamais depuis un
-//! ouvrier async de tokio.
+//! `run()` blocks on purpose (non-blocking UDP socket, polled in small
+//! sleep slices rather than by a blocking `recv_from` with a deadline —
+//! see `RECV_POLL_INTERVAL`) and must therefore be called from a
+//! dedicated thread — `tokio::task::spawn_blocking` on the `demarrage.rs` side — never from a
+//! tokio async worker.
 //!
-//! Ce fichier ne porte plus que l'état de la session. ❌ *Il portait « et la
-//! boucle qui l'anime » : faux depuis le sous-bloc F1, qui a extrait
-//! `Session::run` — avec `accept_offer` et `drain_quietly` — vers
-//! [`boucle`], le fichier ayant franchi 500 lignes (495 → 501 → 440). Les
-//! deux paragraphes ci-dessus, qui décrivent `run()` au présent, sont dans le
-//! même cas : ils décrivent une fonction qui vit maintenant dans `boucle`.*
-//! Le reste est réparti par thème dans les sous-modules, presque
-//! tous écrits en `impl Session` : `tick` (la liste de priorités d'un tour,
-//! dont `act_on_timeout`), `controle` (canal de contrôle et fin de session),
-//! `adaptation` (asservissement au réseau), `redimensionnement` (la fenêtre
-//! que l'utilisateur retaille), `evenements` (ce que str0m remonte),
-//! `piste_video`, `piste_audio` et `piste_micro` (les trois pistes média, la
-//! dernière étant la seule MONTANTE), `socket` (attente
-//! et réception UDP), `boucle` (`run` et le drainage), `fixtures` (les
-//! échafaudages de test partagés). ⚠️ *Cette liste n'est pas exhaustive et ne
-//! l'a jamais été — `cadence_video`, `part` et `relais` y manquaient avant
-//! F1 ; seule la clause de clôture ci-dessous porte une affirmation.*
-//! **Seul `initialisation` fait exception** : une fonction LIBRE
-//! (`construire_rtc`), pas une méthode de `Session` — elle construit le
-//! socket UDP et le `Rtc` str0m avant que `Session` elle-même n'existe, donc
-//! avant qu'il y ait un `self` à qui l'attacher.
+//! This file now only carries the session state. ❌ *It said "and the
+//! loop driving it": wrong since sub-block F1, which extracted
+//! `Session::run` — with `accept_offer` and `drain_quietly` — to
+//! [`boucle`], the file having crossed 500 lines (495 → 501 → 440). The
+//! two paragraphs above, which describe `run()` in the present tense, are in the
+//! same case: they describe a function that now lives in `boucle`.*
+//! The rest is split by theme across the submodules, almost
+//! all written as `impl Session`: `tick` (a round's priority list,
+//! including `act_on_timeout`), `controle` (control channel and session end),
+//! `adaptation` (network feedback control), `redimensionnement` (the window
+//! the user resizes), `evenements` (what str0m reports),
+//! `piste_video`, `piste_audio` and `piste_micro` (the three media tracks, the
+//! last being the only UPSTREAM one), `socket` (UDP waiting
+//! and receiving), `boucle` (`run` and draining), `fixtures` (the
+//! shared test scaffolding). ⚠️ *This list is not exhaustive and never
+//! has been — `cadence_video`, `part` and `relais` were missing from it before
+//! F1; only the closing clause below carries a claim.*
+//! **Only `initialisation` is an exception**: a FREE function
+//! (`construire_rtc`), not a method of `Session` — it builds the
+//! UDP socket and the str0m `Rtc` before `Session` itself exists, hence
+//! before there is a `self` to attach it to.
 
 use std::collections::VecDeque;
 use std::net::{IpAddr, UdpSocket};
@@ -56,29 +56,27 @@ use crate::audio::{AudioSource, Reconstructeur};
 use crate::congestion;
 use crate::source::VideoSource;
 
-#[cfg(test)]
-mod fixtures;
-#[cfg(test)]
-mod sonde_montante;
 mod adaptation;
-/// La boucle de transport et les deux points de drainage antérieurs à `run`.
+/// The transport loop and the two drain points prior to `run`.
 ///
-/// 🔴 EXTRAIT PARCE QUE CE FICHIER A FRANCHI 500 LIGNES — pour la SECONDE fois,
-/// et sur le même champ de bataille : le sous-bloc D10 l'avait déjà porté à 501
-/// et en avait sorti `initialisation.rs` (le constructeur du socket et du
-/// `Rtc`) ; le sous-bloc F1 l'y ramène en ajoutant `input_channel`, et en sort
-/// la boucle. Ce dépôt écrit depuis D6 que « la marge regagnée par une
-/// extraction se reperd à la ronde suivante si on la traite comme acquise » :
-/// c'est la cinquième fois qu'il le paie, et la deuxième sur ce fichier-ci.
-/// EXTRAIT, jamais compressé — la doctrine de `CLAUDE.md` interdit nommément
-/// de raccourcir un commentaire pour repasser sous la ligne.
+/// 🔴 EXTRACTED BECAUSE THIS FILE CROSSED 500 LINES — for the SECOND time,
+/// and on the same battlefield: sub-block D10 had already taken it to 501
+/// and moved `initialisation.rs` out of it (the socket and
+/// `Rtc` constructor); sub-block F1 brings it back there by adding `input_channel`, and moves
+/// the loop out. This repository has written since D6 that "the margin regained by an
+/// extraction is lost again in the next round if treated as acquired":
+/// it is the fifth time it pays for it, and the second on this very file.
+/// EXTRACTED, never compressed — `CLAUDE.md`'s doctrine forbids by name
+/// shortening a comment to get back under the line.
 mod boucle;
 mod cadence_video;
-/// Le collage venu du navigateur : les DEUX moitiés de l'ordre de D6, écrites
-/// au même endroit. Voir son commentaire de tête.
+/// The paste coming from the browser: BOTH halves of D6's order, written
+/// in the same place. See its header comment.
 mod collage;
 mod controle;
 mod evenements;
+#[cfg(test)]
+mod fixtures;
 mod initialisation;
 mod part;
 mod piste_audio;
@@ -87,6 +85,8 @@ mod piste_video;
 mod redimensionnement;
 mod relais;
 mod socket;
+#[cfg(test)]
+mod sonde_montante;
 mod tick;
 
 use piste_video::FRAME_INTERVAL;
@@ -97,300 +97,300 @@ pub struct Session {
     socket: UdpSocket,
     source: Box<dyn VideoSource + Send>,
     dimensions: (u32, u32),
-    /// Origine d'horloge de la session, partagée avec les sources. Sert à
-    /// reconstruire l'instant de capture d'une image à partir de son
-    /// horodatage (voir `write_frame`).
+    /// Clock origin of the session, shared with the sources. Used to
+    /// rebuild an image's capture instant from its
+    /// timestamp (see `write_frame`).
     clock_origin: Instant,
     video_mid: Option<Mid>,
     control_channel: Option<ChannelId>,
-    /// Le canal `input`, retenu comme `control_channel` l'est — c'est ce qui
-    /// permet à `evenements::destination` d'aiguiller par CANAL plutôt que par
-    /// le seul drapeau binaire. `None` tant qu'aucun `ChannelOpen` ne l'a
-    /// nommé : une trame reçue d'ici là est refusée, pas devinée.
+    /// The `input` channel, retained as `control_channel` is — it is what
+    /// lets `evenements::destination` route by CHANNEL rather than by
+    /// the binary flag alone. `None` as long as no `ChannelOpen` has
+    /// named it: a frame received before then is refused, not guessed.
     input_channel: Option<ChannelId>,
     started: Instant,
-    /// Messages de contrôle en attente d'émission. `run()` en envoie un au
-    /// plus par mutation, dès que le canal est ouvert.
+    /// Control messages waiting to be sent. `run()` sends at most one
+    /// per mutation, as soon as the channel is open.
     pending_control: VecDeque<AgentControl>,
-    /// Messages de contrôle produits HORS de la boucle : fil de sondage du
-    /// curseur, rappel de vibration du pilote ViGEmBus. Ni l'un ni l'autre ne
-    /// peut toucher la `Session`, qui n'est possédée que par `run()`.
+    /// Control messages produced OUTSIDE the loop: cursor polling thread,
+    /// ViGEmBus driver rumble callback. Neither
+    /// can touch the `Session`, which is owned only by `run()`.
     outbound_control: Option<std::sync::mpsc::Receiver<AgentControl>>,
-    /// Vrai dès qu'un `AgentControl::session_end` a été mis en file : plus
-    /// aucune image n'est envoyée, la session se termine dès que la file de
-    /// contrôle est vidée (ou constatée impossible à vider).
+    /// True as soon as an `AgentControl::session_end` has been queued: no
+    /// more images are sent, the session ends as soon as the control
+    /// queue is emptied (or found impossible to empty).
     ending: bool,
     next_frame_at: Instant,
-    /// Empêche de noyer les journaux : la négociation incomplète (I4) est
-    /// signalée une seule fois, pas à chaque image jetée.
+    /// Prevents flooding the logs: the incomplete negotiation (I4) is
+    /// reported once only, not at each dropped image.
     warned_negotiation: bool,
-    /// Nombre d'erreurs de réception UDP transitoires consécutives (voir
-    /// `classify_recv_error`/`recv_error_backoff`) : remis à zéro dès qu'un
-    /// tour de boucle se déroule sans une telle erreur (paquet reçu, ou
-    /// simple échéance sans donnée). Sert à faire croître la temporisation
-    /// appliquée entre deux tentatives pendant une rafale.
+    /// Number of consecutive transient UDP receive errors (see
+    /// `classify_recv_error`/`recv_error_backoff`): reset to zero as soon as a
+    /// loop round runs without such an error (packet received, or
+    /// mere deadline without data). Used to grow the backoff
+    /// applied between two attempts during a burst.
     consecutive_recv_errors: u32,
-    /// Vrai juste après qu'une image vidéo a été écrite (`writer.write()`),
-    /// tant que le drainage str0m qui la fait réellement partir
-    /// (`Rtc::handle_input(Input::Timeout(..))`) n'a pas encore eu lieu.
+    /// True right after a video image has been written (`writer.write()`),
+    /// as long as the str0m drain that actually sends it
+    /// (`Rtc::handle_input(Input::Timeout(..))`) has not happened yet.
     ///
-    /// `writer.write()` empile l'image dans la file interne `to_payload` de
-    /// str0m ; seul `handle_input(Input::Timeout(..))` la dépile
-    /// (`do_payload`), jamais `poll_output()` seul (voir `act_on_timeout`,
-    /// ronde de correction 1). Ce drapeau reporte ce drainage au tour
-    /// suivant plutôt que de l'enchaîner dans le même appel : `write_frame`
-    /// (une mutation) et `handle_input` (une seconde mutation) restent ainsi
-    /// chacun séparés par un passage complet dans `poll_output()`, comme
-    /// l'exige str0m — les enchaîner directement, comme le faisait la
-    /// première version de ce correctif, reproduisait exactement la
-    /// violation qu'il prétendait résoudre.
+    /// `writer.write()` pushes the image onto str0m's internal `to_payload` queue;
+    /// only `handle_input(Input::Timeout(..))` pops it
+    /// (`do_payload`), never `poll_output()` alone (see `act_on_timeout`,
+    /// fix round 1). This flag defers that drain to the next
+    /// round rather than chaining it in the same call: `write_frame`
+    /// (one mutation) and `handle_input` (a second mutation) thus stay
+    /// each separated by a full pass through `poll_output()`, as
+    /// str0m requires — chaining them directly, as the
+    /// first version of this fix did, reproduced exactly the
+    /// violation it claimed to resolve.
     video_write_pending_drain: bool,
-    /// Source audio, absente tant qu'aucune n'a été fournie (source de test
-    /// vidéo, plateforme sans audio, ou échec d'ouverture du loopback — dans
-    /// tous les cas la session vidéo continue).
+    /// Audio source, absent as long as none has been provided (video test
+    /// source, platform without audio, or loopback opening failure — in
+    /// all cases the video session continues).
     audio_source: Option<Box<dyn AudioSource + Send>>,
-    /// `mid` de la piste audio DESCENDANTE (chantier A, agent → navigateur),
-    /// renseigné à la négociation. ⚠️ DEUX m-lines audio depuis le chantier E :
-    /// la montante a le sien, `mic_mid`, et c'est la DIRECTION qui les sépare
-    /// (`evenements.rs`, qui porte le défaut muet que ce champ a longtemps eu).
+    /// `mid` of the DOWNSTREAM audio track (workstream A, agent → browser),
+    /// filled at negotiation. ⚠️ TWO audio m-lines since workstream E:
+    /// the upstream one has its own, `mic_mid`, and it is DIRECTION that separates them
+    /// (`evenements.rs`, which carries the silent defect this field long had).
     audio_mid: Option<Mid>,
-    /// `mid` de la piste du MICRO (chantier E), renseigné à la négociation.
+    /// `mid` of the MICROPHONE track (workstream E), filled at negotiation.
     mic_mid: Option<Mid>,
-    // Les CINQ champs du MICRO (chantier E). Leur raisonnement vit en entier
-    // dans `transport/piste_micro.rs`, auprès du code qui les emploie — et
-    // c'est là qu'est aussi la réfutation des deux comptes que ce commentaire
-    // portait jusqu'au bloc E3 (« les QUATRE champs », « à trois lignes de son
-    // plafond »), par le même PLACEMENT et non par une compression.
-    /// Puits du flux montant, absent tant qu'aucun n'a été installé.
+    // The FIVE MICROPHONE fields (workstream E). Their reasoning lives in full
+    // in `transport/piste_micro.rs`, next to the code that uses them — and
+    // that is also where the refutation of the two counts this comment
+    // carried until block E3 ("the FOUR fields", "three lines from its
+    // ceiling") lives, by the same PLACEMENT and not by compression.
+    /// Sink of the upstream flow, absent as long as none has been installed.
     puits_micro: Option<Box<dyn crate::micro::PuitsMicro + Send>>,
-    /// Négociation ou horloge inattendue : signalées une seule fois.
+    /// Unexpected negotiation or clock: reported once only.
     warned_micro_negotiation: bool,
-    /// Refus du puits (exclusivité non acquise) : signalé une seule fois.
+    /// Sink refusal (exclusivity not acquired): reported once only.
     refus_micro_signale: bool,
-    /// Lignes de journal réellement ÉMISES au sujet du micro.
+    /// Log lines actually EMITTED about the microphone.
     journaux_micro: u64,
-    /// Dernier verdict d'exclusivité ANNONCÉ au navigateur (bloc E3).
-    /// `None` tant qu'aucun paquet montant n'a été déposé : c'est ce qui fait
-    /// que la PREMIÈRE réponse du puits est une transition, donc annoncée.
+    /// Last exclusivity verdict ANNOUNCED to the browser (block E3).
+    /// `None` as long as no upstream packet has been deposited: that is what makes
+    /// the sink's FIRST answer a transition, hence announced.
     exclusivite_annoncee: Option<bool>,
-    /// Pendant audio de `video_write_pending_drain`. Distinct de lui : sans
-    /// drapeau propre, une écriture audio suivie d'une écriture vidéo au tour
-    /// suivant perdrait un drainage.
+    /// Audio counterpart of `video_write_pending_drain`. Distinct from it: without
+    /// its own flag, an audio write followed by a video write in the next
+    /// round would lose a drain.
     audio_write_pending_drain: bool,
-    /// Signale une seule fois qu'aucun type de charge utile Opus n'a été
-    /// négocié, plutôt qu'à chaque paquet jeté.
+    /// Reports once only that no Opus payload type was
+    /// negotiated, rather than at each dropped packet.
     warned_audio_negotiation: bool,
-    /// Dernier redimensionnement demandé, pas encore appliqué. On ne garde
-    /// que le plus récent : pendant qu'un utilisateur tire un bord, les
-    /// demandes intermédiaires n'ont aucun intérêt. Appliqué dans
-    /// `act_on_timeout`, jamais depuis `dispatch_channel_data` — voir le
-    /// commentaire de ce champ à son point de consommation.
+    /// Last requested resize, not yet applied. Only the most
+    /// recent is kept: while a user drags an edge, the
+    /// intermediate requests are of no interest. Applied in
+    /// `act_on_timeout`, never from `dispatch_channel_data` — see the
+    /// comment of this field at its point of consumption.
     pending_resize: Option<(u32, u32)>,
-    /// Dernière visibilité annoncée par le navigateur, en attente
-    /// d'application. Même raison de différer que `pending_resize`.
+    /// Last visibility announced by the browser, waiting to be
+    /// applied. Same reason for deferring as `pending_resize`.
     pending_visibility: Option<(bool, bool)>,
-    /// Dernier collage annoncé par le navigateur, en attente d'application
-    /// (sous-bloc P2 du chantier presse-papier). Même raison de différer que
-    /// `pending_resize` : `memoriser_controle` court pendant le drainage de
-    /// `poll_output`, et str0m impose une seule mutation de `Rtc` par appel.
+    /// Last paste announced by the browser, waiting to be applied
+    /// (sub-block P2 of the clipboard workstream). Same reason for deferring as
+    /// `pending_resize`: `memoriser_controle` runs during the drain of
+    /// `poll_output`, and str0m imposes a single mutation of `Rtc` per call.
     ///
-    /// ⚠️ **Un collage est un ÉVÉNEMENT, et il est pourtant mémorisé comme un
-    /// ÉTAT — écrasement du dernier. Le coût est réel, et il est écrit :** deux
-    /// collages arrivés entre deux tours de boucle se réduisent au second, le
-    /// premier étant **perdu sans trace**. C'est acceptable parce qu'un tour de
-    /// boucle est borné par la cadence vidéo et qu'un humain ne produit pas
-    /// deux `Ctrl+V` dans cet intervalle — **mais un client qui se conduirait
-    /// mal, lui, le pourrait**. Le remède serait une file bornée ; il n'est pas
-    /// livré, et c'est un legs de P2.
+    /// ⚠️ **A paste is an EVENT, and yet it is stored as a
+    /// STATE — overwriting the last one. The cost is real, and it is written down:** two
+    /// pastes arriving between two loop rounds reduce to the second, the
+    /// first being **lost without a trace**. It is acceptable because a loop
+    /// round is bounded by the video cadence and a human does not produce
+    /// two `Ctrl+V` in that interval — **but a misbehaving client
+    /// could**. The remedy would be a bounded queue; it is not
+    /// delivered, and it is a legacy of P2.
     pending_clipboard: Option<String>,
-    /// Le collage a été écrit dans le presse-papier de la VM : il reste à
-    /// injecter `Ctrl+V`.
+    /// The paste was written into the VM's clipboard: `Ctrl+V` remains to
+    /// be injected.
     ///
-    /// 🔴 **Ce drapeau porte L'ORDRE de D6 à lui seul**, et c'est pourquoi il
-    /// existe plutôt qu'un appel direct. Il n'est posé que lorsque l'écriture
-    /// a **réussi** (`act_on_timeout`, branche `a1octies`), et il est consommé
-    /// par `run` (`transport/boucle.rs`) juste après. L'écriture étant
-    /// synchrone et précédant la pose, l'ordre « le presse-papier Windows
-    /// d'abord, la touche ensuite » est garanti **par construction** — aucun
-    /// ordonnancement de canal n'y entre.
+    /// 🔴 **This flag carries D6's ORDER on its own**, and that is why it
+    /// exists rather than a direct call. It is only set when the write
+    /// **succeeded** (`act_on_timeout`, branch `a1octies`), and it is consumed
+    /// by `run` (`transport/boucle.rs`) right after. The write being
+    /// synchronous and preceding the setting, the order "the Windows clipboard
+    /// first, the key afterwards" is guaranteed **by construction** — no
+    /// channel ordering comes into it.
     ///
-    /// Sur échec d'écriture, il n'est **pas** posé : la touche `V` est PERDUE,
-    /// pas reportée (D6). Un `Ctrl+V` sur un presse-papier inchangé collerait
-    /// le contenu PRÉCÉDENT, ce que D6 existe entièrement pour éviter.
+    /// On write failure, it is **not** set: the `V` key is LOST,
+    /// not deferred (D6). A `Ctrl+V` on an unchanged clipboard would paste
+    /// the PREVIOUS content, which D6 exists entirely to avoid.
     collage_a_injecter: bool,
-    /// Contrôleur de congestion. Alimenté par `Event::EgressBitrateEstimate`
-    /// et `Event::MediaEgressStats`, tous deux déjà émis par str0m — le
-    /// second l'était même déjà avant ce chantier, et tombait dans le `_ =>
-    /// {}` de `handle_event`.
+    /// Congestion controller. Fed by `Event::EgressBitrateEstimate`
+    /// and `Event::MediaEgressStats`, both already emitted by str0m — the
+    /// second was even already emitted before this workstream, and fell into the `_ =>
+    /// {}` of `handle_event`.
     congestion: congestion::Controleur,
-    /// Dernière estimation reçue, avec l'instant de sa réception, en attente
-    /// d'être confrontée aux statistiques. Les deux événements n'arrivent pas
-    /// ensemble.
+    /// Last estimate received, with the instant it was received, waiting
+    /// to be matched against the statistics. The two events do not arrive
+    /// together.
     ///
-    /// **Horodatée depuis I4 (revue finale de branche).** Sans l'instant, une
-    /// estimation reçue une seule fois puis plus jamais (TWCC qui se tarit)
-    /// resterait utilisée indéfiniment — voir `EXPIRATION_ESTIMATION`, qui la
-    /// traite comme absente au-delà de son délai.
+    /// **Timestamped since I4 (final branch review).** Without the instant, an
+    /// estimate received once and then never again (TWCC drying up)
+    /// would stay in use indefinitely — see `EXPIRATION_ESTIMATION`, which
+    /// treats it as absent beyond its delay.
     derniere_estimation_bps: Option<(u32, Instant)>,
-    /// Décision décidée mais pas encore appliquée. Appliquée dans
-    /// `act_on_timeout`, jamais depuis `handle_event` — reconstruire
-    /// l'encodeur pendant le drainage de `poll_output` romprait l'invariant
-    /// de str0m (une seule mutation par appel), exactement comme pour
+    /// Decision decided but not yet applied. Applied in
+    /// `act_on_timeout`, never from `handle_event` — rebuilding
+    /// the encoder during the drain of `poll_output` would break str0m's
+    /// invariant (a single mutation per call), exactly as for
     /// `pending_resize`.
     pending_decision: Option<congestion::Decision>,
-    /// Vrai une fois que l'indisponibilité de l'adaptation a été journalisée.
-    /// Une condition permanente ne se journalise pas chaque seconde.
+    /// True once the unavailability of adaptation has been logged.
+    /// A permanent condition is not logged every second.
     absence_bwe_signalee: bool,
-    /// Vrai une fois que l'indisponibilité de l'adaptation a été annoncée AU
-    /// NAVIGATEUR (message `Link`). Drapeau distinct d'`absence_bwe_signalee`,
-    /// qui ne couvre que le journal.
+    /// True once the unavailability of adaptation has been announced TO THE
+    /// BROWSER (`Link` message). A flag distinct from `absence_bwe_signalee`,
+    /// which only covers the log.
     ///
-    /// **Ajouté pour I2 (revue finale de branche).** Avant ce correctif,
-    /// `Controleur::observer` rendait `None` d'entrée quand aucune estimation
-    /// n'était disponible, donc aucune `pending_decision` n'était jamais
-    /// produite pour ce cas — `Adaptation::Indisponible` n'atteignait jamais
-    /// le navigateur, alors que la spec l'exige nommément (« surtout pas un
-    /// silence qui ressemble à tout va bien »).
+    /// **Added for I2 (final branch review).** Before this fix,
+    /// `Controleur::observer` returned `None` straight away when no estimate
+    /// was available, so no `pending_decision` was ever
+    /// produced for that case — `Adaptation::Indisponible` never reached
+    /// the browser, whereas the spec demands it by name ("above all not a
+    /// silence that looks like everything is fine").
     ///
-    /// Remis à `false` dès qu'une estimation fraîche revient : une
-    /// indisponibilité ultérieure (nouvelle coupure de TWCC, voir I4) est une
-    /// information neuve, à annoncer de nouveau — comme `taille_refus_signalee`
-    /// se remet à `None` dès qu'un changement de taille réussit.
+    /// Reset to `false` as soon as a fresh estimate comes back: a later
+    /// unavailability (new TWCC outage, see I4) is new
+    /// information, to be announced again — as `reported_refused_size`
+    /// resets to `None` as soon as a size change succeeds.
     indisponibilite_annoncee: bool,
-    /// Taille d'encodage réellement appliquée. Distincte de celle décidée :
-    /// un refus de l'encodeur laisse la décision non appliquée, et il ne faut
-    /// pas la retenter à chaque tour.
+    /// Encoding size actually applied. Distinct from the decided one:
+    /// an encoder refusal leaves the decision unapplied, and it must not
+    /// be retried at every round.
     encode_size_appliquee: (u32, u32),
-    /// Dernière taille d'encodage dont le refus a été journalisé. Une
-    /// condition permanente ne se journalise pas chaque seconde ; en
-    /// revanche, une NOUVELLE cible refusée est une information neuve.
-    /// Remis à `None` dès qu'un changement de taille réussit, pour qu'un
-    /// refus ultérieur de la même taille soit à nouveau dit.
-    taille_refus_signalee: Option<(u32, u32)>,
-    /// Vrai une fois le refus du débit à chaud journalisé.
+    /// Last encoding size whose refusal was logged. A
+    /// permanent condition is not logged every second; on the
+    /// other hand, a NEW refused target is new information.
+    /// Reset to `None` as soon as a size change succeeds, so that a
+    /// later refusal of the same size is told again.
+    reported_refused_size: Option<(u32, u32)>,
+    /// True once the refusal of the hot bitrate change has been logged.
     refus_debit_signale: bool,
-    /// Débit réellement appliqué par l'encodeur. Distinct de celui décidé :
-    /// un refus du pilote laisse l'encodeur au débit précédent, et annoncer
-    /// au navigateur un débit qu'il n'émet pas serait un mensonge de la même
-    /// famille que celui déjà corrigé sur la qualité (tâche 5).
+    /// Bitrate actually applied by the encoder. Distinct from the decided one:
+    /// a driver refusal leaves the encoder at the previous bitrate, and announcing
+    /// to the browser a bitrate it does not emit would be a lie of the same
+    /// family as the one already fixed on quality (task 5).
     bitrate_applique: u32,
-    /// Dernier instant où `source.is_alive()` a été interrogée. Cet appel
-    /// coûte un appel système côté Windows (recherche de fenêtre) : on
-    /// l'espace plutôt que de le refaire à chaque tour de boucle — une
-    /// fenêtre fermée le reste (voir `ALIVE_CHECK_INTERVAL`).
+    /// Last instant `source.is_alive()` was queried. This call
+    /// costs a system call on the Windows side (window lookup): it is
+    /// spaced out rather than redone at every loop round — a
+    /// closed window stays closed (see `ALIVE_CHECK_INTERVAL`).
     last_alive_check: Instant,
-    /// Client TURN, absent tant qu'aucun relais n'est configuré ou alloué.
-    /// Son absence rend tout le chemin relayé inerte.
+    /// TURN client, absent as long as no relay is configured or allocated.
+    /// Its absence makes the whole relayed path inert.
     pub(super) turn: Option<crate::turn::TurnClient>,
-    /// Résolution du minuteur Windows abaissée à 1 ms pour la durée de vie de
-    /// la session (voir `TimerResolutionGuard`). Champ jamais lu : sa seule
-    /// raison d'être est de vivre aussi longtemps que `Session` et de
-    /// restaurer la résolution d'origine à la destruction.
+    /// Windows timer resolution lowered to 1 ms for the lifetime of
+    /// the session (see `TimerResolutionGuard`). Field never read: its only
+    /// reason for being is to live as long as `Session` and to
+    /// restore the original resolution on destruction.
     _timer_resolution: TimerResolutionGuard,
-    /// Identifiant de session, posé par `set_session_id` (voir
-    /// `cadence_video.rs`) — vide tant qu'il ne l'a pas été (chemins de
-    /// test). Ne sert qu'à apparier la ligne de cadence de la piste vidéo à
-    /// celle du capteur (`capteur/fenetre.rs`) dans un `agent.log` que
-    /// plusieurs fenêtres se partagent.
+    /// Session identifier, set by `set_session_id` (see
+    /// `cadence_video.rs`) — empty as long as it has not been (test
+    /// paths). Only used to pair the video track's cadence line with
+    /// the sensor's (`capteur/fenetre.rs`) in an `agent.log` that
+    /// several windows share.
     session_id: String,
-    /// Unités d'accès vidéo réellement écrites sur la piste depuis le
-    /// dernier relevé de cadence (voir `cadence_video::PERIODE_COMPTEURS`).
-    /// Incrémenté par `write_frame` (`piste_video.rs`), jamais par un tour de
-    /// boucle qui ne produit rien.
+    /// Video access units actually written on the track since the
+    /// last cadence reading (see `cadence_video::PERIODE_COMPTEURS`).
+    /// Incremented by `write_frame` (`piste_video.rs`), never by a loop
+    /// round that produces nothing.
     unites_video_ecrites: u64,
-    /// Instant du dernier relevé de cadence de la piste vidéo.
-    dernier_compte_video: Instant,
-    /// Vrai une fois `VideoSource::signaler_audio_mort` appelée pour cette
-    /// capture — le verrou qui empêche d'inonder le capteur : `capture_morte`
-    /// (`crate::audio::AudioSource`) reste vrai à jamais une fois posé, alors
-    /// que ce champ, lui, retombe à `false` à chaque rattachement du canal
-    /// vers le capteur (`VideoSource::rattachement_survenu`, sous-bloc D9) —
-    /// un capteur relancé a perdu la mémoire de tout signalement antérieur.
+    /// Instant of the last cadence reading of the video track.
+    last_video_count: Instant,
+    /// True once `VideoSource::signaler_audio_mort` has been called for this
+    /// capture — the latch that prevents flooding the sensor: `capture_morte`
+    /// (`crate::audio::AudioSource`) stays true forever once set, whereas
+    /// this field, for its part, falls back to `false` at each reattachment of the channel
+    /// to the sensor (`VideoSource::rattachement_survenu`, sub-block D9) —
+    /// a restarted sensor has lost the memory of any earlier report.
     audio_mort_signale: bool,
-    /// De quoi refabriquer la source audio après la mort de sa capture
-    /// (sous-bloc D10). Absent quand `AUDIO=0`, sous `TEST_FILE`, et quand
-    /// l'ouverture audio initiale a échoué : le comportement d'avant D10 —
-    /// signaler immédiatement — reste exactement conservé dans ces cas.
+    /// What is needed to rebuild the audio source after its capture died
+    /// (sub-block D10). Absent when `AUDIO=0`, under `TEST_FILE`, and when
+    /// the initial audio opening failed: the behaviour from before D10 —
+    /// report immediately — stays exactly preserved in those cases.
     ///
-    /// ❌ **« Absent sur le chemin mono-fenêtre » figurait ici et c'est
-    /// FAUX** : `demarrage/audio.rs::brancher` pose ce champ
-    /// INCONDITIONNELLEMENT dans son bras `Ok`, branche `None` comprise. Le
-    /// mono-fenêtre reconstruit donc bien — son défaut propre, la source
-    /// reconstruite y étant réarmée à `false`, ✅ **est le leg n°4 de D10,
-    /// CORRIGÉ en D11** (voir `reconstruire_ou_signaler`).
-    /// ⚠️ **Troisième occurrence
-    /// de cette même phrase, et celle-ci n'a été trouvée ni par la revue
-    /// transverse ni par la revue finale de branche** : les deux ont corrigé
-    /// les jumelles de `tick.rs` et de `tick/tests/audio.rs` sans balayer
-    /// jusqu'ici. Le `grep -rn "mono-fenêtre" agent/src` la listait pourtant.
+    /// ❌ **"Absent on the single-window path" appeared here and it is
+    /// WRONG**: `demarrage/audio.rs::brancher` sets this field
+    /// UNCONDITIONALLY in its `Ok` arm, `None` branch included. The
+    /// single-window path therefore does rebuild — its own defect, the rebuilt
+    /// source being re-armed there at `false`, ✅ **is legacy no. 4 of D10,
+    /// FIXED in D11** (see `reconstruire_ou_signaler`).
+    /// ⚠️ **Third occurrence
+    /// of this same sentence, and this one was found neither by the cross-cutting
+    /// review nor by the final branch review**: both fixed
+    /// the twins in `tick.rs` and `tick/tests/audio.rs` without sweeping
+    /// this far. A recursive grep of `agent/src` for the phrase listed it nonetheless.
     audio_reconstructeur: Option<Reconstructeur>,
-    /// Budget de tentatives de reconstruction restant, initialisé à
-    /// `crate::audio::RECONSTRUCTIONS_MAX`. Épuisé, `reconstruire_ou_signaler`
-    /// retombe sur le signalement — c'est là que la promotion d'une voisine
-    /// par le capteur reprend son rôle.
+    /// Remaining budget of rebuild attempts, initialised to
+    /// `crate::audio::RECONSTRUCTIONS_MAX`. Once exhausted, `reconstruire_ou_signaler`
+    /// falls back to reporting — that is where the sensor's promotion of a neighbour
+    /// takes its role back.
     reconstructions_restantes: u32,
-    /// Instant à partir duquel une nouvelle tentative de reconstruction est
-    /// permise. `None` : aucune tentative n'a encore eu lieu, ou aucun répit
-    /// n'est en cours.
+    /// Instant from which a new rebuild attempt is
+    /// allowed. `None`: no attempt has happened yet, or no respite
+    /// is in progress.
     ///
-    /// **Sans ce répit**, `reconstruire_ou_signaler` court sur le fil de
-    /// `Session::run` et ouvrir une source WASAPI y est un appel bloquant de
-    /// durée non bornée : sans répit, la boucle de tick tenterait une
-    /// ouverture à chaque tour.
+    /// **Without this respite**, `reconstruire_ou_signaler` runs on the
+    /// `Session::run` thread and opening a WASAPI source there is a blocking call of
+    /// unbounded duration: without respite, the tick loop would attempt an
+    /// opening at every round.
     prochaine_reconstruction: Option<Instant>,
-    /// Vrai dès qu'une reconstruction a réussi, tant qu'aucun paquet n'est
-    /// encore venu la confirmer. Distingue une DÉCISION (la reconstruction a
-    /// rendu `Ok`) d'une PREUVE (un paquet a réellement été produit) — c'est
-    /// toute la différence que `SourceVivante::sans_paquet` existe pour
-    /// exercer (leg 6).
+    /// True as soon as a rebuild has succeeded, as long as no packet has
+    /// yet come to confirm it. Distinguishes a DECISION (the rebuild
+    /// returned `Ok`) from a PROOF (a packet was actually produced) — that is
+    /// the whole difference `SourceVivante::sans_paquet` exists to
+    /// exercise (legacy 6).
     audio_reconstruit_sans_preuve: bool,
-    /// Vrai dès qu'un paquet RÉEL a confirmé — la PREUVE, pas la décision —
-    /// que la capture audio reconstruite produit de nouveau du son : reste à
-    /// annoncer `VersCapteur::AudioVivant` au capteur.
+    /// True as soon as a REAL packet has confirmed — the PROOF, not the decision —
+    /// that the rebuilt audio capture produces sound again: it remains to
+    /// announce `VersCapteur::AudioVivant` to the sensor.
     ///
-    /// Posé par `brancher_audio`, juste après qu'`audio_reconstruit_sans_preuve`
-    /// retombe (voir ce champ) ; consommé — remis à `false` — par la branche
-    /// a1sexies de `act_on_timeout`, qui appelle alors
-    /// `VideoSource::signaler_audio_vivant`. C'est ce qui referme le leg 6 de
-    /// D9 : `REARMEMENTS_MAX` (`capteur/sommeil.rs`) repart de zéro sur CE
-    /// signal, jamais sur la seule décision de réélection.
+    /// Set by `brancher_audio`, right after `audio_reconstruit_sans_preuve`
+    /// falls back (see that field); consumed — reset to `false` — by the
+    /// a1sexies branch of `act_on_timeout`, which then calls
+    /// `VideoSource::signaler_audio_vivant`. It is what closes legacy 6 of
+    /// D9: `REARMEMENTS_MAX` (`capteur/sommeil.rs`) restarts from zero on THIS
+    /// signal, never on the re-election decision alone.
     audio_vivant_a_annoncer: bool,
-    /// Miroir LOCAL du dernier ordre audio reçu — ou, en mono-fenêtre, du mode
-    /// lui-même. **DEUX écrivains** : `appliquer_audio` sur ordre du capteur, et
-    /// `set_audio_porteuse` au branchement mono-fenêtre (`demarrage/audio.rs`,
-    /// leg 4 de D10), où aucun capteur n'arbitrera jamais cette session.
+    /// LOCAL mirror of the last audio order received — or, in single-window mode, of the mode
+    /// itself. **TWO writers**: `appliquer_audio` on the sensor's order, and
+    /// `set_audio_porteuse` at single-window wiring (`demarrage/audio.rs`,
+    /// legacy 4 of D10), where no sensor will ever arbitrate this session.
     ///
-    /// ❌ **« Sert UNIQUEMENT à détecter la TRANSITION vers `actif = true` » —
-    /// écrit ici, et FAUX depuis D10 lui-même.** Le champ a **deux** lecteurs :
-    /// la transition d'`appliquer_audio`, qui réapprovisionne
-    /// `reconstructions_restantes` et lève `audio_mort_signale` ; et le
-    /// réarmement `set_actif(self.audio_porteuse)` de
-    /// `reconstruire_ou_signaler`, qui n'en est pas une. La doc précède ce
-    /// second lecteur et n'a pas été relue quand il est arrivé.
+    /// ❌ **"Used ONLY to detect the TRANSITION to `actif = true`" —
+    /// written here, and WRONG since D10 itself.** The field has **two** readers:
+    /// `appliquer_audio`'s transition, which replenishes
+    /// `reconstructions_restantes` and lifts `audio_mort_signale`; and the
+    /// `set_actif(self.audio_porteuse)` re-arming of
+    /// `reconstruire_ou_signaler`, which is not one. The doc predates this
+    /// second reader and was not reread when it arrived.
     ///
-    /// ⚠️ **Sans ce champ, le cycle mort → reconstruit → prouvé ne tournerait
-    /// qu'UNE FOIS** (revue de la tâche 12, D10) : `reconstructions_restantes`
-    /// n'était jamais rechargé, et `audio_mort_signale`, jamais levé, fermait
-    /// définitivement la porte de `reconstruire_ou_signaler`.
+    /// ⚠️ **Without this field, the dead → rebuilt → proven cycle would only turn
+    /// ONCE** (review of task 12, D10): `reconstructions_restantes`
+    /// was never reloaded, and `audio_mort_signale`, never lifted, closed
+    /// the door of `reconstruire_ou_signaler` for good.
     audio_porteuse: bool,
 }
 
 impl Session {
-    /// Prépare une session en attente d'offre.
+    /// Prepares a session waiting for an offer.
     ///
-    /// `local_ip` est l'adresse par laquelle le navigateur joindra l'agent.
-    /// `clock_origin` est l'origine d'horloge de la session, partagée avec la
-    /// source audio (voir `capture_instant`) : c'est elle qui rend les deux
-    /// lignes de temps comparables et donc la synchro A/V exacte.
+    /// `local_ip` is the address through which the browser will reach the agent.
+    /// `clock_origin` is the session's clock origin, shared with the
+    /// audio source (see `capture_instant`): it is what makes both
+    /// timelines comparable and hence A/V sync exact.
     pub fn new(
         source: Box<dyn VideoSource + Send>,
         local_ip: IpAddr,
         clock_origin: Instant,
         plafond_bps: u32,
     ) -> Result<Self> {
-        // Socket UDP et `Rtc` str0m dans leur état initial : code
-        // auto-contenu, sans accès aux champs de `Session`, extrait vers
-        // `initialisation.rs` (revue de la tâche 12, sous-bloc D10).
+        // UDP socket and str0m `Rtc` in their initial state: self-contained
+        // code, without access to `Session`'s fields, extracted to
+        // `initialisation.rs` (review of task 12, sub-block D10).
         let (socket, rtc) = initialisation::construire_rtc(local_ip, plafond_bps)?;
 
         let dimensions = source.dimensions();
@@ -428,26 +428,26 @@ impl Session {
             congestion: congestion::Controleur::new(
                 congestion::Config {
                     plafond_bps,
-                    // Référence `opus::BITRATE_BPS` plutôt qu'une constante
-                    // dupliquée (I5, revue finale de branche) : une valeur en
-                    // dur ici pouvait diverger silencieusement de ce que
-                    // l'encodeur Opus utilise réellement.
+                    // References `opus::BITRATE_BPS` rather than a duplicated
+                    // constant (I5, final branch review): a value hardcoded
+                    // here could silently diverge from what the
+                    // Opus encoder really uses.
                     audio_bps: crate::opus::BITRATE_BPS as u32,
                     source: dimensions,
-                    // **Délibérément 60, PAS `ENCODER_FPS`** (I5, revue finale
-                    // de branche). `ENCODER_FPS` (défaut 90, voir `demarrage.rs`)
-                    // est la cadence de SOLLICITATION de l'encodeur, pas la
-                    // cadence DÉLIVRÉE — la recette mesure 55 à 63 im/s
-                    // réellement décodées, bien plus proche de 60 que de 90.
-                    // Et surtout : `BPP_MIN` (voir `congestion/echelle.rs`) a été
-                    // calibrée avec `fps = 60`. `fps` multiplie directement
-                    // tous les `min_bps` de l'échelle — le faire suivre
-                    // `ENCODER_FPS` multiplierait tous les seuils par 1,5 et
-                    // invaliderait une calibration déjà fragile (reconduite
-                    // sans preuve visuelle, voir le commentaire de
-                    // `BPP_MIN`), sans mesure pour la refaire. `BPP_MIN` et ce
-                    // `fps` sont COUPLÉS et doivent être recalibrés ENSEMBLE,
-                    // jamais l'un sans l'autre.
+                    // **Deliberately 60, NOT `ENCODER_FPS`** (I5, final
+                    // branch review). `ENCODER_FPS` (default 90, see `demarrage.rs`)
+                    // is the encoder's SOLICITATION cadence, not the
+                    // DELIVERED cadence — acceptance measures 55 to 63 fps
+                    // actually decoded, much closer to 60 than to 90.
+                    // And above all: `BPP_MIN` (see `congestion/echelle.rs`) was
+                    // calibrated with `fps = 60`. `fps` directly multiplies
+                    // all the ladder's `min_bps` — making it follow
+                    // `ENCODER_FPS` would multiply all thresholds by 1.5 and
+                    // invalidate an already fragile calibration (carried over
+                    // without visual proof, see the comment of
+                    // `BPP_MIN`), without a measurement to redo it. `BPP_MIN` and this
+                    // `fps` are COUPLED and must be recalibrated TOGETHER,
+                    // never one without the other.
                     fps: 60,
                 },
                 Instant::now(),
@@ -457,17 +457,17 @@ impl Session {
             absence_bwe_signalee: false,
             indisponibilite_annoncee: false,
             encode_size_appliquee: dimensions,
-            taille_refus_signalee: None,
+            reported_refused_size: None,
             refus_debit_signale: false,
-            // Comme le contrôleur initialise le sien : avant toute décision
-            // appliquée, le débit réel est celui de repli, le plafond.
+            // As the controller initialises its own: before any applied
+            // decision, the real bitrate is the fallback one, the ceiling.
             bitrate_applique: plafond_bps,
             last_alive_check: Instant::now(),
             turn: None,
             _timer_resolution: TimerResolutionGuard::new(),
             session_id: String::new(),
             unites_video_ecrites: 0,
-            dernier_compte_video: Instant::now(),
+            last_video_count: Instant::now(),
             audio_mort_signale: false,
             audio_reconstructeur: None,
             reconstructions_restantes: crate::audio::RECONSTRUCTIONS_MAX,
@@ -477,12 +477,11 @@ impl Session {
             audio_porteuse: false,
         };
 
-        // `add_local_candidate` est une mutation : on draine avant de rendre
-        // la main, pour ne jamais dépendre de ce que l'appelant fera après
+        // `add_local_candidate` is a mutation: we drain before giving
+        // control back, so as never to depend on what the caller will do after
         // `new()`.
         session.drain_quietly()?;
 
         Ok(session)
     }
-
 }

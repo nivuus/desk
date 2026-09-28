@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Spike multi-fenêtres</title>
+    <title>Multi-window spike</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#111827">
     <link rel="icon" href="/icon-192.png">
@@ -24,74 +24,74 @@
     </style>
 </head>
 <body>
-    <h1>Spike — ouverture de fenêtre sans geste utilisateur</h1>
+    <h1>Spike — opening a window without a user gesture</h1>
     <p>
-        WebSocket : <span id="etat" class="deconnecte">déconnecté</span> ·
-        <a href="/reset.html">étape 0 — hygiène de l'origin</a>
+        WebSocket : <span id="etat" class="deconnecte">disconnected</span> ·
+        <a href="/reset.html">step 0 — origin hygiene</a>
     </p>
     <p>
-        Chaque bouton <strong>arme</strong> sa variante : l'ouverture est ensuite
-        commandée par le serveur, 15 s plus tard. Ne touchez ni souris ni clavier
-        pendant le compte à rebours (sauf variante 3, dont le clic est le
-        mécanisme testé, et variante 4, qu'il faut mettre en arrière-plan).
+        Each button <strong>arms</strong> its variant: the opening is then
+        ordered by the server, 15 s later. Touch neither mouse nor keyboard
+        during the countdown (except variant 3, whose click is the
+        tested mechanism, and variant 4, which must be put in the background).
     </p>
     <p>
-        Les boutons restent inactifs tant que le WebSocket n'est pas connecté :
-        sans lui l'ordre du serveur n'arriverait nulle part et la mesure serait
-        vide sans le dire.
+        The buttons stay inactive as long as the WebSocket is not connected:
+        without it the server order would arrive nowhere and the measurement would
+        be empty without saying so.
     </p>
 
     <table>
         <thead>
-            <tr><th>#</th><th>Variante</th><th>Armer</th><th>Verdict</th></tr>
+            <tr><th>#</th><th>Variant</th><th>Arm</th><th>Verdict</th></tr>
         </thead>
         <tbody>
             <tr>
                 <td>1</td>
                 <td>
-                    Onglet normal, sans activation — <em>témoin</em>.
-                    À jouer <strong>depuis un onglet ordinaire</strong> : elle refuse
-                    de s'exécuter dans la fenêtre PWA.
+                    Normal tab, without activation — <em>control</em>.
+                    To be run <strong>from an ordinary tab</strong>: it refuses
+                    to run in the PWA window.
                 </td>
-                <td><button data-variante="1" data-libelle="Armer 1">Armer 1</button></td>
+                <td><button data-variante="1" data-libelle="Arm 1">Arm 1</button></td>
                 <td class="verdict" id="verdict-1">—</td>
             </tr>
             <tr>
                 <td>2</td>
                 <td>
-                    PWA installée (<code>standalone</code>), sans activation.
-                    À jouer <strong>depuis la fenêtre de la PWA installée</strong> :
-                    elle refuse de s'exécuter dans un onglet.
+                    Installed PWA (<code>standalone</code>), without activation.
+                    To be run <strong>from the window of the installed PWA</strong>:
+                    it refuses to run in a tab.
                 </td>
-                <td><button data-variante="2" data-libelle="Armer 2">Armer 2</button></td>
+                <td><button data-variante="2" data-libelle="Arm 2">Arm 2</button></td>
                 <td class="verdict" id="verdict-2">—</td>
             </tr>
             <tr>
                 <td>3</td>
-                <td>Armement sur le prochain clic</td>
-                <td><button data-variante="3" data-libelle="Armer 3">Armer 3</button></td>
+                <td>Arming on the next click</td>
+                <td><button data-variante="3" data-libelle="Arm 3">Arm 3</button></td>
                 <td class="verdict" id="verdict-3">—</td>
             </tr>
             <tr>
                 <td>4</td>
-                <td>Notification → <code>clients.openWindow()</code>, fenêtre en arrière-plan</td>
+                <td>Notification → <code>clients.openWindow()</code>, window in the background</td>
                 <td>
-                    <button id="permission">Autoriser les notifications</button>
-                    <button data-variante="4" data-libelle="Armer 4">Armer 4</button>
+                    <button id="permission">Allow notifications</button>
+                    <button data-variante="4" data-libelle="Arm 4">Arm 4</button>
                 </td>
                 <td class="verdict" id="verdict-4">—</td>
             </tr>
         </tbody>
     </table>
 
-    <h2>Journal</h2>
+    <h2>Log</h2>
     <div id="journal"></div>
 
     <script type="module" src="/app.js"></script>
     <script type="module">
         document.getElementById('permission').addEventListener('click', async () => {
             const resultat = await Notification.requestPermission();
-            console.log('[spike] permission notifications :', resultat);
+            console.log('[spike] notification permission:', resultat);
         });
     </script>
 </body>

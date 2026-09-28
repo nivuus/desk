@@ -112,7 +112,7 @@ if (etat) {
     console.log(`  (c) montee ${etat.wsUrl} : ${etat.ws}${etat.wsFermeture ? ` (code ${etat.wsFermeture.code})` : ''}`);
     console.log(`  (d) POST /auth/connexion      : statut ${etat.fetchStatut}, corps lisible = ${etat.fetchLisible}`);
     console.log(`      champs du corps (NOMS seuls) : ${JSON.stringify(etat.fetchChamps)}`);
-    if (etat.fetchErreur) console.log(`      erreur : ${etat.fetchErreur}`);
+    if (etat.fetchError) console.log(`      erreur : ${etat.fetchError}`);
 }
 const csp = journalConsole.filter((e) => /Content Security Policy|Refused to/i.test(e.texte));
 console.log(`  journal console — entrees mentionnant la CSP : ${csp.length}`);

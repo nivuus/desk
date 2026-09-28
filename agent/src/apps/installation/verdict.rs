@@ -1,82 +1,83 @@
-//! L'issue d'une installation : ce qui s'est réellement passé, et rien de plus.
+//! The outcome of an installation: what actually happened, and nothing more.
 //!
-//! 🔴 **LE CODE DE SORTIE EST RAPPORTÉ, JAMAIS INTERPRÉTÉ, et c'est la
-//! décision qui gouverne tout ce module.** `msiexec` rend **3010**
-//! (`ERROR_SUCCESS_REBOOT_REQUIRED`) pour un succès qui demande un
-//! redémarrage, et beaucoup d'installeurs graphiques rendent **0** après une
-//! annulation par l'utilisateur. Un verdict tiré du code se tromperait donc
-//! **dans les deux sens** : il appellerait échec une installation réussie, et
-//! succès une installation que personne n'a faite. C'est la doctrine que le
-//! sous-bloc D8 a payée sur un autre terrain — *juger sur la RELECTURE, jamais
-//! sur le code de retour* —, et la relecture est ici la fenêtre de comptage de
-//! [`super::fenetre`], qui dit ce que le disque a réellement gagné.
+//! 🔴 **THE EXIT CODE IS REPORTED, NEVER INTERPRETED, and that is the
+//! decision that governs this whole module.** `msiexec` returns **3010**
+//! (`ERROR_SUCCESS_REBOOT_REQUIRED`) for a success that requires a
+//! reboot, and many graphical installers return **0** after a
+//! cancellation by the user. A verdict drawn from the code would therefore be wrong
+//! **in both directions**: it would call a successful installation a failure, and
+//! a success an installation nobody performed. It is the doctrine that
+//! sub-block D8 paid for on another ground — *judge on the RE-READ, never
+//! on the return code* —, and the re-read here is the counting window of
+//! [`super::fenetre`], which says what the disk actually gained.
 //!
-//! 🔴 **LE SEUL RÔLE DE L'`Option` EST DE DISTINGUER « CODE RECUEILLI » DE
-//! « CODE PERDU ».** Sa VALEUR n'entre dans aucune branche, et un test le
-//! garde en posant `Some(3010)` sur une installation qui a bel et bien posé
-//! ses raccourcis. Le code voyage jusqu'au hub, qui l'affiche à l'exploitant ;
-//! il ne décide de rien ici.
+//! 🔴 **THE ONLY ROLE OF THE `Option` IS TO DISTINGUISH "CODE COLLECTED" FROM
+//! "CODE LOST".** Its VALUE enters no branch, and a test
+//! guards it by setting `Some(3010)` on an installation that did indeed place
+//! its shortcuts. The code travels to the hub, which shows it to the operator;
+//! it decides nothing here.
 //!
-//! **Pur, aucun `cfg`, aucune horloge, aucune entrée-sortie** — comme
-//! `capteur::plein_ecran` et `apps::reconciliation` : ses épreuves courent sur
-//! l'hôte Linux, là où le reste de l'installation ne peut pas être éprouvé.
+//! **Pure, no `cfg`, no clock, no input-output** — like
+//! `capteur::plein_ecran` and `apps::reconciliation`: its tests run on
+//! the Linux host, where the rest of the installation cannot be tested.
 
-/// Pourquoi une installation n'a **jamais démarré**.
+/// Why an installation **never started**.
 ///
-/// ⚠️ **`Refusee` EST UNE ADDITION À LA SPÉCIFICATION, QUI N'EN COMPTE QUE
-/// TROIS, et elle est justifiée** : ces cinq cas ne sont ni un succès, ni un
-/// « sans effet », ni une ignorance — **ce sont des refus, et ils savent
-/// pourquoi**. Les fondre dans [`Issue::IssueInconnue`] ferait lire « on ne
-/// sait pas » là où l'on sait très bien, et priverait le hub du seul message
-/// qu'il puisse afficher utilement à l'utilisateur.
+/// ⚠️ **`Refusee` IS AN ADDITION TO THE SPECIFICATION, WHICH COUNTS ONLY
+/// THREE, and it is justified**: these five cases are neither a success, nor a
+/// "no effect", nor ignorance — **they are refusals, and they know
+/// why**. Folding them into [`Issue::IssueInconnue`] would read "we do not
+/// know" where we know very well, and would deprive the hub of the only message
+/// it can usefully show the user.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Motif {
-    /// Le SHA-256 relu après écriture n'est pas celui qui était annoncé.
+    /// The SHA-256 re-read after writing is not the one that was announced.
     Empreinte,
-    /// `CreateProcessW` a rendu `ERROR_ELEVATION_REQUIRED` (740). C'est le
-    /// remède qui rend une élévation LISIBLE au lieu d'une attente que
-    /// personne ne comprend : la boîte de consentement s'ouvre sur le bureau
-    /// sécurisé, hors de portée de toute capture.
+    /// `CreateProcessW` returned `ERROR_ELEVATION_REQUIRED` (740). It is the
+    /// remedy that makes an elevation READABLE instead of a wait that
+    /// nobody understands: the consent box opens on the secure
+    /// desktop, out of reach of any capture.
     ElevationRequise,
-    /// L'extension n'est ni `.exe` ni `.msi` — `.bat` en particulier, dont
-    /// l'interprète, le répertoire de travail et la politique d'exécution
-    /// appelleraient leurs propres décisions.
+    /// The extension is neither `.exe` nor `.msi` — `.bat` in particular, whose
+    /// interpreter, working directory and execution policy
+    /// would call for their own decisions.
     Extension,
-    /// 🔴 Le processus qui installe est assigné à un **job object**, donc
-    /// l'installeur y mourrait avec l'agent — au milieu d'une écriture de
-    /// registre, et la machine resterait à moitié installée. Un refus bruyant
-    /// vaut mieux qu'une installation qu'un redéploiement tuera. C'est un
-    /// GARDE, pas le remède : le remède est le leg n°1 de G1, qui n'appartient
-    /// pas à ce sous-bloc.
+    /// 🔴 The installing process is assigned to a **job object**, so
+    /// the installer would die there with the agent — in the middle of a registry
+    /// write, and the machine would stay half-installed. A loud refusal
+    /// is better than an installation a redeployment will kill. It is a
+    /// GUARD, not the remedy: the remedy is G1's hand-over no. 1, which does not belong
+    /// to this sub-block.
     JobObject,
-    /// Il n'y a pas la place d'écrire l'installeur.
+    /// There is no room to write the installer.
     DisquePlein,
-    /// Le disque a refusé une écriture qui n'est PAS celle de l'installeur —
-    /// le journal de l'installeur, par exemple.
+    /// The disk refused a write that is NOT the installer's —
+    /// the installer's log, for instance.
     ///
-    /// ⚠️ DISTINCT DE [`Self::DisquePlein`], et ce n'est pas une nuance de
-    /// style : un disque plein se répare en libérant de la place, un refus
-    /// d'écriture se répare en regardant des droits. Les confondre enverrait
-    /// chercher la mauvaise chose.
+    /// ⚠️ DISTINCT FROM [`Self::DisquePlein`], and it is not a nuance of
+    /// style: a full disk is fixed by freeing space, a write
+    /// refusal is fixed by looking at permissions. Confusing them would send you
+    /// looking for the wrong thing.
     Disque,
-    /// `CreateProcessW` a échoué pour une raison AUTRE qu'une élévation
-    /// requise — exécutable corrompu, antivirus qui l'a mis en quarantaine,
-    /// image incompatible.
+    /// `CreateProcessW` failed for a reason OTHER than a required
+    /// elevation — corrupted executable, antivirus that quarantined it,
+    /// incompatible image.
     ///
-    /// ⚠️ IL NE DIT PAS LAQUELLE, et c'est honnête : l'erreur Windows exacte
-    /// est au journal, ce motif ne fait que dire « l'installeur n'a jamais
-    /// démarré ». Inventer une taxonomie ici prétendrait savoir.
+    /// ⚠️ IT DOES NOT SAY WHICH, and that is honest: the exact Windows error
+    /// is in the log, this reason only says "the installer never
+    /// started". Inventing a taxonomy here would pretend to know.
     LancementImpossible,
 }
 
 impl Motif {
-    /// Les cinq variantes, dans l'ordre où le test les parcourt.
+    /// The five variants, in the order the test walks them.
     ///
-    /// 🔴 ANTI-OUBLI : une variante ajoutée sans sa ligne ici serait absente
-    /// du test de correspondance, qui compare cette liste à une table écrite à
-    /// la main dont le compte est en dur — le compilateur exige la branche de
-    /// [`Motif::mot`], et le test exige l'entrée.
-    pub const TOUS: [Self; 7] = [
+    /// 🔴 ANTI-FORGETTING: a variant added without its line here would be missing
+    /// from the mapping test, which compares this list to a hand-written table
+    /// whose count is hardcoded — the compiler requires the branch in
+    /// [`Motif::mot`], and the test requires the entry.
+    #[cfg(test)]
+    pub const ALL: [Self; 7] = [
         Self::Empreinte,
         Self::ElevationRequise,
         Self::Extension,
@@ -86,15 +87,15 @@ impl Motif {
         Self::LancementImpossible,
     ];
 
-    /// Le mot exact qui voyage sur le fil.
+    /// The exact word that travels on the wire.
     ///
-    /// 🔴 ÉCRIT À LA MAIN, JAMAIS PAR UN `rename_all` : le sous-bloc G1 a
-    /// MESURÉ qu'une convention de sérialisation est **inobservable** sur un
-    /// enum dont toutes les variantes tiennent en un mot — passer `kebab-case`
-    /// à `snake_case` sur `IssueLancement` laissait `cargo test -p proto` à
-    /// 75 passed. `elevation-requise` referme la lacune de lui-même, et la
-    /// table ci-dessous la garde même si une variante d'un seul mot venait à
-    /// rester seule.
+    /// 🔴 WRITTEN BY HAND, NEVER BY A `rename_all`: sub-block G1
+    /// MEASURED that a serialisation convention is **unobservable** on an
+    /// enum whose variants all fit in one word — switching `kebab-case`
+    /// to `snake_case` on `IssueLancement` left `cargo test -p proto` at
+    /// 75 passed. `elevation-requise` closes the gap by itself, and the
+    /// table below guards it even if a single-word variant were to
+    /// remain alone.
     pub fn mot(self) -> &'static str {
         match self {
             Self::Empreinte => "empreinte",
@@ -107,82 +108,83 @@ impl Motif {
         }
     }
 
-    /// Le motif que ce mot désigne, ou `None` si nous ne le connaissons pas.
+    /// The reason this word designates, or `None` if we do not know it.
     ///
-    /// 🔴 `None` N'EST PAS UNE ERREUR : c'est un motif d'une version qui nous
-    /// dépasse, et l'appelant doit le journaliser **verbatim** plutôt que de
-    /// le perdre ou de le remplacer par un défaut.
+    /// 🔴 `None` IS NOT AN ERROR: it is a reason from a version that is ahead of
+    /// us, and the caller must log it **verbatim** rather than
+    /// lose it or replace it with a default.
+    #[cfg(test)]
     pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS.into_iter().find(|candidat| candidat.mot() == mot)
+        Self::ALL.into_iter().find(|candidat| candidat.mot() == mot)
     }
 }
 
-/// Ce que l'agent déclare à la plateforme quand une installation s'achève.
+/// What the agent declares to the platform when an installation ends.
 ///
-/// ⚠️ **TYPE LOCAL, EN ATTENTE DE SON JUMEAU DE PROTOCOLE.** Le vocabulaire du
-/// fil vit dans `proto::plateforme` ; tant qu'il n'y est pas, ce module ne
-/// l'importe pas et l'appelant fera la conversion. Les noms sont les mêmes des
-/// deux côtés, à dessein.
+/// ⚠️ **LOCAL TYPE, WAITING FOR ITS PROTOCOL TWIN.** The wire
+/// vocabulary lives in `proto::plateforme`; as long as it is not there, this module does not
+/// import it and the caller will do the conversion. The names are the same on
+/// both sides, on purpose.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// ⚠️ `IssueInconnue` COMMENCE PAR LE NOM DE SON ENUM, ET CLIPPY LE SIGNALE.
-// C'est DÉLIBÉRÉ et cela ne se corrige pas : le sous-bloc G1 a MESURÉ qu'un
-// `rename_all` est **inobservable** sur un enum dont toutes les variantes
-// tiennent en un mot — passer `kebab-case` à `snake_case` sur `IssueLancement`
-// laisse `cargo test -p proto` entièrement vert. `SansEffet` et `IssueInconnue`
-// sont les deux variantes de deux mots qui referment cette lacune, et le test
-// `les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case` en dépend.
-// La renommer rouvrirait le leg n°9 de G1 pour satisfaire un lint de style.
+// ⚠️ `IssueInconnue` STARTS WITH THE NAME OF ITS ENUM, AND CLIPPY FLAGS IT.
+// It is DELIBERATE and it is not fixed: sub-block G1 MEASURED that a
+// `rename_all` is **unobservable** on an enum whose variants all
+// fit in one word — switching `kebab-case` to `snake_case` on `IssueLancement`
+// leaves `cargo test -p proto` entirely green. `SansEffet` and `IssueInconnue`
+// are the two two-word variants that close that gap, and the test
+// `les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case` depends on them.
+// Renaming it would reopen G1's hand-over no. 9 to satisfy a style lint.
 #[allow(clippy::enum_variant_names)]
 pub enum Issue {
-    /// La fenêtre de comptage a vu **au moins une** application apparaître.
+    /// The counting window saw **at least one** application appear.
     Reussie,
-    /// La fenêtre s'est fermée à **zéro** : l'installeur a tourné, le
-    /// catalogue n'a pas bougé. C'est le cas d'une annulation.
+    /// The window closed at **zero**: the installer ran, the
+    /// catalogue did not move. That is the case of a cancellation.
     SansEffet,
-    /// Le code de sortie n'a pas pu être recueilli, ou l'installation a
-    /// expiré. **Nous ne savons pas**, et le dire est le seul énoncé honnête.
+    /// The exit code could not be collected, or the installation
+    /// timed out. **We do not know**, and saying so is the only honest statement.
     IssueInconnue,
-    /// L'installation n'a **jamais démarré**, et l'on sait pourquoi.
+    /// The installation **never started**, and we know why.
     Refusee,
 }
 
 impl Issue {
-    /// L'issue, dans l'ordre de priorité que la spécification fixe.
+    /// The outcome, in the priority order the specification sets.
     ///
-    /// **L'ordre n'est pas indifférent, et chaque marche a sa raison :**
+    /// **The order is not indifferent, and each step has its reason:**
     ///
-    /// 1. **`Refusee` l'emporte sur tout.** Rien n'a été lancé, donc `apparues`
-    ///    ne compte que ce que d'AUTRES réconciliations ont trouvé — une
-    ///    installation concurrente, ou une application posée à la main pendant
-    ///    la fenêtre. En tirer un succès serait **inventer** un effet à un
-    ///    processus qui n'a pas existé.
-    /// 2. **`IssueInconnue` l'emporte ensuite**, sur l'absence de code comme
-    ///    sur l'expiration. Un installeur expiré peut être **encore en train de
-    ///    travailler** : ses apparitions sont alors partielles, et annoncer
-    ///    `Reussie` reviendrait à déclarer achevé ce que personne n'a vu
-    ///    s'achever. ⚠️ Cette marche coûte donc quelques faux `IssueInconnue`
-    ///    sur des installations qui ont réellement abouti après l'expiration —
-    ///    **c'est assumé** : « je ne sais pas » se corrige par une seconde
-    ///    lecture du catalogue, « c'est réussi » ne se corrige pas.
-    /// 3. **`Reussie` si la fenêtre a compté quelque chose**, `SansEffet`
-    ///    sinon.
+    /// 1. **`Refusee` wins over everything.** Nothing was launched, so `apparues`
+    ///    only counts what OTHER reconciliations found — a
+    ///    concurrent installation, or an application placed by hand during
+    ///    the window. Drawing a success from it would **invent** an effect for a
+    ///    process that did not exist.
+    /// 2. **`IssueInconnue` wins next**, over a missing code as well as
+    ///    over a timeout. A timed-out installer may be **still
+    ///    working**: its appearances are then partial, and announcing
+    ///    `Reussie` would amount to declaring finished what nobody saw
+    ///    finish. ⚠️ This step therefore costs a few false `IssueInconnue`
+    ///    on installations that actually completed after the timeout —
+    ///    **that is accepted**: "I do not know" is corrected by a second
+    ///    read of the catalogue, "it succeeded" is not.
+    /// 3. **`Reussie` if the window counted something**, `SansEffet`
+    ///    otherwise.
     ///
-    /// ⚠️ `code_sortie` n'est LU que par `is_none()`. Si un jour une branche
-    /// se met à comparer sa valeur, c'est que la décision de tête de module a
-    /// été perdue.
-    /// La variante du PROTOCOLE que cette issue désigne.
+    /// ⚠️ `code_sortie` is READ only through `is_none()`. If one day a branch
+    /// starts comparing its value, the decision at the head of the module has
+    /// been lost.
+    /// The PROTOCOL variant this outcome designates.
     ///
-    /// 🔴 DEUX TYPES PLUTÔT QU'UN, ET C'EST DÉLIBÉRÉ. `proto::plateforme::Issue`
-    /// est une **forme de fil** : elle porte son `rename_all`, son `Serialize`
-    /// et sa compatibilité de version. Celle-ci est une **décision**, et elle
-    /// se teste sur l'hôte sans rien savoir de serde. Les fondre ferait entrer
-    /// une contrainte de sérialisation dans un module dont tout l'intérêt est
-    /// de n'en avoir aucune — et le jour où le fil changerait de mots, la
-    /// règle changerait avec lui.
+    /// 🔴 TWO TYPES RATHER THAN ONE, AND IT IS DELIBERATE. `proto::plateforme::Issue`
+    /// is a **wire shape**: it carries its `rename_all`, its `Serialize`
+    /// and its version compatibility. This one is a **decision**, and it
+    /// is tested on the host without knowing anything about serde. Merging them would bring
+    /// a serialisation constraint into a module whose whole point is
+    /// to have none — and the day the wire changed words, the
+    /// rule would change with it.
     ///
-    /// ⚠️ LE `match` EST EXHAUSTIF : une variante ajoutée d'un côté ne compile
-    /// pas tant qu'elle n'a pas son pendant. C'est la seule chose qui garde les
-    /// deux types alignés, et elle est gratuite.
+    /// ⚠️ THE `match` IS EXHAUSTIVE: a variant added on one side does not compile
+    /// until it has its counterpart. It is the only thing that keeps the
+    /// two types aligned, and it is free.
     pub fn vers_protocole(self) -> proto::plateforme::Issue {
         match self {
             Self::Reussie => proto::plateforme::Issue::Reussie,
@@ -216,26 +218,26 @@ impl Issue {
 mod tests {
     use super::*;
 
-    /// 🔴 LE TÉMOIN DE LA DÉCISION DE TÊTE DE MODULE. `msiexec` rend 3010 pour
-    /// un succès qui demande un redémarrage : une interprétation « code non
-    /// nul ⇒ échec » rendrait ici autre chose que `Reussie`, sur une
-    /// installation qui a posé deux raccourcis sous nos yeux.
+    /// 🔴 THE WITNESS OF THE DECISION AT THE HEAD OF THE MODULE. `msiexec` returns 3010 for
+    /// a success that requires a reboot: a "non-zero code ⇒ failure"
+    /// interpretation would return something other than `Reussie` here, on an
+    /// installation that placed two shortcuts before our eyes.
     #[test]
     fn un_code_de_sortie_non_nul_ne_defait_pas_une_fenetre_qui_a_compte() {
         assert_eq!(Issue::depuis(Some(3010), 2, false, None), Issue::Reussie);
-        // Les mêmes, pour que la première ne passe pas par hasard : aucun de
-        // ces codes ne doit peser, quel que soit son signe ou sa magnitude.
+        // The same, so that the first does not pass by chance: none of
+        // these codes must weigh, whatever its sign or magnitude.
         for code in [1_i32, 1603, 259, -1, i32::MIN, i32::MAX] {
             assert_eq!(
                 Issue::depuis(Some(code), 1, false, None),
                 Issue::Reussie,
-                "le code {code} a été interprété"
+                "code {code} was interpreted"
             );
         }
     }
 
-    /// 🔴 L'AUTRE SENS DE LA MÊME ERREUR, et c'est le témoin de la spec ⑥ :
-    /// un installeur graphique annulé sort en **0** sans rien avoir posé.
+    /// 🔴 THE OTHER DIRECTION OF THE SAME ERROR, and it is the witness of spec ⑥:
+    /// a cancelled graphical installer exits with **0** without having placed anything.
     #[test]
     fn un_installeur_annule_sort_en_zero_et_reste_sans_effet() {
         assert_eq!(Issue::depuis(Some(0), 0, false, None), Issue::SansEffet);
@@ -243,8 +245,8 @@ mod tests {
 
     #[test]
     fn un_refus_l_emporte_sur_tout_le_reste() {
-        // Y compris sur une fenêtre pleine et un code de succès : ce qui est
-        // apparu pendant la fenêtre vient d'ailleurs, puisque rien n'a démarré.
+        // Including on a full window and a success code: what
+        // appeared during the window comes from elsewhere, since nothing started.
         assert_eq!(
             Issue::depuis(Some(0), 7, false, Some(Motif::ElevationRequise)),
             Issue::Refusee
@@ -257,10 +259,10 @@ mod tests {
 
     #[test]
     fn l_ignorance_l_emporte_sur_une_fenetre_pleine() {
-        // Code perdu : l'agent est mort avant de le recueillir.
+        // Code lost: the agent died before collecting it.
         assert_eq!(Issue::depuis(None, 3, false, None), Issue::IssueInconnue);
-        // Expiré : l'installeur peut encore travailler, ses apparitions sont
-        // peut-être partielles.
+        // Timed out: the installer may still be working, its appearances are
+        // perhaps partial.
         assert_eq!(Issue::depuis(Some(0), 3, true, None), Issue::IssueInconnue);
         assert_eq!(Issue::depuis(None, 0, true, None), Issue::IssueInconnue);
     }
@@ -271,17 +273,17 @@ mod tests {
         assert_eq!(Issue::depuis(Some(0), 0, false, None), Issue::SansEffet);
     }
 
-    /// La table des motifs, parcourue dans les DEUX sens — un `rename_all`
-    /// n'aurait pas permis de la faire rougir.
+    /// The table of reasons, walked in BOTH directions — a `rename_all`
+    /// would not have let it turn red.
     #[test]
     fn la_table_des_motifs_fait_l_aller_retour_sur_les_sept() {
-        // ⚠️ CE TEST A DÉJÀ SERVI, ET C'EST SA RAISON D'ÊTRE. L'écriture de
-        // `installation/execution.rs` a eu besoin de deux motifs que cette
-        // table n'avait pas — `disque` et `lancement-impossible` —, et le
-        // compte en dur les a exigés ICI avant de laisser le code compiler. Un
-        // `TOUS` dérivé d'un `match` exhaustif ne l'aurait pas fait : le
-        // compilateur aurait accepté la variante, et seul le mot serait resté
-        // absent de la table du fil.
+        // ⚠️ THIS TEST HAS ALREADY SERVED, AND THAT IS ITS REASON TO BE. Writing
+        // `installation/execution.rs` needed two reasons this
+        // table did not have — `disque` and `lancement-impossible` —, and the
+        // hardcoded count demanded them HERE before letting the code compile. A
+        // `ALL` derived from an exhaustive `match` would not have done so: the
+        // compiler would have accepted the variant, and only the word would have stayed
+        // missing from the wire table.
         let attendus = [
             (Motif::Empreinte, "empreinte"),
             (Motif::ElevationRequise, "elevation-requise"),
@@ -291,24 +293,24 @@ mod tests {
             (Motif::Disque, "disque"),
             (Motif::LancementImpossible, "lancement-impossible"),
         ];
-        // 🔴 ANTI-OUBLI : `TOUS` doit couvrir exactement l'énumération
-        // ci-dessus. Une variante ajoutée sans sa ligne ici fausse ce compte.
-        assert_eq!(Motif::TOUS.len(), attendus.len());
+        // 🔴 ANTI-FORGETTING: `ALL` must cover exactly the enumeration
+        // above. A variant added without its line here skews this count.
+        assert_eq!(Motif::ALL.len(), attendus.len());
         for (motif, mot) in attendus {
-            assert!(Motif::TOUS.contains(&motif), "{mot} absent de TOUS");
+            assert!(Motif::ALL.contains(&motif), "{mot} absent from ALL");
             assert_eq!(motif.mot(), mot);
             assert_eq!(Motif::depuis_mot(mot), Some(motif));
         }
-        // Un mot inconnu ne devient JAMAIS un motif par défaut.
+        // An unknown word NEVER becomes a default reason.
         assert_eq!(Motif::depuis_mot("quota-depasse"), None);
         assert_eq!(Motif::depuis_mot(""), None);
         assert_eq!(Motif::depuis_mot("Empreinte"), None);
         assert_eq!(Motif::depuis_mot("elevation_requise"), None);
-        // 🔴 `disque` ET `disque-plein` PARTAGENT UN PRÉFIXE, et c'est
-        // exactement le cas où une correspondance par `starts_with` rendrait le
-        // mauvais motif. G1 a mesuré qu'un préfixe trop large laissait
-        // DIX-SEPT tests verts ; celui-ci est minuscule, et il vérifie que la
-        // correspondance est EXACTE dans les deux sens.
+        // 🔴 `disque` AND `disque-plein` SHARE A PREFIX, and it is
+        // exactly the case where a `starts_with` match would return the
+        // wrong reason. G1 measured that too broad a prefix left
+        // SEVENTEEN tests green; this one is tiny, and it checks that the
+        // match is EXACT in both directions.
         assert_eq!(Motif::depuis_mot("disque"), Some(Motif::Disque));
         assert_eq!(Motif::depuis_mot("disque-plein"), Some(Motif::DisquePlein));
         assert_eq!(Motif::depuis_mot("disque-pleine"), None);

@@ -1,20 +1,20 @@
-//! **La reprise au démarrage** : ce qu'on fait des écritures que le journal
-//! déclarait dues quand le pont s'est arrêté.
+//! **Resumption at startup**: what we do with the writes the journal
+//! declared due when the bridge stopped.
 //!
-//! # Pourquoi cette extraction
+//! # Why this extraction
 //!
-//! `fil.rs` était à **505** lignes après l'extraction de [`super::mutations`],
-//! soit **cinq de trop**. Ce dépôt interdit nommément de compresser pour
-//! repasser sous la ligne — D9 l'a fait deux fois avant de devoir extraire
-//! quand même —, et il restait une responsabilité entière à sortir.
+//! `fil.rs` was at **505** lines after the extraction of [`super::mutations`],
+//! that is **five too many**. This repository forbids by name compressing to
+//! get back under the line — D9 did it twice before having to extract
+//! anyway —, and there remained a whole responsibility to move out.
 //!
-//! # La ligne de partage
+//! # The dividing line
 //!
-//! [`super`] porte le **régime établi** : une notification arrive, on
-//! journalise, on annonce, on pousse. Ce module porte le **démarrage**, qui
-//! obéit à d'autres règles — l'ordre d'inscription du journal fait foi, et un
-//! fichier local disparu doit être RETIRÉ en étant NOMMÉ plutôt que repoussé
-//! indéfiniment.
+//! [`super`] carries the **steady state**: a notification arrives, we
+//! journal, we announce, we push. This module carries **startup**, which
+//! obeys other rules — the journal's registration order is authoritative, and a
+//! vanished local file must be REMOVED while being NAMED rather than pushed again
+//! indefinitely.
 
 use crate::pont::bonjour::{a_memoriser, decider, Decision};
 use crate::pont::ecriture::Evenement;
@@ -22,26 +22,30 @@ use crate::pont::ecriture::Evenement;
 use super::{disque, Fil};
 
 impl Fil {
-    /// **F5** — le navigateur s'est annoncé : on pousse, ou on RETIENT.
+    /// **F5** — the browser announced itself: we push, or we HOLD BACK.
     ///
-    /// ⚠️ **Le journal n'est JAMAIS vidé sur une retenue.** Rejouer aveuglément
-    /// écrirait les fichiers d'une session dans le dossier d'une autre (spec
-    /// §6.4 cas 2) ; jeter perdrait la donnée. **On ne fait ni l'un ni l'autre :
-    /// on NOMME**, par `Dues.retenues`, et le navigateur propose « Reprendre
-    /// l'enregistrement ».
+    /// ⚠️ **The journal is NEVER emptied on a hold-back.** Replaying blindly
+    /// would write the files of one session into the folder of another (spec
+    /// §6.4 case 2); throwing away would lose the data. **We do neither one nor the other:
+    /// we NAME it**, through `Dues.retenues`, and the browser offers "Resume
+    /// saving".
     pub(super) fn bonjour(&mut self, racine: &str, forcer: bool) {
         let memorise = self.lire_le_nom_memorise();
         let decision = decider(memorise.as_deref(), racine, forcer);
         tracing::info!(
             racine,
             forcer,
-            memorise = memorise.as_deref().unwrap_or("<aucun>"),
-            decision = if decision == Decision::Pousser { "pousser" } else { "retenir" },
+            memorise = memorise.as_deref().unwrap_or("<none>"),
+            decision = if decision == Decision::Pousser {
+                "pousser"
+            } else {
+                "retenir"
+            },
             dues = self.journal.dues().len(),
-            "bonjour du navigateur : decision de reprise"
+            "browser hello: resume decision"
         );
         if let Some(nom) = a_memoriser(decision, racine) {
-            self.ecrire_le_nom_memorise(nom);
+            self.write_remembered_name(nom);
         }
         match decision {
             Decision::Pousser => {
@@ -49,85 +53,87 @@ impl Fil {
                 self.reprendre();
             }
             Decision::Retenir => {
-                // 🔴 **ON ANNONCE, ET ON NE POUSSE PAS.** Sans cette annonce, le
-                // navigateur verrait un compteur de dues figé sans savoir
-                // pourquoi — c'est-à-dire le silence que `retenues` existe pour
-                // rompre.
+                // 🔴 **WE ANNOUNCE, AND WE DO NOT PUSH.** Without this announcement, the
+                // browser would see a frozen dues counter without knowing
+                // why — that is, the silence `retenues` exists to
+                // break.
                 self.retenues = true;
                 tracing::warn!(
                     racine,
-                    memorise = memorise.as_deref().unwrap_or("<aucun>"),
+                    memorise = memorise.as_deref().unwrap_or("<none>"),
                     dues = self.journal.dues().len(),
-                    "ecritures dues RETENUES : le repertoire annonce n'est pas celui qui a ete \
-                     enregistre. Rien n'est pousse, rien n'est jete."
+                    "due writes HELD: the announced directory is not the one that was \
+                     recorded. Nothing is pushed, nothing is dropped."
                 );
                 self.annoncer_les_dues();
             }
         }
     }
 
-    /// Le nom de racine mémorisé, **à côté du journal et jamais dedans**.
+    /// The memorised root name, **next to the journal and never inside it**.
     ///
-    /// 🔴 **HORS DE LA RACINE, et ce fichier-ci l'écrit déjà du journal** : un
-    /// état qui vivrait DANS la racine serait lui-même un objet projeté — donc
-    /// dépendant du pont pour être lu, donc circulaire — et il disparaîtrait
-    /// avec elle exactement le jour où il sert.
+    /// 🔴 **OUTSIDE THE ROOT, and this file already says it of the journal**: a
+    /// state that lived IN the root would itself be a projected object — hence
+    /// dependent on the bridge to be read, hence circular — and it would disappear
+    /// with it exactly the day it matters.
     fn chemin_du_nom(&self) -> std::path::PathBuf {
         self.config.chemin_journal.with_file_name("racine.nom")
     }
 
     fn lire_le_nom_memorise(&self) -> Option<String> {
         let brut = std::fs::read_to_string(self.chemin_du_nom()).ok()?;
-        // ⚠️ **Rogné, parce qu'un éditeur ajoute une fin de ligne.** Un nom qui
-        // ne différerait que par un `\n` ferait RETENIR à chaque démarrage, sur
-        // le bon répertoire, sans que rien n'en dise la cause.
+        // ⚠️ **Trimmed, because an editor adds a line ending.** A name that
+        // differed only by a `\n` would cause a HOLD-BACK at each startup, on
+        // the right directory, with nothing saying why.
         let nom = brut.trim_end_matches(['\r', '\n']).to_string();
-        // Un fichier vide n'est pas un nom vide : il n'y a rien de mémorisé.
-        // Les confondre ferait retenir sur toute racine au premier montage.
+        // An empty file is not an empty name: nothing is memorised.
+        // Confusing them would hold back on any root at the first mount.
         if nom.is_empty() && brut.is_empty() {
             return None;
         }
         Some(nom)
     }
 
-    fn ecrire_le_nom_memorise(&self, nom: &str) {
-        if let Err(erreur) = std::fs::write(self.chemin_du_nom(), nom) {
-            // Un `warn!` et rien d'autre : ne pas mémoriser fait RETENIR au
-            // démarrage suivant, ce qui est le côté sûr.
-            tracing::warn!(%erreur, nom, "nom de racine non memorise");
+    fn write_remembered_name(&self, nom: &str) {
+        if let Err(error) = std::fs::write(self.chemin_du_nom(), nom) {
+            // A `warn!` and nothing else: not memorising causes a HOLD-BACK at the
+            // next startup, which is the safe side.
+            tracing::warn!(%error, nom, "nom de racine non memorise");
         }
     }
 
-    /// Au démarrage : annoncer les dues **avant** toute poussée, puis les
-    /// repousser **dans l'ordre d'inscription**.
+    /// At startup: announce the dues **before** any push, then
+    /// push them again **in registration order**.
     pub(super) fn reprendre(&mut self) {
         if self.journal.est_vide() {
             return;
         }
         tracing::warn!(
             dues = self.journal.compte(),
-            "des ecritures etaient dues au demarrage du pont : elles sont repoussees"
+            "writes were due when the bridge started: they are pushed again"
         );
         self.annoncer_les_dues();
-        let a_reprendre: Vec<String> =
-            self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
+        let a_reprendre: Vec<String> = self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
         for chemin in a_reprendre {
             let local = disque::local(&self.config.racine, &chemin);
             let evenement = match std::fs::metadata(&local) {
-                Ok(m) if m.is_dir() => Evenement::Cree { chemin, repertoire: true },
-                Ok(_) => Evenement::Modifie { chemin },
-                Err(erreur) => {
-                    // 🔴 **La racine a été recréée, et le fichier est parti avec
-                    // elle** (spec §6.4 cas 3). Boucler sur le réessai ferait
-                    // repousser indéfiniment un fichier qui n'existe plus ; le
-                    // retirer EN LE NOMMANT est tout ce qui reste — *savoir ce
-                    // qu'on a perdu n'est pas l'avoir*.
+                Ok(m) if m.is_dir() => Evenement::Cree {
+                    chemin,
+                    repertoire: true,
+                },
+                Ok(_) => Evenement::Modified { chemin },
+                Err(error) => {
+                    // 🔴 **The root was recreated, and the file went away with
+                    // it** (spec §6.4 case 3). Looping on retry would
+                    // push indefinitely a file that no longer exists; removing
+                    // it WHILE NAMING IT is all that remains — *knowing what
+                    // we lost is not having it*.
                     tracing::warn!(
-                        chemin, %erreur,
-                        "ecriture due abandonnee : le fichier local n'existe plus"
+                        chemin, %error,
+                        "due write abandoned: the local file no longer exists"
                     );
                     let ligne = self.journal.retirer(&chemin);
-                    self.ecrire_journal(&ligne);
+                    self.write_journal(&ligne);
                     continue;
                 }
             };
@@ -136,4 +142,5 @@ impl Fil {
             }
         }
         self.annoncer_les_dues();
-    }}
+    }
+}

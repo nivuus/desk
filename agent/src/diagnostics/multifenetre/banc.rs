@@ -1,21 +1,21 @@
-//! Temps 2 : trois passes, de 1 à N fenêtres.
+//! Phase 2: three passes, from 1 to N windows.
 //!
-//! 1. TÉMOIN — les mires peignent, rien ne capture. Sans cette passe, un
-//!    décrochage à six fenêtres serait indiscernable d'un décrochage de la
-//!    mire elle-même : huit swapchains à 60 Hz consomment du GPU, et cette
-//!    charge entrerait sinon dans la mesure. Même rôle que le profil `lan`
-//!    du banc `netem`.
-//! 2. CAPTURE — les mires peignent et la voie capture.
-//! 3. CAPTURE + ENCODAGE — un encodeur H.264 par fenêtre.
+//! 1. CONTROL — the test patterns paint, nothing captures. Without this pass, a
+//!    drop at six windows would be indistinguishable from a drop of the
+//!    test pattern itself: eight swapchains at 60 Hz consume GPU, and that
+//!    load would otherwise enter the measurement. Same role as the `lan` profile
+//!    of the `netem` bench.
+//! 2. CAPTURE — the test patterns paint and the path captures.
+//! 3. CAPTURE + ENCODING — one H.264 encoder per window.
 //!
-//! À mi-parcours des passes 2 et 3, une mire vient en recouvrir une autre :
-//! la fenêtre recouverte doit continuer de rendre sa mire. Un échec ici
-//! élimine la voie SANS mesure de cadence — chiffrer la vitesse d'une image
-//! fausse n'apprend rien.
+//! Halfway through passes 2 and 3, one test pattern comes to cover another:
+//! the covered window must keep rendering its pattern. A failure here
+//! eliminates the path WITHOUT a frame rate measurement — putting a figure on the speed of a
+//! wrong image teaches nothing.
 //!
-//! Aucune trace par trame : compteurs agrégés, journalisés à la seconde. Au
-//! chantier NAT, une trace par paquet écrite sur le partage CIFS a détruit la
-//! session qu'elle mesurait.
+//! No per-frame trace: aggregated counters, logged every second. In
+//! the NAT work stream, a per-packet trace written to the CIFS share destroyed the
+//! session it was measuring.
 
 use std::time::Instant;
 
@@ -27,15 +27,15 @@ use crate::mire;
 
 use super::compteurs::{self, Compteurs, DUREE_PASSE, PERIODE_JOURNAL};
 use super::mires::Mires;
-use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow};
+use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow, VoiesOuvertes};
 
-/// `sortie` désigne la sortie DXGI à mesurer par son nom (`\\.\DISPLAYn`), ou
-/// `None` pour la sortie qui porte le bureau — le comportement d'origine,
-/// inchangé.
-pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Result<()> {
+/// `sortie` designates the DXGI output to measure by its name (`\\.\DISPLAYn`), or
+/// `None` for the output that carries the desktop — the original behaviour,
+/// unchanged.
+pub(super) fn executer(nom_voie: &str, count: u8, sortie: Option<&str>) -> Result<()> {
     anyhow::ensure!(
-        nombre >= 1 && nombre <= mire::MIRES_MAX,
-        "MULTIFENETRE_N doit valoir 1 à {}",
+        (1..=mire::MIRES_MAX).contains(&count),
+        "MULTIFENETRE_N must be 1 to {}",
         mire::MIRES_MAX
     );
 
@@ -45,16 +45,21 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
     };
     let (texture_largeur, texture_hauteur) = capture.desktop_size();
 
-    // Le rectangle où vivent les FENÊTRES : les coordonnées du bureau virtuel,
-    // telles que `DXGI_OUTPUT_DESC::DesktopCoordinates` les donne. Sans sortie
-    // désignée, c'est le bureau à l'origine — le comportement d'avant.
+    // The rectangle where the WINDOWS live: the virtual desktop coordinates,
+    // as `DXGI_OUTPUT_DESC::DesktopCoordinates` gives them. Without a designated
+    // output, it is the desktop at the origin — the previous behaviour.
     let bureau = match sortie {
         Some(nom) => crate::capture::enumerer_sorties()?
             .into_iter()
             .find(|s| s.nom_sortie == nom)
             .map(|s| s.rect)
-            .with_context(|| format!("sortie {nom} absente de l'énumération"))?,
-        None => Rect { x: 0, y: 0, width: texture_largeur, height: texture_hauteur },
+            .with_context(|| format!("output {nom} absent from the enumeration"))?,
+        None => Rect {
+            x: 0,
+            y: 0,
+            width: texture_largeur,
+            height: texture_hauteur,
+        },
     };
     let facteur = crate::moniteurs_virtuels::facteur_echelle(
         (bureau.width, bureau.height),
@@ -70,11 +75,14 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
         texture_hauteur,
         facteur_horizontal = facteur.0,
         facteur_vertical = facteur.1,
-        "banc : coordonnées de fenêtre et de texture"
+        "bench: window and texture coordinates"
     );
 
-    let places = disposition::tuiles(bureau, nombre as u32).with_context(|| {
-        format!("{nombre} places sur un bureau {}x{}", bureau.width, bureau.height)
+    let places = disposition::tuiles(bureau, count as u32).with_context(|| {
+        format!(
+            "{count} places on a {}x{} desktop",
+            bureau.width, bureau.height
+        )
     })?;
     let places_texture: Vec<Rect> = places
         .iter()
@@ -82,37 +90,37 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
         .collect();
     tracing::info!(
         voie = nom_voie,
-        nombre,
+        count,
         ?places,
         ?places_texture,
-        "banc : disposition retenue"
+        "bench: layout retained"
     );
 
     let mut mires = Mires::ouvrir(capture.device(), &places)?;
 
-    // La duplication DXGI est exclusive à l'échelle du processus : DXGI
-    // n'autorise qu'UNE SEULE duplication ouverte à la fois sur une même
-    // sortie — mesuré ici, pas supposé : la voie « duplication » (qui ouvre
-    // la sienne dans `ouvrir_voies`) échouait avec 0x80070057 (« paramètre
-    // incorrect ») tant que celle-ci restait vivante. `capture` n'a servi
-    // qu'à donner son périphérique D3D11 à `Mires::ouvrir` (qui en garde son
-    // propre clone à comptage de références COM, indépendant) et ses
-    // dimensions de bureau, déjà lues ci-dessus : rien ne dépend plus
-    // d'elle à partir d'ici, et sa PROPRE duplication doit être relâchée
-    // avant que la voie « duplication » n'ouvre la sienne.
+    // DXGI duplication is exclusive at the process level: DXGI
+    // only allows ONE open duplication at a time on a given
+    // output — measured here, not assumed: the "duplication" path (which opens
+    // its own in `ouvrir_voies`) failed with 0x80070057 ("parameter
+    // incorrect") as long as this one stayed alive. `capture` only served
+    // to give its D3D11 device to `Mires::ouvrir` (which keeps its
+    // own COM reference-counted clone, independent) and its
+    // desktop dimensions, already read above: nothing depends on
+    // it anymore from here on, and its OWN duplication must be released
+    // before the "duplication" path opens its own.
     drop(capture);
 
-    // `None` : ce protocole ne détient aucun pilote — il reçoit une sortie
-    // déjà là et n'a pas de quoi battre son chien de garde. Comportement
-    // INCHANGÉ par la ronde 1, y compris son risque connu : appelé par
-    // `capture_virtuelle.rs`, le banc tourne sans un seul ping sur une sortie
-    // virtuelle, ce que l'en-tête de ce module-là signale déjà et rattrape
-    // après coup par un contrôle de survie.
+    // `None`: this protocol holds no driver — it receives an output
+    // already there and has nothing to beat its watchdog with. Behaviour
+    // UNCHANGED by round 1, including its known risk: called by
+    // `capture_virtuelle.rs`, the bench runs without a single ping on a virtual
+    // output, which that module's header already flags and makes up for
+    // afterwards with a survival check.
     compteurs::passe_temoin(&mut mires, None)?;
     let (mut voies, regions) =
-        ouvrir_voies(nom_voie, nombre, &mires, &places, &places_texture, sortie)?;
+        ouvrir_voies(nom_voie, count, &mires, &places, &places_texture, sortie)?;
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, false)?;
-    compteurs::journaliser("capture", nom_voie, nombre, &compteurs);
+    compteurs::journaliser("capture", nom_voie, count, &compteurs);
     if compteurs.apres_recouvrement.faux() > 0 {
         tracing::error!(
             voie = nom_voie,
@@ -120,97 +128,97 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Resu
             noires = compteurs.apres_recouvrement.noires,
             voisines = compteurs.apres_recouvrement.voisines,
             inconnues = compteurs.apres_recouvrement.inconnues,
-            "verdict : ÉLIMINÉE sous recouvrement — la passe d'encodage est sautée"
+            "verdict: ELIMINATED under overlap — the encoding pass is skipped"
         );
         return Ok(());
     }
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, true)?;
-    compteurs::journaliser("capture+encodage", nom_voie, nombre, &compteurs);
-    // Le second suspect, après les encodeurs : la source de duplication que
-    // toutes les voies partagent. Tracé séparément pour que le journal
-    // distingue « mort aux encodeurs » de « mort à la duplication ».
-    tracing::info!("libération des voies de capture : avant");
+    compteurs::journaliser("capture+encoding", nom_voie, count, &compteurs);
+    // The second suspect, after the encoders: the duplication source that
+    // all paths share. Traced separately so that the log
+    // distinguishes "died at the encoders" from "died at the duplication".
+    tracing::info!("releasing the capture paths: before");
     drop(voies);
-    tracing::info!("libération des voies de capture : après");
+    tracing::info!("releasing the capture paths: after");
     Ok(())
 }
 
-/// Deux dispositions, et elles ne sont pas interchangeables :
-/// `places_fenetres` est en coordonnées du bureau virtuel — c'est là que sont
-/// les fenêtres, et `PrintWindow` travaille sur la fenêtre elle-même ;
-/// `places_texture` est en coordonnées de la texture dupliquée — c'est là que
-/// recadre `CopySubresourceRegion`. Elles ne coïncident que si la sortie n'est
-/// pas mise à l'échelle, ce qui est le cas du bureau physique mais pas
-/// nécessairement d'une sortie virtuelle (facteur 1,5 relevé par la sonde).
+/// Two layouts, and they are not interchangeable:
+/// `places_fenetres` is in virtual desktop coordinates — that is where
+/// the windows are, and `PrintWindow` works on the window itself;
+/// `places_texture` is in duplicated texture coordinates — that is where
+/// `CopySubresourceRegion` crops. They only coincide if the output is
+/// not scaled, which is the case of the physical desktop but not
+/// necessarily of a virtual output (factor 1.5 noted by the probe).
 ///
-/// Rend aussi la région RETENUE par voie, celle dont chaque image portera les
-/// dimensions. La passe d'encodage en a besoin telle quelle : dimensionner
-/// l'encodeur sur la place de la fenêtre alors que la voie `duplication` rend
-/// une image aux dimensions de la texture ferait diverger les deux dès que le
-/// facteur d'échelle diffère de 1.
+/// Also returns the region RETAINED per path, the one whose dimensions each image will
+/// carry. The encoding pass needs it as is: sizing
+/// the encoder on the window's slot while the `duplication` path returns
+/// an image at the texture's dimensions would make the two diverge as soon as the
+/// scale factor differs from 1.
 fn ouvrir_voies(
     nom_voie: &str,
-    nombre: u8,
+    count: u8,
     mires: &Mires,
     places_fenetres: &[Rect],
     places_texture: &[Rect],
     sortie: Option<&str>,
-) -> Result<(Vec<Box<dyn VoieDeCapture>>, Vec<Rect>)> {
-    // Ce que la voie partage entre ses N flux est décidé ICI, une fois : la
-    // duplication n'accepte pas d'être ouverte N fois sur la même sortie, et
-    // le périphérique D3D11 de la voie printwindow n'a besoin d'exister
-    // qu'une fois.
+) -> Result<VoiesOuvertes> {
+    // What the path shares between its N streams is decided HERE, once: the
+    // duplication does not accept being opened N times on the same output, and
+    // the D3D11 device of the printwindow path only needs to exist
+    // once.
     let mut voies: Vec<Box<dyn VoieDeCapture>> = Vec::new();
     let regions: Vec<Rect> = match nom_voie {
         "duplication" => {
             let partagee = VoieDuplication::partagee_sur(sortie)?;
-            for id in 0..nombre {
+            for id in 0..count {
                 let mut voie: Box<dyn VoieDeCapture> =
-                    Box::new(VoieDuplication::nouvelle(partagee.clone()));
+                    Box::new(VoieDuplication::new(partagee.clone()));
                 voie.ouvrir(mires.hwnd(id)?, places_texture[id as usize])?;
                 voies.push(voie);
             }
-            places_texture[..nombre as usize].to_vec()
+            places_texture[..count as usize].to_vec()
         }
         "printwindow" => {
             let (device, contexte) = VoiePrintWindow::partagee()?;
-            for id in 0..nombre {
+            for id in 0..count {
                 let mut voie: Box<dyn VoieDeCapture> =
-                    Box::new(VoiePrintWindow::nouvelle(device.clone(), contexte.clone()));
+                    Box::new(VoiePrintWindow::new(device.clone(), contexte.clone()));
                 voie.ouvrir(mires.hwnd(id)?, places_fenetres[id as usize])?;
                 voies.push(voie);
             }
-            places_fenetres[..nombre as usize].to_vec()
+            places_fenetres[..count as usize].to_vec()
         }
         autre => {
             anyhow::bail!(
-                "voie « {autre} » inconnue du banc — voies câblées : duplication, printwindow"
+                "path '{autre}' unknown to the bench — wired paths: duplication, printwindow"
             )
         }
     };
     Ok((voies, regions))
 }
 
-/// `regions` porte, voie par voie, les dimensions que ses images auront —
-/// celles retenues par `ouvrir_voies`, et non celles des fenêtres : sur une
-/// sortie mise à l'échelle, la voie `duplication` rend des images aux
-/// dimensions de la TEXTURE, qu'un encodeur dimensionné sur la fenêtre
-/// refuserait.
+/// `regions` carries, path by path, the dimensions its images will have —
+/// those retained by `ouvrir_voies`, and not those of the windows: on a
+/// scaled output, the `duplication` path returns images at the
+/// dimensions of the TEXTURE, which an encoder sized on the window
+/// would refuse.
 fn passe_capture(
     mires: &mut Mires,
     voies: &mut [Box<dyn VoieDeCapture>],
     regions: &[Rect],
-    avec_encodage: bool,
+    with_encoding: bool,
 ) -> Result<Compteurs> {
-    let nombre = voies.len();
-    let mut compteurs = Compteurs::nouveaux(nombre);
+    let count = voies.len();
+    let mut compteurs = Compteurs::nouveaux(count);
     let mut encodeurs: Vec<crate::encode::H264Encoder> = Vec::new();
-    if avec_encodage {
-        for id in 0..nombre {
+    if with_encoding {
+        for id in 0..count {
             let place = regions[id];
-            // Un encodeur par fenêtre, sur le périphérique de SA voie : une
-            // texture ne se soumet pas à un encodeur bâti sur un autre
-            // périphérique D3D11.
+            // One encoder per window, on the device of ITS path: a
+            // texture cannot be submitted to an encoder built on another
+            // D3D11 device.
             let appareil = voies[id].device();
             encodeurs.push(crate::encode::H264Encoder::new(
                 &appareil,
@@ -231,24 +239,24 @@ fn passe_capture(
         .filter(|ms| *ms > 0);
     let mut eprouve = false;
     let mut prochain_journal = debut + PERIODE_JOURNAL;
-    let mut pts = vec![0u64; nombre];
+    let mut pts = vec![0u64; count];
 
     while debut.elapsed() < DUREE_PASSE {
         mires.peindre()?;
         mires.pomper();
-        // Identifie ce tick pour les voies à source partagée
-        // (`VoieDuplication`/`SourceDuplication`) : leur permet de
-        // n'acquérir cette source qu'une fois par tour, quel que soit le
-        // nombre de voies qui la recadrent ensuite — voir le commentaire de
-        // tête de `SourceDuplication` (`voies.rs`).
+        // Identifies this tick for shared-source paths
+        // (`VoieDuplication`/`SourceDuplication`): lets them
+        // acquire that source only once per round, whatever the
+        // number of paths that crop it afterwards — see the header
+        // comment of `SourceDuplication` (`voies.rs`).
         let tour = mires.trame();
 
-        // Épreuve de la file imposée à la MFT (`MULTIFENETRE_EPREUVE_FILE_MS`) :
-        // on bouche la file au milieu de la passe et l'on regarde si les
-        // `unites` du journal périodique s'effondrent. C'est la seule mesure
-        // qui dise si le travail de la MFT transite par cette file — donc si
-        // la barrière de mise au repos porte sur quoi que ce soit. Hors
-        // variable, ce bloc n'existe pas à l'exécution.
+        // Test of the queue imposed on the MFT (`MULTIFENETRE_EPREUVE_FILE_MS`):
+        // we clog the queue in the middle of the pass and watch whether the
+        // `unites` of the periodic log collapse. It is the only measurement
+        // that tells whether the MFT's work goes through this queue — hence whether
+        // the idle barrier bears on anything at all. Without the
+        // variable, this block does not exist at runtime.
         if !eprouve && Instant::now() >= mi_parcours {
             if let (Some(ms), Some(encodeur)) = (epreuve_file_ms, encodeurs.first()) {
                 encodeur.eprouver_file(std::time::Duration::from_millis(ms));
@@ -256,12 +264,15 @@ fn passe_capture(
             }
         }
 
-        // Mise en scène de la porte éliminatoire : la dernière mire vient
-        // recouvrir la première.
-        if !recouvert && Instant::now() >= mi_parcours && nombre >= 2 {
-            mires.recouvrir(nombre as u8 - 1, 0)?;
+        // Staging of the elimination gate: the last test pattern comes to
+        // cover the first.
+        if !recouvert && Instant::now() >= mi_parcours && count >= 2 {
+            mires.recouvrir(count as u8 - 1, 0)?;
             recouvert = true;
-            tracing::info!("recouvrement posé : la mire 0 est sous la mire {}", nombre - 1);
+            tracing::info!(
+                "overlap set: test pattern 0 is under test pattern {}",
+                count - 1
+            );
         }
 
         for (id, voie) in voies.iter_mut().enumerate() {
@@ -270,29 +281,29 @@ fn passe_capture(
             };
             compteurs.images[id] += 1;
 
-            // La vérification ne porte QUE sur la mire 0 — ailleurs elle
-            // coûterait une copie CPU par image sans rien apprendre — mais elle
-            // porte sur TOUTE la passe, avant comme après le recouvrement.
+            // The check ONLY bears on test pattern 0 — elsewhere it
+            // would cost one CPU copy per image without teaching anything — but it
+            // bears on the WHOLE pass, before as well as after the covering.
             //
-            // Elle ne courait auparavant qu'une fois le recouvrement posé :
-            // sur le bureau physique, qu'une fenêtre dégagée soit capturée
-            // juste allait de soi, et seul le recouvrement était en question.
-            // La mesure ③ renverse cela — sur une sortie virtuelle SANS écran
-            // attaché, que Windows compose seulement quelque chose est
-            // l'hypothèse à éprouver. Sans le relevé d'avant recouvrement, une
-            // sortie qui ne rendrait que du noir donnerait le même « éliminée
-            // sous recouvrement » qu'une sortie parfaitement composée, et l'on
-            // conclurait au mauvais défaut.
+            // It used to run only once the covering was in place:
+            // on the physical desktop, that an unobstructed window is captured
+            // correctly went without saying, and only the covering was in question.
+            // Measurement ③ reverses that — on a virtual output WITHOUT a screen
+            // attached, whether Windows composes anything at all is
+            // the hypothesis to test. Without the reading from before the covering, an
+            // output that rendered only black would give the same "eliminated
+            // under covering" as a perfectly composed output, and we would
+            // conclude on the wrong defect.
             if id == 0 {
                 let verdict = compteurs::lire_verdict(voie.as_mut(), &image, 0)?;
                 if recouvert {
                     compteurs.apres_recouvrement.compter(verdict);
                 } else {
-                    compteurs.avant_recouvrement.compter(verdict);
+                    compteurs.before_overlap.compter(verdict);
                 }
             }
 
-            if avec_encodage {
+            if with_encoding {
                 encodeurs[id].submit(&image, pts[id])?;
                 pts[id] += 90_000 / 60;
                 while let Some(_unite) = encodeurs[id].poll_output()? {
@@ -306,31 +317,31 @@ fn passe_capture(
                 images = ?compteurs.images,
                 unites = ?compteurs.unites,
                 verdicts_faux = compteurs.apres_recouvrement.faux(),
-                avant = ?compteurs.avant_recouvrement,
+                before = ?compteurs.before_overlap,
                 apres = ?compteurs.apres_recouvrement,
-                "banc en cours"
+                "bench running"
             );
             prochain_journal += PERIODE_JOURNAL;
         }
     }
 
-    // Libération EXPLICITE et tracée, une par une. Le défaut hérité tuait le
-    // processus ici — au relâchement, pas à la soumission — et un `Vec`
-    // détruit implicitement n'aurait pas dit lequel de ses éléments avait tué.
-    // ✅ Ce défaut est diagnostiqué et corrigé depuis le 31 juillet 2026
-    // (`encode::arret`, 0 récidive sur 20 exécutions du cas comparable) ; ces
-    // traces restent, parce que c'est par elles qu'on l'a vu et que rien ne
-    // prouve son absence.
-    // Ces traces sont rares par construction (une par encodeur, une fois par
-    // passe) : elles ne violent pas la règle « aucune trace par trame ».
+    // EXPLICIT and traced release, one by one. The inherited defect killed the
+    // process here — at release, not at submission — and a `Vec`
+    // destroyed implicitly would not have said which of its elements had killed it.
+    // ✅ This defect has been diagnosed and fixed since 31 July 2026
+    // (`encode::arret`, 0 recurrence over 20 runs of the comparable case); these
+    // traces stay, because it is through them that it was seen and nothing
+    // proves its absence.
+    // These traces are rare by construction (one per encoder, once per
+    // pass): they do not violate the "no per-frame trace" rule.
     if !encodeurs.is_empty() {
-        tracing::info!(nombre = encodeurs.len(), "libération des encodeurs : début");
+        tracing::info!(count = encodeurs.len(), "releasing the encoders: start");
         for (id, encodeur) in encodeurs.drain(..).enumerate() {
-            tracing::info!(id, "libération d'un encodeur : avant");
+            tracing::info!(id, "releasing one encoder: before");
             drop(encodeur);
-            tracing::info!(id, "libération d'un encodeur : après");
+            tracing::info!(id, "releasing one encoder: after");
         }
-        tracing::info!("libération des encodeurs : terminée");
+        tracing::info!("releasing the encoders: done");
     }
     Ok(compteurs)
 }

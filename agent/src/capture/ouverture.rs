@@ -1,14 +1,14 @@
-//! Résolution d'une sortie DXGI par cible, et duplication de cette sortie.
+//! Resolving a DXGI output by target, and duplicating that output.
 //!
-//! Extrait de `capture.rs` à la tâche 3 du sous-bloc D2 : l'ajout de
-//! `EchecAcquisition` et de la reprise dans `next_frame` portait le fichier
-//! parent au-dessus du plafond de 500 lignes (`CLAUDE.md`). Ces deux
-//! fonctions ne touchent à aucun champ privé de `DesktopCapture` — elles
-//! prennent le périphérique et la cible en paramètres — donc aucune raison
-//! d'accès n'imposait de les garder dans le fichier parent.
+//! Extracted from `capture.rs` in task 3 of sub-block D2: adding
+//! `EchecAcquisition` and the resumption in `next_frame` took the parent
+//! file above the 500-line cap (`CLAUDE.md`). These two
+//! functions touch no private field of `DesktopCapture` — they
+//! take the device and the target as parameters — so no access reason
+//! required keeping them in the parent file.
 //!
-//! `dupliquer_avec_reprise` les y a rejointes à la tâche 11 bis, pour la même
-//! raison de plafond et sans plus d'accès privé qu'elles.
+//! `duplicate_with_retry` joined them in task 11 bis, for the same
+//! cap reason and with no more private access than them.
 
 use anyhow::{anyhow, bail, Context, Result};
 use windows::core::Interface;
@@ -23,50 +23,50 @@ use windows::Win32::Graphics::Dxgi::{
 
 use super::CibleCapture;
 
-/// Dimensions d'une sortie DXGI désignée par son nom, **sans en ouvrir la
+/// Dimensions of a DXGI output designated by its name, **without opening its
 /// duplication**.
 ///
-/// C'est la seule façon de connaître la taille d'une fenêtre avant d'avoir
-/// décidé qu'elle méritait un encodeur : DXGI n'autorise qu'une duplication
-/// ouverte par sortie, et en ouvrir une ici prendrait le mutex de la sortie —
-/// donc le retirerait à la session qui la capture peut-être déjà. Cette
-/// fonction n'ouvre rien, ne duplique rien, et ne perturbe aucune voisine.
+/// It is the only way to know a window's size before having
+/// decided it deserved an encoder: DXGI only allows one open duplication
+/// per output, and opening one here would take the output's mutex —
+/// hence take it away from the session that may already be capturing it. This
+/// function opens nothing, duplicates nothing, and disturbs no neighbour.
 ///
-/// **La taille se lit sur `DesktopCoordinates`, jamais sur WMI ni sur ce que
-/// l'appelant a demandé au pilote.** WMI rend un champ vu périmé de 68 s
-/// (relevé de la sonde multi-fenêtres), et le pilote de sortie virtuelle
-/// QUANTIFIE la résolution demandée — 1280×632 demandé rend une sortie
-/// 1280×720 (sous-bloc D2). Seule la valeur rendue par DXGI est vraie.
+/// **The size is read on `DesktopCoordinates`, never from WMI nor from what
+/// the caller asked of the driver.** WMI returns a field seen stale for 68 s
+/// (multi-window probe reading), and the virtual output driver
+/// QUANTISES the requested resolution — 1280×632 requested yields a
+/// 1280×720 output (sub-block D2). Only the value returned by DXGI is true.
 ///
-/// ⚠️ **Elle peut néanmoins différer de la taille de la TEXTURE** que
-/// l'acquisition rendra plus tard (`duplication.GetDesc().ModeDesc`) : sur une
-/// sortie mise à l'échelle, le rapport vaut le facteur DPI — 3413×960 annoncés
-/// pour 5120×1440 réels, relevé à 150 % par la sonde, d'où
-/// `moniteurs_virtuels::facteur_echelle`. Sur le chemin du produit, où les
-/// sorties virtuelles sont créées à la taille du viewport et sans mise à
-/// l'échelle, les deux coïncident ; l'appelant qui ne peut pas le garantir doit
-/// traiter cette valeur comme une ANNONCE, et confronter la taille réelle une
-/// fois la source construite.
-pub fn taille_de_sortie(nom: &str) -> Result<(u32, u32)> {
+/// ⚠️ **It may nonetheless differ from the size of the TEXTURE** that
+/// acquisition will return later (`duplication.GetDesc().ModeDesc`): on a
+/// scaled output, the ratio is the DPI factor — 3413×960 announced
+/// for 5120×1440 real, read at 150 % by the probe, hence
+/// `moniteurs_virtuels::facteur_echelle`. On the product path, where the
+/// virtual outputs are created at the viewport size and without
+/// scaling, the two coincide; a caller that cannot guarantee it must
+/// treat this value as an ANNOUNCEMENT, and check against the real size
+/// once the source is built.
+pub fn size_of_output(nom: &str) -> Result<(u32, u32)> {
     let factory: IDXGIFactory1 =
-        unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
-    // `ouvrir_sortie` fait déjà exactement la résolution par nom, avec sa
-    // trace : la refaire ici serait une seconde vérité à maintenir.
+        unsafe { CreateDXGIFactory1() }.context("creating the DXGI factory")?;
+    // `ouvrir_sortie` already does exactly the resolution by name, with its
+    // trace: redoing it here would be a second truth to maintain.
     let (_adaptateur, sortie) = ouvrir_sortie(&factory, &CibleCapture::Sortie(nom.to_string()))?;
     let desc = unsafe { sortie.GetDesc() }.with_context(|| format!("description de {nom}"))?;
     let rect = desc.DesktopCoordinates;
     let largeur = (rect.right - rect.left).max(0) as u32;
     let hauteur = (rect.bottom - rect.top).max(0) as u32;
-    // Le même seuil que `region_de_sortie` : en dessous, l'alignement pair
-    // qu'exige NV12 ne laisse plus rien à encoder.
+    // The same threshold as `region_de_sortie`: below it, the even alignment
+    // NV12 requires leaves nothing to encode.
     if largeur < 2 || hauteur < 2 {
-        bail!("sortie {nom} de dimensions inexploitables ({largeur}x{hauteur})");
+        bail!("output {nom} with unusable dimensions ({largeur}x{hauteur})");
     }
     Ok((largeur, hauteur))
 }
 
-/// Ouvre une sortie désignée par son nom, ou — pour `CibleCapture::Bureau` —
-/// trouve et ouvre la sortie qui compose le bureau.
+/// Opens an output designated by its name, or — for `CibleCapture::Bureau` —
+/// finds and opens the output that composes the desktop.
 pub(super) fn ouvrir_sortie(
     factory: &IDXGIFactory1,
     cible: &CibleCapture,
@@ -94,12 +94,12 @@ pub(super) fn ouvrir_sortie(
                     Ok(adapter_desc) => String::from_utf16_lossy(&adapter_desc.Description)
                         .trim_end_matches('\0')
                         .to_string(),
-                    Err(_) => "<inconnu>".to_string(),
+                    Err(_) => "<unknown>".to_string(),
                 };
                 tracing::info!(
                     adaptateur = %name, index_adaptateur, index_sortie, nom_sortie = %nom,
                     attachee = desc.AttachedToDesktop.as_bool(),
-                    "sortie retenue pour la duplication"
+                    "output retained for the duplication"
                 );
                 return Ok((adapter.clone(), output.cast()?));
             }
@@ -108,21 +108,21 @@ pub(super) fn ouvrir_sortie(
         index_adaptateur += 1;
     }
     match cible {
-        CibleCapture::Sortie(nom) => bail!("aucune sortie DXGI nommée {nom}"),
+        CibleCapture::Sortie(nom) => bail!("no DXGI output named {nom}"),
         CibleCapture::Bureau => {
-            bail!("aucune sortie attachée au bureau : la session est-elle interactive ?")
+            bail!("no output attached to the desktop: is the session interactive?")
         }
     }
 }
 
-/// Crée le périphérique D3D11 sur l'adaptateur qui porte la sortie retenue, et
-/// le rend partageable avec Media Foundation.
+/// Creates the D3D11 device on the adapter carrying the chosen output, and
+/// makes it shareable with Media Foundation.
 ///
-/// Extraite d'`ouvrir` à la tâche 11 bis : le réessai d'ouverture ajoutait une
-/// ligne à `capture.rs`, déjà à 500 lignes exactement (`CLAUDE.md`), et la
-/// consigne est d'extraire, jamais de compresser. **Déplacement pur : aucun
-/// appel, aucun ordre, aucune valeur n'a changé.**
-pub(super) fn creer_peripherique(
+/// Extracted from `ouvrir` in task 11 bis: the opening retry added a
+/// line to `capture.rs`, already at exactly 500 lines (`CLAUDE.md`), and the
+/// instruction is to extract, never to compress. **Pure move: no
+/// call, no order, no value changed.**
+pub(super) fn create_device_and_context(
     adapter: &IDXGIAdapter1,
 ) -> Result<(ID3D11Device, ID3D11DeviceContext)> {
     let mut device: Option<ID3D11Device> = None;
@@ -140,129 +140,128 @@ pub(super) fn creer_peripherique(
             None,
             Some(&mut context),
         )
-        .context("création du périphérique D3D11")?;
+        .context("creating the D3D11 device")?;
     }
-    let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
-    let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
+    let device = device.ok_or_else(|| anyhow!("D3D11 device absent"))?;
+    let context = context.ok_or_else(|| anyhow!("D3D11 context absent"))?;
 
-    // Le contexte immédiat D3D11 n'est PAS sûr en accès concurrent par
-    // défaut : le pilote suppose un seul fil et ne pose aucun verrou. Or ce
-    // périphérique ne reste pas privé — il est confié à Media Foundation
-    // par un `IMFDXGIDeviceManager` (voir `encode::share_device`), et le
-    // convertisseur BGRA→NV12 comme l'encodeur H.264 matériel s'en servent
-    // depuis leurs propres fils de travail internes, pendant que notre fil
-    // principal appelle `CopySubresourceRegion` dans `crop` et que la
-    // duplication de sortie — bâtie sur ce même périphérique — sert
+    // The D3D11 immediate context is NOT safe for concurrent access by
+    // default: the driver assumes a single thread and sets no lock. Yet this
+    // device does not stay private — it is handed to Media Foundation
+    // through an `IMFDXGIDeviceManager` (see `encode::share_device`), and the
+    // BGRA→NV12 converter as well as the hardware H.264 encoder use it
+    // from their own internal worker threads, while our main
+    // thread calls `CopySubresourceRegion` in `crop` and the output
+    // duplication — built on this same device — serves
     // `AcquireNextFrame`.
     //
-    // Sans cette protection, deux fils entrent en même temps dans le
-    // pilote et l'un d'eux peut ne jamais ressortir. C'est le blocage
-    // mesuré ici : quatre exécutions sur quatre figées dans
-    // `AcquireNextFrame`, pourtant appelée avec un délai d'attente NUL,
-    // donc censée ne jamais bloquer — l'attente ne venait pas de DXGI mais
-    // du verrou interne du pilote. Aucune erreur n'est remontée, la
-    // fonction ne rend simplement plus la main.
+    // Without this protection, two threads enter the driver at the same
+    // time and one of them may never come out. It is the block
+    // measured here: four runs out of four frozen in
+    // `AcquireNextFrame`, yet called with a ZERO timeout,
+    // hence supposed never to block — the wait did not come from DXGI but
+    // from the driver's internal lock. No error is raised, the
+    // function simply never returns.
     //
-    // `SetMultithreadProtected(TRUE)` fait prendre au pilote son verrou
-    // interne autour de chaque commande : c'est la condition documentée
-    // pour partager un périphérique D3D11 avec Media Foundation, et elle
-    // doit être posée AVANT `DuplicateOutput`, la duplication héritant du
-    // périphérique tel qu'il est à cet instant.
+    // `SetMultithreadProtected(TRUE)` makes the driver take its internal
+    // lock around each command: it is the documented condition
+    // for sharing a D3D11 device with Media Foundation, and it
+    // must be set BEFORE `DuplicateOutput`, the duplication inheriting the
+    // device as it is at that instant.
     let multithread: ID3D11Multithread = context
         .cast()
-        .context("obtention de ID3D11Multithread depuis le contexte immédiat")?;
+        .context("getting ID3D11Multithread from the immediate context")?;
     let was_protected = unsafe { multithread.SetMultithreadProtected(true) };
     tracing::info!(
         protection_precedente = was_protected.as_bool(),
-        "protection multi-fils activée sur le contexte immédiat D3D11"
+        "multithread protection enabled on the D3D11 immediate context"
     );
 
     Ok((device, context))
 }
 
-/// Duplique la sortie et lit ses dimensions. Le seul morceau d'`ouvrir` que
-/// `rouvrir` refait.
+/// Duplicates the output and reads its dimensions. The only piece of `ouvrir` that
+/// `rouvrir` redoes.
 ///
-/// écart d'API windows-rs 0.62 : `GetDesc` ne prend plus de paramètre de
-/// sortie ; elle renvoie directement la structure (par valeur pour
-/// `IDXGIOutputDuplication`, dans un `Result` pour `IDXGIOutput1` et
-/// `IDXGIAdapter1`, ces deux dernières pouvant échouer).
+/// windows-rs 0.62 API gap: `GetDesc` no longer takes an output
+/// parameter; it returns the structure directly (by value for
+/// `IDXGIOutputDuplication`, in a `Result` for `IDXGIOutput1` and
+/// `IDXGIAdapter1`, the last two being fallible).
 pub(super) fn dupliquer(
     device: &ID3D11Device,
     output: &IDXGIOutput1,
 ) -> Result<(IDXGIOutputDuplication, u32, u32)> {
     let duplication =
-        unsafe { output.DuplicateOutput(device) }.context("duplication de la sortie écran")?;
+        unsafe { output.DuplicateOutput(device) }.context("screen output duplication")?;
     let desc = unsafe { duplication.GetDesc() };
     Ok((duplication, desc.ModeDesc.Width, desc.ModeDesc.Height))
 }
 
-/// Duplique la sortie, **en retentant tant que DXGI dit « pas maintenant »**,
-/// et au plus pendant `fenetre`.
+/// Duplicates the output, **retrying as long as DXGI says "not now"**,
+/// and at most for `fenetre`.
 ///
-/// Employée par la seule construction de `DesktopCapture` (`ouvrir`), et non
-/// par `rouvrir` : celle-ci est déjà appelée depuis la fenêtre de reprise de
-/// `next_frame`, qui joue le même rôle par un autre montage.
+/// Used only by the construction of `DesktopCapture` (`ouvrir`), and not
+/// by `rouvrir`: that one is already called from the resumption window of
+/// `next_frame`, which plays the same role through another set-up.
 ///
-/// **Extraite ici plutôt qu'écrite dans `capture.rs`** : ce fichier parent est
-/// à 500 lignes exactement, marge nulle (`CLAUDE.md`), et cette boucle
-/// n'enveloppe que `dupliquer`, qui vit déjà ici.
-pub(super) fn dupliquer_avec_reprise(
+/// **Extracted here rather than written in `capture.rs`**: that parent file is
+/// at exactly 500 lines, zero margin (`CLAUDE.md`), and this loop
+/// only wraps `dupliquer`, which already lives here.
+pub(super) fn duplicate_with_retry(
     device: &ID3D11Device,
     output: &IDXGIOutput1,
     cible: &CibleCapture,
     fenetre: std::time::Duration,
 ) -> Result<(IDXGIOutputDuplication, u32, u32)> {
-    // Retenter la SEULE duplication, et sur place.
+    // Retry ONLY the duplication, and on the spot.
     //
-    // **Bloquer n'est pas légitime partout, d'où la `fenetre` reçue en
-    // argument plutôt que lue ici.** Au démarrage d'un enfant du superviseur
-    // elle est pleine : rien ne tourne encore — ni keyframe à servir, ni
-    // adaptation réseau, ni redimensionnement en attente. Mais `ouvrir` est
-    // AUSSI rappelée en pleine session par `WindowsSource::resize`
-    // (`DesktopCapture::new`, deux fabriques dans `rebuild_or_recover`), sur
-    // le fil bloquant de `Session::run` : celle-là passe une durée NULLE, et
-    // se comporte donc exactement comme avant ce réessai. C'est le même
-    // arbitrage que `next_frame`, qui refuse déjà de dormir pour cette raison.
+    // **Blocking is not legitimate everywhere, hence the `fenetre` received as an
+    // argument rather than read here.** At the start-up of a supervisor child
+    // it is full: nothing is running yet — no keyframe to serve, no
+    // network adaptation, no pending resize. But `ouvrir` is
+    // ALSO called again mid-session by `WindowsSource::resize`
+    // (`DesktopCapture::new`, two factories in `rebuild_or_recover`), on
+    // the blocking thread of `Session::run`: that one passes a ZERO duration, and
+    // therefore behaves exactly as before this retry. It is the same
+    // trade-off as `next_frame`, which already refuses to sleep for this reason.
     //
-    // Sans ce réessai, une première `DuplicateOutput` tombée pendant que
-    // Windows reconfigure sa topologie tuait l'enfant, que le superviseur
-    // relançait en DÉTRUISANT puis RECRÉANT sa sortie — abandonnant du même
-    // coup le mutex de toutes les duplications déjà ouvertes. La
-    // compensation coûtait plus que la panne : 32 des 44 réouvertures du
-    // relevé du 1ᵉʳ août 2026 venaient de cette seule étape.
+    // Without this retry, a first `DuplicateOutput` landing while
+    // Windows reconfigures its topology killed the child, which the supervisor
+    // restarted by DESTROYING then RECREATING its output — thereby abandoning
+    // the mutex of all the duplications already open. The
+    // compensation cost more than the failure: 32 of the 44 reopenings of the
+    // reading of 1 August 2026 came from this single step.
     let debut = std::time::Instant::now();
     loop {
         match dupliquer(device, output) {
             Ok(rendu) => break Ok(rendu),
-            Err(erreur) => {
-                // `dupliquer` rend une `anyhow::Error` bâtie par `.context()`
-                // sur une `windows::core::Error` : anyhow conserve la cause
-                // sous-jacente et `downcast_ref` la retrouve. Si jamais elle
-                // ne pouvait pas être lue, `retentable` vaudrait `false` et
-                // l'ouverture échouerait sans réessai — dégradation sûre,
-                // jamais une boucle.
-                let code = erreur
+            Err(error) => {
+                // `dupliquer` returns an `anyhow::Error` built through `.context()`
+                // on a `windows::core::Error`: anyhow keeps the underlying
+                // cause and `downcast_ref` finds it again. If it ever
+                // could not be read, `retentable` would be `false` and
+                // the opening would fail without retry — safe degradation,
+                // never a loop.
+                let code = error
                     .downcast_ref::<windows::core::Error>()
                     .map(|e| e.code().0);
-                let retentable =
-                    code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
+                let retentable = code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
                 if !retentable || debut.elapsed() >= fenetre {
-                    // Bruyant à dessein : c'est ici que se lit un plafond
-                    // de duplications concurrentes, indiscernable d'une
-                    // reconfiguration par le seul HRESULT.
+                    // Loud on purpose: it is here that a cap on
+                    // concurrent duplications shows, indistinguishable from a
+                    // reconfiguration by the HRESULT alone.
                     tracing::error!(
                         hresult = code.map(|c| format!("{c:#010x}")),
                         attendu_ms = debut.elapsed().as_millis() as u64,
                         cible = ?cible,
-                        "ouverture de la duplication abandonnée"
+                        "opening the duplication given up"
                     );
-                    break Err(erreur);
+                    break Err(error);
                 }
                 tracing::info!(
                     hresult = code.map(|c| format!("{c:#010x}")),
                     cible = ?cible,
-                    "duplication indisponible à l'ouverture, nouvel essai"
+                    "duplication unavailable at opening, retrying"
                 );
                 std::thread::sleep(crate::capture_reprise::PAS_REPRISE);
             }

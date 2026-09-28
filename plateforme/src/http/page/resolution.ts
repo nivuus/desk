@@ -1,19 +1,19 @@
-// La RÈGLE de résolution d'un chemin d'URL vers un fichier de la page bâtie.
-// PURE : aucun `fs`, aucun `http`, aucune variable d'environnement. C'est ce
-// qui la rend éprouvable sur l'hôte, SANS DISQUE.
+// The RULE resolving a URL path to a file of the built page.
+// PURE: no `fs`, no `http`, no environment variable. That is what
+// makes it testable on the host, WITHOUT A DISK.
 //
-// 🔴 CETTE RÈGLE NE PORTE PAS « TOUTE » LA SÉCURITÉ DU SERVANT, ET UNE REVUE
-// PAR EXÉCUTION L'A ÉTABLI (round 2, Critique 3) — CETTE PHRASE LE DISAIT
-// ENCORE ICI ALORS QU'ELLE ÉTAIT DÉJÀ FAUSSE DANS `page/routes-page.ts`.
-// Cette règle ferme la traversée LEXICALE (`..`, encodée ou non) — ce qui
-// SUFFISAIT tant que rien ne lisait le disque. `page/routes-page.ts`, lui,
-// LIT le disque, et un lien symbolique déposé dans la racine bâtie traverse
-// cette règle sans qu'aucun `..` n'apparaisse jamais dans l'URL : la garde
-// réelle contre les liens (`realpath`, sur le chemin CANONIQUE) vit donc
-// dans ce module-là, pas ici. Ce que CETTE règle garantit reste vrai et
-// nécessaire — elle n'est simplement plus SUFFISANTE seule.
+// 🔴 THIS RULE DOES NOT CARRY « ALL » THE SECURITY OF THE SERVER, AND A REVIEW
+// BY EXECUTION ESTABLISHED IT (round 2, Critical 3) — THIS SENTENCE STILL SAID SO
+// HERE WHILE IT WAS ALREADY FALSE IN `page/routes-page.ts`.
+// This rule closes LEXICAL traversal (`..`, encoded or not) — which
+// WAS ENOUGH as long as nothing read the disk. `page/routes-page.ts`, however,
+// READS the disk, and a symbolic link dropped in the built root goes through
+// this rule without any `..` ever showing up in the URL: the real
+// guard against links (`realpath`, on the CANONICAL path) therefore lives
+// in that module, not here. What THIS rule guarantees stays true and
+// necessary — it is simply no longer ENOUGH on its own.
 
-/// 🔴 LISTE CLOSE. Une extension absente d'ici REFUSE.
+/// 🔴 CLOSED LIST. An extension missing from here REFUSES.
 export const TYPES_MIME: ReadonlyMap<string, string> = new Map([
     ['html', 'text/html; charset=utf-8'],
     ['js', 'text/javascript; charset=utf-8'],
@@ -26,59 +26,59 @@ export const TYPES_MIME: ReadonlyMap<string, string> = new Map([
     ['woff2', 'font/woff2'],
 ]);
 
-// 🔴 `hub.html`, PAS `index.html` — DÉCISION DU PROPRIÉTAIRE DU DÉPÔT
-// (« Sers le hub à la racine », 30 août 2026), après un défaut mesuré EN
-// PRODUCTION : `https://app.allanic.me/` rendait `index.html`, la page de
-// SESSION — et sans paramètre `?session=`, `client/src/main.ts` inventait
-// alors une session `demo` SANS jeton (corrigé dans le même lot, voir
-// `client/src/session-id.ts`). L'agent journalisait « poignée de main
-// refusée : poignée de main sans jeton sur la session demo », et le
-// propriétaire voyait « Échec de la session » — une panne INDISCERNABLE
-// d'une vraie pour qui ouvre juste l'adresse du service.
+// 🔴 `hub.html`, NOT `index.html` — DECISION OF THE REPOSITORY OWNER
+// (« Serve the hub at the root », 30 August 2026), after a defect measured IN
+// PRODUCTION: `https://app.allanic.me/` returned `index.html`, the SESSION
+// page — and with no `?session=` parameter, `client/src/main.ts` then made up
+// a `demo` session WITHOUT a token (fixed in the same batch, see
+// `client/src/session-id.ts`). The agent logged « handshake
+// refused: handshake without a token on the demo session », and the
+// owner saw « Session failed » — a failure INDISTINGUISHABLE
+// from a real one for whoever just opens the address of the service.
 //
-// La racine et tout chemin sans extension replient désormais sur le HUB, la
-// seule surface qui ouvre une session avec un jeton réel. `index.html` (la
-// page de session) N'EST PAS RETIRÉ : il reste servi à SON PROPRE chemin
-// EXPLICITE, `/index.html` — segment avec extension, donc jamais résolu par
-// `PAGE` ci-dessous (voir `resoudre()`). Seul le repli change de cible.
+// The root and any path without an extension now fall back to the HUB, the
+// only surface that opens a session with a real token. `index.html` (the
+// session page) IS NOT REMOVED: it is still served at ITS OWN EXPLICIT
+// path, `/index.html` — a segment with an extension, so never resolved by
+// `PAGE` below (see `resoudre()`). Only the fallback changes target.
 const PAGE = 'hub.html';
 
-/// 🔴 LE RÉPERTOIRE DONT VITE EMPREINTE **TOUS** LES NOMS, ET LE SEUL.
+/// 🔴 THE DIRECTORY WHOSE NAMES VITE FINGERPRINTS **ALL**, AND THE ONLY ONE.
 ///
-/// C'est `build.assetsDir`, dont le défaut est `assets` et que `client/
-/// vite.config.ts` ne surcharge pas. Relevé sur la page réellement bâtie, le
-/// 22 août 2026 :
+/// It is `build.assetsDir`, whose default is `assets` and which `client/
+/// vite.config.ts` does not override. Read off the really built page, on
+/// 22 August 2026:
 ///   ls client/dist         -> assets/ + connexion.html design.html hub.html
 ///                             hub.webmanifest index.html primitives.html
 ///                             shell.html
 ///   ls client/dist/assets  -> adresse-plateforme-uutwZeXQ.js,
 ///                             main-DOC38JmJ.css, hub-B8O-1KAt.js, …
-/// **La racine ne porte AUCUN nom empreinté** ; le répertoire d'actifs n'en
-/// porte que. C'est cette partition-là, et non une expression régulière sur la
-/// forme d'un nom, qui décide du cache — un nom se déguise, un emplacement
-/// non.
+/// **The root carries NO fingerprinted name**; the assets directory carries
+/// nothing else. It is that partition, and not a regular expression on the
+/// shape of a name, that decides the cache — a name can be disguised, a location
+/// cannot.
 export const REPERTOIRE_ACTIFS = 'assets';
 
 export type Resolution =
     | {
           readonly ok: true;
-          readonly fichier: string;
+          readonly file: string;
           readonly mime: string;
           readonly document: boolean;
-          /// 🔴 LE NOM PORTE-T-IL RÉELLEMENT UNE EMPREINTE ? C'est la question
-          /// que la première rédaction ne posait PAS : elle classait par
-          /// EXTENSION, et donnait donc un an d'`immutable` à `hub.webmanifest`
-          /// et `favicon.ico` — des noms que Vite n'empreinte JAMAIS. MESURÉ
-          /// sur le vrai `client/dist` : `/hub.webmanifest` rendait
-          /// `public, max-age=31536000, immutable`, ce qui rend **le manifeste
-          /// PWA du hub non révisable pendant un an** chez tout navigateur
-          /// l'ayant vu. Sous nginx, `location /` n'émet AUCUN
-          /// `Cache-Control` : c'était une régression que le seul montage
-          /// Pomerium introduisait.
+          /// 🔴 DOES THE NAME REALLY CARRY A FINGERPRINT? That is the question
+          /// the first draft did NOT ask: it classified by
+          /// EXTENSION, and thus gave a year of `immutable` to `hub.webmanifest`
+          /// and `favicon.ico` — names Vite NEVER fingerprints. MEASURED
+          /// on the real `client/dist`: `/hub.webmanifest` returned
+          /// `public, max-age=31536000, immutable`, which makes **the hub PWA
+          /// manifest not revisable for a year** in any browser
+          /// that saw it. Under nginx, `location /` emits NO
+          /// `Cache-Control`: it was a regression that only the Pomerium
+          /// deployment introduced.
           ///
-          /// ⚠️ LA DISTINCTION VIT ICI, DANS LA RÈGLE PURE, ET NON DANS LE
-          /// SERVANT : c'est là que vit déjà la classification, et c'est ce
-          /// qui la rend éprouvable SANS DISQUE.
+          /// ⚠️ THE DISTINCTION LIVES HERE, IN THE PURE RULE, AND NOT IN THE
+          /// SERVER: that is where the classification already lives, and that is what
+          /// makes it testable WITHOUT A DISK.
           readonly empreinte: boolean;
       }
     | {
@@ -91,18 +91,18 @@ export type Resolution =
               | 'nom-vide';
       };
 
-/// Normalise un chemin en segments, en refusant toute remontée qui SORT.
+/// Normalises a path into segments, refusing any climb that GOES OUT.
 ///
-/// ⚠️ LE COMPTE SE FAIT SUR LE RÉSULTAT, JAMAIS SUR LA PRÉSENCE DE `..` : c'est
-/// ce qui rend `/assets/../index.html` légitime et `/assets/../../x` refusé,
-/// là où un filtre par sous-chaîne refuserait les deux ou accepterait les deux.
+/// ⚠️ THE COUNT IS MADE ON THE RESULT, NEVER ON THE PRESENCE OF `..`: that is
+/// what makes `/assets/../index.html` legitimate and `/assets/../../x` refused,
+/// where a substring filter would refuse both or accept both.
 function normaliser(brut: string): string[] | undefined {
     const sortie: string[] = [];
     for (const segment of brut.split('/')) {
         if (segment === '' || segment === '.') continue;
-        // Un antislash n'est pas un séparateur sous Linux, mais un chemin qui
-        // en porte un ne vient d'aucune page bâtie par Vite : le refuser coûte
-        // zéro et ferme la variante Windows de la traversée.
+        // A backslash is not a separator under Linux, but a path that
+        // carries one comes from no page built by Vite: refusing it costs
+        // nothing and closes the Windows variant of the traversal.
         if (segment === '..' || segment.includes('\\')) {
             if (segment === '..' && sortie.length > 0) {
                 sortie.pop();
@@ -120,10 +120,10 @@ export function resoudre(cheminUrl: string): Resolution {
     try {
         decode = decodeURIComponent(cheminUrl);
     } catch {
-        // `decodeURIComponent` LÈVE sur un `%` mal formé. Un servant qui
-        // laisserait passer cette exception rendrait un 500 là où un refus
-        // suffit — et le `catch` du serveur journaliserait une « route en
-        // échec » pour une requête simplement mal écrite.
+        // `decodeURIComponent` THROWS on a malformed `%`. A server that
+        // let that exception through would return a 500 where a refusal
+        // is enough — and the server `catch` would log a « failing
+        // route » for a request that is merely badly written.
         return { ok: false, motif: 'chemin-invalide' };
     }
     if (decode.includes('\0')) return { ok: false, motif: 'octet-nul' };
@@ -131,44 +131,44 @@ export function resoudre(cheminUrl: string): Resolution {
     const segments = normaliser(decode);
     if (segments === undefined) return { ok: false, motif: 'traversee' };
 
-    const dernier = segments[segments.length - 1];
-    // Racine, ou chemin sans extension : le repli SPA — l'équivalent du
-    // `try_files … /index.html` de nginx, sauf que la CIBLE, ici, est
-    // `hub.html` depuis le 30 août 2026 (voir `PAGE` ci-dessus).
-    const fichier = dernier === undefined || !dernier.includes('.') ? PAGE : segments.join('/');
+    const last = segments[segments.length - 1];
+    // Root, or path without an extension: the SPA fallback — the equivalent of
+    // nginx's `try_files … /index.html`, except that the TARGET, here, is
+    // `hub.html` since 30 August 2026 (see `PAGE` above).
+    const file = last === undefined || !last.includes('.') ? PAGE : segments.join('/');
 
-    const point = fichier.lastIndexOf('.');
-    const extension = fichier.slice(point + 1).toLowerCase();
+    const point = file.lastIndexOf('.');
+    const extension = file.slice(point + 1).toLowerCase();
     const mime = TYPES_MIME.get(extension);
     if (mime === undefined) return { ok: false, motif: 'extension-inconnue' };
 
-    // 🔴 UN NOM RÉDUIT À UNE EXTENSION NUE (`/.json`, `/assets/.webmanifest`…)
-    // A UN NOM VIDE AVANT L'EXTENSION — CE N'EST PAS UN CAS LÉGITIME, C'EST UN
-    // TROU DE LA RÈGLE. Une revue antérieure l'avait jugé SANS EXPLOITABILITÉ
-    // parce que CE MODULE ne lit rien lui-même ; mais celui qui l'applique
-    // (`page/routes-page.ts`) LIT LE DISQUE, et servirait tel quel un fichier
-    // littéralement nommé `.json` s'il existait à la racine bâtie. La garde
-    // est posée ICI, APRÈS la liste MIME et jamais avant : `/.env` et
-    // `/.htaccess` sont déjà refusés par `extension-inconnue` (leur
-    // « extension » n'y figure pas), et ce verdict-là reste inchangé — le
-    // déplacer aurait menti sur la raison de LEUR refus. Ce que cette ligne
-    // ferme est la CLASSE que la liste MIME laisse passer par accident :
-    // n'importe quelle extension CONNUE (`.json` en fait partie) portée par
-    // un nom vide. Fermer la classe évite de dépendre au cas par cas d'une
-    // liste qui n'a pas été écrite pour trancher cette question.
-    if (dernier !== undefined && dernier.lastIndexOf('.') === 0) {
+    // 🔴 A NAME REDUCED TO A BARE EXTENSION (`/.json`, `/assets/.webmanifest`…)
+    // HAS AN EMPTY NAME BEFORE THE EXTENSION — THIS IS NOT A LEGITIMATE CASE, IT IS A
+    // HOLE IN THE RULE. An earlier review had judged it NOT EXPLOITABLE
+    // because THIS MODULE reads nothing itself; but the one that applies it
+    // (`page/routes-page.ts`) READS THE DISK, and would serve as is a file
+    // literally named `.json` if it existed at the built root. The guard
+    // is set HERE, AFTER the MIME list and never before: `/.env` and
+    // `/.htaccess` are already refused by `extension-inconnue` (their
+    // « extension » is not in it), and that verdict stays unchanged — moving
+    // it would have lied about the reason for THEIR refusal. What this line
+    // closes is the CLASS that the MIME list lets through by accident:
+    // any KNOWN extension (`.json` is one of them) carried by
+    // an empty name. Closing the class avoids depending case by case on a
+    // list that was not written to settle this question.
+    if (last !== undefined && last.lastIndexOf('.') === 0) {
         return { ok: false, motif: 'nom-vide' };
     }
 
     return {
         ok: true,
-        fichier,
+        file,
         mime,
         document: extension === 'html',
-        // ⚠️ LE PRÉFIXE PORTE LE SÉPARATEUR : sans lui, un fichier nommé
-        // `assetsX.js` posé à la racine passerait pour un actif empreinté.
-        // `fichier` est déjà NORMALISÉ (segments recomposés, aucune remontée
-        // survivante), donc ce test porte bien sur le premier segment.
-        empreinte: fichier.startsWith(`${REPERTOIRE_ACTIFS}/`),
+        // ⚠️ THE PREFIX CARRIES THE SEPARATOR: without it, a file named
+        // `assetsX.js` placed at the root would pass for a fingerprinted asset.
+        // `file` is already NORMALISED (segments put back together, no surviving
+        // climb), so this test really applies to the first segment.
+        empreinte: file.startsWith(`${REPERTOIRE_ACTIFS}/`),
     };
 }

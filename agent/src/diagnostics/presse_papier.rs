@@ -1,137 +1,145 @@
-//! Sonde P0 du sous-bloc P1 (presse-papier) : le compteur de séquence du
-//! presse-papier Windows se comporte-t-il comme la documentation l'annonce ?
+//! P0 probe of sub-block P1 (clipboard): does the sequence counter of the
+//! Windows clipboard behave as the documentation announces?
 //!
-//! La spécification (§8) déclare ce point **non mesuré** : elle s'appuie sur
-//! la documentation de `GetClipboardSequenceNumber`, la VM ayant été occupée
-//! quand elle a été écrite. Cette sonde prend la mesure, et elle est une
-//! **porte éliminatoire** : trois de ses cinq verdicts rendent le mécanisme
-//! de détection retenu (D2) non livrable en l'état.
+//! The specification (§8) declares this point **not measured**: it relies on
+//! the documentation of `GetClipboardSequenceNumber`, the VM having been busy
+//! when it was written. This probe takes the measurement, and it is an
+//! **elimination gate**: three of its five verdicts make the retained detection
+//! mechanism (D2) not deliverable as is.
 //!
-//! ⚠️ **ELLE ÉCRIT LE PRESSE-PAPIER DE LA VM, et le détruit donc.** Les
-//! phases C et D posent `SetClipboardData(CF_UNICODETEXT)` pour répondre aux
-//! questions Q3 et Q2. C'est un geste de SONDE : **le produit, lui, n'écrit
-//! jamais le presse-papier en P1** — il ne fait que le lire. Ne pas
-//! confondre les deux (décision D-P1-7 du plan).
+//! ⚠️ **IT WRITES THE VM'S CLIPBOARD, and therefore destroys it.** Phases
+//! C and D set `SetClipboardData(CF_UNICODETEXT)` to answer
+//! questions Q3 and Q2. It is a PROBE gesture: **the product, for its part, never
+//! writes the clipboard in P1** — it only reads it. Do not
+//! confuse the two (decision D-P1-7 of the plan).
 //!
-//! ⚠️ **Elle ne journalise JAMAIS le texte du presse-papier** — une empreinte
-//! tronquée et une longueur, jamais le contenu. C'est une ressource privée de
-//! l'utilisateur de la VM, et un journal versé dans git est public au dépôt.
+//! ⚠️ **It NEVER logs the clipboard's text** — a truncated fingerprint
+//! and a length, never the content. It is a private resource of
+//! the VM's user, and a log committed to git is public to the repository.
 //!
-//! ⚠️ **Elle se lance SEULE**, sans `SUPERVISEUR` : voir le commentaire du
-//! bras d'aiguillage dans `diagnostics.rs` (divergence E10 du plan).
+//! ⚠️ **It runs ALONE**, without `SUPERVISEUR`: see the comment of the
+//! routing arm in `diagnostics.rs` (divergence E10 of the plan).
 //!
-//! Aucun verdict ne se juge sur un code de retour. La phase C juge sur le
-//! **mouvement du compteur relu**, jamais sur le succès de
-//! `SetClipboardData` — c'est la doctrine que ce dépôt s'est donnée après
-//! qu'un `ChangeDisplaySettingsExW` a rendu `0` sur une sortie qui n'avait
-//! pas bougé d'un pixel (sous-bloc D8).
+//! No verdict is judged on a return code. Phase C judges on the
+//! **movement of the counter read back**, never on the success of
+//! `SetClipboardData` — it is the doctrine this repository adopted after
+//! a `ChangeDisplaySettingsExW` returned `0` on an output that had
+//! not moved by one pixel (sub-block D8).
 
 use anyhow::Result;
 
-/// Nombre de relevés de la phase A, et leur espacement.
+/// Number of phase A readings, and their spacing.
 const RELEVES_REPOS: usize = 3;
 const PAS_REPOS: std::time::Duration = std::time::Duration::from_millis(250);
-/// Cadence de la phase B : 4 Hz, la même que `PERIODE_PRESSE_PAPIER`.
+/// Phase B cadence: 4 Hz, the same as `PERIODE_PRESSE_PAPIER`.
 const PAS_OBSERVATION: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// Empreinte d'un texte : SHA-1 tronqué à 12 caractères hexadécimaux.
+/// Fingerprint of a text: SHA-1 truncated to 12 hexadecimal characters.
 ///
-/// ⚠️ **SHA-1 et non SHA-256, contrairement au plan (tâche 1)**, et c'est
-/// délibéré : `sha1` est déjà une dépendance de cette caisse (bail TURN),
-/// `sha2` ne l'est pas, et le plan pose en tête que **P1 n'ajoute aucune
-/// dépendance**. La propriété recherchée est « distinguer deux textes sans
-/// jamais écrire l'un des deux », pas une résistance cryptographique : les
-/// deux fonctions la rendent également.
+/// ⚠️ **SHA-1 and not SHA-256, unlike the plan (task 1)**, and it is
+/// deliberate: `sha1` is already a dependency of this crate (TURN lease),
+/// `sha2` is not, and the plan states at the top that **P1 adds no
+/// dependency**. The property sought is "distinguish two texts without
+/// ever writing either of them", not cryptographic resistance: both
+/// functions provide it equally.
 fn empreinte(texte: &str) -> String {
     use sha1::{Digest, Sha1};
     let condense = Sha1::digest(texte.as_bytes());
-    condense.iter().take(6).map(|octet| format!("{octet:02x}")).collect()
+    condense
+        .iter()
+        .take(6)
+        .map(|octet| format!("{octet:02x}"))
+        .collect()
 }
 
-/// Ce que la sonde a lu du presse-papier à un instant donné.
+/// What the probe read from the clipboard at a given instant.
 struct Lecture {
     octets_utf16: usize,
     octets_utf8: usize,
     empreinte: String,
 }
 
-/// Exécute la sonde pendant `secondes` de phase B.
+/// Runs the probe for `secondes` of phase B.
 pub fn executer(secondes_texte: &str) -> Result<()> {
     let secondes: u64 = secondes_texte.trim().parse().unwrap_or(40);
 
     tracing::info!(
         secondes,
-        "P0 DEBUT sonde presse-papier — elle ECRIT le presse-papier de la VM (phases C et D)"
+        "P0 START clipboard probe — it WRITES the VM clipboard (phases C and D)"
     );
 
-    // ---- Phase A : le compteur existe-t-il, et est-il STABLE au repos ? ----
+    // ---- Phase A: does the counter exist, and is it STABLE at rest? ----
     let mut repos = Vec::with_capacity(RELEVES_REPOS);
     for i in 0..RELEVES_REPOS {
         if i > 0 {
             std::thread::sleep(PAS_REPOS);
         }
         let seq = win::numero_de_sequence();
-        tracing::info!(releve = i, seq, "P0 A repos");
+        tracing::info!(releve = i, seq, "P0 A at rest");
         repos.push(seq);
     }
     let stable_au_repos = repos.windows(2).all(|paire| paire[0] == paire[1]);
 
-    // ---- Phase A-bis : DÉSAMBIGUÏSER un zéro, jamais en conclure ----
+    // ---- Phase A-bis: DISAMBIGUATE a zero, never conclude from it ----
     //
-    // 🔴 **Trois zéros ont DEUX causes, et la première version de cette sonde
-    // les confondait — elle a rendu un verdict éliminatoire FAUX sur un
-    // système parfaitement sain** (exécution n°1 du 20 août 2026, journal
-    // `p0-sonde-1.log`, conservé pour cela) :
+    // 🔴 **Three zeros have TWO causes, and the first version of this probe
+    // confused them — it returned a WRONG elimination verdict on a
+    // perfectly healthy system** (run no. 1 of 20 August 2026, log
+    // `p0-sonde-1.log`, kept for that reason):
     //
-    // 1. `GetClipboardSequenceNumber` a ÉCHOUÉ — le processus n'a pas
-    //    l'accès `WINSTA_ACCESSCLIPBOARD` sur sa station de fenêtres. La
-    //    documentation ne prévoit que ce cas, et c'est ce que la première
-    //    version supposait.
-    // 2. Le compteur EXISTE et vaut réellement zéro, parce que **rien n'a
-    //    jamais été copié depuis le démarrage de la station de fenêtres**.
-    //    Mesuré : la VM venait d'être démarrée, la sonde a lu `0, 0, 0` et
-    //    a déclaré `P0 NON MESURABLE` ; cinq copies plus tard, la même sonde
-    //    sur la même station lisait **53**, stable, et toutes les phases
-    //    passaient. Le zéro était le compteur, pas son absence.
+    // 1. `GetClipboardSequenceNumber` FAILED — the process does not have
+    //    `WINSTA_ACCESSCLIPBOARD` access on its window station. The
+    //    documentation only provides for this case, and it is what the first
+    //    version assumed.
+    // 2. The counter EXISTS and is really zero, because **nothing has
+    //    ever been copied since the window station started**.
+    //    Measured: the VM had just been started, the probe read `0, 0, 0` and
+    //    declared `P0 NON MESURABLE`; five copies later, the same probe
+    //    on the same station read **53**, stable, and all phases
+    //    passed. The zero was the counter, not its absence.
     //
-    // On ne conclut donc pas : on écrit nous-mêmes le presse-papier — le
-    // geste de la phase C, joué ici en désambiguïsateur — et on relit. S'il
-    // bouge, le compteur existe et les phases suivantes ont un sens. **Un
-    // verdict négatif exige que la chose mesurée soit ABSENTE, pas
-    // seulement nulle** ; c'est la symétrie du piège de D9 (`survit=true`
-    // rendu par une sortie disparue).
-    let mut repos = repos;
+    // So we do not conclude: we write the clipboard ourselves — the
+    // gesture of phase C, played here as a disambiguator — and read back. If it
+    // moves, the counter exists and the following phases make sense. **A
+    // negative verdict requires the measured thing to be ABSENT, not
+    // merely zero**; it is the mirror image of D9's trap (`survit=true`
+    // returned by a vanished output).
     if repos.iter().all(|&s| s == 0) {
         tracing::info!(
-            "P0 A-bis : trois zeros — on ecrit le presse-papier pour departager \
-             « compteur absent » de « rien n'a encore ete copie »"
+            "P0 A-bis: three zeros — the clipboard is written to tell \
+             \"counter absent\" apart from \"nothing copied yet\""
         );
-        let _ = win::ecrire_texte("sonde-presse-papier-desambiguisation");
+        let _ = win::write_text("sonde-presse-papier-desambiguisation");
         std::thread::sleep(PAS_REPOS);
         let apres = win::numero_de_sequence();
-        tracing::info!(apres, "P0 A-bis releve apres notre ecriture");
+        tracing::info!(apres, "P0 A-bis reading after our write");
         if apres != 0 {
-            // Le compteur existe : la station était simplement vierge. On
-            // repart de ce relevé-ci, qui est le vrai état de référence.
+            // The counter exists: the station was simply blank. We
+            // start again from this reading, which is the real reference state.
             repos = vec![apres; RELEVES_REPOS];
         }
     }
     let compteur_absent = repos.iter().all(|&s| s == 0);
     let q1 = if compteur_absent {
-        "NON-MESURABLE-compteur-absent"
+        "NOT-MEASURABLE-counter-absent"
     } else if stable_au_repos {
         "stable"
     } else {
-        "INSTABLE-au-repos"
+        "UNSTABLE-at-rest"
     };
-    tracing::info!(q1, seq_min = repos.iter().min(), seq_max = repos.iter().max(), "P0 A bilan");
+    tracing::info!(
+        q1,
+        seq_min = repos.iter().min(),
+        seq_max = repos.iter().max(),
+        "P0 A summary"
+    );
 
     if compteur_absent {
         tracing::warn!(
-            "P0 NON MESURABLE : GetClipboardSequenceNumber rend 0 aux trois releves ET \
-             apres une ecriture de la sonde elle-meme — le processus n'a donc pas \
-             WINSTA_ACCESSCLIPBOARD. Les phases B a D ne peuvent rien mesurer, elles \
-             sont sautees."
+            "P0 NOT MEASURABLE: GetClipboardSequenceNumber returns 0 on the three readings AND \
+             after a write by the probe itself — so the process does not have \
+             WINSTA_ACCESSCLIPBOARD. Phases B to D cannot measure anything, they \
+             are skipped."
         );
         tracing::info!(
             q1,
@@ -147,7 +155,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         return Ok(());
     }
 
-    // ---- Phase B : une copie faite à la main fait-elle bouger le compteur ? ----
+    // ---- Phase B: does a copy made by hand make the counter move? ----
     let seq_debut = *repos.last().expect("RELEVES_REPOS > 0");
     let mut reference = seq_debut;
     let mut mouvements = 0usize;
@@ -157,8 +165,8 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     tracing::info!(
         secondes,
         seq_debut,
-        "P0 B debut — COPIER MAINTENANT trois textes distincts a la main dans la VM, \
-         puis RECOPIER le troisieme a l'identique"
+        "P0 B start — COPY NOW three distinct texts by hand in the VM, \
+         then COPY the third one AGAIN identically"
     );
     let fin = std::time::Instant::now() + std::time::Duration::from_secs(secondes);
     while std::time::Instant::now() < fin {
@@ -179,53 +187,69 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
                     octets_utf16 = lecture.octets_utf16,
                     octets_utf8 = lecture.octets_utf8,
                     empreinte = lecture.empreinte,
-                    "P0 B mouvement, texte lu"
+                    "P0 B movement, text read"
                 );
             }
             Ok(None) => {
-                tracing::info!(seq, precedent = reference, "P0 B mouvement, aucun CF_UNICODETEXT");
+                tracing::info!(
+                    seq,
+                    precedent = reference,
+                    "P0 B movement, no CF_UNICODETEXT"
+                );
             }
-            Err(erreur) => {
+            Err(error) => {
                 echecs_open += 1;
-                tracing::warn!(seq, precedent = reference, %erreur, "P0 B mouvement, ouverture refusee");
+                tracing::warn!(seq, precedent = reference, %error, "P0 B movement, opening refused");
             }
         }
         reference = seq;
     }
-    let q1bis = if mouvements == 0 { "AUCUN-MOUVEMENT" } else { "bouge" };
-    tracing::info!(q1bis, mouvements, lectures, echecs_open, "P0 B bilan");
+    let q1bis = if mouvements == 0 {
+        "AUCUN-MOUVEMENT"
+    } else {
+        "moved"
+    };
+    tracing::info!(q1bis, mouvements, lectures, echecs_open, "P0 B summary");
 
-    // ---- Phase C : notre PROPRE écriture fait-elle bouger le compteur ? ----
+    // ---- Phase C: does our OWN write make the counter move? ----
     let nonce = format!("{:x}", std::process::id());
     let notre_texte = format!("sonde-presse-papier-{nonce}");
-    let avant_c = win::numero_de_sequence();
-    let ecrit_c = win::ecrire_texte(&notre_texte);
+    let before_c = win::numero_de_sequence();
+    let written_c = win::write_text(&notre_texte);
     std::thread::sleep(PAS_REPOS);
     let apres_c = win::numero_de_sequence();
-    // On juge sur le MOUVEMENT relu, jamais sur `ecrit_c`.
-    let q3 = if apres_c != avant_c { "bouge" } else { "PAS-DE-MOUVEMENT" };
+    // We judge on the movement read back, never on `written_c`.
+    let q3 = if apres_c != before_c {
+        "moved"
+    } else {
+        "NO-MOVEMENT"
+    };
     tracing::info!(
         q3,
-        avant = avant_c,
+        before = before_c,
         apres = apres_c,
-        api_annonce_succes = ecrit_c.is_ok(),
+        api_annonce_succes = written_c.is_ok(),
         empreinte = empreinte(&notre_texte),
         octets = notre_texte.len(),
-        "P0 C notre ecriture"
+        "P0 C our write"
     );
 
-    // ---- Phase D : une réécriture IDENTIQUE fait-elle bouger le compteur ? ----
-    let avant_d = win::numero_de_sequence();
-    let ecrit_d = win::ecrire_texte(&notre_texte);
+    // ---- Phase D: does an IDENTICAL rewrite make the counter move? ----
+    let before_d = win::numero_de_sequence();
+    let written_d = win::write_text(&notre_texte);
     std::thread::sleep(PAS_REPOS);
     let apres_d = win::numero_de_sequence();
-    let q2 = if apres_d != avant_d { "bouge" } else { "PAS-DE-MOUVEMENT" };
+    let q2 = if apres_d != before_d {
+        "moved"
+    } else {
+        "NO-MOVEMENT"
+    };
     tracing::info!(
         q2,
-        avant = avant_d,
+        before = before_d,
         apres = apres_d,
-        api_annonce_succes = ecrit_d.is_ok(),
-        "P0 D reecriture identique"
+        api_annonce_succes = written_d.is_ok(),
+        "P0 D identical rewrite"
     );
 
     // ---- Phase E : le bilan ----
@@ -245,7 +269,7 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     Ok(())
 }
 
-/// Ce qu'on mesure d'un texte lu — jamais le texte lui-même.
+/// What we measure of a text read — never the text itself.
 fn mesurer(texte: &str) -> Lecture {
     Lecture {
         octets_utf16: texte.encode_utf16().count() * 2,
@@ -270,12 +294,12 @@ mod win {
 
     /// Ouvre le presse-papier, lit `CF_UNICODETEXT`, referme.
     ///
-    /// `Ok(None)` = le presse-papier ne porte pas de texte Unicode (une image,
-    /// par exemple) ; `Err` = l'ouverture a été refusée, ce qui est NORMAL
-    /// sous Windows (une autre application le tient) et non une panne.
+    /// `Ok(None)` = the clipboard carries no Unicode text (an image,
+    /// for example); `Err` = opening was refused, which is NORMAL
+    /// under Windows (another application holds it) and not a failure.
     pub fn lire_texte() -> Result<Option<String>> {
         unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
-        let resultat = (|| unsafe {
+        let result = (|| unsafe {
             let poignee = match GetClipboardData(CF_UNICODETEXT.0 as u32) {
                 Ok(poignee) if !poignee.is_invalid() => poignee,
                 _ => return Ok(None),
@@ -283,42 +307,42 @@ mod win {
             let global = HGLOBAL(poignee.0);
             let pointeur = GlobalLock(global) as *const u16;
             if pointeur.is_null() {
-                anyhow::bail!("GlobalLock a rendu un pointeur nul");
+                anyhow::bail!("GlobalLock returned a null pointer");
             }
-            let mut longueur = 0usize;
-            while *pointeur.add(longueur) != 0 {
-                longueur += 1;
+            let mut length = 0usize;
+            while *pointeur.add(length) != 0 {
+                length += 1;
             }
-            let unites = std::slice::from_raw_parts(pointeur, longueur);
+            let unites = std::slice::from_raw_parts(pointeur, length);
             let texte = String::from_utf16_lossy(unites);
             let _ = GlobalUnlock(global);
             Ok(Some(texte))
         })();
         let _ = unsafe { CloseClipboard() };
-        resultat
+        result
     }
 
-    /// Écrit `texte` dans le presse-papier — **geste de sonde uniquement**.
-    pub fn ecrire_texte(texte: &str) -> Result<()> {
+    /// Writes `texte` to the clipboard — **probe gesture only**.
+    pub fn write_text(texte: &str) -> Result<()> {
         let mut unites: Vec<u16> = texte.encode_utf16().collect();
         unites.push(0);
         unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
-        let resultat = (|| unsafe {
+        let result = (|| unsafe {
             EmptyClipboard().context("EmptyClipboard")?;
             let octets = unites.len() * std::mem::size_of::<u16>();
             let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
             let pointeur = GlobalLock(global) as *mut u16;
             if pointeur.is_null() {
-                anyhow::bail!("GlobalLock a rendu un pointeur nul");
+                anyhow::bail!("GlobalLock returned a null pointer");
             }
             std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
             let _ = GlobalUnlock(global);
-            // Le presse-papier prend possession du bloc : ne pas le libérer.
+            // The clipboard takes ownership of the block: do not free it.
             SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(global.0)))
                 .context("SetClipboardData")?;
             Ok(())
         })();
         let _ = unsafe { CloseClipboard() };
-        resultat
+        result
     }
 }

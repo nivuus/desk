@@ -1,79 +1,79 @@
-# L'image du service `plateforme`, employée par le profil `deploiement` de
+# The image of the `plateforme` service, used by the `deploiement` profile of
 # `docker-compose.plateforme.yml`.
 #
-# ⚠️ CE FICHIER N'EST PAS PRESCRIT PAR LE PLAN DE P5, et c'est déclaré plutôt
-# que passé sous silence : la « Structure des fichiers » du plan liste
-# `deploiement/nginx.conf` et `deploiement/README.md`, mais aucune image pour le
-# service `plateforme` qu'elle demande pourtant à la tâche 13 de déclarer. Sans
-# elle, le profil `deploiement` se décrit mais ne se lance pas. C'est un manque
-# du plan, comblé au plus petit.
+# ⚠️ THIS FILE IS NOT PRESCRIBED BY THE P5 PLAN, and that is declared rather
+# than kept quiet: the plan's "File structure" lists
+# `deploiement/nginx.conf` and `deploiement/README.md`, but no image for the
+# `plateforme` service that it nevertheless asks task 13 to declare. Without
+# it, the `deploiement` profile describes itself but does not start. It is a gap
+# in the plan, filled as minimally as possible.
 #
-# 🔴 LA VERSION MAJEURE SUIT `package.json`, qui déclare
-# `"node": ">=24.0.0 <25.0.0"`. Une image d'une autre majeure démarrerait
-# peut-être, et divergerait du moteur sur lequel les 423 tests sont verts.
-# 🔴 LE CONTEXTE DE CONSTRUCTION EST LA RACINE DU DÉPÔT, ET NON `plateforme/`.
-# CE N'EST PAS UNE COMMODITÉ, C'EST UNE NÉCESSITÉ MESURÉE.
+# 🔴 THE MAJOR VERSION FOLLOWS `package.json`, which declares
+# `"node": ">=24.0.0 <25.0.0"`. An image of another major might
+# start, and would diverge from the engine on which the 423 tests are green.
+# 🔴 THE BUILD CONTEXT IS THE ROOT OF THE REPOSITORY, AND NOT `plateforme/`.
+# IT IS NOT A CONVENIENCE, IT IS A MEASURED NECESSITY.
 #
-# Trois fichiers de PRODUCTION importent `../../../proto/ts/plateforme` —
-# `agents/canal.ts`, `agents/registre.ts`, `apps/catalogue.ts` —, c'est-à-dire
-# un chemin qui SORT de `plateforme/`. Avec un contexte borné à `plateforme/`,
-# ce répertoire ne peut pas entrer dans l'image, et le service MEURT au
-# chargement sur `ERR_MODULE_NOT_FOUND … file:///opt/proto/ts/plateforme`.
+# Three PRODUCTION files import `../../../proto/ts/plateforme` —
+# `agents/canal.ts`, `agents/registre.ts`, `apps/catalogue.ts` —, that is
+# a path that LEAVES `plateforme/`. With a context bounded to `plateforme/`,
+# that directory cannot enter the image, and the service DIES at
+# load time on `ERR_MODULE_NOT_FOUND … file:///opt/proto/ts/plateforme`.
 #
-# ⚠️ RIEN NE LE VOYAIT AVANT LE CRITÈRE ⑤ DE LA RECETTE : les 433 tests
-# tournent depuis l'arbre, où le chemin relatif existe ; `docker build`
-# RÉUSSIT, puisque rien n'est résolu à la construction ; `docker compose
-# config` et `nginx -t` n'ont pas d'opinion. **L'image se construisait sans
-# erreur et ne démarrait pas.** Trouvé le 20 août 2026 en lançant le profil
-# `deploiement` pour la première fois.
+# ⚠️ NOTHING SAW IT BEFORE CRITERION ⑤ OF THE ACCEPTANCE: the 433 tests
+# run from the tree, where the relative path exists; `docker build`
+# SUCCEEDS, since nothing is resolved at build time; `docker compose
+# config` and `nginx -t` have no opinion. **The image built without
+# error and did not start.** Found on 20 August 2026 by launching the
+# `deploiement` profile for the first time.
 #
-# La contrepartie est nommée : un contexte large enverrait tout le dépôt au
-# démon. `plateforme/Dockerfile.dockerignore` le borne — BuildKit lit le
-# `.dockerignore` NOMMÉ D'APRÈS LE DOCKERFILE quand il existe, ce qui évite de
-# poser un `.dockerignore` à la racine, qui s'appliquerait AUSSI à l'image du
-# Guacamole historique (`./Dockerfile`) et changerait un build qui ne nous
-# appartient pas.
+# The trade-off is named: a wide context would send the whole repository to the
+# daemon. `plateforme/Dockerfile.dockerignore` bounds it — BuildKit reads the
+# `.dockerignore` NAMED AFTER THE DOCKERFILE when it exists, which avoids
+# placing a `.dockerignore` at the root, which would ALSO apply to the image of the
+# historical Guacamole (`./Dockerfile`) and would change a build that does not
+# belong to us.
 FROM node:24-alpine
 
 WORKDIR /opt/plateforme
 
-# Les manifestes d'abord, et l'installation ensuite : la couche d'installation
-# n'est refaite que si les dépendances changent, pas à chaque édition de source.
+# The manifests first, and the installation afterwards: the installation layer
+# is only redone if the dependencies change, not at every source edit.
 COPY plateforme/package.json plateforme/package-lock.json ./
 
-# 🔴 `npm ci` ET NON `npm install` : il exige que `package-lock.json` soit
-# cohérent avec `package.json` et refuse de le RÉÉCRIRE. Une image bâtie avec
-# `install` pourrait embarquer des versions que personne n'a testées.
+# 🔴 `npm ci` AND NOT `npm install`: it requires `package-lock.json` to be
+# consistent with `package.json` and refuses to REWRITE it. An image built with
+# `install` could ship versions that nobody has tested.
 #
-# ⚠️ LES DÉPENDANCES DE DÉVELOPPEMENT SONT INSTALLÉES, et ce n'est pas un
-# oubli : `npm start` lance `tsx src/index.ts`, et `tsx` est une
-# `devDependency`. Un `--omit=dev` produirait une image qui échoue au démarrage
-# avec « tsx: not found ». Le service tourne donc depuis les SOURCES
-# TypeScript, sans étape de compilation — le même chemin que
-# `npm run start` en développement, ce qui supprime toute divergence entre ce
-# qui est éprouvé et ce qui est déployé.
+# ⚠️ THE DEVELOPMENT DEPENDENCIES ARE INSTALLED, and it is not an
+# oversight: `npm start` runs `tsx src/index.ts`, and `tsx` is a
+# `devDependency`. An `--omit=dev` would produce an image that fails at startup
+# with "tsx: not found". The service therefore runs from the TypeScript
+# SOURCES, without a compilation step — the same path as
+# `npm run start` in development, which removes any divergence between what
+# is proven and what is deployed.
 RUN npm ci
 
 COPY plateforme/tsconfig.json ./
 COPY plateforme/src ./src
 
-# 🔴 `proto/ts` EST POSÉ À `/opt/proto/ts`, ET L'ADRESSE N'EST PAS LIBRE : les
-# sources vivent à `/opt/plateforme/src/<dossier>/<fichier>.ts` et remontent de
-# trois crans (`../../../proto/ts/plateforme`), ce qui désigne exactement
-# `/opt/proto/ts/plateforme`. C'est l'URL que Node nommait dans l'erreur.
-# Déplacer `WORKDIR` sans déplacer ceci rouvrirait le même défaut.
+# 🔴 `proto/ts` IS PLACED AT `/opt/proto/ts`, AND THE ADDRESS IS NOT FREE: the
+# sources live at `/opt/plateforme/src/<folder>/<file>.ts` and climb up
+# three levels (`../../../proto/ts/plateforme`), which designates exactly
+# `/opt/proto/ts/plateforme`. It is the URL Node named in the error.
+# Moving `WORKDIR` without moving this would reopen the same defect.
 #
-# ⚠️ SEUL `proto/ts` ENTRE, pas `proto/src` (le crate Rust) : le service n'en a
-# aucun besoin, et une image qui embarque ce qu'elle n'exécute pas se contente
-# d'élargir sa surface.
+# ⚠️ ONLY `proto/ts` ENTERS, not `proto/src` (the Rust crate): the service has
+# no need for it, and an image that ships what it does not run merely
+# widens its surface.
 COPY proto/ts /opt/proto/ts
 
-# ⚠️ AUCUN `EXPOSE`, ET AUCUN PORT PUBLIÉ dans le fichier de composition. Le
-# service écoute sur `PLATEFORME_HOTE`, qui vaut le NOM DU SERVICE : Node
-# résout ce nom et se lie à l'adresse du conteneur sur le réseau interne. Seul
-# le proxy l'atteint, et c'est ce que la spec §9 exige — la plateforme ne
-# termine jamais TLS.
+# ⚠️ NO `EXPOSE`, AND NO PORT PUBLISHED in the compose file. The
+# service listens on `PLATEFORME_HOTE`, whose value is the SERVICE NAME: Node
+# resolves that name and binds to the container address on the internal network. Only
+# the proxy reaches it, and that is what spec §9 requires — the platform never
+# terminates TLS.
 #
-# ⚠️ `PLATEFORME_HOTE` n'a AUCUN défaut : si l'environnement ne le pose pas,
-# `lireConfig` LÈVE au démarrage plutôt que d'écouter partout.
+# ⚠️ `PLATEFORME_HOTE` has NO default: if the environment does not set it,
+# `lireConfig` THROWS at startup rather than listening everywhere.
 CMD ["npm", "start"]

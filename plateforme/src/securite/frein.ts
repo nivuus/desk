@@ -1,67 +1,67 @@
-// Le frein : combien d'échecs récents une clé a-t-elle accumulés, et faut-il
-// refuser le suivant sans le payer.
+// The brake: how many recent failures has a key accumulated, and should
+// the next one be refused without paying for it.
 //
-// Ce module est PUR — une `Map`, aucune horloge lue, aucun socket, aucune base
-// —, sur le patron exact de `signaling/propriete.ts`, et pour la même raison :
-// c'est ce qui le rend testable sans ouvrir la moindre connexion. `maintenant`
-// est un PARAMÈTRE partout, comme dans `agents/fraicheur.ts`,
-// `identite/jeton.ts` et `depot/session.ts`.
+// This module is PURE — a `Map`, no clock read, no socket, no database
+// —, on the exact pattern of `signaling/propriete.ts`, and for the same reason:
+// that is what makes it testable without opening a single connection. `maintenant`
+// is a PARAMETER everywhere, as in `agents/fraicheur.ts`,
+// `identite/jeton.ts` and `depot/session.ts`.
 //
-// 🔴 IL REFUSE, IL NE RETARDE PAS. Un frein par temporisation garde le socket
-// ouvert pendant l'attente : c'est un SECOND déni de service offert à
-// l'attaquant, celui-là même qu'on prétendait fermer. Ce module ne rend qu'un
-// verdict ; l'appelant répond 429 immédiatement, avec `Retry-After`.
+// 🔴 IT REFUSES, IT DOES NOT DELAY. A brake by delay keeps the socket
+// open during the wait: that is a SECOND denial of service offered to
+// the attacker, the very one it claimed to close. This module only returns a
+// verdict; the caller answers 429 immediately, with `Retry-After`.
 //
-// 🔴 POURQUOI L'ÉTAT EST EN MÉMOIRE ET NON EN BASE, et la première raison est
-// décisive :
-//   1. un frein en base fait ÉCRIRE l'attaquant. Chaque tentative deviendrait
-//      un `INSERT`/`UPDATE` : le frein serait un amplificateur de charge,
-//      exactement ce qu'il existe pour empêcher ;
-//   2. le gestionnaire `message` de `ws` est SYNCHRONE (`signaling/relais.ts`)
-//      et une promesse rejetée y abat tout le process Node — le frein du canal
-//      `/agent` doit donc pouvoir répondre SANS `await` ;
-//   3. un WebSocket vit dans un processus et un seul (spec §3.1), et la
-//      scalabilité horizontale est hors périmètre v1 (spec §9) : il n'y a
-//      aucune seconde instance avec qui partager cet état.
+// 🔴 WHY THE STATE IS IN MEMORY AND NOT IN THE DATABASE, and the first reason is
+// decisive:
+//   1. a database brake makes the attacker WRITE. Each attempt would become
+//      an `INSERT`/`UPDATE`: the brake would be a load amplifier,
+//      exactly what it exists to prevent;
+//   2. the `ws` `message` handler is SYNCHRONOUS (`signaling/relais.ts`)
+//      and a promise rejected there takes down the whole Node process — the brake of the
+//      `/agent` channel must therefore be able to answer WITHOUT `await`;
+//   3. a WebSocket lives in one process and one only (spec §3.1), and
+//      horizontal scaling is out of v1 scope (spec §9): there is
+//      no second instance to share this state with.
 //
-// ⚠️ LE COÛT, nommé et NON corrigé, sur le patron de `ProprieteDeSession` :
-// ce frein NE SURVIT PAS à un redémarrage du service. Un attaquant qui
-// parviendrait à le faire redémarrer remettrait les compteurs à zéro — mais
-// s'il le peut, il a déjà mieux à faire. Ce qui reste vrai sans réserve : LE
-// FREIN D'UNE INSTANCE NE PROTÈGE QUE CETTE INSTANCE. Deux instances
-// multiplieraient chaque budget par deux, sans que rien ne le dise — c'est
-// pourquoi le déploiement n'en déclare qu'une seule.
+// ⚠️ THE COST, named and NOT fixed, on the pattern of `ProprieteDeSession`:
+// this brake DOES NOT SURVIVE a restart of the service. An attacker who
+// managed to make it restart would reset the counters to zero — but
+// if they can, they already have better things to do. What stays true without reservation: THE
+// BRAKE OF ONE INSTANCE ONLY PROTECTS THAT INSTANCE. Two instances
+// would multiply each budget by two, without anything saying so — that is
+// why the deployment declares only one.
 //
-// ⚠️ L'ARBITRAGE QUI SE RETOURNE CONTRE L'UTILISATEUR LÉGITIME, et il faut
-// l'écrire : un attaquant peut brûler le budget d'un compte qu'il vise et en
-// refuser l'accès à son propriétaire pendant la fenêtre. C'est l'arbitrage
-// classique du verrouillage de compte. Il est accepté parce que (a) la fenêtre
-// est courte, (b) le déblocage par courriel exigerait un SMTP, que la spec §9
-// range hors périmètre v1, et (c) l'alternative — ne freiner que par adresse —
-// laisse passer la force brute CIBLÉE, qui est la menace nommée.
+// ⚠️ THE TRADE-OFF THAT TURNS AGAINST THE LEGITIMATE USER, and it must be
+// written: an attacker can burn the budget of an account they target and
+// deny its owner access for the duration of the window. That is the classic
+// account-lockout trade-off. It is accepted because (a) the window
+// is short, (b) unlocking by email would require SMTP, which spec §9
+// puts out of v1 scope, and (c) the alternative — braking only per address —
+// lets TARGETED brute force through, which is the named threat.
 //
-// ⚠️ LA FENÊTRE EST ANCRÉE AU PREMIER ÉCHEC D'UNE SÉRIE, ET N'EST PAS
-// GLISSANTE — divergence assumée avec le mot « glissante » du plan, et voici
-// pourquoi. Une fenêtre réellement glissante retient un horodatage PAR ÉCHEC,
-// donc `O(max)` par clé : à `ECHECS_MAX_ADRESSE = 50` et `ENTREES_MAX =
-// 10 000`, c'est un demi-million d'horodatages, soit un ordre de grandeur
-// au-dessus du coût que D2 calcule pour la borne (« quelques centaines de
-// kilo-octets »). Ici chaque clé coûte deux nombres, et la borne de D2 est
-// tenue au sens où elle a été calculée.
-//   LE PRIX DE CE CHOIX, et il est réel : à la frontière de deux fenêtres, un
-//   attaquant peut placer `max` échecs juste avant et `max` juste après, soit
-//   `2 × max` en rafale. C'est un facteur DEUX, pas un ordre de grandeur, et
-//   il ne rend aucun secret devinable — il rend la rafale deux fois plus
-//   longue.
-//   ET IL A UNE CONTREPARTIE QUI SERT L'ARBITRAGE CI-DESSUS : la fenêtre
-//   n'étant PAS repoussée par les échecs suivants, un attaquant qui martèle un
-//   compte ne prolonge pas indéfiniment le verrouillage de son propriétaire.
-//   Le compte revient à `FENETRE_MS` du PREMIER échec, quoi qu'il arrive.
+// ⚠️ THE WINDOW IS ANCHORED AT THE FIRST FAILURE OF A SERIES, AND IS NOT
+// SLIDING — a deliberate divergence from the word "sliding" in the plan, and here is
+// why. A truly sliding window keeps one timestamp PER FAILURE,
+// hence `O(max)` per key: at `ECHECS_MAX_ADRESSE = 50` and `ENTREES_MAX =
+// 10 000`, that is half a million timestamps, an order of magnitude
+// above the cost D2 computes for the bound ("a few hundred
+// kilobytes"). Here each key costs two numbers, and the D2 bound is
+// held in the sense in which it was computed.
+//   THE PRICE OF THIS CHOICE, and it is real: at the boundary of two windows, an
+//   attacker can place `max` failures just before and `max` just after, that is
+//   `2 × max` in a burst. It is a factor of TWO, not an order of magnitude, and
+//   it makes no secret guessable — it makes the burst twice as
+//   long.
+//   AND IT HAS A COUNTERPART THAT SERVES THE TRADE-OFF ABOVE: the window
+//   NOT being pushed back by later failures, an attacker hammering an
+//   account does not extend its owner's lockout indefinitely.
+//   The account comes back `FENETRE_MS` after the FIRST failure, whatever happens.
 
-/// Le budget d'une clé. Il est passé à chaque appel plutôt que retenu par le
-/// frein : c'est ce qui laisse deux clés de budgets DIFFÉRENTS (un compte et
-/// une adresse) vivre dans la même table, sans qu'une seconde table ne
-/// diverge le jour où l'une des deux sera durcie.
+/// The budget of a key. It is passed on each call rather than kept by the
+/// brake: that is what lets two keys with DIFFERENT budgets (an account and
+/// an address) live in the same table, without a second table
+/// diverging the day one of the two is hardened.
 export interface Budget {
     readonly max: number;
     readonly fenetreMs: number;
@@ -69,58 +69,58 @@ export interface Budget {
 
 export interface Verdict {
     readonly freine: boolean;
-    /// Secondes à attendre, arrondies VERS LE HAUT. Vaut 0 quand rien n'est
-    /// freiné. ⚠️ Jamais 0 quand quelque chose l'est : un `Retry-After: 0`
-    /// inviterait le demandeur à revenir immédiatement.
+    /// Seconds to wait, rounded UP. It is 0 when nothing is
+    /// braked. ⚠️ Never 0 when something is: a `Retry-After: 0`
+    /// would invite the requester to come back immediately.
     readonly retryApresS: number;
 }
 
-/// ⚠️ LES QUATRE CONSTANTES SONT NON CALIBRÉES, et elles rejoignent la liste
-/// que ce dépôt tient depuis le chantier C : `BPP_MIN`, `FACTEUR_FOCUS`,
-/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE`,
-/// `SEUIL_INJOIGNABLE_MS`, `DUREE_JETON_ACCES_MS`. Aucun jugement d'usage
-/// n'a été porté sur aucune d'elles.
+/// ⚠️ THE FOUR CONSTANTS ARE NOT CALIBRATED, and they join the list
+/// this repository has kept since effort C: `BPP_MIN`, `FACTEUR_FOCUS`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `MAX_OUTPUT_SIZE`,
+/// `SEUIL_INJOIGNABLE_MS`, `DUREE_JETON_ACCES_MS`. No usage judgement
+/// has been made on any of them.
 
-/// La mémoire d'un échec.
+/// The memory of a failure.
 export const FENETRE_MS = 15 * 60_000;
 
-/// Les essais contre UN compte. Petit : c'est le seul frein qui ferme la force
-/// brute CIBLÉE.
+/// Attempts against ONE account. Small: it is the only brake that closes TARGETED
+/// brute force.
 export const ECHECS_MAX_COMPTE = 5;
 
-/// Les essais depuis UNE adresse, tous comptes confondus. Dix fois plus grand :
-/// derrière un NAT, plusieurs utilisateurs légitimes partagent une adresse, et
-/// c'est le seul frein qui ferme le BALAYAGE de comptes.
+/// Attempts from ONE address, all accounts combined. Ten times larger:
+/// behind a NAT, several legitimate users share an address, and
+/// it is the only brake that closes account SWEEPING.
 export const ECHECS_MAX_ADRESSE = 50;
 
-/// 🔴 LA MOITIÉ QUI COMPTE. Un frein qui retiendrait une entrée par clé vue
-/// serait un vecteur d'ÉPUISEMENT MÉMOIRE : un attaquant essaie un million de
-/// courriels distincts, chacun une seule fois, et la table grandit sans
-/// qu'aucun budget ne soit jamais dépassé. Le frein devient l'attaque.
+/// 🔴 THE HALF THAT MATTERS. A brake that kept one entry per key seen
+/// would be a MEMORY EXHAUSTION vector: an attacker tries a million
+/// distinct emails, each only once, and the table grows without
+/// any budget ever being exceeded. The brake becomes the attack.
 ///
-/// ⚠️ CE QUE L'ÉVICTION COÛTE, et qui n'est pas rattrapable ici : sous
-/// saturation, un attaquant peut faire évincer l'entrée d'un compte qu'il vise
-/// pour lui rendre son budget. C'est le prix de la borne, et la borne vaut
-/// mieux que la mémoire.
+/// ⚠️ WHAT EVICTION COSTS, and which cannot be caught up here: under
+/// saturation, an attacker can get the entry of an account they target evicted
+/// to give it its budget back. That is the price of the bound, and the bound is worth
+/// more than the memory.
 export const ENTREES_MAX = 10_000;
 
-/// Les deux budgets du service, construits UNE fois.
+/// The two budgets of the service, built ONCE.
 ///
-/// ⚠️ ILS SONT ICI, ET NON CHEZ LEURS APPELANTS, POUR QUE `/auth/*` ET
-/// `/agent` NE PUISSENT PAS DIVERGER. D4 le dit : « pas de seconde table —
-/// deux freins distincts divergeraient le jour où l'un serait durci ». La même
-/// raison vaut pour les budgets et pour la forme des clés ci-dessous.
+/// ⚠️ THEY ARE HERE, AND NOT WITH THEIR CALLERS, SO THAT `/auth/*` AND
+/// `/agent` CANNOT DIVERGE. D4 says so: "no second table —
+/// two distinct brakes would diverge the day one was hardened". The same
+/// reason holds for the budgets and for the key shape below.
 export const BUDGET_COMPTE: Budget = { max: ECHECS_MAX_COMPTE, fenetreMs: FENETRE_MS };
 export const BUDGET_ADRESSE: Budget = { max: ECHECS_MAX_ADRESSE, fenetreMs: FENETRE_MS };
 
-/// 🔴 LES CLÉS SONT PRÉFIXÉES, ET LES PRÉFIXES SONT DISJOINTS. Sans eux, une
-/// VM nommée `203.0.113.7` partagerait le budget de l'adresse `203.0.113.7`, et
-/// un attaquant pourrait épuiser l'un pour fermer l'autre. Les trois
-/// constructeurs vivent ici pour que personne n'en écrive un quatrième.
+/// 🔴 THE KEYS ARE PREFIXED, AND THE PREFIXES ARE DISJOINT. Without them, a
+/// VM named `203.0.113.7` would share the budget of the address `203.0.113.7`, and
+/// an attacker could exhaust one to close the other. The three
+/// constructors live here so that nobody writes a fourth.
 
-/// ⚠️ LE COURRIEL EST NORMALISÉ EN MINUSCULES ET DÉTOURÉ. Sans quoi
-/// `ADA@exemple.test` serait une seconde clé, et le budget d'un compte se
-/// multiplierait par le nombre de casses qu'un attaquant sait écrire.
+/// ⚠️ THE EMAIL IS NORMALISED TO LOWERCASE AND TRIMMED. Otherwise
+/// `ADA@exemple.test` would be a second key, and the budget of an account would be
+/// multiplied by the number of casings an attacker can write.
 export function cleCompte(email: string): string {
     return `compte:${email.trim().toLowerCase()}`;
 }
@@ -133,86 +133,86 @@ export function cleVm(vmId: string): string {
     return `agent:${vmId}`;
 }
 
-/// 🔴 LE BUDGET « TOUTE REQUÊTE », PARTAGÉ PAR `GET /vm`, `POST /session` ET
-/// LE RELAIS `/signal` (`http/routes-vm.ts`, `http/routes-session.ts`,
-/// `signaling/relais.ts`) — comme `BUDGET_ADRESSE` l'est déjà entre
-/// `/auth/*` et `/agent`.
+/// 🔴 THE "ANY REQUEST" BUDGET, SHARED BY `GET /vm`, `POST /session` AND
+/// THE `/signal` RELAY (`http/routes-vm.ts`, `http/routes-session.ts`,
+/// `signaling/relais.ts`) — as `BUDGET_ADRESSE` already is between
+/// `/auth/*` and `/agent`.
 ///
-/// ⚠️ CE BUDGET N'A AUCUNE NOTION D'ÉCHEC, ET C'EST LE POINT : les trois
-/// surfaces qu'il couvre n'ont rien d'équivalent à un mot de passe faux —
-/// leur abus est un VOLUME de requêtes qui, individuellement, peuvent toutes
-/// RÉUSSIR. `Frein.echec` est réutilisée pour COMPTER, jamais pour signaler
-/// un échec : c'est la STRUCTURE — fenêtre ANCRÉE au premier échec d'une
-/// série (jamais glissante, voir l'en-tête du module), plafond d'entrées,
-/// éviction — qui est reprise ici, jamais la sémantique du nom de la
-/// méthode. Rien n'appelle `succes()` sur ce budget : une entrée ne se vide
-/// QUE par expiration de sa fenêtre, jamais par un geste de l'appelant — il
-/// n'existe ici aucun équivalent d'une connexion réussie qui blanchirait un
-/// compte, précisément parce qu'il n'y a pas de compte.
+/// ⚠️ THIS BUDGET HAS NO NOTION OF FAILURE, AND THAT IS THE POINT: the three
+/// surfaces it covers have nothing equivalent to a wrong password —
+/// their abuse is a VOLUME of requests which, individually, may all
+/// SUCCEED. `Frein.echec` is reused to COUNT, never to signal
+/// a failure: it is the STRUCTURE — window ANCHORED at the first failure of a
+/// series (never sliding, see the module header), entry cap,
+/// eviction — that is reused here, never the semantics of the method
+/// name. Nothing calls `succes()` on this budget: an entry only empties
+/// BY expiry of its window, never by a gesture of the caller — there
+/// is no equivalent here of a successful sign-in clearing an
+/// account, precisely because there is no account.
 ///
-/// ⚠️ AUCUNE CLÉ DE « COMPTE » N'EXISTE POUR CE BUDGET, À LA DIFFÉRENCE DE
-/// `BUDGET_COMPTE` : `/signal` ne connaît son pair qu'APRÈS sa poignée de
-/// main, et une clé posée sur l'utilisateur authentifié de `/vm` ou
-/// `/session` laisserait un jeton volé consommer le budget de SA VICTIME
-/// plutôt que celui de l'attaquant qui l'emploie — seule l'ADRESSE est donc
-/// retenue.
+/// ⚠️ NO "ACCOUNT" KEY EXISTS FOR THIS BUDGET, UNLIKE
+/// `BUDGET_COMPTE`: `/signal` only knows its peer AFTER its
+/// handshake, and a key set on the authenticated user of `/vm` or
+/// `/session` would let a stolen token consume the budget of ITS VICTIM
+/// rather than that of the attacker using it — only the ADDRESS is therefore
+/// kept.
 ///
-/// 🔵 **PROPRIÉTÉ FAVORABLE, ÉTABLIE PAR LA REVUE (round de correction 1,
-/// 25 août 2026), ET PERSONNE NE L'AVAIT CHERCHÉE : L'ÉVICTION CROISÉE NE
-/// MORD PAS.** `Frein` tient TOUTES ses clés dans UNE seule `Map`
-/// (`entrees`), avec un plafond COMMUN (`ENTREES_MAX`) et une purge qui
-/// retire d'abord les entrées EXPIRÉES avant d'évincer la plus proche de
-/// l'expiration (`faireDeLaPlace`). Parce que `FENETRE_REQUETES_MS` (une
-/// minute) est **STRICTEMENT PLUS COURTE** que `FENETRE_MS` (quinze
-/// minutes) — un rapport EXACT de 15 —, une clé `req:` expire et se purge
-/// TOUJOURS avant qu'une clé `compte:`/`adr:` de même âge n'ait ne serait-ce
-/// qu'atteint UN QUINZIÈME de sa propre fenêtre. Sous saturation, la purge
-/// réclame donc très
-/// préférentiellement les entrées `req:` — celles qu'un simple VOLUME de
-/// trafic fait naître en masse — et épargne les entrées `compte:`/`adr:`,
-/// qui portent la mémoire d'un COMPTE ou d'une ADRESSE ciblés par une
-/// attaque en cours. **CE QUE CELA FERME** : sans cette propriété, un
-/// attaquant pourrait inonder `/vm` d'adresses jetables pour saturer la
-/// table et faire évincer l'entrée `adr:`/`compte:` de SA PROPRE cible,
-/// lui rendant tout son budget d'échecs — exactement le coût que
-/// `ENTREES_MAX` documente déjà (« un attaquant peut faire évincer l'entrée
-/// d'un compte qu'il vise pour lui rendre son budget »), ici fermé par un
-/// heureux accident d'ordre de grandeur entre les deux fenêtres.
+/// 🔵 **FAVOURABLE PROPERTY, ESTABLISHED BY THE REVIEW (correction round 1,
+/// 25 August 2026), AND NOBODY HAD LOOKED FOR IT: CROSS-EVICTION DOES NOT
+/// BITE.** `Frein` holds ALL its keys in ONE single `Map`
+/// (`entrees`), with a COMMON cap (`ENTREES_MAX`) and a purge that
+/// first removes EXPIRED entries before evicting the one closest to
+/// expiry (`faireDeLaPlace`). Because `FENETRE_REQUETES_MS` (one
+/// minute) is **STRICTLY SHORTER** than `FENETRE_MS` (fifteen
+/// minutes) — an EXACT ratio of 15 —, a `req:` key expires and is purged
+/// ALWAYS before a `compte:`/`adr:` key of the same age has even
+/// reached ONE FIFTEENTH of its own window. Under saturation, the purge
+/// therefore very
+/// preferentially reclaims `req:` entries — those that a mere traffic VOLUME
+/// creates in bulk — and spares the `compte:`/`adr:` entries,
+/// which hold the memory of an ACCOUNT or an ADDRESS targeted by an
+/// ongoing attack. **WHAT THIS CLOSES**: without this property, an
+/// attacker could flood `/vm` from throwaway addresses to saturate the
+/// table and get the `adr:`/`compte:` entry of THEIR OWN target evicted,
+/// giving it back its whole failure budget — exactly the cost that
+/// `ENTREES_MAX` already documents ("an attacker can get the entry
+/// of an account they target evicted to give it its budget back"), here closed by a
+/// happy accident of magnitude between the two windows.
 ///
-/// 🔴 **CETTE PROPRIÉTÉ N'EST PAS GARANTIE PAR LE CODE — ELLE TIENT PARCE
-/// QUE `FENETRE_REQUETES_MS < FENETRE_MS`, ET RIEN NE LE VÉRIFIE AILLEURS
-/// QUE DANS `frein.test.ts`.** Un futur réglage de `FENETRE_REQUETES_MS`
-/// (calibration, ou un besoin de fenêtre plus longue) qui l'élèverait
-/// au-delà de `FENETRE_MS` casserait cette propriété SANS AUCUN AUTRE
-/// SIGNAL : le test `(l) FENETRE_REQUETES_MS reste PLUS COURTE que
-/// FENETRE_MS` est le seul garde-fou. Le lire avant de toucher l'une ou
-/// l'autre constante.
+/// 🔴 **THIS PROPERTY IS NOT GUARANTEED BY THE CODE — IT HOLDS BECAUSE
+/// `FENETRE_REQUETES_MS < FENETRE_MS`, AND NOTHING CHECKS IT ANYWHERE
+/// BUT `frein.test.ts`.** A future tuning of `FENETRE_REQUETES_MS`
+/// (calibration, or a need for a longer window) that raised it
+/// above `FENETRE_MS` would break this property WITHOUT ANY OTHER
+/// SIGNAL: the test `(l) FENETRE_REQUETES_MS stays SHORTER than
+/// FENETRE_MS` is the only safeguard. Read it before touching either
+/// constant.
 ///
-/// ⚠️ NON CALIBRÉ, comme les quatre constantes de `Frein` ci-dessus. La
-/// fenêtre est plus COURTE que `FENETRE_MS` (une minute contre quinze) parce
-/// qu'il s'agit de brider un DÉBIT, pas de verrouiller un compte le temps
-/// qu'un humain réagisse — et voir la propriété favorable ci-dessus pour la
-/// SECONDE raison, découverte après coup, de ne jamais l'allonger sans y
-/// repenser.
+/// ⚠️ NOT CALIBRATED, like the four constants of `Frein` above. The
+/// window is SHORTER than `FENETRE_MS` (one minute against fifteen) because
+/// the aim is to throttle a RATE, not to lock an account for the time
+/// it takes a human to react — and see the favourable property above for the
+/// SECOND reason, discovered afterwards, never to lengthen it without
+/// rethinking.
 ///
-/// 🔴 **`REQUETES_MAX_ADRESSE` RECONSIDÉRÉ (round de correction 1, critique
-/// ⑥) — 60 ÉTAIT TROP MINCE, ET LE CALCUL QUI LE MONTRE :** une session
-/// avec toutes ses fenêtres ouvre, côté AGENT (une seule adresse — celle de
-/// la VM), 1 connexion `/signal` pour la session de contrôle (`bureau`) + 1
-/// pour le pont fichiers + jusqu'à `CAPACITE` = 10 pour les fenêtres
-/// (`agent/src/superviseur/boucle.rs::CAPACITE`) = **12** connexions
-/// `/signal`, PLUS 2 requêtes HTTP qui partagent le MÊME seau (`GET /vm`,
-/// `POST /session`) = **14** « coups » pour ouvrir une seule session
-/// tout-fenêtres. Une coupure réseau fait reconnecter tout ce monde en
-/// rafale rapprochée (chaque processus a son propre repli, mais tous
-/// démarrent au même délai minimal, ~500 ms) : même ordre de grandeur en une
-/// seule rafale. Et CÔTÉ CLIENT, plusieurs utilisateurs derrière un même NAT
-/// d'entreprise PARTAGENT LA CLÉ — chacun pouvant ouvrir sa propre session
-/// tout-fenêtres — même raison, au même facteur qu'entre `ECHECS_MAX_COMPTE`
-/// et `ECHECS_MAX_ADRESSE` (un ordre de grandeur), qui existe déjà
-/// précisément pour ce cas. `120` = environ 8-9 rafales de 14, ou l'équivalent
-/// de plusieurs utilisateurs simultanés derrière un même NAT ouvrant chacun
-/// leur session — **RAISONNÉ, TOUJOURS PAS MESURÉ.**
+/// 🔴 **`REQUETES_MAX_ADRESSE` RECONSIDERED (correction round 1, criticism
+/// ⑥) — 60 WAS TOO THIN, AND THE COMPUTATION THAT SHOWS IT:** a session
+/// with all its windows opens, on the AGENT side (a single address — that of
+/// the VM), 1 `/signal` connection for the control session (`bureau`) + 1
+/// for the file bridge + up to `CAPACITE` = 10 for the windows
+/// (`agent/src/superviseur/boucle.rs::CAPACITE`) = **12** `/signal`
+/// connections, PLUS 2 HTTP requests sharing the SAME bucket (`GET /vm`,
+/// `POST /session`) = **14** "hits" to open a single all-windows
+/// session. A network cut makes all of them reconnect in a
+/// tight burst (each process has its own backoff, but all
+/// start at the same minimal delay, ~500 ms): same order of magnitude in a
+/// single burst. And ON THE CLIENT SIDE, several users behind the same corporate
+/// NAT SHARE THE KEY — each able to open their own all-windows
+/// session — same reason, at the same factor as between `ECHECS_MAX_COMPTE`
+/// and `ECHECS_MAX_ADRESSE` (an order of magnitude), which already exists
+/// precisely for this case. `120` = about 8-9 bursts of 14, or the equivalent
+/// of several simultaneous users behind the same NAT each opening
+/// their session — **REASONED, STILL NOT MEASURED.**
 export const FENETRE_REQUETES_MS = 60_000;
 export const REQUETES_MAX_ADRESSE = 120;
 export const BUDGET_REQUETES: Budget = {
@@ -220,27 +220,27 @@ export const BUDGET_REQUETES: Budget = {
     fenetreMs: FENETRE_REQUETES_MS,
 };
 
-/// 🔴 PRÉFIXE DISJOINT DE `compte:`, `adr:` ET `agent:` — POUR LA MÊME
-/// RAISON QU'EUX. Sans lui, l'adresse `203.0.113.7` sur ce budget
-/// partagerait sa clé avec la MÊME adresse sur `BUDGET_ADRESSE`
-/// (`cleAdresse`), et un attaquant pourrait épuiser l'un des deux budgets
-/// pour vider l'autre — le test exact que ce lot ajoute à `frein.test.ts`.
-/// ⚠️ **CE PRÉFIXE EST AUSSI CE QUI PORTE LA PROPRIÉTÉ FAVORABLE
-/// CI-DESSUS** : sans lui, il n'y aurait qu'UNE seule entrée par adresse,
-/// dont la fenêtre serait celle du DERNIER budget consulté — la distinction
-/// entre « expire vite » et « expire lentement » disparaîtrait avec lui.
+/// 🔴 PREFIX DISJOINT FROM `compte:`, `adr:` AND `agent:` — FOR THE SAME
+/// REASON AS THEM. Without it, the address `203.0.113.7` on this budget
+/// would share its key with the SAME address on `BUDGET_ADRESSE`
+/// (`cleAdresse`), and an attacker could exhaust one of the two budgets
+/// to drain the other — the exact test this batch adds to `frein.test.ts`.
+/// ⚠️ **THIS PREFIX IS ALSO WHAT CARRIES THE FAVOURABLE PROPERTY
+/// ABOVE**: without it, there would be only ONE entry per address,
+/// whose window would be that of the LAST budget consulted — the distinction
+/// between "expires fast" and "expires slowly" would disappear with it.
 export function cleRequetes(adresse: string): string {
     return `req:${adresse}`;
 }
 
 interface Entree {
     compte: number;
-    /// L'instant du PREMIER échec de la série — voir l'en-tête : c'est lui qui
-    /// ancre la fenêtre, et il n'est pas repoussé par les échecs suivants.
+    /// The instant of the FIRST failure of the series — see the header: it is what
+    /// anchors the window, and it is not pushed back by later failures.
     premierA: number;
-    /// Retenue avec l'entrée, et non relue du budget de l'appelant : la purge
-    /// et l'éviction doivent pouvoir dater une entrée sans savoir de quelle
-    /// clé elle vient.
+    /// Kept with the entry, and not reread from the caller's budget: the purge
+    /// and the eviction must be able to date an entry without knowing which
+    /// key it comes from.
     fenetreMs: number;
 }
 
@@ -249,54 +249,54 @@ export class Frein {
     private readonly entreesMax: number;
     private evincees = 0;
 
-    /// `entreesMax` est un PARAMÈTRE, et pas seulement pour le test : une
-    /// instance qui servirait un déploiement plus grand n'a pas à recompiler.
+    /// `entreesMax` is a PARAMETER, and not only for the test: an
+    /// instance serving a larger deployment should not have to recompile.
     constructor(entreesMax: number = ENTREES_MAX) {
         this.entreesMax = entreesMax;
     }
 
-    /// Consulte SANS RIEN ENREGISTRER. Appelée AVANT tout travail coûteux —
-    /// avant `scrypt`, avant le moindre accès à la base.
+    /// Consults WITHOUT RECORDING ANYTHING. Called BEFORE any costly work —
+    /// before `scrypt`, before any database access.
     ///
-    /// 🔴 `consulter` ET `echec` SONT DEUX FONCTIONS, JAMAIS UNE. Une fonction
-    /// unique qui consulterait ET compterait ferait payer un échec à une
-    /// requête légitime arrivée pendant la fenêtre, et rendrait le frein
-    /// AUTO-ENTRETENU : un attaquant maintiendrait un compte bloqué
-    /// indéfiniment sans jamais tenter un mot de passe.
+    /// 🔴 `consulter` AND `echec` ARE TWO FUNCTIONS, NEVER ONE. A single
+    /// function that consulted AND counted would charge a failure to a
+    /// legitimate request arriving during the window, and would make the brake
+    /// SELF-SUSTAINING: an attacker would keep an account locked
+    /// indefinitely without ever trying a password.
     consulter(cles: readonly (readonly [string, Budget])[], maintenant: number): Verdict {
         let restantMs = 0;
         for (const [cle, budget] of cles) {
             const entree = this.entrees.get(cle);
             if (entree === undefined) continue;
-            // `>=`, jamais `>` : au budget exactement, on refuse. Un `>`
-            // accorderait un essai de plus que ce que la constante annonce.
+            // `>=`, never `>`: at exactly the budget, we refuse. A `>`
+            // would grant one more attempt than the constant announces.
             if (entree.compte >= budget.max) {
                 const restant = entree.premierA + entree.fenetreMs - maintenant;
-                // 🔴 UN RESTE NON POSITIF *EST* L'EXPIRATION, et c'est pourquoi
-                // il n'y a PAS de second test d'expiration ici. `restantMs`
-                // part de 0 : une entree dont la fenetre est close rend un
-                // reste <= 0, qui ne peut donc jamais l'elever.
+                // 🔴 A NON-POSITIVE REMAINDER *IS* THE EXPIRY, and that is why
+                // there is NO second expiry test here. `restantMs`
+                // starts at 0: an entry whose window is closed returns a
+                // remainder <= 0, which can therefore never raise it.
                 //
-                // ⚠️ CE COMMENTAIRE A ETE ECRIT APRES UNE MUTATION QUI N'A RIEN
-                // PERTURBE. Un `if (this.expiree(entree, maintenant)) continue;`
-                // vivait deux lignes plus haut, et le RETIRER laissait les onze
-                // tests VERTS : il etait EXACTEMENT redondant avec la
-                // comparaison ci-dessous, `maintenant - premierA >= fenetreMs`
-                // etant la meme proposition que `premierA + fenetreMs -
-                // maintenant <= 0`. Une ligne qu'aucun test ne peut faire
-                // tomber n'est pas une ceinture : c'est du code mort qui donne
-                // l'APPARENCE d'une garde, et qui aurait fait croire l'an
-                // prochain que l'expiration est decidee la. Elle est decidee
-                // ICI, et la mutation `T1-c` porte desormais sur cette ligne.
+                // ⚠️ THIS COMMENT WAS WRITTEN AFTER A MUTATION THAT DISTURBED
+                // NOTHING. An `if (this.expiree(entree, maintenant)) continue;`
+                // lived two lines higher, and REMOVING it left the eleven
+                // tests GREEN: it was EXACTLY redundant with the
+                // comparison below, `maintenant - premierA >= fenetreMs`
+                // being the same proposition as `premierA + fenetreMs -
+                // maintenant <= 0`. A line no test can bring
+                // down is not a belt: it is dead code giving
+                // the APPEARANCE of a guard, and it would have made people believe next
+                // year that expiry is decided there. It is decided
+                // HERE, and mutation `T1-c` now targets this line.
                 if (restant > restantMs) restantMs = restant;
             }
         }
         if (restantMs <= 0) return { freine: false, retryApresS: 0 };
-        // Arrondi VERS LE HAUT : voir `Verdict.retryApresS`.
+        // Rounded UP: see `Verdict.retryApresS`.
         return { freine: true, retryApresS: Math.ceil(restantMs / 1000) };
     }
 
-    /// Enregistre un échec sur chacune des clés.
+    /// Records a failure on each of the keys.
     echec(cles: readonly (readonly [string, Budget])[], maintenant: number): void {
         for (const [cle, budget] of cles) {
             const entree = this.entrees.get(cle);
@@ -305,30 +305,30 @@ export class Frein {
                 continue;
             }
             if (entree === undefined) this.faireDeLaPlace(maintenant);
-            // Une entrée expirée est RÉARMÉE sur place, jamais accumulée : la
-            // fenêtre repart du présent, et la table ne grandit pas.
+            // An expired entry is REARMED in place, never accumulated: the
+            // window restarts from the present, and the table does not grow.
             this.entrees.set(cle, { compte: 1, premierA: maintenant, fenetreMs: budget.fenetreMs });
         }
     }
 
-    /// Efface une clé — appelée sur un SUCCÈS.
+    /// Clears a key — called on a SUCCESS.
     ///
-    /// ⚠️ L'APPELANT NE LUI PASSE QUE LA CLÉ DE COMPTE. La passer aussi sur la
-    /// clé d'adresse BLANCHIRAIT un attaquant qui possède un compte valide : il
-    /// lui suffirait de s'y connecter entre deux rafales pour rendre son
-    /// budget d'adresse à zéro. Ce module n'impose rien — il efface ce qu'on
-    /// lui nomme —, et c'est la route qui tient la règle.
+    /// ⚠️ THE CALLER ONLY PASSES IT THE ACCOUNT KEY. Passing it the
+    /// address key too would CLEAR an attacker who owns a valid account: they
+    /// would just need to sign in to it between two bursts to reset their
+    /// address budget to zero. This module imposes nothing — it clears what it is
+    /// told —, and it is the route that holds the rule.
     succes(cle: string): void {
         this.entrees.delete(cle);
     }
 
-    /// Pour la trace, et pour le test du plafond.
-    taille(): number {
+    /// For the trace, and for the cap test.
+    size(): number {
         return this.entrees.size;
     }
 
-    /// 🔴 UNE ÉVICTION N'EST JAMAIS SILENCIEUSE POUR L'EXPLOITANT : ce compteur
-    /// monte, la trace le lit, et une saturation cesse d'être invisible.
+    /// 🔴 AN EVICTION IS NEVER SILENT FOR THE OPERATOR: this counter
+    /// goes up, the trace reads it, and a saturation stops being invisible.
     evictions(): number {
         return this.evincees;
     }
@@ -337,9 +337,9 @@ export class Frein {
         return maintenant - entree.premierA >= entree.fenetreMs;
     }
 
-    /// Purge d'abord, évince ensuite — et jamais l'inverse : évincer une entrée
-    /// VIVANTE alors que la table est pleine d'entrées mortes rendrait son
-    /// budget à un attaquant pour rien.
+    /// Purge first, evict next — and never the reverse: evicting a LIVE
+    /// entry while the table is full of dead entries would give its
+    /// budget back to an attacker for nothing.
     private faireDeLaPlace(maintenant: number): void {
         if (this.entrees.size < this.entreesMax) return;
 
@@ -348,9 +348,9 @@ export class Frein {
         }
         if (this.entrees.size < this.entreesMax) return;
 
-        // Encore pleine : on évince celle dont la fenêtre se referme le plus
-        // tôt. C'est celle dont la disparition coûte le moins de mémoire du
-        // passé — et c'est un choix, pas une évidence : voir `ENTREES_MAX`.
+        // Still full: we evict the one whose window closes the
+        // soonest. It is the one whose disappearance costs the least memory of the
+        // past — and that is a choice, not a given: see `ENTREES_MAX`.
         let plusTot: string | undefined;
         let plusTotA = Number.POSITIVE_INFINITY;
         for (const [cle, entree] of this.entrees) {

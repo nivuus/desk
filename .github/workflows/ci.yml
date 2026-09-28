@@ -17,8 +17,44 @@ jobs:
     uses: nivuus/.github/.github/workflows/policy.yml@main
   security:
     uses: nivuus/.github/.github/workflows/security.yml@main
+  # The workspace holds two crates that do not share a target. `proto` is
+  # portable. `agent` is a Windows program: its portable modules are reached
+  # only from #[cfg(windows)] code, so linting it for Linux reports every one
+  # of them as dead (626 errors measured on 2026-09-28, none of them real).
+  # The shared job therefore checks formatting for the whole workspace
+  # (`cargo fmt --all` follows the workspace from any member's manifest) but
+  # lints and tests `proto` alone; `rust-agent` below lints `agent` for its
+  # real target and runs its host tests - the same two commands CLAUDE.md
+  # gives for local work.
   rust:
     uses: nivuus/.github/.github/workflows/ci-rust.yml@main
+    with:
+      manifest-path: proto/Cargo.toml
+  rust-agent:
+    name: Rust agent (Windows target)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # x86_64-pc-windows-gnu is the target scripts/build-agent-croise.sh
+      # ships agent.exe for, and the build scripts of the C dependencies
+      # (opus) need its mingw compiler even for a check.
+      - name: Install the Windows target and its mingw toolchain
+        run: |
+          rustup component add clippy
+          rustup target add x86_64-pc-windows-gnu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run clippy for the Windows target
+        run: cargo clippy -p agent --target x86_64-pc-windows-gnu --all-targets -- -D warnings
+
+      # The #[cfg(windows)] code cannot run on a Linux runner; everything
+      # else in the agent is tested here, on the host, as it is locally.
+      - name: Run the agent's host tests
+        run: cargo test -p agent --all-targets
   node:
     uses: nivuus/.github/.github/workflows/ci-node.yml@main
   shell:

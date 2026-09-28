@@ -1,16 +1,16 @@
-//! Le *process loopback* : capter l'audio d'un seul processus, et de son arbre.
+//! The *process loopback*: capturing the audio of a single process, and of its tree.
 //!
-//! **Extrait de `wasapi.rs` et non ajouté dedans.** Ce fichier-là est à
-//! 543 lignes, `#[cfg(windows)]`, sans aucun test : c'est de la dette gelée au
-//! sens de `CLAUDE.md`, et la règle du dépôt veut qu'une addition
-//! substantielle s'y accompagne d'une extraction. Toute la machinerie COM
-//! asynchrone d'`ActivateAudioInterfaceAsync` vit donc ici, où le code du
-//! sous-bloc D7 a sa place.
+//! **Extracted from `wasapi.rs` and not added to it.** That file is at
+//! 543 lines, `#[cfg(windows)]`, without any test: it is frozen debt in
+//! `CLAUDE.md`'s sense, and the repository's rule requires that a substantial
+//! addition there come with an extraction. All the asynchronous COM
+//! machinery of `ActivateAudioInterfaceAsync` therefore lives here, where
+//! sub-block D7's code belongs.
 //!
-//! **Ce que cette API a de particulier** : elle n'est pas synchrone. Le
-//! résultat n'arrive pas en retour d'appel mais par
-//! `IActivateAudioInterfaceCompletionHandler::ActivateCompleted`, invoqué
-//! depuis un fil du pool COM — d'où l'état partagé et la `Condvar` ci-dessous.
+//! **What is peculiar about this API**: it is not synchronous. The
+//! result does not arrive as a call return but through
+//! `IActivateAudioInterfaceCompletionHandler::ActivateCompleted`, invoked
+//! from a COM pool thread — hence the shared state and the `Condvar` below.
 
 #![cfg(windows)]
 
@@ -36,43 +36,43 @@ use windows::Win32::System::Variant::VT_BLOB;
 use crate::opus::{CHANNELS, SAMPLE_RATE_HZ};
 
 // ---------------------------------------------------------------------------
-// Sonde n°4 de la spec du chantier A (§11) : le *process loopback*.
+// Probe no. 4 of workstream A's spec (§11): the *process loopback*.
 //
-// Répond à une question du chantier D, pas de celui-ci : rien n'est construit
-// sur cette sonde ici, elle observe seulement si l'activation réussit sur
-// cette VM, et le résultat est consigné pour le chantier D (modèle
-// multi-fenêtres, qui a besoin d'isoler l'audio par fenêtre/processus).
+// Answers a question of workstream D, not of this one: nothing is built
+// on this probe here, it only observes whether activation succeeds on
+// this VM, and the result is recorded for workstream D (multi-window
+// model, which needs to isolate audio per window/process).
 // ---------------------------------------------------------------------------
 
-/// État partagé entre le fil appelant de `probe_process_loopback` et le
-/// rappel COM de `ActivateAudioInterfaceAsync`, qui s'exécute sur un fil du
-/// pool de threads COM — pas forcément celui qui a lancé l'appel.
+/// State shared between the calling thread of `probe_process_loopback` and the
+/// COM callback of `ActivateAudioInterfaceAsync`, which runs on a thread of the
+/// COM thread pool — not necessarily the one that launched the call.
 struct EtatActivation {
-    resultat: Mutex<Option<ResultatActivation>>,
+    result: Mutex<Option<ActivationResult>>,
     signal: Condvar,
 }
 
-/// Résultat de l'activation, tel que déposé par le rappel.
+/// Result of the activation, as deposited by the callback.
 ///
-/// SÉCURITÉ : `IAudioClient` n'est pas `Send` par défaut (même motif que
-/// `LoopbackCapture`, dans le module PARENT `agent/src/wasapi.rs` — s'y
-/// référer pour le raisonnement complet, ce fichier-ci n'étant qu'une
-/// extraction de celui-là). Ce n'est pas un problème ici : `activer_pour_processus`
-/// (appelée par `probe_process_loopback` ET par `CaptureProcessus::ouvrir`)
-/// rejoint la MTA avant d'appeler `ActivateAudioInterfaceAsync`, et son
-/// rappel de complétion s'exécute nécessairement sur un fil qui est lui-même
-/// membre de cette MTA (c'est ce que documente Microsoft pour cette API).
-/// Faire transiter cette valeur vers le fil appelant, une fois le rappel
-/// signalé via la `Condvar` ci-dessous, ne viole donc aucune contrainte
-/// d'appartement COM.
-struct ResultatActivation(Result<IAudioClient>);
-unsafe impl Send for ResultatActivation {}
+/// SAFETY: `IAudioClient` is not `Send` by default (same reason as
+/// `LoopbackCapture`, in the PARENT module `agent/src/wasapi.rs` — refer
+/// to it for the full reasoning, this file being only an
+/// extraction of that one). It is not a problem here: `activer_pour_processus`
+/// (called by `probe_process_loopback` AND by `CaptureProcessus::ouvrir`)
+/// joins the MTA before calling `ActivateAudioInterfaceAsync`, and its
+/// completion callback necessarily runs on a thread that is itself
+/// a member of that MTA (that is what Microsoft documents for this API).
+/// Passing this value to the calling thread, once the callback has
+/// signalled through the `Condvar` below, therefore violates no COM
+/// apartment constraint.
+struct ActivationResult(Result<IAudioClient>);
+unsafe impl Send for ActivationResult {}
 
-/// Gestionnaire de complétion COM pour `ActivateAudioInterfaceAsync`.
+/// COM completion handler for `ActivateAudioInterfaceAsync`.
 ///
-/// Cette API est **asynchrone à rappel** : le résultat n'arrive pas en retour
-/// d'appel mais via `ActivateCompleted`, invoqué depuis un fil du pool COM.
-/// On dépose le résultat dans l'état partagé et on réveille le fil appelant.
+/// This API is **asynchronous with a callback**: the result does not arrive as a call
+/// return but through `ActivateCompleted`, invoked from a COM pool thread.
+/// We deposit the result in the shared state and wake the calling thread.
 #[implement(IActivateAudioInterfaceCompletionHandler)]
 struct GestionnaireCompletion {
     etat: Arc<EtatActivation>,
@@ -83,58 +83,54 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for GestionnaireCompletion_Im
         &self,
         activateoperation: Ref<'_, IActivateAudioInterfaceAsyncOperation>,
     ) -> windows::core::Result<()> {
-        let resultat: Result<IAudioClient> = (|| {
+        let result: Result<IAudioClient> = (|| {
             let operation = activateoperation
                 .ok()
-                .context("le rappel d'activation n'a rendu aucune opération")?;
+                .context("the activation callback returned no operation")?;
             let mut hr = windows::core::HRESULT::default();
             let mut interface: Option<windows::core::IUnknown> = None;
             unsafe { operation.GetActivateResult(&mut hr, &mut interface) }
                 .context("GetActivateResult")?;
-            hr.ok().context("activation du process loopback refusée")?;
+            hr.ok().context("process loopback activation refused")?;
             interface
-                .context("GetActivateResult a réussi sans rendre d'interface")?
+                .context("GetActivateResult succeeded without returning an interface")?
                 .cast::<IAudioClient>()
-                .context("l'interface activée n'est pas un IAudioClient")
+                .context("the activated interface is not an IAudioClient")
         })();
 
-        let mut verrou = self
-            .etat
-            .resultat
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        *verrou = Some(ResultatActivation(resultat));
+        let mut verrou = self.etat.result.lock().unwrap_or_else(|e| e.into_inner());
+        *verrou = Some(ActivationResult(result));
         self.etat.signal.notify_one();
         Ok(())
     }
 }
 
-/// Délai maximal d'attente du rappel d'activation.
+/// Maximum wait for the activation callback.
 const DELAI_RAPPEL_ACTIVATION: Duration = Duration::from_secs(10);
 
-/// Active un `IAudioClient` de *process loopback* pour `pid` et l'attend.
+/// Activates a *process loopback* `IAudioClient` for `pid` and waits for it.
 ///
 /// `AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` (Windows 10 build 19041+)
-/// isole l'audio d'un seul processus (et de ses enfants) — exactement ce
-/// qu'exige le modèle multi-fenêtres du chantier D (une fenêtre Windows = une
-/// fenêtre navigateur, donc potentiellement une piste audio par fenêtre
-/// plutôt qu'un unique loopback global).
+/// isolates the audio of a single process (and its children) — exactly what
+/// workstream D's multi-window model requires (one Windows window = one
+/// browser window, hence potentially one audio track per window
+/// rather than a single global loopback).
 ///
-/// **Extrait de `probe_process_loopback`, qui l'appelle désormais** (tâche 2
-/// du sous-bloc D7) : la sonde et `CaptureProcessus::ouvrir` doivent activer
-/// **exactement de la même façon**, sans quoi la sonde ne mesurerait pas ce
-/// que le produit fait.
+/// **Extracted from `probe_process_loopback`, which now calls it** (task 2
+/// of sub-block D7): the probe and `CaptureProcessus::ouvrir` must activate
+/// **exactly the same way**, otherwise the probe would not measure what
+/// the product does.
 fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
     unsafe {
-        // Même garde-fou que `LoopbackCapture::open` (module PARENT
-        // `agent/src/wasapi.rs`) : voir son commentaire pour le raisonnement
-        // complet sur `RPC_E_CHANGED_MODE`.
+        // Same safeguard as `LoopbackCapture::open` (PARENT module
+        // `agent/src/wasapi.rs`): see its comment for the full reasoning
+        // on `RPC_E_CHANGED_MODE`.
         let hr = CoInitializeEx(None, COINIT_MULTITHREADED);
         if hr == RPC_E_CHANGED_MODE {
             bail!(
-                "activation du process loopback refusée : le fil appelant appartient déjà à une \
-                 STA, pas à la MTA qu'exige cette API (voir `LoopbackCapture::open` dans \
-                 `agent/src/wasapi.rs` pour le même garde-fou)"
+                "process loopback activation refused: the calling thread already belongs to an \
+                 STA, not to the MTA this API requires (see `LoopbackCapture::open` in \
+                 `agent/src/wasapi.rs` for the same safeguard)"
             );
         }
 
@@ -143,40 +139,40 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
             Anonymous: AUDIOCLIENT_ACTIVATION_PARAMS_0 {
                 ProcessLoopbackParams: AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS {
                     TargetProcessId: pid,
-                    // INCLUDE et non EXCLUDE : c'est bien l'audio DE ce
-                    // processus (et de ses enfants) qu'on veut isoler, pas
-                    // celui de tout le reste de la machine.
+                    // INCLUDE and not EXCLUDE: it is indeed the audio OF this
+                    // process (and its children) we want to isolate, not
+                    // that of the whole rest of the machine.
                     ProcessLoopbackMode: PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
                 },
             },
         };
 
-        // `ActivateAudioInterfaceAsync` attend ses paramètres sous la forme
-        // d'un PROPVARIANT de type VT_BLOB portant un pointeur brut vers
-        // `params` — le pendant Rust du `PropVariantInit` puis affectation
-        // manuelle des champs `vt`/`blob` en C++. `params` doit rester vivant
-        // jusqu'à la fin de l'appel synchrone (seule l'ACTIVATION elle-même
-        // est asynchrone, la lecture des paramètres ne l'est pas) : les deux
-        // valeurs restent dans cette même portée `unsafe`.
-        // `Anonymous` (le premier niveau) est un champ `ManuallyDrop<...>`
-        // d'union COM : l'auto-déréférencement implicite de `ManuallyDrop`
-        // n'est pas appliqué sur un champ d'union par le compilateur (il
-        // faudrait sinon appeler le destructeur de l'ancienne valeur active,
-        // indéterminée) — d'où le `*` explicite.
+        // `ActivateAudioInterfaceAsync` expects its parameters in the form
+        // of a PROPVARIANT of type VT_BLOB carrying a raw pointer to
+        // `params` — the Rust counterpart of `PropVariantInit` then manual
+        // assignment of the `vt`/`blob` fields in C++. `params` must stay alive
+        // until the end of the synchronous call (only the ACTIVATION itself
+        // is asynchronous, reading the parameters is not): both
+        // values stay in this same `unsafe` scope.
+        // `Anonymous` (the first level) is a `ManuallyDrop<...>` field
+        // of a COM union: `ManuallyDrop`'s implicit auto-dereference
+        // is not applied on a union field by the compiler (it
+        // would otherwise have to call the destructor of the old active value,
+        // undetermined) — hence the explicit `*`.
         //
-        // CORRECTIF (revue) : `PROPVARIANT` implémente `Drop`
+        // FIX (review): `PROPVARIANT` implements `Drop`
         // (`windows-0.62.2/src/extensions/Win32/System/StructuredStorage.rs`)
-        // et appelle `PropVariantClear` — qui, pour `VT_BLOB`, relâche
-        // `blob.pBlobData` via `CoTaskMemFree`. Or `pBlobData` pointe ici sur
-        // `params`, une variable de PILE, pas une allocation `CoTaskMemAlloc` :
-        // laisser ce `Drop` s'exécuter (sur TOUT chemin de sortie, y compris le
-        // `?` d'`ActivateAudioInterfaceAsync` juste en dessous) appelle
-        // `CoTaskMemFree` sur une adresse de pile — un comportement indéfini
-        // franc, seule cause plausible de la corruption qui rendait la sonde
-        // silencieuse (aucune ligne de log, aucun rapport de plantage
-        // cohérent avec le point d'échec). `ManuallyDrop` empêche ce `Drop` :
-        // rien n'a besoin d'être libéré, `blob` ne référence aucune mémoire
-        // dont ce PROPVARIANT est propriétaire.
+        // and calls `PropVariantClear` — which, for `VT_BLOB`, releases
+        // `blob.pBlobData` through `CoTaskMemFree`. Yet `pBlobData` points here to
+        // `params`, a STACK variable, not a `CoTaskMemAlloc` allocation:
+        // letting this `Drop` run (on EVERY exit path, including the
+        // `?` of `ActivateAudioInterfaceAsync` just below) calls
+        // `CoTaskMemFree` on a stack address — outright undefined
+        // behaviour, the only plausible cause of the corruption that made the probe
+        // silent (no log line, no crash report
+        // consistent with the failure point). `ManuallyDrop` prevents this `Drop`:
+        // nothing needs to be freed, `blob` references no memory
+        // this PROPVARIANT owns.
         let mut propriete = std::mem::ManuallyDrop::new(PROPVARIANT::default());
         (*propriete.Anonymous.Anonymous).vt = VT_BLOB;
         (*propriete.Anonymous.Anonymous).Anonymous.blob = BLOB {
@@ -185,90 +181,85 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
         };
 
         let etat = Arc::new(EtatActivation {
-            resultat: Mutex::new(None),
+            result: Mutex::new(None),
             signal: Condvar::new(),
         });
-        let gestionnaire: IActivateAudioInterfaceCompletionHandler = GestionnaireCompletion {
-            etat: etat.clone(),
-        }
-        .into();
+        let gestionnaire: IActivateAudioInterfaceCompletionHandler =
+            GestionnaireCompletion { etat: etat.clone() }.into();
 
-        // L'opération rendue doit rester en vie jusqu'à la fin de l'attente :
-        // la laisser tomber prématurément peut annuler l'activation en cours.
+        // The returned operation must stay alive until the end of the wait:
+        // dropping it prematurely can cancel the ongoing activation.
         let _operation = ActivateAudioInterfaceAsync(
             VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
             &IAudioClient::IID,
             Some(&*propriete),
             &gestionnaire,
         )
-        .context("appel à ActivateAudioInterfaceAsync")?;
+        .context("call to ActivateAudioInterfaceAsync")?;
 
-        let verrou = etat
-            .resultat
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let verrou = etat.result.lock().unwrap_or_else(|e| e.into_inner());
         let (mut verrou, _attente) = etat
             .signal
             .wait_timeout_while(verrou, DELAI_RAPPEL_ACTIVATION, |r| r.is_none())
             .unwrap_or_else(|e| e.into_inner());
 
         match verrou.take() {
-            Some(ResultatActivation(Ok(client))) => Ok(client),
-            Some(ResultatActivation(Err(e))) => Err(e).context("activation refusée"),
+            Some(ActivationResult(Ok(client))) => Ok(client),
+            Some(ActivationResult(Err(e))) => Err(e).context("activation refused"),
             None => bail!(
-                "aucun rappel d'activation reçu en {DELAI_RAPPEL_ACTIVATION:?} pour le PID {pid}"
+                "no activation callback received within {DELAI_RAPPEL_ACTIVATION:?} for PID {pid}"
             ),
         }
     }
 }
 
-/// Sonde d'ACTIVATION seule — conservée telle quelle pour que le relevé du
-/// chantier A (28 juillet 2026) reste reproductible à l'identique. Elle
-/// n'initialise rien et ne lit aucun octet : c'est `CaptureProcessus::ouvrir`
-/// qui va plus loin, et c'est `PROCESS_LOOPBACK_CAPTURE` qui le mesure.
+/// ACTIVATION-only probe — kept as is so that workstream A's
+/// reading (July 28th, 2026) stays reproducible identically. It
+/// initialises nothing and reads no byte: it is `CaptureProcessus::ouvrir`
+/// that goes further, and `PROCESS_LOOPBACK_CAPTURE` that measures it.
 pub fn probe_process_loopback(pid: u32) -> Result<String> {
     let _client = activer_pour_processus(pid)?;
     Ok(format!(
-        "activation réussie : IAudioClient obtenu pour le PID {pid} \
+        "activation succeeded: IAudioClient obtained for PID {pid} \
          (VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, INCLUDE_TARGET_PROCESS_TREE)"
     ))
 }
 
-/// Durée du tampon demandé, en unités de 100 ns. 200 ms, comme
-/// `LoopbackCapture::open` : large marge pour absorber un tour de boucle en
-/// retard sans perdre d'échantillon.
+/// Duration of the requested buffer, in 100 ns units. 200 ms, like
+/// `LoopbackCapture::open`: a wide margin to absorb a late loop round
+/// without losing a sample.
 const DUREE_TAMPON_100NS: i64 = 2_000_000;
 
-/// Capture loopback d'un seul processus et de son arbre.
+/// Loopback capture of a single process and its tree.
 ///
-/// **Le format n'est pas demandé, il est IMPOSÉ.** Un client de *process
-/// loopback* n'est lié à aucun point de terminaison : `GetMixFormat` n'y a pas
-/// de sens évident, et l'échantillon officiel de Microsoft pose lui aussi un
-/// format explicite. On pose donc exactement celui qu'`opus.rs` attend
-/// (48 kHz, 2 canaux, 16 bits entiers), ce qui supprime du même coup toute
-/// conversion : `read` rend des `i16` entrelacés directement exploitables par
+/// **The format is not requested, it is IMPOSED.** A *process
+/// loopback* client is bound to no endpoint: `GetMixFormat` has no
+/// obvious meaning there, and Microsoft's official sample also sets an
+/// explicit format. We therefore set exactly the one `opus.rs` expects
+/// (48 kHz, 2 channels, 16-bit integers), which at the same time removes any
+/// conversion: `read` returns interleaved `i16`s directly usable by
 /// `FrameAssembler`.
 ///
-/// ⚠️ **Que Windows accepte ce format n'est pas établi avant la mesure de la
-/// tâche 3.** S'il refuse, le `HRESULT` exact est le relevé qui compte — ne pas
-/// deviner un repli.
+/// ⚠️ **That Windows accepts this format is not established before task 3's
+/// measurement.** If it refuses, the exact `HRESULT` is the reading that counts — do not
+/// guess a fallback.
 pub struct CaptureProcessus {
     client: IAudioClient,
     capture: IAudioCaptureClient,
     description: String,
-    /// Vrai quand `Start()` a été appelé sans `Stop()` depuis. **Nécessaire** :
-    /// `IAudioClient::Start` sur un flux déjà démarré rend
-    /// `AUDCLNT_E_NOT_STOPPED`, et l'arbitrage peut réémettre un ordre
-    /// identique après un rattachement de canal.
-    demarre: bool,
+    /// True when `Start()` has been called without `Stop()` since. **Necessary**:
+    /// `IAudioClient::Start` on an already started stream returns
+    /// `AUDCLNT_E_NOT_STOPPED`, and arbitration can re-emit an identical
+    /// order after a channel reattachment.
+    started: bool,
 }
 
-// SÉCURITÉ : même raisonnement que `unsafe impl Send for LoopbackCapture`
-// (module PARENT `agent/src/wasapi.rs`, dont il faut lire le commentaire
-// d'abord). `activer_pour_processus` vérifie que le fil appelant est membre
-// de la MTA et refuse `RPC_E_CHANGED_MODE` ; le fil de capture de
-// `windows_audio.rs` rejoint cette même MTA avant tout appel COM.
-// **La promesse porte sur le struct entier, champs futurs compris.**
+// SAFETY: same reasoning as `unsafe impl Send for LoopbackCapture`
+// (PARENT module `agent/src/wasapi.rs`, whose comment must be read
+// first). `activer_pour_processus` checks that the calling thread is a member
+// of the MTA and refuses `RPC_E_CHANGED_MODE`; the capture thread of
+// `windows_audio.rs` joins that same MTA before any COM call.
+// **The promise covers the whole struct, future fields included.**
 unsafe impl Send for CaptureProcessus {}
 
 impl CaptureProcessus {
@@ -297,31 +288,31 @@ impl CaptureProcessus {
                     None,
                 )
                 .context(
-                    "Initialize du client de process loopback (format impose : 48 kHz, \
-                     2 canaux, 16 bits)",
+                    "Initialize of the process loopback client (imposed format: 48 kHz, \
+                     2 channels, 16 bits)",
                 )?;
 
             let capture: IAudioCaptureClient = client
                 .GetService()
-                .context("GetService(IAudioCaptureClient) sur le client de process loopback")?;
+                .context("GetService(IAudioCaptureClient) on the process loopback client")?;
 
-            // `WAVEFORMATEX` est `repr(packed)` (même motif que
-            // `WAVEFORMATEXTENSIBLE` dans le module parent) : y prendre une
-            // référence — ce que fait `format!` pour tout argument — est un
-            // accès non aligné, donc un comportement indéfini. On copie
-            // d'abord les champs vers des variables de pile ordinaires.
+            // `WAVEFORMATEX` is `repr(packed)` (same reason as
+            // `WAVEFORMATEXTENSIBLE` in the parent module): taking a
+            // reference into it — which `format!` does for any argument — is an
+            // unaligned access, hence undefined behaviour. We first copy
+            // the fields into ordinary stack variables.
             let frequence = format.nSamplesPerSec;
             let canaux = format.nChannels;
             let description = format!(
-                "process loopback pid={pid} — {frequence} Hz, {canaux} canaux, \
-                 16 bits entiers"
+                "process loopback pid={pid} — {frequence} Hz, {canaux} channels, \
+                 16-bit integers"
             );
 
             Ok(Self {
                 client,
                 capture,
                 description,
-                demarre: false,
+                started: false,
             })
         }
     }
@@ -330,64 +321,64 @@ impl CaptureProcessus {
         &self.description
     }
 
-    /// Démarre le flux. Idempotent : un second appel ne fait rien.
-    pub fn demarrer(&mut self) -> Result<()> {
-        if self.demarre {
+    /// Starts the stream. Idempotent: a second call does nothing.
+    pub fn start(&mut self) -> Result<()> {
+        if self.started {
             return Ok(());
         }
-        unsafe { self.client.Start() }.context("Start du client de process loopback")?;
-        self.demarre = true;
+        unsafe { self.client.Start() }.context("Start of the process loopback client")?;
+        self.started = true;
         Ok(())
     }
 
-    /// Arrête le flux. Idempotent.
+    /// Stops the stream. Idempotent.
     ///
-    /// **Ce n'est pas une destruction** : le client reste activé, donc aucune
-    /// réactivation COM — la seule étape qui puisse refuser — n'a lieu à la
-    /// bascule suivante. C'est tout l'intérêt de l'approche retenue au §4.4 de
-    /// la spec.
+    /// **It is not a destruction**: the client stays activated, so no
+    /// COM reactivation — the only step that can refuse — happens at the
+    /// next toggle. That is the whole point of the approach chosen in §4.4 of
+    /// the spec.
     pub fn arreter(&mut self) -> Result<()> {
-        if !self.demarre {
+        if !self.started {
             return Ok(());
         }
-        unsafe { self.client.Stop() }.context("Stop du client de process loopback")?;
-        self.demarre = false;
+        unsafe { self.client.Stop() }.context("Stop of the process loopback client")?;
+        self.started = false;
         Ok(())
     }
 
-    /// Lit un paquet, ou `None` s'il n'y en a aucun de prêt.
+    /// Reads a packet, or `None` if none is ready.
     ///
-    /// Rend des `i16` entrelacés, sans conversion : le format est imposé à
-    /// l'ouverture.
+    /// Returns interleaved `i16`s, without conversion: the format is imposed at
+    /// opening.
     pub fn read(&mut self) -> Result<Option<Vec<i16>>> {
         unsafe {
             let disponibles = self
                 .capture
                 .GetNextPacketSize()
-                .context("GetNextPacketSize sur le process loopback")?;
+                .context("GetNextPacketSize on the process loopback")?;
             if disponibles == 0 {
                 return Ok(None);
             }
 
-            let mut donnees: *mut u8 = std::ptr::null_mut();
+            let mut data: *mut u8 = std::ptr::null_mut();
             let mut images = 0u32;
             let mut drapeaux = 0u32;
             self.capture
-                .GetBuffer(&mut donnees, &mut images, &mut drapeaux, None, None)
-                .context("GetBuffer sur le process loopback")?;
+                .GetBuffer(&mut data, &mut images, &mut drapeaux, None, None)
+                .context("GetBuffer on the process loopback")?;
 
             let echantillons = images as usize * CHANNELS;
             let sortie = if drapeaux & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 {
-                // Le drapeau SILENT autorise le pilote à ne pas remplir le
-                // tampon : lire ses octets rendrait n'importe quoi.
+                // The SILENT flag allows the driver not to fill the
+                // buffer: reading its bytes would return anything.
                 vec![0i16; echantillons]
             } else {
-                std::slice::from_raw_parts(donnees as *const i16, echantillons).to_vec()
+                std::slice::from_raw_parts(data as *const i16, echantillons).to_vec()
             };
 
             self.capture
                 .ReleaseBuffer(images)
-                .context("ReleaseBuffer sur le process loopback")?;
+                .context("ReleaseBuffer on the process loopback")?;
             Ok(Some(sortie))
         }
     }

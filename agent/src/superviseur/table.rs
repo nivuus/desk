@@ -1,216 +1,219 @@
-//! Où en est chaque fenêtre : détectée, en attente de son viewport, en attente
-//! de sa sortie, vivante.
+//! Where each window stands: detected, waiting for its viewport, waiting
+//! for its output, live.
 //!
-//! Logique pure et sans effet de bord : la table ne crée rien, ne tue rien,
-//! ne parle à personne. Elle rend une liste d'`Effet` que `superviseur.rs`
-//! exécute. C'est ce qui la rend éprouvable sans Windows, sans pilote et sans
-//! navigateur — et c'est là que vivent les règles qui, mal écrites, feraient
-//! fuir une sortie virtuelle ou dédoubler le son.
+//! Pure logic without side effects: the table creates nothing, kills nothing,
+//! talks to no one. It returns a list of `Effet`s that `superviseur.rs`
+//! executes. It is what makes it exercisable without Windows, without a driver and without
+//! a browser — and it is where the rules live that, badly written, would
+//! leak a virtual output or duplicate the sound.
 
 use std::collections::HashMap;
 
-/// Identifiant opaque d'une fenêtre Windows. C'est un `HWND` côté Windows,
-/// mais ce module n'en sait rien et n'a pas à en savoir plus.
+/// Opaque identifier of a Windows window. It is an `HWND` on the Windows side,
+/// but this module knows nothing of it and has no need to know more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IdFenetre(pub u64);
 
-/// Identifiant de session, tel que le signaling et l'URL du navigateur le
-/// portent. Opaque à dessein : ni le `HWND` ni le titre, qui changent tous
-/// deux au cours de la vie d'une fenêtre.
+/// Session identifier, as signaling and the browser URL
+/// carry it. Opaque on purpose: neither the `HWND` nor the title, which both
+/// change during a window's life.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdSession(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Etat {
-    /// Annoncée à la page-shell ; on attend qu'elle dise la taille de sa
-    /// fenêtre navigateur.
+    /// Announced to the shell page; we wait for it to say the size of its
+    /// browser window.
     AttendLeViewport,
-    /// Le viewport est connu, la sortie virtuelle est demandée.
+    /// The viewport is known, the virtual output is requested.
     AttendLaSortie,
     /// L'enfant tourne.
     Vivante,
-    /// L'enfant est mort, mais **la fenêtre Windows est toujours là**. Le
-    /// contrôle périodique la reproposera.
+    /// The child is dead, but **the Windows window is still there**. The
+    /// periodic check will offer it again.
     ///
-    /// ❌ **« et la sortie a été rendue » figurait ici et est faux depuis le
-    /// sous-bloc D3** — contredit par `enfant_mort` deux cents lignes plus
-    /// bas, qui dit en toutes lettres « la sortie est RETENUE, et c'est le
-    /// correctif §7.1 du sous-bloc D3 ». Fausseté antérieure à D10, relevée
-    /// par sa revue transverse parce qu'elle survivait dans un fichier que la
-    /// branche a modifié. La rétention est **le** point du correctif : rendre
-    /// la sortie ferait recréer une sortie à la relance, et c'est la création
-    /// qui fait abandonner le mutex de toutes les duplications ouvertes.
+    /// ❌ **"and the output was handed back" appeared here and has been wrong since
+    /// sub-block D3** — contradicted by `enfant_mort` two hundred lines
+    /// below, which says in so many words "the output is RETAINED, and it is
+    /// fix §7.1 of sub-block D3". A falsehood predating D10, found
+    /// by its cross-cutting review because it survived in a file the
+    /// branch modified. Retention is **the** point of the fix: handing back
+    /// the output would recreate an output at restart, and it is creation
+    /// that makes all open duplications abandon the mutex.
     ///
-    /// Sans cet état, `enfant_mort` retirait purement l'entrée : plus rien ne
-    /// rappelait la fenêtre sauf un `SHOW` fortuit de Windows, et la shell
-    /// restait vide devant des applications bien vivantes (recette D1 §3.3).
+    /// Without this state, `enfant_mort` purely removed the entry: nothing
+    /// recalled the window except a chance `SHOW` from Windows, and the shell
+    /// stayed empty in front of very much alive applications (acceptance run D1 §3.3).
     SansSession,
 }
 
-/// Relances tolérées pour une même fenêtre avant abandon.
+/// Restarts tolerated for the same window before abandonment.
 ///
-/// Le garde-fou de l'emballement relevé en recette D1 : une fenêtre dont
-/// l'enfant meurt systématiquement produirait sinon `w-5, w-6, w-7, w-8…`
-/// jusqu'à épuiser le vivier de sorties du pilote.
+/// The safeguard against the runaway found in acceptance run D1: a window whose
+/// child dies systematically would otherwise produce `w-5, w-6, w-7, w-8…`
+/// until exhausting the driver's pool of outputs.
 ///
-/// **Ce compteur ne redescend jamais à zéro**, y compris quand une relance
-/// atteint `Vivante` : il mesure les morts cumulées sur toute la vie de la
-/// fenêtre, pas les échecs consécutifs. Une fenêtre qui vit dix minutes puis
-/// meurt trois fois de suite plus tard est abandonnée à la troisième — pas
-/// « trois échecs d'affilée » au sens strict. Choix conservateur, hérité tel
-/// quel du brief de la tâche 10.
+/// **This counter never goes back down to zero**, including when a restart
+/// reaches `Vivante`: it measures the deaths accumulated over the whole life of the
+/// window, not consecutive failures. A window that lives ten minutes then
+/// dies three times in a row later is abandoned at the third — not
+/// "three failures in a row" in the strict sense. A conservative choice, inherited as
+/// is from task 10's brief.
 ///
-/// **Corollaire non corrigé, à documenter seulement** : un cycle `HIDE`/`SHOW`
-/// (fenêtre réduite puis restaurée) fait quitter puis rejoindre la table par
-/// `fenetre_disparue`/`fenetre_apparue`, donc repart à `relances = 0`. Le
-/// garde-fou reste borné à chaque cycle pris isolément (jamais plus de 3
-/// relances par cycle), donc aucune fuite — seulement une remise à zéro dont
-/// il faut avoir conscience si l'on cherchait à borner le nombre total de
-/// morts d'une fenêtre sur sa vie entière.
+/// **Uncorrected corollary, only to be documented**: a `HIDE`/`SHOW` cycle
+/// (window minimised then restored) makes it leave then rejoin the table through
+/// `fenetre_disparue`/`fenetre_apparue`, hence restarts at `relances = 0`. The
+/// safeguard stays bounded for each cycle taken in isolation (never more than 3
+/// restarts per cycle), hence no leak — only a reset one
+/// must be aware of if one sought to bound the total number of
+/// deaths of a window over its whole life.
 pub const RELANCES_MAX: u32 = 3;
 
-/// Temps toléré, en attente d'un viewport, avant qu'une fenêtre relancée ne
-/// soit abandonnée.
+/// Time tolerated, waiting for a viewport, before a restarted window
+/// is abandoned.
 ///
-/// **Régression que ce délai corrige** : avant la tâche 10, un enfant mort
-/// libérait sa place dans `entrees` immédiatement (`enfant_mort` retirait
-/// l'entrée). Depuis, une fenêtre relancée reste `AttendLeViewport` — et si
-/// la page-shell ne répond jamais (pop-up bloqué, shell déconnectée :
-/// `CLAUDE.md` documente nommément ce cas pour la recette du sous-bloc D1),
-/// plus rien ne fait progresser cette entrée : ni `SansSession` (elle ne l'est
-/// plus), ni `Vivante` (elle ne l'atteindra jamais). Sans ce délai, sa place
-/// serait perdue pour la durée de vie du superviseur.
+/// **Regression this delay fixes**: before task 10, a dead child
+/// freed its place in `entrees` immediately (`enfant_mort` removed
+/// the entry). Since then, a restarted window stays `AttendLeViewport` — and if
+/// the shell page never answers (pop-up blocked, shell disconnected:
+/// `CLAUDE.md` documents this case by name for sub-block D1's acceptance run),
+/// nothing makes this entry progress any more: neither `SansSession` (it is no longer
+/// so), nor `Vivante` (it will never reach it). Without this delay, its place
+/// would be lost for the supervisor's lifetime.
 ///
-/// **Majorante et non calibrée** — même aveu que `DUREE_FENETRE_REPRISE`
-/// (`agent/src/capture/reprise.rs`) : aucune mesure n'a établi combien de
-/// temps une page-shell peut légitimement mettre à répondre. Trente secondes
-/// couvrent largement un rechargement de page ou une reconnexion réseau, sans
-/// bloquer indéfiniment une place — d'autant que `CAPACITE` n'en offre plus
-/// que **quatre** depuis la campagne de D3.
+/// **An upper bound and not calibrated** — same admission as `DUREE_FENETRE_REPRISE`
+/// (`agent/src/capture/reprise.rs`): no measurement has established how long
+/// a shell page can legitimately take to answer. Thirty seconds
+/// largely cover a page reload or a network reconnection, without
+/// blocking a place indefinitely — all the more since `CAPACITE` only offers
+/// **four** since D3's campaign.
 ///
-/// **Portée : TOUTES les entrées en attente de viewport**, depuis le sous-bloc
-/// D3. Elle était limitée aux entrées relancées, parce que `fenetre_apparue`
-/// est pure et ne reçoit aucun instant ; le tampon est désormais posé
-/// paresseusement par `relancer_les_orphelines`, qui en reçoit un. Conséquence
-/// à connaître : une fenêtre préexistante au démarrage est abandonnée si la
-/// page-shell ne s'est pas connectée dans ce délai.
+/// **Scope: ALL entries waiting for a viewport**, since sub-block
+/// D3. It was limited to restarted entries, because `fenetre_apparue`
+/// is pure and receives no instant; the timestamp is now set
+/// lazily by `relancer_les_orphelines`, which receives one. Consequence
+/// to know: a window pre-existing at startup is abandoned if the
+/// shell page has not connected within this delay.
 pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
 
-// Extrait dans un fichier voisin (tâche 9 du sous-bloc D10, à la revue) :
-// purement déclaratif, déjà lourdement documenté, et ce fichier-ci était à
-// marge 1 avant l'extraction. Voir la doc de tête de `table/effets.rs`.
+// Extracted into a neighbouring file (task 9 of sub-block D10, at review):
+// purely declarative, already heavily documented, and this file was at
+// margin 1 before the extraction. See the header doc of `table/effets.rs`.
 mod effets;
 pub use effets::Effet;
 
 #[derive(Debug)]
 struct Entree {
     fenetre: IdFenetre,
-    /// Retenu pour la seule raison qu'un refus de sortie doit se dire à un
-    /// humain (voir `Effet::CreerSortie`). Il n'est PAS un identifiant : le
-    /// titre d'une fenêtre change au cours de sa vie, c'est `IdSession` qui
-    /// désigne.
+    /// Kept for the sole reason that an output refusal must be told to a
+    /// human (see `Effet::CreateOutput`). It is NOT an identifier: a
+    /// window's title changes during its life, it is `IdSession` that
+    /// designates.
     titre: String,
     etat: Etat,
-    /// Identifiant rendu par le pilote à la création, pour la destruction.
+    /// Identifier returned by the driver at creation, for destruction.
     sortie_pilote: Option<u32>,
-    /// Nom DXGI (`\\.\DISPLAYn`) de la même sortie, pour la capture et le
-    /// placement. Stable, contrairement à une position d'énumération.
+    /// DXGI name (`\\.\DISPLAYn`) of the same output, for capture and
+    /// placement. Stable, unlike an enumeration position.
     nom_sortie: Option<String>,
-    /// ❌ **Ce champ portait « les dimensions RÉELLEMENT rendues par DXGI »,
-    /// et ce n'est plus vrai depuis le sous-bloc D10** (relevé par la revue
-    /// transverse : le fichier se contredisait lui-même, `rafraichir_taille_sortie`
-    /// plus bas et `boucle/placement_periodique.rs` disant tous deux le
-    /// contraire). Il porte la **taille RETENUE** — `min` axe par axe entre le
-    /// viewport borné et la taille DXGI réelle —, écrite par
-    /// `boucle::creation_sortie::creer_sortie` à la création et par
-    /// `table::attribution::viewport_recu` à la réutilisation. C'est la taille
-    /// à laquelle la fenêtre est posée, et celle que la capture recadre dans
-    /// la duplication de la sortie ; elle **n'a plus de raison d'égaler** la
-    /// taille DXGI brute, puisqu'une sortie peut naître plus grande que
-    /// demandé.
+    /// ❌ **This field carried "the dimensions ACTUALLY returned by DXGI",
+    /// and that is no longer true since sub-block D10** (found by the cross-cutting
+    /// review: the file contradicted itself, `refresh_output_size`
+    /// below and `boucle/placement_periodique.rs` both saying the
+    /// opposite). It carries the **RETAINED size** — `min` axis by axis between the
+    /// bounded viewport and the real DXGI size —, written by
+    /// `boucle::creation_sortie::create_output` at creation and by
+    /// `table::attribution::viewport_recu` at reuse. It is the size
+    /// at which the window is put, and the one the capture crops in
+    /// the output's duplication; it **no longer has any reason to equal** the
+    /// raw DXGI size, since an output can be born larger than
+    /// requested.
     ///
-    /// Le raisonnement qui justifiait l'ancienne sémantique — le pilote
-    /// quantifie (1280×632 demandé rend 1280×720, mesuré au sous-bloc D2),
-    /// donc comparer un viewport ultérieur à la DEMANDE jugerait réutilisable
-    /// une sortie qui ne l'est pas — est **mort avec elle** : la réutilisation
-    /// ne compare plus une égalité mais `placement::sortie_assez_grande`.
+    /// The reasoning that justified the old semantics — the driver
+    /// quantises (1280×632 requested returns 1280×720, measured in sub-block D2),
+    /// so comparing a later viewport to the REQUEST would judge reusable
+    /// an output that is not — **died with it**: reuse
+    /// no longer compares an equality but `placement::sortie_assez_grande`.
     ///
-    /// Posé et effacé en même temps que `sortie_pilote` et `nom_sortie` : les
-    /// trois désignent la même sortie et ne se séparent jamais.
-    taille_sortie: Option<(u32, u32)>,
-    /// Nombre de fois où cette fenêtre a déjà été relancée après la mort de
-    /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
-    /// s'appuie dessus pour abandonner plutôt que de relancer sans fin.
+    /// Set and cleared together with `sortie_pilote` and `nom_sortie`: the
+    /// three designate the same output and are never separated.
+    output_size: Option<(u32, u32)>,
+    /// Number of times this window has already been restarted after its
+    /// child's death. The safeguard of `relancer_les_orphelines` (`RELANCES_MAX`)
+    /// relies on it to give up rather than restart endlessly.
     relances: u32,
-    /// Instant à partir duquel cette entrée est en `AttendLeViewport` — posé
-    /// paresseusement par `relancer_les_orphelines` pour une entrée issue de
-    /// `fenetre_apparue`, qui reste pure et sans horloge. C'est le garde-fou
-    /// du second risque de capacité de la tâche 10 : sans lui, une fenêtre
-    /// dont la page-shell ne répond plus jamais resterait `AttendLeViewport`
-    /// pour toujours, ni `SansSession` ni `Vivante`, place perdue jusqu'à
-    /// l'arrêt du superviseur. Effacé dès que le viewport arrive
-    /// (`viewport_recu`) : passé ce point, l'entrée n'attend plus le
-    /// navigateur.
+    /// Instant from which this entry is in `AttendLeViewport` — set
+    /// lazily by `relancer_les_orphelines` for an entry coming from
+    /// `fenetre_apparue`, which stays pure and clockless. It is the safeguard
+    /// against task 10's second capacity risk: without it, a window
+    /// whose shell page never answers again would stay `AttendLeViewport`
+    /// forever, neither `SansSession` nor `Vivante`, a place lost until
+    /// supervisor shutdown. Cleared as soon as the viewport arrives
+    /// (`viewport_recu`): past that point, the entry no longer waits for the
+    /// browser.
     attente_depuis: Option<std::time::Instant>,
 }
 
 pub struct Table {
-    /// Nombre de fenêtres simultanées que la table s'autorise. Le vivier de
-    /// sorties du pilote vaut 10 (mesuré), mais Apollo puise au même : la
-    /// capacité est un paramètre, pas une constante.
+    /// Number of simultaneous windows the table allows itself. The driver's
+    /// output pool is 10 (measured), but Apollo draws from the same one: the
+    /// capacity is a parameter, not a constant.
     capacite: usize,
     entrees: HashMap<IdSession, Entree>,
-    /// Compteur des sessions attribuées. Croît sans jamais reculer : un
-    /// identifiant réutilisé apparierait un message tardif du navigateur à la
-    /// mauvaise fenêtre.
+    /// Counter of assigned sessions. Grows without ever going back: a
+    /// reused identifier would pair a late browser message with the
+    /// wrong window.
     compteur: u64,
-    /// Le préfixe de la VM, délivré par la plateforme à l'enrôlement
-    /// (sous-bloc P3). **Vide quand aucun enrôlement n'a eu lieu**, et le nom
-    /// de session est alors exactement celui d'avant P3.
+    /// The VM's prefix, delivered by the platform at enrolment
+    /// (sub-block P3). **Empty when no enrolment took place**, and the session
+    /// name is then exactly the one from before P3.
     ///
-    /// ⚠️ Il est reçu à la CONSTRUCTION et jamais posé après coup, à dessein :
-    /// un préfixe qui changerait en cours de route ferait cohabiter deux
-    /// espaces de noms dans la même table, et la seule façon d'y rester
-    /// honnête serait de ne pas réutiliser les identifiants déjà émis —
-    /// c'est-à-dire de ne surtout PAS remettre le compteur à zéro. Rendre
-    /// l'état impossible vaut mieux que le garder correct.
+    /// ⚠️ It is received at CONSTRUCTION and never set afterwards, on purpose:
+    /// a prefix changing along the way would make two
+    /// namespaces coexist in the same table, and the only way to stay
+    /// honest there would be not to reuse the identifiers already emitted —
+    /// that is, above all NOT to reset the counter to zero. Making
+    /// the state impossible beats keeping it correct.
     prefixe: String,
 }
 
-/// Effet de destruction d'une sortie retenue par une entrée qu'on retire.
+/// Destruction effect for an output retained by an entry being removed.
 ///
-/// **Trois chemins retirent une entrée de la table, et depuis le §7.1 du
-/// sous-bloc D3 les trois peuvent en porter une** : `fenetre_disparue`, et les
-/// deux abandons de `relancer_les_orphelines`. Avant D3, `enfant_mort` avait
-/// toujours rendu la sortie et le cas n'existait pas. Une sortie oubliée ici
-/// consommerait le vivier de dix du pilote jusqu'à l'arrêt du superviseur,
-/// sans qu'aucune trace ne le dise.
+/// **Three paths remove an entry from the table, and since §7.1 of
+/// sub-block D3 all three can carry one**: `fenetre_disparue`, and the
+/// two abandonments of `relancer_les_orphelines`. Before D3, `enfant_mort` had
+/// always handed back the output and the case did not exist. An output forgotten here
+/// would consume the driver's pool of ten until supervisor shutdown,
+/// without any trace saying so.
 fn rendre_la_sortie_de(entree: &Entree) -> Option<Effet> {
-    entree.sortie_pilote.map(|sortie_pilote| Effet::DetruireSortie {
-        sortie_pilote,
-        // `nom_sortie` est toujours renseigné quand `sortie_pilote` l'est :
-        // `sortie_creee` pose les trois champs ensemble, jamais l'un sans les
-        // autres, et `viewport_recu` les vide ensemble. Le repli n'est donc
-        // pas atteignable — s'il l'était, il produirait un `nom_sortie: ""`.
-        nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
-    })
+    entree
+        .sortie_pilote
+        .map(|sortie_pilote| Effet::DetruireSortie {
+            sortie_pilote,
+            // `nom_sortie` is always filled when `sortie_pilote` is:
+            // `sortie_creee` sets the three fields together, never one without the
+            // others, and `viewport_recu` clears them together. The fallback is therefore
+            // not reachable — if it were, it would produce a `nom_sortie: ""`.
+            nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
+        })
 }
 
 impl Table {
-    /// Une table sans préfixe : les sessions s'appellent `w-1`, `w-2`, …
-    /// exactement comme avant le sous-bloc P3.
+    /// A table without prefix: sessions are called `w-1`, `w-2`, …
+    /// exactly as before sub-block P3.
     ///
-    /// ⚠️ **Plus aucun appelant de PRODUCTION depuis P3** (`boucle.rs` passe
-    /// par `avec_prefixe`), et le lint le dit sur la compilation Windows.
-    /// Conservée parce qu'elle est le témoin du comportement d'avant P3 —
-    /// c'est elle que la vingtaine de tests de ce module emploie, et c'est par
-    /// elle que « préfixe vide = nom d'aujourd'hui » reste éprouvé.
-    pub fn nouvelle(capacite: usize) -> Self {
-        Self::avec_prefixe(capacite, String::new())
+    /// ⚠️ **No PRODUCTION caller any more since P3** (`boucle.rs` goes
+    /// through `with_prefix`), and the lint says so on the Windows build.
+    /// Kept because it is the witness of the behaviour from before P3 —
+    /// it is what the twenty or so tests of this module use, and it is through
+    /// it that "empty prefix = today's name" stays exercised.
+    #[cfg(test)]
+    pub fn new(capacite: usize) -> Self {
+        Self::with_prefix(capacite, String::new())
     }
 
-    /// Une table dont toutes les sessions portent le préfixe de leur VM.
-    pub fn avec_prefixe(capacite: usize, prefixe: String) -> Self {
+    /// A table all of whose sessions carry their VM's prefix.
+    pub fn with_prefix(capacite: usize, prefixe: String) -> Self {
         Self {
             capacite,
             entrees: HashMap::new(),
@@ -219,12 +222,12 @@ impl Table {
         }
     }
 
-    /// L'identifiant de la prochaine session, préfixe compris.
+    /// The identifier of the next session, prefix included.
     ///
-    /// Les DEUX sites qui attribuent un identifiant passent par ici
-    /// (`fenetre_apparue` et la relance de `orphelines.rs`) : un troisième
-    /// qui composerait à la main donnerait une session que le préfixe
-    /// n'atteint pas, et la garde de la plateforme la refuserait.
+    /// The TWO sites assigning an identifier go through here
+    /// (`fenetre_apparue` and the restart in `orphelines.rs`): a third
+    /// composing by hand would give a session the prefix
+    /// does not reach, and the platform's guard would refuse it.
     fn prochaine_session(&mut self) -> IdSession {
         self.compteur += 1;
         IdSession(super::protocole::composer(
@@ -237,41 +240,41 @@ impl Table {
         self.entrees.get(session).map(|e| &e.etat)
     }
 
-    /// Fenêtre Windows associée à une session.
+    /// Windows window associated with a session.
     ///
-    /// Le superviseur en a besoin pour le contrôle périodique de placement :
-    /// il connaît la sortie par session, mais c'est la fenêtre qu'il faut
-    /// replacer.
+    /// The supervisor needs it for the periodic placement check:
+    /// it knows the output per session, but it is the window that must be
+    /// placed again.
     pub fn fenetre_de(&self, session: &IdSession) -> Option<IdFenetre> {
         self.entrees.get(session).map(|e| e.fenetre)
     }
 
     pub fn fenetre_apparue(&mut self, fenetre: IdFenetre, titre: String) -> Vec<Effet> {
-        // Idempotence par fenêtre, et cette garde passe AVANT le contrôle de
-        // capacité (voir plus bas) : Windows peut annoncer deux fois le même
-        // HWND — l'énumération de démarrage du superviseur et le hook
-        // `EVENT_OBJECT_SHOW` se recouvrent sur une fenêtre qui apparaît
-        // pendant l'énumération. Sans cette garde, une seconde entrée serait
-        // créée pour la même fenêtre : deux places consommées, et si la
-        // seconde atteint `sortie_creee`, deux sorties réelles ouvertes chez
-        // le pilote. Or `fenetre_disparue` ne retrouve qu'UNE entrée par
-        // recherche linéaire sur `fenetre`, et Windows n'émet qu'UN
-        // événement de fermeture par HWND : la seconde entrée deviendrait
-        // inatteignable, sa sortie ne serait jamais détruite, et le vivier
-        // de sorties du pilote se viderait en silence — jusqu'à ce que plus
-        // aucune fenêtre ne puisse s'ouvrir, des dizaines de minutes plus
-        // tard, sans rapport visible avec la cause.
+        // Idempotence per window, and this guard comes BEFORE the capacity check
+        // (see below): Windows can announce the same
+        // HWND twice — the supervisor's startup enumeration and the
+        // `EVENT_OBJECT_SHOW` hook overlap on a window appearing
+        // during the enumeration. Without this guard, a second entry would be
+        // created for the same window: two places consumed, and if the
+        // second reaches `sortie_creee`, two real outputs opened at
+        // the driver. Yet `fenetre_disparue` only finds ONE entry by
+        // linear search on `fenetre`, and Windows only emits ONE
+        // closing event per HWND: the second entry would become
+        // unreachable, its output would never be destroyed, and the driver's
+        // output pool would silently empty — until no
+        // window could open any more, tens of minutes
+        // later, with no visible link to the cause.
         //
-        // Si la garde venait après le contrôle de capacité, une réannonce
-        // sur une table pleine produirait à tort un `AnnoncerRefus` pour une
-        // fenêtre... déjà ouverte.
+        // If the guard came after the capacity check, a re-announcement
+        // on a full table would wrongly produce an `AnnoncerRefus` for a
+        // window... already open.
         if self.entrees.values().any(|e| e.fenetre == fenetre) {
             return Vec::new();
         }
         if self.entrees.len() >= self.capacite {
             return vec![Effet::AnnoncerRefus {
                 titre,
-                motif: "plus aucune sortie virtuelle disponible".into(),
+                motif: "no virtual output available any more".into(),
             }];
         }
         let session = self.prochaine_session();
@@ -283,7 +286,7 @@ impl Table {
                 etat: Etat::AttendLeViewport,
                 sortie_pilote: None,
                 nom_sortie: None,
-                taille_sortie: None,
+                output_size: None,
                 relances: 0,
                 attente_depuis: None,
             },
@@ -291,49 +294,51 @@ impl Table {
         vec![Effet::AnnoncerOuverture { session, titre }]
     }
 
-    /// Nom de la sortie d'une session, pour le contrôle périodique de
-    /// placement.
+    /// Name of a session's output, for the periodic placement
+    /// check.
     pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
-        self.entrees.get(session).and_then(|e| e.nom_sortie.as_deref())
+        self.entrees
+            .get(session)
+            .and_then(|e| e.nom_sortie.as_deref())
     }
 
-    /// Dimensions de la sortie retenue par une session, s'il y en a une.
-    pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
-        self.entrees.get(session).and_then(|e| e.taille_sortie)
+    /// Dimensions of the output retained by a session, if there is one.
+    pub fn output_size_of(&self, session: &IdSession) -> Option<(u32, u32)> {
+        self.entrees.get(session).and_then(|e| e.output_size)
     }
 
-    /// Met à jour la taille RETENUE d'une sortie déjà attribuée, sur une
-    /// lecture DXGI fraîche. N'écrit RIEN si la session n'a pas (encore) de
-    /// sortie retenue : cette méthode ne fait que corriger un enregistrement
-    /// existant, jamais en créer un — `sortie_creee` reste le seul point qui
-    /// pose `nom_sortie` et `taille_sortie` ensemble.
+    /// Updates the RETAINED size of an already assigned output, from a
+    /// fresh DXGI read. Writes NOTHING if the session has no retained
+    /// output (yet): this method only corrects an existing
+    /// record, never creates one — `sortie_creee` stays the only point that
+    /// sets `nom_sortie` and `output_size` together.
     ///
-    /// Ex-IMPORTANT 5 (revue de la tâche 9) : referme l'écart que D8 avait
-    /// ouvert — `WindowsSource::changer_mode_de_sortie` retaillait une sortie
-    /// virtuelle sans passer par cette table, donc sans qu'elle ne le sache,
-    /// et `taille_sortie` restait figée à la taille de CRÉATION. **Ce chemin
-    /// a été retiré au sous-bloc D9**, mesure à l'appui (voir le constat en
-    /// tête de `capteur/plein_ecran.rs`) : plus rien, en production, ne
-    /// retaille une sortie après sa création. **Plus aucun appelant depuis le
-    /// sous-bloc D10** : `taille_sortie` porte désormais la taille RETENUE
-    /// (`sortie_pour_viewport` accepte une sortie plus grande que le
-    /// viewport), qui n'a plus de raison d'égaler la taille DXGI brute — le
-    /// rafraîchissement périodique l'aurait donc écrasée, et l'appel a été
-    /// retiré. Aucun filet de sécurité n'est câblé pour un futur retaillage
-    /// hors de cette table.
-    pub fn rafraichir_taille_sortie(&mut self, session: &IdSession, taille: (u32, u32)) {
+    /// Former IMPORTANT 5 (review of task 9): closes the gap D8 had
+    /// opened — `WindowsSource::changer_mode_de_sortie` resized a virtual
+    /// output without going through this table, hence without it knowing,
+    /// and `output_size` stayed frozen at the CREATION size. **That path
+    /// was removed in sub-block D9**, with measurement to back it (see the finding at
+    /// the head of `capteur/plein_ecran.rs`): nothing, in production, any longer
+    /// resizes an output after its creation. **No caller any more since
+    /// sub-block D10**: `output_size` now carries the RETAINED size
+    /// (`sortie_pour_viewport` accepts an output larger than the
+    /// viewport), which no longer has any reason to equal the raw DXGI size — the
+    /// periodic refresh would therefore have overwritten it, and the call was
+    /// removed. No safety net is wired for a future resize
+    /// outside this table.
+    pub fn refresh_output_size(&mut self, session: &IdSession, size: (u32, u32)) {
         if let Some(entree) = self.entrees.get_mut(session) {
-            if entree.taille_sortie.is_some() {
-                entree.taille_sortie = Some(taille);
+            if entree.output_size.is_some() {
+                entree.output_size = Some(size);
             }
         }
     }
 
-    /// Sessions dont l'enfant tourne, pour le contrôle périodique de
-    /// placement. Rendues par valeur, mais plus par nécessité d'emprunt
-    /// depuis le sous-bloc D10 : son unique appelant
-    /// (`placement_periodique.rs::controler_le_placement`) ne tient plus
-    /// qu'un `&Table`, et ne mute rien pendant qu'il les parcourt.
+    /// Sessions whose child is running, for the periodic placement
+    /// check. Returned by value, but no longer out of borrowing necessity
+    /// since sub-block D10: its only caller
+    /// (`placement_periodique.rs::controler_le_placement`) now only holds
+    /// a `&Table`, and mutates nothing while walking them.
     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
         self.entrees
             .iter()
@@ -351,80 +356,84 @@ impl Table {
         else {
             return Vec::new();
         };
-        let entree = self.entrees.remove(&session).expect("trouvée à l'instant");
-        let mut effets = vec![Effet::TuerEnfant { session: session.clone() }];
-        // Rien à détruire si la fenêtre s'est fermée avant que sa sortie
-        // n'existe : `rendre_la_sortie_de` ne rend `None` que dans ce cas, et
-        // demander au pilote de retirer une sortie qu'il n'a jamais créée ne
-        // ferait qu'une erreur de plus au journal. Même appel que les deux
-        // abandons de `relancer_les_orphelines` : les trois chemins qui
-        // rendent une sortie depuis le correctif §7.1 passent par là.
+        let entree = self.entrees.remove(&session).expect("found just now");
+        let mut effets = vec![Effet::TuerEnfant {
+            session: session.clone(),
+        }];
+        // Nothing to destroy if the window closed before its output
+        // existed: `rendre_la_sortie_de` only returns `None` in that case, and
+        // asking the driver to remove an output it never created would only
+        // add one more error to the log. Same call as the two
+        // abandonments of `relancer_les_orphelines`: the three paths that
+        // hand back an output since fix §7.1 go through there.
         effets.extend(rendre_la_sortie_de(&entree));
         effets.push(Effet::AnnoncerFermeture { session });
         effets
     }
 
     pub fn enfant_mort(&mut self, session: &IdSession) -> Vec<Effet> {
-        // Pas de `TuerEnfant` : il est déjà mort. Mais sa sortie, elle, ne
-        // s'est pas détruite toute seule — une sortie virtuelle survit au
-        // processus qui l'a créée.
+        // No `TuerEnfant`: it is already dead. But its output did not
+        // destroy itself — a virtual output outlives the
+        // process that created it.
         //
-        // L'entrée n'est PAS retirée : la fenêtre Windows, elle, est toujours
-        // là (sauf coïncidence avec sa fermeture, traitée ailleurs par
-        // `fenetre_disparue`). Elle bascule en `SansSession` pour que le
-        // contrôle périodique la retrouve et la reproposera via
-        // `relancer_les_orphelines` — sans quoi rien ne rappelait plus la
-        // fenêtre, sauf un `SHOW` fortuit de Windows (recette D1 §3.3).
+        // The entry is NOT removed: the Windows window, for its part, is still
+        // there (unless it coincides with its closing, handled elsewhere by
+        // `fenetre_disparue`). It switches to `SansSession` so that the
+        // periodic check finds it and offers it again via
+        // `relancer_les_orphelines` — otherwise nothing recalled the
+        // window any more, except a chance `SHOW` from Windows (acceptance run D1 §3.3).
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
         };
         entree.etat = Etat::SansSession;
-        // **La sortie est RETENUE, et c'est le correctif §7.1 du sous-bloc
-        // D3.** Elle était jusqu'ici rendue au pilote ici même, et la relance
-        // en recréait une — or c'est la CRÉATION d'une sortie qui fait
-        // abandonner le mutex de toutes les duplications DXGI déjà ouvertes
-        // (`0x887A0026`). Une seule fenêtre condamnée faisait ainsi passer le
-        // compteur de réouvertures de 6 à 38 sur des sessions parfaitement
-        // saines (recette D2, étape 4 du passage D).
+        // **The output is RETAINED, and it is fix §7.1 of sub-block
+        // D3.** It was until then handed back to the driver right here, and the restart
+        // recreated one — yet it is the CREATION of an output that makes
+        // all the already open DXGI duplications abandon the mutex
+        // (`0x887A0026`). A single doomed window thus took the
+        // reopening counter from 6 to 38 on perfectly healthy
+        // sessions (acceptance run D2, step 4 of pass D).
         //
-        // La contrepartie est que trois chemins, et non plus un, doivent
-        // rendre la sortie : `fenetre_disparue`, et les deux abandons de
-        // `relancer_les_orphelines`. Une sortie oubliée sur l'un d'eux
-        // consommerait le vivier de dix jusqu'à l'arrêt du superviseur.
-        vec![Effet::AnnoncerFermeture { session: session.clone() }]
+        // The counterpart is that three paths, and no longer one, must
+        // hand back the output: `fenetre_disparue`, and the two abandonments of
+        // `relancer_les_orphelines`. An output forgotten on one of them
+        // would consume the pool of ten until supervisor shutdown.
+        vec![Effet::AnnoncerFermeture {
+            session: session.clone(),
+        }]
     }
 }
 
-// Chemin d'attribution d'une sortie à une session (`viewport_recu`,
-// `sortie_creee`) : extrait côté PRODUCTION, et non seulement les tests. Ce
-// fichier frôlait déjà le plafond de 500 lignes du projet avant l'ajout du
-// chemin de réutilisation de sortie du sous-bloc D3 (tâche 4) — l'ajouter ici
-// l'aurait franchi. Extraire plutôt que compresser, même raison que les
-// modules de tests ci-dessous.
+// Path assigning an output to a session (`viewport_recu`,
+// `sortie_creee`): extracted on the PRODUCTION side, and not only the tests. This
+// file was already brushing against the project's 500-line ceiling before the addition of the
+// output reuse path of sub-block D3 (task 4) — adding it here
+// would have crossed it. Extract rather than compress, same reason as the
+// test modules below.
 mod attribution;
 
-// Contrôle périodique des entrées qui n'avancent plus
-// (`relancer_les_orphelines`) : extrait côté PRODUCTION, comme
-// `attribution.rs` ci-dessus et pour la même raison — ce fichier était à 492
-// lignes, marge 8, quand le sous-bloc P3 a eu besoin d'y composer un préfixe
-// de session (tâche 19). L'extraction PRÉCÈDE l'addition, c'est l'ordre que
-// le plan impose et la doctrine du dépôt : on ne comprime pas un commentaire
-// pour repasser sous la ligne.
+// Periodic check of entries that no longer advance
+// (`relancer_les_orphelines`): extracted on the PRODUCTION side, like
+// `attribution.rs` above and for the same reason — this file was at 492
+// lines, margin 8, when sub-block P3 needed to compose a session
+// prefix in it (task 19). The extraction PRECEDES the addition, it is the order
+// the plan imposes and the repository's doctrine: one does not compress a comment
+// to get back under the line.
 mod orphelines;
 
-// Module de tests extrait dans un fichier voisin : la production seule
-// approche déjà le plafond de 500 lignes du projet, et les tests en
-// ajoutent régulièrement (le correctif d'idempotence ci-dessus en a ajouté
-// deux). Extraire plutôt que compresser — la compression s'est déjà jouée
-// ailleurs dans ce dépôt (`agent/src/encode/arret.rs`) et elle ne se joue
-// qu'une fois.
+// Test module extracted into a neighbouring file: production alone
+// already approaches the project's 500-line ceiling, and tests
+// regularly add to it (the idempotence fix above added
+// two). Extract rather than compress — compression has already been played
+// elsewhere in this repository (`agent/src/encode/arret.rs`) and it is only played
+// once.
 #[cfg(test)]
 #[path = "table/tests.rs"]
 mod tests;
 
-// Tests de la tâche 10 (relance après mort d'enfant), extraits dans un
-// second fichier voisin : leur ajout dans `tests.rs` en aurait fait franchir
-// le plafond de 500 lignes du projet. Voir la doc en tête de ce fichier.
+// Tests of task 10 (restart after a child's death), extracted into a
+// second neighbouring file: adding them to `tests.rs` would have made it cross
+// the project's 500-line ceiling. See the doc at the head of this file.
 #[cfg(test)]
 #[path = "table/tests_relance.rs"]
 mod tests_relance;

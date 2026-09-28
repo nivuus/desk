@@ -1,62 +1,62 @@
-//! La règle : qui porte le son.
+//! The rule: who carries the sound.
 //!
-//! **Pur, sans aucun `cfg`, sans COM, sans fenêtre** — comme `vivier.rs` et
-//! `repartiteur.rs` avant lui. Il ne connaît ni `IAudioClient` ni `HWND` : il
-//! reçoit des PID et rend des booléens.
+//! **Pure, without any `cfg`, without COM, without a window** — like `vivier.rs` and
+//! `repartiteur.rs` before it. It knows neither `IAudioClient` nor `HWND`: it
+//! receives PIDs and returns booleans.
 //!
-//! **Le sommeil n'entre PAS dans la règle**, et son absence de ce fichier est
-//! le meilleur endroit pour le dire : `FenetreAudio` ne porte aucun champ
-//! `eveillee`. Une fenêtre endormie (sous-bloc D5) a relâché son encodeur
-//! vidéo ; son application peut parfaitement continuer à jouer de la musique,
-//! et c'est précisément le cas où l'on veut du son sans image.
+//! **Sleep does NOT enter the rule**, and its absence from this file is
+//! the best place to say so: `FenetreAudio` carries no
+//! `eveillee` field. A sleeping window (sub-block D5) has released its video
+//! encoder; its application may perfectly well keep playing music,
+//! and that is precisely the case where we want sound without picture.
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-/// Ce que le registre sait d'une fenêtre, du point de vue du son.
+/// What the registry knows about a window, from the sound's point of view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FenetreAudio {
     pub session: String,
-    /// PID du processus propriétaire de la fenêtre Windows.
+    /// PID of the process owning the Windows window.
     pub pid: u32,
-    /// Rang d'arrivée, strictement croissant. Départage deux fenêtres d'un
-    /// même processus dont **aucune** n'a jamais été focalisée.
+    /// Arrival rank, strictly increasing. Breaks the tie between two windows of the
+    /// same process of which **neither** has ever been focused.
     pub arrivee: u64,
-    /// Rang du dernier focus reçu, `0` si cette session n'a jamais été
-    /// focalisée. **Un rang, pas un horodatage** : un `Instant` n'est pas
-    /// comparable entre processus et n'apporterait rien ici.
-    pub dernier_focus: u64,
-    /// Cette fenêtre ne peut pas porter le son en ce moment.
+    /// Rank of the last focus received, `0` if this session has never been
+    /// focused. **A rank, not a timestamp**: an `Instant` is not
+    /// comparable across processes and would bring nothing here.
+    pub last_focus: u64,
+    /// This window cannot carry the sound right now.
     ///
-    /// Vrai quand l'enfant a signalé `AudioMort` et que la session observe
-    /// son répit de réarmement.
+    /// True when the child has reported `AudioMort` and the session observes
+    /// its re-arm respite.
     ///
-    /// ⚠️ **Ce champ disait « quand sa capture WASAPI est morte — dix erreurs
-    /// de lecture consécutives (`LECTURES_ECHOUEES_MAX`) », et ce n'est plus
-    /// le déclencheur depuis le sous-bloc D10** (revue transverse ; même
-    /// correction que sur `VersCapteur::AudioMort`, `capteur/protocole.rs`).
-    /// Ces dix erreurs posent `capture_morte` côté enfant, rien de plus :
-    /// `AudioMort` — donc `inapte` — n'arrive qu'après épuisement du budget
-    /// de reconstruction (`crate::audio::RECONSTRUCTIONS_MAX`), ou en
-    /// l'absence de reconstructeur.
+    /// ⚠️ **This field said "when its WASAPI capture has died — ten consecutive read
+    /// errors (`LECTURES_ECHOUEES_MAX`)", and that has no longer been
+    /// the trigger since sub-block D10** (cross-cutting review; same
+    /// fix as on `VersCapteur::AudioMort`, `capteur/protocole.rs`).
+    /// Those ten errors set `capture_morte` on the child side, nothing more:
+    /// `AudioMort` — hence `inapte` — only arrives after the rebuild budget
+    /// is exhausted (`crate::audio::RECONSTRUCTIONS_MAX`), or in
+    /// the absence of a rebuilder.
     ///
-    /// ⚠️ **Un `bool`, jamais un `Instant`.** L'expiration du répit vit dans le
-    /// registre, qui a l'horloge ; ce module garde sa doctrine — « un rang, pas
-    /// un horodatage » — et reste éprouvable sans horloge.
+    /// ⚠️ **A `bool`, never an `Instant`.** The respite's expiry lives in the
+    /// registry, which has the clock; this module keeps its doctrine — "a rank, not
+    /// a timestamp" — and remains testable without a clock.
     pub inapte: bool,
 }
 
-/// Rend, pour chaque fenêtre, si elle porte le son.
+/// Returns, for each window, whether it carries the sound.
 ///
-/// **Une entrée par fenêtre, y compris les muettes** : le registre a besoin du
-/// `false` pour ordonner de se taire à celle qui portait le son l'instant
-/// d'avant.
+/// **One entry per window, including silent ones**: the registry needs the
+/// `false` to order the one that carried the sound a moment
+/// before to go silent.
 pub fn arbitrer(fenetres: &[FenetreAudio]) -> Vec<(String, bool)> {
     let mut porteur: HashMap<u32, &FenetreAudio> = HashMap::new();
     for f in fenetres {
-        // Une inapte n'est jamais CANDIDATE. Elle reçoit quand même son
-        // verdict plus bas, qui vaudra `false` : c'est ce `false` qui ordonne
-        // de se taire à celle qui portait le son l'instant d'avant.
+        // An unfit one is never a CANDIDATE. It still receives its
+        // verdict below, which will be `false`: it is this `false` that orders
+        // the one that carried the sound a moment before to go silent.
         if f.inapte {
             continue;
         }
@@ -77,13 +77,13 @@ pub fn arbitrer(fenetres: &[FenetreAudio]) -> Vec<(String, bool)> {
         .collect()
 }
 
-/// `candidat` l'emporte-t-il sur `actuel` au sein de leur groupe de PID ?
+/// Does `candidat` win over `actuel` within their PID group?
 ///
-/// Le focus le plus RÉCENT prime ; à égalité — deux fenêtres jamais focalisées,
-/// donc `dernier_focus == 0` toutes les deux — la PREMIÈRE arrivée. Le sommeil
-/// n'entre pas dans la comparaison, et aucun champ ne le porte.
+/// The MOST RECENT focus wins; on a tie — two never-focused windows,
+/// hence `last_focus == 0` for both — the FIRST arrival. Sleep
+/// does not enter the comparison, and no field carries it.
 fn l_emporte(candidat: &FenetreAudio, actuel: &FenetreAudio) -> bool {
-    match candidat.dernier_focus.cmp(&actuel.dernier_focus) {
+    match candidat.last_focus.cmp(&actuel.last_focus) {
         Ordering::Greater => true,
         Ordering::Less => false,
         Ordering::Equal => candidat.arrivee < actuel.arrivee,
@@ -94,8 +94,14 @@ fn l_emporte(candidat: &FenetreAudio, actuel: &FenetreAudio) -> bool {
 mod tests {
     use super::*;
 
-    fn fenetre(session: &str, pid: u32, arrivee: u64, dernier_focus: u64) -> FenetreAudio {
-        FenetreAudio { session: session.into(), pid, arrivee, dernier_focus, inapte: false }
+    fn fenetre(session: &str, pid: u32, arrivee: u64, last_focus: u64) -> FenetreAudio {
+        FenetreAudio {
+            session: session.into(),
+            pid,
+            arrivee,
+            last_focus,
+            inapte: false,
+        }
     }
 
     fn porteurs(fenetres: &[FenetreAudio]) -> Vec<String> {
@@ -115,8 +121,8 @@ mod tests {
     }
 
     #[test]
-    fn deux_processus_distincts_portent_chacun_le_leur() {
-        // Le cas nominal du produit : une application par fenêtre.
+    fn two_distinct_processes_each_carry_their_own() {
+        // The product's nominal case: one application per window.
         let f = vec![fenetre("a", 100, 1, 0), fenetre("b", 200, 2, 0)];
         assert_eq!(porteurs(&f), vec!["a".to_string(), "b".to_string()]);
     }
@@ -129,17 +135,17 @@ mod tests {
 
     #[test]
     fn le_focus_prend_le_son_a_sa_voisine_du_meme_processus() {
-        // "b" arrive après "a" et prend le focus : le son bascule.
+        // "b" arrives after "a" and takes the focus: the sound switches.
         let f = vec![fenetre("a", 100, 1, 0), fenetre("b", 100, 2, 7)];
         assert_eq!(porteurs(&f), vec!["b".to_string()]);
     }
 
     #[test]
     fn un_groupe_qui_perd_tout_focus_garde_son_son_sur_la_derniere_focalisee() {
-        // C'est la règle 3 de la spec, et elle n'est pas cosmétique :
-        // `focalisee` est GLOBAL — au plus une fenêtre focalisée sur toute la
-        // session. Cliquer sur une fenêtre d'un AUTRE processus fait perdre le
-        // focus à tout ce groupe, et sans cette règle son son se couperait.
+        // It is rule 3 of the spec, and it is not cosmetic:
+        // `focalisee` is GLOBAL — at most one focused window over the whole
+        // session. Clicking on a window of ANOTHER process makes this whole group
+        // lose the focus, and without this rule its sound would cut out.
         let f = vec![
             fenetre("a", 100, 1, 3),
             fenetre("b", 100, 2, 7),
@@ -150,18 +156,18 @@ mod tests {
 
     #[test]
     fn l_oubli_du_porteur_fait_passer_le_son_a_la_suivante_du_groupe() {
-        // Le registre retire "b" (canal rompu, fermeture) et rappelle
-        // `arbitrer` sur ce qui reste : "a" doit reprendre le son, sans quoi
-        // le groupe deviendrait définitivement muet.
+        // The registry removes "b" (channel broken, close) and calls
+        // `arbitrer` again on what remains: "a" must take the sound back, otherwise
+        // the group would become permanently silent.
         let f = vec![fenetre("a", 100, 1, 3)];
         assert_eq!(porteurs(&f), vec!["a".to_string()]);
     }
 
     #[test]
-    fn la_decision_est_rendue_pour_chaque_session_meme_muette() {
-        // `arbitrer` rend une entrée par fenêtre, pas seulement pour les
-        // porteuses : le registre a besoin du `false` pour envoyer l'ordre de
-        // se taire à celle qui portait le son juste avant.
+    fn the_decision_is_returned_for_every_session_even_a_silent_one() {
+        // `arbitrer` returns one entry per window, not only for the
+        // carriers: the registry needs the `false` to send the order to
+        // go silent to the one that carried the sound just before.
         let f = vec![fenetre("a", 100, 1, 0), fenetre("b", 100, 2, 0)];
         let decisions = arbitrer(&f);
         assert_eq!(decisions.len(), 2);
@@ -170,18 +176,30 @@ mod tests {
     }
 
     #[test]
-    fn aucune_fenetre_rend_aucune_decision() {
+    fn no_window_returns_no_decision() {
         assert!(arbitrer(&[]).is_empty());
     }
 
     #[test]
     fn une_fenetre_inapte_ne_porte_jamais_le_son() {
-        // Le cas du leg 1 : sa capture WASAPI est morte après dix échecs
-        // consécutifs. Elle ne doit plus être élue, sans quoi le groupe entier
-        // reste muet — c'est l'état d'avant D9.
+        // Hand-over 1's case: its WASAPI capture died after ten consecutive
+        // failures. It must no longer be elected, otherwise the whole group
+        // stays silent — that is the state before D9.
         let fenetres = vec![
-            FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 9, inapte: true },
-            FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: false },
+            FenetreAudio {
+                session: "w-1".into(),
+                pid: 42,
+                arrivee: 1,
+                last_focus: 9,
+                inapte: true,
+            },
+            FenetreAudio {
+                session: "w-2".into(),
+                pid: 42,
+                arrivee: 2,
+                last_focus: 0,
+                inapte: false,
+            },
         ];
         let verdict = arbitrer(&fenetres);
         assert_eq!(verdict, vec![("w-1".into(), false), ("w-2".into(), true)]);
@@ -189,83 +207,117 @@ mod tests {
 
     #[test]
     fn une_inapte_recoit_quand_meme_son_verdict_false() {
-        // Le registre a besoin de ce `false` pour ordonner de se taire à celle
-        // qui portait le son l'instant d'avant.
+        // The registry needs this `false` to order the one that carried
+        // the sound a moment before to go silent.
         let fenetres = vec![FenetreAudio {
-            session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 1, inapte: true,
+            session: "w-1".into(),
+            pid: 42,
+            arrivee: 1,
+            last_focus: 1,
+            inapte: true,
         }];
         assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false)]);
     }
 
     #[test]
     fn un_groupe_entierement_inapte_reste_muet() {
-        // Aucune voisine à promouvoir : c'est le cas MAJORITAIRE — une
-        // application, une fenêtre.
+        // No neighbour to promote: this is the MAJORITY case — one
+        // application, one window.
         //
-        // ❌ **Ce commentaire disait « le réarmement après répit est le seul
-        // remède, et il vit dans le registre, pas ici ». Le remède en question
-        // est INERTE** (recette VM de la tâche 15, sous-bloc D9) : réélire la
-        // même session ne reconstruit AUCUNE capture — `set_audio_source` n'est
-        // appelée qu'une fois (`demarrage/audio.rs`), le fil de capture
-        // (`windows_audio.rs`) fait un `return` définitif, et `set_actif(true)`
-        // n'écrit qu'un atomique que ce fil ne relit jamais. La réfutation
-        // complète vit auprès de `REPIT_REARMEMENT_AUDIO`
-        // (`capteur/sommeil.rs`) ; elle est répétée ICI parce que c'est ici que
-        // le cas majoritaire se lit, et que ce dépôt a payé cinq fois d'avoir
-        // corrigé une affirmation là où on la lui montrait plutôt que là où
-        // elle vit. **Le cas majoritaire reste donc SANS REMÈDE, et c'est un
-        // legs de D9.**
+        // ❌ **This comment said "re-arming after a respite is the only
+        // remedy, and it lives in the registry, not here". The remedy in question
+        // is INERT** (VM acceptance run of task 15, sub-block D9): re-electing the
+        // same session rebuilds NO capture — `set_audio_source` is
+        // called only once (`demarrage/audio.rs`), the capture thread
+        // (`windows_audio.rs`) does a definitive `return`, and `set_actif(true)`
+        // only writes an atomic this thread never re-reads. The complete
+        // refutation lives next to `REPIT_REARMEMENT_AUDIO`
+        // (`capteur/sommeil.rs`); it is repeated HERE because this is where
+        // the majority case is read, and this repository has paid five times for having
+        // fixed a claim where it was shown to it rather than where
+        // it lives. **The majority case therefore remains WITHOUT A REMEDY, and it is a
+        // hand-over from D9.**
         //
-        // ✅ **CE LEGS EST FERMÉ SUR PIÈCES — code plus tests d'hôte —,
-        // ~~NON EXERCÉ SUR LA VM~~ (sous-bloc D10, tâches 11 et 12).**
-        // ~~La recette audio qui l'exercerait est la tâche 14, et elle n'a pas
-        // encore tourné : ne pas lire ce qui suit comme mesuré.~~
+        // ✅ **THIS HAND-OVER IS CLOSED ON THE EVIDENCE — code plus host tests —,
+        // ~~NOT EXERCISED ON THE VM~~ (sub-block D10, tasks 11 and 12).**
+        // ~~The audio acceptance run that would exercise it is task 14, and it has not
+        // run yet: do not read what follows as measured.~~
         //
-        // ✅ **ELLE A TOURNÉ, ET LE SON EST REVENU (7 août 2026, tâche 14 du
-        // MÊME sous-bloc — l'affirmation ci-dessus a été réfutée dans la
-        // branche qui l'écrivait, et c'est la revue transverse qui l'a
-        // relevée).** Sous injection de fautes (`AUDIO_FAUTE_LECTURE`), la
-        // capture est reconstruite et la fenêtre entend de nouveau sa propre
-        // tonalité : fréquence dominante **441 Hz à −40 dB** pour une cible
-        // assignée de 440 Hz, plancher à −158 dB, aux **deux** exécutions et
-        // aux deux points de contrôle (t+15 s et t+60 s), avec
-        // `compteurs audio … actif=true` relevé 2 fois par exécution.
-        // ⚠️ **Deux exécutions, aucun taux** — et la mort de capture y est
-        // INJECTÉE : rien n'établit qu'une cause naturelle existe. Corrigé ICI même, où
-        // le commentaire ci-dessus disait explicitement qu'il fallait le
-        // corriger — le code nommait lui-même l'endroit où corriger. Le
-        // remède n'est PAS la réélection : c'est
+        // ✅ **IT RAN, AND THE SOUND CAME BACK (7 August 2026, task 14 of the
+        // SAME sub-block — the claim above was refuted in the
+        // branch that wrote it, and it was the cross-cutting review that
+        // caught it).** Under fault injection (`AUDIO_FAUTE_LECTURE`), the
+        // capture is rebuilt and the window hears its own
+        // tone again: dominant frequency **441 Hz at −40 dB** for an
+        // assigned target of 440 Hz, floor at −158 dB, on **both** runs and
+        // at both checkpoints (t+15 s and t+60 s), with
+        // `compteurs audio … actif=true` read twice per run.
+        // ⚠️ **Two runs, no rate** — and the capture death there is
+        // INJECTED: nothing establishes that a natural cause exists. Fixed RIGHT HERE, where
+        // the comment above explicitly said it had to be
+        // fixed — the code itself named the place to fix. The
+        // remedy is NOT re-election: it is
         // `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`),
-        // appelée AVANT tout signalement `AudioMort`, qui refabrique
-        // réellement la capture — la phrase « réélire seule ne reconstruit
-        // rien » reste vraie sur ce qu'elle décrivait, mais le produit ne
-        // compte plus SEULEMENT sur la réélection pour le cas majoritaire.
-        // Et la réélection a gagné un rôle qu'elle n'avait pas alors : elle
-        // réapprovisionne le budget de tentatives et lève le verrou
-        // `audio_mort_signale` (`appliquer_audio`, `piste_audio.rs`) — sans
-        // quoi, trouvé en revue de la tâche 12, le cycle mort → reconstruit →
-        // prouvé n'aurait tourné qu'une seule fois par session, et
-        // `REARMEMENTS_MAX` aurait compté des échecs non consécutifs sur
-        // toute sa vie plutôt que des échecs consécutifs.
+        // called BEFORE any `AudioMort` report, which really
+        // rebuilds the capture — the sentence "re-electing alone rebuilds
+        // nothing" stays true of what it described, but the product no longer
+        // relies ONLY on re-election for the majority case.
+        // And re-election has gained a role it did not have then: it
+        // replenishes the attempt budget and lifts the
+        // `audio_mort_signale` latch (`appliquer_audio`, `piste_audio.rs`) — without
+        // which, found in review of task 12, the dead → rebuilt →
+        // proven cycle would have run only once per session, and
+        // `REARMEMENTS_MAX` would have counted non-consecutive failures over
+        // its whole life rather than consecutive failures.
         //
-        // Ce que ce test établit, et qui reste juste : la RÈGLE pure ne fait
-        // porter le son à personne quand tout le groupe est inapte — un état
-        // qui n'est plus PERMANENT pour la fenêtre seule de son groupe (le
-        // cas majoritaire) : le répit expire, elle redevient candidate, et sa
-        // propre reconstruction retente.
+        // What this test establishes, and which remains right: the pure RULE makes
+        // nobody carry the sound when the whole group is unfit — a state
+        // that is no longer PERMANENT for the window alone in its group (the
+        // majority case): the respite expires, it becomes a candidate again, and its
+        // own rebuild retries.
         let fenetres = vec![
-            FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
-            FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: true },
+            FenetreAudio {
+                session: "w-1".into(),
+                pid: 42,
+                arrivee: 1,
+                last_focus: 0,
+                inapte: true,
+            },
+            FenetreAudio {
+                session: "w-2".into(),
+                pid: 42,
+                arrivee: 2,
+                last_focus: 0,
+                inapte: true,
+            },
         ];
-        assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false), ("w-2".into(), false)]);
+        assert_eq!(
+            arbitrer(&fenetres),
+            vec![("w-1".into(), false), ("w-2".into(), false)]
+        );
     }
 
     #[test]
     fn l_inaptitude_d_un_groupe_ne_touche_pas_un_autre_pid() {
         let fenetres = vec![
-            FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
-            FenetreAudio { session: "w-2".into(), pid: 77, arrivee: 2, dernier_focus: 0, inapte: false },
+            FenetreAudio {
+                session: "w-1".into(),
+                pid: 42,
+                arrivee: 1,
+                last_focus: 0,
+                inapte: true,
+            },
+            FenetreAudio {
+                session: "w-2".into(),
+                pid: 77,
+                arrivee: 2,
+                last_focus: 0,
+                inapte: false,
+            },
         ];
-        assert_eq!(arbitrer(&fenetres), vec![("w-1".into(), false), ("w-2".into(), true)]);
+        assert_eq!(
+            arbitrer(&fenetres),
+            vec![("w-1".into(), false), ("w-2".into(), true)]
+        );
     }
 }

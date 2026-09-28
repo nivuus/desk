@@ -1,24 +1,24 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Bureau</title>
+        <title>Desktop</title>
         <!--
-          🔴 CETTE PAGE N'EST PLUS QU'UNE REDIRECTION (31 août 2026). Le hub,
-          servi à la racine, est désormais la seule surface : il tient la
-          session de contrôle, montre les fenêtres et porte le pont fichiers.
+          🔴 THIS PAGE IS NOTHING MORE THAN A REDIRECTION (31 August 2026). The hub,
+          served at the root, is now the only surface: it holds the
+          control session, shows the windows and carries the file bridge.
 
-          ⚠️ ELLE N'EST PAS SUPPRIMÉE, ET CE N'EST PAS DE LA PRUDENCE : les PWA
-          par application déjà installées portent `shell.html?app=<id>` dans un
-          manifeste `blob:` qu'elles ne reliront JAMAIS. Voir
+          ⚠️ IT IS NOT DELETED, AND THAT IS NOT CAUTION: the per-application
+          PWAs already installed carry `shell.html?app=<id>` in a
+          `blob:` manifest they will NEVER read again. See
           `src/bureau/redirection.ts`.
 
-          ⚠️ ELLE RESTE DANS `rollupOptions.input` de `vite.config.ts` : une
-          page absente de cette liste ne sort pas du build ET RIEN NE LE DIT.
+          ⚠️ IT STAYS IN `rollupOptions.input` of `vite.config.ts`: a
+          page missing from that list does not come out of the build AND NOTHING SAYS SO.
 
-          AUCUN `<link>` ICI, à dessein : la page ne peint rien, et lier une
-          feuille ferait un éclair de style avant la redirection.
+          NO `<link>` HERE, on purpose: the page paints nothing, and linking a
+          sheet would make a flash of style before the redirection.
         -->
     </head>
     <body>

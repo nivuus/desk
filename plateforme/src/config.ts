@@ -1,143 +1,143 @@
-// PLATEFORME_HOTE n'a AUCUN défaut, et c'est le point de cette fonction.
+// PLATEFORME_HOTE has NO default, and that is the point of this function.
 //
-// L'ex-`signaling/src/server.ts:67` — aujourd'hui `src/signaling/relais.ts`,
-// le paquet `signaling/` ayant disparu au sous-bloc P1 — faisait
-// `new WebSocketServer({ port })` sans
-// `host` : le service écoutait sur toutes les interfaces, et délivrait des
-// identifiants TURN valables 24 h (`ice.ts:16`) à quiconque atteignait le
-// port. Poser un défaut ici — même `127.0.0.1` — ferait passer le critère ④
-// du sous-bloc P1 sans rien garantir : l'opérateur ne saurait jamais sur quoi
-// il écoute. Une rupture bruyante vaut mieux qu'une écoute universelle
-// silencieuse.
+// The former `signaling/src/server.ts:67` — today `src/signaling/relais.ts`,
+// the `signaling/` package having disappeared in sub-block P1 — did
+// `new WebSocketServer({ port })` without
+// `host`: the service listened on all interfaces, and handed out
+// TURN credentials valid for 24 h (`ice.ts:16`) to anyone reaching the
+// port. Setting a default here — even `127.0.0.1` — would make criterion ④
+// of sub-block P1 pass without guaranteeing anything: the operator would never know what
+// it listens on. A loud break is better than a silent universal
+// listen.
 //
-// ⚠️ UNE MOITIÉ DE CE « À QUICONQUE » AVAIT SURVÉCU AU SOUS-BLOC P2, ET ELLE
-// EST FERMÉE DEPUIS P3. Le texte disait ici qu'un pair se déclarant
-// `{"role":"agent"}` était toujours accepté sans identité et recevait ses
-// identifiants TURN de 86 400 s ; ce n'est plus vrai — le rôle `agent` exige
-// son jeton, de type `agent` et à sujet préfixant la session
-// (`identite/garde.ts`), et ce jeton s'obtient sur le canal `/agent` contre le
-// secret d'enrôlement de la VM.
+// ⚠️ ONE HALF OF THIS "TO ANYONE" HAD SURVIVED SUB-BLOCK P2, AND IT HAS
+// BEEN CLOSED SINCE P3. The text here said that a peer declaring itself
+// `{"role":"agent"}` was still accepted without identity and received its
+// 86,400 s TURN credentials; that is no longer true — the `agent` role requires
+// its token, of type `agent` and with a subject prefixing the session
+// (`identite/garde.ts`), and that token is obtained on the `/agent` channel in exchange for the
+// enrolment secret of the VM.
 //
-// **L'argument ci-dessus n'en perd RIEN**, et c'est pourquoi le paragraphe est
-// corrigé plutôt que supprimé : `PLATEFORME_HOTE` borne QUI PEUT ATTEINDRE le
-// port, ce qui vaut avant toute authentification et pour les deux chemins —
-// le relais comme le canal d'enrôlement.
+// **The argument above loses NOTHING by it**, and that is why the paragraph is
+// corrected rather than removed: `PLATEFORME_HOTE` bounds WHO CAN REACH the
+// port, which holds before any authentication and for both paths —
+// the relay as well as the enrolment channel.
 //
-// ✅ **P5 A LIVRÉ CE QUE CETTE PHRASE ANNONÇAIT**, et elle est corrigée plutôt
-// que supprimée : elle disait « les tentatives de secret ne sont bridées par
-// rien à ce jour (c'est le sujet de P5) ». Elles le sont — `agents/canal.ts`
-// consulte le frein AVANT `verifierEnrolement`, donc avant tout `scrypt`.
-// L'argument de `PLATEFORME_HOTE` ci-dessus n'en perd rien : il vaut toujours
-// avant toute authentification, et il couvre le relais, que le frein NE couvre
-// PAS (voir l'annotation de `signaling/resilience.test.ts`).
+// ✅ **P5 DELIVERED WHAT THIS SENTENCE ANNOUNCED**, and it is corrected rather
+// than removed: it said "secret attempts are throttled by
+// nothing to date (that is the subject of P5)". They are — `agents/canal.ts`
+// consults the throttle BEFORE `verifyEnrolment`, hence before any `scrypt`.
+// The `PLATEFORME_HOTE` argument above loses nothing by it: it still holds
+// before any authentication, and it covers the relay, which the throttle does NOT
+// cover (see the annotation of `signaling/resilience.test.ts`).
 
 //
-// La lecture d'environnement se fait ICI et nulle part ailleurs : `env` est un
-// paramètre, jamais `process.env` lu en douce, ce qui rend la fonction pure et
-// testable sans salir l'environnement du processus de test.
+// The environment is read HERE and nowhere else: `env` is a
+// parameter, never `process.env` read on the sly, which makes the function pure and
+// testable without dirtying the environment of the test process.
 
-import { LONGUEUR_SECRET_MIN } from './identite/jeton';
+import { MIN_SECRET_LENGTH } from './identite/jeton';
 
 export interface Config {
-    /// PLATEFORME_HOTE — aucun défaut, voir le commentaire de tête.
+    /// PLATEFORME_HOTE — no default, see the header comment.
     hote: string;
-    /// PLATEFORME_PORT, défaut 8080.
+    /// PLATEFORME_PORT, default 8080.
     port: number;
-    /// PLATEFORME_BASE, défaut 'sqlite'. Une valeur inconnue LÈVE : un repli
-    /// silencieux sur sqlite ferait tourner la production sur un fichier
-    /// local sans que rien ne le dise.
+    /// PLATEFORME_BASE, default 'sqlite'. An unknown value THROWS: a silent
+    /// fallback to sqlite would run production on a local
+    /// file without anything saying so.
     base: 'sqlite' | 'postgres';
-    /// PLATEFORME_BASE_URL — chemin de fichier SQLite ou URL de connexion pg.
+    /// PLATEFORME_BASE_URL — SQLite file path or pg connection URL.
     urlBase: string;
-    /// PLATEFORME_SECRET_JETON — AUCUN défaut, `LONGUEUR_SECRET_MIN`
-    /// caractères au moins. Voir le commentaire ci-dessous : un secret tiré
-    /// au hasard au démarrage serait pire qu'une absence de secret.
+    /// PLATEFORME_SECRET_JETON — NO default, at least `MIN_SECRET_LENGTH`
+    /// characters. See the comment below: a secret drawn
+    /// at random at startup would be worse than no secret at all.
     secretJeton: string;
-    /// PLATEFORME_ORIGINE_CLIENT — FACULTATIVE. Absente, aucun en-tête CORS
-    /// n'est émis et le navigateur refuse : le défaut est le refus.
+    /// PLATEFORME_ORIGINE_CLIENT — OPTIONAL. When absent, no CORS header
+    /// is emitted and the browser refuses: the default is refusal.
     origineClient?: string;
-    /// PLATEFORME_PROXY_DE_CONFIANCE — FACULTATIVE, liste séparée par des
-    /// virgules. Absente ou vide, l'ensemble est VIDE : on ne croit l'en-tête
-    /// `X-Forwarded-For` d'AUCUNE source. Voir le commentaire au point de
-    /// lecture, plus bas.
+    /// PLATEFORME_PROXY_DE_CONFIANCE — OPTIONAL, comma-separated
+    /// list. Absent or empty, the set is EMPTY: the `X-Forwarded-For` header
+    /// is trusted from NO source. See the comment at the point where it is
+    /// read, further down.
     ///
-    /// ⚠️ ELLE N'EST JAMAIS `undefined` : un ensemble vide se traverse, un
-    /// `undefined` se déréférence. C'est l'asymétrie voulue avec
-    /// `origineClient` ci-dessus, dont l'absence a un sens pour l'appelant
-    /// (« n'émets aucun en-tête ») là où celle-ci n'en a qu'un (« ne crois
-    /// personne »), déjà porté par l'ensemble vide.
+    /// ⚠️ IT IS NEVER `undefined`: an empty set can be iterated, an
+    /// `undefined` gets dereferenced. That is the intended asymmetry with
+    /// `origineClient` above, whose absence means something to the caller
+    /// ("emit no header") where this one's means only one thing ("trust
+    /// nobody"), already carried by the empty set.
     proxyDeConfiance: ReadonlySet<string>;
-    /// PLATEFORME_ICONES — FACULTATIVE, défaut `donnees/icones`. Le répertoire
-    /// du magasin d'icônes adressé par contenu (sous-bloc G2).
+    /// PLATEFORME_ICONES — OPTIONAL, default `donnees/icones`. The directory (policy: allow-fr - path on the target)
+    /// of the content-addressed icon store (sub-block G2).
     ///
-    /// ⚠️ **ASYMÉTRIE ASSUMÉE AVEC `PLATEFORME_HOTE`, ET IL FAUT DIRE
-    /// POURQUOI.** Le commentaire de tête de ce fichier fonde l'absence de
-    /// défaut sur le fait qu'un mauvais défaut EXPOSERAIT le service. Ici, un
-    /// mauvais répertoire coûte **un retéléversement, borné et automatique** :
-    /// le magasin se reconstruit tout seul à la réconciliation suivante, parce
-    /// que la plateforme demande ce qui lui manque en interrogeant son DISQUE.
-    /// Une rupture bruyante ne serait pas proportionnée — mais un silence non
-    /// plus, d'où la ligne de journal à l'ouverture du magasin.
+    /// ⚠️ **ASYMMETRY WITH `PLATEFORME_HOTE` ACCEPTED, AND WE MUST SAY
+    /// WHY.** The header comment of this file grounds the absence of a
+    /// default on the fact that a bad default WOULD EXPOSE the service. Here, a
+    /// bad directory costs **one re-upload, bounded and automatic**:
+    /// the store rebuilds itself at the next reconciliation, because
+    /// the platform asks for what it lacks by querying its DISK.
+    /// A loud break would not be proportionate — but neither would
+    /// silence, hence the log line when the store opens.
     repertoireIcones: string;
-    /// PLATEFORME_TELEVERSEMENTS — FACULTATIVE, défaut `donnees/televersements`.
-    /// La racine du magasin des TRANCHES : `<racine>/<id>/<n>`, un fichier par
-    /// tranche, et jamais de fichier assemblé (sous-bloc G3).
+    /// PLATEFORME_TELEVERSEMENTS — OPTIONAL, default `donnees/televersements`. (policy: allow-fr - path on the target)
+    /// The root of the SLICE store: `<racine>/<id>/<n>`, one file per
+    /// slice, and never an assembled file (sub-block G3).
     ///
-    /// ⚠️ **MÊME ASYMÉTRIE ASSUMÉE AVEC `PLATEFORME_HOTE` QUE `repertoireIcones`
-    /// CI-DESSUS, ET IL FAUT LA DIRE PLUTÔT QUE DE L'HÉRITER.** Là, un mauvais
-    /// défaut EXPOSERAIT le service ; ici il coûte un RETÉLÉVERSEMENT — borné,
-    /// et visible de l'utilisateur qui le refait. Une rupture bruyante ne
-    /// serait pas proportionnée.
+    /// ⚠️ **SAME ASYMMETRY WITH `PLATEFORME_HOTE` ACCEPTED AS `repertoireIcones`
+    /// ABOVE, AND IT MUST BE STATED RATHER THAN INHERITED.** There, a bad
+    /// default WOULD EXPOSE the service; here it costs a RE-UPLOAD — bounded,
+    /// and visible to the user who redoes it. A loud break would not
+    /// be proportionate.
     ///
-    /// ⚠️ **MAIS LA CONSÉQUENCE EST PLUS LOURDE QUE POUR LES ICÔNES, ET CE
-    /// N'EST PAS LE MÊME MOT.** Le magasin d'icônes se reconstruit TOUT SEUL —
-    /// la plateforme redemande à l'agent ce que son disque n'a pas. Un
-    /// téléversement perdu, lui, ne se reconstruit pas : il faut qu'un humain
-    /// redépose son fichier. Le silence est donc encore moins acceptable
-    /// ici — d'où la ligne de journal à l'ouverture du magasin.
+    /// ⚠️ **BUT THE CONSEQUENCE IS HEAVIER THAN FOR THE ICONS, AND IT
+    /// IS NOT THE SAME WORD.** The icon store rebuilds ITSELF —
+    /// the platform asks the agent again for what its disk lacks. A
+    /// lost upload, on the other hand, is not rebuilt: a human has to
+    /// upload their file again. Silence is therefore even less acceptable
+    /// here — hence the log line when the store opens.
     repertoireTeleversements: string;
-    /// PLATEFORME_PAGE — FACULTATIVE, et **AUCUN DÉFAUT**, à la différence de
-    /// `PLATEFORME_ICONES` et `PLATEFORME_TELEVERSEMENTS` juste en dessous.
+    /// PLATEFORME_PAGE — OPTIONAL, and **NO DEFAULT**, unlike
+    /// `PLATEFORME_ICONES` and `PLATEFORME_TELEVERSEMENTS` just below.
     ///
-    /// 🔴 ABSENTE OU VIDE ⇒ LE SERVICE NE SERT AUCUN FICHIER, et son
-    /// comportement est celui d'avant le lot À L'OCTET PRÈS : `GET /` rend
-    /// `404 introuvable`. C'est ce qui rend l'ajout strictement additif — et
-    /// c'est ce qui rend le témoin négatif de la recette jouable.
+    /// 🔴 ABSENT OR EMPTY ⇒ THE SERVICE SERVES NO FILE, and its
+    /// behaviour is that from before the batch DOWN TO THE BYTE: `GET /` returns
+    /// `404 introuvable`. That is what makes the addition strictly additive — and
+    /// it is what makes the negative witness of the acceptance run playable.
     ///
-    /// ⚠️ UN DÉFAUT SERAIT UN DÉFAUT DE SÉCURITÉ, pas une commodité : dans le
-    /// montage nginx, la plateforme ne doit RIEN servir, et un défaut la
-    /// ferait publier ce que son répertoire courant contient.
+    /// ⚠️ A DEFAULT WOULD BE A SECURITY DEFECT, not a convenience: in the
+    /// nginx setup, the platform must serve NOTHING, and a default would
+    /// make it publish whatever its working directory contains.
     racinePage?: string;
-    /// PLATEFORME_AUTH, défaut 'pomerium'. Une valeur inconnue LÈVE.
+    /// PLATEFORME_AUTH, default 'pomerium'. An unknown value THROWS.
     ///
-    /// ⚠️ CE N'EST PAS UN ARMEMENT, C'EST UN CHOIX DE MODE — la convention
-    /// `=0 désarme` de `agent/` ne s'applique pas ici. Le précédent est
-    /// `PLATEFORME_BASE` quinze lignes plus haut, et pour la même raison : un
-    /// repli silencieux ferait tourner un mode sous le nom de l'autre, et
-    /// l'un des deux sens est une OUVERTURE.
+    /// ⚠️ IT IS NOT AN ARMING, IT IS A MODE CHOICE — the `=0 disarms`
+    /// convention of `agent/` does not apply here. The precedent is
+    /// `PLATEFORME_BASE` fifteen lines above, and for the same reason: a
+    /// silent fallback would run one mode under the name of the other, and
+    /// one of the two directions is an OPENING.
     auth: 'pomerium' | 'motdepasse';
 }
 
 const BASES = ['sqlite', 'postgres'] as const;
 const AUTHS = ['pomerium', 'motdepasse'] as const;
 
-/// Les adresses qui font écouter le service sur TOUTES les interfaces.
+/// The addresses that make the service listen on ALL interfaces.
 ///
-/// 🔴 CE N'EST PAS « L'ÉCOUTE EST BORNÉE », ET LA DIFFÉRENCE EST ÉCRITE PLUTÔT
-/// QUE MAQUILLÉE. Le contrôle qu'on aimerait — « ce doit être une adresse de
-/// bouclage » — casserait le déploiement livré, qui pose `PLATEFORME_HOTE:
-/// plateforme`, un nom de service Docker sans port publié, et qui est le
-/// montage le plus sûr des trois. Ce qui est décidable est le refus de
-/// l'écoute UNIVERSELLE ; que seul Pomerium atteigne le port reste à la charge
-/// de l'exploitant, et c'est dit au § 9 de la spec.
+/// 🔴 IT IS NOT "THE LISTEN IS BOUNDED", AND THE DIFFERENCE IS WRITTEN DOWN RATHER
+/// THAN DISGUISED. The check one would like — "it must be a loopback
+/// address" — would break the shipped deployment, which sets `PLATEFORME_HOTE:
+/// plateforme`, a Docker service name with no published port, and which is the
+/// safest setup of the three. What is decidable is refusing
+/// the UNIVERSAL listen; that only Pomerium reaches the port remains the
+/// operator's responsibility, and that is stated in § 9 of the spec.
 const ECOUTES_UNIVERSELLES = new Set(['0.0.0.0', '::', '[::]', '*']);
 
 export function lireConfig(env: Record<string, string | undefined>): Config {
     const hote = env.PLATEFORME_HOTE;
     if (hote === undefined || hote === '') {
         throw new Error(
-            "PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse " +
-                "d'écoute, sans quoi le service écouterait sur toutes les interfaces.",
+            "PLATEFORME_HOTE is required and has no default: name the listen " +
+                "address, otherwise the service would listen on every interface.",
         );
     }
 
@@ -145,20 +145,20 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const auth = (brutAuth === undefined || brutAuth === '' ? 'pomerium' : brutAuth) as Config['auth'];
     if (!(AUTHS as readonly string[]).includes(auth)) {
         throw new Error(
-            `PLATEFORME_AUTH doit valoir ${AUTHS.join(' ou ')}, reçu : ${brutAuth}`,
+            `PLATEFORME_AUTH must be ${AUTHS.join(' or ')}, got: ${brutAuth}`,
         );
     }
 
-    // 🔴 LIÉE AU MODE, ET NON UNIVERSELLE. En mode `motdepasse`, le service
-    // s'authentifie lui-même et une écoute large ne le rend pas anonyme ; en
-    // mode `pomerium`, l'identité arrive dans un en-tête EN CLAIR, et une
-    // écoute universelle l'offre à quiconque atteint la machine.
+    // 🔴 TIED TO THE MODE, AND NOT UNIVERSAL. In `motdepasse` mode, the service
+    // authenticates by itself and a wide listen does not make it anonymous; in
+    // `pomerium` mode, the identity arrives in a CLEARTEXT header, and a
+    // universal listen offers it to anyone reaching the machine.
     if (auth === 'pomerium' && ECOUTES_UNIVERSELLES.has(hote.trim())) {
         throw new Error(
-            `PLATEFORME_HOTE=${hote} est une écoute universelle, refusée en mode ` +
-                "pomerium : l'identité arrive dans un en-tête en clair, que seul le " +
-                'proxy doit pouvoir poser. Nommer une adresse précise ' +
-                '(192.168.3.1, 127.0.0.1) ou un nom de service de réseau interne.',
+            `PLATEFORME_HOTE=${hote} is a universal listen, refused in ` +
+                "pomerium mode: the identity arrives in a plaintext header that only the " +
+                'proxy must be able to set. Name a precise address ' +
+                '(192.168.3.1, 127.0.0.1) or an internal network service name.',
         );
     }
 
@@ -166,7 +166,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     let port = 8080;
     if (brutPort !== undefined && brutPort !== '') {
         if (!/^\d+$/.test(brutPort)) {
-            throw new Error(`PLATEFORME_PORT doit être un entier, reçu : ${brutPort}`);
+            throw new Error(`PLATEFORME_PORT must be an integer, got: ${brutPort}`);
         }
         port = Number(brutPort);
     }
@@ -175,137 +175,137 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const base = (brutBase === undefined || brutBase === '' ? 'sqlite' : brutBase) as Config['base'];
     if (!(BASES as readonly string[]).includes(base)) {
         throw new Error(
-            `PLATEFORME_BASE doit valoir ${BASES.join(' ou ')}, reçu : ${brutBase}`,
+            `PLATEFORME_BASE must be ${BASES.join(' or ')}, got: ${brutBase}`,
         );
     }
 
     const urlBase = env.PLATEFORME_BASE_URL ?? ':memory:';
 
-    // ⚠️ LE TEST DE LA CHAÎNE VIDE EST DISTINCT DE CELUI DE L'ABSENCE :
-    // `env.X ?? 'defaut'` ne rattrape PAS `''`, et P1 a payé cette erreur
-    // exacte. Un `PLATEFORME_ICONES=` vide doit retomber sur le défaut, pas
-    // faire du magasin le répertoire courant.
+    // ⚠️ THE EMPTY STRING TEST IS DISTINCT FROM THE ABSENCE ONE:
+    // `env.X ?? 'defaut'` does NOT catch `''`, and P1 paid for this exact
+    // mistake. An empty `PLATEFORME_ICONES=` must fall back to the default, not
+    // make the working directory the store.
     const brutIcones = env.PLATEFORME_ICONES;
     const repertoireIcones =
         brutIcones === undefined || brutIcones === '' ? 'donnees/icones' : brutIcones;
 
-    // Même garde de la chaîne VIDE, et pour la même raison qu'au-dessus : un
-    // `PLATEFORME_TELEVERSEMENTS=` vide ferait de la racine des tranches le
-    // répertoire COURANT du service, où elles se mêleraient à ses sources.
+    // Same EMPTY string guard, and for the same reason as above: an
+    // empty `PLATEFORME_TELEVERSEMENTS=` would make the slice root the
+    // WORKING directory of the service, where they would mix with its sources.
     const brutTeleversements = env.PLATEFORME_TELEVERSEMENTS;
     const repertoireTeleversements =
         brutTeleversements === undefined || brutTeleversements === ''
             ? 'donnees/televersements'
             : brutTeleversements;
 
-    // Même garde de la chaîne VIDE qu'au-dessus, mais SANS repli : ici, vide
-    // et absente valent toutes deux « aucun servant ».
+    // Same EMPTY string guard as above, but WITHOUT a fallback: here, empty
+    // and absent both mean "no server".
     const brutPage = env.PLATEFORME_PAGE;
     const racinePage = brutPage === undefined || brutPage === '' ? undefined : brutPage;
 
-    // 🔴 AUCUN DÉFAUT, et surtout pas un défaut ALÉATOIRE. Un secret tiré au
-    // démarrage passerait tous les tests de forme, puis invaliderait à chaque
-    // redémarrage l'ensemble des jetons délivrés — les utilisateurs seraient
-    // déconnectés sans qu'aucune trace n'en donne la cause. C'est la même
-    // décision que `PLATEFORME_HOTE` : une rupture bruyante vaut mieux qu'une
-    // dégradation silencieuse.
+    // 🔴 NO DEFAULT, and above all not a RANDOM default. A secret drawn at
+    // startup would pass all the shape tests, then invalidate at every
+    // restart the whole set of tokens handed out — users would be
+    // logged out without any trace giving the cause. It is the same
+    // decision as `PLATEFORME_HOTE`: a loud break is better than a
+    // silent degradation.
     //
-    // Le test de la chaîne VIDE est distinct de celui de l'absence, parce que
-    // `env.X ?? 'defaut'` ne rattrape pas `''` — P1 a payé cette erreur exacte
-    // à sa tâche 1, où un des deux rouges annoncés était en réalité vert.
+    // The EMPTY string test is distinct from the absence one, because
+    // `env.X ?? 'defaut'` does not catch `''` — P1 paid for this exact mistake
+    // in its task 1, where one of the two announced reds was in fact green.
     const secretJeton = env.PLATEFORME_SECRET_JETON;
     if (secretJeton === undefined || secretJeton === '') {
         throw new Error(
-            "PLATEFORME_SECRET_JETON est obligatoire et n'a aucun défaut : sans lui " +
-                'aucun jeton ne peut être signé, et un défaut aléatoire invaliderait ' +
-                'toutes les sessions à chaque redémarrage.',
+            "PLATEFORME_SECRET_JETON is required and has no default: without it " +
+                'no token can be signed, and a random default would invalidate ' +
+                'every session at each restart.',
         );
     }
-    if (secretJeton.length < LONGUEUR_SECRET_MIN) {
+    if (secretJeton.length < MIN_SECRET_LENGTH) {
         throw new Error(
-            `PLATEFORME_SECRET_JETON est trop court : ${secretJeton.length} caractères, ` +
-                `${LONGUEUR_SECRET_MIN} au moins sont exigés — un secret devinable ` +
-                "n'authentifie personne.",
+            `PLATEFORME_SECRET_JETON is too short: ${secretJeton.length} characters, ` +
+                `at least ${MIN_SECRET_LENGTH} are required — a guessable secret ` +
+                "authenticates nobody.",
         );
     }
 
-    // FACULTATIVE, contrairement à `PLATEFORME_HOTE`, et l'asymétrie est dans
-    // les conséquences : une origine absente produit un refus BRUYANT du
-    // navigateur, que l'opérateur voit immédiatement ; une adresse d'écoute
-    // absente produirait une écoute universelle SILENCIEUSE. Refuser de
-    // démarrer pour elle casserait par ailleurs le déploiement de P5, où le
-    // proxy inverse met le client et la plateforme sur la MÊME origine et où
-    // aucune valeur n'aurait de sens.
+    // OPTIONAL, unlike `PLATEFORME_HOTE`, and the asymmetry lies in
+    // the consequences: a missing origin produces a LOUD refusal from the
+    // browser, which the operator sees immediately; a missing listen
+    // address would produce a SILENT universal listen. Refusing to
+    // start for it would moreover break the P5 deployment, where the
+    // reverse proxy puts the client and the platform on the SAME origin and where
+    // no value would make sense.
     const brutOrigine = env.PLATEFORME_ORIGINE_CLIENT;
     const origineClient = brutOrigine === undefined || brutOrigine === '' ? undefined : brutOrigine;
 
-    // FACULTATIVE — mais seulement EN MODE `motdepasse`, ET C'EST DEVENU FAUX
-    // DANS L'AUTRE MODE (tâche 6, revue « round de correction 1 », 22 août
-    // 2026). Cette phrase disait « refuser de démarrer casserait ces deux
-    // cas » : un déploiement SANS proxy inverse — celui des tests, et celui
-    // d'un exploitant qui expose le service directement — n'aurait aucune
-    // valeur qui ait du sens ici. C'ÉTAIT VRAI AVANT LA GARDE PLUS BAS DANS
-    // CETTE FONCTION, QUI FAIT PRÉCISÉMENT CELA EN MODE `pomerium` — LE
-    // DÉFAUT : `lireConfig` refuse désormais de démarrer si cette variable
-    // est absente ou vide ET que le mode est `pomerium`. La phrase reste
-    // vraie pour le SEUL mode `motdepasse`, où l'en-tête n'est lu par
-    // personne et où l'absence de proxy déclaré est un cas parfaitement sain
-    // (les tests de ce fichier, par exemple).
+    // OPTIONAL — but only IN `motdepasse` MODE, AND IT HAS BECOME FALSE
+    // IN THE OTHER MODE (task 6, review "correction round 1", 22 August
+    // 2026). This sentence said "refusing to start would break these two
+    // cases": a deployment WITHOUT a reverse proxy — the one of the tests, and the one
+    // of an operator who exposes the service directly — would have no
+    // value that makes sense here. THAT WAS TRUE BEFORE THE GUARD FURTHER DOWN IN
+    // THIS FUNCTION, WHICH DOES PRECISELY THAT IN `pomerium` MODE — THE
+    // DEFAULT: `lireConfig` now refuses to start if this variable
+    // is absent or empty AND the mode is `pomerium`. The sentence remains
+    // true for the `motdepasse` mode ALONE, where the header is read by
+    // nobody and where the absence of a declared proxy is a perfectly healthy case
+    // (the tests of this file, for instance).
     //
-    // 🔴 MAIS SON DÉFAUT EST LE REFUS DE CROIRE, JAMAIS UNE PERMISSION. Même
-    // doctrine que `PLATEFORME_ORIGINE_CLIENT` : absente, l'ensemble est vide,
-    // et `http/adresse-source.ts` ignore alors `X-Forwarded-For` quel qu'il
-    // soit. Un défaut permissif — croire l'en-tête de tout le monde, ou même
-    // seulement des adresses privées — rendrait l'adresse du client FORGEABLE
-    // PAR LE CLIENT, donc le frein par adresse contournable en une ligne
-    // d'en-tête. C'est le seul défaut qui échange une panne bruyante contre
-    // un contournement silencieux, et c'est exactement ce que ce fichier
-    // refuse depuis `PLATEFORME_HOTE`.
+    // 🔴 BUT ITS DEFAULT IS THE REFUSAL TO TRUST, NEVER A PERMISSION. Same
+    // doctrine as `PLATEFORME_ORIGINE_CLIENT`: absent, the set is empty,
+    // and `http/adresse-source.ts` then ignores `X-Forwarded-For` whatever it
+    // is. A permissive default — trusting everybody's header, or even
+    // only private addresses — would make the client address FORGEABLE
+    // BY THE CLIENT, hence the per-address throttle bypassable with one header
+    // line. It is the only default that trades a loud failure for
+    // a silent bypass, and that is exactly what this file has been
+    // refusing since `PLATEFORME_HOTE`.
     //
-    // ⚠️ LE MODE DE DÉFAILLANCE DE L'OUBLI EST NOMMÉ, et il n'est pas
-    // silencieux par accident mais par CHOIX ASSUMÉ. Un exploitant qui pose un
-    // proxy sans déclarer sa confiance verra TOUTES les requêtes porter
-    // l'adresse du proxy : le frein par adresse dégénère en frein GLOBAL, et
-    // le service se refuse à lui-même au 51e échec. Le remède n'est PAS de
-    // croire par défaut — ce serait le contournement ci-dessus — mais que LA
-    // TRACE DU FREIN NOMME L'ADRESSE RETENUE : un exploitant qui lit
-    // `adresse=172.18.0.5` sur toutes les lignes reconnaît l'adresse de son
-    // proxy. `deploiement/README.md` le dit aussi.
+    // ⚠️ THE FAILURE MODE OF FORGETTING IS NAMED, and it is not
+    // silent by accident but by DELIBERATE CHOICE. An operator who sets up a
+    // proxy without declaring trust in it will see ALL requests carry
+    // the proxy address: the per-address throttle degenerates into a GLOBAL throttle, and
+    // the service refuses itself at the 51st failure. The remedy is NOT to
+    // trust by default — that would be the bypass above — but that THE
+    // THROTTLE TRACE NAMES THE ADDRESS IT RETAINED: an operator who reads
+    // `adresse=172.18.0.5` on every line recognises the address of their
+    // proxy. `deploiement/README.md` says so too.
     //
-    // ⚠️ EXACTEMENT UN PROXY EN TÊTE DE CHAÎNE. Deux proxies enchaînés font
-    // rendre à `adresseSource` l'adresse du PREMIER PROXY, pas celle du
-    // client : P5 ne livre pas la chaîne à N sauts, et
-    // `http/adresse-source.ts` le documente.
+    // ⚠️ EXACTLY ONE PROXY AT THE HEAD OF THE CHAIN. Two chained proxies make
+    // `adresseSource` return the address of the FIRST PROXY, not that of the
+    // client: P5 does not deliver the N-hop chain, and
+    // `http/adresse-source.ts` documents it.
     //
-    // Le test de la chaîne VIDE est distinct de celui de l'absence, pour la
-    // raison déjà payée par P1 plus haut dans ce fichier : `??` ne rattrape
-    // pas `''`. Ici, `''.split(',')` rendrait `['']` — donc un ensemble à UNE
-    // entrée vide, qui rendrait de confiance tout pair sans adresse.
+    // The EMPTY string test is distinct from the absence one, for the
+    // reason already paid for by P1 further up in this file: `??` does not catch
+    // `''`. Here, `''.split(',')` would return `['']` — hence a set with ONE
+    // empty entry, which would make trusted any peer without an address.
     const brutProxy = env.PLATEFORME_PROXY_DE_CONFIANCE;
     const proxyDeConfiance: ReadonlySet<string> = new Set(
         (brutProxy ?? '')
             .split(',')
             .map((entree) => entree.trim())
-            // Sans ce filtre, `'172.18.0.5,,10.0.0.1'` porterait une entrée
-            // vide — et `'  '` en porterait une aussi, après `trim`.
+            // Without this filter, `'172.18.0.5,,10.0.0.1'` would carry an empty
+            // entry — and `'  '` would carry one too, after `trim`.
             .filter((entree) => entree !== ''),
     );
 
-    // 🔴 TROISIÈME GARDE LIÉE AU MODE, après celle de `PLATEFORME_HOTE`. Même
-    // raison : en `pomerium`, l'identité arrive dans un en-tête EN CLAIR
-    // qu'aucune signature ne vérifie, et sans la liste des adresses autorisées
-    // à le poser, l'en-tête est croyable par n'importe qui.
+    // 🔴 THIRD GUARD TIED TO THE MODE, after the `PLATEFORME_HOTE` one. Same
+    // reason: in `pomerium`, the identity arrives in a CLEARTEXT header
+    // that no signature verifies, and without the list of addresses allowed
+    // to set it, the header can be believed from anybody.
     //
-    // ⚠️ POURQUOI UN REFUS DE DÉMARRER ET NON UN 401 : un refus se lit AVANT
-    // d'agir et nomme la variable. Un 401 pour tout le monde se lirait APRÈS,
-    // sur un service qui répond et sert les dix autres routeurs.
+    // ⚠️ WHY A REFUSAL TO START AND NOT A 401: a refusal is read BEFORE
+    // acting and names the variable. A 401 for everybody would be read AFTER,
+    // on a service that answers and serves the ten other routers.
     if (auth === 'pomerium' && proxyDeConfiance.size === 0) {
         throw new Error(
-            'PLATEFORME_PROXY_DE_CONFIANCE est obligatoire en mode pomerium : ' +
-                "l'identité arrive dans un en-tête en clair qu'aucune signature ne vérifie, " +
-                'et sans la liste des adresses autorisées à le poser, quiconque atteint le ' +
-                "port obtient un jeton pour l'identité de son choix. Poser l'adresse du " +
-                'proxy, ou PLATEFORME_AUTH=motdepasse.',
+            'PLATEFORME_PROXY_DE_CONFIANCE is required in pomerium mode: ' +
+                "the identity arrives in a plaintext header that no signature verifies, " +
+                'and without the list of addresses allowed to set it, anyone reaching the ' +
+                "port gets a token for the identity of their choice. Set the address of the " +
+                'proxy, or PLATEFORME_AUTH=motdepasse.',
         );
     }
 

@@ -1,22 +1,22 @@
-//! Contrôleur de congestion : décide du débit et de la résolution d'encodage
-//! à partir de ce que le pair rapporte.
+//! Congestion controller: decides the encoding bitrate and resolution
+//! from what the peer reports.
 //!
-//! Aucune dépendance à Windows, à str0m ni au socket — c'est ce qui rend
-//! toute la politique testable sur Linux, sans VM et sans réseau. Même
-//! raison d'être que `geometry.rs`, `rebuild.rs` et `clock.rs`.
+//! No dependency on Windows, str0m or the socket — that is what makes
+//! the whole policy testable on Linux, without a VM and without a network. Same
+//! reason to be as `geometry.rs`, `rebuild.rs` and `clock.rs`.
 //!
-//! Découpé en quatre sous-modules : `echelle` (les résolutions disponibles),
-//! `hysteresis` (les délais avant changement), `controleur` (l'asservissement
-//! continu) et `reconfiguration` (le changement de taille de source).
+//! Split into four sub-modules: `echelle` (the available resolutions),
+//! `hysteresis` (the delays before a change), `controleur` (the continuous
+//! control loop) and `reconfiguration` (the source size change).
 //!
-//! Visibilité entre les quatre : ce qu'un sous-module doit exposer à ses
-//! frères (champs de `Controleur`, constantes d'hystérésis, fonctions
-//! utilitaires de test) est marqué `pub(super)`, jamais `pub` — borné au
-//! module `congestion` et à lui seul, l'extérieur ne voyant que ce que
-//! réexporte `pub use controleur::Controleur`. Un helper niché dans un `mod
-//! tests` privé n'aurait été visible que de son propre sous-arbre, d'où ce
-//! choix chaque fois qu'un détail est partagé entre deux sous-modules
-//! frères.
+//! Visibility among the four: what a sub-module must expose to its
+//! siblings (fields of `Controleur`, hysteresis constants, test
+//! utility functions) is marked `pub(super)`, never `pub` — bounded to the
+//! `congestion` module alone, the outside only seeing what
+//! `pub use controleur::Controleur` re-exports. A helper nested in a private `mod
+//! tests` would only have been visible to its own subtree, hence this
+//! choice whenever a detail is shared between two sibling
+//! sub-modules.
 
 mod controleur;
 mod echelle;
@@ -27,67 +27,67 @@ pub use controleur::Controleur;
 
 use std::time::{Duration, Instant};
 
-/// Part de l'estimation qu'on s'autorise à consommer.
+/// Share of the estimate we allow ourselves to consume.
 ///
-/// Les 10 % restants laissent la place aux retransmissions RTX et aux paquets
-/// de sondage que le sous-système BWE émet pour tester à la hausse. Viser
-/// 100 % de l'estimation, c'est garantir de la dépasser.
+/// The remaining 10 % leave room for RTX retransmissions and the probing packets
+/// the BWE subsystem emits to test upwards. Aiming at
+/// 100 % of the estimate guarantees exceeding it.
 const MARGE: f32 = 0.9;
 
-/// Écart relatif en dessous duquel on ne reconfigure pas le débit. Sans lui,
-/// une estimation qui frémit ferait écrire l'encodeur à chaque seconde.
+/// Relative gap below which the bitrate is not reconfigured. Without it,
+/// a quivering estimate would make the encoder be written every second.
 const ECART_MINIMAL_DEBIT: f32 = 0.10;
 
-/// Plafond du pourcentage de perte déclaré à Opus. Au-delà, la redondance
-/// LBRR coûte plus de débit qu'elle n'en sauve.
+/// Cap on the loss percentage declared to Opus. Beyond it, LBRR
+/// redundancy costs more bitrate than it saves.
 const PERTE_MAX_OPUS: i32 = 25;
 
-/// Réglages figés d'une session.
+/// Fixed settings of a session.
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    /// Plafond de débit vidéo, en bits par seconde (variable `BITRATE`).
-    /// Sert aussi de valeur de repli quand aucune estimation n'arrive.
+    /// Video bitrate ceiling, in bits per second (variable `BITRATE`).
+    /// Also serves as the fallback value when no estimate arrives.
     pub plafond_bps: u32,
-    /// Budget réservé à la piste audio, retiré de l'estimation.
+    /// Budget reserved for the audio track, taken out of the estimate.
     pub audio_bps: u32,
-    /// Taille de la source capturée, sommet de l'échelle.
+    /// Size of the captured source, top of the ladder.
     pub source: (u32, u32),
     pub fps: u32,
 }
 
-/// Ce que le transport observe, une fois par seconde.
+/// What the transport observes, once per second.
 #[derive(Debug, Clone, Copy)]
 pub struct Observation {
-    /// Estimation de bande passante sortante. `None` tant qu'aucune n'est
-    /// arrivée — cas normal au démarrage, cas permanent si TWCC n'est pas
-    /// négocié.
+    /// Outgoing bandwidth estimate. `None` as long as none has
+    /// arrived — normal case at start-up, permanent case if TWCC is not
+    /// negotiated.
     pub estimate_bps: Option<u32>,
-    /// Non consommé par la décision : journalisé par `transport/evenements.rs` pour que
-    /// la recette dispose du RTT vu par l'agent, à confronter à celui que le
-    /// navigateur rapporte.
+    /// Not consumed by the decision: logged by `transport/evenements.rs` so that
+    /// the acceptance run has the RTT seen by the agent, to compare with the one the
+    /// browser reports.
     pub rtt: Option<Duration>,
-    /// Fraction de paquets perdus, entre 0 et 1.
+    /// Fraction of packets lost, between 0 and 1.
     pub loss: Option<f32>,
     pub at: Instant,
 }
 
-/// État du lien tel qu'on l'annonce à l'utilisateur.
+/// State of the link as announced to the user.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Qualite {
-    /// Barreau le plus haut.
+    /// Highest rung.
     Bonne,
-    /// Résolution réduite : l'utilisateur doit savoir pourquoi l'image a molli.
+    /// Reduced resolution: the user must know why the picture softened.
     Degradee,
-    /// Plancher atteint. On ne dégrade plus — on le dit.
+    /// Floor reached. We no longer degrade — we say so.
     Insuffisante,
 }
 
-/// Le contrôleur reçoit-il de quoi s'asservir ?
+/// Is the controller receiving anything to control on?
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Adaptation {
     Active,
-    /// Aucune estimation n'est jamais arrivée. Le débit reste au plafond, et
-    /// ce fait doit être annoncé — un silence ressemblerait à « tout va bien ».
+    /// No estimate has ever arrived. The bitrate stays at the ceiling, and
+    /// this fact must be announced — silence would look like "all is well".
     Indisponible,
 }
 

@@ -103,7 +103,7 @@ async function obtenirPaire() {
 
 class FinSousCoupure extends Error {}
 
-const resultat = { maintien_s: MAINTIEN_S, prefixe: PREFIXE, journal, erreurs: [] };
+const result = { maintien_s: MAINTIEN_S, prefixe: PREFIXE, journal, errors: [] };
 let chrome;
 try {
     const paire = await obtenirPaire();
@@ -123,7 +123,7 @@ try {
     chrome = lancerChrome(PORT_CDP, UDD);
     const ver = await attendreDevtools(PORT_CDP);
     dire(`chrome : ${ver.Browser}`);
-    resultat.chrome = ver.Browser;
+    result.chrome = ver.Browser;
 
     const cdp = new Cdp(ver.webSocketDebuggerUrl);
     const sessions = new Map();
@@ -177,7 +177,7 @@ try {
             if (console_page.length > 400) console_page.shift();
         }
     });
-    resultat.console_page = console_page;
+    result.console_page = console_page;
 
     // 🔴 `?faute-fichiers=1` ARME l'injection du canonicaliseur. **VARIABLE DE
     // BANC, jamais une configuration livrée** : sans elle, un `.faute-*` est un
@@ -187,7 +187,7 @@ try {
     // PROUVE PAS QUE LA CAUSE EST ATTEIGNABLE EN EXPLOITATION.** Les deux
     // colonnes restent distinctes au document de résultats.
     const fautes = process.env.FAUTES_FICHIERS === '1' ? '&faute-fichiers=1' : '';
-    resultat.fautes_armees = fautes !== '';
+    result.fautes_armees = fautes !== '';
     const url = `${CLIENT_URL}/shell.html?signaling=${encodeURIComponent(SIGNALING_RELAIS)}&prefixe=${encodeURIComponent(PREFIXE)}${fautes}`;
     dire(`navigation : ${url}`);
     await cdp.send('Page.navigate', { url }, sessionShell);
@@ -195,7 +195,7 @@ try {
 
     for (let i = 0; i < 120; i += 1) {
         const p = await cdp.evalBorne(sessionShell, `String(window.__f2 && window.__f2.peuple)`, 5000, false);
-        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); resultat.opfs_entrees = Number(p); break; }
+        if (p && p !== 'undefined' && p !== 'null') { dire(`OPFS peuple : ${p} entrees`); result.opfs_entrees = Number(p); break; }
         await dodo(500);
     }
 
@@ -212,7 +212,7 @@ try {
         for (let i = 0; i < 90; i += 1) {
             const cibles = await (await fetch(`http://127.0.0.1:${PORT_CDP}/json/list`)).json();
             const n = cibles.filter((c) => c.type === 'page' && c.url.includes('session=')).length;
-            if (n > 0) { dire(`${n} fenetre(s) d application apres ${i} s`); resultat.fenetres_ouvertes = n; break; }
+            if (n > 0) { dire(`${n} fenetre(s) d application apres ${i} s`); result.fenetres_ouvertes = n; break; }
             await dodo(1000);
         }
     }
@@ -221,7 +221,7 @@ try {
     // tout ce qui suit mesurerait `connexion.html`.
     const jetonVu = await cdp.evalBorne(sessionShell, `JSON.stringify({ href: location.href, jeton: !!localStorage.getItem('guac.jeton.acces'), bouton: !!document.querySelector('#choisir-dossier') })`, 8000, false);
     dire(`etat avant le clic : ${jetonVu}`);
-    resultat.etat_avant_clic = jetonVu;
+    result.etat_avant_clic = jetonVu;
     if (!String(jetonVu).includes('"jeton":true') || !String(jetonVu).includes('"bouton":true')) {
         throw new Error(`la page-shell n est pas dans l etat attendu : ${jetonVu}`);
     }
@@ -239,14 +239,14 @@ try {
         await dodo(1000);
     }
     dire(`#etat-fichiers : ${JSON.stringify(monte)}`);
-    resultat.etat_fichiers = monte;
+    result.etat_fichiers = monte;
 
     // ⚠️ LE TEST PORTE SUR LE SUCCES, PAS SUR LA SOUS-CHAINE « mont » : les DEUX
     // messages de `shell.ts` la contiennent, et F1 a mesure NEUF MINUTES sur un
     // pont NON monte pour l'avoir oublie.
     const bienMonte = typeof monte === 'string' && !monte.includes('n’a pas pu')
         && !monte.includes("n'a pas pu") && /mont[ée]/.test(monte);
-    resultat.bien_monte = bienMonte;
+    result.bien_monte = bienMonte;
     if (!bienMonte) throw new Error(`lecteur NON monte : ${JSON.stringify(monte)}`);
 
     // Repos declare : `#etat-fichiers` passe a « monte » quand le canal s'ouvre
@@ -289,12 +289,12 @@ try {
             for await (const n of d.keys()) noms.push(n);
             return JSON.stringify(noms);
         })()`, 20000, true);
-        resultat.divergence_posee = typeof div === 'string' ? JSON.parse(div) : div;
-        dire(`divergence posee cote local : ${JSON.stringify(resultat.divergence_posee)}`);
+        result.divergence_posee = typeof div === 'string' ? JSON.parse(div) : div;
+        dire(`divergence posee cote local : ${JSON.stringify(result.divergence_posee)}`);
     }
 
-    resultat.compteur_avant = await lireCompteur(cdp, sessionShell);
-    dire(`compteur AVANT : ${JSON.stringify(resultat.compteur_avant)}`);
+    result.compteur_avant = await lireCompteur(cdp, sessionShell);
+    dire(`compteur AVANT : ${JSON.stringify(result.compteur_avant)}`);
 
     // ── CRITERE ③ : COUPER LE CANAL PENDANT UNE LECTURE EN VOL ────────────
     //
@@ -328,7 +328,7 @@ try {
                     // la commande atteindre le pont.
                     const apres = Number(process.env.COUPURE_APRES_MARQUE_MS || 1500);
                     await dodo(apres);
-                    resultat.coupure_posee_sur_marque_a_ms = i * 100 + apres;
+                    result.coupure_posee_sur_marque_a_ms = i * 100 + apres;
                     await cdp.send('Target.closeTarget', { targetId: cible.targetId })
                         .then(() => dire(`COUPURE sur la marque, apres ${i * 100} ms d attente`))
                         .catch((e) => dire(`COUPURE echouee : ${String(e).slice(0, 150)}`));
@@ -336,7 +336,7 @@ try {
                 }
                 await dodo(100);
             }
-            resultat.coupure_marque_jamais_vue = true;
+            result.coupure_marque_jamais_vue = true;
             dire('COUPURE : la marque n est jamais apparue — RIEN N A ETE COUPE');
         })();
         dire('coupure du canal ARMEE sur la marque de commande en vol');
@@ -348,7 +348,7 @@ try {
             cdp.send('Target.closeTarget', { targetId: cible.targetId })
                 .then(() => dire(`COUPURE : cible de la page-shell fermee apres ${attente} ms`))
                 .catch((e) => dire(`COUPURE echouee : ${String(e).slice(0, 150)}`));
-            resultat.coupure_posee_a_ms = attente;
+            result.coupure_posee_a_ms = attente;
         }, attente);
         dire(`coupure du canal ARMEE a +${attente} ms`);
     }
@@ -358,12 +358,12 @@ try {
     try {
         const { stdout: sortie } = await execFileAsync('bash', ['-c', `bash ${ICI}/mesurer-f3.sh`],
             { encoding: 'utf8', timeout: 600000, maxBuffer: 64 * 1024 * 1024 });
-        resultat.mesure_vm_brut = sortie;
+        result.mesure_vm_brut = sortie;
         const ligne = sortie.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('{')).pop();
-        resultat.mesure_vm = ligne ? JSON.parse(ligne) : null;
+        result.mesure_vm = ligne ? JSON.parse(ligne) : null;
         dire(`mesure VM : ${ligne ? 'JSON lu' : 'AUCUN JSON'}`);
     } catch (e) {
-        resultat.mesure_vm_erreur = String(e).slice(0, 2000);
+        result.mesure_vm_erreur = String(e).slice(0, 2000);
         dire(`mesure VM ECHOUEE : ${String(e).slice(0, 300)}`);
     }
 
@@ -373,7 +373,7 @@ try {
     // relit, donc tout ce qui suit est SANS OBJET. On le DIT plutot que de
     // rendre des zeros qui se liraient comme des mesures.
     if (process.env.COUPURE_MS || process.env.COUPURE_SUR_MARQUE) {
-        resultat.suite_sans_objet = 'canal coupe : compteur, relectures et arbre OPFS non relevables';
+        result.suite_sans_objet = 'canal coupe : compteur, relectures et arbre OPFS non relevables';
         dire('coupure posee : la suite du protocole est SANS OBJET, et le releve le dit');
         // ⚠️ On sort par une EXCEPTION MARQUEE, pas par un `return` : ce bloc
         // est au premier niveau du `try`, et un `return` y est illegal.
@@ -387,16 +387,16 @@ try {
         if (i > 3 && c.dues === 0 && c.vues > 0) break;
         await dodo(1000);
     }
-    resultat.suivi_compteur = suivi;
-    resultat.compteur_final = suivi.at(-1);
-    dire(`compteur FINAL : ${JSON.stringify(resultat.compteur_final)}`);
+    result.suivi_compteur = suivi;
+    result.compteur_final = suivi.at(-1);
+    dire(`compteur FINAL : ${JSON.stringify(result.compteur_final)}`);
 
     // ── LA RELECTURE D'OPFS : le critere ① et le critere ② ─────────────────
     // 🔴 LES DEUX MOITIES DE CHAQUE CRITERE : ce qui doit avoir BOUGE, et ce
     // qui ne doit PLUS etre la. Ne relire que la cible laisserait passer une
     // COPIE — un renommage qui copie sans retirer la source, ce que le repli
     // local peut reellement produire.
-    resultat.relectures = {};
+    result.relectures = {};
     for (const chemin of [
         'projete.txt',                          // ① a — la SOURCE doit avoir DISPARU
         'renomme.txt',                          // ① a — la CIBLE doit etre la
@@ -411,12 +411,12 @@ try {
         'occupe-cote-local.txt',                // ④ — NE DOIT PAS avoir ete ecrase
     ]) {
         const v = await cdp.evalBorne(sessionShell, `window.__relire(${JSON.stringify(chemin)})`, 30000, true);
-        resultat.relectures[chemin] = typeof v === 'string' ? JSON.parse(v) : v;
-        dire(`relecture ${chemin} : ${JSON.stringify(resultat.relectures[chemin])}`);
+        result.relectures[chemin] = typeof v === 'string' ? JSON.parse(v) : v;
+        dire(`relecture ${chemin} : ${JSON.stringify(result.relectures[chemin])}`);
     }
     const arbre = await cdp.evalBorne(sessionShell, `window.__arbre()`, 30000, true);
-    resultat.arbre_opfs = typeof arbre === 'string' ? JSON.parse(arbre) : arbre;
-    dire(`arbre OPFS : ${JSON.stringify(resultat.arbre_opfs)}`);
+    result.arbre_opfs = typeof arbre === 'string' ? JSON.parse(arbre) : arbre;
+    dire(`arbre OPFS : ${JSON.stringify(result.arbre_opfs)}`);
 
     // ── CRITERE ⑥ : la video ne perd pas une image ─────────────────────────
     const echantillons = [];
@@ -442,19 +442,19 @@ try {
         echantillons.push(point);
         dire(`echantillon : ${JSON.stringify(point)}`);
     }
-    resultat.echantillons = echantillons;
-    resultat.ok = true;
+    result.echantillons = echantillons;
+    result.ok = true;
 } catch (e) {
-    if (e instanceof FinSousCoupure) { resultat.ok = true; }
+    if (e instanceof FinSousCoupure) { result.ok = true; }
     else {
-    resultat.ok = false;
-    resultat.erreurs.push(String(e).slice(0, 1000));
+    result.ok = false;
+    result.errors.push(String(e).slice(0, 1000));
     dire(`ERREUR : ${String(e).slice(0, 500)}`);
     }
 } finally {
-    fs.writeFileSync(SORTIE, JSON.stringify(resultat, null, 1));
+    fs.writeFileSync(SORTIE, JSON.stringify(result, null, 1));
     dire(`resultat ecrit : ${SORTIE}`);
     if (chrome) chrome.kill();
     await dodo(500);
-    process.exit(resultat.ok ? 0 : 1);
+    process.exit(result.ok ? 0 : 1);
 }

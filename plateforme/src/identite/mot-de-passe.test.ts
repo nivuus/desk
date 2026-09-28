@@ -1,36 +1,36 @@
-// Les sept propriétés du hachage de mot de passe.
+// The seven properties of password hashing.
 //
-// 🔴 Les valeurs employées ici sont RÉALISTES, jamais commodes : un mot de
-// passe de longueur ordinaire, un sel de 16 octets, une empreinte de
-// 32 octets. C'est la leçon la plus chère de P1 — une suite qui n'écrit que
-// des `1_000` déclare portable un schéma qui refuse toute écriture réelle.
+// 🔴 The values used here are REALISTIC, never convenient: a password
+// of ordinary length, a 16-byte salt, a 32-byte
+// hash. It is the most expensive lesson of P1 — a suite that only writes
+// `1_000`s declares portable a schema that refuses every real write.
 
 import { describe, expect, it } from 'vitest';
 import {
     analyser,
     doitEtreRehache,
     hacher,
-    PARAMETRES_COURANTS,
-    verifier,
+    CURRENT_PARAMS,
+    verify,
 } from './mot-de-passe';
 
 const MOT_DE_PASSE = 'un-mot-de-passe-ordinaire-42';
 
 describe('hacher', () => {
-    it('rend la forme scrypt$N$r$p$sel$empreinte, avec les paramètres courants', async () => {
+    it('returns the shape scrypt$N$r$p$salt$fingerprint, with the current parameters', async () => {
         const encode = await hacher(MOT_DE_PASSE);
         expect(encode).toMatch(/^scrypt\$16384\$8\$1\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
         const { algo, params, sel, empreinte } = analyser(encode);
         expect(algo).toBe('scrypt');
-        expect(params).toEqual(PARAMETRES_COURANTS);
-        // Tailles RÉELLES : 16 octets de sel, 32 d'empreinte.
+        expect(params).toEqual(CURRENT_PARAMS);
+        // REAL sizes: 16 bytes of salt, 32 of hash.
         expect(sel).toHaveLength(16);
         expect(empreinte).toHaveLength(32);
     });
 
-    it('tire un sel neuf : deux hachages du même mot de passe diffèrent', async () => {
-        // Un sel figé rendrait les deux encodages identiques, et deux comptes
-        // au même mot de passe seraient reconnaissables en base.
+    it('draws a fresh salt: two hashes of the same password differ', async () => {
+        // A frozen salt would make both encodings identical, and two accounts
+        // with the same password would be recognisable in the database.
         const a = await hacher(MOT_DE_PASSE);
         const b = await hacher(MOT_DE_PASSE);
         expect(a).not.toBe(b);
@@ -38,50 +38,50 @@ describe('hacher', () => {
 });
 
 describe('verifier', () => {
-    it('accepte le bon mot de passe', async () => {
+    it('accepts the right password', async () => {
         const encode = await hacher(MOT_DE_PASSE);
-        expect(await verifier(MOT_DE_PASSE, encode)).toBe(true);
+        expect(await verify(MOT_DE_PASSE, encode)).toBe(true);
     });
 
-    it('refuse un mot de passe faux', async () => {
+    it('refuses a wrong password', async () => {
         const encode = await hacher(MOT_DE_PASSE);
-        expect(await verifier('un-mot-de-passe-ordinaire-43', encode)).toBe(false);
+        expect(await verify('un-mot-de-passe-ordinaire-43', encode)).toBe(false);
     });
 
-    it('rend false SANS LEVER sur une empreinte tronquée', async () => {
-        // 🔴 MESURÉ le 19 août 2026 sur Node v24.9.0 :
+    it('returns false WITHOUT THROWING on a truncated fingerprint', async () => {
+        // 🔴 MEASURED on 19 August 2026 on Node v24.9.0:
         //     timingSafeEqual(Buffer.from('aa'), Buffer.from('aaa'))
-        //     -> LÈVE `Input buffers must have the same byte length`
-        // Une empreinte raccourcie en base — colonne trop courte, écriture
-        // partielle, format d'une version antérieure — ferait donc LEVER la
-        // vérification. L'appelant HTTP répondrait 500 là où il doit répondre
-        // 401, et l'écart de comportement serait à lui seul un oracle.
+        //     -> THROWS `Input buffers must have the same byte length`
+        // A shortened hash in the database — column too short, partial
+        // write, format of an earlier version — would therefore make the
+        // verification THROW. The HTTP caller would answer 500 where it must answer
+        // 401, and the difference in behaviour would on its own be an oracle.
         //
-        // ⚠️ L'empreinte est réellement PLUS COURTE, jamais vide : une chaîne
-        // vide pourrait être attrapée par un contrôle de forme en amont et ne
-        // jamais atteindre `timingSafeEqual`. Le test ne mesurerait alors pas
-        // ce qu'il annonce.
+        // ⚠️ The hash is really SHORTER, never empty: an empty
+        // string could be caught by an upstream shape check and never
+        // reach `timingSafeEqual`. The test would then not measure
+        // what it announces.
         const encode = await hacher(MOT_DE_PASSE);
         const morceaux = encode.split('$');
         morceaux[5] = morceaux[5].slice(0, 20);
         const tronque = morceaux.join('$');
         expect(analyser(tronque).empreinte.length).toBeLessThan(32);
-        await expect(verifier(MOT_DE_PASSE, tronque)).resolves.toBe(false);
+        await expect(verify(MOT_DE_PASSE, tronque)).resolves.toBe(false);
     });
 
-    it('LÈVE sur un algorithme inconnu, plutôt que de rendre false', async () => {
-        // Un `false` silencieux serait indiscernable d'un mauvais mot de
-        // passe : personne ne saurait diagnostiquer une base écrite par une
-        // version future.
+    it('THROWS on an unknown algorithm, rather than returning false', async () => {
+        // A silent `false` would be indistinguishable from a wrong
+        // password: nobody could diagnose a database written by a
+        // future version.
         const encode = (await hacher(MOT_DE_PASSE)).replace(/^scrypt/, 'argon2id');
-        await expect(verifier(MOT_DE_PASSE, encode)).rejects.toThrow(/argon2id/);
+        await expect(verify(MOT_DE_PASSE, encode)).rejects.toThrow(/argon2id/);
     });
 });
 
 describe('doitEtreRehache', () => {
-    it('dit vrai sur un N inférieur au courant, faux sur le courant', async () => {
-        const courant = await hacher(MOT_DE_PASSE);
-        expect(doitEtreRehache(courant)).toBe(false);
+    it('tells true on an N below the current one, false on the current one', async () => {
+        const current = await hacher(MOT_DE_PASSE);
+        expect(doitEtreRehache(current)).toBe(false);
         const faible = await hacher(MOT_DE_PASSE, { N: 4096, r: 8, p: 1 });
         expect(doitEtreRehache(faible)).toBe(true);
     });

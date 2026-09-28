@@ -11,10 +11,10 @@ import {
 } from './input';
 
 /**
- * Typage explicite des cas de vecteurs partagés : le JSON mélange des champs
- * propres à chaque `kind`, tous optionnels ici puisqu'aucun cas ne les porte
- * tous. Un typage local évite à TypeScript d'inférer une union imprécise
- * (et évite de disperser des `as any` dans le corps du test).
+ * Explicit typing of the shared vector cases: the JSON mixes fields
+ * specific to each `kind`, all optional here since no case carries them
+ * all. A local typing keeps TypeScript from inferring an imprecise union
+ * (and avoids scattering `as any` through the test body).
  */
 interface VectorCase {
     name: string;
@@ -42,12 +42,12 @@ interface VectorCase {
 
 const cases: VectorCase[] = vectors.cases;
 
-describe('encodeur du protocole d\'entrée', () => {
-    it('déclare la même version que les vecteurs', () => {
+describe('encoder of the input protocol', () => {
+    it('declares the same version as the vectors', () => {
         expect(PROTOCOL_VERSION).toBe(vectors.version);
     });
 
-    it.each(cases)('produit les octets attendus pour « $name »', (testCase) => {
+    it.each(cases)('produces the expected bytes for « $name »', (testCase) => {
         let actual: Uint8Array;
         switch (testCase.kind) {
             case 'mouse_move':
@@ -83,24 +83,24 @@ describe('encodeur du protocole d\'entrée', () => {
                 });
                 break;
             default:
-                throw new Error(`type de vecteur inconnu : ${testCase.kind}`);
+                throw new Error(`unknown vector type: ${testCase.kind}`);
         }
         expect(Array.from(actual)).toEqual(testCase.bytes);
     });
 
-    it('borne les coordonnées hors plage', () => {
+    it('bounds out-of-range coordinates', () => {
         expect(Array.from(encodeMouseMove(-10, 99999))).toEqual([2, 1, 0, 0, 255, 255]);
     });
 
-    it('borne les deltas de molette hors plage', () => {
+    it('bounds out-of-range wheel deltas', () => {
         expect(Array.from(encodeWheel(-40000, 40000))).toEqual([2, 3, 0, 128, 255, 127]);
     });
 
-    it('borne les deltas relatifs hors plage', () => {
+    it('bounds out-of-range relative deltas', () => {
         expect(Array.from(encodeMouseMoveRelative(-40000, 40000))).toEqual([2, 5, 0, 128, 255, 127]);
     });
 
-    it('borne les gâchettes hors plage', () => {
+    it('bounds out-of-range triggers', () => {
         const state = encodeGamepadState({
             seq: 0,
             buttons: 0,
