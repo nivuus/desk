@@ -30,7 +30,7 @@ dependencies = [
  "anyhow",
  "futures-util",
  "hmac",
- "is",
+ "is 0.11.0",
  "md-5",
  "opus",
  "proto",
@@ -569,10 +569,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5cff4e962dd367e3b1c478f67c24a35e7120ec767090cb61305b855db9a529c4"
 dependencies = [
  "crc",
+ "serde",
+ "str0m-proto 0.6.0",
+ "subtle",
+ "tracing",
+]
+
+[[package]]
+name = "is"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d08f9118d003d441f79c1070e84d0a2a89f35721ca8ae0cd5e1f9026dc4a2517"
+dependencies = [
+ "crc",
  "hmac",
  "serde",
  "sha1",
- "str0m-proto",
+ "str0m-proto 0.7.0",
  "subtle",
  "tracing",
 ]
@@ -1139,11 +1152,11 @@ dependencies = [
  "combine",
  "dimpl",
  "fastrand",
- "is",
+ "is 0.10.0",
  "sctp-proto",
  "serde",
  "str0m-aws-lc-rs",
- "str0m-proto",
+ "str0m-proto 0.6.0",
  "subtle",
  "time",
  "tracing",
@@ -1157,7 +1170,7 @@ checksum = "67e3e6efb440ad95c9370171da8fb033684f8237a4d4d4987887774149547b0d"
 dependencies = [
  "aws-lc-rs",
  "dimpl",
- "str0m-proto",
+ "str0m-proto 0.6.0",
  "time",
 ]
 
@@ -1169,6 +1182,19 @@ checksum = "c99c3d805532aebd04585ba54e97e958c382759fb8f52256e289a49233f7e05b"
 dependencies = [
  "base64ct",
  "dimpl",
+ "fastrand",
+ "serde",
+ "subtle",
+ "time",
+]
+
+[[package]]
+name = "str0m-proto"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8f3d99f2cf6c76a502e45feb896ea71e54787ede8744bcdb215acfbfcb905dd"
+dependencies = [
+ "base64ct",
  "fastrand",
  "serde",
  "subtle",
