@@ -1,74 +1,74 @@
-// L'adaptateur entre les chemins logiques du pont et la File System Access
-// API du navigateur.
+// The adapter between the bridge's logical paths and the browser's File System Access
+// API.
 //
-// 🔴 LA RACINE EST INJECTÉE, JAMAIS IMPORTÉE (spec §4.4). C'est la couture qui
-// rend ce fichier testable : Vitest tourne sous Node, qui n'a aucune FSA. Sans
-// elle, la résolution de chemin, le découpage des plages et le classement des
-// erreurs ne seraient éprouvés par rien — et ce sont exactement les trois
-// endroits où l'ancien pont se trompait.
+// 🔴 THE ROOT IS INJECTED, NEVER IMPORTED (spec §4.4). It is the seam that
+// makes this file testable: Vitest runs under Node, which has no FSA. Without
+// it, path resolution, range splitting and error classification
+// would be exercised by nothing — and those are exactly the three
+// places where the old bridge was wrong.
 //
-// Ce module ne connaît ni le DOM, ni WebRTC, ni la trame binaire : il rend des
-// valeurs et lève des `EchecFichiers`. C'est `protocole.ts` qui les met sur le
-// fil.
+// This module knows neither the DOM, nor WebRTC, nor the binary frame: it returns
+// values and raises `EchecFichiers`. It is `protocole.ts` that puts them on the
+// wire.
 //
-// ✅ LA CASSE EST TRAITÉE DEPUIS F3, EN LECTURE COMME EN ÉCRITURE.
+// ✅ CASE IS HANDLED SINCE F3, ON READ AS ON WRITE.
 //
-// ❌ Ces lignes disaient : « EN LECTURE, LA CASSE N'EST TRAITÉE NULLE PART, ET
-// C'EST UN LEGS DÉCLARÉ », puis décrivaient le défaut mesuré par F1 et
-// concluaient « le remède complet, une table de correspondance alimentée par
-// l'énumération, reste F3 ». **F3 est arrivé, et le remède n'est PAS une table
-// de correspondance** : c'est `fichiers/noms.ts`, qui énumère le parent à
-// CHAQUE résolution, **sans aucun cache**. Un cache que rien n'invalide est le
-// défaut de l'ancien pont (`src/file.js`, cache SANS TTL). ✅ `Rafraichir` EST
-// LIVRÉ DEPUIS F5. ⚠️ Mais il vide le cache d'ÉNUMÉRATION du pont et le cache
-// NÉGATIF de ProjFS — `noms.ts`, lui, n'a toujours aucun cache, donc rien à
-// vider : les deux objets sont distincts, et les confondre ferait croire que
-// la casse est devenue moins chère.
+// ❌ These lines said: "ON READ, CASE IS HANDLED NOWHERE, AND
+// IT IS A DECLARED LEGACY", then described the defect measured by F1 and
+// concluded "the complete remedy, a correspondence table fed by
+// enumeration, remains F3". **F3 has arrived, and the remedy is NOT a correspondence
+// table**: it is `fichiers/noms.ts`, which enumerates the parent at
+// EACH resolution, **without any cache**. A cache nothing invalidates is the
+// defect of the old bridge (`src/file.js`, cache WITHOUT TTL). ✅ `Rafraichir` HAS BEEN
+// DELIVERED SINCE F5. ⚠️ But it empties the bridge's ENUMERATION cache and ProjFS's
+// NEGATIVE cache — `noms.ts`, for its part, still has no cache, hence nothing to
+// empty: the two objects are distinct, and confusing them would make one believe
+// case had become cheaper.
 //
-// Chaque composant de chemin passe donc par `canoniser`, et ce module rend le
-// nom **STOCKÉ**, jamais le nom demandé.
+// Each path component therefore goes through `canoniser`, and this module returns the
+// **STORED** name, never the requested one.
 //
-// ⚠️ CE QUE F3 NE CORRIGE PAS, ET QUI N'EST PAS RÉPARABLE ICI : la moitié VM du
-// phénomène. NTFS résout la casse sur un fichier DÉJÀ HYDRATÉ sans jamais
-// atteindre ce module — et quand NTFS répond, nous ne sommes pas consultés.
-// C'est le comportement NORMAL de Windows, et l'en-tête de `noms.ts` le
-// détaille.
+// ⚠️ WHAT F3 DOES NOT FIX, AND WHAT IS NOT REPAIRABLE HERE: the VM half of the
+// phenomenon. NTFS resolves case on an ALREADY HYDRATED file without ever
+// reaching this module — and when NTFS answers, we are not consulted.
+// It is the NORMAL behaviour of Windows, and the header of `noms.ts`
+// details it.
 //
-// ⚠️ LE COÛT EST RÉEL ET IL EST DÉCLARÉ : une énumération du parent par
-// composant résolu, en plus du `getFile()` par entrée que le listage paie déjà.
-// **F3 échange de la latence contre une correction**, et c'est F4 qui dira ce
-// que l'échange coûte.
+// ⚠️ THE COST IS REAL AND IT IS DECLARED: one enumeration of the parent per
+// resolved component, on top of the `getFile()` per entry the listing already pays.
+// **F3 trades latency for correctness**, and it is F4 that will say what
+// the trade costs.
 //
-// ⛔ **F4 NE L'A PAS DIT** (21 août 2026) : aucun geste de sa campagne n'exerce
-// la canonicalisation de casse. **Le coût reste DÛ.**
+// ⛔ **F4 DID NOT SAY IT** (August 21st, 2026): no gesture of its campaign exercises
+// case canonicalisation. **The cost remains OWED.**
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { TAILLE_TRAME_MAX } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
 import { canoniserOuLever, injecterFaute } from './noms';
 
-/* ── LES POIGNÉES, DÉCRITES PAR CE DONT ON SE SERT ────────────────────────
-   Ces interfaces sont un SOUS-ENSEMBLE STRUCTUREL de `FileSystemDirectoryHandle`,
-   `FileSystemFileHandle`, `File` et `Blob` : la vraie poignée les satisfait
-   sans conversion (`canal.ts` le vérifie à la compilation), et un faux en
-   mémoire aussi. Les décrire ici plutôt que d'importer les types du DOM garde
-   ce module utilisable sous Node. */
+/* ── THE HANDLES, DESCRIBED BY WHAT WE USE OF THEM ────────────────────────
+   These interfaces are a STRUCTURAL SUBSET of `FileSystemDirectoryHandle`,
+   `FileSystemFileHandle`, `File` and `Blob`: the real handle satisfies them
+   without conversion (`canal.ts` checks it at compile time), and an in-memory
+   fake does too. Describing them here rather than importing the DOM types keeps
+   this module usable under Node. */
 
-/** Ce qu'on sait faire d'une tranche : en lire les octets. */
+/** What we can do with a slice: read its bytes. */
 export interface TrancheLisible {
     arrayBuffer(): Promise<ArrayBuffer>;
 }
 
 /**
- * Le sous-ensemble de `File` dont on se sert.
+ * The subset of `File` we use.
  *
- * ⚠️ `arrayBuffer()` FIGURE DANS CE TYPE ALORS QUE LE CODE NE DOIT JAMAIS
- * L'APPELER, et c'est délibéré : le vrai `File` l'expose, et un type qui le
- * cacherait mentirait sur ce qui est injecté. Surtout, c'est ce qui permet au
- * faux de `adaptateur.test.ts` de COMPTER ses appels, donc au test de plage
- * d'être vu rouge. Un type qui interdirait l'appel remplacerait un contrôle
- * exécuté par une promesse de compilateur — plus fort en apparence, mais on ne
- * l'aurait jamais vu échouer.
+ * ⚠️ `arrayBuffer()` APPEARS IN THIS TYPE ALTHOUGH THE CODE MUST NEVER
+ * CALL IT, and it is deliberate: the real `File` exposes it, and a type that
+ * hid it would lie about what is injected. Above all, it is what lets the
+ * fake of `adaptateur.test.ts` COUNT its calls, hence the range test
+ * be seen red. A type forbidding the call would replace an executed
+ * check with a compiler promise — stronger in appearance, but we would never
+ * have seen it fail.
  */
 export interface FichierLu {
     readonly size: number;
@@ -78,17 +78,17 @@ export interface FichierLu {
 }
 
 /**
- * Ce que toute poignée porte, quelle que soit sa nature.
+ * What every handle carries, whatever its kind.
  *
- * ⚠️ C'EST CE QUE `values()` REND, ET NON L'UNION DES DEUX NATURES — parce que
- * c'est tout ce que la bibliothèque DOM de TypeScript garantit :
- * `FileSystemDirectoryHandle.values()` y est typée
- * `AsyncIterator<FileSystemHandle>`, la classe de BASE, alors que l'API réelle
- * rend les sous-types concrets. Déclarer l'union ici rendrait la vraie poignée
- * NON assignable, et le contrôle de compatibilité de `canal.ts` échouerait sur
- * une divergence de la bibliothèque, pas du produit. L'adaptateur redescend
- * donc vers `PoigneeFichier` après avoir lu `kind` — la même chose que ferait
- * TypeScript tout seul si l'union était déclarée.
+ * ⚠️ IT IS WHAT `values()` RETURNS, AND NOT THE UNION OF THE TWO KINDS — because
+ * it is all TypeScript's DOM library guarantees:
+ * `FileSystemDirectoryHandle.values()` is typed there as
+ * `AsyncIterator<FileSystemHandle>`, the BASE class, whereas the real API
+ * returns the concrete subtypes. Declaring the union here would make the real handle
+ * NOT assignable, and the compatibility check of `canal.ts` would fail on
+ * a divergence of the library, not of the product. The adapter therefore narrows
+ * down to `PoigneeFichier` after reading `kind` — the same thing
+ * TypeScript would do on its own if the union were declared.
  */
 export interface PoigneeBase {
     readonly kind: 'file' | 'directory';
@@ -107,21 +107,21 @@ export interface PoigneeRepertoire extends PoigneeBase {
     values(): AsyncIterable<PoigneeBase>;
 }
 
-/** La racine choisie par l'utilisateur : un répertoire, et rien d'autre. */
+/** The root chosen by the user: a directory, and nothing else. */
 export type Racine = PoigneeRepertoire;
 
 /**
- * Un échec PORTEUR DE SON CODE.
+ * A failure CARRYING ITS CODE.
  *
- * 🔴 C'est la réponse au défaut relevé de l'ancien pont : `web/index.js:669`
- * émettait `JSON.stringify(e)`, qui rend `"{}"` pour toute `Error`, et
- * `src/file.js:127` reconstruisait un `new Error("{}")` à l'arrivée. La cause
- * était détruite à l'émission, et personne ne pouvait la retrouver.
+ * 🔴 It is the answer to the defect found in the old bridge: `web/index.js:669`
+ * emitted `JSON.stringify(e)`, which returns `"{}"` for any `Error`, and
+ * `src/file.js:127` rebuilt a `new Error("{}")` on arrival. The cause
+ * was destroyed at emission, and no one could recover it.
  *
- * Ici la cause voyage sous forme de `CodeEchec`, membre de l'énumération
- * partagée `proto::fichiers::CodeEchec` : elle traverse le fil sans rien
- * perdre, et l'agent la retraduit en `HRESULT`. Le `message`, lui, ne traverse
- * pas — il est ce qu'on lit dans la console du navigateur.
+ * Here the cause travels as a `CodeEchec`, a member of the shared enumeration
+ * `proto::fichiers::CodeEchec`: it crosses the wire without losing
+ * anything, and the agent translates it back into an `HRESULT`. The `message`, for its part, does not
+ * cross — it is what one reads in the browser console.
  */
 export class EchecFichiers extends Error {
     readonly code: CodeEchec;
@@ -134,12 +134,12 @@ export class EchecFichiers extends Error {
 }
 
 /**
- * Classe une exception venue de la File System Access API.
+ * Classifies an exception coming from the File System Access API.
  *
- * `siAbsent` distingue les deux façons d'être introuvable, que ProjFS
- * distingue aussi (`ERROR_FILE_NOT_FOUND` contre `ERROR_PATH_NOT_FOUND`) et
- * dont l'Explorateur ne dit pas la même chose : un composant INTERMÉDIAIRE
- * manquant rend `chemin-introuvable`, le composant FINAL rend `introuvable`.
+ * `siAbsent` distinguishes the two ways of being not found, which ProjFS
+ * distinguishes too (`ERROR_FILE_NOT_FOUND` versus `ERROR_PATH_NOT_FOUND`) and
+ * about which Explorer does not say the same thing: a missing INTERMEDIATE component
+ * returns `chemin-introuvable`, the FINAL component returns `introuvable`.
  */
 export function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
     if (e instanceof EchecFichiers) return e;
@@ -152,30 +152,30 @@ export function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
         case 'NotAllowedError':
         case 'SecurityError':
             return new EchecFichiers('acces-refuse', texte);
-        // ── LES DEUX CAUSES DE F2 ──────────────────────────────────────────
-        // Elles n'existaient pas en lecture seule, et sans elles les deux
-        // tomberaient dans `interne` : le journal ne dirait plus POURQUOI une
-        // écriture a échoué, et l'utilisateur ne saurait pas s'il doit libérer
-        // de la place ou rendre une permission.
+        // ── THE TWO CAUSES OF F2 ──────────────────────────────────────────
+        // They did not exist in read-only mode, and without them both
+        // would fall into `interne`: the log would no longer say WHY a
+        // write failed, and the user would not know whether to free
+        // space or grant a permission back.
         //
-        // ⚠️ **`TypeMismatchError` N'EST PAS CLASSÉ EN `deja-present`**, contre
-        // la lettre du plan de F2 : il est DÉJÀ classé en absence, deux lignes
-        // plus haut, et c'est ce qui permet à `attributs` de retenter en
-        // fichier après avoir échoué en répertoire. Le classer deux fois est
-        // impossible ; le classer ici casserait la lecture.
+        // ⚠️ **`TypeMismatchError` IS NOT CLASSIFIED AS `deja-present`**, against
+        // the letter of F2's plan: it is ALREADY classified as absence, two lines
+        // above, and that is what lets `attributs` retry as a
+        // file after failing as a directory. Classifying it twice is
+        // impossible; classifying it here would break reading.
         case 'QuotaExceededError':
             return new EchecFichiers('disque-plein', texte);
         case 'InvalidModificationError':
             return new EchecFichiers('deja-present', texte);
         default:
-            // Tout le reste est `interne` : inventer un code plus précis
-            // reviendrait à deviner, et l'agent le traduirait en un HRESULT
-            // faux plutôt qu'en un HRESULT vague.
+            // Everything else is `interne`: inventing a more precise code
+            // would amount to guessing, and the agent would translate it into a wrong
+            // HRESULT rather than a vague one.
             return new EchecFichiers('interne', texte);
     }
 }
 
-/** Un échec d'absence est-il rattrapable en essayant l'autre nature ? */
+/** Can an absence failure be recovered by trying the other kind? */
 function estAbsence(e: unknown): boolean {
     return e instanceof DOMException && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
 }
@@ -193,14 +193,14 @@ export interface Adaptateur {
 
 export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateur {
     /**
-     * Descend les `jusqua` premiers composants, tous des répertoires, **en les
-     * CANONICALISANT**.
+     * Walks down the first `jusqua` components, all directories, **while
+     * CANONICALISING them**.
      */
     async function descendre(parts: string[], jusqua: number): Promise<PoigneeRepertoire> {
         let ici = racine;
         for (let i = 0; i < jusqua; i += 1) {
-            // Un composant INTERMÉDIAIRE : le chemin lui-même est en cause, et
-            // ProjFS distingue les deux (`ERROR_PATH_NOT_FOUND` contre
+            // An INTERMEDIATE component: the path itself is at fault, and
+            // ProjFS distinguishes the two (`ERROR_PATH_NOT_FOUND` versus
             // `ERROR_FILE_NOT_FOUND`).
             const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
             try {
@@ -214,8 +214,8 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
 
     async function metaDuFichier(nom: string, f: PoigneeFichier): Promise<EnteteMeta> {
         const fichier = await f.getFile();
-        // 🔴 **`nom` EST LE NOM STOCKÉ**, celui que le canonicaliseur a rendu —
-        // et c'est lui que `PrjWritePlaceholderInfo` recevra.
+        // 🔴 **`nom` IS THE STORED NAME**, the one the canonicaliser returned —
+        // and it is the one `PrjWritePlaceholderInfo` will receive.
         return { nom, repertoire: false, taille: fichier.size, modifie: fichier.lastModified };
     }
 
@@ -237,26 +237,26 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
             try {
                 for await (const enfant of dossier.values()) {
                     if (enfant.kind === 'directory') {
-                        // ⚠️ La FSA n'expose NI taille NI horodatage d'un
-                        // répertoire. Zéro est ce que ProjFS attend d'un
-                        // répertoire pour la taille ; l'horodatage nul est une
-                        // perte assumée, et le dire évite qu'on la cherche.
+                        // ⚠️ The FSA exposes NEITHER size NOR timestamp of a
+                        // directory. Zero is what ProjFS expects of a
+                        // directory for the size; the null timestamp is an
+                        // accepted loss, and saying so avoids anyone looking for it.
                         entrees.push({ nom: enfant.name, repertoire: true, taille: 0, modifie: 0 });
                     } else {
-                        // ⚠️ COÛT ASSUMÉ : un `getFile()` par entrée. La FSA
-                        // n'offre aucun moyen d'obtenir taille et date sans
-                        // ouvrir le fichier, et ProjFS exige les deux dans son
-                        // énumération. Un répertoire à mille entrées coûte
-                        // mille ouvertures. ✅ **MESURÉ PAR F4** : un listage
-                        // de 1 000 entrées coûte **~6,0 s** de bout en bout
-                        // (deux exécutions), dont ~3,0 s par traversée et
-                        // DEUX traversées par `Get-ChildItem`. Ces mille
-                        // `getFile()` sont DEDANS et ne sont pas isolés :
-                        // F4 mesure la traversée, jamais ce qui la compose.
-                        // Narrowing explicite : `kind` vaut `'file'`, donc la
-                        // poignée EST une `PoigneeFichier`. Voir la note de
-                        // `PoigneeBase` — c'est la bibliothèque DOM qui
-                        // sous-type `values()`, pas l'API.
+                        // ⚠️ ACCEPTED COST: one `getFile()` per entry. The FSA
+                        // offers no way to obtain size and date without
+                        // opening the file, and ProjFS requires both in its
+                        // enumeration. A directory of a thousand entries costs
+                        // a thousand openings. ✅ **MEASURED BY F4**: a listing
+                        // of 1,000 entries costs **~6.0 s** end to end
+                        // (two runs), of which ~3.0 s per traversal and
+                        // TWO traversals per `Get-ChildItem`. These thousand
+                        // `getFile()` are INSIDE and are not isolated:
+                        // F4 measures the traversal, never what composes it.
+                        // Explicit narrowing: `kind` is `'file'`, so the
+                        // handle IS a `PoigneeFichier`. See the note on
+                        // `PoigneeBase` — it is the DOM library that
+                        // subtypes `values()`, not the API.
                         const f = await (enfant as PoigneeFichier).getFile();
                         entrees.push({
                             nom: enfant.name,
@@ -276,25 +276,25 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
             const parts = composants(chemin);
             await injecterFaute(parts, fautesArmees);
             if (parts.length === 0) {
-                // ⚠️ La RACINE n'a pas de nom : `nom` vaut la chaîne vide, et
-                // `PrjWritePlaceholderInfo` n'est de toute façon jamais appelée
-                // pour elle.
+                // ⚠️ The ROOT has no name: `nom` is the empty string, and
+                // `PrjWritePlaceholderInfo` is never called
+                // for it anyway.
                 return { nom: '', repertoire: true, taille: 0, modifie: 0 };
             }
             const parent = await descendre(parts, parts.length - 1);
-            // 🔴 **LA RÉSOLUTION EST FAITE UNE FOIS, ICI**, et le nom obtenu
-            // sert aux DEUX tentatives — répertoire puis fichier. La refaire
-            // deux fois coûterait deux énumérations du parent pour la même
+            // 🔴 **RESOLUTION IS DONE ONCE, HERE**, and the name obtained
+            // serves BOTH attempts — directory then file. Redoing it
+            // twice would cost two enumerations of the parent for the same
             // question.
             const dernier = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
             try {
                 await parent.getDirectoryHandle(dernier);
                 return { nom: dernier, repertoire: true, taille: 0, modifie: 0 };
             } catch (e) {
-                // On ne retente EN FICHIER que si l'échec est une absence. Un
-                // refus de permission retenté serait masqué en « introuvable »,
-                // et l'utilisateur chercherait un fichier au lieu de rendre
-                // l'accès.
+                // We retry AS A FILE only if the failure is an absence. A
+                // retried permission refusal would be masked as "not found",
+                // and the user would look for a file instead of granting
+                // access back.
                 if (!estAbsence(e)) throw classer(e, 'introuvable');
             }
             try {
@@ -307,9 +307,9 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
         async lire(chemin, position, longueur) {
             await injecterFaute(composants(chemin), fautesArmees);
             if (longueur > TAILLE_TRAME_MAX) {
-                // Le pair ne se voit pas accorder de confiance sur la taille
-                // qu'il demande : `pont::decoupe` borne déjà côté agent, mais
-                // c'est l'agent qui le fait, donc l'autre bout du fil.
+                // The peer is granted no trust on the size
+                // it requests: `pont::decoupe` already bounds on the agent side, but
+                // it is the agent doing it, hence the other end of the wire.
                 throw new EchecFichiers(
                     'trop-grand',
                     `${longueur} octets demandés, maximum ${TAILLE_TRAME_MAX}`,
@@ -327,10 +327,10 @@ export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateu
             } catch (e) {
                 throw classer(e, 'introuvable');
             }
-            // 🔴 `slice` PUIS `arrayBuffer`, JAMAIS L'INVERSE. Lire le fichier
-            // entier pour en rendre 4 Ko est le défaut relevé de l'ancien pont
-            // (`web/index.js:562-564`) : sur un fichier d'un gigaoctet, chaque
-            // lecture de ProjFS le matérialiserait en mémoire.
+            // 🔴 `slice` THEN `arrayBuffer`, NEVER THE REVERSE. Reading the whole
+            // file to return 4 KB of it is the defect found in the old bridge
+            // (`web/index.js:562-564`): on a one-gigabyte file, each
+            // ProjFS read would materialise it in memory.
             const debut = Math.min(position, fichier.size);
             const fin = Math.min(position + longueur, fichier.size);
             try {

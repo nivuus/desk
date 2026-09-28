@@ -1,24 +1,24 @@
-// Le canal de données du pont fichiers : une `RTCPeerConnection` DÉDIÉE, SANS
-// MÉDIA, portant un unique data channel `fichiers`.
+// The file bridge's data channel: a DEDICATED `RTCPeerConnection`, WITHOUT
+// MEDIA, carrying a single data channel `fichiers`.
 //
-// 🔴 POURQUOI UNE CONNEXION À PART (décision D4 du plan de F1). Le cadrage
-// promet qu'« une panne du canal fichiers ne touche jamais le flux vidéo ».
-// Partager la `PeerConnection` d'une fenêtre ferait qu'une reconnexion de l'une
-// emporterait l'autre, et lierait le pont — qui est un service de la SHELL, pas
-// d'une fenêtre — au cycle de vie d'une fenêtre d'application quelconque. Or
-// aucune fenêtre n'est spéciale, et c'est l'invariant que la page-shell existe
-// pour tenir.
+// 🔴 WHY A SEPARATE CONNECTION (decision D4 of F1's plan). The framing
+// promises that "a failure of the file channel never touches the video stream".
+// Sharing a window's `PeerConnection` would make a reconnection of one
+// take the other with it, and would tie the bridge — which is a service of the SHELL, not
+// of a window — to the lifecycle of some application window. Yet
+// no window is special, and that is the invariant the shell page exists
+// to hold.
 //
-// ⚠️ `connectSession` N'EST PAS RÉUTILISABLE, et ce n'est pas un oubli.
-// `SessionOptions` exige un `video: HTMLVideoElement`, et `connectSession`
-// ajoute INCONDITIONNELLEMENT trois transceivers (`video` recvonly, `audio`
-// recvonly, `audio` sendonly pour le micro) puis les canaux `input` et
-// `control`. Le plan interdit de la refactorer pour rendre la vidéo
-// optionnelle : le coût serait une régression possible sur le chemin critique
-// de TOUTES les fenêtres, contre une trentaine de lignes dupliquées ici. Ce qui
-// est réemployé SANS ÊTRE COPIÉ : `waitForAnswer`, `waitForIceGathering` et
-// `attendreConfigIce`, les trois exportées de `webrtc.ts` (les deux dernières
-// l'ont été PAR ce sous-bloc, modification déclarée dans leur documentation).
+// ⚠️ `connectSession` IS NOT REUSABLE, and it is not an oversight.
+// `SessionOptions` requires a `video: HTMLVideoElement`, and `connectSession`
+// UNCONDITIONALLY adds three transceivers (`video` recvonly, `audio`
+// recvonly, `audio` sendonly for the mic) then the `input` and
+// `control` channels. The plan forbids refactoring it to make video
+// optional: the cost would be a possible regression on the critical path
+// of ALL windows, against thirty or so lines duplicated here. What
+// is reused WITHOUT BEING COPIED: `waitForAnswer`, `waitForIceGathering` and
+// `attendreConfigIce`, the three exported from `webrtc.ts` (the last two
+// were exported BY this sub-block, a change declared in their documentation).
 
 import {
     attendreConfigIce,
@@ -34,36 +34,36 @@ import { TYPE_ECHEC, decoder, encoderTexte } from '../../../proto/ts/fichiers';
 import { encodeEchec } from '../../../proto/ts/fichiers-entetes';
 
 /**
- * Nom réservé de la session de signaling du pont fichiers.
+ * Reserved name of the file bridge's signaling session.
  *
- * ⚠️ MIROIR de `NOM_SESSION_DU_PONT` (`agent/src/superviseur/protocole.rs`) :
- * les deux bouts composent le MÊME identifiant, et une divergence ne se verrait
- * qu'en session réelle. C'est exactement le régime de `SEPARATEUR`
- * (`client/src/prefixe.ts`) et du nom de la session de contrôle — `'bureau'`,
- * composé par `client/src/bureau/porteur-dom.ts` (`NOM_SESSION_DE_CONTROLE`
- * dans `shell-page.ts` avant que la tâche 9 ne l'inline, 31 août 2026) —, et
- * la même dette : ce dépôt n'a pas de source unique pour les noms de session,
- * seulement des miroirs commentés.
+ * ⚠️ MIRROR of `NOM_SESSION_DU_PONT` (`agent/src/superviseur/protocole.rs`):
+ * both ends compose the SAME identifier, and a divergence would only show
+ * in a real session. It is exactly the regime of `SEPARATEUR`
+ * (`client/src/prefixe.ts`) and of the control session's name — `'bureau'`,
+ * composed by `client/src/bureau/porteur-dom.ts` (`NOM_SESSION_DE_CONTROLE`
+ * in `shell-page.ts` before task 9 inlined it, August 31st, 2026) —, and
+ * the same debt: this repository has no single source for session names,
+ * only commented mirrors.
  *
- * ⚠️ CE N'EST PAS UN IDENTIFIANT À LUI SEUL : il se compose avec le préfixe de
- * la VM (sous-bloc P3), sans quoi deux VMs se disputeraient la même session sur
- * la plateforme et la seconde serait refusée.
+ * ⚠️ IT IS NOT AN IDENTIFIER ON ITS OWN: it is composed with the VM's
+ * prefix (sub-block P3), otherwise two VMs would fight over the same session on
+ * the platform and the second would be refused.
  */
 export const NOM_SESSION_DU_PONT = 'fichiers';
 
 export interface OptionsCanal {
     signalingUrl: string;
-    /// L'identifiant COMPLET, préfixe compris. `sessionDuPont()` le compose.
+    /// The FULL identifier, prefix included. `sessionDuPont()` composes it.
     sessionId: string;
-    /// 🔴 **REÇU, JAMAIS LU DANS LE COFFRE — CORRECTION DE LA REVUE FINALE DU
-    /// 31 AOÛT 2026 (critique ①).** Ce module appelait `jetonAcces()`,
-    /// c'est-à-dire le contenu **BRUT** de `localStorage`, sans passer par
-    /// `jeton.ts::assurerAccesFrais`. Un jeton d'accès vit **dix minutes**
-    /// (`plateforme/src/identite/jeton.ts`) et « Choisir mon dossier » est un
-    /// geste qui peut arriver n'importe quand : le pont présentait donc un
-    /// jeton expiré, et se voyait refuser sa session sans que rien ne relie
-    /// l'échec à l'expiration. **L'appelant redemande un jeton frais et le
-    /// passe ici** (`bureau/fichiers-dom.ts`).
+    /// 🔴 **RECEIVED, NEVER READ FROM THE VAULT — FIX FROM THE FINAL REVIEW OF
+    /// AUGUST 31ST, 2026 (critical ①).** This module called `jetonAcces()`,
+    /// that is, the **RAW** content of `localStorage`, without going through
+    /// `jeton.ts::assurerAccesFrais`. An access token lives **ten minutes**
+    /// (`plateforme/src/identite/jeton.ts`) and "Choose my folder" is a
+    /// gesture that can come at any time: the bridge thus presented an
+    /// expired token, and was refused its session without anything linking
+    /// the failure to the expiry. **The caller asks for a fresh token again and
+    /// passes it here** (`bureau/fichiers-dom.ts`).
     jeton: string;
     onStatus?: (message: string) => void;
     /// Appelé pour chaque trame reçue. Rend la trame à réémettre, ou `null`.

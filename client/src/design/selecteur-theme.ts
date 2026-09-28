@@ -123,10 +123,10 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
     // `storage` mechanism (spec §4.2). The shell page opens N session
     // windows on the same origin; all receive this event.
     //
-    // ⚠️ `marquer()` LIT le coffre, il ne l'écrit pas. Écrire ici renverrait un
-    // `storage` aux fenêtres voisines, qui le renverraient à leur tour, sans
-    // terme — `selecteur-theme.test.ts` garde cette propriété par un test qui
-    // PEUT tomber, la fermeture détenant bien le coffre.
+    // ⚠️ `marquer()` READS the vault, it does not write it. Writing here would send a
+    // `storage` back to the neighbouring windows, which would send it back in turn, without
+    // end — `selecteur-theme.test.ts` guards this property with a test that
+    // CAN fail, the closure indeed holding the vault.
     source.addEventListener('storage', (evenement) => {
         if (evenement.key !== CLE_THEME) return;
         surStockageModifie(racine, evenement.key, evenement.newValue);
@@ -150,35 +150,35 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
 }
 
 /**
- * LA COUTURE VERS LE VRAI DOM — la seule fonction de ce module qui touche
- * `document`, `window` et `localStorage`, et donc la seule qui ne soit pas
- * testable sans navigateur. Elle ne porte AUCUNE règle : elle ne fait que
- * fournir les objets réels à la fonction ci-dessus. Même partage que
- * `armerPleinEcran` / `armerPleinEcranAuDOM` dans `client/src/fullscreen.ts`.
+ * THE SEAM TO THE REAL DOM — the only function of this module that touches
+ * `document`, `window` and `localStorage`, and hence the only one that is not
+ * testable without a browser. It carries NO rule: it only
+ * provides the real objects to the function above. Same split as
+ * `armerPleinEcran` / `armerPleinEcranAuDOM` in `client/src/fullscreen.ts`.
  *
- * ⚠️ LES DEUX CLASSES SONT ÉCRITES EN LITTÉRAL, un `classList.add` par classe.
- * Le contrôle §7.9 ne voit que les littéraux ; une classe composée
- * (`` `bouton--${variante}` ``) lui serait invisible, et la convention §6.4 du
- * plan S3 est ce qui rend ce contrôle utile.
+ * ⚠️ THE TWO CLASSES ARE WRITTEN AS LITERALS, one `classList.add` per class.
+ * Check §7.9 only sees literals; a composed class
+ * (`` `bouton--${variante}` ``) would be invisible to it, and convention §6.4 of
+ * plan S3 is what makes this check useful.
  *
- * ⚠️ LES BOUTONS N'ONT PAS DE LIBELLÉ ACCESSIBLE AUTRE QUE LEUR TEXTE
- * (`systeme`, `clair`, `sombre`) et leur `aria-pressed`. Aucune primitive ne
- * porte de rôle ARIA — les primitives sont du CSS, la sémantique reste au
- * balisage —, et un groupe `role="group"` avec son libellé appartiendrait au
- * balisage de chaque page. Déclaré plutôt que supposé fait.
+ * ⚠️ THE BUTTONS HAVE NO ACCESSIBLE LABEL OTHER THAN THEIR TEXT
+ * (`systeme`, `clair`, `sombre`) and their `aria-pressed`. No primitive
+ * carries an ARIA role — primitives are CSS, semantics stay in the
+ * markup —, and a `role="group"` with its label would belong to the
+ * markup of each page. Declared rather than assumed done.
  */
 export function installerSelecteurDeThemeAuDOM(
     hote: HTMLElement,
     apres: () => void = () => {},
 ): void {
     installerSelecteurDeTheme({
-        // ⚠️ L'HÔTE EST ADAPTÉ PLUTÔT QUE `HTMLElement` N'ÉLARGISSE LE
-        // CONTRAT. `HTMLElement.append` accepte `(...nodes: (string|Node)[])`,
-        // que `HoteDeSelecteur.append(bouton: BoutonDeTheme)` ne satisfait
-        // pas — et c'est TypeScript qui l'a dit, pas une supposition. Élargir
-        // `BoutonDeTheme` jusqu'à `Node` pour faire taire l'erreur aurait rendu
-        // le double de test impossible à écrire sans jsdom, c'est-à-dire aurait
-        // rendu ce module intestable pour satisfaire le compilateur.
+        // ⚠️ THE HOST IS ADAPTED RATHER THAN `HTMLElement` WIDENING THE
+        // CONTRACT. `HTMLElement.append` accepts `(...nodes: (string|Node)[])`,
+        // which `HoteDeSelecteur.append(bouton: BoutonDeTheme)` does not
+        // satisfy — and it is TypeScript that said so, not an assumption. Widening
+        // `BoutonDeTheme` up to `Node` to silence the error would have made
+        // the test double impossible to write without jsdom, that is, would have
+        // made this module untestable to satisfy the compiler.
         hote: { append: (bouton) => hote.append(bouton as unknown as HTMLElement) },
         racine: document.documentElement,
         coffre: localStorage,
