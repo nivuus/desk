@@ -7,18 +7,18 @@ use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 use crate::transport::Session;
 
-/// Trace ORDONNÉE partagée entre la source factice et le rappel d'entrée :
-/// c'est elle qui rend l'ordre de D6 observable, et pas seulement ses deux
-/// effets pris séparément.
+/// ORDERED trace shared between the fake source and the input callback:
+/// it is what makes D6's order observable, and not only its two
+/// effects taken separately.
 type Trace = Arc<Mutex<Vec<String>>>;
 
-/// Source factice qui enregistre chaque écriture de presse-papier et rend la
-/// réponse préparée.
+/// Fake source that records each clipboard write and returns the
+/// prepared answer.
 ///
-/// ⚠️ **Elle REDÉFINIT `ecrire_le_presse_papier`, et c'est voulu ici** : ce
-/// fichier éprouve l'usage que `collage` fait de la méthode, pas son défaut.
-/// Le défaut du trait — qui doit rendre `Err` et non `Ok(())`, précisément
-/// pour que le piège de D10 ne se rejoue pas — est éprouvé à part, dans
+/// ⚠️ **It OVERRIDES `ecrire_le_presse_papier`, and that is intended here**: this
+/// file exercises the use `collage` makes of the method, not its default.
+/// The trait's default — which must return `Err` and not `Ok(())`, precisely
+/// so that D10's trap does not replay — is exercised separately, in
 /// `capteur/distante/tests_etats.rs`.
 struct SourceQuiEcrit {
     inner: crate::source::FileSource,
@@ -64,8 +64,8 @@ fn session_qui_ecrit(accepte: bool) -> (Session, Trace) {
     (session, trace)
 }
 
-/// Vide le drapeau par le chemin du produit, en enregistrant les touches dans
-/// la MÊME trace que les écritures.
+/// Empties the flag through the product's path, recording the keys in
+/// the SAME trace as the writes.
 fn injecter(session: &mut Session, trace: &Trace) {
     let t = trace.clone();
     let mut on_input = move |message: InputMessage| {
@@ -74,12 +74,12 @@ fn injecter(session: &mut Session, trace: &Trace) {
     session.injecter_le_collage(&mut on_input);
 }
 
-/// 🔴 **L'ORDRE DE D6, OBSERVÉ SUR UNE SEULE TRACE.** L'écriture précède les
-/// quatre touches — et le presse-papier reçoit le texte **DÉNORMALISÉ**,
-/// puisque c'est Windows qui le lira.
+/// 🔴 **D6's ORDER, OBSERVED ON A SINGLE TRACE.** The write precedes the
+/// four keys — and the clipboard receives the **DENORMALISED** text,
+/// since it is Windows that will read it.
 ///
-/// ROUGE si l'injection précédait l'écriture, ou si le texte partait sans
-/// dénormalisation.
+/// RED if injection preceded the write, or if the text went out without
+/// denormalisation.
 #[test]
 fn l_ecriture_precede_l_injection_et_le_texte_part_denormalise() {
     let (mut session, trace) = session_qui_ecrit(true);
@@ -98,11 +98,11 @@ fn l_ecriture_precede_l_injection_et_le_texte_part_denormalise() {
     );
 }
 
-/// 🔴 **EXACTEMENT QUATRE TOUCHES, DANS L'ORDRE Ctrl↓ V↓ V↑ Ctrl↑.**
+/// 🔴 **EXACTLY FOUR KEYS, IN THE ORDER Ctrl↓ V↓ V↑ Ctrl↑.**
 ///
-/// ROUGE si l'on omet le `Ctrl`↑ : l'application resterait avec un
-/// modificateur ENFONCÉ, et **toute frappe suivante deviendrait un
-/// raccourci**. C'est le défaut le plus insidieux de ce chemin.
+/// RED if the `Ctrl`↑ is omitted: the application would stay with a
+/// modifier PRESSED, and **every following keystroke would become a
+/// shortcut**. It is the most insidious defect of this path.
 #[test]
 fn un_collage_injecte_exactement_les_quatre_touches_dans_l_ordre() {
     let (mut session, trace) = session_qui_ecrit(true);
@@ -150,15 +150,15 @@ fn un_collage_injecte_exactement_les_quatre_touches_dans_l_ordre() {
     );
 }
 
-/// 🔴 **UNE ÉCRITURE QUI ÉCHOUE N'ARME PAS L'INJECTION, ET C'EST LE TEST DE
-/// L'ORDRE.** Le drapeau n'est posé que dans le bras `Ok` : une mutation qui
-/// l'armerait inconditionnellement — ou AVANT le `match` — fait rougir ce
-/// test-ci et lui seul.
+/// 🔴 **A FAILING WRITE DOES NOT ARM THE INJECTION, AND IT IS THE TEST OF
+/// THE ORDER.** The flag is only set in the `Ok` arm: a mutation that
+/// armed it unconditionally — or BEFORE the `match` — turns this
+/// test red and this one alone.
 ///
-/// Sans lui, `Ctrl+V` partirait sur un presse-papier inchangé et collerait le
-/// contenu **PRÉCÉDENT** : le mode de défaillance silencieux que D6 existe
-/// entièrement pour éviter, et le seul qui donne à l'utilisateur un résultat
-/// FAUX plutôt qu'absent.
+/// Without it, `Ctrl+V` would go out on an unchanged clipboard and paste the
+/// **PREVIOUS** content: the silent failure mode D6 exists
+/// entirely to avoid, and the only one that gives the user a WRONG result
+/// rather than a missing one.
 #[test]
 fn une_ecriture_refusee_n_injecte_aucune_touche() {
     let (mut session, trace) = session_qui_ecrit(false);
@@ -177,10 +177,10 @@ fn une_ecriture_refusee_n_injecte_aucune_touche() {
     );
 }
 
-/// Le drapeau se **consomme** : un second tour de boucle n'injecte rien.
+/// The flag is **consumed**: a second loop round injects nothing.
 ///
-/// ROUGE si le booléen n'était jamais remis à faux — `Ctrl+V` partirait à
-/// chaque tour, c'est-à-dire à la cadence vidéo.
+/// RED if the boolean were never reset to false — `Ctrl+V` would go out at
+/// every round, that is, at the video cadence.
 #[test]
 fn le_drapeau_se_consomme() {
     let (mut session, trace) = session_qui_ecrit(true);
@@ -195,9 +195,9 @@ fn le_drapeau_se_consomme() {
     );
 }
 
-/// Sans collage, aucun tour de boucle n'injecte quoi que ce soit.
+/// Without a paste, no loop round injects anything at all.
 ///
-/// ROUGE si `injecter_le_collage` frappait sans regarder le drapeau.
+/// RED if `injecter_le_collage` typed without looking at the flag.
 #[test]
 fn sans_collage_aucune_touche_n_est_injectee() {
     let (mut session, trace) = session_qui_ecrit(true);
@@ -205,11 +205,11 @@ fn sans_collage_aucune_touche_n_est_injectee() {
     assert!(trace.lock().unwrap().is_empty());
 }
 
-/// 🔴 **AU-DESSUS DE LA BORNE : RIEN N'EST ÉCRIT, ET RIEN N'EST INJECTÉ.**
+/// 🔴 **ABOVE THE BOUND: NOTHING IS WRITTEN, AND NOTHING IS INJECTED.**
 ///
-/// ROUGE si la borne n'était pas appliquée sur ce chemin : 64 Kio + 1 partirait
-/// vers le tube capteur↔enfant, et la VM collerait un texte que le client avait
-/// pourtant refusé d'émettre.
+/// RED if the bound were not applied on this path: 64 KiB + 1 would go out
+/// to the sensor↔child pipe, and the VM would paste a text the client had
+/// nevertheless refused to send.
 #[test]
 fn un_texte_au_dessus_de_la_borne_n_est_ni_ecrit_ni_injecte() {
     let (mut session, trace) = session_qui_ecrit(true);
@@ -224,15 +224,15 @@ fn un_texte_au_dessus_de_la_borne_n_est_ni_ecrit_ni_injecte() {
     assert!(trace.lock().unwrap().is_empty(), "aucune touche non plus");
 }
 
-/// 🔴 **LA BORNE PORTE SUR LE TEXTE NORMALISÉ, JAMAIS SUR LE DÉNORMALISÉ**, et
-/// ce test le mesure là où l'ordre des trois opérations pourrait sembler
-/// indifférent.
+/// 🔴 **THE BOUND APPLIES TO THE NORMALISED TEXT, NEVER TO THE DENORMALISED ONE**, and
+/// this test measures it where the order of the three operations might seem
+/// indifferent.
 ///
-/// Un texte de `PRESSE_PAPIER_MAX` octets fait entièrement de sauts de ligne
-/// DOUBLE de taille à la dénormalisation. Borner après elle le refuserait —
-/// alors que c'est exactement ce que la VM aurait pu émettre dans l'autre
-/// sens, où la borne porte aussi sur la forme normalisée (D-P1-2). Un
-/// aller-retour deviendrait impossible.
+/// A text of `PRESSE_PAPIER_MAX` bytes made entirely of line breaks
+/// DOUBLES in size at denormalisation. Bounding after it would refuse it —
+/// whereas it is exactly what the VM could have sent in the other
+/// direction, where the bound also applies to the normalised form (D-P1-2). A
+/// round trip would become impossible.
 ///
 /// ROUGE si l'ordre est `denormaliser` puis `borner_entrant`.
 #[test]

@@ -1,13 +1,13 @@
-//! Les tests d'`evenements.rs`, sortis dans leur propre fichier au titre de
-//! la règle des 500 lignes : le module a franchi le plafond en gagnant le
-//! filet de non-régression des DEUX m-lines audio (chantier E, bloc E1,
-//! tâche 7), et la doctrine du dépôt impose d'EXTRAIRE, jamais de compresser
-//! un commentaire pour repasser sous la ligne.
+//! The tests of `evenements.rs`, moved into their own file under
+//! the 500-line rule: the module crossed the ceiling by gaining the
+//! non-regression net for the TWO audio m-lines (workstream E, block E1,
+//! task 7), and the repository's doctrine requires EXTRACTING, never compressing
+//! a comment to get back under the line.
 //!
-//! Déclaré chez le parent par `#[path]` — l'usage explicitement HORS de la
-//! « Convention de module enfant » de `CLAUDE.md`, qui ne vise que les modules
-//! qu'on sort d'un parent `#[cfg(windows)]` pour les compiler sur l'hôte. Ici
-//! le seul motif est la taille, et le précédent est `superviseur/table.rs`.
+//! Declared at the parent through `#[path]` — the use explicitly OUTSIDE
+//! `CLAUDE.md`'s "Child module convention", which only targets modules
+//! moved out of a `#[cfg(windows)]` parent to compile them on the host. Here
+//! the only reason is size, and the precedent is `superviseur/table.rs`.
 
 use std::time::Duration;
 
@@ -20,33 +20,33 @@ use crate::source::VideoSource;
 use crate::transport::fixtures;
 use str0m::media::{Direction, MediaKind, Mid};
 
-/// Les tests de `memoriser_controle`, extraits AVANT que ce fichier ne
-/// franchisse 500 (sous-bloc P2) — voir leur commentaire de tête.
+/// The tests of `memoriser_controle`, extracted BEFORE this file
+/// crossed 500 (sub-block P2) — see their header comment.
 ///
-/// ⚠️ **Le `#[path]` est OBLIGATOIRE ici, et ce n'est pas un choix de style** :
-/// ce module-ci est lui-même déclaré par `#[path]` depuis `evenements.rs`, et
-/// rustc résout alors ses enfants dans le répertoire du fichier PARENT
-/// (`evenements/`), pas dans un répertoire portant son nom. Un `mod
-/// memorisation;` nu chercherait `evenements/memorisation.rs`. C'est ce qui
-/// distingue ce cas de `tick/tests.rs`, dont le parent emploie un `mod`
-/// ordinaire et dont les enfants tombent donc bien dans `tick/tests/`.
+/// ⚠️ **The `#[path]` is MANDATORY here, and it is not a style choice**:
+/// this module is itself declared through `#[path]` from `evenements.rs`, and
+/// rustc then resolves its children in the PARENT file's directory
+/// (`evenements/`), not in a directory bearing its name. A bare `mod
+/// memorisation;` would look for `evenements/memorisation.rs`. That is what
+/// distinguishes this case from `tick/tests.rs`, whose parent uses an ordinary
+/// `mod` and whose children therefore do land in `tick/tests/`.
 #[path = "tests/memorisation.rs"]
 mod memorisation;
 
-/// Preuve d'intégration que `Event::KeyframeRequest` (émis par str0m
-/// quand le pair envoie un PLI/FIR RTCP — ce que fait un navigateur après
-/// une perte de paquet détectée par son décodeur) est bien relayé jusqu'à
-/// `VideoSource::request_keyframe`, sans passer par un mock du trait
-/// `Event` : le pair local ici est un vrai second `Rtc` str0m, comme dans
+/// Integration proof that `Event::KeyframeRequest` (emitted by str0m
+/// when the peer sends an RTCP PLI/FIR — which a browser does after
+/// a packet loss detected by its decoder) is indeed relayed down to
+/// `VideoSource::request_keyframe`, without going through a mock of the
+/// `Event` trait: the local peer here is a real second str0m `Rtc`, as in
 /// `atteint_la_cadence_video_visee_avec_un_pair_local`.
 ///
-/// N'exerce PAS le chemin `WindowsSource`/`H264Encoder::request_keyframe`
-/// réel (`#![cfg(windows)]`, indisponible sur la machine de compilation
-/// Linux) : seul le relais `handle_event` → `Session::source` est prouvé
-/// ici. Le câblage `WindowsSource::request_keyframe` →
-/// `H264Encoder::request_keyframe` (`SetValue` sur
-/// `CODECAPI_AVEncVideoForceKeyFrame`) reste vérifié par lecture et par
-/// la compilation croisée Windows, pas par un test automatisé.
+/// Does NOT exercise the real `WindowsSource`/`H264Encoder::request_keyframe`
+/// path (`#![cfg(windows)]`, unavailable on the Linux build
+/// machine): only the `handle_event` → `Session::source` relay is proven
+/// here. The `WindowsSource::request_keyframe` →
+/// `H264Encoder::request_keyframe` wiring (`SetValue` on
+/// `CODECAPI_AVEncVideoForceKeyFrame`) stays checked by reading and by
+/// Windows cross-compilation, not by an automated test.
 #[test]
 fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
     use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
@@ -55,11 +55,11 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
     use str0m::change::SdpAnswer;
     use str0m::media::{Direction, KeyframeRequestKind, MediaKind};
 
-    /// Enveloppe `FileSource` en comptant les appels à
-    /// `request_keyframe`, seule façon d'observer depuis ce test que le
-    /// relais a bien eu lieu (le compteur est partagé via `Arc` avant que
-    /// la source ne soit déplacée dans `Session`, qui la possède ensuite
-    /// depuis le thread dédié de `Session::run`).
+    /// Wraps `FileSource` counting the calls to
+    /// `request_keyframe`, the only way to observe from this test that the
+    /// relay did happen (the counter is shared through `Arc` before
+    /// the source is moved into `Session`, which then owns it
+    /// from `Session::run`'s dedicated thread).
     struct CountingSource {
         inner: crate::source::FileSource,
         keyframe_requests: Arc<AtomicUsize>,
@@ -90,10 +90,10 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
     let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, false);
 
     let mut api = peer_rtc.sdp_api();
-    // Recvonly côté pair == la piste vidéo que le navigateur reçoit
-    // réellement de l'agent ; c'est sur ce `mid` que `writer(...)` émettra
-    // le PLI plus bas (str0m nomme cet accès « writer » indépendamment du
-    // sens du média — c'est l'API par laquelle la rétroaction RTCP sort).
+    // Recvonly on the peer side == the video track the browser actually receives
+    // from the agent; it is on this `mid` that `writer(...)` will emit
+    // the PLI below (str0m names this access "writer" regardless of the
+    // media's direction — it is the API through which RTCP feedback goes out).
     let video_mid = api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
     api.add_channel("control".to_string());
     api.add_channel("input".to_string());
@@ -145,13 +145,13 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
             Output::Event(Event::Connected) => {
                 if !keyframe_requested_at_peer {
                     keyframe_requested_at_peer = true;
-                    // Exactement ce que fait un navigateur après une
-                    // perte de paquet détectée par son décodeur : demander
-                    // une image clé via un PLI RTCP. `fb_pli` est vrai par
-                    // défaut pour un codec vidéo dans str0m (voir
-                    // `format::payload_params::PayloadParams::new`), donc
-                    // cette négociation n'a rien de spécial à activer côté
-                    // offre/réponse SDP.
+                    // Exactly what a browser does after a
+                    // packet loss detected by its decoder: request
+                    // a keyframe through an RTCP PLI. `fb_pli` is true by
+                    // default for a video codec in str0m (see
+                    // `format::payload_params::PayloadParams::new`), so
+                    // this negotiation has nothing special to enable on the
+                    // SDP offer/answer side.
                     let mut writer = peer_rtc.writer(video_mid).expect("writer vidéo");
                     writer
                         .request_keyframe(None, KeyframeRequestKind::Pli)
@@ -168,13 +168,13 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
     );
 }
 
-/// Construit une session nue et lui remet des `MediaAdded` synthétiques.
+/// Builds a bare session and hands it synthetic `MediaAdded` events.
 ///
-/// `MediaAdded` porte des champs tous publics (`str0m::media::MediaAdded`),
-/// ce qui permet d'exercer la discrimination directement, sans négociation
-/// SDP complète. Le fait que str0m rende bien la direction LOCALE, lui, est
-/// établi par la MESURE : la sonde 1 (`transport::sonde_montante`) voit le
-/// récepteur annoncer `RecvOnly` pour une piste offerte en `SendOnly`.
+/// `MediaAdded` carries fields that are all public (`str0m::media::MediaAdded`),
+/// which lets us exercise the discrimination directly, without a full SDP
+/// negotiation. The fact that str0m indeed returns the LOCAL direction is
+/// established by MEASUREMENT: probe 1 (`transport::sonde_montante`) sees the
+/// receiver announce `RecvOnly` for a track offered as `SendOnly`.
 fn session_avec_pistes(pistes: &[(MediaKind, Direction)]) -> Session {
     let source = Box::new(fixtures::video_test_source());
     let mut session =
@@ -195,14 +195,14 @@ fn session_avec_pistes(pistes: &[(MediaKind, Direction)]) -> Session {
     session
 }
 
-/// `evenements.rs` posait `audio_mid` pour TOUTE piste audio, quelle que
-/// soit sa direction. Avec deux m-lines audio — celle du chantier A
-/// (agent → navigateur) et celle du micro (navigateur → agent) —, la
-/// seconde ÉCRASAIT la première, et le son descendant partait sur une
-/// piste `recvonly`, c'est-à-dire nulle part. **MUET, sans un `WARN`.**
+/// `evenements.rs` set `audio_mid` for ANY audio track, whatever
+/// its direction. With two audio m-lines — workstream A's
+/// (agent → browser) and the microphone's (browser → agent) —, the
+/// second OVERWROTE the first, and the downstream sound went out on a
+/// `recvonly` track, that is, nowhere. **SILENT, without a single `WARN`.**
 ///
-/// Ce test est un filet de non-régression sur un défaut qui existait DÉJÀ,
-/// et il a été vu rouge sur le code d'avant.
+/// This test is a non-regression net on a defect that ALREADY existed,
+/// and it was seen red on the code from before.
 #[test]
 fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
     let s = session_avec_pistes(&[
@@ -222,9 +222,9 @@ fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
     );
 }
 
-/// Le même fait pris dans l'ordre inverse : le micro négocié AVANT le son
-/// descendant. L'ordre des m-lines n'est pas sous notre contrôle — c'est
-/// le navigateur qui offre.
+/// The same fact taken in reverse order: the microphone negotiated BEFORE the
+/// downstream sound. The order of m-lines is not under our control — it is
+/// the browser that offers.
 #[test]
 fn une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro() {
     let s = session_avec_pistes(&[
@@ -235,9 +235,9 @@ fn une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro() {
     assert_eq!(s.mic_mid, Some("m0".into()));
 }
 
-/// `SendRecv` reste une piste d'ÉMISSION pour nous : c'est ce que
-/// négocierait un pair qui ne distingue pas les deux sens. La ranger du
-/// côté du micro couperait le son descendant.
+/// `SendRecv` stays an EMISSION track for us: it is what a peer
+/// that does not distinguish the two directions would negotiate. Filing it on
+/// the microphone side would cut the downstream sound.
 #[test]
 fn une_piste_audio_sendrecv_est_une_piste_de_sortie() {
     let s = session_avec_pistes(&[(MediaKind::Audio, Direction::SendRecv)]);
@@ -245,8 +245,8 @@ fn une_piste_audio_sendrecv_est_une_piste_de_sortie() {
     assert_eq!(s.mic_mid, None);
 }
 
-/// `Inactive` n'est NI l'une NI l'autre. Sans ce bras, une piste éteinte
-/// par le pair prendrait la place d'une piste vivante.
+/// `Inactive` is NEITHER one NOR the other. Without this arm, a track switched off
+/// by the peer would take the place of a live track.
 #[test]
 fn une_piste_audio_inactive_n_est_retenue_nulle_part() {
     let s = session_avec_pistes(&[
@@ -258,39 +258,39 @@ fn une_piste_audio_inactive_n_est_retenue_nulle_part() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-L'AIGUILLAGE DES CANAUX DE DONNÉES — sous-bloc F1, tâche 17.
+DATA CHANNEL ROUTING — sub-block F1, task 17.
 
-🔴 LE DÉFAUT CORRIGÉ, ET POURQUOI IL N'EST PAS LÉGUÉ. `dispatch_channel_data`
-aiguillait sur le SEUL drapeau `data.binary` : toute trame binaire, quel que
-soit son canal, partait dans `InputMessage::decode`. Le label était pourtant
-disponible dans `Event::ChannelOpen(id, label)` et simplement inutilisé —
-seul `"control"` y était reconnu, pour mémoriser son `ChannelId`.
+🔴 THE DEFECT FIXED, AND WHY IT IS NOT LEFT AS LEGACY. `dispatch_channel_data`
+routed on the `data.binary` flag ALONE: any binary frame, whatever
+its channel, went into `InputMessage::decode`. The label was nevertheless
+available in `Event::ChannelOpen(id, label)` and simply unused —
+only `"control"` was recognised there, to store its `ChannelId`.
 
-La `PeerConnection` dédiée du pont fichiers (décision D4) rend ce défaut sans
-objet POUR F1 : le canal `fichiers` vit dans une autre `PeerConnection`, dans
-un autre processus. Mais elle ne le REFERME pas — il reste entier dans la
-`PeerConnection` de chaque enfant, dormant parce qu'aujourd'hui seul `input`
-y est binaire, et c'est le piège exact où tombera la première personne qui
-jugera la voie du « troisième canal » assez bon marché. Son seul symptôme
-serait un `WARN "message d'entrée invalide"` par trame.
+The file bridge's dedicated `PeerConnection` (decision D4) makes this defect
+moot FOR F1: the `fichiers` channel lives in another `PeerConnection`, in
+another process. But it does not CLOSE it — it remains whole in
+each child's `PeerConnection`, dormant because today only `input`
+is binary there, and it is the exact trap the first person who
+judges the "third channel" route cheap enough will fall into. Its only symptom
+would be an "invalid input message" `WARN` per frame.
 
-Il est donc corrigé, pour trois raisons dont la troisième décide : il est
-TESTABLE SUR L'HÔTE, donc le contrôle peut être vu rouge ; il coûte une
-dizaine de lignes ; et ce dépôt a payé QUATRE fois le bras catch-all de
+It is therefore fixed, for three reasons of which the third decides: it is
+TESTABLE ON THE HOST, so the check can be seen red; it costs about
+ten lines; and this repository paid FOUR times for the catch-all arm of
 `capteur/pont_media.rs` (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
-`PleinEcran`) pour apprendre qu'un aiguillage qui ne nomme pas ses cas se
-paie à chaque message neuf.
+`PleinEcran`) to learn that a router that does not name its cases
+pays for it at each new message.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/// La décision d'aiguillage, éprouvée avec un identifiant de STAND-IN.
+/// The routing decision, exercised with a STAND-IN identifier.
 ///
-/// 🔴 C'EST CE TEST QUI COUVRE « une trame arrivée AVANT le `ChannelOpen` de
-/// son canal », cas qu'aucun montage à pair local ne peut produire : str0m émet
-/// toujours `ChannelOpen` avant la première `ChannelData`. C'est pourtant
-/// l'état INITIAL de toute session, où les deux champs valent `None` — et il
-/// n'est éprouvable que parce que `destination` est générique sur son
-/// identifiant, `str0m::channel::ChannelId` étant délibérément inconstructible
-/// hors du crate de str0m.
+/// 🔴 IT IS THIS TEST THAT COVERS "a frame arrived BEFORE its channel's
+/// `ChannelOpen`", a case no local-peer setup can produce: str0m always
+/// emits `ChannelOpen` before the first `ChannelData`. It is nevertheless
+/// the INITIAL state of every session, where both fields are `None` — and it
+/// is only testable because `destination` is generic over its
+/// identifier, `str0m::channel::ChannelId` being deliberately unconstructible
+/// outside str0m's crate.
 #[test]
 fn une_trame_arrivee_avant_tout_channel_open_est_refusee() {
     // L'état initial : aucun canal n'est encore nommé.

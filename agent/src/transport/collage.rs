@@ -1,48 +1,48 @@
-//! Le collage venu du navigateur : écrire le presse-papier de la VM, puis
-//! injecter `Ctrl+V` — **dans cet ordre, et jamais l'inverse**.
+//! The paste coming from the browser: write the VM's clipboard, then
+//! inject `Ctrl+V` — **in that order, and never the reverse**.
 //!
-//! **Extrait de `tick.rs` AVANT que la branche `a1octies` n'y tienne**
-//! (sous-bloc P2) : ce fichier-là était à 421 lignes pour un plafond de 500, et
-//! le corps de la branche en fait plus de soixante-dix — il porte tout le
-//! raisonnement de D6. Le mettre en ligne l'aurait porté à 493, marge 7, sur un
-//! fichier qui compte déjà onze branches et soixante lignes d'audit
-//! d'invariant. La règle du dépôt est d'extraire AVANT d'ajouter.
+//! **Extracted from `tick.rs` BEFORE branch `a1octies` fitted there**
+//! (sub-block P2): that file was at 421 lines for a ceiling of 500, and
+//! the branch's body is more than seventy — it carries all of
+//! D6's reasoning. Inlining it would have taken it to 493, margin 7, on a
+//! file that already counts eleven branches and sixty lines of invariant
+//! audit. The repository's rule is to extract BEFORE adding.
 //!
-//! 🔴 **LES DEUX MOITIÉS DE L'ORDRE DE D6 VIVENT ICI, et c'est le point.**
-//! `traiter_le_collage` écrit et arme ; `injecter_le_collage` consomme et
-//! frappe. Elles sont appelées depuis deux fichiers différents —
-//! `tick::act_on_timeout` pour la première, `boucle::run` pour la seconde —
-//! parce que seule `run` reçoit `on_input` (D-P2-1) ; les lire à deux fichiers
-//! d'écart rendrait l'ordre invisible.
+//! 🔴 **BOTH HALVES OF D6's ORDER LIVE HERE, and that is the point.**
+//! `traiter_le_collage` writes and arms; `injecter_le_collage` consumes and
+//! types. They are called from two different files —
+//! `tick::act_on_timeout` for the first, `boucle::run` for the second —
+//! because only `run` receives `on_input` (D-P2-1); reading them two files
+//! apart would make the order invisible.
 
 use proto::input::InputMessage;
 
 use super::Session;
 
 impl Session {
-    /// Écrit `texte` dans le presse-papier de la VM, puis **arme** l'injection.
+    /// Writes `texte` into the VM's clipboard, then **arms** the injection.
     ///
-    /// Trois pas, dans cet ordre exact et pour cette raison : écrire d'abord —
-    /// **SYNCHRONE**, `ecrire_le_presse_papier` attend le `Fait` du capteur —,
-    /// n'armer qu'ENSUITE, et seulement si l'écriture a **réussi**. Aucun
-    /// ordonnancement de canal n'entre là-dedans : l'ordre est garanti par
+    /// Three steps, in this exact order and for this reason: write first —
+    /// **SYNCHRONOUS**, `ecrire_le_presse_papier` waits for the sensor's `Fait` —,
+    /// only arm AFTERWARDS, and only if the write **succeeded**. No
+    /// channel ordering comes into it: the order is guaranteed by
     /// construction.
     ///
-    /// 🔴 **Sur `Err`, on n'arme PAS**, et c'est tout le sujet : un `Ctrl+V` sur
-    /// un presse-papier inchangé collerait le contenu **PRÉCÉDENT**, sans que
-    /// rien ne le dise à l'utilisateur. D6 prescrit littéralement l'inverse —
-    /// « si le presse-papier ne peut pas être écrit, la touche `V` est PERDUE,
-    /// pas reportée ».
+    /// 🔴 **On `Err`, we do NOT arm**, and that is the whole matter: a `Ctrl+V` on
+    /// an unchanged clipboard would paste the **PREVIOUS** content, without
+    /// anything telling the user. D6 literally prescribes the opposite —
+    /// "if the clipboard cannot be written, the `V` key is LOST,
+    /// not deferred".
     ///
-    /// **Le texte est normalisé, borné, puis dénormalisé, dans CET ordre** — le
-    /// même que le sens sortant (D-P1-2). Borner d'abord refuserait un texte
-    /// qui, une fois les `\r\n` ramenés à `\n`, tiendrait ; borner APRÈS la
-    /// dénormalisation refuserait un texte que la VM venait d'accepter dans
-    /// l'autre sens, un aller-retour l'ayant gonflé d'un `\r` par ligne.
+    /// **The text is normalised, bounded, then denormalised, in THAT order** — the
+    /// same as the outgoing direction (D-P1-2). Bounding first would refuse a text
+    /// that, once `\r\n` are brought back to `\n`, would fit; bounding AFTER
+    /// denormalisation would refuse a text the VM had just accepted in
+    /// the other direction, a round trip having inflated it by one `\r` per line.
     ///
-    /// **Un refus ne remonte AUCUN message au navigateur** : le client a déjà
-    /// sa propre borne et son bandeau, et un second refus pour le même geste
-    /// serait du bruit. Il est journalisé, jamais tu.
+    /// **A refusal sends NO message back to the browser**: the client already has
+    /// its own bound and its banner, and a second refusal for the same gesture
+    /// would be noise. It is logged, never kept quiet.
     pub(super) fn traiter_le_collage(&mut self, texte: &str) {
         let normalise = crate::presse_papier::normaliser(texte);
         match crate::presse_papier::borner_entrant(&normalise) {
@@ -55,12 +55,12 @@ impl Session {
             Some(borne) => {
                 let pour_windows = crate::presse_papier::denormaliser(&borne);
                 match self.source.ecrire_le_presse_papier(&pour_windows) {
-                    // ⚠️ **JAMAIS LE TEXTE AU JOURNAL** (D-P1-7) : le
-                    // contenu du presse-papier est une ressource privée, et
-                    // un journal versé dans git est public au dépôt. Seule
-                    // sa TAILLE est journalisée, et une seule ligne — deux
-                    // traces au même instant se comptent comme deux
-                    // événements (piège maison de D6).
+                    // ⚠️ **NEVER THE TEXT IN THE LOG** (D-P1-7): the
+                    // clipboard content is a private resource, and
+                    // a log committed to git is public to the repository. Only
+                    // its SIZE is logged, and a single line — two
+                    // traces at the same instant count as two
+                    // events (D6's home-grown trap).
                     Ok(()) => {
                         tracing::debug!(
                             session = %self.session_id,
@@ -79,15 +79,15 @@ impl Session {
         }
     }
 
-    /// Injecte les quatre touches d'un collage si `traiter_le_collage` les a
-    /// armées. **Consomme le drapeau** : sans cela, `Ctrl+V` partirait à CHAQUE
-    /// tour de boucle, c'est-à-dire à la cadence vidéo.
+    /// Injects the four keys of a paste if `traiter_le_collage` armed
+    /// them. **Consumes the flag**: otherwise, `Ctrl+V` would go out at EVERY
+    /// loop round, that is, at the video cadence.
     ///
-    /// Aucune méthode `coller()` n'est ajoutée à `InputInjector` : son bras
-    /// `InputMessage::Key` appelle **déjà** `au_premier_plan()`, qui vérifie le
-    /// retour de `SetForegroundWindow` et le journalise une fois par
-    /// basculement. Réutiliser `InputMessage::Key` en hérite gratuitement ;
-    /// écrire un second chemin le dupliquerait.
+    /// No `coller()` method is added to `InputInjector`: its
+    /// `InputMessage::Key` arm **already** calls `au_premier_plan()`, which checks the
+    /// return of `SetForegroundWindow` and logs it once per
+    /// switch. Reusing `InputMessage::Key` inherits that for free;
+    /// writing a second path would duplicate it.
     pub(super) fn injecter_le_collage(&mut self, on_input: &mut impl FnMut(InputMessage)) {
         if !self.collage_a_injecter {
             return;
