@@ -1,73 +1,73 @@
-// De qui vient cette requête ? Fonction PURE, aucune expression régulière sur
-// le format d'une adresse, aucune lecture d'environnement.
+// Who does this request come from? PURE function, no regular expression on
+// the format of an address, no environment read.
 //
-// 🔴 POURQUOI CE MODULE EXISTE. Derrière un proxy inverse,
-// `req.socket.remoteAddress` est l'adresse DU PROXY — la même pour tout le
-// monde. Un frein par adresse fondé sur elle dégénère en frein GLOBAL : le
-// service se refuse à lui-même au 51e échec, quelle que soit sa provenance.
-// Et `X-Forwarded-For` est FORGEABLE par le demandeur : le croire aveuglément
-// rendrait le frein contournable en une ligne d'en-tête.
+// 🔴 WHY THIS MODULE EXISTS. Behind a reverse proxy,
+// `req.socket.remoteAddress` is the address OF THE PROXY — the same for
+// everybody. A per-address throttle based on it degenerates into a GLOBAL throttle: the
+// service refuses itself at the 51st failure, whatever its origin.
+// And `X-Forwarded-For` is FORGEABLE by the requester: trusting it blindly
+// would make the throttle bypassable with one header line.
 //
-// 🔴 LE DÉFAUT EST DE NE RIEN CROIRE. L'ensemble de confiance est VIDE quand
-// `PLATEFORME_PROXY_DE_CONFIANCE` est absente — même doctrine que
-// `PLATEFORME_ORIGINE_CLIENT` (`config.ts`), dont l'absence produit un refus et
-// non une permission.
+// 🔴 THE DEFAULT IS TO TRUST NOTHING. The trust set is EMPTY when
+// `PLATEFORME_PROXY_DE_CONFIANCE` is absent — same doctrine as
+// `PLATEFORME_ORIGINE_CLIENT` (`config.ts`), whose absence produces a refusal and
+// not a permission.
 //
-// 🔴 ET ON PREND LE DERNIER ÉLÉMENT, JAMAIS LE PREMIER. C'est la faute
-// classique, et voici pourquoi c'en est une : `nginx` avec
-// `$proxy_add_x_forwarded_for` AJOUTE l'adresse de son pair à ce que le client
-// a envoyé. Un client qui envoie `X-Forwarded-For: 203.0.113.7` produit donc
-// `203.0.113.7, <sa vraie adresse>`. Le PREMIER élément est celui que le
-// client a forgé ; le DERNIER est le seul que le proxy ait écrit lui-même.
+// 🔴 AND WE TAKE THE LAST ELEMENT, NEVER THE FIRST. It is the classic
+// mistake, and here is why it is one: `nginx` with
+// `$proxy_add_x_forwarded_for` APPENDS the address of its peer to what the client
+// sent. A client that sends `X-Forwarded-For: 203.0.113.7` therefore produces
+// `203.0.113.7, <its real address>`. The FIRST element is the one the
+// client forged; the LAST is the only one the proxy wrote itself.
 //
-// ⚠️ CETTE RÈGLE SUPPOSE EXACTEMENT UN PROXY DE CONFIANCE EN TÊTE DE CHAÎNE.
-// Avec deux proxies enchaînés, le dernier élément est l'adresse du PREMIER
-// PROXY, pas celle du client. P5 ne livre pas la chaîne à N sauts : la
-// configuration versionnée n'en pose qu'un seul, et `deploiement/nginx.conf`
-// le documente. C'est une limite DÉCLARÉE, pas une omission.
+// ⚠️ THIS RULE ASSUMES EXACTLY ONE TRUSTED PROXY AT THE HEAD OF THE CHAIN.
+// With two chained proxies, the last element is the address of the FIRST
+// PROXY, not that of the client. P5 does not deliver the N-hop chain: the
+// versioned configuration sets only one, and `deploiement/nginx.conf`
+// documents it. It is a DECLARED limit, not an omission.
 //
-// ⚠️ LE MODE DE DÉFAILLANCE DE L'OUBLI EST NOMMÉ, et le remède n'est PAS de
-// croire l'en-tête par défaut — ce serait échanger une panne bruyante contre
-// un contournement silencieux. Si l'exploitant pose un proxy sans déclarer sa
-// confiance, TOUTES les requêtes portent l'adresse du proxy et le frein par
-// adresse devient global. Le remède est que LA TRACE DU FREIN NOMME L'ADRESSE
-// RETENUE : un exploitant qui lit `adresse=172.18.0.5` sur toutes les lignes
-// reconnaît l'adresse de son proxy. Le runbook le dit aussi.
+// ⚠️ THE FAILURE MODE OF FORGETTING IS NAMED, and the remedy is NOT to
+// trust the header by default — that would be trading a loud failure for
+// a silent bypass. If the operator sets up a proxy without declaring trust
+// in it, ALL requests carry the proxy address and the per-address throttle
+// becomes global. The remedy is that THE THROTTLE TRACE NAMES THE ADDRESS
+// IT RETAINED: an operator who reads `adresse=172.18.0.5` on every line
+// recognises the address of their proxy. The runbook says so too.
 
-/// La valeur rendue quand le pair n'a pas d'adresse — un socket déjà fermé
-/// rend `undefined` pour `remoteAddress`.
+/// The value returned when the peer has no address — an already closed socket
+/// returns `undefined` for `remoteAddress`.
 ///
-/// 🔴 ELLE EST NOMMÉE, ET CE N'EST PAS DE LA COQUETTERIE. Sans elle, la clé du
-/// frein deviendrait la chaîne `"undefined"` par accident d'interpolation :
-/// c'est exactement le piège que `signaling/turn-harnais.ts` documente pour
-/// `process.env` (`"undefined"` est une chaîne VRAIE), et il se rejoue ici.
-/// Une valeur nommée se lit dans une trace et se cherche dans ce fichier.
+/// 🔴 IT IS NAMED, AND THAT IS NOT AFFECTATION. Without it, the throttle
+/// key would become the string `"undefined"` by an interpolation accident:
+/// it is exactly the trap that `signaling/turn-harnais.ts` documents for
+/// `process.env` (`"undefined"` is a TRUTHY string), and it plays out again here.
+/// A named value can be read in a trace and searched for in this file.
 ///
-/// ⚠️ Tous les pairs sans adresse PARTAGENT donc un budget de frein. C'est
-/// voulu : c'est le seul comportement qui ne rende pas le frein contournable
-/// en fermant son socket avant que le service ne lise son adresse.
+/// ⚠️ All the peers without an address therefore SHARE one throttle budget. That is
+/// intended: it is the only behaviour that does not make the throttle bypassable
+/// by closing one's socket before the service reads its address.
 export const ADRESSE_INCONNUE = 'adresse-inconnue';
 
-/// Le préfixe des IPv4 encapsulées en IPv6. Node rend couramment
-/// `::ffff:172.18.0.5` pour un pair IPv4 sur une pile double.
+/// The prefix of IPv4 addresses encapsulated in IPv6. Node commonly returns
+/// `::ffff:172.18.0.5` for an IPv4 peer on a dual stack.
 const PREFIXE_MAPPE = '::ffff:';
 
-/// ⚠️ NORMALISER EST OBLIGATOIRE DES DEUX CÔTÉS — la valeur comparée à
-/// l'ensemble de confiance ET la valeur rendue. Sans quoi le même client
-/// compte deux fois selon la pile employée, et son budget double ; et un proxy
-/// déclaré sous sa forme nue ne serait jamais reconnu sous sa forme
-/// encapsulée, ce qui ferait échouer la confiance EN SILENCE.
+/// ⚠️ NORMALISING IS MANDATORY ON BOTH SIDES — the value compared with
+/// the trust set AND the value returned. Otherwise the same client
+/// counts twice depending on the stack used, and its budget doubles; and a proxy
+/// declared in its bare form would never be recognised in its encapsulated
+/// form, which would make trust fail SILENTLY.
 function normaliser(adresse: string): string {
     return adresse.startsWith(PREFIXE_MAPPE) ? adresse.slice(PREFIXE_MAPPE.length) : adresse;
 }
 
-/// Le pair est-il l'un des proxys déclarés ?
+/// Is the peer one of the declared proxies?
 ///
-/// 🔴 IL NE REGARDE QUE `remoteAddress`, JAMAIS `X-Forwarded-For` — à la
-/// différence d'`adresseSource` juste au-dessus, et la différence est le point.
-/// Honorer un en-tête fourni par l'attaquant pour décider si l'on croit
-/// l'attaquant est circulaire. `adresseSource` a raison de le faire, elle :
-/// elle attribue une requête à un client une fois le pair déjà jugé.
+/// 🔴 IT LOOKS ONLY AT `remoteAddress`, NEVER AT `X-Forwarded-For` — unlike
+/// `adresseSource` just above, and the difference is the point.
+/// Honouring a header supplied by the attacker to decide whether to trust
+/// the attacker is circular. `adresseSource` is right to do it, for its part:
+/// it attributes a request to a client once the peer has already been judged.
 export function pairDeConfiance(
     remote: string | undefined,
     confiance: ReadonlySet<string>,
@@ -88,9 +88,9 @@ export function adresseSource(
     if (remote === undefined || remote === '') return ADRESSE_INCONNUE;
     const pair = normaliser(remote);
 
-    // L'ensemble est normalisé à la comparaison plutôt qu'à la lecture de
-    // configuration : `config.ts` rend ce que l'exploitant a écrit, et c'est
-    // ici — le seul lecteur — que la forme est décidée.
+    // The set is normalised at comparison time rather than when the
+    // configuration is read: `config.ts` returns what the operator wrote, and it is
+    // here — the only reader — that the form is decided.
     let deConfiance = false;
     for (const declare of confiance) {
         if (normaliser(declare) === pair) {
@@ -101,9 +101,9 @@ export function adresseSource(
     if (!deConfiance) return pair;
 
     if (enteteXff === undefined) return pair;
-    // Le DERNIER élément NON VIDE : `203.0.113.7, ` a un dernier élément vide,
-    // et le prendre rendrait une clé de frein vide que toutes les requêtes mal
-    // formées partageraient.
+    // The LAST NON-EMPTY element: `203.0.113.7, ` has an empty last element,
+    // and taking it would return an empty throttle key that all malformed
+    // requests would share.
     const elements = enteteXff.split(',');
     for (let i = elements.length - 1; i >= 0; i--) {
         const element = elements[i].trim();

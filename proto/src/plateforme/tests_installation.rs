@@ -1,10 +1,10 @@
-//! Les messages de l'INSTALLATION, côté Rust.
+//! The INSTALLATION messages, on the Rust side.
 //!
-//! 🔴 CE FICHIER EXISTE POUR CE QUE LES VECTEURS NE PEUVENT PAS ÉPROUVER.
-//! `plateforme-vectors.json` est un jeu de ROUND-TRIPS : il fige les chaînes
-//! que les deux langages doivent produire et relire, et ne dit rien de ce qui
-//! doit être REFUSÉ. Or la garde la plus fragile de v4 est un refus — un
-//! `termine` dont la clé `motif` MANQUE.
+//! 🔴 THIS FILE EXISTS FOR WHAT THE VECTORS CANNOT TEST.
+//! `plateforme-vectors.json` is a set of ROUND-TRIPS: it freezes the strings
+//! that both languages must produce and read back, and says nothing of what
+//! must be REFUSED. Yet the most fragile guard of v4 is a refusal — a
+//! `termine` whose `motif` key is MISSING.
 
 use super::*;
 

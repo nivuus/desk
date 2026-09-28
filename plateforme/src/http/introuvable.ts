@@ -1,51 +1,51 @@
-// Le `404` du service, à UN SEUL endroit.
+// The `404` of the service, in ONE SINGLE place.
 //
-// 🔴 POURQUOI CE MODULE EXISTE, ET CE N'EST PAS UN GOÛT DE FACTORISATION. Le
-// `404` du service portait un CONTRAT documenté aux deux bouts : les deux
-// gardes de mode (`routes-identite.ts` et `routes-auth.ts`) se retiraient
-// pour le laisser répondre, et `client/src/connexion.ts` LIT ce `404` comme
-// « ce montage authentifie par mot de passe ». Le lot « page derrière
-// Pomerium » a chaîné un servant de fichiers EN DERNIER, dont le repli SPA
-// résout n'importe quel chemin : le `404` que les gardes appelaient est
-// devenu, en mode `motdepasse` et la page armée, un `200 text/html`. MESURÉ :
-// `GET /auth/moi` rendait `200 text/html` au lieu de `404`.
+// 🔴 WHY THIS MODULE EXISTS, AND IT IS NOT A TASTE FOR FACTORING. The
+// `404` of the service carried a CONTRACT documented at both ends: the two
+// mode guards (`routes-identite.ts` and `routes-auth.ts`) stepped aside
+// to let it answer, and `client/src/connexion.ts` READS that `404` as
+// « this deployment authenticates by password ». The « page behind
+// Pomerium » batch chained a file server LAST, whose SPA fallback
+// resolves any path at all: the `404` the guards relied on has
+// become, in `motdepasse` mode with the page armed, a `200 text/html`. MEASURED:
+// `GET /auth/moi` returned `200 text/html` instead of `404`.
 //
-// 🔴 LE DÉFAUT AVAIT UN JUMEAU SYMÉTRIQUE, et c'est ce qui a décidé du remède.
-// `routes-auth.ts` porte la garde de polarité OPPOSÉE — elle se retire en mode
-// `pomerium` —, si bien que `GET /auth/connexion` était avalé de la même façon
-// dans l'autre mode. Les deux gardes PARTITIONNENT les modes : elles ont donc
-// le MÊME défaut, chacune dans l'autre mode.
+// 🔴 THE DEFECT HAD A SYMMETRIC TWIN, and that is what decided the remedy.
+// `routes-auth.ts` carries the guard of OPPOSITE polarity — it steps aside in
+// `pomerium` mode —, so that `GET /auth/connexion` was swallowed the same way
+// in the other mode. The two guards PARTITION the modes: they therefore have
+// the SAME defect, each in the other mode.
 //
-// 🔴 LE REMÈDE RETENU : LES DEUX GARDES RÉPONDENT LE `404` ELLES-MÊMES, au
-// lieu de le déléguer. Les alternatives pesées, et pourquoi elles cèdent :
-//   - exclure les préfixes d'API du repli SPA — il faudrait tenir une LISTE,
-//     et une route d'API ajoutée sans mettre la liste à jour retomberait
-//     silencieusement dans le repli : on remplacerait une panne muette par
-//     une autre ;
-//   - conditionner le repli à l'en-tête `Accept` — auto-maintenu, mais il
-//     DIVERGE de nginx, dont le `try_files` est inconditionnel, et fait
-//     dépendre le comportement d'un en-tête que le client ne contrôle pas
-//     toujours ;
-//   - documenter que la promesse ne tient plus — ce serait livrer sciemment
-//     un mécanisme cassé.
-// Répondre soi-même est chirurgical, ne demande aucune liste, et préserve
-// EXACTEMENT le contrat documenté : « le 404 dit la vérité ».
+// 🔴 THE REMEDY CHOSEN: THE TWO GUARDS ANSWER THE `404` THEMSELVES, instead
+// of delegating it. The alternatives weighed, and why they give way:
+//   - exclude the API prefixes from the SPA fallback — one would have to keep a LIST,
+//     and an API route added without updating the list would fall back
+//     silently into the fallback: one would swap one silent failure for
+//     another;
+//   - make the fallback depend on the `Accept` header — self-maintained, but it
+//     DIVERGES from nginx, whose `try_files` is unconditional, and makes
+//     the behaviour depend on a header the client does not
+//     always control;
+//   - document that the promise no longer holds — that would knowingly ship
+//     a broken mechanism.
+// Answering directly is surgical, needs no list, and keeps
+// EXACTLY the documented contract: « the 404 tells the truth ».
 //
-// ⚠️ LE CORPS N'EST PAS TOUCHÉ, ET C'EST TOUT L'INTÉRÊT DE L'AVOIR ICI. Il
-// vient de P1, `routes-auth.test.ts` le fige, et une SECONDE forme de 404 —
-// écrite à la main dans chaque garde — dériverait de celle du serveur sans
-// que rien ne le dise. Un seul texte, un seul jeu d'en-têtes, trois appelants.
+// ⚠️ THE BODY IS NOT TOUCHED, AND THAT IS THE WHOLE POINT OF HAVING IT HERE. It
+// comes from P1, `routes-auth.test.ts` freezes it, and a SECOND form of 404 —
+// written by hand in each guard — would drift from the server one without
+// anything saying so. One text, one set of headers, three callers.
 
 import type { ServerResponse } from 'node:http';
 import { ENTETES_SECURITE } from './entetes';
 
-/// Le corps exact, conservé MOT POUR MOT depuis P1.
+/// The exact body, kept WORD FOR WORD since P1.
 export const CORPS_INTROUVABLE = 'introuvable\n';
 
-/// ⚠️ `nosniff` N'EST PAS OPTIONNEL ICI : sans `ENTETES_SECURITE`, un chemin
-/// inconnu serait la SEULE réponse du service à ne pas le porter — la raison
-/// pour laquelle `serveur.ts` traitait déjà son 404 lui-même plutôt que de le
-/// laisser à Node.
+/// ⚠️ `nosniff` IS NOT OPTIONAL HERE: without `ENTETES_SECURITE`, an unknown
+/// path would be the ONLY response of the service not to carry it — the reason
+/// why `serveur.ts` already handled its 404 itself rather than
+/// leaving it to Node.
 export function repondreIntrouvable(rep: ServerResponse): void {
     rep.writeHead(404, {
         'content-type': 'text/plain; charset=utf-8',

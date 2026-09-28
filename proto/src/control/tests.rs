@@ -3,8 +3,8 @@ use super::*;
 #[test]
 fn serialise_le_redimensionnement() {
     let json = serde_json::to_string(&ClientControl::resize(1280, 720)).expect("sérialisation");
-    // `type` est le tag interne de l'enum : serde l'émet avant les autres
-    // champs, y compris `v`, quel que soit leur ordre de déclaration.
+    // `type` is the internal tag of the enum: serde emits it before the other
+    // fields, `v` included, whatever their declaration order.
     assert_eq!(json, r#"{"type":"resize","v":3,"width":1280,"height":720}"#);
 }
 
@@ -159,9 +159,9 @@ fn le_plein_ecran_fait_l_aller_retour() {
 
 #[test]
 fn toutes_les_formes_de_curseur_sont_des_valeurs_css() {
-    // Le client pose cette chaîne telle quelle dans `style.cursor` : une
-    // valeur non reconnue serait silencieusement ignorée par le
-    // navigateur, donc invisible en test.
+    // The client sets this string as is into `style.cursor`: an
+    // unrecognised value would be silently ignored by the
+    // browser, hence invisible in tests.
     for (forme, attendu) in [
         (CursorShape::Default, "default"),
         (CursorShape::Text, "text"),
@@ -173,13 +173,13 @@ fn toutes_les_formes_de_curseur_sont_des_valeurs_css() {
     }
 }
 
-/// Chantier E : `Ready` porte la disponibilité du micro, **sans bump de
+/// Workstream E: `Ready` carries the microphone availability, **without a bump of
 /// `CONTROL_VERSION`**.
 ///
-/// Le parseur TypeScript vérifie `v`, puis `type`, puis CASTE : un champ
-/// supplémentaire est simplement ignoré par un client ancien. Et un client
-/// RÉCENT parlant à un agent ANCIEN lit `mic === undefined`, donc falsy,
-/// donc pas de bouton — exactement la règle de la spec §10, gratuitement.
+/// The TypeScript parser checks `v`, then `type`, then CASTS: an extra
+/// field is simply ignored by an old client. And a RECENT client
+/// talking to an OLD agent reads `mic === undefined`, hence falsy,
+/// hence no button — exactly the rule of spec §10, for free.
 #[test]
 fn ready_porte_la_disponibilite_du_micro() {
     assert_eq!(
@@ -188,13 +188,13 @@ fn ready_porte_la_disponibilite_du_micro() {
     );
 }
 
-/// « Le champ est optionnel à la lecture et SON ABSENCE VAUT `false` »
-/// (spec §10) : un client récent face à un agent ancien n'affiche pas un
-/// bouton qui ne mènerait nulle part.
+/// "The field is optional on read and ITS ABSENCE MEANS `false`"
+/// (spec §10): a recent client facing an old agent does not show a
+/// button that would lead nowhere.
 ///
-/// ⚠️ `AgentControl` porte `deny_unknown_fields` : cela ne gêne pas
-/// l'AJOUT d'un champ, mais un champ MANQUANT est une erreur de
-/// désérialisation en Rust. `#[serde(default)]` est donc OBLIGATOIRE.
+/// ⚠️ `AgentControl` carries `deny_unknown_fields`: that does not hinder
+/// ADDING a field, but a MISSING field is a
+/// deserialization error in Rust. `#[serde(default)]` is therefore MANDATORY.
 #[test]
 fn un_ready_sans_micro_se_lit_avec_micro_faux() {
     let m: AgentControl =
@@ -212,11 +212,11 @@ fn serialise_le_presse_papier_avec_son_texte() {
     );
 }
 
-/// 🔴 Un REFUS sérialise `"text":null`, champ PRÉSENT.
+/// 🔴 A REFUSAL serializes `"text":null`, field PRESENT.
 ///
-/// ROUGE si l'on pose `#[serde(skip_serializing_if = "Option::is_none")]` :
-/// le champ disparaîtrait, et le client ne pourrait plus distinguer un refus
-/// d'un message tronqué en route.
+/// RED if one sets `#[serde(skip_serializing_if = "Option::is_none")]`:
+/// the field would vanish, and the client could no longer tell a refusal
+/// from a message truncated on the way.
 #[test]
 fn un_refus_de_presse_papier_serialise_un_text_null_present() {
     let json =
@@ -231,9 +231,9 @@ fn un_refus_de_presse_papier_serialise_un_text_null_present() {
     );
 }
 
-/// 🔴 Ce qui prouve que `verifie_version` est bien branché sur la variante
-/// NEUVE — l'oublier est une erreur silencieuse, `version` n'étant vérifié
-/// que par son attribut.
+/// 🔴 What proves that `verifie_version` is indeed wired onto the NEW
+/// variant — forgetting it is a silent error, `version` being checked
+/// only through its attribute.
 #[test]
 fn un_presse_papier_en_version_2_est_rejete() {
     let brut = r#"{"type":"clipboard","v":2,"text":"bonjour","bytes":7}"#;
@@ -246,8 +246,8 @@ fn un_presse_papier_en_version_2_est_rejete() {
     );
 }
 
-/// ROUGE si l'on retire `deny_unknown_fields` de l'enum : ce test le fige
-/// pour la variante neuve.
+/// RED if one removes `deny_unknown_fields` from the enum: this test pins it
+/// for the new variant.
 #[test]
 fn un_presse_papier_portant_un_champ_inconnu_est_rejete() {
     let brut = r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7,"surprise":1}"#;
@@ -255,10 +255,10 @@ fn un_presse_papier_portant_un_champ_inconnu_est_rejete() {
 }
 
 // ---------------------------------------------------------------------------
-// Sous-bloc P2 du chantier presse-papier — le sens navigateur → VM.
+// Sub-block P2 of the clipboard workstream — the browser → VM direction.
 // ---------------------------------------------------------------------------
 
-/// ROUGE si la variante `ClientControl::Clipboard` est absente.
+/// RED if the `ClientControl::Clipboard` variant is absent.
 #[test]
 fn deserialise_le_collage_venu_du_client() {
     let msg: ClientControl = serde_json::from_str(r#"{"v":3,"type":"clipboard","text":"bonjour"}"#)
@@ -274,18 +274,18 @@ fn serialise_le_collage_venu_du_client() {
     );
 }
 
-/// 🔴 ROUGE si l'on oublie `deserialize_with = "verifie_version"` sur le champ
-/// `version` — **c'est la ligne qu'on omet en recopiant une variante
-/// voisine**, et rien d'autre dans ce dépôt ne le verrait : la variante
-/// fonctionnerait, simplement elle accepterait n'importe quelle version.
+/// 🔴 RED if one forgets `deserialize_with = "verifie_version"` on the
+/// `version` field — **it is the line one omits when copying a neighbouring
+/// variant**, and nothing else in this repository would see it: the variant
+/// would work, it would simply accept any version at all.
 #[test]
 fn un_collage_client_a_la_mauvaise_version_est_rejete() {
     let erreur = serde_json::from_str::<ClientControl>(r#"{"v":2,"type":"clipboard","text":"x"}"#);
     assert!(erreur.is_err(), "une version 2 doit être refusée");
 }
 
-/// 🔴 ROUGE si l'on posait la variante sur un enum sans `deny_unknown_fields` :
-/// un client mal conduit pourrait alors faire passer n'importe quoi.
+/// 🔴 RED if the variant were placed on an enum without `deny_unknown_fields`:
+/// a badly behaved client could then push anything through.
 #[test]
 fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
     let erreur =
@@ -295,13 +295,13 @@ fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
 
 /// 🔴 ROUGE si l'on oublie `#[serde(default)]` sur `Capabilities::clipboard`.
 ///
-/// ⚠️ **La raison n'est PAS `deny_unknown_fields`**, contrairement à ce que la
-/// spec avance : `deny_unknown_fields` refuse un champ INCONNU ; c'est le
-/// défaut de serde qui refuse un champ MANQUANT. Les deux mécanismes n'ont
-/// rien à voir, et c'est le commentaire de `mic` qui dit la chose juste.
+/// ⚠️ **The reason is NOT `deny_unknown_fields`**, contrary to what the
+/// spec claims: `deny_unknown_fields` refuses an UNKNOWN field; it is
+/// serde's default that refuses a MISSING field. The two mechanisms have
+/// nothing to do with each other, and it is the comment on `mic` that says the right thing.
 ///
-/// Un agent d'avant P2 n'émet pas ce champ ; un désérialiseur récent doit donc
-/// le tolérer et lire `false`.
+/// An agent from before P2 does not emit this field; a recent deserializer must therefore
+/// tolerate it and read `false`.
 #[test]
 fn capabilities_sans_clipboard_se_deserialise_a_false() {
     let msg: AgentControl = serde_json::from_str(r#"{"v":3,"type":"capabilities","gamepad":true}"#)
@@ -309,11 +309,11 @@ fn capabilities_sans_clipboard_se_deserialise_a_false() {
     assert_eq!(msg, AgentControl::capabilities(true, false));
 }
 
-/// ROUGE si l'on posait un `skip_serializing_if` : le champ disparaîtrait
-/// quand il vaut `false`, et le client ne pourrait plus distinguer « l'agent
-/// dit non » de « l'agent est trop ancien pour le dire ». Les deux se traitent
-/// de la même façon aujourd'hui, mais la distinction est ce qui permettra un
-/// jour de le journaliser.
+/// RED if one set a `skip_serializing_if`: the field would vanish
+/// when it is `false`, and the client could no longer tell "the agent
+/// says no" from "the agent is too old to say". Both are handled
+/// the same way today, but the distinction is what will one
+/// day allow logging it.
 #[test]
 fn capabilities_serialise_les_deux_champs() {
     assert_eq!(
@@ -322,18 +322,18 @@ fn capabilities_serialise_les_deux_champs() {
     );
 }
 
-/// 🔴 **LE PRESSE-PAPIER NE DOIT JAMAIS ATTEINDRE UN JOURNAL, ET CE TEST EST
-/// LE SEUL REMPART.**
+/// 🔴 **THE CLIPBOARD MUST NEVER REACH A LOG, AND THIS TEST IS
+/// THE ONLY RAMPART.**
 ///
-/// Il est né d'une MESURE, pas d'une précaution : la recette de P2 a relevé
-/// dans `agent.log` quatre lignes portant le contenu du presse-papier **en
-/// clair** — `Clipboard { version: 3, text: "alpha-arme-1-crwor9" }` —, parce
-/// que `demarrage.rs` imprime le message reçu par `?message` et que
-/// `ClientControl` DÉRIVAIT `Debug`. La décision D-P1-7 l'interdit nommément.
+/// It was born from a MEASUREMENT, not a precaution: the P2 acceptance run found
+/// in `agent.log` four lines carrying the clipboard content **in
+/// clear** — `Clipboard { version: 3, text: "alpha-arme-1-crwor9" }` —, because
+/// `demarrage.rs` prints the received message through `?message` and
+/// `ClientControl` DERIVED `Debug`. Decision D-P1-7 forbids it by name.
 ///
-/// ROUGE si l'on remet `#[derive(Debug)]` sur l'un des deux enums. Le remède
-/// est au TYPE et non au site de journalisation, précisément pour que le
-/// PROCHAIN site n'ait pas à y penser.
+/// RED if one puts `#[derive(Debug)]` back on either enum. The remedy
+/// is at the TYPE and not at the logging site, precisely so that the
+/// NEXT site does not have to think about it.
 #[test]
 fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
     let rendu = format!("{:?}", ClientControl::clipboard("mot-de-passe-tres-secret"));
@@ -370,11 +370,11 @@ fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
     );
 }
 
-/// Le `Debug` écrit à la main ne doit pas AVALER les autres variantes en
-/// chemin : sans ce test, une variante rendue vide passerait inaperçue, et le
-/// journal perdrait tout pouvoir de diagnostic sans que rien ne le dise.
+/// The hand-written `Debug` must not SWALLOW the other variants on
+/// the way: without this test, a variant rendered empty would go unnoticed, and the
+/// log would lose all diagnostic power without anything saying so.
 ///
-/// ROUGE si une variante rend une forme vide ou omet ses champs.
+/// RED if a variant renders an empty shape or omits its fields.
 #[test]
 fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
     let r = format!("{:?}", ClientControl::resize(1280, 720));
@@ -406,22 +406,22 @@ fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
 
 // ── Bloc E3 : la variante `MicState` ────────────────────────────────────────
 //
-// ⚠️ **Divergence V1, relevée le 21 août 2026 et LÉGUÉE, pas fermée :** il
-// n'existe AUCUN fichier de vecteurs partagé pour `AgentControl`. Les trois
-// `*-vectors.json` du dépôt servent `input`, `plateforme` et `fichiers`,
-// jamais `control`. Les tests ci-dessous épinglent la forme de fil **côté
-// Rust** ; `proto/ts/control.test.ts` épingle **la sienne**. Les deux
-// s'accordent parce que deux mains ont écrit la même chaîne, et **rien ne le
-// vérifie** : un renommage de clé appliqué d'un seul côté resterait vert des
-// deux côtés. La lacune est PRÉEXISTANTE et GÉNÉRALE à `AgentControl` — E3
-// est le premier à la nommer, il ne la crée pas.
+// ⚠️ **Divergence V1, noted on 21 August 2026 and HANDED DOWN, not closed:**
+// there is NO shared vector file for `AgentControl`. The three
+// `*-vectors.json` of the repository serve `input`, `plateforme` and `fichiers`,
+// never `control`. The tests below pin the wire shape **on the
+// Rust side**; `proto/ts/control.test.ts` pins **its own**. The two
+// agree because two hands wrote the same string, and **nothing
+// checks it**: a key rename applied on one side only would stay green on
+// both sides. The gap is PRE-EXISTING and GENERAL to `AgentControl` — E3
+// is the first to name it, it does not create it.
 
 #[test]
 fn l_etat_du_micro_se_serialise_en_kebab_case_avec_sa_version() {
     let json = serde_json::to_string(&AgentControl::mic_state(false)).unwrap();
-    // Le nom en DEUX mots est ce qui rend `rename_all` observable : sur un enum
-    // dont toutes les variantes tiennent en un mot, la mutation
-    // `kebab-case` → `snake_case` est invisible (mesuré par le sous-bloc G1).
+    // The TWO-word name is what makes `rename_all` observable: on an enum
+    // whose variants all fit in one word, the mutation
+    // `kebab-case` → `snake_case` is invisible (measured by sub-block G1).
     assert!(json.contains(r#""type":"mic-state""#), "{json}");
     assert!(json.contains(r#""granted":false"#), "{json}");
     assert!(json.contains(r#""v":3"#), "{json}");
@@ -439,10 +439,10 @@ fn l_etat_du_micro_fait_l_aller_retour_dans_les_deux_sens() {
 
 #[test]
 fn un_etat_de_micro_a_la_mauvaise_version_est_rejete() {
-    // C'est le test que la rouge R1 doit faire tomber, ET LUI SEUL : retirer
-    // `deserialize_with` de la seule variante `MicState` établit que la
-    // vérification est branchée variante par variante, et non une fois pour
-    // toutes (patron mesuré en P3 : 1 échec sur 18).
+    // It is the test that the red R1 must bring down, AND IT ALONE: removing
+    // `deserialize_with` from the `MicState` variant alone establishes that the
+    // check is wired variant by variant, and not once and for
+    // all (pattern measured in P3: 1 failure out of 18).
     let erreur =
         serde_json::from_str::<AgentControl>(r#"{"type":"mic-state","v":2,"granted":true}"#)
             .expect_err("une version 2 doit être rejetée");
@@ -464,9 +464,9 @@ fn un_etat_de_micro_sans_version_est_rejete() {
 
 #[test]
 fn l_etat_du_micro_ne_divulgue_rien_au_journal() {
-    // La règle de `control/redaction.rs`, appliquée au TYPE et non au site :
-    // P2 a trouvé le presse-papier en clair dans `agent.log` sur une trace
-    // antérieure et inoffensive, rendue dangereuse par une variante neuve.
+    // The rule of `control/redaction.rs`, applied to the TYPE and not to the site:
+    // P2 found the clipboard in clear in `agent.log` on an earlier,
+    // harmless trace, made dangerous by a new variant.
     let rendu = format!("{:?}", AgentControl::mic_state(true));
     assert_eq!(
         rendu, "MicState { v: 3, granted: true }",

@@ -323,107 +323,107 @@ export function createSignalingServer(
                     return;
                 }
 
-                // 🔴 LA GARDE PASSE AVANT `declarer`, ET L'ORDRE N'EST PAS
-                // INDIFFÉRENT. Un pair refusé qui serait entré dans la table
-                // d'appariement y occuperait le rôle et empêcherait le pair
-                // LÉGITIME d'arriver : un déni de service ouvert à l'anonyme,
-                // obtenu précisément en refusant de s'authentifier.
+                // 🔴 THE GUARD RUNS BEFORE `declarer`, AND THE ORDER IS NOT
+                // IRRELEVANT. A refused peer that had entered the pairing
+                // table would occupy the role there and keep the LEGITIMATE
+                // peer from arriving: a denial of service open to anyone,
+                // obtained precisely by refusing to authenticate.
                 const verdict = garde.verifier({
                     role: declaredRole,
                     session: declaredSession,
                     jeton: message.jeton,
                 });
                 if (!verdict.ok) {
-                    // Le journal porte le nom de session et l'identifiant du
-                    // demandeur ; le message qui part sur le fil ne porte ni
-                    // l'un ni l'autre (`identite/garde.ts`).
+                    // The log carries the session name and the requester's
+                    // identifier; the message sent on the wire carries neither
+                    // one nor the other (`identite/garde.ts`).
                     console.warn(`poignée de main refusée : ${verdict.journal}`);
-                    // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse : un
-                    // `terminate()` immédiat tronquerait le message, et le
-                    // pair verrait une fermeture sans motif.
+                    // ⚠️ SEND THEN CLOSE, never the reverse: an
+                    // immediate `terminate()` would truncate the message, and the
+                    // peer would see a close with no reason.
                     send(socket, { type: 'error', reason: verdict.message, motif: verdict.motif });
-                    // 🔴 Le socket est FERMÉ, alors qu'il reste OUVERT après un
-                    // message malformé (voir plus haut, délibéré depuis le
-                    // jalon 1). Spec §6 : « refus typé sur la poignée de main,
-                    // connexion fermée — contrairement au message malformé,
-                    // que le relais laisse retenter à dessein ».
+                    // 🔴 The socket is CLOSED, whereas it stays OPEN after a
+                    // malformed message (see above, deliberate since
+                    // milestone 1). Spec §6: "typed refusal on the handshake,
+                    // connection closed — unlike the malformed message,
+                    // which the relay lets the peer retry on purpose".
                     socket.close(1008, verdict.motif);
                     return;
                 }
 
                 const refus = sessions.declarer(declaredSession, declaredRole, socket);
                 if (refus) {
-                    // 🔴 `motif` EST TYPÉ, `reason` EST UNE PHRASE. Ajouté le
-                    // 31 août 2026 : le hub élit un onglet porteur par Web
-                    // Locks, et son REPLI (navigateur sans cette API) doit
-                    // distinguer « la place est prise » — à avaler en silence,
-                    // un second onglet n'étant pas une faute de l'utilisateur —
-                    // d'un refus d'une autre cause, qu'il faut afficher.
-                    // Trancher sur `reason` obligerait le client à comparer une
-                    // phrase FRANÇAISE, qui se reformule : c'est le piège de F1,
-                    // payé neuf minutes sur deux messages qui partageaient une
-                    // sous-chaîne.
+                    // 🔴 `motif` IS TYPED, `reason` IS A SENTENCE. Added on
+                    // 31 August 2026: the hub elects a carrier tab through Web
+                    // Locks, and its FALLBACK (browser without that API) must
+                    // tell "the seat is taken" — to swallow silently,
+                    // a second tab not being the user's fault —
+                    // from a refusal with another cause, which must be shown.
+                    // Deciding on `reason` would force the client to compare a
+                    // FRENCH sentence, which gets reworded: that is the F1 trap,
+                    // paid for with nine minutes on two messages that shared a
+                    // substring.
                     //
-                    // ⚠️ STRICTEMENT ADDITIF : le champ est ajouté, aucun n'est
-                    // retiré (règle §10.2). Un client d'hier ne lit pas `motif`
-                    // et continue de lire `reason`.
+                    // ⚠️ STRICTLY ADDITIVE: the field is added, none is
+                    // removed (rule §10.2). A client from yesterday does not read `motif`
+                    // and keeps reading `reason`.
                     send(socket, { type: 'error', reason: refus, motif: 'role-occupe' });
                     return;
                 }
 
-                // SEULEMENT MAINTENANT : `declarer` a accepté. Revendiquer
-                // plus tôt laisserait une appartenance fantôme derrière un
-                // pair refusé pour cause de rôle déjà occupé.
+                // ONLY NOW: `declarer` has accepted. Claiming
+                // earlier would leave a phantom membership behind a
+                // peer refused because the role was already taken.
                 garde.revendiquer(declaredSession, verdict.utilisateurId);
 
                 role = declaredRole;
                 sessionId = declaredSession;
 
-                // L'APPARIEMENT, et non la déclaration : le pair d'en face
-                // existe, donc les deux rôles sont là. `pair` rend le socket
-                // d'EN FACE — s'il est défini, ce pair-ci est le second.
+                // THE PAIRING, and not the declaration: the opposite peer
+                // exists, so both roles are there. `pair` returns the socket
+                // OPPOSITE — if it is defined, this peer is the second one.
                 const pairEnFace = sessions.pair(declaredSession, declaredRole);
                 if (pairEnFace) {
                     trace?.apparie(declaredSession, verdict.utilisateurId);
-                    // Le jumeau symétrique du `peer-gone` émis en pied de
-                    // fichier : le relais savait dire « ton pair est parti »
-                    // et ne savait pas dire « ton pair est arrivé ». Toute la
-                    // raison d'être — et la mesure de production qui l'a
-                    // imposée — vit dans `pair-present.ts`, jamais recopiée
-                    // ici pour ne pas diverger.
+                    // The symmetric twin of the `peer-gone` sent at the bottom of the
+                    // file: the relay could say "your peer has left"
+                    // and could not say "your peer has arrived". The whole
+                    // reason for being — and the production measurement that
+                    // forced it — lives in `pair-present.ts`, never copied
+                    // here so as not to diverge.
                     if (prevenirLePairEnPlace(declaredRole)) send(pairEnFace, messagePairPresent());
-                    // Et la moitié SYMÉTRIQUE : l'agent qui ARRIVE sur une
-                    // session où un client attend déjà. Elle n'existait pas
-                    // tant que l'agent n'ouvrait sa session de contrôle
-                    // qu'une fois ; elle devient le cas ordinaire depuis
-                    // qu'il la ROUVRE. Raison complète dans
-                    // `pair-present.ts::prevenirLArrivant`, jamais recopiée
-                    // ici pour ne pas diverger.
+                    // And the SYMMETRIC half: the agent that ARRIVES on a
+                    // session where a client is already waiting. It did not exist
+                    // as long as the agent opened its control session
+                    // only once; it becomes the ordinary case since
+                    // it REOPENS it. Full reasoning in
+                    // `pair-present.ts::prevenirLArrivant`, never copied
+                    // here so as not to diverge.
                     if (prevenirLArrivant(declaredRole)) send(socket, messagePairPresent());
                 }
 
-                // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
-                // déclare, agent comme client. Les deux en ont besoin — le
-                // relais TURN n'est utile que si les deux extrémités peuvent
-                // l'employer.
+                // ICE configuration: sent to EACH peer as soon as it
+                // declares itself, agent and client alike. Both need it — the
+                // TURN relay is only useful if both ends can
+                // use it.
                 //
-                // `Date.now()` est lu ici et non dans `configurationIce` :
-                // cette dernière reste ainsi une fonction pure, testable
-                // avec un instant fixé.
+                // `Date.now()` is read here and not in `configurationIce`:
+                // the latter thus stays a pure function, testable
+                // with a fixed instant.
                 const ice = configurationIce(process.env, declaredSession, Date.now());
                 if (ice) {
                     send(socket, { type: 'ice-config', ...ice });
                 } else {
-                    // Trace explicite : une session sans relais qui échoue à
-                    // se connecter depuis l'extérieur doit pouvoir être
-                    // diagnostiquée sans relire le code.
+                    // Explicit trace: a session without a relay that fails to
+                    // connect from outside must be
+                    // diagnosable without rereading the code.
                     console.warn(
                         'aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais',
                     );
                 }
 
-                // Une offre arrivée avant cet agent l'attend : la lui remettre
-                // maintenant, sinon elle ne partira jamais.
+                // An offer that arrived before this agent is waiting for it: hand it over
+                // now, otherwise it will never leave.
                 if (declaredRole === 'agent') {
                     const offre = sessions.prendreOffre(declaredSession);
                     if (offre) send(socket, { type: 'offer', sdp: offre });
@@ -431,12 +431,12 @@ export function createSignalingServer(
                 return;
             }
 
-            // Messages suivants : relais vers le pair.
+            // Following messages: relayed to the peer.
             const peer = sessions.pair(sessionId!, role);
 
             if (TYPES_RELAYES.has(message.type as string)) {
                 if (message.type === 'offer' && !peer) {
-                    // Pas d'agent en face : on retient, plutôt que de perdre.
+                    // No agent opposite: we hold on to it, rather than lose it.
                     sessions.retenirOffre(sessionId!, message.sdp as string);
                     return;
                 }
@@ -451,15 +451,15 @@ export function createSignalingServer(
             const peer = sessions.pair(sessionId, role);
             const { vide } = sessions.retirer(sessionId, role);
             send(peer, { type: 'peer-gone' });
-            // L'instant exact où la session est oubliée de la table : c'est
-            // celui-là qui clôt la ligne, et pas le départ du premier pair.
+            // The exact instant the session is forgotten from the table: that is
+            // the one that closes the row, and not the departure of the first peer.
             //
-            // ⚠️ `garde.liberer` est appelée ICI et non dans `http/serveur.ts`
-            // par l'observateur : le relais s'emploie AUSSI sous sa forme
-            // `port`, sans observateur (`server.test.ts` depuis le jalon 1).
-            // Accrocher la libération à la trace ferait qu'un nom de session
-            // resterait pris à vie dans ce montage-là, sans que rien ne le
-            // dise.
+            // ⚠️ `garde.liberer` is called HERE and not in `http/serveur.ts`
+            // by the observer: the relay is ALSO used in its
+            // `port` form, without an observer (`server.test.ts` since milestone 1).
+            // Hooking the release onto the trace would mean a session name
+            // would stay taken for life in that setup, with nothing
+            // saying so.
             if (vide) {
                 garde.liberer(sessionId);
                 trace?.separe(sessionId);

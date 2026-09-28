@@ -1,21 +1,21 @@
-// Le dépôt `agent_enrole` : enrôler une VM, la relire par son identifiant ou
-// par son préfixe, et marquer qu'on vient de l'entendre battre.
+// The `agent_enrole` repository: enrol a VM, read it back by its identifier or
+// by its prefix, and mark that we just heard it beat.
 //
-// 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais lue ici — même règle que
-// `depot/session.ts`, `depot/utilisateur.ts` et `signaling/ice.ts`, et c'est
-// ce qui rend `agent.test.ts` capable d'asserter une époque EXACTE.
+// 🔴 THE CLOCK IS A PARAMETER, never read here — same rule as
+// `depot/session.ts`, `depot/utilisateur.ts` and `signaling/ice.ts`, and it is
+// what makes `agent.test.ts` able to assert an EXACT epoch.
 //
-// 🔴 AUCUNE VALEUR LITTÉRALE dans le SQL : tout passe en paramètre, sans quoi
-// `rendreMarqueurs` lèverait côté Postgres (`base/pilote.ts`).
+// 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, otherwise
+// `rendreMarqueurs` would throw on the Postgres side (`base/pilote.ts`).
 //
-// ⚠️ CE MODULE NE SAIT RIEN DU HACHAGE : il reçoit et rend une empreinte
-// opaque, exactement comme `depot/utilisateur.ts`. C'est ce qui permettra de
-// durcir `scrypt` sans le rouvrir — le format porte ses propres paramètres
+// ⚠️ THIS MODULE KNOWS NOTHING ABOUT HASHING: it receives and returns an opaque
+// hash, exactly like `depot/utilisateur.ts`. That is what will allow
+// hardening `scrypt` without reopening it — the format carries its own parameters
 // (`identite/mot-de-passe.ts`).
 //
-// ⚠️ IL NE SAIT RIEN DE LA FRAÎCHEUR NON PLUS : il rend `vu_a` tel qu'il est,
-// `null` compris. Décider `prete` / `injoignable` est le travail d'un module
-// PUR, avec son horloge en paramètre.
+// ⚠️ IT KNOWS NOTHING ABOUT FRESHNESS EITHER: it returns `vu_a` as it is,
+// `null` included. Deciding `prete` / `injoignable` is the job of a
+// PURE module, with its clock as a parameter.
 
 import type { Pilote } from '../base/pilote';
 
@@ -23,27 +23,27 @@ export interface LigneAgent {
     vm_id: string;
     empreinte_secret: string;
     prefixe_session: string;
-    /// `null` tant que l'agent n'a jamais battu. ⚠️ Ce n'est PAS `0` : zéro se
-    /// lirait comme une époque de 1970, donc comme un agent injoignable depuis
-    /// cinquante-six ans, et les deux états sont distincts.
+    /// `null` as long as the agent has never beaten. ⚠️ It is NOT `0`: zero would
+    /// read as a 1970 epoch, hence as an agent unreachable for
+    /// fifty-six years, and the two states are distinct.
     ///
-    /// ✅ `number` EST VRAI SUR LES DEUX MOTEURS, et ce ne l'a pas toujours
-    /// été : `pg` rend les `BIGINT` en chaîne, et cette déclaration était
-    /// FAUSSE en production jusqu'à ce que `base/pilote-postgres.ts` pose son
-    /// `setTypeParser` (recette de P3). `interroger<T>` faisant un `as T[]`,
-    /// aucun typage ne l'aurait attrapée — c'est `pilotes.test.ts` qui la
-    /// tient, colonne par colonne.
+    /// ✅ `number` IS TRUE ON BOTH ENGINES, and it has not always
+    /// been: `pg` returns `BIGINT`s as strings, and this declaration was
+    /// FALSE in production until `base/pilote-postgres.ts` set its
+    /// `setTypeParser` (P3 acceptance run). Since `interroger<T>` does an `as T[]`,
+    /// no typing would have caught it — it is `pilotes.test.ts` that
+    /// holds it, column by column.
     vu_a: number | null;
 }
 
 const COLONNES = 'vm_id, empreinte_secret, prefixe_session, vu_a';
 
-/// Enrôle une VM.
+/// Enrols a VM.
 ///
-/// Un préfixe déjà pris fait LEVER, par l'index UNIQUE de `0003-agents.sql` —
-/// jamais un retour silencieux : ici l'appelant est l'administrateur, et lui
-/// cacher l'échec lui ferait croire à un enrôlement qui n'existe pas. Même
-/// raisonnement que `creerUtilisateur` sur le courriel.
+/// A prefix already taken makes it THROW, through the UNIQUE index of `0003-agents.sql` —
+/// never a silent return: here the caller is the administrator, and hiding
+/// the failure from them would make them believe in an enrolment that does not exist. Same
+/// reasoning as `creerUtilisateur` on the email.
 export async function enroler(
     p: Pilote,
     vmId: string,
@@ -56,11 +56,11 @@ export async function enroler(
     );
 }
 
-/// Rend la ligne, ou `undefined`. JAMAIS une exception sur une VM inconnue :
-/// le canal doit répondre le MÊME refus que pour un secret faux, et une
-/// exception qui remonterait en erreur interne serait à elle seule un oracle
-/// d'énumération — l'appelant apprendrait par tâtonnement quelles VMs
-/// existent. Précédent : `depot/utilisateur.ts::lireParEmail`.
+/// Returns the row, or `undefined`. NEVER an exception on an unknown VM:
+/// the channel must answer the SAME refusal as for a wrong secret, and an
+/// exception that bubbled up as an internal error would on its own be an
+/// enumeration oracle — the caller would learn by trial and error which VMs
+/// exist. Precedent: `depot/utilisateur.ts::lireParEmail`.
 export async function lireParVm(p: Pilote, vmId: string): Promise<LigneAgent | undefined> {
     const lignes = await p.interroger<LigneAgent>(
         `SELECT ${COLONNES} FROM agent_enrole WHERE vm_id = ?`,
@@ -69,11 +69,11 @@ export async function lireParVm(p: Pilote, vmId: string): Promise<LigneAgent | u
     return lignes[0];
 }
 
-/// Rend la ligne dont le préfixe est celui-ci, ou `undefined`.
+/// Returns the row whose prefix is this one, or `undefined`.
 ///
-/// C'est la SEULE clé dont dispose qui lit un nom de session : `P:bureau` ne
-/// porte pas l'identifiant de la VM, il porte son préfixe. L'unicité de la
-/// colonne est ce qui rend ce retour non ambigu.
+/// It is the ONLY key available to whoever reads a session name: `P:bureau` does not
+/// carry the identifier of the VM, it carries its prefix. The uniqueness of the
+/// column is what makes this return unambiguous.
 export async function lireParPrefixe(
     p: Pilote,
     prefixe: string,
@@ -85,36 +85,36 @@ export async function lireParPrefixe(
     return lignes[0];
 }
 
-/// Avance `vu_a`. La valeur est ÉCRASÉE, jamais accumulée : c'est un instant,
-/// pas un compteur.
+/// Advances `vu_a`. The value is OVERWRITTEN, never accumulated: it is an instant,
+/// not a counter.
 ///
-/// Une VM inconnue n'écrit rien et ne lève pas — l'`UPDATE` touche zéro ligne.
-/// C'est délibéré : ce chemin est celui du battement de cœur, et il ne doit
-/// jamais être une raison d'abattre le canal.
+/// An unknown VM writes nothing and does not throw — the `UPDATE` touches zero rows.
+/// This is deliberate: this path is the heartbeat one, and it must
+/// never be a reason to bring the channel down.
 export async function marquerVu(p: Pilote, vmId: string, maintenant: number): Promise<void> {
     await p.executer('UPDATE agent_enrole SET vu_a = ? WHERE vm_id = ?', [maintenant, vmId]);
 }
 
-/// Remplace l'empreinte du secret d'enrôlement d'une VM, et RIEN D'AUTRE.
+/// Replaces the hash of the enrolment secret of a VM, and NOTHING ELSE.
 ///
-/// 🔴 `prefixe_session` N'EST PAS TOUCHÉ, ET C'EST LE POINT DE CETTE FONCTION.
-/// Le préfixe compose le nom des sessions VIVANTES de cette VM
-/// (`agents/prefixe.ts`, spec §3.4) : le faire tourner en même temps que le
-/// secret couperait toute session en cours. **Rotation du secret n'est pas
-/// rotation de l'identité**, et les deux n'ont pas la même urgence — un secret
-/// se remplace le jour où il fuite, une identité ne se remplace jamais en
-/// urgence.
+/// 🔴 `prefixe_session` IS NOT TOUCHED, AND THAT IS THE POINT OF THIS FUNCTION.
+/// The prefix makes up the name of the LIVE sessions of this VM
+/// (`agents/prefixe.ts`, spec §3.4): rotating it together with the
+/// secret would cut every ongoing session. **Rotating the secret is not
+/// rotating the identity**, and the two do not have the same urgency — a secret
+/// is replaced the day it leaks, an identity is never replaced in
+/// a hurry.
 ///
-/// Rend le nombre de lignes touchées. Une VM inconnue en touche ZÉRO et ne lève
-/// PAS : c'est ce qui permet à `admin/enroler-agent.ts` de rendre un refus
-/// MOTIVÉ plutôt qu'une exception. ⚠️ Le raisonnement d'oracle qui vaut pour
-/// `lireParVm` ne s'applique PAS ici — l'appelant est l'administrateur, pas un
-/// inconnu au bout d'un canal, et lui cacher qu'il s'est trompé de VM lui
-/// ferait croire à une rotation qui n'a pas eu lieu.
+/// Returns the number of rows touched. An unknown VM touches ZERO and does NOT
+/// throw: that is what lets `admin/enroler-agent.ts` return a
+/// REASONED refusal rather than an exception. ⚠️ The oracle reasoning that holds for
+/// `lireParVm` does NOT apply here — the caller is the administrator, not a
+/// stranger at the end of a channel, and hiding from them that they picked the wrong VM would
+/// make them believe in a rotation that did not happen.
 ///
-/// ⚠️ CE QU'ELLE NE FAIT PAS : révoquer les jetons d'agent DÉJÀ délivrés, qui
-/// restent valides jusqu'à leur expiration. Même propriété que les jetons
-/// humains (spec §3.5), et elle borne la fenêtre à `DUREE_JETON_ACCES_MS`.
+/// ⚠️ WHAT IT DOES NOT DO: revoke the agent tokens ALREADY handed out, which
+/// stay valid until they expire. Same property as the human
+/// tokens (spec §3.5), and it bounds the window to `DUREE_JETON_ACCES_MS`.
 export async function remplacerEmpreinte(
     p: Pilote,
     vmId: string,

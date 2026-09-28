@@ -1,47 +1,47 @@
-//! La RÉDACTION des messages de contrôle au journal : ce que `Debug` montre,
-//! et surtout ce qu'il ne montre PAS.
+//! The REDACTION of control messages in the log: what `Debug` shows,
+//! and above all what it does NOT show.
 //!
-//! **Extrait de `control.rs` au relevé de clôture du sous-bloc P2** : les deux
-//! `impl` ci-dessous l'avaient porté à **494 lignes, marge 6**, sur un plafond
-//! de 500. C'est la TROISIÈME porte de ce sous-bloc, et la règle du dépôt est
-//! d'extraire, jamais de comprimer un commentaire pour repasser sous la ligne.
+//! **Extracted from `control.rs` at the closing survey of sub-block P2**: the two
+//! `impl` below had taken it to **494 lines, margin 6**, on a ceiling
+//! of 500. It is the THIRD gate of this sub-block, and the repository's rule is
+//! to extract, never to compress a comment to get back under the line.
 //!
-//! ⚠️ **Cet emploi de `#[path]` est HORS de la portée de la « Convention de
-//! module enfant » de `CLAUDE.md`**, qui déclare elle-même son exclusion : même
-//! mécanisme Rust, autre raison — la règle des 500 lignes —, exactement comme
-//! `superviseur/table.rs`. Ce module ne se hisse PAS à la racine.
+//! ⚠️ **This use of `#[path]` is OUTSIDE the scope of the "Child
+//! module convention" of `CLAUDE.md`**, which itself declares its exclusion: same
+//! Rust mechanism, another reason — the 500-line rule —, exactly like
+//! `superviseur/table.rs`. This module is NOT hoisted to the root.
 
 use super::{AgentControl, ClientControl};
 
 // ---------------------------------------------------------------------------
-// 🔴 LE PRESSE-PAPIER NE DOIT JAMAIS ATTEINDRE UN JOURNAL, ET `#[derive(Debug)]`
-//    L'Y METTAIT.
+// 🔴 THE CLIPBOARD MUST NEVER REACH A LOG, AND `#[derive(Debug)]`
+//    PUT IT THERE.
 // ---------------------------------------------------------------------------
 //
-// **Mesuré, pas conjecturé** : la recette du sous-bloc P2 a relevé, dans
-// `agent.log`, quatre lignes de la forme
+// **Measured, not conjectured**: the acceptance run of sub-block P2 found, in
+// `agent.log`, four lines of the shape
 //
-//     INFO agent::demarrage: contrôle reçu session=… \
+//     INFO agent::demarrage: control received session=… \
 //          Clipboard { version: 3, text: "alpha-arme-1-crwor9" }
 //
-// c'est-à-dire **le contenu du presse-papier de l'utilisateur, en clair, dans
-// un journal que ce dépôt VERSE DANS GIT**. La décision D-P1-7 l'interdit
-// nommément (« UNE SEULE TRACE, ET JAMAIS LE TEXTE »), et P1 l'avait tenue
-// dans le sens descendant — `capteur::sommeil::presse_papier::distribuer` ne
-// journalise qu'`octets` et `refus`.
+// that is, **the content of the user's clipboard, in clear, in
+// a log that this repository POURS INTO GIT**. Decision D-P1-7 forbids it
+// by name ("ONE SINGLE TRACE, AND NEVER THE TEXT"), and P1 had kept to it
+// in the downstream direction — `capteur::sommeil::presse_papier::distribuer`
+// logs only `octets` and `refus`.
 //
-// ⚠️ **Ce n'est PAS un défaut du site de journalisation.** La trace fautive
-// (`demarrage.rs`, `on_control`) est ANTÉRIEURE au chantier presse-papier :
-// elle imprime le message reçu par `?message`, ce qui était inoffensif tant
-// qu'aucune variante ne portait de contenu privé. C'est P2 qui a rendu cette
-// trace dangereuse en ajoutant `ClientControl::Clipboard`, et un remède posé
-// sur le site aurait laissé le PROCHAIN site fuir.
+// ⚠️ **It is NOT a defect of the logging site.** The faulty trace
+// (`demarrage.rs`, `on_control`) PREDATES the clipboard workstream:
+// it prints the received message through `?message`, which was harmless as long
+// as no variant carried private content. It is P2 that made this
+// trace dangerous by adding `ClientControl::Clipboard`, and a remedy placed
+// on the site would have let the NEXT site leak.
 //
-// **Le remède est donc au TYPE, et il est exhaustif par construction** : ces
-// deux `impl` sont écrites à la main, si bien qu'ajouter une variante oblige à
-// décider ce qu'elle montre. Le texte est remplacé par sa TAILLE — ce qui
-// garde au journal tout son pouvoir de diagnostic, la taille étant justement
-// ce que la borne et le refus mettent en jeu.
+// **The remedy is therefore at the TYPE, and it is exhaustive by construction**: these
+// two `impl` are written by hand, so that adding a variant forces
+// deciding what it shows. The text is replaced by its SIZE — which
+// keeps the log's full diagnostic power, the size being precisely
+// what the bound and the refusal are about.
 
 impl std::fmt::Debug for ClientControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -66,7 +66,7 @@ impl std::fmt::Debug for ClientControl {
                 .field("visible", visible)
                 .field("focused", focused)
                 .finish(),
-            // 🔴 LA TAILLE, JAMAIS LE TEXTE.
+            // 🔴 THE SIZE, NEVER THE TEXT.
             ClientControl::Clipboard { version, text } => f
                 .debug_struct("Clipboard")
                 .field("v", version)
@@ -79,8 +79,8 @@ impl std::fmt::Debug for ClientControl {
 impl std::fmt::Debug for AgentControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            // 🔴 LA TAILLE ET LE REFUS, JAMAIS LE TEXTE. `bytes` porte déjà la
-            // taille dans le protocole : on ne la recalcule pas, on la montre.
+            // 🔴 THE SIZE AND THE REFUSAL, NEVER THE TEXT. `bytes` already carries the
+            // size in the protocol: we do not recompute it, we show it.
             AgentControl::Clipboard {
                 version,
                 text,
@@ -91,9 +91,9 @@ impl std::fmt::Debug for AgentControl {
                 .field("refus", &text.is_none())
                 .field("octets", bytes)
                 .finish(),
-            // Les autres variantes ne portent aucun contenu privé : leur forme
-            // dérivée est reproduite telle quelle, par le seul moyen qui reste
-            // une fois `derive` retiré.
+            // The other variants carry no private content: their derived
+            // shape is reproduced as is, by the only means left
+            // once `derive` is removed.
             AgentControl::Ready {
                 version,
                 width,
@@ -156,19 +156,19 @@ impl std::fmt::Debug for AgentControl {
                 .field("v", version)
                 .field("active", active)
                 .finish(),
-            // Sous-bloc A1. 🔴 **CE `match` EST CE QUI M'A FORCÉ À DÉCIDER**, et
-            // c'est exactement ce que son en-tête promet : « ajouter une
-            // variante oblige à décider ce qu'elle montre ». La décision est
-            // de MONTRER la couleur, et la raison est que ce message ne porte
-            // rien de privé — ni `hwnd`, ni PID, ni titre de fenêtre, ni chemin
-            // d'exécutable. Une teinte est une propriété visuelle publique de
-            // l'application, et elle est le seul champ utile au diagnostic.
+            // Sub-block A1. 🔴 **THIS `match` IS WHAT FORCED ME TO DECIDE**, and
+            // it is exactly what its header promises: "adding a
+            // variant forces deciding what it shows". The decision is
+            // to SHOW the colour, and the reason is that this message carries
+            // nothing private — no `hwnd`, no PID, no window title, no executable
+            // path. A hue is a public visual property of the
+            // application, and it is the only field useful for diagnosis.
             //
-            // ⚠️ **Si une variante future d'accent portait le titre ou le
-            // chemin de l'application, elle devrait être rédigée ICI**, et pas
-            // au site de journalisation : c'est la leçon de P2, dont la fuite
-            // venait d'une trace ANTÉRIEURE et inoffensive rendue dangereuse
-            // par une variante neuve.
+            // ⚠️ **If a future accent variant carried the title or the
+            // path of the application, it would have to be redacted HERE**, and not
+            // at the logging site: it is the lesson of P2, whose leak
+            // came from an EARLIER, harmless trace made dangerous
+            // by a new variant.
             AgentControl::Accent { version, couleur } => f
                 .debug_struct("Accent")
                 .field("v", version)
@@ -190,11 +190,11 @@ impl std::fmt::Debug for AgentControl {
                 .field("quality", quality)
                 .field("adaptation", adaptation)
                 .finish(),
-            // Bloc E3. Ce `match` a fait son travail une seconde fois : il a
-            // FORCÉ la décision, comme son en-tête le promet. Elle est de
-            // montrer `granted`, et la raison est qu'un booléen n'a rien à
-            // divulguer — ni identité de fenêtre, ni titre, ni PID. C'est
-            // aussi le seul champ que porte la variante.
+            // Block E3. This `match` did its job a second time: it
+            // FORCED the decision, as its header promises. It is to
+            // show `granted`, and the reason is that a boolean has nothing to
+            // disclose — no window identity, no title, no PID. It is
+            // also the only field the variant carries.
             AgentControl::MicState { version, granted } => f
                 .debug_struct("MicState")
                 .field("v", version)

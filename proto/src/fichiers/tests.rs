@@ -1,32 +1,32 @@
-//! Tests de la trame binaire v1. Purs, exécutés sur l'hôte.
+//! Tests of the v1 binary frame. Pure, run on the host.
 
 use super::*;
 
-/// Le vecteur épinglé, **écrit en dur ici ET dans `proto/ts/fichiers.test.ts`**.
+/// The pinned vector, **hard-coded here AND in `proto/ts/fichiers.test.ts`**.
 ///
-/// ⚠️ C'est la seule façon de voir ROUGE une divergence d'endianness entre les
-/// deux implémentations : un aller-retour Rust→Rust reste vert quel que soit le
-/// boutisme, du moment qu'il est le même des deux côtés du même fichier. Les
-/// octets ci-dessous sont donc la source de vérité du format, pas une
-/// conséquence du code.
+/// ⚠️ It is the only way to see an endianness divergence between the
+/// two implementations turn RED: a Rust→Rust round trip stays green whatever the
+/// byte order, as long as it is the same on both sides of the same file. The
+/// bytes below are therefore the source of truth of the format, not a
+/// consequence of the code.
 ///
-/// Décomposition : version 1 | type 66 (`TYPE_DONNEES`) | corrélation
-/// 0x0A0B0C0D en petit-boutiste | longueur d'en-tête 2 en petit-boutiste |
-/// en-tête `{}` | charge `00 FF 7F 80`.
+/// Breakdown: version 1 | type 66 (`TYPE_DONNEES`) | correlation
+/// 0x0A0B0C0D in little-endian | header length 2 in little-endian |
+/// header `{}` | payload `00 FF 7F 80`.
 pub(super) const VECTEUR_EPINGLE: &[u8] = &[
     1, 66, 0x0D, 0x0C, 0x0B, 0x0A, 2, 0, 0, 0, b'{', b'}', 0x00, 0xFF, 0x7F, 0x80,
 ];
 
 #[test]
 fn une_trame_sans_version_est_refusee() {
-    // Une trame de zéro octet ne porte pas sa version : elle est rejetée, jamais
-    // complétée par la version courante. C'est la doctrine de `control.rs:37-40`.
+    // A zero-byte frame does not carry its version: it is rejected, never
+    // completed with the current version. It is the doctrine of `control.rs:37-40`.
     assert!(matches!(
         decoder(&[]),
         Err(ErreurTrame::TropCourte { recu: 0, .. })
     ));
-    // Et tout ce qui est plus court que l'en-tête fixe l'est aussi, y compris à
-    // un octet près.
+    // And anything shorter than the fixed header is too, even by
+    // a single byte.
     let presque = vec![0u8; TAILLE_ENTETE_FIXE - 1];
     assert!(matches!(
         decoder(&presque),
@@ -47,16 +47,16 @@ fn une_trame_de_version_2_est_refusee() {
 #[test]
 fn un_entete_dont_la_longueur_deborde_la_trame_est_refuse() {
     let mut octets = encoder(TYPE_ENTREES, 1, "{}", b"charge");
-    // Longueur d'en-tête annoncée à `u32::MAX` : sans borne, la tranche
-    // `split_at` paniquerait hors limites.
+    // Header length announced as `u32::MAX`: without a bound, the `split_at`
+    // slice would panic out of bounds.
     octets[6..10].copy_from_slice(&u32::MAX.to_le_bytes());
     assert!(matches!(
         decoder(&octets),
         Err(ErreurTrame::EnteteDeborde { .. })
     ));
 
-    // Et le débordement d'UN SEUL octet est refusé aussi : c'est là que vit
-    // l'erreur d'inégalité stricte.
+    // And an overflow of ONE SINGLE byte is refused too: that is where
+    // the strict-inequality error lives.
     let mut juste_un_de_trop = encoder(TYPE_ENTREES, 1, "ab", b"");
     juste_un_de_trop[6..10].copy_from_slice(&3u32.to_le_bytes());
     assert!(matches!(
@@ -70,7 +70,7 @@ fn un_entete_dont_la_longueur_deborde_la_trame_est_refuse() {
 
 #[test]
 fn un_aller_retour_conserve_les_octets_bruts() {
-    // 0x00 et 0xFF sont les deux octets qu'un encodage textuel abîme en premier.
+    // 0x00 and 0xFF are the two bytes a textual encoding damages first.
     let charge: Vec<u8> = (0u16..=255).map(|o| o as u8).collect();
     let octets = encoder(TYPE_DONNEES, 0xDEAD_BEEF, r#"{"position":0}"#, &charge);
     let trame = decoder(&octets).expect("trame licite");
@@ -87,7 +87,7 @@ fn un_aller_retour_conserve_les_octets_bruts() {
 
 #[test]
 fn une_charge_vide_et_un_entete_vide_sont_licites() {
-    // La trame minimale : c'est celle d'un accusé sans corps, et elle est licite.
+    // The minimal frame: it is that of an acknowledgement without a body, and it is lawful.
     let octets = encoder(TYPE_META, 0, "", b"");
     assert_eq!(octets.len(), TAILLE_ENTETE_FIXE);
     let trame = decoder(&octets).expect("la trame minimale est licite");
@@ -98,8 +98,8 @@ fn une_charge_vide_et_un_entete_vide_sont_licites() {
 
 #[test]
 fn la_charge_maximale_de_taille_trame_max_passe() {
-    // Au seuil EXACT : `TAILLE_TRAME_MAX` octets passent, `+ 1` ne passe pas.
-    // C'est l'inégalité stricte qui est éprouvée, pas la borne en général.
+    // At the EXACT threshold: `TAILLE_TRAME_MAX` bytes pass, `+ 1` does not.
+    // It is the strict inequality that is tested, not the bound in general.
     let pleine = vec![0xABu8; TAILLE_TRAME_MAX];
     let octets = encoder(TYPE_DONNEES, 1, "{}", &pleine);
     let trame = decoder(&octets).expect("le seuil exact doit passer");
@@ -118,16 +118,16 @@ fn la_charge_maximale_de_taille_trame_max_passe() {
 
 #[test]
 fn le_vecteur_epingle_se_decode_comme_annonce() {
-    // Épingle le format sur le fil, indépendamment du code qui l'encode : si
-    // `encoder` passait au gros-boutiste, cet assert tomberait et l'aller-retour
-    // ci-dessus resterait vert.
+    // Pins the wire format, independently of the code that encodes it: if
+    // `encoder` switched to big-endian, this assert would fall and the round trip
+    // above would stay green.
     let trame = decoder(VECTEUR_EPINGLE).expect("vecteur épinglé licite");
     assert_eq!(trame.version, 1);
     assert_eq!(trame.type_message, TYPE_DONNEES);
     assert_eq!(trame.correlation, 0x0A0B_0C0D);
     assert_eq!(trame.entete, b"{}");
     assert_eq!(trame.charge, &[0x00, 0xFF, 0x7F, 0x80]);
-    // …et l'encodeur le REPRODUIT à l'octet près.
+    // …and the encoder REPRODUCES it byte for byte.
     assert_eq!(
         encoder(TYPE_DONNEES, 0x0A0B_0C0D, "{}", &[0x00, 0xFF, 0x7F, 0x80]),
         VECTEUR_EPINGLE
@@ -136,14 +136,14 @@ fn le_vecteur_epingle_se_decode_comme_annonce() {
 
 #[test]
 fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
-    // ⚠️ Les variantes à DEUX MOTS sont celles qui se cassent en silence : ce
-    // dépôt a laissé passer `battement-recu` verte sur cinquante tests parce que
-    // rien n'épinglait ses octets. Les ONZE sont épinglées littéralement, et
-    // dans les DEUX sens — sérialiser puis désérialiser ne prouverait que la
-    // cohérence de serde avec lui-même.
+    // ⚠️ The TWO-WORD variants are the ones that break silently: this
+    // repository let `battement-recu` through green on fifty tests because
+    // nothing pinned its bytes. All ELEVEN are pinned literally, and
+    // in BOTH directions — serializing then deserializing would only prove the
+    // consistency of serde with itself.
     //
-    // ⚠️ Les TROIS neuves de F2 sont toutes à deux mots ou plus, et la seule
-    // de F3 — `repertoire-non-vide` — est à TROIS.
+    // ⚠️ The THREE new ones of F2 all have two words or more, and the only one
+    // of F3 — `repertoire-non-vide` — has THREE.
     let attendu = [
         (CodeEchec::Introuvable, "\"introuvable\""),
         (CodeEchec::CheminIntrouvable, "\"chemin-introuvable\""),
@@ -173,9 +173,9 @@ fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
 
 #[test]
 fn les_types_de_message_ne_se_chevauchent_pas() {
-    // Un type dupliqué entre une requête et une réponse ferait qu'une réponse
-    // serait traitée comme une requête. Le balayage l'interdit, et il couvre
-    // toute addition future — une énumération à la main ne l'aurait pas fait.
+    // A type duplicated between a request and an answer would mean an answer
+    // would be handled as a request. The sweep forbids it, and it covers
+    // any future addition — a hand enumeration would not have.
     let tous = [
         TYPE_LISTER,
         TYPE_ATTRIBUTS,
@@ -198,16 +198,16 @@ fn les_types_de_message_ne_se_chevauchent_pas() {
     }
 }
 
-/// 🔴 **UNE TRAME `ECRIRE` PLEINE PASSE, en-tête compris.**
+/// 🔴 **A FULL `ECRIRE` FRAME PASSES, header included.**
 ///
-/// ⚠️ **C'est le contrôle qui distingue les deux lectures possibles de
-/// `TAILLE_TRAME_MAX`**, et le module l'annonce lui-même comme une divergence :
-/// le nom dit « trame », la valeur borne la **charge**. Si un jour la borne
-/// devenait `TAILLE_TRAME_MAX - taille_entete`, un morceau plein d'écriture —
-/// c'est-à-dire le cas NOMINAL d'un gros fichier, celui que `pont::decoupe`
-/// produit à chaque tour sauf le dernier — serait refusé par le décodeur. Le
-/// symptôme serait une écriture qui échoue **uniquement** sur les fichiers de
-/// plus de 64 Kio.
+/// ⚠️ **It is the check that tells apart the two possible readings of
+/// `TAILLE_TRAME_MAX`**, and the module itself announces it as a divergence:
+/// the name says "frame", the value bounds the **payload**. If one day the bound
+/// became `TAILLE_TRAME_MAX - taille_entete`, a full write chunk —
+/// that is, the NOMINAL case of a big file, the one `pont::decoupe`
+/// produces on every round but the last — would be refused by the decoder. The
+/// symptom would be a write that fails **only** on files of
+/// more than 64 KiB.
 #[test]
 fn une_trame_ecrire_pleine_passe_entete_compris() {
     let entete = serde_json::to_string(&entetes::Ecrire {
@@ -232,23 +232,23 @@ fn une_trame_ecrire_pleine_passe_entete_compris() {
     assert_eq!(relu.longueur as usize, trame.charge.len());
 }
 
-/// 🔴 **CHAQUE TYPE DE MESSAGE A UNE VALEUR ÉPINGLÉE, ET LE TEST LA NOMME.**
+/// 🔴 **EACH MESSAGE TYPE HAS A PINNED VALUE, AND THE TEST NAMES IT.**
 ///
-/// ⚠️ **`les_types_de_message_ne_se_chevauchent_pas` ne suffit PAS**, et c'est
-/// ce qui justifie ce test-ci : il interdit deux valeurs égales, jamais un
-/// DÉPLACEMENT. Renuméroter `TYPE_RENOMMER` de 7 à 9 le laisserait vert, et
-/// pourtant un agent de la version d'avant et un navigateur de celle d'après
-/// ne se comprendraient plus — sans que `FICHIERS_VERSION` ait bougé, puisque
-/// l'addition d'un type est réputée additive.
+/// ⚠️ **`les_types_de_message_ne_se_chevauchent_pas` is NOT enough**, and that is
+/// what justifies this test: it forbids two equal values, never a
+/// SHIFT. Renumbering `TYPE_RENOMMER` from 7 to 9 would leave it green, and
+/// yet an agent of the version before and a browser of the one after
+/// would no longer understand each other — without `FICHIERS_VERSION` having moved, since
+/// adding a type is deemed additive.
 ///
-/// C'est la même lacune que ce dépôt a payée sur `battement-recu` : un test
-/// qui vérifie une PROPRIÉTÉ d'un ensemble ne remplace pas un test qui épingle
-/// ses ÉLÉMENTS.
+/// It is the same gap this repository paid for on `battement-recu`: a test
+/// that checks a PROPERTY of a set does not replace a test that pins
+/// its ELEMENTS.
 #[test]
 fn un_type_de_message_a_une_valeur_epinglee() {
-    // ⚠️ 6 est une ANNONCE, 7 et 8 sont des REQUÊTES : la numérotation n'est
-    // pas contiguë par famille, et le trou de F2 — qui a sauté 7 et 8 pour F3 —
-    // est ce qui a évité une renumérotation tardive.
+    // ⚠️ 6 is an ANNOUNCEMENT, 7 and 8 are REQUESTS: the numbering is
+    // not contiguous per family, and the gap of F2 — which skipped 7 and 8 for F3 —
+    // is what avoided a late renumbering.
     assert_eq!(TYPE_LISTER, 1);
     assert_eq!(TYPE_ATTRIBUTS, 2);
     assert_eq!(TYPE_LIRE, 3);

@@ -1,28 +1,28 @@
-// Le dépôt `installation` : la demande, son avancement, et son issue.
+// The `installation` repository: the request, its progress, and its outcome.
 //
-// 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais lue ici. 🔴 AUCUNE VALEUR LITTÉRALE
-// dans le SQL. Mêmes règles que ses quatre voisins, et pour les mêmes raisons.
+// 🔴 THE CLOCK IS A PARAMETER, never read here. 🔴 NO LITERAL VALUE
+// in the SQL. Same rules as its four neighbours, and for the same reasons.
 //
-// 🔴 CE MODULE NE DÉCIDE D'AUCUNE ISSUE. Le verdict est calculé par
-// `agent/src/apps/installation/verdict.rs`, PUR, sur la VM : c'est lui qui
-// connaît le compte d'applications apparues pendant la fenêtre, et lui seul.
-// Ici on écrit ce que l'agent rapporte.
+// 🔴 THIS MODULE DECIDES NO OUTCOME. The verdict is computed by
+// `agent/src/apps/installation/verdict.rs`, PURE, on the VM: it is the one that
+// knows the count of applications that appeared during the window, and it alone.
+// Here we write what the agent reports.
 //
-// 🔴 ET LE CODE DE SORTIE N'EST PAS INTERPRÉTÉ ICI NON PLUS. `msiexec` rend
-// 3010 pour un succès qui demande un redémarrage, et beaucoup d'installeurs
-// rendent 0 après une annulation : une colonne `reussie BOOLEAN` dérivée du
-// code serait fausse dans les deux sens. Le code est RAPPORTÉ, à côté de
-// l'issue.
+// 🔴 AND THE EXIT CODE IS NOT INTERPRETED HERE EITHER. `msiexec` returns
+// 3010 for a success that asks for a restart, and many installers
+// return 0 after a cancellation: a `reussie BOOLEAN` column derived from the
+// code would be wrong in both directions. The code is REPORTED, next to
+// the outcome.
 
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
 
-/// L'état de la LIGNE, distinct de l'issue.
+/// The state of the ROW, distinct from the outcome.
 ///
-/// 🔴 C'EST LUI QUI GOUVERNE LA RÉÉMISSION : la plateforme cesse de pousser
-/// l'ordre dès que l'état n'est plus `en_attente`. C'est la PREMIÈRE des deux
-/// ceintures contre une double exécution ; la seconde est le marqueur sur le
-/// disque de la VM, et elle protège du cas où la première a perdu sa base.
+/// 🔴 IT IS WHAT GOVERNS RE-EMISSION: the platform stops pushing
+/// the order as soon as the state is no longer `en_attente`. It is the FIRST of the two
+/// belts against a double execution; the second is the marker on the
+/// disk of the VM, and it protects against the case where the first has lost its database.
 export type EtatInstallation = 'en_attente' | 'en_cours' | 'terminee';
 
 export interface LigneInstallation {
@@ -31,22 +31,22 @@ export interface LigneInstallation {
     televersement_id: string;
     demandee_a: number;
     etat: EtatInstallation;
-    /// `transfert` | `execution` | `reconciliation`, ou la chaîne vide tant que
-    /// rien n'a commencé. ⚠️ `empreinte` n'est PAS une phase de ce canal : elle
-    /// se déroule dans le navigateur.
+    /// `transfert` | `execution` | `reconciliation`, or the empty string as long as
+    /// nothing has started. ⚠️ `empreinte` is NOT a phase of this channel: it
+    /// takes place in the browser.
     phase: string;
     octets_faits: number;
-    /// Vaut zéro en phase `execution`, où il n'y a rien à totaliser.
+    /// Is zero in the `execution` phase, where there is nothing to total.
     octets_total: number;
     ecoule_ms: number;
-    /// 🔴 `null` = LE CODE N'A PAS PU ÊTRE RECUEILLI, et c'est un fait distinct
-    /// de tout code entier. Une sentinelle `-1` les confondrait.
+    /// 🔴 `null` = THE CODE COULD NOT BE COLLECTED, and that is a fact distinct
+    /// from any integer code. A `-1` sentinel would conflate them.
     code_sortie: number | null;
     issue: string | null;
     motif: string | null;
     journal: string | null;
-    /// ⚠️ Un entier et non un booléen : SQLite n'a pas de type booléen, et
-    /// c'est la convention du reste du schéma.
+    /// ⚠️ An integer and not a boolean: SQLite has no boolean type, and
+    /// it is the convention of the rest of the schema.
     journal_tronque: number;
     terminee_a: number | null;
     maj_a: number;
@@ -104,14 +104,14 @@ export async function lireParId(
     return lignes[0];
 }
 
-/// Les installations qu'une VM doit encore recevoir.
+/// The installations a VM has yet to receive.
 ///
-/// 🔴 C'EST LA REQUÊTE DE LA RÉÉMISSION À L'ENRÔLEMENT, et l'index
-/// `installation_par_vm_et_etat` existe pour elle. Un `push` WebSocket n'a
-/// AUCUNE garantie de livraison : sans cette réémission, un ordre émis pendant
-/// une coupure serait perdu SANS TERME. C'est le même filet que le
-/// `complet = true` du catalogue, et la recette de G1 l'a vu fonctionner sur le
-/// chemin réel.
+/// 🔴 IT IS THE QUERY OF THE RE-EMISSION ON ENROLMENT, and the index
+/// `installation_par_vm_et_etat` exists for it. A WebSocket `push` has
+/// NO delivery guarantee: without this re-emission, an order sent during
+/// an outage would be lost WITHOUT END. It is the same safety net as the
+/// `complet = true` of the catalogue, and the G1 acceptance run saw it work on the
+/// real path.
 export async function lireEnAttentePourVm(
     p: Pilote,
     vmId: string,
@@ -122,12 +122,12 @@ export async function lireEnAttentePourVm(
     );
 }
 
-/// Enregistre une progression rapportée par l'agent.
+/// Records a progress reported by the agent.
 ///
-/// ⚠️ ELLE FAIT PASSER L'ÉTAT À `en_cours`, ET C'EST CE QUI ARRÊTE LA
-/// RÉÉMISSION. Sans ce passage, la plateforme rejouerait l'ordre au prochain
-/// enrôlement alors que l'installateur tourne déjà — et l'agent aurait à
-/// s'en défendre seul, par son marqueur de disque.
+/// ⚠️ IT MOVES THE STATE TO `en_cours`, AND THAT IS WHAT STOPS THE
+/// RE-EMISSION. Without this move, the platform would replay the order at the next
+/// enrolment while the installer is already running — and the agent would have to
+/// defend itself alone, through its disk marker.
 export async function avancer(
     p: Pilote,
     id: string,
@@ -144,11 +144,11 @@ export async function avancer(
     );
 }
 
-/// ⚠️ `AND etat <> 'terminee'` SUR LES DEUX ÉCRITURES, et ce n'est pas une
-/// précaution de style : la plateforme RÉÉMET, donc un agent peut rapporter
-/// deux fois. Sans ce garde, une progression tardive écraserait une issue déjà
-/// posée et une installation terminée redeviendrait « en cours » — c'est-à-dire
-/// que la réémission recommencerait.
+/// ⚠️ `AND etat <> 'terminee'` ON BOTH WRITES, and it is not a
+/// stylistic precaution: the platform RE-EMITS, so an agent can report
+/// twice. Without this guard, a late progress would overwrite an outcome already
+/// set and a finished installation would become "in progress" again — that is,
+/// the re-emission would start over.
 export async function terminer(
     p: Pilote,
     id: string,

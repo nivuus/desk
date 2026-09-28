@@ -1,65 +1,65 @@
-// La trace en base d'une session appariée : une ligne ouverte quand les DEUX
-// rôles sont présents, close quand la session se vide.
+// The database trace of a paired session: a row opened when BOTH
+// roles are present, closed when the session empties.
 //
-// 🔴 QUAND, exactement, et ce n'est pas évident. Le relais connaît deux
-// instants : la DÉCLARATION d'un pair, et l'APPARIEMENT du second. Un seul pair
-// n'est pas un appariement — le superviseur se déclare `agent` sur `bureau` au
-// démarrage de la VM et peut y rester seul des heures
-// (`agent/src/superviseur/protocole.rs`). La ligne s'ouvre donc au SECOND rôle,
-// et se clôt quand `Appariement::retirer` rend `{ vide: true }`.
+// 🔴 WHEN, exactly, and it is not obvious. The relay knows two
+// instants: the DECLARATION of a peer, and the PAIRING of the second. A single peer
+// is not a pairing — the supervisor declares itself `agent` on `bureau` at
+// VM startup and can stay there alone for hours
+// (`agent/src/superviseur/protocole.rs`). The row therefore opens at the SECOND role,
+// and closes when `Appariement::retirer` returns `{ vide: true }`.
 //
-// ⚠️ CONSÉQUENCE ASSUMÉE : un agent qui se déclare et repart sans jamais
-// rencontrer de client NE LAISSE AUCUNE TRACE. C'est une décision, pas un
-// oubli.
+// ⚠️ ACCEPTED CONSEQUENCE: an agent that declares itself and leaves without ever
+// meeting a client LEAVES NO TRACE. It is a decision, not an
+// oversight.
 //
-// ✅ CETTE DÉCISION ANNONÇAIT SA PROPRE RÉOUVERTURE — « le jour où l'on voudra
-// observer les agents présents, ce qui est le sujet de P3 (`vu_a`) » —, ET
-// P3 A EU LIEU SANS LA ROUVRIR (19 août 2026, revue transverse de fin de
-// branche). Observer les agents ne passe PAS par la trace de session : c'est
-// `agent_enrole.vu_a`, avancé par le battement du canal `/agent`
-// (`agents/canal.ts`), et jugé par `agents/fraicheur.ts`. Un agent qui se
-// déclare et repart y est donc bien vu — simplement ailleurs, et par un
-// mécanisme qui ne dépend d'aucun appariement.
+// ✅ THIS DECISION ANNOUNCED ITS OWN REOPENING — "the day we want to
+// observe the agents present, which is the topic of P3 (`vu_a`)" —, AND
+// P3 HAPPENED WITHOUT REOPENING IT (19 August 2026, cross-cutting end-of-branch
+// review). Observing agents does NOT go through the session trace: it is
+// `agent_enrole.vu_a`, advanced by the heartbeat of the `/agent` channel
+// (`agents/canal.ts`), and judged by `agents/fraicheur.ts`. An agent that
+// declares itself and leaves is therefore indeed seen there — simply elsewhere, and by a
+// mechanism that depends on no pairing.
 //
-// **Le pronostic était juste sur le BESOIN et faux sur le LIEU**, et c'est la
-// forme la plus fréquente de pronostic périmé dans ce dépôt : ce module
-// n'avait rien à changer.
+// **The forecast was right about the NEED and wrong about the PLACE**, and it is the
+// most frequent form of stale forecast in this repository: this module
+// had nothing to change.
 //
-// 🔴 L'ÉCRITURE NE DOIT JAMAIS POUVOIR TUER UNE SESSION. `ouvrirSession` est
-// asynchrone, le gestionnaire `message` du relais est synchrone, et une
-// promesse rejetée sans `catch` dans un gestionnaire d'événement `ws` abat tout
-// le process Node — c'est exactement le mode de défaillance que le commentaire
-// d'`isJsonObject` (`relais.ts`) décrit. L'écriture est donc lancée SANS être
-// attendue, avec un `.catch` qui journalise et n'interrompt rien.
+// 🔴 THE WRITE MUST NEVER BE ABLE TO KILL A SESSION. `ouvrirSession` is
+// asynchronous, the relay's `message` handler is synchronous, and a
+// promise rejected without `catch` in a `ws` event handler brings down the whole
+// Node process — that is exactly the failure mode that the comment
+// of `isJsonObject` (`relais.ts`) describes. The write is therefore launched WITHOUT being
+// awaited, with a `.catch` that logs and interrupts nothing.
 //
-// Le coût est nommé : une écriture perdue ne se voit qu'au journal. C'est
-// pourquoi `trace.test.ts` attend la ligne avec une BORNE et échoue sur
-// expiration, plutôt que de se contenter de « la ligne finit par exister ».
+// The cost is named: a lost write only shows in the log. That is
+// why `trace.test.ts` waits for the row with a BOUND and fails on
+// timeout, rather than settling for "the row ends up existing".
 //
-// 🔴 C'EST ICI QUE `session.vm_id` SE RÉSOUT, ET NON DANS LE RELAIS (E10 du
-// plan P3). `ObservateurDeSession.apparie` est SYNCHRONE et sans retour, à
-// dessein (`relais.ts`) : une résolution qui vivrait là-bas obligerait le
-// relais à connaître la base, ce qu'il ne connaît pas et ne doit pas
-// connaître. La trace, elle, la connaît déjà — c'est sa seule raison d'être.
+// 🔴 THIS IS WHERE `session.vm_id` IS RESOLVED, AND NOT IN THE RELAY (E10 of the
+// P3 plan). `ObservateurDeSession.apparie` is SYNCHRONOUS and returns nothing, on
+// purpose (`relais.ts`): a resolution living over there would force the
+// relay to know the database, which it does not know and must not
+// know. The trace, for its part, already knows it — it is its sole reason for being.
 //
-// Le nom de session PORTE la VM : `<préfixe>:bureau` (`agents/prefixe.ts`).
-// On le découpe, on cherche le préfixe dans `agent_enrole`, et on inscrit
-// l'identifiant trouvé. DEUX cas rendent `null`, et ni l'un ni l'autre n'est
-// une erreur :
-//   - AUCUN PRÉFIXE (`bureau` tout court) : c'est le mode d'essai local que
-//     la spec §10 pose comme légitime, et il ne se journalise pas — il est
-//     nominal, pas anormal ;
-//   - PRÉFIXE INCONNU : la VM n'est pas (ou n'est plus) enrôlée. Celui-là SE
-//     JOURNALISE, parce qu'il est anormal et qu'il serait autrement
-//     indiscernable du précédent.
+// The session name CARRIES the VM: `<prefix>:bureau` (`agents/prefixe.ts`).
+// We split it, look up the prefix in `agent_enrole`, and record
+// the identifier found. TWO cases return `null`, and neither one is
+// an error:
+//   - NO PREFIX (plain `bureau`): it is the local trial mode that
+//     spec §10 sets as legitimate, and it is not logged — it is
+//     nominal, not abnormal;
+//   - UNKNOWN PREFIX: the VM is not (or is no longer) enrolled. That one IS
+//     LOGGED, because it is abnormal and would otherwise be
+//     indistinguishable from the previous one.
 //
-// ⚠️ INSCRIRE MALGRÉ TOUT FERAIT MENTIR LA COLONNE : elle nommerait une VM
-// que la base ne connaît pas. `session.vm_id` reste NULLABLE pour cette
-// raison même — `NOT NULL` y serait FAUX, pas seulement coûteux.
+// ⚠️ RECORDING ANYWAY WOULD MAKE THE COLUMN LIE: it would name a VM
+// the database does not know. `session.vm_id` stays NULLABLE for this very
+// reason — `NOT NULL` would be WRONG there, not merely costly.
 //
-// L'horloge est un PARAMÈTRE, jamais lue ici : même règle que `depot/session.ts`
-// et `src/signaling/ice.ts`, et c'est ce qui rend les instants assertables sur des
-// valeurs exactes.
+// The clock is a PARAMETER, never read here: same rule as `depot/session.ts`
+// and `src/signaling/ice.ts`, and it is what makes the instants assertable on
+// exact values.
 
 import type { Pilote } from '../base/pilote';
 import { decouper } from '../agents/prefixe';
@@ -67,34 +67,34 @@ import { lireParPrefixe } from '../depot/agent';
 import { clore, ouvrirSession } from '../depot/session';
 import type { ObservateurDeSession } from './relais';
 
-/// Motif posé quand les deux pairs sont partis d'eux-mêmes — à distinguer de
-/// `MOTIF_BALAYAGE`, qui marque une ligne qu'un arrêt brutal a laissée ouverte.
+/// Reason set when both peers left on their own — to be told apart from
+/// `MOTIF_BALAYAGE`, which marks a row that an abrupt stop left open.
 ///
-/// Passé en PARAMÈTRE de la requête, jamais écrit dans le SQL : une valeur
-/// littérale ferait lever `rendreMarqueurs` côté Postgres.
+/// Passed as a query PARAMETER, never written into the SQL: a literal
+/// value would make `rendreMarqueurs` throw on the Postgres side.
 export const MOTIF_DEPART = 'les deux pairs sont partis';
 
-/// Résout la VM que le nom de session désigne, ou `undefined`.
+/// Resolves the VM that the session name designates, or `undefined`.
 ///
-/// ⚠️ ELLE NE LÈVE PAS SUR UN PRÉFIXE INCONNU : c'est un état légitime du
-/// point de vue de la trace, qui observe et n'arbitre rien. Une exception ici
-/// remonterait dans le `.catch` de l'appelant et ferait perdre la LIGNE
-/// ENTIÈRE — on aurait échangé une colonne `null` contre aucune trace du tout.
+/// ⚠️ IT DOES NOT THROW ON AN UNKNOWN PREFIX: it is a legitimate state from the
+/// trace's point of view, which observes and arbitrates nothing. An exception here
+/// would climb into the caller's `.catch` and lose the WHOLE
+/// ROW — we would have traded a `null` column for no trace at all.
 ///
-/// Elle laisse en revanche remonter une panne de la BASE, qui est un tout
-/// autre événement : le `.catch` de l'appelant la journalise, et la ligne
-/// manquante est alors le symptôme juste.
+/// It does, however, let a DATABASE failure climb up, which is an entirely
+/// different event: the caller's `.catch` logs it, and the missing
+/// row is then the right symptom.
 async function resoudreVm(base: Pilote, nomSession: string): Promise<string | undefined> {
     const { prefixe } = decouper(nomSession);
-    // Le mode d'essai local. Nominal, donc muet : le journaliser noierait le
-    // cas anormal ci-dessous sous une ligne par session.
+    // The local trial mode. Nominal, therefore silent: logging it would drown the
+    // abnormal case below under one line per session.
     if (prefixe === '') return undefined;
 
     const ligne = await lireParPrefixe(base, prefixe);
     if (ligne === undefined) {
-        // ⚠️ LE PRÉFIXE EST DANS LA LIGNE, et ce n'est pas un oracle : cette
-        // trace reste CHEZ NOUS, elle ne part sur aucun fil. C'est le même
-        // partage que `identite/garde.ts` entre `message` et `journal`.
+        // ⚠️ THE PREFIX IS IN THE LINE, and it is not an oracle: this
+        // trace stays WITH US, it leaves on no wire. It is the same
+        // split as `identite/garde.ts` between `message` and `journal`.
         console.warn(
             `session ${nomSession} : préfixe ${prefixe} inconnu de agent_enrole, vm_id non inscrit`,
         );
@@ -107,30 +107,30 @@ export function observateurDeSession(
     base: Pilote,
     horloge: () => number,
 ): ObservateurDeSession {
-    // La PROMESSE, et non l'identifiant : `separe` peut arriver avant que
-    // l'INSERT n'ait abouti (deux pairs qui se ferment aussitôt appariés).
-    // Retenir la promesse et enchaîner dessus ferme cette course sans verrou.
+    // The PROMISE, and not the identifier: `separe` can arrive before
+    // the INSERT has completed (two peers that close right after pairing).
+    // Holding the promise and chaining on it closes this race without a lock.
     const ouvertes = new Map<string, Promise<string | undefined>>();
 
     return {
         apparie(nomSession, utilisateurId) {
-            // Une session déjà tracée ne rouvre pas de seconde ligne : un pair
-            // qui se reconnecte pendant que l'autre reste en place rapparie la
-            // session, et la première ligne resterait sinon orpheline — jamais
-            // close, jusqu'au balayage du prochain démarrage.
+            // An already traced session does not open a second row: a peer
+            // that reconnects while the other stays in place re-pairs the
+            // session, and the first row would otherwise stay orphaned — never
+            // closed, until the sweep at the next startup.
             if (ouvertes.has(nomSession)) return;
-            // 🔴 L'INSTANT EST PRIS **AVANT** LA RÉSOLUTION, jamais après :
-            // `resoudreVm` lit la base, donc son temps d'exécution est
-            // inconnu, et `ouverte_a` doit dater l'APPARIEMENT — pas la fin
-            // d'une requête. Lire l'horloge dans l'appel à `ouvrirSession`
-            // ferait dériver l'instant d'autant.
+            // 🔴 THE INSTANT IS TAKEN **BEFORE** THE RESOLUTION, never after:
+            // `resoudreVm` reads the database, so its execution time is
+            // unknown, and `ouverte_a` must date the PAIRING — not the end
+            // of a query. Reading the clock in the call to `ouvrirSession`
+            // would drift the instant by that much.
             const instant = horloge();
             ouvertes.set(
                 nomSession,
-                // L'identifiant d'utilisateur vient du verdict de garde,
-                // relayé par le relais. Il est absent quand le second pair à
-                // arriver est l'agent — dont l'identité existe depuis P3, mais
-                // qui ne revendique toujours rien (`identite/garde.ts`).
+                // The user identifier comes from the guard's verdict,
+                // passed on by the relay. It is absent when the second peer to
+                // arrive is the agent — whose identity exists since P3, but
+                // which still claims nothing (`identite/garde.ts`).
                 resoudreVm(base, nomSession)
                     .then((vmId) => ouvrirSession(base, nomSession, instant, utilisateurId, vmId))
                     .catch((cause) => {
@@ -144,8 +144,8 @@ export function observateurDeSession(
 
         separe(nomSession) {
             const attendue = ouvertes.get(nomSession);
-            // Rien à clore : la session n'a jamais été appariée. Ce n'est pas
-            // une anomalie — voir l'en-tête.
+            // Nothing to close: the session was never paired. It is not
+            // an anomaly — see the header.
             if (!attendue) return;
             ouvertes.delete(nomSession);
             void attendue

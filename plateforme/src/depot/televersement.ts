@@ -1,24 +1,24 @@
-// Le dépôt `televersement` : la ligne d'un fichier déposé par un utilisateur.
+// The `televersement` repository: the row of a file uploaded by a user.
 //
-// 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais lue ici — règle de `depot/agent.ts`,
-// `depot/session.ts`, `depot/application.ts` et de tout ce dépôt.
+// 🔴 THE CLOCK IS A PARAMETER, never read here — rule of `depot/agent.ts`,
+// `depot/session.ts`, `depot/application.ts` and of this whole repository.
 //
-// 🔴 AUCUNE VALEUR LITTÉRALE dans le SQL : tout passe en paramètre, `null`
-// compris, sans quoi `rendreMarqueurs` lèverait côté Postgres.
-// ⚠️ Cette moitié du lint ne mord QUE sur le chemin Postgres — le lint statique
-// de `base/sous-ensemble.test.ts` ne balaie que les `.sql`. Une requête fautive
-// écrite ici serait verte sous `test:sqlite` seul.
+// 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, `null`
+// included, otherwise `rendreMarqueurs` would throw on the Postgres side.
+// ⚠️ This half of the lint bites ONLY on the Postgres path — the static lint
+// of `base/sous-ensemble.test.ts` only sweeps the `.sql` files. A faulty query
+// written here would be green under `test:sqlite` alone.
 //
-// 🔴 CE MODULE NE DÉCIDE RIEN, ET SURTOUT PAS DU DÉCOUPAGE. La règle des
-// tranches vit dans `proto/ts/tranches.ts`, PURE et PARTAGÉE avec le
-// navigateur : deux arithmétiques indépendantes divergeraient un jour, et le
-// symptôme serait un scellement qui refuse sans qu'on sache lequel des deux
-// bouts a tort. Ici on écrit ce qu'on nous donne.
+// 🔴 THIS MODULE DECIDES NOTHING, AND ABOVE ALL NOT THE SLICING. The slice
+// rule lives in `proto/ts/tranches.ts`, PURE and SHARED with the
+// browser: two independent arithmetics would diverge one day, and the
+// symptom would be a sealing that refuses without anybody knowing which of the two
+// ends is wrong. Here we write what we are given.
 //
-// 🔴 LES TRANCHES NE SONT PAS DANS CETTE TABLE, et c'est la décision D7 :
-// la reprise est un LISTAGE de répertoire, jamais une comptabilité qui
-// pourrait diverger du disque. Une colonne `tranches_presentes` serait
-// exactement cette seconde source de vérité.
+// 🔴 THE SLICES ARE NOT IN THIS TABLE, and that is decision D7:
+// resumption is a directory LISTING, never bookkeeping that
+// could diverge from the disk. A `tranches_presentes` column would be
+// exactly that second source of truth.
 
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
@@ -26,24 +26,24 @@ import type { Pilote } from '../base/pilote';
 export interface LigneTeleversement {
     id: string;
     utilisateur_id: string;
-    /// Le nom tel que le NAVIGATEUR l'annonce. Il n'est assaini qu'au moment de
-    /// devenir un chemin, côté agent — jamais ici, où il n'est qu'une donnée.
+    /// The name as the BROWSER announces it. It is sanitised only when it
+    /// becomes a path, on the agent side — never here, where it is only data.
     nom: string;
-    /// ✅ `number` EST VRAI SUR LES DEUX MOTEURS, et ce ne l'a pas toujours
-    /// été : `pg` rend les `BIGINT` en chaîne, et cette déclaration aurait été
-    /// FAUSSE en production sans le `setTypeParser` de
-    /// `base/pilote-postgres.ts` (recette de P3). `interroger<T>` faisant un
-    /// `as T[]`, aucun typage ne l'attraperait.
+    /// ✅ `number` IS TRUE ON BOTH ENGINES, and it has not always
+    /// been: `pg` returns `BIGINT`s as strings, and this declaration would have been
+    /// FALSE in production without the `setTypeParser` of
+    /// `base/pilote-postgres.ts` (P3 acceptance run). Since `interroger<T>` does an
+    /// `as T[]`, no typing would catch it.
     taille: number;
-    /// L'empreinte du fichier ENTIER — une seule valeur, comparable partout, y
-    /// compris par un humain avec un `sha256sum`.
+    /// The hash of the WHOLE file — a single value, comparable everywhere,
+    /// including by a human with a `sha256sum`.
     sha256: string;
-    /// Figée à la création : le découpage ne doit pas changer sous les tranches
-    /// déjà déposées.
+    /// Frozen at creation: the slicing must not change under the slices
+    /// already uploaded.
     taille_tranche: number;
     cree_a: number;
-    /// `null` = pas encore scellé. ⚠️ Ce n'est PAS `0`, qui se lirait comme une
-    /// époque de 1970 — même raisonnement que `application.disparue_a`.
+    /// `null` = not sealed yet. ⚠️ It is NOT `0`, which would read as an
+    /// epoch of 1970 — same reasoning as `application.disparue_a`.
     scelle_a: number | null;
 }
 
@@ -97,19 +97,19 @@ export async function lireParId(
     return lignes[0];
 }
 
-/// Marque le scellement. **L'empreinte a DÉJÀ été recalculée** par l'appelant :
-/// ce module n'en juge pas.
+/// Marks the sealing. **The hash has ALREADY been recomputed** by the caller:
+/// this module does not judge it.
 export async function sceller(p: Pilote, id: string, maintenant: number): Promise<void> {
     await p.executer('UPDATE televersement SET scelle_a = ? WHERE id = ?', [maintenant, id]);
 }
 
-/// Combien de téléversements NON SCELLÉS un utilisateur a en cours.
+/// How many UNSEALED uploads a user has in progress.
 ///
-/// 🔴 C'EST UN QUOTA, PAS UN FREIN, et la distinction est écrite dans la
-/// décision D8 du plan : le frein (`securite/frein.ts`) existe pour les portes
-/// PRÉ-AUTHENTIFIÉES, où un pair anonyme devine un secret. Ces routes-ci
-/// exigent toutes un jeton valide ; ce qui les protège est une borne sur ce
-/// qu'un utilisateur AUTHENTIFIÉ peut faire travailler le disque.
+/// 🔴 IT IS A QUOTA, NOT A THROTTLE, and the distinction is written in
+/// decision D8 of the plan: the throttle (`securite/frein.ts`) exists for the
+/// PRE-AUTHENTICATED doors, where an anonymous peer guesses a secret. These routes
+/// all require a valid token; what protects them is a bound on what
+/// an AUTHENTICATED user can make the disk work on.
 export async function compterEnCours(p: Pilote, utilisateurId: string): Promise<number> {
     const lignes = await p.interroger<{ n: number }>(
         'SELECT COUNT(*) AS n FROM televersement WHERE utilisateur_id = ? AND scelle_a IS NULL',
@@ -118,13 +118,13 @@ export async function compterEnCours(p: Pilote, utilisateurId: string): Promise<
     return Number(lignes[0]?.n ?? 0);
 }
 
-/// Les téléversements plus vieux que `avant`, pour le balayage d'âge.
+/// The uploads older than `avant`, for the age sweep.
 ///
-/// ⚠️ IL REND AUSSI LES SCELLÉS : un téléversement scellé dont l'installation
-/// a réussi n'a plus de raison d'occuper le disque. C'est l'appelant qui décide
-/// lesquels supprimer — la clé étrangère refusera ceux qu'une installation
-/// référence encore, et **c'est voulu** : l'historique d'une installation doit
-/// rester lisible.
+/// ⚠️ IT ALSO RETURNS THE SEALED ONES: a sealed upload whose installation
+/// succeeded no longer has any reason to occupy the disk. It is the caller that decides
+/// which ones to delete — the foreign key will refuse those an installation
+/// still references, and **this is intended**: the history of an installation must
+/// remain readable.
 export async function lirePlusVieuxQue(
     p: Pilote,
     avant: number,

@@ -1,156 +1,156 @@
-//! Trame binaire du pont fichiers (canal fiable, ordonné).
+//! Binary frame of the file bridge (reliable, ordered channel).
 //!
-//! Format : `version: u8 | type: u8 | correlation: u32 | longueur_entete: u32 |
-//! entete | charge`, entiers en **petit-boutiste** — la convention d'[`input`]
-//! (`proto/src/input.rs`), et celle de `DataView.setUint32(…, true)` côté
-//! navigateur.
+//! Format: `version: u8 | type: u8 | correlation: u32 | longueur_entete: u32 |
+//! entete | charge`, integers in **little-endian** — the convention of [`input`]
+//! (`proto/src/input.rs`), and that of `DataView.setUint32(…, true)` on the
+//! browser side.
 //!
-//! **Pourquoi binaire, et non JSON comme [`control`]** — la raison est un
-//! chiffre relevé sur l'ancien pont, pas une préférence : `src/file.js:264`
-//! sérialise les octets d'une écriture par `Array.from(buffer.slice(0, length))`,
-//! soit ~4 octets transmis par octet utile, et `web/index.js:653-657` fait pire
-//! au retour. Un protocole de fichiers qui encode les octets en JSON paie cet
-//! ordre de grandeur **sur chaque octet de chaque lecture**. Ici la charge est
-//! transportée telle quelle, jamais encodée ; seul l'en-tête, petit et
-//! structuré, est du JSON.
+//! **Why binary, and not JSON like [`control`]** — the reason is a
+//! figure taken on the old bridge, not a preference: `src/file.js:264`
+//! serializes the bytes of a write through `Array.from(buffer.slice(0, length))`,
+//! i.e. ~4 bytes transmitted per useful byte, and `web/index.js:653-657` does worse
+//! on the way back. A file protocol that encodes bytes in JSON pays this
+//! order of magnitude **on every byte of every read**. Here the payload is
+//! carried as is, never encoded; only the header, small and
+//! structured, is JSON.
 //!
-//! De [`control`] on reprend la doctrine de version **et sa note** : pas de
-//! valeur par défaut sur la version. Une trame trop courte pour porter sa
-//! version est **rejetée**, jamais silencieusement complétée.
+//! From [`control`] we take the version doctrine **and its note**: no
+//! default value on the version. A frame too short to carry its
+//! version is **rejected**, never silently completed.
 //!
 //! [`input`]: crate::input
 //! [`control`]: crate::control
 
 use serde::{Deserialize, Serialize};
 
-/// Version du protocole de fichiers. Incrémenter à tout changement de format.
+/// Version of the file protocol. Increment on any format change.
 ///
-/// 🔴 **F2 AJOUTE QUATRE TYPES DE MESSAGE ET NE L'INCRÉMENTE PAS, et c'est une
-/// décision, pas un oubli.** F1 l'a laissée à 1 « précisément pour que
-/// l'arrivée de ces verbes soit une rupture visible » (son legs 13) — mais la
-/// rupture est **ADDITIVE** : un pont v1 en lecture seule et un client v1 qui
-/// sait écrire s'entendent sans réserve, le client ignorant simplement des
-/// types qu'il ne recevra jamais. Incrémenter à 2 casserait la compatibilité
-/// dans le seul sens où elle n'a aucune valeur — les deux bouts sont livrés
-/// ensemble — et ferait échouer une session en cours pendant une migration.
+/// 🔴 **F2 ADDS FOUR MESSAGE TYPES AND DOES NOT INCREMENT IT, and it is a
+/// decision, not an oversight.** F1 left it at 1 "precisely so that
+/// the arrival of these verbs is a visible break" (its legacy 13) — but the
+/// break is **ADDITIVE**: a read-only v1 bridge and a v1 client that
+/// can write get along without reservation, the client simply ignoring
+/// types it will never receive. Incrementing to 2 would break compatibility
+/// in the only direction where it has no value — both ends are shipped
+/// together — and would make a running session fail during a migration.
 ///
-/// ⚠️ **Ce qui l'incrémentera est un changement de FORME, pas d'inventaire** :
-/// un champ renommé, un ordre d'octets différent, un en-tête dont le sens
-/// change. Ceux-là, un pair d'une autre version ne peut pas les ignorer.
+/// ⚠️ **What will increment it is a change of SHAPE, not of inventory**:
+/// a renamed field, a different byte order, a header whose meaning
+/// changes. Those, a peer of another version cannot ignore.
 pub const FICHIERS_VERSION: u8 = 1;
 
-/// Taille maximale de la **charge** d'une trame, en octets.
+/// Maximum size of the **payload** of a frame, in bytes.
 ///
-/// ⚠️ **NON CALIBRÉE.** Posée, pas mesurée.
+/// ⚠️ **NOT CALIBRATED.** Set, not measured.
 ///
-/// ✅ **F4 A DONNÉ DE QUOI LA JUGER, ET IL AJOUTE UN FAIT QUE CE COMMENTAIRE NE
-/// DISAIT PAS : CE N'EST PAS ELLE QUI BORNE UN LISTAGE.** Une énumération part
-/// dans l'EN-TÊTE d'un seul message, que **rien ne borne** — ni ici (le contrôle
-/// porte sur `charge.len()`), ni côté navigateur. C'est le
-/// `max-message-size = 256 Kio` de SCTP qui l'arrête, à **~3 150 entrées**
-/// mesurées pour ~3 159 calculées, et le refus du `send()` n'engendre AUCUNE
-/// réponse : la commande meurt à `DELAI_LISTER`.
+/// ✅ **F4 GAVE WHAT IS NEEDED TO JUDGE IT, AND IT ADDS A FACT THIS COMMENT
+/// DID NOT SAY: IT IS NOT WHAT BOUNDS A LISTING.** An enumeration goes
+/// into the HEADER of a single message, which **nothing bounds** — neither here (the check
+/// is on `charge.len()`), nor on the browser side. It is SCTP's
+/// `max-message-size = 256 KiB` that stops it, at **~3,150 entries**
+/// measured for ~3,159 computed, and the refusal of `send()` produces NO
+/// answer: the command dies at `DELAI_LISTER`.
 ///
-/// 🔴 **Ce qu'elle borne, en revanche, mord** : à ~33 Kio/s mesurés sur le canal
-/// du pont, un morceau de 64 Kio met ~2 s, et quatre morceaux concurrents
-/// dépassent `DELAI_LIRE`. Elle rejoint `BPP_MIN`,
+/// 🔴 **What it does bound, on the other hand, bites**: at ~33 KiB/s measured on the
+/// bridge channel, a 64 KiB chunk takes ~2 s, and four concurrent chunks
+/// exceed `DELAI_LIRE`. It joins `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`,
-/// `TAILLE_MAX_SORTIE`, `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` dans la
-/// liste des constantes de ce dépôt qu'aucune mesure n'a jugées.
+/// `TAILLE_MAX_SORTIE`, `REPIT_REARMEMENT_AUDIO` and `REARMEMENTS_MAX` in the
+/// set of constants of this repository that no measurement has judged.
 ///
-/// ⚠️ **Le nom dit « trame », la valeur borne la CHARGE** — divergence relevée
-/// dans le plan, qui nomme la constante `TAILLE_TRAME_MAX` et écrit dans le
-/// même souffle le contrôle « la charge maximale de `TAILLE_TRAME_MAX` passe ».
-/// C'est la seconde lecture qui est retenue, parce que c'est celle qui rend le
-/// module cohérent avec `pont::decoupe`, dont le `max` est bien une taille de
-/// charge. Une trame pleine pèse donc `TAILLE_TRAME_MAX + TAILLE_ENTETE_FIXE +
-/// la longueur de l'en-tête JSON` : le nom est trompeur, le dire coûte trois
-/// lignes, le taire coûterait un dépassement de MTU applicatif un jour.
+/// ⚠️ **The name says "frame", the value bounds the PAYLOAD** — divergence noted
+/// in the plan, which names the constant `TAILLE_TRAME_MAX` and writes in the
+/// same breath the check "the maximum payload of `TAILLE_TRAME_MAX` passes".
+/// It is the second reading that is kept, because it is the one that makes the
+/// module consistent with `pont::decoupe`, whose `max` is indeed a payload
+/// size. A full frame therefore weighs `TAILLE_TRAME_MAX + TAILLE_ENTETE_FIXE +
+/// the length of the JSON header`: the name is misleading, saying so costs three
+/// lines, keeping quiet would cost an application MTU overrun one day.
 pub const TAILLE_TRAME_MAX: usize = 64 * 1024;
 
-/// Longueur de la partie fixe d'une trame : version, type, corrélation,
-/// longueur d'en-tête.
+/// Length of the fixed part of a frame: version, type, correlation,
+/// header length.
 pub const TAILLE_ENTETE_FIXE: usize = 1 + 1 + 4 + 4;
 
-// Requêtes pont → navigateur — **elles ATTENDENT une réponse**.
+// Bridge → browser requests — **they AWAIT an answer**.
 pub const TYPE_LISTER: u8 = 1;
 pub const TYPE_ATTRIBUTS: u8 = 2;
 pub const TYPE_LIRE: u8 = 3;
-pub const TYPE_ECRIRE: u8 = 4; // F2 — en-tête `Ecrire`, la charge porte les octets
-pub const TYPE_CREER: u8 = 5; // F2 — en-tête `Creer`, charge vide
-pub const TYPE_RENOMMER: u8 = 7; // F3 — en-tête `Renommer`, charge vide
-pub const TYPE_SUPPRIMER: u8 = 8; // F3 — en-tête `Supprimer`, charge vide
+pub const TYPE_ECRIRE: u8 = 4; // F2 — `Ecrire` header, the payload carries the bytes
+pub const TYPE_CREER: u8 = 5; // F2 — `Creer` header, empty payload
+pub const TYPE_RENOMMER: u8 = 7; // F3 — `Renommer` header, empty payload
+pub const TYPE_SUPPRIMER: u8 = 8; // F3 — `Supprimer` header, empty payload
 
-// Annonces pont → navigateur — **elles n'attendent RIEN**.
+// Bridge → browser announcements — **they await NOTHING**.
 //
-// 🔴 **TROISIÈME FAMILLE, et elle casse l'invariant que le navigateur énonce
-// en majuscules** (`client/src/fichiers/protocole.ts`) : « une requête reçoit
-// toujours une réponse ». Une ANNONCE n'en reçoit aucune — aucune entrée de
-// table ne lui correspond côté pont, et n'y pas répondre ne laisse donc rien
-// en vol. **La liste des annonces est CLOSE**, et c'est ce qui empêche cette
-// famille de devenir le bras fourre-tout silencieux que ce dépôt a payé quatre
-// fois sur `capteur/pont_media.rs`.
-pub const TYPE_DUES: u8 = 6; // F2 — en-tête `Dues`, charge vide
+// 🔴 **THIRD FAMILY, and it breaks the invariant the browser states
+// in capitals** (`client/src/fichiers/protocole.ts`): "a request always
+// receives an answer". An ANNOUNCEMENT receives none — no table
+// entry corresponds to it on the bridge side, and not answering it therefore leaves nothing
+// in flight. **The set of announcements is CLOSED**, and that is what keeps this
+// family from becoming the silent catch-all arm this repository paid for four
+// times on `capteur/pont_media.rs`.
+pub const TYPE_DUES: u8 = 6; // F2 — `Dues` header, empty payload
 
-// Annonces NAVIGATEUR → PONT — **elles n'attendent RIEN**.
+// BROWSER → BRIDGE announcements — **they await NOTHING**.
 //
-// 🔴 **QUATRIÈME FAMILLE, et c'est la première qui remonte.** Les trois autres
-// vont du pont vers le navigateur, ou répondent à une requête du pont ; ces
-// deux-là partent du navigateur **sans qu'on les lui ait demandées**, et leur
-// corrélation est **IGNORÉE**.
+// 🔴 **FOURTH FAMILY, and it is the first one that goes upstream.** The other three
+// go from the bridge to the browser, or answer a bridge request; these
+// two leave the browser **without having been asked for**, and their
+// correlation is **IGNORED**.
 //
-// ⚠️ **C'EST CE QUI LES REND DANGEREUSES, et il faut le dire ici plutôt que le
-// découvrir.** Le pont décode toute trame entrante puis cherche sa corrélation
-// dans `pont::table` ; une corrélation inconnue est **jetée** dans un
-// `tracing::debug!` (`agent/src/pont/service.rs`) — invisible sous
-// `RUST_LOG=info`, qui est le réglage de `scripts/run-agent.sh`. Une annonce
-// remontante qui traverserait ce chemin **ne ferait rien, et rien ne le
-// dirait**. C'est le bras fourre-tout que ce dépôt a payé **cinq fois** sur
+// ⚠️ **THAT IS WHAT MAKES THEM DANGEROUS, and it must be said here rather than
+// discovered.** The bridge decodes every incoming frame then looks up its correlation
+// in `pont::table`; an unknown correlation is **thrown away** in a
+// `tracing::debug!` (`agent/src/pont/service.rs`) — invisible under
+// `RUST_LOG=info`, which is the setting of `scripts/run-agent.sh`. An upstream
+// announcement that went through this path **would do nothing, and nothing would
+// say so**. It is the catch-all arm this repository paid for **five times** on
 // `capteur/pont_media.rs` (D5 `Sommeil`, D6 `Part`, D7 `Audio`, D8
-// `PleinEcran`, P1 presse-papier) et une sixième sur
-// `superviseur/signalisation.rs`. **F5 les aiguille AVANT `resoudre`**, et
-// c'est la seule raison pour laquelle elles marchent.
+// `PleinEcran`, P1 clipboard) and a sixth on
+// `superviseur/signalisation.rs`. **F5 routes them BEFORE `resoudre`**, and
+// it is the only reason they work.
 //
-// **La liste est CLOSE**, comme celle de la troisième famille et pour la même
-// raison.
-pub const TYPE_BONJOUR: u8 = 68; // F5 — en-tête `Bonjour`, charge vide
-pub const TYPE_RAFRAICHIR: u8 = 69; // F5 — en-tête VIDE `{}`, charge vide
+// **The set is CLOSED**, like that of the third family and for the same
+// reason.
+pub const TYPE_BONJOUR: u8 = 68; // F5 — `Bonjour` header, empty payload
+pub const TYPE_RAFRAICHIR: u8 = 69; // F5 — EMPTY header `{}`, empty payload
 
-// Réponses navigateur → pont.
+// Browser → bridge answers.
 pub const TYPE_ENTREES: u8 = 64;
 pub const TYPE_META: u8 = 65;
 pub const TYPE_DONNEES: u8 = 66;
-pub const TYPE_FAIT: u8 = 67; // F2 — en-tête VIDE `{}`, charge vide
+pub const TYPE_FAIT: u8 = 67; // F2 — EMPTY header `{}`, empty payload
 pub const TYPE_ECHEC: u8 = 127;
 
-// ✅ **7 ET 8 SONT PRIS, ET PAR CELUI POUR QUI ILS ÉTAIENT RÉSERVÉS.** *(Ces
-// lignes disaient « RÉSERVÉS à F3 » ; F3 les a prises, et la réservation est
-// devenue un constat plutôt que d'être laissée au futur.)* La réservation a
-// tenu son office : F2 a pris 4, 5 et 6 **en sautant** 7 et 8, si bien
-// qu'aucun des deux sous-blocs n'a eu à renuméroter — et une renumérotation
-// tardive est exactement le geste par lequel une référence survit à ce qu'elle
-// désigne.
+// ✅ **7 AND 8 ARE TAKEN, AND BY THE ONE THEY WERE RESERVED FOR.** *(These
+// lines said "RESERVED for F3"; F3 took them, and the reservation has
+// become a statement of fact rather than being left to the future.)* The reservation
+// did its job: F2 took 4, 5 and 6 **skipping** 7 and 8, so
+// that neither of the two sub-blocks had to renumber — and a late
+// renumbering is exactly the move through which a reference outlives what it
+// designates.
 //
-// ⚠️ **La numérotation n'est donc PAS contiguë : 6 est une ANNONCE, 7 et 8 sont
-// des REQUÊTES.** L'ordre des valeurs ne dit rien de la famille ; c'est
-// l'aiguillage nommé de `client/src/fichiers/protocole.ts` qui la dit, et lui
-// seul.
+// ⚠️ **The numbering is therefore NOT contiguous: 6 is an ANNOUNCEMENT, 7 and 8 are
+// REQUESTS.** The order of the values says nothing of the family; it is
+// the named routing of `client/src/fichiers/protocole.ts` that says it, and it
+// alone.
 
-/// Cause d'un échec renvoyé par le navigateur.
+/// Cause of a failure sent back by the browser.
 ///
-/// ⚠️ La représentation sur le fil est du **kebab-case**, et les variantes à
-/// deux mots ou plus sont celles qui se cassent en silence : ce dépôt a laissé
-/// passer une variante `battement-recu` verte sur cinquante tests parce que
-/// rien n'épinglait ses octets. `un_code_d_echec_a_une_forme_epinglee_sur_le_fil`
-/// épingle les **onze**, littéralement — les dix de F2, plus
-/// `RepertoireNonVide` que F3 ajoute, **à trois mots**, donc de la famille
-/// exacte qui casse en silence.
+/// ⚠️ The wire representation is **kebab-case**, and the variants with
+/// two words or more are the ones that break silently: this repository let
+/// a `battement-recu` variant through green on fifty tests because
+/// nothing pinned its bytes. `un_code_d_echec_a_une_forme_epinglee_sur_le_fil`
+/// pins **all eleven**, literally — the ten of F2, plus
+/// `RepertoireNonVide` which F3 adds, **with three words**, hence of the exact family
+/// that breaks silently.
 ///
-/// ⚠️ **Le plan de F2 en annonçait NEUF et appelait `CasseAmbigue` « la
-/// neuvième variante ».** Sa tâche 1 en ajoute déjà deux aux sept de F1
-/// (`DisquePlein`, `DejaPresent`), ce qui fait neuf ; sa tâche 9 en ajoute une
-/// troisième. **`CasseAmbigue` est donc la DIXIÈME**, et le compte du plan est
-/// corrigé ici plutôt que recopié.
+/// ⚠️ **The F2 plan announced NINE and called `CasseAmbigue` "the
+/// ninth variant".** Its task 1 already adds two to the seven of F1
+/// (`DisquePlein`, `DejaPresent`), which makes nine; its task 9 adds a
+/// third. **`CasseAmbigue` is therefore the TENTH**, and the plan's count is
+/// corrected here rather than copied.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum CodeEchec {
@@ -161,60 +161,60 @@ pub enum CodeEchec {
     NonSupporte,
     TropGrand,
     Interne,
-    /// Le disque du poste local est plein — `QuotaExceededError` côté
-    /// navigateur (F2).
+    /// The disk of the local machine is full — `QuotaExceededError` on the
+    /// browser side (F2).
     ///
-    /// 🔴 **CE CODE N'ATTEINT AUCUNE APPLICATION WINDOWS, et le dire ici est le
-    /// seul moyen qu'un successeur ne croie pas le contraire.** Il naît d'une
-    /// poussée d'écriture, c'est-à-dire APRÈS que l'application a refermé son
-    /// handle et cru avoir enregistré : il n'y a plus aucune commande ProjFS à
-    /// compléter. Ce code sert au JOURNAL et au compteur d'écritures dues de la
-    /// page-shell, jamais à un `HRESULT` rendu à qui que ce soit.
+    /// 🔴 **THIS CODE REACHES NO WINDOWS APPLICATION, and saying so here is the
+    /// only way a successor will not believe otherwise.** It is born from a
+    /// write push, that is AFTER the application has closed its
+    /// handle and believed it had saved: there is no longer any ProjFS command to
+    /// complete. This code serves the LOG and the pending-writes counter of the
+    /// shell page, never an `HRESULT` returned to anyone at all.
     DisquePlein,
-    /// Une entrée du même nom existe déjà (F2).
+    /// An entry with the same name already exists (F2).
     DejaPresent,
-    /// 🔴 **Le poste local porte un homonyme qui ne diffère QUE par la casse, et
-    /// l'écrivain a REFUSÉ d'écrire.**
+    /// 🔴 **The local machine holds a namesake that differs ONLY by case, and
+    /// the writer REFUSED to write.**
     ///
-    /// Le cas qui l'atteint : un fichier créé dans la VM avec une casse
-    /// différente d'une entrée locale existante. Le système de fichiers du
-    /// poste local est insensible à la casse sur Windows et sur macOS ;
-    /// `getFileHandle('CASSE.TXT', { create: true })` y ouvrirait donc
-    /// `Casse.txt` et **l'écraserait**. Refuser bruyamment est le seul
-    /// arbitrage disponible entre « refuser à tort » et « écraser le mauvais
-    /// fichier » — voir `client/src/fichiers/ecriture.ts`.
+    /// The case that reaches it: a file created in the VM with a
+    /// case different from an existing local entry. The file system of the
+    /// local machine is case-insensitive on Windows and on macOS;
+    /// `getFileHandle('CASSE.TXT', { create: true })` would therefore open
+    /// `Casse.txt` there and **overwrite it**. Refusing loudly is the only
+    /// arbitration available between "refusing wrongly" and "overwriting the wrong
+    /// file" — see `client/src/fichiers/ecriture.ts`.
     CasseAmbigue,
-    /// 🔴 **Le poste local refuse de supprimer un répertoire NON VIDE, et cela
-    /// veut dire que le MIROIR A DÉRIVÉ.**
+    /// 🔴 **The local machine refuses to delete a NON-EMPTY directory, and that
+    /// means the MIRROR HAS DRIFTED.**
     ///
-    /// F3 appelle `removeEntry(nom)` **sans `recursive`** : un geste dans la VM
-    /// ne doit pas déclencher une destruction récursive sur le disque du poste
-    /// local, sur la foi d'un miroir qu'aucune preuve ne dit à jour. Windows ne
-    /// supprime jamais un répertoire non vide en un geste non plus —
-    /// l'Explorateur et `rd /s` effacent les enfants un à un, et chaque enfant
-    /// produit sa propre notification.
+    /// F3 calls `removeEntry(nom)` **without `recursive`**: a gesture in the VM
+    /// must not trigger a recursive destruction on the disk of the local
+    /// machine, on the strength of a mirror that no proof says is up to date. Windows never
+    /// deletes a non-empty directory in one gesture either —
+    /// Explorer and `rd /s` erase the children one by one, and each child
+    /// produces its own notification.
     ///
-    /// 🔵 **Ce code est donc DIAGNOSTIQUE, et c'est ce qui le distingue des
-    /// trois de F2** : le recevoir signifie que le poste local porte des
-    /// entrées que la VM ne connaît pas. Il atteint bien une application
-    /// Windows — la suppression naît d'une notification POST, mais la voie
-    /// `PRE_DELETE` la précède, et c'est `ERROR_DIR_NOT_EMPTY` qu'un
-    /// successeur y lirait.
+    /// 🔵 **This code is therefore DIAGNOSTIC, and that is what sets it apart from the
+    /// three of F2**: receiving it means the local machine holds
+    /// entries the VM does not know. It does reach a Windows
+    /// application — the deletion is born from a POST notification, but the
+    /// `PRE_DELETE` path precedes it, and it is `ERROR_DIR_NOT_EMPTY` that a
+    /// successor would read there.
     RepertoireNonVide,
 }
 
-/// Une trame décodée. Emprunte les octets d'entrée : ni l'en-tête ni la charge
-/// ne sont recopiés.
+/// A decoded frame. Borrows the input bytes: neither the header nor the payload
+/// is copied.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Trame<'a> {
     pub version: u8,
     pub type_message: u8,
     pub correlation: u32,
-    /// JSON UTF-8. **Non validé ici** : le décodeur rend les octets, l'appelant
-    /// les analyse. Un en-tête mal formé est une erreur de l'appelant, pas de
-    /// la trame.
+    /// UTF-8 JSON. **Not validated here**: the decoder returns the bytes, the caller
+    /// parses them. A malformed header is an error of the caller, not of
+    /// the frame.
     pub entete: &'a [u8],
-    /// Octets bruts, **jamais encodés**.
+    /// Raw bytes, **never encoded**.
     pub charge: &'a [u8],
 }
 
@@ -230,7 +230,7 @@ pub enum ErreurTrame {
     ChargeTropGrande { recu: usize, max: usize },
 }
 
-/// Encode une trame. L'en-tête est du JSON UTF-8, la charge des octets bruts.
+/// Encodes a frame. The header is UTF-8 JSON, the payload raw bytes.
 pub fn encoder(type_message: u8, correlation: u32, entete: &str, charge: &[u8]) -> Vec<u8> {
     let entete = entete.as_bytes();
     let mut out = Vec::with_capacity(TAILLE_ENTETE_FIXE + entete.len() + charge.len());
@@ -243,7 +243,7 @@ pub fn encoder(type_message: u8, correlation: u32, entete: &str, charge: &[u8]) 
     out
 }
 
-/// Décode une trame, ou dit précisément pourquoi elle est refusée.
+/// Decodes a frame, or says precisely why it is refused.
 pub fn decoder(octets: &[u8]) -> Result<Trame<'_>, ErreurTrame> {
     if octets.len() < TAILLE_ENTETE_FIXE {
         return Err(ErreurTrame::TropCourte {
@@ -258,9 +258,9 @@ pub fn decoder(octets: &[u8]) -> Result<Trame<'_>, ErreurTrame> {
     let correlation = u32::from_le_bytes([octets[2], octets[3], octets[4], octets[5]]);
     let longueur_entete = u32::from_le_bytes([octets[6], octets[7], octets[8], octets[9]]);
     let reste = &octets[TAILLE_ENTETE_FIXE..];
-    // Comparaison en `u64` : `longueur_entete as usize` déborderait sur une
-    // cible 32 bits, et rendrait cette borne inopérante là où elle est le plus
-    // nécessaire.
+    // Comparison in `u64`: `longueur_entete as usize` would overflow on a
+    // 32-bit target, and would make this bound inoperative exactly where it is most
+    // needed.
     if u64::from(longueur_entete) > reste.len() as u64 {
         return Err(ErreurTrame::EnteteDeborde {
             longueur: u64::from(longueur_entete),

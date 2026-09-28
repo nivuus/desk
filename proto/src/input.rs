@@ -1,16 +1,16 @@
-//! Codec binaire des messages d'entrée (souris, clavier).
+//! Binary codec of input messages (mouse, keyboard).
 //!
-//! Format : `version: u8 | type: u8 | charge utile`, entiers en petit-boutiste.
-//! Chaque message est autonome et de taille fixe : le canal de transport est
-//! non fiable et non ordonné, aucun message ne dépend d'un autre.
+//! Format: `version: u8 | type: u8 | payload`, integers in little-endian.
+//! Each message is self-contained and of fixed size: the transport channel is
+//! unreliable and unordered, no message depends on another.
 
-/// Version du protocole d'entrée. Incrémenter à tout changement de format.
+/// Version of the input protocol. Increment on any format change.
 ///
-/// v2 (chantier B) : ajout de `MouseMoveRelative` (type 5) et `Gamepad`
-/// (type 6). Agent et client étant déployés ensemble, le rejet mutuel des
-/// versions est le comportement souhaitable — un client v1 qui parlerait à
-/// un agent v2 n'aurait de toute façon aucun moyen d'annoncer un mode
-/// relatif.
+/// v2 (workstream B): added `MouseMoveRelative` (type 5) and `Gamepad`
+/// (type 6). Agent and client being deployed together, mutual rejection of
+/// versions is the desirable behaviour — a v1 client talking to
+/// a v2 agent would have no way anyway to announce a relative
+/// mode.
 pub const PROTOCOL_VERSION: u8 = 2;
 
 const TYPE_MOUSE_MOVE: u8 = 1;
@@ -20,11 +20,11 @@ const TYPE_KEY: u8 = 4;
 const TYPE_MOUSE_MOVE_RELATIVE: u8 = 5;
 const TYPE_GAMEPAD_STATE: u8 = 6;
 
-/// État complet d'une manette, calqué sur `XINPUT_GAMEPAD` : aucune
-/// conversion côté agent, donc aucune occasion de se tromper de convention.
+/// Complete state of a gamepad, modelled on `XINPUT_GAMEPAD`: no
+/// conversion on the agent side, hence no chance of getting the convention wrong.
 ///
-/// `seq` croît d'un message à l'autre. Le canal est non ordonné : il permet
-/// de rejeter un état plus ancien arrivé après un plus récent.
+/// `seq` grows from one message to the next. The channel is unordered: it makes it possible
+/// to reject an older state that arrived after a more recent one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GamepadState {
     pub seq: u16,
@@ -63,11 +63,11 @@ impl MouseButton {
     }
 }
 
-/// Message d'entrée du client vers l'agent.
+/// Input message from the client to the agent.
 ///
-/// Les coordonnées `x`/`y` sont normalisées sur `0..=65535` par rapport à la
-/// zone vidéo : cet espace est indépendant de la résolution courante et
-/// correspond directement au mode absolu de `SendInput`.
+/// The `x`/`y` coordinates are normalised on `0..=65535` relative to the
+/// video area: this space is independent of the current resolution and
+/// maps directly onto the absolute mode of `SendInput`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMessage {
     MouseMove {
@@ -89,8 +89,8 @@ pub enum InputMessage {
         pressed: bool,
         extended: bool,
     },
-    /// Déplacement relatif, en pixels bruts. Émis sous Pointer Lock, quand
-    /// l'agent a annoncé un curseur masqué.
+    /// Relative movement, in raw pixels. Emitted under Pointer Lock, when
+    /// the agent announced a hidden cursor.
     MouseMoveRelative {
         dx: i16,
         dy: i16,
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn encodage_petit_boutiste() {
-        // MouseMove x=0x0201, y=0x0403 : version, type, puis octets faibles en tête.
+        // MouseMove x=0x0201, y=0x0403: version, type, then low bytes first.
         let encoded = InputMessage::MouseMove {
             x: 0x0201,
             y: 0x0403,

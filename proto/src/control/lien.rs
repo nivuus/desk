@@ -1,47 +1,47 @@
-//! `LinkQuality` et `LinkAdaptation` — les deux vocabulaires de l'état du lien,
-//! extraits de `control.rs`.
+//! `LinkQuality` and `LinkAdaptation` — the two vocabularies of the link state,
+//! extracted from `control.rs`.
 //!
-//! ⚠️ **EXTRACTION, pas un remaniement.** La revue transverse du bloc E3 a porté
-//! `control.rs` à **496** lignes, soit une marge de **4** — c'est le piège que ce
-//! dépôt paie depuis S2 : *documenter une extraction reprend une part de la
-//! marge qu'elle rend*, et la ronde qui dénonce la dérive la produit. La
-//! doctrine est d'extraire, jamais de comprimer, et surtout jamais de
-//! raccourcir une réfutation pour atteindre un compte de lignes.
+//! ⚠️ **EXTRACTION, not a rework.** The cross-cutting review of block E3 took
+//! `control.rs` to **496** lines, i.e. a margin of **4** — it is the trap this
+//! repository has paid since S2: *documenting an extraction takes back part of the
+//! margin it frees*, and the round that denounces the drift produces it. The
+//! doctrine is to extract, never to compress, and above all never to
+//! shorten a rebuttal to reach a line count.
 //!
-//! ⚠️ **Le contenu est VERBATIM.** Seul le `use serde::…` est répété — un module
-//! enfant ne voit pas les imports de son parent —, et les deux types restent
-//! `pub`, ré-exportés par `control.rs` : aucun site d'appel de
-//! `proto::control::LinkQuality` ni de `proto::control::LinkAdaptation` n'a
-//! bougé.
+//! ⚠️ **The content is VERBATIM.** Only the `use serde::…` is repeated — a child
+//! module does not see its parent's imports —, and both types stay
+//! `pub`, re-exported by `control.rs`: no call site of
+//! `proto::control::LinkQuality` nor of `proto::control::LinkAdaptation` has
+//! moved.
 
 use serde::{Deserialize, Serialize};
 
-/// Ce que l'utilisateur doit comprendre de l'état du lien.
+/// What the user must understand of the link state.
 ///
-/// Trois valeurs et non un booléen : « dégradé » et « insuffisant » sont deux
-/// situations distinctes, et la seconde ne se déduit pas de la première par
-/// une négation.
+/// Three values and not a boolean: "degraded" and "insufficient" are two
+/// distinct situations, and the second is not deduced from the first by
+/// a negation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LinkQuality {
-    /// Pleine résolution, lien confortable.
+    /// Full resolution, comfortable link.
     Bonne,
-    /// Résolution réduite pour tenir le lien.
+    /// Resolution reduced to hold the link.
     Degradee,
-    /// Plancher atteint : le lien ne permet plus le jeu nerveux. C'est
-    /// l'avertissement explicite exigé par le cadrage jeu (§3).
+    /// Floor reached: the link no longer allows fast-paced gaming. It is
+    /// the explicit warning required by the gaming framing (§3).
     Insuffisante,
 }
 
-/// L'agent reçoit-il de quoi s'asservir ?
+/// Does the agent receive something to regulate itself on?
 ///
-/// Indépendant de `LinkQuality` : une session sans estimation de bande
-/// passante peut très bien tourner en `Bonne` sur un lien large.
+/// Independent of `LinkQuality`: a session without a bandwidth
+/// estimate can very well run as `Bonne` on a wide link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LinkAdaptation {
     Active,
-    /// Aucune estimation ne parvient à l'agent : le débit reste figé au
-    /// plafond configuré. À dire, pas à taire.
+    /// No estimate reaches the agent: the bitrate stays frozen at the
+    /// configured ceiling. To be said, not kept quiet.
     Indisponible,
 }

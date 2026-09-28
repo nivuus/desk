@@ -1,51 +1,51 @@
-// `GET /sante` : la base répond-elle ? Et rien d'autre.
+// `GET /sante`: does the database answer? And nothing else.
 //
-// 🔴 CE QUE CETTE ROUTE NE REND PAS, ET C'EST L'ESSENTIEL : ni version, ni
-// compte de sessions, ni URL de base, ni nom de moteur, ni durée de
-// fonctionnement. Une page de santé bavarde est un INVENTAIRE offert à un
-// anonyme. Son test compare l'objet ENTIER, jamais une sous-chaîne,
-// précisément pour qu'un ajout futur le fasse rougir.
+// 🔴 WHAT THIS ROUTE DOES NOT RETURN, AND THAT IS THE ESSENCE: no version, no
+// session count, no database URL, no engine name, no
+// uptime. A chatty health page is an INVENTORY offered to an
+// anonymous party. Its test compares the WHOLE object, never a substring,
+// precisely so that a future addition turns it red.
 //
-// 🔴 « DEPUIS P2, C'EST PAR CONSTRUCTION LA SEULE ROUTE NON AUTHENTIFIÉE DU
-// SERVICE » — CETTE PHRASE ÉTAIT ICI, ET ELLE EST MORTE LE 22 AOÛT 2026 : le
-// servant de page (`http/page/routes-page.ts`, armé par `PLATEFORME_PAGE`) en
-// est une SECONDE, et il ne consulte aucun jeton. Elle est réécrite plutôt que
-// supprimée, parce que ce qu'elle protégeait reste vrai sous une forme PLUS
-// ÉTROITE et plus utile : `/sante` est la seule route non authentifiée qui
-// TOUCHE LA BASE. C'est exactement ce que le cache ci-dessous existe pour
-// borner — le servant, lui, ne lit qu'un disque, et rien d'anonyme n'y
-// traduit une requête HTTP en requête SQL.
+// 🔴 « SINCE P2, IT IS BY CONSTRUCTION THE ONLY UNAUTHENTICATED ROUTE OF THE
+// SERVICE » — THAT SENTENCE WAS HERE, AND IT DIED ON 22 AUGUST 2026: the
+// page server (`http/page/routes-page.ts`, armed by `PLATEFORME_PAGE`) is
+// a SECOND one, and it consults no token. It is rewritten rather than
+// deleted, because what it protected stays true in a NARROWER
+// and more useful form: `/sante` is the only unauthenticated route that
+// TOUCHES THE DATABASE. That is exactly what the cache below exists to
+// bound — the page server, for its part, only reads a disk, and nothing anonymous there
+// translates an HTTP request into an SQL query.
 //
-// 🔴 LE VERDICT EST MIS EN CACHE, ET LE CACHE EST LE POINT DE CETTE ROUTE, PAS
-// UN RAFFINEMENT. Sans lui, `/sante` traduit une requête HTTP ANONYME en
-// requête SQL, à volonté : c'est une amplification, sur la route même qu'un
-// équilibreur de charge appelle en boucle. Un attaquant n'aurait qu'à la
-// marteler pour faire porter sa charge à la base.
+// 🔴 THE VERDICT IS CACHED, AND THE CACHE IS THE POINT OF THIS ROUTE, NOT
+// A REFINEMENT. Without it, `/sante` translates an ANONYMOUS HTTP request into
+// an SQL query, at will: that is an amplification, on the very route a
+// load balancer calls in a loop. An attacker would only need to
+// hammer it to shift their load onto the database.
 //
-// ⚠️ ELLE N'EST PAS FREINÉE, ET C'EST DÉLIBÉRÉ : une sonde d'équilibreur
-// freinée déclarerait le service MORT, et provoquerait la panne qu'elle
-// surveille. Le cache est ce qui la rend sûre SANS frein — c'est pourquoi les
-// deux décisions vivent dans le même paragraphe.
+// ⚠️ IT IS NOT BRAKED, AND THAT IS DELIBERATE: a braked load balancer probe
+// would declare the service DEAD, and would cause the failure it
+// watches for. The cache is what makes it safe WITHOUT a brake — that is why the
+// two decisions live in the same paragraph.
 //
-// ⚠️ CE N'EST PAS UNE SONDE DE CORRECTION. Elle dit que la base RÉPOND, jamais
-// que le service SERT : une route peut être rompue, un canal muet, une session
-// jamais appariée, et `/sante` rendra `ok`. Elle ne dit pas davantage que le
-// service est PRÊT — `demarrage.ts` garantit déjà que le port ne s'ouvre
-// qu'après la base et ses migrations, et son ordre est commenté « NON
-// NÉGOCIABLE ». `/sante` ne fait que RAPPORTER ; elle ne doit jamais devenir
-// un second endroit qui décide si le service est prêt.
+// ⚠️ IT IS NOT A CORRECTNESS PROBE. It says the database ANSWERS, never
+// that the service SERVES: a route can be broken, a channel silent, a session
+// never paired, and `/sante` will return `ok`. Nor does it say that the
+// service is READY — `demarrage.ts` already guarantees that the port only opens
+// after the database and its migrations, and its order is commented « NOT
+// NEGOTIABLE ». `/sante` only REPORTS; it must never become
+// a second place that decides whether the service is ready.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 
-/// La durée pendant laquelle un verdict est réemployé.
+/// The duration for which a verdict is reused.
 ///
-/// ⚠️ NON CALIBRÉE : une seconde est un ordre de grandeur, choisi pour être
-/// très inférieur à l'intervalle usuel d'une sonde d'équilibreur (5 à 30 s) —
-/// de sorte que le cache ne masque jamais une panne à celui qui surveille —
-/// tout en absorbant une rafale. Aucune mesure ne l'a fixée.
+/// ⚠️ NOT CALIBRATED: one second is an order of magnitude, chosen to be
+/// far below the usual interval of a load balancer probe (5 to 30 s) —
+/// so that the cache never hides a failure from whoever is watching —
+/// while absorbing a burst. No measurement set it.
 export const PERIODE_SANTE_MS = 1000;
 
 const CHEMIN = '/sante';
@@ -53,25 +53,25 @@ const CHEMIN = '/sante';
 export interface DependancesSante {
     base: Pilote;
     origineClient?: string;
-    /// 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais `Date.now()` lu ici : c'est ce
-    /// qui rend l'expiration du cache assertable sur une valeur EXACTE dans
-    /// une exécution de test, où il n'y aurait autrement qu'un seul instant.
+    /// 🔴 THE CLOCK IS A PARAMETER, never `Date.now()` read here: that is what
+    /// makes the cache expiry assertable on an EXACT value within
+    /// a test run, where there would otherwise be only one instant.
     maintenant: () => number;
     cache: CacheSante;
 }
 
-/// Le verdict, et sa date. Vit pour la durée du service, comme
-/// `ProprieteDeSession` et `RegistreAgents`.
+/// The verdict, and its date. Lives for the lifetime of the service, like
+/// `ProprieteDeSession` and `RegistreAgents`.
 export class CacheSante {
     private verdictRetenu: boolean | undefined;
     private prisA = 0;
-    /// 🔴 LA REQUÊTE EN VOL, ET SANS ELLE LE CACHE NE SERT À RIEN SOUS LA
-    /// CHARGE QU'IL EXISTE POUR ABSORBER. Le cas réel est plusieurs sondes
-    /// d'équilibreur en vol au même instant : sans déduplication, chacune
-    /// lancerait sa propre requête, et le cache n'agirait qu'APRÈS la rafale.
+    /// 🔴 THE IN-FLIGHT QUERY, AND WITHOUT IT THE CACHE IS USELESS UNDER THE
+    /// LOAD IT EXISTS TO ABSORB. The real case is several load balancer
+    /// probes in flight at the same instant: without deduplication, each would
+    /// launch its own query, and the cache would only act AFTER the burst.
     private enVol: Promise<boolean> | undefined;
 
-    /// Rend `true` si la base répond, en réemployant le verdict de moins de
+    /// Yields `true` if the database answers, reusing the verdict younger than
     /// `PERIODE_SANTE_MS`.
     verdict(base: Pilote, maintenant: number): Promise<boolean> {
         if (this.verdictRetenu !== undefined && maintenant - this.prisA < PERIODE_SANTE_MS) {
@@ -86,24 +86,24 @@ export class CacheSante {
     private async demander(base: Pilote, maintenant: number): Promise<boolean> {
         let vivante: boolean;
         try {
-            // ⚠️ `SELECT 1` PORTE UNE VALEUR LITTÉRALE, ET C'EST SANS DANGER
-            // ICI : la règle du dépôt — « aucune valeur littérale dans une
-            // requête » — vise les valeurs qui viennent d'un DEMANDEUR, et le
-            // lint de `base/sous-ensemble.test.ts` ne porte que sur les
-            // MIGRATIONS. `rendreMarqueurs` ne refuse que les CHAÎNES
-            // littérales (apostrophe ou guillemet) ; `1` n'en est pas une, et
-            // la requête ne prend aucun paramètre.
+            // ⚠️ `SELECT 1` CARRIES A LITERAL VALUE, AND THAT IS HARMLESS
+            // HERE: the repository rule — « no literal value in a
+            // query » — targets values that come from a REQUESTER, and the
+            // lint of `base/sous-ensemble.test.ts` only applies to the
+            // MIGRATIONS. `rendreMarqueurs` only refuses literal STRINGS
+            // (apostrophe or double quote); `1` is not one, and
+            // the query takes no parameter.
             await base.interroger('SELECT 1', []);
             vivante = true;
         } catch {
-            // ⚠️ LA CAUSE N'EST PAS JOURNALISÉE ICI, et ce n'est pas un oubli :
-            // une base injoignable fait échouer TOUTES les routes, qui
-            // journalisent déjà leur propre échec (`http/serveur.ts` le fait
-            // pour les cinq). Une ligne de plus PAR SONDE, sur une route qu'un
-            // équilibreur appelle en boucle, rendrait le service
-            // amplificateur au moment précis où il va mal — c'est la règle
-            // « jamais tracer par paquet » du chantier TURN, appliquée au pire
-            // moment possible pour l'enfreindre.
+            // ⚠️ THE CAUSE IS NOT LOGGED HERE, and that is not an oversight:
+            // an unreachable database makes ALL the routes fail, which
+            // already log their own failure (`http/serveur.ts` does so
+            // for the five). One more line PER PROBE, on a route a
+            // load balancer calls in a loop, would make the service an
+            // amplifier at the precise moment it is unwell — that is the rule
+            // « never trace per packet » of the TURN work, applied at the worst
+            // possible moment to break it.
             vivante = false;
         }
         this.verdictRetenu = vivante;
@@ -121,35 +121,35 @@ function repondre(
 ): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, et posés sur TOUTE réponse — y compris les
-        // réponses d'ERREUR (401, 405, 413, 429, 500, 503), qui portent
-        // souvent plus d'information qu'une réponse normale. Ils sont étalés
-        // AVANT `cors` pour que la politique d'origine, qui est facultative,
-        // ne puisse jamais les écraser par mégarde.
+        // ⚠️ UNCONDITIONAL, and set on EVERY response — including the
+        // ERROR responses (401, 405, 413, 429, 500, 503), which
+        // often carry more information than a normal response. They are spread
+        // BEFORE `cors` so that the origin policy, which is optional,
+        // can never overwrite them by mistake.
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(JSON.stringify(corps));
 }
 
-/// Rend `true` si la requête a été servie, `false` si elle ne concerne pas la
-/// santé — le serveur répond alors 404, comme les neuf autres routeurs.
+/// Yields `true` if the request was served, `false` if it is not about
+/// health — the server then answers 404, like the nine other routers.
 ///
-/// ⚠️ CETTE PHRASE N'EST PLUS VRAIE SANS CONDITION DEPUIS LE 22 AOÛT 2026 :
-/// quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant de
-/// page — est chaîné APRÈS tous les autres, et il résout n'importe quel
-/// chemin. Sur un `GET`, c'est LUI qui répond `200 text/html` au `false`
-/// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
-/// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+/// ⚠️ THIS SENTENCE IS NO LONGER UNCONDITIONALLY TRUE SINCE 22 AUGUST 2026:
+/// when `PLATEFORME_PAGE` is armed, a TENTH router — the page
+/// server — is chained AFTER all the others, and it resolves any
+/// path. On a `GET`, it is IT that answers `200 text/html` to the `false`
+/// returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
+/// over. See `http/chaine.ts`, which carries the count and the rule.
 export async function servirSante(
     req: IncomingMessage,
     rep: ServerResponse,
     deps: DependancesSante,
 ): Promise<boolean> {
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
-    // Comparaison EXACTE, jamais un `startsWith` : `/santelle` n'est pas
-    // `/sante`, et un préfixe ouvrirait une famille de chemins que personne
-    // n'a décidés.
+    // EXACT comparison, never a `startsWith`: `/santelle` is not
+    // `/sante`, and a prefix would open a family of paths nobody
+    // decided on.
     if (chemin !== CHEMIN) return false;
 
     const cors = entetesCors(req.headers.origin, deps.origineClient);
@@ -165,9 +165,9 @@ export async function servirSante(
     }
 
     const vivante = await deps.cache.verdict(deps.base, deps.maintenant());
-    // 503 et non 500 : le service est TEMPORAIREMENT indisponible, ce qui est
-    // exactement ce qu'un équilibreur doit lire pour retirer l'instance du
-    // service sans la déclarer définitivement morte.
+    // 503 and not 500: the service is TEMPORARILY unavailable, which is
+    // exactly what a load balancer must read to take the instance out of
+    // service without declaring it dead for good.
     repondre(rep, vivante ? 200 : 503, { etat: vivante ? 'ok' : 'degrade' }, cors);
     return true;
 }

@@ -4,7 +4,7 @@
 use super::*;
 
 impl ClientControl {
-    /// Construit un message de redimensionnement à la version courante du protocole.
+    /// Builds a resize message at the current protocol version.
     pub fn resize(width: u32, height: u32) -> Self {
         ClientControl::Resize {
             version: CONTROL_VERSION,
@@ -13,7 +13,7 @@ impl ClientControl {
         }
     }
 
-    /// Construit un message de collage à la version courante du protocole.
+    /// Builds a paste message at the current protocol version.
     pub fn clipboard(text: impl Into<String>) -> Self {
         ClientControl::Clipboard {
             version: CONTROL_VERSION,
@@ -23,7 +23,7 @@ impl ClientControl {
 }
 
 impl AgentControl {
-    /// Construit un message "agent prêt" à la version courante du protocole.
+    /// Builds an "agent ready" message at the current protocol version.
     pub fn ready(width: u32, height: u32, mic: bool) -> Self {
         AgentControl::Ready {
             version: CONTROL_VERSION,
@@ -33,7 +33,7 @@ impl AgentControl {
         }
     }
 
-    /// Construit un message de fin de session à la version courante du protocole.
+    /// Builds an end-of-session message at the current protocol version.
     pub fn session_end(reason: impl Into<String>) -> Self {
         AgentControl::SessionEnd {
             version: CONTROL_VERSION,
@@ -64,9 +64,9 @@ impl AgentControl {
         }
     }
 
-    /// Le micro de cette fenêtre est-il entendu par la VM ?
+    /// Is this window's microphone heard by the VM?
     ///
-    /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
+    /// ⚠️ **Does NOT raise `CONTROL_VERSION`** — see the doc of the variant.
     pub fn mic_state(granted: bool) -> AgentControl {
         AgentControl::MicState {
             version: CONTROL_VERSION,
@@ -74,21 +74,21 @@ impl AgentControl {
         }
     }
 
-    /// Le presse-papier de la VM a changé.
+    /// The VM clipboard has changed.
     ///
-    /// ⚠️ **`CONTROL_VERSION` NE MONTE PAS pour cette variante, et ce n'est
-    /// pas un oubli.** Les deux vérifications de `v` — `verifie_version`
-    /// ci-dessus et `parseAgentControl` côté TypeScript — sont des **égalités
-    /// strictes** : monter la version ferait rejeter **tous** les messages,
-    /// `Ready` et `SessionEnd` compris. Une incompatibilité TOTALE
-    /// remplacerait une dégradation PAR MESSAGE. Le précédent est le
-    /// constructeur `ready` de cette même `impl` (le champ `mic` a été ajouté
-    /// à `Ready` sans monter la version, pour la même raison).
+    /// ⚠️ **`CONTROL_VERSION` DOES NOT GO UP for this variant, and it is not
+    /// an oversight.** The two checks of `v` — `verifie_version`
+    /// above and `parseAgentControl` on the TypeScript side — are **strict
+    /// equalities**: raising the version would reject **all** messages,
+    /// `Ready` and `SessionEnd` included. A TOTAL incompatibility
+    /// would replace a PER-MESSAGE degradation. The precedent is the
+    /// `ready` builder of this same `impl` (the `mic` field was added
+    /// to `Ready` without raising the version, for the same reason).
     ///
-    /// ⚠️ Cette phrase disait « à TROIS lignes d'ici » : `pub fn ready` est
-    /// trente-deux lignes plus haut, et l'était déjà à l'écriture. **Un
-    /// déictique de distance vieillit à la première insertion** ; nommer la
-    /// chose, jamais compter les lignes qui l'en séparent.
+    /// ⚠️ This sentence said "THREE lines from here": `pub fn ready` is
+    /// thirty-two lines higher, and already was at the time of writing. **A
+    /// distance deictic ages at the first insertion**; name the
+    /// thing, never count the lines that separate you from it.
     pub fn clipboard(text: Option<String>, bytes: u32) -> AgentControl {
         AgentControl::Clipboard {
             version: CONTROL_VERSION,
@@ -97,7 +97,7 @@ impl AgentControl {
         }
     }
 
-    /// ⚠️ **Ne monte PAS `CONTROL_VERSION`** — voir la doc de la variante.
+    /// ⚠️ **Does NOT raise `CONTROL_VERSION`** — see the doc of the variant.
     pub fn accent(couleur: impl Into<String>) -> AgentControl {
         AgentControl::Accent {
             version: CONTROL_VERSION,

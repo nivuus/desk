@@ -1,26 +1,26 @@
-// Le dépôt `application` : lire le catalogue d'une VM, et lui appliquer une
-// fusion.
+// The `application` repository: read the catalogue of a VM, and apply a
+// merge to it.
 //
-// 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais lue ici — même règle que
-// `depot/agent.ts`, `depot/session.ts` et `depot/utilisateur.ts`, et c'est ce
-// qui rend `application.test.ts` capable d'asserter une époque EXACTE.
+// 🔴 THE CLOCK IS A PARAMETER, never read here — same rule as
+// `depot/agent.ts`, `depot/session.ts` and `depot/utilisateur.ts`, and it is what
+// makes `application.test.ts` able to assert an EXACT epoch.
 //
-// 🔴 AUCUNE VALEUR LITTÉRALE dans le SQL : tout passe en paramètre, `null`
-// compris, sans quoi `rendreMarqueurs` lèverait côté Postgres
-// (`base/pilote.ts`). ⚠️ Cette moitié du lint ne mord QUE sur le chemin
-// Postgres — le lint statique de `base/sous-ensemble.test.ts` ne balaie que les
-// `.sql`. Une requête fautive écrite ici serait donc verte sous `test:sqlite`
-// seul.
+// 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, `null`
+// included, otherwise `rendreMarqueurs` would throw on the Postgres side
+// (`base/pilote.ts`). ⚠️ This half of the lint bites ONLY on the Postgres
+// path — the static lint of `base/sous-ensemble.test.ts` only sweeps the
+// `.sql` files. A faulty query written here would therefore be green under `test:sqlite`
+// alone.
 //
-// 🔴 CE MODULE NE DÉCIDE RIEN. Ce qu'il faut insérer, mettre à jour, marquer
-// disparu ou ressusciter est décidé par `apps/catalogue.ts`, qui est PUR. Ici
-// on écrit, et rien d'autre : une règle qui vivrait dans cette couche ne serait
-// éprouvable que par un test qui traverse un moteur SQL.
+// 🔴 THIS MODULE DECIDES NOTHING. What to insert, update, mark
+// gone or bring back is decided by `apps/catalogue.ts`, which is PURE. Here
+// we write, and nothing else: a rule living in this layer would
+// only be testable by a test that goes through an SQL engine.
 //
-// 🔴 UNE LIGNE N'EST JAMAIS SUPPRIMÉE. `disparue_a` est posée et la ligne
-// reste : une application installée côté navigateur porte l'identifiant de sa
-// ligne, et un `DELETE` suivi d'une réinsertion à la réapparition lui en
-// donnerait un autre. Il n'y a, dans tout ce module, aucun `DELETE`.
+// 🔴 A ROW IS NEVER DELETED. `disparue_a` is set and the row
+// stays: an application installed on the browser side carries the identifier of its
+// row, and a `DELETE` followed by a reinsertion on reappearance would give it
+// another one. There is, in this whole module, no `DELETE`.
 
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
@@ -31,85 +31,85 @@ export interface LigneApplication {
     id: string;
     vm_id: string;
     nom: string;
-    /// Le chemin du `.lnk` LUI-MÊME, et c'est lui qu'on lance.
+    /// The path of the `.lnk` ITSELF, and it is what gets launched.
     chemin: string;
-    /// La dernière réconciliation qui a vu cette application.
+    /// The last reconciliation that saw this application.
     ///
-    /// ✅ `number` EST VRAI SUR LES DEUX MOTEURS, et ce ne l'a pas toujours
-    /// été : `pg` rend les `BIGINT` en chaîne, et cette déclaration aurait été
-    /// FAUSSE en production sans le `setTypeParser` de
-    /// `base/pilote-postgres.ts` (recette de P3). `interroger<T>` faisant un
-    /// `as T[]`, aucun typage ne l'attraperait — c'est `pilotes.test.ts` qui
-    /// le tient, colonne par colonne, et `application.test.ts` au point
-    /// d'usage.
+    /// ✅ `number` IS TRUE ON BOTH ENGINES, and it has not always
+    /// been: `pg` returns `BIGINT`s as strings, and this declaration would have been
+    /// FALSE in production without the `setTypeParser` of
+    /// `base/pilote-postgres.ts` (P3 acceptance run). Since `interroger<T>` does an
+    /// `as T[]`, no typing would catch it — it is `pilotes.test.ts` that
+    /// holds it, column by column, and `application.test.ts` at the point
+    /// of use.
     vue_a: number;
-    /// L'empreinte du triplet `(cible, arguments, repertoire)` — l'identité au
-    /// sens de l'agent, unique par VM (`application_cle`).
+    /// The hash of the triplet `(cible, arguments, repertoire)` — the identity in
+    /// the agent's sense, unique per VM (`application_cle`).
     cle: string;
     cible: string;
-    /// BRUTS et sensibles à la casse. Vide = `''`, jamais NULL.
+    /// RAW and case-sensitive. Empty = `''`, never NULL.
     arguments: string;
     repertoire: string;
-    /// La PREMIÈRE vue. ⚠️ ÉCRITE ICI ET LUE PAR PERSONNE avant le sous-bloc
-    /// G3 : elle existe parce qu'une colonne NOT NULL ne peut plus être
-    /// ajoutée une fois la table peuplée (voir `0004-applications.sql`).
+    /// The FIRST sighting. ⚠️ WRITTEN HERE AND READ BY NOBODY before sub-block
+    /// G3: it exists because a NOT NULL column can no longer be
+    /// added once the table is populated (see `0004-applications.sql`).
     apparue_a: number;
-    /// `null` = vivante. ⚠️ Ce n'est PAS `0` : zéro se lirait comme une époque
-    /// de 1970, et les deux états sont distincts — même raisonnement que
+    /// `null` = live. ⚠️ It is NOT `0`: zero would read as an epoch
+    /// of 1970, and the two states are distinct — same reasoning as
     /// `agent_enrole.vu_a`.
     disparue_a: number | null;
-    /// Le geste explicite qui masque une entrée. ⚠️ AUCUN ÉCRIVAIN EN G1.
+    /// The explicit gesture that hides an entry. ⚠️ NO WRITER IN G1.
     masquee_a: number | null;
-    /// L'empreinte SHA-256 du PNG, en hexadécimal minuscule. `null` =
-    /// l'extraction a échoué, et ce n'est PAS une erreur.
+    /// The SHA-256 hash of the PNG, in lowercase hexadecimal. `null` =
+    /// the extraction failed, and that is NOT an error.
     icone: string | null;
-    /// 🔴 `null` = `SourceMax.NonMesuree`, JAMAIS `0` NI `256`. La colonne est
-    /// `INTEGER` : elle ne peut pas porter le mot `non-mesuree`. Voir
-    /// l'invariant à trois cas de `0005-icones.sql`, et la quatrième
-    /// combinaison qui y est INTERDITE.
+    /// 🔴 `null` = `SourceMax.NonMesuree`, NEVER `0` NOR `256`. The column is
+    /// `INTEGER`: it cannot carry the word `non-mesuree`. See
+    /// the three-case invariant of `0005-icones.sql`, and the fourth
+    /// combination that is FORBIDDEN there.
     source_max_px: number | null;
-    /// La couleur dominante de l'icône, en `#rrggbb`, ou `null`.
+    /// The dominant colour of the icon, as `#rrggbb`, or `null`.
     ///
-    /// ⚠️ `null` VEUT DIRE « PAS D'ACCENT », JAMAIS « PAS ENCORE MESURÉ » : une
-    /// icône trop pâle, trop sombre ou trop transparente n'a aucune dominante,
-    /// et la règle pure de l'agent rend `None` par construction. Le manifeste
-    /// OMET alors `theme_color` plutôt que d'en inventer un.
+    /// ⚠️ `null` MEANS "NO ACCENT", NEVER "NOT MEASURED YET": an
+    /// icon too pale, too dark or too transparent has no dominant colour,
+    /// and the pure rule of the agent returns `None` by construction. The manifest
+    /// then OMITS `theme_color` rather than making one up.
     accent: string | null;
 }
 
-/// Reconstruit la `SourceMax` du fil depuis les deux colonnes.
+/// Rebuilds the wire `SourceMax` from the two columns.
 ///
-/// 🔴 ÉCRITE UNE SEULE FOIS, ICI, ET C'EST DÉLIBÉRÉ : deux reconstructions
-/// divergeraient le jour où l'une déciderait que `null` vaut `0`. C'est le
-/// critère ④ jusqu'au bout de la chaîne — `NonMesuree` n'est JAMAIS rendue
-/// comme un nombre.
+/// 🔴 WRITTEN ONLY ONCE, HERE, AND THIS IS DELIBERATE: two rebuilds
+/// would diverge the day one of them decided that `null` means `0`. It is
+/// criterion ④ all the way down the chain — `NonMesuree` is NEVER returned
+/// as a number.
 export function sourceMaxDepuis(px: number | null): SourceMax {
     return px === null ? 'non-mesuree' : { pixels: px };
 }
 
-/// L'inverse : ce qu'on écrit en colonne pour une `SourceMax` du fil.
+/// The reverse: what is written in the column for a wire `SourceMax`.
 export function pxDepuisSourceMax(source: SourceMax): number | null {
     return source === 'non-mesuree' ? null : source.pixels;
 }
 
-/// Les colonnes sont ÉNUMÉRÉES, jamais `SELECT *` : une colonne ajoutée un
-/// jour n'apparaîtrait pas toute seule dans un type qui ne la déclare pas.
+/// The columns are LISTED, never `SELECT *`: a column added one
+/// day would not show up by itself in a type that does not declare it.
 const COLONNES =
     'id, vm_id, nom, chemin, vue_a, cle, cible, arguments, repertoire, apparue_a, disparue_a,'
     + ' masquee_a, icone, source_max_px, accent';
 
-/// Réécrit les associations d'une application : on efface, on repose.
+/// Rewrites the associations of an application: we erase, we put back.
 ///
-/// 🔴 EFFACER PUIS REPOSER, ET NON RÉCONCILIER. Ce sont quelques extensions par
-/// application, l'agent les rend **triées et dédupliquées**, et un diff coûterait
-/// plus cher à écrire et à relire que le remplacement. Surtout : un diff qui se
-/// tromperait laisserait une association PÉRIMÉE, c'est-à-dire un `file_handler`
-/// qui ouvrirait un fichier avec la mauvaise application — un défaut visible par
-/// l'utilisateur et invisible dans les données.
+/// 🔴 ERASE THEN PUT BACK, AND NOT RECONCILE. These are a few extensions per
+/// application, the agent returns them **sorted and deduplicated**, and a diff would cost
+/// more to write and to review than the replacement. Above all: a diff that got it
+/// wrong would leave a STALE association, that is, a `file_handler`
+/// that would open a file with the wrong application — a defect visible to
+/// the user and invisible in the data.
 ///
-/// ⚠️ LE `DELETE` PORTE SUR UNE TABLE DE LIAISON, ET NON SUR `application` —
-/// dont le fichier écrit, deux fois, qu'elle n'en connaît AUCUN. Une ligne de
-/// liaison n'a pas d'histoire à préserver : elle décrit un état courant.
+/// ⚠️ THE `DELETE` IS ON A LINK TABLE, AND NOT ON `application` —
+/// of which the file writes, twice, that it knows NONE. A link
+/// row has no history to preserve: it describes a current state.
 async function ecrireAssociations(
     tx: { executer(sql: string, parametres?: unknown[]): Promise<unknown> },
     applicationId: string,
@@ -126,15 +126,15 @@ async function ecrireAssociations(
     }
 }
 
-/// Les associations de plusieurs applications, en UNE requête.
+/// The associations of several applications, in ONE query.
 ///
-/// 🔴 UNE REQUÊTE, ET NON UNE PAR APPLICATION. Le corpus de la VM porte 156
-/// applications ; les interroger une à une ferait 156 allers-retours par
-/// affichage du hub. ⚠️ Les marqueurs sont **engendrés depuis le nombre
-/// d'identifiants**, jamais concaténés depuis leurs valeurs — `rendreMarqueurs`
-/// refuse de toute façon tout SQL portant une apostrophe, et c'est ce qui rend
-/// la règle « toute valeur passe en paramètre » mécanique plutôt que
-/// documentaire.
+/// 🔴 ONE QUERY, AND NOT ONE PER APPLICATION. The VM corpus carries 156
+/// applications; querying them one by one would make 156 round trips per
+/// display of the hub. ⚠️ The markers are **generated from the number
+/// of identifiers**, never concatenated from their values — `rendreMarqueurs`
+/// refuses any SQL carrying an apostrophe anyway, and that is what makes
+/// the rule "every value goes in as a parameter" mechanical rather than
+/// documentary.
 export async function associationsDe(
     p: Pilote,
     ids: readonly string[],
@@ -155,10 +155,10 @@ export async function associationsDe(
     return par;
 }
 
-/// Le catalogue AFFICHABLE d'une VM : ni les disparues, ni les masquées.
+/// The DISPLAYABLE catalogue of a VM: neither the gone ones, nor the hidden ones.
 ///
-/// 🔴 CE N'EST PAS LE LECTEUR DE LA FUSION, et les deux ne peuvent pas être le
-/// même — voir `lireConnues`.
+/// 🔴 IT IS NOT THE MERGE READER, and the two cannot be the
+/// same — see `lireConnues`.
 export async function lireParVm(p: Pilote, vmId: string): Promise<LigneApplication[]> {
     return p.interroger<LigneApplication>(
         `SELECT ${COLONNES} FROM application`
@@ -168,14 +168,14 @@ export async function lireParVm(p: Pilote, vmId: string): Promise<LigneApplicati
     );
 }
 
-/// Rend la ligne, ou `undefined`. JAMAIS une exception sur un identifiant
-/// inconnu : une exception qui remonterait en 500 serait à elle seule un
-/// oracle. Précédents : `depot/agent.ts::lireParVm`, `depot/vm.ts::lireParId`.
+/// Returns the row, or `undefined`. NEVER an exception on an unknown
+/// identifier: an exception bubbling up as a 500 would on its own be an
+/// oracle. Precedents: `depot/agent.ts::lireParVm`, `depot/vm.ts::lireParId`.
 ///
-/// ⚠️ ELLE NE FILTRE NI LES DISPARUES NI LES MASQUÉES, à dessein : son appelant
-/// est la route de lancement, qui doit pouvoir distinguer « inconnue » de
-/// « connue mais plus là », et son autre appelant est le test qui vérifie
-/// qu'une disparition n'a pas effacé la ligne.
+/// ⚠️ IT FILTERS NEITHER THE GONE NOR THE HIDDEN ONES, on purpose: its caller
+/// is the launch route, which must be able to tell "unknown" from
+/// "known but no longer there", and its other caller is the test that checks
+/// that a disappearance did not erase the row.
 export async function lireParId(p: Pilote, id: string): Promise<LigneApplication | undefined> {
     const lignes = await p.interroger<LigneApplication>(
         `SELECT ${COLONNES} FROM application WHERE id = ?`,
@@ -184,12 +184,12 @@ export async function lireParId(p: Pilote, id: string): Promise<LigneApplication
     return lignes[0];
 }
 
-/// Ce que la fusion a besoin de savoir, et RIEN DE PLUS.
+/// What the merge needs to know, and NOTHING MORE.
 ///
-/// 🔴 IL REND AUSSI LES DISPARUES, et c'est ce qui le distingue de
-/// `lireParVm`. Une fusion qui ne les verrait pas les RÉINSÉRERAIT à leur
-/// retour, avec un identifiant neuf — c'est-à-dire exactement la perte
-/// d'identifiant que ce module existe pour empêcher.
+/// 🔴 IT ALSO RETURNS THE GONE ONES, and that is what sets it apart from
+/// `lireParVm`. A merge that did not see them would REINSERT them on their
+/// return, with a new identifier — that is, exactly the loss of
+/// identifier this module exists to prevent.
 export async function lireConnues(p: Pilote, vmId: string): Promise<Connue[]> {
     return p.interroger<Connue>(
         'SELECT id, cle, disparue_a FROM application WHERE vm_id = ?',
@@ -197,19 +197,19 @@ export async function lireConnues(p: Pilote, vmId: string): Promise<Connue[]> {
     );
 }
 
-/// Applique une fusion, EN ENTIER OU PAS DU TOUT.
+/// Applies a merge, IN FULL OR NOT AT ALL.
 ///
-/// 🔴 LA TRANSACTION N'EST PAS DÉCORATIVE. Un catalogue à moitié écrit est
-/// indiscernable d'un catalogue correct au tour suivant : la réconciliation
-/// suivante le prendrait pour l'état de la VM, et les lignes manquantes ne
-/// reviendraient qu'au prochain envoi complet — ou jamais, si l'agent n'en
-/// émet plus. C'est la classe de panne muette contre laquelle tout ce dépôt
-/// est écrit, et c'est le même raisonnement que celui de `migrations.ts`.
+/// 🔴 THE TRANSACTION IS NOT DECORATIVE. A half-written catalogue is
+/// indistinguishable from a correct one at the next round: the next
+/// reconciliation would take it for the state of the VM, and the missing rows would
+/// only come back at the next full send — or never, if the agent no longer
+/// emits one. It is the class of silent failure this whole repository
+/// is written against, and it is the same reasoning as that of `migrations.ts`.
 ///
-/// 🔴 L'IDENTIFIANT EST GÉNÉRÉ ICI, jamais reçu de l'agent. La clé est
-/// l'empreinte d'un triplet de chemins Windows : deux VMs portant la même
-/// application produisent la MÊME clé, et un identifiant qui en viendrait
-/// serait en collision d'une VM à l'autre.
+/// 🔴 THE IDENTIFIER IS GENERATED HERE, never received from the agent. The key is
+/// the hash of a triplet of Windows paths: two VMs carrying the same
+/// application produce the SAME key, and an identifier derived from it
+/// would collide from one VM to another.
 export async function appliquer(
     p: Pilote,
     vmId: string,
@@ -218,18 +218,18 @@ export async function appliquer(
 ): Promise<void> {
     await p.transaction(async (tx) => {
         for (const app of fusion.aInserer) {
-            // 🔴 L'IDENTIFIANT EST NOMMÉ AVANT L'INSERT, parce que les
-            // associations en ont besoin : `randomUUID()` écrit en ligne
-            // rendrait une valeur qu'on ne pourrait plus désigner.
+            // 🔴 THE IDENTIFIER IS NAMED BEFORE THE INSERT, because the
+            // associations need it: `randomUUID()` written inline
+            // would return a value that could no longer be referred to.
             const identifiant = randomUUID();
             await tx.executer(
-                // 🔴 QUATORZE MARQUEURS POUR QUATORZE COLONNES. Un `INSERT`
-                // mal compté LÈVE sur les DEUX moteurs — c'est le garde le
-                // moins cher du fichier, et il est gratuit.
-                // 🔴 QUINZE MARQUEURS POUR QUINZE COLONNES — quatorze jusqu'à
-                // G5, qui ajoute `accent`. Un `INSERT` mal compté LÈVE sur les
-                // DEUX moteurs : c'est le garde le moins cher du fichier, et
-                // il est gratuit.
+                // 🔴 FOURTEEN MARKERS FOR FOURTEEN COLUMNS. A miscounted `INSERT`
+                // THROWS on BOTH engines — it is the cheapest guard in the
+                // file, and it is free.
+                // 🔴 FIFTEEN MARKERS FOR FIFTEEN COLUMNS — fourteen until
+                // G5, which adds `accent`. A miscounted `INSERT` THROWS on
+                // BOTH engines: it is the cheapest guard in the file, and
+                // it is free.
                 `INSERT INTO application(${COLONNES})`
                     + ' VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
@@ -242,9 +242,9 @@ export async function appliquer(
                     app.cible,
                     app.arguments,
                     app.repertoire,
-                    // `apparue_a` et `vue_a` naissent égales : c'est la même
-                    // vue. Elles divergent à la mise à jour suivante, et c'est
-                    // tout le sens de la première.
+                    // `apparue_a` and `vue_a` are born equal: it is the same
+                    // sighting. They diverge at the next update, and that is
+                    // the whole point of the first one.
                     maintenant,
                     null,
                     null,
@@ -257,25 +257,25 @@ export async function appliquer(
         }
 
         for (const { id, app } of fusion.aMettreAJour) {
-            // ⚠️ `apparue_a` N'EST PAS DANS CE `SET`. L'avancer en ferait un
-            // doublon de `vue_a`, et le verdict d'installation qui la lira un
-            // jour ne verrait plus jamais une apparition.
+            // ⚠️ `apparue_a` IS NOT IN THIS `SET`. Advancing it would make it a
+            // duplicate of `vue_a`, and the installation verdict that will read it one
+            // day would never again see an appearance.
             //
-            // ⚠️ `cle` non plus, et pour une raison différente : c'est par
-            // elle qu'on a trouvé la ligne, et elle est l'identité. La
-            // réécrire n'aurait aucun effet dans le meilleur des cas, et
-            // violerait `application_cle` dans le pire.
-            // ⚠️ `icone` ET `source_max_px` SONT DANS CE `SET`, contrairement
-            // à `cle` et `apparue_a`. Une icône CHANGE quand l'application se
-            // met à jour, et c'est le cas nominal, pas l'exception : les
-            // omettre ferait qu'une icône neuve n'atteindrait jamais la base,
-            // et le seul symptôme serait une image périmée que rien
-            // n'expliquerait.
+            // ⚠️ Nor is `cle`, and for a different reason: it is through
+            // it that the row was found, and it is the identity. Rewriting
+            // it would have no effect in the best case, and
+            // would violate `application_cle` in the worst.
+            // ⚠️ `icone` AND `source_max_px` ARE IN THIS `SET`, unlike
+            // `cle` and `apparue_a`. An icon CHANGES when the application
+            // updates, and that is the nominal case, not the exception:
+            // omitting them would mean a new icon never reaches the database,
+            // and the only symptom would be a stale image that nothing
+            // would explain.
             await tx.executer(
-                // ⚠️ `accent` EST DANS CE `SET`, ET POUR LA MÊME RAISON QUE
-                // `icone` : il en DÉRIVE. Une icône qui change change son
-                // accent, et l'omettre laisserait une couleur périmée que rien
-                // n'expliquerait.
+                // ⚠️ `accent` IS IN THIS `SET`, AND FOR THE SAME REASON AS
+                // `icone`: it DERIVES from it. An icon that changes changes its
+                // accent, and omitting it would leave a stale colour that nothing
+                // would explain.
                 'UPDATE application SET nom = ?, chemin = ?, cible = ?, arguments = ?,'
                     + ' repertoire = ?, vue_a = ?, icone = ?, source_max_px = ?, accent = ?'
                     + ' WHERE id = ?',
@@ -296,18 +296,18 @@ export async function appliquer(
         }
 
         for (const id of fusion.aMarquerDisparues) {
-            // ⚠️ AUCUN `DELETE`, ici ni ailleurs dans ce fichier.
+            // ⚠️ NO `DELETE`, here or anywhere else in this file.
             await tx.executer('UPDATE application SET disparue_a = ? WHERE id = ?', [maintenant, id]);
         }
 
         for (const id of fusion.aRessusciter) {
-            // Le `null` passe en PARAMÈTRE comme toute valeur. Ce n'est pas
-            // `rendreMarqueurs` qui l'exige — `NULL` est un mot-clé, pas une
-            // chaîne littérale, et un `SET disparue_a = NULL` écrit en dur
-            // passerait. C'est la règle générale du dépôt, dont
-            // `depot/vm.ts::detacher` a posé l'usage : une seule forme
-            // d'écriture, pour qu'aucun lecteur n'ait à se demander laquelle
-            // des deux il a sous les yeux.
+            // The `null` goes in as a PARAMETER like any value. It is not
+            // `rendreMarqueurs` that requires it — `NULL` is a keyword, not a
+            // string literal, and a hardcoded `SET disparue_a = NULL`
+            // would pass. It is the general rule of the repository, whose usage
+            // `depot/vm.ts::detacher` established: a single form
+            // of writing, so that no reader has to wonder which
+            // of the two they are looking at.
             await tx.executer('UPDATE application SET disparue_a = ? WHERE id = ?', [null, id]);
         }
     });

@@ -1,30 +1,30 @@
-//! Conformité des en-têtes aux vecteurs partagés. **Purs, exécutés sur l'hôte.**
+//! Conformance of the headers to the shared vectors. **Pure, run on the host.**
 
 use super::*;
 
-/// 🔴 **CE TEST EST LE CONTRÔLE QUI RATTRAPE UN RENOMMAGE**, et c'est la
-/// raison pour laquelle ces structures ont quitté `agent/src/pont/entetes.rs`
-/// pour `proto/`.
+/// 🔴 **THIS TEST IS THE CHECK THAT CATCHES A RENAME**, and it is the
+/// reason why these structures left `agent/src/pont/entetes.rs`
+/// for `proto/`.
 ///
-/// Tant qu'elles vivaient dans l'agent seul, le jumeau TypeScript devait les
-/// reproduire à la main : un champ renommé d'un côté cassait le pont **sans
-/// casser un seul test**. C'est le patron exact que ce dépôt a déjà payé —
-/// `TYPES_AGENT` écrit à la main sans être confronté à son union, et la
-/// variante `battement-recu` restée verte sur cinquante tests parce que rien
-/// n'épinglait ses octets.
+/// As long as they lived in the agent alone, the TypeScript twin had to
+/// reproduce them by hand: a field renamed on one side broke the bridge **without
+/// breaking a single test**. It is the exact pattern this repository has already paid for —
+/// `TYPES_AGENT` written by hand without being confronted with its union, and the
+/// `battement-recu` variant that stayed green on fifty tests because nothing
+/// pinned its bytes.
 ///
-/// `proto/fichiers-vectors.json` est lu **ici ET dans
-/// `proto/ts/fichiers-entetes.test.ts`** : un renommage n'a plus qu'un côté à
-/// casser pour être vu.
+/// `proto/fichiers-vectors.json` is read **here AND in
+/// `proto/ts/fichiers-entetes.test.ts`**: a rename now only has one side to
+/// break to be seen.
 #[test]
 fn conformite_aux_vecteurs_partages() {
     let brut = include_str!("../../../fichiers-vectors.json");
     let doc: serde_json::Value = serde_json::from_str(brut).expect("vecteurs valides");
 
-    // 🔴 La version du fichier EST celle du protocole. Sans cette assertion, un
-    // bump d'un seul côté ne se verrait nulle part — c'est la lacune que
-    // `input.rs::conformite_aux_vecteurs_partages` traîne et que
-    // `plateforme.rs` a corrigée pour son fichier.
+    // 🔴 The version of the file IS that of the protocol. Without this assertion, a
+    // bump on one side only would show nowhere — it is the gap that
+    // `input.rs::conformite_aux_vecteurs_partages` drags along and that
+    // `plateforme.rs` fixed for its file.
     assert_eq!(
         doc["version"].as_u64().expect("clé version"),
         u64::from(super::super::FICHIERS_VERSION),
@@ -32,8 +32,8 @@ fn conformite_aux_vecteurs_partages() {
     );
 
     let cas = doc["cases"].as_array().expect("tableau de cas");
-    // 🔴 ANTI-TAUTOLOGIE : un fichier de vecteurs VIDE ferait passer toute la
-    // boucle sans rien éprouver.
+    // 🔴 ANTI-TAUTOLOGY: an EMPTY vector file would let the whole
+    // loop pass without testing anything.
     assert!(!cas.is_empty(), "au moins un vecteur attendu");
 
     let mut vus = 0;
@@ -41,8 +41,8 @@ fn conformite_aux_vecteurs_partages() {
         let nom = c["name"].as_str().expect("nom");
         let attendu = c["json"].as_str().expect("json attendu");
 
-        // Chaque forme est sérialisée depuis ses champs, puis relue depuis le
-        // JSON attendu : les DEUX sens, sur le MÊME vecteur.
+        // Each shape is serialized from its fields, then read back from the
+        // expected JSON: BOTH directions, on the SAME vector.
         match c["forme"].as_str().expect("forme") {
             "chemin" => {
                 let v = Chemin {
@@ -153,14 +153,14 @@ fn conformite_aux_vecteurs_partages() {
         }
         vus += 1;
     }
-    // 🔴 Le compte est comparé à celui du fichier : sans lui, une `forme` mal
-    // orthographiée ferait sauter des cas en silence. Le `panic!` ci-dessus
-    // n'est atteint que par une valeur PRÉSENTE et inconnue, jamais par un cas
-    // qu'une future refonte de la boucle sauterait.
+    // 🔴 The count is compared to that of the file: without it, a misspelt `forme`
+    // would silently skip cases. The `panic!` above
+    // is only reached by a PRESENT and unknown value, never by a case
+    // that a future rework of the loop would skip.
     assert_eq!(vus, cas.len(), "tous les cas doivent être exercés");
 }
 
-/// Sérialise, compare au vecteur, relit le vecteur, compare à la valeur.
+/// Serializes, compares to the vector, reads the vector back, compares to the value.
 fn verifier<T>(nom: &str, attendu: &str, valeur: &T)
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq + std::fmt::Debug,
@@ -174,25 +174,25 @@ where
     assert_eq!(&relu, valeur, "désérialisation du vecteur « {nom} »");
 }
 
-/// Un en-tête auquel il manque un champ est **rejeté**, jamais silencieusement
-/// complété — la doctrine de version de [`crate::control`], appliquée aux
-/// en-têtes : aucun `#[serde(default)]` nulle part.
+/// A header missing a field is **rejected**, never silently
+/// completed — the version doctrine of [`crate::control`], applied to
+/// headers: no `#[serde(default)]` anywhere.
 #[test]
 fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     assert!(serde_json::from_str::<Meta>(r#"{"nom":"a","repertoire":false,"taille":1}"#).is_err());
-    // 🔴 **Sans `nom`, le substitut serait créé sous le nom que l'application a
-    // TAPÉ**, et non sous celui qui existe sur le poste local — deux noms pour
-    // un fichier, dont un qui n'existe nulle part.
+    // 🔴 **Without `nom`, the placeholder would be created under the name the application
+    // TYPED**, and not under the one that exists on the local machine — two names for
+    // one file, one of which exists nowhere.
     assert!(
         serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1,"modifie":0}"#).is_err()
     );
     assert!(serde_json::from_str::<Donnees>(r#"{"position":0}"#).is_err());
     assert!(serde_json::from_str::<Lire>(r#"{"chemin":"a","position":0}"#).is_err());
-    // 🔴 Les deux drapeaux d'`Ecrire` sont ceux dont l'absence est la plus
-    // coûteuse : sans `premier`, le flux s'ouvrirait avec `keepExistingData` et
-    // un fichier réécrit plus court garderait sa queue d'octets — le défaut
-    // EXACT de l'ancien pont (spec §12). Sans `dernier`, le `close()` ne
-    // viendrait jamais et l'écriture ne serait **jamais** commise.
+    // 🔴 The two flags of `Ecrire` are the ones whose absence is the most
+    // costly: without `premier`, the stream would open with `keepExistingData` and
+    // a file rewritten shorter would keep its tail of bytes — the EXACT
+    // defect of the old bridge (spec §12). Without `dernier`, the `close()` would
+    // never come and the write would **never** be committed.
     assert!(serde_json::from_str::<Ecrire>(
         r#"{"chemin":"a","position":0,"longueur":1,"dernier":true}"#
     )
@@ -203,44 +203,44 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     .is_err());
     assert!(serde_json::from_str::<Creer>(r#"{"chemin":"a"}"#).is_err());
     assert!(serde_json::from_str::<Due>(r#"{"chemin":"a"}"#).is_err());
-    // 🔴 **Un `Renommer` sans `vers` est le cas qui DÉTRUIT** : complété en
-    // silence par une chaîne vide, il ferait renommer vers la racine — ou, si
-    // l'appelant sautait sa garde, écraserait la source par elle-même. C'est le
-    // seul en-tête de ce protocole dont un champ manquant a une conséquence
-    // destructrice, et c'est pourquoi il est nommé ici plutôt que compté.
+    // 🔴 **A `Renommer` without `vers` is the case that DESTROYS**: filled in
+    // silently with an empty string, it would rename to the root — or, if
+    // the caller skipped its guard, would overwrite the source with itself. It is the
+    // only header of this protocol where a missing field has a destructive
+    // consequence, and that is why it is named here rather than counted.
     assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","repertoire":false}"#).is_err());
     assert!(serde_json::from_str::<Renommer>(r#"{"de":"a","vers":"b"}"#).is_err());
     assert!(serde_json::from_str::<Supprimer>(r#"{"chemin":"a"}"#).is_err());
-    // 🔴 **F5 — LE SECOND CAS DONT UN CHAMP MANQUANT A UNE CONSÉQUENCE, et il
-    // va dans le sens DANGEREUX.** Un `Dues` sans `retenues` complété en
-    // silence vaudrait `false` = « le pont pousse », c'est-à-dire l'inverse de
-    // ce que `Bonjour` existe pour empêcher : écrire les fichiers d'une session
-    // dans le dossier d'une autre. **Ces deux lignes épinglent l'ABSENCE de
-    // défaut**, ce qu'aucun vecteur ne saurait faire — un vecteur épingle une
-    // forme qui passe, jamais une forme qui doit être refusée.
+    // 🔴 **F5 — THE SECOND CASE WHERE A MISSING FIELD HAS A CONSEQUENCE, and it
+    // goes in the DANGEROUS direction.** A `Dues` without `retenues` filled in
+    // silently would be `false` = "the bridge pushes", that is the reverse of
+    // what `Bonjour` exists to prevent: writing the files of one session
+    // into the folder of another. **These two lines pin the ABSENCE of a
+    // default**, which no vector could do — a vector pins a
+    // shape that passes, never a shape that must be refused.
     assert!(serde_json::from_str::<Dues>(r#"{"dues":[]}"#).is_err());
     assert!(serde_json::from_str::<Bonjour>(r#"{"racine":"Documents"}"#).is_err());
     assert!(serde_json::from_str::<Bonjour>(r#"{"forcer":false}"#).is_err());
 }
 
-/// 🔴 **LES DOUZE FORMES ONT LEUR VECTEUR** — et c'est ce qui empêche qu'une
-/// forme neuve soit ajoutée sans être épinglée.
+/// 🔴 **THE TWELVE SHAPES HAVE THEIR VECTOR** — and that is what keeps a
+/// new shape from being added without being pinned.
 ///
-/// La boucle de [`conformite_aux_vecteurs_partages`] n'éprouve que les formes
-/// PRÉSENTES dans le fichier : ajouter `Renommer` au code sans lui donner de
-/// vecteur y passerait inaperçu. Ce test compte les formes distinctes du
-/// fichier et exige qu'elles soient les douze que le protocole porte.
+/// The loop of [`conformite_aux_vecteurs_partages`] only tests the shapes
+/// PRESENT in the file: adding `Renommer` to the code without giving it a
+/// vector would go unnoticed there. This test counts the distinct shapes of the
+/// file and requires them to be the twelve the protocol carries.
 ///
-/// ⚠️ **`TYPE_FAIT` n'a pas de forme** : son en-tête est `{}`. Le compter
-/// ferait attendre un vecteur pour une structure qui n'existe pas. **`F5`
-/// ajoute un SECOND type dans ce cas — `TYPE_RAFRAICHIR`** : douze formes pour
-/// quatorze types, et l'écart est exactement ces deux-là.
+/// ⚠️ **`TYPE_FAIT` has no shape**: its header is `{}`. Counting it
+/// would expect a vector for a structure that does not exist. **`F5`
+/// adds a SECOND type in this case — `TYPE_RAFRAICHIR`**: twelve shapes for
+/// fourteen types, and the gap is exactly those two.
 ///
-/// *(Ce test s'appelait `les_neuf_formes_ont_leur_vecteur` jusqu'à F3, qui en
-/// ajoute deux, puis `les_onze_…` jusqu'à F5, qui en ajoute une. **Le renommer
-/// plutôt que rallonger sa liste en silence** est ce que `pont::notifications`
-/// a fait de son propre garde de masque, pour la même raison : un nom qui ment
-/// sur son compte est un nom qu'on cesse de lire.)*
+/// *(This test was called `les_neuf_formes_ont_leur_vecteur` until F3, which
+/// adds two, then `les_onze_…` until F5, which adds one. **Renaming it
+/// rather than silently lengthening its set** is what `pont::notifications`
+/// did with its own mask guard, for the same reason: a name that lies
+/// about its count is a name one stops reading.)*
 #[test]
 fn les_douze_formes_ont_leur_vecteur() {
     let brut = include_str!("../../../fichiers-vectors.json");

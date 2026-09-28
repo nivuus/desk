@@ -1,29 +1,29 @@
-// La RECONNAISSANCE DES TROIS CHEMINS de `routes-installation.ts`, extraite le
-// 22 août 2026. PURE : ni `http`, ni base, ni horloge — c'est ce qui la rend
-// éprouvable sans monter de serveur.
+// The MATCHING OF THE THREE PATHS of `routes-installation.ts`, extracted on
+// 22 August 2026. PURE: no `http`, no database, no clock — that is what makes it
+// testable without standing up a server.
 //
-// 🔴 POURQUOI CETTE EXTRACTION EXISTE, ET LE DIRE VAUT MIEUX QUE DE LA LAISSER
-// PARAÎTRE GRATUITE : `routes-installation.ts` était EXACTEMENT à 500 lignes
-// sur 500, et la vague de correction de la revue finale devait y ajouter huit
-// lignes de commentaire — la phrase « le 404 générique répond alors seul », que
-// le servant de page a rendue fausse sans condition. `CLAUDE.md` interdit de
-// comprimer pour regagner la marge (« extraire, jamais comprimer »), et il
-// interdit tout autant de laisser un fichier franchir le plafond. L'extraction
-// est donc la seule issue, et elle porte sur ce que le fichier avait de plus
-// autonome : trois déclarations sans aucune dépendance.
+// 🔴 WHY THIS EXTRACTION EXISTS, AND SAYING IT BEATS LETTING IT
+// LOOK GRATUITOUS: `routes-installation.ts` was EXACTLY at 500 lines
+// out of 500, and the fix wave of the final review had to add eight
+// comment lines to it — the sentence « the generic 404 then answers alone », which
+// the page server made false unconditionally. `CLAUDE.md` forbids
+// compressing to win back the margin (« extract, never compress »), and it
+// equally forbids letting a file cross the ceiling. The extraction
+// is therefore the only way out, and it covers what the file had that was most
+// self-contained: three declarations with no dependency at all.
 //
-// ⚠️ UNE EXTRACTION N'EST JAMAIS RIGOUREUSEMENT VERBATIM, et `CLAUDE.md` le
-// dit : ici, les deux fonctions passent de `function` privée à `export`, et
-// c'est le SEUL changement — aucun corps n'est touché, aucun commentaire n'est
-// réécrit.
+// ⚠️ AN EXTRACTION IS NEVER STRICTLY VERBATIM, and `CLAUDE.md` says
+// so: here, the two functions go from private `function` to `export`, and
+// that is the ONLY change — no body is touched, no comment is
+// rewritten.
 
-/// Le chemin de l'ORDRE d'installation, comparé EXACTEMENT.
+/// The path of the installation ORDER, compared EXACTLY.
 export const CHEMIN_ORDRE = '/installation';
 
-/// Reconnaît `/installation/:id`, et RIEN d'autre. 🔴 DÉCOUPÉ PAR SEGMENTS,
-/// JAMAIS PAR `startsWith` : G1 a MESURÉ qu'un `startsWith('/application')`
-/// laissait DIX-SEPT tests verts — la route mangeait la famille et rendait SON
-/// PROPRE 404 typé, indiscernable du générique. Ancré des DEUX bouts.
+/// Matches `/installation/:id`, and NOTHING else. 🔴 SPLIT BY SEGMENTS,
+/// NEVER BY `startsWith`: G1 MEASURED that a `startsWith('/application')`
+/// left SEVENTEEN tests green — the route swallowed the family and returned ITS
+/// OWN typed 404, indistinguishable from the generic one. Anchored at BOTH ends.
 export function installationDe(chemin: string): string | undefined {
     const segments = chemin.split('/');
     // ['', 'installation', '<id>'] — exactement trois.
@@ -32,9 +32,9 @@ export function installationDe(chemin: string): string | undefined {
     return segments[2] === '' ? undefined : segments[2];
 }
 
-/// Reconnaît `/televersement/:id/contenu`, et RIEN d'autre — même règle. ⚠️ LE
-/// MOTIF S'ARRÊTE À `contenu` : c'est ce qui laisse la place aux autres routes
-/// de la famille `/televersement/…`, qu'un `startsWith` mangerait toutes.
+/// Matches `/televersement/:id/contenu`, and NOTHING else — same rule. ⚠️ THE
+/// PATTERN STOPS AT `contenu`: that is what leaves room for the other routes
+/// of the `/televersement/…` family, which a `startsWith` would swallow whole.
 export function contenuDe(chemin: string): string | undefined {
     const segments = chemin.split('/');
     // ['', 'televersement', '<id>', 'contenu'] — exactement quatre.

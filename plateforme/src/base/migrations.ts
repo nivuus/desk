@@ -1,9 +1,9 @@
-// Le lanceur de migrations : transactionnel, ordonné NUMÉRIQUEMENT, idempotent.
+// The migration runner: transactional, NUMERICALLY ordered, idempotent.
 //
-// Spec §6 : une migration en échec annule sa transaction, arrête le service et
-// laisse la version inchangée. Jamais de schéma à moitié appliqué — un schéma
-// partiel serait indiscernable d'un schéma correct au démarrage suivant, et
-// c'est la classe de panne muette contre laquelle tout ce dépôt est écrit.
+// Spec §6: a failing migration rolls back its transaction, stops the service and
+// leaves the version unchanged. Never a half-applied schema — a partial
+// schema would be indistinguishable from a correct one at the next startup, and
+// that is the class of silent failure this whole repository is written against.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -15,13 +15,13 @@ interface Migration {
     sql: string;
 }
 
-/// 🔴 Le tri est NUMÉRIQUE, jamais lexicographique.
+/// 🔴 The sort is NUMERIC, never lexicographic.
 ///
-/// Un tri de chaînes place `0010` avant `0002` : la dixième migration
-/// s'appliquerait avant la deuxième, et le schéma serait faux sans qu'aucune
-/// erreur ne le dise — chaque fichier serait pourtant bien exécuté, et
-/// `schema_migration` bien renseignée. C'est une panne muette différée de neuf
-/// migrations, et c'est pour cela que le tri est explicite ici.
+/// A string sort puts `0010` before `0002`: the tenth migration
+/// would apply before the second, and the schema would be wrong without any
+/// error saying so — each file would still be run, and
+/// `schema_migration` properly filled in. It is a silent failure deferred by nine
+/// migrations, and that is why the sort is explicit here.
 function lire(repertoire: string): Migration[] {
     return readdirSync(repertoire)
         .filter((f) => f.endsWith('.sql'))
@@ -41,10 +41,10 @@ function lire(repertoire: string): Migration[] {
         .sort((a, b) => a.version - b.version);
 }
 
-/// Découpe un fichier en instructions.
+/// Splits a file into statements.
 ///
-/// Les commentaires `--` sont retirés d'abord : ils portent des apostrophes de
-/// français, et une instruction vide ferait échouer certains moteurs.
+/// The `--` comments are removed first: they carry French
+/// apostrophes, and an empty statement would make some engines fail.
 function instructions(sql: string): string[] {
     return sql
         .replace(/--.*$/gm, '')
@@ -53,31 +53,31 @@ function instructions(sql: string): string[] {
         .filter((s) => s.length > 0);
 }
 
-/// Applique les migrations non encore appliquées et rend leur NOMBRE.
+/// Applies the migrations not yet applied and returns their COUNT.
 ///
-/// `maintenant` est un paramètre, jamais `Date.now()` lu ici : c'est la règle
-/// du sous-ensemble (les horodatages sont toujours écrits par l'application),
-/// et c'est ce qui rend le résultat vérifiable sur une valeur exacte.
+/// `maintenant` is a parameter, never `Date.now()` read here: that is the rule
+/// of the subset (timestamps are always written by the application),
+/// and it is what makes the result checkable against an exact value.
 export async function appliquerMigrations(
     p: Pilote,
     repertoire: string,
     maintenant: number,
 ): Promise<number> {
-    // La table de suivi doit exister avant qu'on puisse la lire. `IF NOT
-    // EXISTS` la rend idempotente ; sa définition est répétée ici et dans
-    // `0001-socle.sql`, à l'identique, parce qu'aucune des deux ne peut
-    // s'appuyer sur l'autre : la première migration a besoin de la table pour
-    // s'enregistrer.
+    // The tracking table must exist before it can be read. `IF NOT
+    // EXISTS` makes it idempotent; its definition is repeated here and in
+    // `0001-socle.sql`, identically, because neither of the two can
+    // lean on the other: the first migration needs the table to
+    // record itself.
     //
-    // ⚠️ Cette duplication est DÉLIBÉRÉE, donc elle peut diverger — et une
-    // divergence de TYPE serait muette : la base créée par cette ligne-ci ne
-    // ressemblerait plus à celle que décrit le socle, sans qu'aucune erreur ne
-    // le dise. `sous-ensemble.test.ts` compare les deux définitions ; ne pas
-    // toucher l'une sans l'autre.
+    // ⚠️ This duplication is DELIBERATE, so it can diverge — and a
+    // TYPE divergence would be silent: the database created by this line would
+    // no longer look like the one the base schema describes, without any error
+    // saying so. `sous-ensemble.test.ts` compares the two definitions; do not
+    // touch one without the other.
     //
-    // `applique_a` est BIGINT et non INTEGER : voir l'en-tête de
-    // `0001-socle.sql` -- sur Postgres, INTEGER vaut 4 octets et un
-    // `Date.now()` n'y tient pas.
+    // `applique_a` is BIGINT and not INTEGER: see the header of
+    // `0001-socle.sql` -- on Postgres, INTEGER is 4 bytes and a
+    // `Date.now()` does not fit.
     await p.executer(
         'CREATE TABLE IF NOT EXISTS schema_migration (version INTEGER PRIMARY KEY, applique_a BIGINT NOT NULL)',
         [],
@@ -94,9 +94,9 @@ export async function appliquerMigrations(
         if (appliquees.has(migration.version)) continue;
         await p.transaction(async (tx) => {
             for (const instruction of instructions(migration.sql)) {
-                // `schema_migration` est déjà créée ci-dessus : une seconde
-                // création dans la même transaction échouerait. Le socle la
-                // déclare pour un lecteur du schéma, pas pour l'exécution.
+                // `schema_migration` is already created above: a second
+                // creation in the same transaction would fail. The base schema
+                // declares it for a reader of the schema, not for execution.
                 if (/^CREATE\s+TABLE\s+schema_migration\b/i.test(instruction)) continue;
                 await tx.executer(instruction, []);
             }
@@ -110,8 +110,8 @@ export async function appliquerMigrations(
     return compte;
 }
 
-/// Le répertoire des migrations, résolu depuis ce module — pour qu'aucun
-/// appelant n'ait à connaître l'arborescence.
+/// The migrations directory, resolved from this module — so that no
+/// caller has to know the tree layout.
 export const REPERTOIRE_MIGRATIONS = path.join(
     path.dirname(new URL(import.meta.url).pathname),
     'migrations',

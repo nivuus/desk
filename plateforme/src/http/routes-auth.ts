@@ -1,26 +1,26 @@
 // Les deux routes d'authentification : `POST /auth/connexion` et
 // `POST /auth/rafraichir`.
 //
-// 🔴 LE MESSAGE DE REFUS EST IDENTIQUE pour « courriel inconnu » et « mot de
-// passe faux » — `{refus:'identifiants'}`. Un message qui les distinguerait
-// serait un ORACLE d'énumération de comptes : l'attaquant apprendrait quelles
-// adresses existent en lisant la réponse. C'est la même règle que le critère ②
-// de P3, posée ici parce que le premier cas où elle mord est celui-ci.
+// 🔴 THE REFUSAL MESSAGE IS IDENTICAL for « unknown email » and « wrong
+// password » — `{refus:'identifiants'}`. A message that told them apart
+// would be an account ENUMERATION oracle: the attacker would learn which
+// addresses exist by reading the response. It is the same rule as criterion ②
+// of P3, set here because the first case where it bites is this one.
 //
-// ⚠️ ET LE COÛT DU CHEMIN EST ÉGALISÉ AUSSI : sur un courriel inconnu, la
-// route hache quand même un mot de passe leurre, pour que la durée de réponse
-// ne trahisse pas l'existence du compte. **CETTE ÉGALISATION N'EST PAS
-// MESURÉE**, et ne le sera pas : un test de temporisation serait instable, et
-// la spec §8 range déjà les attaques temporelles parmi ce que ⑤ n'éprouve pas.
-// Ce qui EST testé est le message identique, qui est décidable. Écrire
-// « égalisé » sans cette réserve serait une affirmation au-delà du relevé.
+// ⚠️ AND THE COST OF THE PATH IS EQUALISED TOO: on an unknown email, the
+// route still hashes a decoy password, so that the response time
+// does not betray the existence of the account. **THIS EQUALISATION IS NOT
+// MEASURED**, and will not be: a timing test would be flaky, and
+// the spec §8 already files timing attacks among what ⑤ does not test.
+// What IS tested is the identical message, which is decidable. Writing
+// « equalised » without this caveat would be a claim beyond the survey.
 //
-// 🔴 AUCUN MOT DE PASSE N'APPARAÎT DANS UNE TRACE NI DANS UNE RÉPONSE
-// (critère ④). Aucune ligne de ce fichier ne journalise un corps de requête,
-// et c'est délibéré : journaliser `JSON.stringify(corps)` pour diagnostiquer
-// écrirait le mot de passe en clair dans `agent.log`. Le test du critère ④
-// balaie LE CHAMP (`motdepasse`, `mot_de_passe`, `empreinte_mdp`) et non la
-// valeur, précisément pour attraper ce geste-là.
+// 🔴 NO PASSWORD SHOWS UP IN A TRACE OR IN A RESPONSE
+// (criterion ④). No line of this file logs a request body,
+// and that is deliberate: logging `JSON.stringify(corps)` to diagnose
+// would write the password in clear into `agent.log`. The criterion ④ test
+// sweeps THE FIELD (`motdepasse`, `mot_de_passe`, `empreinte_mdp`) and not the
+// value, precisely to catch that move.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
@@ -47,40 +47,40 @@ export interface DependancesAuth {
     secretJeton: string;
     origineClient?: string;
     maintenant: () => number;
-    /// Le frein, PARTAGÉ avec le canal `/agent` — une seule table, jamais
-    /// deux (voir `securite/frein.ts`).
+    /// The brake, SHARED with the `/agent` channel — one single table, never
+    /// two (see `securite/frein.ts`).
     frein: Frein;
-    /// Les proxys dont on croit l'en-tête `X-Forwarded-For`. VIDE par défaut :
-    /// on ne croit personne (`config.ts`).
+    /// The proxies whose `X-Forwarded-For` header is trusted. EMPTY by default:
+    /// nobody is trusted (`config.ts`).
     proxyDeConfiance: ReadonlySet<string>;
-    /// Le mode d'authentification (`config.ts`). En `pomerium`, ce routeur se
-    /// RETIRE : voir le garde en tête de `servirAuth`.
+    /// The authentication mode (`config.ts`). In `pomerium`, this router
+    /// STEPS ASIDE: see the guard at the top of `servirAuth`.
     auth: 'pomerium' | 'motdepasse';
 }
 
-/// Les clés à consulter pour une requête, et celle qu'un succès efface.
+/// The keys to consult for a request, and the one a success clears.
 interface ContexteFrein {
     cles: readonly (readonly [string, Budget])[];
-    /// L'adresse RETENUE par `adresseSource` — celle que la trace nomme.
+    /// The address RETAINED by `adresseSource` — the one the trace names.
     adresse: string;
-    /// ⚠️ RENSEIGNÉE POUR `/auth/connexion` SEULEMENT. `/auth/rafraichir` n'a
-    /// pas de courriel à présenter — seulement un jeton opaque —, et prendre
-    /// ce jeton pour clé reviendrait à INDEXER UNE TABLE SUR UN SECRET.
+    /// ⚠️ FILLED IN FOR `/auth/connexion` ONLY. `/auth/rafraichir` has
+    /// no email to present — only an opaque token —, and taking
+    /// that token as a key would amount to INDEXING A TABLE ON A SECRET.
     cleDuCompte?: string;
 }
 
-/// 4 KiB. Un corps d'authentification honnête pèse quelques centaines
-/// d'octets ; sans borne, un pair ANONYME — la route est ouverte, c'est son
-/// objet — ferait grossir la mémoire du service à volonté.
-/// ⚠️ NON CALIBRÉE : c'est une borne généreuse, pas une mesure.
+/// 4 KiB. An honest authentication body weighs a few hundred
+/// bytes; with no bound, an ANONYMOUS peer — the route is open, that is its
+/// purpose — would grow the memory of the service at will.
+/// ⚠️ NOT CALIBRATED: it is a generous bound, not a measurement.
 const CORPS_MAX_OCTETS = 4 * 1024;
 
 const CHEMINS = new Set(['/auth/connexion', '/auth/rafraichir']);
 
-/// Le mot de passe leurre haché sur un courriel inconnu. Calculé UNE fois et
-/// mémorisé : le hacher à chaque requête coûterait le même temps, mais le
-/// calculer ici garde le coût du chemin « compte inexistant » comparable à
-/// celui du chemin « compte existant ».
+/// The decoy password hashed on an unknown email. Computed ONCE and
+/// memoised: hashing it on each request would cost the same time, but
+/// computing it here keeps the cost of the « no such account » path comparable to
+/// that of the « existing account » path.
 const LEURRE = 'un-mot-de-passe-leurre-qui-n-est-a-personne';
 
 function repondre(
@@ -91,28 +91,28 @@ function repondre(
 ): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
-        // ⚠️ INCONDITIONNELS, et posés sur TOUTE réponse — y compris les
-        // réponses d'ERREUR (401, 405, 413, 429, 500, 503), qui portent
-        // souvent plus d'information qu'une réponse normale. Ils sont étalés
-        // AVANT `cors` pour que la politique d'origine, qui est facultative,
-        // ne puisse jamais les écraser par mégarde.
+        // ⚠️ UNCONDITIONAL, and set on EVERY response — including the
+        // ERROR responses (401, 405, 413, 429, 500, 503), which
+        // often carry more information than a normal response. They are spread
+        // BEFORE `cors` so that the origin policy, which is optional,
+        // can never overwrite them by mistake.
         ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(JSON.stringify(corps));
 }
 
-/// Lit le corps, ou rend `undefined` si la borne est franchie — auquel cas la
-/// requête est ABANDONNÉE sans lire la suite, plutôt que d'accumuler.
+/// Reads the body, or yields `undefined` if the bound is crossed — in which case the
+/// request is ABANDONED without reading the rest, rather than piling up.
 function lireCorps(req: IncomingMessage): Promise<string | undefined> {
     return new Promise((resolve, rejeter) => {
         let recu = '';
         req.on('data', (morceau: Buffer) => {
             recu += morceau.toString('utf8');
             if (recu.length > CORPS_MAX_OCTETS) {
-                // On cesse de lire IMMÉDIATEMENT : continuer à accumuler pour
-                // répondre poliment serait exactement le déni de service que
-                // la borne existe pour empêcher.
+                // We stop reading AT ONCE: carrying on piling up to
+                // answer politely would be exactly the denial of service that
+                // the bound exists to prevent.
                 req.destroy();
                 resolve(undefined);
             }
@@ -126,15 +126,15 @@ function estObjet(v: unknown): v is Record<string, unknown> {
     return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/// Rend `true` si la requête a été servie, `false` si elle ne concerne pas
-/// l'authentification — le serveur répond alors 404, comme aujourd'hui.
+/// Yields `true` if the request was served, `false` if it is not about
+/// authentication — the server then answers 404, as today.
 ///
-/// ⚠️ « COMME AUJOURD'HUI » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT
-/// 2026 : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
-/// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
-/// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au
-/// `false` rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique
-/// reprend la main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+/// ⚠️ « AS TODAY » IS NO LONGER UNCONDITIONALLY TRUE SINCE 22 AUGUST
+/// 2026: when `PLATEFORME_PAGE` is armed, a TENTH router — the page
+/// server — is chained AFTER all the others, and it resolves any
+/// path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the
+/// `false` returned here; outside `GET`/`HEAD` it steps aside, and the generic 404
+/// takes over. See `http/chaine.ts`, which carries the count and the rule.
 export async function servirAuth(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -143,45 +143,45 @@ export async function servirAuth(
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     if (!CHEMINS.has(chemin)) return false;
 
-    // 🔴 EN MODE `pomerium`, CES DEUX ROUTES N'EXISTENT PAS — `404`, rendu
-    // ICI. Les laisser vivantes derrière le proxy serait une SECONDE porte
-    // d'authentification, avec des mots de passe que plus personne ne tourne
-    // et un frein que plus personne ne regarde.
+    // 🔴 IN `pomerium` MODE, THESE TWO ROUTES DO NOT EXIST — `404`, returned
+    // HERE. Leaving them alive behind the proxy would be a SECOND authentication
+    // door, with passwords nobody rotates any more
+    // and a brake nobody watches any more.
     //
-    // 🔴 CE GARDE RENDAIT `false` JUSQU'AU 22 AOÛT 2026, POUR LAISSER RÉPONDRE
-    // LE 404 GÉNÉRIQUE — ET C'ÉTAIT LE JUMEAU SYMÉTRIQUE DU DÉFAUT DE
-    // `routes-identite.ts`. Le servant de page, chaîné en dernier, replie tout
-    // chemin sans extension sur la page (`hub.html` depuis le 30 août 2026,
-    // `index.html` avant — voir `page/resolution.ts::PAGE`) : `GET
-    // /auth/connexion` en mode `pomerium` avec `PLATEFORME_PAGE` armée
-    // rendait `200 text/html`. Les deux gardes ayant des polarités OPPOSÉES,
-    // elles avaient le MÊME défaut,
-    // chacune dans l'autre mode — et une revue par tâche ne pouvait pas le
-    // voir, chaque moitié étant juste. Le `404` vient de
-    // `http/introuvable.ts`, celui du serveur, jamais un second texte.
+    // 🔴 THIS GUARD RETURNED `false` UNTIL 22 AUGUST 2026, TO LET THE GENERIC
+    // 404 ANSWER — AND IT WAS THE SYMMETRIC TWIN OF THE DEFECT OF
+    // `routes-identite.ts`. The page server, chained last, folds every
+    // path without an extension onto the page (`hub.html` since 30 August 2026,
+    // `index.html` before — see `page/resolution.ts::PAGE`): `GET
+    // /auth/connexion` in `pomerium` mode with `PLATEFORME_PAGE` armed
+    // returned `200 text/html`. The two guards having OPPOSITE polarities,
+    // they had the SAME defect,
+    // each in the other mode — and a per-task review could not
+    // see it, each half being right. The `404` comes from
+    // `http/introuvable.ts`, the server one, never a second text.
     //
-    // ⚠️ LE GARDE EST APRÈS LA COMPARAISON DE CHEMIN ET NON AVANT, à dessein :
-    // un routeur qui rendrait `false` pour TOUT chemin en mode pomerium serait
-    // indiscernable d'un routeur débranché, et la rouge du chaînage ne
-    // pourrait plus rien dire.
-    // 🔴 L'INVARIANT DES DEUX GARDES DE MODE, ÉCRIT ICI ET DANS
-    // `routes-identite.ts` PARCE QU'IL N'APPARTIENT NI À L'UN NI À L'AUTRE :
-    // **les deux gardes ont des POLARITÉS OPPOSÉES, et c'est ce qui les fait
-    // PARTITIONNER les modes.** Celui-ci se retire si le mode n'est PAS
-    // `motdepasse` ; celui de `routes-identite.ts` se retire si le mode n'est
-    // PAS `pomerium`. À DEUX modes, tout mode active donc exactement une des
-    // deux portes.
+    // ⚠️ THE GUARD IS AFTER THE PATH COMPARISON AND NOT BEFORE, on purpose:
+    // a router that returned `false` for EVERY path in pomerium mode would be
+    // indistinguishable from an unplugged router, and the red of the chaining
+    // could no longer say anything.
+    // 🔴 THE INVARIANT OF THE TWO MODE GUARDS, WRITTEN HERE AND IN
+    // `routes-identite.ts` BECAUSE IT BELONGS TO NEITHER ONE NOR THE OTHER:
+    // **the two guards have OPPOSITE POLARITIES, and that is what makes them
+    // PARTITION the modes.** This one steps aside if the mode is NOT
+    // `motdepasse`; the one of `routes-identite.ts` steps aside if the mode is
+    // NOT `pomerium`. With TWO modes, every mode therefore activates exactly one of the
+    // two doors.
     //
-    // 🔴 CE QUE CET INVARIANT COÛTE LE JOUR OÙ UN TROISIÈME MODE APPARAÎT :
-    // **les deux gardes rendent `404` en même temps, et le service n'a plus
-    // AUCUNE route d'authentification — EN SILENCE.** Aucun 500, aucun `warn!` ;
-    // chacun des deux 404 est juste pris seul, et la page de connexion lit
-    // celui d'`/auth/moi` comme « ce montage authentifie par mot de passe »
-    // avant de POSTer vers une route qui n'existe pas non plus.
-    // **Ajouter une valeur à `AUTHS` (`config.ts`) OBLIGE donc à revenir ici**
-    // et à décider laquelle des deux portes le nouveau mode ouvre —
-    // TypeScript ne le demandera pas, ces gardes comparant des chaînes et non
-    // un `switch` exhaustif.
+    // 🔴 WHAT THIS INVARIANT COSTS THE DAY A THIRD MODE SHOWS UP:
+    // **both guards return `404` at the same time, and the service has
+    // NO authentication route left — SILENTLY.** No 500, no `warn!`;
+    // each of the two 404s is right taken alone, and the login page reads
+    // the one of `/auth/moi` as « this deployment authenticates by password »
+    // before POSTing to a route that does not exist either.
+    // **Adding a value to `AUTHS` (`config.ts`) therefore FORCES coming back here**
+    // to decide which of the two doors the new mode opens —
+    // TypeScript will not ask, as these guards compare strings and not
+    // an exhaustive `switch`.
     if (deps.auth !== 'motdepasse') {
         repondreIntrouvable(rep);
         return true;
@@ -190,9 +190,9 @@ export async function servirAuth(
     const cors = entetesCors(req.headers.origin, deps.origineClient);
 
     if (req.method === 'OPTIONS') {
-        // 204 même sans en-tête CORS : la requête préalable est servie, mais
-        // sans autorisation le navigateur refusera la vraie requête — un refus
-        // BRUYANT, que l'opérateur voit (voir `config.ts`).
+        // 204 even without a CORS header: the preflight request is served, but
+        // without permission the browser will refuse the real request — a LOUD
+        // refusal, which the operator sees (see `config.ts`).
         rep.writeHead(204, { ...ENTETES_SECURITE, ...(cors ?? {}) });
         rep.end();
         return true;
@@ -221,22 +221,22 @@ export async function servirAuth(
         return true;
     }
 
-    // 🔴 LE FREIN EST CONSULTÉ ICI, ET C'EST LA POSITION QUI COMPTE : AVANT
-    // `lireParEmail`, donc AVANT le moindre accès à la base, ET AVANT
-    // `verifier`/`hacher`, donc AVANT LA DÉRIVATION `scrypt`. `scrypt` est à
-    // mémoire dure et coûte délibérément cher (68 ms mesurés le 20 août 2026
-    // sur cette machine) : un attaquant qui le déclenche à volonté épuise le
-    // service sans jamais deviner un secret. UN FREIN POSTÉ APRÈS LA
-    // VÉRIFICATION NE PROTÈGE RIEN — il compte des échecs qu'il a déjà payés.
+    // 🔴 THE BRAKE IS CONSULTED HERE, AND THE POSITION IS WHAT MATTERS: BEFORE
+    // `lireParEmail`, so BEFORE the slightest database access, AND BEFORE
+    // `verifier`/`hacher`, so BEFORE THE `scrypt` DERIVATION. `scrypt` is
+    // memory-hard and deliberately costly (68 ms measured on 20 August 2026
+    // on this machine): an attacker who triggers it at will exhausts the
+    // service without ever guessing a secret. A BRAKE PLACED AFTER THE
+    // CHECK PROTECTS NOTHING — it counts failures it has already paid for.
     //
-    // Le corps est lu d'abord, parce que la clé de compte en dépend ; il est
-    // borné à `CORPS_MAX_OCTETS` et ne coûte donc rien de comparable.
+    // The body is read first, because the account key depends on it; it is
+    // bounded to `CORPS_MAX_OCTETS` and therefore costs nothing comparable.
     const contexte = clesDe(chemin, corps, req, deps);
     const verdict = deps.frein.consulter(contexte.cles, deps.maintenant());
     if (verdict.freine) {
-        // ⚠️ LE 429 PORTE LES EN-TÊTES CORS COMME TOUTES LES AUTRES RÉPONSES.
-        // Sans eux, le NAVIGATEUR ne peut pas lire le refus : l'utilisateur
-        // voit un échec opaque au lieu de « réessayez dans n minutes ».
+        // ⚠️ THE 429 CARRIES THE CORS HEADERS LIKE ALL THE OTHER RESPONSES.
+        // Without them, the BROWSER cannot read the refusal: the user
+        // sees an opaque failure instead of « try again in n minutes ».
         rep.setHeader('Retry-After', String(verdict.retryApresS));
         repondre(rep, 429, { refus: 'trop-de-tentatives' }, cors);
         return true;
@@ -250,13 +250,13 @@ export async function servirAuth(
     return true;
 }
 
-/// Construit les clés de frein d'une requête.
+/// Builds the brake keys of a request.
 ///
-/// ⚠️ `/auth/connexion` PORTE DEUX CLÉS, `/auth/rafraichir` UNE SEULE (D1) :
-///   - par COMPTE, seul frein qui ferme la force brute CIBLÉE — un attaquant
-///     disposant de mille adresses source n'en est pas ralenti autrement ;
-///   - par ADRESSE, seul frein qui ferme le BALAYAGE de comptes — mille
-///     courriels essayés une fois chacun ne consomment aucun budget de compte.
+/// ⚠️ `/auth/connexion` CARRIES TWO KEYS, `/auth/rafraichir` ONLY ONE (D1):
+///   - per ACCOUNT, the only brake that closes TARGETED brute force — an attacker
+///     with a thousand source addresses is not slowed down otherwise;
+///   - per ADDRESS, the only brake that closes account SWEEPING — a thousand
+///     emails tried once each consume no account budget.
 function clesDe(
     chemin: string,
     corps: Record<string, unknown>,
@@ -265,10 +265,10 @@ function clesDe(
 ): ContexteFrein {
     const adresse = adresseSource(
         req.socket.remoteAddress,
-        // Node rend `string[]` si l'en-tête est répété. Le concaténer avec des
-        // virgules le ramène à la forme d'un en-tête unique, que
-        // `adresseSource` sait lire — et dont il prend le DERNIER élément,
-        // c'est-à-dire celui que le proxy le plus proche a écrit.
+        // Node yields `string[]` if the header is repeated. Joining it with
+        // commas brings it back to the shape of a single header, which
+        // `adresseSource` can read — and of which it takes the LAST element,
+        // that is, the one the closest proxy wrote.
         Array.isArray(req.headers['x-forwarded-for'])
             ? req.headers['x-forwarded-for'].join(',')
             : req.headers['x-forwarded-for'],
@@ -276,8 +276,8 @@ function clesDe(
     );
     const parAdresse: readonly [string, Budget] = [cleAdresse(adresse), BUDGET_ADRESSE];
 
-    // Le courriel n'est une clé que s'il est une chaîne : un corps mal formé
-    // sera refusé en 400 plus bas, et n'a pas à consommer de budget de compte.
+    // The email is a key only if it is a string: a malformed body
+    // will be refused with 400 further down, and has no business consuming account budget.
     const email = corps.email;
     if (chemin !== '/auth/connexion' || typeof email !== 'string') {
         return { cles: [parAdresse], adresse };
@@ -286,45 +286,45 @@ function clesDe(
     return { cles: [[cle, BUDGET_COMPTE], parAdresse], adresse, cleDuCompte: cle };
 }
 
-/// Enregistre l'échec, et journalise SI ET SEULEMENT SI le frein vient de
-/// mordre.
+/// Records the failure, and logs IF AND ONLY IF the brake has just
+/// bitten.
 ///
-/// 🔴 POURQUOI PAS UNE LIGNE PAR REFUS. Une trace émise à chaque 429 rendrait
-/// le service AMPLIFICATEUR sur le chemin même qu'on ferme : un attaquant à
-/// dix mille requêtes par seconde ferait écrire dix mille lignes par seconde,
-/// pour des requêtes qui, elles, ne coûtent plus rien. `CLAUDE.md` porte la
-/// règle depuis le chantier TURN — « compter ou échantillonner, jamais tracer
-/// par paquet », après qu'une trace par paquet a écrit 18 619 lignes en
-/// quelques secondes et détruit la mesure qu'elle servait.
+/// 🔴 WHY NOT ONE LINE PER REFUSAL. A trace emitted on each 429 would make
+/// the service an AMPLIFIER on the very path being closed: an attacker at
+/// ten thousand requests per second would get ten thousand lines written per second,
+/// for requests that, for their part, no longer cost anything. `CLAUDE.md` has carried the
+/// rule since the TURN work — « count or sample, never trace
+/// per packet », after a per-packet trace wrote 18 619 lines in
+/// a few seconds and destroyed the measurement it served.
 ///
-/// La transition est détectée en reconsultant APRÈS l'échec : la requête
-/// suivante étant refusée tout en haut de `servirAuth`, elle n'atteindra
-/// jamais cette fonction. Il y a donc EXACTEMENT UNE ligne par clé et par
-/// fenêtre, borne que `ENTREES_MAX` referme.
+/// The transition is detected by consulting again AFTER the failure: the next
+/// request being refused at the very top of `servirAuth`, it will
+/// never reach this function. There is therefore EXACTLY ONE line per key and per
+/// window, a bound that `ENTREES_MAX` closes.
 ///
-/// ⚠️ LA LIGNE PORTE LE COURRIEL VISÉ, et c'est un arbitrage : savoir QUEL
-/// compte est attaqué est précisément ce dont un exploitant a besoin. Aucun
-/// mot de passe n'y figure — critère ④ —, et la clé est déjà normalisée.
+/// ⚠️ THE LINE CARRIES THE TARGETED EMAIL, and that is a trade-off: knowing WHICH
+/// account is attacked is precisely what an operator needs. No
+/// password appears in it — criterion ④ —, and the key is already normalised.
 function compterLEchec(deps: DependancesAuth, contexte: ContexteFrein, chemin: string): void {
     const instant = deps.maintenant();
     deps.frein.echec(contexte.cles, instant);
     const apres = deps.frein.consulter(contexte.cles, instant);
     if (!apres.freine) return;
-    // ⚠️ L'ADRESSE EST NOMMÉE, ET C'EST LE SEUL REMÈDE au mode de défaillance
-    // de `http/adresse-source.ts` : un exploitant qui a posé un proxy sans
-    // déclarer sa confiance verra ici l'adresse de son proxy sur toutes les
-    // lignes, et comprendra que son frein par adresse est devenu GLOBAL.
+    // ⚠️ THE ADDRESS IS NAMED, AND IT IS THE ONLY REMEDY for the failure mode
+    // of `http/adresse-source.ts`: an operator who set up a proxy without
+    // declaring trust in it will see here the address of their proxy on every
+    // line, and will understand that their per-address brake has become GLOBAL.
     console.warn(
         ligne('frein', {
             route: chemin,
             adresse: contexte.adresse,
             cles: contexte.cles.map(([cle]) => cle).join(' '),
             retry_apres_s: apres.retryApresS,
-            // ⚠️ `entrees` ET `evictions` SONT LÀ POUR QUE LA SATURATION DU
-            // FREIN CESSE D'ÊTRE INVISIBLE. Sous saturation, une éviction rend
-            // son budget à un compte visé (voir `ENTREES_MAX`) : un exploitant
-            // qui voit `evictions` monter sait que le frein est débordé, et
-            // que ses budgets ne valent plus ce qu'ils annoncent.
+            // ⚠️ `entrees` AND `evictions` ARE THERE SO THAT SATURATION OF THE
+            // BRAKE STOPS BEING INVISIBLE. Under saturation, an eviction gives
+            // its budget back to a targeted account (see `ENTREES_MAX`): an operator
+            // who sees `evictions` climb knows the brake is overwhelmed, and
+            // that its budgets are no longer worth what they claim.
             entrees: deps.frein.taille(),
             evictions: deps.frein.evictions(),
         }),
@@ -346,13 +346,13 @@ async function connexion(
 
     const utilisateur = await lireParEmail(deps.base, email);
     if (!utilisateur) {
-        // Voir l'en-tête : le coût du chemin est égalisé, l'égalisation n'est
-        // PAS mesurée, et le message est le même que pour un mot de passe faux.
+        // See the header: the cost of the path is equalised, the equalisation is
+        // NOT measured, and the message is the same as for a wrong password.
         await hacher(LEURRE);
-        // ⚠️ UN COURRIEL INCONNU COMPTE COMME UN ÉCHEC, exactement comme un
-        // mot de passe faux. Ne compter que les comptes existants rouvrirait
-        // l'ORACLE que cette route ferme sur trois paragraphes : le balayage
-        // d'un million d'adresses ne consommerait alors aucun budget.
+        // ⚠️ AN UNKNOWN EMAIL COUNTS AS A FAILURE, exactly like a
+        // wrong password. Counting only existing accounts would reopen
+        // the ORACLE that this route closes over three paragraphs: sweeping
+        // a million addresses would then consume no budget.
         compterLEchec(deps, contexte, '/auth/connexion');
         repondre(rep, 401, { refus: 'identifiants' }, cors);
         return;
@@ -362,10 +362,10 @@ async function connexion(
     try {
         bon = await verifier(motdepasse, utilisateur.empreinte_mdp);
     } catch (cause) {
-        // `verifier` LÈVE sur un algorithme inconnu — une base écrite par une
-        // version future. C'est un défaut de données, pas une entrée fautive :
-        // il se journalise SANS le corps de la requête, et la réponse reste
-        // celle des identifiants, pour ne pas devenir un oracle.
+        // `verifier` THROWS on an unknown algorithm — a database written by a
+        // future version. It is a data defect, not a faulty input:
+        // it is logged WITHOUT the request body, and the response stays
+        // that of the credentials, so as not to become an oracle.
         console.error(`empreinte illisible pour un compte existant : ${String(cause)}`);
         compterLEchec(deps, contexte, '/auth/connexion');
         repondre(rep, 401, { refus: 'identifiants' }, cors);
@@ -377,20 +377,20 @@ async function connexion(
         return;
     }
 
-    // Le re-hachage à la connexion suivante : c'est ce qui rendra inutile
-    // toute migration de données le jour où les paramètres changeront.
+    // Rehashing on the next login: that is what will make any
+    // data migration unnecessary the day the parameters change.
     if (doitEtreRehache(utilisateur.empreinte_mdp)) {
         await remplacerEmpreinte(deps.base, utilisateur.id, await hacher(motdepasse));
     }
 
-    // 🔴 LE SUCCÈS N'EFFACE QUE LA CLÉ DE COMPTE, JAMAIS CELLE DE L'ADRESSE.
-    // L'effacer aussi BLANCHIRAIT un attaquant qui possède un compte valide :
-    // il lui suffirait de s'y connecter entre deux rafales pour rendre son
-    // budget d'adresse à zéro, et le frein par adresse ne fermerait plus rien.
+    // 🔴 SUCCESS ONLY CLEARS THE ACCOUNT KEY, NEVER THE ADDRESS ONE.
+    // Clearing it too would LAUNDER an attacker who owns a valid account:
+    // they would only need to sign in to it between two bursts to bring their
+    // address budget back to zero, and the per-address brake would close nothing any more.
     if (contexte.cleDuCompte !== undefined) deps.frein.succes(contexte.cleDuCompte);
 
-    // Une connexion ouvre une famille NEUVE — c'est le seul geste qui le
-    // fasse.
+    // A login opens a NEW family — it is the only move that
+    // does so.
     await delivrer(rep, deps, utilisateur.id, await emettre(deps.base, utilisateur.id, deps.maintenant()), cors);
 }
 
@@ -409,29 +409,29 @@ async function rafraichir(
 
     const issue = await tourner(deps.base, rafraichissement, deps.maintenant());
     if (!issue.ok) {
-        // ⚠️ SEULE LA CLÉ D'ADRESSE EST CONSOMMÉE ICI — `contexte.cles` n'en
-        // porte qu'une pour cette route (voir `clesDe`). Un jeton de
-        // rafraîchissement volé ne peut donc pas servir à verrouiller le
-        // compte de sa victime.
+        // ⚠️ ONLY THE ADDRESS KEY IS CONSUMED HERE — `contexte.cles` only
+        // carries one for this route (see `clesDe`). A stolen refresh
+        // token therefore cannot be used to lock the
+        // account of its victim.
         compterLEchec(deps, contexte, '/auth/rafraichir');
-        // Le motif est rendu au demandeur : il porte sur SON propre jeton, et
-        // lui dire s'il doit se reconnecter ou s'il vient d'être compromis
-        // n'apprend rien sur les comptes des autres.
+        // The reason is returned to the requester: it is about THEIR own token, and
+        // telling them whether they must sign in again or whether they have just been compromised
+        // teaches nothing about the accounts of others.
         repondre(rep, 401, { refus: issue.motif }, cors);
         return;
     }
 
-    // 🔴 LE JETON RENDU EST CELUI DE LA ROTATION, jamais un jeton neuf émis
-    // par-dessus. Appeler `emettre` ici ouvrirait une famille NEUVE à chaque
-    // rafraîchissement : la détection de rejeu révoquerait alors une famille
-    // à laquelle le jeton volé n'appartient plus, et ne protégerait RIEN. Ce
-    // défaut a réellement été écrit, et c'est le test du rejeu de bout en bout
-    // qui l'a attrapé — les tests du dépôt seuls ne le pouvaient pas.
+    // 🔴 THE TOKEN RETURNED IS THE ROTATION ONE, never a new token issued
+    // on top. Calling `emettre` here would open a NEW family on each
+    // refresh: replay detection would then revoke a family
+    // that the stolen token no longer belongs to, and would protect NOTHING. This
+    // defect was really written, and it is the end-to-end replay test
+    // that caught it — the repository tests alone could not.
     await delivrer(rep, deps, issue.utilisateurId, issue.clair, cors);
 }
 
-/// La paire délivrée par les deux routes, écrite une seule fois pour qu'elles
-/// ne puissent pas diverger.
+/// The pair issued by both routes, written once so that they
+/// cannot diverge.
 async function delivrer(
     rep: ServerResponse,
     deps: DependancesAuth,
@@ -444,8 +444,8 @@ async function delivrer(
     repondre(
         rep,
         200,
-        // `expire_a` en MILLISECONDES, comme tout horodatage de ce service —
-        // voir la divergence déclarée dans `identite/jeton.ts`.
+        // `expire_a` in MILLISECONDS, like every timestamp of this service —
+        // see the divergence declared in `identite/jeton.ts`.
         { acces, rafraichissement, expire_a: maintenant + DUREE_JETON_ACCES_MS },
         cors,
     );

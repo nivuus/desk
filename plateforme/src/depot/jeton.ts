@@ -1,28 +1,28 @@
-// La chaîne de rafraîchissement : rotative à chaque emploi, hachée en base, et
-// détectrice de rejeu.
+// The refresh chain: rotated on each use, hashed in the database, and
+// detecting replay.
 //
-// 🔴 POURQUOI SHA-256 ICI ALORS QUE LE MOT DE PASSE EMPLOIE `scrypt`.
-// `scrypt` est lent PAR CONCEPTION, pour rendre coûteuse l'attaque par
-// dictionnaire d'un secret à faible entropie. Un jeton de 256 bits tiré au
-// hasard n'a pas de dictionnaire : le hachage ne sert ici qu'à ce qu'une fuite
-// de la base ne rende pas les jetons utilisables, et SHA-256 y suffit.
-// **Le coût est nommé** : si un jour un jeton de rafraîchissement devenait
-// dérivé d'un secret humain, cette décision serait à rouvrir.
+// 🔴 WHY SHA-256 HERE WHEREAS THE PASSWORD USES `scrypt`.
+// `scrypt` is slow BY DESIGN, to make a dictionary attack on a
+// low-entropy secret expensive. A randomly drawn 256-bit token
+// has no dictionary: hashing here only serves so that a leak
+// of the database does not make the tokens usable, and SHA-256 is enough for that.
+// **The cost is named**: if one day a refresh token became
+// derived from a human secret, this decision would have to be reopened.
 //
-// 🔴 LA RÈGLE DE REJEU, et pourquoi elle exige DEUX colonnes que la spec §5
-// n'avait pas. Sans `famille` ni `remplace_par`, rien ne relie un jeton tourné
-// à son successeur : présenter un jeton déjà tourné ne pourrait révoquer que
-// la ligne DÉJÀ révoquée, et le voleur qui a tourné le premier garderait son
-// jeton neuf. La détection ne protégerait rien.
+// 🔴 THE REPLAY RULE, and why it requires TWO columns that spec §5
+// did not have. Without `famille` or `remplace_par`, nothing links a rotated token
+// to its successor: presenting an already rotated token could only revoke
+// the ALREADY revoked row, and the thief who rotated first would keep their
+// new token. The detection would protect nothing.
 //
-// ⚠️ `rejeu` et `revoque` se distinguent par `remplace_par`, et cette
-// distinction n'est pas cosmétique : une ligne révoquée AVEC successeur a été
-// tournée légitimement — la présenter de nouveau est un REJEU, donc une
-// compromission, donc la famille tombe. Une ligne révoquée SANS successeur n'a
-// jamais été tournée : c'est un jeton mort (déconnexion, révocation
-// administrative), et il n'y a rien à révoquer de plus. Sans elle, le motif
-// `revoque` serait une variante inatteignable — un contrôle qui ne peut pas
-// échouer, sous une autre forme.
+// ⚠️ `rejeu` and `revoque` are told apart by `remplace_par`, and this
+// distinction is not cosmetic: a row revoked WITH a successor was
+// legitimately rotated — presenting it again is a REPLAY, hence a
+// compromise, hence the family falls. A row revoked WITHOUT a successor was
+// never rotated: it is a dead token (logout, administrative
+// revocation), and there is nothing more to revoke. Without it, the
+// `revoque` reason would be an unreachable variant — a check that cannot
+// fail, in another form.
 
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
@@ -32,12 +32,12 @@ export type IssueRotation =
     | { ok: true; clair: string; utilisateurId: string }
     | { ok: false; motif: MotifRafraichissement };
 
-/// 30 jours. ⚠️ NON CALIBRÉE : aucune mesure ne l'a jugée. Elle rejoint la
-/// liste des constantes non calibrées du dépôt.
+/// 30 days. ⚠️ UNCALIBRATED: no measurement has judged it. It joins the
+/// list of uncalibrated constants of the repository.
 export const DUREE_RAFRAICHISSEMENT_MS = 30 * 24 * 60 * 60 * 1000;
 
-/// 32 octets, soit 256 bits d'entropie. C'est ce qui autorise SHA-256 plutôt
-/// que `scrypt` — voir l'en-tête.
+/// 32 bytes, that is 256 bits of entropy. It is what allows SHA-256 rather
+/// than `scrypt` — see the header.
 const OCTETS_CLAIR = 32;
 
 interface LigneJeton {
@@ -45,16 +45,16 @@ interface LigneJeton {
     utilisateur_id: string;
     famille: string;
     remplace_par: string | null;
-    /// ⚠️ CES DEUX CHAMPS ONT ÉTÉ DÉCLARÉS `number | string`, ET C'ÉTAIT LE
-    /// SYMPTÔME LOCAL D'UN DÉFAUT DE CLASSE : `pg` rendait tout `BIGINT` en
-    /// chaîne, et ce module s'en tirait par un `Number(...)` à l'usage. Les
-    /// autres dépôts, eux, déclaraient `number` sans convertir — et
-    /// `LigneAgent.vu_a` s'est révélé être une `string` en production à la
-    /// recette de P3. Le défaut est corrigé AU PILOTE
-    /// (`base/pilote-postgres.ts`, `setTypeParser`), donc la déclaration
-    /// redevient vraie et la conversion locale disparaît. Ce qui la TIENT
-    /// désormais est `base/pilotes.test.ts`, qui éprouve les sept colonnes
-    /// `BIGINT` du schéma, `jeton_rafraichissement.expire_a` comprise.
+    /// ⚠️ THESE TWO FIELDS WERE DECLARED `number | string`, AND IT WAS THE
+    /// LOCAL SYMPTOM OF A CLASS DEFECT: `pg` returned every `BIGINT` as a
+    /// string, and this module got away with it through a `Number(...)` at the point of use. The
+    /// other repositories, for their part, declared `number` without converting — and
+    /// `LigneAgent.vu_a` turned out to be a `string` in production during the
+    /// P3 acceptance run. The defect is fixed IN THE DRIVER
+    /// (`base/pilote-postgres.ts`, `setTypeParser`), so the declaration
+    /// becomes true again and the local conversion goes away. What HOLDS it
+    /// now is `base/pilotes.test.ts`, which tests the seven `BIGINT`
+    /// columns of the schema, `jeton_rafraichissement.expire_a` included.
     expire_a: number;
     revoque_a: number | null;
 }
@@ -63,7 +63,7 @@ function nouveauClair(): string {
     return randomBytes(OCTETS_CLAIR).toString('base64url');
 }
 
-/// L'empreinte stockée. Le clair n'entre JAMAIS en base.
+/// The stored hash. The cleartext NEVER enters the database.
 function empreinteDe(clair: string): string {
     return createHash('sha256').update(clair).digest('base64url');
 }
@@ -90,8 +90,8 @@ async function inserer(
     );
 }
 
-/// Ouvre une famille NEUVE — c'est le geste de la connexion. Rend le jeton EN
-/// CLAIR, la seule et unique fois où il existe hors du navigateur.
+/// Opens a NEW family — it is the gesture of signing in. Returns the token IN
+/// CLEAR, the one and only time it exists outside the browser.
 export async function emettre(
     p: Pilote,
     utilisateurId: string,
@@ -102,9 +102,9 @@ export async function emettre(
     return clair;
 }
 
-/// Révoque toute une famille et rend le NOMBRE de lignes encore vivantes
-/// qu'elle a fauchées. La clause `revoque_a IS NULL` rend l'appel idempotent :
-/// une seconde révocation ne déplace pas l'instant de la première.
+/// Revokes a whole family and returns the NUMBER of still live rows
+/// it mowed down. The `revoque_a IS NULL` clause makes the call idempotent:
+/// a second revocation does not move the instant of the first.
 export async function revoquerFamille(
     p: Pilote,
     famille: string,
@@ -117,15 +117,15 @@ export async function revoquerFamille(
     return r.lignes;
 }
 
-/// Tourne un jeton : révoque le présenté, en émet un neuf dans la MÊME
-/// famille, le tout dans UNE SEULE transaction.
+/// Rotates a token: revokes the presented one, issues a new one in the SAME
+/// family, all in ONE SINGLE transaction.
 ///
-/// ⚠️ `genererClair` est une COUTURE DE TEST, et rien d'autre. Elle existe
-/// pour qu'un test puisse faire échouer l'insertion neuve — sur l'index UNIQUE
-/// de `empreinte` — et vérifier que la transaction annule bien la révocation
-/// de l'ancien. Sans elle, le chemin de l'échec partiel serait du code jamais
-/// couru, et ce dépôt a payé plusieurs fois pour des chemins de repli qui
-/// n'avaient jamais tourné. La production ne la passe jamais.
+/// ⚠️ `genererClair` is a TEST SEAM, and nothing more. It exists
+/// so that a test can make the new insertion fail — on the UNIQUE index
+/// of `empreinte` — and check that the transaction does roll back the revocation
+/// of the old one. Without it, the partial failure path would be code never
+/// run, and this repository has paid several times for fallback paths that
+/// had never run. Production never passes it.
 export async function tourner(
     p: Pilote,
     clair: string,
@@ -138,13 +138,13 @@ export async function tourner(
 
         if (ligne.revoque_a !== null && ligne.revoque_a !== undefined) {
             if (ligne.remplace_par === null || ligne.remplace_par === undefined) {
-                // Révoqué sans jamais avoir été tourné : jeton mort, pas rejeu.
+                // Revoked without ever having been rotated: dead token, not replay.
                 return { ok: false, motif: 'revoque' } as const;
             }
-            // 🔴 REJEU : ce jeton a DÉJÀ servi à en obtenir un neuf. Ou bien
-            // le porteur légitime rejoue, ou bien un voleur — indiscernable,
-            // et le doute se tranche du côté sûr : toute la famille tombe, y
-            // compris le jeton neuf que le voleur détient.
+            // 🔴 REPLAY: this token has ALREADY been used to obtain a new one. Either
+            // the legitimate bearer is replaying, or a thief — indistinguishable,
+            // and the doubt is settled on the safe side: the whole family falls,
+            // including the new token the thief holds.
             await revoquerFamille(tx, ligne.famille, maintenant);
             return { ok: false, motif: 'rejeu' } as const;
         }

@@ -1,25 +1,25 @@
-// Les QUATRE routes du téléversement d'un installeur : `POST /televersement`
-// (déclarer), `PUT /televersement/:id/tranche/:n` (déposer),
-// `GET /televersement/:id` (relire pour reprendre) et
-// `POST /televersement/:id/sceller` (arrêter le contenu).
+// The FOUR routes of the upload of an installer: `POST /televersement`
+// (declare), `PUT /televersement/:id/tranche/:n` (upload),
+// `GET /televersement/:id` (read again to resume) and
+// `POST /televersement/:id/sceller` (freeze the content).
 //
-// 🔴 LE CONTRAT EST CELUI DES NEUF ROUTEURS EXISTANTS : `Promise<boolean>`,
-// `true` = servie, `false` = pas mon chemin. Le 404 générique de
-// `http/serveur.ts` est alors SEUL à répondre, et il n'est pas dupliqué ici.
+// 🔴 THE CONTRACT IS THAT OF THE NINE EXISTING ROUTERS: `Promise<boolean>`,
+// `true` = served, `false` = not my path. The generic 404 of
+// `http/serveur.ts` then answers ALONE, and it is not duplicated here.
 //
-// ⚠️ « ALORS SEUL » N'EST PLUS VRAI SANS CONDITION DEPUIS LE 22 AOÛT 2026, et
-// la phrase est laissée telle quelle parce qu'elle reste juste dans le montage
-// nginx : quand `PLATEFORME_PAGE` est armée, un DIXIÈME routeur — le servant
-// de page — est chaîné APRÈS tous les autres, et il résout n'importe quel
-// chemin. Sur un `GET`/`HEAD`, c'est LUI qui répond `200 text/html` au `false`
-// rendu ici ; hors `GET`/`HEAD` il se retire, et le 404 générique reprend la
-// main. Voir `http/chaine.ts`, qui porte le compte et la règle.
+// ⚠️ « THEN ANSWERS ALONE » IS NO LONGER UNCONDITIONALLY TRUE SINCE 22 AUGUST 2026, and
+// the sentence is left as is because it stays right in the nginx
+// deployment: when `PLATEFORME_PAGE` is armed, a TENTH router — the page
+// server — is chained AFTER all the others, and it resolves any
+// path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the `false`
+// returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
+// over. See `http/chaine.ts`, which carries the count and the rule.
 //
-// 🔴 CE MODULE NE DÉCIDE NI DU DÉCOUPAGE, NI DE L'ÉCRITURE, NI DU PORTEUR :
-// `proto/ts/tranches.ts` (PUR, et importé AUSSI par le navigateur),
-// `apps/magasin-tranches.ts`, `http/porteur.ts`. En recopier un ici en ferait
-// une seconde source de vérité — « un scellement qui refuse sans qu'on sache
-// lequel des deux bouts a tort ».
+// 🔴 THIS MODULE DECIDES NEITHER THE SPLITTING, NOR THE WRITING, NOR THE BEARER:
+// `proto/ts/tranches.ts` (PURE, and ALSO imported by the browser),
+// `apps/magasin-tranches.ts`, `http/porteur.ts`. Copying one of them here would make it
+// a second source of truth — « a sealing that refuses without anyone knowing
+// which of the two ends is wrong ».
 //
 // 🔴 LE VOCABULAIRE DE REFUS EST LOCAL, ET NE REJOINT PAS
 // `orchestration/refus.ts`, qui est celui de l'ORCHESTRATION DES VMs — ses six

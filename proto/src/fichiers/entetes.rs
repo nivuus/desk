@@ -1,59 +1,59 @@
-//! Les en-têtes JSON des trames du pont fichiers. **PUR** — aucun `cfg`,
-//! aucune dépendance à `windows`, formes sur le fil **épinglées par des
-//! vecteurs partagés**.
+//! The JSON headers of the file bridge frames. **PURE** — no `cfg`,
+//! no dependency on `windows`, wire shapes **pinned by shared
+//! vectors**.
 //!
-//! # Pourquoi ce module vit ICI et non dans l'agent
+//! # Why this module lives HERE and not in the agent
 //!
-//! Il y a vécu, le temps d'un commit : `agent/src/pont/entetes.rs` portait ces
-//! sept structures et déclarait lui-même que c'était une dette, parce que le
-//! périmètre de la tâche qui les a écrites interdisait de toucher `proto/`.
-//! Sa formulation était exacte, et c'est elle qui a décidé du déplacement :
-//! **« un champ renommé ici casse le pont sans casser un seul test côté
-//! client »**.
+//! It lived there, for the span of one commit: `agent/src/pont/entetes.rs` carried these
+//! seven structures and itself declared that it was a debt, because the
+//! scope of the task that wrote them forbade touching `proto/`.
+//! Its wording was exact, and it is what decided the move:
+//! **"a field renamed here breaks the bridge without breaking a single test on the
+//! client side"**.
 //!
-//! Ce dépôt connaît ce patron par cœur, et l'a payé deux fois : `TYPES_AGENT`
-//! (`proto/ts/control.ts`) est une liste écrite à la main que rien ne confronte
-//! à l'union qu'elle reflète, et une variante `battement-recu` est restée verte
-//! sur cinquante tests parce que rien n'épinglait ses octets. La spec §4.2
-//! nomme d'ailleurs `proto/` comme « source de vérité unique » : la dette était
-//! une divergence de périmètre, pas une décision de conception.
+//! This repository knows that pattern by heart, and paid for it twice: `TYPES_AGENT`
+//! (`proto/ts/control.ts`) is a hand-written set that nothing confronts
+//! with the union it mirrors, and a `battement-recu` variant stayed green
+//! on fifty tests because nothing pinned its bytes. Spec §4.2
+//! moreover names `proto/` as the "single source of truth": the debt was
+//! a scope divergence, not a design decision.
 //!
-//! `proto` porte donc désormais les deux couches : la **trame** (version, type,
-//! corrélation, longueur d'en-tête) et les **en-têtes** qu'elle transporte.
+//! `proto` therefore now carries both layers: the **frame** (version, type,
+//! correlation, header length) and the **headers** it carries.
 //!
-//! # Le contrôle qui rattrape un renommage
+//! # The check that catches a rename
 //!
-//! `proto/fichiers-vectors.json` fige la chaîne JSON EXACTE de chaque forme, et
-//! il est lu par **les deux** implémentations :
+//! `proto/fichiers-vectors.json` freezes the EXACT JSON string of each shape, and
+//! it is read by **both** implementations:
 //!
-//! - `proto/src/fichiers/entetes/tests.rs` (Rust) ;
+//! - `proto/src/fichiers/entetes/tests.rs` (Rust);
 //! - `proto/ts/fichiers-entetes.test.ts` (TypeScript).
 //!
-//! Renommer un champ d'un seul côté rend ce côté-là ROUGE — mesuré, voir le
-//! rapport de la tâche 15. Les deux tests vérifient en outre la clé `version`
-//! du fichier, ce que `vectors.json` ne fait que côté TypeScript.
+//! Renaming a field on one side only turns that side RED — measured, see the
+//! report of task 15. Both tests also check the `version` key
+//! of the file, which `vectors.json` does only on the TypeScript side.
 //!
-//! **Aucun `#[serde(default)]` nulle part** : un en-tête incomplet est rejeté,
-//! jamais silencieusement complété — la doctrine de version de
-//! [`crate::control`], appliquée aux en-têtes.
+//! **No `#[serde(default)]` anywhere**: an incomplete header is rejected,
+//! never silently completed — the version doctrine of
+//! [`crate::control`], applied to headers.
 //!
-//! ⚠️ **Le découpage est le MÊME des deux côtés** : la trame dans
-//! `fichiers.{rs,ts}`, les en-têtes dans `fichiers/entetes.rs` et
-//! `fichiers-entetes.ts`. Une asymétrie de découpage rendrait le jumelage plus
-//! difficile à relire qu'à écrire.
+//! ⚠️ **The split is the SAME on both sides**: the frame in
+//! `fichiers.{rs,ts}`, the headers in `fichiers/entetes.rs` and
+//! `fichiers-entetes.ts`. A split asymmetry would make the pairing harder
+//! to reread than to write.
 
 use serde::{Deserialize, Serialize};
 
-/// L'en-tête de `TYPE_LISTER` et de `TYPE_ATTRIBUTS`.
+/// The header of `TYPE_LISTER` and of `TYPE_ATTRIBUTS`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Chemin {
-    /// Chemin logique, composants séparés par `/`, **normalisé** côté agent par
-    /// `pont::chemins`. Vide = la racine.
+    /// Logical path, components separated by `/`, **normalised** on the agent side by
+    /// `pont::chemins`. Empty = the root.
     pub chemin: String,
 }
 
-/// L'en-tête de `TYPE_LIRE`. La plage est **un morceau**, jamais le fichier
-/// entier : c'est `pont::decoupe` qui la produit.
+/// The header of `TYPE_LIRE`. The range is **one chunk**, never the whole
+/// file: it is `pont::decoupe` that produces it.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Lire {
     pub chemin: String,
@@ -61,80 +61,80 @@ pub struct Lire {
     pub longueur: u32,
 }
 
-/// Une entrée de répertoire, dans la réponse `TYPE_ENTREES`.
+/// A directory entry, in the `TYPE_ENTREES` answer.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EntreeJson {
     pub nom: String,
     pub repertoire: bool,
     pub taille: u64,
-    /// `File.lastModified` : millisecondes depuis l'époque Unix, **signé** —
-    /// un fichier antérieur à 1970 en rend un négatif, et le refuser ferait
-    /// échouer une énumération pour une date.
+    /// `File.lastModified`: milliseconds since the Unix epoch, **signed** —
+    /// a file older than 1970 yields a negative one, and refusing it would make
+    /// an enumeration fail over a date.
     pub modifie: i64,
 }
 
-/// L'en-tête de `TYPE_ENTREES`. Charge binaire **vide**.
+/// The header of `TYPE_ENTREES`. **Empty** binary payload.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Entrees {
     pub entrees: Vec<EntreeJson>,
 }
 
-/// L'en-tête de `TYPE_META`. Charge binaire **vide**.
+/// The header of `TYPE_META`. **Empty** binary payload.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Meta {
-    /// 🔴 **LE NOM CANONIQUE — CELUI QUI EST STOCKÉ SUR LE POSTE LOCAL, jamais
-    /// celui que l'application a tapé** (F3).
+    /// 🔴 **THE CANONICAL NAME — THE ONE STORED ON THE LOCAL MACHINE, never
+    /// the one the application typed** (F3).
     ///
-    /// C'est la conséquence ① du canonicaliseur de casse : sans lui, un
-    /// `GROS.BIN` demandé sur un `gros.bin` local ferait créer un substitut
-    /// nommé `GROS.BIN` dans la racine de virtualisation. La racine étant NTFS,
-    /// donc insensible à la casse, l'ouverture réussirait — mais **une
-    /// énumération du parent rendrait `gros.bin` et le substitut porterait
-    /// `GROS.BIN`** : deux noms pour un fichier, dont un qui n'existe nulle
-    /// part.
+    /// It is consequence ① of the case canonicaliser: without it, a
+    /// `GROS.BIN` requested over a local `gros.bin` would create a placeholder
+    /// named `GROS.BIN` in the virtualisation root. The root being NTFS,
+    /// hence case-insensitive, the open would succeed — but **an
+    /// enumeration of the parent would return `gros.bin` and the placeholder would carry
+    /// `GROS.BIN`**: two names for one file, one of which exists
+    /// nowhere.
     ///
-    /// ⚠️ **VIDE pour la RACINE elle-même**, qui n'a pas de nom.
+    /// ⚠️ **EMPTY for the ROOT itself**, which has no name.
     ///
-    /// ⚠️ **CHAMP REQUIS, sans `#[serde(default)]`** — la doctrine de ce module
-    /// n'en porte aucun. Un pair antérieur à F3 ne sait donc pas le produire :
-    /// c'est une rupture, et `FICHIERS_VERSION` **reste 1** parce que les deux
-    /// bouts de ce pont sont toujours déployés ensemble (un seul `agent.exe`,
-    /// une seule page-shell). *Le dire plutôt que de laisser croire à une
-    /// addition compatible.*
+    /// ⚠️ **REQUIRED FIELD, without `#[serde(default)]`** — the doctrine of this module
+    /// carries none. A peer older than F3 therefore cannot produce it:
+    /// it is a break, and `FICHIERS_VERSION` **stays 1** because both
+    /// ends of this bridge are always deployed together (a single `agent.exe`,
+    /// a single shell page). *Saying so rather than suggesting a
+    /// compatible addition.*
     pub nom: String,
     pub repertoire: bool,
     pub taille: u64,
     pub modifie: i64,
 }
 
-/// L'en-tête de `TYPE_DONNEES`. **La charge porte les octets**, jamais encodés.
+/// The header of `TYPE_DONNEES`. **The payload carries the bytes**, never encoded.
 ///
-/// `longueur` est redondante avec la taille de la charge, **et c'est
-/// délibéré** : le décodeur peut ainsi refuser une trame dont l'en-tête et la
-/// charge se contredisent, plutôt que d'écrire dans le tampon de ProjFS une
-/// quantité d'octets que l'émetteur ne croyait pas envoyer.
+/// `longueur` is redundant with the payload size, **and that is
+/// deliberate**: the decoder can thus refuse a frame whose header and
+/// payload contradict each other, rather than writing into the ProjFS buffer a
+/// quantity of bytes the sender did not believe it was sending.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Donnees {
     pub position: u64,
     pub longueur: u32,
 }
 
-/// L'en-tête de `TYPE_ECRIRE`. **La charge porte les octets**, jamais encodés.
+/// The header of `TYPE_ECRIRE`. **The payload carries the bytes**, never encoded.
 ///
-/// ⚠️ **`premier` et `dernier` ne sont PAS déductibles de `position` et
-/// `longueur`.** Un fichier d'un seul morceau les porte tous deux à `true` ;
-/// un fichier de taille NULLE n'a aucun morceau du tout et passe par
-/// [`Creer`]. Surtout, `position == 0` ne suffit pas à dire « premier » le jour
-/// où une écriture partielle existera : c'est le drapeau qui décide, et lui
-/// seul, parce que c'est lui qui commande l'ouverture du flux **sans**
+/// ⚠️ **`premier` and `dernier` are NOT deducible from `position` and
+/// `longueur`.** A single-chunk file carries both at `true`;
+/// a file of ZERO size has no chunk at all and goes through
+/// [`Creer`]. Above all, `position == 0` is not enough to say "first" the day
+/// a partial write exists: it is the flag that decides, and it
+/// alone, because it is what commands opening the stream **without**
 /// `keepExistingData`.
 ///
-/// 🔵 **`dernier` EST LA COMMITTAISON.** `createWritable()` du navigateur écrit
-/// dans un fichier d'échange et ne commet qu'au `close()` : c'est le morceau
-/// `dernier` qui déclenche ce `close()`, et donc le seul instant où le fichier
-/// du poste local change. Une poussée interrompue avant lui laisse le fichier
-/// local **inchangé** — pas à moitié écrit. ⚠️ *Inférence de la spécification
-/// de la File System Access API, non mesurée par ce sous-bloc.*
+/// 🔵 **`dernier` IS THE COMMIT.** The browser's `createWritable()` writes
+/// into a swap file and commits only on `close()`: it is the
+/// `dernier` chunk that triggers that `close()`, and hence the only instant the
+/// local machine's file changes. A push interrupted before it leaves the local
+/// file **unchanged** — not half written. ⚠️ *Inference from the specification
+/// of the File System Access API, not measured by this sub-block.*
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Ecrire {
     pub chemin: String,
@@ -142,160 +142,160 @@ pub struct Ecrire {
     pub longueur: u32,
     /// Premier morceau : le flux s'ouvre **sans** `keepExistingData`.
     pub premier: bool,
-    /// Dernier morceau : le flux se ferme, et **c'est la committaison**.
+    /// Last chunk: the stream closes, and **that is the commit**.
     pub dernier: bool,
 }
 
-/// L'en-tête de `TYPE_CREER`. Charge binaire **vide**.
+/// The header of `TYPE_CREER`. **Empty** binary payload.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Creer {
     pub chemin: String,
     pub repertoire: bool,
 }
 
-/// L'en-tête de `TYPE_RENOMMER`. Charge binaire **vide**.
+/// The header of `TYPE_RENOMMER`. **Empty** binary payload.
 ///
-/// 🔴 **L'ORDRE DES DEUX CHAMPS EST LE SENS DE L'OPÉRATION, et s'y tromper
-/// DÉTRUIT.** `de` est la source, `vers` la destination — c'est-à-dire, côté
-/// ProjFS, `FilePathName` puis `destinationFileName`. Inverser les deux ne
-/// produirait aucune erreur : le renommage aurait lieu, à l'envers, et le
-/// fichier de destination écraserait la source. C'est le risque R-F3-1 du plan,
-/// et il porte **deux** parades qui ne dépendent pas l'une de l'autre :
+/// 🔴 **THE ORDER OF THE TWO FIELDS IS THE DIRECTION OF THE OPERATION, and getting it wrong
+/// DESTROYS.** `de` is the source, `vers` the destination — that is, on the
+/// ProjFS side, `FilePathName` then `destinationFileName`. Swapping the two would
+/// produce no error: the rename would happen, backwards, and the
+/// destination file would overwrite the source. It is risk R-F3-1 of the plan,
+/// and it carries **two** safeguards that do not depend on each other:
 ///
-/// 1. la sonde S1 relève sur pièces quel champ ProjFS porte quoi, **avant**
-///    toute recette ;
-/// 2. le pont **refuse de pousser** un renommage dont `vers` est vide ou égal à
-///    `de`, avec un `warn!` qui nomme les deux champs bruts. Celle-ci ne dépend
-///    d'aucune mesure.
+/// 1. probe S1 records on evidence which ProjFS field carries what, **before**
+///    any acceptance run;
+/// 2. the bridge **refuses to push** a rename whose `vers` is empty or equal to
+///    `de`, with a `warn!` naming both raw fields. That one depends
+///    on no measurement.
 ///
-/// ⚠️ **`repertoire` est TRANSPORTÉ plutôt que redécouvert.** C'est
-/// l'`isdirectory` que le rappel de notification reçoit du système ; le
-/// navigateur le redemanderait au prix d'un aller-retour, et se tromperait sur
-/// une entrée disparue entre-temps. Il décide de deux choses : la récursion du
-/// repli de copie, et la façon dont l'écriture due d'un ENFANT retarde le
-/// renommage d'un répertoire (`agent/src/pont/mutation.rs`).
+/// ⚠️ **`repertoire` is CARRIED rather than rediscovered.** It is
+/// the `isdirectory` that the notification callback receives from the system; the
+/// browser would ask for it again at the cost of a round trip, and would be wrong about
+/// an entry that vanished in between. It decides two things: the recursion of the
+/// copy fallback, and the way the pending write of a CHILD delays the
+/// rename of a directory (`agent/src/pont/mutation.rs`).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Renommer {
-    /// La source, telle qu'elle existe aujourd'hui sur le poste local.
+    /// The source, as it exists today on the local machine.
     pub de: String,
-    /// La destination. **Jamais vide, jamais égale à `de`** — le pont refuse de
-    /// pousser autrement.
+    /// The destination. **Never empty, never equal to `de`** — the bridge refuses to
+    /// push otherwise.
     pub vers: String,
     pub repertoire: bool,
 }
 
-/// L'en-tête de `TYPE_SUPPRIMER`. Charge binaire **vide**.
+/// The header of `TYPE_SUPPRIMER`. **Empty** binary payload.
 ///
-/// ⚠️ **La suppression n'est PAS récursive côté navigateur**, contre la lettre
-/// de la spec §3.5 (`dir.removeEntry(nom, { recursive })`). Un geste dans la VM
-/// ne doit pas déclencher une destruction récursive sur le disque du poste
-/// local, sur la foi d'un miroir qu'aucune preuve ne dit à jour. Le refus
-/// remonte alors sous [`super::CodeEchec::RepertoireNonVide`], qui devient de
-/// ce fait **diagnostique** au lieu d'être un code jamais produit.
+/// ⚠️ **Deletion is NOT recursive on the browser side**, against the letter
+/// of spec §3.5 (`dir.removeEntry(nom, { recursive })`). A gesture in the VM
+/// must not trigger a recursive destruction on the disk of the local
+/// machine, on the strength of a mirror that no proof says is up to date. The refusal
+/// then climbs up as [`super::CodeEchec::RepertoireNonVide`], which thereby
+/// becomes **diagnostic** instead of being a code never produced.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Supprimer {
     pub chemin: String,
     pub repertoire: bool,
 }
 
-/// Une écriture DUE : des octets qui vivent sur la VM et pas encore sur le
-/// poste local.
+/// A PENDING write: bytes that live on the VM and not yet on the
+/// local machine.
 ///
-/// 🔴 **C'est la fenêtre de perte, rendue NOMMABLE.** ProjFS ne met jamais le
-/// fournisseur sur le chemin de l'écriture : quand nous l'apprenons,
-/// l'application a déjà refermé son handle et cru avoir enregistré. Ce que
-/// cette structure porte est donc ce que l'utilisateur risque de perdre s'il
-/// referme son onglet maintenant — et le nommer est tout ce qu'on peut faire.
+/// 🔴 **It is the loss window, made NAMEABLE.** ProjFS never puts the
+/// provider on the write path: by the time we learn of it,
+/// the application has already closed its handle and believed it had saved. What
+/// this structure carries is therefore what the user risks losing if they
+/// close their tab now — and naming it is all we can do.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Due {
     pub chemin: String,
     pub octets: u64,
 }
 
-/// L'en-tête de `TYPE_DUES`. Charge binaire **vide**.
+/// The header of `TYPE_DUES`. **Empty** binary payload.
 ///
-/// ⚠️ **C'est une ANNONCE : elle n'attend aucune réponse**, et le navigateur ne
-/// doit rien renvoyer. Voir le commentaire de `TYPE_DUES` dans
+/// ⚠️ **It is an ANNOUNCEMENT: it awaits no answer**, and the browser must
+/// send nothing back. See the comment on `TYPE_DUES` in
 /// [`crate::fichiers`].
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Dues {
     pub dues: Vec<Due>,
-    /// **F5** — vrai quand le pont a des écritures dues et qu'il **refuse de
-    /// les pousser**, le navigateur ayant annoncé une racine dont le nom
-    /// diffère de celui mémorisé (`Bonjour`, spec §6.4 cas 2).
+    /// **F5** — true when the bridge has pending writes and **refuses to
+    /// push them**, the browser having announced a root whose name
+    /// differs from the remembered one (`Bonjour`, spec §6.4 case 2).
     ///
-    /// 🔴 **CHAMP REQUIS, sans `#[serde(default)]`, et c'est une DIVERGENCE
-    /// DÉCLARÉE avec la décision D7 du plan de F5**, qui l'annonçait additif.
-    /// Trois raisons, dans cet ordre :
+    /// 🔴 **REQUIRED FIELD, without `#[serde(default)]`, and it is a DECLARED
+    /// DIVERGENCE from decision D7 of the F5 plan**, which announced it as additive.
+    /// Three reasons, in this order:
     ///
-    /// 1. **le défaut irait dans le sens dangereux.** `#[serde(default)]`
-    ///    rendrait `false` = « pousse » pour un en-tête dont le champ aurait
-    ///    été perdu — et pousser dans le mauvais dossier est précisément le
-    ///    dommage que `Bonjour` existe pour empêcher. Un défaut doit tomber du
-    ///    côté sûr ou ne pas exister ;
-    /// 2. **l'en-tête de ce module l'interdit** : « Aucun `#[serde(default)]`
-    ///    nulle part : un en-tête incomplet est rejeté, jamais silencieusement
-    ///    complété. » En poser un ici ferait le premier, et une doctrine qui
-    ///    souffre une exception n'en est plus une ;
-    /// 3. **F3 a tranché le même arbitrage dans le même sens** pour
-    ///    `Meta::nom` : rupture assumée, `FICHIERS_VERSION` **reste 1**, parce
-    ///    que les deux bouts de ce pont sont toujours déployés ensemble — un
-    ///    seul `agent.exe`, une seule page-shell.
+    /// 1. **the default would go in the dangerous direction.** `#[serde(default)]`
+    ///    would yield `false` = "push" for a header whose field had
+    ///    been lost — and pushing into the wrong folder is precisely the
+    ///    damage `Bonjour` exists to prevent. A default must fall on the
+    ///    safe side or not exist;
+    /// 2. **this module's header forbids it**: "No `#[serde(default)]`
+    ///    anywhere: an incomplete header is rejected, never silently
+    ///    completed." Setting one here would make the first, and a doctrine that
+    ///    tolerates an exception is no longer one;
+    /// 3. **F3 settled the same trade-off in the same direction** for
+    ///    `Meta::nom`: accepted break, `FICHIERS_VERSION` **stays 1**, because
+    ///    both ends of this bridge are always deployed together — a
+    ///    single `agent.exe`, a single shell page.
     ///
-    /// ⚠️ **Conséquence sur les vecteurs** : `fichiers-vectors.json` ne porte
-    /// PAS « les deux formes » que D7 prévoyait. Il porte la forme complète, et
-    /// un test **oppose** la forme incomplète au parseur pour vérifier qu'elle
-    /// est REFUSÉE — ce qui épingle l'**absence** de défaut, plus forte qu'un
-    /// défaut épinglé.
+    /// ⚠️ **Consequence for the vectors**: `fichiers-vectors.json` does NOT carry
+    /// "both shapes" as D7 planned. It carries the complete shape, and
+    /// a test **confronts** the parser with the incomplete shape to check that it
+    /// is REFUSED — which pins the **absence** of a default, stronger than a
+    /// pinned default.
     pub retenues: bool,
 }
 
-/// L'en-tête de `TYPE_BONJOUR`. Charge binaire **vide**.
+/// The header of `TYPE_BONJOUR`. **Empty** binary payload.
 ///
-/// ⚠️ **C'est une ANNONCE, et elle REMONTE** : du navigateur vers le pont, sans
-/// que celui-ci l'ait demandée, et **sa corrélation est ignorée**. Voir le
-/// commentaire de la quatrième famille dans [`crate::fichiers`], qui dit
-/// pourquoi elle doit être aiguillée avant toute résolution de corrélation.
+/// ⚠️ **It is an ANNOUNCEMENT, and it goes UPSTREAM**: from the browser to the bridge, without
+/// the bridge having asked for it, and **its correlation is ignored**. See the
+/// comment on the fourth family in [`crate::fichiers`], which says
+/// why it must be routed before any correlation resolution.
 ///
-/// Elle porte ce que seul le navigateur sait : **le nom de la racine que
-/// l'utilisateur a choisie**. Le pont le compare à celui qu'il a mémorisé pour
-/// décider s'il pousse ses écritures dues ou s'il les **retient**.
+/// It carries what only the browser knows: **the name of the root the
+/// user chose**. The bridge compares it to the one it remembered to
+/// decide whether it pushes its pending writes or **holds them back**.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Bonjour {
-    /// `FileSystemDirectoryHandle.name` de la racine montée.
+    /// `FileSystemDirectoryHandle.name` of the mounted root.
     ///
-    /// 🔴 **C'est un INDICE, jamais une preuve**, et la spec §6.4 cas 2 le dit :
-    /// `isSameEntry()` compare deux poignées **vivantes**, jamais une poignée à
-    /// un souvenir. Deux répertoires homonymes sur deux disques différents
-    /// passeraient pour un seul. **La v1 compare le nom faute de mieux**, et il
-    /// faut le lire ainsi.
+    /// 🔴 **It is a HINT, never a proof**, and spec §6.4 case 2 says so:
+    /// `isSameEntry()` compares two **live** handles, never a handle with
+    /// a memory. Two namesake directories on two different disks
+    /// would pass for one. **v1 compares the name for lack of anything better**, and it
+    /// must be read that way.
     pub racine: String,
-    /// L'utilisateur a confirmé qu'il veut pousser malgré le nom différent.
+    /// The user confirmed they want to push despite the different name.
     ///
-    /// ⚠️ **REQUIS, comme tout champ de ce module.** Un défaut à `false`
-    /// paraîtrait sûr, mais il ferait qu'un navigateur qui oublierait le champ
-    /// ne pourrait **plus jamais** reprendre son enregistrement, sans qu'aucune
-    /// trace ne le dise.
+    /// ⚠️ **REQUIRED, like every field of this module.** A default at `false`
+    /// would look safe, but it would mean a browser that forgot the field
+    /// could **never again** resume its saving, without any
+    /// trace saying so.
     pub forcer: bool,
 }
 
-// ⚠️ **`TYPE_RAFRAICHIR` n'a PAS d'en-tête propre : sa trame porte `{}`**, et
-// c'est le précédent de `TYPE_FAIT`, écrit en bas de ce fichier : « lui donner
-// une structure vide ferait une forme à épingler qui n'épingle rien, et un
-// vecteur partagé qui ne peut pas casser ». **Divergence déclarée avec la
-// tâche 8 du plan de F5**, qui nommait `Rafraichir` parmi les structures à
-// écrire. Ce qui identifie un rafraîchissement est son TYPE, pas sa forme.
+// ⚠️ **`TYPE_RAFRAICHIR` has NO header of its own: its frame carries `{}`**, and
+// it is the precedent of `TYPE_FAIT`, written at the bottom of this file: "giving it
+// an empty structure would make a shape to pin that pins nothing, and a
+// shared vector that cannot break". **Declared divergence from
+// task 8 of the F5 plan**, which named `Rafraichir` among the structures to
+// write. What identifies a refresh is its TYPE, not its shape.
 
-/// L'en-tête de `TYPE_ECHEC`.
+/// The header of `TYPE_ECHEC`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Echec {
     pub code: super::CodeEchec,
 }
 
-// ⚠️ **`TYPE_FAIT` n'a PAS d'en-tête propre : sa trame porte `{}`.** Lui donner
-// une structure vide ferait une forme à épingler qui n'épingle rien, et un
-// vecteur partagé qui ne peut pas casser. Ce qui identifie l'écriture
-// acquittée est la CORRÉLATION de la trame, pas son en-tête.
+// ⚠️ **`TYPE_FAIT` has NO header of its own: its frame carries `{}`.** Giving it
+// an empty structure would make a shape to pin that pins nothing, and a
+// shared vector that cannot break. What identifies the acknowledged
+// write is the CORRELATION of the frame, not its header.
 
 #[cfg(test)]
 mod tests;

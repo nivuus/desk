@@ -1,90 +1,90 @@
-// Les en-têtes que la plateforme pose sur ce qu'elle SERT comme page.
+// The headers the platform sets on what it SERVES as a page.
 //
-// 🔴 CE MODULE EXISTE PARCE QUE `../entetes.ts` NE POUVAIT PAS SERVIR ICI, et
-// la raison est une inversion, pas un manque : son `Cache-Control: no-store`
-// est INCONDITIONNEL, et il est là pour les réponses de `/auth/*`, qui portent
-// des jetons en clair. Les ressources EMPREINTÉES ont le besoin EXACTEMENT
-// OPPOSÉ — cachables un an. Réutiliser `ENTETES_SECURITE` tel quel est le
-// geste naturel, et c'est le défaut.
+// 🔴 THIS MODULE EXISTS BECAUSE `../entetes.ts` COULD NOT SERVE HERE, and
+// the reason is an inversion, not a gap: its `Cache-Control: no-store`
+// is UNCONDITIONAL, and it is there for the responses of `/auth/*`, which carry
+// tokens in clear. FINGERPRINTED assets have the EXACTLY
+// OPPOSITE need — cacheable for a year. Reusing `ENTETES_SECURITE` as is is the
+// natural move, and it is the defect.
 //
-// 🔴 MAIS « LES RESSOURCES » ÉTAIT UN MOT TROP LARGE, ET IL A COÛTÉ UN AN DE
-// CACHE SUR LE MANIFESTE PWA DU HUB. La première rédaction n'avait que DEUX
-// jeux d'en-têtes, document et ressource, et classait par EXTENSION : la liste
-// MIME admet `webmanifest`, `json`, `ico`, `png`, que Vite n'empreinte JAMAIS
-// à la racine. MESURÉ sur le vrai `client/dist` : `/hub.webmanifest` rendait
-// `public, max-age=31536000, immutable`, donc **non révisable pendant un an**
-// chez tout navigateur l'ayant vu. D'où TROIS jeux, et non deux — la
-// distinction elle-même vit dans `resolution.ts` (`empreinte`), parce que
-// c'est la RÈGLE qui classe, pas le servant.
+// 🔴 BUT « THE ASSETS » WAS TOO BROAD A WORD, AND IT COST A YEAR OF
+// CACHE ON THE HUB PWA MANIFEST. The first draft had only TWO
+// header sets, document and asset, and classified by EXTENSION: the MIME
+// list admits `webmanifest`, `json`, `ico`, `png`, which Vite NEVER fingerprints
+// at the root. MEASURED on the real `client/dist`: `/hub.webmanifest` returned
+// `public, max-age=31536000, immutable`, thus **not revisable for a year**
+// in any browser that had seen it. Hence THREE sets, not two — the
+// distinction itself lives in `resolution.ts` (`empreinte`), because
+// it is the RULE that classifies, not the server.
 //
-// 🔴 HSTS N'EST PAS ICI, ET C'EST DÉLIBÉRÉ. La ligne de partage avec le proxy
-// devient : ce qui dépend du DOCUMENT suit le document ; ce qui dépend de TLS
-// reste chez qui termine TLS. La plateforme est joignable en clair.
+// 🔴 HSTS IS NOT HERE, AND THAT IS DELIBERATE. The dividing line with the proxy
+// becomes: what depends on the DOCUMENT follows the document; what depends on TLS
+// stays with whoever ends TLS. The platform is reachable in clear.
 
-/// La politique de sécurité du contenu.
+/// The content security policy.
 ///
-/// 🔴 ELLE EST RECOPIÉE DE `deploiement/nginx.conf`, ET `entetes-page.test.ts`
-/// LIT LES DEUX ET LES COMPARE. Sans ce test, un durcissement appliqué d'un
-/// seul côté livrerait deux montages aux sécurités différentes.
+/// 🔴 IT IS COPIED FROM `deploiement/nginx.conf`, AND `entetes-page.test.ts`
+/// READS BOTH AND COMPARES THEM. Without that test, a hardening applied on
+/// one side only would ship two deployments with differing security.
 ///
-/// 🔴 `script-src 'self'` SANS `'unsafe-inline'` NI HASH, ET C'EST DÉLIBÉRÉ —
-/// mesuré cassé le 29 août 2026 (`https://app.allanic.me`, Chrome) tant que
-/// l'amorce anti-FOUC de `client/` partait EN LIGNE dans le HTML : ce module
-/// et `client/vite.config.ts` vivent dans deux paquets, et rien ne les
-/// reliait avant `client/src/design/amorce-theme.csp.test.ts`. Corrigé côté
-/// CLIENT (l'amorce est désormais un fichier externe `'self'`, jamais en
-/// ligne) plutôt qu'ici par un hash : ce fichier a une copie STATIQUE dans
-/// `deploiement/nginx.conf` (ligne ci-dessus) qui ne peut PAS calculer un
-/// hash à la volée sur le contenu qu'il sert — un hash aurait donc dû être
-/// recopié à la main dans les DEUX fichiers, le « naufrage du 487 » que
-/// `CLAUDE.md` interdit. Lire le grand commentaire au-dessus de
-/// `NOM_FICHIER_AMORCE` dans `client/vite.config.ts` avant de reproposer un
-/// hash ici.
+/// 🔴 `script-src 'self'` WITHOUT `'unsafe-inline'` OR A HASH, AND THAT IS DELIBERATE —
+/// measured broken on 29 August 2026 (`https://app.allanic.me`, Chrome) as long as
+/// the anti-FOUC bootstrap of `client/` went INLINE in the HTML: this module
+/// and `client/vite.config.ts` live in two packages, and nothing tied them
+/// together before `client/src/design/amorce-theme.csp.test.ts`. Fixed on the
+/// CLIENT side (the bootstrap is now an external `'self'` file, never
+/// inline) rather than here by a hash: this file has a STATIC copy in
+/// `deploiement/nginx.conf` (line above) that can NOT compute a
+/// hash on the fly over the content it serves — a hash would therefore have had to be
+/// copied by hand into BOTH files, the « shipwreck of 487 » that
+/// `CLAUDE.md` forbids. Read the large comment above
+/// `NOM_FICHIER_AMORCE` in `client/vite.config.ts` before proposing a
+/// hash here again.
 ///
-/// 🔴 `manifest-src 'self'` EST EXPLICITE, ET NON UN REPLI SUR `default-src` —
-/// mesuré cassé le 29 août 2026 (`https://app.allanic.me/hub.html`, Chrome) :
+/// 🔴 `manifest-src 'self'` IS EXPLICIT, AND NOT A FALLBACK TO `default-src` —
+/// measured broken on 29 August 2026 (`https://app.allanic.me/hub.html`, Chrome):
 /// « manifest-src was not explicitly set, so default-src is used as a
-/// fallback » (le navigateur le DIT lui-même dans le message de violation).
-/// Le défaut réel n'était pas la directive manquante mais un
-/// `<link rel="manifest">` sans `crossorigin="use-credentials"` — corrigé
-/// côté CLIENT (`client/src/hub/manifeste-hub-greffon.ts`), sur le même
-/// principe que `script-src` deux paragraphes plus haut : un repli implicite
-/// est une règle que personne n'a écrite, donc on l'écrit, même quand ce
-/// n'était pas elle qui bloquait.
+/// fallback » (the browser SAYS so itself in the violation message).
+/// The real defect was not the missing directive but a
+/// `<link rel="manifest">` without `crossorigin="use-credentials"` — fixed
+/// on the CLIENT side (`client/src/hub/manifeste-hub-greffon.ts`), on the same
+/// principle as `script-src` two paragraphs above: an implicit fallback
+/// is a rule nobody wrote, so we write it, even when it
+/// was not the one blocking.
 ///
-/// 🔴 `blob:` A DÛ REJOINDRE `manifest-src` LE 30 AOÛT 2026 — régression
-/// commandée par CE dépôt LA VEILLE, et trouvée EN PRODUCTION par le
-/// propriétaire (`https://app.allanic.me`, boucle de violations) :
+/// 🔴 `blob:` HAD TO JOIN `manifest-src` ON 30 AUGUST 2026 — a regression
+/// ordered by THIS repository THE DAY BEFORE, and found IN PRODUCTION by the
+/// owner (`https://app.allanic.me`, a loop of violations):
 ///
 ///   Loading a manifest from 'blob:https://app.allanic.me/…' violates the
 ///   following Content Security Policy directive: "manifest-src 'self'".
 ///
-/// Le manifeste DU HUB est servi par HTTP (`hub.webmanifest`, couvert par
-/// `'self'`), mais le manifeste PAR APPLICATION ne peut pas l'être : aucune
-/// route authentifiée ne le sert (⑤ ne pose aucun cookie), donc
-/// `client/src/hub/page.ts::publierLeManifeste` le construit en mémoire et le
-/// publie par `URL.createObjectURL` — voie V1 de G5, documentée dans
-/// `client/hub.html` et `client/src/hub/manifeste.ts`. En n'écrivant QUE
-/// `'self'`, l'explicitation d'hier a rendu VISIBLE — et donc BLOQUANT — ce
-/// que le repli implicite sur `default-src 'self'` bloquait déjà en silence
-/// (`default-src` ne portait pas non plus `blob:`) : la boucle du propriétaire
-/// est le symptôme d'un défaut préexistant, pas une régression de comportement
-/// pur — mais une régression de VISIBILITÉ suffit à casser une fonctionnalité
-/// livrée (G5), et c'est bien ce qui s'est produit.
+/// The HUB manifest is served over HTTP (`hub.webmanifest`, covered by
+/// `'self'`), but the PER-APPLICATION manifest cannot be: no
+/// authenticated route serves it (⑤ sets no cookie), so
+/// `client/src/hub/page.ts::publierLeManifeste` builds it in memory and
+/// publishes it via `URL.createObjectURL` — path V1 of G5, documented in
+/// `client/hub.html` and `client/src/hub/manifeste.ts`. By writing ONLY
+/// `'self'`, the explicit rule of yesterday made VISIBLE — and hence BLOCKING — what
+/// the implicit fallback to `default-src 'self'` was already blocking silently
+/// (`default-src` did not carry `blob:` either): the owner's loop
+/// is the symptom of a pre-existing defect, not a pure behaviour
+/// regression — but a VISIBILITY regression is enough to break a shipped
+/// feature (G5), and that is indeed what happened.
 ///
-/// ⚠️ CE QUE `blob:` ADMET ICI, ET POURQUOI C'EST ACCEPTABLE : une origine
-/// `blob:` n'est pas un tiers — c'est une URL que LA PAGE ELLE-MÊME fabrique,
-/// à partir d'octets qu'ELLE a construits (`new Blob([JSON.stringify(...)])`),
-/// et qu'aucune requête réseau ne peut produire depuis l'extérieur : un
-/// attaquant qui n'a pas déjà de JavaScript actif dans cette origine ne peut
-/// pas faire naviguer `<link rel="manifest">` vers une `blob:` de son choix.
-/// Admettre `manifest-src blob:` revient donc à dire « je fais confiance à ce
-/// que MON script produit », pas « je fais confiance à une origine externe » —
-/// c'est la même confiance que `script-src 'self'` accorde déjà à tout le
-/// code de cette page, un cran plus bas. Le risque théorique est qu'une
-/// injection XSS réussie pourrait de toute façon fabriquer sa propre `blob:`
-/// (ou pire, exécuter du script directement) : `manifest-src blob:` n'ouvre
-/// donc aucune surface qu'une XSS n'ouvrirait pas déjà. **Acceptable.**
+/// ⚠️ WHAT `blob:` ADMITS HERE, AND WHY IT IS ACCEPTABLE: a `blob:`
+/// origin is not a third party — it is a URL that THE PAGE ITSELF makes,
+/// from bytes IT built (`new Blob([JSON.stringify(...)])`),
+/// and that no network request can produce from outside: an
+/// attacker who does not already have active JavaScript in this origin cannot
+/// make `<link rel="manifest">` navigate to a `blob:` of their choosing.
+/// Admitting `manifest-src blob:` thus amounts to saying « I trust what
+/// MY script produces », not « I trust an external origin » —
+/// it is the same trust that `script-src 'self'` already grants to all the
+/// code of this page, one notch lower. The theoretical risk is that a
+/// successful XSS injection could make its own `blob:` anyway
+/// (or worse, run script directly): `manifest-src blob:` therefore opens
+/// no surface that an XSS would not already open. **Acceptable.**
 export const CSP =
     "default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; " +
     "media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
@@ -99,34 +99,34 @@ export const ENTETES_DOCUMENT: Readonly<Record<string, string>> = Object.freeze(
     'X-Frame-Options': 'DENY',
 });
 
-/// Pour les seuls noms qui portent RÉELLEMENT une empreinte — ceux du
-/// répertoire d'actifs de Vite (`resolution.ts::REPERTOIRE_ACTIFS`).
+/// For the only names that REALLY carry a fingerprint — those of the
+/// Vite assets directory (`resolution.ts::REPERTOIRE_ACTIFS`).
 ///
-/// 🔴 `immutable` EST UNE PROMESSE QU'ON NE PEUT PAS REPRENDRE : un navigateur
-/// qui l'a vue ne redemandera pas la ressource avant un an, quoi qu'on
-/// déploie. Elle n'est tenable que si le NOM change à chaque contenu — ce que
-/// l'empreinte garantit, et ce que rien d'autre ne garantit.
+/// 🔴 `immutable` IS A PROMISE THAT CANNOT BE TAKEN BACK: a browser
+/// that saw it will not ask for the asset again before a year, whatever gets
+/// deployed. It only holds if the NAME changes with each content — which
+/// the fingerprint guarantees, and which nothing else guarantees.
 export const ENTETES_RESSOURCE_EMPREINTEE: Readonly<Record<string, string>> = Object.freeze({
     'X-Content-Type-Options': 'nosniff',
     'Cache-Control': 'public, max-age=31536000, immutable',
 });
 
-/// Pour TOUTE autre ressource : `hub.webmanifest`, `favicon.ico`, une icône
-/// posée à la racine — des noms STABLES dont le contenu change.
+/// For ANY other asset: `hub.webmanifest`, `favicon.ico`, an icon
+/// placed at the root — STABLE names whose content changes.
 ///
-/// 🔴 RÉVALIDABLE, JAMAIS UN AN ET JAMAIS `no-store`. Les deux extrêmes sont
-/// faux ici : un an rend la ressource non révisable (c'est le défaut qu'on
-/// corrige), et `no-store` interdirait jusqu'au stockage, donc referait payer
-/// le transfert entier à chaque visite pour un fichier qui, la plupart du
-/// temps, n'a pas changé. `max-age=0, must-revalidate` garde la copie et exige
-/// qu'elle soit revalidée : un `304` suffit alors, et une révision se voit
-/// immédiatement.
+/// 🔴 REVALIDATABLE, NEVER A YEAR AND NEVER `no-store`. Both extremes are
+/// wrong here: a year makes the asset not revisable (that is the defect being
+/// fixed), and `no-store` would forbid even storing it, so would make every visit
+/// pay the whole transfer again for a file that, most of the
+/// time, has not changed. `max-age=0, must-revalidate` keeps the copy and requires
+/// it to be revalidated: a `304` is then enough, and a revision shows up
+/// at once.
 ///
-/// ⚠️ ELLE EST PLUS PERMISSIVE QUE NGINX, ET C'EST ASSUMÉ : `location /` de
-/// `deploiement/nginx.conf` n'émet AUCUN `Cache-Control`, ce qui laisse le
-/// navigateur heuristiquer. Émettre une politique explicite est un
-/// resserrement, pas un relâchement — l'inverse de l'`immutable` d'un an, qui
-/// en était un vrai.
+/// ⚠️ IT IS MORE PERMISSIVE THAN NGINX, AND THAT IS ACCEPTED: `location /` of
+/// `deploiement/nginx.conf` emits NO `Cache-Control`, which leaves the
+/// browser to apply heuristics. Emitting an explicit policy is a
+/// tightening, not a loosening — the reverse of the one-year `immutable`, which
+/// was a real one.
 export const ENTETES_RESSOURCE_REVALIDABLE: Readonly<Record<string, string>> = Object.freeze({
     'X-Content-Type-Options': 'nosniff',
     'Cache-Control': 'public, max-age=0, must-revalidate',

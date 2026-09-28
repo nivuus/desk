@@ -1,182 +1,182 @@
-// L'URL SIGNÉE d'une icône d'application. Module PUR : aucune base, aucun DOM,
-// aucune horloge lue ici — `maintenant` est un PARAMÈTRE, comme dans
-// `identite/jeton.ts` et `depot/session.ts`. C'est ce qui rend l'expiration
-// éprouvable sur trois instants distincts au lieu d'être inerte.
+// The SIGNED URL of an application icon. PURE module: no database, no DOM,
+// no clock read here — `maintenant` is a PARAMETER, as in
+// `identite/jeton.ts` and `depot/session.ts`. That is what makes expiry
+// testable on three distinct instants instead of being inert.
 //
-// 🔴 DÉCISION DU PROPRIÉTAIRE DU DÉPÔT, PRISE LE 30 AOÛT 2026 — CE N'EST PAS
-// UNE COMMODITÉ D'IMPLÉMENTATION. Le legs ouvert depuis le sous-bloc G5
-// disait : « un `<img src>` ne porte pas d'en-tête `Authorization` », donc
-// `GET /application/:id/icone` était inatteignable par une balise d'image, et
-// le hub non installable faute d'icône chargeable par le navigateur. G5 a
-// explicitement laissé la décision au propriétaire, parce que c'est une
-// décision de SÉCURITÉ et non un choix d'écriture. Il a tranché : **URL
-// signée**, et il a ÉCARTÉ NOMMÉMENT les deux autres voies —
-//   ① servir les icônes SANS jeton : révélerait la liste des applications
-//      installées sur la VM à quiconque atteint le port ;
-//   ② les inliner en `data:` dans le catalogue : support inégal des `data:`
-//      dans un manifeste PWA.
+// 🔴 DECISION OF THE REPOSITORY OWNER, TAKEN ON 30 AUGUST 2026 — IT IS NOT
+// AN IMPLEMENTATION CONVENIENCE. The legacy open since sub-block G5
+// said: "an `<img src>` carries no `Authorization` header", so
+// `GET /application/:id/icone` was unreachable by an image tag, and
+// the hub not installable for lack of an icon the browser could load. G5
+// explicitly left the decision to the owner, because it is a
+// SECURITY decision and not a writing choice. He settled it: **signed
+// URL**, and he explicitly RULED OUT the two other paths —
+//   ① serving the icons WITHOUT a token: would reveal the list of applications
+//      installed on the VM to anyone reaching the port;
+//   ② inlining them as `data:` in the catalogue: uneven support of `data:`
+//      in a PWA manifest.
 //
-// 🔴 CE QUE CE MÉCANISME EST, DIT SANS ENJOLIVER : une CAPACITÉ AU PORTEUR.
-// Qui détient l'URL peut lire l'icône, sans s'identifier, jusqu'à son
-// expiration. C'est exactement ce qu'on lui demande — un `<img src>` ne peut
-// rien porter d'autre que son URL — et c'est ce qui borne sa portée : elle ne
-// vaut QUE pour une icône, QUE pour une application, QUE pour une VM, et QUE
-// pendant `DUREE_URL_ICONE_MS`. Elle n'ouvre ni le catalogue, ni le
-// lancement, ni la session.
+// 🔴 WHAT THIS MECHANISM IS, STATED WITHOUT EMBELLISHMENT: a BEARER CAPABILITY.
+// Whoever holds the URL can read the icon, without identifying, until its
+// expiry. That is exactly what is asked of it — an `<img src>` can
+// carry nothing other than its URL — and that is what bounds its reach: it is
+// valid ONLY for one icon, ONLY for one application, ONLY for one VM, and ONLY
+// for `DUREE_URL_ICONE_MS`. It opens neither the catalogue, nor the
+// launch, nor the session.
 
 import { createHmac, hkdfSync, timingSafeEqual } from 'node:crypto';
 
-/* ── LA CLÉ ───────────────────────────────────────────────────────────── */
+/* ── THE KEY ──────────────────────────────────────────────────────────── */
 
-/// L'étiquette de dérivation. ⚠️ ELLE FAIT PARTIE DU CONTRAT : la changer
-/// invalide toutes les URL en vol, ce qui est sans conséquence (elles vivent
-/// cinq minutes) mais doit être VOULU.
+/// The derivation label. ⚠️ IT IS PART OF THE CONTRACT: changing it
+/// invalidates all URLs in flight, which is harmless (they live
+/// five minutes) but must be INTENDED.
 const ETIQUETTE_DERIVATION = 'nivuus-desk/url-icone/v1';
 
-/// Le sel HKDF. ⚠️ IL N'EST PAS SECRET, et il n'a pas à l'être : HKDF-Extract
-/// admet un sel public — c'est le matériel d'entrée qui porte l'entropie.
-/// Il est FIXE parce qu'un sel aléatoire par démarrage rendrait toute URL
-/// invalide au redémarrage du service, ce qui est le défaut exact qu'un
-/// secret de jeton aléatoire aurait produit sur les sessions
-/// (`config.ts`, ligne du secret de jeton).
+/// The HKDF salt. ⚠️ IT IS NOT SECRET, and it does not have to be: HKDF-Extract
+/// accepts a public salt — it is the input material that carries the entropy.
+/// It is FIXED because a random salt per startup would make every URL
+/// invalid when the service restarts, which is the exact defect that a
+/// random token secret would have produced on sessions
+/// (`config.ts`, token secret line).
 const SEL_DERIVATION = 'nivuus-desk/sel/url-icone';
 
-/// 🔴 POURQUOI UNE SOUS-CLÉ ET NON LE SECRET DE JETON LUI-MÊME.
-/// Le secret de jeton de la plateforme signe déjà les JWT de session ET les
-/// jetons d'agent. Employer la MÊME clé pour un troisième usage est la faute
-/// classique de réutilisation de clé : deux mécanismes qui signent des
-/// messages de formats différents avec la même clé s'exposent l'un l'autre le
-/// jour où l'un accepte un message que l'autre a produit. Ici la menace est
-/// concrète et pas théorique — les deux formats sont voisins, tous deux en
-/// `base64url`, tous deux HMAC-SHA256 — et la parade coûte une ligne.
+/// 🔴 WHY A SUBKEY AND NOT THE TOKEN SECRET ITSELF.
+/// The platform token secret already signs the session JWTs AND the
+/// agent tokens. Using the SAME key for a third purpose is the
+/// classic key reuse mistake: two mechanisms that sign
+/// messages of different formats with the same key expose each other on the
+/// day one accepts a message the other has produced. Here the threat is
+/// concrete and not theoretical — the two formats are close, both in
+/// `base64url`, both HMAC-SHA256 — and the countermeasure costs one line.
 ///
-/// La dérivation est HKDF-SHA256 (`node:crypto`, aucune dépendance ajoutée —
-/// la contrainte d'`base/pilote.test.ts`). La sous-clé fait 32 octets, la
-/// taille de bloc de sortie de SHA-256.
+/// The derivation is HKDF-SHA256 (`node:crypto`, no dependency added —
+/// the constraint of `base/pilote.test.ts`). The subkey is 32 bytes, the
+/// output block size of SHA-256.
 ///
-/// ⚠️ ELLE EST DÉRIVÉE À CHAQUE APPEL, ET C'EST ASSUMÉ : `hkdfSync` sur 32
-/// octets est deux HMAC, c'est-à-dire moins cher que la lecture de base qui
-/// suit. Un cache mémoïsé ferait vivre une clé dans un état global, que les
-/// tests devraient alors savoir vider.
+/// ⚠️ IT IS DERIVED ON EVERY CALL, AND THIS IS DELIBERATE: `hkdfSync` on 32
+/// bytes is two HMACs, that is, cheaper than the database read that
+/// follows. A memoised cache would keep a key alive in a global state, which the
+/// tests would then have to know how to clear.
 export function sousCleIcone(secretJeton: string): Buffer {
     return Buffer.from(hkdfSync('sha256', secretJeton, SEL_DERIVATION, ETIQUETTE_DERIVATION, 32));
 }
 
-/* ── LA DURÉE ─────────────────────────────────────────────────────────── */
+/* ── THE DURATION ─────────────────────────────────────────────────────── */
 
-/// **CINQ MINUTES.**
+/// **FIVE MINUTES.**
 ///
-/// 🔴 SA RAISON, ÉCRITE PLUTÔT QUE SUPPOSÉE — ce dépôt porte un legs entier
-/// sur les constantes non calibrées, et en ajouter une en silence l'aggrave.
+/// 🔴 ITS REASON, WRITTEN DOWN RATHER THAN ASSUMED — this repository carries a whole legacy
+/// about uncalibrated constants, and adding one silently makes it worse.
 ///
-///   ① **Le plancher.** Une page de hub charge quarante icônes d'un coup ;
-///      toutes les URL sont frappées dans la seconde qui suit la lecture du
-///      catalogue. Cinq minutes laissent aussi survivre un onglet resté
-///      ouvert quelques minutes avant que l'utilisateur ne le regarde, et une
-///      image rechargée par le navigateur après un retour d'arrière-plan.
+///   ① **The floor.** A hub page loads forty icons at once;
+///      all the URLs are minted within the second following the read of the
+///      catalogue. Five minutes also let a tab survive that stayed
+///      open a few minutes before the user looks at it, and an
+///      image reloaded by the browser after coming back from the background.
 ///
-///   ② **Le plafond, et c'est LUI qui fixe la valeur.** L'URL est frappée
-///      AVEC le jeton porteur, par le catalogue, qui est authentifié. Elle ne
-///      doit donc jamais survivre au jeton qui l'a fait naître :
-///      `DUREE_JETON_ACCES_MS` vaut 600 000 ms (`identite/jeton.ts`), et
-///      300 000 en est la moitié franche. Une URL qui vivrait plus longtemps
-///      que le jeton serait une capacité qui SURVIT à la session — exactement
-///      ce qu'une durée courte doit empêcher.
+///   ② **The ceiling, and it is THAT which sets the value.** The URL is minted
+///      WITH the bearer token, by the catalogue, which is authenticated. It must
+///      therefore never outlive the token that gave birth to it:
+///      `DUREE_JETON_ACCES_MS` is 600,000 ms (`identite/jeton.ts`), and
+///      300,000 is a clean half of it. A URL that lived longer
+///      than the token would be a capability that OUTLIVES the session — exactly
+///      what a short duration must prevent.
 ///
-/// ⚠️ **ELLE N'EST PAS CALIBRÉE POUR AUTANT** : aucune mesure de charge, aucun
-/// relevé de navigateur ne l'a jugée. Elle rejoint la liste des constantes non
-/// calibrées de `CLAUDE.md`, et son rapport de 1/2 au jeton d'accès est un
-/// ARBITRAGE, pas un résultat. ⚠️ Elle et `DUREE_JETON_ACCES_MS` se
-/// recalibrent ENSEMBLE : baisser le jeton sous cinq minutes rendrait cette
-/// borne fausse sans qu'aucun test ne le dise, et c'est pourquoi un test
-/// l'épingle nommément (`url-icone.test.ts`).
+/// ⚠️ **IT IS NOT CALIBRATED FOR ALL THAT**: no load measurement, no
+/// browser reading has judged it. It joins the list of uncalibrated
+/// constants of `CLAUDE.md`, and its 1/2 ratio to the access token is a
+/// TRADE-OFF, not a result. ⚠️ It and `DUREE_JETON_ACCES_MS` are
+/// recalibrated TOGETHER: lowering the token below five minutes would make this
+/// bound wrong without any test saying so, and that is why a test
+/// pins it by name (`url-icone.test.ts`).
 export const DUREE_URL_ICONE_MS = 300_000;
 
-/// **UNE MINUTE** — le PAS auquel l'expiration est arrondie vers le haut.
+/// **ONE MINUTE** — the STEP to which the expiry is rounded up.
 ///
-/// 🔴 IL EXISTE POUR QUE `Cache-Control: immutable` GARDE UN SENS, ET SANS LUI
-/// CE LOT AURAIT DÉTRUIT LE CACHE QU'IL PRÉTEND SERVIR. La réponse d'icône
-/// porte `max-age=31536000, immutable` (`http/routes-icone.ts`) : elle est
-/// adressée par contenu, et la mettre en cache est tout l'objet de la route.
-/// Mais une URL SIGNÉE change à chaque frappe — `x` et `s` en font partie —,
-/// donc la clé de cache changerait à chaque lecture du catalogue et AUCUNE
-/// entrée ne serait jamais relue. On remplirait le cache d'entrées mortes.
+/// 🔴 IT EXISTS SO THAT `Cache-Control: immutable` KEEPS A MEANING, AND WITHOUT IT
+/// THIS BATCH WOULD HAVE DESTROYED THE CACHE IT CLAIMS TO SERVE. The icon response
+/// carries `max-age=31536000, immutable` (`http/routes-icone.ts`): it is
+/// content-addressed, and caching it is the whole point of the route.
+/// But a SIGNED URL changes on every minting — `x` and `s` are part of it —,
+/// so the cache key would change on every read of the catalogue and NO
+/// entry would ever be read again. The cache would fill with dead entries.
 ///
-/// En arrondissant l'expiration au pas supérieur, toutes les URL frappées
-/// dans la même minute sont IDENTIQUES, octet pour octet : un rechargement de
-/// page dans cette minute retombe sur le cache.
+/// By rounding the expiry up to the next step, all the URLs minted
+/// within the same minute are IDENTICAL, byte for byte: a page reload
+/// within that minute lands on the cache.
 ///
-/// ⚠️ CE QU'IL COÛTE, DIT PLUTÔT QUE TU : la durée de vie réelle est comprise
-/// entre `DUREE_URL_ICONE_MS` et `DUREE_URL_ICONE_MS + PAS_URL_ICONE_MS`,
-/// c'est-à-dire entre 5 et 6 minutes. **Le PLANCHER est garanti** — c'est le
-/// sens de l'arrondi vers le HAUT —, et c'est le plancher qui portait
-/// l'exigence « quarante icônes ne doivent pas expirer en cours de route ».
-/// Le plafond reste très en dessous du jeton d'accès (10 min).
+/// ⚠️ WHAT IT COSTS, SAID RATHER THAN KEPT QUIET: the real lifetime lies
+/// between `DUREE_URL_ICONE_MS` and `DUREE_URL_ICONE_MS + PAS_URL_ICONE_MS`,
+/// that is, between 5 and 6 minutes. **The FLOOR is guaranteed** — that is the
+/// point of rounding UP —, and it is the floor that carried
+/// the requirement "forty icons must not expire along the way".
+/// The ceiling stays well below the access token (10 min).
 ///
-/// ⚠️ NON CALIBRÉE, comme sa voisine : aucune mesure de taux de succès de
-/// cache ne l'a jugée.
+/// ⚠️ UNCALIBRATED, like its neighbour: no measurement of the cache hit rate
+/// has judged it.
 export const PAS_URL_ICONE_MS = 60_000;
 
-/* ── CE QUE LA SIGNATURE COUVRE ───────────────────────────────────────── */
+/* ── WHAT THE SIGNATURE COVERS ────────────────────────────────────────── */
 
-/// Les trois champs liés, plus l'expiration.
+/// The three bound fields, plus the expiry.
 ///
-/// 🔴 CHACUN EST VÉRIFIABLE CÔTÉ SERVEUR, ET C'EST LE CRITÈRE D'ADMISSION :
-/// une signature qui couvrirait ce que le serveur ne peut pas recontrôler est
-/// un ornement. Le détail, champ par champ :
+/// 🔴 EACH ONE IS CHECKABLE ON THE SERVER SIDE, AND THAT IS THE ADMISSION CRITERION:
+/// a signature that covered what the server cannot check again is
+/// an ornament. The detail, field by field:
 ///
-///   - `application` — l'identifiant, LU DANS LE CHEMIN de la requête. C'est
-///     lui qui empêche qu'une URL signée pour une application vaille pour une
-///     autre.
-///   - `vm` — l'identifiant de la VM. Recontrôlé contre `application.vm_id`
-///     après la lecture de base. Il porte l'AUTORISATION : c'est parce que
-///     l'appartenance de la VM a été vérifiée au moment de la frappe (route
-///     du catalogue, jeton porteur en main) que l'URL vaut quelque chose. Le
-///     lier ici fait qu'une application repointée vers une autre VM cesse
-///     d'être servie par les URL déjà frappées.
-///   - `expiration` — en MILLISECONDES, comme partout dans ce paquet (voir la
-///     divergence déclarée en tête d'`identite/jeton.ts`).
+///   - `application` — the identifier, READ FROM THE PATH of the request. It is
+///     what prevents a URL signed for one application from being valid for
+///     another.
+///   - `vm` — the identifier of the VM. Checked again against `application.vm_id`
+///     after the database read. It carries the AUTHORISATION: it is because
+///     the ownership of the VM was checked at minting time (catalogue
+///     route, bearer token in hand) that the URL is worth anything. Binding
+///     it here means that an application repointed to another VM stops
+///     being served by the URLs already minted.
+///   - `expiration` — in MILLISECONDS, as everywhere in this package (see the
+///     divergence declared at the top of `identite/jeton.ts`).
 ///
-/// ⚠️ CE QUE LA SIGNATURE NE COUVRE PAS, ET POURQUOI : l'identité de
-/// l'UTILISATEUR. Elle serait invérifiable — la requête d'un `<img src>` ne
-/// porte rien qui permette de la confronter. L'écrire dans l'URL sans pouvoir
-/// la vérifier donnerait l'illusion d'un lien qui n'existe pas.
+/// ⚠️ WHAT THE SIGNATURE DOES NOT COVER, AND WHY: the identity of the
+/// USER. It would be unverifiable — the request of an `<img src>`
+/// carries nothing that allows checking it. Writing it into the URL without being able
+/// to verify it would give the illusion of a link that does not exist.
 ///
-/// ⚠️ L'EMPREINTE DE L'ICÔNE N'EST PAS DANS CETTE STRUCTURE, ET C'EST VOULU :
-/// elle n'est pas une autorisation mais une VERSION. La route la recontrôle
-/// contre `application.icone`, et un `?e=` périmé rend 404 — c'est ce qui
-/// rend `Cache-Control: immutable` honnête (voir `routes-icone.ts`). La
-/// signer LIERAIT la capacité à une version, si bien qu'une icône mise à jour
-/// invaliderait des URL déjà frappées ET déjà servies : deux mécanismes pour
-/// une même chose, dont l'un ne dit rien de plus que l'autre.
+/// ⚠️ THE ICON HASH IS NOT IN THIS STRUCTURE, AND THIS IS INTENDED:
+/// it is not an authorisation but a VERSION. The route checks it again
+/// against `application.icone`, and a stale `?e=` returns 404 — that is what
+/// makes `Cache-Control: immutable` honest (see `routes-icone.ts`). Signing
+/// it WOULD BIND the capability to a version, so that an updated icon
+/// would invalidate URLs already minted AND already served: two mechanisms for
+/// one and the same thing, one of which says nothing more than the other.
 export interface PorteeIcone {
     application: string;
     vm: string;
-    /// ⚠️ UNE CHAÎNE, ET NON UN NOMBRE — voir `messageCanonique` juste en
-    /// dessous : c'est la forme TEXTUELLE qui est signée.
+    /// ⚠️ A STRING, AND NOT A NUMBER — see `messageCanonique` just
+    /// below: it is the TEXTUAL form that is signed.
     expiration: string;
 }
 
-/// La chaîne SIGNÉE, canonique et NON AMBIGUË.
+/// The SIGNED string, canonical and UNAMBIGUOUS.
 ///
-/// 🔴 CHAQUE CHAMP EST PRÉFIXÉ DE SA LONGUEUR, ET CE N'EST PAS UNE COQUETTERIE.
-/// Un simple `a|b|c` est FORGEABLE dès qu'un champ peut contenir le
-/// séparateur : `application='x|y'` et `vm='z'` produiraient la même chaîne
-/// que `application='x'` et `vm='y|z'`, donc la même signature — une URL
-/// signée pour une paire vaudrait pour une AUTRE paire. Les identifiants
-/// d'application sont des UUID engendrés par la plateforme, mais celui de la
-/// VM vient de `npm run admin:agent`, donc d'un humain, donc de n'importe
-/// quels caractères. Le préfixe de longueur ferme la question pour de bon,
-/// quels que soient les champs de demain.
+/// 🔴 EACH FIELD IS PREFIXED WITH ITS LENGTH, AND IT IS NOT AN AFFECTATION.
+/// A plain `a|b|c` is FORGEABLE as soon as a field can contain the
+/// separator: `application='x|y'` and `vm='z'` would produce the same string
+/// as `application='x'` and `vm='y|z'`, hence the same signature — a URL
+/// signed for one pair would be valid for ANOTHER pair. The application
+/// identifiers are UUIDs generated by the platform, but the VM one
+/// comes from `npm run admin:agent`, hence from a human, hence from any
+/// characters at all. The length prefix settles the question for good,
+/// whatever the fields of tomorrow.
 ///
-/// ⚠️ `v1` EN TÊTE : une version future qui couvrirait un champ de plus ne
-/// pourra pas être confondue avec celle-ci, même à clé égale.
+/// ⚠️ `v1` AT THE HEAD: a future version that covered one more field
+/// cannot be confused with this one, even with an equal key.
 ///
-/// 🔴 L'EXPIRATION EST SIGNÉE DANS SA FORME TEXTUELLE EXACTE, celle qui voyage
-/// dans l'URL — jamais reconvertie en nombre puis reformatée. Sans cela,
-/// `x=010` et `x=10` deviendraient le MÊME message, donc la MÊME signature :
-/// une seule URL frappée en vaudrait une famille entière, et le contrôle de
-/// forme d'en face serait contournable en changeant l'écriture du nombre.
+/// 🔴 THE EXPIRY IS SIGNED IN ITS EXACT TEXTUAL FORM, the one that travels
+/// in the URL — never converted back to a number then reformatted. Without that,
+/// `x=010` and `x=10` would become the SAME message, hence the SAME signature:
+/// a single minted URL would be worth a whole family, and the shape check
+/// on the other end could be bypassed by changing how the number is written.
 function messageCanonique(portee: PorteeIcone): string {
     const champ = (v: string): string => `${String(v.length)}:${v}`;
     return ['v1', champ(portee.application), champ(portee.vm), champ(portee.expiration)].join('\n');
@@ -184,23 +184,23 @@ function messageCanonique(portee: PorteeIcone): string {
 
 /* ── FRAPPER ──────────────────────────────────────────────────────────── */
 
-/// La signature seule, en `base64url` (43 caractères sur SHA-256).
+/// The signature alone, in `base64url` (43 characters with SHA-256).
 export function signature(portee: PorteeIcone, secretJeton: string): string {
     return createHmac('sha256', sousCleIcone(secretJeton))
         .update(messageCanonique(portee), 'utf8')
         .digest('base64url');
 }
 
-/// L'URL RELATIVE d'une icône, prête à poser dans un `src`.
+/// The RELATIVE URL of an icon, ready to put in a `src`.
 ///
-/// 🔴 RELATIVE, ET JAMAIS ABSOLUE. La plateforme ne connaît pas l'origine
-/// publique sous laquelle un proxy la publie — `deploiement/nginx.conf` et
-/// Pomerium en posent chacun une. Fabriquer une origine ici la ferait
-/// diverger de celle de la page, et l'image serait alors soit inatteignable,
-/// soit refusée par la CSP (`img-src 'self'`). Le client la résout contre
-/// `location.origin`, qui est la seule origine juste par construction.
+/// 🔴 RELATIVE, AND NEVER ABSOLUTE. The platform does not know the public
+/// origin under which a proxy publishes it — `deploiement/nginx.conf` and
+/// Pomerium each set one. Making up an origin here would make it
+/// diverge from that of the page, and the image would then be either unreachable,
+/// or refused by the CSP (`img-src 'self'`). The client resolves it against
+/// `location.origin`, which is the only right origin by construction.
 ///
-/// ⚠️ CHAQUE VALEUR EST ENCODÉE : l'identifiant de VM vient d'un humain.
+/// ⚠️ EACH VALUE IS ENCODED: the VM identifier comes from a human.
 export function signerUrlIcone(
     application: string,
     vm: string,
@@ -209,9 +209,9 @@ export function signerUrlIcone(
     maintenant: number,
     dureeMs: number = DUREE_URL_ICONE_MS,
 ): string {
-    // 🔴 ARRONDI VERS LE HAUT, JAMAIS VERS LE BAS : vers le bas, une URL
-    // frappée juste avant un pas vivrait quelques millisecondes, et le
-    // plancher de durée ne serait plus garanti. Voir `PAS_URL_ICONE_MS`.
+    // 🔴 ROUNDED UP, NEVER DOWN: rounded down, a URL
+    // minted just before a step would live a few milliseconds, and the
+    // duration floor would no longer be guaranteed. See `PAS_URL_ICONE_MS`.
     const brute = maintenant + dureeMs;
     const expiration = String(Math.ceil(brute / PAS_URL_ICONE_MS) * PAS_URL_ICONE_MS);
     const q = new URLSearchParams({
@@ -223,31 +223,31 @@ export function signerUrlIcone(
     return `/application/${encodeURIComponent(application)}/icone?${q.toString()}`;
 }
 
-/* ── VÉRIFIER ─────────────────────────────────────────────────────────── */
+/* ── VERIFY ───────────────────────────────────────────────────────────── */
 
 export type MotifUrlIcone = 'parametre-absent' | 'signature-invalide' | 'url-expiree';
 
 export type VerdictUrlIcone = { ok: true; vm: string } | { ok: false; motif: MotifUrlIcone };
 
-/// Vérifie la signature d'une URL d'icône. Rend TOUJOURS un verdict, jamais
-/// une exception : tout vient du réseau, et un jet ferait répondre 500 là où
-/// il faut refuser.
+/// Verifies the signature of an icon URL. ALWAYS returns a verdict, never
+/// an exception: everything comes from the network, and a throw would answer 500 where
+/// it must refuse.
 ///
-/// 🔴 L'ORDRE DES CONTRÔLES EST CELUI DE `verifierJeton`, ET IL EST DÉLIBÉRÉ :
-/// la SIGNATURE d'abord, l'EXPIRATION ensuite. Une URL forgée ET périmée doit
-/// s'entendre dire « signature invalide », jamais « expirée » — sans quoi le
-/// refus renseignerait un faussaire sur la moitié de son travail qui a abouti.
+/// 🔴 THE ORDER OF THE CHECKS IS THAT OF `verifierJeton`, AND IT IS DELIBERATE:
+/// the SIGNATURE first, the EXPIRY next. A forged AND stale URL must
+/// be told "invalid signature", never "expired" — otherwise the
+/// refusal would inform a forger about the half of his work that succeeded.
 ///
-/// 🔴 L'EXPIRATION EST JUGÉE ICI, CONTRE L'HORLOGE DU SERVEUR, ET LE CHAMP `x`
-/// DE L'URL N'EST CRU QUE PARCE QU'IL EST SIGNÉ. Le lire sans le signer
-/// laisserait le client choisir sa propre date de péremption, c'est-à-dire
-/// aucune.
+/// 🔴 THE EXPIRY IS JUDGED HERE, AGAINST THE SERVER CLOCK, AND THE `x` FIELD
+/// OF THE URL IS BELIEVED ONLY BECAUSE IT IS SIGNED. Reading it without signing it
+/// would let the client pick its own expiry date, that is,
+/// none.
 ///
-/// 🔴 LA COMPARAISON EST EN TEMPS CONSTANT (`timingSafeEqual`), JAMAIS `===`.
-/// Un `===` sur une chaîne s'arrête au premier octet différent, et la durée du
-/// refus dit alors combien d'octets étaient justes — de quoi reconstruire une
-/// signature octet par octet. Les LONGUEURS sont comparées d'abord : mesuré,
-/// `timingSafeEqual` LÈVE quand elles diffèrent.
+/// 🔴 THE COMPARISON IS CONSTANT-TIME (`timingSafeEqual`), NEVER `===`.
+/// A `===` on a string stops at the first differing byte, and the duration of the
+/// refusal then tells how many bytes were right — enough to rebuild a
+/// signature byte by byte. The LENGTHS are compared first: measured,
+/// `timingSafeEqual` THROWS when they differ.
 export function verifierUrlIcone(
     application: string,
     parametres: URLSearchParams,
@@ -263,7 +263,7 @@ export function verifierUrlIcone(
     }
     if (recue === null || recue === '') return { ok: false, motif: 'parametre-absent' };
 
-    // La signature porte la forme TEXTUELLE de `x`, telle qu'elle est arrivée.
+    // The signature carries the TEXTUAL form of `x`, as it arrived.
     const attendue = Buffer.from(
         signature({ application, vm, expiration: brutExpiration }, secretJeton),
         'utf8',
@@ -272,18 +272,18 @@ export function verifierUrlIcone(
     if (attendue.length !== fournie.length) return { ok: false, motif: 'signature-invalide' };
     if (!timingSafeEqual(attendue, fournie)) return { ok: false, motif: 'signature-invalide' };
 
-    // 🔴 CE GARDE VIENT APRÈS LA SIGNATURE, ET IL N'EST PAS DÉCORATIF :
-    // `Number('pas-un-nombre')` rend `NaN`, et `maintenant >= NaN` est FAUX —
-    // une expiration illisible serait donc ACCEPTÉE, c'est-à-dire éternelle.
-    // ⚠️ IL EST INATTEIGNABLE PAR LE PRODUIT, qui ne frappe que des entiers :
-    // le seul chemin qui l'atteigne est une signature calculée avec la VRAIE
-    // clé sur un `x` non entier — et c'est exactement ainsi que son test le
-    // fait rougir, plutôt que de le laisser vert par construction.
+    // 🔴 THIS GUARD COMES AFTER THE SIGNATURE, AND IT IS NOT DECORATIVE:
+    // `Number('pas-un-nombre')` returns `NaN`, and `maintenant >= NaN` is FALSE —
+    // an unreadable expiry would therefore be ACCEPTED, that is, eternal.
+    // ⚠️ IT IS UNREACHABLE BY THE PRODUCT, which only mints integers:
+    // the only path that reaches it is a signature computed with the REAL
+    // key on a non-integer `x` — and that is exactly how its test
+    // makes it go red, rather than leaving it green by construction.
     const expiration = Number(brutExpiration);
     if (!Number.isInteger(expiration)) return { ok: false, motif: 'signature-invalide' };
 
-    // Borne FRANCHE, écrite pour que le test puisse l'assiéger des deux côtés
-    // — même geste que `verifierJeton`.
+    // STRICT bound, written so that the test can besiege it from both sides
+    // — same gesture as `verifierJeton`.
     if (maintenant >= expiration) return { ok: false, motif: 'url-expiree' };
 
     return { ok: true, vm };
