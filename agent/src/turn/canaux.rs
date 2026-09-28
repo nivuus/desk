@@ -62,7 +62,7 @@ impl TurnClient {
             return Some(canal);
         }
         if self.prochain_canal > CANAL_MAX {
-            tracing::warn!("plage de canaux TURN épuisée");
+            tracing::warn!("TURN channel range exhausted");
             return None;
         }
         let canal = self.prochain_canal;
@@ -132,7 +132,7 @@ impl TurnClient {
             // `info` and not `debug`, for the same reason as the lease: one
             // line every 150 s per channel, and it is the only observable proof
             // that the relay stays maintained.
-            tracing::info!(canal, %pair, "réaffirmation d'une liaison de canal TURN");
+            tracing::info!(canal, %pair, "reasserting a TURN channel binding");
             self.emettre_liaison(canal, pair);
         }
     }
@@ -185,30 +185,21 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn le_premier_octet_departage_stun_de_channel_data() {
+    fn the_first_byte_tells_stun_from_channel_data() {
         // The two most significant bits: 00 = STUN, 01 = ChannelData. It is the
         // only demultiplexing available on a shared UDP socket.
-        assert!(
-            !est_channel_data(&[0x00, 0x03, 0, 0]),
-            "Allocate est du STUN"
-        );
-        assert!(!est_channel_data(&[0x01, 0x01, 0, 0]), "réponse STUN");
-        assert!(
-            est_channel_data(&[0x40, 0x00, 0, 0]),
-            "premier canal valide"
-        );
-        assert!(
-            est_channel_data(&[0x7F, 0xFF, 0, 0]),
-            "dernier canal valide"
-        );
-        assert!(!est_channel_data(&[]), "un paquet vide n'est rien");
+        assert!(!est_channel_data(&[0x00, 0x03, 0, 0]), "Allocate is STUN");
+        assert!(!est_channel_data(&[0x01, 0x01, 0, 0]), "STUN answer");
+        assert!(est_channel_data(&[0x40, 0x00, 0, 0]), "first valid channel");
+        assert!(est_channel_data(&[0x7F, 0xFF, 0, 0]), "last valid channel");
+        assert!(!est_channel_data(&[]), "an empty packet is nothing");
     }
 
     #[test]
     fn encapsulate_prefixes_the_channel_number_and_the_length() {
         let mut c = allouee();
         let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
-        let canal = c.lier_canal(pair).expect("canal attribué");
+        let canal = c.lier_canal(pair).expect("channel assigned");
 
         let encapsule = c.encapsuler(pair, &[1, 2, 3]).expect("pair connu");
         assert_eq!(&encapsule[0..2], &canal.to_be_bytes());
@@ -219,27 +210,27 @@ mod tests {
     }
 
     #[test]
-    fn encapsuler_refuse_un_pair_sans_canal() {
+    fn wrapping_refuses_a_peer_without_a_channel() {
         let c = allouee();
         let inconnu: SocketAddr = "198.51.100.1:1".parse().unwrap();
         assert!(
             c.encapsuler(inconnu, &[1]).is_none(),
-            "aucun canal lié pour ce pair"
+            "no channel bound for this peer"
         );
     }
 
     #[test]
-    fn lier_un_canal_emet_permission_puis_channel_bind() {
+    fn binding_a_channel_emits_permission_then_channel_bind() {
         let mut c = allouee();
         // Empty what was still pending.
         while c.poll_transmit().is_some() {}
 
         let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
-        c.lier_canal(pair).expect("canal attribué");
+        c.lier_canal(pair).expect("channel assigned");
 
-        let premier = c.poll_transmit().expect("CreatePermission attendu");
+        let premier = c.poll_transmit().expect("CreatePermission expected");
         assert_eq!(&premier[0..2], &[0x00, 0x08], "CreatePermission");
-        let second = c.poll_transmit().expect("ChannelBind attendu");
+        let second = c.poll_transmit().expect("ChannelBind expected");
         assert_eq!(&second[0..2], &[0x00, 0x09], "ChannelBind");
     }
 
@@ -248,10 +239,10 @@ mod tests {
         let mut c = allouee();
         for i in 0..8u16 {
             let pair: SocketAddr = format!("203.0.113.{}:6000", i + 1).parse().unwrap();
-            let canal = c.lier_canal(pair).expect("canal attribué");
+            let canal = c.lier_canal(pair).expect("channel assigned");
             assert!(
                 (0x4000..=0x7FFF).contains(&canal),
-                "canal {canal:#x} hors de la plage 0x4000-0x7FFF"
+                "channel {canal:#x} outside the 0x4000-0x7FFF range"
             );
         }
     }
@@ -265,7 +256,7 @@ mod tests {
         // was indeed refreshed.
         let mut c = allouee();
         let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
-        let canal = c.lier_canal(pair).expect("canal attribué");
+        let canal = c.lier_canal(pair).expect("channel assigned");
         while c.poll_transmit().is_some() {}
 
         // At half a permission's duration, as for the lease: a
@@ -274,11 +265,9 @@ mod tests {
 
         let premier = c
             .poll_transmit()
-            .expect("CreatePermission de rafraîchissement attendu");
+            .expect("refresh CreatePermission expected");
         assert_eq!(&premier[0..2], &[0x00, 0x08], "CreatePermission");
-        let second = c
-            .poll_transmit()
-            .expect("ChannelBind de rafraîchissement attendu");
+        let second = c.poll_transmit().expect("refresh ChannelBind expected");
         assert_eq!(&second[0..2], &[0x00, 0x09], "ChannelBind");
 
         // The SAME channel, not a new one: a refresh extends the
@@ -288,38 +277,32 @@ mod tests {
         assert_eq!(message.xor_peer_address(), Some(pair));
 
         // And no burst: nothing more before the next deadline.
-        assert!(
-            c.poll_transmit().is_none(),
-            "un seul rafraîchissement par échéance"
-        );
+        assert!(c.poll_transmit().is_none(), "a single refresh per deadline");
         c.avancer(t0() + Duration::from_secs(151));
-        assert!(
-            c.poll_transmit().is_none(),
-            "pas de réémission à chaque tour"
-        );
+        assert!(c.poll_transmit().is_none(), "no re-emission at every round");
     }
 
     #[test]
-    fn desencapsuler_rend_le_pair_et_la_charge_utile() {
+    fn unwrapping_returns_the_peer_and_the_payload() {
         let mut c = allouee();
         let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
-        let canal = c.lier_canal(pair).expect("canal attribué");
+        let canal = c.lier_canal(pair).expect("channel assigned");
 
         let mut trame = Vec::new();
         trame.extend_from_slice(&canal.to_be_bytes());
         trame.extend_from_slice(&4u16.to_be_bytes());
         trame.extend_from_slice(&[9, 8, 7, 6]);
 
-        let (source, charge) = c.desencapsuler(&trame).expect("trame reconnue");
+        let (source, charge) = c.desencapsuler(&trame).expect("recognised frame");
         assert_eq!(source, pair);
         assert_eq!(charge, &[9, 8, 7, 6]);
     }
 
     #[test]
-    fn desencapsuler_refuse_une_trame_tronquee_ou_inconnue() {
+    fn unwrapping_refuses_a_truncated_or_unknown_frame() {
         let mut c = allouee();
         let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
-        let canal = c.lier_canal(pair).expect("canal");
+        let canal = c.lier_canal(pair).expect("channel");
 
         // Announced length larger than what follows: a naive read
         // would panic on an out-of-bounds slice.

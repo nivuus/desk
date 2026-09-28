@@ -118,7 +118,7 @@ impl EncodeurMft {
         // Unlock asynchronous mode: mandatory for any hardware MFT.
         let is_async = unsafe { attributes.GetUINT32(&MF_TRANSFORM_ASYNC) }.unwrap_or(0);
         if is_async == 0 {
-            bail!("l'encodeur trouvé n'est pas asynchrone : configuration inattendue");
+            bail!("the encoder found is not asynchronous: unexpected configuration");
         }
         unsafe { attributes.SetUINT32(&MF_TRANSFORM_ASYNC_UNLOCK, 1) }?;
         // Low-latency mode: no multi-frame buffering.
@@ -136,7 +136,7 @@ impl EncodeurMft {
                 device_manager.as_raw() as usize,
             )
         }
-        .context("partage du périphérique D3D avec l'encodeur")?;
+        .context("sharing the D3D device with the encoder")?;
 
         reglages::configure_output(&transform, encode.0, encode.1, fps, bitrate)?;
         reglages::configure_input(&transform, encode.0, encode.1, fps)?;
@@ -155,24 +155,24 @@ impl EncodeurMft {
         unsafe {
             transform
                 .ProcessMessage(MFT_MESSAGE_COMMAND_FLUSH, 0)
-                .context("purge initiale de l'encodeur H.264 (transform matériel)")?;
+                .context("initial flush of the H.264 encoder (hardware transform)")?;
             transform
                 .ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)
-                .context("démarrage du flux de l'encodeur H.264 (transform matériel)")?;
+                .context("starting the H.264 encoder stream (hardware transform)")?;
             transform
                 .ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)
-                .context("début de flux de l'encodeur H.264 (transform matériel)")?;
+                .context("start of stream of the H.264 encoder (hardware transform)")?;
         }
 
         // BGRA→NV12 converter, sharing the same D3D device.
         let converter = fabrique::create_color_converter(&device_manager, capture, encode, fps)?;
         let converter_stream_info = unsafe { converter.GetOutputStreamInfo(0) }
-            .context("interrogation du flux de sortie du convertisseur")?;
+            .context("querying the converter output stream")?;
         let converter_provides_samples =
             converter_stream_info.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32 != 0;
         tracing::info!(
             converter_provides_samples,
-            "convertisseur BGRA→NV12 (Video Processor MFT) configuré"
+            "BGRA→NV12 converter (Video Processor MFT) configured"
         );
         // Attempt made (throughput investigation): systematically provide our
         // own output sample, including when
@@ -183,9 +183,9 @@ impl EncodeurMft {
         // when this flag is set) must be respected, there is no possible
         // workaround here.
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }
-            .context("démarrage du flux du convertisseur de couleur (Video Processor MFT)")?;
+            .context("starting the colour converter stream (Video Processor MFT)")?;
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }
-            .context("début de flux du convertisseur de couleur (Video Processor MFT)")?;
+            .context("start of stream of the colour converter (Video Processor MFT)")?;
 
         Ok(Self {
             transform,
@@ -261,7 +261,7 @@ impl EncodeurMft {
         let codec: ICodecAPI = self.transform.cast()?;
         let rate = reglages::variant_u32(bitrate);
         unsafe { codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate) }
-            .context("réglage à chaud du débit d'encodage")?;
+            .context("live adjustment of the encoding bitrate")?;
         Ok(())
     }
 
@@ -277,7 +277,7 @@ impl Drop for EncodeurMft {
         if self.skipped_busy > 0 {
             tracing::debug!(
                 skipped_busy = self.skipped_busy,
-                "images renoncées faute de confirmation du convertisseur (diagnostic)"
+                "frames given up for lack of converter confirmation (diagnostic)"
             );
         }
         // Putting at rest BEFORE releasing the COM references: nothing

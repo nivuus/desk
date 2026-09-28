@@ -22,10 +22,10 @@ pub enum Verdict {
 }
 
 /// 🔴 **THIS VERDICT CRIED WRONGLY AT EACH START-UP, AND THAT IS WHAT WE FIX.**
-/// The old form compared `apres == before - retirees` and returned an
+/// The old form compared `after == before - removed` and returned an
 /// `ERROR` on **any** difference. Measured twice on 30 August 2026:
-/// `retirees=5 before=7 apres=1 attendu=2` then `retirees=7 avant=9 apres=1
-/// attendu=2` — `apres` **LOWER** than `attendu` in both cases, that is
+/// `removed=5 before=7 after=1 expected=2` then `removed=7 before=9 after=1
+/// expected=2` (field names as they read today) — `after` **LOWER** than `expected` in both cases, that is
 /// MORE outputs had disappeared than we had removed. The purge
 /// had nevertheless worked perfectly (SudoVDA monitors: 8 → 0).
 ///
@@ -41,9 +41,9 @@ pub enum Verdict {
 /// MORE outputs than expected, then removals declared successful removed
 /// nothing — a broken handle or IOCTL, that is the defect this verdict
 /// existed to catch.
-pub fn verdict(before: usize, apres: usize, retirees: usize) -> Verdict {
-    let attendu = before.saturating_sub(retirees);
-    match apres.cmp(&attendu) {
+pub fn verdict(before: usize, after: usize, removed: usize) -> Verdict {
+    let expected = before.saturating_sub(removed);
+    match after.cmp(&expected) {
         std::cmp::Ordering::Equal => Verdict::Conforme,
         std::cmp::Ordering::Less => Verdict::UnTiersAAussiRetire,
         std::cmp::Ordering::Greater => Verdict::RetraitsSansEffet,
@@ -55,7 +55,7 @@ mod tests_verdict {
     use super::*;
 
     #[test]
-    fn autant_de_moins_que_de_retraits_est_conforme() {
+    fn as_many_fewer_as_removals_is_compliant() {
         assert_eq!(verdict(9, 2, 7), Verdict::Conforme);
         assert_eq!(verdict(0, 0, 0), Verdict::Conforme);
     }
@@ -63,7 +63,7 @@ mod tests_verdict {
     /// 🔴 THE TWO REAL SURVEYS OF 30 AUGUST 2026, which returned an `ERROR`.
     /// They must no longer return one: the purge had worked.
     #[test]
-    fn les_deux_releves_qui_criaient_a_tort_ne_crient_plus() {
+    fn the_two_readings_that_cried_wrongly_no_longer_cry() {
         assert_eq!(verdict(7, 1, 5), Verdict::UnTiersAAussiRetire);
         assert_eq!(verdict(9, 1, 7), Verdict::UnTiersAAussiRetire);
     }
@@ -72,7 +72,7 @@ mod tests_verdict {
     /// catch: the driver declares successful removals, the topology does not
     /// move.
     #[test]
-    fn des_retraits_sans_effet_restent_denonces() {
+    fn ineffective_removals_stay_denounced() {
         assert_eq!(verdict(9, 9, 7), Verdict::RetraitsSansEffet);
         assert_eq!(verdict(3, 3, 1), Verdict::RetraitsSansEffet);
     }
@@ -80,7 +80,7 @@ mod tests_verdict {
     /// The case the old form already handled: no removal, nothing
     /// moves, all is well.
     #[test]
-    fn aucun_retrait_et_rien_ne_bouge_est_conforme() {
+    fn no_removal_and_nothing_moving_is_compliant() {
         assert_eq!(verdict(4, 4, 0), Verdict::Conforme);
     }
 }

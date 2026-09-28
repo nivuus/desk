@@ -17,8 +17,8 @@ use super::chargement;
 
 /// The root folder's name, in the user's profile.
 ///
-/// **ProjFS virtualises a DIRECTORY, never a volume**: the "Mes
-/// Fichiers drive" is a usage name, not a letter (decision D6). No letter
+/// **ProjFS virtualises a DIRECTORY, never a volume**: the
+/// "Mes Fichiers drive" is a usage name, not a letter (decision D6). No letter (policy: allow-fr, real Windows folder name)
 /// is assigned — `subst`/`DefineDosDevice` would have a logon session
 /// lifetime, hence one more mechanism to watch, to set again after
 /// a restart and to remove cleanly, **for zero gain**: a profile folder
@@ -36,10 +36,10 @@ const NOM_RACINE: &str = "Mes Fichiers";
 const STATE_SUBFOLDER: &str = r"Guacamole\pont";
 const GUID_FILE: &str = "instance.guid";
 
-/// `%USERPROFILE%\Mes Fichiers`.
+/// `%USERPROFILE%\Mes Fichiers`. (policy: allow-fr, real Windows folder name)
 pub(super) fn racine() -> Result<PathBuf> {
     let profil = std::env::var("USERPROFILE")
-        .context("USERPROFILE absent : impossible de situer la racine du pont fichiers")?;
+        .context("USERPROFILE missing: cannot locate the file bridge root")?;
     Ok(PathBuf::from(profil).join(NOM_RACINE))
 }
 
@@ -52,7 +52,7 @@ pub(super) fn racine() -> Result<PathBuf> {
 /// it matters**.
 pub fn dossier_etat() -> Result<PathBuf> {
     let local = std::env::var("LOCALAPPDATA")
-        .context("LOCALAPPDATA absent : impossible de situer l'état du pont fichiers")?;
+        .context("LOCALAPPDATA missing: cannot locate the file bridge state")?;
     Ok(PathBuf::from(local).join(STATE_SUBFOLDER))
 }
 
@@ -68,7 +68,7 @@ pub fn dossier_etat() -> Result<PathBuf> {
 /// 3. **nothing of our state lives in the root** (see [`STATE_SUBFOLDER`]).
 pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()> {
     std::fs::create_dir_all(racine)
-        .with_context(|| format!("création de la racine « {} »", racine.display()))?;
+        .with_context(|| format!("creating the root « {} »", racine.display()))?;
     let etat = dossier_etat()?;
     let empreinte = etat.join(GUID_FILE);
 
@@ -76,15 +76,15 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
     let guid = match std::fs::read_to_string(&empreinte) {
         Ok(texte) => lire_guid(texte.trim()).with_context(|| {
             format!(
-                "« {} » ne porte pas un GUID lisible : le retirer À LA MAIN ferait re-marquer \
-                 une racine déjà marquée, ce que ProjFS refuse — il faut retirer la RACINE aussi",
+                "« {} » does not carry a readable GUID: removing it BY HAND would re-mark \
+                 an already marked root, which ProjFS refuses — the ROOT must be removed too",
                 empreinte.display()
             )
         })?,
         // SAFETY: `CoCreateGuid` has no precondition and takes no
         // pointer; it can only fail for lack of resources.
         Err(_) => unsafe { windows::Win32::System::Com::CoCreateGuid() }
-            .context("génération du GUID d'instance de la racine")?,
+            .context("generating the root's instance GUID")?,
     };
 
     if !deja_marquee {
@@ -93,13 +93,13 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
         // hydrated files, and marking would fail with
         // a code no one would be able to link to this cause.
         let entrees = std::fs::read_dir(racine)
-            .with_context(|| format!("lecture de la racine « {} »", racine.display()))?
+            .with_context(|| format!("reading the root « {} »", racine.display()))?
             .count();
         if entrees != 0 {
             bail!(
-                "la racine « {}» contient {entrees} entrée(s) : ProjFS refuse de marquer un \
-                 répertoire non vide, et « {} » n'existe pas — vider la racine, ou restaurer \
-                 l'empreinte de l'instance qui l'a marquée",
+                "the root « {}» holds {entrees} entry(ies): ProjFS refuses to mark a \
+                 non-empty directory, and « {} » does not exist — empty the root, or restore \
+                 the fingerprint of the instance that marked it",
                 racine.display(),
                 empreinte.display()
             );
@@ -153,9 +153,9 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
             tracing::info!(
                 %issue,
                 racine = %racine.display(),
-                "marquage refusé sur une racine dont l'empreinte existe déjà : \
-                 tenue pour déjà marquée (le code exact de « déjà marquée » n'est \
-                 mesuré sur aucune machine de ce dépôt, donc il n'est pas testé)"
+                "marking refused on a root whose fingerprint already exists: \
+                 taken as already marked (the exact code for « already marked » is \
+                 measured on no machine of this repository, so it is not tested)"
             );
         } else {
             bail!(
@@ -165,12 +165,12 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
         }
     } else {
         std::fs::create_dir_all(&etat)
-            .with_context(|| format!("création de « {} »", etat.display()))?;
+            .with_context(|| format!("creating « {} »", etat.display()))?;
         // Written AFTER marking, never before: a fingerprint set on a
         // marking that fails would make a root count as marked when it
         // is not, and the next startup would fail with no readable cause.
         std::fs::write(&empreinte, format!("{guid:?}"))
-            .with_context(|| format!("écriture de « {} »", empreinte.display()))?;
+            .with_context(|| format!("writing « {} »", empreinte.display()))?;
         // ⚠️ **`deja_marquee` IS REPORTED, and it is what makes this trace
         // able to answer a question.** It asserted "first
         // time" without knowing; it now returns the observation it
@@ -178,7 +178,7 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
         tracing::info!(
             racine = %racine.display(),
             empreinte_preexistante = deja_marquee,
-            "racine marquée (le marquage RÉUSSIT même sur une racine déjà marquée : mesuré, F5 P2)"
+            "root marked (marking SUCCEEDS even on an already marked root: measured, F5 P2)"
         );
     }
     Ok(())
@@ -187,7 +187,7 @@ pub(super) fn preparer(projfs: &chargement::ProjFs, racine: &Path) -> Result<()>
 /// Rereads the GUID written by [`preparer`], in the `Debug` format of
 /// `windows::core::GUID`.
 fn lire_guid(texte: &str) -> Result<GUID> {
-    GUID::try_from(texte).with_context(|| format!("GUID « {texte} » illisible"))
+    GUID::try_from(texte).with_context(|| format!("GUID « {texte} » unreadable"))
 }
 
 /// A null-terminated UTF-16 string, for a `PCWSTR`.

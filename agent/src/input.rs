@@ -146,9 +146,9 @@ mod win {
         ) -> Self {
             tracing::info!(
                 ?reference,
-                "reference des entrees retenue (batie par le match qui choisit \
-                 le mode de capture ; la taille de l'image y est PARTAGEE avec \
-                 la source, jamais recalculee)"
+                "input reference retained (built by the match that chooses \
+                 the capture mode; the image size is SHARED there with \
+                 the source, never recomputed)"
             );
             Self {
                 hwnd,
@@ -274,11 +274,11 @@ mod win {
             let obtenu = unsafe { SetForegroundWindow(self.hwnd) }.as_bool();
             if self.premier_plan_obtenu != Some(obtenu) {
                 if obtenu {
-                    tracing::info!(hwnd = ?self.hwnd, "premier plan obtenu avant injection clavier");
+                    tracing::info!(hwnd = ?self.hwnd, "foreground obtained before keyboard injection");
                 } else {
                     tracing::warn!(
                         hwnd = ?self.hwnd,
-                        "SetForegroundWindow refusé — le clavier ira à la fenêtre active"
+                        "SetForegroundWindow refused — the keyboard will go to the active window"
                     );
                 }
                 self.premier_plan_obtenu = Some(obtenu);
@@ -366,8 +366,8 @@ mod win {
             let sortie = self.rectangle_de_la_sortie(&nom)?;
             crate::entrees::rectangle_capture(sortie, image).ok_or_else(|| {
                 anyhow!(
-                    "taille de l'image capturée encore inconnue ({}x{}) : aucune \
-                     référence fiable pour démapper les entrées",
+                    "captured image size still unknown ({}x{}): no \
+                     reliable reference to unmap the inputs",
                     image.0,
                     image.1
                 )
@@ -384,7 +384,7 @@ mod win {
                 }
             }
             let sorties = crate::capture::enumerer_sorties_silencieux()
-                .context("énumération DXGI pour la référence des entrées")?;
+                .context("DXGI enumeration for the input reference")?;
             let trouvee = sorties.iter().find(|s| s.nom_sortie == nom).map(|s| s.rect);
             match trouvee {
                 Some(rect) => {
@@ -396,8 +396,8 @@ mod win {
                 // the symptom would again become "the mouse clicks beside" without
                 // any trace saying so. Better a named error.
                 None => Err(anyhow!(
-                    "sortie capturée {nom} introuvable dans la topologie DXGI : \
-                     aucune référence fiable pour démapper les entrées"
+                    "captured output {nom} not found in the DXGI topology: \
+                     no reliable reference to unmap the inputs"
                 )),
             }
         }
@@ -452,9 +452,7 @@ mod win {
     fn dispatch(inputs: &[INPUT]) -> Result<()> {
         let sent = unsafe { SendInput(inputs, std::mem::size_of::<INPUT>() as i32) };
         if sent as usize != inputs.len() {
-            return Err(anyhow!(
-                "SendInput a refusé l'entrée (session verrouillée ?)"
-            ));
+            return Err(anyhow!("SendInput refused the input (session locked?)"));
         }
         Ok(())
     }

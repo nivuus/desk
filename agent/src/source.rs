@@ -254,7 +254,7 @@ pub trait VideoSource {
     /// default that runs. The single-window owner stays P1's legacy no. 1,
     /// not filled; P2 makes it loud instead of silent.
     fn write_clipboard(&mut self, _texte: &str) -> anyhow::Result<()> {
-        anyhow::bail!("aucun capteur : le presse-papier de la VM n'est pas accessible")
+        anyhow::bail!("no sensor: the VM clipboard is not accessible")
     }
 
     /// True only once, right after the channel to the capturer has
@@ -294,14 +294,14 @@ pub struct FileSource {
 impl FileSource {
     pub fn from_annex_b(data: Vec<u8>, width: u32, height: u32, fps: u32) -> Result<Self> {
         if fps == 0 {
-            bail!("le nombre d'images par seconde doit être supérieur à zéro");
+            bail!("the number of frames per second must be greater than zero");
         }
         let units = group_access_units(&data, fps);
         if units.is_empty() {
-            bail!("flux invalide : aucune unité d'accès trouvée");
+            bail!("invalid stream: no access unit found");
         }
         if !units.iter().any(|u| u.is_keyframe) {
-            bail!("flux invalide : aucune image clé trouvée");
+            bail!("invalid stream: no key frame found");
         }
         Ok(Self {
             tick_90k: CLOCK_RATE_HZ / fps as u64,
@@ -359,19 +359,19 @@ mod tests {
     }
 
     #[test]
-    fn expose_ses_dimensions() {
+    fn exposes_its_dimensions() {
         let source = FileSource::from_annex_b(flux_de_test(2), 1280, 720, 60).unwrap();
         assert_eq!(source.dimensions(), (1280, 720));
     }
 
     #[test]
-    fn rejette_un_flux_sans_image() {
+    fn rejects_a_stream_without_frames() {
         let err = FileSource::from_annex_b(vec![0xFF, 0xFE], 1280, 720, 60).unwrap_err();
-        assert!(err.to_string().contains("aucune unité d'accès"));
+        assert!(err.to_string().contains("no access unit"));
     }
 
     #[test]
-    fn rejette_un_flux_sans_image_cle() {
+    fn rejects_a_stream_without_a_key_frame() {
         let stream = {
             let mut s = Vec::new();
             s.extend_from_slice(&[0, 0, 0, 1]);
@@ -379,7 +379,7 @@ mod tests {
             s
         };
         let err = FileSource::from_annex_b(stream, 1280, 720, 60).unwrap_err();
-        assert!(err.to_string().contains("aucune image clé"));
+        assert!(err.to_string().contains("no key frame"));
     }
 
     #[test]
@@ -403,21 +403,15 @@ mod tests {
     }
 
     #[test]
-    fn charge_le_flux_de_test_reel() {
+    fn loads_the_real_test_stream() {
         let path =
             std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
-        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
+        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("loading the stream");
         assert_eq!(source.dimensions(), (1280, 720));
 
         let first = source.next_frame().unwrap();
-        assert!(
-            first.is_keyframe,
-            "la première unité doit être une image clé"
-        );
-        assert!(
-            first.data.len() > 100,
-            "une image clé réelle n'est pas minuscule"
-        );
+        assert!(first.is_keyframe, "the first unit must be a key frame");
+        assert!(first.data.len() > 100, "a real key frame is not tiny");
     }
 
     #[test]
@@ -427,7 +421,7 @@ mod tests {
         // loop counter must increment after 300 calls, not 2400.
         let path =
             std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
-        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
+        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("loading the stream");
 
         // A complete loop (300 frames), plus the first frame of the next turn.
         let mut horodatages = Vec::with_capacity(301);
@@ -438,14 +432,14 @@ mod tests {
             keyframes.push(unit.is_keyframe);
         }
 
-        assert!(keyframes[0], "la première image du fichier est une IDR");
+        assert!(keyframes[0], "the first frame of the file is an IDR");
         assert!(
             keyframes[300],
-            "la première image de la boucle suivante doit aussi être une IDR"
+            "the first frame of the next loop must also be an IDR"
         );
         assert!(
             horodatages.windows(2).all(|w| w[0] < w[1]),
-            "les horodatages doivent être strictement croissants, y compris au bouclage"
+            "timestamps must be strictly increasing, including at the loop point"
         );
         // 300 frames at 1500 ticks (90000 / 60): the timestamp at wraparound
         // continues the linear progression instead of restarting at zero.
@@ -453,18 +447,18 @@ mod tests {
     }
 
     #[test]
-    fn resize_par_defaut_ignore_la_demande_et_ne_change_pas_les_dimensions() {
+    fn default_resize_ignores_the_request_and_keeps_the_dimensions() {
         // `FileSource` does not redefine `resize`: the trait's default
         // method must be a no-op that succeeds, without ever touching the
         // file source's dimensions (task 13, source.rs).
         let mut source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();
         source
             .resize(1920, 1080)
-            .expect("le no-op par défaut ne doit jamais échouer");
+            .expect("the default no-op must never fail");
         assert_eq!(
             source.dimensions(),
             (640, 480),
-            "les dimensions ne doivent pas bouger"
+            "the dimensions must not move"
         );
     }
 

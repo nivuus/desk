@@ -101,7 +101,7 @@ fn the_trait_default_refuses_to_write_rather_than_pretend() {
         .write_clipboard("colle")
         .expect_err("the trait's default MUST return Err, never Ok(())");
     assert!(
-        error.to_string().contains("aucun capteur"),
+        error.to_string().contains("no sensor"),
         "the reason must name the cause: {error}"
     );
 }

@@ -150,7 +150,7 @@ mod tests {
     use crate::plateforme::repli::REPLI_MIN_MS;
 
     #[test]
-    fn la_premiere_reconnexion_attend_le_plancher() {
+    fn the_first_reconnection_waits_for_the_floor() {
         // A one-second outage must not cost thirty seconds of
         // mute desktop: the very first resumption starts from the floor shared
         // with the `/agent` channel.
@@ -159,13 +159,13 @@ mod tests {
     }
 
     #[test]
-    fn le_delai_croit_puis_plafonne() {
+    fn the_delay_grows_then_caps() {
         let mut reprise = Reprise::neuve();
         let mut precedent = reprise.delai_ms();
         reprise.tentative_lancee();
         assert!(
             reprise.delai_ms() > precedent,
-            "le délai doit croître : {} n'est pas > {precedent}",
+            "the delay must grow: {} is not > {precedent}",
             reprise.delai_ms()
         );
         for _ in 0..40 {
@@ -173,18 +173,18 @@ mod tests {
             reprise.tentative_lancee();
             assert!(
                 reprise.delai_ms() >= precedent,
-                "le délai ne doit jamais reculer sans réarmement"
+                "the delay must never go back without re-arming"
             );
             assert!(
                 reprise.delai_ms() <= REPLI_MAX_MS,
-                "le délai {} dépasse le plafond {REPLI_MAX_MS}",
+                "the delay {} exceeds the ceiling {REPLI_MAX_MS}",
                 reprise.delai_ms()
             );
         }
         assert_eq!(
             reprise.delai_ms(),
             REPLI_MAX_MS,
-            "le plafond doit être ATTEINT, pas seulement respecté"
+            "the ceiling must be REACHED, not merely respected"
         );
     }
 
@@ -193,11 +193,11 @@ mod tests {
     /// would become unable to grow — the exact defect
     /// `relance_pont.rs` paid for in its fix round 3.
     #[test]
-    fn le_seuil_de_connexion_utile_reste_strictement_au_dessus_du_plafond_de_repli() {
+    fn the_useful_connection_threshold_stays_strictly_above_the_backoff_ceiling() {
         const {
             assert!(
                 SEUIL_CONNEXION_UTILE_MS > REPLI_MAX_MS,
-                "SEUIL_CONNEXION_UTILE_MS doit être > REPLI_MAX_MS"
+                "SEUIL_CONNEXION_UTILE_MS must be > REPLI_MAX_MS"
             )
         };
     }
@@ -206,7 +206,7 @@ mod tests {
     /// closes at once (expired token, role already taken, budget exhausted). The
     /// fallback must grow up to its ceiling, never start again from the floor.
     #[test]
-    fn une_connexion_refusee_ne_rearme_jamais_le_repli() {
+    fn a_refused_connection_never_re_arms_the_backoff() {
         // 🔴 **THE DURATION EXERCISED IS `REPLI_MAX_MS`, NOT THE 3 ms OF A REAL
         // REFUSAL, AND IT IS A FIX OF THIS VERY TEST.** Written first
         // with `3` — the measured order of magnitude of a `{"type":"error"}` followed
@@ -226,7 +226,7 @@ mod tests {
             reprise.tentative_lancee();
             assert!(
                 !reprise.connexion_terminee(REPLI_MAX_MS),
-                "un refus au tour {tour}, même long de REPLI_MAX_MS, ne doit JAMAIS réarmer le repli"
+                "a refusal at round {tour}, even REPLI_MAX_MS long, must NEVER re-arm the backoff"
             );
         }
         assert_eq!(reprise.delai_ms(), REPLI_MAX_MS);
@@ -240,7 +240,7 @@ mod tests {
     /// so that the NEXT outage does not resume at the ceiling of an
     /// already resolved failure.
     #[test]
-    fn une_connexion_qui_a_servi_rearme_le_repli() {
+    fn a_connection_that_served_re_arms_the_backoff() {
         let mut reprise = Reprise::neuve();
         for _ in 0..10 {
             reprise.tentative_lancee();
@@ -255,7 +255,7 @@ mod tests {
     /// the exact threshold re-arms. Without this test, a `>` comparison instead
     /// of `>=` would go unnoticed.
     #[test]
-    fn la_frontiere_du_seuil_est_eprouvee_des_deux_cotes() {
+    fn the_threshold_boundary_is_tested_on_both_sides() {
         let mut juste_en_dessous = Reprise::neuve();
         juste_en_dessous.tentative_lancee();
         assert!(!juste_en_dessous.connexion_terminee(SEUIL_CONNEXION_UTILE_MS - 1));
@@ -272,7 +272,7 @@ mod tests {
     /// wraparound. `saturating_add` and `delai_de_repli` cover both;
     /// this test freezes it.
     #[test]
-    fn le_compteur_ne_deborde_jamais() {
+    fn the_counter_never_overflows() {
         let mut reprise = Reprise {
             tentative: u32::MAX - 1,
         };

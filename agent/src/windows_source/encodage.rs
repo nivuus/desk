@@ -38,7 +38,7 @@ impl WindowsSource {
         // with an error: it keeps the current rung and continues the session
         // until its normal closing.
         if self.fatal {
-            anyhow::bail!("source épuisée : taille d'encodage inchangée");
+            anyhow::bail!("source exhausted: encoding size unchanged");
         }
 
         // Upper bound added in the final branch review (C1): the
@@ -95,7 +95,7 @@ impl WindowsSource {
             Err(error) => {
                 self.fatal = true;
                 return Err(error).context(
-                    "encodeur neuf refusé après destruction de l'ancien : source épuisée",
+                    "fresh encoder refused after destroying the old one: source exhausted",
                 );
             }
         };
@@ -106,7 +106,7 @@ impl WindowsSource {
         // as above, and for the same reason.
         if let Err(error) = encoder.request_keyframe() {
             self.fatal = true;
-            return Err(error).context("image clé refusée par l'encodeur neuf : source épuisée");
+            return Err(error).context("key frame refused by the fresh encoder: source exhausted");
         }
 
         self.encoder = Some(encoder);
@@ -116,7 +116,7 @@ impl WindowsSource {
         tracing::info!(
             width,
             height,
-            "taille d'encodage changée sans toucher à la fenêtre"
+            "encoding size changed without touching the window"
         );
         Ok(())
     }

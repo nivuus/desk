@@ -39,10 +39,8 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
     let client = vigem_client::Client::connect().context("connexion au pilote ViGEmBus")?;
     let id = vigem_client::TargetId::XBOX360_WIRED;
     let mut target = vigem_client::Xbox360Wired::new(client, id);
-    target
-        .plugin()
-        .context("branchement de la manette virtuelle")?;
-    target.wait_ready().context("attente de disponibilité")?;
+    target.plugin().context("plugging in the virtual gamepad")?;
+    target.wait_ready().context("waiting for availability")?;
 
     // A non-neutral state: if a Windows tool (joy.cpl) is open on the
     // VM, it must show it.
@@ -79,27 +77,27 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
                 tracing::warn!(
                     tentative = tentatives,
                     error = ?e,
-                    "update() pas encore prêt, nouvelle tentative"
+                    "update() not ready yet, retrying"
                 );
                 std::thread::sleep(Duration::from_millis(250));
             }
             Err(e) => {
-                tracing::warn!(error = ?e, "update() a échoué — variante brute, abandon");
-                return Err(e).context("application d'un état");
+                tracing::warn!(error = ?e, "update() failed — raw variant, giving up");
+                return Err(e).context("applying a state");
             }
         }
     }
     if tentatives > 0 {
-        tracing::info!(tentatives, "update() a fini par réussir après attente");
+        tracing::info!(tentatives, "update() finally succeeded after waiting");
     }
 
     // `request_notification()` then `spawn_thread`: see the module comment
     // above for why this detour is necessary rather than a
     // hypothetical `wait_timeout`.
     let (tx, rx) = mpsc::channel::<vigem_client::XNotification>();
-    let requete = target.request_notification().context(
-        "requête de notification (nécessite la fonctionnalité unstable_xtarget_notification)",
-    )?;
+    let requete = target
+        .request_notification()
+        .context("notification request (requires the unstable_xtarget_notification feature)")?;
     let fil = requete.spawn_thread(move |_requete, notification| {
         let _ = tx.send(notification);
     });
@@ -117,7 +115,7 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
                 tracing::info!(
                     grand = vibration.large_motor,
                     petit = vibration.small_motor,
-                    "vibration reçue"
+                    "rumble received"
                 );
             }
             Err(mpsc::RecvTimeoutError::Timeout) => continue,
@@ -132,6 +130,6 @@ pub fn probe(secondes: u64) -> anyhow::Result<String> {
     let _ = fil.join();
 
     Ok(format!(
-        "branchement OK, {recu} notification(s) de vibration reçue(s)"
+        "plugged in OK, {recu} rumble notification(s) received"
     ))
 }

@@ -25,13 +25,13 @@ fn cree_dossier(chemin: &str) -> Evenement {
 /// Letting the second through would open two concurrent `createWritable()` streams
 /// on the same file, which would overwrite each other.
 #[test]
-fn deux_notifications_du_meme_chemin_ne_font_qu_une_poussee_en_vol() {
+fn two_notifications_of_the_same_path_make_only_one_push_in_flight() {
     let mut f = File::new();
     assert_eq!(f.signaler(modified("a.txt")), Some(modified("a.txt")));
     assert_eq!(
         f.signaler(modified("a.txt")),
         None,
-        "la seconde ne démarre RIEN"
+        "the second starts NOTHING"
     );
     assert_eq!(f.en_vol(), Some("a.txt"));
     assert_eq!(f.en_attente(), 0);
@@ -43,14 +43,14 @@ fn deux_notifications_du_meme_chemin_ne_font_qu_une_poussee_en_vol() {
 /// any trace saying so: it is the silent loss this whole
 /// sub-project exists to forbid.
 #[test]
-fn une_notification_pendant_une_poussee_est_rejouee_apres() {
+fn a_notification_during_a_push_is_replayed_afterwards() {
     let mut f = File::new();
     f.signaler(modified("a.txt"));
     f.signaler(modified("a.txt")); // arrives during the push
     assert_eq!(
         f.terminee("a.txt"),
         Some(modified("a.txt")),
-        "le rejeu doit repartir, et le fichier être relu DEPUIS LE DÉBUT"
+        "the replay must restart, and the file be read again FROM THE START"
     );
     assert_eq!(f.en_vol(), Some("a.txt"));
     // …and once replayed, nothing is waiting any more.
@@ -61,7 +61,7 @@ fn une_notification_pendant_une_poussee_est_rejouee_apres() {
 /// The replay goes **ahead** of the queue: its bytes are the most recent
 /// anyone is waiting for.
 #[test]
-fn un_rejeu_passe_devant_la_file() {
+fn a_replay_goes_ahead_of_the_queue() {
     let mut f = File::new();
     f.signaler(modified("a.txt"));
     f.signaler(modified("b.txt")); // en attente
@@ -73,14 +73,14 @@ fn un_rejeu_passe_devant_la_file() {
 /// The order between distinct paths is the registration order. A `HashSet`
 /// would give a different one at each run.
 #[test]
-fn l_ordre_entre_chemins_distincts_est_celui_d_inscription() {
+fn the_order_between_distinct_paths_is_the_registration_order() {
     let mut f = File::new();
     let noms: Vec<String> = (0..8).map(|i| format!("f{i}.txt")).collect();
     for n in &noms {
         f.signaler(modified(n));
     }
-    let mut vus = vec![f.en_vol().expect("le premier est parti").to_string()];
-    while let Some(next) = f.terminee(vus.last().expect("non vide")) {
+    let mut vus = vec![f.en_vol().expect("the first has left").to_string()];
+    while let Some(next) = f.terminee(vus.last().expect("not empty")) {
         vus.push(next.chemin().to_string());
     }
     assert_eq!(vus, noms);
@@ -89,13 +89,17 @@ fn l_ordre_entre_chemins_distincts_est_celui_d_inscription() {
 /// A path already WAITING keeps its rank: moving it back to the tail would
 /// let younger entries pass ahead of it.
 #[test]
-fn un_chemin_deja_en_attente_garde_son_rang() {
+fn a_path_already_pending_keeps_its_rank() {
     let mut f = File::new();
     f.signaler(modified("en-vol.txt"));
     f.signaler(modified("a.txt"));
     f.signaler(modified("b.txt"));
-    assert_eq!(f.signaler(modified("a.txt")), None, "a.txt attendait déjà");
-    assert_eq!(f.en_attente(), 2, "aucun doublon n'entre dans la file");
+    assert_eq!(
+        f.signaler(modified("a.txt")),
+        None,
+        "a.txt was already waiting"
+    );
+    assert_eq!(f.en_attente(), 2, "no duplicate enters the queue");
     assert_eq!(
         f.terminee("en-vol.txt").as_ref().map(Evenement::chemin),
         Some("a.txt")
@@ -109,7 +113,7 @@ fn un_chemin_deja_en_attente_garde_son_rang() {
 /// and the local workstation would return `IsADirectory` on the most mundane path there
 /// is.
 #[test]
-fn une_creation_de_repertoire_survit_a_une_modification() {
+fn a_directory_creation_survives_a_modification() {
     // En vol, puis rejeu.
     let mut f = File::new();
     f.signaler(cree_dossier("dossier"));
@@ -140,7 +144,7 @@ fn a_file_creation_is_replaced_by_the_following_modification() {
 /// would mean a SINGLE failure would block all following writes — and the
 /// journal keeps the due entry anyway.
 #[test]
-fn une_poussee_qui_echoue_libere_le_vol() {
+fn a_failing_push_frees_the_flight() {
     let mut f = File::new();
     f.signaler(modified("echoue.txt"));
     f.signaler(modified("suivant.txt"));
@@ -150,11 +154,15 @@ fn une_poussee_qui_echoue_libere_le_vol() {
 /// An end that does not match the flight in progress disturbs nothing — it is the case
 /// of a late `Fait`, arrived after an expiry.
 #[test]
-fn une_fin_qui_ne_correspond_pas_au_vol_ne_derange_rien() {
+fn an_end_not_matching_the_flight_disturbs_nothing() {
     let mut f = File::new();
     f.signaler(modified("a.txt"));
     assert_eq!(f.terminee("inconnu.txt"), None);
-    assert_eq!(f.en_vol(), Some("a.txt"), "le vol en cours est INTACT");
+    assert_eq!(
+        f.en_vol(),
+        Some("a.txt"),
+        "the flight in progress is INTACT"
+    );
 }
 
 /// ⚠️ **WHAT F3 WILL READ.** Without `attend`, its renaming would not know that a
@@ -162,7 +170,7 @@ fn une_fin_qui_ne_correspond_pas_au_vol_ne_derange_rien() {
 /// path that no longer exists. The browser would then recreate the temporary
 /// file, and the save would be lost.
 #[test]
-fn attend_voit_le_vol_et_la_file() {
+fn waits_sees_the_flight_and_the_queue() {
     let mut f = File::new();
     f.signaler(modified("en-vol.txt"));
     f.signaler(modified("en-attente.txt"));
@@ -177,7 +185,7 @@ fn attend_voit_le_vol_et_la_file() {
 /// 🔴 **And `oublier` DOES NOT TOUCH THE FLIGHT IN PROGRESS**: its frames have already
 /// gone, and its `Fait` must still find its recipient.
 #[test]
-fn oublier_retire_de_la_file_et_du_rejeu_mais_pas_du_vol() {
+fn forgetting_removes_from_the_queue_and_the_replay_but_not_the_flight() {
     let mut f = File::new();
     f.signaler(modified("en-vol.txt"));
     f.signaler(modified("en-vol.txt")); // pose un rejeu
@@ -188,10 +196,14 @@ fn oublier_retire_de_la_file_et_du_rejeu_mais_pas_du_vol() {
     assert_eq!(f.en_attente(), 0);
 
     f.oublier("en-vol.txt");
-    assert_eq!(f.en_vol(), Some("en-vol.txt"), "le vol en cours reste");
+    assert_eq!(
+        f.en_vol(),
+        Some("en-vol.txt"),
+        "the flight in progress remains"
+    );
     assert_eq!(
         f.terminee("en-vol.txt"),
         None,
-        "mais son rejeu a bien été oublié"
+        "but its replay was indeed forgotten"
     );
 }

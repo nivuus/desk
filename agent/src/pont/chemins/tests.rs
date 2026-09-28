@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn une_remontee_sort_de_la_racine_et_est_refusee() {
+fn a_climb_up_leaves_the_root_and_is_refused() {
     // The test spec §4.4 names. `a\..\..\secret` goes up TWO levels
     // above the root: if it were resolved, it would designate a file outside
     // the directory the user shared.
@@ -11,7 +11,7 @@ fn une_remontee_sort_de_la_racine_et_est_refusee() {
 }
 
 #[test]
-fn une_remontee_deguisee_est_refusee() {
+fn a_disguised_climb_up_is_refused() {
     // The interposed `.` is what breaks a naive detection by substring
     // `"\.."` or by prefix.
     assert_eq!(normaliser(r"a\.\..\..\x"), Err(CheminRefuse::Remontee));
@@ -21,7 +21,7 @@ fn une_remontee_deguisee_est_refusee() {
 }
 
 #[test]
-fn un_flux_alternatif_est_refuse() {
+fn an_alternate_stream_is_refused() {
     // An NTFS alternate data stream has no equivalent in the File
     // System Access API: serving it would make no sense, and ignoring it
     // silently would return the file's CONTENT for a request for zone
@@ -37,7 +37,7 @@ fn un_flux_alternatif_est_refuse() {
 }
 
 #[test]
-fn un_nom_reserve_est_refuse() {
+fn a_reserved_name_is_refused() {
     for nom in ["CON", "PRN", "NUL", "AUX", "COM1", "LPT1"] {
         assert_eq!(normaliser(nom), Err(CheminRefuse::NomReserve), "{nom}");
     }
@@ -59,7 +59,7 @@ fn un_nom_reserve_est_refuse() {
 }
 
 #[test]
-fn un_chemin_absolu_est_refuse() {
+fn an_absolute_path_is_refused() {
     assert_eq!(normaliser(r"C:\x"), Err(CheminRefuse::Absolu));
     assert_eq!(normaliser(r"\\serveur\part"), Err(CheminRefuse::Absolu));
     assert_eq!(normaliser(r"\depuis-la-racine"), Err(CheminRefuse::Absolu));
@@ -74,7 +74,7 @@ fn the_root_itself_is_the_empty_string_and_is_valid() {
 }
 
 #[test]
-fn les_contre_obliques_deviennent_des_barres() {
+fn backslashes_become_slashes() {
     assert_eq!(normaliser(r"a\b\c").unwrap(), "a/b/c");
     assert_eq!(normaliser("a").unwrap(), "a");
     // An interposed `.` gets dropped, it does not become a component.
@@ -85,7 +85,7 @@ fn les_contre_obliques_deviennent_des_barres() {
 }
 
 #[test]
-fn la_casse_est_conservee_mais_la_comparaison_ne_l_est_pas() {
+fn case_is_preserved_but_comparison_is_not() {
     // ⚠️ Case is PRESERVED: the File System Access API is case-
     // sensitive, and folding the path would make every opening fail. Two
     // paths differing only in case therefore stay distinct on
@@ -162,6 +162,6 @@ fn with_last_component_ignores_the_slash() {
     assert_eq!(
         super::with_last_component("a/b", "z"),
         Some("z".to_string()),
-        "il n'y a aucun antislash : tout le chemin est le dernier composant"
+        "there is no backslash: the whole path is the last component"
     );
 }

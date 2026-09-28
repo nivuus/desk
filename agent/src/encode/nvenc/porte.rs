@@ -32,9 +32,9 @@ pub(super) fn verify(statut: Statut, quoi: &str) -> Result<()> {
     // API — see `super::abi`.
     if statut == abi::ERR_INVALID_VERSION {
         bail!(
-            "{quoi} : NV_ENC_ERR_INVALID_VERSION ({statut}) — une version de \
-             structure est fausse. Voir `encode_nvenc::abi` et sa commande de \
-             relecture ; ce n'est PAS un défaut de pilote."
+            "{quoi}: NV_ENC_ERR_INVALID_VERSION ({statut}) — a structure \
+             version is wrong. See `encode_nvenc::abi` and its re-reading \
+             command; this is NOT a driver defect."
         );
     }
     bail!("{quoi} : NVENCSTATUS {statut}")
@@ -52,7 +52,7 @@ pub struct Porte {
 impl Porte {
     pub fn ouvrir() -> Result<Self> {
         let module = unsafe { LoadLibraryA(windows::core::s!("nvEncodeAPI64.dll")) }
-            .context("chargement de nvEncodeAPI64.dll (la DLL vient du pilote NVIDIA)")?;
+            .context("loading nvEncodeAPI64.dll (the DLL comes from the NVIDIA driver)")?;
 
         // ① The driver version BEFORE anything, so that the refusal is readable.
         let version_max = unsafe {
@@ -61,7 +61,7 @@ impl Porte {
                 windows::core::s!("NvEncodeAPIGetMaxSupportedVersion"),
             )
         }
-        .ok_or_else(|| anyhow!("NvEncodeAPIGetMaxSupportedVersion absente de la DLL"))?;
+        .ok_or_else(|| anyhow!("NvEncodeAPIGetMaxSupportedVersion missing from the DLL"))?;
         let version_max: fonctions::VersionMaxSupportee =
             unsafe { std::mem::transmute(version_max) };
         let mut rendue = 0u32;
@@ -71,9 +71,9 @@ impl Porte {
         )?;
         if !abi::pilote_compatible(rendue) {
             bail!(
-                "pilote NVIDIA trop ancien pour l'API transcrite : il annonce \
-                 {rendue:#x}, il faut au moins {:#x} (soit {}.{}). \
-                 ⚠️ Cet empaquetage est (majeure << 4) | mineure, PAS celui de \
+                "NVIDIA driver too old for the transcribed API: it announces \
+                 {rendue:#x}, at least {:#x} is needed (i.e. {}.{}). \
+                 ⚠️ This packing is (major << 4) | minor, NOT the one of \
                  NVENCAPI_VERSION.",
                 abi::version_pilote_attendue(),
                 abi::VERSION_MAJEURE,
@@ -89,7 +89,7 @@ impl Porte {
         // ② The function table.
         let create =
             unsafe { GetProcAddress(module, windows::core::s!("NvEncodeAPICreateInstance")) }
-                .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance absente de la DLL"))?;
+                .ok_or_else(|| anyhow!("NvEncodeAPICreateInstance missing from the DLL"))?;
         let create: fonctions::CreateInstanceFn = unsafe { std::mem::transmute(create) };
         let mut table: FunctionList = unsafe { std::mem::zeroed() };
         table.version = abi::FUNCTION_LIST_VER;

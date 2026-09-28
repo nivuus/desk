@@ -46,7 +46,7 @@ enum Scenario {
 async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedReceiver<String>) {
     let ecoute = TcpListener::bind("127.0.0.1:0")
         .await
-        .expect("écoute locale");
+        .expect("local listener");
     let port = ecoute.local_addr().expect("adresse locale").port();
     let (tx, rx) = mpsc::unbounded_channel();
     scenarios.reverse();
@@ -60,7 +60,7 @@ async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedRec
             tokio::spawn(async move {
                 let mut ws = tokio_tungstenite::accept_async(flux)
                     .await
-                    .expect("montée WebSocket");
+                    .expect("WebSocket upgrade");
                 if let Some(Ok(Message::Text(texte))) = ws.next().await {
                     let _ = tx.send(texte);
                 }
@@ -84,7 +84,7 @@ async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedRec
                     }
                     Some(Scenario::Refuse(motif)) => {
                         let texte = serde_json::to_string(&DepuisLaPlateforme::refus(motif))
-                            .expect("sérialisation du refus");
+                            .expect("serializing the refusal");
                         let _ = ws.send(Message::Text(texte)).await;
                         tokio::time::sleep(Duration::from_millis(50)).await;
                         drop(ws);
@@ -109,10 +109,10 @@ where
         "jeton-jwt",
         1_787_136_774_000,
     ))
-    .expect("sérialisation de l'enrôlement");
+    .expect("serializing the enrolment");
     ws.send(Message::Text(texte))
         .await
-        .expect("envoi de l'enrôlement");
+        .expect("sending the enrolment");
 }
 
 /// Waits for the identity to take a value different from the one already read.
@@ -122,7 +122,7 @@ async fn prochain_prefixe(canal: &mut Canal) -> String {
             .identite
             .changed()
             .await
-            .expect("le fil de reprise a renoncé au lieu de reprendre");
+            .expect("the reconnection thread gave up instead of reconnecting");
         let courante = canal.identite.borrow_and_update().clone();
         if let Some(identite) = courante {
             return identite.prefixe;
@@ -131,7 +131,7 @@ async fn prochain_prefixe(canal: &mut Canal) -> String {
 }
 
 #[test]
-fn l_url_du_canal_ne_double_jamais_la_barre() {
+fn the_channel_url_never_doubles_the_slash() {
     assert_eq!(url_du_canal("ws://h:8080"), "ws://h:8080/agent");
     assert_eq!(url_du_canal("ws://h:8080/"), "ws://h:8080/agent");
 }
@@ -142,7 +142,7 @@ fn l_url_du_canal_ne_double_jamais_la_barre() {
 /// would declare the VM `injoignable` **permanently**, while the network
 /// has been back for a long time.
 #[tokio::test]
-async fn une_coupure_reelle_du_socket_fait_reprendre_le_canal() {
+async fn a_real_socket_cut_makes_the_channel_reconnect() {
     let (url, mut connexions) = faux_canal(vec![
         Scenario::EnroleEtCoupe("PREMIER"),
         Scenario::EnroleEtTient("SECOND"),
@@ -152,26 +152,26 @@ async fn une_coupure_reelle_du_socket_fait_reprendre_le_canal() {
 
     let premiere = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
         .await
-        .expect("aucune identité en 5 s")
-        .expect("la boucle a renoncé avant tout enrôlement");
+        .expect("no identity within 5 s")
+        .expect("the loop gave up before any enrolment");
     assert_eq!(premiere.prefixe, "PREMIER");
 
     let seconde = tokio::time::timeout(Duration::from_secs(5), prochain_prefixe(&mut canal))
         .await
-        .expect("aucune reprise en 5 s après la coupure : le canal ne se reprend PAS");
+        .expect("no reconnection within 5 s after the cut: the channel does NOT reconnect");
     assert_eq!(seconde, "SECOND");
 
     // And it is indeed a SECOND connection, with the same enrolment: the
     // reconnection presents itself again, it does not merely beat.
-    let premier = connexions.recv().await.expect("premier enrôlement");
-    let second = connexions.recv().await.expect("second enrôlement");
+    let premier = connexions.recv().await.expect("first enrolment");
+    let second = connexions.recv().await.expect("second enrolment");
     assert!(
         premier.contains(r#""vm":"vm-1""#),
-        "enrôlement reçu : {premier}"
+        "enrolment received: {premier}"
     );
     assert_eq!(
         premier, second,
-        "la reprise doit re-présenter le MÊME enrôlement"
+        "the reconnection must present the SAME enrolment again"
     );
 }
 
@@ -186,16 +186,16 @@ async fn une_coupure_reelle_du_socket_fait_reprendre_le_canal() {
 /// in advance. Measured: under the mutation, both go red, each on its
 /// own message.
 #[tokio::test]
-async fn un_refus_de_version_rend_l_attente_vaine() {
+async fn a_version_refusal_makes_the_wait_pointless() {
     let (url, _connexions) = faux_canal(vec![Scenario::Refuse(MotifCanal::Version)]).await;
     let mut canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
     let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
         .await
-        .expect("la boucle doit RENONCER, pas attendre indéfiniment");
+        .expect("the loop must GIVE UP, not wait forever");
     assert!(
         verdict.is_none(),
-        "un refus de version doit rendre l'attente vaine"
+        "a version refusal must make the wait pointless"
     );
 }
 
@@ -205,13 +205,13 @@ async fn a_version_refusal_opens_no_second_connection() {
     let (url, mut connexions) = faux_canal(vec![Scenario::Refuse(MotifCanal::Version)]).await;
     let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
-    connexions.recv().await.expect("premier enrôlement");
+    connexions.recv().await.expect("first enrolment");
     // The minimal backoff (500 ms) has elapsed three times: if there were to be
     // a second attempt, it would be there.
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     assert!(
         connexions.try_recv().is_err(),
-        "une seconde connexion a eu lieu : le refus de version a été réessayé"
+        "a second connection took place: the version refusal was retried"
     );
 }
 
@@ -220,7 +220,7 @@ async fn a_version_refusal_opens_no_second_connection() {
 /// A refused enrolment stops being refused as soon as the operator enrols the VM,
 /// without anyone restarting the agent.
 #[tokio::test]
-async fn un_refus_d_enrolement_se_reessaie() {
+async fn an_enrolment_refusal_is_retried() {
     let (url, _connexions) = faux_canal(vec![
         Scenario::Refuse(MotifCanal::Enrolement),
         Scenario::EnroleEtTient("APRES-ENROLEMENT"),
@@ -230,8 +230,8 @@ async fn un_refus_d_enrolement_se_reessaie() {
 
     let identite = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
         .await
-        .expect("aucune reprise en 5 s après un refus d'enrôlement")
-        .expect("la boucle a renoncé sur un refus qui n'est PAS `version`");
+        .expect("no reconnection within 5 s after an enrolment refusal")
+        .expect("the loop gave up on a refusal that is NOT `version`");
     assert_eq!(identite.prefixe, "APRES-ENROLEMENT");
 }
 
@@ -253,7 +253,7 @@ pub(super) async fn faux_canal_bidirectionnel(
 ) {
     let ecoute = TcpListener::bind("127.0.0.1:0")
         .await
-        .expect("écoute locale");
+        .expect("local listener");
     let port = ecoute.local_addr().expect("adresse locale").port();
     let (recus_tx, recus_rx) = mpsc::unbounded_channel();
     let (ordres_tx, mut ordres_rx) = mpsc::unbounded_channel::<String>();
@@ -263,7 +263,7 @@ pub(super) async fn faux_canal_bidirectionnel(
         };
         let mut ws = tokio_tungstenite::accept_async(flux)
             .await
-            .expect("montée WebSocket");
+            .expect("WebSocket upgrade");
         if let Some(Ok(Message::Text(texte))) = ws.next().await {
             let _ = recus_tx.send(texte);
         }
@@ -291,7 +291,7 @@ pub(super) async fn attendre_message(
 ) -> String {
     let attente = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
-            let texte = recus.recv().await.expect("le faux canal s'est tu");
+            let texte = recus.recv().await.expect("the fake channel went silent");
             if predicat(&texte) {
                 return texte;
             }
@@ -307,7 +307,7 @@ async fn a_message_pushed_into_the_queue_reaches_the_server() {
     // say so — neither error nor trace, the platform would simply stay empty.
     let (url, mut recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
+    canal.attendre_identite().await.expect("enrolment");
 
     canal
         .emetteur()
@@ -320,7 +320,7 @@ async fn a_message_pushed_into_the_queue_reaches_the_server() {
 }
 
 #[tokio::test]
-async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session() {
+async fn a_launch_order_reaches_the_consumer_and_does_not_close_the_session() {
     // 🔴 TWO REDS IN ONE. Forgetting the `Lancer` arm would make it fall into the
     // `Err` arm ("unreadable message"), which CLOSES the session: a
     // perfectly valid order would trigger a reconnection loop. The second
@@ -328,10 +328,8 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
     // logged then returned `Fin::Reprenable` would pass the first.
     let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
-    let mut recu_ordres = canal
-        .ordres()
-        .expect("la file d'ordres n'est prise qu'une fois");
+    canal.attendre_identite().await.expect("enrolment");
+    let mut recu_ordres = canal.ordres().expect("the order queue is taken only once");
 
     ordres
         .send(r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#.into())
@@ -339,8 +337,8 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
 
     let ordre = tokio::time::timeout(Duration::from_secs(5), recu_ordres.recv())
         .await
-        .expect("aucun ordre reçu en 5 s")
-        .expect("la file d'ordres est fermée");
+        .expect("no order received within 5 s")
+        .expect("the order queue is closed");
     assert_eq!(
         ordre,
         Ordre::Lancer {
@@ -361,7 +359,7 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
 }
 
 #[tokio::test]
-async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tuer_le_canal() {
+async fn a_message_queued_while_the_socket_is_down_is_lost_without_killing_the_channel() {
     // 🔴 IT IS THE INTENDED BEHAVIOUR, AND THIS TEST HAMMERS IT HOME. Making it blocking
     // would turn the queue into a memory leak on a channel that can stay cut
     // for hours; making it fatal would kill the channel on an ordinary network
@@ -378,7 +376,7 @@ async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tue
         canal
             .attendre_identite()
             .await
-            .expect("1er enrôlement")
+            .expect("1st enrolment")
             .prefixe,
         "AAA"
     );
@@ -413,13 +411,13 @@ async fn the_identity_is_reannounced_at_each_reenrolment() {
 }
 
 #[tokio::test]
-async fn la_file_d_ordres_ne_se_prend_qu_une_fois() {
+async fn the_order_queue_is_taken_only_once() {
     // Two consumers would steal orders from one another, and each
     // would only see part of them — a defect whose symptom would be "one
     // launch out of two does not go".
     let (url, _recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
+    canal.attendre_identite().await.expect("enrolment");
     assert!(canal.ordres().is_some());
     assert!(canal.ordres().is_none());
 }
@@ -443,10 +441,12 @@ async fn a_version_refusal_sent_in_another_version_makes_the_wait_vain() {
 
     let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
         .await
-        .expect("la boucle doit RENONCER, pas boucler : c'est le défaut mesuré en recette G1");
+        .expect(
+            "the loop must GIVE UP, not loop: this is the defect measured in acceptance run G1",
+        );
     assert!(
         verdict.is_none(),
-        "un refus de version émis dans une autre version doit rendre l'attente vaine"
+        "a version refusal sent in another version must make the wait pointless"
     );
 }
 
@@ -460,11 +460,11 @@ async fn a_version_refusal_sent_in_another_version_opens_no_second_connection() 
     .await;
     let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
 
-    connexions.recv().await.expect("premier enrôlement");
+    connexions.recv().await.expect("first enrolment");
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     assert!(
         connexions.try_recv().is_err(),
-        "une seconde connexion a eu lieu : c'est la boucle sans terme de la recette G1"
+        "a second connection took place: this is the endless loop of acceptance run G1"
     );
 }
 
@@ -474,7 +474,7 @@ async fn a_version_refusal_sent_in_another_version_opens_no_second_connection() 
 /// the first reason added by a future version, and the failure mode
 /// would come back identically.
 #[tokio::test]
-async fn un_refus_a_motif_inconnu_se_reessaie_au_lieu_de_devenir_illisible() {
+async fn a_refusal_with_an_unknown_reason_is_retried_instead_of_becoming_unreadable() {
     let (url, _connexions) = faux_canal(vec![
         Scenario::RefuseBrut(r#"{"type":"refus","v":98,"motif":"quota-depasse"}"#),
         Scenario::EnroleEtTient("APRES-MOTIF-INCONNU"),
@@ -484,7 +484,7 @@ async fn un_refus_a_motif_inconnu_se_reessaie_au_lieu_de_devenir_illisible() {
 
     let identite = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
         .await
-        .expect("aucune reprise en 5 s après un refus à motif inconnu")
-        .expect("la boucle a renoncé sur un motif qui n'est PAS `version`");
+        .expect("no reconnection within 5 s after a refusal with an unknown reason")
+        .expect("the loop gave up on a reason that is NOT `version`");
     assert_eq!(identite.prefixe, "APRES-MOTIF-INCONNU");
 }

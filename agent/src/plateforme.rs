@@ -15,7 +15,7 @@
 //! platform's guard refuses the handshake of the two others (sub-block P3), and
 //! no session is established.
 //!
-//! 🔴 **RECONNECTION IS NEW BEHAVIOUR, and it is the raison d'être of this
+//! 🔴 **RECONNECTION IS NEW BEHAVIOUR, and it is the reason to exist of this
 //! file.** Neither `signaling.rs` nor `signalisation.rs` has any: their fall
 //! is only logged, which is assumed there because the media no longer
 //! depends on signaling once the offer has been exchanged. **That reasoning does
@@ -163,7 +163,7 @@ impl Emetteur {
     /// loss silent and permanent.
     pub fn emettre(&self, message: VersLaPlateforme) {
         if let Err(error) = self.file.try_send(message) {
-            tracing::warn!(%error, "message montant abandonné : canal coupé ou file pleine");
+            tracing::warn!(%error, "upstream message dropped: channel cut or queue full");
         }
     }
 }
@@ -226,14 +226,19 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
                 Fin::Definitive => {
                     tracing::warn!(
                         url,
-                        "canal /agent abandonné DÉFINITIVEMENT : aucune reprise ne le rattrapera"
+                        "/agent channel abandoned FOR GOOD: no reconnection will catch it up"
                     );
                     return;
                 }
                 Fin::Reprenable => {}
             }
             let delai = repli::delai_de_repli(tentative);
-            tracing::info!(url, tentative, delai_ms = delai, "reprise du canal /agent");
+            tracing::info!(
+                url,
+                tentative,
+                delai_ms = delai,
+                "resuming the /agent channel"
+            );
             tentative = tentative.saturating_add(1);
             tokio::time::sleep(Duration::from_millis(delai)).await;
         }

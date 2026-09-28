@@ -43,7 +43,7 @@ pub struct Morceau {
 pub fn decouper(position: u64, length: u64, max: usize) -> Vec<Morceau> {
     assert!(
         max > 0,
-        "une découpe en morceaux de zéro octet ne se termine pas"
+        "splitting into zero-byte chunks does not terminate"
     );
     // `max` is bounded to `u32::MAX` before any conversion: it is here that the
     // overflow would occur on a 64-bit target, where `usize` is wider

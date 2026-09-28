@@ -25,7 +25,7 @@ fn a_l_envers(a: &str, b: &str) -> Ordering {
 /// fills in the wrong order sees its enumeration **silently**
 /// truncated or scrambled by ProjFS.
 #[test]
-fn l_ordre_suit_le_comparateur_injecte_et_non_l_ordre_lexicographique() {
+fn the_order_follows_the_injected_comparator_not_the_lexicographic_order() {
     let entrees = vec![e("alpha"), e("charlie"), e("bravo")];
     let prepare = preparer(entrees, None, |_, _| true, a_l_envers);
     let noms: Vec<&str> = prepare.iter().map(|e| e.nom.as_str()).collect();
@@ -51,7 +51,7 @@ fn the_search_expression_is_applied_when_provided() {
 /// always provide one, and inventing one (`*`) would make the result depend on
 /// `PrjFileNameMatch`'s behaviour on a pattern we forged.
 #[test]
-fn sans_expression_l_apparieur_n_est_pas_consulte() {
+fn without_an_expression_the_matcher_is_not_consulted() {
     let mut consulte = false;
     let prepare = preparer(
         vec![e("a"), e("b")],
@@ -65,12 +65,12 @@ fn sans_expression_l_apparieur_n_est_pas_consulte() {
     assert_eq!(prepare.len(), 2);
     assert!(
         !consulte,
-        "l'apparieur a été consulté alors qu'aucune expression n'est fournie"
+        "the matcher was consulted although no expression is provided"
     );
 }
 
 #[test]
-fn une_session_neuve_n_est_pas_chargee() {
+fn a_fresh_session_is_not_loaded() {
     let session = Session::new();
     assert!(!session.chargee());
     assert!(session.prochaine().is_none());
@@ -87,7 +87,7 @@ fn a_loaded_session_returns_its_entries_in_order_then_runs_out() {
     session.avancer();
     assert!(
         session.prochaine().is_none(),
-        "la session doit être épuisée"
+        "the session must be exhausted"
     );
 }
 
@@ -95,7 +95,7 @@ fn a_loaded_session_returns_its_entries_in_order_then_runs_out() {
 /// it restarts the enumeration in progress. Not doing so would return an empty
 /// directory to any application that asks again from the start — silently.
 #[test]
-fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
+fn a_restart_brings_the_cursor_back_to_the_start_without_losing_entries() {
     let mut session = Session::new();
     session.poser(vec![e("un"), e("deux")]);
     session.avancer();
@@ -104,7 +104,7 @@ fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
     session.redemarrer();
     assert!(
         session.chargee(),
-        "un redémarrage ne doit PAS jeter les entrées déjà obtenues"
+        "a restart must NOT drop the entries already obtained"
     );
     assert_eq!(session.prochaine().map(|e| e.nom.as_str()), Some("un"));
 }
@@ -113,7 +113,7 @@ fn un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees() {
 /// it, a second `Entrees` response would leave the cursor beyond the
 /// new list, and the enumeration would return empty.
 #[test]
-fn reposer_des_entrees_remet_le_curseur_a_zero() {
+fn setting_entries_again_resets_the_cursor() {
     let mut session = Session::new();
     session.poser(vec![e("un"), e("deux")]);
     session.avancer();

@@ -35,14 +35,14 @@ impl Fil {
         tracing::info!(
             racine,
             forcer,
-            memorise = memorise.as_deref().unwrap_or("<aucun>"),
+            memorise = memorise.as_deref().unwrap_or("<none>"),
             decision = if decision == Decision::Pousser {
                 "pousser"
             } else {
                 "retenir"
             },
             dues = self.journal.dues().len(),
-            "bonjour du navigateur : decision de reprise"
+            "browser hello: resume decision"
         );
         if let Some(nom) = a_memoriser(decision, racine) {
             self.write_remembered_name(nom);
@@ -60,10 +60,10 @@ impl Fil {
                 self.retenues = true;
                 tracing::warn!(
                     racine,
-                    memorise = memorise.as_deref().unwrap_or("<aucun>"),
+                    memorise = memorise.as_deref().unwrap_or("<none>"),
                     dues = self.journal.dues().len(),
-                    "ecritures dues RETENUES : le repertoire annonce n'est pas celui qui a ete \
-                     enregistre. Rien n'est pousse, rien n'est jete."
+                    "due writes HELD: the announced directory is not the one that was \
+                     recorded. Nothing is pushed, nothing is dropped."
                 );
                 self.annoncer_les_dues();
             }
@@ -110,7 +110,7 @@ impl Fil {
         }
         tracing::warn!(
             dues = self.journal.compte(),
-            "des ecritures etaient dues au demarrage du pont : elles sont repoussees"
+            "writes were due when the bridge started: they are pushed again"
         );
         self.annoncer_les_dues();
         let a_reprendre: Vec<String> = self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
@@ -130,7 +130,7 @@ impl Fil {
                     // we lost is not having it*.
                     tracing::warn!(
                         chemin, %error,
-                        "ecriture due abandonnee : le fichier local n'existe plus"
+                        "due write abandoned: the local file no longer exists"
                     );
                     let ligne = self.journal.retirer(&chemin);
                     self.write_journal(&ligne);

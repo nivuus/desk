@@ -38,7 +38,7 @@ pub(in crate::transport) fn budget_faute_reconstruction() -> &'static std::sync:
         if n > 0 {
             tracing::warn!(
                 fautes_a_injecter = n,
-                "injection de fautes de RECONSTRUCTION audio ARMEE : banc, jamais une configuration livrée"
+                "audio REBUILD fault injection ARMED: bench, never a shipped configuration"
             );
         }
         std::sync::atomic::AtomicU32::new(n)
@@ -64,7 +64,7 @@ where
         .is_ok()
     {
         Err(anyhow::anyhow!(
-            "faute injectée (AUDIO_FAUTE_RECONSTRUCTION)"
+            "injected fault (AUDIO_FAUTE_RECONSTRUCTION)"
         ))
     } else {
         reconstruire()

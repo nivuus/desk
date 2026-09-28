@@ -51,7 +51,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deux_telemetries_ne_se_melangent_pas() {
+    fn two_telemetries_do_not_mix() {
         // It is THE WHOLE point of the legacy: three process statics mixed
         // the sensor's N windows since D4, and `SOURCE_TRACE=1` only displayed
         // zeros in the child, which writes nothing.
@@ -81,7 +81,7 @@ mod tests {
     /// satisfy it. That was this test's first draft, and it was
     /// measured green under the sabotage it was meant to expose.
     #[test]
-    fn une_telemetrie_remise_a_neuf_repart_de_zero() {
+    fn a_reset_telemetry_restarts_from_zero() {
         let mut t = Telemetrie::default();
         t.tick();
         t.capturee();
@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(
             t.lire(),
             (1, 1, 1),
-            "précondition : les TROIS compteurs ont compté"
+            "precondition: the THREE counters have counted"
         );
         t = Telemetrie::default();
         assert_eq!(t.lire(), (0, 0, 0));

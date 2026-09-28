@@ -219,7 +219,7 @@ impl TamponGigue {
         // the other correction would come to undo.
         let occupation = self.occupation();
         if occupation > SEUIL_SAUT {
-            let saute = self.file.pop_front().expect("tête relue");
+            let saute = self.file.pop_front().expect("head read back");
             self.compteurs.sauts += 1;
             // Same reason as for saturation: without advancing the due, the next
             // round would claim through FEC the frame we just deliberately
@@ -241,7 +241,7 @@ impl TamponGigue {
             return Retrait::Manquante;
         }
 
-        let tete = self.file.front().expect("tête relue").rtp_48k;
+        let tete = self.file.front().expect("head read back").rtp_48k;
 
         let du = *self.prochain_du.get_or_insert(tete);
 
@@ -249,14 +249,14 @@ impl TamponGigue {
             // The due frame is missing, but the next one is there: that is exactly
             // the condition — and the only one — where in-band FEC can work.
             self.compteurs.fec += 1;
-            let suivante = self.file.front().expect("tête relue").opus.clone();
+            let suivante = self.file.front().expect("head read back").opus.clone();
             // We advance to the next one WITHOUT consuming it: it plays in
             // its turn. The hole is filled by its redundancy, not by it.
             self.prochain_du = Some(tete);
             return Retrait::Reconstruire { suivante };
         }
 
-        let trame = self.file.pop_front().expect("tête relue");
+        let trame = self.file.pop_front().expect("head read back");
         self.prochain_du = Some(trame.rtp_48k + trame.echantillons as u64);
         Retrait::Trame(trame)
     }

@@ -89,7 +89,7 @@ mod win {
         .context("SPI_GETMOUSESPEED")?;
 
         Ok(format!(
-            "seuils relus = {relu:?}, vitesse relue = {vitesse} (attendu : [0, 0, 0] et {VITESSE_1_POUR_1})"
+            "thresholds read back = {relu:?}, speed read back = {vitesse} (expected: [0, 0, 0] and {VITESSE_1_POUR_1})"
         ))
     }
 }

@@ -56,7 +56,7 @@ pub mod transport;
 /// browser": that was the state of **task 13**, and **task 14**
 /// wired the three asynchronous callbacks to it. The root shows the tree of the
 /// local workstation — noted in the acceptance run, 6 entries out of 6, three runs
-/// (`docs/superpowers/plans/2026-08-19-pont-fichiers-f1-resultats.md`).
+/// (`docs/superpowers/plans/2026-08-19-pont-fichiers-f1-resultats.md`). (policy: allow-fr, real file path)
 /// *A per-task review could not see it: the task that writes the sentence
 /// and the one that refutes it never reread each other.*
 ///
@@ -74,7 +74,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
 
     // Load BEFORE touching the file system and BEFORE signaling:
     // a VM without ProjFS must fail here, with a message that names the missing
-    // entry point, and not after having created an empty "Mes Fichiers" folder that
+    // entry point, and not after having created an empty "Mes Fichiers" folder that (policy: allow-fr, real Windows folder name)
     // nothing would ever serve.
     let projfs = projfs::chargement::charger()?;
 
@@ -105,19 +105,19 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     // the process boundary.
     let Some(offre) = offers.recv().await else {
         crate::signaling::honour_suggested_retry(&retry_apres_s).await;
-        anyhow::bail!("aucune offre SDP pour le pont fichiers");
+        anyhow::bail!("no SDP offer for the file bridge");
     };
     let offre = str0m::change::SdpOffer::from_sdp_string(&offre)
         .map_err(|e| anyhow::anyhow!("offre SDP illisible : {e}"))?;
     let reponse = rtc
         .sdp_api()
         .accept_offer(offre)
-        .map_err(|e| anyhow::anyhow!("le pont refuse l'offre : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("the bridge refuses the offer: {e}"))?;
     answers
         .send(reponse.to_sdp_string())
         .await
-        .context("envoi de la réponse SDP du pont")?;
-    tracing::info!("réponse SDP du pont envoyée");
+        .context("sending the bridge's SDP answer")?;
+    tracing::info!("bridge SDP answer sent");
 
     // ⚠️ **No TURN relay for the bridge, and it is an assumed DIVERGENCE
     // from the video session**, which allocates one before its answer
@@ -174,8 +174,8 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let mutations_armees = std::env::var("PONT_MUTATION").as_deref() != Ok("0");
     if !mutations_armees {
         tracing::warn!(
-            "mutations DESARMEES (PONT_MUTATION=0) : renommage et suppression refuses \
-             au PRE_, rien n'est pousse"
+            "mutations DISARMED (PONT_MUTATION=0): rename and delete refused \
+             at PRE_, nothing is pushed"
         );
     }
 
@@ -194,8 +194,8 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let cache_arme = std::env::var("PONT_CACHE").as_deref() != Ok("0");
     if !cache_arme {
         tracing::warn!(
-            "cache d'enumeration DESARME (PONT_CACHE=0) : bras de banc, jamais une \
-             configuration livree"
+            "enumeration cache DISARMED (PONT_CACHE=0): bench arm, never a \
+             shipped configuration"
         );
     }
 
@@ -208,7 +208,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         cache_arme,
     )?;
     let etat = virtualisation.etat();
-    tracing::info!(racine = %virtualisation.racine().display(), "racine du pont fichiers montée");
+    tracing::info!(racine = %virtualisation.racine().display(), "file bridge root mounted");
 
     // Thread 4 — **the WRITE thread**, and it is DEDICATED.
     //
@@ -233,7 +233,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
                 ordres_ecriture,
             )
         })
-        .context("lancement du fil d'écriture du pont")?;
+        .context("launching the bridge write thread")?;
 
     // Thread 2 — the transport. It owns the `Rtc` and the socket, and **knows
     // neither ProjFS nor Windows**.
@@ -241,10 +241,10 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         .name("pont-transport".into())
         .spawn(move || {
             if let Err(error) = transport::tourner(rtc, socket, requetes, vers_pont) {
-                tracing::error!(%error, "transport du pont arrêté sur erreur");
+                tracing::error!(%error, "bridge transport stopped on error");
             }
         })
-        .context("lancement du fil de transport du pont")?;
+        .context("launching the bridge transport thread")?;
 
     // I6, as for the video session: a loss of signaling after the initial
     // exchange must be visible rather than silent. No renegotiation
@@ -252,7 +252,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let mut closed = closed;
     tokio::spawn(async move {
         if closed.changed().await.is_ok() && *closed.borrow() {
-            tracing::warn!("connexion de signaling du pont perdue (aucune renégociation)");
+            tracing::warn!("bridge signaling connection lost (no renegotiation)");
         }
     });
 
@@ -262,7 +262,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let etat_du_fil = std::sync::Arc::clone(&etat);
     tokio::task::spawn_blocking(move || service::tourner(etat_du_fil, reponses))
         .await
-        .context("le fil du pont fichiers a paniqué")?;
+        .context("the file bridge thread panicked")?;
 
     // 🔴 **THE LOCAL COPY OF `Arc<Etat>` MUST BE RELEASED HERE, AND F1 DID NOT
     // DO IT.**
@@ -298,11 +298,11 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     drop(virtualisation);
     let _ = ecriture.join();
     let _ = transport.join();
-    tracing::info!("pont fichiers arrêté");
+    tracing::info!("file bridge stopped");
     Ok(())
 }
 
 #[cfg(not(windows))]
 pub async fn executer(_config: crate::Config) -> anyhow::Result<()> {
-    anyhow::bail!("le mode pont n'existe que sur Windows")
+    anyhow::bail!("bridge mode only exists on Windows")
 }

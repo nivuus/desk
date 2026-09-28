@@ -307,7 +307,7 @@ impl Session {
                                 .map_err(|e| anyhow!("handle_input receive : {e}"))?;
                         }
                         Err(e) => {
-                            tracing::debug!(error = %e, "paquet UDP ignoré (non reconnu)");
+                            tracing::debug!(error = %e, "UDP packet ignored (unrecognised)");
                         }
                     }
                     return Ok(Tick::Continue);
@@ -352,7 +352,7 @@ impl Session {
                             error = %e,
                             consecutives = self.consecutive_recv_errors,
                             backoff_ms = backoff.as_millis(),
-                            "échec de réception UDP transitoire, ignoré"
+                            "transient UDP receive failure, ignored"
                         );
                         std::thread::sleep(backoff);
                         return Ok(Tick::Continue);
@@ -366,9 +366,9 @@ impl Session {
                     RecvErrorAction::Fatal => {
                         tracing::warn!(
                             error = %e,
-                            "échec de réception UDP non transitoire, fin de session"
+                            "non-transient UDP receive failure, end of session"
                         );
-                        self.begin_ending("échec de réception UDP non transitoire");
+                        self.begin_ending("non-transient UDP receive failure");
                         return Ok(Tick::Continue);
                     }
                 },
@@ -390,7 +390,7 @@ mod tests {
     // classification and backoff, independently of any I/O.
 
     #[test]
-    fn connection_reset_est_transitoire() {
+    fn connection_reset_is_transient() {
         // The motivating case (I2 extended): `ConnectionReset` is the portable
         // variant to which Rust normalises `WSAECONNRESET`, received on
         // a Windows UDP socket after an ICMP "port unreachable".
@@ -401,7 +401,7 @@ mod tests {
     }
 
     #[test]
-    fn interrupted_est_transitoire() {
+    fn interrupted_is_transient() {
         assert_eq!(
             classify_recv_error(std::io::ErrorKind::Interrupted),
             RecvErrorAction::RetryWithBackoff
@@ -435,12 +435,12 @@ mod tests {
         let un = recv_error_backoff(1);
         let deux = recv_error_backoff(2);
         let trois = recv_error_backoff(3);
-        assert!(un < deux, "{un:?} devrait être < {deux:?}");
-        assert!(deux < trois, "{deux:?} devrait être < {trois:?}");
+        assert!(un < deux, "{un:?} should be < {deux:?}");
+        assert!(deux < trois, "{deux:?} should be < {trois:?}");
     }
 
     #[test]
-    fn backoff_reste_borne_meme_apres_une_tres_longue_rafale() {
+    fn backoff_stays_bounded_even_after_a_very_long_burst() {
         // Direct proof of the targeted defect: without a bound, a burst
         // of consecutive errors would make the delay grow without limit (or
         // would overflow the arithmetic). Here, even after a number of errors
@@ -459,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn attente_bornee_par_l_echeance_d_image_la_plus_proche() {
+    fn wait_bounded_by_the_nearest_frame_deadline() {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_secs(1);
         let next_frame_at = now + Duration::from_micros(5_000);
@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn attente_bornee_par_l_echeance_rtc_si_plus_proche() {
+    fn wait_bounded_by_the_rtc_deadline_if_nearer() {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_micros(2_000);
         let next_frame_at = now + Duration::from_secs(1);
@@ -477,7 +477,7 @@ mod tests {
     }
 
     #[test]
-    fn attente_dictee_par_rtc_seul_sans_piste_video() {
+    fn wait_dictated_by_rtc_alone_without_a_video_track() {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_millis(10);
         assert_eq!(

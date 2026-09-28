@@ -52,11 +52,11 @@ fn an_out_of_order_arrival_is_restored_in_order() {
         }
     }
     assert_eq!(vus, vec![0, 960, 1920]);
-    assert_eq!(t.compteurs().hors_ordre, 2, "les deux arrivées tardives");
+    assert_eq!(t.compteurs().hors_ordre, 2, "the two late arrivals");
 }
 
 #[test]
-fn un_doublon_est_compte_et_jete() {
+fn a_duplicate_is_counted_and_dropped() {
     let mut t = tampon();
     t.deposer(trame(960, 20));
     t.deposer(trame(960, 20));
@@ -72,7 +72,7 @@ fn un_doublon_est_compte_et_jete() {
 /// It is the reverse of emission (work stream A throws away the old to keep
 /// the fresh) — here we undergo a remote timeline.
 #[test]
-fn a_saturation_c_est_la_plus_ancienne_qui_part() {
+fn at_saturation_the_oldest_one_leaves() {
     let mut t = tampon();
     // PLAFOND = 200 ms, that is 10 frames of 20 ms. Drop off 12 in order.
     for i in 0..12u64 {
@@ -80,7 +80,7 @@ fn a_saturation_c_est_la_plus_ancienne_qui_part() {
     }
     assert!(
         t.occupation() <= PLAFOND,
-        "occupation {:?} au-dessus du plafond {PLAFOND:?}",
+        "occupancy {:?} above the ceiling {PLAFOND:?}",
         t.occupation()
     );
     assert!(t.compteurs().jetees_saturation >= 2);
@@ -93,8 +93,8 @@ fn a_saturation_c_est_la_plus_ancienne_qui_part() {
     };
     assert!(
         premiere > 0,
-        "la trame la plus ancienne (rtp 0) est encore là : c'est la plus RÉCENTE \
-         qui a été jetée"
+        "the oldest frame (rtp 0) is still there: it is the most RECENT \
+         that was dropped"
     );
 
     // …and the most recent, for its part, survived.
@@ -102,12 +102,12 @@ fn a_saturation_c_est_la_plus_ancienne_qui_part() {
     while let Retrait::Trame(tr) = t.retirer() {
         derniere = tr.rtp_48k;
     }
-    assert_eq!(derniere, 11 * 960, "la trame la plus récente a été jetée");
+    assert_eq!(derniere, 11 * 960, "the most recent frame was dropped");
 }
 
 /// "under starvation, the sink returns silence without ever blocking" (spec §11).
 #[test]
-fn en_famine_le_retrait_rend_manquante_sans_bloquer() {
+fn when_starving_the_removal_returns_missing_without_blocking() {
     let mut t = tampon();
     for _ in 0..5 {
         assert!(matches!(t.retirer(), Retrait::Manquante));
@@ -119,7 +119,7 @@ fn en_famine_le_retrait_rend_manquante_sans_bloquer() {
 /// FEC is ONLY useful if the next one is already there (spec §8): the
 /// reconstruction is done from the frame that FOLLOWS the missing one.
 #[test]
-fn une_trame_absente_dont_la_suivante_est_la_donne_reconstruire() {
+fn a_missing_frame_whose_next_is_there_gives_rebuild() {
     let mut t = tampon();
     t.deposer(trame(0, 20));
     t.deposer(trame(1920, 20)); // la trame 960 manque
@@ -127,9 +127,9 @@ fn une_trame_absente_dont_la_suivante_est_la_donne_reconstruire() {
     assert!(matches!(t.retirer(), Retrait::Trame(tr) if tr.rtp_48k == 0));
     match t.retirer() {
         Retrait::Reconstruire { suivante } => {
-            assert_eq!(suivante, trame(1920, 20).opus, "ce n'est pas la SUIVANTE");
+            assert_eq!(suivante, trame(1920, 20).opus, "it is not the NEXT one");
         }
-        autre => panic!("attendu Reconstruire, reçu {autre:?}"),
+        autre => panic!("expected Reconstruire, got {autre:?}"),
     }
     assert_eq!(t.compteurs().fec, 1);
     // The next one was not consumed: it plays at the round after.
@@ -137,23 +137,19 @@ fn une_trame_absente_dont_la_suivante_est_la_donne_reconstruire() {
 }
 
 #[test]
-fn une_trame_absente_sans_suivante_donne_manquante() {
+fn a_missing_frame_without_a_next_gives_missing() {
     let mut t = tampon();
     t.deposer(trame(0, 20));
     assert!(matches!(t.retirer(), Retrait::Trame(tr) if tr.rtp_48k == 0));
     assert!(matches!(t.retirer(), Retrait::Manquante));
-    assert_eq!(
-        t.compteurs().fec,
-        0,
-        "aucune suivante : rien à reconstruire"
-    );
+    assert_eq!(t.compteurs().fec, 0, "no next one: nothing to rebuild");
     assert_eq!(t.compteurs().famines, 1);
 }
 
 /// A frame that arrives AFTER its place has passed is not played out
 /// of turn: it is stale, counted, and thrown away.
 #[test]
-fn une_trame_perimee_est_comptee_et_jetee() {
+fn a_stale_frame_is_counted_and_dropped() {
     let mut t = tampon();
     t.deposer(trame(960, 20));
     assert!(matches!(t.retirer(), Retrait::Trame(_)));
@@ -172,7 +168,7 @@ fn une_trame_perimee_est_comptee_et_jetee() {
 /// that 10,000 drop-offs in a row do not diverge and leave the
 /// buffer bounded.
 #[test]
-fn deposer_ne_bloque_jamais_meme_a_saturation() {
+fn depositing_never_blocks_even_at_saturation() {
     let mut t = tampon();
     for i in 0..10_000u64 {
         t.deposer(trame(i * 960, 20));
@@ -180,7 +176,7 @@ fn deposer_ne_bloque_jamais_meme_a_saturation() {
     assert_eq!(t.compteurs().deposees, 10_000);
     assert!(
         t.occupation() <= PLAFOND,
-        "le tampon a enflé sans borne : {:?}",
+        "the buffer swelled without bound: {:?}",
         t.occupation()
     );
 }
@@ -189,7 +185,7 @@ fn deposer_ne_bloque_jamais_meme_a_saturation() {
 /// below 20 ms we insert one. "Crude, audible once every
 /// several minutes" — and assumed.
 #[test]
-fn au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee() {
+fn beyond_the_high_threshold_a_frame_is_skipped_and_counted() {
     let mut t = tampon();
     // 7 frames of 20 ms = 140 ms, above SEUIL_SAUT (120 ms) and under
     // PLAFOND (200 ms): it is DRIFT we exercise, not saturation.
@@ -199,12 +195,12 @@ fn au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee() {
     assert_eq!(
         t.compteurs().jetees_saturation,
         0,
-        "c'est la dérive, pas la saturation"
+        "this is drift, not saturation"
     );
 
     match t.retirer() {
         // Frame 0 was skipped: it is 960 that comes out.
-        Retrait::Trame(tr) => assert_eq!(tr.rtp_48k, 960, "aucune trame n'a été sautée"),
+        Retrait::Trame(tr) => assert_eq!(tr.rtp_48k, 960, "no frame was skipped"),
         autre => panic!("retrait inattendu : {autre:?}"),
     }
     assert_eq!(t.compteurs().sauts, 1);
@@ -215,7 +211,7 @@ fn au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee() {
 }
 
 #[test]
-fn en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee() {
+fn below_the_low_threshold_a_frame_is_inserted_and_counted() {
     let mut t = tampon();
     // A single 10 ms frame: 10 ms of occupancy, under SEUIL_INSERTION.
     t.deposer(trame(0, 10));
@@ -241,12 +237,8 @@ fn between_the_two_thresholds_no_correction_is_applied() {
         t.deposer(trame(i * 960, 20));
     }
     assert!(matches!(t.retirer(), Retrait::Trame(tr) if tr.rtp_48k == 0));
-    assert_eq!(t.compteurs().sauts, 0, "un saut dans la bande morte");
-    assert_eq!(
-        t.compteurs().insertions,
-        0,
-        "une insertion dans la bande morte"
-    );
+    assert_eq!(t.compteurs().sauts, 0, "a skip in the dead band");
+    assert_eq!(t.compteurs().insertions, 0, "an insertion in the dead band");
 }
 
 /// "None is silent" (spec §8). Each correction increments its
@@ -276,12 +268,12 @@ fn each_correction_has_its_counter() {
     assert_eq!(
         t.compteurs().insertions,
         1,
-        "l'insertion n'a pas son compteur"
+        "the insertion does not have its counter"
     );
     assert_eq!(
         t.compteurs().sauts,
         skips_before,
-        "l'insertion a incrémenté le compteur des SAUTS : les deux corrections \
-         partagent un compteur"
+        "the insertion incremented the SKIPS counter: the two corrections \
+         share a counter"
     );
 }

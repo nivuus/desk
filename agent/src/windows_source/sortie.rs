@@ -451,14 +451,13 @@ impl WindowsSource {
                 (b.0.min(dw), b.1.min(dh))
             }
             Err(error) => {
-                tracing::warn!(%error, "zone de travail illisible : recadrage borné par la texture");
+                tracing::warn!(%error, "unreadable work area: cropping bounded by the texture");
                 (dw, dh)
             }
         };
         let (rl, rh) = size_for_viewport(size, borne);
-        let region = region_de_sortie(rl, rh).with_context(|| {
-            format!("sortie {nom_sortie} de dimensions inexploitables ({dw}x{dh})")
-        })?;
+        let region = region_de_sortie(rl, rh)
+            .with_context(|| format!("output {nom_sortie} with unusable dimensions ({dw}x{dh})"))?;
         let (width, height) = (region.width, region.height);
 
         let mut encoder = H264Encoder::new(

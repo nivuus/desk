@@ -72,7 +72,7 @@ pub(super) unsafe extern "system" fn debut_enumeration(
         // empty directory (spec §7.2).
         etat.sessions
             .lock()
-            .expect("verrou des sessions")
+            .expect("sessions lock")
             .entry(id)
             .or_default();
         S_OK
@@ -92,10 +92,7 @@ pub(super) unsafe extern "system" fn fin_enumeration(
         // The session dies here: its entries do NOT outlive the enumeration.
         // It is what distinguishes a session from an enumeration cache, which is
         // NOT delivered in F1 (see `pont::enumeration`).
-        etat.sessions
-            .lock()
-            .expect("verrou des sessions")
-            .remove(&id);
+        etat.sessions.lock().expect("sessions lock").remove(&id);
         S_OK
     })
 }

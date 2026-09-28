@@ -226,8 +226,8 @@ fn refusee_pour_appartenance(hwnd: HWND, titre: &str) -> bool {
         titre,
         pid,
         processus = %nom_du_processus(pid).unwrap_or_else(|| "?".into()),
-        "fenêtre ÉCARTÉE : desk ne l'a pas lancée (règle d'appartenance). \
-         Désarmer par APPARTENANCE=0 pour retrouver le comportement d'avant"
+        "window DISCARDED: desk did not launch it (ownership rule). \
+         Disarm with APPARTENANCE=0 to get the previous behaviour back"
     );
     true
 }
@@ -292,7 +292,7 @@ pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
             )
         };
         if hook.is_invalid() {
-            let _ = prete.send(Err("SetWinEventHook a échoué".into()));
+            let _ = prete.send(Err("SetWinEventHook failed".into()));
             return;
         }
         let id = unsafe { windows::Win32::System::Threading::GetCurrentThreadId() };
@@ -317,7 +317,7 @@ pub fn poser(tx: Sender<EvenementFenetre>) -> Result<Hook> {
         }),
         Ok(Err(e)) => Err(anyhow!(e)),
         Err(_) => Err(anyhow!(
-            "le fil du hook s'est terminé avant de rendre son état"
+            "the hook thread finished before returning its state"
         )),
     }
 }

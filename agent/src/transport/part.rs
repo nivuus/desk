@@ -42,7 +42,7 @@ fn sondage_arme() -> bool {
     *ARME.get_or_init(|| {
         let arme = std::env::var("PART_SONDAGE").as_deref() != Ok("0");
         if !arme {
-            tracing::warn!("objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée");
+            tracing::warn!("probing objective DISARMED (PART_SONDAGE=0): A/B arm, never a shipped configuration");
         }
         arme
     })
@@ -67,7 +67,7 @@ impl Session {
     /// probing saturated nothing and was read as congestion by
     /// no one. What saturates is the **browser's decoder**, and the only
     /// lever measured effective against it is the number of pixels
-    /// (`docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`,
+    /// (`docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`, (policy: allow-fr, real file path)
     /// §1 and §3.6). The mechanism stays right, its justification has changed.
     ///
     /// **A SLEEPING window's share does not go to the controller**, and it is the only
@@ -107,7 +107,7 @@ impl Session {
             session = %self.session_id,
             part_bps = bps,
             endormie,
-            "part de budget appliquee"
+            "budget share applied"
         );
     }
 }
@@ -165,9 +165,9 @@ mod tests {
     /// share, otherwise `changer_plafond` makes the bitrate follow the ceiling in
     /// both directions ("never any estimate" regime) and the defect does not
     /// show — the test would be green by construction. Same precaution
-    /// as `une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation`.
+    /// as `a_rising_share_does_not_raise_the_bitrate_beyond_the_estimate`.
     #[test]
-    fn une_part_dormante_ne_borne_pas_le_controleur_et_le_reveil_est_suivi() {
+    fn a_dormant_share_does_not_bound_the_controller_and_the_wake_is_followed() {
         let mid = Mid::from("0");
         let endormie = Arc::new(AtomicBool::new(false));
         let source = Box::new(SourceEndormable {
@@ -191,13 +191,13 @@ mod tests {
         assert_eq!(
             session.congestion.current().adaptation,
             congestion::Adaptation::Active,
-            "précondition : une estimation réelle a bien été observée, donc `changer_plafond` BORNE"
+            "precondition: a real estimate was indeed observed, so `changer_plafond` BOUNDS"
         );
         let part_eveillee = 1_333_333; // 12 Mb/s shared between eight windows.
         assert!(
             session.congestion.current().video_bitrate_bps > part_eveillee,
-            "précondition : l'estimation laisse de la place au-dessus de la part d'éveillée, \
-             sans quoi l'assertion finale ne prouverait rien"
+            "precondition: the estimate leaves room above the awake share, \
+             otherwise the final assertion would prove nothing"
         );
 
         // The observation above itself set a pending decision:
@@ -211,7 +211,7 @@ mod tests {
         session.appliquer_part(PART_DORMANTE_BPS);
         assert!(
             session.pending_decision.is_none(),
-            "une part d'endormie ne pose aucune décision : il n'y a plus d'encodeur à régler"
+            "an asleep share sets no decision: there is no encoder to tune any more"
         );
 
         // It wakes up, and receives its awake share.
@@ -221,13 +221,13 @@ mod tests {
         assert_eq!(
             session.congestion.current().video_bitrate_bps,
             part_eveillee,
-            "le débit doit suivre la part de l'ÉVEILLÉE : avant le remède, le `min` du plancher \
-             dormant le figeait à {PART_DORMANTE_BPS} bps pour toute la vie de la session"
+            "the bitrate must follow the AWAKE share: before the remedy, the `min` of the dormant \
+             floor froze it at {PART_DORMANTE_BPS} bps for the whole life of the session"
         );
     }
 
     #[test]
-    fn une_part_recue_borne_le_plafond_du_controleur() {
+    fn a_received_share_bounds_the_controller_ceiling() {
         let source = Box::new(fixtures::video_test_source());
         let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
             .expect("session");
@@ -243,11 +243,11 @@ mod tests {
         assert_eq!(
             session.congestion.current().video_bitrate_bps,
             3_000_000,
-            "la décision du contrôleur doit être bornée par la part"
+            "the controller's decision must be bounded by the share"
         );
         assert!(
             session.pending_decision.is_some(),
-            "la part doit poser une décision que la branche a0ter appliquera"
+            "the share must set a decision that the a0ter branch will apply"
         );
     }
 
@@ -266,10 +266,10 @@ mod tests {
     /// 50,000,000 — it is not an implementation bug, it is the test that
     /// did not exercise the regime it claims to cover. Fixed by injecting
     /// a real observation before the decrease, as
-    /// `une_estimation_perimee_bascule_l_adaptation_en_indisponible_et_l_annonce`
+    /// `a_stale_estimate_switches_the_adaptation_to_unavailable_and_announces_it`
     /// (`transport/adaptation.rs`) already does.
     #[test]
-    fn une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation() {
+    fn a_rising_share_does_not_raise_the_bitrate_beyond_the_estimate() {
         let mid = Mid::from("0");
         let source = Box::new(fixtures::video_test_source());
         let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
@@ -293,21 +293,21 @@ mod tests {
         assert_eq!(
             session.congestion.current().adaptation,
             congestion::Adaptation::Active,
-            "précondition : une estimation réelle a bien été observée"
+            "precondition: a real estimate was indeed observed"
         );
 
         session.appliquer_part(2_000_000);
         let apres_baisse = session.congestion.current().video_bitrate_bps;
         assert!(
             apres_baisse <= 2_000_000,
-            "précondition : la baisse a bien été appliquée"
+            "precondition: the decrease was indeed applied"
         );
 
         session.appliquer_part(50_000_000);
 
         assert!(
             session.congestion.current().video_bitrate_bps <= apres_baisse,
-            "sans observation neuve, une part plus large ne remonte pas le débit d'elle-même"
+            "without a new observation, a wider share does not raise the bitrate by itself"
         );
     }
 }

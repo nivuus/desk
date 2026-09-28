@@ -80,7 +80,7 @@ impl Session {
                 // inform the browser, but we do not wait indefinitely
                 // for a channel that will not open.
                 tracing::warn!(
-                    "fin de session sans canal de contrôle disponible pour en informer le navigateur"
+                    "end of session without a control channel available to tell the browser"
                 );
                 return Ok(Some(Tick::Disconnected));
             }
@@ -89,7 +89,7 @@ impl Session {
             return Ok(None);
         };
 
-        let message = self.pending_control.pop_front().expect("non vide");
+        let message = self.pending_control.pop_front().expect("not empty");
         // Variant name for logging purposes only: workstream B's
         // acceptance run (measurements 3 and 5) had to work around this
         // path's observability with temporary client instrumentation, for lack of a line
@@ -112,10 +112,10 @@ impl Session {
         if let Some(mut channel) = self.rtc.channel(id) {
             match channel.write(false, json.as_bytes()) {
                 Ok(_) => {
-                    tracing::debug!(type_message, "message de contrôle écrit");
+                    tracing::debug!(type_message, "control message written");
                 }
                 Err(e) => {
-                    tracing::warn!(error = %e, "échec d'écriture sur le canal de contrôle");
+                    tracing::warn!(error = %e, "write failure on the control channel");
                 }
             }
         }
@@ -132,7 +132,7 @@ impl Session {
         self.ending = true;
         self.pending_control
             .push_back(AgentControl::session_end(reason));
-        tracing::info!(reason, "clôture de session amorcée");
+        tracing::info!(reason, "session closing started");
     }
 }
 
@@ -146,7 +146,7 @@ mod tests {
     use crate::transport::fixtures;
 
     #[test]
-    fn relaie_au_pair_un_controle_pousse_depuis_l_exterieur_de_la_boucle() {
+    fn relays_to_the_peer_a_control_pushed_from_outside_the_loop() {
         use proto::control::CursorShape;
         use std::sync::mpsc;
         use std::thread;
@@ -164,15 +164,15 @@ mod tests {
         api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
         api.add_channel("control".to_string());
         api.add_channel("input".to_string());
-        let (offer, pending) = api.apply().expect("offre non vide");
+        let (offer, pending) = api.apply().expect("non-empty offer");
         let answer_sdp = session
             .accept_offer(&offer.to_sdp_string())
-            .expect("offre acceptée");
-        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+            .expect("offer accepted");
+        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
         peer_rtc
             .sdp_api()
             .accept_answer(pending, answer)
-            .expect("réponse acceptée");
+            .expect("answer accepted");
 
         // That is the point of the test: the message is produced NEITHER by the loop,
         // NOR by a str0m event — it comes from a third party, as the
@@ -180,7 +180,7 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         session.set_control_source(rx);
         tx.send(AgentControl::pointer(false, CursorShape::Default))
-            .expect("envoi dans le canal");
+            .expect("sending on the channel");
 
         thread::spawn(move || {
             let mut on_input = |_| {};
@@ -192,7 +192,7 @@ mod tests {
         // the control channel. Hard bound so as not to hang if nothing arrives.
         peer_socket
             .set_read_timeout(Some(Duration::from_millis(50)))
-            .expect("délai de lecture");
+            .expect("read timeout");
         let mut buf = vec![0u8; 4096];
         let debut = Instant::now();
         let mut recu = false;
@@ -227,6 +227,6 @@ mod tests {
             }
         }
 
-        assert!(recu, "le message de pointeur n'est jamais parvenu au pair");
+        assert!(recu, "the pointer message never reached the peer");
     }
 }

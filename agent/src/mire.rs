@@ -118,7 +118,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn la_couleur_d_une_mire_identifie_sa_fenetre() {
+    fn a_test_pattern_colour_identifies_its_window() {
         for id in 0..MIRES_MAX {
             assert_eq!(identifier(couleur_mire(id, 0)), Some(id));
             assert_eq!(identifier(couleur_mire(id, 1)), Some(id));
@@ -126,26 +126,26 @@ mod tests {
     }
 
     #[test]
-    fn l_alternance_de_trame_change_le_vert_sans_toucher_a_l_identite() {
+    fn frame_alternation_changes_the_green_without_touching_the_identity() {
         let paire = couleur_mire(3, 10);
         let impaire = couleur_mire(3, 11);
         assert_ne!(
             paire.1, impaire.1,
-            "sans alternance visible, Desktop Duplication n'émet rien"
+            "without visible alternation, Desktop Duplication emits nothing"
         );
         assert_eq!(paire.0, impaire.0);
         assert_eq!(identifier(impaire), Some(3));
     }
 
     #[test]
-    fn la_mire_d_une_fenetre_voisine_est_rejetee() {
+    fn a_neighbouring_window_test_pattern_is_rejected() {
         // The exact case the elimination gate must catch: the capture
         // of a covered window returns the content of the one on top.
         assert_eq!(verdict(3, couleur_mire(4, 0)), Verdict::Voisine(4));
     }
 
     #[test]
-    fn une_image_noire_est_rejetee() {
+    fn a_black_image_is_rejected() {
         // PrintWindow on a D3D window typically returns black: it is a
         // path failure, not an unknown test pattern.
         assert_eq!(verdict(0, (0, 0, 0)), Verdict::Noire);
@@ -158,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn une_couleur_etrangere_est_inconnue() {
+    fn a_foreign_colour_is_unknown() {
         // The desktop background, a PowerShell console: neither a test pattern, nor black.
         assert_eq!(verdict(0, (255, 255, 255)), Verdict::Inconnue);
         assert_eq!(identifier((1, 36, 86)), None);
@@ -173,22 +173,22 @@ mod tests {
         for count in 1..=8usize {
             let mut comptes = vec![0usize; count];
             for tour in 0..(count as u64 * 7) {
-                let voie = voie_controlee(tour, count).expect("nombre non nul");
+                let voie = voie_controlee(tour, count).expect("non-zero count");
                 comptes[voie] += 1;
             }
             assert!(
                 comptes.iter().all(|compte| *compte == 7),
-                "nombre = {count}, comptes = {comptes:?}"
+                "count = {count}, counts = {comptes:?}"
             );
         }
     }
 
     #[test]
-    fn la_rotation_ne_designe_jamais_une_voie_inexistante() {
+    fn the_rotation_never_designates_a_non_existent_lane() {
         for count in 1..=8usize {
             for tour in 0..100u64 {
-                let voie = voie_controlee(tour, count).expect("nombre non nul");
-                assert!(voie < count, "voie {voie} hors des {count} voies");
+                let voie = voie_controlee(tour, count).expect("non-zero count");
+                assert!(voie < count, "lane {voie} outside the {count} lanes");
             }
         }
     }
@@ -196,7 +196,7 @@ mod tests {
     /// Zero paths is not a caller error to report through a panic: the
     /// bench must be able to ask without knowing, and check nothing.
     #[test]
-    fn sans_voie_il_n_y_a_rien_a_controler() {
+    fn without_a_lane_there_is_nothing_to_check() {
         assert_eq!(voie_controlee(0, 0), None);
         assert_eq!(voie_controlee(42, 0), None);
     }

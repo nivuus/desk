@@ -10,7 +10,7 @@ fn pt(v: u8) -> Pt {
 }
 
 #[test]
-fn selectionne_le_mode_de_paquetisation_1() {
+fn selects_packetization_mode_1() {
     let candidates = vec![
         CandidatePt {
             codec: Codec::H264,
@@ -32,7 +32,7 @@ fn selectionne_le_mode_de_paquetisation_1() {
 }
 
 #[test]
-fn ignore_les_profils_sans_mode_1() {
+fn ignores_profiles_without_mode_1() {
     let candidates = vec![
         CandidatePt {
             codec: Codec::H264,
@@ -54,7 +54,7 @@ fn ignore_les_profils_sans_mode_1() {
 }
 
 #[test]
-fn ignore_les_codecs_non_h264_meme_en_mode_1() {
+fn ignores_non_h264_codecs_even_in_mode_1() {
     let candidates = vec![CandidatePt {
         codec: Codec::Vp8,
         packetization_mode: Some(1),
@@ -64,7 +64,7 @@ fn ignore_les_codecs_non_h264_meme_en_mode_1() {
 }
 
 #[test]
-fn cadence_normale_basee_sur_l_echeance_precedente_sans_derive() {
+fn normal_cadence_based_on_the_previous_deadline_without_drift() {
     let start = Instant::now();
     let interval = Duration::from_micros(16_667);
     let previous = start;
@@ -75,7 +75,7 @@ fn cadence_normale_basee_sur_l_echeance_precedente_sans_derive() {
 }
 
 #[test]
-fn rattrapage_borne_apres_un_long_blocage() {
+fn bounded_catch_up_after_a_long_block() {
     let start = Instant::now();
     let interval = Duration::from_micros(16_667);
     let previous = start;
@@ -93,13 +93,13 @@ fn rattrapage_borne_apres_un_long_blocage() {
 /// if the method read the current clock, the result would be
 /// later than `before`, not earlier.
 #[test]
-fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
+fn the_session_anchors_the_capture_instant_on_its_origin() {
     let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let source = Box::new(
         crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-            .expect("chargement du flux de test"),
+            .expect("loading the test stream"),
     );
 
     let before = Instant::now();
@@ -113,7 +113,7 @@ fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
     );
     assert!(
         session.capture_instant(180_000) < before,
-        "l'instant doit être ancré sur l'origine (dans le passé), pas sur l'horloge courante"
+        "the instant must be anchored on the origin (in the past), not on the current clock"
     );
     assert_eq!(session.capture_instant(0), origine);
 }
@@ -121,7 +121,7 @@ fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
 /// Non-regression net on THE fix of this workstream (in `write_frame`):
 /// if `write_frame` went back to `Instant::now()` instead of
 /// `self.capture_instant(unit.pts_90k)`, no existing test would
-/// detect it — `la_session_ancre_l_instant_de_capture_sur_son_origine`
+/// detect it — `the_session_anchors_the_capture_instant_on_its_origin`
 /// only exercises `capture_instant` in isolation, never its use at the call
 /// site, which requires a negotiated session.
 ///
@@ -161,7 +161,7 @@ fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
 /// `self.capture_instant(unit.pts_90k)` with `Instant::now()` in `write_frame`,
 /// this test fails with a measured gap close to 0 s instead of ~10 s.
 #[test]
-fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() {
+fn write_frame_announces_the_capture_instant_to_the_peer_via_the_rtcp_sender_report() {
     use std::thread;
     use str0m::change::SdpAnswer;
     use str0m::media::{Direction, MediaKind};
@@ -179,16 +179,16 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
     api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
     api.add_channel("control".to_string());
     api.add_channel("input".to_string());
-    let (offer, pending) = api.apply().expect("offre non vide");
+    let (offer, pending) = api.apply().expect("non-empty offer");
 
     let answer_sdp = session
         .accept_offer(&offer.to_sdp_string())
-        .expect("offre acceptée");
-    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+        .expect("offer accepted");
+    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
     peer_rtc
         .sdp_api()
         .accept_answer(pending, answer)
-        .expect("réponse acceptée par le pair");
+        .expect("answer accepted by the peer");
 
     thread::spawn(move || {
         let mut on_input = |_| {};
@@ -207,8 +207,8 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
         let now = Instant::now();
         if now >= hard_deadline {
             panic!(
-                "le pair local ne s'est jamais connecté, ou aucun Sender Report RTCP \
-                 exploitable n'a été reçu dans le délai imparti"
+                "the local peer never connected, or no usable RTCP Sender Report \
+                 was received within the allotted delay"
             );
         }
         if mesure.is_some() {
@@ -259,15 +259,15 @@ fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() 
         }
     }
 
-    let (rtp_time_secondes, elapsed_since_before) = mesure.expect("mesure du SR");
+    let (rtp_time_secondes, elapsed_since_before) = mesure.expect("SR measurement");
     let ecart = rtp_time_secondes - elapsed_since_before;
     eprintln!(
-        "wallclock RTCP : rtp_time={rtp_time_secondes:.3}s, écoulé depuis le début du test={elapsed_since_before:.3}s, écart={ecart:.3}s (attendu ≈ 10 s si write_frame annonce bien l'instant de capture)"
+        "RTCP wallclock: rtp_time={rtp_time_secondes:.3}s, elapsed since the start of the test={elapsed_since_before:.3}s, gap={ecart:.3}s (expected ≈ 10 s if write_frame does announce the capture instant)"
     );
     assert!(
         ecart > 3.0,
-        "écart de {ecart:.3} s trop faible (attendu ≈ 10 s) : write_frame semble annoncer \
-         l'instant d'ÉCRITURE plutôt que l'instant de CAPTURE comme wallclock RTCP — \
-         régression sur la correction centrale du chantier (dans `write_frame`)"
+        "gap of {ecart:.3} s too small (expected ≈ 10 s): write_frame seems to announce \
+         the WRITE instant rather than the CAPTURE instant as the RTCP wallclock — \
+         regression on the work item's central fix (in `write_frame`)"
     );
 }

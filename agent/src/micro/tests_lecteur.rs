@@ -36,7 +36,7 @@ fn trames_d_un_ton(f: f32, n: usize) -> Vec<TrameMicro> {
             .collect();
         phase += FRAME_SAMPLES as u64;
         out.push(TrameMicro {
-            opus: enc.encode(&pcm).expect("encodage"),
+            opus: enc.encode(&pcm).expect("encoding"),
             rtp_48k: (i * FRAME_SAMPLES) as u64,
             echantillons: FRAME_SAMPLES,
         });
@@ -66,7 +66,7 @@ fn gauche(entrelace: &[f32]) -> Vec<f32> {
 /// window — the same test over 1 s returns 437 Hz. **A correct instrument
 /// applied to the wrong window remains a bad instrument.**
 #[test]
-fn le_residu_survit_d_un_remplissage_a_l_autre() {
+fn the_residue_survives_from_one_fill_to_the_next() {
     let trames = trames_d_un_ton(440.0, 12);
 
     // Two players fed identically, read differently.
@@ -96,17 +96,17 @@ fn le_residu_survit_d_un_remplissage_a_l_autre() {
     // player that decoded NOTHING would pass the equality below.
     assert!(
         reference.iter().any(|&e| e.abs() > 0.01),
-        "la référence est muette : il n'y a rien à comparer"
+        "the reference is silent: there is nothing to compare"
     );
     assert_eq!(
         recolte.len(),
         reference.len(),
-        "les deux découpages ne rendent pas le même nombre d'échantillons"
+        "the two splittings do not return the same number of samples"
     );
     if let Some(i) = recolte.iter().zip(&reference).position(|(a, b)| a != b) {
         panic!(
-            "divergence à l'échantillon {i} ({} contre {}) : le résidu perd la queue \
-             des trames que le découpage coupe en deux",
+            "divergence at sample {i} ({} versus {}): the residue loses the tail \
+             of the frames that the splitting cuts in two",
             recolte[i], reference[i]
         );
     }
@@ -130,14 +130,14 @@ fn an_empty_reader_returns_silence_and_never_an_error() {
     l.remplir(&mut sortie);
     assert!(
         sortie.iter().all(|&e| e == 0.0),
-        "le silence n'a pas été écrit"
+        "the silence was not written"
     );
 }
 
 /// The acceptance run's instrument (decision 8), tested on a SYNTHETIC signal
 /// before serving to judge anything at all.
 #[test]
-fn la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent() {
+fn a_pure_tone_frequency_is_found_within_one_percent() {
     for cible in [220.0f32, 440.0, 1000.0] {
         let pcm: Vec<f32> = (0..48_000)
             .map(|n| (2.0 * std::f32::consts::PI * cible * n as f32 / 48_000.0).sin())
@@ -145,7 +145,7 @@ fn la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent() {
         let f = frequence_par_passages_a_zero(&pcm, 48_000).expect("ton mesurable");
         assert!(
             (f - cible).abs() / cible < 0.01,
-            "cible {cible}, mesuré {f}"
+            "target {cible}, measured {f}"
         );
     }
 }
@@ -155,10 +155,10 @@ fn la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent() {
 /// than a byte count — and that is exactly the doctrine this repository
 /// paid for in D7.
 #[test]
-fn le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible() {
+fn silence_and_noise_do_not_return_a_credible_frequency() {
     assert!(
         frequence_par_passages_a_zero(&vec![0.0; 48_000], 48_000).is_none(),
-        "le silence a rendu une fréquence"
+        "the silence returned a frequency"
     );
     // Deterministic noise (congruential generator, no new dependency).
     let mut x = 12_345u32;
@@ -171,13 +171,13 @@ fn le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible() {
     let f = frequence_par_passages_a_zero(&bruit, 48_000);
     assert!(
         f.is_none_or(|f| (f - 440.0).abs() > 100.0),
-        "du bruit a été pris pour un 440 Hz : {f:?}"
+        "noise was taken for a 440 Hz tone: {f:?}"
     );
 }
 
 /// ⚠️ **THE test that exercises the DEAD BAND**, and it took a mutation to
 /// discover that no other did: removing the dead band leaves
-/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible` green (pure noise
+/// `silence_and_noise_do_not_return_a_credible_frequency` green (pure noise
 /// returns ~12,000 Hz with or without it, hence always far from 440).
 ///
 /// What the dead band really avoids is the MIXED case: a real tone, with
@@ -185,7 +185,7 @@ fn le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible() {
 /// crossings. Each parasitic crossing adds two sign changes there, and
 /// the measured frequency explodes while the signal, for its part, is indeed a 440 Hz.
 #[test]
-fn un_ton_bruite_reste_mesure_a_sa_frequence() {
+fn a_noisy_tone_stays_measured_at_its_frequency() {
     let mut x = 987_654u32;
     let pcm: Vec<f32> = (0..48_000)
         .map(|n| {
@@ -197,8 +197,8 @@ fn un_ton_bruite_reste_mesure_a_sa_frequence() {
     let f = frequence_par_passages_a_zero(&pcm, 48_000).expect("ton mesurable");
     assert!(
         (f - 440.0).abs() / 440.0 < 0.01,
-        "un ton de 440 Hz légèrement bruité est mesuré {f} Hz : les traversées \
-         parasites autour de zéro sont comptées comme des passages"
+        "a slightly noisy 440 Hz tone is measured at {f} Hz: the spurious \
+         crossings around zero are counted as passages"
     );
 }
 
@@ -207,7 +207,7 @@ fn un_ton_bruite_reste_mesure_a_sa_frequence() {
 /// E1's acceptance run, played without VM and without browser** — what will remain for the
 /// acceptance run is the WebRTC path, not the processing chain.
 #[test]
-fn un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence() {
+fn an_encoded_tone_crosses_the_buffer_and_comes_out_at_its_frequency() {
     let trames = trames_d_un_ton(440.0, 106);
     let mut l = LecteurMicro::new().unwrap();
 
@@ -232,19 +232,16 @@ fn un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence() {
     assert_eq!(
         (c.sauts, c.insertions, c.plc, c.famines),
         (0, 0, 0, 0),
-        "le régime n'est pas nominal : la mesure de fréquence porterait sur \
-         un signal corrigé, pas sur le signal transmis — {c:?}"
+        "the regime is not nominal: the frequency measurement would bear on \
+         a corrected signal, not on the transmitted signal — {c:?}"
     );
 
     let g = gauche(&recolte);
     let f = frequence_par_passages_a_zero(&g, 48_000).expect("ton mesurable");
-    eprintln!(
-        "bout en bout pur : {} échantillons, {f} Hz mesurés",
-        g.len()
-    );
+    eprintln!("pure end to end: {} samples, {f} Hz measured", g.len());
     assert!(
         (f - 440.0).abs() / 440.0 < 0.02,
-        "le ton n'a pas traversé : mesuré {f} Hz au lieu de 440"
+        "the tone did not get through: measured {f} Hz instead of 440"
     );
 }
 
@@ -297,7 +294,7 @@ fn famine_apres_un_ton(reveils: usize) -> (Vec<f32>, LecteurMicro) {
 /// therefore converges towards comfort noise and NEVER stops by itself:
 /// bounding the concealed duration is up to US.
 #[test]
-fn une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence() {
+fn prolonged_starvation_stops_concealing_and_returns_silence() {
     const REVEILS: usize = 100; // 1 s de famine
     const QUEUE_DEPUIS: usize = 50; // we judge the second half
     let (recolte, lecteur) = famine_apres_un_ton(REVEILS);
@@ -307,7 +304,7 @@ fn une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence() {
     let c = lecteur.compteurs();
     assert!(
         c.plc > 0,
-        "aucune dissimulation n'a eu lieu : le test ne mesure rien — {c:?}"
+        "no concealment took place: the test measures nothing — {c:?}"
     );
 
     let queue = &recolte[QUEUE_DEPUIS * 480 * 2..];
@@ -315,13 +312,13 @@ fn une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence() {
     let f = frequence_par_passages_a_zero(&gauche(queue), 48_000);
     assert_eq!(
         crete, 0.0,
-        "après 500 ms de famine le puits rend encore du signal (crête {crete:.3}, \
-         fréquence {f:?}) : la dissimulation Opus n'est bornée par rien et \
-         fabrique un bourdon continu"
+        "after 500 ms of starvation the sink still returns signal (peak {crete:.3}, \
+         frequency {f:?}): Opus concealment is bounded by nothing and \
+         produces a continuous drone"
     );
     assert_eq!(
         f, None,
-        "après 500 ms de famine le puits rend encore une fréquence dominante"
+        "after 500 ms of starvation the sink still returns a dominant frequency"
     );
 }
 
@@ -335,23 +332,23 @@ fn une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence() {
 /// `plc` stops, `plc_plafonnees` takes over, and the sum of the two
 /// does cover all the missing frames returned.
 #[test]
-fn le_plafond_est_compte_a_part_de_la_dissimulation() {
+fn the_ceiling_is_counted_apart_from_concealment() {
     const REVEILS: usize = 100;
     let (_, lecteur) = famine_apres_un_ton(REVEILS);
     let c = lecteur.compteurs();
 
     assert!(
         c.plc_plafonnees > 0,
-        "le plafond a mordu (le puits se tait) mais rien ne le compte : une \
-         recette ne peut pas distinguer ce silence-là d'une dissimulation qui \
-         travaille — {c:?}"
+        "the ceiling bit (the sink goes silent) but nothing counts it: an \
+         acceptance run cannot tell that silence from a concealment that \
+         is working — {c:?}"
     );
     // Concealment did take place BEFORE the cap, and it is bounded by
     // it: 200 ms of 10 ms frames make at most 20 concealments.
     assert!(
         (1..=20).contains(&c.plc),
-        "les dissimulations réellement produites devraient tenir dans les \
-         200 ms du plafond (au plus 20 trames de 10 ms) — {c:?}"
+        "the concealments actually produced should fit within the \
+         200 ms of the ceiling (at most 20 frames of 10 ms) — {c:?}"
     );
     // And the two counters share EXACTLY the missing frames:
     // a due frame is either concealed or returned as silence, never
@@ -359,8 +356,8 @@ fn le_plafond_est_compte_a_part_de_la_dissimulation() {
     assert_eq!(
         c.plc + c.plc_plafonnees,
         c.famines + c.insertions,
-        "des trames manquantes ne sont comptées ni comme dissimulées ni comme \
-         plafonnées — {c:?}"
+        "missing frames are counted neither as concealed nor as \
+         capped — {c:?}"
     );
 }
 
@@ -371,7 +368,7 @@ fn le_plafond_est_compte_a_part_de_la_dissimulation() {
 /// file that exercises the reset on the PRODUCTION path: the unit
 /// tests of `micro/dissimulation.rs` cover the rule, never its wiring.
 #[test]
-fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
+fn after_the_ceiling_returning_speech_restores_the_whole_budget() {
     let all = trames_d_un_ton(440.0, 70);
     let mut it = all.into_iter();
     let mut l = LecteurMicro::new().unwrap();
@@ -396,7 +393,7 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
     let apres_famine_1 = l.compteurs();
     assert!(
         apres_famine_1.plc_plafonnees > 0,
-        "le plafond n'a pas mordu : la suite du test ne prouverait rien — {apres_famine_1:?}"
+        "the ceiling did not bite: the rest of the test would prove nothing — {apres_famine_1:?}"
     );
 
     // Speech comes back: thirty frames, one per wake-up.
@@ -411,8 +408,8 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
     let crete = entendu.iter().fold(0.0f32, |m, e| m.max(e.abs()));
     assert!(
         crete > 0.05,
-        "le ton n'est pas revenu après le plafond (crête {crete:.3}) : le puits \
-         reste muet alors que des trames arrivent"
+        "the tone did not come back after the ceiling (peak {crete:.3}): the sink \
+         stays silent while frames arrive"
     );
 
     // Second starvation, SHORT: three wake-ups, the order of magnitude of a network
@@ -423,8 +420,8 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
     let apres_famine_2 = l.compteurs();
     assert!(
         apres_famine_2.plc > apres_famine_1.plc,
-        "une perte courte survenue APRÈS que le plafond a mordu n'est plus \
-         dissimulée : le budget n'est pas rendu au retour de la parole — \
-         {apres_famine_1:?} puis {apres_famine_2:?}"
+        "a short loss occurring AFTER the ceiling bit is no longer \
+         concealed: the budget is not given back when speech returns — \
+         {apres_famine_1:?} then {apres_famine_2:?}"
     );
 }

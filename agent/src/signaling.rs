@@ -109,7 +109,7 @@ pub async fn run_signaling(
     // it is the only label that misled.
     tracing::info!(
         session,
-        "déclaration de l'agent émise au signaling (acceptation encore inconnue)"
+        "agent declaration sent to the signaling (acceptance still unknown)"
     );
 
     let (offer_tx, offers) = mpsc::channel::<String>(4);
@@ -130,7 +130,7 @@ pub async fn run_signaling(
             let text = match message {
                 Ok(Message::Text(text)) => text,
                 Ok(Message::Close(frame)) => {
-                    tracing::info!(?frame, "signaling fermé par le serveur");
+                    tracing::info!(?frame, "signaling closed by the server");
                     break;
                 }
                 Err(e) => {
@@ -160,7 +160,7 @@ pub async fn run_signaling(
                             Ok(()) => {}
                             Err(mpsc::error::TrySendError::Full(_)) => {
                                 tracing::warn!(
-                                    "offre écartée : la précédente n'a pas encore été consommée"
+                                    "offer discarded: the previous one has not been consumed yet"
                                 );
                             }
                             Err(mpsc::error::TrySendError::Closed(_)) => break,
@@ -169,14 +169,14 @@ pub async fn run_signaling(
                 }
                 Some("ice-config") => match analyser_config_ice(&parsed) {
                     Some(config) => {
-                        tracing::info!(serveur = %config.serveur, "configuration TURN reçue");
+                        tracing::info!(serveur = %config.serveur, "TURN configuration received");
                         let _ = ice_tx.send(Some(config));
                     }
                     None => tracing::warn!(
-                        "configuration ICE reçue mais inexploitable : session sans relais"
+                        "ICE configuration received but unusable: session without relay"
                     ),
                 },
-                Some("peer-gone") => tracing::info!("le client s'est déconnecté"),
+                Some("peer-gone") => tracing::info!("the client disconnected"),
                 Some("error") => {
                     // 🔴 `retryApresS` IS ONLY CARRIED ON THE VOLUME REFUSAL
                     // (`motif: "trop-de-requetes"`) — see `relais.ts`. A
@@ -193,13 +193,13 @@ pub async fn run_signaling(
                     tracing::error!(
                         raison = %parsed["reason"],
                         retry_apres_s = ?retry,
-                        "erreur de signaling"
+                        "signaling error"
                     )
                 }
-                other => tracing::debug!(?other, "message de signaling ignoré"),
+                other => tracing::debug!(?other, "signaling message ignored"),
             }
         }
-        tracing::info!("boucle de réception du signaling terminée");
+        tracing::info!("signaling receive loop finished");
         // Wakes the send task so that it ends in turn instead
         // of waiting indefinitely on a still-open `answers` channel.
         let _ = closed_tx.send(true);
@@ -218,13 +218,13 @@ pub async fn run_signaling(
                     let Some(sdp) = sdp else { break };
                     let payload = serde_json::json!({ "type": "answer", "sdp": sdp });
                     if sink.send(Message::Text(payload.to_string())).await.is_err() {
-                        tracing::warn!("échec d'envoi de la réponse SDP, connexion de signaling perdue");
+                        tracing::warn!("failed to send the SDP answer, signaling connection lost");
                         let _ = closed_tx_sender_side.send(true);
                         break;
                     }
                 }
                 _ = closed_rx.changed() => {
-                    tracing::info!("boucle d'émission du signaling terminée (connexion fermée)");
+                    tracing::info!("signaling send loop finished (connection closed)");
                     break;
                 }
             }
@@ -275,7 +275,7 @@ pub async fn honour_suggested_retry(retry_apres_s: &watch::Receiver<Option<u64>>
     tracing::info!(
         secondes = bornees,
         secondes_demandees = secondes,
-        "attente du délai suggéré par le relais (retryApresS) avant de céder la main"
+        "waiting for the delay suggested by the relay (retryApresS) before handing over"
     );
     tokio::time::sleep(std::time::Duration::from_secs(bornees)).await;
 }
@@ -318,14 +318,14 @@ mod tests {
     async fn premiere_poignee_de_main(jeton: Option<&str>) -> String {
         let ecoute = TcpListener::bind("127.0.0.1:0")
             .await
-            .expect("écoute locale");
+            .expect("local listener");
         let port = ecoute.local_addr().expect("adresse locale").port();
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let (flux, _) = ecoute.accept().await.expect("connexion entrante");
             let mut ws = tokio_tungstenite::accept_async(flux)
                 .await
-                .expect("montée WebSocket");
+                .expect("WebSocket upgrade");
             if let Some(Ok(Message::Text(texte))) = ws.next().await {
                 let _ = tx.send(texte);
             }
@@ -336,8 +336,8 @@ mod tests {
             .expect("connexion au faux signaling");
         tokio::time::timeout(std::time::Duration::from_secs(5), rx)
             .await
-            .expect("aucune poignée de main en 5 s")
-            .expect("le faux signaling n'a rien reçu")
+            .expect("no handshake within 5 s")
+            .expect("the fake signaling received nothing")
     }
 
     /// 🔴 Without the token on the wire, the platform's guard refuses the
@@ -346,7 +346,7 @@ mod tests {
     /// NOTHING at compile time, neither here nor at the caller: it is an
     /// end-to-end failure only the wire can reveal.
     #[tokio::test]
-    async fn la_poignee_de_main_porte_le_jeton_d_agent() {
+    async fn the_handshake_carries_the_agent_token() {
         let poignee = premiere_poignee_de_main(Some("jwt.d.agent")).await;
         assert_eq!(
             poignee,
@@ -358,7 +358,7 @@ mod tests {
     /// like an absence. This test freezes the shape, so that a future fallback cannot
     /// slip an empty string into it that would look like a token.
     #[tokio::test]
-    async fn sans_jeton_la_poignee_de_main_le_dit_au_lieu_de_l_inventer() {
+    async fn without_a_token_the_handshake_says_so_instead_of_inventing_one() {
         let poignee = premiere_poignee_de_main(None).await;
         assert_eq!(
             poignee,
@@ -367,14 +367,14 @@ mod tests {
     }
 
     #[test]
-    fn le_relais_derive_du_signaling() {
+    fn the_relay_derives_from_the_signaling() {
         assert_eq!(url_du_relais("ws://h:8080"), "ws://h:8080/signal");
     }
 
     /// ⚠️ SAME REASON AS `url_du_canal`: `ws://h:8080/` followed by `/signal`
     /// would give `//signal`, and the platform compares the path EXACTLY.
     #[test]
-    fn la_barre_finale_ne_double_pas() {
+    fn the_final_slash_does_not_double() {
         assert_eq!(url_du_relais("ws://h:8080/"), "ws://h:8080/signal");
     }
 
@@ -394,7 +394,7 @@ mod tests {
     /// test does establish, and it is already useful, is that the addition of `/signal` by
     /// `url_du_relais` did not contaminate `url_du_canal`.
     #[test]
-    fn le_canal_agent_n_est_pas_affecte() {
+    fn the_agent_channel_is_not_affected() {
         assert_eq!(
             crate::plateforme::url_du_canal("ws://h:8080"),
             "ws://h:8080/agent"
@@ -420,7 +420,7 @@ mod tests {
     /// do so — but "the behaviour on a wrong base is KNOWN and fixed
     /// by a test", where yesterday no test looked at it.
     #[test]
-    fn une_base_portant_deja_signal_casse_le_canal_agent() {
+    fn a_base_already_carrying_signal_breaks_the_agent_channel() {
         // The RIGHT base: `url_du_canal` adds `/agent` to it.
         assert_eq!(
             crate::plateforme::url_du_canal("ws://h:8080"),
@@ -432,8 +432,8 @@ mod tests {
         assert_eq!(
             crate::plateforme::url_du_canal("ws://h:8080/signal"),
             "ws://h:8080/signal/agent",
-            "le contrat de SIGNALING_URL a changé : cette égalité documentait \
-             que le produit accepte une base déjà suffixée EN SILENCE"
+            "the SIGNALING_URL contract changed: this equality documented \
+             that the product accepts an already-suffixed base SILENTLY"
         );
     }
 
@@ -450,7 +450,7 @@ mod tests {
         assert_eq!(
             tokio::time::Instant::now(),
             debut,
-            "aucun refus de volume n'est jamais arrivé : rien à attendre"
+            "no volume refusal ever arrived: nothing to wait for"
         );
     }
 
@@ -470,7 +470,7 @@ mod tests {
     /// process whose sole purpose, at this stage, is to die fast so
     /// that its supervisor retries.
     #[tokio::test(start_paused = true)]
-    async fn honorer_retry_suggere_est_bornee_au_plafond_de_repli() {
+    async fn honour_suggested_retry_is_bounded_by_the_backoff_ceiling() {
         let (_tx, rx) = watch::channel(Some(999_999u64));
         let debut = tokio::time::Instant::now();
         honour_suggested_retry(&rx).await;

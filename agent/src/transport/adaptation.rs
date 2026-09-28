@@ -96,7 +96,7 @@ impl Session {
                 // single line, not one per second.
                 if !self.refus_debit_signale {
                     self.refus_debit_signale = true;
-                    tracing::warn!(error = %e, "l'encodeur refuse le réglage du débit à chaud");
+                    tracing::warn!(error = %e, "the encoder refuses the live bitrate setting");
                 }
             }
         }
@@ -142,7 +142,7 @@ impl Session {
                         session = %self.session_id,
                         largeur = decision.encode_size.0,
                         hauteur = decision.encode_size.1,
-                        "taille d'encodage changée"
+                        "encoding size changed"
                     );
                     self.encode_size_appliquee = decision.encode_size;
                     // A later refusal of this same size (or of
@@ -159,14 +159,14 @@ impl Session {
                         error = %e,
                         largeur = decision.encode_size.0,
                         hauteur = decision.encode_size.1,
-                        "changement de taille d'encodage refusé, barreau conservé"
+                        "encoding size change refused, rung kept"
                     );
                 }
             }
         }
         if let Some(audio) = self.audio_source.as_mut() {
             if let Err(e) = audio.set_packet_loss_perc(decision.opus_loss_perc) {
-                tracing::warn!(error = %e, "réglage du taux de perte Opus refusé");
+                tracing::warn!(error = %e, "Opus loss rate setting refused");
             }
         }
         // We announce `decision_courante()`, not `decision`: `bitrate` and
@@ -222,7 +222,7 @@ mod tests {
     /// a time scale of several seconds, not network routing
     /// — and no peer knows how to make TWCC emission *stop* on demand.
     #[test]
-    fn une_estimation_perimee_bascule_l_adaptation_en_indisponible_et_l_annonce() {
+    fn a_stale_estimate_switches_the_adaptation_to_unavailable_and_announces_it() {
         let mid = Mid::from("0");
         let source = Box::new(fixtures::video_test_source());
         let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
@@ -241,7 +241,7 @@ mod tests {
         );
         assert!(
             session.estimation_fraiche(Instant::now()).is_some(),
-            "une estimation qui vient d'arriver est fraîche"
+            "an estimate that just arrived is fresh"
         );
         session.handle_event(
             Event::MediaEgressStats(stats_video(mid)),
@@ -260,13 +260,13 @@ mod tests {
         //    treated as ABSENT, and not serve again indefinitely — it is
         //    exactly the last high value before the incident that
         //    would announce "Good" on a dead link.
-        let (bps, _) = session.derniere_estimation_bps.expect("posée en 1");
+        let (bps, _) = session.derniere_estimation_bps.expect("set at 1");
         let perimee_a = Instant::now() - EXPIRATION_ESTIMATION - Duration::from_millis(1);
         session.derniere_estimation_bps = Some((bps, perimee_a));
         assert_eq!(
             session.estimation_fraiche(Instant::now()),
             None,
-            "au-delà d'EXPIRATION_ESTIMATION, une estimation ne doit plus être utilisable"
+            "beyond EXPIRATION_ESTIMATION, an estimate must no longer be usable"
         );
 
         session.pending_decision = None;
@@ -279,16 +279,16 @@ mod tests {
         assert_eq!(
             session.congestion.current().adaptation,
             congestion::Adaptation::Indisponible,
-            "l'expiration de l'estimation doit faire basculer l'adaptation, pas la laisser à Active"
+            "the estimate's expiry must switch the adaptation, not leave it at Active"
         );
         assert!(
             session.absence_bwe_signalee,
-            "l'absence doit être journalisée une fois"
+            "the absence must be logged once"
         );
         assert!(session.indisponibilite_annoncee);
         let decision = session.pending_decision.expect(
-            "l'indisponibilité doit être RELAYÉE au navigateur (I2), pas seulement journalisée : \
-             `Controleur::observer` ne produit aucune décision sans estimation",
+            "the unavailability must be RELAYED to the browser (I2), not merely logged: \
+             `Controleur::observer` produces no decision without an estimate",
         );
         assert_eq!(decision.adaptation, congestion::Adaptation::Indisponible);
 
@@ -296,7 +296,7 @@ mod tests {
         //    `Link` message for the browser.
         session
             .act_on_timeout(Instant::now())
-            .expect("appliquer une décision ne doit jamais faire échouer la session");
+            .expect("applying a decision must never make the session fail");
         assert!(
             session.pending_control.iter().any(|message| matches!(
                 message,
@@ -305,8 +305,8 @@ mod tests {
                     ..
                 }
             )),
-            "le navigateur doit recevoir Indisponible — surtout pas un silence qui ressemble à \
-             « tout va bien » : file = {:?}",
+            "the browser must receive Indisponible — above all not a silence that looks like \
+             « all is well »: queue = {:?}",
             session.pending_control
         );
 
@@ -328,7 +328,7 @@ mod tests {
         );
         assert!(
             !session.indisponibilite_annoncee,
-            "une coupure ultérieure de TWCC doit être annoncée de nouveau"
+            "a later TWCC cut must be announced again"
         );
     }
 
@@ -356,7 +356,7 @@ mod tests {
             }
             fn set_encode_size(&mut self, width: u32, height: u32) -> anyhow::Result<()> {
                 self.soumises.lock().unwrap().push((width, height));
-                Err(anyhow!("pilote imaginaire : refuse toujours"))
+                Err(anyhow!("imaginary driver: always refuses"))
             }
         }
 
@@ -366,7 +366,7 @@ mod tests {
         let soumises: SubmittedSizes = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let source = Box::new(SourceRefusant {
             inner: crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-                .expect("chargement du flux de test"),
+                .expect("loading the test stream"),
             soumises: soumises.clone(),
         });
         let session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
@@ -379,7 +379,7 @@ mod tests {
         session.pending_decision = Some(decision);
         session
             .act_on_timeout(Instant::now())
-            .expect("un refus de l'encodeur ne doit jamais faire échouer la session");
+            .expect("an encoder refusal must never make the session fail");
     }
 
     /// A congestion decision targeting `encode_size`, the rest having no
@@ -404,11 +404,11 @@ mod tests {
     /// by construction. Without the guard, the controller would relaunch that work at
     /// each decision — one per second and per window, indefinitely.
     #[test]
-    fn une_cible_deja_refusee_n_est_plus_soumise_a_la_source() {
+    fn an_already_refused_target_is_no_longer_submitted_to_the_source() {
         let (mut session, soumises) = session_refusing_sizes();
         let original_size = session.encode_size_appliquee;
         let refusee = (640, 360);
-        assert_ne!(refusee, original_size, "précondition du test");
+        assert_ne!(refusee, original_size, "test precondition");
 
         // Five identical decisions, as the controller would produce for five
         // seconds under sustained congestion.
@@ -418,7 +418,7 @@ mod tests {
         assert_eq!(
             *soumises.lock().unwrap(),
             vec![refusee],
-            "la cible refusée ne doit être soumise qu'UNE fois, pas à chaque décision"
+            "the refused target must be submitted only ONCE, not at every decision"
         );
 
         // A DIFFERENT target stays new information: the guard must
@@ -428,7 +428,7 @@ mod tests {
         assert_eq!(
             *soumises.lock().unwrap(),
             vec![refusee, autre],
-            "une cible jamais essayée doit l'être, même après un refus précédent"
+            "a never-tried target must be tried, even after a previous refusal"
         );
 
         // And the new refused target becomes in turn the guarded target:
@@ -439,7 +439,7 @@ mod tests {
         assert_eq!(
             session.decision_courante().encode_size,
             original_size,
-            "aucun de ces refus ne doit se refléter dans la décision annoncée"
+            "none of these refusals must be reflected in the announced decision"
         );
     }
 
@@ -462,7 +462,7 @@ mod tests {
         let (mut session, _soumises) = session_refusing_sizes();
         let original_size = session.encode_size_appliquee;
         let target_size = (640, 360);
-        assert_ne!(target_size, original_size, "précondition du test");
+        assert_ne!(target_size, original_size, "test precondition");
 
         // Three successive decisions, as the controller would do once
         // per second under sustained congestion: the same size
@@ -476,7 +476,7 @@ mod tests {
         assert_eq!(
             session.decision_courante().encode_size,
             original_size,
-            "un refus de l'encodeur ne doit jamais se refléter dans la décision annoncée"
+            "an encoder refusal must never be reflected in the announced decision"
         );
 
         // Finding 1: the deduplication memory retains the refused
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(
             session.reported_refused_size,
             Some(target_size),
-            "la cible refusée doit être mémorisée pour éviter de rejournaliser à chaque tour"
+            "the refused target must be memorised to avoid logging it again at every round"
         );
     }
 }

@@ -58,7 +58,7 @@ fn pomper(rtc: &mut Rtc, socket: &UdpSocket, adresse: SocketAddr, attente: Durat
 }
 
 #[test]
-fn str0m_expose_l_opus_montant_via_media_data() {
+fn str0m_exposes_upstream_opus_through_media_data() {
     let ip = local_ip();
     // BOTH peers enable Opus: without `enable_opus`, no Opus PT is
     // offered and the probe would answer "no" for the wrong reason — it is
@@ -73,16 +73,16 @@ fn str0m_expose_l_opus_montant_via_media_data() {
     // in vain for a `MediaAdded` on the emitter (the agent, for its part, always accepts,
     // which is why `evenements.rs` makes do with it).
     let mid_emission = api.add_media(MediaKind::Audio, Direction::SendOnly, None, None, None);
-    let (offre, en_attente) = api.apply().expect("offre non vide");
+    let (offre, en_attente) = api.apply().expect("non-empty offer");
 
     let reponse = recepteur
         .sdp_api()
         .accept_offer(offre)
-        .expect("offre acceptée par le récepteur");
+        .expect("offer accepted by the receiver");
     emetteur
         .sdp_api()
         .accept_answer(en_attente, reponse)
-        .expect("réponse acceptée par l'émetteur");
+        .expect("answer accepted by the sender");
 
     socket_e.set_nonblocking(false).unwrap();
     socket_r.set_nonblocking(false).unwrap();
@@ -96,12 +96,12 @@ fn str0m_expose_l_opus_montant_via_media_data() {
         let maintenant = Instant::now();
         assert!(
             maintenant < echeance,
-            "aucun `Event::MediaData` reçu en 15 s : str0m ne délivre pas l'Opus montant, \
-             ou la connexion ne s'est pas établie (au moins une écriture tentée : {written})"
+            "no `Event::MediaData` received within 15 s: str0m does not deliver the upstream Opus, \
+             or the connection was not established (at least one write attempted: {written})"
         );
 
         // ---- the emitter ------------------------------------------------
-        match emetteur.poll_output().expect("poll_output de l'émetteur") {
+        match emetteur.poll_output().expect("sender poll_output") {
             Output::Timeout(t) => {
                 {
                     let mid = mid_emission;
@@ -140,7 +140,7 @@ fn str0m_expose_l_opus_montant_via_media_data() {
         }
 
         // ---- the receiver -----------------------------------------------
-        match recepteur.poll_output().expect("poll_output du récepteur") {
+        match recepteur.poll_output().expect("receiver poll_output") {
             Output::Timeout(t) => {
                 let attente = t
                     .saturating_duration_since(Instant::now())
@@ -159,18 +159,18 @@ fn str0m_expose_l_opus_montant_via_media_data() {
 
     let (data, codec, denominateur) = recu.unwrap();
     eprintln!(
-        "SONDE 1 : MediaData reçue — {} octets, codec {codec:?}, horloge RTP {denominateur} Hz",
+        "PROBE 1: MediaData received — {} bytes, codec {codec:?}, RTP clock {denominateur} Hz",
         data.len()
     );
 
     assert_eq!(
         data, CHARGE,
-        "la charge utile n'a pas traversé octet pour octet : str0m ne se comporte pas en \
-         passe-plat sur l'Opus entrant"
+        "the payload did not pass through byte for byte: str0m does not behave as a \
+         pass-through on the incoming Opus"
     );
-    assert_eq!(codec, Codec::Opus, "le codec délivré n'est pas Opus");
+    assert_eq!(codec, Codec::Opus, "the delivered codec is not Opus");
     assert_eq!(
         denominateur, 48_000,
-        "l'horloge RTP délivrée n'est pas celle d'Opus"
+        "the delivered RTP clock is not Opus's"
     );
 }

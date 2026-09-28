@@ -199,14 +199,14 @@ async fn main() -> Result<()> {
     #[cfg(windows)]
     if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
         match pointer_settings::neutraliser() {
-            Ok(rapport) => tracing::info!(rapport, "accélération pointeur neutralisée"),
+            Ok(rapport) => tracing::info!(rapport, "pointer acceleration neutralised"),
             Err(e) => {
-                tracing::warn!(error = %e, "neutralisation de l'accélération pointeur échouée")
+                tracing::warn!(error = %e, "pointer acceleration neutralisation failed")
             }
         }
     } else {
         tracing::warn!(
-            "neutralisation SAUTÉE au démarrage (INPUT_LINEARITY_NEUTRALISER=0, mesure de référence)"
+            "neutralisation SKIPPED at startup (INPUT_LINEARITY_NEUTRALISER=0, reference measurement)"
         );
     }
 
@@ -232,7 +232,7 @@ async fn main() -> Result<()> {
     // channel delivers, and the prefix it returns names the sessions.
     //
     // The channel stays open for the whole life of the process: it carries the
-    // heartbeat, hence `vu_a`, hence the `prête`/`injoignable` state
+    // heartbeat, hence `vu_a`, hence the ready/unreachable state
     // the platform reads. Binding it to a variable and not to `_` is not a
     // lint nicety — it is what keeps it alive.
     //
@@ -260,8 +260,8 @@ async fn main() -> Result<()> {
             // composed by the supervisor, which knows the prefix. Inheriting
             // an unused prefix would only invite using it.
             tracing::info!(
-                "identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre \
-                 aucun canal /agent, un seul socket par VM"
+                "identity inherited from the supervisor (AGENT_JETON): this process opens \
+                 no /agent channel, a single socket per VM"
             );
             config.jeton = Some(jeton);
             None
@@ -274,9 +274,7 @@ async fn main() -> Result<()> {
             // GIVEN UP — a version refusal —, and there is then nothing to
             // wait for.
             let Some(identite) = canal.attendre_identite().await else {
-                anyhow::bail!(
-                    "enrôlement abandonné par la plateforme : voir le journal du canal /agent"
-                );
+                anyhow::bail!("enrolment abandoned by the platform: see the /agent channel log");
             };
             config.prefixe = identite.prefixe;
             config.jeton = Some(identite.jeton);
@@ -284,9 +282,9 @@ async fn main() -> Result<()> {
         }
         plateforme::identite::SourceIdentite::Absent => {
             tracing::warn!(
-                "AGENT_VM ou AGENT_SECRET absent, et aucun AGENT_JETON hérité : aucun \
-                 jeton d'agent. La plateforme REFUSERA la poignée de main et aucune \
-                 session ne s'établira (sous-bloc P3, sans interrupteur permissif)."
+                "AGENT_VM or AGENT_SECRET missing, and no inherited AGENT_JETON: no \
+                 agent token. The platform WILL REFUSE the handshake and no \
+                 session will be established (sub-block P3, without a permissive switch)."
             );
             None
         }

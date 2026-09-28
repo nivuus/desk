@@ -15,7 +15,7 @@ fn rejouer(lignes: &str) -> (Journal, usize) {
 /// whole file, would lose **intact** writes: it is the red
 /// spec §4.4 names for this module.
 #[test]
-fn une_derniere_ligne_tronquee_ne_fait_pas_perdre_les_precedentes() {
+fn a_truncated_last_line_does_not_lose_the_previous_ones() {
     let mut j = Journal::new();
     let mut file = String::new();
     file.push_str(&j.inscrire("note.txt", 42));
@@ -24,14 +24,17 @@ fn une_derniere_ligne_tronquee_ne_fait_pas_perdre_les_precedentes() {
     file.push_str("+7 \"perd");
 
     let (relu, ignorees) = rejouer(&file);
-    assert_eq!(ignorees, 1, "la ligne tronquée doit être COMPTÉE, pas tue");
+    assert_eq!(
+        ignorees, 1,
+        "the truncated line must be COUNTED, not silenced"
+    );
     assert_eq!(
         relu.dues(),
         [
             ("note.txt".to_string(), 42),
             ("dossier/gros.bin".to_string(), 12_582_912)
         ],
-        "les deux entrées ANTÉRIEURES doivent survivre"
+        "the two EARLIER entries must survive"
     );
 }
 
@@ -41,7 +44,7 @@ fn une_derniere_ligne_tronquee_ne_fait_pas_perdre_les_precedentes() {
 /// that a folder would erase everything it contains — that is, a silent
 /// data loss, produced by the module that exists to prevent it.
 #[test]
-fn un_retrait_efface_l_inscription_et_pas_une_autre() {
+fn a_removal_erases_the_registration_and_no_other() {
     let mut j = Journal::new();
     let mut f = String::new();
     f.push_str(&j.inscrire("note.txt", 1));
@@ -58,7 +61,7 @@ fn un_retrait_efface_l_inscription_et_pas_une_autre() {
                 ("note.txt.bak".to_string(), 2),
                 ("dossier/enfant.txt".to_string(), 4)
             ],
-            "seuls les chemins EXACTS devaient partir"
+            "only the EXACT paths were supposed to go out"
         );
     }
 }
@@ -67,7 +70,7 @@ fn un_retrait_efface_l_inscription_et_pas_une_autre() {
 /// deterministic. A `HashMap` would give a different order at each run,
 /// and the resumption of a batch of writes would become irreproducible.
 #[test]
-fn l_ordre_d_inscription_est_conserve() {
+fn the_registration_order_is_kept() {
     let mut j = Journal::new();
     let mut f = String::new();
     for i in 0..16u64 {
@@ -88,7 +91,7 @@ fn l_ordre_d_inscription_est_conserve() {
 /// Moving the entry back to the tail would let younger writes pass
 /// ahead of it, whereas it has been waiting longer.
 #[test]
-fn un_rejeu_met_a_jour_les_octets_sans_changer_de_place() {
+fn a_replay_updates_the_bytes_without_moving() {
     let mut j = Journal::new();
     let mut f = String::new();
     f.push_str(&j.inscrire("a.txt", 1));
@@ -111,7 +114,7 @@ fn un_rejeu_met_a_jour_les_octets_sans_changer_de_place() {
 /// two lines: the first would be unreadable, the second would be interpreted
 /// as a record of another kind.
 #[test]
-fn un_chemin_a_saut_de_ligne_survit_a_un_aller_retour() {
+fn a_path_with_a_line_break_survives_a_round_trip() {
     let tordus = [
         "dossier/nom\navec saut.txt",
         "éphémère été.txt",
@@ -125,7 +128,7 @@ fn un_chemin_a_saut_de_ligne_survit_a_un_aller_retour() {
         f.push_str(&j.inscrire(chemin, i as u64));
     }
     let (relu, ignorees) = rejouer(&f);
-    assert_eq!(ignorees, 0, "aucune ligne ne devait être illisible");
+    assert_eq!(ignorees, 0, "no line was supposed to be unreadable");
     let vus: Vec<&str> = relu.dues().iter().map(|(c, _)| c.as_str()).collect();
     assert_eq!(vus, tordus);
     // …and the removal finds the same path.
@@ -139,44 +142,44 @@ fn un_chemin_a_saut_de_ligne_survit_a_un_aller_retour() {
 /// Compacting unconditionally would lose a due entry **exactly when it
 /// matters**: a large journal is a journal where many writes failed.
 #[test]
-fn un_journal_vide_se_compacte_et_un_journal_non_vide_jamais() {
+fn an_empty_journal_is_compacted_and_a_non_empty_one_never() {
     let mut j = Journal::new();
     assert!(
         !j.compactable(JOURNAL_COMPACTION_SIZE),
-        "au seuil exact : pas encore"
+        "at the exact threshold: not yet"
     );
     assert!(j.compactable(JOURNAL_COMPACTION_SIZE + 1));
 
     j.inscrire("une seule due.txt", 1);
     assert!(
         !j.compactable(u64::MAX),
-        "un journal PORTANT une due ne se compacte JAMAIS, si gros soit-il"
+        "a journal CARRYING a due is NEVER compacted, however big it is"
     );
 
     j.retirer("une seule due.txt");
     assert!(
         j.compactable(JOURNAL_COMPACTION_SIZE + 1),
-        "vidé, il redevient compactable"
+        "emptied, it becomes compactable again"
     );
 }
 
 /// A line of an unknown kind is counted and thrown away, never fatal.
 #[test]
-fn une_ligne_de_genre_inconnu_est_comptee_et_jetee() {
+fn a_line_of_unknown_kind_is_counted_and_dropped() {
     let (relu, ignorees) = rejouer("+1 \"a.txt\"\n?que suis-je\n+2 \"b.txt\"\n");
     assert_eq!(ignorees, 1);
-    assert_eq!(relu.compte(), 2, "les deux lignes licites restent");
+    assert_eq!(relu.compte(), 2, "the two valid lines remain");
 }
 
 /// An empty journal, or one reduced to removals, is reread without inventing anything.
 #[test]
-fn un_journal_vide_ou_de_retraits_seuls_se_relit_sans_rien_inventer() {
+fn an_empty_or_removals_only_journal_reloads_without_inventing_anything() {
     assert_eq!(rejouer("").0.compte(), 0);
     assert_eq!(rejouer("\n\n").0.compte(), 0);
     let (relu, ignorees) = rejouer("-\"jamais inscrit.txt\"\n");
     assert_eq!(
         ignorees, 0,
-        "un retrait d'un chemin absent est LICITE, pas illisible"
+        "a removal of an absent path is VALID, not unreadable"
     );
     assert_eq!(relu.compte(), 0);
 }

@@ -34,7 +34,7 @@
 //! one.
 
 /// Returns `"true"` or `"false"` when BOTH measurements exist and can
-/// therefore be compared, `"indetermine (sortie disparue)"` as soon as EITHER
+/// therefore be compared, `"undetermined (output vanished)"` as soon as EITHER
 /// one is missing — never a comparison on a numeric sentinel
 /// that could be confused with a success.
 pub(crate) fn verdict_persistance(
@@ -44,7 +44,7 @@ pub(crate) fn verdict_persistance(
     match (before, apres) {
         (Some(a), Some(b)) if a == b => "true",
         (Some(_), Some(_)) => "false",
-        _ => "indetermine (sortie disparue)",
+        _ => "undetermined (output vanished)",
     }
 }
 
@@ -53,7 +53,7 @@ mod tests {
     use super::verdict_persistance;
 
     #[test]
-    fn deux_mesures_egales_rendent_true() {
+    fn two_equal_measurements_return_true() {
         assert_eq!(
             verdict_persistance(Some((1920, 1080)), Some((1920, 1080))),
             "true"
@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn deux_mesures_differentes_rendent_false() {
+    fn two_different_measurements_return_false() {
         assert_eq!(
             verdict_persistance(Some((1920, 1080)), Some((1280, 720))),
             "false"
@@ -75,15 +75,15 @@ mod tests {
     fn a_measure_missing_on_each_side_returns_undetermined() {
         assert_eq!(
             verdict_persistance(None, Some((1280, 720))),
-            "indetermine (sortie disparue)"
+            "undetermined (output vanished)"
         );
         assert_eq!(
             verdict_persistance(Some((1280, 720)), None),
-            "indetermine (sortie disparue)"
+            "undetermined (output vanished)"
         );
         assert_eq!(
             verdict_persistance(None, None),
-            "indetermine (sortie disparue)"
+            "undetermined (output vanished)"
         );
     }
 }

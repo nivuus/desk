@@ -6,29 +6,21 @@ use super::*;
 ///
 /// Red: adding a variant to [`Error`] without adding it to [`nom`] first
 /// makes compilation fail (the `match` is exhaustive); forgetting it in
-/// `ALL` makes that of `erreurs.rs` fail (`COUNT` types the array). This
+/// `ALL` makes that of `errors.rs` fail (`COUNT` types the array). This
 /// test covers what the two do not: that the name is **distinct**
 /// and **non-empty**.
 #[test]
 fn each_variant_has_its_counter_and_a_distinct_name() {
     let mut noms: Vec<&str> = Error::ALL.iter().map(|e| nom(*e)).collect();
-    assert_eq!(
-        noms.len(),
-        COUNT,
-        "TOUTES doit porter les {COUNT} variantes"
-    );
+    assert_eq!(noms.len(), COUNT, "ALL must carry the {COUNT} variants");
     assert!(
         noms.iter().all(|n| !n.is_empty()),
-        "un nom vide ne se grep pas"
+        "an empty name cannot be grepped"
     );
     noms.sort_unstable();
     let before = noms.len();
     noms.dedup();
-    assert_eq!(
-        noms.len(),
-        before,
-        "deux causes partagent un nom : {noms:?}"
-    );
+    assert_eq!(noms.len(), before, "two causes share a name: {noms:?}");
 }
 
 /// 🔴 **NO NAME IS A PREFIX OF ANOTHER.**
@@ -46,7 +38,7 @@ fn each_variant_has_its_counter_and_a_distinct_name() {
 /// `chemin-introuvable=` — hence the acceptance run reads ` introuvable=`,
 /// space included. Saying it here avoids rediscovering it at `grep` time.
 #[test]
-fn aucun_nom_n_est_prefixe_d_un_autre() {
+fn no_name_is_a_prefix_of_another() {
     for a in Error::ALL {
         for b in Error::ALL {
             if a == b {
@@ -54,7 +46,7 @@ fn aucun_nom_n_est_prefixe_d_un_autre() {
             }
             assert!(
                 !nom(b).starts_with(nom(a)),
-                "« {} » est préfixe de « {} » : le recensement deviendrait ambigu",
+                "« {} » is a prefix of « {} »: the census would become ambiguous",
                 nom(a),
                 nom(b)
             );
@@ -63,11 +55,11 @@ fn aucun_nom_n_est_prefixe_d_un_autre() {
 }
 
 #[test]
-fn un_recensement_neuf_est_a_zero_partout() {
+fn a_fresh_census_is_zero_everywhere() {
     let c = Compteurs::nouveaux();
     assert_eq!(c.total(), 0);
     for e in Error::ALL {
-        assert_eq!(c.compte(e), 0, "{} devrait naître à zéro", nom(e));
+        assert_eq!(c.compte(e), 0, "{} should start at zero", nom(e));
     }
 }
 
@@ -76,21 +68,21 @@ fn un_recensement_neuf_est_a_zero_partout() {
 /// Red: incrementing `rang(e) + 1` makes this test fail by naming BOTH
 /// wrong counters — the one that did not rise and the one that wrongly rose.
 #[test]
-fn rendre_incremente_la_bonne_case_et_elle_seule() {
+fn giving_back_increments_the_right_slot_and_only_it() {
     for cible in Error::ALL {
         let c = Compteurs::nouveaux();
         let code = c.rendre(cible);
         assert_eq!(
             code,
             crate::pont::errors::hresult(cible),
-            "le code rendu doit être celui de la table"
+            "the returned code must be the table's"
         );
         for e in Error::ALL {
             let attendu = u64::from(e == cible);
             assert_eq!(
                 c.compte(e),
                 attendu,
-                "après rendre({}), le compteur « {} » vaut {} au lieu de {}",
+                "after rendre({}), counter « {} » is {} instead of {}",
                 nom(cible),
                 nom(e),
                 c.compte(e),
@@ -101,7 +93,7 @@ fn rendre_incremente_la_bonne_case_et_elle_seule() {
 }
 
 #[test]
-fn rendre_cumule() {
+fn giving_back_accumulates() {
     let c = Compteurs::nouveaux();
     for _ in 0..3 {
         c.rendre(Error::Introuvable);
@@ -120,12 +112,12 @@ fn rendre_cumule() {
 /// criterion that exists precisely to prevent the §5 table from being
 /// decorative.
 #[test]
-fn manquants_rend_exactement_les_causes_a_zero() {
+fn missing_returns_exactly_the_causes_at_zero() {
     let c = Compteurs::nouveaux();
     assert_eq!(
         c.manquants().len(),
         COUNT,
-        "tout manque sur un compteur neuf"
+        "everything is missing on a fresh counter"
     );
 
     c.rendre(Error::Introuvable);
@@ -139,7 +131,7 @@ fn manquants_rend_exactement_les_causes_a_zero() {
     for e in Error::ALL {
         c.rendre(e);
     }
-    assert!(c.manquants().is_empty(), "le critère (4) est alors TENU");
+    assert!(c.manquants().is_empty(), "criterion (4) is then MET");
 }
 
 /// 🔴 **THE CENSUS ORDER IS THAT OF `ALL`**, and the whole string
@@ -165,7 +157,7 @@ deja-present=0 protege-en-ecriture=1 inattendue=0"
 /// would be caught — but removing a loop and writing the twelve by hand
 /// would pass, and the thirteenth field would be silently missing.
 #[test]
-fn le_recensement_porte_un_champ_par_variante() {
+fn the_census_carries_one_field_per_variant() {
     let ligne = Compteurs::nouveaux().recensement();
     assert_eq!(ligne.split(' ').count(), COUNT + 1);
     for e in Error::ALL {
@@ -194,7 +186,7 @@ fn the_counter_is_correct_under_concurrency() {
         })
         .collect();
     for f in fils {
-        f.join().expect("aucun fil ne panique");
+        f.join().expect("no thread panics");
     }
     assert_eq!(c.compte(Error::DelaiDepasse), 2_000);
 }

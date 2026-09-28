@@ -61,10 +61,10 @@ impl Numeros {
         }
         anyhow::ensure!(
             self.plus_haut < PLAFOND_NUMEROS,
-            "plus aucun numéro de sortie virtuelle disponible : {PLAFOND_NUMEROS} sont \
-             attribués et non rendus. Créer au-delà donnerait un GUID que la purge \
-             inter-processus ne balaye pas, donc un moniteur irrécupérable sans \
-             redémarrage de la VM"
+            "no virtual output number available any more: {PLAFOND_NUMEROS} are \
+             assigned and not given back. Creating beyond would give a GUID that the \
+             inter-process purge does not sweep, hence a monitor unrecoverable without \
+             restarting the VM"
         );
         self.plus_haut += 1;
         Ok(self.plus_haut)
@@ -97,7 +97,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn les_numeros_se_suivent_tant_que_rien_n_est_rendu() {
+    fn numbers_follow_each_other_as_long_as_nothing_is_given_back() {
         let mut numeros = Numeros::default();
         assert_eq!(numeros.attribuer().unwrap(), 1);
         assert_eq!(numeros.attribuer().unwrap(), 2);
@@ -109,15 +109,15 @@ mod tests {
     /// bound. With a monotonic counter, the 17th opening assigned a number
     /// outside the range swept by the purge.
     #[test]
-    fn cent_ouvertures_fermetures_ne_font_pas_sortir_du_plafond() {
+    fn a_hundred_opens_and_closes_do_not_leave_the_ceiling() {
         let mut numeros = Numeros::default();
         for _ in 0..100 {
             let numero = numeros
                 .attribuer()
-                .expect("le recyclage doit rendre la place");
+                .expect("recycling must give the slot back");
             assert!(
                 numero <= PLAFOND_NUMEROS,
-                "numéro {numero} hors de portée de la purge"
+                "number {numero} out of the purge's reach"
             );
             numeros.rendre(numero);
         }
@@ -136,7 +136,7 @@ mod tests {
             let neuve = numeros.attribuer().unwrap();
             assert!(
                 neuve <= PLAFOND_NUMEROS,
-                "numéro {neuve} hors de portée de la purge"
+                "number {neuve} out of the purge's reach"
             );
             vivantes.push(neuve);
         }
@@ -147,12 +147,15 @@ mod tests {
     /// must make the creation be refused, not assign a number invisible to the
     /// purge.
     #[test]
-    fn au_dela_du_plafond_la_creation_est_refusee() {
+    fn beyond_the_ceiling_creation_is_refused() {
         let mut numeros = Numeros::default();
         for _ in 0..PLAFOND_NUMEROS {
             numeros.attribuer().unwrap();
         }
-        assert!(numeros.attribuer().is_err(), "le plafond aurait dû refuser");
+        assert!(
+            numeros.attribuer().is_err(),
+            "the ceiling should have refused"
+        );
         // A single successful removal reopens exactly one slot.
         numeros.rendre(4);
         assert_eq!(numeros.attribuer().unwrap(), 4);
@@ -160,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn rendre_un_numero_inconnu_ou_deja_rendu_ne_cree_pas_de_doublon() {
+    fn giving_back_an_unknown_or_already_given_back_number_creates_no_duplicate() {
         let mut numeros = Numeros::default();
         let a = numeros.attribuer().unwrap();
         numeros.rendre(a);
@@ -172,7 +175,7 @@ mod tests {
         assert_eq!(
             numeros.attribuer().unwrap(),
             a + 1,
-            "aucun doublon n'a été mis en réserve"
+            "no duplicate was put in reserve"
         );
     }
 }

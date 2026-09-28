@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn deux_causes_distinctes_ne_partagent_jamais_un_code() {
+fn two_distinct_causes_never_share_a_code() {
     // ⚠️ The test spec §4.4 names, and the counter-example is the old
     // bridge: `cb(-1)` (EPERM) at NINE distinct sites of `src/file.js`.
     //
@@ -13,7 +13,7 @@ fn deux_causes_distinctes_ne_partagent_jamais_un_code() {
             assert_ne!(
                 hresult(*a),
                 hresult(*b),
-                "{a:?} et {b:?} partagent le code {:#010x}",
+                "{a:?} and {b:?} share code {:#010x}",
                 hresult(*a)
             );
         }
@@ -28,31 +28,31 @@ fn the_sweep_really_covers_every_variant() {
     assert_eq!(Error::ALL.len(), COUNT);
     let mut vus = [false; COUNT];
     for e in Error::ALL {
-        assert!(!vus[index(e)], "{e:?} apparaît deux fois dans TOUTES");
+        assert!(!vus[index(e)], "{e:?} appears twice in ALL");
         vus[index(e)] = true;
     }
-    assert!(vus.iter().all(|v| *v), "une variante manque à TOUTES");
+    assert!(vus.iter().all(|v| *v), "a variant is missing from ALL");
 }
 
 #[test]
-fn aucun_code_rendu_n_est_un_succes() {
+fn no_returned_code_is_a_success() {
     // The severity bit (0x8000_0000) must be set on all twelve: a
     // success `HRESULT` returned to ProjFS would make it believe the operation
     // succeeded, and the Windows application would read an empty file instead of an
     // error — the worst possible failure mode for this module.
     for e in Error::ALL {
         let h = hresult(e);
-        assert!(h < 0, "{e:?} rend {h:#010x}, qui est un succès");
+        assert!(h < 0, "{e:?} returns {h:#010x}, which is a success");
         assert_eq!(
             (h as u32) & 0xFFFF_0000,
             FACILITE_WIN32,
-            "{e:?} n'est pas dans FACILITY_WIN32"
+            "{e:?} is not in FACILITY_WIN32"
         );
     }
 }
 
 #[test]
-fn le_canal_ferme_rend_bien_error_io_device() {
+fn the_closed_channel_does_return_error_io_device() {
     // "The standard I/O error" of framing §7: it is what Explorer
     // displays as "the device is not accessible", and not as
     // "file not found", when the browser tab closes.
@@ -60,7 +60,7 @@ fn le_canal_ferme_rend_bien_error_io_device() {
 }
 
 #[test]
-fn la_protection_en_ecriture_rend_0x80070013() {
+fn write_protection_returns_0x80070013() {
     // ❌ *This comment said "every write, every CREATION, every
     // deletion ends up there". F1's acceptance run refuted creation: a
     // file created from scratch in the root SUCCEEDS (2 runs
@@ -70,7 +70,7 @@ fn la_protection_en_ecriture_rend_0x80070013() {
 }
 
 #[test]
-fn les_douze_codes_sont_epingles_un_a_un() {
+fn the_twelve_codes_are_pinned_one_by_one() {
     // Pins the whole table: the distinction test above would stay
     // green if two variants SWAPPED their codes, which would return
     // "disk full" for an absent file.
@@ -99,7 +99,7 @@ fn les_douze_codes_sont_epingles_un_a_un() {
 /// a failed I/O on every read, and the bridge would wait indefinitely for a
 /// completion ProjFS would no longer accept.
 #[test]
-fn en_cours_vaut_le_hresult_de_error_io_pending() {
+fn in_progress_equals_the_hresult_of_error_io_pending() {
     assert_eq!(EN_COURS, 0x8007_03E5u32 as i32);
 }
 

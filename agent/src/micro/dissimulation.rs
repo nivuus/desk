@@ -7,8 +7,8 @@
 //! # Why this cap exists — a MEASURED defect, not a caveat
 //!
 //! Acceptance run E1 (task 14, work stream E) noted, during **60 s of silence**
-//! from the browser — its nominal DTX, `packetsSent` frozen —, a "micro
-//! mesuré" trace that carried second after second:
+//! from the browser — its nominal DTX, `packetsSent` frozen —, a "mic
+//! measured" trace that carried second after second:
 //!
 //! ```text
 //! plc = 50/s for 60 s            starvations = 50/s
@@ -178,14 +178,10 @@ mod tests {
     /// The NOMINAL case, and it must not change: a short network loss
     /// stays concealed exactly as before the cap.
     #[test]
-    fn une_perte_courte_est_dissimulee_sans_reserve() {
+    fn a_short_loss_is_concealed_without_reserve() {
         let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
         for i in 0..3 {
-            assert!(
-                b.consommer(TRAME),
-                "la {}ᵉ trame perdue a été refusée",
-                i + 1
-            );
+            assert!(b.consommer(TRAME), "lost frame no. {} was refused", i + 1);
         }
         assert_eq!(b.consecutif(), Duration::from_millis(60));
     }
@@ -193,25 +189,25 @@ mod tests {
     /// The cap bites, and it bites EXACTLY at its value: ten frames of
     /// 20 ms make the 200 ms allowed, the eleventh is refused.
     #[test]
-    fn au_dela_du_plafond_la_dissimulation_est_refusee() {
+    fn beyond_the_ceiling_concealment_is_refused() {
         let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
         for i in 0..10 {
             assert!(
                 b.consommer(TRAME),
-                "la {}ᵉ trame a été refusée trop tôt",
+                "frame no. {} was refused too early",
                 i + 1
             );
         }
         assert_eq!(b.consecutif(), PLAFOND_DISSIMULATION);
         assert!(
             !b.consommer(TRAME),
-            "la 11ᵉ trame a été dissimulée : le plafond ne mord pas"
+            "the 11th frame was concealed: the ceiling does not bite"
         );
         // And the refusal is LASTING: it does not lift by itself at the next
         // round. Without this line, a cap that only forbade one frame
         // out of two would pass the assertion above.
         for _ in 0..100 {
-            assert!(!b.consommer(TRAME), "le refus s'est levé tout seul");
+            assert!(!b.consommer(TRAME), "the refusal lifted by itself");
         }
     }
 
@@ -219,7 +215,7 @@ mod tests {
     /// once would condemn the session to silence forever: the sink would
     /// never again conceal the slightest network loss.
     #[test]
-    fn une_vraie_trame_rend_le_budget_entier() {
+    fn a_real_frame_restores_the_whole_budget() {
         let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
         while b.consommer(TRAME) {}
         assert!(!b.consommer(TRAME));
@@ -228,7 +224,7 @@ mod tests {
         assert_eq!(b.consecutif(), Duration::ZERO);
         assert!(
             b.consommer(TRAME),
-            "après le retour d'une vraie trame, le budget reste fermé"
+            "after a real frame returns, the budget stays closed"
         );
     }
 
@@ -239,7 +235,7 @@ mod tests {
     /// — Chrome emits 20 ms, work stream A 10 ms, and nothing forces a
     /// peer to stick to that (spec §7).
     #[test]
-    fn le_plafond_est_une_duree_et_non_un_compte_de_trames() {
+    fn the_ceiling_is_a_duration_not_a_frame_count() {
         let compte = |trame: Duration| {
             let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
             let mut n = 0;
@@ -261,7 +257,7 @@ mod tests {
     /// A zero duration cannot make the budget spin endlessly — that
     /// would be the unbounded defect replayed inside its own remedy.
     #[test]
-    fn une_duree_nulle_est_refusee_plutot_que_de_ne_jamais_epuiser_le_budget() {
+    fn a_zero_duration_is_refused_rather_than_never_exhausting_the_budget() {
         let mut b = BudgetDissimulation::new(PLAFOND_DISSIMULATION);
         assert!(!b.consommer(Duration::ZERO));
         assert_eq!(b.consecutif(), Duration::ZERO);

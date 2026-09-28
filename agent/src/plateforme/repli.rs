@@ -36,7 +36,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn la_premiere_reprise_attend_le_minimum() {
+    fn the_first_retry_waits_for_the_minimum() {
         assert_eq!(delai_de_repli(0), REPLI_MIN_MS);
     }
 
@@ -46,13 +46,13 @@ mod tests {
     fn the_delay_grows_with_the_attempt() {
         assert!(
             delai_de_repli(1) > delai_de_repli(0),
-            "delai_de_repli(1) = {} n'est pas > delai_de_repli(0) = {}",
+            "delai_de_repli(1) = {} is not > delai_de_repli(0) = {}",
             delai_de_repli(1),
             delai_de_repli(0)
         );
         assert!(
             delai_de_repli(2) > delai_de_repli(1),
-            "delai_de_repli(2) = {} n'est pas > delai_de_repli(1) = {}",
+            "delai_de_repli(2) = {} is not > delai_de_repli(1) = {}",
             delai_de_repli(2),
             delai_de_repli(1)
         );
@@ -62,18 +62,18 @@ mod tests {
     /// **145 hours**: the VM is unreachable forever, and the agent that
     /// waits looks exactly like an agent about to reconnect.
     #[test]
-    fn le_delai_est_borne_par_le_plafond() {
+    fn the_delay_is_bounded_by_the_ceiling() {
         for tentative in 0..200u32 {
             assert!(
                 delai_de_repli(tentative) <= REPLI_MAX_MS,
-                "delai_de_repli({tentative}) = {} dépasse REPLI_MAX_MS = {REPLI_MAX_MS}",
+                "delai_de_repli({tentative}) = {} exceeds REPLI_MAX_MS = {REPLI_MAX_MS}",
                 delai_de_repli(tentative)
             );
         }
         assert_eq!(
             delai_de_repli(20),
             REPLI_MAX_MS,
-            "le plafond doit être ATTEINT, pas seulement respecté"
+            "the ceiling must be REACHED, not merely respected"
         );
     }
 
@@ -81,7 +81,7 @@ mod tests {
     /// running long enough gets there. An overflow in `debug` is a
     /// `panic`, hence the death of the reconnection thread: the VM never comes back.
     #[test]
-    fn le_delai_ne_deborde_pas_sur_une_tentative_enorme() {
+    fn the_delay_does_not_overflow_on_a_huge_attempt() {
         assert_eq!(delai_de_repli(63), REPLI_MAX_MS);
         assert_eq!(delai_de_repli(64), REPLI_MAX_MS);
         assert_eq!(delai_de_repli(u32::MAX), REPLI_MAX_MS);

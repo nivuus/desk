@@ -29,7 +29,7 @@
 //! measurement** — setting `MFT_ENUM_ADAPTER_LUID`, holding a live NVIDIA D3D11
 //! device before activation, and binding the virtual display to the NVIDIA
 //! GPU (already true here). See
-//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`.
+//! `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`. (policy: allow-fr, real file path)
 //!
 //! ⚠️ **AND `find_hardware_video_processor` FINDS NOTHING ON THIS
 //! MACHINE, IN BOTH SESSIONS** (same measurement): `create_color_converter`
@@ -77,9 +77,9 @@ pub(super) fn log_supported_input_types(transform: &IMFTransform) {
             Ok(guid) => tracing::info!(
                 index,
                 subtype = %format_subtype(guid),
-                "type d'entrée annoncé par l'encodeur"
+                "input type announced by the encoder"
             ),
-            Err(_) => tracing::info!(index, "type d'entrée annoncé (sous-type illisible)"),
+            Err(_) => tracing::info!(index, "input type announced (unreadable subtype)"),
         }
         index += 1;
     }
@@ -125,9 +125,9 @@ pub(super) fn create_color_converter(
     let converter: IMFTransform = match find_hardware_video_processor() {
         Ok(t) => t,
         Err(e) => {
-            tracing::debug!(error = %e, "aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT");
+            tracing::debug!(error = %e, "no hardware video converter enumerated, falling back to CLSID_VideoProcessorMFT");
             unsafe { CoCreateInstance(&CLSID_VideoProcessorMFT, None, CLSCTX_INPROC_SERVER) }
-                .context("création du convertisseur vidéo (Video Processor MFT)")?
+                .context("creating the video converter (Video Processor MFT)")?
         }
     };
 
@@ -147,7 +147,7 @@ pub(super) fn create_color_converter(
             device_manager.as_raw() as usize,
         )
     }
-    .context("partage du périphérique D3D avec le convertisseur")?;
+    .context("sharing the D3D device with the converter")?;
 
     // Trap met during the attempt: with the default pool, the documented
     // sequence "ProcessOutput until MF_E_TRANSFORM_NEED_MORE_INPUT"
@@ -166,7 +166,7 @@ pub(super) fn create_color_converter(
     // attribute is honoured for progressive content. We set both
     // out of caution (MF documentation ambiguous on this point).
     let output_stream_attributes = unsafe { converter.GetOutputStreamAttributes(0) }
-        .context("attributs du flux de sortie du convertisseur")?;
+        .context("converter output stream attributes")?;
     unsafe {
         output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT, 16)?;
         output_stream_attributes.SetUINT32(&MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT_PROGRESSIVE, 16)?;
@@ -181,9 +181,9 @@ pub(super) fn create_color_converter(
         input_type.SetUINT64(&MF_MT_FRAME_SIZE, reglages::pack_u64(capture.0, capture.1))?;
         input_type.SetUINT64(&MF_MT_FRAME_RATE, reglages::pack_u64(fps, 1))?;
         input_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetInputType(0, &input_type, 0).context(
-            "configuration du type d'entrée du convertisseur de couleur (Video Processor MFT)",
-        )?;
+        converter
+            .SetInputType(0, &input_type, 0)
+            .context("configuring the colour converter input type (Video Processor MFT)")?;
     }
 
     let output_type = unsafe { MFCreateMediaType() }?;
@@ -193,9 +193,9 @@ pub(super) fn create_color_converter(
         output_type.SetUINT64(&MF_MT_FRAME_SIZE, reglages::pack_u64(encode.0, encode.1))?;
         output_type.SetUINT64(&MF_MT_FRAME_RATE, reglages::pack_u64(fps, 1))?;
         output_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetOutputType(0, &output_type, 0).context(
-            "configuration du type de sortie du convertisseur de couleur (Video Processor MFT)",
-        )?;
+        converter
+            .SetOutputType(0, &output_type, 0)
+            .context("configuring the colour converter output type (Video Processor MFT)")?;
     }
 
     Ok(converter)
@@ -227,12 +227,12 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
             &mut activates,
             &mut count,
         )
-        .context("énumération des convertisseurs vidéo matériels")?;
+        .context("enumerating the hardware video converters")?;
     }
 
     if count == 0 {
         unsafe { CoTaskMemFree(Some(activates as *const _)) };
-        bail!("aucun convertisseur vidéo matériel enregistré");
+        bail!("no hardware video converter registered");
     }
 
     let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
@@ -243,7 +243,7 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
             first = activate;
         }
     }
-    let first = first.ok_or_else(|| anyhow!("activateur de convertisseur absent"))?;
+    let first = first.ok_or_else(|| anyhow!("converter activator missing"))?;
 
     let mut name_ptr = PWSTR::null();
     let mut name_len = 0u32;
@@ -253,12 +253,12 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
     .is_ok()
     {
         let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
-        tracing::info!(convertisseur = %name, "convertisseur vidéo matériel retenu");
+        tracing::info!(convertisseur = %name, "hardware video converter retained");
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
     let transform: IMFTransform = unsafe { first.ActivateObject() }
-        .context("activation du convertisseur vidéo matériel (ActivateObject)")?;
+        .context("activating the hardware video converter (ActivateObject)")?;
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
     Ok(transform)
 }
@@ -289,12 +289,12 @@ pub(super) fn create_nv12_sample(
     };
     let mut texture: Option<ID3D11Texture2D> = None;
     unsafe { device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-        .context("allocation de la texture NV12 intermédiaire")?;
+        .context("allocating the intermediate NV12 texture")?;
     let texture = texture.ok_or_else(|| anyhow!("texture NV12 absente"))?;
 
     let sample = unsafe { MFCreateSample() }?;
     let buffer = unsafe { MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, &texture, 0, false) }
-        .context("enveloppement de la texture NV12")?;
+        .context("wrapping the NV12 texture")?;
     unsafe { sample.AddBuffer(&buffer) }?;
     Ok(sample)
 }
@@ -322,14 +322,14 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
             &mut activates,
             &mut count,
         )
-        .context("énumération des encodeurs H.264 matériels")?;
+        .context("enumerating the hardware H.264 encoders")?;
     }
 
     if count == 0 {
         unsafe { CoTaskMemFree(Some(activates as *const _)) };
         bail!(
-            "aucun encodeur H.264 matériel trouvé sur cette machine. \
-             Vérifier le pilote GPU ; le jalon 1 n'a pas de repli logiciel."
+            "no hardware H.264 encoder found on this machine. \
+             Check the GPU driver; milestone 1 has no software fallback."
         );
     }
 
@@ -369,7 +369,7 @@ pub(super) fn find_hardware_encoder() -> Result<IMFTransform> {
     .is_ok()
     {
         let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
-        tracing::info!(encodeur = %name, "encodeur matériel retenu");
+        tracing::info!(encodeur = %name, "hardware encoder retained");
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
@@ -427,6 +427,6 @@ pub(super) fn share_device(device: &ID3D11Device) -> Result<IMFDXGIDeviceManager
     }
     let manager = manager.ok_or_else(|| anyhow!("gestionnaire DXGI absent"))?;
     unsafe { manager.ResetDevice(device, token) }
-        .context("liaison du périphérique D3D11 au gestionnaire DXGI")?;
+        .context("binding the D3D11 device to the DXGI manager")?;
     Ok(manager)
 }

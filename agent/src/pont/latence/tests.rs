@@ -18,10 +18,10 @@ fn attributs(chemin: &str) -> Attendue {
 /// ⚠️ **THIS TEST ONLY EXERCISES A `Default`, AND IT IS KEPT ONLY BECAUSE IT IS
 /// THE STARTING WITNESS OF THE OTHERS.** It is D9's legacy no. 11
 /// (`une_telemetrie_neuve_est_a_zero`, "unable to return the other value"):
-/// without it, `les_familles_ne_se_melangent_pas` could not distinguish
+/// without it, `the_families_do_not_mix` could not distinguish
 /// "the neighbouring family did not move" from "it never carried anything".
 #[test]
-fn un_histogramme_neuf_rend_des_zeros() {
+fn a_fresh_histogram_returns_zeros() {
     let h = Histogramme::new();
     for f in Famille::ALL {
         assert_eq!(h.compte(f), 0, "{}", nom(f));
@@ -60,18 +60,18 @@ fn a_crossing_falls_in_the_bucket_that_contains_it() {
     // And the bucket is indeed the one the histogram increments.
     let h = Histogramme::new();
     h.observer(Famille::Lire, ms(5));
-    assert_eq!(h.seau(Famille::Lire, 2), 1, "5 ms est dans le seau '5'");
+    assert_eq!(h.seau(Famille::Lire, 2), 1, "5 ms is in bucket '5'");
     assert_eq!(
         h.seau(Famille::Lire, 3),
         0,
-        "et surtout PAS dans le seau '10'"
+        "and above all NOT in bucket '10'"
     );
 }
 
 /// The twin of `pont::compteurs`' guard: a wrong `rang()` would count
 /// one family on the back of another.
 #[test]
-fn les_familles_ne_se_melangent_pas() {
+fn the_families_do_not_mix() {
     let h = Histogramme::new();
     h.observer(Famille::Lire, ms(7));
     h.observer(Famille::Lire, ms(7));
@@ -80,7 +80,7 @@ fn les_familles_ne_se_melangent_pas() {
     assert_eq!(h.compte(Famille::Lire), 2);
     assert_eq!(h.compte(Famille::Lister), 1);
     for f in [Famille::Attributs, Famille::Write, Famille::Mutation] {
-        assert_eq!(h.compte(f), 0, "{} n'a rien reçu", nom(f));
+        assert_eq!(h.compte(f), 0, "{} received nothing", nom(f));
         assert_eq!(h.max_us(f), 0, "{}", nom(f));
     }
     // The buckets do not mix either.
@@ -91,7 +91,7 @@ fn les_familles_ne_se_melangent_pas() {
 
 /// A swapped sum and count would make the mean equal to the count.
 #[test]
-fn le_max_est_le_max_et_la_moyenne_est_la_moyenne() {
+fn the_max_is_the_max_and_the_mean_is_the_mean() {
     let h = Histogramme::new();
     h.observer(Famille::Attributs, ms(2));
     h.observer(Famille::Attributs, ms(8));
@@ -109,18 +109,20 @@ fn le_max_est_le_max_et_la_moyenne_est_la_moyenne() {
 /// 🔴 **An order drift would READ ONE COUNTER FOR ANOTHER.** The line
 /// is pinned in full, values included.
 #[test]
-fn l_ordre_du_recensement_est_epingle() {
+fn the_census_order_is_pinned() {
     let h = Histogramme::new();
     h.observer(Famille::Lire, ms(3));
 
     let ligne = h.recensement();
-    let (tetes, seaux) = ligne.split_once(" | ").expect("la ligne a deux moitiés");
+    let (tetes, seaux) = ligne.split_once(" | ").expect("the line has two halves");
 
     assert_eq!(
         tetes,
-        "traversees attributs=n:0 moy_us:0 max_us:0 lister=n:0 moy_us:0 max_us:0 \
-         lire=n:1 moy_us:3000 max_us:3000 ecrire=n:0 moy_us:0 max_us:0 \
-         mutation=n:0 moy_us:0 max_us:0"
+        concat!(
+            "traversees attributs=n:0 moy_us:0 max_us:0 lister=n:0 moy_us:0 max_us:0 ",
+            "lire=n:1 moy_us:3000 max_us:3000 ecrire=n:0 moy_us:0 max_us:0 ",
+            "mutation=n:0 moy_us:0 max_us:0",
+        )
     );
     // The FIVE families carry their buckets, and `lire` carries its own at the right rank.
     assert!(seaux.starts_with("seaux_ms attributs="), "{seaux}");
@@ -133,7 +135,7 @@ fn l_ordre_du_recensement_est_epingle() {
     }
     assert!(
         seaux.contains("lire=1:0,2:0,5:1,10:0,"),
-        "3 ms est dans le seau '5' : {seaux}"
+        "3 ms is in bucket '5': {seaux}"
     );
     assert!(seaux.ends_with("inf:0"), "{seaux}");
     // A single occurrence of each family name in each half.
@@ -162,18 +164,19 @@ fn a_new_family_cannot_inherit_another_name() {
     let before = noms.len();
     noms.sort_unstable();
     noms.dedup();
-    assert_eq!(
-        noms.len(),
-        before,
-        "deux familles partagent un nom : {noms:?}"
-    );
-    assert_eq!(before, COUNT, "TOUTES doit porter les NOMBRE familles");
+    assert_eq!(noms.len(), before, "two families share a name: {noms:?}");
+    assert_eq!(before, COUNT, "ALL must carry the COUNT families");
     // ⚠️ No name is the PREFIX of another: two messages sharing a
     // substring make a false instrument (house trap, paid for by F1).
     for a in Famille::ALL {
         for b in Famille::ALL {
             if a != b {
-                assert!(!nom(a).starts_with(nom(b)), "{} préfixe {}", nom(b), nom(a));
+                assert!(
+                    !nom(a).starts_with(nom(b)),
+                    "{} is a prefix of {}",
+                    nom(b),
+                    nom(a)
+                );
             }
         }
     }
@@ -209,7 +212,7 @@ fn the_family_follows_the_budget_and_create_belongs_to_the_write_family() {
     assert_eq!(
         Famille::de(&Attendue::Create { chemin: "f".into() }),
         Famille::Write,
-        "Creer est inscrite par ecriture::fil sous DELAI_ECRIRE"
+        "Creer is registered by ecriture::fil under DELAI_ECRIRE"
     );
     assert_eq!(
         Famille::de(&Attendue::Muter {

@@ -24,7 +24,7 @@ pub struct Consigne {
     pub nom_sortie: String,
     /// The RETAINED size (`placement::retained_size`) at which the table
     /// put this window — not the output's size, which can be much
-    /// larger. Set on the child through `TAILLE_FENETRE` (`lanceur.rs`),
+    /// larger. Set on the child through `TAILLE_FENETRE` (`lanceur.rs`), (policy: allow-fr, env var name)
     /// so that it repeats it to the capturer at attach time (task 9 of sub-block
     /// D10), which will need it to crop (task 8).
     pub size: (u32, u32),
@@ -72,7 +72,7 @@ impl<'l> Enfants<'l> {
             session = %consigne.session.0,
             pid,
             sortie = %consigne.nom_sortie,
-            "enfant lancé"
+            "child launched"
         );
         self.vivants.insert(consigne.session, pid);
         Ok(())
@@ -96,7 +96,7 @@ impl<'l> Enfants<'l> {
             return;
         };
         if let Err(error) = self.lanceur.tuer(pid) {
-            tracing::warn!(session = %session.0, pid, %error, "mise à mort de l'enfant échouée");
+            tracing::warn!(session = %session.0, pid, %error, "killing the child failed");
         }
     }
 
@@ -113,7 +113,7 @@ impl<'l> Enfants<'l> {
             .collect();
         for session in &morts {
             let pid = self.vivants.remove(session);
-            tracing::warn!(session = %session.0, ?pid, "enfant mort de lui-même");
+            tracing::warn!(session = %session.0, ?pid, "child died by itself");
         }
         morts
     }
@@ -159,7 +159,7 @@ mod tests {
 
     impl Lanceur for LanceurEchec {
         fn lancer(&self, _consigne: &Consigne) -> anyhow::Result<u32> {
-            Err(anyhow::anyhow!("lancement simulé échoué"))
+            Err(anyhow::anyhow!("simulated launch failed"))
         }
         fn est_vivant(&self, _pid: u32) -> bool {
             false
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn lancer_transmet_la_consigne_au_lanceur() {
+    fn launching_passes_the_instruction_to_the_launcher() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn tuer_demande_la_mise_a_mort_du_bon_processus() {
+    fn killing_requests_the_death_of_the_right_process() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -198,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn morts_rend_les_sessions_dont_le_processus_a_disparu() {
+    fn dead_returns_the_sessions_whose_process_vanished() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1")).unwrap();
@@ -209,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn une_session_morte_n_est_signalee_qu_une_fois() {
+    fn a_dead_session_is_reported_only_once() {
         // Without this guarantee, the supervisor would destroy the output a
         // first time then request its destruction again at each loop
         // turn, and the log would fill with failures.
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn tuer_une_session_inconnue_ne_fait_rien() {
+    fn killing_an_unknown_session_does_nothing() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.tuer(&IdSession("w-jamais-lancee".into()));

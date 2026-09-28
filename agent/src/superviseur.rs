@@ -87,13 +87,13 @@ pub async fn executer(
         // Purge BEFORE anything: a previous run killed outright may have left
         // outputs, and they occupy the pool of ten.
         if let Err(error) = crate::moniteurs_virtuels::purge::purger() {
-            tracing::warn!(%error, "purge des sorties orphelines incomplète au démarrage");
+            tracing::warn!(%error, "purge of orphan outputs incomplete at startup");
         }
 
         let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()
-            .context("ouverture du pilote d'affichage virtuel")?;
+            .context("opening the virtual display driver")?;
         let lanceur = lanceur::LanceurDeProcessus::new(
-            std::env::current_exe().context("chemin de l'exécutable")?,
+            std::env::current_exe().context("executable path")?,
             signaling_url,
             local_ip,
             prefixe.clone(),
@@ -103,12 +103,12 @@ pub async fn executer(
         let (tx_hook, rx_hook) = std::sync::mpsc::channel();
         // The guard lives until the end of this closure: dropping it would remove
         // the hook and stop its message pump.
-        let _garde_hook = hook::poser(tx_hook).context("pose du hook de détection")?;
+        let _garde_hook = hook::poser(tx_hook).context("installing the detection hook")?;
 
         boucle::tourner(&pilote, &lanceur, rx_hook, rx_shell, envoyer, prefixe)
     })
     .await
-    .context("le fil du superviseur a paniqué")?
+    .context("the supervisor thread panicked")?
 }
 
 #[cfg(not(windows))]
@@ -116,5 +116,5 @@ pub async fn executer(
     _config: crate::Config,
     _identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
 ) -> anyhow::Result<()> {
-    anyhow::bail!("le mode superviseur n'existe que sur Windows")
+    anyhow::bail!("supervisor mode only exists on Windows")
 }

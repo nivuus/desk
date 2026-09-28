@@ -111,7 +111,7 @@ pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
             None,
         )
     }
-    .context("ouverture du périphérique du pilote d'affichage virtuel (SudoVDA)")?;
+    .context("opening the virtual display driver device (SudoVDA)")?;
     Ok(PiloteParIoctl {
         peripherique,
         etat: Mutex::new(EtatSorties::default()),
@@ -279,7 +279,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 &mut ajoutee as *mut _ as *mut _,
                 std::mem::size_of::<SortieAjoutee>() as u32,
             )),
-            &format!("création d'une sortie {largeur}x{hauteur}@{hertz}"),
+            &format!("creating a {largeur}x{hauteur}@{hertz} output"),
         ) {
             Ok(rendus) => rendus,
             Err(error) => {
@@ -320,15 +320,15 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         if rendus as usize != attendus {
             let retrait = self.retirer_par_guid(
                 guid_moniteur,
-                "retrait de la sortie créée avec un tampon de sortie illisible",
+                "removing the output created with an unreadable output buffer",
             );
             match retrait {
                 Ok(()) => {
                     self.oublier(guid_moniteur);
                     anyhow::bail!(
-                        "le pilote a rendu {rendus} octets pour une sortie créée, \
-                         {attendus} attendus — la disposition supposée de \
-                         VIRTUAL_DISPLAY_ADD_OUT est fausse ; la sortie a été retirée"
+                        "the driver returned {rendus} bytes for a created output, \
+                         {attendus} expected — the assumed layout of \
+                         VIRTUAL_DISPLAY_ADD_OUT is wrong; the output was removed"
                     );
                 }
                 Err(error) => {
@@ -340,14 +340,14 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                     tracing::error!(
                         guid = ?guid_moniteur,
                         %error,
-                        "sortie virtuelle NON retirée après un tampon illisible — \
-                         purge manuelle requise"
+                        "virtual output NOT removed after an unreadable buffer — \
+                         manual purge required"
                     );
                     anyhow::bail!(
-                        "le pilote a rendu {rendus} octets pour une sortie créée, \
-                         {attendus} attendus — la disposition supposée de \
-                         VIRTUAL_DISPLAY_ADD_OUT est fausse, ET son retrait a \
-                         échoué : {error}"
+                        "the driver returned {rendus} bytes for a created output, \
+                         {attendus} expected — the assumed layout of \
+                         VIRTUAL_DISPLAY_ADD_OUT is wrong, AND its removal \
+                         failed: {error}"
                     );
                 }
             }
@@ -375,7 +375,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             largeur,
             hauteur,
             hertz,
-            "sortie virtuelle créée"
+            "virtual output created"
         );
         Ok(id)
     }
@@ -389,17 +389,17 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             .apparies
             .iter()
             .position(|(connu, _, _)| *connu == id)
-            .with_context(|| format!("sortie {id} inconnue de ce pilote — rien à détruire"))?;
+            .with_context(|| format!("output {id} unknown to this driver — nothing to destroy"))?;
         let (_, guid_moniteur, _) = etat.apparies[rang];
         drop(etat);
 
         // The pairing is only removed AFTER the call, never before: on
         // failure, the GUID is the only handle the project has on this monitor,
         // and forgetting it would make it unrecoverable.
-        match self.retirer_par_guid(guid_moniteur, &format!("destruction de la sortie {id}")) {
+        match self.retirer_par_guid(guid_moniteur, &format!("destroying output {id}")) {
             Ok(()) => {
                 self.oublier(guid_moniteur);
-                tracing::info!(id, "sortie virtuelle détruite");
+                tracing::info!(id, "virtual output destroyed");
                 Ok(())
             }
             Err(error) => {
@@ -420,7 +420,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                     id,
                     guid = ?guid_moniteur,
                     %error,
-                    "sortie virtuelle NON détruite — purge manuelle requise"
+                    "virtual output NOT destroyed — manual purge required"
                 );
                 Err(error)
             }
@@ -461,8 +461,8 @@ impl Drop for PiloteParIoctl {
                 numeros_en_vol,
                 guids_jamais_detruits = ?apparies,
                 guids_dont_le_retrait_a_echoue = ?a_purger,
-                "sorties virtuelles créées et NON retirées — elles survivent à ce \
-                 processus, purge requise"
+                "virtual outputs created and NOT removed — they outlive this \
+                 process, purge required"
             );
         }
         let _ = unsafe { CloseHandle(self.peripherique) };

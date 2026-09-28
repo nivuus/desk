@@ -84,14 +84,11 @@ impl Drop for TamponAligne<'_> {
 /// indistinguishable from the nominal case.
 pub(super) fn completer(etat: &Etat, commande: Option<i32>, result: HRESULT) {
     let Some(commande) = commande else {
-        tracing::debug!(%result, "aucune commande ProjFS a completer : c'est une ecriture");
+        tracing::debug!(%result, "no ProjFS command to complete: it is a write");
         return;
     };
     let Some(Contexte(contexte)) = etat.contexte() else {
-        tracing::warn!(
-            commande,
-            "complétion impossible : aucun contexte de virtualisation"
-        );
+        tracing::warn!(commande, "completion impossible: no virtualisation context");
         return;
     };
     // SAFETY: context valid as long as virtualisation runs — the bridge
@@ -100,7 +97,7 @@ pub(super) fn completer(etat: &Etat, commande: Option<i32>, result: HRESULT) {
     let issue =
         unsafe { (etat.projfs.completer_commande)(contexte, commande, result, std::ptr::null()) };
     if issue.is_err() {
-        tracing::warn!(commande, %issue, %result, "PrjCompleteCommand refusée");
+        tracing::warn!(commande, %issue, %result, "PrjCompleteCommand refused");
     }
 }
 
@@ -116,10 +113,7 @@ pub(super) fn completer_enumeration(
     result: HRESULT,
 ) {
     let Some(Contexte(contexte)) = etat.contexte() else {
-        tracing::warn!(
-            commande,
-            "complétion d'énumération impossible : aucun contexte"
-        );
+        tracing::warn!(commande, "enumeration completion impossible: no context");
         return;
     };
     let params = PRJ_COMPLETE_COMMAND_EXTENDED_PARAMETERS {
@@ -134,7 +128,7 @@ pub(super) fn completer_enumeration(
     // the call.
     let issue = unsafe { (etat.projfs.completer_commande)(contexte, commande, result, &params) };
     if issue.is_err() {
-        tracing::warn!(commande, %issue, "PrjCompleteCommand (énumération) refusée");
+        tracing::warn!(commande, %issue, "PrjCompleteCommand (enumeration) refused");
     }
 }
 
@@ -277,7 +271,7 @@ pub(super) fn remplir(
             return S_OK;
         }
         if issue.is_err() {
-            tracing::warn!(nom = %entree.nom, %issue, "PrjFillDirEntryBuffer refusée");
+            tracing::warn!(nom = %entree.nom, %issue, "PrjFillDirEntryBuffer refused");
             return issue;
         }
         session.avancer();

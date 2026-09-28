@@ -119,7 +119,7 @@ impl LanceurDeProcessus {
         identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
     ) -> Result<Self> {
         let job = unsafe { CreateJobObjectW(None, None) }
-            .context("création du job object des enfants")?;
+            .context("creating the children's job object")?;
         let limites = JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
             BasicLimitInformation:
                 windows::Win32::System::JobObjects::JOBOBJECT_BASIC_LIMIT_INFORMATION {
@@ -136,7 +136,7 @@ impl LanceurDeProcessus {
                 std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
             )
         }
-        .context("pose de KILL_ON_JOB_CLOSE sur le job object des enfants")?;
+        .context("setting KILL_ON_JOB_CLOSE on the children's job object")?;
         Ok(Self {
             executable,
             signaling_url,
@@ -281,7 +281,7 @@ impl LanceurDeProcessus {
             .env_remove("TEST_FILE")
             .env_remove("WINDOW_TITLE");
         Self::sans_identite(&mut commande);
-        let mut capteur = commande.spawn().context("lancement du capteur")?;
+        let mut capteur = commande.spawn().context("launching the sensor")?;
         let pid = capteur.id();
         let handle = HANDLE(capteur.as_raw_handle());
         if let Err(error) = unsafe { AssignProcessToJobObject(self.job, handle) } {
@@ -289,13 +289,13 @@ impl LanceurDeProcessus {
             // job would outlive the supervisor WHILE HOLDING N duplications.
             if let Err(mise_a_mort) = capteur.kill() {
                 tracing::error!(pid, %mise_a_mort,
-                    "capteur NON rattaché au job ET NON tué — il survivra au superviseur");
+                    "sensor NOT attached to the job AND NOT killed — it will outlive the supervisor");
             }
             let _ = capteur.wait();
             return Err(anyhow::Error::new(error)
-                .context(format!("rattachement du capteur {pid} au job object")));
+                .context(format!("attaching sensor {pid} to the job object")));
         }
-        tracing::info!(pid, "capteur lancé");
+        tracing::info!(pid, "sensor launched");
         *self.capteur() = Some(Enfant {
             processus: capteur,
             etat_illisible_signale: false,
@@ -322,7 +322,7 @@ impl LanceurDeProcessus {
                 true
             }
             Ok(Some(code)) => {
-                tracing::info!(pid = en_cours.processus.id(), ?code, "capteur terminé");
+                tracing::info!(pid = en_cours.processus.id(), ?code, "sensor finished");
                 *capteur = None;
                 false
             }
@@ -331,8 +331,8 @@ impl LanceurDeProcessus {
                     en_cours.etat_illisible_signale = true;
                     tracing::warn!(
                         %error,
-                        "état du capteur illisible, tenu pour vivant \
-                         (signalé une seule fois tant que l'état reste illisible)"
+                        "sensor state unreadable, taken as alive \
+                         (reported only once as long as the state stays unreadable)"
                     );
                 }
                 true

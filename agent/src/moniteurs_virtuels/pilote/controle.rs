@@ -31,7 +31,7 @@ impl PiloteParIoctl {
                 &mut version as *mut _ as *mut _,
                 std::mem::size_of::<VersionProtocole>() as u32,
             )),
-            "lecture de la version de protocole du pilote",
+            "reading the driver's protocol version",
         )?;
         Ok((version, rendus))
     }
@@ -52,12 +52,7 @@ impl PiloteParIoctl {
     /// only need to punctuate their waits. We expose the beat,
     /// the caller keeps the cadence.
     pub(crate) fn pinguer(&self) -> Result<()> {
-        self.commander(
-            IOCTL_PINGUER,
-            None,
-            None,
-            "ping du chien de garde du pilote",
-        )?;
+        self.commander(IOCTL_PINGUER, None, None, "pinging the driver's watchdog")?;
         Ok(())
     }
 
@@ -71,7 +66,7 @@ impl PiloteParIoctl {
                 &mut veille as *mut _ as *mut _,
                 std::mem::size_of::<Veille>() as u32,
             )),
-            "lecture du watchdog du pilote",
+            "reading the driver's watchdog",
         )?;
         Ok((veille, rendus))
     }

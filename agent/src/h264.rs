@@ -178,13 +178,13 @@ mod tests {
     }
 
     #[test]
-    fn ignore_les_nal_vides() {
+    fn ignores_empty_nals() {
         let stream = [0, 0, 0, 1, 0, 0, 0, 1, 0x65, 0x01];
         assert_eq!(split_annex_b(&stream), vec![vec![0x65, 0x01]]);
     }
 
     #[test]
-    fn detecte_une_image_cle_sur_nal_idr() {
+    fn detects_a_key_frame_on_an_idr_nal() {
         // NAL type = 5 low-order bits of the first byte.
         assert!(is_keyframe(&[vec![0x65, 0x00]])); // 0x65 & 0x1F == 5 → IDR
         assert!(!is_keyframe(&[vec![0x41, 0x00]])); // 0x41 & 0x1F == 1 → non IDR
@@ -193,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn regroupe_en_unites_d_acces_horodatees() {
+    fn groups_into_timestamped_access_units() {
         // Deux images : SPS+PPS+IDR, puis une tranche non-IDR.
         let mut stream = Vec::new();
         for nal in [vec![0x67u8, 0x42], vec![0x68, 0xCE], vec![0x65, 0x88]] {
@@ -214,12 +214,12 @@ mod tests {
     }
 
     #[test]
-    fn regroupe_un_flux_vide_sans_panique() {
+    fn groups_an_empty_stream_without_panicking() {
         assert!(group_access_units(&[], 60).is_empty());
     }
 
     #[test]
-    fn regroupe_des_images_multi_tranches_en_une_seule_unite() {
+    fn groups_multi_slice_frames_into_a_single_unit() {
         // Two images of three slices each. The high-order bit of the
         // first payload byte distinguishes the first slice
         // (0x88 / 0x9A, bit set) from the following ones (0x00, bit clear).
@@ -246,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn compte_les_memes_unites_que_ffprobe_sur_le_flux_reel() {
+    fn counts_the_same_units_as_ffprobe_on_the_real_stream() {
         // Independent reference: `ffprobe -count_frames` reports 300 images
         // on this file, whereas each image is actually split into
         // eight slices by libx264 (level 3.1 constraint at 1280x720/60).
@@ -254,7 +254,7 @@ mod tests {
         // units instead of 300.
         let path =
             std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
-        let data = std::fs::read(path).expect("lecture du flux de test");
+        let data = std::fs::read(path).expect("reading the test stream");
         let units = group_access_units(&data, 60);
         assert_eq!(units.len(), 300);
     }

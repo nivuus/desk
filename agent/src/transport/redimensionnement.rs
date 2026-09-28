@@ -75,7 +75,7 @@ impl Session {
                     error = %e,
                     width,
                     height,
-                    "échec du redimensionnement, ignoré"
+                    "resize failure, ignored"
                 );
             }
         }
@@ -128,12 +128,12 @@ mod tests {
         assert_eq!(
             session.encode_size_appliquee,
             (1280, 720),
-            "précondition du test"
+            "test precondition"
         );
         assert_eq!(
             session.congestion.current().encode_size,
             (1280, 720),
-            "précondition : l'échelle est calibrée sur la source d'origine"
+            "precondition: the scale is calibrated on the original source"
         );
         // Trace of an earlier refusal, which no longer applies as soon as the encoded
         // size changes under it.
@@ -145,32 +145,32 @@ mod tests {
         session.pending_resize = Some((641, 481));
         session
             .act_on_timeout(Instant::now())
-            .expect("un redimensionnement ne doit jamais faire échouer la session");
+            .expect("a resize must never make the session fail");
 
         assert_eq!(
             session.dimensions,
             (640, 480),
-            "la session doit retenir les dimensions RÉELLEMENT obtenues, pas celles demandées"
+            "the session must retain the dimensions ACTUALLY obtained, not the requested ones"
         );
         assert_eq!(
             session.encode_size_appliquee,
             (640, 480),
-            "C1 : `resize` reconstruit l'encodeur à la taille pleine de la nouvelle capture, \
-             sans passer par `set_encode_size` — la taille appliquée doit être enregistrée ici"
+            "C1: `resize` rebuilds the encoder at the full size of the new capture, \
+             without going through `set_encode_size` — the applied size must be recorded here"
         );
         assert_eq!(
             session.reported_refused_size, None,
-            "une cible refusée avant ce redimensionnement n'a plus cours"
+            "a target refused before this resize no longer applies"
         );
 
         let decision = session.pending_decision.expect(
-            "`changer_source` doit avoir produit une décision, mémorisée pour que a0ter la \
-             confronte à `encode_size_appliquee` au tour suivant",
+            "`changer_source` must have produced a decision, memorised so that a0ter \
+             compares it to `encode_size_appliquee` at the next round",
         );
         assert!(
             decision.encode_size.0 <= 640 && decision.encode_size.1 <= 480,
-            "le contrôleur doit être recalibré sur la NOUVELLE source : sans `changer_source`, \
-             l'échelle viserait encore une taille d'encodage plus grande que la capture ({:?})",
+            "the controller must be recalibrated on the NEW source: without `changer_source`, \
+             the scale would still target an encoding size bigger than the capture ({:?})",
             decision.encode_size
         );
 
@@ -183,7 +183,7 @@ mod tests {
                     ..
                 }
             )),
-            "le navigateur doit être informé des dimensions réellement obtenues : file = {:?}",
+            "the browser must be told the dimensions actually obtained: queue = {:?}",
             session.pending_control
         );
     }

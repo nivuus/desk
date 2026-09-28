@@ -59,10 +59,7 @@ impl Fil {
             // The calling arm guarantees `est_mutation()`; this case is
             // unreachable, and SAYING so beats assuming it.
             autre => {
-                tracing::warn!(
-                    ?autre,
-                    "evenement non-mutation route vers le fil de mutation"
-                );
+                tracing::warn!(?autre, "non-mutation event routed to the mutation thread");
                 return;
             }
         };
@@ -84,7 +81,7 @@ impl Fil {
             // The DISARMED arm of `PONT_ECRITURE`: we log, we never
             // push. Nothing is due in the journal for a mutation, so nothing
             // remains — it is said rather than assumed.
-            tracing::warn!(?quoi, "mutation NON poussee : PONT_ECRITURE=0");
+            tracing::warn!(?quoi, "mutation NOT pushed: PONT_ECRITURE=0");
             if let Some(suivante) = self.mutations.terminee() {
                 self.commencer_mutation(suivante);
             }
@@ -98,7 +95,7 @@ impl Fil {
                 // gestures is the very meaning.
                 tracing::warn!(
                     ?quoi, ?chemins,
-                    "renommage suspendu : ecriture due sur la source. La mutation repartira                      quand les octets seront pousses"
+                    "rename suspended: write due on the source. The mutation will resume                      when the bytes are pushed"
                 );
                 self.mutations.differer();
                 return;
@@ -106,7 +103,7 @@ impl Fil {
             Ordonnancement::AbandonnerEcrituresDues { chemins } => {
                 // 🔴 **PUSHING WOULD RECREATE WHAT THE USER ERASES.**
                 for chemin in &chemins {
-                    tracing::warn!(chemin, "ecriture due abandonnee : le chemin a ete supprime");
+                    tracing::warn!(chemin, "due write abandoned: the path was deleted");
                     self.file.oublier(chemin);
                     let ligne = self.journal.retirer(chemin);
                     self.write_journal(&ligne);
@@ -126,7 +123,7 @@ impl Fil {
                     vers: vers.clone(),
                     repertoire: *repertoire,
                 })
-                .expect("un en-tete Renommer se serialise toujours"),
+                .expect("a Renommer header always serializes"),
                 de.clone(),
                 true,
                 Some(vers.clone()),
@@ -137,7 +134,7 @@ impl Fil {
                     chemin: chemin.clone(),
                     repertoire: *repertoire,
                 })
-                .expect("un en-tete Supprimer se serialise toujours"),
+                .expect("a Remove header always serializes"),
                 chemin.clone(),
                 false,
                 None,

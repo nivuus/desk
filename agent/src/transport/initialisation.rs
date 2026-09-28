@@ -25,8 +25,7 @@ use super::adaptation::ESTIMATION_INITIALE_BPS;
 /// `plafond_bps` is the target the bandwidth probing seeks to
 /// reach.
 pub(super) fn construire_rtc(local_ip: IpAddr, plafond_bps: u32) -> Result<(UdpSocket, Rtc)> {
-    let socket =
-        UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("ouverture du socket UDP")?;
+    let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).context("opening the UDP socket")?;
     // Non-blocking once and for all: `act_on_timeout` no longer depends on
     // `set_read_timeout`, whose delay overshoots massively under Windows
     // (measured: mean overshoot +12.7 ms, up to +37 ms on a requested
@@ -100,7 +99,7 @@ pub(super) fn construire_rtc(local_ip: IpAddr, plafond_bps: u32) -> Result<(UdpS
     // `Option<&Candidate>` (the previous candidate if it was already known).
     // Only building the `Candidate` itself can fail.
     rtc.add_local_candidate(
-        Candidate::host(addr, "udp").map_err(|e| anyhow!("candidat hôte invalide : {e}"))?,
+        Candidate::host(addr, "udp").map_err(|e| anyhow!("invalid host candidate: {e}"))?,
     );
 
     Ok((socket, rtc))

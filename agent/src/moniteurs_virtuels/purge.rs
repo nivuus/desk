@@ -85,18 +85,18 @@ use crate::diagnostics::multifenetre::montee::{relever_topologie, DELAI_TOPOLOGI
 
 /// Sonde `MULTIFENETRE_VDD_PURGE`.
 pub(crate) fn purger() -> Result<()> {
-    // `relever_topologie` already logs the topology survey with `moment="avant
-    // purge" nombre=…` — a second message here would be a duplicate.
-    let before = relever_topologie("avant purge")?;
+    // `relever_topologie` already logs the topology survey with `moment="before
+    // purge"` and its count — a second message here would be a duplicate.
+    let before = relever_topologie("before purge")?;
 
     let pilote = ouvrir_pilote()?;
-    let mut retirees = 0usize;
+    let mut removed = 0usize;
     for numero in 1..=PLAFOND_NUMEROS {
         let guid = guid_pour(numero);
-        match pilote.retirer_par_guid(guid, "retrait déterministe (purge inter-processus)") {
+        match pilote.retirer_par_guid(guid, "deterministic removal (inter-process purge)") {
             Ok(()) => {
-                retirees += 1;
-                tracing::info!(numero, guid = ?guid, "sortie virtuelle retirée par la purge");
+                removed += 1;
+                tracing::info!(numero, guid = ?guid, "virtual output removed by the purge");
             }
             Err(error) => {
                 // At `debug`, not silent: out of `PLAFOND_NUMEROS`
@@ -108,45 +108,45 @@ pub(crate) fn purger() -> Result<()> {
                 // from a GUID held by a live process") was verifiable
                 // by no one, including us. The error code stays here,
                 // consultable afterwards.
-                tracing::debug!(numero, guid = ?guid, %error, "retrait refusé (GUID jamais attribué, ou échec réel — indiscernable côté code de retour)");
+                tracing::debug!(numero, guid = ?guid, %error, "removal refused (GUID never assigned, or a real failure — indistinguishable from the return code)");
             }
         }
     }
 
     std::thread::sleep(DELAI_TOPOLOGIE);
-    let apres = relever_topologie("après purge")?;
+    let after = relever_topologie("after purge")?;
 
     // Explicit verdict: without it, a broken handle or IOCTL would produce
-    // silently `retirees=0` and an `Ok(())` — the probe whose job
+    // silently `removed=0` and an `Ok(())` — the probe whose job
     // IS to restore would then be the only one judging nothing, whereas
     // `monter_en_n` (montee.rs) emits one in the symmetric case.
-    let attendu = before.len().saturating_sub(retirees);
-    match verdict(before.len(), apres.len(), retirees) {
+    let expected = before.len().saturating_sub(removed);
+    match verdict(before.len(), after.len(), removed) {
         Verdict::Conforme => {
             tracing::info!(
-                retirees,
+                removed,
                 before = before.len(),
-                apres = apres.len(),
-                "purge terminée"
+                after = after.len(),
+                "purge finished"
             )
         }
         Verdict::UnTiersAAussiRetire => tracing::info!(
-            retirees,
+            removed,
             before = before.len(),
-            apres = apres.len(),
-            attendu,
-            "purge terminée — MOINS de sorties qu'attendu, ce que la purge ne \
-             peut pas expliquer et n'a pas à dénoncer : un tiers en a retiré \
-             une pendant ce temps (Apollo crée puis détruit une sortie \
-             temporaire pour sonder ses encodeurs, mesuré au lot 32C)"
+            after = after.len(),
+            expected,
+            "purge finished — FEWER outputs than expected, which the purge \
+             cannot explain and need not denounce: a third party removed \
+             one meanwhile (Apollo creates then destroys a temporary \
+             output to probe its encoders, measured in batch 32C)"
         ),
         Verdict::RetraitsSansEffet => tracing::error!(
-            retirees,
+            removed,
             before = before.len(),
-            apres = apres.len(),
-            attendu,
-            "purge terminée SANS retrouver le compte attendu — il reste PLUS de \
-             sorties qu'attendu : des retraits déclarés réussis n'ont rien retiré"
+            after = after.len(),
+            expected,
+            "purge finished WITHOUT finding the expected count — MORE \
+             outputs remain than expected: removals reported successful removed nothing"
         ),
     }
     Ok(())
@@ -173,14 +173,14 @@ pub(crate) fn purger() -> Result<()> {
 pub(crate) fn rejouer_purge_due(pilote: &PiloteParIoctl) -> usize {
     let mut reussis = 0usize;
     for guid_moniteur in pilote.a_purger() {
-        match pilote.retirer_par_guid(guid_moniteur, "retrait rejoué d'un retrait dû") {
+        match pilote.retirer_par_guid(guid_moniteur, "replaying a removal that is due") {
             Ok(()) => {
                 pilote.oublier(guid_moniteur);
                 reussis += 1;
-                tracing::info!(guid = ?guid_moniteur, "retrait dû rejoué avec succès");
+                tracing::info!(guid = ?guid_moniteur, "due removal replayed successfully");
             }
             Err(error) => {
-                tracing::warn!(guid = ?guid_moniteur, %error, "retrait dû toujours refusé");
+                tracing::warn!(guid = ?guid_moniteur, %error, "due removal still refused");
             }
         }
     }

@@ -84,7 +84,7 @@ impl Lanceur for LanceurDeProcessus {
         self.identite_heritee(&mut commande);
         let mut enfant = commande
             .spawn()
-            .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
+            .with_context(|| format!("launching child {}", consigne.session.0))?;
         let pid = enfant.id();
 
         // This function's only fallible post-processing. The trait's atomic
@@ -96,12 +96,12 @@ impl Lanceur for LanceurDeProcessus {
             if let Err(mise_a_mort) = enfant.kill() {
                 tracing::error!(
                     pid, %mise_a_mort,
-                    "enfant NON rattaché au job ET NON tué — il survivra au superviseur"
+                    "child NOT attached to the job AND NOT killed — it will outlive the supervisor"
                 );
             }
             let _ = enfant.wait();
             return Err(anyhow::Error::new(error)
-                .context(format!("rattachement de l'enfant {pid} au job object")));
+                .context(format!("attaching child {pid} to the job object")));
         }
 
         self.enfants().insert(
@@ -128,7 +128,7 @@ impl Lanceur for LanceurDeProcessus {
                 true
             }
             Ok(Some(code)) => {
-                tracing::info!(pid, ?code, "enfant terminé");
+                tracing::info!(pid, ?code, "child finished");
                 // The `Child` goes with its handle: the PID becomes
                 // recyclable again, but no one uses it any more.
                 enfants.remove(&pid);
@@ -144,8 +144,8 @@ impl Lanceur for LanceurDeProcessus {
                     enfant.etat_illisible_signale = true;
                     tracing::warn!(
                         pid, %error,
-                        "état de l'enfant illisible, tenu pour vivant \
-                         (signalé une seule fois tant que l'état reste illisible)"
+                        "child state unreadable, taken as alive \
+                         (reported only once as long as the state stays unreadable)"
                     );
                 }
                 true
@@ -157,7 +157,7 @@ impl Lanceur for LanceurDeProcessus {
         let mut enfant = self
             .enfants()
             .remove(&pid)
-            .with_context(|| format!("processus {pid} inconnu de ce lanceur — rien à tuer"))?;
+            .with_context(|| format!("process {pid} unknown to this launcher — nothing to kill"))?;
         // `Child::kill` goes through the retained HANDLE, never through the number: even
         // if Windows had recycled this PID, no third party can be targeted.
         let issue = enfant.processus.kill();

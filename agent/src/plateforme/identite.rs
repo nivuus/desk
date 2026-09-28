@@ -90,7 +90,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn un_jeton_herite_dispense_de_tout_enrolement() {
+    fn an_inherited_token_exempts_from_any_enrolment() {
         assert_eq!(
             source(Some("jwt.h"), None, None),
             SourceIdentite::Heritee("jwt.h".into())
@@ -103,7 +103,7 @@ mod tests {
     /// own channel, and we would fall back on the 95 enrolments / 94 evictions
     /// measured on 20 August 2026.
     #[test]
-    fn le_jeton_herite_l_emporte_sur_un_couple_d_enrolement_present() {
+    fn the_inherited_token_wins_over_a_present_enrolment_pair() {
         assert_eq!(
             source(Some("jwt.h"), Some("vm-1"), Some("chut")),
             SourceIdentite::Heritee("jwt.h".into())
@@ -111,7 +111,7 @@ mod tests {
     }
 
     #[test]
-    fn sans_jeton_le_couple_complet_fait_s_enroler() {
+    fn without_a_token_the_complete_pair_enrols() {
         assert_eq!(
             source(None, Some("vm-1"), Some("chut")),
             SourceIdentite::Enrolement {

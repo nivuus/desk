@@ -109,7 +109,7 @@ impl Compteurs {
     ///
     /// 🔴 **It is the most important red of this module**: an always empty
     /// `manquants()` would make criterion (4) be declared HELD on a run where
-    /// nothing was exercised. The test `manquants_rend_exactement_les_causes_a_zero`
+    /// nothing was exercised. The test `missing_returns_exactly_the_causes_at_zero`
     /// catches it.
     pub fn manquants(&self) -> Vec<Error> {
         Error::ALL
@@ -146,7 +146,7 @@ fn rang(e: Error) -> usize {
     Error::ALL
         .iter()
         .position(|c| *c == e)
-        .expect("toute variante d'Erreur figure dans TOUTES — NOMBRE l'impose")
+        .expect("every Error variant appears in ALL — COUNT enforces it")
 }
 
 #[cfg(test)]

@@ -32,7 +32,7 @@
 //! SudoVDA is the one CCD uses. It is a hypothesis, stated as
 //! such in `config_affichage`, and its failure makes the product fall back on
 //! the pairing by elimination described below — which therefore stays alive, and
-//! stays the raison d'être of this whole module.
+//! stays the reason to exist of this whole module.
 //!
 //! **`GetDesc`/`DesktopCoordinates` is the source of truth, never WMI** —
 //! the WMI field was seen 68 s stale on this ground, and the virtual output
@@ -401,7 +401,7 @@ mod win {
                 // foreground from the one the user is handling.
                 SWP_NOACTIVATE,
             )
-            .context("SetWindowPos vers la sortie virtuelle")?;
+            .context("SetWindowPos towards the virtual output")?;
         }
         Ok(())
     }

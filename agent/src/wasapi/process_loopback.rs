@@ -86,16 +86,16 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for GestionnaireCompletion_Im
         let result: Result<IAudioClient> = (|| {
             let operation = activateoperation
                 .ok()
-                .context("le rappel d'activation n'a rendu aucune opération")?;
+                .context("the activation callback returned no operation")?;
             let mut hr = windows::core::HRESULT::default();
             let mut interface: Option<windows::core::IUnknown> = None;
             unsafe { operation.GetActivateResult(&mut hr, &mut interface) }
                 .context("GetActivateResult")?;
-            hr.ok().context("activation du process loopback refusée")?;
+            hr.ok().context("process loopback activation refused")?;
             interface
-                .context("GetActivateResult a réussi sans rendre d'interface")?
+                .context("GetActivateResult succeeded without returning an interface")?
                 .cast::<IAudioClient>()
-                .context("l'interface activée n'est pas un IAudioClient")
+                .context("the activated interface is not an IAudioClient")
         })();
 
         let mut verrou = self.etat.result.lock().unwrap_or_else(|e| e.into_inner());
@@ -128,9 +128,9 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
         let hr = CoInitializeEx(None, COINIT_MULTITHREADED);
         if hr == RPC_E_CHANGED_MODE {
             bail!(
-                "activation du process loopback refusée : le fil appelant appartient déjà à une \
-                 STA, pas à la MTA qu'exige cette API (voir `LoopbackCapture::open` dans \
-                 `agent/src/wasapi.rs` pour le même garde-fou)"
+                "process loopback activation refused: the calling thread already belongs to an \
+                 STA, not to the MTA this API requires (see `LoopbackCapture::open` in \
+                 `agent/src/wasapi.rs` for the same safeguard)"
             );
         }
 
@@ -195,7 +195,7 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
             Some(&*propriete),
             &gestionnaire,
         )
-        .context("appel à ActivateAudioInterfaceAsync")?;
+        .context("call to ActivateAudioInterfaceAsync")?;
 
         let verrou = etat.result.lock().unwrap_or_else(|e| e.into_inner());
         let (mut verrou, _attente) = etat
@@ -205,9 +205,9 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
 
         match verrou.take() {
             Some(ActivationResult(Ok(client))) => Ok(client),
-            Some(ActivationResult(Err(e))) => Err(e).context("activation refusée"),
+            Some(ActivationResult(Err(e))) => Err(e).context("activation refused"),
             None => bail!(
-                "aucun rappel d'activation reçu en {DELAI_RAPPEL_ACTIVATION:?} pour le PID {pid}"
+                "no activation callback received within {DELAI_RAPPEL_ACTIVATION:?} for PID {pid}"
             ),
         }
     }
@@ -220,7 +220,7 @@ fn activer_pour_processus(pid: u32) -> Result<IAudioClient> {
 pub fn probe_process_loopback(pid: u32) -> Result<String> {
     let _client = activer_pour_processus(pid)?;
     Ok(format!(
-        "activation réussie : IAudioClient obtenu pour le PID {pid} \
+        "activation succeeded: IAudioClient obtained for PID {pid} \
          (VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, INCLUDE_TARGET_PROCESS_TREE)"
     ))
 }
@@ -288,13 +288,13 @@ impl CaptureProcessus {
                     None,
                 )
                 .context(
-                    "Initialize du client de process loopback (format impose : 48 kHz, \
-                     2 canaux, 16 bits)",
+                    "Initialize of the process loopback client (imposed format: 48 kHz, \
+                     2 channels, 16 bits)",
                 )?;
 
             let capture: IAudioCaptureClient = client
                 .GetService()
-                .context("GetService(IAudioCaptureClient) sur le client de process loopback")?;
+                .context("GetService(IAudioCaptureClient) on the process loopback client")?;
 
             // `WAVEFORMATEX` is `repr(packed)` (same reason as
             // `WAVEFORMATEXTENSIBLE` in the parent module): taking a
@@ -304,8 +304,8 @@ impl CaptureProcessus {
             let frequence = format.nSamplesPerSec;
             let canaux = format.nChannels;
             let description = format!(
-                "process loopback pid={pid} — {frequence} Hz, {canaux} canaux, \
-                 16 bits entiers"
+                "process loopback pid={pid} — {frequence} Hz, {canaux} channels, \
+                 16-bit integers"
             );
 
             Ok(Self {
@@ -326,7 +326,7 @@ impl CaptureProcessus {
         if self.started {
             return Ok(());
         }
-        unsafe { self.client.Start() }.context("Start du client de process loopback")?;
+        unsafe { self.client.Start() }.context("Start of the process loopback client")?;
         self.started = true;
         Ok(())
     }
@@ -341,7 +341,7 @@ impl CaptureProcessus {
         if !self.started {
             return Ok(());
         }
-        unsafe { self.client.Stop() }.context("Stop du client de process loopback")?;
+        unsafe { self.client.Stop() }.context("Stop of the process loopback client")?;
         self.started = false;
         Ok(())
     }
@@ -355,7 +355,7 @@ impl CaptureProcessus {
             let disponibles = self
                 .capture
                 .GetNextPacketSize()
-                .context("GetNextPacketSize sur le process loopback")?;
+                .context("GetNextPacketSize on the process loopback")?;
             if disponibles == 0 {
                 return Ok(None);
             }
@@ -365,7 +365,7 @@ impl CaptureProcessus {
             let mut drapeaux = 0u32;
             self.capture
                 .GetBuffer(&mut data, &mut images, &mut drapeaux, None, None)
-                .context("GetBuffer sur le process loopback")?;
+                .context("GetBuffer on the process loopback")?;
 
             let echantillons = images as usize * CHANNELS;
             let sortie = if drapeaux & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 {
@@ -378,7 +378,7 @@ impl CaptureProcessus {
 
             self.capture
                 .ReleaseBuffer(images)
-                .context("ReleaseBuffer sur le process loopback")?;
+                .context("ReleaseBuffer on the process loopback")?;
             Ok(Some(sortie))
         }
     }

@@ -274,7 +274,7 @@ impl Table {
         if self.entrees.len() >= self.capacite {
             return vec![Effet::AnnoncerRefus {
                 titre,
-                motif: "plus aucune sortie virtuelle disponible".into(),
+                motif: "no virtual output available any more".into(),
             }];
         }
         let session = self.prochaine_session();
@@ -356,7 +356,7 @@ impl Table {
         else {
             return Vec::new();
         };
-        let entree = self.entrees.remove(&session).expect("trouvée à l'instant");
+        let entree = self.entrees.remove(&session).expect("found just now");
         let mut effets = vec![Effet::TuerEnfant {
             session: session.clone(),
         }];

@@ -111,7 +111,7 @@ impl Reveil {
     /// The label that goes to the log.
     pub fn libelle(self) -> &'static str {
         match self {
-            Reveil::Evenement => "evenement",
+            Reveil::Evenement => "event",
             Reveil::Echeance => "echeance",
         }
     }
@@ -158,8 +158,8 @@ pub fn rejoindre_mta() -> Result<()> {
     let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
     if hr == RPC_E_CHANGED_MODE {
         bail!(
-            "ecriture du micro refusee : le fil de rendu appartient deja a un appartement a \
-             thread unique (STA), pas a l'appartement multi-thread (MTA) qu'exige WASAPI"
+            "mic write refused: the render thread already belongs to a \
+             single-threaded apartment (STA), not to the multi-threaded apartment (MTA) that WASAPI requires"
         );
     }
     Ok(())
@@ -203,12 +203,12 @@ impl RenduWasapi {
         unsafe {
             let client: IAudioClient = peripherique
                 .Activate(CLSCTX_ALL, None)
-                .context("activation du client audio de rendu (cable)")?;
+                .context("activating the render audio client (cable)")?;
 
             let mix = FormatMixage(
                 client
                     .GetMixFormat()
-                    .context("lecture du format de mixage du cable")?,
+                    .context("reading the cable's mix format")?,
             );
             let canaux = mix.nChannels as usize;
             let frequence = mix.nSamplesPerSec;
@@ -248,13 +248,13 @@ impl RenduWasapi {
                 Err(e) => {
                     tracing::warn!(
                         error = %e,
-                        "AUDCLNT_STREAMFLAGS_EVENTCALLBACK refuse par le cable : repli sur une \
-                         boucle a echeance (spec §6 le predisait supporte, ce n'etait qu'une \
+                        "AUDCLNT_STREAMFLAGS_EVENTCALLBACK refused by the cable: falling back to a \
+                         deadline loop (spec §6 predicted it supported, it was only a \
                          prediction)"
                     );
                     let neuf: IAudioClient = peripherique.Activate(CLSCTX_ALL, None).context(
-                        "re-activation du client audio de rendu apres refus de \
-                                  l'evenement",
+                        "re-activating the render audio client after the event \
+                                  refusal",
                     )?;
                     neuf.Initialize(
                         AUDCLNT_SHAREMODE_SHARED,
@@ -264,7 +264,7 @@ impl RenduWasapi {
                         mix.0,
                         None,
                     )
-                    .context("initialisation du client audio de rendu (cable, sans evenement)")?;
+                    .context("initialising the render audio client (cable, without event)")?;
                     (neuf, Reveil::Echeance)
                 }
             };
@@ -274,10 +274,10 @@ impl RenduWasapi {
 
             let evenement = if reveil == Reveil::Evenement {
                 let handle = CreateEventW(None, false, false, PCWSTR::null())
-                    .context("creation de l'evenement de reveil du rendu")?;
+                    .context("creating the render wake-up event")?;
                 client
                     .SetEventHandle(handle)
-                    .context("liaison de l'evenement au client de rendu")?;
+                    .context("binding the event to the render client")?;
                 Some(handle)
             } else {
                 None
@@ -285,11 +285,11 @@ impl RenduWasapi {
 
             let buffer_size = client
                 .GetBufferSize()
-                .context("lecture de la taille du tampon de rendu")?;
+                .context("reading the render buffer size")?;
             let rendu: IAudioRenderClient = client
                 .GetService()
-                .context("obtention du service de rendu")?;
-            client.Start().context("demarrage du rendu")?;
+                .context("obtaining the render service")?;
+            client.Start().context("starting the render")?;
 
             Ok(Self {
                 client,
@@ -336,7 +336,7 @@ impl RenduWasapi {
                 Reveil::Evenement => {
                     let handle = self
                         .evenement
-                        .context("mode evenement sans handle : incoherence interne")?;
+                        .context("event mode without a handle: internal inconsistency")?;
                     // `as u32` after `min`: a wait of more than 49 days
                     // makes no sense here, and `INFINITE` (0xFFFFFFFF) must
                     // never be reached by accident — a render thread that
@@ -347,7 +347,7 @@ impl RenduWasapi {
                     // is only closed by `Drop`.
                     let issue = unsafe { WaitForSingleObject(handle, ms) };
                     if issue == WAIT_FAILED {
-                        bail!("attente de l'evenement de rendu echouee (WAIT_FAILED)");
+                        bail!("waiting for the render event failed (WAIT_FAILED)");
                     }
                 }
                 Reveil::Echeance => {
@@ -364,7 +364,7 @@ impl RenduWasapi {
     fn place(&self) -> Result<usize> {
         // SAFETY: `client` comes from a successful `Initialize`.
         let occupe = unsafe { self.client.GetCurrentPadding() }
-            .context("lecture de l'occupation du tampon de rendu")?;
+            .context("reading the render buffer occupancy")?;
         Ok(self.buffer_size.saturating_sub(occupe) as usize)
     }
 
@@ -380,7 +380,7 @@ impl RenduWasapi {
         let besoin = trames * self.canaux;
         ensure!(
             pcm.len() >= besoin,
-            "tampon PCM trop court : {} echantillons pour {trames} trames x {} canaux",
+            "PCM buffer too short: {} samples for {trames} frames x {} channels",
             pcm.len(),
             self.canaux
         );
@@ -400,11 +400,11 @@ impl RenduWasapi {
             let tampon = self
                 .rendu
                 .GetBuffer(trames as u32)
-                .context("acquisition du tampon de rendu")?;
+                .context("acquiring the render buffer")?;
             std::ptr::copy_nonoverlapping(pcm.as_ptr(), tampon as *mut f32, besoin);
             self.rendu
                 .ReleaseBuffer(trames as u32, 0)
-                .context("liberation du tampon de rendu")?;
+                .context("releasing the render buffer")?;
         }
         Ok(())
     }
@@ -446,7 +446,7 @@ fn faute_a_injecter() -> bool {
             // as two events (sub-block D6's home-grown trap).
             tracing::warn!(
                 fautes_a_injecter = n,
-                "injection de fautes d'ecriture du micro ARMEE (banc, MICRO_FAUTE_ECRITURE)"
+                "mic write fault injection ARMED (bench, MICRO_FAUTE_ECRITURE)"
             );
         }
         AtomicU32::new(n)

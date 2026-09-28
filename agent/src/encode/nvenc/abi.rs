@@ -220,7 +220,7 @@ mod tests {
     /// arithmetic with that survey — it is what makes re-readable a constant
     /// whose error would be silent.
     #[test]
-    fn les_versions_de_structures_valent_celles_de_l_entete() {
+    fn the_structure_versions_equal_the_header_ones() {
         assert_eq!(VERSION_API, 0x0200_000C, "NVENCAPI_VERSION");
         assert_eq!(OPEN_ENCODE_SESSION_EX_PARAMS_VER, 0x7201_000C);
         assert_eq!(INITIALIZE_PARAMS_VER, 0xF207_000C);
@@ -236,14 +236,14 @@ mod tests {
         assert_eq!(RECONFIGURE_PARAMS_VER, 0xF202_000C);
         assert_eq!(
             RECONFIGURE_PARAMS_VER, LOCK_BITSTREAM_VER,
-            "les deux partagent la révision 2 : relevé, pas supposé"
+            "both share revision 2: read, not assumed"
         );
     }
 
     /// 🔴 The `1 << 31` bit separates the two families. If it disappeared from the
     /// five structures that carry it, NVENC would refuse them **silently**.
     #[test]
-    fn le_bit_de_poids_fort_distingue_les_deux_familles() {
+    fn the_most_significant_bit_tells_the_two_families_apart() {
         for (nom, v) in [
             ("INITIALIZE_PARAMS", INITIALIZE_PARAMS_VER),
             ("CONFIG", CONFIG_VER),
@@ -252,7 +252,7 @@ mod tests {
             ("LOCK_BITSTREAM", LOCK_BITSTREAM_VER),
             ("RECONFIGURE_PARAMS", RECONFIGURE_PARAMS_VER),
         ] {
-            assert_ne!(v & (1 << 31), 0, "{nom} doit porter le bit 31");
+            assert_ne!(v & (1 << 31), 0, "{nom} must carry bit 31");
         }
         for (nom, v) in [
             (
@@ -265,23 +265,23 @@ mod tests {
             ("CREATE_BITSTREAM_BUFFER", CREATE_BITSTREAM_BUFFER_VER),
             ("FUNCTION_LIST", FUNCTION_LIST_VER),
         ] {
-            assert_eq!(v & (1 << 31), 0, "{nom} ne doit PAS porter le bit 31");
+            assert_eq!(v & (1 << 31), 0, "{nom} must NOT carry bit 31");
         }
     }
 
     /// 🔴 **THE TWO VERSION PACKINGS ARE DIFFERENT**, and
     /// confusing them would reject every driver. This test pins the difference.
     #[test]
-    fn la_version_attendue_du_pilote_n_est_pas_celle_de_l_api() {
+    fn the_expected_driver_version_is_not_the_api_one() {
         assert_eq!(version_pilote_attendue(), 0xC2, "(12 << 4) | 2");
         assert_ne!(version_pilote_attendue(), VERSION_API);
     }
 
     #[test]
-    fn un_pilote_trop_ancien_est_refuse_et_un_plus_recent_accepte() {
+    fn a_too_old_driver_is_refused_and_a_newer_one_accepted() {
         assert!(pilote_compatible(0xC2), "12.2 exactement");
-        assert!(pilote_compatible((13 << 4) | 1), "13.1, plus récent");
-        assert!(!pilote_compatible((12 << 4) | 1), "12.1, trop ancien");
+        assert!(pilote_compatible((13 << 4) | 1), "13.1, more recent");
+        assert!(!pilote_compatible((12 << 4) | 1), "12.1, too old");
         assert!(!pilote_compatible(0), "pilote muet");
     }
 
@@ -289,19 +289,19 @@ mod tests {
     /// (`DXGI_FORMAT_B8G8R8A8_UNORM`) is declared `ARGB` to NVENC, never
     /// `ABGR` — the reverse would output an image without the slightest error.
     #[test]
-    fn le_format_de_la_capture_est_argb_et_non_abgr() {
+    fn the_capture_format_is_argb_not_abgr() {
         assert_eq!(BUFFER_FORMAT_ARGB, 0x0100_0000);
         assert_eq!(BUFFER_FORMAT_ABGR, 0x1000_0000);
         assert_ne!(BUFFER_FORMAT_ARGB, BUFFER_FORMAT_ABGR);
     }
 
     #[test]
-    fn les_constantes_d_enumeration_valent_celles_de_l_entete() {
+    fn the_enumeration_constants_equal_the_header_ones() {
         assert_eq!(DEVICE_TYPE_DIRECTX, 0);
         assert_eq!(INPUT_RESOURCE_TYPE_DIRECTX, 0);
         assert_eq!(BUFFER_FORMAT_NV12, 1);
         assert_eq!(RC_MODE_CBR, 2);
-        assert_eq!(PIC_STRUCT_FRAME, 1, "vaut 1, pas 0");
+        assert_eq!(PIC_STRUCT_FRAME, 1, "is 1, not 0");
         assert_eq!(PIC_FLAG_FORCEIDR, 2);
         assert_eq!(PIC_FLAG_OUTPUT_SPSPPS, 4);
         assert_eq!(TUNING_ULTRA_LOW_LATENCY, 3);

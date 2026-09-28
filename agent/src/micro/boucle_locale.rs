@@ -109,17 +109,17 @@ mod tests {
     /// 🔴 **The defect measured on 20 August 2026.**
     #[test]
     #[allow(non_snake_case)]
-    fn le_cable_capte_par_le_loopback_est_un_RISQUE() {
+    fn the_cable_captured_by_the_loopback_is_a_RISK() {
         assert_eq!(evaluer(Some(CABLE), CABLE), Boucle::Risque);
     }
 
     #[test]
-    fn deux_endpoints_distincts_ne_bouclent_pas() {
+    fn two_distinct_endpoints_do_not_loop() {
         assert_eq!(evaluer(Some(AUTRE), CABLE), Boucle::Absent);
     }
 
     #[test]
-    fn sans_capture_il_n_y_a_pas_de_boucle() {
+    fn without_capture_there_is_no_loop() {
         assert_eq!(evaluer(None, CABLE), Boucle::Absent);
     }
 
@@ -128,7 +128,7 @@ mod tests {
     /// hexadecimal digits —, hence `eq_ignore_ascii_case`.
     #[test]
     #[allow(non_snake_case)]
-    fn la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant() {
+    fn the_comparison_is_case_INSENSITIVE_on_the_identifier() {
         assert_eq!(evaluer(Some(&CABLE.to_uppercase()), CABLE), Boucle::Risque);
     }
 
@@ -139,7 +139,7 @@ mod tests {
     /// would lose its microphone for no reason.
     #[test]
     #[allow(non_snake_case)]
-    fn un_identifiant_VIDE_ne_boucle_pas() {
+    fn an_EMPTY_identifier_does_not_loop() {
         assert_eq!(evaluer(Some(""), ""), Boucle::Absent);
         assert_eq!(evaluer(Some(""), CABLE), Boucle::Absent);
         assert_eq!(evaluer(Some(CABLE), ""), Boucle::Absent);

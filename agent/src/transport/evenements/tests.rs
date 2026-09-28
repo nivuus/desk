@@ -48,7 +48,7 @@ mod memorisation;
 /// `CODECAPI_AVEncVideoForceKeyFrame`) stays checked by reading and by
 /// Windows cross-compilation, not by an automated test.
 #[test]
-fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
+fn relays_a_key_frame_request_from_the_peer_to_the_source() {
     use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
     use std::sync::Arc;
     use std::thread;
@@ -97,16 +97,16 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
     let video_mid = api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
     api.add_channel("control".to_string());
     api.add_channel("input".to_string());
-    let (offer, pending) = api.apply().expect("offre non vide");
+    let (offer, pending) = api.apply().expect("non-empty offer");
 
     let answer_sdp = session
         .accept_offer(&offer.to_sdp_string())
-        .expect("offre acceptée");
-    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+        .expect("offer accepted");
+    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
     peer_rtc
         .sdp_api()
         .accept_answer(pending, answer)
-        .expect("réponse acceptée par le pair");
+        .expect("answer accepted by the peer");
 
     thread::spawn(move || {
         let mut on_input = |_| {};
@@ -124,9 +124,9 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
         }
         if now >= hard_deadline {
             panic!(
-                "délai dépassé : le pair local ne s'est jamais connecté, ou \
-                 Event::KeyframeRequest n'a jamais atteint VideoSource::request_keyframe \
-                 (compteur toujours à 0)"
+                "timeout: the local peer never connected, or \
+                 Event::KeyframeRequest never reached VideoSource::request_keyframe \
+                 (counter still at 0)"
             );
         }
 
@@ -152,10 +152,10 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
                     // `format::payload_params::PayloadParams::new`), so
                     // this negotiation has nothing special to enable on the
                     // SDP offer/answer side.
-                    let mut writer = peer_rtc.writer(video_mid).expect("writer vidéo");
+                    let mut writer = peer_rtc.writer(video_mid).expect("video writer");
                     writer
                         .request_keyframe(None, KeyframeRequestKind::Pli)
-                        .expect("PLI négocié par défaut sur un codec vidéo (fb_pli)");
+                        .expect("PLI negotiated by default on a video codec (fb_pli)");
                 }
             }
             Output::Event(_) => {}
@@ -164,7 +164,7 @@ fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
 
     assert!(
         keyframe_requests.load(AtomicOrdering::SeqCst) > 0,
-        "Event::KeyframeRequest du pair n'a jamais atteint VideoSource::request_keyframe"
+        "the peer's Event::KeyframeRequest never reached VideoSource::request_keyframe"
     );
 }
 
@@ -204,7 +204,7 @@ fn session_with_tracks(pistes: &[(MediaKind, Direction)]) -> Session {
 /// This test is a non-regression net on a defect that ALREADY existed,
 /// and it was seen red on the code from before.
 #[test]
-fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
+fn a_recvonly_audio_track_never_becomes_the_output_track() {
     let s = session_with_tracks(&[
         (MediaKind::Video, Direction::RecvOnly),
         (MediaKind::Audio, Direction::SendOnly),
@@ -213,12 +213,12 @@ fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
     assert_eq!(
         s.audio_mid,
         Some("m1".into()),
-        "la piste audio RECVONLY (le micro) a écrasé la piste de sortie du chantier A"
+        "the RECVONLY audio track (the mic) overwrote the output track of work item A"
     );
     assert_eq!(
         s.mic_mid,
         Some("m2".into()),
-        "la piste du micro n'a pas été retenue"
+        "the mic track was not retained"
     );
 }
 
@@ -226,7 +226,7 @@ fn une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie() {
 /// downstream sound. The order of m-lines is not under our control — it is
 /// the browser that offers.
 #[test]
-fn une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro() {
+fn a_sendonly_audio_track_stays_the_output_track_even_after_the_mic() {
     let s = session_with_tracks(&[
         (MediaKind::Audio, Direction::RecvOnly),
         (MediaKind::Audio, Direction::SendOnly),
@@ -239,7 +239,7 @@ fn une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro() {
 /// that does not distinguish the two directions would negotiate. Filing it on
 /// the microphone side would cut the downstream sound.
 #[test]
-fn une_piste_audio_sendrecv_est_une_piste_de_sortie() {
+fn a_sendrecv_audio_track_is_an_output_track() {
     let s = session_with_tracks(&[(MediaKind::Audio, Direction::SendRecv)]);
     assert_eq!(s.audio_mid, Some("m0".into()));
     assert_eq!(s.mic_mid, None);
@@ -248,7 +248,7 @@ fn une_piste_audio_sendrecv_est_une_piste_de_sortie() {
 /// `Inactive` is NEITHER one NOR the other. Without this arm, a track switched off
 /// by the peer would take the place of a live track.
 #[test]
-fn une_piste_audio_inactive_n_est_retenue_nulle_part() {
+fn an_inactive_audio_track_is_retained_nowhere() {
     let s = session_with_tracks(&[
         (MediaKind::Audio, Direction::SendOnly),
         (MediaKind::Audio, Direction::Inactive),
@@ -301,7 +301,7 @@ fn a_frame_arriving_before_any_channel_open_is_refused() {
 }
 
 #[test]
-fn l_aiguillage_nomme_ses_deux_canaux_et_refuse_les_autres() {
+fn the_switch_names_its_two_channels_and_refuses_the_others() {
     assert_eq!(destination(1u8, Some(1), Some(2)), Destination::Entree);
     assert_eq!(destination(2u8, Some(1), Some(2)), Destination::Controle);
     // 🔴 THE THIRD CHANNEL: yesterday decoded as a mouse input as soon as it was
@@ -319,7 +319,7 @@ fn l_aiguillage_nomme_ses_deux_canaux_et_refuse_les_autres() {
 /// is called TWICE. **Without this second channel, the test would be vacuous** — it
 /// would only check what the code already did.
 #[test]
-fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_refuse() {
+fn a_binary_frame_of_the_input_channel_reaches_on_input_and_an_unknown_channel_is_refused() {
     use proto::input::InputMessage;
     use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
     use std::sync::{Arc, Mutex};
@@ -343,16 +343,16 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
     // 🔴 THE PARASITE CHANNEL. It does not need to exist in the product: it
     // exhibits that ANY binary channel was decoded as an input.
     let canal_parasite = api.add_channel("parasite".to_string());
-    let (offer, pending) = api.apply().expect("offre non vide");
+    let (offer, pending) = api.apply().expect("non-empty offer");
 
     let answer_sdp = session
         .accept_offer(&offer.to_sdp_string())
-        .expect("offre acceptée");
-    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+        .expect("offer accepted");
+    let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("valid SDP answer");
     peer_rtc
         .sdp_api()
         .accept_answer(pending, answer)
-        .expect("réponse acceptée par le pair");
+        .expect("answer accepted by the peer");
 
     let recus = Arc::new(Mutex::new(Vec::<InputMessage>::new()));
     let recus_fil = recus.clone();
@@ -360,7 +360,7 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
     let fini_fil = fini.clone();
     thread::spawn(move || {
         let mut on_input = |m: InputMessage| {
-            recus_fil.lock().expect("verrou").push(m);
+            recus_fil.lock().expect("lock").push(m);
         };
         let mut on_control = |_| {};
         let _ = session.run(&mut on_input, &mut on_control);
@@ -390,12 +390,12 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
         }
         if maintenant >= butoir {
             panic!(
-                "délai dépassé : le pair local ne s'est jamais connecté, ou la trame du \
-                 canal `input` n'a jamais atteint on_input (reçus : {:?})",
-                recus.lock().expect("verrou")
+                "timeout: the local peer never connected, or the frame of the \
+                 `input` channel never reached on_input (received: {:?})",
+                recus.lock().expect("lock")
             );
         }
-        if repit.is_none() && recus.lock().expect("verrou").contains(&attendu) {
+        if repit.is_none() && recus.lock().expect("lock").contains(&attendu) {
             repit = Some(maintenant + Duration::from_millis(400));
         }
 
@@ -427,32 +427,32 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
                     // all the lead.
                     peer_rtc
                         .channel(canal_parasite)
-                        .expect("canal parasite ouvert")
+                        .expect("stray channel open")
                         .write(true, &parasite.encode())
-                        .expect("écriture sur le canal parasite");
+                        .expect("writing on the stray channel");
                     peer_rtc
                         .channel(canal_input)
-                        .expect("canal input ouvert")
+                        .expect("input channel open")
                         .write(true, &attendu.encode())
-                        .expect("écriture sur le canal input");
+                        .expect("writing on the input channel");
                 }
             }
             Output::Event(_) => {}
         }
     }
 
-    let recus = recus.lock().expect("verrou").clone();
+    let recus = recus.lock().expect("lock").clone();
     assert!(
         recus.contains(&attendu),
-        "la trame du canal `input` n'a pas atteint on_input : {recus:?}"
+        "the frame of the `input` channel did not reach on_input: {recus:?}"
     );
     assert!(
         !recus.contains(&parasite),
-        "🔴 une trame binaire d'un canal INCONNU a été décodée comme une entrée : {recus:?}"
+        "🔴 a binary frame from an UNKNOWN channel was decoded as an input: {recus:?}"
     );
     assert_eq!(
         recus.len(),
         1,
-        "une seule entrée attendue, reçues : {recus:?}"
+        "a single input expected, received: {recus:?}"
     );
 }

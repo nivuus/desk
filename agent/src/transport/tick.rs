@@ -126,7 +126,7 @@ impl Session {
             self.audio_write_pending_drain = false;
             self.rtc
                 .handle_input(Input::Timeout(Instant::now()))
-                .map_err(|e| anyhow!("handle_input timeout (drainage média) : {e}"))?;
+                .map_err(|e| anyhow!("handle_input timeout (media drain): {e}"))?;
             return Ok(Tick::Continue);
         }
 
@@ -184,7 +184,7 @@ impl Session {
                     error = %crate::cause::chain(&error),
                     visible,
                     focalisee,
-                    "visibilité refusée par le capteur"
+                    "visibility refused by the sensor"
                 );
             }
             return Ok(Tick::Continue);
@@ -431,7 +431,7 @@ impl Session {
         if now.saturating_duration_since(self.last_alive_check) >= ALIVE_CHECK_INTERVAL {
             self.last_alive_check = now;
             if !self.source.is_alive() {
-                self.begin_ending("fenêtre fermée");
+                self.begin_ending("window closed");
                 return Ok(Tick::Continue);
             }
         }

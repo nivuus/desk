@@ -104,8 +104,8 @@ pub(super) fn put_to_rest(
     // (two leads of brief 2ter) were set here, then removed on evidence:
     // with them, at N = 4 encoders, **one run out of four blocked
     // without returning** in this block, right after putting encoder
-    // no. 0 at rest and during that of no. 1 (log stopped at "libération d'un
-    // encodeur : avant id=1", process still alive thirteen minutes
+    // no. 0 at rest and during that of no. 1 (log stopped at the "releasing an
+    // encoder: before id=1" trace, process still alive thirteen minutes
     // later, `Responding: True`). The block is **bounded to this block**: the next
     // trace was never written. The two end-of-stream messages above, for their part,
     // predate this work stream and never blocked. Evidence committed:
@@ -123,7 +123,7 @@ pub(super) fn put_to_rest(
     // Imposing a queue and a barrier on it was done, then removed: in that
     // form (8 serialised queues at N = 4 instead of 4), one run out of six at
     // N = 4 **froze in the encoder's `IMFShutdown::Shutdown`**, trace
-    // "Shutdown : avant" written, "après" never
+    // "Shutdown: before" written, "after" never
     // (`2ter-gel-n4-shutdown.log`). The form without a queue on the converter had,
     // for its part, passed 16 runs at N = 4 without a freeze. Covering a case that exists
     // on no tested machine, at the cost of a freeze observed on the one being
@@ -135,7 +135,7 @@ pub(super) fn put_to_rest(
     // carry this risk on its own (see `arreter`).
 
     // Barrier: nothing that was already queued is still running.
-    file_encodeur.barriere("encodeur", "après END_STREAMING");
+    file_encodeur.barriere("encodeur", "after END_STREAMING");
 
     // Explicit stop of the MFTs, then a SECOND barrier: the stop itself drops
     // work onto the queue, and it is precisely that work that must be
@@ -143,7 +143,7 @@ pub(super) fn put_to_rest(
     arreter(convertisseur, "convertisseur");
     arreter(encodeur, "encodeur");
 
-    file_encodeur.barriere("encodeur", "après IMFShutdown");
+    file_encodeur.barriere("encodeur", "after IMFShutdown");
 }
 
 /// Safeguard of the wait for an MFT's stop confirmation.
@@ -187,7 +187,7 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 ///
 /// **And this freeze was OBSERVED, in this precise call.** At N = 4, a run
 /// stopped on `IMFShutdown::Shutdown : before mft="encodeur"` (id=2,
-/// 18:00:27,347197) without ever writing its `après`, process still alive
+/// 18:00:27,347197) without ever writing its `after`, process still alive
 /// thirteen minutes later:
 /// `docs/superpowers/plans/journaux-duplications-paralleles/2ter-gel-n4-shutdown.log`.
 /// It is therefore not a theoretical risk.
@@ -214,7 +214,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
             // Surveyed, not assumed: if the interface is missing, the log says so,
             // and we know this path stopped nothing at all. It is the case
             // of the software converter on this VM (`0x80004002`).
-            tracing::debug!(mft = quoi, error = %err, "MFT sans IMFShutdown : pas d'arrêt explicite");
+            tracing::debug!(mft = quoi, error = %err, "MFT without IMFShutdown: no explicit shutdown");
             return;
         }
     };
@@ -222,12 +222,12 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
     // `info` and not `debug`: the only mitigation of the only unbounded call, and
     // operation runs at `RUST_LOG=info`. Two lines per encoder
     // destruction, never per frame. DO NOT LOWER IT.
-    tracing::info!(mft = quoi, "IMFShutdown::Shutdown : avant");
+    tracing::info!(mft = quoi, "IMFShutdown::Shutdown: before");
     if let Err(err) = unsafe { arret.Shutdown() } {
-        tracing::warn!(mft = quoi, error = %err, "IMFShutdown::Shutdown refusé");
+        tracing::warn!(mft = quoi, error = %err, "IMFShutdown::Shutdown refused");
         return;
     }
-    tracing::info!(mft = quoi, "IMFShutdown::Shutdown : après");
+    tracing::info!(mft = quoi, "IMFShutdown::Shutdown: after");
 
     let debut = Instant::now();
     loop {
@@ -236,7 +236,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
                 tracing::debug!(
                     mft = quoi,
                     attente_ms = debut.elapsed().as_millis() as u64,
-                    "arrêt de la MFT confirmé"
+                    "MFT shutdown confirmed"
                 );
                 return;
             }
@@ -246,7 +246,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
                 tracing::debug!(
                     mft = quoi,
                     error = %err,
-                    "GetShutdownStatus indisponible : arrêt demandé mais non confirmable"
+                    "GetShutdownStatus unavailable: shutdown requested but not confirmable"
                 );
                 return;
             }
@@ -255,7 +255,7 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
             tracing::warn!(
                 mft = quoi,
                 delai_ms = DELAI_ARRET_MFT.as_millis() as u64,
-                "arrêt de la MFT non confirmé dans le délai : on relâche quand même"
+                "MFT shutdown not confirmed within the delay: releasing anyway"
             );
             return;
         }
@@ -266,12 +266,12 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
 /// Sends a message to an MFT, bracketing the call with two traces: a call
 /// that does not return can then be read in the log.
 fn message(mft: &IMFTransform, quoi: &'static str, nom: &'static str, message: MFT_MESSAGE_TYPE) {
-    tracing::debug!(mft = quoi, message = nom, "mise au repos : avant");
+    tracing::debug!(mft = quoi, message = nom, "putting to rest: before");
     let issue = unsafe { mft.ProcessMessage(message, 0) };
     tracing::debug!(
         mft = quoi,
         message = nom,
         refuse = issue.is_err(),
-        "mise au repos : après"
+        "putting to rest: after"
     );
 }

@@ -55,7 +55,7 @@ mod lisere {
     /// What `SetWindowPos` must receive for the eye to see exactly the
     /// target: the target inflated by the fringe, shifted by its top-left corner.
     #[test]
-    fn le_rectangle_pose_est_la_cible_gonflee_du_lisere() {
+    fn the_set_rectangle_is_the_target_inflated_by_the_border() {
         let pose = rect_a_poser(&cible_mesuree(), MESURE);
         assert_eq!(
             pose,
@@ -77,7 +77,7 @@ mod lisere {
     /// each side), as the probe measured it, and not an inversion of
     /// `rect_a_poser`.
     #[test]
-    fn le_cadre_visible_du_rectangle_pose_redonne_exactement_la_cible() {
+    fn the_visible_frame_of_the_set_rectangle_gives_back_exactly_the_target() {
         let cible = cible_mesuree();
         let pose = rect_a_poser(&cible, MESURE);
         let visible = Rect {
@@ -95,7 +95,7 @@ mod lisere {
     /// the gap would be permanent and the window would be placed again **every
     /// second**. This test is the pure version of that loop.
     #[test]
-    fn apres_compensation_le_controle_periodique_ne_replace_plus() {
+    fn after_compensation_the_periodic_check_no_longer_replaces() {
         let cible = cible_mesuree();
         let pose = rect_a_poser(&cible, MESURE);
         let visible = Rect {
@@ -113,7 +113,7 @@ mod lisere {
         // check would replace indefinitely.
         assert!(
             doit_etre_replacee(&pose, &cible),
-            "le brut DOIT differer de la cible, sinon ce test ne prouve rien"
+            "the raw value MUST differ from the target, otherwise this test proves nothing"
         );
     }
 
@@ -155,7 +155,7 @@ mod lisere {
     /// the behaviour from before this fix**. A correction that could
     /// not disarm itself would be worse than the defect.
     #[test]
-    fn un_lisere_nul_rend_la_cible_telle_quelle() {
+    fn a_zero_border_returns_the_target_as_is() {
         let cible = cible_mesuree();
         assert_eq!(rect_a_poser(&cible, Lisere::NUL), cible);
         assert_eq!(size_to_set((1732, 1032), Lisere::NUL), (1732, 1032));
@@ -172,7 +172,7 @@ mod lisere {
     /// An aberrant fringe — DWM returning anything — must not
     /// overflow the arithmetic and produce a tiny window.
     #[test]
-    fn un_lisere_aberrant_ne_fait_pas_deborder() {
+    fn an_aberrant_border_does_not_make_it_overflow() {
         let fou = Lisere {
             gauche: -100_000,
             haut: 0,
@@ -190,7 +190,7 @@ mod lisere {
         );
         assert_eq!(
             pose.width, 0,
-            "saturation vers le bas, jamais un repli par le haut"
+            "saturating downward, never a fallback from above"
         );
     }
 }
@@ -240,7 +240,7 @@ mod bordure_peinte {
     /// The result must be **exactly** the crop, otherwise the periodic check
     /// sees a permanent gap.
     #[test]
-    fn poser_puis_relire_redonne_exactement_le_recadrage() {
+    fn setting_then_reading_back_gives_exactly_the_cropping() {
         let crop = Rect {
             x: 1280,
             y: 0,
@@ -267,7 +267,7 @@ mod bordure_peinte {
     /// overflows by exactly one pixel on each side, and that is where Windows
     /// paints its dark line.
     #[test]
-    fn la_ligne_sombre_tombe_hors_du_recadrage() {
+    fn the_dark_line_falls_outside_the_cropping() {
         let crop = Rect {
             x: 1280,
             y: 0,
@@ -279,7 +279,7 @@ mod bordure_peinte {
         assert_eq!(
             crop.x - cadre_vu_gauche,
             BORDURE.0,
-            "le bord peint doit etre EN DEHORS"
+            "the painted edge must be OUTSIDE"
         );
         let cadre_vu_droite = pose.x + pose.width as i32 - DWM.droite;
         assert_eq!(cadre_vu_droite - (crop.x + crop.width as i32), BORDURE.0);
@@ -288,7 +288,7 @@ mod bordure_peinte {
     /// The fallback: no painted border → the envelope is the fringe alone, and
     /// `sans_la_bordure` is the identity. The previous behaviour, exactly.
     #[test]
-    fn sans_bordure_peinte_on_retrouve_le_comportement_precedent() {
+    fn without_a_painted_border_the_previous_behaviour_returns() {
         assert_eq!(enveloppe(DWM, (0, 0)), DWM);
         let r = Rect {
             x: 10,
@@ -302,7 +302,7 @@ mod bordure_peinte {
     /// An aberrant border must not overflow the arithmetic and
     /// return a giant crop through integer wraparound.
     #[test]
-    fn une_bordure_aberrante_ne_fait_pas_deborder() {
+    fn an_aberrant_border_does_not_overflow() {
         let r = Rect {
             x: 0,
             y: 0,

@@ -17,23 +17,23 @@
 use core::ffi::c_void;
 
 macro_rules! forme {
-    ($t:ty, $taille:expr, $alignement:expr, $nom:literal) => {
+    ($t:ty, $size:expr, $alignment:expr, $name:literal) => {
         const _: () = assert!(
-            core::mem::size_of::<$t>() == $taille,
-            concat!("taille ABI fausse pour ", $nom)
+            core::mem::size_of::<$t>() == $size,
+            concat!("wrong ABI size for ", $name)
         );
         const _: () = assert!(
-            core::mem::align_of::<$t>() == $alignement,
-            concat!("alignement ABI faux pour ", $nom)
+            core::mem::align_of::<$t>() == $alignment,
+            concat!("wrong ABI alignment for ", $name)
         );
     };
 }
 
 macro_rules! deport {
-    ($t:ty, $champ:ident, $valeur:expr, $nom:literal) => {
+    ($t:ty, $field:ident, $value:expr, $name:literal) => {
         const _: () = assert!(
-            core::mem::offset_of!($t, $champ) == $valeur,
-            concat!("déport ABI faux pour ", $nom)
+            core::mem::offset_of!($t, $field) == $value,
+            concat!("wrong ABI offset for ", $name)
         );
     };
 }

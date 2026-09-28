@@ -133,13 +133,13 @@ impl EtatPont {
             // be read from `relance_pont.rs`. The constant now says so
             // on its side, and ⚠️ it is **welded** to
             // `plateforme::repli::REPLI_MIN_MS` by the test
-            // `le_premier_espacement_egale_le_plancher`: it cannot
+            // `the_first_spacing_equals_the_floor`: it cannot
             // be raised alone.
             derniere_tentative: std::time::Instant::now()
                 - std::time::Duration::from_millis(crate::relance_pont::ESPACEMENT_PLANCHER_MS),
             relance: EtatRelance::neuve(),
         };
-        etat.tenter(lanceur, "lancement initial du pont fichiers échoué");
+        etat.tenter(lanceur, "initial file bridge launch failed");
         etat
     }
 
@@ -171,7 +171,7 @@ impl EtatPont {
             EtatObserve::Vivant => {
                 let ecoule_ms = self.derniere_tentative.elapsed().as_millis() as u64;
                 if self.relance.stable(ecoule_ms) {
-                    tracing::info!(pid = self.pid, "pont fichiers de nouveau stable");
+                    tracing::info!(pid = self.pid, "file bridge stable again");
                 }
                 return;
             }
@@ -185,7 +185,7 @@ impl EtatPont {
             // ③ measured, whose fallback must grow.
             EtatObserve::Absent => {}
         }
-        self.tenter(lanceur, "relance du pont fichiers échouée");
+        self.tenter(lanceur, "file bridge relaunch failed");
     }
 
     /// One launch attempt, spaced and logged once per cycle.
@@ -226,8 +226,8 @@ impl EtatPont {
                         pid_neuf = new,
                         tentative = self.relance.tentative(),
                         espacement_ms,
-                        "pont fichiers lancé ou relancé (tentatives suivantes silencieuses \
-                         tant que le cycle se répète)"
+                        "file bridge launched or relaunched (following attempts silent \
+                         as long as the cycle repeats)"
                     );
                 }
                 self.pid = Some(new);
@@ -248,9 +248,9 @@ impl EtatPont {
                         %error,
                         tentative = self.relance.tentative(),
                         espacement_ms,
-                        "{quoi} — la capture n'est PAS affectée ; retenté indéfiniment, à un \
-                         espacement CROISSANT (plateforme::repli::delai_de_repli), et \
-                         silencieusement tant que l'échec se répète"
+                        "{quoi} — the capture is NOT affected; retried indefinitely, at an \
+                         INCREASING spacing (plateforme::repli::delai_de_repli), and \
+                         silently as long as the failure repeats"
                     );
                 }
             }

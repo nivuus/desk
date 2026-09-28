@@ -14,21 +14,21 @@ pub(super) fn amorce(sondeur: &mut Sondeur) {
 /// RED if `normaliser` lets `\r\n` through: P2's round trip
 /// would then double lines at each turn.
 #[test]
-fn normaliser_ramene_crlf_a_lf() {
+fn normalising_turns_crlf_into_lf() {
     assert_eq!(normaliser("a\r\nb"), "a\nb");
 }
 
 /// RED if only `\r\n` is handled: classic Mac line endings
 /// would pass through as is.
 #[test]
-fn normaliser_ramene_un_cr_seul_a_lf() {
+fn normalising_turns_a_lone_cr_into_lf() {
     assert_eq!(normaliser("a\rb"), "a\nb");
 }
 
 /// RED if `normaliser` replaced `\n` with `\r\n`: the function would
 /// no longer be idempotent and P2's round trip would diverge.
 #[test]
-fn normaliser_est_idempotente() {
+fn normalising_is_idempotent() {
     let une = normaliser("a\r\nb\rc\nd");
     assert_eq!(une, "a\nb\nc\nd");
     assert_eq!(normaliser(&une), une);
@@ -39,7 +39,7 @@ fn normaliser_est_idempotente() {
 ///
 /// ROUGE si `observer` appelle `lire` inconditionnellement.
 #[test]
-fn un_numero_inchange_n_ouvre_pas_le_presse_papier() {
+fn an_unchanged_number_does_not_open_the_clipboard() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let appele = Cell::new(false);
@@ -50,12 +50,12 @@ fn un_numero_inchange_n_ouvre_pas_le_presse_papier() {
     assert_eq!(annonce, None);
     assert!(
         !appele.get(),
-        "lire() ne doit pas être appelée à numéro inchangé"
+        "lire() must not be called with an unchanged number"
     );
 }
 
 #[test]
-fn un_numero_neuf_annonce_le_texte() {
+fn a_new_number_announces_the_text() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     assert_eq!(
@@ -72,7 +72,7 @@ fn un_numero_neuf_annonce_le_texte() {
 ///
 /// ROUGE si l'on retire la comparaison : `Some` serait rendu deux fois.
 #[test]
-fn un_meme_texte_a_un_numero_different_n_est_annonce_qu_une_fois() {
+fn the_same_text_at_a_different_number_is_announced_only_once() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     assert_eq!(
@@ -87,7 +87,7 @@ fn un_meme_texte_a_un_numero_different_n_est_annonce_qu_une_fois() {
 ///
 /// RED if the implementation truncates — the assertion on the variant fails.
 #[test]
-fn un_texte_trop_grand_est_refuse_jamais_tronque() {
+fn a_too_large_text_is_refused_never_truncated() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let gros = "a".repeat(PRESSE_PAPIER_MAX + 1);
@@ -138,7 +138,7 @@ fn normalise_before_clamping() {
 /// `PRESSE_PAPIER_MAX / 4 + 1` characters, far below the bound
 /// counted that way, and would pass while weighing more than 64 KiB.
 #[test]
-fn le_bornage_compte_des_octets_pas_des_caracteres() {
+fn bounding_counts_bytes_not_characters() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let emoji = "🙂".repeat(PRESSE_PAPIER_MAX / 4 + 1);
@@ -158,7 +158,7 @@ fn le_bornage_compte_des_octets_pas_des_caracteres() {
 /// RED if we memorise the number before reading — the second call,
 /// at the SAME number, would no longer call `lire`.
 #[test]
-fn une_lecture_echouee_n_avance_pas_la_reference() {
+fn a_failed_read_does_not_advance_the_reference() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     assert_eq!(sondeur.observer(2, || None), None);
@@ -169,7 +169,7 @@ fn une_lecture_echouee_n_avance_pas_la_reference() {
     });
     assert!(
         rappelee.get(),
-        "le même numéro doit être retenté après un échec"
+        "the same number must be retried after a failure"
     );
     assert_eq!(annonce, Some(Annonce::Texte(String::from("rattrape"))));
 }
@@ -177,7 +177,7 @@ fn une_lecture_echouee_n_avance_pas_la_reference() {
 /// RED if the refusal is not memorised: the banner would flicker at
 /// each neighbouring copy as long as the huge content stays in place.
 #[test]
-fn un_refus_repete_a_l_identique_n_est_annonce_qu_une_fois() {
+fn an_identically_repeated_refusal_is_announced_only_once() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     let gros = "a".repeat(PRESSE_PAPIER_MAX + 1);
@@ -198,7 +198,7 @@ fn un_refus_repete_a_l_identique_n_est_annonce_qu_une_fois() {
 /// RED if the first turn announces — which would make each
 /// attach receive a content the user did not copy for it.
 #[test]
-fn le_premier_tour_prend_reference_et_n_annonce_rien() {
+fn the_first_round_takes_a_reference_and_announces_nothing() {
     let mut sondeur = Sondeur::new();
     assert_eq!(sondeur.observer(7, || Some(String::from("deja-la"))), None);
     // And that content is indeed kept: copying it again restarts nothing.

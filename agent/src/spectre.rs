@@ -118,13 +118,13 @@ mod tests {
     }
 
     #[test]
-    fn une_tonalite_pure_est_retrouvee_a_la_resolution_de_la_grille() {
+    fn a_pure_tone_is_found_at_the_grid_resolution() {
         let bloc = sinus(440.0, 48_000.0, 24_000, 0.5);
         let d = dominante(&mono(&bloc, 2), 48_000.0, 100.0, 2_000.0, 1.0)
-            .expect("une tonalité pure a une dominante");
+            .expect("a pure tone has a dominant");
         assert!(
             (d.frequence_hz - 440.0).abs() <= d.resolution_hz,
-            "dominante relevée {} Hz, attendue 440 Hz à ±{} Hz",
+            "dominant read {} Hz, expected 440 Hz at ±{} Hz",
             d.frequence_hz,
             d.resolution_hz
         );
@@ -135,7 +135,7 @@ mod tests {
     /// implementation always returning `min_hz` would pass the test
     /// above if the bound were 440.
     #[test]
-    fn deux_tonalites_differentes_rendent_deux_dominantes_differentes() {
+    fn two_different_tones_return_two_different_dominants() {
         let grave = dominante(
             &mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2),
             48_000.0,
@@ -171,7 +171,7 @@ mod tests {
     /// The magnitude of the carrier line must CLEARLY dominate a neighbouring
     /// line: without a gap, "dominant" would mean nothing.
     #[test]
-    fn la_raie_porteuse_domine_nettement_ses_voisines() {
+    fn the_carrier_line_clearly_dominates_its_neighbours() {
         let m = mono(&sinus(440.0, 48_000.0, 24_000, 0.5), 2);
         let porteuse = magnitude(&m, 440.0, 48_000.0);
         let voisine = magnitude(&m, 700.0, 48_000.0);
@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn le_mono_moyenne_les_canaux_et_ignore_une_trame_incomplete() {
+    fn mono_averages_the_channels_and_ignores_an_incomplete_frame() {
         // Three values for two channels: the third is incomplete.
         let m = mono(&[i16::MAX, 0, 1234], 2);
         assert_eq!(m.len(), 1);
@@ -193,7 +193,7 @@ mod tests {
     /// A tone present on a SINGLE channel must not be lost by the
     /// fold into mono — it is only half as strong.
     #[test]
-    fn une_tonalite_sur_un_seul_canal_survit_au_repliement() {
+    fn a_tone_on_a_single_channel_survives_the_downmix() {
         let bloc: Vec<i16> = (0..24_000)
             .flat_map(|n| {
                 let v = (2.0 * std::f32::consts::PI * 440.0 * n as f32 / 48_000.0).sin();
@@ -223,12 +223,12 @@ mod tests {
         let ecart = (mesuree - attendue).abs() / attendue;
         assert!(
             ecart < 0.02,
-            "magnitude mesurée {mesuree}, analytique {attendue}, écart relatif {ecart}"
+            "measured magnitude {mesuree}, analytic {attendue}, relative gap {ecart}"
         );
     }
 
     #[test]
-    fn une_grille_degeneree_ne_rend_rien_plutot_qu_un_verdict_invente() {
+    fn a_degenerate_grid_returns_nothing_rather_than_an_invented_verdict() {
         let m = mono(&sinus(440.0, 48_000.0, 4_800, 0.5), 2);
         assert_eq!(dominante(&m, 48_000.0, 100.0, 2_000.0, 0.0), None);
         assert_eq!(dominante(&m, 48_000.0, 2_000.0, 100.0, 1.0), None);

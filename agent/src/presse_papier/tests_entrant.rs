@@ -25,15 +25,13 @@ fn after_our_write_the_next_round_does_not_open_the_clipboard() {
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
     assert_eq!(
-        sondeur.observer(7, || panic!(
-            "le garde n°1 a laissé rouvrir le presse-papier"
-        )),
+        sondeur.observer(7, || panic!("guard no. 1 let the clipboard be reopened")),
         None
     );
 }
 
 /// 🔴 **It is guard no. 2 ARMED ON OUR OWN WRITE**, that is, the
-/// case D5 gives as no. 2's raison d'être: a THIRD-PARTY write slipped
+/// case D5 gives as no. 2's reason to exist: a THIRD-PARTY write slipped
 /// in between our `SetClipboardData` and our reread of the counter,
 /// so that the number we reread is already no longer the current one.
 ///
@@ -54,7 +52,7 @@ fn after_our_write_a_counter_that_moved_does_not_send_back_our_text() {
 /// RED if `apres_notre_ecriture` set a "we keep quiet from now on" state.
 /// Without this test, a too-wide guard would pass the two previous ones.
 #[test]
-fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
+fn after_our_write_a_third_party_copy_is_still_announced() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.apres_notre_ecriture(7, "colle");
@@ -71,7 +69,7 @@ fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
 ///
 /// RED if the raw text is memorised.
 #[test]
-fn apres_notre_ecriture_memorise_le_texte_normalise() {
+fn after_our_write_memorises_the_normalised_text() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     // What we HANDED to Windows carries `\r\n`s (it is `denormaliser` that
@@ -89,14 +87,14 @@ fn apres_notre_ecriture_memorise_le_texte_normalise() {
 /// RED if `denormaliser` doubles the `\r`s — `normaliser` would then return two
 /// lines where there was one.
 #[test]
-fn l_aller_retour_normaliser_denormaliser_est_l_identite() {
+fn the_normalise_denormalise_round_trip_is_the_identity() {
     let normalise = "une\ndeux\ntrois";
     assert_eq!(normaliser(&denormaliser(normalise)), normalise);
 }
 
 /// RED if `denormaliser` added a `\r\n` where there is no break.
 #[test]
-fn denormaliser_laisse_un_texte_sans_saut_de_ligne_intact() {
+fn denormalising_leaves_a_text_without_line_break_intact() {
     assert_eq!(denormaliser("abc"), "abc");
 }
 
@@ -107,21 +105,21 @@ fn denormaliser_laisse_un_texte_sans_saut_de_ligne_intact() {
 /// RED if `denormaliser` is a naive `replace("\n", "\r\n")`: it would return
 /// `a\r\r\nb`, and Notepad would show one more empty line.
 #[test]
-fn denormaliser_ne_double_pas_des_crlf_deja_presents() {
+fn denormalising_does_not_double_crlf_already_present() {
     assert_eq!(denormaliser("a\r\nb"), "a\r\nb");
 }
 
 /// A lone `\r` becomes `\r\n` too: Windows does not show a bare `\r`
 /// as a line break in Notepad.
 #[test]
-fn denormaliser_traite_aussi_un_cr_seul() {
+fn denormalising_also_handles_a_lone_cr() {
     assert_eq!(denormaliser("a\rb"), "a\r\nb");
 }
 
 /// RED if the comparison is a `>=` instead of a `>`: the exact limit case
 /// would be refused while it fits.
 #[test]
-fn borner_entrant_accepte_exactement_la_borne_et_refuse_un_octet_de_plus() {
+fn bounding_incoming_accepts_exactly_the_bound_and_refuses_one_byte_more() {
     let pile = "a".repeat(PRESSE_PAPIER_MAX);
     assert_eq!(borner_entrant(&pile), Some(pile.clone()));
     let un_de_trop = "a".repeat(PRESSE_PAPIER_MAX + 1);
@@ -136,7 +134,7 @@ fn borner_entrant_accepte_exactement_la_borne_et_refuse_un_octet_de_plus() {
 /// `PRESSE_PAPIER_MAX` bytes — then one more character would make it overflow
 /// by four bytes without the `char` count noticing.
 #[test]
-fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
+fn bounding_incoming_counts_utf8_bytes_not_chars() {
     let emojis = "😀".repeat(PRESSE_PAPIER_MAX / 4);
     assert_eq!(emojis.len(), PRESSE_PAPIER_MAX);
     assert_eq!(emojis.chars().count(), PRESSE_PAPIER_MAX / 4);
@@ -159,7 +157,7 @@ fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
 /// but guard no. 2 would absorb the announcement and the acceptance run's count would stay
 /// at ZERO — criterion ④'s red would be vacuous a second time.
 #[test]
-fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
+fn disarming_the_guards_lets_our_own_write_be_read_and_announced() {
     let mut sondeur = Sondeur::new();
     amorce(&mut sondeur);
     sondeur.armer(false, 7, "colle");
@@ -172,12 +170,12 @@ fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
 
     assert!(
         lu.get(),
-        "désarmé, le presse-papier DOIT être rouvert (garde n°1)"
+        "disarmed, the clipboard MUST be reopened (guard no. 1)"
     );
     assert_eq!(
         annonce,
         Some(Annonce::Texte(String::from("colle"))),
-        "désarmé, notre propre texte DOIT être annoncé (garde n°2)"
+        "disarmed, our own text MUST be announced (guard no. 2)"
     );
 }
 
@@ -187,7 +185,7 @@ fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
 ///
 /// RED if `apres_notre_ecriture` stopped delegating to `armer`.
 #[test]
-fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
+fn arming_to_true_is_the_same_path_as_after_our_write() {
     let mut par_defaut = Sondeur::new();
     amorce(&mut par_defaut);
     par_defaut.apres_notre_ecriture(7, "colle");
@@ -228,7 +226,7 @@ fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
 /// RED on the intact tree: the first two lines returned
 /// `Some(Texte("textB"))` where the third must return `None`.
 #[test]
-fn une_ecriture_notre_survenue_apres_l_armement_n_est_pas_annoncee() {
+fn our_write_occurring_after_arming_is_not_announced() {
     let mut s = Sondeur::new();
     // The wheel turn armed on the first write (window A).
     s.armer(true, 10, "textA");
@@ -279,7 +277,7 @@ fn the_filter_does_not_touch_a_size_refusal() {
 /// which counts the messages coming back to the window after a paste, and a
 /// take that bit anyway would empty it of its meaning.
 #[test]
-fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
+fn the_second_take_is_disarmed_by_the_bench_arm() {
     let mut s = Sondeur::new();
     s.armer(true, 10, "textA");
     let annonce = s.observer(11, || Some(String::from("textB")));
@@ -292,7 +290,7 @@ fn la_seconde_prise_est_desarmee_par_le_bras_de_banc() {
 /// Without a write on our part, the second take is transparent — and it
 /// arms nothing: RED if it set `reference` on an invented `seq`.
 #[test]
-fn sans_notre_ecriture_la_seconde_prise_ne_touche_a_rien() {
+fn without_our_write_the_second_take_touches_nothing() {
     let mut s = Sondeur::new();
     amorce(&mut s);
     let annonce = s.observer(2, || Some(String::from("copie-tierce")));

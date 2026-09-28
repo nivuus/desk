@@ -227,7 +227,7 @@ fn rang(f: Famille) -> usize {
     Famille::ALL
         .iter()
         .position(|c| *c == f)
-        .expect("toute famille figure dans TOUTES — NOMBRE l'impose")
+        .expect("every family appears in ALL — COUNT enforces it")
 }
 
 #[cfg(test)]

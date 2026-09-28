@@ -146,7 +146,7 @@ impl VideoSource for WindowsSource {
                     std::sync::atomic::Ordering::Relaxed,
                 );
                 if let Err(e) = fed {
-                    tracing::warn!(error = %crate::cause::chain(&e), "soumission à l'encodeur échouée");
+                    tracing::warn!(error = %crate::cause::chain(&e), "submission to the encoder failed");
                 } else {
                     submitted = true;
                 }
@@ -156,7 +156,7 @@ impl VideoSource for WindowsSource {
                 // An access loss has already gone through the resumptions of
                 // `next_frame`: receiving it here means they were not
                 // enough. Legitimate end in both cases.
-                tracing::error!(error = %e, "capture interrompue, source déclarée épuisée");
+                tracing::error!(error = %e, "capture interrupted, source declared exhausted");
                 self.fatal = true;
                 return None;
             }

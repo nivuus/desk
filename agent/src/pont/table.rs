@@ -352,15 +352,7 @@ impl Table {
             .collect();
         echues
             .into_iter()
-            .map(|c| {
-                (
-                    self.en_vol
-                        .remove(&c)
-                        .expect("relevée à l'instant")
-                        .command_id,
-                    c,
-                )
-            })
+            .map(|c| (self.en_vol.remove(&c).expect("read just now").command_id, c))
             .collect()
     }
 

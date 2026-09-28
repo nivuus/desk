@@ -65,9 +65,7 @@ impl EtatCapteur {
     /// like a driver or a hook that does not open — there is nothing
     /// else to clean up.
     pub(super) fn start(lanceur: &LanceurDeProcessus) -> Result<Self> {
-        let pid = lanceur
-            .lancer_capteur()
-            .context("lancement initial du capteur")?;
+        let pid = lanceur.lancer_capteur().context("initial sensor launch")?;
         Ok(Self {
             pid,
             derniere_tentative: std::time::Instant::now(),
@@ -106,7 +104,7 @@ impl EtatCapteur {
                 && self.derniere_tentative.elapsed() >= PERIODE_RELANCE_CAPTEUR_MIN
             {
                 self.cycle_signale = false;
-                tracing::info!(pid = self.pid, "capteur de nouveau stable");
+                tracing::info!(pid = self.pid, "sensor stable again");
             }
             return;
         }
@@ -125,8 +123,8 @@ impl EtatCapteur {
                     tracing::warn!(
                         pid_mort = self.pid,
                         pid_neuf = new,
-                        "capteur mort, relancé (relances suivantes silencieuses \
-                         tant que le cycle se répète)"
+                        "sensor dead, relaunched (following relaunches silent \
+                         as long as the cycle repeats)"
                     );
                 }
                 self.pid = new;
@@ -140,8 +138,8 @@ impl EtatCapteur {
                 if premier_du_cycle {
                     tracing::error!(
                         %error,
-                        "relance du capteur échouée — retentée indéfiniment passé le délai \
-                         minimal, et silencieusement tant que l'échec se répète"
+                        "sensor relaunch failed — retried indefinitely past the minimal \
+                         delay, and silently as long as the failure repeats"
                     );
                 }
             }

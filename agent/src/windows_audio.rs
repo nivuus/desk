@@ -172,7 +172,7 @@ impl WindowsAudioSource {
     /// video source: it is what makes both timelines
     /// comparable, hence A/V sync exact.
     pub fn new(origin: Instant) -> Result<Self> {
-        let capture = LoopbackCapture::open().context("ouverture du loopback audio")?;
+        let capture = LoopbackCapture::open().context("opening the audio loopback")?;
         let source = Self::start(Capture::Session(capture), origin, None)?;
         // No sensor will ever send an order to this agent: it emits straight away.
         source.emettre(true);
@@ -186,7 +186,7 @@ impl WindowsAudioSource {
     /// sound, and its first order arrives right at attach time. See the `emet` field.
     pub fn pour_processus(pid: u32, origin: Instant) -> Result<Self> {
         let capture = CaptureProcessus::ouvrir(pid)
-            .with_context(|| format!("ouverture du process loopback du PID {pid}"))?;
+            .with_context(|| format!("opening the process loopback of PID {pid}"))?;
         Self::start(Capture::Processus(capture), origin, Some(pid))
     }
 
@@ -194,7 +194,7 @@ impl WindowsAudioSource {
     /// an already opened capture, whatever its mode.
     fn start(capture: Capture, origin: Instant, pid: Option<u32>) -> Result<Self> {
         let description = capture.description();
-        let encodeur = OpusEncoder::new().context("création de l'encodeur Opus")?;
+        let encodeur = OpusEncoder::new().context("creating the Opus encoder")?;
 
         let ring = PacketRing::new(RING_CAPACITY);
         let arret = Arc::new(AtomicBool::new(false));
@@ -234,9 +234,9 @@ impl WindowsAudioSource {
                     pid_fil,
                 )
             })
-            .context("démarrage du fil de capture audio")?;
+            .context("starting the audio capture thread")?;
 
-        tracing::info!(format = %description, "source audio démarrée");
+        tracing::info!(format = %description, "audio source started");
         Ok(Self {
             ring,
             arret,

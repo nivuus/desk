@@ -35,25 +35,23 @@ async fn an_install_order_arrives_in_its_queue_and_does_not_close_the_session() 
     // discovery, which would then freeze during the whole download.
     let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
-    let mut recu_ordres = canal
-        .ordres()
-        .expect("la file d'ordres n'est prise qu'une fois");
+    canal.attendre_identite().await.expect("enrolment");
+    let mut recu_ordres = canal.ordres().expect("the order queue is taken only once");
     let mut recu_install = canal
         .installations()
-        .expect("la file d'installations n'est prise qu'une fois");
+        .expect("the install queue is taken only once");
 
     ordres
         .send(
-            r#"{"type":"installer","v":5,"installation":"i-1","url":"http://h:8080/t/c","nom":"setup.exe","taille":42,"sha256":"ab"}"#
+            r#"{"type":"installer","v":5,"installation":"i-1","url":"http://h:8080/t/c","nom":"setup.exe","taille":42,"sha256":"ab"}"# // policy: allow-fr - wire keys of the install order
                 .into(),
         )
         .expect("envoi de l'ordre");
 
     let ordre = tokio::time::timeout(Duration::from_secs(5), recu_install.recv())
         .await
-        .expect("aucune installation reçue en 5 s")
-        .expect("la file d'installations est fermée");
+        .expect("no install received within 5 s")
+        .expect("the install queue is closed");
     assert_eq!(
         ordre,
         crate::plateforme::Installation {
@@ -68,7 +66,7 @@ async fn an_install_order_arrives_in_its_queue_and_does_not_close_the_session() 
     // "routed correctly" from "routed anywhere".
     assert!(
         recu_ordres.try_recv().is_err(),
-        "l'installation ne doit PAS aller aux ordres"
+        "the install must NOT go to the orders"
     );
 
     // The session is still alive: the next emission arrives.
@@ -80,13 +78,13 @@ async fn an_install_order_arrives_in_its_queue_and_does_not_close_the_session() 
 }
 
 #[tokio::test]
-async fn la_file_d_installations_ne_se_prend_qu_une_fois() {
+async fn the_install_queue_is_taken_only_once() {
     // Same property as `ordres()`, and for the same reason: two consumers
     // would steal orders from one another, and the symptom would be "one
     // installation out of two does not go".
     let (url, _recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
-    canal.attendre_identite().await.expect("enrôlement");
+    canal.attendre_identite().await.expect("enrolment");
     assert!(canal.installations().is_some());
     assert!(canal.installations().is_none());
 }

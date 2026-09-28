@@ -39,7 +39,7 @@ pub enum Effet {
         /// The RETAINED size (`placement::retained_size`), not the output's:
         /// the output can be much larger (polluted registry,
         /// see `creation_sortie::create_output`). It is this size the
-        /// supervisor puts on the child (`TAILLE_FENETRE`), so that it
+        /// supervisor puts on the child (`TAILLE_FENETRE`), so that it (policy: allow-fr, env var name)
         /// tells it again to the sensor at attach time (task 9 of sub-block D10) — the
         /// sensor needs it to crop (task 8).
         size: (u32, u32),

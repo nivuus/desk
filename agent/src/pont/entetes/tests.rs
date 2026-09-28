@@ -16,7 +16,7 @@ use super::*;
 /// Explorer — visible, but only if someone looks. Getting the
 /// FACTOR wrong (10⁷ versus 10⁶) is barely visible.
 #[test]
-fn l_epoque_unix_devient_l_epoque_filetime() {
+fn the_unix_epoch_becomes_the_filetime_epoch() {
     // January 1st, 1970, 00:00:00 UTC = 116,444,736,000,000,000 100 ns units
     // since January 1st, 1601.
     assert_eq!(filetime_depuis_ms(0), 116_444_736_000_000_000);
@@ -29,7 +29,7 @@ fn l_epoque_unix_devient_l_epoque_filetime() {
 /// a date before **1601** is not, and would yield a negative FILETIME
 /// that Windows interprets as a relative time. It is brought back to zero.
 #[test]
-fn une_date_anterieure_a_1601_est_ramenee_a_zero() {
+fn a_date_before_1601_is_brought_back_to_zero() {
     assert_eq!(filetime_depuis_ms(-11_644_473_600_000), 0);
     assert_eq!(filetime_depuis_ms(-11_644_473_600_001), 0);
     assert_eq!(filetime_depuis_ms(i64::MIN), 0);
@@ -40,6 +40,6 @@ fn une_date_anterieure_a_1601_est_ramenee_a_zero() {
 /// An absurd `lastModified` must not overflow the computation: an
 /// overflow in `release` wraps silently and would yield an arbitrary date.
 #[test]
-fn une_date_absurde_ne_deborde_pas() {
+fn an_absurd_date_does_not_overflow() {
     assert_eq!(filetime_depuis_ms(i64::MAX), i64::MAX);
 }

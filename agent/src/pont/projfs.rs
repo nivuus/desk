@@ -35,7 +35,7 @@
 //!
 //!    Waiting there for a browser round trip would freeze the APPLICATION reading the
 //!    file — **not the video**: the stream keeps flowing and the window
-//!    shows a frozen application (spec §5.2). It is the only raison d'être
+//!    shows a frozen application (spec §5.2). It is the only reason to exist
 //!    of this discipline.
 //!
 //! 2. **The TRANSPORT thread**, which owns the `Rtc` and the UDP socket
@@ -257,8 +257,8 @@ impl Virtualisation {
                 racine.display()
             );
         }
-        *etat.contexte.lock().expect("verrou du contexte") = Some(Contexte(contexte));
-        tracing::info!(racine = %racine.display(), "racine de virtualisation ProjFS démarrée");
+        *etat.contexte.lock().expect("context lock") = Some(Contexte(contexte));
+        tracing::info!(racine = %racine.display(), "ProjFS virtualisation root started");
         Ok(Self {
             etat,
             confie,
@@ -299,7 +299,7 @@ impl Drop for Virtualisation {
     fn drop(&mut self) {
         let contexte = self.etat.contexte.lock().ok().and_then(|c| *c);
         let Some(Contexte(contexte)) = contexte else {
-            tracing::warn!("arrêt du pont : aucun contexte de virtualisation à relâcher");
+            tracing::warn!("bridge shutdown: no virtualisation context to release");
             return;
         };
 
@@ -309,9 +309,7 @@ impl Drop for Virtualisation {
         let restantes = match self.etat.table.lock() {
             Ok(mut table) => table.drain(),
             Err(empoisonne) => {
-                tracing::error!(
-                    "verrou de la table empoisonné à l'arrêt : la table est vidée quand même"
-                );
+                tracing::error!("table lock poisoned at shutdown: the table is emptied anyway");
                 empoisonne.into_inner().drain()
             }
         };
@@ -326,7 +324,7 @@ impl Drop for Virtualisation {
             let Some(commande) = commande else {
                 tracing::debug!(
                     correlation,
-                    "écriture en vol à l'arrêt : rien à compléter, l'entrée RESTE au journal"
+                    "write in flight at shutdown: nothing to complete, the entry STAYS in the journal"
                 );
                 continue;
             };
@@ -339,13 +337,13 @@ impl Drop for Virtualisation {
                 (self.etat.projfs.completer_commande)(contexte, *commande, echec, std::ptr::null())
             };
             if issue.is_err() {
-                tracing::warn!(commande, correlation, %issue, "complétion d'arrêt refusée");
+                tracing::warn!(commande, correlation, %issue, "shutdown completion refused");
             }
         }
         if !restantes.is_empty() {
             tracing::info!(
                 commandes = restantes.len(),
-                "commandes en vol complétées en erreur d'E/S avant l'arrêt de la virtualisation"
+                "in-flight commands completed with an I/O error before the virtualisation stops"
             );
         }
 
@@ -354,7 +352,7 @@ impl Drop for Virtualisation {
         // SAFETY: `PrjStopVirtualizing` returns NOTHING (`mod.rs:109`), and the
         // transcription reflects it.
         unsafe { (self.etat.projfs.arreter_virtualisation)(contexte) };
-        tracing::info!(racine = %self.racine.display(), "virtualisation ProjFS arrêtée");
+        tracing::info!(racine = %self.racine.display(), "ProjFS virtualisation stopped");
 
         // 3. The entrusted copy, taken back.
         // SAFETY: `confie` comes from `Arc::into_raw` in `start`, has only been

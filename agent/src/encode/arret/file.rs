@@ -107,7 +107,7 @@ impl FileMft {
                 compromise: AtomicBool::new(false),
             },
             Err(err) => {
-                tracing::warn!(error = %err, "allocation de file sérialisée refusée");
+                tracing::warn!(error = %err, "serialized queue allocation refused");
                 Self {
                     id: None,
                     compromise: AtomicBool::new(false),
@@ -122,7 +122,7 @@ impl FileMft {
         let client = match mft.cast::<IMFRealTimeClientEx>() {
             Ok(client) => client,
             Err(err) => {
-                tracing::warn!(mft = quoi, error = %err, "MFT sans IMFRealTimeClientEx : pas de barrière");
+                tracing::warn!(mft = quoi, error = %err, "MFT without IMFRealTimeClientEx: no barrier");
                 self.rendre();
                 return;
             }
@@ -130,11 +130,11 @@ impl FileMft {
         // Priority 0: the base priority of items, not a real-time
         // setting — we ask for no scheduling privilege.
         if let Err(err) = unsafe { client.SetWorkQueueEx(id, 0) } {
-            tracing::warn!(mft = quoi, error = %err, file = id, "la MFT refuse la file imposée");
+            tracing::warn!(mft = quoi, error = %err, file = id, "the MFT refuses the imposed queue");
             self.rendre();
             return;
         }
-        tracing::info!(mft = quoi, file = id, "file de travail sérialisée imposée");
+        tracing::info!(mft = quoi, file = id, "serialized work queue imposed");
     }
 
     /// Releases the queue immediately, when no one holds it yet.
@@ -153,7 +153,7 @@ impl FileMft {
         if let Err(err) = unsafe { MFPutWorkItem(id, &rappel, None) } {
             // The queue no longer dispatches: our sentinel is not in it, but the
             // MFT's work, for its part, may have stayed there.
-            tracing::error!(mft = quoi, error = %err, quand, "dépôt de la sentinelle refusé : file NON barrée");
+            tracing::error!(mft = quoi, error = %err, quand, "sentinel submission refused: queue NOT barred");
             self.compromise.store(true, Ordering::SeqCst);
             return;
         }
@@ -172,8 +172,8 @@ impl FileMft {
                     mft = quoi,
                     quand,
                     delai_ms = DELAI_BARRIERE.as_millis() as u64,
-                    "barrière non franchie : les références COM vont être relâchées avec du \
-                     travail possiblement encore en file — c'est le défaut d'origine, non barré"
+                    "barrier not crossed: the COM references are about to be released with \
+                     work possibly still queued — this is the original defect, not barred"
                 );
                 self.compromise.store(true, Ordering::SeqCst);
                 return;
@@ -183,7 +183,7 @@ impl FileMft {
             mft = quoi,
             quand,
             attente_ms = debut.elapsed().as_millis() as u64,
-            "barrière franchie"
+            "barrier crossed"
         );
     }
 
@@ -194,7 +194,7 @@ impl FileMft {
     /// immediately: it is the queue that stays occupied.
     pub(in crate::encode) fn bloquer(&self, duree: Duration) {
         let Some(id) = self.id else {
-            tracing::warn!("épreuve de file demandée mais aucune file imposée");
+            tracing::warn!("queue trial requested but no queue imposed");
             return;
         };
         let rappel: IMFAsyncCallback = Bouchon { duree }.into();
@@ -202,9 +202,9 @@ impl FileMft {
             Ok(()) => tracing::info!(
                 file = id,
                 duree_ms = duree.as_millis() as u64,
-                "épreuve : file bouchée"
+                "trial: queue plugged"
             ),
-            Err(err) => tracing::warn!(error = %err, "épreuve : dépôt du bouchon refusé"),
+            Err(err) => tracing::warn!(error = %err, "trial: plug submission refused"),
         }
     }
 }
@@ -225,7 +225,7 @@ impl Drop for FileMft {
             // exceptional — no expiry observed to date.
             tracing::error!(
                 file = id,
-                "file compromise : NON rendue, délibérément fuitée"
+                "compromised queue: NOT returned, deliberately leaked"
             );
             return;
         }

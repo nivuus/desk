@@ -34,7 +34,7 @@
 //!
 //! 1. a refusal **UPSTREAM**, at `PRE_CONVERT_TO_FULL`, bearing on a **STATE**
 //!    (read-only root, closed channel) and **never on the outcome** — it is
-//!    the raison d'être of the [`Etat`] parameter of [`decider`];
+//!    the reason to exist of the [`Etat`] parameter of [`decider`];
 //! 2. a **DENUNCIATION** after the fact: the resumption journal, the shell page's
 //!    due writes counter, and `beforeunload`.
 //!

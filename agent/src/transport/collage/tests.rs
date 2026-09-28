@@ -38,7 +38,7 @@ impl VideoSource for WritingSource {
         if self.accepte {
             Ok(())
         } else {
-            anyhow::bail!("le capteur a refusé : OpenClipboard")
+            anyhow::bail!("the sensor refused: OpenClipboard")
         }
     }
 }
@@ -48,7 +48,7 @@ fn writing_session(accepte: bool) -> (Session, Trace) {
     let source_path =
         std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
     let inner = crate::source::FileSource::from_path(source_path, 1280, 720, 60)
-        .expect("chargement du flux de test");
+        .expect("loading the test stream");
     let source = Box::new(WritingSource {
         inner,
         trace: trace.clone(),
@@ -81,20 +81,20 @@ fn injecter(session: &mut Session, trace: &Trace) {
 /// RED if injection preceded the write, or if the text went out without
 /// denormalisation.
 #[test]
-fn l_ecriture_precede_l_injection_et_le_texte_part_denormalise() {
+fn the_write_precedes_the_injection_and_the_text_goes_out_denormalised() {
     let (mut session, trace) = writing_session(true);
     session.traiter_le_collage("une\ndeux");
     injecter(&mut session, &trace);
 
     let vue = trace.lock().unwrap().clone();
-    assert_eq!(vue.len(), 5, "une écriture puis quatre touches : {vue:?}");
+    assert_eq!(vue.len(), 5, "one write then four keys: {vue:?}");
     assert_eq!(
         vue[0], "ecrire:une\r\ndeux",
-        "le texte doit partir en \\r\\n"
+        "the text must go out as \\r\\n"
     );
     assert!(
         vue[1].starts_with("Key"),
-        "les touches suivent l'écriture : {vue:?}"
+        "the keys follow the write: {vue:?}"
     );
 }
 
@@ -166,14 +166,14 @@ fn a_refused_write_injects_no_key() {
     assert_eq!(
         trace.lock().unwrap().len(),
         1,
-        "l'écriture a bien été tentée"
+        "the write was indeed attempted"
     );
     trace.lock().unwrap().clear();
 
     injecter(&mut session, &trace);
     assert!(
         trace.lock().unwrap().is_empty(),
-        "la touche V est PERDUE, pas reportée"
+        "the V key is LOST, not deferred"
     );
 }
 
@@ -182,7 +182,7 @@ fn a_refused_write_injects_no_key() {
 /// RED if the boolean were never reset to false — `Ctrl+V` would go out at
 /// every round, that is, at the video cadence.
 #[test]
-fn le_drapeau_se_consomme() {
+fn the_flag_is_consumed() {
     let (mut session, trace) = writing_session(true);
     session.traiter_le_collage("x");
     injecter(&mut session, &trace);
@@ -191,7 +191,7 @@ fn le_drapeau_se_consomme() {
     injecter(&mut session, &trace);
     assert!(
         trace.lock().unwrap().is_empty(),
-        "un second tour n'injecte rien"
+        "a second round injects nothing"
     );
 }
 
@@ -218,10 +218,10 @@ fn a_text_above_the_bound_is_neither_written_nor_injected() {
 
     assert!(
         trace.lock().unwrap().is_empty(),
-        "aucune écriture ne doit être tentée"
+        "no write must be attempted"
     );
     injecter(&mut session, &trace);
-    assert!(trace.lock().unwrap().is_empty(), "aucune touche non plus");
+    assert!(trace.lock().unwrap().is_empty(), "no key either");
 }
 
 /// 🔴 **THE BOUND APPLIES TO THE NORMALISED TEXT, NEVER TO THE DENORMALISED ONE**, and
@@ -236,16 +236,21 @@ fn a_text_above_the_bound_is_neither_written_nor_injected() {
 ///
 /// ROUGE si l'ordre est `denormaliser` puis `borner_entrant`.
 #[test]
-fn la_borne_porte_sur_la_forme_normalisee_pour_que_l_aller_retour_tienne() {
+fn the_bound_applies_to_the_normalised_form_so_the_round_trip_holds() {
     let (mut session, trace) = writing_session(true);
     let sauts = "\n".repeat(crate::presse_papier::PRESSE_PAPIER_MAX);
     session.traiter_le_collage(&sauts);
 
     let vue = trace.lock().unwrap().clone();
-    assert_eq!(vue.len(), 1, "le texte devait être écrit : {}", vue.len());
+    assert_eq!(
+        vue.len(),
+        1,
+        "the text should have been written: {}",
+        vue.len()
+    );
     assert_eq!(
         vue[0].len() - "ecrire:".len(),
         crate::presse_papier::PRESSE_PAPIER_MAX * 2,
-        "la dénormalisation double bien la taille, et n'est PAS bornée"
+        "denormalisation does double the size, and is NOT bounded"
     );
 }

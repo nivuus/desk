@@ -62,7 +62,7 @@ pub fn lire_texte() -> Result<Option<String>> {
         let global = HGLOBAL(poignee.0);
         let pointeur = GlobalLock(global) as *const u16;
         if pointeur.is_null() {
-            anyhow::bail!("GlobalLock a rendu un pointeur nul");
+            anyhow::bail!("GlobalLock returned a null pointer");
         }
         let mut length = 0usize;
         while *pointeur.add(length) != 0 {
@@ -114,7 +114,7 @@ pub fn write_text(texte: &str) -> Result<u32> {
         let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
         let pointeur = GlobalLock(global) as *mut u16;
         if pointeur.is_null() {
-            anyhow::bail!("GlobalLock a rendu un pointeur nul");
+            anyhow::bail!("GlobalLock returned a null pointer");
         }
         std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
         let _ = GlobalUnlock(global);

@@ -120,19 +120,19 @@ impl MutexNomme {
             Err(e) if e == ERROR_ACCESS_DENIED.into() => {
                 tracing::warn!(
                     error = %e,
-                    "micro : espace de nommage Global refuse (SeCreateGlobalPrivilege absent), \
-                     REPLI sur Local. L'exclusivite du cable ne vaut plus que pour CETTE session \
-                     Windows"
+                    "mic: Global namespace refused (SeCreateGlobalPrivilege missing), \
+                     FALLING BACK to Local. The cable exclusivity now only holds for THIS Windows \
+                     session"
                 );
                 let (handle, espace) = Self::create_in("Local\\")
-                    .context("creation du mutex du cable, y compris dans l'espace Local")?;
+                    .context("creating the cable mutex, including in the Local namespace")?;
                 Ok(Self {
                     handle,
                     espace,
                     tenu: false,
                 })
             }
-            Err(e) => Err(anyhow::Error::from(e).context("creation du mutex du cable micro")),
+            Err(e) => Err(anyhow::Error::from(e).context("creating the mic cable mutex")),
         }
     }
 

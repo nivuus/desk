@@ -19,7 +19,7 @@ const DESKTOP: Rect = Rect {
 // the click drifted by `t × 98` px, nil at the top, growing towards the bottom.
 
 #[test]
-fn le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre() {
+fn the_image_middle_targets_the_middle_of_what_is_shown() {
     // Window sticking out 98 px below a 1080 desktop.
     let window = Rect {
         x: 62,
@@ -35,16 +35,16 @@ fn le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre() {
     };
 
     let (_, y) =
-        to_virtual_desktop_visible(32768, 32768, window, desktop).expect("la fenêtre est visible");
+        to_virtual_desktop_visible(32768, 32768, window, desktop).expect("the window is visible");
 
     // The middle of the shown image is screen pixel 540, that is 32768 once
     // normalised on the desktop. Mapping onto the complete client area
     // would give 589 px, that is 35742 — the gap the user saw.
-    assert!((y - 32768).abs() <= 40, "y = {y}, attendu ~32768");
+    assert!((y - 32768).abs() <= 40, "y = {y}, expected ~32768");
 }
 
 #[test]
-fn le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre() {
+fn the_image_bottom_targets_the_bottom_of_what_is_shown() {
     let window = Rect {
         x: 62,
         y: 0,
@@ -59,13 +59,16 @@ fn le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre() {
     };
 
     let (_, y) =
-        to_virtual_desktop_visible(0, 65535, window, desktop).expect("la fenêtre est visible");
+        to_virtual_desktop_visible(0, 65535, window, desktop).expect("the window is visible");
 
-    assert_eq!(y, 65535, "le bas de l'image doit viser le bas du bureau");
+    assert_eq!(
+        y, 65535,
+        "the bottom of the image must target the bottom of the desktop"
+    );
 }
 
 #[test]
-fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
+fn the_horizontal_axis_stays_intact_when_only_the_bottom_overflows() {
     // The width does not stick out: the horizontal mapping must not move.
     let window = Rect {
         x: 62,
@@ -86,7 +89,7 @@ fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
 }
 
 #[test]
-fn une_fenetre_entierement_visible_est_mappee_a_l_identique() {
+fn a_fully_visible_window_is_mapped_identically() {
     // Without overflow, the fix must change nothing: that is what
     // made the defect invisible until now.
     let window = Rect {
@@ -115,7 +118,7 @@ fn an_off_screen_window_produces_no_coordinate() {
 // --- Bornage du redimensionnement ---
 
 #[test]
-fn borne_une_hauteur_qui_depasserait_le_bas_du_bureau() {
+fn bounds_a_height_that_would_exceed_the_desktop_bottom() {
     // The real case: 1187 requested from a viewport taller than the
     // VM's desktop.
     assert_eq!(
@@ -125,7 +128,7 @@ fn borne_une_hauteur_qui_depasserait_le_bas_du_bureau() {
 }
 
 #[test]
-fn tient_compte_de_l_origine_de_la_fenetre() {
+fn accounts_for_the_window_origin() {
     // Window already moved down by 100 px: only 980 remain for it.
     assert_eq!(borner_au_bureau(0, 100, 800, 1187, 2400, 1080), (800, 980));
 }
@@ -136,7 +139,7 @@ fn leaves_a_size_that_already_fits_untouched() {
 }
 
 #[test]
-fn borne_aussi_la_largeur() {
+fn also_bounds_the_width() {
     assert_eq!(borner_au_bureau(2000, 0, 800, 500, 2400, 1080), (400, 500));
 }
 
@@ -145,12 +148,12 @@ fn a_negative_origin_does_not_produce_an_absurd_size() {
     // Window whose top-left corner is off screen: the clamping must
     // neither overflow, nor return a zero size that would make the capture fail.
     let (w, h) = borner_au_bureau(-500, -300, 800, 600, 2400, 1080);
-    assert!(w > 0 && h > 0, "taille = {w}x{h}");
-    assert!(w <= 2400 && h <= 1080, "taille = {w}x{h}");
+    assert!(w > 0 && h > 0, "size = {w}x{h}");
+    assert!(w <= 2400 && h <= 1080, "size = {w}x{h}");
 }
 
 #[test]
-fn coin_superieur_gauche_d_une_fenetre_a_l_origine() {
+fn top_left_corner_of_a_window_at_the_origin() {
     let window = Rect {
         x: 0,
         y: 0,
@@ -161,7 +164,7 @@ fn coin_superieur_gauche_d_une_fenetre_a_l_origine() {
 }
 
 #[test]
-fn coin_inferieur_droit_d_une_fenetre_plein_ecran() {
+fn bottom_right_corner_of_a_fullscreen_window() {
     let window = Rect {
         x: 0,
         y: 0,
@@ -175,7 +178,7 @@ fn coin_inferieur_droit_d_une_fenetre_plein_ecran() {
 }
 
 #[test]
-fn centre_d_une_fenetre_decalee() {
+fn centre_of_an_offset_window() {
     // 960×540 window placed in the centre: its centre is the screen's.
     let window = Rect {
         x: 480,
@@ -189,7 +192,7 @@ fn centre_d_une_fenetre_decalee() {
 }
 
 #[test]
-fn origine_d_une_fenetre_decalee() {
+fn origin_of_an_offset_window() {
     let window = Rect {
         x: 960,
         y: 540,
@@ -201,7 +204,7 @@ fn origine_d_une_fenetre_decalee() {
 }
 
 #[test]
-fn borne_les_debordements_sur_un_bureau_multi_ecrans() {
+fn bounds_overflows_on_a_multi_screen_desktop() {
     // Virtual desktop starting at negative coordinates (screen on the left).
     let desktop = Rect {
         x: -1920,
@@ -221,7 +224,7 @@ fn borne_les_debordements_sur_un_bureau_multi_ecrans() {
 }
 
 #[test]
-fn ne_divise_jamais_par_zero() {
+fn never_divides_by_zero() {
     let degenerate = Rect {
         x: 0,
         y: 0,
@@ -233,8 +236,8 @@ fn ne_divise_jamais_par_zero() {
 }
 
 #[test]
-fn ne_deborde_ni_ne_panique_sur_des_coordonnees_extremes() {
-    // Same spirit as `gere_une_largeur_superieure_a_i32_max` for
+fn neither_overflows_nor_panics_on_extreme_coordinates() {
+    // Same spirit as `handles_a_width_above_i32_max` for
     // `crop_region`: a window with extreme coordinates or dimensions
     // (never produced by `client_rect_on_screen` in practice, but not
     // structurally impossible) must neither panic, nor leave

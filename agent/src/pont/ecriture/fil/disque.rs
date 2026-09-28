@@ -100,11 +100,8 @@ pub(super) fn compacter_si_possible(chemin_journal: &Path, journal: &Journal) {
         return;
     }
     if let Err(error) = std::fs::write(chemin_journal, b"") {
-        tracing::warn!(%error, "compactage du journal des ecritures echoue");
+        tracing::warn!(%error, "compacting the write journal failed");
     } else {
-        tracing::info!(
-            octets = meta.len(),
-            "journal des ecritures compacte (aucune due)"
-        );
+        tracing::info!(octets = meta.len(), "write journal compacted (none due)");
     }
 }

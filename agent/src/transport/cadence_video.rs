@@ -48,7 +48,7 @@ impl Session {
             session = %self.session_id,
             unites = self.unites_video_ecrites,
             cadence = format!("{:.1}", self.unites_video_ecrites as f64 / ecoule),
-            "cadence de la piste vidéo (côté enfant)"
+            "video track cadence (child side)"
         );
         self.unites_video_ecrites = 0;
         self.last_video_count = Instant::now();
