@@ -57,8 +57,8 @@ function cle(n: number): string {
 
 const RIEN: Fusion = { aInserer: [], toUpdate: [], aMarquerDisparues: [], aRessusciter: [] };
 
-describe(`dépôt application, moteur=${MOTEUR}`, () => {
-    it('lireParVm ne rend QUE les applications de cette VM', async () => {
+describe(`application repository, engine=${MOTEUR}`, () => {
+    it('lireParVm returns ONLY the applications of this VM', async () => {
         // 🔴 Omettre le `WHERE vm_id = ?` ferait voir à un utilisateur le
         // catalogue de toutes les VMs du service.
         base = await baseNeuve('app-par-vm');
@@ -71,7 +71,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect((await lireParVm(base, 'v-2')).map((l) => l.nom)).toEqual(['Excel']);
     });
 
-    it('lireParVm EXCLUT les disparues et les masquées', async () => {
+    it('lireParVm EXCLUDES the gone and the hidden ones', async () => {
         // 🔴 Les inclure ferait porter au catalogue affiché des applications
         // qui n'existent plus sur la VM — et le hub proposerait de lancer un
         // raccourci supprimé.
@@ -98,14 +98,14 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(await lireParId(base, masquee.id)).toBeDefined();
     });
 
-    it('lireParId rend `undefined` sur un identifiant inconnu, JAMAIS une exception', async () => {
+    it('lireParId returns `undefined` on an unknown identifier, NEVER an exception', async () => {
         // Précédent : `depot/agent.ts::lireParVm` et `depot/vm.ts::lireParId`.
         // Une exception qui remonterait en 500 serait un oracle d'énumération.
         base = await baseNeuve('app-inconnue');
         await expect(lireParId(base, 'jamais-vu')).resolves.toBeUndefined();
     });
 
-    it("génère l'identifiant DANS LE DÉPÔT, et pose apparue_a", async () => {
+    it("generates the identifier IN THE REPOSITORY, and sets apparue_a", async () => {
         // 🔴 Le laisser venir de l'agent ferait que deux VMs pourraient en
         // produire le même — la clé, elle, est l'empreinte d'un triplet de
         // chemins, et deux VMs portant la même application la partagent.
@@ -120,7 +120,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
             .toEqual([MS, MS, null, null]);
     });
 
-    it("met à jour les champs et avance vue_a, sans toucher ni l'id ni apparue_a", async () => {
+    it("updates the fields and advances vue_a, touching neither the id nor apparue_a", async () => {
         base = await baseNeuve('app-maj');
         await withVm(base, 'v-1');
         await appliquer(base, 'v-1', { ...RIEN, aInserer: [app('Ancien', cle(1))] }, MS);
@@ -143,7 +143,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(apres.apparue_a).toBe(MS);
     });
 
-    it('pose disparue_a SANS SUPPRIMER LA LIGNE', async () => {
+    it('sets disparue_a WITHOUT DELETING THE ROW', async () => {
         // 🔴 LE TEST LIT LES DEUX, et c'est ce qui le rend discriminant : un
         // `DELETE` poserait bien « plus dans le catalogue », et ferait perdre
         // son identifiant à une application installée côté navigateur.
@@ -161,7 +161,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(ligne!.id).toBe(before.id);
     });
 
-    it("ressuscite : disparue_a repasse à NULL, et l'identifiant NE CHANGE PAS", async () => {
+    it("resurrects: disparue_a goes back to NULL, and the identifier DOES NOT CHANGE", async () => {
         // 🔴 Insérer une ligne neuve serait la même perte d'identifiant, par
         // une autre porte.
         base = await baseNeuve('app-resurrection');
@@ -187,7 +187,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(apres.apparue_a).toBe(MS);
     });
 
-    it('lireConnues rend AUSSI les disparues, avec leur instant de disparition', async () => {
+    it('lireConnues ALSO returns the gone ones, with their instant of disappearance', async () => {
         // 🔴 C'est ce qui distingue ce lecteur de `lireParVm`, et l'omission
         // serait grave : la fusion qui ne verrait pas les disparues les
         // RÉINSÉRERAIT à leur retour, avec un identifiant neuf. Le lecteur du
@@ -205,7 +205,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(connues.find((c) => c.cle === cle(1))!.disparue_a).toBeNull();
     });
 
-    it("n'écrit RIEN quand une seule écriture de la fusion échoue", async () => {
+    it("writes NOTHING when a single write of the merge fails", async () => {
         // 🔴 UNE FUSION S'APPLIQUE EN ENTIER OU PAS DU TOUT. Un catalogue à
         // moitié écrit est indiscernable d'un catalogue correct au tour
         // suivant : la réconciliation suivante le prendrait pour l'état de la
@@ -239,7 +239,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(await lireConnues(base, 'v-1')).toEqual([]);
     });
 
-    it('ne porte AUCUNE valeur littérale dans ses requêtes', async () => {
+    it('carries NO literal value in its queries', async () => {
         // 🔴 CE CONTRÔLE NE ROUGIT QUE SOUS `test:postgres`, et c'est mesuré :
         // `rendreMarqueurs` (`base/pilote.ts`) n'est appelée que par
         // `pilote-postgres.ts`, et c'est elle seule qui LÈVE sur une
@@ -271,7 +271,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         await expect(lireParId(base, une.id)).resolves.toBeDefined();
     });
 
-    it('🔴 `NULL` se relit `non-mesuree`, JAMAIS `{pixels:0}` — le critère ④', async () => {
+    it('🔴 `NULL` is re-read as `non-mesuree`, NEVER `{pixels:0}` — criterion ④', async () => {
         // 🔴 REPRÉSENTER `NonMesuree` PAR UN NOMBRE FERAIT DIRE À UNE
         // PROVENANCE INCONNUE QU'ELLE VAUT QUELQUE CHOSE, et c'est tout ce que
         // le sous-bloc G2 existe pour empêcher. La règle est écrite UNE SEULE
@@ -285,7 +285,7 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         expect(pxDepuisSourceMax({ pixels: 256 })).toBe(256);
     });
 
-    it('🔴 les deux champs d’icône font l’ALLER-RETOUR par la base', async () => {
+    it('🔴 both icon fields make the ROUND TRIP through the database', async () => {
         base = await baseNeuve('app-icones');
         const p = base;
         await withVm(p, 'v-ico');

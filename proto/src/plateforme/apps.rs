@@ -173,7 +173,7 @@ pub struct Application {
 ///
 /// **The contrast is measured on the same module**: the same mutation applied
 /// to the enum that carries `BattementRecu` — two words, so `battement-recu` against
-/// `battement_recu` — makes `conformite_aux_vecteurs_partages` FAIL. The
+/// `battement_recu` — makes `conformance_to_the_shared_vectors` FAIL. The
 /// protection thus does exist for compound variants, and not for
 /// these ones.
 ///

@@ -22,7 +22,7 @@ function entetes(value: string | string[] | undefined): Record<string, string | 
 }
 
 describe('lirePorteur', () => {
-    it('en-tête ABSENT → jeton-absent, 401', () => {
+    it('header ABSENT → jeton-absent, 401', () => {
         // 🔴 La rouge : rendre `ok:true` avec un sujet vide. Toute route
         // deviendrait publique, au nom d'un utilisateur qui n'existe pas.
         expect(lirePorteur(entetes(undefined), SECRET, MS)).toEqual({
@@ -38,7 +38,7 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('`Bearer <jeton d’utilisateur valide>` → le sujet', () => {
+    it('`Bearer <valid user token>` → the subject', () => {
         const jeton = signer('u-ada', SECRET, MS);
         expect(lirePorteur(entetes(`Bearer ${jeton}`), SECRET, MS)).toEqual({
             ok: true,
@@ -63,7 +63,7 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('🔴 jeton EXPIRÉ → jeton-expire, et l’horloge VARIE', () => {
+    it('🔴 EXPIRED token → jeton-expire, and the clock VARIES', () => {
         // 🔴 La rouge : figer l'horloge. Le test deviendrait inerte — il n'y
         // aurait qu'un instant observable et le seuil ne serait jamais
         // franchi. La borne d'`identite/jeton.ts` est FRANCHE (`maintenant >=
@@ -83,7 +83,7 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('🔴 un schéma autre que `Bearer` → jeton-invalide', () => {
+    it('🔴 a scheme other than `Bearer` → jeton-invalide', () => {
         // 🔴 La rouge : accepter n'importe quel schéma. Et la casse est
         // comparée STRICTEMENT — voir le commentaire de `porteur.ts`, qui
         // déclare la divergence avec la RFC 7235 plutôt que de la subir. Le
@@ -96,7 +96,7 @@ describe('lirePorteur', () => {
             `BEARER ${jeton}`,
             jeton,
             `Bearer`,
-            `Bearer ${jeton} de-trop`,
+            `Bearer ${jeton} too-much`,
         ]) {
             const v = lirePorteur(entetes(brut), SECRET, MS);
             expect(v.ok).toBe(false);
@@ -112,7 +112,7 @@ describe('lirePorteur', () => {
         });
     });
 
-    it('🔴 un en-tête RÉPÉTÉ (string[]) → jeton-invalide', () => {
+    it('🔴 a REPEATED header (string[]) → jeton-invalide', () => {
         // 🔴 La rouge : prendre `entetes.authorization[0]` en silence. Deux
         // en-têtes d'autorisation est une requête AMBIGUË, pas une requête à
         // interpréter — et choisir l'un des deux est exactement le genre de

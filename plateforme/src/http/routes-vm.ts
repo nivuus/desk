@@ -10,7 +10,7 @@
 // server — is chained AFTER all the others, and it resolves any
 // path. On a `GET`/`HEAD`, IT is what answers `200 text/html` to the `false`
 // returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
-// over again. See `http/chaine.ts`, which holds the count and the rule.
+// over again. See `http/chaine.ts`, which holds the count and the rule. (policy: allow-fr - file name)
 //
 // 🔴 `attribuer` IS NOT EXPOSED, and it is not an oversight. There is NO
 // administration role in this service: `identite/jeton.ts` only knows
@@ -108,7 +108,7 @@ function repondre(
 /// would claim that the operation exists and is not supported, which is false.
 /// ⚠️ The page server does not override it HERE, and for a precise reason
 /// rather than by luck: these paths only arrive via `POST`, and the
-/// page server steps aside outside `GET`/`HEAD`. See `http/chaine.ts`.
+/// page server steps aside outside `GET`/`HEAD`. See `http/chaine.ts`. (policy: allow-fr - file name)
 function operationDe(chemin: string): { vmId: string; operation: Operation } | undefined {
     const segments = chemin.split('/');
     // ['', 'vm', '<id>', '<operation>'] — exactement quatre, ni plus ni moins.
@@ -152,7 +152,7 @@ function compterLaRequete(
             route: chemin,
             adresse,
             retry_apres_s: apres.retryApresS,
-            entrees: frein.taille(),
+            entrees: frein.size(),
             evictions: frein.evictions(),
         }),
     );
@@ -303,7 +303,7 @@ export async function servirVm(
 
     if (isList) {
         // ⚠️ THE COUNT IS THE USER'S, NOT THE VM'S, and it
-        // is only exact per VM because the partial index `vm_un_utilisateur`
+        // is only exact per VM because the partial index `vm_un_utilisateur` (policy: allow-fr - frozen wire key or SQLite column)
         // guarantees AT MOST ONE VM per user. The day that invariant
         // falls, this field would become the user's total copied onto
         // every row — hence wrong. It is written here rather than discovered

@@ -11,7 +11,7 @@
 // and an exception would make the answer 500 where the service must admit 501.
 //
 // 🔴 THE REASON IS A SHORT CODE, NOT A SENTENCE. Spec §3.6 proposed
-// `{ refus: 'non supporté par ce backend' }`; the whole rest of the service uses
+// `{ refus: 'not supported by this backend' }`; the whole rest of the service uses
 // a code (`{refus:'identifiants'}` in `http/routes-auth.ts`,
 // `{refus:'methode'}` and `{refus:'interne'}` in `http/serveur.ts`, the four
 // reasons of `identite/garde.ts`). A sentence cannot be compared, cannot be translated,
@@ -41,7 +41,7 @@ export const MOTIFS = [
     /// The VM already has an owner. ⚠️ This reason NEVER leaves through an HTTP
     /// route: it would only leave through an assignment, which is not exposed there.
     'vm-deja-attribuee',
-    /// The user already has a VM — it is the partial index `vm_un_utilisateur`
+    /// The user already has a VM — it is the partial index `vm_un_utilisateur` (policy: allow-fr - frozen wire key or SQLite column)
     /// that says so, by THROWING. Same exposure caveat as above.
     'utilisateur-servi',
     /// The user has no VM assigned.

@@ -1,5 +1,5 @@
 // The `vm` repository: the inventory that P4 reads, and the ONLY column the
-// service owns — `vm.utilisateur_id`.
+// service owns — `vm.utilisateur_id`. (policy: allow-fr - frozen wire key or SQLite column)
 //
 // 🔴 THIS MODULE CREATES NO VM, and that is the meaning of the word "static" of
 // spec §3.6 as reread by D1: the backend drives no hypervisor. The only
@@ -10,7 +10,7 @@
 // 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, `null`
 // included, otherwise `rendreMarqueurs` would throw on the Postgres side
 // (`base/pilote.ts`). ⚠️ This half of the lint bites ONLY on the Postgres
-// path — the static lint of `base/sous-ensemble.test.ts` only sweeps
+// path — the static lint of `base/sous-ensemble.test.ts` only sweeps (policy: allow-fr - file name)
 // the `.sql` files. A faulty query written here would therefore be green under
 // `test:sqlite` alone.
 //
@@ -27,7 +27,7 @@ export interface LigneVm {
     adresse: string;
     /// `null` = in the pool. ⚠️ "Belonging to nobody" is not "belonging to everybody":
     /// it is `orchestration/selection.ts` that carries this rule.
-    utilisateur_id: string | null;
+    utilisateur_id: string | null; // policy: allow-fr - frozen wire key or SQLite column
     /// `null` if the VM was never enrolled as an agent — hence the LEFT JOIN.
     prefixe_session: string | null;
     /// The last heartbeat. `null` if never seen.
@@ -91,7 +91,7 @@ export async function lireParNom(p: Pilote, nom: string): Promise<LigneVm | unde
 
 /// Assigns the VM IF IT IS FREE, and returns the number of rows touched.
 ///
-/// 🔴 `AND utilisateur_id IS NULL` IS THE GUARANTEE, and it is NOT the prior
+/// 🔴 `AND utilisateur_id IS NULL` IS THE GUARANTEE, and it is NOT the prior (policy: allow-fr - frozen wire key or SQLite column)
 /// read the caller does. The clause is RE-EVALUATED BY THE ENGINE at the
 /// moment of the write: that is what makes the race safe. Measured on
 /// PostgreSQL 16.15 in `READ COMMITTED`, two transactions targeting the same free
@@ -101,9 +101,9 @@ export async function lireParNom(p: Pilote, nom: string): Promise<LigneVm | unde
 /// overwrite.
 ///
 /// 🔴 WITHOUT IT, THE THEFT GOES THROUGH. Measured on BOTH engines: a bare `UPDATE vm SET
-/// utilisateur_id = ? WHERE id = ?` returns `1 row` on a VM already
-/// assigned to somebody else. ⚠️ The partial index `vm_un_utilisateur`
-/// DOES NOT FORBID THIS THEFT — it makes `utilisateur_id` unique across
+/// policy: allow-fr (frozen SQLite name) — utilisateur_id = ? WHERE id = ?` returns `1 row` on a VM already
+/// assigned to somebody else. ⚠️ The partial index `vm_un_utilisateur` (policy: allow-fr - frozen wire key or SQLite column)
+/// DOES NOT FORBID THIS THEFT — it makes `utilisateur_id` unique across (policy: allow-fr - frozen wire key or SQLite column)
 /// rows, so it forbids a user from having TWO VMs, never a VM from
 /// changing hands. The spec and `0001-socle.sql` both ascribed to that same
 /// index a property it does not have (divergence E3).
@@ -133,7 +133,7 @@ export async function attribuerSiLibre(
 /// ⚠️ NO CLAUSE ON THE CURRENT OWNER, on purpose: the only caller
 /// is the administration command, whose purpose is precisely to take
 /// a VM back from somebody. The day a user could give back THEIR VM
-/// themselves, this function would need an `AND utilisateur_id = ?` —
+/// themselves, this function would need an `AND utilisateur_id = ?` — (policy: allow-fr - frozen wire key or SQLite column)
 /// otherwise they would give back somebody else's.
 ///
 /// The `null` goes in as a PARAMETER like any value.

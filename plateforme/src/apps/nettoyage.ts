@@ -195,7 +195,7 @@ async function nettoyerTranches(
                 // this loop is BOUNDED, and runs at most once every six
                 // hours — nothing to do with one packet per frame.
                 console.error(
-                    `purge de la ligne de televersement ${ligne.id} en echec : ${String(cause)}`,
+                    `purge of the upload row ${ligne.id} failed: ${String(cause)}`,
                 );
             }
         }
@@ -299,7 +299,7 @@ export async function startCleanup(
         try {
             await unTour({ ...deps, maintenant: deps.maintenant() });
         } catch (cause) {
-            console.error(`nettoyage des magasins en echec : ${String(cause)}`);
+            console.error(`clean-up of the stores failed: ${String(cause)}`);
         }
     };
     await tour();

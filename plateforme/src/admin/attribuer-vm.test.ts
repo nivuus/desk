@@ -31,8 +31,8 @@ async function poserVm(p: Pilote, id: string, nom: string): Promise<void> {
     await enroler(p, id, 'empreinte-opaque', `PREFIXE${id}`);
 }
 
-describe('analyserArguments de admin:attribuer', () => {
-    it('🔴 exige --email ET --vm, sans DÉFAUT ni l’un ni l’autre', () => {
+describe('analyserArguments of admin:attribuer', () => {
+    it('🔴 requires --email AND --vm, with NO DEFAULT for either', () => {
         // 🔴 La rouge : donner un défaut à l'un des deux. Un défaut sur
         // `--email` attribuerait la VM à un compte que l'opérateur n'a pas
         // nommé ; un défaut sur `--vm` en choisirait une au hasard. Les deux
@@ -50,7 +50,7 @@ describe('analyserArguments de admin:attribuer', () => {
         expect('refus' in analyserArguments(['--email', 'ada@exemple.test', '--vm', ''])).toBe(true);
     });
 
-    it('reprend TELLE QUELLE la liste de drapeaux refusés des deux autres commandes', () => {
+    it('reuses AS IS the list of refused flags of the two other commands', () => {
         // ⚠️ AUCUN SECRET N'EST EN JEU DANS CETTE COMMANDE, et la liste est
         // reprise quand même : une commande d'administration qui accepterait
         // `--mot-de-passe` sans s'en servir laisserait tout de même la chaîne
@@ -66,7 +66,7 @@ describe('analyserArguments de admin:attribuer', () => {
         }
     });
 
-    it('🔴 `--detacher` n’exige PAS de courriel, et le dit', () => {
+    it('🔴 `--detacher` does NOT require an email, and says so', () => {
         // 🔴 La rouge : ignorer le drapeau, ou exiger `--email` avec lui. On
         // détache une VM DE quelqu'un ; exiger de nommer ce quelqu'un
         // obligerait l'opérateur à savoir d'avance ce que la commande va lui
@@ -79,8 +79,8 @@ describe('analyserArguments de admin:attribuer', () => {
     });
 });
 
-describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
-    it('🔴 succès → code 0, et la ligne RELUE porte le propriétaire', async () => {
+describe(`appliquer of admin:attribuer, engine=${MOTEUR}`, () => {
+    it('🔴 success → code 0, and the RE-READ row carries the owner', async () => {
         base = await baseNeuve('adm-attrib-ok');
         await poserVm(base, 'v1', 'w1');
         const ada = await createUser(base, 'ada@exemple.test', 'empreinte', MS);
@@ -98,7 +98,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         expect(issue.sortie).toContain('v1');
     });
 
-    it('🔴 `--detacher` rend la VM au vivier, et une NOUVELLE attribution redevient possible', async () => {
+    it('🔴 `--detacher` returns the VM to the pool, and a NEW assignment becomes possible again', async () => {
         // 🔴 La rouge : ignorer le drapeau. La VM resterait prise à vie, et il
         // n'existerait aucun chemin pour la rendre — `depot/vm.ts::detacher`
         // n'a pas d'autre appelant.
@@ -120,7 +120,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(bob);
     });
 
-    it('courriel INCONNU → code 2, et le message NOMME la cause', async () => {
+    it('UNKNOWN email → code 2, and the message NAMES the cause', async () => {
         // ⚠️ On nomme, ici. Voir l'en-tête : ce n'est pas une route publique.
         base = await baseNeuve('adm-courriel-inconnu');
         await poserVm(base, 'v1', 'w1');
@@ -131,12 +131,12 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         });
         expect(issue.code).toBe(2);
         expect(issue.error).toMatch(/personne@exemple\.test/);
-        expect(issue.error).toMatch(/compte|courriel/i);
+        expect(issue.error).toMatch(/account|email/i);
         // Et rien n'a été écrit.
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBeNull();
     });
 
-    it('VM INCONNUE → code 2, message nommant la VM', async () => {
+    it('UNKNOWN VM → code 2, message naming the VM', async () => {
         base = await baseNeuve('adm-vm-inconnue');
         await createUser(base, 'ada@exemple.test', 'empreinte', MS);
         const issue = await appliquer(base, {
@@ -148,7 +148,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         expect(issue.error).toMatch(/w-jamais-creee/);
     });
 
-    it('🔴 VM DÉJÀ PRISE → code 2, message nommant le PROPRIÉTAIRE', async () => {
+    it('🔴 VM ALREADY TAKEN → code 2, message naming the OWNER', async () => {
         // 🔴 La rouge : ne pas nommer le propriétaire. L'opérateur saurait que
         // ça a échoué sans savoir qui détacher — il lui faudrait ouvrir la base
         // à la main, ce que cette commande existe pour éviter.
@@ -169,7 +169,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(ada);
     });
 
-    it('🔴 utilisateur qui a DÉJÀ une VM → code 2 et un message, JAMAIS une trace de pile', async () => {
+    it('🔴 user who ALREADY has a VM → code 2 and a message, NEVER a stack trace', async () => {
         // 🔴 La rouge : laisser l'exception d'unicité remonter. L'administrateur
         // verrait `duplicate key value violates unique constraint
         // "vm_un_utilisateur"` — ou son jumeau SQLite, qui ne dit pas la même
@@ -187,7 +187,7 @@ describe(`appliquer de admin:attribuer, moteur=${MOTEUR}`, () => {
             vm: 'w2',
         });
         expect(issue.code).toBe(2);
-        expect(issue.error).toMatch(/déjà|deja/i);
+        expect(issue.error).toMatch(/already/i);
         // Aucune trace de pile, et aucun texte de moteur : les deux moteurs
         // n'écrivent pas le même, et l'un des deux serait donc faux.
         expect(issue.error).not.toMatch(/UNIQUE constraint|duplicate key|at Object|\bat \w+\./);

@@ -39,7 +39,7 @@ import { ligne } from '../obs/journal';
 /// but unreadable must be LOUD (`console.error`), and leaving that choice to the
 /// call site would make it invisible to the test that checks it.
 export interface Annonce {
-    readonly niveau: 'info' | 'erreur';
+    readonly niveau: 'info' | 'error';
     readonly texte: string;
 }
 
@@ -65,17 +65,17 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
     if (!etat.arme) {
         return {
             niveau: 'info',
-            texte: ligne('page servie', {
-                racine: 'aucune',
-                raison: 'PLATEFORME_PAGE absente ou vide',
-                effet: 'GET / rend 404 introuvable',
+            texte: ligne('page served', {
+                racine: 'none',
+                raison: 'PLATEFORME_PAGE absent or empty',
+                effet: 'GET / returns 404 not found',
             }),
         };
     }
     if (etat.lisible) {
         return {
             niveau: 'info',
-            texte: ligne('page servie', { racine: etat.chemin, lisible: 'oui' }),
+            texte: ligne('page served', { racine: etat.chemin, lisible: 'yes' }),
         };
     }
     // 🔴 `error`, NEVER `info`: it is the case this module exists to
@@ -83,12 +83,12 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
     // would cut the API and the signaling for one page, which would be
     // disproportionate —, but it no longer does so silently.
     return {
-        niveau: 'erreur',
-        texte: ligne('page servie', {
+        niveau: 'error',
+        texte: ligne('page served', {
             racine: etat.chemin,
-            lisible: 'non',
+            lisible: 'no',
             cause: etat.cause,
-            effet: 'toute page rendra 404 introuvable',
+            effet: 'every page will return 404 not found',
         }),
     };
 }
@@ -147,15 +147,15 @@ export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce
     if (confiance.size === 0) {
         return {
             niveau: 'info',
-            texte: ligne('proxys de confiance', {
-                retenus: 'aucun',
-                effet: 'X-Forwarded-For n est pas cru, et /auth/moi refuse tout pair',
+            texte: ligne('trusted proxies', {
+                retenus: 'none',
+                effet: 'X-Forwarded-For is not trusted, and /auth/moi refuses every peer',
             }),
         };
     }
     return {
         niveau: 'info',
-        texte: ligne('proxys de confiance', {
+        texte: ligne('trusted proxies', {
             // ⚠️ ALL THE ENTRIES, NEVER A SAMPLE OR A TRUNCATION:
             // `obs/journal.ts` already carries the reason — a truncated address is
             // AMBIGUOUS, and the operator would no longer recognise their own. It is
@@ -176,7 +176,7 @@ export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce
 /// the whole point of this module.
 export async function sonderRepertoire(chemin: string): Promise<void> {
     const infos = await stat(chemin);
-    if (!infos.isDirectory()) throw new Error('ce n est pas un repertoire');
+    if (!infos.isDirectory()) throw new Error('this is not a directory');
     await access(chemin, constants.R_OK | constants.X_OK);
 }
 
@@ -212,6 +212,6 @@ export async function etatRacinePage(
 /// Writing, isolated into a single gesture — the only one of this module that touches the
 /// console.
 export function write(annonce: Annonce): void {
-    if (annonce.niveau === 'erreur') console.error(annonce.texte);
+    if (annonce.niveau === 'error') console.error(annonce.texte);
     else console.info(annonce.texte);
 }

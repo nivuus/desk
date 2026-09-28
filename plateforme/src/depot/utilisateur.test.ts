@@ -22,10 +22,10 @@ afterEach(async () => {
     base = undefined;
 });
 
-describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
-    it('crée un compte et le relit par courriel, à l’époque EXACTE écrite', async () => {
-        base = await baseNeuve('util-creer');
-        const empreinte = await hacher('un-mot-de-passe-ordinaire-42');
+describe(`user repository, engine=${MOTEUR}`, () => {
+    it('creates an account and re-reads it by email, at the EXACT epoch written', async () => {
+        base = await baseNeuve('user-create');
+        const empreinte = await hacher('an-ordinary-password-42');
         const id = await createUser(base, 'ada@exemple.test', empreinte, MS);
 
         const ligne = await lireParEmail(base, 'ada@exemple.test');
@@ -40,12 +40,12 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
         expect(Number(ligne!.cree_a)).toBe(MS);
     });
 
-    it('REFUSE un second compte au même courriel', async () => {
+    it('REFUSES a second account with the same email', async () => {
         // L'index UNIQUE de `0001-socle.sql:32` : le retirer ferait passer les
         // deux insertions, et deux comptes homonymes rendraient
         // l'authentification non déterministe.
         base = await baseNeuve('util-unique');
-        const empreinte = await hacher('un-mot-de-passe-ordinaire-42');
+        const empreinte = await hacher('an-ordinary-password-42');
         await createUser(base, 'ada@exemple.test', empreinte, MS);
         await expect(createUser(base, 'ada@exemple.test', empreinte, MS + 1))
             .rejects.toThrow();
@@ -57,7 +57,7 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
         expect(Number(all[0].n)).toBe(1);
     });
 
-    it('rend undefined sur un courriel inconnu, JAMAIS une exception', async () => {
+    it('returns undefined on an unknown email, NEVER an exception', async () => {
         // Un `lignes[0].id` sur un tableau vide lèverait, et l'appelant HTTP
         // répondrait 500 là où il doit répondre 401 — l'écart de comportement
         // serait à lui seul un oracle d'énumération de comptes.
@@ -65,12 +65,12 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
         await expect(lireParEmail(base, 'personne@exemple.test')).resolves.toBeUndefined();
     });
 
-    it('remplace l’empreinte, et RIEN d’autre', async () => {
+    it('replaces the fingerprint, and NOTHING else', async () => {
         base = await baseNeuve('util-rehache');
-        const ancienne = await hacher('un-mot-de-passe-ordinaire-42', { N: 4096, r: 8, p: 1 });
+        const ancienne = await hacher('an-ordinary-password-42', { N: 4096, r: 8, p: 1 });
         const id = await createUser(base, 'ada@exemple.test', ancienne, MS);
 
-        const neuve = await hacher('un-mot-de-passe-ordinaire-42');
+        const neuve = await hacher('an-ordinary-password-42');
         await remplacerEmpreinte(base, id, neuve);
 
         const ligne = await lireParEmail(base, 'ada@exemple.test');
@@ -82,9 +82,9 @@ describe(`dépôt utilisateur, moteur=${MOTEUR}`, () => {
         expect(ligne!.id).toBe(id);
     });
 
-    it('donne un identifiant distinct à chaque compte', async () => {
+    it('gives a distinct identifier to each account', async () => {
         base = await baseNeuve('util-ids');
-        const empreinte = await hacher('un-mot-de-passe-ordinaire-42');
+        const empreinte = await hacher('an-ordinary-password-42');
         const un = await createUser(base, 'ada@exemple.test', empreinte, MS);
         const deux = await createUser(base, 'grace@exemple.test', empreinte, MS + 1);
         expect(deux).not.toBe(un);

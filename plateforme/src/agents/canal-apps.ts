@@ -129,7 +129,7 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
             instant,
         ).catch((cause) => {
             console.error(
-                `progression non écrite pour l'installation ${message.installation} : ${String(cause)}`,
+                `progress not written for installation ${message.installation}: ${String(cause)}`,
             );
         });
         return;
@@ -159,7 +159,7 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
             instant,
         ).catch((cause) => {
             console.error(
-                `issue non écrite pour l'installation ${message.installation} : ${String(cause)}`,
+                `outcome not written for installation ${message.installation}: ${String(cause)}`,
             );
         });
         return;
@@ -170,7 +170,7 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
         .then((connues) => appliquer(deps.base, identifiant, fusionner(connues, message), instant))
         .then(() => reclamerLesIcones(deps, message))
         .catch((cause) => {
-            console.error(`catalogue non écrit pour la VM ${identifiant} : ${String(cause)}`);
+            console.error(`catalogue not written for VM ${identifiant}: ${String(cause)}`);
         });
 }
 
@@ -222,7 +222,7 @@ export async function reemettreLesInstallations(
             // not of this code. Skipping it while SAYING so is better than emitting an
             // order whose URL would lead nowhere.
             console.error(
-                `installation ${ligne.id} sans téléversement ${ligne.televersement_id} : ordre non réémis`,
+                `installation ${ligne.id} without upload ${ligne.televersement_id}: order not re-sent`,
             );
             continue;
         }
@@ -231,7 +231,7 @@ export async function reemettreLesInstallations(
                 ligne.id,
                 `/televersement/${tel.id}/contenu`,
                 tel.nom,
-                tel.taille,
+                tel.taille, // policy: allow-fr - frozen wire key or SQLite column
                 tel.sha256,
             ),
         );

@@ -229,7 +229,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                 // of an agent that is itself perfectly fine. The cost is named: a
                 // lost write only shows in the log.
                 void marquerVu(base, vmId, instant).catch((cause) => {
-                    console.error(`vu_a non avancé pour la VM ${vmId} : ${String(cause)}`);
+                    console.error(`vu_a not advanced for VM ${vmId}: ${String(cause)}`);
                 });
 
                 const { jeton, expireA } = jetonNeuf(prefixe);
@@ -340,7 +340,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     // the administrator, never connected since".
                     void marquerVu(base, verdict.vmId, instant).catch((cause) => {
                         console.error(
-                            `vu_a non posé à l'enrôlement de la VM ${verdict.vmId} : ${String(cause)}`,
+                            `vu_a not set at the enrolment of VM ${verdict.vmId}: ${String(cause)}`,
                         );
                     });
 
@@ -370,7 +370,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                         { base, vmId: verdict.vmId, envoyer: (brut) => envoyer(socket, brut) },
                     ).catch((cause) => {
                         console.error(
-                            `réémission des installations impossible pour la VM `
+                            `re-sending the installations impossible for VM `
                                 + `${verdict.vmId} : ${String(cause)}`,
                         );
                     });
@@ -379,7 +379,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     // The VM name is logged, the secret never: it has just
                     // been refused, writing it again elsewhere would make no sense
                     // and would expose it in a trace file.
-                    console.error(`enrôlement en échec pour la VM ${vm} : ${String(cause)}`);
+                    console.error(`enrolment failed for VM ${vm}: ${String(cause)}`);
                     // ⚠️ THIS PATH COUNTS TOO. A digest written by a
                     // future version of the service makes `verify` RAISE: without
                     // this counting, an attacker who found a way to make it
@@ -450,7 +450,7 @@ function journaliserLeFrein(
             retry_apres_s: verdict.retryApresS,
             // Without these two, SATURATION of the brake would be invisible: under
             // saturation an eviction gives its budget back to a targeted VM.
-            entrees: frein.taille(),
+            entrees: frein.size(),
             evictions: frein.evictions(),
         }),
     );

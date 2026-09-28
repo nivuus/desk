@@ -84,7 +84,7 @@ pub const TYPE_DELETE: u8 = 8; // F3 — `Delete` header, empty payload
 // Bridge → browser announcements — **they await NOTHING**.
 //
 // 🔴 **THIRD FAMILY, and it breaks the invariant the browser states
-// in capitals** (`client/src/fichiers/protocole.ts`): "a request always
+// policy: allow-fr (file name) — in capitals** (`client/src/fichiers/protocole.ts`): "a request always
 // receives an answer". An ANNOUNCEMENT receives none — no table
 // entry corresponds to it on the bridge side, and not answering it therefore leaves nothing
 // in flight. **The set of announcements is CLOSED**, and that is what keeps this
@@ -133,7 +133,7 @@ pub const TYPE_ECHEC: u8 = 127;
 //
 // ⚠️ **The numbering is therefore NOT contiguous: 6 is an ANNOUNCEMENT, 7 and 8 are
 // REQUESTS.** The order of the values says nothing of the family; it is
-// the named routing of `client/src/fichiers/protocole.ts` that says it, and it
+// the named routing of `client/src/fichiers/protocole.ts` that says it, and it (policy: allow-fr - file name)
 // alone.
 
 /// Cause of a failure sent back by the browser.
@@ -141,7 +141,7 @@ pub const TYPE_ECHEC: u8 = 127;
 /// ⚠️ The wire representation is **kebab-case**, and the variants with
 /// two words or more are the ones that break silently: this repository let
 /// a `battement-recu` variant through green on fifty tests because
-/// nothing pinned its bytes. `un_code_d_echec_a_une_forme_epinglee_sur_le_fil`
+/// nothing pinned its bytes. `a_failure_code_has_a_pinned_shape_on_the_wire`
 /// pins **all eleven**, literally — the ten of F2, plus
 /// `RepertoireNonVide` which F3 adds, **with three words**, hence of the exact family
 /// that breaks silently.
@@ -182,7 +182,7 @@ pub enum CodeEchec {
     /// `getFileHandle('CASSE.TXT', { create: true })` would therefore open
     /// `Casse.txt` there and **overwrite it**. Refusing loudly is the only
     /// arbitration available between "refusing wrongly" and "overwriting the wrong
-    /// file" — see `client/src/fichiers/ecriture.ts`.
+    /// policy: allow-fr (file name) — file" — see `client/src/fichiers/ecriture.ts`.
     CasseAmbigue,
     /// 🔴 **The local machine refuses to delete a NON-EMPTY directory, and that
     /// means the MIRROR HAS DRIFTED.**
@@ -220,13 +220,13 @@ pub struct Trame<'a> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum FrameError {
-    #[error("trame tronquée : {recu} octets reçus, {attendu} attendus")]
+    #[error("truncated frame: {recu} bytes received, {attendu} expected")]
     TropCourte { recu: usize, attendu: usize },
-    #[error("version de fichiers non supportée : {0}")]
+    #[error("unsupported files version: {0}")]
     VersionNonSupportee(u8),
-    #[error("en-tête de {length} octets annoncé, {disponible} disponibles")]
+    #[error("header of {length} bytes announced, {disponible} available")]
     EnteteDeborde { length: u64, disponible: usize },
-    #[error("charge de {recu} octets, maximum {max}")]
+    #[error("payload of {recu} bytes, maximum {max}")]
     ChargeTropGrande { recu: usize, max: usize },
 }
 

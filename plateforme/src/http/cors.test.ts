@@ -9,7 +9,7 @@ import { entetesCors } from './cors';
 const AUTORISEE = 'http://127.0.0.1:5173';
 
 describe('entetesCors', () => {
-    it('n’émet AUCUN en-tête quand aucune origine n’est autorisée', () => {
+    it('emits NO header when no origin is allowed', () => {
         // Le défaut est le refus, jamais l'ouverture : sans
         // `PLATEFORME_ORIGINE_CLIENT`, le navigateur refuse de lire la réponse,
         // ce que l'opérateur voit immédiatement.
@@ -17,13 +17,13 @@ describe('entetesCors', () => {
         expect(entetesCors(undefined, undefined)).toBeUndefined();
     });
 
-    it('n’émet rien à qui ne demande pas — une requête non navigateur', () => {
+    it('emits nothing to whoever does not ask — a non-browser request', () => {
         // Renvoyer l'origine autorisée à un appelant qui n'a pas d'`Origin`
         // n'a aucun sens et divulgue la configuration.
         expect(entetesCors(undefined, AUTORISEE)).toBeUndefined();
     });
 
-    it('REFUSE une origine différente, sans préfixe ni inclusion', () => {
+    it('REFUSES a different origin, with no prefix and no inclusion', () => {
         // Une comparaison par `startsWith` accepterait
         // `http://127.0.0.1:5173.attaquant.test`.
         expect(entetesCors('http://mechant.test', AUTORISEE)).toBeUndefined();
@@ -31,7 +31,7 @@ describe('entetesCors', () => {
         expect(entetesCors('http://127.0.0.1:517', AUTORISEE)).toBeUndefined();
     });
 
-    it('🔴 annonce GET, POST, OPTIONS — `GET /vm` en a besoin', () => {
+    it('🔴 announces GET, POST, OPTIONS — `GET /vm` needs them', () => {
         // 🔴 La rouge : laisser `POST, OPTIONS`. La requête préalable de
         // `GET /vm` recevrait alors une liste de méthodes qui ne contient pas
         // la sienne, et le navigateur refuserait la vraie requête — SANS
@@ -46,7 +46,7 @@ describe('entetesCors', () => {
         expect(entetes!['Access-Control-Allow-Methods']).toBe('GET, POST, PUT, OPTIONS');
     });
 
-    it('🔴 annonce `PUT` — sans quoi le TÉLÉVERSEMENT de G3 est inatteignable', () => {
+    it('🔴 announces `PUT` — otherwise the UPLOAD of G3 is unreachable', () => {
         // 🔴 TROISIÈME FOIS QUE CETTE CLASSE MORD, et P4 l'avait nommée en la
         // déclarant SANS GARDE AUTOMATIQUE : « ce qu'un navigateur exige et
         // qu'un test serveur ne voit pas ». Elle a mordu deux fois chez lui
@@ -84,7 +84,7 @@ describe('entetesCors', () => {
         expect(permises).toContain('OPTIONS');
     });
 
-    it('🔴 autorise l’en-tête `authorization` — sans quoi AUCUNE route de P4 n’est atteignable', () => {
+    it('🔴 allows the `authorization` header — otherwise NO route of P4 is reachable', () => {
         // 🔴 DÉFAUT DU PLAN, RELEVÉ ET NON RECOPIÉ. La tâche 8 ne prescrivait
         // que `GET` dans `Access-Control-Allow-Methods`. Or les deux routes de
         // P4 exigent `Authorization: Bearer` (`http/porteur.ts`), et un en-tête
@@ -109,7 +109,7 @@ describe('entetesCors', () => {
         expect(permis).toContain('content-type');
     });
 
-    it('émet l’origine ET Vary: Origin quand elle correspond exactement', () => {
+    it('emits the origin AND Vary: Origin when it matches exactly', () => {
         const entetes = entetesCors(AUTORISEE, AUTORISEE);
         expect(entetes).toBeDefined();
         expect(entetes!['Access-Control-Allow-Origin']).toBe(AUTORISEE);
@@ -118,7 +118,7 @@ describe('entetesCors', () => {
         expect(entetes!['Vary']).toBe('Origin');
     });
 
-    it('ne produit JAMAIS la valeur `*`, quelle que soit l’entrée', () => {
+    it('NEVER produces the value `*`, whatever the input', () => {
         const entrees: Array<[string | undefined, string | undefined]> = [
             ['*', '*'],
             ['*', AUTORISEE],

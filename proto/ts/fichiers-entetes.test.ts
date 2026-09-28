@@ -88,7 +88,7 @@ function encoder(c: CasVecteur): string {
         case 'echec':
             return encodeEchec(c.code as CodeEchec);
         default:
-            throw new Error(`forme inconnue dans les vecteurs : ${c.forme}`);
+            throw new Error(`unknown shape in the vectors: ${c.forme}`);
     }
 }
 
@@ -121,58 +121,58 @@ function analyser(c: CasVecteur): unknown {
         case 'echec':
             return parseEchec(brut);
         default:
-            throw new Error(`forme inconnue dans les vecteurs : ${c.forme}`);
+            throw new Error(`unknown shape in the vectors: ${c.forme}`);
     }
 }
 
-describe('vecteurs partagés des en-têtes du pont fichiers', () => {
-    it('🔴 déclare la MÊME version que le protocole', () => {
+describe('shared vectors of the file bridge headers', () => {
+    it('🔴 declares the SAME version as the protocol', () => {
         // 🔴 La rouge : l'omettre. C'est la lacune que `vectors.json` traîne
         // côté Rust — `input.rs` ne vérifie jamais `doc["version"]`. Ici les
         // DEUX côtés la vérifient.
         expect(FILES_VERSION).toBe(vecteurs.version);
     });
 
-    it('🔴 porte au moins un cas', () => {
+    it('🔴 carries at least one case', () => {
         // 🔴 ANTI-TAUTOLOGIE : un fichier vide ferait passer toutes les boucles
         // ci-dessous sans rien éprouver.
         expect(cas.length).toBeGreaterThan(0);
     });
 
-    it.each(cas)('encode « $name » exactement comme le vecteur', (c) => {
+    it.each(cas)('encodes « $name » exactly like the vector', (c) => {
         expect(encoder(c)).toBe(c.json);
     });
 
-    it.each(cas)('relit « $name » depuis le vecteur, sans le déformer', (c) => {
+    it.each(cas)('re-reads « $name » from the vector, without distorting it', (c) => {
         // Aller-retour : ce qui est relu doit se ré-encoder à l'identique. Un
         // champ renommé casse ici, un champ perdu aussi.
         expect(JSON.stringify(analyser(c))).toBe(c.json);
     });
 });
 
-describe('les en-têtes incomplets sont rejetés', () => {
+describe('incomplete headers are rejected', () => {
     // Doctrine de version de `control` appliquée aux en-têtes : rien n'est
     // silencieusement complété. Le jumeau Rust est
-    // `un_entete_incomplet_est_rejete_plutot_que_complete`.
-    it('refuse un Meta sans `modifie`', () => {
+    // `an_incomplete_header_is_rejected_rather_than_completed`.
+    it('refuses a Meta without `modifie`', () => {
         expect(() => parseMeta({ nom: 'a', repertoire: false, taille: 1 })).toThrow(/modifie/);
     });
 
-    it('🔴 refuse un Meta sans `nom` — le nom CANONIQUE', () => {
+    it('🔴 refuses a Meta without `nom` — the CANONICAL name', () => {
         // Sans lui, le substitut serait créé sous le nom que l'application a
         // TAPÉ, et non sous celui qui existe sur le poste local.
         expect(() => parseMeta({ repertoire: false, taille: 1, modifie: 0 })).toThrow(/nom/);
     });
 
-    it('refuse un Donnees sans `longueur`', () => {
+    it('refuses a Donnees without `longueur`', () => {
         expect(() => parseData({ position: 0 })).toThrow(/longueur/);
     });
 
-    it('refuse un Lire sans `longueur`', () => {
+    it('refuses a Lire without `longueur`', () => {
         expect(() => parseLire({ chemin: 'a', position: 0 })).toThrow(/longueur/);
     });
 
-    it('refuse un champ du mauvais TYPE, pas seulement un champ absent', () => {
+    it('refuses a field of the wrong TYPE, not only an absent field', () => {
         // Un `size` en chaîne passerait un contrôle de présence et
         // produirait une taille de fichier absurde côté ProjFS.
         expect(() => parseMeta({ nom: 'a', repertoire: false, taille: '1', modifie: 0 })).toThrow(
@@ -180,7 +180,7 @@ describe('les en-têtes incomplets sont rejetés', () => {
         );
     });
 
-    it('🔴 refuse un Renommer sans `vers` — le seul champ dont l’absence DÉTRUIT', () => {
+    it('🔴 refuses a Renommer without `vers` — the only field whose absence DESTROYS', () => {
         // Complété en silence par une chaîne vide, il ferait renommer vers la
         // racine — ou, si l'appelant sautait sa garde, écraserait la source par
         // elle-même. C'est le seul en-tête de ce protocole dont un champ
@@ -188,15 +188,15 @@ describe('les en-têtes incomplets sont rejetés', () => {
         expect(() => parseRenommer({ de: 'a', repertoire: false })).toThrow(/vers/);
     });
 
-    it('refuse un Supprimer sans `repertoire`', () => {
+    it('refuses a Supprimer without `repertoire`', () => {
         expect(() => parseDelete({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
-    it('refuse un code d’échec inconnu', () => {
-        expect(() => parseEchec({ code: 'inventé' })).toThrow(/code/);
+    it('refuses an unknown failure code', () => {
+        expect(() => parseEchec({ code: 'invented' })).toThrow(/code/);
     });
 
-    it('🔴 refuse un Ecrire sans `premier`', () => {
+    it('🔴 refuses an Ecrire without `premier`', () => {
         // Sans `premier`, le flux s'ouvrirait avec `keepExistingData` : un
         // fichier réécrit plus court garderait sa queue d'octets, ce qui est le
         // défaut EXACT de l'ancien pont (spec §12).
@@ -205,7 +205,7 @@ describe('les en-têtes incomplets sont rejetés', () => {
         ).toThrow(/premier/);
     });
 
-    it('🔴 refuse un Ecrire sans `dernier`', () => {
+    it('🔴 refuses an Ecrire without `dernier`', () => {
         // Sans `last`, le `close()` ne viendrait jamais : rien ne serait
         // jamais commis côté poste local, et l'entrée resterait due à jamais.
         expect(() =>
@@ -213,11 +213,11 @@ describe('les en-têtes incomplets sont rejetés', () => {
         ).toThrow(/dernier/);
     });
 
-    it('refuse un Creer sans `repertoire`', () => {
+    it('refuses a Creer without `repertoire`', () => {
         expect(() => parseCreate({ chemin: 'a' })).toThrow(/repertoire/);
     });
 
-    it('refuse une due incomplète', () => {
+    it('refuses an incomplete due', () => {
         expect(() => parseDues({ dues: [{ chemin: 'a' }] })).toThrow(/octets/);
         // 🔴 **F5 — l'ABSENCE de défaut, épinglée.** Un `Dues` sans `retenues`
         // complété en silence vaudrait « le pont pousse », c'est-à-dire
@@ -227,7 +227,7 @@ describe('les en-têtes incomplets sont rejetés', () => {
         expect(() => parseBonjour({ forcer: false })).toThrow(/racine/);
     });
 
-    it('refuse une entrée de répertoire incomplète', () => {
+    it('refuses an incomplete directory entry', () => {
         expect(() => parseEntrees({ entrees: [{ nom: 'a', repertoire: false }] })).toThrow(
             /taille/,
         );

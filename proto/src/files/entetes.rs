@@ -23,11 +23,11 @@
 //!
 //! # The check that catches a rename
 //!
-//! `proto/fichiers-vectors.json` freezes the EXACT JSON string of each shape, and
+//! `proto/fichiers-vectors.json` freezes the EXACT JSON string of each shape, and (policy: allow-fr - file name)
 //! it is read by **both** implementations:
 //!
-//! - `proto/src/fichiers/entetes/tests.rs` (Rust);
-//! - `proto/ts/fichiers-entetes.test.ts` (TypeScript).
+//! - `proto/src/files/entetes/tests.rs` (Rust);
+//! - `proto/ts/fichiers-entetes.test.ts` (TypeScript). (policy: allow-fr - file name)
 //!
 //! Renaming a field on one side only turns that side RED — measured, see the
 //! report of task 15. Both tests also check the `version` key
@@ -38,8 +38,8 @@
 //! [`crate::control`], applied to headers.
 //!
 //! ⚠️ **The split is the SAME on both sides**: the frame in
-//! `files.{rs,ts}`, the headers in `fichiers/entetes.rs` and
-//! `fichiers-entetes.ts`. A split asymmetry would make the pairing harder
+//! `files.rs`/`fichiers.ts`, the headers in `files/entetes.rs` and (policy: allow-fr - file name)
+//! `fichiers-entetes.ts`. A split asymmetry would make the pairing harder (policy: allow-fr - file name)
 //! to reread than to write.
 
 use serde::{Deserialize, Serialize};
@@ -250,7 +250,7 @@ pub struct Dues {
     ///    both ends of this bridge are always deployed together — a
     ///    single `agent.exe`, a single shell page.
     ///
-    /// ⚠️ **Consequence for the vectors**: `fichiers-vectors.json` does NOT carry
+    /// ⚠️ **Consequence for the vectors**: `fichiers-vectors.json` does NOT carry (policy: allow-fr - file name)
     /// "both shapes" as D7 planned. It carries the complete shape, and
     /// a test **confronts** the parser with the incomplete shape to check that it
     /// is REFUSED — which pins the **absence** of a default, stronger than a

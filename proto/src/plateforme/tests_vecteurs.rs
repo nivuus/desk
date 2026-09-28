@@ -18,7 +18,7 @@ use crate::plateforme::*;
 /// Conformance to the shared vectors.
 ///
 /// 🔴 IT CHECKS `doc["version"]`, AND THIS IS THE `input.rs` GAP FIXED
-/// FOR THIS FILE: `input.rs::conformite_aux_vecteurs_partages` reads
+/// FOR THIS FILE: `input.rs::conformance_to_the_shared_vectors` reads
 /// `vectors.json` without ever checking its `version` key, and the ONLY
 /// place in the repository that checks it is `ts/input.test.ts`. A vector whose
 /// version had drifted would therefore pass the Rust side silently — MEASURED:
@@ -26,28 +26,28 @@ use crate::plateforme::*;
 /// `"version": 2`, the 52 tests stayed GREEN. Here, BOTH sides
 /// check it.
 #[test]
-fn conformite_aux_vecteurs_partages() {
+fn conformance_to_the_shared_vectors() {
     let raw = include_str!("../../plateforme-vectors.json");
-    let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
+    let doc: serde_json::Value = serde_json::from_str(raw).expect("valid vectors");
 
     // 🔴 The version of the file IS that of the protocol. Without this
     // assertion, a bump on one side only would show up nowhere.
     assert_eq!(
-        doc["version"].as_u64().expect("clé version"),
+        doc["version"].as_u64().expect("version key"),
         u64::from(PLATEFORME_VERSION),
-        "la version des vecteurs a dérivé de PLATEFORME_VERSION"
+        "the vectors version drifted from PLATEFORME_VERSION"
     );
 
-    let cases = doc["cases"].as_array().expect("tableau de cas");
+    let cases = doc["cases"].as_array().expect("array of cases");
     // 🔴 ANTI-TAUTOLOGY: an EMPTY vector file would let the whole
     // loop pass without exercising anything. Same guard as `input.rs:326` and
-    // `sous-ensemble.test.ts`.
-    assert!(!cases.is_empty(), "au moins un vecteur attendu");
+    // `sous-ensemble.test.ts`. (policy: allow-fr - file name)
+    assert!(!cases.is_empty(), "at least one vector expected");
 
     let mut vus = 0;
     for case in cases {
         let name = case["name"].as_str().expect("nom");
-        let attendu = case["json"].as_str().expect("json attendu");
+        let attendu = case["json"].as_str().expect("json expected");
 
         match case["sens"].as_str().expect("sens") {
             "vers" => {
@@ -86,15 +86,15 @@ fn conformite_aux_vecteurs_partages() {
                         case["journal"].as_str().unwrap(),
                         case["journal_tronque"].as_bool().unwrap(),
                     ),
-                    autre => panic!("kind inconnu dans le sens vers : {autre}"),
+                    autre => panic!("unknown kind in the vers direction: {autre}"),
                 };
                 assert_eq!(
-                    serde_json::to_string(&msg).expect("sér."),
+                    serde_json::to_string(&msg).expect("ser."),
                     attendu,
-                    "sérialisation du vecteur « {name} »"
+                    "serialisation of vector « {name} »"
                 );
-                let relu: VersLaPlateforme = serde_json::from_str(attendu).expect("désér.");
-                assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
+                let relu: VersLaPlateforme = serde_json::from_str(attendu).expect("deser.");
+                assert_eq!(relu, msg, "deserialisation of vector « {name} »");
             }
             "depuis" => {
                 let msg = match case["kind"].as_str().expect("kind") {
@@ -115,7 +115,7 @@ fn conformite_aux_vecteurs_partages() {
                     // reason the platform knows how to EMIT.
                     "refus" => DepuisLaPlateforme::refus(
                         MotifCanal::depuis_mot(case["motif"].as_str().expect("motif"))
-                            .expect("motif connu"),
+                            .expect("known reason"),
                     ),
                     "lancer" => DepuisLaPlateforme::lancer(
                         case["demande"].as_str().unwrap(),
@@ -131,17 +131,17 @@ fn conformite_aux_vecteurs_partages() {
                         case["taille"].as_u64().unwrap(),
                         case["sha256"].as_str().unwrap(),
                     ),
-                    autre => panic!("kind inconnu dans le sens depuis : {autre}"),
+                    autre => panic!("unknown kind in the depuis direction: {autre}"),
                 };
                 assert_eq!(
-                    serde_json::to_string(&msg).expect("sér."),
+                    serde_json::to_string(&msg).expect("ser."),
                     attendu,
-                    "sérialisation du vecteur « {name} »"
+                    "serialisation of vector « {name} »"
                 );
-                let relu: DepuisLaPlateforme = serde_json::from_str(attendu).expect("désér.");
-                assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
+                let relu: DepuisLaPlateforme = serde_json::from_str(attendu).expect("deser.");
+                assert_eq!(relu, msg, "deserialisation of vector « {name} »");
             }
-            autre => panic!("sens inconnu : {autre}"),
+            autre => panic!("unknown direction: {autre}"),
         }
         vus += 1;
     }
@@ -149,7 +149,7 @@ fn conformite_aux_vecteurs_partages() {
     // would silently skip cases — the `panic!` would not see them,
     // since it is only reached by a PRESENT and unknown value, not
     // by a case a future rework of the loop would skip.
-    assert_eq!(vus, cases.len(), "tous les cas doivent être exercés");
+    assert_eq!(vus, cases.len(), "every case must be exercised");
 }
 
 /// The refusals BOTH ends must know how to read, frozen in the shared
@@ -159,28 +159,28 @@ fn conformite_aux_vecteurs_partages() {
 /// that is precisely the divergence mode `plateforme-vectors.json`
 /// exists to close.
 #[test]
-fn conformite_aux_refus_lisibles_partages() {
+fn conformance_to_the_shared_readable_refusals() {
     let raw = include_str!("../../plateforme-vectors.json");
-    let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
+    let doc: serde_json::Value = serde_json::from_str(raw).expect("valid vectors");
     let refus = doc["refus_lisibles"]
         .as_array()
         .expect("tableau refus_lisibles");
     // 🔴 ANTI-TAUTOLOGY, and the count is HARDCODED: an empty array, or
     // one missing a case, would let the loop pass without exercising anything.
-    assert_eq!(refus.len(), 4, "quatre refus lisibles attendus");
+    assert_eq!(refus.len(), 4, "four readable refusals expected");
 
     for cas in refus {
         let name = cas["name"].as_str().expect("nom");
         let brut = cas["json"].as_str().expect("json");
         let lu: DepuisLaPlateforme = serde_json::from_str(brut)
-            .unwrap_or_else(|error| panic!("refus « {name} » illisible : {error}"));
+            .unwrap_or_else(|error| panic!("refusal « {name} » unreadable: {error}"));
         let DepuisLaPlateforme::Refus { version, motif } = lu else {
-            panic!("le vecteur « {name} » n'a pas été lu comme un refus");
+            panic!("vector « {name} » was not read as a refusal");
         };
         assert_eq!(
             u64::from(version),
             cas["v"].as_u64().expect("v"),
-            "version de « {name} »"
+            "version of « {name} »"
         );
         // 🔴 THIS CASE IS THE ONLY ONE WHOSE NAME CLAIMS SOMETHING ABOUT THE
         // CURRENT VERSION, AND IT HAD ALREADY AGED: sub-block G2 raised
@@ -192,13 +192,13 @@ fn conformite_aux_refus_lisibles_partages() {
         if name == "refus_de_notre_version" {
             assert_eq!(
                 version, PLATEFORME_VERSION,
-                "« refus_de_notre_version » ne porte PLUS la version courante : son nom est devenu faux"
+                "« refus_de_notre_version » NO LONGER carries the current version: its name has become wrong"
             );
         }
         assert_eq!(
             motif,
             cas["motif"].as_str().expect("motif"),
-            "motif de « {name} »"
+            "reason of « {name} »"
         );
     }
 }

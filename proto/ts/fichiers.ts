@@ -1,5 +1,5 @@
 // Binary frame of the file bridge. Must stay strictly aligned with
-// proto/src/fichiers.rs — the pinned vector of fichiers.test.ts, hardcoded
+// proto/src/files.rs — the pinned vector of fichiers.test.ts, hardcoded (policy: allow-fr - file name)
 // on both sides, is what checks it.
 //
 // Format: version u8 | type u8 | correlation u32 | header_length u32 |
@@ -63,7 +63,7 @@ export const TYPE_ECHEC = 127;
 // ✅ 7 AND 8 ARE TAKEN, AND BY THE ONE THEY WERE RESERVED FOR. *(This
 // line said "RESERVED for F3".)* Numbering is thus NOT contiguous per
 // family: 6 is an ANNOUNCEMENT, 7 and 8 are REQUESTS. It is the named routing of
-// `client/src/fichiers/protocole.ts` that tells the family, never the value.
+// `client/src/fichiers/protocole.ts` that tells the family, never the value. (policy: allow-fr - file name)
 
 /** The union of message types. */
 export type TypeMessage =
@@ -213,12 +213,12 @@ export function decoder(octets: ArrayBuffer): Trame {
     const brut = new Uint8Array(octets);
     if (brut.length < FIXED_HEADER_SIZE) {
         throw new Error(
-            `trame tronquée : ${brut.length} octets reçus, ${FIXED_HEADER_SIZE} attendus`,
+            `truncated frame: ${brut.length} bytes received, ${FIXED_HEADER_SIZE} expected`,
         );
     }
     const version = brut[0];
     if (version !== FILES_VERSION) {
-        throw new Error(`version de fichiers non supportée : ${version}`);
+        throw new Error(`unsupported files version: ${version}`);
     }
     const vue = new DataView(brut.buffer, brut.byteOffset, brut.byteLength);
     const correlation = vue.getUint32(2, true);
@@ -226,13 +226,13 @@ export function decoder(octets: ArrayBuffer): Trame {
     const disponible = brut.length - FIXED_HEADER_SIZE;
     if (headerLength > disponible) {
         throw new Error(
-            `en-tête de ${headerLength} octets annoncé, ${disponible} disponibles`,
+            `header of ${headerLength} bytes announced, ${disponible} available`,
         );
     }
     const debutCharge = FIXED_HEADER_SIZE + headerLength;
     const charge = brut.subarray(debutCharge);
     if (charge.length > MAX_FRAME_SIZE) {
-        throw new Error(`charge de ${charge.length} octets, maximum ${MAX_FRAME_SIZE}`);
+        throw new Error(`payload of ${charge.length} bytes, maximum ${MAX_FRAME_SIZE}`);
     }
     const entete =
         headerLength === 0

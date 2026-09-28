@@ -6,7 +6,7 @@
 //
 //   1. A BLOB DOES NOT CROSS THE DOUBLE PASS WITHOUT LYING. PostgreSQL has no
 //      `BLOB` type (it has `bytea`); SQLite accepts ANY type name
-//      by affinity — the lint of `base/sous-ensemble.test.ts`
+//      by affinity — the lint of `base/sous-ensemble.test.ts` (policy: allow-fr - file name)
 //      documents it for `SERIAL`, with a measurement to back it. Writing `BYTEA` would therefore pass
 //      BOTH passes while meaning two different things: it is the `SERIAL`
 //      trap IN REVERSE, and neither of the two guards of the repository catches it.
@@ -99,7 +99,7 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
 
     const chemin = (empreinte: string): string => {
         if (!empreinteValide(empreinte)) {
-            throw new Error(`empreinte d'icône invalide : ${JSON.stringify(empreinte)}`);
+            throw new Error(`invalid icon fingerprint: ${JSON.stringify(empreinte)}`);
         }
         return join(repertoire, empreinte);
     };
@@ -151,7 +151,7 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
             const reel = createHash('sha256').update(octets).digest('hex');
             if (reel !== empreinte) {
                 throw new Error(
-                    `empreinte annoncée ${empreinte} mais contenu en ${reel} : refusé`,
+                    `announced fingerprint ${empreinte} but content hashes to ${reel}: refused`,
                 );
             }
             // The random suffix keeps two concurrent `PUT`s of the same
@@ -182,7 +182,7 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
         ///
         /// ⚠️ A NAME THAT IS NOT A VALID DIGEST IS NEVER TOUCHED:
         /// a foreign file dropped by hand into the store (the case
-        /// covered by `icones.test.ts::'un file étranger…'`) is not the
+        /// covered by `icones.test.ts::'a foreign file already present…'`) is not the
         /// responsibility of this eviction.
         ///
         /// 🔴 DECLARED LEGACY (correction round 3): THE `stat` → `rm` GAP

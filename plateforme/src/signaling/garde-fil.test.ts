@@ -97,7 +97,7 @@ function poignee(port: number, corps: unknown): Promise<Suivi> {
             socket: w,
             ferme: new Promise((r) => w.once('close', () => r())),
         };
-        const minuteur = setTimeout(() => reject(new Error('aucune issue en 3000 ms')), 3000);
+        const minuteur = setTimeout(() => reject(new Error('no outcome within 3000 ms')), 3000);
         w.on('message', (brut) => {
             suivi.messages.push(JSON.parse(brut.toString()));
             suivi.ordre.push('message');
@@ -117,8 +117,8 @@ function poignee(port: number, corps: unknown): Promise<Suivi> {
     });
 }
 
-describe('la garde, au niveau du socket', () => {
-    it('CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config', async () => {
+describe('the guard, at the socket level', () => {
+    it('CRITERION ①: a client without a token is refused, and sees NO ice-config', async () => {
         const port = start();
         const refuse = await poignee(port, { role: 'client', session: 's-1' });
 
@@ -143,7 +143,7 @@ describe('la garde, au niveau du socket', () => {
         admis.socket.terminate();
     });
 
-    it('le socket est FERMÉ après le refus, et le message est arrivé AVANT', async () => {
+    it('the socket is CLOSED after the refusal, and the message arrived BEFORE', async () => {
         const port = start();
         const refuse = await poignee(port, { role: 'client', session: 's-1' });
         await refuse.ferme;
@@ -153,7 +153,7 @@ describe('la garde, au niveau du socket', () => {
         expect(refuse.socket.readyState).toBe(WebSocket.CLOSED);
     });
 
-    it('CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire', async () => {
+    it('CRITERION ②: a token whose duration has elapsed is refused jeton-expire', async () => {
         const port = start();
         const jeton = signer('u1', SECRET, T0);
         // Le même jeton passe à t0…
@@ -169,7 +169,7 @@ describe('la garde, au niveau du socket', () => {
         );
     });
 
-    it('CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme', async () => {
+    it('CRITERION ③: u2 is refused the session of u1, and the LOG names it', async () => {
         const port = start();
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -200,7 +200,7 @@ describe('la garde, au niveau du socket', () => {
         un.socket.terminate();
     });
 
-    it('après le départ des deux pairs, u2 PEUT prendre la session', async () => {
+    it('after both peers left, u2 CAN take the session', async () => {
         const port = start();
         const un = await poignee(port, {
             role: 'client',
@@ -225,7 +225,7 @@ describe('la garde, au niveau du socket', () => {
         deux.socket.terminate();
     });
 
-    it('🔴 un pair `agent` SANS jeton est REFUSÉ — la fenêtre de E2 est FERMÉE', async () => {
+    it('🔴 an `agent` peer WITHOUT a token is REFUSED — the E2 window is CLOSED', async () => {
         // 🔴 CE TEST EST L'INVERSE EXACT DE CELUI QUE P2 LIVRAIT, et P2 l'avait
         // prévu : « Le jour où P3 l'inversera, il faudra le réécrire À DESSEIN,
         // pas par surprise. » C'est fait, à dessein, et la rouge est GRATUITE —
@@ -236,7 +236,7 @@ describe('la garde, au niveau du socket', () => {
         agent.socket.terminate();
     });
 
-    it('🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée', async () => {
+    it('🔴 …and it receives NO `ice-config` — THE LEAK of E12 is closed', async () => {
         // 🔴 CE TEST EST LA SUBSTANCE D'E12, et le refus ci-dessus n'en était
         // que la moitié. Un service qui refuserait APRÈS avoir envoyé
         // `ice-config` passerait le test précédent mot pour mot, et laisserait

@@ -17,7 +17,7 @@ import {
 const MOT_DE_PASSE = 'un-mot-de-passe-ordinaire-42';
 
 describe('hacher', () => {
-    it('rend la forme scrypt$N$r$p$sel$empreinte, avec les paramètres courants', async () => {
+    it('returns the shape scrypt$N$r$p$salt$fingerprint, with the current parameters', async () => {
         const encode = await hacher(MOT_DE_PASSE);
         expect(encode).toMatch(/^scrypt\$16384\$8\$1\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
         const { algo, params, sel, empreinte } = analyser(encode);
@@ -28,7 +28,7 @@ describe('hacher', () => {
         expect(empreinte).toHaveLength(32);
     });
 
-    it('tire un sel neuf : deux hachages du même mot de passe diffèrent', async () => {
+    it('draws a fresh salt: two hashes of the same password differ', async () => {
         // Un sel figé rendrait les deux encodages identiques, et deux comptes
         // au même mot de passe seraient reconnaissables en base.
         const a = await hacher(MOT_DE_PASSE);
@@ -38,17 +38,17 @@ describe('hacher', () => {
 });
 
 describe('verifier', () => {
-    it('accepte le bon mot de passe', async () => {
+    it('accepts the right password', async () => {
         const encode = await hacher(MOT_DE_PASSE);
         expect(await verify(MOT_DE_PASSE, encode)).toBe(true);
     });
 
-    it('refuse un mot de passe faux', async () => {
+    it('refuses a wrong password', async () => {
         const encode = await hacher(MOT_DE_PASSE);
         expect(await verify('un-mot-de-passe-ordinaire-43', encode)).toBe(false);
     });
 
-    it('rend false SANS LEVER sur une empreinte tronquée', async () => {
+    it('returns false WITHOUT THROWING on a truncated fingerprint', async () => {
         // 🔴 MESURÉ le 19 août 2026 sur Node v24.9.0 :
         //     timingSafeEqual(Buffer.from('aa'), Buffer.from('aaa'))
         //     -> LÈVE `Input buffers must have the same byte length`
@@ -69,7 +69,7 @@ describe('verifier', () => {
         await expect(verify(MOT_DE_PASSE, tronque)).resolves.toBe(false);
     });
 
-    it('LÈVE sur un algorithme inconnu, plutôt que de rendre false', async () => {
+    it('THROWS on an unknown algorithm, rather than returning false', async () => {
         // Un `false` silencieux serait indiscernable d'un mauvais mot de
         // passe : personne ne saurait diagnostiquer une base écrite par une
         // version future.
@@ -79,7 +79,7 @@ describe('verifier', () => {
 });
 
 describe('doitEtreRehache', () => {
-    it('dit vrai sur un N inférieur au courant, faux sur le courant', async () => {
+    it('tells true on an N below the current one, false on the current one', async () => {
         const current = await hacher(MOT_DE_PASSE);
         expect(doitEtreRehache(current)).toBe(false);
         const faible = await hacher(MOT_DE_PASSE, { N: 4096, r: 8, p: 1 });

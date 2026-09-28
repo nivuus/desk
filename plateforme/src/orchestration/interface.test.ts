@@ -17,8 +17,8 @@ import {
     type EtatVm,
 } from './interface';
 
-describe('les listes blanches d’opérations', () => {
-    it('🔴 leur UNION, triée, est exactement OPERATIONS triée', () => {
+describe('the operation allow-lists', () => {
+    it('🔴 their UNION, sorted, is exactly OPERATIONS sorted', () => {
         // 🔴 La rouge : retirer `arreter` des deux listes. L'union cesse
         // d'égaler `OPERATIONS`, et le test tombe. C'est le contrôle qui
         // interdit d'ajouter un verbe en l'oubliant : un verbe ajouté à
@@ -28,7 +28,7 @@ describe('les listes blanches d’opérations', () => {
         expect(union).toEqual([...OPERATIONS].sort());
     });
 
-    it('🔴 leur INTERSECTION est vide', () => {
+    it('🔴 their INTERSECTION is empty', () => {
         // 🔴 La rouge : mettre `etat` dans les deux. `it()` DISTINCT du
         // précédent : `expect` interrompt un test à sa première assertion
         // fausse, et l'union resterait juste en doublons près — la leçon
@@ -38,7 +38,7 @@ describe('les listes blanches d’opérations', () => {
         expect(communes).toEqual([]);
     });
 
-    it('🔴 `attribuer` n’est PAS une opération HTTP', () => {
+    it('🔴 `attribuer` is NOT an HTTP operation', () => {
         // 🔴 La rouge : l'ajouter à `OPERATIONS_HTTP`. L'attribution d'une VM
         // deviendrait atteignable par tout utilisateur authentifié — il
         // n'existe aucun rôle d'administration dans ce service (D8), et la
@@ -47,7 +47,7 @@ describe('les listes blanches d’opérations', () => {
         expect((OPERATIONS_HORS_HTTP as readonly string[]).includes('attribuer')).toBe(true);
     });
 
-    it('EtatVm est exactement ce que `etatDe` produit : `prete` et `injoignable`', () => {
+    it('EtatVm is exactly what `etatDe` produces: `prete` and `injoignable`', () => {
         // 🔴 La rouge : remplacer le réexport par l'union à quatre membres de
         // la spec §3.6 (`arretee`, `demarrage`, `prete`, `injoignable`).
         //

@@ -79,7 +79,7 @@ export function analyser(encode: string): {
     const morceaux = encode.split('$');
     if (morceaux.length !== 6) {
         throw new Error(
-            `empreinte de mot de passe malformée : ${morceaux.length} segments au lieu de 6`,
+            `malformed password fingerprint: ${morceaux.length} segments instead of 6`,
         );
     }
     const [algo, n, r, p, sel, empreinte] = morceaux;
@@ -108,7 +108,7 @@ export async function verify(motDePasse: string, encode: string): Promise<boolea
 
     if (analyse.algo !== ALGO) {
         throw new Error(
-            `algorithme de hachage inconnu : ${analyse.algo} — ce service ne sait vérifier que ${ALGO}`,
+            `unknown hash algorithm: ${analyse.algo} — this service can only verify ${ALGO}`,
         );
     }
 

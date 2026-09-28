@@ -28,12 +28,12 @@
 // ⚠️ WHAT THE PREFIX DOES NOT REPAIR, and it must be said so as not to read the
 // line above as a closure: it is PER VM, not per session. After a
 // restart, two human clients of the SAME VM get the same prefix back,
-// and the in-memory registry that decided which one owns `<préfixe>:w-1` is
+// and the in-memory registry that decided which one owns `<prefix>:w-1` is
 // still lost. The prefix closes guessability between VMs; it does not
 // close the claiming of a session within a VM. The cost named
 // above therefore stays OPEN, reduced and not removed.
 //
-// The durable RECORD, for its part, does exist: `session.utilisateur_id` is
+// The durable RECORD, for its part, does exist: `session.utilisateur_id` is (policy: allow-fr - frozen wire key or SQLite column)
 // filled in at pairing by the trace (task 13). That is what makes the word
 // "recorded" of criterion ③ literally true, and it is what P4 will
 // need. The DECISION and the RECORD are two distinct layers.
@@ -52,7 +52,7 @@
 // is NOT settled by P4, which only wired the SOURCE of the prefix
 // (`client/src/connexion.ts` -> `poserPrefixe`). Its SCOPE has not changed:
 // two human clients of the same VM still get the same prefix back after
-// a service restart, and `<préfixe>:w-1` becomes claimable again.
+// a service restart, and `<prefix>:w-1` becomes claimable again.
 
 export class ProprieteDeSession {
     private readonly proprietaires = new Map<string, string>();

@@ -54,7 +54,7 @@ function empreinteParMorceaux(message: Uint8Array, size: number): string {
     return empreinte.terminer();
 }
 
-describe('Sha256, les vecteurs de réponse connue', () => {
+describe('Sha256, the known-answer vectors', () => {
     /**
      * 🔴 CE SONT EUX QUI FONT DE CE MODULE AUTRE CHOSE QU'UNE PROMESSE, et ils
      * sont recopiés de FIPS 180-4, **pas** produits par notre code. Une
@@ -66,7 +66,7 @@ describe('Sha256, les vecteurs de réponse connue', () => {
      * entre les deux implémentations, qui doivent rendre la même identité pour
      * le même contenu.
      */
-    it('rend les trois empreintes de FIPS 180-4', () => {
+    it('returns the three fingerprints of FIPS 180-4', () => {
         // §D.1 : le message vide, dont tout le bloc est du bourrage.
         expect(condenserHex(texte(''))).toBe(
             'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
@@ -110,7 +110,7 @@ const SIZES = [0, 1, 3, 55, 56, 57, 63, 64, 65, 127, 128, 129, 1000, 4096, 100_0
  */
 const DECOUPES = [1, 63, 64, 65, 1000];
 
-describe('Sha256 confronté à crypto.subtle', () => {
+describe('Sha256 against crypto.subtle', () => {
     /**
      * 🔵 L'ORACLE EST INDÉPENDANT DE NOTRE CODE, et c'est ce qui donne son poids
      * à ce test : `crypto.subtle.digest` est l'implémentation du moteur, écrite
@@ -118,15 +118,15 @@ describe('Sha256 confronté à crypto.subtle', () => {
      * satisfait par une faute que nous aurions commise deux fois — à la
      * différence d'un aller-retour de notre code contre lui-même.
      */
-    it.each(SIZES)('concorde sur un message de %i octets absorbé d’un coup', async (size) => {
+    it.each(SIZES)('agrees on a message of %i bytes absorbed in one go', async (size) => {
         const message = messageOfSize(size);
         expect(condenserHex(message)).toBe(await empreinteDeReference(message));
     });
 
-    it.each(DECOUPES)('concorde sur tous les messages absorbés par morceaux de %i octets', async (decoupe) => {
+    it.each(DECOUPES)('agrees on all the messages absorbed in chunks of %i bytes', async (decoupe) => {
         for (const size of SIZES) {
             const message = messageOfSize(size);
-            expect(empreinteParMorceaux(message, decoupe), `taille ${size}, morceaux de ${decoupe}`).toBe(
+            expect(empreinteParMorceaux(message, decoupe), `size ${size}, chunks of ${decoupe}`).toBe(
                 await empreinteDeReference(message),
             );
         }
@@ -138,7 +138,7 @@ describe('Sha256 confronté à crypto.subtle', () => {
      * flux réel. C'est le seul cas où le résidu est repris à des décalages
      * chaque fois différents.
      */
-    it('concorde sur un découpage aux longueurs variables', async () => {
+    it('agrees on a split with variable lengths', async () => {
         const lengths = [1, 7, 64, 2, 63, 65, 128, 3, 55, 56, 1, 200, 9];
         for (const size of SIZES) {
             const message = messageOfSize(size);
@@ -151,11 +151,11 @@ describe('Sha256 confronté à crypto.subtle', () => {
                 i += pris;
                 n += 1;
             }
-            expect(empreinte.terminer(), `taille ${size}`).toBe(await empreinteDeReference(message));
+            expect(empreinte.terminer(), `size ${size}`).toBe(await empreinteDeReference(message));
         }
     });
 
-    it('absorbe un morceau vide sans rien changer', async () => {
+    it('absorbs an empty chunk without changing anything', async () => {
         const message = messageOfSize(200);
         const empreinte = new Sha256();
         empreinte.absorber(new Uint8Array(0));
@@ -167,17 +167,17 @@ describe('Sha256 confronté à crypto.subtle', () => {
     });
 });
 
-describe('Sha256, le contrat de l’objet', () => {
-    it('lève si l’on absorbe après avoir terminé', () => {
+describe('Sha256, the contract of the object', () => {
+    it('throws when absorbing after finishing', () => {
         const empreinte = new Sha256();
         empreinte.absorber(texte('abc'));
         empreinte.terminer();
         // Poursuivre rendrait une empreinte silencieusement fausse : elle doit
         // lever, jamais mentir.
-        expect(() => empreinte.absorber(texte('def'))).toThrow(/clos/);
+        expect(() => empreinte.absorber(texte('def'))).toThrow(/closed/);
     });
 
-    it('rend la même empreinte à chaque appel de terminer', () => {
+    it('returns the same fingerprint at each call of terminer', () => {
         const empreinte = new Sha256();
         empreinte.absorber(texte('abc'));
         const premier = empreinte.terminer();
@@ -185,13 +185,13 @@ describe('Sha256, le contrat de l’objet', () => {
         expect(premier).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
     });
 
-    it('rend 64 caractères hexadécimaux minuscules', () => {
+    it('returns 64 lowercase hexadecimal characters', () => {
         for (const size of SIZES) {
             expect(condenserHex(messageOfSize(size))).toMatch(/^[0-9a-f]{64}$/);
         }
     });
 
-    it('rend des empreintes distinctes pour 130 longueurs distinctes', () => {
+    it('returns distinct fingerprints for 130 distinct lengths', () => {
         // Un bourrage cassé — un `<` pour un `<=`, une longueur écrite au
         // mauvais décalage — ferait collisionner deux tailles voisines.
         const all = new Set<string>();

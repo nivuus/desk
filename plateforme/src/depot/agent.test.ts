@@ -30,8 +30,8 @@ async function withVm(p: Pilote, id: string): Promise<void> {
     await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [id, `vm-${id}`, '192.168.3.2']);
 }
 
-describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
-    it('enrôle, puis relit par VM', async () => {
+describe(`agent_enrole repository, engine=${MOTEUR}`, () => {
+    it('enrols, then re-reads by VM', async () => {
         base = await baseNeuve('agent-enrole');
         await withVm(base, 'v-1');
         // Une empreinte RÉELLE, produite par la même dérivation que les
@@ -49,7 +49,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         expect(ligne!.vu_a).toBeNull();
     });
 
-    it('relit la MÊME ligne par son PRÉFIXE', async () => {
+    it('re-reads the SAME row by its PREFIX', async () => {
         // 🔴 La rouge : interroger sur `vm_id`. Le préfixe est ce que le nom de
         // session porte — c'est la seule clé dont `signaling/trace.ts`
         // dispose pour remonter à la VM.
@@ -63,7 +63,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         expect(parPrefixe!.vm_id).toBe('v-1');
     });
 
-    it('rend undefined sur un inconnu, SANS LEVER, des deux côtés', async () => {
+    it('returns undefined on an unknown one, WITHOUT THROWING, on both sides', async () => {
         // 🔴 Lever ferait répondre 500 au canal là où il doit répondre un
         // refus — et l'écart de comportement serait à lui seul un oracle
         // d'énumération. Précédent : `depot/utilisateur.ts::lireParEmail`.
@@ -72,7 +72,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         await expect(lireParPrefixe(base, 'PrefixeQuiNExistePas22')).resolves.toBeUndefined();
     });
 
-    it('REFUSE un second enrôlement sur le MÊME préfixe', async () => {
+    it('REFUSES a second enrolment on the SAME prefix', async () => {
         // 🔴 La rouge : retirer UNIQUE de la migration. Deux VMs de même
         // préfixe rendraient `lireParPrefixe` ambiguë, et le choix de la VM
         // arbitraire — le problème exact que le préfixe existe pour fermer.
@@ -83,7 +83,7 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         await expect(enroler(base, 'v-2', await hacher('secret-deux'), PREFIXE)).rejects.toThrow();
     });
 
-    it('marque vu_a à une MAGNITUDE D’ÉPOQUE, et la relit EN `number`', async () => {
+    it('marks vu_a at an EPOCH MAGNITUDE, and re-reads it AS `number`', async () => {
         // 🔴 Écrire `1_000` passerait sur les deux moteurs sans rien prouver :
         // c'est l'angle mort exact que P1 a payé.
         //
@@ -107,8 +107,8 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
     });
 });
 
-describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
-    it("remplace l'empreinte de la VM nommée, et rend le nombre de lignes touchées", async () => {
+describe(`remplacerEmpreinte, engine=${MOTEUR}`, () => {
+    it("replaces the fingerprint of the named VM, and returns the number of rows touched", async () => {
         base = await baseNeuve('agent-rotation');
         await withVm(base, 'v-1');
         const ancienne = await hacher('le-secret-d-origine-de-la-vraie-longueur');
@@ -121,7 +121,7 @@ describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
         expect(ligne!.empreinte_secret).toBe(neuve);
     });
 
-    it("🔴 NE TOUCHE PAS le préfixe de session — relu des DEUX côtés de l'appel", async () => {
+    it("🔴 DOES NOT TOUCH the session prefix — re-read on BOTH sides of the call", async () => {
         // 🔴 LA ROUGE : faire tourner le préfixe en même temps que le secret.
         // Il compose le nom des sessions VIVANTES de cette VM
         // (`agents/prefixe.ts`) : le changer couperait toute session en cours.
@@ -138,7 +138,7 @@ describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
         expect(apres).toBe(PREFIXE);
     });
 
-    it("🔴 ne touche AUCUNE autre VM, et ne lève pas sur une VM inconnue", async () => {
+    it("🔴 touches NO other VM, and does not throw on an unknown VM", async () => {
         // 🔴 LA ROUGE : oublier la clause WHERE. Toutes les VMs partageraient
         // alors le même secret, ce qu'aucun test à une seule VM ne verrait.
         base = await baseNeuve('agent-rotation-portee');

@@ -124,7 +124,7 @@ function compterLaConnexion(
             route: '/signal',
             adresse,
             retry_apres_s: apres.retryApresS,
-            entrees: frein.taille(),
+            entrees: frein.size(),
             evictions: frein.evictions(),
         }),
     );
@@ -273,7 +273,7 @@ export function createSignalingServer(
             // half being the exponential backoff it already applies.
             send(socket, {
                 type: 'error',
-                reason: 'trop de requêtes',
+                reason: 'too many requests',
                 motif: 'trop-de-requetes',
                 retryApresS: verdictRequetes.retryApresS,
             });
@@ -290,7 +290,7 @@ export function createSignalingServer(
             try {
                 message = JSON.parse(raw.toString());
             } catch {
-                send(socket, { type: 'error', reason: 'JSON invalide' });
+                send(socket, { type: 'error', reason: 'invalid JSON' });
                 return;
             }
 
@@ -301,8 +301,8 @@ export function createSignalingServer(
                 send(socket, {
                     type: 'error',
                     reason: role
-                        ? 'message invalide : objet JSON attendu'
-                        : 'premier message invalide : {role, session} attendu',
+                        ? 'invalid message: JSON object expected'
+                        : 'invalid first message: {role, session} expected',
                 });
                 return;
             }
@@ -318,7 +318,7 @@ export function createSignalingServer(
                 ) {
                     send(socket, {
                         type: 'error',
-                        reason: 'premier message invalide : {role, session} attendu',
+                        reason: 'invalid first message: {role, session} expected',
                     });
                     return;
                 }
@@ -337,7 +337,7 @@ export function createSignalingServer(
                     // The log carries the session name and the requester's
                     // identifier; the message sent on the wire carries neither
                     // one nor the other (`identite/garde.ts`).
-                    console.warn(`poignée de main refusée : ${verdict.journal}`);
+                    console.warn(`handshake refused: ${verdict.journal}`);
                     // ⚠️ SEND THEN CLOSE, never the reverse: an
                     // immediate `terminate()` would truncate the message, and the
                     // peer would see a close with no reason.
@@ -418,7 +418,7 @@ export function createSignalingServer(
                     // connect from outside must be
                     // diagnosable without rereading the code.
                     console.warn(
-                        'aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais',
+                        'no TURN server configured (TURN_URL/TURN_SECRET): session without relay',
                     );
                 }
 
@@ -442,7 +442,7 @@ export function createSignalingServer(
                 }
                 send(peer, message);
             } else {
-                send(socket, { type: 'error', reason: `type inconnu : ${message.type}` });
+                send(socket, { type: 'error', reason: `unknown type: ${message.type}` });
             }
         });
 

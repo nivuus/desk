@@ -156,7 +156,7 @@ export function ouvrirMagasinTranches(
 
     const repertoireDe = (id: string): string => {
         if (!identifiantValide(id)) {
-            throw new Error(`identifiant de téléversement invalide : ${JSON.stringify(id)}`);
+            throw new Error(`invalid upload identifier: ${JSON.stringify(id)}`);
         }
         return join(racine, id);
     };
@@ -164,7 +164,7 @@ export function ouvrirMagasinTranches(
     const cheminDe = (id: string, n: number): string => {
         const rep = repertoireDe(id);
         if (!rangValide(n)) {
-            throw new Error(`rang de tranche invalide : ${JSON.stringify(n)}`);
+            throw new Error(`invalid chunk rank: ${JSON.stringify(n)}`);
         }
         return join(rep, String(n));
     };
@@ -224,7 +224,7 @@ export function ouvrirMagasinTranches(
                             if (octets > plafondOctets) {
                                 depasse = true;
                                 throw new Error(
-                                    `tranche ${n} au-delà du plafond de ${plafondOctets} octets`,
+                                    `chunk ${n} beyond the ceiling of ${plafondOctets} bytes`,
                                 );
                             }
                             yield morceau;

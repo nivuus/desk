@@ -2,7 +2,7 @@
 
 use super::*;
 
-/// The pinned vector, **hard-coded here AND in `proto/ts/fichiers.test.ts`**.
+/// The pinned vector, **hard-coded here AND in `proto/ts/fichiers.test.ts`**. (policy: allow-fr - file name)
 ///
 /// ⚠️ It is the only way to see an endianness divergence between the
 /// two implementations turn RED: a Rust→Rust round trip stays green whatever the
@@ -18,7 +18,7 @@ pub(super) const VECTEUR_EPINGLE: &[u8] = &[
 ];
 
 #[test]
-fn une_trame_sans_version_est_refusee() {
+fn a_frame_without_version_is_refused() {
     // A zero-byte frame does not carry its version: it is rejected, never
     // completed with the current version. It is the doctrine of `control.rs:37-40`.
     assert!(matches!(
@@ -35,7 +35,7 @@ fn une_trame_sans_version_est_refusee() {
 }
 
 #[test]
-fn une_trame_de_version_2_est_refusee() {
+fn a_version_2_frame_is_refused() {
     let mut octets = encoder(TYPE_LISTER, 7, "{}", b"");
     octets[0] = FILES_VERSION + 1;
     assert_eq!(
@@ -69,11 +69,11 @@ fn a_header_whose_length_overflows_the_frame_is_refused() {
 }
 
 #[test]
-fn un_aller_retour_conserve_les_octets_bruts() {
+fn a_round_trip_keeps_the_raw_bytes() {
     // 0x00 and 0xFF are the two bytes a textual encoding damages first.
     let charge: Vec<u8> = (0u16..=255).map(|o| o as u8).collect();
     let octets = encoder(TYPE_DATA, 0xDEAD_BEEF, r#"{"position":0}"#, &charge);
-    let trame = decoder(&octets).expect("trame licite");
+    let trame = decoder(&octets).expect("legal frame");
     assert_eq!(trame.version, FILES_VERSION);
     assert_eq!(trame.type_message, TYPE_DATA);
     assert_eq!(trame.correlation, 0xDEAD_BEEF);
@@ -81,16 +81,16 @@ fn un_aller_retour_conserve_les_octets_bruts() {
     assert_eq!(
         trame.charge,
         &charge[..],
-        "la charge doit sortir octet pour octet"
+        "the payload must come out byte for byte"
     );
 }
 
 #[test]
-fn une_charge_vide_et_un_entete_vide_sont_licites() {
+fn an_empty_payload_and_an_empty_header_are_legal() {
     // The minimal frame: it is that of an acknowledgement without a body, and it is lawful.
     let octets = encoder(TYPE_META, 0, "", b"");
     assert_eq!(octets.len(), FIXED_HEADER_SIZE);
-    let trame = decoder(&octets).expect("la trame minimale est licite");
+    let trame = decoder(&octets).expect("the minimal frame is legal");
     assert_eq!(trame.entete, b"");
     assert_eq!(trame.charge, b"");
     assert_eq!(trame.correlation, 0);
@@ -102,7 +102,7 @@ fn the_maximum_payload_of_max_frame_size_passes() {
     // It is the strict inequality that is tested, not the bound in general.
     let pleine = vec![0xABu8; MAX_FRAME_SIZE];
     let octets = encoder(TYPE_DATA, 1, "{}", &pleine);
-    let trame = decoder(&octets).expect("le seuil exact doit passer");
+    let trame = decoder(&octets).expect("the exact threshold must pass");
     assert_eq!(trame.charge.len(), MAX_FRAME_SIZE);
 
     let trop = vec![0xABu8; MAX_FRAME_SIZE + 1];
@@ -121,7 +121,7 @@ fn the_pinned_vector_decodes_as_announced() {
     // Pins the wire format, independently of the code that encodes it: if
     // `encoder` switched to big-endian, this assert would fall and the round trip
     // above would stay green.
-    let trame = decoder(VECTEUR_EPINGLE).expect("vecteur épinglé licite");
+    let trame = decoder(VECTEUR_EPINGLE).expect("pinned vector is legal");
     assert_eq!(trame.version, 1);
     assert_eq!(trame.type_message, TYPE_DATA);
     assert_eq!(trame.correlation, 0x0A0B_0C0D);
@@ -135,7 +135,7 @@ fn the_pinned_vector_decodes_as_announced() {
 }
 
 #[test]
-fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
+fn a_failure_code_has_a_pinned_shape_on_the_wire() {
     // ⚠️ The TWO-WORD variants are the ones that break silently: this
     // repository let `battement-recu` through green on fifty tests because
     // nothing pinned its bytes. All ELEVEN are pinned literally, and
@@ -161,18 +161,18 @@ fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
         assert_eq!(
             serde_json::to_string(&code).unwrap(),
             texte,
-            "sérialisation de {code:?}"
+            "serialisation of {code:?}"
         );
         assert_eq!(
             serde_json::from_str::<CodeEchec>(texte).unwrap(),
             code,
-            "désérialisation de {texte}"
+            "deserialisation of {texte}"
         );
     }
 }
 
 #[test]
-fn les_types_de_message_ne_se_chevauchent_pas() {
+fn the_message_types_do_not_overlap() {
     // A type duplicated between a request and an answer would mean an answer
     // would be handled as a request. The sweep forbids it, and it covers
     // any future addition — a hand enumeration would not have.
@@ -193,17 +193,17 @@ fn les_types_de_message_ne_se_chevauchent_pas() {
     ];
     for (i, a) in all.iter().enumerate() {
         for b in &all[i + 1..] {
-            assert_ne!(a, b, "deux types de message partagent la valeur {a}");
+            assert_ne!(a, b, "two message types share the value {a}");
         }
     }
 }
 
-/// 🔴 **A FULL `ECRIRE` FRAME PASSES, header included.**
+/// 🔴 **A FULL WRITE FRAME PASSES, header included.**
 ///
 /// ⚠️ **It is the check that tells apart the two possible readings of
 /// `MAX_FRAME_SIZE`**, and the module itself announces it as a divergence:
 /// the name says "frame", the value bounds the **payload**. If one day the bound
-/// became `MAX_FRAME_SIZE - taille_entete`, a full write chunk —
+/// became `MAX_FRAME_SIZE - header_size`, a full write chunk —
 /// that is, the NOMINAL case of a big file, the one `pont::decoupe`
 /// produces on every round but the last — would be refused by the decoder. The
 /// symptom would be a write that fails **only** on files of
@@ -217,24 +217,24 @@ fn a_full_write_frame_passes_header_included() {
         premier: false,
         last: false,
     })
-    .expect("un en-tête Ecrire se sérialise toujours");
+    .expect("an Ecrire header always serialises");
     let charge = vec![0xCDu8; MAX_FRAME_SIZE];
     let octets = encoder(TYPE_WRITE, 42, &entete, &charge);
     assert!(
         octets.len() > MAX_FRAME_SIZE,
-        "la trame pèse PLUS que sa charge"
+        "the frame weighs MORE than its payload"
     );
 
-    let trame = decoder(&octets).expect("une trame d'écriture pleine doit passer");
+    let trame = decoder(&octets).expect("a full write frame must pass");
     assert_eq!(trame.type_message, TYPE_WRITE);
     assert_eq!(trame.charge.len(), MAX_FRAME_SIZE);
-    let relu: entetes::Write = serde_json::from_slice(trame.entete).expect("en-tête relu");
+    let relu: entetes::Write = serde_json::from_slice(trame.entete).expect("re-read header");
     assert_eq!(relu.length as usize, trame.charge.len());
 }
 
 /// 🔴 **EACH MESSAGE TYPE HAS A PINNED VALUE, AND THE TEST NAMES IT.**
 ///
-/// ⚠️ **`les_types_de_message_ne_se_chevauchent_pas` is NOT enough**, and that is
+/// ⚠️ **`the_message_types_do_not_overlap` is NOT enough**, and that is
 /// what justifies this test: it forbids two equal values, never a
 /// SHIFT. Renumbering `TYPE_RENOMMER` from 7 to 9 would leave it green, and
 /// yet an agent of the version before and a browser of the one after

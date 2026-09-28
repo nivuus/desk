@@ -16,7 +16,7 @@
 // forbids writing a verb that does not exist, never FORGETTING one. It is
 // the union test of `interface.test.ts` that forbids forgetting, and it runs
 // under `vitest`. Each covers the blind spot of the other — the doctrine of
-// `base/sous-ensemble.test.ts`.
+// `base/sous-ensemble.test.ts`. (policy: allow-fr - file name)
 
 import type { EtatAgent } from '../agents/fraicheur';
 // TYPE-only import, hence erased at compile time: the cycle
@@ -80,7 +80,7 @@ export type Operation = (typeof OPERATIONS)[number];
 /// ⚠️ The page server (`http/page/`, chained last since 22 August
 /// 2026) does not override this 404, and for a precise reason rather than by
 /// luck: these paths only arrive via `POST`, and the page server steps aside
-/// outside `GET`/`HEAD`. See `http/chaine.ts`.
+/// outside `GET`/`HEAD`. See `http/chaine.ts`. (policy: allow-fr - file name)
 ///
 /// 🔴 `attribuer` IS NOT IN IT, AND A NAMED TEST HOLDS THAT. There
 /// is no administration role in this service (`identite/jeton.ts`

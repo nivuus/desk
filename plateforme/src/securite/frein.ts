@@ -323,7 +323,7 @@ export class Frein {
     }
 
     /// For the trace, and for the cap test.
-    taille(): number {
+    size(): number {
         return this.entrees.size;
     }
 

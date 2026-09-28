@@ -30,8 +30,8 @@ async function baseEnrolee(nom: string): Promise<Pilote> {
     return p;
 }
 
-describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
-    it('accepte le bon couple, et rend le préfixe de la VM', async () => {
+describe(`enrolment of an agent, engine=${MOTEUR}`, () => {
+    it('accepts the right pair, and returns the prefix of the VM', async () => {
         base = await baseEnrolee('enrol-bon');
         const journal: string[] = [];
         const v = await verifyEnrolment(base, 'v-1', SECRET, (l) => journal.push(l));
@@ -40,7 +40,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         expect(journal).toEqual([]);
     });
 
-    it('🔴 refuse une VM INCONNUE et un SECRET FAUX du MÊME refus, mot pour mot', async () => {
+    it('🔴 refuses an UNKNOWN VM and a WRONG SECRET with the SAME refusal, word for word', async () => {
         // 🔴 La rouge : rendre `'vm-inconnue'` d'un côté et `'secret-invalide'`
         // de l'autre. C'est un oracle d'énumération, et il suffit d'une
         // différence d'UN caractère pour qu'il le redevienne — d'où la
@@ -53,7 +53,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         expect(inconnue).toEqual(fauxSecret);
     });
 
-    it('journalise le refus AVEC le nom de VM demandé', async () => {
+    it('logs the refusal WITH the requested VM name', async () => {
         // 🔴 La rouge : ne rien journaliser. Le refus devient alors
         // indiagnosticable — et c'est le prix exact de l'indistinction
         // ci-dessus : ce que le demandeur n'apprend pas, l'exploitant doit
@@ -71,7 +71,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         expect(journal[0]).not.toContain('secret=');
     });
 
-    it('🔴 rend un refus, JAMAIS une exception, sur une empreinte TRONQUÉE', async () => {
+    it('🔴 returns a refusal, NEVER an exception, on a TRUNCATED fingerprint', async () => {
         // 🔴 La rouge : comparer sans egaliser les longueurs d'abord. MESURÉ en
         // P2 : `timingSafeEqual` LÈVE `Input buffers must have the same byte
         // length`, et l'appelant répondrait une erreur interne là où il doit
@@ -87,7 +87,7 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         expect(v.ok).toBe(false);
     });
 
-    it('LAISSE PASSER l’exception d’un algorithme inconnu, sans la transformer en refus', async () => {
+    it('LETS THROUGH the exception of an unknown algorithm, without turning it into a refusal', async () => {
         // ⚠️ `identite/mot-de-passe.ts::verify` LÈVE délibérément sur un
         // algorithme inconnu : un refus muet y serait indiscernable d'un secret
         // faux, et personne ne saurait diagnostiquer une base écrite par une
@@ -98,6 +98,6 @@ describe(`enrôlement d'un agent, moteur=${MOTEUR}`, () => {
         await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v-1', 'vm-1', '10.0.0.1']);
         await enroler(base, 'v-1', 'argon2id$1$2$3$sel$empreinte', PREFIXE);
         await expect(verifyEnrolment(base, 'v-1', SECRET, () => {}))
-            .rejects.toThrow(/algorithme de hachage inconnu/i);
+            .rejects.toThrow(/unknown hash algorithm/i);
     });
 });

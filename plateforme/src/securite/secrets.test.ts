@@ -81,9 +81,9 @@ const EXCEPTIONS: readonly Exception[] = [
         nom: 'POSTGRES_PASSWORD',
         empreinte: '3b132f52b3b4ad4d',
         raison:
-            "L'instance Postgres de TEST, jetable, dont l'en-tête du fichier déclare " +
-            "en toutes lettres qu'« une base de production n'emploiera JAMAIS ce " +
-            'fichier ». La valeur est la même pour tout le monde et ne protège rien.',
+            "The TEST Postgres instance, disposable, whose file header declares " +
+            "in plain words that « a production database will NEVER use this " +
+            'file ». The value is the same for everybody and protects nothing.',
     },
     {
         file: 'docs/superpowers/plans/2026-08-19-plateforme-p5.md',
@@ -92,9 +92,9 @@ const EXCEPTIONS: readonly Exception[] = [
         // même valeur, et l'épinglage le montre plutôt que de l'affirmer.
         empreinte: '3b132f52b3b4ad4d',
         raison:
-            'Le plan de P5 CITE la ligne du fichier de composition ci-dessus, pour ' +
-            "expliquer pourquoi elle est exemptée. C'est la même valeur de fixture, " +
-            'recopiée dans une phrase.',
+            'The P5 plan QUOTES the line of the composition file above, to ' +
+            "explain why it is exempted. It is the same fixture value, " +
+            'copied into a sentence.',
     },
     // ❌ **UNE EXCEPTION PAR CHEMIN A ÉTÉ RETIRÉE ICI AU LOT 33** :
     // `docs/superpowers/plans/2026-07-27-jalon1-tranche-verticale.md` /
@@ -109,73 +109,73 @@ const EXCEPTIONS: readonly Exception[] = [
         nom: 'TURN_SECRET',
         empreinte: '2bb80d537b1da3e3',
         raison:
-            "Une fixture de test recopiée dans le plan : la valeur est le mot " +
-            '« secret » lui-même, et le même littéral vit dans `signaling/ice.test.ts`.',
+            "A test fixture copied into the plan: the value is the word " +
+            '« secret » itself, and the same literal lives in `signaling/ice.test.ts`.',
     },
     {
         file: 'plateforme/src/signaling/ice.test.ts',
         nom: 'TURN_SECRET',
         empreinte: '2bb80d537b1da3e3',
         raison:
-            'La fixture du test de `configurationIce` : la valeur est le mot ' +
-            "« secret ». Un vrai secret y serait inutile — le test vérifie la FORME " +
-            "de l'identifiant dérivé, pas sa résistance.",
+            'The fixture of the `configurationIce` test: the value is the word ' +
+            "« secret ». A real secret would be useless there — the test checks the SHAPE " +
+            "of the derived identifier, not its strength.",
     },
     {
         file: 'docs/superpowers/plans/2026-08-19-plateforme-p3.md',
         nom: 'AGENT_SECRET',
         empreinte: 'ba7816bf8f01cfea',
         raison:
-            "Une valeur de trois lettres dans une commande de contrôle de SYNTAXE " +
-            "(`bash -n`) : le script n'est jamais exécuté, et la valeur n'atteint " +
-            'aucune VM.',
+            "A three-letter value in a SYNTAX check command " +
+            "(`bash -n`): the script is never run, and the value reaches " +
+            'no VM.',
     },
     {
         file: 'docs/superpowers/plans/journaux-corrections/instrument/compter-enrolements.sh',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '6b82a0dca0d6fa4d',
         raison:
-            "Le secret de signature d'un instrument de RECETTE, tiré pour cette " +
-            "recette-là et mort avec elle. Il ne signe aucun jeton d'un service vivant.",
+            "The signing secret of an ACCEPTANCE instrument, drawn for that " +
+            "acceptance run and dead with it. It signs no token of a live service.",
     },
     {
         file: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/jouer.sh',
         nom: 'TURN_SECRET',
         empreinte: '20e73cf9ccbda64a',
         raison:
-            "Le secret TURN d'un instrument de recette P3, nommé « recette-p3-… » " +
-            "précisément pour qu'on ne le confonde pas avec celui du relais réel.",
+            "The TURN secret of a P3 acceptance instrument, named « recette-p3-… » " +
+            "precisely so that it is not mistaken for the one of the real relay.",
     },
     {
         file: 'docs/superpowers/plans/journaux-plateforme-p3/instrument/rouge-1a.ts',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '2923f1439452d95c',
         raison:
-            'Idem : la fixture de signature de la rouge ①A de P3, nommée ' +
-            '« recette-p3-… », morte avec sa recette.',
+            'Likewise: the signing fixture of red run ①A of P3, named ' +
+            '« recette-p3-… », dead with its acceptance run.',
     },
     {
         file: 'plateforme/src/config.test.ts',
         nom: 'PLATEFORME_SECRET_JETON',
         empreinte: '94e4c4bc7d176bd9',
         raison:
-            "La valeur est littéralement « trop-court » : c'est le test qui vérifie " +
-            "que `lireConfig` REFUSE un secret sous `LONGUEUR_SECRET_MIN`.",
+            "The value is literally « trop-court »: it is the test that checks " +
+            "that `lireConfig` REFUSES a secret under `LONGUEUR_SECRET_MIN`.",
     },
     {
         file: 'tests/desk_activate_fixtures.py',
         nom: 'AGENT_SECRET',
         empreinte: 'fc66b5649cf2782e',
         raison:
-            "La sortie SIMULÉE d'un faux `npm run admin:agent`, dans les tests du " +
-            "package `desk` : ce script factice imprime cette ligne pour que le hook " +
-            "activate.py sous test croie avoir enrôlé un agent, sans jamais parler à " +
-            "une vraie plateforme. Ce n'est l'identifiant d'AUCUN agent réel. " +
-            "Réécrire la fixture ne servirait à rien — le détecteur cherche des NOMS, " +
-            "jamais des valeurs (voir l'en-tête du fichier), donc une valeur changée " +
-            "resterait tout autant dénoncée ; et concaténer la chaîne pour esquiver " +
-            "l'expression régulière serait pire que le mal : la fixture deviendrait " +
-            "invisible à tout audit futur, alors qu'elle est ici visible et discutée.",
+            "The SIMULATED output of a fake `npm run admin:agent`, in the tests of the " +
+            "`desk` package: this dummy script prints this line so that the " +
+            "activate.py hook under test believes it enrolled an agent, without ever talking to " +
+            "a real platform. It is the identifier of NO real agent. " +
+            "Rewriting the fixture would be pointless — the detector looks for NAMES, " +
+            "never for values (see the file header), so a changed value " +
+            "would be reported just the same; and concatenating the string to dodge " +
+            "the regular expression would be worse than the harm: the fixture would become " +
+            "invisible to any future audit, whereas here it is visible and discussed.",
     },
 ];
 
@@ -328,8 +328,8 @@ function balayer(): Trouvaille[] {
     return trouvailles;
 }
 
-describe('aucun secret dans un fichier versionné', () => {
-    it('🔴 ne trouve aucune affectation littérale hors des exceptions déclarées', () => {
+describe('no secret in a versioned file', () => {
+    it('🔴 finds no literal assignment outside the declared exceptions', () => {
         const trouvailles = balayer();
         const autorisees = new Set(
             EXCEPTIONS.map((e) => `${e.file}:${e.nom}:${e.empreinte}`),
@@ -341,24 +341,24 @@ describe('aucun secret dans un fichier versionné', () => {
         // VALEUR. Voir l'en-tête : un test de sécurité qui imprimerait le
         // secret le fuirait par la porte qu'il garde.
         expect(
-            hors.map((t) => `${t.file}:${t.ligne} affecte ${t.nom} [empreinte ${t.empreinte}]`),
-            "des secrets sont affectés en clair dans des fichiers versionnés " +
-                "(la valeur n'est volontairement pas affichée)",
+            hors.map((t) => `${t.file}:${t.ligne} assigns ${t.nom} [fingerprint ${t.empreinte}]`),
+            "secrets are assigned in plaintext in versioned files " +
+                "(the value is deliberately not shown)",
         ).toEqual([]);
     });
 
-    it('chaque exception porte une RAISON non vide', () => {
+    it('each exception carries a non-empty REASON', () => {
         // Sans cette assertion, la liste deviendrait en deux chantiers une
         // liste de choses qu'on a renoncé à comprendre.
         for (const e of EXCEPTIONS) {
-            expect(e.raison.trim().length, `l'exception ${e.file}:${e.nom} n'a pas de raison`)
+            expect(e.raison.trim().length, `the exception ${e.file}:${e.nom} has no reason`)
                 .toBeGreaterThan(30);
-            expect(e.empreinte, `l'exception ${e.file}:${e.nom} n'épingle aucune valeur`)
+            expect(e.empreinte, `the exception ${e.file}:${e.nom} pins no value`)
                 .toMatch(/^[0-9a-f]{16}$/);
         }
     });
 
-    it('🔴 chaque exception correspond à une trouvaille RÉELLE', () => {
+    it('🔴 each exception matches a REAL finding', () => {
         // 🔴 UNE EXCEPTION QUI NE COUVRE PLUS RIEN EST UN MENSONGE QUI DORT :
         // le jour où le fichier change, elle continue d'autoriser un chemin
         // que personne ne relit. Cette assertion la fait tomber le jour où
@@ -368,12 +368,12 @@ describe('aucun secret dans un fichier versionné', () => {
         );
         for (const e of EXCEPTIONS) {
             const cle = `${e.file}:${e.nom}:${e.empreinte}`;
-            expect(reelles.has(cle), `l'exception ${e.file}:${e.nom} ne couvre plus rien`)
+            expect(reelles.has(cle), `the exception ${e.file}:${e.nom} no longer covers anything`)
                 .toBe(true);
         }
     });
 
-    it('le balayage voit RÉELLEMENT des fichiers — il ne peut pas être vide par accident', () => {
+    it('the sweep REALLY sees files — it cannot be empty by accident', () => {
         // ⚠️ CONTRÔLE DU CONTRÔLE. Un `git ls-files` qui rendrait zéro fichier
         // — mauvais `cwd`, dépôt absent — ferait passer le test principal en
         // vert sans avoir rien balayé. C'est le patron du contrôle vacueux,

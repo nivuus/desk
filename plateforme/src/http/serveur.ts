@@ -129,7 +129,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     // side effect. `routes-auth.test.ts` now freezes it.
     //
     // 🔴 THE CHAINING HAS NOT BEEN DONE HERE SINCE 22 AUGUST 2026: IT WAS
-    // EXTRACTED INTO `./chaine.ts` (`servirTout`, exported), BECAUSE THIS
+    // EXTRACTED INTO `./chaine.ts` (`servirTout`, exported), BECAUSE THIS (policy: allow-fr - file name)
     // FILE WAS REACHING 475/500 LINES AND THE NEXT BATCH HAD TO
     // ADD A TENTH ROUTER TO IT — the extraction freed the margin BEFORE
     // the addition, as `CLAUDE.md` prescribes. What remains HERE is the CALL
@@ -148,7 +148,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     // ⚠️ "THE THREE ROUTERS" WAS THE WORDING, AND IT DATED FROM P4: seven have
     // been chained since, without this sentence moving. The count is
     // rerun, not copied:
-    //   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts
+    //   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts (policy: allow-fr - file name)
     //     -> 10
     // The registry of live agent sockets, built ONCE and shared
     // between the channel (which registers into it) and the routes (which launch through it). It is the
@@ -184,7 +184,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     // being optional, that is the only thing that makes visible to the operator
     // the store they are actually working on.
     const magasin = ouvrirMagasin(config.repertoireIcones, (chemin) => {
-        console.info(`magasin d icones : ${chemin}`);
+        console.info(`icon store: ${chemin}`);
     });
 
     // The SLICE store, also opened ONCE, and logging its
@@ -196,7 +196,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     // would be two views of one disk, and the second would not
     // necessarily see what the first has just written.
     const magasinTranches = ouvrirMagasinTranches(config.repertoireTeleversements, (chemin) => {
-        console.info(`magasin de tranches : ${chemin}`);
+        console.info(`chunk store: ${chemin}`);
     });
 
     // 🔴 WITHOUT THIS CALL, `evincer` OF THE TWO STORES ABOVE IS INVOKED
@@ -260,7 +260,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
         // distinct from the FAILURES one that `servirAuth` alone consults.
         //
         // ✅ THIS WHOLE BLOCK RECHECKED on 25 August 2026 BY THE COMMAND, not by
-        // reading: `grep -ln 'deps\.<clé>' plateforme/src/http/routes-*.ts`
+        // reading: `grep -ln 'deps\.<key>' plateforme/src/http/routes-*.ts`
         // (excluding `*.test.ts`, which SET the dependency without consuming it).
         // Readers — `frein`: `routes-auth.ts`, `routes-vm.ts`,
         // `routes-session.ts` — THREE; `proxyDeConfiance`: the three
@@ -297,7 +297,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
         racinePage: config.racinePage,
     };
 
-    // `servirTout`: see its extraction into `./chaine.ts`, explained higher
+    // `servirTout`: see its extraction into `./chaine.ts`, explained higher (policy: allow-fr - file name)
     // up in this function.
     const http: Server = createServer((requete, reponse) => {
         void servirTout(requete, reponse, deps)
@@ -328,11 +328,11 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
                 // ⚠️ THE LABEL NO LONGER NAMES "the authentication": since
                 // P4 this `catch` covers ALL routers — there are TEN, not
                 // three as this sentence said until 22 August 2026, and
-                // the count is rerun from `chaine.ts`. A message that
+                // the count is rerun from `chaine.ts`. A message that (policy: allow-fr - file name)
                 // named the wrong one would send people looking in the wrong place.
                 // It is the only line of this block that P4 changes, and it is
                 // changed because it would otherwise have become WRONG.
-                console.error(`route HTTP en échec : ${String(cause)}`);
+                console.error(`HTTP route failed: ${String(cause)}`);
                 if (!reponse.headersSent) {
                     reponse.writeHead(500, {
                         'content-type': 'application/json; charset=utf-8',

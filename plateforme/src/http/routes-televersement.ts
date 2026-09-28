@@ -13,7 +13,7 @@
 // server — is chained AFTER all the others, and it resolves any
 // path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the `false`
 // returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
-// over. See `http/chaine.ts`, which carries the count and the rule.
+// over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 //
 // 🔴 THIS MODULE DECIDES NEITHER THE SPLITTING, NOR THE WRITING, NOR THE BEARER:
 // `proto/ts/tranches.ts` (PURE, and ALSO imported by the browser),
@@ -155,7 +155,7 @@ async function lireSienne(
 ): Promise<LigneTeleversement | undefined> {
     const ligne = await lireParId(ctx.deps.base, id);
     if (ligne === undefined) return journaliserLeRefus('inconnu', id, userId);
-    if (ligne.utilisateur_id !== userId) {
+    if (ligne.utilisateur_id !== userId) { // policy: allow-fr - frozen wire key or SQLite column
         return journaliserLeRefus('etranger', id, userId);
     }
     return ligne;
@@ -166,9 +166,9 @@ async function lireSienne(
 /// `undefined` so that tracing and refusing are the SAME gesture.
 function journaliserLeRefus(cas: 'inconnu' | 'etranger', id: string, u: string): undefined {
     console.warn(
-        `refus d'accès au téléversement ${id} pour l'utilisateur ${u} : cas=${cas} — `
-            + `la réponse HTTP, elle, est le même 404 « televersement-inconnu » dans les `
-            + `deux cas (décision du propriétaire du dépôt : pas d'oracle d'énumération).`,
+        `access to upload ${id} refused for user ${u}: cas=${cas} — `
+            + `the HTTP response itself is the same 404 « televersement-inconnu » in both `
+            + `cases (decision of the repository owner: no enumeration oracle).`,
     );
     return undefined;
 }
@@ -251,7 +251,7 @@ async function lireDeclaration(req: IncomingMessage): Promise<string | 'trop-gro
 /// "named, not guarded", it is guarded HERE, the only place fed by the WIRE.
 function motifDeDeclaration(c: Record<string, unknown>): string | undefined {
     if (typeof c.nom !== 'string' || c.nom === '') return 'nom-invalide';
-    if (!Number.isSafeInteger(c.taille) || (c.taille as number) < 0) return 'taille-invalide';
+    if (!Number.isSafeInteger(c.taille) || (c.taille as number) < 0) return 'taille-invalide'; // policy: allow-fr - frozen wire key or SQLite column
     if (typeof c.sha256 !== 'string' || !empreinteValide(c.sha256)) return 'empreinte-invalide';
     return undefined;
 }
@@ -274,7 +274,7 @@ async function declarer(req: IncomingMessage, ctx: Contexte, user: string): Prom
     const motif = motifDeDeclaration(champs);
     if (motif !== undefined) return repondre(ctx, 400, { refus: motif });
 
-    const size = champs.taille as number;
+    const size = champs.taille as number; // policy: allow-fr - frozen wire key or SQLite column
     if (size > TELEVERSEMENT_MAX_OCTETS) {
         return repondre(ctx, 413, { refus: 'trop-grand', maximum: TELEVERSEMENT_MAX_OCTETS });
     }
@@ -290,7 +290,7 @@ async function declarer(req: IncomingMessage, ctx: Contexte, user: string): Prom
     const entree = {
         userId: user,
         nom: champs.nom as string,
-        taille: size,
+        taille: size, // policy: allow-fr - frozen wire key or SQLite column
         sha256: champs.sha256 as string,
         chunkSize: CHUNK_SIZE,
     };
@@ -322,9 +322,9 @@ function etatDe(ctx: Contexte, ligne: LigneTeleversement): unknown {
     return {
         id: ligne.id,
         nom: ligne.nom,
-        taille: ligne.taille,
+        taille: ligne.taille, // policy: allow-fr - frozen wire key or SQLite column
         sha256: ligne.sha256,
-        taille_tranche: ligne.taille_tranche,
+        taille_tranche: ligne.taille_tranche, // policy: allow-fr - frozen wire key or SQLite column
         scelle_a: ligne.scelle_a,
         tranches_presentes: ctx.deps.tranches.lister(ligne.id),
     };
@@ -358,12 +358,12 @@ async function deposer(
     // NEVER become consistent (`verdict` would call it `incoherentes`, the verdict
     // that cannot be repaired). Refusing it at once avoids writing bytes
     // whose only future is to make the whole upload fail.
-    const attendu = plan(ligne.taille, ligne.taille_tranche);
+    const attendu = plan(ligne.taille, ligne.taille_tranche); // policy: allow-fr - frozen wire key or SQLite column
     if (n >= attendu.length) {
         return repondre(ctx, 409, { refus: 'rang-hors-plan', tranches: attendu.length });
     }
 
-    // 🔴 THE BOUND IS HARD, READ BACK FROM THE DATABASE, AND IT IS `taille_tranche` — never the
+    // 🔴 THE BOUND IS HARD, READ BACK FROM THE DATABASE, AND IT IS `taille_tranche` — never the (policy: allow-fr - frozen wire key or SQLite column)
     // EXPECTED size of this particular slice: the last one is shorter than the
     // step, and bounding to its exact size would make this cap a judge of the
     // SLICING, the role of `proto/ts/tranches.ts::verdict` and of it alone. Here we
@@ -372,7 +372,7 @@ async function deposer(
     // 🔴 THE BODY IS NEVER HELD IN MEMORY: `req` is an
     // `AsyncIterable<Uint8Array>` handed AS IS to the store. A `Buffer.concat`
     // would turn the service into a memory bomb driven by its clients.
-    const issue = await ctx.deps.tranches.write(ligne.id, n, req, ligne.taille_tranche);
+    const issue = await ctx.deps.tranches.write(ligne.id, n, req, ligne.taille_tranche); // policy: allow-fr - frozen wire key or SQLite column
     if (!issue.ok) {
         // ⚠️ THE PARTIAL FILE IS ALREADY DELETED BY THE STORE — reread in
         // `magasin-tranches.ts`: `rmSync(provisoire)` in the `catch`, and the
@@ -401,8 +401,8 @@ async function arreter(ctx: Contexte, ligne: LigneTeleversement): Promise<boolea
     // writing it. A row with a zero step would be a PROGRAM defect — a boundary
     // set by `proto/ts/tranches.ts` —, and the 500 is the right answer:
     // disguising it as a refusal would make the client refill slices that do not exist.
-    const attendu = plan(ligne.taille, ligne.taille_tranche);
-    const v = verdict(ligne.taille, ligne.taille_tranche, ctx.deps.tranches.lister(ligne.id));
+    const attendu = plan(ligne.taille, ligne.taille_tranche); // policy: allow-fr - frozen wire key or SQLite column
+    const v = verdict(ligne.taille, ligne.taille_tranche, ctx.deps.tranches.lister(ligne.id)); // policy: allow-fr - frozen wire key or SQLite column
 
     // 🔴 TWO VERDICTS, TWO DISTINCT REFUSALS, AND MERGING THEM WOULD BE AN ENDLESS
     // LOOP: a hole is filled by asking for it again, a slice of the wrong
@@ -437,9 +437,9 @@ async function arreter(ctx: Contexte, ligne: LigneTeleversement): Promise<boolea
         // would describe the content actually stored to a peer that might have
         // uploaded only part of it. The log, for its part, carries both.
         console.warn(
-            `scellement refusé pour le téléversement ${ligne.id} : empreinte annoncée `
-                + `${ligne.sha256}, empreinte relue ${relu} — les octets stockés ne sont `
-                + `pas ceux que le déposant a annoncés.`,
+            `sealing refused for upload ${ligne.id}: announced fingerprint `
+                + `${ligne.sha256}, re-read fingerprint ${relu} — the stored bytes are `
+                + `not the ones the depositor announced.`,
         );
         return repondre(ctx, 409, { refus: 'empreinte' });
     }
@@ -453,5 +453,5 @@ async function arreter(ctx: Contexte, ligne: LigneTeleversement): Promise<boolea
 /// that had already happened: otherwise a client that retries would read two shapes of the
 /// same fact.
 function scellement(ligne: LigneTeleversement, scelleA: number): unknown {
-    return { id: ligne.id, taille: ligne.taille, sha256: ligne.sha256, scelle_a: scelleA };
+    return { id: ligne.id, taille: ligne.taille, sha256: ligne.sha256, scelle_a: scelleA }; // policy: allow-fr - frozen wire key or SQLite column
 }

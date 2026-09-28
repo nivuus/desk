@@ -2,14 +2,14 @@
 // by its prefix, and mark that we just heard it beat.
 //
 // 🔴 THE CLOCK IS A PARAMETER, never read here — same rule as
-// `depot/session.ts`, `depot/utilisateur.ts` and `signaling/ice.ts`, and it is
+// `depot/session.ts`, `depot/utilisateur.ts` and `signaling/ice.ts`, and it is (policy: allow-fr - file name)
 // what makes `agent.test.ts` able to assert an EXACT epoch.
 //
 // 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, otherwise
 // `rendreMarqueurs` would throw on the Postgres side (`base/pilote.ts`).
 //
 // ⚠️ THIS MODULE KNOWS NOTHING ABOUT HASHING: it receives and returns an opaque
-// hash, exactly like `depot/utilisateur.ts`. That is what will allow
+// hash, exactly like `depot/utilisateur.ts`. That is what will allow (policy: allow-fr - file name)
 // hardening `scrypt` without reopening it — the format carries its own parameters
 // (`identite/mot-de-passe.ts`).
 //
@@ -60,7 +60,7 @@ export async function enroler(
 /// the channel must answer the SAME refusal as for a wrong secret, and an
 /// exception that bubbled up as an internal error would on its own be an
 /// enumeration oracle — the caller would learn by trial and error which VMs
-/// exist. Precedent: `depot/utilisateur.ts::lireParEmail`.
+/// exist. Precedent: `depot/utilisateur.ts::lireParEmail`. (policy: allow-fr - file name)
 export async function lireParVm(p: Pilote, vmId: string): Promise<LigneAgent | undefined> {
     const lignes = await p.interroger<LigneAgent>(
         `SELECT ${COLUMNS} FROM agent_enrole WHERE vm_id = ?`,

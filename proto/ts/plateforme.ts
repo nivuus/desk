@@ -456,13 +456,13 @@ export function encodeIconesManquantes(empreintes: string[]): string {
 export function parseDepuisLaPlateforme(raw: string): DepuisLaPlateforme {
     const parsed = JSON.parse(raw) as Partial<DepuisLaPlateforme>;
     if (!TYPES_DEPUIS.includes(parsed.type as (typeof TYPES_DEPUIS)[number])) {
-        throw new Error(`type de message de plateforme inconnu : ${parsed.type}`);
+        throw new Error(`unknown platform message type: ${parsed.type}`);
     }
     if (typeof parsed.v !== 'number') {
-        throw new Error(`version de plateforme absente ou non numérique : ${parsed.v}`);
+        throw new Error(`platform version absent or not numeric: ${parsed.v}`);
     }
     if (parsed.type !== 'refus' && parsed.v !== PLATEFORME_VERSION) {
-        throw new Error(`version de plateforme non supportée : ${parsed.v}`);
+        throw new Error(`unsupported platform version: ${parsed.v}`);
     }
     return parsed as DepuisLaPlateforme;
 }

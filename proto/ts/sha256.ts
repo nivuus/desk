@@ -181,10 +181,10 @@ export class Sha256 {
      */
     absorber(bloc: Uint8Array): void {
         if (this.empreinte !== null) {
-            throw new Error('Sha256.absorber après Sha256.terminer : le condensat est clos');
+            throw new Error('Sha256.absorber after Sha256.terminer: the digest is closed');
         }
         if (this.octets + bloc.length > OCTETS_MAX) {
-            throw new Error(`Sha256 : message de plus de ${OCTETS_MAX} octets, longueur non représentable`);
+            throw new Error(`Sha256: message of more than ${OCTETS_MAX} bytes, length not representable`);
         }
         this.octets += bloc.length;
 

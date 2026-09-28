@@ -6,7 +6,7 @@
 // ⚠️ THIS SENTENCE SAID "ELEVENTH" UNTIL THE FINAL REVIEW, here and in
 // `serveur.ts`: the count was wrong on both sides, and nobody had
 // rerun it. Here it is, with its command — the only thing that is authoritative:
-//   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts
+//   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts (policy: allow-fr - file name)
 //     -> 10
 //
 // `CLAUDE.md` prescribes the extraction as a DEDICATED task, BEFORE the one that adds —
@@ -54,7 +54,7 @@ export type DependancesRoutage = DependancesIdentite &
 /// are DISJOINT" — was wrong twice, and contradicted another one
 /// of the same file fifty lines further down ("THE SERVER IS CHAINED
 /// LAST, AND IT IS THE GUARANTEE, NOT A CONVENIENCE"). The count, rerun:
-///   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts
+///   grep -cE '^    (if \(await servir|return servir)' plateforme/src/http/chaine.ts (policy: allow-fr - file name)
 ///     -> 10
 /// **TEN routers, NINE of which have DISJOINT sets of paths** — each one compares
 /// exactly, or splits by SEGMENTS and compares their NUMBER, never by

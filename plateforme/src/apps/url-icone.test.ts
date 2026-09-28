@@ -32,8 +32,8 @@ function paramsOf(url: string): URLSearchParams {
     return new URL(url, 'http://interne').searchParams;
 }
 
-describe("l'URL signée d'icône", () => {
-    it('rend un chemin relatif, portant les quatre paramètres', () => {
+describe("the signed icon URL", () => {
+    it('returns a relative path, carrying the four parameters', () => {
         const url = signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS);
         expect(url.startsWith(`/application/${APP}/icone?`)).toBe(true);
         const p = paramsOf(url);
@@ -47,14 +47,14 @@ describe("l'URL signée d'icône", () => {
         expect(p.get('s')).toMatch(/^[A-Za-z0-9_-]{43}$/);
     });
 
-    it('se vérifie, et rend la VM qu’elle porte', () => {
+    it('verifies, and returns the VM it carries', () => {
         const v = verifyIconUrl(APP, paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS)), SECRET, MS);
         expect(v).toEqual({ ok: true, vm: VM });
     });
 
     /* ── ROUGE ① : LA SIGNATURE FALSIFIÉE ─────────────────────────────── */
 
-    it('🔴 REFUSE une signature falsifiée — un octet suffit', () => {
+    it('🔴 REFUSES a forged signature — one byte is enough', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         const vraie = p.get('s')!;
         // Un SEUL caractère change, et il change vraiment : `a` -> `b`.
@@ -67,7 +67,7 @@ describe("l'URL signée d'icône", () => {
         });
     });
 
-    it('🔴 REFUSE une signature d’une AUTRE clé — la sous-clé n’est pas le secret', () => {
+    it('🔴 REFUSES a signature from ANOTHER key — the subkey is not the secret', () => {
         // 🔴 C'EST LE CONTRÔLE QUI DIT QUE LA DÉRIVATION SERT À QUELQUE CHOSE.
         // Une signature calculée avec le secret de jeton BRUT — c'est-à-dire
         // ce qu'on aurait écrit sans dériver — doit être REFUSÉE. Sans lui,
@@ -87,7 +87,7 @@ describe("l'URL signée d'icône", () => {
         expect(verifyIconUrl(APP, p, SECRET, MS).ok).toBe(true);
     });
 
-    it('la sous-clé n’est PAS le secret, et elle est stable', () => {
+    it('the subkey is NOT the secret, and it is stable', () => {
         const a = iconSubkey(SECRET);
         expect(a.length).toBe(32);
         expect(a.toString('utf8')).not.toBe(SECRET);
@@ -97,7 +97,7 @@ describe("l'URL signée d'icône", () => {
 
     /* ── ROUGE ② : L'URL EXPIRÉE ──────────────────────────────────────── */
 
-    it('🔴 REFUSE une URL EXPIRÉE, et la borne est assiégée des DEUX côtés', () => {
+    it('🔴 REFUSES an EXPIRED URL, and the bound is besieged from BOTH sides', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         const x = Number(p.get('x'));
         // Une milliseconde avant : encore bonne.
@@ -111,7 +111,7 @@ describe("l'URL signée d'icône", () => {
         });
     });
 
-    it('🔴 une URL forgée ET périmée s’entend dire « signature », jamais « expirée »', () => {
+    it('🔴 a forged AND stale URL is told « signature », never « expired »', () => {
         // 🔴 L'ORDRE DES CONTRÔLES EST UNE PROPRIÉTÉ DE SÉCURITÉ : dire
         // « expirée » à un faussaire lui apprendrait que sa signature était
         // bonne. Le contrôle de signature vient donc AVANT celui du temps.
@@ -123,13 +123,13 @@ describe("l'URL signée d'icône", () => {
         });
     });
 
-    it('🔴 une expiration NON ENTIÈRE, pourtant signée, est refusée', () => {
+    it('🔴 a NON-INTEGER expiry, although signed, is refused', () => {
         // 🔴 `Number('x')` rend `NaN`, et `maintenant >= NaN` est FAUX : sans
         // ce garde, une expiration illisible serait ÉTERNELLE. Le seul chemin
         // qui l'atteigne est une signature calculée avec la VRAIE clé — donc
         // ce test la calcule, plutôt que de laisser le garde vert par
         // construction.
-        for (const x of ['pas-un-nombre', '1.5', 'Infinity']) {
+        for (const x of ['not-a-number', '1.5', 'Infinity']) {
             const p = new URLSearchParams({
                 e: EMPREINTE,
                 v: VM,
@@ -145,7 +145,7 @@ describe("l'URL signée d'icône", () => {
 
     /* ── ROUGE ③ : UNE URL NE VAUT QUE POUR SA PORTÉE ─────────────────── */
 
-    it('🔴 une URL signée pour une application NE VAUT PAS pour une autre', () => {
+    it('🔴 a URL signed for one application IS NOT VALID for another', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         const autre = '99999999-8888-7777-6666-555555555555';
         expect(verifyIconUrl(autre, p, SECRET, MS)).toEqual({
@@ -156,7 +156,7 @@ describe("l'URL signée d'icône", () => {
         expect(verifyIconUrl(APP, p, SECRET, MS).ok).toBe(true);
     });
 
-    it('🔴 une URL signée pour une VM NE VAUT PAS pour une autre', () => {
+    it('🔴 a URL signed for one VM IS NOT VALID for another', () => {
         const p = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         p.set('v', 'vm-2');
         expect(verifyIconUrl(APP, p, SECRET, MS)).toEqual({
@@ -165,7 +165,7 @@ describe("l'URL signée d'icône", () => {
         });
     });
 
-    it('🔴 les champs ne GLISSENT pas les uns dans les autres', () => {
+    it('🔴 the fields do not SLIDE into one another', () => {
         // 🔴 LE PRÉFIXE DE LONGUEUR EXISTE POUR CELA : sans lui, un simple
         // `join('\n')` ferait qu'une application nommée `x\n3:vm` et une VM
         // `abc` produiraient le même message qu'une autre paire. On éprouve
@@ -180,18 +180,18 @@ describe("l'URL signée d'icône", () => {
 
     /* ── LA FORME ─────────────────────────────────────────────────────── */
 
-    it('refuse un paramètre absent ou vide, sans le confondre avec une signature fausse', () => {
+    it('refuses an absent or empty parameter, without confusing it with a wrong signature', () => {
         const base = paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS));
         for (const nom of ['v', 'x', 's']) {
             const manque = new URLSearchParams(base);
             manque.delete(nom);
-            expect(verifyIconUrl(APP, manque, SECRET, MS), `sans ${nom}`).toEqual({
+            expect(verifyIconUrl(APP, manque, SECRET, MS), `without ${nom}`).toEqual({
                 ok: false,
                 motif: 'parametre-absent',
             });
             const vide = new URLSearchParams(base);
             vide.set(nom, '');
-            expect(verifyIconUrl(APP, vide, SECRET, MS), `${nom} vide`).toEqual({
+            expect(verifyIconUrl(APP, vide, SECRET, MS), `${nom} empty`).toEqual({
                 ok: false,
                 motif: 'parametre-absent',
             });
@@ -200,7 +200,7 @@ describe("l'URL signée d'icône", () => {
 
     /* ── LA DURÉE ─────────────────────────────────────────────────────── */
 
-    it('🔴 deux frappes de la MÊME minute rendent la MÊME URL — sinon le cache est mort', () => {
+    it('🔴 two strikes in the SAME minute give the SAME URL — otherwise the cache is dead', () => {
         // 🔴 C'EST LA PROPRIÉTÉ QUI SAUVE `Cache-Control: immutable`. Sans
         // l'arrondi, `x` et `s` changeraient à chaque frappe, la clé de cache
         // aussi, et aucune entrée ne serait jamais relue.
@@ -212,20 +212,20 @@ describe("l'URL signée d'icône", () => {
         expect(signerUrlIcone(APP, VM, EMPREINTE, SECRET, MS + PAS_URL_ICONE_MS)).not.toBe(a);
     });
 
-    it('🔴 le PLANCHER de durée est garanti, sur tout un pas', () => {
+    it('🔴 the duration FLOOR is guaranteed, over a whole step', () => {
         // L'arrondi est vers le HAUT : à aucun instant du pas la durée de vie
         // ne descend sous `DUREE_URL_ICONE_MS`.
         for (let d = 0; d < PAS_URL_ICONE_MS; d += 997) {
             const t = MS + d;
             const x = Number(paramsOf(signerUrlIcone(APP, VM, EMPREINTE, SECRET, t)).get('x'));
-            expect(x - t, `à +${String(d)} ms`).toBeGreaterThanOrEqual(DUREE_URL_ICONE_MS);
-            expect(x - t, `à +${String(d)} ms`).toBeLessThan(
+            expect(x - t, `at +${String(d)} ms`).toBeGreaterThanOrEqual(DUREE_URL_ICONE_MS);
+            expect(x - t, `at +${String(d)} ms`).toBeLessThan(
                 DUREE_URL_ICONE_MS + PAS_URL_ICONE_MS,
             );
         }
     });
 
-    it('🔴 ne survit JAMAIS au jeton porteur qui l’a fait naître', () => {
+    it('🔴 NEVER outlives the bearer token that gave birth to it', () => {
         // 🔴 C'EST LA RAISON ÉCRITE DE LA VALEUR, ÉPINGLÉE PLUTÔT QUE LAISSÉE
         // DANS UN COMMENTAIRE. Les deux constantes se recalibrent ENSEMBLE :
         // baisser le jeton d'accès sous cinq minutes rendrait la borne fausse,

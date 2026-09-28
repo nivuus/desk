@@ -42,8 +42,8 @@ async function seedUser(p: Pilote, email: string): Promise<string> {
     return createUser(p, email, 'empreinte-opaque-de-test', MS);
 }
 
-describe(`dépôt vm, moteur=${MOTEUR}`, () => {
-    it('🔴 `lister` rend la VM AVEC son préfixe et son `vu_a`, joints depuis agent_enrole', async () => {
+describe(`vm repository, engine=${MOTEUR}`, () => {
+    it('🔴 `lister` returns the VM WITH its prefix and its `vu_a`, joined from agent_enrole', async () => {
         // 🔴 La rouge : remplacer le `LEFT JOIN` par un `JOIN`. Une VM enrôlée
         // mais qui n'a jamais battu resterait visible (son `vu_a` est nul, pas
         // sa ligne) — mais une VM créée SANS enrôlement disparaîtrait de
@@ -69,7 +69,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect(v2.vu_a).toBeNull();
     });
 
-    it('🔴 `vu_a` est un NOMBRE, pas une chaîne, après une époque réelle', async () => {
+    it('🔴 `vu_a` is a NUMBER, not a string, after a real epoch', async () => {
         // 🔴 C'est le défaut de CLASSE que P3 a payé : `pg` rend tout `BIGINT`
         // en CHAÎNE, et `interroger<T>` fait un `as T[]` — aucun typage ne
         // pouvait l'attraper. Le remède est au pilote
@@ -91,7 +91,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect(ligne.vu_a).toBe(MS);
     });
 
-    it('`lireParId` et `lireParNom` rendent la même ligne, `undefined` sur inconnu', async () => {
+    it('`lireParId` and `lireParNom` return the same row, `undefined` on an unknown one', async () => {
         base = await baseNeuve('vm-lire');
         await poserVm(base, 'v1', 'w1');
         await enroler(base, 'v1', 'empreinte-opaque', 'PREFIXEv1');
@@ -106,7 +106,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect(await lireParNom(base, 'w-inexistante')).toBeUndefined();
     });
 
-    it('🔴 `attribuerSiLibre` sur une VM LIBRE rend 1', async () => {
+    it('🔴 `attribuerSiLibre` on a FREE VM returns 1', async () => {
         base = await baseNeuve('vm-attrib-libre');
         await poserVm(base, 'v1', 'w1');
         const alice = await seedUser(base, 'alice@exemple.test');
@@ -114,7 +114,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
     });
 
-    it('🔴 `attribuerSiLibre` sur une VM DÉJÀ PRISE rend 0, sans lever', async () => {
+    it('🔴 `attribuerSiLibre` on an ALREADY TAKEN VM returns 0, without throwing', async () => {
         // 🔴 La rouge : retirer `AND utilisateur_id IS NULL`. MESURÉ sur les
         // DEUX moteurs (SQLite 3.50.4, PostgreSQL 16.15) : l'`UPDATE` nu rend
         // alors `1 ligne` et la VM d'alice est VOLÉE. L'index partiel
@@ -129,7 +129,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect(await attribuerSiLibre(base, 'v1', bob)).toBe(0);
     });
 
-    it('🔴 …et la VM DÉJÀ PRISE n’a PAS changé de propriétaire', async () => {
+    it('🔴 …and the ALREADY TAKEN VM did NOT change owner', async () => {
         // ⚠️ `it()` DISTINCT du précédent, et c'est la propriété ②a
         // elle-même : `expect` interrompt un test à sa première assertion
         // fausse, si bien qu'une seule des deux serait éprouvée. Sous la
@@ -144,7 +144,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, 'v1'))?.utilisateur_id).toBe(alice);
     });
 
-    it('🔴 `attribuerSiLibre` pour un utilisateur qui a DÉJÀ une VM LÈVE', async () => {
+    it('🔴 `attribuerSiLibre` for a user who ALREADY has a VM THROWS', async () => {
         // 🔴 La rouge : retirer l'index `vm_un_utilisateur` de
         // `0001-socle.sql`. MESURÉ sur les deux moteurs : l'`UPDATE` passe
         // alors, et l'utilisateur se retrouve avec deux VMs. C'est la
@@ -166,7 +166,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect((await lireParId(base, 'v2'))?.utilisateur_id).toBeNull();
     });
 
-    it('`attribuerSiLibre` sur une VM INCONNUE rend 0 sans lever', async () => {
+    it('`attribuerSiLibre` on an UNKNOWN VM returns 0 without throwing', async () => {
         // 🔴 La rouge : lever. Le motif serait alors indiscernable d'un défaut
         // de base — et `changes = 0` confond bien TROIS causes (E8), ce qui
         // est précisément pourquoi l'appelant lit d'abord la ligne.
@@ -175,7 +175,7 @@ describe(`dépôt vm, moteur=${MOTEUR}`, () => {
         expect(await attribuerSiLibre(base, 'v-inexistante', alice)).toBe(0);
     });
 
-    it('🔴 `detacher` rend la VM au vivier, et une seconde attribution redevient possible', async () => {
+    it('🔴 `detacher` returns the VM to the pool, and a second assignment becomes possible again', async () => {
         // 🔴 La rouge : ne pas remettre `null`. La VM resterait prise à vie, et
         // `--detacher` de `admin:attribuer` ne servirait à rien.
         base = await baseNeuve('vm-detacher');

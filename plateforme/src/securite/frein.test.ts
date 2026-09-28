@@ -35,7 +35,7 @@ function cleAdresse(adresse: string): [string, Budget] {
 }
 
 describe('Frein', () => {
-    it('(a) sous le budget, ne freine pas', () => {
+    it('(a) under the budget, does not brake', () => {
         const f = new Frein();
         const cles = [cleCompte('alice@exemple.test')];
         // `max - 1` échecs : il reste exactement un essai.
@@ -46,14 +46,14 @@ describe('Frein', () => {
         });
     });
 
-    it('(b) au budget exactement, freine — la comparaison est `>=`, jamais `>`', () => {
+    it('(b) exactly at the budget, brakes — the comparison is `>=`, never `>`', () => {
         const f = new Frein();
         const cles = [cleCompte('alice@exemple.test')];
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) f.echec(cles, T0 + i);
         expect(f.consulter(cles, T0 + ECHECS_MAX_COMPTE).freine).toBe(true);
     });
 
-    it('(c) après la fenêtre, le budget est rendu', () => {
+    it('(c) after the window, the budget is given back', () => {
         const f = new Frein();
         const cles = [cleCompte('alice@exemple.test')];
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) f.echec(cles, T0 + i);
@@ -62,7 +62,7 @@ describe('Frein', () => {
         expect(f.consulter(cles, T0 + FENETRE_MS + 1).freine).toBe(false);
     });
 
-    it('(d) `succes` efface la clé donnée, et elle seule', () => {
+    it('(d) `succes` erases the given key, and only it', () => {
         const f = new Frein();
         const compte = cleCompte('alice@exemple.test');
         const adresse = cleAdresse(ADR);
@@ -74,7 +74,7 @@ describe('Frein', () => {
         expect(f.consulter([adresse], T0 + ECHECS_MAX_ADRESSE).freine).toBe(true);
     });
 
-    it("(e) `consulter` n'enregistre RIEN", () => {
+    it("(e) `consulter` records NOTHING", () => {
         const f = new Frein();
         const cles = [cleCompte('alice@exemple.test')];
         // `max + 1` consultations : si `consulter` comptait, la dernière
@@ -83,37 +83,37 @@ describe('Frein', () => {
         for (let i = 0; i <= ECHECS_MAX_COMPTE; i++) {
             expect(f.consulter(cles, T0 + i).freine).toBe(false);
         }
-        expect(f.taille()).toBe(0);
+        expect(f.size()).toBe(0);
     });
 
-    it('(f) 🔴 la table ne dépasse JAMAIS son plafond d’entrées', () => {
+    it('(f) 🔴 the table NEVER exceeds its entry ceiling', () => {
         // `entreesMax` est un paramètre du constructeur PRÉCISÉMENT pour que
         // le test puisse en poser un petit : insérer dix mille clés ne
         // mesurerait rien de plus, et coûterait le temps de la suite.
         const f = new Frein(8);
         for (let i = 0; i < 9; i++) f.echec([cleCompte(`n${i}@exemple.test`)], T0 + i);
-        expect(f.taille()).toBeLessThanOrEqual(8);
+        expect(f.size()).toBeLessThanOrEqual(8);
     });
 
-    it('(g) une éviction est COMPTÉE, jamais silencieuse', () => {
+    it('(g) an eviction is COUNTED, never silent', () => {
         const f = new Frein(8);
         expect(f.evictions()).toBe(0);
         for (let i = 0; i < 9; i++) f.echec([cleCompte(`n${i}@exemple.test`)], T0 + i);
         expect(f.evictions()).toBeGreaterThanOrEqual(1);
     });
 
-    it('(g bis) une entrée EXPIRÉE est purgée avant qu’on évince une vivante', () => {
+    it('(g bis) an EXPIRED entry is purged before a live one is evicted', () => {
         const f = new Frein(2);
         f.echec([cleCompte('vieille@exemple.test')], T0);
         f.echec([cleCompte('recente@exemple.test')], T0 + FENETRE_MS + 1);
         // La table est pleine, et la plus vieille est EXPIRÉE : la purge doit
         // suffire, sans qu'aucune entrée vivante ne soit évincée.
         f.echec([cleCompte('neuve@exemple.test')], T0 + FENETRE_MS + 2);
-        expect(f.taille()).toBeLessThanOrEqual(2);
+        expect(f.size()).toBeLessThanOrEqual(2);
         expect(f.evictions()).toBe(0);
     });
 
-    it('(h) `retryApresS` est le temps RESTANT, arrondi vers le haut', () => {
+    it('(h) `retryApresS` is the REMAINING time, rounded up', () => {
         const f = new Frein();
         const cles = [cleCompte('alice@exemple.test')];
         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) f.echec(cles, T0);
@@ -126,7 +126,7 @@ describe('Frein', () => {
         expect(f.consulter(cles, T0 + FENETRE_MS - 1).retryApresS).toBe(1);
     });
 
-    it('(i) une seule clé freinée suffit, et le verdict porte SON temps', () => {
+    it('(i) a single braked key is enough, and the verdict carries ITS time', () => {
         const f = new Frein();
         const compte = cleCompte('alice@exemple.test');
         const adresse = cleAdresse(AUTRE_ADR);
@@ -138,7 +138,7 @@ describe('Frein', () => {
         expect(v.retryApresS).toBe(FENETRE_MS / 1000 - 1);
     });
 
-    it('(j) les constantes sont celles que le plan fixe, et elles sont exportées', () => {
+    it('(j) the constants are those the plan sets, and they are exported', () => {
         // Elles sont NON CALIBRÉES (voir l'en-tête du module) : ce test les
         // fige pour qu'un changement soit un geste délibéré, pas une dérive.
         expect(FENETRE_MS).toBe(15 * 60_000);
@@ -164,7 +164,7 @@ describe('Frein', () => {
     // fichier, comme les tests (a) à (i) ci-dessus : eux éprouvent la
     // MÉCANIQUE générique de `Frein`, celui-ci éprouve le NAMESPACING réel de
     // `securite/frein.ts`.
-    it("(k) le budget de requêtes n'entame PAS le budget d'échecs de la même adresse", () => {
+    it("(k) the request budget does NOT eat into the failure budget of the same address", () => {
         // 🔴 CORRECTIF (round de correction 1, critique ①) : le brief d'origine
         // prescrivait `i < 10` contre un budget d'échecs de 50 — l'assertion
         // NE POUVAIT PAS tomber, fusion des clés ou pas (10 < 50 dans les DEUX
@@ -181,7 +181,7 @@ describe('Frein', () => {
         );
     });
 
-    it('(k bis) — et RÉCIPROQUEMENT : des échecs sur une adresse n’entament PAS son budget de requêtes', () => {
+    it('(k bis) — and CONVERSELY: failures on an address do NOT eat into its request budget', () => {
         // Symétrique de (k) : un attaquant qui épuise le budget D'ÉCHECS
         // d'une adresse (en se trompant de mot de passe, par exemple) ne
         // doit PAS voir son budget de VOLUME entamé pour autant — les deux
@@ -208,7 +208,7 @@ describe('Frein', () => {
     // l'éviction croisée ne mord pas parce que `req:` (une minute) expire
     // TOUJOURS avant `compte:`/`adr:` (quinze minutes). Elle ne tient QUE si
     // cette inégalité tient — voir `BUDGET_REQUETES` dans le module.
-    it('(l) 🔴 FENETRE_REQUETES_MS reste PLUS COURTE que FENETRE_MS — sans quoi la propriété favorable de purge tombe', () => {
+    it('(l) 🔴 FENETRE_REQUETES_MS stays SHORTER than FENETRE_MS — otherwise the favourable purge property falls', () => {
         expect(FENETRE_REQUETES_MS).toBeLessThan(FENETRE_MS);
     });
 
@@ -221,7 +221,7 @@ describe('Frein', () => {
     // ainsi entre deux tentatives ne consomme jamais qu'une fraction infime du
     // budget partagé : le reste demeure ouvert à toute autre requête de la
     // même adresse (session de contrôle du superviseur, autres fenêtres).
-    it("(m) 🔴 un pair refusé qui retente selon delai_de_repli (repli.rs) NE VERROUILLE PAS son adresse", () => {
+    it("(m) 🔴 a refused peer that retries according to delai_de_repli (repli.rs) DOES NOT LOCK its address", () => {
         // Copie fidèle de `agent/src/plateforme/repli.rs::delai_de_repli` —
         // mêmes constantes (`REPLI_MIN_MS`/`REPLI_MAX_MS`), même formule.
         // Si l'une des deux dérive un jour sans que l'autre suive, ce test
@@ -281,7 +281,7 @@ describe('Frein', () => {
     // À PLAT toutes les 500 ms — le comportement MESURÉ avant ce round —
     // VERROUILLE bel et bien l'adresse. Sans ce témoin, (m) ne prouverait
     // rien : un contrôle qu'on n'a jamais vu rougir n'est pas un contrôle.
-    it('(m bis) — témoin négatif : un pair qui retente À PLAT, plus vite que le plancher documenté, VERROUILLE son adresse', () => {
+    it('(m bis) — negative witness: a peer that retries FLAT, faster than the documented floor, LOCKS its address', () => {
         // ⚠️ PAS 500 ms : c'est PRÉCISÉMENT `ESPACEMENT_PLANCHER_MS`, le
         // PLANCHER documenté d'`agent/src/relance_pont.rs` (`PERIODE_
         // RELANCE_PONT_MIN`, l'ex-nom cité ici avant le round de correction

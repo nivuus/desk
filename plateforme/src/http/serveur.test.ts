@@ -70,7 +70,7 @@ function tenter(url: string, borneMs = 3000): Promise<'ouvert' | 'ferme'> {
         const w = new WebSocket(url);
         const minuteur = setTimeout(() => {
             w.terminate();
-            reject(new Error(`aucune issue pour ${url} en ${borneMs} ms`));
+            reject(new Error(`no outcome for ${url} within ${borneMs} ms`));
         }, borneMs);
         const finir = (issue: 'ouvert' | 'ferme') => {
             clearTimeout(minuteur);
@@ -85,18 +85,18 @@ function tenter(url: string, borneMs = 3000): Promise<'ouvert' | 'ferme'> {
 }
 
 describe('demarrerServeur', () => {
-    it("n'écoute QUE sur l'adresse nommée", async () => {
+    it("listens ONLY on the named address", async () => {
         service = await servir('http-adresse');
         expect(service.port).toBeGreaterThan(0);
         await expect(tenter(`ws://127.0.0.1:${service.port}/signal`)).resolves.toBe('ouvert');
     });
 
-    it('refuse la montée WebSocket sur un chemin inconnu', async () => {
+    it('refuses the WebSocket upgrade on an unknown path', async () => {
         service = await servir('http-chemin');
         await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
     });
 
-    it('🔴 accepte la montée WebSocket sur /agent — la seconde branche', async () => {
+    it('🔴 accepts the WebSocket upgrade on /agent — the second branch', async () => {
         // 🔴 La rouge : ne pas ajouter la branche. Le `404` écrit à la main
         // pour tout chemin autre que `/signal` la ferme, et c'est exactement
         // ce que le test « refuse la montée sur un chemin inconnu » éprouve.
@@ -111,22 +111,22 @@ describe('demarrerServeur', () => {
     // le relais répondrait à côté de sa garde) ; le second est le témoin qui
     // rend le premier interprétable ; le troisième est le témoin que /agent
     // n'a pas bougé.
-    it('🔴 accepte la montée WebSocket sur /signal — le relais a déménagé', async () => {
+    it('🔴 accepts the WebSocket upgrade on /signal — the relay has moved', async () => {
         service = await servir('http-signal');
         await expect(tenter(`ws://127.0.0.1:${service.port}/signal`)).resolves.toBe('ouvert');
     });
 
-    it('🔴 REFUSE désormais la montée sur la RACINE', async () => {
+    it('🔴 now REFUSES the upgrade on the ROOT', async () => {
         service = await servir('http-racine-fermee');
         await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ferme');
     });
 
-    it('/agent est INCHANGÉ', async () => {
+    it('/agent is UNCHANGED', async () => {
         service = await servir('http-agent-inchange');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
     });
 
-    it('🔴 refuse TOUJOURS un chemin inconnu — /agent n’ouvre pas le service', async () => {
+    it('🔴 ALWAYS refuses an unknown path — /agent does not open the service', async () => {
         // 🔴 La rouge : remplacer `if (chemin !== CHEMIN_SIGNAL)` par une
         // comparaison à une liste noire (`if (chemin === '/inconnu')`), ce qui
         // rendrait le service ouvert à TOUT chemin. Le test l. 79 existe déjà
@@ -136,13 +136,13 @@ describe('demarrerServeur', () => {
         // (revue de la tâche 5, constat I2 : la comparaison EXACTE de
         // `/signal` n'était gardée par AUCUN test — une mutation en
         // `startsWith` passait les 16 tests du fichier).
-        service = await servir('http-inconnu-encore');
+        service = await servir('http-unknown-again');
         await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agentaire`)).resolves.toBe('ferme');
         await expect(tenter(`ws://127.0.0.1:${service.port}/signalement`)).resolves.toBe('ferme');
     });
 
-    it('sert le relais de signaling sur /signal, poignée de main comprise', async () => {
+    it('serves the signaling relay on /signal, handshake included', async () => {
         // Un pair 'agent' et un pair 'client' sur '/signal' : l'offre du
         // client parvient à l'agent — exactement ce que `server.test.ts`
         // éprouve déjà, rejoué ici à travers le serveur HTTP pour prouver que
@@ -191,8 +191,8 @@ describe('demarrerServeur', () => {
     });
 });
 
-describe('le chaînage des quatre routeurs', () => {
-    it('🔴 les QUATRE chemins répondent, et `/inconnu` rend le 404 MOT POUR MOT', async () => {
+describe('the chaining of the four routers', () => {
+    it('🔴 the FOUR paths answer, and `/inconnu` returns the 404 WORD FOR WORD', async () => {
         // 🔴 La rouge : retirer un maillon de la chaîne. Sa route rend alors
         // 404 — et c'est la panne la plus discrète possible, puisque le service
         // répond, écoute, et sert les deux autres.
@@ -202,7 +202,7 @@ describe('le chaînage des quatre routeurs', () => {
         // `pomerium` (le défaut de `CONFIG`), cette route N'EXISTE PLUS DU
         // TOUT (voir `routes-auth.ts`), et l'assertion `400` ci-dessous
         // deviendrait `404` pour une raison hors du champ de ce test.
-        service = await servir('http-chaine', { ...CONFIG, auth: 'motdepasse' });
+        service = await servir('http-chain', { ...CONFIG, auth: 'motdepasse' });
         const url = `http://127.0.0.1:${service.port}`;
 
         // `/auth/connexion` répond TOUJOURS EN MODE MOTDEPASSE : P2 n'est pas
@@ -241,11 +241,11 @@ describe('le chaînage des quatre routeurs', () => {
         // Et le 404 de P1 est intact, CARACTÈRE POUR CARACTÈRE.
         const inconnu = await fetch(`${url}/inconnu`);
         expect(inconnu.status).toBe(404);
-        expect(await inconnu.text()).toBe('introuvable\n');
+        expect(await inconnu.text()).toBe('not found\n');
         expect(inconnu.headers.get('content-type')).toBe('text/plain; charset=utf-8');
     });
 
-    it('🔴 une route qui REJETTE rend 500 { refus: interne }, et le processus SURVIT', async () => {
+    it('🔴 a route that REJECTS returns 500 { refus: interne }, and the process SURVIVES', async () => {
         // 🔴 La rouge : retirer le `.catch`. Une promesse rejetée dans un
         // gestionnaire d'évènement Node ABAT TOUT LE PROCESSUS — c'est le mode
         // de défaillance que `serveur.ts` documente déjà, et le chaînage de P4
@@ -256,10 +256,10 @@ describe('le chaînage des quatre routeurs', () => {
         // valide atteint alors `orchestrateur.lister()` et rejette.
         const sabotee: TypePilote = {
             async interroger<T>(): Promise<T[]> {
-                throw new Error('base injoignable');
+                throw new Error('database unreachable');
             },
             async executer() {
-                throw new Error('base injoignable');
+                throw new Error('database unreachable');
             },
             async transaction<T>(corps: (p: TypePilote) => Promise<T>): Promise<T> {
                 return corps(sabotee);
@@ -281,7 +281,7 @@ describe('le chaînage des quatre routeurs', () => {
         expect(apres.status).toBe(404);
     });
 
-    it('🔴 les DEUX montées WebSocket sont INCHANGÉES PAR LE CHAÎNAGE HTTP', async () => {
+    it('🔴 BOTH WebSocket upgrades are UNCHANGED BY THE HTTP CHAINING', async () => {
         // 🔴 La rouge : toucher au routage de l'`upgrade` DEPUIS CE CHAÎNAGE.
         // C'est hors sujet de cette tâche, et ce test le fige — le POINT
         // D'APPEL du chaînage HTTP (`void servirTout(...)`, dans
@@ -297,7 +297,7 @@ describe('le chaînage des quatre routeurs', () => {
         // haut. Ce qui reste à sa charge est ajouté : que la racine reste
         // FERMÉE, comme `/signal` et `/agent` restent ce qu'ils sont, même
         // après le chaînage des quatre routeurs HTTP.
-        service = await servir('http-chaine-ws');
+        service = await servir('http-chain-ws');
         await expect(tenter(`ws://127.0.0.1:${service.port}/signal`)).resolves.toBe('ouvert');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
         await expect(tenter(`ws://127.0.0.1:${service.port}/vm`)).resolves.toBe('ferme');
@@ -305,7 +305,7 @@ describe('le chaînage des quatre routeurs', () => {
     });
 });
 
-describe('la trame maximale acceptée avant toute authentification', () => {
+describe('the maximum frame accepted before any authentication', () => {
     /// Ouvre un socket sur `url`, y envoie `octets` octets, et rend le code de
     /// fermeture — ou `'servi'` si le socket est toujours ouvert au bout de
     /// la borne.
@@ -335,11 +335,11 @@ describe('la trame maximale acceptée avant toute authentification', () => {
                 // Un socket fermé en cours d'écriture lève côté client : ce
                 // n'est pas un échec du test, c'est la fermeture qu'il mesure.
             });
-            setTimeout(() => rejeter(new Error('ni fermeture ni verdict en 3000 ms')), 3000);
+            setTimeout(() => rejeter(new Error('neither closing nor verdict within 3000 ms')), 3000);
         });
     }
 
-    it('(a) 🔴 une trame TROP GRANDE ferme le socket en 1009, sur `/signal`', async () => {
+    it('(a) 🔴 a TOO LARGE frame closes the socket with 1009, on `/signal`', async () => {
         // Le pair est ANONYME : `signaling/relais.ts:84-86` dit lui-même que
         // le contrôle de FORME court une trentaine de lignes AVANT
         // `garde.verify`. Sans borne, `JSON.parse` sur la trame est une
@@ -355,7 +355,7 @@ describe('la trame maximale acceptée avant toute authentification', () => {
             .resolves.toBe(1009);
     });
 
-    it('(a bis) 🔴 et sur `/agent` AUSSI, qui est l’autre porte anonyme', async () => {
+    it('(a bis) 🔴 and on `/agent` TOO, which is the other anonymous door', async () => {
         // Le canal d'enrôlement est ouvert avant toute identité : le borner
         // seulement sur `/signal` laisserait la moitié du problème entière.
         service = await servir('trame-agent');
@@ -363,18 +363,18 @@ describe('la trame maximale acceptée avant toute authentification', () => {
             .resolves.toBe(1009);
     });
 
-    it('(b) 🔴 une trame JUSTE SOUS la borne est acceptée et servie', async () => {
+    it('(b) 🔴 a frame JUST UNDER the bound is accepted and served', async () => {
         // 🔴 SANS CE TEST, UN `maxPayload: 1` PASSERAIT LE TEST (a). C'est la
         // moitié qui empêche la borne de devenir un refus de service posé de
         // nos propres mains.
-        service = await servir('trame-sous-borne');
+        service = await servir('frame-under-bound');
         // Le socket reste ouvert : le message est mal formé, et le relais
         // laisse retenter un message malformé plutôt que de fermer.
         await expect(pousser(`ws://127.0.0.1:${service.port}/signal`, TRAME_MAX_OCTETS - 1))
             .resolves.toBe('servi');
     });
 
-    it('(d) 🔴 LE PROCESSUS SURVIT à la trame refusée, et sert la requête suivante', async () => {
+    it('(d) 🔴 THE PROCESS SURVIVES the refused frame, and serves the next request', async () => {
         // 🔴 CE TEST EXISTE PARCE QUE LE CORRECTIF DE (a) A FAILLI ÊTRE PIRE
         // QUE LE DÉFAUT. Poser `maxPayload` fait émettre `error` par `ws` sur
         // le socket SERVEUR ; or aucun socket serveur de ce service n'avait
@@ -403,7 +403,7 @@ describe('la trame maximale acceptée avant toute authentification', () => {
         expect(apres.status).toBe(404);
     });
 
-    it('(c) la borne est celle que le module annonce, et elle est grande', () => {
+    it('(c) the bound is the one the module announces, and it is large', () => {
         // ⚠️ NON CALIBRÉE, et son plancher est RAISONNÉ, pas mesuré : voir
         // l'en-tête de `serveur.ts`. Ce test fige la valeur pour qu'un
         // changement soit un geste délibéré.
@@ -417,10 +417,10 @@ describe('la trame maximale acceptée avant toute authentification', () => {
 // `unTour` ou `evincer` à la main ne peut PAS voir ce défaut : il prouve que
 // le mécanisme fonctionne, jamais que le SERVICE le déclenche. Celui-ci ne
 // touche qu'à `startServer`, le point d'entrée réel.
-describe('le câblage du nettoyage de fond (round de correction 1)', () => {
+describe('the wiring of the background clean-up (correction round 1)', () => {
     it(
-        '🔴 démarrer le service évince une icône orpheline et vieille — ' +
-            'SANS appel manuel à evincer, unTour, ni demarrerNettoyage',
+        '🔴 starting the service evicts an orphan and old icon — ' +
+            'WITHOUT a manual call to evincer, unTour, nor demarrerNettoyage',
         async () => {
             const racineIcones = join(mkdtempSync(join(tmpdir(), 'g2-icones-cablage-')), 'icones');
             const racineTranches = join(
@@ -431,7 +431,7 @@ describe('le câblage du nettoyage de fond (round de correction 1)', () => {
 
             const orpheline = createHash('sha256').update('orpheline-cablage').digest('hex');
             const chemin = join(racineIcones, orpheline);
-            writeFileSync(chemin, 'contenu jamais revalidé par lire()');
+            writeFileSync(chemin, 'content never revalidated by lire()');
             // 400 jours dans le passé : bien au-delà d'AGE_EVICTION_ICONE_MS
             // (180 jours, `apps/icones.ts`).
             const vieux = new Date(Date.now() - 400 * 24 * 60 * 60_000);

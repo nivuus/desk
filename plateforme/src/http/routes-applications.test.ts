@@ -62,7 +62,7 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
             .then((servie) => {
                 if (servie) return;
                 rep.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-                rep.end('introuvable\n');
+                rep.end('not found\n');
             })
             .catch((cause) => {
                 rep.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
@@ -89,17 +89,17 @@ function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAg
     };
 }
 
-describe(`routes /applications, moteur=${MOTEUR}`, () => {
-    it("rend `false` sur un chemin étranger : le 404 du serveur suit", async () => {
+describe(`routes /applications, engine=${MOTEUR}`, () => {
+    it("returns `false` on a foreign path: the server's 404 follows", async () => {
         // 🔴 Rendre `true` ferait manger à cette route les 404 de toutes les
         // autres, et un chemin inconnu répondrait un corps JSON d'application.
         const url = await servir('apps-etranger');
-        const r = await fetch(`${url}/rien-du-tout`);
+        const r = await fetch(`${url}/nothing-at-all`);
         expect(r.status).toBe(404);
-        expect(await r.text()).toBe('introuvable\n');
+        expect(await r.text()).toBe('not found\n');
     });
 
-    it('🔴 le motif de `/application/:id/lancer` est ANCRÉ DES DEUX BOUTS', async () => {
+    it('🔴 the pattern of `/application/:id/lancer` is ANCHORED AT BOTH ENDS', async () => {
         // 🔴 Un `startsWith` ouvrirait « une famille entière de chemins que
         // personne n'a décidés » (`serveur.ts`).
         //
@@ -118,14 +118,14 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         ];
         for (const cible of declines) {
             const r = await fetch(cible, { method: 'POST' });
-            expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'introuvable\n']);
+            expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'not found\n']);
         }
         // Et le chemin JUSTE est bien servi — sans ce témoin, les assertions
         // ci-dessus seraient vraies d'une route qui ne sert RIEN.
         expect((await fetch(`${url}/application/x/lancer`, { method: 'POST' })).status).not.toBe(404);
     });
 
-    it('SANS en-tête `Authorization`, rend 401', async () => {
+    it('WITHOUT an `Authorization` header, returns 401', async () => {
         // 🔴 Les deux routes de P1/P2 sont ouvertes par construction, et rien
         // dans ce dépôt n'authentifiait une requête HTTP avant P4. L'omettre
         // ici rendrait le catalogue de toute VM lisible par n'importe qui.
@@ -135,7 +135,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ refus: 'jeton-absent' });
     });
 
-    it("🔴 avec un jeton d'AGENT, refuse — agent et humain sont signés par le MÊME secret", async () => {
+    it("🔴 with an AGENT token, refuses — agent and human are signed by the SAME secret", async () => {
         // 🔴 Accepter tout jeton valide rouvrirait E5 de P3 : sans le claim de
         // type, les deux identités sont INTERCHANGEABLES. Un agent compromis
         // lirait alors le catalogue de son propre utilisateur, et le lancerait.
@@ -147,7 +147,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ refus: 'jeton-agent' });
     });
 
-    it('avec un jeton EXPIRÉ, refuse — et le test fait AVANCER l’horloge', async () => {
+    it('with an EXPIRED token, refuses — and the test ADVANCES the clock', async () => {
         // 🔴 Une horloge figée rendrait ce cas inerte : il lirait un état
         // final au lieu de voir la transition. Le jeton est signé à `MS`, et
         // la requête est servie bien après son expiration.
@@ -159,7 +159,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ refus: 'jeton-expire' });
     });
 
-    it('sert la requête préalable `OPTIONS`, sans laquelle rien n’est atteignable', async () => {
+    it('serves the `OPTIONS` preflight request, without which nothing is reachable', async () => {
         // ⚠️ Les deux routes exigent `Authorization`, ce qui rend la requête
         // NON SIMPLE : le navigateur émet d'abord un `OPTIONS`, et un 404 lui
         // ferait abandonner sans jamais envoyer la vraie requête. AUCUN test
@@ -174,7 +174,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(r.headers.get('access-control-allow-origin')).toBe(ORIGINE);
     });
 
-    it('rend les applications de la VM demandée, et rien d’autre', async () => {
+    it('returns the applications of the requested VM, and nothing else', async () => {
         const url = await servir('apps-liste');
         await poserVm(base!, 'v-1');
         await poserVm(base!, 'v-2');
@@ -188,7 +188,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(corps.applications.map((a) => a.nom)).toEqual(['Firefox']);
     });
 
-    it("🔴 frappe l'URL SIGNÉE de l'icône, et `null` quand il n'y en a pas", async () => {
+    it("🔴 strikes the SIGNED URL of the icon, and `null` when there is none", async () => {
         // 🔴 DÉCISION DU PROPRIÉTAIRE DU DÉPÔT, 30 AOÛT 2026 : c'est ICI, sous
         // le jeton porteur et APRÈS le contrôle d'appartenance de la VM,
         // qu'une URL d'icône est frappée — jamais librement. Ce test fige ce
@@ -224,7 +224,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it("🔴 une VM ÉTRANGÈRE répond EXACTEMENT comme une VM INCONNUE", async () => {
+    it("🔴 a FOREIGN VM answers EXACTLY like an UNKNOWN VM", async () => {
         // 🔴 CE TEST A ÉTÉ RETOURNÉ. Il épinglait `403 {refus:'vm-etrangere'}`,
         // c'est-à-dire la décision D9 du plan de G1 — un ORACLE
         // D'ÉNUMÉRATION : le code de retour confirmait à qui n'y a pas droit
@@ -257,7 +257,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(etrangere.status).toBe(404);
     });
 
-    it("🔴 le corps du refus NE PORTE AUCUNE TRACE du cas réel", async () => {
+    it("🔴 the body of the refusal CARRIES NO TRACE of the real case", async () => {
         // 🔴 C'EST L'OBJET MÊME DE LA DÉCISION : la ligne de journal distingue,
         // la réponse HTTP jamais. Sans cette assertion, un champ de diagnostic
         // ajouté « pour aider » rétablirait l'oracle sans qu'aucun test ne
@@ -277,7 +277,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(corps).not.toContain('proprietaire');
     });
 
-    it("🔴 la LIGNE DE JOURNAL, elle, distingue les deux cas", async () => {
+    it("🔴 the LOG LINE, however, tells the two cases apart", async () => {
         // 🔴 C'EST LA CONTREPARTIE EXPLICITE DU REFUS INDISTINGUABLE. Sans
         // elle, uniformiser coûterait à l'exploitant tout le diagnostic : « la
         // VM n'existe pas » et « elle est à quelqu'un d'autre » se liraient
@@ -310,7 +310,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(apresInconnue).not.toContain('cas=etrangere');
     });
 
-    it('🔴 une VM NON ATTRIBUÉE est servie, ET la ligne de journal est ÉMISE', async () => {
+    it('🔴 an UNASSIGNED VM is served, AND the log line is EMITTED', async () => {
         // 🔴 SERVIR EN SILENCE RENDRAIT L'ABSENCE D'ISOLATION INVISIBLE. Tant
         // qu'aucune VM n'est attribuée, tout utilisateur authentifié voit
         // toutes les VMs — ce n'est PAS une isolation, et la ligne de journal
@@ -325,11 +325,11 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
 
         const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jetonDe(u)) });
         expect(r.status).toBe(200);
-        expect(traces.join(' | ')).toContain('vm non attribuee');
+        expect(traces.join(' | ')).toContain('unassigned vm');
         expect(traces.join(' | ')).toContain('v-1');
     });
 
-    it('rend 404 sur une application INCONNUE', async () => {
+    it('returns 404 on an UNKNOWN application', async () => {
         const url = await servir('apps-lancer-inconnue');
         const u = await createUser(base!, 'u@exemple.test', 'x', MS);
         const r = await fetch(`${url}/application/jamais-vue/lancer`, {
@@ -340,7 +340,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ refus: 'application-inconnue' });
     });
 
-    it('🔴 rend 503 quand l’agent est ABSENT, jamais 200', async () => {
+    it('🔴 returns 503 when the agent is ABSENT, never 200', async () => {
         // 🔴 Rendre 200 ferait afficher au hub un succès pour un lancement qui
         // n'a PAS eu lieu — la panne la plus difficile à diagnostiquer qui
         // soit, parce que rien nulle part ne la contredit.
@@ -357,7 +357,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ refus: 'agent-injoignable' });
     });
 
-    it("🔴 rend 504 quand l'agent NE RÉPOND PAS, jamais 202 sans attendre", async () => {
+    it("🔴 returns 504 when the agent DOES NOT ANSWER, never 202 without waiting", async () => {
         // 🔴 Rendre 202 sans attendre ferait passer le critère de recette sur
         // un binaire qui n'a RIEN lancé : la plateforme dirait « c'est parti »
         // pour un ordre dont personne n'a jamais vu l'issue.
@@ -381,7 +381,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(Date.now() - debut).toBeGreaterThanOrEqual(DELAI_LANCEMENT_MS - 50);
     }, 20_000);
 
-    it("🔴 un lancement réussi rend L'ISSUE, jamais un booléen", async () => {
+    it("🔴 a successful launch returns THE OUTCOME, never a boolean", async () => {
         // 🔴 Aplatir l'issue en booléen ferait perdre au critère de recette
         // toute discrimination : `raccourci` contre `cible` est ce qui dit si
         // c'est bien le `.lnk` qu'on a lancé, ou une cible reconstruite.
@@ -399,7 +399,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ issue: 'raccourci' });
     });
 
-    it("un lancement en ÉCHEC côté agent rend 200 et l'issue `echec`, jamais une erreur HTTP", async () => {
+    it("a launch that FAILS on the agent side returns 200 and the outcome `echec`, never an HTTP error", async () => {
         // ⚠️ L'ORDRE A ABOUTI : la plateforme a fait son travail, et l'agent a
         // répondu. Rendre une 5xx dirait que le SERVICE a échoué, ce qui est
         // faux — et le distinguer de `agent-injoignable` est tout l'intérêt
@@ -418,7 +418,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ issue: 'echec' });
     });
 
-    it("🔴 lancer une application d'une VM ÉTRANGÈRE répond comme une VM INCONNUE", async () => {
+    it("🔴 launching an application of a FOREIGN VM answers like an UNKNOWN VM", async () => {
         // Sans cette garde, l'identifiant d'application suffirait à lancer un
         // programme sur la machine de quelqu'un d'autre — et l'agent, lui,
         // n'a aucun moyen de savoir qui a demandé.
@@ -467,7 +467,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(etrangere.status).toBe(404);
     });
 
-    it('refuse la MÉTHODE sur un chemin qui existe, plutôt qu’un 404', async () => {
+    it('refuses the METHOD on a path that exists, rather than a 404', async () => {
         // Le chemin EXISTE, c'est la méthode qui ne convient pas : un 404
         // ferait chercher une route absente. Même choix que `routes-vm.ts`.
         const url = await servir('apps-methode');
@@ -475,7 +475,7 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect((await fetch(`${url}/application/x/lancer`)).status).toBe(405);
     });
 
-    it('exige le paramètre `vm`, et le dit', async () => {
+    it('requires the `vm` parameter, and says so', async () => {
         const url = await servir('apps-sans-vm');
         const u = await createUser(base!, 'u@exemple.test', 'x', MS);
         const r = await fetch(`${url}/applications`, { headers: withIt(jetonDe(u)) });

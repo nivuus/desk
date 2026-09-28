@@ -40,7 +40,7 @@ import type { ServerResponse } from 'node:http';
 import { ENTETES_SECURITE } from './entetes';
 
 /// The exact body, kept WORD FOR WORD since P1.
-export const CORPS_INTROUVABLE = 'introuvable\n';
+export const CORPS_INTROUVABLE = 'not found\n';
 
 /// ⚠️ `nosniff` IS NOT OPTIONAL HERE: without `ENTETES_SECURITE`, an unknown
 /// path would be the ONLY response of the service not to carry it — the reason

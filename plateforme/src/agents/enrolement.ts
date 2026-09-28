@@ -49,7 +49,7 @@ export async function verifyEnrolment(
 ): Promise<VerdictEnrolement> {
     const ligne = await lireParVm(p, vmId);
     if (ligne === undefined) {
-        journaliser(`enrôlement refusé pour la VM ${vmId}`);
+        journaliser(`enrolment refused for VM ${vmId}`);
         return REFUS;
     }
 
@@ -57,7 +57,7 @@ export async function verifyEnrolment(
         // ⚠️ EXACTLY THE SAME TEXT as above, on purpose: two different
         // labels in a log end up finding their way into a
         // response, and the oracle would be reborn through the back door.
-        journaliser(`enrôlement refusé pour la VM ${vmId}`);
+        journaliser(`enrolment refused for VM ${vmId}`);
         return REFUS;
     }
 

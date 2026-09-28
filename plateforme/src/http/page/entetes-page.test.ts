@@ -7,39 +7,39 @@ import {
     ENTETES_RESSOURCE_REVALIDABLE,
 } from './entetes-page';
 
-describe('les en-têtes de document', () => {
+describe('the document headers', () => {
     // 🔴 TROIS TESTS DISTINCTS, PAS TROIS ASSERTIONS DANS UN SEUL : `expect`
     // s'arrête au premier échec, et ces trois propriétés de sécurité sont
     // INDÉPENDANTES — si la CSP est fausse, personne n'apprend si
     // `X-Frame-Options` l'est aussi.
-    it('porte la CSP', () => {
+    it('carries the CSP', () => {
         expect(ENTETES_DOCUMENT['Content-Security-Policy']).toBe(CSP);
     });
 
-    it('porte Referrer-Policy: no-referrer', () => {
+    it('carries Referrer-Policy: no-referrer', () => {
         expect(ENTETES_DOCUMENT['Referrer-Policy']).toBe('no-referrer');
     });
 
-    it('porte X-Frame-Options: DENY', () => {
+    it('carries X-Frame-Options: DENY', () => {
         expect(ENTETES_DOCUMENT['X-Frame-Options']).toBe('DENY');
     });
 
     // 🔴 HSTS RESTE AU TERMINATEUR TLS. La plateforme est joignable en clair
     // sur 192.168.3.1:8080 ; y affirmer que l'origine est HTTPS pour un an
     // serait une affirmation qu'elle n'est pas en position de faire.
-    it("n'émet PAS Strict-Transport-Security", () => {
+    it("does NOT emit Strict-Transport-Security", () => {
         expect(ENTETES_DOCUMENT).not.toHaveProperty('Strict-Transport-Security');
     });
 
-    it('garde no-store sur le document, qui peut porter un jeton', () => {
+    it('keeps no-store on the document, which may carry a token', () => {
         expect(ENTETES_DOCUMENT['Cache-Control']).toBe('no-store');
     });
 });
 
-describe('les en-têtes de ressource EMPREINTÉE', () => {
+describe('the headers of a FINGERPRINTED resource', () => {
     // 🔴 LA MOITIÉ QUI COMPTE. `no-store` ici tuerait le cache du navigateur
     // sur des noms que Vite empreinte réellement — la panne silencieuse type.
-    it('est immutable, JAMAIS no-store', () => {
+    it('is immutable, NEVER no-store', () => {
         expect(ENTETES_RESSOURCE_EMPREINTEE['Cache-Control']).toBe(
             'public, max-age=31536000, immutable',
         );
@@ -47,35 +47,35 @@ describe('les en-têtes de ressource EMPREINTÉE', () => {
 
     // 🔴 DEUX TESTS DISTINCTS, PAS DEUX ASSERTIONS DANS UN SEUL — même raison
     // que ci-dessus.
-    it("ne porte PAS Content-Security-Policy : c'est un en-tête de document", () => {
+    it("does NOT carry Content-Security-Policy: it is a document header", () => {
         expect(ENTETES_RESSOURCE_EMPREINTEE).not.toHaveProperty('Content-Security-Policy');
     });
 
-    it("ne porte PAS X-Frame-Options : c'est un en-tête de document", () => {
+    it("does NOT carry X-Frame-Options: it is a document header", () => {
         expect(ENTETES_RESSOURCE_EMPREINTEE).not.toHaveProperty('X-Frame-Options');
     });
 });
 
-describe('les en-têtes de ressource RÉVALIDABLE', () => {
+describe('the headers of a REVALIDATABLE resource', () => {
     // 🔴 LE JEU NEUF, ET LA RAISON DE SON EXISTENCE : `hub.webmanifest`,
     // `favicon.ico` et toute ressource à nom STABLE recevaient un an
     // d'`immutable` — donc devenaient non révisables chez tout navigateur les
     // ayant vues.
-    it("n'est JAMAIS immutable", () => {
+    it("is NEVER immutable", () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).not.toContain('immutable');
     });
 
     // ⚠️ SÉPARÉ : `no-store` est l'AUTRE extrême, tout aussi faux ici, et il
     // faut qu'une régression vers lui rougisse pour SA raison.
-    it("n'est JAMAIS no-store non plus", () => {
+    it("is NEVER no-store either", () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).not.toContain('no-store');
     });
 
-    it('exige une revalidation', () => {
+    it('requires a revalidation', () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['Cache-Control']).toContain('must-revalidate');
     });
 
-    it('porte nosniff comme les deux autres jeux', () => {
+    it('carries nosniff like the two other sets', () => {
         expect(ENTETES_RESSOURCE_REVALIDABLE['X-Content-Type-Options']).toBe('nosniff');
     });
 });
@@ -83,8 +83,8 @@ describe('les en-têtes de ressource RÉVALIDABLE', () => {
 // 🔴 DEUX COPIES D'UNE MÊME POLITIQUE DÉRIVENT. Ce test est la seule chose qui
 // l'empêche : un durcissement appliqué d'un seul côté livrerait deux montages
 // aux sécurités différentes sans qu'aucune suite ne bronche.
-describe('la CSP ne dérive pas de celle de nginx', () => {
-    it('est identique à celle de deploiement/nginx.conf', () => {
+describe('the CSP does not drift from the nginx one', () => {
+    it('is identical to the one of deploiement/nginx.conf', () => {
         // ⚠️ AUCUN REPLI : `readFileSync` LÈVE si le fichier manque, et c'est
         // voulu. « Un `||` de repli transforme *fichier absent* en *contrôle
         // vert*. »
@@ -106,8 +106,8 @@ describe('la CSP ne dérive pas de celle de nginx', () => {
 // APPLICATION, publié en `blob:` par `client/src/hub/page.ts`
 // (`publierLeManifeste`, voie V1 de G5) — `'self'` seul le bloque en boucle
 // sur `https://app.allanic.me`. Ce test rougit si `manifest-src` perd `blob:`.
-describe("manifest-src admet blob:, sans quoi le manifeste PAR APPLICATION ne charge plus", () => {
-    it('admet blob: en plus de self', () => {
+describe("manifest-src admits blob:, otherwise the PER-APPLICATION manifest no longer loads", () => {
+    it('admits blob: in addition to self', () => {
         const [, directive] = CSP.match(/manifest-src ([^;]+);/) ?? [];
         expect(directive).toBe("'self' blob:");
     });

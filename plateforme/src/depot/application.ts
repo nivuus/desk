@@ -2,13 +2,13 @@
 // merge to it.
 //
 // 🔴 THE CLOCK IS A PARAMETER, never read here — same rule as
-// `depot/agent.ts`, `depot/session.ts` and `depot/utilisateur.ts`, and it is what
+// `depot/agent.ts`, `depot/session.ts` and `depot/utilisateur.ts`, and it is what (policy: allow-fr - file name)
 // makes `application.test.ts` able to assert an EXACT epoch.
 //
 // 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, `null`
 // included, otherwise `rendreMarqueurs` would throw on the Postgres side
 // (`base/pilote.ts`). ⚠️ This half of the lint bites ONLY on the Postgres
-// path — the static lint of `base/sous-ensemble.test.ts` only sweeps the
+// path — the static lint of `base/sous-ensemble.test.ts` only sweeps the (policy: allow-fr - file name)
 // `.sql` files. A faulty query written here would therefore be green under `test:sqlite`
 // alone.
 //

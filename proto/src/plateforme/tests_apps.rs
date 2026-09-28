@@ -11,7 +11,7 @@
 //!
 //! **The boundary is the one the protocol already carries**: the lifecycle
 //! (version, refusal, enrolment, heartbeat) stays in `tests.rs`, app
-//! management comes here. ⚠️ `les_variantes_de_p3_rejettent_desormais_la_version_1`
+//! management comes here. ⚠️ `the_p3_variants_now_reject_version_1`
 //! STAYED in `tests.rs` although it lived in the G1 section: it only tests
 //! lifecycle variants, and filing it here would have classified it by its
 //! address rather than by its object.
@@ -57,13 +57,13 @@ fn app_sans_icone() -> Application {
 }
 
 #[test]
-fn serialise_le_catalogue() {
+fn serialises_the_catalogue() {
     let json = serde_json::to_string(&VersLaPlateforme::catalogue(
         true,
         vec![app_temoin()],
         vec!["disparue-1".into()],
     ))
-    .expect("sér.");
+    .expect("ser.");
     assert_eq!(
         json,
         r##"{"type":"catalogue","v":5,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32","icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2","source_max":{"pixels":256},"accent":"#3f2a7a","associations":[".txt",".log"]}],"disparues":["disparue-1"]}"##
@@ -71,8 +71,8 @@ fn serialise_le_catalogue() {
 }
 
 #[test]
-fn serialise_le_lancer() {
-    let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("sér.");
+fn serialises_the_lancer() {
+    let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#
@@ -80,9 +80,9 @@ fn serialise_le_lancer() {
 }
 
 #[test]
-fn serialise_la_lancee() {
+fn serialises_the_lancee() {
     let json = serde_json::to_string(&VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci))
-        .expect("sér.");
+        .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}"#
@@ -97,7 +97,7 @@ fn serialise_la_lancee() {
 /// day a two-word outcome appears, it will have to carry its own
 /// case test, otherwise it will diverge from the TypeScript mirror silently.
 #[test]
-fn serialise_les_quatre_issues() {
+fn serialises_the_four_outcomes() {
     let attendus = [
         (IssueLancement::Raccourci, "raccourci"),
         (IssueLancement::Cible, "cible"),
@@ -106,14 +106,14 @@ fn serialise_les_quatre_issues() {
     ];
     for (issue, attendu) in attendus {
         assert_eq!(
-            serde_json::to_string(&issue).expect("sér."),
+            serde_json::to_string(&issue).expect("ser."),
             format!("\"{attendu}\"")
         );
     }
 }
 
 #[test]
-fn rejette_une_version_absente_sur_catalogue() {
+fn rejects_an_absent_version_on_catalogue() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"catalogue","complet":true,"applications":[],"disparues":[]}"#
     )
@@ -121,7 +121,7 @@ fn rejette_une_version_absente_sur_catalogue() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_catalogue() {
+fn rejects_the_next_version_on_catalogue() {
     assert!(
         serde_json::from_str::<VersLaPlateforme>(&super::tests::etrangere(
             r#"{"type":"catalogue","v":0,"complet":true,"applications":[],"disparues":[]}"#
@@ -131,7 +131,7 @@ fn rejette_la_version_suivante_sur_catalogue() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_lancee() {
+fn rejects_an_absent_version_on_lancee() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"lancee","demande":"d","issue":"echec"}"#
     )
@@ -139,7 +139,7 @@ fn rejette_une_version_absente_sur_lancee() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_lancee() {
+fn rejects_the_next_version_on_lancee() {
     assert!(
         serde_json::from_str::<VersLaPlateforme>(&super::tests::etrangere(
             r#"{"type":"lancee","v":0,"demande":"d","issue":"echec"}"#
@@ -149,7 +149,7 @@ fn rejette_la_version_suivante_sur_lancee() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_lancer() {
+fn rejects_an_absent_version_on_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"lancer","demande":"d","cle":"c"}"#
     )
@@ -157,7 +157,7 @@ fn rejette_une_version_absente_sur_lancer() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_lancer() {
+fn rejects_the_next_version_on_lancer() {
     assert!(
         serde_json::from_str::<DepuisLaPlateforme>(&super::tests::etrangere(
             r#"{"type":"lancer","v":0,"demande":"d","cle":"c"}"#
@@ -167,7 +167,7 @@ fn rejette_la_version_suivante_sur_lancer() {
 }
 
 #[test]
-fn rejette_un_champ_inconnu_sur_lancer() {
+fn rejects_an_unknown_field_on_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"lancer","v":5,"demande":"d","cle":"c","bonus":1}"#
     )
@@ -186,13 +186,13 @@ fn rejette_un_champ_inconnu_sur_lancer() {
 /// it is 256, that is exactly what the whole sub-block exists
 /// to distinguish.
 #[test]
-fn serialise_les_deux_formes_de_source_max() {
+fn serialises_both_shapes_of_source_max() {
     assert_eq!(
-        serde_json::to_string(&SourceMax::Pixels(256)).expect("sér."),
+        serde_json::to_string(&SourceMax::Pixels(256)).expect("ser."),
         r#"{"pixels":256}"#
     );
     assert_eq!(
-        serde_json::to_string(&SourceMax::NonMesuree).expect("sér."),
+        serde_json::to_string(&SourceMax::NonMesuree).expect("ser."),
         r#""non-mesuree""#
     );
     // And the round trip, in both directions.
@@ -201,8 +201,8 @@ fn serialise_les_deux_formes_de_source_max() {
         SourceMax::Pixels(256),
         SourceMax::NonMesuree,
     ] {
-        let json = serde_json::to_string(&value).expect("sér.");
-        let relu: SourceMax = serde_json::from_str(&json).expect("désér.");
+        let json = serde_json::to_string(&value).expect("ser.");
+        let relu: SourceMax = serde_json::from_str(&json).expect("deser.");
         assert_eq!(value, relu);
     }
 }
@@ -220,25 +220,25 @@ fn serialise_les_deux_formes_de_source_max() {
 /// ⚠️ The gap stays OPEN for `IssueLancement`, which no G2 task
 /// touches.
 #[test]
-fn la_convention_de_nommage_de_source_max_est_observable() {
+fn the_naming_convention_of_source_max_is_observable() {
     assert_eq!(
-        serde_json::to_string(&SourceMax::NonMesuree).expect("sér."),
+        serde_json::to_string(&SourceMax::NonMesuree).expect("ser."),
         r#""non-mesuree""#,
-        "un tiret, pas un tiret bas : c'est ce que le miroir TypeScript lit"
+        "a hyphen, not an underscore: it is what the TypeScript mirror reads"
     );
     assert!(serde_json::from_str::<SourceMax>(r#""non_mesuree""#).is_err());
 }
 
 /// An application WITHOUT an icon crosses the wire, and its absence is explicit.
 #[test]
-fn serialise_une_application_sans_icone() {
-    let json = serde_json::to_string(&app_sans_icone()).expect("sér.");
+fn serialises_an_application_without_icon() {
+    let json = serde_json::to_string(&app_sans_icone()).expect("ser.");
     assert!(
         json.contains(r#""icone":null"#),
-        "l'absence d'icône s'ÉCRIT, elle ne se tait pas : {json}"
+        "the absence of an icon is WRITTEN, it does not stay silent: {json}"
     );
     assert!(json.contains(r#""source_max":"non-mesuree""#), "{json}");
-    let relu: Application = serde_json::from_str(&json).expect("désér.");
+    let relu: Application = serde_json::from_str(&json).expect("deser.");
     assert_eq!(relu, app_sans_icone());
 }
 
@@ -249,7 +249,7 @@ fn serialise_une_application_sans_icone() {
 /// prevent: the break must say `version`, never `forme`, and above all
 /// not nothing at all.
 #[test]
-fn rejette_une_application_a_qui_il_manque_un_champ_neuf() {
+fn rejects_an_application_missing_a_new_field() {
     let sans_icone = r#"{"cle":"a","nom":"n","chemin":"c","cible":"t","arguments":"","repertoire":"r","source_max":"non-mesuree"}"#;
     assert!(serde_json::from_str::<Application>(sans_icone).is_err());
     let sans_source = r#"{"cle":"a","nom":"n","chemin":"c","cible":"t","arguments":"","repertoire":"r","icone":null}"#;
@@ -257,17 +257,17 @@ fn rejette_une_application_a_qui_il_manque_un_champ_neuf() {
 }
 
 #[test]
-fn serialise_les_icones_manquantes() {
+fn serialises_the_missing_icons() {
     let json = serde_json::to_string(&DepuisLaPlateforme::icones_manquantes(vec![
         "a1b2".into(),
         "c3d4".into(),
     ]))
-    .expect("sér.");
+    .expect("ser.");
     assert_eq!(
         json,
         r#"{"type":"icones-manquantes","v":5,"empreintes":["a1b2","c3d4"]}"#
     );
-    let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
+    let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("deser.");
     assert_eq!(
         relu,
         DepuisLaPlateforme::icones_manquantes(vec!["a1b2".into(), "c3d4".into()])
@@ -275,7 +275,7 @@ fn serialise_les_icones_manquantes() {
 }
 
 #[test]
-fn rejette_une_version_absente_sur_icones_manquantes() {
+fn rejects_an_absent_version_on_icones_manquantes() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"icones-manquantes","empreintes":[]}"#
     )
@@ -283,7 +283,7 @@ fn rejette_une_version_absente_sur_icones_manquantes() {
 }
 
 #[test]
-fn rejette_la_version_suivante_sur_icones_manquantes() {
+fn rejects_the_next_version_on_icones_manquantes() {
     assert!(
         serde_json::from_str::<DepuisLaPlateforme>(&super::tests::etrangere(
             r#"{"type":"icones-manquantes","v":0,"empreintes":[]}"#
@@ -296,7 +296,7 @@ fn rejette_la_version_suivante_sur_icones_manquantes() {
 /// new fields, and a v3 platform must REFUSE it — not complete it, not
 /// ignore it.
 #[test]
-fn le_catalogue_d_un_agent_v2_est_refuse() {
+fn the_catalogue_of_a_v2_agent_is_refused() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
         r#"{"type":"catalogue","v":2,"complet":true,"applications":[],"disparues":[]}"#
     )

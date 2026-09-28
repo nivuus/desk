@@ -183,8 +183,8 @@ export class RegistreAgents {
         const attente = this.enVol.get(demande);
         if (attente === undefined) {
             console.warn(
-                `lancement sans attente : la demande ${demande} a rendu ${issue}, `
-                    + `mais plus personne ne l'attendait (expiration, ou agent remplacé)`,
+                `launch with no waiter: request ${demande} returned ${issue}, `
+                    + `but nobody was waiting for it any more (expiry, or agent replaced)`,
             );
             return;
         }

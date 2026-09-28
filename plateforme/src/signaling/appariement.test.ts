@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Appariement } from './appariement';
 
 describe('Appariement', () => {
-    it("refuse un second occupant du même rôle, avec le motif d'aujourd'hui", () => {
+    it("refuses a second occupant of the same role, with today's reason", () => {
         const a = new Appariement<string>();
         expect(a.declarer('s', 'agent', 'sock-1')).toBeUndefined();
         // Le motif est repris MOT POUR MOT de l'ex-`server.ts:119-125` : le
@@ -17,10 +17,10 @@ describe('Appariement', () => {
         // sa place » est une affirmation de COMPLÉTUDE, et les places ont été
         // énumérées par `grep -n` avant d'écrire.
         expect(a.declarer('s', 'agent', 'sock-2'))
-            .toBe('un agent est déjà connecté à la session s');
+            .toBe('an agent is already connected to session s');
     });
 
-    it('isole les sessions entre elles', () => {
+    it('isolates the sessions from one another', () => {
         const a = new Appariement<string>();
         a.declarer('s1', 'agent', 'a1');
         expect(a.declarer('s2', 'agent', 'a2')).toBeUndefined();
@@ -31,21 +31,21 @@ describe('Appariement', () => {
         expect(a.pair('s2', 'agent')).toBeUndefined();
     });
 
-    it("retient la dernière offre et l'oublie quand elle est prise", () => {
+    it("keeps the last offer and forgets it when it is taken", () => {
         const a = new Appariement<string>();
         a.retenirOffre('s', 'v=0 premiere');
         expect(a.prendreOffre('s')).toBe('v=0 premiere');
         expect(a.prendreOffre('s')).toBeUndefined();
     });
 
-    it('la dernière offre écrase les précédentes', () => {
+    it('the last offer overwrites the previous ones', () => {
         const a = new Appariement<string>();
-        a.retenirOffre('s', 'v=0 vieille');
-        a.retenirOffre('s', 'v=0 fraiche');
-        expect(a.prendreOffre('s')).toBe('v=0 fraiche');
+        a.retenirOffre('s', 'v=0 old');
+        a.retenirOffre('s', 'v=0 fresh');
+        expect(a.prendreOffre('s')).toBe('v=0 fresh');
     });
 
-    it('oublie la session quand ses deux pairs sont partis', () => {
+    it('forgets the session when both its peers have left', () => {
         const a = new Appariement<string>();
         a.declarer('s', 'agent', 'a');
         a.declarer('s', 'client', 'c');

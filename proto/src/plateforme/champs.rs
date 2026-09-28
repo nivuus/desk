@@ -33,7 +33,7 @@ where
     let v = u8::deserialize(deserializer)?;
     if v != PLATEFORME_VERSION {
         return Err(serde::de::Error::custom(format!(
-            "version de plateforme non supportée : {v}"
+            "unsupported platform version: {v}"
         )));
     }
     Ok(v)

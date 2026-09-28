@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 describe('RegistreAgents', () => {
-    it('rend `agent-injoignable` IMMÉDIATEMENT pour une VM absente', async () => {
+    it('returns `agent-injoignable` IMMEDIATELY for an absent VM', async () => {
         // 🔴 Attendre `DELAI_LANCEMENT_MS` pour une VM dont on sait DÉJÀ
         // qu'elle n'a pas de socket ferait payer cinq secondes à un appelant
         // pour une réponse connue d'avance. Les minuteurs sont feints et ne
@@ -50,7 +50,7 @@ describe('RegistreAgents', () => {
         await expect(registre.lancer('v-absente', 'cle-1', 'd-1')).resolves.toBe('agent-injoignable');
     });
 
-    it("envoie un `Lancer` ENCODÉ PAR LE PROTOCOLE, jamais une forme recopiée", async () => {
+    it("sends a `Lancer` ENCODED BY THE PROTOCOL, never a copied shape", async () => {
         // 🔴 Recopier la forme du message ici la ferait diverger EN SILENCE de
         // `proto/ts/plateforme.ts`, et `plateforme-vectors.json` ne
         // comparerait plus rien de ce que la plateforme met sur le fil. C'est
@@ -65,7 +65,7 @@ describe('RegistreAgents', () => {
         expect(socket.ecrits).toEqual([encodeLancer('d-1', 'cle-1')]);
     });
 
-    it('apparie la réponse sur la DEMANDE, jamais sur la clé', async () => {
+    it('matches the answer on the REQUEST, never on the key', async () => {
         // 🔴 Apparier sur la clé mélangerait deux lancements concurrents de la
         // MÊME application — cas parfaitement ordinaire, deux onglets du hub
         // suffisent. La demande est le seul identifiant unique d'un ordre.
@@ -82,7 +82,7 @@ describe('RegistreAgents', () => {
         expect(await second).toBe('cible' satisfies IssueLancement);
     });
 
-    it("IGNORE une demande inconnue, avec sa trace, et ne LÈVE jamais", async () => {
+    it("IGNORES an unknown request, with its trace, and never THROWS", async () => {
         // 🔴 Lever ici serait grave : l'appelant de `resoudre` est le
         // gestionnaire `message` d'un socket, et une exception qui le
         // traverse — ou une promesse rejetée qui en part — abat TOUT LE
@@ -99,7 +99,7 @@ describe('RegistreAgents', () => {
         expect(traces.join(' | ')).toContain('jamais-emise');
     });
 
-    it('`retirer` REJETTE les demandes en vol de cette VM', async () => {
+    it('`retirer` REJECTS the in-flight requests of this VM', async () => {
         // 🔴 Ne rien faire ferait attendre `DELAI_LANCEMENT_MS` à la route
         // après une mort d'agent CONNUE À L'INSTANT MÊME : le socket vient de
         // se fermer, et on ferait patienter cinq secondes pour une réponse qui
@@ -114,7 +114,7 @@ describe('RegistreAgents', () => {
         await expect(enVol).resolves.toBe('agent-injoignable');
     });
 
-    it('une SECONDE inscription de la même VM ferme la première et la remplace', async () => {
+    it('a SECOND registration of the same VM closes the first and replaces it', async () => {
         // 🔴 Garder les deux poserait la question à laquelle
         // `0003-agents.sql` répond déjà pour la clé primaire d'`agent_enrole` :
         // « laquelle serait la bonne ? ». Le dernier enrôlement gagne, et
@@ -133,7 +133,7 @@ describe('RegistreAgents', () => {
         expect(ancien.ecrits).toEqual([]);
     });
 
-    it("`retirer` d'un socket DÉJÀ remplacé ne débranche pas le neuf", async () => {
+    it("`retirer` of a socket ALREADY replaced does not unplug the new one", async () => {
         // ⚠️ COURSE RÉELLE, ET ELLE EST ORDINAIRE : un agent qui se relance
         // s'inscrit AVANT que la fermeture de son ancien socket ne soit
         // notifiée. Un `retirer(vmId)` nu effacerait alors l'inscription du
@@ -152,7 +152,7 @@ describe('RegistreAgents', () => {
         expect(neuf.ecrits).toEqual([encodeLancer('d-1', 'cle-1')]);
     });
 
-    it('rend `delai` à `DELAI_LANCEMENT_MS`, et le test FAIT AVANCER le temps', async () => {
+    it('returns `delai` at `DELAI_LANCEMENT_MS`, and the test ADVANCES the time', async () => {
         // 🔴 LE CAS VOIT LA TRANSITION, il ne lit pas un état final : la
         // promesse est encore en vol avant l'échéance, et résolue après. Une
         // horloge figée le rendrait inerte.
@@ -174,7 +174,7 @@ describe('RegistreAgents', () => {
         expect(resolue).toBe('delai');
     });
 
-    it("n'écrit pas sur un socket qui n'est plus OUVERT", async () => {
+    it("does not write to a socket that is no longer OPEN", async () => {
         // ⚠️ Un `send` sur un socket en cours de fermeture LÈVE, et cette
         // exception traverserait l'appelant. Même garde que `envoyer` dans
         // `agents/canal.ts`. Le lancement rend alors `agent-injoignable` :

@@ -55,7 +55,7 @@ function racineJetable(): string {
     // reproduit sans dépendre d'un build.
     writeFileSync(join(racine, 'hub.webmanifest'), '{"name":"hub"}');
     // Le PIÈGE que le critère ⑥ éprouve : un fichier homonyme d'une route.
-    writeFileSync(join(racine, 'sante'), 'ceci ne doit JAMAIS etre servi');
+    writeFileSync(join(racine, 'sante'), 'this must NEVER be served');
     writeFileSync(join(racine, 'secret.env'), 'MOT_DE_PASSE=x');
     return racine;
 }
@@ -122,12 +122,12 @@ function requeteFermee(url: string, options: RequestInit = {}): Promise<Response
 describe('GET /', () => {
     // 🔴 LE TÉMOIN NÉGATIF. Sans lui, le 200 du test suivant ne prouve pas que
     // PLATEFORME_PAGE a servi à quelque chose.
-    it("sans PLATEFORME_PAGE, GET / rend le 404 d'hier, mot pour mot", async () => {
+    it("without PLATEFORME_PAGE, GET / returns yesterday's 404, word for word", async () => {
         base = await baseNeuve('page-temoin-negatif');
         service = await startServer({ ...CONFIG, racinePage: undefined }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.status).toBe(404);
-        expect(await r.text()).toBe('introuvable\n');
+        expect(await r.text()).toBe('not found\n');
     });
 
     // ⚠️ MINEUR PROMU (round 2) : `racinePage: ''` doit se comporter comme
@@ -135,10 +135,10 @@ describe('GET /', () => {
     // processus). `process.chdir` vers un répertoire CONTRÔLÉ qui porte un
     // `index.html` rend la garde discriminante : sans elle, ce test verrait
     // `200` et le corps piégé.
-    it("une racine VIDE ('') retire aussi le servant, jamais le répertoire courant", async () => {
+    it("an EMPTY root ('') also removes the server, never the current directory", async () => {
         const cwdBefore = process.cwd();
         const piege = mkdtempSync(join(tmpdir(), 'page-cwd-piege-'));
-        writeFileSync(join(piege, 'index.html'), 'CECI NE DOIT JAMAIS ETRE SERVI');
+        writeFileSync(join(piege, 'index.html'), 'THIS MUST NEVER BE SERVED');
         process.chdir(piege);
         try {
             base = await baseNeuve('page-racine-vide');
@@ -150,7 +150,7 @@ describe('GET /', () => {
         }
     });
 
-    it('avec PLATEFORME_PAGE, GET / rend 200', async () => {
+    it('with PLATEFORME_PAGE, GET / returns 200', async () => {
         base = await baseNeuve('page-index-statut');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
@@ -160,7 +160,7 @@ describe('GET /', () => {
     // 🔴 LA ROUGE DE « SERS LE HUB À LA RACINE » (30 août 2026) : avant ce
     // lot, `GET /` rendait le corps d'`index.html` — la page de SESSION,
     // mesurée en PRODUCTION comme la panne (voir `resolution.ts::PAGE`).
-    it('avec PLATEFORME_PAGE, GET / rend le corps EXACT de hub.html', async () => {
+    it('with PLATEFORME_PAGE, GET / returns the EXACT body of hub.html', async () => {
         base = await baseNeuve('page-index-corps');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
@@ -171,7 +171,7 @@ describe('GET /', () => {
     // ⚠️ AUCUN CHEMIN EXISTANT NE CASSE : `index.html` reste servi, à SON
     // PROPRE chemin explicite — c'est CE test qui le garantit, distinct du
     // repli SPA de `/` ci-dessus.
-    it('GET /index.html sert encore la page de session, explicitement', async () => {
+    it('GET /index.html still serves the session page, explicitly', async () => {
         base = await baseNeuve('page-index-explicite');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/index.html`);
@@ -179,21 +179,21 @@ describe('GET /', () => {
         expect(await r.text()).toBe('<!doctype html><title>page</title>');
     });
 
-    it('le document porte la CSP', async () => {
+    it('the document carries the CSP', async () => {
         base = await baseNeuve('page-index-csp');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.headers.get('content-security-policy')).toContain("default-src 'self'");
     });
 
-    it('le document porte cache-control no-store', async () => {
+    it('the document carries cache-control no-store', async () => {
         base = await baseNeuve('page-index-cache');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`);
         expect(r.headers.get('cache-control')).toBe('no-store');
     });
 
-    it('un actif EMPREINTÉ porte immutable, JAMAIS no-store', async () => {
+    it('a FINGERPRINTED asset carries immutable, NEVER no-store', async () => {
         base = await baseNeuve('page-actif');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/assets/index-a1b2c3.js`);
@@ -211,7 +211,7 @@ describe('GET /', () => {
     // 🔴 ANCRÉ SUR L'ABSENCE D'`immutable`, PAS SUR LA VALEUR EXACTE : c'est
     // la propriété qui compte, et elle rougirait quelle que soit la forme
     // qu'une régression prendrait pour revenir à un an.
-    it("une ressource NON empreintée n'obtient JAMAIS immutable", async () => {
+    it("a NON-fingerprinted resource NEVER gets immutable", async () => {
         base = await baseNeuve('page-manifeste-immutable');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
@@ -221,14 +221,14 @@ describe('GET /', () => {
     // 🔴 SÉPARÉ, ET C'EST L'AUTRE EXTRÊME : `no-store` referait payer le
     // transfert entier à chaque visite. Une seule assertion groupée
     // n'éprouverait que la première.
-    it("une ressource NON empreintée n'obtient pas no-store non plus", async () => {
+    it("a NON-fingerprinted resource does not get no-store either", async () => {
         base = await baseNeuve('page-manifeste-nostore');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
         expect(r.headers.get('cache-control')).not.toContain('no-store');
     });
 
-    it('une ressource NON empreintée est RÉVALIDABLE', async () => {
+    it('a NON-fingerprinted resource is REVALIDATABLE', async () => {
         base = await baseNeuve('page-manifeste-revalidable');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/hub.webmanifest`);
@@ -242,14 +242,14 @@ describe('GET /', () => {
     // mutation de l'étape 6, `content-type` rougit et arrête le test AVANT
     // que le corps ne soit jamais vérifié — la seconde assertion, groupée,
     // n'était donc jamais éprouvée.
-    it('/sante reste servi par SON routeur — content-type json, malgré un fichier homonyme', async () => {
+    it('/sante stays served by ITS router — json content-type, despite a file of the same name', async () => {
         base = await baseNeuve('page-homonyme-type');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/sante`);
         expect(r.headers.get('content-type')).toContain('application/json');
     });
 
-    it('/sante reste servi par SON routeur — corps, malgré un fichier homonyme', async () => {
+    it('/sante stays served by ITS router — body, despite a file of the same name', async () => {
         base = await baseNeuve('page-homonyme-corps');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/sante`);
@@ -263,14 +263,14 @@ describe('GET /', () => {
     // exactement le patron dénoncé par l'Important 1 du round 2, réintroduit
     // ici en corrigeant celui-là — chacune des deux DOIT pouvoir rougir
     // indépendamment de l'autre.
-    it('refuse un fichier hors de la liste MIME', async () => {
+    it('refuses a file outside the MIME list', async () => {
         base = await baseNeuve('page-mime-refuse-statut');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/secret.env`);
         expect(r.status).toBe(404);
     });
 
-    it("un fichier hors de la liste MIME ne fuite jamais son contenu, MÊME si le statut régressait", async () => {
+    it("a file outside the MIME list never leaks its content, EVEN if the status regressed", async () => {
         // ⚠️ ANCRÉ SUR LE CORPS (round 2, Important 3) : un `404` seul ne dit
         // pas SI c'est parce que la liste MIME est close, ou parce que rien
         // ne répond — les deux rendent le même statut. Cette assertion-ci ne
@@ -286,9 +286,9 @@ describe('GET /', () => {
     // (`resolution.ts`, motif `nom-vide`) n'était éprouvé qu'à la règle PURE,
     // jamais avec un VRAI fichier `.json` nu sur le disque — la seule tâche
     // du lot qui en expose.
-    it('refuse un fichier `.json` nu (nom vide), même réellement présent sur le disque', async () => {
+    it('refuses a bare `.json` file (empty name), even one really present on the disk', async () => {
         const racine = racineJetable();
-        writeFileSync(join(racine, '.json'), '"ne doit jamais etre servi"');
+        writeFileSync(join(racine, '.json'), '"must never be served"');
         base = await baseNeuve('page-json-nu-disque');
         service = await startServer({ ...CONFIG, racinePage: racine }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/.json`);
@@ -303,7 +303,7 @@ describe('GET /', () => {
     // plus tôt. `%2e%2e%2f` SURVIT à cette normalisation (vérifié :
     // `new URL('/%2e%2e%2f…', base).pathname` la restitue verbatim), et
     // c'est ce que `resoudre()` décode et refuse LUI-MÊME.
-    it('refuse une traversée ENCODÉE qui sort de la racine, via une vraie requête HTTP', async () => {
+    it('refuses an ENCODED traversal escaping the root, through a real HTTP request', async () => {
         base = await baseNeuve('page-traversee-disque');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(
@@ -315,8 +315,8 @@ describe('GET /', () => {
     // 🔴 CRITIQUE 3 (round 2), MESURÉE : un lien FICHIER qui sort de la
     // racine par un chemin relatif rendait `200` avec le contenu volé avant
     // le `realpath` de `routes-page.ts`.
-    it('refuse un fichier atteint via un lien symbolique FICHIER qui sort de la racine', async () => {
-        base = await baseNeuve('page-lien-fichier');
+    it('refuses a file reached through a FILE symbolic link escaping the root', async () => {
+        base = await baseNeuve('page-link-file');
         service = await startServer({ ...CONFIG, racinePage: rootWithSymlinks() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/lien.json`);
         expect(r.status).toBe(404);
@@ -324,7 +324,7 @@ describe('GET /', () => {
 
     // 🔴 CRITIQUE 3 (round 2), MESURÉE : un lien RÉPERTOIRE qui sort de la
     // racine — aucun `..` n'apparaît jamais dans l'URL qui l'atteint.
-    it('refuse un fichier atteint via un lien symbolique RÉPERTOIRE qui sort de la racine', async () => {
+    it('refuses a file reached through a DIRECTORY symbolic link escaping the root', async () => {
         base = await baseNeuve('page-lien-repertoire');
         service = await startServer({ ...CONFIG, racinePage: rootWithSymlinks() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/lien-rep/vole.html`);
@@ -335,7 +335,7 @@ describe('GET /', () => {
     // quand la destination meurt. Un client qui abandonne — ici, un socket
     // détruit dès la réception des en-têtes — laissait le descripteur du
     // fichier ouvert INDÉFINIMENT, de façon MONOTONE.
-    it("un téléchargement ABANDONNÉ par le client ne fuit pas de descripteur", async () => {
+    it("a download ABANDONED by the client does not leak a descriptor", async () => {
         const racine = racineJetable();
         // Un fichier assez gros pour laisser le temps d'abandonner AVANT que
         // le flux n'ait fini de couler.
@@ -426,7 +426,7 @@ describe('GET /', () => {
                 if (envoyee) return;
                 envoyee = true;
                 this.push('debut ');
-                process.nextTick(() => this.emit('error', new Error('EMFILE (simulé)')));
+                process.nextTick(() => this.emit('error', new Error('EMFILE (simulated)')));
             },
         });
 
@@ -443,7 +443,7 @@ describe('GET /', () => {
     // 🔴 SÉPARÉS (round 3, Neuf 2), même raison que le test MIME plus haut :
     // groupées, `expect(result).toBe(true)` courait en premier et aurait
     // masqué un échec de la seconde assertion si elle avait rougi.
-    it('une erreur de flux injectée APRÈS les en-têtes est prise en charge (route non retombée en 404)', async () => {
+    it('a stream error injected AFTER the headers is handled (route not fallen back to 404)', async () => {
         const { result } = unitCallWithFaultyStream();
         // La route EST prise en charge (les en-têtes sont partis) : rendre
         // `false` ferait tomber la chaîne sur un 404 générique par-dessus une
@@ -451,7 +451,7 @@ describe('GET /', () => {
         expect(await result).toBe(true);
     });
 
-    it('une erreur de flux injectée APRÈS les en-têtes détruit la réponse, plutôt que de la laisser pendre', async () => {
+    it('a stream error injected AFTER the headers destroys the response, rather than leaving it hanging', async () => {
         const { result, rep } = unitCallWithFaultyStream();
         await result;
         expect(rep.destroyed).toBe(true);
@@ -460,14 +460,14 @@ describe('GET /', () => {
     // 🔴 HORS GET/HEAD, LE COMPORTEMENT EST CELUI D'HIER À L'OCTET PRÈS. Rendre
     // 405 ferait qu'un POST sur un chemin mal orthographié — le repli SPA résout
     // n'importe quoi — obtiendrait « méthode » au lieu du 404 qui le désigne.
-    it('un POST sur un chemin inconnu rend toujours 404, jamais 405', async () => {
+    it('a POST on an unknown path always returns 404, never 405', async () => {
         base = await baseNeuve('page-post-inconnu');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/aplication/x`, { method: 'POST' });
         expect(r.status).toBe(404);
     });
 
-    it('sert un HEAD sans corps', async () => {
+    it('serves a HEAD without a body', async () => {
         base = await baseNeuve('page-head');
         service = await startServer({ ...CONFIG, racinePage: racineJetable() }, base);
         const r = await requeteFermee(`http://127.0.0.1:${service.port}/`, { method: 'HEAD' });

@@ -233,7 +233,7 @@ async function depot(
     //
     // ⚠️ THE FOUR REASONS AND THEIR CODES ARE UNCHANGED, to the letter:
     // `jeton-absent` 401, `jeton-invalide` 401, `jeton-expire` 401,
-    // `jeton-utilisateur` 403, and in that order. The ONLY behaviour
+    // `jeton-utilisateur` 403, and in that order. The ONLY behaviour (policy: allow-fr - frozen wire key or SQLite column)
     // difference is a REPEATED `Authorization` header, which the copy filed
     // with `jeton-absent` and which the module refuses as `jeton-invalide` — an
     // ambiguous request is not an empty request. **It is UNREACHABLE
@@ -257,7 +257,7 @@ async function depot(
     if (corps === 'trop-gros') {
         // ⚠️ TYPED AND LOGGED, NEVER SILENT: the application will enter the
         // catalogue WITHOUT an icon, and one must be able to know it.
-        console.warn(`icone refusee, corps au-dela de ${ICONE_MAX_OCTETS} octets : ${empreinte}`);
+        console.warn(`icon refused, body beyond ${ICONE_MAX_OCTETS} bytes: ${empreinte}`);
         repondre(rep, 413, { refus: 'taille' }, cors);
         return true;
     }

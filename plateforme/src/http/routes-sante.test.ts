@@ -39,10 +39,10 @@ afterEach(async () => {
 function piloteMort(): Pilote {
     const mort: Pilote = {
         async interroger() {
-            throw new Error('base injoignable');
+            throw new Error('database unreachable');
         },
         async executer() {
-            throw new Error('base injoignable');
+            throw new Error('database unreachable');
         },
         async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
             return corps(mort);
@@ -53,7 +53,7 @@ function piloteMort(): Pilote {
 }
 
 describe('GET /sante', () => {
-    it('(a) base saine ⇒ 200 et `{"etat":"ok"}`', async () => {
+    it('(a) healthy database ⇒ 200 and `{"etat":"ok"}`', async () => {
         base = await baseNeuve('sante-ok');
         service = await startServer(CONFIG, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`);
@@ -61,14 +61,14 @@ describe('GET /sante', () => {
         expect(await r.json()).toEqual({ etat: 'ok' });
     });
 
-    it('(b) base en échec ⇒ 503 et `{"etat":"degrade"}`', async () => {
+    it('(b) database failing ⇒ 503 and `{"etat":"degrade"}`', async () => {
         service = await startServer(CONFIG, piloteMort());
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`);
         expect(r.status).toBe(503);
         expect(await r.json()).toEqual({ etat: 'degrade' });
     });
 
-    it("(c) 🔴 la réponse ne porte RIEN D'AUTRE", async () => {
+    it("(c) 🔴 the response carries NOTHING ELSE", async () => {
         // 🔴 COMPARAISON DE L'OBJET ENTIER, jamais un `toContain` : une page de
         // santé bavarde est un INVENTAIRE offert à un anonyme.
         // Un ajout futur de version, de compte de sessions, d'URL de base ou
@@ -79,13 +79,13 @@ describe('GET /sante', () => {
         // test — est que `/sante` est la seule route non authentifiée qui
         // TOUCHE LA BASE, donc la seule dont la réponse puisse en dire
         // quelque chose. Voir `routes-sante.ts`.
-        base = await baseNeuve('sante-rien-d-autre');
+        base = await baseNeuve('health-nothing-else');
         service = await startServer(CONFIG, base);
         const corps = (await (await fetch(`http://127.0.0.1:${service.port}/sante`)).json()) as Record<string, unknown>;
         expect(Object.keys(corps)).toEqual(['etat']);
     });
 
-    it('(d) 🔴 N appels dans la période ne font QU’UNE requête', async () => {
+    it('(d) 🔴 N calls within the period make ONLY ONE query', async () => {
         // 🔴 SANS LE CACHE, `/sante` TRADUIT UNE REQUÊTE HTTP ANONYME EN
         // REQUÊTE SQL, À VOLONTÉ : c'est une amplification, sur la route même
         // qu'un équilibreur de charge appelle en boucle. Le cache est LE POINT
@@ -103,7 +103,7 @@ describe('GET /sante', () => {
         expect(compteur.acces()).toBe(1);
     });
 
-    it('(e) après la période, une NOUVELLE requête a lieu', async () => {
+    it('(e) after the period, a NEW query takes place', async () => {
         const reel = await baseNeuve('sante-cache-expire');
         base = reel;
         const compteur = piloteCompteur(reel);
@@ -118,7 +118,7 @@ describe('GET /sante', () => {
         expect(compteur.acces()).toBe(2);
     });
 
-    it('(d bis) 🔴 N appels CONCURRENTS ne font QU’UNE requête non plus', async () => {
+    it('(d bis) 🔴 N CONCURRENT calls make ONLY ONE query either', async () => {
         // Le cas réel d'un équilibreur de charge : plusieurs sondes en vol au
         // même instant. Sans déduplication de la requête EN COURS, chacune
         // lancerait la sienne — et le cache ne servirait qu'après coup,
@@ -134,7 +134,7 @@ describe('GET /sante', () => {
         expect(compteur.acces()).toBe(1);
     });
 
-    it('(f) une méthode autre que GET rend 405', async () => {
+    it('(f) a method other than GET returns 405', async () => {
         base = await baseNeuve('sante-methode');
         service = await startServer(CONFIG, base);
         const r = await fetch(`http://127.0.0.1:${service.port}/sante`, { method: 'POST' });
@@ -142,7 +142,7 @@ describe('GET /sante', () => {
         expect(await r.json()).toEqual({ refus: 'methode' });
     });
 
-    it("(g) `/sante` n'est PAS authentifiée — aucun jeton n'est exigé", async () => {
+    it("(g) `/sante` is NOT authenticated — no token is required", async () => {
         // ⚠️ Délibéré, et c'est ce qui rend le cache obligatoire : une sonde
         // d'équilibreur ne présente aucun jeton, et une sonde FREINÉE
         // déclarerait le service mort. Le cache est ce qui la rend sûre SANS
@@ -153,7 +153,7 @@ describe('GET /sante', () => {
         expect(r.status).toBe(200);
     });
 
-    it("(h) un chemin voisin n'est PAS servi par la santé", async () => {
+    it("(h) a neighbouring path is NOT served by the health route", async () => {
         // Comparaison EXACTE, jamais un `startsWith` : `/santelle` n'est pas
         // `/sante`, et un préfixe ouvrirait une famille de chemins que
         // personne n'a décidés.
@@ -162,7 +162,7 @@ describe('GET /sante', () => {
         expect((await fetch(`http://127.0.0.1:${service.port}/santelle`)).status).toBe(404);
     });
 
-    it('(i) `servirSante` rend `false` sur un chemin qui n’est pas le sien', async () => {
+    it('(i) `servirSante` returns `false` on a path that is not its own', async () => {
         // La convention des quatre routeurs : rendre `false` laisse le suivant
         // essayer, et le 404 générique conclut.
         const req = { url: '/autre', method: 'GET', headers: {} } as never;

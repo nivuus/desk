@@ -127,12 +127,12 @@ async function servir(nom: string, config: Config = CONFIG): Promise<string> {
 /// Vérifie les DEUX en-têtes, nommément, sur une réponse.
 function porteLesEntetes(r: Response, quoi: string): void {
     for (const [cle, value] of Object.entries(ENTETES_SECURITE)) {
-        expect(r.headers.get(cle.toLowerCase()), `${quoi} : en-tête ${cle}`).toBe(value);
+        expect(r.headers.get(cle.toLowerCase()), `${quoi}: header ${cle}`).toBe(value);
     }
 }
 
-describe('les en-têtes de sécurité, un routeur à la fois', () => {
-    it('(1) `routes-auth` les pose — y compris sur une réponse d’ERREUR', async () => {
+describe('the security headers, one router at a time', () => {
+    it('(1) `routes-auth` sets them — including on an ERROR response', async () => {
         // ⚠️ `auth: 'motdepasse'` LOCAL : sans lui, `servirAuth` se RETIRE
         // (tâche 3) et cette requête rencontrerait le 404 générique, jamais
         // le 405 de `routes-auth`.
@@ -142,25 +142,25 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         // qu'un correctif hâtif oublierait.
         const r = await fetch(`${url}/auth/connexion`, { method: 'GET' });
         expect(r.status).toBe(405);
-        porteLesEntetes(r, '405 de /auth/connexion');
+        porteLesEntetes(r, '405 of /auth/connexion');
     });
 
-    it('(2) `routes-vm` les pose', async () => {
+    it('(2) `routes-vm` sets them', async () => {
         const url = await servir('entetes-vm');
         const r = await fetch(`${url}/vm`);
         // 401 : aucun porteur présenté. La réponse d'erreur porte les en-têtes.
         expect(r.status).toBe(401);
-        porteLesEntetes(r, '401 de /vm');
+        porteLesEntetes(r, '401 of /vm');
     });
 
-    it('(3) `routes-session` les pose', async () => {
+    it('(3) `routes-session` sets them', async () => {
         const url = await servir('entetes-session');
         const r = await fetch(`${url}/session`, { method: 'POST' });
         expect(r.status).toBe(401);
-        porteLesEntetes(r, '401 de /session');
+        porteLesEntetes(r, '401 of /session');
     });
 
-    it('(4) `routes-applications` les pose — le CINQUIÈME routeur, ajouté par G1', async () => {
+    it('(4) `routes-applications` sets them — the FIFTH router, added by G1', async () => {
         // ⚠️ CE ROUTEUR N'EST PAS DANS LE PLAN DE P5, qui compte « les quatre
         // routeurs ». G1 l'a livré entre la rédaction du plan et son
         // exécution. Sans cet `it()`, la propriété « toute réponse JSON du
@@ -168,17 +168,17 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         const url = await servir('entetes-applications');
         const r = await fetch(`${url}/applications`);
         expect(r.status).toBe(401);
-        porteLesEntetes(r, '401 de /applications');
+        porteLesEntetes(r, '401 of /applications');
     });
 
-    it('(5) `routes-sante` les pose', async () => {
+    it('(5) `routes-sante` sets them', async () => {
         const url = await servir('entetes-sante');
         const r = await fetch(`${url}/sante`);
         expect(r.status).toBe(200);
-        porteLesEntetes(r, '200 de /sante');
+        porteLesEntetes(r, '200 of /sante');
     });
 
-    it('(6) 🔴 la réponse 200 de `/auth/connexion` porte `Cache-Control: no-store`', async () => {
+    it('(6) 🔴 the 200 response of `/auth/connexion` carries `Cache-Control: no-store`', async () => {
         // 🔴 C'EST LA SEULE RÉPONSE DU SERVICE QUI PORTE DES JETONS — l'accès
         // ET le rafraîchissement, en clair dans son corps JSON. Un cache
         // intermédiaire, ou simplement le disque du navigateur, les
@@ -195,10 +195,10 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         });
         expect(r.status).toBe(200);
         expect(r.headers.get('cache-control')).toBe('no-store');
-        porteLesEntetes(r, '200 de /auth/connexion');
+        porteLesEntetes(r, '200 of /auth/connexion');
     });
 
-    it('(6bis) `routes-icone` les pose — LE SIXIÈME ROUTEUR', async () => {
+    it('(6bis) `routes-icone` sets them — THE SIXTH ROUTER', async () => {
         // 🔴 G2 AJOUTE LE SIXIÈME ROUTEUR, et l'en-tête de ce fichier nomme le
         // précédent : « G1 vient d'ajouter un routeur sans que personne ne
         // s'en aperçoive côté P5 ». Ne pas rejouer le défaut que ce fichier
@@ -208,7 +208,7 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         // correctif hâtif oublierait.
         const r = await fetch(`${url}/icone/${'a'.repeat(64)}`, { method: 'PUT' });
         expect(r.status).toBe(401);
-        porteLesEntetes(r, '401 de /icone/:sha256');
+        porteLesEntetes(r, '401 of /icone/:sha256');
 
         // Et sur l'autre chemin de ce même routeur.
         //
@@ -221,10 +221,10 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         // réponse d'ERREUR de ce routeur.
         const g = await fetch(`${url}/application/x/icone?e=${'a'.repeat(64)}`);
         expect(g.status).toBe(400);
-        porteLesEntetes(g, '400 de /application/:id/icone');
+        porteLesEntetes(g, '400 of /application/:id/icone');
     });
 
-    it('(6ter) `routes-televersement` les pose — LE SEPTIÈME ROUTEUR', async () => {
+    it('(6ter) `routes-televersement` sets them — THE SEVENTH ROUTER', async () => {
         // 🔴 G3 AJOUTE LE SEPTIÈME, et l'en-tête de ce fichier nomme les deux
         // précédents : G1 a livré le cinquième « sans que personne ne s'en
         // aperçoive côté P5 », G2 le sixième. C'est la troisième fois, et le
@@ -235,10 +235,10 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         // qu'un `GET` sans corps atteigne.
         const r = await fetch(`${url}/televersement/inexistant`);
         expect(r.status).toBe(401);
-        porteLesEntetes(r, '401 de /televersement/:id');
+        porteLesEntetes(r, '401 of /televersement/:id');
     });
 
-    it('(6quater) `routes-installation` les pose — LE HUITIÈME ROUTEUR', async () => {
+    it('(6quater) `routes-installation` sets them — THE EIGHTH ROUTER', async () => {
         // ⚠️ CELUI-CI NE SERT QUE L'AGENT, et son refus emprunte donc le
         // porteur d'AGENT et non celui de l'utilisateur. Deux gardes
         // différentes, une seule propriété transverse : c'est précisément le
@@ -246,20 +246,20 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         const url = await servir('entetes-installation');
         const r = await fetch(`${url}/televersement/inexistant/contenu`);
         expect(r.status).toBe(401);
-        porteLesEntetes(r, '401 de /televersement/:id/contenu');
+        porteLesEntetes(r, '401 of /televersement/:id/contenu');
     });
 
-    it('(7) le 404 générique et le 500 les portent aussi', async () => {
+    it('(7) the generic 404 and the 500 carry them too', async () => {
         // Le 404 ne vient d'aucun routeur : il est écrit dans `serveur.ts`.
         // Sans lui, un chemin inconnu serait la seule réponse du service à ne
         // pas porter `nosniff`.
         const url = await servir('entetes-404');
-        const r = await fetch(`${url}/chemin-qui-n-existe-pas`);
+        const r = await fetch(`${url}/path-that-does-not-exist`);
         expect(r.status).toBe(404);
-        porteLesEntetes(r, '404 générique');
+        porteLesEntetes(r, 'generic 404');
     });
 
-    it('(8) la réponse préalable OPTIONS les porte aussi', async () => {
+    it('(8) the OPTIONS preflight response carries them too', async () => {
         // ⚠️ `auth: 'motdepasse'` LOCAL — voir le cas (1) : en mode `pomerium`,
         // `servirAuth` se retire AVANT même sa branche OPTIONS (le garde
         // précède tout le reste de la fonction), et ce OPTIONS rencontrerait
@@ -267,6 +267,6 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         const url = await servir('entetes-options', { ...CONFIG, auth: 'motdepasse' });
         const r = await fetch(`${url}/auth/connexion`, { method: 'OPTIONS' });
         expect(r.status).toBe(204);
-        porteLesEntetes(r, '204 préalable');
+        porteLesEntetes(r, '204 preflight');
     });
 });

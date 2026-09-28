@@ -67,7 +67,7 @@ export interface Config {
     /// ("emit no header") where this one's means only one thing ("trust
     /// nobody"), already carried by the empty set.
     proxyDeConfiance: ReadonlySet<string>;
-    /// PLATEFORME_ICONES — OPTIONAL, default `donnees/icones`. The directory
+    /// PLATEFORME_ICONES — OPTIONAL, default `donnees/icones`. The directory (policy: allow-fr - path on the target)
     /// of the content-addressed icon store (sub-block G2).
     ///
     /// ⚠️ **ASYMMETRY WITH `PLATEFORME_HOTE` ACCEPTED, AND WE MUST SAY
@@ -79,7 +79,7 @@ export interface Config {
     /// A loud break would not be proportionate — but neither would
     /// silence, hence the log line when the store opens.
     repertoireIcones: string;
-    /// PLATEFORME_TELEVERSEMENTS — OPTIONAL, default `donnees/televersements`.
+    /// PLATEFORME_TELEVERSEMENTS — OPTIONAL, default `donnees/televersements`. (policy: allow-fr - path on the target)
     /// The root of the SLICE store: `<racine>/<id>/<n>`, one file per
     /// slice, and never an assembled file (sub-block G3).
     ///
@@ -136,8 +136,8 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const hote = env.PLATEFORME_HOTE;
     if (hote === undefined || hote === '') {
         throw new Error(
-            "PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse " +
-                "d'écoute, sans quoi le service écouterait sur toutes les interfaces.",
+            "PLATEFORME_HOTE is required and has no default: name the listen " +
+                "address, otherwise the service would listen on every interface.",
         );
     }
 
@@ -145,7 +145,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const auth = (brutAuth === undefined || brutAuth === '' ? 'pomerium' : brutAuth) as Config['auth'];
     if (!(AUTHS as readonly string[]).includes(auth)) {
         throw new Error(
-            `PLATEFORME_AUTH doit valoir ${AUTHS.join(' ou ')}, reçu : ${brutAuth}`,
+            `PLATEFORME_AUTH must be ${AUTHS.join(' or ')}, got: ${brutAuth}`,
         );
     }
 
@@ -155,10 +155,10 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     // universal listen offers it to anyone reaching the machine.
     if (auth === 'pomerium' && ECOUTES_UNIVERSELLES.has(hote.trim())) {
         throw new Error(
-            `PLATEFORME_HOTE=${hote} est une écoute universelle, refusée en mode ` +
-                "pomerium : l'identité arrive dans un en-tête en clair, que seul le " +
-                'proxy doit pouvoir poser. Nommer une adresse précise ' +
-                '(192.168.3.1, 127.0.0.1) ou un nom de service de réseau interne.',
+            `PLATEFORME_HOTE=${hote} is a universal listen, refused in ` +
+                "pomerium mode: the identity arrives in a plaintext header that only the " +
+                'proxy must be able to set. Name a precise address ' +
+                '(192.168.3.1, 127.0.0.1) or an internal network service name.',
         );
     }
 
@@ -166,7 +166,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     let port = 8080;
     if (brutPort !== undefined && brutPort !== '') {
         if (!/^\d+$/.test(brutPort)) {
-            throw new Error(`PLATEFORME_PORT doit être un entier, reçu : ${brutPort}`);
+            throw new Error(`PLATEFORME_PORT must be an integer, got: ${brutPort}`);
         }
         port = Number(brutPort);
     }
@@ -175,7 +175,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const base = (brutBase === undefined || brutBase === '' ? 'sqlite' : brutBase) as Config['base'];
     if (!(BASES as readonly string[]).includes(base)) {
         throw new Error(
-            `PLATEFORME_BASE doit valoir ${BASES.join(' ou ')}, reçu : ${brutBase}`,
+            `PLATEFORME_BASE must be ${BASES.join(' or ')}, got: ${brutBase}`,
         );
     }
 
@@ -216,16 +216,16 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const secretJeton = env.PLATEFORME_SECRET_JETON;
     if (secretJeton === undefined || secretJeton === '') {
         throw new Error(
-            "PLATEFORME_SECRET_JETON est obligatoire et n'a aucun défaut : sans lui " +
-                'aucun jeton ne peut être signé, et un défaut aléatoire invaliderait ' +
-                'toutes les sessions à chaque redémarrage.',
+            "PLATEFORME_SECRET_JETON is required and has no default: without it " +
+                'no token can be signed, and a random default would invalidate ' +
+                'every session at each restart.',
         );
     }
     if (secretJeton.length < MIN_SECRET_LENGTH) {
         throw new Error(
-            `PLATEFORME_SECRET_JETON est trop court : ${secretJeton.length} caractères, ` +
-                `${MIN_SECRET_LENGTH} au moins sont exigés — un secret devinable ` +
-                "n'authentifie personne.",
+            `PLATEFORME_SECRET_JETON is too short: ${secretJeton.length} characters, ` +
+                `at least ${MIN_SECRET_LENGTH} are required — a guessable secret ` +
+                "authenticates nobody.",
         );
     }
 
@@ -301,11 +301,11 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     // on a service that answers and serves the ten other routers.
     if (auth === 'pomerium' && proxyDeConfiance.size === 0) {
         throw new Error(
-            'PLATEFORME_PROXY_DE_CONFIANCE est obligatoire en mode pomerium : ' +
-                "l'identité arrive dans un en-tête en clair qu'aucune signature ne vérifie, " +
-                'et sans la liste des adresses autorisées à le poser, quiconque atteint le ' +
-                "port obtient un jeton pour l'identité de son choix. Poser l'adresse du " +
-                'proxy, ou PLATEFORME_AUTH=motdepasse.',
+            'PLATEFORME_PROXY_DE_CONFIANCE is required in pomerium mode: ' +
+                "the identity arrives in a plaintext header that no signature verifies, " +
+                'and without the list of addresses allowed to set it, anyone reaching the ' +
+                "port gets a token for the identity of their choice. Set the address of the " +
+                'proxy, or PLATEFORME_AUTH=motdepasse.',
         );
     }
 

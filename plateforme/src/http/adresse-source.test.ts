@@ -14,18 +14,18 @@ const NO_TRUST: ReadonlySet<string> = new Set();
 const PROXY_DE_CONFIANCE: ReadonlySet<string> = new Set([PROXY]);
 
 describe('adresseSource', () => {
-    it("(a) 🔴 une source NON de confiance voit son en-tête IGNORÉ", () => {
+    it("(a) 🔴 a NON-trusted source has its header IGNORED", () => {
         // Le demandeur prétend venir d'ailleurs ; personne ne l'a autorisé à
         // le dire. Croire cet en-tête serait une usurpation d'identité, et
         // rendrait le frein par adresse contournable en une ligne d'en-tête.
         expect(adresseSource(CLIENT, `${INTERMEDIAIRE}, ${PROXY}`, NO_TRUST)).toBe(CLIENT);
     });
 
-    it("(a bis) la confiance VIDE est le défaut, et elle ne croit personne", () => {
+    it("(a bis) EMPTY trust is the default, and it trusts nobody", () => {
         expect(adresseSource(PROXY, CLIENT, NO_TRUST)).toBe(PROXY);
     });
 
-    it('(b) 🔴 une source de confiance : on prend le DERNIER élément, jamais le premier', () => {
+    it('(b) 🔴 a trusted source: we take the LAST element, never the first', () => {
         // `nginx` avec `$proxy_add_x_forwarded_for` AJOUTE l'adresse de son
         // pair à ce que le client a envoyé. Un client qui envoie
         // `X-Forwarded-For: 203.0.113.7` produit donc
@@ -36,23 +36,23 @@ describe('adresseSource', () => {
             .toBe(INTERMEDIAIRE);
     });
 
-    it('(c) en-tête absent ⇒ l’adresse du pair', () => {
+    it('(c) header absent ⇒ the address of the peer', () => {
         expect(adresseSource(PROXY, undefined, PROXY_DE_CONFIANCE)).toBe(PROXY);
     });
 
-    it('(d) en-tête présent mais vide ou blanc ⇒ l’adresse du pair', () => {
+    it('(d) header present but empty or blank ⇒ the address of the peer', () => {
         expect(adresseSource(PROXY, ' , ', PROXY_DE_CONFIANCE)).toBe(PROXY);
         expect(adresseSource(PROXY, '', PROXY_DE_CONFIANCE)).toBe(PROXY);
     });
 
-    it('(d bis) les éléments vides de FIN sont sautés, pas pris pour le dernier', () => {
+    it('(d bis) TRAILING empty elements are skipped, not taken for the last one', () => {
         // `X-Forwarded-For: 203.0.113.7, ` a un dernier élément VIDE. Le
         // prendre rendrait une clé de frein vide, que toutes les requêtes
         // mal formées partageraient.
         expect(adresseSource(PROXY, `${CLIENT}, `, PROXY_DE_CONFIANCE)).toBe(CLIENT);
     });
 
-    it('(e) 🔴 une IPv4 encapsulée en IPv6 rend la MÊME clé que sa forme nue', () => {
+    it('(e) 🔴 an IPv4 wrapped in IPv6 returns the SAME key as its bare form', () => {
         // Sans cette normalisation, le même client compte DEUX fois selon la
         // pile employée, et son budget de frein double.
         expect(adresseSource(`::ffff:${CLIENT}`, undefined, NO_TRUST))
@@ -60,7 +60,7 @@ describe('adresseSource', () => {
         expect(adresseSource(`::ffff:${CLIENT}`, undefined, NO_TRUST)).toBe(CLIENT);
     });
 
-    it("(e bis) la CONFIANCE se juge sur la forme normalisée, des deux côtés", () => {
+    it("(e bis) TRUST is judged on the normalised form, on both sides", () => {
         // Node rend couramment `::ffff:172.18.0.5` pour un pair IPv4 sur une
         // pile double. Comparer la forme brute à la valeur configurée ferait
         // échouer la confiance en silence — et le frein par adresse
@@ -70,11 +70,11 @@ describe('adresseSource', () => {
         expect(adresseSource(PROXY, CLIENT, new Set([`::ffff:${PROXY}`]))).toBe(CLIENT);
     });
 
-    it("(e ter) l'élément d'en-tête retenu est normalisé lui aussi", () => {
+    it("(e ter) the retained header element is normalised too", () => {
         expect(adresseSource(PROXY, `::ffff:${CLIENT}`, PROXY_DE_CONFIANCE)).toBe(CLIENT);
     });
 
-    it('(f) 🔴 un pair sans adresse rend une valeur NOMMÉE, jamais « undefined »', () => {
+    it('(f) 🔴 a peer without an address returns a NAMED value, never « undefined »', () => {
         // Un socket déjà fermé rend `undefined` pour `remoteAddress`. La clé
         // du frein ne doit pas devenir la chaîne `"undefined"` par accident
         // d'interpolation : c'est le piège que `signaling/turn-harnais.ts`
@@ -85,7 +85,7 @@ describe('adresseSource', () => {
         expect(rendu.length).toBeGreaterThan(0);
     });
 
-    it("(f bis) un pair sans adresse ne devient JAMAIS de confiance", () => {
+    it("(f bis) a peer without an address NEVER becomes trusted", () => {
         // Si `ADRESSE_INCONNUE` figurait par mégarde dans l'ensemble de
         // confiance, tous les pairs anonymes pourraient forger leur adresse.
         expect(adresseSource(undefined, CLIENT, new Set([ADRESSE_INCONNUE]))).toBe(ADRESSE_INCONNUE);
@@ -93,12 +93,12 @@ describe('adresseSource', () => {
 });
 
 describe('pairDeConfiance', () => {
-    it('accepte un pair déclaré', () => {
+    it('accepts a declared peer', () => {
         expect(pairDeConfiance('10.0.0.1', new Set(['10.0.0.1']))).toBe(true);
     });
 
     // Le préfixe des adresses IPv4 mappées, comme `adresseSource` le fait déjà.
-    it('normalise le préfixe ::ffff: DU CÔTÉ DU PAIR', () => {
+    it('normalises the ::ffff: prefix ON THE PEER SIDE', () => {
         expect(pairDeConfiance('::ffff:10.0.0.1', new Set(['10.0.0.1']))).toBe(true);
     });
 
@@ -110,21 +110,21 @@ describe('pairDeConfiance', () => {
     // du commentaire de tête — « NORMALISER EST OBLIGATOIRE DES DEUX CÔTÉS » —
     // ne tenait sur rien. Ce test ferme le trou : la confiance est déclarée
     // sous forme ENCAPSULÉE, le pair se présente sous forme NUE.
-    it('normalise le préfixe ::ffff: DU CÔTÉ DÉCLARÉ', () => {
+    it('normalises the ::ffff: prefix ON THE DECLARED SIDE', () => {
         expect(pairDeConfiance('10.0.0.1', new Set(['::ffff:10.0.0.1']))).toBe(true);
     });
 
-    it('refuse un pair non déclaré', () => {
+    it('refuses an undeclared peer', () => {
         expect(pairDeConfiance('10.0.0.2', new Set(['10.0.0.1']))).toBe(false);
     });
 
     // 🔴 UNE LISTE VIDE NE FAIT CONFIANCE À PERSONNE. Le contraire ferait de
     // l'absence de configuration une ouverture — l'inverse exact du défaut sûr.
-    it('refuse tout le monde quand la liste est vide', () => {
+    it('refuses everybody when the list is empty', () => {
         expect(pairDeConfiance('10.0.0.1', new Set())).toBe(false);
     });
 
-    it('refuse une adresse absente', () => {
+    it('refuses an absent address', () => {
         expect(pairDeConfiance(undefined, new Set(['10.0.0.1']))).toBe(false);
     });
 });

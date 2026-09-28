@@ -32,7 +32,7 @@ where
     let v = u8::deserialize(deserializer)?;
     if v != CONTROL_VERSION {
         return Err(serde::de::Error::custom(format!(
-            "version de contrôle non supportée : {v}"
+            "unsupported control version: {v}"
         )));
     }
     Ok(v)

@@ -1,15 +1,15 @@
 // The JSON headers of the file bridge frames — the TypeScript twin of
-// `proto/src/fichiers/entetes.rs`.
+// `proto/src/files/entetes.rs`.
 //
-// ⚠️ THE SPLIT IS THE SAME ON BOTH SIDES: the frame in `files.{rs,ts}`,
-// the headers here and in `fichiers/entetes.rs`. An asymmetric split
+// ⚠️ THE SPLIT IS THE SAME ON BOTH SIDES: the frame in `files.rs`/`fichiers.ts`, (policy: allow-fr - file name)
+// the headers here and in `files/entetes.rs`. An asymmetric split
 // would make the pairing harder to read than to write. This file is
-// separate from `fichiers.ts` for the same reason its Rust twin is separate from
-// `fichiers.rs` — and because the two together would cross the 250-line
-// gate the plan arms on `fichiers.ts`.
+// separate from `fichiers.ts` for the same reason its Rust twin is separate from (policy: allow-fr - file name)
+// `files.rs` — and because the two together would cross the 250-line
+// gate the plan arms on `fichiers.ts`. (policy: allow-fr - file name)
 //
-// 🔴 WHAT CATCHES A RENAME: `proto/fichiers-vectors.json`, read by
-// `fichiers-entetes.test.ts` HERE and by `fichiers/entetes/tests.rs` OVER THERE.
+// 🔴 WHAT CATCHES A RENAME: `proto/fichiers-vectors.json`, read by (policy: allow-fr - file name)
+// `fichiers-entetes.test.ts` HERE and by `files/entetes/tests.rs` OVER THERE. (policy: allow-fr - file name)
 // As long as these shapes lived in the agent alone, this file would have had to
 // reproduce them by hand, and a field renamed on one side would have broken the bridge without
 // breaking a single test — the exact pattern of `TYPES_AGENT` (`control.ts`) and of
@@ -37,16 +37,16 @@ export interface EnteteChemin {
 export interface EnteteLire {
     chemin: string;
     position: number;
-    longueur: number;
+    longueur: number; // policy: allow-fr - frozen wire key or SQLite column
 }
 
 /** A directory entry, in the `TYPE_ENTREES` answer. */
 export interface EntreeJson {
     nom: string;
     repertoire: boolean;
-    taille: number;
+    taille: number; // policy: allow-fr - frozen wire key or SQLite column
     /** `File.lastModified`: milliseconds since the Unix epoch, **signed**. */
-    modifie: number;
+    modifie: number; // policy: allow-fr - frozen wire key or SQLite column
 }
 
 /** The header of `TYPE_ENTREES`. **Empty** binary payload. */
@@ -63,14 +63,14 @@ export interface EnteteEntrees {
 export interface EnteteMeta {
     nom: string;
     repertoire: boolean;
-    taille: number;
-    modifie: number;
+    taille: number; // policy: allow-fr - frozen wire key or SQLite column
+    modifie: number; // policy: allow-fr - frozen wire key or SQLite column
 }
 
 /** The header of `TYPE_DATA`. **The payload carries the bytes.** */
 export interface DataHeader {
     position: number;
-    longueur: number;
+    longueur: number; // policy: allow-fr - frozen wire key or SQLite column
 }
 
 /**
@@ -84,9 +84,9 @@ export interface DataHeader {
 export interface WriteHeader {
     chemin: string;
     position: number;
-    longueur: number;
+    longueur: number; // policy: allow-fr - frozen wire key or SQLite column
     premier: boolean;
-    dernier: boolean;
+    dernier: boolean; // policy: allow-fr - frozen wire key or SQLite column
 }
 
 /** The header of `TYPE_CREATE`. **Empty** binary payload. */
@@ -187,7 +187,7 @@ export function encodeChemin(chemin: string): string {
 }
 
 export function encodeLire(chemin: string, position: number, length: number): string {
-    return JSON.stringify({ chemin, position, longueur: length } satisfies EnteteLire);
+    return JSON.stringify({ chemin, position, longueur: length } satisfies EnteteLire); // policy: allow-fr - frozen wire key or SQLite column
 }
 
 export function encodeEntrees(entrees: EntreeJson[]): string {
@@ -197,8 +197,8 @@ export function encodeEntrees(entrees: EntreeJson[]): string {
         entrees: entrees.map((e) => ({
             nom: e.nom,
             repertoire: e.repertoire,
-            taille: e.taille,
-            modifie: e.modifie,
+            taille: e.taille, // policy: allow-fr - frozen wire key or SQLite column
+            modifie: e.modifie, // policy: allow-fr - frozen wire key or SQLite column
         })),
     } satisfies EnteteEntrees);
 }
@@ -211,11 +211,11 @@ export function encodeMeta(
 ): string {
     // ⚠️ THE KEY ORDER IS THAT OF THE RUST DECLARATION, and the vector
     // freezes it: `nom` comes FIRST.
-    return JSON.stringify({ nom, repertoire, taille: size, modifie: modified } satisfies EnteteMeta);
+    return JSON.stringify({ nom, repertoire, taille: size, modifie: modified } satisfies EnteteMeta); // policy: allow-fr - frozen wire key or SQLite column
 }
 
 export function encodeData(position: number, length: number): string {
-    return JSON.stringify({ position, longueur: length } satisfies DataHeader);
+    return JSON.stringify({ position, longueur: length } satisfies DataHeader); // policy: allow-fr - frozen wire key or SQLite column
 }
 
 export function encodeEchec(code: CodeEchec): string {
@@ -232,9 +232,9 @@ export function encodeWrite(
     return JSON.stringify({
         chemin,
         position,
-        longueur: length,
+        longueur: length, // policy: allow-fr - frozen wire key or SQLite column
         premier,
-        dernier: last,
+        dernier: last, // policy: allow-fr - frozen wire key or SQLite column
     } satisfies WriteHeader);
 }
 
@@ -274,7 +274,7 @@ export function encodeDues(dues: Due[], retenues: boolean): string {
 
 function objet(value: unknown, forme: string): Record<string, unknown> {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-        throw new Error(`en-tête ${forme} : objet attendu, reçu ${typeof value}`);
+        throw new Error(`header ${forme}: object expected, got ${typeof value}`);
     }
     return value as Record<string, unknown>;
 }
@@ -282,7 +282,7 @@ function objet(value: unknown, forme: string): Record<string, unknown> {
 function chain(o: Record<string, unknown>, cle: string, forme: string): string {
     const v = o[cle];
     if (typeof v !== 'string') {
-        throw new Error(`en-tête ${forme} : champ « ${cle} » absent ou non textuel`);
+        throw new Error(`header ${forme}: field « ${cle} » absent or not text`);
     }
     return v;
 }
@@ -290,7 +290,7 @@ function chain(o: Record<string, unknown>, cle: string, forme: string): string {
 function entier(o: Record<string, unknown>, cle: string, forme: string): number {
     const v = o[cle];
     if (typeof v !== 'number' || !Number.isInteger(v)) {
-        throw new Error(`en-tête ${forme} : champ « ${cle} » absent ou non entier`);
+        throw new Error(`header ${forme}: field « ${cle} » absent or not an integer`);
     }
     return v;
 }
@@ -298,7 +298,7 @@ function entier(o: Record<string, unknown>, cle: string, forme: string): number 
 function booleen(o: Record<string, unknown>, cle: string, forme: string): boolean {
     const v = o[cle];
     if (typeof v !== 'boolean') {
-        throw new Error(`en-tête ${forme} : champ « ${cle} » absent ou non booléen`);
+        throw new Error(`header ${forme}: field « ${cle} » absent or not a boolean`);
     }
     return v;
 }
@@ -313,7 +313,7 @@ export function parseLire(brut: unknown): EnteteLire {
     return {
         chemin: chain(o, 'chemin', 'Lire'),
         position: entier(o, 'position', 'Lire'),
-        longueur: entier(o, 'longueur', 'Lire'),
+        longueur: entier(o, 'longueur', 'Lire'), // policy: allow-fr - frozen wire key or SQLite column
     };
 }
 
@@ -321,7 +321,7 @@ export function parseEntrees(brut: unknown): EnteteEntrees {
     const o = objet(brut, 'Entrees');
     const list = o.entrees;
     if (!Array.isArray(list)) {
-        throw new Error('en-tête Entrees : champ « entrees » absent ou non tableau');
+        throw new Error('header Entrees: field « entrees » absent or not an array');
     }
     return {
         entrees: list.map((e) => {
@@ -329,8 +329,8 @@ export function parseEntrees(brut: unknown): EnteteEntrees {
             return {
                 nom: chain(item, 'nom', 'EntreeJson'),
                 repertoire: booleen(item, 'repertoire', 'EntreeJson'),
-                taille: entier(item, 'taille', 'EntreeJson'),
-                modifie: entier(item, 'modifie', 'EntreeJson'),
+                taille: entier(item, 'taille', 'EntreeJson'), // policy: allow-fr - frozen wire key or SQLite column
+                modifie: entier(item, 'modifie', 'EntreeJson'), // policy: allow-fr - frozen wire key or SQLite column
             };
         }),
     };
@@ -341,8 +341,8 @@ export function parseMeta(brut: unknown): EnteteMeta {
     return {
         nom: chain(o, 'nom', 'Meta'),
         repertoire: booleen(o, 'repertoire', 'Meta'),
-        taille: entier(o, 'taille', 'Meta'),
-        modifie: entier(o, 'modifie', 'Meta'),
+        taille: entier(o, 'taille', 'Meta'), // policy: allow-fr - frozen wire key or SQLite column
+        modifie: entier(o, 'modifie', 'Meta'), // policy: allow-fr - frozen wire key or SQLite column
     };
 }
 
@@ -350,7 +350,7 @@ export function parseData(brut: unknown): DataHeader {
     const o = objet(brut, 'Donnees');
     return {
         position: entier(o, 'position', 'Donnees'),
-        longueur: entier(o, 'longueur', 'Donnees'),
+        longueur: entier(o, 'longueur', 'Donnees'), // policy: allow-fr - frozen wire key or SQLite column
     };
 }
 
@@ -359,13 +359,13 @@ export function parseWrite(brut: unknown): WriteHeader {
     return {
         chemin: chain(o, 'chemin', 'Ecrire'),
         position: entier(o, 'position', 'Ecrire'),
-        longueur: entier(o, 'longueur', 'Ecrire'),
+        longueur: entier(o, 'longueur', 'Ecrire'), // policy: allow-fr - frozen wire key or SQLite column
         // 🔴 BOTH flags are required. Without `premier`, the stream would open
         // with `keepExistingData` and a file rewritten shorter would keep its
         // tail of bytes — the EXACT defect of the old bridge. Without `last`, the
         // `close()` would never come and nothing would ever be committed.
         premier: booleen(o, 'premier', 'Ecrire'),
-        dernier: booleen(o, 'dernier', 'Ecrire'),
+        dernier: booleen(o, 'dernier', 'Ecrire'), // policy: allow-fr - frozen wire key or SQLite column
     };
 }
 
@@ -398,7 +398,7 @@ export function parseDues(brut: unknown): EnteteDues {
     const o = objet(brut, 'Dues');
     const list = o.dues;
     if (!Array.isArray(list)) {
-        throw new Error('en-tête Dues : champ « dues » absent ou non tableau');
+        throw new Error('header Dues: field « dues » absent or not an array');
     }
     return {
         dues: list.map((d) => {
@@ -426,7 +426,7 @@ export function parseEchec(brut: unknown): EnteteEchec {
     // 🔴 The list is that of `CODES_ECHEC`, hence of the Rust enum: an
     // unknown code is refused rather than propagated as a free string.
     if (!(CODES_ECHEC as readonly string[]).includes(code)) {
-        throw new Error(`en-tête Echec : code inconnu « ${code} »`);
+        throw new Error(`header Echec: unknown code « ${code} »`);
     }
     return { code: code as CodeEchec };
 }

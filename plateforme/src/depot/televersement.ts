@@ -6,7 +6,7 @@
 // 🔴 NO LITERAL VALUE in the SQL: everything goes in as a parameter, `null`
 // included, otherwise `rendreMarqueurs` would throw on the Postgres side.
 // ⚠️ This half of the lint bites ONLY on the Postgres path — the static lint
-// of `base/sous-ensemble.test.ts` only sweeps the `.sql` files. A faulty query
+// of `base/sous-ensemble.test.ts` only sweeps the `.sql` files. A faulty query (policy: allow-fr - file name)
 // written here would be green under `test:sqlite` alone.
 //
 // 🔴 THIS MODULE DECIDES NOTHING, AND ABOVE ALL NOT THE SLICING. The slice
@@ -25,7 +25,7 @@ import type { Pilote } from '../base/pilote';
 
 export interface LigneTeleversement {
     id: string;
-    utilisateur_id: string;
+    utilisateur_id: string; // policy: allow-fr - frozen wire key or SQLite column
     /// The name as the BROWSER announces it. It is sanitised only when it
     /// becomes a path, on the agent side — never here, where it is only data.
     nom: string;
@@ -34,13 +34,13 @@ export interface LigneTeleversement {
     /// FALSE in production without the `setTypeParser` of
     /// `base/pilote-postgres.ts` (P3 acceptance run). Since `interroger<T>` does an
     /// `as T[]`, no typing would catch it.
-    taille: number;
+    taille: number; // policy: allow-fr - frozen wire key or SQLite column
     /// The hash of the WHOLE file — a single value, comparable everywhere,
     /// including by a human with a `sha256sum`.
     sha256: string;
     /// Frozen at creation: the slicing must not change under the slices
     /// already uploaded.
-    taille_tranche: number;
+    taille_tranche: number; // policy: allow-fr - frozen wire key or SQLite column
     cree_a: number;
     /// `null` = not sealed yet. ⚠️ It is NOT `0`, which would read as an
     /// epoch of 1970 — same reasoning as `application.disparue_a`.
@@ -52,7 +52,7 @@ export async function create(
     entree: {
         userId: string;
         nom: string;
-        taille: number;
+        taille: number; // policy: allow-fr - frozen wire key or SQLite column
         sha256: string;
         chunkSize: number;
     },
@@ -60,11 +60,11 @@ export async function create(
 ): Promise<LigneTeleversement> {
     const ligne: LigneTeleversement = {
         id: randomUUID(),
-        utilisateur_id: entree.userId,
+        utilisateur_id: entree.userId, // policy: allow-fr - frozen wire key or SQLite column
         nom: entree.nom,
-        taille: entree.taille,
+        taille: entree.taille, // policy: allow-fr - frozen wire key or SQLite column
         sha256: entree.sha256,
-        taille_tranche: entree.chunkSize,
+        taille_tranche: entree.chunkSize, // policy: allow-fr - frozen wire key or SQLite column
         cree_a: maintenant,
         scelle_a: null,
     };
@@ -73,11 +73,11 @@ export async function create(
             + ' VALUES(?,?,?,?,?,?,?,?)',
         [
             ligne.id,
-            ligne.utilisateur_id,
+            ligne.utilisateur_id, // policy: allow-fr - frozen wire key or SQLite column
             ligne.nom,
-            ligne.taille,
+            ligne.taille, // policy: allow-fr - frozen wire key or SQLite column
             ligne.sha256,
-            ligne.taille_tranche,
+            ligne.taille_tranche, // policy: allow-fr - frozen wire key or SQLite column
             ligne.cree_a,
             ligne.scelle_a,
         ],

@@ -134,7 +134,7 @@ function estObjet(v: unknown): v is Record<string, unknown> {
 /// server — is chained AFTER all the others, and it resolves any
 /// path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the
 /// `false` returned here; outside `GET`/`HEAD` it steps aside, and the generic 404
-/// takes over. See `http/chaine.ts`, which carries the count and the rule.
+/// takes over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 export async function servirAuth(
     req: IncomingMessage,
     rep: ServerResponse,
@@ -325,7 +325,7 @@ function compterLEchec(deps: DependancesAuth, contexte: ContexteFrein, chemin: s
             // its budget back to a targeted account (see `ENTREES_MAX`): an operator
             // who sees `evictions` climb knows the brake is overwhelmed, and
             // that its budgets are no longer worth what they claim.
-            entrees: deps.frein.taille(),
+            entrees: deps.frein.size(),
             evictions: deps.frein.evictions(),
         }),
     );
@@ -366,7 +366,7 @@ async function connexion(
         // future version. It is a data defect, not a faulty input:
         // it is logged WITHOUT the request body, and the response stays
         // that of the credentials, so as not to become an oracle.
-        console.error(`empreinte illisible pour un compte existant : ${String(cause)}`);
+        console.error(`unreadable fingerprint for an existing account: ${String(cause)}`);
         compterLEchec(deps, contexte, '/auth/connexion');
         repondre(rep, 401, { refus: 'identifiants' }, cors);
         return;

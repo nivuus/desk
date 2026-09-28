@@ -31,9 +31,9 @@ export interface Pilote {
 export function rendreMarqueurs(sql: string): string {
     if (/['"]/.test(sql)) {
         throw new Error(
-            "SQL refusé : il porte une chaîne littérale (apostrophe ou guillemet). " +
-                'Toute valeur passe en paramètre, sans exception — sans quoi la ' +
-                "conversion des marqueurs changerait le sens de la requête. SQL : " +
+            "SQL refused: it carries a string literal (apostrophe or quote). " +
+                'Every value goes through a parameter, without exception — otherwise the ' +
+                "conversion of the placeholders would change the meaning of the query. SQL: " +
                 sql,
         );
     }

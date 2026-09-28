@@ -4,7 +4,7 @@
 // (no public sign-up in v1)" and stops there: the entry point and
 // the convention are decided here.
 //
-//     npm run admin:utilisateur -- --email ada@exemple.test
+//     npm run admin:utilisateur -- --email ada@exemple.test (policy: allow-fr - frozen wire key or SQLite column)
 //
 // 🔴 THE PASSWORD IS READ FROM STANDARD INPUT, AND ONLY THERE. A
 // `--mot-de-passe` on argv is REFUSED explicitly, with its reason:
@@ -40,20 +40,20 @@ export function analyserArguments(argv: string[]): Arguments {
             // sense.
             return {
                 refus:
-                    `${drapeau} est refusé : le mot de passe se lit sur l'entrée standard, ` +
-                    "jamais sur la ligne de commande — `ps` l'exposerait à tout utilisateur " +
-                    'de la machine.',
+                    `${drapeau} is refused: the password is read from standard input, ` +
+                    "never from the command line — `ps` would expose it to every user " +
+                    'of the machine.',
             };
         }
     }
 
     const i = argv.indexOf('--email');
     if (i === -1) {
-        return { refus: "--email <adresse> est obligatoire, et n'a aucun défaut." };
+        return { refus: "--email <address> is required, and has no default." };
     }
     const email = argv[i + 1];
     if (email === undefined || email === '') {
-        return { refus: '--email attend une adresse non vide.' };
+        return { refus: '--email expects a non-empty address.' };
     }
     return { email };
 }
@@ -79,9 +79,9 @@ export async function executer(argv: string[]): Promise<number> {
         return 2;
     }
 
-    const motDePasse = await lireMotDePasse('mot de passe (entrée standard) : ');
+    const motDePasse = await lireMotDePasse('password (standard input): ');
     if (motDePasse === '') {
-        process.stderr.write('mot de passe vide : aucun compte créé.\n');
+        process.stderr.write('empty password: no account created.\n');
         return 2;
     }
 
@@ -103,7 +103,7 @@ export async function executer(argv: string[]): Promise<number> {
         process.stdout.write(`${id}\n`);
         return 0;
     } catch (cause) {
-        process.stderr.write(`création refusée : ${String(cause)}\n`);
+        process.stderr.write(`creation refused: ${String(cause)}\n`);
         return 1;
     } finally {
         await base.fermer();

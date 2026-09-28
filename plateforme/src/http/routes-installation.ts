@@ -15,7 +15,7 @@
 // server — is chained AFTER all the others, and it resolves any
 // path. On a `GET`/`HEAD`, it is IT that answers `200 text/html` to the `false`
 // returned here; outside `GET`/`HEAD` it steps aside, and the generic 404 takes
-// over. See `http/chaine.ts`, which carries the count and the rule.
+// over. See `http/chaine.ts`, which carries the count and the rule. (policy: allow-fr - file name)
 //
 // 🔴 THE MOST IMPORTANT GUARD OF THE SUB-BLOCK LIVES IN THIS FILE:
 // `GET …/contenu` COMPARES THE VM OF THE TOKEN WITH THAT OF THE INSTALLATION. Without it,
@@ -138,8 +138,8 @@ function lireCorps(req: IncomingMessage): Promise<string | undefined> {
 /// SENTENCE — it is what the operator `grep`s for. Convention of G1.
 function journaliser(cas: string, ressource: string, demandeur: string): void {
     console.warn(
-        `refus d'acces a ${ressource} pour ${demandeur} : cas=${cas} — la reponse `
-            + `HTTP, elle, est INDISTINGUABLE d'une ressource inconnue.`,
+        `access to ${ressource} refused for ${demandeur}: cas=${cas} — the HTTP `
+            + `response itself is INDISTINGUISHABLE from an unknown resource.`,
     );
 }
 
@@ -152,22 +152,22 @@ function journaliser(cas: string, ressource: string, demandeur: string): void {
 /// indirection without closing anything. **Declared rather than endured, as
 /// `porteur-agent.ts` did for its header splitting: any fix
 /// is made IN THE THREE FILES.** ⚠️ The « not assigned » branch LOGS:
-/// `vm.utilisateur_id` is born NULL, and as long as no VM is assigned EVERY
+/// `vm.utilisateur_id` is born NULL, and as long as no VM is assigned EVERY (policy: allow-fr - frozen wire key or SQLite column)
 /// AUTHENTICATED USER SEES ALL THE VMS.
 async function acces(
     deps: DependancesInstallation, vmId: string, userId: string,
 ): Promise<'ok' | 'inconnue' | 'etrangere'> {
     const vm = await lireVm(deps.base, vmId);
     if (vm === undefined) {
-        journaliser('inconnue', `la VM ${vmId}`, `l'utilisateur ${userId}`);
+        journaliser('inconnue', `the VM ${vmId}`, `user ${userId}`);
         return 'inconnue';
     }
-    if (vm.utilisateur_id === null) {
-        console.warn(`vm non attribuee, acces accorde sans isolation a la VM ${vmId}`);
+    if (vm.utilisateur_id === null) { // policy: allow-fr - frozen wire key or SQLite column
+        console.warn(`unassigned vm, access granted without isolation to VM ${vmId}`);
         return 'ok';
     }
-    if (vm.utilisateur_id !== userId) {
-        journaliser('etrangere', `la VM ${vmId}`, `l'utilisateur ${userId}`);
+    if (vm.utilisateur_id !== userId) { // policy: allow-fr - frozen wire key or SQLite column
+        journaliser('etrangere', `the VM ${vmId}`, `user ${userId}`);
         return 'etrangere';
     }
     return 'ok';
@@ -289,10 +289,10 @@ async function ordre(
     // 🔴 UNKNOWN AND FOREIGN RETURN THE SAME REFUSAL, through the same expression: otherwise
     // one would learn which uploads exist at other people's.
     const tel = await lireTeleversement(deps.base, televersementId);
-    if (tel === undefined || tel.utilisateur_id !== porteur.userId) {
+    if (tel === undefined || tel.utilisateur_id !== porteur.userId) { // policy: allow-fr - frozen wire key or SQLite column
         journaliser(
             tel === undefined ? 'inconnue' : 'etrangere',
-            `le televersement ${televersementId}`, `l'utilisateur ${porteur.userId}`,
+            `upload ${televersementId}`, `user ${porteur.userId}`,
         );
         repondre(rep, 404, { refus: 'televersement-inconnu' }, cors);
         return true;
@@ -352,13 +352,13 @@ async function ordre(
         envoyer: (brut) => {
             if (!deps.registre.pousser(vmId, brut)) {
                 console.info(
-                    `installation ${ligne.id} : aucun socket ouvert pour la VM ${vmId}, `
-                    + "l'ordre attend le prochain enrôlement",
+                    `installation ${ligne.id}: no socket open for VM ${vmId}, `
+                    + "the order waits for the next enrolment",
                 );
             }
         },
     }).catch((cause) => {
-        console.error(`installation ${ligne.id} : poussée impossible — ${String(cause)}`);
+        console.error(`installation ${ligne.id}: push impossible — ${String(cause)}`);
     });
 
     // 201: a resource was BORN, and its id is what the hub will
@@ -420,7 +420,7 @@ async function contenu(
     if (!autorise) {
         const cas = enrole === undefined ? 'prefixe-sans-enrolement'
             : tel === undefined ? 'inconnue' : 'etrangere';
-        journaliser(cas, `le contenu du televersement ${id}`, `l'agent ${porteur.prefixe}`);
+        journaliser(cas, `the content of upload ${id}`, `agent ${porteur.prefixe}`);
         repondre(rep, 404, { refus: 'televersement-inconnu' }, cors);
         return true;
     }
@@ -449,7 +449,7 @@ async function contenu(
 async function servirLesOctets(
     rep: ServerResponse, deps: DependancesInstallation, tel: LigneTeleversement, cors: Cors,
 ): Promise<boolean> {
-    const rangs = plan(tel.taille, tel.taille_tranche).map((t) => t.n);
+    const rangs = plan(tel.taille, tel.taille_tranche).map((t) => t.n); // policy: allow-fr - frozen wire key or SQLite column
     const flux = deps.tranches.concatener(tel.id, rangs);
     rep.writeHead(200, {
         ...ENTETES_SECURITE,
@@ -461,7 +461,7 @@ async function servirLesOctets(
         // 🔴 THE LENGTH IS THAT OF THE CONTRACT, checked at sealing against the
         // sum of the slices: it is what makes a TRUNCATED response
         // detectable instead of letting it pass for a complete file.
-        'content-length': String(tel.taille),
+        'content-length': String(tel.taille), // policy: allow-fr - frozen wire key or SQLite column
         // ⚠️ NO `Content-Disposition`, NO FILE NAME: the agent knows
         // the name, received in the `installer` order next to the fingerprint;
         // repeating it would make a second source that nothing would compare.
@@ -475,8 +475,8 @@ async function servirLesOctets(
         // response. Destroying it cuts the connection, and the agent reads it as the
         // failed transfer it is.
         console.error(
-            `contenu du televersement ${tel.id} interrompu : ${String(cause)} — une `
-                + `tranche manque, ou le client a raccroche`,
+            `content of upload ${tel.id} interrupted: ${String(cause)} — a `
+                + `chunk is missing, or the client hung up`,
         );
         rep.destroy();
     }

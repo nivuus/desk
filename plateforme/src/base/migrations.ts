@@ -29,7 +29,7 @@ function lire(repertoire: string): Migration[] {
             const tete = /^(\d+)/.exec(file);
             if (!tete) {
                 throw new Error(
-                    `migration sans numéro de version en tête : ${file} — le nom doit commencer par des chiffres`,
+                    `migration without a version number at its head: ${file} — the name must start with digits`,
                 );
             }
             return {
@@ -72,7 +72,7 @@ export async function appliquerMigrations(
     // ⚠️ This duplication is DELIBERATE, so it can diverge — and a
     // TYPE divergence would be silent: the database created by this line would
     // no longer look like the one the base schema describes, without any error
-    // saying so. `sous-ensemble.test.ts` compares the two definitions; do not
+    // saying so. `sous-ensemble.test.ts` compares the two definitions; do not (policy: allow-fr - file name)
     // touch one without the other.
     //
     // `applique_a` is BIGINT and not INTEGER: see the header of

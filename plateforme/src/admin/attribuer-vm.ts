@@ -60,9 +60,9 @@ export function analyserArguments(argv: string[]): Arguments {
             // ⚠️ The reason does NOT COPY the refused value.
             return {
                 refus:
-                    `${drapeau} est refusé : cette commande n'a besoin d'aucun secret, et ` +
-                    "un secret passé sur la ligne de commande serait lisible par tout " +
-                    'utilisateur de la machine — `ps` expose l’argv de tout processus.',
+                    `${drapeau} is refused: this command needs no secret at all, and ` +
+                    "a secret passed on the command line would be readable by any " +
+                    'user of the machine — `ps` exposes the argv of every process.',
             };
         }
     }
@@ -74,7 +74,7 @@ export function analyserArguments(argv: string[]): Arguments {
 
     const vm = lire('--vm');
     if (vm === undefined || vm === '') {
-        return { refus: "--vm <nom|id> est obligatoire, et n'a aucun défaut." };
+        return { refus: "--vm <name|id> is required, and has no default." };
     }
 
     // 🔴 `--detacher` DOES NOT REQUIRE AN EMAIL: we detach a VM FROM someone,
@@ -86,8 +86,8 @@ export function analyserArguments(argv: string[]): Arguments {
     if (email === undefined || email === '') {
         return {
             refus:
-                "--email <courriel> est obligatoire, et n'a aucun défaut : un défaut " +
-                "attribuerait la VM à un compte que l'opérateur n'a pas nommé.",
+                "--email <email> is required, and has no default: a default " +
+                "would assign the VM to an account the operator did not name.",
         };
     }
     return { action: 'attribuer', email, vm };
@@ -118,7 +118,7 @@ async function resoudre(p: Pilote, designation: string): Promise<LigneVm | undef
 export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: string }>): Promise<Issue> {
     const ligne = await resoudre(p, args.vm);
     if (ligne === undefined) {
-        return { code: 2, error: `aucune VM nommée « ${args.vm} », ni par son nom ni par son identifiant.` };
+        return { code: 2, error: `no VM named « ${args.vm} », neither by its name nor by its identifier.` };
     }
 
     if (args.action === 'detacher') {
@@ -127,14 +127,14 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
             code: 0,
             sortie:
                 lignes === 1
-                    ? `vm=${ligne.id} (${ligne.nom}) rendue au vivier.\n`
-                    : `vm=${ligne.id} (${ligne.nom}) était déjà au vivier.\n`,
+                    ? `vm=${ligne.id} (${ligne.nom}) returned to the pool.\n`
+                    : `vm=${ligne.id} (${ligne.nom}) was already in the pool.\n`,
         };
     }
 
     const user = await lireParEmail(p, args.email);
     if (user === undefined) {
-        return { code: 2, error: `aucun compte pour le courriel « ${args.email} ».` };
+        return { code: 2, error: `no account for the email « ${args.email} ».` };
     }
 
     // 🔴 THE ASSIGNMENT GOES THROUGH THE ORCHESTRATOR, never through an `UPDATE` written
@@ -168,8 +168,8 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
             return {
                 code: 2,
                 error:
-                    `la VM ${ligne.id} (${ligne.nom}) appartient déjà à ` +
-                    `${relue?.utilisateur_id ?? 'un autre compte'} — la détacher d'abord : ` +
+                    `the VM ${ligne.id} (${ligne.nom}) already belongs to ` +
+                    `${relue?.utilisateur_id ?? 'another account'} — detach it first: ` +
                     `npm run admin:attribuer -- --detacher --vm ${ligne.nom}`,
             };
         }
@@ -177,14 +177,14 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
             return {
                 code: 2,
                 error:
-                    `${args.email} a déjà une VM, et l'index unique partiel ` +
-                    "`vm_un_utilisateur` n'en autorise qu'une — détacher la sienne d'abord.",
+                    `${args.email} already has a VM, and the partial unique index ` +
+                    "`vm_un_utilisateur` allows only one — detach theirs first.",
             };
         default:
             // Unreachable with the inputs above (the VM was resolved,
             // so never `vm-inconnue`), written anyway: a reason added one
             // day must not fall into silence.
-            return { code: 2, error: `attribution refusée : ${issue.motif}.` };
+            return { code: 2, error: `assignment refused: ${issue.motif}.` };
     }
 }
 

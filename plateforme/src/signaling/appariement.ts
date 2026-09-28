@@ -82,7 +82,7 @@ export class Appariement<S> {
     declarer(session: string, role: Role, socket: S): string | undefined {
         const entree = this.sessions.get(session) ?? {};
         if (entree[role]) {
-            return `un ${role} est déjà connecté à la session ${session}`;
+            return `${role === 'agent' ? 'an' : 'a'} ${role} is already connected to session ${session}`;
         }
         entree[role] = socket;
         this.sessions.set(session, entree);

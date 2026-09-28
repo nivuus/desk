@@ -38,7 +38,7 @@ function jetonAgent(sujet: string = PREFIXE): string {
 }
 
 describe('lirePorteurAgent', () => {
-    it('en-tête ABSENT → jeton-absent, 401', () => {
+    it('header ABSENT → jeton-absent, 401', () => {
         // 🔴 La rouge : rendre `ok:true` avec un préfixe vide. La route de
         // téléversement deviendrait publique, au nom d'une VM qui n'existe
         // pas — et `depot/agent.ts::lireParPrefixe('')` ne rendrait rien, donc
@@ -57,7 +57,7 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('`Bearer <jeton d’agent valide>` → le PRÉFIXE, jamais un id de VM', () => {
+    it('`Bearer <valid agent token>` → the PREFIX, never a VM id', () => {
         // 🔴 CE QUI EST RENDU EST LE SUJET DU JETON, ET LE SUJET EST LE
         // PRÉFIXE. `agents/canal.ts` écrit `signer(prefixe, …, 'agent')` et
         // son en-tête dit qu'« un canal qui signerait l'identifiant de VM au
@@ -71,7 +71,7 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 `Bearer <jeton d’UTILISATEUR>` → jeton-utilisateur, 403', () => {
+    it('🔴 `Bearer <USER token>` → jeton-utilisateur, 403', () => {
         // 🔴 LA ROUGE, ET ELLE VA PAR PAIRE AVEC CELLE DE `porteur.test.ts` :
         // accepter le type `user` ici. Un humain déposerait alors des
         // installeurs et téléchargerait ceux d'une VM dont il n'est pas
@@ -90,7 +90,7 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 un jeton SANS claim de type est un jeton d’utilisateur, donc refusé', () => {
+    it('🔴 a token WITHOUT a type claim is a user token, so refused', () => {
         // 🔴 L'ABSENCE DU CLAIM VAUT `user` (`identite/jeton.ts`,
         // `TYPE_PAR_DEFAUT`) — c'est le format des jetons de P2, encore en
         // vol. Ce test tient que le lecteur d'agent lit bien le DÉFAUT et ne
@@ -112,7 +112,7 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 jeton EXPIRÉ → jeton-expire, et l’horloge VARIE', () => {
+    it('🔴 EXPIRED token → jeton-expire, and the clock VARIES', () => {
         // 🔴 La rouge : figer l'horloge. Le test deviendrait inerte — il n'y
         // aurait qu'un instant observable et le seuil ne serait jamais
         // franchi. La borne d'`identite/jeton.ts` est FRANCHE (`maintenant >=
@@ -132,7 +132,7 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 un schéma autre que `Bearer` → jeton-invalide', () => {
+    it('🔴 a scheme other than `Bearer` → jeton-invalide', () => {
         // 🔴 La rouge : accepter n'importe quel schéma. La casse est comparée
         // STRICTEMENT, divergence avec la RFC 7235 déclarée dans
         // `porteur-agent.ts` — et elle DOIT être la même que celle de
@@ -145,7 +145,7 @@ describe('lirePorteurAgent', () => {
             `BEARER ${jeton}`,
             jeton,
             `Bearer`,
-            `Bearer ${jeton} de-trop`,
+            `Bearer ${jeton} too-much`,
         ]) {
             const v = lirePorteurAgent(entetes(brut), SECRET, MS);
             expect(v.ok).toBe(false);
@@ -161,7 +161,7 @@ describe('lirePorteurAgent', () => {
         });
     });
 
-    it('🔴 un en-tête RÉPÉTÉ (string[]) → jeton-invalide', () => {
+    it('🔴 a REPEATED header (string[]) → jeton-invalide', () => {
         // 🔴 La rouge : prendre `entetes.authorization[0]` en silence. Deux
         // en-têtes d'autorisation est une requête AMBIGUË, pas une requête à
         // interpréter.

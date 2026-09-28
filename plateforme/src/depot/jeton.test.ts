@@ -48,8 +48,8 @@ async function lignes(p: Pilote): Promise<
     );
 }
 
-describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
-    it('émet un clair NEUF à chaque appel, et la base ne porte JAMAIS le clair', async () => {
+describe(`jeton_rafraichissement repository, engine=${MOTEUR}`, () => {
+    it('issues a NEW plaintext at each call, and the database NEVER holds the plaintext', async () => {
         const { p, id } = await withUser('jet-emettre');
         const un = await emettre(p, id, MS);
         const deux = await emettre(p, id, MS);
@@ -67,7 +67,7 @@ describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
         expect(JSON.stringify(all)).not.toContain(deux);
     });
 
-    it('écrit expire_a à l’époque EXACTE attendue, sur ce moteur', async () => {
+    it('writes expire_a at the EXACT expected epoch, on this engine', async () => {
         const { p, id } = await withUser('jet-epoque');
         await emettre(p, id, MS);
         const [l] = await lignes(p);
@@ -76,7 +76,7 @@ describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
         expect(Number(l.expire_a)).toBe(MS + DUREE_RAFRAICHISSEMENT_MS);
     });
 
-    it('tourne : le neuf vaut, l’ancien ne vaut plus, et la famille est la même', async () => {
+    it('rotates: the new one is valid, the old one no longer is, and the family is the same', async () => {
         const { p, id } = await withUser('jet-tourner');
         const un = await emettre(p, id, MS);
         const issue = await tourner(p, un, MS + 1_000);
@@ -93,7 +93,7 @@ describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
         await expect(tourner(p, issue.clair, MS + 2_000)).resolves.toMatchObject({ ok: true });
     });
 
-    it('REJEU : tourner deux fois le même clair révoque TOUTE la famille', async () => {
+    it('REPLAY: rotating the same plaintext twice revokes the WHOLE family', async () => {
         const { p, id } = await withUser('jet-rejeu');
         const un = await emettre(p, id, MS);
         const issue = await tourner(p, un, MS + 1_000);
@@ -108,7 +108,7 @@ describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
         for (const l of all) expect(l.revoque_a).not.toBeNull();
     });
 
-    it('une famille révoquée refuse AUSSI le jeton neuf, et le motif le DIT', async () => {
+    it('a revoked family ALSO refuses the new token, and the reason SAYS so', async () => {
         // 🔴 `revoque` et `rejeu` sont distingués par `remplace_par` : une
         // ligne révoquée SANS successeur n'a jamais été tournée, donc la
         // présenter n'est pas un rejeu — c'est un jeton mort. Sans cette
@@ -124,9 +124,9 @@ describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
         expect(await tourner(p, issue.clair, MS + 2_000)).toEqual({ ok: false, motif: 'revoque' });
     });
 
-    it('refuse un clair inconnu, et un jeton expiré — sur une horloge qui VARIE', async () => {
+    it('refuses an unknown plaintext, and an expired token — on a clock that VARIES', async () => {
         const { p, id } = await withUser('jet-expire');
-        expect(await tourner(p, 'un-clair-qui-n-a-jamais-existe', MS)).toEqual({
+        expect(await tourner(p, 'a-plaintext-that-never-existed', MS)).toEqual({
             ok: false,
             motif: 'inconnu',
         });
@@ -144,7 +144,7 @@ describe(`dépôt jeton_rafraichissement, moteur=${MOTEUR}`, () => {
         });
     });
 
-    it('annule la TRANSACTION si l’insertion neuve échoue : l’ancien reste valide', async () => {
+    it('rolls back the TRANSACTION if the new insertion fails: the old one stays valid', async () => {
         // 🔴 Hors transaction, la révocation de l'ancien serait déjà écrite
         // quand l'insertion échouerait : l'utilisateur perdrait sa session sur
         // une panne partielle, sans qu'aucune erreur ne le lui dise.

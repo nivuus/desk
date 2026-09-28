@@ -15,7 +15,7 @@ fn termine_complet() -> String {
 }
 
 #[test]
-fn lit_un_termine_complet() {
+fn reads_a_complete_termine() {
     let lu: VersLaPlateforme = serde_json::from_str(&termine_complet()).expect("lisible");
     assert_eq!(
         lu,
@@ -38,7 +38,7 @@ fn lit_un_termine_complet() {
 /// v4 platform, with a reason and a code silently missing. That is the
 /// exact disguise the version bump exists to prevent.
 #[test]
-fn refuse_un_termine_dont_une_cle_facultative_manque() {
+fn refuses_a_termine_missing_an_optional_key() {
     for cle in ["motif", "code_sortie"] {
         let ampute: String = {
             let mut doc: serde_json::Value =
@@ -48,20 +48,20 @@ fn refuse_un_termine_dont_une_cle_facultative_manque() {
         };
         assert!(
             serde_json::from_str::<VersLaPlateforme>(&ampute).is_err(),
-            "un `termine` sans « {cle} » doit être refusé, il ne doit pas être complété"
+            "a `termine` without « {cle} » must be refused, it must not be completed"
         );
     }
 }
 
 #[test]
-fn accepte_null_sur_les_deux_cles_et_le_distingue_de_l_absence() {
+fn accepts_null_on_both_keys_and_tells_it_from_absence() {
     let with_null = termine_complet().replace(r#""code_sortie":0"#, r#""code_sortie":null"#);
     let lu: VersLaPlateforme = serde_json::from_str(&with_null).expect("lisible");
     let VersLaPlateforme::Termine {
         motif, code_sortie, ..
     } = lu
     else {
-        panic!("pas un termine");
+        panic!("not a termine");
     };
     assert_eq!(motif, None);
     assert_eq!(code_sortie, None);
@@ -71,11 +71,11 @@ fn accepte_null_sur_les_deux_cles_et_le_distingue_de_l_absence() {
 /// have the high bit set and read as a signed `i32`. Refusing it
 /// would confuse "abnormal code" with "ordinary failure".
 #[test]
-fn accepte_un_code_de_sortie_negatif() {
+fn accepts_a_negative_exit_code() {
     let negatif = termine_complet().replace(r#""code_sortie":0"#, r#""code_sortie":-1073741510"#);
     let lu: VersLaPlateforme = serde_json::from_str(&negatif).expect("lisible");
     let VersLaPlateforme::Termine { code_sortie, .. } = lu else {
-        panic!("pas un termine");
+        panic!("not a termine");
     };
     assert_eq!(code_sortie, Some(-1_073_741_510));
 }
@@ -95,7 +95,7 @@ fn accepte_un_code_de_sortie_negatif() {
 /// played here, on the enum that can carry it, and **we did NOT invent a
 /// fourth phase** to make a mutation observable.
 #[test]
-fn les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case() {
+fn the_two_two_word_outcome_variants_travel_in_kebab_case() {
     let paires = [
         (Issue::Reussie, "reussie"),
         (Issue::SansEffet, "sans-effet"),
@@ -104,11 +104,11 @@ fn les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case() {
     ];
     for (variante, mot) in paires {
         assert_eq!(
-            serde_json::to_string(&variante).expect("sér."),
+            serde_json::to_string(&variante).expect("ser."),
             format!("\"{mot}\""),
-            "la variante {variante:?} doit voyager en kebab-case"
+            "variant {variante:?} must travel in kebab-case"
         );
-        let relu: Issue = serde_json::from_str(&format!("\"{mot}\"")).expect("désér.");
+        let relu: Issue = serde_json::from_str(&format!("\"{mot}\"")).expect("deser.");
         assert_eq!(relu, variante);
     }
     // ⚠️ AND THE `snake_case` FORM IS REFUSED, which is the half that makes
@@ -119,14 +119,14 @@ fn les_deux_variantes_de_deux_mots_d_issue_voyagent_en_kebab_case() {
 }
 
 #[test]
-fn les_trois_phases_voyagent_par_leur_mot() {
+fn the_three_phases_travel_by_their_word() {
     for (variante, mot) in [
         (Phase::Transfert, "transfert"),
         (Phase::Execution, "execution"),
         (Phase::Reconciliation, "reconciliation"),
     ] {
         assert_eq!(
-            serde_json::to_string(&variante).expect("sér."),
+            serde_json::to_string(&variante).expect("ser."),
             format!("\"{mot}\"")
         );
     }
@@ -138,11 +138,11 @@ fn les_trois_phases_voyagent_par_leur_mot() {
 /// The shape of the downstream `Installer`, and the fact that the URL travels in it — never
 /// the bytes.
 #[test]
-fn l_ordre_d_installation_porte_une_url_et_pas_des_octets() {
+fn the_install_order_carries_a_url_and_not_bytes() {
     let ordre = DepuisLaPlateforme::installer("i-1", "http://h:8080/t/c", "setup.exe", 42, "ab");
-    let chain = serde_json::to_string(&ordre).expect("sér.");
+    let chain = serde_json::to_string(&ordre).expect("ser.");
     assert!(chain.contains(r#""url":"http://h:8080/t/c""#));
     assert!(!chain.contains("base64"));
-    let relu: DepuisLaPlateforme = serde_json::from_str(&chain).expect("désér.");
+    let relu: DepuisLaPlateforme = serde_json::from_str(&chain).expect("deser.");
     assert_eq!(relu, ordre);
 }
