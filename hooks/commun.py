@@ -262,7 +262,7 @@ def lire_hote():
 # survey (29 August 2026), and Pomerium is not yet retargeted to
 # this address (that is part 10B). **Part 10B MUST confirm this
 # value through the announcement line of the platform startup
-# (`proxys de confiance retenus=…`, see `plateforme/src/http/annonces.ts`)
+# (`trusted proxies retained=…`, see `plateforme/src/http/annonces.ts`)
 # once its route points at `192.168.3.1:3445`.**
 #
 # Overridable by `DESK_PROXY_DE_CONFIANCE` (tests, or once 10B measures

@@ -66,16 +66,16 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
         return {
             niveau: 'info',
             texte: ligne('page served', {
-                racine: 'none',
+                root: 'none',
                 raison: 'PLATEFORME_PAGE absent or empty',
-                effet: 'GET / returns 404 not found',
+                effect: 'GET / returns 404 not found',
             }),
         };
     }
     if (etat.lisible) {
         return {
             niveau: 'info',
-            texte: ligne('page served', { racine: etat.chemin, lisible: 'yes' }),
+            texte: ligne('page served', { root: etat.chemin, readable: 'yes' }),
         };
     }
     // 🔴 `error`, NEVER `info`: it is the case this module exists to
@@ -85,10 +85,10 @@ export function annonceRacinePage(etat: EtatRacinePage): Annonce {
     return {
         niveau: 'error',
         texte: ligne('page served', {
-            racine: etat.chemin,
-            lisible: 'no',
+            root: etat.chemin,
+            readable: 'no',
             cause: etat.cause,
-            effet: 'every page will return 404 not found',
+            effect: 'every page will return 404 not found',
         }),
     };
 }
@@ -148,8 +148,8 @@ export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce
         return {
             niveau: 'info',
             texte: ligne('trusted proxies', {
-                retenus: 'none',
-                effet: 'X-Forwarded-For is not trusted, and /auth/moi refuses every peer',
+                retained: 'none',
+                effect: 'X-Forwarded-For is not trusted, and /auth/moi refuses every peer',
             }),
         };
     }
@@ -161,7 +161,7 @@ export function annonceProxyDeConfiance(confiance: ReadonlySet<string>): Annonce
             // AMBIGUOUS, and the operator would no longer recognise their own. It is
             // also what makes a host name VISIBLE where it would not be
             // in a count.
-            retenus: [...confiance].join(' '),
+            retained: [...confiance].join(' '),
             count: confiance.size,
         }),
     };

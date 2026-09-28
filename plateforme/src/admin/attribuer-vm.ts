@@ -8,7 +8,7 @@
 // `user` and `agent`, and `config.ts` has no administrator
 // variable. A route that assigned a VM would therefore, at best,
 // be open to any authenticated user — a privilege escalation on offer.
-// The precedent is exact: `admin:user` and `admin:agent` (D8).
+// The precedent is exact: `admin:utilisateur` (policy: allow-fr - npm script name) and `admin:agent` (D8).
 //
 // 🔴 AND THAT IS WHY IT NAMES THE CAUSE, unlike the routes.
 // `http/routes-vm.ts` returns the same refusal for "unknown VM" and "someone

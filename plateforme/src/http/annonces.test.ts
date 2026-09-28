@@ -40,7 +40,7 @@ describe('the announced page root', () => {
     // 🔴 « AUCUNE PAGE SERVIE » EST UNE INFORMATION, PAS UN SILENCE : c'est
     // elle qui distingue le montage nginx nominal d'une racine fausse.
     it("announces the ABSENCE of a served page, rather than staying silent", () => {
-        expect(annonceRacinePage({ arme: false }).texte).toContain('racine=none');
+        expect(annonceRacinePage({ arme: false }).texte).toContain('root=none');
     });
 
     it("the absence of a served page is NOT an error", () => {
@@ -49,7 +49,7 @@ describe('the announced page root', () => {
 
     it('announces the retained path when the root is readable', () => {
         const annonce = annonceRacinePage({ arme: true, chemin: '/srv/page', lisible: true });
-        expect(annonce.texte).toContain('racine=/srv/page');
+        expect(annonce.texte).toContain('root=/srv/page');
     });
 
     // 🔴 BRUYANTE, JAMAIS `info` : c'est le cas exact que la revue finale a
@@ -131,7 +131,7 @@ describe("the announced trust set", () => {
     });
 
     it('announces an EMPTY set rather than staying silent', () => {
-        expect(annonceProxyDeConfiance(new Set()).texte).toContain('retenus=none');
+        expect(annonceProxyDeConfiance(new Set()).texte).toContain('retained=none');
     });
 
     // ⚠️ CE N'EST PAS PARCE QUE L'ENSEMBLE VIDE SERAIT LE « DÉFAUT SÛR » —
@@ -197,7 +197,7 @@ describe('the service announces at startup', () => {
 
     it("announces the absence of a served page when the variable is not set", async () => {
         const { infos } = await startAndCapture({ racinePage: undefined }, 'annonce-page-absente');
-        expect(infos.some((l) => l.startsWith('page served') && l.includes('racine=none'))).toBe(
+        expect(infos.some((l) => l.startsWith('page served') && l.includes('root=none'))).toBe(
             true,
         );
     });
@@ -207,7 +207,7 @@ describe('the service announces at startup', () => {
     it('a root set but NON-EXISTENT is announced on console.error', async () => {
         const absente = join(mkdtempSync(join(tmpdir(), 'annonce-absente-')), 'jamais-batie');
         const { errors } = await startAndCapture({ racinePage: absente }, 'annonce-page-morte');
-        expect(errors.some((l) => l.startsWith('page served') && l.includes('lisible=no'))).toBe(
+        expect(errors.some((l) => l.startsWith('page served') && l.includes('readable=no'))).toBe(
             true,
         );
     });

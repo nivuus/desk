@@ -378,7 +378,7 @@ démarrage annonce désormais l'ensemble RETENU**, si bien qu'un nom d'hôte s'y
 lit en toutes lettres :
 
 ```
-proxys de confiance retenus=172.18.0.5 nombre=1
+trusted proxies retained=172.18.0.5 count=1
 ```
 
 Ce que la ligne dit est ce que le service a **retenu**, jamais ce qu'on lui a

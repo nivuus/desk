@@ -84,7 +84,7 @@ pub const TYPE_DELETE: u8 = 8; // F3 — `Delete` header, empty payload
 // Bridge → browser announcements — **they await NOTHING**.
 //
 // 🔴 **THIRD FAMILY, and it breaks the invariant the browser states
-// policy: allow-fr (file name) — in capitals** (`client/src/fichiers/protocole.ts`): "a request always
+// in capitals** (`client/src/files/protocole.ts`): "a request always
 // receives an answer". An ANNOUNCEMENT receives none — no table
 // entry corresponds to it on the bridge side, and not answering it therefore leaves nothing
 // in flight. **The set of announcements is CLOSED**, and that is what keeps this
@@ -133,7 +133,7 @@ pub const TYPE_ECHEC: u8 = 127;
 //
 // ⚠️ **The numbering is therefore NOT contiguous: 6 is an ANNOUNCEMENT, 7 and 8 are
 // REQUESTS.** The order of the values says nothing of the family; it is
-// the named routing of `client/src/fichiers/protocole.ts` that says it, and it (policy: allow-fr - file name)
+// the named routing of `client/src/files/protocole.ts` that says it, and it
 // alone.
 
 /// Cause of a failure sent back by the browser.
@@ -182,7 +182,7 @@ pub enum CodeEchec {
     /// `getFileHandle('CASSE.TXT', { create: true })` would therefore open
     /// `Casse.txt` there and **overwrite it**. Refusing loudly is the only
     /// arbitration available between "refusing wrongly" and "overwriting the wrong
-    /// policy: allow-fr (file name) — file" — see `client/src/fichiers/ecriture.ts`.
+    /// file" — see `client/src/files/ecriture.ts`.
     CasseAmbigue,
     /// 🔴 **The local machine refuses to delete a NON-EMPTY directory, and that
     /// means the MIRROR HAS DRIFTED.**

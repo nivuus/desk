@@ -63,7 +63,7 @@ export const TYPE_ECHEC = 127;
 // ✅ 7 AND 8 ARE TAKEN, AND BY THE ONE THEY WERE RESERVED FOR. *(This
 // line said "RESERVED for F3".)* Numbering is thus NOT contiguous per
 // family: 6 is an ANNOUNCEMENT, 7 and 8 are REQUESTS. It is the named routing of
-// `client/src/fichiers/protocole.ts` that tells the family, never the value. (policy: allow-fr - file name)
+// `client/src/files/protocole.ts` that tells the family, never the value.
 
 /** The union of message types. */
 export type TypeMessage =
