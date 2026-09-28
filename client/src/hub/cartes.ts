@@ -1,53 +1,53 @@
-// LE BALISAGE D'UNE CARTE D'APPLICATION — cloné depuis le `<template>` du
-// hub, jamais construit élément par élément.
+// THE MARKUP OF AN APPLICATION CARD — cloned from the hub's `<template>`,
+// never built element by element.
 //
-// 🔴 EXTRAIT DE `hub/page.ts::entree` LE 31 AOÛT 2026, DANS UNE TÂCHE DÉDIÉE
-// ET AVANT L'ADDITION QU'ELLE PRÉPARE (le hub absorbe les deux sections du
-// bureau). C'est la forme forte que `CLAUDE.md` exige : extraire, jamais
-// comprimer, et jamais dans le commit qui ajoute.
+// 🔴 EXTRACTED FROM `hub/page.ts::entree` ON AUGUST 31ST, 2026, IN A DEDICATED TASK
+// AND BEFORE THE ADDITION IT PREPARES (the hub absorbs the two sections of the
+// desktop). It is the strong form `CLAUDE.md` requires: extract, never
+// compress, and never in the commit that adds.
 //
-// ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, ET C'EST DÉCLARÉ PLUTÔT QUE
-// SUBI — la convention de `hub/page.ts`, `bureau/porteur-dom.ts` et
-// `main.ts` (`shell-page.ts` jusqu'à la revue finale du 31 août 2026 : il
-// n'est plus qu'une redirection de seize lignes). Ce qui
-// la rend tenable est la clause qui l'accompagne : **une condition est une
-// RÈGLE si la changer change ce que le produit DÉCIDE ; elle est du CÂBLAGE si
-// elle ne fait que router une décision déjà prise ailleurs.** Cloner un
-// gabarit et y poser un nom ne décide rien. Et `client/` n'a **ni jsdom ni
-// happy-dom** : les modules qui veulent être éprouvés injectent leurs
-// dépendances (`accent-dom.ts`, `presse-papier-dom.ts`) — ce qui n'a pas de
-// sens ici, où tout le travail EST la manipulation du gabarit.
+// ⚠️ THIS FILE IS NOT UNIT TESTED, AND IT IS DECLARED RATHER THAN
+// ENDURED — the convention of `hub/page.ts`, `bureau/porteur-dom.ts` and
+// `main.ts` (`shell-page.ts` until the final review of August 31st, 2026: it
+// is now only a sixteen-line redirect). What
+// makes it tenable is the clause accompanying it: **a condition is a
+// RULE if changing it changes what the product DECIDES; it is WIRING if
+// it only routes a decision already taken elsewhere.** Cloning a
+// template and setting a name in it decides nothing. And `client/` has **neither jsdom nor
+// happy-dom**: the modules wanting to be tested inject their
+// dependencies (`accent-dom.ts`, `presse-papier-dom.ts`) — which makes no
+// sense here, where all the work IS template manipulation.
 //
-// ⚠️ UNE EXTRACTION N'EST JAMAIS RIGOUREUSEMENT VERBATIM : elle laisse ses
-// imports derrière elle (un `TS6133` est un ÉCHEC de `tsc`, pas un
-// avertissement) et casse les déictiques. Relire `hub/page.ts` APRÈS ce
-// déplacement, pas seulement avant.
+// ⚠️ AN EXTRACTION IS NEVER STRICTLY VERBATIM: it leaves its
+// imports behind (a `TS6133` is a `tsc` FAILURE, not a
+// warning) and breaks deictic references. Reread `hub/page.ts` AFTER this
+// move, not only before.
 
 import type { ApplicationListee } from './catalogue';
 
 export interface DepsCarte {
     /// Le `<template id="modele-application">` du hub.
     modele: HTMLTemplateElement;
-    /// L'URL absolue de l'icône, ou `null`. 🔴 LE CALCUL DE LA BASE RESTE CHEZ
-    /// L'APPELANT : ce module n'a aucune raison de connaître l'adresse de la
-    /// plateforme, et la lui donner en ferait un second endroit à tenir
-    /// d'accord avec `adresse-plateforme.ts`.
+    /// The absolute URL of the icon, or `null`. 🔴 COMPUTING THE BASE STAYS WITH
+    /// THE CALLER: this module has no reason to know the platform's
+    /// address, and giving it to it would make a second place to keep
+    /// in agreement with `adresse-plateforme.ts`.
     ///
-    /// 🔴 ❌ ~~L'ICÔNE NE PEUT PAS ÊTRE POSÉE PAR `src` VERS LA ROUTE : un
-    ///    `<img src>` ne porte pas d'`Authorization`. Elle est LUE par `fetch`
-    ///    authentifié, puis publiée en objet — la seule voie.~~ **PLUS VRAI
-    ///    DEPUIS LE 30 AOÛT 2026**, décision du propriétaire du dépôt : la
-    ///    route d'icône s'atteint par une URL SIGNÉE, que le catalogue frappe
-    ///    sous jeton porteur et rend dans `icone_url`. **Elle se pose
-    ///    directement dans `src`**, et c'est très exactement ce que le lot
-    ///    livre. Le détour par `fetch` + `createObjectURL` disparaît d'ici —
-    ///    il survit dans `publierLeManifeste`, qui a besoin des OCTETS pour
-    ///    bâtir le `data:` du manifeste, la seule forme que G5 ait mesurée
-    ///    installable et la seule qu'un manifeste atteigne sans cookie.
+    /// 🔴 ❌ ~~THE ICON CANNOT BE SET THROUGH `src` TOWARDS THE ROUTE: an
+    ///    `<img src>` carries no `Authorization`. It is READ by an authenticated
+    ///    `fetch`, then published as an object — the only way.~~ **NO LONGER TRUE
+    ///    SINCE AUGUST 30TH, 2026**, a decision of the repository owner: the
+    ///    icon route is reached through a SIGNED URL, which the catalogue mints
+    ///    under a bearer token and returns in `icone_url`. **It is set
+    ///    directly in `src`**, and that is exactly what the batch
+    ///    delivers. The detour through `fetch` + `createObjectURL` disappears from here —
+    ///    it survives in `publierLeManifeste`, which needs the BYTES to
+    ///    build the manifest's `data:`, the only form G5 measured
+    ///    installable and the only one a manifest reaches without a cookie.
     ///
-    /// ⚠️ CE QUE CETTE LIGNE N'ÉTABLIT PAS : qu'un navigateur RÉEL l'affiche.
-    ///    Ce fichier n'est pas testé unitairement (voir l'en-tête), et aucun
-    ///    jugement visuel n'a été porté sur le hub à ce jour.
+    /// ⚠️ WHAT THIS LINE DOES NOT ESTABLISH: that a REAL browser displays it.
+    ///    This file is not unit tested (see the header), and no
+    ///    visual judgement has been passed on the hub to date.
     urlIcone: string | null;
     lancer(): void;
     installer(): void;
@@ -57,10 +57,10 @@ export function batirCarte(application: ApplicationListee, deps: DepsCarte): Doc
     const fragment = deps.modele.content.cloneNode(true) as DocumentFragment;
 
     const icone = fragment.querySelector<HTMLImageElement>('[data-icone]')!;
-    // 🔴 UN LITTÉRAL, PAS UN TERNAIRE SUR `className`. Une classe calculée est
-    // invisible au contrôle §7.9, qui ne voit que les littéraux passés à
-    // `classList.add('…')` et `className = '…'`. C'est la forme que
-    // `fenetres-dom` emploie déjà pour ses pastilles.
+    // 🔴 A LITERAL, NOT A TERNARY ON `className`. A computed class is
+    // invisible to check §7.9, which only sees the literals passed to
+    // `classList.add('…')` and `className = '…'`. It is the form
+    // `fenetres-dom` already uses for its badges.
     if (application.icone === null) icone.classList.add('hub__icone--absente');
     if (deps.urlIcone !== null) icone.src = deps.urlIcone;
 

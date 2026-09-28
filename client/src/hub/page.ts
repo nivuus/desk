@@ -1,17 +1,17 @@
-// LE CÂBLAGE DU HUB : un DOM d'un côté, `catalogue.ts`, `depot.ts` et
-// `manifeste.ts` de l'autre.
+// THE HUB'S WIRING: a DOM on one side, `catalogue.ts`, `depot.ts` and
+// `manifeste.ts` on the other.
 //
-// ⚠️ CE FICHIER N'EST PAS TESTÉ UNITAIREMENT, et c'est DÉCLARÉ plutôt que
-// subi : c'est la convention de `connexion.ts`, `bureau/porteur-dom.ts` et
-// `main.ts`. ⚠️ CETTE LISTE NOMMAIT `shell-page.ts` jusqu'à la revue finale
-// du 31 août 2026 : depuis la tâche 9 il n'est plus qu'une redirection de
-// seize lignes, donc un précédent qui ne dit plus rien d'un câblage.
-// Ce qui la rend tenable est la clause qui l'accompagne, resserrée par la revue
-// transverse de P4 : **une condition est une RÈGLE si la changer change ce que
-// le produit DÉCIDE ; elle est du CÂBLAGE si elle ne fait que router une
-// décision déjà prise ailleurs, et testée là-bas.** Toute règle que ce fichier
-// porterait doit descendre dans `catalogue.ts`, `depot.ts` ou `manifeste.ts`,
-// qui sont purs et testés.
+// ⚠️ THIS FILE IS NOT UNIT TESTED, and it is DECLARED rather than
+// endured: it is the convention of `connexion.ts`, `bureau/porteur-dom.ts` and
+// `main.ts`. ⚠️ THIS LIST NAMED `shell-page.ts` until the final review
+// of August 31st, 2026: since task 9 it is only a sixteen-line
+// redirect, hence a precedent that no longer says anything about wiring.
+// What makes it tenable is the clause accompanying it, tightened by P4's cross-cutting
+// review: **a condition is a RULE if changing it changes what
+// the product DECIDES; it is WIRING if it only routes a
+// decision already taken elsewhere, and tested there.** Any rule this file
+// carried must move down into `catalogue.ts`, `depot.ts` or `manifeste.ts`,
+// which are pure and tested.
 
 import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
@@ -52,54 +52,54 @@ function dire(ton: Ton, texte: string): void {
     elMessage.textContent = texte;
 }
 
-// 🔴 `deps` PORTE UN JETON VIDE JUSQU'À CE QUE `demarrer()` (en pied de
-// fichier) L'AIT OBTENU — voir son en-tête pour ce que ce correctif répare.
-// `let`, et non `const` : les fermetures qui suivent (`traiterUnFichier`,
-// `entree`, `peupler`) lisent `deps` À L'APPEL, jamais à la déclaration,
-// donc voient la valeur finale une fois `demarrer()` résolue — aucune n'est
-// invoquée avant.
+// 🔴 `deps` CARRIES AN EMPTY TOKEN UNTIL `demarrer()` (at the foot of the
+// file) HAS OBTAINED IT — see its header for what this fix repairs.
+// `let`, and not `const`: the closures that follow (`traiterUnFichier`,
+// `entree`, `peupler`) read `deps` AT CALL TIME, never at declaration,
+// so they see the final value once `demarrer()` has resolved — none is
+// invoked before.
 let deps: DepsCatalogue = { base, jeton: '', fetch: window.fetch.bind(window) };
 
-/* ── LE MANIFESTE PAR APPLICATION, PUBLIÉ EN `blob:` ───────────────────── */
+/* ── THE PER-APPLICATION MANIFEST, PUBLISHED AS `blob:` ───────────────────── */
 
-/// 🔴 LA VOIE V1, REÇUE PAR LA PORTE P0. Un `<link rel="manifest">` est allé
-/// chercher par le navigateur **sans en-tête `Authorization`**, exactement
-/// comme les icônes qu'il nomme, et ⑤ ne pose **aucun cookie** — son porteur
-/// vit dans `localStorage`, qui ne voyage sur aucune requête que le navigateur
-/// émet de lui-même. Servir ce manifeste demanderait donc d'ouvrir une route
-/// authentifiée, c'est-à-dire une DÉCISION DE SÉCURITÉ que
-/// `routes-icone.ts:20-26` laisse au propriétaire du dépôt. La page, elle, est
-/// authentifiée : elle lit tout par `fetch`, et publie ce qu'elle a lu.
+/// 🔴 PATH V1, PASSED BY GATE P0. A `<link rel="manifest">` is fetched
+/// by the browser **without an `Authorization` header**, exactly
+/// like the icons it names, and ⑤ sets **no cookie** — its bearer
+/// lives in `localStorage`, which does not travel on any request the browser
+/// emits on its own. Serving this manifest would therefore require opening an
+/// authenticated route, that is, a SECURITY DECISION
+/// `routes-icone.ts:20-26` leaves to the repository owner. The page, for its part, is
+/// authenticated: it reads everything through `fetch`, and publishes what it read.
 ///
-/// **Mesuré (2 exécutions par sonde)** : le manifeste `blob:` à icône `data:`
-/// est chargé, analysé, et jugé installable — `getInstallabilityErrors` vide et
-/// `beforeinstallprompt` déclenché —, et le témoin servi par HTTP ordinaire rend
-/// EXACTEMENT le même relevé. **Ce qui diffère entre les deux est : rien.**
+/// **Measured (2 runs per probe)**: the `blob:` manifest with a `data:` icon
+/// is loaded, parsed, and judged installable — `getInstallabilityErrors` empty and
+/// `beforeinstallprompt` fired —, and the control served over ordinary HTTP returns
+/// EXACTLY the same report. **What differs between the two is: nothing.**
 ///
-/// ⚠️ CE QUE V1 COÛTE, ET IL FAUT LE DIRE : le manifeste n'existe que dans
-/// l'onglet qui l'a construit. Une PWA installée qui re-chercherait son
-/// manifeste plus tard trouverait une URL `blob:` morte. **Le comportement de
-/// Chromium dans ce cas n'est mesuré par rien**, et c'est un legs de G5.
+/// ⚠️ WHAT V1 COSTS, AND IT MUST BE SAID: the manifest only exists in
+/// the tab that built it. An installed PWA that fetched its
+/// manifest again later would find a dead `blob:` URL. **Chromium's behaviour
+/// in that case is measured by nothing**, and it is a legacy of G5.
 async function publierLeManifeste(application: ApplicationListee): Promise<void> {
     let icone: Uint8Array | undefined;
     if (application.icone !== null) {
         const issue = await lireIcone(application, deps);
         if (issue.etat === 'ok') icone = issue.valeur;
     }
-    // La couleur de fond est LUE SUR LE THÈME VIVANT, jamais écrite dans un
-    // `.ts` : §7.2 balaie les `.ts` autant que les `.css`, et il n'existe
-    // qu'une source de vérité pour une couleur — `tokens.css`. C'est la voie
-    // que la spec §4.1 de ⑥ sanctionne et que `design/galerie.ts` emploie.
+    // The background colour is READ FROM THE LIVE THEME, never written in a
+    // `.ts`: §7.2 sweeps `.ts` files as much as `.css` ones, and there is
+    // only one source of truth for a colour — `tokens.css`. It is the path
+    // ⑥'s spec §4.1 sanctions and `design/galerie.ts` uses.
     const fond = getComputedStyle(document.documentElement).getPropertyValue('--fond-0').trim();
     const manifeste = batirManifeste(
         {
             id: application.id,
             nom: application.nom,
             icone,
-            // ⚠️ `?? undefined` ET NON `?? fond` : `null` veut dire « cette
-            // icône n'a AUCUNE dominante », et le manifeste doit alors OMETTRE
-            // `theme_color` plutôt que d'en inventer un. Reprendre le fond
-            // ferait paraître une couleur choisie là où il n'y en a pas.
+            // ⚠️ `?? undefined` AND NOT `?? fond`: `null` means "this
+            // icon has NO dominant colour", and the manifest must then OMIT
+            // `theme_color` rather than invent one. Reusing the background
+            // would make a chosen colour appear where there is none.
             accent: application.accent ?? undefined,
             associations: application.associations,
         },
@@ -109,9 +109,9 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
     const url = URL.createObjectURL(
         new Blob([JSON.stringify(manifeste)], { type: 'application/manifest+json' }),
     );
-    // 🔴 LE LIEN DU HUB EST REMPLACÉ, JAMAIS DOUBLÉ : un document n'a qu'un
-    //    manifeste, et le second serait ignoré en silence — on croirait avoir
-    //    posé celui de l'application en gardant celui du hub.
+    // 🔴 THE HUB'S LINK IS REPLACED, NEVER DOUBLED: a document has only one
+    //    manifest, and the second would be silently ignored — one would believe one had
+    //    set the application's while keeping the hub's.
     for (const ancien of document.querySelectorAll('link[rel="manifest"]')) ancien.remove();
     const lien = document.createElement('link');
     lien.rel = 'manifest';
@@ -120,11 +120,11 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
     document.title = application.nom;
 }
 
-/* ── LE DÉPÔT D'UN INSTALLEUR — LE POINT DE CONVERGENCE ────────────────── */
+/* ── DROPPING AN INSTALLER — THE CONVERGENCE POINT ────────────────── */
 
-/// 🔴 LES DEUX CHEMINS APPELLENT CECI, ET RIEN D'AUTRE (décision D10). C'est ce
-/// qui rend la ROUGE du critère ② décidable : retirer `launchQueue` doit
-/// laisser le glisser-déposer VERT.
+/// 🔴 BOTH PATHS CALL THIS, AND NOTHING ELSE (decision D10). It is what
+/// makes criterion ②'s RED run decidable: removing `launchQueue` must
+/// leave drag-and-drop GREEN.
 async function traiterUnFichier(fichier: File): Promise<void> {
     dire('neutre', `Téléversement de ${fichier.name}…`);
     const resume = await deposer(fichier, {

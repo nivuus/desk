@@ -214,10 +214,10 @@ export function attachGamepad({
             // Absent on gamepads or browsers that do not implement
             // it: silently ignored.
             void pad?.vibrationActuator?.playEffect?.('dual-rumble', {
-                // Durée volontairement supérieure à la période de
-                // rafraîchissement des vibrations côté agent : chaque message
-                // remplace le précédent, et si l'agent se tait, l'effet
-                // s'éteint seul plutôt que de rester bloqué.
+                // A duration deliberately longer than the agent-side rumble
+                // refresh period: each message
+                // replaces the previous one, and if the agent goes quiet, the effect
+                // dies out on its own rather than staying stuck.
                 duration: 200,
                 strongMagnitude: gauche / 255,
                 weakMagnitude: droite / 255,
@@ -229,7 +229,7 @@ export function attachGamepad({
     };
 }
 
-// Valeurs par défaut pour utilisation dans le navigateur réel (voir tâche 15 : câblage).
+// Default values for use in the real browser (see task 15: wiring).
 export function attachGamepadAuDOM(
     options: Omit<GamepadOptions, 'manettes' | 'minuteur' | 'horloge'>,
 ): GamepadHandle {

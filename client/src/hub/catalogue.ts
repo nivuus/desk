@@ -1,38 +1,38 @@
-// La lecture du catalogue et de ses icônes, côté navigateur.
+// Reading the catalogue and its icons, browser side.
 //
-// 🔴 AUCUN DOM, ET `fetch` EST INJECTÉ — la discipline de `televersement.ts`,
-// pour la même raison : c'est ce qui rend la règle éprouvable sur l'hôte sans
-// navigateur, et ce qui permet à une recette d'exécuter LE CODE DU PRODUIT
-// plutôt qu'une réimplémentation `curl` qui n'éprouverait qu'elle-même.
+// 🔴 NO DOM, AND `fetch` IS INJECTED — the discipline of `televersement.ts`,
+// for the same reason: it is what makes the rule testable on the host without a
+// browser, and what lets an acceptance run execute THE PRODUCT'S CODE
+// rather than a `curl` reimplementation that would only test itself.
 //
-// 🔴 ❌ ~~L'ICÔNE EST LUE PAR UN `fetch` AUTHENTIFIÉ, ET C'EST LA SEULE VOIE.
-// `routes-icone.ts` l'a écrit en toutes lettres : un `<img src>` ne porte pas
-// d'en-tête `Authorization`.~~ **PLUS VRAI DEPUIS LE 30 AOÛT 2026**, sur
-// DÉCISION DU PROPRIÉTAIRE DU DÉPÔT — pas par commodité : la route d'icône
-// est désormais atteinte par une **URL SIGNÉE**, frappée par le catalogue
-// (donc sous jeton porteur, et après le contrôle d'appartenance de la VM) et
-// rendue dans le champ `icone_url`. Un `<img src>` peut la charger telle
-// quelle. Voir `plateforme/src/apps/url-icone.ts` pour la clé dérivée, ce que
-// la signature couvre et la durée retenue.
+// 🔴 ❌ ~~THE ICON IS READ BY AN AUTHENTICATED `fetch`, AND IT IS THE ONLY WAY.
+// `routes-icone.ts` wrote it out in full: an `<img src>` carries no
+// `Authorization` header.~~ **NO LONGER TRUE SINCE AUGUST 30TH, 2026**, by
+// DECISION OF THE REPOSITORY OWNER — not for convenience: the icon route
+// is now reached through a **SIGNED URL**, minted by the catalogue
+// (hence under a bearer token, and after the VM ownership check) and
+// returned in the `icone_url` field. An `<img src>` can load it as
+// is. See `plateforme/src/apps/url-icone.ts` for the derived key, what
+// the signature covers and the retained duration.
 //
-// ⚠️ CE QUI RESTE VRAI DE G5, ET QUI EXPLIQUE POURQUOI `lireIcone` SURVIT :
-// un `<link rel="manifest">` est allé chercher SANS cookie, et le manifeste
-// par application continue donc de porter son icône en `data:` — forme que G5
-// a mesurée installable. Bâtir ce `data:` demande les OCTETS du PNG, que
-// `lireIcone` va chercher. **Ce qui change est qu'elle n'envoie plus
-// d'en-tête** : l'URL signée se suffit.
+// ⚠️ WHAT REMAINS TRUE OF G5, AND EXPLAINS WHY `lireIcone` SURVIVES:
+// a `<link rel="manifest">` is fetched WITHOUT a cookie, and the per-application
+// manifest therefore keeps carrying its icon as `data:` — a form G5
+// measured installable. Building that `data:` requires the PNG's BYTES, which
+// `lireIcone` fetches. **What changes is that it no longer sends a
+// header**: the signed URL is self-sufficient.
 //
-// ⚠️ UN REFUS ATTENDU EST UNE ISSUE, JAMAIS UNE EXCEPTION — l'arbitrage de
-// `plateforme/src/orchestration/refus.ts`, déjà tenu par `televersement.ts`.
-// Une panne d'ENVIRONNEMENT (le `fetch` qui rejette) remonte telle quelle :
-// la déguiser en refus la ferait passer pour une décision de protocole.
+// ⚠️ AN EXPECTED REFUSAL IS AN OUTCOME, NEVER AN EXCEPTION — the arbitration of
+// `plateforme/src/orchestration/refus.ts`, already held by `televersement.ts`.
+// An ENVIRONMENT failure (the `fetch` that rejects) propagates as is:
+// disguising it as a refusal would pass it off as a protocol decision.
 
-/* ── LES DÉPENDANCES, TOUTES INJECTÉES ────────────────────────────────── */
+/* ── THE DEPENDENCIES, ALL INJECTED ────────────────────────────────── */
 
-/// La forme de réponse dont ce module a besoin, et rien de plus. DÉCLARÉE
-/// plutôt qu'empruntée à `Response` — un `fetch` factice n'a aucune chance
-/// d'en satisfaire les trente membres. Que la VRAIE `fetch` la satisfasse est
-/// vérifié par le typage, au test.
+/// The response shape this module needs, and nothing more. DECLARED
+/// rather than borrowed from `Response` — a fake `fetch` has no chance
+/// of satisfying its thirty members. That the REAL `fetch` satisfies it is
+/// checked by typing, in the test.
 export interface ReponseHttp {
     ok: boolean;
     status: number;
@@ -46,49 +46,49 @@ export interface InitHttp {
 export type Fetch = (url: string, init?: InitHttp) => Promise<ReponseHttp>;
 
 export interface DepsCatalogue {
-    /// L'origine de la plateforme, SANS barre oblique finale.
+    /// The platform's origin, WITHOUT a trailing slash.
     base: string;
-    /// Le jeton porteur, tel que `client/src/jeton.ts` le rend.
+    /// The bearer token, as `client/src/jeton.ts` returns it.
     jeton: string;
     fetch: Fetch;
 }
 
-/* ── CE QUI TRAVERSE ──────────────────────────────────────────────────── */
+/* ── WHAT CROSSES ──────────────────────────────────────────────────── */
 
-/// Une application, telle que `GET /applications` la rend — et RIEN de plus.
+/// An application, as `GET /applications` returns it — and NOTHING more.
 ///
-/// ⚠️ NI `cible`, NI `arguments`, NI `repertoire`, NI `chemin` : la plateforme
-/// les tait délibérément (`routes-applications.ts:250-255`), parce que ce sont
-/// des chemins du disque de la VM. **Ne pas les ajouter ici en croyant
-/// compléter le type** : ils n'arriveront jamais, et le lancement se fait par
-/// l'identifiant, jamais par un chemin que le client fournirait.
+/// ⚠️ NEITHER `cible`, NOR `arguments`, NOR `repertoire`, NOR `chemin`: the platform
+/// withholds them deliberately (`routes-applications.ts:250-255`), because they are
+/// paths on the VM's disk. **Do not add them here believing you are
+/// completing the type**: they will never arrive, and launching goes through
+/// the identifier, never through a path the client would supply.
 export interface ApplicationListee {
     id: string;
     nom: string;
-    /// L'empreinte sha256 de l'icône, ou `null` s'il n'y en a pas.
+    /// The sha256 fingerprint of the icon, or `null` if there is none.
     icone: string | null;
-    /// L'URL SIGNÉE de l'icône — relative, donc à résoudre contre l'origine
-    /// de la page —, ou `null` s'il n'y a pas d'icône.
+    /// The SIGNED URL of the icon — relative, hence to resolve against the page's
+    /// origin —, or `null` if there is no icon.
     ///
-    /// 🔴 ELLE EST FRAPPÉE PAR LA PLATEFORME, ET JAMAIS RECONSTRUITE ICI : le
-    /// client n'a pas la clé, et une URL qu'il fabriquerait serait refusée.
-    /// C'est aussi ce qui empêche qu'une page prolonge elle-même la durée de
-    /// vie d'une capacité.
+    /// 🔴 IT IS MINTED BY THE PLATFORM, AND NEVER REBUILT HERE: the
+    /// client does not have the key, and a URL it made up would be refused.
+    /// It is also what prevents a page from extending a capability's
+    /// lifetime by itself.
     ///
-    /// ⚠️ ELLE EXPIRE — 5 à 6 minutes (`apps/url-icone.ts`). Une page qui la
-    /// garderait des heures verrait ses images échouer ; la relire, c'est
-    /// relire le catalogue.
+    /// ⚠️ IT EXPIRES — 5 to 6 minutes (`apps/url-icone.ts`). A page that
+    /// kept it for hours would see its images fail; rereading it means
+    /// rereading the catalogue.
     icone_url: string | null;
     source_max: string;
-    /// La couleur dominante de l'icône, en `#rrggbb`, ou `null`.
+    /// The dominant colour of the icon, as `#rrggbb`, or `null`.
     ///
-    /// ⚠️ `null` VEUT DIRE « PAS D'ACCENT », JAMAIS « PAS ENCORE MESURÉ » : une
-    /// icône trop pâle, trop sombre ou trop transparente n'a aucune dominante.
-    /// Le manifeste OMET alors `theme_color` plutôt que d'en inventer un.
+    /// ⚠️ `null` MEANS "NO ACCENT", NEVER "NOT MEASURED YET": an
+    /// icon too pale, too dark or too transparent has no dominant colour.
+    /// The manifest then OMITS `theme_color` rather than inventing one.
     accent: string | null;
-    /// Les extensions que cette application ouvre — minuscules, avec le point.
+    /// The extensions this application opens — lowercase, with the dot.
     ///
-    /// ⚠️ VIDE EST LE CAS LE PLUS FRÉQUENT, pas une panne.
+    /// ⚠️ EMPTY IS THE MOST FREQUENT CASE, not a failure.
     associations: string[];
 }
 
@@ -104,14 +104,14 @@ function entetes(deps: DepsCatalogue): Record<string, string> {
     return { authorization: `Bearer ${deps.jeton}` };
 }
 
-/// Le motif que le service a rendu, ou son code seul s'il n'en rend aucun.
+/// The reason the service returned, or its code alone if it returns none.
 ///
-/// 🔴 LE MOTIF EST UNE `string`, PAS UNE UNION, ET C'EST DÉLIBÉRÉ — le même
-/// arbitrage que `televersement.ts`. Le vocabulaire des refus appartient à
-/// `plateforme/`, que `client/` ne peut pas importer ; le recopier en union
-/// serait la copie qu'aucun type ne confronte à sa source, silencieusement
-/// fausse au renommage. C'est le défaut que `connexion.ts` déclare sur
-/// `aucune-vm`, et que P4 a légué sans le fermer.
+/// 🔴 THE REASON IS A `string`, NOT A UNION, AND IT IS DELIBERATE — the same
+/// arbitration as `televersement.ts`. The vocabulary of refusals belongs to
+/// `plateforme/`, which `client/` cannot import; copying it into a union
+/// would be the copy no type confronts with its source, silently
+/// wrong on renaming. It is the defect `connexion.ts` declares about
+/// `aucune-vm`, and which P4 bequeathed without closing it.
 async function motifDuService(r: ReponseHttp): Promise<string> {
     try {
         const corps = await r.json();
@@ -120,14 +120,14 @@ async function motifDuService(r: ReponseHttp): Promise<string> {
             if (typeof refus === 'string') return refus;
         }
     } catch {
-        // Un corps illisible n'est pas plus informatif qu'une absence de corps.
+        // An unreadable body is no more informative than an absent body.
     }
     return `statut ${r.status}`;
 }
 
-/* ── LA LECTURE DU CATALOGUE ──────────────────────────────────────────── */
+/* ── READING THE CATALOGUE ──────────────────────────────────────────── */
 
-/// `GET /applications?vm=<id>` — la liste, ou un refus typé.
+/// `GET /applications?vm=<id>` — the list, or a typed refusal.
 export async function listerApplications(
     vm: string,
     deps: DepsCatalogue,
@@ -160,10 +160,10 @@ export async function listerApplications(
             icone_url: typeof e.icone_url === 'string' ? e.icone_url : null,
             source_max: typeof e.source_max === 'string' ? e.source_max : 'non-mesuree',
             accent: typeof e.accent === 'string' ? e.accent : null,
-            // ⚠️ ON FILTRE LES ÉLÉMENTS, ET ON NE SE CONTENTE PAS DE VÉRIFIER
-            // QUE C'EST UN TABLEAU : une entrée non textuelle atterrirait dans
-            // un `accept` de manifeste, où le navigateur la rejetterait sans
-            // qu'on sache d'où elle vient.
+            // ⚠️ WE FILTER THE ELEMENTS, AND DO NOT MERELY CHECK
+            // THAT IT IS AN ARRAY: a non-textual entry would land in
+            // a manifest's `accept`, where the browser would reject it without
+            // anyone knowing where it came from.
             associations: Array.isArray(e.associations)
                 ? e.associations.filter((x): x is string => typeof x === 'string')
                 : [],
@@ -178,11 +178,11 @@ function illisible<T>(detail: string): Issue<T> {
 
 /* ── LA VM ────────────────────────────────────────────────────────────── */
 
-/// Une VM, telle que `GET /vm` la rend — et RIEN de plus.
+/// A VM, as `GET /vm` returns it — and NOTHING more.
 ///
-/// ⚠️ NI `adresse`, NI `utilisateurId` : la plateforme les tait délibérément
-/// (`routes-vm.ts:177-180`) — la première est de la topologie interne, la
-/// seconde est celle du demandeur, qu'il connaît déjà.
+/// ⚠️ NEITHER `adresse`, NOR `utilisateurId`: the platform withholds them deliberately
+/// (`routes-vm.ts:177-180`) — the first is internal topology, the
+/// second is the requester's, which they already know.
 export interface VmListee {
     id: string;
     nom: string;
@@ -190,13 +190,13 @@ export interface VmListee {
     prefixe: string | null;
 }
 
-/// `GET /vm` — les VMs de l'utilisateur.
+/// `GET /vm` — the user's VMs.
 ///
-/// ⚠️ IL Y EN A AU PLUS UNE À CE JOUR, et c'est une propriété de la BASE, pas
-/// de ce module : l'index partiel `vm_un_utilisateur` de `0001-socle.sql` la
-/// garantit. `routes-vm.ts` écrit que le jour où cet invariant tomberait, son
-/// champ `sessions_ouvertes` deviendrait faux. **Ce module rend donc une
-/// LISTE**, pour n'avoir rien à défaire ce jour-là.
+/// ⚠️ THERE IS AT MOST ONE TO DATE, and it is a property of the DATABASE, not
+/// of this module: the partial index `vm_un_utilisateur` of `0001-socle.sql`
+/// guarantees it. `routes-vm.ts` writes that the day this invariant fell, its
+/// `sessions_ouvertes` field would become wrong. **This module therefore returns a
+/// LIST**, so as to have nothing to undo that day.
 export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>> {
     const r = await deps.fetch(`${deps.base}/vm`, { method: 'GET', headers: entetes(deps) });
     if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };
@@ -228,19 +228,19 @@ export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>>
     return { etat: 'ok', valeur: vms };
 }
 
-/* ── LA LECTURE D'UNE ICÔNE ───────────────────────────────────────────── */
+/* ── READING AN ICON ───────────────────────────────────────────── */
 
-/// Les OCTETS du PNG, par l'URL signée que le catalogue a rendue.
+/// The PNG's BYTES, through the signed URL the catalogue returned.
 ///
-/// 🔴 AUCUN EN-TÊTE N'EST ENVOYÉ, ET C'EST LE POINT DU LOT DU 30 AOÛT 2026 :
-/// la même URL, posée telle quelle dans un `src`, se charge à l'identique.
-/// Envoyer quand même le porteur serait garder vivante une seconde voie
-/// d'autorisation que la plateforme a précisément retirée.
+/// 🔴 NO HEADER IS SENT, AND IT IS THE POINT OF THE BATCH OF AUGUST 30TH, 2026:
+/// the same URL, set as is in a `src`, loads identically.
+/// Sending the bearer anyway would keep alive a second authorisation
+/// path the platform precisely removed.
 ///
-/// 🔴 ELLE N'EST PAS RECONSTRUITE ICI. La version antérieure fabriquait
-/// `/application/:id/icone?e=…` de ses propres mains ; ce chemin est
-/// désormais REFUSÉ (`400 signature-absente`), et le reconstruire serait un
-/// contrôle qu'on ne verrait jamais rouge autrement.
+/// 🔴 IT IS NOT REBUILT HERE. The earlier version built
+/// `/application/:id/icone?e=…` by its own hands; that path is
+/// now REFUSED (`400 signature-absente`), and rebuilding it would be a
+/// check one would never otherwise see red.
 export async function lireIcone(
     application: ApplicationListee,
     deps: DepsCatalogue,
