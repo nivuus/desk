@@ -52,10 +52,10 @@ const CONTRAINTES: MediaStreamConstraints = {
 /// the user who clicked "block" once has no visible way left
 /// to go back — Chrome never offers the dialog again.
 const DETAIL_REFUS =
-    "micro refusé — autorisez-le dans les réglages du site (icône à gauche de la barre d'adresse), puis recliquez";
+    "microphone refused — allow it in the site settings (icon to the left of the address bar), then click again";
 
 /// Same for the absence of a device.
-const DETAIL_SANS_PERIPHERIQUE = "aucun microphone détecté sur cet ordinateur";
+const DETAIL_SANS_PERIPHERIQUE = "no microphone detected on this computer";
 
 /// The error `name`s `getUserMedia` uses for a PERMISSION refusal,
 /// and those alone. Everything else — `NotFoundError`, `NotReadableError`,
@@ -117,7 +117,7 @@ export function attacherMicro(options: OptionsMicro): Micro {
         const detail =
             nom === 'NotFoundError' || nom === 'DevicesNotFoundError'
                 ? DETAIL_SANS_PERIPHERIQUE
-                : `micro indisponible : ${error instanceof Error ? error.message : String(error)}`;
+                : `mic unavailable: ${error instanceof Error ? error.message : String(error)}`;
         return annoncer('indisponible', detail);
     };
 
@@ -246,10 +246,10 @@ export interface ControleBoutonMicro {
 
 /// What the button displays on hover, per state.
 const TITRES: Record<EtatMicro, string> = {
-    ferme: 'Microphone — cliquez pour parler',
-    actif: 'Microphone actif — cliquez pour couper',
-    refuse: 'Microphone refusé — voir le message',
-    indisponible: 'Aucun microphone disponible',
+    ferme: 'Microphone — click to talk',
+    actif: 'Microphone active — click to mute',
+    refuse: 'Microphone refused — see the message',
+    indisponible: 'No microphone available',
 };
 
 /// What the button displays when it really captures but ANOTHER
@@ -260,17 +260,17 @@ const TITRES: Record<EtatMicro, string> = {
 /// Chrome's indicator is lit —, then that this window is not
 /// heard, and because of what.
 const TITRE_NON_ENTENDU =
-    'Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y est pas entendue';
+    'Microphone active — but another window holds the VM microphone: this one is not heard there';
 
 /// The same fact, as a banner. ⚠️ **The wording is a HUMAN JUDGEMENT**, and
 /// it joins the list this repository has kept since `BPP_MIN`: no measurement will
 /// say whether it is clear. No one has read it on screen to date.
 const DETAIL_NON_ENTENDU =
-    'Votre micro est ouvert, mais une autre fenêtre tient le micro de la VM — fermez-la, ou coupez son micro, pour être entendu depuis celle-ci.';
+    'Your microphone is open, but another window holds the VM microphone — close it, or mute its microphone, to be heard from this one.';
 
 /// And the return, which must be said: a banner that rises without ever
 /// coming down would suggest the defect after it disappeared.
-const DETAIL_ENTENDU = 'Votre micro est de nouveau entendu par la VM.';
+const DETAIL_ENTENDU = 'Your microphone is heard by the VM again.';
 
 export function attacherBoutonMicro(options: OptionsBoutonMicro): ControleBoutonMicro {
     const { bouton, surMessage } = options;
@@ -312,7 +312,7 @@ export function attacherBoutonMicro(options: OptionsBoutonMicro): ControleBouton
         // so that nothing surfaces as an "unhandled rejection" if this invariant
         // came to be broken by a future change.
         enVol = micro.basculer().catch((error: unknown) => {
-            console.warn('bascule micro en échec', error);
+            console.warn('mic toggle failed', error);
         });
     };
     bouton.addEventListener('click', onClick);

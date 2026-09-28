@@ -255,7 +255,7 @@ async function avecChrome(fn) {
         // ménage d'un répertoire temporaire ne doit jamais coûter un relevé.
         await dormir(1500);
         await rm(profil, { recursive: true, force: true }).catch((e) => {
-            console.warn(`ménage du profil Chrome incomplet (sans effet sur la mesure) : ${e.message}`);
+            console.warn(`incomplete Chrome profile clean-up (no effect on the measurement): ${e.message}`);
         });
     }
 }
@@ -275,7 +275,7 @@ async function principal() {
         }, 90000);
         journal.sessionVivante = vivante;
         if (!vivante) {
-            journal.etapes.push({ quoi: 'session', issue: 'aucune image decodee en 90 s' });
+            journal.etapes.push({ quoi: 'session', issue: 'no image decoded in 90 s' });
             return 1;
         }
         journal.etapes.push({ quoi: 'session', issue: 'vivante', quand: new Date().toISOString() });
@@ -285,7 +285,7 @@ async function principal() {
             s.etiquette = etiquette;
             journal.stats.push(s);
         };
-        await releverStats('avant-injection');
+        await releverStats('before-injection');
 
         journal.etapes.push({
             quoi: 'allumage',
@@ -300,7 +300,7 @@ async function principal() {
             // 20 s de ton, 60 s de silence, 30 s de ton : le critère ③ se lit
             // sur la CONTINUITÉ des lignes « micro mesuré » pendant le creux.
             await dormir(20000);
-            await releverStats('avant-silence');
+            await releverStats('before-silence');
             journal.etapes.push({
                 quoi: 'extinction',
                 quand: new Date().toISOString(),
@@ -316,7 +316,7 @@ async function principal() {
             await dormir(30000);
             await releverStats('fin-reprise');
         } else {
-            throw new Error(`scénario inconnu : ${scenario}`);
+            throw new Error(`unknown scenario: ${scenario}`);
         }
         journal.console = cdp.consoleLines.slice(-40);
         journal.erreursPage = cdp.pageErrors;

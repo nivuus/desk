@@ -71,7 +71,7 @@ export type Etape = 'creation' | 'etat' | 'tranche' | 'scellement';
 /// 🔴 THE SERVICE'S REASON IS A `string`, NOT A UNION, AND IT IS DELIBERATE.
 /// Its vocabulary belongs to it and lives in `plateforme/`, which `client/`
 /// cannot import. Copying it into a union would be EXACTLY the defect
-/// `client/src/connexion.ts` declares about `aucune-vm`: a copy no type
+/// `client/src/connexion.ts` declares about `aucune-vm`: a copy no type (policy: allow-fr, wire refusal code)
 /// confronts with its source, silently wrong on renaming.
 export type Refus =
     | { source: 'client'; motif: MotifLocal; detail: string }
@@ -82,11 +82,11 @@ export type Refus =
 /// take a refusal for a success by forgetting an `if`, which an ignored boolean
 /// would allow — the argument of `prefixe.ts::poserPrefixe`, held here by typing.
 export type Issue =
-    | { etat: 'scelle'; id: string; taille: number; sha256: string; deposees: number[] }
+    | { etat: 'scelle'; id: string; size: number; sha256: string; deposees: number[] }
     | { etat: 'refus'; refus: Refus; id?: string };
 
 /// The size of a chunk read to fingerprint. NOT CALIBRATED. ⚠️ NO RELATION
-/// TO `taille_tranche`, which comes from the service and is not yet known when
+/// TO `taille_tranche`, which comes from the service and is not yet known when (policy: allow-fr, wire key of the upload API)
 /// we fingerprint: giving them the same value would suggest a derivation,
 /// whereas they would be recalibrated separately. It trades tab
 /// memory for the time the thread is blocked hashing
@@ -203,18 +203,18 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     if (deps.reprise !== undefined) {
         const url = `${deps.base}/televersement/${encodeURIComponent(id)}`;
         const r = await appeler(deps, url, { method: 'GET', headers: entetes(deps) });
-        if (r === null) return nonLocal('interrompu', 'pendant la relecture');
+        if (r === null) return nonLocal('interrompu', 'during the re-read');
         if (!r.ok) return await nonService('etat', r);
         etat = (await r.json().catch(() => undefined)) as Record<string, unknown> | undefined;
         // 🔴 A STATE THAT DOES NOT ANNOUNCE `{size, sha256}` MAKES THE RESUMPTION REFUSED, it
         // does not make it resume blindly: without these two values, nothing says
         // the re-chosen file is THE SAME, the slices of two files would
         // mix, and sealing would fail without anything saying why.
-        if (typeof etat?.taille !== 'number' || typeof etat.sha256 !== 'string') {
-            return nonLocal('etat-illisible', 'état sans taille ni empreinte : reprise invérifiable');
+        if (typeof etat?.taille !== 'number' || typeof etat.sha256 !== 'string') { // policy: allow-fr - wire key of the upload API
+            return nonLocal('etat-illisible', 'state without size or fingerprint: resuming cannot be checked');
         }
-        if (etat.taille !== size) {
-            return nonLocal('fichier-different', `taille ${size} contre ${etat.taille} au téléversement`);
+        if (etat.taille !== size) { // policy: allow-fr - wire key of the upload API
+            return nonLocal('fichier-different', `size ${size} versus ${etat.taille} at upload time`);
         }
     }
 
@@ -222,35 +222,35 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     // makes resumption safe, and the only value the three stages compare.
     emettre('empreinte', 0, size, true);
     const sha256 = await empreindre(file, deps, emettre);
-    if (sha256 === null) return nonLocal('interrompu', "pendant l'empreinte");
+    if (sha256 === null) return nonLocal('interrompu', "during fingerprinting");
     emettre('empreinte', size, size, true);
     if (etat !== undefined && etat.sha256 !== sha256) {
-        return nonLocal('fichier-different', `empreinte ${sha256} contre ${String(etat.sha256)} retenue`);
+        return nonLocal('fichier-different', `fingerprint ${sha256} versus ${String(etat.sha256)} retained`);
     }
 
     // ③ CREATE, IF WE ARE NOT RESUMING.
     let chunkSize: unknown;
     let presentesBrut: unknown;
     if (etat !== undefined) {
-        chunkSize = etat.taille_tranche;
+        chunkSize = etat.taille_tranche; // policy: allow-fr - wire key of the upload API
         presentesBrut = etat.tranches_presentes;
     } else {
         const r = await appeler(deps, `${deps.base}/televersement`, {
             method: 'POST',
             headers: entetes(deps, 'application/json'),
-            body: JSON.stringify({ nom: file.name, taille: size, sha256 }),
+            body: JSON.stringify({ nom: file.name, taille: size, sha256 }), // policy: allow-fr - wire key of the upload API
         });
-        if (r === null) return nonLocal('interrompu', 'pendant la création');
+        if (r === null) return nonLocal('interrompu', 'during the creation');
         if (!r.ok) return await nonService('creation', r);
         const c = (await r.json().catch(() => undefined)) as Record<string, unknown> | undefined;
-        if (typeof c?.id !== 'string') return nonLocal('etat-illisible', 'création sans identifiant');
+        if (typeof c?.id !== 'string') return nonLocal('etat-illisible', 'creation without an identifier');
         id = c.id;
-        chunkSize = c.taille_tranche;
+        chunkSize = c.taille_tranche; // policy: allow-fr - wire key of the upload API
         presentesBrut = c.tranches_presentes;
     }
 
     // ④ THE SPLITTING. `plan` and `verdict` THROW on an absurd contract — their guard
-    // targets a programming defect. Yet `taille_tranche` comes from the WIRE: validating it here
+    // targets a programming defect. Yet `taille_tranche` comes from the WIRE: validating it here (policy: allow-fr, wire key of the upload API)
     // prevents a deranged answer from bringing everything down through an exception.
     if (!Number.isInteger(chunkSize) || (chunkSize as number) <= 0) {
         return nonLocal('etat-illisible', `taille_tranche ${String(chunkSize)}`);
@@ -258,7 +258,7 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     const pas = chunkSize as number;
     const attendu = plan(size, pas);
     const presentes = normaliserPresentes(presentesBrut);
-    if (presentes === null) return nonLocal('etat-illisible', 'tranches_presentes de forme inconnue');
+    if (presentes === null) return nonLocal('etat-illisible', 'tranches_presentes of unknown shape');
 
     // 🔴 `incoherentes` IS NOT FILLED IN AGAIN: the two ends no longer agree
     // on the splitting, and uploading again would return the same thing indefinitely. We
@@ -273,7 +273,7 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     let envoyes = size - aDeposer.reduce((s, n) => s + attendu[n].octets, 0);
     emettre('transfert', envoyes, size, true);
     for (const n of aDeposer) {
-        if (deps.signal?.aborted === true) return nonLocal('interrompu', `avant la tranche ${n}`);
+        if (deps.signal?.aborted === true) return nonLocal('interrompu', `before chunk ${n}`);
         const debut = n * pas;
         const corps = new Uint8Array(await file.slice(debut, debut + attendu[n].octets).arrayBuffer());
         const url = `${deps.base}/televersement/${encodeURIComponent(id)}/tranche/${n}`;
@@ -282,7 +282,7 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
             headers: entetes(deps, 'application/octet-stream'),
             body: corps,
         });
-        if (r === null) return nonLocal('interrompu', `pendant la tranche ${n}`);
+        if (r === null) return nonLocal('interrompu', `during chunk ${n}`);
         if (!r.ok) return await nonService('tranche', r);
         envoyes += attendu[n].octets;
         emettre('transfert', envoyes, size, false);
@@ -294,7 +294,7 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     emettre('scellement', size, size, true);
     const url = `${deps.base}/televersement/${encodeURIComponent(id)}/sceller`;
     const r = await appeler(deps, url, { method: 'POST', headers: entetes(deps) });
-    if (r === null) return nonLocal('interrompu', 'pendant le scellement');
+    if (r === null) return nonLocal('interrompu', 'during sealing');
     if (!r.ok) return await nonService('scellement', r);
-    return { etat: 'scelle', id, taille: size, sha256, deposees: aDeposer };
+    return { etat: 'scelle', id, size, sha256, deposees: aDeposer };
 }

@@ -279,16 +279,16 @@ export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
 
     // ① equality of the two copies of the light palette, both ways.
     for (const token of attribut.tokens.keys()) {
-        if (!media.tokens.has(token)) ecarts.push(`media-clair : ${token} manquant`);
+        if (!media.tokens.has(token)) ecarts.push(`media-clair: ${token} missing`);
     }
     for (const token of media.tokens.keys()) {
-        if (!attribut.tokens.has(token)) ecarts.push(`attribut-clair : ${token} manquant`);
+        if (!attribut.tokens.has(token)) ecarts.push(`attribut-clair: ${token} missing`);
     }
     // ② every light token has its counterpart in the unconditional block.
     for (const bloc of [media, attribut]) {
         for (const token of bloc.tokens.keys()) {
             if (!racine.tokens.has(token)) {
-                ecarts.push(`racine : ${token} surchargé par ${bloc.nom} sans y être déclaré`);
+                ecarts.push(`root: ${token} overridden by ${bloc.nom} without being declared there`);
             }
         }
     }
@@ -300,7 +300,7 @@ export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
         if (COULEURS_HORS_THEME.includes(token)) continue;
         if (media.tokens.has(token) || attribut.tokens.has(token)) continue;
         ecarts.push(
-            `blocs clairs : ${token} est une couleur de la racine sans contrepartie claire`,
+            `light blocks: ${token} is a root colour without a light counterpart`,
         );
     }
     return [...new Set(ecarts)].sort();

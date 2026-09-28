@@ -2,7 +2,7 @@
 //
 // 🔴 THIS FILE CARRIED 500 LINES AND HALF THE PRODUCT. Its content now lives
 // in `bureau/porteur-dom.ts`, `bureau/fenetres-dom.ts` and
-// `bureau/fichiers-dom.ts`, used by the hub — the ONLY surface since
+// `bureau/files-dom.ts`, used by the hub — the ONLY surface since
 // that date. The business rule `shell.ts`, for its part, has not moved by a line:
 // it was already pure and tested, and it is reused as is.
 //

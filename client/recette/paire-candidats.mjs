@@ -199,7 +199,7 @@ async function main() {
         await semerJeton(cdp);
         await cdp.send('Page.navigate', { url });
 
-        console.log(`mode : ${forcerRelais ? "RELAIS FORCÉ (iceTransportPolicy 'relay')" : 'libre (ICE choisit)'}`);
+        console.log(`mode: ${forcerRelais ? "FORCED RELAY (iceTransportPolicy 'relay')" : 'free (ICE chooses)'}`);
         for (let i = 0; i < 60; i += 1) {
             if (await cdp.eval('window.__pc != null')) break;
             await new Promise((r) => setTimeout(r, 200));
@@ -222,28 +222,28 @@ async function main() {
             const dImages = second.imagesDecodees - premier.imagesDecodees;
             const dOctets = second.octetsRecus - premier.octetsRecus;
             console.log('');
-            console.log(`chemin employé : ${second.typeLocal} <- -> ${second.typeDistant}`);
-            console.log(`RTT courant : ${(second.rttCourant * 1000).toFixed(1)} ms`);
-            console.log(`images décodées : ${dImages} en ${dt.toFixed(2)} s => ${(dImages / dt).toFixed(1)} i/s`);
-            console.log(`débit reçu : ${((dOctets * 8) / dt / 1e6).toFixed(2)} Mb/s`);
-            console.log(`résolution : ${second.largeur}x${second.hauteur}`);
+            console.log(`path used: ${second.typeLocal} <- -> ${second.typeDistant}`);
+            console.log(`current RTT: ${(second.rttCourant * 1000).toFixed(1)} ms`);
+            console.log(`decoded images: ${dImages} in ${dt.toFixed(2)} s => ${(dImages / dt).toFixed(1)} i/s`);
+            console.log(`received bitrate: ${((dOctets * 8) / dt / 1e6).toFixed(2)} Mb/s`);
+            console.log(`resolution: ${second.largeur}x${second.hauteur}`);
             const attendu = forcerRelais ? 'relay' : null;
             if (attendu && second.typeLocal !== attendu) {
-                console.error(`ÉCHEC : type local ${second.typeLocal}, attendu ${attendu}`);
+                console.error(`FAILURE: local type ${second.typeLocal}, expected ${attendu}`);
                 process.exitCode = 1;
             } else if (dImages <= 0) {
-                console.error('ÉCHEC : aucune image décodée sur la fenêtre de mesure');
+                console.error('FAILURE: no image decoded over the measurement window');
                 process.exitCode = 1;
             } else {
-                console.log('PREUVE : le flux traverse par ce chemin (images décodées en hausse).');
+                console.log('PROOF: the stream goes through this path (decoded images rising).');
             }
         } else {
-            console.error("ÉCHEC : aucune paire de candidats n'a été employée");
+            console.error("FAILURE: no candidate pair was used");
             process.exitCode = 1;
         }
         if (journalPage.length) {
             console.log('');
-            console.log('--- console de la page ---');
+            console.log('--- page console ---');
             for (const ligne of journalPage) console.log(ligne);
         }
         cdp.close();

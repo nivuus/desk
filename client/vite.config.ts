@@ -85,13 +85,13 @@ const TOKENS_CSS = readFileSync(
 function tokenRacine(nom: string): string {
     const blocs = lireBlocsDeTheme(TOKENS_CSS);
     const racine = blocs.find((b) => b.nom === 'racine');
-    if (racine === undefined) throw new Error('tokens/couleurs.css ne porte plus de bloc racine');
+    if (racine === undefined) throw new Error('tokens/couleurs.css no longer carries a root block');
     const value = propertyValue(racine, nom);
     // 🔴 WE THROW RATHER THAN FALL BACK TO A DEFAULT COLOUR: a fallback
     //    would set a colour that belongs to no token, that is, the
     //    second source of truth this plugin exists to avoid — and it would
     //    do so SILENTLY.
-    if (value === null) throw new Error(`tokens/couleurs.css ne déclare plus ${nom}`);
+    if (value === null) throw new Error(`tokens/couleurs.css no longer declares ${nom}`);
     return value;
 }
 

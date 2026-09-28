@@ -19,7 +19,7 @@
 // into a shared namespace" — IS REDUCED, NOT SETTLED, and
 // one must say by what. What now keeps it from going unnoticed comes down to
 // two guards, at both ends: `poserPrefixe` THROWS on the empty string rather
-// than writing it to the vault, and the route returns 409 `aucune-vm` instead of a
+// than writing it to the vault, and the route returns 409 `aucune-vm` instead of a (policy: allow-fr, wire refusal code)
 // 200 with an empty prefix. What remains: the prefix is PER VM and not per session,
 // and `signaling/propriete.ts` stays in memory — two human clients of the
 // same VM find the same prefix again after a service restart.
@@ -96,9 +96,9 @@ export function lirePrefixe(
 export function poserPrefixe(coffre: CoffreEcrivable, prefixe: string): void {
     if (prefixe === '') {
         throw new Error(
-            'préfixe vide refusé : le coucher au coffre ferait rejoindre ' +
-                "l'espace de noms partagé sans que rien ne le dise (spec §10). " +
-                'Une absence de VM s\'écrit par effacerPrefixe.',
+            'empty prefix refused: writing it to the store would join ' +
+                "the shared namespace without anything saying so (spec §10). " +
+                'An absence of VM is written through effacerPrefixe.',
         );
     }
     coffre.setItem(CLE_PREFIXE, prefixe);

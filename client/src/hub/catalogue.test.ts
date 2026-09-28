@@ -22,7 +22,7 @@ function faux(reponses: Record<string, Partial<ReponseHttp>>): {
     const fetch: Fetch = async (url, init) => {
         appels.push({ url, init });
         const r = reponses[url];
-        if (r === undefined) throw new Error(`aucune réponse factice pour ${url}`);
+        if (r === undefined) throw new Error(`no fake answer for ${url}`);
         return {
             ok: r.ok ?? true,
             status: r.status ?? 200,
@@ -43,7 +43,7 @@ function faux(reponses: Record<string, Partial<ReponseHttp>>): {
 const ACCENT = (() => {
     const racine = tokensCss.slice(tokensCss.indexOf(':root'));
     const trouve = /--accent:\s*([^;]+);/.exec(racine);
-    if (trouve === null) throw new Error('tokens/couleurs.css ne declare plus --accent');
+    if (trouve === null) throw new Error('tokens/couleurs.css no longer declares --accent');
     return trouve[1].trim();
 })();
 
@@ -64,7 +64,7 @@ const APP: ApplicationListee = {
 };
 
 describe('listerApplications', () => {
-    it('appelle GET /applications?vm=… AVEC le porteur, et rend la liste', async () => {
+    it('calls GET /applications?vm=… WITH the bearer, and returns the list', async () => {
         const { fetch, appels } = faux({
             'https://x/applications?vm=vm-1': {
                 json: async () => ({
@@ -108,7 +108,7 @@ describe('listerApplications', () => {
         expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
     });
 
-    it("échappe l'identifiant de VM dans la requête", async () => {
+    it("escapes the VM identifier in the request", async () => {
         const { fetch, appels } = faux({
             'https://x/applications?vm=a%2Fb%3Fc': { json: async () => ({ applications: [] }) },
         });
@@ -117,7 +117,7 @@ describe('listerApplications', () => {
         expect(appels[0].url).toBe('https://x/applications?vm=a%2Fb%3Fc');
     });
 
-    it('rend le MOTIF du service sur un refus, jamais une exception', async () => {
+    it('returns the service REASON on a refusal, never an exception', async () => {
         const { fetch } = faux({
             'https://x/applications?vm=vm-1': { ok: false, status: 404, json: async () => ({ refus: 'vm-inconnue' }) },
         });
@@ -125,21 +125,21 @@ describe('listerApplications', () => {
         expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 404, motif: 'vm-inconnue' } });
     });
 
-    it('rend le CODE seul quand le corps du refus est illisible', async () => {
+    it('returns the CODE alone when the refusal body is unreadable', async () => {
         const { fetch } = faux({
             'https://x/applications?vm=vm-1': {
                 ok: false,
                 status: 503,
                 json: async () => {
-                    throw new Error('pas du JSON');
+                    throw new Error('not JSON');
                 },
             },
         });
         const issue = await listerApplications('vm-1', { base: 'https://x', jeton: 'J', fetch });
-        expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 503, motif: 'statut 503' } });
+        expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 503, motif: 'status 503' } });
     });
 
-    it('refuse un corps 200 qui ne porte pas de tableau `applications`', async () => {
+    it('refuses a 200 body that carries no `applications` array', async () => {
         const { fetch } = faux({ 'https://x/applications?vm=vm-1': { json: async () => ({ applications: 'non' }) } });
         const issue = await listerApplications('vm-1', { base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('refus');
@@ -147,11 +147,11 @@ describe('listerApplications', () => {
         expect(issue.refus).toEqual({
             source: 'client',
             motif: 'reponse-illisible',
-            detail: "'applications' n'est pas un tableau",
+            detail: "'applications' is not an array",
         });
     });
 
-    it("refuse une entrée sans `id` ni `nom` plutôt que d'en fabriquer", async () => {
+    it("refuses an entry without `id` or `nom` rather than making one up", async () => {
         const { fetch } = faux({
             'https://x/applications?vm=vm-1': { json: async () => ({ applications: [{ nom: 'sans id' }] }) },
         });
@@ -161,7 +161,7 @@ describe('listerApplications', () => {
 });
 
 describe('lireIcone', () => {
-    it("🔴 suit l'URL SIGNÉE, et n'envoie AUCUN en-tête", async () => {
+    it("🔴 follows the SIGNED URL, and sends NO header", async () => {
         // 🔴 C'EST LA PROPRIÉTÉ QUE LE LOT DU 30 AOÛT 2026 LIVRE : la même URL
         // se pose dans un `<img src>`, qui ne peut rien porter d'autre. Un
         // `authorization` envoyé quand même ferait vivre une seconde voie
@@ -182,7 +182,7 @@ describe('lireIcone', () => {
         expect(appels[0].init?.headers).toBeUndefined();
     });
 
-    it("refuse sans appeler quand l'application n'a pas d'icône", async () => {
+    it("refuses without calling when the application has no icon", async () => {
         const { fetch, appels } = faux({});
         const issue = await lireIcone(
             { ...APP, icone: null, icone_url: null },
@@ -197,7 +197,7 @@ describe('lireIcone', () => {
 });
 
 describe('lancerApplication', () => {
-    it('POSTe sur /application/:id/lancer avec le porteur', async () => {
+    it('POSTs to /application/:id/lancer with the bearer', async () => {
         const { fetch, appels } = faux({ 'https://x/application/u-1/lancer': {} });
         const issue = await lancerApplication('u-1', { base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('ok');
@@ -205,7 +205,7 @@ describe('lancerApplication', () => {
         expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
     });
 
-    it('rend le motif du service sur un refus', async () => {
+    it('returns the service reason on a refusal', async () => {
         const { fetch } = faux({
             'https://x/application/u-1/lancer': { ok: false, status: 503, json: async () => ({ refus: 'vm-injoignable' }) },
         });
@@ -214,8 +214,8 @@ describe('lancerApplication', () => {
     });
 });
 
-describe('contrôle de forme', () => {
-    it('la VRAIE fetch satisfait le type Fetch', () => {
+describe('shape check', () => {
+    it('the REAL fetch satisfies the Fetch type', () => {
         // Aucune requête n'est émise : c'est une assertion de TYPAGE, jouée à
         // la compilation. Le même geste que `televersement.test.ts`.
         const _: Fetch = globalThis.fetch as unknown as Fetch;
@@ -224,7 +224,7 @@ describe('contrôle de forme', () => {
 });
 
 describe('listerVms', () => {
-    it('appelle GET /vm avec le porteur et rend la liste', async () => {
+    it('calls GET /vm with the bearer and returns the list', async () => {
         const { fetch, appels } = faux({
             'https://x/vm': {
                 json: async () => ({
@@ -239,7 +239,7 @@ describe('listerVms', () => {
         expect(appels[0].init?.headers).toEqual({ authorization: 'Bearer J' });
     });
 
-    it('rend une liste VIDE plutôt qu\'un refus quand aucune VM n\'est attribuée', async () => {
+    it('returns an EMPTY list rather than a refusal when no VM is assigned', async () => {
         // ⚠️ AUCUNE VM N'EST UN ÉTAT NORMAL, pas une panne : `routes-vm.ts` rend
         //    200 avec un tableau vide. Le confondre avec un refus ferait dire au
         //    hub qu'il est cassé là où il n'a rien à montrer.
@@ -248,7 +248,7 @@ describe('listerVms', () => {
         expect(issue).toEqual({ etat: 'ok', value: [] });
     });
 
-    it('rend le motif du service sur un refus', async () => {
+    it('returns the service reason on a refusal', async () => {
         const { fetch } = faux({
             'https://x/vm': { ok: false, status: 401, json: async () => ({ refus: 'jeton-expire' }) },
         });
@@ -256,15 +256,15 @@ describe('listerVms', () => {
         expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 401, motif: 'jeton-expire' } });
     });
 
-    it('refuse un corps 200 sans tableau `vms`', async () => {
+    it('refuses a 200 body without a `vms` array', async () => {
         const { fetch } = faux({ 'https://x/vm': { json: async () => ({}) } });
         const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('refus');
     });
 });
 
-describe('les deux champs de la tranche F', () => {
-    it("ECARTE une entree d'`associations` qui n'est pas une chaine", async () => {
+describe('the two fields of slice F', () => {
+    it("DISCARDS an `associations` entry that is not a string", async () => {
         // ⚠️ Une entrée non textuelle atterrirait dans un `accept` de
         //    manifeste, où le navigateur la rejetterait sans qu'on sache d'où
         //    elle vient.
@@ -283,7 +283,7 @@ describe('les deux champs de la tranche F', () => {
         expect(issue.value[0].associations).toEqual(['.a', '.b']);
     });
 
-    it("retombe sur `[]` quand `associations` n'est pas un tableau", async () => {
+    it("falls back to `[]` when `associations` is not an array", async () => {
         const { fetch } = faux({
             'https://x/applications?vm=v': {
                 json: async () => ({

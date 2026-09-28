@@ -5,16 +5,16 @@ import type { DepsTeleversement, Issue } from './televersement';
 const FILE = new File([new Uint8Array([1, 2, 3])], 'app.msi');
 
 describe('resumer', () => {
-    it('rend un ton de SUCCÈS et nomme le fichier quand le scellement passe', () => {
-        const issue: Issue = { etat: 'scelle', id: 't-1', taille: 3, sha256: 'ab', deposees: [0] };
+    it('returns a SUCCESS tone and names the file when sealing passes', () => {
+        const issue: Issue = { etat: 'scelle', id: 't-1', size: 3, sha256: 'ab', deposees: [0] };
         expect(resumer(FILE, issue)).toEqual({
             ton: 'succes',
-            texte: 'app.msi a été téléversé et scellé (1 tranche(s) déposée(s)).',
+            texte: 'app.msi was uploaded and sealed (1 chunk(s) deposited).',
             id: 't-1',
         });
     });
 
-    it('rend le MOTIF DU SERVICE tel quel, jamais réécrit', () => {
+    it('returns the SERVICE REASON as is, never rewritten', () => {
         const issue: Issue = {
             etat: 'refus',
             id: 't-2',
@@ -28,25 +28,25 @@ describe('resumer', () => {
         expect(r.id).toBe('t-2');
     });
 
-    it('distingue un refus LOCAL d\'un refus du SERVICE', () => {
+    it('tells a LOCAL refusal from a SERVICE refusal', () => {
         const issue: Issue = {
             etat: 'refus',
-            refus: { source: 'client', motif: 'fichier-different', detail: 'la taille a changé' },
+            refus: { source: 'client', motif: 'fichier-different', detail: 'the size changed' },
         };
         const r = resumer(FILE, issue);
         expect(r.texte).toContain('fichier-different');
-        expect(r.texte).toContain('la taille a changé');
+        expect(r.texte).toContain('the size changed');
         expect(r.texte).not.toContain('service');
         expect(r.id).toBeUndefined();
     });
 });
 
-describe('deposer — le point de convergence', () => {
+describe('deposer — the convergence point', () => {
     /// 🔴 CE TEST EST CELUI QUI REND LA ROUGE DU CRITÈRE ② HONNÊTE : il éprouve
     ///    que `deposer` mène RÉELLEMENT au téléversement, et pas seulement
     ///    qu'il rend un objet. Les deux chemins du hub — glisser-déposer et
     ///    `launchQueue` — appellent CETTE fonction, et aucune autre.
-    it('mène un fichier jusqu\'au scellement, et le rapporte', async () => {
+    it('takes a file all the way to sealing, and reports it', async () => {
         const vus: string[] = [];
         const deps: DepsTeleversement = {
             base: 'https://x',
@@ -80,7 +80,7 @@ describe('deposer — le point de convergence', () => {
         expect(vus.at(-1)).toBe('POST /televersement/t-9/sceller');
     });
 
-    it('rend un refus du service SANS lever', async () => {
+    it('returns a service refusal WITHOUT throwing', async () => {
         const deps: DepsTeleversement = {
             base: 'https://x',
             jeton: 'J',

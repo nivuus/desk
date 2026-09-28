@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { attacherBoutonMicro, attacherMicro, type EtatMicro } from './micro';
 import { domError, faussePiste, fauxBouton, fauxFlux, fauxSender } from './micro.fixtures';
-describe('attacherMicro — la bascule et ses quatre états', () => {
-    it('au départ, le sender n’a pas de piste et l’état est « fermé »', () => {
+describe('attacherMicro — the toggle and its four states', () => {
+    it('at start, the sender has no track and the state is « closed »', () => {
         const sender = fauxSender();
         const micro = attacherMicro({
             sender,
@@ -16,7 +16,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(micro.etat()).toBe('ferme');
     });
 
-    it('la bascule appelle getUserMedia une seule fois, puis replaceTrack', async () => {
+    it('the toggle calls getUserMedia only once, then replaceTrack', async () => {
         const piste = faussePiste();
         const sender = fauxSender();
         const demanderFlux = vi.fn(async () => fauxFlux(piste));
@@ -47,7 +47,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(etats).toEqual([['actif', undefined]]);
     });
 
-    it("l'extinction appelle replaceTrack(null) ET track.stop()", async () => {
+    it("switching off calls replaceTrack(null) AND track.stop()", async () => {
         const piste = faussePiste();
         const sender = fauxSender();
         const micro = attacherMicro({ sender, demanderFlux: async () => fauxFlux(piste) });
@@ -66,7 +66,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(micro.etat()).toBe('ferme');
     });
 
-    it('un refus de permission mène à l’état « refusé » sans exception', async () => {
+    it('a permission refusal leads to the « refused » state without an exception', async () => {
         const sender = fauxSender();
         const etats: Array<[EtatMicro, string | undefined]> = [];
         const micro = attacherMicro({
@@ -87,10 +87,10 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         // seulement le fait du refus : sans cela l'utilisateur qui a cliqué
         // « bloquer » une fois n'a plus aucun moyen de revenir en arrière.
         const [, detail] = etats[0];
-        expect(detail).toMatch(/barre d'adresse/);
+        expect(detail).toMatch(/address bar/);
     });
 
-    it("l'absence de périphérique d'entrée mène à « indisponible », pas à « refusé »", async () => {
+    it("the absence of an input device leads to « unavailable », not to « refused »", async () => {
         const sender = fauxSender();
         const micro = attacherMicro({
             sender,
@@ -107,7 +107,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(micro.etat()).toBe('indisponible');
     });
 
-    it('un flux sans piste audio mène à « indisponible », pas à « actif »', async () => {
+    it('a stream without an audio track leads to « unavailable », not to « active »', async () => {
         const sender = fauxSender();
         const micro = attacherMicro({
             sender,
@@ -118,7 +118,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(sender.recus).toEqual([]);
     });
 
-    it('deux clics rapides ne demandent le flux qu’une fois', async () => {
+    it('two quick clicks request the stream only once', async () => {
         const piste = faussePiste();
         let debloquer!: (flux: MediaStream) => void;
         const enAttente = new Promise<MediaStream>((resolve) => {
@@ -140,7 +140,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(demanderFlux).toHaveBeenCalledTimes(1);
     });
 
-    it('un détachement pendant la demande de flux arrête la piste obtenue', async () => {
+    it('a detach during the stream request stops the obtained track', async () => {
         const piste = faussePiste();
         let debloquer!: (flux: MediaStream) => void;
         const enAttente = new Promise<MediaStream>((resolve) => {
@@ -162,7 +162,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(sender.recus).toEqual([]);
     });
 
-    it('après détachement, un clic ne demande plus rien', async () => {
+    it('after detaching, a click requests nothing any more', async () => {
         const demanderFlux = vi.fn(async () => fauxFlux(faussePiste()));
         const micro = attacherMicro({ sender: fauxSender(), demanderFlux });
 
@@ -171,7 +171,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(demanderFlux).not.toHaveBeenCalled();
     });
 
-    it('détacher un micro ACTIF éteint réellement la piste', async () => {
+    it('detaching an ACTIVE mic really switches the track off', async () => {
         const piste = faussePiste();
         const sender = fauxSender();
         const micro = attacherMicro({ sender, demanderFlux: async () => fauxFlux(piste) });
@@ -186,7 +186,7 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(micro.etat()).toBe('ferme');
     });
 
-    it('un refus n’est pas définitif : le clic suivant retente', async () => {
+    it('a refusal is not final: the next click retries', async () => {
         const piste = faussePiste();
         let premierAppel = true;
         const demanderFlux = vi.fn(async () => {
@@ -207,8 +207,8 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
     });
 });
 
-describe('attacherBoutonMicro — le bouton et ses états', () => {
-    it("le bouton reste CACHÉ tant que l'agent n'a pas annoncé `mic: true`", () => {
+describe('attacherBoutonMicro — the button and its states', () => {
+    it("the button stays HIDDEN as long as the agent has not announced `mic: true`", () => {
         const bouton = fauxBouton();
         attacherBoutonMicro({
             bouton,
@@ -219,7 +219,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
         expect(bouton.hidden).toBe(true);
     });
 
-    it("`mic` ABSENT laisse le bouton caché — un agent ancien ne le porte pas", () => {
+    it("ABSENT `mic` leaves the button hidden — an old agent does not carry it", () => {
         const bouton = fauxBouton();
         const controle = attacherBoutonMicro({
             bouton,
@@ -240,7 +240,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
         expect(bouton.hidden).toBe(false);
     });
 
-    it('un clic allume, un second éteint, et le bouton porte son état', async () => {
+    it('a click switches on, a second one switches off, and the button carries its state', async () => {
         const bouton = fauxBouton();
         const piste = faussePiste();
         const sender = fauxSender();
@@ -264,7 +264,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
         expect(piste.arretee).toBe(true);
     });
 
-    it('« indisponible » DÉSACTIVE le bouton, « refusé » le laisse cliquable', async () => {
+    it('« unavailable » DISABLES the button, « refused » leaves it clickable', async () => {
         const bouton = fauxBouton();
         let nom = 'NotFoundError';
         const controle = attacherBoutonMicro({
@@ -300,7 +300,7 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
         expect(autre.disabled).toBe(false);
     });
 
-    it("le détail des deux états d'échec est remonté à l'appelant", async () => {
+    it("the detail of the two failure states is passed up to the caller", async () => {
         const bouton = fauxBouton();
         const messages: string[] = [];
         const controle = attacherBoutonMicro({
@@ -319,10 +319,10 @@ describe('attacherBoutonMicro — le bouton et ses états', () => {
         // Un seul message, et il porte le remède — pas seulement le fait du
         // refus (spec §10).
         expect(messages).toHaveLength(1);
-        expect(messages[0]).toMatch(/barre d'adresse/);
+        expect(messages[0]).toMatch(/address bar/);
     });
 
-    it('`detacher` éteint la piste, cache le bouton et retire son écouteur', async () => {
+    it('`detacher` switches the track off, hides the button and removes its listener', async () => {
         const bouton = fauxBouton();
         const piste = faussePiste();
         const controle = attacherBoutonMicro({

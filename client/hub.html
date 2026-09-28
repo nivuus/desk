@@ -1,59 +1,59 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Applications</title>
-        <!-- L'ORDRE PORTE LA CASCADE : socle (tokens + base), primitives, puis
-             la feuille de cette surface. Trois `<link>` et aucun `@import` :
-             c'est ce qui laisse Vite PARTAGER `primitives.css` avec les trois
-             autres surfaces au lieu de le ré-inliner dans chacune. -->
+        <!-- THE ORDER CARRIES THE CASCADE: base layer (tokens + base), primitives,
+             then this surface's sheet. Three `<link>` and no `@import`:
+             that is what lets Vite SHARE `primitives.css` with the three
+             other surfaces instead of re-inlining it into each one. -->
         <link rel="stylesheet" href="/src/design/socle.css" />
         <link rel="stylesheet" href="/src/design/primitives.css" />
         <link rel="stylesheet" href="/src/hub/hub.css" />
-        <!-- ⚠️ APRÈS `hub.css`, ET L'ORDRE PORTE LA CASCADE. Cette feuille
-             vient de `shell.html` avec les sections ci-dessous ; RENOMMÉE
-             `shell.css` → `bureau/bureau.css` à la tâche 9 (31 août 2026),
-             où `shell.html` cesse de porter tout balisage — le nom `shell`
-             mentait dès lors sur ce qu'elle peint. -->
+        <!-- ⚠️ AFTER `hub.css`, AND THE ORDER CARRIES THE CASCADE. This sheet
+             comes from `shell.html` with the sections below; RENAMED
+             `shell.css` → `bureau/bureau.css` at task 9 (31 August 2026),
+             when `shell.html` stopped carrying any markup — the name `shell`
+             was from then on lying about what it paints. -->
         <link rel="stylesheet" href="/src/bureau/bureau.css" />
-        <!-- ⚠️ AUCUN `<link rel="manifest">` ICI, ET C'EST LE FOND DE G5.
-             Le manifeste du HUB est engendré AU BUILD depuis `tokens.ts` et
-             posé par le greffon `guac-manifeste-hub` de `vite.config.ts` : une
-             couleur écrite en dur dans un `.webmanifest` échapperait à §7.2,
-             dont le périmètre est `client/src/**` en `.css`/`.ts` plus les
-             entrées Vite, et le dépôt aurait DEUX sources de vérité pour une
-             couleur (décision D4 du plan).
-             Le manifeste PAR APPLICATION, lui, ne peut pas être servi du tout :
-             un `<link rel="manifest">` est allé chercher par le navigateur SANS
-             en-tête `Authorization`, et ⑤ ne pose AUCUN cookie. `page.ts` le
-             construit donc en mémoire et le publie en `blob:` quand `?app=` est
-             présent — voie V1, REÇUE par la porte P0. -->
+        <!-- ⚠️ NO `<link rel="manifest">` HERE, AND THAT IS THE CORE OF G5.
+             The HUB manifest is generated AT BUILD TIME from `tokens.ts` and
+             set by the `guac-manifeste-hub` plugin of `vite.config.ts`: a
+             colour hardcoded in a `.webmanifest` would escape §7.2,
+             whose scope is `client/src/**` as `.css`/`.ts` plus the
+             Vite entries, and the repository would have TWO sources of truth for a
+             colour (decision D4 of the plan).
+             The PER-APPLICATION manifest, for its part, cannot be served at all:
+             a `<link rel="manifest">` is fetched by the browser WITHOUT an
+             `Authorization` header, and ⑤ sets NO cookie. `page.ts` therefore
+             builds it in memory and publishes it as `blob:` when `?app=` is
+             present — path V1, ACCEPTED by gate P0. -->
     </head>
     <body>
         <main class="hub">
             <header class="hub__entete">
                 <h1 class="hub__titre">Applications</h1>
-                <p id="themes" class="hub__actions" role="group" aria-label="Thème"></p>
+                <p id="themes" class="hub__actions" role="group" aria-label="Theme"></p>
             </header>
 
-            <!-- LA ZONE DE DÉPÔT. Le chemin NOMINAL, et il doit fonctionner
-                 SEUL : c'est l'amendement du 28/07/2026, que le critère ② de
-                 G5 existe pour garder. Le bouton est là parce qu'un dépôt
-                 n'est pas accessible au clavier. -->
+            <!-- THE DROP ZONE. The NOMINAL path, and it must work
+                 ALONE: that is the amendment of 28/07/2026, which criterion ② of
+                 G5 exists to keep. The button is there because a drop
+                 is not keyboard accessible. -->
             <section
                 id="depot"
                 class="hub__depot"
                 aria-labelledby="depot-titre"
                 aria-describedby="depot-aide"
             >
-                <h2 id="depot-titre" class="hub__depot-titre">Installer un logiciel</h2>
+                <h2 id="depot-titre" class="hub__depot-titre">Install software</h2>
                 <p id="depot-aide" class="hub__depot-aide">
-                    Déposez ici un fichier .msi, .exe ou .bat — ou choisissez-le.
+                    Drop a .msi, .exe or .bat file here — or choose it.
                 </p>
                 <p>
                     <button id="choisir" type="button" class="bouton bouton--secondaire">
-                        Choisir un fichier…
+                        Choose a file…
                     </button>
                 </p>
             </section>
@@ -62,47 +62,47 @@
 
             <ul id="applications" class="hub__grille"></ul>
 
-            <!-- ═══ CE QUI VIENT DE `shell.html`, LE 31 AOÛT 2026 ═══════════
-                 La page-shell est devenue une redirection : le hub est
-                 désormais la SEULE surface. Ces deux sections viennent d'elle
-                 telles quelles — mêmes identifiants, mêmes crochets `data-*`,
-                 même `<template>` — pour que `shell.ts`, qui est pur et testé,
-                 soit RÉUTILISÉ et non réécrit.
+            <!-- ═══ WHAT COMES FROM `shell.html`, ON 31 AUGUST 2026 ═══════════
+                 The shell page has become a redirection: the hub is
+                 now the ONLY surface. These two sections come from it
+                 as they were — same identifiers, same `data-*` hooks,
+                 same `<template>` — so that `shell.ts`, which is pure and tested,
+                 is REUSED and not rewritten.
 
-                 🔴 LES CROCHETS D'INSTRUMENT SURVIVENT AU DÉPLACEMENT :
-                 `data-dues`, `data-vues` et `data-retenues` sont lus par les
-                 pilotes de recette, et JAMAIS le texte — piège de F1, payé
-                 neuf minutes sur deux messages qui partageaient une
-                 sous-chaîne. -->
+                 🔴 THE INSTRUMENT HOOKS SURVIVE THE MOVE:
+                 `data-dues`, `data-vues` and `data-retenues` are read by the
+                 acceptance drivers, and NEVER the text — an F1 trap, paid
+                 nine minutes on two messages that shared a
+                 substring. -->
 
             <div id="statut" class="message hub__message" role="status"></div>
 
-            <!-- ⚠️ `hidden` PAR DÉFAUT, ET RETIRÉ PAR LE SCRIPT DÈS QU'IL Y A
-                 UNE FENÊTRE. Une section montrant en permanence « aucune
-                 fenêtre ouverte » serait du bruit sur l'état NOMINAL d'un hub
-                 qu'on vient d'ouvrir (décision du propriétaire, spec §4.1). -->
+            <!-- ⚠️ `hidden` BY DEFAULT, AND REMOVED BY THE SCRIPT AS SOON AS THERE IS
+                 A WINDOW. A section permanently showing "no open
+                 window" would be noise on the NOMINAL state of a hub
+                 that was just opened (owner decision, spec §4.1). -->
             <section id="section-fenetres" class="hub__section" hidden>
-                <h2 class="hub__section-titre">Mes fenêtres</h2>
+                <h2 class="hub__section-titre">My windows</h2>
                 <ul id="fenetres" class="bureau__fenetres"></ul>
             </section>
 
-            <!-- ⚠️ REPLIÉE, JAMAIS RETIRÉE : « Choisir mon dossier » doit
-                 rester atteignable en un geste. `<details>` porte le pli
-                 nativement — un élément replié reste dans le DOM, donc reste
-                 lisible par un pilote de recette ; un élément RETIRÉ ne l'est
-                 pas, et c'est pourquoi c'est un pli et non un rendu
-                 conditionnel. Le script l'ouvre (`open = true`) dès qu'un pont
-                 est monté, pour que le compteur d'écritures dues et le bouton
-                 « Reprendre » ne soient jamais cachés au moment où ils
-                 comptent. -->
-            <details id="section-fichiers" class="hub__section">
-                <summary class="hub__section-titre">Mes fichiers</summary>
+            <!-- ⚠️ FOLDED, NEVER REMOVED: "Choose my folder" must
+                 stay reachable in one gesture. `<details>` carries the fold
+                 natively — a folded element stays in the DOM, so stays
+                 readable by an acceptance driver; a REMOVED element is
+                 not, and that is why it is a fold and not a conditional
+                 render. The script opens it (`open = true`) as soon as a bridge
+                 is mounted, so that the due writes counter and the
+                 "Resume" button are never hidden at the moment they
+                 matter. -->
+            <details id="files-section" class="hub__section">
+                <summary class="hub__section-titre">My files</summary>
                 <div class="bureau__actions">
                     <button id="choisir-dossier" type="button" class="bouton bouton--secondaire">
-                        Choisir mon dossier
+                        Choose my folder
                     </button>
                 </div>
-                <div id="etat-fichiers" class="message bureau__bandeau" role="status"></div>
+                <div id="files-state" class="message bureau__bandeau" role="status"></div>
                 <div
                     id="ecritures-dues"
                     class="message bureau__bandeau"
@@ -110,9 +110,9 @@
                     data-dues="0"
                     data-vues="0"
                 ></div>
-                <p class="bureau__actions" data-retenues="false" id="actions-fichiers">
+                <p class="bureau__actions" data-retenues="false" id="files-actions">
                     <button id="rafraichir" type="button" class="bouton bouton--discret">
-                        Rafraîchir
+                        Refresh
                     </button>
                     <button
                         id="reprendre-enregistrement"
@@ -120,38 +120,38 @@
                         class="bouton bouton--secondaire"
                         hidden
                     >
-                        Reprendre l’enregistrement
+                        Resume saving
                     </button>
                 </p>
             </details>
         </main>
 
         <!--
-          LE BALISAGE D'UNE CARTE D'APPLICATION VIT ICI, PAS DANS LE TYPESCRIPT.
-          `hub/cartes.ts` clone ce modèle et le remplit.
+          THE MARKUP OF AN APPLICATION CARD LIVES HERE, NOT IN THE TYPESCRIPT.
+          `hub/cartes.ts` clones this template and fills it.
 
-          Deux raisons, la première décide : ① toutes les classes restent dans
-          le HTML, donc dans le périmètre le plus simple du contrôle §7.9 —
-          celui qui ne dépend d'aucune analyse de TypeScript ; ② le balisage
-          d'une carte se lit à l'endroit où l'on regarde une page. C'est
-          exactement la convention que `#modele-fenetre` applique déjà plus
-          bas dans cette même page — venue de `shell.html` (voir le bloc
-          « CE QUI VIENT DE `shell.html` » plus haut), qui ne porte plus ce
-          gabarit depuis que la page-shell est devenue une redirection
-          (tâche 9).
+          Two reasons, the first one decides: ① all the classes stay in
+          the HTML, so in the simplest scope of check §7.9 —
+          the one that depends on no TypeScript analysis; ② the markup
+          of a card is read where one looks at a page. That is
+          exactly the convention `#modele-fenetre` already applies further
+          down in this same page — coming from `shell.html` (see the block
+          "WHAT COMES FROM `shell.html`" above), which no longer carries this
+          template since the shell page became a redirection
+          (task 9).
 
-          🔴 `hub__icone--absente` EST DÉCLARÉE ICI, SUR UN ÉLÉMENT QUI NE LA
-          PORTE PAS : le script l'AJOUTE quand l'application n'a pas d'icône,
-          par `classList.add` d'un LITTÉRAL. Avant cette extraction elle vivait
-          dans un ternaire (`className = application.icone === null ? … : …`),
-          donc dans une valeur CALCULÉE — invisible au contrôle §7.9, qui ne
-          voit que les littéraux. L'extraction est l'occasion de ne pas
-          reconduire ce trou (ruling R3).
+          🔴 `hub__icone--absente` IS DECLARED HERE, ON AN ELEMENT THAT DOES NOT
+          CARRY IT: the script ADDS it when the application has no icon,
+          through `classList.add` of a LITERAL. Before this extraction it lived
+          in a ternary (`className = application.icone === null ? … : …`),
+          so in a COMPUTED value — invisible to check §7.9, which only
+          sees literals. The extraction is the opportunity not to
+          carry that hole over (ruling R3).
 
-          ⚠️ LES CROCHETS SONT DES ATTRIBUTS `data-*`, PAS DES CLASSES. Une
-          classe sert à peindre ; s'en servir aussi comme point d'accroche du
-          script rendrait tout renommage visuel capable de casser le câblage
-          en silence.
+          ⚠️ THE HOOKS ARE `data-*` ATTRIBUTES, NOT CLASSES. A
+          class is for painting; also using it as the script's attachment
+          point would make any visual rename able to break the wiring
+          silently.
         -->
         <template id="modele-application">
             <li class="carte hub__entree">
@@ -160,10 +160,10 @@
                     <h2 class="hub__nom" data-nom></h2>
                     <p class="hub__boutons">
                         <button type="button" class="bouton bouton--principal" data-lancer>
-                            Lancer
+                            Launch
                         </button>
                         <button type="button" class="bouton bouton--discret" data-installer>
-                            Installer
+                            Install
                         </button>
                     </p>
                 </div>
@@ -171,22 +171,22 @@
         </template>
 
         <!--
-          LE BALISAGE D'UNE CARTE VIT ICI, PAS DANS LE TYPESCRIPT.
-          `bureau/fenetres-dom.ts::dessinerFenetres` clone ce modèle et le
-          remplit ; il ne construit plus d'éléments à la main.
+          THE MARKUP OF A CARD LIVES HERE, NOT IN THE TYPESCRIPT.
+          `bureau/fenetres-dom.ts::dessinerFenetres` clones this template and
+          fills it; it no longer builds elements by hand.
 
-          Trois raisons, dont la première décide :
-            ① toutes les classes restent dans le HTML, donc dans le périmètre le
-               plus simple du contrôle §7.9 — celui qui ne dépend d'aucune analyse
-               de TypeScript ;
-            ② le balisage d'une carte se lit à l'endroit où l'on regarde une page ;
-            ③ `fenetres-dom.ts` reste ce que son en-tête dit qu'il est — « du
-               câblage, et rien d'autre » (les décisions vivent dans `fenetres.ts`,
-               pur et testé).
+          Three reasons, the first one decides:
+            ① all the classes stay in the HTML, so in the simplest
+               scope of check §7.9 — the one that depends on no TypeScript
+               analysis;
+            ② the markup of a card is read where one looks at a page;
+            ③ `fenetres-dom.ts` stays what its header says it is — "wiring,
+               and nothing else" (the decisions live in `fenetres.ts`,
+               pure and tested).
 
-          ⚠️ LES CROCHETS SONT DES ATTRIBUTS `data-*`, PAS DES CLASSES. Une classe
-          sert à peindre ; s'en servir aussi comme point d'accroche du script
-          rendrait tout renommage visuel capable de casser le câblage en silence.
+          ⚠️ THE HOOKS ARE `data-*` ATTRIBUTES, NOT CLASSES. A class
+          is for painting; also using it as the script's attachment point
+          would make any visual rename able to break the wiring silently.
         -->
         <template id="modele-fenetre">
           <li class="bureau__fenetre">
@@ -196,7 +196,7 @@
                 <span class="bureau__pastille" data-etat></span>
               </p>
               <div class="bureau__actions">
-                <button type="button" class="bouton bouton--discret" data-rouvrir>Rouvrir</button>
+                <button type="button" class="bouton bouton--discret" data-rouvrir>Reopen</button>
               </div>
             </article>
           </li>

@@ -34,7 +34,7 @@
 //   ① the body carries a `prefixe` — 200 as well as 503 —: we write it. It is known
 //     and correct in both cases, and the page needs it so as not to join
 //     the shared namespace while waiting for the VM to come back;
-//   ② the service says `aucune-vm`: we erase. Leaving in place the prefix of a
+//   ② the service says `aucune-vm`: we erase. Leaving in place the prefix of a (policy: allow-fr, wire refusal code)
 //     VM we no longer have would open sessions in another machine's name;
 //   ③ everything else — token refused, method, failure — says NOTHING about
 //     the assignment: the vault is not touched. Erasing on a 401 would lose
@@ -151,7 +151,7 @@ function show(texte: string, ton: Ton): void {
 ///      moving them here would re-enable `bouton.disabled = false` on the
 ///      Pomerium path, where no button was ever disabled.
 async function fetchTheSession(acces: string): Promise<void> {
-    show('recherche de votre machine…', 'neutre');
+    show('looking for your machine…', 'neutre');
     const session = await fetch(`${plateformeUrl}/session`, {
         method: 'POST',
         // 🔴 THE `Authorization` HEADER MAKES THE REQUEST NON-SIMPLE, hence
@@ -185,7 +185,7 @@ async function fetchTheSession(acces: string): Promise<void> {
         // property stops at the package boundary: `client/` cannot
         // import from `plateforme/`, and the only shared package is
         // `proto/`, which P4 forbids itself to touch (its version belongs to
-        // sub-block G1). CONSEQUENCE TO KNOW: renaming `aucune-vm`
+        // sub-block G1). CONSEQUENCE TO KNOW: renaming `aucune-vm` (policy: allow-fr, wire refusal code)
         // on the service side would leave this test always false, hence the stale
         // prefix in the vault — a SILENT failure, which neither `npm run typecheck`
         // nor any test of this repository would see. The remedy is to move
@@ -200,10 +200,10 @@ async function fetchTheSession(acces: string): Promise<void> {
         // static backend the hub says so, and says it cannot
         // restart. Keeping that admission quiet would make one wait for a button that does not
         // exist.
-        const etat = sien?.etat ? ` (état : ${sien.etat})` : '';
+        const etat = sien?.etat ? ` (state: ${sien.etat})` : '';
         const aveu =
             sien?.redemarrage?.possible === false
-                ? ` — la plateforme ne sait pas la redémarrer (${sien.redemarrage.motif}, backend ${sien.redemarrage.backend})`
+                ? ` — the platform cannot restart it (${sien.redemarrage.motif}, backend ${sien.redemarrage.backend})`
                 : '';
         show(`${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`, 'danger');
         return;
@@ -256,7 +256,7 @@ async function tenterPomerium(): Promise<boolean> {
 formulaire.addEventListener('submit', async (evenement) => {
     evenement.preventDefault();
     bouton.disabled = true;
-    show('connexion…', 'neutre');
+    show('Connecting…', 'neutre');
 
     try {
         const reponse = await fetch(`${plateformeUrl}/auth/connexion`, {
@@ -271,7 +271,7 @@ formulaire.addEventListener('submit', async (evenement) => {
 
         if (!reponse.ok) {
             // The service's reason, as is — see the header.
-            show(`refusé : ${corps?.refus ?? reponse.status}`, 'danger');
+            show(`refused: ${corps?.refus ?? reponse.status}`, 'danger');
             return;
         }
 
@@ -290,7 +290,7 @@ formulaire.addEventListener('submit', async (evenement) => {
         // symptom of a `PLATEFORME_ORIGINE_CLIENT` missing on the service side
         // (`plateforme/src/config.ts`), and confusing it with a credentials
         // refusal would send one looking for the defect in the wrong place.
-        show(`plateforme injoignable (${String(cause)})`, 'danger');
+        show(`platform unreachable (${String(cause)})`, 'danger');
     } finally {
         bouton.disabled = false;
     }

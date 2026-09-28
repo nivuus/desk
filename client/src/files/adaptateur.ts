@@ -17,7 +17,7 @@
 // IT IS A DECLARED LEGACY", then described the defect measured by F1 and
 // concluded "the complete remedy, a correspondence table fed by
 // enumeration, remains F3". **F3 has arrived, and the remedy is NOT a correspondence
-// table**: it is `fichiers/noms.ts`, which enumerates the parent at
+// table**: it is `files/noms.ts`, which enumerates the parent at
 // EACH resolution, **without any cache**. A cache nothing invalidates is the
 // defect of the old bridge (`src/file.js`, cache WITHOUT TTL). ✅ `Rafraichir` HAS BEEN
 // DELIVERED SINCE F5. ⚠️ But it empties the bridge's ENUMERATION cache and ProjFS's
@@ -216,7 +216,7 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
         const file = await f.getFile();
         // 🔴 **`nom` IS THE STORED NAME**, the one the canonicaliser returned —
         // and it is the one `PrjWritePlaceholderInfo` will receive.
-        return { nom, repertoire: false, taille: file.size, modifie: file.lastModified };
+        return { nom, repertoire: false, taille: file.size, modifie: file.lastModified }; // policy: allow-fr - wire keys of the file protocol
     }
 
     return {
@@ -241,7 +241,7 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
                         // directory. Zero is what ProjFS expects of a
                         // directory for the size; the null timestamp is an
                         // accepted loss, and saying so avoids anyone looking for it.
-                        entrees.push({ nom: enfant.name, repertoire: true, taille: 0, modifie: 0 });
+                        entrees.push({ nom: enfant.name, repertoire: true, taille: 0, modifie: 0 }); // policy: allow-fr - wire keys of the file protocol
                     } else {
                         // ⚠️ ACCEPTED COST: one `getFile()` per entry. The FSA
                         // offers no way to obtain size and date without
@@ -261,8 +261,8 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
                         entrees.push({
                             nom: enfant.name,
                             repertoire: false,
-                            taille: f.size,
-                            modifie: f.lastModified,
+                            taille: f.size, // policy: allow-fr - wire key of the file protocol
+                            modifie: f.lastModified, // policy: allow-fr - wire key of the file protocol
                         });
                     }
                 }
@@ -279,7 +279,7 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
                 // ⚠️ The ROOT has no name: `nom` is the empty string, and
                 // `PrjWritePlaceholderInfo` is never called
                 // for it anyway.
-                return { nom: '', repertoire: true, taille: 0, modifie: 0 };
+                return { nom: '', repertoire: true, taille: 0, modifie: 0 }; // policy: allow-fr - wire keys of the file protocol
             }
             const parent = await descendre(parts, parts.length - 1);
             // 🔴 **RESOLUTION IS DONE ONCE, HERE**, and the name obtained
@@ -289,7 +289,7 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
             const last = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
             try {
                 await parent.getDirectoryHandle(last);
-                return { nom: last, repertoire: true, taille: 0, modifie: 0 };
+                return { nom: last, repertoire: true, taille: 0, modifie: 0 }; // policy: allow-fr - wire keys of the file protocol
             } catch (e) {
                 // We retry AS A FILE only if the failure is an absence. A
                 // retried permission refusal would be masked as "not found",
@@ -312,12 +312,12 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
                 // it is the agent doing it, hence the other end of the wire.
                 throw new FilesError(
                     'trop-grand',
-                    `${length} octets demandés, maximum ${MAX_FRAME_SIZE}`,
+                    `${length} bytes requested, maximum ${MAX_FRAME_SIZE}`,
                 );
             }
             const parts = composants(chemin);
             if (parts.length === 0) {
-                throw new FilesError('introuvable', 'la racine n’est pas un fichier');
+                throw new FilesError('introuvable', 'the root is not a file');
             }
             const parent = await descendre(parts, parts.length - 1);
             const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');

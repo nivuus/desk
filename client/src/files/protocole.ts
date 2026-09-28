@@ -162,7 +162,7 @@ export function createServer(
             try {
                 trame = decoder(octets);
             } catch (e) {
-                journal(`trame illisible, ignorée : ${(e as Error).message}`);
+                journal(`unreadable frame, ignored: ${(e as Error).message}`);
                 return null;
             }
 
@@ -182,7 +182,7 @@ export function createServer(
                         const annonce = parseDues(trame.entete);
                         options.onDues?.(annonce.dues, annonce.retenues);
                     } catch (e) {
-                        journal(`annonce de dues illisible : ${(e as Error).message}`);
+                        journal(`unreadable dues announcement: ${(e as Error).message}`);
                     }
                     return null;
                 }
@@ -193,14 +193,14 @@ export function createServer(
                 case TYPE_DATA:
                 case TYPE_ECHEC:
                     journal(
-                        `réponse ignorée : le navigateur ne demande rien ` +
-                            `(type=${trame.type}, corrélation=${trame.correlation})`,
+                        `answer ignored: the browser requests nothing ` +
+                            `(type=${trame.type}, correlation=${trame.correlation})`,
                     );
                     return null;
                 default:
                     journal(
-                        `type inconnu ignoré : type=${trame.type}, ` +
-                            `corrélation=${trame.correlation}`,
+                        `unknown type ignored: type=${trame.type}, ` +
+                            `correlation=${trame.correlation}`,
                     );
                     return null;
             }
@@ -220,7 +220,7 @@ export function createServer(
                 // a more precise code would make the agent translate a wrong HRESULT
                 // rather than a vague one.
                 const code = e instanceof FilesError ? e.code : 'interne';
-                journal(`échec ${code} sur la corrélation ${trame.correlation} : ${(e as Error).message}`);
+                journal(`failure ${code} on correlation ${trame.correlation}: ${(e as Error).message}`);
                 if (trame.type === TYPE_RENOMMER || trame.type === TYPE_DELETE) {
                     // ⚠️ The path is reread from the header rather than kept:
                     // the failure may have come from its PARSING, in which case there is
@@ -284,7 +284,7 @@ async function servir(
             // at nine distinct sites.
             throw new FilesError(
                 'protege-en-ecriture',
-                'ce lecteur ne sait pas renommer ni supprimer',
+                'this drive can neither rename nor remove',
             );
         }
         if (type === TYPE_RENOMMER) {
@@ -307,7 +307,7 @@ async function servir(
             // is the old bridge, which returned `EPERM` at nine distinct sites.
             throw new FilesError(
                 'protege-en-ecriture',
-                'ce lecteur est monté en lecture seule',
+                'this drive is mounted read-only',
             );
         }
         if (type === TYPE_WRITE) {
@@ -317,13 +317,13 @@ async function servir(
             // kind of divergence no downstream check catches: only
             // a digest would say so. It is the exact mirror of the check
             // the agent already applies to `Data` answers.
-            if (e.longueur !== charge.length) {
+            if (e.longueur !== charge.length) { // policy: allow-fr - wire key of the file protocol
                 throw new FilesError(
                     'interne',
-                    `en-tête Ecrire incohérent : ${e.longueur} annoncés, ${charge.length} reçus`,
+                    `inconsistent Ecrire header: ${e.longueur} announced, ${charge.length} received`,
                 );
             }
-            await ecrivain.write(e.chemin, e.position, charge, e.premier, e.dernier);
+            await ecrivain.write(e.chemin, e.position, charge, e.premier, e.dernier); // policy: allow-fr - wire key of the file protocol
         } else {
             const c = parseCreate(entete);
             await ecrivain.create(c.chemin, c.repertoire);
@@ -344,10 +344,10 @@ async function servir(
         return encoderTexte(
             TYPE_META,
             correlation,
-            encodeMeta(m.nom, m.repertoire, m.taille, m.modifie),
+            encodeMeta(m.nom, m.repertoire, m.taille, m.modifie), // policy: allow-fr - wire keys of the file protocol
         );
     }
-    const { chemin, position, longueur: length } = parseLire(entete);
+    const { chemin, position, longueur: length } = parseLire(entete); // policy: allow-fr - wire key of the file protocol
     const octets = await adaptateur.lire(chemin, position, length);
     // 🔴 THE ANNOUNCED LENGTH IS THE ONE ACTUALLY READ, never the one requested.
     // A file read to its end returns less; copying the request would make

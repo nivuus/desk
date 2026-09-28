@@ -232,9 +232,9 @@ for (const chemin of aBalayer) {
     }
 }
 
-console.log(`fichiers balayés : ${aBalayer.length}`);
-console.log(`couleurs littérales : ${total}`);
+console.log(`files scanned: ${aBalayer.length}`);
+console.log(`literal colours: ${total}`);
 if (total > 0) {
-    console.log('→ elles doivent vivre dans client/src/design/tokens/couleurs.css');
+    console.log('→ they must live in client/src/design/tokens/couleurs.css');
 }
 process.exit(total > 0 ? 1 : 0);

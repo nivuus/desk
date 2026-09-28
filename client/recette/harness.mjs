@@ -147,7 +147,7 @@ async function withChrome(fn) {
         await semerJeton(cdp);
         await cdp.send('Page.navigate', { url });
         const pcAppeared = await pollUntil(() => cdp.eval('window.__pc !== null && window.__pc !== undefined'), 15_000);
-        if (!pcAppeared) throw new Error('aucune RTCPeerConnection créée après 15s');
+        if (!pcAppeared) throw new Error('no RTCPeerConnection created after 15s');
         // Attend l'état "prêt" (bandeau #status masqué par main.ts) avant de mesurer.
         await pollUntil(() => cdp.eval("document.querySelector('#status')?.dataset.hidden === 'true'"), 15_000);
         return await fn(cdp);
@@ -159,7 +159,7 @@ async function withChrome(fn) {
 
 async function modeStats(durationMs) {
     await withChrome(async (cdp) => {
-        console.log('Connexion établie, envoi de molette continue pendant', durationMs, 'ms...');
+        console.log('Connection established, sending continuous wheel for', durationMs, 'ms...');
         // Boucle de molette dans la page (un seul domaine d'horloge, pas de
         // rafale Node<->Chrome) : dispatch un WheelEvent réel sur #remote
         // toutes les ~60ms, comme un défilement utilisateur soutenu.
@@ -203,17 +203,17 @@ async function modeStats(durationMs) {
         const after = await sampleStats(cdp);
         const statsText = await cdp.eval("document.querySelector('#stats')?.textContent ?? ''");
         const sendCount = await cdp.eval('window.__sendCount');
-        console.log('messages envoyés sur les canaux (input+control) :', sendCount);
-        console.log('--- Avant ---');
+        console.log('messages sent on the channels (input+control):', sendCount);
+        console.log('--- Before ---');
         printSample(before);
-        console.log('--- Après ---');
+        console.log('--- After ---');
         printSample(after);
-        console.log('Overlay #stats (dernier texte affiché) :', statsText);
+        console.log('Overlay #stats (last text displayed):', statsText);
         const dFrames = (after.stats?.framesDecoded ?? 0) - (before.stats?.framesDecoded ?? 0);
         const dt = (after.stats?.timestamp - before.stats?.timestamp) / 1000;
-        console.log(`Δ framesDecoded=${dFrames} sur ${dt.toFixed(2)}s => ${(dFrames / dt).toFixed(2)} im/s`);
+        console.log(`Δ framesDecoded=${dFrames} over ${dt.toFixed(2)}s => ${(dFrames / dt).toFixed(2)} fps`);
         console.log(`packetsLost=${after.stats?.packetsLost} framesDropped=${after.stats?.framesDropped}`);
-        if (cdp.pageErrors.length) console.log('Erreurs JS :', cdp.pageErrors);
+        if (cdp.pageErrors.length) console.log('JS errors:', cdp.pageErrors);
     });
 }
 
@@ -233,7 +233,7 @@ async function sampleStats(cdp) {
 
 function printSample(sample) {
     const s = sample.stats;
-    if (!s) { console.log('  (aucune donnée inbound-rtp)'); return; }
+    if (!s) { console.log('  (no inbound-rtp data)'); return; }
     console.log(`  framesDecoded=${s.framesDecoded} frameWidth=${s.frameWidth} frameHeight=${s.frameHeight} packetsLost=${s.packetsLost} framesDropped=${s.framesDropped} t=${s.timestamp}`);
 }
 
@@ -334,13 +334,13 @@ async function modeLatency(trials) {
                     ? (freezeAfter.totalFreezesDuration - freezeBefore.totalFreezesDuration) * 1000
                     : null;
             results.push(r);
-            console.log(`essai ${i + 1}/${trials} :`, JSON.stringify(r));
+            console.log(`trial ${i + 1}/${trials}:`, JSON.stringify(r));
             // Laisse la vidéo se stabiliser avant l'essai suivant.
             await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         const ok = results.filter((r) => typeof r.latencyMs === 'number');
         console.log('');
-        console.log(`${ok.length}/${results.length} essais exploitables.`);
+        console.log(`${ok.length}/${results.length} usable trials.`);
         if (ok.length) {
             const values = ok.map((r) => r.latencyMs).sort((a, b) => a - b);
             const sum = values.reduce((a, b) => a + b, 0);
@@ -350,22 +350,22 @@ async function modeLatency(trials) {
             // length/2 (qui donne le (n/2+1)-ième élément, pas le milieu).
             const median =
                 values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
-            console.log('valeurs (ms) :', values.map((v) => v.toFixed(1)).join(', '));
+            console.log('values (ms):', values.map((v) => v.toFixed(1)).join(', '));
             console.log(
-                `min=${values[0].toFixed(1)} max=${values[values.length - 1].toFixed(1)} moyenne=${(sum / values.length).toFixed(1)} médiane=${median.toFixed(1)}`,
+                `min=${values[0].toFixed(1)} max=${values[values.length - 1].toFixed(1)} mean=${(sum / values.length).toFixed(1)} median=${median.toFixed(1)}`,
             );
             const withFreeze = ok.filter((r) => r.freezeCountDelta !== null);
             if (withFreeze.length) {
                 console.log('');
-                console.log('Corrélation gel détecté / latence de cet essai :');
+                console.log('Correlation of detected freeze / latency of this trial:');
                 for (const r of withFreeze) {
                     console.log(
-                        `  latence=${r.latencyMs.toFixed(1)}ms  freezeCountDelta=${r.freezeCountDelta}  totalFreezesDurationDelta=${r.totalFreezesDurationDeltaMs.toFixed(1)}ms`,
+                        `  latency=${r.latencyMs.toFixed(1)}ms  freezeCountDelta=${r.freezeCountDelta}  totalFreezesDurationDelta=${r.totalFreezesDurationDeltaMs.toFixed(1)}ms`,
                     );
                 }
             }
         }
-        if (cdp.pageErrors.length) console.log('Erreurs JS :', cdp.pageErrors);
+        if (cdp.pageErrors.length) console.log('JS errors:', cdp.pageErrors);
     });
 }
 

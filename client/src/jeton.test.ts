@@ -33,18 +33,18 @@ function b64url(value: unknown): string {
     return btoa(binaire).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-describe('le coffre à jetons du navigateur', () => {
-    it("rend l'accès qui vient d'être posé", () => {
+describe('the browser token store', () => {
+    it("returns the access that was just set", () => {
         const coffre = coffreFactice();
         poser(coffre, { acces: 'a-1', rafraichissement: 'r-1' });
         expect(jetonAcces(coffre)).toBe('a-1');
     });
 
-    it("rend `undefined` quand aucun jeton n'a été posé", () => {
+    it("returns `undefined` when no token was set", () => {
         expect(jetonAcces(coffreFactice())).toBeUndefined();
     });
 
-    it('`vider` efface LES DEUX clés', () => {
+    it('`vider` erases BOTH keys', () => {
         // 🔴 Le rouge de ce test est de n'en effacer qu'une : une déconnexion
         // qui laisserait le rafraîchissement derrière elle laisserait un
         // moyen de se reconnecter sans mot de passe, dans un stockage que
@@ -58,7 +58,7 @@ describe('le coffre à jetons du navigateur', () => {
 });
 
 describe('poserAcces', () => {
-    it("pose l'accès", () => {
+    it("sets the access", () => {
         const c = coffreFactice();
         poserAcces(c, 'J');
         expect(c.getItem(CLE_ACCES)).toBe('J');
@@ -69,7 +69,7 @@ describe('poserAcces', () => {
     // au changement de mode et serait présenté à une route qui rend désormais
     // 404 — une panne dont le symptôme serait une déconnexion inexpliquée dix
     // minutes après chaque ouverture de page.
-    it('EFFACE le jeton de rafraîchissement laissé par un montage antérieur', () => {
+    it('ERASES the refresh token left by an earlier mount', () => {
         const c = coffreFactice();
         c.setItem(CLE_RAFRAICHISSEMENT, 'vieux');
         poserAcces(c, 'J');
@@ -118,25 +118,25 @@ describe('poserAcces', () => {
    ⚠️ DANS LES TROIS CAS, LE PREMIER `it()` — celui qui éprouve l'ACCEPTATION
    — reste VERT. C'est ce qui rend chaque rouge discriminante : elle ne dénonce
    pas un module débranché. */
-describe('le corps de `GET /auth/moi`', () => {
-    it("rend le jeton quand le corps en porte un", () => {
+describe('the body of `GET /auth/moi`', () => {
+    it("returns the token when the body carries one", () => {
         expect(accesDeReponse({ acces: 'J' })).toBe('J');
     });
 
     // Le cas EXACT que le mode `motdepasse` produirait si le 404 ne portait
     // pas le mode : un corps sans `acces`.
-    it("rend `undefined` sur un corps SANS `acces` — sinon le coffre reçoit la chaîne « undefined »", () => {
+    it("returns `undefined` on a body WITHOUT `acces` — otherwise the store receives the string « undefined »", () => {
         expect(accesDeReponse({})).toBeUndefined();
     });
 
     // ⚠️ DISTINCT DU CAS CI-DESSUS, ET NON REDONDANT : `typeof '' === 'string'`.
     // Un `''` posé au coffre serait un jeton qu'aucun `Authorization` ne peut
     // porter, et `jetonAcces` le rendrait comme s'il valait quelque chose.
-    it('rend `undefined` sur une chaîne VIDE', () => {
+    it('returns `undefined` on an EMPTY string', () => {
         expect(accesDeReponse({ acces: '' })).toBeUndefined();
     });
 
-    it("rend `undefined` quand `acces` n'est pas une chaîne", () => {
+    it("returns `undefined` when `acces` is not a string", () => {
         expect(accesDeReponse({ acces: 42 })).toBeUndefined();
         expect(accesDeReponse({ acces: null })).toBeUndefined();
     });
@@ -144,7 +144,7 @@ describe('le corps de `GET /auth/moi`', () => {
     // `reponse.json().catch(() => undefined)` rend `undefined` sur un corps
     // illisible, et `null` est un JSON parfaitement valable : les deux
     // atteignent cette fonction, et ni l'un ni l'autre ne doit la faire lever.
-    it('rend `undefined` sur `undefined`, `null` et un corps qui n’est pas un objet', () => {
+    it('returns `undefined` on `undefined`, `null` and a body that is not an object', () => {
         expect(accesDeReponse(undefined)).toBeUndefined();
         expect(accesDeReponse(null)).toBeUndefined();
         expect(accesDeReponse('J')).toBeUndefined();
@@ -156,69 +156,69 @@ describe('le corps de `GET /auth/moi`', () => {
 /// une seule fois ici, pas répétés en entier — et applique le MÊME critère
 /// (chaîne, non vide) à `rafraichissement`, sur le modèle exact des tests
 /// ci-dessus.
-describe('le corps de `POST /auth/rafraichir`', () => {
-    it('rend la paire quand le corps en porte une complète', () => {
+describe('the body of `POST /auth/rafraichir`', () => {
+    it('returns the pair when the body carries a complete one', () => {
         expect(paireDeReponse({ acces: 'A', rafraichissement: 'R' })).toEqual({
             acces: 'A',
             rafraichissement: 'R',
         });
     });
 
-    it('rend `undefined` quand `acces` est absent, vide ou non une chaîne — via `accesDeReponse`', () => {
+    it('returns `undefined` when `acces` is absent, empty or not a string — through `accesDeReponse`', () => {
         expect(paireDeReponse({ rafraichissement: 'R' })).toBeUndefined();
         expect(paireDeReponse({ acces: '', rafraichissement: 'R' })).toBeUndefined();
         expect(paireDeReponse({ acces: 42, rafraichissement: 'R' })).toBeUndefined();
     });
 
-    it("rend `undefined` quand `rafraichissement` est ABSENT — le cas que la revue a trouve manquant", () => {
+    it("returns `undefined` when `rafraichissement` is ABSENT — the case the review found missing", () => {
         expect(paireDeReponse({ acces: 'A' })).toBeUndefined();
     });
 
     // ⚠️ DISTINCT DU CAS CI-DESSUS, ET NON REDONDANT : `typeof '' === 'string'`,
     // le même piège que celui d'`accesDeReponse`, appliqué ici au second champ.
-    it('rend `undefined` sur un `rafraichissement` VIDE', () => {
+    it('returns `undefined` on an EMPTY `rafraichissement`', () => {
         expect(paireDeReponse({ acces: 'A', rafraichissement: '' })).toBeUndefined();
     });
 
-    it("rend `undefined` quand `rafraichissement` n'est pas une chaîne", () => {
+    it("returns `undefined` when `rafraichissement` is not a string", () => {
         expect(paireDeReponse({ acces: 'A', rafraichissement: 42 })).toBeUndefined();
         expect(paireDeReponse({ acces: 'A', rafraichissement: null })).toBeUndefined();
     });
 
-    it('rend `undefined` sur `undefined`, `null` et un corps qui n’est pas un objet', () => {
+    it('returns `undefined` on `undefined`, `null` and a body that is not an object', () => {
         expect(paireDeReponse(undefined)).toBeUndefined();
         expect(paireDeReponse(null)).toBeUndefined();
         expect(paireDeReponse('J')).toBeUndefined();
     });
 });
 
-describe('la fraîcheur, lue SANS vérifier la signature', () => {
-    it("lit `exp` d'un jeton dont la SIGNATURE est fausse, et ne le refuse pas", () => {
+describe('freshness, read WITHOUT checking the signature', () => {
+    it("reads `exp` from a token whose SIGNATURE is wrong, and does not refuse it", () => {
         // 🔴 C'est la moitié décidable de « le navigateur ne vérifie jamais » :
         // ce jeton porte une signature qui n'est celle de personne, et
         // `expiresBefore` rend quand même `false` parce que son `exp` est loin.
         // Le rouge est de prétendre vérifier — le client n'a pas le secret, et
         // croire qu'il vérifie serait pire que savoir qu'il ne le fait pas.
-        const jeton = jetonFactice(10_000, 'signature-qui-n-est-celle-de-personne');
+        const jeton = jetonFactice(10_000, 'signature-that-is-no-one-s');
         expect(expiresBefore(jeton, 5_000)).toBe(false);
     });
 
-    it('rend `true` quand `exp` est déjà passé', () => {
+    it('returns `true` when `exp` has already passed', () => {
         expect(expiresBefore(jetonFactice(1_000), 5_000)).toBe(true);
     });
 
-    it('rend `true` sur un jeton MAL FORMÉ', () => {
+    it('returns `true` on a MALFORMED token', () => {
         // Le rouge est de rendre `false` : un jeton illisible serait alors cru
         // valable, et la session échouerait plus tard, ailleurs, sur un refus
         // du service que rien ne relierait à cette lecture.
-        expect(expiresBefore('pas-un-jeton', 0)).toBe(true);
+        expect(expiresBefore('not-a-token', 0)).toBe(true);
         expect(expiresBefore('a.b.c', 0)).toBe(true);
         expect(expiresBefore(`${b64url({})}.${b64url({})}.x`, 0)).toBe(true);
     });
 });
 
-describe('le rafraîchissement', () => {
-    it("N'APPELLE PAS le réseau quand le jeton est frais au-delà de la marge", async () => {
+describe('the refresh', () => {
+    it("DOES NOT CALL the network when the token is fresh beyond the margin", async () => {
         // 🔴 Le rouge est d'appeler toujours : un aller-retour réseau par
         // ouverture de fenêtre, sur un chemin qui n'a rien à faire.
         const coffre = coffreFactice({
@@ -230,7 +230,7 @@ describe('le rafraîchissement', () => {
         expect(appel).not.toHaveBeenCalled();
     });
 
-    it('appelle, pose la paire neuve et rend `true` quand la marge est franchie', async () => {
+    it('calls, sets the new pair and returns `true` when the margin is crossed', async () => {
         const coffre = coffreFactice({
             [CLE_ACCES]: jetonFactice(10_000),
             [CLE_RAFRAICHISSEMENT]: 'r-1',
@@ -244,7 +244,7 @@ describe('le rafraîchissement', () => {
         expect(coffre.contenu.get(CLE_RAFRAICHISSEMENT)).toBe('r-2');
     });
 
-    it("un refus de l'appel VIDE le coffre et rend `false`", async () => {
+    it("a refusal of the call EMPTIES the store and returns `false`", async () => {
         // Le rouge est de garder la paire morte : l'utilisateur boucle alors
         // sur un refus sans jamais revoir l'écran de connexion.
         const coffre = coffreFactice({
@@ -255,7 +255,7 @@ describe('le rafraîchissement', () => {
         expect(coffre.contenu.size).toBe(0);
     });
 
-    it('rend `false` sans appeler quand aucun rafraîchissement n’est stocké', async () => {
+    it('returns `false` without calling when no refresh is stored', async () => {
         const coffre = coffreFactice({ [CLE_ACCES]: jetonFactice(10_000) });
         const appel = vi.fn();
         expect(await rafraichirSiNecessaire(coffre, 0, 30_000, appel)).toBe(false);
@@ -285,19 +285,19 @@ function appelFactice(
     return vi.fn(async () => {
         const r = reponses[Math.min(i, reponses.length - 1)];
         i += 1;
-        if (r.leve === true) throw new Error('reseau injoignable');
+        if (r.leve === true) throw new Error('network unreachable');
         return { ok: r.ok ?? false, json: async () => r.corps };
     });
 }
 
-describe('accesParPomerium — le chemin de `tenterPomerium`, extrait', () => {
-    it("rend le jeton quand `/auth/moi` répond 200 avec un corps valide", async () => {
+describe('accesParPomerium — the `tenterPomerium` path, extracted', () => {
+    it("returns the token when `/auth/moi` answers 200 with a valid body", async () => {
         const appel = appelFactice([{ ok: true, corps: { acces: 'J' } }]);
         expect(await accesParPomerium('https://h', appel)).toBe('J');
         expect(appel).toHaveBeenCalledWith('https://h/auth/moi');
     });
 
-    it("rend `undefined` sur le 404 QUE `routes-identite.ts` REND EN MODE motdepasse", async () => {
+    it("returns `undefined` on the 404 THAT `routes-identite.ts` RETURNS IN motdepasse MODE", async () => {
         // 🔴 CE CAS PORTE LE MODE JUSQU'ICI (en-tête de `connexion.ts`) : un
         // 404 n'est pas une panne, c'est le service qui dit « ce montage
         // authentifie par mot de passe ». Le prendre pour une panne serait
@@ -307,12 +307,12 @@ describe('accesParPomerium — le chemin de `tenterPomerium`, extrait', () => {
         expect(await accesParPomerium('https://h', appel)).toBeUndefined();
     });
 
-    it('rend `undefined` sur un réseau injoignable, sans lever', async () => {
+    it('returns `undefined` on an unreachable network, without throwing', async () => {
         const appel = appelFactice([{ leve: true }]);
         expect(await accesParPomerium('https://h', appel)).toBeUndefined();
     });
 
-    it("rend `undefined` sur un corps sans `acces` exploitable", async () => {
+    it("returns `undefined` on a body without a usable `acces`", async () => {
         const appel = appelFactice([{ ok: true, corps: {} }]);
         expect(await accesParPomerium('https://h', appel)).toBeUndefined();
     });
@@ -336,7 +336,7 @@ describe('assurerAccesFrais', () => {
         };
     }
 
-    it('un jeton frais est rendu SANS aucun appel reseau', async () => {
+    it('a fresh token is returned WITHOUT any network call', async () => {
         const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(100_000) });
         let appels = 0;
         const acces = await assurerAccesFrais(
@@ -353,7 +353,7 @@ describe('assurerAccesFrais', () => {
         expect(acces).toBe(jetonExpirantA(100_000));
     });
 
-    it('un jeton qui expire DANS LA MARGE est traite comme perime', async () => {
+    it('a token expiring WITHIN THE MARGIN is treated as expired', async () => {
         // `exp` = 20 s, marge = 30 s, maintenant = 0 : encore valide a
         // l'instant meme, deja perime au sens de la marge.
         const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(20_000) });
@@ -367,7 +367,7 @@ describe('assurerAccesFrais', () => {
         expect(acces).toBe('FRAIS');
     });
 
-    it('un jeton perime avec rafraichissement passe par le rafraichissement, PAS par Pomerium', async () => {
+    it('an expired token with a refresh goes through the refresh, NOT through Pomerium', async () => {
         const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
@@ -384,7 +384,7 @@ describe('assurerAccesFrais', () => {
         expect(acces).toBe(jetonExpirantA(999_000));
     });
 
-    it('sans jeton de rafraichissement, Pomerium prend le relais et le jeton est POSE', async () => {
+    it('without a refresh token, Pomerium takes over and the token is SET', async () => {
         const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(0) });
         const acces = await assurerAccesFrais(
             coffre,
@@ -398,7 +398,7 @@ describe('assurerAccesFrais', () => {
         expect(coffre.getItem(CLE_ACCES)).toBe('FRAIS');
     });
 
-    it('les deux voies echouent : rend undefined ET vide le coffre', async () => {
+    it('both ways fail: returns undefined AND empties the store', async () => {
         const coffre = vaultWith({ [CLE_ACCES]: jetonExpirantA(0) });
         const acces = await assurerAccesFrais(
             coffre,
@@ -414,7 +414,7 @@ describe('assurerAccesFrais', () => {
         expect(coffre.getItem(CLE_ACCES)).toBeNull();
     });
 
-    it('un coffre VIDE va directement a Pomerium', async () => {
+    it('an EMPTY store goes straight to Pomerium', async () => {
         const coffre = vaultWith({});
         const acces = await assurerAccesFrais(
             coffre,
@@ -430,7 +430,7 @@ describe('assurerAccesFrais', () => {
     // rafraichissement etait le PREMIER appelant de production de
     // `rafraichirSiNecessaire`, et rien n'eprouvait ni une exception ni un
     // corps malforme avant cette ronde.
-    it('un callback de rafraichissement qui LEVE ne fait PAS lever assurerAccesFrais : passe par Pomerium', async () => {
+    it('a refresh callback that THROWS does NOT make assurerAccesFrais throw: goes through Pomerium', async () => {
         // Le rouge serait l'exception qui remonte non rattrapee, au lieu de
         // retomber sur l'etape suivante (Pomerium), et la page resterait
         // bloquee sur "identification...".
@@ -443,7 +443,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             10_000,
-            async () => { throw new Error('reseau injoignable'); },
+            async () => { throw new Error('network unreachable'); },
         );
         expect(acces).toBe('FRAIS');
     });
@@ -453,7 +453,7 @@ describe('assurerAccesFrais', () => {
     // incomplet (`ok: true` mais sans `rafraichissement`, ou avec une chaine
     // vide) doit donc etre rejete PAR LE CALLBACK, jamais ecrit tel quel au
     // coffre par `rafraichirSiNecessaire::poser`.
-    it("un corps de rafraichissement MALFORME (ok:true, sans `rafraichissement`) ne poison PAS le coffre", async () => {
+    it("a MALFORMED refresh body (ok:true, without `rafraichissement`) does NOT poison the store", async () => {
         const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
@@ -470,7 +470,7 @@ describe('assurerAccesFrais', () => {
         expect(coffre.getItem(CLE_ACCES)).toBe('FRAIS');
     });
 
-    it("un corps de rafraichissement MALFORME (`acces` vide) ne poison PAS le coffre", async () => {
+    it("a MALFORMED refresh body (empty `acces`) does NOT poison the store", async () => {
         const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',

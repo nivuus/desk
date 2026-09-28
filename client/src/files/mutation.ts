@@ -52,7 +52,7 @@
 // **without error**. *No document of the repository said so before this one.*
 // Resolving the destination therefore comes FIRST, in both branches —
 // otherwise renaming `draft.txt` to `note.txt` would destroy `note.txt` without a
-// word. Log: `journaux-pont-fichiers-f3/s2-move-casse.txt`.
+// word. Log: `journaux-pont-fichiers-f3/s2-move-casse.txt`. (policy: allow-fr, archived log path)
 //
 // 🔴 **AND IT DOES NOT EXIST ON A DIRECTORY** — same probe,
 // `move_repertoire: { present: false }`. F3's plan held the fact that
@@ -195,7 +195,7 @@ async function descendreEnCreant(
         if (r.sorte === 'ambigu') {
             throw new FilesError(
                 'casse-ambigue',
-                `« ${parts[i]} » ne se distingue pas de « ${r.noms.join(' », « ')} »`,
+                `« ${parts[i]} » cannot be told apart from « ${r.noms.join(' », « ')} »`,
             );
         }
         try {
@@ -223,7 +223,7 @@ export async function renommer(
     const partsDe = composants(de);
     const partsVers = composants(vers);
     if (partsDe.length === 0 || partsVers.length === 0) {
-        throw new FilesError('non-supporte', 'la racine ne se renomme pas');
+        throw new FilesError('non-supporte', 'the root cannot be renamed');
     }
     const parentSource = await descendre(racine, partsDe, partsDe.length - 1);
     const nomSource = await canoniserOuLever(
@@ -243,7 +243,7 @@ export async function renommer(
     if (dest.sorte === 'ambigu') {
         throw new FilesError(
             'casse-ambigue',
-            `« ${nomDemande} » ne se distingue pas de « ${dest.noms.join(' », « ')} »`,
+            `« ${nomDemande} » cannot be told apart from « ${dest.noms.join(' », « ')} »`,
         );
     }
     if (dest.sorte === 'trouve') {
@@ -255,7 +255,7 @@ export async function renommer(
         } else {
             throw new FilesError(
                 'deja-present',
-                `« ${vers} » existe déjà sous le nom « ${dest.nom} »`,
+                `« ${vers} » already exists under the name « ${dest.nom} »`,
             );
         }
     }
@@ -351,7 +351,7 @@ export async function remove(
 ): Promise<void> {
     const parts = composants(chemin);
     if (parts.length === 0) {
-        throw new FilesError('non-supporte', 'la racine ne se supprime pas');
+        throw new FilesError('non-supporte', 'the root cannot be removed');
     }
     const parent = await descendre(racine, parts, parts.length - 1);
     const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
@@ -378,8 +378,8 @@ export async function remove(
         if (e instanceof DOMException && e.name === 'InvalidModificationError') {
             throw new FilesError(
                 'repertoire-non-vide',
-                `« ${chemin} » n’est pas vide sur le poste local : le miroir a dérivé, ` +
-                    `rien n’a été supprimé`,
+                `« ${chemin} » is not empty on the local host: the mirror has drifted, ` +
+                    `nothing was removed`,
             );
         }
         throw classer(e, 'introuvable');

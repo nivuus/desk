@@ -94,12 +94,12 @@ function banc(themeInitial: string | null = null) {
 }
 
 describe('installerSelecteurDeTheme', () => {
-    it('pose exactement trois boutons, un par état', () => {
+    it('sets exactly three buttons, one per state', () => {
         const b = banc();
         expect(b.boutons.map((x) => x.dataset.theme)).toEqual(['systeme', 'clair', 'sombre']);
     });
 
-    it('un clic sur « clair » ÉCRIT LA CLÉ', () => {
+    it('a click on « light » WRITES THE KEY', () => {
         // Première moitié, séparée de la seconde comme le contrôle §7.5 sépare
         // les siennes : écrire et appliquer sont deux effets, et `expect`
         // interrompt au premier échec.
@@ -108,13 +108,13 @@ describe('installerSelecteurDeTheme', () => {
         expect(b.ecrits).toEqual([[CLE_THEME, 'clair']]);
     });
 
-    it('un clic sur « clair » POSE `data-theme` LOCALEMENT', () => {
+    it('a click on « light » SETS `data-theme` LOCALLY', () => {
         const b = banc();
         (b.parTheme('clair') as unknown as { cliquer(): void }).cliquer();
         expect(b.attributRacine()).toBe('clair');
     });
 
-    it('`aria-pressed` suit le clic', () => {
+    it('`aria-pressed` follows the click', () => {
         const b = banc();
         expect(b.presse('systeme')).toBe('true');
         (b.parTheme('sombre') as unknown as { cliquer(): void }).cliquer();
@@ -122,7 +122,7 @@ describe('installerSelecteurDeTheme', () => {
         expect(b.presse('systeme')).toBe('false');
     });
 
-    it('`aria-pressed` suit un `storage` VENU D\'UNE AUTRE FENÊTRE', () => {
+    it('`aria-pressed` follows a `storage` COMING FROM ANOTHER WINDOW', () => {
         // 🔴 LA ROUGE DE LA CORRECTION, et elle tombe sur le code d'avant S3.
         // Ce module déclarait lui-même le défaut : « IL NE RAPPELLE PAS
         // `marquer()` […] un `aria-pressed` posé ici reste celui du thème
@@ -140,13 +140,13 @@ describe('installerSelecteurDeTheme', () => {
         expect(b.presse('systeme')).toBe('false');
     });
 
-    it('applique le thème reçu par `storage` à la racine', () => {
+    it('applies the theme received through `storage` to the root', () => {
         const b = banc();
         b.emettreStorage(CLE_THEME, 'clair');
         expect(b.attributRacine()).toBe('clair');
     });
 
-    it('un `storage` sur la clé VOISINE `guac.jeton.acces` ne change RIEN', () => {
+    it('a `storage` on the NEIGHBOURING key `guac.jeton.acces` changes NOTHING', () => {
         // ⚠️ LA VRAIE CLÉ VOISINE, jamais une clé inventée : `jeton.ts` la
         // déclare et `connexion.ts` l'écrit réellement à chaque connexion, donc
         // toute fenêtre voisine reçoit cet événement-là. Sans le filtre,
@@ -158,7 +158,7 @@ describe('installerSelecteurDeTheme', () => {
         expect(b.rappels()).toBe(0);
     });
 
-    it("n'écrit RIEN dans le coffre en réagissant à un `storage`", () => {
+    it("writes NOTHING to the store when reacting to a `storage`", () => {
         // Sans quoi deux fenêtres se renverraient l'événement sans terme.
         // ⚠️ CE TEST N'EST PAS GARANTI PAR LA SIGNATURE, contrairement à celui
         // de `onStorageChanged` : ici la fermeture DÉTIENT le coffre et le

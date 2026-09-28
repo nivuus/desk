@@ -98,26 +98,26 @@ function faireCibleDocument() {
     };
 }
 
-describe('sommation des deltas coalescés', () => {
-    it('somme les échantillons intermédiaires', () => {
+describe('summing the coalesced deltas', () => {
+    it('sums the intermediate samples', () => {
         expect(sommerDeltas([
             { movementX: 3, movementY: -1 },
             { movementX: 4, movementY: -2 },
         ])).toEqual({ dx: 7, dy: -3 });
     });
 
-    it('rend zéro sur une liste vide', () => {
+    it('returns zero on an empty list', () => {
         expect(sommerDeltas([])).toEqual({ dx: 0, dy: 0 });
     });
 });
 
-describe('clamp avec report', () => {
-    it('laisse passer les valeurs dans la plage', () => {
+describe('clamp with carry-over', () => {
+    it('lets the values within range through', () => {
         const clamp = createClampReport();
         expect(clamp(10, -10)).toEqual({ dx: 10, dy: -10 });
     });
 
-    it('borne le débordement et le reporte sur l\'appel suivant', () => {
+    it('clamps the overflow and carries it over to the next call', () => {
         // La somme transmise doit rester exacte : c'est elle qui détermine la
         // visée. Écrêter en perdant le reste ferait dériver le tir.
         const clamp = createClampReport();
@@ -126,13 +126,13 @@ describe('clamp avec report', () => {
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: 0 });
     });
 
-    it('reporte aussi les débordements négatifs', () => {
+    it('also carries the negative overflows over', () => {
         const clamp = createClampReport();
         expect(clamp(0, -40000)).toEqual({ dx: 0, dy: -32768 });
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: -7232 });
     });
 
-    it('ne reporte rien quand rien ne déborde', () => {
+    it('carries nothing over when nothing overflows', () => {
         const clamp = createClampReport();
         clamp(5, 5);
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: 0 });
@@ -140,7 +140,7 @@ describe('clamp avec report', () => {
 });
 
 describe('attachPointer', () => {
-    it('reste désarmé tant qu\'aucun message pointer n\'est reçu', () => {
+    it('stays disarmed as long as no pointer message has been received', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
@@ -152,7 +152,7 @@ describe('attachPointer', () => {
         expect(video.estVerrouille()).toBe(false);
     });
 
-    it('arme le verrouillage sur message pointer visible=false, et le clic verrouille', () => {
+    it('arms the lock on a pointer visible=false message, and the click locks', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
@@ -173,7 +173,7 @@ describe('attachPointer', () => {
         // Ce test échoue si onClick est vide ou si la condition sur `arme` est cassée.
     });
 
-    it('reste armé après une sortie par Échap si l\'agent est toujours en relatif', () => {
+    it('stays armed after an exit through Escape if the agent is still relative', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
@@ -203,7 +203,7 @@ describe('attachPointer', () => {
         // Ce test échoue si onPointerLockChange désarmait ou si onClick était vide.
     });
 
-    it('retire tous les écouteurs lors du détachement', () => {
+    it('removes all the listeners on detach', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
@@ -229,7 +229,7 @@ describe('attachPointer', () => {
         expect(video.estVerrouille()).toBe(false);
     });
 
-    it('appelle surEchec après deux erreurs de verrouillage consécutives', () => {
+    it('calls surEchec after two consecutive lock errors', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
@@ -259,7 +259,7 @@ describe('attachPointer', () => {
         expect(surEchec).toHaveBeenCalledTimes(2);
     });
 
-    it('retombe sur l\'événement principal quand getCoalescedEvents retourne un tableau vide', () => {
+    it('falls back to the main event when getCoalescedEvents returns an empty array', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();

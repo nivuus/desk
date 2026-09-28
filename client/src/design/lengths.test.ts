@@ -160,19 +160,19 @@ for (const [cle, texte] of Object.entries(FEUILLES).sort()) {
 const values = new Set(occurrences.map((o) => o.fautive));
 
 // ── LE RELEVÉ, TOUJOURS IMPRIMÉ, SUCCÈS COMPRIS ───────────────────────────
-console.log(`§7.10  feuilles de surface : ${Object.keys(FEUILLES).length}`);
-console.log(`       déclarations lues : ${declarationsLues}, dont ${parToken} par un token`);
+console.log(`§7.10  surface sheets: ${Object.keys(FEUILLES).length}`);
+console.log(`       declarations read: ${declarationsLues}, of which ${parToken} through a token`);
 for (const o of occurrences) {
     console.log(`       ${o.file}  ${o.propriete}: ${o.value}  → « ${o.fautive} »`);
 }
 console.log(
-    `       hors token : ${occurrences.length} occurrence(s), ` +
-        `${values.size} valeur(s) distincte(s)` +
+    `       outside tokens: ${occurrences.length} occurrence(s), ` +
+        `${values.size} distinct value(s)` +
         (values.size ? ` — ${[...values].sort().join(', ')}` : ''),
 );
 
-describe('§7.10 — aucune longueur hors token dans une feuille de surface', () => {
-    it('atteignabilité : des feuilles sont lues, et des longueurs y passent par un token', () => {
+describe('§7.10 — no length outside tokens in a surface sheet', () => {
+    it('reachability: sheets are read, and lengths go through a token in them', () => {
         // 🔴 SANS CETTE ASSERTION, LA SUIVANTE EST VERTE SUR DES FICHIERS VIDES.
         // C'est G5 de `primitives.test.ts`, et c'est le piège que ce sous-projet
         // a payé en S2 : « quatre gardes sur cinq ne prouveraient rien ». Sa
@@ -180,22 +180,22 @@ describe('§7.10 — aucune longueur hors token dans une feuille de surface', ()
         // une valeur.
         expect(
             Object.keys(FEUILLES).length,
-            'aucune feuille de surface trouvée : §7.10 est vert en ne mesurant rien',
+            'no surface sheet found: §7.10 is green while measuring nothing',
         ).toBeGreaterThan(0);
         expect(
             declarationsLues,
-            'aucune déclaration lue : §7.10 est vert en ne mesurant rien',
+            'no declaration read: §7.10 is green while measuring nothing',
         ).toBeGreaterThan(0);
         expect(
             parToken,
-            'aucune longueur ne passe par un token : le contrôle ne mesure pas ce qu’il croit',
+            'no length goes through a token: the check does not measure what it thinks',
         ).toBeGreaterThan(0);
     });
 
-    it('toute longueur passe par un token, hors les trois exceptions nommées', () => {
+    it('every length goes through a token, except the three named exceptions', () => {
         expect(
             occurrences.map((o) => `${o.file}  ${o.propriete}: ${o.value}  → « ${o.fautive} »`),
-            `longueurs hors token : ${occurrences.length} occurrence(s) pour ${values.size} valeur(s) distincte(s)`,
+            `lengths outside tokens: ${occurrences.length} occurrence(s) for ${values.size} distinct value(s)`,
         ).toEqual([]);
     });
 });

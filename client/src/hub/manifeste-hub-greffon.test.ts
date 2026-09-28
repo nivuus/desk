@@ -7,21 +7,21 @@ import { baliseManifesteHub } from './manifeste-hub-greffon';
 /// répond par une redirection vers `authenticate.allanic.me`, et la CSP
 /// bloque le chargement d'une autre origine — visible sous
 /// `default-src 'self'`. Ce test échoue si quiconque retire l'attribut.
-describe('la balise <link rel="manifest"> du hub porte crossorigin="use-credentials"', () => {
-    it('sans quoi le manifeste part sans cookies et Pomerium redirige vers une autre origine', () => {
+describe('the hub <link rel="manifest"> tag carries crossorigin="use-credentials"', () => {
+    it('otherwise the manifest goes out without cookies and Pomerium redirects to another origin', () => {
         const balise = baliseManifesteHub();
         expect(balise.attrs.crossorigin).toBe('use-credentials');
     });
 
-    it('pointe toujours /hub.webmanifest', () => {
+    it('always points to /hub.webmanifest', () => {
         expect(baliseManifesteHub().attrs.href).toBe('/hub.webmanifest');
     });
 
-    it('reste rel="manifest"', () => {
+    it('stays rel="manifest"', () => {
         expect(baliseManifesteHub().attrs.rel).toBe('manifest');
     });
 
-    it("s'injecte dans <head>, comme le greffon d'amorce", () => {
+    it("injects itself into <head>, like the bootstrap plugin", () => {
         expect(baliseManifesteHub().injectTo).toBe('head');
     });
 });

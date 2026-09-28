@@ -13,6 +13,6 @@
 import { installThemeSelectorInDOM } from './selecteur-theme';
 
 const hote = document.getElementById('themes');
-if (!hote) throw new Error('la galerie des primitives attend un élément #themes');
+if (!hote) throw new Error('the primitives gallery expects a #themes element');
 
 installThemeSelectorInDOM(hote, () => {});

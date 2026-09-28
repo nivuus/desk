@@ -39,7 +39,7 @@ export function suivreMontant(
     // The memory is FORGOTTEN when the track disappears: without that, a
     // renegotiated track (new SSRC, counters restarted from zero) would compute its
     // first rate against the counters of another stream.
-    if (!current) return { ligne: 'micro absent', memoire: undefined };
+    if (!current) return { ligne: 'mic absent', memoire: undefined };
 
     let kbps = 0;
     if (precedent) {
@@ -51,7 +51,7 @@ export function suivreMontant(
         }
     }
     return {
-        ligne: `micro ${kbps.toFixed(0)} kb/s  ·  paquets ${current.paquets}`,
+        ligne: `mic ${kbps.toFixed(0)} kb/s  ·  packets ${current.paquets}`,
         memoire: current,
     };
 }
@@ -154,8 +154,8 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
         // session without audio would pass for a session whose audio is simply
         // perfect.
         const audioLine = inboundAudio
-            ? `audio ${audioKbps.toFixed(0)} kb/s  ·  perdus ${(inboundAudio as any).packetsLost ?? 0}  ·  gigue ${(((inboundAudio as any).jitter ?? 0) * 1000).toFixed(1)} ms`
-            : 'audio absente';
+            ? `audio ${audioKbps.toFixed(0)} kb/s  ·  lost ${(inboundAudio as any).packetsLost ?? 0}  ·  jitter ${(((inboundAudio as any).jitter ?? 0) * 1000).toFixed(1)} ms`
+            : 'audio absent';
 
         const montant = suivreMontant(
             precedentMontant,
@@ -176,7 +176,7 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             `RTT ${rttMs.toFixed(1)} ms`,
             `tampon ${jitterBufferMs.toFixed(1)} ms`,
             `≈ ${glassToGlassMs.toFixed(1)} ms`,
-            `perdues ${(inbound as any).framesDropped ?? 0}`,
+            `dropped ${(inbound as any).framesDropped ?? 0}`,
             audioLine,
             montant.ligne,
         ].join('  ·  ');

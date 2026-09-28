@@ -98,11 +98,11 @@ const etatDe = (presentes: unknown, extra: Record<string, unknown> = {}): Repons
     corps: { taille: 16, sha256: SHA, taille_tranche: 4, tranches_presentes: presentes, ...extra },
 });
 
-describe('le chemin nominal', () => {
-    it('empreint, crée, dépose les quatre tranches et scelle', async () => {
+describe('the nominal path', () => {
+    it('fingerprints, creates, deposits the four chunks and seals', async () => {
         const s = serveur({ creation });
         const issue = await televerser(file(), deps(s.fetch));
-        expect(issue).toEqual({ etat: 'scelle', id: 't-1', taille: 16, sha256: SHA, deposees: [0, 1, 2, 3] });
+        expect(issue).toEqual({ etat: 'scelle', id: 't-1', size: 16, sha256: SHA, deposees: [0, 1, 2, 3] });
         expect(s.rangs()).toEqual([0, 1, 2, 3]);
         expect(s.octetsEmis()).toBe(16);
         // L'ordre du protocole : créer, déposer, sceller — et une seule création.
@@ -111,7 +111,7 @@ describe('le chemin nominal', () => {
         ]);
     });
 
-    it("annonce dès la CRÉATION le nom, la taille et l'empreinte (D5)", async () => {
+    it("announces the name, the size and the fingerprint from the CREATION on (D5)", async () => {
         // 🔴 C'est cette annonce, et elle seule, qui rendra une reprise
         // vérifiable : sans `{size, sha256}` posés d'avance, rien ne dira que
         // le fichier re-choisi après un rechargement d'onglet est LE MÊME.
@@ -122,7 +122,7 @@ describe('le chemin nominal', () => {
         expect(JSON.parse(s.appels[0].corps ?? '{}')).toEqual({ nom: 'programme.msi', taille: 16, sha256: SHA });
     });
 
-    it("la `fetch` de la plateforme d'exécution satisfait le type `Fetch`", () => {
+    it("the runtime platform's `fetch` satisfies the `Fetch` type", () => {
         // 🔵 LE CONTRÔLE QUI EMPÊCHE `Fetch` DE DÉRIVER. Il est déclaré à la main
         // — une `Response` complète serait infabricable dans un test —, donc rien
         // ne garantirait qu'une VRAIE `fetch` le satisfasse encore après une
@@ -132,7 +132,7 @@ describe('le chemin nominal', () => {
         expect(typeof preuve).toBe('function');
     });
 
-    it('porte le jeton et le type binaire sur chaque tranche déposée', async () => {
+    it('carries the token and the binary type on each deposited chunk', async () => {
         const s = serveur({ creation });
         await televerser(file(), deps(s.fetch));
         for (const p of s.puts()) {
@@ -141,17 +141,17 @@ describe('le chemin nominal', () => {
         }
     });
 
-    it("d'un fichier VIDE, ne dépose aucune tranche et scelle quand même", async () => {
+    it("on an EMPTY file, deposits no chunk and seals anyway", async () => {
         const s = serveur({ creation: { status: 200, corps: { id: 't-0', taille_tranche: 4, tranches_presentes: [] } } });
         const issue = await televerser(file(new Uint8Array(0)), deps(s.fetch));
-        expect(issue).toMatchObject({ etat: 'scelle', taille: 0, sha256: condenserHex(new Uint8Array(0)) });
+        expect(issue).toMatchObject({ etat: 'scelle', size: 0, sha256: condenserHex(new Uint8Array(0)) });
         expect(s.puts()).toHaveLength(0);
         expect(s.appels.at(-1)?.url).toBe('https://p/televersement/t-0/sceller');
     });
 });
 
-describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
-    it('sur quatre tranches dont deux présentes, en émet DEUX — pas quatre', async () => {
+describe('🔴 resuming deposits again ONLY the missing chunks', () => {
+    it('on four chunks of which two are present, emits TWO — not four', async () => {
         // 🔴 C'est la rouge du critère ③ : un produit qui recommencerait à zéro
         // rendrait le MÊME verdict `scelle`. Seul le COMPTE D'OCTETS le sépare
         // d'un produit correct — d'où l'assertion sur `octetsEmis`, et non sur
@@ -168,14 +168,14 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
         expect(issue).toMatchObject({ etat: 'scelle', id: 't-1', deposees: [2, 3] });
     });
 
-    it('accepte AUSSI la forme riche `{n, octets}` du listage', async () => {
+    it('ALSO accepts the rich `{n, octets}` form of the listing', async () => {
         const s = serveur({ etat: etatDe([{ n: 0, octets: 4 }, { n: 2, octets: 4 }]) });
         const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(s.octetsEmis()).toBe(8);
         expect(issue).toMatchObject({ etat: 'scelle', deposees: [1, 3] });
     });
 
-    it("d'un dépôt COMPLET, ne redépose rien et va droit au scellement", async () => {
+    it("on a COMPLETE deposit, deposits nothing again and goes straight to sealing", async () => {
         const s = serveur({ etat: etatDe([presente(0), presente(1), presente(2), presente(3)]) });
         const issue = await televerser(file(), deps(s.fetch, { reprise: 't-1' }));
         expect(s.puts()).toHaveLength(0);
@@ -183,7 +183,7 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
         expect(s.appels.map((a) => a.methode)).toEqual(['GET', 'POST']);
     });
 
-    it('refuse une tranche mal TAILLÉE au lieu de la redemander sans fin', async () => {
+    it('refuses a badly SIZED chunk instead of requesting it again endlessly', async () => {
         // `incoherentes` n'est pas `manquantes` : redéposer ne réparerait rien,
         // et boucler serait le vrai défaut.
         const s = serveur({ etat: etatDe([{ n: 0, octets: 3 }]) });
@@ -197,8 +197,8 @@ describe('🔴 la reprise ne redépose QUE les tranches manquantes', () => {
     });
 });
 
-describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", () => {
-    it("refuse une TAILLE différente AVANT d'empreindre, et n'émet AUCUN PUT", async () => {
+describe("🔴 resuming checks the identity of the file BEFORE resuming", () => {
+    it("refuses a different SIZE BEFORE fingerprinting, and emits NO PUT", async () => {
         // 🔴 LA PREMIÈRE ASSERTION EST LA SEULE QUI DISTINGUE LE GARDE DE TAILLE
         // DU GARDE D'EMPREINTE, et elle a été ajoutée APRÈS avoir vu la rouge
         // correspondante rester VERTE : un fichier de 12 octets a de toute façon
@@ -222,14 +222,14 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
         expect(s.puts()).toHaveLength(0);
     });
 
-    it("refuse un CONTENU différent à taille égale, et n'émet AUCUN PUT", async () => {
+    it("refuses a different CONTENT of equal size, and emits NO PUT", async () => {
         const s = serveur({ etat: etatDe([presente(0), presente(1)]) });
         const issue = await televerser(file(octetsDe(16, 99)), deps(s.fetch, { reprise: 't-1' }));
         expect(issue).toMatchObject({ etat: 'refus', id: 't-1', refus: { motif: 'fichier-different' } });
         expect(s.puts()).toHaveLength(0);
     });
 
-    it("refuse de reprendre un état qui n'annonce NI taille NI empreinte", async () => {
+    it("refuses to resume a state that announces NEITHER size NOR fingerprint", async () => {
         // Reprendre à l'aveugle mélangerait les tranches de deux fichiers, et le
         // scellement échouerait sans que rien ne dise pourquoi.
         const s = serveur({ etat: { status: 200, corps: { taille_tranche: 4, tranches_presentes: [] } } });
@@ -239,8 +239,8 @@ describe("🔴 la reprise vérifie l'identité du fichier AVANT de reprendre", (
     });
 });
 
-describe('🔴 les refus du service remontent TYPÉS', () => {
-    it("d'un scellement en 409 `empreinte`, rend le refus et ne réessaie PAS", async () => {
+describe('🔴 the service refusals come back TYPED', () => {
+    it("on a sealing answered 409 `empreinte`, returns the refusal and does NOT retry", async () => {
         const s = serveur({ creation, sceller: { status: 409, corps: { refus: 'empreinte' } } });
         const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toEqual({
@@ -255,7 +255,7 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
         expect(s.octetsEmis()).toBe(16);
     });
 
-    it("d'un dépôt de tranche refusé, s'arrête à la PREMIÈRE et nomme l'étape", async () => {
+    it("on a refused chunk deposit, stops at the FIRST one and names the step", async () => {
         const s = serveur({ creation, tranche: { status: 413, corps: { refus: 'tranche-trop-grande' } } });
         const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({
@@ -265,7 +265,7 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
         expect(s.puts()).toHaveLength(1);
     });
 
-    it("d'un corps sans `refus`, rend le statut plutôt que d'inventer un motif", async () => {
+    it("on a body without `refus`, returns the status rather than making up a reason", async () => {
         const s = serveur({ creation: { status: 503, corps: 'indisponible' } });
         const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toEqual({
@@ -274,14 +274,14 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
         });
     });
 
-    it("d'une création sans identifiant, refuse au lieu de déposer dans le vide", async () => {
+    it("on a creation without an identifier, refuses instead of depositing into the void", async () => {
         const s = serveur({ creation: { status: 200, corps: { taille_tranche: 4 } } });
         const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'etat-illisible' } });
         expect(s.puts()).toHaveLength(0);
     });
 
-    it("d'une `taille_tranche` absurde, refuse au lieu de LEVER", async () => {
+    it("on an absurd `taille_tranche`, refuses instead of THROWING", async () => {
         // `plan` lève sur un pas nul — sa garde vise un défaut de programme, pas
         // une donnée de fil. La valider ici est ce qui rend un refus nommé.
         const s = serveur({ creation: { status: 200, corps: { id: 't-1', taille_tranche: 0 } } });
@@ -289,15 +289,15 @@ describe('🔴 les refus du service remontent TYPÉS', () => {
         expect(issue).toMatchObject({ etat: 'refus', id: 't-1', refus: { motif: 'etat-illisible' } });
     });
 
-    it("de `tranches_presentes` de forme inconnue, refuse", async () => {
+    it("on `tranches_presentes` of unknown shape, refuses", async () => {
         const s = serveur({ creation: { status: 200, corps: { id: 't-1', taille_tranche: 4, tranches_presentes: 'deux' } } });
         const issue = await televerser(file(), deps(s.fetch));
         expect(issue).toMatchObject({ etat: 'refus', refus: { motif: 'etat-illisible' } });
     });
 });
 
-describe("l'interruption est un refus, jamais une panne", () => {
-    it('arrête le dépôt entre deux tranches et rend `interrompu` avec son `id`', async () => {
+describe("interruption is a refusal, never a failure", () => {
+    it('stops the deposit between two chunks and returns `interrompu` with its `id`', async () => {
         const s = serveur({ creation });
         const arret = new AbortController();
         // ⚠️ L'HORLOGE DOIT AVANCER : figée, le cadenceur ne laisserait passer que
@@ -319,10 +319,10 @@ describe("l'interruption est un refus, jamais une panne", () => {
         expect(s.puts().length).toBeLessThan(4);
     });
 
-    it("convertit le rejet d'un `fetch` COUPÉ en refus, mais laisse passer les autres", async () => {
+    it("turns the rejection of a CUT `fetch` into a refusal, but lets the others through", async () => {
         const arret = new AbortController();
         const casse: Fetch = async () => {
-            throw new Error('coupé');
+            throw new Error('cut');
         };
         arret.abort();
         const issue = await televerser(file(), deps(casse, { signal: arret.signal }));
@@ -330,12 +330,12 @@ describe("l'interruption est un refus, jamais une panne", () => {
         // Sans signal levé, la même panne REMONTE : ce module n'a rien d'utile à
         // dire d'une panne d'environnement, et la déguiser en refus la ferait
         // passer pour une décision de protocole.
-        await expect(televerser(file(), deps(casse))).rejects.toThrow('coupé');
+        await expect(televerser(file(), deps(casse))).rejects.toThrow('cut');
     });
 });
 
-describe("la progression, cadencée par l'horloge injectée", () => {
-    it('annonce les trois phases, et ne dépend que du paramètre `maintenant`', async () => {
+describe("progress, paced by the injected clock", () => {
+    it('announces the three phases, and depends only on the `maintenant` parameter', async () => {
         const s = serveur({ creation });
         const vues: string[] = [];
         let horloge = 0;
@@ -353,7 +353,7 @@ describe("la progression, cadencée par l'horloge injectée", () => {
         );
     });
 
-    it('retient les événements NON forcés quand la période n\'est pas écoulée', async () => {
+    it('holds back NON-forced events when the period has not elapsed', async () => {
         // L'horloge figée : seuls les changements de phase, qui passent toujours,
         // doivent sortir. Sans cadence, empreindre 800 Mo en émettrait des milliers.
         const s = serveur({ creation });

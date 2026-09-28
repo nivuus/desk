@@ -53,7 +53,7 @@ function lireCorps(requete: IncomingMessage): Promise<string> {
         requete.on('data', (morceau) => {
             corps += morceau;
             if (corps.length > 4096) {
-                reject(new Error('corps trop volumineux'));
+                reject(new Error('body too large'));
                 requete.destroy();
             }
         });
@@ -85,7 +85,7 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
         // public/. The server is exposed on the internet via Pomerium.
         const absolu = normalize(join(RACINE_PUBLIQUE, chemin));
         if (!absolu.startsWith(RACINE_PUBLIQUE)) {
-            reponse.writeHead(403).end('interdit');
+            reponse.writeHead(403).end('forbidden');
             return;
         }
         try {
@@ -108,18 +108,18 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
             // any verb is a route that can be triggered by
             // accident, and an accidental trigger skews the measurement.
             if (requete.method !== 'POST') {
-                reponse.writeHead(405, { allow: 'POST' }).end('méthode non autorisée');
+                reponse.writeHead(405, { allow: 'POST' }).end('method not allowed');
                 return;
             }
             let variante: unknown;
             try {
                 variante = (JSON.parse(await lireCorps(requete)) as { variant?: unknown }).variant;
             } catch {
-                reponse.writeHead(400).end('JSON invalide');
+                reponse.writeHead(400).end('invalid JSON');
                 return;
             }
             if (!estVarianteValide(variante)) {
-                reponse.writeHead(400).end('variante invalide');
+                reponse.writeHead(400).end('invalid variant');
                 return;
             }
             const touches = diffuser({ type: 'fire', variant: variante });
@@ -133,17 +133,17 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
         // open anything". Same input contract, hence the same guard.
         if (url.pathname === '/alive' || url.pathname === '/bloque') {
             if (requete.method !== 'GET') {
-                reponse.writeHead(405, { allow: 'GET' }).end('méthode non autorisée');
+                reponse.writeHead(405, { allow: 'GET' }).end('method not allowed');
                 return;
             }
             const variante = Number(url.searchParams.get('variant'));
             if (!estVarianteValide(variante)) {
-                reponse.writeHead(400).end('variante invalide');
+                reponse.writeHead(400).end('invalid variant');
                 return;
             }
             const nonce = url.searchParams.get('nonce');
             if (nonce !== null && !MOTIF_NONCE.test(nonce)) {
-                reponse.writeHead(400).end('nonce invalide');
+                reponse.writeHead(400).end('invalid nonce');
                 return;
             }
             diffuser({ type: url.pathname === '/alive' ? 'alive' : 'bloque', variant: variante, nonce });

@@ -104,8 +104,8 @@ function etatsManquants(nom: string, attendus: string[]): string[] {
     return attendus.filter((etat) => !selecteurs.includes(etat));
 }
 
-describe('primitives.css — les gardes de forme', () => {
-    it('G1 — aucun sélecteur d’élément nu : tout compound porte une classe', () => {
+describe('primitives.css — the shape guards', () => {
+    it('G1 — no bare element selector: every compound carries a class', () => {
         // 🔴 C'EST CE GARDE QUI TIENT LA NEUTRALITÉ D'`index.html`. La fenêtre
         // de session porte cinq éléments sans aucune classe de primitive, dont
         // DEUX `<button>` : un `button { … }` écrit ici changerait son
@@ -118,10 +118,10 @@ describe('primitives.css — les gardes de forme', () => {
                 }
             }
         }
-        expect(nus, 'sélecteurs d’élément nus dans primitives.css').toEqual([]);
+        expect(nus, 'bare element selectors in primitives.css').toEqual([]);
     });
 
-    it('G2 — l’anneau de focus n’est jamais effacé', () => {
+    it('G2 — the focus ring is never removed', () => {
         // `base.css` pose `:focus-visible` GLOBALEMENT : aucune primitive n'a
         // à le déclarer, et le seul risque est qu'une d'elles l'efface « pour
         // faire propre ». Aucun des neuf contrôles ne le verrait.
@@ -130,10 +130,10 @@ describe('primitives.css — les gardes de forme', () => {
                 /^outline(-(width|style))?$/i.test(d.propriete) &&
                 /^(none|0|0px|0rem|0em)$/i.test(d.value),
         ).map((d) => `${d.propriete}: ${d.value}`);
-        expect(effacements, 'effacements de l’anneau de focus').toEqual([]);
+        expect(effacements, 'removals of the focus ring').toEqual([]);
     });
 
-    it('G3 — aucun état ne se dit par une composition d’exécution', () => {
+    it('G3 — no state is expressed through a runtime composition', () => {
         // `opacity` et `filter` composent la couleur AU RENDU : la teinte
         // effective échappe alors aux 52 paires du contrôle §7.1. Un état
         // désactivé exprimé par une opacité serait le seul état du produit
@@ -141,10 +141,10 @@ describe('primitives.css — les gardes de forme', () => {
         const compositions = DECLARATIONS.filter((d) =>
             ['opacity', 'filter', 'backdrop-filter'].includes(d.propriete.toLowerCase()),
         ).map((d) => `${d.propriete}: ${d.value}`);
-        expect(compositions, 'compositions d’exécution dans primitives.css').toEqual([]);
+        expect(compositions, 'runtime compositions in primitives.css').toEqual([]);
     });
 
-    it('G4 — aucune longueur hors échelle : toute unité passe par un token', () => {
+    it('G4 — no length off the scale: every unit goes through a token', () => {
         // ⚠️ CE GARDE NE DIT PAS QUE LE BON TOKEN A ÉTÉ CHOISI. Il dit
         // qu'aucune longueur ne s'écrit hors des échelles du §4.4 — ce
         // qu'aucun des neuf contrôles ne mesure ICI.
@@ -157,31 +157,31 @@ describe('primitives.css — les gardes de forme', () => {
         for (const d of DECLARATIONS) {
             const reste = d.value.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
             const trouve = reste.match(/(\d+(?:\.\d+)?)(px|rem|em|ms|s|pt|ch|vw|vh)\b/);
-            if (trouve) hors.push(`${d.propriete}: ${d.value} → « ${trouve[0]} » hors token`);
+            if (trouve) hors.push(`${d.propriete}: ${d.value} → « ${trouve[0]} » outside tokens`);
         }
-        expect(hors, 'longueurs littérales dans primitives.css').toEqual([]);
+        expect(hors, 'literal lengths in primitives.css').toEqual([]);
     });
 
-    it('G5 — atteignabilité : le fichier déclare des règles, dont la famille bouton', () => {
+    it('G5 — reachability: the file declares rules, including the button family', () => {
         // 🔴 SANS CE GARDE, LES QUATRE PRÉCÉDENTS NE PROUVENT RIEN : ce sont
         // des tests d'absence, et un fichier vide les satisfait tous.
         expect(
             SELECTEURS.length,
-            'primitives.css ne déclare AUCUNE règle : G1 à G4 sont alors verts en ne mesurant rien',
+            'primitives.css declares NO rule: G1 to G4 are then green while measuring nothing',
         ).toBeGreaterThan(0);
-        expect(famille('bouton'), 'la famille .bouton est absente de primitives.css').not.toEqual(
+        expect(famille('bouton'), 'the .bouton family is missing from primitives.css').not.toEqual(
             [],
         );
         // 🔴 ET QUE CE FICHIER LISE BIEN TOUT CE QUE `primitives.css` IMPORTE :
         // une famille importée mais absente de `FAMILLES` échapperait à G1, G2,
         // G3 et G4 sans qu'aucune commande ne le dise.
         const importees = [...primitivesCss.matchAll(/@import\s+'([^']+)'/g)].map((m) => m[1]);
-        expect(importees.sort(), 'les familles importées et celles que ce test lit divergent').toEqual(
+        expect(importees.sort(), 'the imported families and those this test reads diverge').toEqual(
             [...FAMILLES.keys()].sort(),
         );
     });
 
-    it('G6 — la famille CHAMP déclare ses états et ses parties', () => {
+    it('G6 — the FIELD family declares its states and its parts', () => {
         expect(
             etatsManquants('champ', [
                 '.champ__etiquette',
@@ -192,28 +192,28 @@ describe('primitives.css — les gardes de forme', () => {
                 ':disabled',
                 '.champ--erreur',
             ]),
-            'états ou parties absents de la famille champ',
+            'states or parts missing from the field family',
         ).toEqual([]);
     });
 
-    it('G6 — la famille SURFACE déclare ses parties, et le séparateur', () => {
+    it('G6 — the SURFACE family declares its parts, and the separator', () => {
         expect(
             etatsManquants('carte', ['.carte__titre', '.carte__corps']),
-            'parties absentes de la famille carte',
+            'parts missing from the card family',
         ).toEqual([]);
-        expect(famille('separateur'), 'le séparateur est absent de primitives').not.toEqual([]);
+        expect(famille('separateur'), 'the separator is missing from primitives').not.toEqual([]);
     });
 
-    it('G6 — la famille MESSAGE déclare ses quatre tons', () => {
+    it('G6 — the MESSAGE family declares its four tones', () => {
         // Le ton NEUTRE est `.message` elle-même : les trois autres ne
         // changent que l'encre et le trait.
         expect(
             etatsManquants('message', ['.message--succes', '.message--alerte', '.message--danger']),
-            'tons absents de la famille message',
+            'tones missing from the message family',
         ).toEqual([]);
     });
 
-    it('G7 — base.css neutralise les transitions sous prefers-reduced-motion', () => {
+    it('G7 — base.css neutralises the transitions under prefers-reduced-motion', () => {
         // 🔴 LE BLANCHIMENT EST ICI STRICTEMENT NÉCESSAIRE : l'en-tête de la
         // règle RECOPIE la commande de mesure qui l'a imposée, donc la chaîne
         // `@media (prefers-reduced-motion: reduce)` en toutes lettres, ET le
@@ -235,11 +235,11 @@ describe('primitives.css — les gardes de forme', () => {
         const debut = base.search(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/);
         expect(
             debut,
-            'aucune requête @media (prefers-reduced-motion: reduce) dans base.css, commentaires blanchis',
+            'no @media (prefers-reduced-motion: reduce) query in base.css, comments blanked',
         ).toBeGreaterThan(-1);
         expect(
             declarationsDe(blocApres(base, debut)).map((d) => d.propriete),
-            'la requête de mouvement réduit ne porte aucune déclaration',
+            'the reduced-motion query carries no declaration',
         ).toContain('transition-duration');
     });
 });

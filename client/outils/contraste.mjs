@@ -30,7 +30,7 @@ const iFichier = args.indexOf('--fichier');
 const file = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
 if (!existsSync(file)) {
-    console.error(`${file} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+    console.error(`${file} is missing: nothing was measured, this is not a success.`);
     process.exit(2);
 }
 
@@ -40,11 +40,11 @@ const { verifiees, echecs, minimum } = evaluer(blocs);
 for (const { paire, rapport } of echecs) {
     const nom = (t) => t.replace(/^--/, '');
     console.log(
-        `ÉCHEC ${paire.theme} ${nom(paire.encre)}/${nom(paire.fond)} = ` +
+        `FAILURE ${paire.theme} ${nom(paire.encre)}/${nom(paire.fond)} = ` +
             `${rapport.toFixed(2)} < ${paire.seuil}`,
     );
 }
-console.log(`paires vérifiées : ${verifiees}`);
-console.log(`échecs : ${echecs.length}`);
+console.log(`pairs checked: ${verifiees}`);
+console.log(`failures: ${echecs.length}`);
 console.log(`minimum global : ${minimum.toFixed(2)}`);
 process.exit(echecs.length > 0 ? 1 : 0);

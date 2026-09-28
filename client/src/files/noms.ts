@@ -42,9 +42,9 @@
 // 🔵 UNICODE NORMALISATION, WHICH F2 DECLARES UNHANDLED AND BEQUEATHS HERE
 // ════════════════════════════════════════════════════════════════════════════
 //
-// `client/src/fichiers/ecriture.ts` writes it out in full: "AND IT DOES NOT SEE
+// `client/src/files/ecriture.ts` writes it out in full: "AND IT DOES NOT SEE
 // UNICODE NORMALISATION. macOS stores its names in NFD, Windows in NFC:
-// `résumé.txt` can exist there under two different sequences of code units, which
+// `résumé.txt` can exist there under two different sequences of code units, which (policy: allow-fr, accented file name example)
 // `===` distinguishes and the user does not. The guard would
 // then create a DUPLICATE instead of overwriting — less serious than the loss, but wrong.
 // NOT HANDLED, declared; it is F3's canonicaliser."
@@ -155,15 +155,15 @@ export async function canoniserOuLever(
         case 'trouve':
             return r.nom;
         case 'absent':
-            throw new FilesError(siAbsent, `« ${demande} » n’existe pas`);
+            throw new FilesError(siAbsent, `« ${demande} » does not exist`);
         case 'ambigu':
             // ⚠️ The message NAMES the namesakes, because that is all the
             // user will be able to do: rename one. The CODE crosses the
             // wire; the message stays in the console and in the shell page.
             throw new FilesError(
                 'casse-ambigue',
-                `« ${demande} » ne se distingue pas de « ${r.noms.join(' », « ')} » : ` +
-                    `rendre l’un d’eux choisirait le mauvais fichier, rien n’a été fait`,
+                `« ${demande} » cannot be told apart from « ${r.noms.join(' », « ')} »: ` +
+                    `returning one of them would pick the wrong file, nothing was done`,
             );
     }
 }
@@ -238,7 +238,7 @@ export async function injecterFaute(
     if ((CODES_ECHEC as readonly string[]).includes(demande)) {
         throw new FilesError(
             demande as CodeEchec,
-            `faute injectée par « ${premier} » : banc, jamais une configuration livrée`,
+            `fault injected by « ${premier} »: bench, never a shipped configuration`,
         );
     }
     // ⚠️ A `.faute-` whose suffix is NOT a known code is SAID, never
@@ -247,7 +247,7 @@ export async function injecterFaute(
     // exercised.
     throw new FilesError(
         'interne',
-        `« ${premier} » demande une faute inconnue « ${demande} » : ` +
-            `les codes connus sont ${CODES_ECHEC.join(', ')}, plus « ${FAUTE_SILENCE} »`,
+        `« ${premier} » requests an unknown fault « ${demande} »: ` +
+            `the known codes are ${CODES_ECHEC.join(', ')}, plus « ${FAUTE_SILENCE} »`,
     );
 }

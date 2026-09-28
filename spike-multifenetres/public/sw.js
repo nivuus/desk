@@ -31,7 +31,7 @@ async function signalerBlocage(url, raison) {
         const nonce = params.get('nonce') ?? '';
         await fetch(`/bloque?variant=${encodeURIComponent(variante)}&nonce=${encodeURIComponent(nonce)}`);
     } catch (error) {
-        console.error('[spike] blocage non rapporté', raison, error);
+        console.error('[spike] block not reported', raison, error);
     }
 }
 
@@ -46,7 +46,7 @@ self.addEventListener('notificationclick', (evenement) => {
             // a mute value that must be turned into a verdict, otherwise the
             // page would only see a delay elapsing with nothing.
             const fenetre = await self.clients.openWindow(url);
-            if (!fenetre) await signalerBlocage(url, 'poignée nulle');
+            if (!fenetre) await signalerBlocage(url, 'null handle');
         } catch (error) {
             await signalerBlocage(url, error);
         }

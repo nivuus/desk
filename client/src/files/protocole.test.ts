@@ -52,8 +52,8 @@ function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
     };
 }
 
-describe('serveur du protocole fichiers', () => {
-    it('répond à LISTER par ENTREES', async () => {
+describe('file protocol server', () => {
+    it('answers LISTER with ENTREES', async () => {
         const serveur = createServer(fauxAdaptateur());
         const reponse = await serveur.traiter(encoder(TYPE_LISTER, 11, { chemin: 'dossier' }));
         const trame = decoder(reponse!);
@@ -64,7 +64,7 @@ describe('serveur du protocole fichiers', () => {
         expect(trame.charge.length).toBe(0);
     });
 
-    it('répond à ATTRIBUTS par META', async () => {
+    it('answers ATTRIBUTS with META', async () => {
         const serveur = createServer(fauxAdaptateur());
         const trame = decoder((await serveur.traiter(encoder(TYPE_ATTRIBUTS, 3, { chemin: '' })))!);
         expect(trame.type).toBe(TYPE_META);
@@ -75,7 +75,7 @@ describe('serveur du protocole fichiers', () => {
         expect(parseMeta(trame.entete).nom).toBe('Nom Stocké.txt');
     });
 
-    it('🔴 répond à LIRE par DONNEES dont la longueur est celle REELLEMENT lue', async () => {
+    it('🔴 answers LIRE with DONNEES whose length is the one ACTUALLY read', async () => {
         // 🔴 Un fichier lu jusqu'à sa fin rend MOINS d'octets que demandé.
         // Recopier la longueur DEMANDÉE dans l'en-tête ferait mentir la trame,
         // et l'agent la refuserait pour incohérence en-tête/charge — le seul
@@ -94,7 +94,7 @@ describe('serveur du protocole fichiers', () => {
         expect([...trame.charge]).toEqual([1, 2]);
     });
 
-    it('🔴 une réponse à une corrélation inconnue est ignorée', async () => {
+    it('🔴 an answer to an unknown correlation is ignored', async () => {
         // Le navigateur est un SERVEUR : il ne demande jamais rien, donc aucune
         // corrélation ne lui appartient. Une trame de type RÉPONSE ne peut être
         // qu'un écho, une boucle, ou un pair confus — la décoder comme une
@@ -117,20 +117,20 @@ describe('serveur du protocole fichiers', () => {
         // version. Confondre les deux, c'est le bras catch-all de
         // `capteur/pont_media.rs`, que ce dépôt a payé quatre fois.
         for (const appel of journal.mock.calls) {
-            expect(appel[0]).toMatch(/réponse ignorée/);
+            expect(appel[0]).toMatch(/answer ignored/);
             expect(appel[0]).toMatch(/77/);
         }
     });
 
-    it('un type inconnu est ignoré, et le journal le distingue d’une réponse', async () => {
+    it('an unknown type is ignored, and the log tells it apart from an answer', async () => {
         const journal = vi.fn();
         const serveur = createServer(fauxAdaptateur(), journal);
         expect(await serveur.traiter(encoder(200, 9, {}))).toBeNull();
-        expect(journal.mock.calls[0][0]).toMatch(/type inconnu/);
+        expect(journal.mock.calls[0][0]).toMatch(/unknown type/);
         expect(journal.mock.calls[0][0]).toMatch(/200/);
     });
 
-    it('une trame illisible est ignorée plutôt que de faire tomber le canal', async () => {
+    it('an unreadable frame is ignored rather than bringing the channel down', async () => {
         const journal = vi.fn();
         const serveur = createServer(fauxAdaptateur(), journal);
         const mauvaise = new Uint8Array(encoder(TYPE_LISTER, 1, { chemin: '' }));
@@ -139,11 +139,11 @@ describe('serveur du protocole fichiers', () => {
         expect(journal.mock.calls[0][0]).toMatch(/version/i);
     });
 
-    it('🔴 un échec de l’adaptateur devient un CODE, jamais une chaîne', async () => {
+    it('🔴 an adapter failure becomes a CODE, never a string', async () => {
         const serveur = createServer(
             fauxAdaptateur({
                 attributs: async () => {
-                    throw new FilesError('acces-refuse', 'permission révoquée');
+                    throw new FilesError('acces-refuse', 'permission revoked');
                 },
             }),
         );
@@ -153,14 +153,14 @@ describe('serveur du protocole fichiers', () => {
         expect(parseEchec(trame.entete).code).toBe('acces-refuse');
     });
 
-    it('une panne imprévue devient interne, et la corrélation est RENDUE', async () => {
+    it('an unexpected failure becomes internal, and the correlation is RETURNED', async () => {
         // 🔴 Ne rien répondre laisserait la commande en vol côté agent jusqu'à
         // son expiration : l'Explorateur se figerait sur une panne qui, elle,
         // est immédiate.
         const serveur = createServer(
             fauxAdaptateur({
                 lister: async () => {
-                    throw new Error('quelque chose a explosé');
+                    throw new Error('something blew up');
                 },
             }),
         );
@@ -170,7 +170,7 @@ describe('serveur du protocole fichiers', () => {
         expect(parseEchec(trame.entete).code).toBe('interne');
     });
 
-    it('un en-tête malformé est REFUSÉ, et la corrélation est rendue', async () => {
+    it('a malformed header is REFUSED, and the correlation is returned', async () => {
         const serveur = createServer(fauxAdaptateur());
         // `chemin` absent : le parseur du protocole partagé lève.
         const trame = decoder((await serveur.traiter(encoder(TYPE_LISTER, 8, { rien: 1 })))!);
@@ -180,8 +180,8 @@ describe('serveur du protocole fichiers', () => {
     });
 });
 
-describe('les verbes d’écriture de F2', () => {
-    it('🔴 une écriture reçoit TOUJOURS un FAIT ou un ECHEC', async () => {
+describe('the F2 write verbs', () => {
+    it('🔴 a write ALWAYS receives a FAIT or an ECHEC', async () => {
         // Ne rien rendre laisserait la commande en vol côté agent jusqu'à
         // `WRITE_TIMEOUT` — trente secondes pendant lesquelles le fil d'écriture
         // ne pousserait plus rien, et le compteur de dues ne bougerait pas.
@@ -202,7 +202,7 @@ describe('les verbes d’écriture de F2', () => {
         expect(ecrivain.vus).toEqual(['ecrire note.txt @0 +3 true/true']);
     });
 
-    it('une création reçoit un FAIT', async () => {
+    it('a creation receives a FAIT', async () => {
         const ecrivain = fauxEcrivain();
         const serveur = createServer(fauxAdaptateur(), () => {}, { ecrivain });
         const trame = decoder(
@@ -212,7 +212,7 @@ describe('les verbes d’écriture de F2', () => {
         expect(ecrivain.vus).toEqual(['creer dossier true']);
     });
 
-    it('🔴 LE CODE D’ÉCHEC DE L’ÉCRIVAIN TRAVERSE, il n’est pas écrasé', async () => {
+    it('🔴 THE WRITER FAILURE CODE GOES THROUGH, it is not overwritten', async () => {
         // Rendre `interne` pour tout détruirait la cause à l'émission —
         // exactement le défaut de `web/index.js:669`, qui émettait
         // `JSON.stringify(e)` et rendait `"{}"` pour toute `Error`.
@@ -237,7 +237,7 @@ describe('les verbes d’écriture de F2', () => {
         expect(parseEchec(trame.entete).code).toBe('casse-ambigue');
     });
 
-    it('🔴 sans écrivain, l’écriture est refusée en `protege-en-ecriture`', async () => {
+    it('🔴 without a writer, the write is refused as `protege-en-ecriture`', async () => {
         // PAS `interne` : « ce lecteur est en lecture seule » et « le lecteur
         // est en panne » n'appellent pas le même geste, et c'est tout l'objet
         // de `CodeEchec`.
@@ -256,7 +256,7 @@ describe('les verbes d’écriture de F2', () => {
         expect(parseEchec(trame.entete).code).toBe('protege-en-ecriture');
     });
 
-    it('🔴 refuse une trame dont l’en-tête et la charge se contredisent', async () => {
+    it('🔴 refuses a frame whose header and payload contradict each other', async () => {
         // Écrire une quantité d'octets que l'émetteur ne croyait pas envoyer
         // est le genre de divergence qu'aucun contrôle en aval ne rattrape :
         // seul un condensat le dirait.
@@ -278,8 +278,8 @@ describe('les verbes d’écriture de F2', () => {
     });
 });
 
-describe('la dénonciation d’un échec d’écriture', () => {
-    it('🔴 NOMME le fichier et la cause à la page-shell', async () => {
+describe('reporting a write failure', () => {
+    it('🔴 NAMES the file and the cause to the shell page', async () => {
         // 🔴 Le navigateur est le SEUL à connaître la cause, et il n'a personne
         // à qui la dire : le code traverse bien le fil, mais il n'atteint
         // AUCUNE application Windows — le handle est refermé depuis longtemps.
@@ -288,7 +288,7 @@ describe('la dénonciation d’un échec d’écriture', () => {
         const vus: Array<[string, string]> = [];
         const ecrivain = fauxEcrivain({
             write: async () => {
-                throw new FilesError('disque-plein', 'plus de place');
+                throw new FilesError('disque-plein', 'no space left');
             },
         });
         const serveur = createServer(fauxAdaptateur(), () => {}, {
@@ -307,7 +307,7 @@ describe('la dénonciation d’un échec d’écriture', () => {
         expect(vus).toEqual([['dossier/rapport.docx', 'disque-plein']]);
     });
 
-    it('ne nomme RIEN quand l’en-tête lui-même est illisible', async () => {
+    it('names NOTHING when the header itself is unreadable', async () => {
         // Deviner un chemin qu'on n'a pas lu serait pire que se taire : la
         // page-shell nommerait un fichier au hasard.
         const vus: unknown[] = [];
@@ -315,7 +315,7 @@ describe('la dénonciation d’un échec d’écriture', () => {
             ecrivain: fauxEcrivain(),
             onEchecEcriture: (...a) => vus.push(a),
         });
-        await serveur.traiter(encoder(TYPE_WRITE, 5, { rien: 'du tout' }));
+        await serveur.traiter(encoder(TYPE_WRITE, 5, { rien: 'at all' }));
         expect(vus).toEqual([]);
     });
 });
@@ -337,8 +337,8 @@ function fauxMutateur(surcharge: Partial<Mutateur> = {}): Mutateur & { vus: stri
     };
 }
 
-describe('les deux verbes de F3', () => {
-    it('🔴 RENOMMER répond TOUJOURS — par FAIT', async () => {
+describe('the two verbs of F3', () => {
+    it('🔴 RENOMMER ALWAYS answers — with FAIT', async () => {
         // Rouge : rendre `null`. La commande resterait en vol côté pont
         // **jusqu'à son expiration**, et l'Explorateur se figerait sur une
         // panne pourtant immédiate. C'est l'invariant que `protocole.ts` énonce
@@ -354,7 +354,7 @@ describe('les deux verbes de F3', () => {
         expect(mutateur.vus).toEqual(['renommer a.txt -> b.txt false']);
     });
 
-    it('🔴 SUPPRIMER répond TOUJOURS — par FAIT', async () => {
+    it('🔴 SUPPRIMER ALWAYS answers — with FAIT', async () => {
         const mutateur = fauxMutateur();
         const serveur = createServer(fauxAdaptateur(), () => {}, { mutateur });
         const reponse = await serveur.traiter(
@@ -365,7 +365,7 @@ describe('les deux verbes de F3', () => {
         expect(mutateur.vus).toEqual(['supprimer d true']);
     });
 
-    it('🔴 SANS mutateur, c’est `protege-en-ecriture` et NON `interne`', async () => {
+    it('🔴 WITHOUT a mutator, it is `protege-en-ecriture` and NOT `interne`', async () => {
         // Un lecteur monté sans mutateur et un lecteur en panne n'appellent pas
         // le même geste — le contre-exemple est l'ancien pont, qui rendait
         // `EPERM` à neuf sites distincts.
@@ -378,13 +378,13 @@ describe('les deux verbes de F3', () => {
         expect(parseEchec(trame.entete).code).toBe('protege-en-ecriture');
     });
 
-    it('🔴 un échec de RENOMMAGE nomme LES DEUX chemins', async () => {
+    it('🔴 a RENAME failure names BOTH paths', async () => {
         // « impossible de renommer X » ne dit pas vers quoi, et c'est
         // précisément ce que l'utilisateur doit vérifier.
         const vus: Array<[string, string]> = [];
         const mutateur = fauxMutateur({
             renommer: async () => {
-                throw new FilesError('deja-present', 'déjà là');
+                throw new FilesError('deja-present', 'already there');
             },
         });
         const serveur = createServer(fauxAdaptateur(), () => {}, {
@@ -400,11 +400,11 @@ describe('les deux verbes de F3', () => {
         expect(vus).toEqual([['x.txt → y.txt', 'deja-present']]);
     });
 
-    it('un échec de SUPPRESSION nomme le chemin', async () => {
+    it('a REMOVAL failure names the path', async () => {
         const vus: Array<[string, string]> = [];
         const mutateur = fauxMutateur({
             remove: async () => {
-                throw new FilesError('repertoire-non-vide', 'pas vide');
+                throw new FilesError('repertoire-non-vide', 'not empty');
             },
         });
         const serveur = createServer(fauxAdaptateur(), () => {}, {
@@ -415,7 +415,7 @@ describe('les deux verbes de F3', () => {
         expect(vus).toEqual([['d', 'repertoire-non-vide']]);
     });
 
-    it('🔵 le repli de COPIE est INSTRUMENTÉ, et `move()` ne l’est pas', async () => {
+    it('🔵 the COPY fallback is INSTRUMENTED, and `move()` is not', async () => {
         // L'instrumentation que la spec §3.5.1 exige. Elle part par le journal
         // parce que le navigateur est le SEUL à savoir ce qu'il a fait.
         const vus: Array<[string, string, number, number]> = [];

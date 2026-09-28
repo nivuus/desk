@@ -50,11 +50,11 @@ const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
 // message INDISTINGUISHABLE from a real network failure). `throw` stops
 // the evaluation of THIS ES module: no connection is attempted afterwards.
 if (sessionId === undefined) {
-    statut.show('Aucune session indiquée — ouvrez une application depuis le hub.', {
+    statut.show('No session given — open an application from the hub.', {
         terminal: true,
         ton: 'danger',
     });
-    throw new Error('main.ts : aucun paramètre `session` dans l’URL');
+    throw new Error('main.ts: no `session` parameter in the URL');
 }
 
 // The viewport announcement lives in `viewport-dom.ts`, extracted in batch 33: this
@@ -150,7 +150,7 @@ connectSession({
     onStatus: (message) => statut.show(message),
     onControl(message) {
         if (message.type === 'ready') {
-            statut.show(`prêt — ${message.width}×${message.height}`);
+            statut.show(`ready — ${message.width}×${message.height}`);
             setTimeout(() => statut.masquer(), 1500);
             // The mic button ONLY appears if the agent says it has the cable
             // (spec §10). `message.mic` is passed AS IS: the rule "its
@@ -182,7 +182,7 @@ connectSession({
             pressePapier?.detacher();
             // `neutre`: the user closed the remote application, it
             // is not an error. The tone ONLY serves the terminal screen.
-            statut.show(`session terminée : ${message.reason}`, {
+            statut.show(`session ended: ${message.reason}`, {
                 terminal: true,
                 ton: 'neutre',
             });
@@ -194,8 +194,8 @@ connectSession({
             if (message.asleep) {
                 const texte =
                     message.reason === 'evincee'
-                        ? 'image figée : trop de fenêtres actives'
-                        : 'image figée : fenêtre masquée';
+                        ? 'image frozen: too many active windows'
+                        : 'image frozen: window hidden';
                 // `persistant`: the state lasts as long as the window sleeps, it
                 // must not be erased by a neighbouring banner's timer.
                 statut.show(texte, { persistant: true });
@@ -247,7 +247,7 @@ connectSession({
             // message distinct from the gamepad banner's below, otherwise
             // the user would believe their gamepad was at fault.
             if (!message.gamepad) {
-                statut.show('manette indisponible sur cette machine');
+                statut.show('gamepad unavailable on this machine');
                 setTimeout(() => statut.masquer(), 4000);
             }
             // No logic here either: this flag only GATES
@@ -298,7 +298,7 @@ connectSession({
 
         pointeur = attachPointerAuDOM({
             envoyer,
-            surEchec: () => statut.show('cliquez dans l\'image pour prendre la souris'),
+            surEchec: () => statut.show('click in the image to take the mouse'),
         });
 
         manette = attachGamepadAuDOM({
@@ -307,7 +307,7 @@ connectSession({
                 if (present && !manetteAnnoncee) {
                     manetteAnnoncee = true;
                     window.clearTimeout(bandeauManette);
-                    statut.show('manette détectée');
+                    statut.show('gamepad detected');
                     setTimeout(() => statut.masquer(), 1500);
                 }
             },
@@ -319,7 +319,7 @@ connectSession({
         // there is a failure — same pattern as the audio banner below, including
         // the delay: no point explaining it to someone who has already pressed.
         bandeauManette = window.setTimeout(() => {
-            if (!manetteAnnoncee) statut.show('manette : appuyez sur un bouton pour l\'activer');
+            if (!manetteAnnoncee) statut.show('gamepad: press a button to activate it');
         }, 4000);
 
         detacherPleinEcran = attachFullscreenAuDOM({ bouton: fullscreenElement, cible: document.documentElement });
@@ -379,7 +379,7 @@ connectSession({
                     statut.masquer();
                 } else {
                     bandeau = window.setTimeout(() => {
-                        statut.show('cliquez pour activer le son');
+                        statut.show('click to enable sound');
                     }, 4000);
                 }
             },
@@ -455,7 +455,7 @@ connectSession({
         attacherResizeAuDOM(video, session, annonceurDeViewport(sessionId));
     })
     .catch((error: unknown) => {
-        statut.show(`échec : ${error instanceof Error ? error.message : String(error)}`, {
+        statut.show(`failure: ${error instanceof Error ? error.message : String(error)}`, {
             terminal: true,
             ton: 'danger',
         });

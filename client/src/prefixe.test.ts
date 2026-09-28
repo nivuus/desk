@@ -25,18 +25,18 @@ function coffre(entrees: Record<string, string> = {}) {
 }
 
 describe('lirePrefixe', () => {
-    it('rend le préfixe du coffre quand il y en a un', () => {
+    it('returns the store prefix when there is one', () => {
         expect(lirePrefixe(coffre({ [CLE_PREFIXE]: 'Zm9vYmFy' }), '')).toBe('Zm9vYmFy');
     });
 
-    it('retombe sur la chaîne de requête quand le coffre est vide', () => {
+    it('falls back to the query string when the store is empty', () => {
         expect(lirePrefixe(coffre(), '?prefixe=Zm9vYmFy')).toBe('Zm9vYmFy');
     });
 
     /// 🔴 L'ORDRE DE PRIORITÉ, ET IL COMPTE : inversé, un `?prefixe=` resté
     /// dans une URL en favori écraserait à CHAQUE rechargement le préfixe que
     /// la plateforme a posé, et la page ouvrirait les sessions d'une autre VM.
-    it('préfère le coffre à la chaîne de requête', () => {
+    it('prefers the store to the query string', () => {
         expect(lirePrefixe(coffre({ [CLE_PREFIXE]: 'DU-COFFRE' }), '?prefixe=DE-L-URL')).toBe(
             'DU-COFFRE',
         );
@@ -45,14 +45,14 @@ describe('lirePrefixe', () => {
     /// Ni l'un ni l'autre : chaîne vide, et surtout pas `undefined` ni une
     /// exception — la page doit retomber sur `bureau`, exactement comme
     /// avant P3 (spec §10).
-    it('rend la chaîne vide quand ni le coffre ni la requête ne portent rien', () => {
+    it('returns the empty string when neither the store nor the query carry anything', () => {
         expect(lirePrefixe(coffre(), '')).toBe('');
         expect(lirePrefixe(coffre(), '?autre=chose')).toBe('');
     });
 
     /// Un `?prefixe=` vide est une absence, pas un préfixe vide qui
     /// vaudrait `':bureau'`.
-    it('traite un préfixe vide de la requête comme une absence', () => {
+    it('treats an empty prefix in the query as an absence', () => {
         expect(lirePrefixe(coffre(), '?prefixe=')).toBe('');
     });
 
@@ -61,7 +61,7 @@ describe('lirePrefixe', () => {
     /// porte la clé à vide. Un préfixe vide au coffre est une absence — sans
     /// quoi il masquerait la requête et la page retomberait sur `bureau`
     /// alors qu'on lui a explicitement nommé une VM.
-    it('traite un préfixe vide du coffre comme une absence', () => {
+    it('treats an empty prefix in the store as an absence', () => {
         expect(lirePrefixe(coffre({ [CLE_PREFIXE]: '' }), '?prefixe=DE-L-URL')).toBe('DE-L-URL');
     });
 });
@@ -72,18 +72,18 @@ describe('composer', () => {
     /// d'aujourd'hui. Un `':bureau'` silencieux n'est le nom d'aucune session
     /// existante : la page-shell attendrait une fenêtre qui ne vient jamais,
     /// et rien ne le signalerait.
-    it("sans préfixe, la session garde exactement son nom d'aujourd'hui", () => {
+    it("without a prefix, the session keeps exactly its current name", () => {
         expect(composer('', 'bureau')).toBe('bureau');
         expect(composer('', 'w-1')).toBe('w-1');
     });
 
-    it('avec un préfixe, il précède le nom et en est séparé par deux points', () => {
+    it('with a prefix, it precedes the name and is separated from it by a colon', () => {
         expect(composer('Zm9vYmFy', 'bureau')).toBe('Zm9vYmFy:bureau');
     });
 });
 
 describe('poserPrefixe', () => {
-    it('écrit le préfixe, que lirePrefixe relit', () => {
+    it('writes the prefix, which lirePrefixe reads back', () => {
         const c = coffre();
         poserPrefixe(c, 'AB');
         expect(lirePrefixe(c, '')).toBe('AB');
@@ -100,9 +100,9 @@ describe('poserPrefixe', () => {
     /// n'existait pas encore : appeler une fonction absente lève, et un
     /// `toThrow()` sans motif s'en contente. C'est le contrôle vacueux que ce
     /// dépôt a payé quatre fois au sous-bloc D10, attrapé ici avant le vert.
-    it('LÈVE sur la chaîne vide, plutôt que de la coucher au coffre', () => {
+    it('THROWS on the empty string, rather than writing it to the store', () => {
         const c = coffre();
-        expect(() => poserPrefixe(c, '')).toThrow(/préfixe vide/);
+        expect(() => poserPrefixe(c, '')).toThrow(/empty prefix/);
         expect(c.getItem(CLE_PREFIXE)).toBeNull();
     });
 
@@ -110,7 +110,7 @@ describe('poserPrefixe', () => {
     /// capté `globalThis.localStorage` — au chargement ou à l'appel — écrirait
     /// ailleurs que là où l'appelant l'a envoyé, et le test ci-dessus resterait
     /// vert parce que le préfixe serait bien quelque part.
-    it('écrit dans le coffre PASSÉ, jamais dans un global', () => {
+    it('writes into the PASSED store, never into a global', () => {
         const global = globalThis as { localStorage?: unknown };
         const before = global.localStorage;
         const espion = coffre();
@@ -132,7 +132,7 @@ describe('effacerPrefixe', () => {
     /// sessions au nom d'une autre machine. Et l'effacement est ce qui rend au
     /// mode d'essai local son `?prefixe=` : le coffre a la priorité, donc tant
     /// qu'il porte quelque chose la requête ne sert à rien.
-    it('retire la clé, et rend la main à la chaîne de requête', () => {
+    it('removes the key, and hands back to the query string', () => {
         const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
         clearPrefix(c);
         expect(lirePrefixe(c, '?prefixe=Q')).toBe('Q');
@@ -141,7 +141,7 @@ describe('effacerPrefixe', () => {
 
 /* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
 
-describe('prefixeDeLaVm — la decision, PURE', () => {
+describe('prefixeDeLaVm — the decision, PURE', () => {
     // 🔴 CETTE REGLE EXISTE PARCE QUE LE HUB NE POSAIT AUCUN PREFIXE (critique
     // ② de la revue finale). `poserPrefixe` n avait qu UN appelant de
     // production, sur la PAGE DE CONNEXION ; un visiteur derriere Pomerium
@@ -149,18 +149,18 @@ describe('prefixeDeLaVm — la decision, PURE', () => {
     // ecoutait donc `bureau` pendant que l agent annoncait sur
     // `<prefixe>:bureau`, et AUCUN `fenetre-ouverte` n arrivait jamais.
 
-    it('retient le prefixe annonce par la VM', () => {
+    it('retains the prefix announced by the VM', () => {
         expect(prefixeDeLaVm('vm-7')).toEqual({ action: 'poser', prefixe: 'vm-7' });
     });
 
-    it('efface quand la VM n en annonce AUCUN (`null`)', () => {
+    it('erases when the VM announces NONE (`null`)', () => {
         // `catalogue.ts::VmListee.prefixe` est `string | null` : `null` veut
         // dire « cette VM n a pas de prefixe », et laisser celui d hier ferait
         // ouvrir les sessions au nom d une AUTRE machine.
         expect(prefixeDeLaVm(null)).toEqual({ action: 'effacer' });
     });
 
-    it('efface sur la CHAINE VIDE, au lieu de faire lever `poserPrefixe`', () => {
+    it('erases on the EMPTY STRING, instead of making `poserPrefixe` throw', () => {
         // ⚠️ `poserPrefixe` LEVE sur `''`, et c est juste POUR LUI : un
         // appelant qui n a pas de prefixe n en a pas a ecrire. Mais un service
         // qui annoncerait `prefixe: ''` n est pas une programmation fausse du
@@ -169,26 +169,26 @@ describe('prefixeDeLaVm — la decision, PURE', () => {
         expect(prefixeDeLaVm('')).toEqual({ action: 'effacer' });
     });
 
-    it('efface sur ce qui n est meme pas une chaine', () => {
+    it('erases on what is not even a string', () => {
         expect(prefixeDeLaVm(undefined)).toEqual({ action: 'effacer' });
         expect(prefixeDeLaVm(42)).toEqual({ action: 'effacer' });
     });
 });
 
-describe('retenirLePrefixe — l application au coffre', () => {
-    it('ecrit le prefixe recu', () => {
+describe('retenirLePrefixe — applying it to the store', () => {
+    it('writes the received prefix', () => {
         const c = coffre();
         retenirLePrefixe(c, 'vm-7');
         expect(lirePrefixe(c, '')).toBe('vm-7');
     });
 
-    it('EFFACE celui d hier quand la VM n en annonce plus', () => {
+    it('ERASES yesterday one when the VM no longer announces one', () => {
         const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
         retenirLePrefixe(c, null);
         expect(lirePrefixe(c, '')).toBe('');
     });
 
-    it('ne LEVE pas sur une chaine vide', () => {
+    it('does not THROW on an empty string', () => {
         const c = coffre({ [CLE_PREFIXE]: 'ANCIEN' });
         expect(() => retenirLePrefixe(c, '')).not.toThrow();
         expect(lirePrefixe(c, '')).toBe('');

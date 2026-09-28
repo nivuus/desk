@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sessionIdFromParams } from './session-id';
 
 describe('sessionIdDepuisParametres', () => {
-    it("rend l'identifiant porté par le paramètre `session`", () => {
+    it("returns the identifier carried by the `session` parameter", () => {
         expect(sessionIdFromParams(new URLSearchParams('session=abc'))).toBe('abc');
     });
 
@@ -14,7 +14,7 @@ describe('sessionIdDepuisParametres', () => {
     // `sessionIdFromParams` par l'ancienne ligne (voir le rapport de
     // ce lot pour la sortie réelle) : `expect(undefined).toBe('demo')`
     // échoue comme attendu.
-    it("n'invente PAS de session 'demo' quand le paramètre est absent", () => {
+    it("does NOT invent a 'demo' session when the parameter is absent", () => {
         expect(sessionIdFromParams(new URLSearchParams())).toBeUndefined();
     });
 });

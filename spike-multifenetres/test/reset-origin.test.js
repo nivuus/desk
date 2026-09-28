@@ -34,7 +34,7 @@ function fauxCaches(noms) {
 }
 
 describe('nettoyerOrigin', () => {
-    it('désenregistre tous les service workers et rapporte leurs portées', async () => {
+    it('unregisters all the service workers and reports their scopes', async () => {
         const sw = fauxServiceWorker(['https://app.allanic.me/', 'https://app.allanic.me/excel/']);
         const cache = fauxCaches([]);
 
@@ -47,7 +47,7 @@ describe('nettoyerOrigin', () => {
         expect(sw.desenregistres).toHaveLength(2);
     });
 
-    it('vide les caches et rapporte leurs noms', async () => {
+    it('empties the caches and reports their names', async () => {
         const sw = fauxServiceWorker([]);
         const cache = fauxCaches(['guacamole-v1', 'images']);
 
@@ -57,7 +57,7 @@ describe('nettoyerOrigin', () => {
         expect(cache.supprimes).toEqual(['guacamole-v1', 'images']);
     });
 
-    it('rapporte un origin déjà propre sans échouer', async () => {
+    it('reports an already clean origin without failing', async () => {
         const rapport = await nettoyerOrigin({
             serviceWorker: fauxServiceWorker([]).api,
             caches: fauxCaches([]).api,
@@ -66,7 +66,7 @@ describe('nettoyerOrigin', () => {
         expect(rapport).toEqual({ serviceWorkers: [], caches: [], supporte: true });
     });
 
-    it("signale l'absence d'API au lieu de lever", async () => {
+    it("reports the absence of the API instead of throwing", async () => {
         const rapport = await nettoyerOrigin({ serviceWorker: undefined, caches: undefined });
 
         expect(rapport.supporte).toBe(false);

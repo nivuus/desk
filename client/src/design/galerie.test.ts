@@ -61,8 +61,8 @@ function parPrefixe(...prefixes: string[]): string[] {
     return [...TOKENS].filter((n) => prefixes.some((p) => n.startsWith(p))).sort();
 }
 
-describe("galerie.ts — la liste des cas qu'elle est censée montrer (voir l'en-tête)", () => {
-    it('« Couleurs » : les quatorze tokens redéclarés par les TROIS blocs de thème', () => {
+describe("galerie.ts — the list of cases it is meant to show (see the header)", () => {
+    it('« Colours »: the fourteen tokens redeclared by the THREE theme blocks', () => {
         // Définition STRUCTURELLE, pas une copie de `galerie.ts::COULEURS` :
         // un token « de thème » est celui que les trois blocs redéclarent
         // TOUS — c'est la règle que l'en-tête de `tokens/couleurs.css` écrit
@@ -76,7 +76,7 @@ describe("galerie.ts — la liste des cas qu'elle est censée montrer (voir l'en
         const mediaClair = parBloc.get('media-clair');
         const attributClair = parBloc.get('attribut-clair');
         if (!racine || !mediaClair || !attributClair) {
-            throw new Error('tokens/couleurs.css ne porte plus les trois blocs de thème attendus');
+            throw new Error('tokens/couleurs.css no longer carries the three expected theme blocks');
         }
         const themes = [...racine].filter((n) => mediaClair.has(n) && attributClair.has(n)).sort();
 
@@ -96,10 +96,10 @@ describe("galerie.ts — la liste des cas qu'elle est censée montrer (voir l'en
             '--texte-faible',
             '--texte-fort',
         ].sort();
-        expect(themes, 'les 14 couleurs de thème ont changé de nom ou de nombre').toEqual(ATTENDUS);
+        expect(themes, 'the 14 theme colours changed name or number').toEqual(ATTENDUS);
     });
 
-    it('« Voiles » : six tokens hors thème, `--video-` et `--voile-`', () => {
+    it('« Veils »: six out-of-theme tokens, `--video-` and `--voile-`', () => {
         const ATTENDUS = [
             '--video-letterbox',
             '--voile-bouton',
@@ -108,22 +108,22 @@ describe("galerie.ts — la liste des cas qu'elle est censée montrer (voir l'en
             '--voile-micro-actif',
             '--voile-micro-refuse',
         ].sort();
-        expect(parPrefixe('--video-', '--voile-'), 'la section « voiles » de design.html').toEqual(
+        expect(parPrefixe('--video-', '--voile-'), 'the « veils » section of design.html').toEqual(
             ATTENDUS,
         );
     });
 
-    it('« Typographie » : sept crans, `--t-`', () => {
+    it('« Typography »: seven steps, `--t-`', () => {
         const ATTENDUS = ['--t-2xl', '--t-3xl', '--t-l', '--t-m', '--t-s', '--t-xl', '--t-xs'].sort();
-        expect(parPrefixe('--t-'), 'la section « typographie » de design.html').toEqual(ATTENDUS);
+        expect(parPrefixe('--t-'), 'the « typography » section of design.html').toEqual(ATTENDUS);
     });
 
-    it('« Interlignes » : trois, `--lh-`', () => {
+    it('« Line heights »: three, `--lh-`', () => {
         const ATTENDUS = ['--lh-large', '--lh-normal', '--lh-serre'].sort();
-        expect(parPrefixe('--lh-'), 'la section « interlignes » de design.html').toEqual(ATTENDUS);
+        expect(parPrefixe('--lh-'), 'the « line heights » section of design.html').toEqual(ATTENDUS);
     });
 
-    it('« Espacement » : huit crans, `--e-`', () => {
+    it('« Spacing »: eight steps, `--e-`', () => {
         const ATTENDUS = [
             '--e-1',
             '--e-2',
@@ -134,21 +134,21 @@ describe("galerie.ts — la liste des cas qu'elle est censée montrer (voir l'en
             '--e-7',
             '--e-8',
         ].sort();
-        expect(parPrefixe('--e-'), 'la section « espacement » de design.html').toEqual(ATTENDUS);
+        expect(parPrefixe('--e-'), 'the « spacing » section of design.html').toEqual(ATTENDUS);
     });
 
-    it('« Rayons » : quatre, `--r-`', () => {
+    it('« Radii »: four, `--r-`', () => {
         const ATTENDUS = ['--r-1', '--r-2', '--r-3', '--r-plein'].sort();
-        expect(parPrefixe('--r-'), 'la section « rayons » de design.html').toEqual(ATTENDUS);
+        expect(parPrefixe('--r-'), 'the « radii » section of design.html').toEqual(ATTENDUS);
     });
 
-    it('« Traits » : deux épaisseurs, préfixe `--trait` (sans tiret : couvre aussi `--trait-focus`)', () => {
+    it('« Strokes »: two thicknesses, prefix `--trait` (no dash: also covers `--trait-focus`)', () => {
         const ATTENDUS = ['--trait', '--trait-focus'].sort();
-        expect(parPrefixe('--trait'), 'la section « traits » de design.html').toEqual(ATTENDUS);
+        expect(parPrefixe('--trait'), 'the « strokes » section of design.html').toEqual(ATTENDUS);
     });
 
-    it('« Polices » : deux piles système, `--police-`', () => {
+    it('« Fonts »: two system stacks, `--police-`', () => {
         const ATTENDUS = ['--police-mono', '--police-ui'].sort();
-        expect(parPrefixe('--police-'), 'la section « polices » de design.html').toEqual(ATTENDUS);
+        expect(parPrefixe('--police-'), 'the « fonts » section of design.html').toEqual(ATTENDUS);
     });
 });

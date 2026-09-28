@@ -34,7 +34,7 @@ function collage(texte: string | null) {
 }
 
 describe('attacherPressePapierAuDOM', () => {
-    it('écrit le texte reçu quand la fenêtre a le focus', async () => {
+    it('writes the received text when the window has the focus', async () => {
         const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
@@ -55,7 +55,7 @@ describe('attacherPressePapierAuDOM', () => {
     /// Le dépôt différé de D3, et la seule ligne de DOM de ce module : sans
     /// focus on ne tente rien (`writeText` échouerait), et le retour du focus
     /// est ce qui sort le texte.
-    it("n'écrit rien sans focus, puis écrit au retour du focus", async () => {
+    it("writes nothing without focus, then writes when focus comes back", async () => {
         const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         let focalise = false;
@@ -80,7 +80,7 @@ describe('attacherPressePapierAuDOM', () => {
     });
 
     /// Un refus est DIT, jamais tu — et il ne déclenche aucune écriture.
-    it('dit le refus et n’écrit rien', async () => {
+    it('says the refusal and writes nothing', async () => {
         const write = vi.fn().mockResolvedValue(undefined);
         const surMessage = vi.fn();
         const attache = attacherPressePapierAuDOM({
@@ -102,8 +102,8 @@ describe('attacherPressePapierAuDOM', () => {
     /// `FAILURES_BEFORE_MESSAGE` vaut 2 : le premier échec est le cas ordinaire
     /// d'une fenêtre qui perd le focus pendant l'écriture, et crier dessus
     /// ferait un bandeau permanent sur un produit qui marche.
-    it('ne crie qu’au deuxième échec consécutif', async () => {
-        const write = vi.fn().mockRejectedValue(new Error('refusé'));
+    it('only shouts on the second consecutive failure', async () => {
+        const write = vi.fn().mockRejectedValue(new Error('refused'));
         const surMessage = vi.fn();
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
@@ -129,7 +129,7 @@ describe('attacherPressePapierAuDOM', () => {
     /// Sans ce détachement, l'écouteur `focus` survivrait à la fin de session
     /// et écrirait le presse-papier local d'une session morte — le même défaut
     /// que les trois détachements voisins de `main.ts` existent pour éviter.
-    it('détache son écouteur de focus', () => {
+    it('detaches its focus listener', () => {
         const cible = cibleFactice();
         const attache = attacherPressePapierAuDOM({
             write: vi.fn().mockResolvedValue(undefined),
@@ -159,7 +159,7 @@ describe('attacherPressePapierAuDOM', () => {
     /// n'est pas une capacité reçue mais un geste de l'utilisateur — et il ne
     /// passe par aucune de ces clés. La liste est donc étendue **sciemment**,
     /// et non par accommodement.
-    it('ne reçoit aucune capacité de LECTURE du presse-papier', () => {
+    it('receives no clipboard READ capability', () => {
         const options = {
             write: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
@@ -182,7 +182,7 @@ describe('attacherPressePapierAuDOM', () => {
 // Sous-bloc P2 — l'écouteur `paste`, le sens navigateur → VM.
 // ---------------------------------------------------------------------------
 
-describe("l'écouteur de collage", () => {
+describe("the paste listener", () => {
     function monter(surMessage = vi.fn()) {
         const cible = cibleFactice();
         const emettre = vi.fn();
@@ -199,7 +199,7 @@ describe("l'écouteur de collage", () => {
     // 🔴 ROUGE si l'écouteur est absent : rien ne remonterait jamais à l'agent.
     // La forme émise est celle que `proto/src/control.rs` désérialise, avec
     // `deny_unknown_fields` — un encodeur maison serait refusé par serde.
-    it('émet le texte collé sur le canal de contrôle', () => {
+    it('emits the pasted text on the control channel', () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage('bonjour'));
         expect(emettre).toHaveBeenCalledOnce();
@@ -212,7 +212,7 @@ describe("l'écouteur de collage", () => {
 
     // 🔴 ROUGE si l'on émettait une chaîne vide : elle VIDERAIT le
     // presse-papier de la VM sans que l'utilisateur l'ait demandé.
-    it("un collage vide n'émet rien", () => {
+    it("an empty paste emits nothing", () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage(''));
         expect(emettre).not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ describe("l'écouteur de collage", () => {
 
     // Un `paste` sans `clipboardData` (une image, un format inconnu) est le
     // même cas : rien à émettre, et rien à dire.
-    it("un collage sans clipboardData n'émet rien", () => {
+    it("a paste without clipboardData emits nothing", () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage(null));
         expect(emettre).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe("l'écouteur de collage", () => {
     // 🔴 **LA BORNE CÔTÉ CLIENT EST OBLIGATOIRE.** Sans elle, l'agent la ferait
     // respecter — mais le canal aurait DÉJÀ porté la charge, et le bandeau ne
     // paraîtrait jamais : l'agent refuse en journalisant, sans rien renvoyer.
-    it('au-delà de la borne : rien n émis, et le refus est DIT', () => {
+    it('beyond the bound: nothing emitted, and the refusal is SAID', () => {
         const surMessage = vi.fn();
         const { cible, emettre } = monter(surMessage);
         const trop = 'a'.repeat(PRESSE_PAPIER_MAX + 1);
@@ -239,7 +239,7 @@ describe("l'écouteur de collage", () => {
     });
 
     // Le cas limite exact passe : rouge si la comparaison est un `>=`.
-    it('exactement la borne passe', () => {
+    it('exactly the bound passes', () => {
         const { cible, emettre } = monter();
         cible.declencher('paste', collage('a'.repeat(PRESSE_PAPIER_MAX)));
         expect(emettre).toHaveBeenCalledOnce();
@@ -250,7 +250,7 @@ describe("l'écouteur de collage", () => {
     // `PRESSE_PAPIER_MAX / 2` unités UTF-16 — donc passerait — pour
     // `PRESSE_PAPIER_MAX * 2` octets, soit le DOUBLE de ce que l'agent accepte.
     // Le client émettrait alors une charge que l'agent refuserait en silence.
-    it('la borne compte des octets UTF-8, pas des unités UTF-16', () => {
+    it('the bound counts UTF-8 bytes, not UTF-16 units', () => {
         const { cible, emettre, surMessage } = monter();
         const emojis = '😀'.repeat(PRESSE_PAPIER_MAX / 4);
         expect(emojis.length).toBe(PRESSE_PAPIER_MAX / 2);
@@ -262,7 +262,7 @@ describe("l'écouteur de collage", () => {
     // 🔴 **LE GARDE N°3 CÂBLÉ** : un texte qu'on vient de recevoir de l'agent
     // n'est pas réémis vers lui. Sans cet appel, chaque collage d'un contenu
     // venu de la VM produirait un aller-retour complet.
-    it("ne réémet pas un texte qu'on vient de recevoir", () => {
+    it("does not re-emit a text that was just received", () => {
         const { cible, emettre, attache } = monter();
         attache.recevoir({ texte: 'venu-de-la-vm', octets: 13 });
         cible.declencher('paste', collage('venu-de-la-vm'));
@@ -271,16 +271,16 @@ describe("l'écouteur de collage", () => {
 
     // Le jumeau du précédent : sans lui, un `aEmettre` qui rendrait toujours
     // `undefined` passerait le test ci-dessus et le collage serait mort.
-    it('réémet bien un texte DIFFÉRENT après une réception', () => {
+    it('does re-emit a DIFFERENT text after a reception', () => {
         const { cible, emettre, attache } = monter();
         attache.recevoir({ texte: 'venu-de-la-vm', octets: 13 });
-        cible.declencher('paste', collage('autre chose'));
+        cible.declencher('paste', collage('something else'));
         expect(emettre).toHaveBeenCalledOnce();
     });
 
     // ROUGE si `detacher` oubliait le `paste` : l'écouteur survivrait à la fin
     // de session et émettrait pour une session morte.
-    it('detacher retire AUSSI l écouteur de collage', () => {
+    it('detacher ALSO removes the paste listener', () => {
         const { cible, attache } = monter();
         expect(cible.compte('paste')).toBe(1);
         attache.detacher();
@@ -290,7 +290,7 @@ describe("l'écouteur de collage", () => {
 
 });
 
-describe("l'état reçu AVANT l'attache", () => {
+describe("the state received BEFORE attaching", () => {
     // ── L'ÉTAT REÇU AVANT L'ATTACHE (moitié CLIENT du legs n°3 de P1) ────
     //
     // 🔴 `client/src/main.ts` N'A AUCUN TEST et ne peut pas en avoir : module
@@ -299,7 +299,7 @@ describe("l'état reçu AVANT l'attache", () => {
     // de câblage de `main.ts`, elles, n'en ont aucune, et leur seul contrôle de
     // bout en bout est le critère ① de la recette.
 
-    it('un `initial` fourni est écrit au montage si la fenêtre a le focus', async () => {
+    it('a supplied `initial` is written on mount if the window has the focus', async () => {
         const write = vi.fn().mockResolvedValue(undefined);
         // ROUGE avant le paramètre `initial` : rien n'est écrit au montage.
         attacherPressePapierAuDOM({
@@ -314,7 +314,7 @@ describe("l'état reçu AVANT l'attache", () => {
         expect(write).toHaveBeenCalledWith('copie-avant-attache');
     });
 
-    it("un `initial` fourni SANS focus n'est pas écrit au montage, et l'est au retour du focus", async () => {
+    it("an `initial` supplied WITHOUT focus is not written on mount, and is when focus comes back", async () => {
         const write = vi.fn().mockResolvedValue(undefined);
         const cible = cibleFactice();
         let focalise = false;
@@ -338,7 +338,7 @@ describe("l'état reçu AVANT l'attache", () => {
         expect(write).toHaveBeenCalledWith('differe');
     });
 
-    it('un `initial` portant un REFUS dit le bandeau au montage', async () => {
+    it('an `initial` carrying a REFUSAL says the banner on mount', async () => {
         const surMessage = vi.fn();
         // ROUGE = ne rejouer que les textes : la fenêtre attendrait un contenu
         // qui n'arrivera jamais, sans rien pour lui dire pourquoi.
@@ -354,7 +354,7 @@ describe("l'état reçu AVANT l'attache", () => {
         expect(surMessage).toHaveBeenCalledWith(messageDeRefus(123456));
     });
 
-    it("sans `initial`, le montage n'écrit rien et ne dit rien", async () => {
+    it("without `initial`, mounting writes nothing and says nothing", async () => {
         const write = vi.fn().mockResolvedValue(undefined);
         const surMessage = vi.fn();
         // ROUGE = rejouer un `Recu` vide quand le paramètre est absent : le

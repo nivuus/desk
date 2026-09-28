@@ -40,7 +40,7 @@ export async function verrouillerClavier(navigateur: NavigateurClavier): Promise
     try {
         await navigateur.keyboard.lock();
     } catch (error) {
-        console.warn('Keyboard Lock refusé', error);
+        console.warn('Keyboard Lock refused', error);
     }
 }
 

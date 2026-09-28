@@ -28,7 +28,7 @@
    ④ AUCUNE LONGUEUR HORS ÉCHELLE. Un `4px` écrit ici ne serait vu par AUCUN
       des neuf contrôles, et la RAISON A CHANGÉ avec le sous-bloc S4.
       ❌ « aucun ne mesure une longueur » était vrai jusque-là ; §7.10
-      (`design/longueurs.test.ts`) en mesure une. Ce qui laisse CE fichier
+      (`design/lengths.test.ts`) en mesure une. Ce qui laisse CE fichier
       découvert est désormais une PORTÉE, pas une absence : §7.10 exclut
       `client/src/design/`, et G4 de `primitives.test.ts` ne lit que les
       QUATRE familles, jamais cet agrégateur d'`@import`. Les seuls littéraux

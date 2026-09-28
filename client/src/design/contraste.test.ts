@@ -9,16 +9,16 @@ import { PAIRES, evaluer, luminanceRelative, rapportDeContraste } from './contra
  * Que la palette RÉELLE tienne les seuils est éprouvé ailleurs, par
  * `client/outils/contraste.mjs`, qui lit `tokens.css`.
  */
-describe('rapportDeContraste — vecteurs extérieurs à notre palette', () => {
-    it('rend 21 sur noir contre blanc : le maximum absolu de l’échelle', () => {
+describe('rapportDeContraste — vectors external to our palette', () => {
+    it('returns 21 on black against white: the absolute maximum of the scale', () => {
         expect(rapportDeContraste('#000000', '#ffffff')).toBeCloseTo(21, 5);
     });
 
-    it('rend 1 sur une couleur contre elle-même : le minimum absolu', () => {
+    it('returns 1 on a colour against itself: the absolute minimum', () => {
         expect(rapportDeContraste('#ffffff', '#ffffff')).toBeCloseTo(1, 10);
     });
 
-    it('est symétrique — la formule ordonne ses deux termes', () => {
+    it('is symmetric — the formula orders its two terms', () => {
         // `(L + 0.05) / (l + 0.05)` avec L ≥ l. Oublier l'ordre casse ici.
         for (const [a, b] of [
             ['#000000', '#ffffff'],
@@ -29,7 +29,7 @@ describe('rapportDeContraste — vecteurs extérieurs à notre palette', () => {
         }
     });
 
-    it('applique la correction gamma, et non une moyenne linéaire', () => {
+    it('applies the gamma correction, and not a linear average', () => {
         // 🔴 C'EST LE VECTEUR QUI DISCRIMINE. `#808080` est à mi-course des
         // canaux, donc une moyenne linéaire rendrait 0,5. La luminance
         // relative vraie vaut ≈ 0,2159. La faute est classique et rend des
@@ -41,7 +41,7 @@ describe('rapportDeContraste — vecteurs extérieurs à notre palette', () => {
 });
 
 describe('PAIRES', () => {
-    it('en compte 53, et ce sont des paires DÉCLARÉES', () => {
+    it('counts 53 of them, and they are DECLARED pairs', () => {
         // Sept encres × trois fonds au seuil 4,5, plus `--bord-fort` sur les
         // trois fonds au seuil 3, plus `--sur-accent` sur `--accent` au
         // seuil 4,5, plus `--sur-accent` sur `--accent-survol` au seuil 4,5
@@ -59,11 +59,11 @@ describe('PAIRES', () => {
         // S4, tâche 4).
         expect(PAIRES).toHaveLength(53);
         expect(new Set(PAIRES.map((p) => p.theme))).toEqual(
-            new Set(['sombre', 'clair', 'hors thème']),
+            new Set(['sombre', 'clair', 'out of theme']),
         );
     });
 
-    it("ne porte JAMAIS `--bord`, et c'est une décision", () => {
+    it("NEVER carries `--bord`, and that is a decision", () => {
         // `--bord` rend 1,45 (sombre) et 1,40 (clair) sur `--fond-0` : il est
         // réservé aux séparateurs purement décoratifs, que WCAG 1.4.11 exempte.
         // Sans ce test, un successeur bien intentionné l'ajouterait et rendrait
@@ -103,7 +103,7 @@ const FONDS_SYNTHETIQUES = (n: string) =>
     n.startsWith('--fond') || n === '--sur-accent' || n === '--video-letterbox';
 
 describe('evaluer', () => {
-    it('rend aucun échec sur une palette conforme', () => {
+    it('returns no failure on a compliant palette', () => {
         const conforme = Object.fromEntries(
             ALL.map((n) => [
                 n,
@@ -118,7 +118,7 @@ describe('evaluer', () => {
         expect(result.minimum).toBeCloseTo(21, 5);
     });
 
-    it("NOMME le thème, l'encre, le fond et le rapport de chaque échec", () => {
+    it("NAMES the theme, the ink, the background and the ratio of each failure", () => {
         // Un booléen ne dirait pas quoi corriger.
         const fautif = Object.fromEntries(
             ALL.map((n) => [

@@ -23,5 +23,5 @@ export async function attendreDevtools(port, tentatives = 50) {
         }
         await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    throw new Error('Chrome DevTools ne répond pas après le délai imparti');
+    throw new Error('Chrome DevTools does not answer after the allotted delay');
 }

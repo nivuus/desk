@@ -16,18 +16,18 @@ const CLAIR: Emplacement = { protocol: 'http:', host: 'plateforme.exemple.fr' };
 /// Le serveur de développement de vite.
 const SAMPLE: Emplacement = { protocol: 'http:', host: 'localhost:5173' };
 
-describe('adressePlateforme et adresseSignaling', () => {
-    it("(a) une page en https: donne https: et wss:/signal", () => {
+describe('adressePlateforme and adresseSignaling', () => {
+    it("(a) a page on https: gives https: and wss:/signal", () => {
         expect(adressePlateforme(TLS)).toBe('https://plateforme.exemple.fr');
         expect(adresseSignaling(TLS)).toBe('wss://plateforme.exemple.fr/signal');
     });
 
-    it("(b) une page en http: donne http: et ws:/signal", () => {
+    it("(b) a page on http: gives http: and ws:/signal", () => {
         expect(adressePlateforme(CLAIR)).toBe('http://plateforme.exemple.fr');
         expect(adresseSignaling(CLAIR)).toBe('ws://plateforme.exemple.fr/signal');
     });
 
-    it("🔴 (c) le paramètre EXPLICITE l'emporte, sur les deux", () => {
+    it("🔴 (c) the EXPLICIT parameter wins, over both", () => {
         // 🔴 LA ROUGE : dériver toujours de la page. Le mode d'essai local
         // disparaîtrait, et P3 a déjà payé la disparition d'un mode d'essai.
         expect(adressePlateforme(TLS, 'http://192.168.3.2:8080'))
@@ -36,7 +36,7 @@ describe('adressePlateforme et adresseSignaling', () => {
             .toBe('ws://192.168.3.2:8080');
     });
 
-    it("🔴 (d) AUCUN :8080 n'apparaît quand la page est sur le port par défaut", () => {
+    it("🔴 (d) NO :8080 appears when the page is on the default port", () => {
         // 🔴 C'EST TOUT L'OBJET DE CE MODULE, et la rouge est le code d'avant :
         // `ws://${location.hostname}:8080`. Sous TLS c'est du contenu mixte, et
         // le navigateur refuse — sans qu'aucun test Node ne puisse le voir.
@@ -46,7 +46,7 @@ describe('adressePlateforme et adresseSignaling', () => {
         expect(adresseSignaling(CLAIR)).not.toContain(':8080');
     });
 
-    it("🔴 (d bis) sous TLS, JAMAIS de ws: ni de http: — c'est le contenu mixte", () => {
+    it("🔴 (d bis) under TLS, NEVER ws: nor http: — that is mixed content", () => {
         // 🔴 LA ROUGE la plus directe : garder `ws://` en dur. Cette assertion
         // tombe, et elle est SÉPARÉE de (a) parce qu'`expect` interrompt un
         // test à la première assertion fausse — la leçon que P2 a payée.
@@ -54,20 +54,20 @@ describe('adressePlateforme et adresseSignaling', () => {
         expect(adressePlateforme(TLS).startsWith('https://')).toBe(true);
     });
 
-    it("(e) le PORT de la page est conservé, pas remplacé par 8080", () => {
+    it("(e) the page PORT is kept, not replaced by 8080", () => {
         // Le serveur de développement de vite sert sur 5173 : l'adresse rendue
         // est celle de la page, port compris.
         expect(adressePlateforme(SAMPLE)).toBe('http://localhost:5173');
         expect(adresseSignaling(SAMPLE)).toBe('ws://localhost:5173/signal');
     });
 
-    it("(f) un port NON standard sous TLS est conservé lui aussi", () => {
+    it("(f) a NON-standard port under TLS is kept too", () => {
         const p: Emplacement = { protocol: 'https:', host: 'exemple.fr:8443' };
         expect(adressePlateforme(p)).toBe('https://exemple.fr:8443');
         expect(adresseSignaling(p)).toBe('wss://exemple.fr:8443/signal');
     });
 
-    it("(g) un paramètre VIDE ou absent ne l'emporte pas", () => {
+    it("(g) an EMPTY or absent parameter does not win", () => {
         // Une chaîne vide est ce que rend `URLSearchParams.get` sur `?x=` : la
         // traiter comme explicite produirait une adresse vide, donc une panne
         // sans message. `null` est ce qu'il rend sur un paramètre absent.
@@ -77,7 +77,7 @@ describe('adressePlateforme et adresseSignaling', () => {
         expect(adressePlateforme(TLS, null)).toBe('https://plateforme.exemple.fr');
     });
 
-    it("(h) un protocole inconnu ne fabrique pas une adresse absurde", () => {
+    it("(h) an unknown protocol does not build an absurd address", () => {
         // `file:` arrive quand on ouvre le HTML depuis le disque. Rien ne peut
         // en être déduit : le module retombe sur le clair plutôt que de rendre
         // `filews://`, qu'aucun navigateur ne comprendrait et dont le message

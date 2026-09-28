@@ -59,7 +59,7 @@ const COULEURS = [
 
 function vide(id: string): HTMLElement {
     const hote = document.getElementById(id);
-    if (!hote) throw new Error(`la galerie attend un élément #${id}`);
+    if (!hote) throw new Error(`the gallery expects a #${id} element`);
     hote.textContent = '';
     return hote;
 }
@@ -109,14 +109,14 @@ function rendre(): void {
 
     const typo = vide('typo');
     for (const nom of famille('--t-')) {
-        ligne(typo, nom, texte('Session distante — Aa Éé 0123', { fontSize: `var(${nom})` }));
+        ligne(typo, nom, texte('Remote session — Aa Éé 0123', { fontSize: `var(${nom})` }));
     }
 
     const interlignes = vide('interlignes');
     for (const nom of famille('--lh-')) {
         const bloc = document.createElement('span');
         bloc.textContent =
-            'Deux lignes suffisent à voir un interligne : celle-ci est écrite assez longue pour se replier au moins une fois dans la colonne de la galerie.';
+            'Two lines are enough to see a line height: this one is written long enough to wrap at least once in the gallery column.';
         bloc.style.lineHeight = `var(${nom})`;
         bloc.style.display = 'block';
         ligne(interlignes, nom, bloc);
@@ -147,7 +147,7 @@ function rendre(): void {
 
     const polices = vide('polices');
     for (const nom of famille('--police-')) {
-        ligne(polices, nom, texte('Session distante — Aa Éé 0123', { fontFamily: `var(${nom})` }));
+        ligne(polices, nom, texte('Remote session — Aa Éé 0123', { fontFamily: `var(${nom})` }));
     }
 }
 

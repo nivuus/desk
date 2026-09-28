@@ -129,8 +129,8 @@ class Faux {
 
 const octets = (...o: number[]) => new Uint8Array(o);
 
-describe('la garde de casse', () => {
-    it('🔴 REFUSE d’écrire dans un homonyme de casse', async () => {
+describe('the case guard', () => {
+    it('🔴 REFUSES to write into a case homonym', async () => {
         const faux = new Faux();
         faux.poser('Casse.txt', [1, 2, 3]);
         const e = createWriter(faux.racine());
@@ -139,7 +139,7 @@ describe('la garde de casse', () => {
         );
     });
 
-    it('🔴 …ET `Casse.txt` N’EST PAS ÉCRASÉ — c’est LE test de F2', async () => {
+    it('🔴 …AND `Casse.txt` IS NOT OVERWRITTEN — this is THE F2 test', async () => {
         // 🔴 **UN TEST SÉPARÉ, ET C'EST LA LEÇON ①A-bis DE P2.** `expect`
         // interrompt un test à sa PREMIÈRE assertion en échec : mettre le refus
         // et le non-écrasement dans le même test ferait que le second ne serait
@@ -154,7 +154,7 @@ describe('la garde de casse', () => {
         expect(faux.lire('Casse.txt')).toEqual({ nom: 'Casse.txt', contenu: [1, 2, 3] });
     });
 
-    it('🔴 …ET AUCUN FLUX N’EST MÊME OUVERT', async () => {
+    it('🔴 …AND NO STREAM IS EVEN OPENED', async () => {
         // Troisième assertion, troisième test, même raison. « Rien n'est
         // écrit » et « rien n'est même ouvert » ne se déduisent pas l'un de
         // l'autre : un flux ouvert puis abandonné laisse un fichier d'échange.
@@ -165,7 +165,7 @@ describe('la garde de casse', () => {
         expect(faux.ouverts).toBe(0);
     });
 
-    it('porte le code `casse-ambigue` et NOMME les deux fichiers', async () => {
+    it('carries the `casse-ambigue` code and NAMES both files', async () => {
         const faux = new Faux();
         faux.poser('Casse.txt');
         const e = createWriter(faux.racine());
@@ -182,14 +182,14 @@ describe('la garde de casse', () => {
         expect(error.message).toContain('Casse.txt');
     });
 
-    it('refuse aussi une CRÉATION ambiguë', async () => {
+    it('also refuses an ambiguous CREATION', async () => {
         const faux = new Faux();
         faux.poser('Dossier');
         const e = createWriter(faux.racine());
-        await expect(e.create('DOSSIER', true)).rejects.toThrow(/casse/);
+        await expect(e.create('DOSSIER', true)).rejects.toThrow(/case/);
     });
 
-    it('écrit dans le nom EXACT quand il existe', async () => {
+    it('writes into the EXACT name when it exists', async () => {
         // 🔴 Une garde trop stricte ferait échouer TOUTE écriture : ce test est
         // ce qui l'empêche.
         const faux = new Faux();
@@ -199,7 +199,7 @@ describe('la garde de casse', () => {
         expect(faux.lire('Casse.txt')?.contenu).toEqual([7, 8]);
     });
 
-    it('crée quand rien ne ressemble au nom demandé', async () => {
+    it('creates when nothing resembles the requested name', async () => {
         const faux = new Faux();
         faux.poser('autre.txt');
         const e = createWriter(faux.racine());
@@ -209,7 +209,7 @@ describe('la garde de casse', () => {
 });
 
 describe('les flux', () => {
-    it('🔴 un fichier réécrit PLUS COURT ne garde pas sa queue d’octets', async () => {
+    it('🔴 a file rewritten SHORTER does not keep its tail of bytes', async () => {
         // 🔴 C'est le défaut EXACT de l'ancien pont (spec §12) : il employait
         // `keepExistingData: true` sans `truncate`. Passer `true` ici fait
         // survivre la queue, et le fichier local porte alors un contenu que la
@@ -221,7 +221,7 @@ describe('les flux', () => {
         expect(faux.lire('note.txt')?.contenu).toEqual([9, 9]);
     });
 
-    it('ouvre UNE fois et ferme UNE fois, sur plusieurs morceaux', async () => {
+    it('opens ONCE and closes ONCE, over several chunks', async () => {
         const faux = new Faux();
         const e = createWriter(faux.racine());
         await e.write('gros.bin', 0, octets(1, 2), true, false);
@@ -231,7 +231,7 @@ describe('les flux', () => {
         expect(faux.lire('gros.bin')?.contenu).toEqual([1, 2, 3, 4, 5]);
     });
 
-    it('n’écrit RIEN tant que le dernier morceau n’est pas arrivé', async () => {
+    it('writes NOTHING until the last chunk has arrived', async () => {
         // 🔵 L'ATOMICITÉ de `createWritable()` : la committaison est au
         // `close()`. Une poussée interrompue laisse le fichier local INCHANGÉ.
         const faux = new Faux();
@@ -244,7 +244,7 @@ describe('les flux', () => {
         expect(faux.lire('note.txt')?.contenu).toEqual([1, 2, 3]);
     });
 
-    it('🔴 abandonner ferme les flux restés ouverts', async () => {
+    it('🔴 aborting closes the streams left open', async () => {
         const faux = new Faux();
         const e = createWriter(faux.racine());
         await e.write('a.txt', 0, octets(1), true, false);
@@ -256,7 +256,7 @@ describe('les flux', () => {
         expect(faux.fermes).toBe(1);
     });
 
-    it('un rejeu ferme le flux précédent au lieu d’en laisser deux', async () => {
+    it('a replay closes the previous stream instead of leaving two', async () => {
         const faux = new Faux();
         const e = createWriter(faux.racine());
         await e.write('a.txt', 0, octets(1), true, false);
@@ -266,18 +266,18 @@ describe('les flux', () => {
         expect(faux.lire('a.txt')?.contenu).toEqual([7, 7]);
     });
 
-    it('🔴 refuse un morceau NON initial sans flux ouvert', async () => {
+    it('🔴 refuses a NON-initial chunk without an open stream', async () => {
         // Ouvrir ici écrirait un fichier TRONQUÉ à ce morceau-ci : la
         // troncature serait silencieuse, ce qui est pire qu'un refus.
         const faux = new Faux();
         const e = createWriter(faux.racine());
-        await expect(e.write('a.txt', 64, octets(1), false, true)).rejects.toThrow(/flux/);
+        await expect(e.write('a.txt', 64, octets(1), false, true)).rejects.toThrow(/stream/);
         expect(faux.lire('a.txt')).toBeUndefined();
     });
 });
 
-describe('les créations', () => {
-    it('crée un répertoire, et un fichier VIDE sans le tronquer', async () => {
+describe('the creations', () => {
+    it('creates a directory, and an EMPTY file without truncating it', async () => {
         const faux = new Faux();
         faux.poser('deja.txt', [1, 2, 3]);
         const e = createWriter(faux.racine());
@@ -290,7 +290,7 @@ describe('les créations', () => {
         expect(faux.ouverts).toBe(0);
     });
 
-    it('crée les répertoires intermédiaires d’un chemin profond', async () => {
+    it('creates the intermediate directories of a deep path', async () => {
         const faux = new Faux();
         const e = createWriter(faux.racine());
         await e.write('a/b/c.txt', 0, octets(5), true, true);
@@ -298,8 +298,8 @@ describe('les créations', () => {
     });
 });
 
-describe('le classement des échecs', () => {
-    it('🔴 un quota dépassé rend `disque-plein`, et pas `interne`', async () => {
+describe('the classification of failures', () => {
+    it('🔴 an exceeded quota returns `disque-plein`, and not `interne`', async () => {
         // Le laisser tomber dans le `default` de `classer` ferait `interne`, et
         // le journal ne dirait plus POURQUOI : l'utilisateur ne saurait pas
         // qu'il doit libérer de la place.

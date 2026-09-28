@@ -71,8 +71,8 @@ export interface EcranTerminal {
 /// it is one more than the seven S4's plan provided for — it is declared
 /// rather than passed over in silence.
 const TITRE: Record<TonTerminal, string> = {
-    neutre: 'Session terminée',
-    danger: 'Échec de la session',
+    neutre: 'Session ended',
+    danger: 'Session failed',
 };
 
 /// The whole class is REWRITTEN at each call, never added to: that is what

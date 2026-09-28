@@ -66,14 +66,14 @@ function monter(): void {
 
 beforeEach(monter);
 
-describe("l'exception étroite du collage", () => {
+describe("the narrow paste exception", () => {
     // 🔴 **LA ROUGE CENTRALE DE P2.** Jusqu'au commit `4cf2206`, `onKeyDown`
     // appelait `preventDefault()` SANS CONDITION : aucun événement `paste` ne
     // pouvait naître dans la fenêtre de session. Le §0 du plan établit par
     // mesure (deux exécutions) que retirer ce `preventDefault` sur le seul
     // `KeyV` suffit à faire naître un `paste` de confiance sur un `<video>`
     // focalisé — et ce test est ce qui garde la propriété désormais.
-    it('Ctrl+V : ni preventDefault, ni octet envoyé', () => {
+    it('Ctrl+V: neither preventDefault, nor byte sent', () => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' });
         expect(pd).not.toHaveBeenCalled();
         expect(envois).toHaveLength(0);
@@ -81,7 +81,7 @@ describe("l'exception étroite du collage", () => {
 
     // 🔴 **C'EST LE RISQUE R5.** Une condition élargie rendrait le navigateur
     // au clavier, et `Ctrl+W` fermerait la fenêtre de session.
-    it.each(['KeyW', 'KeyT', 'KeyN'])('Ctrl+%s : preventDefault ET octet envoyé', (code) => {
+    it.each(['KeyW', 'KeyT', 'KeyN'])('Ctrl+%s: preventDefault AND byte sent', (code) => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code });
         expect(pd).toHaveBeenCalledOnce();
         expect(envois).toHaveLength(1);
@@ -90,7 +90,7 @@ describe("l'exception étroite du collage", () => {
     // Le modificateur lui-même part normalement : le retenir ferait perdre à
     // la VM un `Ctrl` que l'utilisateur tient peut-être pour autre chose. La
     // sonde établit que son `preventDefault` n'empêche PAS le `paste`.
-    it('ControlLeft seul : preventDefault ET octet envoyé', () => {
+    it('ControlLeft alone: preventDefault AND byte sent', () => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'ControlLeft' });
         expect(pd).toHaveBeenCalledOnce();
         expect(envois).toHaveLength(1);
@@ -100,25 +100,25 @@ describe("l'exception étroite du collage", () => {
     // seul `V`↑ ferait voir à la VM un relâchement sans enfoncement — ce qui
     // peut débloquer une répétition clavier —, et il arriverait APRÈS les
     // quatre touches que l'agent injecte.
-    it('keyup de V sous Ctrl : preventDefault, mais aucun octet', () => {
+    it('keyup of V under Ctrl: preventDefault, but no byte', () => {
         const pd = clavier.frapper('keyup', { ctrlKey: true, code: 'KeyV' });
         expect(pd).toHaveBeenCalledOnce();
         expect(envois).toHaveLength(0);
     });
 
-    it('Shift+Insert est traité comme Ctrl+V', () => {
+    it('Shift+Insert is handled like Ctrl+V', () => {
         const pd = clavier.frapper('keydown', { shiftKey: true, code: 'Insert' });
         expect(pd).not.toHaveBeenCalled();
         expect(envois).toHaveLength(0);
     });
 });
 
-describe('le gate sur Capabilities.clipboard', () => {
+describe('the gate on Capabilities.clipboard', () => {
     // 🔴 **SANS CE GATE, `PRESSE_PAPIER=0` DONNERAIT LE PIRE DES DEUX MONDES** :
     // le client retiendrait le `Ctrl+V` alors que personne ne l'injecterait
     // côté VM. La touche serait perdue, et l'utilisateur verrait un raccourci
     // mort.
-    it("désarmé, Ctrl+V retrouve le comportement d'avant P2", () => {
+    it("disarmed, Ctrl+V gets back its pre-P2 behaviour", () => {
         arme = false;
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' });
         expect(pd).toHaveBeenCalledOnce();
@@ -130,7 +130,7 @@ describe('le gate sur Capabilities.clipboard', () => {
     // jamais, et le collage serait mort sans qu'aucune trace ne le dise.
     //
     // ROUGE si `collageArme` était lu une seule fois, au montage.
-    it("l'armement est relu à CHAQUE frappe, pas capturé au montage", () => {
+    it("the arming is re-read on EACH keystroke, not captured on mount", () => {
         arme = false;
         expect(clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' })).toHaveBeenCalledOnce();
         arme = true;
@@ -138,10 +138,10 @@ describe('le gate sur Capabilities.clipboard', () => {
     });
 });
 
-describe('le détachement', () => {
+describe('detaching', () => {
     // ROUGE si `detacher` retirait les écouteurs de `window` alors qu'ils ont
     // été posés sur la cible injectée : ils survivraient à la fin de session.
-    it('retire les deux écouteurs de la cible injectée', () => {
+    it('removes both listeners from the injected target', () => {
         expect(clavier.attaches).toBe(2);
         detacher();
         expect(clavier.attaches).toBe(0);

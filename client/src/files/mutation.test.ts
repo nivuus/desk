@@ -44,7 +44,7 @@ interface Options {
 }
 
 function absent(nom: string): never {
-    throw new DOMException(`« ${nom} » est introuvable`, 'NotFoundError');
+    throw new DOMException(`« ${nom} » cannot be found`, 'NotFoundError');
 }
 
 /** Trouve la clé réelle, en tenant compte de la sensibilité à la casse. */
@@ -63,7 +63,7 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
             const k = cle(n.dossiers, nom, o);
             if (k !== undefined) return repertoire(n.dossiers.get(k)!, o);
             if (cle(n.files, nom, o) !== undefined) {
-                throw new DOMException(`« ${nom} » est un fichier`, 'TypeMismatchError');
+                throw new DOMException(`« ${nom} » is a file`, 'TypeMismatchError');
             }
             if (opts?.create !== true) absent(nom);
             const neuf = noeud();
@@ -77,7 +77,7 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
             const k = cle(n.files, nom, o);
             if (k === undefined) {
                 if (cle(n.dossiers, nom, o) !== undefined) {
-                    throw new DOMException(`« ${nom} » est un dossier`, 'TypeMismatchError');
+                    throw new DOMException(`« ${nom} » is a folder`, 'TypeMismatchError');
                 }
                 if (opts?.create !== true) absent(nom);
                 n.files.set(nom, new Uint8Array());
@@ -105,7 +105,7 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
             // ⚠️ SANS `recursive` : un répertoire non vide est REFUSÉ, et le
             // navigateur réel lève exactement cette `DOMException`.
             if (enfant.files.size > 0 || enfant.dossiers.size > 0) {
-                throw new DOMException(`« ${nom} » n'est pas vide`, 'InvalidModificationError');
+                throw new DOMException(`« ${nom} » is not empty`, 'InvalidModificationError');
             }
             n.dossiers.delete(kd);
         },
@@ -113,7 +113,7 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
     if (o.withMove) {
         // Le faux `move()` d'un RÉPERTOIRE. Il ÉCRASE, comme le vrai.
         (self as { move?: unknown }).move = async (): Promise<void> => {
-            throw new Error('move() de répertoire n’est pas exercée par ce faux');
+            throw new Error('directory move() is not exercised by this fake');
         };
     }
     return self;
@@ -191,8 +191,8 @@ function monde(
 
 const OCTETS = new Uint8Array([1, 2, 3, 4, 5]);
 
-describe('le renommage AVEC move()', () => {
-    it('🔴 est UN appel et ne copie RIEN', async () => {
+describe('the rename WITH move()', () => {
+    it('🔴 is ONE call and copies NOTHING', async () => {
         // Rouge : appeler le repli quand même. Le faux compte ses lectures et
         // ses écritures, et le coût de la spec §3.5.1 redeviendrait vrai.
         const m = monde((r) => r.files.set('a.txt', OCTETS), { withMove: true });
@@ -206,8 +206,8 @@ describe('le renommage AVEC move()', () => {
     });
 });
 
-describe('le renommage SANS move() — le repli LOCAL', () => {
-    it('copie puis supprime, et la source disparaît', async () => {
+describe('the rename WITHOUT move() — the LOCAL fallback', () => {
+    it('copies then removes, and the source disappears', async () => {
         const m = monde((r) => r.files.set('a.txt', OCTETS));
         const trace = await renommer(m.racine, 'a.txt', 'b.txt', false);
         expect(trace.parMove).toBe(false);
@@ -217,7 +217,7 @@ describe('le renommage SANS move() — le repli LOCAL', () => {
         expect(m.arbre.files.get('b.txt')).toEqual(OCTETS);
     });
 
-    it('🔴 renomme un répertoire contenant un SOUS-RÉPERTOIRE', async () => {
+    it('🔴 renames a directory containing a SUB-DIRECTORY', async () => {
         // 🔴 C'EST LE DÉFAUT DE L'ANCIEN PONT, `web/index.js:631` : une zone
         // morte temporelle (`const newDir = await newDir.getDirectoryHandle(…)`
         // dans le bloc où `newDir` est le paramètre) fait que le renommage d'un
@@ -238,7 +238,7 @@ describe('le renommage SANS move() — le repli LOCAL', () => {
         expect(cible.dossiers.get('sous')!.files.get('profond.txt')).toEqual(OCTETS);
     });
 
-    it('🔴 AUCUN octet ne passe par le canal', async () => {
+    it('🔴 NO byte goes through the channel', async () => {
         // Rouge : orchestrer la copie par `Lire` + `Write` depuis le pont. Le
         // coût de la spec §3.5.1 — « 2 Gio de canal pour 1 Gio » — redeviendrait
         // vrai. Ce module ne reçoit AUCUN canal : la couture n'existe pas, et
@@ -252,7 +252,7 @@ describe('le renommage SANS move() — le repli LOCAL', () => {
         expect(renommer.length).toBe(4);
     });
 
-    it('🔴 une copie interrompue laisse la SOURCE intacte', async () => {
+    it('🔴 an interrupted copy leaves the SOURCE intact', async () => {
         // Rouge : supprimer la source AVANT la fin de la copie. Une coupure
         // perdrait alors le fichier.
         const m = monde((r) => r.files.set('a.txt', OCTETS));
@@ -261,7 +261,7 @@ describe('le renommage SANS move() — le repli LOCAL', () => {
         };
         const vrai = parent.getFileHandle.bind(parent);
         parent.getFileHandle = async (nom, opts) => {
-            if (opts?.create === true) throw new DOMException('disque plein', 'QuotaExceededError');
+            if (opts?.create === true) throw new DOMException('disk full', 'QuotaExceededError');
             return vrai(nom, opts);
         };
         await expect(renommer(m.racine, 'a.txt', 'b.txt', false)).rejects.toBeInstanceOf(
@@ -271,8 +271,8 @@ describe('le renommage SANS move() — le repli LOCAL', () => {
     });
 });
 
-describe('le renommage de CASSE PURE', () => {
-    it('🔴 passe par un nom intermédiaire sur un poste INSENSIBLE', async () => {
+describe('the PURE CASE rename', () => {
+    it('🔴 goes through an intermediate name on an INSENSITIVE host', async () => {
         // Rouge : renommer directement. Sur le faux insensible, la destination
         // « existe déjà » — et c'est la source. Une implémentation naïve refuse
         // (`deja-present`) ou, pire, écrase.
@@ -282,15 +282,15 @@ describe('le renommage de CASSE PURE', () => {
         expect(m.arbre.files.get('A.txt')).toEqual(OCTETS);
     });
 
-    it('passe aussi sur un poste SENSIBLE, où il n’y a pas de collision', async () => {
+    it('also passes on a SENSITIVE host, where there is no collision', async () => {
         const m = monde((r) => r.files.set('a.txt', OCTETS));
         await renommer(m.racine, 'a.txt', 'A.txt', false);
         expect([...m.arbre.files.keys()]).toEqual(['A.txt']);
     });
 });
 
-describe('les refus du renommage', () => {
-    it('🔴 refuse d’ÉCRASER une destination existante', async () => {
+describe('the rename refusals', () => {
+    it('🔴 refuses to OVERWRITE an existing destination', async () => {
         // `move()` écrase silencieusement : sans la résolution préalable,
         // renommer `brouillon.txt` en `note.txt` détruirait `note.txt` sans un
         // mot.
@@ -305,21 +305,21 @@ describe('les refus du renommage', () => {
         expect(m.compteurs.move).toBe(0);
     });
 
-    it('refuse une source absente en `introuvable`', async () => {
+    it('refuses a missing source as `introuvable`', async () => {
         const m = monde(() => {});
         await expect(renommer(m.racine, 'x.txt', 'y.txt', false)).rejects.toMatchObject({
             code: 'introuvable',
         });
     });
 
-    it('refuse la racine en `non-supporte`', async () => {
+    it('refuses the root as `non-supporte`', async () => {
         const m = monde(() => {});
         await expect(renommer(m.racine, '', 'y', false)).rejects.toMatchObject({
             code: 'non-supporte',
         });
     });
 
-    it('résout la SOURCE par le canonicaliseur', async () => {
+    it('resolves the SOURCE through the canonicaliser', async () => {
         const m = monde((r) => r.files.set('Casse.txt', OCTETS));
         await renommer(m.racine, 'casse.txt', 'neuf.txt', false);
         expect(m.arbre.files.get('neuf.txt')).toEqual(OCTETS);
@@ -327,19 +327,19 @@ describe('les refus du renommage', () => {
 });
 
 describe('la suppression', () => {
-    it('supprime un fichier', async () => {
+    it('removes a file', async () => {
         const m = monde((r) => r.files.set('a.txt', OCTETS));
         await remove(m.racine, 'a.txt', false);
         expect(m.arbre.files.size).toBe(0);
     });
 
-    it('supprime un répertoire VIDE', async () => {
+    it('removes an EMPTY directory', async () => {
         const m = monde((r) => r.dossiers.set('vide', noeud()));
         await remove(m.racine, 'vide', true);
         expect(m.arbre.dossiers.size).toBe(0);
     });
 
-    it('🔴 un répertoire NON VIDE rend `repertoire-non-vide`, et rien n’est détruit', async () => {
+    it('🔴 a NON-EMPTY directory returns `repertoire-non-vide`, and nothing is destroyed', async () => {
         // Rouge : passer `recursive: true`. **Le sous-arbre du poste local
         // disparaîtrait**, et le test ne pourrait plus le voir.
         //
@@ -357,7 +357,7 @@ describe('la suppression', () => {
         expect(m.arbre.dossiers.get('d')!.files.size).toBe(1);
     });
 
-    it('🔴 `InvalidModificationError` ne devient PAS `deja-present` ici', async () => {
+    it('🔴 `InvalidModificationError` does NOT become `deja-present` here', async () => {
         // La MÊME `DOMException` veut dire deux choses selon le verbe : « une
         // entrée du même nom existe » sur une création (ce que F2 a écrit dans
         // `classer`), « le répertoire n'est pas vide » sur un `removeEntry`.
@@ -371,13 +371,13 @@ describe('la suppression', () => {
         expect((e as FilesError).code).not.toBe('deja-present');
     });
 
-    it('résout le chemin par le canonicaliseur', async () => {
+    it('resolves the path through the canonicaliser', async () => {
         const m = monde((r) => r.files.set('Casse.txt', OCTETS));
         await remove(m.racine, 'CASSE.TXT', false);
         expect(m.arbre.files.size).toBe(0);
     });
 
-    it('refuse la racine en `non-supporte`', async () => {
+    it('refuses the root as `non-supporte`', async () => {
         const m = monde(() => {});
         await expect(remove(m.racine, '', true)).rejects.toMatchObject({
             code: 'non-supporte',
@@ -385,8 +385,8 @@ describe('la suppression', () => {
     });
 });
 
-describe('le retrait de l’arbre source, après un repli de copie', () => {
-    it('🔴 n’emporte PAS une entrée apparue entre-temps : il ÉCHOUE, source intacte', async () => {
+describe('removing the source tree, after a copy fallback', () => {
+    it('🔴 does NOT carry away an entry that appeared in the meantime: it FAILS, source intact', async () => {
         // 🔵 C'est ce qui rend le retrait feuille à feuille PLUS SÛR que
         // `recursive: true`, et pas seulement plus verbeux : on ne retire que
         // ce que la copie vient d'énumérer. Une entrée apparue depuis fait

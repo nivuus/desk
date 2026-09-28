@@ -188,14 +188,14 @@ function fauxVideo(): HTMLVideoElement {
     return { srcObject: null } as unknown as HTMLVideoElement;
 }
 
-describe('connectSession — négociation promise par la spec §10', () => {
+describe('connectSession — negotiation promised by spec §10', () => {
     afterEach(() => {
         derniereInstancePc = undefined;
         messagesEnvoyes = [];
         vi.unstubAllGlobals();
     });
 
-    it("l'offre envoyée contient un `m=audio` en `recvonly`", async () => {
+    it("the sent offer contains an `m=audio` as `recvonly`", async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -213,7 +213,7 @@ describe('connectSession — négociation promise par la spec §10', () => {
         expect(lignes[indexAudio + 1]).toBe('a=recvonly');
     });
 
-    it('deux pistes reçues aboutissent dans un seul MediaStream', async () => {
+    it('two received tracks end up in a single MediaStream', async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -266,7 +266,7 @@ describe('connectSession — négociation promise par la spec §10', () => {
     // vaut pas pour ceux-ci, qui portent sur l'ORDRE des m-lines et sur
     // l'extinction — deux propriétés qu'on peut casser sans rien supprimer, et
     // dont chacune a été vue tomber sous mutation (voir le rapport de tâche).
-    it("l'offre déclare une TROISIÈME m-line, `audio` en `sendonly`, APRÈS l'audio descendante", async () => {
+    it("the offer declares a THIRD m-line, `audio` as `sendonly`, AFTER the downstream audio", async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -295,7 +295,7 @@ describe('connectSession — négociation promise par la spec §10', () => {
         expect(lignes[audios[1] + 1]).toBe('a=sendonly');
     });
 
-    it('le sender du micro est exposé, et il naît SANS PISTE', async () => {
+    it('the mic sender is exposed, and it is born WITHOUT A TRACK', async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -312,7 +312,7 @@ describe('connectSession — négociation promise par la spec §10', () => {
         expect(session.micSender.track).toBeNull();
     });
 
-    it("`close()` ARRÊTE la piste du micro, et pas seulement la connexion", async () => {
+    it("`close()` STOPS the mic track, and not only the connection", async () => {
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
         vi.stubGlobal('WebSocket', FakeSignalingSocket);
         vi.stubGlobal('MediaStream', FakeMediaStream);
@@ -342,7 +342,7 @@ describe('connectSession — négociation promise par la spec §10', () => {
     });
 });
 
-describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
+describe('the handshake carries the token (sub-block P2)', () => {
     afterEach(() => {
         messagesEnvoyes = [];
         vi.unstubAllGlobals();
@@ -354,7 +354,7 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
         vi.stubGlobal('MediaStream', FakeMediaStream);
     }
 
-    it('envoie le jeton passé en option', async () => {
+    it('sends the token passed as an option', async () => {
         armerLesFactices();
         await connectSession({
             signalingUrl: 'ws://signaling.invalid',
@@ -369,7 +369,7 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
         });
     });
 
-    it('retombe sur le coffre du navigateur quand aucun jeton n’est passé', async () => {
+    it('falls back to the browser store when no token is passed', async () => {
         // E7 : le champ est FACULTATIF pour que `main.ts` — modifié par un
         // autre chantier — n'ait pas à bouger. Le repli est donc le chemin
         // NOMINAL, pas un cas de secours, et il doit être éprouvé comme tel.
@@ -387,7 +387,7 @@ describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
         expect(poigneeDeMain().jeton).toBe('jeton-du-coffre');
     });
 
-    it("n'ajoute AUCUN champ hors `jeton`, et n'en retire aucun", async () => {
+    it("adds NO field other than `jeton`, and removes none", async () => {
         // 🔴 Spec §10.2 : le champ est AJOUTÉ, aucun n'est retiré. Un service
         // du sous-bloc P1 ne lit que `role` et `session` et ignore `jeton`,
         // donc ce client reste compatible avec lui. La compatibilité ne va que

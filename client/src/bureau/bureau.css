@@ -90,7 +90,7 @@
    `style.css` que S4 doit reprendre. La clause “aucune longueur hors échelle”
    du §8 de la spec reste FAUSSE à la fin de S3, et de SIX valeurs. » VRAI À SA
    DATE, ET RÉFUTÉ PAR S4 : le contrôle **§7.10**
-   (`client/src/design/longueurs.test.ts`, tâche 2) mesure les longueurs des
+   (`client/src/design/lengths.test.ts`, tâche 2) mesure les longueurs des
    feuilles de surface, il est NÉ ROUGE de HUIT OCCURRENCES pour SIX VALEURS —
    les deux nombres sont vrais de choses différentes, un contrôle comptant des
    occurrences là où S3 comptait des valeurs —, et les tâches 5 à 8 les ont

@@ -60,7 +60,7 @@ async function waitForDevtools(port, attempts = 50) {
         } catch {}
         await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    throw new Error('Chrome DevTools ne répond pas après le délai imparti');
+    throw new Error('Chrome DevTools does not answer after the allotted delay');
 }
 
 async function main() {
@@ -90,7 +90,7 @@ async function main() {
         await cdp.send('Runtime.enable');
         await cdp.send('Page.navigate', { url });
         const t0 = Date.now();
-        console.log(`t=0ms navigation vers ${url}`);
+        console.log(`t=0ms navigating to ${url}`);
         while (Date.now() - t0 < durationMs) {
             const snap = await cdp.eval(
                 `({ status: document.querySelector('#status')?.textContent ?? null, hidden: document.querySelector('#status')?.dataset.hidden ?? null, stats: document.querySelector('#stats')?.textContent ?? null })`,
@@ -107,6 +107,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error('échec de la sonde :', error);
+    console.error('probe failure:', error);
     process.exit(1);
 });

@@ -29,7 +29,7 @@
    DETTE D'ÉNONCÉ. Elle était fausse depuis S1, nommée comme telle, et
    INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
    écrit à cinq endroits du dépôt. S4 livre **§7.10**
-   (`client/src/design/longueurs.test.ts`), le premier contrôle de ⑥ qui en
+   (`client/src/design/lengths.test.ts`), le premier contrôle de ⑥ qui en
    mesure une, et il est NÉ ROUGE de huit occurrences sur l'arbre intact.
 
    ═══════════════════════════════════════════════════════════════════════════

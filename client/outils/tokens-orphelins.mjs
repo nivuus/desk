@@ -114,8 +114,8 @@ const PORTE = 'client/src/design/tokens.css';
 const EXCLUS = new Map([
     [
         'client/design.html',
-        'la galerie rend tous les tokens par construction ; l’inclure rendrait ' +
-            'l’inclusion « déclaré ⊆ employé » vraie pour toujours',
+        'the gallery renders every token by construction; including it would make ' +
+            'the inclusion “declared ⊆ used” true forever',
     ],
     [
         // 🔴 LA RAISON POUR LAQUELLE CE FICHIER NE PEUT PAS FAIRE ÉCHOUER LE
@@ -126,9 +126,9 @@ const EXCLUS = new Map([
         // mise en page de démonstration. La liste d'attente aurait rétréci de
         // cinq sans que le produit ait gagné un seul appelant.
         'client/primitives.html',
-        'une page de démonstration emploie des tokens par construction, dans sa ' +
-            'propre mise en page ; l’inclure ferait sortir de la liste d’attente ' +
-            'des tokens que le PRODUIT n’appelle pas',
+        'a demonstration page uses tokens by construction, in its ' +
+            'own layout; including it would take out of the waiting list ' +
+            'tokens that the PRODUCT does not call',
     ],
 ]);
 
@@ -159,7 +159,7 @@ function fichiersCss(repertoire, acc = []) {
 const sources = SOURCES.map((s) => join(racine, s));
 for (const [i, chemin] of sources.entries()) {
     if (!existsSync(chemin)) {
-        console.error(`${SOURCES[i]} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+        console.error(`${SOURCES[i]} is missing: nothing was measured, this is not a success.`);
         process.exit(2);
     }
 }
@@ -217,39 +217,39 @@ const declares = tokensDeclares(texteSource);
 const orphelins = [...declares].filter((t) => !employePar.has(t)).sort();
 const nonDeclares = [...employePar.keys()].filter((t) => !declares.has(t)).sort();
 
-console.log(`sources       : ${SOURCES.join(', ')} — ${declares.size} token(s) déclaré(s)`);
+console.log(`sources       : ${SOURCES.join(', ')} — ${declares.size} token(s) declared`);
 console.log(
-    `périmètre     : ${balayes.length} fichier(s) — ${employePar.size} token(s) employé(s)`,
+    `scope         : ${balayes.length} file(s) — ${employePar.size} token(s) used`,
 );
-console.log(`  balayés : ${balayes.join(', ')}`);
+console.log(`  scanned: ${balayes.join(', ')}`);
 console.log(
-    `posé par le JS : ${posesJs.size} token(s) (poserToken, hors *.test.ts) — ` +
-        `${[...posesJs.keys()].sort().join(', ') || 'aucun'}`,
+    `set by the JS: ${posesJs.size} token(s) (poserToken, outside *.test.ts) — ` +
+        `${[...posesJs.keys()].sort().join(', ') || 'none'}`,
 );
 for (const [chemin, raison] of EXCLUS) {
-    console.log(`  ${sansExclusion ? 'INCLUS (--sans-exclusion)' : 'exclu'} : ${chemin} — ${raison}`);
+    console.log(`  ${sansExclusion ? 'INCLUDED (--sans-exclusion)' : 'excluded'} : ${chemin} — ${raison}`);
 }
 
 // ① employé ⊆ déclaré
-console.log(`\ninclusion ① — tout var(--…) est déclaré : ${nonDeclares.length} écart(s)`);
+console.log(`\ninclusion ① — every var(--…) is declared: ${nonDeclares.length} gap(s)`);
 for (const token of nonDeclares) {
-    console.log(`  NON DÉCLARÉ  ${token}  employé par ${employePar.get(token).join(', ')}`);
+    console.log(`  UNDECLARED  ${token}  used by ${employePar.get(token).join(', ')}`);
 }
 
 // ② déclaré ⊆ employé, à la liste d'attente près — et l'ÉGALITÉ, pas l'inclusion.
 const nouveaux = orphelins.filter((t) => !EN_ATTENTE_D_APPELANT.has(t));
 const aRetirer = [...EN_ATTENTE_D_APPELANT.keys()].filter((t) => employePar.has(t)).sort();
 console.log(
-    `inclusion ② — tout token déclaré a un appelant : ${orphelins.length} orphelin(s), ` +
-        `dont ${orphelins.length - nouveaux.length} en attente déclarée`,
+    `inclusion ② — every declared token has a caller: ${orphelins.length} orphan(s), ` +
+        `of which ${orphelins.length - nouveaux.length} declared as waiting`,
 );
 for (const token of nouveaux) {
-    console.log(`  NOUVEL ORPHELIN  ${token}  déclaré et appelé par personne`);
+    console.log(`  NEW ORPHAN  ${token}  declared and called by no one`);
 }
 for (const token of aRetirer) {
     console.log(
-        `  À RETIRER DE LA LISTE  ${token}  a désormais un appelant ` +
-            `(${employePar.get(token).join(', ')}) : la liste d'attente doit rétrécir`,
+        `  TO REMOVE FROM THE LIST  ${token}  now has a caller ` +
+            `(${employePar.get(token).join(', ')}): the waiting list must shrink`,
     );
 }
 
@@ -271,22 +271,22 @@ const surSousBlocClos = [...EN_ATTENTE_D_APPELANT.entries()]
     .filter(([, entree]) => SOUS_BLOCS_CLOS.has(entree.sousBloc))
     .sort(([a], [b]) => a.localeCompare(b));
 console.log(
-    `\ninclusion ③ — aucune entrée ne nomme un sous-bloc clos ` +
-        `(${[...SOUS_BLOCS_CLOS].join(', ')}) : ${surSousBlocClos.length} écart(s)`,
+    `\ninclusion ③ — no entry names a closed sub-block ` +
+        `(${[...SOUS_BLOCS_CLOS].join(', ')}): ${surSousBlocClos.length} gap(s)`,
 );
 for (const [token, entree] of surSousBlocClos) {
     console.log(
-        `  SOUS-BLOC CLOS  ${token}  nommait ${entree.sousBloc}, qui est clos : ` +
-            `décider ou re-étiqueter avec sa raison`,
+        `  CLOSED SUB-BLOCK  ${token}  named ${entree.sousBloc}, which is closed: ` +
+            `decide or re-label with its reason`,
     );
 }
 
 const echecs = nonDeclares.length + nouveaux.length + aRetirer.length + surSousBlocClos.length;
-console.log(`\ntotal : ${echecs} écart(s)`);
+console.log(`\ntotal: ${echecs} gap(s)`);
 if (echecs === 0) {
     console.log(
-        `les trois assertions tiennent ; ${EN_ATTENTE_D_APPELANT.size} token(s) restent ` +
-            `en attente d'appelant, nommés dans tokens-orphelins/attente.mjs`,
+        `the three assertions hold; ${EN_ATTENTE_D_APPELANT.size} token(s) remain ` +
+            `waiting for a caller, named in tokens-orphelins/attente.mjs`,
     );
 }
 process.exit(echecs > 0 ? 1 : 0);

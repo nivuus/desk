@@ -70,7 +70,7 @@ export function attacherResizeAuDOM(
         if (session.controlChannel.readyState !== 'open') {
             // Traced, and no longer mute: it is this silent `return` that lost
             // the `Resize`s without leaving the slightest trace (leg 10).
-            console.warn('Resize différé : canal de contrôle non ouvert');
+            console.warn('Resize deferred: control channel not open');
             return;
         }
         // Instrumentation of D9's legacy no. 7 (task 18, D10) — confirmation at the
@@ -79,7 +79,7 @@ export function attacherResizeAuDOM(
         // confirms, for THIS `Resize` attempt, which of the three
         // outcomes happened.
         console.debug('[instrumentation resize] emission', {
-            taille: size,
+            size,
             clientWidth: video.clientWidth,
             clientHeight: video.clientHeight,
             innerWidth: window.innerWidth,
@@ -122,7 +122,7 @@ export function attacherResizeAuDOM(
         // This log, taken before the 200 ms smoothing, settles case 1;
         // the emission log above confirms 2 or 3 for the attempt
         // that actually succeeds.
-        console.debug('[instrumentation resize] declenchement ResizeObserver', {
+        console.debug('[resize instrumentation] ResizeObserver trigger', {
             clientWidth: video.clientWidth,
             clientHeight: video.clientHeight,
             innerWidth: window.innerWidth,

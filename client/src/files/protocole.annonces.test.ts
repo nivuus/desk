@@ -39,8 +39,8 @@ function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
     };
 }
 
-describe('l’ANNONCE des écritures dues', () => {
-    it('🔴 ne répond RIEN, et appelle le rappel injecté', async () => {
+describe('the ANNOUNCEMENT of the due writes', () => {
+    it('🔴 answers NOTHING, and calls the injected callback', async () => {
         // Rendre une trame ferait recevoir au pont une réponse à une
         // corrélation qu'il ne connaît pas, et il la jetterait en `debug!` —
         // SILENCIEUSEMENT. C'est le bras catch-all payé quatre fois sur
@@ -63,7 +63,7 @@ describe('l’ANNONCE des écritures dues', () => {
      * Sans ce champ, une reprise retenue serait indiscernable d'un pont en
      * panne : un compteur de dues figé, et rien qui l'explique.
      */
-    it('🔴 une annonce RETENUE le dit au rappel', async () => {
+    it('🔴 a HELD announcement says so to the callback', async () => {
         const vues: boolean[] = [];
         const serveur = createServer(fauxAdaptateur(), () => {}, {
             onDues: (_dues, retenues) => vues.push(retenues),
@@ -79,7 +79,7 @@ describe('l’ANNONCE des écritures dues', () => {
      * défaut.** Un défaut à `false` vaudrait « le pont pousse », c'est-à-dire
      * l'inverse de ce que `Bonjour` existe pour empêcher.
      */
-    it('🔴 une annonce SANS `retenues` est refusée, pas complétée', async () => {
+    it('🔴 an announcement WITHOUT `retenues` is refused, not completed', async () => {
         const messages: string[] = [];
         const vues: unknown[] = [];
         const serveur = createServer(fauxAdaptateur(), (m) => messages.push(m), {
@@ -92,21 +92,21 @@ describe('l’ANNONCE des écritures dues', () => {
         expect(messages.join(' ')).toMatch(/retenues/);
     });
 
-    it('une annonce illisible est journalisée, jamais fatale', async () => {
+    it('an unreadable announcement is logged, never fatal', async () => {
         const messages: string[] = [];
         const serveur = createServer(fauxAdaptateur(), (m) => messages.push(m), {
             onDues: () => {
-                throw new Error('jamais atteint');
+                throw new Error('never reached');
             },
         });
-        expect(await serveur.traiter(encoder(TYPE_DUES, 0, { dues: 'pas un tableau' }))).toBeNull();
+        expect(await serveur.traiter(encoder(TYPE_DUES, 0, { dues: 'not an array' }))).toBeNull();
         expect(messages.join(' ')).toMatch(/dues/);
     });
 
-    it('un FAIT reçu par le navigateur est IGNORÉ : il ne demande rien', async () => {
+    it('a FAIT received by the browser is IGNORED: it requests nothing', async () => {
         const messages: string[] = [];
         const serveur = createServer(fauxAdaptateur(), (m) => messages.push(m));
         expect(await serveur.traiter(encoder(TYPE_FAIT, 3, {}))).toBeNull();
-        expect(messages.join(' ')).toMatch(/ne demande rien/);
+        expect(messages.join(' ')).toMatch(/requests nothing/);
     });
 });

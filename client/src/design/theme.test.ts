@@ -37,7 +37,7 @@ function racineFactice() {
     };
 }
 
-describe('choisir — la fenêtre ÉCRIVANTE', () => {
+describe('choisir — the WRITING window', () => {
     // 🔴 Les deux tests suivants sont DEUX `it()` séparés, jamais deux `expect`
     // du même test. `expect` interrompt le test à la première assertion : un
     // seul `it()` qui vérifierait l'écriture PUIS l'attribut s'arrêterait à
@@ -45,27 +45,27 @@ describe('choisir — la fenêtre ÉCRIVANTE', () => {
     // mécanisme, puisque `storage` ne se déclenche pas chez l'écrivain — se
     // cacherait derrière elle. C'est la leçon que le sous-bloc P2 a payée.
 
-    it('écrit le thème dans le coffre, sous la clé préfixée', () => {
+    it('writes the theme to the store, under the prefixed key', () => {
         const coffre = coffreFactice();
         choisir(coffre, racineFactice(), 'clair');
         expect(coffre.getItem(CLE_THEME)).toBe('clair');
     });
 
-    it("applique le thème LOCALEMENT, parce que `storage` ne revient pas chez l'écrivain", () => {
+    it("applies the theme LOCALLY, because `storage` does not come back to the writer", () => {
         const racine = racineFactice();
         choisir(coffreFactice(), racine, 'clair');
         expect(racine.attributs.get('data-theme')).toBe('clair');
     });
 });
 
-describe('surStockageModifie — une fenêtre VOISINE', () => {
-    it("pose `data-theme` à partir de l'événement d'une autre fenêtre", () => {
+describe('surStockageModifie — a NEIGHBOURING window', () => {
+    it("sets `data-theme` from the event of another window", () => {
         const racine = racineFactice();
         onStorageChanged(racine, CLE_THEME, 'sombre');
         expect(racine.attributs.get('data-theme')).toBe('sombre');
     });
 
-    it("retire l'attribut quand la voisine est repassée à « systeme »", () => {
+    it("removes the attribute when the neighbour went back to « systeme »", () => {
         // ⚠️ CE TEST REMPLACE celui que le plan prescrivait — « `onStorageChanged`
         // n'écrit rien dans le coffre ». Ce dernier est INSATISFIABLE COMME
         // TEST : la signature ne reçoit AUCUN `Coffre`, donc la fonction n'a
@@ -80,7 +80,7 @@ describe('surStockageModifie — une fenêtre VOISINE', () => {
         expect(racine.attributs.has('data-theme')).toBe(false);
     });
 
-    it("ignore un événement portant une AUTRE clé — un jeton d'accès", () => {
+    it("ignores an event carrying ANOTHER key — an access token", () => {
         // La clé employée ici n'est pas inventée : `client/src/connexion.ts:57`
         // écrit RÉELLEMENT `guac.jeton.acces` au moment de la connexion, donc
         // toute fenêtre voisine reçoit cet événement. Un gestionnaire qui ne
@@ -92,18 +92,18 @@ describe('surStockageModifie — une fenêtre VOISINE', () => {
     });
 });
 
-describe('themeStocke — robustesse', () => {
-    it("retombe sur « systeme » sur une valeur inconnue", () => {
+describe('themeStocke — robustness', () => {
+    it("falls back to « systeme » on an unknown value", () => {
         expect(themeStocke(coffreFactice({ [CLE_THEME]: 'bleu' }))).toBe('systeme');
     });
 
-    it("retombe sur « systeme » quand la clé est absente", () => {
+    it("falls back to « systeme » when the key is absent", () => {
         expect(themeStocke(coffreFactice())).toBe('systeme');
     });
 });
 
 describe('appliquer', () => {
-    it("RETIRE `data-theme` pour « systeme », au lieu de poser l'attribut", () => {
+    it("REMOVES `data-theme` for « systeme », instead of setting the attribute", () => {
         // Son ABSENCE signifie « systeme ». Un `data-theme="systeme"` passerait
         // le sélecteur `:root:not([data-theme="sombre"])` de la requête média,
         // mais pas `:root[data-theme="clair"]` — et rien ne casserait
@@ -136,8 +136,8 @@ describe('appliquer', () => {
  * le build qui prouve l'INJECTION (tâche 10, Step 3) et rien ne prouve
  * l'absence d'éclair.
  */
-describe('l’amorce anti-FOUC et `theme.ts` ne peuvent pas diverger sur la clé', () => {
-    it('`amorce-theme.js` LIT littéralement la valeur de `CLE_THEME`', () => {
+describe('the anti-FOUC bootstrap and `theme.ts` cannot diverge on the key', () => {
+    it('`amorce-theme.js` READS the value of `CLE_THEME` literally', () => {
         // 🔴 L'assertion porte sur l'APPEL, pas sur la présence de la chaîne
         // quelque part dans le fichier. Une première rédaction disait
         // `toContain("'guac.theme'")` : elle était satisfaite par le
@@ -147,7 +147,7 @@ describe('l’amorce anti-FOUC et `theme.ts` ne peuvent pas diverger sur la clé
         expect(amorce).toContain(`getItem('${CLE_THEME}')`);
     });
 
-    it('`amorce-theme.js` ne porte AUCUNE autre clé `guac.*`', () => {
+    it('`amorce-theme.js` carries NO other `guac.*` key', () => {
         // Sans cette seconde assertion, ajouter une clé à l'amorce sans retirer
         // l'ancienne passerait : `toContain` ne dit rien de ce qu'il y a autour.
         const cles = [...amorce.matchAll(/'(guac\.[a-z.]+)'/g)].map((m) => m[1]);

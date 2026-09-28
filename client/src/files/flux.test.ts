@@ -61,8 +61,8 @@ async function resolue(p: Promise<unknown>): Promise<boolean> {
     return (await Promise.race([p, sentinelle])) !== marque;
 }
 
-describe('la contre-pression', () => {
-    it('pose `bufferedAmountLowThreshold` à la construction', () => {
+describe('back-pressure', () => {
+    it('sets `bufferedAmountLowThreshold` at construction', () => {
         // ⚠️ La spec §3.4 l'exige (« posé ») ; `canal.ts` ne le posait PAS
         // avant F3 — il ne passait que `{ ordered: true }`.
         const c = fauxCanal();
@@ -70,14 +70,14 @@ describe('la contre-pression', () => {
         expect(c.bufferedAmountLowThreshold).toBe(SEUIL_TAMPON);
     });
 
-    it('n’attend rien quand le tampon est sous le seuil', async () => {
+    it('waits for nothing when the buffer is under the threshold', async () => {
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(0);
         expect(await resolue(cp.beforeSend())).toBe(true);
     });
 
-    it('🔴 n’envoie PAS tant que le tampon dépasse le seuil', async () => {
+    it('🔴 does NOT send while the buffer exceeds the threshold', async () => {
         // Rouge : envoyer quand même. Le faux voit `bufferedAmount` croître sans
         // borne, et le canal devient la source de latence de tout le reste.
         const c = fauxCanal();
@@ -90,7 +90,7 @@ describe('la contre-pression', () => {
         expect(await resolue(attente)).toBe(true);
     });
 
-    it('🔴 `bufferedamountlow` libère l’attente', async () => {
+    it('🔴 `bufferedamountlow` releases the wait', async () => {
         // Rouge : ne pas s'y abonner. **L'ATTENTE NE SE TERMINE JAMAIS, et le
         // pont expire** — un blocage PIRE que celui qu'on répare, puisqu'il
         // fige la page au lieu de ralentir un transfert.
@@ -103,7 +103,7 @@ describe('la contre-pression', () => {
         expect(await resolue(attente)).toBe(true);
     });
 
-    it('🔴 un canal FERMÉ pendant l’attente ne reste pas suspendu', async () => {
+    it('🔴 a channel CLOSED during the wait does not stay suspended', async () => {
         // Rouge : ne pas traiter `close`. Un canal fermé n'émettra plus jamais
         // `bufferedamountlow` : une lecture en cours figerait la page à la
         // fermeture de l'onglet distant.
@@ -116,7 +116,7 @@ describe('la contre-pression', () => {
         expect(await resolue(attente)).toBe(true);
     });
 
-    it('un canal DÉJÀ fermé n’attend pas du tout', async () => {
+    it('an ALREADY closed channel does not wait at all', async () => {
         const c = fauxCanal();
         const cp = contrePression(c);
         c.poser(SEUIL_TAMPON * 2);
@@ -124,7 +124,7 @@ describe('la contre-pression', () => {
         expect(await resolue(cp.beforeSend())).toBe(true);
     });
 
-    it('🔴 LES DEUX ÉCOUTEURS SONT RETIRÉS, quel que soit celui qui gagne', async () => {
+    it('🔴 BOTH LISTENERS ARE REMOVED, whichever one wins', async () => {
         // 🔴 C'est le défaut relevé de l'ancien pont : un écouteur posé PAR
         // REQUÊTE et jamais retiré (`src/file.js:155`), dont le coût croissait
         // avec le nombre d'opérations passées, indéfiniment.
@@ -140,7 +140,7 @@ describe('la contre-pression', () => {
         expect(c.abonnes.close).toBe(0);
     });
 
-    it('🔴 le tampon qui redescend ENTRE le test et l’abonnement ne suspend pas à jamais', async () => {
+    it('🔴 the buffer that drops BETWEEN the test and the subscription does not suspend forever', async () => {
         // La course classique de tout mécanisme « tester puis attendre » :
         // l'événement passe pendant qu'on s'abonne, et l'attente ne se termine
         // jamais. Rouge : retirer le re-contrôle qui suit l'abonnement.

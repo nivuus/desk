@@ -31,7 +31,7 @@
 import { composer } from '../prefixe';
 import { createDesktop, type FenetreConnue, type Ton } from '../shell';
 import { dessinerFenetres } from './fenetres-dom';
-import { installerLePont } from './fichiers-dom';
+import { installerLePont } from './files-dom';
 import {
     NOM_VERROU,
     batirDemande,
@@ -56,13 +56,13 @@ declare global {
 /// What a tab that does not hold the desktop says about ITSELF.
 ///
 /// 🔴 **A FOLLOWER WAS SILENT ABOUT ITS OWN STATE** (Minor ⑥ of the final
-/// review): the only text explaining it was written in `#etat-fichiers`,
+/// review): the only text explaining it was written in `#files-state`,
 /// **inside a collapsed `<details>`**, and `#statut` stayed empty.
 /// ⚠️ **IT IS NOT AN ERROR MESSAGE** — the decision "no error on the
 /// second tab" (spec §2) does not forbid INFORMING, and this line is what
 /// makes understandable the fact that a "Launch" clicked here makes
 /// the window appear in the other tab.
-const TEXTE_SUIVEUR = 'Bureau tenu par un autre onglet.';
+const TEXTE_SUIVEUR = 'Desktop held by another tab.';
 
 /// The election lock's name, PREFIXED by the VM.
 ///
@@ -117,7 +117,7 @@ export interface DepsBureauPage {
     /// `<prefixe>:bureau`. It is `hub/page.ts::start` that guarantees this
     /// order; this module only receives the value.
     prefixe: string;
-    /// `?faute-fichiers=1` — BENCH variable, never a shipped
+    /// `?faute-fichiers=1` — BENCH variable, never a shipped (policy: allow-fr, bench URL parameter)
     /// configuration. Read ONCE by the page and passed as an argument, never reread
     /// here: it is the convention of `PLEIN_ECRAN` and `PART_SONDAGE` on the
     /// agent side — the mechanism reads a flag it is given.
@@ -285,7 +285,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
 
     // 🔴 **THE FILE BRIDGE FOLLOWS THE ELECTION, AND IT IS A CONSEQUENCE OF THIS
     // TASK, NOT AN OVERSIGHT** (Important ③, review round 1): the bridge's session
-    // (`fichiers/canal.ts::sessionDuPont`) is FIXED PER VM and carries, it
+    // (`files/canal.ts::sessionDuPont`) is FIXED PER VM and carries, it
     // too, the `client` role — EXCLUSIVE. The reasoning of `porteur.ts`
     // for the control session ("as long as the desktop lived in a
     // NAMED window, there could not be two") holds WORD FOR WORD
@@ -298,7 +298,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     // tab does not handle files".
     const desactiverLePont = (): void => {
         el.boutonDossier.disabled = true;
-        el.filesState.textContent = 'Les fichiers sont gérés par l’onglet qui tient le bureau.';
+        el.filesState.textContent = 'Files are handled by the tab that holds the desktop.';
         poserTon(el.filesState, 'neutre');
     };
     const activerLePont = (): void => {
@@ -313,7 +313,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         // had set — including the text of `#statut`, which would otherwise say
         // "Desktop held by another tab" whereas it is THIS one that
         // holds it now.
-        el.statut.textContent = 'connexion du bureau…';
+        el.statut.textContent = 'connecting the desktop…';
         poserTon(el.statut, 'neutre');
         activerLePont();
         // 🔴 **THE SEQUENCE IS IN `porteur.ts::promouvoir`, PURE AND TESTED**
@@ -346,7 +346,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                 // ⚠️ ACTIONABLE, and not "an error occurred": the
                 // reload restarts `assurerAccesFrais`, hence Pomerium.
                 el.statut.textContent =
-                    'Votre session a expiré. Rechargez la page pour vous reconnecter.';
+                    'Your session has expired. Reload the page to sign in again.';
                 poserTon(el.statut, 'danger');
                 desactiverLePont();
             },
@@ -357,7 +357,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         socket = new WebSocket(deps.signalingUrl);
         socket.addEventListener('open', () => {
             socket!.send(JSON.stringify({ role: 'client', session: sessionDeControle, jeton }));
-            el.statut.textContent = 'bureau connecté';
+            el.statut.textContent = 'desktop connected';
             poserTon(el.statut, 'neutre');
         });
         socket.addEventListener('message', (evenement) => {
@@ -443,7 +443,7 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             porteur = false;
             // ⚠️ **TELL ITS STATE, NOT ONLY KEEP QUIET** (Minor ⑥): without
             // this line, `#statut` stayed EMPTY and the only explanation of
-            // this tab's role lived in `#etat-fichiers`, inside
+            // this tab's role lived in `#files-state`, inside
             // a COLLAPSED `<details>`. A tab promoted later overwrites this
             // text from `ouvrirLaSession` on ("connecting the desktop…").
             el.statut.textContent = TEXTE_SUIVEUR;

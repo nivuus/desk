@@ -36,19 +36,19 @@ const racine = join(paquet, '..');
 
 /** Les sept, dans l'ordre où ils se lisent : d'abord la source, puis le bâti. */
 const CONTROLES = [
-    ['§7.4  les trois blocs de thème ne divergent pas', 'blocs-de-theme.mjs'],
-    ['§7.1  les contrastes tiennent les seuils WCAG', 'contraste.mjs'],
-    ['§7.2  aucune couleur littérale hors de tokens/couleurs.css', 'couleurs-litterales.mjs'],
-    ['§7.6  aucun token orphelin, aucun var() non déclaré', 'tokens-orphelins.mjs'],
-    ['§7.9  toute classe employée est déclarée, et une primitive atteint le produit', 'classes-employees.mjs'],
-    ['§7.3  toute surface bâtie porte les tokens', 'surfaces-baties.mjs'],
-    ['§7.7  le poids CSS ne dérive pas', 'poids-css.mjs'],
+    ['§7.4  the three theme blocks do not diverge', 'blocs-de-theme.mjs'],
+    ['§7.1  the contrasts hold the WCAG thresholds', 'contraste.mjs'],
+    ['§7.2  no literal colour outside tokens/couleurs.css', 'couleurs-litterales.mjs'],
+    ['§7.6  no orphan token, no undeclared var()', 'tokens-orphelins.mjs'],
+    ['§7.9  every used class is declared, and a primitive reaches the product', 'classes-employees.mjs'],
+    ['§7.3  every built surface carries the tokens', 'surfaces-baties.mjs'],
+    ['§7.7  the CSS weight does not drift', 'poids-css.mjs'],
 ];
 
-console.log('==> npm run build (sans quoi §7.3 et §7.7 jugeraient le build d’avant)');
+console.log('==> npm run build (otherwise §7.3 and §7.7 would judge the previous build)');
 const build = spawnSync('npm', ['run', 'build'], { cwd: paquet, stdio: 'inherit' });
 if (build.status !== 0) {
-    console.error('\nÉCHEC : le build a échoué — aucun contrôle n’a été joué.');
+    console.error('\nFAILURE: the build failed — no check was run.');
     process.exit(2);
 }
 
@@ -60,9 +60,9 @@ for (const [titre, script] of CONTROLES) {
     if (r.status !== 0) echoues.push(`${titre} (sortie ${r.status})`);
 }
 
-console.log(`\n═══ ${CONTROLES.length - echoues.length}/${CONTROLES.length} contrôle(s) vert(s) ═══`);
-for (const echec of echoues) console.log(`  ÉCHEC  ${echec}`);
+console.log(`\n═══ ${CONTROLES.length - echoues.length}/${CONTROLES.length} check(s) green ═══`);
+for (const echec of echoues) console.log(`  FAILURE  ${echec}`);
 if (echoues.length === 0) {
-    console.log('  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.');
+    console.log('  §7.5 (the theme switch) is a unit test: it runs in `npm test`.');
 }
 process.exit(echoues.length > 0 ? 1 : 0);

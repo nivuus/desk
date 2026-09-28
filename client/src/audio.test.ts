@@ -56,14 +56,14 @@ function faireMediaRecalcitrant() {
 }
 
 describe('armerLeSon', () => {
-    it('laisse le média muet tant qu’aucun geste n’est venu', () => {
+    it('leaves the media muted as long as no gesture has come', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
         expect(media.muted).toBe(true);
     });
 
-    it('démute au premier clic', () => {
+    it('unmutes on the first click', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -71,7 +71,7 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(false);
     });
 
-    it('démute aussi sur une touche du clavier', () => {
+    it('also unmutes on a keyboard key', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -79,7 +79,7 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(false);
     });
 
-    it('retire tous ses écouteurs après le premier geste', () => {
+    it('removes all its listeners after the first gesture', () => {
         // Sans retrait, chaque geste ultérieur reforcerait `muted = false` et
         // écraserait un éventuel choix de l'utilisateur de couper le son.
         const media = { muted: true };
@@ -94,7 +94,7 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(true);
     });
 
-    it('signale le changement d’état une seule fois', () => {
+    it('reports the state change only once', () => {
         const media = { muted: true };
         const cible = faireCible();
         const surEtat = vi.fn();
@@ -106,7 +106,7 @@ describe('armerLeSon', () => {
         expect(surEtat).toHaveBeenCalledTimes(2);
     });
 
-    it('l’annulation retire les écouteurs sans démuter', () => {
+    it('cancelling removes the listeners without unmuting', () => {
         const media = { muted: true };
         const cible = faireCible();
         const annuler = armerLeSon({ media, cible });
@@ -116,7 +116,7 @@ describe('armerLeSon', () => {
         expect(cible.compte('pointerdown')).toBe(0);
     });
 
-    it('un appui sur Shift seul ne démute pas et ne consomme pas l’armement', () => {
+    it('pressing Shift alone does not unmute and does not consume the arming', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -128,7 +128,7 @@ describe('armerLeSon', () => {
         expect(cible.compte('pointerdown')).toBe(1);
     });
 
-    it('Control, Alt, Meta et Escape ne valent pas non plus activation', () => {
+    it('Control, Alt, Meta and Escape do not count as activation either', () => {
         for (const touche of ['Control', 'Alt', 'Meta', 'Escape']) {
             const media = { muted: true };
             const cible = faireCible();
@@ -140,7 +140,7 @@ describe('armerLeSon', () => {
         }
     });
 
-    it('une touche ordinaire qui suit un modificateur démute bien', () => {
+    it('an ordinary key following a modifier does unmute', () => {
         const media = { muted: true };
         const cible = faireCible();
         armerLeSon({ media, cible });
@@ -154,7 +154,7 @@ describe('armerLeSon', () => {
         expect(cible.compte('pointerdown')).toBe(0);
     });
 
-    it('un média dont le démutage est refusé par le navigateur laisse les écouteurs en place', () => {
+    it('a media whose unmute is refused by the browser leaves the listeners in place', () => {
         const media = faireMediaRecalcitrant();
         const cible = faireCible();
         const surEtat = vi.fn();
@@ -174,7 +174,7 @@ describe('armerLeSon', () => {
         expect(cible.compte('pointerdown')).toBe(1);
     });
 
-    it('l’annulation après un démutage déjà survenu ne casse rien et laisse le son actif', () => {
+    it('cancelling after an unmute that already happened breaks nothing and leaves the sound on', () => {
         // Le geste a déjà tout retiré lui-même (voir le test précédent) :
         // `annuler()` doit rester un no-op silencieux, pas remuter ni lever.
         const media = { muted: true };

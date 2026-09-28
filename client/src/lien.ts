@@ -19,19 +19,19 @@ export function texteLien(message: LinkMessage): TexteLien {
 
     if (message.quality === 'insuffisante') {
         return {
-            resume: `Réseau insuffisant pour le jeu nerveux — ${size}, ${mbps} Mb/s`,
+            resume: `Network insufficient for twitchy gaming — ${size}, ${mbps} Mb/s`,
             alerte: true,
         };
     }
     if (message.quality === 'degradee') {
         return {
-            resume: `Image réduite par le réseau — ${size}, ${mbps} Mb/s`,
+            resume: `Image reduced by the network — ${size}, ${mbps} Mb/s`,
             alerte: true,
         };
     }
     if (message.adaptation === 'indisponible') {
         return {
-            resume: `${size}, ${mbps} Mb/s — adaptation indisponible`,
+            resume: `${size}, ${mbps} Mb/s — adaptation unavailable`,
             alerte: false,
         };
     }

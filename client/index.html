@@ -1,44 +1,44 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Session distante</title>
-        <!-- Le socle EN PREMIER, la feuille de cette surface ensuite : l'ordre
-             porte la cascade. `style.css` n'importe rien de son côté, pour que
-             Vite PARTAGE le socle entre les pages au lieu de le ré-inliner
-             dans chacune — mesure au prototype, voir l'en-tête de style.css. -->
+        <title>Remote session</title>
+        <!-- The base layer FIRST, this surface's sheet next: the order
+             carries the cascade. `style.css` imports nothing on its side, so that
+             Vite SHARES the base layer between the pages instead of re-inlining it
+             into each one — measured on the prototype, see the header of style.css. -->
         <link rel="stylesheet" href="/src/design/socle.css" />
         <link rel="stylesheet" href="/src/style.css" />
     </head>
     <body>
         <video id="remote" autoplay playsinline muted tabindex="0"></video>
-        <!-- Les deux bandeaux prennent la famille `message` et sa variante
-             FLOTTANTE (sous-bloc S4, tâche 5) : `.message` seule poserait, en
-             thème clair, un panneau clair et opaque au-dessus de la vidéo —
-             ce que `tokens.css` interdit en une phrase. La variante troque le
-             fond opaque contre `--voile-flottant`, hors thème.
-             ⚠️ `#stats` naît VIDE, et `.message:empty` le fait DISPARAÎTRE au
-             lieu d'en laisser un cadre : c'est le comportement voulu, écrit
-             dans `primitives/message.css` depuis S3. -->
-        <div id="status" class="message message--flottant" role="status">Connexion…</div>
+        <!-- Both banners take the `message` family and its FLOATING
+             variant (sub-block S4, task 5): `.message` alone would set, in
+             light theme, a light and opaque panel above the video —
+             which `tokens.css` forbids in one sentence. The variant swaps the
+             opaque background for `--voile-flottant`, out of theme.
+             ⚠️ `#stats` is born EMPTY, and `.message:empty` makes it DISAPPEAR
+             instead of leaving a frame: that is the intended behaviour, written
+             in `primitives/message.css` since S3. -->
+        <div id="status" class="message message--flottant" role="status">Connecting…</div>
         <div id="stats" class="message message--flottant" role="status"></div>
-        <!-- `hidden` par défaut : le bouton n'apparaît QUE si l'agent annonce
-             `mic: true` dans son message `ready` (spec §10). Un agent d'avant le
-             chantier E ne porte pas le champ, et un bouton qui ne mènerait nulle
-             part est pire que pas de bouton. -->
+        <!-- `hidden` by default: the button appears ONLY if the agent announces
+             `mic: true` in its `ready` message (spec §10). An agent from before
+             work item E does not carry the field, and a button leading
+             nowhere is worse than no button. -->
         <button id="micro" type="button" title="Microphone" hidden>🎤</button>
-        <button id="fullscreen" type="button" title="Plein écran">⛶</button>
-        <!-- L'ÉCRAN PLEIN CADRE DES ÉTATS TERMINAUX (sous-bloc S4, tâche 9).
-             `hidden` par défaut, et la feuille `src/session/etat-terminal.css`
-             pose `.ecran[hidden] { display: none }` EXPLICITEMENT : la cascade
-             compare l'origine avant la spécificité, donc `.ecran { display:
-             grid }`, règle d'auteur, l'emporterait sur le `[hidden]` de
-             l'agent utilisateur et l'écran serait visible dès le chargement.
-             ⚠️ LE TITRE NAÎT VIDE, ET C'EST VOULU : `ecran-terminal.ts` l'écrit
-             depuis le TON, un titre statique étant faux de l'un des deux cas
-             (« Session terminée » ment sur un échec où aucune session n'a
-             commencé). L'y recopier ferait deux libellés à tenir d'accord. -->
+        <button id="fullscreen" type="button" title="Fullscreen">⛶</button>
+        <!-- THE FULL-FRAME SCREEN OF TERMINAL STATES (sub-block S4, task 9).
+             `hidden` by default, and the sheet `src/session/etat-terminal.css`
+             sets `.ecran[hidden] { display: none }` EXPLICITLY: the cascade
+             compares origin before specificity, so `.ecran { display:
+             grid }`, an author rule, would win over the user agent's
+             `[hidden]` and the screen would be visible from load time.
+             ⚠️ THE TITLE IS BORN EMPTY, AND THAT IS INTENDED: `ecran-terminal.ts` writes it
+             from the TONE, a static title being wrong in one of the two cases
+             ("Session ended" lies on a failure where no session ever
+             started). Copying it here would make two labels to keep in sync. -->
         <div id="fin" class="ecran" hidden>
             <div class="carte ecran__carte">
                 <h1 class="ecran__titre"></h1>

@@ -62,7 +62,7 @@ export function resumer(file: File, issue: Issue): Resume {
     if (issue.etat === 'scelle') {
         return {
             ton: 'succes',
-            texte: `${file.name} a été téléversé et scellé (${issue.deposees.length} tranche(s) déposée(s)).`,
+            texte: `${file.name} was uploaded and sealed (${issue.deposees.length} chunk(s) deposited).`,
             id: issue.id,
         };
     }
@@ -71,10 +71,10 @@ export function resumer(file: File, issue: Issue): Resume {
     // of refusals belongs to `plateforme/`, which `client/` cannot import;
     // translating it here would make a copy no type confronts with its
     // source, silently wrong on renaming — the defect
-    // `connexion.ts` declares about `aucune-vm` and which P4 bequeathed without closing it.
+    // `connexion.ts` declares about `aucune-vm` and which P4 bequeathed without closing it. (policy: allow-fr, wire refusal code)
     const texte =
         r.source === 'client'
-            ? `${file.name} n'a pas été téléversé : ${r.motif} (${r.detail}).`
-            : `${file.name} a été refusé par le service à l'étape « ${r.etape} » : ${r.motif}.`;
+            ? `${file.name} was not uploaded: ${r.motif} (${r.detail}).`
+            : `${file.name} was refused by the service at step « ${r.etape} »: ${r.motif}.`;
     return { ton: 'danger', texte, id: issue.id };
 }

@@ -72,8 +72,8 @@ const TOKEN_TEMOIN = '--fond-0';
 const EXCLUS_DE_A = new Map([
     [
         'shell.html',
-        'redirection pure depuis le 31 août 2026 (tâche 9) ; elle ne peint ' +
-            'rien et ne lie donc AUCUNE feuille, à dessein — voir son commentaire',
+        'pure redirection since 31 August 2026 (task 9); it paints ' +
+            'nothing and so links NO sheet, on purpose — see its comment',
     ],
 ]);
 
@@ -82,7 +82,7 @@ const iDist = args.indexOf('--dist');
 const dist = iDist === -1 ? 'client/dist' : args[iDist + 1];
 
 if (!existsSync(dist)) {
-    console.error(`${dist} est absent : lancer d'abord « npm run build ».`);
+    console.error(`${dist} is missing: run « npm run build » first.`);
     process.exit(2);
 }
 
@@ -124,25 +124,25 @@ for (const page of pages) {
     }
 }
 
-console.log(`pages bâties : ${pages.length} (${pages.join(', ')})`);
+console.log(`built pages: ${pages.length} (${pages.join(', ')})`);
 for (const [page, raison] of EXCLUS_DE_A) {
-    console.log(`  exclue de A : ${page} — ${raison}`);
+    console.log(`  excluded from A: ${page} — ${raison}`);
 }
 console.log('');
-console.log(`assertion A — un <link rel="stylesheet"> par page : ${echecsA.length} échec(s)`);
-for (const page of echecsA) console.log(`  ÉCHEC A  ${page} : aucune feuille de style liée`);
+console.log(`assertion A — one <link rel="stylesheet"> per page: ${echecsA.length} failure(s)`);
+for (const page of echecsA) console.log(`  FAILURE A  ${page}: no linked stylesheet`);
 console.log(
-    `assertion B — une feuille liée déclarant ${TOKEN_TEMOIN} : ${echecsB.length} échec(s)` +
+    `assertion B — a linked sheet declaring ${TOKEN_TEMOIN}: ${echecsB.length} failure(s)` +
         // Ni les échecs de A, ni les pages EXCLUES DE A (`continue` avant B) ne
         // sont évaluées par B — les trois pages bâties comptées, les échecs, les
         // exclues et les évaluées, doivent se retrouver dans ce total.
-        ` (évaluée sur ${pages.length - echecsA.length - EXCLUS_DE_A.size} page(s))`,
+        ` (evaluated on ${pages.length - echecsA.length - EXCLUS_DE_A.size} page(s))`,
 );
 for (const e of echecsB) {
-    console.log(`  ÉCHEC B  ${e.page} : lie ${e.feuilles.join(', ')}, aucune ne déclare ${TOKEN_TEMOIN}`);
+    console.log(`  FAILURE B  ${e.page}: links ${e.feuilles.join(', ')}, none declares ${TOKEN_TEMOIN}`);
 }
 
 const total = echecsA.length + echecsB.length;
 console.log('');
-console.log(total === 0 ? 'les DEUX assertions sont vertes' : `total : ${total} échec(s)`);
+console.log(total === 0 ? 'BOTH assertions are green' : `total: ${total} failure(s)`);
 process.exit(total > 0 ? 1 : 0);

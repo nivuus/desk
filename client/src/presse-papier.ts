@@ -35,7 +35,7 @@ export interface Recu {
 /// (`micro.ts`), and for the same reason — a message that only states the
 /// symptom leaves the user with no gesture to make.
 export const MESSAGE_ECHEC =
-    "copie de la VM non recopiée ici — cliquez dans la fenêtre pour lui rendre le focus, puis recopiez";
+    "VM copy not copied here — click in the window to give it back the focus, then copy again";
 
 /// Number of CONSECUTIVE failures before shouting.
 ///
@@ -66,7 +66,7 @@ export const PRESSE_PAPIER_MAX = 64 * 1024;
 /// the user what they must reduce.
 export function messageDeRefus(octets: number): string {
     const kio = Math.round(octets / 1024);
-    return `copie trop volumineuse (${kio} Kio) — elle n'a pas été recopiée ici, réduisez la sélection`;
+    return `copy too large (${kio} KiB) — it was not copied here, reduce the selection`;
 }
 
 export class PressePapierLocal {

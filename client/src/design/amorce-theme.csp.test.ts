@@ -23,7 +23,7 @@ function baliseInjectee() {
     return baliseAmorce();
 }
 
-describe("l'amorce anti-FOUC ne peut pas être bloquée par la CSP servie", () => {
+describe("the anti-FOUC bootstrap cannot be blocked by the served CSP", () => {
     // 🔴 C'EST LA RÉGRESSION ELLE-MÊME, REJOUÉE À L'ENVERS. Avant ce lot, le
     // greffon rendait `{ tag: 'script', children: AMORCE, … }` : un script EN
     // LIGNE. La CSP ci-dessous n'a JAMAIS admis `'unsafe-inline'` ni aucun
@@ -31,13 +31,13 @@ describe("l'amorce anti-FOUC ne peut pas être bloquée par la CSP servie", () =
     // mesuré. Ce test échoue si quiconque réintroduit `children` sans changer
     // la CSP, ET si quiconque durcit la CSP sans vérifier que l'amorce reste
     // servable.
-    it('le greffon injecte une balise `src`, JAMAIS `children` (un script en ligne)', () => {
+    it('the plugin injects a `src` tag, NEVER `children` (an inline script)', () => {
         const balise = baliseInjectee();
         expect(balise.attrs).toHaveProperty('src');
         expect(balise).not.toHaveProperty('children');
     });
 
-    it("la balise n'est ni `async`, ni `defer`, ni `type=\"module\"` — l'anti-FOUC l'exige", () => {
+    it("the tag is neither `async`, nor `defer`, nor `type=\"module\"` — the anti-FOUC requires it", () => {
         // Un script asynchrone, différé, ou de type module s'exécuterait
         // APRÈS l'analyse du `<body>`, donc après la première peinture : ce
         // serait le FOUC que cette amorce existe pour éviter. Un `<script
@@ -54,7 +54,7 @@ describe("l'amorce anti-FOUC ne peut pas être bloquée par la CSP servie", () =
         expect(attrs.type).not.toBe('module');
     });
 
-    it("l'URL servie est de MÊME ORIGINE (un chemin absolu, jamais un hôte tiers)", () => {
+    it("the served URL is SAME ORIGIN (an absolute path, never a third-party host)", () => {
         // 🔴 `script-src 'self'` n'admet QUE la même origine. Une URL absolue
         // (`https://…`) échapperait silencieusement à ce test tout en étant
         // bloquée par la CSP en pratique — la même classe de défaut, une
@@ -64,7 +64,7 @@ describe("l'amorce anti-FOUC ne peut pas être bloquée par la CSP servie", () =
         expect(balise.attrs?.src).toMatch(/^\//);
     });
 
-    it("la CSP n'a besoin d'AUCUN `'unsafe-inline'` ni hash pour admettre ce fichier", () => {
+    it("the CSP needs NO `'unsafe-inline'` nor hash to admit this file", () => {
         // 🔴 CETTE ASSERTION EST CE QUI REND LE REMÈDE (b) DÉCISIF : `'self'`
         // seul couvre déjà un fichier de même origine. Un hash `sha256-…`
         // aurait dû être TENU IDENTIQUE, à la main, dans
@@ -81,7 +81,7 @@ describe("l'amorce anti-FOUC ne peut pas être bloquée par la CSP servie", () =
     });
 });
 
-describe("l'actif bâti ne diverge pas de sa source", () => {
+describe("the built asset does not diverge from its source", () => {
     // 🔴 LA DÉMONSTRATION DE ROUGE DE CE LOT PASSE PAR CE TEST. `client/dist`
     // est un ARTEFACT DE BUILD (gitignoré) : ce test exige `npm run build`
     // AU PRÉALABLE, et lève LOUDLY (aucun `||` de repli, aucun `try/catch`
@@ -97,7 +97,7 @@ describe("l'actif bâti ne diverge pas de sa source", () => {
     // rebuild, ce test rougit (la source a changé, `dist/` non), restauré
     // depuis la copie nommée — jamais `git checkout --`, qui aurait aussi
     // effacé un éventuel travail non commité (`CLAUDE.md`, pièges du shell).
-    it('`dist/amorce-theme.js` est identique à `src/design/amorce-theme.js`', async () => {
+    it('`dist/amorce-theme.js` is identical to `src/design/amorce-theme.js`', async () => {
         // 🔴 IMPORT DYNAMIQUE, PAS STATIQUE : un `import … from '../../dist/…'`
         // en tête de fichier ferait échouer la RÉSOLUTION DE MODULE dès la
         // collecte, et ferait tomber les QUATRE AUTRES tests de ce fichier
@@ -109,9 +109,9 @@ describe("l'actif bâti ne diverge pas de sa source", () => {
             servi = module.default;
         } catch (cause) {
             throw new Error(
-                `client/dist/amorce-theme.js est absent : lancer 'npm run build' dans ` +
-                    `client/ avant ce test — un fichier de build manquant n'est pas un ` +
-                    `contrôle vert. Cause : ${String(cause)}`,
+                `client/dist/amorce-theme.js is missing: run 'npm run build' in ` +
+                    `client/ before this test — a missing build file is not a ` +
+                    `green check. Cause: ${String(cause)}`,
             );
         }
         expect(servi).toBe(AMORCE);

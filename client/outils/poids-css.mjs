@@ -53,7 +53,7 @@ const plafond = Number(valeurDe('--plafond', PLAFOND_PAR_DEFAUT));
 
 const actifs = join(dist, 'assets');
 if (!existsSync(actifs)) {
-    console.error(`${actifs} est absent : lancer d'abord « npm run build ».`);
+    console.error(`${actifs} is missing: run « npm run build » first.`);
     process.exit(2);
 }
 
@@ -72,17 +72,17 @@ const somme = feuilles.reduce((t, f) => t + f.octets, 0);
 // forme. Sortie 2, comme pour un `dist/` absent : l'INSTRUMENT n'a rien pu
 // mesurer, ce qui n'est pas la même chose que le produit qui dépasse (1).
 if (feuilles.length === 0) {
-    console.error(`aucune feuille dans ${actifs} : rien n'a été mesuré, ce n'est pas un succès.`);
+    console.error(`no sheet in ${actifs}: nothing was measured, this is not a success.`);
     process.exit(2);
 }
 
 for (const f of feuilles) console.log(`${String(f.octets).padStart(7)}  ${f.nom}`);
-console.log(`feuilles émises : ${feuilles.length}`);
+console.log(`sheets emitted: ${feuilles.length}`);
 console.log(`somme : ${somme} octets`);
-console.log(`plafond : ${plafond} octets (arbitraire, voir l'en-tête)`);
+console.log(`ceiling: ${plafond} bytes (arbitrary, see the header)`);
 
 if (somme > plafond) {
-    console.log(`DÉPASSEMENT de ${somme - plafond} octets`);
+    console.log(`OVERRUN of ${somme - plafond} bytes`);
     process.exit(1);
 }
 console.log(`marge : ${plafond - somme} octets`);

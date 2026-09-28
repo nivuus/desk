@@ -84,7 +84,7 @@ export function adresseSignaling(
     //
     // **ELEVEN files under `journaux-*/instrument/` set `?signaling=`** —
     // the drivers of `accent-a1`, `micro-e3` (the driver and its
-    // `injection-e3.js`), `pont-fichiers` f1 to f5, and `presse-papier` p1 to p3 —,
+    // `injection-e3.js`), `pont-fichiers` f1 to f5, and `presse-papier` p1 to p3 —, (policy: allow-fr, archived plan names)
     // **plus a TWELFTH outside that directory**,
     // `journaux-micro-e2/pilote-recette-e2.mjs`. All twelve pass a URL
     // **without a path** (`ws://192.168.3.1:8080`, `ws://<host>:8090`, or the

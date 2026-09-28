@@ -122,21 +122,21 @@ export function waitForAnswer(socket: WebSocket): Promise<string> {
         const onMessage = (event: MessageEvent) => {
             const message = parseSignalingMessage(String(event.data));
             if (!message) {
-                console.warn('message de signaling illisible ou de forme inattendue, ignoré');
+                console.warn('unreadable or unexpectedly shaped signaling message, ignored');
                 return;
             }
             if (message.type === 'answer') {
                 finish(() => resolve(message.sdp));
             } else if (message.type === 'error') {
-                finish(() => reject(new Error(message.reason ?? 'erreur de signaling')));
+                finish(() => reject(new Error(message.reason ?? 'signaling error')));
             } else if (message.type === 'peer-gone') {
-                finish(() => reject(new Error('agent déconnecté')));
+                finish(() => reject(new Error('agent disconnected')));
             }
         };
 
         const onClose = () => {
             finish(() =>
-                reject(new Error("connexion au serveur de signaling perdue avant la réponse de l'agent")),
+                reject(new Error("connection to the signaling server lost before the agent answer")),
             );
         };
 
@@ -147,7 +147,7 @@ export function waitForAnswer(socket: WebSocket): Promise<string> {
             finish(() =>
                 reject(
                     new Error(
-                        "l'agent n'a pas répondu — vérifiez qu'il est bien lancé et connecté à cette session",
+                        "the agent did not answer — check that it is running and connected to this session",
                     ),
                 ),
             );
@@ -162,7 +162,7 @@ export function waitForAnswer(socket: WebSocket): Promise<string> {
 /// contain all the candidates.
 ///
 /// ⚠️ EXPORTED BY SUB-BLOCK F1, AND IT IS A DECLARED CHANGE.
-/// `client/src/fichiers/canal.ts` opens a DEDICATED `RTCPeerConnection`, without
+/// `client/src/files/canal.ts` opens a DEDICATED `RTCPeerConnection`, without
 /// media (decision D4 of F1's plan): `connectSession` does not suit it —
 /// it requires an `HTMLVideoElement` and unconditionally adds three
 /// transceivers. The plan forbids refactoring `connectSession` to make
@@ -220,7 +220,7 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
-        socket.addEventListener('error', () => reject(new Error('signaling injoignable')), {
+        socket.addEventListener('error', () => reject(new Error('signaling unreachable')), {
             once: true,
         });
     });
@@ -285,7 +285,7 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         try {
             options.onControl?.(parseAgentControl(String(event.data)));
         } catch (error) {
-            console.warn('message de contrôle invalide', error);
+            console.warn('invalid control message', error);
         }
     });
 
@@ -313,23 +313,23 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         if (options.video.srcObject !== flux) {
             options.video.srcObject = flux;
         }
-        status(`flux reçu (${flux.getTracks().length} piste(s))`);
+        status(`stream received (${flux.getTracks().length} track(s))`);
     });
 
     pc.addEventListener('connectionstatechange', () => {
-        status(`connexion : ${pc.connectionState}`);
+        status(`connection: ${pc.connectionState}`);
     });
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await waitForIceGathering(pc);
 
-    status('offre envoyée, attente de l\'agent…');
+    status('offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
     const answerSdp = await waitForAnswer(socket);
     await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-    status('réponse reçue');
+    status('answer received');
 
     return {
         pc,

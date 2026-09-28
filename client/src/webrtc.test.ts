@@ -20,27 +20,27 @@ import { describe, expect, it } from 'vitest';
 import { parseSignalingMessage, waitForAnswer } from './webrtc';
 
 describe('parseSignalingMessage', () => {
-    it('ignore un message `null` plutôt que de lever une exception', () => {
+    it('ignores a `null` message rather than throwing an exception', () => {
         expect(parseSignalingMessage('null')).toBeUndefined();
     });
 
-    it('ignore toute charge utile non-objet (nombre, chaîne, tableau, booléen)', () => {
+    it('ignores any non-object payload (number, string, array, boolean)', () => {
         expect(parseSignalingMessage('42')).toBeUndefined();
-        expect(parseSignalingMessage('"une chaine"')).toBeUndefined();
+        expect(parseSignalingMessage('"a string"')).toBeUndefined();
         expect(parseSignalingMessage('[1, 2, 3]')).toBeUndefined();
         expect(parseSignalingMessage('true')).toBeUndefined();
     });
 
-    it('ignore un JSON illisible', () => {
-        expect(parseSignalingMessage('{ceci nest pas du json')).toBeUndefined();
+    it('ignores unreadable JSON', () => {
+        expect(parseSignalingMessage('{this is not json')).toBeUndefined();
     });
 
-    it("ignore un objet dont le `type` n'est pas reconnu", () => {
+    it("ignores an object whose `type` is not recognised", () => {
         expect(parseSignalingMessage('{"foo": "bar"}')).toBeUndefined();
         expect(parseSignalingMessage('{"type": "inconnu"}')).toBeUndefined();
     });
 
-    it('accepte les messages valides tels quels', () => {
+    it('accepts valid messages as is', () => {
         expect(parseSignalingMessage('{"type": "answer", "sdp": "v=0..."}')).toEqual({
             type: 'answer',
             sdp: 'v=0...',
@@ -52,7 +52,7 @@ describe('parseSignalingMessage', () => {
         expect(parseSignalingMessage('{"type": "peer-gone"}')).toEqual({ type: 'peer-gone' });
     });
 
-    it('reconnaît la configuration ICE', () => {
+    it('recognises the ICE configuration', () => {
         const message = parseSignalingMessage(
             JSON.stringify({
                 type: 'ice-config',
@@ -89,8 +89,8 @@ class FakeSocket {
     }
 }
 
-describe('waitForAnswer face à des messages malformés', () => {
-    it("un message brut `null` n'explose pas le gestionnaire et la réponse valide suivante est toujours acceptée", async () => {
+describe('waitForAnswer facing malformed messages', () => {
+    it("a raw `null` message does not blow up the handler and the next valid answer is still accepted", async () => {
         const socket = new FakeSocket();
         const pending = waitForAnswer(socket as unknown as WebSocket);
 
@@ -111,13 +111,13 @@ describe('waitForAnswer face à des messages malformés', () => {
         await expect(pending).resolves.toBe('v=0...');
     });
 
-    it('les charges utiles non-objet successives (nombre, chaîne, tableau) sont toutes ignorées', async () => {
+    it('successive non-object payloads (number, string, array) are all ignored', async () => {
         const socket = new FakeSocket();
         const pending = waitForAnswer(socket as unknown as WebSocket);
 
         expect(() => {
             socket.emitMessage('42');
-            socket.emitMessage('"une chaine"');
+            socket.emitMessage('"a string"');
             socket.emitMessage('[1, 2, 3]');
         }).not.toThrow();
 

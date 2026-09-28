@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Connexion</title>
-        <!-- L'ORDRE PORTE LA CASCADE : socle (tokens + base), primitives, puis
-             la feuille de cette surface. Trois `<link>` et aucun `@import` :
-             c'est ce qui laisse Vite PARTAGER `primitives.css` avec la
-             page-shell au lieu de la ré-inliner dans chacune. -->
+        <title>Sign in</title>
+        <!-- THE ORDER CARRIES THE CASCADE: base layer (tokens + base), primitives,
+             then this surface's sheet. Three `<link>` and no `@import`:
+             that is what lets Vite SHARE `primitives.css` with the
+             shell page instead of re-inlining it into each one. -->
         <link rel="stylesheet" href="/src/design/socle.css" />
         <link rel="stylesheet" href="/src/design/primitives.css" />
         <link rel="stylesheet" href="/src/connexion.css" />
@@ -15,10 +15,10 @@
     <body>
         <main class="connexion">
             <div class="carte connexion__carte">
-                <h1 class="connexion__titre">Connexion</h1>
+                <h1 class="connexion__titre">Sign in</h1>
                 <form id="connexion" class="connexion__formulaire">
                     <p class="champ">
-                        <label class="champ__etiquette" for="email">Courriel</label>
+                        <label class="champ__etiquette" for="email">Email</label>
                         <input
                             class="champ__saisie"
                             id="email"
@@ -29,7 +29,7 @@
                         />
                     </p>
                     <p class="champ">
-                        <label class="champ__etiquette" for="motdepasse">Mot de passe</label>
+                        <label class="champ__etiquette" for="motdepasse">Password</label>
                         <input
                             class="champ__saisie"
                             id="motdepasse"
@@ -41,23 +41,23 @@
                     </p>
                     <p>
                         <button id="valider" type="submit" class="bouton bouton--principal">
-                            Se connecter
+                            Sign in
                         </button>
                     </p>
                 </form>
                 <div id="message" class="message connexion__message" role="status"></div>
 
-                <!-- LE SÉLECTEUR DE THÈME, ici par EXTENSION RAISONNÉE de la
-                     spec §5.2 : cet écran est souvent la première surface, et
-                     parfois la seule, qu'un utilisateur non authentifié voie.
-                     Un défaut sombre qu'on ne pourrait pas changer avant de
-                     s'être connecté est ce que le §11 range sous « réversible
-                     en un clic dès S3 ». Coût : zéro — même module. -->
+                <!-- THE THEME SELECTOR, here as a REASONED EXTENSION of
+                     spec §5.2: this screen is often the first surface, and
+                     sometimes the only one, an unauthenticated user sees.
+                     A dark default that could not be changed before
+                     signing in is what §11 files under "reversible
+                     in one click from S3". Cost: zero — same module. -->
                 <p
                     id="themes"
                     class="connexion__theme connexion__actions"
                     role="group"
-                    aria-label="Thème"
+                    aria-label="Theme"
                 ></p>
             </div>
         </main>

@@ -37,7 +37,7 @@ const sombre = blocs.find((b) => b.nom === 'racine')!.tokens;
 
 const jeton = (nom: string): string => {
     const v = sombre.get(nom);
-    if (!v) throw new Error(`token absent de tokens/couleurs.css : ${nom}`);
+    if (!v) throw new Error(`token missing from tokens/couleurs.css: ${nom}`);
     return v;
 };
 
@@ -53,21 +53,21 @@ const ILLISIBLE = jeton('--bord');
 const LISIBLE = jeton('--succes');
 
 describe('conformer', () => {
-    it('🔴 une couleur ILLISIBLE est REFUSÉE, et le thème reprend la main', () => {
+    it('🔴 an UNREADABLE colour is REFUSED, and the theme takes over again', () => {
         // ROUGE : l'arbre intact avant que `conformer` n'existe ; puis, par
         // mutation, ne plus juger la lisibilité.
         // 🔴 C'EST LA ROUGE QUE LA SPEC EXIGE (critère ③).
         expect(conformer(ILLISIBLE, FONDS, ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);
     });
 
-    it('une couleur LISIBLE est rendue telle quelle', () => {
+    it('a READABLE colour is rendered as is', () => {
         // ROUGE : rendre toujours `accentDuTheme` ⟹ le mécanisme entier serait
         // inerte. SANS CE TEST, le précédent serait tenu par une fonction qui
         // refuse tout — c'est-à-dire par un produit mort.
         expect(conformer(LISIBLE, FONDS, ACCENT_DU_THEME)).toBe(LISIBLE);
     });
 
-    it('une couleur lisible sur DEUX fonds sur trois est REFUSÉE', () => {
+    it('a colour readable on TWO backgrounds out of three is REFUSED', () => {
         // ROUGE : `.some()` au lieu de `.every()`.
         // Le troisième fond EST la couleur candidate : le rapport y vaut
         // exactement 1,000, quand les deux premiers valent 8,867 et 8,186.
@@ -77,7 +77,7 @@ describe('conformer', () => {
             .toBe(ACCENT_DU_THEME);
     });
 
-    it('une forme NON HEXADÉCIMALE est REFUSÉE, sans lever', () => {
+    it('a NON-HEXADECIMAL form is REFUSED, without throwing', () => {
         // ROUGE : retirer l'étape « forme » ⟹ `rapportDeContraste` LÈVE (E9).
         // ⚠️ L'assertion est « rend `accentDuTheme` », PAS « ne lève pas » : un
         // test qui n'attendrait qu'une absence d'exception serait satisfait par
@@ -94,20 +94,20 @@ describe('conformer', () => {
             'var(--accent)',
             '',
             '   ',
-            'pas une couleur',
+            'not a colour',
         ];
         for (const forme of formes) {
             expect(conformer(forme, FONDS, ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);
         }
     });
 
-    it('une casse MAJUSCULE est acceptée après normalisation', () => {
+    it('an UPPERCASE casing is accepted after normalisation', () => {
         // ROUGE : comparer sans minusculer ⟹ la MÊME couleur, écrite en
         // majuscules, serait refusée pour un motif de forme.
         expect(conformer(`  ${LISIBLE.toUpperCase()}  `, FONDS, ACCENT_DU_THEME)).toBe(LISIBLE);
     });
 
-    it('la couleur rendue n\'est JAMAIS corrigée', () => {
+    it('the rendered colour is NEVER corrected', () => {
         // ROUGE : éclaircir la couleur refusée au lieu de la refuser (D10
         // point 3 : « éclaircir ou assombrir la couleur d'une application
         // produirait une teinte que personne n'a choisie »).
@@ -116,7 +116,7 @@ describe('conformer', () => {
         expect(conformer(ILLISIBLE, FONDS, ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);
     });
 
-    it('un fond mal formé fait REFUSER, il ne fait pas lever', () => {
+    it('a malformed background makes it REFUSE, it does not throw', () => {
         // ROUGE : ne pas contrôler la forme des FONDS ⟹ `rapportDeContraste`
         // lève sur le fond, et le message de canal de données tue la session.
         // Le cas est RÉEL : `getComputedStyle` rend la CHAÎNE VIDE pour un
@@ -125,7 +125,7 @@ describe('conformer', () => {
             .toBe(ACCENT_DU_THEME);
     });
 
-    it('une liste de fonds VIDE fait REFUSER', () => {
+    it('an EMPTY list of backgrounds makes it REFUSE', () => {
         // ROUGE : rendre la candidate quand il n'y a rien à juger ⟹ une page
         // dont les tokens ne sont pas encore posés accepterait n'importe quoi.
         expect(conformer(LISIBLE, [], ACCENT_DU_THEME)).toBe(ACCENT_DU_THEME);

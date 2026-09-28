@@ -20,7 +20,7 @@ function cibleFactice(): CibleVisibilite & { declencher: (nom: string) => void }
 }
 
 describe('attachVisibilite', () => {
-    it('annonce l’état courant dès l’attache', () => {
+    it('announces the current state as soon as it attaches', () => {
         const envoyer = vi.fn(() => true);
         attachVisibilite(cibleFactice(), envoyer);
         expect(envoyer).toHaveBeenCalledWith(
@@ -28,7 +28,7 @@ describe('attachVisibilite', () => {
         );
     });
 
-    it('annonce la disparition quand la page est cachée', () => {
+    it('announces the disappearance when the page is hidden', () => {
         const cible = cibleFactice();
         const envoyer = vi.fn(() => true);
         attachVisibilite(cible, envoyer);
@@ -41,7 +41,7 @@ describe('attachVisibilite', () => {
         );
     });
 
-    it('n’annonce pas deux fois le même état', () => {
+    it('does not announce the same state twice', () => {
         // Le canal de contrôle est fiable et ordonné : réémettre un état
         // inchangé n'apporterait rien et se paierait à chaque blur/focus
         // parasite.
@@ -53,7 +53,7 @@ describe('attachVisibilite', () => {
         expect(envoyer).not.toHaveBeenCalled();
     });
 
-    it('annonce la perte de focus sans perte de visibilité', () => {
+    it('announces the focus loss without a visibility loss', () => {
         const cible = cibleFactice();
         const envoyer = vi.fn(() => true);
         attachVisibilite(cible, envoyer);
@@ -65,7 +65,7 @@ describe('attachVisibilite', () => {
         );
     });
 
-    it('détache ses trois écouteurs', () => {
+    it('detaches its three listeners', () => {
         const cible = cibleFactice();
         const detacher = attachVisibilite(cible, vi.fn(() => true));
         detacher();
@@ -74,7 +74,7 @@ describe('attachVisibilite', () => {
         expect(envoyer).not.toHaveBeenCalled();
     });
 
-    it('retente un envoi refusé au signal suivant, au lieu de le perdre', () => {
+    it('retries a refused send on the next signal, instead of losing it', () => {
         // Défaut corrigé : si le canal n'est pas encore ouvert à l'attache,
         // `envoyer` rend `false`. Mémoriser `last` malgré cet échec
         // ferait croire l'état déjà annoncé, et aucun changement de

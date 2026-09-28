@@ -44,7 +44,7 @@
 // WRITE direction, the only one where the error DESTROYS something.
 //
 // ⚠️ AND IT DOES NOT SEE UNICODE NORMALISATION. macOS stores its names in
-// NFD, Windows in NFC: `résumé.txt` can exist there under two different sequences of code
+// NFD, Windows in NFC: `résumé.txt` can exist there under two different sequences of code (policy: allow-fr, accented file name example)
 // units, which `===` distinguishes and the user does not.
 // The guard would then create a DUPLICATE instead of overwriting — less serious than the
 // loss, but wrong. NOT HANDLED, declared; it is F3's canonicaliser.
@@ -183,8 +183,8 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
             // and in the shell page.
             throw new FilesError(
                 'casse-ambigue',
-                `« ${nom} » ne diffère de « ${homonymes.join(' », « ')} » que par la casse : ` +
-                    `écrire écraserait le mauvais fichier, rien n'a été écrit`,
+                `« ${nom} » differs from « ${homonymes.join(' », « ')} » only by case: ` +
+                    `writing would overwrite the wrong file, nothing was written`,
             );
         }
         return nom;
@@ -193,7 +193,7 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
     async function ouvrir(chemin: string): Promise<FluxInscriptible> {
         const parts = composants(chemin);
         if (parts.length === 0) {
-            throw new FilesError('introuvable', 'la racine n’est pas un fichier');
+            throw new FilesError('introuvable', 'the root is not a file');
         }
         const parent = await descendre(parts, parts.length - 1);
         const nom = await nomSur(parent, parts[parts.length - 1]);
@@ -234,12 +234,12 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
                 // refusing — the truncation would be silent.
                 throw new FilesError(
                     'interne',
-                    `morceau non initial sur « ${chemin} » sans flux ouvert`,
+                    `non-initial chunk on « ${chemin} » without an open stream`,
                 );
             }
             try {
                 // ⚠️ **THE TYPE TIGHTENING HAPPENS HERE, AND ONLY ONCE.**
-                // `proto/ts/fichiers` returns a BARE `Uint8Array` — hence
+                // `proto/ts/fichiers` returns a BARE `Uint8Array` — hence (policy: allow-fr, proto module path)
                 // `Uint8Array<ArrayBufferLike>`, `SharedArrayBuffer` included —
                 // because that is what the frame decoder produces. Nothing, at
                 // runtime, can give it a view on shared
@@ -272,7 +272,7 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
         async create(chemin, repertoire) {
             const parts = composants(chemin);
             if (parts.length === 0) {
-                throw new FilesError('deja-present', 'la racine existe déjà');
+                throw new FilesError('deja-present', 'the root already exists');
             }
             const parent = await descendre(parts, parts.length - 1);
             const nom = await nomSur(parent, parts[parts.length - 1]);

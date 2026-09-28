@@ -193,13 +193,13 @@ async function main() {
 
         // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
         await semerJeton(cdp);
-        console.log(`Navigation vers ${url} (Chrome DevTools sur le port ${port})`);
+        console.log(`Navigating to ${url} (Chrome DevTools on port ${port})`);
         await cdp.send('Page.navigate', { url });
 
         // Attend que `connectSession` ait créé la RTCPeerConnection.
         const pcAppeared = await pollUntil(() => cdp.eval('window.__pc !== null && window.__pc !== undefined'), 10_000);
         if (!pcAppeared) {
-            throw new Error("aucune RTCPeerConnection créée dans la page après 10s — le script client n'a pas démarré");
+            throw new Error("no RTCPeerConnection created in the page after 10s — the client script did not start");
         }
 
         // Attendre que la vidéo coule VRAIMENT avant d'ouvrir la fenêtre de
@@ -221,20 +221,20 @@ async function main() {
             // clé manquante) ne sont imprimés que par les relevés ci-dessous.
             // Sortir avant de les lire, c'est jeter la seule information qui
             // permette de trancher.
-            console.log('AVERTISSEMENT : aucune image décodée après 20s — relevés pris quand même pour diagnostic');
+            console.log('WARNING: no image decoded after 20s — readings taken anyway for diagnosis');
         }
         // Laisser le régime s'établir (premier keyframe absorbé, tampon de
         // gigue stabilisé) avant de chronométrer.
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
         const first = await sampleStats(cdp);
-        console.log('--- Relevé 1 ---');
+        console.log('--- Reading 1 ---');
         printSample(first);
 
         await new Promise((resolve) => setTimeout(resolve, sampleDelayMs));
 
         const second = await sampleStats(cdp);
-        console.log(`--- Relevé 2 (+${sampleDelayMs}ms) ---`);
+        console.log(`--- Reading 2 (+${sampleDelayMs}ms) ---`);
         printSample(second);
 
         const framesDecodedDelta = (second.stats?.framesDecoded ?? 0) - (first.stats?.framesDecoded ?? 0);
@@ -300,23 +300,23 @@ async function main() {
         console.log('');
         console.log(`connectionState (final) : ${second.connectionState}`);
         console.log(`iceConnectionState (final) : ${second.iceConnectionState}`);
-        console.log(`Δ framesDecoded sur ${sampleDelayMs}ms : ${framesDecodedDelta}`);
-        console.log(`Δ framesReceived sur ${sampleDelayMs}ms : ${framesReceivedDelta}`);
-        console.log(`dimensions plausibles (>0, ≤ ${PLAUSIBLE_MAX_DIMENSION}px) : ${dimensionsOk ? 'OK' : 'ÉCHEC'} (obtenu ${width}x${height})`);
+        console.log(`Δ framesDecoded over ${sampleDelayMs}ms: ${framesDecodedDelta}`);
+        console.log(`Δ framesReceived over ${sampleDelayMs}ms: ${framesReceivedDelta}`);
+        console.log(`plausible dimensions (>0, ≤ ${PLAUSIBLE_MAX_DIMENSION}px): ${dimensionsOk ? 'OK' : 'FAILURE'} (got ${width}x${height})`);
         console.log('');
-        console.log(`Δ audio bytesReceived sur ${sampleDelayMs}ms : ${audioBytesDelta}`);
-        console.log(`Δ audio packetsReceived sur ${sampleDelayMs}ms : ${audioPacketsDelta}`);
-        console.log(`audio packetsLost (relevé 2) : ${second.audioStats?.packetsLost ?? 'absent'}`);
-        console.log(`audio jitter (relevé 2) : ${(((second.audioStats?.jitter ?? 0)) * 1000).toFixed(1)} ms`);
+        console.log(`Δ audio bytesReceived over ${sampleDelayMs}ms: ${audioBytesDelta}`);
+        console.log(`Δ audio packetsReceived over ${sampleDelayMs}ms: ${audioPacketsDelta}`);
+        console.log(`audio packetsLost (reading 2): ${second.audioStats?.packetsLost ?? 'absent'}`);
+        console.log(`audio jitter (reading 2): ${(((second.audioStats?.jitter ?? 0)) * 1000).toFixed(1)} ms`);
         if (audioAbsent) {
             console.log(
-                'audio : aucun octet reçu sur les deux relevés (pas de piste audio active — session vidéo seule, ou silence total).' +
-                    (expectAudio ? ' EXPECT_AUDIO=1 : ceci est traité comme un échec.' : ''),
+                'audio: no byte received in the two readings (no active audio track — video-only session, or total silence).' +
+                    (expectAudio ? ' EXPECT_AUDIO=1: this is treated as a failure.' : ''),
             );
         } else if (audioGrowing) {
-            console.log('audio : bytesReceived et packetsReceived augmentent — PREUVE que l\'audio traverse la chaîne.');
+            console.log('audio: bytesReceived and packetsReceived increase — PROOF that the audio goes through the chain.');
         } else {
-            console.log('audio : des octets sont arrivés mais les compteurs ont cessé de progresser (figé) — ce n\'est PAS une preuve de flux continu.');
+            console.log('audio: bytes arrived but the counters stopped advancing (frozen) — this is NOT a proof of a continuous stream.');
         }
         if (avSkewMs === null) {
             // Deux causes distinctes à ne pas confondre (revue de la tâche
@@ -327,39 +327,39 @@ async function main() {
             // ce second cas, que l'audio ne traverse pas du tout alors que
             // la ligne juste au-dessus prouve le contraire.
             if (audioAbsent) {
-                console.log('décalage A/V : non mesurable (pas de piste audio active sur ce relevé).');
+                console.log('A/V offset: not measurable (no active audio track in this reading).');
             } else {
                 console.log(
-                    'décalage A/V : non mesurable — la piste audio traverse (voir ci-dessus), mais ' +
-                        "`estimatedPlayoutTimestamp` est absent de getStats() pour l'une des deux pistes " +
-                        'sur ce navigateur/cette plateforme (voir les clés listées dans chaque relevé).',
+                    'A/V offset: not measurable — the audio track goes through (see above), but ' +
+                        "`estimatedPlayoutTimestamp` is absent from getStats() for one of the two tracks " +
+                        'on this browser/platform (see the keys listed in each reading).',
                 );
             }
         } else {
-            const sens = avSkewMs > 0 ? 'audio en avance sur la vidéo' : avSkewMs < 0 ? 'audio en retard sur la vidéo' : 'aucun décalage mesuré';
+            const sens = avSkewMs > 0 ? 'audio ahead of the video' : avSkewMs < 0 ? 'audio behind the video' : 'no offset measured';
             // Seuils de gêne ITU-R BT.1359 : 45 ms si l'audio devance l'image,
             // 125 ms s'il la retarde — le signe compte, l'avance gêne presque
             // trois fois plus tôt que le retard.
             const seuil = avSkewMs > 0 ? 45 : 125;
             const dansLeSeuil = Math.abs(avSkewMs) <= seuil;
             console.log(
-                `décalage A/V (estimatedPlayoutTimestamp audio − vidéo) : ${avSkewMs.toFixed(1)} ms ` +
-                    `(${sens}) — seuil de gêne ITU-R BT.1359 applicable : ${seuil} ms, ` +
-                    `${dansLeSeuil ? 'dans le seuil' : 'AU-DELÀ DU SEUIL'} (mesure informative, ne conditionne pas le code de sortie)`,
+                `A/V offset (estimatedPlayoutTimestamp audio − video): ${avSkewMs.toFixed(1)} ms ` +
+                    `(${sens}) — applicable ITU-R BT.1359 annoyance threshold: ${seuil} ms, ` +
+                    `${dansLeSeuil ? 'within the threshold' : 'BEYOND THE THRESHOLD'} (informative measurement, does not condition the exit code)`,
             );
         }
 
         if (cdp.consoleLines.length > 0) {
-            console.log('\n--- Console de la page ---');
+            console.log('\n--- Page console ---');
             for (const line of cdp.consoleLines) console.log(line);
         }
         if (cdp.pageErrors.length > 0) {
-            console.log('\n--- Erreurs JS de la page ---');
+            console.log('\n--- Page JS errors ---');
             for (const line of cdp.pageErrors) console.log(line);
         }
 
         if (framesDecodedDelta > 0 && framesReceivedDelta > 0 && dimensionsOk) {
-            console.log('\nPREUVE : la vidéo traverse la chaîne (framesDecoded et framesReceived augmentent, dimensions plausibles).');
+            console.log('\nPROOF: the video goes through the chain (framesDecoded and framesReceived increase, plausible dimensions).');
             // La vidéo est prouvée : c'est ici, et seulement ici, que l'audio
             // peut faire échouer le harnais. Par défaut, seul un flux VU
             // (au moins un octet reçu) puis figé fait échouer — une session
@@ -375,25 +375,25 @@ async function main() {
             // plus haut : mesure, pas encore critère éprouvé).
             if (audioAbsent && expectAudio) {
                 console.log(
-                    "\nÉCHEC (audio) : EXPECT_AUDIO=1 mais aucune piste audio n'a été vue sur les deux relevés. " +
-                        'Voir chrome://webrtc-internals pour le détail.',
+                    "\nFAILURE (audio): EXPECT_AUDIO=1 but no audio track was seen in the two readings. " +
+                        'See chrome://webrtc-internals for details.',
                 );
                 exitCode = 1;
             } else if (audioAbsent || audioGrowing) {
                 exitCode = 0;
             } else {
                 console.log(
-                    "\nÉCHEC (audio) : une piste audio a reçu des octets mais bytesReceived/packetsReceived " +
-                        "ont cessé de progresser — un paquet isolé ne prouve pas un flux continu. " +
-                        'Voir chrome://webrtc-internals pour le détail.',
+                    "\nFAILURE (audio): an audio track received bytes but bytesReceived/packetsReceived " +
+                        "stopped advancing — an isolated packet does not prove a continuous stream. " +
+                        'See chrome://webrtc-internals for details.',
                 );
                 exitCode = 1;
             }
         } else if (!dimensionsOk) {
-            console.log(`\nÉCHEC : dimensions rapportées non plausibles (${width}x${height}). Voir chrome://webrtc-internals pour le détail.`);
+            console.log(`\nFAILURE: reported dimensions not plausible (${width}x${height}). See chrome://webrtc-internals for details.`);
             exitCode = 1;
         } else {
-            console.log('\nÉCHEC : les compteurs ne montrent pas de vidéo décodée (framesDecoded/framesReceived stagnants). Voir chrome://webrtc-internals pour le détail.');
+            console.log('\nFAILURE: the counters show no decoded video (framesDecoded/framesReceived stagnant). See chrome://webrtc-internals for details.');
             exitCode = 1;
         }
 
@@ -447,15 +447,15 @@ async function sampleStats(cdp) {
 /// — un seul des deux soutient la conclusion « champ non exposé par ce
 /// navigateur ».
 function decrireEstimatedPlayoutTimestamp(entry) {
-    if (!entry) return 'n/a (entrée absente)';
+    if (!entry) return 'n/a (entry absent)';
     const clePresente = 'estimatedPlayoutTimestamp' in entry;
-    if (!clePresente) return 'CLÉ ABSENTE de l\'entrée';
-    return `clé présente, valeur=${entry.estimatedPlayoutTimestamp}`;
+    if (!clePresente) return 'KEY ABSENT from the entry';
+    return `key present, value=${entry.estimatedPlayoutTimestamp}`;
 }
 
 function printSample(sample) {
     if (!sample.stats) {
-        console.log('  aucune entrée inbound-rtp vidéo dans getStats()');
+        console.log('  no video inbound-rtp entry in getStats()');
     } else {
         const s = sample.stats;
         console.log(
@@ -465,16 +465,16 @@ function printSample(sample) {
                 `packetsLost=${s.packetsLost} keyFramesDecoded=${s.keyFramesDecoded}`,
         );
         console.log(
-            `  [vidéo] estimatedPlayoutTimestamp : ${decrireEstimatedPlayoutTimestamp(s)}`,
+            `  [video] estimatedPlayoutTimestamp: ${decrireEstimatedPlayoutTimestamp(s)}`,
         );
         // Diagnostic demandé en revue : la liste complète des clés de
         // l'entrée, pour vérifier par les faits plutôt que par déduction
         // quels champs ce navigateur produit réellement sur `inbound-rtp`.
-        console.log(`  [vidéo] clés de l'entrée getStats() : ${Object.keys(s).sort().join(', ')}`);
+        console.log(`  [video] keys of the getStats() entry: ${Object.keys(s).sort().join(', ')}`);
     }
 
     if (!sample.audioStats) {
-        console.log('  aucune entrée inbound-rtp audio dans getStats()');
+        console.log('  no audio inbound-rtp entry in getStats()');
         return;
     }
     const a = sample.audioStats;
@@ -485,10 +485,10 @@ function printSample(sample) {
     console.log(
         `  [audio] estimatedPlayoutTimestamp : ${decrireEstimatedPlayoutTimestamp(a)}`,
     );
-    console.log(`  [audio] clés de l'entrée getStats() : ${Object.keys(a).sort().join(', ')}`);
+    console.log(`  [audio] keys of the getStats() entry: ${Object.keys(a).sort().join(', ')}`);
 }
 
 main().catch((error) => {
-    console.error('échec du harnais de vérification :', error);
+    console.error('verification harness failure:', error);
     process.exit(1);
 });

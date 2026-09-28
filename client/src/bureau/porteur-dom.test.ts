@@ -6,20 +6,20 @@ import { describe, expect, it } from 'vitest';
 import { diffuserSiChange, nomDuVerrou, type DepsBureauPage } from './porteur-dom';
 
 describe('nomDuVerrou', () => {
-    it('porte le PREFIXE de VM', () => {
+    it('carries the VM PREFIX', () => {
         // 🔴 SANS LUI, DEUX VMs OUVERTES DANS DEUX ONGLETS S EXCLURAIENT L UNE
         // L AUTRE -- le defaut que P3 a corrige sur le nom de session,
         // reintroduit par la porte de derriere.
         expect(nomDuVerrou('vm-7')).toBe('vm-7:nivuus-bureau');
     });
 
-    it('sans prefixe connu, rend le nom nu', () => {
+    it('without a known prefix, returns the bare name', () => {
         expect(nomDuVerrou('')).toBe('nivuus-bureau');
     });
 });
 
 describe('diffuserSiChange', () => {
-    it('ne diffuse RIEN quand l etat est identique', () => {
+    it('broadcasts NOTHING when the state is identical', () => {
         // ⚠️ Le porteur redessine a 1 Hz : diffuser a chaque tour reveillerait
         // tous les onglets une fois par seconde pour rien.
         const envoyes: unknown[] = [];
@@ -35,7 +35,7 @@ describe('diffuserSiChange', () => {
         expect(last).toBe(JSON.stringify(list));
     });
 
-    it('diffuse quand une fenetre change d etat', () => {
+    it('broadcasts when a window changes state', () => {
         const envoyes: unknown[] = [];
         const canal = { postMessage: (m: unknown) => void envoyes.push(m) };
         let last = diffuserSiChange(canal, [{ session: 's', titre: 'x', ouverte: true }], '');
@@ -49,7 +49,7 @@ describe('diffuserSiChange', () => {
 
 /* ══ CE QUE LA REVUE FINALE DU 31 AOUT 2026 A AJOUTE ═════════════════════ */
 
-describe('DepsBureauPage : le jeton est un FOURNISSEUR, jamais une chaine', () => {
+describe('DepsBureauPage: the token is a PROVIDER, never a string', () => {
     // 🔴 CE QUI EST FIGE ICI N EST PAS LA REGLE DE FRAICHEUR -- `jeton.test.ts`
     // la tient depuis la tache 1 -- MAIS LA JONCTION. Le champ portait une
     // CHAINE, capturee au chargement de la page ; or `ouvrirLaSession` ne
@@ -64,7 +64,7 @@ describe('DepsBureauPage : le jeton est un FOURNISSEUR, jamais une chaine', () =
     // est `tsc --noEmit`, pas Vitest (qui transpile sans verifier les types).
     const elements = {} as DepsBureauPage['elements'];
 
-    it('expose `jetonFrais`, une FONCTION que la promotion peut rappeler', async () => {
+    it('exposes `jetonFrais`, a FUNCTION the promotion can call again', async () => {
         const deps: DepsBureauPage = {
             signalingUrl: 'ws://exemple/signal',
             jetonFrais: () => Promise.resolve('frais'),
@@ -76,7 +76,7 @@ describe('DepsBureauPage : le jeton est un FOURNISSEUR, jamais une chaine', () =
         await expect(deps.jetonFrais()).resolves.toBe('frais');
     });
 
-    it('REFUSE un jeton scalaire -- assertion tenue par `tsc --noEmit`', () => {
+    it('REFUSES a scalar token -- assertion held by `tsc --noEmit`', () => {
         const deps: DepsBureauPage = {
             signalingUrl: 'ws://exemple/signal',
             jetonFrais: () => Promise.resolve(undefined),
@@ -89,7 +89,7 @@ describe('DepsBureauPage : le jeton est un FOURNISSEUR, jamais une chaine', () =
             // reintroduirait le defaut. Vitest, lui, ne verifie aucun type :
             // c est `npm run typecheck` qui juge, et il est obligatoire.
             // @ts-expect-error un jeton FIGE n a plus sa place dans ces deps
-            jeton: 'une chaine capturee au chargement',
+            jeton: 'a string captured at load time',
         };
         expect('jeton' in deps).toBe(true);
     });

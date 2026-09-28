@@ -15,7 +15,7 @@ export interface LigneFenetre {
     session: string;
     titre: string;
     /// The word shown in the badge — text for a human, hence accented.
-    etat: 'ouverte' | 'fermée';
+    etat: 'ouverte' | 'closed';
     /// 🔴 A BOOLEAN, NOT A CLASS NAME: `design/classes.ts::
     /// classesEmployeesTs` only recognises `classList.add('…')` and
     /// `className = '…'` with a literal IN the call — a class that
@@ -33,7 +33,7 @@ export function lignes(fenetres: FenetreConnue[]): LigneFenetre[] {
     return fenetres.map((f) => ({
         session: f.session,
         titre: f.titre,
-        etat: f.ouverte ? 'ouverte' : 'fermée',
+        etat: f.ouverte ? 'ouverte' : 'closed',
         ouverte: f.ouverte,
         rouvrable: !f.ouverte,
     }));

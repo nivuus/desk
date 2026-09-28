@@ -111,7 +111,7 @@ function entetes(deps: DepsCatalogue): Record<string, string> {
 /// `plateforme/`, which `client/` cannot import; copying it into a union
 /// would be the copy no type confronts with its source, silently
 /// wrong on renaming. It is the defect `connexion.ts` declares about
-/// `aucune-vm`, and which P4 bequeathed without closing it.
+/// `aucune-vm`, and which P4 bequeathed without closing it. (policy: allow-fr, wire refusal code)
 async function motifDuService(r: ReponseHttp): Promise<string> {
     try {
         const corps = await r.json();
@@ -122,7 +122,7 @@ async function motifDuService(r: ReponseHttp): Promise<string> {
     } catch {
         // An unreadable body is no more informative than an absent body.
     }
-    return `statut ${r.status}`;
+    return `status ${r.status}`;
 }
 
 /* ── READING THE CATALOGUE ──────────────────────────────────────────── */
@@ -142,16 +142,16 @@ export async function listerApplications(
         return illisible(`corps non JSON : ${(e as Error).message}`);
     }
     if (typeof corps !== 'object' || corps === null || !('applications' in corps)) {
-        return illisible("le corps ne porte pas de champ 'applications'");
+        return illisible("the body carries no 'applications' field");
     }
     const list = (corps as { applications: unknown }).applications;
-    if (!Array.isArray(list)) return illisible("'applications' n'est pas un tableau");
+    if (!Array.isArray(list)) return illisible("'applications' is not an array");
     const applications: ApplicationListee[] = [];
     for (const entree of list) {
-        if (typeof entree !== 'object' || entree === null) return illisible('une entrée n\'est pas un objet');
+        if (typeof entree !== 'object' || entree === null) return illisible('an entry is not an object');
         const e = entree as Record<string, unknown>;
         if (typeof e.id !== 'string' || typeof e.nom !== 'string') {
-            return illisible("une entrée n'a ni `id` ni `nom` utilisables");
+            return illisible("an entry has neither a usable `id` nor `nom`");
         }
         applications.push({
             id: e.id,
@@ -193,7 +193,7 @@ export interface VmListee {
 /// `GET /vm` — the user's VMs.
 ///
 /// ⚠️ THERE IS AT MOST ONE TO DATE, and it is a property of the DATABASE, not
-/// of this module: the partial index `vm_un_utilisateur` of `0001-socle.sql`
+/// of this module: the partial index `vm_un_utilisateur` of `0001-socle.sql` (policy: allow-fr, SQLite index name)
 /// guarantees it. `routes-vm.ts` writes that the day this invariant fell, its
 /// `sessions_ouvertes` field would become wrong. **This module therefore returns a
 /// LIST**, so as to have nothing to undo that day.
@@ -207,16 +207,16 @@ export async function listerVms(deps: DepsCatalogue): Promise<Issue<VmListee[]>>
         return illisible(`corps non JSON : ${(e as Error).message}`);
     }
     if (typeof corps !== 'object' || corps === null || !('vms' in corps)) {
-        return illisible("le corps ne porte pas de champ 'vms'");
+        return illisible("the body carries no 'vms' field");
     }
     const list = (corps as { vms: unknown }).vms;
-    if (!Array.isArray(list)) return illisible("'vms' n'est pas un tableau");
+    if (!Array.isArray(list)) return illisible("'vms' is not an array");
     const vms: VmListee[] = [];
     for (const entree of list) {
-        if (typeof entree !== 'object' || entree === null) return illisible("une entrée n'est pas un objet");
+        if (typeof entree !== 'object' || entree === null) return illisible("an entry is not an object");
         const e = entree as Record<string, unknown>;
         if (typeof e.id !== 'string' || typeof e.nom !== 'string') {
-            return illisible("une entrée n'a ni `id` ni `nom` utilisables");
+            return illisible("an entry has neither a usable `id` nor `nom`");
         }
         vms.push({
             id: e.id,
@@ -246,7 +246,7 @@ export async function lireIcone(
     deps: DepsCatalogue,
 ): Promise<Issue<Uint8Array>> {
     if (application.icone_url === null) {
-        return illisible(`l'application ${application.id} n'a pas d'icône`);
+        return illisible(`the application ${application.id} has no icon`);
     }
     const r = await deps.fetch(`${deps.base}${application.icone_url}`, { method: 'GET' });
     if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };

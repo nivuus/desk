@@ -1,6 +1,6 @@
 // TREE COPY AND ITS REMOVAL — the branch of renaming that has no
 // `move()`. **PURE**: neither DOM, nor WebRTC, nor frame; the handles are
-// injected, as everywhere in `fichiers/`.
+// injected, as everywhere in `files/`.
 //
 // ════════════════════════════════════════════════════════════════════════════
 // 🔴 FOR A DIRECTORY, IT IS NOT A "FALLBACK" — IT IS THE ONLY PATH
@@ -11,7 +11,7 @@
 // { present: false }`). F3's plan held the fact that the old bridge only
 // called it on files (`web/index.js:628`) as a "hint, not
 // proof"; the measurement settles it. Log:
-// `docs/superpowers/plans/journaux-pont-fichiers-f3/s2-move-casse.txt`.
+// `docs/superpowers/plans/journaux-pont-fichiers-f3/s2-move-casse.txt`. (policy: allow-fr, archived log path)
 //
 // ════════════════════════════════════════════════════════════════════════════
 // WHY THIS EXTRACTION, AND WHY IT COMES BEFORE THE CROSSING

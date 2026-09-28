@@ -1,52 +1,52 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Galerie des primitives</title>
+        <title>Primitives gallery</title>
         <link rel="stylesheet" href="/src/design/socle.css" />
         <link rel="stylesheet" href="/src/design/primitives.css" />
         <!--
             ═══════════════════════════════════════════════════════════════════
-            LA GALERIE DES PRIMITIVES — L'INSTRUMENT D'UN JUGEMENT HUMAIN, PAS
-            UNE PREUVE.
+            THE PRIMITIVES GALLERY — THE INSTRUMENT OF A HUMAN JUDGEMENT, NOT
+            A PROOF.
 
-            🔴 ELLE EXISTE PARCE QUE `design.html` NE POUVAIT PAS L'ACCUEILLIR.
-            Cette page-là valait 231 lignes pour une porte armée à 300 : quatre
-            familles avec leurs variantes et leurs états n'entrent pas dans 69
-            lignes. La scission a donc été décidée AVANT l'addition — ce dépôt a
-            franchi le plafond trois fois sous D10 et deux fois sous D9, et l'a
-            rattrapé chaque fois APRÈS, dont deux fois par une compression que
-            `CLAUDE.md` interdit nommément. `design.html` n'est pas touché d'une
-            ligne par S2, hors le mot « treize » devenu « quatorze ».
+            🔴 IT EXISTS BECAUSE `design.html` COULD NOT HOST IT.
+            That page was worth 231 lines for a gate armed at 300: four
+            families with their variants and their states do not fit in 69
+            lines. The split was therefore decided BEFORE the addition — this repository
+            crossed the ceiling three times under D10 and twice under D9, and
+            caught up each time AFTERWARDS, twice through a compression that
+            `CLAUDE.md` forbids by name. `design.html` is not touched by a single
+            line by S2, apart from the word "thirteen" become "fourteen".
 
-            🔴 CETTE PAGE EST EXCLUE DE LA MOITIÉ « EMPLOYÉ » DU CONTRÔLE §7.6,
-            pour la raison EXACTE qui y fait déjà vivre `design.html` : une page
-            de démonstration emploie des tokens par construction, et l'inclure
-            ferait sortir de la liste d'attente des tokens que LE PRODUIT
-            N'APPELLE PAS. La liste rétrécirait sans que rien n'ait été livré.
-            L'exclusion est éprouvée par une rouge, pas affirmée par une phrase :
-            `node client/outils/tokens-orphelins.mjs --sans-exclusion` sort à 1.
+            🔴 THIS PAGE IS EXCLUDED FROM THE "USED" HALF OF CHECK §7.6,
+            for the EXACT reason that already puts `design.html` there: a
+            demonstration page uses tokens by construction, and including it
+            would take out of the waiting list tokens THE PRODUCT
+            DOES NOT CALL. The list would shrink without anything having been shipped.
+            The exclusion is proven by a red run, not asserted by a sentence:
+            `node client/outils/tokens-orphelins.mjs --sans-exclusion` exits with 1.
 
-            ⚠️ CE QU'ELLE NE DIT JAMAIS : que `#93b4f9` soit le bon survol, que
-            l'état actif dit « par le retour au repos » soit lisible, ni que
-            quatre tons de message distingués par la SEULE ENCRE suffisent. Ce
-            sont les trois jugements humains que S2 ajoute aux huit du §8, et
-            aucun ne deviendra une mesure. ⚠️ ILS SONT QUINZE À LA FIN DE S3,
-            qui en ajoute quatre — la grille de cartes, la largeur de la carte
-            de connexion, l'état d'une pastille dit par la seule encre, et la
-            forme du sélecteur de thème.
+            ⚠️ WHAT IT NEVER SAYS: that `#93b4f9` is the right hover, that
+            the active state expressed "by the return to rest" is readable, nor that
+            four message tones told apart by INK ALONE are enough. These
+            are the three human judgements S2 adds to the eight of §8, and
+            none will become a measurement. ⚠️ THERE ARE FIFTEEN AT THE END OF S3,
+            which adds four — the card grid, the width of the sign-in
+            card, the state of a badge expressed by ink alone, and the
+            shape of the theme selector.
 
-            ⚠️ DEUX ÉTATS NE SE MONTRENT PAS CÔTE À CÔTE : le survol et l'appui
-            demandent un pointeur. Il faut les essayer, pas les lire.
+            ⚠️ TWO STATES DO NOT SHOW SIDE BY SIDE: hover and press
+            require a pointer. They must be tried, not read.
 
-            ⚠️ PORTE ARMÉE À 300 LIGNES : au-delà, scinder par famille.
+            ⚠️ GATE ARMED AT 300 LINES: beyond that, split by family.
             ═══════════════════════════════════════════════════════════════════
         -->
         <style>
-            /* La mise en page de la page de démonstration, JAMAIS une
-               primitive — même clause que `design.html`. Aucune couleur
-               littérale : §7.2 balaie cette page comme les autres. */
+            /* The layout of the demonstration page, NEVER a
+               primitive — same clause as `design.html`. No literal
+               colour: §7.2 scans this page like the others. */
             body {
                 margin: 0 auto;
                 padding: var(--e-6) var(--e-5);
@@ -88,12 +88,12 @@
                 gap: var(--e-4);
                 max-width: 26rem;
             }
-            /* Un damier, pour que `.message--flottant` se lise comme il vit :
-               posé sur une image dont on ne sait rien. Repris de la section
-               « voiles » de `design.html`, qui le pose pour la même raison —
-               DUPLICATION DÉCLARÉE : la mise en page d'une page de
-               démonstration n'est pas une primitive, et la monter dans
-               `client/src/design/` en ferait une. */
+            /* A checkerboard, so that `.message--flottant` reads as it lives:
+               laid over an image nothing is known about. Taken from the
+               « veils » section of `design.html`, which sets it for the same reason —
+               DECLARED DUPLICATION: the layout of a demonstration
+               page is not a primitive, and moving it up into
+               `client/src/design/` would make it one. */
             .damier {
                 padding: var(--e-3);
                 border-radius: var(--r-3);
@@ -123,104 +123,104 @@
         </style>
     </head>
     <body>
-        <h1>Galerie des primitives</h1>
+        <h1>Primitives gallery</h1>
         <p class="note">
-            Quatre familles — bouton, champ, surface, message —, toutes écrites
-            en tokens et en rien d’autre. Cette page est le seul endroit qui les
-            charge sans les employer. À la fin du sous-bloc S2, aucune surface du
-            produit n’en employait ; depuis S3, la page-shell et l’écran de
-            connexion les emploient — c’est le contrôle §7.9 qui le dit.
+            Four families — button, field, surface, message —, all written
+            in tokens and nothing else. This page is the only place that
+            loads them without using them. At the end of sub-block S2, no surface of the
+            product used them; since S3, the shell page and the sign-in
+            screen use them — check §7.9 says so.
         </p>
 
-        <h2>Thème</h2>
+        <h2>Theme</h2>
         <p class="note">
-            Les mêmes trois états que la galerie de tokens, et le même code —
-            <code>src/design/selecteur-theme.ts</code>, extrait avant que cette
-            page n’existe.
+            The same three states as the token gallery, and the same code —
+            <code>src/design/selecteur-theme.ts</code>, extracted before this
+            page existed.
         </p>
         <p id="themes"></p>
 
-        <h2>Bouton — trois variantes, quatre états</h2>
+        <h2>Button — three variants, four states</h2>
         <p class="note">
-            Le survol et l’appui demandent un pointeur : les essayer. L’appui se
-            dit par le <strong>retour à la valeur de repos</strong> — le survol
-            se retire sous le doigt —, et c’est un arbitrage, pas une mesure.
+            Hover and press require a pointer: try them. Press is
+            expressed by the <strong>return to the rest value</strong> — the hover
+            withdraws under the finger —, and that is a trade-off, not a measurement.
         </p>
-        <h3>Repos, et au survol</h3>
+        <h3>At rest, and on hover</h3>
         <div class="rangee">
-            <button type="button" class="bouton bouton--principal">Se connecter</button>
-            <button type="button" class="bouton bouton--secondaire">Annuler</button>
-            <button type="button" class="bouton bouton--discret">Plus tard</button>
+            <button type="button" class="bouton bouton--principal">Sign in</button>
+            <button type="button" class="bouton bouton--secondaire">Cancel</button>
+            <button type="button" class="bouton bouton--discret">Later</button>
         </div>
-        <h3>Désactivés — par les tokens, jamais par une opacité</h3>
+        <h3>Disabled — through the tokens, never through an opacity</h3>
         <div class="rangee">
-            <button type="button" class="bouton bouton--principal" disabled>Se connecter</button>
-            <button type="button" class="bouton bouton--secondaire" disabled>Annuler</button>
-            <button type="button" class="bouton bouton--discret" disabled>Plus tard</button>
+            <button type="button" class="bouton bouton--principal" disabled>Sign in</button>
+            <button type="button" class="bouton bouton--secondaire" disabled>Cancel</button>
+            <button type="button" class="bouton bouton--discret" disabled>Later</button>
         </div>
-        <h3>Focus — hérité de base.css, et jamais effacé</h3>
+        <h3>Focus — inherited from base.css, and never removed</h3>
         <p class="note">
-            Aucune primitive ne déclare d’anneau de focus : elles l’ont toutes,
-            depuis <code>:focus-visible</code> dans <code>base.css</code>.
-            Naviguer au clavier pour le voir.
+            No primitive declares a focus ring: they all have it,
+            from <code>:focus-visible</code> in <code>base.css</code>.
+            Navigate with the keyboard to see it.
         </p>
 
-        <h2>Champ — étiquette, saisie, aide, erreur</h2>
+        <h2>Field — label, input, help, error</h2>
         <div class="colonne">
             <p class="champ">
-                <label class="champ__etiquette" for="c1">Identifiant</label>
-                <input class="champ__saisie" id="c1" type="text" placeholder="prenom.nom" />
-                <span class="champ__aide">Celui de votre poste de travail.</span>
+                <label class="champ__etiquette" for="c1">Username</label>
+                <input class="champ__saisie" id="c1" type="text" placeholder="first.last" />
+                <span class="champ__aide">The one of your workstation.</span>
             </p>
             <p class="champ champ--erreur">
-                <label class="champ__etiquette" for="c2">Mot de passe</label>
-                <input class="champ__saisie" id="c2" type="password" value="mauvais" />
-                <span class="champ__erreur">Identifiant ou mot de passe refusé.</span>
+                <label class="champ__etiquette" for="c2">Password</label>
+                <input class="champ__saisie" id="c2" type="password" value="wrong" />
+                <span class="champ__erreur">Username or password refused.</span>
             </p>
             <p class="champ">
-                <label class="champ__etiquette" for="c3">Domaine</label>
-                <input class="champ__saisie" id="c3" type="text" value="ATELIER" disabled />
-                <span class="champ__aide">Imposé par l’administrateur.</span>
+                <label class="champ__etiquette" for="c3">Domain</label>
+                <input class="champ__saisie" id="c3" type="text" value="WORKSHOP" disabled />
+                <span class="champ__aide">Set by the administrator.</span>
             </p>
         </div>
 
-        <h2>Surface — carte et séparateur</h2>
+        <h2>Surface — card and separator</h2>
         <div class="colonne">
             <div class="carte">
-                <h3 class="carte__titre">Poste 3 — atelier</h3>
+                <h3 class="carte__titre">Host 3 — workshop</h3>
                 <p class="carte__corps">
-                    Une carte INERTE porte <code>--bord</code>, que WCAG 1.4.11
-                    exempte comme décoratif. Une carte CLIQUABLE porterait
-                    <code>--bord-fort</code> — S2 n’en livre pas.
+                    An INERT card carries <code>--bord</code>, which WCAG 1.4.11
+                    exempts as decorative. A CLICKABLE card would carry
+                    <code>--bord-fort</code> — S2 ships none.
                 </p>
                 <hr class="separateur" />
-                <p class="carte__corps">Le séparateur est une classe, jamais un sélecteur d’élément.</p>
+                <p class="carte__corps">The separator is a class, never an element selector.</p>
             </div>
         </div>
 
-        <h2>Message — quatre tons, dits par l’encre et jamais par le fond</h2>
+        <h2>Message — four tones, expressed by the ink and never by the background</h2>
         <p class="note">
-            Un fond teinté placerait le texte sur une couleur qu’aucune des 52
-            paires du contrôle §7.1 ne mesure : ces trois tokens y sont des
-            <strong>encres</strong> sur les trois fonds, jamais des fonds.
+            A tinted background would put the text on a colour none of the 52
+            pairs of check §7.1 measures: these three tokens are
+            <strong>inks</strong> there on the three backgrounds, never backgrounds.
         </p>
         <div class="colonne">
-            <p class="message">Session prête. Aucune action requise.</p>
-            <p class="message message--succes">Connecté au poste 3.</p>
-            <p class="message message--alerte">Le lien est lent : l’image sera réduite.</p>
-            <p class="message message--danger">Connexion refusée par le serveur.</p>
+            <p class="message">Session ready. No action required.</p>
+            <p class="message message--succes">Connected to host 3.</p>
+            <p class="message message--alerte">The link is slow: the image will be reduced.</p>
+            <p class="message message--danger">Connection refused by the server.</p>
         </div>
         <p class="note">
-            La variante <code>message--flottant</code> est celle des bandeaux
-            posés <strong>sur la vidéo</strong> : elle troque le fond opaque
-            contre le voile hors thème, et sa bordure devient
-            <code>transparent</code>. Rendue ici sur un damier, pour qu’on la
-            lise comme elle vit — un fond clair et opaque au-dessus d’une image
-            vidéo se lirait comme un défaut d’affichage.
+            The <code>message--flottant</code> variant is the one of the banners
+            laid <strong>over the video</strong>: it swaps the opaque background
+            for the out-of-theme veil, and its border becomes
+            <code>transparent</code>. Rendered here on a checkerboard, so it is
+            read as it lives — a light and opaque background above a video
+            image would read as a display defect.
         </p>
         <div class="colonne damier">
-            <p class="message message--flottant">Connexion…</p>
-            <p class="message message--flottant">12,4 Mb/s — 1280×720 — 58 i/s</p>
+            <p class="message message--flottant">Connecting…</p>
+            <p class="message message--flottant">12.4 Mb/s — 1280×720 — 58 fps</p>
         </div>
 
         <script type="module" src="/src/design/galerie-primitives.ts"></script>

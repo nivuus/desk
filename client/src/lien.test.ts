@@ -16,31 +16,31 @@ function lien(partiel: Partial<LinkMessage>): LinkMessage {
 }
 
 describe('texteLien', () => {
-    it('ne signale rien de particulier quand tout va bien', () => {
+    it('reports nothing in particular when all is well', () => {
         const t = texteLien(lien({}));
         expect(t.alerte).toBe(false);
         expect(t.resume).toContain('8.0 Mb/s');
     });
 
-    it('dit pourquoi l’image a molli quand la résolution est réduite', () => {
+    it('says why the image went soft when the resolution is reduced', () => {
         const t = texteLien(lien({ quality: 'degradee', width: 1280, height: 720 }));
         expect(t.alerte).toBe(true);
         expect(t.resume).toContain('1280×720');
         // Le texte doit nommer la CAUSE, pas seulement l'effet : un
         // utilisateur qui lit « 1280×720 » sans explication croit à un bug.
-        expect(t.resume.toLowerCase()).toContain('réseau');
+        expect(t.resume.toLowerCase()).toContain('network');
     });
 
-    it('avertit explicitement quand le lien ne permet plus le jeu nerveux', () => {
+    it('warns explicitly when the link no longer allows twitchy gaming', () => {
         const t = texteLien(lien({ quality: 'insuffisante' }));
         expect(t.alerte).toBe(true);
-        expect(t.resume.toLowerCase()).toContain('insuffisant');
+        expect(t.resume.toLowerCase()).toContain('insufficient');
     });
 
-    it('distingue une adaptation indisponible d’un lien dégradé', () => {
+    it('tells an unavailable adaptation from a degraded link', () => {
         const t = texteLien(lien({ adaptation: 'indisponible' }));
         // Pas une alerte : le lien peut très bien être excellent.
         expect(t.alerte).toBe(false);
-        expect(t.resume.toLowerCase()).toContain('adaptation indisponible');
+        expect(t.resume.toLowerCase()).toContain('adaptation unavailable');
     });
 });

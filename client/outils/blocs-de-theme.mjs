@@ -49,23 +49,23 @@ const iFichier = args.indexOf('--fichier');
 const file = iFichier === -1 ? 'client/src/design/tokens/couleurs.css' : args[iFichier + 1];
 
 if (!existsSync(file)) {
-    console.error(`${file} est absent : rien n'a été mesuré, ce n'est pas un succès.`);
+    console.error(`${file} is missing: nothing was measured, this is not a success.`);
     process.exit(2);
 }
 
 const css = readFileSync(file, 'utf8');
 const blocs = lireBlocsDeTheme(css);
 
-console.log(`fichier : ${file}`);
+console.log(`file: ${file}`);
 for (const bloc of blocs) {
     console.log(`  bloc ${bloc.nom} : ${bloc.tokens.size} token(s)`);
 }
 
 const ecarts = ecartsEntreBlocs(blocs);
 console.log(
-    `portée : ① clair \u2261 clair, ② clair \u2286 racine, ` +
-        `③ couleurs de racine \u2286 clair sauf ${COULEURS_HORS_THEME.length} hors-thème nommés`,
+    `scope: ① light ≡ light, ② light ⊆ root, ` +
+        `③ root colours ⊆ light except ${COULEURS_HORS_THEME.length} named out-of-theme ones`,
 );
-console.log(`écarts : ${ecarts.length}`);
-for (const ecart of ecarts) console.log(`  ÉCART  ${ecart}`);
+console.log(`gaps: ${ecarts.length}`);
+for (const ecart of ecarts) console.log(`  GAP  ${ecart}`);
 process.exit(ecarts.length > 0 ? 1 : 0);

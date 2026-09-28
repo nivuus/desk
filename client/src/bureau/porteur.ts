@@ -126,7 +126,7 @@ export interface DepsPromotion {
     /// folder" is a gesture that can happen any time after
     /// promotion, so a token passed HERE would be stale at click time —
     /// the defect just fixed, reintroduced one notch lower. The
-    /// bridge requests its own at click time (`bureau/fichiers-dom.ts`).
+    /// bridge requests its own at click time (`bureau/files-dom.ts`).
     installerPont(): void;
     /// Opens the control session's socket, with the FRESH token.
     ouvrirSocket(jeton: string): void;

@@ -9,7 +9,7 @@ function touche(partiel: Partial<ToucheObservee> & { code: string }): ToucheObse
 }
 
 describe('estUnRaccourciDeCollage', () => {
-    it('reconnaît Ctrl+V', () => {
+    it('recognises Ctrl+V', () => {
         expect(estUnRaccourciDeCollage(touche({ ctrlKey: true, code: 'KeyV' }))).toBe(true);
     });
 
@@ -17,7 +17,7 @@ describe('estUnRaccourciDeCollage', () => {
     // `paste` de confiance, aux quatre cellules où il est éprouvé et aux deux
     // exécutions (`journaux-presse-papier-p2/p2-paste-video-{1,2}.json`). D6 le
     // nommait sans l'avoir mesuré.
-    it('reconnaît Shift+Insert', () => {
+    it('recognises Shift+Insert', () => {
         expect(estUnRaccourciDeCollage(touche({ shiftKey: true, code: 'Insert' }))).toBe(true);
     });
 
@@ -52,7 +52,7 @@ describe('estUnRaccourciDeCollage', () => {
     });
 
     // ROUGE si l'on teste le seul `code`.
-    it('refuse V seul', () => {
+    it('refuses V alone', () => {
         expect(estUnRaccourciDeCollage(touche({ code: 'KeyV' }))).toBe(false);
     });
 
@@ -78,7 +78,7 @@ describe('estUnRaccourciDeCollage', () => {
     // PAS le `paste` d'arriver (`ControlLeft` porte `dp: true`, `KeyV` porte
     // `dp: false`, et le `paste` est reçu — deux exécutions).
     it.each(['ControlLeft', 'ControlRight', 'ShiftLeft', 'ShiftRight'])(
-        'refuse le modificateur %s seul',
+        'refuses the modifier %s alone',
         (code) => {
             expect(estUnRaccourciDeCollage(touche({ ctrlKey: true, code }))).toBe(false);
             expect(estUnRaccourciDeCollage(touche({ shiftKey: true, code }))).toBe(false);

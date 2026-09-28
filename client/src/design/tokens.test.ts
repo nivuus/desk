@@ -49,12 +49,12 @@ const demonstration = `
 `;
 
 describe('lireBlocsDeTheme', () => {
-    it('découpe le CSS en exactement trois blocs nommés', () => {
+    it('splits the CSS into exactly three named blocks', () => {
         const blocs = lireBlocsDeTheme(demonstration);
         expect(blocs.map((b) => b.nom)).toEqual(['racine', 'media-clair', 'attribut-clair']);
     });
 
-    it('le bloc « racine » est celui SANS condition, pas celui à attribut', () => {
+    it('the « root » block is the one WITHOUT a condition, not the attribute one', () => {
         const blocs = lireBlocsDeTheme(demonstration);
         const racine = blocs.find((b) => b.nom === 'racine');
         // La palette SOMBRE est celle du bloc sans condition (spec §4.2).
@@ -63,7 +63,7 @@ describe('lireBlocsDeTheme', () => {
         expect(attribut?.tokens.get('--fond-0')).toBe('#ffffff');
     });
 
-    it('`color-scheme` est déclaré dans les TROIS blocs (D9)', () => {
+    it('`color-scheme` is declared in the THREE blocks (D9)', () => {
         // Ce n'est PAS un token `--*` : il ne compte ni dans l'égalité
         // d'ensembles de §7.4, ni dans les orphelins de §7.6. Il est donc
         // vérifié à part — sans quoi rien ne le garderait.
@@ -76,7 +76,7 @@ describe('lireBlocsDeTheme', () => {
     });
 });
 
-describe('lireBlocsDeTheme — deux occurrences DU MÊME bloc se FUSIONNENT', () => {
+describe('lireBlocsDeTheme — two occurrences OF THE SAME block MERGE', () => {
     // 🔴 LE CAS QUE L'EXTRACTION DE LA TÂCHE 6 REND RÉEL : `couleurs.css` et
     // `echelles.css` déclarent chacun leur propre `:root {}` sans condition.
     // Concaténés — c'est ce que fait tout lecteur qui a besoin des deux — le
@@ -86,19 +86,19 @@ describe('lireBlocsDeTheme — deux occurrences DU MÊME bloc se FUSIONNENT', ()
     // disparaîtrait EN SILENCE.
     const deuxRacines = ':root {\n    --a: 1;\n}\n:root {\n    --b: 2;\n}\n';
 
-    it('rend UN SEUL bloc « racine », pas deux', () => {
+    it('returns ONE SINGLE « root » block, not two', () => {
         const blocs = lireBlocsDeTheme(deuxRacines);
         expect(blocs).toHaveLength(1);
         expect(blocs[0].nom).toBe('racine');
     });
 
-    it('UNIT les tokens des deux occurrences — ni le premier seul, ni le dernier seul', () => {
+    it('UNITES the tokens of both occurrences — neither the first alone, nor the last alone', () => {
         const blocs = lireBlocsDeTheme(deuxRacines);
         expect(blocs[0].tokens.get('--a')).toBe('1');
         expect(blocs[0].tokens.get('--b')).toBe('2');
     });
 
-    it('ne fusionne PAS un bloc « racine » avec un bloc clair du même texte', () => {
+    it('does NOT merge a « root » block with a light block of the same text', () => {
         // La fusion doit rester bornée au NOM : les trois blocs de thème
         // doivent continuer à se distinguer même quand « racine » se
         // dédouble.
@@ -119,7 +119,7 @@ describe('lireBlocsDeTheme — deux occurrences DU MÊME bloc se FUSIONNENT', ()
         expect(racine?.tokens.get('--b')).toBe('2');
     });
 
-    it('`lireBlocsBruts` NE FUSIONNE PAS — c\'est tout son intérêt', () => {
+    it('`lireBlocsBruts` DOES NOT MERGE — that is its whole point', () => {
         // 🔴 CORRECTIF DE LA REVUE (round 1) : `lireBlocsDeTheme` borne
         // désormais son compte à 3 PAR CONSTRUCTION, donc AUCUNE assertion
         // sur `lireBlocsDeTheme(...).length` ne peut plus dénoncer un
@@ -135,7 +135,7 @@ describe('lireBlocsDeTheme — deux occurrences DU MÊME bloc se FUSIONNENT', ()
 });
 
 describe('tokensDeclares', () => {
-    it("rend l'UNION des trois blocs, pas le seul :root", () => {
+    it("returns the UNION of the three blocks, not :root alone", () => {
         const css = demonstration.replace('--texte-fort: #10131a;\n}\n', '--texte-fort: #10131a;\n    --propre-au-clair: 1px;\n}\n');
         expect(tokensDeclares(css)).toEqual(
             new Set(['--fond-0', '--texte-fort', '--propre-au-clair']),
@@ -144,7 +144,7 @@ describe('tokensDeclares', () => {
 });
 
 describe('tokensReferences', () => {
-    it('trouve `var(--a)` et `var(--b, repli)`, et IGNORE ce qui est commenté', () => {
+    it('finds `var(--a)` and `var(--b, repli)`, and IGNORES what is commented out', () => {
         const css = `
             .a { color: var(--encre); background: var(--fond, #fff); }
             /* .mort { color: var(--jamais-employe); } */
@@ -154,11 +154,11 @@ describe('tokensReferences', () => {
 });
 
 describe('ecartsEntreBlocs', () => {
-    it('rend VIDE sur trois blocs qui déclarent le même ensemble', () => {
+    it('returns EMPTY on three blocks that declare the same set', () => {
         expect(ecartsEntreBlocs(lireBlocsDeTheme(demonstration))).toEqual([]);
     });
 
-    it('signale un token MANQUANT dans le bloc média', () => {
+    it('reports a token MISSING from the media block', () => {
         const css = demonstration.replace('        --texte-fort: #10131a;\n', '');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
         expect(ecarts).toHaveLength(1);
@@ -166,7 +166,7 @@ describe('ecartsEntreBlocs', () => {
         expect(ecarts[0]).toContain('--texte-fort');
     });
 
-    it("signale un token manquant dans le bloc ATTRIBUT — l'AUTRE sens", () => {
+    it("reports a token missing from the ATTRIBUTE block — the OTHER direction", () => {
         // 🔴 Le défaut NATUREL de ce contrôle est de ne tester l'inclusion que
         // dans UN sens. Il laisserait passer exactement la dérive que §7.4
         // existe pour empêcher, la palette claire étant déclarée DEUX fois
@@ -179,10 +179,10 @@ describe('ecartsEntreBlocs', () => {
         // est un token présent dans `media-clair` et ABSENT d'`attribut-clair`.
         const css = demonstration.replace('    --texte-fort: #10131a;\n}\n', '}\n');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
-        expect(ecarts).toEqual(['attribut-clair : --texte-fort manquant']);
+        expect(ecarts).toEqual(['attribut-clair: --texte-fort missing']);
     });
 
-    it('signale un token clair SANS contrepartie dans le bloc sans condition', () => {
+    it('reports a light token WITHOUT a counterpart in the unconditional block', () => {
         // Un thème clair qui surcharge un token qui n'existe pas en sombre est
         // une faute de frappe, pas une intention. C'est l'inclusion ② de
         // `ecartsEntreBlocs`, et rien d'autre ne la couvrait.
@@ -191,19 +191,19 @@ describe('ecartsEntreBlocs', () => {
             .replace(':root[data-theme="clair"] {', ':root[data-theme="clair"] {\n    --orphelin-clair: 0;');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
         expect(ecarts).toEqual([
-            'racine : --orphelin-clair surchargé par attribut-clair sans y être déclaré',
-            'racine : --orphelin-clair surchargé par media-clair sans y être déclaré',
+            'root: --orphelin-clair overridden by attribut-clair without being declared there',
+            'root: --orphelin-clair overridden by media-clair without being declared there',
         ]);
     });
 
-    it("NOMME le bloc et le token, jamais un booléen", () => {
+    it("NAMES the block and the token, never a boolean", () => {
         const css = demonstration.replace('        --fond-0: #ffffff;\n', '');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
-        expect(ecarts).toEqual(['media-clair : --fond-0 manquant']);
+        expect(ecarts).toEqual(['media-clair: --fond-0 missing']);
     });
 });
 
-describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => {
+describe('ecartsEntreBlocs — inclusion ③, the root COLOURS', () => {
     // 🔴 L'ANGLE MORT QUE S3 FERME. Jusqu'ici `ecartsEntreBlocs` comparait
     // clair ⇄ clair (①) et clair ⊆ racine (②), JAMAIS racine ⊆ clair : une
     // couleur déclarée à la racine et oubliée dans les DEUX blocs clairs
@@ -238,22 +238,22 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
 }
 `;
 
-    it('rend VIDE quand toutes les couleurs de la racine sont dans les deux blocs clairs', () => {
+    it('returns EMPTY when all the root colours are in both light blocks', () => {
         expect(ecartsEntreBlocs(lireBlocsDeTheme(withColour))).toEqual([]);
     });
 
-    it('signale une couleur de la racine absente des DEUX blocs clairs', () => {
+    it('reports a root colour missing from BOTH light blocks', () => {
         // La mutation exacte que S2 a jouée et versée.
         const css = withColour
             .replaceAll('        --accent-survol: #1d4ed8;\n', '')
             .replaceAll('    --accent-survol: #1d4ed8;\n', '');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
         expect(ecarts).toEqual([
-            'blocs clairs : --accent-survol est une couleur de la racine sans contrepartie claire',
+            'light blocks: --accent-survol is a root colour without a light counterpart',
         ]);
     });
 
-    it('ne signale AUCUN écart pour un token HORS THÈME de la liste nommée', () => {
+    it('reports NO gap for an OUT-OF-THEME token of the named list', () => {
         // `--voile-flottant` est une couleur de la racine absente des deux
         // blocs clairs, et c'est VOULU : les six voiles sont posés sur la
         // vidéo, dont le contenu ne suit aucun thème. Sans cette exemption la
@@ -261,7 +261,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         expect(ecartsEntreBlocs(lireBlocsDeTheme(withColour))).toEqual([]);
     });
 
-    it('ne signale AUCUN écart pour un token de la racine qui N\'EST PAS une couleur', () => {
+    it('reports NO gap for a root token that IS NOT a colour', () => {
         // 🔴 SANS CETTE PROPRIÉTÉ la fermeture rendrait des dizaines d'écarts
         // sur l'arbre intact — les crans typographiques, l'espacement, les
         // rayons, les durées et les piles de polices ne vivent QUE dans
@@ -271,7 +271,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         expect(ecarts.join(' ')).not.toContain('--police-ui');
     });
 
-    it('signale une couleur NEUVE ajoutée à la seule racine', () => {
+    it('reports a NEW colour added to the root alone', () => {
         // 🔴 LE TEST QUI ATTRAPE LA VACUITÉ. Un prédicat « est une couleur »
         // qui rendrait `false` pour tout laisserait ce cas passer, et la
         // fermeture entière serait un contrôle qui ne mord jamais.
@@ -281,11 +281,11 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         );
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
         expect(ecarts).toEqual([
-            'blocs clairs : --bord-neuf est une couleur de la racine sans contrepartie claire',
+            'light blocks: --bord-neuf is a root colour without a light counterpart',
         ]);
     });
 
-    it('reconnaît une couleur écrite en rgb() et en hsl(), pas seulement en #', () => {
+    it('recognises a colour written in rgb() and in hsl(), not only in #', () => {
         // Le prédicat décide sur la VALEUR, jamais sur le nom : un préfixe de
         // nom est une convention qu'une faute de frappe contourne.
         const css = withColour.replace(
@@ -294,12 +294,12 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         );
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
         expect(ecarts).toEqual([
-            'blocs clairs : --a-hsl est une couleur de la racine sans contrepartie claire',
-            'blocs clairs : --a-rgb est une couleur de la racine sans contrepartie claire',
+            'light blocks: --a-hsl is a root colour without a light counterpart',
+            'light blocks: --a-rgb is a root colour without a light counterpart',
         ]);
     });
 
-    it('rend ZÉRO écart sur les VRAIS tokens/couleurs.css et tokens/echelles.css', () => {
+    it('returns ZERO gaps on the REAL tokens/couleurs.css and tokens/echelles.css', () => {
         // 🔴 Ce test dépend de `test: { css: true }` dans `vite.config.ts` :
         // sans lui `?raw` rend la chaîne VIDE, `lireBlocsDeTheme` ne trouve
         // aucun bloc, et l'assertion « zéro écart » passerait en ne mesurant
@@ -315,7 +315,7 @@ describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => 
         expect(ecartsEntreBlocs(blocs)).toEqual([]);
     });
 
-    it('EXACTEMENT QUATRE occurrences PHYSIQUES — le garde qu\'un `:root` de trop doit faire rougir', () => {
+    it('EXACTLY FOUR PHYSICAL occurrences — the guard that one `:root` too many must turn red', () => {
         // 🔴 CORRECTIF DE LA REVUE (round 1, 25 août 2026). Mesuré : ajouter
         // `:root { --e-4: 999rem; }` en trop dans `tokens/echelles.css` (une
         // régression réelle — tout `--e-4` passerait de 1rem à 999rem) se

@@ -30,7 +30,7 @@
 // 🔴 **And the backpressure set up here has never served in operation**: the
 // only read that would reach `MORCEAUX_EN_VOL = 4` (256 KiB) fails on the
 // `DELAI_LIRE` budget, its four chunks sharing those 33 KiB/s. See
-// `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`.
+// `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`. (policy: allow-fr, archived plan path)
 
 /**
  * The subset of an `RTCDataChannel` that backpressure uses.

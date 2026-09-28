@@ -53,14 +53,14 @@ function racine(depart: Record<string, string>) {
 }
 
 describe('attacherAccentAuDOM', () => {
-    it('une couleur CONFORME est posée sur la racine', () => {
+    it('a COMPLIANT colour is set on the root', () => {
         // ROUGE : l'arbre intact avant que le module n'existe.
         const r = racine(SOMBRE);
         attacherAccentAuDOM(r.acces).recevoir(READABLE_IN_DARK_ONLY);
         expect(r.poses).toEqual([[TOKEN_ACCENT, READABLE_IN_DARK_ONLY]]);
     });
 
-    it('une couleur REFUSÉE fait poser l\'accent du thème, jamais rien', () => {
+    it('a REFUSED colour makes the theme accent be set, never nothing', () => {
         // ROUGE : ne rien poser sur refus ⟹ le token garderait sa valeur
         // PRÉCÉDENTE, c'est-à-dire la teinte d'une icône qui n'est plus celle
         // de cette fenêtre — un état périmé, plus trompeur qu'un repli visible.
@@ -74,7 +74,7 @@ describe('attacherAccentAuDOM', () => {
         ]);
     });
 
-    it('les TROIS fonds et l\'accent sont relus À CHAQUE message', () => {
+    it('the THREE backgrounds and the accent are re-read on EACH message', () => {
         // 🔴 ROUGE : mémoriser les fonds au montage ⟹ une bascule de thème
         // laisserait l'accent jugé contre l'ANCIEN thème. La MÊME couleur est
         // acceptée en sombre et refusée en clair : sans la relecture, le second
@@ -91,7 +91,7 @@ describe('attacherAccentAuDOM', () => {
         expect(CLAIR['--accent']).not.toBe(SOMBRE['--accent']);
     });
 
-    it('le token est posé sur la RACINE, et le module ne connaît aucun élément', () => {
+    it('the token is set on the ROOT, and the module knows no element', () => {
         // 🔴 C'EST LA ROUGE DE REMPLACEMENT DU CRITÈRE ② (E7 du plan) : la rouge
         // que la spec prescrivait — « poser le token sans le déclarer dans les
         // trois blocs, §7.4 échoue » — est VACUEUSE sous D-A1-2, où il n'y a
@@ -113,7 +113,7 @@ describe('attacherAccentAuDOM', () => {
         expect(Object.keys(r.acces)).toEqual(['lireToken', 'poserToken']);
     });
 
-    it('une racine dont les tokens sont ABSENTS fait poser la chaîne vide, sans lever', () => {
+    it('a root whose tokens are ABSENT makes the empty string be set, without throwing', () => {
         // ROUGE : ne pas contrôler la forme des fonds dans `conformer` ⟹
         // `rapportDeContraste` LÈVE sur la chaîne vide, et une exception dans un
         // gestionnaire de message de canal de données tue la session sans rien

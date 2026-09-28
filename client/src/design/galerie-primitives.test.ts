@@ -62,15 +62,15 @@ function manquantes(attendues: string[]): string[] {
     return attendues.filter((nom) => !CLASSES.has(nom));
 }
 
-describe("primitives.html — la galerie des primitives montre bien ce qu'elle promet", () => {
-    it('la famille BOUTON : les trois variantes sont dans le balisage', () => {
+describe("primitives.html — the primitives gallery does show what it promises", () => {
+    it('the BUTTON family: the three variants are in the markup', () => {
         expect(
             manquantes(['bouton', 'bouton--principal', 'bouton--secondaire', 'bouton--discret']),
-            'variantes de bouton absentes du balisage de démonstration',
+            'button variants missing from the demonstration markup',
         ).toEqual([]);
     });
 
-    it('la famille CHAMP : ses quatre parties, et son état d’erreur', () => {
+    it('the FIELD family: its four parts, and its error state', () => {
         expect(
             manquantes([
                 'champ',
@@ -80,18 +80,18 @@ describe("primitives.html — la galerie des primitives montre bien ce qu'elle p
                 'champ__aide',
                 'champ__erreur',
             ]),
-            'parties ou état de champ absents du balisage de démonstration',
+            'field parts or state missing from the demonstration markup',
         ).toEqual([]);
     });
 
-    it('la famille SURFACE : la carte, ses deux parties, et le séparateur', () => {
+    it('the SURFACE family: the card, its two parts, and the separator', () => {
         expect(
             manquantes(['carte', 'carte__titre', 'carte__corps', 'separateur']),
-            'parties de surface absentes du balisage de démonstration',
+            'surface parts missing from the demonstration markup',
         ).toEqual([]);
     });
 
-    it('la famille MESSAGE : ses quatre tons, plus la variante flottante', () => {
+    it('the MESSAGE family: its four tones, plus the floating variant', () => {
         expect(
             manquantes([
                 'message',
@@ -100,7 +100,7 @@ describe("primitives.html — la galerie des primitives montre bien ce qu'elle p
                 'message--danger',
                 'message--flottant',
             ]),
-            'tons ou variante de message absents du balisage de démonstration',
+            'message tones or variant missing from the demonstration markup',
         ).toEqual([]);
     });
 });

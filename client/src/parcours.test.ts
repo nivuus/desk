@@ -72,9 +72,9 @@ const clePage = (page: string) => `../${page}`;
 /// `./hub/page.ts`).
 function entreeDeLaPage(page: string): string {
     const html = PAGES[clePage(page)];
-    expect(html, `page introuvable : ${page}`).toBeTypeOf('string');
+    expect(html, `page not found: ${page}`).toBeTypeOf('string');
     const trouvees = [...html.matchAll(/<script type="module" src="\/src\/([^"]+)"/g)];
-    expect(trouvees, `entrée unique attendue dans ${page}`).toHaveLength(1);
+    expect(trouvees, `single entry expected in ${page}`).toHaveLength(1);
     return `./${trouvees[0][1]}`;
 }
 
@@ -127,29 +127,29 @@ function aiguilleSurFenetreOuverte(source: string): boolean {
     return AIGUILLAGE_FENETRE_OUVERTE.test(source);
 }
 
-describe('le garde ① lui-même : ce qu’il accepte et ce qu’il REFUSE', () => {
+describe('guard ① itself: what it accepts and what it REFUSES', () => {
     // 🔴 UN CONTRÔLE QU'ON N'A JAMAIS VU ROUGE N'EST PAS UN CONTRÔLE, et le
     // témoin ne vit PAS dans le dépôt : une prose de test est stable, une
     // prose de produit ne l'est pas. On éprouve donc le prédicat sur deux
     // chaînes fabriquées ici, dont l'une est exactement le cas que l'ancien
     // garde laissait passer.
-    it('REFUSE une simple mention en prose', () => {
+    it('REFUSES a mere mention in prose', () => {
         expect(
             aiguilleSurFenetreOuverte(
-                '// aucun message fenetre-ouverte n atteint son bureau, qui n ouvre aucun socket',
+                '// no fenetre-ouverte message reaches its desktop, which opens no socket',
             ),
         ).toBe(false);
     });
 
-    it('ACCEPTE la comparaison réelle', () => {
+    it('ACCEPTS the real comparison', () => {
         expect(
             aiguilleSurFenetreOuverte("if (message.type === 'fenetre-ouverte') bureau.fenetreOuverte(s, t);"),
         ).toBe(true);
     });
 });
 
-describe('le parcours : ouvrir le produit, lancer une application, voir sa fenêtre', () => {
-    it("① la page servie à la racine traite elle-même « fenetre-ouverte »", () => {
+describe('the journey: open the product, launch an application, see its window', () => {
+    it("① the page served at the root handles « fenetre-ouverte » itself", () => {
         // 🔴 RÉÉCRIT PAR LA TÂCHE 8 (31 août 2026) : le hub cesse de MENER à
         // une seconde surface — il tient lui-même la session de contrôle
         // (`bureau/porteur-dom.ts`, câblé depuis `hub/page.ts`). Chercher une
@@ -158,18 +158,18 @@ describe('le parcours : ouvrir le produit, lancer une application, voir sa fenê
         // fermeture d'imports de la racine elle-même porte le traitement.
         const racine = pageServieALaRacine();
         const modules = fermetureDImports(entreeDeLaPage(racine));
-        expect(modules.length, 'la fermeture ne peut pas être vide').toBeGreaterThan(1);
+        expect(modules.length, 'the closure cannot be empty').toBeGreaterThan(1);
 
         // 🔴 SUR LA SYNTAXE, PAS SUR UNE SOUS-CHAÎNE DU TEXTE SOURCE — voir
         // `AIGUILLAGE_FENETRE_OUVERTE` ci-dessus, et le garde qui l'éprouve.
         const traite = modules.some((cle) => aiguilleSurFenetreOuverte(MODULES[cle]));
         expect(
             traite,
-            `aucun module de la fermeture de ${racine} n’AIGUILLE sur « fenetre-ouverte » : ${modules.join(', ')}`,
+            `no module of the closure of ${racine} DISPATCHES on « fenetre-ouverte »: ${modules.join(', ')}`,
         ).toBe(true);
     });
 
-    it('③ la racine RETIENT le préfixe de la VM AVANT d’installer le bureau', () => {
+    it('③ the root RETAINS the VM prefix BEFORE installing the desktop', () => {
         // 🔴 CRITIQUE ② DE LA REVUE FINALE : le hub ne posait AUCUN préfixe.
         // `poserPrefixe` n'avait qu'un appelant de production — `connexion.ts`,
         // sur la page de CONNEXION —, or ce chantier fait qu'un visiteur
@@ -193,15 +193,15 @@ describe('le parcours : ouvrir le produit, lancer une application, voir sa fenê
         const source = MODULES[entreeDeLaPage(pageServieALaRacine())];
         const prefixe = [...source.matchAll(/\bretenirLePrefixe\(/g)];
         const bureau = [...source.matchAll(/\binstallerLeBureau\(/g)];
-        expect(prefixe, 'un seul appel à retenirLePrefixe attendu').toHaveLength(1);
-        expect(bureau, 'un seul appel à installerLeBureau attendu').toHaveLength(1);
+        expect(prefixe, 'a single call to retenirLePrefixe expected').toHaveLength(1);
+        expect(bureau, 'a single call to installerLeBureau expected').toHaveLength(1);
         expect(
             prefixe[0].index,
-            'le préfixe doit être retenu AVANT que le bureau ne compose ses noms de session',
+            'the prefix must be retained BEFORE the desktop composes its session names',
         ).toBeLessThan(bureau[0].index);
     });
 
-    it('② la surface qui reçoit l’annonce ouvre la fenêtre de l’application', () => {
+    it('② the surface that receives the announcement opens the application window', () => {
         const ouvertes: string[] = [];
         const bureau = createDesktop({
             ouvrirFenetre(session) {

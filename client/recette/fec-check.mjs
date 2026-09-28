@@ -111,7 +111,7 @@ async function main() {
         if (s1 && s2) {
             const dt = (s2.timestamp - s1.timestamp) / 1000;
             console.log('');
-            console.log(`Δ bytesReceived=${s2.bytesReceived - s1.bytesReceived} sur ${dt.toFixed(2)}s => ${(((s2.bytesReceived - s1.bytesReceived) * 8) / dt / 1000).toFixed(1)} kb/s`);
+            console.log(`Δ bytesReceived=${s2.bytesReceived - s1.bytesReceived} over ${dt.toFixed(2)}s => ${(((s2.bytesReceived - s1.bytesReceived) * 8) / dt / 1000).toFixed(1)} kb/s`);
             console.log(`Δ packetsLost=${s2.packetsLost - s1.packetsLost}`);
             console.log(`Δ fecPacketsReceived=${s2.fecPacketsReceived - s1.fecPacketsReceived}`);
             console.log(`Δ fecPacketsDiscarded=${s2.fecPacketsDiscarded - s1.fecPacketsDiscarded}`);

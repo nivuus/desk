@@ -2,20 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { RejeuResize } from './resize';
 
 describe('RejeuResize', () => {
-    it("rend la taille observée quand rien n'a encore été émis", () => {
+    it("returns the observed size when nothing was emitted yet", () => {
         const r = new RejeuResize();
         r.observer({ largeur: 1280, hauteur: 720 });
         expect(r.aEmettre()).toEqual({ largeur: 1280, hauteur: 720 });
     });
 
-    it('ne rend rien quand la taille émise est déjà la bonne', () => {
+    it('returns nothing when the emitted size is already the right one', () => {
         const r = new RejeuResize();
         r.observer({ largeur: 1280, hauteur: 720 });
         r.confirmer({ largeur: 1280, hauteur: 720 });
         expect(r.aEmettre()).toBeUndefined();
     });
 
-    it("rend la taille observée tant qu'aucune émission n'a été confirmée", () => {
+    it("returns the observed size as long as no emission was confirmed", () => {
         // ⚠️ Ce test n'exerce AUCUN état de canal : `RejeuResize` est pur et
         // n'en connaît aucun (leg n°11 de D9 — son titre annonçait « quand le
         // canal était fermé au moment du geste », état qu'il ne pouvait pas
@@ -34,14 +34,14 @@ describe('RejeuResize', () => {
         expect(r.aEmettre()).toEqual({ largeur: 1920, hauteur: 1080 });
     });
 
-    it('rend la DERNIÈRE taille observée, pas la première', () => {
+    it('returns the LAST observed size, not the first', () => {
         const r = new RejeuResize();
         r.observer({ largeur: 1280, hauteur: 720 });
         r.observer({ largeur: 1920, hauteur: 1080 });
         expect(r.aEmettre()).toEqual({ largeur: 1920, hauteur: 1080 });
     });
 
-    it("ne rend rien tant que rien n'a été observé", () => {
+    it("returns nothing as long as nothing was observed", () => {
         expect(new RejeuResize().aEmettre()).toBeUndefined();
     });
 });

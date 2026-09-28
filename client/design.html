@@ -1,57 +1,57 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Galerie de tokens</title>
+        <title>Token gallery</title>
         <link rel="stylesheet" href="/src/design/socle.css" />
         <!--
             ═══════════════════════════════════════════════════════════════════
-            LA GALERIE DE TOKENS — L'INSTRUMENT D'UN JUGEMENT HUMAIN, PAS UNE
-            PREUVE.
+            THE TOKEN GALLERY — THE INSTRUMENT OF A HUMAN JUDGEMENT, NOT A
+            PROOF.
 
-            🔴 CE QU'ELLE NE DIT JAMAIS : que la palette soit sobre, que
-            `#7aa2f7` soit le bon bleu, que le ratio 1,2 soit le bon, que 14 px
-            soit assez dense, que le pas de 4 px soit le bon, que `--bord` ait
-            été employé là où il fallait, que le plafond de 12 Kio soit au bon
-            endroit, ni qu'elle montre elle-même ce qu'il faut regarder. Ce
-            sont les huit jugements humains du §8 de la spec, et AUCUN NE
-            DEVIENDRA UNE MESURE au fil des sous-blocs.
+            🔴 WHAT IT NEVER SAYS: that the palette is sober, that
+            `#7aa2f7` is the right blue, that the 1.2 ratio is the right one, that 14 px
+            is dense enough, that the 4 px step is the right one, that `--bord` was
+            used where it should be, that the 12 KiB ceiling is in the right
+            place, nor that it shows by itself what to look at. These
+            are the eight human judgements of §8 of the spec, and NONE WILL
+            BECOME A MEASUREMENT as the sub-blocks go by.
 
-            ⚠️ LA COMPARAISON D'IMAGES DE RÉFÉRENCE EST ÉCARTÉE (spec §7.8), et
-            sa première raison est éliminatoire : les polices système rendent
-            différemment d'une machine à l'autre, si bien qu'une référence
-            prise sur un poste échouerait sur le suivant POUR UNE RAISON QUI
-            N'EST PAS UN DÉFAUT. Il faudrait embarquer une police pour rendre
-            la recette possible — c'est-à-dire payer au bénéfice de
-            l'instrument le coût que le §4.3 refuse au bénéfice du produit.
+            ⚠️ REFERENCE IMAGE COMPARISON IS RULED OUT (spec §7.8), and
+            its first reason is disqualifying: system fonts render
+            differently from one machine to the next, so a reference
+            taken on one host would fail on the next FOR A REASON THAT
+            IS NOT A DEFECT. A font would have to be embedded to make
+            the acceptance possible — that is, pay for the benefit of the
+            instrument the cost §4.3 refuses for the benefit of the product.
 
-            🔴 CETTE PAGE EST EXCLUE DE LA MOITIÉ « EMPLOYÉ » DU CONTRÔLE §7.6
-            (`client/outils/tokens-orphelins.mjs`) : elle rend tous les tokens
-            par construction, donc l'y inclure rendrait ce contrôle incapable
-            d'échouer. Elle reste INCLUSE dans §7.2 (aucune couleur littérale
-            ici non plus — sans quoi elle montrerait autre chose que les
-            tokens) et dans §7.3 (c'est une surface bâtie comme les autres).
+            🔴 THIS PAGE IS EXCLUDED FROM THE "USED" HALF OF CHECK §7.6
+            (`client/outils/tokens-orphelins.mjs`): it renders every token
+            by construction, so including it would make that check unable
+            to fail. It stays INCLUDED in §7.2 (no literal colour
+            here either — otherwise it would show something other than the
+            tokens) and in §7.3 (it is a built surface like the others).
 
-            ⚠️ PORTE ARMÉE À 300 LIGNES (spec §10) : au-delà, scinder par
-            famille.
-            ❌ « au même rythme que les primitives de S2 » — écrit par S1, et
-            RÉFUTÉ par S2 : la scission a bien eu lieu, mais PAS ici. S2 n'a pas
-            découpé cette page ; il a fait naître `client/primitives.html` à
-            côté, cette page-ci restant à 231 lignes pour une porte à 300. Cette
-            porte n'a donc toujours JAMAIS été franchie, et l'instruction
-            ci-dessus vaut pour le jour où elle le serait.
+            ⚠️ GATE ARMED AT 300 LINES (spec §10): beyond that, split by
+            family.
+            ❌ "at the same pace as the S2 primitives" — written by S1, and
+            REFUTED by S2: the split did happen, but NOT here. S2 did not
+            cut this page; it created `client/primitives.html` next to it,
+            this page staying at 231 lines for a gate at 300. That
+            gate has therefore still NEVER been crossed, and the instruction
+            above holds for the day it would be.
             ═══════════════════════════════════════════════════════════════════
         -->
         <style>
-            /* La galerie n'emploie QUE des tokens : c'est ce qu'elle montre.
-               Ces règles sont la mise en page de la page de démonstration, pas
-               une primitive.
-               ⚠️ « S2 est le sous-bloc qui en pose » était écrit AU FUTUR par
-               S1 ; S2 a eu lieu (20 août 2026) et les a posées dans
-               `src/design/primitives/{bouton,champ,surface,message}.css`, que
-               `client/primitives.html` montre. Ces règles-ci n'ont pas bougé —
-               une mise en page de démonstration n'est toujours pas une
+            /* The gallery uses ONLY tokens: that is what it shows.
+               These rules are the layout of the demonstration page, not
+               a primitive.
+               ⚠️ "S2 is the sub-block that sets some" was written IN THE FUTURE by
+               S1; S2 happened (20 August 2026) and set them in
+               `src/design/primitives/{bouton,champ,surface,message}.css`, which
+               `client/primitives.html` shows. These rules did not move —
+               a demonstration layout is still not a
                primitive. */
             body {
                 margin: 0 auto;
@@ -109,8 +109,8 @@
                 grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
                 padding: var(--e-3);
                 border-radius: var(--r-3);
-                /* Un damier, pour que les voiles se lisent comme ils vivent :
-                   posés sur une image dont on ne sait rien. */
+                /* A checkerboard, so that the veils read as they live:
+                   laid over an image nothing is known about. */
                 background:
                     repeating-conic-gradient(var(--fond-2) 0 25%, var(--fond-0) 0 50%) 0 0 / var(--e-5)
                     var(--e-5);
@@ -182,62 +182,62 @@
         </style>
     </head>
     <body>
-        <h1>Galerie de tokens</h1>
+        <h1>Token gallery</h1>
         <p class="note">
-            Tout ce que cette page affiche vient de
-            <code>src/design/tokens/couleurs.css</code> et
-            <code>src/design/tokens/echelles.css</code> (importés ensemble par
-            <code>src/design/tokens.css</code>). Rien n’y est écrit en littéral :
-            si une valeur bouge à la source, elle bouge ici, et nulle part
-            ailleurs. C’est aussi ce que le contrôle §7.2 vérifie sur cette page
-            comme sur les autres.
+            Everything this page displays comes from
+            <code>src/design/tokens/couleurs.css</code> and
+            <code>src/design/tokens/echelles.css</code> (imported together by
+            <code>src/design/tokens.css</code>). Nothing is written as a literal:
+            if a value moves at the source, it moves here, and nowhere
+            else. That is also what check §7.2 verifies on this page
+            as on the others.
         </p>
 
-        <h2>Thème</h2>
+        <h2>Theme</h2>
         <p class="note">
-            Trois états, et l’absence d’attribut <code>data-theme</code>
-            signifie « système ». Ouvrir cette page dans deux fenêtres et
-            changer le thème dans l’une : l’autre suit, par l’événement
-            <code>storage</code>. La fenêtre qui écrit ne le reçoit pas — c’est
-            pourquoi <code>choisir()</code> applique aussi localement.
+            Three states, and the absence of a <code>data-theme</code> attribute
+            means “system”. Open this page in two windows and
+            change the theme in one: the other follows, through the
+            <code>storage</code> event. The writing window does not receive it — that is
+            why <code>choisir()</code> also applies locally.
         </p>
         <p id="themes"></p>
 
-        <h2>Couleurs — quatorze par thème</h2>
+        <h2>Colours — fourteen per theme</h2>
         <div class="grille" id="couleurs"></div>
 
-        <h2>Voiles — six, hors thème</h2>
+        <h2>Veils — six, out of theme</h2>
         <p class="note">
-            Ils sont posés sur la vidéo, dont le contenu ne suit aucun thème :
-            ils sont donc identiques en clair et en sombre, et ils sont
-            <strong>hors des cinquante-deux paires de contraste</strong> — leur
-            lisibilité dépend d’une image qui n’est pas connaissable.
+            They are laid over the video, whose content follows no theme:
+            they are therefore identical in light and in dark, and they are
+            <strong>outside the fifty-two contrast pairs</strong> — their
+            readability depends on an image that cannot be known.
         </p>
         <div class="voiles" id="voiles"></div>
 
-        <h2>Typographie — sept crans, ratio ≈ 1,2</h2>
+        <h2>Typography — seven steps, ratio ≈ 1.2</h2>
         <div id="typo"></div>
 
-        <h2>Interlignes — trois</h2>
+        <h2>Line heights — three</h2>
         <div id="interlignes"></div>
 
-        <h2>Espacement — huit crans, pas de 4 px</h2>
+        <h2>Spacing — eight steps, 4 px step</h2>
         <div id="espacement"></div>
 
-        <h2>Rayons — quatre</h2>
+        <h2>Radii — four</h2>
         <div class="grille" id="rayons"></div>
 
-        <h2>Durées — deux, rien au-delà de 300 ms</h2>
-        <p class="note">Survoler les deux pavés : la différence est le token.</p>
+        <h2>Durations — two, nothing beyond 300 ms</h2>
+        <p class="note">Hover over the two blocks: the difference is the token.</p>
         <p>
             <span class="transition vive">--duree-1</span>
             <span class="transition lente">--duree-2</span>
         </p>
 
-        <h2>Traits — deux épaisseurs</h2>
+        <h2>Strokes — two thicknesses</h2>
         <div id="traits"></div>
 
-        <h2>Polices — deux piles système, zéro octet embarqué</h2>
+        <h2>Fonts — two system stacks, zero embedded bytes</h2>
         <div id="polices"></div>
 
         <script type="module" src="/src/design/galerie.ts"></script>

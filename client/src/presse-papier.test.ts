@@ -16,7 +16,7 @@ import {
 } from './presse-papier';
 
 describe('PressePapierLocal', () => {
-    it('rend le texte reçu quand la fenêtre est focalisée', () => {
+    it('returns the received text when the window is focused', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'bonjour', octets: 7 });
         expect(pp.toWrite(true)).toBe('bonjour');
@@ -24,7 +24,7 @@ describe('PressePapierLocal', () => {
 
     // 🔴 Le dépôt différé : écrire sans focus ferait rendre le texte au
     // premier appel, et ce test tombe.
-    it('ne rend rien sans focus, puis rend le texte au retour du focus', () => {
+    it('returns nothing without focus, then returns the text when focus comes back', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'bonjour', octets: 7 });
         expect(pp.toWrite(false)).toBeUndefined();
@@ -33,7 +33,7 @@ describe('PressePapierLocal', () => {
 
     // 🔴 « Une écriture obsolète est impossible » : empiler dans un tableau
     // ferait sortir le PREMIER, et ce test le voit.
-    it('deux réceptions sans focus : le DERNIER texte sort, jamais une file', () => {
+    it('two receptions without focus: the LAST text comes out, never a queue', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'ancien', octets: 6 });
         pp.recevoir({ texte: 'recent', octets: 6 });
@@ -42,7 +42,7 @@ describe('PressePapierLocal', () => {
         expect(pp.toWrite(true)).toBeUndefined();
     });
 
-    it('ne réécrit pas ce qui a déjà été écrit', () => {
+    it('does not rewrite what was already written', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'bonjour', octets: 7 });
         pp.confirmer('bonjour');
@@ -52,31 +52,31 @@ describe('PressePapierLocal', () => {
     // 🔴 Crier au PREMIER échec ferait un bandeau permanent sur un produit
     // qui marche : le premier échec est le cas ordinaire d'une fenêtre sans
     // focus.
-    it('ne dit rien au premier échec, et parle au second', () => {
+    it('says nothing on the first failure, and speaks on the second', () => {
         const pp = new PressePapierLocal();
         expect(pp.echouer()).toBeUndefined();
         expect(pp.echouer()).toBe(MESSAGE_ECHEC);
         expect(FAILURES_BEFORE_MESSAGE).toBe(2);
     });
 
-    it('un succès remet le compteur d’échecs à zéro', () => {
+    it('a success resets the failure counter to zero', () => {
         const pp = new PressePapierLocal();
         expect(pp.echouer()).toBeUndefined();
-        pp.confirmer('quelque chose');
+        pp.confirmer('something');
         expect(pp.echouer()).toBeUndefined();
     });
 
     // 🔴 Le message dit COMMENT rétablir, pas seulement que quelque chose
     // manque — même règle que le micro. L'assertion porte sur une
     // sous-chaîne d'INSTRUCTION, jamais sur la seule présence d'un message.
-    it('le message d’échec dit comment rétablir', () => {
-        expect(MESSAGE_ECHEC).toContain('cliquez');
+    it('the failure message says how to recover', () => {
+        expect(MESSAGE_ECHEC).toContain('click');
         expect(MESSAGE_ECHEC).toContain('focus');
     });
 
     // 🔴 Le critère ③ : écrire quand même, ou taire le refus, fait tomber ce
     // test.
-    it('un refus n’écrit rien et se dit, en nommant la taille', () => {
+    it('a refusal writes nothing and says so, naming the size', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: null, octets: 102400 });
         expect(pp.toWrite(true)).toBeUndefined();
@@ -85,7 +85,7 @@ describe('PressePapierLocal', () => {
         expect(message).toContain('100');
     });
 
-    it('un refus n’écrase pas le dernier texte mémorisé', () => {
+    it('a refusal does not overwrite the last remembered text', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: 'valide', octets: 6 });
         pp.recevoir({ texte: null, octets: 102400 });
@@ -93,7 +93,7 @@ describe('PressePapierLocal', () => {
     });
 
     // 🔴 Sans consommation, le bandeau se réafficherait à chaque tour.
-    it('le refus se consomme : deux appels ne rendent qu’un message', () => {
+    it('the refusal is consumed: two calls return only one message', () => {
         const pp = new PressePapierLocal();
         pp.recevoir({ texte: null, octets: 102400 });
         expect(pp.refusADire()).toBeDefined();
@@ -106,12 +106,12 @@ describe('PressePapierLocal', () => {
 // contenu qu'elle vient de recevoir de lui.
 // ---------------------------------------------------------------------------
 
-describe('PressePapierLocal.aEmettre — le garde n°3', () => {
+describe('PressePapierLocal.aEmettre — guard no. 3', () => {
     // 🔴 C'EST LE GARDE N°3. ROUGE si `aEmettre` rend toujours son argument :
     // l'agent écrit T dans le presse-papier Windows, le Sondeur le relit, le
     // pousse à la page, la page l'écrit localement — et si l'utilisateur colle
     // alors, la page le renvoie à l'agent. Un aller-retour par collage.
-    it('tait un texte qu on vient de recevoir', () => {
+    it('silences a text that was just received', () => {
         const etat = new PressePapierLocal();
         etat.recevoir({ texte: 'x', octets: 1 });
         expect(etat.aEmettre('x')).toBeUndefined();
@@ -120,7 +120,7 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
     // ROUGE si le garde bloquait TOUT après une réception. Sans ce test, un
     // `aEmettre` qui rendrait toujours `undefined` passerait le précédent — et
     // le collage ne marcherait plus du tout.
-    it('laisse passer un texte différent', () => {
+    it('lets a different text through', () => {
         const etat = new PressePapierLocal();
         etat.recevoir({ texte: 'x', octets: 1 });
         expect(etat.aEmettre('y')).toBe('y');
@@ -128,7 +128,7 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
 
     // ROUGE si l'état initial comparait à la chaîne vide : un collage de chaîne
     // vide serait alors muet dès le premier geste.
-    it('laisse passer avant toute réception', () => {
+    it('lets through before any reception', () => {
         const etat = new PressePapierLocal();
         expect(etat.aEmettre('x')).toBe('x');
         expect(etat.aEmettre('')).toBe('');
@@ -138,7 +138,7 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
     // deux fois le même texte le veut deux fois — et l'agent, lui, ne réécrira
     // pas pour rien : c'est son garde n°2 qui absorbe le doublon, côté VM.
     // ROUGE si le témoin est permanent au lieu d'être consommable.
-    it('ne tait que le PREMIER renvoi', () => {
+    it('silences only the FIRST echo', () => {
         const etat = new PressePapierLocal();
         etat.recevoir({ texte: 'x', octets: 1 });
         expect(etat.aEmettre('x')).toBeUndefined();
@@ -147,7 +147,7 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
 
     // ROUGE si le garde prenait un REFUS pour un contenu reçu : rien n'a été
     // écrit localement, donc rien ne peut être un écho.
-    it('un refus n arme pas le garde', () => {
+    it('a refusal does not arm the guard', () => {
         const etat = new PressePapierLocal();
         etat.recevoir({ texte: null, octets: 100_000 });
         expect(etat.aEmettre('x')).toBe('x');
@@ -159,7 +159,7 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
     // est indiscernable et le choix est de se taire — mais alors le témoin
     // doit venir de `recevoir`, et ce test fige ce choix plutôt que de le
     // laisser dépendre du focus.
-    it('arme le garde même quand l écriture locale n a pas encore eu lieu', () => {
+    it('arms the guard even when the local write has not happened yet', () => {
         const etat = new PressePapierLocal();
         etat.recevoir({ texte: 'x', octets: 1 });
         expect(etat.toWrite(false)).toBeUndefined();
@@ -176,12 +176,12 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
 ///
 /// ROUGE si l'une des deux valeurs bouge sans l'autre.
 describe('PRESSE_PAPIER_MAX', () => {
-    it("vaut ce que l'agent Rust déclare", () => {
+    it("is worth what the Rust agent declares", () => {
         const trouve = /pub const PRESSE_PAPIER_MAX: usize = ([^;]+);/.exec(rustPressePapier);
         // ⚠️ Sans cette assertion, un renommage côté Rust rendrait `trouve`
         // nul et le test passerait en ne mesurant RIEN — le contrôle vacueux
         // que ce dépôt paie depuis D7.
-        expect(trouve, "la constante Rust n'a pas été retrouvée").not.toBeNull();
+        expect(trouve, "the Rust constant was not found").not.toBeNull();
         // eslint-disable-next-line no-eval
         const rustValue = Number(new Function(`return ${trouve![1].replace(/_/g, '')}`)());
         expect(PRESSE_PAPIER_MAX).toBe(rustValue);

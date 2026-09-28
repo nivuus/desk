@@ -129,7 +129,7 @@ function fichiersSuffixes(repertoire, suffixe, acc = []) {
 
 const src = join(racine, 'client/src');
 if (!existsSync(src)) {
-    console.error("client/src est absent : rien n'a été mesuré, ce n'est pas un succès.");
+    console.error("client/src is missing: nothing was measured, this is not a success.");
     process.exit(2);
 }
 
@@ -186,24 +186,24 @@ const classesDePrimitive = new Set(familles.flatMap((f) => [...f.classes]));
 // ── LE RELEVÉ, TOUJOURS IMPRIMÉ, SUCCÈS COMPRIS ───────────────────────────
 // « Un contrôle de dérive dont on ne lit jamais la valeur ne sert qu'à passer »
 // (`poids-css.mjs`).
-console.log(`déclarées : ${declarePar.size} classe(s)`);
-console.log(`employées : ${employePar.size} classe(s)`);
-console.log(`familles de primitives : ${familles.map((f) => f.nom).join(', ')}`);
+console.log(`declared: ${declarePar.size} class(es)`);
+console.log(`used: ${employePar.size} class(es)`);
+console.log(`primitive families: ${familles.map((f) => f.nom).join(', ')}`);
 
 // ① employé ⊆ déclaré
 const nonDeclarees = [...employePar.keys()].filter((n) => !declarePar.has(n)).sort();
-console.log(`\n① toute classe employée est déclarée : ${nonDeclarees.length} écart(s)`);
+console.log(`\n① every used class is declared: ${nonDeclarees.length} gap(s)`);
 for (const nom of nonDeclarees) {
-    console.log(`  NON DÉCLARÉE  ${nom}  employée par ${employePar.get(nom).join(', ')}`);
+    console.log(`  UNDECLARED  ${nom}  used by ${employePar.get(nom).join(', ')}`);
 }
 
 // ② A — une primitive atteint une surface du produit
-console.log('\n② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :');
+console.log('\n② A — the primitives reach the PRODUCT, EACH of the three surfaces:');
 const nues = [];
 for (const surface of SURFACES_PRODUIT) {
     const chemin = join(racine, surface);
     if (!existsSync(chemin)) {
-        console.log(`  ${surface} : INTROUVABLE`);
+        console.log(`  ${surface}: NOT FOUND`);
         nues.push(surface);
         continue;
     }
@@ -213,7 +213,7 @@ for (const surface of SURFACES_PRODUIT) {
         .map((f) => f.nom);
     if (parFamille.length === 0) nues.push(surface);
     console.log(
-        `  ${surface} : ${parFamille.length === 0 ? 'aucune famille' : parFamille.join(', ')}`,
+        `  ${surface}: ${parFamille.length === 0 ? 'no family' : parFamille.join(', ')}`,
     );
 }
 // 🔴 UNE SURFACE NUE EST UN ÉCHEC, ET ELLE EST NOMMÉE. Le compte est celui des
@@ -223,8 +223,8 @@ for (const surface of SURFACES_PRODUIT) {
 const echecA = nues.length;
 for (const surface of nues) {
     console.log(
-        `  ${surface} n'emploie AUCUNE famille de primitives : ` +
-            'les primitives y ont un appelant ÉCRIT, pas un pixel RENDU',
+        `  ${surface} uses NO primitive family: ` +
+            'the primitives have a WRITTEN caller there, not a RENDERED pixel',
     );
 }
 
@@ -234,15 +234,15 @@ const employeesGalerie = existsSync(galerie)
     ? classesEmployeesHtml(readFileSync(galerie, 'utf8'))
     : new Set();
 const absentes = familles.filter((f) => ![...f.classes].some((c) => employeesGalerie.has(c)));
-console.log(`\n③ B — chaque famille est rendue par ${GALERIE_PRIMITIVES} :`);
+console.log(`\n③ B — each family is rendered by ${GALERIE_PRIMITIVES}:`);
 for (const f of familles) {
     const rendues = [...f.classes].filter((c) => employeesGalerie.has(c)).length;
-    console.log(`  ${f.nom} : ${rendues} classe(s) employée(s) sur ${f.classes.size} déclarée(s)`);
+    console.log(`  ${f.nom}: ${rendues} class(es) used out of ${f.classes.size} declared`);
 }
 for (const f of absentes) {
-    console.log(`  famille ${f.nom.toUpperCase()} absente de ${GALERIE_PRIMITIVES}`);
+    console.log(`  family ${f.nom.toUpperCase()} missing from ${GALERIE_PRIMITIVES}`);
 }
 
 const echecs = nonDeclarees.length + echecA + absentes.length;
-console.log(`\ntotal : ${echecs} écart(s)`);
+console.log(`\ntotal: ${echecs} gap(s)`);
 process.exit(echecs > 0 ? 1 : 0);

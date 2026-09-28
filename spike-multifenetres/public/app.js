@@ -128,14 +128,14 @@ async function conclure(variante, nonce, poigneeNulle, gesteAttendu = false) {
 
     const niveau = verdict === 'succes' ? 'succes'
         : verdict === 'non-concluant' ? 'alerte' : 'echec';
-    const etatVie = vivante ? 'reçue'
-        : issue === 'bloquee' ? 'sans objet (blocage rapporté par le service worker)'
-        : 'absente';
+    const etatVie = vivante ? 'received'
+        : issue === 'bloquee' ? 'not applicable (block reported by the service worker)'
+        : 'absent';
     tracer(
-        `variante ${variante} → ${verdict.toUpperCase()} ` +
+        `variant ${variante} → ${verdict.toUpperCase()} ` +
         `(mode ${modeAffichage()}, ` +
-        `poignée ${poignee === 'sans-objet' ? 'sans objet' : poignee ? 'nulle' : 'rendue'}, ` +
-        `vie ${etatVie}, ${msDepuisGeste} ms depuis le dernier geste)`,
+        `handle ${poignee === 'sans-objet' ? 'not applicable' : poignee ? 'null' : 'returned'}, ` +
+        `life ${etatVie}, ${msDepuisGeste} ms since the last gesture)`,
         niveau,
     );
     document.querySelector(`#verdict-${variante}`).textContent = verdict;
@@ -165,18 +165,18 @@ function contexteValide(variante) {
     const mode = modeAffichage();
     if (variante === 1 && mode === 'standalone') {
         tracer(
-            'variante 1 refusée : elle est le témoin et doit tourner dans un onglet ' +
-            'ordinaire. Rouvrez le spike dans un onglet du navigateur (hors fenêtre PWA), ' +
-            'puis rejouez-la depuis cet onglet.',
+            'variant 1 refused: it is the control and must run in an ' +
+            'ordinary one. Reopen the spike in a browser tab (outside the PWA window), ' +
+            'then replay it from this tab.',
             'echec',
         );
         return false;
     }
     if (variante === 2 && mode !== 'standalone') {
         tracer(
-            'variante 2 refusée : elle mesure la PWA installée. Installez le spike ' +
-            '(menu du navigateur → Installer), ouvrez-le depuis son icône, puis rejouez-la ' +
-            'depuis cette fenêtre-là.',
+            'variant 2 refused: it measures the installed PWA. Install the spike ' +
+            '(browser menu → Install), open it from its icon, then replay it ' +
+            'from that window.',
             'echec',
         );
         return false;
@@ -187,8 +187,8 @@ function contexteValide(variante) {
 async function executerVariante(variante) {
     if (variantesEnCours.has(variante)) {
         tracer(
-            `ordre ignoré : la variante ${variante} est déjà en cours dans cette page ` +
-            '(le même ordre a été relayé deux fois — autre onglet du spike, ou curl)',
+            `order ignored: variant ${variante} is already in progress in this page ` +
+            '(the same order was relayed twice — another spike tab, or curl)',
             'alerte',
         );
         return;
@@ -213,8 +213,8 @@ async function deroulerVariante(variante) {
 
         case 3:
             tracer(
-                `variante 3 armée — cliquez ailleurs que sur un bouton pour déclencher ` +
-                `(abandon automatique dans ${DELAI_EXPIRATION_V3_MS / 1000} s)`,
+                `variant 3 armed — click anywhere but on a button to trigger ` +
+                `(automatic abandon in ${DELAI_EXPIRATION_V3_MS / 1000} s)`,
                 'alerte',
             );
             // The wait is held here so that `variantesEnCours` also covers the
@@ -224,7 +224,7 @@ async function deroulerVariante(variante) {
                 armementVariante3 = () => conclure(3, nonce, ouvrir(3, nonce), true).then(resolve);
                 expirationVariante3 = setTimeout(() => {
                     desarmerVariante3();
-                    tracer('variante 3 : armement expiré sans clic, aucun verdict rendu', 'alerte');
+                    tracer('variant 3: arming expired without a click, no verdict returned', 'alerte');
                     resolve();
                 }, DELAI_EXPIRATION_V3_MS);
             });
@@ -233,21 +233,21 @@ async function deroulerVariante(variante) {
         case 4: {
             const enregistrement = await navigator.serviceWorker.getRegistration();
             if (!enregistrement) {
-                tracer('variante 4 impossible : aucun service worker enregistré', 'echec');
+                tracer('variant 4 impossible: no service worker registered', 'echec');
                 return;
             }
             if (Notification.permission !== 'granted') {
-                tracer('variante 4 impossible : permission notifications non accordée', 'echec');
+                tracer('variant 4 impossible: notification permission not granted', 'echec');
                 return;
             }
-            await enregistrement.showNotification('Le jeu est prêt', {
-                body: 'Cliquez pour ouvrir sa fenêtre (variante 4).',
+            await enregistrement.showNotification('The game is ready', {
+                body: 'Click to open its window (variant 4).',
                 data: { url: `/opened.html?variant=4&nonce=${nonce}` },
                 tag: 'spike-4',
             });
             tracer(
-                `notification affichée — cliquez dessus ` +
-                `(${DELAI_SIGNAL_VIE_V4_MS / 1000} s pour réagir, rien ne presse)`,
+                `notification displayed — click on it ` +
+                `(${DELAI_SIGNAL_VIE_V4_MS / 1000} s to react, no hurry)`,
                 'alerte',
             );
             await conclure(4, nonce, 'sans-objet');
@@ -278,8 +278,8 @@ function resoudrePassage(message, issue) {
     const resolveur = message.nonce ? attentes.get(message.nonce) : undefined;
     if (!resolveur) {
         tracer(
-            `signal « ${issue === 'vivante' ? 'vie' : 'blocage'} » ignoré pour la variante ` +
-            `${message.variant} : il n'appartient à aucun passage en cours dans cette page`,
+            `« ${issue === 'vivante' ? 'life' : 'block'} » signal ignored for variant ` +
+            `${message.variant}: it belongs to no run in progress in this page`,
             'alerte',
         );
         return;
@@ -302,17 +302,17 @@ function connecter() {
 
     socket.addEventListener('open', () => {
         tentativesReconnexion = 0;
-        etat.textContent = 'connecté';
+        etat.textContent = 'connected';
         etat.className = 'connecte';
         majEtatBoutons();
     });
 
     // `error` is always followed by `close`: reconnection is only scheduled
     // in `close`, so as not to double the attempts.
-    socket.addEventListener('error', () => showDisconnection('déconnecté'));
+    socket.addEventListener('error', () => showDisconnection('disconnected'));
 
     socket.addEventListener('close', () => {
-        showDisconnection('déconnecté');
+        showDisconnection('disconnected');
         planifierReconnexion();
     });
 
@@ -320,7 +320,7 @@ function connecter() {
         const message = JSON.parse(evenement.data);
         switch (message.type) {
             case 'fire':
-                tracer(`ordre reçu du serveur pour la variante ${message.variant}`);
+                tracer(`order received from the server for variant ${message.variant}`);
                 executerVariante(message.variant);
                 break;
             case 'alive':
@@ -338,7 +338,7 @@ function connecter() {
 function planifierReconnexion() {
     const delai = Math.min(RECONNEXION_MIN_MS * 2 ** tentativesReconnexion, RECONNEXION_MAX_MS);
     tentativesReconnexion += 1;
-    showDisconnection(`déconnecté — reconnexion dans ${Math.max(1, Math.round(delai / 1000))} s`);
+    showDisconnection(`disconnected — reconnecting in ${Math.max(1, Math.round(delai / 1000))} s`);
     setTimeout(connecter, delai);
 }
 
@@ -359,13 +359,13 @@ for (const bouton of boutons) {
         // the operator must send the window to the background, and it is that
         // background state that defines the variant.
         const consigne = variante === 4
-            ? 'Ne touchez ni souris ni clavier, à une exception près : mettez cette ' +
-              'fenêtre en arrière-plan avant la fin du compte à rebours — c\'est ce que ' +
-              'la variante 4 mesure.'
-            : 'Ne touchez à rien.';
+            ? 'Touch neither mouse nor keyboard, with one exception: put this ' +
+              'window into the background before the end of the countdown — that is what ' +
+              'variant 4 measures.'
+            : 'Do not touch anything.';
         tracer(
-            `variante ${variante} armée : déclenchement dans ${restant} s ` +
-            `(> ${SEUIL_ACTIVATION_MS / 1000} s d'activation transitoire). ${consigne}`,
+            `variant ${variante} armed: trigger in ${restant} s ` +
+            `(> ${SEUIL_ACTIVATION_MS / 1000} s of transient activation). ${consigne}`,
         );
 
         const compteur = setInterval(async () => {
@@ -387,13 +387,13 @@ for (const bouton of boutons) {
                 const { clients } = await reponse.json();
                 if (!clients) {
                     tracer(
-                        `déclenchement perdu : le serveur n'a touché aucun client WebSocket. ` +
-                        `Aucune mesure — attendez la reconnexion et rejouez la variante ${variante}.`,
+                        `trigger lost: the server reached no WebSocket client. ` +
+                        `No measurement — wait for the reconnection and replay variant ${variante}.`,
                         'echec',
                     );
                 }
             } catch (error) {
-                tracer(`échec du déclenchement : ${error}`, 'echec');
+                tracer(`trigger failure: ${error}`, 'echec');
             }
         }, 1000);
     });
@@ -406,9 +406,9 @@ for (const bouton of boutons) {
 // result of the spike, not an incident — it is traced as such.
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
-        .then((enregistrement) => tracer(`service worker enregistré (portée ${enregistrement.scope})`))
-        .catch((error) => tracer(`service worker refusé : ${error} — vérifier la politique Pomerium`, 'echec'));
+        .then((enregistrement) => tracer(`service worker registered (scope ${enregistrement.scope})`))
+        .catch((error) => tracer(`service worker refused: ${error} — check the Pomerium policy`, 'echec'));
 }
 
-tracer(`mode d'affichage : ${modeAffichage() === 'standalone' ? 'standalone (PWA installée)' : 'onglet navigateur'}`);
+tracer(`display mode: ${modeAffichage() === 'standalone' ? 'standalone (installed PWA)' : 'browser tab'}`);
 connecter();

@@ -63,7 +63,7 @@ export interface OptionsCanal {
     /// gesture that can come at any time: the bridge thus presented an
     /// expired token, and was refused its session without anything linking
     /// the failure to the expiry. **The caller asks for a fresh token again and
-    /// passes it here** (`bureau/fichiers-dom.ts`).
+    /// passes it here** (`bureau/files-dom.ts`).
     jeton: string;
     onStatus?: (message: string) => void;
     /// Called for each frame received. Returns the frame to send back, or `null`.
@@ -87,7 +87,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
-        socket.addEventListener('error', () => reject(new Error('signaling injoignable')), {
+        socket.addEventListener('error', () => reject(new Error('signaling unreachable')), {
             once: true,
         });
     });
@@ -125,13 +125,13 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
     // that depends on the browser, hence invisible in an acceptance run on just one.
     canal.binaryType = 'arraybuffer';
 
-    canal.addEventListener('open', () => statut('canal fichiers ouvert'));
-    canal.addEventListener('close', () => statut('canal fichiers fermé'));
+    canal.addEventListener('open', () => statut('file channel open'));
+    canal.addEventListener('close', () => statut('file channel closed'));
     canal.addEventListener('message', (evenement) => {
         const data: unknown = evenement.data;
         if (!(data instanceof ArrayBuffer)) {
             // The bridge only emits binary. A string here is not a frame.
-            console.warn('trame fichiers non binaire, ignorée');
+            console.warn('non-binary file frame, ignored');
             return;
         }
         // ════════════════════════════════════════════════════════════════
@@ -166,7 +166,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
          * sub-project ③ **without a recipient**.
          */
         const denoncer = (raison: string, e: unknown) => {
-            console.warn(`trame fichiers non delivree (${raison})`, e);
+            console.warn(`file frame not delivered (${raison})`, e);
             if (correlation === undefined) return;
             try {
                 if (canal.readyState === 'open') {
@@ -176,7 +176,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
                 // The channel went away while we were reporting. There is no one
                 // left to tell, and the bridge will learn it through the
                 // closing — never through a twenty-second silence.
-                console.warn('denonciation impossible : canal ferme', echec);
+                console.warn('reporting impossible: channel closed', echec);
             }
         };
         void options
@@ -188,7 +188,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
                 // have closed meanwhile: `send` on a closed channel THROWS.
                 await frein.beforeSend();
                 if (canal.readyState !== 'open') {
-                    denoncer('canal ferme pendant l attente', undefined);
+                    denoncer('channel closed during the wait', undefined);
                     return;
                 }
                 try {
@@ -203,24 +203,24 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
                 // `traiter` itself answers the failures it can name; if it
                 // throws, the protocol itself has broken. We say so, and
                 // we do not kill the channel for all that.
-                denoncer('traitement leve', e);
+                denoncer('processing threw', e);
             });
     });
 
     pc.addEventListener('connectionstatechange', () => {
-        statut(`pont fichiers : ${pc.connectionState}`);
+        statut(`file bridge: ${pc.connectionState}`);
     });
 
     const offre = await pc.createOffer();
     await pc.setLocalDescription(offre);
     await waitForIceGathering(pc);
 
-    statut('offre du pont envoyée, attente de l’agent…');
+    statut('bridge offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
     const reponse = await waitForAnswer(socket);
     await pc.setRemoteDescription({ type: 'answer', sdp: reponse });
-    statut('pont fichiers : réponse reçue');
+    statut('file bridge: answer received');
 
     return {
         pc,
@@ -277,8 +277,8 @@ export async function choisirDossier(): Promise<{ racine: Racine; nom: string } 
     };
     if (typeof global.showDirectoryPicker !== 'function') {
         throw new Error(
-            'ce navigateur n’expose pas la File System Access API ' +
-                '(Chromium 86+ requis, hors navigation privée)',
+            'this browser does not expose the File System Access API ' +
+                '(Chromium 86+ required, outside private browsing)',
         );
     }
     let poignee: FileSystemDirectoryHandle;
@@ -311,7 +311,7 @@ export async function choisirDossier(): Promise<{ racine: Racine; nom: string } 
     // `FileSystemDirectoryHandle` does not have only turned the test fake
     // red — never that line.
     // Log:
-    // `docs/superpowers/plans/journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`
+    // `docs/superpowers/plans/journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt` (policy: allow-fr, archived log path)
     //
     // **The three ASSIGNMENTS below, for their part, do check**: they bear
     // on the REAL `FileSystemDirectoryHandle`, before any widening. If

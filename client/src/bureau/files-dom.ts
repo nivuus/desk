@@ -15,27 +15,27 @@
 // `RTCPeerConnection`, a `WebSocket` and a directory picker, none of
 // which exists under Node — and `client/` has neither jsdom nor happy-dom, by
 // convention (`accent-dom.test.ts`). Everything DECIDABLE it carries is
-// tested elsewhere: `shell.ts`, `fichiers/protocole.ts` and
-// `fichiers/adaptateur.ts` are pure and covered.
+// tested elsewhere: `shell.ts`, `files/protocole.ts` and
+// `files/adaptateur.ts` are pure and covered.
 
-import { createAdapter } from '../fichiers/adaptateur';
+import { createAdapter } from '../files/adaptateur';
 import {
     choisirDossier,
     connectFilesChannel,
     sessionDuPont,
     type FilesChannel,
-} from '../fichiers/canal';
-import { createWriter, type RacineInscriptible } from '../fichiers/ecriture';
-import type { RacineMutable } from '../fichiers/mutation';
-import { createMutator } from '../fichiers/mutation-service';
-import { createServer, trameBonjour, trameRafraichir } from '../fichiers/protocole';
+} from '../files/canal';
+import { createWriter, type RacineInscriptible } from '../files/ecriture';
+import type { RacineMutable } from '../files/mutation';
+import { createMutator } from '../files/mutation-service';
+import { createServer, trameBonjour, trameRafraichir } from '../files/protocole';
 import type { Bureau } from '../shell';
 
 export interface FilesDeps {
     bureau: Bureau;
     signalingUrl: string;
     /// 🔴 **A FRESH TOKEN PROVIDER, AND THERE WAS NONE** (critical
-    /// ① of the final review of August 31st, 2026). `fichiers/canal.ts` read
+    /// ① of the final review of August 31st, 2026). `files/canal.ts` read
     /// `jetonAcces()` — the vault's **RAW** content, without going through
     /// `assurerAccesFrais` —, yet "Choose my folder" is a gesture that can
     /// happen any time after the page loads, and an access
@@ -48,7 +48,7 @@ export interface FilesDeps {
     /// user activation, and the picker would be refused without anything
     /// saying so. See `monterLeLecteur`, where the order is applied.
     jetonFrais(): Promise<string | undefined>;
-    /// `?faute-fichiers=1` — BENCH variable, never a shipped
+    /// `?faute-fichiers=1` — BENCH variable, never a shipped (policy: allow-fr, bench URL parameter)
     /// configuration. Read ONCE by the page and passed here, never reread: it is the
     /// convention of `PLEIN_ECRAN` and `PART_SONDAGE` on the agent side — the
     /// mechanism reads a flag it is given. And a user who
@@ -110,7 +110,7 @@ export function installerLePont(deps: FilesDeps): void {
         const jeton = await deps.jetonFrais();
         if (jeton === undefined) {
             deps.bureau.lecteurEchoue(
-                'Votre session a expiré. Rechargez la page pour vous reconnecter.',
+                'Your session has expired. Reload the page to sign in again.',
             );
             return;
         }
@@ -127,10 +127,10 @@ export function installerLePont(deps: FilesDeps): void {
         // `FileSystemDirectoryHandle` does not have only turned the test
         // fake red.
         //
-        // ✅ **THE REAL CHECK NOW LIVES IN `fichiers/canal.ts`**, on the
+        // ✅ **THE REAL CHECK NOW LIVES IN `files/canal.ts`**, on the
         // REAL handle, before any widening — and it found an
         // incompatibility of F2 as soon as it was set (see
-        // `journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`).
+        // `journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`). (policy: allow-fr, archived log path)
         // These two lines are now just wiring.
         const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
         const racineMutable: RacineMutable = choix.racine as RacineMutable;
@@ -151,8 +151,8 @@ export function installerLePont(deps: FilesDeps): void {
                 // divergence declared in `protocole.ts`.
                 onRenommagePorCopie: (de, vers, octets, entrees) => {
                     console.warn(
-                        `renommage par copie « ${de} » → « ${vers} » : ${octets} octets, ` +
-                            `${entrees} entree(s) — move() absente, repli LOCAL (zero octet sur le canal)`,
+                        `rename by copy « ${de} » → « ${vers} »: ${octets} bytes, ` +
+                            `${entrees} entry(ies) — move() missing, LOCAL fallback (zero bytes on the channel)`,
                     );
                 },
             },
@@ -213,14 +213,14 @@ export function installerLePont(deps: FilesDeps): void {
         // `'open'` would then miss the event forever.
         const envoyerAuPont = (trame: ArrayBuffer): void => {
             if (!pont) {
-                console.warn('aucun pont : annonce non envoyee');
+                console.warn('no bridge: announcement not sent');
                 return;
             }
             const canal = pont.canal;
             if (canal.readyState === 'open') canal.send(trame);
             else if (canal.readyState === 'connecting') {
                 canal.addEventListener('open', () => canal.send(trame), { once: true });
-            } else console.warn('canal fichiers ferme : annonce non envoyee');
+            } else console.warn('file channel closed: announcement not sent');
         };
         envoyerAuPont(trameBonjour(choix.nom, false));
         deps.boutonRafraichir.onclick = () => envoyerAuPont(trameRafraichir());

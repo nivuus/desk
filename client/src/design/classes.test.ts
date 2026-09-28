@@ -15,7 +15,7 @@ import {
  */
 
 describe('classesDeclarees', () => {
-    it('lit les classes des sélecteurs simples et composés', () => {
+    it('reads the classes of simple and compound selectors', () => {
         const css = `
             .bouton { color: red; }
             .carte .carte__titre { font-weight: 600; }
@@ -31,7 +31,7 @@ describe('classesDeclarees', () => {
         ]);
     });
 
-    it('descend dans les @media et y lit les classes', () => {
+    it('goes down into @media and reads the classes there', () => {
         const css = `
             @media (min-width: 40rem) {
                 .grille { display: grid; }
@@ -40,7 +40,7 @@ describe('classesDeclarees', () => {
         expect([...classesDeclarees(css)]).toEqual(['grille']);
     });
 
-    it("n'invente AUCUNE classe à partir d'un corps de déclaration", () => {
+    it("invents NO class from a declaration body", () => {
         // 🔴 SANS L'ÉCART DES CORPS, ce contrôle deviendrait permissif : une
         // longueur `.5rem` ou un `content: ".x"` se lirait comme une classe
         // déclarée, et n'importe quelle faute de frappe finirait par se
@@ -49,16 +49,16 @@ describe('classesDeclarees', () => {
         expect([...classesDeclarees(css)]).toEqual(['a']);
     });
 
-    it('BLANCHIT les commentaires avant de chercher', () => {
+    it('BLANKS the comments before searching', () => {
         // Le patron que ce dépôt a payé trois fois : un garde satisfait par le
         // commentaire du fichier qu'il analyse.
-        const css = `/* .bouton--principale est une faute de frappe */ .bouton { color: red; }`;
+        const css = `/* .bouton--principale is a typo */ .bouton { color: red; }`;
         expect([...classesDeclarees(css)]).toEqual(['bouton']);
     });
 });
 
 describe('classesEmployeesHtml', () => {
-    it('lit un attribut class à plusieurs valeurs, guillemets doubles ou simples', () => {
+    it('reads a class attribute with several values, double or single quotes', () => {
         const html = `<div class="carte carte--large"></div><p class='message message--danger'></p>`;
         expect([...classesEmployeesHtml(html)].sort()).toEqual([
             'carte',
@@ -68,19 +68,19 @@ describe('classesEmployeesHtml', () => {
         ]);
     });
 
-    it('BLANCHIT les commentaires HTML avant de chercher', () => {
+    it('BLANKS the HTML comments before searching', () => {
         const html = `<!-- <div class="fantome"></div> --><div class="reelle"></div>`;
         expect([...classesEmployeesHtml(html)]).toEqual(['reelle']);
     });
 
-    it("ne confond pas un attribut dont le NOM finit par « class »", () => {
+    it("does not confuse an attribute whose NAME ends with « class »", () => {
         const html = `<div data-class="fantome" class="reelle"></div>`;
         expect([...classesEmployeesHtml(html)]).toEqual(['reelle']);
     });
 });
 
 describe('classesDeclareesEnLigne', () => {
-    it('lit les classes des blocs <style> en ligne', () => {
+    it('reads the classes of inline <style> blocks', () => {
         // 🔴 OBLIGATOIRE : `client/design.html` déclare en ligne six classes que
         // `galerie.ts` emploie. Les omettre ferait naître §7.9 ROUGE sur du
         // code correct, c'est-à-dire la pression à l'assouplissement.
@@ -88,13 +88,13 @@ describe('classesDeclareesEnLigne', () => {
         expect([...classesDeclareesEnLigne(html)].sort()).toEqual(['barre', 'pastille']);
     });
 
-    it("rend un ensemble VIDE quand la page n'a aucun <style>", () => {
+    it("returns an EMPTY set when the page has no <style>", () => {
         expect([...classesDeclareesEnLigne('<div class="x"></div>')]).toEqual([]);
     });
 });
 
 describe('classesEmployeesTs', () => {
-    it('lit classList.add et className, à un ou plusieurs arguments', () => {
+    it('reads classList.add and className, with one or several arguments', () => {
         const ts = `
             el.classList.add('bouton', 'bouton--discret');
             autre.className = 'pastille pastille--ouverte';
@@ -107,7 +107,7 @@ describe('classesEmployeesTs', () => {
         ]);
     });
 
-    it('BLANCHIT les commentaires TypeScript avant de chercher', () => {
+    it('BLANKS the TypeScript comments before searching', () => {
         const ts = `
             // el.classList.add('fantome-ligne');
             /* el.className = 'fantome-bloc'; */
@@ -116,7 +116,7 @@ describe('classesEmployeesTs', () => {
         expect([...classesEmployeesTs(ts)]).toEqual(['reelle']);
     });
 
-    it("ne se laisse pas déséquilibrer par une LITTÉRALE DE REGEX", () => {
+    it("is not unbalanced by a REGEX LITERAL", () => {
         // 🔴 TROUVÉ EN LANÇANT LE CONTRÔLE SUR `classes.ts` LUI-MÊME. Une regex
         // qui porte des guillemets rompait la parité du suivi de chaîne : tout
         // le reste du fichier était lu comme une chaîne, donc plus AUCUN
@@ -138,7 +138,7 @@ describe('classesEmployeesTs', () => {
         expect([...classesEmployeesTs(ts)]).toEqual(['reelle']);
     });
 
-    it("ne blanchit PAS ce qui vit dans une chaîne — le faux négatif silencieux", () => {
+    it("does NOT blank what lives in a string — the silent false negative", () => {
         // ⚠️ Un `'https://x'` blanchi naïvement perdrait la fin de sa ligne, et
         // la classe écrite après lui deviendrait invisible : un faux NÉGATIF,
         // donc exactement la faute de frappe que §7.9 existe pour attraper,
@@ -148,8 +148,8 @@ describe('classesEmployeesTs', () => {
     });
 });
 
-describe('les blanchisseurs, séparément', () => {
-    it('sansCommentairesHtml garde les sauts de ligne', () => {
+describe('the blankers, separately', () => {
+    it('sansCommentairesHtml keeps the line breaks', () => {
         // `<!--x` vaut CINQ caractères et `y-->` en vaut QUATRE : le compte
         // est celui des caractères blanchis, pas une approximation. Cette
         // assertion a été écrite fausse une première fois, et c'est
@@ -157,7 +157,7 @@ describe('les blanchisseurs, séparément', () => {
         expect(sansCommentairesHtml('a<!--x\ny-->b')).toBe('a     \n    b');
     });
 
-    it('sansCommentairesTs garde les sauts de ligne', () => {
+    it('sansCommentairesTs keeps the line breaks', () => {
         expect(sansCommentairesTs('a//x\nb')).toBe('a   \nb');
     });
 });

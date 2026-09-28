@@ -126,7 +126,7 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
 /// makes criterion ②'s RED run decidable: removing `launchQueue` must
 /// leave drag-and-drop GREEN.
 async function processOneFile(file: File): Promise<void> {
-    dire('neutre', `Téléversement de ${file.name}…`);
+    dire('neutre', `Uploading ${file.name}…`);
     const resume = await deposer(file, {
         ...deps,
         maintenant: () => Date.now(),
@@ -154,18 +154,18 @@ function entree(application: ApplicationListee): DocumentFragment {
             //    THIS page — no need any more to open a second one from this
             //    click. The fix of August 30th (opening `shell.html` from this
             //    same gesture) therefore has no purpose any more.
-            dire('neutre', `Lancement de ${application.nom}…`);
+            dire('neutre', `Launching ${application.nom}…`);
             void jetonFrais().then((frais) => {
                 if (frais === undefined) {
-                    dire('danger', 'Votre session a expiré. Rechargez la page pour vous reconnecter.');
+                    dire('danger', 'Your session has expired. Reload the page to sign in again.');
                     return;
                 }
                 return lancerApplication(application.id, deps).then((issue) => {
                     if (issue.etat !== 'ok') {
-                        dire('danger', `${application.nom} n'a pas pu être lancée : ${issue.refus.motif}.`);
+                        dire('danger', `${application.nom} could not be launched: ${issue.refus.motif}.`);
                         return;
                     }
-                    dire('succes', `${application.nom} a été lancée.`);
+                    dire('succes', `${application.nom} was launched.`);
                 });
             });
         },
@@ -173,7 +173,7 @@ function entree(application: ApplicationListee): DocumentFragment {
             void publierLeManifeste(application).then(() => {
                 dire(
                     'neutre',
-                    `${application.nom} est prête à être installée : employez « Installer l'application » du navigateur.`,
+                    `${application.nom} is ready to be installed: use the browser's « Install app ».`,
                 );
             });
         },
@@ -186,11 +186,11 @@ async function peupler(): Promise<void> {
     // returned one — it is that function that decides, and `jeton.test.ts` holds it.
     const vms = await listerVms(deps);
     if (vms.etat !== 'ok') {
-        dire('danger', `Les machines n'ont pas pu être lues : ${vms.refus.motif}.`);
+        dire('danger', `The machines could not be read: ${vms.refus.motif}.`);
         return;
     }
     if (vms.value.length === 0) {
-        dire('neutre', "Aucune machine ne vous est attribuée : il n'y a rien à montrer.");
+        dire('neutre', "No machine is assigned to you: there is nothing to show.");
         return;
     }
     const vm = vms.value[0];
@@ -216,11 +216,11 @@ async function peupler(): Promise<void> {
 
     const applications = await listerApplications(vm.id, deps);
     if (applications.etat !== 'ok') {
-        dire('danger', `Le catalogue n'a pas pu être lu : ${applications.refus.motif}.`);
+        dire('danger', `The catalogue could not be read: ${applications.refus.motif}.`);
         return;
     }
     elList.replaceChildren(...applications.value.map(entree));
-    dire('neutre', `${String(applications.value.length)} application(s) sur ${vm.nom}.`);
+    dire('neutre', `${String(applications.value.length)} application(s) on ${vm.nom}.`);
 
     // `?app=<uuid>`: the page publishes THIS application's manifest, which
     // makes it installable. It is also what `start_url` will reopen.
@@ -228,7 +228,7 @@ async function peupler(): Promise<void> {
     if (demandee !== null) {
         const cible = applications.value.find((a) => a.id === demandee);
         if (cible !== undefined) await publierLeManifeste(cible);
-        else dire('danger', "L'application demandée n'est pas dans ce catalogue.");
+        else dire('danger', "The requested application is not in this catalogue.");
     }
 }
 
@@ -327,7 +327,7 @@ async function start(): Promise<void> {
     try {
         await peupler();
     } catch (e) {
-        dire('danger', `Le catalogue n'a pas pu être lu : ${(e as Error).message}.`);
+        dire('danger', `The catalogue could not be read: ${(e as Error).message}.`);
     }
 
     // ── THE DESKTOP, IN THIS PAGE ────────────────────────────────────────
@@ -350,11 +350,11 @@ async function start(): Promise<void> {
             list: document.querySelector<HTMLUListElement>('#fenetres')!,
             modele: document.querySelector<HTMLTemplateElement>('#modele-fenetre')!,
             sectionFenetres: document.querySelector<HTMLElement>('#section-fenetres')!,
-            filesSection: document.querySelector<HTMLDetailsElement>('#section-fichiers')!,
+            filesSection: document.querySelector<HTMLDetailsElement>('#files-section')!,
             boutonDossier: document.querySelector<HTMLButtonElement>('#choisir-dossier')!,
-            filesState: document.querySelector<HTMLDivElement>('#etat-fichiers')!,
+            filesState: document.querySelector<HTMLDivElement>('#files-state')!,
             ecrituresDues: document.querySelector<HTMLDivElement>('#ecritures-dues')!,
-            filesActions: document.querySelector<HTMLParagraphElement>('#actions-fichiers')!,
+            filesActions: document.querySelector<HTMLParagraphElement>('#files-actions')!,
             boutonRafraichir: document.querySelector<HTMLButtonElement>('#rafraichir')!,
             boutonReprendre: document.querySelector<HTMLButtonElement>('#reprendre-enregistrement')!,
         },

@@ -78,7 +78,7 @@ export interface Bureau {
     viewportRecu(session: string, largeur: number, hauteur: number): void;
     list(): FenetreConnue[];
     rouvrir(session: string): void;
-    /// The `Mes Fichiers` drive is mounted on the folder `nom`.
+    /// The `Mes Fichiers` drive is mounted on the folder `nom`. (policy: allow-fr, real Windows drive name)
     lecteurMonte(nom: string): void;
     /// The drive is no longer mounted: the state is ERASED, not left in place.
     lecteurDemonte(): void;
@@ -197,8 +197,8 @@ export function createDesktop(options: OptionsBureau): Bureau {
             // DANGER: the user must ACT — allow pop-ups. A
             // neutral tone would suggest the window is on its way.
             options.show(
-                `« ${titre} » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. ` +
-                `Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.`,
+                `« ${titre} » could not open: the browser blocked the pop-up. ` +
+                `Allow pop-ups for this site, then reopen the window.`,
                 'danger',
             );
         }
@@ -220,7 +220,7 @@ export function createDesktop(options: OptionsBureau): Bureau {
 
         refus(titre, motif) {
             // DANGER: the window will not exist.
-            options.show(`« ${titre} » n'a pas pu s'ouvrir : ${motif}.`, 'danger');
+            options.show(`« ${titre} » could not open: ${motif}.`, 'danger');
         },
 
         viewportRecu(session, largeur, hauteur) {
@@ -249,7 +249,7 @@ export function createDesktop(options: OptionsBureau): Bureau {
 
         lecteurMonte(nom) {
             // SUCCESS — and it is the only positive state of the product.
-            options.showFilesState(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`, 'succes');
+            options.showFilesState(`« Mes Fichiers » drive mounted on « ${nom} ».`, 'succes');
         },
 
         lecteurDemonte() {
@@ -318,7 +318,7 @@ export function createDesktop(options: OptionsBureau): Bureau {
             // DANGER: sharing failed, and "nothing is shared" does not call for
             // the same gesture as "sharing failed, here is why".
             options.showFilesState(
-                `Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`,
+                `The « Mes Fichiers » drive could not be mounted: ${motif}.`,
                 'danger',
             );
         },
@@ -329,15 +329,15 @@ export function createDesktop(options: OptionsBureau): Bureau {
             // `relais.ts` for `trop-de-requetes`); `motif` is a stable
             // KEYWORD for code, not a sentence — see `bureau.refus`
             // above, which follows the same hierarchy for the same reason.
-            const cause = reason ?? motif ?? 'raison inconnue';
+            const cause = reason ?? motif ?? 'unknown reason';
             // ⚠️ `retryApresS` ONLY accompanies the volume refusal
             // (`signaling/relais.ts`): a handshake refusal (token
             // absent or invalid) has nothing to retry, reconnecting will
             // change nothing. Absent, the sentence therefore promises nothing that would
             // not hold.
             const attente =
-                typeof retryApresS === 'number' ? ` Nouvelle tentative possible dans ${retryApresS} s.` : '';
-            options.show(`Bureau refusé : ${cause}.${attente}`, 'danger');
+                typeof retryApresS === 'number' ? ` New attempt possible in ${retryApresS} s.` : '';
+            options.show(`Desktop refused: ${cause}.${attente}`, 'danger');
         },
 
         canalDeControlePerdu() {
@@ -345,7 +345,7 @@ export function createDesktop(options: OptionsBureau): Bureau {
             // close any more until the page is reloaded, and saying it
             // neutrally would suggest a desktop that still works.
             options.show(
-                'Connexion au bureau perdue. Rechargez la page pour vous reconnecter.',
+                'Connection to the desktop lost. Reload the page to sign in again.',
                 'danger',
             );
         },
@@ -367,10 +367,10 @@ function phraseDesMutations(mutations: string[]): string {
     if (mutations.length === 0) return '';
     const pluriel = mutations.length > 1 ? 's' : '';
     return (
-        `${mutations.length} renommage${pluriel} ou suppression${pluriel} n'${
-            mutations.length > 1 ? 'ont' : 'a'
-        } PAS été répercuté${pluriel} sur ce poste : ${mutations.join(', ')}. ` +
-        `Les deux côtés ont divergé, et rien ne le rejouera.`
+        `${mutations.length} rename${pluriel} or removal${pluriel} ${
+            mutations.length > 1 ? 'have' : 'has'
+        } NOT been applied on this host: ${mutations.join(', ')}. ` +
+        `The two sides have diverged, and nothing will replay it.`
     );
 }
 
@@ -384,7 +384,7 @@ function phraseDesDues(dues: EcritureDue[], echecs: Map<string, string>): string
         .join(', ');
     const pluriel = dues.length > 1 ? 's' : '';
     return (
-        `${dues.length} fichier${pluriel} enregistré${pluriel} dans la VM n'${dues.length > 1 ? 'ont' : 'a'} ` +
-        `pas encore été recopié${pluriel} sur ce poste : ${noms}. Ne fermez pas cet onglet.`
+        `${dues.length} file${pluriel} saved in the VM ${dues.length > 1 ? 'have' : 'has'} ` +
+        `not been copied to this host yet: ${noms}. Do not close this tab.`
     );
 }

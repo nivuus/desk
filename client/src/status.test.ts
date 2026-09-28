@@ -12,71 +12,71 @@ function faireCible() {
 }
 
 describe('creerStatut', () => {
-    it('affiche un message ordinaire', () => {
+    it('displays an ordinary message', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('offre envoyée, attente de l’agent…');
+        statut.show('offer sent, waiting for the agent…');
 
-        expect(element.textContent).toBe('offre envoyée, attente de l’agent…');
+        expect(element.textContent).toBe('offer sent, waiting for the agent…');
         expect(element.dataset.hidden).toBe('false');
     });
 
-    it('affiche un message terminal', () => {
+    it('displays a terminal message', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session ended: close requested', { terminal: true });
 
-        expect(element.textContent).toBe('session terminée : fermeture demandée');
+        expect(element.textContent).toBe('session ended: close requested');
         expect(element.dataset.hidden).toBe('false');
     });
 
-    it('un message ordinaire arrivant après un terminal ne l’écrase pas', () => {
+    it('an ordinary message arriving after a terminal one does not overwrite it', () => {
         // Le cas réel qui a motivé ce module : `connectionstatechange` sur
         // `disconnected` se déclenche juste après `session-end`, et écrivait
         // par-dessus « session terminée : … » avant ce correctif.
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('session terminée : fermeture demandée', { terminal: true });
-        statut.show('connexion : disconnected');
+        statut.show('session ended: close requested', { terminal: true });
+        statut.show('connection: disconnected');
 
-        expect(element.textContent).toBe('session terminée : fermeture demandée');
+        expect(element.textContent).toBe('session ended: close requested');
     });
 
-    it('deux messages terminaux successifs se remplacent l’un l’autre', () => {
+    it('two successive terminal messages replace each other', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('session terminée : fermeture demandée', { terminal: true });
-        statut.show('session terminée : erreur agent', { terminal: true });
+        statut.show('session ended: close requested', { terminal: true });
+        statut.show('session ended: agent error', { terminal: true });
 
-        expect(element.textContent).toBe('session terminée : erreur agent');
+        expect(element.textContent).toBe('session ended: agent error');
     });
 
-    it('masquer() cache le bandeau tant qu’aucun message terminal n’est affiché', () => {
+    it('masquer() hides the banner as long as no terminal message is displayed', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('prêt — 1920×1080');
+        statut.show('ready — 1920×1080');
         statut.masquer();
 
         expect(element.dataset.hidden).toBe('true');
     });
 
-    it('masquer() n’efface pas un message terminal affiché', () => {
+    it('masquer() does not erase a displayed terminal message', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session ended: close requested', { terminal: true });
         statut.masquer();
 
         expect(element.dataset.hidden).toBe('false');
-        expect(element.textContent).toBe('session terminée : fermeture demandée');
+        expect(element.textContent).toBe('session ended: close requested');
     });
 
-    it('masquer() n’efface pas un message persistant affiché', () => {
+    it('masquer() does not erase a displayed persistent message', () => {
         // Cas réel : une alerte réseau (`link`, `alerte: true`) affichée
         // pendant la fenêtre de tir du minuteur anonyme d'un bandeau voisin
         // (« prêt », « manette détectée »…) ne doit pas disparaître quand ce
@@ -84,16 +84,16 @@ describe('creerStatut', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+        statut.show('Network insufficient for twitchy gaming — 1920×1080, 2.0 Mb/s', {
             persistant: true,
         });
         statut.masquer();
 
         expect(element.dataset.hidden).toBe('false');
-        expect(element.textContent).toBe('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s');
+        expect(element.textContent).toBe('Network insufficient for twitchy gaming — 1920×1080, 2.0 Mb/s');
     });
 
-    it('un message ordinaire suivant un persistant lève la persistance : masquer() s’applique de nouveau', () => {
+    it('an ordinary message following a persistent one lifts the persistence: masquer() applies again', () => {
         // Symétrique du cas ci-dessus : un retour à un état normal (par
         // exemple `link` avec `alerte: false` après une amélioration du
         // réseau) doit pouvoir se masquer normalement, sans que l'ancienne
@@ -101,7 +101,7 @@ describe('creerStatut', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+        statut.show('Network insufficient for twitchy gaming — 1920×1080, 2.0 Mb/s', {
             persistant: true,
         });
         statut.show('1920×1080, 8.0 Mb/s');
@@ -110,7 +110,7 @@ describe('creerStatut', () => {
         expect(element.dataset.hidden).toBe('true');
     });
 
-    it('expirer() lève la persistance d’un message persistant et le masque', () => {
+    it('expirer() lifts the persistence of a persistent message and hides it', () => {
         // Cas réel qui a motivé cette méthode : le réveil d'une fenêtre
         // endormie doit effacer le bandeau « image figée : … » affiché avec
         // `persistant: true` à l'endormissement — `masquer()` seul ne le
@@ -118,41 +118,41 @@ describe('creerStatut', () => {
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('image figée : fenêtre masquée', { persistant: true });
+        statut.show('image frozen: window hidden', { persistant: true });
         statut.expirer();
 
         expect(element.dataset.hidden).toBe('true');
     });
 
-    it('expirer() n’efface pas un message terminal : la garde terminale n’est pas affaiblie', () => {
+    it('expirer() does not erase a terminal message: the terminal guard is not weakened', () => {
         // Même exigence que pour masquer() : `expirer()` ne lève QUE la
         // persistance, jamais la protection terminale.
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('session terminée : fermeture demandée', { terminal: true });
+        statut.show('session ended: close requested', { terminal: true });
         statut.expirer();
 
         expect(element.dataset.hidden).toBe('false');
-        expect(element.textContent).toBe('session terminée : fermeture demandée');
+        expect(element.textContent).toBe('session ended: close requested');
     });
 
-    it('un message terminal reste prioritaire sur un persistant : la garde terminale n’est pas affaiblie', () => {
+    it('a terminal message keeps priority over a persistent one: the terminal guard is not weakened', () => {
         // Ce test compte particulièrement : `persistant` est un drapeau ajouté
         // à côté de `terminal`, exactement le genre d'endroit où l'on
         // affaiblit une garde existante sans le voir.
         const element = faireCible();
         const statut = createStatus(element);
 
-        statut.show('session terminée : fermeture demandée', { terminal: true });
-        statut.show('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+        statut.show('session ended: close requested', { terminal: true });
+        statut.show('Network insufficient for twitchy gaming — 1920×1080, 2.0 Mb/s', {
             persistant: true,
         });
 
-        expect(element.textContent).toBe('session terminée : fermeture demandée');
+        expect(element.textContent).toBe('session ended: close requested');
 
         statut.masquer();
         expect(element.dataset.hidden).toBe('false');
-        expect(element.textContent).toBe('session terminée : fermeture demandée');
+        expect(element.textContent).toBe('session ended: close requested');
     });
 });

@@ -42,9 +42,9 @@ function verifierLesCles() {
     ]) {
         if (!source.includes(`export const ${nom} = '${value}';`)) {
             throw new Error(
-                `la clé ${nom} de ce module ne correspond plus à celle de client/src/jeton.ts : ` +
-                    `le jeton serait semé sous un nom que le client ne lit pas, et la session ` +
-                    `serait refusée sans que rien ne dise pourquoi`,
+                `the key ${nom} of this module no longer matches the one in client/src/jeton.ts: ` +
+                    `the token would be seeded under a name the client does not read, and the session ` +
+                    `would be refused without anything saying why`,
             );
         }
     }
@@ -73,9 +73,9 @@ export async function obtenirPaire(config) {
     const corps = await reponse.json().catch(() => undefined);
     if (!reponse.ok) {
         throw new Error(
-            `POST ${config.plateformeUrl}/auth/connexion a rendu ${reponse.status} ` +
-                `(${corps?.refus ?? 'sans motif'}) — le compte de recette RECETTE_EMAIL ` +
-                `existe-t-il, et son mot de passe est-il celui de RECETTE_MOTDEPASSE ?`,
+            `POST ${config.plateformeUrl}/auth/connexion returned ${reponse.status} ` +
+                `(${corps?.refus ?? 'no reason'}) — does the test account RECETTE_EMAIL ` +
+                `exist, and is its password the one in RECETTE_MOTDEPASSE?`,
         );
     }
     return { acces: corps.acces, rafraichissement: corps.rafraichissement };
@@ -95,10 +95,10 @@ export async function semerJeton(cdp, env = process.env) {
     const config = configurationRecette(env);
     if (!config) {
         console.warn(
-            "⚠️ aucun jeton semé : RECETTE_EMAIL et RECETTE_MOTDEPASSE ne sont pas posées. " +
-                "Depuis le sous-bloc P2, un pair `client` sans jeton est REFUSÉ par la garde " +
-                '(motif `jeton-absent`) et son socket fermé. Poser aussi PLATEFORME_URL si ' +
-                "le service n'écoute pas sur http://127.0.0.1:8080.",
+            "⚠️ no token seeded: RECETTE_EMAIL and RECETTE_MOTDEPASSE are not set. " +
+                "Since sub-block P2, a `client` peer without a token is REFUSED by the guard " +
+                '(reason `jeton-absent`) and its socket closed. Also set PLATEFORME_URL if ' +
+                "the service is not listening on http://127.0.0.1:8080.",
         );
         return false;
     }
@@ -116,6 +116,6 @@ export async function semerJeton(cdp, env = process.env) {
             }
         `,
     });
-    console.log(`jeton de recette semé pour ${config.email} (${config.plateformeUrl})`);
+    console.log(`test token seeded for ${config.email} (${config.plateformeUrl})`);
     return true;
 }

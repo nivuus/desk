@@ -45,7 +45,7 @@ export function luminanceRelative(couleur: string): number {
             ? brut.slice(0, 3).split('').map((c) => c + c).join('')
             : brut.slice(0, 6);
     if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
-        throw new Error(`couleur non reconnue : « ${couleur} » (attendu #rgb ou #rrggbb)`);
+        throw new Error(`unrecognised colour: « ${couleur} » (expected #rgb or #rrggbb)`);
     }
     const [r, v, b] = [0, 2, 4].map((i) => canalLineaire(parseInt(hex.slice(i, i + 2), 16)));
     return 0.2126 * r + 0.7152 * v + 0.0722 * b;
@@ -133,7 +133,7 @@ function pairesDuTheme(theme: string): Paire[] {
  * (spec §8): only its readability ON THE BLACK BAND is measured here.
  */
 const PAIRE_HORS_THEME: Paire = {
-    theme: 'hors thème',
+    theme: 'out of theme',
     encre: '--sur-voile',
     fond: '--video-letterbox',
     seuil: SEUIL_TEXTE,

@@ -60,7 +60,7 @@ function monter(largeurCss: number, hauteurCss: number, dpr: number) {
     return { envoyes, annonces };
 }
 
-describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME mesure', () => {
+describe('attacherResizeAuDOM — the viewport and the Resize come from the SAME measurement', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
@@ -68,7 +68,7 @@ describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME m
     });
     afterEach(() => vi.useRealTimers());
 
-    it('émet un viewport pour chaque Resize, avec exactement les mêmes nombres', () => {
+    it('emits a viewport for each Resize, with exactly the same numbers', () => {
         const { envoyes, annonces } = monter(778, 491, 1);
         ResizeObserverFactice.dernier!.declencher();
         vi.advanceTimersByTime(250);
@@ -91,7 +91,7 @@ describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME m
         expect(annonces).toEqual([[decode.width, decode.height]]);
     });
 
-    it("n'annonce rien quand la page n'a pas d'ouvreur (rappel absent)", () => {
+    it("announces nothing when the page has no opener (callback absent)", () => {
         // Le cas « page ouverte à la main » : `main.ts` ne passe alors aucun
         // annonceur. Le `Resize` doit partir quand même — la session vit.
         const envoyes: string[] = [];
@@ -108,7 +108,7 @@ describe('attacherResizeAuDOM — le viewport et le Resize sortent de la MÊME m
         expect(envoyes).toHaveLength(1);
     });
 
-    it('multiplie par devicePixelRatio UNE seule fois', () => {
+    it('multiplies by devicePixelRatio only ONCE', () => {
         // ⚠️ L'annonceur de `main.ts` ne remultiplie pas : si ce module et lui
         // appliquaient tous deux le facteur, un client HiDPI demanderait
         // QUATRE fois les pixels. Le nombre annoncé doit être celui, déjà

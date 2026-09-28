@@ -33,7 +33,7 @@ import { declarationsDe, preludes, sansCommentaires } from './design/css';
  * `client/vite.config.ts`, et il doit être lancé DEPUIS `client/` : depuis la
  * racine du dépôt, la racine Vite change, le CSS est court-circuité EN SILENCE
  * et `styleCss` vaut la chaîne vide. C'est l'assertion d'atteignabilité qui
- * attrape ce cas — voir `design/longueurs.test.ts`, qui l'a payé.
+ * attrape ce cas — voir `design/lengths.test.ts`, qui l'a payé.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -137,12 +137,12 @@ for (const [cle, brut] of Object.entries(FEUILLES_SRC).sort()) {
 
 // Le relevé, toujours imprimé, succès compris — « un contrôle de dérive dont on
 // ne lit jamais la valeur ne sert qu'à passer » (`poids-css.mjs`).
-console.log(`garde WCO  feuilles de client/src/ : ${Object.keys(FEUILLES_SRC).length}`);
-console.log(`           env(titlebar-area-*) lus : ${envs.length}`);
+console.log(`WCO guard  sheets of client/src/: ${Object.keys(FEUILLES_SRC).length}`);
+console.log(`           env(titlebar-area-*) read: ${envs.length}`);
 for (const e of envs) console.log(`           ${e.file}  ${e.texte}`);
 
-describe('le Window Controls Overlay — la règle est livrée, et elle est INERTE', () => {
-    it('③ atteignabilité : il existe au moins un env(titlebar-area-) à lire', () => {
+describe('the Window Controls Overlay — the rule is shipped, and it is INERT', () => {
+    it('③ reachability: there is at least one env(titlebar-area-) to read', () => {
         // 🔴 SANS CETTE ASSERTION, ① EST VERTE EN NE MESURANT RIEN — et ② l'est
         // de toute façon, puisqu'elle nie. Sa rouge se joue en VIDANT les
         // feuilles qui portent la règle.
@@ -150,51 +150,51 @@ describe('le Window Controls Overlay — la règle est livrée, et elle est INER
         // `*.css` de `client/src/`, donc vider `style.css` SEULE laisse
         // `session/etat-terminal.css` porter son `env()` et l'atteignabilité
         // reste VERTE, à juste titre. C'est le défaut de prescription que
-        // `design/longueurs.test.ts` a déjà mesuré sur sa propre rouge.
+        // `design/lengths.test.ts` a déjà mesuré sur sa propre rouge.
         expect(
             envs.length,
-            'aucun env(titlebar-area-) dans client/src/ : le garde WCO est vert en ne mesurant rien',
+            'no env(titlebar-area-) in client/src/: the WCO guard is green while measuring nothing',
         ).toBeGreaterThan(0);
     });
 
-    it('① tout env(titlebar-area-*) porte le repli 0px', () => {
+    it('① every env(titlebar-area-*) carries the 0px fallback', () => {
         expect(
             envs.filter((e) => e.repli !== ', 0px').map((e) => `${e.file}  ${e.texte}`),
-            'un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI',
+            'an env(titlebar-area-*) without the « , 0px » fallback changes the layout TODAY',
         ).toEqual([]);
     });
 
-    it('② aucune requête @media conditionnelle au WCO', () => {
+    it('② no @media query conditional on the WCO', () => {
         // Un repli neutralise un `env()` ; rien ne neutralise un bloc `@media`.
         expect(
             requetesWco.map((r) => `${r.file}  ${r.prelude}`),
-            'une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise',
+            'a @media (display-mode: window-controls-overlay) can change the layout without any command saying so',
         ).toEqual([]);
     });
 });
 
-describe('style.css — les gardes de la fenêtre de session', () => {
-    it('② atteignabilité : la feuille déclare des règles', () => {
+describe('style.css — the guards of the session window', () => {
+    it('② reachability: the sheet declares rules', () => {
         // 🔴 SANS CETTE ASSERTION, LA SUIVANTE EST VERTE SUR UNE FEUILLE VIDE.
         // C'est G5 de `primitives.test.ts`, et le piège que S2 a mesuré :
         // « quatre gardes sur cinq ne prouveraient rien ». Sa rouge se joue en
         // VIDANT `client/src/style.css`, jamais en y ajoutant quelque chose.
         expect(
             SELECTEURS.length,
-            'style.css ne déclare AUCUNE règle : les gardes de cette feuille sont alors verts en ne mesurant rien',
+            'style.css declares NO rule: the guards of this sheet are then green while measuring nothing',
         ).toBeGreaterThan(0);
         // 🔴 ET L'ATTEIGNABILITÉ SUIT LA RÈGLE, PAS LE FICHIER D'ORIGINE.
         // Depuis l'extraction, vider `style.css` seule laisserait le garde ①
         // vert : sa règle vit ailleurs. C'est le défaut de portée que
-        // `design/longueurs.test.ts` a mesuré sur sa propre rouge, et il se
+        // `design/lengths.test.ts` a mesuré sur sa propre rouge, et il se
         // rejoue ici à l'identique dès qu'une extraction déplace une règle.
         expect(
             preludes(sansCommentaires(boutonsDeCoinCss)).filter((p) => !p.startsWith('@')).length,
-            'session/boutons-de-coin.css ne déclare AUCUNE règle : le garde ① est alors vert en ne mesurant rien',
+            'session/boutons-de-coin.css declares NO rule: guard ① is then green while measuring nothing',
         ).toBeGreaterThan(0);
     });
 
-    it('① le bouton plein écran actif est HORS du flux d’événements', () => {
+    it('① the active fullscreen button is OUT of the event flow', () => {
         // La raison, écrite dans `style.css` et reprise ici pour qu'elle
         // survive à une lecture de ce seul fichier : sans cette déclaration,
         // une zone de coin reste dans le flux d'événements et avale les clics
@@ -208,11 +208,11 @@ describe('style.css — les gardes de la fenêtre de session', () => {
         // JUGEMENT HUMAIN (spec §8), et il n'a pas été porté.
         expect(
             declarationsDuBloc(CSS_BOUTONS, '#fullscreen[data-actif="true"]'),
-            'session/boutons-de-coin.css : la règle #fullscreen[data-actif="true"] ne déclare pas pointer-events: none',
+            'session/boutons-de-coin.css: the #fullscreen[data-actif="true"] rule does not declare pointer-events: none',
         ).toContain('pointer-events: none');
     });
 
-    it('③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden`', () => {
+    it('③ the terminal screen stays HIDDEN as long as it carries `hidden`', () => {
         // 🔴 `[hidden]` PERD CONTRE UNE RÈGLE D'AUTEUR. Le
         // `[hidden] { display: none }` qui rend l'attribut efficace vit dans la
         // feuille de l'agent utilisateur, et la cascade compare l'ORIGINE avant
@@ -227,7 +227,7 @@ describe('style.css — les gardes de la fenêtre de session', () => {
         // piège que ce dépôt a payé trois fois.
         expect(
             declarationsDuBloc(CSS_TERMINAL, '.ecran[hidden]'),
-            'session/etat-terminal.css ne déclare pas .ecran[hidden] { display: none }',
+            'session/etat-terminal.css does not declare .ecran[hidden] { display: none }',
         ).toContain('display: none');
     });
 });

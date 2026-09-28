@@ -33,18 +33,18 @@ const tokensCss = `${couleursCss}\n${echellesCss}`;
 const blocs = lireBlocsDeTheme(tokensCss);
 const racine = blocs.find((b) => b.nom === 'racine');
 
-describe('les couleurs déjà en place sont reprises caractère pour caractère', () => {
-    it('`--fond-0` sombre vaut exactement l’ancien `--surface`', () => {
+describe('the colours already in place are taken over character for character', () => {
+    it('`--fond-0` dark is exactly the former `--surface`', () => {
         expect(racine?.tokens.get('--fond-0')).toBe('#0b0d10');
     });
 
-    it('`--texte-fort` sombre vaut exactement l’ancien `--text`', () => {
+    it('`--texte-fort` dark is exactly the former `--text`', () => {
         expect(racine?.tokens.get('--texte-fort')).toBe('#e6e8eb');
     });
 });
 
-describe('les longueurs reprises rendent le MÊME nombre de pixels', () => {
-    it('chaque cran employé rend, à racine 16 px, le littéral d’avant', () => {
+describe('the lengths taken over render the SAME number of pixels', () => {
+    it('each step used renders, at a 16 px root, the previous literal', () => {
         // 🔴 Poser `--e-3: 0.8rem` rendrait 12,8 px : plausible, et faux. C'est
         // exactement le genre d'erreur qu'aucun des neuf contrôles n'attrape.
         // ❌ « puisque aucun ne mesure une longueur » : plus vrai depuis le
@@ -66,15 +66,15 @@ describe('les longueurs reprises rendent le MÊME nombre de pixels', () => {
         }
     });
 
-    it('les crans sans unité `rem` valent le littéral d’avant, tels quels', () => {
+    it('the steps without a `rem` unit are worth the previous literal, as is', () => {
         expect(racine?.tokens.get('--r-2')).toBe('6px');
         expect(racine?.tokens.get('--duree-2')).toBe('300ms');
         expect(racine?.tokens.get('--lh-normal')).toBe('1.5');
     });
 });
 
-describe('les six voiles hors thème reprennent les littérales verbatim', () => {
-    it('chacune vaut la valeur exacte qu’elle remplace', () => {
+describe('the six out-of-theme veils take the literals over verbatim', () => {
+    it('each one is worth the exact value it replaces', () => {
         const attendus: Record<string, string> = {
             '--video-letterbox': '#000',
             '--voile-flottant': 'rgb(0 0 0 / 0.72)',
@@ -89,8 +89,8 @@ describe('les six voiles hors thème reprennent les littérales verbatim', () =>
     });
 });
 
-describe('la précondition de tout ce qui précède : la racine est LIBRE', () => {
-    it('aucune règle dont le sélecteur contient `html` ne pose de taille de police', () => {
+describe('the precondition of everything above: the root is FREE', () => {
+    it('no rule whose selector contains `html` sets a font size', () => {
         // 🔴 C'EST LE SEUL LIEN MÉCANIQUE ENTRE `base.css` ET LES CHIFFRES
         // CI-DESSUS. `--e-3` ne vaut 12 px que si `1rem` vaut 16 px, donc que
         // si la racine n'est pas forcée. Avec le `font: 14px/1.5` que
