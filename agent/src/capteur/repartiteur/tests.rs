@@ -144,13 +144,13 @@ fn un_budget_inferieur_aux_planchers_ne_deborde_pas() {
 fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     // **Régime 1 : cas normal, budget copieux**
     // 2 endormies = 512 000 bps, budget = 1 000 000, reste = 488 000 >> diviseur
-    let regime_1 = vec![
+    let regime_1 = [
         (f("d0", false, false), false),
         (f("d1", false, false), false),
         (f("e0", true, true), true),
         (f("e1", true, false), true),
     ];
-    let mut fenetres: Vec<Fenetre> = regime_1
+    let fenetres: Vec<Fenetre> = regime_1
         .iter()
         .map(|(fenetre, _)| fenetre.clone())
         .collect();
@@ -171,7 +171,7 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     // 2 endormies = 512 000 bps, 1 focalisée + 1 non-focalisée
     // Diviseur = 2 - 1 + 2 = 3, seuil = 512 000 + 3 = 512 003
     // Budget = 512 002 → reste = 2, reste < diviseur = 3
-    let regime_2_focus = vec![
+    let regime_2_focus = [
         (f("d0", false, false), false),
         (f("d1", false, false), false),
         (f("e0", true, true), true),
@@ -199,7 +199,7 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     // 2 endormies = 512 000 bps, 2 non-focalisées
     // Diviseur = 2, seuil = 512 000 + 2 = 512 002
     // Budget = 512 001 → reste = 1, reste < diviseur = 2
-    let regime_2_no_focus = vec![
+    let regime_2_no_focus = [
         (f("d0", false, false), false),
         (f("d1", false, false), false),
         (f("e0", true, false), true),
@@ -220,7 +220,7 @@ fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
     // **Régime 3 : budget trop petit, ne couvre pas les planchers**
     // 2 endormies = 512 000 bps, budget = 100 000 < planchers
     // Reste = 0 (saturating_sub), dépassement = (512_000 - 100_000) + eveillees = 412_000 + 2
-    let regime_3 = vec![
+    let regime_3 = [
         (f("d0", false, false), false),
         (f("d1", false, false), false),
         (f("e0", true, false), true),

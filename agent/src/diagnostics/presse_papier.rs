@@ -104,7 +104,6 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
     // verdict négatif exige que la chose mesurée soit ABSENTE, pas
     // seulement nulle** ; c'est la symétrie du piège de D9 (`survit=true`
     // rendu par une sortie disparue).
-    let mut repos = repos;
     if repos.iter().all(|&s| s == 0) {
         tracing::info!(
             "P0 A-bis : trois zeros — on ecrit le presse-papier pour departager \

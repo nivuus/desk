@@ -13,7 +13,6 @@
 //! ⚠️ TRANSPOSITION VERBATIM. Le contrôle est le COMPTE, annoncé avant d'être
 //! mesuré : `cargo test -p proto` rendait 106 avant, il doit rendre 106 après.
 
-use crate::plateforme::tests::etrangere;
 use crate::plateforme::*;
 
 /// Conformité aux vecteurs partagés.

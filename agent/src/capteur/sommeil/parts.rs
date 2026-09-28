@@ -137,10 +137,10 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
         // plus FABRIQUER d'issue, et l'écrire `Envoi::Rompu` ferait purger une
         // session sur un fait qui n'a pas eu lieu si cette invariance venait à
         // tomber. Un `Option` nomme la chose : il n'y a eu aucun envoi.
-        let issue = match garde.canaux.get(&session) {
-            Some(canal) => Some(canal.envoyer(Message::Part { bps })),
-            None => None,
-        };
+        let issue = garde
+            .canaux
+            .get(&session)
+            .map(|canal| canal.envoyer(Message::Part { bps }));
         match issue {
             // Aucun canal : rien n'est parti, et il n'y a rien à purger — la
             // session n'est déjà plus dans `canaux`.

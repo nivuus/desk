@@ -330,7 +330,7 @@ impl Session {
         // C'est le contrôle d'ATTEIGNABILITÉ de ce leg — si cette chaîne
         // n'apparaît pas alors que l'injection est armée, c'est le format qui
         // ne marche pas, pas la cause qui manque.
-        let tentative = injection::intercepter(|| reconstructeur());
+        let tentative = injection::intercepter(reconstructeur);
         match tentative {
             Ok(mut source) => {
                 tracing::info!(

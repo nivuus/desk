@@ -98,6 +98,7 @@ impl Sursis {
     }
 
     /// Combien de fenêtres attendent — pour la trace, jamais pour décider.
+    #[cfg(test)]
     pub fn en_attente(&self) -> usize {
         self.attentes.len()
     }

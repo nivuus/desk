@@ -165,7 +165,7 @@ async fn honorer(
     }
 
     // --- transfert ---
-    let url = format!("{}{}", base.trim_end_matches('/'), &ordre.url);
+    let url = format!("{}{}", base.trim_end_matches('/'), ordre.url);
     let mut dernier: Option<u64> = None;
     let telecharge = {
         let emettre = &emettre;

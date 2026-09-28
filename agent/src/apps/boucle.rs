@@ -94,6 +94,16 @@ fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
     issue
 }
 
+/// Où la boucle parle, à quel rythme, et ce qu'elle partage avec les fils de
+/// surveillance et d'installation.
+pub struct Reglages {
+    pub base_plateforme: String,
+    pub periode: std::time::Duration,
+    pub partage: crate::apps::installation::partage::Partage,
+    pub veille: Veille,
+    pub mode: Mode,
+}
+
 /// Le corps de la boucle, sur son fil dédié.
 ///
 /// 🔴 UN FIL BLOQUANT DÉDIÉ, ET COM INITIALISÉ UNE SEULE FOIS DESSUS.
@@ -104,12 +114,15 @@ pub fn tourner(
     canal_emission: impl Fn(VersLaPlateforme) + Send + 'static,
     mut ordres: mpsc::UnboundedReceiver<Ordre>,
     mut identite: watch::Receiver<Option<Identite>>,
-    base_plateforme: String,
-    periode: std::time::Duration,
-    partage: crate::apps::installation::partage::Partage,
-    veille: Veille,
-    mode: Mode,
+    reglages: Reglages,
 ) {
+    let Reglages {
+        base_plateforme,
+        periode,
+        partage,
+        veille,
+        mode,
+    } = reglages;
     if let Err(erreur) = lecture::initialiser_com() {
         tracing::error!(%erreur, "decouverte d'applications abandonnee : COM indisponible");
         return;

@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use str0m::media::{Direction, Frequency, MediaKind, MediaTime};
-use str0m::{Event, Output};
+use str0m::Output;
 
 use super::*;
 use crate::micro::{PuitsMicro, TrameMicro};

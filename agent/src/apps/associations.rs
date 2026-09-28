@@ -95,6 +95,7 @@ pub fn executable_de_commande(commande: &str) -> Option<String> {
 /// `normaliser_chemin` est RÉEMPLOYÉE et non recopiée : deux normalisations
 /// divergeraient le jour où l'une d'elles changerait, et l'appariement
 /// deviendrait faux **du seul côté qui n'aurait pas bougé**.
+#[cfg(test)]
 pub fn commande_vise(commande: &str, cible: &str) -> bool {
     match executable_de_commande(commande) {
         None => false,

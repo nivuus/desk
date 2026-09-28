@@ -163,6 +163,7 @@ impl BudgetDissimulation {
     }
 
     /// Durée dissimulée d'affilée depuis la dernière vraie trame.
+    #[cfg(test)]
     pub fn consecutif(&self) -> Duration {
         self.consecutif
     }

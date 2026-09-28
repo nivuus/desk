@@ -320,8 +320,10 @@ fn demarrer_media_foundation() -> Result<()> {
 /// Détail, relevés bruts et **trois remèdes réfutés par la mesure** :
 /// `docs/superpowers/plans/2026-08-30-encodeur-porte-apollo-resultats.md`.
 pub enum H264Encoder {
-    /// L'API NVENC native — la porte qu'Apollo emprunte.
-    Natif(natif::EncodeurNatif),
+    /// L'API NVENC native — la porte qu'Apollo emprunte. En boîte : la
+    /// session porte la configuration NVENC en ligne (plusieurs Kio), qui
+    /// ferait de chaque `H264Encoder` un bloc de cette taille.
+    Natif(Box<natif::EncodeurNatif>),
     /// La MFT Media Foundation — le dos **générique**.
     Mft(mft::EncodeurMft),
 }
@@ -346,7 +348,7 @@ impl H264Encoder {
                         luid = format!("{:08X}:{:08X}", vu.luid.0, vu.luid.1),
                         "encodeur NVENC natif retenu"
                     );
-                    return Ok(Self::Natif(encodeur));
+                    return Ok(Self::Natif(Box::new(encodeur)));
                 }
                 // 🔴 **Le repli est BRUYANT, à dessein.** Retomber en silence
                 // sur la MFT ferait lire « NVENC marche » à qui voit une

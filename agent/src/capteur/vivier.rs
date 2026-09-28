@@ -231,6 +231,7 @@ impl Vivier {
         self.arbitrer(maintenant)
     }
 
+    #[cfg(test)]
     pub fn eveillee(&self, session: &str) -> Option<bool> {
         self.entrees.get(session).map(|e| e.eveillee)
     }
@@ -299,7 +300,7 @@ impl Vivier {
             .iter()
             .filter(|(_, e)| {
                 e.visible
-                    && e.dernier_echec.map_or(true, |t| {
+                    && e.dernier_echec.is_none_or(|t| {
                         maintenant.saturating_duration_since(t) >= REPIT_APRES_ECHEC
                     })
             })

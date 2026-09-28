@@ -27,14 +27,14 @@ use crate::mire;
 
 use super::compteurs::{self, Compteurs, DUREE_PASSE, PERIODE_JOURNAL};
 use super::mires::Mires;
-use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow};
+use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow, VoiesOuvertes};
 
 /// `sortie` désigne la sortie DXGI à mesurer par son nom (`\\.\DISPLAYn`), ou
 /// `None` pour la sortie qui porte le bureau — le comportement d'origine,
 /// inchangé.
 pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Result<()> {
     anyhow::ensure!(
-        nombre >= 1 && nombre <= mire::MIRES_MAX,
+        (1..=mire::MIRES_MAX).contains(&nombre),
         "MULTIFENETRE_N doit valoir 1 à {}",
         mire::MIRES_MAX
     );
@@ -163,7 +163,7 @@ fn ouvrir_voies(
     places_fenetres: &[Rect],
     places_texture: &[Rect],
     sortie: Option<&str>,
-) -> Result<(Vec<Box<dyn VoieDeCapture>>, Vec<Rect>)> {
+) -> Result<VoiesOuvertes> {
     // Ce que la voie partage entre ses N flux est décidé ICI, une fois : la
     // duplication n'accepte pas d'être ouverte N fois sur la même sortie, et
     // le périphérique D3D11 de la voie printwindow n'a besoin d'exister

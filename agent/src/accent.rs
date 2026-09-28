@@ -128,8 +128,9 @@ pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
     }
 
     // clé de seau -> (somme_r, somme_g, somme_b, compte)
-    let mut seaux: std::collections::BTreeMap<(u16, u16, u16), (u64, u64, u64, u64)> =
-        std::collections::BTreeMap::new();
+    type Cle = (u16, u16, u16);
+    type Sommes = (u64, u64, u64, u64);
+    let mut seaux: std::collections::BTreeMap<Cle, Sommes> = std::collections::BTreeMap::new();
 
     for pixel in rgba.chunks_exact(4) {
         let (r, g, b, a) = (pixel[0], pixel[1], pixel[2], pixel[3]);
@@ -142,7 +143,7 @@ pub fn dominante(rgba: &[u8], largeur: u32, hauteur: u32) -> Option<[u8; 3]> {
             continue;
         }
         let l = luma(r, g, b);
-        if l < LUMA_MIN || l > LUMA_MAX {
+        if !(LUMA_MIN..=LUMA_MAX).contains(&l) {
             continue;
         }
         let cle = (r as u16 / PAS, g as u16 / PAS, b as u16 / PAS);

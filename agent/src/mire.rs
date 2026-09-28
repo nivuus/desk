@@ -45,7 +45,7 @@ pub enum Verdict {
 pub fn couleur_mire(id: u8, trame: u64) -> (u8, u8, u8) {
     debug_assert!(id < MIRES_MAX);
     let rouge = BASE_IDENTITE + id * PAS_IDENTITE;
-    let vert = if trame % 2 == 0 {
+    let vert = if trame.is_multiple_of(2) {
         VERT_PAIR
     } else {
         VERT_IMPAIR

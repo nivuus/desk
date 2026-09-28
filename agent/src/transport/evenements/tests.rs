@@ -395,7 +395,7 @@ fn une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_ref
                 recus.lock().expect("verrou")
             );
         }
-        if repit.is_none() && recus.lock().expect("verrou").iter().any(|m| *m == attendu) {
+        if repit.is_none() && recus.lock().expect("verrou").contains(&attendu) {
             repit = Some(maintenant + Duration::from_millis(400));
         }
 

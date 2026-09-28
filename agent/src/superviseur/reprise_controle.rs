@@ -194,10 +194,12 @@ mod tests {
     /// `relance_pont.rs` a payé à son round de correction 3.
     #[test]
     fn le_seuil_de_connexion_utile_reste_strictement_au_dessus_du_plafond_de_repli() {
-        assert!(
-            SEUIL_CONNEXION_UTILE_MS > REPLI_MAX_MS,
-            "SEUIL_CONNEXION_UTILE_MS = {SEUIL_CONNEXION_UTILE_MS} doit être > REPLI_MAX_MS = {REPLI_MAX_MS}"
-        );
+        const {
+            assert!(
+                SEUIL_CONNEXION_UTILE_MS > REPLI_MAX_MS,
+                "SEUIL_CONNEXION_UTILE_MS doit être > REPLI_MAX_MS"
+            )
+        };
     }
 
     /// Le scénario du refus en boucle : la plateforme accepte le TCP puis

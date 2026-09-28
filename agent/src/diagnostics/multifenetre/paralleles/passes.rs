@@ -18,7 +18,7 @@ use anyhow::{Context, Result};
 
 use super::super::compteurs::{self, Compteurs, Garde, DUREE_PASSE, PERIODE_JOURNAL};
 use super::super::mires::Mires;
-use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication};
+use super::super::voies::{creer_device, VoieDeCapture, VoieDuplication, VoiesOuvertes};
 use super::constater_survie;
 use crate::capture::SortieDxgi;
 use crate::geometry::Rect;
@@ -47,7 +47,7 @@ fn ouvrir_duplications(
     garde: &mut Garde<'_>,
     virtuelles: &[SortieDxgi],
     mires: &Mires,
-) -> Result<(Vec<Box<dyn VoieDeCapture>>, Vec<Rect>)> {
+) -> Result<VoiesOuvertes> {
     let mut sources = Vec::new();
     let mut textures = Vec::new();
     for (rang, sortie) in virtuelles.iter().enumerate() {

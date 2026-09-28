@@ -17,7 +17,7 @@ fn morceaux(n: usize) -> VecDeque<Morceau> {
 /// deviendrait la source de latence de tout le reste — ce que ce module existe
 /// précisément pour empêcher.
 #[test]
-fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
+fn la_fenetre_ne_demande_jamais_plus_de_morceaux_en_vol() {
     let mut f = Fenetre::nouvelle(morceaux(50));
     let lot = f.a_demander();
     assert_eq!(lot.len(), MORCEAUX_EN_VOL);
@@ -44,10 +44,12 @@ fn la_fenetre_ne_demande_jamais_plus_de_MORCEAUX_EN_VOL() {
 #[test]
 #[allow(non_snake_case)]
 fn la_fenetre_atteint_reellement_MORCEAUX_EN_VOL_sur_une_lecture_longue() {
-    assert!(
-        MORCEAUX_EN_VOL > 1,
-        "une fenêtre de 1 est INERTE : voir la doc du module"
-    );
+    const {
+        assert!(
+            MORCEAUX_EN_VOL > 1,
+            "une fenêtre de 1 est INERTE : voir la doc du module"
+        )
+    };
     let mut f = Fenetre::nouvelle(morceaux(50));
     for _ in 0..20 {
         for m in f.a_demander() {

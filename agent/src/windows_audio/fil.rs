@@ -11,23 +11,36 @@
 
 use super::*;
 
+/// Ce que le fil partage avec `WindowsAudioSource` : la file de paquets et les
+/// quatre drapeaux atomiques. Les champs portent le nom des variables `_fil`
+/// de l'appelant, pour que la correspondance reste lisible d'un fichier à
+/// l'autre.
+pub(super) struct PartageFil {
+    pub(super) ring_fil: PacketRing,
+    pub(super) arret_fil: Arc<AtomicBool>,
+    pub(super) perte_desiree_fil: Arc<AtomicI32>,
+    pub(super) emet_fil: Arc<AtomicBool>,
+    pub(super) capture_morte_fil: Arc<AtomicBool>,
+}
+
 /// Corps du fil de capture audio, lancé par `WindowsAudioSource::demarrer`.
 ///
 /// Toutes les valeurs sont passées explicitement — aucune n'est plus
-/// capturée par une fermeture — et leur nom reprend celui des variables
-/// `_fil` de l'appelant, pour que la correspondance reste lisible d'un
-/// fichier à l'autre.
+/// capturée par une fermeture.
 pub(super) fn tourner(
     mut capture: Capture,
     mut encodeur: OpusEncoder,
     origin: Instant,
-    ring_fil: PacketRing,
-    arret_fil: Arc<AtomicBool>,
-    perte_desiree_fil: Arc<AtomicI32>,
-    emet_fil: Arc<AtomicBool>,
-    capture_morte_fil: Arc<AtomicBool>,
+    partage: PartageFil,
     pid_fil: Option<u32>,
 ) {
+    let PartageFil {
+        ring_fil,
+        arret_fil,
+        perte_desiree_fil,
+        emet_fil,
+        capture_morte_fil,
+    } = partage;
     // Ce fil appelle lui-même des méthodes COM — `read()` à chaque
     // tour, et `Stop()` via le `Drop` de `LoopbackCapture` en
     // sortant — alors que `open()` a initialisé COM sur le fil

@@ -87,9 +87,9 @@ impl CacheEnumeration {
     /// ferait croître le cache sans terme sur une arborescence qu'on parcourt
     /// une fois — et ce module n'a **aucune** politique d'éviction (spec §10 R4).
     pub fn lire(&mut self, chemin: &str, maintenant: Instant) -> Option<&[Entree]> {
-        let perime = match self.par_chemin.get(chemin) {
-            Some(m) => maintenant.duration_since(m.pose_a) >= TTL_ENUMERATION,
-            None => return None,
+        let perime = {
+            let m = self.par_chemin.get(chemin)?;
+            maintenant.duration_since(m.pose_a) >= TTL_ENUMERATION
         };
         if perime {
             self.par_chemin.remove(chemin);

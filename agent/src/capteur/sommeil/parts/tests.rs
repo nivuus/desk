@@ -32,7 +32,7 @@ fn derniere_part(canal: &ReceveurSession) -> Option<u32> {
             Message::Part { bps } => Some(bps),
             _ => None,
         })
-        .last()
+        .next_back()
 }
 
 /// 🔴 CE TEST A ÉTÉ RÉÉCRIT LE 25 AOÛT 2026, PARCE QUE LA BORNE PAR

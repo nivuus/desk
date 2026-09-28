@@ -207,6 +207,7 @@ impl Table {
     /// Conservée parce qu'elle est le témoin du comportement d'avant P3 —
     /// c'est elle que la vingtaine de tests de ce module emploie, et c'est par
     /// elle que « préfixe vide = nom d'aujourd'hui » reste éprouvé.
+    #[cfg(test)]
     pub fn nouvelle(capacite: usize) -> Self {
         Self::avec_prefixe(capacite, String::new())
     }

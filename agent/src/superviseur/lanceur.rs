@@ -280,7 +280,7 @@ impl LanceurDeProcessus {
         Self::sans_identite(&mut commande);
         let mut capteur = commande.spawn().context("lancement du capteur")?;
         let pid = capteur.id();
-        let handle = HANDLE(capteur.as_raw_handle() as *mut core::ffi::c_void);
+        let handle = HANDLE(capteur.as_raw_handle());
         if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             // Même contrat atomique que `lancer` : un capteur non rattaché au
             // job survivrait au superviseur EN TENANT N duplications.
@@ -423,7 +423,7 @@ impl Lanceur for LanceurDeProcessus {
         // atomique du trait exige donc qu'il tue lui-même l'enfant avant de
         // rendre `Err` — sans quoi celui-ci tournerait sans être suivi et sa
         // sortie virtuelle resterait captive du vivier de dix.
-        let handle = HANDLE(enfant.as_raw_handle() as *mut core::ffi::c_void);
+        let handle = HANDLE(enfant.as_raw_handle());
         if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             if let Err(mise_a_mort) = enfant.kill() {
                 tracing::error!(

@@ -224,11 +224,13 @@ impl WindowsAudioSource {
                     capture,
                     encodeur,
                     origin,
-                    ring_fil,
-                    arret_fil,
-                    perte_desiree_fil,
-                    emet_fil,
-                    capture_morte_fil,
+                    fil::PartageFil {
+                        ring_fil,
+                        arret_fil,
+                        perte_desiree_fil,
+                        emet_fil,
+                        capture_morte_fil,
+                    },
                     pid_fil,
                 )
             })

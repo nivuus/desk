@@ -203,7 +203,7 @@ mod tests {
     /// `MICRO_MESURE=1` gagne — on arme un instrument de banc pour observer
     /// *au lieu* du câble, jamais en plus.
     #[test]
-    fn le_puits_de_mesure_PREND_LE_PAS_sur_le_cable() {
+    fn le_puits_de_mesure_prend_le_pas_sur_le_cable() {
         assert_eq!(choisir_puits(true, true), Puits::Mesure);
     }
 

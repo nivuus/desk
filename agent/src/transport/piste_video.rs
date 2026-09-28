@@ -394,6 +394,7 @@ mod tests {
     ///     proche de l'instant réel d'écriture (pas de l'origine décalée),
     ///     donc `rtp_time_secondes ≈ instant_du_SR - instant_de_test_avant`
     ///     — aucun décalage de 10 s.
+    ///
     /// Le seuil de l'assertion (3 s) est loin des deux valeurs réelles (~10 s
     /// vs ~0 s) : large marge pour le bruit de test (latence loopback,
     /// granularité de la boucle de sondage), sans jamais pouvoir confondre

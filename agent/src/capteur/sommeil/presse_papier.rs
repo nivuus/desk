@@ -90,13 +90,12 @@ pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, annonce: Annonce
         // verrou, deux lignes plus haut), donc sans conséquence — mais
         // fabriquer une rupture ferait purger une session sur un fait qui n'a
         // pas eu lieu si cette invariance venait à tomber.
-        let issue = match garde.canaux.get(&session) {
-            Some(canal) => Some(canal.envoyer(Message::PressePapier {
+        let issue = garde.canaux.get(&session).map(|canal| {
+            canal.envoyer(Message::PressePapier {
                 texte: texte.clone(),
                 octets,
-            })),
-            None => None,
-        };
+            })
+        });
         match issue {
             // Aucun canal : rien n'est parti, et il n'y a rien à purger.
             None => {}

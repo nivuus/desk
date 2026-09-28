@@ -79,7 +79,7 @@ fn un_renommage_attend_la_ou_une_suppression_abandonne() {
 /// Rouge : comparer par PRÉFIXE au lieu d'égalité — toute écriture bloquerait
 /// alors tout renommage, et le pont se figerait sur le premier gros fichier.
 #[test]
-fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
+fn une_ecriture_due_sur_un_autre_chemin_ne_retarde_rien() {
     assert_eq!(
         ordonnancer(
             &dues(&["autre.txt", "dossier/x.bin"]),
@@ -97,7 +97,7 @@ fn une_ecriture_due_sur_un_AUTRE_chemin_ne_retarde_rien() {
 /// répertoire** : c'est `repertoire` qui tranche, et c'est pour cela qu'il est
 /// transporté depuis le rappel.
 #[test]
-fn une_ecriture_due_sur_un_ENFANT_du_repertoire_renomme_retarde() {
+fn une_ecriture_due_sur_un_enfant_du_repertoire_renomme_retarde() {
     assert_eq!(
         ordonnancer(
             &dues(&["projet/note.txt"]),

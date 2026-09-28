@@ -72,7 +72,7 @@ fn un_chemin_de_lnk_qui_change_est_une_modification() {
 }
 
 #[test]
-fn une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE() {
+fn une_application_absente_d_aujourdhui_disparait_par_sa_cle() {
     // La plateforme n'a besoin que de l'identité : rendre l'objet entier ferait
     // grossir le message pour rien.
     let d = diff(

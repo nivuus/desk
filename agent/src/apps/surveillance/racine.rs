@@ -240,10 +240,10 @@ impl Racine {
         let (repertoire, evenement) = ouvrir_les_deux_handles(&self.chemin)?;
         self.repertoire = repertoire;
         self.evenement = evenement;
-        self.overlapped = Box::new(OVERLAPPED {
+        *self.overlapped = OVERLAPPED {
             hEvent: evenement,
             ..Default::default()
-        });
+        };
         self.armer()?;
         self.echecs = 0;
         self.reprise = None;

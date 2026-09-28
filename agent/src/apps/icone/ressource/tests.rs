@@ -61,7 +61,7 @@ fn les_deux_temoins_se_distinguent_par_la_ressource() {
 /// Ce que le pas décide réellement est **le contrôle de longueur** et **les
 /// entrées à partir de la seconde**. C'est donc là que ce test regarde.
 #[test]
-fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_SECONDE_entree() {
+fn le_mauvais_pas_d_entree_se_voit_a_partir_de_la_seconde_entree() {
     // Le fait mesuré, écrit plutôt que tu : sur UNE entrée, les deux pas
     // s'accordent.
     assert_eq!(tailles_icondir(TEMOIN_48), Some(vec![48]));

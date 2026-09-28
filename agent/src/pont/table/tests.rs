@@ -457,7 +457,7 @@ fn les_cinq_budgets_sont_distincts() {
 /// système sur un identifiant qui appartient désormais à quelqu'un d'autre.
 /// *Muet, différé, et hors de notre processus.*
 #[test]
-fn annuler_retire_les_N_correlations_d_une_lecture_a_fenetre() {
+fn annuler_retire_les_n_correlations_d_une_lecture_a_fenetre() {
     let mut t = Table::nouvelle();
     let e = maintenant() + DELAI_LIRE;
     let a = t.inscrire(

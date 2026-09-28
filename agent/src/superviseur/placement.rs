@@ -198,6 +198,7 @@ pub struct Lisere {
 impl Lisere {
     /// Le lisère nul — le repli quand DWM refuse de répondre, et donc
     /// **exactement le comportement d'avant ce correctif**.
+    #[cfg(test)]
     pub const NUL: Lisere = Lisere {
         gauche: 0,
         haut: 0,
@@ -207,6 +208,7 @@ impl Lisere {
 
     /// Vrai s'il n'y a rien à compenser : évite un second `SetWindowPos` et,
     /// surtout, rend la correction inerte là où elle n'a pas lieu d'être.
+    #[cfg(test)]
     pub fn est_nul(self) -> bool {
         self == Lisere::NUL
     }

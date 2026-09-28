@@ -20,7 +20,7 @@ use proto::plateforme::IssueLancement;
 use std::time::Duration;
 
 #[tokio::test]
-async fn un_ordre_d_installation_arrive_dans_SA_file_et_ne_ferme_pas_la_session() {
+async fn un_ordre_d_installation_arrive_dans_sa_file_et_ne_ferme_pas_la_session() {
     // 🔴 DEUX ROUGES EN UNE, exactement comme pour `Lancer` — et c'est la
     // CINQUIÈME fois que ce dépôt paie la leçon du bras manquant (D5 `Sommeil`,
     // D6 `Part`, D7 `Audio`, D8 `PleinEcran`, G2 `IconesManquantes`). Sans le

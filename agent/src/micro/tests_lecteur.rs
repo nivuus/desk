@@ -375,7 +375,7 @@ fn apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier() {
     let toutes = trames_d_un_ton(440.0, 70);
     let mut it = toutes.into_iter();
     let mut l = LecteurMicro::new().unwrap();
-    let mut reveil = |l: &mut LecteurMicro| {
+    let reveil = |l: &mut LecteurMicro| {
         let mut tranche = vec![0.0f32; 480 * 2];
         l.remplir(&mut tranche);
         tranche

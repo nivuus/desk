@@ -92,6 +92,7 @@ impl Fenetres {
 
     /// Combien d'installations sont en vol. L'appelant s'en sert pour ne pas
     /// forcer de réconciliation quand il n'y a personne à servir.
+    #[cfg(test)]
     pub fn en_vol(&self) -> usize {
         self.ouvertes.len()
     }

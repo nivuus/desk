@@ -105,6 +105,7 @@ impl<'p> Sorties<'p> {
         Ok(id)
     }
 
+    #[cfg(test)]
     pub fn nombre(&self) -> usize {
         self.creees.len()
     }

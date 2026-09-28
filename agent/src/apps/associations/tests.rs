@@ -44,7 +44,7 @@ fn une_ligne_vide_ne_rend_rien() {
 }
 
 #[test]
-fn un_guillemet_ouvrant_jamais_ferme_est_REFUSE() {
+fn un_guillemet_ouvrant_jamais_ferme_est_refuse() {
     // ⚠️ On refuse plutôt que de prendre tout le reste : une ligne mal formée
     // n'est pas un chemin, et en fabriquer un attribuerait l'association à
     // n'importe quoi.
@@ -72,7 +72,7 @@ fn une_commande_vise_sa_cible_a_la_casse_pres() {
 }
 
 #[test]
-fn une_commande_ne_vise_PAS_une_autre_version_du_meme_produit() {
+fn une_commande_ne_vise_pas_une_autre_version_du_meme_produit() {
     // 🔴 C'EST LA RAISON D'ÊTRE DE LA DÉCISION D12, ET LE TEST QUI L'IMPOSE.
     // Le modèle que la conception cite (`src/app.js:15-37`) apparie par
     // SOUS-CHAÎNE DE NOM après avoir retiré les chiffres : « Nsight 2020.3 »
@@ -120,7 +120,7 @@ fn une_extension_prend_son_point_et_ses_minuscules() {
 }
 
 #[test]
-fn une_extension_vide_ou_absurde_est_REFUSEE() {
+fn une_extension_vide_ou_absurde_est_refusee() {
     // ⚠️ Sans ces refus, une clé de registre déréglée ferait voyager `"."` ou
     // un fragment de chemin, que la plateforme poserait tel quel dans un
     // manifeste.
@@ -134,7 +134,7 @@ fn une_extension_vide_ou_absurde_est_REFUSEE() {
 // ── `ranger` ────────────────────────────────────────────────────────────────
 
 #[test]
-fn ranger_trie_ET_dedoublonne() {
+fn ranger_trie_et_dedoublonne() {
     // 🔴 L'ORDRE N'EST PAS UN ORNEMENT : la plateforme compare le catalogue
     // reçu à celui qu'elle connaît. Deux listes identiques dans un ordre
     // différent la feraient écrire à chaque tour et journaliser un changement
@@ -208,7 +208,7 @@ fn la_table_ecarte_ce_qui_ne_se_lit_pas_sans_perdre_le_reste() {
 }
 
 #[test]
-fn pour_cible_normalise_LA_CIBLE_AUSSI() {
+fn pour_cible_normalise_la_cible_aussi() {
     // 🔴 LE DÉFAUT QUE CE TEST EMPÊCHE EST SILENCIEUX : la table est bâtie sur
     // des chemins normalisés ; l'interroger avec un chemin brut ne trouverait
     // JAMAIS rien, et toutes les listes seraient simplement vides — un produit
@@ -227,7 +227,7 @@ fn pour_cible_normalise_LA_CIBLE_AUSSI() {
 }
 
 #[test]
-fn pour_cible_rend_une_liste_VIDE_quand_l_application_n_ouvre_rien() {
+fn pour_cible_rend_une_liste_vide_quand_l_application_n_ouvre_rien() {
     // C'est l'état de la très grande majorité des applications, et ce n'est
     // pas une panne.
     let t = table(vec![(".txt".into(), "C:\\Windows\\notepad.exe %1".into())]);

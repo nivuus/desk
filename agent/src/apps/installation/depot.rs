@@ -37,6 +37,7 @@ pub const MARQUEUR_TERMINE: &str = ".termine";
 /// ordre réémis pour une installation déjà jouée serait rejoué. La seconde
 /// ceinture est côté plateforme, qui cesse de réémettre dès que la ligne n'est
 /// plus `en_attente`.
+#[cfg(test)]
 pub const EXPIRATION_INSTALLEUR_MS: u64 = 24 * 60 * 60 * 1000;
 
 /// Les deux bornes de longueur, en octets.
@@ -236,6 +237,7 @@ pub fn etat(commence: bool, termine: bool) -> Etat {
 /// ⚠️ LE BALAYAGE EST OPPORTUNISTE, JAMAIS UN MINUTEUR : il court à chaque
 /// réconciliation. Un minuteur d'entretien est une décision d'exploitation —
 /// qui l'observe, que fait-il si le disque est plein — hors de ce sous-bloc.
+#[cfg(test)]
 pub fn a_purger(entrees: &[(String, u64)]) -> Vec<&str> {
     entrees
         .iter()

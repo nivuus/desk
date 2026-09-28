@@ -76,6 +76,7 @@ impl Motif {
     /// du test de correspondance, qui compare cette liste à une table écrite à
     /// la main dont le compte est en dur — le compilateur exige la branche de
     /// [`Motif::mot`], et le test exige l'entrée.
+    #[cfg(test)]
     pub const TOUS: [Self; 7] = [
         Self::Empreinte,
         Self::ElevationRequise,
@@ -112,6 +113,7 @@ impl Motif {
     /// 🔴 `None` N'EST PAS UNE ERREUR : c'est un motif d'une version qui nous
     /// dépasse, et l'appelant doit le journaliser **verbatim** plutôt que de
     /// le perdre ou de le remplacer par un défaut.
+    #[cfg(test)]
     pub fn depuis_mot(mot: &str) -> Option<Self> {
         Self::TOUS
             .into_iter()

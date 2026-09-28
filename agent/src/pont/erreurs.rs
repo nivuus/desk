@@ -160,6 +160,7 @@ impl Erreur {
 
 /// Le rang d'une variante. `match` **exhaustif** : c'est lui qui rend
 /// impossible d'ajouter une variante sans être forcé de la classer.
+#[cfg(test)]
 const fn index(e: Erreur) -> usize {
     match e {
         Erreur::Introuvable => 0,

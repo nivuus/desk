@@ -82,7 +82,7 @@ impl LanceurDeProcessus {
         self.identite_heritee(&mut commande);
         let mut pont = commande.spawn().context("lancement du pont fichiers")?;
         let pid = pont.id();
-        let handle = HANDLE(pont.as_raw_handle() as *mut core::ffi::c_void);
+        let handle = HANDLE(pont.as_raw_handle());
         if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
             // Même contrat atomique que `lancer` et `lancer_capteur` : un pont
             // non rattaché au job survivrait au superviseur EN TENANT une

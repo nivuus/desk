@@ -83,6 +83,9 @@ fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigate
     )
 }
 
+/// Un message reçu par le pair : son canal, s'il est binaire, ses octets.
+type Recu = (ChannelId, bool, Vec<u8>);
+
 /// **LE** pilote de ces tests : il pompe le pair ET récolte ce que le pont
 /// fait remonter, dans la MÊME boucle.
 ///
@@ -100,12 +103,12 @@ fn echanger(
     pair: &mut Pair,
     entrant: &Receiver<DuNavigateur>,
     mut agir: impl FnMut(&mut Rtc, &[DuNavigateur]),
-    mut fini: impl FnMut(&[DuNavigateur], &[(ChannelId, bool, Vec<u8>)]) -> bool,
+    mut fini: impl FnMut(&[DuNavigateur], &[Recu]) -> bool,
     quoi: &str,
-) -> (Vec<DuNavigateur>, Vec<(ChannelId, bool, Vec<u8>)>) {
+) -> (Vec<DuNavigateur>, Vec<Recu>) {
     let limite = Instant::now() + BUDGET;
     let mut remontees: Vec<DuNavigateur> = Vec::new();
-    let mut recus: Vec<(ChannelId, bool, Vec<u8>)> = Vec::new();
+    let mut recus: Vec<Recu> = Vec::new();
     loop {
         while let Ok(m) = entrant.try_recv() {
             remontees.push(m);

@@ -61,11 +61,13 @@ fn un_contour_noir_majoritaire_ne_gagne_pas() {
     // ⚠️ Le contour est un bleu TRÈS SOMBRE (5, 5, 60) et non un noir pur :
     // un noir pur serait déjà rejeté par la SATURATION, et le test ne dirait
     // alors rien du filtre de luminance qu'il prétend éprouver.
-    assert!(
-        (60u8 - 5u8) >= SATURATION_MIN,
-        "le contour doit PASSER le filtre de saturation, sinon ce test \
-         n'éprouve pas la luminance"
-    );
+    const {
+        assert!(
+            (60u8 - 5u8) >= SATURATION_MIN,
+            "le contour doit PASSER le filtre de saturation, sinon ce test \
+             n'éprouve pas la luminance"
+        )
+    };
     let (o, l, h) = image(&[
         (px(5, 5, 60, 255), 40),     // contour sombre, majoritaire
         (px(250, 160, 40, 255), 20), // orange, minoritaire
@@ -79,7 +81,7 @@ fn un_contour_noir_majoritaire_ne_gagne_pas() {
 }
 
 #[test]
-fn une_icone_entierement_grise_rend_None() {
+fn une_icone_entierement_grise_rend_none() {
     // 🔴 C'EST LA PREUVE QUE `None` EST ATTEIGNABLE, donc que la clause 2
     // n'est pas un ornement.
     // ROUGE : retirer le filtre de saturation ⟹ `Some([128,128,128])`.
@@ -106,7 +108,7 @@ fn la_moyenne_du_seau_n_est_pas_le_centre_du_seau() {
 }
 
 #[test]
-fn une_geometrie_incoherente_rend_None() {
+fn une_geometrie_incoherente_rend_none() {
     // ROUGE : retirer le garde de longueur ⟹ `Some`, sur une tranche dont la
     // géométrie annoncée ne décrit pas le contenu.
     let o = vec![60u8, 110, 240, 255];
@@ -217,7 +219,7 @@ fn bgra_en_rgba_laisse_un_reste_incomplet_tel_quel() {
 }
 
 #[test]
-fn bgra_en_rgba_puis_dominante_rendent_la_couleur_REELLE_du_bgra() {
+fn bgra_en_rgba_puis_dominante_rendent_la_couleur_reelle_du_bgra() {
     // 🔴 LE TEST QUI RELIE LES DEUX, et c'est celui qui aurait attrapé le
     // défaut de sens. L'aplat vaut `40 80 D0` EN BGRA, donc une teinte chaude
     // (0xD0, 0x80, 0x40) une fois convertie, et une teinte froide
@@ -230,8 +232,7 @@ fn bgra_en_rgba_puis_dominante_rendent_la_couleur_REELLE_du_bgra() {
     // deux lectures : luma 144 et 117, saturation 144, toutes deux dans les
     // bornes — donc l'écart mesuré ci-dessous est bien celui du SENS, et non
     // celui d'un pixel rejeté d'un côté et pas de l'autre.
-    let chaud_en_bgra: Vec<u8> = std::iter::repeat([0x40, 0x80, 0xd0, 0xff])
-        .take(64)
+    let chaud_en_bgra: Vec<u8> = std::iter::repeat_n([0x40, 0x80, 0xd0, 0xff], 64)
         .flatten()
         .collect();
 

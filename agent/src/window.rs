@@ -80,18 +80,6 @@ unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
     TRUE
 }
 
-/// Dimensions de la zone client de la fenêtre, en pixels.
-pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
-    let mut rect = RECT::default();
-    unsafe { GetClientRect(hwnd, &mut rect)? };
-    let width = (rect.right - rect.left).max(0) as u32;
-    let height = (rect.bottom - rect.top).max(0) as u32;
-    if width == 0 || height == 0 {
-        bail!("la fenêtre a une zone client vide");
-    }
-    Ok((width, height))
-}
-
 /// Zone client de la fenêtre, convertie en coordonnées écran.
 ///
 /// Nécessaire au recadrage : Desktop Duplication renvoie une image de tout

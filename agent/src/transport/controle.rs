@@ -197,20 +197,17 @@ mod tests {
         let debut = Instant::now();
         let mut recu = false;
         while !recu && debut.elapsed() < Duration::from_secs(15) {
-            match peer_socket.recv_from(&mut buf) {
-                Ok((n, from)) => {
-                    let contents: str0m::net::DatagramRecv = buf[..n].try_into().unwrap();
-                    let _ = peer_rtc.handle_input(Input::Receive(
-                        Instant::now(),
-                        str0m::net::Receive {
-                            proto: str0m::net::Protocol::Udp,
-                            source: from,
-                            destination: peer_addr,
-                            contents,
-                        },
-                    ));
-                }
-                Err(_) => {}
+            if let Ok((n, from)) = peer_socket.recv_from(&mut buf) {
+                let contents: str0m::net::DatagramRecv = buf[..n].try_into().unwrap();
+                let _ = peer_rtc.handle_input(Input::Receive(
+                    Instant::now(),
+                    str0m::net::Receive {
+                        proto: str0m::net::Protocol::Udp,
+                        source: from,
+                        destination: peer_addr,
+                        contents,
+                    },
+                ));
             }
             while let Ok(output) = peer_rtc.poll_output() {
                 match output {

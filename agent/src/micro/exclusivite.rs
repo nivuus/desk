@@ -88,6 +88,7 @@ impl<V: Verrou> Exclusivite<V> {
     }
 
     /// Vrai si le dernier arbitrage a laissé ce processus propriétaire.
+    #[cfg(test)]
     pub fn tenue(&self) -> bool {
         self.tenue
     }

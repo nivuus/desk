@@ -3,7 +3,6 @@ use std::time::Instant;
 
 use proto::input::InputMessage;
 
-use super::*;
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 use crate::transport::Session;

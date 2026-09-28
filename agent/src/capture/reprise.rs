@@ -27,11 +27,13 @@ pub const NON_DISPONIBLE: i32 = 0x887A0022u32 as i32;
 
 /// `DXGI_ERROR_DEVICE_REMOVED`. Le périphérique lui-même est perdu : rouvrir
 /// la seule duplication ne servirait à rien. Reste définitif.
+#[cfg(test)]
 pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
 
 /// `DXGI_ERROR_WAIT_TIMEOUT`. Pas un échec : le bureau n'a simplement pas
 /// changé. Traité en amont de la classification, mais nommé ici pour que le
 /// test puisse vérifier qu'il n'est PAS pris pour une perte d'accès.
+#[cfg(test)]
 pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
 
 /// Durée pendant laquelle une perte d'accès est retentée avant d'être déclarée

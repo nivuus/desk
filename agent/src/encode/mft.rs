@@ -68,11 +68,8 @@ pub struct EncodeurMft {
     /// `awaiting_drain`) : le pilotage s'appuie désormais sur `GetInputStatus`,
     /// qui décrit l'état réel du convertisseur au lieu de le déduire.
     converter_output_pending: bool,
-    /// Taille des textures BGRA remises par la capture — l'entrée du
-    /// convertisseur.
-    capture: (u32, u32),
     /// Taille réellement encodée et transportée — la sortie du convertisseur
-    /// et l'entrée de l'encodeur. Peut être plus petite que `capture` : c'est
+    /// et l'entrée de l'encodeur. Peut être plus petite que la capture : c'est
     /// le levier de résolution adaptative, et il ne touche pas à la fenêtre
     /// Windows (contrairement à `WindowsSource::resize`).
     encode: (u32, u32),
@@ -204,7 +201,6 @@ impl EncodeurMft {
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
             file_encodeur,
-            capture,
             encode,
             fps,
             pending_input_requests: 0,

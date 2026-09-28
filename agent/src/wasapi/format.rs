@@ -161,7 +161,7 @@ mod tests {
     /// la description, pas du motif. `(48 000, 2, 32, entier)` ne peut être
     /// refusé que par la garde du flottant.
     #[test]
-    fn un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant() {
+    fn un_format_entier_32_bits_est_refuse_par_la_seule_garde_du_flottant() {
         let e = verifier(48_000, 2, 32, false).unwrap_err().to_string();
         assert!(
             e.contains("entier"),
@@ -219,7 +219,7 @@ mod tests {
     /// mixage, pas du silence, et le compter comme tel masquerait exactement
     /// ce défaut.
     #[test]
-    fn une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence() {
+    fn une_trame_dont_un_seul_canal_parle_n_est_pas_du_silence() {
         assert_eq!(trames_de_silence(&[0.0, 0.3, 0.0, 0.0], 2), 1);
     }
 

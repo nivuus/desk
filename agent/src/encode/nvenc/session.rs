@@ -29,6 +29,7 @@
 //! 4. `nvEncGetEncodePresetConfigEx` — **les DEUX versions posées**.
 //! 5. `nvEncInitializeEncoder`.
 //! 6. `nvEncCreateBitstreamBuffer`.
+//!
 //! Puis, par image : enregistrer, projeter, encoder, verrouiller, **copier**,
 //! déverrouiller, déprojeter.
 

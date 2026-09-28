@@ -36,7 +36,7 @@ fn dernier_presse_papier(canal: &ReceveurSession) -> Option<(Option<String>, u32
             Message::PressePapier { texte, octets } => Some((texte, octets)),
             _ => None,
         })
-        .last()
+        .next_back()
 }
 
 /// **Toutes les fenêtres reçoivent, pas seulement la focalisée** : chaque

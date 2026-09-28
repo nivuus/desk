@@ -21,7 +21,7 @@
 //! et `206`. *Un refus nommé se diagnostique en une ligne de journal ; un
 //! analyseur qui devine se diagnostique en une campagne.*
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -389,15 +389,6 @@ async fn ecrire(
         .map_err(|e| Refus::Disque(format!("écriture : {e}")))?;
     condensateur.absorber(bloc);
     Ok(())
-}
-
-/// Le chemin d'un installeur, tel que l'appelant le compose.
-///
-/// ⚠️ IL N'EST PAS ASSAINI ICI : la règle vit dans `installation::depot`, PURE
-/// et testée, et l'appelant l'a déjà appliquée. La dupliquer ferait diverger
-/// les deux le jour où l'une des deux changerait.
-pub fn destination(repertoire: &str, nom: &str) -> PathBuf {
-    Path::new(repertoire).join(nom)
 }
 
 #[cfg(test)]

@@ -445,8 +445,7 @@ fn une_ecriture_pendant_une_poussee_est_rejouee_apres() {
     let (_, c2, _, charge) = bac
         .trames()
         .into_iter()
-        .filter(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE)
-        .next_back()
+        .rfind(|(t, ..)| *t == proto::fichiers::TYPE_ECRIRE)
         .expect("le rejeu doit repartir");
     assert_eq!(charge, b"SECOND CONTENU PLUS LONG", "relu DEPUIS LE DÉBUT");
     fil.traiter(Ordre::Fait { correlation: c2 });

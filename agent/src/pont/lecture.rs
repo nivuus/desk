@@ -154,6 +154,7 @@ impl Fenetre {
     }
 
     /// Combien sont en vol à cet instant.
+    #[cfg(test)]
     pub fn en_vol(&self) -> usize {
         self.en_vol.len()
     }

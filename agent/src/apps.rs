@@ -254,11 +254,13 @@ fn demarrer(
                 move |message| emetteur.emettre(message),
                 ordres,
                 identite,
-                base,
-                PERIODE_RECONCILIATION,
-                partage,
-                veille,
-                mode,
+                boucle::Reglages {
+                    base_plateforme: base,
+                    periode: PERIODE_RECONCILIATION,
+                    partage,
+                    veille,
+                    mode,
+                },
             )
         })
         .map_err(|erreur| {

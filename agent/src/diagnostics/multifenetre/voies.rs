@@ -25,8 +25,11 @@ use windows::Win32::Storage::Xps::PrintWindow;
 use crate::capture::{CapturedFrame, DesktopCapture};
 use crate::geometry::Rect;
 
+/// Des voies ouvertes, une par fenêtre, et la région que chacune retient —
+/// celle dont ses images porteront les dimensions.
+pub(super) type VoiesOuvertes = (Vec<Box<dyn VoieDeCapture>>, Vec<Rect>);
+
 pub(super) trait VoieDeCapture {
-    fn nom(&self) -> &'static str;
     /// Ouvre un flux sur une fenêtre. `region` est sa place à l'écran, dont
     /// les voies par recadrage ont besoin et que les voies par fenêtre
     /// ignorent.
@@ -223,10 +226,6 @@ impl VoieDuplication {
 }
 
 impl VoieDeCapture for VoieDuplication {
-    fn nom(&self) -> &'static str {
-        "duplication"
-    }
-
     fn ouvrir(&mut self, _hwnd: HWND, region: Rect) -> Result<()> {
         self.region = region;
         let device = self.source.borrow().capture.device().clone();
@@ -371,10 +370,6 @@ impl VoiePrintWindow {
 }
 
 impl VoieDeCapture for VoiePrintWindow {
-    fn nom(&self) -> &'static str {
-        "printwindow"
-    }
-
     fn ouvrir(&mut self, hwnd: HWND, region: Rect) -> Result<()> {
         self.hwnd = hwnd;
         self.region = region;

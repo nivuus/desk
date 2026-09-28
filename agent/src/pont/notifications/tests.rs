@@ -124,7 +124,7 @@ fn une_mutation_est_refusee_sur_chacun_des_quatre_etats_qui_l_empechent() {
 /// interdit — et l'utilisateur chercherait une permission là où il n'y a
 /// simplement pas de poignée.
 #[test]
-fn un_renommage_hors_racine_est_NonSupporte_et_pas_ProtegeEnEcriture() {
+fn un_renommage_hors_racine_est_nonsupporte_et_pas_protegeenecriture() {
     let hors = decider(PRE_RENAME, OUVERT, Cible::HorsRacine);
     assert_eq!(hors, Reponse::Refuser(Erreur::NonSupporte));
     assert_ne!(hors, Reponse::Refuser(Erreur::ProtegeEnEcriture));

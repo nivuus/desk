@@ -81,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn un_journal_long_rend_sa_FIN_et_se_declare_tronque() {
+    fn un_journal_long_rend_sa_fin_et_se_declare_tronque() {
         let long = format!("{}FIN", "a".repeat(JOURNAL_MAX_OCTETS));
         let (q, tronque) = queue(&long);
         assert!(tronque);
@@ -97,7 +97,7 @@ mod tests {
     /// fil d'installation serait mort sans rapporter d'issue, et le hub aurait
     /// affiché « en cours » pour l'éternité.
     #[test]
-    fn ne_panique_JAMAIS_au_milieu_d_un_caractere_multi_octet() {
+    fn ne_panique_jamais_au_milieu_d_un_caractere_multi_octet() {
         // « é » fait deux octets ; en répéter assez place la coupe au milieu
         // d'un caractère une fois sur deux, quel que soit le rembourrage.
         for rembourrage in 0..4 {
@@ -122,7 +122,7 @@ mod tests {
     /// longue que la borne — et c'est exactement ce que l'appelant supposait
     /// faux quand il rebornait sans vérifier la frontière.
     #[test]
-    fn from_utf8_lossy_AGRANDIT_donc_on_reborne_apres_la_conversion() {
+    fn from_utf8_lossy_agrandit_donc_on_reborne_apres_la_conversion() {
         // Que des octets invalides : chacun coûte trois octets une fois converti.
         let octets = vec![0xFFu8; JOURNAL_MAX_OCTETS + 10];
         let brut = String::from_utf8_lossy(&octets[octets.len() - JOURNAL_MAX_OCTETS..]);

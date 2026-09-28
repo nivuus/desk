@@ -93,6 +93,7 @@ impl Veille {
     /// s'arrêter est un fil qu'on ne saura pas arrêter le jour où le chemin
     /// existera ; celui-ci attend son appelant, et `Drop for Racine` ferme déjà
     /// les handles quel que soit le chemin de sortie.
+    #[cfg(test)]
     pub fn arreter(&self) {
         self.arret.store(true, Ordering::Relaxed);
     }

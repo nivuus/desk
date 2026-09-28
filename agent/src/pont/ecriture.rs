@@ -201,6 +201,7 @@ impl File {
 
     /// Ce chemin est-il en vol ou en attente ? **Ce que F3 lira** avant de
     /// pousser un renommage.
+    #[cfg(test)]
     pub fn attend(&self, chemin: &str) -> bool {
         self.en_vol() == Some(chemin) || self.attente.iter().any(|e| e.chemin() == chemin)
     }
@@ -219,6 +220,7 @@ impl File {
         }
     }
 
+    #[cfg(test)]
     pub fn en_attente(&self) -> usize {
         self.attente.len()
     }

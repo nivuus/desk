@@ -18,7 +18,9 @@
 //! (4 576 398 octets, 29 911 o/icône), jamais les 99 distincts. Ne pas le
 //! déduire d'une règle de trois — les icônes n'ont pas la même taille.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+#[cfg(test)]
+use std::collections::BTreeSet;
 
 use crate::apps::sha256;
 
@@ -69,6 +71,7 @@ impl Magasin {
         e
     }
 
+    #[cfg(test)]
     pub fn contient(&self, empreinte: &str) -> bool {
         self.par_empreinte.contains_key(empreinte)
     }
@@ -77,6 +80,7 @@ impl Magasin {
         self.par_empreinte.get(empreinte).map(Vec::as_slice)
     }
 
+    #[cfg(test)]
     pub fn empreintes(&self) -> BTreeSet<String> {
         self.par_empreinte.keys().cloned().collect()
     }
@@ -85,6 +89,7 @@ impl Magasin {
         self.par_empreinte.len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.par_empreinte.is_empty()
     }
@@ -118,6 +123,7 @@ impl Magasin {
 ///
 /// ⚠️ L'ORDRE D'ANNONCE EST PRÉSERVÉ plutôt que trié : c'est celui du
 /// catalogue, donc celui dans lequel l'utilisateur verra les icônes arriver.
+#[cfg(test)]
 pub fn manquantes(annoncees: &[String], connues: &BTreeSet<String>) -> Vec<String> {
     let mut vues = BTreeSet::new();
     annoncees

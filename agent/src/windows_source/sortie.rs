@@ -86,6 +86,7 @@ impl ModeCapture {
     /// `DesktopCapture::new()` faisait diffuser **le coin du bureau physique
     /// de la VM** dans la fenêtre du navigateur — en multi-fenêtres, une fuite
     /// du contenu d'un moniteur vers la session d'autrui.
+    #[cfg(test)]
     pub fn recapture_le_bureau(self) -> bool {
         matches!(self, ModeCapture::FenetreRecadree)
     }

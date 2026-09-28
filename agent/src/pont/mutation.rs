@@ -216,10 +216,12 @@ impl FileMutations {
         }
     }
 
+    #[cfg(test)]
     pub fn en_vol(&self) -> Option<&Mutation> {
         self.en_vol.as_ref()
     }
 
+    #[cfg(test)]
     pub fn en_attente(&self) -> usize {
         self.attente.len()
     }

@@ -36,10 +36,12 @@ fn le_premier_espacement_egale_le_plancher() {
 /// moins.
 #[test]
 fn le_seuil_de_stabilite_reste_strictement_au_dessus_du_plafond_de_repli() {
-    assert!(
-        SEUIL_STABILITE_MS > REPLI_MAX_MS,
-        "SEUIL_STABILITE_MS = {SEUIL_STABILITE_MS} n'est pas > REPLI_MAX_MS = {REPLI_MAX_MS}"
-    );
+    const {
+        assert!(
+            SEUIL_STABILITE_MS > REPLI_MAX_MS,
+            "SEUIL_STABILITE_MS n'est pas > REPLI_MAX_MS"
+        )
+    };
 }
 
 #[test]

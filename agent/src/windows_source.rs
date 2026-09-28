@@ -246,10 +246,6 @@ impl WindowsSource {
         }
     }
 
-    pub fn hwnd(&self) -> HWND {
-        self.hwnd
-    }
-
     /// Capture courante, mutable. Le seul appelant (`next_frame`) garde le
     /// garde `if self.fatal { return None; }` avant tout appel : ce champ ne
     /// vaut `None` que pendant `resize`, et `resize` ne rend jamais la main
