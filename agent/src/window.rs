@@ -195,25 +195,25 @@ pub fn lisere_dwm(hwnd: HWND) -> Result<crate::superviseur::placement::Lisere> {
 /// the crop of every served window — see
 /// `windows_source_sortie::borne_de_la_sortie`, which carries the measurement.
 ///
-/// **Deux points d'entrée, un seul corps, et c'est délibéré** : le SUPERVISEUR
-/// interroge par l'ORIGINE de la sortie (il connaît le rectangle DXGI avant
-/// même d'avoir posé la fenêtre), le CAPTEUR par SA FENÊTRE (il ne connaît que
-/// le nom de la sortie, mais sa fenêtre est posée dessus). Les deux tombent
-/// sur le même `HMONITOR`, donc sur la même réponse — c'est ce qui permet aux
-/// deux processus de calculer la même borne sans échanger un message.
+/// **Two entry points, a single body, and that is deliberate**: the SUPERVISOR
+/// queries by the output's ORIGIN (it knows the DXGI rectangle before
+/// even having placed the window), the SENSOR by ITS WINDOW (it only knows
+/// the output's name, but its window is placed on it). Both land
+/// on the same `HMONITOR`, hence on the same answer — that is what lets the
+/// two processes compute the same bound without exchanging a message.
 pub fn zones_du_moniteur_au_point(x: i32, y: i32) -> Result<(Rect, Rect)> {
-    // `MONITOR_DEFAULTTONEAREST` : un point hors de tout moniteur — une sortie
-    // que Windows vient de détacher — rendrait `NULL` avec
-    // `MONITOR_DEFAULTTONULL`, et l'appelant retomberait sur le rectangle de
-    // la sortie. Le plus proche est une réponse, pas une devinette : le point
-    // vient de l'origine d'une sortie que DXGI énumère encore.
+    // `MONITOR_DEFAULTTONEAREST`: a point outside any monitor — an output
+    // Windows has just detached — would return `NULL` with
+    // `MONITOR_DEFAULTTONULL`, and the caller would fall back to the output's
+    // rectangle. The nearest is an answer, not a guess: the point
+    // comes from the origin of an output DXGI still enumerates.
     let moniteur = unsafe { MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST) };
     zones_de_l_hmoniteur(moniteur)
 }
 
-/// Le rectangle du moniteur et sa zone de travail, pour le moniteur qui porte
-/// une fenêtre. Voir [`zones_du_moniteur_au_point`] pour le pourquoi des deux
-/// points d'entrée.
+/// The monitor's rectangle and its work area, for the monitor carrying
+/// a window. See [`zones_du_moniteur_au_point`] for why there are two
+/// entry points.
 pub fn zones_du_moniteur_de(hwnd: HWND) -> Result<(Rect, Rect)> {
     let moniteur = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
     zones_de_l_hmoniteur(moniteur)
@@ -227,8 +227,8 @@ fn zones_de_l_hmoniteur(moniteur: HMONITOR) -> Result<(Rect, Rect)> {
         cbSize: std::mem::size_of::<MONITORINFO>() as u32,
         ..Default::default()
     };
-    // `GetMonitorInfoW` rend un `BOOL` brut : un `false` n'est pas une
-    // `windows::core::Error`, et un `?` ne l'attraperait pas.
+    // `GetMonitorInfoW` returns a raw `BOOL`: a `false` is not a
+    // `windows::core::Error`, and a `?` would not catch it.
     if !unsafe { GetMonitorInfoW(moniteur, &mut info) }.as_bool() {
         bail!("GetMonitorInfoW a refusé");
     }
@@ -244,16 +244,16 @@ fn depuis_rect(r: RECT) -> Rect {
     }
 }
 
-/// Redimensionne la fenêtre sans la déplacer ni changer son ordre d'affichage.
+/// Resizes the window without moving it or changing its z-order.
 pub fn resize_window(hwnd: HWND, width: u32, height: u32) -> Result<()> {
-    // Les dimensions nulles font échouer la capture ; on impose un plancher.
+    // Zero dimensions make capture fail; we impose a floor.
     let width = width.max(160) as i32;
     let height = height.max(120) as i32;
     unsafe { SetWindowPos(hwnd, None, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER)? };
     Ok(())
 }
 
-/// Vrai tant que la fenêtre existe.
+/// True as long as the window exists.
 pub fn is_window_alive(hwnd: HWND) -> bool {
     unsafe { IsWindow(Some(hwnd)).as_bool() }
 }

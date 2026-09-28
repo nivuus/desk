@@ -1,11 +1,11 @@
-//! Le corps du fil de capture WASAPI.
+//! The body of the WASAPI capture thread.
 //!
-//! Extrait de `windows_audio.rs` à la tâche 3 du sous-bloc D10, au point de
-//! chute que `CLAUDE.md` nomme depuis le sous-bloc D7. L'extraction précède
-//! l'addition de la tâche 13 (`AUDIO_FAUTE_LECTURE`).
+//! Extracted from `windows_audio.rs` in task 3 of sub-block D10, at the landing
+//! point `CLAUDE.md` has named since sub-block D7. The extraction precedes
+//! the addition of task 13 (`AUDIO_FAUTE_LECTURE`).
 //!
-//! `#![cfg(windows)]` comme son parent : aucun test d'hôte ne peut le couvrir,
-//! et c'est précisément pourquoi la tâche 13 lui donne une injection de faute.
+//! `#![cfg(windows)]` like its parent: no host test can cover it,
+//! and that is precisely why task 13 gives it fault injection.
 
 #![cfg(windows)]
 
@@ -22,7 +22,7 @@ pub(super) struct PartageFil {
     pub(super) capture_morte_fil: Arc<AtomicBool>,
 }
 
-/// Corps du fil de capture audio, lancé par `WindowsAudioSource::demarrer`.
+/// Body of the audio capture thread, launched by `WindowsAudioSource::demarrer`.
 ///
 /// Every value is passed explicitly; none is captured by a closure any more.
 pub(super) fn tourner(
@@ -39,92 +39,92 @@ pub(super) fn tourner(
         emet_fil,
         capture_morte_fil,
     } = partage;
-    // Ce fil appelle lui-même des méthodes COM — `read()` à chaque
-    // tour, et `Stop()` via le `Drop` de `LoopbackCapture` en
-    // sortant — alors que `open()` a initialisé COM sur le fil
-    // APPELANT, pas sur celui-ci. Microsoft exige que tout fil
-    // invoquant des méthodes COM ait d'abord rejoint un
-    // appartement.
+    // This thread itself calls COM methods — `read()` at each
+    // round, and `Stop()` through `LoopbackCapture`'s `Drop` when
+    // leaving — whereas `open()` initialised COM on the
+    // CALLING thread, not on this one. Microsoft requires every thread
+    // invoking COM methods to have first joined an
+    // apartment.
     //
-    // Résultat volontairement ignoré ICI — contrairement à
-    // `wasapi::open`, qui lui **vérifie** son `HRESULT` et refuse
-    // `RPC_E_CHANGED_MODE` (voir son commentaire, dont dépend
-    // `unsafe impl Send for LoopbackCapture`) : ce fil-ci vient
-    // d'être créé par `thread::Builder::spawn` juste au-dessus,
-    // il n'a donc encore rejoint aucun appartement COM, et
-    // `CoInitializeEx` y rend nécessairement `S_OK`. `open()`,
-    // lui, s'exécute sur un fil quelconque — potentiellement
-    // recyclé, potentiellement déjà lié à une STA — d'où la
-    // vérification qui n'a pas lieu d'être répétée ici.
+    // Result deliberately ignored HERE — unlike
+    // `wasapi::open`, which **checks** its `HRESULT` and refuses
+    // `RPC_E_CHANGED_MODE` (see its comment, on which
+    // `unsafe impl Send for LoopbackCapture` depends): this thread has just
+    // been created by `thread::Builder::spawn` right above,
+    // so it has not yet joined any COM apartment, and
+    // `CoInitializeEx` necessarily returns `S_OK` there. `open()`,
+    // for its part, runs on an arbitrary thread — potentially
+    // recycled, potentially already bound to an STA — hence the
+    // check that has no reason to be repeated here.
     //
-    // Symétriquement, PAS de `CoUninitialize` : voir le motif
-    // détaillé dans `wasapi.rs`.
+    // Symmetrically, NO `CoUninitialize`: see the reason
+    // detailed in `wasapi.rs`.
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
     }
 
     let mut assembleur = FrameAssembler::new(origin);
     let mut dernier_rapport = Instant::now();
-    // Dernière valeur effectivement posée sur l'encodeur. Un
-    // appel CTL par trame de 10 ms serait du gaspillage sur ce
-    // chemin chaud : on ne réécrit que lorsque la cible a changé.
+    // Last value actually set on the encoder. A
+    // CTL call per 10 ms frame would be waste on this
+    // hot path: we only rewrite when the target has changed.
     let mut derniere_perte: i32 = 0;
-    // Dernier ordre pour lequel une bascule a été TENTÉE (que
-    // `capture.emettre` ait réussi ou non). Sert uniquement à ne
-    // pas rappeler `Start()`/`Stop()` à chaque tour à ~200 Hz : ce
-    // n'est PAS l'état réel du flux, voir `emettait`.
+    // Last order for which a toggle was ATTEMPTED (whether
+    // `capture.emettre` succeeded or not). Only used not to
+    // call `Start()`/`Stop()` again at each round at ~200 Hz: it
+    // is NOT the real state of the stream, see `emettait`.
     let mut voulu_applique = false;
-    // État RÉEL du flux : vrai seulement quand `Start()` a
-    // effectivement réussi, écrit UNIQUEMENT dans la branche
-    // `Ok` ci-dessous. Gouverne à la fois le gate de
-    // lecture/encodage plus bas et la trace `actif` de
-    // « compteurs audio » — la seule fenêtre sur un arbitrage
-    // figé. Si un refus de `Start()` faisait mentir cette valeur
-    // (comme le ferait `emettait = veut_emettre` inconditionnel),
-    // la trace annoncerait une fenêtre audible qui ne capture
-    // rien, exactement le mode de défaillance silencieux que
-    // cette trace existe pour révéler.
+    // REAL state of the stream: true only when `Start()` has
+    // actually succeeded, written ONLY in the
+    // `Ok` branch below. Governs both the
+    // reading/encoding gate below and the `actif` trace of
+    // "audio counters" — the only window onto a frozen
+    // arbitration. If a `Start()` refusal made this value lie
+    // (as an unconditional `emettait = veut_emettre` would),
+    // the trace would announce an audible window that captures
+    // nothing, exactly the silent failure mode
+    // this trace exists to reveal.
     let mut emettait = false;
-    // Erreurs de lecture consécutives. Remis à zéro par toute
-    // lecture qui aboutit — y compris `Ok(None)`, qui est le cas
-    // courant : le flux n'a simplement rien de neuf à rendre.
+    // Consecutive read errors. Reset to zero by any
+    // read that succeeds — including `Ok(None)`, which is the common
+    // case: the stream simply has nothing new to return.
     let mut lectures_echouees: u32 = 0;
 
-    // VARIABLE DE BANC, jamais une configuration livrée — même statut que
-    // `PART_SONDAGE`. Elle existe parce qu'aucun déclencheur naturel de mort
-    // de capture n'a pu être trouvé : les QUATRE de D9 (Restart-Service
+    // BENCH VARIABLE, never a shipped configuration — same status as
+    // `PART_SONDAGE`. It exists because no natural trigger of capture
+    // death could be found: D9's FOUR (Restart-Service
     // Audiosrv, Stop/Start, Stop-Process audiodg, Disable/Enable-PnpDevice)
-    // n'ont produit AUCUNE ligne `lecture audio échouée` sur neuf exécutions
-    // versées — la capture *process loopback* suit l'ARBRE DE PROCESSUS, pas
-    // le service ni le périphérique.
+    // produced NO "audio read failed" line in nine filed
+    // runs — *process loopback* capture follows the PROCESS TREE, not
+    // the service or the device.
     //
-    // ⚠️ Elle établit que le REMÈDE fonctionne, jamais qu'une cause naturelle
-    // existe. Ne pas lire une recette qui l'emploie comme une preuve de
-    // robustesse en production.
+    // ⚠️ It establishes that the REMEDY works, never that a natural cause
+    // exists. Do not read an acceptance run using it as proof of
+    // robustness in production.
     //
-    // ⚠️ **GLOBAL AU PROCESSUS, pas local à ce fil** (trouvé en recette VM,
-    // tâche 14) : un budget par fil se réarme intégralement à chaque
-    // reconstruction — `std::env::var` relu à l'identique par le fil neuf —,
-    // donc CHAQUE capture reconstruite meurt à son tour avant tout appel réel
-    // à `capture.read()`, quel que soit le nombre de reconstructions. Un
-    // contrôle qui ne peut jamais rendre l'autre valeur (« de la vraie audio
-    // après reconstruction ») n'en est pas un — exactement le patron que ce
-    // dépôt vient de payer sur ce même fichier. Un `static` partagé,
-    // décrémenté par `fetch_update`, fait que le budget s'épuise UNE FOIS
-    // pour tout le processus : le premier fil consomme les 10 fautes et
-    // meurt, et la toute première reconstruction trouve le compteur à zéro,
-    // atteint la branche `else`, et lit pour de vrai.
+    // ⚠️ **PROCESS-GLOBAL, not local to this thread** (found during VM acceptance,
+    // task 14): a per-thread budget re-arms fully at each
+    // rebuild — `std::env::var` reread identically by the new thread —,
+    // so EACH rebuilt capture dies in turn before any real call
+    // to `capture.read()`, whatever the number of rebuilds. A
+    // check that can never return the other value ("real audio
+    // after rebuild") is not one — exactly the pattern this
+    // repository has just paid for on this same file. A shared `static`,
+    // decremented by `fetch_update`, makes the budget run out ONCE
+    // for the whole process: the first thread consumes the 10 faults and
+    // dies, and the very first rebuild finds the counter at zero,
+    // reaches the `else` branch, and reads for real.
     //
-    // ⚠️ **`AUDIO_FAUTE_LECTURE_MS` borne cet armement DANS LE TEMPS**, et
-    // c'est ce qui rend le repli sur la promotion démontrable — voir
-    // `crate::audio::injection_encore_armee`, qui porte l'arithmétique
-    // complète. Absente : `None`, illimité, comportement de D10 strictement
-    // préservé.
+    // ⚠️ **`AUDIO_FAUTE_LECTURE_MS` bounds this arming IN TIME**, and
+    // it is what makes the fallback on promotion demonstrable — see
+    // `crate::audio::injection_encore_armee`, which carries the full
+    // arithmetic. Absent: `None`, unlimited, D10's behaviour strictly
+    // preserved.
     //
-    // **L'origine est capturée à l'initialisation du BUDGET, pas au premier
-    // `read()`** : les deux processus — la porteuse et sa voisine — démarrent
-    // ensemble, et c'est ce qui leur donne la même origine sans qu'aucune
-    // session n'ait à être nommée.
+    // **The origin is captured when the BUDGET is initialised, not at the first
+    // `read()`**: both processes — the carrier and its neighbour — start
+    // together, and that is what gives them the same origin without any
+    // session having to be named.
     static FAUTES_A_INJECTER: std::sync::OnceLock<(
         std::sync::atomic::AtomicU32,
         Option<Duration>,
@@ -141,11 +141,11 @@ pub(super) fn tourner(
                 .and_then(|v| v.parse::<u64>().ok())
                 .map(Duration::from_millis);
             if v > 0 {
-                // Un SEUL `warn!`, enrichi de `fenetre_ms` : deux traces au
-                // même instant se compteraient comme deux événements (piège
-                // maison du sous-bloc D6). `fenetre_ms` dit laquelle des deux
-                // configurations tourne — sans elle, un journal ne permet pas
-                // de distinguer un armement borné d'un armement illimité.
+                // A SINGLE `warn!`, enriched with `fenetre_ms`: two traces at the
+                // same instant would count as two events (sub-block D6's
+                // home-grown trap). `fenetre_ms` says which of the two
+                // configurations is running — without it, a log does not let one
+                // distinguish a bounded arming from an unlimited one.
                 tracing::warn!(
                     fautes_a_injecter = v,
                     fenetre_ms = fenetre.map(|f| f.as_millis() as u64),
@@ -165,10 +165,10 @@ pub(super) fn tourner(
             voulu_applique = veut_emettre;
             match capture.emettre(veut_emettre) {
                 Ok(()) => {
-                    // Reprise réelle (Start() a réussi après une
-                    // coupure, ou premier démarrage) : réancrer
-                    // l'assembleur AVANT qu'il ne rejoue toute la
-                    // coupure en une rafale de silence (voir
+                    // Real resumption (Start() succeeded after an
+                    // outage, or first start): re-anchor
+                    // the assembler BEFORE it replays the whole
+                    // outage as a burst of silence (see
                     // `FrameAssembler::reancrer`).
                     if veut_emettre && !emettait {
                         assembleur.reancrer();
@@ -176,12 +176,12 @@ pub(super) fn tourner(
                     emettait = veut_emettre;
                 }
                 Err(e) => {
-                    // Un refus ne tue pas la session : on
-                    // journalise et on retentera au prochain
-                    // changement d'ordre plutôt qu'à chaque tour
-                    // (grâce à `voulu_applique`, mis à jour ci-
-                    // dessus). `emettait` NE BOUGE PAS : c'est
-                    // l'état réel du flux, et il n'a pas changé.
+                    // A refusal does not kill the session: we
+                    // log and will retry at the next
+                    // order change rather than at every round
+                    // (thanks to `voulu_applique`, updated
+                    // above). `emettait` DOES NOT MOVE: it is
+                    // the real state of the stream, and it has not changed.
                     tracing::warn!(
                         erreur = %e,
                         actif = veut_emettre,
@@ -190,42 +190,42 @@ pub(super) fn tourner(
                 }
             }
         }
-        // ⚠️ **CE BLOC EST AVANT LE GATE `!emettait`, ET C'EST
-        // TOUT SON INTÉRÊT** (F1, revue finale de branche du
-        // sous-bloc D7). Il vivait en fin de corps de boucle,
-        // c'est-à-dire APRÈS le `continue` de la branche muette :
-        // la trace n'était donc atteignable que quand `emettait`
-        // valait vrai, et son champ `actif` valait
-        // structurellement `true` — le contrôle d'entrée de D8
-        // (`grep -c 'actif=true'` opposé au compte total) était
-        // **insatisfiable**, et le défaut qu'il existe pour
-        // révéler — plus aucune fenêtre ne porte le son — rendait
-        // 0 et 0, que ces mêmes documents classaient comme bénin.
-        // Une fenêtre muette rapporte désormais elle aussi, toutes
-        // les `REPORT_INTERVAL`.
+        // ⚠️ **THIS BLOCK IS BEFORE THE `!emettait` GATE, AND THAT IS
+        // ITS WHOLE POINT** (F1, final branch review of
+        // sub-block D7). It lived at the end of the loop body,
+        // that is, AFTER the `continue` of the silent branch:
+        // the trace was therefore only reachable when `emettait`
+        // was true, and its `actif` field was
+        // structurally `true` — D8's entry check
+        // (`grep -c 'actif=true'` against the total count) was
+        // **unsatisfiable**, and the defect it exists to
+        // reveal — no window carries the sound any more — returned
+        // 0 and 0, which those same documents classified as benign.
+        // A silent window now reports too, every
+        // `REPORT_INTERVAL`.
         //
-        // Les trois compteurs restent lisibles en muette : ils
-        // vivent sur `ring_fil` et `assembleur`, que ce fil
-        // possède, et leurs accesseurs ne prennent que `&self`.
+        // The three counters stay readable while silent: they
+        // live on `ring_fil` and `assembleur`, which this thread
+        // owns, and their accessors only take `&self`.
         if dernier_rapport.elapsed() >= REPORT_INTERVAL {
             dernier_rapport = Instant::now();
-            // `info!`, pas `debug!` : le filtre par défaut
-            // (`agent/src/main.rs`, `EnvFilter` replié sur
-            // `"info"` en l'absence de `RUST_LOG`) n'émet jamais
-            // les journaux `debug!` en exploitation normale. La
-            // spec (§5, §9) promet des compteurs « journalisés
-            // périodiquement et jamais silencieux » — un
-            // enregistrement toutes les `REPORT_INTERVAL` (30 s)
-            // n'est pas du bruit, et un compteur de rejets muet
-            // est exactement ce qui rendrait une dégradation
-            // audio invisible en recette.
+            // `info!`, not `debug!`: the default filter
+            // (`agent/src/main.rs`, `EnvFilter` falling back to
+            // `"info"` when `RUST_LOG` is absent) never emits
+            // `debug!` logs in normal operation. The
+            // spec (§5, §9) promises counters "logged
+            // periodically and never silent" — one
+            // record every `REPORT_INTERVAL` (30 s)
+            // is not noise, and a silent rejection counter
+            // is exactly what would make an audio degradation
+            // invisible during acceptance.
             //
-            // `pid` et `actif` sont le seul moyen d'observer un
-            // arbitrage figé : si aucune fenêtre ne portait plus
-            // jamais le son, toutes rapporteraient `actif=false`
-            // — le symptôme serait sinon le silence total, sans un
-            // `WARN`, sans une erreur. C'est le `grep` d'entrée du
-            // sous-bloc suivant (spec §6).
+            // `pid` and `actif` are the only way to observe a
+            // frozen arbitration: if no window ever carried the
+            // sound again, all would report `actif=false`
+            // — the symptom would otherwise be total silence, without a
+            // `WARN`, without an error. It is the entry `grep` of the
+            // next sub-block (spec §6).
             tracing::info!(
                 pid = pid_fil,
                 actif = emettait,
@@ -237,29 +237,29 @@ pub(super) fn tourner(
         }
 
         if !emettait {
-            // Muette : ne rien lire, ne rien encoder, ne rien
-            // déposer. Une trame de silence encodée coûterait
-            // quelques octets grâce au DTX, mais elle arriverait
-            // au navigateur — et deux fenêtres d'un même processus
-            // s'entendraient toutes les deux.
+            // Silent: read nothing, encode nothing, deposit
+            // nothing. An encoded silence frame would cost
+            // a few bytes thanks to DTX, but it would reach
+            // the browser — and two windows of the same process
+            // would both be heard.
             std::thread::sleep(POLL_INTERVAL);
             continue;
         }
 
-        // `fetch_update` : décrémente atomiquement SI le budget global
-        // n'est pas déjà à zéro (`checked_sub(1)` rend `None` à zéro, ce qui
-        // fait échouer `fetch_update` sans y toucher). Un budget épuisé par
-        // un AUTRE fil (la toute première capture, typiquement) laisse donc
-        // celui-ci — et tout fil né après lui — lire réellement dès son
-        // premier tour.
+        // `fetch_update`: atomically decrements IF the global budget
+        // is not already at zero (`checked_sub(1)` returns `None` at zero, which
+        // makes `fetch_update` fail without touching it). A budget exhausted by
+        // ANOTHER thread (the very first capture, typically) therefore lets
+        // this one — and any thread born after it — read for real from its
+        // first round.
         //
-        // ⚠️ **L'ORDRE DES OPÉRANDES DU `&&` COMPTE** : `fetch_update`
-        // DÉCRÉMENTE. Le placer en second garantit qu'aucune faute n'est
-        // consommée une fois la fenêtre refermée — le court-circuit de `&&`
-        // n'évalue alors jamais la décrémentation. Inversés, la porteuse
-        // continuerait de brûler son budget après l'échéance, et la voisine
-        // promue le trouverait vide : le contrôle redeviendrait incapable de
-        // rendre l'autre valeur.
+        // ⚠️ **THE ORDER OF THE `&&` OPERANDS MATTERS**: `fetch_update`
+        // DECREMENTS. Placing it second guarantees that no fault is
+        // consumed once the window has closed — the short-circuit of `&&`
+        // then never evaluates the decrement. Swapped, the carrier would
+        // keep burning its budget after the deadline, and the promoted
+        // neighbour would find it empty: the check would again be unable to
+        // return the other value.
         let lecture = if crate::audio::injection_encore_armee(
             origine_injection.elapsed(),
             *fenetre_injection,
@@ -279,14 +279,14 @@ pub(super) fn tourner(
             }
             Ok(None) => lectures_echouees = 0,
             Err(e) => {
-                // **Une erreur ISOLÉE ne condamne pas tout un
-                // groupe de PID** (F3, revue finale de branche du
-                // sous-bloc D7) : on retente, et l'on n'abandonne
-                // qu'après `LECTURES_ECHOUEES_MAX` échecs d'affilée.
-                // Le motif complet et la temporisation vivent sur
-                // `audio::LECTURES_ECHOUEES_MAX` et
-                // `audio::temporisation_de_reprise`, éprouvés sur
-                // l'hôte.
+                // **An ISOLATED error does not condemn a whole
+                // PID group** (F3, final branch review of
+                // sub-block D7): we retry, and only give up
+                // after `LECTURES_ECHOUEES_MAX` failures in a row.
+                // The full reason and the backoff live on
+                // `audio::LECTURES_ECHOUEES_MAX` and
+                // `audio::temporisation_de_reprise`, tested on
+                // the host.
                 lectures_echouees = lectures_echouees.saturating_add(1);
                 if lectures_echouees < LECTURES_ECHOUEES_MAX {
                     tracing::warn!(
@@ -297,17 +297,17 @@ pub(super) fn tourner(
                     std::thread::sleep(temporisation_de_reprise(lectures_echouees));
                     continue;
                 }
-                // Abandon définitif. Le témoin est posé AVANT la
-                // trace, pour qu'aucun ordre traité entre les deux
-                // ne puisse se déclarer appliqué à une capture
-                // déjà morte.
+                // Final abandonment. The witness is set BEFORE the
+                // trace, so that no order handled between the two
+                // can declare itself applied to an already
+                // dead capture.
                 capture_morte_fil.store(true, Ordering::Relaxed);
-                // Les compteurs sont inclus ici parce que c'est la
-                // dernière ligne de log de ce fil : sans eux, une
-                // capture morte en cours de session serait
-                // indiscernable d'un simple silence —
-                // `next_packet` continuerait à rendre `None` comme
-                // dans le cas nominal.
+                // The counters are included here because it is the
+                // last log line of this thread: without them, a
+                // capture dead mid-session would be
+                // indistinguishable from mere silence —
+                // `next_packet` would keep returning `None` as
+                // in the nominal case.
                 tracing::warn!(
                     erreur = %e,
                     consecutives = lectures_echouees,
@@ -316,25 +316,25 @@ pub(super) fn tourner(
                     echantillons_jetes = assembleur.echantillons_jetes(),
                     "lecture audio échouée, capture arrêtée définitivement"
                 );
-                // ⚠️ **CE COMMENTAIRE ANNONÇAIT UN TROU DÉJÀ COMBLÉ AU
-                // MOMENT OÙ IL A ÉTÉ ÉCRIT ICI** — orphelin trouvé par la
-                // tâche 13 du sous-bloc D10 (`git show
-                // c9b7a31:agent/src/windows_audio.rs`, le point de
-                // divergence de cette branche, porte déjà le signal qu'il
-                // dit manquant). Le témoin `capture_morte_fil` n'est
-                // effectivement pas observable par le capteur — il vit
-                // ici, dans l'enfant — mais `transport/tick.rs` (branche
-                // a1sexies) le lit et pousse `VersCapteur::AudioMort`
-                // (`capteur/protocole.rs`) depuis D9 ; ce N'EST PLUS « à
-                // cadrer ». **Et depuis D10 (tâches 11-12), ce n'est même
-                // plus le premier geste** : la session tente D'ABORD de
-                // reconstruire la capture (`reconstruire_ou_signaler`,
-                // `transport/piste_audio.rs`) ; `AudioMort` n'est que son
-                // repli, quand le budget de tentatives est épuisé — et
-                // c'est SEULEMENT dans ce repli que `capteur/audio.rs`
-                // peut promouvoir une voisine du même groupe de PID. Une
-                // fenêtre seule dans son groupe dépend donc entièrement de
-                // la reconstruction.
+                // ⚠️ **THIS COMMENT ANNOUNCED A GAP ALREADY FILLED AT THE
+                // MOMENT IT WAS WRITTEN HERE** — orphan found by
+                // task 13 of sub-block D10 (`git show
+                // c9b7a31:agent/src/windows_audio.rs`, the divergence point
+                // of this branch, already carries the signal it
+                // says is missing). The `capture_morte_fil` witness is
+                // indeed not observable by the sensor — it lives
+                // here, in the child — but `transport/tick.rs` (branch
+                // a1sexies) reads it and pushes `VersCapteur::AudioMort`
+                // (`capteur/protocole.rs`) since D9; it is NO LONGER "to be
+                // framed". **And since D10 (tasks 11-12), it is not even
+                // the first gesture any more**: the session FIRST tries to
+                // rebuild the capture (`reconstruire_ou_signaler`,
+                // `transport/piste_audio.rs`); `AudioMort` is only its
+                // fallback, when the attempt budget is exhausted — and
+                // it is ONLY in that fallback that `capteur/audio.rs`
+                // can promote a neighbour of the same PID group. A
+                // window alone in its group therefore depends entirely on
+                // the rebuild.
                 return;
             }
         }
@@ -345,9 +345,9 @@ pub(super) fn tourner(
                 match encodeur.set_packet_loss_perc(voulue) {
                     Ok(()) => derniere_perte = voulue,
                     Err(e) => {
-                        // Refus de l'encodeur : on retentera au
-                        // prochain changement de cible plutôt que
-                        // de rejouer cet appel à chaque trame.
+                        // Encoder refusal: we will retry at the
+                        // next target change rather than
+                        // replaying this call at every frame.
                         derniere_perte = voulue;
                         tracing::warn!(
                             erreur = %e,
@@ -364,17 +364,17 @@ pub(super) fn tourner(
                     captured_at: trame.captured_at,
                 }),
                 Err(e) => {
-                    // Même raisonnement que pour l'erreur de
-                    // lecture ci-dessus : dernière ligne de log
-                    // de ce fil, donc dernière chance de rendre
-                    // les compteurs accumulés exploitables — et
-                    // même témoin, pour la même raison (F3).
+                    // Same reasoning as for the read
+                    // error above: last log line
+                    // of this thread, hence last chance to make
+                    // the accumulated counters usable — and
+                    // same witness, for the same reason (F3).
                     //
-                    // **Pas de tolérance ici**, contrairement à la
-                    // lecture : un refus de l'encodeur Opus sur
-                    // une trame bien formée ne relève d'aucune
-                    // cause transitoire connue, là où un refus
-                    // WASAPI en a plusieurs.
+                    // **No tolerance here**, unlike
+                    // reading: an Opus encoder refusal on
+                    // a well-formed frame stems from no known
+                    // transient cause, whereas a WASAPI refusal
+                    // has several.
                     capture_morte_fil.store(true, Ordering::Relaxed);
                     tracing::warn!(
                         erreur = %e,

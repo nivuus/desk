@@ -1,57 +1,57 @@
-//! L'assemblage du microphone côté Windows : le câble, la garde de boucle, le
-//! fil de rendu, et le puits que la boucle de transport alimente.
+//! Assembling the microphone on the Windows side: the cable, the loop guard, the
+//! render thread, and the sink the transport loop feeds.
 //!
-//! C'est le seul fichier du bloc E2 qui **assemble** ; tout ce qui peut se
-//! tromper en a été sorti et est éprouvé sous Linux — la désignation du câble
-//! (`wasapi/peripherique.rs`), le contrôle de format (`wasapi/format.rs`), la
-//! politique d'exclusivité (`micro/exclusivite.rs`), la garde de boucle
+//! It is the only file of block E2 that **assembles**; everything that can go
+//! wrong has been moved out of it and is tested under Linux — the cable designation
+//! (`wasapi/peripherique.rs`), the format check (`wasapi/format.rs`), the
+//! exclusivity policy (`micro/exclusivite.rs`), the loop guard
 //! (`micro/boucle_locale.rs`).
 //!
-//! ## L'ordre est celui du plan E2, et il n'est pas commutatif
+//! ## The order is plan E2's, and it is not commutative
 //!
-//! 1. rejoindre la MTA, puis créer l'énumérateur **sur le fil de rendu** ;
-//! 2. `rendu::identifiant_capte` — **si et seulement si** le loopback capte
-//!    réellement un point de terminaison ;
-//! 3. `rendu::resoudre_cable` ;
-//! 4. `boucle_locale::evaluer` → `Risque` ⇒ **on s'arrête là**, et le `warn!`
-//!    nomme le remède ;
-//! 5. `RenduWasapi::ouvrir` (c'est là que le format est refusé) ;
-//! 6. la boucle : `attendre_place` → `remplir` → `ecrire`.
+//! 1. join the MTA, then create the enumerator **on the render thread**;
+//! 2. `rendu::identifiant_capte` — **if and only if** the loopback really
+//!    captures an endpoint;
+//! 3. `rendu::resoudre_cable`;
+//! 4. `boucle_locale::evaluer` → `Risque` ⇒ **we stop there**, and the `warn!`
+//!    names the remedy;
+//! 5. `RenduWasapi::ouvrir` (that is where the format is refused);
+//! 6. the loop: `attendre_place` → `remplir` → `ecrire`.
 //!
-//! La garde vient **avant** l'ouverture, et pas après : ouvrir le câble puis
-//! constater la boucle aurait déjà mis un flux de rendu sur le point de
-//! terminaison que l'agent capte.
+//! The guard comes **before** opening, not after: opening the cable then
+//! noticing the loop would already have put a render stream on the endpoint
+//! the agent captures.
 //!
-//! ## Aucun objet COM ne traverse de frontière de fil
+//! ## No COM object crosses a thread boundary
 //!
-//! `RenduWasapi` n'est pas `Send` (voir son en-tête) : tout ce qui est COM naît
-//! et meurt sur le fil de rendu. La conséquence est que [`ouvrir`] ne peut pas
-//! connaître le verdict en revenant d'un `spawn` — il l'apprend par un canal,
-//! avec une borne. C'est le prix, écrit, du parti « ouvrir dans le fil » que la
-//! tâche 7 a retenu pour n'avoir aucune promesse `unsafe` à tenir.
+//! `RenduWasapi` is not `Send` (see its header): everything COM is born
+//! and dies on the render thread. The consequence is that [`ouvrir`] cannot
+//! know the verdict when returning from a `spawn` — it learns it through a channel,
+//! with a bound. It is the written price of the "open in the thread" approach that
+//! task 7 chose so as to have no `unsafe` promise to keep.
 //!
-//! ## Le `Mutex` du lecteur est GARDÉ, et voici pourquoi
+//! ## The reader's `Mutex` is KEPT, and here is why
 //!
-//! `PuitsMicro::deposer` est appelé **depuis la boucle de transport** et ne
-//! doit jamais la faire attendre (`transport/piste_micro.rs`). E1 écrit
-//! lui-même que « le bloc E2 aura un vrai fil WASAPI à échéance dure et devra
-//! trancher autrement — une file sans verrou, ou un double tampon »
-//! (`demarrage/micro/mesure.rs`). **On garde le `Mutex`.** Le fil de rendu ne
-//! le tient que le temps de `remplir` — le décodage d'au plus une poignée de
-//! trames Opus, de l'ordre de la dizaine de microsecondes — quand l'échéance
-//! WASAPI est de l'ordre de 10 ms : trois ordres de grandeur au-dessus. Une
-//! file sans verrou serait du travail écrit avant d'avoir constaté le besoin.
+//! `PuitsMicro::deposer` is called **from the transport loop** and must
+//! never make it wait (`transport/piste_micro.rs`). E1 itself
+//! writes that "block E2 will have a real WASAPI thread with a hard deadline and will have to
+//! decide otherwise — a lock-free queue, or a double buffer"
+//! (`demarrage/micro/mesure.rs`). **We keep the `Mutex`.** The render thread only
+//! holds it for the time of `remplir` — decoding at most a handful of
+//! Opus frames, of the order of ten microseconds — whereas the WASAPI
+//! deadline is of the order of 10 ms: three orders of magnitude above. A
+//! lock-free queue would be work written before having observed the need.
 //!
-//! 🔴 **Et le besoin est rendu OBSERVABLE plutôt que conjectural** : le fil
-//! compte ses **retards d'échéance** (`retards` de la trace périodique). Si ce
-//! compteur reste à zéro, la question est tranchée ; s'il monte, elle se pose
-//! avec un chiffre. Sans lui, on l'aurait tranchée par opinion.
+//! 🔴 **And the need is made OBSERVABLE rather than conjectural**: the thread
+//! counts its **missed deadlines** (`retards` of the periodic trace). If this
+//! counter stays at zero, the question is settled; if it rises, it is asked
+//! with a figure. Without it, it would have been settled by opinion.
 //!
-//! ✅ **LE COMPTEUR EST RESTÉ À ZÉRO, DONC LA QUESTION EST TRANCHÉE** (recette
-//! E2, tâches 12 et 13, 20 août 2026) : `retards=0` à chacune des exécutions,
-//! et **cumul 0 sur DEUX épreuves de dix minutes** (615 puis 630 lignes de
-//! trace). Le `Mutex` reste, et ce n'est plus un pari — une file sans verrou
-//! serait du travail écrit contre un besoin mesuré nul.
+//! ✅ **THE COUNTER STAYED AT ZERO, SO THE QUESTION IS SETTLED** (acceptance
+//! E2, tasks 12 and 13, August 20th, 2026): `retards=0` in every run,
+//! and **cumulative 0 over TWO ten-minute trials** (615 then 630 lines of
+//! trace). The `Mutex` stays, and it is no longer a bet — a lock-free queue
+//! would be work written against a need measured at zero.
 
 #![cfg(windows)]
 
@@ -72,33 +72,33 @@ use crate::wasapi_format::trames_de_silence;
 use crate::wasapi_peripherique::inventaire;
 use crate::Config;
 
-/// Le mutex nommé qui garantit qu'un seul processus écrit sur le câble.
+/// The named mutex that guarantees a single process writes to the cable.
 mod verrou;
 
-/// Combien de temps [`ouvrir`] attend le verdict du fil de rendu.
+/// How long [`ouvrir`] waits for the render thread's verdict.
 ///
-/// ⚠️ **Bornée, et pas généreusement.** Ce délai est payé par le DÉMARRAGE de
-/// la session : `demarrage::micro::brancher` court avant `run()`. Une seconde
-/// suffit très largement à trois appels COM sur des objets locaux ; au-delà,
-/// c'est que quelque chose ne répond pas, et une session vidéo saine vaut mieux
-/// qu'un micro qu'on attend.
+/// ⚠️ **Bounded, and not generously.** This delay is paid by the session's
+/// STARTUP: `demarrage::micro::brancher` runs before `run()`. One second
+/// is largely enough for three COM calls on local objects; beyond that,
+/// something is not answering, and a healthy video session is worth more
+/// than a microphone we wait for.
 const DELAI_VERDICT: Duration = Duration::from_secs(1);
 
-/// Période de la trace périodique. Une seconde, comme celle du puits de mesure
-/// de E1 — les deux se lisent côte à côte dans `agent.log`.
+/// Period of the periodic trace. One second, like E1's measurement
+/// sink — the two read side by side in `agent.log`.
 const PERIODE_TRACE: Duration = Duration::from_secs(1);
 
-/// Borne de l'attente de place à chaque tour. Trois fois la période usuelle du
-/// moteur audio partagé (10 ms) : assez pour ne jamais expirer en régime
-/// normal, assez peu pour que le fil se réveille et compte son retard si le
-/// périphérique cesse de signaler.
+/// Bound of the wait for room at each round. Three times the usual period of the
+/// shared audio engine (10 ms): enough never to expire in normal
+/// operation, little enough for the thread to wake up and count its delay if the
+/// device stops signalling.
 const DELAI_PLACE: Duration = Duration::from_millis(30);
 
-/// Le puits que la boucle de transport alimente.
+/// The sink the transport loop feeds.
 ///
-/// Il ne fait que deux choses : arbitrer l'exclusivité, et déposer. **Il
-/// n'écrit rien sur le câble** — c'est le fil de rendu qui consomme, à son
-/// rythme.
+/// It only does two things: arbitrate exclusivity, and deposit. **It
+/// writes nothing to the cable** — it is the render thread that consumes, at its own
+/// pace.
 pub struct PuitsCable {
     lecteur: Arc<Mutex<LecteurMicro>>,
     exclusivite: Exclusivite<verrou::MutexNomme>,
@@ -107,10 +107,10 @@ pub struct PuitsCable {
 
 impl PuitsMicro for PuitsCable {
     fn deposer(&mut self, trame: TrameMicro) -> bool {
-        // ⚠️ La tentative est refaite à CHAQUE dépôt ; seul le JOURNAL est
-        // unique (Décision 2 du plan E2). Un refus collant condamnerait la
-        // fenêtre B à rester sans micro pour la vie de son processus après la
-        // mort de la fenêtre A, sans qu'aucune ligne ne le dise.
+        // ⚠️ The attempt is redone at EACH deposit; only the LOG is
+        // single (Decision 2 of plan E2). A sticky refusal would condemn
+        // window B to stay without a microphone for the life of its process after
+        // window A died, without any line saying so.
         match self.exclusivite.arbitrer() {
             Issue::Accepte => {}
             Issue::AccepteApresRefus => tracing::info!(
@@ -134,32 +134,32 @@ impl PuitsMicro for PuitsCable {
                 lecteur.deposer(trame);
                 true
             }
-            // Le verrou est empoisonné : le fil de rendu a paniqué. On refuse
-            // plutôt que de propager la panique dans la boucle de transport —
-            // un défaut du micro ne tue jamais une session vidéo (spec §10).
+            // The lock is poisoned: the render thread panicked. We refuse
+            // rather than propagating the panic into the transport loop —
+            // a microphone defect never kills a video session (spec §10).
             Err(_) => false,
         }
     }
 }
 
-/// Ouvre le câble, arme la garde de boucle, lance le fil de rendu, et rend le
-/// puits — ou dit **pourquoi** il ne le peut pas.
+/// Opens the cable, arms the loop guard, launches the render thread, and returns the
+/// sink — or says **why** it cannot.
 ///
-/// **N'échoue jamais la session** : l'appelant journalise et continue sans
-/// micro. `micro_disponible()` reste faux, `ready` porte `mic: false`, et le
-/// bouton du navigateur ne paraît pas.
+/// **Never fails the session**: the caller logs and continues without a
+/// microphone. `micro_disponible()` stays false, `ready` carries `mic: false`, and the
+/// browser's button does not appear.
 pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
     let lecteur = Arc::new(Mutex::new(
         LecteurMicro::new().context("creation du lecteur de micro")?,
     ));
 
-    // ⚠️ La question « le loopback capte-t-il un point de terminaison ? » se
-    // décide ICI, sur la configuration, et jamais dans le fil : en process
-    // loopback (`fenetre_hwnd` posé) il n'y a AUCUN endpoint —
-    // `ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK)` vise
-    // un arbre de processus —, et `AUDIO=0` n'ouvre aucune capture. Dans les
-    // deux cas il n'y a rien à comparer, et interroger COM pour rien coûterait
-    // une résolution de périphérique au démarrage de chaque enfant.
+    // ⚠️ The question "does the loopback capture an endpoint?" is
+    // decided HERE, on the configuration, and never in the thread: in process
+    // loopback (`fenetre_hwnd` set) there is NO endpoint —
+    // `ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK)` targets
+    // a process tree —, and `AUDIO=0` opens no capture. In both
+    // cases there is nothing to compare, and querying COM for nothing would cost
+    // a device resolution at the startup of every child.
     let loopback_de_session = config.audio && config.fenetre_hwnd.is_none();
 
     let (envoi, reception) = sync_channel::<Result<Verdict>>(1);
@@ -196,17 +196,17 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
     })
 }
 
-/// Ce que le fil rend à [`ouvrir`] quand tout s'est bien passé. **Des chaînes
-/// et un `enum`, aucun objet COM** : c'est ce qui traverse la frontière de fil,
-/// et rien d'autre ne le peut.
+/// What the thread returns to [`ouvrir`] when everything went well. **Strings
+/// and an `enum`, no COM object**: that is what crosses the thread boundary,
+/// and nothing else can.
 struct Verdict {
     cable: String,
     format: String,
     reveil: Reveil,
 }
 
-/// Le fil de rendu : il ouvre, il rend son verdict, puis il écrit jusqu'à la
-/// fin du processus.
+/// The render thread: it opens, returns its verdict, then writes until the
+/// end of the process.
 fn fil_de_rendu(
     lecteur: Arc<Mutex<LecteurMicro>>,
     session: String,
@@ -215,9 +215,9 @@ fn fil_de_rendu(
 ) {
     let (mut rendu_wasapi, canaux) = match preparer(loopback_de_session) {
         Ok((r, canaux, verdict)) => {
-            // ⚠️ Si l'envoi échoue, `ouvrir` a déjà renoncé (délai dépassé) :
-            // on s'arrête plutôt que d'écrire sur un câble que personne
-            // n'alimentera — le puits n'existe pas.
+            // ⚠️ If sending fails, `ouvrir` has already given up (timeout exceeded):
+            // we stop rather than write on a cable nobody
+            // will feed — the sink does not exist.
             if envoi.send(Ok(verdict)).is_err() {
                 return;
             }
@@ -249,9 +249,9 @@ fn fil_de_rendu(
             }
         };
         if trames == 0 {
-            // Le tampon était encore plein : c'est un retard d'échéance, pas
-            // une erreur. C'est CE compteur qui rendra décidable la question du
-            // `Mutex` (voir l'en-tête de module).
+            // The buffer was still full: it is a missed deadline, not
+            // an error. It is THIS counter that will make the `Mutex` question
+            // decidable (see the module header).
             retards += 1;
         } else {
             let besoin = trames * canaux;
@@ -268,15 +268,15 @@ fn fil_de_rendu(
                     );
                     return;
                 };
-                // ⚠️ `remplir` ne bloque JAMAIS et complète au silence
-                // (spec §8) : le câble doit être alimenté en continu. Une
-                // application qui écoute un tampon vide ne perçoit pas du
-                // silence, elle voit un flux qui s'interrompt — ce n'est pas la
-                // même chose, et cela s'entend.
+                // ⚠️ `remplir` NEVER blocks and fills with silence
+                // (spec §8): the cable must be fed continuously. An
+                // application listening to an empty buffer does not perceive
+                // silence, it sees a stream that breaks off — it is not the
+                // same thing, and it can be heard.
                 //
-                // ⚠️ Le verrou est relâché ICI, à la fin de ce bloc, et donc
-                // AVANT l'écriture : `deposer` ne doit jamais attendre la fin
-                // d'un appel WASAPI.
+                // ⚠️ The lock is released HERE, at the end of this block, and therefore
+                // BEFORE the write: `deposer` must never wait for the end
+                // of a WASAPI call.
                 lecteur.remplir(cible);
             }
             if ecrire(&mut rendu_wasapi, cible, trames, &session).is_err() {
@@ -287,13 +287,13 @@ fn fil_de_rendu(
         }
 
         if Instant::now() >= prochaine_trace {
-            // ⚠️ **Les deux lectures se font sous LE MÊME verrou**, et ce
-            // n'est pas une commodité : `occupation` est un INSTANTANÉ, et le
-            // lire à un second verrouillage le daterait d'un autre moment que
-            // les compteurs, sur un tampon que le fil de dépôt fait bouger
-            // toutes les 20 ms. Deux grandeurs d'une même ligne de journal
-            // doivent décrire le même instant, sans quoi la ligne invite à
-            // rapprocher ce qui ne se rapproche pas.
+            // ⚠️ **Both reads happen under THE SAME lock**, and it is
+            // not a convenience: `occupation` is a SNAPSHOT, and
+            // reading it at a second locking would date it from another moment than
+            // the counters, on a buffer the depositing thread moves
+            // every 20 ms. Two quantities of the same log line
+            // must describe the same instant, otherwise the line invites
+            // relating what cannot be related.
             let (compteurs, occupation) = match lecteur.lock() {
                 Ok(l) => (l.compteurs(), l.occupation()),
                 Err(_) => return,
@@ -317,8 +317,8 @@ fn fil_de_rendu(
     }
 }
 
-/// L'écriture, isolée pour que la boucle reste lisible. `Err(())` signifie
-/// « le fil s'arrête », et la cause est déjà journalisée.
+/// The write, isolated so that the loop stays readable. `Err(())` means
+/// "the thread stops", and the cause is already logged.
 fn ecrire(
     rendu_wasapi: &mut RenduWasapi,
     pcm: &[f32],
@@ -338,12 +338,12 @@ fn ecrire(
     }
 }
 
-/// Tout le COM du démarrage, dans l'ordre du plan E2. Rend le flux ouvert, son
-/// nombre de canaux, et le verdict à renvoyer.
+/// All the startup COM, in plan E2's order. Returns the opened stream, its
+/// number of channels, and the verdict to send back.
 fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> {
     rejoindre_mta()?;
-    // SAFETY : le fil courant vient de rejoindre la MTA (`rejoindre_mta`
-    // ci-dessus refuse s'il appartenait déjà à une STA).
+    // SAFETY: the current thread has just joined the MTA (`rejoindre_mta`
+    // above refuses if it already belonged to an STA).
     let enumerateur: IMMDeviceEnumerator =
         unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }
             .context("creation de l'enumerateur de peripheriques audio (micro)")?;
@@ -356,18 +356,18 @@ fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> 
 
     let (peripherique, identifiant) = rendu::resoudre_cable(&enumerateur)?;
 
-    // 🔴 La garde de boucle locale, AVANT toute ouverture. Mesurée nécessaire
-    // le 20 août 2026 : le rendu par défaut de cette VM EST le câble, et
-    // `LoopbackCapture::open` capte le défaut quand `AUDIO_PERIPHERIQUE` est
-    // absente. L'utilisateur s'entendrait lui-même avec la latence du tour
-    // complet ; sans casque, la boucle acoustique se refermerait par les
-    // haut-parleurs.
+    // 🔴 The local loop guard, BEFORE any opening. Measured necessary
+    // on August 20th, 2026: this VM's default render device IS the cable, and
+    // `LoopbackCapture::open` captures the default when `AUDIO_PERIPHERIQUE` is
+    // absent. The user would hear themselves with the latency of the full
+    // round trip; without headphones, the acoustic loop would close through the
+    // speakers.
     if evaluer(capte.as_deref(), &identifiant) == Boucle::Risque {
         let disponibles = rendu::enumerer(&enumerateur).unwrap_or_default();
-        // ⚠️ **C'est le MICRO qui cède, et jamais le son** (Décision 3) : le son
-        // est un chantier livré depuis le chantier A, le micro est ce qu'on
-        // ajoute. Le remède est NOMMÉ, sur le patron du bras `Choix::Ambigu`
-        // de `resoudre`, qui énumère déjà ses candidats.
+        // ⚠️ **It is the MICROPHONE that yields, never the sound** (Decision 3): sound
+        // is a workstream delivered since workstream A, the microphone is what is being
+        // added. The remedy is NAMED, on the pattern of the `Choix::Ambigu` arm
+        // of `resoudre`, which already lists its candidates.
         bail!(
             "micro DESACTIVE : le loopback audio de cette session capte le cable meme sur lequel \
              le micro ecrirait ({identifiant}) — l'utilisateur s'entendrait lui-meme. Remede : \
@@ -379,10 +379,10 @@ fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> 
     let rendu_wasapi = RenduWasapi::ouvrir(&peripherique)?;
     let format = rendu_wasapi.description().to_string();
     let reveil = rendu_wasapi.reveil();
-    // Le nombre de canaux n'est pas relu du flux : `RenduWasapi::ouvrir` a
-    // REFUSÉ tout format qui ne soit pas stéréo (`wasapi/format.rs`), donc il
-    // vaut `CANAUX` ou l'ouverture a échoué. Le relire ouvrirait la porte à ce
-    // que les deux divergent.
+    // The number of channels is not reread from the stream: `RenduWasapi::ouvrir`
+    // REFUSED any format that is not stereo (`wasapi/format.rs`), so it
+    // is `CANAUX` or the opening failed. Rereading it would open the door to
+    // the two diverging.
     let canaux = crate::wasapi_format::CANAUX;
     Ok((
         rendu_wasapi,
@@ -395,12 +395,12 @@ fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> 
     ))
 }
 
-/// La trace périodique.
+/// The periodic trace.
 ///
-/// ⚠️ **`session` est OBLIGATOIRE** : `agent.log` mêle le superviseur et tous
-/// ses enfants depuis D4, et D6 a dû ré-imputer deux traces en pleine recette
-/// faute de ce champ. Une trace sans lui est un nombre dans un multiensemble
-/// anonyme.
+/// ⚠️ **`session` is MANDATORY**: `agent.log` mixes the supervisor and all
+/// its children since D4, and D6 had to re-attribute two traces in the middle of acceptance
+/// for lack of this field. A trace without it is a number in an anonymous
+/// multiset.
 #[allow(clippy::too_many_arguments)]
 fn tracer(
     session: &str,
@@ -412,16 +412,16 @@ fn tracer(
     precedents: &CompteursMicro,
     occupation: std::time::Duration,
 ) {
-    // Les compteurs sont des DELTAS de la seconde écoulée, pas des cumuls : un
-    // cumul ferait traîner un unique incident pour le restant de la session.
+    // The counters are DELTAS of the elapsed second, not cumulative totals: a
+    // cumulative total would drag a single incident along for the rest of the session.
     let d = |maintenant: u64, avant: u64| maintenant.saturating_sub(avant);
     tracing::info!(
         session = %session,
         ecrites,
-        // ⚠️ `ecrites` et `silence` CÔTE À CÔTE : `remplir` complète au silence
-        // sans jamais le dire, donc « 48 000 trames écrites » s'écrit
-        // exactement pareil pour un micro qui parle et pour un micro qui se
-        // tait. Sans le second, cette trace ne prouve rien.
+        // ⚠️ `ecrites` and `silence` SIDE BY SIDE: `remplir` fills with silence
+        // without ever saying so, so "48,000 frames written" is written
+        // exactly the same for a microphone that speaks and for a microphone that is
+        // silent. Without the second, this trace proves nothing.
         silence,
         retards,
         reveil = reveil.libelle(),
@@ -429,35 +429,35 @@ fn tracer(
         sauts = d(compteurs.sauts, precedents.sauts),
         insertions = d(compteurs.insertions, precedents.insertions),
         plc = d(compteurs.plc, precedents.plc),
-        // ⚠️ **`plc` et `plc_plafonnees` CÔTE À CÔTE**, et c'est le fond de
-        // cette paire : les deux naissent d'une trame manquante, et sans le
-        // second on ne distingue pas « la dissimulation travaille » de « le
-        // plafond a mordu et le puits se tait ». Voir `micro/dissimulation.rs`.
+        // ⚠️ **`plc` and `plc_plafonnees` SIDE BY SIDE**, and it is the heart of
+        // this pair: both arise from a missing frame, and without the
+        // second one cannot distinguish "concealment is working" from "the
+        // ceiling has bitten and the sink is silent". See `micro/dissimulation.rs`.
         plc_plafonnees = d(compteurs.plc_plafonnees, precedents.plc_plafonnees),
         // ── Bloc E3 : le legs n°7 de E2 ────────────────────────────────────
         //
-        // 🔴 **Ces deux grandeurs EXISTAIENT DÉJÀ et n'étaient lues par
-        // PERSONNE sur le chemin de production.** `LecteurMicro::occupation()`
-        // est publique depuis E1 et `famines` est un champ de `CompteursMicro`
-        // depuis E1 ; les deux ne vivaient que dans la trace du PUITS DE MESURE
-        // (`MICRO_MESURE=1`), qui **ne peut pas coexister avec le câble** — le
-        // puits de mesure consomme le tampon, le câble aussi. E2 l'a relevé et
-        // n'a pas pu le corriger dans son périmètre. Il n'y avait rien à
-        // calculer, seulement à tracer.
+        // 🔴 **These two quantities ALREADY EXISTED and were read by
+        // NOBODY on the production path.** `LecteurMicro::occupation()`
+        // has been public since E1 and `famines` has been a field of `CompteursMicro`
+        // since E1; both only lived in the trace of the MEASUREMENT SINK
+        // (`MICRO_MESURE=1`), which **cannot coexist with the cable** — the
+        // measurement sink consumes the buffer, the cable too. E2 noted it and
+        // could not fix it within its scope. There was nothing to
+        // compute, only to trace.
         //
-        // 🔴 **`occupation_ms` est un INSTANTANÉ ; `famines` est un DELTA.**
-        // Tous les autres compteurs de cette trace sont des deltas *à dessein*
-        // — « un cumul ferait traîner un unique incident pour le restant de la
-        // session ». Mélanger les deux sans le dire rendrait la ligne
-        // illisible : on lirait « 120 » pour une occupation et « 3 » pour des
-        // famines en croyant les deux comparables sur la même seconde, alors
-        // que le premier décrit l'instant de la trace et le second la seconde
-        // qui la précède.
+        // 🔴 **`occupation_ms` is a SNAPSHOT; `famines` is a DELTA.**
+        // All the other counters of this trace are deltas *on purpose*
+        // — "a cumulative total would drag a single incident along for the rest of the
+        // session". Mixing the two without saying so would make the line
+        // unreadable: one would read "120" for an occupation and "3" for
+        // starvations believing both comparable over the same second, whereas
+        // the first describes the trace's instant and the second the second
+        // preceding it.
         //
-        // ⚠️ **`famines` et `occupation_ms` CÔTE À CÔTE**, sur le patron des
-        // deux paires qui précèdent : une famine est un tampon vidé, donc une
-        // occupation qui a touché zéro. Le second seul ne dirait pas combien de
-        // fois ; le premier seul ne dirait pas de combien on est loin du bord.
+        // ⚠️ **`famines` and `occupation_ms` SIDE BY SIDE**, on the pattern of the
+        // two preceding pairs: a starvation is an emptied buffer, hence an
+        // occupation that touched zero. The second alone would not say how many
+        // times; the first alone would not say how far we are from the edge.
         //
         // ⚠️ **Ce que cela NE donne PAS** : la latence de bout en bout, que
         // RIEN ne mesure dans ce dépôt depuis D1. C'est la SECONDE des deux
