@@ -68,37 +68,37 @@ type Flux = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 /// Pourquoi `servir` a rendu la main.
 enum Fin {
-    /// La connexion est tombée — il faut en rouvrir une.
+    /// The connection dropped — a new one must be opened.
     ConnexionPerdue,
-    /// Le superviseur lui-même a disparu : ses deux extrémités sont fermées,
-    /// il n'y a plus personne à servir et rouvrir un socket serait une fuite.
+    /// The supervisor itself is gone: both its ends are closed,
+    /// there is no one left to serve and reopening a socket would be a leak.
     SuperviseurArrete,
 }
 
-/// Ouvre la connexion, se déclare comme `agent` sur la session donnée, et rend
-/// de quoi envoyer et recevoir. **La connexion est ensuite ROUVERTE
-/// automatiquement à chaque chute**, sans que l'appelant ait rien à faire.
+/// Opens the connection, declares itself as `agent` on the given session, and returns
+/// what is needed to send and receive. **The connection is then REOPENED
+/// automatically at each drop**, with nothing for the caller to do.
 ///
-/// `url` est déjà l'URL du RELAIS (`crate::signaling::url_du_relais`) : c'est
-/// `superviseur.rs` qui la dérive avant d'appeler cette fonction, jamais elle.
+/// `url` is already the RELAY URL (`crate::signaling::url_du_relais`): it is
+/// `superviseur.rs` that derives it before calling this function, never this function.
 ///
-/// `jeton_initial` porte le jeton d'agent connu au démarrage
-/// (`crate::plateforme`). **`None` fait refuser la poignée de main par la
-/// plateforme depuis le sous-bloc P3** : la garde n'accepte plus un
-/// `{"role":"agent"}` anonyme.
+/// `jeton_initial` carries the agent token known at startup
+/// (`crate::plateforme`). **`None` makes the platform refuse the handshake
+/// since sub-block P3**: the guard no longer accepts an anonymous
+/// `{"role":"agent"}`.
 ///
-/// `identite` est la VEILLE d'identité, relue à chaque RECONNEXION : voir
-/// l'en-tête de ce fichier. `None` quand l'agent n'a pas ouvert de canal
-/// `/agent` (jeton hérité, ou aucune identité) — `jeton_initial` sert alors
-/// à chaque tentative, exactement comme avant ce lot.
+/// `identite` is the identity WATCH, reread at each RECONNECTION: see
+/// this file's header. `None` when the agent opened no `/agent`
+/// channel (inherited token, or no identity) — `jeton_initial` then serves
+/// at each attempt, exactly as before this batch.
 ///
-/// 🔴 **LA PREMIÈRE OUVERTURE RESTE FATALE, ET C'EST DÉLIBÉRÉ.** Elle rend
-/// `Err`, donc `superviseur::executer` échoue et le processus s'arrête, comme
-/// avant ce lot : une `SIGNALING_URL` fautive doit se voir tout de suite, pas
-/// se transformer en boucle de reprise silencieuse. Ce lot ne corrige que la
-/// perte d'une connexion **déjà établie**, qui est le défaut mesuré ; élargir
-/// la reprise au tout premier essai est un autre changement, non mesuré,
-/// délibérément laissé de côté.
+/// 🔴 **THE FIRST OPENING STAYS FATAL, AND IT IS DELIBERATE.** It returns
+/// `Err`, so `superviseur::executer` fails and the process stops, as
+/// before this batch: a wrong `SIGNALING_URL` must show right away, not
+/// turn into a silent resumption loop. This batch only fixes the
+/// loss of an **already established** connection, which is the measured defect; widening
+/// resumption to the very first try is another change, not measured,
+/// deliberately left aside.
 pub async fn connecter(
     url: &str,
     session: &str,
@@ -110,9 +110,9 @@ pub async fn connecter(
 )> {
     let premier = ouvrir(url, session, jeton_initial).await?;
 
-    // Les DEUX extrémités que l'appelant garde. Créées une seule fois : elles
-    // survivent à toutes les reconnexions, c'est ce qui laisse `boucle.rs`
-    // ignorant du mécanisme.
+    // The TWO ends the caller keeps. Created only once: they
+    // survive all reconnections, which is what leaves `boucle.rs`
+    // unaware of the mechanism.
     let (tx_entrant, rx_entrant) = std::sync::mpsc::channel();
     let (tx_sortant, rx_sortant) = tokio::sync::mpsc::unbounded_channel::<String>();
 
@@ -136,38 +136,38 @@ pub async fn connecter(
     Ok((rx_entrant, envoyer))
 }
 
-/// Ouvre UNE connexion et y émet la déclaration de rôle.
+/// Opens ONE connection and emits the role declaration on it.
 ///
-/// ⚠️ Rendre `Ok` ne prouve PAS que la plateforme a accepté : le verdict
-/// arrive plus tard, sous forme d'un message `{"type":"error"}` suivi d'une
-/// fermeture. C'est le piège que la recette de P3 a payé — voir la trace
-/// ci-dessous, qui dit ce qu'elle SAIT et rien de plus.
+/// ⚠️ Returning `Ok` does NOT prove the platform accepted: the verdict
+/// arrives later, as a `{"type":"error"}` message followed by a
+/// closing. It is the trap P3's acceptance run paid for — see the trace
+/// below, which says what it KNOWS and nothing more.
 async fn ouvrir(url: &str, session: &str, jeton: Option<&str>) -> Result<Flux> {
     let (mut stream, _) = tokio_tungstenite::connect_async(url)
         .await
         .with_context(|| format!("connexion au signaling {url}"))?;
-    // `WebSocketStream` est lui-même un `Sink<Message>` : on émet la
-    // déclaration SANS scinder le flux, pour n'avoir pas à le recoller
-    // ensuite. `servir` le scindera une fois, et une seule.
+    // `WebSocketStream` is itself a `Sink<Message>`: we emit the
+    // declaration WITHOUT splitting the stream, so as not to have to glue it back
+    // afterwards. `servir` will split it once, and only once.
     stream
         .send(Message::Text(
             serde_json::json!({ "role": "agent", "session": session, "jeton": jeton }).to_string(),
         ))
         .await
         .context("déclaration du superviseur au signaling")?;
-    // 🔴 CETTE TRACE DISAIT « superviseur ENREGISTRÉ », ET C'ÉTAIT UN
-    // MENSONGE — relevé par la recette de P3, sur pièces
-    // (`journaux-plateforme-p3/vm-{1,2}-agent-sans-identite-plat.log`). Elle
-    // sortait à l'ÉMISSION de la poignée de main, donc AVANT que la
-    // plateforme ait pu la refuser ; aux deux exécutions sans secret
-    // d'enrôlement, elle s'affichait alors qu'AUCUNE session ne s'établissait,
-    // et la connexion tombait 5 ms plus tard. **Qui la cherchait au `grep`
-    // pour savoir si une session tient concluait l'inverse de la vérité.**
+    // 🔴 THIS TRACE SAID "supervisor REGISTERED", AND IT WAS A
+    // LIE — found by P3's acceptance run, from evidence
+    // (`journaux-plateforme-p3/vm-{1,2}-agent-sans-identite-plat.log`). It
+    // came out at the handshake's EMISSION, hence BEFORE the
+    // platform could refuse it; in both runs without an enrolment
+    // secret, it showed while NO session was established,
+    // and the connection dropped 5 ms later. **Whoever grepped for it
+    // to know whether a session holds concluded the opposite of the truth.**
     //
-    // Elle dit désormais ce qu'elle SAIT : la déclaration est partie. Ce que
-    // la plateforme en fait arrive plus tard, et sur un autre fil — d'où le
-    // bras `error` de la boucle de réception ci-dessous, qui est ce qui rend
-    // le refus observable.
+    // It now says what it KNOWS: the declaration went out. What
+    // the platform does with it arrives later, and on another thread — hence the
+    // `error` arm of the receive loop below, which is what makes
+    // the refusal observable.
     tracing::info!(
         session,
         jeton_present = jeton.is_some(),
@@ -176,15 +176,15 @@ async fn ouvrir(url: &str, session: &str, jeton: Option<&str>) -> Result<Flux> {
     Ok(stream)
 }
 
-/// Tient la session de contrôle : la sert, et la ROUVRE tant que le
-/// superviseur est là.
+/// Holds the control session: serves it, and REOPENS it as long as the
+/// supervisor is there.
 ///
-/// ⚠️ **CHAQUE TENTATIVE EST TRACÉE, SANS CONDITION.** Ce dépôt vient de
-/// payer l'inverse (lot 33 : des traces derrière des `return` précoces, et
-/// l'observabilité qui avait permis le diagnostic détruite par son propre
-/// remède). Le volume est borné par le plafond du repli : une plateforme
-/// morte pendant une heure coûte ~120 lignes, à comparer aux dizaines de
-/// milliers qu'`agent.log` écrit dans le même temps.
+/// ⚠️ **EACH ATTEMPT IS TRACED, UNCONDITIONALLY.** This repository has just
+/// paid for the opposite (batch 33: traces behind early `return`s, and
+/// the observability that had allowed the diagnosis destroyed by its own
+/// remedy). The volume is bounded by the fallback's ceiling: a platform
+/// dead for an hour costs ~120 lines, compared with the tens of
+/// thousands `agent.log` writes in the same time.
 #[allow(clippy::too_many_arguments)]
 async fn tenir(
     premier: Flux,
@@ -204,16 +204,16 @@ async fn tenir(
                 let delai_ms = reprise.delai_ms();
                 tokio::time::sleep(std::time::Duration::from_millis(delai_ms)).await;
                 reprise.tentative_lancee();
-                // 🔴 LE JETON EST RELU ICI, PAS CAPTURÉ AU DÉMARRAGE : voir
-                // l'en-tête. `borrow()` rend la dernière identité connue,
-                // rafraîchie à chaque battement par `plateforme/session.rs`.
+                // 🔴 THE TOKEN IS REREAD HERE, NOT CAPTURED AT STARTUP: see
+                // the header. `borrow()` returns the last known identity,
+                // refreshed at each heartbeat by `plateforme/session.rs`.
                 let jeton = jeton_courant(&identite, &jeton_initial);
                 match ouvrir(&url, &session, jeton.as_deref()).await {
                     Ok(f) => {
-                        // ⚠️ INCONDITIONNELLE, et elle porte le compte de
-                        // messages JETÉS — y compris `0`, qui est le témoin
-                        // négatif : une reprise sans perte se distingue ainsi
-                        // d'une reprise qui a mangé trois annonces.
+                        // ⚠️ UNCONDITIONAL, and it carries the count of
+                        // DROPPED messages — including `0`, which is the negative
+                        // witness: a resumption without loss is thus distinguished
+                        // from a resumption that ate three announcements.
                         let jetes = vider(&mut rx_sortant);
                         tracing::warn!(
                             session = %session,
@@ -252,10 +252,10 @@ async fn tenir(
             return;
         }
         let rearme = reprise.connexion_terminee(vecu_ms);
-        // ⚠️ INCONDITIONNELLE elle aussi, et c'est elle qui remplace le
-        // `connexion de contrôle au signaling perdue` d'avant ce lot : celle-
-        // là ne disait pas que plus rien ne reviendrait, celle-ci dit quand
-        // la suite arrive.
+        // ⚠️ UNCONDITIONAL too, and it is the one replacing the
+        // "control connection to signaling lost" line from before this batch: that
+        // one did not say nothing more would come back, this one says when
+        // the rest arrives.
         tracing::warn!(
             session = %session,
             vecu_ms,
@@ -266,8 +266,8 @@ async fn tenir(
     }
 }
 
-/// Le jeton à présenter MAINTENANT : celui de la veille d'identité s'il y en a
-/// une, sinon celui du démarrage.
+/// The token to present NOW: the identity watch's if there is
+/// one, otherwise the startup one.
 fn jeton_courant(
     identite: &Option<watch::Receiver<Option<Identite>>>,
     jeton_initial: &Option<String>,
@@ -278,8 +278,8 @@ fn jeton_courant(
         .or_else(|| jeton_initial.clone())
 }
 
-/// Jette ce qui attendait d'être émis, et rend combien. Voir l'en-tête pour la
-/// raison : une annonce périmée est pire que pas d'annonce.
+/// Drops what was waiting to be emitted, and returns how much. See the header for the
+/// reason: a stale announcement is worse than no announcement.
 fn vider(rx: &mut tokio::sync::mpsc::UnboundedReceiver<String>) -> usize {
     let mut jetes = 0usize;
     while rx.try_recv().is_ok() {
@@ -288,12 +288,12 @@ fn vider(rx: &mut tokio::sync::mpsc::UnboundedReceiver<String>) -> usize {
     jetes
 }
 
-/// Sert UNE connexion jusqu'à sa fin : lit ce qui arrive, écrit ce qui part.
+/// Serves ONE connection until it ends: reads what arrives, writes what leaves.
 ///
-/// **Un seul `select!` là où il y avait deux tâches**, parce que les deux
-/// moitiés partagent désormais un destin : quand la connexion tombe, il faut
-/// que la même boucle en rouvre une. Deux tâches indépendantes obligeraient à
-/// les coordonner pour savoir laquelle reconnecte.
+/// **A single `select!` where there were two tasks**, because the two
+/// halves now share a fate: when the connection drops, the
+/// same loop must open a new one. Two independent tasks would require
+/// coordinating them to know which one reconnects.
 async fn servir(
     flux: Flux,
     tx_entrant: &std::sync::mpsc::Sender<DepuisLaShell>,
@@ -306,20 +306,20 @@ async fn servir(
                 let Some(recu) = recu else { return Fin::ConnexionPerdue };
                 let message = match recu {
                     Ok(Message::Text(texte)) => texte,
-                    // ⚠️ `Err` REND LA MAIN, il ne `continue` pas. Avant ce
-                    // lot, un `let Ok(Message::Text(_)) = recu else
-                    // { continue }` traitait une erreur de flux comme une
-                    // trame à ignorer : sur une erreur PERSISTANTE, cette
-                    // boucle tournait à vide en consommant un cœur, sans une
-                    // trace. Non observé en production — la connexion se
-                    // terminait par `None` — mais le chemin existait.
+                    // ⚠️ `Err` RETURNS CONTROL, it does not `continue`. Before this
+                    // batch, a `let Ok(Message::Text(_)) = recu else
+                    // { continue }` treated a stream error as a
+                    // frame to ignore: on a PERSISTENT error, this
+                    // loop spun idle consuming a core, without a
+                    // trace. Not observed in production — the connection
+                    // ended with `None` — but the path existed.
                     Err(erreur) => {
                         tracing::warn!(%erreur, "lecture de la session de contrôle en erreur");
                         return Fin::ConnexionPerdue;
                     }
                     Ok(Message::Close(_)) => return Fin::ConnexionPerdue,
-                    // Ping/Pong/Binary : `tokio-tungstenite` répond seul aux
-                    // Ping, il n'y a rien à faire ici.
+                    // Ping/Pong/Binary: `tokio-tungstenite` answers
+                    // Pings on its own, there is nothing to do here.
                     Ok(_) => continue,
                 };
                 if let Some(message) = analyser(&message) {
@@ -339,27 +339,27 @@ async fn servir(
     }
 }
 
-/// Ce qu'une trame texte veut dire, ou rien.
+/// What a text frame means, or nothing.
 fn analyser(texte: &str) -> Option<DepuisLaShell> {
     match serde_json::from_str::<DepuisLaShell>(texte) {
         Ok(message) => Some(message),
-        // Le signaling envoie aussi `ice-config` et `peer-gone`, qui
-        // ne concernent pas la session de contrôle : les ignorer est
-        // le comportement voulu, pas un défaut.
+        // Signaling also sends `ice-config` and `peer-gone`, which
+        // do not concern the control session: ignoring them is
+        // the intended behaviour, not a defect.
         //
-        // 🔴 MAIS `error` N'EST PAS DE CEUX-LÀ, et le traiter comme
-        // tel a coûté un diagnostic à la recette de P3 : le refus de
-        // poignée de main de la plateforme arrive sous cette forme
-        // (`{"type":"error","reason":…,"motif":…}`, `relais.ts`), et
-        // il partait en `debug!` — donc invisible sous le
-        // `RUST_LOG=info` de l'exploitation. Le seul signe restant
-        // était `connexion de contrôle au signaling perdue`, qui se
-        // lit comme une panne réseau et non comme un refus.
+        // 🔴 BUT `error` IS NOT ONE OF THEM, and treating it as
+        // such cost P3's acceptance run a diagnosis: the platform's
+        // handshake refusal arrives in this form
+        // (`{"type":"error","reason":…,"motif":…}`, `relais.ts`), and
+        // it went out as `debug!` — hence invisible under operations'
+        // `RUST_LOG=info`. The only remaining sign
+        // was "control connection to signaling lost", which
+        // reads like a network failure and not like a refusal.
         //
-        // ⚠️ **CE BRAS COMPTE DOUBLE DEPUIS QUE LA CONNEXION SE REPREND** :
-        // un jeton expiré présenté par une reconnexion se dit ici, et
-        // c'est la SEULE façon de distinguer « la plateforme est morte »
-        // de « la plateforme refuse ce que je lui présente ».
+        // ⚠️ **THIS ARM COUNTS DOUBLE SINCE THE CONNECTION RESUMES**:
+        // an expired token presented by a reconnection is told here, and
+        // it is the ONLY way to distinguish "the platform is dead"
+        // from "the platform refuses what I present to it".
         Err(_) => match serde_json::from_str::<serde_json::Value>(texte) {
             Ok(valeur) if valeur.get("type").and_then(|t| t.as_str()) == Some("error") => {
                 tracing::warn!(
