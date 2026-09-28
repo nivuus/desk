@@ -1,22 +1,22 @@
-// LE LECTEUR « MES FICHIERS » — le câblage du pont ProjFS, à dépendances
-// injectées.
+// THE "MY FILES" READER — the ProjFS bridge's wiring, with injected
+// dependencies.
 //
-// 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026, VERBATIM. Les six blocs
-// (quatre 🔴, deux ⚠️) qu'il porte documentent chacun un défaut MESURÉ :
-// 🔴 l'activation utilisateur transitoire qu'exige `showDirectoryPicker()`,
-// 🔴 le transtypage qui n'est PAS un contrôle, 🔴 l'ordre du `Bonjour` (F5),
-// 🔴 l'attente de l'ouverture du canal (le `Bonjour` partait dans le vide, et
-// AUCUNE écriture due n'aurait jamais été poussée), ⚠️ la garde `pont !== ce`
-// (un écouteur qui survit à son objet), et ⚠️ la fermeture des flux au
-// `close`. Aucun n'est décoratif : ils ont été déplacés à la lettre, jamais
-// résumés.
+// 🔴 EXTRACTED FROM `shell-page.ts` ON AUGUST 31st, 2026, VERBATIM. The six blocks
+// (four 🔴, two ⚠️) it carries each document a MEASURED defect:
+// 🔴 the transient user activation `showDirectoryPicker()` requires,
+// 🔴 the cast that is NOT a check, 🔴 the order of the `Bonjour` (F5),
+// 🔴 waiting for the channel to open (the `Bonjour` went into the void, and
+// NO due write would ever have been pushed), ⚠️ the `pont !== ce` guard
+// (a listener outliving its object), and ⚠️ closing the streams on
+// `close`. None is decorative: they were moved to the letter, never
+// summarised.
 //
-// ⚠️ CE FICHIER N'EST PAS TESTÉ, ET NE PEUT PAS L'ÊTRE ICI : il ouvre un
-// `RTCPeerConnection`, un `WebSocket` et un sélecteur de répertoire, dont
-// aucun n'existe sous Node — et `client/` n'a ni jsdom ni happy-dom, par
-// convention (`accent-dom.test.ts`). Tout ce qu'il porte de DÉCIDABLE est
-// testé ailleurs : `shell.ts`, `fichiers/protocole.ts` et
-// `fichiers/adaptateur.ts` sont purs et couverts.
+// ⚠️ THIS FILE IS NOT TESTED, AND CANNOT BE HERE: it opens an
+// `RTCPeerConnection`, a `WebSocket` and a directory picker, none of
+// which exists under Node — and `client/` has neither jsdom nor happy-dom, by
+// convention (`accent-dom.test.ts`). Everything DECIDABLE it carries is
+// tested elsewhere: `shell.ts`, `fichiers/protocole.ts` and
+// `fichiers/adaptateur.ts` are pure and covered.
 
 import { creerAdaptateur } from '../fichiers/adaptateur';
 import {
@@ -34,38 +34,38 @@ import type { Bureau } from '../shell';
 export interface DepsFichiers {
     bureau: Bureau;
     signalingUrl: string;
-    /// 🔴 **UN FOURNISSEUR DE JETON FRAIS, ET IL N'Y EN AVAIT AUCUN** (critique
-    /// ① de la revue finale du 31 août 2026). `fichiers/canal.ts` lisait
-    /// `jetonAcces()` — le contenu **BRUT** du coffre, sans passer par
-    /// `assurerAccesFrais` —, or « Choisir mon dossier » est un geste qui peut
-    /// arriver n'importe quand après le chargement de la page, et un jeton
-    /// d'accès vit **dix minutes** (`plateforme/src/identite/jeton.ts`).
-    /// Le pont se voyait donc refuser sa session sans que rien ne relie
-    /// l'échec à l'expiration.
+    /// 🔴 **A FRESH TOKEN PROVIDER, AND THERE WAS NONE** (critical
+    /// ① of the final review of August 31st, 2026). `fichiers/canal.ts` read
+    /// `jetonAcces()` — the vault's **RAW** content, without going through
+    /// `assurerAccesFrais` —, yet "Choose my folder" is a gesture that can
+    /// happen any time after the page loads, and an access
+    /// token lives **ten minutes** (`plateforme/src/identite/jeton.ts`).
+    /// The bridge was therefore refused its session without anything linking
+    /// the failure to expiry.
     ///
-    /// ⚠️ **APPELÉ APRÈS LE SÉLECTEUR DE RÉPERTOIRE, JAMAIS AVANT** : un
-    /// `await` posé avant `showDirectoryPicker()` consommerait l'activation
-    /// utilisateur transitoire, et le sélecteur serait refusé sans que rien ne
-    /// le dise. Voir `monterLeLecteur`, où l'ordre est appliqué.
+    /// ⚠️ **CALLED AFTER THE DIRECTORY PICKER, NEVER BEFORE**: an
+    /// `await` placed before `showDirectoryPicker()` would consume the transient
+    /// user activation, and the picker would be refused without anything
+    /// saying so. See `monterLeLecteur`, where the order is applied.
     jetonFrais(): Promise<string | undefined>;
-    /// `?faute-fichiers=1` — variable de BANC, jamais une configuration
-    /// livrée. Lue UNE fois par la page et passée ici, jamais relue : c'est la
-    /// convention de `PLEIN_ECRAN` et de `PART_SONDAGE` côté agent — le
-    /// mécanisme lit un drapeau qu'on lui donne. Et un utilisateur qui
-    /// créerait un dossier au nom réservé ne casserait pas son propre pont.
+    /// `?faute-fichiers=1` — BENCH variable, never a shipped
+    /// configuration. Read ONCE by the page and passed here, never reread: it is the
+    /// convention of `PLEIN_ECRAN` and `PART_SONDAGE` on the agent side — the
+    /// mechanism reads a flag it is given. And a user who
+    /// created a folder with the reserved name would not break their own bridge.
     fautesArmees: boolean;
     boutonDossier: HTMLButtonElement;
     boutonRafraichir: HTMLButtonElement;
     boutonReprendre: HTMLButtonElement;
-    /// Le `<details>` à déplier au clic.
+    /// The `<details>` to unfold on click.
     ///
-    /// ⚠️ **OBLIGATOIRE DEPUIS LA REVUE FINALE (Minor ①).** Sa doc disait
-    /// « `undefined` quand la page n'a pas de pli — c'est le cas de
-    /// `shell.html` » : **faux depuis la tâche 9**, où `shell.html` est
-    /// devenue une redirection sans aucune UI. L'unique appelant
-    /// (`bureau/porteur-dom.ts`) passait TOUJOURS une section, si bien que
-    /// l'optionnel n'était plus que du code mort justifié par une phrase
-    /// fausse.
+    /// ⚠️ **MANDATORY SINCE THE FINAL REVIEW (Minor ①).** Its doc said
+    /// "`undefined` when the page has no fold — that is the case of
+    /// `shell.html`": **wrong since task 9**, where `shell.html`
+    /// became a redirect without any UI. The only caller
+    /// (`bureau/porteur-dom.ts`) ALWAYS passed a section, so that
+    /// the optional was nothing more than dead code justified by a
+    /// false sentence.
     section: HTMLDetailsElement;
 }
 
@@ -73,23 +73,23 @@ export function installerLePont(deps: DepsFichiers): void {
     let pont: CanalFichiers | null = null;
 
     deps.boutonDossier.addEventListener('click', () => {
-        // ⚠️ LE DÉPLIAGE EST AU CLIC, ET AVANT TOUT `await`. Le déplier au
-        // montage RÉUSSI donnerait l'impression, sur une annulation du
-        // sélecteur, que le clic n'a rien fait.
+        // ⚠️ UNFOLDING HAPPENS ON CLICK, AND BEFORE ANY `await`. Unfolding it on
+        // SUCCESSFUL mount would give the impression, on a picker
+        // cancellation, that the click did nothing.
         deps.section.open = true;
-        // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR TRANSITOIRE,
-        // et c'est pourquoi il est appelé depuis ce gestionnaire, et
-        // jamais depuis un message de canal. Le gestionnaire n'est pas `async` : un
-        // `await` avant l'appel consommerait l'activation, et le sélecteur serait
-        // refusé sans que rien ne le dise. Même contrainte que `window.open()`, que
-        // cette page connaît déjà.
+        // 🔴 `showDirectoryPicker()` REQUIRES A TRANSIENT USER ACTIVATION,
+        // and that is why it is called from this handler, and
+        // never from a channel message. The handler is not `async`: an
+        // `await` before the call would consume the activation, and the picker would be
+        // refused without anything saying so. Same constraint as `window.open()`, which
+        // this page already knows.
         void monterLeLecteur();
     });
 
     async function monterLeLecteur(): Promise<void> {
-        // Un second clic remplace le dossier : l'ancien pont part d'abord, sans
-        // quoi deux `PeerConnection` se disputeraient la session `…:fichiers` et
-        // la seconde serait refusée par le relais.
+        // A second click replaces the folder: the old bridge goes first, otherwise
+        // two `PeerConnection`s would fight over the `…:fichiers` session and
+        // the second would be refused by the relay.
         pont?.close();
         pont = null;
         deps.bureau.lecteurDemonte();
@@ -98,15 +98,15 @@ export function installerLePont(deps: DepsFichiers): void {
             deps.bureau.lecteurEchoue((e as Error).message);
             return undefined;
         });
-        // `null` = annulation délibérée, `undefined` = échec déjà signalé.
+        // `null` = deliberate cancellation, `undefined` = failure already reported.
         if (choix === null || choix === undefined) return;
 
-        // 🔴 **LE JETON EST REDEMANDÉ ICI, ET SEULEMENT ICI** — après le
-        // sélecteur (qui exige l'activation utilisateur, donc aucun `await`
-        // avant lui) et avant la poignée de main de signaling. C'est la
-        // moitié « pont » de la critique ① de la revue finale : `canal.ts`
-        // lisait le coffre BRUT, dont le jeton peut avoir expiré depuis le
-        // chargement de la page.
+        // 🔴 **THE TOKEN IS REQUESTED AGAIN HERE, AND ONLY HERE** — after the
+        // picker (which requires user activation, hence no `await`
+        // before it) and before the signaling handshake. It is the
+        // "bridge" half of critique ① of the final review: `canal.ts`
+        // read the RAW vault, whose token may have expired since
+        // the page loaded.
         const jeton = await deps.jetonFrais();
         if (jeton === undefined) {
             deps.bureau.lecteurEchoue(
@@ -115,23 +115,23 @@ export function installerLePont(deps: DepsFichiers): void {
             return;
         }
 
-        // 🔴 LA MÊME POIGNÉE SERT À LIRE, À ÉCRIRE ET À MUTER.
+        // 🔴 THE SAME HANDLE IS USED TO READ, TO WRITE AND TO MUTATE.
         //
-        // ❌ **CE TRANSTYPAGE N'EST PAS UN CONTRÔLE, ET F2 LE DÉCLARAIT COMME TEL.**
-        // Ces lignes disaient : « le transtypage est le CONTRÔLE DE COMPATIBILITÉ
-        // STRUCTURELLE de F2 : si la vraie poignée cessait de le satisfaire,
-        // `tsc --noEmit` le dirait ICI ». **C'est faux, et c'est mesuré** :
-        // `choix.racine` est typée `Racine`, et `RacineInscriptible` en est un
-        // SOUS-type — un `as` vers un sous-type ASSERTE, il ne vérifie pas.
-        // Ajouter à `RacineInscriptible` une méthode que
-        // `FileSystemDirectoryHandle` n'a pas ne faisait rougir QUE le faux de
-        // test.
+        // ❌ **THIS CAST IS NOT A CHECK, AND F2 DECLARED IT AS ONE.**
+        // These lines said: "the cast is F2's STRUCTURAL COMPATIBILITY
+        // CHECK: if the real handle stopped satisfying it,
+        // `tsc --noEmit` would say so HERE". **It is wrong, and it is measured**:
+        // `choix.racine` is typed `Racine`, and `RacineInscriptible` is a
+        // SUBtype of it — an `as` to a subtype ASSERTS, it does not check.
+        // Adding to `RacineInscriptible` a method
+        // `FileSystemDirectoryHandle` does not have only turned the test
+        // fake red.
         //
-        // ✅ **LE CONTRÔLE RÉEL VIT DÉSORMAIS DANS `fichiers/canal.ts`**, sur la
-        // VRAIE poignée, avant tout élargissement — et il a trouvé une
-        // incompatibilité de F2 dès qu'il a été posé (voir
+        // ✅ **THE REAL CHECK NOW LIVES IN `fichiers/canal.ts`**, on the
+        // REAL handle, before any widening — and it found an
+        // incompatibility of F2 as soon as it was set (see
         // `journaux-pont-fichiers-f3/t9-controle-structurel-de-f2-vacueux.txt`).
-        // Ces deux lignes-ci ne sont plus que du câblage.
+        // These two lines are now just wiring.
         const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
         const racineMutable: RacineMutable = choix.racine as RacineMutable;
         const ecrivain = creerEcrivain(racineInscriptible);
@@ -145,10 +145,10 @@ export function installerLePont(deps: DepsFichiers): void {
                 onDues: (dues, retenues) => deps.bureau.ecrituresDues(dues, retenues),
                 onEchecEcriture: (chemin, code) => deps.bureau.ecritureEchouee(chemin, code),
                 onEchecMutation: (quoi, code) => deps.bureau.mutationEchouee(quoi, code),
-                // 🔵 **L'INSTRUMENTATION QUE LA SPEC §3.5.1 EXIGE**, et elle part
-                // par le journal parce que le navigateur est le seul à SAVOIR ce
-                // qu'il a fait. Le pont, lui, journalise ce que LUI sait — voir la
-                // divergence déclarée dans `protocole.ts`.
+                // 🔵 **THE INSTRUMENTATION SPEC §3.5.1 REQUIRES**, and it goes out
+                // through the log because the browser is the only one to KNOW what
+                // it did. The bridge, for its part, logs what IT knows — see the
+                // divergence declared in `protocole.ts`.
                 onRenommagePorCopie: (de, vers, octets, entrees) => {
                     console.warn(
                         `renommage par copie « ${de} » → « ${vers} » : ${octets} octets, ` +
@@ -172,45 +172,45 @@ export function installerLePont(deps: DepsFichiers): void {
         deps.bureau.lecteurMonte(choix.nom);
 
         // ════════════════════════════════════════════════════════════════════
-        // 🔴 **F5 — `Bonjour` PART ICI, ET L'ORDRE N'EST PAS INDIFFÉRENT.**
+        // 🔴 **F5 — `Bonjour` GOES OUT HERE, AND THE ORDER IS NOT INDIFFERENT.**
         //
-        // Il est envoyé **APRÈS** que l'écrivain, le mutateur et l'adaptateur sont
-        // posés et que le canal est ouvert — jamais avant. C'est lui, et lui seul,
-        // qui déclenche la reprise des écritures dues côté pont : avant F5, celle-ci
-        // courait au démarrage du FIL, c'est-à-dire *sans savoir si un navigateur
-        // est là, ni lequel, ni sur quel répertoire*. F2 a mesuré, deux fois sur
-        // deux, la poussée du rejeu **0,8 s AVANT** cette annonce de montage, puis
-        // une expiration **+30,2 s** plus tard.
+        // It is sent **AFTER** the writer, the mutator and the adapter are
+        // set and the channel is open — never before. It is it, and it alone,
+        // that triggers the resumption of due writes on the bridge side: before F5, that
+        // ran at the THREAD's startup, that is, *without knowing whether a browser
+        // is there, nor which, nor on which directory*. F2 measured, twice out of
+        // two, the replay push **0.8 s BEFORE** this mount announcement, then
+        // an expiry **+30.2 s** later.
         //
-        // ⚠️ **`choix.nom` est le `name` de la poignée de répertoire**, et c'est la
-        // MÊME valeur qu'un répertoire choisi par `showDirectoryPicker()` ou par
-        // OPFS rendrait : c'est ce qui permet à la recette d'éprouver la règle sans
-        // le sélecteur. **Elle n'éprouve pas pour autant le modèle de permission**,
-        // qui n'est appelé nulle part dans ce dépôt.
+        // ⚠️ **`choix.nom` is the directory handle's `name`**, and it is the
+        // SAME value a directory chosen through `showDirectoryPicker()` or through
+        // OPFS would return: that is what lets the acceptance run exercise the rule without
+        // the picker. **It does not exercise the permission model for all that**,
+        // which is called nowhere in this repository.
         //
-        // ⚠️ **`forcer: false` au montage, TOUJOURS.** Forcer est un geste de
-        // l'utilisateur, jamais un défaut : un `true` ici rendrait le bouton
-        // « Reprendre » inatteignable et réintroduirait le danger du §6.4 cas 2.
+        // ⚠️ **`forcer: false` at mount, ALWAYS.** Forcing is a user
+        // gesture, never a default: a `true` here would make the
+        // "Resume" button unreachable and would reintroduce the danger of §6.4 case 2.
         // ════════════════════════════════════════════════════════════════════
-        // 🔴 **L'ANNONCE ATTEND L'OUVERTURE DU CANAL, ET C'EST UN DÉFAUT QUE SEUL
-        // LE CHEMIN RÉEL POUVAIT MONTRER.**
+        // 🔴 **THE ANNOUNCEMENT WAITS FOR THE CHANNEL TO OPEN, AND IT IS A DEFECT ONLY
+        // THE REAL PATH COULD SHOW.**
         //
-        // *La première rédaction envoyait ici même, sans attendre.*
-        // `connecterCanalFichiers` rend dès que la réponse SDP est reçue ; le canal
-        // de données, lui, s'ouvre **après**. Mesuré sur la VM, dans cet ordre :
-        // « pont fichiers : réponse reçue » → **`canal fichiers ferme : annonce non
-        // envoyee`** → « connecting » → « connected » → « canal fichiers ouvert ».
-        // Le `Bonjour` partait dans le vide, **et donc AUCUNE écriture due n'aurait
-        // jamais été poussée** — un silence, c'est-à-dire pire que les trente
-        // secondes que F2 avait mesurées et que F5 existe pour supprimer.
+        // *The first draft sent right here, without waiting.*
+        // `connecterCanalFichiers` returns as soon as the SDP answer is received; the data
+        // channel, for its part, opens **afterwards**. Measured on the VM, in this order:
+        // "file bridge: answer received" → **`file channel closed: announcement not
+        // sent`** → "connecting" → "connected" → "file channel open".
+        // The `Bonjour` went into the void, **and therefore NO due write would
+        // ever have been pushed** — a silence, that is, worse than the thirty
+        // seconds F2 had measured and that F5 exists to remove.
         //
-        // 🔵 **C'est mon propre `console.warn` qui l'a dénoncé.** Un envoi qui
-        // aurait échoué en silence aurait laissé la recette verte sur ses critères
-        // de cache et muette sur celui-ci.
+        // 🔵 **It is my own `console.warn` that exposed it.** A send that
+        // had failed silently would have left the acceptance run green on its cache
+        // criteria and silent on this one.
         //
-        // ⚠️ **LES DEUX BRANCHES SONT NÉCESSAIRES** : le canal peut être déjà
-        // ouvert quand on arrive ici (rien ne l'interdit), et n'écouter que
-        // `'open'` manquerait alors l'événement pour toujours.
+        // ⚠️ **BOTH BRANCHES ARE NECESSARY**: the channel may already be
+        // open when we get here (nothing forbids it), and listening only to
+        // `'open'` would then miss the event forever.
         const envoyerAuPont = (trame: ArrayBuffer): void => {
             if (!pont) {
                 console.warn('aucun pont : annonce non envoyee');
@@ -225,31 +225,31 @@ export function installerLePont(deps: DepsFichiers): void {
         envoyerAuPont(trameBonjour(choix.nom, false));
         deps.boutonRafraichir.onclick = () => envoyerAuPont(trameRafraichir());
         deps.boutonReprendre.onclick = () => {
-            // **Reprendre est un `Bonjour` FORCÉ**, et non un verbe de plus : c'est
-            // exactement « je confirme que ce répertoire est le bon ». Le pont
-            // mémorise alors le nom annoncé, et le bouton disparaît à l'annonce
-            // suivante — sans qu'aucun état local n'ait à être remis à zéro ici.
+            // **Resuming is a FORCED `Bonjour`**, and not one more verb: it is
+            // exactly "I confirm this directory is the right one". The bridge
+            // then stores the announced name, and the button disappears at the next
+            // announcement — without any local state having to be reset here.
             envoyerAuPont(trameBonjour(choix.nom, true));
         };
 
-        // ⚠️ LE DÉMONTAGE SUIT LA CONNEXION, PAS LE CANAL SEUL : un canal fermé sur
-        // une connexion qui se rétablit serait rouvert par l'agent, alors qu'une
-        // connexion `failed` ou `closed` est définitive pour ce pont-ci.
+        // ⚠️ UNMOUNTING FOLLOWS THE CONNECTION, NOT THE CHANNEL ALONE: a channel closed on
+        // a connection that recovers would be reopened by the agent, whereas a
+        // `failed` or `closed` connection is final for this bridge.
         //
-        // ⚠️ LE PONT COURANT EST CAPTURÉ, et l'écouteur se tait s'il n'est plus
-        // celui-là. Sans cette garde, la fermeture de l'ANCIEN pont — que le
-        // remontage vient de provoquer — effacerait l'état du NOUVEAU : un
-        // écouteur qui survit à son objet est le patron exact d'une course qu'on
-        // ne voit qu'en cliquant deux fois.
+        // ⚠️ THE CURRENT BRIDGE IS CAPTURED, and the listener goes silent if it is no longer
+        // that one. Without this guard, closing the OLD bridge — which the
+        // remount has just caused — would erase the NEW one's state: a
+        // listener outliving its object is the exact pattern of a race one
+        // only sees by clicking twice.
         const ce = pont;
         ce.pc.addEventListener('connectionstatechange', () => {
             if (pont !== ce) return;
             const etat = ce.pc.connectionState;
             if (etat === 'failed' || etat === 'closed') deps.bureau.lecteurDemonte();
         });
-        // ⚠️ **LES FLUX OUVERTS SE FERMENT AVEC LE CANAL.** Un flux
-        // `createWritable()` laissé ouvert garde son fichier d'échange, et son
-        // fichier de destination reste INCHANGÉ — la committaison est au `close()`.
+        // ⚠️ **OPEN STREAMS CLOSE WITH THE CHANNEL.** A
+        // `createWritable()` stream left open keeps its swap file, and its
+        // destination file stays UNCHANGED — the commit happens at `close()`.
         ce.canal.addEventListener('close', () => ecrivain.abandonner());
     }
 }

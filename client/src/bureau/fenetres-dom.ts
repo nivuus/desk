@@ -1,14 +1,14 @@
-// LA POSE DE LA LISTE « MES FENÊTRES » DANS LE GABARIT — du câblage, et rien
-// d'autre. Les décisions (quel mot, quelle classe, un bouton ou pas, la
-// section visible ou non) vivent dans `fenetres.ts`, qui est pur et testé.
+// PLACING THE "MY WINDOWS" LIST IN THE TEMPLATE — wiring, and nothing
+// else. The decisions (which word, which class, a button or not, the
+// section visible or not) live in `fenetres.ts`, which is pure and tested.
 //
-// 🔴 EXTRAIT DE `shell-page.ts` LE 31 AOÛT 2026. Ce n'est pas un rangement :
-// `shell-page.ts` déclare lui-même, dans son en-tête, que son câblage n'est
-// éprouvable par RIEN. Cette extraction ne rend pas CE FICHIER-ci éprouvable
-// non plus — elle sort de lui tout ce qui pouvait l'être.
+// 🔴 EXTRACTED FROM `shell-page.ts` ON AUGUST 31st, 2026. It is not tidying up:
+// `shell-page.ts` itself declares, in its header, that its wiring is
+// testable by NOTHING. This extraction does not make THIS file testable
+// either — it moves out of it everything that could be.
 //
-// ⚠️ LE BALISAGE VIENT D'UN `<template>` DE LA PAGE, PAS D'ICI : les classes
-// restent dans le HTML, où le contrôle §7.9 les lit sans avoir à analyser du
+// ⚠️ THE MARKUP COMES FROM A `<template>` OF THE PAGE, NOT FROM HERE: the classes
+// stay in the HTML, where check §7.9 reads them without having to parse
 // TypeScript.
 
 import type { FenetreConnue } from '../shell';
@@ -17,15 +17,15 @@ import { lignes, sectionVisible } from './fenetres';
 export interface DepsFenetres {
     liste: HTMLUListElement;
     modele: HTMLTemplateElement;
-    /// La section à révéler ou à recacher.
+    /// The section to reveal or to hide again.
     ///
-    /// ⚠️ **OBLIGATOIRE DEPUIS LA REVUE FINALE (Minor ①).** Sa doc disait
-    /// « `undefined` quand la page affiche la liste sans pli — c'est le cas de
-    /// `shell.html` » : **faux depuis la tâche 9**, où `shell.html` est devenue
-    /// une redirection sans aucune UI. L'unique appelant
-    /// (`bureau/porteur-dom.ts`) passait TOUJOURS une section, si bien que
-    /// l'optionnel n'était plus que du code mort justifié par une phrase
-    /// fausse.
+    /// ⚠️ **MANDATORY SINCE THE FINAL REVIEW (Minor ①).** Its doc said
+    /// "`undefined` when the page shows the list without a fold — that is the case of
+    /// `shell.html`": **wrong since task 9**, where `shell.html` became
+    /// a redirect without any UI. The only caller
+    /// (`bureau/porteur-dom.ts`) ALWAYS passed a section, so that
+    /// the optional was nothing more than dead code justified by a
+    /// false sentence.
     section: HTMLElement;
     rouvrir(session: string): void;
 }
@@ -38,12 +38,12 @@ export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres):
 
         const pastille = item.querySelector<HTMLElement>('[data-etat]')!;
         pastille.textContent = ligne.etat;
-        // 🔴 DEUX LITTÉRAUX, ET NON UNE CLASSE CALCULÉE. `design/classes.ts::
-        // classesEmployeesTs` ne reconnaît que `classList.add('…')` et
-        // `className = '…'` avec un littéral DANS l'appel : passer un nom par une
-        // variable rendrait ces deux classes invisibles au contrôle §7.9, donc
-        // orphelines sans que rien ne le dise. C'est la forme qu'avait
-        // `shell-page.ts`, et elle est conservée à dessein.
+        // 🔴 TWO LITERALS, AND NOT A COMPUTED CLASS. `design/classes.ts::
+        // classesEmployeesTs` only recognises `classList.add('…')` and
+        // `className = '…'` with a literal IN the call: passing a name through a
+        // variable would make these two classes invisible to check §7.9, hence
+        // orphaned without anything saying so. It is the form
+        // `shell-page.ts` had, and it is kept on purpose.
         if (ligne.ouverte) pastille.classList.add('bureau__pastille--ouverte');
         else pastille.classList.add('bureau__pastille--fermee');
 
@@ -53,7 +53,7 @@ export function dessinerFenetres(fenetres: FenetreConnue[], deps: DepsFenetres):
 
         deps.liste.append(item);
     }
-    // ⚠️ RÉVÉLER **ET** RECACHER. Ne faire que le premier laisserait une
-    // section vide sur un hub qui n'a plus rien à montrer.
+    // ⚠️ REVEAL **AND** HIDE AGAIN. Doing only the first would leave an
+    // empty section on a hub that has nothing left to show.
     deps.section.hidden = !sectionVisible(fenetres);
 }

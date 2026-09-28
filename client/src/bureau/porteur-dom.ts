@@ -1,33 +1,33 @@
-// LE CÂBLAGE DU BUREAU DANS LE HUB : élection, socket de la session de
-// contrôle, canal entre onglets, DOM.
+// THE DESKTOP'S WIRING IN THE HUB: election, control session socket,
+// cross-tab channel, DOM.
 //
-// 🔴 CE FICHIER EST LE SUCCESSEUR DE `shell-page.ts`, ET IL NE REPREND PAS SON
-// DÉFAUT : ses dépendances sont INJECTÉES, et les trois règles qu'il emploie
-// (`porteur.ts`, `fenetres-dom.ts`, `shell.ts`) sont testées ailleurs.
+// 🔴 THIS FILE IS THE SUCCESSOR OF `shell-page.ts`, AND IT DOES NOT CARRY OVER ITS
+// DEFECT: its dependencies are INJECTED, and the three rules it uses
+// (`porteur.ts`, `fenetres-dom.ts`, `shell.ts`) are tested elsewhere.
 //
-// ⚠️ AUCUNE RÈGLE ICI. Une condition qui déciderait quelque chose du produit
-// doit descendre dans `porteur.ts` ou `shell.ts`.
+// ⚠️ NO RULE HERE. A condition that would decide something about the product
+// must move down into `porteur.ts` or `shell.ts`.
 //
-// 🔴 CETTE DÉCLARATION A ÉTÉ PRISE EN DÉFAUT DEUX FOIS, ET LES DEUX SONT
-// NOMMÉES PLUTÔT QUE TUES :
-//   ① revue round 1 — « quelle liste cet onglet peint-il » ÉTAIT une règle,
-//      posée ici sous la forme d'un `bureau.liste()` appelé sans condition par
-//      la minuterie. Descendue dans `porteur.ts::fenetresAPeindre`.
-//   ② revue FINALE (31 août 2026, Minor ④) — « qui ouvre la fenêtre au clic
-//      Rouvrir » en était une autre, sous la forme d'un ternaire
-//      `porteur ? bureau.rouvrir : window.open`. Descendue dans
-//      `porteur.ts::ouvertureParLeBureau`. **La séquence de promotion**
-//      (redemander un jeton, installer le pont, ouvrir le socket) est
-//      descendue dans `porteur.ts::promouvoir` par la même revue.
+// 🔴 THIS DECLARATION WAS CAUGHT OUT TWICE, AND BOTH ARE
+// NAMED RATHER THAN KEPT QUIET:
+//   ① review round 1 — "which list does this tab paint" WAS a rule,
+//      set here in the form of a `bureau.liste()` called unconditionally by
+//      the timer. Moved down into `porteur.ts::fenetresAPeindre`.
+//   ② FINAL review (August 31st, 2026, Minor ④) — "who opens the window on a
+//      Reopen click" was another, in the form of a ternary
+//      `porteur ? bureau.rouvrir : window.open`. Moved down into
+//      `porteur.ts::ouvertureParLeBureau`. **The promotion sequence**
+//      (request a token again, install the bridge, open the socket) was
+//      moved down into `porteur.ts::promouvoir` by the same review.
 //
-// ⚠️ CE QUI RESTE ICI, ET QUE LA DÉCLARATION NE DOIT PAS PROMETTRE D'AVOIR
-// SORTI : le choix des TEXTES affichés et le branchement des écouteurs DOM.
-// Changer un texte ne change aucune décision du produit — c'est le critère
-// reproductible de ce dépôt, et il est appliqué ici plutôt que supposé.
+// ⚠️ WHAT STAYS HERE, AND WHICH THE DECLARATION MUST NOT CLAIM TO HAVE
+// MOVED OUT: the choice of displayed TEXTS and the wiring of DOM listeners.
+// Changing a text changes no product decision — it is this repository's
+// reproducible criterion, and it is applied here rather than assumed.
 
-// ⚠️ AUCUN import d'`adresseSignaling` ICI : l'URL arrive par `deps`, calculée
-// par `hub/page.ts`. L'importer sans l'employer serait un `TS6133`, c'est-à-dire
-// un ÉCHEC de `tsc --noEmit`, pas un avertissement.
+// ⚠️ NO import of `adresseSignaling` HERE: the URL arrives through `deps`, computed
+// by `hub/page.ts`. Importing it without using it would be a `TS6133`, that is,
+// a FAILURE of `tsc --noEmit`, not a warning.
 import { composer } from '../prefixe';
 import { creerBureau, type FenetreConnue, type Ton } from '../shell';
 import { dessinerFenetres } from './fenetres-dom';
@@ -53,23 +53,23 @@ declare global {
     }
 }
 
-/// Ce qu'un onglet qui ne tient pas le bureau dit de LUI-MÊME.
+/// What a tab that does not hold the desktop says about ITSELF.
 ///
-/// 🔴 **UN SUIVEUR ÉTAIT MUET SUR SON PROPRE ÉTAT** (Minor ⑥ de la revue
-/// finale) : le seul texte qui l'expliquait était écrit dans `#etat-fichiers`,
-/// **à l'intérieur d'un `<details>` replié**, et `#statut` restait vide.
-/// ⚠️ **CE N'EST PAS UN MESSAGE D'ERREUR** — la décision « aucune erreur au
-/// second onglet » (spec §2) n'interdit pas d'INFORMER, et cette ligne est ce
-/// qui rend compréhensible le fait qu'un « Lancer » cliqué ici fasse paraître
-/// la fenêtre dans l'autre onglet.
+/// 🔴 **A FOLLOWER WAS SILENT ABOUT ITS OWN STATE** (Minor ⑥ of the final
+/// review): the only text explaining it was written in `#etat-fichiers`,
+/// **inside a collapsed `<details>`**, and `#statut` stayed empty.
+/// ⚠️ **IT IS NOT AN ERROR MESSAGE** — the decision "no error on the
+/// second tab" (spec §2) does not forbid INFORMING, and this line is what
+/// makes understandable the fact that a "Launch" clicked here makes
+/// the window appear in the other tab.
 const TEXTE_SUIVEUR = 'Bureau tenu par un autre onglet.';
 
-/// Le nom du verrou d'élection, PRÉFIXÉ par la VM.
+/// The election lock's name, PREFIXED by the VM.
 ///
-/// 🔴 SANS LE PRÉFIXE, deux VMs différentes ouvertes dans deux onglets
-/// s'excluraient l'une l'autre : le défaut que P3 a corrigé sur le nom de
-/// session, réintroduit par la porte de derrière. `composer` rend le nom nu
-/// quand aucun préfixe n'est connu — exactement le comportement d'avant P3.
+/// 🔴 WITHOUT THE PREFIX, two different VMs opened in two tabs
+/// would exclude each other: the defect P3 fixed on the session
+/// name, reintroduced through the back door. `composer` returns the bare name
+/// when no prefix is known — exactly the behaviour from before P3.
 export function nomDuVerrou(prefixe: string): string {
     return composer(prefixe, NOM_VERROU);
 }
@@ -78,13 +78,13 @@ export interface CanalDiffusion {
     postMessage(message: unknown): void;
 }
 
-/// Diffuse l'état aux autres onglets **seulement s'il a changé**, et rend la
-/// nouvelle empreinte.
+/// Broadcasts the state to the other tabs **only if it has changed**, and returns the
+/// new fingerprint.
 ///
-/// ⚠️ LE PORTEUR REDESSINE À 1 Hz (la fermeture d'une fenêtre par
-/// l'utilisateur ne prévient personne : on relit l'état plutôt que d'attendre
-/// un événement qui n'existe pas). Diffuser à chaque tour réveillerait tous
-/// les onglets une fois par seconde pour rien.
+/// ⚠️ THE CARRIER REDRAWS AT 1 Hz (the user closing a window
+/// warns nobody: we reread the state rather than wait for
+/// an event that does not exist). Broadcasting at every round would wake all
+/// tabs once per second for nothing.
 export function diffuserSiChange(
     canal: CanalDiffusion,
     fenetres: FenetreConnue[],
@@ -98,29 +98,29 @@ export function diffuserSiChange(
 
 export interface DepsBureauPage {
     signalingUrl: string;
-    /// 🔴 **UN FOURNISSEUR, JAMAIS UNE CHAÎNE — ET CE CHAMP PORTAIT UNE CHAÎNE
-    /// JUSQU'À LA REVUE FINALE DU 31 AOÛT 2026** (critique ①). Voir
-    /// `porteur.ts::DepsPromotion` pour le défaut mesuré : un suiveur promu
-    /// des heures plus tard présentait un jeton de **dix minutes**, expiré,
-    /// et la promotion ne pouvait pas fonctionner en usage réel.
+    /// 🔴 **A PROVIDER, NEVER A STRING — AND THIS FIELD CARRIED A STRING
+    /// UNTIL THE FINAL REVIEW OF AUGUST 31st, 2026** (critique ①). See
+    /// `porteur.ts::DepsPromotion` for the measured defect: a follower promoted
+    /// hours later presented a **ten-minute** token, expired,
+    /// and promotion could not work in real use.
     ///
-    /// ⚠️ **UN TEST FIGE L'ABSENCE DE JETON SCALAIRE DANS CETTE INTERFACE**
-    /// (`porteur-dom.test.ts`) : c'est la JONCTION qui était fausse, pas la
-    /// règle de fraîcheur, et un test d'`assurerAccesFrais` ne l'aurait
-    /// jamais vue.
+    /// ⚠️ **A TEST FREEZES THE ABSENCE OF A SCALAR TOKEN IN THIS INTERFACE**
+    /// (`porteur-dom.test.ts`): it is the JUNCTION that was wrong, not the
+    /// freshness rule, and a test of `assurerAccesFrais` would never have
+    /// seen it.
     jetonFrais(): Promise<string | undefined>;
-    /// Le préfixe de VM (`prefixe.ts::lirePrefixe`), ou `''` s'il n'y en a pas.
+    /// The VM prefix (`prefixe.ts::lirePrefixe`), or `''` if there is none.
     ///
-    /// 🔴 **IL DOIT ÊTRE LU APRÈS QUE `GET /vm` A RÉPONDU** — critique ② de la
-    /// revue finale : le hub ne posait aucun préfixe, `lirePrefixe()` rendait
-    /// `''`, et le hub écoutait `bureau` pendant que l'agent annonçait sur
-    /// `<prefixe>:bureau`. C'est `hub/page.ts::demarrer` qui garantit cet
-    /// ordre ; ce module ne fait que recevoir la valeur.
+    /// 🔴 **IT MUST BE READ AFTER `GET /vm` HAS ANSWERED** — critique ② of the
+    /// final review: the hub set no prefix, `lirePrefixe()` returned
+    /// `''`, and the hub listened on `bureau` while the agent announced on
+    /// `<prefixe>:bureau`. It is `hub/page.ts::demarrer` that guarantees this
+    /// order; this module only receives the value.
     prefixe: string;
-    /// `?faute-fichiers=1` — variable de BANC, jamais une configuration
-    /// livrée. Lue UNE fois par la page et passée en argument, jamais relue
-    /// ici : c'est la convention de `PLEIN_ECRAN` et de `PART_SONDAGE` côté
-    /// agent — le mécanisme lit un drapeau qu'on lui donne.
+    /// `?faute-fichiers=1` — BENCH variable, never a shipped
+    /// configuration. Read ONCE by the page and passed as an argument, never reread
+    /// here: it is the convention of `PLEIN_ECRAN` and `PART_SONDAGE` on the
+    /// agent side — the mechanism reads a flag it is given.
     fautesArmees: boolean;
     elements: {
         statut: HTMLDivElement;
@@ -143,18 +143,18 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     const canal = new BroadcastChannel(nomDuVerrou(deps.prefixe));
     let empreinte = '';
     let porteur = false;
-    /// Le DERNIER état reçu sur le canal, côté SUIVEUR. `undefined` tant
-    /// qu'aucune diffusion n'est encore arrivée — c'est ce que
-    /// `fenetresAPeindre` distingue d'une liste vide diffusée pour de vrai.
+    /// The LAST state received on the channel, FOLLOWER side. `undefined` as long
+    /// as no broadcast has arrived yet — that is what
+    /// `fenetresAPeindre` distinguishes from an empty list broadcast for real.
     let dernierEtatRecu: FenetreConnue[] | undefined;
-    // ⚠️ DÉCLARÉ AVANT `creerBureau`, dont le rappel `envoyer` le lit : une
-    // fermeture qui capture un `let` déclaré plus bas compile, mais se lit
-    // mal — et la zone morte temporelle est une classe d'erreur qu'on évite
-    // par la disposition plutôt que par la vigilance.
+    // ⚠️ DECLARED BEFORE `creerBureau`, whose `envoyer` callback reads it: a
+    // closure capturing a `let` declared further down compiles, but reads
+    // badly — and the temporal dead zone is an error class avoided
+    // by layout rather than by vigilance.
     let socket: WebSocket | undefined;
-    /// Rendue par `elire`. `undefined` tant que l'élection n'a pas été posée —
-    /// le repli sans Web Locks appelle `devenirPorteur` SYNCHRONEMENT, donc
-    /// avant cette affectation.
+    /// Returned by `elire`. `undefined` as long as the election has not been set —
+    /// the fallback without Web Locks calls `devenirPorteur` SYNCHRONOUSLY, hence
+    /// before this assignment.
     let election: Election | undefined;
 
     const poserTon = (element: HTMLElement, ton: Ton): void => {
@@ -162,13 +162,13 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         if (ton !== 'neutre') element.classList.add(`message--${ton}`);
     };
 
-    /// 🔴 `/index.html`, PAS `/` : la racine sert le HUB depuis le lot 14, et
-    /// `/?session=…` ouvrirait le hub avec un paramètre qu'il ignore, jamais
-    /// une session.
+    /// 🔴 `/index.html`, NOT `/`: the root serves the HUB since batch 14, and
+    /// `/?session=…` would open the hub with a parameter it ignores, never
+    /// a session.
     ///
-    /// ⚠️ **UN SEUL ENDROIT CONSTRUIT CETTE URL**, employé par le porteur (via
-    /// `bureau.ouvrirFenetre`) ET par le suiveur : la revue finale l'a trouvée
-    /// écrite deux fois, à deux endroits qu'il aurait fallu tenir d'accord.
+    /// ⚠️ **A SINGLE PLACE BUILDS THIS URL**, used by the carrier (through
+    /// `bureau.ouvrirFenetre`) AND by the follower: the final review found it
+    /// written twice, in two places that would have had to be kept in agreement.
     const ouvrirUneFenetre = (session: string): Window | null =>
         window.open(`/index.html?session=${encodeURIComponent(session)}`, `guac-${session}`);
 

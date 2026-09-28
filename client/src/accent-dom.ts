@@ -87,26 +87,26 @@ export const TOKEN_ACCENT = '--accent-fenetre';
 const FONDS = ['--fond-0', '--fond-1', '--fond-2'] as const;
 const ACCENT_DU_THEME = '--accent';
 
-/** Ce dont ce module a besoin du document, et rien d'autre. */
+/** What this module needs from the document, and nothing else. */
 export interface AccesTokens {
-    /** Lit la valeur COURANTE d'un token sur la racine. */
+    /** Reads the CURRENT value of a token on the root. */
     lireToken(nom: string): string;
-    /** Écrit un token sur la racine — **jamais sur un élément**. */
+    /** Writes a token on the root — **never on an element**. */
     poserToken(nom: string, valeur: string): void;
 }
 
 /**
- * Reçoit une couleur annoncée par l'agent, la conforme, et pose le résultat.
+ * Receives a colour announced by the agent, conforms it, and sets the result.
  *
- * 🔴 **Les fonds sont relus À CHAQUE MESSAGE, jamais mémorisés au montage.**
- * Sans cela, une bascule de thème laisserait l'accent jugé contre l'ANCIEN
- * thème : les fonds du clair et du sombre n'ont rien à voir, et une couleur
- * lisible sur `#0b0d10` ne l'est pas forcément sur `#ffffff`. C'est un test.
+ * 🔴 **The backgrounds are reread AT EACH MESSAGE, never stored at mount time.**
+ * Otherwise, a theme switch would leave the accent judged against the OLD
+ * theme: the light and dark backgrounds have nothing in common, and a colour
+ * readable on `#0b0d10` is not necessarily readable on `#ffffff`. It is a test.
  *
- * ⚠️ **Sur un REFUS, on pose `--accent` — on ne laisse pas le token en place.**
- * Ne rien poser lui laisserait sa valeur PRÉCÉDENTE, c'est-à-dire la teinte
- * d'une icône qui n'est plus celle de cette fenêtre : un état périmé, plus
- * trompeur qu'un repli visible. C'est aussi un test.
+ * ⚠️ **On a REFUSAL, we set `--accent` — we do not leave the token in place.**
+ * Setting nothing would leave it its PREVIOUS value, that is, the hue
+ * of an icon that is no longer this window's: a stale state, more
+ * misleading than a visible fallback. It is also a test.
  */
 export function attacherAccentAuDOM(acces: AccesTokens): { recevoir(couleur: string): void } {
     return {
