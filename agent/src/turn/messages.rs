@@ -1,35 +1,35 @@
-//! Sérialisation des requêtes TURN et dérivation des clés d'authentification.
+//! TURN request serialisation and authentication key derivation.
 //!
-//! `is::stun` sait LIRE les réponses TURN mais ne sait pas ÉMETTRE une requête
-//! Allocate valide : l'attribut `REQUESTED-TRANSPORT` (0x0019) est absent de sa
-//! table. On écrit donc les quatre requêtes ici, et on lui délègue la lecture.
+//! `is::stun` can READ TURN responses but cannot EMIT a valid Allocate
+//! request: the `REQUESTED-TRANSPORT` attribute (0x0019) is missing from its
+//! table. So we write the four requests here, and delegate reading to it.
 
 use std::net::SocketAddr;
 
 use hmac::{Hmac, Mac};
 
-// Constantes de protocole visibles de tout le module `turn` : la machine à
-// états (`allocation`) en a besoin pour fabriquer, dans ses tests, les
-// réponses qu'un serveur produirait. `pub(super)` et non `pub` — elles ne
-// sortent pas de `turn`.
+// Protocol constants visible to the whole `turn` module: the state
+// machine (`allocation`) needs them to fabricate, in its tests, the
+// responses a server would produce. `pub(super)` and not `pub` — they do not
+// leave `turn`.
 
 /// Cookie magique STUN (RFC 5389 §6).
 pub(super) const MAGIC: [u8; 4] = [0x21, 0x12, 0xA4, 0x42];
 
-// Méthodes TURN. Classe « requête » valant 0b00, le type sur le fil est la
-// méthode elle-même.
+// TURN methods. The "request" class being 0b00, the type on the wire is the
+// method itself.
 pub(super) const METHODE_ALLOCATE: u16 = 0x0003;
 pub(super) const METHODE_REFRESH: u16 = 0x0004;
 const METHODE_CREATE_PERMISSION: u16 = 0x0008;
 pub(super) const METHODE_CHANNEL_BIND: u16 = 0x0009;
 
-// Attributs employés. `REQUESTED_TRANSPORT` est celui qui manque à
-// `is::stun` et qui motive tout ce sérialiseur.
+// Attributes used. `REQUESTED_TRANSPORT` is the one `is::stun` lacks
+// and which motivates this whole serialiser.
 const ATTR_USERNAME: u16 = 0x0006;
 const ATTR_MESSAGE_INTEGRITY: u16 = 0x0008;
-/// Lu par `is::stun`, jamais écrit par nous : sert aux réponses simulées de
-/// `allocation`, d'où le `#[cfg(test)]` — sans lui la constante serait du code
-/// mort dans le binaire.
+/// Read by `is::stun`, never written by us: used for the simulated responses of
+/// `allocation`, hence the `#[cfg(test)]` — without it the constant would be dead
+/// code in the binary.
 #[cfg(test)]
 pub(super) const ATTR_ERROR_CODE: u16 = 0x0009;
 const ATTR_CHANNEL_NUMBER: u16 = 0x000C;
@@ -37,29 +37,29 @@ pub(super) const ATTR_LIFETIME: u16 = 0x000D;
 const ATTR_XOR_PEER_ADDRESS: u16 = 0x0012;
 pub(super) const ATTR_REALM: u16 = 0x0014;
 pub(super) const ATTR_NONCE: u16 = 0x0015;
-/// Adresse relayée que le serveur accorde, et adresse réflexive qu'il observe.
-/// Comme `ATTR_ERROR_CODE` : lues par `is::stun`, écrites seulement en test.
+/// Relayed address the server grants, and reflexive address it observes.
+/// Like `ATTR_ERROR_CODE`: read by `is::stun`, written only in tests.
 #[cfg(test)]
 pub(super) const ATTR_XOR_RELAYED_ADDRESS: u16 = 0x0016;
 const ATTR_REQUESTED_TRANSPORT: u16 = 0x0019;
 #[cfg(test)]
 pub(super) const ATTR_XOR_MAPPED_ADDRESS: u16 = 0x0020;
 
-/// Numéro de protocole d'IANA pour UDP, valeur du champ `REQUESTED-TRANSPORT`.
+/// IANA protocol number for UDP, value of the `REQUESTED-TRANSPORT` field.
 const TRANSPORT_UDP: u8 = 17;
 
-/// Durée de bail demandée à l'allocation, en secondes. Le serveur peut en
-/// accorder une autre — c'est celle qu'il annonce qui fait foi, et le
-/// rafraîchissement se cale dessus (voir `allocation`).
+/// Lease duration requested at allocation, in seconds. The server may
+/// grant another — it is the one it announces that counts, and the
+/// refresh aligns with it (see `allocation`).
 pub const BAIL_DEMANDE_S: u32 = 600;
 
-/// Identifiants longue durée, tels que le serveur les impose dans sa
-/// réponse 401.
+/// Long-term credentials, as the server imposes them in its
+/// 401 response.
 ///
-/// Le mot de passe n'y figure pas, contrairement à ce que prévoyait le plan :
-/// il ne va JAMAIS sur le fil, il ne sert qu'à dériver la clé d'intégrité
-/// (`cle_longue_duree`), que `encoder_requete` reçoit séparément. Un champ que
-/// rien ne relit, et qui porte un secret, n'a pas sa place ici.
+/// The password is not included, contrary to what the plan provided:
+/// it NEVER goes on the wire, it only serves to derive the integrity key
+/// (`cle_longue_duree`), which `encoder_requete` receives separately. A field
+/// nothing reads back, and which carries a secret, has no place here.
 #[derive(Debug, Clone)]
 pub struct Identifiants {
     pub username: String,
@@ -67,11 +67,11 @@ pub struct Identifiants {
     pub nonce: String,
 }
 
-/// Requête à émettre. Chaque variante porte exactement ce qui la distingue.
+/// Request to emit. Each variant carries exactly what distinguishes it.
 pub enum Requete {
-    /// Première tentative, sans identifiants : elle SERT à provoquer le 401
-    /// qui révèle le realm et le nonce. Ce n'est pas un échec, c'est l'étape
-    /// normale du protocole.
+    /// First attempt, without credentials: it SERVES to provoke the 401
+    /// that reveals the realm and the nonce. It is not a failure, it is the normal
+    /// step of the protocol.
     AllocateNu,
     AllocateSigne,
     Refresh {
@@ -86,7 +86,7 @@ pub enum Requete {
     },
 }
 
-/// HMAC-SHA1, dans la forme que réclament `is::stun::verify` et `to_bytes`.
+/// HMAC-SHA1, in the form `is::stun::verify` and `to_bytes` require.
 pub fn sha1_hmac(cle: &[u8], morceaux: &[&[u8]]) -> [u8; 20] {
     let mut mac = Hmac::<sha1::Sha1>::new_from_slice(cle).expect("HMAC accepte toute longueur");
     for morceau in morceaux {
@@ -95,23 +95,23 @@ pub fn sha1_hmac(cle: &[u8], morceaux: &[&[u8]]) -> [u8; 20] {
     mac.finalize().into_bytes().into()
 }
 
-/// Clé d'intégrité longue durée : `MD5(username:realm:password)` (RFC 5766
-/// §4, qui reprend RFC 5389 §15.4).
+/// Long-term integrity key: `MD5(username:realm:password)` (RFC 5766
+/// §4, which takes up RFC 5389 §15.4).
 ///
-/// MD5 est ici une dérivation de clé normative, pas un choix : le serveur
-/// calcule la même, et toute autre fonction produirait un 401 systématique.
+/// MD5 is here a normative key derivation, not a choice: the server
+/// computes the same, and any other function would produce a systematic 401.
 pub fn cle_longue_duree(username: &str, realm: &str, password: &str) -> Vec<u8> {
     use md5::Digest;
     md5::Md5::digest(format!("{username}:{realm}:{password}").as_bytes()).to_vec()
 }
 
-/// Sérialise une requête TURN complète, prête à être envoyée.
+/// Serialises a complete TURN request, ready to be sent.
 ///
-/// `identifiants` absent produit une requête nue (sans USERNAME/REALM/NONCE ni
-/// MESSAGE-INTEGRITY) : c'est la forme de la première tentative d'allocation.
+/// Absent `identifiants` produces a bare request (without USERNAME/REALM/NONCE or
+/// MESSAGE-INTEGRITY): it is the form of the first allocation attempt.
 ///
-/// FINGERPRINT n'est pas émis : il est facultatif en TURN, et l'omettre évite
-/// d'avoir à l'inclure dans le calcul d'intégrité.
+/// FINGERPRINT is not emitted: it is optional in TURN, and omitting it avoids
+/// having to include it in the integrity computation.
 pub fn encoder_requete(
     requete: &Requete,
     trans_id: [u8; 12],
@@ -126,8 +126,8 @@ pub fn encoder_requete(
 
     let mut attributs: Vec<u8> = Vec::new();
 
-    // L'ordre suit celui de la RFC : les attributs propres à la méthode, puis
-    // les attributs d'authentification, puis MESSAGE-INTEGRITY en dernier.
+    // The order follows the RFC's: the method's own attributes, then
+    // the authentication attributes, then MESSAGE-INTEGRITY last.
     match requete {
         Requete::AllocateNu | Requete::AllocateSigne => {
             ecrire_attribut(
@@ -171,10 +171,10 @@ pub fn encoder_requete(
 
     let mut paquet = Vec::with_capacity(20 + attributs.len() + 24);
     paquet.extend_from_slice(&methode.to_be_bytes());
-    // Longueur : renseignée après, une fois connue. Les 24 octets de
-    // MESSAGE-INTEGRITY doivent être COMPTÉS dans la longueur au moment où
-    // l'empreinte est calculée — c'est la subtilité qui fait échouer la
-    // plupart des implémentations naïves.
+    // Length: filled in afterwards, once known. The 24 bytes of
+    // MESSAGE-INTEGRITY must be COUNTED in the length at the moment
+    // the digest is computed — it is the subtlety that makes most
+    // naive implementations fail.
     paquet.extend_from_slice(&[0, 0]);
     paquet.extend_from_slice(&MAGIC);
     paquet.extend_from_slice(&trans_id);
@@ -186,9 +186,9 @@ pub fn encoder_requete(
         return paquet;
     };
 
-    // Longueur annoncée AVANT le calcul : elle inclut déjà l'attribut
-    // MESSAGE-INTEGRITY qui n'est pas encore écrit (4 octets d'en-tête + 20
-    // d'empreinte).
+    // Length announced BEFORE the computation: it already includes the
+    // MESSAGE-INTEGRITY attribute not yet written (4 header bytes + 20
+    // digest bytes).
     let longueur_avec_integrite = (paquet.len() - 20 + 24) as u16;
     paquet[2..4].copy_from_slice(&longueur_avec_integrite.to_be_bytes());
 
@@ -197,12 +197,12 @@ pub fn encoder_requete(
     paquet
 }
 
-/// Méthode d'un message STUN, extraite de son type sur le fil.
+/// Method of a STUN message, extracted from its type on the wire.
 ///
-/// Le type mêle méthode et classe : les bits de classe (0x0100 et 0x0010) sont
-/// intercalés dans les bits de méthode (RFC 5389 §6). Les retirer redonne la
-/// méthode, seule façon de savoir à QUELLE requête une réponse répond — et donc
-/// si elle porte un bail (`Allocate`, `Refresh`) ou non (`CreatePermission`,
+/// The type mixes method and class: the class bits (0x0100 and 0x0010) are
+/// interleaved in the method bits (RFC 5389 §6). Removing them gives back the
+/// method, the only way to know WHICH request a response answers — and hence
+/// whether it carries a lease (`Allocate`, `Refresh`) or not (`CreatePermission`,
 /// `ChannelBind`).
 pub(super) fn methode_de(paquet: &[u8]) -> Option<u16> {
     if paquet.len() < 2 {

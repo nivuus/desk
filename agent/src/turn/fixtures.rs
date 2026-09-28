@@ -1,11 +1,11 @@
-//! Échafaudages partagés des tests de `turn` : l'horloge de départ, l'adresse
-//! du serveur, la fabrique de réponses qui remplace coturn, et le client déjà
-//! amené jusqu'à l'état alloué.
+//! Shared scaffolding for the `turn` tests: the starting clock, the server
+//! address, the response factory that replaces coturn, and the client already
+//! brought to the allocated state.
 //!
-//! `#[cfg(test)]` : rien de ceci n'est compilé en `release`.
+//! `#[cfg(test)]`: none of this is compiled in `release`.
 //!
-//! N'y figurent que les éléments réellement partagés par `allocation` et
-//! `canaux` — même critère que `transport/fixtures.rs`.
+//! Only the items really shared by `allocation` and
+//! `canaux` appear here — same criterion as `transport/fixtures.rs`.
 
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -16,8 +16,8 @@ use super::messages::{
     ATTR_XOR_MAPPED_ADDRESS, ATTR_XOR_RELAYED_ADDRESS, MAGIC, METHODE_ALLOCATE,
 };
 
-/// Instant de référence des tests, dans le passé : `avancer` peut ainsi porter
-/// l'horloge de plusieurs minutes sans jamais dépasser `Instant::now()`.
+/// Reference instant of the tests, in the past: `avancer` can thus move
+/// the clock forward several minutes without ever exceeding `Instant::now()`.
 pub(super) fn t0() -> Instant {
     Instant::now() - Duration::from_secs(3600)
 }
@@ -26,8 +26,8 @@ pub(super) fn serveur() -> SocketAddr {
     "192.0.2.1:3478".parse().unwrap()
 }
 
-/// Fabrique la réponse qu'un serveur produirait, pour piloter le client
-/// sans réseau. C'est ce qui remplace coturn dans ces tests.
+/// Fabricates the response a server would produce, to drive the client
+/// without a network. It is what replaces coturn in these tests.
 pub(super) fn reponse(
     methode: u16,
     classe_succes: bool,
@@ -38,7 +38,7 @@ pub(super) fn reponse(
     for (type_, valeur) in attributs {
         ecrire_attribut(&mut corps, *type_, valeur);
     }
-    // Classe succès = 0b10 → bits 0x0100 ; classe erreur = 0b11 → 0x0110.
+    // Success class = 0b10 → bits 0x0100; error class = 0b11 → 0x0110.
     let type_fil = methode | if classe_succes { 0x0100 } else { 0x0110 };
     let mut paquet = Vec::new();
     paquet.extend_from_slice(&type_fil.to_be_bytes());
@@ -53,7 +53,7 @@ pub(super) fn trans_id_de(paquet: &[u8]) -> [u8; 12] {
     paquet[8..20].try_into().unwrap()
 }
 
-/// Amène un client jusqu'à l'état alloué, pour les tests qui partent de là.
+/// Brings a client to the allocated state, for the tests that start from there.
 pub(super) fn allouee() -> TurnClient {
     let mut c = TurnClient::new(serveur(), "u".into(), "p".into(), t0());
     let nue = c.poll_transmit().unwrap();
