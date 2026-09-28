@@ -264,7 +264,7 @@ async function modeLatency(trials) {
             const r = await cdp.eval(
                 `(async () => {
                     const video = document.querySelector('#remote');
-                    if (!video.videoWidth) return { error: 'pas encore de frame vidéo' };
+                    if (!video.videoWidth) return { error: 'no video frame yet' };
                     const canvas = document.createElement('canvas');
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
@@ -295,7 +295,7 @@ async function modeLatency(trials) {
                         const timer = setTimeout(() => {
                             if (settled) return;
                             settled = true;
-                            resolve({ error: 'timeout (3s) sans nouvelle frame vidéo détectée du tout', before, after: sampleCenter() });
+                            resolve({ error: 'timeout (3s) without any new video frame detected', before, after: sampleCenter() });
                         }, 3000);
                         function onFrame(now, metadata) {
                             if (settled) return;

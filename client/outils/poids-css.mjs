@@ -78,12 +78,12 @@ if (feuilles.length === 0) {
 
 for (const f of feuilles) console.log(`${String(f.octets).padStart(7)}  ${f.nom}`);
 console.log(`sheets emitted: ${feuilles.length}`);
-console.log(`somme : ${somme} octets`);
+console.log(`total: ${somme} bytes`);
 console.log(`ceiling: ${plafond} bytes (arbitrary, see the header)`);
 
 if (somme > plafond) {
     console.log(`OVERRUN of ${somme - plafond} bytes`);
     process.exit(1);
 }
-console.log(`marge : ${plafond - somme} octets`);
+console.log(`margin: ${plafond - somme} bytes`);
 process.exit(0);
