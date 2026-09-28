@@ -1,58 +1,58 @@
-// La boucle du canal `/agent` : enrôlement, battement, jeton frais — et, depuis
-// le sous-bloc G1, tout ce que le sous-projet ④ y fait passer.
+// The loop of the `/agent` channel: enrolment, heartbeat, fresh token — and, since
+// sub-block G1, everything sub-project ④ sends through it.
 //
-// ⚠️ CET INVENTAIRE A ÉTÉ ÉCRIT TROIS FOIS ET A VIEILLI DEUX FOIS, et c'est
-// pourquoi il ne s'écrit plus ici : G1 y a mis `catalogue`, `lancee` et
-// `lancer` ; G2 y a ajouté `icones-manquantes` sans reprendre cette ligne ; G3
-// y ajoute `installer`, `progression` et `termine`. **La liste qui fait
-// autorité est celle du protocole** (`proto/ts/plateforme.ts`), et les branches
-// de ④ vivent dans `canal-apps.ts`. Une énumération recopiée ici serait fausse
-// au sous-bloc suivant, comme elle l'a été aux deux précédents.
+// ⚠️ THIS INVENTORY WAS WRITTEN THREE TIMES AND WENT STALE TWICE, and that is
+// why it is no longer written here: G1 put `catalogue`, `lancee` and
+// `lancer` in it; G2 added `icones-manquantes` without updating this line; G3
+// adds `installer`, `progression` and `termine`. **The list that is
+// authoritative is the protocol one** (`proto/ts/plateforme.ts`), and the branches
+// of ④ live in `canal-apps.ts`. An enumeration copied here would be wrong
+// at the next sub-block, as it was at the two previous ones.
 //
-// ⚠️ LE CANAL N'EST DONC PLUS SEULEMENT UN CANAL D'IDENTITÉ, et cette
-// première ligne disait le contraire jusqu'au 20 août 2026. Trois variantes
-// s'y sont ajoutées (`catalogue` et `lancee` montantes, `lancer` descendante),
-// et `PLATEFORME_VERSION` est passée à 2 pour cela.
+// ⚠️ THE CHANNEL IS THEREFORE NO LONGER ONLY AN IDENTITY CHANNEL, and this
+// first line said the opposite until 20 August 2026. Three variants
+// were added to it (`catalogue` and `lancee` upstream, `lancer` downstream),
+// and `PLATEFORME_VERSION` went to 2 for that.
 //
-// ⚠️ **CE PARAGRAPHE EST UN RELEVÉ DATÉ, ET IL RESTE VRAI COMME HISTOIRE** :
-// c'est bien à 2 que la version est passée POUR CELA. Elle vaut 4 aujourd'hui
-// — 3 pour les icônes de G2, 4 pour l'installation de G3 —, et le barrer
-// rendrait faux ce qui ne l'est pas.
+// ⚠️ **THIS PARAGRAPH IS A DATED RECORD, AND IT STAYS TRUE AS HISTORY**:
+// the version did go to 2 FOR THAT. It is 4 today
+// — 3 for the icons of G2, 4 for the installation of G3 —, and striking it out
+// would make wrong what is not.
 //
-// C'est l'UNIQUE consommateur du protocole `plateforme`
-// (`proto/ts/plateforme.ts`), et il ne recopie aucune forme de message : il
-// appelle les encodeurs et le parseur du miroir. Une copie divergerait en
-// silence, et `plateforme-vectors.json` ne comparerait plus rien de ce que la
-// plateforme met réellement sur le fil.
+// It is the ONLY consumer of the `plateforme` protocol
+// (`proto/ts/plateforme.ts`), and it copies no message shape: it
+// calls the encoders and the parser of the mirror. A copy would diverge
+// silently, and `plateforme-vectors.json` would no longer compare anything the
+// platform really puts on the wire.
 //
-// 🔴 CE CANAL NE PARTAGE RIEN AVEC LE RELAIS — ni garde, ni registre
-// d'appartenance, ni observateur de session.
+// 🔴 THIS CHANNEL SHARES NOTHING WITH THE RELAY — no guard, no membership
+// registry, no session observer.
 //
-// ⚠️ NE PAS CONFONDRE DEUX REGISTRES DEPUIS G1. La phrase ci-dessus reste
-// vraie du registre d'appartenance du RELAIS (`identite/garde.ts`), qu'il ne
-// partage toujours pas. Mais ce canal en tient désormais un AUTRE, qui lui est
-// propre : `agents/registre.ts`, la table des sockets d'agent vivants, sans
-// laquelle `POST /application/:id/lancer` n'aurait aucun moyen de joindre la
-// VM. Les deux ne se ressemblent que par le nom. C'est la conséquence directe
-// d'E4 : l'enrôlement est ASYNCHRONE (il lit `agent_enrole` et dérive une
-// empreinte `scrypt`), quand la garde du relais est PURE et SYNCHRONE. Les
-// faire cohabiter obligerait l'un des deux à céder.
+// ⚠️ DO NOT MIX UP TWO REGISTRIES SINCE G1. The sentence above stays
+// true of the membership registry of the RELAY (`identite/garde.ts`), which it still does not
+// share. But this channel now keeps ANOTHER one, its
+// own: `agents/registre.ts`, the table of live agent sockets, without
+// which `POST /application/:id/lancer` would have no way to reach the
+// VM. The two only look alike by name. It is the direct consequence
+// of E4: enrolment is ASYNCHRONOUS (it reads `agent_enrole` and derives a
+// `scrypt` digest), whereas the relay guard is PURE and SYNCHRONOUS. Making them
+// live together would force one of the two to give way.
 //
-// 🔴 CE QUE LE CANAL DÉLIVRE EST EXACTEMENT CE QUE LA GARDE EXIGE, et les deux
-// bouts doivent être lus ensemble (`identite/garde.ts`) :
-//   - le jeton est de TYPE `agent` (claim `sty`), sans quoi la garde le refuse
-//     pour le rôle `agent` ;
-//   - son SUJET est le PRÉFIXE de la VM, parce que la garde exige que le sujet
-//     préfixe le nom de session demandé.
-// Un canal qui signerait l'identifiant de VM au lieu du préfixe délivrerait des
-// jetons parfaitement valides que RIEN n'accepterait — panne muette de bout en
-// bout, éprouvée pour cela par un test qui traverse les deux modules.
+// 🔴 WHAT THE CHANNEL ISSUES IS EXACTLY WHAT THE GUARD DEMANDS, and the two
+// ends must be read together (`identite/garde.ts`):
+//   - the token is of TYPE `agent` (claim `sty`), otherwise the guard refuses it
+//     for the `agent` role;
+//   - its SUBJECT is the PREFIX of the VM, because the guard requires the subject
+//     to prefix the requested session name.
+// A channel that signed the VM identifier instead of the prefix would issue
+// perfectly valid tokens that NOTHING would accept — a silent end-to-end
+// failure, tested for that reason by a test that crosses both modules.
 //
-// ⚠️ AUCUNE PROMESSE N'EST ATTENDUE DANS UN GESTIONNAIRE `message`, ET AUCUNE
-// N'EST LAISSÉE SANS `catch`. Une promesse rejetée dans un gestionnaire
-// d'évènement `ws` abat tout le process Node — mode de défaillance que
-// `signaling/relais.ts` et `signaling/trace.ts` documentent tous deux. Tout ce
-// qui est asynchrone ici part par `void … .catch(…)`.
+// ⚠️ NO PROMISE IS AWAITED IN A `message` HANDLER, AND NONE
+// IS LEFT WITHOUT `catch`. A promise rejected in a `ws` event
+// handler takes down the whole Node process — a failure mode that
+// `signaling/relais.ts` and `signaling/trace.ts` both document. Everything
+// asynchronous here goes out through `void … .catch(…)`.
 
 import type { IncomingMessage } from 'node:http';
 import type { WebSocket, WebSocketServer } from 'ws';
@@ -88,84 +88,84 @@ import type { RegistreAgents } from './registre';
 
 export interface OptionsCanal {
     base: Pilote;
-    /// Le secret de SIGNATURE des jetons — jamais celui de l'enrôlement d'une
-    /// VM, qui vit haché en base et ne quitte jamais `agent_enrole`.
+    /// The token SIGNING secret — never the enrolment one of a
+    /// VM, which lives hashed in the database and never leaves `agent_enrole`.
     secretJeton: string;
-    /// L'horloge est un PARAMÈTRE, jamais `Date.now()` lue ici : c'est ce qui
-    /// rend l'expiration d'un jeton assertable sur une valeur EXACTE, et ce
-    /// qui permet au test de voir un jeton frais succéder à un jeton mort.
+    /// The clock is a PARAMETER, never `Date.now()` read here: that is what
+    /// makes the expiry of a token assertable on an EXACT value, and what
+    /// lets the test see a fresh token succeed a dead one.
     maintenant: () => number;
-    /// Le registre des sockets d'agent vivants.
+    /// The registry of live agent sockets.
     ///
-    /// 🔴 IL EST REQUIS, JAMAIS OPTIONNEL, et pour la raison exacte qui rend
-    /// `base` requise dans `http/serveur.ts` : un canal qui n'inscrirait
-    /// personne serait indiscernable du bon fonctionnement vu du pair — il
-    /// s'enrôlerait, battrait, pousserait son catalogue, et TOUT lancement
-    /// rendrait `agent-injoignable`. Panne muette, et de celles qu'on ne
-    /// diagnostique qu'en lisant ce fichier.
+    /// 🔴 IT IS REQUIRED, NEVER OPTIONAL, and for the exact reason that makes
+    /// `base` required in `http/serveur.ts`: a channel that registered
+    /// nobody would be indistinguishable from correct operation as seen by the peer — it
+    /// would enrol, beat, push its catalogue, and EVERY launch
+    /// would return `agent-injoignable`. A silent failure, and one of those one only
+    /// diagnoses by reading this file.
     registre: RegistreAgents;
-    /// Le magasin d'icônes, interrogé après chaque `catalogue` pour savoir ce
-    /// qui MANQUE. `undefined` = aucun inventaire n'est poussé.
+    /// The icon store, queried after each `catalogue` to know what
+    /// is MISSING. `undefined` = no inventory is pushed.
     ///
-    /// ⚠️ FACULTATIF, contrairement à `registre`, et l'asymétrie est dans les
-    /// conséquences : un registre absent rend TOUT lancement injoignable —
-    /// panne muette —, là qu'un magasin absent coûte seulement des icônes qui
-    /// n'arrivent pas. Les tests du canal qui ne parlent pas d'icônes n'ont
-    /// donc pas à en monter un.
+    /// ⚠️ OPTIONAL, unlike `registre`, and the asymmetry lies in the
+    /// consequences: a missing registry makes EVERY launch unreachable —
+    /// a silent failure —, whereas a missing store only costs icons that
+    /// do not arrive. The channel tests that do not talk about icons
+    /// therefore do not have to mount one.
     magasin?: Magasin;
-    /// Le frein, PARTAGÉ avec les routes d'authentification — une seule table,
-    /// jamais deux. Deux freins distincts divergeraient le jour où l'un serait
-    /// durci, et leurs budgets d'ADRESSE s'additionneraient : un attaquant
-    /// obtiendrait le double de ce que les constantes annoncent en alternant
-    /// les deux portes.
+    /// The brake, SHARED with the authentication routes — a single table,
+    /// never two. Two distinct brakes would diverge the day one got
+    /// hardened, and their ADDRESS budgets would add up: an attacker
+    /// would get twice what the constants announce by alternating
+    /// the two doors.
     frein: Frein;
-    /// Les proxys dont on croit l'en-tête `X-Forwarded-For`. VIDE par défaut.
+    /// The proxies whose `X-Forwarded-For` header we trust. EMPTY by default.
     proxyDeConfiance: ReadonlySet<string>;
     dureeJetonMs?: number;
 }
 
-/// Les motifs qui FERMENT le socket, et ceux qui le laissent ouvert.
+/// The reasons that CLOSE the socket, and those that leave it open.
 ///
-/// 🔴 `enrolement` ferme : un pair refusé qui garderait sa connexion pourrait
-/// réessayer sans limite sur le même socket. Fermer ne l'empêche pas de se
-/// reconnecter — cela lui en fait payer le coût, et rend le nombre de
-/// tentatives comptable à l'étage au-dessus.
+/// 🔴 `enrolement` closes: a refused peer that kept its connection could
+/// retry without limit on the same socket. Closing does not stop it from
+/// reconnecting — it makes it pay the cost, and makes the number of
+/// attempts countable at the level above.
 ///
-/// ✅ **CET ÉTAGE EXISTE DEPUIS P5, ET IL EST DANS CE FICHIER** : le frein est
-/// consulté cent-soixante lignes plus bas, avant `verifierEnrolement`. Cette
-/// phrase disait « le déni de service que P5 doit freiner … le jour où on
-/// voudra le brider » : ce jour est arrivé, et le même fichier l'écrit en
-/// toutes lettres à ce site-là. La fermeture reste ce qu'elle était — la
-/// moitié gratuite —, et le frein est l'autre.
+/// ✅ **THAT LEVEL HAS EXISTED SINCE P5, AND IT IS IN THIS FILE**: the brake is
+/// consulted a hundred and sixty lines further down, before `verifierEnrolement`. This
+/// sentence said "the denial of service that P5 must brake … the day we
+/// want to curb it": that day has come, and the same file spells it out
+/// at that very site. The close stays what it was — the
+/// free half —, and the brake is the other one.
 ///
-/// ⚠️ `version` ferme AUSSI, et c'est une décision de ce module que le plan ne
-/// prescrivait pas : un pair qui ne parle pas notre version ne réussira JAMAIS
-/// sur cette connexion. Le laisser ouvert le ferait boucler à plein régime, là
-/// où la fermeture rend la main à sa reprise à repli exponentiel.
+/// ⚠️ `version` closes TOO, and that is a decision of this module the plan did not
+/// prescribe: a peer that does not speak our version will NEVER succeed
+/// on this connection. Leaving it open would make it loop at full speed, whereas
+/// closing hands control back to its exponential-backoff retry.
 ///
-/// `forme` et `sequence` laissent le socket OUVERT : ce sont des erreurs dont
-/// le pair peut se relever — un message mal formé se reprend, une séquence
-/// inversée se corrige en s'enrôlant. Même partage que le relais, qui laisse
-/// retenter un message malformé et ferme sur une poignée de main refusée.
+/// `forme` and `sequence` leave the socket OPEN: these are errors the
+/// peer can recover from — a malformed message can be resent, an inverted
+/// sequence is fixed by enrolling. Same split as the relay, which lets
+/// a malformed message be retried and closes on a refused handshake.
 const MOTIFS_FERMANTS: readonly MotifCanal[] = ['enrolement', 'version'];
 
-/// Le code de fermeture WebSocket 1008 — « violation de politique ». C'est
-/// celui du relais sur une poignée de main refusée : un pair qui lit les deux
-/// canaux n'a pas à connaître deux conventions.
+/// The WebSocket close code 1008 — "policy violation". It is
+/// the one the relay uses on a refused handshake: a peer that reads both
+/// channels does not have to know two conventions.
 const FERMETURE_POLITIQUE = 1008;
 
 export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal): void {
     const { base, secretJeton, maintenant, registre, frein, proxyDeConfiance, magasin } = options;
     const dureeJetonMs = options.dureeJetonMs ?? DUREE_JETON_ACCES_MS;
 
-    // ⚠️ LA REQUÊTE DE MONTÉE EST DÉSORMAIS REÇUE, et c'est `ws` qui la
-    // fournit : `http/serveur.ts` fait déjà `wss.emit('connection', client,
-    // requete)`, et un `WebSocketServer` autonome la passe nativement. C'est
-    // le seul endroit d'où l'adresse du pair soit lisible — un WebSocket, une
-    // fois monté, ne la porte plus.
+    // ⚠️ THE UPGRADE REQUEST IS NOW RECEIVED, and `ws` is what
+    // supplies it: `http/serveur.ts` already does `wss.emit('connection', client,
+    // requete)`, and a standalone `WebSocketServer` passes it natively. It is
+    // the only place where the peer address is readable — a WebSocket, once
+    // upgraded, no longer carries it.
     wss.on('connection', (socket: WebSocket, requete?: IncomingMessage) => {
-        // Lue UNE FOIS par connexion : elle ne change pas en cours de route,
-        // et la relire à chaque message coûterait sans rien apprendre.
+        // Read ONCE per connection: it does not change along the way,
+        // and reading it again on every message would cost without teaching anything.
         const adresse = adresseSource(
             requete?.socket.remoteAddress,
             Array.isArray(requete?.headers['x-forwarded-for'])
@@ -175,27 +175,27 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
         );
         const parAdresse: readonly [string, Budget] = [cleAdresse(adresse), BUDGET_ADRESSE];
 
-        // L'état de CETTE connexion, et rien d'autre. Il naît vide : tant
-        // qu'un enrôlement n'a pas abouti, ce pair n'est personne.
+        // The state of THIS connection, and nothing else. It is born empty: as long
+        // as no enrolment has succeeded, this peer is nobody.
         let vmId: string | undefined;
         let prefixe: string | undefined;
 
         function refuser(motif: MotifCanal): void {
-            // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse : une fermeture qui
-            // précèderait le message tronquerait le motif, et le pair verrait
-            // sa connexion tomber sans savoir s'il doit se corriger, se mettre
-            // à jour ou renoncer.
+            // ⚠️ SEND THEN CLOSE, never the reverse: a close that
+            // came before the message would truncate the reason, and the peer would see
+            // its connection drop without knowing whether it must fix itself, update
+            // or give up.
             envoyer(socket, encodeRefus(motif));
             if (MOTIFS_FERMANTS.includes(motif)) socket.close(FERMETURE_POLITIQUE, motif);
         }
 
-        /// Signe un jeton d'agent et rend le couple (jeton, expiration).
+        /// Signs an agent token and returns the pair (token, expiry).
         ///
-        /// 🔴 L'INSTANT EST LU UNE SEULE FOIS et sert aux DEUX : signer avec un
-        /// instant et annoncer une expiration calculée sur un autre ferait
-        /// mentir `expire_a` de l'écart entre les deux lectures — un mensonge
-        /// petit, permanent, et que rien ne rattraperait puisque l'agent croit
-        /// l'annonce.
+        /// 🔴 THE INSTANT IS READ ONLY ONCE and serves BOTH: signing with one
+        /// instant and announcing an expiry computed on another would make
+        /// `expire_a` lie by the gap between the two reads — a small,
+        /// permanent lie that nothing would catch up since the agent trusts
+        /// the announcement.
         function jetonNeuf(sujet: string): { jeton: string; expireA: number } {
             const instant = maintenant();
             return {
@@ -213,21 +213,21 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
 
             if (lecture.message.type === 'battement') {
                 if (vmId === undefined || prefixe === undefined) {
-                    // 🔴 UN BATTEMENT N'AUTHENTIFIE PERSONNE. Y répondre
-                    // `battement-recu` délivrerait un JETON D'AGENT à un pair
-                    // qui n'a présenté aucun secret — c'est-à-dire la fuite que
-                    // tout ce sous-bloc existe pour fermer, par une autre
-                    // porte.
+                    // 🔴 A HEARTBEAT AUTHENTICATES NOBODY. Answering it with
+                    // `battement-recu` would issue an AGENT TOKEN to a peer
+                    // that presented no secret — that is, the leak that
+                    // this whole sub-block exists to close, through another
+                    // door.
                     refuser('sequence');
                     return;
                 }
 
                 const instant = maintenant();
-                // ⚠️ LANCÉE SANS ÊTRE ATTENDUE, avec son `catch` : le battement
-                // est une OBSERVATION, jamais une dépendance du canal. Une base
-                // momentanément indisponible ne doit pas abattre la connexion
-                // d'un agent qui, lui, va très bien. Le coût est nommé : une
-                // écriture perdue ne se voit qu'au journal.
+                // ⚠️ LAUNCHED WITHOUT BEING AWAITED, with its `catch`: the heartbeat
+                // is an OBSERVATION, never a dependency of the channel. A database
+                // momentarily unavailable must not take down the connection
+                // of an agent that is itself perfectly fine. The cost is named: a
+                // lost write only shows in the log.
                 void marquerVu(base, vmId, instant).catch((cause) => {
                     console.error(`vu_a non avancé pour la VM ${vmId} : ${String(cause)}`);
                 });
@@ -237,26 +237,26 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                 return;
             }
 
-            // 🔴 UNE GARDE DE TYPE, PLUS UNE CHUTE. `enroler` était le RESTE
-            // d'un `if/else`, et l'élargissement de l'union par le sous-bloc G3
-            // a fait de `progression` et `termine` deux membres de ce reste —
-            // donc deux messages que la destructuration ci-dessous aurait lus
-            // comme un enrôlement. `tsc` l'a dit, et il a eu de la chance : la
-            // même fragilité sur une valeur plutôt qu'un type serait passée en
-            // silence. Le prédicat NOMME les quatre types de ④.
+            // 🔴 A TYPE GUARD, NO LONGER A FALL-THROUGH. `enroler` was the REMAINDER
+            // of an `if/else`, and the widening of the union by sub-block G3
+            // made `progression` and `termine` two members of that remainder —
+            // hence two messages that the destructuring below would have read
+            // as an enrolment. `tsc` said so, and it got lucky: the
+            // same fragility on a value rather than a type would have gone through
+            // silently. The predicate NAMES the four types of ④.
             if (estMontantDeQuatre(lecture.message)) {
                 if (vmId === undefined) {
-                    // 🔴 NI CATALOGUE, NI ISSUE, NI PROGRESSION SANS
-                    // ENRÔLEMENT. Accepter un catalogue ici laisserait un pair
-                    // anonyme ÉCRIRE DANS LA TABLE `application` d'une VM qu'il
-                    // n'a pas authentifiée ; accepter une issue lui laisserait
-                    // résoudre la demande d'un autre, et faire croire à un
-                    // lancement qui n'a pas eu lieu ; accepter une progression
-                    // ou un `termine` lui laisserait écrire dans la table
-                    // `installation` d'une VM qui n'est pas la sienne — et donc
-                    // déclarer réussie, ou refusée, l'installation d'autrui.
-                    // C'est le trou que le refus `sequence` du battement ferme
-                    // déjà, par quatre autres portes.
+                    // 🔴 NO CATALOGUE, NO OUTCOME, NO PROGRESS WITHOUT
+                    // ENROLMENT. Accepting a catalogue here would let an anonymous
+                    // peer WRITE INTO THE `application` TABLE of a VM it
+                    // has not authenticated; accepting an outcome would let it
+                    // resolve someone else's request, and fake a
+                    // launch that never happened; accepting a progress report
+                    // or a `termine` would let it write into the `installation`
+                    // table of a VM that is not its own — and therefore
+                    // declare someone else's installation succeeded, or refused.
+                    // It is the hole the `sequence` refusal of the heartbeat already
+                    // closes, through four other doors.
                     refuser('sequence');
                     return;
                 }
@@ -269,42 +269,42 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
 
             const { vm, secret } = lecture.message;
 
-            // 🔴 LE FREIN EST CONSULTÉ ICI, ET C'EST LA POSITION QUI COMPTE :
-            // AVANT `verifierEnrolement`, donc avant qu'il ne lise
-            // `agent_enrole` ET avant qu'il ne dérive une empreinte `scrypt`.
-            // `scrypt` est à mémoire dure et coûte délibérément cher (68 ms
-            // mesurés le 20 août 2026) : un attaquant qui le déclenche à
-            // volonté épuise le service sans jamais deviner un secret. UN
-            // FREIN POSTÉ APRÈS LA VÉRIFICATION NE PROTÈGE RIEN.
+            // 🔴 THE BRAKE IS CONSULTED HERE, AND THE POSITION IS WHAT COUNTS:
+            // BEFORE `verifierEnrolement`, hence before it reads
+            // `agent_enrole` AND before it derives a `scrypt` digest.
+            // `scrypt` is memory-hard and deliberately expensive (68 ms
+            // measured on 20 August 2026): an attacker who triggers it at
+            // will exhausts the service without ever guessing a secret. A
+            // BRAKE PLACED AFTER THE CHECK PROTECTS NOTHING.
             //
-            // Ce fichier annonçait ce jour depuis P3, dans le commentaire de
-            // `MOTIFS_FERMANTS` : « fermer ne l'empêche pas de se reconnecter
-            // — cela rend le nombre de tentatives comptable à l'étage
-            // au-dessus le jour où on voudra le brider ». P5 est ce jour-là.
+            // This file announced this day since P3, in the comment of
+            // `MOTIFS_FERMANTS`: "closing does not stop it from reconnecting
+            // — it makes the number of attempts countable at the level
+            // above the day we want to curb it". P5 is that day.
             const cles: readonly (readonly [string, Budget])[] = [
                 [cleVm(vm), BUDGET_COMPTE],
                 parAdresse,
             ];
             if (frein.consulter(cles, maintenant()).freine) {
-                // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un motif
-                // `frein` distinct rendrait à l'attaquant l'information
-                // « cette VM existe et je l'ai fait déclencher » : c'est
-                // l'ORACLE D'ÉNUMÉRATION que `agents/enrolement.ts` ferme sur
-                // trois paragraphes, rouvert par la porte du frein. Le
-                // JOURNAL, lui, distingue les deux — même partage que
-                // `identite/garde.ts` (`message` sur le fil, `journal` chez
-                // nous).
+                // 🔴 THE REASON IS `enrolement`, AND NOTHING ELSE. A distinct
+                // `frein` reason would give the attacker the information
+                // "this VM exists and I made it trigger": that is
+                // the ENUMERATION ORACLE that `agents/enrolement.ts` closes over
+                // three paragraphs, reopened through the brake door. The
+                // LOG, on the other hand, tells the two apart — same split as
+                // `identite/garde.ts` (`message` on the wire, `journal` on our
+                // side).
                 journaliserLeFrein(frein, cles, adresse, maintenant());
                 refuser('enrolement');
                 return;
             }
-            // ⚠️ LE `catch` EST OBLIGATOIRE ET IL N'EST PAS DÉCORATIF :
-            // `verifierEnrolement` LÈVE sur une empreinte écrite par une
-            // version future du service (`identite/mot-de-passe.ts` refuse un
-            // algorithme inconnu plutôt que de rendre un `false` indiscernable
-            // d'un mauvais secret). Cette exception est traduite ICI en refus
-            // `enrolement` — le même que tous les autres, pour ne rien
-            // énumérer — et journalisée AVEC sa cause, qui ne porte jamais le
+            // ⚠️ THE `catch` IS MANDATORY AND IT IS NOT DECORATIVE:
+            // `verifierEnrolement` RAISES on a digest written by a
+            // future version of the service (`identite/mot-de-passe.ts` refuses an
+            // unknown algorithm rather than returning a `false` indistinguishable
+            // from a wrong secret). This exception is translated HERE into an
+            // `enrolement` refusal — the same as all the others, so as to enumerate
+            // nothing — and logged WITH its cause, which never carries the
             // secret.
             void verifierEnrolement(base, vm, secret, (ligne) => console.warn(ligne))
                 .then((verdict) => {
@@ -313,31 +313,31 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                         refuser(verdict.motif);
                         return;
                     }
-                    // 🔴 LE SUCCÈS EFFACE LA CLÉ DE LA VM, JAMAIS CELLE DE
-                    // L'ADRESSE — même règle que `/auth/connexion`. L'effacer
-                    // aussi blanchirait un attaquant qui possède une VM
-                    // valide : il lui suffirait de s'enrôler entre deux
-                    // rafales pour rendre son budget d'adresse à zéro.
+                    // 🔴 SUCCESS CLEARS THE KEY OF THE VM, NEVER THAT OF THE
+                    // ADDRESS — same rule as `/auth/connexion`. Clearing it
+                    // too would whitewash an attacker who owns a valid
+                    // VM: they would only have to enrol between two
+                    // bursts to reset their address budget to zero.
                     frein.succes(cleVm(verdict.vmId));
                     vmId = verdict.vmId;
                     prefixe = verdict.prefixe;
-                    // 🔴 C'EST ICI, ET NULLE PART AILLEURS, QUE LA VM DEVIENT
-                    // JOIGNABLE. L'inscription suit l'authentification et ne la
-                    // précède jamais : un pair qui n'a pas prouvé son secret ne
-                    // doit pas pouvoir recevoir les ordres de lancement d'une
-                    // VM. Le DERNIER inscrit gagne, et l'ancien socket est
-                    // fermé (`agents/registre.ts`).
+                    // 🔴 IT IS HERE, AND NOWHERE ELSE, THAT THE VM BECOMES
+                    // REACHABLE. Registration follows authentication and never
+                    // precedes it: a peer that has not proven its secret
+                    // must not be able to receive the launch orders of a
+                    // VM. The LAST one registered wins, and the old socket is
+                    // closed (`agents/registre.ts`).
                     registre.inscrire(verdict.vmId, socket);
 
                     const instant = maintenant();
-                    // ⚠️ L'ENRÔLEMENT AVANCE `vu_a` LUI AUSSI, et ce n'est pas
-                    // une commodité : il EST un signe de vie, le premier. Sans
-                    // lui, une VM qui vient de se connecter resterait `vu_a =
-                    // null` — donc `injoignable` (`agents/fraicheur.ts`) —
-                    // jusqu'à son premier battement, et une console la
-                    // dirait éteinte alors qu'elle parle. La colonne garde tout
-                    // son sens : `null` continue de dire « enrôlée par
-                    // l'administrateur, jamais connectée depuis ».
+                    // ⚠️ ENROLMENT ADVANCES `vu_a` AS WELL, and it is not
+                    // a convenience: it IS a sign of life, the first one. Without
+                    // it, a VM that just connected would stay `vu_a =
+                    // null` — hence `injoignable` (`agents/fraicheur.ts`) —
+                    // until its first heartbeat, and a console would
+                    // call it off while it is talking. The column keeps all
+                    // its meaning: `null` still says "enrolled by
+                    // the administrator, never connected since".
                     void marquerVu(base, verdict.vmId, instant).catch((cause) => {
                         console.error(
                             `vu_a non posé à l'enrôlement de la VM ${verdict.vmId} : ${String(cause)}`,
@@ -347,25 +347,25 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     const { jeton, expireA } = jetonNeuf(verdict.prefixe);
                     envoyer(socket, encodeEnrole(verdict.prefixe, jeton, expireA));
 
-                    // 🔴 LA RÉÉMISSION DES INSTALLATIONS EN ATTENTE. Un `push`
-                    // WebSocket n'a AUCUNE garantie de livraison : sans elle,
-                    // un ordre émis pendant une coupure serait perdu SANS
-                    // TERME, et l'utilisateur attendrait une installation que
-                    // personne ne relancerait jamais. C'est le même filet que
-                    // le `complet = true` du catalogue, et la recette de G1 a
-                    // vu ce filet-là fonctionner sur le chemin réel.
+                    // 🔴 THE RE-EMISSION OF PENDING INSTALLATIONS. A WebSocket
+                    // `push` has NO delivery guarantee: without it,
+                    // an order emitted during an outage would be lost WITH NO
+                    // END, and the user would wait for an installation that
+                    // nobody would ever relaunch. It is the same safety net as
+                    // the `complet = true` of the catalogue, and the G1 acceptance run
+                    // saw that net work on the real path.
                     //
-                    // ⚠️ ELLE NE VISE QUE LES `en_attente`, ET C'EST LA
-                    // PREMIÈRE DES DEUX CEINTURES CONTRE UNE DOUBLE
-                    // EXÉCUTION : dès qu'un agent a rapporté une progression,
-                    // la ligne passe `en_cours` et cesse d'être réémise. La
-                    // seconde ceinture est le marqueur sur le disque de la VM,
-                    // et elle protège du cas où la première a perdu sa base.
+                    // ⚠️ IT ONLY TARGETS THE `en_attente` ONES, AND THAT IS THE
+                    // FIRST OF THE TWO BELTS AGAINST A DOUBLE
+                    // RUN: as soon as an agent has reported a progress,
+                    // the row turns `en_cours` and stops being re-emitted. The
+                    // second belt is the marker on the VM disk,
+                    // and it protects from the case where the first one lost its database.
                     //
-                    // ⚠️ `void … .catch(…)`, JAMAIS `await` : un enrôlement
-                    // parfaitement valide ne doit pas échouer parce que la
-                    // base est momentanément indisponible, et une promesse
-                    // rejetée sans `catch` abattrait tout le process Node.
+                    // ⚠️ `void … .catch(…)`, NEVER `await`: a perfectly
+                    // valid enrolment must not fail because the
+                    // database is momentarily unavailable, and a promise
+                    // rejected without `catch` would take down the whole Node process.
                     void reemettreLesInstallations(
                         { base, vmId: verdict.vmId, envoyer: (brut) => envoyer(socket, brut) },
                     ).catch((cause) => {
@@ -376,48 +376,48 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     });
                 })
                 .catch((cause) => {
-                    // Le nom de VM est journalisé, le secret jamais : il vient
-                    // d'être refusé, le réécrire ailleurs n'aurait aucun sens
-                    // et l'exposerait dans un fichier de traces.
+                    // The VM name is logged, the secret never: it has just
+                    // been refused, writing it again elsewhere would make no sense
+                    // and would expose it in a trace file.
                     console.error(`enrôlement en échec pour la VM ${vm} : ${String(cause)}`);
-                    // ⚠️ CE CHEMIN COMPTE AUSSI. Une empreinte écrite par une
-                    // version future du service fait LEVER `verifier` : sans
-                    // ce comptage, un attaquant qui trouverait de quoi la
-                    // faire lever aurait un chemin de coût plein et non
-                    // freiné.
+                    // ⚠️ THIS PATH COUNTS TOO. A digest written by a
+                    // future version of the service makes `verifier` RAISE: without
+                    // this counting, an attacker who found a way to make it
+                    // raise would have a full-cost path with no
+                    // brake.
                     compterLEchec(frein, cles, adresse, maintenant());
                     refuser('enrolement');
                 });
         });
 
         socket.on('close', () => {
-            // ⚠️ LE SOCKET EST PASSÉ, ET IL COMPTE. Un agent qui se relance
-            // s'inscrit AVANT que la fermeture du précédent ne soit notifiée :
-            // un retrait nu effacerait alors l'inscription du NEUF, et la VM
-            // deviendrait injoignable au moment même où elle se reconnecte.
+            // ⚠️ THE SOCKET IS PASSED, AND IT MATTERS. An agent that restarts
+            // registers BEFORE the close of the previous one is notified:
+            // a bare removal would then erase the registration of the NEW one, and the VM
+            // would become unreachable at the very moment it reconnects.
             //
-            // Sans ce retrait, une VM morte resterait « joignable » jusqu'au
-            // prochain enrôlement, et chaque lancement coûterait
-            // `DELAI_LANCEMENT_MS` avant d'échouer sur un silence.
+            // Without this removal, a dead VM would stay "reachable" until the
+            // next enrolment, and each launch would cost
+            // `DELAI_LANCEMENT_MS` before failing on a silence.
             if (vmId !== undefined) registre.retirer(vmId, socket);
         });
     });
 }
 
-/// Enregistre l'échec, et journalise SI ET SEULEMENT SI le frein vient de
-/// mordre.
+/// Records the failure, and logs IF AND ONLY IF the brake has just
+/// bitten.
 ///
-/// 🔴 POURQUOI PAS UNE LIGNE PAR REFUS — même raison qu'`http/routes-auth.ts`,
-/// et elle est plus mordante ici : une tentative d'enrôlement refusée FERME le
-/// socket, si bien qu'un attaquant en boucle ouvre une connexion par
-/// tentative. Une trace par refus ferait donc écrire une ligne par connexion,
-/// sur le chemin même que le frein vient de rendre gratuit. `CLAUDE.md` porte
-/// la règle depuis le chantier TURN : « compter ou échantillonner, jamais
-/// tracer par paquet ».
+/// 🔴 WHY NOT ONE LINE PER REFUSAL — same reason as `http/routes-auth.ts`,
+/// and it bites harder here: a refused enrolment attempt CLOSES the
+/// socket, so an attacker in a loop opens one connection per
+/// attempt. One trace per refusal would therefore write one line per connection,
+/// on the very path the brake has just made free. `CLAUDE.md` carries
+/// the rule since the TURN project: "count or sample, never
+/// trace per packet".
 ///
-/// La transition est détectée en reconsultant APRÈS l'échec : la tentative
-/// suivante est refusée AVANT d'atteindre `verifierEnrolement`, donc n'appelle
-/// jamais cette fonction. Il y a EXACTEMENT une ligne par clé et par fenêtre.
+/// The transition is detected by consulting again AFTER the failure: the next
+/// attempt is refused BEFORE reaching `verifierEnrolement`, so it never calls
+/// this function. There is EXACTLY one line per key and per window.
 function compterLEchec(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
@@ -429,12 +429,12 @@ function compterLEchec(
     journaliserLeFrein(frein, cles, adresse, instant);
 }
 
-/// La ligne que l'exploitant lit, et que le demandeur ne verra jamais.
+/// The line the operator reads, and that the requester will never see.
 ///
-/// ⚠️ ELLE NOMME L'ADRESSE RETENUE, et c'est le SEUL remède au mode de
-/// défaillance de `http/adresse-source.ts` : un exploitant qui a posé un proxy
-/// sans déclarer sa confiance verra ici l'adresse de son proxy sur toutes les
-/// lignes, et comprendra que son frein par adresse est devenu GLOBAL.
+/// ⚠️ IT NAMES THE RETAINED ADDRESS, and that is the ONLY remedy for the failure
+/// mode of `http/adresse-source.ts`: an operator who put a proxy in place
+/// without declaring trust in it will see the address of their proxy here on every
+/// line, and will understand that their per-address brake has become GLOBAL.
 function journaliserLeFrein(
     frein: Frein,
     cles: readonly (readonly [string, Budget])[],
@@ -448,16 +448,16 @@ function journaliserLeFrein(
             adresse,
             cles: cles.map(([cle]) => cle).join(' '),
             retry_apres_s: verdict.retryApresS,
-            // Sans ces deux-là, la SATURATION du frein serait invisible : sous
-            // saturation une éviction rend son budget à une VM visée.
+            // Without these two, SATURATION of the brake would be invisible: under
+            // saturation an eviction gives its budget back to a targeted VM.
             entrees: frein.taille(),
             evictions: frein.evictions(),
         }),
     );
 }
 
-/// N'écrit que sur un socket OUVERT. Un `send` sur un socket en cours de
-/// fermeture lève, et cette exception traverserait le gestionnaire `message`.
+/// Only writes to an OPEN socket. A `send` on a socket being
+/// closed raises, and that exception would cross the `message` handler.
 function envoyer(socket: WebSocket, brut: string): void {
     if (socket.readyState === 1 /* OPEN */) socket.send(brut);
 }

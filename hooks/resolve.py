@@ -38,13 +38,13 @@ from commun import (
 
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 
-# PORT_DEFAUT (3445) et sa raison vivent désormais dans `commun.py`, seul
-# endroit qui les porte — voir son commentaire. Repris ici tel quel par
-# `lire_port()`, jamais recopié.
+# PORT_DEFAUT (3445) and its reason now live in `commun.py`, the only
+# place that holds them — see its comment. Reused here as is by
+# `lire_port()`, never copied.
 #
-# Surchargeable par DESK_PORT pour que les tests (et un futur opérateur qui
-# changerait de proxy) puissent poser une autre valeur ; le défaut reste
-# celui de `commun.PORT_DEFAUT`.
+# Overridable by DESK_PORT so that the tests (and a future operator who
+# would switch proxies) can set another value; the default stays
+# that of `commun.PORT_DEFAUT`.
 
 MODES_CONNUS = ("motdepasse", "pomerium")
 
@@ -58,15 +58,15 @@ def refuser(raison: str) -> None:
 
 
 def lire_borne_node():
-    """Relit `engines.node` dans plateforme/package.json.
+    """Reads back `engines.node` from plateforme/package.json.
 
-    🔴 RELUE DANS LE FICHIER, JAMAIS RECOPIÉE DEPUIS UN PLAN : un intervalle
-    recopié survit à la réalité qu'il décrivait — le naufrage du « 487 » que
-    CLAUDE.md nomme, appliqué ici d'avance.
+    🔴 READ FROM THE FILE, NEVER COPIED FROM A PLAN: a copied
+    range outlives the reality it described — the "487" wreck that
+    CLAUDE.md names, applied here in advance.
 
-    Rend (borne, None) en succès, ou (None, raison) si le fichier est
-    illisible ou ne déclare pas `engines.node` — un chemin d'échec comme un
-    autre, qui se traduit en refus, jamais en exception.
+    Returns (bound, None) on success, or (None, raison) if the file is
+    unreadable or does not declare `engines.node` — a failure path like any
+    other, which turns into a refusal, never an exception.
     """
     chemin = RACINE / "plateforme" / "package.json"
     try:
@@ -80,12 +80,12 @@ def lire_borne_node():
 
 
 def parser_borne(borne: str):
-    """Parse une borne à deux clauses ('>=A.B.C <X.Y.Z') en deux tuples.
+    """Parses a two-clause bound ('>=A.B.C <X.Y.Z') into two tuples.
 
-    Ne comprend QUE les deux opérateurs réellement présents dans
-    `plateforme/package.json` (`>=` et `<`) : un format plus riche que celui
-    qu'on a mesuré n'a pas à être deviné, il doit faire échouer le parsing —
-    et donc refuser, jamais planter.
+    Understands ONLY the two operators actually present in
+    `plateforme/package.json` (`>=` and `<`): a format richer than the one
+    we measured need not be guessed, it must make parsing fail —
+    and therefore refuse, never crash.
     """
     mini = maxi = None
     for clause in borne.split():
@@ -104,12 +104,12 @@ def parser_borne(borne: str):
 
 
 def version_node_locale():
-    """`node --version` de la machine qui exécute CE hook, ou None.
+    """`node --version` of the machine running THIS hook, or None.
 
-    resolve tourne avant le redémarrage vers la cible : ce qu'il peut
-    éprouver est le node de la machine qui l'exécute réellement (l'hôte de
-    l'assistant, ou celui des tests) — jamais celui d'une cible pas encore
-    installée.
+    resolve runs before the reboot into the target: what it can
+    test is the node of the machine that actually runs it (the host of
+    the wizard, or that of the tests) — never that of a target not yet
+    installed.
     """
     try:
         r = subprocess.run(["node", "--version"], capture_output=True,
@@ -122,7 +122,7 @@ def version_node_locale():
 
 
 def valider_node():
-    """Rend (version, None) en succès, (None, raison) sinon."""
+    """Returns (version, None) on success, (None, raison) otherwise."""
     borne_brute, raison = lire_borne_node()
     if raison:
         return None, raison
@@ -146,20 +146,20 @@ def valider_node():
 
 
 def deriver_adresses_turn():
-    """Les deux adresses de docker-compose.coturn.yml, dérivées des interfaces.
+    """The two addresses of docker-compose.coturn.yml, derived from the interfaces.
 
-    🔴 `docker-compose.coturn.yml` exige TURN_LISTENING_IP **et**
-    TURN_RELAY_IP, toutes deux obligatoires, sans quoi coturn se lie à TOUTES
-    les interfaces (mesuré le 21 août 2026 : 23 adresses distinctes, dont
-    l'adresse publique). Les deux sont dérivées de la même interface — celle
-    de la route IPv4 par défaut — parce que ce déploiement porte coturn en
-    `network_mode: host` sur une machine à interface publique unique :
-    l'adresse d'où l'on écoute et celle depuis laquelle on relaie sont la
-    même adresse physique. Si l'une des deux ne peut pas être établie,
-    REFUSER plutôt qu'inventer une valeur.
+    🔴 `docker-compose.coturn.yml` requires TURN_LISTENING_IP **and**
+    TURN_RELAY_IP, both mandatory, otherwise coturn binds to ALL
+    interfaces (measured on 21 August 2026: 23 distinct addresses, including
+    the public address). Both are derived from the same interface — that
+    of the default IPv4 route — because this deployment runs coturn in
+    `network_mode: host` on a machine with a single public interface:
+    the address we listen from and the one we relay from are the
+    same physical address. If either cannot be established,
+    REFUSE rather than invent a value.
 
-    Rend (turn_ecoute, turn_relais, None) en succès, ou
-    (None, None, raison) sinon.
+    Returns (turn_ecoute, turn_relais, None) on success, or
+    (None, None, raison) otherwise.
     """
     interface = interface_de_route_par_defaut()
     if not interface:
@@ -177,7 +177,7 @@ def deriver_adresses_turn():
 
 
 def lire_port():
-    """PORT_DEFAUT, surchargeable par DESK_PORT (pour les tests seuls)."""
+    """PORT_DEFAUT, overridable by DESK_PORT (for the tests only)."""
     brut = os.environ.get("DESK_PORT")
     if not brut:
         return PORT_DEFAUT, None
@@ -188,25 +188,25 @@ def lire_port():
 
 
 def valider_auth_mode(answers: dict):
-    """Rend None en succès, ou la phrase de refus sinon.
+    """Returns None on success, or the refusal sentence otherwise.
 
-    🔴 Un mode inconnu LÈVE (côté service, `PLATEFORME_AUTH` en dehors de
-    `motdepasse`/`pomerium` lève dans `plateforme/src/config.ts`) : ici,
-    un repli silencieux sur `motdepasse` ferait tourner un mode sous le nom
-    de l'autre, et l'un des deux sens est une ouverture. Donc refus, jamais
-    de repli.
+    🔴 An unknown mode RAISES (on the service side, `PLATEFORME_AUTH` outside
+    `motdepasse`/`pomerium` raises in `plateforme/src/config.ts`): here,
+    a silent fallback to `motdepasse` would run one mode under the name
+    of the other, and one of the two directions is an opening. So refusal, never
+    a fallback.
 
-    ✅ CORRIGÉ AU LOT 10A (29 août 2026, problème C) : cette fonction
-    refusait CATÉGORIQUEMENT `auth_mode=pomerium`, au motif qu'aucune des
-    quatre questions du wizard ne permet de déclarer un proxy de confiance.
-    C'était vrai, mais rendait IMPOSSIBLE le choix explicite du propriétaire
-    du dépôt pour la mise en service réelle (« PLATEFORME_AUTH=pomerium »,
-    contre l'autre option qui lui était présentée). Le refus est levé : le
-    proxy de confiance est désormais DÉRIVÉ, comme `PORT_DEFAUT` et
-    `commun.HOTE_DEFAUT` — voir `commun.py::lire_proxy_confiance` pour le
-    raisonnement complet et sa réserve (valeur RAISONNÉE, pas mesurée, à
-    confirmer par le volet 10B). `resoudre()` l'inclut désormais dans les
-    facts sous la clé `proxy_confiance`, et `hooks/install.py` l'écrit dans
+    ✅ FIXED IN BATCH 10A (29 August 2026, problem C): this function
+    flatly REFUSED `auth_mode=pomerium`, on the grounds that none of the
+    four wizard questions allows declaring a trusted proxy.
+    That was true, but made IMPOSSIBLE the explicit choice of the repository
+    owner for the real commissioning ("PLATEFORME_AUTH=pomerium",
+    against the other option offered to them). The refusal is lifted: the
+    trusted proxy is now DERIVED, like `PORT_DEFAUT` and
+    `commun.HOTE_DEFAUT` — see `commun.py::lire_proxy_confiance` for the
+    full reasoning and its reservation (a REASONED value, not measured, to
+    be confirmed by part 10B). `resoudre()` now includes it in the
+    facts under the key `proxy_confiance`, and `hooks/install.py` writes it into
     `PLATEFORME_PROXY_DE_CONFIANCE`.
     """
     mode = answers.get("auth_mode")
@@ -220,21 +220,21 @@ def valider_auth_mode(answers: dict):
 
 
 def valider_vb_audio(answers: dict):
-    """Rend None en succès, ou la phrase de refus sinon.
+    """Returns None on success, or the refusal sentence otherwise.
 
-    🔴 RONDE DE CORRECTION 1 sur la tâche 6 (29 août 2026) : `hooks/vm.py::
-    poser_vb_audio(armee=True)` lève `NotImplementedError` faute de charge
-    VB-Audio fournie par ce package (licence personnelle seulement) — mais
-    ce hook-là tourne dans `activate`, APRÈS que le compte administrateur
-    et l'enrôlement de l'agent ont déjà été tentés (`hooks/activate.py`).
-    Un opérateur qui coche la case du wizard (« Installer VB-Audio dans la
-    VM (micro) ») obtiendrait donc une activation qui échoue à CHAQUE
-    exécution, indéfiniment : aucun compte, aucun agent enrôlé. Le refus
-    doit arriver ICI, dans `resolve`, avant qu'un octet touche le disque —
-    exactement la doctrine de ce hook (voir le docstring de tête). La levée
-    de `poser_vb_audio` reste en place par ailleurs : une défense en
-    profondeur, pas un doublon — si ce refus était un jour contourné, le
-    hook ne doit toujours pas prétendre avoir installé quoi que ce soit.
+    🔴 CORRECTION ROUND 1 on task 6 (29 August 2026): `hooks/vm.py::
+    poser_vb_audio(armee=True)` raises `NotImplementedError` for lack of a
+    VB-Audio payload supplied by this package (personal licence only) — but
+    that hook runs in `activate`, AFTER the administrator account
+    and the agent enrolment have already been attempted (`hooks/activate.py`).
+    An operator who ticks the wizard box ("Install VB-Audio in the
+    VM (microphone)") would therefore get an activation that fails on EVERY
+    run, forever: no account, no enrolled agent. The refusal
+    must come HERE, in `resolve`, before a single byte touches the disk —
+    exactly the doctrine of this hook (see the head docstring). The raise
+    in `poser_vb_audio` stays in place as well: defence in
+    depth, not a duplicate — if this refusal were ever bypassed, the
+    hook must still not claim to have installed anything.
     """
     if not answers.get("vb_audio"):
         return None
@@ -249,14 +249,14 @@ def valider_vb_audio(answers: dict):
 
 
 def charger_contexte():
-    """Lit et valide `{"hw":…, "answers":…}` sur stdin.
+    """Reads and validates `{"hw":…, "answers":…}` on stdin.
 
-    Rend (hw, answers, None) en succès, ou (None, None, raison) sur les deux
-    formes d'entrée mal formée qu'on sait NOMMER : un JSON illisible, ou une
-    racine / `hw` / `answers` qui ne sont pas des objets. Nommer ces deux cas
-    plutôt que de les laisser tomber dans le garde générique de `main()` évite
-    à l'opérateur un aller-retour : la phrase dit PRÉCISÉMENT ce qui cloche,
-    pas seulement qu'une exception a eu lieu.
+    Returns (hw, answers, None) on success, or (None, None, raison) on the two
+    malformed input shapes we know how to NAME: unreadable JSON, or a
+    root / `hw` / `answers` that are not objects. Naming these two cases
+    rather than letting them fall into the generic guard of `main()` saves
+    the operator a round trip: the sentence says PRECISELY what is wrong,
+    not only that an exception happened.
     """
     try:
         contexte = json.load(sys.stdin)
@@ -283,64 +283,64 @@ def charger_contexte():
 
 
 def resoudre(hw: dict, answers: dict) -> int:
-    """Le corps du hook, une fois `hw`/`answers` garantis être des objets.
+    """The body of the hook, once `hw`/`answers` are guaranteed to be objects.
 
-    Isolé de `main()` pour que le garde générique de `main()` enveloppe
-    aussi cette fonction : toute exception qu'AUCUN chemin ci-dessous n'a
-    prévue redevient un refus là-bas, jamais une trace pour l'opérateur.
+    Isolated from `main()` so that the generic guard of `main()` also wraps
+    this function: any exception that NO path below
+    anticipated becomes a refusal there again, never a traceback for the operator.
     """
     emettre({"event": "progress", "pct": 10,
              "msg": "Vérification du mode d'authentification"})
 
-    # 🔴 IL N'Y A PLUS DE PORTE « VM WINDOWS » ICI, ET C'EST LA CORRECTION
-    # DE LA CRITIQUE DE LA REVUE FINALE DE BRANCHE (30 août 2026). Ce hook
-    # portait `if not hw.get("vm_windows"): refuser(...)`. Trois faits, dont
-    # chacun suffit à condamner cette porte :
+    # 🔴 THERE IS NO "WINDOWS VM" GATE HERE ANY MORE, AND THAT IS THE FIX
+    # FOR THE CRITICAL FINDING OF THE FINAL BRANCH REVIEW (30 August 2026). This hook
+    # carried `if not hw.get("vm_windows"): refuser(...)`. Three facts, each
+    # of which is enough to condemn that gate:
     #
-    #   ① AUCUN PRODUCTEUR DE CETTE CLÉ N'EXISTE. Le moteur passe à `resolve`
-    #      EXACTEMENT ce que rend `installer/installer/common/hardware.py::
-    #      detect_all()` — huit clés (`disks`, `ethernet`, `wifi`, `gpus`,
-    #      `cpu`, `iommu`, `memory_mib`, `passthrough_candidates`), aucune
-    #      nommée `vm_windows` — passé verbatim par `install-engine/run.py`
-    #      (`hw = hardware.detect_all()`) à `steps/packages.py::plan_packages`
-    #      puis à `run_resolve`, sans enrichissement. `hw.get("vm_windows")`
-    #      rendait donc TOUJOURS `None`, ce hook refusait TOUJOURS, et
-    #      `steps/packages.py` traduit un refus en `StepError` — c'est-à-dire
-    #      que l'installation ENTIÈRE s'arrêtait, pas seulement `desk`. Le
-    #      package ne pouvait pas s'installer, la seule chose qu'il existe
-    #      pour faire.
-    #   ② LE MOMENT REND LA CONDITION INSATISFIABLE. `plan_packages()` appelle
-    #      `resolve` AVANT `partition()` (`installer/installer/packages/
-    #      runner.py`, docstring de tête : « plan_packages() runs resolve
-    #      BEFORE partition() »). À cet instant, le disque cible n'existe pas,
-    #      donc le système que `console` va installer n'existe pas, donc la VM
-    #      Windows que `console` provisionne ne peut pas exister. Aucun
-    #      détecteur qu'on ajouterait au moteur ne changerait cela : la porte
-    #      était fausse par construction, pas par oubli.
-    #   ③ LA GARANTIE EXISTE DÉJÀ, PLUS TÔT ET PLUS FORTE, ET ELLE N'EST PAS
-    #      LA NÔTRE. `nivuus-package.yaml` déclare `requires: packages:
-    #      [console]`, et `plan_packages()` refuse par `missing_dependencies`
-    #      AVANT le premier hook `resolve` et AVANT `partition()`. « La VM
-    #      existera » est donc acquis par le manifeste ; le redire ici en
-    #      interrogeant une clé inventée n'ajoutait rien et cassait tout.
+    #   ① NO PRODUCER OF THIS KEY EXISTS. The engine passes to `resolve`
+    #      EXACTLY what `installer/installer/common/hardware.py::
+    #      detect_all()` returns — eight keys (`disks`, `ethernet`, `wifi`, `gpus`,
+    #      `cpu`, `iommu`, `memory_mib`, `passthrough_candidates`), none
+    #      named `vm_windows` — passed verbatim by `install-engine/run.py`
+    #      (`hw = hardware.detect_all()`) to `steps/packages.py::plan_packages`
+    #      then to `run_resolve`, without enrichment. `hw.get("vm_windows")`
+    #      therefore ALWAYS returned `None`, this hook ALWAYS refused, and
+    #      `steps/packages.py` turns a refusal into a `StepError` — meaning
+    #      that the WHOLE installation stopped, not only `desk`. The
+    #      package could not install itself, the one thing it exists
+    #      to do.
+    #   ② THE TIMING MAKES THE CONDITION UNSATISFIABLE. `plan_packages()` calls
+    #      `resolve` BEFORE `partition()` (`installer/installer/packages/
+    #      runner.py`, head docstring: "plan_packages() runs resolve
+    #      BEFORE partition()"). At that instant, the target disk does not exist,
+    #      so the system `console` will install does not exist, so the Windows
+    #      VM that `console` provisions cannot exist. No
+    #      detector added to the engine would change that: the gate
+    #      was wrong by construction, not by oversight.
+    #   ③ THE GUARANTEE ALREADY EXISTS, EARLIER AND STRONGER, AND IT IS NOT
+    #      OURS. `nivuus-package.yaml` declares `requires: packages:
+    #      [console]`, and `plan_packages()` refuses through `missing_dependencies`
+    #      BEFORE the first `resolve` hook and BEFORE `partition()`. "The VM
+    #      will exist" is therefore settled by the manifest; saying it again here by
+    #      querying an invented key added nothing and broke everything.
     #
-    # 🔴 LA PORTE N'EST PAS SUPPRIMÉE, ELLE MIGRE VERS `activate` — la seule
-    # phase où la VM peut exister (après le redémarrage, sur le système
-    # installé, avec le réseau). Voir `hooks/activate.py`, le bloc
-    # « LA PORTE DE LA VM WINDOWS VIT ICI » : la VM y est éprouvée par un
-    # ÉCHANGE WinRM RÉEL, jamais par une clé que personne ne produit.
+    # 🔴 THE GATE IS NOT REMOVED, IT MOVES TO `activate` — the only
+    # phase where the VM can exist (after the reboot, on the installed
+    # system, with the network). See `hooks/activate.py`, the block
+    # "THE WINDOWS VM GATE LIVES HERE": the VM is tested there through a
+    # REAL WinRM EXCHANGE, never through a key that nobody produces.
     #
-    # 🔴 CE QUE CE HOOK PEUT ENCORE LIRE DANS `hw` : rien qui ne figure dans
-    # `detect_all()`. `tests/test_desk_contrat_hw.py` fige ce contrat et
-    # rougit si une clé absente du producteur réapparaît ici.
+    # 🔴 WHAT THIS HOOK CAN STILL READ IN `hw`: nothing that is not in
+    # `detect_all()`. `tests/test_desk_contrat_hw.py` freezes this contract and
+    # turns red if a key missing from the producer reappears here.
 
-    # --- Le mode d'authentification, et sa garde pomerium ------------------
+    # --- The authentication mode, and its pomerium guard --------------------
     raison_auth = valider_auth_mode(answers)
     if raison_auth:
         refuser(raison_auth)
         return 0
 
-    # --- VB-Audio : aucune charge fournie, le refus arrive ICI -------------
+    # --- VB-Audio: no payload supplied, the refusal comes HERE ---------------
     raison_vb_audio = valider_vb_audio(answers)
     if raison_vb_audio:
         refuser(raison_vb_audio)
@@ -348,7 +348,7 @@ def resoudre(hw: dict, answers: dict) -> int:
 
     emettre({"event": "progress", "pct": 40, "msg": "Vérification de node"})
 
-    # --- Node, contre la borne DÉCLARÉE par plateforme/package.json --------
+    # --- Node, against the bound DECLARED by plateforme/package.json ----------
     version_node, raison_node = valider_node()
     if raison_node:
         refuser(raison_node)
@@ -356,29 +356,29 @@ def resoudre(hw: dict, answers: dict) -> int:
 
     emettre({"event": "progress", "pct": 70, "msg": "Dérivation des adresses TURN"})
 
-    # --- Les deux adresses TURN, dérivées, jamais demandées ----------------
+    # --- The two TURN addresses, derived, never asked for ------------------
     turn_ecoute, turn_relais, raison_turn = deriver_adresses_turn()
     if raison_turn:
         refuser(raison_turn)
         return 0
 
-    # --- L'adresse d'écoute de la plateforme (jamais celle de TURN) --------
-    # 🔴 DÉLIBÉRÉMENT UNE DÉRIVATION SÉPARÉE de `deriver_adresses_turn()`
-    # ci-dessus : cette dernière résout l'interface de la route INTERNET
-    # (publique, requise pour TURN) ; `lire_hote()` rend une adresse
-    # INTERNE fixe (voir `commun.py::HOTE_DEFAUT` pour le bug réel que cette
-    # séparation corrige — les deux étaient confondues avant le lot 10A).
+    # --- The listen address of the platform (never the TURN one) ------------
+    # 🔴 DELIBERATELY A DERIVATION SEPARATE from `deriver_adresses_turn()`
+    # above: the latter resolves the interface of the INTERNET route
+    # (public, required for TURN); `lire_hote()` returns a fixed INTERNAL
+    # address (see `commun.py::HOTE_DEFAUT` for the real bug this
+    # separation fixes — the two were mixed up before batch 10A).
     hote, raison_hote = lire_hote()
     if raison_hote:
         refuser(raison_hote)
         return 0
 
-    # --- Le proxy de confiance (PLATEFORME_PROXY_DE_CONFIANCE) --------------
-    # Voir `commun.py::lire_proxy_confiance` : une valeur RAISONNÉE, jamais
-    # demandée, jamais absente. Exposée dans les facts quel que soit
-    # auth_mode — elle ne nuit pas en mode motdepasse (elle y sert
-    # seulement à faire croire X-Forwarded-For depuis cette adresse), et
-    # c'est en mode pomerium qu'elle devient obligatoire côté service.
+    # --- The trusted proxy (PLATEFORME_PROXY_DE_CONFIANCE) ------------------
+    # See `commun.py::lire_proxy_confiance`: a REASONED value, never
+    # asked for, never missing. Exposed in the facts whatever
+    # auth_mode is — it does no harm in `motdepasse` mode (there it only
+    # serves to trust X-Forwarded-For from this address), and
+    # it is in pomerium mode that it becomes mandatory on the service side.
     proxy_confiance = lire_proxy_confiance()
 
     port, raison_port = lire_port()
@@ -403,31 +403,31 @@ def resoudre(hw: dict, answers: dict) -> int:
 
 
 def main() -> int:
-    # sys.argv est délibérément ignoré : le moteur réel appelle ce hook avec
-    # `--phase resolve` (voir installer/packages/runner.py), mais son test
-    # l'appelle sans aucun argument. La seule chose qui compte est stdin —
-    # ainsi le hook répond aux deux appels sans avoir à distinguer lequel
-    # c'est.
+    # sys.argv is deliberately ignored: the real engine calls this hook with
+    # `--phase resolve` (see installer/packages/runner.py), but its test
+    # calls it without any argument. The only thing that matters is stdin —
+    # so the hook answers both calls without having to tell which one
+    # it is.
     #
-    # 🔴 GARDE GÉNÉRIQUE, RONDE DE CORRECTION 1 (29 août 2026) : la première
-    # version laissait `json.load` et l'accès `.get()` sur un `hw`/`answers`
-    # mal typé lever tels quels — mesuré : un JSON illisible, une racine qui
-    # n'est pas un objet, ou `hw` valant une chaîne au lieu d'un dict
-    # donnaient tous les trois une trace Python et un code de sortie 1,
-    # cassant l'invariant central de ce hook. `charger_contexte()` nomme les
-    # deux cas qu'on sait distinguer (JSON illisible ; `hw`/`answers` mal
-    # typés) ; CE `try` couvre tout le reste — ce qu'aucun chemin de
-    # `resoudre()` n'a prévu. Les deux sont nécessaires ensemble : le garde
-    # générique seul rendrait un « erreur inattendue » sur un cas qu'on sait
-    # nommer, coûtant un aller-retour à l'opérateur ; les cas nommés seuls
-    # laisseraient passer tout ce qu'on n'a pas anticipé.
+    # 🔴 GENERIC GUARD, CORRECTION ROUND 1 (29 August 2026): the first
+    # version let `json.load` and the `.get()` access on a wrongly typed `hw`/`answers`
+    # raise as is — measured: unreadable JSON, a root that
+    # is not an object, or `hw` being a string instead of a dict
+    # all three gave a Python traceback and an exit code 1,
+    # breaking the central invariant of this hook. `charger_contexte()` names the
+    # two cases we can tell apart (unreadable JSON; wrongly typed `hw`/`answers`);
+    # THIS `try` covers everything else — what no path in
+    # `resoudre()` anticipated. Both are needed together: the generic
+    # guard alone would return an "unexpected error" on a case we know how to
+    # name, costing the operator a round trip; the named cases alone
+    # would let through everything we did not foresee.
     try:
         hw, answers, raison = charger_contexte()
         if raison:
             refuser(raison)
             return 0
         return resoudre(hw, answers)
-    except Exception as exc:  # noqa: BLE001 — c'est le garde générique lui-même
+    except Exception as exc:  # noqa: BLE001 — this is the generic guard itself
         refuser(f"erreur inattendue dans resolve : {exc}")
         return 0
 

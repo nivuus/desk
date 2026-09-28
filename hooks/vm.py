@@ -78,21 +78,21 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
-# --- Où vit winrm_exec.py, résolu jamais supposé --------------------------
+# --- Where winrm_exec.py lives, resolved never assumed ----------------------
 
 NIVUUS_PACKAGES_DIR_DEFAUT = "/opt/nivuus-packages"
 WINRM_EXEC_RELATIF = pathlib.Path("console") / "guest" / "winrm_exec.py"
 
 
 def chemin_winrm_exec() -> pathlib.Path:
-    """Résout le chemin de `winrm_exec.py`, sans jamais le deviner.
+    """Resolves the path of `winrm_exec.py`, without ever guessing it.
 
-    Lit `NIVUUS_PACKAGES_DIR` (défaut `/opt/nivuus-packages` — voir le
-    docstring de tête pour d'où vient cette convention), vise
-    `<packages_dir>/console/guest/winrm_exec.py`, et LÈVE
-    `FileNotFoundError`, NOMMANT le chemin cherché, si ce fichier n'existe
-    pas : un package qui échoue en silence sur un contrat inter-packages
-    est indiscernable d'un package qui n'a rien à faire.
+    Reads `NIVUUS_PACKAGES_DIR` (default `/opt/nivuus-packages` — see the
+    head docstring for where this convention comes from), targets
+    `<packages_dir>/console/guest/winrm_exec.py`, and RAISES
+    `FileNotFoundError`, NAMING the searched path, if this file does not
+    exist: a package that fails silently on an inter-package contract
+    cannot be told apart from a package that has nothing to do.
     """
     packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR", NIVUUS_PACKAGES_DIR_DEFAUT)
     chemin = pathlib.Path(packages_dir) / WINRM_EXEC_RELATIF
@@ -106,17 +106,17 @@ def chemin_winrm_exec() -> pathlib.Path:
 
 
 def executer_winrm_reel(mode: str, commande: str) -> str:
-    """L'exécuteur RÉEL — jamais employé par `tests/test_desk_vm.py`, sauf
-    pour sa propre ROUGE, qui rate avant tout accès réseau (voir plus
-    haut).
+    """The REAL executor — never used by `tests/test_desk_vm.py`, except
+    for its own RED, which misses before any network access (see
+    above).
 
-    Résout `winrm_exec.py` (ce qui lève AVANT tout appel réseau si
-    `console` n'est pas installé), puis invoque
-    `winrm_exec.py <mode> <commande>` en sous-processus. Rend la sortie
-    standard, dépouillée de ses espaces de bord ; lève `RuntimeError` sur
-    un échec de transport ou une commande distante en erreur (le fichier
-    de mot de passe absent, la VM injoignable, `RestartNeeded` non
-    lisible...).
+    Resolves `winrm_exec.py` (which raises BEFORE any network call if
+    `console` is not installed), then invokes
+    `winrm_exec.py <mode> <command>` as a subprocess. Returns the standard
+    output, stripped of its edge whitespace; raises `RuntimeError` on
+    a transport failure or a remote command in error (the password
+    file missing, the VM unreachable, `RestartNeeded` not
+    readable...).
     """
     chemin = chemin_winrm_exec()
     proc = subprocess.run(
@@ -132,23 +132,23 @@ def executer_winrm_reel(mode: str, commande: str) -> str:
     return proc.stdout.strip()
 
 
-# --- ProjFS : le redémarrage se CONSTATE et se DIT, il ne se prend pas ----
+# --- ProjFS: the reboot is NOTED and SAID, it is not taken ----------------
 
 @dataclass(frozen=True)
 class EtatProjFS:
-    """Ce que `poser_projfs` rapporte à l'appelant (`activate.py`)."""
+    """What `poser_projfs` reports to the caller (`activate.py`)."""
     redemarrage_requis: bool
 
 
-# La feature ProjFS EXIGE un redémarrage pour devenir active, mais
-# `-NoRestart` empêche `Enable-WindowsOptionalFeature` de le PRENDRE
-# lui-même : redémarrer la VM d'un opérateur sans le lui demander est un
-# effet de bord qu'aucune installation ne doit prendre (voir le docstring
-# de tête). La ligne `Write-Output 'RestartNeeded'` n'est émise QUE si la
-# propriété `RestartNeeded` de l'objet rendu est vraie — c'est ce jeton,
-# et lui seul, que `poser_projfs` cherche dans la sortie : une sortie vide
-# veut dire « aucun redémarrage requis », jamais une réponse ambiguë à
-# interpréter.
+# The ProjFS feature REQUIRES a reboot to become active, but
+# `-NoRestart` prevents `Enable-WindowsOptionalFeature` from TAKING it
+# itself: rebooting an operator's VM without asking is a side
+# effect no installation may take (see the head
+# docstring). The line `Write-Output 'RestartNeeded'` is emitted ONLY if the
+# `RestartNeeded` property of the returned object is true — it is this token,
+# and it alone, that `poser_projfs` looks for in the output: an empty output
+# means "no reboot required", never an ambiguous answer to
+# interpret.
 COMMANDE_PROJFS = (
     "$r = Enable-WindowsOptionalFeature -Online -FeatureName Client-ProjFS "
     "-NoRestart; if ($r.RestartNeeded) { Write-Output 'RestartNeeded' }"
@@ -156,48 +156,48 @@ COMMANDE_PROJFS = (
 
 
 def poser_projfs(executer=None) -> EtatProjFS:
-    """Active la fonctionnalité optionnelle Client-ProjFS dans la VM, SANS
-    redémarrer (`-NoRestart`), et RAPPORTE si un redémarrage est requis —
-    elle ne le déclenche jamais (voir le docstring de tête).
+    """Enables the Client-ProjFS optional feature in the VM, WITHOUT
+    rebooting (`-NoRestart`), and REPORTS whether a reboot is required —
+    it never triggers it (see the head docstring).
 
-    `executer(mode, commande) -> str` : en test, un exécuteur factice
-    (`faux_winrm_rendant`, voir `tests/test_desk_vm.py`) ; par défaut,
-    `executer_winrm_reel`, qui invoque réellement `winrm_exec.py` — donc
-    jamais exercé par ce module tant qu'un `executer` factice est fourni.
+    `executer(mode, commande) -> str`: in tests, a fake executor
+    (`faux_winrm_rendant`, see `tests/test_desk_vm.py`); by default,
+    `executer_winrm_reel`, which really invokes `winrm_exec.py` — hence
+    never exercised by this module as long as a fake `executer` is supplied.
     """
     executer = executer or executer_winrm_reel
     sortie = executer("ps", COMMANDE_PROJFS)
     return EtatProjFS(redemarrage_requis="RestartNeeded" in sortie)
 
 
-# --- VB-Audio : licence PERSONNELLE seulement -----------------------------
+# --- VB-Audio: PERSONAL licence only -----------------------------------
 
 def poser_vb_audio(armee: bool = False, executer=None) -> None:
-    """Pose VB-Audio dans la VM SI `armee` (le défaut du wizard, `vb_audio`
-    dans `wizard.yaml`, est faux).
+    """Installs VB-Audio in the VM IF `armee` (the wizard default, `vb_audio`
+    in `wizard.yaml`, is false).
 
-    🔴 DÉSARMÉ (le cas nominal), RIEN NE PART VERS LA VM — pas seulement
-    « rien ne s'installe » : `executer` n'est JAMAIS invoqué, et
-    `tests/test_desk_vm.py` éprouve que la liste des commandes vues par
-    l'exécuteur factice reste vide, pas qu'une installation a été sautée.
+    🔴 DISARMED (the nominal case), NOTHING GOES TO THE VM — not only
+    "nothing gets installed": `executer` is NEVER invoked, and
+    `tests/test_desk_vm.py` proves that the list of commands seen by
+    the fake executor stays empty, not that an installation was skipped.
 
-    ⚠️ ARMÉ, CE LOT NE POSE AUCUN PAYLOAD VB-AUDIO — ce n'est pas un
-    oubli : aucune tâche de ce lot (voir l'index des tâches,
-    `.superpowers/sdd/2026-08-29-package-nivuus/task-*-brief.md`) ne
-    dépose de pilote VB-Audio dans l'arborescence que `console` construit
-    (`console/guest/fetch_payload.py` : `agent/`, `virtio/`, `steam/`,
-    `sudovda/`, `winfsp/`, `apollo/`, `nvidia/` — AUCUNE entrée
-    `vb-audio`), et aucun chemin d'installateur silencieux n'est documenté
-    nulle part dans ce dépôt ni dans `installer/`. Fabriquer une commande
-    d'installation ici serait deviner un contrat qui n'existe pas — la
-    consigne explicite de cette tâche est de ne jamais deviner un tel
-    contrat (voir le chemin de `winrm_exec.py` ci-dessus, traité de la
-    même façon). Lever ICI, fort et nommé, est le choix cohérent avec le
-    reste de ce dépôt : un mécanisme qui échouerait en silence sur une
-    demande explicite de l'opérateur (`vb_audio: true`) serait indiscernable
-    d'un mécanisme qui n'a rien à faire. C'est un point ouvert, à trancher
-    par le propriétaire du dépôt quand un payload VB-Audio existera — voir
-    le rapport de cette tâche, § Réserves.
+    ⚠️ ARMED, THIS BATCH LAYS DOWN NO VB-AUDIO PAYLOAD — this is not an
+    oversight: no task of this batch (see the task index,
+    `.superpowers/sdd/2026-08-29-package-nivuus/task-*-brief.md`)
+    drops a VB-Audio driver into the tree that `console` builds
+    (`console/guest/fetch_payload.py`: `agent/`, `virtio/`, `steam/`,
+    `sudovda/`, `winfsp/`, `apollo/`, `nvidia/` — NO
+    `vb-audio` entry), and no silent installer path is documented
+    anywhere in this repository nor in `installer/`. Making up an
+    install command here would be guessing a contract that does not exist — the
+    explicit instruction of this task is to never guess such a
+    contract (see the path of `winrm_exec.py` above, handled the
+    same way). Raising HERE, loud and named, is the choice consistent with the
+    rest of this repository: a mechanism that would fail silently on an
+    explicit operator request (`vb_audio: true`) could not be told apart
+    from a mechanism that has nothing to do. It is an open point, to be settled
+    by the repository owner when a VB-Audio payload exists — see
+    the report of this task, § Reservations.
     """
     if not armee:
         return

@@ -1,37 +1,37 @@
-// L'enrôlement d'une VM par ligne de commande d'administration.
+// Enrolling a VM from the administration command line.
 //
-//     npm run admin:agent -- --vm w1 --adresse 192.168.3.2      (enrôler)
-//     npm run admin:agent -- --vm <id> --roter                  (faire tourner)
+//     npm run admin:agent -- --vm w1 --adresse 192.168.3.2      (enrol)
+//     npm run admin:agent -- --vm <id> --roter                  (rotate)
 //
-// 🔴 LE SECRET EST TIRÉ AU SORT PAR LA COMMANDE, ET ÉCRIT UNE SEULE FOIS SUR
-// STDOUT. Il n'est jamais relisible : seule son empreinte va en base. Un
-// `--secret` sur l'argv est REFUSÉ explicitement, avec son motif — `ps` expose
-// la ligne de commande de tout processus à tout utilisateur de la machine, et
-// un secret passé ainsi serait lisible par n'importe qui pendant toute la
-// durée de l'appel, puis dans l'historique du shell. C'est le précédent exact
-// de `creer-utilisateur.ts`, repris à la lettre.
+// 🔴 THE SECRET IS DRAWN AT RANDOM BY THE COMMAND, AND WRITTEN ONLY ONCE TO
+// STDOUT. It can never be read back: only its digest goes to the database. A
+// `--secret` on argv is REFUSED explicitly, with its reason — `ps` exposes
+// the command line of every process to every user of the machine, and
+// a secret passed that way would be readable by anyone for the whole
+// duration of the call, then in the shell history. It is the exact precedent
+// of `creer-utilisateur.ts`, taken to the letter.
 //
-// ⚠️ CE QU'ON EN FAIT ENSUITE N'EST PAS PROTÉGÉ, et il faut le dire ici :
-// le secret est destiné à `AGENT_SECRET` dans `scripts/run-agent.sh`, qui
-// l'écrit EN CLAIR dans `C:\dev\run-agent.ps1` sur un partage CIFS lisible
-// depuis l'hôte — comme les cinquante-sept autres variables.
+// ⚠️ WHAT IS DONE WITH IT NEXT IS NOT PROTECTED, and it must be said here:
+// the secret is meant for `AGENT_SECRET` in `scripts/run-agent.sh`, which
+// writes it IN PLAIN TEXT into `C:\dev\run-agent.ps1` on a CIFS share readable
+// from the host — like the fifty-seven other variables.
 //
-// 🔴 LE SOUS-BLOC P5 A ROUVERT CE POINT, ET IL NE LE CORRIGE PAS : IL LE REND
-// RÉPARABLE. Retirer le secret de ce fichier exigerait de modifier `scripts/`,
-// de faire lire à `agent/` un coffre Windows (DPAPI), et d'éprouver le
-// résultat SUR LA VM — trois choses hors de son périmètre. Livrer un demi-
-// remède non éprouvé serait pire que de déclarer le manque.
+// 🔴 SUB-BLOCK P5 REOPENED THIS POINT, AND IT DOES NOT FIX IT: IT MAKES IT
+// REPAIRABLE. Removing the secret from that file would require changing `scripts/`,
+// making `agent/` read a Windows vault (DPAPI), and testing the
+// result ON THE VM — three things outside its scope. Delivering a half
+// remedy, untested, would be worse than declaring the gap.
 //
-// **La contrepartie est `--roter`, et elle n'existait pas.** Avant elle, un
-// exploitant qui apprenait qu'un secret avait fuité n'avait AUCUN moyen de le
-// remplacer : `enroler` ne sait qu'INSÉRER, `vm_id` est clé primaire
-// (`0003-agents.sql`), donc réenrôler une VM déjà enrôlée LÈVE. Il ne restait
-// que le `DELETE` manuel en base. Le vol d'un secret est désormais réparable.
+// **The counterpart is `--roter`, and it did not exist.** Before it, an
+// operator who learned that a secret had leaked had NO way to
+// replace it: `enroler` only knows how to INSERT, `vm_id` is a primary key
+// (`0003-agents.sql`), so re-enrolling an already enrolled VM RAISES. All that was left
+// was a manual `DELETE` in the database. The theft of a secret is now repairable.
 //
-// ⚠️ Une VM déjà enrôlée fait LEVER, par la clé primaire de `agent_enrole`.
-// Il n'y a PAS d'oracle d'énumération ici, contrairement au canal `/agent` :
-// l'appelant est l'administrateur, et lui cacher l'échec lui ferait croire à
-// un enrôlement qui n'existe pas.
+// ⚠️ An already enrolled VM makes it RAISE, through the primary key of `agent_enrole`.
+// There is NO enumeration oracle here, unlike the `/agent` channel:
+// the caller is the administrator, and hiding the failure would make them believe in
+// an enrolment that does not exist.
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { lireConfig } from '../config';
@@ -42,19 +42,19 @@ import { enroler, lireParVm, remplacerEmpreinte } from '../depot/agent';
 import { hacher } from '../identite/mot-de-passe';
 import { nouveauPrefixe } from '../agents/prefixe';
 
-/// Les deux gestes de cette commande, et le refus.
+/// The two actions of this command, and the refusal.
 ///
-/// ⚠️ `mode` EST EXPLICITE plutôt que déduit de la présence d'`adresse` : un
-/// jour où un troisième geste apparaîtrait, la déduction se tromperait en
-/// silence, là où un champ nommé oblige à trancher.
+/// ⚠️ `mode` IS EXPLICIT rather than inferred from the presence of `adresse`: the
+/// day a third action appeared, the inference would go wrong
+/// silently, whereas a named field forces a decision.
 export type Arguments =
     | { mode: 'enroler'; vm: string; adresse: string }
     | { mode: 'roter'; vm: string }
     | { refus: string };
 
-/// Les drapeaux qui tenteraient de faire passer un secret par l'argv. Ils sont
-/// ÉNUMÉRÉS plutôt que devinés : un motif large refuserait un jour un drapeau
-/// légitime sans qu'on sache pourquoi. Même choix que `creer-utilisateur.ts`.
+/// The flags that would try to pass a secret through argv. They are
+/// ENUMERATED rather than guessed: a broad pattern would one day refuse a
+/// legitimate flag without anyone knowing why. Same choice as `creer-utilisateur.ts`.
 const DRAPEAUX_INTERDITS = [
     '--secret',
     '--secret-enrolement',
@@ -66,16 +66,16 @@ const DRAPEAUX_INTERDITS = [
     '-p',
 ];
 
-/// 32 octets, soit 43 caractères de `base64url`. ⚠️ NON CALIBRÉE : c'est la
-/// longueur usuelle d'un secret de 256 bits, pas un seuil mesuré. Elle rejoint
-/// la liste des constantes non calibrées du dépôt.
+/// 32 bytes, i.e. 43 `base64url` characters. ⚠️ NOT CALIBRATED: it is the
+/// usual length of a 256-bit secret, not a measured threshold. It joins
+/// the list of uncalibrated constants of the repository.
 const OCTETS_SECRET = 32;
 
-/// PURE, et testée seule. Rend la paire, ou un refus qui porte son motif.
+/// PURE, and tested on its own. Returns the pair, or a refusal carrying its reason.
 export function analyserArguments(argv: string[]): Arguments {
     for (const drapeau of DRAPEAUX_INTERDITS) {
         if (argv.includes(drapeau)) {
-            // ⚠️ Le motif ne RECOPIE PAS la valeur refusée.
+            // ⚠️ The reason does NOT COPY the refused value.
             return {
                 refus:
                     `${drapeau} est refusé : le secret d'enrôlement est TIRÉ AU SORT par ` +
@@ -96,15 +96,15 @@ export function analyserArguments(argv: string[]): Arguments {
         return { refus: "--vm <nom> est obligatoire, et n'a aucun défaut." };
     }
 
-    // 🔴 LA ROTATION N'EXIGE PAS `--adresse`, et ce n'est pas une commodité :
-    // elle ne touche PAS la table `vm`. Exiger une adresse inviterait à en
-    // saisir une au hasard, qui serait ignorée — un paramètre qu'on demande
-    // sans l'employer finit par être cru employé.
+    // 🔴 ROTATION DOES NOT REQUIRE `--adresse`, and that is not a convenience:
+    // it does NOT touch the `vm` table. Requiring an address would invite
+    // typing a random one, which would be ignored — a parameter asked for
+    // without being used ends up being believed used.
     //
-    // ⚠️ LE CONTRÔLE DES DRAPEAUX INTERDITS EST EN AMONT DE CETTE BRANCHE, donc
-    // il couvre `--roter` aussi. C'est le chemin qu'on emprunte précisément
-    // quand un secret a fuité : y laisser passer un `--secret` sur l'argv
-    // rejouerait la fuite qu'on est en train de réparer.
+    // ⚠️ THE CHECK FOR FORBIDDEN FLAGS IS UPSTREAM OF THIS BRANCH, so
+    // it covers `--roter` too. That is the path taken precisely
+    // when a secret has leaked: letting a `--secret` on argv through there
+    // would replay the leak we are in the middle of repairing.
     if (argv.includes('--roter')) {
         return { mode: 'roter', vm };
     }
@@ -119,16 +119,16 @@ export function analyserArguments(argv: string[]): Arguments {
 export interface Enrolement {
     vmId: string;
     prefixe: string;
-    /// 🔴 Rendu UNE SEULE FOIS. Il n'existe nulle part ailleurs : seule son
-    /// empreinte est écrite, et rien ne permet de le retrouver ensuite.
+    /// 🔴 Returned ONLY ONCE. It exists nowhere else: only its
+    /// digest is written, and nothing allows finding it again afterwards.
     secret: string;
 }
 
-/// Crée la VM et son enrôlement, et rend le secret en clair À L'APPELANT SEUL.
+/// Creates the VM and its enrolment, and returns the plain secret TO THE CALLER ONLY.
 ///
-/// L'horloge est un PARAMÈTRE, comme partout dans ce dépôt : c'est ce qui
-/// rendrait une assertion sur une valeur exacte possible si un jour cette
-/// fonction en écrivait une.
+/// The clock is a PARAMETER, as everywhere in this repository: that is what
+/// would make an assertion on an exact value possible if one day this
+/// function wrote one.
 export async function enrolerLaVm(
     p: Pilote,
     nom: string,
@@ -138,9 +138,9 @@ export async function enrolerLaVm(
     const vmId = randomUUID();
     await p.executer('INSERT INTO vm(id, nom, adresse) VALUES(?, ?, ?)', [vmId, nom, adresse]);
 
-    // 🔴 TIRÉ AU SORT, jamais dérivé du nom de VM : un secret dérivé serait
-    // devinable par quiconque connaît ce nom, et l'enrôlement
-    // n'authentifierait plus rien.
+    // 🔴 DRAWN AT RANDOM, never derived from the VM name: a derived secret would be
+    // guessable by anyone who knows that name, and the enrolment
+    // would no longer authenticate anything.
     const secret = randomBytes(OCTETS_SECRET).toString('base64url');
     await enroler(p, vmId, await hacher(secret), nouveauPrefixe());
 
@@ -151,29 +151,29 @@ export async function enrolerLaVm(
     return { vmId, prefixe: ligne[0].prefixe_session, secret };
 }
 
-/// Ce qu'une rotation rend : le secret NEUF, ou un refus motivé.
+/// What a rotation returns: the NEW secret, or a reasoned refusal.
 export type Rotation = { vmId: string; prefixe: string; secret: string } | { refus: string };
 
-/// Fait tourner le secret d'enrôlement d'une VM DÉJÀ enrôlée.
+/// Rotates the enrolment secret of an ALREADY enrolled VM.
 ///
-/// 🔴 LE PRÉFIXE DE SESSION N'EST PAS TOUCHÉ, ET C'EST DÉLIBÉRÉ. Il compose le
-/// nom des sessions VIVANTES de cette VM (`agents/prefixe.ts`, spec §3.4) : le
-/// faire tourner couperait toutes les sessions en cours, au moment même où
-/// l'exploitant réagit à une fuite et où il a le moins besoin d'une panne de
-/// plus. **Rotation du secret n'est pas rotation de l'identité.** Il est
-/// d'ailleurs RENDU à l'appelant, inchangé, pour qu'il le voie de ses yeux.
+/// 🔴 THE SESSION PREFIX IS NOT TOUCHED, AND THAT IS DELIBERATE. It makes up the
+/// name of the LIVE sessions of this VM (`agents/prefixe.ts`, spec §3.4):
+/// rotating it would cut all ongoing sessions, at the very moment when
+/// the operator is reacting to a leak and least needs one more
+/// outage. **Rotating the secret is not rotating the identity.** It is
+/// moreover RETURNED to the caller, unchanged, so they see it with their own eyes.
 ///
-/// 🔴 UNE VM NON ENRÔLÉE REND UN REFUS MOTIVÉ, jamais un succès silencieux.
-/// L'`UPDATE` seul toucherait zéro ligne sans rien dire, et l'administrateur
-/// croirait avoir réparé une fuite alors que l'ancien secret resterait valide —
-/// le pire résultat possible pour une commande qu'on n'emploie QUE dans ce
-/// cas-là. ⚠️ Il n'y a PAS d'oracle d'énumération ici, contrairement au canal
-/// `/agent` : l'appelant est l'administrateur, et le refus le lui dit.
+/// 🔴 A NON-ENROLLED VM RETURNS A REASONED REFUSAL, never a silent success.
+/// The `UPDATE` alone would touch zero rows without saying anything, and the administrator
+/// would believe they had repaired a leak while the old secret stayed valid —
+/// the worst possible result for a command used ONLY in that
+/// case. ⚠️ There is NO enumeration oracle here, unlike the
+/// `/agent` channel: the caller is the administrator, and the refusal tells them.
 ///
-/// ⚠️ CE QUE LA ROTATION NE FAIT PAS : révoquer les jetons d'agent DÉJÀ
-/// délivrés, qui restent valides jusqu'à leur expiration. Même propriété que
-/// les jetons humains (spec §3.5) ; la fenêtre est bornée par
-/// `DUREE_JETON_ACCES_MS`, et le runbook l'écrit.
+/// ⚠️ WHAT ROTATION DOES NOT DO: revoke the agent tokens ALREADY
+/// issued, which stay valid until they expire. Same property as
+/// human tokens (spec §3.5); the window is bounded by
+/// `DUREE_JETON_ACCES_MS`, and the runbook says so.
 export async function roterLeSecret(p: Pilote, vmId: string): Promise<Rotation> {
     const ligne = await lireParVm(p, vmId);
     if (ligne === undefined) {
@@ -186,15 +186,15 @@ export async function roterLeSecret(p: Pilote, vmId: string): Promise<Rotation> 
         };
     }
 
-    // 🔴 TIRÉ AU SORT, exactement comme à l'enrôlement, et par le même appel :
-    // un secret de rotation dérivé de quoi que ce soit serait devinable, et la
-    // rotation ne réparerait rien.
+    // 🔴 DRAWN AT RANDOM, exactly as at enrolment, and by the same call:
+    // a rotation secret derived from anything at all would be guessable, and the
+    // rotation would repair nothing.
     const secret = randomBytes(OCTETS_SECRET).toString('base64url');
     await remplacerEmpreinte(p, vmId, await hacher(secret));
     return { vmId, prefixe: ligne.prefixe_session, secret };
 }
 
-/// Le corps impur. Rend le code de sortie.
+/// The impure body. Returns the exit code.
 export async function executer(argv: string[]): Promise<number> {
     const args = analyserArguments(argv);
     if ('refus' in args) {
@@ -205,9 +205,9 @@ export async function executer(argv: string[]): Promise<number> {
     const config = lireConfig(process.env);
     const base = await ouvrirBase(config);
     try {
-        // Les migrations d'abord : la commande peut être le tout premier geste
-        // sur une base neuve, et un `INSERT` sur une table absente rendrait un
-        // diagnostic sans rapport avec la cause.
+        // Migrations first: the command may be the very first action
+        // on a new database, and an `INSERT` on a missing table would give a
+        // diagnosis unrelated to the cause.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
 
         if (args.mode === 'roter') {
@@ -216,9 +216,9 @@ export async function executer(argv: string[]): Promise<number> {
                 process.stderr.write(`rotation refusée : ${r.refus}\n`);
                 return 2;
             }
-            // ⚠️ LE MÊME PARTAGE QU'À L'ENRÔLEMENT : l'avertissement sur
-            // stderr, la valeur sur stdout, pour que la sortie standard reste
-            // utilisable dans un tube.
+            // ⚠️ THE SAME SPLIT AS AT ENROLMENT: the warning on
+            // stderr, the value on stdout, so that standard output stays
+            // usable in a pipe.
             process.stderr.write(
                 'Le secret ci-dessous ne sera JAMAIS réaffiché : seule son empreinte est en base.\n' +
                     "Le préfixe de session est INCHANGÉ — les sessions en cours de cette VM ne sont pas coupées.\n" +
@@ -236,10 +236,10 @@ export async function executer(argv: string[]): Promise<number> {
             args.adresse,
             Date.now(),
         );
-        // 🔴 LA SEULE ET UNIQUE FOIS où le secret est écrit quelque part. Il
-        // va sur la sortie standard avec ce dont l'exploitant a besoin pour
-        // poser `AGENT_VM` et `AGENT_SECRET` ; l'avertissement, lui, va sur
-        // stderr, pour que la sortie standard reste utilisable dans un tube.
+        // 🔴 THE ONE AND ONLY TIME the secret is written anywhere. It
+        // goes to standard output with what the operator needs to
+        // set `AGENT_VM` and `AGENT_SECRET`; the warning goes to
+        // stderr, so that standard output stays usable in a pipe.
         process.stderr.write(
             'Le secret ci-dessous ne sera JAMAIS réaffiché : seule son empreinte est en base.\n',
         );
@@ -253,8 +253,8 @@ export async function executer(argv: string[]): Promise<number> {
     }
 }
 
-// Exécuté seulement quand ce fichier EST le point d'entrée : sans cette garde,
-// l'importer depuis un test lancerait la commande.
+// Run only when this file IS the entry point: without this guard,
+// importing it from a test would launch the command.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
     process.exitCode = await executer(process.argv.slice(2));
 }

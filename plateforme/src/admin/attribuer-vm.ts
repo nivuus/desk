@@ -1,25 +1,25 @@
-// L'attribution d'une VM à un utilisateur, par ligne de commande.
+// Assigning a VM to a user, from the command line.
 //
 //     npm run admin:attribuer -- --email ada@exemple.test --vm w1
 //     npm run admin:attribuer -- --detacher --vm w1
 //
-// 🔴 POURQUOI CE N'EST PAS UNE ROUTE HTTP. Il n'existe AUCUN rôle
-// d'administration dans ce service : `identite/jeton.ts` ne connaît que
-// `utilisateur` et `agent`, et `config.ts` n'a aucune variable
-// d'administrateur. Une route qui attribuerait une VM serait donc, au mieux,
-// ouverte à tout utilisateur authentifié — une escalade de privilège offerte.
-// Le précédent est exact : `admin:utilisateur` et `admin:agent` (D8).
+// 🔴 WHY THIS IS NOT AN HTTP ROUTE. There is NO administration
+// role in this service: `identite/jeton.ts` only knows
+// `utilisateur` and `agent`, and `config.ts` has no administrator
+// variable. A route that assigned a VM would therefore, at best,
+// be open to any authenticated user — a privilege escalation on offer.
+// The precedent is exact: `admin:utilisateur` and `admin:agent` (D8).
 //
-// 🔴 ET C'EST POURQUOI ELLE NOMME LA CAUSE, à l'inverse des routes.
-// `http/routes-vm.ts` rend le même refus pour « VM inconnue » et « VM
-// d'autrui », parce qu'une route publique qui les distinguerait serait un
-// oracle d'énumération. Ici l'appelant a déjà l'accès à la base et au secret de
-// configuration : l'énumération n'est pas un risque, et lui cacher la cause le
-// ferait chercher ailleurs (E8).
+// 🔴 AND THAT IS WHY IT NAMES THE CAUSE, unlike the routes.
+// `http/routes-vm.ts` returns the same refusal for "unknown VM" and "someone
+// else's VM", because a public route that told them apart would be an
+// enumeration oracle. Here the caller already has access to the database and to the
+// configuration secret: enumeration is not a risk, and hiding the cause would
+// send them looking elsewhere (E8).
 //
-// ⚠️ CETTE COMMANDE NE CRÉE AUCUNE VM. Le seul chemin de création reste
-// `admin:agent`. Elle pose un propriétaire sur une VM déjà enrôlée, et rien de
-// plus — c'est tout ce que « statique » autorise (D1).
+// ⚠️ THIS COMMAND CREATES NO VM. The only creation path remains
+// `admin:agent`. It sets an owner on an already enrolled VM, and nothing
+// more — that is all "static" allows (D1).
 
 import { lireConfig } from '../config';
 import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from '../base/migrations';
@@ -34,14 +34,14 @@ export type Arguments =
     | { action: 'detacher'; vm: string }
     | { refus: string };
 
-/// Les drapeaux qui tenteraient de faire passer un secret par l'argv.
+/// The flags that would try to pass a secret through argv.
 ///
-/// ⚠️ AUCUN SECRET N'EST EN JEU DANS CETTE COMMANDE, et la liste des deux
-/// autres est reprise TELLE QUELLE quand même : une commande qui accepterait
-/// `--mot-de-passe` sans s'en servir laisserait tout de même la chaîne dans
-/// `ps`, où tout utilisateur de la machine la lirait, puis dans l'historique du
-/// shell. Ils sont ÉNUMÉRÉS plutôt que devinés : un motif large refuserait un
-/// jour un drapeau légitime sans qu'on sache pourquoi.
+/// ⚠️ NO SECRET IS AT STAKE IN THIS COMMAND, and the list of the two
+/// others is taken AS IS anyway: a command that accepted
+/// `--mot-de-passe` without using it would still leave the string in
+/// `ps`, where any user of the machine would read it, then in the shell
+/// history. They are ENUMERATED rather than guessed: a broad pattern would one
+/// day refuse a legitimate flag without anyone knowing why.
 const DRAPEAUX_INTERDITS = [
     '--secret',
     '--secret-enrolement',
@@ -53,11 +53,11 @@ const DRAPEAUX_INTERDITS = [
     '-p',
 ];
 
-/// PURE, et testée seule.
+/// PURE, and tested on its own.
 export function analyserArguments(argv: string[]): Arguments {
     for (const drapeau of DRAPEAUX_INTERDITS) {
         if (argv.includes(drapeau)) {
-            // ⚠️ Le motif ne RECOPIE PAS la valeur refusée.
+            // ⚠️ The reason does NOT COPY the refused value.
             return {
                 refus:
                     `${drapeau} est refusé : cette commande n'a besoin d'aucun secret, et ` +
@@ -77,9 +77,9 @@ export function analyserArguments(argv: string[]): Arguments {
         return { refus: "--vm <nom|id> est obligatoire, et n'a aucun défaut." };
     }
 
-    // 🔴 `--detacher` N'EXIGE PAS DE COURRIEL : on détache une VM DE quelqu'un,
-    // et exiger de nommer ce quelqu'un obligerait l'opérateur à savoir d'avance
-    // ce que la commande va lui apprendre.
+    // 🔴 `--detacher` DOES NOT REQUIRE AN EMAIL: we detach a VM FROM someone,
+    // and requiring that someone to be named would force the operator to know in advance
+    // what the command is about to tell them.
     if (argv.includes('--detacher')) return { action: 'detacher', vm };
 
     const email = lire('--email');
@@ -94,26 +94,26 @@ export function analyserArguments(argv: string[]): Arguments {
 }
 
 export interface Issue {
-    /// 0 = fait, 2 = refus nommé. ⚠️ 1 est réservé à l'imprévu, comme dans les
-    /// deux autres commandes.
+    /// 0 = done, 2 = named refusal. ⚠️ 1 is reserved for the unexpected, as in the
+    /// two other commands.
     code: number;
     sortie?: string;
     erreur?: string;
 }
 
-/// Résout `--vm` : le NOM d'abord, l'identifiant ensuite.
+/// Resolves `--vm`: the NAME first, the identifier next.
 ///
-/// ⚠️ L'ORDRE EST DÉLIBÉRÉ : l'administrateur connaît le nom qu'il a donné à
-/// `admin:agent`, et l'identifiant est un UUID que la commande a tiré au sort.
-/// ⚠️ `vm.nom` n'étant pas UNIQUE (`0001-socle.sql`), deux VMs homonymes font
-/// rendre la première — c'est acceptable pour un opérateur qui voit le
-/// résultat, et ce ne le serait pas sur une route.
+/// ⚠️ THE ORDER IS DELIBERATE: the administrator knows the name they gave to
+/// `admin:agent`, and the identifier is a UUID the command drew at random.
+/// ⚠️ `vm.nom` not being UNIQUE (`0001-socle.sql`), two VMs with the same name make
+/// it return the first — that is acceptable for an operator who sees the
+/// result, and it would not be on a route.
 async function resoudre(p: Pilote, designation: string): Promise<LigneVm | undefined> {
     return (await lireParNom(p, designation)) ?? (await lireParId(p, designation));
 }
 
-/// Le cœur, testable : il prend un `Pilote` et rend l'issue, sans lire aucune
-/// configuration ni écrire sur aucun flux. Même découpage que
+/// The testable core: it takes a `Pilote` and returns the outcome, without reading any
+/// configuration or writing to any stream. Same split as
 /// `enroler-agent.ts::enrolerLaVm`.
 export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: string }>): Promise<Issue> {
     const ligne = await resoudre(p, args.vm);
@@ -137,14 +137,14 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
         return { code: 2, erreur: `aucun compte pour le courriel « ${args.email} ».` };
     }
 
-    // 🔴 L'ATTRIBUTION PASSE PAR L'ORCHESTRATEUR, jamais par un `UPDATE` écrit
-    // ici. C'est lui qui porte l'ordre « lire, écrire sous clause, traduire
-    // l'exception » (D4), et le dupliquer ferait diverger les deux chemins le
-    // jour où l'un changerait — la commande d'administration étant précisément
-    // celle qu'on relit le moins souvent.
+    // 🔴 THE ASSIGNMENT GOES THROUGH THE ORCHESTRATOR, never through an `UPDATE` written
+    // here. It is the one that carries the order "read, write under a clause, translate
+    // the exception" (D4), and duplicating it would make the two paths diverge the
+    // day one of them changed — the administration command being precisely
+    // the one we reread least often.
     //
-    // ⚠️ L'horloge n'est employée par aucun chemin d'`attribuer` ; elle est
-    // passée parce que l'interface l'exige, et `Date.now` est honnête ici.
+    // ⚠️ The clock is used by no path of `attribuer`; it is
+    // passed because the interface demands it, and `Date.now` is honest here.
     const orchestrateur = inventaireStatique(p, Date.now);
     const issue = await orchestrateur.attribuer(ligne.id, utilisateur.id);
     if (issue.ok) {
@@ -154,16 +154,16 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
         };
     }
 
-    // 🔴 LE REFUS TYPÉ EST TRADUIT EN UNE PHRASE, JAMAIS RELAYÉ TEL QUEL NI
-    // LAISSÉ SOUS FORME D'EXCEPTION. Une trace de pile portant `UNIQUE
-    // constraint failed` — ou `duplicate key value violates unique constraint`,
-    // l'autre moteur n'écrivant pas la même chose — n'apprend pas à
-    // l'administrateur quoi faire.
+    // 🔴 THE TYPED REFUSAL IS TRANSLATED INTO A SENTENCE, NEVER RELAYED AS IS NOR
+    // LEFT AS AN EXCEPTION. A stack trace carrying `UNIQUE
+    // constraint failed` — or `duplicate key value violates unique constraint`,
+    // the other engine not writing the same thing — does not tell the
+    // administrator what to do.
     switch (issue.motif) {
         case 'vm-deja-attribuee': {
-            // On NOMME le propriétaire : sans lui, l'opérateur saurait que ça a
-            // échoué sans savoir qui détacher, et devrait ouvrir la base à la
-            // main — ce que cette commande existe pour éviter.
+            // We NAME the owner: without them, the operator would know it
+            // failed without knowing whom to detach, and would have to open the database by
+            // hand — which this command exists to avoid.
             const relue = await lireParId(p, ligne.id);
             return {
                 code: 2,
@@ -181,14 +181,14 @@ export async function appliquer(p: Pilote, args: Exclude<Arguments, { refus: str
                     "`vm_un_utilisateur` n'en autorise qu'une — détacher la sienne d'abord.",
             };
         default:
-            // Inatteignable avec les entrées ci-dessus (la VM a été résolue,
-            // donc jamais `vm-inconnue`), écrit quand même : un motif ajouté un
-            // jour ne doit pas tomber dans un silence.
+            // Unreachable with the inputs above (the VM was resolved,
+            // so never `vm-inconnue`), written anyway: a reason added one
+            // day must not fall into silence.
             return { code: 2, erreur: `attribution refusée : ${issue.motif}.` };
     }
 }
 
-/// Le corps impur. Rend le code de sortie.
+/// The impure body. Returns the exit code.
 export async function executer(argv: string[]): Promise<number> {
     const args = analyserArguments(argv);
     if ('refus' in args) {
@@ -199,17 +199,17 @@ export async function executer(argv: string[]): Promise<number> {
     const config = lireConfig(process.env);
     const base = await ouvrirBase(config);
     try {
-        // Les migrations d'abord : la commande peut être le tout premier geste
-        // sur une base neuve, et un `UPDATE` sur une table absente rendrait un
-        // diagnostic sans rapport avec la cause. Même choix que les deux autres
-        // commandes.
+        // Migrations first: the command may be the very first action
+        // on a new database, and an `UPDATE` on a missing table would give a
+        // diagnosis unrelated to the cause. Same choice as the two other
+        // commands.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
         const issue = await appliquer(base, args);
         if (issue.erreur !== undefined) process.stderr.write(`${issue.erreur}\n`);
         if (issue.sortie !== undefined) process.stdout.write(issue.sortie);
         return issue.code;
     } catch (cause) {
-        // Code 1, réservé à l'imprévu : un refus nommé rend 2.
+        // Code 1, reserved for the unexpected: a named refusal returns 2.
         process.stderr.write(`attribution impossible : ${String(cause)}\n`);
         return 1;
     } finally {
@@ -217,8 +217,8 @@ export async function executer(argv: string[]): Promise<number> {
     }
 }
 
-// Exécuté seulement quand ce fichier EST le point d'entrée : sans cette garde,
-// l'importer depuis un test lancerait la commande.
+// Run only when this file IS the entry point: without this guard,
+// importing it from a test would launch the command.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
     process.exitCode = await executer(process.argv.slice(2));
 }

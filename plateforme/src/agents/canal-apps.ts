@@ -1,28 +1,28 @@
-// Les branches MONTANTES du sous-projet ④ : ce qu'un agent enrôlé rapporte de
-// son catalogue, de ses lancements et de ses installations.
+// The UPSTREAM branches of sub-project ④: what an enrolled agent reports about
+// its catalogue, its launches and its installations.
 //
-// 🔴 EXTRAIT AVANT L'ADDITION, JAMAIS APRÈS. `canal.ts` était à 462 lignes,
-// marge 38 ; le sous-bloc G3 y ajoute deux branches et la réémission à
-// l'enrôlement. Le plan le relevait à 423 le 20 août : c'est G2 qui a consommé
-// la différence. La doctrine de `CLAUDE.md` est de rendre la marge par une
-// extraction jouée d'avance, jamais par une compression — et ce dépôt écrit
-// quatre fois que la marge regagnée par une extraction se reperd si on la
-// traite comme acquise.
+// 🔴 EXTRACTED BEFORE THE ADDITION, NEVER AFTER. `canal.ts` was at 462 lines,
+// margin 38; sub-block G3 adds two branches and the re-emission at
+// enrolment to it. The plan put it at 423 on 20 August: G2 is what consumed
+// the difference. The `CLAUDE.md` doctrine is to give the margin back through an
+// extraction played in advance, never through compression — and this repository says
+// four times that the margin won back by an extraction is lost again if it is
+// treated as settled.
 //
-// 🔴 LA FRONTIÈRE EST CELLE QUE TROIS AUTRES FICHIERS EMPLOIENT DÉJÀ : cycle de
-// vie d'un côté (enrôlement, battement, refus, frein), gestion d'apps de
-// l'autre. C'est la coupure de `proto/src/plateforme/apps.rs`, de
-// `proto/src/plateforme/tests_apps.rs` et de `proto/ts/plateforme-apps.test.ts`.
-// Une seule coupure pour quatre fichiers, c'est ce qui la rend mémorisable.
+// 🔴 THE BOUNDARY IS THE ONE THREE OTHER FILES ALREADY USE: life
+// cycle on one side (enrolment, heartbeat, refusal, brake), app management
+// on the other. It is the cut of `proto/src/plateforme/apps.rs`, of
+// `proto/src/plateforme/tests_apps.rs` and of `proto/ts/plateforme-apps.test.ts`.
+// A single cut for four files is what makes it memorable.
 //
-// 🔴 ET C'EST UNE GARDE DE TYPE, PAS UNE CHUTE. `traiter` est appelée derrière
-// le prédicat `estMontantDeQuatre`, qui NOMME les quatre types. `canal.ts`
-// laissait auparavant `enroler` être le RESTE d'un `if/else` — et l'élargissement
-// de l'union par G3 a fait de `progression` et `termine` deux membres de ce
-// reste, donc deux messages que la destructuration `const { vm, secret }`
-// aurait lus comme un enrôlement. **C'est `tsc` qui l'a dit, et il a eu de la
-// chance : la même fragilité sur une valeur plutôt qu'un type serait passée en
-// silence.** Le prédicat referme la classe.
+// 🔴 AND IT IS A TYPE GUARD, NOT A FALL-THROUGH. `traiter` is called behind
+// the predicate `estMontantDeQuatre`, which NAMES the four types. `canal.ts`
+// previously let `enroler` be the REMAINDER of an `if/else` — and the widening
+// of the union by G3 made `progression` and `termine` two members of that
+// remainder, hence two messages that the destructuring `const { vm, secret }`
+// would have read as an enrolment. **`tsc` is what said so, and it got
+// lucky: the same fragility on a value rather than a type would have gone through
+// silently.** The predicate closes the class.
 
 import type { WebSocket } from 'ws';
 import {
@@ -42,13 +42,13 @@ import { avancer, lireEnAttentePourVm, terminer } from '../depot/installation';
 import { lireParId as lireTeleversement } from '../depot/televersement';
 import type { RegistreAgents } from './registre';
 
-/// Les quatre types montants qui appartiennent à ④.
+/// The four upstream types that belong to ④.
 ///
-/// 🔴 DÉRIVÉE DE L'UNION PAR LE TYPE DE RETOUR DU PRÉDICAT : une variante
-/// ajoutée à `VersLaPlateforme` sans sa clé ici ne serait pas refusée par
-/// `tsc`, mais elle tomberait dans le `enroler` de `canal.ts`, où la
-/// destructuration la refuserait BRUYAMMENT. C'est le comportement voulu — un
-/// message de ④ qu'on oublie de router doit se voir, pas se perdre.
+/// 🔴 DERIVED FROM THE UNION THROUGH THE RETURN TYPE OF THE PREDICATE: a variant
+/// added to `VersLaPlateforme` without its key here would not be refused by
+/// `tsc`, but it would fall into the `enroler` of `canal.ts`, where the
+/// destructuring would refuse it LOUDLY. That is the wanted behaviour — a
+/// message of ④ one forgets to route must show up, not get lost.
 export type MontantDeQuatre =
     | CatalogueMessage
     | LanceeMessage
@@ -76,12 +76,12 @@ export interface DependancesMontantes {
     envoyer: (brut: string) => void;
 }
 
-/// L'inventaire des icônes que la plateforme n'a pas, réclamé APRÈS l'écriture
-/// du catalogue.
+/// The inventory of icons the platform lacks, requested AFTER the catalogue
+/// is written.
 ///
-/// 🔴 L'INVENTAIRE INTERROGE LE DISQUE, PAS UNE TABLE. Une table de
-/// comptabilité divergerait du magasin le jour où un fichier serait perdu — et
-/// c'est PRÉCISÉMENT le jour où l'on a besoin de le savoir.
+/// 🔴 THE INVENTORY QUERIES THE DISK, NOT A TABLE. A bookkeeping
+/// table would diverge from the store the day a file got lost — and
+/// that is PRECISELY the day one needs to know.
 function reclamerLesIcones(
     deps: DependancesMontantes,
     message: CatalogueMessage,
@@ -96,27 +96,27 @@ function reclamerLesIcones(
     deps.envoyer(encodeIconesManquantes(manque));
 }
 
-/// Traite un montant de ④. L'appelant a DÉJÀ vérifié l'enrôlement.
+/// Handles an upstream message of ④. The caller has ALREADY checked the enrolment.
 ///
-/// ⚠️ RIEN N'EST ATTENDU ICI, ET C'EST LA RÈGLE DU FICHIER : un `await` sur le
-/// chemin d'un message ferait qu'une base momentanément indisponible
-/// ABATTRAIT LA CONNEXION d'un agent qui va très bien, et une promesse rejetée
-/// sans `catch` abattrait tout le process Node. C'est la règle que `canal.ts`
-/// s'impose déjà pour `marquerVu`.
+/// ⚠️ NOTHING IS AWAITED HERE, AND THAT IS THE RULE OF THE FILE: an `await` on the
+/// path of a message would mean a momentarily unavailable database
+/// WOULD TAKE DOWN THE CONNECTION of an agent that is perfectly fine, and a rejected promise
+/// without `catch` would take down the whole Node process. It is the rule `canal.ts`
+/// already imposes on itself for `marquerVu`.
 export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): void {
     const instant = deps.maintenant();
 
     if (message.type === 'lancee') {
-        // ⚠️ SYNCHRONE, et rien à écrire : `resoudre` ne touche qu'une `Map` en
-        // mémoire, et IGNORE une demande inconnue plutôt que de lever.
+        // ⚠️ SYNCHRONOUS, and nothing to write: `resoudre` only touches an in-memory
+        // `Map`, and IGNORES an unknown request rather than raising.
         deps.registre.resoudre(message.demande, message.issue);
         return;
     }
 
     if (message.type === 'progression') {
-        // ⚠️ LE COÛT EST NOMMÉ : une progression perdue ne se voit qu'au
-        // journal. Elle se rattrape toute seule — la suivante arrive une
-        // seconde plus tard, et le `termine` porte l'état final.
+        // ⚠️ THE COST IS NAMED: a lost progress report only shows in the
+        // log. It catches up on its own — the next one arrives a
+        // second later, and the `termine` carries the final state.
         void avancer(
             deps.base,
             message.installation,
@@ -136,16 +136,16 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
     }
 
     if (message.type === 'termine') {
-        // 🔴 CELUI-CI, PERDU, NE SE RATTRAPE PAS TOUT SEUL — et il faut le dire
-        // plutôt que de le laisser croire. L'agent n'émet `termine` qu'une
-        // fois ; si l'écriture échoue, la ligne reste `en_cours` pour toujours
-        // et la réémission ne la reprend pas non plus, puisqu'elle ne vise que
-        // les `en_attente`. Le journal est alors la seule trace, et c'est
-        // pourquoi il porte l'identifiant.
+        // 🔴 THIS ONE, IF LOST, DOES NOT CATCH UP ON ITS OWN — and that must be said
+        // rather than left to be believed. The agent emits `termine` only
+        // once; if the write fails, the row stays `en_cours` forever
+        // and the re-emission does not pick it up either, since it only targets
+        // the `en_attente` ones. The log is then the only trace, and that is
+        // why it carries the identifier.
         //
-        // ⚠️ Ce qui protège l'utilisateur d'une installation rejouée n'est PAS
-        // cette écriture mais le marqueur sur le disque de la VM : la seconde
-        // ceinture existe pour le cas où la première a perdu sa base.
+        // ⚠️ What protects the user from a replayed installation is NOT
+        // this write but the marker on the VM disk: the second
+        // belt exists for the case where the first one lost its database.
         void terminer(
             deps.base,
             message.installation,
@@ -177,38 +177,38 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
 export interface DependancesReemission {
     base: Pilote;
     vmId: string;
-    /// 🔴 L'ÉMISSION EST INJECTÉE, ET C'EST CE QUI DONNE DEUX APPELANTS À CETTE
-    /// FONCTION : le canal, qui écrit sur le socket qu'il vient d'enrôler, et
-    /// `POST /installation`, qui passe par le registre pour joindre un agent
-    /// DÉJÀ connecté. Sans ce second appelant, un ordre passé pendant que la VM
-    /// est en ligne n'était livré qu'au prochain enrôlement — c'est-à-dire au
-    /// prochain redémarrage de l'agent. Voir le §5quater des résultats.
+    /// 🔴 THE EMISSION IS INJECTED, AND THAT IS WHAT GIVES THIS FUNCTION TWO
+    /// CALLERS: the channel, which writes to the socket it just enrolled, and
+    /// `POST /installation`, which goes through the registry to reach an agent
+    /// ALREADY connected. Without that second caller, an order placed while the VM
+    /// is online was only delivered at the next enrolment — that is, at the
+    /// next restart of the agent. See §5quater of the results.
     ///
-    /// ⚠️ UN CHAMP `socket: WebSocket` FIGURAIT ICI ET N'ÉTAIT LU PAR PERSONNE.
-    /// Il n'a pas été retiré par goût : tant qu'il était là, seul un porteur de
-    /// `WebSocket` pouvait appeler cette fonction, et la route HTTP — qui n'en
-    /// a pas — devait dupliquer la construction du message. Un champ mort peut
-    /// donc coûter une duplication, pas seulement une ligne.
+    /// ⚠️ A `socket: WebSocket` FIELD SAT HERE AND WAS READ BY NOBODY.
+    /// It was not removed out of taste: as long as it was there, only a holder of a
+    /// `WebSocket` could call this function, and the HTTP route — which has
+    /// none — had to duplicate building the message. A dead field can
+    /// therefore cost a duplication, not only a line.
     envoyer: (brut: string) => void;
 }
 
-/// Repousse les ordres d'installation qu'une VM n'a pas encore acquittés.
+/// Pushes again the installation orders a VM has not acknowledged yet.
 ///
-/// 🔴 C'EST LE FILET DU `push` SANS GARANTIE DE LIVRAISON, et il a un jumeau
-/// que la recette de G1 a vu fonctionner sur le chemin réel : le
-/// `complet = true` que l'agent renvoie à chaque réenrôlement. Sans lui, un
-/// ordre émis pendant une coupure serait perdu SANS TERME.
+/// 🔴 IT IS THE SAFETY NET OF THE `push` WITHOUT DELIVERY GUARANTEE, and it has a twin
+/// that the G1 acceptance run saw working on the real path: the
+/// `complet = true` the agent sends back at every re-enrolment. Without it, an
+/// order emitted during an outage would be lost WITH NO END.
 ///
-/// ⚠️ **ELLE NE VISE QUE LES `en_attente`.** Dès qu'un agent a rapporté une
-/// progression, la ligne passe `en_cours` et cesse d'être réémise : c'est la
-/// PREMIÈRE des deux ceintures contre une double exécution. La seconde est le
-/// marqueur sur le disque de la VM, et elle protège du cas où la première a
-/// perdu sa base.
+/// ⚠️ **IT ONLY TARGETS THE `en_attente` ONES.** As soon as an agent has reported a
+/// progress, the row turns `en_cours` and stops being re-emitted: that is the
+/// FIRST of the two belts against a double run. The second is the
+/// marker on the VM disk, and it protects from the case where the first one
+/// lost its database.
 ///
-/// ⚠️ **L'URL EST DÉRIVÉE, PAS CONFIGURÉE.** Elle est relative — `/televersement/
-/// :id/contenu` — et l'agent la résout contre l'adresse de son propre canal,
-/// comme il dérive déjà celle du téléversement d'icônes. Deux variables pour la
-/// même adresse divergeraient le jour où l'une des deux serait changée.
+/// ⚠️ **THE URL IS DERIVED, NOT CONFIGURED.** It is relative — `/televersement/
+/// :id/contenu` — and the agent resolves it against the address of its own channel,
+/// as it already derives that of the icon upload. Two variables for the
+/// same address would diverge the day one of the two got changed.
 export async function reemettreLesInstallations(
     deps: DependancesReemission,
 ): Promise<void> {
@@ -217,10 +217,10 @@ export async function reemettreLesInstallations(
     for (const ligne of enAttente) {
         const tel = await lireTeleversement(deps.base, ligne.televersement_id);
         if (tel === undefined) {
-            // ⚠️ INATTEIGNABLE PAR LA CLÉ ÉTRANGÈRE, et gardé quand même : la
-            // supposition « la clé étrangère l'empêche » est vraie de la base,
-            // pas de ce code. La sauter en le DISANT vaut mieux qu'émettre un
-            // ordre dont l'URL ne mènerait nulle part.
+            // ⚠️ UNREACHABLE THROUGH THE FOREIGN KEY, and guarded anyway: the
+            // assumption "the foreign key prevents it" is true of the database,
+            // not of this code. Skipping it while SAYING so is better than emitting an
+            // order whose URL would lead nowhere.
             console.error(
                 `installation ${ligne.id} sans téléversement ${ligne.televersement_id} : ordre non réémis`,
             );

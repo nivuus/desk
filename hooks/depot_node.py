@@ -57,27 +57,27 @@ import subprocess
 
 from depot_arbre import copier_arbre, rendre_lisible_par_tous
 
-# Les trois exécutables attendus sous `<préfixe>/bin`, et le seul paquet
-# global qui voyage. Énoncés ici plutôt que devinés à l'énumération : un
-# `bin/` d'nvm porte aussi les paquets globaux de son propriétaire.
+# The three executables expected under `<prefix>/bin`, and the only global
+# package that travels. Stated here rather than guessed by enumeration: an
+# nvm `bin/` also holds the global packages of its owner.
 EXECUTABLES = ("node", "npm", "npx")
 PAQUET_GLOBAL = pathlib.Path("lib") / "node_modules" / "npm"
 
 
 def racine_node_source():
-    """Le préfixe Node à déposer. Rend `(chemin, None)` ou `(None, raison)`.
+    """The Node prefix to deploy. Returns `(chemin, None)` or `(None, raison)`.
 
-    Surchargeable par `DESK_NODE_SOURCE` — pour les tests (qui posent un
-    arbre factice de quelques octets plutôt que de recopier 144 Mio à chaque
-    scénario), et pour un opérateur qui voudrait déposer un autre runtime que
-    celui qui exécute le hook.
+    Overridable by `DESK_NODE_SOURCE` — for the tests (which lay out a
+    dummy tree of a few bytes rather than copying 144 MiB for each
+    scenario), and for an operator who would like to deploy a runtime other than
+    the one running the hook.
 
-    À défaut, le préfixe est DÉRIVÉ de l'interpréteur lui-même :
-    `process.execPath` rend `<préfixe>/bin/node`, donc `parents[1]` est le
-    préfixe. Jamais `command -v node` : sur cette machine, `node` est une
-    FONCTION zsh qui source nvm, et un `subprocess` ne passe de toute façon
-    jamais par une fonction de shell interactif — c'est le diagnostic du lot
-    10A (voir `commun.py::NODE_BIN_DEFAUT`).
+    Otherwise, the prefix is DERIVED from the interpreter itself:
+    `process.execPath` returns `<prefix>/bin/node`, so `parents[1]` is the
+    prefix. Never `command -v node`: on this machine, `node` is a zsh
+    FUNCTION that sources nvm, and a `subprocess` never goes through
+    an interactive shell function anyway — that is the diagnosis of batch
+    10A (see `commun.py::NODE_BIN_DEFAUT`).
     """
     brut = os.environ.get("DESK_NODE_SOURCE")
     if brut:
@@ -114,15 +114,15 @@ def racine_node_source():
 
 
 def deposer_node(prefixe: pathlib.Path, destination: pathlib.Path) -> None:
-    """Copie le runtime de `prefixe` vers `destination` (le PRÉFIXE cible,
-    pas son `bin/`), et le rend lisible par tous.
+    """Copies the runtime from `prefixe` to `destination` (the target PREFIX,
+    not its `bin/`), and makes it readable by all.
 
-    `rendre_lisible_par_tous` est indispensable et pas cosmétique :
-    `DynamicUser=yes` fait tourner le service sous un UID éphémère qui
-    n'appartient à aucun groupe partagé avec les fichiers déposés par root —
-    c'est le bug réel du lot 10A, déjà payé sur `/opt/nivuus/desk` (voir
-    `depot_arbre.py::rendre_lisible_par_tous`). Un `bin/node` en `rwxr-x---`
-    donnerait un `ExecStart` qui échoue avant la première ligne de
+    `rendre_lisible_par_tous` is essential, not cosmetic:
+    `DynamicUser=yes` runs the service under an ephemeral UID that
+    belongs to no group shared with the files dropped by root —
+    that is the real bug of batch 10A, already paid for on `/opt/nivuus/desk` (see
+    `depot_arbre.py::rendre_lisible_par_tous`). A `bin/node` as `rwxr-x---`
+    would give an `ExecStart` that fails before the first line of
     JavaScript.
     """
     bin_dest = destination / "bin"
@@ -132,7 +132,7 @@ def deposer_node(prefixe: pathlib.Path, destination: pathlib.Path) -> None:
     for nom in EXECUTABLES:
         source = prefixe / "bin" / nom
         if not source.exists() and not source.is_symlink():
-            continue          # `npx` peut légitimement manquer d'un runtime
+            continue          # a runtime may legitimately lack `npx`
         cible = bin_dest / nom
         if source.is_symlink():
             os.symlink(os.readlink(source), cible)

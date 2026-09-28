@@ -1,65 +1,65 @@
-// Le registre des sockets d'agent VIVANTS, et les demandes de lancement en vol.
+// The registry of LIVE agent sockets, and the launch requests in flight.
 //
-// 🔴 POURQUOI IL EXISTE. `agents/canal.ts` tient son état dans la FERMETURE de
-// la connexion (`vmId`, `prefixe`) : il n'existait, avant ce module, aucun
-// moyen de retrouver le socket d'une VM donnée. `POST /application/:id/lancer`
-// en a besoin — l'ordre part de la route HTTP et la réponse revient par le
-// socket, deux chemins que rien ne reliait.
+// 🔴 WHY IT EXISTS. `agents/canal.ts` keeps its state in the CLOSURE of
+// the connection (`vmId`, `prefixe`): before this module, there was no
+// way to find the socket of a given VM. `POST /application/:id/lancer`
+// needs it — the order leaves from the HTTP route and the answer comes back through the
+// socket, two paths that nothing linked.
 //
-// 🔴 C'EST UN OBJET DE SERVICE, sur le patron exact de `ProprieteDeSession`
-// (`signaling/propriete.ts`) : construit UNE FOIS dans `demarrerServeur`, passé
-// à ses deux consommateurs, et vivant pour la durée du processus.
+// 🔴 IT IS A SERVICE OBJECT, on the exact pattern of `ProprieteDeSession`
+// (`signaling/propriete.ts`): built ONCE in `demarrerServeur`, passed
+// to its two consumers, and alive for the duration of the process.
 //
-// ⚠️ IL A LE MÊME COÛT QUE `ProprieteDeSession`, ET IL EST ÉCRIT ICI POUR LA
-// MÊME RAISON : IL NE SURVIT PAS À UN REDÉMARRAGE. Après un redémarrage, aucun
-// agent n'y figure tant qu'il ne s'est pas ré-enrôlé, et tout lancement rend
-// `agent-injoignable` — bruyamment, jamais en silence. Ce n'est pas rattrapable
-// ici : un socket vit dans un processus et un seul. Le rattrapage réel est la
-// reconnexion de l'agent, à repli exponentiel, qui reconstitue le registre
-// sans que personne n'ait à le persister.
+// ⚠️ IT HAS THE SAME COST AS `ProprieteDeSession`, AND IT IS WRITTEN HERE FOR THE
+// SAME REASON: IT DOES NOT SURVIVE A RESTART. After a restart, no
+// agent is in it until it has re-enrolled, and every launch returns
+// `agent-injoignable` — loudly, never silently. This cannot be caught up
+// here: a socket lives in one process and one only. The real catch-up is the
+// reconnection of the agent, with exponential backoff, which rebuilds the registry
+// without anyone having to persist it.
 //
-// ⚠️ AUCUNE PROMESSE N'EST LAISSÉE SANS ISSUE. Toute demande enregistrée ici
-// finit résolue : par la réponse de l'agent, par la mort de son socket, ou par
-// l'échéance. Une promesse qu'aucun chemin ne résout tiendrait une requête HTTP
-// ouverte jusqu'au bout du monde.
+// ⚠️ NO PROMISE IS LEFT WITHOUT AN OUTCOME. Every request registered here
+// ends up resolved: by the agent's answer, by the death of its socket, or by
+// the deadline. A promise no path resolves would hold an HTTP request
+// open until the end of the world.
 
 import type { IssueLancement } from '../../../proto/ts/plateforme';
 import { encodeLancer } from '../../../proto/ts/plateforme';
 
-/// Le délai au bout duquel un ordre sans réponse est abandonné.
+/// The delay after which an unanswered order is abandoned.
 ///
-/// ⚠️ NON CALIBRÉE. Elle est majorante à vue : un `ShellExecuteExW` rend la
-/// main sans attendre que l'application soit visible, donc l'agent répond en
-/// quelques millisecondes dans le cas nominal. Cinq secondes couvrent une VM
-/// chargée sans faire attendre un humain indéfiniment. Aucune mesure ne la
-/// fonde, et le dire est plus honnête que de la présenter comme réglée.
+/// ⚠️ NOT CALIBRATED. It is a rough upper bound: a `ShellExecuteExW` returns
+/// without waiting for the application to be visible, so the agent answers in
+/// a few milliseconds in the nominal case. Five seconds cover a loaded
+/// VM without making a human wait forever. No measurement
+/// grounds it, and saying so is more honest than presenting it as tuned.
 export const DELAI_LANCEMENT_MS = 5_000;
 
-/// Le code de fermeture WebSocket 1008, « violation de politique » — le même
-/// que `agents/canal.ts` emploie sur un refus. Un pair qui lit les deux
-/// canaux n'a pas à connaître deux conventions.
+/// The WebSocket close code 1008, "policy violation" — the same
+/// that `agents/canal.ts` uses on a refusal. A peer that reads both
+/// channels does not have to know two conventions.
 const FERMETURE_POLITIQUE = 1008;
 
-/// Ce que le registre exige d'un socket, et RIEN DE PLUS.
+/// What the registry demands of a socket, and NOTHING MORE.
 ///
-/// 🔴 UNE FRONTIÈRE STRUCTURELLE, PAS UN TYPE `ws`. Un `ws.WebSocket` la
-/// satisfait sans rien déclarer, et `registre.test.ts` peut passer un double
-/// — ce qui rend les sept cas du registre jouables sans ouvrir un port. C'est
-/// la même figure que l'horloge en paramètre : la dépendance est nommée au
-/// lieu d'être importée.
+/// 🔴 A STRUCTURAL BOUNDARY, NOT A `ws` TYPE. A `ws.WebSocket`
+/// satisfies it without declaring anything, and `registre.test.ts` can pass a double
+/// — which makes the seven registry cases playable without opening a port. It is
+/// the same figure as the clock as a parameter: the dependency is named instead
+/// of being imported.
 export interface SocketAgent {
-    /// 1 = OPEN, dans la convention `ws` comme dans celle du navigateur.
+    /// 1 = OPEN, in the `ws` convention as in the browser one.
     readonly readyState: number;
     send(donnees: string): void;
     close(code?: number, raison?: string): void;
 }
 
-/// Ce que `lancer` peut rendre, en plus des issues du protocole.
+/// What `lancer` can return, on top of the protocol outcomes.
 ///
-/// ⚠️ `agent-injoignable` ET `delai` NE SONT PAS DES `IssueLancement`, et ne
-/// doivent jamais le devenir : une `IssueLancement` est ce que l'AGENT a fait,
-/// et ces deux-là disent que l'agent n'a rien dit du tout. Les confondre ferait
-/// répondre « lancement échoué » là où la vérité est « on ne sait pas ».
+/// ⚠️ `agent-injoignable` AND `delai` ARE NOT `IssueLancement`s, and must
+/// never become ones: an `IssueLancement` is what the AGENT did,
+/// and these two say the agent said nothing at all. Mixing them up would
+/// answer "launch failed" where the truth is "we do not know".
 export type EchecLancement = 'agent-injoignable' | 'delai';
 
 interface EnVol {
@@ -68,18 +68,18 @@ interface EnVol {
 }
 
 export class RegistreAgents {
-    /// La VM et son socket courant. Au plus UN par VM.
+    /// The VM and its current socket. At most ONE per VM.
     private readonly sockets = new Map<string, SocketAgent>();
-    /// Les ordres émis dont la réponse n'est pas encore arrivée, par demande.
+    /// The emitted orders whose answer has not arrived yet, by request.
     private readonly enVol = new Map<string, EnVol>();
 
-    /// Inscrit le socket d'une VM. LE DERNIER GAGNE.
+    /// Registers the socket of a VM. THE LAST ONE WINS.
     ///
-    /// 🔴 L'ANCIEN EST FERMÉ, jamais laissé à flotter. Deux sockets pour la
-    /// même VM poseraient la question à laquelle la clé primaire
-    /// d'`agent_enrole` répond déjà (`0003-agents.sql`) : « laquelle serait la
-    /// bonne ? ». Le cas est ordinaire — un agent relancé se reconnecte avant
-    /// que la fermeture de son ancien socket ne soit notifiée.
+    /// 🔴 THE OLD ONE IS CLOSED, never left floating. Two sockets for the
+    /// same VM would raise the question that the primary key
+    /// of `agent_enrole` already answers (`0003-agents.sql`): "which one would be the
+    /// right one?". The case is ordinary — a restarted agent reconnects before
+    /// the close of its old socket is notified.
     inscrire(vmId: string, socket: SocketAgent): void {
         const ancien = this.sockets.get(vmId);
         this.sockets.set(vmId, socket);
@@ -88,18 +88,18 @@ export class RegistreAgents {
         }
     }
 
-    /// Pousse un message brut vers l'agent d'une VM, et dit s'il est parti.
+    /// Pushes a raw message to the agent of a VM, and says whether it went out.
     ///
-    /// 🔴 CE REGISTRE EST LE SEUL À CONNAÎTRE LES SOCKETS, donc le seul à
-    /// pouvoir répondre « cette VM est-elle joignable À CET INSTANT ». Exposer
-    /// la `Map` à la place aurait laissé chaque appelant refaire le test de
-    /// `readyState`, et un seul l'aurait oublié.
+    /// 🔴 THIS REGISTRY IS THE ONLY ONE THAT KNOWS THE SOCKETS, hence the only one
+    /// able to answer "is this VM reachable AT THIS INSTANT". Exposing
+    /// the `Map` instead would have let each caller redo the
+    /// `readyState` test, and one of them would have forgotten.
     ///
-    /// ⚠️ **`false` N'EST PAS UNE ERREUR** : il dit « aucun socket ouvert pour
-    /// cette VM », qui est l'état ordinaire d'une VM éteinte. L'appelant décide
-    /// quoi en faire — et pour l'ordre d'installation, la réponse est « rien » :
-    /// la ligne reste `en_attente` en base, et `reemettreLesInstallations` la
-    /// livrera au prochain enrôlement. C'est le filet qui existait déjà.
+    /// ⚠️ **`false` IS NOT AN ERROR**: it says "no open socket for
+    /// this VM", which is the ordinary state of a VM that is off. The caller decides
+    /// what to do with it — and for the installation order, the answer is "nothing":
+    /// the row stays `en_attente` in the database, and `reemettreLesInstallations` will
+    /// deliver it at the next enrolment. That is the safety net that already existed.
     pousser(vmId: string, brut: string): boolean {
         const socket = this.sockets.get(vmId);
         if (socket === undefined || socket.readyState !== 1) return false;
@@ -107,18 +107,18 @@ export class RegistreAgents {
         return true;
     }
 
-    /// Retire une VM et REJETTE ses demandes en vol.
+    /// Removes a VM and REJECTS its requests in flight.
     ///
-    /// 🔴 LE REJET N'EST PAS UNE COMMODITÉ. Sans lui, la route attendrait
-    /// `DELAI_LANCEMENT_MS` après une mort d'agent connue à l'instant même —
-    /// cinq secondes pour une réponse dont on sait déjà qu'elle n'arrivera
-    /// jamais.
+    /// 🔴 THE REJECTION IS NOT A CONVENIENCE. Without it, the route would wait
+    /// `DELAI_LANCEMENT_MS` after an agent death known at that very instant —
+    /// five seconds for an answer we already know will never
+    /// arrive.
     ///
-    /// ⚠️ `socket` EST OPTIONNEL ET IL COMPTE : passé, le retrait n'a lieu que
-    /// si c'est bien CE socket qui est inscrit. Un agent qui se relance
-    /// s'inscrit AVANT que la fermeture du précédent ne soit notifiée ; un
-    /// retrait nu effacerait alors l'inscription du NEUF, et la VM deviendrait
-    /// injoignable alors qu'elle vient de se reconnecter.
+    /// ⚠️ `socket` IS OPTIONAL AND IT MATTERS: when passed, the removal only happens
+    /// if it is indeed THIS socket that is registered. An agent that restarts
+    /// registers BEFORE the close of the previous one is notified; a
+    /// bare removal would then erase the registration of the NEW one, and the VM would become
+    /// unreachable although it has just reconnected.
     retirer(vmId: string, socket?: SocketAgent): void {
         const courant = this.sockets.get(vmId);
         if (socket !== undefined && courant !== socket) return;
@@ -130,24 +130,24 @@ export class RegistreAgents {
         }
     }
 
-    /// Émet un ordre de lancement et attend son issue.
+    /// Emits a launch order and waits for its outcome.
     ///
-    /// 🔴 LE MESSAGE EST ENCODÉ PAR `proto/ts/plateforme.ts`, jamais recopié
-    /// ici : une copie divergerait en silence, et `plateforme-vectors.json` ne
-    /// comparerait plus rien de ce que la plateforme met réellement sur le fil.
-    /// C'est la règle que `agents/canal.ts` s'impose depuis P3.
+    /// 🔴 THE MESSAGE IS ENCODED BY `proto/ts/plateforme.ts`, never copied
+    /// here: a copy would diverge silently, and `plateforme-vectors.json` would no longer
+    /// compare anything the platform really puts on the wire.
+    /// It is the rule `agents/canal.ts` has imposed on itself since P3.
     ///
-    /// ⚠️ L'APPARIEMENT SE FAIT SUR LA DEMANDE, JAMAIS SUR LA CLÉ. Deux
-    /// lancements concurrents de la même application sont ordinaires — deux
-    /// onglets du hub suffisent — et apparier sur la clé les mélangerait.
+    /// ⚠️ PAIRING IS DONE ON THE REQUEST, NEVER ON THE KEY. Two
+    /// concurrent launches of the same application are ordinary — two
+    /// hub tabs are enough — and pairing on the key would mix them up.
     lancer(
         vmId: string,
         cle: string,
         demande: string,
     ): Promise<IssueLancement | EchecLancement> {
         const socket = this.sockets.get(vmId);
-        // Immédiat, et sans minuteur : faire attendre pour une réponse connue
-        // d'avance serait payer cinq secondes pour rien.
+        // Immediate, and without a timer: waiting for an answer known
+        // in advance would be paying five seconds for nothing.
         if (socket === undefined || socket.readyState !== 1 /* OPEN */) {
             return Promise.resolve('agent-injoignable');
         }
@@ -157,9 +157,9 @@ export class RegistreAgents {
                 this.enVol.delete(demande);
                 resoudre('delai');
             }, DELAI_LANCEMENT_MS);
-            // ⚠️ `unref` n'est PAS appelé : un minuteur détaché laisserait le
-            // processus se terminer avec une requête HTTP en attente. Il est en
-            // revanche TOUJOURS annulé, sur les deux autres chemins de sortie.
+            // ⚠️ `unref` is NOT called: a detached timer would let the
+            // process exit with an HTTP request pending. It is on the other hand
+            // ALWAYS cancelled, on the two other exit paths.
             this.enVol.set(demande, {
                 vmId,
                 resoudre: (issue) => {
@@ -171,14 +171,14 @@ export class RegistreAgents {
         });
     }
 
-    /// Délivre l'issue que l'agent a rapportée.
+    /// Delivers the outcome the agent reported.
     ///
-    /// 🔴 UNE DEMANDE INCONNUE EST IGNORÉE AVEC SA TRACE, JAMAIS UNE
-    /// EXCEPTION. Son appelant est le gestionnaire `message` d'un socket, et
-    /// une exception qui le traverse abat TOUT LE PROCESS Node — mode de
-    /// défaillance que `relais.ts`, `trace.ts` et `canal.ts` documentent tous
-    /// les trois. Le cas n'a d'ailleurs rien d'anormal : un agent peut
-    /// répondre à un ordre dont l'attente a déjà expiré.
+    /// 🔴 AN UNKNOWN REQUEST IS IGNORED WITH ITS TRACE, NEVER AN
+    /// EXCEPTION. Its caller is the `message` handler of a socket, and
+    /// an exception crossing it takes down THE WHOLE Node PROCESS — a failure
+    /// mode that `relais.ts`, `trace.ts` and `canal.ts` all three
+    /// document. The case is moreover nothing abnormal: an agent can
+    /// answer an order whose wait has already expired.
     resoudre(demande: string, issue: IssueLancement): void {
         const attente = this.enVol.get(demande);
         if (attente === undefined) {

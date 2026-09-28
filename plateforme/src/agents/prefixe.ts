@@ -1,66 +1,66 @@
-// Le préfixe opaque de session, et les deux fonctions pures qui le composent
-// et le découpent.
+// The opaque session prefix, and the two pure functions that compose
+// and split it.
 //
-// 🔴 POURQUOI IL EXISTE : jusqu'ici, l'espace de noms des sessions était
-// LOCAL À UNE VM. `agent/src/superviseur/protocole.rs` nomme sa session de
-// contrôle `bureau` — une constante littérale — et `agent/src/superviseur/
-// table.rs` numérote ses fenêtres `w-1`, `w-2`… par un compteur d'INSTANCE.
-// Deux VMs branchées sur la même plateforme produisent donc toutes deux
-// `bureau` et toutes deux `w-1`, et se disputent la même entrée de la table
-// d'appariement. Le préfixe rend le nom global sans toucher au compteur.
+// 🔴 WHY IT EXISTS: until now, the session namespace was
+// LOCAL TO A VM. `agent/src/superviseur/protocole.rs` names its control
+// session `bureau` — a literal constant — and `agent/src/superviseur/
+// table.rs` numbers its windows `w-1`, `w-2`… through an INSTANCE counter.
+// Two VMs plugged into the same platform therefore both produce
+// `bureau` and both `w-1`, and fight over the same entry of the pairing
+// table. The prefix makes the name global without touching the counter.
 //
-// 🔴 CE MODULE EST PUR À UNE EXCEPTION NOMMÉE : `nouveauPrefixe` tire de
-// `randomBytes`. Tout le reste — `composer`, `decouper` — est une fonction
-// de chaîne, sans horloge, sans base, sans état.
+// 🔴 THIS MODULE IS PURE WITH ONE NAMED EXCEPTION: `nouveauPrefixe` draws from
+// `randomBytes`. Everything else — `composer`, `decouper` — is a string
+// function, with no clock, no database, no state.
 //
-// ⚠️ L'ALPHABET N'EST PAS UN DÉTAIL. `base64url` (`A-Za-z0-9_-`) et non
-// `base64` ordinaire, pour deux raisons dont une porte tout le reste :
-//   1. il ne contient PAS le séparateur `:`, donc l'identifiant TURN
-//      `<expiration>:<préfixe>:<nom>` (`signaling/ice.ts`) garde une PREMIÈRE
-//      borne non ambiguë — coturn coupe sur le premier `:` en mode
-//      `use-auth-secret`. ⚠️ Cette dernière propriété est une lecture de la
-//      convention coturn, JAMAIS ÉPROUVÉE contre un coturn vivant ;
-//   2. il ne contient ni `+` ni `/`, qui casseraient une chaîne de requête ou
-//      un composant de chemin le jour où le préfixe y voyagerait.
+// ⚠️ THE ALPHABET IS NOT A DETAIL. `base64url` (`A-Za-z0-9_-`) and not
+// plain `base64`, for two reasons, one of which carries all the rest:
+//   1. it does NOT contain the `:` separator, so the TURN identifier
+//      `<expiry>:<prefix>:<name>` (`signaling/ice.ts`) keeps an unambiguous FIRST
+//      boundary — coturn splits on the first `:` in
+//      `use-auth-secret` mode. ⚠️ This last property is a reading of the
+//      coturn convention, NEVER TESTED against a live coturn;
+//   2. it contains neither `+` nor `/`, which would break a query string or
+//      a path component the day the prefix travelled in one.
 
 import { randomBytes } from 'node:crypto';
 
-/// Le séparateur entre le préfixe et le nom local de session, tel que la
-/// spec §3.4 l'écrit : `<préfixe>:bureau`.
+/// The separator between the prefix and the local session name, as
+/// spec §3.4 writes it: `<prefix>:bureau`.
 export const SEPARATEUR = ':';
 
-/// 16 octets, soit 128 bits — le minimum que la spec §3.4 exige d'un préfixe
-/// « non devinable ». ⚠️ NON CALIBRÉE au-delà de ce minimum : aucune mesure
-/// n'a jugé qu'il fallait plus, elle rejoint la liste des constantes non
-/// calibrées du dépôt.
+/// 16 bytes, i.e. 128 bits — the minimum spec §3.4 demands of a
+/// "non-guessable" prefix. ⚠️ NOT CALIBRATED beyond that minimum: no measurement
+/// judged that more was needed, it joins the list of uncalibrated
+/// constants of the repository.
 export const OCTETS_PREFIXE = 16;
 
-/// Tire un préfixe neuf. 22 caractères, sans remplissage.
+/// Draws a new prefix. 22 characters, without padding.
 export function nouveauPrefixe(): string {
     return randomBytes(OCTETS_PREFIXE).toString('base64url');
 }
 
-/// Compose le nom de session global.
+/// Composes the global session name.
 ///
-/// 🔴 UN PRÉFIXE VIDE REND LE NOM INCHANGÉ, et c'est la propriété la plus
-/// importante de ce fichier : elle restitue EXACTEMENT le comportement d'avant
-/// P3 (`bureau`, `w-1`). Poser le séparateur inconditionnellement rendrait
-/// `:bureau`, qui n'est le nom d'aucune session existante — et rien, nulle
-/// part, ne le signalerait. C'est la classe de panne muette contre laquelle
-/// tout ce dépôt est écrit.
+/// 🔴 AN EMPTY PREFIX RETURNS THE NAME UNCHANGED, and that is the most
+/// important property of this file: it restores EXACTLY the behaviour from before
+/// P3 (`bureau`, `w-1`). Putting the separator unconditionally would return
+/// `:bureau`, which is the name of no existing session — and nothing, anywhere,
+/// would report it. It is the class of silent failure that this whole
+/// repository is written against.
 export function composer(prefixe: string, nom: string): string {
     if (prefixe === '') return nom;
     return `${prefixe}${SEPARATEUR}${nom}`;
 }
 
-/// Défait la composition. Rend un préfixe VIDE quand il n'y en a pas, jamais
-/// `undefined` et jamais une exception : le mode d'essai local (spec §10) est
-/// un état légitime, pas une erreur.
+/// Undoes the composition. Returns an EMPTY prefix when there is none, never
+/// `undefined` and never an exception: the local trial mode (spec §10) is
+/// a legitimate state, not an error.
 ///
-/// La coupe se fait sur le PREMIER séparateur : le préfixe n'en contient
-/// jamais (voir l'alphabet), mais rien ne garantit qu'un nom local n'en porte
-/// pas un jour. Couper sur le dernier ferait alors passer le début du nom
-/// pour une partie du préfixe.
+/// The cut is made on the FIRST separator: the prefix never contains one
+/// (see the alphabet), but nothing guarantees a local name will not carry
+/// one some day. Cutting on the last one would then pass the start of the name
+/// off as part of the prefix.
 export function decouper(session: string): { prefixe: string; nom: string } {
     const i = session.indexOf(SEPARATEUR);
     if (i === -1) return { prefixe: '', nom: session };

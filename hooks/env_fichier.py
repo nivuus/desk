@@ -16,10 +16,10 @@ import stat
 
 
 def lire_env_fichier(chemin: pathlib.Path) -> dict:
-    """Parse `chemin` en KEY=VALUE, un par ligne. `{}` si le fichier n'existe
-    pas — dupliqué du parseur du test de la tâche 4 plutôt qu'importé,
-    même doctrine que le reste de ce package : chaque hook reste
-    exécutable seul.
+    """Parses `chemin` as KEY=VALUE, one per line. `{}` if the file does not
+    exist — duplicated from the task 4 test parser rather than imported,
+    same doctrine as the rest of this package: each hook stays
+    runnable on its own.
     """
     valeurs = {}
     if not chemin.is_file():
@@ -34,26 +34,26 @@ def lire_env_fichier(chemin: pathlib.Path) -> dict:
 
 
 def ajouter_variables_env(chemin: pathlib.Path, nouvelles: dict) -> None:
-    """Ajoute des lignes `KEY=VALUE` à la fin d'un fichier d'environnement
-    déjà posé, SANS toucher aux lignes qui y sont déjà, et referme le
-    fichier en mode 600 — le même mode que `install.py::ecrire_env` lui a
-    donné, et qu'il doit garder : ce fichier porte des secrets.
+    """Appends `KEY=VALUE` lines at the end of an environment file
+    already in place, WITHOUT touching the lines already there, and closes the
+    file back in mode 600 — the same mode `install.py::ecrire_env` gave
+    it, and which it must keep: this file holds secrets.
 
-    🔴 PRÉCONDITION, EXIGÉE PAR L'APPELANT : `chemin` DOIT DÉJÀ EXISTER
-    (`hooks/activate.py::main()` refuse si `desk.env` est absent — voir son
-    commentaire). `write_text()` sur un fichier EXISTANT réutilise le mode
-    déjà en place, il ne le recrée pas au umask du processus ; c'est
-    SEULEMENT sur un fichier NEUF que ce patron ouvrirait la fenêtre
-    écriture-puis-`chmod` qu'`install.py::ecrire_env` a éliminée (commit
-    `92cacfb`) en passant à `os.open(..., 0o600)`. Cette fonction ne
-    recrée jamais ce fichier depuis rien — c'est la garde de `main()`, pas
-    elle, qui rend cette précondition vraie.
+    🔴 PRECONDITION, REQUIRED FROM THE CALLER: `chemin` MUST ALREADY EXIST
+    (`hooks/activate.py::main()` refuses if `desk.env` is missing — see its
+    comment). `write_text()` on an EXISTING file reuses the mode
+    already in place, it does not recreate it with the process umask; it is
+    ONLY on a NEW file that this pattern would open the
+    write-then-`chmod` window that `install.py::ecrire_env` removed (commit
+    `92cacfb`) by switching to `os.open(..., 0o600)`. This function never
+    recreates this file from nothing — it is the guard in `main()`, not
+    this function, that makes this precondition true.
     """
     corps = chemin.read_text(encoding="utf-8") if chemin.is_file() else ""
     if corps and not corps.endswith("\n"):
         corps += "\n"
     corps += "".join(f"{cle}={valeur}\n" for cle, valeur in nouvelles.items())
     chemin.write_text(corps, encoding="utf-8")
-    os.chmod(chemin, stat.S_IRUSR | stat.S_IWUSR)  # 0o600, redondant si la
-    # précondition tient déjà — mais gratuit, et une seconde ligne de
-    # défense ne coûte rien.
+    os.chmod(chemin, stat.S_IRUSR | stat.S_IWUSR)  # 0o600, redundant if the
+    # precondition already holds — but free, and a second line of
+    # defence costs nothing.

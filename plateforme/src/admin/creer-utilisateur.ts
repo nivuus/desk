@@ -1,21 +1,21 @@
-// La création de compte par ligne de commande d'administration.
+// Account creation from the administration command line.
 //
-// La spec §4 dit « création de compte par ligne de commande d'administration
-// (pas d'inscription publique en v1) » et s'arrête là : le point d'entrée et
-// la convention sont décidés ici.
+// Spec §4 says "account creation from the administration command line
+// (no public sign-up in v1)" and stops there: the entry point and
+// the convention are decided here.
 //
 //     npm run admin:utilisateur -- --email ada@exemple.test
 //
-// 🔴 LE MOT DE PASSE SE LIT SUR L'ENTRÉE STANDARD, ET LÀ SEULEMENT. Un
-// `--mot-de-passe` sur l'argv est REFUSÉ explicitement, avec son motif :
-// `ps` expose la ligne de commande de tout processus à tout utilisateur de la
-// machine, et un secret passé ainsi serait lisible par n'importe qui pendant
-// toute la durée de l'appel — puis dans l'historique du shell.
+// 🔴 THE PASSWORD IS READ FROM STANDARD INPUT, AND ONLY THERE. A
+// `--mot-de-passe` on argv is REFUSED explicitly, with its reason:
+// `ps` exposes the command line of every process to every user of the
+// machine, and a secret passed that way would be readable by anyone for
+// the whole duration of the call — then in the shell history.
 //
-// ⚠️ Un courriel déjà pris rend un message clair et un code de sortie non nul.
-// Il n'y a PAS d'oracle d'énumération ici, contrairement aux routes HTTP :
-// l'appelant est l'administrateur, et lui cacher l'échec lui ferait croire à
-// un compte qui n'existe pas.
+// ⚠️ An email already taken returns a clear message and a non-zero exit code.
+// There is NO enumeration oracle here, unlike the HTTP routes:
+// the caller is the administrator, and hiding the failure would make them believe in
+// an account that does not exist.
 
 import { createInterface } from 'node:readline';
 import { lireConfig } from '../config';
@@ -26,18 +26,18 @@ import { hacher } from '../identite/mot-de-passe';
 
 export type Arguments = { email: string } | { refus: string };
 
-/// Les drapeaux qui tenteraient de faire passer un secret par l'argv. Ils sont
-/// énumérés plutôt que devinés : un motif large refuserait un jour un drapeau
-/// légitime sans qu'on sache pourquoi.
+/// The flags that would try to pass a secret through argv. They are
+/// enumerated rather than guessed: a broad pattern would one day refuse a
+/// legitimate flag without anyone knowing why.
 const DRAPEAUX_INTERDITS = ['--mot-de-passe', '--motdepasse', '--password', '--mdp', '-p'];
 
-/// PURE, et testée seule. Rend l'adresse, ou un refus qui porte son motif.
+/// PURE, and tested on its own. Returns the address, or a refusal carrying its reason.
 export function analyserArguments(argv: string[]): Arguments {
     for (const drapeau of DRAPEAUX_INTERDITS) {
         if (argv.includes(drapeau)) {
-            // ⚠️ Le motif ne recopie PAS la valeur refusée : la réécrire dans
-            // un journal après l'avoir refusée dans un argv n'aurait aucun
-            // sens.
+            // ⚠️ The reason does NOT copy the refused value: writing it again into
+            // a log after refusing it in an argv would make no
+            // sense.
             return {
                 refus:
                     `${drapeau} est refusé : le mot de passe se lit sur l'entrée standard, ` +
@@ -58,8 +58,8 @@ export function analyserArguments(argv: string[]): Arguments {
     return { email };
 }
 
-/// Lit une ligne sur l'entrée standard. Rien n'est réaffiché — un `readline`
-/// nu ferait l'écho du mot de passe au terminal.
+/// Reads one line from standard input. Nothing is echoed back — a bare
+/// `readline` would echo the password to the terminal.
 function lireMotDePasse(invite: string): Promise<string> {
     const rl = createInterface({ input: process.stdin, terminal: false });
     process.stderr.write(invite);
@@ -71,7 +71,7 @@ function lireMotDePasse(invite: string): Promise<string> {
     });
 }
 
-/// Le corps impur : lecture, hachage, écriture. Rend le code de sortie.
+/// The impure body: read, hash, write. Returns the exit code.
 export async function executer(argv: string[]): Promise<number> {
     const args = analyserArguments(argv);
     if ('refus' in args) {
@@ -88,9 +88,9 @@ export async function executer(argv: string[]): Promise<number> {
     const config = lireConfig(process.env);
     const base = await ouvrirBase(config);
     try {
-        // Les migrations d'abord : la commande peut être le tout premier geste
-        // sur une base neuve, et un `INSERT` sur une table absente rendrait un
-        // diagnostic sans rapport avec la cause.
+        // Migrations first: the command may be the very first action
+        // on a new database, and an `INSERT` on a missing table would give a
+        // diagnosis unrelated to the cause.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
         const id = await creerUtilisateur(
             base,
@@ -98,8 +98,8 @@ export async function executer(argv: string[]): Promise<number> {
             await hacher(motDePasse),
             Date.now(),
         );
-        // L'identifiant créé, et RIEN D'AUTRE, sur la sortie standard : c'est
-        // ce qui rend la commande utilisable dans un tube.
+        // The created identifier, and NOTHING ELSE, on standard output: that is
+        // what makes the command usable in a pipe.
         process.stdout.write(`${id}\n`);
         return 0;
     } catch (cause) {
@@ -110,8 +110,8 @@ export async function executer(argv: string[]): Promise<number> {
     }
 }
 
-// Exécuté seulement quand ce fichier EST le point d'entrée : sans cette garde,
-// l'importer depuis un test lancerait la commande.
+// Run only when this file IS the entry point: without this guard,
+// importing it from a test would launch the command.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
     process.exitCode = await executer(process.argv.slice(2));
 }

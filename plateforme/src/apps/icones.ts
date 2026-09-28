@@ -1,25 +1,25 @@
-// Le magasin d'icônes de la plateforme : des octets sur DISQUE, adressés par
-// leur contenu, un fichier par empreinte.
+// The icon store of the platform: bytes on DISK, addressed by
+// their content, one file per digest.
 //
-// 🔴 POURQUOI LE DISQUE ET NON LA BASE. Trois raisons, dans l'ordre de leur
-// poids :
+// 🔴 WHY THE DISK AND NOT THE DATABASE. Three reasons, in order of their
+// weight:
 //
-//   1. UN BLOB NE TRAVERSE PAS LA DOUBLE PASSE SANS MENTIR. PostgreSQL n'a pas
-//      de type `BLOB` (il a `bytea`) ; SQLite, lui, accepte N'IMPORTE QUEL nom
-//      de type par affinité — le lint de `base/sous-ensemble.test.ts` le
-//      documente pour `SERIAL`, mesure à l'appui. Écrire `BYTEA` passerait donc
-//      les DEUX passes en signifiant deux choses différentes : c'est le piège
-//      `SERIAL` À L'ENVERS, et aucun des deux gardes du dépôt ne l'attrape.
-//   2. La doctrine est déjà écrite par la spécification, qui tranche pour la
-//      reprise de téléversement en faveur d'« un LISTAGE DE RÉPERTOIRE, jamais
-//      une table de comptabilité qui pourrait diverger du disque ».
-//   3. Le volume : 4 576 398 octets mesurés pour ce seul catalogue.
+//   1. A BLOB DOES NOT CROSS THE DOUBLE PASS WITHOUT LYING. PostgreSQL has no
+//      `BLOB` type (it has `bytea`); SQLite accepts ANY type name
+//      by affinity — the lint of `base/sous-ensemble.test.ts`
+//      documents it for `SERIAL`, with a measurement to back it. Writing `BYTEA` would therefore pass
+//      BOTH passes while meaning two different things: it is the `SERIAL`
+//      trap IN REVERSE, and neither of the two guards of the repository catches it.
+//   2. The doctrine is already written by the specification, which settles the
+//      upload resumption in favour of "a DIRECTORY LISTING, never
+//      a bookkeeping table that could diverge from the disk".
+//   3. The volume: 4,576,398 bytes measured for this catalogue alone.
 //
-// 🔴 ET C'EST L'AUTO-RECONSTRUCTION QUI REND LE DISQUE ACCEPTABLE, pas une
-// commodité. Un magasin perdu — conteneur sans volume, répertoire mal nommé —
-// se remplit tout seul : l'inventaire des manquantes interroge le DISQUE, donc
-// tout ce qui manque est redemandé à la réconciliation suivante. C'est le
-// critère ⑦ de recette, et il doit être ÉPROUVÉ plutôt que supposé.
+// 🔴 AND IT IS SELF-REBUILDING THAT MAKES THE DISK ACCEPTABLE, not a
+// convenience. A lost store — container without a volume, misnamed directory —
+// refills on its own: the inventory of missing icons queries the DISK, so
+// everything missing is requested again at the next reconciliation. That is
+// acceptance criterion ⑦, and it must be TESTED rather than assumed.
 
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -27,49 +27,49 @@ import { existsSync } from 'node:fs';
 import { readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-/// 🔴 TOUS LES 50 NOMS EXAMINÉS, LE TOUR REND LA MAIN AU BOUCLE D'ÉVÈNEMENTS
-/// (round de correction 2) — `setImmediate` plutôt qu'un `Promise.resolve()`
-/// : ce dernier ne planifie qu'une MICROTÂCHE, qui ne cède la main à AUCUNE
-/// E/S ni horloge en attente ; `setImmediate` planifie une VRAIE tâche, après
-/// la phase "poll" — ce qui laisse une requête HTTP ou un message WebSocket
-/// déjà prêts s'exécuter avant l'entrée suivante. MESURÉ (banc de 20 000
-/// icônes, 25 août 2026, AVANT ce remède) : 222 ms d'un seul tenant,
-/// ZÉRO battement de 10 ms servi pendant (≈22 attendus) — le port était
-/// ouvert, et rien ne répondait. ⚠️ NON CALIBRÉ : 50 est raisonné (assez petit
-/// pour qu'aucune E/S en attente ne patiente plus de quelques passages
-/// d'entrées, assez grand pour ne pas noyer le tour sous des tâches de
-/// planification), jamais mesuré finement. La mesure AVANT ce remède est
-/// celle de la REVUE (round de correction 2), pas la mienne : reprise ici
-/// pour ne pas la perdre, avec sa provenance dite.
+/// 🔴 EVERY 50 NAMES EXAMINED, THE ROUND YIELDS TO THE EVENT LOOP
+/// (correction round 2) — `setImmediate` rather than a `Promise.resolve()`
+/// : the latter only schedules a MICROTASK, which yields to NO pending
+/// I/O or timer; `setImmediate` schedules a REAL task, after
+/// the "poll" phase — which lets an HTTP request or a WebSocket message
+/// already ready run before the next entry. MEASURED (bench of 20,000
+/// icons, 25 August 2026, BEFORE this remedy): 222 ms in one block,
+/// ZERO 10 ms beat served during it (≈22 expected) — the port was
+/// open, and nothing answered. ⚠️ NOT CALIBRATED: 50 is reasoned (small enough
+/// that no pending I/O waits more than a few passes over
+/// entries, large enough not to drown the round in scheduling
+/// tasks), never finely measured. The measurement BEFORE this remedy is
+/// that of the REVIEW (correction round 2), not mine: repeated here
+/// so as not to lose it, with its provenance stated.
 const PAS_DE_REPRISE = 50;
 
 async function rendreLaMain(): Promise<void> {
     await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-/// ⚠️ **NON CALIBRÉE.** Aucune constante de ce dépôt ne l'est.
+/// ⚠️ **NOT CALIBRATED.** No constant of this repository is.
 ///
-/// 🔴 LE PLANCHER DE RÉFÉRENCE (voir `evincer`, plus bas) EST CE QUI DISTINGUE
-/// UNE ÉVICTION D'UNE CORRUPTION : évincer une icône encore nommée par une
-/// application ferait disparaître son image sans que rien ne le dise.
+/// 🔴 THE REFERENCE FLOOR (see `evincer`, below) IS WHAT TELLS
+/// AN EVICTION FROM A CORRUPTION: evicting an icon still named by an
+/// application would make its image vanish without anything saying so.
 ///
-/// ⚠️ CE QUE CETTE RÈGLE NE FAIT PAS : elle ne borne PAS le disque. Un
-/// catalogue qui grossit sans cesse grossit sans cesse. Le plafond de taille a
-/// été ÉCARTÉ par décision, parce qu'il peut évincer un objet encore référencé
-/// — c'est-à-dire échanger une croissance visible contre une panne silencieuse.
+/// ⚠️ WHAT THIS RULE DOES NOT DO: it does NOT bound the disk. A
+/// catalogue that keeps growing keeps growing. The size cap was
+/// DISMISSED by decision, because it can evict an object still referenced
+/// — that is, trade a visible growth for a silent failure.
 export const AGE_EVICTION_ICONE_MS = 180 * 24 * 60 * 60_000;
 
-/// 🔴 EXACTEMENT 64 CARACTÈRES HEXADÉCIMAUX MINUSCULES, ET RIEN D'AUTRE.
+/// 🔴 EXACTLY 64 LOWERCASE HEXADECIMAL CHARACTERS, AND NOTHING ELSE.
 ///
-/// Sans cette garde, `:sha256` est UN COMPOSANT DE CHEMIN FOURNI PAR LE
-/// RÉSEAU, et `..` y est significatif. Le dépôt écrit déjà « ne jamais
-/// interpoler une valeur d'environnement brute dans un composant de chemin » ;
-/// ici c'est PIRE — elle vient d'un pair.
+/// Without this guard, `:sha256` is A PATH COMPONENT SUPPLIED BY THE
+/// NETWORK, and `..` is meaningful in it. The repository already says "never
+/// interpolate a raw environment value into a path component";
+/// here it is WORSE — it comes from a peer.
 ///
-/// ⚠️ MINUSCULES SEULEMENT, et ce n'est pas de la coquetterie : sur un système
-/// de fichiers insensible à la casse, `AB…` et `ab…` désigneraient le MÊME
-/// fichier sous deux empreintes différentes, et l'adressage par contenu
-/// cesserait d'être une bijection.
+/// ⚠️ LOWERCASE ONLY, and it is not vanity: on a case-insensitive
+/// file system, `AB…` and `ab…` would designate the SAME
+/// file under two different digests, and content addressing
+/// would stop being a bijection.
 export function empreinteValide(s: string): boolean {
     return /^[0-9a-f]{64}$/.test(s);
 }
@@ -79,20 +79,20 @@ export interface Magasin {
     manquantes(annoncees: readonly string[]): string[];
     ecrire(empreinte: string, octets: Buffer): void;
     lire(empreinte: string): Buffer | undefined;
-    /// Évince PAR ÂGE, avec un PLANCHER DE RÉFÉRENCE — voir `AGE_EVICTION_ICONE_MS`.
-    /// `maintenant` est un PARAMÈTRE, jamais lu de l'horloge : même règle que
-    /// partout ailleurs dans ce dépôt (`depot/application.ts`, etc.), et c'est
-    /// ce qui rend `icones.test.ts` capable de rejouer un âge exact.
+    /// Evicts BY AGE, with a REFERENCE FLOOR — see `AGE_EVICTION_ICONE_MS`.
+    /// `maintenant` is a PARAMETER, never read from the clock: same rule as
+    /// everywhere else in this repository (`depot/application.ts`, etc.), and that is
+    /// what makes `icones.test.ts` able to replay an exact age.
     evincer(options: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void>;
     repertoire: string;
 }
 
-/// Ouvre — ou crée — le magasin, et JOURNALISE le chemin retenu.
+/// Opens — or creates — the store, and LOGS the retained path.
 ///
-/// ⚠️ LA LIGNE DE JOURNAL N'EST PAS DÉCORATIVE : `PLATEFORME_ICONES` est
-/// facultative, donc un opérateur peut se tromper de répertoire sans que rien
-/// ne casse — le magasin se reconstruirait ailleurs, en silence, en
-/// retéléversant tout. Le chemin retenu doit se lire.
+/// ⚠️ THE LOG LINE IS NOT DECORATIVE: `PLATEFORME_ICONES` is
+/// optional, so an operator can get the directory wrong without anything
+/// breaking — the store would rebuild itself elsewhere, silently, by
+/// re-uploading everything. The retained path must be readable.
 export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) => void): Magasin {
     mkdirSync(repertoire, { recursive: true });
     journaliser(repertoire);
@@ -107,21 +107,21 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
     return {
         repertoire,
 
-        /// 🔴 UNE EXISTENCE DE FICHIER, JAMAIS UNE TABLE. Une table de
-        /// comptabilité divergerait du magasin le jour où un fichier serait
-        /// perdu — et c'est PRÉCISÉMENT le jour où l'on a besoin de le savoir.
+        /// 🔴 A FILE EXISTENCE, NEVER A TABLE. A bookkeeping
+        /// table would diverge from the store the day a file got
+        /// lost — and that is PRECISELY the day one needs to know.
         possede(empreinte: string): boolean {
             return empreinteValide(empreinte) && existsSync(join(repertoire, empreinte));
         },
 
-        /// Le complément, DANS L'ORDRE D'ANNONCE et sans doublon.
+        /// The complement, IN ANNOUNCEMENT ORDER and without duplicates.
         ///
-        /// ⚠️ L'ordre d'annonce est celui du catalogue, donc celui dans lequel
-        /// l'utilisateur verra les icônes arriver. Trier le perdrait pour rien.
+        /// ⚠️ The announcement order is that of the catalogue, hence the one in which
+        /// the user will see the icons arrive. Sorting would lose it for nothing.
         ///
-        /// ⚠️ UNE EMPREINTE MAL FORMÉE N'EST PAS « MANQUANTE » : elle est
-        /// ignorée. La redemander ferait boucler l'agent sur une valeur que la
-        /// route refuserait de toute façon.
+        /// ⚠️ A MALFORMED DIGEST IS NOT "MISSING": it is
+        /// ignored. Requesting it again would make the agent loop on a value the
+        /// route would refuse anyway.
         manquantes(annoncees: readonly string[]): string[] {
             const vues = new Set<string>();
             const manque: string[] = [];
@@ -133,19 +133,19 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
             return manque;
         },
 
-        /// 🔴 RECALCULE L'EMPREINTE, ET REFUSE SI ELLE DIFFÈRE.
+        /// 🔴 RECOMPUTES THE DIGEST, AND REFUSES IF IT DIFFERS.
         ///
-        /// C'est la troisième des trois vérifications de la spécification —
-        /// « aucun saut ne fait confiance au précédent ». **Sans elle,
-        /// l'adressage par contenu n'en serait PAS un** : un agent fautif
-        /// empoisonnerait le magasin d'un fichier qui ne correspond pas à son
-        /// nom, et le `Cache-Control: immutable` de la route rendrait
-        /// l'empoisonnement PERMANENT dans les caches.
+        /// It is the third of the three checks of the specification —
+        /// "no hop trusts the previous one". **Without it,
+        /// content addressing would NOT be content addressing**: a faulty agent
+        /// would poison the store with a file that does not match its
+        /// name, and the `Cache-Control: immutable` of the route would make
+        /// the poisoning PERMANENT in the caches.
         ///
-        /// 🔴 L'ÉCRITURE EST ATOMIQUE : fichier temporaire puis `rename`. Un
-        /// `PUT` interrompu laisserait sinon un fichier TRONQUÉ **sous un nom
-        /// qui promet son contenu**, et le maillon suivant le servirait sans
-        /// jamais le relire.
+        /// 🔴 THE WRITE IS ATOMIC: temporary file then `rename`. An
+        /// interrupted `PUT` would otherwise leave a TRUNCATED file **under a name
+        /// that promises its content**, and the next link would serve it without
+        /// ever reading it back.
         ecrire(empreinte: string, octets: Buffer): void {
             const cible = chemin(empreinte);
             const reel = createHash('sha256').update(octets).digest('hex');
@@ -154,8 +154,8 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
                     `empreinte annoncée ${empreinte} mais contenu en ${reel} : refusé`,
                 );
             }
-            // Le suffixe aléatoire évite que deux `PUT` concurrents de la même
-            // empreinte n'écrivent le même temporaire.
+            // The random suffix keeps two concurrent `PUT`s of the same
+            // digest from writing the same temporary file.
             const provisoire = `${cible}.${process.pid}.${Math.random().toString(36).slice(2)}.part`;
             try {
                 writeFileSync(provisoire, octets);
@@ -175,31 +175,31 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
             }
         },
 
-        /// 🔴 LE PLANCHER D'ABORD : une empreinte RÉFÉRENCÉE n'est jamais
-        /// examinée pour son âge, quelle que soit sa vétusté. C'est la seule
-        /// chose qui distingue une éviction d'une corruption — voir le
-        /// commentaire de `AGE_EVICTION_ICONE_MS`.
+        /// 🔴 THE FLOOR FIRST: a REFERENCED digest is never
+        /// examined for its age, however stale it is. It is the only
+        /// thing that tells an eviction from a corruption — see the
+        /// comment of `AGE_EVICTION_ICONE_MS`.
         ///
-        /// ⚠️ UN NOM QUI N'EST PAS UNE EMPREINTE VALIDE N'EST JAMAIS TOUCHÉ :
-        /// un fichier étranger déposé à la main dans le magasin (le cas
-        /// couvert par `icones.test.ts::'un fichier étranger…'`) n'est pas de
-        /// la responsabilité de cette éviction.
+        /// ⚠️ A NAME THAT IS NOT A VALID DIGEST IS NEVER TOUCHED:
+        /// a foreign file dropped by hand into the store (the case
+        /// covered by `icones.test.ts::'un fichier étranger…'`) is not the
+        /// responsibility of this eviction.
         ///
-        /// 🔴 LEG DÉCLARÉ (round de correction 3) : LA CÉSURE `stat` → `rm`
-        /// PEUT FAUCHER UNE ÉCRITURE CONCURRENTE. Entre la lecture de l'âge
-        /// et la suppression, un `ecrire()` sur ce MÊME nom (réécriture d'une
-        /// icône récemment redemandée par la réconciliation, par exemple)
-        /// peut retomber dans la fenêtre — le fichier vient d'être touché,
-        /// mais son âge a été lu AVANT. MESURÉ PAR LA REVUE : 0 à 3 icônes
-        /// sur 2 000 fauchées malgré une date fraîche, sur 5 exécutions.
-        /// CETTE FENÊTRE N'EXISTAIT PAS EN SYNCHRONE (`stat` puis `rm`
-        /// s'enchaînaient sans qu'aucune E/S concurrente ne puisse
-        /// s'intercaler). ⚠️ AUTO-RÉPARANT ICI, PAS AILLEURS : la
-        /// réconciliation suivante (`agents/canal-apps.ts::manquantes`)
-        /// redemande toute empreinte absente — la revue a vérifié que cette
-        /// promesse n'est pas vacueuse. `MagasinTranches.evincer` a EXACTEMENT
-        /// la même forme de code, donc la MÊME césure, mais SANS ce filet :
-        /// voir son propre commentaire.
+        /// 🔴 DECLARED LEGACY (correction round 3): THE `stat` → `rm` GAP
+        /// CAN MOW DOWN A CONCURRENT WRITE. Between reading the age
+        /// and the deletion, an `ecrire()` on this SAME name (rewrite of an
+        /// icon recently requested again by the reconciliation, for example)
+        /// can fall into the window — the file has just been touched,
+        /// but its age was read BEFORE. MEASURED BY THE REVIEW: 0 to 3 icons
+        /// out of 2,000 mowed down despite a fresh date, over 5 runs.
+        /// THIS WINDOW DID NOT EXIST WHEN SYNCHRONOUS (`stat` then `rm`
+        /// followed each other without any concurrent I/O being able to
+        /// slip in). ⚠️ SELF-HEALING HERE, NOT ELSEWHERE: the
+        /// next reconciliation (`agents/canal-apps.ts::manquantes`)
+        /// requests again any missing digest — the review checked that this
+        /// promise is not vacuous. `MagasinTranches.evincer` has EXACTLY
+        /// the same code shape, hence the SAME gap, but WITHOUT this safety net:
+        /// see its own comment.
         async evincer({ maintenant, referencees }: { maintenant: number; referencees: ReadonlySet<string> }): Promise<void> {
             let noms: string[];
             try {

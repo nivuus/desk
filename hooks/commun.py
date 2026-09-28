@@ -168,46 +168,46 @@ def deriver_adresse_turn() -> str:
 # `DESK_HOTE` (tests, or a future topology change).
 HOTE_DEFAUT = "192.168.3.1"
 
-# Les quatre valeurs qui font écouter un service sur TOUTES les interfaces —
-# reprises telles quelles de `plateforme/src/config.ts::ECOUTES_UNIVERSELLES`.
+# The four values that make a service listen on ALL interfaces —
+# copied as is from `plateforme/src/config.ts::ECOUTES_UNIVERSELLES`.
 ECOUTES_UNIVERSELLES = ("0.0.0.0", "::", "[::]", "*")
 
 
 def _est_universelle(brut) -> bool:
-    """Vrai si `brut` est l'une des quatre écoutes universelles.
+    """True if `brut` is one of the four universal listen addresses.
 
-    Le SEUL endroit de ce package qui teste cette appartenance : les trois
-    validateurs publics ci-dessous s'en servent, aucun ne redit le test.
+    The ONLY place in this package that tests this membership: the three
+    public validators below use it, none of them repeats the test.
     """
     return isinstance(brut, str) and brut.strip() in ECOUTES_UNIVERSELLES
 
 
 def valider_hote(brut: str, origine: str = "DESK_HOTE"):
-    """Le SEUL contrôle qui refuse une écoute universelle pour
-    `PLATEFORME_HOTE`, quelle que soit la PROVENANCE de `brut`.
+    """The ONLY check that refuses a universal listen address for
+    `PLATEFORME_HOTE`, whatever the ORIGIN of `brut`.
 
-    🔴 EXTRAIT DE `lire_hote()` EN RONDE DE CORRECTION 1 (lot 10A,
-    29 août 2026) : la revue a démontré qu'`install.py` appelait
-    `lire_hote()` SEULEMENT quand `facts.get("hote")` était vide —
-    `facts["hote"] = "0.0.0.0"` traversait donc SANS jamais rencontrer ce
-    contrôle, rendait code 0, et écrivait `PLATEFORME_HOTE=0.0.0.0` dans
-    `desk.env`. Inatteignable par le moteur réel AUJOURD'HUI (qui ne passe
-    aucun `facts` à `install`), mais le docstring de tête d'`install.py`
-    dit lui-même que ce canal existe pour « un futur moteur, ou ce fichier
-    de tests » — et le contrat de `facts` a gagné des clés PENDANT ce lot
-    même. Un garde qui ne mord que sur UN des deux chemins d'entrée n'est
-    pas le garde que ce lot existe pour poser. `install.py` appelle
-    désormais CETTE fonction sur `facts.get("hote")` s'il est présent,
-    EXACTEMENT comme sur la valeur dérivée — même contrôle, quelle que soit
-    la provenance.
+    🔴 EXTRACTED FROM `lire_hote()` IN CORRECTION ROUND 1 (batch 10A,
+    29 August 2026): the review showed that `install.py` called
+    `lire_hote()` ONLY when `facts.get("hote")` was empty —
+    `facts["hote"] = "0.0.0.0"` therefore went through WITHOUT ever meeting this
+    check, returned code 0, and wrote `PLATEFORME_HOTE=0.0.0.0` into
+    `desk.env`. Unreachable by the real engine TODAY (which passes
+    no `facts` to `install`), but the head docstring of `install.py`
+    itself says this channel exists for "a future engine, or this test
+    file" — and the `facts` contract gained keys DURING this very
+    batch. A guard that bites on only ONE of the two entry paths is
+    not the guard this batch exists to put in place. `install.py` now calls
+    THIS function on `facts.get("hote")` when it is present,
+    EXACTLY as on the derived value — same check, whatever
+    the origin.
 
-    `origine` ne sert qu'au message de refus (« DESK_HOTE » pour la valeur
-    dérivée par défaut, « facts["hote"] » pour une valeur fournie par le
-    moteur) — jamais à la logique : la garde est IDENTIQUE dans les deux cas.
+    `origine` only feeds the refusal message ("DESK_HOTE" for the value
+    derived by default, "facts["hote"]" for a value supplied by the
+    engine) — never the logic: the guard is IDENTICAL in both cases.
 
-    Rend `(hote, None)` en succès, `(None, raison)` si `brut` est une
-    écoute universelle : un refus ICI, jamais un service qui démarre puis
-    s'expose sur toutes les interfaces.
+    Returns `(hote, None)` on success, `(None, raison)` if `brut` is a
+    universal listen address: a refusal HERE, never a service that starts and then
+    exposes itself on every interface.
     """
     if _est_universelle(brut):
         return None, (
@@ -220,90 +220,90 @@ def valider_hote(brut: str, origine: str = "DESK_HOTE"):
 
 
 def lire_hote():
-    """`HOTE_DEFAUT`, surchargeable par `DESK_HOTE` (tests, ou un futur
-    changement de topologie réseau) — jamais dérivée de la route par défaut,
-    voir le commentaire ci-dessus. Passe TOUJOURS par `valider_hote` — voir
-    son docstring pour pourquoi ce n'est plus un `if` inline ici.
+    """`HOTE_DEFAUT`, overridable by `DESK_HOTE` (tests, or a future
+    change of network topology) — never derived from the default route,
+    see the comment above. ALWAYS goes through `valider_hote` — see
+    its docstring for why this is no longer an inline `if` here.
 
-    Rend `(hote, None)` en succès, `(None, raison)` si la valeur retenue
-    (défaut ou surchargée) est une écoute universelle.
+    Returns `(hote, None)` on success, `(None, raison)` if the retained value
+    (default or overridden) is a universal listen address.
     """
     brut = os.environ.get("DESK_HOTE") or HOTE_DEFAUT
     return valider_hote(brut, origine="DESK_HOTE")
 
 
-# --- PLATEFORME_PROXY_DE_CONFIANCE : le trou C du lot 10A -------------------
+# --- PLATEFORME_PROXY_DE_CONFIANCE: hole C of batch 10A --------------------
 #
-# `plateforme/src/config.ts::lireConfig` refuse de démarrer en mode
-# `PLATEFORME_AUTH=pomerium` sans `PLATEFORME_PROXY_DE_CONFIANCE` (l'identité
-# arrive sinon dans un en-tête `X-Pomerium-Claim-Email` en clair, qu'aucune
-# signature ne vérifie). Avant ce correctif, `wizard.yaml` ne posait AUCUNE
-# question permettant de la déclarer, et `hooks/resolve.py::valider_auth_mode`
-# REFUSAIT donc catégoriquement `auth_mode=pomerium` — ce qui rendait le mode
-# choisi explicitement par le propriétaire du dépôt (lot 10A, 29 août 2026)
-# IMPOSSIBLE à installer.
+# `plateforme/src/config.ts::lireConfig` refuses to start in
+# `PLATEFORME_AUTH=pomerium` mode without `PLATEFORME_PROXY_DE_CONFIANCE` (otherwise
+# the identity arrives in a plain `X-Pomerium-Claim-Email` header, that no
+# signature checks). Before this fix, `wizard.yaml` asked NO
+# question allowing it to be declared, and `hooks/resolve.py::valider_auth_mode`
+# therefore flatly REFUSED `auth_mode=pomerium` — which made the mode
+# explicitly chosen by the repository owner (batch 10A, 29 August 2026)
+# IMPOSSIBLE to install.
 #
-# 🔴 LE CHEMIN RETENU : LA MÊME DOCTRINE QUE `PORT_DEFAUT`/`HOTE_DEFAUT` —
-# UNE VALEUR DÉRIVÉE, JAMAIS UNE CINQUIÈME QUESTION DU WIZARD. L'opérateur
-# n'a aucune information qui lui permettrait de répondre correctement : la
-# valeur juste dépend de la topologie de CETTE machine (Pomerium tourne en
-# `network_mode: host`), pas d'un choix qu'un opérateur ferait au clavier.
+# 🔴 THE CHOSEN PATH: THE SAME DOCTRINE AS `PORT_DEFAUT`/`HOTE_DEFAUT` —
+# A DERIVED VALUE, NEVER A FIFTH WIZARD QUESTION. The operator
+# has no information that would let them answer correctly: the
+# right value depends on the topology of THIS machine (Pomerium runs in
+# `network_mode: host`), not on a choice an operator would type in.
 #
-# ⚠️ LA VALEUR N'EST PAS MESURÉE, ELLE EST RAISONNÉE — ET C'EST DIT ICI, PAS
-# MAQUILLÉ. Pomerium (réseau hôte) contacte `PLATEFORME_HOTE:PLATEFORME_PORT`,
-# c'est-à-dire une adresse qui lui est LOCALE (`192.168.3.1`, portée par
-# `internalBridge`, pas `127.0.0.1`). Sous Linux, une connexion vers une
-# adresse IPv4 qui appartient déjà à une interface locale (et n'est pas
-# `127.0.0.1`) est acheminée par la table de routage locale et se présente
-# côté serveur avec `remoteAddress` = CETTE MÊME ADRESSE (le noyau ne réécrit
-# pas la source en `127.0.0.1` pour une adresse locale non-loopback) — donc
-# `192.168.3.1`, la même valeur que `PLATEFORME_HOTE`. C'est un raisonnement,
-# PAS UNE MESURE : rien n'écoutait sur le port au moment de cette
-# reconnaissance (29 août 2026), et Pomerium n'est pas encore reciblé vers
-# cette adresse (c'est le volet 10B). **Le volet 10B DOIT confirmer cette
-# valeur par la ligne d'annonce du démarrage de la plateforme
-# (`proxys de confiance retenus=…`, voir `plateforme/src/http/annonces.ts`)
-# une fois sa route repointée vers `192.168.3.1:3445`.**
+# ⚠️ THE VALUE IS NOT MEASURED, IT IS REASONED — AND THAT IS SAID HERE, NOT
+# DISGUISED. Pomerium (host network) contacts `PLATEFORME_HOTE:PLATEFORME_PORT`,
+# that is an address that is LOCAL to it (`192.168.3.1`, carried by
+# `internalBridge`, not `127.0.0.1`). On Linux, a connection to an
+# IPv4 address that already belongs to a local interface (and is not
+# `127.0.0.1`) is routed through the local routing table and shows up
+# on the server side with `remoteAddress` = THAT SAME ADDRESS (the kernel does not rewrite
+# the source to `127.0.0.1` for a local non-loopback address) — hence
+# `192.168.3.1`, the same value as `PLATEFORME_HOTE`. This is reasoning,
+# NOT A MEASUREMENT: nothing was listening on the port at the time of this
+# survey (29 August 2026), and Pomerium is not yet retargeted to
+# this address (that is part 10B). **Part 10B MUST confirm this
+# value through the announcement line of the platform startup
+# (`proxys de confiance retenus=…`, see `plateforme/src/http/annonces.ts`)
+# once its route points at `192.168.3.1:3445`.**
 #
-# Surchargeable par `DESK_PROXY_DE_CONFIANCE` (tests, ou une fois 10B mesure
-# une valeur différente).
+# Overridable by `DESK_PROXY_DE_CONFIANCE` (tests, or once 10B measures
+# a different value).
 PROXY_DEFAUT = HOTE_DEFAUT
 
 
 def lire_proxy_confiance():
-    """`PROXY_DEFAUT`, surchargeable par `DESK_PROXY_DE_CONFIANCE`. Ne lève
-    et ne refuse jamais : c'est une valeur RAISONNÉE (voir le commentaire
-    ci-dessus), jamais absente."""
+    """`PROXY_DEFAUT`, overridable by `DESK_PROXY_DE_CONFIANCE`. Never raises
+    and never refuses: it is a REASONED value (see the comment
+    above), never missing."""
     return os.environ.get("DESK_PROXY_DE_CONFIANCE") or PROXY_DEFAUT
 
 
-# --- Node.js à l'échelle du système (lot 10A, 29 août 2026, problème A) ----
+# --- System-wide Node.js (batch 10A, 29 August 2026, problem A) -----------
 #
-# 🔴 IL N'Y A AUCUN NODE À L'ÉCHELLE DU SYSTÈME SUR CETTE MACHINE, ET
-# `hooks/assets/desk-plateforme.service` PORTAIT `ExecStart=/usr/bin/npm
-# start` — UN CHEMIN QUI N'EXISTE PAS. Vérifié le 29 août 2026 : ni
-# `/usr/bin/node`, ni `/usr/bin/npm`, ni `/usr/local/bin/node`, aucun paquet
-# Debian `nodejs`. `node`/`npm` ne sont que des FONCTIONS zsh qui sourcent
-# nvm depuis `$HOME/.nvm` (mode 700, root seulement) — ni systemd
-# (`DynamicUser=yes`) ni un hook lancé pour un autre utilisateur ne peuvent
-# les atteindre, et un `subprocess.run(["node", ...])` en Python ne passe de
-# toute façon jamais par une fonction de shell interactif.
+# 🔴 THERE IS NO SYSTEM-WIDE NODE ON THIS MACHINE, AND
+# `hooks/assets/desk-plateforme.service` CARRIED `ExecStart=/usr/bin/npm
+# start` — A PATH THAT DOES NOT EXIST. Checked on 29 August 2026: neither
+# `/usr/bin/node`, nor `/usr/bin/npm`, nor `/usr/local/bin/node`, no Debian
+# `nodejs` package. `node`/`npm` are only zsh FUNCTIONS that source
+# nvm from `$HOME/.nvm` (mode 700, root only) — neither systemd
+# (`DynamicUser=yes`) nor a hook launched for another user can
+# reach them, and a Python `subprocess.run(["node", ...])` never goes
+# through an interactive shell function anyway.
 #
-# 🔴 LE REMÈDE EST DE DÉPLOYER NODE, PAS DE MAQUILLER LE DÉFAUT. Un lien
-# symbolique `/usr/bin/npm` aurait caché le problème au lieu de le fermer.
-# Ce lot copie l'arbre nvm `v24.9.0` (celui qui satisfait déjà
-# `engines.node` de `plateforme/package.json`) vers un emplacement SYSTÈME,
-# lisible par tous (`a+rX`) — SANS les paquets globaux nvm sans rapport avec
-# ce dépôt (`bats`, `corepack`, `@github/copilot`, `@google/gemini-cli` : à
-# eux seuls 237 Mio, mesurés le 29 août 2026, pour un besoin qui se résume à
-# `bin/node` et `lib/node_modules/npm/`). Voir le rapport du lot pour la
-# commande exacte de déploiement.
+# 🔴 THE REMEDY IS TO DEPLOY NODE, NOT TO DISGUISE THE DEFECT. A symbolic
+# link `/usr/bin/npm` would have hidden the problem instead of closing it.
+# This batch copies the nvm `v24.9.0` tree (the one that already satisfies
+# `engines.node` of `plateforme/package.json`) to a SYSTEM location,
+# readable by all (`a+rX`) — WITHOUT the global nvm packages unrelated to
+# this repository (`bats`, `corepack`, `@github/copilot`, `@google/gemini-cli`:
+# 237 MiB on their own, measured on 29 August 2026, for a need that boils down to
+# `bin/node` and `lib/node_modules/npm/`). See the batch report for the
+# exact deployment command.
 #
-# `NODE_BIN_DEFAUT` est le chemin du RÉPERTOIRE portant `node`/`npm`/`npx` —
-# jamais un chemin de binaire seul — pour que l'unité systemd ET les hooks
-# d'administration puissent en dériver À LA FOIS `ExecStart`/`Environment=
-# PATH=` et le chemin absolu de `npm` invoqué en sous-processus.
-# Surchargeable par `DESK_NODE_BIN` (tests, ou une future version de Node).
+# `NODE_BIN_DEFAUT` is the path of the DIRECTORY holding `node`/`npm`/`npx` —
+# never the path of a lone binary — so that the systemd unit AND the administration
+# hooks can derive from it BOTH `ExecStart`/`Environment=
+# PATH=` and the absolute path of the `npm` invoked as a subprocess.
+# Overridable by `DESK_NODE_BIN` (tests, or a future Node version).
 NODE_BIN_DEFAUT = "/opt/nivuus/node/bin"
 
 
@@ -312,43 +312,43 @@ def lire_node_bin():
     return os.environ.get("DESK_NODE_BIN") or NODE_BIN_DEFAUT
 
 
-# --- Ce qui vient du canal `facts` : validé, jamais cru sur parole ---------
+# --- What comes from the `facts` channel: validated, never taken on trust ----
 #
-# 🔴 MINEURE #7 DE LA TÂCHE 4, DONT LA RAISON A ÉTÉ RÉFUTÉE PAR CETTE BRANCHE
-# ELLE-MÊME. Elle était classée « reste due » au motif que « `facts` a une
-# forme fixe, produite par `resolve.py` du même package et jamais par un
-# tiers ». Le lot 10A a démontré l'inverse SUR LA CLÉ VOISINE : `facts["hote"]`
-# traversait `install.py` sans jamais rencontrer la garde des écoutes
-# universelles, code 0, `PLATEFORME_HOTE=0.0.0.0` écrit dans `desk.env` — il a
-# fallu une Importante pour le fermer. La même raison restait écrite pour
-# `turn_ecoute`, `turn_relais`, `proxy_confiance` et `port`. La revue finale
-# de branche l'a renversée ; ces trois fonctions sont ce renversement.
+# 🔴 MINOR #7 OF TASK 4, WHOSE REASON WAS REFUTED BY THIS VERY
+# BRANCH. It was filed as "still owed" on the grounds that "`facts` has a
+# fixed shape, produced by `resolve.py` of the same package and never by a
+# third party". Batch 10A showed the opposite ON THE NEIGHBOURING KEY: `facts["hote"]`
+# went through `install.py` without ever meeting the guard on universal listen
+# addresses, code 0, `PLATEFORME_HOTE=0.0.0.0` written into `desk.env` — it took
+# an Important finding to close it. The same reason was still written for
+# `turn_ecoute`, `turn_relais`, `proxy_confiance` and `port`. The final branch
+# review overturned it; these three functions are that overturning.
 #
-# ⚠️ CE QUE CES VALIDATEURS NE PROMETTENT PAS : que l'adresse soit PRIVÉE.
-# Le ruling du lot 10A a refusé une liste blanche RFC1918 — elle créerait une
-# seconde notion d'« adresse sûre », divergente de la garde du produit
-# (`plateforme/src/config.ts::ECOUTES_UNIVERSELLES`, quatre littéraux), et
-# interdirait des déploiements légitimes. Cette réserve tient, et elle est
-# nommée au document de résultats.
+# ⚠️ WHAT THESE VALIDATORS DO NOT PROMISE: that the address is PRIVATE.
+# The batch 10A ruling refused an RFC1918 allow list — it would create a
+# second notion of "safe address", diverging from the product guard
+# (`plateforme/src/config.ts::ECOUTES_UNIVERSELLES`, four literals), and
+# would forbid legitimate deployments. This reservation stands, and it is
+# named in the results document.
 
 
 def valider_adresse_de_facts(brut, origine: str, role: str, consequence: str):
-    """Une adresse venue de `facts` : ni vide, ni d'un autre type, ni
-    universelle.
+    """An address coming from `facts`: not empty, not of another type, not
+    universal.
 
-    Rend `(adresse, None)` en succès, `(None, raison)` sinon. `role` nomme ce
-    que l'adresse sert (« coturn », « PLATEFORME_PROXY_DE_CONFIANCE ») — il
-    n'entre que dans le message, jamais dans la logique.
+    Returns `(adresse, None)` on success, `(None, raison)` otherwise. `role` names what
+    the address serves ("coturn", "PLATEFORME_PROXY_DE_CONFIANCE") — it
+    only goes into the message, never into the logic.
 
-    🔴 `consequence` EXISTE PARCE QUE CE VALIDATEUR SERT TROIS RÔLES
-    (`turn_ecoute`, `turn_relais`, `proxy_confiance`), ET LE MESSAGE
-    D'ÉCOUTE UNIVERSELLE N'EST PAS LE MÊME POUR CHACUN — revue finale de
-    branche, 30 août 2026 : le message était rédigé POUR coturn (« les
-    allocations de relais sur toutes les interfaces ») et rendait donc un
-    refus juste avec un motif HORS SUJET dès que `role` valait
-    `PLATEFORME_PROXY_DE_CONFIANCE`, qui ne relaie rien. `consequence` nomme
-    ce que CE rôle précis romprait ; l'appelant la fournit, jamais ce
-    validateur ne la devine.
+    🔴 `consequence` EXISTS BECAUSE THIS VALIDATOR SERVES THREE ROLES
+    (`turn_ecoute`, `turn_relais`, `proxy_confiance`), AND THE UNIVERSAL
+    LISTEN MESSAGE IS NOT THE SAME FOR EACH — final branch
+    review, 30 August 2026: the message was written FOR coturn ("relay
+    allocations on every interface") and therefore gave a
+    correct refusal with an OFF-TOPIC reason as soon as `role` was
+    `PLATEFORME_PROXY_DE_CONFIANCE`, which relays nothing. `consequence` names
+    what THIS precise role would break; the caller supplies it, this
+    validator never guesses it.
     """
     if not isinstance(brut, str) or not brut.strip():
         return None, (
@@ -364,13 +364,13 @@ def valider_adresse_de_facts(brut, origine: str, role: str, consequence: str):
 
 
 def valider_port_de_facts(brut, origine: str = 'facts["port"]'):
-    """Un port venu de `facts` : un entier de 1 à 65535, jamais autre chose.
+    """A port coming from `facts`: an integer from 1 to 65535, never anything else.
 
-    🔴 `int(facts.get("port"))` LEVAIT une `ValueError` non rattrapée sur
-    n'importe quelle valeur non numérique — donc une trace Python et un code
-    de sortie 1 chez l'opérateur, là où `install.py` sait écrire une phrase
-    partout ailleurs. Un booléen est refusé explicitement : `int(True)` vaut
-    `1`, un port parfaitement valide et parfaitement absurde.
+    🔴 `int(facts.get("port"))` RAISED an uncaught `ValueError` on
+    any non-numeric value — hence a Python traceback and an exit
+    code 1 at the operator's, where `install.py` knows how to write a sentence
+    everywhere else. A boolean is refused explicitly: `int(True)` is
+    `1`, a perfectly valid and perfectly absurd port.
     """
     if isinstance(brut, bool):
         return None, f"{origine}={brut!r} est un booléen, pas un port"

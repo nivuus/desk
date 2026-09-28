@@ -26,79 +26,79 @@ import os
 import pathlib
 import secrets
 
-# Le port TURN standard, celui que docker-compose.coturn.yml pose par
-# `--listening-port=3478` — la seule valeur qui fasse correspondre l'URL
-# annoncée aux clients (TURN_URL) et le port sur lequel coturn écoute
-# réellement.
+# The standard TURN port, the one docker-compose.coturn.yml sets through
+# `--listening-port=3478` — the only value that makes the URL
+# announced to clients (TURN_URL) match the port coturn actually
+# listens on.
 PORT_TURN = 3478
 
 
 def ecrire_secret() -> str:
-    """Tire un secret FRAIS au hasard — jamais demandé, jamais constant.
+    """Draws a FRESH random secret — never asked for, never constant.
 
-    Le mot « FRAIS » est délibéré : cette fonction, à elle seule, tire un
-    NOUVEAU secret à CHAQUE appel, sans exception — c'est le comportement
-    voulu la toute première fois qu'un secret est nécessaire (aucun n'existe
-    encore à réutiliser). `secrets.token_hex(32)` rend 64 caractères
-    hexadécimaux, largement au-dessus du minimum de 32 que
-    `LONGUEUR_SECRET_MIN` exige.
+    The word "FRESH" is deliberate: this function, on its own, draws a
+    NEW secret on EVERY call, without exception — that is the behaviour
+    wanted the very first time a secret is needed (none exists
+    yet to reuse). `secrets.token_hex(32)` returns 64 hexadecimal
+    characters, well above the minimum of 32 that
+    `LONGUEUR_SECRET_MIN` demands.
 
-    🔴 CETTE FONCTION SEULE NE PORTE PAS L'INVARIANT « tiré une seule fois,
-    jamais recalculé » — un docstring antérieur le prétendait ICI, à tort
-    (bug réel, trouvé et corrigé le 2026-09-08 : `install.py` appelait cette
-    fonction sans condition à chaque exécution, donc deux installations sur
-    la même racine tiraient deux secrets DIFFÉRENTS — `PLATEFORME_SECRET_JETON`
-    compris — et invalidaient silencieusement toutes les sessions ainsi que
-    l'authentification coturn à chaque REPLAY d'install, exactement le
-    chemin qu'emprunte l'update de ce plan). `PLATEFORME_SECRET_JETON` n'a
-    d'ailleurs AUCUN défaut côté produit
-    (`plateforme/src/config.ts::lireConfig`) : c'est précisément pourquoi un
-    secret qui change à chaque exécution du hook est un défaut, jamais une
-    fonctionnalité.
+    🔴 THIS FUNCTION ALONE DOES NOT CARRY THE INVARIANT "drawn only once,
+    never recomputed" — an earlier docstring claimed it HERE, wrongly
+    (real bug, found and fixed on 2026-09-08: `install.py` called this
+    function unconditionally on every run, so two installations on
+    the same root drew two DIFFERENT secrets — `PLATEFORME_SECRET_JETON`
+    included — and silently invalidated all sessions as well as
+    coturn authentication on every install REPLAY, exactly the
+    path the update of this plan takes). `PLATEFORME_SECRET_JETON` has
+    moreover NO default on the product side
+    (`plateforme/src/config.ts::lireConfig`): that is precisely why a
+    secret that changes on every hook run is a defect, never a
+    feature.
 
-    L'invariant est maintenant porté par l'APPELANT, jamais par cette
-    fonction : `install.py` doit d'abord tenter `lire_secret_persiste()` sur
-    le `desk.env` déjà en place à la racine CIBLE, et n'appeler
-    `ecrire_secret()` que si rien n'y est réutilisable.
+    The invariant is now carried by the CALLER, never by this
+    function: `install.py` must first try `lire_secret_persiste()` on
+    the `desk.env` already in place at the TARGET root, and call
+    `ecrire_secret()` only if nothing there is reusable.
     """
     return secrets.token_hex(32)
 
 
 def lire_secret_persiste(chemin_env: pathlib.Path, cle: str) -> str | None:
-    """Relit un secret déjà écrit par une installation antérieure de `desk.env`.
+    """Reads back a secret already written by an earlier installation of `desk.env`.
 
-    C'est CETTE fonction, appelée par `install.py` AVANT `ecrire_secret()`,
-    qui porte réellement l'invariant « tiré une seule fois, jamais
-    recalculé » que le docstring d'`ecrire_secret` décrivait sans
-    l'appliquer (bug corrigé le 2026-09-08 — voir son propre docstring).
+    It is THIS function, called by `install.py` BEFORE `ecrire_secret()`,
+    that really carries the invariant "drawn only once, never
+    recomputed" that the `ecrire_secret` docstring described without
+    enforcing it (bug fixed on 2026-09-08 — see its own docstring).
 
-    Trois cas se traitent comme « rien à réutiliser », jamais comme une
-    erreur qui ferait échouer l'install pour une raison qui n'a rien à voir
-    avec l'installation elle-même — dans TOUS les trois, `return None`,
-    silencieusement :
-      - `chemin_env` n'existe pas (premier install sur cette racine) ;
-      - `chemin_env` a disparu ENTRE le test d'existence et la lecture — une
-        vraie course, mais qui revient au même cas que ci-dessus : rien à
-        lire, jamais une panne à signaler ;
-      - `cle` est présente mais sa valeur est vide, ou faite uniquement
-        d'espaces (un fichier tronqué ou modifié à la main), ou `chemin_env`
-        existe sans porter `cle` (une installation antérieure d'une version
-        qui n'écrivait pas encore cette clé).
+    Three cases are treated as "nothing to reuse", never as an
+    error that would make the install fail for a reason unrelated to
+    the installation itself — in ALL three, `return None`,
+    silently:
+      - `chemin_env` does not exist (first install on this root);
+      - `chemin_env` vanished BETWEEN the existence test and the read — a
+        real race, but one that comes back to the same case as above: nothing to
+        read, never a failure to report;
+      - `cle` is present but its value is empty, or made only of
+        spaces (a truncated or hand-edited file), or `chemin_env`
+        exists without carrying `cle` (an earlier installation of a version
+        that did not write this key yet).
 
-    🔴 UN QUATRIÈME CAS EST DÉLIBÉRÉMENT *EXCLU* DE CETTE LISTE, ET C'EST
-    LE POINT DE CE CORRECTIF (2026-09-08, revue) : `chemin_env` EXISTE mais
-    ne peut PAS être lu — permissions faussées par une migration partielle,
-    erreur disque, tout ce qui n'est pas « le fichier n'est simplement pas
-    là ». Un `except OSError` qui avalait CE cas-là aussi referait
-    EXACTEMENT le bug que ce module corrige, par une porte plus étroite :
-    un `desk.env` présent mais momentanément illisible ferait tirer un
-    secret NEUF EN SILENCE — la même rotation silencieuse du bug d'origine,
-    juste déclenchée différemment. Cette fonction ne l'avale donc PAS :
-    seule `FileNotFoundError` (la course TOCTOU ci-dessus) est rattrapée ;
-    toute AUTRE `OSError` (`PermissionError`, une erreur disque, …) se
-    propage à l'appelant tel quel. `install.py` la rattrape à son tour et
-    REFUSE l'installation plutôt que d'en tirer un secret halluciné — voir
-    son propre commentaire à l'appel.
+    🔴 A FOURTH CASE IS DELIBERATELY *EXCLUDED* FROM THIS LIST, AND THAT IS
+    THE POINT OF THIS FIX (2026-09-08, review): `chemin_env` EXISTS but
+    can NOT be read — permissions skewed by a partial migration,
+    disk error, anything that is not "the file is simply not
+    there". An `except OSError` that swallowed THAT case too would redo
+    EXACTLY the bug this module fixes, through a narrower door:
+    a `desk.env` present but momentarily unreadable would draw a
+    NEW secret SILENTLY — the same silent rotation as the original bug,
+    just triggered differently. This function therefore does NOT swallow it:
+    only `FileNotFoundError` (the TOCTOU race above) is caught;
+    any OTHER `OSError` (`PermissionError`, a disk error, …) propagates
+    to the caller as is. `install.py` catches it in turn and
+    REFUSES the installation rather than drawing a hallucinated secret — see
+    its own comment at the call site.
     """
     if not chemin_env.is_file():
         return None
@@ -119,19 +119,19 @@ def lire_secret_persiste(chemin_env: pathlib.Path, cle: str) -> str | None:
 
 
 def ecrire_env(chemin: pathlib.Path, valeurs: dict) -> None:
-    """Écrit `chemin` en KEY=VALUE, un par ligne, DÉJÀ CRÉÉ en mode 600.
+    """Writes `chemin` as KEY=VALUE, one per line, ALREADY CREATED in mode 600.
 
-    🔴 CRÉÉ EN 0600, JAMAIS ÉCRIT PUIS `chmod`É APRÈS COUP (ronde de
-    correction 1, tâche 4) : entre un `write_text` et un `os.chmod`
-    ultérieur, le fichier existe brièvement au mode par défaut du `umask`
-    du processus (644 dans le cas le plus courant) — une fenêtre
-    d'exposition réelle pour un fichier qui porte `PLATEFORME_SECRET_JETON`
-    en clair. `os.open(..., mode=0o600)` pose la permission ATOMIQUEMENT à
-    la création : le `mode` d'un `open(2)` avec `O_CREAT` est toujours
-    masqué par le `umask` du processus (qui ne peut que RETIRER des bits,
-    jamais en ajouter), donc le résultat est au plus 0600, jamais plus
-    permissif — il n'existe aucun instant où le fichier est lisible par
-    autrui.
+    🔴 CREATED AS 0600, NEVER WRITTEN THEN `chmod`ED AFTERWARDS (correction
+    round 1, task 4): between a `write_text` and a later
+    `os.chmod`, the file briefly exists with the default mode of the process
+    `umask` (644 in the most common case) — a real exposure
+    window for a file that holds `PLATEFORME_SECRET_JETON`
+    in plain text. `os.open(..., mode=0o600)` sets the permission ATOMICALLY at
+    creation: the `mode` of an `open(2)` with `O_CREAT` is always
+    masked by the process `umask` (which can only REMOVE bits,
+    never add them), so the result is at most 0600, never more
+    permissive — there is no instant where the file is readable by
+    others.
     """
     chemin.parent.mkdir(parents=True, exist_ok=True)
     corps = "\n".join(f"{cle}={valeur}" for cle, valeur in valeurs.items()) + "\n"
@@ -142,23 +142,23 @@ def ecrire_env(chemin: pathlib.Path, valeurs: dict) -> None:
 
 def ecrire_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
                             turn_relais: str, secret: str) -> None:
-    """Pose la configuration native du paquet Debian `coturn`.
+    """Lays down the native configuration of the Debian `coturn` package.
 
-    ⚠️ FORMAT NON VÉRIFIÉ SUR CETTE MACHINE — `coturn` n'y est pas installé
-    (`dpkg -l coturn` n'y rend rien à la date d'écriture). Les directives
-    ci-dessous reprennent, telles quelles, les options déjà vérifiées et
-    commentées de `docker-compose.coturn.yml` (`--listening-ip`,
-    `--relay-ip`, `--static-auth-secret`, etc.) : chaque option de coturn a,
-    par construction du logiciel, une directive de fichier de configuration
-    du même nom sans le préfixe `--`. C'est une extrapolation raisonnable,
-    pas une mesure — à confirmer au premier `turnserver -c ce-fichier`
-    réellement joué.
+    ⚠️ FORMAT NOT VERIFIED ON THIS MACHINE — `coturn` is not installed on it
+    (`dpkg -l coturn` returns nothing there at the time of writing). The directives
+    below reuse, as is, the options already verified and
+    commented in `docker-compose.coturn.yml` (`--listening-ip`,
+    `--relay-ip`, `--static-auth-secret`, etc.): each coturn option has,
+    by construction of the software, a configuration file directive
+    of the same name without the `--` prefix. This is a reasonable extrapolation,
+    not a measurement — to be confirmed at the first `turnserver -c this-file`
+    actually run.
 
-    🔴 POSÉE, PAS ARMÉE : ce fichier ne suffit pas à faire tourner coturn —
-    `/etc/default/coturn` (TURNSERVER_ENABLED) n'est pas touché ici, par la
-    même doctrine que l'unité desk-plateforme (voir son commentaire) :
-    poser n'est pas armer. Aucune tâche de ce plan n'arme coturn ; c'est un
-    legs nommé, pas un oubli — voir le document de résultats du chantier.
+    🔴 LAID DOWN, NOT ARMED: this file is not enough to make coturn run —
+    `/etc/default/coturn` (TURNSERVER_ENABLED) is not touched here, by the
+    same doctrine as the desk-plateforme unit (see its comment):
+    laying down is not arming. No task of this plan arms coturn; it is a
+    named legacy, not an oversight — see the results document of the project.
     """
     corps = f"""# turnserver.conf — posé par le hook install du package desk.
 # Format extrapolé de docker-compose.coturn.yml, NON VÉRIFIÉ sur ce disque
@@ -178,10 +178,10 @@ no-cli
 log-file=stdout
 """
     chemin.parent.mkdir(parents=True, exist_ok=True)
-    # Même précaution que `ecrire_env` (voir son docstring) : ce fichier
-    # porte `static-auth-secret` en clair, et une fenêtre write-puis-chmod
-    # y serait PIRE que sur desk.env — créé déjà en 0600, jamais chmod après
-    # coup.
+    # Same precaution as `ecrire_env` (see its docstring): this file
+    # holds `static-auth-secret` in plain text, and a write-then-chmod window
+    # would be WORSE there than on desk.env — created already as 0600, never chmod
+    # afterwards.
     descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
         fh.write(corps)
