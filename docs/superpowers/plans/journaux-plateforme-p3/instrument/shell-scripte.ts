@@ -1,25 +1,25 @@
-// The shell page, SCRIPTED — the human peer of the corroboration on a real VM.
+// La page-shell, SCRIPTÉE — le pair humain de la corroboration sur VM réelle.
 //
 //     tsx shell-scripte.ts <url> <prefixe> <secret-jeton> <duree-secondes>
 //
-// ⚠️ IT IS NOT A BROWSER, AND IT MUST BE SAID. The corroboration of
-// task 23 bears on the AGENT's identity — enrolment, prefix, token in
-// both handshakes —, not on the human path, which the acceptance run of
-// sub-block P2 already tested end to end with its three CDP drivers. This
-// peer therefore merely:
-//   - signs a user token ITSELF with the service's signing
-//     secret, instead of going through the authentication route;
-//   - joins `<prefix>:bureau` in the `client` role;
-//   - answers `viewport` to each `fenetre-ouverte`, otherwise the
-//     supervisor launches NO child (the `DELAI_ATTENTE_VIEWPORT_MAX` safeguard
-//     of sub-block D3);
-//   - joins each announced window session, so that pairing really
-//     happens there and the platform writes its line.
+// ⚠️ CE N'EST PAS UN NAVIGATEUR, ET IL FAUT LE DIRE. La corroboration de la
+// tâche 23 porte sur l'identité de l'AGENT — enrôlement, préfixe, jeton dans
+// les deux poignées de main —, pas sur le chemin humain, que la recette du
+// sous-bloc P2 a déjà éprouvé de bout en bout avec ses trois pilotes CDP. Ce
+// pair-ci se contente donc de :
+//   - signer LUI-MÊME un jeton d'utilisateur avec le secret de signature du
+//     service, au lieu de passer par la route d'authentification ;
+//   - rejoindre `<préfixe>:bureau` en rôle `client` ;
+//   - répondre `viewport` à chaque `fenetre-ouverte`, faute de quoi le
+//     superviseur ne lance AUCUN enfant (garde-fou `DELAI_ATTENTE_VIEWPORT_MAX`
+//     du sous-bloc D3) ;
+//   - rejoindre chaque session de fenêtre annoncée, pour que l'appariement s'y
+//     produise réellement et que la plateforme en écrive la ligne.
 //
-// 🔴 NO WebRTC NEGOTIATION IS DONE. The offer the child emits stays
-// unanswered: this peer decodes no media, and nothing here must be read
-// as a stream measurement. What is established is the HANDSHAKE and
-// pairing, which is exactly the task's subject.
+// 🔴 AUCUNE NÉGOCIATION WebRTC N'EST FAITE. L'offre que l'enfant émet reste
+// sans réponse : ce pair ne décode aucun média, et rien ici ne doit être lu
+// comme une mesure de flux. Ce qui est établi est la POIGNÉE DE MAIN et
+// l'appariement, ce qui est exactement l'objet de la tâche.
 
 import { signer, DUREE_JETON_ACCES_MS } from '../../../../../plateforme/src/identite/jeton';
 
@@ -35,8 +35,8 @@ function noter(texte: string): void {
     journal.push(`+${String(Date.now() - debut).padStart(6)} ms  ${texte}`);
 }
 
-/// The HUMAN token, of type `user` — it is what the guard requires of the
-/// `client` role, and an agent token would be refused there (claim `sty`, task 9).
+/// Le jeton HUMAIN, de type `utilisateur` — c'est ce que la garde exige du
+/// rôle `client`, et un jeton d'agent y serait refusé (claim `sty`, tâche 9).
 const jeton = signer('recette-p3', secret, Date.now(), DUREE_JETON_ACCES_MS, 'utilisateur');
 
 const sessionsRejointes = new Set<string>();
@@ -57,8 +57,8 @@ function rejoindre(session: string, role: 'client'): Promise<WebSocket> {
         ws.addEventListener('message', (e) => {
             const brut = String((e as MessageEvent).data);
             const message = JSON.parse(brut) as Record<string, unknown>;
-            // An SDP offer is kilobytes long: we only log its
-            // type and its size, otherwise the log becomes unreadable.
+            // Une offre SDP fait des kilo-octets : on ne journalise que son
+            // type et sa taille, sinon le journal devient illisible.
             const resume =
                 message.type === 'offer' || message.type === 'answer'
                     ? `{"type":"${String(message.type)}","sdp":<${String(message.sdp).length} octets>}`
@@ -78,11 +78,11 @@ function rejoindre(session: string, role: 'client'): Promise<WebSocket> {
                 noter(`-> [${session}] viewport ${fenetre} 1280x720`);
                 if (!sessionsRejointes.has(fenetre)) {
                     sessionsRejointes.add(fenetre);
-                    // ⚠️ A beat before joining: the
-                    // supervisor must first launch the child, which declares itself
-                    // `agent` on this session. Joining BEFORE it is not
-                    // an error (the relay holds the offer), but the product's order
-                    // is this one.
+                    // ⚠️ Un temps de battement avant de rejoindre : le
+                    // superviseur doit d'abord lancer l'enfant, qui se déclare
+                    // `agent` sur cette session. Rejoindre AVANT lui n'est pas
+                    // une erreur (le relais retient l'offre), mais l'ordre du
+                    // produit est celui-ci.
                     setTimeout(() => {
                         void rejoindre(fenetre, 'client').catch((cause) =>
                             noter(`!! ${fenetre} : ${String(cause)}`),

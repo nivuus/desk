@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Batch 3, item 2 (3.6) — THE BRIDGE'S THREE WALLS, re-located on today's
-# product.
+# Lot 3, item 2 (3.6) — LES TROIS MURS DU PONT, re-situés sur le produit
+# d'aujourd'hui.
 #
 #     paliers.sh <etiquette>
 #
-# The three walls F4 measured on August 21st, 2026, REREAD in its document:
-#   sustained throughput       30 to 33 KiB/s
-#   maximum read size          128 KiB  (beyond: fails)
-#   maximum enumeration rank   ~3,150 entries (3,200: fails)
+# Les trois murs que F4 a mesurés le 21 aout 2026, RELUS dans son document :
+#   debit soutenu             30 a 33 Kio/s
+#   taille de lecture maximale  128 Kio  (au-dela : echoue)
+#   rang d'enumeration maximal  ~3 150 entrees (3 200 : echoue)
 #
-# 🔴 THIS SCRIPT JUDGES NOTHING: it records duration and OUTCOME at each rung, and
-# it is the verdict that locates the wall. A failing rung is only a wall if
-# a smaller rung SUCCEEDS — otherwise it is a failure (F4, § 5).
+# 🔴 CE SCRIPT NE JUGE RIEN : il releve duree et ISSUE a chaque barreau, et
+# c'est le verdict qui situe le mur. Un barreau qui echoue n'est un mur que si
+# un barreau plus petit ABOUTIT — sinon c'est une panne (F4, § 5).
 #
-# ⚠️ THE CENSUS COUNTERS ARE CUMULATIVE: a measurement is read as the
-# DIFFERENCE between two censuses, never on an isolated line.
+# ⚠️ LES COMPTEURS DE RECENSEMENT SONT CUMULATIFS : une mesure se lit par
+# DIFFERENCE entre deux recensements, jamais sur une ligne isolee.
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 
@@ -33,7 +33,7 @@ etape() { echo; echo "=== $(date -Is) $* ==="; }
 etape "PRE-VOL"
 vm_prete || exit 1
 
-# The purge is a GATE, not a report (a trap paid for by item 3).
+# La purge est une PORTE, pas un compte rendu (piege paye par l'item 3).
 PURGE_RESTANT=9
 for t in 1 2 3 4 5; do
     PURGE_RESTANT=$(W 'Get-ChildItem "C:\Users\Administrator\Mes Fichiers" -Force -ErrorAction SilentlyContinue | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 500; @(Get-ChildItem "C:\Users\Administrator\Mes Fichiers" -Force -ErrorAction SilentlyContinue).Count' 180 | tr -dc '0-9')
@@ -67,19 +67,19 @@ sleep 5
 
 {
 echo "### BRAS TEMOIN — ARME, AUCUN GESTE : le recensement doit COMPTER ZERO"
-# 🔴 This arm is what makes the following ones discriminating. The check that counts
-# is not that the line COMES OUT, it is that it COUNTS what it says: two
-# census periods (2 x 10 s) without touching the bridge must return n:0.
+# 🔴 Ce bras est ce qui rend les suivants discriminants. Le controle qui vaut
+# n'est pas que la ligne SORTE, c'est qu'elle COMPTE ce qu'elle dit : deux
+# periodes de recensement (2 x 10 s) sans toucher au pont doivent rendre n:0.
 sleep 22
 W 'Get-Content C:\nivuus\agent.log -Encoding UTF8 -Tail 60 | Select-String "recensement" | Select-Object -Last 3 | ForEach-Object { $_.Line }' 180
 
 echo
 echo "### 🔴 TEMOIN POSITIF DU RANG, SONDE EN PREMIER"
-# At the 1st run, rang-100 failed ("does not exist") AFTER the read failures
-# of 192/256/512 KiB, while it EXISTS on the local side — a negative path
-# cache of ProjFS is the suspect. We therefore probe it BEFORE any
-# read, to separate "the small rank does not work" from "it no longer works
-# AFTER a read failure".
+# A la 1re execution, rang-100 a echoue (« does not exist ») APRES les echecs
+# de lecture de 192/256/512 Kio, alors qu il EXISTE cote local — un cache de
+# chemin negatif de ProjFS est le suspect. On le sonde donc AVANT toute
+# lecture, pour separer « le petit rang ne marche pas » de « il ne marche plus
+# APRES un echec de lecture ».
 W '$d = "C:\Users\Administrator\Mes Fichiers\rang-100"
 try { $c = @(Get-ChildItem $d -Force -ErrorAction Stop).Count; "  rang 100 AVANT toute lecture : ABOUTIT, rendues=" + $c }
 catch { "  rang 100 AVANT toute lecture : ECHOUE -- " + $_.Exception.Message.Substring(0,[Math]::Min(90,$_.Exception.Message.Length)) }' 180
@@ -104,16 +104,16 @@ $r' 600
 
 echo
 echo "### 🔴 TEMOIN NEGATIF DE LA LECTURE — l'instrument sait-il seulement ECHOUER ?"
-# Without this arm, "all rungs succeed" would be returned identically
-# by an instrument that cannot report a failure.
+# Sans ce bras, « tous les barreaux aboutissent » serait rendu a l'identique
+# par un instrument qui ne peut pas rapporter d'echec.
 W '$p = "C:\Users\Administrator\Mes Fichiers\ce-fichier-n-existe-pas.bin"
 try { $o = [IO.File]::ReadAllBytes($p); "  ECHEC DU TEMOIN : la lecture a ABOUTI (" + $o.Length + " o) sur un fichier absent" }
 catch { "  temoin OK : la lecture d un fichier absent ECHOUE -- " + $_.Exception.GetType().Name }' 180
 
 echo
 echo "### ECHELLE D ENTREES — duree, ISSUE, et le COMPTE RENDU"
-# ⚠️ The count returned is the point: a listing that succeeds while returning FEWER
-# entries than exist is a DISGUISED wall, not a success.
+# ⚠️ Le compte rendu est le point : un listage qui aboutit en rendant MOINS
+# d'entrees qu'il n'en existe est un mur DEGUISE, pas un succes.
 W '$r = @()
 foreach ($n in 100,1000,2000,3000,3150,3200,4000) {
   $d = "C:\Users\Administrator\Mes Fichiers\rang-$n"
@@ -138,9 +138,9 @@ catch { "  temoin OK : le listage d un repertoire absent ECHOUE -- " + $_.Except
 
 echo
 echo "### DEBIT SOUTENU — au moins 60 s de lecture continue, FICHIERS DISTINCTS"
-# 🔴 DISTINCT FILES, AND THAT IS THE WHOLE POINT. Rereading the same file in
-# a loop returned 1,312,669 KiB/s at the 1st run — the Windows file
-# cache, not the bridge. Twenty files of 128 KiB, read ONCE each.
+# 🔴 DES FICHIERS DISTINCTS, ET C EST TOUT LE POINT. Relire le meme fichier en
+# boucle rendait 1 312 669 Kio/s a la 1re execution — le cache de fichiers de
+# Windows, pas le pont. Vingt fichiers de 128 Kio, lus UNE fois chacun.
 W '$dir = "C:\Users\Administrator\Mes Fichiers\debit"
 $total = 0; $lus = 0; $echecs = 0
 $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -155,7 +155,7 @@ if ($sw.Elapsed.TotalSeconds -gt 0 -and $lus -gt 0) {
 }' 900
 
 echo
-### CENSUS — the DIFFERENCE between two readings, never an isolated line"
+### RECENSEMENT — la DIFFERENCE entre deux releves, jamais une ligne isolee"
 W 'Get-Content C:\nivuus\agent.log -Encoding UTF8 -Tail 120 | Select-String "recensement" | Select-Object -Last 4 | ForEach-Object { $_.Line }' 180
 } 2>&1 | tee "${J}/paliers-${ETIQUETTE}.log"
 

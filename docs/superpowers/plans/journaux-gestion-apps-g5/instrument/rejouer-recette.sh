@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Rebuilds the client THEN replays the acceptance run. It is the check command of the
-# red runs bearing on the CLIENT'S CODE: without the rebuild, the acceptance run
-# would serve the build from BEFORE the mutation — that is, would measure the product
-# intact and believe itself green.
+# Rebâtit le client PUIS rejoue la recette. C'est la commande de contrôle des
+# rouges qui portent sur le CODE DU CLIENT : sans le rebuild, la recette
+# servirait le build d'AVANT la mutation — c'est-à-dire mesurerait le produit
+# intact et se croirait verte.
 set -uo pipefail
 unset -f chpwd 2>/dev/null || true
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"

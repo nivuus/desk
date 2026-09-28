@@ -729,7 +729,7 @@ function getDPI() {
     //     startClientY = e.clientY;
     //     initialWindowX = window.screenX;
     //     initialWindowY = window.screenY;
-    //     //e.preventDefault(); // Prevent the default behaviour
+    //     //e.preventDefault(); // Empêcher le comportement par défaut
     // });
 
     // canvas.addEventListener('mousemove', (e) => {
@@ -738,7 +738,7 @@ function getDPI() {
     //         const dx = e.screenX - startX;
     //         const dy = e.screenY - startY;
     //         window.moveTo(initialWindowX + dx, initialWindowY + dy);
-    //         e.preventDefault(); // Prevent the default behaviour
+    //         e.preventDefault(); // Empêcher le comportement par défaut
     //         e.stopPropagation();
     //     }
     //     else {

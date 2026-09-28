@@ -1,4 +1,4 @@
-# R3: emission goes from the TRANSITION to EACH DEPOSIT.
+# R3 : l'emission passe de la TRANSITION a CHAQUE DEPOT.
 python3 - "$1" <<'PY'
 import sys
 p=sys.argv[1]

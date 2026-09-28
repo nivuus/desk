@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Renders LOCALLY the `.ps1` that `scripts/run-agent.sh` writes on the VM.
+# Rend LOCALEMENT le `.ps1` que `scripts/run-agent.sh` écrit sur la VM.
 #
-# 🔴 IT IS NOT A REWRITE OF THE HEREDOC: it is EXTRACTED from the real script, from
-# the line `cat > /media/vm/dev/run-agent.ps1 <<PS1` up to its closing `PS1`,
-# and evaluated as is. A hand-copied copy would test the
-# copy, not the script — it is exactly the pattern of the hand-written `TYPES_AGENT`
-# this repository has been paying for since P1.
+# 🔴 CE N'EST PAS UNE RÉÉCRITURE DU HEREDOC : il est EXTRAIT du script réel, de
+# la ligne `cat > /media/vm/dev/run-agent.ps1 <<PS1` jusqu'à son `PS1` de
+# fermeture, et évalué tel quel. Une copie recopiée à la main éprouverait la
+# copie, pas le script — c'est exactement le patron du `TYPES_AGENT` écrit à la
+# main que ce dépôt paie depuis P1.
 #
-# ⚠️ WHAT THIS DOES NOT ESTABLISH: that the file ARRIVES on the VM, nor that the
-# scheduled task reads it. It only establishes the shell SUBSTITUTION — that
-# is, precisely the link forgotten in D1, D2 and D7, where "the value simply
-# could not reach the process".
+# ⚠️ CE QUE CELA N'ÉTABLIT PAS : que le fichier ARRIVE sur la VM, ni que la
+# tâche planifiée le lise. Cela n'établit que la SUBSTITUTION du shell — c'est
+# à dire précisément le maillon oublié en D1, D2 et D7, où « la valeur ne
+# pouvait simplement pas atteindre le processus ».
 set -euo pipefail
 racine="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 script="$racine/scripts/run-agent.sh"
@@ -22,8 +22,8 @@ fin=$(awk -v d="$debut" 'NR>d && $0=="PS1"{print NR; exit}' "$script")
 
 {
   echo 'set -u'
-  # The variables the heredoc reads without a default, set empty: the real
-  # script gets them from the operator's environment.
+  # Les variables que le heredoc lit sans défaut, posées à vide : le script
+  # réel les tient de l'environnement de l'opérateur.
   echo 'AGENT_EXE="C:\\dev\\target\\release\\agent.exe"'
   sed -n "${debut},${fin}p" "$script" | sed "1s|/media/vm/dev/run-agent.ps1|$sortie|"
 } > /tmp/f2-heredoc.sh

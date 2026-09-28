@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Batch 32T (E1), second window: the RED run first, by PUTTING BACK the named
-# copy of the 32Q binary, then the GREEN run by redeploying E1.
+# Lot 32T (E1), seconde fenetre : la ROUGE d'abord, en REMETTANT la copie
+# nommee du binaire 32Q, puis la VERTE en redeployant E1.
 #
-# ⚠️ The order is the reverse of the first window because the deployment
-# succeeded there whereas the red run, for its part, had failed on an instrument defect
-# (`/applications` requires `?vm=`). The 32Q binary is not lost: it lives in
+# ⚠️ L'ordre est inverse de la premiere fenetre parce que le deploiement y a
+# reussi alors que la rouge, elle, avait echoue sur un defaut d'instrument
+# (`/applications` exige `?vm=`). Le binaire 32Q n'est pas perdu : il vit dans
 # `agent.exe.copie-nommee-avant-lot32t`, sha 03E2E752...
 #
-# 🔴 THE EXPECTATION, SET BEFORE THE MEASUREMENT AND DERIVED FROM NO MEASURED POINT:
-#   captured output 1860x1080, encoded image 1428x1080 (two lines of the log
-#   of the LIVE process, read before opening the slot).
-#   Judge = the SLOPE, independent of the origin:
-#     gap(A->C) = (0.98 - 0.02) x reference_width
-#     32Q (whole output): 0.96 x 1860 = 1785.6 px
-#     E1  (image)       : 0.96 x 1428 = 1370.9 px
-#   In y: 0.96 x 1080 = 1036.8 px IN BOTH ARMS -- internal negative control.
+# 🔴 L'ATTENDU, POSE AVANT LA MESURE ET DERIVE D'AUCUN POINT MESURE :
+#   sortie capturee 1860x1080, image encodee 1428x1080 (deux lignes du journal
+#   du process VIVANT, relevees avant d'ouvrir le creneau).
+#   Juge = la PENTE, independante de l'origine :
+#     ecart(A->C) = (0.98 - 0.02) x largeur_de_reference
+#     32Q (sortie entiere) : 0.96 x 1860 = 1785.6 px
+#     E1  (image)          : 0.96 x 1428 = 1370.9 px
+#   En y : 0.96 x 1080 = 1036.8 px DANS LES DEUX BRAS -- temoin negatif interne.
 set -euo pipefail
 unset -f chpwd 2>/dev/null || true
 DESK=/home/mallanic/Projects/Nivuus/packages/desk

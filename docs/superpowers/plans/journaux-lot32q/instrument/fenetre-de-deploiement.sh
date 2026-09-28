@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Batch 32Q: THE single window — measurement before, deployment, measurement after.
+# Lot 32Q : LA fenetre unique — mesure d'avant, deploiement, mesure d'apres.
 #
-# 🔴 WHAT IS OUTSIDE THE SLOT, AND WHY. The cross-build and the
-# upload through the hook do NOT touch the VM: they happen BEFORE, and the
-# owner knows nothing about them. Putting them in the slot would cost them two
-# minutes for nothing.
+# 🔴 CE QUI EST HORS DU CRENEAU, ET POURQUOI. La fabrication croisee et le
+# depot par le hook ne touchent PAS la VM : ils se font AVANT, et le
+# proprietaire n'en sait rien. Les mettre dans le creneau lui couterait deux
+# minutes pour rien.
 #
-# ⚠️ WHAT INTERRUPTS THE OWNER STARTS FROM THE MEASUREMENT BEFORE, and not
-# at the restart: the `client` role is EXCLUSIVE per session (established in batch 22),
-# so the driver takes their place as soon as it connects. The window is therefore
-# CONTINUOUS, from the first measurement to the last.
+# ⚠️ CE QUI INTERROMPT LE PROPRIETAIRE COMMENCE DES LA MESURE D'AVANT, et non
+# au redemarrage : le role `client` est EXCLUSIF par session (etabli au lot 22),
+# donc le pilote lui prend sa place des qu'il se connecte. La fenetre est donc
+# CONTINUE, de la premiere mesure a la derniere.
 #
-# ⚠️ The BEFORE arm only exists once: it disappears at the restart.
-# Do not reverse the order, do not skip it.
+# ⚠️ Le bras d'AVANT n'existe qu'une fois : il disparait au redemarrage.
+# Ne pas inverser l'ordre, ne pas le sauter.
 set -euo pipefail
 unset -f chpwd 2>/dev/null || true
 DESK=/home/mallanic/Projects/Nivuus/packages/desk
@@ -44,7 +44,7 @@ mesurer() { # $1 = etiquette
     | tee "/var/tmp/curseur-$1.txt" | tail -20
 }
 
-# ── THE WINDOW STARTS HERE ────────────────────────────────────────────────
+# ── LA FENETRE COMMENCE ICI ────────────────────────────────────────────────
 mesurer avant
 
 etape "DEPLOIEMENT (le binaire est deja bati et depose : voir 0.)"
@@ -69,7 +69,7 @@ kill "$(cat /var/tmp/lot32q-http.pid)" 2>/dev/null || true
 echo "attendu : $(sha256sum /var/tmp/lot32-bin/agent.exe | tr 'a-f' 'A-F' | cut -c1-64)"
 
 mesurer apres
-# ── THE WINDOW ENDS HERE ──────────────────────────────────────────────
+# ── LA FENETRE SE TERMINE ICI ──────────────────────────────────────────────
 
 etape "MENAGE"
 W 'schtasks /delete /tn lot32q-cur /f 2>$null | Out-Null

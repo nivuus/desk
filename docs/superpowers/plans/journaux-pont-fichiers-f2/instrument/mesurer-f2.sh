@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Copies the measurement to the VM, launches it THROUGH AN /it SCHEDULED TASK, and returns its JSON.
+# Copie la mesure sur la VM, la lance PAR TACHE PLANIFIEE /it, et rend son JSON.
 #
-# 🔴 INTERACTIVE SESSION AND NOT WinRM. The ProjFS root is mounted by a
-# session 1 process; writing it from session 0 would still go through
-# the provider, but criterion ②'s Notepad has no desktop there. One
-# single path for both is one path less to explain.
+# 🔴 SESSION INTERACTIVE ET NON WinRM. La racine ProjFS est montee par un
+# processus de la session 1 ; l'ecrire depuis la session 0 traverserait quand
+# meme le fournisseur, mais le Bloc-notes du critere ② n'y a aucun bureau. Un
+# seul chemin pour les deux, c'est un chemin de moins a expliquer.
 set -uo pipefail
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2/instrument"
@@ -23,7 +23,7 @@ node "$RACINE/scripts/winrm.js" \
      /tr 'powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File C:\dev\lancer-mesure-f2.ps1'; \
    schtasks /run /tn mesure-f2" >/dev/null 2>&1
 
-# Wait for the FACT, never a duration (a home-grown trap, D3).
+# Attendre le FAIT, jamais une duree (piege maison D3).
 for i in $(seq 1 60); do
     if [ -s /media/vm/dev/mesure-f2.json ] && grep -qa 'apres_compte' /media/vm/dev/mesure-f2.json; then break; fi
     sleep 2

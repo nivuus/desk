@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Counts the enrolments and evictions of a VM's /agent channel, over a
-# bounded window, with the binary actually deployed.
+# Compte les enrôlements et les évictions du canal /agent d'une VM, sur une
+# fenêtre bornée, avec le binaire réellement déployé.
 #
-# 🔴 IT IS THE RED RUN OF DEFECT 1, AND IT COUNTS REAL ENROLMENTS — not a
-# code inspection. The supervisor and the file bridge both enrol
-# under the same `vm_id` as long as `lancer_pont` does not remove `AGENT_VM` and
-# `AGENT_SECRET`; G1's registry ("the last registered wins") then closes
-# the other's socket, which reconnects, and so on without end.
+# 🔴 C'EST LA ROUGE DU DÉFAUT 1, ET ELLE COMPTE DES ENRÔLEMENTS RÉELS — pas une
+# inspection de code. Le superviseur et le pont fichiers s'enrôlent tous deux
+# sous le même `vm_id` tant que `lancer_pont` ne retire pas `AGENT_VM` et
+# `AGENT_SECRET` ; le registre de G1 (« le dernier inscrit gagne ») ferme alors
+# le socket de l'autre, qui se reprend, et ainsi de suite sans terme.
 #
 # Usage : compter-enrolements.sh <etiquette> <duree_s>
 #
-# Prerequisite: `.env` sourced by the caller (WINDOWS_ADMIN_PASSWORD), VM powered on.
+# Prérequis : `.env` sourcé par l'appelant (WINDOWS_ADMIN_PASSWORD), VM allumée.
 set -euo pipefail
 
 ETIQUETTE="${1:?étiquette du relevé}"
@@ -24,10 +24,10 @@ BASE="$TRAVAIL/plateforme-$ETIQUETTE.sqlite"
 mkdir -p "$TRAVAIL"
 rm -f "$BASE"
 
-# A service left by a previous report would make the next one fail on an
-# EADDRINUSE — and, worse, we would otherwise measure against a platform whose
-# version we do not know. Killed BY PID read from the port, never through `pkill -f`:
-# this repository has already seen a `pkill -f <pattern>` kill the shell that launched it.
+# Un service laissé par un relevé précédent ferait échouer le suivant sur un
+# EADDRINUSE — et, pire, on mesurerait sinon contre une plateforme dont on
+# ignore la version. Tué PAR PID relevé sur le port, jamais par `pkill -f` :
+# ce dépôt a déjà vu un `pkill -f <motif>` tuer le shell qui le lançait.
 RESIDU="$(ss -ltnp 2>/dev/null | grep ":$PORT " | grep -o 'pid=[0-9]*' | cut -d= -f2 | head -1 || true)"
 if [ -n "${RESIDU:-}" ]; then
     echo "== 0. plateforme résiduelle sur le port $PORT (pid $RESIDU) : arrêtée"
@@ -52,8 +52,8 @@ echo "   vm_id=$VM_ID prefixe=$PREFIXE secret=<${#SECRET} caractères>"
 echo "== 2. démarrage de la plateforme sur le port $PORT"
 (cd "$ROOT/plateforme" && nohup npx tsx src/index.ts > "$SORTIE/plateforme-$ETIQUETTE.log" 2>&1 & echo $! > "$TRAVAIL/plateforme.pid")
 PID_PLAT="$(cat "$TRAVAIL/plateforme.pid")"
-# The retained PID is that of `npx`, which is not necessarily the one listening:
-# we kill both, the second read from the port at clean-up time.
+# Le PID retenu est celui du `npx`, qui n'est pas forcément celui qui écoute :
+# on tue les deux, le second relevé sur le port au moment du nettoyage.
 nettoyer() {
     kill "$PID_PLAT" 2>/dev/null || true
     local ecoutant

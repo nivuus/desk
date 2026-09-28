@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Plays ONE run of acceptance run F2.
+# Joue UNE execution de la recette F2.
 #
 #     instrument/jouer-f2.sh <etiquette> <secondes-de-maintien>
 #
-# 🔴 TWO RUNS NEVER OVERLAP. F1 lost one that way: two
-# overlapped by 2 min 23 s, the second killed the first one's agent IN THE MIDDLE OF
-# MEASURING, and the log filed under the first one's name was the
-# second's. This script kills the agent BEFORE, and checks AFTER.
+# 🔴 DEUX EXECUTIONS NE SE CHEVAUCHENT JAMAIS. F1 en a perdu une : deux se sont
+# recouvertes de 2 min 23 s, la seconde a tue l'agent de la premiere EN PLEINE
+# MESURE, et le journal verse sous le nom de la premiere etait celui de la
+# seconde. Ce script tue l'agent AVANT, et verifie APRES.
 set -uo pipefail
 ETIQUETTE="$1"
 MAINTIEN="${2:-40}"
-# `--sans-purge`: KEEPS the root AND the owed-writes journal of the
-# previous run. It is what makes criterion ③ measurable — the restarted
-# bridge must REREAD its journal and push again what remains in it.
+# `--sans-purge` : GARDE la racine ET le journal des ecritures dues de
+# l'execution precedente. C'est ce qui rend le critere ③ mesurable — le pont
+# relance doit RELIRE son journal et repousser ce qui y reste.
 SANS_PURGE="${3:-}"
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2/instrument"
@@ -32,13 +32,13 @@ else
     node "$RACINE/scripts/winrm.js" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\purger-pont.ps1' 2>&1 | tail -4
 fi
 
-# 🔴 THE PREVIOUS RUN'S ARTEFACTS GO FIRST, ALL OF THEM.
-# Paid for on the spot: a `pilote-arme-1.json` left by an earlier attempt
-# was read as this one's result — the measurement showed an empty root and
-# refused writes there, and the conclusion would have been "the product is
-# broken" whereas the ongoing run succeeded. It is D8's trap
-# ("one measures the previous run believing one reads one's own"), in the form of a
-# result file rather than a log.
+# 🔴 LES ARTEFACTS DE L'EXECUTION PRECEDENTE PARTENT AVANT, TOUS.
+# Paye sur place : un `pilote-arme-1.json` laisse par une tentative anterieure a
+# ete lu comme le resultat de celle-ci — la mesure y montrait une racine vide et
+# des ecritures refusees, et la conclusion aurait ete « le produit est en
+# panne » alors que l'execution en cours reussissait. C'est le piege de D8
+# (« on mesure le run d'avant en croyant lire le sien »), sous la forme d'un
+# fichier de resultat plutot que d'un journal.
 rm -f /media/vm/dev/agent.log "/tmp/f2/pilote-$ETIQUETTE.json" \
       "$J/pilote-$ETIQUETTE.json" "$J/agent-$ETIQUETTE.log" "$J/agent-$ETIQUETTE-plat.log"
 
@@ -50,9 +50,9 @@ UDD="/tmp/f2/udd-$ETIQUETTE" PORT_CDP="${PORT_CDP:-9440}" \
 CODE=${PIPESTATUS[0]}
 
 echo "=== [$ETIQUETTE] copie du journal d agent (APRES la fin reelle) ==="
-# ⚠️ AFTER the real end: the children die when the browser closes,
-# hence AFTER the copy, and their release lines would go with the next
-# log. One piece of evidence was lost that way in D4.
+# ⚠️ APRES la fin reelle : les enfants meurent quand le navigateur se ferme,
+# donc APRES la copie, et leurs lignes de liberation partiraient avec le journal
+# suivant. Une piece a ete perdue ainsi en D4.
 sleep 6
 cp /media/vm/dev/agent.log "$J/agent-$ETIQUETTE.log" 2>/dev/null || echo 'agent.log introuvable'
 sed 's/\x1b\[[0-9;]*m//g' "$J/agent-$ETIQUETTE.log" > "$J/agent-$ETIQUETTE-plat.log" 2>/dev/null || true

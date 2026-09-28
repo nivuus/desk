@@ -1,7 +1,7 @@
-// The script of criterion ⑤ — EXTERNAL, to survive `script-src 'self'`.
+// Le script du critere ⑤ — EXTERNE, pour survivre a `script-src 'self'`.
 //
-// 🔴 IT SETS A MARKER BEFORE ANYTHING: without it, "no switch" would be
-// indistinguishable from "no script executed" (a trap characterised at task 14).
+// 🔴 IL POSE UN MARQUEUR AVANT TOUT : sans lui, « aucune bascule » serait
+// indiscernable d'« aucun script execute » (piege caracterise a la tache 14).
 const etat = {
     SCRIPT_OK: true,
     protocole: location.protocol,
@@ -12,11 +12,11 @@ const etat = {
     fetchStatut: null,
     fetchLisible: null,
     fetchChamps: null,
-    fetchError: null,
+    fetchErreur: null,
 };
 window.__p5 = etat;
 
-// The CSP violations, caught IN the page (the standard event).
+// Les violations CSP, captees DANS la page (l'evenement standard).
 document.addEventListener('securitypolicyviolation', (e) => {
     etat.violationsCsp.push({
         directive: e.violatedDirective,
@@ -29,7 +29,7 @@ function peindre() {
     document.getElementById('sortie').textContent = JSON.stringify(etat, null, 2);
 }
 
-// (c) the wss:// upgrade to the SAME origin — hence no more mixed content.
+// (c) la montee wss:// vers la MEME origine — donc plus de contenu mixte.
 const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/';
 etat.wsUrl = url;
 try {
@@ -42,19 +42,19 @@ try {
         peindre();
     };
 } catch (e) {
-    // A CSP refusing `connect-src` THROWS synchronously: it is the
-    // path that makes the red run insensitive to the virtual time budget.
+    // Une CSP qui refuse `connect-src` LEVE de facon synchrone : c'est le
+    // chemin qui rend la rouge insensible au budget de temps virtuel.
     etat.ws = 'WS-REFUSE';
     etat.wsLeve = String(e && e.name);
     peindre();
 }
 
-// (d) the POST /auth/connexion request, and above all: IS ITS BODY READABLE
-// BY THE PAGE? A 200 whose body was unreadable (CORS badly set) would
-// read as a success on the network side and a failure on the product side.
-// ⚠️ THE CREDENTIALS COME FROM A FILE THE DRIVER WRITES INTO
-// `client/dist/` (GITIGNORED) and DELETES after the measurement. They are neither in
-// this instrument, nor in any filed piece.
+// (d) la requete POST /auth/connexion, et surtout : SON CORPS EST-IL LISIBLE
+// PAR LA PAGE ? Un 200 dont le corps serait illisible (CORS mal pose) se
+// lirait comme un succes cote reseau et un echec cote produit.
+// ⚠️ LES IDENTIFIANTS VIENNENT D'UN FICHIER QUE LE PILOTE ECRIT DANS
+// `client/dist/` (GITIGNORE) et SUPPRIME apres la mesure. Ils ne sont ni dans
+// cet instrument, ni dans aucune piece versee.
 const ident = window.__ident ?? null;
 fetch(location.origin + '/auth/connexion', {
     method: 'POST',
@@ -65,13 +65,13 @@ fetch(location.origin + '/auth/connexion', {
         etat.fetchStatut = r.status;
         const j = await r.json();
         etat.fetchLisible = true;
-        // 🔴 WE NEVER COPY THE TOKENS: only THE FIELD NAMES.
+        // 🔴 ON NE RECOPIE JAMAIS LES JETONS : seulement LES NOMS DES CHAMPS.
         etat.fetchChamps = Object.keys(j).sort();
         peindre();
     })
     .catch((e) => {
         etat.fetchLisible = false;
-        etat.fetchError = String(e);
+        etat.fetchErreur = String(e);
         peindre();
     });
 

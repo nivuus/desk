@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Sets up the environment of acceptance run A1: a SECOND platform instance,
-# a vite for the client, a user, a VM, an enrolled agent.
+# Monte l'environnement de la recette A1 : une SECONDE instance de plateforme,
+# un vite pour le client, un utilisateur, une VM, un agent enrôlé.
 #
-# 🔴 A SECOND INSTANCE, NEVER A RESTART OF THE NEIGHBOUR'S: a
-# concurrent workstream already listens on 8080, and restarting it would invalidate its
-# tokens. It is the decision the clipboard's P1 took for the same reason.
+# 🔴 UNE SECONDE INSTANCE, JAMAIS UN REDÉMARRAGE DE CELLE DU VOISIN : un
+# chantier concurrent écoute déjà sur 8080, et la redémarrer invaliderait ses
+# jetons. C'est la décision que P1 du presse-papier a prise pour la même raison.
 set -euo pipefail
 unset -f chpwd 2>/dev/null || true
 cd "$(git rev-parse --show-toplevel)"
@@ -26,7 +26,7 @@ export PLATEFORME_SECRET_JETON="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d 
 export PLATEFORME_ORIGINE_CLIENT="http://127.0.0.1:${PORT_CLIENT}"
 
 cd plateforme
-# Migrations run at startup: we launch, we wait, we administer.
+# Les migrations tournent au démarrage : on lance, on attend, on administre.
 npm start > /tmp/a1-plateforme.log 2>&1 &
 echo $! > /tmp/a1-plateforme.pid
 cd ..

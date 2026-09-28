@@ -1,38 +1,38 @@
-// The common base of acceptance run P3's probes: start a real service,
-// open the `/agent` channel, open a handshake on the relay.
+// Le socle commun des sondes de la recette P3 : démarrer un service réel,
+// ouvrir le canal `/agent`, ouvrir une poignée de main sur le relais.
 //
-// 🔴 NO `ws` IS IMPORTED HERE. Node 24 carries `WebSocket` as a global, and
-// it is deliberate: the probe lives outside `plateforme/`, and importing `ws`
-// from this directory would resolve the package of the repository's ROOT — a
-// SECOND instance of the library, of a version potentially different from
-// the one the service uses. Node's global client shares nothing with
-// the server: it is protocol on the wire, and nothing else.
+// 🔴 AUCUN `ws` N'EST IMPORTÉ ICI. Node 24 porte `WebSocket` en global, et
+// c'est délibéré : la sonde vit hors de `plateforme/`, et importer `ws`
+// depuis ce répertoire résoudrait le paquet de la RACINE du dépôt — une
+// SECONDE instance de la bibliothèque, de version potentiellement autre que
+// celle que le service emploie. Le client global de Node ne partage rien avec
+// le serveur : c'est du protocole sur le fil, et rien d'autre.
 //
-// 🔴 THE SERVICE IS THE REAL ONE, mounted by `start()` — the same sequence as
-// `src/index.ts`. Nothing is simulated on the platform side: it is the
-// `agent` and `client` peers that are scripted sockets, as spec §4 P3
-// requires.
+// 🔴 LE SERVICE EST LE VRAI, monté par `demarrer()` — la même séquence que
+// `src/index.ts`. Rien n'est simulé côté plateforme : ce sont les pairs
+// `agent` et `client` qui sont des sockets scriptés, comme la spec §4 P3
+// l'exige.
 
 import { lireConfig } from '../../../../../plateforme/src/config';
-import { start, type Service } from '../../../../../plateforme/src/demarrage';
+import { demarrer, type Service } from '../../../../../plateforme/src/demarrage';
 import { ouvrirPostgres } from '../../../../../plateforme/src/base/pilote-postgres';
 
 export type Moteur = 'sqlite' | 'postgres';
 
-/// The token signing secret. FIXED and long: `lireConfig` refuses
-/// below `MIN_SECRET_LENGTH`, and a randomly drawn secret would make
-/// the logs non-comparable from one run to the next for nothing.
+/// Le secret de signature des jetons. FIXE et long : `lireConfig` refuse
+/// en dessous de `LONGUEUR_SECRET_MIN`, et un secret tiré au sort rendrait
+/// les journaux non comparables d'une exécution à l'autre pour rien.
 export const SECRET_JETON = '***RETIRE-DE-L-HISTORIQUE***';
 
 const URL_POSTGRES =
     process.env.PLATEFORME_BASE_URL ??
     'postgres://plateforme:plateforme-test@127.0.0.1:5433/plateforme_test';
 
-/// Starts a FRESH service on the requested engine, ephemeral port.
+/// Démarre un service NEUF sur le moteur demandé, port éphémère.
 ///
-/// Postgres: a throwaway SCHEMA, as `base/harnais.ts` does for the
-/// tests — two successive runs must not step on each other.
-export async function startService(moteur: Moteur, nom: string): Promise<Service> {
+/// Postgres : un SCHÉMA jetable, comme `base/harnais.ts` le fait pour les
+/// tests — deux exécutions successives ne doivent pas se marcher dessus.
+export async function demarrerService(moteur: Moteur, nom: string): Promise<Service> {
     let urlBase = ':memory:';
     if (moteur === 'postgres') {
         const schema = `p3_${nom.replace(/[^a-z0-9]/gi, '_')}_${process.pid}`;
@@ -44,18 +44,18 @@ export async function startService(moteur: Moteur, nom: string): Promise<Service
     }
     const config = lireConfig({
         PLATEFORME_HOTE: '127.0.0.1',
-        // 0 = ephemeral port. `startServer` rereads the real address.
+        // 0 = port éphémère. `demarrerServeur` relit l'adresse réelle.
         PLATEFORME_PORT: '0',
         PLATEFORME_BASE: moteur,
         PLATEFORME_BASE_URL: urlBase,
         PLATEFORME_SECRET_JETON: SECRET_JETON,
     });
-    return start(config);
+    return demarrer(config);
 }
 
-/// A received frame, AS IS — the raw string, never a reparsed object:
-/// criterion ② compares two refusals CHARACTER FOR CHARACTER, which a reparsed
-/// object would make impossible to establish.
+/// Une trame reçue, TELLE QUELLE — la chaîne brute, jamais un objet reparsé :
+/// le critère ② compare deux refus CARACTÈRE POUR CARACTÈRE, ce qu'un objet
+/// reparsé rendrait impossible à établir.
 export interface Trame {
     brut: string;
 }
@@ -65,7 +65,7 @@ export interface Fermeture {
     raison: string;
 }
 
-/// A scripted socket: it collects everything that arrives, and its closing.
+/// Un socket scripté : il collecte tout ce qui arrive, et sa fermeture.
 export class Pair {
     readonly recues: Trame[] = [];
     fermeture: Fermeture | undefined;
@@ -98,17 +98,17 @@ export class Pair {
         this.socket.send(brut);
     }
 
-    /// Waits for at least `n` frames to have arrived, or for the delay to expire.
-    /// ⚠️ DOES NOT THROW on expiry: the ABSENCE of an answer is itself a
-    /// reading ("received ice-config: false"), and an exception would
-    /// turn it into a probe failure.
+    /// Attend qu'au moins `n` trames soient arrivées, ou que le délai expire.
+    /// ⚠️ NE LÈVE PAS sur expiration : l'ABSENCE de réponse est elle-même un
+    /// relevé (« a reçu ice-config : false »), et une exception la
+    /// transformerait en panne de sonde.
     async attendre(n: number, delaiMs = 2000): Promise<void> {
         const fin = Date.now() + delaiMs;
         while (this.recues.length < n && Date.now() < fin && this.fermeture === undefined) {
             await new Promise((r) => setTimeout(r, 20));
         }
-        // A frame may still arrive right before a closing: we let
-        // one last event loop beat go by.
+        // Une trame peut encore arriver juste avant une fermeture : on laisse
+        // un dernier battement de boucle d'évènements passer.
         await new Promise((r) => setTimeout(r, 60));
     }
 
@@ -116,23 +116,23 @@ export class Pair {
         try {
             this.socket.close();
         } catch {
-            /* already closed */
+            /* déjà fermé */
         }
     }
 }
 
-/// The RELAY's handshake, as `agent/src/signaling.rs:68`
-/// composes it. `jeton` at `undefined` goes out as `null`, exactly like the agent
-/// without an identity — that is the case of probe E2.
+/// La poignée de main du RELAIS, telle que `agent/src/signaling.rs:68` la
+/// compose. `jeton` à `undefined` part en `null`, exactement comme l'agent
+/// sans identité — c'est le cas de la sonde E2.
 export function poignee(role: string, session: string, jeton?: string): string {
     return JSON.stringify({ role, session, jeton: jeton ?? null });
 }
 
-export function ligne(cle: string, value: unknown): string {
-    return `${cle.padEnd(34)}: ${typeof value === 'string' ? value : JSON.stringify(value)}`;
+export function ligne(cle: string, valeur: unknown): string {
+    return `${cle.padEnd(34)}: ${typeof valeur === 'string' ? valeur : JSON.stringify(valeur)}`;
 }
 
-/// The header EVERY log of this acceptance run carries.
+/// L'en-tête que TOUT journal de cette recette porte.
 export function entete(titre: string, moteur: Moteur, commit: string): string {
     return [
         `# ${titre}`,

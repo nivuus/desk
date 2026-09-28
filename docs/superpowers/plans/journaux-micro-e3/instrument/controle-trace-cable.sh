@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
-# The acceptance check of deliverable ③ (block E3): does the cable trace carry
-# `occupation_ms` and `famines`?
+# Le contrôle de recette du livrable ③ (bloc E3) : la trace du câble porte-t-elle
+# `occupation_ms` et `famines` ?
 #
-# ✅ **PLAYED, AND GREEN** — 2 runs, `agent-1.log` and `agent-2.log`: **166
-# lines, 166 carrying `occupation_ms=`, 166 carrying `famines=`**, in both.
-# ❌ *This header said "THIS CHECK WAS NOT PLAYED […] filed READY, not
-# GREEN", the VM then being held by a concurrent workstream. It was given back
-# the same day.*
+# ✅ **JOUÉ, ET VERT** — 2 exécutions, `agent-1.log` et `agent-2.log` : **166
+# lignes, 166 portant `occupation_ms=`, 166 portant `famines=`**, aux deux.
+# ❌ *Cet en-tête disait « CE CONTRÔLE N'A PAS ÉTÉ JOUÉ […] versé PRÊT, pas
+# VERT », la VM étant alors tenue par un chantier concurrent. Elle a été rendue
+# le jour même.*
 #
-# 🔵 **AND IT DID NOT EVEN PARSE** when it was filed "ready": see the
-# `journal=` line below. An acceptance check is EXECUTED before being
-# prescribed, and this one had not been.
+# 🔵 **ET IL NE SE PARSAIT MÊME PAS** quand il a été versé « prêt » : voir la
+# ligne `journal=` plus bas. Un contrôle de recette s'EXÉCUTE avant d'être
+# prescrit, et celui-ci ne l'avait pas été.
 #
-# ⚠️ **The plan's red run R6 is flagged in advance as the weakest**, and
-# playing it on the host would be a tautology: `windows_micro.rs` is
-# `#[cfg(windows)]`, no host test can run it, and "the field is
-# in the source" is not "the field comes out in the log". The only red run
-# that counts is removing the field, rebuilding, relaunching, and seeing this
-# `grep` fall back to zero.
+# ⚠️ **La rouge R6 du plan est signalée d'avance comme la plus faible**, et la
+# jouer sur l'hôte serait une tautologie : `windows_micro.rs` est
+# `#[cfg(windows)]`, aucun test d'hôte ne peut l'exécuter, et « le champ est
+# dans la source » n'est pas « le champ sort dans le journal ». La seule rouge
+# qui vaut est de retirer le champ, rebâtir, relancer, et constater que ce
+# `grep` retombe à zéro.
 #
 # Usage : controle-trace-cable.sh <agent.log>
 
 set -uo pipefail
-# ❌ This line carried `${1:?journal d'agent}` — the apostrophe OPENS a
-# quote there, because bash PARSES the word of a `${par:?word}` expansion even inside
-# double quotes: the script did NOT PARSE ("unexpected EOF while
-# looking for matching `''", line 37, that is, thirty lines
-# further down). 🔵 **It had been filed "READY, not GREEN" — and it was not even
-# that.** It is the repository's doctrine taken literally: an acceptance check
-# must be EXECUTED before being prescribed, and this one had not been.
+# ❌ Cette ligne portait `${1:?journal d'agent}` — l'apostrophe y OUVRE une
+# quote, car bash ANALYSE le mot d'une expansion `${par:?mot}` même entre
+# guillemets doubles : le script ne se PARSAIT PAS (« EOF prématurée lors de la
+# recherche du ' correspondant », ligne 37, c'est-à-dire trente lignes plus
+# bas). 🔵 **Il avait été versé « PRÊT, pas VERT » — et il ne l'était même
+# pas.** C'est la doctrine du dépôt prise à la lettre : un contrôle de recette
+# doit être EXÉCUTÉ avant d'être prescrit, et celui-ci ne l'avait pas été.
 journal="${1:?chemin du journal d agent attendu}"
 
-# 🔴 `grep -a` MANDATORY: a log with a tail of NUL bytes is classified
-# "binary", and `grep` then returns an EMPTY OUTPUT — not a zero, and the two
-# read the same (a trap paid for in D10).
+# 🔴 `grep -a` OBLIGATOIRE : un journal à queue d'octets NUL est classé
+# « binaire », et `grep` rend alors une SORTIE VIDE — pas un zéro, et les deux
+# se lisent pareil (piège payé en D10).
 plat="$(mktemp)"
 sed 's/\x1b\[[0-9;]*m//g' "$journal" > "$plat"
 
@@ -46,8 +46,8 @@ echo "  dont portant occupation_ms=     : ${occ}"
 echo "  dont portant famines=           : ${fam}"
 rm -f "$plat"
 
-# ⚠️ `lignes = 0` IS NOT A VERDICT: it is a measurement NOT TAKEN. The trace
-# is periodic (`PERIODE_TRACE`), and a mic never turned on emits none.
+# ⚠️ `lignes = 0` N'EST PAS UN VERDICT : c'est une mesure NON PRISE. La trace
+# est périodique (`PERIODE_TRACE`), et un micro jamais allumé n'en émet aucune.
 if [ "$lignes" -eq 0 ]; then
     echo "VERDICT : NON MESURABLE — aucune trace de câble dans ce journal."
     exit 2

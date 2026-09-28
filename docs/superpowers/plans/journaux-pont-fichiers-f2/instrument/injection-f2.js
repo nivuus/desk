@@ -1,21 +1,21 @@
-// Injected BEFORE any script of the page (Page.addScriptToEvaluateOnNewDocument).
+// Injecte AVANT tout script de la page (Page.addScriptToEvaluateOnNewDocument).
 //
-// Taken from `journaux-pont-fichiers/instrument/injection-f1.js`, with what F2
-// adds: a REREAD of OPFS and its digest, and reading the counter
-// of owed writes.
+// Repris de `journaux-pont-fichiers/instrument/injection-f1.js`, avec ce que F2
+// ajoute : une RELECTURE d'OPFS et son condensat, et la lecture du compteur
+// d'ecritures dues.
 //
-// 🔴 THE RETURNED HANDLE IS A REAL `FileSystemDirectoryHandle` (OPFS), so
-// `createWritable()` is the REAL one there, with its swap file and its
-// commit on `close()`. That is what makes criterion ⑤ measurable.
+// 🔴 LA POIGNEE RENDUE EST UNE VRAIE `FileSystemDirectoryHandle` (OPFS), donc
+// `createWritable()` y est le VRAI, avec son fichier d'echange et sa
+// committaison au `close()`. C'est ce qui rend le critere ⑤ mesurable.
 //
-// ⚠️ WHAT OPFS DOES NOT COVER, and it is declared: `showDirectoryPicker()` is
-// never called, the permission model (`queryPermission` /
-// `requestPermission`) is not exercised, and the `readwrite` mode F2 sets
-// is not tested — OPFS has no permission model.
+// ⚠️ CE QU'OPFS NE COUVRE PAS, et c'est declare : `showDirectoryPicker()` n'est
+// jamais appele, le modele de permission (`queryPermission` /
+// `requestPermission`) n'est pas exerce, et le mode `readwrite` que F2 pose
+// n'est pas eprouve — OPFS n'a aucun modele de permission.
 //
-// ⚠️ THE DRIVER SUBSTITUTES THROUGH `replaceAll`, AND THIS COMMENT NAMES NONE OF ITS
-// MARKERS: a first version of F1 quoted them in full here, and the
-// substitution hit the COMMENT while leaving the real marker intact.
+// ⚠️ LE PILOTE SUBSTITUE PAR `replaceAll`, ET CE COMMENTAIRE N'EN NOMME AUCUN
+// MARQUEUR : une premiere version de F1 les citait en toutes lettres ici, et la
+// substitution frappait le COMMENTAIRE en laissant le vrai marqueur intact.
 (() => {
     try {
         localStorage.setItem('guac.jeton.acces', '__JETON_ACCES__');
@@ -23,7 +23,7 @@
         localStorage.setItem('guac.prefixe', '__PREFIXE__');
     } catch (e) { /* page sans localStorage */ }
 
-    // Capture of the `RTCPeerConnection`, for criterion ⑥ (`framesDecoded`).
+    // Capture de la `RTCPeerConnection`, pour le critere ⑥ (`framesDecoded`).
     try {
         const N = window.RTCPeerConnection;
         if (N) {
@@ -35,44 +35,44 @@
             };
             window.RTCPeerConnection.prototype = N.prototype;
         }
-    } catch (e) { /* criterion ⑥ will say */ }
+    } catch (e) { /* le critere ⑥ le dira */ }
 
     const BASE = '__BASE_JEU__';
-    window.__f2 = { etapes: [], errors: [] };
+    window.__f2 = { etapes: [], erreurs: [] };
     const noter = (m) => {
         window.__f2.etapes.push({ t: Date.now(), m: String(m).slice(0, 300) });
         if (window.__f2.etapes.length > 300) window.__f2.etapes.shift();
     };
 
-    // 🔴 OPFS IS ONLY POPULATED BY THE SHELL PAGE, AND IT IS AN INSTRUMENT
-    // DEFECT PAID FOR ON THE SPOT.
+    // 🔴 OPFS N'EST PEUPLÉ QUE PAR LA PAGE-SHELL, ET C'EST UN DÉFAUT
+    // D'INSTRUMENT PAYÉ SUR PLACE.
     //
-    // The injection is set through `Target.setAutoAttach`, hence on ALL
-    // pages — including the application windows opened by
-    // `window.open('/?session=…')`. Each of them then ran the OPFS PURGE and
-    // repopulated it, **while the bridge was writing there**.
+    // L'injection est posée par `Target.setAutoAttach`, donc sur TOUTES les
+    // pages — y compris les fenêtres d'application ouvertes par
+    // `window.open('/?session=…')`. Chacune exécutait alors la PURGE d'OPFS et
+    // la repeuplait, **pendant que le pont y écrivait**.
     //
-    // ⚠️ **THE SYMPTOM READS AS A PRODUCT DEFECT**: at run
-    // `arme-2`, `Casse.txt`, `gros-lecture.bin` and `sous-dossier` had
-    // DISAPPEARED from OPFS, and `CASSE.TXT` — which the case guard refuses in normal
-    // times — was found created there. **The guard had not failed: the namesake
-    // it looks for had been erased under it by another page.**
+    // ⚠️ **LE SYMPTÔME SE LIT COMME UN DÉFAUT DU PRODUIT** : à l'exécution
+    // `arme-2`, `Casse.txt`, `gros-lecture.bin` et `sous-dossier` avaient
+    // DISPARU d'OPFS, et `CASSE.TXT` — que la garde de casse refuse en temps
+    // normal — s'y trouvait créé. **La garde n'avait pas failli : l'homonyme
+    // qu'elle cherche avait été effacé sous elle par une autre page.**
     const EST_SHELL = location.pathname.endsWith('/shell.html');
     const pret = (async () => {
         if (!EST_SHELL) throw new Error('OPFS n est peuple que par la page-shell');
         const racineOpfs = await navigator.storage.getDirectory();
         const dossier = await racineOpfs.getDirectoryHandle('Mes documents', { create: true });
-        // Purge: OPFS persists in the profile, and a second run would read
-        // the first one's data set.
+        // Purge : OPFS persiste dans le profil, et une seconde execution lirait
+        // le jeu de la premiere.
         for await (const nom of dossier.keys()) {
             await dossier.removeEntry(nom, { recursive: true });
         }
-        const list = await (await fetch(BASE + '/liste')).json();
-        for (const e of list.filter((x) => x.type === 'directory')) {
+        const liste = await (await fetch(BASE + '/liste')).json();
+        for (const e of liste.filter((x) => x.type === 'directory')) {
             let ici = dossier;
             for (const p of e.chemin.split('/')) ici = await ici.getDirectoryHandle(p, { create: true });
         }
-        for (const e of list.filter((x) => x.type === 'file')) {
+        for (const e of liste.filter((x) => x.type === 'file')) {
             const parts = e.chemin.split('/');
             const nom = parts.pop();
             let ici = dossier;
@@ -86,12 +86,12 @@
             await w.write(octets);
             await w.close();
         }
-        noter('OPFS peuple : ' + list.length + ' entrees');
-        window.__f2.peuple = list.length;
+        noter('OPFS peuple : ' + liste.length + ' entrees');
+        window.__f2.peuple = liste.length;
         window.__f2.racine = dossier;
         return dossier;
     })().catch((e) => {
-        window.__f2.errors.push('peuplement OPFS : ' + String(e).slice(0, 300));
+        window.__f2.erreurs.push('peuplement OPFS : ' + String(e).slice(0, 300));
         throw e;
     });
 
@@ -102,12 +102,12 @@
         return d;
     };
 
-    // 🔴 THE REREAD, AND IT IS CRITERION ①. It reads OPFS — that is, what
-    // the LOCAL MACHINE really carries — and returns size and digest. A
-    // criterion "the file appears" would be satisfied by a truncated file,
-    // by chunks out of order and by a missing last chunk:
-    // all THREE are defects `pont/decoupe.rs` and the write thread
-    // can really produce, and NONE of them shows to the eye.
+    // 🔴 LA RELECTURE, ET C'EST LE CRITERE ①. Elle lit OPFS — c'est-a-dire ce
+    // que le POSTE LOCAL porte reellement — et rend taille et condensat. Un
+    // critere « le fichier apparait » serait satisfait par un fichier tronque,
+    // par des morceaux dans le desordre et par un dernier morceau manquant :
+    // les TROIS sont des defauts que `pont/decoupe.rs` et le fil d'ecriture
+    // peuvent reellement produire, et AUCUN ne se voit a l'oeil.
     window.__relire = async (chemin) => {
         try {
             const racine = await navigator.storage.getDirectory();
@@ -124,11 +124,11 @@
                 sha256: Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join(''),
             });
         } catch (e) {
-            return JSON.stringify({ present: false, error: String(e).slice(0, 200) });
+            return JSON.stringify({ present: false, erreur: String(e).slice(0, 200) });
         }
     };
 
-    /** The complete OPFS tree, to see what arrived and what did not. */
+    /** L'arborescence complete d'OPFS, pour voir ce qui est arrive et ce qui ne l'est pas. */
     window.__arbre = async () => {
         const sortie = [];
         const descendre = async (poignee, prefixe) => {
@@ -141,14 +141,14 @@
         try {
             const racine = await navigator.storage.getDirectory();
             await descendre(await racine.getDirectoryHandle('Mes documents'), '');
-        } catch (e) { sortie.push({ error: String(e).slice(0, 200) }); }
+        } catch (e) { sortie.push({ erreur: String(e).slice(0, 200) }); }
         return JSON.stringify(sortie);
     };
 
-    // 🔴 THE COUNTER IS READ FROM ATTRIBUTES, NEVER FROM THE TEXT.
-    // It is the remedy for the trap F1 paid nine minutes for: two messages
-    // sharing a substring. And `vues` is CUMULATIVE: `dues=0` ALONE is
-    // indistinguishable from a MEASUREMENT NOT TAKEN.
+    // 🔴 LE COMPTEUR SE LIT DANS DES ATTRIBUTS, JAMAIS DANS LE TEXTE.
+    // C'est le remede au piege que F1 a paye neuf minutes : deux messages qui
+    // partagent une sous-chaine. Et `vues` est CUMULATIF : `dues=0` SEUL est
+    // indiscernable d'une MESURE NON PRISE.
     window.__compteur = () => {
         const e = document.querySelector('#ecritures-dues');
         if (!e) return JSON.stringify({ absent: true });

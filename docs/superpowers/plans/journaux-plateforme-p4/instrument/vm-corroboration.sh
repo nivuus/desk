@@ -1,40 +1,40 @@
 #!/usr/bin/env bash
-# TASK 16 — the corroboration on a real VM, OUTSIDE THE CRITERIA and CONDITIONAL.
+# TÂCHE 16 — la corroboration sur VM réelle, HORS CRITÈRE et CONDITIONNELLE.
 #
 #     instrument/vm-corroboration.sh <repertoire-de-sortie> [duree-secondes]
 #
-# 🔴 WHAT IT ADDS TO `corroboration-navigateur.log`, AND NOTHING ELSE. The
-# browser corroboration of task 14 already tested the sign-in screen,
-# the cross-origin policy and the vault write against a REAL
-# service — but with the agent's state SEEDED IN THE DATABASE. What existed nowhere
-# is the complete UNSEEDED chain: a real Windows agent beats -> `vu_a`
-# advances -> `agents/fraicheur.ts` deduces `prete` from it -> `POST /session` returns the
-# prefix -> the shell page opens `<prefix>:bureau` on that very agent. That is
-# what, and only what, this script establishes.
+# 🔴 CE QU'ELLE AJOUTE À `corroboration-navigateur.log`, ET RIEN D'AUTRE. La
+# corroboration navigateur de la tâche 14 a déjà éprouvé l'écran de connexion,
+# la politique d'origine croisée et l'écriture au coffre contre un service
+# RÉEL — mais avec l'état de l'agent SEMÉ EN BASE. Ce qui n'existait nulle part
+# est la chaîne complète NON SEMÉE : un agent Windows réel bat -> `vu_a`
+# avance -> `agents/fraicheur.ts` en déduit `prete` -> `POST /session` rend le
+# préfixe -> la page-shell ouvre `<préfixe>:bureau` sur cet agent-là. C'est
+# cela, et cela seul, que ce script établit.
 #
-# 🔴 EVERYTHING HAPPENS IN A SINGLE CALL, AND IT IS A CONSTRAINT, NOT A STYLE.
-# A command put in the background by the harness DOES NOT SURVIVE the end of the
-# turn of the agent that launched it (two acceptance runs of D10 lost a
-# run each that way, symptom: a TRUNCATED log copied from a VM where
-# the agent keeps running). The service, the agent and the shell page live and
-# die in this very call. Structure taken from
-# `journaux-plateforme-p3/instrument/vm-corroboration.sh`, from which it also inherits
-# the traps already paid for (wait for the MOUNT and not the port; only accept
-# a short integer from `Get-Process`).
+# 🔴 TOUT SE FAIT DANS UN SEUL APPEL, ET C'EST UNE CONTRAINTE, PAS UN STYLE.
+# Une commande mise en arrière-plan par le harnais NE SURVIT PAS à la fin du
+# tour de l'agent qui l'a lancée (deux recettes de D10 y ont perdu une
+# exécution chacune, symptôme : un journal TRONQUÉ copié depuis une VM où
+# l'agent continue de tourner). Le service, l'agent et la page-shell vivent et
+# meurent dans cet appel-ci. Structure reprise de
+# `journaux-plateforme-p3/instrument/vm-corroboration.sh`, dont elle hérite
+# aussi les pièges déjà payés (attendre le MONTAGE et pas le port ; n'accepter
+# de `Get-Process` qu'un entier court).
 #
-# 🔴 NO REBUILD OF THE AGENT, AND IT IS A REASONED DECISION. P4 touches
-# neither `agent/` nor `proto/`: it needs no new binary. And at the
-# time this is played, a neighbouring workstream (G1, app management) has
-# UNCOMMITTED changes in `proto/` — `scripts/build-agent.sh`
-# rsyncs the sources, so a build from here would push its half-done work
-# onto the VM, and would perhaps give it a `PLATEFORME_VERSION = 2`
-# that this service, which speaks 1, would refuse. The present binary is therefore
-# used AS IS, and its size and date are recorded: they are
-# attributable to NO commit of P4, and the log says so.
+# 🔴 AUCUN REBÂTISSAGE DE L'AGENT, ET C'EST UNE DÉCISION MOTIVÉE. P4 ne touche
+# ni `agent/` ni `proto/` : aucun binaire neuf ne lui est nécessaire. Et au
+# moment où ceci est joué, un chantier voisin (G1, gestion d'apps) a des
+# modifications NON COMMITÉES dans `proto/` — `scripts/build-agent.sh`
+# rsynchronise les sources, donc une compilation d'ici pousserait son travail
+# à demi fait sur la VM, et lui donnerait peut-être un `PLATEFORME_VERSION = 2`
+# que ce service, qui parle la 1, refuserait. Le binaire présent est donc
+# employé TEL QUEL, et sa taille et sa date sont relevées : elles ne sont
+# attribuables à AUCUN commit de P4, et le journal le dit.
 #
-# ⚠️ NO SECRET IS WRITTEN INTO THE FILED LOG: the enrolment secret
-# only appears through its length, and the trial account's password is a
-# throwaway string specific to this run.
+# ⚠️ AUCUN SECRET N'EST ÉCRIT DANS LE JOURNAL VERSÉ : le secret d'enrôlement
+# n'apparaît que par sa longueur, et le mot de passe du compte d'essai est une
+# chaîne jetable propre à cette exécution.
 set -uo pipefail
 
 SORTIE="${1:?usage : vm-corroboration.sh <repertoire-de-sortie> [duree]}"
@@ -49,28 +49,28 @@ set -a; source "$RACINE/.env"; set +a
 SECRET_JETON='***RETIRE-DE-L-HISTORIQUE***'
 MOTDEPASSE='p4-corroboration-jetable'
 EMAIL='p4@essai.local'
-# ⚠️ 8082: neither 8080 (the default, which another acceptance run's service may hold),
-# nor 8081 (P3's). The TURN workstream's trap — "check the environment
-# of the process THAT REALLY LISTENS" — is paid for by plugging into a service
-# one did not launch. We take a port of our own, and `SIGNALING_URL` follows.
+# ⚠️ 8082 : ni 8080 (le défaut, qu'un service d'une autre recette peut tenir),
+# ni 8081 (celui de P3). Le piège du chantier TURN — « vérifier l'environnement
+# du processus QUI ÉCOUTE RÉELLEMENT » — se paie en se branchant sur un service
+# qu'on n'a pas lancé. On prend un port à nous, et `SIGNALING_URL` suit.
 PORT=8090
-DB_FILE="$SORTIE/plateforme-vm.sqlite"
-rm -f "$DB_FILE"
+BASE_FICHIER="$SORTIE/plateforme-vm.sqlite"
+rm -f "$BASE_FICHIER"
 
 dire() { echo "[$(date +%H:%M:%S)] $*"; }
-# Reads `vu_a` IN THE DATABASE, without going through the service: it is the column the
-# heartbeat advances, and reading it here avoids judging freshness on the output of the
-# very module we want to test.
+# Lit `vu_a` DANS LA BASE, sans passer par le service : c'est la colonne que le
+# battement avance, et la lire ici évite de juger la fraîcheur sur la sortie du
+# module qu'on veut justement éprouver.
 vu_a() {
     node -e '
 const { DatabaseSync } = require("node:sqlite");
 const db = new DatabaseSync(process.argv[1]);
 const l = db.prepare("SELECT vu_a FROM agent_enrole WHERE vm_id = ?").all(process.argv[2]);
 console.log(l.length === 0 ? "aucune ligne agent_enrole" : String(l[0].vu_a));
-' "$DB_FILE" "$1" 2>/dev/null
+' "$BASE_FICHIER" "$1" 2>/dev/null
 }
-# `curl` rather than `fetch`: we test the HTTP surface as it is
-# served, without the slightest code of ours between it and the reading.
+# `curl` plutôt que `fetch` : on éprouve la surface HTTP telle qu'elle est
+# servie, sans le moindre code à nous entre elle et le relevé.
 appel() { curl -s -o "$2" -w '%{http_code}' "${@:3}"; }
 
 echo "# CORROBORATION SUR VM RÉELLE — TÂCHE 16, HORS CRITÈRE"
@@ -78,7 +78,7 @@ echo "# Jouée le $(date -Is), commit $(git -C "$RACINE" rev-parse --short HEAD)
 echo "# Durée de la phase page-shell : ${DUREE} s"
 echo
 
-# --- 0. the VM's state, BEFORE anything else ------------------------------------
+# --- 0. l'état de la VM, AVANT toute chose ------------------------------------
 dire '=== 0. état de la VM et du binaire ==='
 virsh list --all 2>&1 | sed 's/^/    /'
 if ! virsh list --state-running --name 2>/dev/null | grep -q '^Windows$'; then
@@ -106,7 +106,7 @@ dire '=== 1. démarrage du service de plateforme ==='
 PLATEFORME_HOTE=192.168.3.1 \
 PLATEFORME_PORT="$PORT" \
 PLATEFORME_BASE=sqlite \
-PLATEFORME_BASE_URL="$DB_FILE" \
+PLATEFORME_BASE_URL="$BASE_FICHIER" \
 PLATEFORME_SECRET_JETON="$SECRET_JETON" \
     "$RACINE/plateforme/node_modules/.bin/tsx" "$RACINE/plateforme/src/index.ts" \
     > "$SORTIE/service.log" 2>&1 &
@@ -117,9 +117,9 @@ for _ in $(seq 1 60); do grep -q 'le port ' "$SORTIE/service.log" 2>/dev/null &&
 grep 'le port ' "$SORTIE/service.log" | sed 's/^/    /' || { dire '🔴 le service n’a pas démarré'; cat "$SORTIE/service.log"; exit 1; }
 
 ADMIN_ENV=(PLATEFORME_HOTE=192.168.3.1 PLATEFORME_BASE=sqlite
-           PLATEFORME_BASE_URL="$DB_FILE" PLATEFORME_SECRET_JETON="$SECRET_JETON")
+           PLATEFORME_BASE_URL="$BASE_FICHIER" PLATEFORME_SECRET_JETON="$SECRET_JETON")
 
-# --- 2. enrolment, account, and the state BEFORE assignment -----------------------
+# --- 2. enrôlement, compte, et l'état AVANT attribution -----------------------
 dire '=== 2. npm run admin:agent ==='
 ENROLEMENT="$(cd "$RACINE/plateforme" && env "${ADMIN_ENV[@]}" npm run --silent admin:agent -- --vm w1 --adresse 192.168.3.2 2>/dev/null)"
 AGENT_VM="$(echo "$ENROLEMENT" | sed -n 's/^vm_id=//p')"
@@ -155,7 +155,7 @@ dire '=== 8. POST /session, attribuée mais AGENT MUET — attendu 503 agent-inj
 C="$(appel x "$SORTIE/session-agent-muet.json" -X POST "http://192.168.3.1:$PORT/session" -H "authorization: Bearer $ACCES")"
 dire "    code = $C  corps = $(cat "$SORTIE/session-agent-muet.json")"
 
-# --- 9. a window to capture ------------------------------------------------
+# --- 9. une fenêtre à capturer ------------------------------------------------
 dire '=== 9. ouverture d’une fenêtre éligible dans la session interactive ==='
 cat > /media/vm/dev/p4-fenetre.ps1 <<'PS1'
 Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -192,7 +192,7 @@ dire '=== 13. GET /vm ==='
 C="$(appel x "$SORTIE/vm.json" "http://192.168.3.1:$PORT/vm" -H "authorization: Bearer $ACCES")"
 dire "    code = $C  corps = $(cat "$SORTIE/vm.json")"
 
-# --- 14. the shell page, on THE PREFIX RETURNED BY THE ROUTE ---------------------
+# --- 14. la page-shell, sur LE PRÉFIXE RENDU PAR LA ROUTE ---------------------
 dire "=== 14. page-shell scriptée sur le préfixe RENDU PAR LA ROUTE, ${DUREE} s ==="
 dire "    préfixe employé : $PREFIXE_ROUTE"
 "$RACINE/plateforme/node_modules/.bin/tsx" "$INSTRU_P3/shell-scripte.ts" \
@@ -204,7 +204,7 @@ dire '=== 15. GET /vm pendant/après la session — sessions_ouvertes ==='
 C="$(appel x "$SORTIE/vm-apres.json" "http://192.168.3.1:$PORT/vm" -H "authorization: Bearer $ACCES")"
 dire "    code = $C  corps = $(cat "$SORTIE/vm-apres.json")"
 
-# --- 16. the stop, and the evidence -----------------------------------------------
+# --- 16. l'arrêt, et les pièces -----------------------------------------------
 dire '=== 16. arrêt de l’agent et copie des pièces ==='
 node "$RACINE/scripts/winrm.js" 'Stop-Process -Name agent -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; (Get-Process agent -ErrorAction SilentlyContinue).Count' 2>/dev/null | sed 's/^/    agents restants : /'
 sleep 2
@@ -219,7 +219,7 @@ const db = new DatabaseSync(process.argv[1]);
 for (const l of db.prepare("SELECT nom_session, utilisateur_id, vm_id, ouverte_a, fermee_a FROM session ORDER BY ouverte_a").all()) {
     console.log(JSON.stringify(l));
 }
-' "$DB_FILE" 2>&1 | sed 's/^/    /'
+' "$BASE_FICHIER" 2>&1 | sed 's/^/    /'
 
 dire '=== 18. le RELEVÉ, assertion par assertion ==='
 node "$RACINE/docs/superpowers/plans/journaux-plateforme-p4/instrument/verdict-vm.mjs" \

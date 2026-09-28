@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
-# Plays ONE red run of acceptance run P4: mutate, play the criterion, restore, PROVE
-# the restoration.
+# Joue UNE rouge de la recette P4 : muter, jouer le critère, restaurer, PROUVER
+# la restauration.
 #
-#     instrument/rouge.sh <label> <mutated-file> <criterion> <engine> <output>
+#     instrument/rouge.sh <étiquette> <fichier-muté> <critère> <moteur> <sortie>
 #
-# The mutation itself is applied by the calling script, BEFORE the call:
-# this script only frames it. It writes into the log the diff, the
-# `sha256` BEFORE mutation (read from the repository), the one AFTER restoration, and their
-# comparison.
+# La mutation elle-même est appliquée par le script appelant, AVANT l'appel :
+# ce script ne fait que l'encadrer. Il écrit dans le journal le diff, le
+# `sha256` AVANT mutation (lu du dépôt), celui APRÈS restauration, et leur
+# comparaison.
 #
-# 🔴 `git checkout` DOES NOT RESTORE AN UNTRACKED FILE. Two mutations
-# survived it in this repository on August 20th, 2026, including a `setTimeout(2000)` left in
-# a PRODUCTION ROUTE. It is the reason for the fingerprint
-# comparison below: it does not trust `git checkout`, it
-# checks it. All files mutated by this acceptance run are tracked — it is
-# checked by `git ls-files --error-unmatch` before any mutation.
+# 🔴 `git checkout` NE RESTAURE PAS UN FICHIER NON SUIVI. Deux mutations y ont
+# survécu dans ce dépôt le 20 août 2026, dont un `setTimeout(2000)` laissé dans
+# une ROUTE DE PRODUCTION. C'est la raison d'être de la comparaison
+# d'empreintes ci-dessous : elle ne fait pas confiance à `git checkout`, elle
+# le vérifie. Tous les fichiers mutés par cette recette sont suivis — c'est
+# contrôlé par `git ls-files --error-unmatch` avant toute mutation.
 set -uo pipefail
 
-ETIQUETTE="$1"; FILE="$2"; CRITERE="$3"; MOTEUR="$4"; SORTIE="$5"
+ETIQUETTE="$1"; FICHIER="$2"; CRITERE="$3"; MOTEUR="$4"; SORTIE="$5"
 RACINE="$(cd "$(dirname "$0")/../../../../.." && pwd)"
-# ⚠️ NO APOSTROPHE IN THIS MESSAGE: bash parses the word of a ${var:?word} with
-# the quoting rules, and an apostrophe there opened a single quote that
-# made the whole script syntactically invalid. Caught at the first run.
-BEFORE="${BEFORE_SHA:?AVANT_SHA doit etre pose par le script appelant, AVANT la mutation}"
+# ⚠️ PAS D'APOSTROPHE DANS CE MESSAGE : bash parse le mot d'un ${var:?mot} avec
+# les règles de citation, et un « l'appelant » y ouvrait une simple quote qui
+# rendait le script entier insyntaxique. Attrapé à la première exécution.
+AVANT="${AVANT_SHA:?AVANT_SHA doit etre pose par le script appelant, AVANT la mutation}"
 
 {
     echo "# ROUGE ${ETIQUETTE} — critère ${CRITERE}, moteur ${MOTEUR}"
     echo "# Jouée le $(date -Is), commit $(git -C "$RACINE" rev-parse --short HEAD)"
     echo "#"
     echo "--- le fichier muté est-il SUIVI par git ? (sans quoi checkout ne le restaurerait pas) ---"
-    git -C "$RACINE" ls-files --error-unmatch "$FILE" >/dev/null 2>&1 \
+    git -C "$RACINE" ls-files --error-unmatch "$FICHIER" >/dev/null 2>&1 \
         && echo "SUIVI : oui" || echo "SUIVI : 🔴 NON — la restauration serait ILLUSOIRE"
     echo
     echo "--- la mutation, en diff ---"
-    git -C "$RACINE" --no-pager diff -- "$FILE" | sed 's/^/    /'
+    git -C "$RACINE" --no-pager diff -- "$FICHIER" | sed 's/^/    /'
     echo
     echo "--- le contrôle, sur l'arbre MUTÉ ---"
 } > "$SORTIE"
@@ -42,15 +42,15 @@ BEFORE="${BEFORE_SHA:?AVANT_SHA doit etre pose par le script appelant, AVANT la 
 CODE=$?
 cat /tmp/rouge-corps.log >> "$SORTIE"
 
-git -C "$RACINE" checkout -- "$FILE"
-APRES="$(sha256sum "$RACINE/$FILE" | cut -d' ' -f1)"
+git -C "$RACINE" checkout -- "$FICHIER"
+APRES="$(sha256sum "$RACINE/$FICHIER" | cut -d' ' -f1)"
 
 {
     echo
     echo "--- restauration ---"
-    echo "sha256 AVANT mutation    : $BEFORE"
+    echo "sha256 AVANT mutation    : $AVANT"
     echo "sha256 APRÈS restauration: $APRES"
-    if [ "$BEFORE" = "$APRES" ]; then
+    if [ "$AVANT" = "$APRES" ]; then
         echo "les deux empreintes CONCORDENT : le fichier est rendu à l'octet près."
     else
         echo "🔴 LES DEUX EMPREINTES DIVERGENT : la mutation a SURVÉCU. NE PAS COMMITER."
@@ -61,6 +61,6 @@ APRES="$(sha256sum "$RACINE/$FILE" | cut -d' ' -f1)"
     echo "#  0 = 🔴 LA MUTATION EST RESTÉE VERTE, l'assertion visée n'éprouve rien)"
 } >> "$SORTIE"
 
-[ "$BEFORE" = "$APRES" ] || exit 2
+[ "$AVANT" = "$APRES" ] || exit 2
 [ "$CODE" -ne 0 ] || exit 3
 exit 0

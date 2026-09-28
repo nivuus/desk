@@ -1,51 +1,51 @@
 #!/usr/bin/env bash
-# Plays ONE red run: applies a named mutation, launches the check, RESTORES.
+# Joue UNE rouge : applique une mutation nommée, lance le contrôle, RESTAURE.
 #
-#     instrument/rouge.sh <file> <mutation-python> <check-command>
+#     instrument/rouge.sh <fichier> <python-de-mutation> <commande-de-controle>
 #
-# 🔴 RESTORATION GOES NEITHER THROUGH `git checkout` NOR THROUGH `git stash`. The
-# original content is copied into a temporary file BEFORE the mutation and
-# written back AFTER, then `git diff --quiet` on that SINGLE file proves the tree
-# is back to identical. Four agents of this repository got trapped the
-# same day by a `git checkout` that took uncommitted work with it; this
-# script cannot make that mistake, it only knows one file.
+# 🔴 LA RESTAURATION NE PASSE PAS PAR `git checkout` NI PAR `git stash`. Le
+# contenu d'origine est copié dans un fichier temporaire AVANT la mutation et
+# réécrit APRÈS, puis `git diff --quiet` sur ce SEUL fichier prouve que l'arbre
+# est revenu à l'identique. Quatre agents de ce dépôt se sont fait piéger le
+# même jour par un `git checkout` qui a emporté du travail non commité ; ce
+# script ne peut pas commettre cette erreur, il ne connaît qu'un fichier.
 #
-# ⚠️ THE CHECK'S EXIT CODE IS RECORDED, NOT PROPAGATED. A SUCCESSFUL red run
-# is a check that FAILS: propagating its code would pass the red run off as
-# an incident. This script exits with 0 if the restoration is clean, and with 1
-# otherwise — it is the only thing that should alarm it.
+# ⚠️ LE CODE DE SORTIE DU CONTRÔLE EST RELEVÉ, PAS PROPAGÉ. Une rouge RÉUSSIE
+# est un contrôle qui ÉCHOUE : propager son code ferait passer la rouge pour
+# un incident. Ce script sort en 0 si la restauration est propre, et en 1
+# sinon — c'est la seule chose qui doive l'alarmer.
 set -uo pipefail
 
-FILE="$1"
+FICHIER="$1"
 MUTATION="$2"
 CONTROLE="$3"
 RACINE="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 cd "$RACINE"
 
 ORIGINAL="$(mktemp)"
-cp "$FILE" "$ORIGINAL"
-# 🔴 RESTORATION IS A `trap`, NOT A LINE AT THE END OF THE SCRIPT. A
-# check command containing `exit` (they do contain some, to propagate
-# the check's code through `eval`) would end the script BEFORE the
-# restoration and leave the mutation in the tree — MEASURED at the first
-# wording of this script, on `identite/garde.ts`.
-restaurer() { cp "$ORIGINAL" "$FILE"; }
+cp "$FICHIER" "$ORIGINAL"
+# 🔴 LA RESTAURATION EST UN `trap`, PAS UNE LIGNE DE FIN DE SCRIPT. Une
+# commande de contrôle contenant `exit` (elles en contiennent, pour propager
+# le code du contrôle à travers `eval`) terminerait le script AVANT la
+# restauration et laisserait la mutation dans l'arbre — MESURÉ à la première
+# rédaction de ce script, sur `identite/garde.ts`.
+restaurer() { cp "$ORIGINAL" "$FICHIER"; }
 trap restaurer EXIT
 
-python3 -c "$MUTATION" || { cp "$ORIGINAL" "$FILE"; echo 'MUTATION EN ÉCHEC' >&2; exit 1; }
+python3 -c "$MUTATION" || { cp "$ORIGINAL" "$FICHIER"; echo 'MUTATION EN ÉCHEC' >&2; exit 1; }
 
-# ⚠️ `diff -u` ON THE COPY, AND NOT `git diff`. One of the probes mutated here is
-# the instrument itself, which is not yet tracked by git when the
-# red run is played: `git diff` would show NOTHING of it, and `git diff --quiet`
-# would return 0 on a file left mutated — a restoration check unable
-# to fail. MEASURED at the first wording of this script, on red run ④.
+# ⚠️ `diff -u` SUR LA COPIE, ET NON `git diff`. Une des sondes mutées ici est
+# l'instrument lui-même, qui n'est pas encore suivi par git au moment où la
+# rouge se joue : `git diff` n'en montrerait RIEN, et `git diff --quiet`
+# rendrait 0 sur un fichier resté muté — un contrôle de restauration incapable
+# d'échouer. MESURÉ à la première rédaction de ce script, sur la rouge ④.
 echo "--- la mutation, en diff ---"
-diff -u "$ORIGINAL" "$FILE" | sed 's/^/    /'
+diff -u "$ORIGINAL" "$FICHIER" | sed 's/^/    /'
 echo
 echo "--- le contrôle, sur l'arbre MUTÉ ---"
-# SUBSHELL: an `exit` in the check command must not
-# take this script down with it (see the `trap` above, which catches the case where it
-# would anyway).
+# SOUS-COQUILLE : un `exit` dans la commande de contrôle ne doit pas
+# emporter ce script (voir le `trap` ci-dessus, qui rattrape le cas où il le
+# ferait quand même).
 ( eval "$CONTROLE" ) 2>&1
 CODE=$?
 echo
@@ -55,16 +55,16 @@ echo "# (un code NON NUL est ce qu'on cherche : le contrôle dénonce la mutatio
 restaurer
 trap - EXIT
 echo
-# The proof of restoration is a FINGERPRINT, not a `git diff`: it holds
-# for a tracked file as well as for one that is not.
-BEFORE="$(sha256sum < "$ORIGINAL" | cut -d' ' -f1)"
-APRES="$(sha256sum < "$FILE" | cut -d' ' -f1)"
+# La preuve de restauration est une EMPREINTE, pas un `git diff` : elle vaut
+# pour un fichier suivi comme pour un fichier qui ne l'est pas.
+AVANT="$(sha256sum < "$ORIGINAL" | cut -d' ' -f1)"
+APRES="$(sha256sum < "$FICHIER" | cut -d' ' -f1)"
 rm -f "$ORIGINAL"
-echo "# sha256 avant la mutation : $BEFORE"
+echo "# sha256 avant la mutation : $AVANT"
 echo "# sha256 après restauration: $APRES"
-if [ "$BEFORE" = "$APRES" ]; then
+if [ "$AVANT" = "$APRES" ]; then
     echo "# source RESTAURÉE À L'IDENTIQUE (empreintes égales)"
     exit 0
 fi
-echo "🔴 RESTAURATION EN ÉCHEC sur $FILE" >&2
+echo "🔴 RESTAURATION EN ÉCHEC sur $FICHIER" >&2
 exit 1

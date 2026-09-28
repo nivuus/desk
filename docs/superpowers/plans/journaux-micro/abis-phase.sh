@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# One A-bis acceptance phase.
-#   $1 label  $2 value of AUDIO_PERIPHERIQUE ('' = absent)
-#   $3 waveOut or jouer prefix ('' = nothing)  $4 frequency Hz
+# Une phase de recette A-bis.
+#   $1 etiquette  $2 valeur d'AUDIO_PERIPHERIQUE ('' = absente)
+#   $3 prefixe waveOut ou jouer ('' = rien)  $4 frequence Hz
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver ROOT (git rev-parse a echoue)" >&2; exit 1; }
 cd "$ROOT"
@@ -12,9 +12,9 @@ USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"
 
 node scripts/winrm.js 'Stop-Process -Name agent -Force -ErrorAction SilentlyContinue' >/dev/null 2>&1
 
-# The tone must play in the INTERACTIVE SESSION, like the agent: a
-# waveOut render launched from WinRM (session 0) reaches no
-# endpoint of session 1 — measured in phase R2-temoin, samples=0.
+# La tonalite doit jouer dans la SESSION INTERACTIVE, comme l'agent : un
+# rendu waveOut lance depuis WinRM (session 0) n'atteint aucun point de
+# terminaison de la session 1 — mesure de la phase R2-temoin, echantillons=0.
 if [ -n "$JOUER" ]; then
   node scripts/winrm.js "schtasks /delete /tn abis-tonalite /f 2>\$null; \
      schtasks /create /tn abis-tonalite /f /it /ru '$USER_NAME' /rp '$WINDOWS_ADMIN_PASSWORD' /sc once /st 00:00 \

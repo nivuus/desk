@@ -1,27 +1,27 @@
-// Batch 3 latency probe — injected into the session page through CDP.
+// Sonde de latence du lot 3 — injectée dans la page de session par CDP.
 //
-// 🔴 IT IS NOT A PRODUCT CHANGE: the client does not call
-// requestVideoFrameCallback, and this probe does not add it there — it
-// attaches from outside, for the duration of the measurement.
+// 🔴 ELLE N'EST PAS UN CHANGEMENT DE PRODUIT : le client n'appelle pas
+// requestVideoFrameCallback, et cette sonde ne l'y ajoute pas — elle
+// s'attache depuis l'extérieur, le temps de la mesure.
 //
-// The agent announces the capture instant to the peer through the RTCP sender report
-// (agent/src/transport/piste_video.rs, held by the test
-// `write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp`);
-// the browser returns it in metadata.captureTime. The subtraction IS the
-// latency.
+// L'agent annonce l'instant de capture au pair par le sender report RTCP
+// (agent/src/transport/piste_video.rs, tenu par le test
+// `write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp`) ;
+// le navigateur le rend dans metadata.captureTime. La soustraction EST la
+// latence.
 //
-// ⚠️ BOTH TIMESTAMPS ARE RETURNED IN THE DOCUMENT'S CLOCK
-// (`DOMHighResTimeStamp`, same origin as `performance.now()`), and that is
-// PRECISELY what makes the subtraction legitimate: `captureTime` is not
-// the VM's clock, it is the capture instant BROUGHT BACK into the document's
-// clock by the RTCP correlation. No clock synchronisation between
-// host and guest is therefore required, and none is assumed.
+// ⚠️ LES DEUX HORODATAGES SONT RENDUS DANS L'HORLOGE DU DOCUMENT
+// (`DOMHighResTimeStamp`, même origine que `performance.now()`), et c'est
+// PRÉCISÉMENT ce qui rend la soustraction licite : `captureTime` n'est pas
+// l'horloge de la VM, c'est l'instant de capture RAMENÉ dans l'horloge du
+// document par la corrélation RTCP. Aucune synchronisation d'horloges entre
+// l'hôte et l'invité n'est donc requise, et aucune n'est supposée.
 //
-// ⚠️ WHY A FRAME COUNTER NEXT TO THE SAMPLES. An empty array
-// has TWO causes it does not distinguish: no frame arrives, or frames
-// arrive without `captureTime`. Confusing them would make one conclude "no stream"
-// where what we have is "no clock correlation", which is an ENTIRELY DIFFERENT
-// defect. The counter separates them.
+// ⚠️ POURQUOI UN COMPTEUR DE TRAMES À CÔTÉ DES ÉCHANTILLONS. Un tableau vide
+// a DEUX causes qu'il ne distingue pas : aucune trame n'arrive, ou des trames
+// arrivent sans `captureTime`. Les confondre ferait conclure « pas de flux »
+// là où l'on tient « pas de corrélation d'horloge », qui est un TOUT AUTRE
+// défaut. Le compteur les sépare.
 (() => {
   const echantillons = [];
   const compteurs = { trames: 0, sans_capture: 0, videos: 0 };
@@ -30,8 +30,8 @@
     compteurs.videos += 1;
     const tour = (maintenant, metadata) => {
       compteurs.trames += 1;
-      // captureTime is ABSENT as long as the remote clock is not known:
-      // a sample without it is not a zero, it does not exist.
+      // captureTime est ABSENT tant que l'horloge distante n'est pas connue :
+      // un échantillon sans lui n'est pas un zéro, il n'existe pas.
       if (typeof metadata.captureTime === 'number') {
         echantillons.push({
           latence_ms: metadata.presentationTime - metadata.captureTime,

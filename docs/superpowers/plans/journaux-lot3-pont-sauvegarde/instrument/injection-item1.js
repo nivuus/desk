@@ -1,30 +1,30 @@
-// Batch 3, item 1 (3.7) — injected BEFORE any script of the page, through
-// `Target.setAutoAttach` + `waitForDebuggerOnStart` at BROWSER level.
+// Lot 3, item 1 (3.7) — injectée AVANT tout script de la page, par
+// `Target.setAutoAttach` + `waitForDebuggerOnStart` au niveau NAVIGATEUR.
 //
-// 🔴 WHAT IT SUBSTITUTES, AND NOTHING MORE: `showDirectoryPicker()`. Everything
-// downstream — `choisirDossier()`, `createWriter`, `createMutator`,
-// `createAdapter`, the channel, the bridge — is the PRODUCT, unmodified. The
-// returned handle is a REAL `FileSystemDirectoryHandle` (OPFS), so
-// `createWritable()` is the real one there, with its swap file and its
-// commit on `close()`.
+// 🔴 CE QU'ELLE SUBSTITUE, ET RIEN DE PLUS : `showDirectoryPicker()`. Tout ce
+// qui est en aval — `choisirDossier()`, `creerEcrivain`, `creerMutateur`,
+// `creerAdaptateur`, le canal, le pont — est le PRODUIT, non modifié. La
+// poignée rendue est une VRAIE `FileSystemDirectoryHandle` (OPFS), donc
+// `createWritable()` y est le vrai, avec son fichier d'échange et sa
+// committaison au `close()`.
 //
-// ⚠️ WHAT OPFS DOES NOT COVER, AND IT IS DECLARED (a limit inherited from F1/F2):
-// `showDirectoryPicker()` is never really called, the
-// permission model (`queryPermission`/`requestPermission`) is not exercised, and
-// neither is the transient user activation. OPFS has no permission
-// model.
+// ⚠️ CE QU'OPFS NE COUVRE PAS, ET C'EST DÉCLARÉ (limite héritée de F1/F2) :
+// `showDirectoryPicker()` n'est jamais réellement appelé, le modèle de
+// permission (`queryPermission`/`requestPermission`) n'est pas exercé, et
+// l'activation utilisateur transitoire non plus. OPFS n'a aucun modèle de
+// permission.
 //
-// 🔴 ONLY THE HUB PAGE POPULATES OPFS — an instrument defect paid for by F2: this
-// injection is set on ALL targets, including the application
-// windows opened by `window.open`. Each of them then purged OPFS and
-// repopulated it WHILE the bridge was writing there, and the symptom read as a
-// product defect (files "gone", a case guard "out of
-// order"). The guard below is what prevents it.
+// 🔴 SEULE LA PAGE DU HUB PEUPLE OPFS — défaut d'instrument payé par F2 : cette
+// injection est posée sur TOUTES les cibles, y compris les fenêtres
+// d'application ouvertes par `window.open`. Chacune purgeait alors OPFS et le
+// repeuplait PENDANT que le pont y écrivait, et le symptôme se lisait comme un
+// défaut du produit (des fichiers « disparus », une garde de casse « en
+// panne »). Le garde ci-dessous est ce qui l'empêche.
 (() => {
     const EST_HUB = location.pathname === '/'
         || location.pathname.endsWith('/hub.html')
         || location.pathname.endsWith('/index.html') === false && location.search === '';
-    window.__item1 = { etapes: [], errors: [], est_hub: EST_HUB, chemin: location.pathname };
+    window.__item1 = { etapes: [], erreurs: [], est_hub: EST_HUB, chemin: location.pathname };
     const noter = (m) => {
         window.__item1.etapes.push({ t: Date.now(), m: String(m).slice(0, 400) });
         if (window.__item1.etapes.length > 400) window.__item1.etapes.shift();
@@ -33,17 +33,17 @@
 
     if (!EST_HUB) { noter('pas le hub : OPFS laissé intact'); return; }
 
-    // The name of the file the editor will reopen and save again. It carries a
-    // known INITIAL content, so that "the save arrived" can be
-    // told apart from "the file was already there".
+    // Le nom du fichier que l'éditeur va rouvrir et réenregistrer. Il porte un
+    // contenu INITIAL connu, pour que « la sauvegarde est arrivée » se
+    // distingue de « le fichier était déjà là ».
     const NOM = 'item1-sauvegarde.txt';
     const INITIAL = 'contenu initial pose par le pilote du lot 3\n';
 
     window.__item1Preparer = async () => {
         const racine = await navigator.storage.getDirectory();
         const dossier = await racine.getDirectoryHandle('Mes documents', { create: true });
-        // Purge: OPFS persists in the profile, and a second run would read
-        // the first one's data set.
+        // Purge : OPFS persiste dans le profil, et une seconde exécution lirait
+        // le jeu de la première.
         for await (const nom of dossier.keys()) {
             await dossier.removeEntry(nom, { recursive: true });
         }
@@ -56,16 +56,16 @@
         return { nom: NOM, octets: INITIAL.length };
     };
 
-    // The SUBSTITUTION, and it alone.
+    // La SUBSTITUTION, et elle seule.
     window.showDirectoryPicker = async () => {
         if (!window.__item1Dossier) await window.__item1Preparer();
         noter('showDirectoryPicker substitué : poignée OPFS rendue');
         return window.__item1Dossier;
     };
 
-    /// Rereads the local root: the content of each entry, and its digest.
-    /// 🔴 IT IS THE SIDE THAT JUDGES. The agent's log says what ProjFS
-    /// notified; ONLY this reading says whether the save ARRIVED.
+    /// Relit la racine locale : le contenu de chaque entrée, et son condensat.
+    /// 🔴 C'EST LE CÔTÉ QUI JUGE. Le journal de l'agent dit ce que ProjFS a
+    /// notifié ; SEUL ce relevé dit si la sauvegarde est ARRIVÉE.
     window.__item1Relire = async () => {
         const dossier = window.__item1Dossier
             ?? await (await navigator.storage.getDirectory())
@@ -73,14 +73,14 @@
         const sortie = [];
         for await (const [nom, poignee] of dossier.entries()) {
             if (poignee.kind !== 'file') { sortie.push({ nom, kind: poignee.kind }); continue; }
-            const file = await poignee.getFile();
-            const texte = await file.text();
+            const fichier = await poignee.getFile();
+            const texte = await fichier.text();
             const octets = new TextEncoder().encode(texte);
             const condensat = await crypto.subtle.digest('SHA-256', octets);
             sortie.push({
                 nom,
-                taille: file.size,
-                modifie: file.lastModified,
+                taille: fichier.size,
+                modifie: fichier.lastModified,
                 sha256: [...new Uint8Array(condensat)]
                     .map((o) => o.toString(16).padStart(2, '0')).join(''),
                 debut: texte.slice(0, 200),

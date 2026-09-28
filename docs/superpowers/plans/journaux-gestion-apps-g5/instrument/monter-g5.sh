@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# THE SETUP OF ACCEPTANCE RUN G5 — fresh database, platform, static client.
+# LE MONTAGE DE LA RECETTE G5 — base neuve, plateforme, client statique.
 #
-# 🔴 NO VM, NO AGENT (decision D7 of the plan). The three criteria measure
-#    a BROWSER; the VM is held by a neighbouring workstream, and putting it in
-#    G5's critical path would make each iteration costly and each
-#    failure ambiguous.
+# 🔴 AUCUNE VM, AUCUN AGENT (décision D7 du plan). Les trois critères mesurent
+#    un NAVIGATEUR ; la VM est tenue par un chantier voisin, et la mettre dans
+#    le chemin critique de G5 rendrait chaque itération coûteuse et chaque
+#    échec ambigu.
 #
-# ⚠️ THE PORTS ARE READ, NOT ASSUMED: "a port free by convention
-#    is not" — G3 and P4 each lost a run that way.
+# ⚠️ LES PORTS SONT RELEVÉS, PAS SUPPOSÉS : « un port libre par convention ne
+#    l'est pas » — G3 et P4 ont chacun perdu une exécution ainsi.
 set -euo pipefail
 unset -f chpwd 2>/dev/null || true
 
@@ -32,8 +32,8 @@ export PLATEFORME_HOTE=127.0.0.1
 export PLATEFORME_PORT="$PORT_PLATEFORME"
 export PLATEFORME_BASE=sqlite
 export PLATEFORME_BASE_URL="$TRAVAIL/g5.sqlite"
-# An acceptance secret, generated at each setup: it does not outlive the
-# working directory, and it is written in no versioned file.
+# Un secret de recette, engendré à chaque montage : il ne survit pas au
+# répertoire de travail, et il n'est écrit dans aucun fichier versionné.
 export PLATEFORME_SECRET_JETON="$(openssl rand -hex 32)"
 export PLATEFORME_ORIGINE_CLIENT="http://127.0.0.1:$PORT_CLIENT"
 export PLATEFORME_ICONES="$TRAVAIL/icones"
@@ -44,24 +44,24 @@ MOTDEPASSE="motdepasse-de-recette-g5"
 
 echo "=== ports retenus : plateforme $PORT_PLATEFORME, client $PORT_CLIENT ==="
 
-# ① the account. The password goes through STDIN — never through argv, which `ps`
-#    exposes to any user of the machine (P2's lesson, held by a test).
+# ① le compte. Le mot de passe passe par STDIN — jamais par l'argv, que `ps`
+#    expose à tout utilisateur de la machine (leçon de P2, tenue par un test).
 ( cd plateforme && printf '%s\n' "$MOTDEPASSE" | npm run --silent admin:utilisateur -- --email "$EMAIL" ) \
   > "$TRAVAIL/00-utilisateur.log" 2>&1
 
-# ② the VM, and its assignment.
+# ② la VM, et son attribution.
 ( cd plateforme && npm run --silent admin:agent -- --vm g5 --adresse 127.0.0.1 ) \
   > "$TRAVAIL/01-agent.log" 2>&1
 ( cd plateforme && npm run --silent admin:attribuer -- --email "$EMAIL" --vm g5 ) \
   > "$TRAVAIL/02-attribuer.log" 2>&1
 
-# ③ seeding, THROUGH THE REPOSITORY'S MODULES.
+# ③ l'ensemencement, PAR LES MODULES DU DÉPÔT.
 ( cd plateforme && npx tsx ../docs/superpowers/plans/journaux-gestion-apps-g5/instrument/ensemencer.mts g5 ) \
   > "$TRAVAIL/03-ensemencer.log" 2>&1
 
-# ④ the client, built then served statically. `vite build` first: without it,
-#    §7.3 and §7.7 would judge the previous build, and the acceptance run would serve a page
-#    that is not the one just written.
+# ④ le client, bâti puis servi en statique. `vite build` d'abord : sans lui,
+#    §7.3 et §7.7 jugeraient le build d'avant, et la recette servirait une page
+#    qui n'est pas celle qu'on vient d'écrire.
 ( cd client && npm run --silent build ) > "$TRAVAIL/04-build.log" 2>&1
 ( cd client/dist && python3 -m http.server "$PORT_CLIENT" --bind 127.0.0.1 ) \
   > "$TRAVAIL/05-client.log" 2>&1 &
@@ -79,7 +79,7 @@ EMAIL=$EMAIL
 MOTDEPASSE=$MOTDEPASSE
 EOF
 
-# We wait for the FACT — that both answer —, never a duration.
+# On attend le FAIT — que les deux répondent —, jamais une durée.
 for _ in $(seq 1 100); do
   if curl -sf "http://127.0.0.1:$PORT_CLIENT/hub.html" > /dev/null \
      && curl -sf "http://127.0.0.1:$PORT_PLATEFORME/sante" > /dev/null; then

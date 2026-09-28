@@ -1,26 +1,26 @@
-// 🔴 THE FREE RED RUN OF CRITERION ① — played on P2'S SERVICE, not on a
-// mutation of ours.
+// 🔴 LA ROUGE GRATUITE DU CRITÈRE ① — jouée sur le SERVICE DE P2, pas sur une
+// mutation du nôtre.
 //
 //     tsx rouge-1a.ts <racine-du-worktree-P2>
 //
-// Spec §7.2 announces it: "P3 ①: P2's service refuses the second agent
-// on `bureau`", and "these are RED RUNS to PLAY, not to assume". This
-// probe mounts the service of P2's LAST commit (`f0b2fca`) in a
-// `git worktree`, and does there exactly what workstream D does with two VMs:
-// two supervisors, each opening ITS control session. Without a prefix, both
-// name it `bureau` — a literal constant of
-// `agent/src/superviseur/protocole.rs` — and fight over the same entry of the
-// pairing table.
+// La spec §7.2 l'annonce : « P3 ① : le service de P2 refuse le second agent
+// sur `bureau` », et « ce sont des ROUGES à JOUER, pas à supposer ». Cette
+// sonde monte le service du DERNIER commit de P2 (`f0b2fca`) dans un
+// `git worktree`, et y fait exactement ce que fait le chantier D à deux VMs :
+// deux superviseurs, chacun ouvrant SA session de contrôle. Sans préfixe, les
+// deux la nomment `bureau` — une constante littérale de
+// `agent/src/superviseur/protocole.rs` — et se disputent la même entrée de la
+// table d'appariement.
 //
-// ⚠️ NO TOKEN IS PRESENTED, AND IT IS P2'S BEHAVIOUR: its guard
-// returns `{ok:true}` without requiring anything for the `agent` role (E2, measured by
-// `journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log`). Presenting a
-// token here would be an anachronism — P2's binary delivers none.
+// ⚠️ AUCUN JETON N'EST PRÉSENTÉ, ET C'EST LE COMPORTEMENT DE P2 : sa garde
+// rend `{ok:true}` sans rien exiger pour le rôle `agent` (E2, mesurée par
+// `journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log`). Présenter un
+// jeton ici serait un anachronisme — le binaire de P2 n'en délivre aucun.
 //
-// 🔴 THE WORKTREE IS NOT A `git checkout` OF THE WORKING TREE. Nothing
-// uncommitted is touched: `git worktree add` creates a SEPARATE tree, and
-// `plateforme/node_modules` is a symbolic link there to the main tree's,
-// the worktree having none.
+// 🔴 LE WORKTREE N'EST PAS UN `git checkout` DE L'ARBRE DE TRAVAIL. Rien de
+// non commité n'est touché : `git worktree add` crée un arbre SÉPARÉ, et
+// `plateforme/node_modules` y est un lien symbolique vers celui de l'arbre
+// principal, le worktree n'en ayant aucun.
 
 import { pathToFileURL } from 'node:url';
 import { ligne, Pair, poignee } from './socle';
@@ -28,16 +28,16 @@ import { ligne, Pair, poignee } from './socle';
 const racine = process.argv[2];
 if (!racine) throw new Error('usage : rouge-1a.ts <racine-du-worktree-P2>');
 
-// DYNAMIC import: the path is only known at runtime, and it points
-// outside this very repository.
+// Import DYNAMIQUE : le chemin n'est connu qu'à l'exécution, et il pointe
+// hors de ce dépôt-ci.
 const { lireConfig } = (await import(
     pathToFileURL(`${racine}/plateforme/src/config.ts`).href
 )) as typeof import('../../../../../plateforme/src/config');
-const { start } = (await import(
+const { demarrer } = (await import(
     pathToFileURL(`${racine}/plateforme/src/demarrage.ts`).href
 )) as typeof import('../../../../../plateforme/src/demarrage');
 
-const service = await start(
+const service = await demarrer(
     lireConfig({
         PLATEFORME_HOTE: '127.0.0.1',
         PLATEFORME_PORT: '0',
@@ -71,10 +71,10 @@ await second.attendre(1);
 const brutSecond = second.recues.map((t) => t.brut);
 dire(ligne('agent de la VM 2 -> bureau', brutSecond));
 
-const errors = brutSecond
+const erreurs = brutSecond
     .map((b) => JSON.parse(b) as { type?: string; reason?: string })
     .filter((m) => m.type === 'error');
-const motif = errors[0]?.reason;
+const motif = erreurs[0]?.reason;
 dire();
 dire(ligne('motif reçu par le SECOND, verbatim', motif ?? '<aucun>'));
 const attendu = 'un agent est déjà connecté à la session bureau';

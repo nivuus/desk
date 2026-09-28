@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Runs PowerShell in the VM's INTERACTIVE SESSION (session 1),
-# through an /IT scheduled task — a mechanism established by task 6.
-# Usage: vm-it.sh <task-name> '<powershell>'
+# Exécute du PowerShell dans la SESSION INTERACTIVE (session 1) de la VM,
+# via une tâche planifiée /IT — mécanisme établi par la tâche 6.
+# Usage : vm-it.sh <nom-tache> '<powershell>'
 set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver ROOT (git rev-parse a echoue)" >&2; exit 1; }
 NOM="$1"; shift

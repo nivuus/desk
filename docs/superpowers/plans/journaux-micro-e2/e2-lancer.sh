@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Launch sequence of one E2 acceptance run: KILL, check, launch.
+# Séquence de lancement d'une exécution de recette E2 : TUER, vérifier, lancer.
 #
-# 🔴 TWO TRAPS ARE WIRED HERE BECAUSE THEY WERE PAID FOR IN THIS BLOCK.
+# 🔴 DEUX PIÈGES SONT CÂBLÉS ICI PARCE QU'ILS ONT ÉTÉ PAYÉS DANS CE BLOC.
 #
-# 1. A surviving agent holds C:\dev\agent.log: the new StreamWriter cannot
-#    open it, and one then rereads the log of the PREVIOUS attempt
-#    believing one reads one's own. Hence `e2-tuer.ps1` first, unconditionally.
-# 2. `scripts/run-agent.sh` requires `.env` (WINDOWS_ADMIN_PASSWORD), and `.env`
-#    carries SIGNALING_URL=…:8080 — the platform of ANOTHER workstream. A
-#    `set -a; source .env` after the acceptance settings OVERWRITES them
-#    silently, and the agent will talk to the wrong service. The order below is
-#    therefore: .env first, acceptance settings AFTERWARDS.
+# 1. Un agent survivant tient C:\dev\agent.log : le nouveau StreamWriter ne peut
+#    pas l'ouvrir, et l'on relit alors le journal de la tentative PRÉCÉDENTE en
+#    croyant lire le sien. D'où `e2-tuer.ps1` en tête, sans condition.
+# 2. `scripts/run-agent.sh` exige `.env` (WINDOWS_ADMIN_PASSWORD), et `.env`
+#    porte SIGNALING_URL=…:8080 — la plateforme d'un AUTRE chantier. Un
+#    `set -a; source .env` postérieur aux réglages de la recette les ÉCRASE en
+#    silence, et l'agent va parler au mauvais service. L'ordre ci-dessous est
+#    donc : .env d'abord, réglages de recette ENSUITE.
 #
 # Usage : SESSION_ID=… MICRO=… [AUDIO_PERIPHERIQUE=…] ./e2-lancer.sh <agent.env>
 set -euo pipefail
 RACINE="$(git rev-parse --show-toplevel)" || { echo "🔴 hors du depot git : impossible de deriver RACINE (git rev-parse a echoue)" >&2; exit 1; }
 ENVRECETTE="${1:?chemin du fichier agent.env attendu}"
-# The acceptance settings, remembered BEFORE .env can overwrite them.
+# Les réglages de recette, mémorisés AVANT que .env ne puisse les écraser.
 GARDE_SESSION="${SESSION_ID:-}"; GARDE_MICRO="${MICRO:-}"
 GARDE_AUDIOP="${AUDIO_PERIPHERIQUE:-}"; GARDE_MICROP="${MICRO_PERIPHERIQUE:-}"
 GARDE_FAUTE="${MICRO_FAUTE_ECRITURE:-}"; GARDE_MESURE="${MICRO_MESURE:-}"

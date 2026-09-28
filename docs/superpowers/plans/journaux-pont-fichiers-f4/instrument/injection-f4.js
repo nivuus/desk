@@ -1,27 +1,27 @@
-// F4 — the TEMPLATE, and nothing else.
+// F4 — le GABARIT, et rien d'autre.
 //
-// 🔴 THIS FILE IS CONCATENATED AFTER `injection-f2.js`, NEVER IN ITS PLACE.
-// The driver reads BOTH files from their original directories and
-// joins them: "a copy would test the copy, not the instrument" (F3). Everything
-// F2 sets — the token, `showDirectoryPicker`, `__relire`, `__arbre`,
-// `__compteur`, the capture of `RTCPeerConnection` — therefore holds here without a
-// copied line.
+// 🔴 CE FICHIER EST CONCATENE APRES `injection-f2.js`, JAMAIS A LA PLACE.
+// Le pilote lit les DEUX fichiers depuis leurs repertoires d'origine et les
+// joint : « une copie eprouverait la copie, pas l'instrument » (F3). Tout ce
+// que F2 pose — le jeton, `showDirectoryPicker`, `__relire`, `__arbre`,
+// `__compteur`, la capture de `RTCPeerConnection` — vaut donc ici sans une
+// ligne recopiee.
 //
-// 🔴 THE TEMPLATE IS POPULATED ON THE DRIVER'S REQUEST, NOT AT LOAD.
-// Writing 100 MiB and 10,000 entries at each navigation would cost minutes at
-// each run, and a measurement launched on a HALF-WRITTEN template would return
-// a figure that means nothing. The driver calls, then waits for the FACT —
-// `__compteEntrees` — never a duration.
+// 🔴 LE GABARIT EST PEUPLE A LA DEMANDE DU PILOTE, PAS AU CHARGEMENT.
+// Ecrire 100 Mio et 10 000 entrees a chaque navigation couterait des minutes a
+// chaque execution, et une mesure lancee sur un gabarit A DEMI ECRIT rendrait
+// un chiffre qui ne veut rien dire. Le pilote appelle, puis attend le FAIT —
+// `__compteEntrees` — jamais une duree.
 //
-// ⚠️ F2'S `EST_SHELL` GUARD IS KEPT BY CONSTRUCTION: this file
-// only acts on the driver's call, and the driver only calls the shell page's
-// session. In M1 there is NO application window (plan §0.7), so
-// nothing to guard — and the guard stays, because M2 has some.
+// ⚠️ LE GARDE `EST_SHELL` DE F2 EST CONSERVE PAR CONSTRUCTION : ce fichier
+// n'agit que sur appel du pilote, et le pilote n'appelle que la session de la
+// page-shell. En M1 il n'y a AUCUNE fenetre d'application (plan §0.7), donc
+// rien a garder — et le garde reste, parce que M2 en a.
 //
-// ⚠️ THE DRIVER SUBSTITUTES THROUGH `replaceAll`, AND THIS COMMENT NAMES NONE OF ITS
-// MARKERS.
+// ⚠️ LE PILOTE SUBSTITUE PAR `replaceAll`, ET CE COMMENTAIRE N'EN NOMME AUCUN
+// MARQUEUR.
 (() => {
-    window.__f4 = { notes: [], errors: [] };
+    window.__f4 = { notes: [], erreurs: [] };
     const noter = (m) => {
         window.__f4.notes.push({ t: Date.now(), m: String(m).slice(0, 300) });
         if (window.__f4.notes.length > 400) window.__f4.notes.shift();
@@ -32,7 +32,7 @@
         return r.getDirectoryHandle('Mes documents', { create: true });
     };
 
-    /** Walks down (and creates) a path `a/b/c` under the fixture's documents folder. */
+    /** Descend (et cree) un chemin `a/b/c` sous « Mes documents ». */
     const dossier = async (chemin) => {
         let ici = await racine();
         for (const p of String(chemin).split('/').filter((s) => s.length > 0)) {
@@ -41,20 +41,20 @@
         return ici;
     };
 
-    // ⚠️ A NAME OF **EIGHTEEN** CHARACTERS, AND IT IS A MEASUREMENT CONSTRAINT,
-    // NOT A MATTER OF TASTE. §0.1 of the plan computes an entry's weight on the wire
-    // (85 B) with names of this length; a set of longer names
-    // would move the listing wall DOWN, a shorter set up,
-    // and the measured rank would no longer be the one the computation predicts.
+    // ⚠️ UN NOM DE **DIX-HUIT** CARACTERES, ET C'EST UNE CONTRAINTE DE MESURE,
+    // PAS UN GOUT. Le §0.1 du plan calcule le poids d'une entree sur le fil
+    // (85 o) avec des noms de cette longueur ; un jeu de noms plus longs
+    // deplacerait le mur du listage vers le BAS, un jeu plus court vers le
+    // haut, et le rang mesure ne serait plus celui que le calcul predit.
     //   e n t r e e - 0 0 0 0 0 - f . t x t   =  18
     const nomEntree = (i) => 'entree-' + String(i).padStart(5, '0') + '-f.txt';
 
-    /** Pseudo-random content with a FIXED SEED: two runs write the
-     *  same bytes, hence the same digest, hence a possible comparison. */
-    const octets = (size, graine) => {
-        const u = new Uint8Array(size);
+    /** Contenu pseudo-aleatoire de GRAINE FIXE : deux executions ecrivent les
+     *  memes octets, donc le meme condensat, donc une comparaison possible. */
+    const octets = (taille, graine) => {
+        const u = new Uint8Array(taille);
         let x = (graine >>> 0) || 1;
-        for (let i = 0; i < size; i += 1) {
+        for (let i = 0; i < taille; i += 1) {
             x ^= x << 13; x >>>= 0;
             x ^= x >> 17;
             x ^= x << 5; x >>>= 0;
@@ -64,11 +64,11 @@
     };
 
     /**
-     * Populates `listage/<N>/` with N files of ZERO bytes.
+     * Peuple `listage/<N>/` avec N fichiers de ZERO octet.
      *
-     * ⚠️ Zero bytes ON PURPOSE: we measure ENUMERATION, not hydration. A
-     * set of non-empty files would make Explorer's first `Get-ChildItem`
-     * also trigger reads, and the two would get mixed up.
+     * ⚠️ Zero octet A DESSEIN : on mesure l'ENUMERATION, pas l'hydratation. Un
+     * jeu de fichiers non vides ferait que le premier `Get-ChildItem` de
+     * l'Explorateur declenche aussi des lectures, et les deux se confondraient.
      */
     window.__gabaritListage = async (n) => {
         try {
@@ -80,39 +80,39 @@
             noter('gabarit listage/' + n + ' : ' + vus + ' entrees');
             return JSON.stringify({ demande: n, presentes: vus });
         } catch (e) {
-            window.__f4.errors.push('gabaritListage ' + n + ' : ' + String(e).slice(0, 300));
-            return JSON.stringify({ demande: n, error: String(e).slice(0, 300) });
+            window.__f4.erreurs.push('gabaritListage ' + n + ' : ' + String(e).slice(0, 300));
+            return JSON.stringify({ demande: n, erreur: String(e).slice(0, 300) });
         }
     };
 
-    /** Populates `<subfolder>/<nom>` with `size` bytes. */
-    window.__fileTemplate = async (subfolder, nom, size, graine) => {
+    /** Peuple `<sousDossier>/<nom>` de `taille` octets. */
+    window.__gabaritFichier = async (sousDossier, nom, taille, graine) => {
         try {
-            const d = await dossier(subfolder);
+            const d = await dossier(sousDossier);
             const fh = await d.getFileHandle(nom, { create: true });
             const w = await fh.createWritable();
-            // In slices of one MiB: a 100 MiB Uint8Array in one go works,
-            // but generating it byte by byte at once freezes the tab.
+            // Par tranches d'un Mio : une Uint8Array de 100 Mio d'un coup passe,
+            // mais la generer octet par octet en une fois fige l'onglet.
             const TRANCHE = 1 << 20;
-            let written = 0;
+            let ecrit = 0;
             let g = graine;
-            while (written < size) {
-                const n = Math.min(TRANCHE, size - written);
+            while (ecrit < taille) {
+                const n = Math.min(TRANCHE, taille - ecrit);
                 await w.write(octets(n, g));
-                written += n;
+                ecrit += n;
                 g = (g * 1664525 + 1013904223) >>> 0;
             }
             await w.close();
             const f = await (await d.getFileHandle(nom)).getFile();
-            noter('gabarit ' + subfolder + '/' + nom + ' : ' + f.size + ' octets');
-            return JSON.stringify({ chemin: subfolder + '/' + nom, taille: f.size });
+            noter('gabarit ' + sousDossier + '/' + nom + ' : ' + f.size + ' octets');
+            return JSON.stringify({ chemin: sousDossier + '/' + nom, taille: f.size });
         } catch (e) {
-            window.__f4.errors.push('gabaritFichier ' + nom + ' : ' + String(e).slice(0, 300));
-            return JSON.stringify({ chemin: subfolder + '/' + nom, error: String(e).slice(0, 300) });
+            window.__f4.erreurs.push('gabaritFichier ' + nom + ' : ' + String(e).slice(0, 300));
+            return JSON.stringify({ chemin: sousDossier + '/' + nom, erreur: String(e).slice(0, 300) });
         }
     };
 
-    /** The FACT the driver waits for: how many entries `chemin` REALLY carries. */
+    /** Le FAIT que le pilote attend : combien d'entrees `chemin` porte VRAIMENT. */
     window.__compteEntrees = async (chemin) => {
         try {
             const d = await dossier(chemin);
@@ -120,18 +120,18 @@
             for await (const _ of d.keys()) n += 1;
             return JSON.stringify({ chemin, entrees: n });
         } catch (e) {
-            return JSON.stringify({ chemin, error: String(e).slice(0, 200) });
+            return JSON.stringify({ chemin, erreur: String(e).slice(0, 200) });
         }
     };
 
-    // 🔴 NEUTRALISING `move` IS THE INSTRUMENT, NOT THE PRODUCT.
+    // 🔴 LA NEUTRALISATION DE `move` EST L'INSTRUMENT, PAS LE PRODUIT.
     //
-    // F3's rename-by-copy fallback (`client/src/fichiers/copie.ts`)
-    // HAS NEVER RUN: `mutation.ts` tests `typeof poignee.move === 'function'`
-    // AT CALL TIME, and `move()` exists on an OPFS file (F3's probe S2). The
-    // only way to measure the fallback's cost is therefore to remove `move` — which
-    // is a FORCED measurement, and the report says so. The CONTROL arm is the
-    // same gesture WITHOUT this call.
+    // Le repli de renommage par copie de F3 (`client/src/fichiers/copie.ts`)
+    // N'A JAMAIS COURU : `mutation.ts` teste `typeof poignee.move === 'function'`
+    // A L'APPEL, et `move()` existe sur un fichier OPFS (sonde S2 de F3). Le
+    // seul moyen de mesurer le cout du repli est donc de retirer `move` — ce
+    // qui est une mesure FORCEE, et le rapport le dit. Le bras TEMOIN est le
+    // meme geste SANS cet appel.
     window.__neutraliserMove = () => {
         const sauve = [];
         for (const P of [FileSystemFileHandle, FileSystemDirectoryHandle]) {
@@ -144,10 +144,10 @@
         return JSON.stringify({ neutralise: sauve, restant: typeof FileSystemFileHandle.prototype.move });
     };
 
-    /** What the injection layer noted, and what escaped it. */
+    /** Ce que la couche d'injection a note, et ce qui lui a echappe. */
     window.__f4Etat = () => JSON.stringify({
         notes: window.__f4.notes.slice(-40),
-        errors: window.__f4.errors,
+        erreurs: window.__f4.erreurs,
         move: typeof FileSystemFileHandle.prototype.move,
     });
 })();

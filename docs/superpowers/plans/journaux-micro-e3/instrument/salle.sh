@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# The EMULATED ROOM of block E3: a loudspeaker and a microphone, digitally.
+# La SALLE ÉMULÉE du bloc E3 : un haut-parleur et un microphone, en numérique.
 #
 #     salle.sh <secondes-de-vie>
 #
-# 🔴 THIS SCRIPT TOUCHES THE AUDIO GRAPH OF THE MACHINE'S OWNER, and it only
-# runs with their consent (the plan's Decision 5). Three consequences,
-# all declared:
+# 🔴 CE SCRIPT TOUCHE LE GRAPHE AUDIO DU PROPRIÉTAIRE DE LA MACHINE, et il ne
+# tourne qu'avec son consentement (Décision 5 du plan). Trois conséquences,
+# toutes déclarées :
 #
-#   1. wireplumber CAN elect the new node as the default output. The reading
-#      of August 21st, 2026 — redone THAT DAY and not copied from the plan — shows that the
-#      default is already `auto_null`, a fallback output, and that there is
-#      **NO `Audio/Source`**: nothing real to disturb. The risk is slim,
-#      **it is not zero**;
-#   2. the node DISAPPEARS WITH THE PROCESS — `pw-loopback` is a client, not
-#      a daemon module. Clean-up is therefore stopping the process, and it is
-#      in a `trap`, **never in the last line**;
-#   3. no write into `~mallanic`, no persistent configuration,
-#      no `systemctl`. **The bench is one process and two windows.**
+#   1. wireplumber PEUT élire le nœud neuf comme sortie par défaut. Le relevé
+#      du 21 août 2026 — refait CE JOUR et non recopié du plan — montre que le
+#      défaut est déjà `auto_null`, une sortie de repli, et qu'il n'y a
+#      **AUCUN `Audio/Source`** : rien de réel à perturber. Le risque est mince,
+#      **il n'est pas nul** ;
+#   2. le nœud DISPARAÎT AVEC LE PROCESSUS — `pw-loopback` est un client, pas
+#      un module du démon. Le nettoyage est donc l'arrêt du processus, et il est
+#      dans un `trap`, **jamais dans la dernière ligne** ;
+#   3. aucune écriture dans `~mallanic`, aucune configuration persistante,
+#      aucun `systemctl`. **Le banc est un processus et deux fenêtres.**
 #
-# 🔴 THE GRAPH IS COMPARED BY SET OF NAMES, NEVER BY NUMBER — a lesson from the
-# virtual outputs workstream: a third party can add a node, and an
-# external addition exactly compensates a removal on a cardinality check.
+# 🔴 LE GRAPHE EST COMPARÉ PAR ENSEMBLE DE NOMS, JAMAIS PAR NOMBRE — leçon du
+# chantier des sorties virtuelles : un tiers peut ajouter un nœud, et une
+# addition externe compense exactement un retrait sur un contrôle par cardinal.
 set -uo pipefail
 VIE="${1:-120}"
 export XDG_RUNTIME_DIR=/run/user/1000
