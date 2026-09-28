@@ -163,7 +163,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("AGENT_VM is the vm_id returned by admin:agent (never the name passed)",
           env_final.get("AGENT_VM"), "vm-test-uuid")
     check("AGENT_SECRET is the secret returned by admin:agent",
-          env_final.get("AGENT_SECRET"), "test-secret-0123456789abcdef")
+          env_final.get("AGENT_SECRET"), "secret-de-test-0123456789abcdef")
     check("the content already there (laid down by install) is still present",
           env_final.get("PLATEFORME_SECRET_JETON"), "x" * 64)
     check("desk.env stays in mode 600 (it carries secrets)",
@@ -184,7 +184,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("AGENT_VM is unchanged after the second pass",
           env_apres_second_passage.get("AGENT_VM"), "vm-test-uuid")
     check("AGENT_SECRET is unchanged after the second pass",
-          env_apres_second_passage.get("AGENT_SECRET"), "test-secret-0123456789abcdef")
+          env_apres_second_passage.get("AGENT_SECRET"), "secret-de-test-0123456789abcdef")
 
 
 # === Scenario 2: desk.env does not exist yet (install has not been

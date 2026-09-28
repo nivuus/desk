@@ -67,7 +67,7 @@ if "admin:utilisateur" in argv:
     sys.exit(0)
 if "admin:agent" in argv:
     sys.stdout.write("vm_id=vm-test-uuid\\nprefixe=abcd\\n"
-                      "AGENT_SECRET=test-secret-0123456789abcdef\\n")
+                      "AGENT_SECRET=secret-de-test-0123456789abcdef\\n")
     sys.exit(0)
 if "admin:attribuer" in argv:
     # Failure arm (task 13): simulates the real refusal of attribuer-vm.ts
