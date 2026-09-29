@@ -17,7 +17,7 @@
 //! aucun `#[path]` n'est employé — par la seule construction qui la serve : le
 //! parent est libre de `cfg`, ses parties Windows sont gatées à l'intérieur.
 //!
-//! La « Convention de module enfant » de `CLAUDE.md` n'est **pas** mobilisée :
+//! La « Convention de module enfant » de `docs/claude/conventions-modules.md` n'est **pas** mobilisée :
 //! aucun module ne franchit ici de frontière `#[cfg(windows)]`.
 
 /// 🔴 LA PREUVE DU SOUS-BLOC, ET ELLE EST PURE : lire un `GRPICONDIR` ou un

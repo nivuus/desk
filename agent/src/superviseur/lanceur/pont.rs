@@ -18,7 +18,7 @@
 //!
 //! `#![cfg(windows)]` hérité de `lanceur.rs` (son `#![cfg(windows)]` porte sur
 //! le module entier, enfants compris) : aucun `#[path]` n'est écrit ici, et la
-//! « convention de module enfant » de `CLAUDE.md` ne s'applique pas — elle ne
+//! « convention de module enfant » de `docs/claude/conventions-modules.md` ne s'applique pas — elle ne
 //! vise que les modules qu'on extrait d'un parent gaté pour les faire compiler
 //! sur l'hôte, ce que celui-ci n'a aucune raison d'être.
 

@@ -74,7 +74,7 @@ export function adresseSignaling(
     // Il cherchait dans `client/*.mjs client/recette/*.mjs scripts/*.sh`, où il
     // n'y a effectivement rien ; **mais TOUS les pilotes de recette de ce dépôt
     // vivent dans `docs/superpowers/plans/journaux-*/`**, que la commande
-    // n'atteignait pas. C'est le patron du « naufrage du 487 » de `CLAUDE.md` :
+    // n'atteignait pas. C'est le patron du « naufrage du 487 » de `docs/claude/pieges-documentation-taille-vm.md` :
     // une affirmation de complétude dont la commande n'a pas balayé son propre
     // périmètre.
     //
@@ -92,7 +92,7 @@ export function adresseSignaling(
     // chantier vient de fermer**.
     //
     // ⚠️ ILS SONT DONC TOUS À RÉPARER, ET AUCUN NE L'A ÉTÉ ICI : c'est un
-    // chantier à part, inscrit aux « Legs ouverts » de `CLAUDE.md`. ⚠️ Le
+    // chantier à part, inscrit aux « Legs ouverts » de `docs/claude/legs-decisions-auth-pomerium.md`. ⚠️ Le
     // `grep` ci-dessus attrape aussi les `.log` et `.json` de sortie, qui sont
     // des RELEVÉS et non des pilotes : la règle de sélection est « les sources
     // de pilote », pas « toute occurrence ».

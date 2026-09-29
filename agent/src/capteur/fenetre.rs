@@ -35,7 +35,7 @@ mod commandes;
 // la même raison que `transitions` ne s'appelle pas `sommeil`** : un `mod accent;`
 // entrerait en collision, à la lecture comme au nommage, avec le
 // `use crate::accent;` de ce fichier. Ce `#[path]`-là est HORS de la convention
-// de `CLAUDE.md`, qui ne vise que les modules extraits d'un parent
+// de `docs/claude/conventions-modules.md`, qui ne vise que les modules extraits d'un parent
 // `#[cfg(windows)]` pour compiler sur l'hôte.
 #[path = "fenetre/accent.rs"]
 mod accent_fenetre;

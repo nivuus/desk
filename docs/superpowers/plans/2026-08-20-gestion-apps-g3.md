@@ -584,7 +584,7 @@ lui aussi.
 ⚠️ **La déclaration se fait par `#[path]` DEPUIS `plateforme.rs`**, comme le
 `#[cfg(test)] #[path = "plateforme/tests.rs"] mod tests;` existant
 (`proto/src/plateforme.rs`, tout en fin de fichier). Ce n'est **pas** la
-« Convention de module enfant » de `CLAUDE.md`, qui vise les modules extraits
+« Convention de module enfant » de `docs/claude/conventions-modules.md`, qui vise les modules extraits
 d'un parent `#[cfg(windows)]` : c'est le même mécanisme Rust employé pour la
 règle des 500 lignes, et `CLAUDE.md` le nomme explicitement hors de portée de
 cette convention.
@@ -1330,7 +1330,7 @@ concurrents. **Ses enfants purs existent donc sur l'hôte**, où leurs tests
 courent, et **seul `execution.rs` porte le `#[cfg(windows)]`**.
 
 C'est exactement la figure qu'`apps.rs` documente déjà en tête, et le texte est
-cité verbatim : « la "Convention de module enfant" de `CLAUDE.md` n'est donc pas
+cité verbatim : « la "Convention de module enfant" de `docs/claude/conventions-modules.md` n'est donc pas
 mobilisée : aucun module ne franchit ici de frontière `#[cfg(windows)]` ».
 
 ---

@@ -12,7 +12,7 @@
 //! `<parent>_<enfant>`.** Celle-ci ne vise que les modules extraits d'un
 //! parent `#[cfg(windows)]` pour compiler sur l'hôte ; ici le mécanisme Rust
 //! est le même mais la raison est autre — scinder un module de TESTS trop
-//! long à l'intérieur d'un fichier par ailleurs portable. `CLAUDE.md` met ce
+//! long à l'intérieur d'un fichier par ailleurs portable. `docs/claude/conventions-modules.md` met ce
 //! cas explicitement HORS de la portée de cette convention, et nomme le
 //! précédent : `superviseur/table.rs`, qui déclare de la même façon
 //! `#[path = "table/tests.rs"] mod tests;` et

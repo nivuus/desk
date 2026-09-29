@@ -144,7 +144,7 @@ pub use motifs::MotifCanal;
 /// nommé trois extractions à jouer d'avance, les trois ont été jouées, et
 /// celle-ci n'était pas prévue. Le franchissement est DÉCLARÉ.
 ///
-/// ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
+/// ⚠️ Ce n'est PAS la « Convention de module enfant » de `docs/claude/conventions-modules.md`, qui vise
 /// les modules extraits d'un parent `#[cfg(windows)]` : c'est le même mécanisme
 /// employé pour l'autre raison — la règle des 500 lignes.
 mod apps;
@@ -384,7 +384,7 @@ mod tests;
 // sous-bloc G2 travaille dedans, donc il l'a découpé : cycle de vie ici,
 // gestion d'apps là. C'est le même mécanisme `#[path]` que la ligne ci-dessus,
 // employé pour la même raison — la règle des 500 lignes —, et NON la
-// « Convention de module enfant » de `CLAUDE.md`, qui vise les modules extraits
+// « Convention de module enfant » de `docs/claude/conventions-modules.md`, qui vise les modules extraits
 // d'un parent `#[cfg(windows)]`.
 #[cfg(test)]
 #[path = "plateforme/tests_apps.rs"]

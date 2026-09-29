@@ -15,7 +15,7 @@
 //! une compression** — ce qui aurait ici voulu dire raccourcir les réfutations
 //! que la revue venait d'écrire.
 //!
-//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
+//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `docs/claude/conventions-modules.md`, qui vise
 //! les modules extraits d'un parent `#[cfg(windows)]` : c'est le même mécanisme
 //! employé pour l'autre raison — la règle des 500 lignes.
 //!

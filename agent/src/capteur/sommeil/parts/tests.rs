@@ -11,7 +11,7 @@
 //! `<parent>_<enfant>`** : celle-ci ne vise que les modules extraits d'un
 //! parent `#[cfg(windows)]` pour compiler sur l'hôte. Ici la raison est
 //! autre — scinder un module de TESTS trop long dans un fichier par ailleurs
-//! portable —, cas que `CLAUDE.md` met explicitement hors de sa portée.
+//! portable —, cas que `docs/claude/conventions-modules.md` met explicitement hors de sa portée.
 //! Précédents du dépôt : `superviseur/table.rs`, et `file/tests.rs` extrait
 //! au round 1 pour la même raison.
 //!

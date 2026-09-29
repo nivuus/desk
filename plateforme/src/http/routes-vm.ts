@@ -267,7 +267,7 @@ export async function servirVm(
     // émet plus bas (et ses jumelles de `routes-session.ts` et
     // `relais.ts`), qui NOMME l'adresse retenue — voir son champ `adresse`.
     // Une même adresse sur toutes les lignes, tous chemins confondus, EST le
-    // signal. Voir aussi `PLATEFORME_PROXY_DE_CONFIANCE` dans `CLAUDE.md`,
+    // signal. Voir aussi `PLATEFORME_PROXY_DE_CONFIANCE` dans `docs/claude/variables-environnement.md`,
     // qui documente le second rôle de cette variable (l'autorisation
     // d'`X-Pomerium-Claim-Email`) — cette note-ci ne porte que sur le
     // premier, le crédit d'`X-Forwarded-For`.

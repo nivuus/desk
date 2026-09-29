@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // précisément parce qu'aucun test ne regardait les deux côtés à la fois : la
 // CSP vit dans `plateforme/`, l'amorce anti-FOUC vit dans `client/`, et
 // chaque paquet a sa propre suite `vitest`, qui ne voit que la moitié du
-// problème. `CLAUDE.md` nomme la classe : « CE QU'UN NAVIGATEUR EXIGE, AUCUN
+// problème. `docs/claude/pieges-shell-tests-recette.md` nomme la classe : « CE QU'UN NAVIGATEUR EXIGE, AUCUN
 // TEST DE NODE NE LE VOIT ». Ce fichier est le garde qui relie les deux —
 // s'il devait un jour être supprimé pour « alléger » ce paquet, le défaut
 // redeviendrait invisible à `npm test`, exactement comme avant ce lot.
@@ -96,7 +96,7 @@ describe("l'actif bâti ne diverge pas de sa source", () => {
     // <scratchpad>/amorce-theme.backup.js`, un octet ajouté à la source SANS
     // rebuild, ce test rougit (la source a changé, `dist/` non), restauré
     // depuis la copie nommée — jamais `git checkout --`, qui aurait aussi
-    // effacé un éventuel travail non commité (`CLAUDE.md`, pièges du shell).
+    // effacé un éventuel travail non commité (`docs/claude/pieges-shell-tests-recette.md`, pièges du shell).
     it('`dist/amorce-theme.js` est identique à `src/design/amorce-theme.js`', async () => {
         // 🔴 IMPORT DYNAMIQUE, PAS STATIQUE : un `import … from '../../dist/…'`
         // en tête de fichier ferait échouer la RÉSOLUTION DE MODULE dès la

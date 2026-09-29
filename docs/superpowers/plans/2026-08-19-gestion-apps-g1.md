@@ -231,7 +231,7 @@ c'est un changement de conception, pas une extraction.
 `proto/src/plateforme/tests.rs`, déclaré par
 `#[cfg(test)] #[path = "plateforme/tests.rs"] mod tests;`.** C'est exactement le
 mécanisme qu'`agent/src/superviseur/table.rs` emploie déjà, et c'est le cas que
-le § « Convention de module enfant » de `CLAUDE.md` range **explicitement hors
+le § « Convention de module enfant » de `docs/claude/conventions-modules.md` range **explicitement hors
 de sa portée** : « l'usage de `#[path]` pour scinder un module de *tests* trop
 long À L'INTÉRIEUR d'un fichier par ailleurs portable […] c'est le même
 mécanisme Rust, employé pour une raison différente (la règle des 500 lignes), et
@@ -926,7 +926,7 @@ déjà les quatre paquets. Relevé par la commande, pas supposé.
 ce sont ses fonctions Windows qui portent le `#[cfg(windows)]`. C'est la
 décision de la spec §6, et elle a une conséquence : l'arbre `apps::raccourci` et
 `apps::reconciliation` **existe sur l'hôte**, sans quoi leurs tests n'y
-courraient pas. La « Convention de module enfant » de `CLAUDE.md` **n'est donc
+courraient pas. La « Convention de module enfant » de `docs/claude/conventions-modules.md` **n'est donc
 pas mobilisée** — aucun module ne franchit de frontière `#[cfg(windows)]`. Elle
 est nommée pour dire qu'elle a été considérée.
 

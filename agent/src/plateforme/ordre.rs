@@ -9,7 +9,7 @@
 //! documentation l'ont porté à 504. **Le franchissement est DÉCLARÉ**, comme
 //! ce dépôt l'exige de ses trois franchissements de D10 et de ses deux de D9.
 //!
-//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
+//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `docs/claude/conventions-modules.md`, qui vise
 //! les modules extraits d'un parent `#[cfg(windows)]` : ce parent-ci n'a aucun
 //! `cfg`, et c'est le même mécanisme employé pour l'autre raison — la règle des
 //! 500 lignes.

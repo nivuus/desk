@@ -1110,7 +1110,7 @@ la première chose qu'un test doit voir rouge.
 
 ⚠️ **`agent/src/presse_papier.rs` est un nom AUTONOME** : il ne préfixe aucun
 module de premier niveau existant. Par la convention écrite en tête de
-`CLAUDE.md` (§ « Convention de module enfant »), il vit **à la racine nue**,
+`docs/claude/conventions-modules.md` (§ « Convention de module enfant »), il vit **à la racine nue**,
 `mod presse_papier;` ordinaire — comme `geometry`, `sortie_dxgi` et
 `survie_verdict`. Son enfant `#[cfg(windows)]` se déclare par un simple `mod
 win32;` **à l'intérieur** de lui : il n'a jamais besoin de sortir de l'arbre de

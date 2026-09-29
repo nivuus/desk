@@ -681,7 +681,7 @@ AVANT que la tâche 8 n'ajoute quoi que ce soit.**
 `Memoire`, `reconcilier` et `mesurer` (l. 18-257) partent **caractère pour
 caractère** vers `agent/src/apps/boucle/memoire.rs`, déclaré par un `mod
 memoire;` **ordinaire** à l'intérieur de `boucle.rs`. **Aucun `#[path]`** : les
-deux sont `#[cfg(windows)]`, et la « Convention de module enfant » de `CLAUDE.md`
+deux sont `#[cfg(windows)]`, et la « Convention de module enfant » de `docs/claude/conventions-modules.md`
 écrit noir sur blanc qu'un module gaté qui n'a pas besoin d'exister sur l'hôte
 reste un enfant normal.
 

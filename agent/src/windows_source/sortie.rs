@@ -76,7 +76,7 @@ impl ModeCapture {
     /// DEVENU UN MENSONGE AU LOT 33.** Depuis ce lot, `SortieEntiere` retaille
     /// bel et bien la fenêtre Windows (voir `suit_le_viewport` ci-dessous) :
     /// un prédicat nommé « redimensionne la fenêtre » qui rend `false` pour un
-    /// mode qui la redimensionne est exactement le patron que `CLAUDE.md`
+    /// mode qui la redimensionne est exactement le patron que `docs/claude/pieges-documentation-taille-vm.md`
     /// nomme « le naufrage du 487 ». Le nom dit désormais ce que le prédicat
     /// discrimine RÉELLEMENT, et ce qu'il a toujours discriminé : **relâcher
     /// la duplication pour en ouvrir une du bureau physique**.

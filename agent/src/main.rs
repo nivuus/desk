@@ -66,7 +66,7 @@ mod signaling;
 mod sortie_dxgi;
 // Fréquence dominante d'un bloc d'échantillons (correction « A-bis »). Pur,
 // nom autonome : racine nue, comme `geometry` et `sortie_dxgi` — voir la
-// convention de module enfant de `CLAUDE.md`.
+// convention de module enfant de `docs/claude/conventions-modules.md`.
 mod spectre;
 // Pas de `#[cfg(windows)]` ici : le prédicat de PERSISTANCE (tâche 2bis, D9,
 // correction n°14 de la revue) est pur -- `Option<(u32, u32)> ×
@@ -150,7 +150,7 @@ mod windows_audio;
 /// L'ecriture du micro sur le cable virtuel (bloc E2).
 ///
 /// ⚠️ **Racine nue, et c'est vérifié contre la convention** (§ « Convention de
-/// module enfant », tête de `CLAUDE.md`) : `windows_micro` ne porte le préfixe
+/// module enfant », tête de `docs/claude/conventions-modules.md`) : `windows_micro` ne porte le préfixe
 /// `<parent>_` d'aucun module de premier niveau existant — `window` exigerait
 /// `window_`, et il n'existe aucun `mod windows;`. Il rejoint `windows_audio`
 /// et `windows_source`, à la racine nue pour la même raison. **Aucun `#[path]`.**

@@ -3,7 +3,7 @@
 //! structures. Aucun `cfg`, aucun appel Windows, **testée sur l'hôte Linux**.
 //!
 //! ⚠️ **`#[path]` chez le parent, et c'est vérifié contre la convention**
-//! (§ « Convention de module enfant », tête de `CLAUDE.md`) : ce module est
+//! (§ « Convention de module enfant », tête de `docs/claude/conventions-modules.md`) : ce module est
 //! extrait d'`encode.rs`, qui est `#![cfg(windows)]`, précisément pour que sa
 //! logique pure compile et se teste sur l'hôte. Son nom, `encode_nvenc`,
 //! porte le préfixe `encode_` d'un module de premier niveau existant

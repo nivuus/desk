@@ -9,7 +9,7 @@
 //! de comprimer après : D9 a payé deux compressions pour l'avoir oublié.
 //!
 //! ⚠️ **Ce module se déclare par un `mod sondeur;` ORDINAIRE chez son parent,
-//! et la « Convention de module enfant » de `CLAUDE.md` ne s'applique pas** :
+//! et la « Convention de module enfant » de `docs/claude/conventions-modules.md` ne s'applique pas** :
 //! elle ne vise que les modules extraits d'un parent `#[cfg(windows)]` pour
 //! que leur logique pure compile sur l'hôte, et `presse_papier.rs` n'est pas
 //! gaté. Rien n'est hissé à la racine du crate.

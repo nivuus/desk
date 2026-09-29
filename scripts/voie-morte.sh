@@ -27,7 +27,7 @@
 # jour où plus rien ne les cite — au 5 septembre 2026, il reste **48**
 # appelants exécutables de `scripts/winrm.js`, **57** de `/media/vm` et **2**
 # de `scripts/build-agent.sh` dans l'arbre suivi par git (relevé par la
-# commande inscrite dans le § « Legs ouverts » de `CLAUDE.md` — la relancer,
+# commande inscrite dans le § « Legs ouverts » de `docs/claude/legs-package-nivuus.md` — la relancer,
 # jamais recopier ces trois nombres).
 #
 # 🔴 CE GUIDE NE DÉCIDE PAS DU SORT DES SCRIPTS : il le rend visible. Les
@@ -51,7 +51,7 @@ voie_morte() {
   CE QUI LE REMPLACE :
 ${successeur}
 
-  Voir CLAUDE.md § « Cycle de vie de la VM Windows », et
+  Voir docs/claude/vm-cycle-de-vie.md § « Cycle de vie de la VM Windows », et
   docs/superpowers/plans/2026-09-05-lot3-campagne-vm-resultats-partiels.md § 1.
 
   ⚠️ Ce script n'est PAS supprimé : son corps reste lisible sous ce garde,

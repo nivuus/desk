@@ -12,7 +12,7 @@
 //! scinder un module de TESTS trop long dans un fichier par ailleurs portable
 //! (précédent : `superviseur/table.rs`, qui déclare ainsi `table/tests.rs` et
 //! `table/tests_relance.rs`). ⚠️ **Ce n'est PAS la convention de module enfant
-//! de `CLAUDE.md`** — celle-ci ne régit que les modules extraits d'un parent
+//! de `docs/claude/conventions-modules.md`** — celle-ci ne régit que les modules extraits d'un parent
 //! `#[cfg(windows)]` pour compiler sur l'hôte, et ce fichier-ci n'en est pas
 //! un.
 

@@ -37,7 +37,7 @@
 /// `deploiement/nginx.conf` (ligne ci-dessus) qui ne peut PAS calculer un
 /// hash à la volée sur le contenu qu'il sert — un hash aurait donc dû être
 /// recopié à la main dans les DEUX fichiers, le « naufrage du 487 » que
-/// `CLAUDE.md` interdit. Lire le grand commentaire au-dessus de
+/// `docs/claude/pieges-documentation-taille-vm.md` interdit. Lire le grand commentaire au-dessus de
 /// `NOM_FICHIER_AMORCE` dans `client/vite.config.ts` avant de reproposer un
 /// hash ici.
 ///

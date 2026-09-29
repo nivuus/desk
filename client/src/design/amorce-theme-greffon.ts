@@ -6,7 +6,7 @@
 // des deux motifs de `client/tsconfig.json:12` (`src/**/*.ts`,
 // `../proto/ts/**/*.ts`). Un test qui l'importerait DIRECTEMENT traînerait ses
 // erreurs de type dans `npx tsc --noEmit` — qui DOIT rester une étape
-// DISTINCTE de `npx vitest run`, `CLAUDE.md` le dit noir sur blanc : « VITEST
+// DISTINCTE de `npx vitest run`, `docs/claude/pieges-shell-tests-recette.md` le dit noir sur blanc : « VITEST
 // TRANSPILE SANS VÉRIFIER LES TYPES ». Ce fichier-ci vit sous `src/`, DONC il
 // est typechecké, et `vite.config.ts` l'IMPORTE — le sens inverse ne pose
 // aucun problème, Rollup ne typechecke jamais son propre fichier de config.

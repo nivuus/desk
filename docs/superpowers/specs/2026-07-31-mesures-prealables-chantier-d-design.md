@@ -271,6 +271,6 @@ mesures bloquantes » et le chantier D devient spécifiable.
 
 La VM Windows est éteinte au moment d'écrire cette conception
 (`virsh list --all` → `fermé`). Toute mesure de ce bloc exige la séquence de
-démarrage documentée dans `CLAUDE.md` § « Cycle de vie de la VM Windows » —
+démarrage documentée dans `docs/claude/vm-cycle-de-vie.md` § « Cycle de vie de la VM Windows » —
 dont l'attente d'un **accès réel** à `/media/vm`, et non de la seule présence
 de l'entrée de montage CIFS.

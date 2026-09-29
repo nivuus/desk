@@ -5,7 +5,7 @@
 //! `apps` lui-même l'est depuis `main.rs`, et ce sont ses enfants Windows qui
 //! portent le leur. C'est ce qui fait exister `verdict`, `fenetre`, `reponse`,
 //! `depot`, `cadence` et `telechargement` sur l'hôte Linux, où leurs tests
-//! courent — la « Convention de module enfant » de `CLAUDE.md` n'est donc pas
+//! courent — la « Convention de module enfant » de `docs/claude/conventions-modules.md` n'est donc pas
 //! mobilisée : aucun module ne franchit ici de frontière `#[cfg(windows)]`.
 //!
 //! 🔴 **SEUL `execution` PORTE LE `cfg`.** Tout ce qui pouvait en sortir en est

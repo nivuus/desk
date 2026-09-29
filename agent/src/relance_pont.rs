@@ -31,7 +31,7 @@
 //! ANCIENNE. Seule la DÉCISION, une fois l'observation connue, est éprouvée
 //! ici.
 //!
-//! 🔴 **CONVENTION DE NOMMAGE (`CLAUDE.md`, « Convention de module enfant »),
+//! 🔴 **CONVENTION DE NOMMAGE (`docs/claude/conventions-modules.md`, « Convention de module enfant »),
 //! APPLIQUÉE ICI, PAS DEVINÉE.** Ce module ne porte le préfixe d'AUCUN module
 //! de premier niveau existant : `relance` n'est déclaré nulle part dans
 //! `main.rs` (`grep -n '^mod \|^pub mod ' agent/src/main.rs` ne rend aucun

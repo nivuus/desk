@@ -18,7 +18,7 @@ use crate::audio::{AudioPacket, AudioSource};
 /// règle est sans exception : **extraction, jamais compression**.
 ///
 /// Pas de frontière `#[cfg(windows)]` ici, donc la convention `#[path]` de
-/// `CLAUDE.md` ne s'applique pas : un `mod` ordinaire suffit.
+/// `docs/claude/conventions-modules.md` ne s'applique pas : un `mod` ordinaire suffit.
 pub(in crate::transport) mod injection;
 
 /// Plafond d'attente quand une piste audio est négociée.

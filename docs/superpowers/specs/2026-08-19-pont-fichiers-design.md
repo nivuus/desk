@@ -1300,7 +1300,7 @@ jamais on ne comprime. Et l'extraction se place **avant** l'addition qui la
 rend nécessaire — c'est le seul geste qui ait fonctionné (D9,
 `serveur/instances.rs` : marge rendue de 10 à 65).
 
-⚠️ **Convention de module enfant** (`CLAUDE.md`, § « Convention de module
+⚠️ **Convention de module enfant** (`docs/claude/conventions-modules.md`, § « Convention de module
 enfant ») : ces modules-ci n'en relèvent **pas**. Elle ne s'applique qu'aux
 modules qu'on extrait d'un parent `#[cfg(windows)]` pour les faire compiler sur
 l'hôte. `pont/table.rs`, `pont/decoupe.rs` et les autres sont des enfants

@@ -9,7 +9,7 @@
 //!
 //! ⚠️ **Un `mod` ORDINAIRE, à l'intérieur de son parent** : il n'y a aucune
 //! frontière `#[cfg(windows)]` à franchir ici — tout `pont::service` est déjà
-//! `#[cfg(windows)]` —, donc la convention `#[path]` de `CLAUDE.md` **ne
+//! `#[cfg(windows)]` —, donc la convention `#[path]` de `docs/claude/conventions-modules.md` **ne
 //! s'applique pas**, comme pour les deux extractions de D11.
 
 use std::sync::atomic::Ordering;

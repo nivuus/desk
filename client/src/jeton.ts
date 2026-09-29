@@ -226,7 +226,7 @@ export async function accesParPomerium(
 /// traité comme périmé.
 ///
 /// ⚠️ **CONSTANTE NON CALIBRÉE, ET DÉCLARÉE COMME TELLE** — comme les
-/// quarante autres de ce dépôt (`CLAUDE.md`, « aucune constante n'est
+/// quarante autres de ce dépôt (`docs/claude/legs-non-mesures.md`, « aucune constante n'est
 /// calibrée »). Elle vaut assez pour qu'un appel parti avec un jeton valide
 /// n'arrive pas expiré, sans forcer un aller-retour à chaque geste.
 export const MARGE_FRAICHEUR_MS = 30_000;

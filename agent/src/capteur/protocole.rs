@@ -367,7 +367,7 @@ pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
 // l'addition de `PressePapierEcrire`, comme la règle du dépôt l'exige.
 //
 // ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de module
-// enfant » de `CLAUDE.md` : même mécanisme Rust, autre raison — la règle des
+// enfant » de `docs/claude/conventions-modules.md` : même mécanisme Rust, autre raison — la règle des
 // 500 lignes —, exactement comme `superviseur/table.rs`. Pas de hissage.
 #[cfg(test)]
 #[path = "protocole/tests.rs"]

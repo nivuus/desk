@@ -64,7 +64,7 @@ const CONFIG: Config = {
     // `grep -c "^\s*const url = await servir(.*motdepasse" <ce fichier>` ->
     // `3`. 🔴 **Ces
     // deux commandes se relancent ; ce compte ne se recopie pas** — c'est le
-    // « naufrage du 487 » de `CLAUDE.md`, et la numérotation hors séquence en
+    // « naufrage du 487 » de `docs/claude/pieges-documentation-taille-vm.md`, et la numérotation hors séquence en
     // est ici la cause mécanique.
     //
     // 🔴 LA SECONDE COMMANDE EST ANCRÉE EN DÉBUT DE LIGNE SUR `const url =

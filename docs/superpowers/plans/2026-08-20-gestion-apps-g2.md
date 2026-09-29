@@ -1087,7 +1087,7 @@ point le plus important de cette liste** — la spec §6 l'écrit déjà pour le
 premier. `apps` est déclaré **sans `cfg`** dans `main.rs` depuis G1
 (`agent/src/apps.rs:3-7`), et ce sont ses enfants Windows qui portent le leur :
 l'arbre `apps::icone::ressource` **existe donc sur l'hôte Linux**, où ses tests
-courent. **La « Convention de module enfant » de `CLAUDE.md` n'est PAS
+courent. **La « Convention de module enfant » de `docs/claude/conventions-modules.md` n'est PAS
 mobilisée** — aucun module ne franchit ici de frontière `#[cfg(windows)]` —,
 et elle est nommée pour dire qu'elle a été considérée.
 

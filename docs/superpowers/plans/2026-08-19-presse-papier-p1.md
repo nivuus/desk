@@ -429,7 +429,7 @@ dans son chemin. **Le plan la reporte à P2, avec sa raison technique.**
 ### E7 — L'argument du §7.1 sur l'emplacement du module est INEXACT ; sa conclusion est retenue
 
 La spec justifie `agent/src/presse_papier.rs` à la racine nue par la
-« Convention de module enfant » de `CLAUDE.md`. **Cette convention déclare
+« Convention de module enfant » de `docs/claude/conventions-modules.md`. **Cette convention déclare
 elle-même sa portée**, et elle ne couvre pas ce cas : « elle ne s'applique
 QU'aux modules qu'on **extrait** d'un fichier `#[cfg(windows)]` (ou autrement
 non portable) […] et qui doivent de ce fait devenir des **frères de premier

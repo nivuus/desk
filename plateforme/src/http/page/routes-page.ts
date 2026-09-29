@@ -69,7 +69,7 @@ export async function servirPage(
 /// ⚠️ CES DEUX COMPTES DISAIENT 18 ET 20, ET ILS ÉTAIENT JUSTES À L'HEURE OÙ
 /// ILS ONT ÉTÉ ÉCRITS : la vague de correction de la revue finale a ajouté
 /// TROIS tests de cache au même fichier. **Les relancer, jamais les
-/// recopier** — c'est le « naufrage du 487 » de `CLAUDE.md`, et ce bloc-ci
+/// recopier** — c'est le « naufrage du 487 » de `docs/claude/pieges-documentation-taille-vm.md`, et ce bloc-ci
 /// existe précisément pour que le prochain lecteur refasse le contrôle.
 ///
 /// ② CE QUE `signaling/resilience.test.ts` ÉTABLIT — le PATRON, et lui seul :

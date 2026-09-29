@@ -1036,7 +1036,7 @@ six critères de G1 ne juge une page : sa tranche verticale est décrite en
 G1 ne touche pas `client/`, et la recette exerce les deux routes par `curl`,
 ce qui les éprouve DAVANTAGE qu'une page. Le hub arrive avec G3. -->
 
-**La « Convention de module enfant » de `CLAUDE.md` s'applique-t-elle ?** Elle
+**La « Convention de module enfant » de `docs/claude/conventions-modules.md` s'applique-t-elle ?** Elle
 vise les modules extraits d'un parent `#[cfg(windows)]` pour compiler sur
 l'hôte. `apps/icone/ressource.rs` est exactement ce cas — mais il reste
 **enfant d'`apps`, et `apps` n'est PAS gaté** : l'arbre `apps::icone::ressource`

@@ -8,7 +8,7 @@
 //! et le sous-bloc G2 a payé, quelques heures plus tôt, de ne pas l'avoir vue
 //! venir sur ce fichier même (il l'a franchi à 588 puis extrait `apps`).
 //!
-//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `CLAUDE.md`, qui vise
+//! ⚠️ Ce n'est PAS la « Convention de module enfant » de `docs/claude/conventions-modules.md`, qui vise
 //! les modules extraits d'un parent `#[cfg(windows)]` : c'est le même mécanisme
 //! employé pour l'autre raison — la règle des 500 lignes.
 //!

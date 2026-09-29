@@ -9,7 +9,7 @@
 //! Le module est à la **racine nue** (`mod presse_papier;` dans `main.rs`) et
 //! non sous `capteur/`, alors que le propriétaire est aujourd'hui le capteur
 //! et lui seul. La raison n'est pas celle que la spec avance — la « Convention
-//! de module enfant » de `CLAUDE.md` déclare elle-même sa portée et ne couvre
+//! de module enfant » de `docs/claude/conventions-modules.md` déclare elle-même sa portée et ne couvre
 //! pas ce cas, ce module n'étant extrait de rien. C'est que la décision D1 pose
 //! que le propriétaire est « le capteur quand il existe, l'enfant sinon » : un
 //! module rangé sous `capteur/` porterait un nom faux le jour où le
@@ -256,7 +256,7 @@ pub fn ecrire_la_plateforme(_texte: &str) -> anyhow::Result<u32> {
 
 /// `Sondeur`, extrait VERBATIM au sous-bloc P3 (tâche 3), AVANT l'addition qui
 /// l'a rendu nécessaire. Un `mod` ORDINAIRE, et non un `#[path]` : la
-/// « Convention de module enfant » de `CLAUDE.md` ne vise que les modules
+/// « Convention de module enfant » de `docs/claude/conventions-modules.md` ne vise que les modules
 /// extraits d'un parent `#[cfg(windows)]`, et ce fichier n'est pas gaté.
 mod sondeur;
 pub use sondeur::Sondeur;
@@ -270,7 +270,7 @@ mod win32;
 // L'extraction précède l'addition, comme la règle du dépôt l'exige.
 //
 // ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de module
-// enfant » de `CLAUDE.md` : c'est le même mécanisme Rust employé pour une autre
+// enfant » de `docs/claude/conventions-modules.md` : c'est le même mécanisme Rust employé pour une autre
 // raison — la règle des 500 lignes —, exactement comme `superviseur/table.rs`.
 // Ce module ne se hisse PAS à la racine du crate.
 #[cfg(test)]

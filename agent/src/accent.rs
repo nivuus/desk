@@ -5,7 +5,7 @@
 //! qui ne prend **aucune décision** : il rend des octets, c'est ici qu'on
 //! décide.
 //!
-//! **Convention de module** (`CLAUDE.md`, § « Convention de module enfant ») :
+//! **Convention de module** (`docs/claude/conventions-modules.md`, § « Convention de module enfant ») :
 //! `accent` ne préfixe aucun module de premier niveau existant, il vit donc à
 //! la **racine nue** — `mod accent;` ordinaire dans `main.rs`. Son enfant
 //! `win32` se déclare par un `mod` ordinaire **à l'intérieur** de lui : il n'a

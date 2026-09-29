@@ -9,7 +9,7 @@
 //! l'addition du round 5 l'aurait porté à 499, soit une marge de UNE ligne,
 //! que ce dépôt a vue se reperdre six fois.
 //!
-//! ⚠️ **La « convention de module enfant » de `CLAUDE.md` NE S'APPLIQUE PAS
+//! ⚠️ **La « convention de module enfant » de `docs/claude/conventions-modules.md` NE S'APPLIQUE PAS
 //! ICI, et c'est vérifié plutôt que supposé** : elle ne vise que les modules
 //! qu'on extrait d'un parent `#[cfg(windows)]` pour les faire compiler sur
 //! l'hôte. `relance_pont` est portable de bout en bout, ce fichier aussi ;

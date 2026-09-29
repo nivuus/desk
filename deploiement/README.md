@@ -321,7 +321,7 @@ authentifie l'utilisateur par OAuth Google et pose l'en-tête
 `X-Pomerium-Claim-Email` — et c'est la plateforme **elle-même** qui sert
 désormais la page, `nginx` n'étant plus dans la chaîne. Introduit par le
 chantier `auth-pomerium` (21 août 2026) et complété par la variable
-`PLATEFORME_PAGE` (22 août 2026), voir `CLAUDE.md` et
+`PLATEFORME_PAGE` (22 août 2026), voir `docs/claude/variables-environnement.md` et
 `docs/superpowers/specs/2026-08-21-auth-pomerium-design.md` § 7.
 
 🔴 **LES DEUX MONTAGES SONT EXCLUSIFS, ET LE MÉLANGE EST LA PANNE.** Un service

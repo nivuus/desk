@@ -62,7 +62,7 @@ def lire_borne_node():
 
     🔴 RELUE DANS LE FICHIER, JAMAIS RECOPIÉE DEPUIS UN PLAN : un intervalle
     recopié survit à la réalité qu'il décrivait — le naufrage du « 487 » que
-    CLAUDE.md nomme, appliqué ici d'avance.
+    docs/claude/pieges-documentation-taille-vm.md nomme, appliqué ici d'avance.
 
     Rend (borne, None) en succès, ou (None, raison) si le fichier est
     illisible ou ne déclare pas `engines.node` — un chemin d'échec comme un

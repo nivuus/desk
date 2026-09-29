@@ -14,7 +14,7 @@
 //! d'`apps::installation`, un cran plus bas, et c'est ce qui fait exister
 //! `apps::surveillance::mode`, `::rebond`, `::faute` et `::partage` sur l'hôte
 //! Linux, où leurs tests courent. La « Convention de module enfant » de
-//! `CLAUDE.md` n'est **pas** mobilisée : aucun module ne franchit ici de
+//! `docs/claude/conventions-modules.md` n'est **pas** mobilisée : aucun module ne franchit ici de
 //! frontière `#[cfg(windows)]`.
 //!
 //! ⚠️ **L'arborescence de la spécification §6 range `rebond.rs` À CÔTÉ de

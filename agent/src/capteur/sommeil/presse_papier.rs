@@ -301,7 +301,7 @@ pub(super) fn filtrer_nos_ecritures_tardives(
 // qui cherche le code de production ne doit pas buter dessus.
 //
 // ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de module
-// enfant » de `CLAUDE.md` : même mécanisme Rust, autre raison — la règle des
+// enfant » de `docs/claude/conventions-modules.md` : même mécanisme Rust, autre raison — la règle des
 // 500 lignes. Ce module ne se hisse PAS à la racine du crate.
 #[cfg(test)]
 #[path = "presse_papier/tests.rs"]

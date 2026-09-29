@@ -471,7 +471,7 @@ seconde commande n'est pas un test.**
   `matches!(std::env::var("PONT_MUTATION").as_deref(), Ok(v) if v != "0")` — la
   forme de `agent/src/main.rs` pour `CAPTEUR` et `PONT`. **Variable de BANC,
   jamais une configuration livrée.**
-- **Convention de module enfant** (`CLAUDE.md`) : **aucun module de ce plan n'en
+- **Convention de module enfant** (`docs/claude/conventions-modules.md`) : **aucun module de ce plan n'en
   relève.** Elle ne vise que les modules extraits d'un parent `#[cfg(windows)]`
   pour compiler sur l'hôte et devenus frères de premier niveau dans `main.rs`.
   `pont.rs` n'est pas gaté et ses enfants purs se déclarent par un simple `mod` ;

@@ -12,7 +12,7 @@
 //! `geometry.rs` et `sortie_dxgi.rs`, extraits pour la même raison.
 //!
 //! **Racine nue, et non `#[path]` chez un parent** (convention tranchée
-//! tâche 17, sous-bloc D10, voir `CLAUDE.md` §« Convention de module
+//! tâche 17, sous-bloc D10, voir `docs/claude/conventions-modules.md` §« Convention de module
 //! enfant ») : un module dont le nom s'écrit `<parent>_<enfant>`
 //! (`capture_reprise`, `windows_source_sortie`, `windows_source_telemetrie`)
 //! reste physiquement chez ce parent et se hisse par

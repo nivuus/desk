@@ -148,7 +148,7 @@ describe('GET /auth/moi', () => {
     // déplaçant la garde APRÈS `identifiantDe`, le 401 et le motif restent
     // IDENTIQUES et pourtant 3 comptes se créent dans `utilisateur` depuis un
     // pair non déclaré, un par courriel choisi par l'attaquant. C'est le
-    // vecteur que `CLAUDE.md` nomme au § legs `auth-pomerium` : « crée une
+    // vecteur que `docs/claude/legs-decisions-auth-pomerium.md` nomme au § legs `auth-pomerium` : « crée une
     // ligne `utilisateur` par courriel distinct, sans borne ».
     it("REFUSE l'en-tête d'identité venu d'un pair non déclaré, SANS CRÉER DE COMPTE", async () => {
         base = await baseNeuve('moi-pair-etranger-compte');

@@ -28,7 +28,7 @@
 //! au même endroit : `transport/piste_audio.rs` (leg 6 de D10, un `HRESULT`
 //! perdu de la même façon) et `diagnostics/multifenetre/plafond/sonde.rs`.
 //! **Ce module est cet endroit** ; il vit à la racine nue parce que son nom
-//! se comprend sans référence à un parent (convention de `CLAUDE.md`,
+//! se comprend sans référence à un parent (convention de `docs/claude/conventions-modules.md`,
 //! précédents `geometry`, `sortie_dxgi`, `survie_verdict`).
 
 /// Rend la chaîne de causes complète d'une erreur, sur une seule ligne.

@@ -385,7 +385,7 @@ mod tests {
     /// ne peut pas voir ce qui arriverait à `"ws://h:8080/signal"` — d'où
     /// `url_du_canal` tirerait `ws://h:8080/signal/agent`, et l'enrôlement
     /// tomberait. **Le contrat de `SIGNALING_URL` reste donc figé par AUCUN
-    /// test**, et c'est inscrit aux « Legs ouverts » de `CLAUDE.md`. Ce que ce
+    /// test**, et c'est inscrit aux « Legs ouverts » de `docs/claude/legs-decisions-auth-pomerium.md`. Ce que ce
     /// test-ci établit, et c'est déjà utile, est que l'ajout de `/signal` par
     /// `url_du_relais` n'a pas contaminé `url_du_canal`.
     #[test]

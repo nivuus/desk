@@ -28,7 +28,7 @@
 //!
 //! `mod memoire;` ORDINAIRE dans `boucle.rs`, **aucun `#[path]`** : les deux
 //! sont `#[cfg(windows)]`, et la « Convention de module enfant » de
-//! `CLAUDE.md` écrit noir sur blanc qu'un module gaté qui n'a pas besoin
+//! `docs/claude/conventions-modules.md` écrit noir sur blanc qu'un module gaté qui n'a pas besoin
 //! d'exister sur l'hôte reste un enfant normal.
 
 use std::collections::{BTreeMap, BTreeSet};

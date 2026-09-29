@@ -349,7 +349,7 @@ describe("la garde d'écoute du mode pomerium", () => {
     // ⚠️ ARBITRAGE : le brief propose `ECOUTES_UNIVERSELLES` avec QUATRE
     // membres (`0.0.0.0`, `::`, `[::]`, `*`) mais ne fait tester que les deux
     // ci-dessus. Un membre non éprouvé est exactement « un contrôle qu'on n'a
-    // jamais vu rouge » (§ méthode de mesure, CLAUDE.md) : les deux tests
+    // jamais vu rouge » (§ méthode de mesure, docs/claude/pieges-methode-de-mesure.md) : les deux tests
     // suivants ferment ce trou plutôt que de retirer les membres du set.
     it('REFUSE [::] en mode pomerium', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '[::]' })).toThrow(

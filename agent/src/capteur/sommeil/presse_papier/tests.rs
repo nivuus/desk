@@ -14,7 +14,7 @@
 //! quatre espaces a été vérifiée RÉVERSIBLE.
 //!
 //! ⚠️ Cet emploi de `#[path]` est HORS de la portée de la « Convention de
-//! module enfant » de `CLAUDE.md` : c'est le même mécanisme Rust employé pour
+//! module enfant » de `docs/claude/conventions-modules.md` : c'est le même mécanisme Rust employé pour
 //! une autre raison — la règle des 500 lignes —, exactement comme
 //! `superviseur/table.rs` et `presse_papier.rs`. Ce module ne se hisse PAS à la
 //! racine du crate.

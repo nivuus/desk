@@ -34,7 +34,7 @@
         "     Dans une séquence du lot 3, passer par le harnais, qui l'enveloppe :",
         '       source docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh',
         '',
-        '  Voir CLAUDE.md § « Cycle de vie de la VM Windows ».',
+        '  Voir docs/claude/vm-cycle-de-vie.md § « Cycle de vie de la VM Windows ».',
         "  ⚠️ Ce script n'est PAS supprimé : `cat $0` pour le lire sans l'exécuter.",
     ].join('\n');
     console.error(successeur);

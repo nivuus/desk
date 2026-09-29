@@ -43,7 +43,7 @@
 //! perdu — le canal `/agent` — avec ce même repli. La session de contrôle
 //! était le seul de ses trois sockets à ne pas savoir le faire.
 //!
-//! 🔴 **CONVENTION DE MODULE (`CLAUDE.md`), APPLIQUÉE PLUTÔT QUE DEVINÉE.**
+//! 🔴 **CONVENTION DE MODULE (`docs/claude/conventions-modules.md`), APPLIQUÉE PLUTÔT QUE DEVINÉE.**
 //! Ce fichier est un enfant ORDINAIRE de `superviseur.rs`, déclaré par un
 //! `pub mod reprise_controle;` sans `#[path]`, et il n'a pas à se poser la
 //! question du préfixe : cette question ne se pose QUE pour un module qu'on
