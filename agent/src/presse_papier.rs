@@ -9,7 +9,7 @@
 //! The module is at the **bare root** (`mod presse_papier;` in `main.rs`) and
 //! not under `capteur/`, although its owner is today the capturer
 //! and it alone. The reason is not the one the spec puts forward — the "Child
-//! module convention" of `CLAUDE.md` declares its own scope and does not cover
+//! module convention" of `docs/claude/module-conventions.md` declares its own scope and does not cover
 //! this case, this module being extracted from nothing. It is that decision D1 states
 //! that the owner is "the capturer when it exists, the child otherwise": a
 //! module filed under `capteur/` would carry a wrong name the day the
@@ -255,7 +255,7 @@ pub fn write_platform(_texte: &str) -> anyhow::Result<u32> {
 
 /// `Sondeur`, extracted VERBATIM in sub-block P3 (task 3), BEFORE the addition that
 /// made it necessary. An ORDINARY `mod`, and not a `#[path]`: the
-/// "Child module convention" of `CLAUDE.md` only targets modules
+/// "Child module convention" of `docs/claude/module-conventions.md` only targets modules
 /// extracted from a `#[cfg(windows)]` parent, and this file is not gated.
 mod sondeur;
 pub use sondeur::Sondeur;
@@ -268,7 +268,7 @@ mod win32;
 // adds D5's guard no. 1, the reciprocal of `normaliser` and their tests.
 // The extraction precedes the addition, as the repository's rule requires.
 //
-// ⚠️ This use of `#[path]` is OUTSIDE the scope of `CLAUDE.md`'s "Child module
+// ⚠️ This use of `#[path]` is OUTSIDE the scope of `docs/claude/module-conventions.md`'s "Child module
 // convention": it is the same Rust mechanism used for another
 // reason — the 500-line rule —, exactly like `superviseur/table.rs`.
 // This module is NOT hoisted to the crate root.

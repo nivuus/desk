@@ -76,7 +76,7 @@ impl ModeCapture {
     /// BECAME A LIE IN BATCH 33.** Since that batch, `SortieEntiere` does
     /// resize the Windows window (see `suit_le_viewport` below):
     /// a predicate named "resizes the window" that returns `false` for a
-    /// mode that resizes it is exactly the pattern `CLAUDE.md`
+    /// mode that resizes it is exactly the pattern `docs/claude/pitfalls-docs-size-vm.md`
     /// names "the 487 wreck". The name now says what the predicate
     /// REALLY discriminates, and always has: **releasing
     /// the duplication to open one of the physical desktop**.

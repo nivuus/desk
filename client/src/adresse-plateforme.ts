@@ -74,7 +74,7 @@ export function adresseSignaling(
     // It searched `client/*.mjs client/recette/*.mjs scripts/*.sh`, where there
     // is indeed nothing; **but ALL of this repository's acceptance drivers
     // live in `docs/superpowers/plans/journaux-*/`**, which the command
-    // did not reach. It is the "487 wreck" pattern of `CLAUDE.md`:
+    // did not reach. It is the "487 wreck" pattern of `docs/claude/pitfalls-docs-size-vm.md`:
     // a completeness claim whose command did not sweep its own
     // scope.
     //
@@ -92,7 +92,7 @@ export function adresseSignaling(
     // workstream has just closed**.
     //
     // ⚠️ THEY ALL THEREFORE NEED REPAIRING, AND NONE WAS REPAIRED HERE: it is a
-    // separate workstream, listed in the "Open legacies" of `CLAUDE.md`. ⚠️ The
+    // separate workstream, listed in the "Open legacies" of `docs/claude/leftovers-auth-pomerium-decisions.md`. ⚠️ The
     // `grep` above also catches the output `.log` and `.json` files, which are
     // READINGS and not drivers: the selection rule is "driver
     // sources", not "any occurrence".

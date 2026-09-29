@@ -11,7 +11,7 @@
 //! `sortie.rs`, and not at the crate root: it is the mechanism used to
 //! split an over-long TESTS module in an otherwise portable file
 //! (precedent: `superviseur/table.rs`, which thus declares `table/tests.rs` and
-//! `table/tests_relance.rs`). ⚠️ **It is NOT `CLAUDE.md`'s child module
+//! `table/tests_relance.rs`). ⚠️ **It is NOT `docs/claude/module-conventions.md`'s child module
 //! convention** — that one only governs modules extracted from a
 //! `#[cfg(windows)]` parent to compile on the host, and this file is not
 //! one.

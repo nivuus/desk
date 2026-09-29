@@ -35,7 +35,7 @@ mod commandes;
 // the same reason `transitions` is not called `sommeil`**: a `mod accent;`
 // would collide, when reading as well as in naming, with the
 // `use crate::accent;` of this file. That `#[path]` is OUTSIDE the convention
-// of `CLAUDE.md`, which only targets modules extracted from a
+// of `docs/claude/module-conventions.md`, which only targets modules extracted from a
 // `#[cfg(windows)]` parent to compile on the host.
 #[path = "fenetre/accent.rs"]
 mod accent_fenetre;

@@ -3,7 +3,7 @@
 //! ⚠️ THIS MODULE IS DECLARED WITHOUT `cfg` in `main.rs`, and it is its Windows
 //! children that carry theirs. That is what makes `apps::raccourci` and
 //! `apps::reconciliation` exist on the Linux host, where their tests run — the
-//! "Child module convention" of `CLAUDE.md` is therefore not invoked:
+//! "Child module convention" of `docs/claude/module-conventions.md` is therefore not invoked:
 //! no module crosses a `#[cfg(windows)]` boundary here.
 
 use std::time::Duration;

@@ -62,7 +62,7 @@ def lire_borne_node():
 
     🔴 READ FROM THE FILE, NEVER COPIED FROM A PLAN: a copied
     range outlives the reality it described — the "487" wreck that
-    CLAUDE.md names, applied here in advance.
+    docs/claude/pitfalls-docs-size-vm.md names, applied here in advance.
 
     Returns (bound, None) on success, or (None, raison) if the file is
     unreadable or does not declare `engines.node` — a failure path like any

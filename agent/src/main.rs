@@ -66,7 +66,7 @@ mod signaling;
 mod sortie_dxgi;
 // Dominant frequency of a block of samples ("A-bis" fix). Pure,
 // standalone name: bare root, like `geometry` and `sortie_dxgi` — see the
-// child module convention of `CLAUDE.md`.
+// child module convention of `docs/claude/module-conventions.md`.
 mod spectre;
 // No `#[cfg(windows)]` here: the PERSISTENCE predicate (task 2bis, D9,
 // fix no. 14 of the review) is pure -- `Option<(u32, u32)> ×
@@ -150,7 +150,7 @@ mod windows_audio;
 /// Writing the microphone to the virtual cable (block E2).
 ///
 /// ⚠️ **Bare root, and it is checked against the convention** (§ "Child
-/// module convention", head of `CLAUDE.md`): `windows_micro` carries the
+/// module convention", head of `docs/claude/module-conventions.md`): `windows_micro` carries the
 /// `<parent>_` prefix of no existing top-level module — `window` would require
 /// `window_`, and there is no `mod windows;`. It joins `windows_audio`
 /// and `windows_source`, at the bare root for the same reason. **No `#[path]`.**

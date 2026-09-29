@@ -550,7 +550,7 @@ il les interprète, et le journal se pollue lui-même (S3).
 | `agent/src/pont/ecriture/fil/contrat.rs` | ≤ 90 | **extraction préalable** — voir §2.3 |
 | `client/src/fichiers/protocole.annonces.test.ts` | ≤ 260 | **extraction préalable** — voir §2.3 |
 
-⚠️ **Convention de module enfant** (`CLAUDE.md`) : **aucun de ces modules n'en
+⚠️ **Convention de module enfant** (`docs/claude/module-conventions.md`) : **aucun de ces modules n'en
 relève.** Elle ne s'applique qu'aux modules extraits d'un parent
 `#[cfg(windows)]` pour compiler sur l'hôte. `pont.rs` n'est pas gaté : `cache` et
 `bonjour` sont des enfants ordinaires, déclarés par un simple `mod`, **aucun

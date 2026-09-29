@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // precisely because no test looked at both sides at once: the
 // CSP lives in `plateforme/`, the anti-FOUC bootstrap lives in `client/`, and
 // each package has its own `vitest` suite, which only sees half of the
-// problem. `CLAUDE.md` names the class: "WHAT A BROWSER REQUIRES, NO
+// problem. `docs/claude/pitfalls-shell-tests-acceptance.md` names the class: "WHAT A BROWSER REQUIRES, NO
 // NODE TEST SEES". This file is the guard that links the two —
 // should it one day be deleted to "lighten" this package, the defect
 // would become invisible to `npm test` again, exactly as before this batch.
@@ -96,7 +96,7 @@ describe("the built asset does not diverge from its source", () => {
     // <scratchpad>/amorce-theme.backup.js`, one byte added to the source WITHOUT
     // a rebuild, this test goes red (the source changed, `dist/` did not), restored
     // from the named copy — never `git checkout --`, which would also have
-    // erased any uncommitted work (`CLAUDE.md`, shell traps).
+    // erased any uncommitted work (`docs/claude/pitfalls-shell-tests-acceptance.md`, shell traps).
     it('`dist/amorce-theme.js` is identical to `src/design/amorce-theme.js`', async () => {
         // 🔴 DYNAMIC IMPORT, NOT STATIC: an `import … from '../../dist/…'`
         // at the top of the file would make MODULE RESOLUTION fail as early as

@@ -141,5 +141,5 @@ Pour recetter le produit — jamais remplacé par ce qui précède :
 env -u TURN_URL -u TURN_SECRET ./scripts/verify-all.sh
 ```
 
-Voir `CLAUDE.md` (§ Commandes) pour tout le reste de l'outillage : la VM
+Voir `docs/claude/commands.md` pour tout le reste de l'outillage : la VM
 Windows, `scripts/build-agent.sh`, les recettes navigateur.

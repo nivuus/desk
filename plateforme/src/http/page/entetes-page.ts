@@ -37,7 +37,7 @@
 /// `deploiement/nginx.conf` (line above) that can NOT compute a
 /// hash on the fly over the content it serves — a hash would therefore have had to be
 /// copied by hand into BOTH files, the « shipwreck of 487 » that
-/// `CLAUDE.md` forbids. Read the large comment above
+/// `docs/claude/pitfalls-docs-size-vm.md` forbids. Read the large comment above
 /// `BOOTSTRAP_FILE_NAME` in `client/vite.config.ts` before proposing a
 /// hash here again.
 ///

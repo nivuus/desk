@@ -59,7 +59,7 @@ mod arret;
 // the settings on an obtained MFT. Ordinary children (a simple `mod`
 // in their gated parent) and not `#[path]`: they never need to
 // get out of the `#![cfg(windows)]` above — see the child module
-// convention in `CLAUDE.md`.
+// convention in `docs/claude/module-conventions.md`.
 mod fabrique;
 mod reglages;
 

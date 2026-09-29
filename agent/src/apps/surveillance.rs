@@ -14,7 +14,7 @@
 //! `apps::installation`, one level down, and it is what makes
 //! `apps::surveillance::mode`, `::rebond`, `::faute` and `::partage` exist on the Linux
 //! host, where their tests run. The "Child module convention" of
-//! `CLAUDE.md` is **not** invoked: no module crosses a
+//! `docs/claude/module-conventions.md` is **not** invoked: no module crosses a
 //! `#[cfg(windows)]` boundary here.
 //!
 //! ⚠️ **The tree of specification §6 puts `rebond.rs` NEXT TO

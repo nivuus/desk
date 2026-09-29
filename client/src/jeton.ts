@@ -226,7 +226,7 @@ export async function accesParPomerium(
 /// treated as stale.
 ///
 /// ⚠️ **UNCALIBRATED CONSTANT, AND DECLARED AS SUCH** — like the
-/// forty others of this repository (`CLAUDE.md`, "no constant is
+/// forty others of this repository (`docs/claude/leftovers-unmeasured.md`, "no constant is
 /// calibrated"). It is enough for a call sent with a valid token
 /// not to arrive expired, without forcing a round trip at each gesture.
 export const MARGE_FRAICHEUR_MS = 30_000;

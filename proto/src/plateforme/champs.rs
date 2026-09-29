@@ -8,7 +8,7 @@
 //! and sub-block G2 paid, a few hours earlier, for not having seen it
 //! coming on this very file (it crossed it at 588 then extracted `apps`).
 //!
-//! ⚠️ It is NOT the "Child module convention" of `CLAUDE.md`, which targets
+//! ⚠️ It is NOT the "Child module convention" of `docs/claude/module-conventions.md`, which targets
 //! modules extracted from a `#[cfg(windows)]` parent: it is the same mechanism
 //! used for the other reason — the 500-line rule.
 //!

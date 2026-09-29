@@ -7,7 +7,7 @@
 //! to extract, never to compress a comment to get back under the line.
 //!
 //! ⚠️ **This use of `#[path]` is OUTSIDE the scope of the "Child
-//! module convention" of `CLAUDE.md`**, which itself declares its exclusion: same
+//! module convention" of `docs/claude/module-conventions.md`**, which itself declares its exclusion: same
 //! Rust mechanism, another reason — the 500-line rule —, exactly like
 //! `superviseur/table.rs`. This module is NOT hoisted to the root.
 

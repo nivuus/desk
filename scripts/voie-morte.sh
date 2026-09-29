@@ -27,7 +27,7 @@
 # day nothing quotes them any more — as of 5 September 2026, there are still **48**
 # executable callers of `scripts/winrm.js`, **57** of `/media/vm` and **2**
 # of `scripts/build-agent.sh` in the tree tracked by git (found by the
-# command written in the "Open legacy items" § of `CLAUDE.md` — rerun it,
+# command written in the "Open legacy items" § of `docs/claude/leftovers-nivuus-package.md` — rerun it,
 # never copy these three numbers).
 #
 # 🔴 THIS GUIDE DOES NOT DECIDE THE FATE OF THE SCRIPTS: it makes it visible.
@@ -52,7 +52,7 @@ voie_morte() {
   WHAT REPLACES IT:
 ${successeur}
 
-  See CLAUDE.md § "Windows VM lifecycle", and
+  See docs/claude/vm-lifecycle.md § "Windows VM lifecycle", and
   ${rapport} § 1.
 
   ⚠️ This script is NOT deleted: its body stays readable under this guard,

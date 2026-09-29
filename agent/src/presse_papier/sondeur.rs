@@ -9,7 +9,7 @@
 //! to compress after: D9 paid two compressions for forgetting it.
 //!
 //! ⚠️ **This module is declared by an ORDINARY `mod sondeur;` in its parent,
-//! and `CLAUDE.md`'s "Child module convention" does not apply**:
+//! and `docs/claude/module-conventions.md`'s "Child module convention" does not apply**:
 //! it only targets modules extracted from a `#[cfg(windows)]` parent so
 //! that their pure logic compiles on the host, and `presse_papier.rs` is not
 //! gated. Nothing is hoisted to the crate root.

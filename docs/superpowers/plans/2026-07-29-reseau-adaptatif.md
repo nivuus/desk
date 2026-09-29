@@ -42,7 +42,7 @@ indépendants ; celui-ci n'en dépend pas.
   lieu dans `transport.rs`.
 - **La VM Windows n'est pas démarrée automatiquement.** Avant toute tâche qui la
   touche : `virsh list --all`, puis `virsh start Windows` et attendre WinRM (voir
-  CLAUDE.md, « Cycle de vie de la VM Windows »).
+  docs/claude/vm-lifecycle.md, « Cycle de vie de la VM Windows »).
 - **Ne pas réemployer `cursor::Hysteresis`** : elle compte des observations
   booléennes consécutives, là où le contrôleur a besoin d'un filtre temporel
   asymétrique sur une échelle à quatre barreaux. Ce sont deux mécanismes

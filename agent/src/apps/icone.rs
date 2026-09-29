@@ -17,7 +17,7 @@
 //! no `#[path]` is used — through the only construction that serves it: the
 //! parent is free of `cfg`, its Windows parts are gated inside.
 //!
-//! The "Child module convention" of `CLAUDE.md` is **not** invoked:
+//! The "Child module convention" of `docs/claude/module-conventions.md` is **not** invoked:
 //! no module crosses a `#[cfg(windows)]` boundary here.
 
 /// 🔴 THE PROOF OF THE SUB-BLOCK, AND IT IS PURE: reading a `GRPICONDIR` or an

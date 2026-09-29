@@ -300,7 +300,7 @@ pub(super) fn filtrer_nos_ecritures_tardives(
 // looking for the production code must not stumble on it.
 //
 // ⚠️ This use of `#[path]` is OUTSIDE the scope of the "Child module
-// convention" of `CLAUDE.md`: same Rust mechanism, different reason — the
+// convention" of `docs/claude/module-conventions.md`: same Rust mechanism, different reason — the
 // 500-line rule. This module is NOT hoisted to the crate root.
 #[cfg(test)]
 #[path = "presse_papier/tests.rs"]

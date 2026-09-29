@@ -11,7 +11,7 @@
 //! `<parent>_<child>` convention**: that one only targets modules extracted from a
 //! `#[cfg(windows)]` parent to compile on the host. Here the reason is
 //! different — splitting a TEST module that is too long in an otherwise
-//! portable file —, a case `CLAUDE.md` explicitly puts outside its scope.
+//! portable file —, a case `docs/claude/module-conventions.md` explicitly puts outside its scope.
 //! Repository precedents: `superviseur/table.rs`, and `file/tests.rs` extracted
 //! in round 1 for the same reason.
 //!

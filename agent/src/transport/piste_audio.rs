@@ -17,7 +17,7 @@ use crate::audio::{AudioPacket, AudioSource};
 /// `piste_audio.rs` to 513 lines — above the repository's 500 ceiling. The
 /// rule has no exception: **extraction, never compression**.
 ///
-/// No `#[cfg(windows)]` boundary here, so `CLAUDE.md`'s `#[path]` convention
+/// No `#[cfg(windows)]` boundary here, so `docs/claude/module-conventions.md`'s `#[path]` convention
 /// does not apply: an ordinary `mod` is enough.
 pub(in crate::transport) mod injection;
 

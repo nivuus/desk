@@ -349,7 +349,7 @@ describe("the listen guard of pomerium mode", () => {
     // ⚠️ ARBITRATION: the brief proposes `ECOUTES_UNIVERSELLES` with FOUR
     // members (`0.0.0.0`, `::`, `[::]`, `*`) but only has the two
     // above tested. An untested member is exactly "a check never
-    // seen red" (§ measurement method, CLAUDE.md): the next two
+    // seen red" (§ measurement method, docs/claude/pitfalls-measurement-method.md): the next two
     // tests close that hole rather than removing members from the set.
     it('REFUSES [::] in pomerium mode', () => {
         expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '[::]' })).toThrow(

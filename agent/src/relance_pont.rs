@@ -31,7 +31,7 @@
 //! exit. Only the DECISION, once the observation is known, is exercised
 //! here.
 //!
-//! 🔴 **NAMING CONVENTION (`CLAUDE.md`, "Child module convention"),
+//! 🔴 **NAMING CONVENTION (`docs/claude/module-conventions.md`, "Child module convention"),
 //! APPLIED HERE, NOT GUESSED.** This module carries the prefix of NO existing
 //! top-level module: `relance` is declared nowhere in
 //! `main.rs` (`grep -n '^mod \|^pub mod ' agent/src/main.rs` returns no

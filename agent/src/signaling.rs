@@ -390,7 +390,7 @@ mod tests {
     /// cannot see what would happen to `"ws://h:8080/signal"` — from which
     /// `url_du_canal` would derive `ws://h:8080/signal/agent`, and enrolment
     /// would fail. **The `SIGNALING_URL` contract is therefore frozen by NO
-    /// test**, and it is listed in `CLAUDE.md`'s "Open legacies". What this
+    /// test**, and it is listed in `docs/claude/leftovers-auth-pomerium-decisions.md`'s "Open legacies". What this
     /// test does establish, and it is already useful, is that the addition of `/signal` by
     /// `url_du_relais` did not contaminate `url_du_canal`.
     #[test]

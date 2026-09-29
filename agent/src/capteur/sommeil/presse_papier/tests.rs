@@ -14,7 +14,7 @@
 //! de-indentation was checked REVERSIBLE.
 //!
 //! ⚠️ This use of `#[path]` is OUTSIDE the scope of the "Child
-//! module convention" of `CLAUDE.md`: it is the same Rust mechanism used for
+//! module convention" of `docs/claude/module-conventions.md`: it is the same Rust mechanism used for
 //! another reason — the 500-line rule —, exactly like
 //! `superviseur/table.rs` and `presse_papier.rs`. This module is NOT hoisted to the
 //! crate root.

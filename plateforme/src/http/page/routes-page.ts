@@ -69,7 +69,7 @@ export async function servirPage(
 /// ⚠️ THESE TWO COUNTS SAID 18 AND 20, AND THEY WERE RIGHT AT THE TIME
 /// THEY WERE WRITTEN: the fix wave of the final review added
 /// THREE cache tests to the same file. **Rerun them, never
-/// copy them** — that is the « shipwreck of 487 » of `CLAUDE.md`, and this block
+/// copy them** — that is the « shipwreck of 487 » of `docs/claude/pitfalls-docs-size-vm.md`, and this block
 /// exists precisely so the next reader redoes the check.
 ///
 /// ② WHAT `signaling/resilience.test.ts` ESTABLISHES — the PATTERN, and that alone:

@@ -929,7 +929,7 @@ garde-fou, n'a pas été exercé.
 `Get-Date` — la panne est **côté client Node**, la VM répond
 (`curl --ntlm` rend `401 WWW-Authenticate: Negotiate`). L'outil qui marche
 est `console/guest/winrm_exec.py`. C'est le même constat que la réserve en
-tête de `CLAUDE.md` § « Cycle de vie de la VM Windows ».
+tête de `docs/claude/vm-lifecycle.md` § « Cycle de vie de la VM Windows ».
 
 ---
 
