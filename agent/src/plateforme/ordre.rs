@@ -9,7 +9,7 @@
 //! documentation brought it to 504. **The crossing is DECLARED**, as
 //! this repository requires of its three crossings in D10 and its two in D9.
 //!
-//! ⚠️ This is NOT the "Child module convention" of `CLAUDE.md`, which targets
+//! ⚠️ This is NOT the "Child module convention" of `docs/claude/module-conventions.md`, which targets
 //! modules extracted from a `#[cfg(windows)]` parent: this parent has no
 //! `cfg`, and it is the same mechanism used for the other reason — the
 //! 500-line rule.

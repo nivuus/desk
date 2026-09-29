@@ -28,7 +28,7 @@
 //!
 //! ORDINARY `mod memoire;` in `boucle.rs`, **no `#[path]`**: both
 //! are `#[cfg(windows)]`, and the "Child module convention" of
-//! `CLAUDE.md` states in black and white that a gated module that does not need
+//! `docs/claude/module-conventions.md` states in black and white that a gated module that does not need
 //! to exist on the host stays a normal child.
 
 use std::collections::{BTreeMap, BTreeSet};

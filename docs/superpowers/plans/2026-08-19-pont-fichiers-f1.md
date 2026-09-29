@@ -73,7 +73,7 @@ dérive.
   marge rendue de 10 à 65 ; les deux fichiers traités après coup en D9 ont été
   **compressés**, geste que `CLAUDE.md` interdit nommément, puis extraits quand
   même).
-- **Convention de module enfant** (`CLAUDE.md`, § « Convention de module
+- **Convention de module enfant** (`docs/claude/module-conventions.md`, § « Convention de module
   enfant… ») : **aucun module de ce plan n'en relève.** Elle ne s'applique
   qu'aux modules qu'on extrait d'un parent `#[cfg(windows)]` pour les faire
   compiler sur l'hôte, et qui doivent de ce fait devenir frères de premier

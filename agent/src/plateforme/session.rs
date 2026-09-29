@@ -8,7 +8,7 @@
 //! in advance, never a compression.
 //!
 //! ⚠️ THIS FILE IS NOT `#[cfg(windows)]`, and the "Child module
-//! convention" of `CLAUDE.md` therefore does not apply: it is an ordinary `mod`
+//! convention" of `docs/claude/module-conventions.md` therefore does not apply: it is an ordinary `mod`
 //! declared in its parent, for the 500-line rule and for it alone.
 //!
 //! 🔴 NO LINE OF BEHAVIOUR CHANGED in the extraction. Visibilities

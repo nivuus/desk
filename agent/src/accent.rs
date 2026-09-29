@@ -5,7 +5,7 @@
 //! which makes **no decision**: it returns bytes, and it is here that the
 //! decision is made.
 //!
-//! **Module convention** (`CLAUDE.md`, § "Child module convention"):
+//! **Module convention** (`docs/claude/module-conventions.md`, § "Child module convention"):
 //! `accent` prefixes no existing top-level module, so it lives at the
 //! **bare root** — an ordinary `mod accent;` in `main.rs`. Its child
 //! `win32` is declared by an ordinary `mod` **inside** it: it never

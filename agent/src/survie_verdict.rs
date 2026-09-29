@@ -12,7 +12,7 @@
 //! `geometry.rs` and `sortie_dxgi.rs`, extracted for the same reason.
 //!
 //! **Bare root, and not `#[path]` under a parent** (convention settled in
-//! task 17, sub-block D10, see `CLAUDE.md` §"Child module
+//! task 17, sub-block D10, see `docs/claude/module-conventions.md` §"Child module
 //! convention"): a module whose name is written `<parent>_<child>`
 //! (`capture_reprise`, `windows_source_sortie`, `windows_source_telemetrie`)
 //! stays physically under that parent and is hoisted through

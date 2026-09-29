@@ -778,7 +778,7 @@ proto/
   `node_modules`, les verrous, `dist/`, `testdata/`, `docs/` et `CLAUDE.md`).
   C'est exactement la divergence texte/commande que `CLAUDE.md` signale déjà,
   non tranchée, pour `client/verify-webrtc.mjs` (497 lignes, marge 3) ;
-- **la « Convention de module enfant » de `CLAUDE.md` ne s'applique pas ici** :
+- **la « Convention de module enfant » de `docs/claude/module-conventions.md` ne s'applique pas ici** :
   elle est écrite pour les modules Rust extraits d'un parent `#[cfg(windows)]`.
   Elle est nommée pour dire qu'elle a été considérée, et écartée pour cause de
   portée.

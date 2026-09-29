@@ -148,7 +148,7 @@ describe('GET /auth/moi', () => {
     // moving the guard AFTER `identifiantDe`, the 401 and the reason stay
     // IDENTICAL and yet 3 accounts are created in `user` from an
     // undeclared peer, one per email chosen by the attacker. It is the
-    // vector `CLAUDE.md` names in the `auth-pomerium` legacy §: "creates one
+    // vector `docs/claude/leftovers-auth-pomerium-decisions.md` names in the `auth-pomerium` legacy §: "creates one
     // `user` row per distinct email, without bound".
     it("REFUSES the identity header coming from an undeclared peer, WITHOUT CREATING AN ACCOUNT", async () => {
         base = await baseNeuve('moi-pair-etranger-compte');

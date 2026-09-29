@@ -5,7 +5,7 @@
 //! `apps` itself is from `main.rs`, and it is its Windows children that
 //! carry theirs. That is what makes `verdict`, `fenetre`, `reponse`,
 //! `depot`, `cadence` and `telechargement` exist on the Linux host, where their tests
-//! run — the "Child module convention" of `CLAUDE.md` is therefore not
+//! run — the "Child module convention" of `docs/claude/module-conventions.md` is therefore not
 //! invoked: no module crosses a `#[cfg(windows)]` boundary here.
 //!
 //! 🔴 **ONLY `execution` CARRIES THE `cfg`.** Everything that could leave it has

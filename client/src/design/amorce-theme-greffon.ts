@@ -6,7 +6,7 @@
 // both patterns of `client/tsconfig.json:12` (`src/**/*.ts`,
 // `../proto/ts/**/*.ts`). A test importing it DIRECTLY would drag its
 // type errors into `npx tsc --noEmit` — which MUST stay a step
-// DISTINCT from `npx vitest run`, `CLAUDE.md` says so in black and white: "VITEST
+// DISTINCT from `npx vitest run`, `docs/claude/pitfalls-shell-tests-acceptance.md` says so in black and white: "VITEST
 // TRANSPILES WITHOUT CHECKING TYPES". This file lives under `src/`, SO it
 // is typechecked, and `vite.config.ts` IMPORTS it — the reverse direction poses
 // no problem, Rollup never typechecks its own config file.

@@ -5,7 +5,7 @@
 //! under the line.
 //!
 //! Declared in the parent through `#[path]` — a usage explicitly OUTSIDE the
-//! "Child module convention" of `CLAUDE.md`, which only targets modules
+//! "Child module convention" of `docs/claude/module-conventions.md`, which only targets modules
 //! taken out of a `#[cfg(windows)]` parent to compile them on the host. Here
 //! the parent is already pure; the only motive is size, and the precedent is
 //! `superviseur/table.rs`.

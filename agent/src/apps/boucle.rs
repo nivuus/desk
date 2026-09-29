@@ -18,7 +18,7 @@ use crate::plateforme::{Identite, Ordre};
 /// produces it — **EXTRACTED VERBATIM from this file, BEFORE the addition that required it.**
 ///
 /// ORDINARY `mod`, without `#[path]`: both are `#[cfg(windows)]`, and the
-/// "Child module convention" of `CLAUDE.md` reserves `#[path]` for
+/// "Child module convention" of `docs/claude/module-conventions.md` reserves `#[path]` for
 /// modules that must cross a `#[cfg]` boundary to exist on the host.
 mod memoire;
 

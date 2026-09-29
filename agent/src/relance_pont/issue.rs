@@ -9,7 +9,7 @@
 //! round 5's addition would have taken it to 499, a margin of ONE line,
 //! which this repository has seen lost again six times.
 //!
-//! ⚠️ **`CLAUDE.md`'s "child module convention" DOES NOT APPLY
+//! ⚠️ **`docs/claude/module-conventions.md`'s "child module convention" DOES NOT APPLY
 //! HERE, and it is checked rather than assumed**: it only targets modules
 //! extracted from a `#[cfg(windows)]` parent to make them compile on the
 //! host. `relance_pont` is portable end to end, this file too;

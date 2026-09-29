@@ -64,7 +64,7 @@ const CONFIG: Config = {
     // `grep -c "^\s*const url = await servir(.*motdepasse" <this file>` ->
     // `3`. 🔴 **These
     // two commands are rerun; this count is not copied** — it is the
-    // "487 wreck" of `CLAUDE.md`, and the out-of-sequence numbering is
+    // "487 wreck" of `docs/claude/pitfalls-docs-size-vm.md`, and the out-of-sequence numbering is
     // its mechanical cause here.
     //
     // 🔴 THE SECOND COMMAND IS ANCHORED AT LINE START ON `const url =

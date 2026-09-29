@@ -10,7 +10,7 @@
 //!
 //! ⚠️ This module is an ordinary `#[cfg(windows)]` child, declared by a plain `mod`
 //! **inside** its parent: the "Child module convention"
-//! of `CLAUDE.md` does not concern it — it never needs to leave its parent's
+//! of `docs/claude/module-conventions.md` does not concern it — it never needs to leave its parent's
 //! tree to compile on the host.
 
 use std::time::Duration;

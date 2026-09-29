@@ -267,7 +267,7 @@ export async function servirVm(
     // emits below (and its twins in `routes-session.ts` and
     // `relais.ts`), which NAMES the retained address — see its `adresse` field.
     // One same address on every line, all paths combined, IS the
-    // signal. See also `PLATEFORME_PROXY_DE_CONFIANCE` in `CLAUDE.md`,
+    // signal. See also `PLATEFORME_PROXY_DE_CONFIANCE` in `docs/claude/environment-variables.md`,
     // which documents the second role of this variable (the authorisation
     // of `X-Pomerium-Claim-Email`) — this note only concerns the
     // first, the credit given to `X-Forwarded-For`.

@@ -43,7 +43,7 @@
 //! socket — the `/agent` channel — with this same fallback. The control session
 //! was the only one of its three sockets not knowing how.
 //!
-//! 🔴 **MODULE CONVENTION (`CLAUDE.md`), APPLIED RATHER THAN GUESSED.**
+//! 🔴 **MODULE CONVENTION (`docs/claude/module-conventions.md`), APPLIED RATHER THAN GUESSED.**
 //! This file is an ORDINARY child of `superviseur.rs`, declared by a
 //! `pub mod reprise_controle;` without `#[path]`, and it does not have to ask the
 //! prefix question: that question ONLY arises for a module

@@ -11,7 +11,7 @@
 //! compression** — D9 paid for it twice.
 //!
 //! ⚠️ **The `#[path]` declaring this module is OUTSIDE the convention of
-//! `CLAUDE.md`** (§ "Child module convention"): that one only targets
+//! `docs/claude/module-conventions.md`** (§ "Child module convention"): that one only targets
 //! modules extracted from a `#[cfg(windows)]` parent to compile on the host.
 //! This is the **second** use of the same Rust mechanism — splitting a file
 //! that is too long —, the one `distante/tests.rs` and `distante/tests_etats.rs`

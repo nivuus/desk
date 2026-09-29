@@ -9,7 +9,7 @@
 //!
 //! ⚠️ **An ORDINARY `mod`, inside its parent**: there is no
 //! `#[cfg(windows)]` boundary to cross here — all of `pont::service` is already
-//! `#[cfg(windows)]` —, so `CLAUDE.md`'s `#[path]` convention **does not
+//! `#[cfg(windows)]` —, so `docs/claude/module-conventions.md`'s `#[path]` convention **does not
 //! apply**, as for D11's two extractions.
 
 use std::sync::atomic::Ordering;

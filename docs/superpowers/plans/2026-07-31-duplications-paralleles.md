@@ -53,7 +53,7 @@
 - **Résolution des sorties virtuelles : 1280×720@60** — la constante `montee::RESOLUTION`, déjà en place.
 - **Rangs mesurés : N = 1, 2, 4, 8.** Critère de réception : à N=8, ≥ 60 i/s par fenêtre en capture+encodage et zéro verdict faux.
 - **Journaux en UTF-8 par les deux réglages PowerShell** (`StreamWriter` pour l'écriture, `[Console]::OutputEncoding` pour la lecture) — déjà posés dans `scripts/run-agent.sh`, ne pas les défaire.
-- **La VM Windows n'est pas démarrée automatiquement.** Avant toute tâche qui compile ou mesure : `virsh list --all`, puis `virsh start Windows`, puis attendre WinRM **et** l'accès réel à `/media/vm` (voir `CLAUDE.md`, « Cycle de vie de la VM Windows »).
+- **La VM Windows n'est pas démarrée automatiquement.** Avant toute tâche qui compile ou mesure : `virsh list --all`, puis `virsh start Windows`, puis attendre WinRM **et** l'accès réel à `/media/vm` (voir `docs/claude/vm-lifecycle.md`, « Cycle de vie de la VM Windows »).
 - **Charger l'environnement** avant tout script : `set -a && source .env && set +a`.
 
 ---

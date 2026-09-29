@@ -307,7 +307,7 @@ commande n'est pas un test.**
   forme exacte de `agent/src/main.rs` pour `CAPTEUR` et `PONT`. **C'est une
   variable de BANC, jamais une configuration livrée** : elle n'existe que pour
   rendre le compteur d'écritures dues rouge.
-- **Convention de module enfant** (`CLAUDE.md`) : **aucun module de ce plan
+- **Convention de module enfant** (`docs/claude/module-conventions.md`) : **aucun module de ce plan
   n'en relève.** Elle ne vise que les modules extraits d'un parent
   `#[cfg(windows)]` pour compiler sur l'hôte, et qui deviennent frères de
   premier niveau dans `main.rs`. Ici, `pont.rs` n'est pas gaté et ses enfants

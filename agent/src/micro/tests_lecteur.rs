@@ -12,7 +12,7 @@
 //!
 //! Declared in the parent through `#[path]`, like its neighbour, and for the same
 //! reason: the usage is OUTSIDE the "Child module convention" of
-//! `CLAUDE.md`, which only targets modules taken out of a
+//! `docs/claude/module-conventions.md`, which only targets modules taken out of a
 //! `#[cfg(windows)]` parent. Here the parent is pure; the only motive is size, and
 //! the precedent is `superviseur/table.rs`.
 

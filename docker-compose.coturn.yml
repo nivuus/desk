@@ -83,7 +83,7 @@ services:
       # 🔴 OÙ COTURN ÉCOUTE — OBLIGATOIRE, SANS DÉFAUT.
       #
       # Sans cette option, coturn se lie à toutes les interfaces de l'hôte.
-      # Ce n'est pas une hypothèse : `CLAUDE.md` porte le constat du 30 juillet
+      # Ce n'est pas une hypothèse : `docs/claude/leftovers-nivuus-package.md` porte le constat du 30 juillet
       # 2026, `UDP listener opened on: 90.87.35.18:3478` — l'adresse publique de
       # la machine. L'accès est authentifié et les identifiants expirent, mais
       # c'était un relais joignable depuis Internet.

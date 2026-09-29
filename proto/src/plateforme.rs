@@ -143,7 +143,7 @@ pub use motifs::MotifCanal;
 /// named three extractions to carry out in advance, all three were carried out, and
 /// this one was not planned. The crossing is DECLARED.
 ///
-/// ⚠️ It is NOT the "Child module convention" of `CLAUDE.md`, which targets
+/// ⚠️ It is NOT the "Child module convention" of `docs/claude/module-conventions.md`, which targets
 /// modules extracted from a `#[cfg(windows)]` parent: it is the same mechanism
 /// used for the other reason — the 500-line rule.
 mod apps;
@@ -382,7 +382,7 @@ mod tests;
 // sub-block G2 works in it, so it split it: lifecycle here,
 // app management there. It is the same `#[path]` mechanism as the line above,
 // used for the same reason — the 500-line rule —, and NOT the
-// "Child module convention" of `CLAUDE.md`, which targets modules extracted
+// "Child module convention" of `docs/claude/module-conventions.md`, which targets modules extracted
 // from a `#[cfg(windows)]` parent.
 #[cfg(test)]
 #[path = "plateforme/tests_apps.rs"]

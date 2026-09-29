@@ -416,7 +416,7 @@ pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
 // the addition of `ClipboardWrite`, as the repository's rule requires.
 //
 // ⚠️ This use of `#[path]` is OUTSIDE the scope of the "Child module
-// convention" of `CLAUDE.md`: same Rust mechanism, different reason — the
+// convention" of `docs/claude/module-conventions.md`: same Rust mechanism, different reason — the
 // 500-line rule —, exactly like `superviseur/table.rs`. No hoisting.
 #[cfg(test)]
 #[path = "protocole/tests.rs"]

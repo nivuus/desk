@@ -34,7 +34,7 @@
         '     In a batch 3 sequence, go through the harness, which wraps it:',
         '       source docs/superpowers/plans/journaux-lot3/instrument/harnais-appliance.sh',
         '',
-        '  See CLAUDE.md § "Windows VM lifecycle".',
+        '  See docs/claude/vm-lifecycle.md § "Windows VM lifecycle".',
         "  ⚠️ This script is NOT deleted: `cat $0` to read it without running it.",
     ].join('\n');
     console.error(successeur);
