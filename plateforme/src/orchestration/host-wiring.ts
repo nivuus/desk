@@ -2,6 +2,7 @@
 // VM. `serveur.ts` only receives the result.
 
 import type { Pilote } from '../base/pilote';
+import { createAppActivity, type AppActivity } from '../signaling/app-activity';
 import { envoyerAuCanal } from './host-channel';
 import { hostOrchestrator } from './host-orchestrator';
 import type { Orchestrateur } from './interface';
@@ -10,6 +11,8 @@ import { Wake } from './wake';
 
 export interface CablageHote {
     orchestrateur: Orchestrateur;
+    /// `undefined` when the channel is disabled: nothing to report to the host.
+    activity: AppActivity | undefined;
 }
 
 /// An absent `socketPath` means the channel is disabled: we keep the static
@@ -21,8 +24,11 @@ export function hostWiring(
     socketPath: string | undefined,
 ): CablageHote {
     if (socketPath === undefined) {
-        return { orchestrateur: inventaireStatique(base, now) };
+        return { orchestrateur: inventaireStatique(base, now), activity: undefined };
     }
     const wake = new Wake((verb) => envoyerAuCanal(socketPath, verb), now);
-    return { orchestrateur: hostOrchestrator(base, now, wake) };
+    return {
+        orchestrateur: hostOrchestrator(base, now, wake),
+        activity: createAppActivity((verb) => envoyerAuCanal(socketPath, verb)),
+    };
 }

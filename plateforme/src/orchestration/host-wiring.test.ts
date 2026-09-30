@@ -26,4 +26,12 @@ describe(`hostWiring, engine=${MOTEUR}`, () => {
         const { orchestrateur } = hostWiring(base, Date.now, '/tmp/host-wiring-absent.sock');
         expect(await orchestrateur.start('v1')).toMatchObject({ ok: false, motif: 'hote-inaccessible' });
     });
+
+    it('`activity` only exists when the channel is configured', async () => {
+        base = await baseNeuve('hw-activity');
+        expect(hostWiring(base, Date.now, undefined).activity).toBeUndefined();
+        const configured = hostWiring(base, Date.now, '/tmp/host-wiring-absent.sock');
+        expect(configured.activity).toBeDefined();
+        configured.activity!.stop();
+    });
 });

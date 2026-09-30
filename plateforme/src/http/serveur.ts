@@ -43,6 +43,7 @@ import { CacheSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
+import { composeObservers } from '../signaling/observers';
 import { observateurDeSession } from '../signaling/trace';
 import { servirLeCanalAgent } from '../agents/canal';
 import { RegistreAgents } from '../agents/registre';
@@ -230,7 +231,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     // already documents it — but a runbook does not turn red.
     write(annonceProxyDeConfiance(config.proxyDeConfiance));
 
-    const { orchestrateur } = hostWiring(base, Date.now, config.socketVm);
+    const { orchestrateur, activity } = hostWiring(base, Date.now, config.socketVm);
 
     const deps = {
         base,
@@ -411,7 +412,10 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
         gardeDuService,
         frein,
         config.proxyDeConfiance,
-        observateurDeSession(base, Date.now),
+        composeObservers(
+            observateurDeSession(base, Date.now),
+            ...(activity === undefined ? [] : [activity]),
+        ),
     );
 
     http.on('upgrade', (requete, socket, tete) => {
@@ -452,6 +456,7 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     return {
         port,
         async close(): Promise<void> {
+            activity?.stop();
             // Called BEFORE everything else — but CORRECTED (correction round
             // 2): `arreter()` only prevents the NEXT scheduling
             // of the background cleanup, it does NOT interrupt a round already in flight.
