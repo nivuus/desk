@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Fetch } from './catalogue';
-import { LAUNCH_RETRY_MS, LAUNCH_STARTUP_MAX_MS, launchWhenReady } from './lancement';
+import { LAUNCH_RETRY_MS, launchWhenReady } from './lancement';
 
 /// A service that answers the given responses in order, then the last one again.
 function service(reponses: Array<{ status: number; corps: unknown }>) {
@@ -63,7 +63,8 @@ describe('launchWhenReady', () => {
         const { clock } = horloge();
         const r = await launchWhenReady('app1', deps, clock, () => {});
         expect(r).toEqual({ kind: 'vm-timeout' });
-        expect(fetch.mock.calls.length).toBe(LAUNCH_STARTUP_MAX_MS / LAUNCH_RETRY_MS + 1);
+        // 60 sleeps of 3 s = 180 s, plus the first attempt: a literal, independent of the constants.
+        expect(fetch.mock.calls.length).toBe(61);
     });
 
     it('`504 delai` is NEVER replayed (the order may have gone out: duplicate risk)', async () => {
@@ -91,5 +92,37 @@ describe('launchWhenReady', () => {
         const { clock } = horloge();
         await launchWhenReady('app1', deps, clock, () => {});
         expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('a network failure propagates and announces nothing when no 503 `demarrage` came before', async () => {
+        const fetch = vi.fn<Fetch>(async () => {
+            throw new Error('network down');
+        });
+        const { clock } = horloge();
+        const onStarting = vi.fn();
+        await expect(
+            launchWhenReady('app1', { base: 'http://p', jeton: 't', fetch }, clock, onStarting),
+        ).rejects.toThrow('network down');
+        expect(onStarting).not.toHaveBeenCalled();
+    });
+
+    it('a network failure after a 503 `demarrage` propagates, the start having been announced once', async () => {
+        let n = 0;
+        const fetch = vi.fn<Fetch>(async () => {
+            if (n++ > 0) throw new Error('network down');
+            return {
+                ok: false,
+                status: 503,
+                json: async () => DEMARRAGE.corps,
+                arrayBuffer: async () => new ArrayBuffer(0),
+            };
+        });
+        const { clock } = horloge();
+        const onStarting = vi.fn();
+        await expect(
+            launchWhenReady('app1', { base: 'http://p', jeton: 't', fetch }, clock, onStarting),
+        ).rejects.toThrow('network down');
+        expect(onStarting).toHaveBeenCalledTimes(1);
+        expect(fetch).toHaveBeenCalledTimes(2);
     });
 });

@@ -178,6 +178,11 @@ function entree(application: ApplicationListee): DocumentFragment {
                     }
                     dire('succes', `${application.nom} was launched.`);
                 });
+            }).catch((erreur: unknown) => {
+                // A network failure, at any attempt of the wait: without this the
+                // "starting" message would stay on screen and the rejection unhandled.
+                console.error('launch failed', erreur);
+                dire('danger', `${application.nom} could not be launched: the platform did not answer.`);
             });
         },
         installer: () => {
