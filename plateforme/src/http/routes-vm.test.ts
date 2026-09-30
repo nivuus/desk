@@ -17,6 +17,7 @@ import { enroler, marquerVu } from '../depot/agent';
 import { createUser } from '../depot/utilisateur';
 import { ouvrirSession } from '../depot/session';
 import { signer } from '../identite/jeton';
+import { inventaireStatique } from '../orchestration/inventaire-statique';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
 import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
 import { servirVm } from './routes-vm';
@@ -60,6 +61,7 @@ async function servir(
             maintenant: () => MS,
             frein,
             proxyDeConfiance: new Set<string>(),
+            orchestrateur: inventaireStatique(b, () => MS),
         })
             .then((servie) => {
                 if (servie) return;

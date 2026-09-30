@@ -11,7 +11,7 @@
 // `OPTIONS` preflight request, without which the route is unreachable from a
 // browser (same plan defect as in task 9).
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
@@ -19,9 +19,12 @@ import { SEUIL_INJOIGNABLE_MS } from '../agents/fraicheur';
 import { enroler, marquerVu } from '../depot/agent';
 import { createUser } from '../depot/utilisateur';
 import { signer } from '../identite/jeton';
+import { hostOrchestrator } from '../orchestration/host-orchestrator';
+import { inventaireStatique } from '../orchestration/inventaire-statique';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
+import { Wake } from '../orchestration/wake';
 import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
-import { servirSession } from './routes-session';
+import { servirSession, type DependancesSession } from './routes-session';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const ORIGINE = 'http://127.0.0.1:5173';
@@ -69,9 +72,12 @@ async function servir(
     instant = MS,
     origineClient?: string,
     frein: Frein = new Frein(),
+    /// Built from the base the harness opens, so a test can wire an orchestrator on it.
+    surcharges: (b: Pilote) => Partial<DependancesSession> = () => ({}),
 ): Promise<string> {
     base = await baseNeuve(nom);
     const b = base;
+    const extra = surcharges(b);
     http = createServer((req, rep) => {
         void servirSession(req, rep, {
             base: b,
@@ -80,6 +86,9 @@ async function servir(
             maintenant: () => instant,
             frein,
             proxyDeConfiance: new Set<string>(),
+            orchestrateur: inventaireStatique(b, () => instant),
+            reveilPossible: false,
+            ...extra,
         })
             .then((servie) => {
                 if (servie) return;
@@ -258,6 +267,41 @@ describe(`route POST /session, engine=${MOTEUR}`, () => {
         await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
         const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
         const corps = await corpsDe(await demander(url, signer(alice, SECRET, MS)));
+        expect(corps.redemarrage).toEqual({
+            possible: false,
+            motif: 'non-supporte',
+            backend: BACKEND_STATIQUE,
+        });
+    });
+
+    it('🔴 during a wake, `etat` is `demarrage` and `redemarrage.possible` is true', async () => {
+        const instant = MS + SEUIL_INJOIGNABLE_MS + 1;
+        const send = vi.fn(async () => ({ ok: true }) as const);
+        // The orchestrator is wired on the SAME base as the route.
+        let orchestrateur: DependancesSession['orchestrateur'] | undefined;
+        const url = await servir('rs-reveil', instant, undefined, new Frein(), (b) => {
+            orchestrateur = hostOrchestrator(b, () => instant, new Wake(send, () => instant));
+            return { orchestrateur, reveilPossible: true };
+        });
+        await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
+        const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
+        expect((await orchestrateur!.start('v1')).ok).toBe(true);
+
+        const r = await demander(url, signer(alice, SECRET, MS));
+        expect(r.status).toBe(503);
+        const corps = await corpsDe(r);
+        expect(corps.etat).toBe('demarrage');
+        expect(corps.redemarrage).toEqual({ possible: true });
+        expect(corps.prefixe).toBe('PREFIXEv1');
+    });
+
+    it('🔴 without a channel, `redemarrage.possible` stays false (the admission from before)', async () => {
+        // Default harness: `reveilPossible: false` and the static inventory.
+        const url = await servir('rs-sans-canal', MS + SEUIL_INJOIGNABLE_MS + 1);
+        await poserVm(base!, 'v1', 'w1', 'PREFIXEv1', MS);
+        const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
+        const corps = await corpsDe(await demander(url, signer(alice, SECRET, MS)));
+        expect(corps.etat).toBe('injoignable');
         expect(corps.redemarrage).toEqual({
             possible: false,
             motif: 'non-supporte',

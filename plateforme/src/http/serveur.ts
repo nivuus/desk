@@ -34,6 +34,7 @@ import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
+import { hostWiring } from '../orchestration/host-wiring';
 import { garde } from '../identite/garde';
 import { ouvrirMagasin } from '../apps/icones';
 import { ouvrirMagasinTranches } from '../apps/magasin-tranches';
@@ -229,8 +230,12 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
     // already documents it — but a runbook does not turn red.
     write(annonceProxyDeConfiance(config.proxyDeConfiance));
 
+    const { orchestrateur } = hostWiring(base, Date.now, config.socketVm);
+
     const deps = {
         base,
+        orchestrateur,
+        reveilPossible: config.socketVm !== undefined,
         secretJeton: config.secretJeton,
         origineClient: config.origineClient,
         maintenant: Date.now,

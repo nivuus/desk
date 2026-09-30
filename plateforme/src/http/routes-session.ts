@@ -33,7 +33,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
-import { inventaireStatique } from '../orchestration/inventaire-statique';
+import type { Orchestrateur } from '../orchestration/interface';
 import { BACKEND_STATIQUE, CODE_HTTP } from '../orchestration/refus';
 import { laVmDe } from '../orchestration/selection';
 import { adresseSource } from './adresse-source';
@@ -51,6 +51,12 @@ export interface DependancesSession {
     /// what makes the transition of criterion ④ observable within a
     /// test run, where there would otherwise be only one instant.
     maintenant: () => number;
+    /// The orchestrator that owns the inventory and the state of each VM:
+    /// static, or the host one when the wake channel is configured.
+    orchestrateur: Orchestrateur;
+    /// `config.socketVm !== undefined`. The hub only admits « cannot restart »
+    /// when that is true.
+    reveilPossible: boolean;
     /// 🔴 THE « ANY REQUEST » BRAKE, SHARED with `routes-vm.ts` AND
     /// `signaling/relais.ts` — see `securite/frein.ts::BUDGET_REQUETES`.
     /// This route has no notion of failure: its abuse is a VOLUME,
@@ -170,7 +176,7 @@ export async function servirSession(
     // A BODY BECOMES NECESSARY, THE BOUND WILL TOO. Without a bound,
     // an authenticated peer would grow the memory of the service at will; the
     // only reason it is missing here is that there is nothing to read.
-    const orchestrateur = inventaireStatique(deps.base, deps.maintenant);
+    const orchestrateur = deps.orchestrateur;
     // `laVmDe` and not `find`: it THROWS if the inventory carried two VMs for
     // the same user, which the partial index makes impossible in the database — and
     // if the database carried it anyway, that is a defect, not a preference to
@@ -213,11 +219,15 @@ export async function servirSession(
             {
                 ...commun,
                 motif: 'agent-injoignable',
-                redemarrage: {
-                    possible: false,
-                    motif: 'non-supporte',
-                    backend: BACKEND_STATIQUE,
-                },
+                // `{ possible: true }` when the host channel can wake the VM;
+                // otherwise the admission from before the wake feature.
+                redemarrage: deps.reveilPossible
+                    ? { possible: true }
+                    : {
+                          possible: false,
+                          motif: 'non-supporte',
+                          backend: BACKEND_STATIQUE,
+                      },
             },
             cors,
         );
