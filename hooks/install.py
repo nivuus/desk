@@ -349,6 +349,11 @@ def main() -> int:
         # above.
         "PLATEFORME_ICONES": "/var/lib/nivuus-desk/icones",
         "PLATEFORME_TELEVERSEMENTS": "/var/lib/nivuus-desk/televersements",
+        # The control socket that `console` lays down
+        # (nivuus-vm-control.socket): it wakes the VM when an app is launched
+        # and receives the "a window is open" signal. The unit joins the
+        # `nivuus-vm` group (see desk-plateforme.service).
+        "PLATEFORME_SOCKET_VM": "/run/nivuus/vm-control.sock",
         # The coturn configuration on the PLATFORM side (not the coturn server side,
         # see write_turnserver_conf): `signaling/ice.ts::configurationIce`
         # requires BOTH to announce a relay to peers.

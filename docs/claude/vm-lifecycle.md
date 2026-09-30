@@ -43,7 +43,11 @@
 > du dépôt, pas de ce chantier. Ce qui suit reste donc écrit tel quel,
 > **à lire désormais comme un relevé historique**, jusqu'à cette décision.
 
-**La VM cible est une machine libvirt/QEMU nommée `Windows`, et elle n'est pas
+**Produit** : la VM est réveillée par le lancement d'une app depuis le hub
+(`PLATEFORME_SOCKET_VM`) et hibernée après 30 min sans session Moonlight ni
+fenêtre ouverte. **Développement** : inchangé, `virsh start Windows`.
+
+**La VM de développement est une machine libvirt/QEMU nommée `Windows`, et elle n'est pas
 démarrée automatiquement.** Tout travail touchant l'agent Rust, la capture, la
 recette WebRTC ou WinRM exige qu'elle tourne. Symptômes d'une VM éteinte :
 `192.168.3.2` injoignable (« Aucun chemin d'accès pour atteindre l'hôte

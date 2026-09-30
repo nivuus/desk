@@ -66,6 +66,13 @@ RestartSec=5
 DynamicUser=yes
 StateDirectory=nivuus-desk
 NoNewPrivileges=yes
+# The group of the VM control socket (console: nivuus-vm-control.socket).
+# This is the ONLY right added: the platform can ask "wake the VM" and "a
+# window is open", and nothing else (no access to virsh). No `-` prefix: a
+# missing group must fail loudly, otherwise the channel would be silently
+# unusable. The group is created by console (sysusers.d) and desk already
+# depends on console (nivuus-package.yaml, requires.packages).
+SupplementaryGroups=nivuus-vm
 
 [Install]
 WantedBy=multi-user.target
