@@ -283,7 +283,8 @@ connectSession({
             clavier: window,
             collageArme: () => collageArme,
         });
-        attachStats(session.pc, statsElement);
+        // The measurement overlay is a diagnostic: shown only on `?stats`.
+        if (params.has('stats')) attachStats(session.pc, statsElement);
         video.focus();
 
         const envoyer = (payload: Uint8Array): void => {
