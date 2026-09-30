@@ -14,6 +14,7 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { parseDepuisLaPlateforme } from '../../../proto/ts/plateforme';
 import { createUser } from '../depot/utilisateur';
+import { inventaireStatique } from '../orchestration/inventaire-statique';
 // 🔴 THE HARNESS IS EXTRACTED, AND IT WAS BEFORE THE ADDITION of the
 // icon route family: this file was at 480 lines for a cap of 500.
 import {
@@ -58,6 +59,7 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
             origineClient,
             registre,
             maintenant: () => maintenant,
+            orchestrateur: inventaireStatique(b, () => maintenant),
         })
             .then((servie) => {
                 if (servie) return;
@@ -354,7 +356,12 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
             headers: withIt(jetonDe(u)),
         });
         expect(r.status).toBe(503);
-        expect(await r.json()).toEqual({ refus: 'agent-injoignable' });
+        // The static inventory cannot wake a VM: the body says so.
+        expect(await r.json()).toEqual({
+            refus: 'agent-injoignable',
+            etat: 'injoignable',
+            reveil: 'non-supporte',
+        });
     });
 
     it("🔴 returns 504 when the agent DOES NOT ANSWER, never 202 without waiting", async () => {

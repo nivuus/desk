@@ -64,6 +64,7 @@ import { lireParId as lireVm } from '../depot/vm';
 import { signerUrlIcone } from '../apps/url-icone';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
+import type { Orchestrateur } from '../orchestration/interface';
 import { lirePorteur } from './porteur';
 
 export interface DependancesApplications {
@@ -72,6 +73,7 @@ export interface DependancesApplications {
     origineClient?: string;
     registre: RegistreAgents;
     maintenant: () => number;
+    orchestrateur: Orchestrateur;
 }
 
 const LIST_PATH = '/applications';
@@ -359,7 +361,21 @@ export async function servirApplications(
         // would make the hub display a success for a launch that did not
         // happen — the hardest failure to diagnose there is, because
         // nothing anywhere contradicts it.
-        repondre(rep, 503, { refus: 'agent-injoignable' }, cors);
+        //
+        // 🔴 THE WAKE IS REQUESTED HERE, AND ONLY HERE, AFTER `acces`: a user
+        // only wakes the VM that is assigned to them. `lancer` sent NO order
+        // to the agent (no socket): the hub can therefore replay this launch
+        // without any risk of a duplicate — which is NOT true of the
+        // `504 delai` below, never replayed.
+        const wake = await deps.orchestrateur.start(application.vm_id);
+        repondre(
+            rep,
+            503,
+            wake.ok
+                ? { refus: 'agent-injoignable', etat: 'demarrage' }
+                : { refus: 'agent-injoignable', etat: 'injoignable', reveil: wake.motif },
+            cors,
+        );
         return true;
     }
     if (issue === 'delai') {

@@ -19,7 +19,6 @@ import { installThemeSelectorInDOM } from '../design/selecteur-theme';
 import { assurerAccesFrais, paireDeReponse } from '../jeton';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
-    lancerApplication,
     lireIcone,
     listerApplications,
     listerVms,
@@ -28,6 +27,7 @@ import {
 } from './catalogue';
 import { batirCarte } from './cartes';
 import { deposer, type Ton } from './depot';
+import { launchWhenReady } from './lancement';
 import { batirManifeste } from './manifeste';
 
 const CLASSE_DE_TON: Record<Ton, string> = {
@@ -160,13 +160,29 @@ function entree(application: ApplicationListee): DocumentFragment {
                     dire('danger', 'Your session has expired. Reload the page to sign in again.');
                     return;
                 }
-                return lancerApplication(application.id, deps).then((issue) => {
+                const clock = {
+                    now: () => Date.now(),
+                    sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+                };
+                return launchWhenReady(application.id, deps, clock, () =>
+                    dire('neutre', `The VM is starting… ${application.nom} will launch as soon as it is ready.`),
+                ).then((outcome) => {
+                    if (outcome.kind === 'vm-timeout') {
+                        dire('danger', 'The VM did not start in time. Try again in a moment.');
+                        return;
+                    }
+                    const { issue } = outcome;
                     if (issue.etat !== 'ok') {
                         dire('danger', `${application.nom} could not be launched: ${issue.refus.motif}.`);
                         return;
                     }
                     dire('succes', `${application.nom} was launched.`);
                 });
+            }).catch((error: unknown) => {
+                // A network failure, at any attempt of the wait: without this the
+                // "starting" message would stay on screen and the rejection unhandled.
+                console.error('launch failed', error);
+                dire('danger', `${application.nom} could not be launched: the platform did not answer.`);
             });
         },
         installer: () => {

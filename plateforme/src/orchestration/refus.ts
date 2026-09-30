@@ -24,6 +24,9 @@ import type { Operation } from './interface';
 /// two copies of a name diverge as soon as one is renamed.
 export const BACKEND_STATIQUE = 'inventaire-statique';
 
+/// The backend that wakes the VM through the host's control socket.
+export const BACKEND_HOTE = 'hote';
+
 /// All the reasons, without exception.
 ///
 /// 🔴 THE ARRAY PRODUCES THE TYPE, never the reverse — same reason as in
@@ -46,6 +49,10 @@ export const MOTIFS = [
     'utilisateur-servi',
     /// The user has no VM assigned.
     'aucune-vm',
+    /// The host's control channel is absent, refused, or did not answer.
+    /// This reason says the WAKE-UP was not requested; it says nothing about
+    /// the state of the VM.
+    'hote-inaccessible',
     /// `vu_a` too old, or null (`agents/fraicheur.ts`).
     'agent-injoignable',
 ] as const;
@@ -85,6 +92,8 @@ export const CODE_HTTP: Record<Motif, number> = {
     // 503: the VM does belong to this user, it does not answer. It is a state
     // of the world, not an error in the request.
     'agent-injoignable': 503,
+    // 503: the service is fine, it is the host that does not answer the request.
+    'hote-inaccessible': 503,
 };
 
 /// Builds a refusal. `backend` has `BACKEND_STATIQUE` as DEFAULT — never a

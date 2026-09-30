@@ -94,7 +94,7 @@ export interface ApplicationListee {
 
 export type Refus =
     | { source: 'client'; motif: 'reponse-illisible'; detail: string }
-    | { source: 'service'; statut: number; motif: string };
+    | { source: 'service'; statut: number; motif: string; etat?: string };
 
 export type Issue<T> = { etat: 'ok'; value: T } | { etat: 'refus'; refus: Refus };
 
@@ -104,7 +104,28 @@ function entetes(deps: DepsCatalogue): Record<string, string> {
     return { authorization: `Bearer ${deps.jeton}` };
 }
 
+/// The reason AND, if there is one, the technical `etat` the service returned.
+///
+/// 🔴 `etat` IS A TECHNICAL VALUE (`demarrage`, `injoignable`), NEVER A MESSAGE:
+/// the client reads no text from the service to decide anything, which keeps
+/// it independent of the language.
+async function lireRefus(r: ReponseHttp): Promise<{ motif: string; etat?: string }> {
+    try {
+        const corps = await r.json();
+        if (typeof corps === 'object' && corps !== null) {
+            const { refus, etat } = corps as { refus?: unknown; etat?: unknown };
+            if (typeof refus === 'string') {
+                return typeof etat === 'string' ? { motif: refus, etat } : { motif: refus };
+            }
+        }
+    } catch {
+        // An unreadable body is no more informative than an absent body.
+    }
+    return { motif: `status ${r.status}` };
+}
+
 /// The reason the service returned, or its code alone if it returns none.
+/// See `lireRefus`.
 ///
 /// 🔴 THE REASON IS A `string`, NOT A UNION, AND IT IS DELIBERATE — the same
 /// arbitration as `televersement.ts`. The vocabulary of refusals belongs to
@@ -113,16 +134,7 @@ function entetes(deps: DepsCatalogue): Record<string, string> {
 /// wrong on renaming. It is the defect `connexion.ts` declares about
 /// `aucune-vm`, and which P4 bequeathed without closing it. (policy: allow-fr, wire refusal code)
 async function motifDuService(r: ReponseHttp): Promise<string> {
-    try {
-        const corps = await r.json();
-        if (typeof corps === 'object' && corps !== null && 'refus' in corps) {
-            const refus = (corps as { refus: unknown }).refus;
-            if (typeof refus === 'string') return refus;
-        }
-    } catch {
-        // An unreadable body is no more informative than an absent body.
-    }
-    return `status ${r.status}`;
+    return (await lireRefus(r)).motif;
 }
 
 /* ── READING THE CATALOGUE ──────────────────────────────────────────── */
@@ -262,6 +274,12 @@ export async function lancerApplication(
 ): Promise<Issue<null>> {
     const url = `${deps.base}/application/${encodeURIComponent(id)}/lancer`;
     const r = await deps.fetch(url, { method: 'POST', headers: entetes(deps) });
-    if (!r.ok) return { etat: 'refus', refus: { source: 'service', statut: r.status, motif: await motifDuService(r) } };
+    if (!r.ok) {
+        const { motif, etat } = await lireRefus(r);
+        return {
+            etat: 'refus',
+            refus: { source: 'service', statut: r.status, motif, ...(etat === undefined ? {} : { etat }) },
+        };
+    }
     return { etat: 'ok', value: null };
 }

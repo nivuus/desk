@@ -47,8 +47,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
 import { compterOuvertesDe } from '../depot/session';
-import { OPERATIONS_HTTP, type Operation } from '../orchestration/interface';
-import { inventaireStatique } from '../orchestration/inventaire-statique';
+import { OPERATIONS_HTTP, type Operation, type Orchestrateur } from '../orchestration/interface';
 import { BACKEND_STATIQUE, CODE_HTTP } from '../orchestration/refus';
 import { vmsDe } from '../orchestration/selection';
 import { adresseSource } from './adresse-source';
@@ -63,6 +62,8 @@ export interface DependancesVm {
     secretJeton: string;
     origineClient?: string;
     maintenant: () => number;
+    /// The orchestrator that owns the inventory, the states and the verbs.
+    orchestrateur: Orchestrateur;
     /// 🔴 THE "ANY REQUEST" BRAKE, SHARED with `routes-session.ts` AND
     /// `signaling/relais.ts` — see `securite/frein.ts::BUDGET_REQUETES`. Neither
     /// `GET /vm` nor `POST /session` has any notion of failure: their abuse is
@@ -294,7 +295,7 @@ export async function servirVm(
         return true;
     }
 
-    const orchestrateur = inventaireStatique(deps.base, deps.maintenant);
+    const orchestrateur = deps.orchestrateur;
     // Filtering is done by the PURE module, never by an SQL clause written
     // here: a filter defect living in this layer would leak
     // the whole inventory, and there would be no place to make it fail without

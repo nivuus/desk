@@ -8,7 +8,7 @@
 // `base/sous-ensemble.test.ts`: each covers the other's blind spot.
 
 import { describe, expect, it } from 'vitest';
-import { BACKEND_STATIQUE, CODE_HTTP, MOTIFS, refuser, type Outcome } from './refus';
+import { BACKEND_HOTE, BACKEND_STATIQUE, CODE_HTTP, MOTIFS, refuser, type Outcome } from './refus';
 
 describe('the refusal reasons', () => {
     it('🔴 CODE_HTTP carries EXACTLY the reasons of MOTIFS, no more no less', () => {
@@ -63,5 +63,21 @@ describe('the refusal reasons', () => {
             if (r.ok) throw new Error('a refusal declared itself a success');
             expect(r.motif).toBe(motif);
         }
+    });
+});
+
+describe('the host backend vocabulary', () => {
+    it("'hote-inaccessible' is a reason, rendered as 503", () => {
+        expect(MOTIFS).toContain('hote-inaccessible');
+        expect(CODE_HTTP['hote-inaccessible']).toBe(503);
+    });
+
+    it('a host refusal carries the `hote` backend', () => {
+        expect(refuser('hote-inaccessible', 'demarrer', BACKEND_HOTE)).toEqual({
+            ok: false,
+            motif: 'hote-inaccessible',
+            operation: 'demarrer',
+            backend: 'hote',
+        });
     });
 });

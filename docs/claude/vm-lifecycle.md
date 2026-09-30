@@ -43,7 +43,22 @@
 > du dépôt, pas de ce chantier. Ce qui suit reste donc écrit tel quel,
 > **à lire désormais comme un relevé historique**, jusqu'à cette décision.
 
-**La VM cible est une machine libvirt/QEMU nommée `Windows`, et elle n'est pas
+**Produit** : la VM est réveillée par le lancement d'une app depuis le hub
+(`PLATEFORME_SOCKET_VM`) et hibernée après 30 min sans session Moonlight ni
+fenêtre ouverte. **Développement** : inchangé, `virsh start Windows`.
+
+⚠️ **Ordre de déploiement : `console` AVANT `desk`.** Le service
+`desk-plateforme` déclare `SupplementaryGroups=nivuus-vm` (sans préfixe `-`,
+volontairement) ; ce groupe et `nivuus-vm-control.socket` ne sont livrés que par
+la version de `console` qui porte `sysusers.d/nivuus-vm.conf`.
+`requires.packages: [console]` dans `nivuus-package.yaml` n'ordonne qu'une
+PREMIÈRE installation — il n'y a pas de clé de version. Sur une console qui
+tourne encore l'ancien `console`, `desk-plateforme` échoue au démarrage sur une
+erreur de groupe supplémentaire et `Restart=on-failure` boucle toutes les 5 s :
+panne totale de la plateforme. Remède : mettre à jour et activer `console`
+d'abord, puis `desk`.
+
+**La VM de développement est une machine libvirt/QEMU nommée `Windows`, et elle n'est pas
 démarrée automatiquement.** Tout travail touchant l'agent Rust, la capture, la
 recette WebRTC ou WinRM exige qu'elle tourne. Symptômes d'une VM éteinte :
 `192.168.3.2` injoignable (« Aucun chemin d'accès pour atteindre l'hôte

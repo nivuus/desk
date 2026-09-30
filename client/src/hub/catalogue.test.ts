@@ -212,6 +212,29 @@ describe('lancerApplication', () => {
         const issue = await lancerApplication('u-1', { base: 'https://x', jeton: 'J', fetch });
         expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 503, motif: 'vm-injoignable' } });
     });
+
+    it('returns `etat` when the service carries it (503 starting)', async () => {
+        const { fetch } = faux({
+            'https://x/application/u-1/lancer': {
+                ok: false,
+                status: 503,
+                json: async () => ({ refus: 'agent-injoignable', etat: 'demarrage' }),
+            },
+        });
+        const issue = await lancerApplication('u-1', { base: 'https://x', jeton: 'J', fetch });
+        expect(issue).toEqual({
+            etat: 'refus',
+            refus: { source: 'service', statut: 503, motif: 'agent-injoignable', etat: 'demarrage' },
+        });
+    });
+
+    it('a refusal without `etat` does not carry the field', async () => {
+        const { fetch } = faux({
+            'https://x/application/u-1/lancer': { ok: false, status: 504, json: async () => ({ refus: 'delai' }) },
+        });
+        const issue = await lancerApplication('u-1', { base: 'https://x', jeton: 'J', fetch });
+        expect(issue).toEqual({ etat: 'refus', refus: { source: 'service', statut: 504, motif: 'delai' } });
+    });
 });
 
 describe('shape check', () => {
