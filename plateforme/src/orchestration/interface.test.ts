@@ -47,25 +47,27 @@ describe('the operation allow-lists', () => {
         expect((OPERATIONS_HORS_HTTP as readonly string[]).includes('attribuer')).toBe(true);
     });
 
-    it('EtatVm is exactly what `etatDe` produces: `prete` and `injoignable`', () => {
-        // 🔴 The red: replacing the re-export with the four-member union of
-        // spec §3.6 (`arretee`, `demarrage`, `prete`, `injoignable`).
+    it('EtatVm is what `etatDe` produces (`prete`, `injoignable`) plus `demarrage`', () => {
+        // 🔴 The red: dropping `demarrage` from the union, or widening it with
+        // a member nothing emits (`arretee`).
         //
         // ⚠️ AND IT IS DOUBLE, BECAUSE NEITHER HALF IS ENOUGH.
-        // Under the mutation alone, `Record<EtatVm, number>` loses two keys:
-        // `npm run typecheck` FAILS, `vitest` stays green (esbuild does not
-        // typecheck). If the author of the mutation then adds the two
-        // missing keys to silence `tsc`, it is `Object.keys`
-        // below that fails under `vitest`. BOTH reds were played
-        // and recorded; without the second, this test would be a check unable
-        // to fail where it is read — see E2.
-        const CODES: Record<EtatVm, number> = { prete: 0, injoignable: 1 };
-        expect(Object.keys(CODES).sort()).toEqual(['injoignable', 'prete']);
+        // Under the mutation alone, `Record<EtatVm, number>` gains or loses a
+        // key: `npm run typecheck` FAILS, `vitest` stays green (esbuild does
+        // not typecheck). If the author then fixes the keys to silence `tsc`,
+        // it is `Object.keys` below that fails under `vitest`.
+        const CODES: Record<EtatVm, number> = { prete: 0, injoignable: 1, demarrage: 2 };
+        expect(Object.keys(CODES).sort()).toEqual(['demarrage', 'injoignable', 'prete']);
 
         const MS = 1_787_136_773_742;
         const prete: EtatVm = etatDe(MS, MS);
         const injoignable: EtatVm = etatDe(null, MS);
         expect(prete).toBe('prete');
         expect(injoignable).toBe('injoignable');
+    });
+
+    it('`EtatVm` accepts `demarrage` on top of the two agent states', () => {
+        const etats: EtatVm[] = ['prete', 'injoignable', 'demarrage'];
+        expect(etats).toHaveLength(3);
     });
 });

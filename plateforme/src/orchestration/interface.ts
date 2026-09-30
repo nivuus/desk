@@ -25,19 +25,16 @@ import type { Outcome } from './refus';
 
 /// The state of a VM, as a v1 backend can know it.
 ///
-/// 🔴 IT IS A RE-EXPORT OF `EtatAgent`, AND IT HAS EXACTLY TWO MEMBERS —
-/// whereas spec §3.6 sets four (`arretee`, `demarrage`, `prete`,
-/// `injoignable`). The first two assume a hypervisor, which NO
-/// P4 backend drives (`InventaireStatique` only inventories what
-/// an administrator enrolled): writing them would produce two variants that
-/// nothing emits, that is dead code IN A TYPE — the kind hardest
-/// to remove, because no test turns red on it.
+/// `EtatAgent` (`prete`, `injoignable`) plus `demarrage`: a wake-up was
+/// requested and the agent has not beaten yet (`orchestration/wake.ts`).
+/// `arretee` stays absent: nothing emits that state yet, and writing it now
+/// would be dead code IN A TYPE, the kind hardest to remove because no test
+/// turns red on it.
 ///
-/// The day a hypervisor backend produces them, it will widen the union — and
-/// any exhaustiveness depending on it will break AT COMPILE TIME. That is the right
-/// failure: noisy, and that is the reason the code table of
+/// Widening the union breaks any exhaustiveness depending on it AT COMPILE
+/// TIME. That is the right failure: noisy, and the reason the code table of
 /// `refus.ts` is a `Record<Motif, number>` and not a free object.
-export type EtatVm = EtatAgent;
+export type EtatVm = EtatAgent | 'demarrage';
 
 /// A VM of the inventory, as the orchestrator returns it.
 ///
