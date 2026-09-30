@@ -1,7 +1,7 @@
 // What the platform tells the host: "an app window is open".
 //
 // 🔴 ONLY `w-<N>` SESSIONS COUNT. The `bureau` control session and the
-// `fichiers` bridge are paired as soon as the hub is open on a running VM:
+// file-transfer bridge are paired as soon as the hub is open on a running VM:
 // counting them would let a forgotten hub tab block the VM shutdown forever.
 //
 // 🔴 A SET OF NAMES, NOT A COUNTER: a repeated `apparie` or an unknown

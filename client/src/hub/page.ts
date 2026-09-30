@@ -160,28 +160,28 @@ function entree(application: ApplicationListee): DocumentFragment {
                     dire('danger', 'Your session has expired. Reload the page to sign in again.');
                     return;
                 }
-                const horloge = {
+                const clock = {
                     now: () => Date.now(),
                     sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
                 };
-                return launchWhenReady(application.id, deps, horloge, () =>
+                return launchWhenReady(application.id, deps, clock, () =>
                     dire('neutre', `The VM is starting… ${application.nom} will launch as soon as it is ready.`),
-                ).then((resultat) => {
-                    if (resultat.kind === 'vm-timeout') {
+                ).then((outcome) => {
+                    if (outcome.kind === 'vm-timeout') {
                         dire('danger', 'The VM did not start in time. Try again in a moment.');
                         return;
                     }
-                    const { issue } = resultat;
+                    const { issue } = outcome;
                     if (issue.etat !== 'ok') {
                         dire('danger', `${application.nom} could not be launched: ${issue.refus.motif}.`);
                         return;
                     }
                     dire('succes', `${application.nom} was launched.`);
                 });
-            }).catch((erreur: unknown) => {
+            }).catch((error: unknown) => {
                 // A network failure, at any attempt of the wait: without this the
                 // "starting" message would stay on screen and the rejection unhandled.
-                console.error('launch failed', erreur);
+                console.error('launch failed', error);
                 dire('danger', `${application.nom} could not be launched: the platform did not answer.`);
             });
         },
