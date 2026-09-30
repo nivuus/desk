@@ -12,6 +12,7 @@ import { DELAI_LANCEMENT_MS } from '../agents/registre';
 import type { Orchestrateur } from '../orchestration/interface';
 import { inventaireStatique } from '../orchestration/inventaire-statique';
 import { BACKEND_HOTE, refuser, type Outcome } from '../orchestration/refus';
+import { enroler, marquerVu } from '../depot/agent';
 import { createUser } from '../depot/utilisateur';
 import {
     attribuer,
@@ -104,7 +105,10 @@ describe('launching an application on a VM that does not answer', () => {
         await poserVm(m.base, 'v-1');
         const u = await attribuer(m.base, 'v-1', 'u@exemple.test');
         const id = await poserApp(m.base, 'v-1', 'Firefox', 'c-1');
-        // An agent registered, but SILENT: the order goes out, nobody answers.
+        // An agent registered and FRESH (it beat a second ago), but SILENT: the
+        // order goes out, nobody answers.
+        await enroler(m.base, 'v-1', 'empreinte', 'prefixe-1');
+        await marquerVu(m.base, 'v-1', MS - 1_000);
         const muet: SocketAgent = { readyState: 1, send() {}, close() {} };
         registre.inscrire('v-1', muet);
 
@@ -113,4 +117,24 @@ describe('launching an application on a VM that does not answer', () => {
         expect(await r.json()).toEqual({ refus: 'delai' });
         expect(start).not.toHaveBeenCalled();
     }, DELAI_LANCEMENT_MS + 10_000);
+
+    it('🔴 wakes a VM whose socket is still held but whose heartbeat is stale, and sends no order', async () => {
+        const start = vi.fn(async (): Promise<Outcome> => ({ ok: true }));
+        const m = await servir('ra-reveil-hiberne', start);
+        await poserVm(m.base, 'v-1');
+        const u = await attribuer(m.base, 'v-1', 'u@exemple.test');
+        const id = await poserApp(m.base, 'v-1', 'Firefox', 'c-1');
+        // A hibernated VM: the agent beat ten minutes ago, and its socket is
+        // still ESTABLISHED on our side (no FIN ever came).
+        await enroler(m.base, 'v-1', 'empreinte', 'prefixe-1');
+        await marquerVu(m.base, 'v-1', MS - 600_000);
+        const send = vi.fn();
+        registre.inscrire('v-1', { readyState: 1, send, close() {} });
+
+        const r = await lancer(m, id, jetonDe(u));
+        expect(r.status).toBe(503);
+        expect(await r.json()).toEqual({ refus: 'agent-injoignable', etat: 'demarrage' });
+        expect(start).toHaveBeenCalledWith('v-1');
+        expect(send).not.toHaveBeenCalled();
+    });
 });

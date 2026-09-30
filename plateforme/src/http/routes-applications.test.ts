@@ -13,6 +13,7 @@ import { DELAI_LANCEMENT_MS, RegistreAgents, type SocketAgent } from '../agents/
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { parseDepuisLaPlateforme } from '../../../proto/ts/plateforme';
+import { enroler, marquerVu } from '../depot/agent';
 import { createUser } from '../depot/utilisateur';
 import { inventaireStatique } from '../orchestration/inventaire-statique';
 // 🔴 THE HARNESS IS EXTRACTED, AND IT WAS BEFORE THE ADDITION of the
@@ -35,6 +36,15 @@ let base: Pilote | undefined;
 let http: Server | undefined;
 let registre = new RegistreAgents();
 let maintenant = MS;
+
+/// A LIVE agent, as production has it: its socket is registered AND its heartbeat
+/// is fresh. The launch route trusts the heartbeat, not the socket, to decide
+/// whether anyone answers (a hibernated VM keeps a dead socket).
+async function agentVivant(vmId: string, socket: SocketAgent): Promise<void> {
+    await enroler(base!, vmId, 'empreinte', `prefixe-${vmId}`);
+    await marquerVu(base!, vmId, maintenant - 1_000);
+    registre.inscrire(vmId, socket);
+}
 
 afterEach(async () => {
     if (http) await new Promise<void>((r) => http!.close(() => r()));
@@ -373,7 +383,7 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
         // An agent registered, but SILENT.
-        registre.inscrire('v-1', agentQuiRepond(null));
+        await agentVivant('v-1', agentQuiRepond(null));
 
         const debut = Date.now();
         const r = await fetch(`${url}/application/${id}/lancer`, {
@@ -396,7 +406,7 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
-        registre.inscrire('v-1', agentQuiRepond('raccourci'));
+        await agentVivant('v-1', agentQuiRepond('raccourci'));
 
         const r = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
@@ -415,7 +425,7 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         await poserVm(base!, 'v-1');
         const u = await attribuer(base!, 'v-1', 'u@exemple.test');
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
-        registre.inscrire('v-1', agentQuiRepond('echec'));
+        await agentVivant('v-1', agentQuiRepond('echec'));
 
         const r = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
@@ -458,7 +468,7 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
         const autre = await createUser(base!, 'autre@exemple.test', 'x', MS);
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
-        registre.inscrire('v-1', agentQuiRepond('raccourci'));
+        await agentVivant('v-1', agentQuiRepond('raccourci'));
 
         const entetes = withIt(jetonDe(autre));
         const etrangere = await fetch(`${url}/application/${id}/lancer`, {

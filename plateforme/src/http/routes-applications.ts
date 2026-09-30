@@ -354,19 +354,16 @@ export async function servirApplications(
     // 🔴 THE REQUEST ID IS DRAWN HERE, and it is what pairs the order with its
     // answer. Using the key in its place would mix up two concurrent
     // launches of the same application — two hub tabs are enough.
-    const issue = await deps.registre.lancer(application.vm_id, application.cle, randomUUID());
-
-    if (issue === 'agent-injoignable') {
-        // 503: the service is fine, it is the VM that does not answer. Returning 200
-        // would make the hub display a success for a launch that did not
-        // happen — the hardest failure to diagnose there is, because
-        // nothing anywhere contradicts it.
-        //
-        // 🔴 THE WAKE IS REQUESTED HERE, AND ONLY HERE, AFTER `acces`: a user
-        // only wakes the VM that is assigned to them. `lancer` sent NO order
-        // to the agent (no socket): the hub can therefore replay this launch
-        // without any risk of a duplicate — which is NOT true of the
-        // `504 delai` below, never replayed.
+    // 🔴 A SILENT VM IS WOKEN BEFORE ANY ORDER IS SENT, AND FRESHNESS DECIDES, NOT
+    // THE SOCKET. A hibernated (or powered-off without a FIN) VM leaves its agent
+    // socket ESTABLISHED on our side, so the registry still holds it: the order
+    // would go into a dead connection and the launch would end in `504 delai`,
+    // which is never replayed and never wakes anything (seen 2026-09-30: Notepad
+    // launched on a hibernated VM, no wake). `vu_a` is the heartbeat the platform
+    // itself records, so it is the truth about whether anyone answers.
+    // `lancer` sends NO order in this case, hence the hub can replay the launch
+    // without any risk of a duplicate.
+    const unreachable = async (): Promise<true> => {
         const wake = await deps.orchestrateur.start(application.vm_id);
         repondre(
             rep,
@@ -377,6 +374,20 @@ export async function servirApplications(
             cors,
         );
         return true;
+    };
+    if ((await deps.orchestrateur.etat(application.vm_id)) !== 'prete') return unreachable();
+
+    const issue = await deps.registre.lancer(application.vm_id, application.cle, randomUUID());
+
+    if (issue === 'agent-injoignable') {
+        // 503: the service is fine, it is the VM that does not answer. Returning 200
+        // would make the hub display a success for a launch that did not
+        // happen — the hardest failure to diagnose there is, because
+        // nothing anywhere contradicts it.
+        //
+        // 🔴 THE WAKE IS REQUESTED ONLY AFTER `acces`: a user only wakes the VM
+        // that is assigned to them (see `unreachable` above).
+        return unreachable();
     }
     if (issue === 'delai') {
         // 504: the order HAS GONE, and nobody answered. ⚠️ It is not
