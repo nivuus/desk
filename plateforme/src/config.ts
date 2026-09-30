@@ -108,6 +108,12 @@ export interface Config {
     /// nginx setup, the platform must serve NOTHING, and a default would
     /// make it publish whatever its working directory contains.
     racinePage?: string;
+    /// PLATEFORME_SOCKET_VM: absolute path of the host control channel (Unix
+    /// socket) through which the service wakes the VM. Absent or empty, the
+    /// channel is disabled and the service keeps the static inventory, which
+    /// refuses to start a VM (`non-supporte`). A relative path THROWS: it would
+    /// resolve against the working directory and silently point nowhere.
+    socketVm?: string;
     /// PLATEFORME_AUTH, default 'pomerium'. An unknown value THROWS.
     ///
     /// ⚠️ IT IS NOT AN ARMING, IT IS A MODE CHOICE — the `=0 disarms`
@@ -202,6 +208,15 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     // and absent both mean "no server".
     const brutPage = env.PLATEFORME_PAGE;
     const racinePage = brutPage === undefined || brutPage === '' ? undefined : brutPage;
+
+    const brutSocketVm = env.PLATEFORME_SOCKET_VM;
+    const socketVm = brutSocketVm === undefined || brutSocketVm === '' ? undefined : brutSocketVm;
+    if (socketVm !== undefined && !socketVm.startsWith('/')) {
+        throw new Error(
+            `PLATEFORME_SOCKET_VM must be an absolute path, received: ${socketVm}. ` +
+                'Empty, the VM wake channel is disabled.',
+        );
+    }
 
     // 🔴 NO DEFAULT, and above all not a RANDOM default. A secret drawn at
     // startup would pass all the shape tests, then invalidate at every
@@ -320,6 +335,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         repertoireIcones,
         repertoireTeleversements,
         racinePage,
+        socketVm,
         auth,
     };
 }

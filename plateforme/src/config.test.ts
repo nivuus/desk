@@ -59,6 +59,7 @@ describe('lireConfig', () => {
             repertoireIcones: 'donnees/icones',
             repertoireTeleversements: 'donnees/televersements',
             racinePage: undefined,
+            socketVm: undefined,
         });
     });
 
@@ -394,5 +395,27 @@ describe("the listen guard of pomerium mode", () => {
                 PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5',
             }).hote,
         ).toBe('192.168.3.1');
+    });
+});
+
+// The proxy address satisfies the pomerium-mode guard: it is not the subject here.
+const ENV_SOCKET = { ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5' };
+
+describe('PLATEFORME_SOCKET_VM', () => {
+    it('is disabled when absent or empty', () => {
+        expect(lireConfig({ ...ENV_SOCKET }).socketVm).toBeUndefined();
+        expect(lireConfig({ ...ENV_SOCKET, PLATEFORME_SOCKET_VM: '' }).socketVm).toBeUndefined();
+    });
+
+    it('keeps an absolute path as is', () => {
+        expect(
+            lireConfig({ ...ENV_SOCKET, PLATEFORME_SOCKET_VM: '/run/nivuus/vm-control.sock' }).socketVm,
+        ).toBe('/run/nivuus/vm-control.sock');
+    });
+
+    it('🔴 refuses a relative path, naming the variable', () => {
+        expect(() => lireConfig({ ...ENV_SOCKET, PLATEFORME_SOCKET_VM: 'vm-control.sock' })).toThrow(
+            /PLATEFORME_SOCKET_VM/,
+        );
     });
 });
