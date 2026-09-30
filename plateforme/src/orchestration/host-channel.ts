@@ -8,7 +8,7 @@
 // an exception would return 500 where the service must admit "the host is not
 // responding".
 
-import { connect } from 'node:net';
+import { connect, type Socket } from 'node:net';
 
 export const VERBES_HOTE = ['wake', 'busy'] as const;
 export type VerbeHote = (typeof VERBES_HOTE)[number];
@@ -26,7 +26,15 @@ export function envoyerAuCanal(
     delaiMs: number = DELAI_CANAL_MS,
 ): Promise<ReponseHote> {
     return new Promise((resoudre) => {
-        const socket = connect(chemin);
+        // `connect` throws synchronously on some inputs (an empty path is read
+        // as a port). Inside the executor that would turn the promise into a
+        // rejection: it becomes a value instead.
+        let socket: Socket;
+        try {
+            socket = connect(chemin);
+        } catch (e) {
+            return resoudre({ ok: false, cause: (e as NodeJS.ErrnoException).code ?? 'erreur-socket' });
+        }
         let recu = '';
         let fini = false;
 

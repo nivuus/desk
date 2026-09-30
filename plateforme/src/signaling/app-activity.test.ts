@@ -91,4 +91,15 @@ describe('createAppActivity', () => {
         vi.advanceTimersByTime(BUSY_PERIOD_MS * 3);
         expect(send).toHaveBeenCalledTimes(1);
     });
+
+    it('🔴 `stop` is terminal: a pairing after it neither counts nor re-arms the timer', () => {
+        const { send, activity } = mount();
+        activity.apparie('PFX:w-1');
+        expect(send).toHaveBeenCalledTimes(1);
+        activity.stop();
+        activity.apparie('PFX:w-2');
+        vi.advanceTimersByTime(BUSY_PERIOD_MS * 3);
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(activity.windows()).toBe(1);
+    });
 });

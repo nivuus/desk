@@ -85,4 +85,19 @@ describe('envoyerAuCanal', () => {
         await new Promise<void>((r) => serveur.listen(chemin, () => r()));
         expect(await envoyerAuCanal(chemin, 'wake')).toEqual({ ok: false, cause: 'ferme-sans-reponse' });
     });
+
+    it('🔴 a path Node rejects synchronously resolves to a value, never rejects', async () => {
+        const reponse = await envoyerAuCanal('/tmp/bad\u0000path.sock', 'wake');
+        expect(reponse.ok).toBe(false);
+        if (reponse.ok) return;
+        expect(typeof reponse.cause).toBe('string');
+        expect(reponse.cause.length).toBeGreaterThan(0);
+    });
+
+    it('🔴 an empty path, which `connect` rejects synchronously, resolves to a value', async () => {
+        const reponse = await envoyerAuCanal('', 'wake');
+        expect(reponse.ok).toBe(false);
+        if (reponse.ok) return;
+        expect(reponse.cause.length).toBeGreaterThan(0);
+    });
 });

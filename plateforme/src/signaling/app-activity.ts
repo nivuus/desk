@@ -20,7 +20,7 @@ export const BUSY_PERIOD_MS = 60_000;
 const WINDOW_NAME = /^w-\d+$/;
 
 export interface AppActivity extends ObservateurDeSession {
-    /// Stops the heartbeats (service shutdown).
+    /// Stops the heartbeats for good (service shutdown): later pairings are ignored.
     stop(): void;
     /// The number of open windows, for tests and diagnostics.
     windows(): number;
@@ -29,6 +29,8 @@ export interface AppActivity extends ObservateurDeSession {
 export function createAppActivity(send: (verb: 'busy') => Promise<ReponseHote>): AppActivity {
     const open = new Set<string>();
     let timer: NodeJS.Timeout | undefined;
+    // Terminal: once stopped, nothing can arm the heartbeats again.
+    let stopped = false;
 
     const beat = (): void => {
         void send('busy').then((response) => {
@@ -50,6 +52,7 @@ export function createAppActivity(send: (verb: 'busy') => Promise<ReponseHote>):
 
     return {
         apparie(sessionName) {
+            if (stopped) return;
             if (!WINDOW_NAME.test(decouper(sessionName).nom)) return;
             open.add(sessionName);
             arm();
@@ -58,7 +61,10 @@ export function createAppActivity(send: (verb: 'busy') => Promise<ReponseHote>):
             open.delete(sessionName);
             if (open.size === 0) disarm();
         },
-        stop: disarm,
+        stop() {
+            stopped = true;
+            disarm();
+        },
         windows: () => open.size,
     };
 }

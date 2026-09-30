@@ -9,7 +9,7 @@
 // routes is reachable from a browser — see `routes-vm.ts`), and the
 // method refusal on `/vm`.
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
@@ -18,6 +18,8 @@ import { createUser } from '../depot/utilisateur';
 import { ouvrirSession } from '../depot/session';
 import { signer } from '../identite/jeton';
 import { inventaireStatique } from '../orchestration/inventaire-statique';
+import type { Orchestrateur } from '../orchestration/interface';
+import type { Outcome } from '../orchestration/refus';
 import { BACKEND_STATIQUE } from '../orchestration/refus';
 import { Frein, REQUETES_MAX_ADRESSE } from '../securite/frein';
 import { servirVm } from './routes-vm';
@@ -50,6 +52,7 @@ async function servir(
     nom: string,
     origineClient?: string,
     frein: Frein = new Frein(),
+    orchestrateurDe: (b: Pilote) => Orchestrateur = (b) => inventaireStatique(b, () => MS),
 ): Promise<string> {
     base = await baseNeuve(nom);
     const b = base;
@@ -61,7 +64,7 @@ async function servir(
             maintenant: () => MS,
             frein,
             proxyDeConfiance: new Set<string>(),
-            orchestrateur: inventaireStatique(b, () => MS),
+            orchestrateur: orchestrateurDe(b),
         })
             .then((servie) => {
                 if (servie) return;
@@ -352,5 +355,55 @@ describe(`routes /vm, engine=${MOTEUR}`, () => {
         const retry = last!.headers.get('retry-after');
         expect(retry).not.toBeNull();
         expect(Number(retry)).toBeGreaterThan(0);
+    });
+
+    it('🔴 `POST /vm/<id>/demarrer` on the requester\'s VM reaches the INJECTED orchestrator', async () => {
+        // 🔴 The red: the route building its own `inventaireStatique` per
+        // request. Every other test would stay green, yet the real backend
+        // (the one that wakes the VM) would never be called.
+        const start = vi.fn(
+            async (_vm: string): Promise<Outcome> => ({
+                ok: false,
+                motif: 'hote-inaccessible',
+                operation: 'demarrer',
+                backend: 'double',
+            }),
+        );
+        const url = await servir('rvm-injecte', undefined, undefined, (b) => ({
+            ...inventaireStatique(b, () => MS),
+            start,
+        }));
+        await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
+        const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
+        const r = await fetch(`${url}/vm/v1/demarrer`, {
+            method: 'POST',
+            headers: withIt(jetonDe(alice)),
+        });
+        expect(start).toHaveBeenCalledTimes(1);
+        expect(start).toHaveBeenCalledWith('v1');
+        expect(r.status).toBe(503);
+        expect(await corpsDe(r)).toEqual({
+            motif: 'hote-inaccessible',
+            operation: 'demarrer',
+            backend: 'double',
+        });
+    });
+
+    it('🔴 `POST /vm/<id>/demarrer` on SOMEONE ELSE\'S VM does not reach the orchestrator', async () => {
+        const start = vi.fn(async (_vm: string): Promise<Outcome> => ({ ok: true }));
+        const url = await servir('rvm-injecte-autrui', undefined, undefined, (b) => ({
+            ...inventaireStatique(b, () => MS),
+            start,
+        }));
+        await poserVm(base!, 'v1', 'w1', 'PREFIXEv1');
+        await poserVm(base!, 'v2', 'w2', 'PREFIXEv2');
+        const alice = await attribuer(base!, 'v1', 'alice@exemple.test');
+        await attribuer(base!, 'v2', 'bob@exemple.test');
+        const r = await fetch(`${url}/vm/v2/demarrer`, {
+            method: 'POST',
+            headers: withIt(jetonDe(alice)),
+        });
+        expect(r.status).toBe(404);
+        expect(start).not.toHaveBeenCalled();
     });
 });
