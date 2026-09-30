@@ -28,7 +28,8 @@
              work item E does not carry the field, and a button leading
              nowhere is worse than no button. -->
         <button id="micro" type="button" title="Microphone" hidden>🎤</button>
-        <button id="fullscreen" type="button" title="Fullscreen">⛶</button>
+        <!-- `hidden`: the agent still drives fullscreen through the `fullscreen` message. -->
+        <button id="fullscreen" type="button" title="Fullscreen" hidden>⛶</button>
         <!-- THE FULL-FRAME SCREEN OF TERMINAL STATES (sub-block S4, task 9).
              `hidden` by default, and the sheet `src/session/etat-terminal.css`
              sets `.ecran[hidden] { display: none }` EXPLICITLY: the cascade
