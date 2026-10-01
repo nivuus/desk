@@ -270,7 +270,11 @@ impl Etat {
         let trame = proto::files::encoder(type_message, correlation, entete, &[]);
         if self
             .sortant
-            .send(VersNavigateur::Requete { correlation, trame })
+            .send(VersNavigateur::Requete {
+                correlation,
+                trame,
+                echeance: Some(echeance),
+            })
             .is_err()
         {
             // The transport is gone: remove what we just registered,

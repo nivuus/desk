@@ -205,7 +205,8 @@ export interface Adaptateur {
 export function createAdapter(
     racine: Racine,
     fautesArmees = false,
-    now: () => number = Date.now,
+    // Monotonic, as `memo.ts` requires.
+    now: () => number = () => performance.now(),
 ): Adaptateur {
     /**
      * 🔵 `lire`'s memory: `r:<path>` holds a directory, `f:<path>` a file.

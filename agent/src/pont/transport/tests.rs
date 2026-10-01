@@ -196,6 +196,7 @@ fn a_frame_emitted_by_the_bridge_reaches_the_peer_as_binary() {
                     .send(VersNavigateur::Requete {
                         correlation: 0x1234_5678,
                         trame: a_emettre.clone(),
+                        echeance: None,
                     })
                     .unwrap();
             }

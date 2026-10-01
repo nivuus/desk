@@ -45,8 +45,20 @@ const ATTENTE_MAX: Duration = Duration::from_millis(20);
 /// What the bridge sends to the browser.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VersNavigateur {
-    Requete { correlation: u32, trame: Vec<u8> },
+    Requete {
+        correlation: u32,
+        trame: Vec<u8>,
+        /// The deadline of the command the request belongs to, when it has
+        /// one. 🔴 A request still waiting for room in str0m's buffer past it
+        /// is DROPPED, never emitted late: the table has already told Windows
+        /// the command failed, and a rename or a write applied afterwards on
+        /// the browser side would contradict it.
+        echeance: Option<Instant>,
+    },
 }
+
+/// A request str0m has not accepted yet.
+type EnAttente = VecDeque<(u32, Vec<u8>, Option<Instant>)>;
 
 /// What the bridge receives from the browser, or learns of the channel state.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,7 +133,7 @@ pub fn tourner(
     let reveils = reveil::armer(&socket, sortant)?;
     let mut canal: Option<ChannelId> = None;
     // Requests str0m did not accept yet (its SCTP buffer is full), IN ORDER.
-    let mut en_attente: VecDeque<(u32, Vec<u8>)> = VecDeque::new();
+    let mut en_attente: EnAttente = VecDeque::new();
 
     loop {
         if !rtc.is_alive() {
@@ -174,13 +186,17 @@ pub fn tourner(
                 rtc.handle_input(Input::Receive(Instant::now(), recu))
                     .map_err(|e| anyhow!("bridge handle_input: {e}"))?;
             }
-            Ok(Reveil::Requete { correlation, trame }) => {
+            Ok(Reveil::Requete(VersNavigateur::Requete {
+                correlation,
+                trame,
+                echeance: delai,
+            })) => {
                 if !en_attente.is_empty() {
                     // Never overtake a refused request: the browser answers in
                     // order, and the read window checks it.
-                    en_attente.push_back((correlation, trame));
+                    en_attente.push_back((correlation, trame, delai));
                 } else if !emettre(&mut rtc, canal, correlation, &trame) {
-                    en_attente.push_back((correlation, trame));
+                    en_attente.push_back((correlation, trame, delai));
                 }
                 // A request does not advance time: a burst of them must not
                 // starve the timers either.
@@ -210,7 +226,7 @@ pub fn tourner(
 
 /// Re-emits, in order, what str0m refused for lack of room; stops at the first
 /// refusal so that nothing overtakes it.
-fn relancer(rtc: &mut Rtc, canal: Option<ChannelId>, en_attente: &mut VecDeque<(u32, Vec<u8>)>) {
+fn relancer(rtc: &mut Rtc, canal: Option<ChannelId>, en_attente: &mut EnAttente) {
     if canal.is_none() {
         // The channel is gone: what waited goes with it, and the table's
         // expiry tells each command — exactly as for a request emitted
@@ -218,7 +234,8 @@ fn relancer(rtc: &mut Rtc, canal: Option<ChannelId>, en_attente: &mut VecDeque<(
         en_attente.clear();
         return;
     }
-    while let Some((correlation, trame)) = en_attente.front() {
+    retirer_expirees(en_attente, Instant::now());
+    while let Some((correlation, trame, _)) = en_attente.front() {
         if !emettre(rtc, canal, *correlation, trame) {
             return;
         }
@@ -320,6 +337,26 @@ fn traiter(
         _ => {}
     }
     None
+}
+
+/// Drops the waiting requests whose command has expired, and says how many.
+///
+/// 🔴 **Dropped, never emitted late**: the table has already completed their
+/// command with a failure. Emitting a rename or a write afterwards would make
+/// the browser apply what Windows was told did not happen.
+fn retirer_expirees(en_attente: &mut EnAttente, maintenant: Instant) -> usize {
+    let before = en_attente.len();
+    en_attente.retain(|(correlation, _, echeance)| {
+        let vivante = echeance.is_none_or(|e| maintenant < e);
+        if !vivante {
+            tracing::warn!(
+                correlation,
+                "request dropped: its command expired while str0m's buffer was full"
+            );
+        }
+        vivante
+    });
+    before - en_attente.len()
 }
 
 /// Writes a request on the channel, if the channel exists.

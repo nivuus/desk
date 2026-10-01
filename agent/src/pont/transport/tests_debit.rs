@@ -10,6 +10,9 @@
 //!   buffer (128 KiB) was full: the third 64 KiB frame of a burst was lost.
 
 use super::tests::{canal_ouvert, echanger, monter};
+use std::collections::VecDeque;
+use std::time::{Duration, Instant};
+
 use super::*;
 
 /// A full-size bridge frame: `MAX_FRAME_SIZE` of payload, numbered by its
@@ -88,6 +91,7 @@ fn a_burst_beyond_the_sctp_buffer_reaches_the_peer_whole_and_in_order() {
                         .send(VersNavigateur::Requete {
                             correlation: numero,
                             trame: trame_pleine(numero),
+                            echeance: None,
                         })
                         .unwrap();
                 }
@@ -105,4 +109,18 @@ fn a_burst_beyond_the_sctp_buffer_reaches_the_peer_whole_and_in_order() {
             "frame {numero}: lost or swapped"
         );
     }
+}
+
+#[test]
+fn a_waiting_request_whose_command_expired_is_dropped_never_emitted_late() {
+    let maintenant = Instant::now();
+    let mut en_attente: EnAttente = VecDeque::from([
+        (1, vec![1], Some(maintenant - Duration::from_millis(1))),
+        (2, vec![2], None),
+        (3, vec![3], Some(maintenant + Duration::from_secs(5))),
+        (4, vec![4], Some(maintenant)),
+    ]);
+    assert_eq!(retirer_expirees(&mut en_attente, maintenant), 2);
+    let restantes: Vec<u32> = en_attente.iter().map(|(c, _, _)| *c).collect();
+    assert_eq!(restantes, vec![2, 3], "the survivors keep their order");
 }

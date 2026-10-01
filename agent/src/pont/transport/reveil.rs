@@ -37,6 +37,13 @@ use super::{VersNavigateur, TAMPON_UDP};
 /// **Off the data path**: see the module header.
 const PERIODE_LECTEUR: Duration = Duration::from_millis(100);
 
+/// The longest a send may block the loop. ⚠️ The socket is blocking for its
+/// reader, and the blocking mode is shared with the loop's sends: a full OS
+/// send buffer would otherwise stall the loop and its timers. Past this, the
+/// send fails and is dropped — exactly what the non-blocking socket did with
+/// `WouldBlock` — and str0m retransmits.
+const ATTENTE_ENVOI: Duration = Duration::from_millis(5);
+
 /// How many wake-ups may wait for the loop at most.
 ///
 /// 🔴 **BOUNDED, AND IT IS NOT A DETAIL**: the reader drains the socket faster
@@ -51,10 +58,7 @@ const CAPACITE: usize = 1024;
 /// One reason for the transport loop to take a turn.
 #[derive(Debug)]
 pub(super) enum Reveil {
-    Requete {
-        correlation: u32,
-        trame: Vec<u8>,
-    },
+    Requete(VersNavigateur),
     Datagram {
         source: SocketAddr,
         bytes: Vec<u8>,
@@ -99,10 +103,13 @@ pub(super) fn armer(socket: &UdpSocket, sortant: Receiver<VersNavigateur>) -> Re
         .try_clone()
         .context("duplicating the bridge UDP socket for its reader")?;
     // ⚠️ The blocking mode is a property of the SOCKET, shared by both handles:
-    // the loop only ever SENDS on its own, and a UDP send does not wait.
+    // the loop's sends become blocking too, hence their bound.
     lecture
         .set_nonblocking(false)
         .context("switching the bridge UDP socket back to blocking")?;
+    lecture
+        .set_write_timeout(Some(ATTENTE_ENVOI))
+        .context("bounding the bridge's sends")?;
     lecture
         .set_read_timeout(Some(PERIODE_LECTEUR))
         .context("bounding the bridge reader's wait")?;
@@ -114,17 +121,22 @@ pub(super) fn armer(socket: &UdpSocket, sortant: Receiver<VersNavigateur>) -> Re
         .spawn(move || lire(lecture, envoi_lecteur, arret_lecteur))
         .context("launching the bridge socket reader")?;
 
-    std::thread::Builder::new()
+    let relais = std::thread::Builder::new()
         .name("pont-transport-relais".into())
         .spawn(move || {
-            for VersNavigateur::Requete { correlation, trame } in sortant.iter() {
-                if envoi.send(Reveil::Requete { correlation, trame }).is_err() {
+            for requete in sortant.iter() {
+                if envoi.send(Reveil::Requete(requete)).is_err() {
                     return;
                 }
             }
             let _ = envoi.send(Reveil::PlusDeRequetes);
-        })
-        .context("launching the bridge request relay")?;
+        });
+    if let Err(error) = relais {
+        // The reader is already running: stop it, or it would loop on its
+        // timeouts for the life of the process.
+        arret.store(true, Ordering::Relaxed);
+        return Err(error).context("launching the bridge request relay");
+    }
 
     Ok(Reveils { recu, arret })
 }

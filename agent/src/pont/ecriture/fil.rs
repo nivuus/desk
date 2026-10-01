@@ -303,7 +303,7 @@ impl Fil {
             repertoire,
         })
         .expect("a Creer header always serializes");
-        let correlation = self.inscrire(Attendue::Create {
+        let (correlation, echeance) = self.inscrire(Attendue::Create {
             chemin: chemin.to_string(),
         });
         self.en_cours = Some(EnCours {
@@ -314,7 +314,13 @@ impl Fil {
             octets: 0,
             debut: Instant::now(),
         });
-        self.emettre(proto::files::TYPE_CREATE, correlation, &entete, &[]);
+        self.emettre(
+            proto::files::TYPE_CREATE,
+            correlation,
+            Some(echeance),
+            &entete,
+            &[],
+        );
         tracing::debug!(chemin, repertoire, correlation, "creation poussee");
     }
 
@@ -345,7 +351,7 @@ impl Fil {
                 return;
             }
         };
-        let correlation = self.inscrire(Attendue::Write {
+        let (correlation, echeance) = self.inscrire(Attendue::Write {
             chemin: chemin.clone(),
             last,
         });
@@ -353,7 +359,13 @@ impl Fil {
             en_cours.correlation = correlation;
             en_cours.last_sent = last;
         }
-        self.emettre(proto::files::TYPE_WRITE, correlation, &entete, &octets);
+        self.emettre(
+            proto::files::TYPE_WRITE,
+            correlation,
+            Some(echeance),
+            &entete,
+            &octets,
+        );
         tracing::debug!(
             chemin,
             correlation,

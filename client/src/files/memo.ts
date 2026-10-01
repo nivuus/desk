@@ -41,7 +41,11 @@ export interface Memo<T> {
     generation(): number;
 }
 
-export function createMemo<T>(now: () => number = Date.now): Memo<T> {
+/**
+ * ⚠️ The clock is MONOTONIC (`performance.now()`), never `Date.now()`: a wall
+ * clock moved backwards would keep a stale handle well past `TTL_MS`.
+ */
+export function createMemo<T>(now: () => number = () => performance.now()): Memo<T> {
     const entries = new Map<string, { value: T; expire: number }>();
     let current = 0;
     return {
