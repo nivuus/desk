@@ -58,6 +58,14 @@
 //! never had the chance to serve in operation**; it serves on the
 //! diagnostic binary, at `ATTENTE_MAX = 1 ms`, where the 256 KiB rank completes with
 //! `lire=n:4`. See `docs/…/2026-08-21-pont-fichiers-f4-resultats.md`. (policy: allow-fr, real file path)
+//!
+//! ✅ **THE CEILING IS LIFTED (October 1st, 2026)**: the loop no longer reads one
+//! datagram per turn — it is woken by each datagram as it lands
+//! (`pont/transport/reveil.rs`), and `transport/tests_debit.rs` moves 2 MiB
+//! within a 10 s budget the old loop exceeded. And the browser now sends the
+//! answers of one path in request order (`client/src/files/ordre.ts`), which
+//! is what [`Fenetre::recu`] checks. ⚠️ **No throughput is claimed on the VM**:
+//! it remains to be measured there, as F4 did.
 
 use std::collections::VecDeque;
 

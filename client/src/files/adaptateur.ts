@@ -41,10 +41,16 @@
 //
 // ⛔ **F4 DID NOT SAY IT** (August 21st, 2026): no gesture of its campaign exercises
 // case canonicalisation. **The cost remains OWED.**
+//
+// 🔵 **`lire` NO LONGER PAYS IT PER CHUNK** (October 1st, 2026): it resolves a
+// file once and keeps the handle in a SHORT, BOUNDED, EMPTIED memory
+// (`memo.ts`, whose header says why it is not the old bridge's cache).
+// `lister` and `attributs` still resolve afresh at every call.
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { MAX_FRAME_SIZE } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
+import { createMemo } from './memo';
 import { canoniserOuLever, injecterFaute } from './noms';
 
 /* ── THE HANDLES, DESCRIBED BY WHAT WE USE OF THEM ────────────────────────
@@ -189,9 +195,121 @@ export interface Adaptateur {
     lister(chemin: string): Promise<EntreeJson[]>;
     attributs(chemin: string): Promise<EnteteMeta>;
     lire(chemin: string, position: number, length: number): Promise<Uint8Array>;
+    /**
+     * Forgets the resolutions `lire` memorised (`memo.ts`). Optional so that
+     * a fake adapter need not carry it; the real one always does.
+     */
+    forget?(): void;
 }
 
-export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur {
+export function createAdapter(
+    racine: Racine,
+    fautesArmees = false,
+    // Monotonic, as `memo.ts` requires.
+    now: () => number = () => performance.now(),
+): Adaptateur {
+    /**
+     * 🔵 `lire`'s memory: `r:<path>` holds a directory, `f:<path>` a file.
+     * See `memo.ts` for why it is short, bounded and emptied — and why
+     * `lister` and `attributs` do NOT use it: they keep resolving afresh.
+     */
+    const memo = createMemo<PoigneeRepertoire | FileHandle>(now);
+    /**
+     * The resolutions UNDER WAY, by `f:<path>`: the agent asks for up to four
+     * chunks at once, and without this each of them would miss the memory
+     * and enumerate the same path on its own.
+     */
+    const inflight = new Map<string, Promise<FileHandle>>();
+
+    /** Forgets the memory AND the resolutions under way. */
+    function forgetAll(): void {
+        memo.clear();
+        inflight.clear();
+    }
+
+    /** [`resolveFile`], shared by every chunk that asks while it runs. */
+    function resolveShared(key: string, parts: string[]): Promise<FileHandle> {
+        const pending = inflight.get(key);
+        if (pending !== undefined) return pending;
+        const generation = memo.generation();
+        const resolution = resolveFile(parts, generation).then((handle) => {
+            memo.set(key, handle, generation);
+            return handle;
+        });
+        inflight.set(key, resolution);
+        const done = () => {
+            if (inflight.get(key) === resolution) inflight.delete(key);
+        };
+        resolution.then(done, done);
+        return resolution;
+    }
+
+    /**
+     * [`descendre`], but starting from the DEEPEST directory `lire` already
+     * resolved, and remembering the ones it resolves.
+     */
+    async function descendreMemo(
+        parts: string[],
+        jusqua: number,
+        generation: number,
+    ): Promise<PoigneeRepertoire> {
+        let i = jusqua;
+        let ici: PoigneeRepertoire = racine;
+        for (; i > 0; i -= 1) {
+            const known = memo.get(`r:${parts.slice(0, i).join('/')}`);
+            if (known !== undefined && known.kind === 'directory') {
+                ici = known;
+                break;
+            }
+        }
+        for (; i < jusqua; i += 1) {
+            const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
+            try {
+                ici = await ici.getDirectoryHandle(nom);
+            } catch (e) {
+                throw classer(e, 'chemin-introuvable');
+            }
+            memo.set(`r:${parts.slice(0, i + 1).join('/')}`, ici, generation);
+        }
+        return ici;
+    }
+
+    /** Resolves the file `parts` designates — canonicalising, as always. */
+    async function resolveFile(parts: string[], generation: number): Promise<FileHandle> {
+        const parent = await descendreMemo(parts, parts.length - 1, generation);
+        const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+        try {
+            return await parent.getFileHandle(nom);
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+    }
+
+    /** The bytes `[position, position + length[` of `poignee`, clamped to its size. */
+    async function trancher(
+        poignee: FileHandle,
+        position: number,
+        length: number,
+    ): Promise<Uint8Array> {
+        let file: ReadableFile;
+        try {
+            file = await poignee.getFile();
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+        // 🔴 `slice` THEN `arrayBuffer`, NEVER THE REVERSE. Reading the whole
+        // file to return 4 KB of it is the defect found in the old bridge
+        // (`web/index.js:562-564`): on a one-gigabyte file, each
+        // ProjFS read would materialise it in memory.
+        const debut = Math.min(position, file.size);
+        const fin = Math.min(position + length, file.size);
+        try {
+            return new Uint8Array(await file.slice(debut, fin).arrayBuffer());
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+    }
+
     /**
      * Walks down the first `jusqua` components, all directories, **while
      * CANONICALISING them**.
@@ -319,25 +437,35 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
             if (parts.length === 0) {
                 throw new FilesError('introuvable', 'the root is not a file');
             }
-            const parent = await descendre(parts, parts.length - 1);
-            const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
-            let file: ReadableFile;
-            try {
-                file = await (await parent.getFileHandle(nom)).getFile();
-            } catch (e) {
-                throw classer(e, 'introuvable');
+            // 🔴 **ONE RESOLUTION PER FILE, NOT PER CHUNK** (`memo.ts`). The
+            // chunks of one read share the handle; the name it was resolved
+            // under is the canonical one, exactly as before.
+            const key = `f:${parts.join('/')}`;
+            const known = memo.get(key);
+            if (known !== undefined && known.kind === 'file') {
+                try {
+                    return await trancher(known, position, length);
+                } catch {
+                    // The handle no longer opens: the file was renamed,
+                    // removed, replaced. We never retry a handle as is — we
+                    // forget everything and resolve again, below, so that the
+                    // failure returned is the one a fresh resolution gives.
+                    forgetAll();
+                }
             }
-            // 🔴 `slice` THEN `arrayBuffer`, NEVER THE REVERSE. Reading the whole
-            // file to return 4 KB of it is the defect found in the old bridge
-            // (`web/index.js:562-564`): on a one-gigabyte file, each
-            // ProjFS read would materialise it in memory.
-            const debut = Math.min(position, file.size);
-            const fin = Math.min(position + length, file.size);
+            const handle = await resolveShared(key, parts);
             try {
-                return new Uint8Array(await file.slice(debut, fin).arrayBuffer());
+                return await trancher(handle, position, length);
             } catch (e) {
-                throw classer(e, 'introuvable');
+                // A handle that fails at once is not kept either: the next
+                // chunk resolves again rather than retrying it.
+                forgetAll();
+                throw e;
             }
+        },
+
+        forget() {
+            forgetAll();
         },
     };
 }

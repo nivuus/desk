@@ -21,15 +21,33 @@ impl Fil {
             retenues: self.retenues,
         })
         .expect("a Dues header always serializes");
-        self.emettre(proto::files::TYPE_DUES, CORRELATION_ANNONCE, &entete, &[]);
+        // An announcement answers no command: it has no deadline.
+        self.emettre(
+            proto::files::TYPE_DUES,
+            CORRELATION_ANNONCE,
+            None,
+            &entete,
+            &[],
+        );
     }
 
-    pub(super) fn emettre(&self, type_message: u8, correlation: u32, entete: &str, charge: &[u8]) {
+    pub(super) fn emettre(
+        &self,
+        type_message: u8,
+        correlation: u32,
+        echeance: Option<Instant>,
+        entete: &str,
+        charge: &[u8],
+    ) {
         let trame = proto::files::encoder(type_message, correlation, entete, charge);
         if self
             .config
             .vers_navigateur
-            .send(VersNavigateur::Requete { correlation, trame })
+            .send(VersNavigateur::Requete {
+                correlation,
+                trame,
+                echeance,
+            })
             .is_err()
         {
             tracing::warn!(
@@ -39,14 +57,17 @@ impl Fil {
         }
     }
 
-    pub(super) fn inscrire(&self, quoi: Attendue) -> u32 {
+    /// Returns the correlation AND its deadline: the transport must not emit a
+    /// request whose command the table has already expired.
+    pub(super) fn inscrire(&self, quoi: Attendue) -> (u32, Instant) {
         let echeance = Instant::now() + WRITE_TIMEOUT;
-        match self.config.table.lock() {
+        let correlation = match self.config.table.lock() {
             Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
             Err(empoisonne) => empoisonne
                 .into_inner()
                 .inscrire_sans_commande(quoi, echeance),
-        }
+        };
+        (correlation, echeance)
     }
 
     /// Appends a line to the journal, and compacts it if possible.

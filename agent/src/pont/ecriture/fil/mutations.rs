@@ -140,13 +140,13 @@ impl Fil {
                 None,
             ),
         };
-        let correlation = self.inscrire_mutation(Attendue::Muter {
+        let (correlation, echeance) = self.inscrire_mutation(Attendue::Muter {
             chemin,
             renommage,
             destination,
         });
         self.mutation_en_vol = Some(correlation);
-        self.emettre(type_message, correlation, &entete, &[]);
+        self.emettre(type_message, correlation, Some(echeance), &entete, &[]);
         tracing::debug!(?quoi, correlation, "mutation poussee");
     }
 
@@ -160,13 +160,16 @@ impl Fil {
         let _ = acquittee;
     }
 
-    pub(super) fn inscrire_mutation(&self, quoi: Attendue) -> u32 {
+    /// Returns the correlation AND its deadline: the transport must not emit a
+    /// request whose command the table has already expired.
+    pub(super) fn inscrire_mutation(&self, quoi: Attendue) -> (u32, Instant) {
         let echeance = Instant::now() + crate::pont::table::DELAI_MUTATION;
-        match self.config.table.lock() {
+        let correlation = match self.config.table.lock() {
             Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
             Err(empoisonne) => empoisonne
                 .into_inner()
                 .inscrire_sans_commande(quoi, echeance),
-        }
+        };
+        (correlation, echeance)
     }
 }

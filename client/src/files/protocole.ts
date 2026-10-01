@@ -205,6 +205,12 @@ export function createServer(
                     return null;
             }
 
+            // 🔵 **EVERY GESTURE THAT MAY CHANGE THE TREE EMPTIES `lire`'s
+            // MEMORY** (`memo.ts`), BEFORE and AFTER itself: a read resolved
+            // while a rename is under way must not survive it. A listing
+            // empties it too — it is how the bridge refreshes its view.
+            const modifiant = trame.type !== TYPE_LIRE && trame.type !== TYPE_ATTRIBUTS;
+            if (modifiant) adaptateur.forget?.();
             try {
                 return await servir(
                     adaptateur,
@@ -235,6 +241,8 @@ export function createServer(
                     if (chemin !== undefined) options.onEchecEcriture?.(chemin, code);
                 }
                 return encoderTexte(TYPE_ECHEC, trame.correlation, encodeEchec(code));
+            } finally {
+                if (modifiant) adaptateur.forget?.();
             }
         },
     };

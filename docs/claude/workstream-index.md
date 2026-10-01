@@ -113,4 +113,8 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 
 - **vm-reveil-arret (30 septembre 2026)** — réveil de la VM au lancement d'une app, arrêt après 30 min sans session : [spec](../superpowers/specs/2026-09-30-vm-reveil-arret-design.md), [plan](../superpowers/plans/2026-09-30-vm-reveil-arret.md)
 
+### Chantier debit-pont-fichiers — le pont des fichiers sort de ses 33 Kio/s
+
+- **debit-pont-fichiers (1er octobre 2026)** — réponses du navigateur remises dans l'ordre des requêtes par chemin (`client/src/files/ordre.ts`), une résolution par fichier et non par morceau (`client/src/files/memo.ts`), boucle de `pont::transport` réveillée par chaque datagramme (`agent/src/pont/transport/reveil.rs`) et requêtes refusées par str0m remises en file au lieu d'être perdues. ⚠️ **Débit sur la VM NON MESURÉ** : seuls les tests en boucle locale l'attestent.
+
 ---
