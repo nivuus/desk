@@ -29,6 +29,7 @@ import { composer, lirePrefixe } from '../prefixe';
 import type { Racine } from './adaptateur';
 import type { RacineInscriptible } from './ecriture';
 import { contrePression } from './flux';
+import { cleDOrdre, creerSequenceur } from './ordre';
 import type { RacineMutable } from './mutation';
 import { TYPE_ECHEC, decoder, encoderTexte } from '../../../proto/ts/fichiers';
 import { encodeEchec } from '../../../proto/ts/fichiers-entetes';
@@ -124,6 +125,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
     // would deliver a `Blob` that `decoder()` would refuse — a failure mode
     // that depends on the browser, hence invisible in an acceptance run on just one.
     canal.binaryType = 'arraybuffer';
+    const sequenceur = creerSequenceur();
 
     canal.addEventListener('open', () => statut('file channel open'));
     canal.addEventListener('close', () => statut('file channel closed'));
@@ -179,9 +181,23 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
                 console.warn('reporting impossible: channel closed', echec);
             }
         };
-        void options
-            .traiter(data)
-            .then(async (reponse) => {
+        // 🔴 **THE WORK STARTS NOW, THE SENDING WAITS ITS TURN** (`ordre.ts`):
+        // the answers of one path leave in the order of their requests, which
+        // the agent's read window checks. A failure is turned into a VALUE
+        // here, so that it keeps its place in that order too.
+        const travail = options.traiter(data).then(
+            (reponse) => ({ reponse, echec: undefined as unknown }),
+            (e: unknown) => ({ reponse: null, echec: e ?? new Error('processing threw') }),
+        );
+        void sequenceur
+            .enchainer(cleDOrdre(data), travail, async ({ reponse, echec }) => {
+                if (echec !== undefined) {
+                    // `traiter` itself answers the failures it can name; if it
+                    // throws, the protocol itself has broken. We say so, and
+                    // we do not kill the channel for all that.
+                    denoncer('processing threw', echec);
+                    return;
+                }
                 if (reponse === null) return;
                 // 🔴 **BACKPRESSURE COMES BEFORE SENDING, AND AFTER IT WE
                 // CHECK THE STATE AGAIN.** The wait can last, and the channel may
@@ -199,12 +215,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
                     denoncer('send refuse', e);
                 }
             })
-            .catch((e: unknown) => {
-                // `traiter` itself answers the failures it can name; if it
-                // throws, the protocol itself has broken. We say so, and
-                // we do not kill the channel for all that.
-                denoncer('processing threw', e);
-            });
+            .catch((e: unknown) => denoncer('sending threw', e));
     });
 
     pc.addEventListener('connectionstatechange', () => {

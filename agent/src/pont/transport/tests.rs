@@ -30,7 +30,7 @@ pub(super) struct Pair {
     socket: UdpSocket,
     adresse: SocketAddr,
     rtc: Rtc,
-    canaux: Vec<ChannelId>,
+    pub(super) canaux: Vec<ChannelId>,
 }
 
 /// Sets up a bridge and a peer, negotiates `labels` as data channels, and returns

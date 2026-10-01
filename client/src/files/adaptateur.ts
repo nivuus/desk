@@ -41,10 +41,16 @@
 //
 // ⛔ **F4 DID NOT SAY IT** (August 21st, 2026): no gesture of its campaign exercises
 // case canonicalisation. **The cost remains OWED.**
+//
+// 🔵 **`lire` NO LONGER PAYS IT PER CHUNK** (October 1st, 2026): it resolves a
+// file once and keeps the handle in a SHORT, BOUNDED, EMPTIED memory
+// (`memo.ts`, whose header says why it is not the old bridge's cache).
+// `lister` and `attributs` still resolve afresh at every call.
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { MAX_FRAME_SIZE } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
+import { creerMemo } from './memo';
 import { canoniserOuLever, injecterFaute } from './noms';
 
 /* ── THE HANDLES, DESCRIBED BY WHAT WE USE OF THEM ────────────────────────
@@ -189,9 +195,87 @@ export interface Adaptateur {
     lister(chemin: string): Promise<EntreeJson[]>;
     attributs(chemin: string): Promise<EnteteMeta>;
     lire(chemin: string, position: number, length: number): Promise<Uint8Array>;
+    /**
+     * Forgets the resolutions `lire` memorised (`memo.ts`). Optional so that
+     * a fake adapter need not carry it; the real one always does.
+     */
+    oublier?(): void;
 }
 
-export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur {
+export function createAdapter(
+    racine: Racine,
+    fautesArmees = false,
+    maintenant: () => number = Date.now,
+): Adaptateur {
+    /**
+     * 🔵 `lire`'s memory: `r:<path>` holds a directory, `f:<path>` a file.
+     * See `memo.ts` for why it is short, bounded and emptied — and why
+     * `lister` and `attributs` do NOT use it: they keep resolving afresh.
+     */
+    const memo = creerMemo<PoigneeRepertoire | FileHandle>(maintenant);
+
+    /**
+     * [`descendre`], but starting from the DEEPEST directory `lire` already
+     * resolved, and remembering the ones it resolves.
+     */
+    async function descendreMemo(parts: string[], jusqua: number): Promise<PoigneeRepertoire> {
+        let i = jusqua;
+        let ici: PoigneeRepertoire = racine;
+        for (; i > 0; i -= 1) {
+            const connu = memo.obtenir(`r:${parts.slice(0, i).join('/')}`);
+            if (connu !== undefined && connu.kind === 'directory') {
+                ici = connu;
+                break;
+            }
+        }
+        for (; i < jusqua; i += 1) {
+            const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
+            try {
+                ici = await ici.getDirectoryHandle(nom);
+            } catch (e) {
+                throw classer(e, 'chemin-introuvable');
+            }
+            memo.poser(`r:${parts.slice(0, i + 1).join('/')}`, ici);
+        }
+        return ici;
+    }
+
+    /** Resolves the file `parts` designates — canonicalising, as always. */
+    async function resoudreFichier(parts: string[]): Promise<FileHandle> {
+        const parent = await descendreMemo(parts, parts.length - 1);
+        const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+        try {
+            return await parent.getFileHandle(nom);
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+    }
+
+    /** The bytes `[position, position + length[` of `poignee`, clamped to its size. */
+    async function trancher(
+        poignee: FileHandle,
+        position: number,
+        length: number,
+    ): Promise<Uint8Array> {
+        let file: ReadableFile;
+        try {
+            file = await poignee.getFile();
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+        // 🔴 `slice` THEN `arrayBuffer`, NEVER THE REVERSE. Reading the whole
+        // file to return 4 KB of it is the defect found in the old bridge
+        // (`web/index.js:562-564`): on a one-gigabyte file, each
+        // ProjFS read would materialise it in memory.
+        const debut = Math.min(position, file.size);
+        const fin = Math.min(position + length, file.size);
+        try {
+            return new Uint8Array(await file.slice(debut, fin).arrayBuffer());
+        } catch (e) {
+            throw classer(e, 'introuvable');
+        }
+    }
+
     /**
      * Walks down the first `jusqua` components, all directories, **while
      * CANONICALISING them**.
@@ -319,25 +403,29 @@ export function createAdapter(racine: Racine, fautesArmees = false): Adaptateur 
             if (parts.length === 0) {
                 throw new FilesError('introuvable', 'the root is not a file');
             }
-            const parent = await descendre(parts, parts.length - 1);
-            const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
-            let file: ReadableFile;
-            try {
-                file = await (await parent.getFileHandle(nom)).getFile();
-            } catch (e) {
-                throw classer(e, 'introuvable');
+            // 🔴 **ONE RESOLUTION PER FILE, NOT PER CHUNK** (`memo.ts`). The
+            // chunks of one read share the handle; the name it was resolved
+            // under is the canonical one, exactly as before.
+            const cle = `f:${parts.join('/')}`;
+            const connue = memo.obtenir(cle);
+            if (connue !== undefined && connue.kind === 'file') {
+                try {
+                    return await trancher(connue, position, length);
+                } catch {
+                    // The handle no longer opens: the file was renamed,
+                    // removed, replaced. We never retry a handle as is — we
+                    // forget everything and resolve again, below, so that the
+                    // failure returned is the one a fresh resolution gives.
+                    memo.oublier();
+                }
             }
-            // 🔴 `slice` THEN `arrayBuffer`, NEVER THE REVERSE. Reading the whole
-            // file to return 4 KB of it is the defect found in the old bridge
-            // (`web/index.js:562-564`): on a one-gigabyte file, each
-            // ProjFS read would materialise it in memory.
-            const debut = Math.min(position, file.size);
-            const fin = Math.min(position + length, file.size);
-            try {
-                return new Uint8Array(await file.slice(debut, fin).arrayBuffer());
-            } catch (e) {
-                throw classer(e, 'introuvable');
-            }
+            const poignee = await resoudreFichier(parts);
+            memo.poser(cle, poignee);
+            return trancher(poignee, position, length);
+        },
+
+        oublier() {
+            memo.oublier();
         },
     };
 }

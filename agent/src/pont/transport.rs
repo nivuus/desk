@@ -13,6 +13,7 @@
 //! the video session would mean a reconnection of one would carry away the other —
 //! which principle 4 of the framing forbids.
 
+use std::collections::VecDeque;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
@@ -21,6 +22,8 @@ use anyhow::{anyhow, Context, Result};
 use str0m::channel::ChannelId;
 use str0m::net::{Protocol, Receive};
 use str0m::{Candidate, Event, Input, Output, Rtc};
+
+use reveil::Reveil;
 
 /// The label of the bridge's data channel. **It is the browser that creates the
 /// channel** (`createDataChannel('files')`); the agent is the responder.
@@ -31,10 +34,12 @@ pub const FILES_LABEL: &str = "fichiers";
 /// a datagram, not an application message.
 const TAMPON_UDP: usize = 2048;
 
-/// Maximum wait of a loop turn when str0m has no close
-/// deadline. Bounds the latency of taking into account a request dropped into
-/// `sortant` — without it, a request arriving just after a `recv_timeout`
-/// would wait for the next str0m deadline.
+/// Maximum wait of a loop turn when str0m has no close deadline.
+///
+/// ✅ **NO LONGER ON THE DATA PATH** (it was F4's dominant term of the
+/// 33 KiB/s ceiling): the loop now waits on [`reveil::Reveils`], which a
+/// request or a datagram ends the moment it arrives. This bound only keeps
+/// the turn going when NOTHING happens.
 const ATTENTE_MAX: Duration = Duration::from_millis(20);
 
 /// What the bridge sends to the browser.
@@ -65,6 +70,10 @@ pub enum DuNavigateur {
 /// probe. **Kept** are the non-blocking UDP socket (whose reason is measured:
 /// `set_read_timeout`'s delay overshoots massively under Windows), the setting of the
 /// cryptographic provider, and the host candidate.
+///
+/// ⚠️ **[`tourner`] switches the socket back to blocking** for its reader
+/// thread ([`reveil`]): there, the read timeout is off the data path, and its
+/// overshoot only delays the reader's stop.
 ///
 /// ⚠️ **`clear_codecs()` without any `enable_*` is deliberate, and it works**:
 /// exercised by this module's tests, which really negotiate and exchange
@@ -97,6 +106,9 @@ pub fn build_data_rtc(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
 ///
 /// `sortant` carries the requests to emit, `entrant` returns the responses and the
 /// channel state changes.
+///
+/// 🔵 **ONE place to wait, and it is woken by the event itself** — see
+/// [`reveil`] for why the loop no longer reads one datagram per turn.
 pub fn tourner(
     mut rtc: Rtc,
     socket: UdpSocket,
@@ -106,8 +118,10 @@ pub fn tourner(
     let adresse = socket
         .local_addr()
         .context("local address of the bridge socket")?;
+    let reveils = reveil::armer(&socket, sortant)?;
     let mut canal: Option<ChannelId> = None;
-    let mut tampon = vec![0u8; TAMPON_UDP];
+    // Requests str0m did not accept yet (its SCTP buffer is full), IN ORDER.
+    let mut en_attente: VecDeque<(u32, Vec<u8>)> = VecDeque::new();
 
     loop {
         if !rtc.is_alive() {
@@ -116,6 +130,10 @@ pub fn tourner(
             let _ = entrant.send(DuNavigateur::CanalFerme);
             return Ok(());
         }
+
+        // What was refused for lack of room goes first: the SACKs handled at
+        // the previous turn may have freed some.
+        relancer(&mut rtc, canal, &mut en_attente);
 
         // Drain `poll_output` until `Output::Timeout`: same invariant as
         // the video loop (`transport.rs`), and for the same reason — every
@@ -143,39 +161,68 @@ pub fn tourner(
             }
         };
 
-        let maintenant = Instant::now();
         let attente = echeance
-            .saturating_duration_since(maintenant)
+            .saturating_duration_since(Instant::now())
             .min(ATTENTE_MAX);
 
-        // A request to emit? We wait at most until the str0m deadline.
-        match sortant.recv_timeout(attente) {
-            Ok(VersNavigateur::Requete { correlation, trame }) => {
-                emettre(&mut rtc, canal, correlation, &trame);
-                continue;
-            }
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => {
-                tracing::info!("nobody emits requests any more: stopping the bridge transport");
-                return Ok(());
-            }
-        }
-
-        // Then the socket, without blocking (it is non-blocking), and finally the
-        // passing time.
-        match socket.recv_from(&mut tampon) {
-            Ok((size, source)) => {
-                let recu = Receive::new(Protocol::Udp, source, adresse, &tampon[..size])
+        match reveils.attendre(attente) {
+            Ok(Reveil::Datagramme { source, octets }) => {
+                let recu = Receive::new(Protocol::Udp, source, adresse, &octets)
                     .map_err(|e| anyhow!("unreadable datagram: {e}"))?;
+                // `Input::Receive` also runs str0m's timers: a continuous
+                // stream of datagrams does not starve them.
                 rtc.handle_input(Input::Receive(Instant::now(), recu))
                     .map_err(|e| anyhow!("bridge handle_input: {e}"))?;
             }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+            Ok(Reveil::Requete { correlation, trame }) => {
+                if !en_attente.is_empty() {
+                    // Never overtake a refused request: the browser answers in
+                    // order, and the read window checks it.
+                    en_attente.push_back((correlation, trame));
+                } else if !emettre(&mut rtc, canal, correlation, &trame) {
+                    en_attente.push_back((correlation, trame));
+                }
+                // A request does not advance time: a burst of them must not
+                // starve the timers either.
+                let maintenant = Instant::now();
+                if maintenant >= echeance {
+                    rtc.handle_input(Input::Timeout(maintenant))
+                        .map_err(|e| anyhow!("bridge handle_input(Timeout): {e}"))?;
+                }
+            }
+            Ok(Reveil::Socket(e)) => {
+                return Err(e).context("reading the bridge UDP socket");
+            }
+            Ok(Reveil::PlusDeRequetes) => {
+                tracing::info!("nobody emits requests any more: stopping the bridge transport");
+                return Ok(());
+            }
+            Err(RecvTimeoutError::Timeout) => {
                 rtc.handle_input(Input::Timeout(Instant::now()))
                     .map_err(|e| anyhow!("bridge handle_input(Timeout): {e}"))?;
             }
-            Err(e) => return Err(e).context("reading the bridge UDP socket"),
+            Err(RecvTimeoutError::Disconnected) => {
+                return Err(anyhow!("the bridge transport relays are gone"));
+            }
         }
+    }
+}
+
+/// Re-emits, in order, what str0m refused for lack of room; stops at the first
+/// refusal so that nothing overtakes it.
+fn relancer(rtc: &mut Rtc, canal: Option<ChannelId>, en_attente: &mut VecDeque<(u32, Vec<u8>)>) {
+    if canal.is_none() {
+        // The channel is gone: what waited goes with it, and the table's
+        // expiry tells each command — exactly as for a request emitted
+        // without a channel.
+        en_attente.clear();
+        return;
+    }
+    while let Some((correlation, trame)) = en_attente.front() {
+        if !emettre(rtc, canal, *correlation, trame) {
+            return;
+        }
+        en_attente.pop_front();
     }
 }
 
@@ -276,14 +323,20 @@ fn traiter(
 }
 
 /// Writes a request on the channel, if the channel exists.
-fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u8]) {
+///
+/// Returns `false` **only** when str0m refused it for lack of room in its SCTP
+/// buffer (`MAX_BUFFERED_ACROSS_STREAMS`, 128 KiB) — the caller keeps it and
+/// retries. ❌ This refusal used to be **silently dropped**: two 64 KiB write
+/// frames were enough to lose the third, and its command waited for its delay.
+/// Every other outcome is final, and returns `true`.
+fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u8]) -> bool {
     let Some(id) = canal else {
         // It is not a programming anomaly: the channel can go down
         // between a command's registration and its emission. The caller
         // will learn it through its table's expiry — it is what the table
         // exists to cover.
         tracing::warn!(correlation, "request not emitted: no bridge channel open");
-        return;
+        return true;
     };
     let Some(mut sortie) = rtc.channel(id) else {
         tracing::warn!(
@@ -291,18 +344,27 @@ fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u
             ?id,
             "request not emitted: channel not found on the str0m side"
         );
-        return;
+        return true;
     };
     // ⚠️ `binary = true`, **unlike the `control` channel** which writes `false`:
     // a files frame's payload is made of raw bytes, and writing it
     // in text mode would put it through UTF-8 validation on the browser side.
-    if let Err(error) = sortie.write(true, trame) {
-        tracing::warn!(%error, correlation, "writing a bridge request failed");
+    match sortie.write(true, trame) {
+        Ok(acceptee) => acceptee,
+        Err(error) => {
+            tracing::warn!(%error, correlation, "writing a bridge request failed");
+            true
+        }
     }
 }
 
+mod reveil;
+
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod tests_debit;
 
 #[cfg(test)]
 mod tests_fermeture;
