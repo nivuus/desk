@@ -166,8 +166,8 @@ pub fn tourner(
             .min(ATTENTE_MAX);
 
         match reveils.attendre(attente) {
-            Ok(Reveil::Datagramme { source, octets }) => {
-                let recu = Receive::new(Protocol::Udp, source, adresse, &octets)
+            Ok(Reveil::Datagram { source, bytes }) => {
+                let recu = Receive::new(Protocol::Udp, source, adresse, &bytes)
                     .map_err(|e| anyhow!("unreadable datagram: {e}"))?;
                 // `Input::Receive` also runs str0m's timers: a continuous
                 // stream of datagrams does not starve them.

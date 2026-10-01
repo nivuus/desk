@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createAdapter, type FileHandle, type PoigneeRepertoire } from './adaptateur';
-import { MAX_ENTREES, TTL_MS, creerMemo } from './memo';
+import { MAX_ENTREES, TTL_MS, createMemo } from './memo';
 
 /* A tree whose directories COUNT their enumerations: it is the cost `memo.ts`
    removes, and a fake that did not count it could not see it come back. */
@@ -91,10 +91,10 @@ describe("lire's memory of resolved handles", () => {
         expect(compte.values).toBe(2);
     });
 
-    it('is emptied by oublier()', async () => {
+    it('is emptied by forget()', async () => {
         const { adaptateur, compte } = monter({ 'f.bin': OCTETS });
         await adaptateur.lire('f.bin', 0, 1);
-        adaptateur.oublier?.();
+        adaptateur.forget?.();
         await adaptateur.lire('f.bin', 1, 1);
         expect(compte.values).toBe(2);
     });
@@ -111,11 +111,11 @@ describe("lire's memory of resolved handles", () => {
     });
 });
 
-describe('creerMemo', () => {
+describe('createMemo', () => {
     it('forgets the oldest entry beyond MAX_ENTREES', () => {
-        const memo = creerMemo<number>(() => 0);
-        for (let i = 0; i <= MAX_ENTREES; i += 1) memo.poser(`k${i}`, i);
-        expect(memo.obtenir('k0')).toBeUndefined();
-        expect(memo.obtenir(`k${MAX_ENTREES}`)).toBe(MAX_ENTREES);
+        const memo = createMemo<number>(() => 0);
+        for (let i = 0; i <= MAX_ENTREES; i += 1) memo.set(`k${i}`, i);
+        expect(memo.get('k0')).toBeUndefined();
+        expect(memo.get(`k${MAX_ENTREES}`)).toBe(MAX_ENTREES);
     });
 });

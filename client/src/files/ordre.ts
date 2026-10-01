@@ -22,12 +22,12 @@
 import { decoder } from '../../../proto/ts/fichiers';
 
 /**
- * The key under which `octets` is ordered: the path its header names, or the
+ * The key under which `bytes` is ordered: the path its header names, or the
  * empty string — one shared queue — when it names none or cannot be read.
  */
-export function cleDOrdre(octets: ArrayBuffer): string {
+export function orderKey(bytes: ArrayBuffer): string {
     try {
-        const entete: unknown = decoder(octets).entete;
+        const entete: unknown = decoder(bytes).entete;
         if (typeof entete !== 'object' || entete === null) return '';
         const o = entete as { chemin?: unknown; de?: unknown };
         if (typeof o.chemin === 'string') return o.chemin;
@@ -39,38 +39,38 @@ export function cleDOrdre(octets: ArrayBuffer): string {
     return '';
 }
 
-export interface Sequenceur {
+export interface Sequencer {
     /**
-     * Runs `emettre(await travail)` once every `emettre` enchained BEFORE it
-     * under the same `cle` has returned. `travail` must not reject — the
+     * Runs `emit(await work)` once every `emit` enchained BEFORE it
+     * under the same `key` has returned. `work` must not reject — the
      * caller turns its failure into a value, so that a failure keeps its
      * place in the order too.
      */
-    enchainer<T>(cle: string, travail: Promise<T>, emettre: (r: T) => unknown): Promise<void>;
+    chain<T>(key: string, work: Promise<T>, emit: (r: T) => unknown): Promise<void>;
     /** How many keys still have an answer pending. */
-    enAttente(): number;
+    pending(): number;
 }
 
-export function creerSequenceur(): Sequenceur {
-    const queues = new Map<string, Promise<void>>();
+export function createSequencer(): Sequencer {
+    const tails = new Map<string, Promise<void>>();
     return {
-        enchainer(cle, travail, emettre) {
-            const precedent = queues.get(cle) ?? Promise.resolve();
-            const suivant = precedent
-                .then(() => travail)
-                .then(emettre)
+        chain(key, work, emit) {
+            const previous = tails.get(key) ?? Promise.resolve();
+            const next = previous
+                .then(() => work)
+                .then(emit)
                 .then(() => {});
-            // The queue never rejects: a throwing `emettre` must not block
+            // The queue never rejects: a throwing `emit` must not block
             // every answer after it on the same path.
-            const queue = suivant.catch(() => {});
-            queues.set(cle, queue);
-            void queue.then(() => {
-                if (queues.get(cle) === queue) queues.delete(cle);
+            const tail = next.catch(() => {});
+            tails.set(key, tail);
+            void tail.then(() => {
+                if (tails.get(key) === tail) tails.delete(key);
             });
-            return suivant;
+            return next;
         },
-        enAttente() {
-            return queues.size;
+        pending() {
+            return tails.size;
         },
     };
 }

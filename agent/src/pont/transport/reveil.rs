@@ -10,7 +10,7 @@
 //! result — ~1,200 bytes per ~35 ms turn, **30 to 33 KiB/s, linear** — and
 //! established the attribution by mutation (`ATTENTE_MAX` 20 ms → 1 ms doubles
 //! the throughput, and no more: the fixed cost of the turn then dominates).
-//! See `docs/superpowers/plans/2026-08-21-pont-fichiers-f4-resultats.md` §7.2.
+//! See `docs/superpowers/plans/2026-08-21-pont-fichiers-f4-resultats.md` §7.2. (policy: allow-fr, real file path)
 //!
 //! The remedy F4 named is "a change of design of the loop, not a setting":
 //! two small relay threads turn each source into a [`Reveil`] on a single
@@ -44,9 +44,9 @@ pub(super) enum Reveil {
         correlation: u32,
         trame: Vec<u8>,
     },
-    Datagramme {
+    Datagram {
         source: SocketAddr,
-        octets: Vec<u8>,
+        bytes: Vec<u8>,
     },
     /// The socket failed for good: the loop stops on this error, as it did
     /// when it read the socket itself.
@@ -122,9 +122,9 @@ fn lire(socket: UdpSocket, envoi: std::sync::mpsc::Sender<Reveil>, arret: Arc<At
     let mut tampon = vec![0u8; TAMPON_UDP];
     while !arret.load(Ordering::Relaxed) {
         let reveil = match socket.recv_from(&mut tampon) {
-            Ok((taille, source)) => Reveil::Datagramme {
+            Ok((size, source)) => Reveil::Datagram {
                 source,
-                octets: tampon[..taille].to_vec(),
+                bytes: tampon[..size].to_vec(),
             },
             // The period elapsed: `WouldBlock` on Unix, `TimedOut` on Windows.
             Err(e)

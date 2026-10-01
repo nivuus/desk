@@ -210,7 +210,7 @@ export function createServer(
             // while a rename is under way must not survive it. A listing
             // empties it too — it is how the bridge refreshes its view.
             const modifiant = trame.type !== TYPE_LIRE && trame.type !== TYPE_ATTRIBUTS;
-            if (modifiant) adaptateur.oublier?.();
+            if (modifiant) adaptateur.forget?.();
             try {
                 return await servir(
                     adaptateur,
@@ -242,7 +242,7 @@ export function createServer(
                 }
                 return encoderTexte(TYPE_ECHEC, trame.correlation, encodeEchec(code));
             } finally {
-                if (modifiant) adaptateur.oublier?.();
+                if (modifiant) adaptateur.forget?.();
             }
         },
     };

@@ -50,7 +50,7 @@
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { MAX_FRAME_SIZE } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
-import { creerMemo } from './memo';
+import { createMemo } from './memo';
 import { canoniserOuLever, injecterFaute } from './noms';
 
 /* ── THE HANDLES, DESCRIBED BY WHAT WE USE OF THEM ────────────────────────
@@ -199,20 +199,20 @@ export interface Adaptateur {
      * Forgets the resolutions `lire` memorised (`memo.ts`). Optional so that
      * a fake adapter need not carry it; the real one always does.
      */
-    oublier?(): void;
+    forget?(): void;
 }
 
 export function createAdapter(
     racine: Racine,
     fautesArmees = false,
-    maintenant: () => number = Date.now,
+    now: () => number = Date.now,
 ): Adaptateur {
     /**
      * 🔵 `lire`'s memory: `r:<path>` holds a directory, `f:<path>` a file.
      * See `memo.ts` for why it is short, bounded and emptied — and why
      * `lister` and `attributs` do NOT use it: they keep resolving afresh.
      */
-    const memo = creerMemo<PoigneeRepertoire | FileHandle>(maintenant);
+    const memo = createMemo<PoigneeRepertoire | FileHandle>(now);
 
     /**
      * [`descendre`], but starting from the DEEPEST directory `lire` already
@@ -222,9 +222,9 @@ export function createAdapter(
         let i = jusqua;
         let ici: PoigneeRepertoire = racine;
         for (; i > 0; i -= 1) {
-            const connu = memo.obtenir(`r:${parts.slice(0, i).join('/')}`);
-            if (connu !== undefined && connu.kind === 'directory') {
-                ici = connu;
+            const known = memo.get(`r:${parts.slice(0, i).join('/')}`);
+            if (known !== undefined && known.kind === 'directory') {
+                ici = known;
                 break;
             }
         }
@@ -235,13 +235,13 @@ export function createAdapter(
             } catch (e) {
                 throw classer(e, 'chemin-introuvable');
             }
-            memo.poser(`r:${parts.slice(0, i + 1).join('/')}`, ici);
+            memo.set(`r:${parts.slice(0, i + 1).join('/')}`, ici);
         }
         return ici;
     }
 
     /** Resolves the file `parts` designates — canonicalising, as always. */
-    async function resoudreFichier(parts: string[]): Promise<FileHandle> {
+    async function resolveFile(parts: string[]): Promise<FileHandle> {
         const parent = await descendreMemo(parts, parts.length - 1);
         const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
         try {
@@ -406,26 +406,26 @@ export function createAdapter(
             // 🔴 **ONE RESOLUTION PER FILE, NOT PER CHUNK** (`memo.ts`). The
             // chunks of one read share the handle; the name it was resolved
             // under is the canonical one, exactly as before.
-            const cle = `f:${parts.join('/')}`;
-            const connue = memo.obtenir(cle);
-            if (connue !== undefined && connue.kind === 'file') {
+            const key = `f:${parts.join('/')}`;
+            const known = memo.get(key);
+            if (known !== undefined && known.kind === 'file') {
                 try {
-                    return await trancher(connue, position, length);
+                    return await trancher(known, position, length);
                 } catch {
                     // The handle no longer opens: the file was renamed,
                     // removed, replaced. We never retry a handle as is — we
                     // forget everything and resolve again, below, so that the
                     // failure returned is the one a fresh resolution gives.
-                    memo.oublier();
+                    memo.clear();
                 }
             }
-            const poignee = await resoudreFichier(parts);
-            memo.poser(cle, poignee);
-            return trancher(poignee, position, length);
+            const handle = await resolveFile(parts);
+            memo.set(key, handle);
+            return trancher(handle, position, length);
         },
 
-        oublier() {
-            memo.oublier();
+        forget() {
+            memo.clear();
         },
     };
 }

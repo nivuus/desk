@@ -15,7 +15,7 @@
 //      case change made on the local machine is seen at worst `TTL_MS` late;
 //   2. IS EMPTIED by every gesture that may change the tree: a write that
 //      opens a file, a creation, a rename, a removal, a listing
-//      (`protocole.ts` calls `oublier()`);
+//      (`protocole.ts` calls `clear()`);
 //   3. IS EMPTIED by a failure: a handle that no longer opens is never
 //      retried as is — `adaptateur.lire` forgets everything and resolves again.
 //
@@ -28,34 +28,34 @@ export const TTL_MS = 5_000;
 export const MAX_ENTREES = 256;
 
 export interface Memo<T> {
-    obtenir(cle: string): T | undefined;
-    poser(cle: string, valeur: T): void;
-    oublier(): void;
+    get(key: string): T | undefined;
+    set(key: string, value: T): void;
+    clear(): void;
 }
 
-export function creerMemo<T>(maintenant: () => number = Date.now): Memo<T> {
-    const entrees = new Map<string, { valeur: T; expire: number }>();
+export function createMemo<T>(now: () => number = Date.now): Memo<T> {
+    const entries = new Map<string, { value: T; expire: number }>();
     return {
-        obtenir(cle) {
-            const e = entrees.get(cle);
+        get(key) {
+            const e = entries.get(key);
             if (e === undefined) return undefined;
-            if (maintenant() >= e.expire) {
-                entrees.delete(cle);
+            if (now() >= e.expire) {
+                entries.delete(key);
                 return undefined;
             }
-            return e.valeur;
+            return e.value;
         },
-        poser(cle, valeur) {
-            entrees.delete(cle);
-            entrees.set(cle, { valeur, expire: maintenant() + TTL_MS });
+        set(key, value) {
+            entries.delete(key);
+            entries.set(key, { value, expire: now() + TTL_MS });
             // A `Map` iterates in insertion order: the first key is the oldest.
-            while (entrees.size > MAX_ENTREES) {
-                const plusVieille = entrees.keys().next().value as string;
-                entrees.delete(plusVieille);
+            while (entries.size > MAX_ENTREES) {
+                const oldest = entries.keys().next().value as string;
+                entries.delete(oldest);
             }
         },
-        oublier() {
-            entrees.clear();
+        clear() {
+            entries.clear();
         },
     };
 }

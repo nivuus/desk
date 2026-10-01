@@ -29,7 +29,7 @@ import { composer, lirePrefixe } from '../prefixe';
 import type { Racine } from './adaptateur';
 import type { RacineInscriptible } from './ecriture';
 import { contrePression } from './flux';
-import { cleDOrdre, creerSequenceur } from './ordre';
+import { orderKey, createSequencer } from './ordre';
 import type { RacineMutable } from './mutation';
 import { TYPE_ECHEC, decoder, encoderTexte } from '../../../proto/ts/fichiers';
 import { encodeEchec } from '../../../proto/ts/fichiers-entetes';
@@ -125,7 +125,7 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
     // would deliver a `Blob` that `decoder()` would refuse — a failure mode
     // that depends on the browser, hence invisible in an acceptance run on just one.
     canal.binaryType = 'arraybuffer';
-    const sequenceur = creerSequenceur();
+    const sequencer = createSequencer();
 
     canal.addEventListener('open', () => statut('file channel open'));
     canal.addEventListener('close', () => statut('file channel closed'));
@@ -189,8 +189,8 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
             (reponse) => ({ reponse, echec: undefined as unknown }),
             (e: unknown) => ({ reponse: null, echec: e ?? new Error('processing threw') }),
         );
-        void sequenceur
-            .enchainer(cleDOrdre(data), travail, async ({ reponse, echec }) => {
+        void sequencer
+            .chain(orderKey(data), travail, async ({ reponse, echec }) => {
                 if (echec !== undefined) {
                     // `traiter` itself answers the failures it can name; if it
                     // throws, the protocol itself has broken. We say so, and
