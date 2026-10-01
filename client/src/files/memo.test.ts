@@ -9,11 +9,16 @@ type Noeud = { [nom: string]: Noeud | Uint8Array };
 
 function monter(arbre: Noeud) {
     const compte = { values: 0 };
+    /** Names whose NEXT `getFile()` fails once, as a file held by another program would. */
+    const pannes = new Set<string>();
+    /** Runs at the start of the next enumeration only: "something happens mid-resolution". */
+    const pendant: { values?: () => void } = {};
     function dossier(nom: string, n: Noeud): PoigneeRepertoire {
         const fichier = (enfant: string): FileHandle => ({
             kind: 'file',
             name: enfant,
             getFile: async () => {
+                if (pannes.delete(enfant)) throw new DOMException(enfant, 'NotReadableError');
                 const actuel = n[enfant];
                 if (!(actuel instanceof Uint8Array)) {
                     throw new DOMException(enfant, 'NotFoundError');
@@ -45,6 +50,9 @@ function monter(arbre: Noeud) {
             },
             async *values() {
                 compte.values += 1;
+                const crochet = pendant.values;
+                pendant.values = undefined;
+                crochet?.();
                 for (const [enfant, e] of Object.entries(n)) {
                     yield e instanceof Uint8Array ? fichier(enfant) : dossier(enfant, e);
                 }
@@ -54,7 +62,7 @@ function monter(arbre: Noeud) {
     let temps = 0;
     const horloge = { avancer: (ms: number) => (temps += ms) };
     const adaptateur = createAdapter(dossier('', arbre), false, () => temps);
-    return { adaptateur, compte, horloge };
+    return { adaptateur, compte, horloge, pannes, pendant };
 }
 
 const OCTETS = new Uint8Array(Array.from({ length: 100 }, (_, i) => i));
@@ -111,10 +119,46 @@ describe("lire's memory of resolved handles", () => {
     });
 });
 
+describe("lire's memory under concurrency", () => {
+    it('shares ONE resolution between chunks asked for at the same time', async () => {
+        const { adaptateur, compte } = monter({ 'f.bin': OCTETS });
+        // The agent's window: four chunks requested before any answer.
+        const lus = await Promise.all([0, 10, 20, 30].map((p) => adaptateur.lire('f.bin', p, 10)));
+        expect(lus.flatMap((l) => [...l])).toEqual([...OCTETS.slice(0, 40)]);
+        expect(compte.values).toBe(1);
+    });
+
+    it('does not keep a resolution that was under way when the memory was emptied', async () => {
+        const { adaptateur, compte, pendant } = monter({ 'f.bin': OCTETS });
+        // A rename lands WHILE the read enumerates the parent.
+        pendant.values = () => adaptateur.forget?.();
+        await adaptateur.lire('f.bin', 0, 1);
+        await adaptateur.lire('f.bin', 1, 1);
+        expect(compte.values).toBe(2);
+    });
+
+    it('does not keep a freshly resolved handle whose first read fails', async () => {
+        const { adaptateur, compte, pannes } = monter({ 'f.bin': OCTETS });
+        pannes.add('f.bin');
+        await expect(adaptateur.lire('f.bin', 0, 1)).rejects.toBeDefined();
+        expect([...(await adaptateur.lire('f.bin', 1, 1))]).toEqual([1]);
+        // Resolved again, rather than the failed handle retried first.
+        expect(compte.values).toBe(2);
+    });
+});
+
 describe('createMemo', () => {
+    it('refuses a value resolved under a generation a clear() made stale', () => {
+        const memo = createMemo<number>(() => 0);
+        const avant = memo.generation();
+        memo.clear();
+        memo.set('k', 1, avant);
+        expect(memo.get('k')).toBeUndefined();
+    });
+
     it('forgets the oldest entry beyond MAX_ENTREES', () => {
         const memo = createMemo<number>(() => 0);
-        for (let i = 0; i <= MAX_ENTREES; i += 1) memo.set(`k${i}`, i);
+        for (let i = 0; i <= MAX_ENTREES; i += 1) memo.set(`k${i}`, i, memo.generation());
         expect(memo.get('k0')).toBeUndefined();
         expect(memo.get(`k${MAX_ENTREES}`)).toBe(MAX_ENTREES);
     });

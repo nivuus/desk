@@ -25,7 +25,7 @@
 
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver, RecvTimeoutError};
+use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -36,6 +36,17 @@ use super::{VersNavigateur, TAMPON_UDP};
 /// How long the reader blocks before checking whether the loop is gone.
 /// **Off the data path**: see the module header.
 const PERIODE_LECTEUR: Duration = Duration::from_millis(100);
+
+/// How many wake-ups may wait for the loop at most.
+///
+/// 🔴 **BOUNDED, AND IT IS NOT A DETAIL**: the reader drains the socket faster
+/// than the loop may process, so an unbounded channel would move the kernel's
+/// BOUNDED receive buffer into UNBOUNDED process memory — any sender reaching
+/// the host candidate could make it grow. Full, the channel blocks the reader;
+/// the datagrams then wait in the kernel, which drops them past its own
+/// buffer, exactly as before this module. SCTP retransmits. 1,024 datagrams
+/// of at most `TAMPON_UDP` bytes is ~2 MiB at worst.
+const CAPACITE: usize = 1024;
 
 /// One reason for the transport loop to take a turn.
 #[derive(Debug)]
@@ -81,7 +92,7 @@ impl Drop for Reveils {
 /// had when the loop held it: the bridge's stop releases every `Sender`
 /// (`pont.rs`), so nothing outlives the process.
 pub(super) fn armer(socket: &UdpSocket, sortant: Receiver<VersNavigateur>) -> Result<Reveils> {
-    let (envoi, recu) = channel();
+    let (envoi, recu) = sync_channel(CAPACITE);
     let arret = Arc::new(AtomicBool::new(false));
 
     let lecture = socket
@@ -118,7 +129,7 @@ pub(super) fn armer(socket: &UdpSocket, sortant: Receiver<VersNavigateur>) -> Re
     Ok(Reveils { recu, arret })
 }
 
-fn lire(socket: UdpSocket, envoi: std::sync::mpsc::Sender<Reveil>, arret: Arc<AtomicBool>) {
+fn lire(socket: UdpSocket, envoi: SyncSender<Reveil>, arret: Arc<AtomicBool>) {
     let mut tampon = vec![0u8; TAMPON_UDP];
     while !arret.load(Ordering::Relaxed) {
         let reveil = match socket.recv_from(&mut tampon) {

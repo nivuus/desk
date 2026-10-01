@@ -29,12 +29,21 @@ export const MAX_ENTREES = 256;
 
 export interface Memo<T> {
     get(key: string): T | undefined;
-    set(key: string, value: T): void;
+    /**
+     * Remembers `value` — unless the memory was cleared since `generation`
+     * was read. 🔴 A resolution that STARTED before a `clear()` and ends after
+     * it must not survive it: it may have walked a tree a rename was changing.
+     */
+    set(key: string, value: T, generation: number): void;
+    /** Empties the memory, and makes every generation read so far stale. */
     clear(): void;
+    /** The current generation: read it BEFORE resolving what `set` will store. */
+    generation(): number;
 }
 
 export function createMemo<T>(now: () => number = Date.now): Memo<T> {
     const entries = new Map<string, { value: T; expire: number }>();
+    let current = 0;
     return {
         get(key) {
             const e = entries.get(key);
@@ -45,7 +54,8 @@ export function createMemo<T>(now: () => number = Date.now): Memo<T> {
             }
             return e.value;
         },
-        set(key, value) {
+        set(key, value, generation) {
+            if (generation !== current) return;
             entries.delete(key);
             entries.set(key, { value, expire: now() + TTL_MS });
             // A `Map` iterates in insertion order: the first key is the oldest.
@@ -56,6 +66,10 @@ export function createMemo<T>(now: () => number = Date.now): Memo<T> {
         },
         clear() {
             entries.clear();
+            current += 1;
+        },
+        generation() {
+            return current;
         },
     };
 }

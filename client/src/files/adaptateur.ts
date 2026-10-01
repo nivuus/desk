@@ -213,12 +213,45 @@ export function createAdapter(
      * `lister` and `attributs` do NOT use it: they keep resolving afresh.
      */
     const memo = createMemo<PoigneeRepertoire | FileHandle>(now);
+    /**
+     * The resolutions UNDER WAY, by `f:<path>`: the agent asks for up to four
+     * chunks at once, and without this each of them would miss the memory
+     * and enumerate the same path on its own.
+     */
+    const inflight = new Map<string, Promise<FileHandle>>();
+
+    /** Forgets the memory AND the resolutions under way. */
+    function forgetAll(): void {
+        memo.clear();
+        inflight.clear();
+    }
+
+    /** [`resolveFile`], shared by every chunk that asks while it runs. */
+    function resolveShared(key: string, parts: string[]): Promise<FileHandle> {
+        const pending = inflight.get(key);
+        if (pending !== undefined) return pending;
+        const generation = memo.generation();
+        const resolution = resolveFile(parts, generation).then((handle) => {
+            memo.set(key, handle, generation);
+            return handle;
+        });
+        inflight.set(key, resolution);
+        const done = () => {
+            if (inflight.get(key) === resolution) inflight.delete(key);
+        };
+        resolution.then(done, done);
+        return resolution;
+    }
 
     /**
      * [`descendre`], but starting from the DEEPEST directory `lire` already
      * resolved, and remembering the ones it resolves.
      */
-    async function descendreMemo(parts: string[], jusqua: number): Promise<PoigneeRepertoire> {
+    async function descendreMemo(
+        parts: string[],
+        jusqua: number,
+        generation: number,
+    ): Promise<PoigneeRepertoire> {
         let i = jusqua;
         let ici: PoigneeRepertoire = racine;
         for (; i > 0; i -= 1) {
@@ -235,14 +268,14 @@ export function createAdapter(
             } catch (e) {
                 throw classer(e, 'chemin-introuvable');
             }
-            memo.set(`r:${parts.slice(0, i + 1).join('/')}`, ici);
+            memo.set(`r:${parts.slice(0, i + 1).join('/')}`, ici, generation);
         }
         return ici;
     }
 
     /** Resolves the file `parts` designates — canonicalising, as always. */
-    async function resolveFile(parts: string[]): Promise<FileHandle> {
-        const parent = await descendreMemo(parts, parts.length - 1);
+    async function resolveFile(parts: string[], generation: number): Promise<FileHandle> {
+        const parent = await descendreMemo(parts, parts.length - 1, generation);
         const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
         try {
             return await parent.getFileHandle(nom);
@@ -416,16 +449,22 @@ export function createAdapter(
                     // removed, replaced. We never retry a handle as is — we
                     // forget everything and resolve again, below, so that the
                     // failure returned is the one a fresh resolution gives.
-                    memo.clear();
+                    forgetAll();
                 }
             }
-            const handle = await resolveFile(parts);
-            memo.set(key, handle);
-            return trancher(handle, position, length);
+            const handle = await resolveShared(key, parts);
+            try {
+                return await trancher(handle, position, length);
+            } catch (e) {
+                // A handle that fails at once is not kept either: the next
+                // chunk resolves again rather than retrying it.
+                forgetAll();
+                throw e;
+            }
         },
 
         forget() {
-            memo.clear();
+            forgetAll();
         },
     };
 }
