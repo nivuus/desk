@@ -3,13 +3,6 @@ name: Release
 on:
   push:
     branches: [main]
-  # Every job here calls a reusable workflow from nivuus/.github@main, so what
-  # this means can change with no commit landing in this repository - and it
-  # does, often. Without this trigger the only way to ask whether main passes
-  # under the current socle is to push something to main, and re-running an
-  # old run does not answer it either: a re-run replays the workflow revision
-  # it was created with. `gh workflow run <name> --ref main` asks directly.
-  workflow_dispatch:
 
 jobs:
   release:
@@ -19,13 +12,21 @@ jobs:
       id-token: write
       attestations: write
     with:
-      # desk's install hook is idempotent (fix 3e9b835), but the gate still
-      # cannot pass in CI: it needs client/dist and
-      # plateforme/node_modules/.bin/tsx, both gitignored build artefacts
-      # that no release step here produces (same reason package: is not yet
-      # wired into ci.yml - see the comment there). Passing no `with:` at
-      # all used to run the gate anyway, with no answers file and no
-      # console prerequisite resolved, failing it permanently on the first
-      # feat: merge. An explicit, visible opt-out until a later plan adds
-      # the build step and wires this back on.
-      prove-package: false
+      # hooks/install.py refuses a source tree without client/dist,
+      # plateforme/node_modules/.bin/tsx and proto/ts (its pre-flight lists
+      # them all). proto/ts is tracked; the other two are gitignored build
+      # outputs, so they are built here and copied into the exported tree
+      # before it is archived - git archive alone never ships them, which
+      # is why every release up to v1.2.3 was a source snapshot the updater
+      # could download but never install.
+      build-command: >-
+        (cd plateforme && npm ci --no-audit --no-fund)
+        && (cd client && npm ci --no-audit --no-fund && npm run build)
+      bundle-command: >-
+        cp -R client/dist "$EXPORT_DIR/client/dist"
+        && cp -R plateforme/node_modules "$EXPORT_DIR/plateforme/node_modules"
+      # The idempotence gate runs after the build, against the same files
+      # the archive will carry. The fixture holds console's answers too:
+      # the harness applies one answers dict to the whole prerequisite
+      # chain (see the fixture's own _comment).
+      answers-file: tests/fixtures/ci-answers.json
