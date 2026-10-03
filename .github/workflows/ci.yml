@@ -77,8 +77,9 @@ jobs:
   # hook refuses a tree without client/dist and
   # plateforme/node_modules/.bin/tsx, both gitignored build outputs that
   # ci-package.yml has no step to produce. Wiring it would ship a
-  # permanently red control. The gate DOES run on every merge to main, in
-  # release.yml: the shared release workflow builds those outputs first
+  # permanently red control. The gate DOES run on every RELEASABLE merge to
+  # main (one the shared workflow derives a new version for; a docs-only
+  # merge skips it), in release.yml: that workflow builds those outputs first
   # (build-command), proves the hook against them, then copies them into the
   # published archive (bundle-command). tests/fixtures/ci-answers.json is
   # the answers file that gate uses - keep it.
