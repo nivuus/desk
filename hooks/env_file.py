@@ -20,7 +20,7 @@ import stat
 # it rewrites the file at an update, or a replay loses that proof, re-runs
 # the enrolment, mints a new AGENT_SECRET the agent in the VM does not hold
 # and trips on the account that already exists (measured 2026-10-03, first
-# `nivuus update desk`: "UNIQUE constraint failed: utilisateur.email").
+# `nivuus update desk`: "UNIQUE constraint failed: utilisateur.email").  # policy: allow-fr - real table name
 ACTIVATE_KEYS = ("AGENT_VM", "AGENT_SECRET")
 
 
