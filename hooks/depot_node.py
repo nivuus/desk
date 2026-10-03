@@ -55,6 +55,7 @@ import pathlib
 import shutil
 import subprocess
 
+from commun import lire_node_bin
 from depot_arbre import copier_arbre, make_world_readable
 
 # The three executables expected under `<prefix>/bin`, and the only global
@@ -64,7 +65,34 @@ EXECUTABLES = ("node", "npm", "npx")
 PAQUET_GLOBAL = pathlib.Path("lib") / "node_modules" / "npm"
 
 
-def racine_node_source():
+def _manquants(prefixe: pathlib.Path) -> list:
+    """What a usable runtime prefix lacks: nothing, or the names to report."""
+    return [nom for nom in ("bin/node",) + (str(PAQUET_GLOBAL),)
+            if not (prefixe / nom).exists()]
+
+
+def _prefixe_sur_le_path():
+    """The prefix of the `node` this machine runs, or `(None, raison)`.
+
+    Never `command -v node`: on this machine, `node` is a zsh FUNCTION that
+    sources nvm, and a `subprocess` never goes through an interactive
+    shell function anyway — that is the diagnosis of batch 10A (see
+    `commun.py::NODE_BIN_DEFAUT`). `process.execPath` returns
+    `<prefix>/bin/node`, so `parents[1]` is the prefix.
+    """
+    try:
+        r = subprocess.run(
+            ["node", "-e", "process.stdout.write(process.execPath)"],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"node is missing or silent on this machine ({exc})"
+    if r.returncode != 0 or not r.stdout.strip():
+        return None, ("`node -e process.execPath` returned nothing usable "
+                      f"(code {r.returncode})")
+    return pathlib.Path(r.stdout.strip()).resolve().parents[1], None
+
+
+def racine_node_source(root=None):
     """The Node prefix to deploy. Returns `(chemin, None)` or `(None, raison)`.
 
     Overridable by `DESK_NODE_SOURCE` — for the tests (which lay out a
@@ -72,37 +100,35 @@ def racine_node_source():
     scenario), and for an operator who would like to deploy a runtime other than
     the one running the hook.
 
-    Otherwise, the prefix is DERIVED from the interpreter itself:
-    `process.execPath` returns `<prefix>/bin/node`, so `parents[1]` is the
-    prefix. Never `command -v node`: on this machine, `node` is a zsh
-    FUNCTION that sources nvm, and a `subprocess` never goes through
-    an interactive shell function anyway — that is the diagnosis of batch
-    10A (see `commun.py::NODE_BIN_DEFAUT`).
+    Otherwise, the prefix is DERIVED from the interpreter itself (see
+    `_prefixe_sur_le_path`). And when this machine has no `node` on its
+    PATH, the runtime ALREADY DROPPED under `root` (the parent of
+    `lire_node_bin()`) stands in, provided it is complete. That is the
+    REPLAY case: `nivuus update desk` runs this hook again on a target
+    whose only Node is the one its first install dropped — nowhere on
+    PATH, by construction (measured 2026-10-03: a plain root PATH has no
+    `node` on the reference machine either). Refusing there would mark
+    desk failed on every update. The PATH stays first so an operator who
+    runs the hook with a newer `node` still upgrades the runtime.
     """
     brut = os.environ.get("DESK_NODE_SOURCE")
     if brut:
         prefixe = pathlib.Path(brut)
     else:
-        try:
-            r = subprocess.run(
-                ["node", "-e", "process.stdout.write(process.execPath)"],
-                capture_output=True, text=True, timeout=30)
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        prefixe, raison = _prefixe_sur_le_path()
+        if prefixe is None:
+            deja = None
+            if root is not None:
+                deja = pathlib.Path(root) / lire_node_bin().lstrip("/")
+                deja = deja.parent
+                if not _manquants(deja):
+                    return deja, None
             return None, (
-                f"node is missing or silent on this machine ({exc}): "
-                "cannot drop a Node runtime on the target, even though "
-                "desk's systemd unit launches npm"
-            )
-        if r.returncode != 0 or not r.stdout.strip():
-            return None, (
-                "`node -e process.execPath` returned nothing usable "
-                f"(code {r.returncode}): cannot locate the Node runtime "
-                "to drop on the target"
-            )
-        prefixe = pathlib.Path(r.stdout.strip()).resolve().parents[1]
-
-    manquants = [nom for nom in ("bin/node",) + (str(PAQUET_GLOBAL),)
-                 if not (prefixe / nom).exists()]
+                f"{raison}: cannot locate a Node runtime to drop on the "
+                "target, even though desk's systemd unit launches npm"
+                + (f" — and none is already dropped at {deja} to stand in"
+                   if deja is not None else ""))
+    manquants = _manquants(prefixe)
     if manquants:
         return None, (
             f"the source Node runtime {prefixe} is incomplete: "
@@ -125,6 +151,11 @@ def deposer_node(prefixe: pathlib.Path, destination: pathlib.Path) -> None:
     would give an `ExecStart` that fails before the first line of
     JavaScript.
     """
+    if destination.exists() and prefixe.resolve() == destination.resolve():
+        # A replay standing on the runtime already dropped here (see
+        # racine_node_source): nothing to copy, and copying would first
+        # delete the very tree it then reads from.
+        return
     bin_dest = destination / "bin"
     if bin_dest.exists() or bin_dest.is_symlink():
         shutil.rmtree(bin_dest)

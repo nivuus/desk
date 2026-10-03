@@ -262,7 +262,7 @@ def main() -> int:
     # See the comment of `raisons_de_pre_vol`: everything missing is said
     # HERE, before a single byte of `desk.env` — hence before a secret — touches
     # the disk.
-    prefixe_node, raison_node = racine_node_source()
+    prefixe_node, raison_node = racine_node_source(root)
     raisons = raisons_de_pre_vol(RACINE, prefixe_node)
     if raison_node:
         raisons = [r for r in raisons if not r.startswith("no Node runtime")]

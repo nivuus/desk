@@ -198,6 +198,27 @@ with tempfile.TemporaryDirectory() as tmp10b:
     r10b = appeler(root10b, facts=FACTS)
     check("negative control: sound facts still pass", r10b.returncode, 0)
 
+# --- Installation 11: NO `node` ANYWHERE -> refusal that names both places --
+# A machine with no `node` on its PATH and no runtime dropped yet under the
+# target (a first install from a stripped environment). The replay case,
+# where the dropped runtime stands in, is the success scenario of
+# tests/test_desk_install_replay.py; this is its negative control.
+with tempfile.TemporaryDirectory() as tmp11, tempfile.TemporaryDirectory() as vide11:
+    root11 = pathlib.Path(tmp11)
+    env11 = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env11["PATH"] = vide11  # an empty directory: no `node` resolves
+    r11 = appeler(root11, facts=FACTS, env=env11, node_source=False)
+    check("installation 11 (no node anywhere): NON-ZERO exit code",
+          r11.returncode != 0, True)
+    check("installation 11: no Python traceback",
+          "Traceback" in (r11.stderr or ""), False)
+    check("installation 11: the refusal names node",
+          "node" in (r11.stderr or ""), True)
+    check("installation 11: the refusal names where a dropped runtime was looked for",
+          "opt/nivuus/node" in (r11.stderr or ""), True)
+    check("installation 11: desk.env is NOT created",
+          (root11 / "etc" / "nivuus" / "desk.env").exists(), False)
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
