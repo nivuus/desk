@@ -19,6 +19,11 @@ jobs:
       id-token: write
       attestations: write
     with:
+      # The Node the build, the gate and the bundle run on: engines.node of
+      # plateforme/package.json pins 24, and the install hook refuses to
+      # drop any other (ubuntu-latest ships 22 - the first run through
+      # this chain was refused by its own gate for exactly that).
+      node-version: "24"
       # hooks/install.py refuses a source tree without client/dist,
       # plateforme/node_modules/.bin/tsx and proto/ts (its pre-flight lists
       # them all). proto/ts is tracked; the other two are gitignored build
