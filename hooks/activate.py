@@ -115,7 +115,7 @@ import sys
 
 from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
-from env_file import add_env_variables, read_env_file
+from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
 from vm import poser_projfs, poser_vb_audio
 
 # --- What task 4 set up, and what this hook arms or completes -----------
@@ -373,7 +373,7 @@ def main() -> int:
     # written) makes a replay stumble on the already taken email — a
     # PARTIAL recovery outside the scope of this task, see the
     # report, § Reservations.
-    if env_deja_pose.get("AGENT_VM") and env_deja_pose.get("AGENT_SECRET"):
+    if all(env_deja_pose.get(cle) for cle in ACTIVATE_KEYS):
         emettre({"event": "progress", "pct": 100,
                  "msg": "desk: already activated (AGENT_VM/AGENT_SECRET already "
                         "present in desk.env); account and enrolment skipped"})
@@ -413,7 +413,7 @@ def main() -> int:
         return 1
     vm_id, secret = result
 
-    add_env_variables(env_chemin, {"AGENT_VM": vm_id, "AGENT_SECRET": secret})
+    add_env_variables(env_chemin, dict(zip(ACTIVATE_KEYS, (vm_id, secret))))
 
     # 🔴 TASK 13 — A HOLE FOUND IN PRODUCTION ON AUGUST 29TH, 2026: `enroler_agent_
     # plateforme()` (hence `admin:agent`, hence `enrolerLaVm`) does
