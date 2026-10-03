@@ -25,7 +25,9 @@ sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(RACINE / "tests"))
 
 from commun import lire_node_bin  # noqa: E402
-from desk_install_fixtures import FACTS, appeler, poser_faux_node_source  # noqa: E402
+from desk_install_fixtures import (  # noqa: E402
+    FACTS, appeler, poser_faux_node_bavard, poser_faux_node_source,
+)
 
 failures = []
 
@@ -47,8 +49,7 @@ with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as vide
     # The fixtures' fake node answers nothing; the dropped one must answer
     # `--version` with something engines.node accepts (FACTS carries a
     # version resolve already validated against that very bound).
-    (depose / "bin" / "node").write_text(
-        f"#!/bin/sh\necho v{FACTS['node_version']}\n", encoding="utf-8")
+    poser_faux_node_bavard(depose, FACTS["node_version"])
     node_avant = (depose / "bin" / "node").read_bytes()
     lien_avant = os.readlink(depose / "bin" / "npm")
 
@@ -69,6 +70,30 @@ with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as vide
     check("replay: the npm package is still there",
           (depose / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js").is_file(),
           True)
+
+# A `node` on the PATH that this package's engines.node REFUSES must not be
+# preferred over a dropped runtime that satisfies it: the PATH comes first
+# only when it is compatible (review of #21).
+with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as autre:
+    root = pathlib.Path(tmp)
+    faux = poser_faux_node_source(root)
+    depose = (root / lire_node_bin().lstrip("/")).parent
+    shutil.copytree(faux, depose, symlinks=True)
+    shutil.rmtree(faux)
+    poser_faux_node_bavard(depose, FACTS["node_version"])
+    node_avant = (depose / "bin" / "node").read_bytes()
+    vieux = poser_faux_node_source(pathlib.Path(autre))
+    bin_vieux = poser_faux_node_bavard(vieux, "0.10.0")
+
+    env = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env["PATH"] = str(bin_vieux)
+    r = appeler(root, facts=FACTS, env=env, node_source=False)
+    check("incompatible node on PATH, compatible runtime dropped: exit code 0",
+          r.returncode, 0)
+    check("incompatible node on PATH: the dropped runtime is kept, byte for byte",
+          (depose / "bin" / "node").read_bytes(), node_avant)
+    check("incompatible node on PATH: desk.env is written",
+          (root / "etc" / "nivuus" / "desk.env").is_file(), True)
 
 if failures:
     print(f"FAIL ({len(failures)})")

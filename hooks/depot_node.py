@@ -55,7 +55,7 @@ import pathlib
 import shutil
 import subprocess
 
-from borne_node import lire_borne_node, verifier_version, version_de
+from borne_node import lire_borne_node, check_version, version_de
 from commun import lire_node_bin
 from depot_arbre import copier_arbre, make_world_readable
 
@@ -67,8 +67,13 @@ PAQUET_GLOBAL = pathlib.Path("lib") / "node_modules" / "npm"
 
 
 def _manquants(prefixe: pathlib.Path) -> list:
-    """What a usable runtime prefix lacks: nothing, or the names to report."""
-    return [nom for nom in ("bin/node",) + (str(PAQUET_GLOBAL),)
+    """What a usable runtime prefix lacks: nothing, or the names to report.
+
+    `bin/npm` counts: the service is `npm start`
+    (hooks/assets/desk-plateforme.service), so a prefix with `node` and
+    the npm package but no `bin/npm` link is a service that never starts.
+    """
+    return [nom for nom in ("bin/node", "bin/npm", str(PAQUET_GLOBAL))
             if not (prefixe / nom).exists()]
 
 
@@ -93,24 +98,32 @@ def _prefixe_sur_le_path():
     return pathlib.Path(r.stdout.strip()).resolve().parents[1], None
 
 
-def _runtime_depose_conforme(deja: pathlib.Path):
-    """The dropped runtime, only if its `node` satisfies the CURRENT
-    package's `engines.node`: a later desk release may raise the bound, and
-    reusing an older runtime would let the install succeed and leave a
-    service unable to start. Same bound and verdict as resolve.py."""
-    version = version_de(deja / "bin" / "node")
+def _runtime_conforme(prefixe: pathlib.Path, origine: str):
+    """`(prefixe, None)` when the runtime at `prefixe` is complete and its
+    `node` satisfies the CURRENT package's `engines.node`, `(None, raison)`
+    otherwise - the same bound and verdict as resolve.py, applied to
+    whichever runtime is about to be dropped. `origine` names it in the
+    refusal ("the node on the PATH", "the runtime already dropped at ...").
+    A later desk release may raise the bound: a runtime that satisfied the
+    previous one would install fine and leave a service unable to start.
+    """
+    manquants = _manquants(prefixe)
+    if manquants:
+        return None, (
+            f"{origine} ({prefixe}) is incomplete: {', '.join(manquants)} "
+            "missing. A desk service without `node` or `npm` dropped cannot "
+            "start (see hooks/assets/desk-plateforme.service::ExecStart).")
+    version = version_de(prefixe / "bin" / "node")
     if version is None:
-        return None, (f"the Node runtime already dropped at {deja} does not "
-                      "answer `node --version`: not a runtime to stand on")
+        return None, (f"{origine} ({prefixe}) does not answer "
+                      "`node --version`: not a runtime to drop")
     borne, raison = lire_borne_node()
     if raison:
         return None, raison
-    version, raison = verifier_version(version, borne)
+    _version, raison = check_version(version, borne)
     if raison:
-        return None, (f"the Node runtime already dropped at {deja} cannot "
-                      f"stand in: {raison}. Run this hook with a compatible "
-                      "`node` on the PATH, or name one in DESK_NODE_SOURCE")
-    return deja, None
+        return None, f"{origine} ({prefixe}) cannot be dropped: {raison}"
+    return prefixe, None
 
 
 def racine_node_source(root=None):
@@ -129,37 +142,45 @@ def racine_node_source(root=None):
     whose only Node is the one its first install dropped — nowhere on
     PATH, by construction (measured 2026-10-03: a plain root PATH has no
     `node` on the reference machine either). Refusing there would mark
-    desk failed on every update. It stands in only if its version still
-    satisfies this package's `engines.node` (see _runtime_depose_conforme).
-    The PATH stays first so an operator who runs the hook with a newer
-    `node` still upgrades the runtime.
+    desk failed on every update. Either runtime is dropped only if it is
+    complete and its version satisfies this package's `engines.node` (see
+    _runtime_conforme): a PATH `node` that does not is passed over for a
+    dropped one that does. The PATH comes first so an operator who runs the
+    hook with a newer, compatible `node` still upgrades the runtime.
     """
     brut = os.environ.get("DESK_NODE_SOURCE")
     if brut:
+        # The operator's explicit choice: completeness is checked, the
+        # version is theirs to answer for (the tests' fake runtime answers
+        # nothing to `--version`).
         prefixe = pathlib.Path(brut)
-    else:
-        prefixe, raison = _prefixe_sur_le_path()
-        if prefixe is None:
-            deja = None
-            if root is not None:
-                deja = pathlib.Path(root) / lire_node_bin().lstrip("/")
-                deja = deja.parent
-                if not _manquants(deja):
-                    return _runtime_depose_conforme(deja)
+        manquants = _manquants(prefixe)
+        if manquants:
             return None, (
-                f"{raison}: cannot locate a Node runtime to drop on the "
-                "target, even though desk's systemd unit launches npm"
-                + (f" — and none is already dropped at {deja} to stand in"
-                   if deja is not None else ""))
-    manquants = _manquants(prefixe)
-    if manquants:
-        return None, (
-            f"the source Node runtime {prefixe} is incomplete: "
-            f"{', '.join(manquants)} missing. A desk service without "
-            "`node` or `npm` dropped cannot start (see "
-            "hooks/assets/desk-plateforme.service::ExecStart)."
-        )
-    return prefixe, None
+                f"the source Node runtime {prefixe} is incomplete: "
+                f"{', '.join(manquants)} missing. A desk service without "
+                "`node` or `npm` dropped cannot start (see "
+                "hooks/assets/desk-plateforme.service::ExecStart).")
+        return prefixe, None
+    raisons = []
+    prefixe, raison = _prefixe_sur_le_path()
+    if prefixe is not None:
+        prefixe, raison = _runtime_conforme(prefixe, "the node on the PATH")
+        if prefixe is not None:
+            return prefixe, None
+    raisons.append(raison)
+    if root is not None:
+        deja = (pathlib.Path(root) / lire_node_bin().lstrip("/")).parent
+        if deja.exists():
+            prefixe, raison = _runtime_conforme(
+                deja, "the runtime already dropped at the target prefix")
+            if prefixe is not None:
+                return prefixe, None
+            raisons.append(raison)
+        else:
+            raisons.append(f"none is already dropped at {deja} to stand in")
+    return None, ("no Node runtime to drop on the target, even though desk's "
+                  "systemd unit launches npm: " + "; ".join(raisons))
 
 
 def deposer_node(prefixe: pathlib.Path, destination: pathlib.Path) -> None:

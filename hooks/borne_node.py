@@ -75,7 +75,7 @@ def version_de(node_bin="node"):
     return r.stdout.strip().lstrip("v")
 
 
-def verifier_version(version: str, borne_brute: str):
+def check_version(version: str, borne_brute: str):
     """(version, None) when `version` satisfies the bound, (None, raison) otherwise."""
     bornes = parser_borne(borne_brute)
     if bornes is None:

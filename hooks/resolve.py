@@ -28,7 +28,7 @@ import re
 import subprocess
 import sys
 
-from borne_node import lire_borne_node, parser_borne, verifier_version, version_de  # noqa: F401
+from borne_node import lire_borne_node, parser_borne, check_version, version_de  # noqa: F401
 from commun import (
     PORT_DEFAUT,
     adresse_ipv4_de,
@@ -78,7 +78,7 @@ def valider_node():
     version = version_node_locale()
     if version is None:
         return None, "node is not found on this machine; plateforme/ requires it"
-    return verifier_version(version, borne_brute)
+    return check_version(version, borne_brute)
 
 
 def deriver_adresses_turn():
