@@ -19,15 +19,19 @@ Run: python3 tests/test_desk_install_gardes.py
 """
 import os
 import pathlib
+import shutil
 import sys
 import tempfile
 
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from commun import lire_node_bin  # noqa: E402
 from desk_install_fixtures import (  # noqa: E402
     FACTS,
     appeler,
+    poser_faux_node_bavard,
+    poser_faux_node_source,
     poser_source_minimale,
 )
 
@@ -197,6 +201,97 @@ with tempfile.TemporaryDirectory() as tmp10b:
     root10b = pathlib.Path(tmp10b)
     r10b = appeler(root10b, facts=FACTS)
     check("negative control: sound facts still pass", r10b.returncode, 0)
+
+# --- Installation 11: NO `node` ANYWHERE -> refusal that names both places --
+# A machine with no `node` on its PATH and no runtime dropped yet under the
+# target (a first install from a stripped environment). The replay case,
+# where the dropped runtime stands in, is the success scenario of
+# tests/test_desk_install_replay.py; this is its negative control.
+with tempfile.TemporaryDirectory() as tmp11, tempfile.TemporaryDirectory() as vide11:
+    root11 = pathlib.Path(tmp11)
+    env11 = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env11["PATH"] = vide11  # an empty directory: no `node` resolves
+    r11 = appeler(root11, facts=FACTS, env=env11, node_source=False)
+    check("installation 11 (no node anywhere): NON-ZERO exit code",
+          r11.returncode != 0, True)
+    check("installation 11: no Python traceback",
+          "Traceback" in (r11.stderr or ""), False)
+    check("installation 11: the refusal names node",
+          "node" in (r11.stderr or ""), True)
+    check("installation 11: the refusal names where a dropped runtime was looked for",
+          "opt/nivuus/node" in (r11.stderr or ""), True)
+    check("installation 11: desk.env is NOT created",
+          (root11 / "etc" / "nivuus" / "desk.env").exists(), False)
+
+# --- Installation 12: a dropped runtime TOO OLD for this package -> refusal --
+# A later desk release may raise engines.node; a replay standing on the
+# older runtime would install fine and leave a service unable to start.
+# The dropped node here answers a version far below any bound.
+with tempfile.TemporaryDirectory() as tmp12, tempfile.TemporaryDirectory() as vide12:
+    root12 = pathlib.Path(tmp12)
+    faux12 = poser_faux_node_source(root12)
+    depose12 = (root12 / lire_node_bin().lstrip("/")).parent
+    shutil.copytree(faux12, depose12, symlinks=True)
+    poser_faux_node_bavard(depose12, "0.10.0")
+    env12 = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env12["PATH"] = vide12
+    r12 = appeler(root12, facts=FACTS, env=env12, node_source=False)
+    check("installation 12 (dropped runtime too old): NON-ZERO exit code",
+          r12.returncode != 0, True)
+    check("installation 12: no Python traceback",
+          "Traceback" in (r12.stderr or ""), False)
+    check("installation 12: the refusal names the dropped version",
+          "0.10.0" in (r12.stderr or ""), True)
+    check("installation 12: the refusal names engines.node",
+          "engines.node" in (r12.stderr or ""), True)
+    check("installation 12: desk.env is NOT created",
+          (root12 / "etc" / "nivuus" / "desk.env").exists(), False)
+    check("installation 12: the dropped runtime is left intact",
+          "echo v0.10.0" in (depose12 / "bin" / "node").read_text(encoding="utf-8"),
+          True)
+
+# --- Installation 13: the `node` on the PATH is TOO OLD, nothing dropped -----
+# The PATH is preferred only when compatible (review of #21): an
+# incompatible one with no dropped runtime to fall back on refuses, naming
+# the version, the bound and the place a dropped runtime was looked for.
+with tempfile.TemporaryDirectory() as tmp13, tempfile.TemporaryDirectory() as autre13:
+    root13 = pathlib.Path(tmp13)
+    vieux13 = poser_faux_node_source(pathlib.Path(autre13))
+    env13 = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env13["PATH"] = str(poser_faux_node_bavard(vieux13, "0.10.0"))
+    r13 = appeler(root13, facts=FACTS, env=env13, node_source=False)
+    check("installation 13 (PATH node too old): NON-ZERO exit code",
+          r13.returncode != 0, True)
+    check("installation 13: no Python traceback",
+          "Traceback" in (r13.stderr or ""), False)
+    check("installation 13: the refusal names the PATH version",
+          "0.10.0" in (r13.stderr or ""), True)
+    check("installation 13: the refusal names engines.node",
+          "engines.node" in (r13.stderr or ""), True)
+    check("installation 13: the refusal names where a dropped runtime was looked for",
+          "opt/nivuus/node" in (r13.stderr or ""), True)
+    check("installation 13: desk.env is NOT created",
+          (root13 / "etc" / "nivuus" / "desk.env").exists(), False)
+
+# --- Installation 14: a dropped runtime WITHOUT bin/npm -> refusal -----------
+# `npm start` is the service: node and the npm package without the
+# `bin/npm` link is a service that never starts (review of #21).
+with tempfile.TemporaryDirectory() as tmp14, tempfile.TemporaryDirectory() as vide14:
+    root14 = pathlib.Path(tmp14)
+    faux14 = poser_faux_node_source(root14)
+    depose14 = (root14 / lire_node_bin().lstrip("/")).parent
+    shutil.copytree(faux14, depose14, symlinks=True)
+    poser_faux_node_bavard(depose14, FACTS["node_version"])
+    (depose14 / "bin" / "npm").unlink()
+    env14 = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env14["PATH"] = vide14
+    r14 = appeler(root14, facts=FACTS, env=env14, node_source=False)
+    check("installation 14 (dropped runtime without bin/npm): NON-ZERO exit code",
+          r14.returncode != 0, True)
+    check("installation 14: the refusal names bin/npm",
+          "bin/npm" in (r14.stderr or ""), True)
+    check("installation 14: desk.env is NOT created",
+          (root14 / "etc" / "nivuus" / "desk.env").exists(), False)
 
 if failures:
     print(f"FAIL ({len(failures)})")

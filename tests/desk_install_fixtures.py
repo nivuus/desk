@@ -80,6 +80,23 @@ def poser_faux_node_source(racine: pathlib.Path) -> pathlib.Path:
     return prefixe
 
 
+def poser_faux_node_bavard(prefixe: pathlib.Path, version: str) -> pathlib.Path:
+    """Turns the fake `bin/node` of `prefixe` into one that ANSWERS: its
+    own absolute path to `-e process.stdout.write(process.execPath)` (what
+    `depot_node._prefixe_sur_le_path` asks) and `v<version>` to
+    `--version` (what `borne_node.version_de` asks). Returns its `bin/`,
+    to put on a PATH or to leave where a first install dropped it."""
+    node = prefixe / "bin" / "node"
+    node.write_text(
+        "#!/bin/sh\n"
+        "case \"$1\" in\n"
+        f"  --version) echo v{version} ;;\n"
+        f"  -e) printf '%s' '{node}' ;;\n"
+        "esac\n", encoding="utf-8")
+    node.chmod(0o755)
+    return prefixe / "bin"
+
+
 def appeler(root, hw=None, answers=None, facts=None, env=None,
             node_source=True):
     """Calls the hook like the engine: --phase/--root, stdin JSON.
