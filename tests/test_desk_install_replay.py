@@ -44,6 +44,11 @@ with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as vide
     depose = depose.parent
     shutil.copytree(faux, depose, symlinks=True)
     shutil.rmtree(faux)
+    # The fixtures' fake node answers nothing; the dropped one must answer
+    # `--version` with something engines.node accepts (FACTS carries a
+    # version resolve already validated against that very bound).
+    (depose / "bin" / "node").write_text(
+        f"#!/bin/sh\necho v{FACTS['node_version']}\n", encoding="utf-8")
     node_avant = (depose / "bin" / "node").read_bytes()
     lien_avant = os.readlink(depose / "bin" / "npm")
 

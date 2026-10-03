@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 
+from borne_node import lire_borne_node, parser_borne, verifier_version, version_de  # noqa: F401
 from commun import (
     PORT_DEFAUT,
     adresse_ipv4_de,
@@ -57,68 +58,16 @@ def refuser(raison: str) -> None:
     emettre({"event": "refuse", "reason": raison})
 
 
-def lire_borne_node():
-    """Reads back `engines.node` from plateforme/package.json.
-
-    🔴 READ FROM THE FILE, NEVER COPIED FROM A PLAN: a copied
-    range outlives the reality it described — the "487" wreck that
-    docs/claude/pitfalls-docs-size-vm.md names, applied here in advance.
-
-    Returns (bound, None) on success, or (None, raison) if the file is
-    unreadable or does not declare `engines.node` — a failure path like any
-    other, which turns into a refusal, never an exception.
-    """
-    chemin = RACINE / "plateforme" / "package.json"
-    try:
-        contenu = json.loads(chemin.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return None, f"cannot read {chemin}: {exc}"
-    borne = (contenu.get("engines") or {}).get("node")
-    if not borne or not isinstance(borne, str):
-        return None, f"{chemin} declares no usable engines.node bound"
-    return borne, None
-
-
-def parser_borne(borne: str):
-    """Parses a two-clause bound ('>=A.B.C <X.Y.Z') into two tuples.
-
-    Understands ONLY the two operators actually present in
-    `plateforme/package.json` (`>=` and `<`): a format richer than the one
-    we measured need not be guessed, it must make parsing fail —
-    and therefore refuse, never crash.
-    """
-    mini = maxi = None
-    for clause in borne.split():
-        correspond = re.match(r"^(>=|<)(\d+)\.(\d+)\.(\d+)$", clause)
-        if not correspond:
-            return None
-        operateur, a, b, c = correspond.groups()
-        value = (int(a), int(b), int(c))
-        if operateur == ">=":
-            mini = value
-        else:
-            maxi = value
-    if mini is None or maxi is None:
-        return None
-    return mini, maxi
-
-
 def version_node_locale():
     """`node --version` of the machine running THIS hook, or None.
 
-    resolve runs before the reboot into the target: what it can
-    test is the node of the machine that actually runs it (the host of
-    the wizard, or that of the tests) — never that of a target not yet
-    installed.
+    resolve runs before the reboot into the target: what it can test is
+    the node of the machine that actually runs it (the host of the wizard,
+    or that of the tests) - never that of a target not yet installed. The
+    target's own runtime is measured later, by `depot_node.py` at a replay,
+    against the same bound (`borne_node.py`).
     """
-    try:
-        r = subprocess.run(["node", "--version"], capture_output=True,
-                            text=True, timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if r.returncode != 0:
-        return None
-    return r.stdout.strip().lstrip("v")
+    return version_de()
 
 
 def valider_node():
@@ -126,23 +75,10 @@ def valider_node():
     borne_brute, raison = lire_borne_node()
     if raison:
         return None, raison
-    bornes = parser_borne(borne_brute)
-    if bornes is None:
-        return None, f"unreadable engines.node bound: {borne_brute!r}"
-    mini, maxi = bornes
     version = version_node_locale()
     if version is None:
         return None, "node is not found on this machine; plateforme/ requires it"
-    try:
-        version_tuple = tuple(int(x) for x in version.split(".")[:3])
-    except ValueError:
-        return None, f"unreadable node version: {version!r}"
-    if not (mini <= version_tuple < maxi):
-        return None, (
-            f"node {version} does not satisfy engines.node={borne_brute!r} "
-            "declared by plateforme/package.json"
-        )
-    return version, None
+    return verifier_version(version, borne_brute)
 
 
 def deriver_adresses_turn():

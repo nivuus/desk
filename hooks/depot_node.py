@@ -55,6 +55,7 @@ import pathlib
 import shutil
 import subprocess
 
+from borne_node import lire_borne_node, verifier_version, version_de
 from commun import lire_node_bin
 from depot_arbre import copier_arbre, make_world_readable
 
@@ -92,6 +93,26 @@ def _prefixe_sur_le_path():
     return pathlib.Path(r.stdout.strip()).resolve().parents[1], None
 
 
+def _runtime_depose_conforme(deja: pathlib.Path):
+    """The dropped runtime, only if its `node` satisfies the CURRENT
+    package's `engines.node`: a later desk release may raise the bound, and
+    reusing an older runtime would let the install succeed and leave a
+    service unable to start. Same bound and verdict as resolve.py."""
+    version = version_de(deja / "bin" / "node")
+    if version is None:
+        return None, (f"the Node runtime already dropped at {deja} does not "
+                      "answer `node --version`: not a runtime to stand on")
+    borne, raison = lire_borne_node()
+    if raison:
+        return None, raison
+    version, raison = verifier_version(version, borne)
+    if raison:
+        return None, (f"the Node runtime already dropped at {deja} cannot "
+                      f"stand in: {raison}. Run this hook with a compatible "
+                      "`node` on the PATH, or name one in DESK_NODE_SOURCE")
+    return deja, None
+
+
 def racine_node_source(root=None):
     """The Node prefix to deploy. Returns `(chemin, None)` or `(None, raison)`.
 
@@ -108,8 +129,10 @@ def racine_node_source(root=None):
     whose only Node is the one its first install dropped — nowhere on
     PATH, by construction (measured 2026-10-03: a plain root PATH has no
     `node` on the reference machine either). Refusing there would mark
-    desk failed on every update. The PATH stays first so an operator who
-    runs the hook with a newer `node` still upgrades the runtime.
+    desk failed on every update. It stands in only if its version still
+    satisfies this package's `engines.node` (see _runtime_depose_conforme).
+    The PATH stays first so an operator who runs the hook with a newer
+    `node` still upgrades the runtime.
     """
     brut = os.environ.get("DESK_NODE_SOURCE")
     if brut:
@@ -122,7 +145,7 @@ def racine_node_source(root=None):
                 deja = pathlib.Path(root) / lire_node_bin().lstrip("/")
                 deja = deja.parent
                 if not _manquants(deja):
-                    return deja, None
+                    return _runtime_depose_conforme(deja)
             return None, (
                 f"{raison}: cannot locate a Node runtime to drop on the "
                 "target, even though desk's systemd unit launches npm"

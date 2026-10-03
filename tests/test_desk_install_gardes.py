@@ -19,15 +19,18 @@ Run: python3 tests/test_desk_install_gardes.py
 """
 import os
 import pathlib
+import shutil
 import sys
 import tempfile
 
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from commun import lire_node_bin  # noqa: E402
 from desk_install_fixtures import (  # noqa: E402
     FACTS,
     appeler,
+    poser_faux_node_source,
     poser_source_minimale,
 )
 
@@ -218,6 +221,34 @@ with tempfile.TemporaryDirectory() as tmp11, tempfile.TemporaryDirectory() as vi
           "opt/nivuus/node" in (r11.stderr or ""), True)
     check("installation 11: desk.env is NOT created",
           (root11 / "etc" / "nivuus" / "desk.env").exists(), False)
+
+# --- Installation 12: a dropped runtime TOO OLD for this package -> refusal --
+# A later desk release may raise engines.node; a replay standing on the
+# older runtime would install fine and leave a service unable to start.
+# The dropped node here answers a version far below any bound.
+with tempfile.TemporaryDirectory() as tmp12, tempfile.TemporaryDirectory() as vide12:
+    root12 = pathlib.Path(tmp12)
+    faux12 = poser_faux_node_source(root12)
+    depose12 = (root12 / lire_node_bin().lstrip("/")).parent
+    shutil.copytree(faux12, depose12, symlinks=True)
+    (depose12 / "bin" / "node").write_text("#!/bin/sh\necho v0.10.0\n",
+                                           encoding="utf-8")
+    env12 = {k: v for k, v in os.environ.items() if k != "DESK_NODE_SOURCE"}
+    env12["PATH"] = vide12
+    r12 = appeler(root12, facts=FACTS, env=env12, node_source=False)
+    check("installation 12 (dropped runtime too old): NON-ZERO exit code",
+          r12.returncode != 0, True)
+    check("installation 12: no Python traceback",
+          "Traceback" in (r12.stderr or ""), False)
+    check("installation 12: the refusal names the dropped version",
+          "0.10.0" in (r12.stderr or ""), True)
+    check("installation 12: the refusal names engines.node",
+          "engines.node" in (r12.stderr or ""), True)
+    check("installation 12: desk.env is NOT created",
+          (root12 / "etc" / "nivuus" / "desk.env").exists(), False)
+    check("installation 12: the dropped runtime is left intact",
+          (depose12 / "bin" / "node").read_text(encoding="utf-8"),
+          "#!/bin/sh\necho v0.10.0\n")
 
 if failures:
     print(f"FAIL ({len(failures)})")
