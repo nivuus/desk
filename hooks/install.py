@@ -50,6 +50,7 @@ from commun import (
 )
 from depot_arbre import copier_arbre, make_world_readable
 from depot_node import deposer_node, racine_node_source
+from env_file import activate_variables
 from installed_files import (
     PORT_TURN,
     write_env,
@@ -360,6 +361,8 @@ def main() -> int:
         "TURN_URL": f"turn:{turn_ecoute}:{PORT_TURN}",
         "TURN_SECRET": secret_turn,
     }
+    # What activate added last time travels with the rewrite (see env_file).
+    env.update(activate_variables(env_existant))
     write_env(sub("etc/nivuus/desk.env"), env)
 
     emettre({"event": "progress", "pct": 55,

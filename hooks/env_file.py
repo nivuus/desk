@@ -14,6 +14,22 @@ import os
 import pathlib
 import stat
 
+# The variables `activate` ADDS to the file `install` wrote: its proof that
+# the agent is enrolled (its guard against re-enrolling - and re-creating the
+# administrator account - on a replay). `install` must carry them over when
+# it rewrites the file at an update, or a replay loses that proof, re-runs
+# the enrolment, mints a new AGENT_SECRET the agent in the VM does not hold
+# and trips on the account that already exists (measured 2026-10-03, first
+# `nivuus update desk`: "UNIQUE constraint failed: utilisateur.email").  # policy: allow-fr - real table name
+ACTIVATE_KEYS = ("AGENT_VM", "AGENT_SECRET")
+
+
+def activate_variables(chemin: pathlib.Path) -> dict:
+    """The ACTIVATE_KEYS present in `chemin`, `{}` when none or no file."""
+    present = read_env_file(chemin)
+    return {cle: present[cle] for cle in ACTIVATE_KEYS if present.get(cle)}
+
+
 
 def read_env_file(chemin: pathlib.Path) -> dict:
     """Parses `chemin` as KEY=VALUE, one per line. `{}` if the file does not

@@ -25,6 +25,7 @@ sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(RACINE / "tests"))
 
 from commun import lire_node_bin  # noqa: E402
+from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file  # noqa: E402
 from desk_install_fixtures import (  # noqa: E402
     FACTS, appeler, poser_faux_node_bavard, poser_faux_node_source,
 )
@@ -95,9 +96,35 @@ with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as autr
     check("incompatible node on PATH: desk.env is written",
           (root / "etc" / "nivuus" / "desk.env").is_file(), True)
 
+# REPLAYING install KEEPS WHAT activate ADDED. activate appends AGENT_VM and
+# AGENT_SECRET to desk.env once the agent is enrolled, and skips enrolment
+# (and the administrator account) on a replay when both are there. install
+# rewrote the file from its own keys only, so an update lost that proof:
+# measured 2026-10-03 on the first `nivuus update desk`, activate then
+# tripped on "UNIQUE constraint failed: utilisateur.email" - and, had it
+# not, would have minted a new AGENT_SECRET the agent in the VM does not
+# hold. A first install, with no file yet, must still write no AGENT_* key.
+with tempfile.TemporaryDirectory() as tmp:
+    root = pathlib.Path(tmp)
+    r = appeler(root, facts=FACTS)
+    check("activate keys, first pass: exit code 0", r.returncode, 0)
+    env_chemin = root / "etc" / "nivuus" / "desk.env"
+    premier = read_env_file(env_chemin)
+    check("first pass: no AGENT_* key is invented",
+          [cle for cle in ACTIVATE_KEYS if cle in premier], [])
+    add_env_variables(env_chemin, dict(zip(ACTIVATE_KEYS, ("vm-1", "s3cret"))))
+    r = appeler(root, facts=FACTS)
+    check("activate keys, replay: exit code 0", r.returncode, 0)
+    second = read_env_file(env_chemin)
+    check("replay: AGENT_VM survives the rewrite", second.get("AGENT_VM"), "vm-1")
+    check("replay: AGENT_SECRET survives the rewrite", second.get("AGENT_SECRET"), "s3cret")
+    check("replay: PLATEFORME_SECRET_JETON is still the first one",
+          second.get("PLATEFORME_SECRET_JETON"), premier.get("PLATEFORME_SECRET_JETON"))
+    check("replay: the file stays 0600", oct(env_chemin.stat().st_mode & 0o777), "0o600")
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("OK - install replay stands on the dropped Node runtime")
+print("OK - install replay tests passed")
