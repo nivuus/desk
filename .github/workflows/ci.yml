@@ -72,18 +72,14 @@ jobs:
       # scripts under scripts/ ARE code and stay in the scan; the path stays
       # "." so anything new outside docs/ is checked without being listed.
       shellcheck-exclude: "./docs/*"
-  # The package/Package contract job is DELIBERATELY NOT wired here yet.
-  # desk/hooks/install.py is idempotent now (fix 3e9b835: it reuses the
-  # secrets already written to desk.env on the target root instead of
-  # redrawing PLATEFORME_SECRET_JETON/TURN_SECRET on every run - see that
-  # commit and test_desk_install.py's "installation 8" for the proof), but
-  # the gate still cannot pass in CI: it needs client/dist and
-  # plateforme/node_modules/.bin/tsx, both gitignored build artefacts that
-  # no job in this workflow produces (no `npm ci`/`npm run build` step
-  # feeds a checkout-only job). Wiring the job today would ship a
-  # permanently red control - exactly the failure this plan exists to
-  # remove - so it stays unwired until a later plan adds that build step.
-  # tests/fixtures/ci-answers.json is CORRECT and already proven against
-  # the gate locally (with the build artefacts present) - keep it, a later
-  # plan will wire it via `with: answers-file:` the same way console's is
-  # wired in installer's ci.yml. Do not delete it as unused.
+  # The package/Package contract job (ci-package.yml) is NOT wired here: it
+  # runs the idempotence harness against a bare checkout, and desk's install
+  # hook refuses a tree without client/dist and
+  # plateforme/node_modules/.bin/tsx, both gitignored build outputs that
+  # ci-package.yml has no step to produce. Wiring it would ship a
+  # permanently red control. The gate DOES run on every RELEASABLE merge to
+  # main (one the shared workflow derives a new version for; a docs-only
+  # merge skips it), in release.yml: that workflow builds those outputs first
+  # (build-command), proves the hook against them, then copies them into the
+  # published archive (bundle-command). tests/fixtures/ci-answers.json is
+  # the answers file that gate uses - keep it.
