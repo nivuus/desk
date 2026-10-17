@@ -110,7 +110,7 @@ pub(super) fn tourner(
     // check that can never return the other value ("real audio
     // after rebuild") is not one — exactly the pattern this
     // repository has just paid for on this same file. A shared `static`,
-    // decremented by `fetch_update`, makes the budget run out ONCE
+    // decremented by `try_update`, makes the budget run out ONCE
     // for the whole process: the first thread consumes the 10 faults and
     // dies, and the very first rebuild finds the counter at zero,
     // reaches the `else` branch, and reads for real.
@@ -246,14 +246,14 @@ pub(super) fn tourner(
             continue;
         }
 
-        // `fetch_update`: atomically decrements IF the global budget
+        // `try_update`: atomically decrements IF the global budget
         // is not already at zero (`checked_sub(1)` returns `None` at zero, which
-        // makes `fetch_update` fail without touching it). A budget exhausted by
+        // makes `try_update` fail without touching it). A budget exhausted by
         // ANOTHER thread (the very first capture, typically) therefore lets
         // this one — and any thread born after it — read for real from its
         // first round.
         //
-        // ⚠️ **THE ORDER OF THE `&&` OPERANDS MATTERS**: `fetch_update`
+        // ⚠️ **THE ORDER OF THE `&&` OPERANDS MATTERS**: `try_update`
         // DECREMENTS. Placing it second guarantees that no fault is
         // consumed once the window has closed — the short-circuit of `&&`
         // then never evaluates the decrement. Swapped, the carrier would
@@ -264,7 +264,7 @@ pub(super) fn tourner(
             origine_injection.elapsed(),
             *fenetre_injection,
         ) && fautes_a_injecter
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
             .is_ok()
         {
             Err(anyhow::anyhow!("injected fault (AUDIO_FAUTE_LECTURE)"))
