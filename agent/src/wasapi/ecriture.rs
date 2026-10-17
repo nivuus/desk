@@ -428,7 +428,7 @@ impl Drop for RenduWasapi {
 /// re-arms fully at each rebuild — `std::env::var` returning the
 /// same value to the new thread —, so each thread dies in turn before any
 /// real call, and **the judging figure cannot leave zero on a product
-/// that is nevertheless fixed**. A `static` decremented by `fetch_update` makes the
+/// that is nevertheless fixed**. A `static` decremented by `try_update` makes the
 /// budget run out **once** for the whole process.
 ///
 /// ⚠️ **BENCH variable, never a shipped configuration.** Absent or zero:
@@ -452,6 +452,6 @@ fn faute_a_injecter() -> bool {
         AtomicU32::new(n)
     });
     budget
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
+        .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
         .is_ok()
 }

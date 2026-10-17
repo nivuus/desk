@@ -20,7 +20,7 @@ use crate::audio::AudioSource;
 /// budget reread at each attempt replenishes indefinitely — each
 /// rebuilt capture would receive a new budget and die again —, and the
 /// judging figure it serves becomes structurally unable to leave zero.
-/// A `static` decremented by `fetch_update` runs out ONCE for the whole
+/// A `static` decremented by `try_update` runs out ONCE for the whole
 /// process.
 ///
 /// `pub(super)` and not private: the tests of the full chain
@@ -47,7 +47,7 @@ pub(in crate::transport) fn budget_faute_reconstruction() -> &'static std::sync:
 
 /// Interposes the injection in front of the real rebuilder.
 ///
-/// `fetch_update` with `checked_sub(1)` atomically decrements IF the global
+/// `try_update` with `checked_sub(1)` atomically decrements IF the global
 /// budget is not already at zero, and returns `Err` without touching it otherwise: an
 /// exhausted budget — the nominal case, the variable being absent — therefore lets
 /// the real call through from the first round, with no measurable overhead.
@@ -56,7 +56,7 @@ where
     F: FnOnce() -> anyhow::Result<Box<dyn AudioSource + Send>>,
 {
     if budget_faute_reconstruction()
-        .fetch_update(
+        .try_update(
             std::sync::atomic::Ordering::Relaxed,
             std::sync::atomic::Ordering::Relaxed,
             |n| n.checked_sub(1),

@@ -132,7 +132,7 @@ fn etat() -> &'static (AtomicU8, AtomicU32) {
 
 /// Consumes a fault of this family, or returns `false`.
 ///
-/// `fetch_update` with `checked_sub(1)` decrements atomically IF the global
+/// `try_update` with `checked_sub(1)` decrements atomically IF the global
 /// budget is not already at zero, and returns `Err` without touching it otherwise: an exhausted
 /// budget — the nominal case, the variable being absent — therefore lets
 /// the real call through from the first round, at no measurable cost.
@@ -142,7 +142,7 @@ pub fn consommer(famille: Famille) -> bool {
         return false;
     }
     reste
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
+        .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
         .is_ok()
 }
 
