@@ -34,7 +34,7 @@ jobs:
     name: Rust agent (Windows target)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # x86_64-pc-windows-gnu is the target scripts/build-agent-croise.sh
       # ships agent.exe for, and the build scripts of the C dependencies
