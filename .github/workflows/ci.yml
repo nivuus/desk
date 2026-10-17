@@ -83,3 +83,9 @@ jobs:
   # (build-command), proves the hook against them, then copies them into the
   # published archive (bundle-command). tests/fixtures/ci-answers.json is
   # the answers file that gate uses - keep it.
+
+  dependabot-auto-merge:
+    uses: nivuus/.github/.github/workflows/dependabot-auto-merge.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
