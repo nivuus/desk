@@ -20,7 +20,7 @@ opus = "0.3.1"
 # the author explicitly closed. Version aligned on the one Cargo.lock
 # already locks as a transitive dependency of str0m: no duplicate in
 # the tree. Same precedent as `windows-core` below.
-is = "0.10"
+is = "0.11"
 # MESSAGE-INTEGRITY of the TURN requests.
 hmac = "0.12"
 sha1 = "0.10"
