@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use str0m::channel::ChannelId;
-use str0m::net::{Protocol, Receive};
+use str0m::net::{DatagramRecv, Protocol, Receive};
 use str0m::{Candidate, Event, Input, Output, Rtc};
 
 use reveil::Reveil;
@@ -179,12 +179,34 @@ pub fn tourner(
 
         match reveils.attendre(attente) {
             Ok(Reveil::Datagram { source, bytes }) => {
-                let recu = Receive::new(Protocol::Udp, source, adresse, &bytes)
-                    .map_err(|e| anyhow!("unreadable datagram: {e}"))?;
-                // `Input::Receive` also runs str0m's timers: a continuous
-                // stream of datagrams does not starve them.
-                rtc.handle_input(Input::Receive(Instant::now(), recu))
-                    .map_err(|e| anyhow!("bridge handle_input: {e}"))?;
+                // A datagram that is neither STUN, nor DTLS, nor RTP/RTCP
+                // (network noise, a port probe, an empty packet) fails this
+                // conversion. It must be dropped, never end the bridge: the
+                // same rule as the child session (`transport/socket.rs`, I2).
+                // `debug!`, never more: this is the per-packet path.
+                match DatagramRecv::try_from(bytes.as_slice()) {
+                    Ok(contents) => {
+                        let recu = Receive {
+                            proto: Protocol::Udp,
+                            source,
+                            destination: adresse,
+                            contents,
+                        };
+                        // `Input::Receive` also runs str0m's timers: a
+                        // continuous stream of datagrams does not starve them.
+                        rtc.handle_input(Input::Receive(Instant::now(), recu))
+                            .map_err(|e| anyhow!("bridge handle_input: {e}"))?;
+                    }
+                    Err(error) => {
+                        tracing::debug!(%error, %source, "bridge UDP datagram ignored (unrecognised)");
+                        // A dropped datagram must not starve the timers either.
+                        let maintenant = Instant::now();
+                        if maintenant >= echeance {
+                            rtc.handle_input(Input::Timeout(maintenant))
+                                .map_err(|e| anyhow!("bridge handle_input(Timeout): {e}"))?;
+                        }
+                    }
+                }
             }
             Ok(Reveil::Requete(VersNavigateur::Requete {
                 correlation,
@@ -405,3 +427,6 @@ mod tests_debit;
 
 #[cfg(test)]
 mod tests_fermeture;
+
+#[cfg(test)]
+mod tests_stray;

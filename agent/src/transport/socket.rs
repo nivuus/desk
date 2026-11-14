@@ -50,7 +50,7 @@ pub(super) const RECV_POLL_INTERVAL: Duration = Duration::from_millis(1);
 /// Outcome of classifying a UDP receive error (see
 /// `classify_recv_error`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum RecvErrorAction {
+pub(crate) enum RecvErrorAction {
     /// Known transient error, which indicates no lasting corruption of the
     /// socket: we keep receiving, after a backoff (see
     /// `recv_error_backoff`) so as not to turn a burst of such
@@ -87,7 +87,7 @@ pub(super) enum RecvErrorAction {
 /// classified fatal: nothing indicates it will resolve by itself, and
 /// looping on it endlessly would mask a real problem rather than
 /// report it.
-pub(super) fn classify_recv_error(kind: std::io::ErrorKind) -> RecvErrorAction {
+pub(crate) fn classify_recv_error(kind: std::io::ErrorKind) -> RecvErrorAction {
     use std::io::ErrorKind::{ConnectionReset, Interrupted};
     match kind {
         ConnectionReset | Interrupted => RecvErrorAction::RetryWithBackoff,
@@ -111,7 +111,7 @@ pub(super) fn classify_recv_error(kind: std::io::ErrorKind) -> RecvErrorAction {
 const RECV_ERROR_BACKOFF_BASE: Duration = Duration::from_millis(1);
 const RECV_ERROR_BACKOFF_MAX: Duration = Duration::from_millis(200);
 
-pub(super) fn recv_error_backoff(consecutive_errors: u32) -> Duration {
+pub(crate) fn recv_error_backoff(consecutive_errors: u32) -> Duration {
     // `1u32 << exponent` would overflow beyond 31: bound the exponent before
     // the shift, rather than relying on `saturating_mul` alone, which
     // operates on `Duration`s (no arithmetic overflow there), but whose

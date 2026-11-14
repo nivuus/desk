@@ -237,12 +237,19 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
 
     // Thread 2 — the transport. It owns the `Rtc` and the socket, and **knows
     // neither ProjFS nor Windows**.
+    //
+    // Its outcome is KEPT and returned once the stop below is done: a
+    // transport that died on an error must make the process exit non-zero,
+    // so that the supervisor reads a failure (`IssueDeSortie::Error`) and does
+    // not reset its restart backoff as it would for a clean end.
     let transport = std::thread::Builder::new()
         .name("pont-transport".into())
         .spawn(move || {
-            if let Err(error) = transport::tourner(rtc, socket, requetes, vers_pont) {
+            let outcome = transport::tourner(rtc, socket, requetes, vers_pont);
+            if let Err(error) = &outcome {
                 tracing::error!(%error, "bridge transport stopped on error");
             }
+            outcome
         })
         .context("launching the bridge transport thread")?;
 
@@ -297,9 +304,12 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     // We therefore release, then join.
     drop(virtualisation);
     let _ = ecriture.join();
-    let _ = transport.join();
+    let transport_outcome = transport.join();
     tracing::info!("file bridge stopped");
-    Ok(())
+    match transport_outcome {
+        Ok(outcome) => outcome.context("the file bridge transport failed"),
+        Err(_) => anyhow::bail!("the file bridge transport thread panicked"),
+    }
 }
 
 #[cfg(not(windows))]

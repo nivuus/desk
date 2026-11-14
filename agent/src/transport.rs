@@ -84,7 +84,7 @@ mod piste_micro;
 mod piste_video;
 mod redimensionnement;
 mod relais;
-mod socket;
+pub(crate) mod socket;
 #[cfg(test)]
 mod sonde_montante;
 mod tick;
