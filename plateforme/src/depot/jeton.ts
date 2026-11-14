@@ -155,10 +155,21 @@ export async function tourner(
 
         const idNeuf = randomUUID();
         const clairNeuf = genererClair();
-        await tx.executer(
-            'UPDATE jeton_rafraichissement SET revoque_a = ?, remplace_par = ? WHERE id = ?',
+        // 🔴 THE REVOCATION IS CONDITIONAL, AND ITS ROW COUNT IS THE VERDICT.
+        // The SELECT above takes no lock: on Postgres (READ COMMITTED) two
+        // concurrent refreshes with one token both read it live. The second
+        // UPDATE waits for the first, then re-checks `revoque_a IS NULL`,
+        // changes zero rows, and that loser is treated as the replay it is
+        // — the family falls — instead of forking it into two live tokens.
+        // SQLite serialises on one connection, and runs the same rule.
+        const revoque = await tx.executer(
+            'UPDATE jeton_rafraichissement SET revoque_a = ?, remplace_par = ? WHERE id = ? AND revoque_a IS NULL',
             [maintenant, idNeuf, ligne.id],
         );
+        if (revoque.lignes === 0) {
+            await revoquerFamille(tx, ligne.famille, maintenant);
+            return { ok: false, motif: 'rejeu' } as const;
+        }
         await inserer(tx, idNeuf, ligne.utilisateur_id, ligne.famille, clairNeuf, maintenant); // policy: allow-fr - frozen wire key or SQLite column
         return { ok: true, clair: clairNeuf, userId: ligne.utilisateur_id } as const; // policy: allow-fr - frozen wire key or SQLite column
     });
