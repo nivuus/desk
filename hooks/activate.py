@@ -110,13 +110,13 @@ import argparse
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
 from commun import lire_adresse_vm
 from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
+from service_start import start_now
 from vm import poser_projfs, poser_vb_audio
 
 # --- What task 4 set up, and what this hook arms or completes -----------
@@ -169,30 +169,6 @@ def armer_unite(root: pathlib.Path, unite: str) -> pathlib.Path:
         lien.unlink()  # a REGULAR file here would be the bug, not a state
     lien.symlink_to(cible)
     return lien
-
-
-def start_now(unite: str) -> list:
-    """`daemon-reload` then `start <unite>`. Never raises.
-
-    `systemctl` is legitimately unusable in a constrained
-    environment (see the top docstring), and the link created by
-    `armer_unite` guarantees anyway that the next real boot
-    is correct — so each failure is only REPORTED, never fatal.
-    Only called by `main()` when `--root` is `/`: see its
-    guard, right before the call.
-    """
-    echecs = []
-    commandes = [["systemctl", "daemon-reload"], ["systemctl", "start", unite]]
-    for commande in commandes:
-        try:
-            proc = subprocess.run(commande, capture_output=True, text=True)
-        except OSError as exc:  # systemctl absent from this PATH
-            echecs.append(f"{' '.join(commande)} : {exc}")
-            continue
-        if proc.returncode != 0:
-            detail = (proc.stderr or proc.stdout or "").strip()[:200]
-            echecs.append(f"{' '.join(commande)} : {detail or proc.returncode}")
-    return echecs
 
 
 def main() -> int:
