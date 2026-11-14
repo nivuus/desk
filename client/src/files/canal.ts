@@ -25,6 +25,7 @@ import {
     waitForAnswer,
     waitForIceGathering,
 } from '../webrtc';
+import { garderLaPoigneeDeMain, type GardePoigneeDeMain } from '../poignee-de-main';
 import { composer, lirePrefixe } from '../prefixe';
 import type { Racine } from './adaptateur';
 import type { RacineInscriptible } from './ecriture';
@@ -83,8 +84,6 @@ export function sessionDuPont(): string {
 }
 
 export async function connectFilesChannel(options: OptionsCanal): Promise<FilesChannel> {
-    const statut = options.onStatus ?? (() => {});
-
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
@@ -92,11 +91,29 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
             once: true,
         });
     });
+    // The handshake guard of the session window, shared (`poignee-de-main.ts`):
+    // a refusal of the hello reaches the user with the relay's reason.
+    const garde = garderLaPoigneeDeMain(socket);
+    try {
+        return await etablirLeCanal(options, socket, garde);
+    } finally {
+        garde.liberer();
+    }
+}
+
+/// The handshake proper, once the socket is open. Every wait races against
+/// `garde`.
+async function etablirLeCanal(
+    options: OptionsCanal,
+    socket: WebSocket,
+    garde: GardePoigneeDeMain,
+): Promise<FilesChannel> {
+    const statut = options.onStatus ?? (() => {});
     socket.send(
         JSON.stringify({ role: 'client', session: options.sessionId, jeton: options.jeton }),
     );
 
-    const iceServers = await attendreConfigIce(socket, 2000);
+    const iceServers = await garde.course(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
 
     // 🔴 NO `addTransceiver`: that is the whole point of D4. An offer without a
@@ -222,15 +239,17 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
         statut(`file bridge: ${pc.connectionState}`);
     });
 
-    const offre = await pc.createOffer();
-    await pc.setLocalDescription(offre);
-    await waitForIceGathering(pc);
+    const offre = await garde.course(pc.createOffer());
+    await garde.course(pc.setLocalDescription(offre));
+    await garde.course(waitForIceGathering(pc));
 
+    // The socket's state is checked BEFORE the offer (see `webrtc.ts`).
+    garde.avantEnvoi();
     statut('bridge offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
-    const reponse = await waitForAnswer(socket);
-    await pc.setRemoteDescription({ type: 'answer', sdp: reponse });
+    const reponse = await garde.course(waitForAnswer(socket));
+    await garde.course(pc.setRemoteDescription({ type: 'answer', sdp: reponse }));
     statut('file bridge: answer received');
 
     return {

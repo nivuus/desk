@@ -131,9 +131,14 @@ class FakeMediaStream {
 /// can go all the way without ever touching a real network.
 class FakeSignalingSocket {
     private listeners = new Map<string, Set<(event: any) => void>>();
+    /// `WebSocket.readyState`: CONNECTING (0), then OPEN (1), CLOSED (3).
+    readyState = 0;
 
     constructor(_url: string) {
-        queueMicrotask(() => this.emit('open', {}));
+        queueMicrotask(() => {
+            this.readyState = 1;
+            this.emit('open', {});
+        });
     }
 
     addEventListener(type: string, cb: (event: any) => void): void {
@@ -457,5 +462,55 @@ describe('the handshake carries a FRESH token (sub-block P2)', () => {
             jetonFrais: async () => 'j',
         });
         expect(Object.keys(poigneeDeMain()).sort()).toEqual(['jeton', 'role', 'session']);
+    });
+});
+
+describe('a refusal during the handshake', () => {
+    afterEach(() => {
+        messagesEnvoyes = [];
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    /// A relay that refuses the hello: it sends an `error` carrying its
+    /// reason, then closes, and never sends the ICE configuration.
+    class RelaisQuiRefuse extends FakeSignalingSocket {
+        override send(data: string): void {
+            messagesEnvoyes.push(data);
+            if ((JSON.parse(data) as { role?: string }).role !== 'client') return;
+            queueMicrotask(() => {
+                this.emit('message', {
+                    data: JSON.stringify({ type: 'error', reason: 'token expired', motif: 'jeton-expire' }),
+                });
+                this.readyState = 3;
+                this.emit('close', { code: 1008, reason: 'jeton-expire' });
+            });
+        }
+    }
+
+    it("rejects at once with the server's reason, before any configuration wait elapses", async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', RelaisQuiRefuse);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+
+        const issue = connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+            jetonFrais: async () => 'j',
+        }).then(
+            () => 'resolved',
+            (e: unknown) => (e instanceof Error ? e.message : String(e)),
+        );
+        let etat = 'pending';
+        void issue.then((v) => (etat = v));
+        // Ten milliseconds: far less than the 2 s ICE configuration wait and
+        // the 15 s answer wait the refusal used to sit behind.
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(etat).toMatch(/token expired/);
+        // The offer is never sent on a socket the server has closed.
+        expect(messagesEnvoyes.some((m) => m.includes('"offer"'))).toBe(false);
     });
 });

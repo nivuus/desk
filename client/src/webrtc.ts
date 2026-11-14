@@ -5,6 +5,8 @@
 // relayed by signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
+import { parseSignalingMessage } from './signalisation';
+import { garderLaPoigneeDeMain, type GardePoigneeDeMain } from './poignee-de-main';
 
 export interface SessionOptions {
     signalingUrl: string;
@@ -46,47 +48,9 @@ export interface SessionHandle {
 // resolve and the user would stay stuck indefinitely.
 const ANSWER_TIMEOUT_MS = 15_000;
 
-/// Subset of the signaling messages expected in answer to the offer,
-/// discriminated by `type`.
-type SignalingMessage =
-    | { type: 'answer'; sdp: string }
-    | { type: 'error'; reason?: string }
-    | { type: 'peer-gone' }
-    | { type: 'ice-config'; iceServers: RTCIceServer[] };
-
-/// Parses and validates a raw signaling message.
-///
-/// `JSON.parse` succeeds on payloads that are not objects:
-/// `"null"` gives `null`, but also `"42"` gives a number, `'"x"'` a
-/// string, `"[1,2]"` an array. Accessing `.type` on one of these values
-/// does not always throw (an array or a string do have an `undefined`
-/// `.type`, no exception), but `null.type` throws an uncaught
-/// `TypeError` — that is the defect fixed here. We therefore explicitly validate
-/// that the result is a non-null, non-array object before any property
-/// read, whatever the shape of the payload.
-///
-/// Returns `undefined` if the message is unreadable or of an unexpected shape:
-/// the caller then silently ignores it, without crashing the wait
-/// (the awaited message — the SDP answer — may still arrive afterwards).
-// Exported only to be unit tested without having to instantiate
-// a real WebSocket (see webrtc.test.ts): the rest of the module only uses it
-// through `waitForAnswer`, internally.
-export function parseSignalingMessage(raw: string): SignalingMessage | undefined {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(raw);
-    } catch {
-        return undefined;
-    }
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        return undefined;
-    }
-    const { type } = parsed as Record<string, unknown>;
-    if (type === 'answer' || type === 'error' || type === 'peer-gone' || type === 'ice-config') {
-        return parsed as SignalingMessage;
-    }
-    return undefined;
-}
+// The signalling message parser lives in `signalisation.ts`, shared with the
+// handshake guard (`poignee-de-main.ts`); re-exported for its existing callers.
+export { parseSignalingMessage } from './signalisation';
 
 /// Waits for the agent's answer SDP, relayed by the signaling socket.
 /// Rejects if: an error or "peer-gone" message is received, the socket
@@ -210,8 +174,6 @@ export function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<R
 }
 
 export async function connectSession(options: SessionOptions): Promise<SessionHandle> {
-    const status = options.onStatus ?? (() => {});
-
     // The socket opens BEFORE the `RTCPeerConnection`, unlike milestone 1:
     // the ICE servers are only known once the configuration is received from
     // signaling, and `RTCPeerConnection` wants them at construction.
@@ -228,6 +190,27 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
             once: true,
         });
     });
+    // 🔴 THE GUARD IS ATTACHED RIGHT AFTER `open`, before the hello: a refusal
+    // the relay sends in answer to it, then its closing, must reach the user
+    // with the relay's reason, whatever wait the handshake is in
+    // (`poignee-de-main.ts`).
+    const garde = garderLaPoigneeDeMain(socket);
+    try {
+        return await etablirLaSession(options, socket, garde, jeton);
+    } finally {
+        garde.liberer();
+    }
+}
+
+/// The handshake proper, once the socket is open: hello, ICE configuration,
+/// offer, answer. Every wait races against `garde`.
+async function etablirLaSession(
+    options: SessionOptions,
+    socket: WebSocket,
+    garde: GardePoigneeDeMain,
+    jeton: string,
+): Promise<SessionHandle> {
+    const status = options.onStatus ?? (() => {});
     // 🔴 THE `jeton` FIELD IS ADDED, NONE IS REMOVED — spec §10.2. A
     // service from sub-block P1 only reads `role` and `session` (its relay ignores
     // everything else): this client therefore stays compatible with a service
@@ -248,7 +231,7 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // never if no relay is deployed. We wait for it briefly rather than
     // blocking: a session on a local network must keep being established
     // without a relay, exactly as before this workstream.
-    const iceServers = await attendreConfigIce(socket, 2000);
+    const iceServers = await garde.course(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
 
     pc.addTransceiver('video', { direction: 'recvonly' });
@@ -323,15 +306,18 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         status(`connection: ${pc.connectionState}`);
     });
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await waitForIceGathering(pc);
+    const offer = await garde.course(pc.createOffer());
+    await garde.course(pc.setLocalDescription(offer));
+    await garde.course(waitForIceGathering(pc));
 
+    // The socket's state is checked BEFORE the offer: sending on a socket the
+    // relay has closed would only turn its refusal into a fifteen-second wait.
+    garde.avantEnvoi();
     status('offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
-    const answerSdp = await waitForAnswer(socket);
-    await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+    const answerSdp = await garde.course(waitForAnswer(socket));
+    await garde.course(pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }));
     status('answer received');
 
     return {
