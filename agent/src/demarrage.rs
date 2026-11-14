@@ -33,6 +33,9 @@ mod trace;
 /// `#[cfg(windows)]`**: this sink is pure, it is tested on the host.
 pub(crate) mod micro;
 
+/// The `Debug` view the input log uses, which leaves key identities out.
+mod input_log;
+
 pub(crate) async fn executer(config: Config) -> Result<()> {
     // Filled in the Windows branch below: the captured window is
     // also the one receiving the injected inputs (task 12). `None` in
@@ -370,7 +373,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
             // reconstruct the evidence another way (instrumenting the channel
             // on the client side). Making it available under Windows too lets
             // the next diagnosis read `agent.log` directly.
-            tracing::debug!(?message, "input received");
+            tracing::debug!(
+                message = ?input_log::LoggableInput(&message),
+                "input received"
+            );
 
             #[cfg(windows)]
             if let Some(injector) = injector.as_mut() {

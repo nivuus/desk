@@ -20,7 +20,7 @@ pub(super) const MAGIC: [u8; 4] = [0x21, 0x12, 0xA4, 0x42];
 // method itself.
 pub(super) const METHODE_ALLOCATE: u16 = 0x0003;
 pub(super) const METHODE_REFRESH: u16 = 0x0004;
-const METHODE_CREATE_PERMISSION: u16 = 0x0008;
+pub(super) const METHODE_CREATE_PERMISSION: u16 = 0x0008;
 pub(super) const METHODE_CHANNEL_BIND: u16 = 0x0009;
 
 // Attributes used. `REQUESTED_TRANSPORT` is the one `is::stun` lacks
@@ -68,6 +68,7 @@ pub struct Identifiants {
 }
 
 /// Request to emit. Each variant carries exactly what distinguishes it.
+#[derive(Debug, Clone, Copy)]
 pub enum Requete {
     /// First attempt, without credentials: it SERVES to provoke the 401
     /// that reveals the realm and the nonce. It is not a failure, it is the normal
@@ -84,6 +85,48 @@ pub enum Requete {
         canal: u16,
         pair: SocketAddr,
     },
+}
+
+impl Requete {
+    /// The STUN method this request is sent with, and that its response
+    /// must carry back.
+    pub fn methode(&self) -> u16 {
+        match self {
+            Requete::AllocateNu | Requete::AllocateSigne => METHODE_ALLOCATE,
+            Requete::Refresh { .. } => METHODE_REFRESH,
+            Requete::CreatePermission { .. } => METHODE_CREATE_PERMISSION,
+            Requete::ChannelBind { .. } => METHODE_CHANNEL_BIND,
+        }
+    }
+
+    /// True when `other` asks the server for the same thing, so that a newer
+    /// emission makes the older one's response irrelevant: one allocation,
+    /// one lease, one permission per peer, one binding per channel.
+    pub fn same_object(&self, other: &Requete) -> bool {
+        match (self, other) {
+            (
+                Requete::AllocateNu | Requete::AllocateSigne,
+                Requete::AllocateNu | Requete::AllocateSigne,
+            ) => true,
+            (Requete::Refresh { .. }, Requete::Refresh { .. }) => true,
+            (Requete::CreatePermission { pair: a }, Requete::CreatePermission { pair: b }) => {
+                a == b
+            }
+            (Requete::ChannelBind { canal: a, .. }, Requete::ChannelBind { canal: b, .. }) => {
+                a == b
+            }
+            _ => false,
+        }
+    }
+
+    /// The peer a `CreatePermission` or `ChannelBind` serves; `None` for the
+    /// requests that concern the allocation itself.
+    pub fn pair(&self) -> Option<SocketAddr> {
+        match self {
+            Requete::CreatePermission { pair } | Requete::ChannelBind { pair, .. } => Some(*pair),
+            _ => None,
+        }
+    }
 }
 
 /// HMAC-SHA1, in the form `is::stun::verify` and `to_bytes` require.
@@ -117,12 +160,7 @@ pub fn encoder_requete(
     trans_id: [u8; 12],
     identifiants: Option<(&Identifiants, &[u8])>,
 ) -> Vec<u8> {
-    let methode = match requete {
-        Requete::AllocateNu | Requete::AllocateSigne => METHODE_ALLOCATE,
-        Requete::Refresh { .. } => METHODE_REFRESH,
-        Requete::CreatePermission { .. } => METHODE_CREATE_PERMISSION,
-        Requete::ChannelBind { .. } => METHODE_CHANNEL_BIND,
-    };
+    let methode = requete.methode();
 
     let mut attributs: Vec<u8> = Vec::new();
 

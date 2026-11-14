@@ -55,6 +55,7 @@
 
 #![cfg(windows)]
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -74,6 +75,10 @@ use crate::Config;
 
 /// The named mutex that guarantees a single process writes to the cable.
 mod verrou;
+
+/// The periodic trace of the render thread.
+mod trace;
+use trace::tracer;
 
 /// How long [`ouvrir`] waits for the render thread's verdict.
 ///
@@ -103,10 +108,24 @@ pub struct PuitsCable {
     lecteur: Arc<Mutex<LecteurMicro>>,
     exclusivite: Exclusivite<verrou::MutexNomme>,
     session: String,
+    /// Cleared when the render thread ends, by whatever path (`RenderThreadEnd`).
+    render_alive: Arc<AtomicBool>,
 }
 
 impl PuitsMicro for PuitsCable {
     fn deposer(&mut self, trame: TrameMicro) -> bool {
+        // Nothing consumes the frames any more: refusing tells the browser,
+        // and ceding gives the machine-wide cable to another window.
+        if !self.render_alive.load(Ordering::Acquire) {
+            if self.exclusivite.cede() {
+                tracing::warn!(
+                    session = %self.session,
+                    "mic: the render thread has stopped, cable released, \
+                     this session refuses mic frames from now on"
+                );
+            }
+            return false;
+        }
         // ⚠️ The attempt is redone at EACH deposit; only the LOG is
         // single (Decision 2 of plan E2). A sticky refusal would condemn
         // window B to stay without a microphone for the life of its process after
@@ -166,7 +185,10 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
     let lecteur_fil = Arc::clone(&lecteur);
     let session = config.session_id.clone();
     let session_fil = session.clone();
+    let render_alive = Arc::new(AtomicBool::new(true));
+    let end_guard = RenderThreadEnd(Arc::clone(&render_alive));
     std::thread::spawn(move || {
+        let _end_guard = end_guard;
         fil_de_rendu(lecteur_fil, session_fil, loopback_de_session, envoi);
     });
 
@@ -193,7 +215,19 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
         lecteur,
         exclusivite: Exclusivite::new(mutex),
         session,
+        render_alive,
     })
+}
+
+/// Held by the render thread for its whole life: dropping it — on any
+/// `return` of `fil_de_rendu`, or on a panic — tells the sink that nothing
+/// consumes its frames any more.
+struct RenderThreadEnd(Arc<AtomicBool>);
+
+impl Drop for RenderThreadEnd {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
 }
 
 /// What the thread returns to [`ouvrir`] when everything went well. **Strings
@@ -393,79 +427,4 @@ fn preparer(loopback_de_session: bool) -> Result<(RenduWasapi, usize, Verdict)> 
             reveil,
         },
     ))
-}
-
-/// The periodic trace.
-///
-/// ⚠️ **`session` is MANDATORY**: `agent.log` mixes the supervisor and all
-/// its children since D4, and D6 had to re-attribute two traces in the middle of acceptance
-/// for lack of this field. A trace without it is a number in an anonymous
-/// multiset.
-#[allow(clippy::too_many_arguments)]
-fn tracer(
-    session: &str,
-    ecrites: u64,
-    silence: u64,
-    retards: u64,
-    reveil: Reveil,
-    compteurs: &CompteursMicro,
-    precedents: &CompteursMicro,
-    occupation: std::time::Duration,
-) {
-    // The counters are DELTAS of the elapsed second, not cumulative totals: a
-    // cumulative total would drag a single incident along for the rest of the session.
-    let d = |maintenant: u64, before: u64| maintenant.saturating_sub(before);
-    tracing::info!(
-        session = %session,
-        ecrites,
-        // ⚠️ `ecrites` and `silence` SIDE BY SIDE: `remplir` fills with silence
-        // without ever saying so, so "48,000 frames written" is written
-        // exactly the same for a microphone that speaks and for a microphone that is
-        // silent. Without the second, this trace proves nothing.
-        silence,
-        retards,
-        reveil = reveil.libelle(),
-        deposees = d(compteurs.deposees, precedents.deposees),
-        sauts = d(compteurs.sauts, precedents.sauts),
-        insertions = d(compteurs.insertions, precedents.insertions),
-        plc = d(compteurs.plc, precedents.plc),
-        // ⚠️ **`plc` and `plc_plafonnees` SIDE BY SIDE**, and it is the heart of
-        // this pair: both arise from a missing frame, and without the
-        // second one cannot distinguish "concealment is working" from "the
-        // ceiling has bitten and the sink is silent". See `micro/dissimulation.rs`.
-        plc_plafonnees = d(compteurs.plc_plafonnees, precedents.plc_plafonnees),
-        // ── Bloc E3 : le legs n°7 de E2 ────────────────────────────────────
-        //
-        // 🔴 **These two quantities ALREADY EXISTED and were read by
-        // NOBODY on the production path.** `LecteurMicro::occupation()`
-        // has been public since E1 and `famines` has been a field of `CompteursMicro`
-        // since E1; both only lived in the trace of the MEASUREMENT SINK
-        // (`MICRO_MESURE=1`), which **cannot coexist with the cable** — the
-        // measurement sink consumes the buffer, the cable too. E2 noted it and
-        // could not fix it within its scope. There was nothing to
-        // compute, only to trace.
-        //
-        // 🔴 **`occupation_ms` is a SNAPSHOT; `famines` is a DELTA.**
-        // All the other counters of this trace are deltas *on purpose*
-        // — "a cumulative total would drag a single incident along for the rest of the
-        // session". Mixing the two without saying so would make the line
-        // unreadable: one would read "120" for an occupation and "3" for
-        // starvations believing both comparable over the same second, whereas
-        // the first describes the trace's instant and the second the second
-        // preceding it.
-        //
-        // ⚠️ **`famines` and `occupation_ms` SIDE BY SIDE**, on the pattern of the
-        // two preceding pairs: a starvation is an emptied buffer, hence an
-        // occupation that touched zero. The second alone would not say how many
-        // times; the first alone would not say how far we are from the edge.
-        //
-        // ⚠️ **What this does NOT give**: end-to-end latency, which
-        // NOTHING in this repository has measured since D1. It is the SECOND of the two
-        // components of the latency added by the agent, of which E2 only had the
-        // first (`retards`). The third criterion of spec §13 stays NOT
-        // JUDGED.
-        famines = d(compteurs.famines, precedents.famines),
-        occupation_ms = occupation.as_millis(),
-        "mic writes to the cable"
-    );
 }

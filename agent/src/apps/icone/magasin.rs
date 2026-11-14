@@ -43,8 +43,8 @@ use crate::apps::sha256;
 /// in advance and lives **in this very module, which is pure** — fingerprint only the
 /// `IHDR`/`PLTE`/`IDAT`/`IEND` chunks, discarding the ancillary ones.
 ///
-/// 🔵 NO NEW LINE OF CRYPTOGRAPHY: `apps::sha256` is already written,
-/// pure, and tested against the FIPS 180-4 known-answer vectors.
+/// 🔵 NO NEW LINE OF CRYPTOGRAPHY: `apps::sha256` wraps the RustCrypto `sha2`
+/// crate and is pinned by the FIPS 180-4 known-answer vectors.
 pub fn empreinte(png: &[u8]) -> String {
     sha256::hex(png)
 }

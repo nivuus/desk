@@ -96,6 +96,50 @@ impl LimiteurVibration {
     }
 }
 
+/// How long the last applied state may go without a successor before the
+/// pad is put back to neutral. Five times the client's refresh
+/// (`RAFRAICHISSEMENT_MS = 100` in `client/src/gamepad.ts`): never reached
+/// while the browser keeps sending, short enough that a stalled link or a
+/// frozen tab does not leave a button or trigger held for tens of seconds,
+/// until the session ends. ⚠️ NOT CALIBRATED.
+pub const STALE_AFTER: Duration = Duration::from_millis(500);
+
+/// Tells when the last applied state has gone stale.
+///
+/// `record_applied` dates each state actually written to the pad; `should_neutralise`,
+/// called periodically, answers `true` ONCE when that state is older than
+/// `STALE_AFTER`, so that a single neutral state is written, not one per
+/// check.
+pub struct Staleness {
+    last_applied: Option<Instant>,
+}
+
+impl Default for Staleness {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Staleness {
+    pub fn new() -> Self {
+        Self { last_applied: None }
+    }
+
+    pub fn record_applied(&mut self, maintenant: Instant) {
+        self.last_applied = Some(maintenant);
+    }
+
+    pub fn should_neutralise(&mut self, maintenant: Instant) -> bool {
+        match self.last_applied {
+            Some(t) if maintenant.saturating_duration_since(t) >= STALE_AFTER => {
+                self.last_applied = None;
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,6 +213,41 @@ mod tests {
         limiteur.observer(t0 + Duration::from_millis(6), (40, 0));
         assert_eq!(limiteur.echu(t0 + PERIODE_MIN), Some((40, 0)));
         assert_eq!(limiteur.echu(t0 + PERIODE_MIN * 3), None);
+    }
+
+    #[test]
+    fn a_state_refreshed_by_the_client_is_never_neutralised() {
+        // The client re-sends its state every 100 ms even unchanged.
+        let t0 = Instant::now();
+        let mut staleness = Staleness::new();
+        for i in 0..50u32 {
+            let t = t0 + Duration::from_millis(100) * i;
+            staleness.record_applied(t);
+            assert!(!staleness.should_neutralise(t + Duration::from_millis(99)));
+        }
+    }
+
+    #[test]
+    fn a_state_not_refreshed_is_neutralised_once() {
+        let t0 = Instant::now();
+        let mut staleness = Staleness::new();
+        staleness.record_applied(t0);
+        assert!(!staleness.should_neutralise(t0 + STALE_AFTER - Duration::from_millis(1)));
+        assert!(staleness.should_neutralise(t0 + STALE_AFTER));
+        assert!(
+            !staleness.should_neutralise(t0 + STALE_AFTER * 4),
+            "a single neutral write, not one per check"
+        );
+        // A new state re-arms it.
+        let t1 = t0 + STALE_AFTER * 5;
+        staleness.record_applied(t1);
+        assert!(staleness.should_neutralise(t1 + STALE_AFTER));
+    }
+
+    #[test]
+    fn nothing_is_neutralised_before_the_first_state() {
+        let mut staleness = Staleness::new();
+        assert!(!staleness.should_neutralise(Instant::now() + STALE_AFTER * 10));
     }
 }
 

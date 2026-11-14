@@ -45,7 +45,7 @@
 use anyhow::{Context, Result};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{ERROR_ACCESS_DENIED, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};
-use windows::Win32::System::Threading::{CreateMutexW, WaitForSingleObject};
+use windows::Win32::System::Threading::{CreateMutexW, ReleaseMutex, WaitForSingleObject};
 
 use crate::micro::exclusivite::Verrou;
 
@@ -57,14 +57,15 @@ use crate::micro::exclusivite::Verrou;
 /// exactly the exclusivity this module does not provide.
 const NOM: &str = "guacamole-agent-micro-cable";
 
-/// A named mutex, acquired lazily and **never released explicitly**.
+/// A named mutex, acquired lazily, and released explicitly in ONE case only.
 ///
-/// Release is the process's death: Windows then abandons
+/// Normally, release is the process's death: Windows then abandons
 /// the mutex, and the next `WaitForSingleObject` of another process returns
-/// `WAIT_ABANDONED`, hence a success. There is nothing to undo by hand, and
-/// it is deliberate — a `ReleaseMutex` must come from the OWNING thread, yet the
-/// owner here is the transport thread, which only ends with the
-/// session.
+/// `WAIT_ABANDONED`, hence a success. The one explicit release is
+/// `release`, when this process's render thread has stopped and the cable
+/// must be given back while the session lives on. A `ReleaseMutex` must come
+/// from the OWNING thread: `release` is called from `PuitsCable::deposer`,
+/// on the transport thread — the very thread whose `tenter` acquired it.
 pub struct MutexNomme {
     handle: HANDLE,
     /// The namespace actually obtained, for the log.
@@ -103,8 +104,8 @@ pub struct MutexNomme {
 //
 // **What would invalidate this promise**, to check before touching it:
 // sharing the sink behind an `Arc` (it would then need `Sync`, which nothing
-// establishes), or adding a `ReleaseMutex` — which must come from the
-// OWNING thread, and would therefore make the calling thread significant.
+// establishes), or calling `release` (its `ReleaseMutex`) from any thread
+// other than the one calling `tenter` — ownership is per thread.
 unsafe impl Send for MutexNomme {}
 
 impl MutexNomme {
@@ -183,6 +184,22 @@ impl Verrou for MutexNomme {
         // It is the only path through which it could get it.
         self.tenu = issue == WAIT_OBJECT_0 || issue == WAIT_ABANDONED;
         self.tenu
+    }
+
+    fn release(&mut self) {
+        if !self.tenu {
+            return;
+        }
+        // SAFETY: `handle` comes from a successful `CreateMutexW`, and the
+        // caller is the thread that acquired it (see the type's doc). `tenu`
+        // guarantees a single acquisition, hence a single release.
+        if let Err(error) = unsafe { ReleaseMutex(self.handle) } {
+            tracing::warn!(
+                %error,
+                "mic: releasing the cable mutex failed; it is released when this process ends"
+            );
+        }
+        self.tenu = false;
     }
 }
 

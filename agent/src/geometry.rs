@@ -119,14 +119,37 @@ fn clamp_normalized(value: f64) -> i32 {
 /// Both functions must therefore keep being called with the same region. Returns
 /// `None` when the window is entirely off screen — there is then
 /// no image, hence no coordinate to convert.
+///
+/// `window` and `desktop` are both in virtual-screen coordinates, and the
+/// virtual desktop does not start at zero when a screen sits left of or above
+/// the primary (`SM_XVIRTUALSCREEN` < 0). The clip is therefore taken against
+/// the desktop's own rectangle: `window` is moved into desktop-relative
+/// coordinates for `crop_region`, which clips against `[0, width)`, and the
+/// visible region is moved back.
 pub fn to_virtual_desktop_visible(
     x: u16,
     y: u16,
     window: Rect,
     desktop: Rect,
 ) -> Option<(i32, i32)> {
-    let visible = crop_region(window, desktop.width, desktop.height)?;
+    let relative = Rect {
+        x: offset_by(window.x, -(desktop.x as i64))?,
+        y: offset_by(window.y, -(desktop.y as i64))?,
+        ..window
+    };
+    let visible_relative = crop_region(relative, desktop.width, desktop.height)?;
+    let visible = Rect {
+        x: offset_by(visible_relative.x, desktop.x as i64)?,
+        y: offset_by(visible_relative.y, desktop.y as i64)?,
+        ..visible_relative
+    };
     Some(to_virtual_desktop(x, y, visible, desktop))
+}
+
+/// `coordinate + delta` in `i64`, `None` when the result leaves `i32` — a
+/// window that far off the desktop has no visible part anyway.
+fn offset_by(coordinate: i32, delta: i64) -> Option<i32> {
+    i32::try_from(coordinate as i64 + delta).ok()
 }
 
 /// Clamps a requested size so that the window, whose top-left corner does not

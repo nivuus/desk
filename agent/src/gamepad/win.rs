@@ -26,13 +26,13 @@
 //!    as the probe (up to 20 retries, 250 ms each) rather than the
 //!    observed minimum.
 
-use super::{plus_recent, LimiteurVibration, PERIODE_MIN};
+use super::{plus_recent, LimiteurVibration, Staleness, PERIODE_MIN};
 use anyhow::{Context, Result};
 use proto::control::AgentControl;
 use proto::input::GamepadState;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, Weak};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -42,13 +42,28 @@ use std::time::{Duration, Instant};
 const TENTATIVES_MAX: u32 = 20;
 const DELAI_TENTATIVE: Duration = Duration::from_millis(250);
 
+/// How often the watch thread checks that the last applied state is still
+/// being refreshed (`Staleness`). The client's own refresh period.
+const WATCH_PERIOD: Duration = Duration::from_millis(100);
+
 /// Virtual Xbox 360 gamepad. Plugged in at the FIRST reception of a
 /// state, never at start-up: a permanently present gamepad
 /// disturbs applications that react to its mere presence
 /// (`demarrage.rs` performs this lazy plugging).
+///
+/// The target is shared with a watch thread (`watch_staleness`) that puts the pad
+/// back to neutral when the peer stops sending: the session only calls
+/// `apply` when a state ARRIVES, so without it a button or trigger held when
+/// the link stalls stays held until the session ends.
 pub struct VirtualPad {
+    shared: Arc<Mutex<Shared>>,
+}
+
+/// What `apply`, the watch thread and `spawn_rumble` share.
+struct Shared {
     target: vigem_client::Xbox360Wired<vigem_client::Client>,
     derniere_seq: Option<u16>,
+    staleness: Staleness,
 }
 
 impl VirtualPad {
@@ -104,10 +119,20 @@ impl VirtualPad {
             tracing::info!(tentatives, "update() finally succeeded after waiting");
         }
         tracing::info!("virtual gamepad plugged in");
-        Ok(Self {
+        let shared = Arc::new(Mutex::new(Shared {
             target,
             derniere_seq: None,
-        })
+            staleness: Staleness::new(),
+        }));
+        let watch = Arc::downgrade(&shared);
+        std::thread::spawn(move || watch_staleness(watch));
+        Ok(Self { shared })
+    }
+
+    fn shared(&self) -> Result<std::sync::MutexGuard<'_, Shared>> {
+        self.shared
+            .lock()
+            .map_err(|_| anyhow::anyhow!("virtual gamepad lock poisoned"))
     }
 
     /// Applies a state received from the client to the virtual gamepad.
@@ -116,7 +141,8 @@ impl VirtualPad {
     /// carrying the `GamepadState`s is not ordered, an older state
     /// arriving after a more recent one would otherwise wrongly restore it.
     pub fn apply(&mut self, state: &GamepadState) -> Result<()> {
-        if let Some(courante) = self.derniere_seq {
+        let mut shared = self.shared()?;
+        if let Some(courante) = shared.derniere_seq {
             if !plus_recent(state.seq, courante) {
                 return Ok(());
             }
@@ -131,15 +157,40 @@ impl VirtualPad {
             thumb_rx: state.thumb_rx,
             thumb_ry: state.thumb_ry,
         };
-        self.target
+        shared
+            .target
             .update(&gamepad)
             .context("applying the gamepad state")?;
         // Recorded only after success: a failed `update()` must
         // not mark this sequence as handled, or else it could
         // never be reapplied (`plus_recent` would then
         // reject it as stale).
-        self.derniere_seq = Some(state.seq);
+        shared.derniere_seq = Some(state.seq);
+        shared.staleness.record_applied(Instant::now());
         Ok(())
+    }
+}
+
+/// The watch thread: every `WATCH_PERIOD`, puts the pad back to neutral
+/// once if no state was applied for `DELAI_PEREMPTION`. Holds only a `Weak`:
+/// it ends as soon as the `VirtualPad` is dropped.
+fn watch_staleness(shared: Weak<Mutex<Shared>>) {
+    loop {
+        std::thread::sleep(WATCH_PERIOD);
+        let Some(shared) = shared.upgrade() else {
+            return;
+        };
+        let Ok(mut shared) = shared.lock() else {
+            return;
+        };
+        if shared.staleness.should_neutralise(Instant::now()) {
+            match shared.target.update(&vigem_client::XGamepad::default()) {
+                Ok(()) => tracing::info!(
+                    "virtual gamepad: no state received for the staleness delay, put back to neutral"
+                ),
+                Err(e) => tracing::warn!(error = ?e, "putting the virtual gamepad back to neutral failed"),
+            }
+        }
     }
 }
 
@@ -167,7 +218,12 @@ impl VirtualPad {
 /// documents why we do not go further.
 impl Drop for VirtualPad {
     fn drop(&mut self) {
-        let _ = self.target.unplug();
+        if let Ok(mut shared) = self.shared.lock() {
+            // Nothing left for the watch thread to neutralise on a target
+            // that is being unplugged.
+            shared.staleness = Staleness::new();
+            let _ = shared.target.unplug();
+        }
     }
 }
 
@@ -207,6 +263,7 @@ pub fn spawn_rumble(
     arret: Arc<AtomicBool>,
 ) -> Result<JoinHandle<()>> {
     let requete = pad
+        .shared()?
         .target
         .request_notification()
         .context("subscribing to rumble notifications")?;
