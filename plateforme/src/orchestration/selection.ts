@@ -7,10 +7,8 @@
 // 🔴 "TO NOBODY" IS NOT "TO EVERYBODY". A VM whose
 // `userId` is `null` is IN THE POOL: it is returned to no
 // requester. The opposite would show any authenticated user every VM
-// not yet assigned — that is, the fleet inventory. ⚠️
-// Sub-block G1 deliberately keeps the other behaviour for ITS routes; the
-// two efforts diverge, and it is declared rather than quietly reconciled
-// by the second branch to arrive.
+// not yet assigned — that is, the fleet inventory. The routes that act on
+// a named VM apply the same verdict through `http/acces-vm.ts`.
 
 import type { Vm } from './interface';
 

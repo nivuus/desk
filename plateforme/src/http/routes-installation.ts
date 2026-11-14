@@ -60,6 +60,8 @@ import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import { lirePorteur } from './porteur';
 import { lirePorteurAgent } from './porteur-agent';
+import { accesVm } from './acces-vm';
+import { lireCorpsJson } from './corps';
 
 export interface DependancesInstallation {
     base: Pilote;
@@ -115,23 +117,6 @@ function repondre(rep: ServerResponse, code: number, corps: unknown, cors: Cors)
     rep.end(corps === undefined ? undefined : JSON.stringify(corps));
 }
 
-/// Reads the body, or yields `undefined` if the bound is crossed — the request is
-/// then ABANDONED without reading the rest: piling up to answer politely would be
-/// the denial of service the bound exists to prevent.
-function lireCorps(req: IncomingMessage): Promise<string | undefined> {
-    return new Promise((resoudre, rejeter) => {
-        let recu = '';
-        req.on('data', (morceau: Buffer) => {
-            recu += morceau.toString('utf8');
-            if (recu.length > CORPS_MAX_OCTETS) {
-                req.destroy();
-                resoudre(undefined);
-            }
-        });
-        req.on('end', () => resoudre(recu));
-        req.on('error', rejeter);
-    });
-}
 
 /// The trade-off of the indistinguishable refusal: the only thing, in the whole
 /// service, that says WHICH of the cases happened. ⚠️ `cas=` IS A FIELD, NOT A
@@ -141,36 +126,6 @@ function journaliser(cas: string, ressource: string, demandeur: string): void {
         `access to ${ressource} refused for ${demandeur}: cas=${cas} — the HTTP `
             + `response itself is INDISTINGUISHABLE from an unknown resource.`,
     );
-}
-
-/// Decides whether this user has the right to see this VM.
-///
-/// ⚠️ THIRD COPY OF THE SAME RULE, and saying so beats keeping it
-/// quiet: `routes-applications.ts::acces`, `routes-icone.ts::service`, and
-/// here it is. The common factor will live in a third module the day these
-/// files are reopened — G3 opens none of them, and a half extraction would cost an
-/// indirection without closing anything. **Declared rather than endured, as
-/// `porteur-agent.ts` did for its header splitting: any fix
-/// is made IN THE THREE FILES.** ⚠️ The « not assigned » branch LOGS:
-/// `vm.utilisateur_id` is born NULL, and as long as no VM is assigned EVERY (policy: allow-fr - frozen wire key or SQLite column)
-/// AUTHENTICATED USER SEES ALL THE VMS.
-async function acces(
-    deps: DependancesInstallation, vmId: string, userId: string,
-): Promise<'ok' | 'inconnue' | 'etrangere'> {
-    const vm = await lireVm(deps.base, vmId);
-    if (vm === undefined) {
-        journaliser('inconnue', `the VM ${vmId}`, `user ${userId}`);
-        return 'inconnue';
-    }
-    if (vm.utilisateur_id === null) { // policy: allow-fr - frozen wire key or SQLite column
-        console.warn(`unassigned vm, access granted without isolation to VM ${vmId}`);
-        return 'ok';
-    }
-    if (vm.utilisateur_id !== userId) { // policy: allow-fr - frozen wire key or SQLite column
-        journaliser('etrangere', `the VM ${vmId}`, `user ${userId}`);
-        return 'etrangere';
-    }
-    return 'ok';
 }
 
 /// Is there, FOR THIS VM, an UNFINISHED installation that calls for this
@@ -259,7 +214,7 @@ async function ordre(
         repondre(rep, porteur.code, { refus: porteur.motif }, cors);
         return true;
     }
-    const brut = await lireCorps(req);
+    const brut = await lireCorpsJson(req, CORPS_MAX_OCTETS);
     if (brut === undefined) {
         repondre(rep, 413, { refus: 'taille' }, cors);
         return true;
@@ -282,7 +237,7 @@ async function ordre(
     // the extension or the sealing dooms. 🔴 AND THE VERDICT IS NOT REREAD:
     // both cases go through the SAME expression, so the bodies CANNOT
     // differ.
-    if ((await acces(deps, vmId, porteur.userId)) !== 'ok') {
+    if ((await accesVm(deps.base, vmId, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
@@ -382,7 +337,7 @@ async function etat(
     // the installation exists, and would reopen the oracle through the back door, on
     // the very resource the URL names. SAME expression for both cases; the
     // log line, for its part, tells them apart.
-    if (ligne === undefined || (await acces(deps, ligne.vm_id, porteur.userId)) !== 'ok') {
+    if (ligne === undefined || (await accesVm(deps.base, ligne.vm_id, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'installation-inconnue' }, cors);
         return true;
     }

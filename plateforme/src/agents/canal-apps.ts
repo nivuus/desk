@@ -109,7 +109,7 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
     if (message.type === 'lancee') {
         // ⚠️ SYNCHRONOUS, and nothing to write: `resoudre` only touches an in-memory
         // `Map`, and IGNORES an unknown request rather than raising.
-        deps.registre.resoudre(message.demande, message.issue);
+        deps.registre.resoudre(deps.vmId, message.demande, message.issue);
         return;
     }
 
@@ -119,6 +119,7 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
         // second later, and the `termine` carries the final state.
         void avancer(
             deps.base,
+            deps.vmId,
             message.installation,
             {
                 phase: message.phase,
@@ -148,6 +149,7 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
         // belt exists for the case where the first one lost its database.
         void terminer(
             deps.base,
+            deps.vmId,
             message.installation,
             {
                 issue: message.issue,

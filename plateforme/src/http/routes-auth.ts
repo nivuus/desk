@@ -24,7 +24,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
-import { emettre, tourner } from '../depot/jeton';
+import { emettre, revoquerParClair, tourner } from '../depot/jeton';
 import { lireParEmail, remplacerEmpreinte } from '../depot/utilisateur';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
 import { doitEtreRehache, hacher, verify } from '../identite/mot-de-passe';
@@ -33,6 +33,7 @@ import { repondreIntrouvable } from './introuvable';
 import { ENTETES_SECURITE } from './entetes';
 import { adresseSource } from './adresse-source';
 import { ligne } from '../obs/journal';
+import { lireCorpsJson } from './corps';
 import {
     BUDGET_ADRESSE,
     BUDGET_COMPTE,
@@ -75,7 +76,8 @@ interface ContexteFrein {
 /// ⚠️ NOT CALIBRATED: it is a generous bound, not a measurement.
 const CORPS_MAX_OCTETS = 4 * 1024;
 
-const CHEMINS = new Set(['/auth/connexion', '/auth/rafraichir']);
+/// `/auth/deconnexion` revokes the family of the presented refresh token.
+const CHEMINS = new Set(['/auth/connexion', '/auth/rafraichir', '/auth/deconnexion']);
 
 /// The decoy password hashed on an unknown email. Computed ONCE and
 /// memoised: hashing it on each request would cost the same time, but
@@ -102,25 +104,6 @@ function repondre(
     rep.end(JSON.stringify(corps));
 }
 
-/// Reads the body, or yields `undefined` if the bound is crossed — in which case the
-/// request is ABANDONED without reading the rest, rather than piling up.
-function lireCorps(req: IncomingMessage): Promise<string | undefined> {
-    return new Promise((resolve, rejeter) => {
-        let recu = '';
-        req.on('data', (morceau: Buffer) => {
-            recu += morceau.toString('utf8');
-            if (recu.length > CORPS_MAX_OCTETS) {
-                // We stop reading AT ONCE: carrying on piling up to
-                // answer politely would be exactly the denial of service that
-                // the bound exists to prevent.
-                req.destroy();
-                resolve(undefined);
-            }
-        });
-        req.on('end', () => resolve(recu));
-        req.on('error', rejeter);
-    });
-}
 
 function estObjet(v: unknown): v is Record<string, unknown> {
     return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -143,7 +126,7 @@ export async function servirAuth(
     const chemin = new URL(req.url ?? '/', 'http://placeholder').pathname;
     if (!CHEMINS.has(chemin)) return false;
 
-    // 🔴 IN `pomerium` MODE, THESE TWO ROUTES DO NOT EXIST — `404`, returned
+    // 🔴 IN `pomerium` MODE, THESE ROUTES DO NOT EXIST — `404`, returned
     // HERE. Leaving them alive behind the proxy would be a SECOND authentication
     // door, with passwords nobody rotates any more
     // and a brake nobody watches any more.
@@ -203,7 +186,7 @@ export async function servirAuth(
         return true;
     }
 
-    const brut = await lireCorps(req);
+    const brut = await lireCorpsJson(req, CORPS_MAX_OCTETS);
     if (brut === undefined) {
         repondre(rep, 413, { refus: 'corps-trop-grand' }, cors);
         return true;
@@ -244,6 +227,8 @@ export async function servirAuth(
 
     if (chemin === '/auth/connexion') {
         await connexion(corps, rep, deps, cors, contexte);
+    } else if (chemin === '/auth/deconnexion') {
+        await deconnexion(corps, rep, deps, cors);
     } else {
         await rafraichir(corps, rep, deps, cors, contexte);
     }
@@ -428,6 +413,27 @@ async function rafraichir(
     // defect was really written, and it is the end-to-end replay test
     // that caught it — the repository tests alone could not.
     await delivrer(rep, deps, issue.userId, issue.clair, cors);
+}
+
+/// Signing out. The presented token's family is revoked, so that neither it
+/// nor any successor can be refreshed again. ⚠️ 204 whether the token was live
+/// or not: signing out is idempotent, and the answer concerns only the
+/// requester's own token. Not counted as a failure: guessing a 256-bit token
+/// is not a door, and the address budget was already consulted above.
+async function deconnexion(
+    corps: Record<string, unknown>,
+    rep: ServerResponse,
+    deps: DependancesAuth,
+    cors: Record<string, string> | undefined,
+): Promise<void> {
+    const { rafraichissement } = corps;
+    if (typeof rafraichissement !== 'string') {
+        repondre(rep, 400, { refus: 'forme' }, cors);
+        return;
+    }
+    await revoquerParClair(deps.base, rafraichissement, deps.maintenant());
+    rep.writeHead(204, { ...ENTETES_SECURITE, ...(cors ?? {}) });
+    rep.end();
 }
 
 /// The pair issued by both routes, written once so that they

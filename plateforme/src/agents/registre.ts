@@ -179,8 +179,20 @@ export class RegistreAgents {
     /// mode that `relais.ts`, `trace.ts` and `canal.ts` all three
     /// document. The case is moreover nothing abnormal: an agent can
     /// answer an order whose wait has already expired.
-    resoudre(demande: string, issue: IssueLancement): void {
+    ///
+    /// 🔴 `vmId` IS THE VM THE ANSWERING SOCKET IS ENROLLED AS, and an answer
+    /// from another VM is ignored, the wait left untouched: request ids
+    /// travel to one agent only, but an agent must never settle the launch
+    /// of a machine that is not its own.
+    resoudre(vmId: string, demande: string, issue: IssueLancement): void {
         const attente = this.enVol.get(demande);
+        if (attente !== undefined && attente.vmId !== vmId) {
+            console.warn(
+                `launch outcome ignored: request ${demande} waits on VM ${attente.vmId}, `
+                    + `but VM ${vmId} answered it`,
+            );
+            return;
+        }
         if (attente === undefined) {
             console.warn(
                 `launch with no waiter: request ${demande} returned ${issue}, `

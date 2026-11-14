@@ -24,7 +24,7 @@ import { verify } from '../identite/mot-de-passe';
 import { lireParVm } from '../depot/agent';
 
 export type VerdictEnrolement =
-    | { ok: true; vmId: string; prefixe: string }
+    | { ok: true; vmId: string; prefixe: string; empreinte: string }
     | { ok: false; motif: 'enrolement' };
 
 /// The ONLY refusal. A single object, built only once, so that no
@@ -61,5 +61,7 @@ export async function verifyEnrolment(
         return REFUS;
     }
 
-    return { ok: true, vmId, prefixe: ligne.prefixe_session };
+    // `empreinte` is the stored digest the secret was checked against: the
+    // channel compares it at every heartbeat to notice a rotation.
+    return { ok: true, vmId, prefixe: ligne.prefixe_session, empreinte: ligne.empreinte_secret };
 }

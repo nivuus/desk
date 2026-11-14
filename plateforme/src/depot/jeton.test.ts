@@ -144,6 +144,39 @@ describe(`jeton_rafraichissement repository, engine=${MOTEUR}`, () => {
         });
     });
 
+    it('🔴 two rotations racing on one token: one succeeds, the loser revokes the family', async () => {
+        // The race of two concurrent refreshes, made deterministic: the loser
+        // READ the row before the winner committed (a stale snapshot, which
+        // Postgres READ COMMITTED allows), and its revocation then meets the
+        // row the winner already revoked. Without the conditional update the
+        // loser also succeeded and the family forked into two live tokens.
+        // ⚠️ The truly concurrent Postgres case is not run by this suite.
+        const { p, id } = await withUser('jet-course');
+        const un = await emettre(p, id, MS);
+        const avant = await p.interroger(
+            'SELECT id, utilisateur_id, famille, remplace_par, expire_a, revoque_a FROM jeton_rafraichissement', [],
+        );
+        const gagnant = await tourner(p, un, MS + 1_000);
+        expect(gagnant.ok).toBe(true);
+
+        const perimee: Pilote = {
+            ...p,
+            transaction: (corps) => p.transaction((tx) => corps({
+                ...tx,
+                interroger: async <T>(sql: string, params: unknown[]) =>
+                    (sql.includes('WHERE empreinte = ?') ? avant : await tx.interroger(sql, params)) as T[],
+            })),
+        };
+        expect(await tourner(perimee, un, MS + 1_001)).toEqual({ ok: false, motif: 'rejeu' });
+
+        const all = await lignes(p);
+        expect(all).toHaveLength(2);
+        for (const l of all) expect(l.revoque_a).not.toBeNull();
+        if (gagnant.ok) {
+            expect(await tourner(p, gagnant.clair, MS + 2_000)).toEqual({ ok: false, motif: 'revoque' });
+        }
+    });
+
     it('rolls back the TRANSACTION if the new insertion fails: the old one stays valid', async () => {
         // 🔴 Outside a transaction, the revocation of the old one would already be written
         // when the insertion failed: the user would lose their session on

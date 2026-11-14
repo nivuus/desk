@@ -43,8 +43,8 @@
 // single origin (`deploiement` profile of P5); it bit in development, `vite`
 // serving on 5173 and the service on 8080 — so exactly where it gets tuned.
 //
-// ⚠️ `routes-auth.ts::lireCorps` IS NEITHER RAISED NOR REUSED, AND BOTH
-// HALVES MATTER. It accumulates into a UTF-8 STRING: a BINARY body would be
+// ⚠️ `corps.ts::lireCorpsJson` IS NEITHER RAISED NOR REUSED, AND BOTH
+// HALVES MATTER. It decodes the body as a UTF-8 STRING: a BINARY body would be
 // corrupted there (any invalid byte becomes U+FFFD, and the hash of the
 // reassembled file would no longer be its own), and raising its cap would give
 // an anonymous peer back the megabyte that this cap takes away. Here the declaration
@@ -221,8 +221,8 @@ export async function servirTeleversement(
 
 /// 🔴 THE CAP IS CHECKED DURING THE READ, NOT AFTER: accumulating first
 /// would let a peer fill memory before the refusal. ⚠️ BYTES ARE
-/// COUNTED, NOT CHARACTERS — `routes-auth.ts` measures an ALREADY
-/// DECODED string, which undercounts everything that is not ASCII.
+/// COUNTED, NOT CHARACTERS — a decoded string undercounts everything
+/// that is not ASCII.
 async function lireDeclaration(req: IncomingMessage): Promise<string | 'trop-gros'> {
     const morceaux: Buffer[] = [];
     let total = 0;
@@ -233,10 +233,8 @@ async function lireDeclaration(req: IncomingMessage): Promise<string | 'trop-gro
         // is enough to stop reading — the async iterator destroys the READABLE
         // side as it closes —, whereas `destroy()` kills the SOCKET, and
         // MEASURED: the client then gets `UND_ERR_SOCKET` instead of the 413 that
-        // was just decided. That is the behaviour of `routes-icone.ts`;
-        // `routes-auth.ts`, for its part, calls `destroy()`, and its own test admits
-        // in so many words that "the connection may be cut before the
-        // response". A refusal that cannot be read is not a refusal.
+        // was just decided. That is the behaviour of `routes-icone.ts` and of
+        // `corps.ts`. A refusal that cannot be read is not a refusal.
         if (total > CORPS_DECLARATION_MAX_OCTETS) return 'trop-gros';
         morceaux.push(b);
     }

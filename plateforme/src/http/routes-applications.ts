@@ -47,7 +47,7 @@
 // DECORATIVE: without it, making things uniform would cost the operator all the
 // diagnosis — « the VM does not exist » and « it belongs to someone else » would
 // read the same on BOTH sides, and nothing would tell a typing
-// mistake from an enumeration attempt any more. `acces` writes it, it names the real
+// mistake from an enumeration attempt any more. `accesVm` writes it, it names the real
 // case, and ⚠️ IT MUST NEVER REACH THE HTTP RESPONSE: that is the whole
 // point. A test asserts that the body carries no trace of the real case.
 //
@@ -60,12 +60,12 @@ import { randomUUID } from 'node:crypto';
 import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
 import { associationsDe, lireParId, lireParVm, sourceMaxDepuis } from '../depot/application';
-import { lireParId as lireVm } from '../depot/vm';
 import { signerUrlIcone } from '../apps/url-icone';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import type { Orchestrateur } from '../orchestration/interface';
 import { lirePorteur } from './porteur';
+import { accesVm } from './acces-vm';
 
 export interface DependancesApplications {
     base: Pilote;
@@ -110,85 +110,6 @@ function lancementDe(chemin: string): string | undefined {
     if (segments.length !== 4) return undefined;
     if (segments[1] !== 'application' || segments[3] !== 'lancer') return undefined;
     return segments[2] === '' ? undefined : segments[2];
-}
-
-/// Decides whether this user has the right to see this VM.
-///
-/// ⚠️ THE « NOT ASSIGNED » BRANCH LOGS, AND THAT IS NOT DECORATIVE.
-/// `vm.utilisateur_id` is NULL after `npm run admin:agent` — reread: (policy: allow-fr - frozen wire key or SQLite column)
-/// `enrolerLaVm` does `INSERT INTO vm(id, nom, adresse)` and never passes
-/// a user. As long as no VM is assigned, EVERY AUTHENTICATED
-/// USER SEES ALL THE VMS: this is NOT isolation, and the log
-/// line is the only thing that makes this state visible to the operator.
-/// Serving silently would make it invisible, and it would stay so until
-/// someone read this file.
-///
-/// The behaviour HARDENS BY ITSELF the day sub-block P4 fills the
-/// column: the NULL branch will stop being reached, without a line changing
-/// here.
-///
-/// 🔴 `'etrangere'` SURVIVES AS AN INTERNAL VERDICT WHILE THE WIRE REASON
-/// `'vm-etrangere'` HAS GONE, and the two facts do not contradict each other.
-/// The wire reason had only dead emission sites left once
-/// uniformity was reached — an unreachable reason is a dead variant that
-/// the next reader would believe alive, and they could have made it
-/// reachable again while believing they were fixing something. It is therefore removed, and it survives
-/// nowhere: it was a member of no union (`orchestration/refus.ts`
-/// only ever knew `vm-inconnue`), only two literals and their two
-/// test assertions, all four gone with it.
-/// The VERDICT, on the other hand, is what feeds the log line: flattening it into a
-/// boolean would remove the only distinction the decision deliberately
-/// keeps. It is alive, tested, and it never crosses the wire.
-async function acces(
-    deps: DependancesApplications,
-    vmId: string,
-    userId: string,
-): Promise<'ok' | 'inconnue' | 'etrangere'> {
-    const vm = await lireVm(deps.base, vmId);
-    if (vm === undefined) return journaliserLeRefus('inconnue', vmId, userId);
-    if (vm.utilisateur_id === null) { // policy: allow-fr - frozen wire key or SQLite column
-        console.warn(
-            `unassigned vm, access granted without isolation to VM ${vmId} `
-                + `for user ${userId} (assignment = sub-block P4)`,
-        );
-        return 'ok';
-    }
-    return vm.utilisateur_id === userId // policy: allow-fr - frozen wire key or SQLite column
-        ? 'ok'
-        : journaliserLeRefus('etrangere', vmId, userId);
-}
-
-/// The trade-off of the indistinguishable refusal: the only thing, in the whole
-/// service, that says WHICH of the two cases happened.
-///
-/// 🔴 IT IS WRITTEN IN `acces`, AND NOT AT THE CALL SITES. The two routes
-/// of this file refuse through the same path, and a third caller
-/// will turn up one day; writing the line at the caller would make it
-/// FORGETTABLE — and forgetting it would break nothing visible, which is
-/// exactly the failure mode this repository calls a silent failure.
-/// Here, the refusal and its trace are born together or not at all.
-///
-/// ⚠️ `cas=` IS A FIELD, NOT A SENTENCE: it is what the operator `grep`s for,
-/// and a sentence gets rewritten without anything breaking. A test pins it, and it
-/// ALSO pins that the two cases do not yield the same thing — without which a
-/// single line saying « refusal » would satisfy a check that only looked for the
-/// presence of the trace.
-///
-/// ⚠️ THE RETURN IS THE VERDICT ITSELF, so that the line cannot
-/// drift from the decision it describes: there is no path where one
-/// logs one case and returns the other.
-function journaliserLeRefus(
-    cas: 'inconnue' | 'etrangere',
-    vmId: string,
-    userId: string,
-): 'inconnue' | 'etrangere' {
-    console.warn(
-        `access to VM ${vmId} refused for user ${userId}: `
-            + `cas=${cas} — the HTTP response itself is the same 404 « vm-inconnue » `
-            + `in both cases (decision of the repository owner: no enumeration `
-            + `oracle).`,
-    );
-    return cas;
 }
 
 export async function servirApplications(
@@ -246,7 +167,7 @@ export async function servirApplications(
             repondre(rep, 400, { refus: 'vm-absente' }, cors);
             return true;
         }
-        const verdict = await acces(deps, vmId, porteur.userId);
+        const verdict = await accesVm(deps.base, vmId, porteur.userId);
         if (verdict !== 'ok') {
             // 🔴 THE VERDICT IS NOT REREAD HERE, and that is the core of the
             // decision: « unknown » and « foreign » go through the SAME
@@ -296,7 +217,7 @@ export async function servirApplications(
                     // NOWHERE ELSE, that an icon URL is minted:
                     // this route requires the bearer token (`lirePorteur`,
                     // above) and has already checked the ownership of the VM
-                    // (`acces`, above). **A signed URL is obtained WITH a
+                    // (`accesVm`, above). **A signed URL is obtained WITH a
                     // token, never freely**, and that chaining is what makes it
                     // legitimate — see `apps/url-icone.ts` for the derived
                     // key, what the signature covers, and the lifetime.
@@ -339,7 +260,7 @@ export async function servirApplications(
         repondre(rep, 404, { refus: 'application-inconnue' }, cors);
         return true;
     }
-    const verdict = await acces(deps, application.vm_id, porteur.userId);
+    const verdict = await accesVm(deps.base, application.vm_id, porteur.userId);
     if (verdict !== 'ok') {
         // 🔴 WITHOUT THIS GUARD, AN APPLICATION ID WOULD BE ENOUGH TO LAUNCH
         // A PROGRAM ON SOMEONE ELSE'S MACHINE — and the agent, for its part,
@@ -385,7 +306,7 @@ export async function servirApplications(
         // happen — the hardest failure to diagnose there is, because
         // nothing anywhere contradicts it.
         //
-        // 🔴 THE WAKE IS REQUESTED ONLY AFTER `acces`: a user only wakes the VM
+        // 🔴 THE WAKE IS REQUESTED ONLY AFTER `accesVm`: a user only wakes the VM
         // that is assigned to them (see `unreachable` above).
         return unreachable();
     }

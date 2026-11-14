@@ -342,7 +342,7 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
         const u = await poserVmVivante(m!.base, 'v-1', 'moi@exemple.test', 'PREFIXE-A');
         const tel = await poserTeleversement(m!.base, u, 'setup.exe', Buffer.from('abc'));
         const inst = await createInstallation(m!.base, { vmId: 'v-1', televersementId: tel.id }, MS);
-        await terminer(m!.base, inst.id, {
+        await terminer(m!.base, 'v-1', inst.id, {
             issue: 'refusee', motif: 'elevation-requise', codeSortie: 740,
             journal: 'the tail', journalTronque: true,
         }, MS + 5);
@@ -458,9 +458,9 @@ describe(`routes /installation, engine=${MOTEUR}`, () => {
         const tel = await poserTeleversement(m!.base, a, 'setup.exe', Buffer.from('abc'));
         const inst = await createInstallation(m!.base, { vmId: 'v-a', televersementId: tel.id }, MS);
         const entetes = withIt(jetonDe('PREFIXE-A', 'agent'));
-        await avancer(m!.base, inst.id, { phase: 'transfert', octetsFaits: 1, octetsTotal: 3, ecouleMs: 1 }, MS);
+        await avancer(m!.base, 'v-a', inst.id, { phase: 'transfert', octetsFaits: 1, octetsTotal: 3, ecouleMs: 1 }, MS);
         expect((await fetch(`${url}/televersement/${tel.id}/contenu`, { headers: entetes })).status).toBe(200);
-        await terminer(m!.base, inst.id, {
+        await terminer(m!.base, 'v-a', inst.id, {
             issue: 'reussie', motif: null, codeSortie: 0, journal: '', journalTronque: false,
         }, MS + 1);
         const apres = await fetch(`${url}/televersement/${tel.id}/contenu`, { headers: entetes });

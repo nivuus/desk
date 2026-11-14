@@ -12,6 +12,12 @@
 // machine, and a secret passed that way would be readable by anyone for
 // the whole duration of the call — then in the shell history.
 //
+//     npm run admin:utilisateur -- --email ada@exemple.test --replace-password (policy: allow-fr - frozen wire key or SQLite column)
+//
+// replaces the password of an EXISTING account instead, and revokes every
+// refresh token of that account in the same transaction: it is also the way
+// to end all the sessions of a compromised account.
+//
 // ⚠️ An email already taken returns a clear message and a non-zero exit code.
 // There is NO enumeration oracle here, unlike the HTTP routes:
 // the caller is the administrator, and hiding the failure would make them believe in
@@ -21,10 +27,10 @@ import { createInterface } from 'node:readline';
 import { lireConfig } from '../config';
 import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from '../base/migrations';
 import { ouvrirBase } from '../base/ouvrir';
-import { createUser } from '../depot/utilisateur';
+import { createUser, lireParEmail, remplacerMotDePasse } from '../depot/utilisateur';
 import { hacher } from '../identite/mot-de-passe';
 
-export type Arguments = { email: string } | { refus: string };
+export type Arguments = { email: string; remplacer: boolean } | { refus: string };
 
 /// The flags that would try to pass a secret through argv. They are
 /// enumerated rather than guessed: a broad pattern would one day refuse a
@@ -55,7 +61,7 @@ export function analyserArguments(argv: string[]): Arguments {
     if (email === undefined || email === '') {
         return { refus: '--email expects a non-empty address.' };
     }
-    return { email };
+    return { email, remplacer: argv.includes('--replace-password') };
 }
 
 /// Reads one line from standard input. Nothing is echoed back — a bare
@@ -92,6 +98,17 @@ export async function executer(argv: string[]): Promise<number> {
         // on a new database, and an `INSERT` on a missing table would give a
         // diagnosis unrelated to the cause.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
+        if (args.remplacer) {
+            const user = await lireParEmail(base, args.email);
+            if (user === undefined) {
+                process.stderr.write(`no account for ${args.email}: nothing replaced.\n`);
+                return 1;
+            }
+            const revoques = await remplacerMotDePasse(base, user.id, await hacher(motDePasse), Date.now());
+            process.stderr.write(`password replaced; ${revoques} live refresh token(s) revoked.\n`);
+            process.stdout.write(`${user.id}\n`);
+            return 0;
+        }
         const id = await createUser(
             base,
             args.email,

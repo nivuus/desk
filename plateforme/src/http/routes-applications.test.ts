@@ -95,7 +95,7 @@ function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAg
             const ordre = parseDepuisLaPlateforme(data);
             if (ordre.type !== 'lancer') return;
             // On the next loop turn, as a real socket would.
-            setTimeout(() => registre.resoudre(ordre.demande, issue), 0);
+            setTimeout(() => registre.resoudre('v-1', ordre.demande, issue), 0);
         },
         close() {},
     };
@@ -320,25 +320,6 @@ describe(`routes /applications, engine=${MOTEUR}`, () => {
         // line always saying "refusal" would satisfy the four assertions
         // above as soon as it carried both words.
         expect(apresInconnue).not.toContain('cas=etrangere');
-    });
-
-    it('🔴 an UNASSIGNED VM is served, AND the log line is EMITTED', async () => {
-        // 🔴 SERVING SILENTLY WOULD MAKE THE LACK OF ISOLATION INVISIBLE. As long
-        // as no VM is assigned, every authenticated user sees
-        // all VMs — it is NOT isolation, and the log line
-        // is what makes the state visible to the operator. The test READS THE TRACE,
-        // not only the response code.
-        const traces: string[] = [];
-        vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
-        const url = await servir('apps-non-attribuee');
-        await poserVm(base!, 'v-1');
-        const u = await createUser(base!, 'quiconque@exemple.test', 'x', MS);
-        await poserApp(base!, 'v-1', 'Firefox', 'c-1');
-
-        const r = await fetch(`${url}/applications?vm=v-1`, { headers: withIt(jetonDe(u)) });
-        expect(r.status).toBe(200);
-        expect(traces.join(' | ')).toContain('unassigned vm');
-        expect(traces.join(' | ')).toContain('v-1');
     });
 
     it('returns 404 on an UNKNOWN application', async () => {

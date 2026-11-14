@@ -198,6 +198,7 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
 
         await avancer(
             base,
+            vm,
             inst.id,
             { phase: 'transfert', octetsFaits: 8_388_608, octetsTotal: TROIS_GO, ecouleMs: 1_200 },
             MS + 2_000,
@@ -211,6 +212,7 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
 
         await terminer(
             base,
+            vm,
             inst.id,
             { issue: 'reussie', motif: null, codeSortie: 3010, journal: '', journalTronque: false },
             MS + 9_000,
@@ -235,12 +237,14 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
         const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         await terminer(
             base,
+            vm,
             inst.id,
             { issue: 'sans-effet', motif: null, codeSortie: 0, journal: '', journalTronque: false },
             MS + 1_000,
         );
         await avancer(
             base,
+            vm,
             inst.id,
             { phase: 'execution', octetsFaits: 0, octetsTotal: 0, ecouleMs: 60_000 },
             MS + 2_000,
@@ -257,6 +261,7 @@ describe(`installation repository, engine=${MOTEUR}`, () => {
         const inst = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
         await terminer(
             base,
+            vm,
             inst.id,
             {
                 issue: 'issue-inconnue',

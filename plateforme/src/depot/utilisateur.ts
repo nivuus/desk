@@ -15,6 +15,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
+import { revokeAllFamiliesOf } from './jeton';
 
 export interface UserRow {
     id: string;
@@ -66,4 +67,20 @@ export async function remplacerEmpreinte(
     empreinte: string,
 ): Promise<void> {
     await p.executer('UPDATE utilisateur SET empreinte_mdp = ? WHERE id = ?', [empreinte, id]);
+}
+
+/// Replaces the password of a user: the new digest, AND the revocation of all
+/// their refresh families, in ONE transaction. ⚠️ NOT the path of rehashing at
+/// sign-in (`remplacerEmpreinte`): there the password is the same, and its
+/// sessions must live on. Returns the number of live tokens revoked.
+export async function remplacerMotDePasse(
+    p: Pilote,
+    id: string,
+    empreinte: string,
+    maintenant: number,
+): Promise<number> {
+    return p.transaction(async (tx) => {
+        await remplacerEmpreinte(tx, id, empreinte);
+        return revokeAllFamiliesOf(tx, id, maintenant);
+    });
 }
