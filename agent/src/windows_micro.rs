@@ -55,6 +55,7 @@
 
 #![cfg(windows)]
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -107,10 +108,24 @@ pub struct PuitsCable {
     lecteur: Arc<Mutex<LecteurMicro>>,
     exclusivite: Exclusivite<verrou::MutexNomme>,
     session: String,
+    /// Cleared when the render thread ends, by whatever path (`RenderThreadEnd`).
+    render_alive: Arc<AtomicBool>,
 }
 
 impl PuitsMicro for PuitsCable {
     fn deposer(&mut self, trame: TrameMicro) -> bool {
+        // Nothing consumes the frames any more: refusing tells the browser,
+        // and ceding gives the machine-wide cable to another window.
+        if !self.render_alive.load(Ordering::Acquire) {
+            if self.exclusivite.cede() {
+                tracing::warn!(
+                    session = %self.session,
+                    "mic: the render thread has stopped, cable released, \
+                     this session refuses mic frames from now on"
+                );
+            }
+            return false;
+        }
         // ⚠️ The attempt is redone at EACH deposit; only the LOG is
         // single (Decision 2 of plan E2). A sticky refusal would condemn
         // window B to stay without a microphone for the life of its process after
@@ -170,7 +185,10 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
     let lecteur_fil = Arc::clone(&lecteur);
     let session = config.session_id.clone();
     let session_fil = session.clone();
+    let render_alive = Arc::new(AtomicBool::new(true));
+    let end_guard = RenderThreadEnd(Arc::clone(&render_alive));
     std::thread::spawn(move || {
+        let _end_guard = end_guard;
         fil_de_rendu(lecteur_fil, session_fil, loopback_de_session, envoi);
     });
 
@@ -197,7 +215,19 @@ pub fn ouvrir(config: &Config) -> Result<PuitsCable> {
         lecteur,
         exclusivite: Exclusivite::new(mutex),
         session,
+        render_alive,
     })
+}
+
+/// Held by the render thread for its whole life: dropping it — on any
+/// `return` of `fil_de_rendu`, or on a panic — tells the sink that nothing
+/// consumes its frames any more.
+struct RenderThreadEnd(Arc<AtomicBool>);
+
+impl Drop for RenderThreadEnd {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
 }
 
 /// What the thread returns to [`ouvrir`] when everything went well. **Strings

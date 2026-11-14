@@ -22,6 +22,10 @@ pub trait Verrou {
     /// `ReleaseMutex` would be needed. It is up to the Windows half to short-
     /// circuit this case, not up to `Exclusivite`.
     fn tenter(&mut self) -> bool;
+
+    /// Gives the lock back if this process holds it; does nothing otherwise.
+    /// Called from the same thread as `tenter`, the one that owns the lock.
+    fn release(&mut self);
 }
 
 /// What the arbitration commands, log included.
@@ -45,6 +49,9 @@ pub struct Exclusivite<V: Verrou> {
     verrou: V,
     tenue: bool,
     refus_dit: bool,
+    /// Set by `cede`: the writer this sink fed has stopped, the cable was
+    /// given back, and it is never taken again by this sink.
+    ceded: bool,
 }
 
 impl<V: Verrou> Exclusivite<V> {
@@ -53,6 +60,7 @@ impl<V: Verrou> Exclusivite<V> {
             verrou,
             tenue: false,
             refus_dit: false,
+            ceded: false,
         }
     }
 
@@ -69,6 +77,9 @@ impl<V: Verrou> Exclusivite<V> {
     /// A second refusal episode reopens its own log: losing the cable
     /// a second time is a new fact, not the repetition of the first.
     pub fn arbitrer(&mut self) -> Issue {
+        if self.ceded {
+            return Issue::RefuseDejaDit;
+        }
         if self.verrou.tenter() {
             self.tenue = true;
             if std::mem::take(&mut self.refus_dit) {
@@ -85,6 +96,20 @@ impl<V: Verrou> Exclusivite<V> {
                 Issue::RefusePremierement
             }
         }
+    }
+
+    /// The writer behind this sink has stopped for good: gives the cable back,
+    /// so that another window can take it over, and refuses every later
+    /// deposit without attempting the lock again. Returns `true` only the
+    /// first time, so that the caller logs the cession once.
+    pub fn cede(&mut self) -> bool {
+        if self.ceded {
+            return false;
+        }
+        self.ceded = true;
+        self.verrou.release();
+        self.tenue = false;
+        true
     }
 
     /// True if the last arbitration left this process as owner.
@@ -105,6 +130,7 @@ mod tests {
         /// The answers to return, in order; the last one repeats.
         reponses: Vec<bool>,
         appels: usize,
+        releases: usize,
     }
 
     impl VerrouFactice {
@@ -112,6 +138,7 @@ mod tests {
             Self {
                 reponses: reponses.to_vec(),
                 appels: 0,
+                releases: 0,
             }
         }
     }
@@ -121,6 +148,10 @@ mod tests {
             let i = self.appels.min(self.reponses.len() - 1);
             self.appels += 1;
             self.reponses[i]
+        }
+
+        fn release(&mut self) {
+            self.releases += 1;
         }
     }
 
@@ -179,5 +210,28 @@ mod tests {
             assert_eq!(e.arbitrer(), Issue::Accepte);
         }
         assert!(e.tenue());
+    }
+
+    /// The writer behind the sink has stopped: the cable is given back once,
+    /// and no later deposit takes it again — otherwise this window would keep
+    /// the machine-wide cable while nothing reaches it.
+    #[test]
+    fn ceding_releases_the_lock_once_and_refuses_every_later_deposit() {
+        let mut e = Exclusivite::new(VerrouFactice::new(&[true]));
+        assert_eq!(e.arbitrer(), Issue::Accepte);
+
+        assert!(e.cede(), "the first cession is reported, to be logged");
+        assert!(!e.cede(), "a second cession reports nothing");
+        assert_eq!(e.verrou.releases, 1, "released exactly once");
+        assert!(!e.tenue());
+
+        let appels = e.verrou.appels;
+        for _ in 0..5 {
+            assert_eq!(e.arbitrer(), Issue::RefuseDejaDit);
+        }
+        assert_eq!(
+            e.verrou.appels, appels,
+            "a ceded cable is never attempted again"
+        );
     }
 }
