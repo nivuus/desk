@@ -50,7 +50,7 @@ describe('deposer — the convergence point', () => {
         const vus: string[] = [];
         const deps: DepsTeleversement = {
             base: 'https://x',
-            jeton: 'J',
+            jetonFrais: async () => 'J',
             maintenant: () => 0,
             fetch: async (url, init) => {
                 vus.push(`${init?.method ?? 'GET'} ${url.replace('https://x', '')}`);
@@ -83,7 +83,7 @@ describe('deposer — the convergence point', () => {
     it('returns a service refusal WITHOUT throwing', async () => {
         const deps: DepsTeleversement = {
             base: 'https://x',
-            jeton: 'J',
+            jetonFrais: async () => 'J',
             maintenant: () => 0,
             fetch: async () => ({ ok: false, status: 413, json: async () => ({ refus: 'trop-gros' }) }),
         };

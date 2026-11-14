@@ -141,7 +141,10 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
 async function processOneFile(file: File): Promise<void> {
     dire('neutre', `Uploading ${file.name}…`);
     const resume = await deposer(file, {
-        ...deps,
+        base: deps.base,
+        fetch: deps.fetch,
+        // A provider, asked before each request: an upload outlives a token.
+        jetonFrais,
         maintenant: () => Date.now(),
         progression: (p) => {
             if (p.total > 0) {

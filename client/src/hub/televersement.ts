@@ -53,8 +53,13 @@ export interface Progression {
 export interface DepsTeleversement {
     /// The platform's origin, WITHOUT a trailing slash.
     base: string;
-    /// The bearer token, as `client/src/jeton.ts` returns it.
-    jeton: string;
+    /// Returns a FRESH bearer token (`jeton-frais.ts`), or `undefined` when
+    /// none can be obtained.
+    ///
+    /// 🔴 ASKED BEFORE EACH REQUEST, NEVER READ ONCE: an upload of a large
+    /// installer outlives an access token (ten minutes), and one string reused
+    /// for every chunk ended in refusals halfway through.
+    jetonFrais: () => Promise<string | undefined>;
     fetch: Fetch;
     /// The clock, in milliseconds. It PACES the progress, and that is its only
     /// use: without it, fingerprinting 800 MB would emit thousands of events.
@@ -66,7 +71,12 @@ export interface DepsTeleversement {
 }
 /* ── THE OUTCOMES ─────────────────────────────────────────────────────── */
 
-export type MotifLocal = 'fichier-different' | 'tranches-incoherentes' | 'etat-illisible' | 'interrompu';
+export type MotifLocal =
+    | 'fichier-different'
+    | 'tranches-incoherentes'
+    | 'etat-illisible'
+    | 'interrompu'
+    | 'session-expiree';
 export type Etape = 'creation' | 'etat' | 'tranche' | 'scellement';
 /// 🔴 THE SERVICE'S REASON IS A `string`, NOT A UNION, AND IT IS DELIBERATE.
 /// Its vocabulary belongs to it and lives in `plateforme/`, which `client/`
@@ -96,8 +106,12 @@ const OCTETS_LECTURE = 4 * 1024 * 1024;
 const PERIODE_PROGRESSION_MS = 250;
 /* ── THE SEQUENCE ──────────────────────────────────────────────────────── */
 
-function entetes(deps: DepsTeleversement, type?: string): Record<string, string> {
-    const en: Record<string, string> = { authorization: `Bearer ${deps.jeton}` };
+/// The headers of one request, with the token current at that moment —
+/// `undefined` when no fresh token can be obtained.
+async function entetes(deps: DepsTeleversement, type?: string): Promise<Record<string, string> | undefined> {
+    const jeton = await deps.jetonFrais();
+    if (jeton === undefined) return undefined;
+    const en: Record<string, string> = { authorization: `Bearer ${jeton}` };
     if (type !== undefined) en['content-type'] = type;
     return en;
 }
@@ -193,6 +207,7 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     let id = deps.reprise ?? '';
     const refuse = (refus: Refus): Issue => ({ etat: 'refus', refus, id: id === '' ? undefined : id });
     const nonLocal = (motif: MotifLocal, detail: string): Issue => refuse({ source: 'client', motif, detail });
+    const sansJeton = (avant: string): Issue => nonLocal('session-expiree', `no fresh access token before ${avant}`);
     const nonService = async (etape: Etape, r: ReponseHttp): Promise<Issue> =>
         refuse({ source: 'service', etape, statut: r.status, motif: await motifDuService(r) });
 
@@ -202,7 +217,9 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     let etat: Record<string, unknown> | undefined;
     if (deps.reprise !== undefined) {
         const url = `${deps.base}/televersement/${encodeURIComponent(id)}`;
-        const r = await appeler(deps, url, { method: 'GET', headers: entetes(deps) });
+        const en = await entetes(deps);
+        if (en === undefined) return sansJeton('the re-read');
+        const r = await appeler(deps, url, { method: 'GET', headers: en });
         if (r === null) return nonLocal('interrompu', 'during the re-read');
         if (!r.ok) return await nonService('etat', r);
         etat = (await r.json().catch(() => undefined)) as Record<string, unknown> | undefined;
@@ -235,9 +252,11 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
         chunkSize = etat.taille_tranche; // policy: allow-fr - wire key of the upload API
         presentesBrut = etat.tranches_presentes;
     } else {
+        const en = await entetes(deps, 'application/json');
+        if (en === undefined) return sansJeton('the creation');
         const r = await appeler(deps, `${deps.base}/televersement`, {
             method: 'POST',
-            headers: entetes(deps, 'application/json'),
+            headers: en,
             body: JSON.stringify({ nom: file.name, taille: size, sha256 }), // policy: allow-fr - wire key of the upload API
         });
         if (r === null) return nonLocal('interrompu', 'during the creation');
@@ -277,9 +296,11 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
         const debut = n * pas;
         const corps = new Uint8Array(await file.slice(debut, debut + attendu[n].octets).arrayBuffer());
         const url = `${deps.base}/televersement/${encodeURIComponent(id)}/tranche/${n}`;
+        const en = await entetes(deps, 'application/octet-stream');
+        if (en === undefined) return sansJeton(`chunk ${n}`);
         const r = await appeler(deps, url, {
             method: 'PUT',
-            headers: entetes(deps, 'application/octet-stream'),
+            headers: en,
             body: corps,
         });
         if (r === null) return nonLocal('interrompu', `during chunk ${n}`);
@@ -293,7 +314,9 @@ export async function televerser(file: File, deps: DepsTeleversement): Promise<I
     // diverges does not converge, and a retry loop would upload endlessly.
     emettre('scellement', size, size, true);
     const url = `${deps.base}/televersement/${encodeURIComponent(id)}/sceller`;
-    const r = await appeler(deps, url, { method: 'POST', headers: entetes(deps) });
+    const en = await entetes(deps);
+    if (en === undefined) return sansJeton('sealing');
+    const r = await appeler(deps, url, { method: 'POST', headers: en });
     if (r === null) return nonLocal('interrompu', 'during sealing');
     if (!r.ok) return await nonService('scellement', r);
     return { etat: 'scelle', id, size, sha256, deposees: aDeposer };
