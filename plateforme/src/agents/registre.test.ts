@@ -75,8 +75,8 @@ describe('RegistreAgents', () => {
 
         const premier = registre.lancer('v-1', 'meme-cle', 'd-1');
         const second = registre.lancer('v-1', 'meme-cle', 'd-2');
-        registre.resoudre('d-2', 'cible');
-        registre.resoudre('d-1', 'raccourci');
+        registre.resoudre('v-1', 'd-2', 'cible');
+        registre.resoudre('v-1', 'd-1', 'raccourci');
 
         expect(await premier).toBe('raccourci' satisfies IssueLancement);
         expect(await second).toBe('cible' satisfies IssueLancement);
@@ -95,7 +95,7 @@ describe('RegistreAgents', () => {
         vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
         const registre = new RegistreAgents();
 
-        expect(() => registre.resoudre('jamais-emise', 'echec')).not.toThrow();
+        expect(() => registre.resoudre('v-1', 'jamais-emise', 'echec')).not.toThrow();
         expect(traces.join(' | ')).toContain('jamais-emise');
     });
 

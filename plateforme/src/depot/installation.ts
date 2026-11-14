@@ -128,18 +128,23 @@ export async function lireEnAttentePourVm(
 /// RE-EMISSION. Without this move, the platform would replay the order at the next
 /// enrolment while the installer is already running — and the agent would have to
 /// defend itself alone, through its disk marker.
+///
+/// 🔴 `AND vm_id = ?` SCOPES THE WRITE TO THE VM THAT REPORTS: the caller passes
+/// the VM its socket's enrolment proved, so that an agent can only write the
+/// installations of its own VM.
 export async function avancer(
     p: Pilote,
+    vmId: string,
     id: string,
     avancement: { phase: string; octetsFaits: number; octetsTotal: number; ecouleMs: number },
     maintenant: number,
 ): Promise<void> {
     await p.executer(
         'UPDATE installation SET etat = ?, phase = ?, octets_faits = ?, octets_total = ?,'
-            + ' ecoule_ms = ?, maj_a = ? WHERE id = ? AND etat <> ?',
+            + ' ecoule_ms = ?, maj_a = ? WHERE id = ? AND vm_id = ? AND etat <> ?',
         [
             'en_cours', avancement.phase, avancement.octetsFaits, avancement.octetsTotal,
-            avancement.ecouleMs, maintenant, id, 'terminee',
+            avancement.ecouleMs, maintenant, id, vmId, 'terminee',
         ],
     );
 }
@@ -148,9 +153,10 @@ export async function avancer(
 /// stylistic precaution: the platform RE-EMITS, so an agent can report
 /// twice. Without this guard, a late progress would overwrite an outcome already
 /// set and a finished installation would become "in progress" again — that is,
-/// the re-emission would start over.
+/// the re-emission would start over. `AND vm_id = ?`: same scoping as `avancer`.
 export async function terminer(
     p: Pilote,
+    vmId: string,
     id: string,
     issue: {
         issue: string;
@@ -163,10 +169,10 @@ export async function terminer(
 ): Promise<void> {
     await p.executer(
         'UPDATE installation SET etat = ?, issue = ?, motif = ?, code_sortie = ?, journal = ?,'
-            + ' journal_tronque = ?, terminee_a = ?, maj_a = ? WHERE id = ? AND etat <> ?',
+            + ' journal_tronque = ?, terminee_a = ?, maj_a = ? WHERE id = ? AND vm_id = ? AND etat <> ?',
         [
             'terminee', issue.issue, issue.motif, issue.codeSortie, issue.journal,
-            issue.journalTronque ? 1 : 0, maintenant, maintenant, id, 'terminee',
+            issue.journalTronque ? 1 : 0, maintenant, maintenant, id, vmId, 'terminee',
         ],
     );
 }

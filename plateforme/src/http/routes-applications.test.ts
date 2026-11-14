@@ -95,7 +95,7 @@ function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAg
             const ordre = parseDepuisLaPlateforme(data);
             if (ordre.type !== 'lancer') return;
             // On the next loop turn, as a real socket would.
-            setTimeout(() => registre.resoudre(ordre.demande, issue), 0);
+            setTimeout(() => registre.resoudre('v-1', ordre.demande, issue), 0);
         },
         close() {},
     };
