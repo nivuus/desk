@@ -60,6 +60,7 @@ import { installThemeSelectorInDOM } from './design/selecteur-theme';
 import { clearPrefix, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
 import { destinationApresConnexion } from './destination';
+import { ADRESSES_ETRANGERES_AUTORISEES } from './politique-adresse';
 
 const params = new URLSearchParams(window.location.search);
 // The SAME convention as the signaling of `hub/page.ts` (`shell-page.ts` before
@@ -72,7 +73,9 @@ const params = new URLSearchParams(window.location.search);
 // `https://` on 443: an `http://…:8080` there would be mixed content, refused
 // by the browser, and nothing listens on 8080 from outside anyway.
 // The rule lives in `adresse-plateforme.ts`, which is PURE and tested.
-const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'));
+//
+// The address itself is computed below, once `show` can say why a
+// `?plateforme=` is refused.
 // Where to go once logged in. The parameter exists so that the screen
 // can send back to the page that required login, and not only to
 // the shell.
@@ -127,6 +130,22 @@ function show(texte: string, ton: Ton): void {
     message.classList.remove('message--succes', 'message--alerte', 'message--danger');
     const classe = CLASSE_DE_TON[ton];
     if (classe !== '') message.classList.add(classe);
+}
+
+// 🔴 A REFUSED `?plateforme=` STOPS THE PAGE ON SCREEN: the form stays hidden,
+// nothing is sent anywhere, and the refusal is rethrown so that the module
+// stops here — the same pattern as `main.ts` without a session.
+let plateformeUrl: string;
+try {
+    plateformeUrl = adressePlateforme(
+        window.location,
+        params.get('plateforme'),
+        ADRESSES_ETRANGERES_AUTORISEES,
+    );
+} catch (refus) {
+    formulaire.hidden = true;
+    show(refus instanceof Error ? refus.message : String(refus), 'danger');
+    throw refus;
 }
 
 /// What follows obtaining a token, whatever the path that obtained it.

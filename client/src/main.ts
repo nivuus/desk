@@ -16,6 +16,7 @@ import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
 import { adresseSignaling } from './adresse-plateforme';
+import { ADRESSES_ETRANGERES_AUTORISEES } from './politique-adresse';
 import { sessionIdFromParams } from './session-id';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -42,7 +43,15 @@ const statut = createStatus(statusElement, createTerminalScreenInDOM());
 // which is PURE and tested — no Node test can see a mixed content refusal.
 const params = new URLSearchParams(window.location.search);
 const sessionId = sessionIdFromParams(params);
-const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
+// A refused `?signaling=` stops the page with a terminal status, like a
+// missing session just below: no socket is opened, no token is sent.
+let signalingUrl: string;
+try {
+    signalingUrl = adresseSignaling(window.location, params.get('signaling'), ADRESSES_ETRANGERES_AUTORISEES);
+} catch (refus) {
+    statut.show(refus instanceof Error ? refus.message : String(refus), { terminal: true, ton: 'danger' });
+    throw refus;
+}
 
 // 🔴 WITHOUT A PARAMETER, THIS PAGE REFUSES AND STOPS THERE — it NO LONGER invents
 // a `demo` session (see `session-id.ts`: that vestige, found in PRODUCTION

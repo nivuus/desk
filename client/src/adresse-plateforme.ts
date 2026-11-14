@@ -39,13 +39,69 @@ export interface Emplacement {
     host: string;
 }
 
+/// An explicit address this build does not honour. Thrown, never replaced by
+/// the default: the caller shows the message, so that a refused parameter is
+/// visible instead of silently turning into another server.
+export class AdresseRefusee extends Error {
+    constructor(parametre: string, valeur: string, raison: string) {
+        super(`the "${parametre}" parameter is refused (${raison}): ${valeur}`);
+        this.name = 'AdresseRefusee';
+    }
+}
+
+/// The scheme an explicit address must carry to stay on the page's own
+/// origin: the page's scheme for HTTP, its WebSocket twin for signalling.
+function schemaAttendu(emplacement: Emplacement, famille: 'http' | 'ws'): string {
+    const securise = emplacement.protocol === 'https:';
+    if (famille === 'http') return securise ? 'https:' : 'http:';
+    return securise ? 'wss:' : 'ws:';
+}
+
+/// Checks an explicit address against the page's origin and returns it AS IS.
+///
+/// 🔴 THE BEARER TOKEN AND THE SESSION GO TO THIS ADDRESS, so in a production
+/// build it must designate the page's own origin: same `host` (hence same
+/// port, the URL parser drops a default port on both sides) and the scheme of
+/// the matching class (`https:`/`wss:` for an `https:` page, `http:`/`ws:`
+/// otherwise). `etrangereAutorisee` lifts the check; it is true only in a
+/// bench build (`politique-adresse.ts`), never in `npm run build`.
+function verifierExplicite(
+    emplacement: Emplacement,
+    parametre: string,
+    explicite: string,
+    famille: 'http' | 'ws',
+    etrangereAutorisee: boolean,
+): string {
+    if (etrangereAutorisee) return explicite;
+    let cible: URL;
+    try {
+        cible = new URL(explicite);
+    } catch {
+        throw new AdresseRefusee(parametre, explicite, 'not an absolute address');
+    }
+    const schema = schemaAttendu(emplacement, famille);
+    if (cible.protocol !== schema) {
+        throw new AdresseRefusee(parametre, explicite, `this page only accepts ${schema} here`);
+    }
+    if (cible.host !== emplacement.host) {
+        throw new AdresseRefusee(parametre, explicite, "it is not this page's origin");
+    }
+    return explicite;
+}
+
 /// The platform's HTTP address: `?plateforme=` if set, otherwise
 /// the page's origin.
+///
+/// `etrangereAutorisee` says whether an explicit value may name another
+/// origin; callers pass `ADRESSES_ETRANGERES_AUTORISEES`.
 export function adressePlateforme(
     emplacement: Emplacement,
-    explicite?: string | null,
+    explicite: string | null | undefined,
+    etrangereAutorisee: boolean,
 ): string {
-    if (explicite) return explicite;
+    if (explicite) {
+        return verifierExplicite(emplacement, 'plateforme', explicite, 'http', etrangereAutorisee);
+    }
     return `${emplacement.protocol === 'https:' ? 'https' : 'http'}://${emplacement.host}`;
 }
 
@@ -60,7 +116,8 @@ const CHEMIN_SIGNAL = '/signal';
 /// browser refuses it.
 export function adresseSignaling(
     emplacement: Emplacement,
-    explicite?: string | null,
+    explicite: string | null | undefined,
+    etrangereAutorisee: boolean,
 ): string {
     // ⚠️ AN EXPLICIT VALUE STAYS EXPLICIT, AND DOES NOT GET THE SUFFIX. It is the
     // contract of this parameter since P5: it replaces the WHOLE address, not
@@ -96,7 +153,16 @@ export function adresseSignaling(
     // `grep` above also catches the output `.log` and `.json` files, which are
     // READINGS and not drivers: the selection rule is "driver
     // sources", not "any occurrence".
-    if (explicite) return explicite;
+    //
+    // 🔴 THOSE DRIVERS NAME ANOTHER ORIGIN THAN THE PAGE (a platform on
+    // another port or host), and a production build now REFUSES that: the
+    // explicit value is honoured only when it designates the page's own origin
+    // (`verifierExplicite`). A bench that needs another origin runs the dev
+    // server or a build made with `vite build --mode banc`, where
+    // `ADRESSES_ETRANGERES_AUTORISEES` (`politique-adresse.ts`) is true.
+    if (explicite) {
+        return verifierExplicite(emplacement, 'signaling', explicite, 'ws', etrangereAutorisee);
+    }
     const schema = emplacement.protocol === 'https:' ? 'wss' : 'ws';
     return `${schema}://${emplacement.host}${CHEMIN_SIGNAL}`;
 }

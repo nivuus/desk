@@ -16,6 +16,7 @@
 import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
 import { installThemeSelectorInDOM } from '../design/selecteur-theme';
+import { ADRESSES_ETRANGERES_AUTORISEES } from '../politique-adresse';
 import { assurerAccesFrais, paireDeReponse } from '../jeton';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
@@ -37,7 +38,6 @@ const CLASSE_DE_TON: Record<Ton, string> = {
 };
 
 const params = new URLSearchParams(window.location.search);
-const base = adressePlateforme(window.location, params.get('plateforme'));
 
 const elMessage = document.getElementById('message') as HTMLDivElement;
 const elList = document.getElementById('applications') as HTMLUListElement;
@@ -50,6 +50,19 @@ if (elThemes !== null) installThemeSelectorInDOM(elThemes);
 function dire(ton: Ton, texte: string): void {
     elMessage.className = `${CLASSE_DE_TON[ton]} hub__message`;
     elMessage.textContent = texte;
+}
+
+// Both addresses are checked at load, after `dire` exists: a refused
+// `?plateforme=` or `?signaling=` is said on screen and stops the module before
+// any request carries the token.
+let base: string;
+let signalingUrl: string;
+try {
+    base = adressePlateforme(window.location, params.get('plateforme'), ADRESSES_ETRANGERES_AUTORISEES);
+    signalingUrl = adresseSignaling(window.location, params.get('signaling'), ADRESSES_ETRANGERES_AUTORISEES);
+} catch (refus) {
+    dire('danger', refus instanceof Error ? refus.message : String(refus));
+    throw refus;
 }
 
 // 🔴 `deps` CARRIES AN EMPTY TOKEN UNTIL `start()` (at the foot of the
@@ -351,7 +364,7 @@ async function start(): Promise<void> {
     // August 31st, 2026). The "My desktop" link and opening on clicking
     // "Launch" were the fixes of August 30th; they have no purpose any more.
     installerLeBureau({
-        signalingUrl: adresseSignaling(window.location, params.get('signaling')),
+        signalingUrl,
         // 🔴 **A PROVIDER, NEVER `acces`** (critical ① of the final
         // review): `ouvrirLaSession` only runs, for a follower, at the moment
         // of its PROMOTION — potentially hours later —, and an
