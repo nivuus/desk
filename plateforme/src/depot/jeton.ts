@@ -117,6 +117,32 @@ export async function revoquerFamille(
     return r.lignes;
 }
 
+/// Signing out: revokes the family of the presented token. Returns the number
+/// of live rows revoked — 0 for an unknown or already dead token, which the
+/// route does not tell apart (signing out is idempotent).
+export async function revoquerParClair(
+    p: Pilote,
+    clair: string,
+    maintenant: number,
+): Promise<number> {
+    const ligne = await lireParEmpreinte(p, empreinteDe(clair));
+    return ligne === undefined ? 0 : revoquerFamille(p, ligne.famille, maintenant);
+}
+
+/// Revokes EVERY live family of a user — what a password replacement must do,
+/// so that a session opened with the old password does not outlive it.
+export async function revokeAllFamiliesOf(
+    p: Pilote,
+    userId: string,
+    maintenant: number,
+): Promise<number> {
+    const r = await p.executer(
+        'UPDATE jeton_rafraichissement SET revoque_a = ? WHERE utilisateur_id = ? AND revoque_a IS NULL',
+        [maintenant, userId],
+    );
+    return r.lignes;
+}
+
 /// Rotates a token: revokes the presented one, issues a new one in the SAME
 /// family, all in ONE SINGLE transaction.
 ///

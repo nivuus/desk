@@ -11,7 +11,12 @@ import { analyserArguments } from './creer-utilisateur';
 describe('analyserArguments', () => {
     it('reads --email', () => {
         expect(analyserArguments(['--email', 'ada@exemple.test']))
-            .toEqual({ email: 'ada@exemple.test' });
+            .toEqual({ email: 'ada@exemple.test', remplacer: false });
+    });
+
+    it('reads --replace-password, which replaces an existing password', () => {
+        expect(analyserArguments(['--email', 'ada@exemple.test', '--replace-password']))
+            .toEqual({ email: 'ada@exemple.test', remplacer: true });
     });
 
     it('REFUSES --mot-de-passe on the command line, with its reason', () => {
