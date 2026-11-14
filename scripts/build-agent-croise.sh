@@ -38,7 +38,9 @@ if [ "${CIBLE_RUST}" = "x86_64-pc-windows-gnu" ] \
     exit 1
 fi
 
-cargo build --release --target "${CIBLE_RUST}" -p agent
+# --locked: build from the dependency versions of the tracked Cargo.lock, the
+# ones CI checked; cargo refuses instead of silently resolving newer ones.
+cargo build --locked --release --target "${CIBLE_RUST}" -p agent
 
 BINAIRE="target/${CIBLE_RUST}/release/agent.exe"
 [ -f "${BINAIRE}" ] || { echo "🔴 cargo succeeded but ${BINAIRE} is absent" >&2; exit 1; }

@@ -81,6 +81,37 @@ with tempfile.TemporaryDirectory() as tmp, \
     check("linker missing: it is named",
           "x86_64-w64-mingw32-gcc" in (r.stdout + r.stderr), True)
 
+# The binary shipped to the controlled machine must be built from the
+# dependency versions of the tracked Cargo.lock: `cargo build` must carry
+# `--locked`, which refuses to build if the lockfile would have to change.
+# Every tool is a FAKE here: rustup reports the target as installed, the
+# mingw compiler exists, and cargo only records its arguments then fails,
+# so nothing is compiled and nothing is written in the repository.
+with tempfile.TemporaryDirectory() as tmp, \
+     tempfile.TemporaryDirectory() as bac_a_sable:
+    for outil in ("grep", "mkdir", "cp", "stat", "dirname"):
+        os.symlink(shutil.which(outil), os.path.join(bac_a_sable, outil))
+    journal = pathlib.Path(bac_a_sable) / "cargo.args"
+    faux = {
+        "rustup": "#!/bin/sh\necho x86_64-pc-windows-gnu\n",
+        "x86_64-w64-mingw32-gcc": "#!/bin/sh\nexit 0\n",
+        "cargo": f"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{journal}'\nexit 3\n",
+    }
+    for nom, corps in faux.items():
+        chemin = pathlib.Path(bac_a_sable) / nom
+        chemin.write_text(corps, encoding="utf-8")
+        chemin.chmod(0o755)
+    env = dict(os.environ, PATH=bac_a_sable)
+    env.pop("CIBLE_RUST", None)
+    r = subprocess.run([BASH, str(SCRIPT), tmp],
+                       capture_output=True, text=True, env=env)
+    arguments = journal.read_text(encoding="utf-8").split() if journal.is_file() else []
+    check("cargo is reached with the fake tools", journal.is_file(), True)
+    check("cargo build carries --locked", "--locked" in arguments, True)
+    check("cargo builds the agent for the Windows target",
+          arguments[:1] + arguments[-2:], ["build", "-p", "agent"])
+    check("a failing cargo fails the script", r.returncode != 0, True)
+
 if failures:
     print(f"FAIL ({len(failures)})")
     for f in failures:
