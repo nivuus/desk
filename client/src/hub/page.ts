@@ -17,7 +17,7 @@ import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
 import { installThemeSelectorInDOM } from '../design/selecteur-theme';
 import { ADRESSES_ETRANGERES_AUTORISEES } from '../politique-adresse';
-import { assurerAccesFrais, paireDeReponse } from '../jeton';
+import { fournisseurDeJetonFrais } from '../jeton-frais';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
     lireIcone,
@@ -395,40 +395,17 @@ async function start(): Promise<void> {
 /// is stale: the load, each launch and each icon read
 /// go through here, without any timer to calibrate.
 async function jetonFrais(): Promise<string | undefined> {
-    const acces = await assurerAccesFrais(
-        window.localStorage,
-        base,
-        window.fetch.bind(window),
-        Date.now(),
-        async (corps) => {
-            // 🔴 **WRAPPED, WHERE `accesParPomerium` (`jeton.ts:175-186`)
-            // HAS ALWAYS BEEN**: this path had stayed WITHOUT A PRODUCTION
-            // CALLER until this task, hence never put to the test
-            // of an unreachable network. Without this `try/catch`, an exception
-            // (offline, DNS, CORS) would propagate uncaught through
-            // `assurerAccesFrais` → `jetonFrais()` → `start()` (unhandled rejection
-            // on `void start()`) or the click handler, and the
-            // page would stay stuck on "identifying…" instead of
-            // falling back to Pomerium (step ③ of `assurerAccesFrais`).
-            try {
-                const reponse = await fetch(`${base}/auth/rafraichir`, {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(corps),
-                });
-                if (!reponse.ok) return undefined;
-                // The shape is VALIDATED, never asserted: an `ok: true`
-                // but incomplete body would be written as is to the vault (`poser`, in
-                // `rafraichirSiNecessaire`) — the "poisoned vault" scenario
-                // `accesDeReponse` exists to prevent on `/auth/moi`.
-                return paireDeReponse(await reponse.json().catch(() => undefined));
-            } catch {
-                return undefined;
-            }
-        },
-    );
+    const acces = await fournisseurJeton();
     if (acces !== undefined) deps = { ...deps, jeton: acces };
     return acces;
 }
+
+/// The shared wiring (`jeton-frais.ts`), built once the address is known.
+const fournisseurJeton = fournisseurDeJetonFrais({
+    coffre: window.localStorage,
+    base,
+    fetch: window.fetch.bind(window),
+    maintenant: () => Date.now(),
+});
 
 void start();

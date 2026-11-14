@@ -21,7 +21,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession } from './webrtc';
-import { CLE_ACCES } from './jeton';
+import { CLE_ACCES, CLE_RAFRAICHISSEMENT } from './jeton';
+import { fournisseurDeJetonFrais } from './jeton-frais';
 
 // These two tests cover a behaviour promised by the spec (§10) but
 // never written: "the offer contains an `m=audio` in `recvonly`" and "two
@@ -204,6 +205,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         const sdp = derniereInstancePc!.localDescription!.sdp;
@@ -230,6 +232,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video,
+            jetonFrais: async () => 'j',
         });
 
         // `receiver` is always present on a real `RTCTrackEvent` — a
@@ -275,6 +278,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         // The ORDER is the crux of the test, not a detail of form: it is what
@@ -304,6 +308,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         // It is the sender of the THIRD transceiver, not of another: without this
@@ -321,6 +326,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         // What `micro.ts` will have done on click: `replaceTrack` sets the track
@@ -342,7 +348,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
     });
 });
 
-describe('the handshake carries the token (sub-block P2)', () => {
+describe('the handshake carries a FRESH token (sub-block P2)', () => {
     afterEach(() => {
         messagesEnvoyes = [];
         vi.unstubAllGlobals();
@@ -354,13 +360,18 @@ describe('the handshake carries the token (sub-block P2)', () => {
         vi.stubGlobal('MediaStream', FakeMediaStream);
     }
 
-    it('sends the token passed as an option', async () => {
+    /// A token whose `exp` is `expMs` (the browser checks no signature).
+    function jetonExpirantA(expMs: number): string {
+        return `x.${btoa(JSON.stringify({ exp: expMs })).replace(/=+$/, '')}.y`;
+    }
+
+    it('sends the token the provider returns', async () => {
         armerLesFactices();
         await connectSession({
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
-            jeton: 'jeton-de-l-appelant',
+            jetonFrais: async () => 'jeton-de-l-appelant',
         });
         expect(poigneeDeMain()).toEqual({
             role: 'client',
@@ -369,51 +380,82 @@ describe('the handshake carries the token (sub-block P2)', () => {
         });
     });
 
-    it('falls back to the browser store when no token is passed', async () => {
-        // E7: the field is OPTIONAL so that `main.ts` — modified by another
-        // project — does not have to move. The fallback is therefore the
-        // NOMINAL path, not an emergency case, and it must be exercised as such.
+    it('with an expired stored token and a valid refresh token, the hello carries a fresh token', async () => {
         armerLesFactices();
-        vi.stubGlobal('localStorage', {
-            getItem: (c: string) => (c === CLE_ACCES ? 'jeton-du-coffre' : null),
-            setItem: () => {},
-            removeItem: () => {},
-        });
+        const maintenant = 1_000_000;
+        const perime = jetonExpirantA(maintenant - 1);
+        const neuf = jetonExpirantA(maintenant + 600_000);
+        const coffre = new Map<string, string>([
+            [CLE_ACCES, perime],
+            [CLE_RAFRAICHISSEMENT, 'rafraichissement-valide'],
+        ]);
+        const vault = {
+            getItem: (c: string) => coffre.get(c) ?? null,
+            setItem: (c: string, v: string) => void coffre.set(c, v),
+            removeItem: (c: string) => void coffre.delete(c),
+        };
+        // The raw store is the global one too: a client that read it would
+        // send the expired token.
+        vi.stubGlobal('localStorage', vault);
+        const urls: string[] = [];
+        const fetch = async (url: string) => {
+            urls.push(url);
+            return {
+                ok: true,
+                json: async () => ({ acces: neuf, rafraichissement: 'rafraichissement-suivant' }),
+            };
+        };
+
         await connectSession({
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: fournisseurDeJetonFrais({
+                coffre: vault,
+                base: 'https://h',
+                fetch,
+                maintenant: () => maintenant,
+            }),
         });
-        expect(poigneeDeMain().jeton).toBe('jeton-du-coffre');
+
+        expect(urls).toEqual(['https://h/auth/rafraichir']);
+        expect(poigneeDeMain().jeton).toBe(neuf);
+    });
+
+    it('without a fresh token, no socket is opened and the failure says so', async () => {
+        armerLesFactices();
+        let sockets = 0;
+        vi.stubGlobal(
+            'WebSocket',
+            class extends FakeSignalingSocket {
+                constructor(url: string) {
+                    super(url);
+                    sockets += 1;
+                }
+            },
+        );
+        await expect(
+            connectSession({
+                signalingUrl: 'ws://signaling.invalid',
+                sessionId: 'test',
+                video: fauxVideo(),
+                jetonFrais: async () => undefined,
+            }),
+        ).rejects.toThrow(/session has expired/);
+        expect(sockets).toBe(0);
     });
 
     it("adds NO field other than `jeton`, and removes none", async () => {
         // 🔴 Spec §10.2: the field is ADDED, none is removed. A service
         // of sub-block P1 only reads `role` and `session` and ignores `jeton`,
-        // so this client stays compatible with it. Compatibility only goes
-        // in that direction, and it is this test that guards the first half.
+        // so this client stays compatible with it.
         armerLesFactices();
-        vi.stubGlobal('localStorage', {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-        });
         await connectSession({
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
-        // Without a token: the handshake from before P2, identical.
-        expect(Object.keys(poigneeDeMain()).sort()).toEqual(['role', 'session']);
-
-        messagesEnvoyes = [];
-        await connectSession({
-            signalingUrl: 'ws://signaling.invalid',
-            sessionId: 'test',
-            video: fauxVideo(),
-            jeton: 'j',
-        });
-        // With a token: EXACTLY one more field.
         expect(Object.keys(poigneeDeMain()).sort()).toEqual(['jeton', 'role', 'session']);
     });
 });

@@ -15,7 +15,8 @@ import { attacherAccentAuDOM } from './accent-dom';
 import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
-import { adresseSignaling } from './adresse-plateforme';
+import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
+import { fournisseurDeJetonFrais } from './jeton-frais';
 import { ADRESSES_ETRANGERES_AUTORISEES } from './politique-adresse';
 import { sessionIdFromParams } from './session-id';
 
@@ -46,8 +47,10 @@ const sessionId = sessionIdFromParams(params);
 // A refused `?signaling=` stops the page with a terminal status, like a
 // missing session just below: no socket is opened, no token is sent.
 let signalingUrl: string;
+let plateformeUrl: string;
 try {
     signalingUrl = adresseSignaling(window.location, params.get('signaling'), ADRESSES_ETRANGERES_AUTORISEES);
+    plateformeUrl = adressePlateforme(window.location, params.get('plateforme'), ADRESSES_ETRANGERES_AUTORISEES);
 } catch (refus) {
     statut.show(refus instanceof Error ? refus.message : String(refus), { terminal: true, ton: 'danger' });
     throw refus;
@@ -156,6 +159,13 @@ connectSession({
     signalingUrl,
     sessionId,
     video,
+    // The hub's wiring, shared: a stale token is refreshed before the hello.
+    jetonFrais: fournisseurDeJetonFrais({
+        coffre: window.localStorage,
+        base: plateformeUrl,
+        fetch: window.fetch.bind(window),
+        maintenant: () => Date.now(),
+    }),
     onStatus: (message) => statut.show(message),
     onControl(message) {
         if (message.type === 'ready') {

@@ -5,7 +5,6 @@
 // relayed by signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
-import { jetonAcces } from './jeton';
 
 export interface SessionOptions {
     signalingUrl: string;
@@ -13,16 +12,15 @@ export interface SessionOptions {
     video: HTMLVideoElement;
     onControl?: (message: AgentControl) => void;
     onStatus?: (message: string) => void;
-    /// The access token carried in the handshake (sub-block P2).
+    /// Returns a FRESH access token for the handshake (sub-block P2).
     ///
-    /// ⚠️ OPTIONAL ON PURPOSE: a required field would force modifying
-    /// `main.ts`, the only caller, which another workstream holds. Absent, the
-    /// token is read from the browser's vault (`jeton.ts`) — which leaves
-    /// ONE SINGLE reader of storage in the whole client, which is better in
-    /// itself. The cost is named: this module gains a dependency on a browser
-    /// global, whereas it already handles `WebSocket` and
-    /// `RTCPeerConnection`; `jeton.ts`, for its part, stays pure.
-    jeton?: string;
+    /// 🔴 MANDATORY, AND A PROVIDER RATHER THAN A STRING: the field was
+    /// optional, and its absence fell back to the RAW vault (`jetonAcces`).
+    /// An access token lives ten minutes and a window opens whenever the
+    /// remote machine announces one, so the session page presented an expired
+    /// token and was refused. Callers pass `jeton-frais.ts`'s provider, which
+    /// refreshes a stale token first; there is no path to the raw store left.
+    jetonFrais: () => Promise<string | undefined>;
 }
 
 export interface SessionHandle {
@@ -217,6 +215,12 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // The socket opens BEFORE the `RTCPeerConnection`, unlike milestone 1:
     // the ICE servers are only known once the configuration is received from
     // signaling, and `RTCPeerConnection` wants them at construction.
+    //
+    // The fresh token is obtained FIRST: without one, nothing is opened.
+    const jeton = await options.jetonFrais();
+    if (jeton === undefined) {
+        throw new Error('your session has expired — sign in again from the hub');
+    }
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
@@ -238,7 +242,6 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // the user's real entry point. A session page is ALWAYS opened by the shell, on
     // the same origin, so the token is already there. Redirecting from a
     // library would give it power over its callers' navigation.
-    const jeton = options.jeton ?? jetonAcces();
     socket.send(JSON.stringify({ role: 'client', session: options.sessionId, jeton }));
 
     // The ICE configuration arrives right after the role declaration, or
