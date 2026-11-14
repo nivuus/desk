@@ -58,7 +58,7 @@ const APP: ApplicationListee = {
     nom: 'Bloc-notes',
     icone: 'abc123',
     icone_url: URL_SIGNEE,
-    source_max: '256',
+    source_max: { pixels: 256 },
     accent: null,
     associations: [],
 };
@@ -74,7 +74,7 @@ describe('listerApplications', () => {
                             nom: 'Bloc-notes',
                             icone: 'abc123',
                             icone_url: URL_SIGNEE,
-                            source_max: '256',
+                            source_max: { pixels: 256 },
                             accent: ACCENT,
                             associations: ['.txt', '.log'],
                         },
@@ -102,6 +102,11 @@ describe('listerApplications', () => {
         //    "no association" from "absent field".
         expect(issue.value[1].accent).toBeNull();
         expect(issue.value[1].associations).toEqual([]);
+        // 🔴 `source_max` IS RELAYED IN THE PROTOCOL'S SHAPE — `{pixels}` or
+        //    `'non-mesuree'` (`proto/ts/plateforme-apps.ts::SourceMax`). A
+        //    measured size used to be coerced to `'non-mesuree'`.
+        expect(issue.value[0].source_max).toEqual({ pixels: 256 });
+        expect(issue.value[1].source_max).toBe('non-mesuree');
         // 🔴 THE HEADER IS THE HALF THAT MATTERS: the whole V1 route rests on
         //    the fact that the page reads AUTHENTICATED what the browser could not
         //    fetch by itself.
@@ -320,5 +325,22 @@ describe('the two fields of slice F', () => {
         expect(issue.etat).toBe('ok');
         if (issue.etat !== 'ok') return;
         expect(issue.value[0].associations).toEqual([]);
+    });
+
+    it('REFUSES an entry whose `source_max` is not of the protocol shape', async () => {
+        // The guard of `proto/ts/plateforme-gardes.ts::estSourceMax`, not a
+        // coercion: a size the client does not understand is not "not measured".
+        for (const source_max of ['256', { pixels: '256' }, undefined]) {
+            const { fetch } = faux({
+                'https://x/applications?vm=v': {
+                    json: async () => ({ applications: [{ id: 'u', nom: 'N', icone: null, source_max }] }),
+                },
+            });
+            const issue = await listerApplications('v', { base: 'https://x', jeton: 'J', fetch });
+            expect(issue).toEqual({
+                etat: 'refus',
+                refus: { source: 'client', motif: 'reponse-illisible', detail: 'an entry has no valid `source_max`' },
+            });
+        }
     });
 });
