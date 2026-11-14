@@ -59,6 +59,7 @@ import type { Ton } from './shell';
 import { installThemeSelectorInDOM } from './design/selecteur-theme';
 import { clearPrefix, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
+import { destinationApresConnexion } from './destination';
 
 const params = new URLSearchParams(window.location.search);
 // The SAME convention as the signaling of `hub/page.ts` (`shell-page.ts` before
@@ -79,7 +80,11 @@ const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'
 // 🔴 THE ROOT, NO LONGER `shell.html` (August 31st, 2026): the shell page became
 // a redirect, and sending back there would make whoever has just logged in
 // do a useless round trip.
-const suite = params.get('suite') ?? '/';
+//
+// The value is read from the address bar, so it is validated before it is
+// followed: `destination.ts` keeps a same-origin path and falls back to the
+// root for anything else.
+const suite = destinationApresConnexion(params.get('suite'), window.location.origin);
 
 const formulaire = document.querySelector<HTMLFormElement>('#connexion')!;
 const champEmail = document.querySelector<HTMLInputElement>('#email')!;
