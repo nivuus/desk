@@ -1,6 +1,6 @@
 // Parsing the messages the signalling relay sends to a client.
 //
-// Moved out of `webrtc.ts` so that the handshake guard (`poignee-de-main.ts`)
+// Moved out of `webrtc.ts` so that the handshake guard (`handshake-guard.ts`)
 // can read them without importing the session module that uses the guard.
 
 /// Subset of the signaling messages expected in answer to the offer,
@@ -26,7 +26,7 @@ export type SignalingMessage =
 /// the caller then silently ignores it, without crashing the wait
 /// (the awaited message — the SDP answer — may still arrive afterwards).
 // Used by `webrtc.ts` (`waitForAnswer`, `attendreConfigIce`) and by the
-// handshake guard (`poignee-de-main.ts`); tested in `webrtc.test.ts`.
+// handshake guard (`handshake-guard.ts`); tested in `webrtc.test.ts`.
 export function parseSignalingMessage(raw: string): SignalingMessage | undefined {
     let parsed: unknown;
     try {

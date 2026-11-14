@@ -383,7 +383,7 @@ describe('the access token, asked again before each request', () => {
         const issue = await televerser(file(), deps(s.fetch, { jetonFrais: async () => undefined }));
         expect(issue).toEqual({
             etat: 'refus',
-            refus: { source: 'client', motif: 'session-expiree', detail: 'no fresh access token before the creation' },
+            refus: { source: 'client', motif: 'session-expired', detail: 'no fresh access token before the creation' },
         });
         expect(s.appels).toEqual([]);
     });

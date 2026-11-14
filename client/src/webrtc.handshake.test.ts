@@ -7,11 +7,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession } from './webrtc';
-import { CLE_ACCES, CLE_RAFRAICHISSEMENT, sansVerrou } from './jeton';
-import { fournisseurDeJetonFrais } from './jeton-frais';
+import { CLE_ACCES, CLE_RAFRAICHISSEMENT, noLock } from './jeton';
+import { freshTokenProvider } from './fresh-token';
 import {
     armerLesFactices,
-    etat,
+    fakes,
     FakeMediaStream,
     FakeRtcPeerConnection,
     FakeSignalingSocket,
@@ -21,7 +21,7 @@ import {
 
 describe('the handshake carries a FRESH token (sub-block P2)', () => {
     afterEach(() => {
-        etat.messagesEnvoyes = [];
+        fakes.messagesEnvoyes = [];
         vi.unstubAllGlobals();
     });
 
@@ -76,12 +76,12 @@ describe('the handshake carries a FRESH token (sub-block P2)', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
-            jetonFrais: fournisseurDeJetonFrais({
-                coffre: vault,
+            jetonFrais: freshTokenProvider({
+                vault,
                 base: 'https://h',
                 fetch,
-                maintenant: () => maintenant,
-                verrou: sansVerrou,
+                now: () => maintenant,
+                lock: noLock,
             }),
         });
 
@@ -129,16 +129,16 @@ describe('the handshake carries a FRESH token (sub-block P2)', () => {
 
 describe('a refusal during the handshake', () => {
     afterEach(() => {
-        etat.messagesEnvoyes = [];
+        fakes.messagesEnvoyes = [];
         vi.useRealTimers();
         vi.unstubAllGlobals();
     });
 
     /// A relay that refuses the hello: it sends an `error` carrying its
     /// reason, then closes, and never sends the ICE configuration.
-    class RelaisQuiRefuse extends FakeSignalingSocket {
+    class RefusingRelay extends FakeSignalingSocket {
         override send(data: string): void {
-            etat.messagesEnvoyes.push(data);
+            fakes.messagesEnvoyes.push(data);
             if ((JSON.parse(data) as { role?: string }).role !== 'client') return;
             queueMicrotask(() => {
                 this.emit('message', {
@@ -153,7 +153,7 @@ describe('a refusal during the handshake', () => {
     it("rejects at once with the server's reason, before any configuration wait elapses", async () => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
-        vi.stubGlobal('WebSocket', RelaisQuiRefuse);
+        vi.stubGlobal('WebSocket', RefusingRelay);
         vi.stubGlobal('MediaStream', FakeMediaStream);
 
         const issue = connectSession({
@@ -173,6 +173,6 @@ describe('a refusal during the handshake', () => {
 
         expect(observee).toMatch(/token expired/);
         // The offer is never sent on a socket the server has closed.
-        expect(etat.messagesEnvoyes.some((m) => m.includes('"offer"'))).toBe(false);
+        expect(fakes.messagesEnvoyes.some((m) => m.includes('"offer"'))).toBe(false);
     });
 });

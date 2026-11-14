@@ -4,27 +4,27 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { attachGamepad } from './gamepad';
-import { creerFinDeSession } from './fin-de-session';
+import { createSessionEnd } from './session-end';
 import { connectSession } from './webrtc';
 import {
     armerLesFactices,
-    etat,
+    fakes,
     FakeSignalingSocket,
     fauxVideo,
     type FauxTransceiver,
 } from './webrtc.fixtures';
 
 afterEach(() => {
-    etat.derniereInstancePc = undefined;
-    etat.messagesEnvoyes = [];
-    etat.socketsFermees = 0;
-    etat.dernierSocket = undefined;
+    fakes.derniereInstancePc = undefined;
+    fakes.messagesEnvoyes = [];
+    fakes.closedSockets = 0;
+    fakes.lastSocket = undefined;
     vi.unstubAllGlobals();
 });
 
 /// A session established on the fake browser, its microphone ON, with the
 /// gamepad module attached on a fake timer — the 4 ms timer `main.ts` runs.
-async function sessionAvecMicroEtManette() {
+async function sessionWithMicAndGamepad() {
     armerLesFactices();
     const session = await connectSession({
         signalingUrl: 'ws://signaling.invalid',
@@ -52,53 +52,53 @@ async function sessionAvecMicroEtManette() {
         envoyer: () => {},
     });
     const affiches: [string, string][] = [];
-    const fin = creerFinDeSession((texte, ton) => void affiches.push([texte, ton]));
-    fin.ajouter(() => manette.detacher());
-    fin.surveiller(session);
-    return { session, micro, minuteur, affiches, pc: etat.derniereInstancePc! };
+    const sessionEnd = createSessionEnd((texte, ton) => void affiches.push([texte, ton]));
+    sessionEnd.add(() => manette.detacher());
+    sessionEnd.watch(session);
+    return { session, micro, minuteur, affiches, pc: fakes.derniereInstancePc! };
 }
 
 describe('the end of a session window', () => {
     it('a connection moving to the failed state tears everything down', async () => {
-        const { micro, minuteur, affiches, pc } = await sessionAvecMicroEtManette();
+        const { micro, minuteur, affiches, pc } = await sessionWithMicAndGamepad();
 
         pc.connectionState = 'failed';
         pc.emit('connectionstatechange', {});
 
         expect(micro.arrete).toBe(true);
         expect(minuteur.annules).toEqual([42]);
-        expect(pc.fermee).toBe(true);
-        expect(etat.socketsFermees).toBe(1);
+        expect(pc.closed).toBe(true);
+        expect(fakes.closedSockets).toBe(1);
         expect(affiches).toHaveLength(1);
         expect(affiches[0][1]).toBe('danger');
     });
 
     it('the peer leaving tears everything down', async () => {
-        const { micro, minuteur, affiches, pc } = await sessionAvecMicroEtManette();
-        const socket = etat.dernierSocket;
+        const { micro, minuteur, affiches, pc } = await sessionWithMicAndGamepad();
+        const socket = fakes.lastSocket;
         expect(socket).toBeDefined();
 
         socket!.emit('message', { data: JSON.stringify({ type: 'peer-gone' }) });
 
         expect(micro.arrete).toBe(true);
         expect(minuteur.annules).toEqual([42]);
-        expect(pc.fermee).toBe(true);
+        expect(pc.closed).toBe(true);
         expect(affiches).toHaveLength(1);
     });
 
     it('a transient disconnection does not end the session', async () => {
-        const { micro, affiches, pc } = await sessionAvecMicroEtManette();
+        const { micro, affiches, pc } = await sessionWithMicAndGamepad();
 
         pc.connectionState = 'disconnected';
         pc.emit('connectionstatechange', {});
 
         expect(micro.arrete).toBe(false);
-        expect(pc.fermee).toBe(false);
+        expect(pc.closed).toBe(false);
         expect(affiches).toEqual([]);
     });
 
     it('ends once, whatever ends it first', async () => {
-        const { minuteur, affiches, pc } = await sessionAvecMicroEtManette();
+        const { minuteur, affiches, pc } = await sessionWithMicAndGamepad();
 
         pc.connectionState = 'failed';
         pc.emit('connectionstatechange', {});
@@ -115,7 +115,7 @@ describe('a handshake that fails after the connection is created', () => {
     it('closes the connection and the socket', async () => {
         armerLesFactices();
         // A relay that refuses the OFFER: the connection exists by then.
-        class RelaisQuiRefuseLOffre extends FakeSignalingSocket {
+        class OfferRefusingRelay extends FakeSignalingSocket {
             override send(data: string): void {
                 const message = JSON.parse(data) as { type?: string; role?: string };
                 if (message.role === 'client') {
@@ -130,7 +130,7 @@ describe('a handshake that fails after the connection is created', () => {
                 }
             }
         }
-        vi.stubGlobal('WebSocket', RelaisQuiRefuseLOffre);
+        vi.stubGlobal('WebSocket', OfferRefusingRelay);
 
         await expect(
             connectSession({
@@ -141,7 +141,7 @@ describe('a handshake that fails after the connection is created', () => {
             }),
         ).rejects.toThrow(/no agent/);
 
-        expect(etat.derniereInstancePc!.fermee).toBe(true);
-        expect(etat.socketsFermees).toBe(1);
+        expect(fakes.derniereInstancePc!.closed).toBe(true);
+        expect(fakes.closedSockets).toBe(1);
     });
 });

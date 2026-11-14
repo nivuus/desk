@@ -59,8 +59,8 @@ import type { Ton } from './shell';
 import { installThemeSelectorInDOM } from './design/selecteur-theme';
 import { clearPrefix, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
-import { destinationApresConnexion } from './destination';
-import { ADRESSES_ETRANGERES_AUTORISEES } from './politique-adresse';
+import { postSignInDestination } from './destination';
+import { FOREIGN_ADDRESSES_ALLOWED } from './address-policy';
 
 const params = new URLSearchParams(window.location.search);
 // The SAME convention as the signaling of `hub/page.ts` (`shell-page.ts` before
@@ -87,7 +87,7 @@ const params = new URLSearchParams(window.location.search);
 // The value is read from the address bar, so it is validated before it is
 // followed: `destination.ts` keeps a same-origin path and falls back to the
 // root for anything else.
-const suite = destinationApresConnexion(params.get('suite'), window.location.origin);
+const suite = postSignInDestination(params.get('suite'), window.location.origin);
 
 const formulaire = document.querySelector<HTMLFormElement>('#connexion')!;
 const champEmail = document.querySelector<HTMLInputElement>('#email')!;
@@ -140,12 +140,12 @@ try {
     plateformeUrl = adressePlateforme(
         window.location,
         params.get('plateforme'),
-        ADRESSES_ETRANGERES_AUTORISEES,
+        FOREIGN_ADDRESSES_ALLOWED,
     );
-} catch (refus) {
+} catch (refusal) {
     formulaire.hidden = true;
-    show(refus instanceof Error ? refus.message : String(refus), 'danger');
-    throw refus;
+    show(refusal instanceof Error ? refusal.message : String(refusal), 'danger');
+    throw refusal;
 }
 
 /// What follows obtaining a token, whatever the path that obtained it.

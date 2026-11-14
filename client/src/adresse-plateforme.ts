@@ -42,19 +42,19 @@ export interface Emplacement {
 /// An explicit address this build does not honour. Thrown, never replaced by
 /// the default: the caller shows the message, so that a refused parameter is
 /// visible instead of silently turning into another server.
-export class AdresseRefusee extends Error {
-    constructor(parametre: string, valeur: string, raison: string) {
-        super(`the "${parametre}" parameter is refused (${raison}): ${valeur}`);
-        this.name = 'AdresseRefusee';
+export class RefusedAddressError extends Error {
+    constructor(parameter: string, value: string, reason: string) {
+        super(`the "${parameter}" parameter is refused (${reason}): ${value}`);
+        this.name = 'RefusedAddressError';
     }
 }
 
 /// The scheme an explicit address must carry to stay on the page's own
 /// origin: the page's scheme for HTTP, its WebSocket twin for signalling.
-function schemaAttendu(emplacement: Emplacement, famille: 'http' | 'ws'): string {
-    const securise = emplacement.protocol === 'https:';
-    if (famille === 'http') return securise ? 'https:' : 'http:';
-    return securise ? 'wss:' : 'ws:';
+function expectedScheme(emplacement: Emplacement, family: 'http' | 'ws'): string {
+    const secure = emplacement.protocol === 'https:';
+    if (family === 'http') return secure ? 'https:' : 'http:';
+    return secure ? 'wss:' : 'ws:';
 }
 
 /// Checks an explicit address against the page's origin and returns it AS IS.
@@ -63,28 +63,28 @@ function schemaAttendu(emplacement: Emplacement, famille: 'http' | 'ws'): string
 /// build it must designate the page's own origin: same `host` (hence same
 /// port, the URL parser drops a default port on both sides) and the scheme of
 /// the matching class (`https:`/`wss:` for an `https:` page, `http:`/`ws:`
-/// otherwise). `etrangereAutorisee` lifts the check; it is true only in a
-/// bench build (`politique-adresse.ts`), never in `npm run build`.
-function verifierExplicite(
+/// otherwise). `foreignAllowed` lifts the check; it is true only in a
+/// bench build (`address-policy.ts`), never in `npm run build`.
+function checkExplicitAddress(
     emplacement: Emplacement,
-    parametre: string,
+    parameter: string,
     explicite: string,
-    famille: 'http' | 'ws',
-    etrangereAutorisee: boolean,
+    family: 'http' | 'ws',
+    foreignAllowed: boolean,
 ): string {
-    if (etrangereAutorisee) return explicite;
-    let cible: URL;
+    if (foreignAllowed) return explicite;
+    let target: URL;
     try {
-        cible = new URL(explicite);
+        target = new URL(explicite);
     } catch {
-        throw new AdresseRefusee(parametre, explicite, 'not an absolute address');
+        throw new RefusedAddressError(parameter, explicite, 'not an absolute address');
     }
-    const schema = schemaAttendu(emplacement, famille);
-    if (cible.protocol !== schema) {
-        throw new AdresseRefusee(parametre, explicite, `this page only accepts ${schema} here`);
+    const scheme = expectedScheme(emplacement, family);
+    if (target.protocol !== scheme) {
+        throw new RefusedAddressError(parameter, explicite, `this page only accepts ${scheme} here`);
     }
-    if (cible.host !== emplacement.host) {
-        throw new AdresseRefusee(parametre, explicite, "it is not this page's origin");
+    if (target.host !== emplacement.host) {
+        throw new RefusedAddressError(parameter, explicite, "it is not this page's origin");
     }
     return explicite;
 }
@@ -92,15 +92,15 @@ function verifierExplicite(
 /// The platform's HTTP address: `?plateforme=` if set, otherwise
 /// the page's origin.
 ///
-/// `etrangereAutorisee` says whether an explicit value may name another
-/// origin; callers pass `ADRESSES_ETRANGERES_AUTORISEES`.
+/// `foreignAllowed` says whether an explicit value may name another
+/// origin; callers pass `FOREIGN_ADDRESSES_ALLOWED`.
 export function adressePlateforme(
     emplacement: Emplacement,
     explicite: string | null | undefined,
-    etrangereAutorisee: boolean,
+    foreignAllowed: boolean,
 ): string {
     if (explicite) {
-        return verifierExplicite(emplacement, 'plateforme', explicite, 'http', etrangereAutorisee);
+        return checkExplicitAddress(emplacement, 'plateforme', explicite, 'http', foreignAllowed);
     }
     return `${emplacement.protocol === 'https:' ? 'https' : 'http'}://${emplacement.host}`;
 }
@@ -117,7 +117,7 @@ const CHEMIN_SIGNAL = '/signal';
 export function adresseSignaling(
     emplacement: Emplacement,
     explicite: string | null | undefined,
-    etrangereAutorisee: boolean,
+    foreignAllowed: boolean,
 ): string {
     // ⚠️ AN EXPLICIT VALUE STAYS EXPLICIT, AND DOES NOT GET THE SUFFIX. It is the
     // contract of this parameter since P5: it replaces the WHOLE address, not
@@ -157,11 +157,11 @@ export function adresseSignaling(
     // 🔴 THOSE DRIVERS NAME ANOTHER ORIGIN THAN THE PAGE (a platform on
     // another port or host), and a production build now REFUSES that: the
     // explicit value is honoured only when it designates the page's own origin
-    // (`verifierExplicite`). A bench that needs another origin runs the dev
+    // (`checkExplicitAddress`). A bench that needs another origin runs the dev
     // server or a build made with `vite build --mode banc`, where
-    // `ADRESSES_ETRANGERES_AUTORISEES` (`politique-adresse.ts`) is true.
+    // `FOREIGN_ADDRESSES_ALLOWED` (`address-policy.ts`) is true.
     if (explicite) {
-        return verifierExplicite(emplacement, 'signaling', explicite, 'ws', etrangereAutorisee);
+        return checkExplicitAddress(emplacement, 'signaling', explicite, 'ws', foreignAllowed);
     }
     const schema = emplacement.protocol === 'https:' ? 'wss' : 'ws';
     return `${schema}://${emplacement.host}${CHEMIN_SIGNAL}`;

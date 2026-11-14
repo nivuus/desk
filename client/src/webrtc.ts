@@ -5,8 +5,8 @@
 // relayed by signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
-import { parseSignalingMessage } from './signalisation';
-import { garderLaPoigneeDeMain, type GardePoigneeDeMain } from './poignee-de-main';
+import { parseSignalingMessage } from './signaling-message';
+import { guardHandshake, type HandshakeGuard } from './handshake-guard';
 
 export interface SessionOptions {
     signalingUrl: string;
@@ -20,7 +20,7 @@ export interface SessionOptions {
     /// optional, and its absence fell back to the RAW vault (`jetonAcces`).
     /// An access token lives ten minutes and a window opens whenever the
     /// remote machine announces one, so the session page presented an expired
-    /// token and was refused. Callers pass `jeton-frais.ts`'s provider, which
+    /// token and was refused. Callers pass `fresh-token.ts`'s provider, which
     /// refreshes a stale token first; there is no path to the raw store left.
     jetonFrais: () => Promise<string | undefined>;
 }
@@ -39,8 +39,8 @@ export interface SessionHandle {
     /// that is, exactly what this repository has already paid for on DXGI outputs.
     micSender: RTCRtpSender;
     /// Registers a callback for the relay saying, after setup, that the agent
-    /// left (`peer-gone`). `fin-de-session.ts` ends the window on it.
-    surPairParti(rappel: () => void): void;
+    /// left (`peer-gone`). `session-end.ts` ends the window on it.
+    onPeerGone(callback: () => void): void;
     close(): void;
 }
 
@@ -51,9 +51,9 @@ export interface SessionHandle {
 // resolve and the user would stay stuck indefinitely.
 const ANSWER_TIMEOUT_MS = 15_000;
 
-// The signalling message parser lives in `signalisation.ts`, shared with the
-// handshake guard (`poignee-de-main.ts`); re-exported for its existing callers.
-export { parseSignalingMessage } from './signalisation';
+// The signalling message parser lives in `signaling-message.ts`, shared with the
+// handshake guard (`handshake-guard.ts`); re-exported for its existing callers.
+export { parseSignalingMessage } from './signaling-message';
 
 /// Waits for the agent's answer SDP, relayed by the signaling socket.
 /// Rejects if: an error or "peer-gone" message is received, the socket
@@ -196,30 +196,30 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // 🔴 THE GUARD IS ATTACHED RIGHT AFTER `open`, before the hello: a refusal
     // the relay sends in answer to it, then its closing, must reach the user
     // with the relay's reason, whatever wait the handshake is in
-    // (`poignee-de-main.ts`).
-    const garde = garderLaPoigneeDeMain(socket);
+    // (`handshake-guard.ts`).
+    const guard = guardHandshake(socket);
     // 🔴 WHAT A FAILED HANDSHAKE HAS BUILT IS CLOSED, NEVER LEFT BEHIND: each
     // failed connect used to leak its peer connection and its socket.
-    const construits: { pc?: RTCPeerConnection } = {};
+    const built: { pc?: RTCPeerConnection } = {};
     try {
-        return await etablirLaSession(options, socket, garde, jeton, construits);
-    } catch (echec) {
-        construits.pc?.close();
+        return await establishSession(options, socket, guard, jeton, built);
+    } catch (failure) {
+        built.pc?.close();
         socket.close();
-        throw echec;
+        throw failure;
     } finally {
-        garde.liberer();
+        guard.release();
     }
 }
 
 /// The handshake proper, once the socket is open: hello, ICE configuration,
-/// offer, answer. Every wait races against `garde`.
-async function etablirLaSession(
+/// offer, answer. Every wait races against `guard`.
+async function establishSession(
     options: SessionOptions,
     socket: WebSocket,
-    garde: GardePoigneeDeMain,
+    guard: HandshakeGuard,
     jeton: string,
-    construits: { pc?: RTCPeerConnection },
+    built: { pc?: RTCPeerConnection },
 ): Promise<SessionHandle> {
     const status = options.onStatus ?? (() => {});
     // 🔴 THE `jeton` FIELD IS ADDED, NONE IS REMOVED — spec §10.2. A
@@ -242,9 +242,9 @@ async function etablirLaSession(
     // never if no relay is deployed. We wait for it briefly rather than
     // blocking: a session on a local network must keep being established
     // without a relay, exactly as before this workstream.
-    const iceServers = await garde.course(attendreConfigIce(socket, 2000));
+    const iceServers = await guard.race(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
-    construits.pc = pc;
+    built.pc = pc;
 
     pc.addTransceiver('video', { direction: 'recvonly' });
     // The browser is the offerer: it is the one that must declare the audio
@@ -318,26 +318,26 @@ async function etablirLaSession(
         status(`connection: ${pc.connectionState}`);
     });
 
-    const offer = await garde.course(pc.createOffer());
-    await garde.course(pc.setLocalDescription(offer));
-    await garde.course(waitForIceGathering(pc));
+    const offer = await guard.race(pc.createOffer());
+    await guard.race(pc.setLocalDescription(offer));
+    await guard.race(waitForIceGathering(pc));
 
     // The socket's state is checked BEFORE the offer: sending on a socket the
     // relay has closed would only turn its refusal into a fifteen-second wait.
-    garde.avantEnvoi();
+    guard.beforeSend();
     status('offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
-    const answerSdp = await garde.course(waitForAnswer(socket));
-    await garde.course(pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }));
+    const answerSdp = await guard.race(waitForAnswer(socket));
+    await guard.race(pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }));
     status('answer received');
 
     // After setup the relay still speaks on this socket: `peer-gone` says the
     // agent left, and nothing else would tell the page.
-    const surPairParti: (() => void)[] = [];
+    const peerGoneCallbacks: (() => void)[] = [];
     socket.addEventListener('message', (event: MessageEvent) => {
         if (parseSignalingMessage(String(event.data))?.type !== 'peer-gone') return;
-        for (const rappel of surPairParti) rappel();
+        for (const callback of peerGoneCallbacks) callback();
     });
 
     return {
@@ -345,8 +345,8 @@ async function etablirLaSession(
         inputChannel,
         controlChannel,
         micSender: micTransceiver.sender,
-        surPairParti(rappel) {
-            surPairParti.push(rappel);
+        onPeerGone(callback) {
+            peerGoneCallbacks.push(callback);
         },
         close() {
             // ⚠️ SWITCHING OFF MUST BE REAL (spec §9). `pc.close()` DOES NOT STOP

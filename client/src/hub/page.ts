@@ -16,8 +16,8 @@
 import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
 import { installThemeSelectorInDOM } from '../design/selecteur-theme';
-import { ADRESSES_ETRANGERES_AUTORISEES } from '../politique-adresse';
-import { fournisseurDeJetonFrais, verrouDuNavigateur } from '../jeton-frais';
+import { FOREIGN_ADDRESSES_ALLOWED } from '../address-policy';
+import { freshTokenProvider, browserLock } from '../fresh-token';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
     lireIcone,
@@ -58,11 +58,11 @@ function dire(ton: Ton, texte: string): void {
 let base: string;
 let signalingUrl: string;
 try {
-    base = adressePlateforme(window.location, params.get('plateforme'), ADRESSES_ETRANGERES_AUTORISEES);
-    signalingUrl = adresseSignaling(window.location, params.get('signaling'), ADRESSES_ETRANGERES_AUTORISEES);
-} catch (refus) {
-    dire('danger', refus instanceof Error ? refus.message : String(refus));
-    throw refus;
+    base = adressePlateforme(window.location, params.get('plateforme'), FOREIGN_ADDRESSES_ALLOWED);
+    signalingUrl = adresseSignaling(window.location, params.get('signaling'), FOREIGN_ADDRESSES_ALLOWED);
+} catch (refusal) {
+    dire('danger', refusal instanceof Error ? refusal.message : String(refusal));
+    throw refusal;
 }
 
 // 🔴 `deps` CARRIES AN EMPTY TOKEN UNTIL `start()` (at the foot of the
@@ -398,18 +398,18 @@ async function start(): Promise<void> {
 /// is stale: the load, each launch and each icon read
 /// go through here, without any timer to calibrate.
 async function jetonFrais(): Promise<string | undefined> {
-    const acces = await fournisseurJeton();
+    const acces = await tokenProvider();
     if (acces !== undefined) deps = { ...deps, jeton: acces };
     return acces;
 }
 
-/// The shared wiring (`jeton-frais.ts`), built once the address is known.
-const fournisseurJeton = fournisseurDeJetonFrais({
-    coffre: window.localStorage,
+/// The shared wiring (`fresh-token.ts`), built once the address is known.
+const tokenProvider = freshTokenProvider({
+    vault: window.localStorage,
     base,
     fetch: window.fetch.bind(window),
-    maintenant: () => Date.now(),
-    verrou: verrouDuNavigateur(),
+    now: () => Date.now(),
+    lock: browserLock(),
 });
 
 void start();

@@ -31,7 +31,7 @@ export interface CibleClavier {
 /// What this module needs to know that the page lost the keyboard and the
 /// mouse: `blur` (from `window`) and `visibilitychange` with `hidden` (from
 /// `document`). `main.ts` unites the two sources, like `attachVisibilite`.
-export interface CiblePage {
+export interface PageTarget {
     readonly hidden: boolean;
     addEventListener(nom: 'blur' | 'visibilitychange', rappel: () => void): void;
     removeEventListener(nom: 'blur' | 'visibilitychange', rappel: () => void): void;
@@ -43,7 +43,7 @@ export interface InputOptions {
     /// The source of keyboard events — `window`, in production.
     clavier: CibleClavier;
     /// Where the loss of focus and visibility is read.
-    page: CiblePage;
+    page: PageTarget;
     /// Has the agent announced `Capabilities.clipboard`?
     ///
     /// 🔴 **A CLOSURE, never a boolean captured at attach time**, and it
@@ -125,52 +125,52 @@ export function attachInput({
     // the page loses focus, becomes hidden, or loses its pointer would stay
     // pressed on the remote machine — its `keyup`/`pointerup` goes to another
     // window, or never fires. On each of those losses, a release is sent for
-    // everything still held (`relacherTout`).
-    const touchesTenues = new Map<string, { scancode: number; extended: boolean }>();
-    const boutonsTenus = new Set<MouseButtonCode>();
+    // everything still held (`releaseAll`).
+    const heldKeys = new Map<string, { scancode: number; extended: boolean }>();
+    const heldButtons = new Set<MouseButtonCode>();
     // The last position sent with a button, for releases that carry none.
-    let derniere: [number, number] = [0, 0];
+    let lastPosition: [number, number] = [0, 0];
 
-    const relacherBoutons = (x: number, y: number): void => {
-        for (const bouton of boutonsTenus) send(encodeMouseButton(bouton, false, x, y));
-        boutonsTenus.clear();
+    const releaseButtons = (x: number, y: number): void => {
+        for (const button of heldButtons) send(encodeMouseButton(button, false, x, y));
+        heldButtons.clear();
     };
 
-    const relacherTout = (): void => {
-        relacherBoutons(...derniere);
-        for (const { scancode, extended } of touchesTenues.values()) {
+    const releaseAll = (): void => {
+        releaseButtons(...lastPosition);
+        for (const { scancode, extended } of heldKeys.values()) {
             send(encodeKey(scancode, false, extended));
         }
-        touchesTenues.clear();
+        heldKeys.clear();
     };
 
     const onPointerDown = (event: PointerEvent): void => {
-        const bouton = BUTTON_MAP[event.button];
+        const button = BUTTON_MAP[event.button];
         // 🔴 A BUTTON THE PROTOCOL DOES NOT MAP IS NOT INJECTED. It fell back to
         // `0`, so the back and forward buttons (3 and 4) clicked LEFT on the
         // remote machine. Its default action — browser history navigation —
         // is prevented too: on the session surface it would leave the session.
-        if (bouton === undefined) {
+        if (button === undefined) {
             event.preventDefault();
             return;
         }
         video.setPointerCapture(event.pointerId);
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        derniere = [x, y];
-        boutonsTenus.add(bouton);
-        send(encodeMouseButton(bouton, true, x, y));
+        lastPosition = [x, y];
+        heldButtons.add(button);
+        send(encodeMouseButton(button, true, x, y));
     };
 
     const onPointerUp = (event: PointerEvent): void => {
-        const bouton = BUTTON_MAP[event.button];
-        if (bouton === undefined) {
+        const button = BUTTON_MAP[event.button];
+        if (button === undefined) {
             event.preventDefault();
             return;
         }
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        derniere = [x, y];
-        boutonsTenus.delete(bouton);
-        send(encodeMouseButton(bouton, false, x, y));
+        lastPosition = [x, y];
+        heldButtons.delete(button);
+        send(encodeMouseButton(button, false, x, y));
     };
 
     // A cancelled pointer, or a capture lost while a button is held (the
@@ -178,12 +178,12 @@ export function attachInput({
     // held any more and nothing is sent).
     const onPointerLost = (event: PointerEvent): void => {
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        relacherBoutons(x, y);
+        releaseButtons(x, y);
     };
 
-    const onBlur = (): void => relacherTout();
-    const onVisibilite = (): void => {
-        if (page.hidden) relacherTout();
+    const onBlur = (): void => releaseAll();
+    const onVisibilityChange = (): void => {
+        if (page.hidden) releaseAll();
     };
 
     const onWheel = (event: WheelEvent): void => {
@@ -220,7 +220,7 @@ export function attachInput({
         event.preventDefault();
         const mapped = SCANCODES[event.code];
         if (!mapped) return;
-        touchesTenues.set(event.code, mapped);
+        heldKeys.set(event.code, mapped);
         send(encodeKey(mapped.scancode, true, mapped.extended));
     };
 
@@ -237,7 +237,7 @@ export function attachInput({
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         const mapped = SCANCODES[event.code];
         if (!mapped) return;
-        touchesTenues.delete(event.code);
+        heldKeys.delete(event.code);
         send(encodeKey(mapped.scancode, false, mapped.extended));
     };
 
@@ -251,7 +251,7 @@ export function attachInput({
     clavier.addEventListener('keydown', onKeyDown);
     clavier.addEventListener('keyup', onKeyUp);
     page.addEventListener('blur', onBlur);
-    page.addEventListener('visibilitychange', onVisibilite);
+    page.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
         video.removeEventListener('pointermove', onPointerMove);
@@ -264,6 +264,6 @@ export function attachInput({
         clavier.removeEventListener('keydown', onKeyDown);
         clavier.removeEventListener('keyup', onKeyUp);
         page.removeEventListener('blur', onBlur);
-        page.removeEventListener('visibilitychange', onVisibilite);
+        page.removeEventListener('visibilitychange', onVisibilityChange);
     };
 }

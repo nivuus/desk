@@ -14,20 +14,20 @@
 // opaque `null`) are all judged exactly as they would be followed.
 
 /// The root, where the sign-in page goes when nothing valid is named.
-const RACINE = '/';
+const ROOT = '/';
 
 /// The post-sign-in destination: a same-origin path (path, query and
-/// fragment) resolved from `valeur`, or the root for anything else —
+/// fragment) resolved from `value`, or the root for anything else —
 /// absent, empty, unparsable, or on another origin.
-export function destinationApresConnexion(valeur: string | null, origine: string): string {
-    if (valeur === null || valeur === '') return RACINE;
-    let cible: URL;
+export function postSignInDestination(value: string | null, origin: string): string {
+    if (value === null || value === '') return ROOT;
+    let target: URL;
     try {
-        cible = new URL(valeur, origine);
+        target = new URL(value, origin);
     } catch {
         // Unparsable against a valid base: not a destination.
-        return RACINE;
+        return ROOT;
     }
-    if (cible.origin !== new URL(origine).origin) return RACINE;
-    return `${cible.pathname}${cible.search}${cible.hash}`;
+    if (target.origin !== new URL(origin).origin) return ROOT;
+    return `${target.pathname}${target.search}${target.hash}`;
 }

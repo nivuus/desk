@@ -5,7 +5,7 @@
 // failing or to the peer leaving after setup: the microphone kept capturing,
 // the gamepad's 4 ms timer kept running, the page kept a dead connection, and
 // nothing told the user. Every way a session can end now goes through
-// `terminer`, which runs once: it calls every registered clean-up (the
+// `end`, which runs once: it calls every registered clean-up (the
 // modules `main.ts` attached), closes the session — which stops the
 // microphone's track, `webrtc.ts::close` — and shows a terminal status.
 //
@@ -19,62 +19,62 @@
 import type { TonTerminal } from './ecran-terminal';
 
 /// What the routine needs from an established session (`SessionHandle`).
-export interface SessionSurveillee {
+export interface WatchedSession {
     pc: {
         readonly connectionState: RTCPeerConnectionState;
         addEventListener(type: 'connectionstatechange', cb: () => void): void;
     };
     /// Registers a callback for the relay saying the agent left.
-    surPairParti(rappel: () => void): void;
+    onPeerGone(callback: () => void): void;
     close(): void;
 }
 
-export interface FinDeSession {
+export interface SessionEnd {
     /// Registers a clean-up to run at the end, in registration order.
-    ajouter(nettoyage: () => void): void;
+    add(cleanup: () => void): void;
     /// Ends the session when its connection fails or closes, or its peer leaves.
-    surveiller(session: SessionSurveillee): void;
+    watch(session: WatchedSession): void;
     /// Ends the session now. Runs once; later calls do nothing.
-    terminer(texte: string, ton: TonTerminal): void;
+    end(text: string, ton: TonTerminal): void;
 }
 
 /// `failed` and `closed` are final states of a peer connection; `disconnected`
 /// is transient — ICE may recover from it on its own — and does not end the
 /// session.
-const ETATS_FINAUX: readonly RTCPeerConnectionState[] = ['failed', 'closed'];
+const FINAL_STATES: readonly RTCPeerConnectionState[] = ['failed', 'closed'];
 
-export function creerFinDeSession(afficher: (texte: string, ton: TonTerminal) => void): FinDeSession {
-    const nettoyages: (() => void)[] = [];
-    let session: SessionSurveillee | undefined;
-    let terminee = false;
+export function createSessionEnd(show: (text: string, ton: TonTerminal) => void): SessionEnd {
+    const cleanups: (() => void)[] = [];
+    let session: WatchedSession | undefined;
+    let ended = false;
 
-    const fin: FinDeSession = {
-        ajouter(nettoyage) {
-            nettoyages.push(nettoyage);
+    const sessionEnd: SessionEnd = {
+        add(cleanup) {
+            cleanups.push(cleanup);
         },
-        surveiller(surveillee) {
-            session = surveillee;
+        watch(watched) {
+            session = watched;
             // A session that ended before it was known (an end-of-session
             // message raced the setup) is closed as soon as it is.
-            if (terminee) {
-                surveillee.close();
+            if (ended) {
+                watched.close();
                 return;
             }
-            surveillee.pc.addEventListener('connectionstatechange', () => {
-                const etat = surveillee.pc.connectionState;
-                if (ETATS_FINAUX.includes(etat)) fin.terminer(`connection ${etat}`, 'danger');
+            watched.pc.addEventListener('connectionstatechange', () => {
+                const state = watched.pc.connectionState;
+                if (FINAL_STATES.includes(state)) sessionEnd.end(`connection ${state}`, 'danger');
             });
-            surveillee.surPairParti(() =>
-                fin.terminer('the remote machine left the session', 'danger'),
+            watched.onPeerGone(() =>
+                sessionEnd.end('the remote machine left the session', 'danger'),
             );
         },
-        terminer(texte, ton) {
-            if (terminee) return;
-            terminee = true;
-            for (const nettoyage of nettoyages) nettoyage();
+        end(text, ton) {
+            if (ended) return;
+            ended = true;
+            for (const cleanup of cleanups) cleanup();
             session?.close();
-            afficher(texte, ton);
+            show(text, ton);
         },
     };
-    return fin;
+    return sessionEnd;
 }

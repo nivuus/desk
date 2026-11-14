@@ -262,13 +262,13 @@ export async function assurerAccesFrais(
     base: string,
     appelAuthMoi: AppelAuthMoi,
     maintenant: number,
-    appelRafraichissement: AppelRafraichissement,
+    appelRafraichissement: RefreshCall,
     margeMs: number = MARGE_FRAICHEUR_MS,
-    verrou: Verrou = sansVerrou,
+    lock: LockRunner = noLock,
 ): Promise<string | undefined> {
     // ① and ②: `rafraichirSiNecessaire` ALREADY carries both, and it is tested.
     // Rewriting it here would produce a second version to keep in agreement.
-    if (await rafraichirSiNecessaire(coffre, maintenant, margeMs, appelRafraichissement, verrou)) {
+    if (await rafraichirSiNecessaire(coffre, maintenant, margeMs, appelRafraichissement, lock)) {
         return jetonAcces(coffre);
     }
     // ⚠️ `rafraichirSiNecessaire` EMPTIED the vault when the service REFUSED the
@@ -333,23 +333,23 @@ function decoderBase64url(segment: string): string {
 /// deleted the 30-day token and signed the user out. Only a REFUSAL by the
 /// service says the refresh token is dead; unavailability says nothing about
 /// it.
-export type IssueRafraichissement =
-    | { issue: 'renouvelee'; paire: Paire }
-    | { issue: 'refusee' }
-    | { issue: 'indisponible' };
+export type RefreshOutcome =
+    | { outcome: 'renewed'; pair: Paire }
+    | { outcome: 'refused' }
+    | { outcome: 'unavailable' };
 
-export type AppelRafraichissement = (corps: unknown) => Promise<IssueRafraichissement>;
+export type RefreshCall = (corps: unknown) => Promise<RefreshOutcome>;
 
-/// Runs `travail` while holding the exclusive lock `nom`, and settles with its
-/// result — the shape of `navigator.locks.request(nom, travail)`, injected so
+/// Runs `work` while holding the exclusive lock `name`, and settles with its
+/// result — the shape of `navigator.locks.request(name, work)`, injected so
 /// that this module stays pure.
-export type Verrou = <T>(nom: string, travail: () => Promise<T>) => Promise<T>;
+export type LockRunner = <T>(name: string, work: () => Promise<T>) => Promise<T>;
 
 /// No lock: for a browser without the Web Locks API, and for a single caller.
-export const sansVerrou: Verrou = (_nom, travail) => travail();
+export const noLock: LockRunner = (_name, work) => work();
 
 /// The lock that serialises refreshes across the tabs of this origin.
-export const VERROU_RAFRAICHISSEMENT = 'guac.jeton.rafraichissement';
+export const REFRESH_LOCK_NAME = 'guac.jeton.rafraichissement';
 
 /// Classifies the answer of `POST /auth/rafraichir`.
 ///
@@ -358,19 +358,19 @@ export const VERROU_RAFRAICHISSEMENT = 'guac.jeton.rafraichissement';
 ///   403, 404 once the route is gone in `pomerium` mode) → refused;
 /// - anything else — 408, 429, a server error, or a 200 whose body carries no
 ///   usable pair — → unavailable: nothing proves the refresh token is dead.
-export function issueDeReponseRafraichissement(
-    statut: number,
+export function refreshOutcomeOf(
+    status: number,
     ok: boolean,
-    corps: unknown,
-): IssueRafraichissement {
+    body: unknown,
+): RefreshOutcome {
     if (ok) {
-        const paire = paireDeReponse(corps);
-        return paire === undefined ? { issue: 'indisponible' } : { issue: 'renouvelee', paire };
+        const pair = paireDeReponse(body);
+        return pair === undefined ? { outcome: 'unavailable' } : { outcome: 'renewed', pair };
     }
-    if (statut >= 400 && statut < 500 && statut !== 408 && statut !== 429) {
-        return { issue: 'refusee' };
+    if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        return { outcome: 'refused' };
     }
-    return { issue: 'indisponible' };
+    return { outcome: 'unavailable' };
 }
 
 /// Refreshes the pair if the access token expires in less than `margeMs`.
@@ -383,8 +383,8 @@ export function issueDeReponseRafraichissement(
 /// tab may have written a new pair meanwhile, and the refusal of the old one
 /// says nothing about it. Unavailability leaves the vault untouched.
 ///
-/// 🔴 REFRESHES ARE SERIALISED ACROSS TABS (`verrou`, the Web Locks API in
-/// production — `jeton-frais.ts`). The service rotates the refresh token and
+/// 🔴 REFRESHES ARE SERIALISED ACROSS TABS (`lock`, the Web Locks API in
+/// production — `fresh-token.ts`). The service rotates the refresh token and
 /// treats the presentation of an already-rotated one as a replay that revokes
 /// the whole family: two tabs refreshing at the same moment presented the same
 /// token, and every tab was signed out. The vault is RE-READ once the lock is
@@ -392,42 +392,42 @@ export function issueDeReponseRafraichissement(
 /// call.
 ///
 /// `appel` is INJECTED, never the global `fetch`: that is what makes this rule
-/// testable without a network. It reports a network failure as `indisponible`
-/// (`jeton-frais.ts`) rather than throwing.
+/// testable without a network. It reports a network failure as `unavailable`
+/// (`fresh-token.ts`) rather than throwing.
 export async function rafraichirSiNecessaire(
     coffre: Coffre,
     maintenant: number,
     margeMs: number,
-    appel: AppelRafraichissement,
-    verrou: Verrou = sansVerrou,
+    appel: RefreshCall,
+    lock: LockRunner = noLock,
 ): Promise<boolean> {
-    const frais = (): boolean => {
+    const isFresh = (): boolean => {
         const acces = jetonAcces(coffre);
         return acces !== undefined && !expiresBefore(acces, maintenant + margeMs);
     };
-    if (frais()) return true;
+    if (isFresh()) return true;
 
-    return verrou(VERROU_RAFRAICHISSEMENT, async () => {
+    return lock(REFRESH_LOCK_NAME, async () => {
         // Re-read under the lock: another tab may have refreshed meanwhile.
-        if (frais()) return true;
+        if (isFresh()) return true;
 
-        const presente = jetonRafraichissement(coffre);
-        if (presente === undefined) {
+        const presented = jetonRafraichissement(coffre);
+        if (presented === undefined) {
             // Nothing to present: we erase what remains rather than leave a
             // stale access the handshake would refuse.
             drain(coffre);
             return false;
         }
 
-        const resultat = await appel({ rafraichissement: presente });
-        if (resultat.issue === 'renouvelee') {
-            poser(coffre, resultat.paire);
+        const outcome = await appel({ rafraichissement: presented });
+        if (outcome.outcome === 'renewed') {
+            poser(coffre, outcome.pair);
             return true;
         }
-        if (resultat.issue === 'refusee' && jetonRafraichissement(coffre) === presente) {
+        if (outcome.outcome === 'refused' && jetonRafraichissement(coffre) === presented) {
             drain(coffre);
         }
         // A pair another writer set during the call is still usable.
-        return frais();
+        return isFresh();
     });
 }

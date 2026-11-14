@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { encodeKey, encodeMouseButton } from '../../proto/ts/input';
-import { attachInput, type CibleClavier, type CiblePage } from './input';
+import { attachInput, type CibleClavier, type PageTarget } from './input';
 import { SCANCODES } from './scancodes';
 
 type Rappel = (event: any) => void;
@@ -39,19 +39,19 @@ class VideoFactice extends Cible {
     }
 }
 
-class PageFactice extends Cible implements CiblePage {
+class FakePage extends Cible implements PageTarget {
     hidden = false;
 }
 
 let video: VideoFactice;
 let clavier: Cible;
-let page: PageFactice;
+let page: FakePage;
 let envois: Uint8Array[];
 
 beforeEach(() => {
     video = new VideoFactice();
     clavier = new Cible();
-    page = new PageFactice();
+    page = new FakePage();
     envois = [];
     const channel = { readyState: 'open', send: (p: Uint8Array) => envois.push(p) } as unknown as RTCDataChannel;
     attachInput({

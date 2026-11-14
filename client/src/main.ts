@@ -1,7 +1,7 @@
 import { attachInput } from './input';
-import { ciblePageDuDOM } from './page-dom';
+import { pageTargetFromDom } from './page-dom';
 import { connectSession } from './webrtc';
-import { creerFinDeSession } from './fin-de-session';
+import { createSessionEnd } from './session-end';
 import { attachStats } from './stats';
 import { armerLeSon } from './audio';
 import { createStatus } from './status';
@@ -18,8 +18,8 @@ import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
 import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
-import { fournisseurDeJetonFrais, verrouDuNavigateur } from './jeton-frais';
-import { ADRESSES_ETRANGERES_AUTORISEES } from './politique-adresse';
+import { freshTokenProvider, browserLock } from './fresh-token';
+import { FOREIGN_ADDRESSES_ALLOWED } from './address-policy';
 import { sessionIdFromParams } from './session-id';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -51,11 +51,11 @@ const sessionId = sessionIdFromParams(params);
 let signalingUrl: string;
 let plateformeUrl: string;
 try {
-    signalingUrl = adresseSignaling(window.location, params.get('signaling'), ADRESSES_ETRANGERES_AUTORISEES);
-    plateformeUrl = adressePlateforme(window.location, params.get('plateforme'), ADRESSES_ETRANGERES_AUTORISEES);
-} catch (refus) {
-    statut.show(refus instanceof Error ? refus.message : String(refus), { terminal: true, ton: 'danger' });
-    throw refus;
+    signalingUrl = adresseSignaling(window.location, params.get('signaling'), FOREIGN_ADDRESSES_ALLOWED);
+    plateformeUrl = adressePlateforme(window.location, params.get('plateforme'), FOREIGN_ADDRESSES_ALLOWED);
+} catch (refusal) {
+    statut.show(refusal instanceof Error ? refusal.message : String(refusal), { terminal: true, ton: 'danger' });
+    throw refusal;
 }
 
 // 🔴 WITHOUT A PARAMETER, THIS PAGE REFUSES AND STOPS THERE — it NO LONGER invents
@@ -157,12 +157,12 @@ let bandeauManette: number | undefined;
 // prevents an obsolete hiding from erasing a warning that arrived meanwhile.
 let bandeauLien: number | undefined;
 
-// 🔴 THE ONE END OF THIS WINDOW (`fin-de-session.ts`): the end-of-session
+// 🔴 THE ONE END OF THIS WINDOW (`session-end.ts`): the end-of-session
 // message, a failed or closed connection and the agent leaving all go through
 // it. It runs these detachments, closes the session and shows a terminal
 // status. No automatic reconnection: that is the owner's decision.
-const fin = creerFinDeSession((texte, ton) => statut.show(texte, { terminal: true, ton }));
-fin.ajouter(() => {
+const sessionEnd = createSessionEnd((texte, ton) => statut.show(texte, { terminal: true, ton }));
+sessionEnd.add(() => {
     window.clearTimeout(bandeau);
     window.clearTimeout(bandeauManette);
     window.clearTimeout(bandeauLien);
@@ -187,12 +187,12 @@ connectSession({
     sessionId,
     video,
     // The hub's wiring, shared: a stale token is refreshed before the hello.
-    jetonFrais: fournisseurDeJetonFrais({
-        coffre: window.localStorage,
+    jetonFrais: freshTokenProvider({
+        vault: window.localStorage,
         base: plateformeUrl,
         fetch: window.fetch.bind(window),
-        maintenant: () => Date.now(),
-        verrou: verrouDuNavigateur(),
+        now: () => Date.now(),
+        lock: browserLock(),
     }),
     onStatus: (message) => statut.show(message),
     onControl(message) {
@@ -208,7 +208,7 @@ connectSession({
         } else if (message.type === 'session-end') {
             // `neutre`: the user closed the remote application, it
             // is not an error. The tone ONLY serves the terminal screen.
-            fin.terminer(`session ended: ${message.reason}`, 'neutre');
+            sessionEnd.end(`session ended: ${message.reason}`, 'neutre');
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
         } else if (message.type === 'rumble') {
@@ -298,18 +298,18 @@ connectSession({
     },
 })
     .then((session) => {
-        fin.surveiller(session);
-        const detacherEntrees = attachInput({
+        sessionEnd.watch(session);
+        const detachInput = attachInput({
             video,
             channel: session.inputChannel,
             // `window` and not `video`: that is where the keyboard listeners
             // already lived before P2.
             clavier: window,
             // Held keys and buttons are released when the page loses focus.
-            page: ciblePageDuDOM(),
+            page: pageTargetFromDom(),
             collageArme: () => collageArme,
         });
-        fin.ajouter(detacherEntrees);
+        sessionEnd.add(detachInput);
         // The measurement overlay is a diagnostic: shown only on `?stats`.
         if (params.has('stats')) attachStats(session.pc, statsElement);
         video.focus();

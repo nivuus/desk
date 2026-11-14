@@ -11,7 +11,7 @@
 // constant folds to `false` and only same-origin values are honoured.
 
 /// The mode name a bench build passes to `vite build --mode`.
-const MODE_BANC = 'banc';
+const BENCH_MODE = 'banc';
 
-export const ADRESSES_ETRANGERES_AUTORISEES: boolean =
-    import.meta.env.DEV || import.meta.env.MODE === MODE_BANC;
+export const FOREIGN_ADDRESSES_ALLOWED: boolean =
+    import.meta.env.DEV || import.meta.env.MODE === BENCH_MODE;

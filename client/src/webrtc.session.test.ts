@@ -15,7 +15,7 @@
 // the transceivers and their ORDER (which decides the `mid`, on which the agent depends),
 // a single `MediaStream` carrying the received tracks, and the real switch-off
 // of the microphone on close (project E). The handshake itself — the token it
-// carries and a refusal during it — is in `webrtc.poignee.test.ts`; the fakes
+// carries and a refusal during it — is in `webrtc.handshake.test.ts`; the fakes
 // are in `webrtc.fixtures.ts`. Not the SDP generation itself, out of reach without a real WebRTC
 // engine.
 
@@ -23,7 +23,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession } from './webrtc';
 import {
-    etat,
+    fakes,
     FakeMediaStream,
     FakeRtcPeerConnection,
     FakeSignalingSocket,
@@ -33,8 +33,8 @@ import {
 
 describe('connectSession — negotiation promised by spec §10', () => {
     afterEach(() => {
-        etat.derniereInstancePc = undefined;
-        etat.messagesEnvoyes = [];
+        fakes.derniereInstancePc = undefined;
+        fakes.messagesEnvoyes = [];
         vi.unstubAllGlobals();
     });
 
@@ -50,7 +50,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             jetonFrais: async () => 'j',
         });
 
-        const sdp = etat.derniereInstancePc!.localDescription!.sdp;
+        const sdp = fakes.derniereInstancePc!.localDescription!.sdp;
         const lignes = sdp.split('\r\n');
         const indexAudio = lignes.indexOf('m=audio 9 UDP/TLS/RTP/SAVPF 0');
         expect(indexAudio).toBeGreaterThanOrEqual(0);
@@ -82,8 +82,8 @@ describe('connectSession — negotiation promised by spec §10', () => {
         // support the property (see the defensive access in webrtc.ts).
         const pisteVideo = { kind: 'video' } as unknown as MediaStreamTrack;
         const pisteAudio = { kind: 'audio' } as unknown as MediaStreamTrack;
-        etat.derniereInstancePc!.emit('track', { track: pisteVideo, receiver: {} });
-        etat.derniereInstancePc!.emit('track', { track: pisteAudio, receiver: {} });
+        fakes.derniereInstancePc!.emit('track', { track: pisteVideo, receiver: {} });
+        fakes.derniereInstancePc!.emit('track', { track: pisteAudio, receiver: {} });
 
         const flux = video.srcObject as unknown as FakeMediaStream;
         expect(flux).toBeInstanceOf(FakeMediaStream);
@@ -128,13 +128,13 @@ describe('connectSession — negotiation promised by spec §10', () => {
         // under `mic_mid` depending on its direction (`transport/evenements.rs`).
         // Swapping the two audio transceivers would send the DOWNSTREAM sound
         // onto a track that cannot emit, without a single error.
-        expect(etat.derniereInstancePc!.transceivers.map((t) => [t.kind, t.direction])).toEqual([
+        expect(fakes.derniereInstancePc!.transceivers.map((t) => [t.kind, t.direction])).toEqual([
             ['video', 'recvonly'],
             ['audio', 'recvonly'],
             ['audio', 'sendonly'],
         ]);
 
-        const lignes = etat.derniereInstancePc!.localDescription!.sdp.split('\r\n');
+        const lignes = fakes.derniereInstancePc!.localDescription!.sdp.split('\r\n');
         const audios = lignes.flatMap((l, i) => (l.startsWith('m=audio ') ? [i] : []));
         expect(audios).toHaveLength(2);
         expect(lignes[audios[0] + 1]).toBe('a=recvonly');
@@ -155,7 +155,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
 
         // It is the sender of the THIRD transceiver, not of another: without this
         // identity equality, `micro.ts` would fill the downstream track.
-        expect(session.micSender).toBe(etat.derniereInstancePc!.transceivers[2].sender);
+        expect(session.micSender).toBe(fakes.derniereInstancePc!.transceivers[2].sender);
         expect(session.micSender.track).toBeNull();
     });
 

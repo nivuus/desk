@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-    AdresseRefusee,
+    RefusedAddressError,
     adressePlateforme,
     adresseSignaling,
     type Emplacement,
@@ -110,41 +110,41 @@ describe('adressePlateforme and adresseSignaling', () => {
 
         it('naming another host is refused', () => {
             expect(() => adressePlateforme(TLS, 'https://other.example.net', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             expect(() => adresseSignaling(TLS, 'wss://other.example.net/signal', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
         });
 
         it('naming the same host on another port is refused', () => {
             expect(() => adressePlateforme(TLS, 'https://plateforme.exemple.fr:8443', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             expect(() => adresseSignaling(SAMPLE, 'ws://localhost:8080/signal', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
         });
 
         it('a scheme that does not match the page is refused', () => {
             // An https page: plain http and ws are another scheme class.
             expect(() => adressePlateforme(TLS, 'http://plateforme.exemple.fr', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             expect(() => adresseSignaling(TLS, 'ws://plateforme.exemple.fr/signal', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             // A plain page: https and wss are another scheme class.
             expect(() => adressePlateforme(CLAIR, 'https://plateforme.exemple.fr', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             expect(() => adresseSignaling(CLAIR, 'wss://plateforme.exemple.fr/signal', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             // The wrong family: a WebSocket address for HTTP, and the reverse.
             expect(() => adressePlateforme(TLS, 'wss://plateforme.exemple.fr', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             expect(() => adresseSignaling(TLS, 'https://plateforme.exemple.fr/signal', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
         });
 
         it('an unparsable value is refused, not ignored', () => {
             expect(() => adressePlateforme(TLS, 'not an address', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
             expect(() => adresseSignaling(TLS, 'not an address', PRODUCTION))
-                .toThrow(AdresseRefusee);
+                .toThrow(RefusedAddressError);
         });
 
         it('the refusal names the parameter and the address', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expiresBefore, issueDeReponseRafraichissement, jetonAcces, paireDeReponse, poser, poserAcces, rafraichirSiNecessaire, drain } from './jeton';
-import type { Coffre, IssueRafraichissement } from './jeton';
+import { accesDeReponse, accesParPomerium, assurerAccesFrais, CLE_ACCES, CLE_RAFRAICHISSEMENT, expiresBefore, refreshOutcomeOf, jetonAcces, paireDeReponse, poser, poserAcces, rafraichirSiNecessaire, drain } from './jeton';
+import type { Coffre, RefreshOutcome } from './jeton';
 
 /// A fake in-memory store. There is NO `localStorage` in
 /// the test environment (observed: `client/` has no `vitest.config.*`,
@@ -237,7 +237,7 @@ describe('the refresh', () => {
         });
         // The call is INJECTED, never the global `fetch`: with `fetch`, this test
         // would require a network and would stop being a test.
-        const appel = vi.fn(async (): Promise<IssueRafraichissement> => ({ issue: 'renouvelee', paire: { acces: 'a-2', rafraichissement: 'r-2' } }));
+        const appel = vi.fn(async (): Promise<RefreshOutcome> => ({ outcome: 'renewed', pair: { acces: 'a-2', rafraichissement: 'r-2' } }));
         expect(await rafraichirSiNecessaire(coffre, 0, 30_000, appel)).toBe(true);
         expect(appel).toHaveBeenCalledWith({ rafraichissement: 'r-1' });
         expect(coffre.contenu.get(CLE_ACCES)).toBe('a-2');
@@ -251,7 +251,7 @@ describe('the refresh', () => {
             [CLE_ACCES]: jetonFactice(10_000),
             [CLE_RAFRAICHISSEMENT]: 'r-1',
         });
-        expect(await rafraichirSiNecessaire(coffre, 0, 30_000, async () => ({ issue: 'refusee' }))).toBe(false);
+        expect(await rafraichirSiNecessaire(coffre, 0, 30_000, async () => ({ outcome: 'refused' }))).toBe(false);
         expect(coffre.contenu.size).toBe(0);
     });
 
@@ -344,7 +344,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => { appels += 1; return { ok: false, json: async () => ({}) }; },
             0,
-            async () => { appels += 1; return { issue: 'refusee' }; },
+            async () => { appels += 1; return { outcome: 'refused' }; },
         );
         // 🔴 THE ZERO CALLS IS THE SUBJECT OF THE TEST, AND IT STANDS ALONE:
         // `expect` stops at the first failure, so an assertion that counts
@@ -362,7 +362,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             0,
-            async () => ({ issue: 'refusee' }),
+            async () => ({ outcome: 'refused' }),
         );
         expect(acces).toBe('FRAIS');
     });
@@ -378,7 +378,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => { pomerium += 1; return { ok: true, json: async () => ({ acces: 'PAR-POMERIUM' }) }; },
             10_000,
-            async () => ({ issue: 'renouvelee', paire: { acces: jetonExpirantA(999_000), rafraichissement: 'R2' } }),
+            async () => ({ outcome: 'renewed', pair: { acces: jetonExpirantA(999_000), rafraichissement: 'R2' } }),
         );
         expect(pomerium).toBe(0);
         expect(acces).toBe(jetonExpirantA(999_000));
@@ -391,7 +391,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             10_000,
-            async () => ({ issue: 'refusee' }),
+            async () => ({ outcome: 'refused' }),
         );
         expect(acces).toBe('FRAIS');
         // Set, otherwise the next reload would pay for the round trip again.
@@ -405,7 +405,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: false, json: async () => ({}) }),
             10_000,
-            async () => ({ issue: 'refusee' }),
+            async () => ({ outcome: 'refused' }),
         );
         expect(acces).toBeUndefined();
         // 🔴 THE STORE IS EMPTY, AND THAT IS THE POINT: an expired access left
@@ -421,7 +421,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             0,
-            async () => ({ issue: 'refusee' }),
+            async () => ({ outcome: 'refused' }),
         );
         expect(acces).toBe('FRAIS');
     });
@@ -431,8 +431,8 @@ describe('assurerAccesFrais', () => {
     // `rafraichirSiNecessaire`, and nothing exercised either an exception or a
     // malformed body before this round.
     it('an UNAVAILABLE refresh service goes through Pomerium', async () => {
-        // A network failure is reported by the callback as `indisponible`
-        // (`jeton-frais.ts`): the next step (Pomerium) still runs.
+        // A network failure is reported by the callback as `unavailable`
+        // (`fresh-token.ts`): the next step (Pomerium) still runs.
         const coffre = vaultWith({
             [CLE_ACCES]: jetonExpirantA(0),
             [CLE_RAFRAICHISSEMENT]: 'R',
@@ -442,7 +442,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             10_000,
-            async () => ({ issue: 'indisponible' }),
+            async () => ({ outcome: 'unavailable' }),
         );
         expect(acces).toBe('FRAIS');
     });
@@ -462,7 +462,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             10_000,
-            async () => issueDeReponseRafraichissement(200, true, { acces: 'X' }),
+            async () => refreshOutcomeOf(200, true, { acces: 'X' }),
         );
         expect(acces).toBe('FRAIS');
         // 🔴 THE POINT OF THE TEST: the store must NEVER have seen 'X'.
@@ -479,7 +479,7 @@ describe('assurerAccesFrais', () => {
             'https://h',
             async () => ({ ok: true, json: async () => ({ acces: 'FRAIS' }) }),
             10_000,
-            async () => issueDeReponseRafraichissement(200, true, { acces: '', rafraichissement: 'R2' }),
+            async () => refreshOutcomeOf(200, true, { acces: '', rafraichissement: 'R2' }),
         );
         expect(acces).toBe('FRAIS');
         expect(coffre.getItem(CLE_ACCES)).toBe('FRAIS');

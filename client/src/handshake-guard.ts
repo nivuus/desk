@@ -13,10 +13,10 @@
 // the FIRST failure (an `error` message, `peer-gone`, the socket's `error`
 // or `close`), and every wait races against it.
 
-import { parseSignalingMessage } from './signalisation';
+import { parseSignalingMessage } from './signaling-message';
 
 /// What the guard needs from a `WebSocket`, and nothing more.
-export interface SocketGarde {
+export interface GuardedSocket {
     readonly readyState: number;
     addEventListener(type: 'message', cb: (event: MessageEvent) => void): void;
     addEventListener(type: 'close', cb: (event: CloseEvent) => void): void;
@@ -28,65 +28,65 @@ export interface SocketGarde {
 
 /// `WebSocket.OPEN`, as the WHATWG specification numbers it. Written as a
 /// value rather than read from the global, which tests replace.
-const OUVERTE = 1;
+const OPEN_STATE = 1;
 
-export interface GardePoigneeDeMain {
-    /// Settles like `attente`, unless the handshake fails first: then rejects
+export interface HandshakeGuard {
+    /// Settles like `pending`, unless the handshake fails first: then rejects
     /// with that failure.
-    course<T>(attente: Promise<T>): Promise<T>;
+    race<T>(pending: Promise<T>): Promise<T>;
     /// Throws the recorded failure, or a closed-socket failure, before a send.
-    avantEnvoi(): void;
+    beforeSend(): void;
     /// Detaches the guard's listeners. Called once the handshake is over,
     /// whatever its outcome.
-    liberer(): void;
+    release(): void;
 }
 
-export function garderLaPoigneeDeMain(socket: SocketGarde): GardePoigneeDeMain {
-    let echec: Error | undefined;
-    let rejeter: (e: Error) => void = () => {};
-    const echoue = new Promise<never>((_resolve, reject) => {
-        rejeter = reject;
+export function guardHandshake(socket: GuardedSocket): HandshakeGuard {
+    let failure: Error | undefined;
+    let rejectFailure: (e: Error) => void = () => {};
+    const failed = new Promise<never>((_resolve, reject) => {
+        rejectFailure = reject;
     });
-    // The shared rejection is always observed through `course`; this
+    // The shared rejection is always observed through `race`; this
     // handler only keeps an unawaited guard from reporting it as unhandled.
-    echoue.catch(() => {});
+    failed.catch(() => {});
 
-    const noter = (e: Error) => {
-        if (echec !== undefined) return;
-        echec = e;
-        rejeter(e);
+    const record = (e: Error) => {
+        if (failure !== undefined) return;
+        failure = e;
+        rejectFailure(e);
     };
 
-    const surMessage = (event: MessageEvent) => {
+    const onMessage = (event: MessageEvent) => {
         const message = parseSignalingMessage(String(event.data));
         if (message?.type === 'error') {
-            noter(new Error(message.reason ?? message.motif ?? 'signaling error'));
+            record(new Error(message.reason ?? message.motif ?? 'signaling error'));
         } else if (message?.type === 'peer-gone') {
-            noter(new Error('agent disconnected'));
+            record(new Error('agent disconnected'));
         }
     };
-    const surFermeture = (event: CloseEvent) => {
+    const onClose = (event: CloseEvent) => {
         const detail = event.reason ? ` (${event.reason})` : '';
-        noter(new Error(`connection to the signaling server lost during the handshake${detail}`));
+        record(new Error(`connection to the signaling server lost during the handshake${detail}`));
     };
-    const surErreur = () => noter(new Error('signaling connection error'));
+    const onError = () => record(new Error('signaling connection error'));
 
-    socket.addEventListener('message', surMessage);
-    socket.addEventListener('close', surFermeture);
-    socket.addEventListener('error', surErreur);
+    socket.addEventListener('message', onMessage);
+    socket.addEventListener('close', onClose);
+    socket.addEventListener('error', onError);
 
     return {
-        course: (attente) => Promise.race([attente, echoue]),
-        avantEnvoi() {
-            if (echec !== undefined) throw echec;
-            if (socket.readyState !== OUVERTE) {
+        race: (pending) => Promise.race([pending, failed]),
+        beforeSend() {
+            if (failure !== undefined) throw failure;
+            if (socket.readyState !== OPEN_STATE) {
                 throw new Error('connection to the signaling server lost during the handshake');
             }
         },
-        liberer() {
-            socket.removeEventListener('message', surMessage);
-            socket.removeEventListener('close', surFermeture);
-            socket.removeEventListener('error', surErreur);
+        release() {
+            socket.removeEventListener('message', onMessage);
+            socket.removeEventListener('close', onClose);
+            socket.removeEventListener('error', onError);
         },
     };
 }
