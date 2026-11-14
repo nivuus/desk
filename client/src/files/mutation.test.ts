@@ -66,6 +66,27 @@ describe('the rename WITHOUT move() — the LOCAL fallback', () => {
         expect(renommer.length).toBe(4);
     });
 
+    it('🔴 copies through the STREAM when a whole-file read cannot be allocated', async () => {
+        // Red: `file.slice(0, file.size).arrayBuffer()`, which materialises the
+        // whole file in the tab — the fake refuses it, as a multi-gigabyte file would.
+        const m = monde((r) => r.files.set('a.txt', OCTETS));
+        const trace = await renommer(m.racine, 'a.txt', 'b.txt', false);
+        expect(m.arbre.files.get('b.txt')).toEqual(OCTETS);
+        expect(trace.octets).toBe(OCTETS.length);
+    });
+
+    it('🔴 a stream that fails mid-copy ABORTS the writable, source intact', async () => {
+        // Red: dropping the writable without `abort()` leaves its swap file and its lock.
+        const m = monde((r) => r.files.set('a.txt', OCTETS), { failingStream: true });
+        await expect(renommer(m.racine, 'a.txt', 'b.txt', false)).rejects.toBeInstanceOf(
+            FilesError,
+        );
+        expect(m.compteurs.aborts).toBe(1);
+        expect(m.arbre.files.get('a.txt')).toEqual(OCTETS);
+        // Nothing was committed: the destination is the empty entry `create` made.
+        expect(m.arbre.files.get('b.txt')).toEqual(new Uint8Array());
+    });
+
     it('🔴 an interrupted copy leaves the SOURCE intact', async () => {
         // Red: removing the source BEFORE the copy ends. A cut
         // would then lose the file.

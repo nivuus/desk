@@ -114,14 +114,36 @@
 // no, deleting a non-empty directory will leave the children on the
 // local machine — **degrades, does not block**.
 
-import { FilesError, classer, type PoigneeBase, type FileHandle } from './adaptateur';
+import {
+    FilesError,
+    classer,
+    type PoigneeBase,
+    type FileHandle,
+    type ReadableFile,
+} from './adaptateur';
 import type { FluxInscriptible, RacineInscriptible } from './ecriture';
 import { canoniser, canoniserOuLever } from './noms';
 import { copyFile, copierRepertoire, ouvrirRepertoire, retirerArbre } from './copie';
 
+/**
+ * A file as the copy fallback reads it: through `stream()`, never whole — a
+ * whole-buffer read of a multi-gigabyte file exhausts the tab's memory.
+ */
+export interface CopyableFile extends ReadableFile {
+    stream(): ReadableStream<Uint8Array>;
+}
+
+/**
+ * The writable the copy fallback pipes into. `FileSystemWritableFileStream` IS a
+ * `WritableStream`: `pipeTo` closes it (the commit) when the source ends and
+ * aborts it (the swap file is discarded) when the source fails.
+ */
+export interface CopyableStream extends FluxInscriptible, WritableStream<Uint8Array> {}
+
 /** What we can do with a file handle we want to move. */
 export interface MutableFileHandle extends FileHandle {
-    createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
+    getFile(): Promise<CopyableFile>;
+    createWritable(options?: { keepExistingData?: boolean }): Promise<CopyableStream>;
     /** **NON STANDARD** — Chromium extension. Absent ⇒ the local fallback. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
 }

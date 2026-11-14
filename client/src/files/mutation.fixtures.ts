@@ -1,5 +1,4 @@
 import type { PoigneeBase } from './adaptateur';
-import type { FluxInscriptible } from './ecriture';
 import type { MutableFileHandle, RacineMutable } from './mutation';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -27,6 +26,8 @@ interface Compteurs {
     lectures: number;
     ecritures: number;
     octetsCopies: number;
+    /** Writables aborted — what a failed streamed copy must do. */
+    aborts: number;
 }
 
 interface Options {
@@ -35,6 +36,8 @@ interface Options {
     /** Is the file system case-INSENSITIVE? */
     insensible: boolean;
     compteurs: Compteurs;
+    /** When set, the file streams fail after their first chunk. */
+    failingStream?: boolean;
 }
 
 function absent(nom: string): never {
@@ -113,6 +116,14 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
     return self;
 }
 
+/**
+ * 🔴 A WHOLE-FILE READ THROWS, as it would on a multi-gigabyte file that does not
+ * fit in the tab's memory: the copy fallback must go through `stream()`.
+ */
+function refuseWholeRead(): never {
+    throw new RangeError('whole-file read: the fake refuses to allocate the entire file');
+}
+
 function file(parent: Noeud, nom: string, o: Options): MutableFileHandle {
     const poignee: MutableFileHandle = {
         kind: 'file',
@@ -124,34 +135,65 @@ function file(parent: Noeud, nom: string, o: Options): MutableFileHandle {
                 size: octets.length,
                 lastModified: 0,
                 slice(debut: number, fin: number) {
+                    if (debut === 0 && fin >= octets.length && octets.length > 0) refuseWholeRead();
                     const t = octets.slice(debut, fin);
                     return {
                         arrayBuffer: async () =>
                             t.buffer.slice(t.byteOffset, t.byteOffset + t.byteLength) as ArrayBuffer,
                     };
                 },
-                arrayBuffer: async () =>
-                    octets.buffer.slice(
-                        octets.byteOffset,
-                        octets.byteOffset + octets.byteLength,
-                    ) as ArrayBuffer,
+                arrayBuffer: async () => refuseWholeRead(),
+                stream() {
+                    // Two chunks, so that the copy is seen to be STREAMED.
+                    const half = Math.ceil(octets.length / 2);
+                    let step = 0;
+                    return new ReadableStream<Uint8Array>({
+                        pull(c) {
+                            if (step === 0) {
+                                c.enqueue(octets.slice(0, half));
+                            } else if (o.failingStream) {
+                                c.error(new DOMException('read failed', 'NotReadableError'));
+                            } else if (step === 1 && half < octets.length) {
+                                c.enqueue(octets.slice(half));
+                            } else {
+                                c.close();
+                            }
+                            step += 1;
+                        },
+                    });
+                },
             };
         },
-        async createWritable(): Promise<FluxInscriptible> {
+        async createWritable() {
             o.compteurs.ecritures += 1;
             let tampon = new Uint8Array();
-            return {
-                async write(d) {
-                    const neuf = new Uint8Array(Math.max(tampon.length, d.position + d.data.length));
-                    neuf.set(tampon);
-                    neuf.set(d.data, d.position);
-                    tampon = neuf;
-                    o.compteurs.octetsCopies += d.data.length;
+            let offset = 0;
+            const put = (data: Uint8Array, at: number) => {
+                const neuf = new Uint8Array(Math.max(tampon.length, at + data.length));
+                neuf.set(tampon);
+                neuf.set(data, at);
+                tampon = neuf;
+                o.compteurs.octetsCopies += data.length;
+            };
+            // A REAL `WritableStream`, as `FileSystemWritableFileStream` is one:
+            // closing commits, aborting discards.
+            const stream = new WritableStream<Uint8Array>({
+                write(chunk) {
+                    put(chunk, offset);
+                    offset += chunk.length;
                 },
-                async close() {
+                close() {
                     parent.files.set(nom, tampon);
                 },
-            };
+                abort() {
+                    o.compteurs.aborts += 1;
+                },
+            });
+            return Object.assign(stream, {
+                async write(d: { type: 'write'; position: number; data: Uint8Array }) {
+                    put(d.data, d.position);
+                },
+            });
         },
     };
     if (o.withMove) {
@@ -174,11 +216,18 @@ export function monde(
 ): { racine: RacineMutable; arbre: Noeud; compteurs: Compteurs } {
     const arbre = noeud();
     contenu(arbre);
-    const compteurs: Compteurs = { move: 0, lectures: 0, ecritures: 0, octetsCopies: 0 };
+    const compteurs: Compteurs = {
+        move: 0,
+        lectures: 0,
+        ecritures: 0,
+        octetsCopies: 0,
+        aborts: 0,
+    };
     const options: Options = {
         withMove: o.withMove ?? false,
         insensible: o.insensible ?? false,
         compteurs,
+        failingStream: o.failingStream,
     };
     return { racine: repertoire(arbre, options), arbre, compteurs };
 }

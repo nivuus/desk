@@ -56,11 +56,15 @@ export async function copyFile(
         // right, and the old bridge's defect was precisely to keep the
         // byte tail of a file rewritten shorter (spec §12).
         const flux = await cible.createWritable();
-        const octets = new Uint8Array(await file.slice(0, file.size).arrayBuffer());
-        await flux.write({ type: 'write', position: 0, data: octets });
-        // 🔵 THE COMMIT HAPPENS HERE, AND NOWHERE ELSE.
-        await flux.close();
-        trace.octets += octets.length;
+        // 🔴 STREAMED, NEVER READ WHOLE: a whole-buffer read allocated the entire
+        // file in the tab, and a multi-gigabyte file ran it out of memory
+        // half-way through the rename. With the default options, `pipeTo`
+        // CLOSES the writable when the source ends — 🔵 THE COMMIT HAPPENS
+        // THERE, AND NOWHERE ELSE — and ABORTS it when the source or a write
+        // fails, so a failed copy leaves neither its swap file nor its lock.
+        await file.stream().pipeTo(flux);
+        // The snapshot was read to its end: it carried exactly `size` bytes.
+        trace.octets += file.size;
         trace.entrees += 1;
     } catch (e) {
         throw classer(e, 'introuvable');
