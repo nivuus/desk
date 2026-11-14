@@ -49,8 +49,9 @@
 // then create a DUPLICATE instead of overwriting — less serious than the loss, but wrong.
 // NOT HANDLED, declared; it is F3's canonicaliser."
 //
-// **It is handled**: folding applies `normalize('NFC')` BEFORE the case
-// fold. Two names differing only by their normalisation form are
+// **It is handled**, on read AND on write (the writer resolves through this
+// module since it lost its private variant): folding applies `normalize('NFC')`
+// BEFORE the case fold. Two names differing only by their normalisation form are
 // therefore namesakes, exactly like two names differing only by
 // case — and for the same reason: **the user does not tell them apart**.
 //
@@ -166,6 +167,68 @@ export async function canoniserOuLever(
                     `returning one of them would pick the wrong file, nothing was done`,
             );
     }
+}
+
+/** The refusal of a name that several entries — or a non-exact one — fold onto. */
+function ambiguousName(demande: string, noms: readonly string[]): FilesError {
+    return new FilesError(
+        'casse-ambigue',
+        `« ${demande} » cannot be told apart from « ${noms.join(' », « ')} »: ` +
+            `the user does not see the difference (case or Unicode normalisation), nothing was done`,
+    );
+}
+
+/** A directory one can create children in, handing out handles of its own kind. */
+export interface CreatingDirectory<R extends PoigneeRepertoire> extends PoigneeRepertoire {
+    getDirectoryHandle(nom: string, options?: { create?: boolean }): Promise<R>;
+}
+
+/**
+ * Walks down the first `jusqua` components, all directories, CREATING the
+ * missing ones — and resolving each one through [`canoniser`] FIRST.
+ *
+ * 🔴 Without the resolution, `archives/` and `Archives/` would be two
+ * directories on a case-SENSITIVE machine and the same one on an insensitive
+ * machine, and a name stored decomposed would gain a composed twin: the reader
+ * would resolve the path to one entry while the writer created another.
+ */
+export async function descendreEnCreant<R extends CreatingDirectory<R>>(
+    racine: R,
+    parts: readonly string[],
+    jusqua: number,
+): Promise<R> {
+    let ici = racine;
+    for (let i = 0; i < jusqua; i += 1) {
+        const r = await canoniser(ici, parts[i]);
+        if (r.sorte === 'ambigu') throw ambiguousName(parts[i], r.noms);
+        const nom = r.sorte === 'trouve' ? r.nom : parts[i];
+        try {
+            ici = await ici.getDirectoryHandle(nom, { create: true });
+        } catch (e) {
+            throw classer(e, 'chemin-introuvable');
+        }
+    }
+    return ici;
+}
+
+/**
+ * The name a write or a creation may use for its FINAL component, or a throw.
+ *
+ *   - the exact name exists          → it is that one;
+ *   - nothing folds onto it          → the requested name, to be created;
+ *   - a namesake that is NOT exact   → `casse-ambigue`, NOTHING IS WRITTEN.
+ *
+ * 🔴 THE LAST RULE IS F2'S GUARD, AND IT DELIBERATELY DIFFERS FROM READING. On
+ * a case-insensitive local machine, `getFileHandle('CASSE.TXT', { create: true })`
+ * opens `Casse.txt`: following the namesake would OVERWRITE a file the VM wrote
+ * under another name. The same holds for a composed versus a decomposed name.
+ */
+export async function nameForWrite(parent: PoigneeRepertoire, demande: string): Promise<string> {
+    const r = await canoniser(parent, demande);
+    if (r.sorte === 'absent') return demande;
+    if (r.sorte === 'ambigu') throw ambiguousName(demande, r.noms);
+    if (r.nom !== demande) throw ambiguousName(demande, [r.nom]);
+    return demande;
 }
 
 // ════════════════════════════════════════════════════════════════════════════

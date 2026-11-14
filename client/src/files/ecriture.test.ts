@@ -23,14 +23,37 @@ function dossier(name = ''): Noeud {
 class Faux {
     ouverts = 0;
     fermes = 0;
+    /** Streams aborted: their swap file is discarded, nothing is committed. */
+    aborts = 0;
+    /** When set, every `write()` of a stream fails. */
+    failingWrites = false;
     racineNoeud = dossier();
 
-    /** Case-INSENSITIVE lookup, like an ordinary local workstation. */
+    /**
+     * `caseSensitive`: a byte-exact host (Linux), where `Docs` and `docs`, or a
+     * composed and a decomposed name, are distinct entries. By default the fake
+     * is case-INSENSITIVE, like an ordinary local workstation.
+     */
+    constructor(private readonly caseSensitive = false) {}
+
     private trouver(parent: Noeud, nom: string): Noeud | undefined {
         for (const enfant of parent.enfants.values()) {
-            if (enfant.name.toLowerCase() === nom.toLowerCase()) return enfant;
+            if (this.caseSensitive ? enfant.name === nom : enfant.name.toLowerCase() === nom.toLowerCase()) {
+                return enfant;
+            }
         }
         return undefined;
+    }
+
+    /** The names a directory holds, in insertion order. */
+    names(path = ''): string[] {
+        let node = this.racineNoeud;
+        for (const part of path.split('/').filter((c) => c.length > 0)) {
+            const next = this.trouver(node, part);
+            if (next === undefined) return [];
+            node = next;
+        }
+        return [...node.enfants.values()].map((n) => n.name);
     }
 
     poser(chemin: string, contenu: number[] = []): void {
@@ -106,6 +129,9 @@ class Faux {
                         const tampon = options?.keepExistingData ? [...cible.contenu] : [];
                         return {
                             async write({ position, data }) {
+                                if (faux.failingWrites) {
+                                    throw new DOMException('disk full', 'QuotaExceededError');
+                                }
                                 for (let i = 0; i < data.length; i += 1) {
                                     tampon[position + i] = data[i];
                                 }
@@ -113,6 +139,9 @@ class Faux {
                             async close() {
                                 faux.fermes += 1;
                                 cible.contenu = tampon.map((o) => o ?? 0);
+                            },
+                            async abort() {
+                                faux.aborts += 1;
                             },
                         };
                     },
@@ -244,26 +273,49 @@ describe('les flux', () => {
         expect(faux.lire('note.txt')?.contenu).toEqual([1, 2, 3]);
     });
 
-    it('🔴 aborting closes the streams left open', async () => {
+    it('🔴 abandoning ABORTS the streams left open, and commits nothing', async () => {
+        // Red: `close()` here COMMITTED an interrupted push — the local file was
+        // replaced by the bytes that happened to have arrived.
         const faux = new Faux();
+        faux.poser('a.txt', [42]);
         const e = createWriter(faux.racine());
         await e.write('a.txt', 0, octets(1), true, false);
-        expect(faux.fermes).toBe(0);
         e.abandonner();
-        // `abandonner` is SYNCHRONOUS: the `close()` is started without being awaited,
+        // `abandonner` is SYNCHRONOUS: the `abort()` is started without being awaited,
         // because it is called from the closing of the channel, which is too.
         await Promise.resolve();
-        expect(faux.fermes).toBe(1);
+        expect([faux.fermes, faux.aborts]).toEqual([0, 1]);
+        expect(faux.lire('a.txt')?.contenu).toEqual([42]);
     });
 
-    it('a replay closes the previous stream instead of leaving two', async () => {
+    it('🔴 a replay ABORTS the previous stream instead of committing it', async () => {
+        // Red: `close()` on the interrupted stream COMMITTED its partial bytes
+        // to the local file before the replay started over.
         const faux = new Faux();
+        faux.poser('a.txt', [42]);
         const e = createWriter(faux.racine());
         await e.write('a.txt', 0, octets(1), true, false);
         // The push is interrupted, then restarted from the beginning.
-        await e.write('a.txt', 0, octets(7, 7), true, true);
-        expect([faux.ouverts, faux.fermes]).toEqual([2, 2]);
-        expect(faux.lire('a.txt')?.contenu).toEqual([7, 7]);
+        await e.write('a.txt', 0, octets(7, 7), true, false);
+        expect([faux.ouverts, faux.fermes, faux.aborts]).toEqual([2, 0, 1]);
+        expect(faux.lire('a.txt')?.contenu).toEqual([42]);
+        await e.write('a.txt', 2, octets(7), false, true);
+        expect(faux.lire('a.txt')?.contenu).toEqual([7, 7, 7]);
+    });
+
+    it('🔴 a failed write ABORTS its stream before forgetting it', async () => {
+        // Red: the stream was dropped, neither closed nor aborted — its swap
+        // file and its lock stayed behind.
+        const faux = new Faux();
+        const e = createWriter(faux.racine());
+        faux.failingWrites = true;
+        await expect(e.write('a.txt', 0, octets(1), true, false)).rejects.toMatchObject({
+            code: 'disque-plein',
+        });
+        expect(faux.aborts).toBe(1);
+        // Forgotten: the next chunk of that push is refused, not written to a dead stream.
+        faux.failingWrites = false;
+        await expect(e.write('a.txt', 1, octets(2), false, true)).rejects.toThrow(/stream/);
     });
 
     it('🔴 refuses a NON-initial chunk without an open stream', async () => {
@@ -295,6 +347,76 @@ describe('the creations', () => {
         const e = createWriter(faux.racine());
         await e.write('a/b/c.txt', 0, octets(5), true, true);
         expect(faux.lire('a/b/c.txt')?.contenu).toEqual([5]);
+    });
+});
+
+// Composed (NFC) and decomposed (NFD) spellings of the same names, written as
+// escapes so that the two sequences are unmistakable: an accented Latin name and
+// a Korean (Hangul) one, where NFD splits each syllable into conjoining jamo.
+const RESUME_NFC = 'r\u00e9sum\u00e9';
+const RESUME_NFD = 're\u0301sume\u0301';
+const HANGUL_NFC = '\ud55c\uae00';
+const HANGUL_NFD = '\u1112\u1161\u11ab\u1100\u1173\u11af';
+
+describe('the shared name resolution, on the write path', () => {
+    it('the four spellings really are two pairs of distinct sequences', () => {
+        // A guard for the test itself: equal strings would make the cases below vacuous.
+        expect(RESUME_NFC).not.toBe(RESUME_NFD);
+        expect(RESUME_NFD.normalize('NFC')).toBe(RESUME_NFC);
+        expect(HANGUL_NFC).not.toBe(HANGUL_NFD);
+        expect(HANGUL_NFD.normalize('NFC')).toBe(HANGUL_NFC);
+    });
+
+    it('🔴 on a case-SENSITIVE host, a write to `Docs/x` lands in the existing `docs`', async () => {
+        // Red: the writer created a sibling `Docs/` while the reader resolves
+        // `Docs/` to `docs/` — the VM would never see the file it wrote.
+        const faux = new Faux(true);
+        faux.poser('docs/autre.txt');
+        const e = createWriter(faux.racine());
+        await e.write('Docs/x.txt', 0, octets(5), true, true);
+        expect(faux.names()).toEqual(['docs']);
+        expect(faux.lire('docs/x.txt')?.contenu).toEqual([5]);
+    });
+
+    for (const [script, nfc, nfd] of [
+        ['accented Latin', RESUME_NFC, RESUME_NFD],
+        ['Hangul', HANGUL_NFC, HANGUL_NFD],
+    ] as const) {
+        it(`🔴 a composed directory name matches the entry stored decomposed (${script})`, async () => {
+            // Red: the private fold had no Unicode normalisation, so a second,
+            // composed directory was created next to the decomposed one.
+            const faux = new Faux(true);
+            faux.poser(`${nfd}/autre.txt`);
+            const e = createWriter(faux.racine());
+            await e.write(`${nfc}/x.txt`, 0, octets(5), true, true);
+            expect(faux.names()).toEqual([nfd]);
+            expect(faux.lire(`${nfd}/x.txt`)?.contenu).toEqual([5]);
+        });
+
+        it(`🔴 a composed FILE name is refused next to its decomposed namesake (${script})`, async () => {
+            // Red: a DUPLICATE was created. The final component keeps the F2
+            // guard: a namesake that is not the exact name is refused, never
+            // overwritten — normalisation now counts as well as case.
+            const faux = new Faux(true);
+            faux.poser(`${nfd}.txt`, [1, 2, 3]);
+            const e = createWriter(faux.racine());
+            await expect(e.write(`${nfc}.txt`, 0, octets(9), true, true)).rejects.toMatchObject({
+                code: 'casse-ambigue',
+            });
+            expect(faux.names()).toEqual([`${nfd}.txt`]);
+            expect(faux.lire(`${nfd}.txt`)?.contenu).toEqual([1, 2, 3]);
+        });
+    }
+
+    it('🔴 an intermediate component that is AMBIGUOUS is refused, nothing written', async () => {
+        const faux = new Faux(true);
+        faux.poser('docs/a.txt');
+        faux.poser('Docs/b.txt');
+        const e = createWriter(faux.racine());
+        await expect(e.write('DOCS/x.txt', 0, octets(5), true, true)).rejects.toMatchObject({
+            code: 'casse-ambigue',
+        });
+        expect(faux.names()).toEqual(['docs', 'Docs']);
     });
 });
 

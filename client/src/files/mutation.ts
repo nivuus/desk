@@ -122,7 +122,7 @@ import {
     type ReadableFile,
 } from './adaptateur';
 import type { FluxInscriptible, RacineInscriptible } from './ecriture';
-import { canoniser, canoniserOuLever } from './noms';
+import { canoniser, canoniserOuLever, descendreEnCreant } from './noms';
 import { copyFile, copierRepertoire, ouvrirRepertoire, retirerArbre } from './copie';
 
 /**
@@ -138,7 +138,7 @@ export interface CopyableFile extends ReadableFile {
  * `WritableStream`: `pipeTo` closes it (the commit) when the source ends and
  * aborts it (the swap file is discarded) when the source fails.
  */
-export interface CopyableStream extends FluxInscriptible, WritableStream<Uint8Array> {}
+export type CopyableStream = FluxInscriptible & WritableStream<Uint8Array>;
 
 /** What we can do with a file handle we want to move. */
 export interface MutableFileHandle extends FileHandle {
@@ -199,34 +199,6 @@ async function descendre(
         const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
         try {
             ici = await ici.getDirectoryHandle(nom);
-        } catch (e) {
-            throw classer(e, 'chemin-introuvable');
-        }
-    }
-    return ici;
-}
-
-/** Walks down CREATING the missing directories — for the destination. */
-async function descendreEnCreant(
-    racine: RacineMutable,
-    parts: string[],
-    jusqua: number,
-): Promise<RacineMutable> {
-    let ici = racine;
-    for (let i = 0; i < jusqua; i += 1) {
-        // ⚠️ We canonicalise FIRST: without that, `archives/` and `Archives/`
-        // would become two directories on a case-SENSITIVE machine, and
-        // the same one on an insensitive machine — two behaviours for one path.
-        const r = await canoniser(ici, parts[i]);
-        const nom = r.sorte === 'trouve' ? r.nom : parts[i];
-        if (r.sorte === 'ambigu') {
-            throw new FilesError(
-                'casse-ambigue',
-                `« ${parts[i]} » cannot be told apart from « ${r.noms.join(' », « ')} »`,
-            );
-        }
-        try {
-            ici = await ici.getDirectoryHandle(nom, { create: true });
         } catch (e) {
             throw classer(e, 'chemin-introuvable');
         }
