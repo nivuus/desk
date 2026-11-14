@@ -219,9 +219,8 @@ with tempfile.TemporaryDirectory() as tmp:
 # === Scenario 2bis (FIX, ROUND 1): plateforme/ laid down, desk.env
 # ABSENT — the precise case the review named: partial install, or an
 # operator who deleted the file. The hook must REFUSE rather than
-# recreate desk.env silently — it is this refusal that prevents
-# add_env_variables() from writing a NEW file (write-then-chmod
-# window), since it never reaches it in this case. ========================
+# recreate desk.env silently: add_env_variables() only appends, and a file
+# born here would hold the enrolment keys without the install secrets. ====
 with tempfile.TemporaryDirectory() as tmp:
     root = pathlib.Path(tmp)
     unite_dir = root / "etc" / "systemd" / "system"

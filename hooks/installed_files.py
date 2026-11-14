@@ -22,9 +22,11 @@ format), travel with them. Only the deictics "above" /
 "this file" that pointed to `install.py` were renamed so as not to
 lie in their new location.
 """
-import os
 import pathlib
 import secrets
+import stat
+
+from atomic_file import replace_file
 
 # The standard TURN port, the one docker-compose.coturn.yml sets through
 # `--listening-port=3478` — the only value that makes the URL
@@ -119,25 +121,17 @@ def lire_secret_persiste(chemin_env: pathlib.Path, cle: str) -> str | None:
 
 
 def write_env(chemin: pathlib.Path, values: dict) -> None:
-    """Writes `chemin` as KEY=VALUE, one per line, ALREADY CREATED in mode 600.
+    """Writes `chemin` as KEY=VALUE, one per line, owner-only (0600).
 
-    🔴 CREATED AS 0600, NEVER WRITTEN THEN `chmod`ED AFTERWARDS (correction
-    round 1, task 4): between a `write_text` and a later
-    `os.chmod`, the file briefly exists with the default mode of the process
-    `umask` (644 in the most common case) — a real exposure
-    window for a file that holds `PLATEFORME_SECRET_JETON`
-    in plain text. `os.open(..., mode=0o600)` sets the permission ATOMICALLY at
-    creation: the `mode` of an `open(2)` with `O_CREAT` is always
-    masked by the process `umask` (which can only REMOVE bits,
-    never add them), so the result is at most 0600, never more
-    permissive — there is no instant where the file is readable by
-    others.
+    The file holds `PLATEFORME_SECRET_JETON` in plain text. It is REPLACED
+    atomically by `atomic_file.replace_file` (see its docstring): the path
+    always holds either the complete previous file or the complete new one,
+    the content is never readable by "other" at any instant, and the final
+    mode is 0600 whatever the mode of the file it replaces — `O_CREAT`'s
+    mode, used here before, only applied to a NEW file.
     """
-    chemin.parent.mkdir(parents=True, exist_ok=True)
     corps = "\n".join(f"{cle}={value}" for cle, value in values.items()) + "\n"
-    descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
-        fh.write(corps)
+    replace_file(chemin, corps, 0o600)
 
 
 def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
@@ -177,11 +171,30 @@ no-dtls
 no-cli
 log-file=stdout
 """
-    chemin.parent.mkdir(parents=True, exist_ok=True)
-    # Same precaution as `write_env` (see its docstring): this file
-    # holds `static-auth-secret` in plain text, and a write-then-chmod window
-    # would be WORSE there than on desk.env — created already as 0600, never chmod
-    # afterwards.
-    descripteur = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descripteur, "w", encoding="utf-8") as fh:
-        fh.write(corps)
+    # This file holds `static-auth-secret` in plain text: replaced atomically
+    # like `write_env`, never readable by "other". See `turnserver_conf_owner`
+    # for the group the coturn daemon needs.
+    mode, gid = turnserver_conf_owner(chemin)
+    replace_file(chemin, corps, mode, gid)
+
+
+def turnserver_conf_owner(chemin: pathlib.Path) -> tuple:
+    """The (mode, gid) the replaced `turnserver.conf` must carry.
+
+    The Debian `coturn` package (4.6.1-2, trixie: `debian/coturn.postinst`)
+    registers `dpkg-statoverride root turnserver 640 /etc/turnserver.conf`,
+    and its unit runs the daemon as `User=turnserver`/`Group=turnserver`:
+    the daemon reads its configuration through the GROUP read bit. Replacing
+    the inode would drop that group and lock the daemon out of its own
+    configuration, so when the existing file grants group read, its group
+    and that bit are kept (0640). Otherwise — no file yet, or a file without
+    group read — the new file is owner-only (0600), returned with no group
+    change. "Other" never gets anything in either case.
+    """
+    try:
+        existant = chemin.stat()
+    except FileNotFoundError:
+        return 0o600, None
+    if existant.st_mode & stat.S_IRGRP:
+        return 0o640, existant.st_gid
+    return 0o600, None

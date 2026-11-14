@@ -334,18 +334,11 @@ def main() -> int:
     #      set up, `desk.env` never written or deleted since) — a problem
     #      more serious than a mere missing file, which deserves a named refusal
     #      rather than a silent fallback;
-    #   2. `add_env_variables()` (below) writes through `write_text()` THEN
-    #      `chmod`, exactly the pattern `install.py::write_env`
-    #      abandoned (commit `92cacfb`, "a secret never readable between
-    #      creation and chmod") for an atomic `os.open(..., 0o600)` — a
-    #      NEW file would be born here with the process umask, briefly readable
-    #      by anyone before the `chmod` catches up, and this file is about to
-    #      receive `AGENT_SECRET`. Refusing here guarantees that
-    #      `add_env_variables()` only EVER writes to a file already at
-    #      600: `write_text()` on an EXISTING file does not touch its
-    #      mode, so no window opens. `tests/test_desk_activate.py`
-    #      tests this refusal (dedicated scenario: `plateforme/` set up, `desk.env`
-    #      absent).
+    #   2. `add_env_variables()` (below) only APPENDS the enrolment keys:
+    #      a `desk.env` recreated from nothing here would carry them without
+    #      the secrets `install` draws, and the service would not start.
+    #      `tests/test_desk_activate.py` tests this refusal (dedicated
+    #      scenario: `plateforme/` set up, `desk.env` absent).
     if not env_chemin.is_file():
         print(f"desk activate: {env_chemin} is absent; the install hook does not "
               "seem to have laid down an environment file on this "
