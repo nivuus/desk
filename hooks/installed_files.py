@@ -27,6 +27,7 @@ import secrets
 import stat
 
 from atomic_file import replace_file
+from turn_peers import peer_restriction_lines
 
 # The standard TURN port, the one docker-compose.coturn.yml sets through
 # `--listening-port=3478` — the only value that makes the URL
@@ -135,28 +136,38 @@ def write_env(chemin: pathlib.Path, values: dict) -> None:
 
 
 def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
-                            turn_relais: str, secret: str) -> None:
+                            turn_relais: str, secret: str,
+                            adresse_vm: str) -> None:
     """Lays down the native configuration of the Debian `coturn` package.
 
-    ⚠️ FORMAT NOT VERIFIED ON THIS MACHINE — `coturn` is not installed on it
-    (`dpkg -l coturn` returns nothing there at the time of writing). The directives
-    below reuse, as is, the options already verified and
-    commented in `docker-compose.coturn.yml` (`--listening-ip`,
-    `--relay-ip`, `--static-auth-secret`, etc.): each coturn option has,
-    by construction of the software, a configuration file directive
-    of the same name without the `--` prefix. This is a reasonable extrapolation,
-    not a measurement — to be confirmed at the first `turnserver -c this-file`
-    actually run.
+    The directive names and their syntax were checked against the coturn
+    4.6.1 sources, the version Debian trixie ships (4.6.1-2):
+    `examples/etc/turnserver.conf` and the option table of
+    `src/apps/relay/mainrelay.c`. The file has NOT been run by a coturn on
+    this machine (`coturn` is not installed on it) — the first
+    `turnserver -c this-file` actually run remains the check of record.
 
-    🔴 LAID DOWN, NOT ARMED: this file is not enough to make coturn run —
-    `/etc/default/coturn` (TURNSERVER_ENABLED) is not touched here, by the
-    same doctrine as the desk-plateforme unit (see its comment):
-    laying down is not arming. No task of this plan arms coturn; it is a
-    named legacy, not an oversight — see the results document of the project.
+    The relay's peers are confined by `turn_peers.peer_restriction_lines`:
+    every non-public destination and the relay's own addresses are denied,
+    and only `adresse_vm` — the controlled machine (`commun.
+    lire_adresse_vm`) — is allowed back. An invalid `adresse_vm` raises
+    `ValueError` BEFORE anything is written: coturn would skip the entry it
+    cannot parse and start anyway.
+
+    🔴 LAID DOWN, NOT ARMED BY THIS HOOK — BUT THE DISTRIBUTION ARMS IT.
+    Nothing here enables or starts coturn. However the Debian package, which
+    the manifest's `apt:` list installs, enables and starts `coturn.service`
+    at installation (`debian/rules` runs `dh_installsystemd` with its
+    defaults), and that unit runs `turnserver -c /etc/turnserver.conf`
+    directly: it does not read `/etc/default/coturn` (TURNSERVER_ENABLED is
+    only read by the SysV init script). On a systemd host the relay
+    therefore runs with this file as soon as both are in place.
     """
+    restrictions = "\n".join(
+        peer_restriction_lines(adresse_vm, (turn_ecoute, turn_relais)))
     corps = f"""# turnserver.conf — laid down by the install hook of the desk package.
-# Format extrapolated from docker-compose.coturn.yml, NOT VERIFIED on this disk
-# (coturn is not installed there) — see the docstring of write_turnserver_conf.
+# Directives checked against the coturn 4.6.1 sources (Debian trixie), not yet
+# run by a coturn on this disk — see the docstring of write_turnserver_conf.
 listening-port={PORT_TURN}
 listening-ip={turn_ecoute}
 relay-ip={turn_relais}
@@ -170,6 +181,9 @@ no-tls
 no-dtls
 no-cli
 log-file=stdout
+# Peers: every non-public destination and the relay's own addresses are
+# denied; only the controlled machine is allowed (hooks/turn_peers.py).
+{restrictions}
 """
     # This file holds `static-auth-secret` in plain text: replaced atomically
     # like `write_env`, never readable by "other". See `turnserver_conf_owner`

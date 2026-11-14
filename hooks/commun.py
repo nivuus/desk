@@ -312,6 +312,20 @@ def lire_node_bin():
     return os.environ.get("DESK_NODE_BIN") or NODE_BIN_DEFAUT
 
 
+# The address of the controlled Windows machine. Its reasons — a value
+# PINNED by `console` (a static DHCP lease, and `GUEST_IP`'s default in
+# `console/guest/winrm_exec.py`), never a wizard answer — are in the head
+# docstring of `hooks/activate.py`, which enrols the agent at that address.
+# Shared here because `install` needs the SAME address: it is the one peer
+# the TURN relay allows back (`hooks/turn_peers.py`).
+ADRESSE_VM_DEFAUT = "192.168.3.2"
+
+
+def lire_adresse_vm():
+    """`ADRESSE_VM_DEFAUT`, overridable by `GUEST_IP` (console's variable)."""
+    return os.environ.get("GUEST_IP", ADRESSE_VM_DEFAUT)
+
+
 # --- What comes from the `facts` channel: validated, never taken on trust ----
 #
 # 🔴 MINOR #7 OF TASK 4, WHOSE REASON WAS REFUTED BY THIS VERY

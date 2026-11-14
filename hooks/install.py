@@ -41,6 +41,7 @@ import sys
 from commun import (
     PORT_DEFAUT,
     deriver_adresse_turn,
+    lire_adresse_vm,
     lire_hote,
     lire_node_bin,
     lire_proxy_confiance,
@@ -488,7 +489,7 @@ def main() -> int:
     emettre({"event": "progress", "pct": 95,
              "msg": "coturn configuration"})
     write_turnserver_conf(sub("etc/turnserver.conf"), turn_ecoute,
-                            turn_relais, secret_turn)
+                            turn_relais, secret_turn, lire_adresse_vm())
 
     emettre({"event": "done"})
     return 0

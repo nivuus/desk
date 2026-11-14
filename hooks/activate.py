@@ -115,6 +115,7 @@ import sys
 
 from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
+from commun import lire_adresse_vm
 from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
 from vm import poser_projfs, poser_vb_audio
 
@@ -131,8 +132,8 @@ WANTS_SUBDIR = "multi-user.target.wants"
 ENV_RELATIF = "etc/nivuus/desk.env"
 PLATEFORME_RELATIF = "opt/nivuus/desk/plateforme"
 
-# See the top docstring for the justification of these two defaults.
-ADRESSE_VM_DEFAUT = "192.168.3.2"
+# See the top docstring for the justification of this default and of
+# `commun.ADRESSE_VM_DEFAUT`.
 NOM_VM_DEFAUT = "windows"
 
 
@@ -399,7 +400,7 @@ def main() -> int:
 
     emettre({"event": "progress", "pct": 70, "msg": "Enrolling the agent"})
     nom_vm = os.environ.get("DESK_VM_NOM", NOM_VM_DEFAUT)
-    adresse_vm = os.environ.get("GUEST_IP", ADRESSE_VM_DEFAUT)
+    adresse_vm = lire_adresse_vm()
     result, raison = enroler_agent_plateforme(plateforme_dir, nom_vm, adresse_vm, env_npm)
     if raison:
         print(f"desk activate: agent enrolment refused: {raison}", file=sys.stderr)

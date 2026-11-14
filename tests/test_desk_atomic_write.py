@@ -46,7 +46,8 @@ def siblings(path: pathlib.Path) -> list:
 
 
 def write_turn(path: pathlib.Path) -> None:
-    write_turnserver_conf(path, "203.0.113.10", "203.0.113.10", "s" * 64)
+    write_turnserver_conf(path, "203.0.113.10", "203.0.113.10", "s" * 64,
+                          "192.168.3.2")
 
 
 WRITERS = {
