@@ -17,7 +17,9 @@
 
 use anyhow::{anyhow, bail, Context, Result};
 
-use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
+use windows::Win32::System::LibraryLoader::{
+    GetProcAddress, LoadLibraryExW, LOAD_LIBRARY_SEARCH_SYSTEM32,
+};
 
 use super::abi;
 use super::fonctions::{self, FunctionList, Statut};
@@ -51,8 +53,19 @@ pub struct Porte {
 
 impl Porte {
     pub fn ouvrir() -> Result<Self> {
-        let module = unsafe { LoadLibraryA(windows::core::s!("nvEncodeAPI64.dll")) }
-            .context("loading nvEncodeAPI64.dll (the DLL comes from the NVIDIA driver)")?;
+        // The driver installs this DLL in System32, and ONLY there is it
+        // looked for: a bare name would search the application's directory
+        // (and, depending on SafeDllSearchMode, the current one) first.
+        let module = unsafe {
+            LoadLibraryExW(
+                windows::core::w!("nvEncodeAPI64.dll"),
+                None,
+                LOAD_LIBRARY_SEARCH_SYSTEM32,
+            )
+        }
+        .context(
+            "loading nvEncodeAPI64.dll from System32 (the DLL comes from the NVIDIA driver)",
+        )?;
 
         // ① The driver version BEFORE anything, so that the refusal is readable.
         let version_max = unsafe {
