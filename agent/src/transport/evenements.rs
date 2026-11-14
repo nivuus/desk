@@ -302,12 +302,13 @@ impl Session {
     ) {
         match destination(data.id, self.input_channel, self.control_channel) {
             Destination::Entree => match InputMessage::decode(&data.data) {
-                Ok(message) => on_input(message),
+                Ok(message) => self.receive_input(message, on_input),
                 Err(e) => tracing::warn!(error = %e, "invalid input message"),
             },
             Destination::Controle => {
                 match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
                     Ok(Ok(message)) => {
+                        self.release_on_focus_loss(&message, on_input);
                         self.memoriser_controle(&message);
                         on_control(message);
                     }

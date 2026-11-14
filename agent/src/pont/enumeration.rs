@@ -88,6 +88,22 @@ pub fn preparer(
     retenues
 }
 
+/// Drops the entries whose name is not one valid Windows path component
+/// (`crate::pont::chemins::valid_component`), and says how many it dropped.
+///
+/// The names come from the PEER's directory listing: a file name legal on
+/// the browser's system (a `:` or a `?` on Linux) can be illegal on Windows,
+/// and one such name must cost that entry, never the whole listing.
+pub fn drop_invalid_names(entrees: Vec<Entree>) -> (Vec<Entree>, usize) {
+    let before = entrees.len();
+    let kept: Vec<Entree> = entrees
+        .into_iter()
+        .filter(|e| crate::pont::chemins::valid_component(&e.nom).is_ok())
+        .collect();
+    let dropped = before - kept.len();
+    (kept, dropped)
+}
+
 /// An enumeration session: the prepared entries, and where we are.
 ///
 /// ⚠️ **Indexed by the ENUMERATION GUID, never by path** (spec §7.2) —

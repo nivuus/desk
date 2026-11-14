@@ -279,14 +279,29 @@ pub(super) fn remplir(
     S_OK
 }
 
-/// Converts protocol entries into enumeration entries.
-pub(super) fn entrees_depuis(json: Vec<proto::files::entetes::EntreeJson>) -> Vec<Entree> {
-    json.into_iter()
+/// Converts protocol entries into enumeration entries, dropping those whose
+/// name is not one valid Windows path component — with ONE trace per
+/// listing, never one per entry.
+pub(super) fn entrees_depuis(
+    chemin: &str,
+    json: Vec<proto::files::entetes::EntreeJson>,
+) -> Vec<Entree> {
+    let entrees = json
+        .into_iter()
         .map(|e| Entree {
             nom: e.nom,
             repertoire: e.repertoire,
             size: e.size,
             modified_ms: e.modified,
         })
-        .collect()
+        .collect();
+    let (kept, dropped) = crate::pont::enumeration::drop_invalid_names(entrees);
+    if dropped > 0 {
+        tracing::warn!(
+            chemin,
+            dropped,
+            "directory entries dropped: their name is not a valid Windows file name"
+        );
+    }
+    kept
 }

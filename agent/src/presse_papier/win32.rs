@@ -14,12 +14,14 @@
 
 use anyhow::{Context, Result};
 use windows::Win32::Foundation::HANDLE;
-use windows::Win32::Foundation::HGLOBAL;
+use windows::Win32::Foundation::{GlobalFree, HGLOBAL};
 use windows::Win32::System::DataExchange::{
     CloseClipboard, EmptyClipboard, GetClipboardData, GetClipboardSequenceNumber, OpenClipboard,
     SetClipboardData,
 };
-use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+use windows::Win32::System::Memory::{
+    GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE,
+};
 use windows::Win32::System::Ole::CF_UNICODETEXT;
 
 /// The clipboard sequence counter of the window station.
@@ -60,17 +62,22 @@ pub fn lire_texte() -> Result<Option<String>> {
             _ => return Ok(None),
         };
         let global = HGLOBAL(poignee.0);
+        // 🔴 THE READ IS BOUNDED BY THE BLOCK: Windows does not enforce the
+        // terminator of `CF_UNICODETEXT`, and the block belongs to whichever
+        // process put it there. No NUL within the block means the text is
+        // the whole block — never a read past it.
+        let units = GlobalSize(global) / std::mem::size_of::<u16>();
+        if units == 0 {
+            anyhow::bail!("GlobalSize returned 0 for the clipboard text block");
+        }
         let pointeur = GlobalLock(global) as *const u16;
         if pointeur.is_null() {
             anyhow::bail!("GlobalLock returned a null pointer");
         }
-        let mut length = 0usize;
-        while *pointeur.add(length) != 0 {
-            length += 1;
-        }
+        let block = std::slice::from_raw_parts(pointeur, units);
         // 🔴 THE DATA IS COPIED BEFORE ANY CLOSING: the handle belongs
         // to the clipboard and is no longer valid after `CloseClipboard`.
-        let texte = String::from_utf16_lossy(std::slice::from_raw_parts(pointeur, length));
+        let texte = String::from_utf16_lossy(&block[..super::text_block::utf16_length(block)]);
         let _ = GlobalUnlock(global);
         Ok(Some(texte))
     }
@@ -111,19 +118,23 @@ pub fn write_text(texte: &str) -> Result<u32> {
         let _garde = PressePapierOuvert;
         EmptyClipboard().context("EmptyClipboard")?;
         let octets = unites.len() * std::mem::size_of::<u16>();
-        let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
-        let pointeur = GlobalLock(global) as *mut u16;
+        // Owned by THIS process until `SetClipboardData` succeeds: the guard
+        // frees it on every path that does not hand it over.
+        let block = OwnedBlock(GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?);
+        let pointeur = GlobalLock(block.0) as *mut u16;
         if pointeur.is_null() {
             anyhow::bail!("GlobalLock returned a null pointer");
         }
         std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
-        let _ = GlobalUnlock(global);
-        // 🔴 The clipboard TAKES OWNERSHIP of the block: do not free it.
-        // `GlobalFree` here would leave the station's clipboard pointing at
-        // memory returned to the heap — a defect with deferred effect, and global to
-        // the Windows session.
-        SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(global.0)))
+        let _ = GlobalUnlock(block.0);
+        // 🔴 On SUCCESS the clipboard TAKES OWNERSHIP of the block: it must not
+        // be freed then (`hand_over`). `GlobalFree` after a success would leave the
+        // station's clipboard pointing at memory returned to the heap — a
+        // defect with deferred effect, and global to the Windows session.
+        // On FAILURE it is still ours, and the guard frees it.
+        SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(block.0 .0)))
             .context("SetClipboardData")?;
+        block.hand_over();
         Ok(())
     })();
     // The guard ran on leaving the closure above: the
@@ -131,6 +142,26 @@ pub fn write_text(texte: &str) -> Result<u32> {
     // stable.
     ecriture?;
     Ok(numero_de_sequence())
+}
+
+/// A `GlobalAlloc` block this process still owns: freed on drop, unless
+/// [`OwnedBlock::hand_over`] records that `SetClipboardData` took it over
+/// (Microsoft's `SetClipboardData` page: on success "the system owns the
+/// object", which the application "may not write to or free").
+struct OwnedBlock(HGLOBAL);
+
+impl OwnedBlock {
+    fn hand_over(self) {
+        std::mem::forget(self);
+    }
+}
+
+impl Drop for OwnedBlock {
+    fn drop(&mut self) {
+        // SAFETY: the block came from `GlobalAlloc`, is unlocked on every
+        // path that reaches here, and was not handed to the clipboard.
+        let _ = unsafe { GlobalFree(Some(self.0)) };
+    }
 }
 
 /// The RAII guard that closes the clipboard — **on ALL exit

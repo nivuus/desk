@@ -31,6 +31,8 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 
+use crate::transport::socket::{classify_recv_error, recv_error_backoff, RecvErrorAction};
+
 use super::{VersNavigateur, TAMPON_UDP};
 
 /// How long the reader blocks before checking whether the loop is gone.
@@ -142,31 +144,66 @@ pub(super) fn armer(socket: &UdpSocket, sortant: Receiver<VersNavigateur>) -> Re
 }
 
 fn lire(socket: UdpSocket, envoi: SyncSender<Reveil>, arret: Arc<AtomicBool>) {
+    read_from(|tampon| socket.recv_from(tampon), envoi, arret);
+}
+
+/// The reader's loop, over any `recv_from`: the seam that lets a host test
+/// hand it the errors a Windows socket returns and a Linux one never does.
+fn read_from(
+    mut receive: impl FnMut(&mut [u8]) -> std::io::Result<(usize, SocketAddr)>,
+    envoi: SyncSender<Reveil>,
+    arret: Arc<AtomicBool>,
+) {
     let mut tampon = vec![0u8; TAMPON_UDP];
+    let mut consecutive_errors = 0u32;
     while !arret.load(Ordering::Relaxed) {
-        let reveil = match socket.recv_from(&mut tampon) {
-            Ok((size, source)) => Reveil::Datagram {
-                source,
-                bytes: tampon[..size].to_vec(),
-            },
+        let reveil = match receive(&mut tampon) {
+            Ok((size, source)) => {
+                consecutive_errors = 0;
+                Reveil::Datagram {
+                    source,
+                    bytes: tampon[..size].to_vec(),
+                }
+            }
             // The period elapsed: `WouldBlock` on Unix, `TimedOut` on Windows.
             Err(e)
                 if matches!(
                     e.kind(),
-                    std::io::ErrorKind::WouldBlock
-                        | std::io::ErrorKind::TimedOut
-                        | std::io::ErrorKind::Interrupted
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
                 ) =>
             {
-                continue
+                consecutive_errors = 0;
+                continue;
             }
-            Err(e) => {
-                let _ = envoi.send(Reveil::Socket(e));
-                return;
-            }
+            // The child session's classification, reused rather than copied:
+            // `ConnectionReset` (Windows' `WSAECONNRESET` after an ICMP "port
+            // unreachable", e.g. a tab closed abruptly) and `Interrupted` are
+            // transient, and retried after a bounded growing backoff so that
+            // a burst of them does not spin. Anything else is fatal.
+            Err(e) => match classify_recv_error(e.kind()) {
+                RecvErrorAction::RetryWithBackoff => {
+                    consecutive_errors = consecutive_errors.saturating_add(1);
+                    let backoff = recv_error_backoff(consecutive_errors);
+                    tracing::warn!(
+                        error = %e,
+                        consecutives = consecutive_errors,
+                        backoff_ms = backoff.as_millis(),
+                        "transient bridge UDP receive failure, retried"
+                    );
+                    std::thread::sleep(backoff);
+                    continue;
+                }
+                RecvErrorAction::Fatal => {
+                    let _ = envoi.send(Reveil::Socket(e));
+                    return;
+                }
+            },
         };
         if envoi.send(reveil).is_err() {
             return;
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

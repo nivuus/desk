@@ -369,8 +369,14 @@ fn analyser(texte: &str) -> Option<DepuisLaShell> {
                 );
                 None
             }
+            // The frame itself is never logged: `ice-config` carries the
+            // TURN credential. Its type and length are enough here.
             _ => {
-                tracing::debug!(texte, "message ignored on the control session");
+                tracing::debug!(
+                    frame_type = ?crate::plateforme::frame::frame_type(texte),
+                    bytes = texte.len(),
+                    "message ignored on the control session"
+                );
                 None
             }
         },

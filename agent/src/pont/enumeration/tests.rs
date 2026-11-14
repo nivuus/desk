@@ -120,3 +120,18 @@ fn setting_entries_again_resets_the_cursor() {
     session.poser(vec![e("trois")]);
     assert_eq!(session.prochaine().map(|e| e.nom.as_str()), Some("trois"));
 }
+
+#[test]
+fn entries_whose_name_windows_cannot_hold_are_dropped_and_counted() {
+    let (kept, dropped) = drop_invalid_names(vec![
+        e("rapport.txt"),
+        e("x:y"),
+        e(r"a\b"),
+        e("Документ.odt"),
+        e("CON"),
+        e("question?.md"),
+    ]);
+    let names: Vec<&str> = kept.iter().map(|e| e.nom.as_str()).collect();
+    assert_eq!(names, vec!["rapport.txt", "Документ.odt"]);
+    assert_eq!(dropped, 4);
+}

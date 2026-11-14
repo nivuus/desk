@@ -31,6 +31,8 @@ pub(super) struct Pair {
     adresse: SocketAddr,
     rtc: Rtc,
     pub(super) canaux: Vec<ChannelId>,
+    /// The bridge's own socket address, for tests that send it stray datagrams.
+    pub(super) bridge_address: SocketAddr,
 }
 
 /// Sets up a bridge and a peer, negotiates `labels` as data channels, and returns
@@ -42,6 +44,7 @@ pub(super) struct Pair {
 pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver<DuNavigateur>) {
     let local_ip = "127.0.0.1".parse().unwrap();
     let (socket_pont, mut rtc_pont) = build_data_rtc(local_ip).expect("bridge built");
+    let bridge_address = socket_pont.local_addr().unwrap();
 
     let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("peer socket");
     let adresse = socket.local_addr().unwrap();
@@ -77,6 +80,7 @@ pub(super) fn monter(labels: &[&str]) -> (Pair, Sender<VersNavigateur>, Receiver
             adresse,
             rtc,
             canaux,
+            bridge_address,
         },
         tx_sortant,
         rx_entrant,

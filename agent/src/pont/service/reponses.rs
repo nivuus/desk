@@ -96,7 +96,24 @@ pub(super) fn appliquer(
             let projfs_texte = String::from_utf16_lossy(
                 chemin_projfs.strip_suffix(&[0u16]).unwrap_or(chemin_projfs),
             );
-            let canonique = crate::pont::chemins::with_last_component(&projfs_texte, &meta.nom);
+            // 🔴 The name comes from the PEER: it is accepted only if it is ONE
+            // valid Windows component that designates the requested file
+            // (equal to it under ProjFS's own comparison). Otherwise the
+            // placeholder keeps the requested name.
+            let canonique =
+                match crate::pont::chemins::canonical_name(&projfs_texte, &meta.nom, |a, b| {
+                    etat.comparer(a, b) == std::cmp::Ordering::Equal
+                }) {
+                    Ok(canonique) => canonique,
+                    Err(reason) => {
+                        tracing::warn!(
+                            demande = %projfs_texte,
+                            ?reason,
+                            "canonical name refused: the placeholder keeps the requested name"
+                        );
+                        None
+                    }
+                };
             let Some(neuf) = canonique else {
                 return Suite::Termine(verbes::write_placeholder(
                     etat,
@@ -266,7 +283,7 @@ pub(super) fn appliquer(
             // See `pont::cache`: the prepared result depends on the request, and
             // memorising it would make a `dir *.txt` poison the next
             // `dir`.
-            let brutes = verbes::entrees_depuis(entete.entrees);
+            let brutes = verbes::entrees_depuis(&chemin, entete.entrees);
             if etat.cache_arme {
                 if let Ok(mut cache) = etat.cache.lock() {
                     cache.poser(chemin.clone(), brutes.clone(), std::time::Instant::now());
