@@ -24,6 +24,7 @@
 //! permanently, and the platform would punish a network cut as an
 //! agent failure.
 
+pub(crate) mod frame;
 pub mod identite;
 pub mod repli;
 
@@ -45,6 +46,10 @@ mod tests_installation;
 #[cfg(test)]
 #[path = "plateforme/tests_backoff.rs"]
 mod tests_backoff;
+
+#[cfg(test)]
+#[path = "plateforme/tests_log.rs"]
+mod tests_log;
 
 use std::time::Duration;
 

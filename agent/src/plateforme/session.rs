@@ -201,9 +201,15 @@ pub(super) async fn une_session(
                     // itself as a silent reconnection loop, which is the
                     // failure mode this channel exists to avoid. And a
                     // platform redeployed at the right version recovers on its own.
+                    //
+                    // 🔴 THE FRAME ITSELF IS NEVER LOGGED: an `enrole` or a
+                    // `battement-recu` carries the agent's bearer token. Its
+                    // type and its length say enough to diagnose a divergence.
                     Err(error) => {
                         tracing::warn!(
-                            url, %error, texte,
+                            url, %error,
+                            frame_type = ?super::frame::frame_type(&texte),
+                            bytes = texte.len(),
                             "unreadable message from the platform (diverging version?)"
                         );
                         return Fin::Reprenable;
