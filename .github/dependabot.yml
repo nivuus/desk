@@ -6,15 +6,24 @@ updates:
       interval: weekly
     commit-message:
       prefix: "ci"
+  # The shared release workflow releases only on fix, perf, refactor and feat
+  # subjects. A runtime dependency bump (often a security fix) must therefore
+  # be a `fix`, or it never reaches a release. Cargo has no
+  # `prefix-development`, so its development dependency bumps release too.
   - package-ecosystem: cargo
     directory: "/"
     schedule:
       interval: weekly
     commit-message:
-      prefix: "ci"
+      prefix: "fix"
+      include: "scope"
+  # npm separates the two: `fix(deps)` for production dependencies, which
+  # releases, and `chore(deps-dev)` for development ones, which does not.
   - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
     commit-message:
-      prefix: "ci"
+      prefix: "fix"
+      prefix-development: "chore"
+      include: "scope"
