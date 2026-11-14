@@ -9,11 +9,11 @@ must only carry the product's own media.
 
 Who the peers legitimately are (`plateforme/src/signaling/ice.ts` gives
 relay credentials to BOTH peers; measured in
-`docs/superpowers/plans/2026-07-29-traversee-nat-resultats.md`):
+`docs/superpowers/plans/2026-07-29-traversee-nat-resultats.md`):  # policy: allow-fr - real file name
 
 - the browser's relayed allocation sends to the agent's candidates, whose
   host candidate is the controlled machine's address (`commun.
-  lire_adresse_vm`) — the pair ICE nominates, since the relay reaches it;
+  read_vm_address`) — the pair ICE nominates, since the relay reaches it;
 - the agent's relayed allocation sends to the browser's candidates, which
   are public (server-reflexive) addresses.
 
@@ -61,7 +61,7 @@ import ipaddress
 # updates): every block that is not globally reachable, plus multicast and
 # the reserved space. IPv6 blocks that start at `::` are left out on
 # purpose; see the module docstring.
-DENIED_PEER_NETWORKS = tuple(ipaddress.ip_network(bloc) for bloc in (
+DENIED_PEER_NETWORKS = tuple(ipaddress.ip_network(block) for block in (
     "0.0.0.0/8",          # "this network" (RFC 791)
     "10.0.0.0/8",         # private use (RFC 1918)
     "100.64.0.0/10",      # shared address space (RFC 6598)
@@ -92,12 +92,12 @@ DENIED_PEER_NETWORKS = tuple(ipaddress.ip_network(bloc) for bloc in (
 ))
 
 
-def coturn_range(reseau) -> str:
+def coturn_range(network) -> str:
     """`first-last`, the only multi-address form coturn 4.6.1 parses."""
-    return f"{reseau.network_address}-{reseau.broadcast_address}"
+    return f"{network.network_address}-{network.broadcast_address}"
 
 
-def allowed_peer_address(brut: str, origine: str) -> str:
+def allowed_peer_address(raw: str, origin: str) -> str:
     """Validates one address to allow back, or raises ValueError.
 
     coturn skips an entry it cannot parse and starts anyway, so an invalid
@@ -106,37 +106,37 @@ def allowed_peer_address(brut: str, origine: str) -> str:
     (see the module docstring): asking for it is a configuration error.
     """
     try:
-        adresse = ipaddress.ip_address(str(brut).strip())
+        address = ipaddress.ip_address(str(raw).strip())
     except ValueError:
         raise ValueError(
-            f"{origine}={brut!r} is not an IP address: the TURN relay can only "
+            f"{origin}={raw!r} is not an IP address: the TURN relay can only "
             "allow a peer by address") from None
-    if adresse.is_unspecified or adresse.is_loopback or adresse.is_multicast:
+    if address.is_unspecified or address.is_loopback or address.is_multicast:
         raise ValueError(
-            f"{origine}={brut!r} cannot be a relay peer (unspecified, "
+            f"{origin}={raw!r} cannot be a relay peer (unspecified, "
             "loopback or multicast address)")
-    return str(adresse)
+    return str(address)
 
 
-def peer_restriction_lines(adresse_vm: str, adresses_relais) -> list:
+def peer_restriction_lines(vm_address: str, relay_addresses) -> list:
     """The `turnserver.conf` lines that confine the relay's peers.
 
-    `adresses_relais`: the relay's own addresses (listen and relay), denied
+    `relay_addresses`: the relay's own addresses (listen and relay), denied
     one by one. The controlled machine's address is the only one allowed.
     """
-    autorisee = allowed_peer_address(adresse_vm, "the controlled machine's address")
-    propres = []
-    for brut in adresses_relais:
-        adresse = str(ipaddress.ip_address(str(brut).strip()))
-        if adresse == autorisee:
+    allowed = allowed_peer_address(vm_address, "the controlled machine's address")
+    own = []
+    for raw in relay_addresses:
+        address = str(ipaddress.ip_address(str(raw).strip()))
+        if address == allowed:
             raise ValueError(
-                f"the controlled machine's address {autorisee} is also an "
+                f"the controlled machine's address {allowed} is also an "
                 "address of the TURN relay itself: the relay cannot both "
                 "deny its own host and allow that peer")
-        if adresse not in propres:
-            propres.append(adresse)
-    lignes = ["no-multicast-peers", "no-tcp-relay"]
-    lignes += [f"denied-peer-ip={coturn_range(r)}" for r in DENIED_PEER_NETWORKS]
-    lignes += [f"denied-peer-ip={a}" for a in propres]
-    lignes.append(f"allowed-peer-ip={autorisee}")
-    return lignes
+        if address not in own:
+            own.append(address)
+    lines = ["no-multicast-peers", "no-tcp-relay"]
+    lines += [f"denied-peer-ip={coturn_range(r)}" for r in DENIED_PEER_NETWORKS]
+    lines += [f"denied-peer-ip={a}" for a in own]
+    lines.append(f"allowed-peer-ip={allowed}")
+    return lines

@@ -153,7 +153,7 @@ services:
       - --denied-peer-ip=${TURN_RELAY_IP}
       # The ONE peer allowed back: the controlled Windows machine, the agent's
       # host candidate. An allowed address wins over a denied range. Same
-      # variable and value as the hooks (`commun.lire_adresse_vm`), MANDATORY
+      # variable and value as the hooks (`commun.read_vm_address`), MANDATORY
       # here like the two addresses above: without it no session could relay.
       - --allowed-peer-ip=${GUEST_IP:?GUEST_IP is required - the address of the controlled Windows machine, the only private peer the relay may reach}
       # Sans cette option, coturn refuse de démarrer s'il ne parvient pas à

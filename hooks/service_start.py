@@ -40,13 +40,13 @@ import urllib.error
 import urllib.request
 
 SYSTEMD_RUNTIME_DIR = pathlib.Path("/run/systemd/system")
-DELAI_SANTE_S = 90.0
-INTERVALLE_SANTE_S = 1.0
-CHEMIN_SANTE = "/sante"
+HEALTH_TIMEOUT_S = 90.0
+HEALTH_INTERVAL_S = 1.0
+HEALTH_PATH = "/sante"
 
 # Never through a proxy: the health target is the service on this host, and
 # an `http_proxy` inherited from the environment would probe something else.
-_OUVREUR = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def systemd_booted(runtime_dir: pathlib.Path = SYSTEMD_RUNTIME_DIR) -> bool:
@@ -54,75 +54,75 @@ def systemd_booted(runtime_dir: pathlib.Path = SYSTEMD_RUNTIME_DIR) -> bool:
     return pathlib.Path(runtime_dir).is_dir()
 
 
-def restart_now(unite: str, runner=subprocess.run) -> str | None:
-    """`daemon-reload` then `restart <unite>`; the first failure, or None."""
-    for commande in (["systemctl", "daemon-reload"], ["systemctl", "restart", unite]):
+def restart_now(unit: str, runner=subprocess.run) -> str | None:
+    """`daemon-reload` then `restart <unit>`; the first failure, or None."""
+    for command in (["systemctl", "daemon-reload"], ["systemctl", "restart", unit]):
         try:
-            proc = runner(commande, capture_output=True, text=True)
+            proc = runner(command, capture_output=True, text=True)
         except OSError as exc:  # systemctl absent from this PATH
-            return f"{' '.join(commande)}: {exc}"
+            return f"{' '.join(command)}: {exc}"
         if proc.returncode != 0:
             detail = (proc.stderr or proc.stdout or "").strip()[:200]
-            return f"{' '.join(commande)}: {detail or f'exit code {proc.returncode}'}"
+            return f"{' '.join(command)}: {detail or f'exit code {proc.returncode}'}"
     return None
 
 
 def health_url(env: dict) -> str:
     """The `/sante` URL of the service, from its `desk.env` values."""
-    hote = str(env.get("PLATEFORME_HOTE") or "").strip()
+    host = str(env.get("PLATEFORME_HOTE") or "").strip()
     port = str(env.get("PLATEFORME_PORT") or "").strip()
-    if not hote or not port:
+    if not host or not port:
         raise ValueError("desk.env carries no PLATEFORME_HOTE/PLATEFORME_PORT: "
                          "the address the service listens on is unknown")
-    if ":" in hote:
-        hote = f"[{hote}]"
-    return f"http://{hote}:{port}{CHEMIN_SANTE}"
+    if ":" in host:
+        host = f"[{host}]"
+    return f"http://{host}:{port}{HEALTH_PATH}"
 
 
-def wait_for_health(url: str, delai_s: float,
-                    intervalle_s: float = INTERVALLE_SANTE_S) -> str | None:
-    """Polls `url` until it answers 200 or `delai_s` elapses.
+def wait_for_health(url: str, timeout_s: float,
+                    interval_s: float = HEALTH_INTERVAL_S) -> str | None:
+    """Polls `url` until it answers 200 or `timeout_s` elapses.
 
     Returns None once the service answered 200, otherwise what was last
     observed — a refused connection and a 503 are different diagnoses.
     """
-    echeance = time.monotonic() + delai_s
-    dernier = "no answer yet"
+    deadline = time.monotonic() + timeout_s
+    last = "no answer yet"
     while True:
-        restant = echeance - time.monotonic()
-        if restant <= 0:
-            return dernier
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return last
         try:
-            with _OUVREUR.open(url, timeout=max(0.1, min(restant, 5.0))) as reponse:
-                if reponse.status == 200:
+            with _OPENER.open(url, timeout=max(0.1, min(remaining, 5.0))) as response:
+                if response.status == 200:
                     return None
-                dernier = f"HTTP {reponse.status}"
+                last = f"HTTP {response.status}"
         except urllib.error.HTTPError as exc:
-            dernier = f"HTTP {exc.code}"
+            last = f"HTTP {exc.code}"
         except (urllib.error.URLError, OSError) as exc:
-            dernier = f"{getattr(exc, 'reason', exc)}"
-        time.sleep(min(intervalle_s, max(0.0, echeance - time.monotonic())))
+            last = f"{getattr(exc, 'reason', exc)}"
+        time.sleep(min(interval_s, max(0.0, deadline - time.monotonic())))
 
 
-def bring_up(unite: str, env: dict, *, runtime_dir: pathlib.Path = SYSTEMD_RUNTIME_DIR,
-             runner=subprocess.run, delai_s: float = DELAI_SANTE_S) -> tuple:
-    """Restarts `unite` and waits for its health route. `(ok, message)`.
+def bring_up(unit: str, env: dict, *, runtime_dir: pathlib.Path = SYSTEMD_RUNTIME_DIR,
+             runner=subprocess.run, timeout_s: float = HEALTH_TIMEOUT_S) -> tuple:
+    """Restarts `unit` and waits for its health route. `(ok, message)`.
 
     `ok` False is FATAL for the caller. Only called by `activate.py::main()`
     when `--root` is `/`: see its guard, right before the call.
     """
     if not systemd_booted(runtime_dir):
-        return True, (f"{unite} linked, not started: systemd is not the running "
+        return True, (f"{unit} linked, not started: systemd is not the running "
                       f"init ({runtime_dir} is absent); it starts at the next boot")
     try:
         url = health_url(env)
     except ValueError as exc:
-        return False, f"{unite} not restarted: {exc}"
-    echec = restart_now(unite, runner)
-    if echec:
-        return False, f"{unite} could not be restarted: {echec}"
-    observe = wait_for_health(url, delai_s)
-    if observe is not None:
-        return False, (f"{unite} restarted but {url} did not answer 200 within "
-                       f"{delai_s:g} s (last: {observe}); see journalctl -u {unite}")
-    return True, f"{unite} restarted and {url} answers"
+        return False, f"{unit} not restarted: {exc}"
+    failure = restart_now(unit, runner)
+    if failure:
+        return False, f"{unit} could not be restarted: {failure}"
+    observed = wait_for_health(url, timeout_s)
+    if observed is not None:
+        return False, (f"{unit} restarted but {url} did not answer 200 within "
+                       f"{timeout_s:g} s (last: {observed}); see journalctl -u {unit}")
+    return True, f"{unit} restarted and {url} answers"

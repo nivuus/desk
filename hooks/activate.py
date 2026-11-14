@@ -115,7 +115,7 @@ import sys
 
 from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
-from commun import lire_adresse_vm
+from commun import read_vm_address
 from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
 from service_start import bring_up
 from vm import poser_projfs, poser_vb_audio
@@ -219,11 +219,11 @@ def main() -> int:
     # Only on the REAL machine: see the top docstring. A failed restart, or a
     # service that never answers its health route, is fatal there — except
     # when systemd is not the running init (see hooks/service_start.py).
-    etat_service = f"{UNITE} linked (not started under a test --root)"
+    service_state = f"{UNITE} linked (not started under a test --root)"
     if str(root) == "/":
-        ok, etat_service = bring_up(UNITE, read_env_file(root / ENV_RELATIF))
+        ok, service_state = bring_up(UNITE, read_env_file(root / ENV_RELATIF))
         if not ok:
-            print(f"desk activate: {etat_service}", file=sys.stderr)
+            print(f"desk activate: {service_state}", file=sys.stderr)
             return 1
 
     # 🔴 TASK 6 — WHAT `desk` SETS UP IN THE VM, THROUGH THE WINRM PATH OF
@@ -347,7 +347,7 @@ def main() -> int:
     # report, § Reservations.
     if all(env_deja_pose.get(cle) for cle in ACTIVATE_KEYS):
         emettre({"event": "progress", "pct": 100,
-                 "msg": f"desk: {etat_service}; already activated (AGENT_VM/"
+                 "msg": f"desk: {service_state}; already activated (AGENT_VM/"
                         "AGENT_SECRET already present in desk.env), account and "
                         "enrolment skipped"})
         emettre({"event": "done"})
@@ -379,7 +379,7 @@ def main() -> int:
 
     emettre({"event": "progress", "pct": 70, "msg": "Enrolling the agent"})
     nom_vm = os.environ.get("DESK_VM_NOM", NOM_VM_DEFAUT)
-    adresse_vm = lire_adresse_vm()
+    adresse_vm = read_vm_address()
     result, raison = enroler_agent_plateforme(plateforme_dir, nom_vm, adresse_vm, env_npm)
     if raison:
         print(f"desk activate: agent enrolment refused: {raison}", file=sys.stderr)
@@ -445,7 +445,7 @@ def main() -> int:
         return 1
 
     emettre({"event": "progress", "pct": 100,
-             "msg": f"desk: {etat_service}; account created, agent enrolled, "
+             "msg": f"desk: {service_state}; account created, agent enrolled, "
                     "VM assigned"})
     emettre({"event": "done"})
     return 0

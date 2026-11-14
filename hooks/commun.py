@@ -321,7 +321,7 @@ def lire_node_bin():
 ADRESSE_VM_DEFAUT = "192.168.3.2"
 
 
-def lire_adresse_vm():
+def read_vm_address():
     """`ADRESSE_VM_DEFAUT`, overridable by `GUEST_IP` (console's variable)."""
     return os.environ.get("GUEST_IP", ADRESSE_VM_DEFAUT)
 

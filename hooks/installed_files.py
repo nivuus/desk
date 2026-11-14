@@ -137,7 +137,7 @@ def write_env(chemin: pathlib.Path, values: dict) -> None:
 
 def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
                             turn_relais: str, secret: str,
-                            adresse_vm: str) -> None:
+                            vm_address: str) -> None:
     """Lays down the native configuration of the Debian `coturn` package.
 
     The directive names and their syntax were checked against the coturn
@@ -149,8 +149,8 @@ def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
 
     The relay's peers are confined by `turn_peers.peer_restriction_lines`:
     every non-public destination and the relay's own addresses are denied,
-    and only `adresse_vm` — the controlled machine (`commun.
-    lire_adresse_vm`) — is allowed back. An invalid `adresse_vm` raises
+    and only `vm_address` — the controlled machine (`commun.
+    read_vm_address`) — is allowed back. An invalid `vm_address` raises
     `ValueError` BEFORE anything is written: coturn would skip the entry it
     cannot parse and start anyway.
 
@@ -164,7 +164,7 @@ def write_turnserver_conf(chemin: pathlib.Path, turn_ecoute: str,
     therefore runs with this file as soon as both are in place.
     """
     restrictions = "\n".join(
-        peer_restriction_lines(adresse_vm, (turn_ecoute, turn_relais)))
+        peer_restriction_lines(vm_address, (turn_ecoute, turn_relais)))
     corps = f"""# turnserver.conf — laid down by the install hook of the desk package.
 # Directives checked against the coturn 4.6.1 sources (Debian trixie), not yet
 # run by a coturn on this disk — see the docstring of write_turnserver_conf.
@@ -206,9 +206,9 @@ def turnserver_conf_owner(chemin: pathlib.Path) -> tuple:
     change. "Other" never gets anything in either case.
     """
     try:
-        existant = chemin.stat()
+        existing = chemin.stat()
     except FileNotFoundError:
         return 0o600, None
-    if existant.st_mode & stat.S_IRGRP:
-        return 0o640, existant.st_gid
+    if existing.st_mode & stat.S_IRGRP:
+        return 0o640, existing.st_gid
     return 0o600, None

@@ -23,7 +23,7 @@ sys.path.insert(0, str(RACINE / "hooks"))
 from service_start import bring_up, health_url, systemd_booted  # noqa: E402
 
 failures = []
-UNITE = "desk-plateforme.service"
+UNIT = "desk-plateforme.service"
 
 
 def check(label, got, want):
@@ -47,24 +47,24 @@ class Recorder:
 
 def serve(status: int, after_s: float = 0.0):
     """A /sante endpoint answering `status`, refusing connections until `after_s`."""
-    debut = time.monotonic()
+    started = time.monotonic()
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802 - http.server naming
-            pret = time.monotonic() - debut >= after_s
-            code = status if pret and self.path == "/sante" else 503
-            corps = b'{"etat":"ok"}' if code == 200 else b'{"etat":"degrade"}'
+            ready = time.monotonic() - started >= after_s
+            code = status if ready and self.path == "/sante" else 503
+            body = b'{"etat":"ok"}' if code == 200 else b'{"etat":"degrade"}'
             self.send_response(code)
             self.send_header("content-type", "application/json")
             self.end_headers()
-            self.wfile.write(corps)
+            self.wfile.write(body)
 
         def log_message(self, *_args):
             pass
 
-    serveur = http.server.HTTPServer(("127.0.0.1", 0), Handler)
-    threading.Thread(target=serveur.serve_forever, daemon=True).start()
-    return serveur
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
 
 
 def free_port() -> int:
@@ -95,72 +95,72 @@ with tempfile.TemporaryDirectory() as tmp:
           "http://[::1]:8080/sante")
 
     # --- 1. daemon-reload then RESTART, and a service that answers -------------
-    serveur = serve(200)
+    server = serve(200)
     runner = Recorder()
-    ok, message = bring_up(UNITE, env_for(serveur.server_port),
-                           runtime_dir=booted_dir, runner=runner, delai_s=5)
-    serveur.shutdown()
+    ok, message = bring_up(UNIT, env_for(server.server_port),
+                           runtime_dir=booted_dir, runner=runner, timeout_s=5)
+    server.shutdown()
     check("answering service: commands", runner.commands,
-          [["systemctl", "daemon-reload"], ["systemctl", "restart", UNITE]])
+          [["systemctl", "daemon-reload"], ["systemctl", "restart", UNIT]])
     check("answering service: success", ok, True)
     check("answering service: the message says what was verified",
           "/sante" in message, True)
 
     # --- 2. a service that comes up late, within the deadline ------------------
-    serveur = serve(200, after_s=1.0)
-    ok, _ = bring_up(UNITE, env_for(serveur.server_port), runtime_dir=booted_dir,
-                     runner=Recorder(), delai_s=6)
-    serveur.shutdown()
+    server = serve(200, after_s=1.0)
+    ok, _ = bring_up(UNIT, env_for(server.server_port), runtime_dir=booted_dir,
+                     runner=Recorder(), timeout_s=6)
+    server.shutdown()
     check("late but within the deadline: success", ok, True)
 
     # --- 3. nothing ever listens: fatal ----------------------------------------
-    debut = time.monotonic()
-    ok, message = bring_up(UNITE, env_for(free_port()), runtime_dir=booted_dir,
-                           runner=Recorder(), delai_s=1.5)
-    duree = time.monotonic() - debut
+    started = time.monotonic()
+    ok, message = bring_up(UNIT, env_for(free_port()), runtime_dir=booted_dir,
+                           runner=Recorder(), timeout_s=1.5)
+    elapsed = time.monotonic() - started
     check("never answers: failure", ok, False)
-    check("never answers: the deadline is honoured", duree < 5, True)
+    check("never answers: the deadline is honoured", elapsed < 5, True)
     check("never answers: the message names the health route", "/sante" in message,
           True)
 
     # --- 4. the route answers 503 (database down): fatal -----------------------
-    serveur = serve(503)
-    ok, message = bring_up(UNITE, env_for(serveur.server_port),
-                           runtime_dir=booted_dir, runner=Recorder(), delai_s=1.5)
-    serveur.shutdown()
+    server = serve(503)
+    ok, message = bring_up(UNIT, env_for(server.server_port),
+                           runtime_dir=booted_dir, runner=Recorder(), timeout_s=1.5)
+    server.shutdown()
     check("503 only: failure", ok, False)
     check("503 only: the last answer is reported", "503" in message, True)
 
     # --- 5. a failed restart is fatal, and nothing is awaited -------------------
     runner = Recorder(failing="restart")
-    debut = time.monotonic()
-    ok, message = bring_up(UNITE, env_for(free_port()), runtime_dir=booted_dir,
-                           runner=runner, delai_s=30)
+    started = time.monotonic()
+    ok, message = bring_up(UNIT, env_for(free_port()), runtime_dir=booted_dir,
+                           runner=runner, timeout_s=30)
     check("failed restart: failure", ok, False)
-    check("failed restart: no wait for health", time.monotonic() - debut < 5, True)
+    check("failed restart: no wait for health", time.monotonic() - started < 5, True)
     check("failed restart: the message names the command",
           "systemctl restart" in message, True)
 
     # --- 6. a failed daemon-reload stops before the restart --------------------
     runner = Recorder(failing="daemon-reload")
-    ok, _ = bring_up(UNITE, env_for(free_port()), runtime_dir=booted_dir,
-                     runner=runner, delai_s=30)
+    ok, _ = bring_up(UNIT, env_for(free_port()), runtime_dir=booted_dir,
+                     runner=runner, timeout_s=30)
     check("failed daemon-reload: failure", ok, False)
     check("failed daemon-reload: no restart attempted", runner.commands,
           [["systemctl", "daemon-reload"]])
 
     # --- 7. systemd is not the running init: non-fatal, nothing run -------------
     runner = Recorder()
-    ok, message = bring_up(UNITE, env_for(free_port()), runtime_dir=absent_dir,
-                           runner=runner, delai_s=30)
+    ok, message = bring_up(UNIT, env_for(free_port()), runtime_dir=absent_dir,
+                           runner=runner, timeout_s=30)
     check("constrained environment: non-fatal", ok, True)
     check("constrained environment: systemctl never called", runner.commands, [])
     check("constrained environment: the message says it was not started",
           "not started" in message, True)
 
     # --- 8. desk.env without the listening address: fatal, said ---------------
-    ok, message = bring_up(UNITE, {}, runtime_dir=booted_dir, runner=Recorder(),
-                           delai_s=1)
+    ok, message = bring_up(UNIT, {}, runtime_dir=booted_dir, runner=Recorder(),
+                           timeout_s=1)
     check("no PLATEFORME_HOTE/PORT: failure", ok, False)
 
 if failures:

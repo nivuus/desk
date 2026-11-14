@@ -24,7 +24,7 @@ import tempfile
 RACINE = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from commun import ADRESSE_VM_DEFAUT, lire_adresse_vm  # noqa: E402
+from commun import ADRESSE_VM_DEFAUT, read_vm_address  # noqa: E402
 from installed_files import write_turnserver_conf  # noqa: E402
 from turn_peers import DENIED_PEER_NETWORKS, coturn_range  # noqa: E402
 from desk_install_fixtures import FACTS, appeler  # noqa: E402
@@ -38,9 +38,9 @@ def check(label, got, want):
 
 
 # --- A model of coturn 4.6.1's peer check -------------------------------------
-def _parse(texte: str):
-    adresse = ipaddress.ip_address(texte)  # raises like make_ioa_addr fails
-    return adresse.version, adresse.packed
+def _parse(text: str):
+    address = ipaddress.ip_address(text)  # raises like make_ioa_addr fails
+    return address.version, address.packed
 
 
 def _any(addr) -> bool:
@@ -62,26 +62,26 @@ def _in_range(rng, addr) -> bool:
     return False
 
 
-def _parse_range(valeur: str):
-    if "/" in valeur:
-        raise ValueError(f"coturn 4.6.1 cannot parse {valeur!r}")
-    first, _, last = valeur.partition("-")
+def _parse_range(value: str):
+    if "/" in value:
+        raise ValueError(f"coturn 4.6.1 cannot parse {value!r}")
+    first, _, last = value.partition("-")
     low = _parse(first)
     return low, (_parse(last) if last else low)
 
 
-def coturn_accepts(lignes, peer: str) -> bool:
-    directives = [ligne.partition("=") for ligne in lignes]
-    flags = {cle for cle, sep, _ in directives if not sep}
-    allowed = [_parse_range(v) for cle, _, v in directives if cle == "allowed-peer-ip"]
-    denied = [_parse_range(v) for cle, _, v in directives if cle == "denied-peer-ip"]
-    adresse = ipaddress.ip_address(peer)
-    if "no-multicast-peers" in flags and adresse.is_multicast:
+def coturn_accepts(lines, peer: str) -> bool:
+    directives = [line.partition("=") for line in lines]
+    flags = {key for key, sep, _ in directives if not sep}
+    allowed = [_parse_range(v) for key, _, v in directives if key == "allowed-peer-ip"]
+    denied = [_parse_range(v) for key, _, v in directives if key == "denied-peer-ip"]
+    address = ipaddress.ip_address(peer)
+    if "no-multicast-peers" in flags and address.is_multicast:
         return False
     if "allow-loopback-peers" not in flags and (
-            (adresse.version == 4 and peer.startswith("127.")) or peer == "::1"):
+            (address.version == 4 and peer.startswith("127.")) or peer == "::1"):
         return False
-    if adresse.is_unspecified:
+    if address.is_unspecified:
         return False
     addr = _parse(peer)
     if any(_in_range(r, addr) for r in allowed):
@@ -89,9 +89,9 @@ def coturn_accepts(lignes, peer: str) -> bool:
     return not any(_in_range(r, addr) for r in denied)
 
 
-def directives_of(texte: str) -> list:
-    return [ligne.strip() for ligne in texte.splitlines()
-            if ligne.strip() and not ligne.lstrip().startswith("#")]
+def directives_of(text: str) -> list:
+    return [line.strip() for line in text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")]
 
 
 DENIED_SAMPLES = (
@@ -109,86 +109,86 @@ PUBLIC_SAMPLES = ("8.8.8.8", "1.1.1.1", "93.184.216.34", "172.32.0.1",
 
 # --- 1. The generated turnserver.conf ----------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
-    chemin = pathlib.Path(tmp) / "turnserver.conf"
-    write_turnserver_conf(chemin, "203.0.113.10", "203.0.113.11", "s" * 64,
+    path = pathlib.Path(tmp) / "turnserver.conf"
+    write_turnserver_conf(path, "203.0.113.10", "203.0.113.11", "s" * 64,
                           "192.168.3.2")
-    lignes = directives_of(chemin.read_text(encoding="utf-8"))
+    lines = directives_of(path.read_text(encoding="utf-8"))
 
-peer_lines = [l for l in lignes if l.startswith(("denied-peer-ip", "allowed-peer-ip"))]
+peer_lines = [l for l in lines if l.startswith(("denied-peer-ip", "allowed-peer-ip"))]
 check("no prefix notation in any peer directive (coturn 4.6.1 rejects it)",
       [l for l in peer_lines if "/" in l], [])
 check("exactly one allowed peer, the controlled machine",
-      [l for l in lignes if l.startswith("allowed-peer-ip")],
+      [l for l in lines if l.startswith("allowed-peer-ip")],
       ["allowed-peer-ip=192.168.3.2"])
 for flag in ("no-multicast-peers", "no-tcp-relay"):
-    check(f"{flag} is set", flag in lignes, True)
+    check(f"{flag} is set", flag in lines, True)
 check("no allocation quota is invented",
-      [l for l in lignes if l.startswith(("user-quota", "total-quota"))], [])
-for reseau in DENIED_PEER_NETWORKS:
-    check(f"{reseau} is denied as a range",
-          f"denied-peer-ip={coturn_range(reseau)}" in lignes, True)
+      [l for l in lines if l.startswith(("user-quota", "total-quota"))], [])
+for network in DENIED_PEER_NETWORKS:
+    check(f"{network} is denied as a range",
+          f"denied-peer-ip={coturn_range(network)}" in lines, True)
 for peer in DENIED_SAMPLES:
-    check(f"coturn refuses peer {peer}", coturn_accepts(lignes, peer), False)
+    check(f"coturn refuses peer {peer}", coturn_accepts(lines, peer), False)
 for peer in PUBLIC_SAMPLES:
-    check(f"coturn accepts public peer {peer}", coturn_accepts(lignes, peer), True)
+    check(f"coturn accepts public peer {peer}", coturn_accepts(lines, peer), True)
 check("coturn accepts the controlled machine",
-      coturn_accepts(lignes, "192.168.3.2"), True)
+      coturn_accepts(lines, "192.168.3.2"), True)
 for own in ("203.0.113.10", "203.0.113.11"):
     check(f"coturn refuses the relay's own address {own}",
-          coturn_accepts(lignes, own), False)
+          coturn_accepts(lines, own), False)
 
 # The model must be able to say "accepted" for a private address: without
 # the allow line, the controlled machine is refused (negative control).
-sans_allow = [l for l in lignes if not l.startswith("allowed-peer-ip")]
+without_allow = [l for l in lines if not l.startswith("allowed-peer-ip")]
 check("negative control: without the allow line the machine is refused",
-      coturn_accepts(sans_allow, "192.168.3.2"), False)
+      coturn_accepts(without_allow, "192.168.3.2"), False)
 
 # --- 2. Invalid addresses stop the write, they never vanish in coturn --------
-for brut in ("not-an-ip", "", "0.0.0.0", "127.0.0.1", "224.0.0.1", "203.0.113.10"):
+for raw in ("not-an-ip", "", "0.0.0.0", "127.0.0.1", "224.0.0.1", "203.0.113.10"):
     with tempfile.TemporaryDirectory() as tmp:
-        chemin = pathlib.Path(tmp) / "turnserver.conf"
+        path = pathlib.Path(tmp) / "turnserver.conf"
         try:
-            write_turnserver_conf(chemin, "203.0.113.10", "203.0.113.10", "s" * 64, brut)
+            write_turnserver_conf(path, "203.0.113.10", "203.0.113.10", "s" * 64, raw)
             raised = False
         except ValueError:
             raised = True
-        check(f"controlled machine address {brut!r} is refused", raised, True)
-        check(f"controlled machine address {brut!r}: nothing written",
-              chemin.exists(), False)
+        check(f"controlled machine address {raw!r} is refused", raised, True)
+        check(f"controlled machine address {raw!r}: nothing written",
+              path.exists(), False)
 
 # --- 3. The allowed address follows the shared definition and its override ---
-ancien = os.environ.pop("GUEST_IP", None)
-check("lire_adresse_vm: the default", lire_adresse_vm(), ADRESSE_VM_DEFAUT)
+previous = os.environ.pop("GUEST_IP", None)
+check("read_vm_address: the default", read_vm_address(), ADRESSE_VM_DEFAUT)
 os.environ["GUEST_IP"] = "10.20.30.40"
-check("lire_adresse_vm: GUEST_IP overrides", lire_adresse_vm(), "10.20.30.40")
+check("read_vm_address: GUEST_IP overrides", read_vm_address(), "10.20.30.40")
 os.environ.pop("GUEST_IP")
-if ancien is not None:
-    os.environ["GUEST_IP"] = ancien
+if previous is not None:
+    os.environ["GUEST_IP"] = previous
 
-for env_guest, attendu in ((None, ADRESSE_VM_DEFAUT), ("10.20.30.40", "10.20.30.40")):
+for guest_ip, expected in ((None, ADRESSE_VM_DEFAUT), ("10.20.30.40", "10.20.30.40")):
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         env = dict(os.environ)
         env.pop("GUEST_IP", None)
-        if env_guest:
-            env["GUEST_IP"] = env_guest
+        if guest_ip:
+            env["GUEST_IP"] = guest_ip
         r = appeler(root, facts=FACTS, env=env)
-        check(f"install with GUEST_IP={env_guest}: exit code", r.returncode, 0)
+        check(f"install with GUEST_IP={guest_ip}: exit code", r.returncode, 0)
         conf = root / "etc" / "turnserver.conf"
-        lignes = directives_of(conf.read_text(encoding="utf-8")) if conf.is_file() else []
-        check(f"install with GUEST_IP={env_guest}: allowed peer",
-              [l for l in lignes if l.startswith("allowed-peer-ip")],
-              [f"allowed-peer-ip={attendu}"])
+        lines = directives_of(conf.read_text(encoding="utf-8")) if conf.is_file() else []
+        check(f"install with GUEST_IP={guest_ip}: allowed peer",
+              [l for l in lines if l.startswith("allowed-peer-ip")],
+              [f"allowed-peer-ip={expected}"])
 
 # --- 4. docker-compose.coturn.yml carries the same restrictions --------------
 compose = (RACINE / "docker-compose.coturn.yml").read_text(encoding="utf-8")
 options = re.findall(r"^\s*- --([a-z-]+)(?:=(.*\S))?\s*$", compose, re.MULTILINE)
-denied_compose = [v for cle, v in options if cle == "denied-peer-ip"]
+denied_compose = [v for key, v in options if key == "denied-peer-ip"]
 check("compose: the same denied ranges, in the same order",
       denied_compose,
       [coturn_range(r) for r in DENIED_PEER_NETWORKS]
       + ["${TURN_LISTENING_IP}", "${TURN_RELAY_IP}"])
-allowed_compose = [v for cle, v in options if cle == "allowed-peer-ip"]
+allowed_compose = [v for key, v in options if key == "allowed-peer-ip"]
 check("compose: one allowed peer, mandatory, from GUEST_IP",
       len(allowed_compose) == 1 and allowed_compose[0].startswith("${GUEST_IP:?"),
       True)
