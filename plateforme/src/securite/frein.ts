@@ -58,6 +58,8 @@
 //   account does not extend its owner's lockout indefinitely.
 //   The account comes back `FENETRE_MS` after the FIRST failure, whatever happens.
 
+import { cleReseau } from './prefixe-ipv6';
+
 /// The budget of a key. It is passed on each call rather than kept by the
 /// brake: that is what lets two keys with DIFFERENT budgets (an account and
 /// an address) live in the same table, without a second table
@@ -101,7 +103,10 @@ export const ECHECS_MAX_ADRESSE = 50;
 /// ⚠️ WHAT EVICTION COSTS, and which cannot be caught up here: under
 /// saturation, an attacker can get the entry of an account they target evicted
 /// to give it its budget back. That is the price of the bound, and the bound is worth
-/// more than the memory.
+/// more than the memory. ⚠️ Address entries can no longer buy that eviction:
+/// they live in a pool of their own (see `Frein`); only a flood of ACCOUNT
+/// keys can, and each of those failures is charged to an address budget.
+/// The bound applies PER POOL.
 export const ENTREES_MAX = 10_000;
 
 /// The two budgets of the service, built ONCE.
@@ -125,8 +130,11 @@ export function cleCompte(email: string): string {
     return `compte:${email.trim().toLowerCase()}`;
 }
 
+/// 🔴 AN IPv6 ADDRESS IS KEYED BY ITS /64 (`prefixe-ipv6.ts`): a client
+/// draws a fresh /128 at will inside its block, and a per-/128 budget would
+/// never fill. IPv4 stays keyed per address.
 export function cleAdresse(adresse: string): string {
-    return `adr:${adresse}`;
+    return `${PREFIXE_ADRESSE}${cleReseau(adresse)}`;
 }
 
 export function cleVm(vmId: string): string {
@@ -230,7 +238,17 @@ export const BUDGET_REQUETES: Budget = {
 /// whose window would be that of the LAST budget consulted — the distinction
 /// between "expires fast" and "expires slowly" would disappear with it.
 export function cleRequetes(adresse: string): string {
-    return `req:${adresse}`;
+    return `${PREFIXE_REQUETES}${cleReseau(adresse)}`;
+}
+
+const PREFIXE_ADRESSE = 'adr:';
+const PREFIXE_REQUETES = 'req:';
+
+/// Address keys are cheap to mint (one per /64, or per IPv4 address); the
+/// keys of accounts and VMs are what a lockout protects. They live in two
+/// pools so that a flood of address entries can only evict address entries.
+function estCleAdresse(cle: string): boolean {
+    return cle.startsWith(PREFIXE_ADRESSE) || cle.startsWith(PREFIXE_REQUETES);
 }
 
 interface Entree {
@@ -245,7 +263,13 @@ interface Entree {
 }
 
 export class Frein {
-    private readonly entrees = new Map<string, Entree>();
+    /// 🔴 TWO POOLS, EACH BOUNDED BY `entreesMax`: address keys and the keys
+    /// of accounts and VMs. In ONE table, a peer holding many addresses
+    /// (cheap under IPv6) filled it and evicted the lockout of the very
+    /// account it was guessing. The bound is per pool, so the memory bound is
+    /// twice `entreesMax`.
+    private readonly adresses = new Map<string, Entree>();
+    private readonly identites = new Map<string, Entree>();
     private readonly entreesMax: number;
     private evincees = 0;
 
@@ -266,7 +290,7 @@ export class Frein {
     consulter(cles: readonly (readonly [string, Budget])[], maintenant: number): Verdict {
         let restantMs = 0;
         for (const [cle, budget] of cles) {
-            const entree = this.entrees.get(cle);
+            const entree = this.reserve(cle).get(cle);
             if (entree === undefined) continue;
             // `>=`, never `>`: at exactly the budget, we refuse. A `>`
             // would grant one more attempt than the constant announces.
@@ -299,15 +323,16 @@ export class Frein {
     /// Records a failure on each of the keys.
     echec(cles: readonly (readonly [string, Budget])[], maintenant: number): void {
         for (const [cle, budget] of cles) {
-            const entree = this.entrees.get(cle);
+            const entrees = this.reserve(cle);
+            const entree = entrees.get(cle);
             if (entree !== undefined && !this.expiree(entree, maintenant)) {
                 entree.compte += 1;
                 continue;
             }
-            if (entree === undefined) this.faireDeLaPlace(maintenant);
+            if (entree === undefined) this.faireDeLaPlace(entrees, maintenant);
             // An expired entry is REARMED in place, never accumulated: the
             // window restarts from the present, and the table does not grow.
-            this.entrees.set(cle, { compte: 1, premierA: maintenant, fenetreMs: budget.fenetreMs });
+            entrees.set(cle, { compte: 1, premierA: maintenant, fenetreMs: budget.fenetreMs });
         }
     }
 
@@ -319,18 +344,22 @@ export class Frein {
     /// address budget to zero. This module imposes nothing — it clears what it is
     /// told —, and it is the route that holds the rule.
     succes(cle: string): void {
-        this.entrees.delete(cle);
+        this.reserve(cle).delete(cle);
     }
 
-    /// For the trace, and for the cap test.
+    /// For the trace, and for the cap test: both pools together.
     size(): number {
-        return this.entrees.size;
+        return this.adresses.size + this.identites.size;
     }
 
     /// 🔴 AN EVICTION IS NEVER SILENT FOR THE OPERATOR: this counter
     /// goes up, the trace reads it, and a saturation stops being invisible.
     evictions(): number {
         return this.evincees;
+    }
+
+    private reserve(cle: string): Map<string, Entree> {
+        return estCleAdresse(cle) ? this.adresses : this.identites;
     }
 
     private expiree(entree: Entree, maintenant: number): boolean {
@@ -340,20 +369,20 @@ export class Frein {
     /// Purge first, evict next — and never the reverse: evicting a LIVE
     /// entry while the table is full of dead entries would give its
     /// budget back to an attacker for nothing.
-    private faireDeLaPlace(maintenant: number): void {
-        if (this.entrees.size < this.entreesMax) return;
+    private faireDeLaPlace(entrees: Map<string, Entree>, maintenant: number): void {
+        if (entrees.size < this.entreesMax) return;
 
-        for (const [cle, entree] of this.entrees) {
-            if (this.expiree(entree, maintenant)) this.entrees.delete(cle);
+        for (const [cle, entree] of entrees) {
+            if (this.expiree(entree, maintenant)) entrees.delete(cle);
         }
-        if (this.entrees.size < this.entreesMax) return;
+        if (entrees.size < this.entreesMax) return;
 
         // Still full: we evict the one whose window closes the
         // soonest. It is the one whose disappearance costs the least memory of the
         // past — and that is a choice, not a given: see `ENTREES_MAX`.
         let plusTot: string | undefined;
         let plusTotA = Number.POSITIVE_INFINITY;
-        for (const [cle, entree] of this.entrees) {
+        for (const [cle, entree] of entrees) {
             const finA = entree.premierA + entree.fenetreMs;
             if (finA < plusTotA) {
                 plusTotA = finA;
@@ -361,7 +390,7 @@ export class Frein {
             }
         }
         if (plusTot !== undefined) {
-            this.entrees.delete(plusTot);
+            entrees.delete(plusTot);
             this.evincees += 1;
         }
     }
