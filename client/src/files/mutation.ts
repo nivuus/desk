@@ -163,6 +163,11 @@ export interface RacineMutable extends RacineInscriptible {
     removeEntry(nom: string): Promise<void>;
     /** **NON STANDARD**. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
+    /**
+     * Do two handles designate the same entry? The API returns a NEW handle
+     * object on each lookup, so `===` only holds for the very same object.
+     */
+    isSameEntry(other: RacineMutable): Promise<boolean>;
 }
 
 /** What a rename cost LOCALLY — the instrumentation the spec requires. */
@@ -260,7 +265,15 @@ export async function renommer(
     // 🔴 `move()` OVERWRITES: without this block, renaming `draft.txt` to `note.txt`
     // would destroy `note.txt` without a word.
     const dest = await canoniser(parentDest, nomDemande);
-    const memeParent = parentSource === parentDest;
+    // 🔴 THE ENTRIES, NOT THE OBJECTS: the two parents come from two separate
+    // walks, and `===` was true at the root only — a case rename inside any
+    // sub-folder was refused as `deja-present`.
+    let memeParent: boolean;
+    try {
+        memeParent = await parentSource.isSameEntry(parentDest);
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
     let cassePure = false;
     if (dest.sorte === 'ambigu') {
         throw new FilesError(

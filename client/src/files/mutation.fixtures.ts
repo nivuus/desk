@@ -52,10 +52,17 @@ function cle(m: Map<string, unknown>, nom: string, o: Options): string | undefin
     return undefined;
 }
 
+/** The node behind each directory handle the fake hands out. */
+const nodeOfHandle = new WeakMap<object, Noeud>();
+
 function repertoire(n: Noeud, o: Options): RacineMutable {
     const self: RacineMutable = {
         kind: 'directory',
         name: 'd',
+        // Like the real API: a NEW handle object per call, the same ENTRY behind it.
+        async isSameEntry(other: RacineMutable): Promise<boolean> {
+            return nodeOfHandle.get(other) === n;
+        },
         async getDirectoryHandle(nom: string, opts?: { create?: boolean }): Promise<RacineMutable> {
             const k = cle(n.dossiers, nom, o);
             if (k !== undefined) return repertoire(n.dossiers.get(k)!, o);
@@ -113,6 +120,7 @@ function repertoire(n: Noeud, o: Options): RacineMutable {
             throw new Error('directory move() is not exercised by this fake');
         };
     }
+    nodeOfHandle.set(self, n);
     return self;
 }
 

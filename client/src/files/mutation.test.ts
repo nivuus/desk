@@ -122,6 +122,45 @@ describe('the PURE CASE rename', () => {
         await renommer(m.racine, 'a.txt', 'A.txt', false);
         expect([...m.arbre.files.keys()]).toEqual(['A.txt']);
     });
+
+    it('🔴 is legal inside a SUB-FOLDER too, where the two parents are distinct handles', async () => {
+        // Red: comparing the parent handles with `===`. The source and the
+        // destination parents come from two separate walks, and the API returns
+        // a new handle object on each call: only the root compared equal, and
+        // `d/a.txt` → `d/A.txt` was refused as `deja-present`.
+        const m = monde(
+            (r) => {
+                const d = noeud();
+                d.files.set('a.txt', OCTETS);
+                r.dossiers.set('d', d);
+            },
+            { insensible: true },
+        );
+        await renommer(m.racine, 'd/a.txt', 'd/A.txt', false);
+        const d = m.arbre.dossiers.get('d')!;
+        expect([...d.files.keys()]).toEqual(['A.txt']);
+        expect(d.files.get('A.txt')).toEqual(OCTETS);
+    });
+
+    it('still refuses a case namesake in ANOTHER folder', async () => {
+        // The same entry, not merely the same name: `d/a.txt` → `e/A.txt` with
+        // `e/a.txt` present is a collision, not a case rename.
+        const m = monde(
+            (r) => {
+                const d = noeud();
+                d.files.set('a.txt', OCTETS);
+                const e = noeud();
+                e.files.set('a.txt', new Uint8Array([7]));
+                r.dossiers.set('d', d);
+                r.dossiers.set('e', e);
+            },
+            { insensible: true },
+        );
+        await expect(renommer(m.racine, 'd/a.txt', 'e/A.txt', false)).rejects.toMatchObject({
+            code: 'deja-present',
+        });
+        expect(m.arbre.dossiers.get('e')!.files.get('a.txt')).toEqual(new Uint8Array([7]));
+    });
 });
 
 describe('the rename refusals', () => {
