@@ -22,6 +22,7 @@
 //! parser that guesses is diagnosed in a campaign.*
 
 use std::path::Path;
+use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -39,6 +40,18 @@ pub const RETABLISSEMENTS_MAX: u32 = 5;
 
 /// The size of the socket read buffer.
 const TAMPON: usize = 64 * 1024;
+
+/// How long the connection, the request write or any single read may stay
+/// without progress before the pass gives up on it.
+///
+/// Without it, a peer that vanishes without FIN or RST leaves a read pending
+/// for ever, and the installation thread, which handles orders one by one,
+/// never runs another order. A stalled BODY counts as a cut (resumed through
+/// `Range`, within `RETABLISSEMENTS_MAX`); a stalled connection or header is a
+/// network refusal, like a connection closed at that point.
+/// ⚠️ NOT CALIBRATED: an idle budget, not a transfer budget — a slow but
+/// moving transfer is never cut by it.
+pub const IDLE_BUDGET: Duration = Duration::from_secs(30);
 
 /// Why a download did not complete.
 ///
@@ -196,7 +209,20 @@ struct Passe {
 /// written** to re-prime the digest state. Saying so here keeps anyone from
 /// "optimising" that re-read one day: without it, a resumption would yield
 /// the fingerprint of the file's END alone.
-pub async fn telecharger<F>(demande: Demande<'_>, mut progres: F) -> Result<u64, Refus>
+pub async fn telecharger<F>(demande: Demande<'_>, progres: F) -> Result<u64, Refus>
+where
+    F: FnMut(u64, u64),
+{
+    download_with_idle_budget(demande, progres, IDLE_BUDGET).await
+}
+
+/// `telecharger` with an explicit idle budget, so that the tests can prove a
+/// stall is cut without waiting `IDLE_BUDGET`.
+async fn download_with_idle_budget<F>(
+    demande: Demande<'_>,
+    mut progres: F,
+    idle_budget: Duration,
+) -> Result<u64, Refus>
 where
     F: FnMut(u64, u64),
 {
@@ -206,7 +232,15 @@ where
     let mut condensateur = Condensateur::neuf();
 
     loop {
-        let passe = une_passe(&cible, &demande, deja, &mut condensateur, &mut progres).await?;
+        let passe = une_passe(
+            &cible,
+            &demande,
+            deja,
+            &mut condensateur,
+            &mut progres,
+            idle_budget,
+        )
+        .await?;
         deja = passe.total;
         if !passe.coupee {
             break;
@@ -253,13 +287,24 @@ async fn une_passe<F>(
     deja: u64,
     condensateur: &mut Condensateur,
     progres: &mut F,
+    idle_budget: Duration,
 ) -> Result<Passe, Refus>
 where
     F: FnMut(u64, u64),
 {
-    let mut socket = TcpStream::connect((cible.hote.as_str(), cible.port))
-        .await
-        .map_err(|e| Refus::Reseau(format!("connecting to {}:{}: {e}", cible.hote, cible.port)))?;
+    let stalled = |etape: &str| {
+        Refus::Reseau(format!(
+            "{etape}: no progress for {} ms",
+            idle_budget.as_millis()
+        ))
+    };
+    let mut socket = tokio::time::timeout(
+        idle_budget,
+        TcpStream::connect((cible.hote.as_str(), cible.port)),
+    )
+    .await
+    .map_err(|_| stalled("connecting"))?
+    .map_err(|e| Refus::Reseau(format!("connecting to {}:{}: {e}", cible.hote, cible.port)))?;
 
     let mut requete = format!(
         "GET {} HTTP/1.1\r\nHost: {}\r\nAuthorization: Bearer {}\r\n\
@@ -270,9 +315,9 @@ where
         requete.push_str(&format!("Range: bytes={deja}-\r\n"));
     }
     requete.push_str("\r\n");
-    socket
-        .write_all(requete.as_bytes())
+    tokio::time::timeout(idle_budget, socket.write_all(requete.as_bytes()))
         .await
+        .map_err(|_| stalled("sending the request"))?
         .map_err(|e| Refus::Reseau(format!("sending the request: {e}")))?;
 
     // --- the header, re-read until complete ---
@@ -284,9 +329,9 @@ where
             Ok(Etat::Incomplet) => {}
             Err(refus) => return Err(Refus::Reponse(refus)),
         }
-        let n = socket
-            .read(&mut lecture)
+        let n = tokio::time::timeout(idle_budget, socket.read(&mut lecture))
             .await
+            .map_err(|_| stalled("reading the header"))?
             .map_err(|e| Refus::Reseau(format!("reading the header: {e}")))?;
         if n == 0 {
             return Err(Refus::Reseau(
@@ -318,10 +363,27 @@ where
         deja
     };
 
+    // 🔴 THE ANNOUNCED LENGTH MUST COMPLETE THE FILE EXACTLY, AND IT IS
+    // CHECKED BEFORE THE FIRST BYTE IS WRITTEN. The order's size is the
+    // contract; a `Content-Length` that disagrees with it would otherwise be
+    // written in full to disk before the size refusal at the end fired.
+    let announced = deja.saturating_add(entete.length);
+    if announced != demande.expected_size {
+        return Err(Refus::Size {
+            attendue: demande.expected_size,
+            obtenue: announced,
+        });
+    }
+
     // --- le corps ---
     let mut file = ouvrir(demande.destination, deja).await?;
     let mut ecrits = 0u64;
-    let debut = &tampon[entete.debut_du_corps..];
+    // The bytes that came with the header are body only up to the announced
+    // length, exactly like the reads below.
+    let after_header = &tampon[entete.debut_du_corps..];
+    let debut = &after_header[..after_header
+        .len()
+        .min(usize::try_from(entete.length).unwrap_or(usize::MAX))];
     if !debut.is_empty() {
         write(&mut file, condensateur, debut).await?;
         ecrits += debut.len() as u64;
@@ -329,10 +391,22 @@ where
     }
 
     while ecrits < entete.length {
-        let n = socket
-            .read(&mut lecture)
-            .await
-            .map_err(|e| Refus::Reseau(format!("reading the body: {e}")))?;
+        // A stalled body is a cut like a closed one: the resumption, bounded
+        // by `RETABLISSEMENTS_MAX`, takes over.
+        let read_result = tokio::time::timeout(idle_budget, socket.read(&mut lecture)).await;
+        let n = match read_result {
+            Ok(read_result) => {
+                read_result.map_err(|e| Refus::Reseau(format!("reading the body: {e}")))?
+            }
+            Err(_) => {
+                tracing::warn!(
+                    url = demande.url,
+                    delai_ms = idle_budget.as_millis() as u64,
+                    "no body byte within the idle budget: treated as a cut"
+                );
+                0
+            }
+        };
         if n == 0 {
             // ⚠️ CLOSED BEFORE THE ANNOUNCED END: this is a cut, not an
             // end. The caller will resume through `Range`.
@@ -391,3 +465,6 @@ async fn write(
 #[cfg(test)]
 #[path = "telechargement/tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "telechargement/tests_bornes.rs"]
+mod tests_bornes;

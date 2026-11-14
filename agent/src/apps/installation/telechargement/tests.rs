@@ -138,20 +138,20 @@ fn depuis_range(requete: &str) -> Option<u64> {
     value.trim_end_matches('-').trim().parse().ok()
 }
 
-fn corps_de(n: usize) -> Vec<u8> {
+pub(super) fn corps_de(n: usize) -> Vec<u8> {
     (0..n).map(|i| (i % 251) as u8).collect()
 }
 
-fn empreinte(octets: &[u8]) -> String {
+pub(super) fn empreinte(octets: &[u8]) -> String {
     crate::apps::sha256::hex(octets)
 }
 
-struct Bac {
+pub(super) struct Bac {
     _dir: std::path::PathBuf,
-    file: std::path::PathBuf,
+    pub(super) file: std::path::PathBuf,
 }
 
-fn bac(nom: &str) -> Bac {
+pub(super) fn bac(nom: &str) -> Bac {
     let dir = std::env::temp_dir().join(format!("g3-dl-{}-{}", nom, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("bac");
