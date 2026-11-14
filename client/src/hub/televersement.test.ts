@@ -75,7 +75,7 @@ function serveur(reponses: Partial<Record<Route, Reponse>>) {
 }
 
 function deps(fetch: Fetch, extra: Partial<DepsTeleversement> = {}): DepsTeleversement {
-    return { base: 'https://p', jeton: 'j-1', fetch, maintenant: () => 0, ...extra };
+    return { base: 'https://p', jetonFrais: async () => 'j-1', fetch, maintenant: () => 0, ...extra };
 }
 
 /// A 16-byte file cut by 4: four chunks, the case of red no. 1.
@@ -360,5 +360,31 @@ describe("progress, paced by the injected clock", () => {
         const vues: string[] = [];
         await televerser(file(), deps(s.fetch, { progression: (p) => void vues.push(p.phase) }));
         expect(vues.filter((v) => v === 'transfert')).toHaveLength(1);
+    });
+});
+
+describe('the access token, asked again before each request', () => {
+    // 🔴 An upload can outlive an access token (ten minutes): one string read
+    // at the start and reused for every chunk ends in refusals halfway.
+    it('every request carries the token current at that moment', async () => {
+        const s = serveur({ creation });
+        // A provider whose token is renewed every two requests.
+        let demandes = 0;
+        const jetonFrais = async (): Promise<string> => `j-${String(Math.floor(demandes++ / 2))}`;
+        const issue = await televerser(file(), deps(s.fetch, { jetonFrais }));
+        expect(issue.etat).toBe('scelle');
+        expect(s.appels.map((a) => a.entetes.authorization)).toEqual([
+            'Bearer j-0', 'Bearer j-0', 'Bearer j-1', 'Bearer j-1', 'Bearer j-2', 'Bearer j-2',
+        ]);
+    });
+
+    it('without a fresh token, the upload stops before the request, and says so', async () => {
+        const s = serveur({ creation });
+        const issue = await televerser(file(), deps(s.fetch, { jetonFrais: async () => undefined }));
+        expect(issue).toEqual({
+            etat: 'refus',
+            refus: { source: 'client', motif: 'session-expired', detail: 'no fresh access token before the creation' },
+        });
+        expect(s.appels).toEqual([]);
     });
 });

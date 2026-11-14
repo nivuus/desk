@@ -59,6 +59,8 @@ import type { Ton } from './shell';
 import { installThemeSelectorInDOM } from './design/selecteur-theme';
 import { clearPrefix, poserPrefixe } from './prefixe';
 import { adressePlateforme } from './adresse-plateforme';
+import { postSignInDestination } from './destination';
+import { FOREIGN_ADDRESSES_ALLOWED } from './address-policy';
 
 const params = new URLSearchParams(window.location.search);
 // The SAME convention as the signaling of `hub/page.ts` (`shell-page.ts` before
@@ -71,7 +73,9 @@ const params = new URLSearchParams(window.location.search);
 // `https://` on 443: an `http://…:8080` there would be mixed content, refused
 // by the browser, and nothing listens on 8080 from outside anyway.
 // The rule lives in `adresse-plateforme.ts`, which is PURE and tested.
-const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'));
+//
+// The address itself is computed below, once `show` can say why a
+// `?plateforme=` is refused.
 // Where to go once logged in. The parameter exists so that the screen
 // can send back to the page that required login, and not only to
 // the shell.
@@ -79,7 +83,11 @@ const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'
 // 🔴 THE ROOT, NO LONGER `shell.html` (August 31st, 2026): the shell page became
 // a redirect, and sending back there would make whoever has just logged in
 // do a useless round trip.
-const suite = params.get('suite') ?? '/';
+//
+// The value is read from the address bar, so it is validated before it is
+// followed: `destination.ts` keeps a same-origin path and falls back to the
+// root for anything else.
+const suite = postSignInDestination(params.get('suite'), window.location.origin);
 
 const formulaire = document.querySelector<HTMLFormElement>('#connexion')!;
 const champEmail = document.querySelector<HTMLInputElement>('#email')!;
@@ -122,6 +130,22 @@ function show(texte: string, ton: Ton): void {
     message.classList.remove('message--succes', 'message--alerte', 'message--danger');
     const classe = CLASSE_DE_TON[ton];
     if (classe !== '') message.classList.add(classe);
+}
+
+// 🔴 A REFUSED `?plateforme=` STOPS THE PAGE ON SCREEN: the form stays hidden,
+// nothing is sent anywhere, and the refusal is rethrown so that the module
+// stops here — the same pattern as `main.ts` without a session.
+let plateformeUrl: string;
+try {
+    plateformeUrl = adressePlateforme(
+        window.location,
+        params.get('plateforme'),
+        FOREIGN_ADDRESSES_ALLOWED,
+    );
+} catch (refusal) {
+    formulaire.hidden = true;
+    show(refusal instanceof Error ? refusal.message : String(refusal), 'danger');
+    throw refusal;
 }
 
 /// What follows obtaining a token, whatever the path that obtained it.

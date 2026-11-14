@@ -9,5 +9,6 @@
     "noEmit": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable", "DOM.AsyncIterable"]
   },
-  "include": ["src/**/*.ts", "../proto/ts/**/*.ts"]
+  "include": ["src/**/*.ts", "../proto/ts/**/*.ts"],
+  "exclude": ["../proto/ts/**/*.test.ts"]
 }

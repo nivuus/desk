@@ -25,6 +25,7 @@ import {
     waitForAnswer,
     waitForIceGathering,
 } from '../webrtc';
+import { guardHandshake, type HandshakeGuard } from '../handshake-guard';
 import { composer, lirePrefixe } from '../prefixe';
 import type { Racine } from './adaptateur';
 import type { RacineInscriptible } from './ecriture';
@@ -83,8 +84,6 @@ export function sessionDuPont(): string {
 }
 
 export async function connectFilesChannel(options: OptionsCanal): Promise<FilesChannel> {
-    const statut = options.onStatus ?? (() => {});
-
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
@@ -92,12 +91,38 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
             once: true,
         });
     });
+    // The handshake guard of the session window, shared (`handshake-guard.ts`):
+    // a refusal of the hello reaches the user with the relay's reason.
+    const guard = guardHandshake(socket);
+    // What a failed handshake has built is closed, never leaked (see `webrtc.ts`).
+    const built: { pc?: RTCPeerConnection } = {};
+    try {
+        return await establishChannel(options, socket, guard, built);
+    } catch (failure) {
+        built.pc?.close();
+        socket.close();
+        throw failure;
+    } finally {
+        guard.release();
+    }
+}
+
+/// The handshake proper, once the socket is open. Every wait races against
+/// `guard`.
+async function establishChannel(
+    options: OptionsCanal,
+    socket: WebSocket,
+    guard: HandshakeGuard,
+    built: { pc?: RTCPeerConnection },
+): Promise<FilesChannel> {
+    const statut = options.onStatus ?? (() => {});
     socket.send(
         JSON.stringify({ role: 'client', session: options.sessionId, jeton: options.jeton }),
     );
 
-    const iceServers = await attendreConfigIce(socket, 2000);
+    const iceServers = await guard.race(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
+    built.pc = pc;
 
     // 🔴 NO `addTransceiver`: that is the whole point of D4. An offer without a
     // media m-line is legal; the agent answers it through `pont/transport.rs`, whose
@@ -174,11 +199,11 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
                 if (canal.readyState === 'open') {
                     canal.send(encoderTexte(TYPE_ECHEC, correlation, encodeEchec('interne')));
                 }
-            } catch (echec: unknown) {
+            } catch (failure: unknown) {
                 // The channel went away while we were reporting. There is no one
                 // left to tell, and the bridge will learn it through the
                 // closing — never through a twenty-second silence.
-                console.warn('reporting impossible: channel closed', echec);
+                console.warn('reporting impossible: channel closed', failure);
             }
         };
         // 🔴 **THE WORK STARTS NOW, THE SENDING WAITS ITS TURN** (`ordre.ts`):
@@ -186,16 +211,16 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
         // the agent's read window checks. A failure is turned into a VALUE
         // here, so that it keeps its place in that order too.
         const travail = options.traiter(data).then(
-            (reponse) => ({ reponse, echec: undefined as unknown }),
-            (e: unknown) => ({ reponse: null, echec: e ?? new Error('processing threw') }),
+            (reponse) => ({ reponse, failure: undefined as unknown }),
+            (e: unknown) => ({ reponse: null, failure: e ?? new Error('processing threw') }),
         );
         void sequencer
-            .chain(orderKey(data), travail, async ({ reponse, echec }) => {
-                if (echec !== undefined) {
+            .chain(orderKey(data), travail, async ({ reponse, failure }) => {
+                if (failure !== undefined) {
                     // `traiter` itself answers the failures it can name; if it
                     // throws, the protocol itself has broken. We say so, and
                     // we do not kill the channel for all that.
-                    denoncer('processing threw', echec);
+                    denoncer('processing threw', failure);
                     return;
                 }
                 if (reponse === null) return;
@@ -222,15 +247,17 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
         statut(`file bridge: ${pc.connectionState}`);
     });
 
-    const offre = await pc.createOffer();
-    await pc.setLocalDescription(offre);
-    await waitForIceGathering(pc);
+    const offre = await guard.race(pc.createOffer());
+    await guard.race(pc.setLocalDescription(offre));
+    await guard.race(waitForIceGathering(pc));
 
+    // The socket's state is checked BEFORE the offer (see `webrtc.ts`).
+    guard.beforeSend();
     statut('bridge offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
-    const reponse = await waitForAnswer(socket);
-    await pc.setRemoteDescription({ type: 'answer', sdp: reponse });
+    const reponse = await guard.race(waitForAnswer(socket));
+    await guard.race(pc.setRemoteDescription({ type: 'answer', sdp: reponse }));
     statut('file bridge: answer received');
 
     return {

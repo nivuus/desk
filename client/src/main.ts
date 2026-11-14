@@ -1,5 +1,7 @@
 import { attachInput } from './input';
+import { pageTargetFromDom } from './page-dom';
 import { connectSession } from './webrtc';
+import { createSessionEnd } from './session-end';
 import { attachStats } from './stats';
 import { armerLeSon } from './audio';
 import { createStatus } from './status';
@@ -15,7 +17,9 @@ import { attacherAccentAuDOM } from './accent-dom';
 import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
-import { adresseSignaling } from './adresse-plateforme';
+import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
+import { freshTokenProvider, browserLock } from './fresh-token';
+import { FOREIGN_ADDRESSES_ALLOWED } from './address-policy';
 import { sessionIdFromParams } from './session-id';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -42,7 +46,17 @@ const statut = createStatus(statusElement, createTerminalScreenInDOM());
 // which is PURE and tested — no Node test can see a mixed content refusal.
 const params = new URLSearchParams(window.location.search);
 const sessionId = sessionIdFromParams(params);
-const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
+// A refused `?signaling=` stops the page with a terminal status, like a
+// missing session just below: no socket is opened, no token is sent.
+let signalingUrl: string;
+let plateformeUrl: string;
+try {
+    signalingUrl = adresseSignaling(window.location, params.get('signaling'), FOREIGN_ADDRESSES_ALLOWED);
+    plateformeUrl = adressePlateforme(window.location, params.get('plateforme'), FOREIGN_ADDRESSES_ALLOWED);
+} catch (refusal) {
+    statut.show(refusal instanceof Error ? refusal.message : String(refusal), { terminal: true, ton: 'danger' });
+    throw refusal;
+}
 
 // 🔴 WITHOUT A PARAMETER, THIS PAGE REFUSES AND STOPS THERE — it NO LONGER invents
 // a `demo` session (see `session-id.ts`: that vestige, found in PRODUCTION
@@ -143,10 +157,43 @@ let bandeauManette: number | undefined;
 // prevents an obsolete hiding from erasing a warning that arrived meanwhile.
 let bandeauLien: number | undefined;
 
+// 🔴 THE ONE END OF THIS WINDOW (`session-end.ts`): the end-of-session
+// message, a failed or closed connection and the agent leaving all go through
+// it. It runs these detachments, closes the session and shows a terminal
+// status. No automatic reconnection: that is the owner's decision.
+const sessionEnd = createSessionEnd((texte, ton) => statut.show(texte, { terminal: true, ton }));
+sessionEnd.add(() => {
+    window.clearTimeout(bandeau);
+    window.clearTimeout(bandeauManette);
+    window.clearTimeout(bandeauLien);
+    // Without these three detachments, the gamepad's 4 ms `setInterval`
+    // (and the pointer/fullscreen listeners) keep running after the end of
+    // the session — nothing else stops them.
+    pointeur?.detacher();
+    manette?.detacher();
+    detacherPleinEcran?.();
+    detacherArmement?.();
+    detacherVisibilite?.();
+    // Turning the mic off must be REAL, and the button's state must follow
+    // (spec §9); `session.close()` then stops the sender's track as well.
+    micro?.detacher();
+    // The `focus` listener would otherwise outlive the end of the session and
+    // write the local clipboard for a dead session.
+    pressePapier?.detacher();
+});
+
 connectSession({
     signalingUrl,
     sessionId,
     video,
+    // The hub's wiring, shared: a stale token is refreshed before the hello.
+    jetonFrais: freshTokenProvider({
+        vault: window.localStorage,
+        base: plateformeUrl,
+        fetch: window.fetch.bind(window),
+        now: () => Date.now(),
+        lock: browserLock(),
+    }),
     onStatus: (message) => statut.show(message),
     onControl(message) {
         if (message.type === 'ready') {
@@ -159,33 +206,9 @@ connectSession({
             micAnnonce = message.mic;
             micro?.annoncerDisponibilite(micAnnonce);
         } else if (message.type === 'session-end') {
-            window.clearTimeout(bandeau);
-            window.clearTimeout(bandeauManette);
-            window.clearTimeout(bandeauLien);
-            // Without these three detachments, the gamepad's 4 ms `setInterval`
-            // (and the pointer/fullscreen listeners) keep
-            // running after the end of the session — nothing else
-            // stops them, the page stays open as long as the user does not
-            // close it themselves.
-            pointeur?.detacher();
-            manette?.detacher();
-            detacherPleinEcran?.();
-            detacherArmement?.();
-            detacherVisibilite?.();
-            // End of session: turning the mic off must be REAL, and
-            // `session.close()` is not called on this path. Without this
-            // Chrome's indicator would stay lit after the end (spec §9).
-            micro?.detacher();
-            // Same reason as the detachments above: the `focus`
-            // listener would otherwise outlive the end of the session and write the
-            // local clipboard for a dead session.
-            pressePapier?.detacher();
             // `neutre`: the user closed the remote application, it
             // is not an error. The tone ONLY serves the terminal screen.
-            statut.show(`session ended: ${message.reason}`, {
-                terminal: true,
-                ton: 'neutre',
-            });
+            sessionEnd.end(`session ended: ${message.reason}`, 'neutre');
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
         } else if (message.type === 'rumble') {
@@ -275,14 +298,18 @@ connectSession({
     },
 })
     .then((session) => {
-        attachInput({
+        sessionEnd.watch(session);
+        const detachInput = attachInput({
             video,
             channel: session.inputChannel,
             // `window` and not `video`: that is where the keyboard listeners
             // already lived before P2.
             clavier: window,
+            // Held keys and buttons are released when the page loses focus.
+            page: pageTargetFromDom(),
             collageArme: () => collageArme,
         });
+        sessionEnd.add(detachInput);
         // The measurement overlay is a diagnostic: shown only on `?stats`.
         if (params.has('stats')) attachStats(session.pc, statsElement);
         video.focus();

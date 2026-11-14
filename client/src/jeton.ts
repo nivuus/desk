@@ -249,8 +249,9 @@ export const MARGE_FRAICHEUR_MS = 30_000;
 ///   ② `rafraichirSiNecessaire` — the path of the `motdepasse` mode;
 ///   ③ `accesParPomerium` → `GET /auth/moi` — the `pomerium` mode, the one of
 ///      production;
-///   ④ `undefined`, **vault emptied**: up to the caller to send back to the sign-in
-///      screen.
+///   ④ `undefined`: up to the caller to send back to the sign-in screen. The
+///      vault is emptied only if the service REFUSED the refresh token; when
+///      it was unavailable, the refresh token stays for the next attempt.
 ///
 /// 🔴 **IT VERIFIES NO SIGNATURE**, and `expiresBefore` already says so: the
 /// browser does not have the secret. What is avoided here is a useless round trip
@@ -261,18 +262,19 @@ export async function assurerAccesFrais(
     base: string,
     appelAuthMoi: AppelAuthMoi,
     maintenant: number,
-    appelRafraichissement: (
-        corps: unknown,
-    ) => Promise<{ acces: string; rafraichissement: string } | undefined>,
+    appelRafraichissement: RefreshCall,
     margeMs: number = MARGE_FRAICHEUR_MS,
+    lock: LockRunner = noLock,
 ): Promise<string | undefined> {
     // ① and ②: `rafraichirSiNecessaire` ALREADY carries both, and it is tested.
     // Rewriting it here would produce a second version to keep in agreement.
-    if (await rafraichirSiNecessaire(coffre, maintenant, margeMs, appelRafraichissement)) {
+    if (await rafraichirSiNecessaire(coffre, maintenant, margeMs, appelRafraichissement, lock)) {
         return jetonAcces(coffre);
     }
-    // ⚠️ `rafraichirSiNecessaire` EMPTIED the vault when returning `false`: there
-    // is nothing left to present, and that is indeed the desired state if ③ fails too.
+    // ⚠️ `rafraichirSiNecessaire` EMPTIED the vault when the service REFUSED the
+    // refresh token, and LEFT IT when the service was unavailable: in the
+    // second case the refresh token survives for the next attempt, even if ③
+    // fails too.
     const frais = await accesParPomerium(base, appelAuthMoi);
     if (frais === undefined) return undefined;
     poserAcces(coffre, frais);
@@ -324,54 +326,108 @@ function decoderBase64url(segment: string): string {
     return new TextDecoder().decode(octets);
 }
 
+/// What a refresh attempt came to, as the injected call reports it.
+///
+/// 🔴 THREE OUTCOMES, NOT TWO. Any failure used to empty the store: a
+/// transient network error or a server restart during a routine refresh
+/// deleted the 30-day token and signed the user out. Only a REFUSAL by the
+/// service says the refresh token is dead; unavailability says nothing about
+/// it.
+export type RefreshOutcome =
+    | { outcome: 'renewed'; pair: Paire }
+    | { outcome: 'refused' }
+    | { outcome: 'unavailable' };
+
+export type RefreshCall = (corps: unknown) => Promise<RefreshOutcome>;
+
+/// Runs `work` while holding the exclusive lock `name`, and settles with its
+/// result — the shape of `navigator.locks.request(name, work)`, injected so
+/// that this module stays pure.
+export type LockRunner = <T>(name: string, work: () => Promise<T>) => Promise<T>;
+
+/// No lock: for a browser without the Web Locks API, and for a single caller.
+export const noLock: LockRunner = (_name, work) => work();
+
+/// The lock that serialises refreshes across the tabs of this origin.
+export const REFRESH_LOCK_NAME = 'guac.jeton.rafraichissement';
+
+/// Classifies the answer of `POST /auth/rafraichir`.
+///
+/// - `ok` with a usable pair → renewed;
+/// - a client error the service chose (400 malformed, 401 refused or replayed,
+///   403, 404 once the route is gone in `pomerium` mode) → refused;
+/// - anything else — 408, 429, a server error, or a 200 whose body carries no
+///   usable pair — → unavailable: nothing proves the refresh token is dead.
+export function refreshOutcomeOf(
+    status: number,
+    ok: boolean,
+    body: unknown,
+): RefreshOutcome {
+    if (ok) {
+        const pair = paireDeReponse(body);
+        return pair === undefined ? { outcome: 'unavailable' } : { outcome: 'renewed', pair };
+    }
+    if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        return { outcome: 'refused' };
+    }
+    return { outcome: 'unavailable' };
+}
+
 /// Refreshes the pair if the access token expires in less than `margeMs`.
 ///
 /// Returns `true` if, on return, the vault carries a usable access token —
-/// whether a call was needed or not. Returns `false` when there is nothing left to
-/// present: the vault is then EMPTIED, so that the caller sends back to
-/// the sign-in screen rather than looping on a refusal.
+/// whether a call was needed or not — and `false` otherwise.
+///
+/// 🔴 THE VAULT IS EMPTIED ONLY WHEN THE SERVICE REFUSED THE REFRESH TOKEN,
+/// and only if that token is still the one in the vault: a sign-in in another
+/// tab may have written a new pair meanwhile, and the refusal of the old one
+/// says nothing about it. Unavailability leaves the vault untouched.
+///
+/// 🔴 REFRESHES ARE SERIALISED ACROSS TABS (`lock`, the Web Locks API in
+/// production — `fresh-token.ts`). The service rotates the refresh token and
+/// treats the presentation of an already-rotated one as a replay that revokes
+/// the whole family: two tabs refreshing at the same moment presented the same
+/// token, and every tab was signed out. The vault is RE-READ once the lock is
+/// held, so the second tab finds the pair the first one obtained and makes no
+/// call.
 ///
 /// `appel` is INJECTED, never the global `fetch`: that is what makes this rule
-/// testable without a network.
-///
-/// 🔴 **`await appel(...)` IS WRAPPED — ADDED AS A REVIEW FIX
-/// (round 1), NOT IN THE FIRST DRAFT.** `accesParPomerium` (higher up in this
-/// file) has had its own guard of this kind SINCE ALWAYS, with its dedicated
-/// test ("returns `undefined` on an unreachable network, without throwing") — but
-/// this function called NO production `appel` before
-/// `assurerAccesFrais` (August 30-31st, 2026): without a real caller, an uncaught
-/// exception here had never had the opportunity to show. A network
-/// failure (offline, DNS, CORS) is therefore handled exactly like a refusal
-/// (`!neuve`): the vault is emptied, the caller falls back to Pomerium rather
-/// than seeing the exception propagate unhandled up to a `void start()`
-/// or a `.then()` without `.catch`.
+/// testable without a network. It reports a network failure as `unavailable`
+/// (`fresh-token.ts`) rather than throwing.
 export async function rafraichirSiNecessaire(
     coffre: Coffre,
     maintenant: number,
     margeMs: number,
-    appel: (corps: unknown) => Promise<{ acces: string; rafraichissement: string } | undefined>,
+    appel: RefreshCall,
+    lock: LockRunner = noLock,
 ): Promise<boolean> {
-    const acces = jetonAcces(coffre);
-    if (acces !== undefined && !expiresBefore(acces, maintenant + margeMs)) return true;
+    const isFresh = (): boolean => {
+        const acces = jetonAcces(coffre);
+        return acces !== undefined && !expiresBefore(acces, maintenant + margeMs);
+    };
+    if (isFresh()) return true;
 
-    const rafraichissement = jetonRafraichissement(coffre);
-    if (rafraichissement === undefined) {
-        // Nothing to present: we erase what remains rather than leave a
-        // stale access the handshake would refuse.
-        drain(coffre);
-        return false;
-    }
+    return lock(REFRESH_LOCK_NAME, async () => {
+        // Re-read under the lock: another tab may have refreshed meanwhile.
+        if (isFresh()) return true;
 
-    let neuve: { acces: string; rafraichissement: string } | undefined;
-    try {
-        neuve = await appel({ rafraichissement });
-    } catch {
-        neuve = undefined;
-    }
-    if (!neuve) {
-        drain(coffre);
-        return false;
-    }
-    poser(coffre, neuve);
-    return true;
+        const presented = jetonRafraichissement(coffre);
+        if (presented === undefined) {
+            // Nothing to present: we erase what remains rather than leave a
+            // stale access the handshake would refuse.
+            drain(coffre);
+            return false;
+        }
+
+        const outcome = await appel({ rafraichissement: presented });
+        if (outcome.outcome === 'renewed') {
+            poser(coffre, outcome.pair);
+            return true;
+        }
+        if (outcome.outcome === 'refused' && jetonRafraichissement(coffre) === presented) {
+            drain(coffre);
+        }
+        // A pair another writer set during the call is still usable.
+        return isFresh();
+    });
 }

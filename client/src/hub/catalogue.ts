@@ -27,6 +27,9 @@
 // An ENVIRONMENT failure (the `fetch` that rejects) propagates as is:
 // disguising it as a refusal would pass it off as a protocol decision.
 
+import type { SourceMax } from '../../../proto/ts/plateforme-apps';
+import { estSourceMax } from '../../../proto/ts/plateforme-gardes';
+
 /* ── THE DEPENDENCIES, ALL INJECTED ────────────────────────────────── */
 
 /// The response shape this module needs, and nothing more. DECLARED
@@ -79,7 +82,10 @@ export interface ApplicationListee {
     /// kept it for hours would see its images fail; rereading it means
     /// rereading the catalogue.
     icone_url: string | null;
-    source_max: string;
+    /// The size of the largest image the icon source holds, in the PROTOCOL'S
+    /// shape: `{ pixels }` or `'non-mesuree'`. Imported, never re-declared: the
+    /// client's copy was a `string`, and a measured size was coerced away.
+    source_max: SourceMax;
     /// The dominant colour of the icon, as `#rrggbb`, or `null`.
     ///
     /// ⚠️ `null` MEANS "NO ACCENT", NEVER "NOT MEASURED YET": an
@@ -165,12 +171,15 @@ export async function listerApplications(
         if (typeof e.id !== 'string' || typeof e.nom !== 'string') {
             return illisible("an entry has neither a usable `id` nor `nom`");
         }
+        // The protocol's guard, not a coercion: a shape the client does not
+        // understand is not "not measured".
+        if (!estSourceMax(e.source_max)) return illisible('an entry has no valid `source_max`');
         applications.push({
             id: e.id,
             nom: e.nom,
             icone: typeof e.icone === 'string' ? e.icone : null,
             icone_url: typeof e.icone_url === 'string' ? e.icone_url : null,
-            source_max: typeof e.source_max === 'string' ? e.source_max : 'non-mesuree',
+            source_max: e.source_max,
             accent: typeof e.accent === 'string' ? e.accent : null,
             // ⚠️ WE FILTER THE ELEMENTS, AND DO NOT MERELY CHECK
             // THAT IT IS AN ARRAY: a non-textual entry would land in

@@ -28,11 +28,22 @@ export interface CibleClavier {
     removeEventListener(nom: 'keydown' | 'keyup', rappel: (event: KeyboardEvent) => void): void;
 }
 
+/// What this module needs to know that the page lost the keyboard and the
+/// mouse: `blur` (from `window`) and `visibilitychange` with `hidden` (from
+/// `document`). `main.ts` unites the two sources, like `attachVisibilite`.
+export interface PageTarget {
+    readonly hidden: boolean;
+    addEventListener(nom: 'blur' | 'visibilitychange', rappel: () => void): void;
+    removeEventListener(nom: 'blur' | 'visibilitychange', rappel: () => void): void;
+}
+
 export interface InputOptions {
     video: HTMLVideoElement;
     channel: RTCDataChannel;
     /// The source of keyboard events — `window`, in production.
     clavier: CibleClavier;
+    /// Where the loss of focus and visibility is read.
+    page: PageTarget;
     /// Has the agent announced `Capabilities.clipboard`?
     ///
     /// 🔴 **A CLOSURE, never a boolean captured at attach time**, and it
@@ -73,12 +84,15 @@ function normalize(video: HTMLVideoElement, clientX: number, clientY: number): [
     return [x, y];
 }
 
-const BUTTON_MAP: Record<number, MouseButtonCode> = { 0: 0, 1: 2, 2: 1 };
+/// The browser's `button` (0 main, 1 auxiliary, 2 secondary) to the protocol's
+/// code. Any other button has no entry, and is not injected.
+const BUTTON_MAP: Partial<Record<number, MouseButtonCode>> = { 0: 0, 1: 2, 2: 1 };
 
 export function attachInput({
     video,
     channel,
     clavier,
+    page,
     collageArme,
 }: InputOptions): () => void {
     const send = (payload: Uint8Array): void => {
@@ -106,15 +120,70 @@ export function attachInput({
         }
     };
 
+    // 🔴 WHAT IS HELD IS TRACKED, SO THAT IT CAN BE RELEASED. The agent injects
+    // what arrives and never releases on its own: a key or a button held when
+    // the page loses focus, becomes hidden, or loses its pointer would stay
+    // pressed on the remote machine — its `keyup`/`pointerup` goes to another
+    // window, or never fires. On each of those losses, a release is sent for
+    // everything still held (`releaseAll`).
+    const heldKeys = new Map<string, { scancode: number; extended: boolean }>();
+    const heldButtons = new Set<MouseButtonCode>();
+    // The last position sent with a button, for releases that carry none.
+    let lastPosition: [number, number] = [0, 0];
+
+    const releaseButtons = (x: number, y: number): void => {
+        for (const button of heldButtons) send(encodeMouseButton(button, false, x, y));
+        heldButtons.clear();
+    };
+
+    const releaseAll = (): void => {
+        releaseButtons(...lastPosition);
+        for (const { scancode, extended } of heldKeys.values()) {
+            send(encodeKey(scancode, false, extended));
+        }
+        heldKeys.clear();
+    };
+
     const onPointerDown = (event: PointerEvent): void => {
+        const button = BUTTON_MAP[event.button];
+        // 🔴 A BUTTON THE PROTOCOL DOES NOT MAP IS NOT INJECTED. It fell back to
+        // `0`, so the back and forward buttons (3 and 4) clicked LEFT on the
+        // remote machine. Its default action — browser history navigation —
+        // is prevented too: on the session surface it would leave the session.
+        if (button === undefined) {
+            event.preventDefault();
+            return;
+        }
         video.setPointerCapture(event.pointerId);
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        send(encodeMouseButton(BUTTON_MAP[event.button] ?? 0, true, x, y));
+        lastPosition = [x, y];
+        heldButtons.add(button);
+        send(encodeMouseButton(button, true, x, y));
     };
 
     const onPointerUp = (event: PointerEvent): void => {
+        const button = BUTTON_MAP[event.button];
+        if (button === undefined) {
+            event.preventDefault();
+            return;
+        }
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        send(encodeMouseButton(BUTTON_MAP[event.button] ?? 0, false, x, y));
+        lastPosition = [x, y];
+        heldButtons.delete(button);
+        send(encodeMouseButton(button, false, x, y));
+    };
+
+    // A cancelled pointer, or a capture lost while a button is held (the
+    // capture is also released after an ordinary `pointerup`, when nothing is
+    // held any more and nothing is sent).
+    const onPointerLost = (event: PointerEvent): void => {
+        const [x, y] = normalize(video, event.clientX, event.clientY);
+        releaseButtons(x, y);
+    };
+
+    const onBlur = (): void => releaseAll();
+    const onVisibilityChange = (): void => {
+        if (page.hidden) releaseAll();
     };
 
     const onWheel = (event: WheelEvent): void => {
@@ -150,7 +219,9 @@ export function attachInput({
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         event.preventDefault();
         const mapped = SCANCODES[event.code];
-        if (mapped) send(encodeKey(mapped.scancode, true, mapped.extended));
+        if (!mapped) return;
+        heldKeys.set(event.code, mapped);
+        send(encodeKey(mapped.scancode, true, mapped.extended));
     };
 
     const onKeyUp = (event: KeyboardEvent): void => {
@@ -165,24 +236,34 @@ export function attachInput({
         // the agent injects, hence at the worst moment.
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         const mapped = SCANCODES[event.code];
-        if (mapped) send(encodeKey(mapped.scancode, false, mapped.extended));
+        if (!mapped) return;
+        heldKeys.delete(event.code);
+        send(encodeKey(mapped.scancode, false, mapped.extended));
     };
 
     video.addEventListener('pointermove', onPointerMove);
     video.addEventListener('pointerdown', onPointerDown);
     video.addEventListener('pointerup', onPointerUp);
+    video.addEventListener('pointercancel', onPointerLost);
+    video.addEventListener('lostpointercapture', onPointerLost);
     video.addEventListener('wheel', onWheel, { passive: false });
     video.addEventListener('contextmenu', onContextMenu);
     clavier.addEventListener('keydown', onKeyDown);
     clavier.addEventListener('keyup', onKeyUp);
+    page.addEventListener('blur', onBlur);
+    page.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
         video.removeEventListener('pointermove', onPointerMove);
         video.removeEventListener('pointerdown', onPointerDown);
         video.removeEventListener('pointerup', onPointerUp);
+        video.removeEventListener('pointercancel', onPointerLost);
+        video.removeEventListener('lostpointercapture', onPointerLost);
         video.removeEventListener('wheel', onWheel);
         video.removeEventListener('contextmenu', onContextMenu);
         clavier.removeEventListener('keydown', onKeyDown);
         clavier.removeEventListener('keyup', onKeyUp);
+        page.removeEventListener('blur', onBlur);
+        page.removeEventListener('visibilitychange', onVisibilityChange);
     };
 }

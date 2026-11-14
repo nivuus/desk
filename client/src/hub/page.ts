@@ -16,7 +16,8 @@
 import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
 import { installThemeSelectorInDOM } from '../design/selecteur-theme';
-import { assurerAccesFrais, paireDeReponse } from '../jeton';
+import { FOREIGN_ADDRESSES_ALLOWED } from '../address-policy';
+import { freshTokenProvider, browserLock } from '../fresh-token';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
     lireIcone,
@@ -37,7 +38,6 @@ const CLASSE_DE_TON: Record<Ton, string> = {
 };
 
 const params = new URLSearchParams(window.location.search);
-const base = adressePlateforme(window.location, params.get('plateforme'));
 
 const elMessage = document.getElementById('message') as HTMLDivElement;
 const elList = document.getElementById('applications') as HTMLUListElement;
@@ -50,6 +50,19 @@ if (elThemes !== null) installThemeSelectorInDOM(elThemes);
 function dire(ton: Ton, texte: string): void {
     elMessage.className = `${CLASSE_DE_TON[ton]} hub__message`;
     elMessage.textContent = texte;
+}
+
+// Both addresses are checked at load, after `dire` exists: a refused
+// `?plateforme=` or `?signaling=` is said on screen and stops the module before
+// any request carries the token.
+let base: string;
+let signalingUrl: string;
+try {
+    base = adressePlateforme(window.location, params.get('plateforme'), FOREIGN_ADDRESSES_ALLOWED);
+    signalingUrl = adresseSignaling(window.location, params.get('signaling'), FOREIGN_ADDRESSES_ALLOWED);
+} catch (refusal) {
+    dire('danger', refusal instanceof Error ? refusal.message : String(refusal));
+    throw refusal;
 }
 
 // 🔴 `deps` CARRIES AN EMPTY TOKEN UNTIL `start()` (at the foot of the
@@ -128,7 +141,10 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
 async function processOneFile(file: File): Promise<void> {
     dire('neutre', `Uploading ${file.name}…`);
     const resume = await deposer(file, {
-        ...deps,
+        base: deps.base,
+        fetch: deps.fetch,
+        // A provider, asked before each request: an upload outlives a token.
+        jetonFrais,
         maintenant: () => Date.now(),
         progression: (p) => {
             if (p.total > 0) {
@@ -351,7 +367,7 @@ async function start(): Promise<void> {
     // August 31st, 2026). The "My desktop" link and opening on clicking
     // "Launch" were the fixes of August 30th; they have no purpose any more.
     installerLeBureau({
-        signalingUrl: adresseSignaling(window.location, params.get('signaling')),
+        signalingUrl,
         // 🔴 **A PROVIDER, NEVER `acces`** (critical ① of the final
         // review): `ouvrirLaSession` only runs, for a follower, at the moment
         // of its PROMOTION — potentially hours later —, and an
@@ -382,40 +398,18 @@ async function start(): Promise<void> {
 /// is stale: the load, each launch and each icon read
 /// go through here, without any timer to calibrate.
 async function jetonFrais(): Promise<string | undefined> {
-    const acces = await assurerAccesFrais(
-        window.localStorage,
-        base,
-        window.fetch.bind(window),
-        Date.now(),
-        async (corps) => {
-            // 🔴 **WRAPPED, WHERE `accesParPomerium` (`jeton.ts:175-186`)
-            // HAS ALWAYS BEEN**: this path had stayed WITHOUT A PRODUCTION
-            // CALLER until this task, hence never put to the test
-            // of an unreachable network. Without this `try/catch`, an exception
-            // (offline, DNS, CORS) would propagate uncaught through
-            // `assurerAccesFrais` → `jetonFrais()` → `start()` (unhandled rejection
-            // on `void start()`) or the click handler, and the
-            // page would stay stuck on "identifying…" instead of
-            // falling back to Pomerium (step ③ of `assurerAccesFrais`).
-            try {
-                const reponse = await fetch(`${base}/auth/rafraichir`, {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(corps),
-                });
-                if (!reponse.ok) return undefined;
-                // The shape is VALIDATED, never asserted: an `ok: true`
-                // but incomplete body would be written as is to the vault (`poser`, in
-                // `rafraichirSiNecessaire`) — the "poisoned vault" scenario
-                // `accesDeReponse` exists to prevent on `/auth/moi`.
-                return paireDeReponse(await reponse.json().catch(() => undefined));
-            } catch {
-                return undefined;
-            }
-        },
-    );
+    const acces = await tokenProvider();
     if (acces !== undefined) deps = { ...deps, jeton: acces };
     return acces;
 }
+
+/// The shared wiring (`fresh-token.ts`), built once the address is known.
+const tokenProvider = freshTokenProvider({
+    vault: window.localStorage,
+    base,
+    fetch: window.fetch.bind(window),
+    now: () => Date.now(),
+    lock: browserLock(),
+});
 
 void start();

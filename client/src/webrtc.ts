@@ -5,7 +5,8 @@
 // relayed by signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
-import { jetonAcces } from './jeton';
+import { parseSignalingMessage } from './signaling-message';
+import { guardHandshake, type HandshakeGuard } from './handshake-guard';
 
 export interface SessionOptions {
     signalingUrl: string;
@@ -13,16 +14,15 @@ export interface SessionOptions {
     video: HTMLVideoElement;
     onControl?: (message: AgentControl) => void;
     onStatus?: (message: string) => void;
-    /// The access token carried in the handshake (sub-block P2).
+    /// Returns a FRESH access token for the handshake (sub-block P2).
     ///
-    /// ⚠️ OPTIONAL ON PURPOSE: a required field would force modifying
-    /// `main.ts`, the only caller, which another workstream holds. Absent, the
-    /// token is read from the browser's vault (`jeton.ts`) — which leaves
-    /// ONE SINGLE reader of storage in the whole client, which is better in
-    /// itself. The cost is named: this module gains a dependency on a browser
-    /// global, whereas it already handles `WebSocket` and
-    /// `RTCPeerConnection`; `jeton.ts`, for its part, stays pure.
-    jeton?: string;
+    /// 🔴 MANDATORY, AND A PROVIDER RATHER THAN A STRING: the field was
+    /// optional, and its absence fell back to the RAW vault (`jetonAcces`).
+    /// An access token lives ten minutes and a window opens whenever the
+    /// remote machine announces one, so the session page presented an expired
+    /// token and was refused. Callers pass `fresh-token.ts`'s provider, which
+    /// refreshes a stale token first; there is no path to the raw store left.
+    jetonFrais: () => Promise<string | undefined>;
 }
 
 export interface SessionHandle {
@@ -38,6 +38,9 @@ export interface SessionHandle {
     /// `pc.getTransceivers()` by position — which would be a positional index,
     /// that is, exactly what this repository has already paid for on DXGI outputs.
     micSender: RTCRtpSender;
+    /// Registers a callback for the relay saying, after setup, that the agent
+    /// left (`peer-gone`). `session-end.ts` ends the window on it.
+    onPeerGone(callback: () => void): void;
     close(): void;
 }
 
@@ -48,47 +51,9 @@ export interface SessionHandle {
 // resolve and the user would stay stuck indefinitely.
 const ANSWER_TIMEOUT_MS = 15_000;
 
-/// Subset of the signaling messages expected in answer to the offer,
-/// discriminated by `type`.
-type SignalingMessage =
-    | { type: 'answer'; sdp: string }
-    | { type: 'error'; reason?: string }
-    | { type: 'peer-gone' }
-    | { type: 'ice-config'; iceServers: RTCIceServer[] };
-
-/// Parses and validates a raw signaling message.
-///
-/// `JSON.parse` succeeds on payloads that are not objects:
-/// `"null"` gives `null`, but also `"42"` gives a number, `'"x"'` a
-/// string, `"[1,2]"` an array. Accessing `.type` on one of these values
-/// does not always throw (an array or a string do have an `undefined`
-/// `.type`, no exception), but `null.type` throws an uncaught
-/// `TypeError` — that is the defect fixed here. We therefore explicitly validate
-/// that the result is a non-null, non-array object before any property
-/// read, whatever the shape of the payload.
-///
-/// Returns `undefined` if the message is unreadable or of an unexpected shape:
-/// the caller then silently ignores it, without crashing the wait
-/// (the awaited message — the SDP answer — may still arrive afterwards).
-// Exported only to be unit tested without having to instantiate
-// a real WebSocket (see webrtc.test.ts): the rest of the module only uses it
-// through `waitForAnswer`, internally.
-export function parseSignalingMessage(raw: string): SignalingMessage | undefined {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(raw);
-    } catch {
-        return undefined;
-    }
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        return undefined;
-    }
-    const { type } = parsed as Record<string, unknown>;
-    if (type === 'answer' || type === 'error' || type === 'peer-gone' || type === 'ice-config') {
-        return parsed as SignalingMessage;
-    }
-    return undefined;
-}
+// The signalling message parser lives in `signaling-message.ts`, shared with the
+// handshake guard (`handshake-guard.ts`); re-exported for its existing callers.
+export { parseSignalingMessage } from './signaling-message';
 
 /// Waits for the agent's answer SDP, relayed by the signaling socket.
 /// Rejects if: an error or "peer-gone" message is received, the socket
@@ -212,11 +177,15 @@ export function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<R
 }
 
 export async function connectSession(options: SessionOptions): Promise<SessionHandle> {
-    const status = options.onStatus ?? (() => {});
-
     // The socket opens BEFORE the `RTCPeerConnection`, unlike milestone 1:
     // the ICE servers are only known once the configuration is received from
     // signaling, and `RTCPeerConnection` wants them at construction.
+    //
+    // The fresh token is obtained FIRST: without one, nothing is opened.
+    const jeton = await options.jetonFrais();
+    if (jeton === undefined) {
+        throw new Error('your session has expired — sign in again from the hub');
+    }
     const socket = new WebSocket(options.signalingUrl);
     await new Promise<void>((resolve, reject) => {
         socket.addEventListener('open', () => resolve(), { once: true });
@@ -224,6 +193,35 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
             once: true,
         });
     });
+    // 🔴 THE GUARD IS ATTACHED RIGHT AFTER `open`, before the hello: a refusal
+    // the relay sends in answer to it, then its closing, must reach the user
+    // with the relay's reason, whatever wait the handshake is in
+    // (`handshake-guard.ts`).
+    const guard = guardHandshake(socket);
+    // 🔴 WHAT A FAILED HANDSHAKE HAS BUILT IS CLOSED, NEVER LEFT BEHIND: each
+    // failed connect used to leak its peer connection and its socket.
+    const built: { pc?: RTCPeerConnection } = {};
+    try {
+        return await establishSession(options, socket, guard, jeton, built);
+    } catch (failure) {
+        built.pc?.close();
+        socket.close();
+        throw failure;
+    } finally {
+        guard.release();
+    }
+}
+
+/// The handshake proper, once the socket is open: hello, ICE configuration,
+/// offer, answer. Every wait races against `guard`.
+async function establishSession(
+    options: SessionOptions,
+    socket: WebSocket,
+    guard: HandshakeGuard,
+    jeton: string,
+    built: { pc?: RTCPeerConnection },
+): Promise<SessionHandle> {
+    const status = options.onStatus ?? (() => {});
     // 🔴 THE `jeton` FIELD IS ADDED, NONE IS REMOVED — spec §10.2. A
     // service from sub-block P1 only reads `role` and `session` (its relay ignores
     // everything else): this client therefore stays compatible with a service
@@ -238,15 +236,15 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // the user's real entry point. A session page is ALWAYS opened by the shell, on
     // the same origin, so the token is already there. Redirecting from a
     // library would give it power over its callers' navigation.
-    const jeton = options.jeton ?? jetonAcces();
     socket.send(JSON.stringify({ role: 'client', session: options.sessionId, jeton }));
 
     // The ICE configuration arrives right after the role declaration, or
     // never if no relay is deployed. We wait for it briefly rather than
     // blocking: a session on a local network must keep being established
     // without a relay, exactly as before this workstream.
-    const iceServers = await attendreConfigIce(socket, 2000);
+    const iceServers = await guard.race(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
+    built.pc = pc;
 
     pc.addTransceiver('video', { direction: 'recvonly' });
     // The browser is the offerer: it is the one that must declare the audio
@@ -320,22 +318,36 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         status(`connection: ${pc.connectionState}`);
     });
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await waitForIceGathering(pc);
+    const offer = await guard.race(pc.createOffer());
+    await guard.race(pc.setLocalDescription(offer));
+    await guard.race(waitForIceGathering(pc));
 
+    // The socket's state is checked BEFORE the offer: sending on a socket the
+    // relay has closed would only turn its refusal into a fifteen-second wait.
+    guard.beforeSend();
     status('offer sent, waiting for the agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
-    const answerSdp = await waitForAnswer(socket);
-    await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+    const answerSdp = await guard.race(waitForAnswer(socket));
+    await guard.race(pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }));
     status('answer received');
+
+    // After setup the relay still speaks on this socket: `peer-gone` says the
+    // agent left, and nothing else would tell the page.
+    const peerGoneCallbacks: (() => void)[] = [];
+    socket.addEventListener('message', (event: MessageEvent) => {
+        if (parseSignalingMessage(String(event.data))?.type !== 'peer-gone') return;
+        for (const callback of peerGoneCallbacks) callback();
+    });
 
     return {
         pc,
         inputChannel,
         controlChannel,
         micSender: micTransceiver.sender,
+        onPeerGone(callback) {
+            peerGoneCallbacks.push(callback);
+        },
         close() {
             // ⚠️ SWITCHING OFF MUST BE REAL (spec §9). `pc.close()` DOES NOT STOP
             // the local tracks: Chrome's mic indicator would stay

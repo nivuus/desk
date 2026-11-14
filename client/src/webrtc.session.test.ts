@@ -13,185 +13,28 @@
 //
 // What these tests carry: what `connectSession` ASKS of the browser —
 // the transceivers and their ORDER (which decides the `mid`, on which the agent depends),
-// a single `MediaStream` carrying the received tracks, the token in the
-// handshake (sub-block P2), and the real switch-off of the microphone on close
-// (project E). Not the SDP generation itself, out of reach without a real WebRTC
+// a single `MediaStream` carrying the received tracks, and the real switch-off
+// of the microphone on close (project E). The handshake itself — the token it
+// carries and a refusal during it — is in `webrtc.handshake.test.ts`; the fakes
+// are in `webrtc.fixtures.ts`. Not the SDP generation itself, out of reach without a real WebRTC
 // engine.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession } from './webrtc';
-import { CLE_ACCES } from './jeton';
-
-// These two tests cover a behaviour promised by the spec (§10) but
-// never written: "the offer contains an `m=audio` in `recvonly`" and "two
-// received tracks end up in a single `MediaStream`". The rest of the
-// file isolates `parseSignalingMessage`/`waitForAnswer` precisely to
-// avoid having to run a real `RTCPeerConnection`/`WebSocket`
-// under Node; here, we go all the way through fake global
-// implementations rather than leaving the hole open. The tested point is what
-// `connectSession` ASKS of the browser (an `audio` transceiver in
-// `recvonly`, a single `MediaStream` carrying the two received tracks) — not the
-// SDP generation itself, out of reach without a real WebRTC engine.
-
-/// Fake `RTCPeerConnection` entry point. `createOffer` faithfully translates
-/// the requested transceivers into SDP lines: it is this
-/// translation, faithful to the request, that the tests check.
-/// What an `addTransceiver` returns, reduced to what `connectSession` uses.
-interface FauxTransceiver {
-    kind: string;
-    direction?: string;
-    sender: { track: { stop(): void } | null };
-}
-
-class FakeRtcPeerConnection {
-    transceivers: FauxTransceiver[] = [];
-    iceGatheringState = 'complete';
-    connectionState = 'new';
-    localDescription: { type: string; sdp: string } | null = null;
-    private listeners = new Map<string, Set<(event: any) => void>>();
-
-    constructor(_config: unknown) {
-        derniereInstancePc = this;
-    }
-
-    addTransceiver(kind: string, opts?: { direction?: string }): FauxTransceiver {
-        // The fake now RETURNS a transceiver, like the real one: it is the
-        // `sender` of the microphone's one that `connectSession` exposes (project E).
-        // A `void` here made the five tests of `connectSession` fail on
-        // "Cannot read properties of undefined (reading 'sender')".
-        const transceiver: FauxTransceiver = {
-            kind,
-            direction: opts?.direction,
-            // `track: null` is the state of a transceiver declared WITHOUT A TRACK —
-            // exactly what spec §5 requires of the microphone: no capture,
-            // no permission requested as long as nobody has clicked.
-            sender: { track: null },
-        };
-        this.transceivers.push(transceiver);
-        return transceiver;
-    }
-
-    createDataChannel(label: string, _opts?: unknown) {
-        return {
-            label,
-            readyState: 'open',
-            addEventListener() {},
-            removeEventListener() {},
-            send() {},
-        };
-    }
-
-    addEventListener(type: string, cb: (event: any) => void): void {
-        if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-        this.listeners.get(type)!.add(cb);
-    }
-
-    removeEventListener(type: string, cb: (event: any) => void): void {
-        this.listeners.get(type)?.delete(cb);
-    }
-
-    emit(type: string, event: unknown): void {
-        for (const cb of [...(this.listeners.get(type) ?? [])]) cb(event);
-    }
-
-    async createOffer(): Promise<{ type: 'offer'; sdp: string }> {
-        const lignes = ['v=0'];
-        for (const { kind, direction } of this.transceivers) {
-            lignes.push(`m=${kind} 9 UDP/TLS/RTP/SAVPF 0`);
-            lignes.push(`a=${direction ?? 'sendrecv'}`);
-        }
-        return { type: 'offer', sdp: lignes.join('\r\n') };
-    }
-
-    async setLocalDescription(desc: { type: string; sdp: string }): Promise<void> {
-        this.localDescription = desc;
-    }
-
-    async setRemoteDescription(_desc: unknown): Promise<void> {}
-
-    close(): void {}
-}
-
-/// Fake `MediaStream`: just enough to prove that received tracks
-/// accumulate in the same object rather than chasing each other out.
-class FakeMediaStream {
-    private tracks: unknown[] = [];
-    addTrack(track: unknown): void {
-        this.tracks.push(track);
-    }
-    getTracks(): unknown[] {
-        return this.tracks;
-    }
-}
-
-/// Fake `WebSocket` that opens right away and automatically answers
-/// "answer" as soon as it sees an offer go by, so that `connectSession`
-/// can go all the way without ever touching a real network.
-class FakeSignalingSocket {
-    private listeners = new Map<string, Set<(event: any) => void>>();
-
-    constructor(_url: string) {
-        queueMicrotask(() => this.emit('open', {}));
-    }
-
-    addEventListener(type: string, cb: (event: any) => void): void {
-        if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-        this.listeners.get(type)!.add(cb);
-    }
-
-    removeEventListener(type: string, cb: (event: any) => void): void {
-        this.listeners.get(type)?.delete(cb);
-    }
-
-    emit(type: string, event: unknown): void {
-        for (const cb of [...(this.listeners.get(type) ?? [])]) cb(event);
-    }
-
-    send(data: string): void {
-        messagesEnvoyes.push(data);
-        const parsed = JSON.parse(data) as { type?: string; role?: string };
-        // Empty ICE configuration, emitted as soon as the role is declared, as
-        // the signaling server does when no relay is deployed.
-        // Without it, `connectSession` would wait 2 s (the delay
-        // of `attendreConfigIce`) before building the connection.
-        if (parsed.role === 'client') {
-            queueMicrotask(() => {
-                this.emit('message', {
-                    data: JSON.stringify({ type: 'ice-config', iceServers: [] }),
-                });
-            });
-        }
-        if (parsed.type === 'offer') {
-            queueMicrotask(() => {
-                this.emit('message', {
-                    data: JSON.stringify({ type: 'answer', sdp: 'v=0\r\n' }),
-                });
-            });
-        }
-    }
-
-    close(): void {}
-}
-
-let derniereInstancePc: FakeRtcPeerConnection | undefined;
-/// Everything the client pushed on the signaling socket. It is the only
-/// instrument that can say what the HANDSHAKE carries.
-let messagesEnvoyes: string[] = [];
-
-/// The role declaration, that is, the first message sent.
-function poigneeDeMain(): Record<string, unknown> {
-    return JSON.parse(messagesEnvoyes[0]) as Record<string, unknown>;
-}
-
-function fauxVideo(): HTMLVideoElement {
-    return { srcObject: null } as unknown as HTMLVideoElement;
-}
+import {
+    fakes,
+    FakeMediaStream,
+    FakeRtcPeerConnection,
+    FakeSignalingSocket,
+    fauxVideo,
+    type FauxTransceiver,
+} from './webrtc.fixtures';
 
 describe('connectSession — negotiation promised by spec §10', () => {
     afterEach(() => {
-        derniereInstancePc = undefined;
-        messagesEnvoyes = [];
+        fakes.derniereInstancePc = undefined;
+        fakes.messagesEnvoyes = [];
         vi.unstubAllGlobals();
     });
 
@@ -204,9 +47,10 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
-        const sdp = derniereInstancePc!.localDescription!.sdp;
+        const sdp = fakes.derniereInstancePc!.localDescription!.sdp;
         const lignes = sdp.split('\r\n');
         const indexAudio = lignes.indexOf('m=audio 9 UDP/TLS/RTP/SAVPF 0');
         expect(indexAudio).toBeGreaterThanOrEqual(0);
@@ -230,6 +74,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video,
+            jetonFrais: async () => 'j',
         });
 
         // `receiver` is always present on a real `RTCTrackEvent` — a
@@ -237,8 +82,8 @@ describe('connectSession — negotiation promised by spec §10', () => {
         // support the property (see the defensive access in webrtc.ts).
         const pisteVideo = { kind: 'video' } as unknown as MediaStreamTrack;
         const pisteAudio = { kind: 'audio' } as unknown as MediaStreamTrack;
-        derniereInstancePc!.emit('track', { track: pisteVideo, receiver: {} });
-        derniereInstancePc!.emit('track', { track: pisteAudio, receiver: {} });
+        fakes.derniereInstancePc!.emit('track', { track: pisteVideo, receiver: {} });
+        fakes.derniereInstancePc!.emit('track', { track: pisteAudio, receiver: {} });
 
         const flux = video.srcObject as unknown as FakeMediaStream;
         expect(flux).toBeInstanceOf(FakeMediaStream);
@@ -275,6 +120,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         // The ORDER is the crux of the test, not a detail of form: it is what
@@ -282,13 +128,13 @@ describe('connectSession — negotiation promised by spec §10', () => {
         // under `mic_mid` depending on its direction (`transport/evenements.rs`).
         // Swapping the two audio transceivers would send the DOWNSTREAM sound
         // onto a track that cannot emit, without a single error.
-        expect(derniereInstancePc!.transceivers.map((t) => [t.kind, t.direction])).toEqual([
+        expect(fakes.derniereInstancePc!.transceivers.map((t) => [t.kind, t.direction])).toEqual([
             ['video', 'recvonly'],
             ['audio', 'recvonly'],
             ['audio', 'sendonly'],
         ]);
 
-        const lignes = derniereInstancePc!.localDescription!.sdp.split('\r\n');
+        const lignes = fakes.derniereInstancePc!.localDescription!.sdp.split('\r\n');
         const audios = lignes.flatMap((l, i) => (l.startsWith('m=audio ') ? [i] : []));
         expect(audios).toHaveLength(2);
         expect(lignes[audios[0] + 1]).toBe('a=recvonly');
@@ -304,11 +150,12 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         // It is the sender of the THIRD transceiver, not of another: without this
         // identity equality, `micro.ts` would fill the downstream track.
-        expect(session.micSender).toBe(derniereInstancePc!.transceivers[2].sender);
+        expect(session.micSender).toBe(fakes.derniereInstancePc!.transceivers[2].sender);
         expect(session.micSender.track).toBeNull();
     });
 
@@ -321,6 +168,7 @@ describe('connectSession — negotiation promised by spec §10', () => {
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video: fauxVideo(),
+            jetonFrais: async () => 'j',
         });
 
         // What `micro.ts` will have done on click: `replaceTrack` sets the track
@@ -339,81 +187,5 @@ describe('connectSession — negotiation promised by spec §10', () => {
         // end of the session and the device would stay taken. It is the "visual
         // lie" spec §9 calls unacceptable on this feature.
         expect(arretee).toBe(true);
-    });
-});
-
-describe('the handshake carries the token (sub-block P2)', () => {
-    afterEach(() => {
-        messagesEnvoyes = [];
-        vi.unstubAllGlobals();
-    });
-
-    function armerLesFactices(): void {
-        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
-        vi.stubGlobal('WebSocket', FakeSignalingSocket);
-        vi.stubGlobal('MediaStream', FakeMediaStream);
-    }
-
-    it('sends the token passed as an option', async () => {
-        armerLesFactices();
-        await connectSession({
-            signalingUrl: 'ws://signaling.invalid',
-            sessionId: 'test',
-            video: fauxVideo(),
-            jeton: 'jeton-de-l-appelant',
-        });
-        expect(poigneeDeMain()).toEqual({
-            role: 'client',
-            session: 'test',
-            jeton: 'jeton-de-l-appelant',
-        });
-    });
-
-    it('falls back to the browser store when no token is passed', async () => {
-        // E7: the field is OPTIONAL so that `main.ts` — modified by another
-        // project — does not have to move. The fallback is therefore the
-        // NOMINAL path, not an emergency case, and it must be exercised as such.
-        armerLesFactices();
-        vi.stubGlobal('localStorage', {
-            getItem: (c: string) => (c === CLE_ACCES ? 'jeton-du-coffre' : null),
-            setItem: () => {},
-            removeItem: () => {},
-        });
-        await connectSession({
-            signalingUrl: 'ws://signaling.invalid',
-            sessionId: 'test',
-            video: fauxVideo(),
-        });
-        expect(poigneeDeMain().jeton).toBe('jeton-du-coffre');
-    });
-
-    it("adds NO field other than `jeton`, and removes none", async () => {
-        // 🔴 Spec §10.2: the field is ADDED, none is removed. A service
-        // of sub-block P1 only reads `role` and `session` and ignores `jeton`,
-        // so this client stays compatible with it. Compatibility only goes
-        // in that direction, and it is this test that guards the first half.
-        armerLesFactices();
-        vi.stubGlobal('localStorage', {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-        });
-        await connectSession({
-            signalingUrl: 'ws://signaling.invalid',
-            sessionId: 'test',
-            video: fauxVideo(),
-        });
-        // Without a token: the handshake from before P2, identical.
-        expect(Object.keys(poigneeDeMain()).sort()).toEqual(['role', 'session']);
-
-        messagesEnvoyes = [];
-        await connectSession({
-            signalingUrl: 'ws://signaling.invalid',
-            sessionId: 'test',
-            video: fauxVideo(),
-            jeton: 'j',
-        });
-        // With a token: EXACTLY one more field.
-        expect(Object.keys(poigneeDeMain()).sort()).toEqual(['jeton', 'role', 'session']);
     });
 });

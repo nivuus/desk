@@ -39,13 +39,69 @@ export interface Emplacement {
     host: string;
 }
 
+/// An explicit address this build does not honour. Thrown, never replaced by
+/// the default: the caller shows the message, so that a refused parameter is
+/// visible instead of silently turning into another server.
+export class RefusedAddressError extends Error {
+    constructor(parameter: string, value: string, reason: string) {
+        super(`the "${parameter}" parameter is refused (${reason}): ${value}`);
+        this.name = 'RefusedAddressError';
+    }
+}
+
+/// The scheme an explicit address must carry to stay on the page's own
+/// origin: the page's scheme for HTTP, its WebSocket twin for signalling.
+function expectedScheme(emplacement: Emplacement, family: 'http' | 'ws'): string {
+    const secure = emplacement.protocol === 'https:';
+    if (family === 'http') return secure ? 'https:' : 'http:';
+    return secure ? 'wss:' : 'ws:';
+}
+
+/// Checks an explicit address against the page's origin and returns it AS IS.
+///
+/// 🔴 THE BEARER TOKEN AND THE SESSION GO TO THIS ADDRESS, so in a production
+/// build it must designate the page's own origin: same `host` (hence same
+/// port, the URL parser drops a default port on both sides) and the scheme of
+/// the matching class (`https:`/`wss:` for an `https:` page, `http:`/`ws:`
+/// otherwise). `foreignAllowed` lifts the check; it is true only in a
+/// bench build (`address-policy.ts`), never in `npm run build`.
+function checkExplicitAddress(
+    emplacement: Emplacement,
+    parameter: string,
+    explicite: string,
+    family: 'http' | 'ws',
+    foreignAllowed: boolean,
+): string {
+    if (foreignAllowed) return explicite;
+    let target: URL;
+    try {
+        target = new URL(explicite);
+    } catch {
+        throw new RefusedAddressError(parameter, explicite, 'not an absolute address');
+    }
+    const scheme = expectedScheme(emplacement, family);
+    if (target.protocol !== scheme) {
+        throw new RefusedAddressError(parameter, explicite, `this page only accepts ${scheme} here`);
+    }
+    if (target.host !== emplacement.host) {
+        throw new RefusedAddressError(parameter, explicite, "it is not this page's origin");
+    }
+    return explicite;
+}
+
 /// The platform's HTTP address: `?plateforme=` if set, otherwise
 /// the page's origin.
+///
+/// `foreignAllowed` says whether an explicit value may name another
+/// origin; callers pass `FOREIGN_ADDRESSES_ALLOWED`.
 export function adressePlateforme(
     emplacement: Emplacement,
-    explicite?: string | null,
+    explicite: string | null | undefined,
+    foreignAllowed: boolean,
 ): string {
-    if (explicite) return explicite;
+    if (explicite) {
+        return checkExplicitAddress(emplacement, 'plateforme', explicite, 'http', foreignAllowed);
+    }
     return `${emplacement.protocol === 'https:' ? 'https' : 'http'}://${emplacement.host}`;
 }
 
@@ -60,7 +116,8 @@ const CHEMIN_SIGNAL = '/signal';
 /// browser refuses it.
 export function adresseSignaling(
     emplacement: Emplacement,
-    explicite?: string | null,
+    explicite: string | null | undefined,
+    foreignAllowed: boolean,
 ): string {
     // ⚠️ AN EXPLICIT VALUE STAYS EXPLICIT, AND DOES NOT GET THE SUFFIX. It is the
     // contract of this parameter since P5: it replaces the WHOLE address, not
@@ -96,7 +153,16 @@ export function adresseSignaling(
     // `grep` above also catches the output `.log` and `.json` files, which are
     // READINGS and not drivers: the selection rule is "driver
     // sources", not "any occurrence".
-    if (explicite) return explicite;
+    //
+    // 🔴 THOSE DRIVERS NAME ANOTHER ORIGIN THAN THE PAGE (a platform on
+    // another port or host), and a production build now REFUSES that: the
+    // explicit value is honoured only when it designates the page's own origin
+    // (`checkExplicitAddress`). A bench that needs another origin runs the dev
+    // server or a build made with `vite build --mode banc`, where
+    // `FOREIGN_ADDRESSES_ALLOWED` (`address-policy.ts`) is true.
+    if (explicite) {
+        return checkExplicitAddress(emplacement, 'signaling', explicite, 'ws', foreignAllowed);
+    }
     const schema = emplacement.protocol === 'https:' ? 'wss' : 'ws';
     return `${schema}://${emplacement.host}${CHEMIN_SIGNAL}`;
 }
