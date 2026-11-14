@@ -32,6 +32,13 @@ sha1 = "0.10"
 # (API `md5::compute`): the former shares the `Digest` trait with `sha1`
 # declared just above, hence a single API family in this module.
 md-5 = "0.11"
+# SHA-256 of the installer that is checked before it is run, and of the
+# catalogue and icon identities (`apps::sha256`). RustCrypto, the family of
+# `sha1` and `md-5` above, replacing a hand-written implementation once an
+# integrity check came to depend on it. 0.10 and not 0.11: it shares `digest`
+# 0.10 and `cpufeatures` 0.2 with `sha1`, so it adds no crate version to the
+# tree (0.11 would duplicate `cpufeatures`).
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 # Direct dependency required by the `#[windows::core::implement]` macro

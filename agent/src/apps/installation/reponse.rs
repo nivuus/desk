@@ -9,7 +9,7 @@
 //! client and `tokio-tungstenite` is locked without TLS there: `reqwest`
 //! would bring an entire TLS stack and break the invariant "no
 //! production dependency" that G1 and G2 both hold. This repository has already
-//! written its TURN client, its STUN codec and its SHA-256 for the same reason.
+//! written its TURN client and its STUN codec for the same reason.
 //!
 //! 🔴 "NOT COMPLETE YET" IS A STATE IN ITS OWN RIGHT, NOT A REFUSAL. The
 //! buffer of a caller reading a socket carries a **cut** header one time

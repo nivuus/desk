@@ -14,7 +14,8 @@
 //! `tokio-tungstenite` is locked **without TLS** there: `reqwest` would bring
 //! an entire TLS stack and break the invariant "no production
 //! dependency" that G1 and G2 both hold. This repository has already written its
-//! TURN client, its STUN codec and its SHA-256 for the same reason.
+//! TURN client and its STUN codec for the same reason. (Its SHA-256, once
+//! hand-written too, now comes from the `sha2` crate: see `apps::sha256`.)
 //!
 //! 🔴 WHAT IT REFUSES LOUDLY RATHER THAN INTERPRETING: `https://`,
 //! because it does not speak TLS; `Transfer-Encoding`; any status other than `200`
