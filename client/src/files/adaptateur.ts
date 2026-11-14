@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 // The adapter between the bridge's logical paths and the browser's File System Access
 // API.
 //
@@ -227,6 +228,16 @@ export function createAdapter(
      */
     const inflight = new Map<string, Promise<FileHandle>>();
 
+    /**
+     * 🔴 THE BENCH'S FAULT INJECTION, COMPILED OUT OF PRODUCTION BUILDS: Vite
+     * replaces `import.meta.env.DEV` by `false` there, the branch is
+     * tree-shaken and `injecterFaute` with it — no address-bar switch can arm
+     * what the shipped bundle does not contain. The dev server keeps it.
+     */
+    async function injectFaults(parts: readonly string[]): Promise<void> {
+        if (import.meta.env.DEV) await injecterFaute(parts, fautesArmees);
+    }
+
     /** Forgets the memory AND the resolutions under way. */
     function forgetAll(): void {
         memo.clear();
@@ -358,7 +369,7 @@ export function createAdapter(
     return {
         async lister(chemin) {
             const parts = composants(chemin);
-            await injecterFaute(parts, fautesArmees);
+            await injectFaults(parts);
             const parent = await descendre(parts, Math.max(parts.length - 1, 0));
             let dossier = parent;
             if (parts.length > 0) {
@@ -410,7 +421,7 @@ export function createAdapter(
 
         async attributs(chemin) {
             const parts = composants(chemin);
-            await injecterFaute(parts, fautesArmees);
+            await injectFaults(parts);
             if (parts.length === 0) {
                 // ⚠️ The ROOT has no name: `nom` is the empty string, and
                 // `PrjWritePlaceholderInfo` is never called
@@ -441,7 +452,7 @@ export function createAdapter(
         },
 
         async lire(chemin, position, length) {
-            await injecterFaute(composants(chemin), fautesArmees);
+            await injectFaults(composants(chemin));
             if (length > MAX_FRAME_SIZE) {
                 // The peer is granted no trust on the size
                 // it requests: `pont::decoupe` already bounds on the agent side, but

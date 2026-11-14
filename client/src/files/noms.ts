@@ -331,6 +331,9 @@ export const FAUTE_SILENCE = 'silence';
  * Throws — or stays silent forever — if the FIRST path component requests a
  * fault **and** injection is ARMED.
  *
+ * 🔴 **DEVELOPMENT BUILDS ONLY**: the adapter calls it behind
+ * `import.meta.env.DEV`, so a production build drops it entirely.
+ *
  * 🔴 **DISARMED BY DEFAULT, AND THE FLAG IS AN ARGUMENT.** Reading it from this
  * module (`location.search`, a module variable) would make it untestable, and
  * above all: a user creating a folder named `.faute-disque-plein`
