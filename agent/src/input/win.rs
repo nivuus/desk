@@ -53,6 +53,10 @@ pub struct InputInjector {
     /// collide with any real result of `SetForegroundWindow`, so
     /// the first call always traces, whether it succeeds or fails.
     premier_plan_obtenu: Option<bool>,
+    /// What THIS injector pressed and has not released: released on
+    /// `Drop`, so that a session ending with a key or a button down
+    /// (lost release, tab closed mid-press) does not leave it down.
+    held: super::HeldInputs,
 }
 
 impl InputInjector {
@@ -94,10 +98,18 @@ impl InputInjector {
             sortie: None,
             mode_relatif,
             premier_plan_obtenu: None,
+            held: super::HeldInputs::default(),
         }
     }
 
     pub fn inject(&mut self, message: InputMessage) -> Result<()> {
+        self.inject_now(message)?;
+        // Only what was actually injected is held.
+        self.held.observer(&message);
+        Ok(())
+    }
+
+    fn inject_now(&mut self, message: InputMessage) -> Result<()> {
         match message {
             InputMessage::MouseMove { x, y } => self.move_mouse(x, y),
             InputMessage::MouseButton {
@@ -357,6 +369,56 @@ impl InputInjector {
             width: (rect.right - rect.left).max(0) as u32,
             height: (rect.bottom - rect.top).max(0) as u32,
         })
+    }
+}
+
+impl Drop for InputInjector {
+    /// Releases what this injector still holds. ⚠️ **Raw releases**: no
+    /// `SetForegroundWindow` (the window may be gone, and a release need not
+    /// reach any particular window — key state belongs to the session) and
+    /// no cursor move (`move_mouse` can fail, and the button-up must not
+    /// depend on it).
+    fn drop(&mut self) {
+        let releases = self.held.release_all();
+        if releases.is_empty() {
+            return;
+        }
+        tracing::info!(
+            releases = releases.len(),
+            "input injector dropped: releasing the keys and buttons still held"
+        );
+        for release in releases {
+            let outcome = match release {
+                InputMessage::Key {
+                    scancode, extended, ..
+                } => {
+                    let mut flags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+                    if extended {
+                        flags |= KEYEVENTF_EXTENDEDKEY;
+                    }
+                    send_keyboard(KEYBDINPUT {
+                        wVk: Default::default(),
+                        wScan: scancode,
+                        dwFlags: flags,
+                        time: 0,
+                        dwExtraInfo: 0,
+                    })
+                }
+                InputMessage::MouseButton { button, .. } => send_mouse(MOUSEINPUT {
+                    dwFlags: match button {
+                        MouseButton::Left => MOUSEEVENTF_LEFTUP,
+                        MouseButton::Right => MOUSEEVENTF_RIGHTUP,
+                        MouseButton::Middle => MOUSEEVENTF_MIDDLEUP,
+                    },
+                    ..Default::default()
+                }),
+                // `release_all` only yields key and button releases.
+                _ => Ok(()),
+            };
+            if let Err(error) = outcome {
+                tracing::warn!(%error, ?release, "release at injector drop refused");
+            }
+        }
     }
 }
 

@@ -77,6 +77,7 @@ mod controle;
 mod evenements;
 #[cfg(test)]
 mod fixtures;
+mod held_release;
 mod initialisation;
 mod part;
 mod piste_audio;
@@ -189,6 +190,8 @@ pub struct Session {
     /// Last visibility announced by the browser, waiting to be
     /// applied. Same reason for deferring as `pending_resize`.
     pending_visibility: Option<(bool, bool)>,
+    /// What the peer holds pressed, released on loss of focus (`held_release`).
+    held: crate::input::HeldInputs,
     /// Last paste announced by the browser, waiting to be applied
     /// (sub-block P2 of the clipboard workstream). Same reason for deferring as
     /// `pending_resize`: `memoriser_controle` runs during the drain of
@@ -423,6 +426,7 @@ impl Session {
             warned_audio_negotiation: false,
             pending_resize: None,
             pending_visibility: None,
+            held: crate::input::HeldInputs::default(),
             pending_clipboard: None,
             collage_a_injecter: false,
             congestion: congestion::Controleur::new(

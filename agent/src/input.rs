@@ -60,6 +60,9 @@ pub const TOUCHES_COLLAGE: [proto::input::InputMessage; 4] = [
     },
 ];
 
+mod held;
+pub use held::HeldInputs;
+
 #[cfg(windows)]
 mod win;
 
