@@ -224,6 +224,61 @@ fn bounds_overflows_on_a_multi_screen_desktop() {
 }
 
 #[test]
+fn the_visible_region_is_clipped_against_the_desktop_origin_not_zero() {
+    // A screen left of the primary: the virtual desktop starts at -1920, and
+    // the captured output lies entirely in negative coordinates.
+    let desktop = Rect {
+        x: -1920,
+        y: 0,
+        width: 3840,
+        height: 1080,
+    };
+    let window = Rect {
+        x: -1920,
+        y: 0,
+        width: 1920,
+        height: 1080,
+    };
+    assert_eq!(
+        to_virtual_desktop_visible(0, 0, window, desktop),
+        Some(to_virtual_desktop(0, 0, window, desktop)),
+        "an output left of the primary is visible"
+    );
+    assert_eq!(
+        to_virtual_desktop_visible(65535, 65535, window, desktop),
+        Some(to_virtual_desktop(65535, 65535, window, desktop))
+    );
+}
+
+#[test]
+fn the_right_clip_is_the_desktop_right_edge_when_it_starts_left_of_zero() {
+    // Desktop spanning [-1920, 1920): a window from 1000 to 2428 sticks out
+    // by 508 px on the right, so only 920 px of it are visible.
+    let desktop = Rect {
+        x: -1920,
+        y: 0,
+        width: 3840,
+        height: 1080,
+    };
+    let window = Rect {
+        x: 1000,
+        y: 0,
+        width: 1428,
+        height: 1080,
+    };
+    let visible = Rect {
+        x: 1000,
+        y: 0,
+        width: 920,
+        height: 1080,
+    };
+    assert_eq!(
+        to_virtual_desktop_visible(32768, 32768, window, desktop),
+        Some(to_virtual_desktop(32768, 32768, visible, desktop))
+    );
+}
+
+#[test]
 fn never_divides_by_zero() {
     let degenerate = Rect {
         x: 0,
