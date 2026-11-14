@@ -33,6 +33,7 @@ import { repondreIntrouvable } from './introuvable';
 import { ENTETES_SECURITE } from './entetes';
 import { adresseSource } from './adresse-source';
 import { ligne } from '../obs/journal';
+import { lireCorpsJson } from './corps';
 import {
     BUDGET_ADRESSE,
     BUDGET_COMPTE,
@@ -102,25 +103,6 @@ function repondre(
     rep.end(JSON.stringify(corps));
 }
 
-/// Reads the body, or yields `undefined` if the bound is crossed — in which case the
-/// request is ABANDONED without reading the rest, rather than piling up.
-function lireCorps(req: IncomingMessage): Promise<string | undefined> {
-    return new Promise((resolve, rejeter) => {
-        let recu = '';
-        req.on('data', (morceau: Buffer) => {
-            recu += morceau.toString('utf8');
-            if (recu.length > CORPS_MAX_OCTETS) {
-                // We stop reading AT ONCE: carrying on piling up to
-                // answer politely would be exactly the denial of service that
-                // the bound exists to prevent.
-                req.destroy();
-                resolve(undefined);
-            }
-        });
-        req.on('end', () => resolve(recu));
-        req.on('error', rejeter);
-    });
-}
 
 function estObjet(v: unknown): v is Record<string, unknown> {
     return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -203,7 +185,7 @@ export async function servirAuth(
         return true;
     }
 
-    const brut = await lireCorps(req);
+    const brut = await lireCorpsJson(req, CORPS_MAX_OCTETS);
     if (brut === undefined) {
         repondre(rep, 413, { refus: 'corps-trop-grand' }, cors);
         return true;

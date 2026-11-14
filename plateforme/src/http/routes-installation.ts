@@ -61,6 +61,7 @@ import { ENTETES_SECURITE } from './entetes';
 import { lirePorteur } from './porteur';
 import { lirePorteurAgent } from './porteur-agent';
 import { accesVm } from './acces-vm';
+import { lireCorpsJson } from './corps';
 
 export interface DependancesInstallation {
     base: Pilote;
@@ -116,23 +117,6 @@ function repondre(rep: ServerResponse, code: number, corps: unknown, cors: Cors)
     rep.end(corps === undefined ? undefined : JSON.stringify(corps));
 }
 
-/// Reads the body, or yields `undefined` if the bound is crossed — the request is
-/// then ABANDONED without reading the rest: piling up to answer politely would be
-/// the denial of service the bound exists to prevent.
-function lireCorps(req: IncomingMessage): Promise<string | undefined> {
-    return new Promise((resoudre, rejeter) => {
-        let recu = '';
-        req.on('data', (morceau: Buffer) => {
-            recu += morceau.toString('utf8');
-            if (recu.length > CORPS_MAX_OCTETS) {
-                req.destroy();
-                resoudre(undefined);
-            }
-        });
-        req.on('end', () => resoudre(recu));
-        req.on('error', rejeter);
-    });
-}
 
 /// The trade-off of the indistinguishable refusal: the only thing, in the whole
 /// service, that says WHICH of the cases happened. ⚠️ `cas=` IS A FIELD, NOT A
@@ -230,7 +214,7 @@ async function ordre(
         repondre(rep, porteur.code, { refus: porteur.motif }, cors);
         return true;
     }
-    const brut = await lireCorps(req);
+    const brut = await lireCorpsJson(req, CORPS_MAX_OCTETS);
     if (brut === undefined) {
         repondre(rep, 413, { refus: 'taille' }, cors);
         return true;
