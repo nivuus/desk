@@ -79,13 +79,14 @@ describe("lire's memory of resolved handles", () => {
         expect(compte.values).toBe(3);
     });
 
-    it('reuses the directories already resolved for a sibling file', async () => {
+    it('🔴 reuses the directories AND their name index for a sibling file', async () => {
+        // Red: `a` was enumerated again to canonicalise `y.bin` — one full
+        // walk of the parent per file, hence quadratic over a whole folder.
         const { adaptateur, compte } = monter({ a: { 'x.bin': OCTETS, 'y.bin': OCTETS } });
         await adaptateur.lire('a/x.bin', 0, 1);
         const avant = compte.values;
         await adaptateur.lire('a/y.bin', 0, 1);
-        // Only `a` is enumerated again, to canonicalise `y.bin`.
-        expect(compte.values - avant).toBe(1);
+        expect(compte.values - avant).toBe(0);
     });
 
     it('resolves again once TTL_MS has elapsed, even under continuous reads', async () => {
@@ -116,6 +117,76 @@ describe("lire's memory of resolved handles", () => {
         // Put back under ANOTHER case: only a fresh resolution finds it.
         arbre['F.BIN'] = OCTETS;
         expect([...(await adaptateur.lire('f.bin', 5, 2))]).toEqual([5, 6]);
+    });
+});
+
+describe('the name index of a directory, kept in the same memory', () => {
+    const folderOf = (n: number): Noeud =>
+        Object.fromEntries(Array.from({ length: n }, (_, i) => [`photo-${i}.jpg`, OCTETS]));
+
+    it('🔴 touching every file of a folder enumerates it ONCE, not once per file', async () => {
+        // Red: 2 × 200 enumerations — the root and `a` walked again for every
+        // file. A folder of a few thousand photos cost millions of iterations.
+        const { adaptateur, compte } = monter({ a: folderOf(200) });
+        for (let i = 0; i < 200; i += 1) {
+            await adaptateur.attributs(`a/photo-${i}.jpg`);
+            await adaptateur.lire(`a/photo-${i}.jpg`, 0, 1);
+        }
+        expect(compte.values).toBe(2);
+    });
+
+    it('still returns the STORED name through the index', async () => {
+        const { adaptateur } = monter({ a: { 'Casse.txt': OCTETS, 'b.txt': OCTETS } });
+        await adaptateur.attributs('a/b.txt');
+        await expect(adaptateur.attributs('a/CASSE.TXT')).resolves.toMatchObject({
+            nom: 'Casse.txt',
+        });
+    });
+
+    it('still refuses an AMBIGUOUS name, and still serves the exact one', async () => {
+        const { adaptateur } = monter({ a: { 'note.txt': OCTETS, 'Note.txt': OCTETS } });
+        await adaptateur.attributs('a/note.txt');
+        await expect(adaptateur.attributs('a/NOTE.TXT')).rejects.toMatchObject({
+            code: 'casse-ambigue',
+        });
+        await expect(adaptateur.attributs('a/Note.txt')).resolves.toMatchObject({
+            nom: 'Note.txt',
+        });
+    });
+
+    it('🔴 a name MISSING from the remembered index is looked up afresh', async () => {
+        // A file the user just dropped on the local machine is found at once:
+        // only a hit is trusted from the index, never an absence.
+        const tree: Noeud = { a: { 'x.bin': OCTETS } };
+        const { adaptateur, compte } = monter(tree);
+        await adaptateur.attributs('a/x.bin');
+        (tree.a as Noeud)['neuf.bin'] = OCTETS;
+        await expect(adaptateur.attributs('a/neuf.bin')).resolves.toMatchObject({
+            nom: 'neuf.bin',
+        });
+        expect(compte.values).toBe(3);
+    });
+
+    it('🔴 an index rebuilt for a missing name also sees a NEW namesake', async () => {
+        // An index that said "one namesake" is trusted; but once a lookup misses
+        // and the folder is walked again, a namesake that appeared meanwhile
+        // makes the name ambiguous, as a fresh resolution would.
+        const tree: Noeud = { a: { 'x.bin': OCTETS } };
+        const { adaptateur } = monter(tree);
+        await adaptateur.attributs('a/x.bin');
+        (tree.a as Noeud)['Y.bin'] = OCTETS;
+        (tree.a as Noeud)['y.BIN'] = OCTETS;
+        await expect(adaptateur.attributs('a/y.bin')).rejects.toMatchObject({
+            code: 'casse-ambigue',
+        });
+    });
+
+    it('is emptied with the rest of the memory', async () => {
+        const { adaptateur, compte } = monter({ a: folderOf(3) });
+        await adaptateur.attributs('a/photo-0.jpg');
+        adaptateur.forget?.();
+        await adaptateur.attributs('a/photo-1.jpg');
+        expect(compte.values).toBe(4);
     });
 });
 

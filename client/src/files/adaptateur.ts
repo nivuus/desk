@@ -21,9 +21,10 @@
 // EACH resolution, **without any cache**. A cache nothing invalidates is the
 // defect of the old bridge (`src/file.js`, cache WITHOUT TTL). ✅ `Rafraichir` HAS BEEN
 // DELIVERED SINCE F5. ⚠️ But it empties the bridge's ENUMERATION cache and ProjFS's
-// NEGATIVE cache — `noms.ts`, for its part, still has no cache, hence nothing to
-// empty: the two objects are distinct, and confusing them would make one believe
-// case had become cheaper.
+// NEGATIVE cache — `noms.ts`, for its part, ~~still has no cache, hence nothing to
+// empty~~ keeps its name index in this module's memory since November 2026, which
+// every gesture that may change the tree empties: the objects are distinct, and
+// must not be confused.
 //
 // Each path component therefore goes through `canoniser`, and this module returns the
 // **STORED** name, never the requested one.
@@ -45,13 +46,16 @@
 // 🔵 **`lire` NO LONGER PAYS IT PER CHUNK** (October 1st, 2026): it resolves a
 // file once and keeps the handle in a SHORT, BOUNDED, EMPTIED memory
 // (`memo.ts`, whose header says why it is not the old bridge's cache).
-// `lister` and `attributs` still resolve afresh at every call.
+// `lister` and `attributs` still resolve afresh at every call — but every
+// resolution, theirs included, reads the NAME INDEX of each directory from a
+// second memory of the same kind (`noms.ts`), so a folder is enumerated once
+// per memory lifetime rather than once per file.
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { MAX_FRAME_SIZE } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
 import { createMemo } from './memo';
-import { canoniserOuLever, injecterFaute } from './noms';
+import { canoniserOuLever, injecterFaute, type NameIndex } from './noms';
 
 /* ── THE HANDLES, DESCRIBED BY WHAT WE USE OF THEM ────────────────────────
    These interfaces are a STRUCTURAL SUBSET of `FileSystemDirectoryHandle`,
@@ -214,6 +218,8 @@ export function createAdapter(
      * `lister` and `attributs` do NOT use it: they keep resolving afresh.
      */
     const memo = createMemo<PoigneeRepertoire | FileHandle>(now);
+    /** The name index of each directory, by its path: `noms.ts::canoniser`. */
+    const nameIndex = createMemo<NameIndex>(now);
     /**
      * The resolutions UNDER WAY, by `f:<path>`: the agent asks for up to four
      * chunks at once, and without this each of them would miss the memory
@@ -224,7 +230,19 @@ export function createAdapter(
     /** Forgets the memory AND the resolutions under way. */
     function forgetAll(): void {
         memo.clear();
+        nameIndex.clear();
         inflight.clear();
+    }
+
+    /** Canonicalises `parts[i]` in `directory`, the directory `parts[0..i]` reached. */
+    function resolveName(
+        directory: PoigneeRepertoire,
+        parts: string[],
+        i: number,
+        siAbsent: CodeEchec,
+    ): Promise<string> {
+        const key = parts.slice(0, i).join('/');
+        return canoniserOuLever(directory, parts[i], siAbsent, { memo: nameIndex, key });
     }
 
     /** [`resolveFile`], shared by every chunk that asks while it runs. */
@@ -263,7 +281,7 @@ export function createAdapter(
             }
         }
         for (; i < jusqua; i += 1) {
-            const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
+            const nom = await resolveName(ici, parts, i, 'chemin-introuvable');
             try {
                 ici = await ici.getDirectoryHandle(nom);
             } catch (e) {
@@ -277,7 +295,7 @@ export function createAdapter(
     /** Resolves the file `parts` designates — canonicalising, as always. */
     async function resolveFile(parts: string[], generation: number): Promise<FileHandle> {
         const parent = await descendreMemo(parts, parts.length - 1, generation);
-        const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+        const nom = await resolveName(parent, parts, parts.length - 1, 'introuvable');
         try {
             return await parent.getFileHandle(nom);
         } catch (e) {
@@ -320,7 +338,7 @@ export function createAdapter(
             // An INTERMEDIATE component: the path itself is at fault, and
             // ProjFS distinguishes the two (`ERROR_PATH_NOT_FOUND` versus
             // `ERROR_FILE_NOT_FOUND`).
-            const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
+            const nom = await resolveName(ici, parts, i, 'chemin-introuvable');
             try {
                 ici = await ici.getDirectoryHandle(nom);
             } catch (e) {
@@ -344,7 +362,7 @@ export function createAdapter(
             const parent = await descendre(parts, Math.max(parts.length - 1, 0));
             let dossier = parent;
             if (parts.length > 0) {
-                const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+                const nom = await resolveName(parent, parts, parts.length - 1, 'introuvable');
                 try {
                     dossier = await parent.getDirectoryHandle(nom);
                 } catch (e) {
@@ -404,7 +422,7 @@ export function createAdapter(
             // serves BOTH attempts — directory then file. Redoing it
             // twice would cost two enumerations of the parent for the same
             // question.
-            const last = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
+            const last = await resolveName(parent, parts, parts.length - 1, 'introuvable');
             try {
                 await parent.getDirectoryHandle(last);
                 return { nom: last, repertoire: true, taille: 0, modifie: 0 }; // policy: allow-fr - wire keys of the file protocol

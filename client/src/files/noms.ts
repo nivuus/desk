@@ -61,7 +61,7 @@
 // that re-normalise. We normalise FIRST.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// ⚠️ NO CACHE. THE PARENT IS ENUMERATED AT EACH RESOLUTION.
+// ⚠️ ~~NO CACHE. THE PARENT IS ENUMERATED AT EACH RESOLUTION.~~ (see the note below)
 // ════════════════════════════════════════════════════════════════════════════
 //
 // It is expensive — `adaptateur.ts` already declares the cost of one `getFile()` per entry
@@ -71,6 +71,23 @@
 //
 // **F3 therefore trades latency for correctness, and it is F4 that will say
 // what the trade costs.**
+//
+// 🔵 **THE READ PATH NOW KEEPS THE INDEX** (November 2026): one enumeration per
+// resolved component made touching every file of a folder QUADRATIC — a
+// folder of a few thousand photos cost millions of `values()` steps. The
+// adapter passes [`canoniser`] a `Memo` (`memo.ts`: short, bounded, emptied by
+// every gesture that may change the tree), and the folded index of each
+// directory is kept there. **Only a HIT is trusted from it**: a miss or an
+// ambiguity walks the directory again, so a file that just appeared on the
+// local machine is found at once. The writer and the mutations pass no memory
+// and keep enumerating afresh.
+//
+// ⚠️ **THE "EXACT NAME FIRST" SHORT-CUT BY A DIRECT HANDLE LOOKUP IS NOT USED**,
+// and the reason is now known: on a case-INSENSITIVE local machine,
+// `getFileHandle('CASSE.TXT')` SUCCEEDS on `Casse.txt` and the handle carries the
+// REQUESTED name (WICG/file-system-access issue 152). A hit therefore does not
+// prove the exact name is STORED, which rule 1 below requires — it would return
+// the requested name instead of the stored one, and break the pure case rename.
 //
 // ⛔ **F4 DID NOT SAY IT, AND IT MUST BE WRITTEN RATHER THAN LETTING ONE BELIEVE THE
 // OPPOSITE** (August 21st, 2026). No gesture of its campaign exercises case
@@ -82,6 +99,7 @@
 // this host). **Bequeathed, not half implemented.**
 
 import { FilesError, classer, type PoigneeRepertoire } from './adaptateur';
+import type { Memo } from './memo';
 import { CODES_ECHEC, type CodeEchec } from '../../../proto/ts/fichiers';
 
 /** What resolving a path component can return. */
@@ -120,20 +138,61 @@ export function plier(nom: string): string {
 export async function canoniser(
     parent: PoigneeRepertoire,
     demande: string,
+    memory?: NameMemory,
 ): Promise<Resolution> {
-    const cible = plier(demande);
-    const homonymes: string[] = [];
+    if (memory !== undefined) {
+        const known = memory.memo.get(memory.key);
+        if (known !== undefined) {
+            const r = resolveInIndex(known, demande);
+            // Only a HIT is trusted: an absence or an ambiguity may be stale.
+            if (r.sorte === 'trouve') return r;
+        }
+        const generation = memory.memo.generation();
+        const index = await indexNames(parent);
+        memory.memo.set(memory.key, index, generation);
+        return resolveInIndex(index, demande);
+    }
+    return resolveInIndex(await indexNames(parent), demande);
+}
+
+/** The names of one directory: the stored ones, and the stored ones by fold. */
+export interface NameIndex {
+    readonly exact: ReadonlySet<string>;
+    readonly folded: ReadonlyMap<string, readonly string[]>;
+}
+
+/** Where the adapter keeps the index of the directory being resolved, and under which key. */
+export interface NameMemory {
+    readonly memo: Memo<NameIndex>;
+    /** The directory's path, as requested: one key per directory reached. */
+    readonly key: string;
+}
+
+/** Enumerates `parent` ONCE and indexes its names. */
+async function indexNames(parent: PoigneeRepertoire): Promise<NameIndex> {
+    const exact = new Set<string>();
+    const folded = new Map<string, string[]>();
     try {
         for await (const enfant of parent.values()) {
-            // Rule 1: the exact one short-circuits everything, ambiguity included.
-            if (enfant.name === demande) return { sorte: 'trouve', nom: demande };
-            if (plier(enfant.name) === cible) homonymes.push(enfant.name);
+            exact.add(enfant.name);
+            const fold = plier(enfant.name);
+            const existing = folded.get(fold);
+            if (existing === undefined) folded.set(fold, [enfant.name]);
+            else existing.push(enfant.name);
         }
     } catch (e) {
         throw classer(e, 'chemin-introuvable');
     }
+    return { exact, folded };
+}
+
+/** The four rules of [`canoniser`], on an index. */
+function resolveInIndex(index: NameIndex, demande: string): Resolution {
+    // Rule 1: the exact one short-circuits everything, ambiguity included.
+    if (index.exact.has(demande)) return { sorte: 'trouve', nom: demande };
+    const homonymes = index.folded.get(plier(demande)) ?? [];
     if (homonymes.length === 1) return { sorte: 'trouve', nom: homonymes[0] };
-    if (homonymes.length > 1) return { sorte: 'ambigu', noms: homonymes };
+    if (homonymes.length > 1) return { sorte: 'ambigu', noms: [...homonymes] };
     return { sorte: 'absent' };
 }
 
@@ -150,8 +209,9 @@ export async function canoniserOuLever(
     parent: PoigneeRepertoire,
     demande: string,
     siAbsent: CodeEchec,
+    memory?: NameMemory,
 ): Promise<string> {
-    const r = await canoniser(parent, demande);
+    const r = await canoniser(parent, demande, memory);
     switch (r.sorte) {
         case 'trouve':
             return r.nom;
