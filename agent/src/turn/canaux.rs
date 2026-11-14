@@ -10,7 +10,7 @@ use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use super::allocation::TurnClient;
-use super::messages::{encoder_requete, Requete};
+use super::messages::Requete;
 
 /// First channel number of the normative range (RFC 5766 §2.5).
 pub(super) const CANAL_MIN: u16 = 0x4000;
@@ -53,13 +53,16 @@ impl TurnClient {
     /// a window during which the server would drop our packets if the
     /// `ChannelBind` got lost.
     ///
-    /// Returns `None` if no allocation is in place, or if the channel
-    /// range is exhausted.
+    /// Returns `None` if no allocation is in place, if the server refused
+    /// this peer for good, or if the channel range is exhausted.
     pub fn lier_canal(&mut self, pair: SocketAddr) -> Option<u16> {
         // No allocation: there is nothing to bind a channel to.
         self.allocation?;
         if let Some(canal) = self.canal_de(pair) {
             return Some(canal);
+        }
+        if self.refused_peers.contains(&pair) {
+            return None;
         }
         if self.prochain_canal > CANAL_MAX {
             tracing::warn!("TURN channel range exhausted");
@@ -92,19 +95,8 @@ impl TurnClient {
     /// server handles both the same way, which is precisely what
     /// the RFC provides for extending a binding.
     fn emettre_liaison(&mut self, canal: u16, pair: SocketAddr) -> Option<()> {
-        let (ids, cle) = (self.identifiants.clone()?, self.cle.clone()?);
-        let trans_permission = self.prochain_trans_id();
-        self.sortantes.push_back(encoder_requete(
-            &Requete::CreatePermission { pair },
-            trans_permission,
-            Some((&ids, &cle)),
-        ));
-        let trans_bind = self.prochain_trans_id();
-        self.sortantes.push_back(encoder_requete(
-            &Requete::ChannelBind { canal, pair },
-            trans_bind,
-            Some((&ids, &cle)),
-        ));
+        self.send_request(Requete::CreatePermission { pair }, 0)?;
+        self.send_request(Requete::ChannelBind { canal, pair }, 0)?;
 
         self.canaux.insert(
             canal,
