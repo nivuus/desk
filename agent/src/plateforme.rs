@@ -42,6 +42,10 @@ mod tests;
 #[path = "plateforme/tests_installation.rs"]
 mod tests_installation;
 
+#[cfg(test)]
+#[path = "plateforme/tests_backoff.rs"]
+mod tests_backoff;
+
 use std::time::Duration;
 
 use proto::plateforme::VersLaPlateforme;
@@ -203,16 +207,18 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
     let (ordres_tx, ordres_rx) = mpsc::unbounded_channel();
     let (installations_tx, installations_rx) = mpsc::unbounded_channel();
     let tache = tokio::spawn(async move {
-        // The attempt restarts from ZERO after each successful enrolment: an
-        // agent connected for three days that loses its network for one second
-        // must reconnect in half a second, not in thirty.
-        let mut tentative = 0u32;
+        // The backoff restarts from the floor only after a session that
+        // SERVED — one that lived past `SEUIL_CONNEXION_UTILE_MS`: an agent
+        // connected for three days that loses its network for one second must
+        // reconnect in half a second, not in thirty. ❌ It used to re-arm
+        // whenever the identity watch held a value, which it does forever
+        // after the FIRST enrolment: every later retry then waited the floor,
+        // and a platform that kept refusing was hammered at 2 Hz. The rule is
+        // the control session's, reused rather than copied.
+        let mut resumption = crate::superviseur::reprise_controle::Reprise::neuve();
         loop {
-            let reussite_precedente = tx.borrow().is_some();
-            if reussite_precedente {
-                tentative = 0;
-            }
-            match une_session(
+            let started = tokio::time::Instant::now();
+            let end = une_session(
                 &url,
                 &vm,
                 &secret,
@@ -221,8 +227,9 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
                 &ordres_tx,
                 &installations_tx,
             )
-            .await
-            {
+            .await;
+            let lived_ms = started.elapsed().as_millis() as u64;
+            match end {
                 Fin::Definitive => {
                     tracing::warn!(
                         url,
@@ -232,14 +239,17 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
                 }
                 Fin::Reprenable => {}
             }
-            let delai = repli::delai_de_repli(tentative);
+            let backoff_rearmed = resumption.connexion_terminee(lived_ms);
+            let delai = resumption.delai_ms();
             tracing::info!(
                 url,
-                tentative,
+                tentative = resumption.tentative(),
+                lived_ms,
+                backoff_rearmed,
                 delai_ms = delai,
                 "resuming the /agent channel"
             );
-            tentative = tentative.saturating_add(1);
+            resumption.tentative_lancee();
             tokio::time::sleep(Duration::from_millis(delai)).await;
         }
     });
