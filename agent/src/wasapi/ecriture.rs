@@ -42,8 +42,8 @@
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, ensure, Context, Result};
-use windows::core::PCWSTR;
-use windows::Win32::Foundation::{CloseHandle, HANDLE, RPC_E_CHANGED_MODE, WAIT_FAILED};
+use windows::core::{Owned, PCWSTR};
+use windows::Win32::Foundation::{HANDLE, RPC_E_CHANGED_MODE, WAIT_FAILED};
 use windows::Win32::Media::Audio::{
     IAudioClient, IAudioRenderClient, IMMDevice, AUDCLNT_SHAREMODE_SHARED,
     AUDCLNT_STREAMFLAGS_EVENTCALLBACK, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
@@ -169,8 +169,9 @@ pub fn rejoindre_mta() -> Result<()> {
 pub struct RenduWasapi {
     client: IAudioClient,
     rendu: IAudioRenderClient,
-    /// `None` en mode [`Reveil::Echeance`].
-    evenement: Option<HANDLE>,
+    /// `None` en mode [`Reveil::Echeance`]. Owned: closed when dropped,
+    /// including on every error path of `ouvrir` before `Self` exists.
+    evenement: Option<Owned<HANDLE>>,
     /// `GetBufferSize()`, in frames per channel.
     buffer_size: u32,
     canaux: usize,
@@ -273,10 +274,14 @@ impl RenduWasapi {
             // internal copy of it, as `GetMixFormat`'s documentation requires.
 
             let evenement = if reveil == Reveil::Evenement {
-                let handle = CreateEventW(None, false, false, PCWSTR::null())
-                    .context("creating the render wake-up event")?;
+                // SAFETY: `CreateEventW` just returned this handle, and
+                // nothing else owns it.
+                let handle = Owned::new(
+                    CreateEventW(None, false, false, PCWSTR::null())
+                        .context("creating the render wake-up event")?,
+                );
                 client
-                    .SetEventHandle(handle)
+                    .SetEventHandle(*handle)
                     .context("binding the event to the render client")?;
                 Some(handle)
             } else {
@@ -334,8 +339,9 @@ impl RenduWasapi {
             }
             match self.reveil {
                 Reveil::Evenement => {
-                    let handle = self
+                    let handle = *self
                         .evenement
+                        .as_deref()
                         .context("event mode without a handle: internal inconsistency")?;
                     // `as u32` after `min`: a wait of more than 49 days
                     // makes no sense here, and `INFINITE` (0xFFFFFFFF) must
@@ -410,13 +416,12 @@ impl RenduWasapi {
     }
 }
 
+/// The event handle is not closed here: `evenement` is an `Owned` field, closed
+/// when the fields drop, after this body has stopped the stream.
 impl Drop for RenduWasapi {
     fn drop(&mut self) {
         unsafe {
             let _ = self.client.Stop();
-            if let Some(handle) = self.evenement.take() {
-                let _ = CloseHandle(handle);
-            }
         }
     }
 }
