@@ -49,8 +49,9 @@
 // then create a DUPLICATE instead of overwriting — less serious than the loss, but wrong.
 // NOT HANDLED, declared; it is F3's canonicaliser."
 //
-// **It is handled**: folding applies `normalize('NFC')` BEFORE the case
-// fold. Two names differing only by their normalisation form are
+// **It is handled**, on read AND on write (the writer resolves through this
+// module since it lost its private variant): folding applies `normalize('NFC')`
+// BEFORE the case fold. Two names differing only by their normalisation form are
 // therefore namesakes, exactly like two names differing only by
 // case — and for the same reason: **the user does not tell them apart**.
 //
@@ -60,7 +61,7 @@
 // that re-normalise. We normalise FIRST.
 //
 // ════════════════════════════════════════════════════════════════════════════
-// ⚠️ NO CACHE. THE PARENT IS ENUMERATED AT EACH RESOLUTION.
+// ⚠️ ~~NO CACHE. THE PARENT IS ENUMERATED AT EACH RESOLUTION.~~ (see the note below)
 // ════════════════════════════════════════════════════════════════════════════
 //
 // It is expensive — `adaptateur.ts` already declares the cost of one `getFile()` per entry
@@ -70,6 +71,23 @@
 //
 // **F3 therefore trades latency for correctness, and it is F4 that will say
 // what the trade costs.**
+//
+// 🔵 **THE READ PATH NOW KEEPS THE INDEX** (November 2026): one enumeration per
+// resolved component made touching every file of a folder QUADRATIC — a
+// folder of a few thousand photos cost millions of `values()` steps. The
+// adapter passes [`canoniser`] a `Memo` (`memo.ts`: short, bounded, emptied by
+// every gesture that may change the tree), and the folded index of each
+// directory is kept there. **Only a HIT is trusted from it**: a miss or an
+// ambiguity walks the directory again, so a file that just appeared on the
+// local machine is found at once. The writer and the mutations pass no memory
+// and keep enumerating afresh.
+//
+// ⚠️ **THE "EXACT NAME FIRST" SHORT-CUT BY A DIRECT HANDLE LOOKUP IS NOT USED**,
+// and the reason is now known: on a case-INSENSITIVE local machine,
+// `getFileHandle('CASSE.TXT')` SUCCEEDS on `Casse.txt` and the handle carries the
+// REQUESTED name (WICG/file-system-access issue 152). A hit therefore does not
+// prove the exact name is STORED, which rule 1 below requires — it would return
+// the requested name instead of the stored one, and break the pure case rename.
 //
 // ⛔ **F4 DID NOT SAY IT, AND IT MUST BE WRITTEN RATHER THAN LETTING ONE BELIEVE THE
 // OPPOSITE** (August 21st, 2026). No gesture of its campaign exercises case
@@ -81,6 +99,7 @@
 // this host). **Bequeathed, not half implemented.**
 
 import { FilesError, classer, type PoigneeRepertoire } from './adaptateur';
+import type { Memo } from './memo';
 import { CODES_ECHEC, type CodeEchec } from '../../../proto/ts/fichiers';
 
 /** What resolving a path component can return. */
@@ -119,20 +138,61 @@ export function plier(nom: string): string {
 export async function canoniser(
     parent: PoigneeRepertoire,
     demande: string,
+    memory?: NameMemory,
 ): Promise<Resolution> {
-    const cible = plier(demande);
-    const homonymes: string[] = [];
+    if (memory !== undefined) {
+        const known = memory.memo.get(memory.key);
+        if (known !== undefined) {
+            const r = resolveInIndex(known, demande);
+            // Only a HIT is trusted: an absence or an ambiguity may be stale.
+            if (r.sorte === 'trouve') return r;
+        }
+        const generation = memory.memo.generation();
+        const index = await indexNames(parent);
+        memory.memo.set(memory.key, index, generation);
+        return resolveInIndex(index, demande);
+    }
+    return resolveInIndex(await indexNames(parent), demande);
+}
+
+/** The names of one directory: the stored ones, and the stored ones by fold. */
+export interface NameIndex {
+    readonly exact: ReadonlySet<string>;
+    readonly folded: ReadonlyMap<string, readonly string[]>;
+}
+
+/** Where the adapter keeps the index of the directory being resolved, and under which key. */
+export interface NameMemory {
+    readonly memo: Memo<NameIndex>;
+    /** The directory's path, as requested: one key per directory reached. */
+    readonly key: string;
+}
+
+/** Enumerates `parent` ONCE and indexes its names. */
+async function indexNames(parent: PoigneeRepertoire): Promise<NameIndex> {
+    const exact = new Set<string>();
+    const folded = new Map<string, string[]>();
     try {
         for await (const enfant of parent.values()) {
-            // Rule 1: the exact one short-circuits everything, ambiguity included.
-            if (enfant.name === demande) return { sorte: 'trouve', nom: demande };
-            if (plier(enfant.name) === cible) homonymes.push(enfant.name);
+            exact.add(enfant.name);
+            const fold = plier(enfant.name);
+            const existing = folded.get(fold);
+            if (existing === undefined) folded.set(fold, [enfant.name]);
+            else existing.push(enfant.name);
         }
     } catch (e) {
         throw classer(e, 'chemin-introuvable');
     }
+    return { exact, folded };
+}
+
+/** The four rules of [`canoniser`], on an index. */
+function resolveInIndex(index: NameIndex, demande: string): Resolution {
+    // Rule 1: the exact one short-circuits everything, ambiguity included.
+    if (index.exact.has(demande)) return { sorte: 'trouve', nom: demande };
+    const homonymes = index.folded.get(plier(demande)) ?? [];
     if (homonymes.length === 1) return { sorte: 'trouve', nom: homonymes[0] };
-    if (homonymes.length > 1) return { sorte: 'ambigu', noms: homonymes };
+    if (homonymes.length > 1) return { sorte: 'ambigu', noms: [...homonymes] };
     return { sorte: 'absent' };
 }
 
@@ -149,8 +209,9 @@ export async function canoniserOuLever(
     parent: PoigneeRepertoire,
     demande: string,
     siAbsent: CodeEchec,
+    memory?: NameMemory,
 ): Promise<string> {
-    const r = await canoniser(parent, demande);
+    const r = await canoniser(parent, demande, memory);
     switch (r.sorte) {
         case 'trouve':
             return r.nom;
@@ -166,6 +227,68 @@ export async function canoniserOuLever(
                     `returning one of them would pick the wrong file, nothing was done`,
             );
     }
+}
+
+/** The refusal of a name that several entries — or a non-exact one — fold onto. */
+function ambiguousName(demande: string, noms: readonly string[]): FilesError {
+    return new FilesError(
+        'casse-ambigue',
+        `« ${demande} » cannot be told apart from « ${noms.join(' », « ')} »: ` +
+            `the user does not see the difference (case or Unicode normalisation), nothing was done`,
+    );
+}
+
+/** A directory one can create children in, handing out handles of its own kind. */
+export interface CreatingDirectory<R extends PoigneeRepertoire> extends PoigneeRepertoire {
+    getDirectoryHandle(nom: string, options?: { create?: boolean }): Promise<R>;
+}
+
+/**
+ * Walks down the first `jusqua` components, all directories, CREATING the
+ * missing ones — and resolving each one through [`canoniser`] FIRST.
+ *
+ * 🔴 Without the resolution, `archives/` and `Archives/` would be two
+ * directories on a case-SENSITIVE machine and the same one on an insensitive
+ * machine, and a name stored decomposed would gain a composed twin: the reader
+ * would resolve the path to one entry while the writer created another.
+ */
+export async function descendreEnCreant<R extends CreatingDirectory<R>>(
+    racine: R,
+    parts: readonly string[],
+    jusqua: number,
+): Promise<R> {
+    let ici = racine;
+    for (let i = 0; i < jusqua; i += 1) {
+        const r = await canoniser(ici, parts[i]);
+        if (r.sorte === 'ambigu') throw ambiguousName(parts[i], r.noms);
+        const nom = r.sorte === 'trouve' ? r.nom : parts[i];
+        try {
+            ici = await ici.getDirectoryHandle(nom, { create: true });
+        } catch (e) {
+            throw classer(e, 'chemin-introuvable');
+        }
+    }
+    return ici;
+}
+
+/**
+ * The name a write or a creation may use for its FINAL component, or a throw.
+ *
+ *   - the exact name exists          → it is that one;
+ *   - nothing folds onto it          → the requested name, to be created;
+ *   - a namesake that is NOT exact   → `casse-ambigue`, NOTHING IS WRITTEN.
+ *
+ * 🔴 THE LAST RULE IS F2'S GUARD, AND IT DELIBERATELY DIFFERS FROM READING. On
+ * a case-insensitive local machine, `getFileHandle('CASSE.TXT', { create: true })`
+ * opens `Casse.txt`: following the namesake would OVERWRITE a file the VM wrote
+ * under another name. The same holds for a composed versus a decomposed name.
+ */
+export async function nameForWrite(parent: PoigneeRepertoire, demande: string): Promise<string> {
+    const r = await canoniser(parent, demande);
+    if (r.sorte === 'absent') return demande;
+    if (r.sorte === 'ambigu') throw ambiguousName(demande, r.noms);
+    if (r.nom !== demande) throw ambiguousName(demande, [r.nom]);
+    return demande;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -207,6 +330,9 @@ export const FAUTE_SILENCE = 'silence';
 /**
  * Throws — or stays silent forever — if the FIRST path component requests a
  * fault **and** injection is ARMED.
+ *
+ * 🔴 **DEVELOPMENT BUILDS ONLY**: the adapter calls it behind
+ * `import.meta.env.DEV`, so a production build drops it entirely.
  *
  * 🔴 **DISARMED BY DEFAULT, AND THE FLAG IS AN ARGUMENT.** Reading it from this
  * module (`location.search`, a module variable) would make it untestable, and

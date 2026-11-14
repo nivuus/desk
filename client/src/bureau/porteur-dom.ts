@@ -120,7 +120,9 @@ export interface DepsBureauPage {
     /// `?faute-fichiers=1` — BENCH variable, never a shipped (policy: allow-fr, bench URL parameter)
     /// configuration. Read ONCE by the page and passed as an argument, never reread
     /// here: it is the convention of `PLEIN_ECRAN` and `PART_SONDAGE` on the
-    /// agent side — the mechanism reads a flag it is given.
+    /// agent side — the mechanism reads a flag it is given. It is read in
+    /// DEVELOPMENT builds only (`import.meta.env.DEV`), and a production build
+    /// carries no injection code at all (`files/fault-injection-build.test.ts`).
     fautesArmees: boolean;
     elements: {
         statut: HTMLDivElement;

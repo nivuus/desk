@@ -48,6 +48,14 @@
 // units, which `===` distinguishes and the user does not.
 // The guard would then create a DUPLICATE instead of overwriting — less serious than the
 // loss, but wrong. NOT HANDLED, declared; it is F3's canonicaliser.
+//
+// ✅ HANDLED SINCE THE WRITER LOST ITS PRIVATE RESOLUTION. It used to walk the
+// path without canonicalising it and to fold names with a bare
+// `toLowerCase()`: it had drifted from `noms.ts`, so the reader resolved
+// `Docs/` to an existing `docs/` while the writer created a sibling, and a
+// decomposed name gained a composed twin. Every component now goes through
+// `noms.ts` — `descendreEnCreant` for the directories, `nameForWrite`, which
+// keeps the guard above, for the final one.
 
 import {
     FilesError,
@@ -56,6 +64,7 @@ import {
     type FileHandle,
     type PoigneeRepertoire,
 } from './adaptateur';
+import { descendreEnCreant, nameForWrite } from './noms';
 
 /* ── THE WRITABLE HANDLES ───────────────────────────────────────────
    One more STRUCTURAL SUBSET, described by what we use of it. The real
@@ -100,6 +109,11 @@ export interface FluxInscriptible {
      * here; criterion ⑤ of the acceptance run is written to test it.
      */
     close(): Promise<void>;
+    /**
+     * Discards the swap file and releases the lock on the file: what an
+     * interrupted or failed push must do — closing would COMMIT its partial bytes.
+     */
+    abort(reason?: unknown): Promise<void>;
 }
 
 export interface WritableFileHandle extends FileHandle {
@@ -146,57 +160,14 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
      */
     const flux = new Map<string, FluxInscriptible>();
 
-    /** Walks down the first `jusqua` components, CREATING them if needed. */
-    async function descendre(parts: string[], jusqua: number): Promise<RacineInscriptible> {
-        let ici = racine;
-        for (let i = 0; i < jusqua; i += 1) {
-            try {
-                ici = await ici.getDirectoryHandle(parts[i], { create: true });
-            } catch (e) {
-                throw classer(e, 'chemin-introuvable');
-            }
-        }
-        return ici;
-    }
-
-    /**
-     * 🔴 THE CASE GUARD. Returns the name to use, or THROWS.
-     *
-     * It returns the EXACT name when it exists, the requested name when nothing
-     * resembles it, and throws `casse-ambigue` when a namesake only differs by
-     * case. In that last case, WE WRITE NOTHING.
-     */
-    async function nomSur(parent: RacineInscriptible, nom: string): Promise<string> {
-        const homonymes: string[] = [];
-        try {
-            for await (const enfant of parent.values()) {
-                if (enfant.name === nom) return nom;
-                if (enfant.name.toLowerCase() === nom.toLowerCase()) homonymes.push(enfant.name);
-            }
-        } catch (e) {
-            throw classer(e, 'chemin-introuvable');
-        }
-        if (homonymes.length > 0) {
-            // ⚠️ The message NAMES both, because that is all the
-            // user will be able to do: rename one of the two. The CODE, for its part,
-            // crosses the wire; the message stays in the browser console
-            // and in the shell page.
-            throw new FilesError(
-                'casse-ambigue',
-                `« ${nom} » differs from « ${homonymes.join(' », « ')} » only by case: ` +
-                    `writing would overwrite the wrong file, nothing was written`,
-            );
-        }
-        return nom;
-    }
-
     async function ouvrir(chemin: string): Promise<FluxInscriptible> {
         const parts = composants(chemin);
         if (parts.length === 0) {
             throw new FilesError('introuvable', 'the root is not a file');
         }
-        const parent = await descendre(parts, parts.length - 1);
-        const nom = await nomSur(parent, parts[parts.length - 1]);
+        const parent = await descendreEnCreant(racine, parts, parts.length - 1);
+        // 🔴 THE CASE GUARD: the exact name, a new one, or NOTHING is written.
+        const nom = await nameForWrite(parent, parts[parts.length - 1]);
         try {
             const poignee = await parent.getFileHandle(nom, { create: true });
             // 🔴 WITHOUT `keepExistingData`, AND IT IS THE OLD BRIDGE'S DEFECT
@@ -215,14 +186,13 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
             if (premier) {
                 // ⚠️ A `premier` on an ALREADY open path can only come
                 // from a replay whose previous stream was never closed — an
-                // interrupted push, then restarted. We close the old one rather
-                // than leave TWO open on the same file: the
-                // second `close()` would win, and the first would leave its
-                // swap file behind.
+                // interrupted push, then restarted. We ABORT the old one rather
+                // than leave TWO open on the same file — and never `close()` it,
+                // which would commit the interrupted push's partial bytes.
                 const ancien = flux.get(chemin);
                 if (ancien !== undefined) {
                     flux.delete(chemin);
-                    await ancien.close().catch(() => {});
+                    await ancien.abort();
                 }
                 flux.set(chemin, await ouvrir(chemin));
             }
@@ -254,9 +224,13 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
                 await ouvert.write({ type: 'write', position, data: data });
             } catch (e) {
                 // The stream is lost: remove it, otherwise the next chunk
-                // would write into a dead stream and the failure would change cause.
+                // would write into a dead stream and the failure would change cause
+                // — and ABORT it first, so that it leaves neither its swap
+                // file nor its lock behind.
                 flux.delete(chemin);
-                throw classer(e, 'introuvable');
+                const failure = classer(e, 'introuvable');
+                await ouvert.abort(failure);
+                throw failure;
             }
             if (last) {
                 flux.delete(chemin);
@@ -274,8 +248,8 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
             if (parts.length === 0) {
                 throw new FilesError('deja-present', 'the root already exists');
             }
-            const parent = await descendre(parts, parts.length - 1);
-            const nom = await nomSur(parent, parts[parts.length - 1]);
+            const parent = await descendreEnCreant(racine, parts, parts.length - 1);
+            const nom = await nameForWrite(parent, parts[parts.length - 1]);
             try {
                 if (repertoire) {
                     await parent.getDirectoryHandle(nom, { create: true });
@@ -291,11 +265,13 @@ export function createWriter(racine: RacineInscriptible): Ecrivain {
         },
 
         abandonner() {
-            // ⚠️ `close()` AND NOT `abort()`: a stream abandoned without being closed
-            // leaves its swap file behind. Nothing is awaited —
-            // this function is called from the channel's closing, which is
-            // synchronous.
-            for (const [, ouvert] of flux) void ouvert.close().catch(() => {});
+            // 🔴 `abort()` AND NOT `close()`: a stream still open here belongs to
+            // an INTERRUPTED push, and `close()` would commit its partial bytes
+            // over the local file. `abort()` discards the swap file and releases
+            // the lock (WHATWG File System, the writable's abort algorithm).
+            // Nothing is awaited — this function is called from the channel's
+            // closing, which is synchronous, and has no one to report to.
+            for (const [, ouvert] of flux) void ouvert.abort().catch(() => {});
             flux.clear();
         },
     };

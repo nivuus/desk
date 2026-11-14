@@ -114,14 +114,36 @@
 // no, deleting a non-empty directory will leave the children on the
 // local machine — **degrades, does not block**.
 
-import { FilesError, classer, type PoigneeBase, type FileHandle } from './adaptateur';
+import {
+    FilesError,
+    classer,
+    type PoigneeBase,
+    type FileHandle,
+    type ReadableFile,
+} from './adaptateur';
 import type { FluxInscriptible, RacineInscriptible } from './ecriture';
-import { canoniser, canoniserOuLever } from './noms';
+import { canoniser, canoniserOuLever, descendreEnCreant } from './noms';
 import { copyFile, copierRepertoire, ouvrirRepertoire, retirerArbre } from './copie';
+
+/**
+ * A file as the copy fallback reads it: through `stream()`, never whole — a
+ * whole-buffer read of a multi-gigabyte file exhausts the tab's memory.
+ */
+export interface CopyableFile extends ReadableFile {
+    stream(): ReadableStream<Uint8Array>;
+}
+
+/**
+ * The writable the copy fallback pipes into. `FileSystemWritableFileStream` IS a
+ * `WritableStream`: `pipeTo` closes it (the commit) when the source ends and
+ * aborts it (the swap file is discarded) when the source fails.
+ */
+export type CopyableStream = FluxInscriptible & WritableStream<Uint8Array>;
 
 /** What we can do with a file handle we want to move. */
 export interface MutableFileHandle extends FileHandle {
-    createWritable(options?: { keepExistingData?: boolean }): Promise<FluxInscriptible>;
+    getFile(): Promise<CopyableFile>;
+    createWritable(options?: { keepExistingData?: boolean }): Promise<CopyableStream>;
     /** **NON STANDARD** — Chromium extension. Absent ⇒ the local fallback. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
 }
@@ -141,6 +163,11 @@ export interface RacineMutable extends RacineInscriptible {
     removeEntry(nom: string): Promise<void>;
     /** **NON STANDARD**. */
     move?(parent: RacineMutable, nom: string): Promise<void>;
+    /**
+     * Do two handles designate the same entry? The API returns a NEW handle
+     * object on each lookup, so `===` only holds for the very same object.
+     */
+    isSameEntry(other: RacineMutable): Promise<boolean>;
 }
 
 /** What a rename cost LOCALLY — the instrumentation the spec requires. */
@@ -179,34 +206,6 @@ async function descendre(
     return ici;
 }
 
-/** Walks down CREATING the missing directories — for the destination. */
-async function descendreEnCreant(
-    racine: RacineMutable,
-    parts: string[],
-    jusqua: number,
-): Promise<RacineMutable> {
-    let ici = racine;
-    for (let i = 0; i < jusqua; i += 1) {
-        // ⚠️ We canonicalise FIRST: without that, `archives/` and `Archives/`
-        // would become two directories on a case-SENSITIVE machine, and
-        // the same one on an insensitive machine — two behaviours for one path.
-        const r = await canoniser(ici, parts[i]);
-        const nom = r.sorte === 'trouve' ? r.nom : parts[i];
-        if (r.sorte === 'ambigu') {
-            throw new FilesError(
-                'casse-ambigue',
-                `« ${parts[i]} » cannot be told apart from « ${r.noms.join(' », « ')} »`,
-            );
-        }
-        try {
-            ici = await ici.getDirectoryHandle(nom, { create: true });
-        } catch (e) {
-            throw classer(e, 'chemin-introuvable');
-        }
-    }
-    return ici;
-}
-
 /**
  * Renames `de` to `vers`, both relative to the root.
  *
@@ -238,7 +237,15 @@ export async function renommer(
     // 🔴 `move()` OVERWRITES: without this block, renaming `draft.txt` to `note.txt`
     // would destroy `note.txt` without a word.
     const dest = await canoniser(parentDest, nomDemande);
-    const memeParent = parentSource === parentDest;
+    // 🔴 THE ENTRIES, NOT THE OBJECTS: the two parents come from two separate
+    // walks, and `===` was true at the root only — a case rename inside any
+    // sub-folder was refused as `deja-present`.
+    let memeParent: boolean;
+    try {
+        memeParent = await parentSource.isSameEntry(parentDest);
+    } catch (e) {
+        throw classer(e, 'introuvable');
+    }
     let cassePure = false;
     if (dest.sorte === 'ambigu') {
         throw new FilesError(

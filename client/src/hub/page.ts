@@ -360,7 +360,7 @@ async function start(): Promise<void> {
         // 🔴 **READ HERE, HENCE AFTER `peupler()`**: that is what gives the lock
         // and the control session the VM's prefix (critical ②).
         prefixe: lirePrefixe(),
-        fautesArmees: params.get('faute-fichiers') === '1',
+        fautesArmees: import.meta.env.DEV && params.get('faute-fichiers') === '1',
         elements: {
             statut: document.querySelector<HTMLDivElement>('#statut')!,
             list: document.querySelector<HTMLUListElement>('#fenetres')!,
