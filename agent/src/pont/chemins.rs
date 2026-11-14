@@ -80,17 +80,45 @@ pub enum CheminRefuse {
     Vide,
     /// The UTF-16 units delivered by ProjFS do not form valid text.
     NonUtf16Valide,
+    /// A peer-supplied name carrying a separator (`\\` or `/`): it would
+    /// be a path, not one component.
+    Separator,
+    /// A peer-supplied name that is `.`, the current directory.
+    CurrentDirectory,
+    /// A character Win32 forbids in a name: `<>"|?*` or a control
+    /// character (U+0000 to U+001F).
+    ForbiddenCharacter,
+    /// A name ending with a space or a period, which Win32 strips: the
+    /// file would exist under another name than the one announced.
+    ForbiddenEnding,
+}
+
+/// Why a peer-supplied canonical name is not used for a placeholder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CanonicalRefused {
+    /// The name is not one valid Windows path component.
+    Invalid(CheminRefuse),
+    /// The name is valid but does not designate the requested file: it
+    /// differs from the requested last component by more than case.
+    OtherName,
 }
 
 /// Win32's reserved device names.
 ///
 /// ⚠️ The list is that of **DOS devices**, not an arbitrary security
 /// list: Windows resolves them BEFORE looking at the file system, at
-/// any depth, and with any extension.
+/// any depth, and with any extension. The superscript digits `¹²³` are part
+/// of it: Microsoft's "Naming Files, Paths, and Namespaces" documents that
+/// Windows reads them as digits of `COM#` and `LPT#`.
 const NOMS_RESERVES: &[&str] = &[
     "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    "COM9", "COM¹", "COM²", "COM³", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8",
+    "LPT9", "LPT¹", "LPT²", "LPT³",
 ];
+
+/// Characters Win32 forbids in a name, besides the separators and `:`,
+/// which have their own refusal causes.
+const FORBIDDEN_CHARACTERS: &[char] = &['<', '>', '"', '|', '?', '*'];
 
 /// Decodes the UTF-16 units of a ProjFS `PCWSTR`, then normalises.
 ///
@@ -159,8 +187,76 @@ fn est_reserve(composant: &str) -> bool {
     NOMS_RESERVES.iter().any(|r| r.eq_ignore_ascii_case(base))
 }
 
+/// Is `nom` — a name supplied by the PEER, never by ProjFS — exactly one
+/// valid Windows path component?
+///
+/// The rules are those of Microsoft's "Naming Files, Paths, and Namespaces":
+/// no separator, not `.` or `..`, no `:` (an alternate data stream), none of
+/// `<>"|?*` nor a control character, no trailing space or period, not a
+/// reserved device name. It is Unicode-neutral: any other character, in any
+/// script, is accepted.
+pub fn valid_component(nom: &str) -> Result<(), CheminRefuse> {
+    if nom.is_empty() {
+        return Err(CheminRefuse::Vide);
+    }
+    if nom.contains(['\\', '/']) {
+        return Err(CheminRefuse::Separator);
+    }
+    if nom == "." {
+        return Err(CheminRefuse::CurrentDirectory);
+    }
+    if nom == ".." {
+        return Err(CheminRefuse::Remontee);
+    }
+    if nom.contains(':') {
+        return Err(CheminRefuse::FluxAlternatif);
+    }
+    if nom
+        .chars()
+        .any(|c| c < '\u{20}' || FORBIDDEN_CHARACTERS.contains(&c))
+    {
+        return Err(CheminRefuse::ForbiddenCharacter);
+    }
+    if nom.ends_with([' ', '.']) {
+        return Err(CheminRefuse::ForbiddenEnding);
+    }
+    if est_reserve(nom) {
+        return Err(CheminRefuse::NomReserve);
+    }
+    Ok(())
+}
+
+/// The path under which to write a placeholder whose requested ProjFS path
+/// is `chemin_projfs` and whose name the peer reports as `nom`.
+///
+/// `Ok(None)`: keep the requested bytes (nothing to change). `Ok(Some(..))`:
+/// the requested path with its last component replaced by `nom`. `Err(..)`:
+/// the peer's name is refused, and the caller keeps the requested name.
+///
+/// `same_name` is the case-insensitive equality of the file system —
+/// `PrjFileNameCompare` on Windows, injected so that this stays pure.
+pub fn canonical_name(
+    chemin_projfs: &str,
+    nom: &str,
+    same_name: impl Fn(&str, &str) -> bool,
+) -> Result<Option<String>, CanonicalRefused> {
+    if chemin_projfs.is_empty() {
+        // The root itself: it has no last component to replace.
+        return Ok(None);
+    }
+    valid_component(nom).map_err(CanonicalRefused::Invalid)?;
+    let requested = chemin_projfs.rsplit('\\').next().unwrap_or(chemin_projfs);
+    if !same_name(requested, nom) {
+        return Err(CanonicalRefused::OtherName);
+    }
+    Ok(with_last_component(chemin_projfs, nom))
+}
+
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod tests_component;
 
 /// Replaces the LAST component of a ProjFS path with `nom`, keeping the
 /// separators and the case of everything preceding it.
