@@ -143,3 +143,27 @@ describe('releasing what is held when the page loses it', () => {
         expect(envois).toEqual([]);
     });
 });
+
+describe('a mouse button the protocol does not map', () => {
+    it('a pointer-down with button 3 sends nothing, and its default is prevented', () => {
+        const { preventDefault } = video.emettre('pointerdown', {
+            button: 3,
+            pointerId: 1,
+            clientX: 1,
+            clientY: 1,
+        });
+        expect(envois).toEqual([]);
+        expect(preventDefault).toHaveBeenCalled();
+    });
+
+    it('nor does its pointer-up', () => {
+        const { preventDefault } = video.emettre('pointerup', {
+            button: 4,
+            pointerId: 1,
+            clientX: 1,
+            clientY: 1,
+        });
+        expect(envois).toEqual([]);
+        expect(preventDefault).toHaveBeenCalled();
+    });
+});

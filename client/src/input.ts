@@ -84,7 +84,9 @@ function normalize(video: HTMLVideoElement, clientX: number, clientY: number): [
     return [x, y];
 }
 
-const BUTTON_MAP: Record<number, MouseButtonCode> = { 0: 0, 1: 2, 2: 1 };
+/// The browser's `button` (0 main, 1 auxiliary, 2 secondary) to the protocol's
+/// code. Any other button has no entry, and is not injected.
+const BUTTON_MAP: Partial<Record<number, MouseButtonCode>> = { 0: 0, 1: 2, 2: 1 };
 
 export function attachInput({
     video,
@@ -143,17 +145,29 @@ export function attachInput({
     };
 
     const onPointerDown = (event: PointerEvent): void => {
+        const bouton = BUTTON_MAP[event.button];
+        // 🔴 A BUTTON THE PROTOCOL DOES NOT MAP IS NOT INJECTED. It fell back to
+        // `0`, so the back and forward buttons (3 and 4) clicked LEFT on the
+        // remote machine. Its default action — browser history navigation —
+        // is prevented too: on the session surface it would leave the session.
+        if (bouton === undefined) {
+            event.preventDefault();
+            return;
+        }
         video.setPointerCapture(event.pointerId);
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        const bouton = BUTTON_MAP[event.button] ?? 0;
         derniere = [x, y];
         boutonsTenus.add(bouton);
         send(encodeMouseButton(bouton, true, x, y));
     };
 
     const onPointerUp = (event: PointerEvent): void => {
+        const bouton = BUTTON_MAP[event.button];
+        if (bouton === undefined) {
+            event.preventDefault();
+            return;
+        }
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        const bouton = BUTTON_MAP[event.button] ?? 0;
         derniere = [x, y];
         boutonsTenus.delete(bouton);
         send(encodeMouseButton(bouton, false, x, y));
