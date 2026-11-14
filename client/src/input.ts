@@ -28,11 +28,22 @@ export interface CibleClavier {
     removeEventListener(nom: 'keydown' | 'keyup', rappel: (event: KeyboardEvent) => void): void;
 }
 
+/// What this module needs to know that the page lost the keyboard and the
+/// mouse: `blur` (from `window`) and `visibilitychange` with `hidden` (from
+/// `document`). `main.ts` unites the two sources, like `attachVisibilite`.
+export interface CiblePage {
+    readonly hidden: boolean;
+    addEventListener(nom: 'blur' | 'visibilitychange', rappel: () => void): void;
+    removeEventListener(nom: 'blur' | 'visibilitychange', rappel: () => void): void;
+}
+
 export interface InputOptions {
     video: HTMLVideoElement;
     channel: RTCDataChannel;
     /// The source of keyboard events — `window`, in production.
     clavier: CibleClavier;
+    /// Where the loss of focus and visibility is read.
+    page: CiblePage;
     /// Has the agent announced `Capabilities.clipboard`?
     ///
     /// 🔴 **A CLOSURE, never a boolean captured at attach time**, and it
@@ -79,6 +90,7 @@ export function attachInput({
     video,
     channel,
     clavier,
+    page,
     collageArme,
 }: InputOptions): () => void {
     const send = (payload: Uint8Array): void => {
@@ -106,15 +118,58 @@ export function attachInput({
         }
     };
 
+    // 🔴 WHAT IS HELD IS TRACKED, SO THAT IT CAN BE RELEASED. The agent injects
+    // what arrives and never releases on its own: a key or a button held when
+    // the page loses focus, becomes hidden, or loses its pointer would stay
+    // pressed on the remote machine — its `keyup`/`pointerup` goes to another
+    // window, or never fires. On each of those losses, a release is sent for
+    // everything still held (`relacherTout`).
+    const touchesTenues = new Map<string, { scancode: number; extended: boolean }>();
+    const boutonsTenus = new Set<MouseButtonCode>();
+    // The last position sent with a button, for releases that carry none.
+    let derniere: [number, number] = [0, 0];
+
+    const relacherBoutons = (x: number, y: number): void => {
+        for (const bouton of boutonsTenus) send(encodeMouseButton(bouton, false, x, y));
+        boutonsTenus.clear();
+    };
+
+    const relacherTout = (): void => {
+        relacherBoutons(...derniere);
+        for (const { scancode, extended } of touchesTenues.values()) {
+            send(encodeKey(scancode, false, extended));
+        }
+        touchesTenues.clear();
+    };
+
     const onPointerDown = (event: PointerEvent): void => {
         video.setPointerCapture(event.pointerId);
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        send(encodeMouseButton(BUTTON_MAP[event.button] ?? 0, true, x, y));
+        const bouton = BUTTON_MAP[event.button] ?? 0;
+        derniere = [x, y];
+        boutonsTenus.add(bouton);
+        send(encodeMouseButton(bouton, true, x, y));
     };
 
     const onPointerUp = (event: PointerEvent): void => {
         const [x, y] = normalize(video, event.clientX, event.clientY);
-        send(encodeMouseButton(BUTTON_MAP[event.button] ?? 0, false, x, y));
+        const bouton = BUTTON_MAP[event.button] ?? 0;
+        derniere = [x, y];
+        boutonsTenus.delete(bouton);
+        send(encodeMouseButton(bouton, false, x, y));
+    };
+
+    // A cancelled pointer, or a capture lost while a button is held (the
+    // capture is also released after an ordinary `pointerup`, when nothing is
+    // held any more and nothing is sent).
+    const onPointerLost = (event: PointerEvent): void => {
+        const [x, y] = normalize(video, event.clientX, event.clientY);
+        relacherBoutons(x, y);
+    };
+
+    const onBlur = (): void => relacherTout();
+    const onVisibilite = (): void => {
+        if (page.hidden) relacherTout();
     };
 
     const onWheel = (event: WheelEvent): void => {
@@ -150,7 +205,9 @@ export function attachInput({
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         event.preventDefault();
         const mapped = SCANCODES[event.code];
-        if (mapped) send(encodeKey(mapped.scancode, true, mapped.extended));
+        if (!mapped) return;
+        touchesTenues.set(event.code, mapped);
+        send(encodeKey(mapped.scancode, true, mapped.extended));
     };
 
     const onKeyUp = (event: KeyboardEvent): void => {
@@ -165,24 +222,34 @@ export function attachInput({
         // the agent injects, hence at the worst moment.
         if (collageArme() && estUnRaccourciDeCollage(event)) return;
         const mapped = SCANCODES[event.code];
-        if (mapped) send(encodeKey(mapped.scancode, false, mapped.extended));
+        if (!mapped) return;
+        touchesTenues.delete(event.code);
+        send(encodeKey(mapped.scancode, false, mapped.extended));
     };
 
     video.addEventListener('pointermove', onPointerMove);
     video.addEventListener('pointerdown', onPointerDown);
     video.addEventListener('pointerup', onPointerUp);
+    video.addEventListener('pointercancel', onPointerLost);
+    video.addEventListener('lostpointercapture', onPointerLost);
     video.addEventListener('wheel', onWheel, { passive: false });
     video.addEventListener('contextmenu', onContextMenu);
     clavier.addEventListener('keydown', onKeyDown);
     clavier.addEventListener('keyup', onKeyUp);
+    page.addEventListener('blur', onBlur);
+    page.addEventListener('visibilitychange', onVisibilite);
 
     return () => {
         video.removeEventListener('pointermove', onPointerMove);
         video.removeEventListener('pointerdown', onPointerDown);
         video.removeEventListener('pointerup', onPointerUp);
+        video.removeEventListener('pointercancel', onPointerLost);
+        video.removeEventListener('lostpointercapture', onPointerLost);
         video.removeEventListener('wheel', onWheel);
         video.removeEventListener('contextmenu', onContextMenu);
         clavier.removeEventListener('keydown', onKeyDown);
         clavier.removeEventListener('keyup', onKeyUp);
+        page.removeEventListener('blur', onBlur);
+        page.removeEventListener('visibilitychange', onVisibilite);
     };
 }

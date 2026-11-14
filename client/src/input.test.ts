@@ -61,7 +61,9 @@ function monter(): void {
     // use of the `video` is the pointer, which this file does not exercise.
     const video = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as
         HTMLVideoElement;
-    detacher = attachInput({ video, channel, clavier, collageArme: () => arme });
+    // The loss-of-focus releases are covered by `input-relache.test.ts`.
+    const page = { hidden: false, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    detacher = attachInput({ video, channel, clavier, page, collageArme: () => arme });
 }
 
 beforeEach(monter);

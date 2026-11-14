@@ -1,4 +1,5 @@
 import { attachInput } from './input';
+import { ciblePageDuDOM } from './page-dom';
 import { connectSession } from './webrtc';
 import { creerFinDeSession } from './fin-de-session';
 import { attachStats } from './stats';
@@ -298,14 +299,17 @@ connectSession({
 })
     .then((session) => {
         fin.surveiller(session);
-        attachInput({
+        const detacherEntrees = attachInput({
             video,
             channel: session.inputChannel,
             // `window` and not `video`: that is where the keyboard listeners
             // already lived before P2.
             clavier: window,
+            // Held keys and buttons are released when the page loses focus.
+            page: ciblePageDuDOM(),
             collageArme: () => collageArme,
         });
+        fin.ajouter(detacherEntrees);
         // The measurement overlay is a diagnostic: shown only on `?stats`.
         if (params.has('stats')) attachStats(session.pc, statsElement);
         video.focus();
