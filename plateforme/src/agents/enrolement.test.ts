@@ -35,7 +35,7 @@ describe(`enrolment of an agent, engine=${MOTEUR}`, () => {
         base = await baseEnrolee('enrol-bon');
         const journal: string[] = [];
         const v = await verifyEnrolment(base, 'v-1', SECRET, (l) => journal.push(l));
-        expect(v).toEqual({ ok: true, vmId: 'v-1', prefixe: PREFIXE });
+        expect(v).toMatchObject({ ok: true, vmId: 'v-1', prefixe: PREFIXE });
         // A success logs no refusal.
         expect(journal).toEqual([]);
     });

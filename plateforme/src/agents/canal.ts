@@ -68,7 +68,7 @@ import {
 import type { Magasin } from '../apps/icones';
 import type { Pilote } from '../base/pilote';
 import { fusionner } from '../apps/catalogue';
-import { marquerVu } from '../depot/agent';
+import { lireParVm as lireAgent, marquerVu } from '../depot/agent';
 import { appliquer, lireConnues } from '../depot/application';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
 import { adresseSource } from '../http/adresse-source';
@@ -179,6 +179,9 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
         // as no enrolment has succeeded, this peer is nobody.
         let vmId: string | undefined;
         let prefixe: string | undefined;
+        /// The secret digest this socket enrolled against; a different one at
+        /// a heartbeat means the secret was rotated since.
+        let empreinte: string | undefined;
 
         function refuser(motif: MotifCanal): void {
             // ⚠️ SEND THEN CLOSE, never the reverse: a close that
@@ -212,7 +215,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
             }
 
             if (lecture.message.type === 'battement') {
-                if (vmId === undefined || prefixe === undefined) {
+                if (vmId === undefined || prefixe === undefined || empreinte === undefined) {
                     // 🔴 A HEARTBEAT AUTHENTICATES NOBODY. Answering it with
                     // `battement-recu` would issue an AGENT TOKEN to a peer
                     // that presented no secret — that is, the leak that
@@ -222,18 +225,32 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     return;
                 }
 
-                const instant = maintenant();
-                // ⚠️ LAUNCHED WITHOUT BEING AWAITED, with its `catch`: the heartbeat
-                // is an OBSERVATION, never a dependency of the channel. A database
-                // momentarily unavailable must not take down the connection
-                // of an agent that is itself perfectly fine. The cost is named: a
-                // lost write only shows in the log.
-                void marquerVu(base, vmId, instant).catch((cause) => {
-                    console.error(`vu_a not advanced for VM ${vmId}: ${String(cause)}`);
-                });
-
-                const { jeton, expireA } = jetonNeuf(prefixe);
-                envoyer(socket, encodeBattementRecu(jeton, expireA));
+                const [vu, sujet, attendue] = [vmId, prefixe, empreinte];
+                // 🔴 A TOKEN IS MINTED ONLY WHILE THE ENROLMENT THIS SOCKET PROVED
+                // STILL STANDS. After `admin:agent --roter` the stored digest
+                // differs: the socket is closed with the enrolment refusal and
+                // gets no token, so the old secret's tokens really end at their
+                // expiry. A failed read issues no token either (logged, socket
+                // kept): the agent's current token runs until the next beat.
+                void lireAgent(base, vu)
+                    .then((ligne) => {
+                        if (ligne?.empreinte_secret !== attendue) {
+                            console.warn(`heartbeat of VM ${vu} refused: its enrolment secret changed`);
+                            refuser('enrolement');
+                            return;
+                        }
+                        const instant = maintenant();
+                        // ⚠️ NOT AWAITED, with its `catch`: `vu_a` is an
+                        // observation, never a dependency of the channel.
+                        void marquerVu(base, vu, instant).catch((cause) => {
+                            console.error(`vu_a not advanced for VM ${vu}: ${String(cause)}`);
+                        });
+                        const { jeton, expireA } = jetonNeuf(sujet);
+                        envoyer(socket, encodeBattementRecu(jeton, expireA));
+                    })
+                    .catch((cause) => {
+                        console.error(`heartbeat of VM ${vu}: enrolment not re-read, no token issued: ${String(cause)}`);
+                    });
                 return;
             }
 
@@ -321,6 +338,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     frein.succes(cleVm(verdict.vmId));
                     vmId = verdict.vmId;
                     prefixe = verdict.prefixe;
+                    empreinte = verdict.empreinte;
                     // 🔴 IT IS HERE, AND NOWHERE ELSE, THAT THE VM BECOMES
                     // REACHABLE. Registration follows authentication and never
                     // precedes it: a peer that has not proven its secret

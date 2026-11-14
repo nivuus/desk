@@ -222,7 +222,8 @@ export async function executer(argv: string[]): Promise<number> {
             process.stderr.write(
                 'The secret below will NEVER be shown again: only its fingerprint is in the database.\n' +
                     "The session prefix is UNCHANGED — the ongoing sessions of this VM are not cut.\n" +
-                    "⚠️ Agent tokens ALREADY issued stay valid until they expire.\n",
+                    "⚠️ Agent tokens ALREADY issued stay valid until they expire; a connected\n" +
+                    'agent of the old secret is disconnected at its next heartbeat and gets no new one.\n',
             );
             process.stdout.write(
                 `vm_id=${r.vmId}\nprefixe=${r.prefixe}\nAGENT_SECRET=${r.secret}\n`,
