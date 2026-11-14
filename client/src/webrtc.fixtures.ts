@@ -93,7 +93,12 @@ export class FakeRtcPeerConnection {
 
     async setRemoteDescription(_desc: unknown): Promise<void> {}
 
-    close(): void {}
+    /// Set by `close()`: what `fin-de-session.test.ts` checks.
+    fermee = false;
+
+    close(): void {
+        this.fermee = true;
+    }
 }
 
 /// Fake `MediaStream`: just enough to prove that received tracks
@@ -117,6 +122,7 @@ export class FakeSignalingSocket {
     readyState = 0;
 
     constructor(_url: string) {
+        etat.dernierSocket = this;
         queueMicrotask(() => {
             this.readyState = 1;
             this.emit('open', {});
@@ -159,7 +165,10 @@ export class FakeSignalingSocket {
         }
     }
 
-    close(): void {}
+    close(): void {
+        this.readyState = 3;
+        etat.socketsFermees += 1;
+    }
 }
 
 /// What the fakes record, shared with the test files that use them.
@@ -168,7 +177,11 @@ export const etat: {
     /// Everything the client pushed on the signaling socket. It is the only
     /// instrument that can say what the HANDSHAKE carries.
     messagesEnvoyes: string[];
-} = { derniereInstancePc: undefined, messagesEnvoyes: [] };
+    /// How many fake signalling sockets were closed.
+    socketsFermees: number;
+    /// The last fake signalling socket built.
+    dernierSocket: FakeSignalingSocket | undefined;
+} = { derniereInstancePc: undefined, messagesEnvoyes: [], socketsFermees: 0, dernierSocket: undefined };
 
 /// The role declaration, that is, the first message sent.
 export function poigneeDeMain(): Record<string, unknown> {

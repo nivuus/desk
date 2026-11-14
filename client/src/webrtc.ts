@@ -38,6 +38,9 @@ export interface SessionHandle {
     /// `pc.getTransceivers()` by position — which would be a positional index,
     /// that is, exactly what this repository has already paid for on DXGI outputs.
     micSender: RTCRtpSender;
+    /// Registers a callback for the relay saying, after setup, that the agent
+    /// left (`peer-gone`). `fin-de-session.ts` ends the window on it.
+    surPairParti(rappel: () => void): void;
     close(): void;
 }
 
@@ -195,8 +198,15 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // with the relay's reason, whatever wait the handshake is in
     // (`poignee-de-main.ts`).
     const garde = garderLaPoigneeDeMain(socket);
+    // 🔴 WHAT A FAILED HANDSHAKE HAS BUILT IS CLOSED, NEVER LEFT BEHIND: each
+    // failed connect used to leak its peer connection and its socket.
+    const construits: { pc?: RTCPeerConnection } = {};
     try {
-        return await etablirLaSession(options, socket, garde, jeton);
+        return await etablirLaSession(options, socket, garde, jeton, construits);
+    } catch (echec) {
+        construits.pc?.close();
+        socket.close();
+        throw echec;
     } finally {
         garde.liberer();
     }
@@ -209,6 +219,7 @@ async function etablirLaSession(
     socket: WebSocket,
     garde: GardePoigneeDeMain,
     jeton: string,
+    construits: { pc?: RTCPeerConnection },
 ): Promise<SessionHandle> {
     const status = options.onStatus ?? (() => {});
     // 🔴 THE `jeton` FIELD IS ADDED, NONE IS REMOVED — spec §10.2. A
@@ -233,6 +244,7 @@ async function etablirLaSession(
     // without a relay, exactly as before this workstream.
     const iceServers = await garde.course(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
+    construits.pc = pc;
 
     pc.addTransceiver('video', { direction: 'recvonly' });
     // The browser is the offerer: it is the one that must declare the audio
@@ -320,11 +332,22 @@ async function etablirLaSession(
     await garde.course(pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }));
     status('answer received');
 
+    // After setup the relay still speaks on this socket: `peer-gone` says the
+    // agent left, and nothing else would tell the page.
+    const surPairParti: (() => void)[] = [];
+    socket.addEventListener('message', (event: MessageEvent) => {
+        if (parseSignalingMessage(String(event.data))?.type !== 'peer-gone') return;
+        for (const rappel of surPairParti) rappel();
+    });
+
     return {
         pc,
         inputChannel,
         controlChannel,
         micSender: micTransceiver.sender,
+        surPairParti(rappel) {
+            surPairParti.push(rappel);
+        },
         close() {
             // ⚠️ SWITCHING OFF MUST BE REAL (spec §9). `pc.close()` DOES NOT STOP
             // the local tracks: Chrome's mic indicator would stay

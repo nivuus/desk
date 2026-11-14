@@ -1,5 +1,6 @@
 import { attachInput } from './input';
 import { connectSession } from './webrtc';
+import { creerFinDeSession } from './fin-de-session';
 import { attachStats } from './stats';
 import { armerLeSon } from './audio';
 import { createStatus } from './status';
@@ -155,6 +156,31 @@ let bandeauManette: number | undefined;
 // prevents an obsolete hiding from erasing a warning that arrived meanwhile.
 let bandeauLien: number | undefined;
 
+// 🔴 THE ONE END OF THIS WINDOW (`fin-de-session.ts`): the end-of-session
+// message, a failed or closed connection and the agent leaving all go through
+// it. It runs these detachments, closes the session and shows a terminal
+// status. No automatic reconnection: that is the owner's decision.
+const fin = creerFinDeSession((texte, ton) => statut.show(texte, { terminal: true, ton }));
+fin.ajouter(() => {
+    window.clearTimeout(bandeau);
+    window.clearTimeout(bandeauManette);
+    window.clearTimeout(bandeauLien);
+    // Without these three detachments, the gamepad's 4 ms `setInterval`
+    // (and the pointer/fullscreen listeners) keep running after the end of
+    // the session — nothing else stops them.
+    pointeur?.detacher();
+    manette?.detacher();
+    detacherPleinEcran?.();
+    detacherArmement?.();
+    detacherVisibilite?.();
+    // Turning the mic off must be REAL, and the button's state must follow
+    // (spec §9); `session.close()` then stops the sender's track as well.
+    micro?.detacher();
+    // The `focus` listener would otherwise outlive the end of the session and
+    // write the local clipboard for a dead session.
+    pressePapier?.detacher();
+});
+
 connectSession({
     signalingUrl,
     sessionId,
@@ -179,33 +205,9 @@ connectSession({
             micAnnonce = message.mic;
             micro?.annoncerDisponibilite(micAnnonce);
         } else if (message.type === 'session-end') {
-            window.clearTimeout(bandeau);
-            window.clearTimeout(bandeauManette);
-            window.clearTimeout(bandeauLien);
-            // Without these three detachments, the gamepad's 4 ms `setInterval`
-            // (and the pointer/fullscreen listeners) keep
-            // running after the end of the session — nothing else
-            // stops them, the page stays open as long as the user does not
-            // close it themselves.
-            pointeur?.detacher();
-            manette?.detacher();
-            detacherPleinEcran?.();
-            detacherArmement?.();
-            detacherVisibilite?.();
-            // End of session: turning the mic off must be REAL, and
-            // `session.close()` is not called on this path. Without this
-            // Chrome's indicator would stay lit after the end (spec §9).
-            micro?.detacher();
-            // Same reason as the detachments above: the `focus`
-            // listener would otherwise outlive the end of the session and write the
-            // local clipboard for a dead session.
-            pressePapier?.detacher();
             // `neutre`: the user closed the remote application, it
             // is not an error. The tone ONLY serves the terminal screen.
-            statut.show(`session ended: ${message.reason}`, {
-                terminal: true,
-                ton: 'neutre',
-            });
+            fin.terminer(`session ended: ${message.reason}`, 'neutre');
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
         } else if (message.type === 'rumble') {
@@ -295,6 +297,7 @@ connectSession({
     },
 })
     .then((session) => {
+        fin.surveiller(session);
         attachInput({
             video,
             channel: session.inputChannel,

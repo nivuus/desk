@@ -94,8 +94,14 @@ export async function connectFilesChannel(options: OptionsCanal): Promise<FilesC
     // The handshake guard of the session window, shared (`poignee-de-main.ts`):
     // a refusal of the hello reaches the user with the relay's reason.
     const garde = garderLaPoigneeDeMain(socket);
+    // What a failed handshake has built is closed, never leaked (see `webrtc.ts`).
+    const construits: { pc?: RTCPeerConnection } = {};
     try {
-        return await etablirLeCanal(options, socket, garde);
+        return await etablirLeCanal(options, socket, garde, construits);
+    } catch (echec) {
+        construits.pc?.close();
+        socket.close();
+        throw echec;
     } finally {
         garde.liberer();
     }
@@ -107,6 +113,7 @@ async function etablirLeCanal(
     options: OptionsCanal,
     socket: WebSocket,
     garde: GardePoigneeDeMain,
+    construits: { pc?: RTCPeerConnection },
 ): Promise<FilesChannel> {
     const statut = options.onStatus ?? (() => {});
     socket.send(
@@ -115,6 +122,7 @@ async function etablirLeCanal(
 
     const iceServers = await garde.course(attendreConfigIce(socket, 2000));
     const pc = new RTCPeerConnection({ iceServers });
+    construits.pc = pc;
 
     // 🔴 NO `addTransceiver`: that is the whole point of D4. An offer without a
     // media m-line is legal; the agent answers it through `pont/transport.rs`, whose
