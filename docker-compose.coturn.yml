@@ -110,6 +110,52 @@ services:
       # laisse la moitié du problème ouverte : les allocations de relais
       # prendraient encore leur adresse locale sur n'importe quelle interface.
       - --relay-ip=${TURN_RELAY_IP:?TURN_RELAY_IP est obligatoire - l adresse depuis laquelle coturn relaie. Borner la seule ecoute laisse les allocations de relais sur toutes les interfaces}
+      # 🔴 WHERE COTURN MAY RELAY TO - every non-public destination is denied.
+      #
+      # Without a peer restriction, a holder of a relay credential can reach
+      # private, shared and link-local addresses from this host. The list
+      # below is the one `hooks/turn_peers.py` writes into turnserver.conf
+      # (same order; `tests/test_desk_turn_conf.py` keeps the two equal).
+      # coturn 4.6 parses a single address or a `first-last` range, NEVER a
+      # prefix: a `/8` entry is skipped with "Wrong address format" and the
+      # server starts without it. The relay's own two addresses are denied
+      # too, so its host's other services are not reachable through it.
+      - --no-multicast-peers
+      - --no-tcp-relay
+      - --denied-peer-ip=0.0.0.0-0.255.255.255
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=100.64.0.0-100.127.255.255
+      - --denied-peer-ip=127.0.0.0-127.255.255.255
+      - --denied-peer-ip=169.254.0.0-169.254.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.0.0.0-192.0.0.255
+      - --denied-peer-ip=192.0.2.0-192.0.2.255
+      - --denied-peer-ip=192.88.99.0-192.88.99.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255
+      - --denied-peer-ip=198.18.0.0-198.19.255.255
+      - --denied-peer-ip=198.51.100.0-198.51.100.255
+      - --denied-peer-ip=203.0.113.0-203.0.113.255
+      - --denied-peer-ip=224.0.0.0-239.255.255.255
+      - --denied-peer-ip=240.0.0.0-255.255.255.255
+      - --denied-peer-ip=::ffff:0.0.0.0-::ffff:255.255.255.255
+      - --denied-peer-ip=64:ff9b::-64:ff9b::ffff:ffff
+      - --denied-peer-ip=64:ff9b:1::-64:ff9b:1:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=100::-100::ffff:ffff:ffff:ffff
+      - --denied-peer-ip=2001::-2001:1ff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=2001:db8::-2001:db8:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=2002::-2002:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=3fff::-3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=fec0::-feff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=ff00::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=${TURN_LISTENING_IP}
+      - --denied-peer-ip=${TURN_RELAY_IP}
+      # The ONE peer allowed back: the controlled Windows machine, the agent's
+      # host candidate. An allowed address wins over a denied range. Same
+      # variable and value as the hooks (`commun.read_vm_address`), MANDATORY
+      # here like the two addresses above: without it no session could relay.
+      - --allowed-peer-ip=${GUEST_IP:?GUEST_IP is required - the address of the controlled Windows machine, the only private peer the relay may reach}
       # Sans cette option, coturn refuse de démarrer s'il ne parvient pas à
       # déterminer son adresse externe. En déploiement local elle vaut
       # l'adresse de l'hôte ; en production, l'adresse publique.

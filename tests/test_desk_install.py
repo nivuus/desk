@@ -31,7 +31,7 @@ RACINE = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE / "hooks"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from commun import HOTE_DEFAUT, NODE_BIN_DEFAUT, PROXY_DEFAUT  # noqa: E402
-from installed_files import lire_secret_persiste  # noqa: E402
+from installed_files import lire_secret_persiste, write_env  # noqa: E402
 
 failures = []
 
@@ -390,8 +390,7 @@ with tempfile.TemporaryDirectory() as tmp_ls:
     # only of spaces (truncated file or edited by hand) — BOTH
     # forms count as "nothing to reuse".
     empty_value = dossier_ls / "empty-value.env"
-    empty_value.write_text(
-        "PLATEFORME_SECRET_JETON=\nTURN_SECRET=   \n", encoding="utf-8")
+    write_env(empty_value, {"PLATEFORME_SECRET_JETON": "", "TURN_SECRET": "   "})
     check("lire_secret_persiste: empty value -> None",
           lire_secret_persiste(empty_value, "PLATEFORME_SECRET_JETON"), None)
     check("lire_secret_persiste: value made of spaces -> None",

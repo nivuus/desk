@@ -191,10 +191,22 @@ tard il était rouvert en plus grand.**
   ⚠️ **Relancer la commande, ne pas recopier ces trois nombres** :
   `git ls-files | grep -E '\.(sh|mjs|js|py)$' | xargs grep -l -- <motif>`.
   Le retrait se joue le jour où plus rien ne les cite.
-- ⚠️ **`coturn` EST POSÉ, JAMAIS ARMÉ** : `/etc/turnserver.conf` est écrit,
-  `/etc/default/coturn` ne l'est pas, et **rien n'écoute sur le port 3478**
+- ⚠️ ~~**`coturn` EST POSÉ, JAMAIS ARMÉ** : `/etc/turnserver.conf` est écrit,
+  `/etc/default/coturn` ne l'est pas,~~ et **rien n'écoute sur le port 3478**
   alors que le service annonce `TURN_URL=turn:90.87.35.18:3478` à ses
   clients.
+  🔴 **CORRECTED (November 2026): leaving `/etc/default/coturn` alone does
+  NOT keep the relay disarmed on a systemd host.** Read in the Debian
+  sources of `coturn` 4.6.1-2 (trixie): `debian/rules` runs
+  `dh_installsystemd` with its defaults, so installing the package — which
+  the manifest's `apt:` list does — enables and starts `coturn.service`;
+  that unit runs `turnserver -c /etc/turnserver.conf` and never reads
+  `/etc/default/coturn`, whose `TURNSERVER_ENABLED` only the SysV init
+  script tests. Why nothing listened on 3478 at the time was not
+  re-measured. Whether the hooks should keep the relay disarmed is the
+  owner's decision. The file the install hook lays down now denies every
+  non-public peer and allows only the controlled machine
+  (`hooks/turn_peers.py`).
 - 🔴 **UN REDÉMARRAGE DE L'AGENT ORPHELINE TOUTES LES FENÊTRES OUVERTES, ET
   RIEN NE LES RÉCUPÈRE.** Conséquence d'exploitation de la règle
   d'appartenance du lot 32I, mesurée deux fois le 31 août 2026 : après toute

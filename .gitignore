@@ -28,3 +28,7 @@ deploiement/tls/
 # sous-bloc G2) : des octets adresses par contenu, reconstruits tout seuls.
 plateforme/donnees/
 donnees/
+
+# Python bytecode: build output of the packaging suites, never tracked.
+__pycache__/
+*.py[cod]

@@ -56,12 +56,13 @@ real `/`, `os.path.realpath()` lands on the same file — that is what
 makes `os.path.exists(os.path.realpath(lien))` checkable IN TESTS, without
 ever touching the real systemd of the machine running these tests.
 
-🔴 YOU ARM NOTHING ON THIS MACHINE. `daemon-reload` and `start` only
+🔴 YOU ARM NOTHING ON THIS MACHINE. `daemon-reload` and `restart` only
 run IF `--root` is `/` — never under a test `--root`:
 reloading/starting there would drive the systemd of the INSTALLER (or of the test
-bench), not that of the target. The links created guarantee anyway
-that the next real boot is correct, with or without this immediate
-step — same reasoning as `console/hooks/activate.py::start_now`.
+bench), not that of the target. On `/`, `hooks/service_start.py::bring_up`
+restarts the unit (an update replaced the code under the running process)
+and waits for its health route; a failure is fatal, except where systemd is
+not the running init — see that module.
 
 The password of the initial account ONLY TRAVELS THROUGH STDIN, never through
 `argv`: see `plateforme/src/admin/creer-utilisateur.ts`, which explicitly  # policy: allow-fr - real file name
@@ -110,12 +111,13 @@ import argparse
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
+from commun import read_vm_address
 from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
+from service_start import bring_up
 from vm import poser_projfs, poser_vb_audio
 
 # --- What task 4 set up, and what this hook arms or completes -----------
@@ -131,8 +133,8 @@ WANTS_SUBDIR = "multi-user.target.wants"
 ENV_RELATIF = "etc/nivuus/desk.env"
 PLATEFORME_RELATIF = "opt/nivuus/desk/plateforme"
 
-# See the top docstring for the justification of these two defaults.
-ADRESSE_VM_DEFAUT = "192.168.3.2"
+# See the top docstring for the justification of this default and of
+# `commun.ADRESSE_VM_DEFAUT`.
 NOM_VM_DEFAUT = "windows"
 
 
@@ -168,30 +170,6 @@ def armer_unite(root: pathlib.Path, unite: str) -> pathlib.Path:
         lien.unlink()  # a REGULAR file here would be the bug, not a state
     lien.symlink_to(cible)
     return lien
-
-
-def start_now(unite: str) -> list:
-    """`daemon-reload` then `start <unite>`. Never raises.
-
-    `systemctl` is legitimately unusable in a constrained
-    environment (see the top docstring), and the link created by
-    `armer_unite` guarantees anyway that the next real boot
-    is correct — so each failure is only REPORTED, never fatal.
-    Only called by `main()` when `--root` is `/`: see its
-    guard, right before the call.
-    """
-    echecs = []
-    commandes = [["systemctl", "daemon-reload"], ["systemctl", "start", unite]]
-    for commande in commandes:
-        try:
-            proc = subprocess.run(commande, capture_output=True, text=True)
-        except OSError as exc:  # systemctl absent from this PATH
-            echecs.append(f"{' '.join(commande)} : {exc}")
-            continue
-        if proc.returncode != 0:
-            detail = (proc.stderr or proc.stdout or "").strip()[:200]
-            echecs.append(f"{' '.join(commande)} : {detail or proc.returncode}")
-    return echecs
 
 
 def main() -> int:
@@ -238,14 +216,15 @@ def main() -> int:
         print(f"desk activate: unit absent, nothing armed: {exc}", file=sys.stderr)
         return 1
 
-    # Only on the REAL machine: see the top docstring.
+    # Only on the REAL machine: see the top docstring. A failed restart, or a
+    # service that never answers its health route, is fatal there — except
+    # when systemd is not the running init (see hooks/service_start.py).
+    service_state = f"{UNITE} linked (not started under a test --root)"
     if str(root) == "/":
-        echecs = start_now(UNITE)
-        if echecs:
-            print("desk activate: unit linked but not started; arming "
-                  "will take effect at the next reboot", file=sys.stderr)
-            for item in echecs:
-                print(f"  - {item}", file=sys.stderr)
+        ok, service_state = bring_up(UNITE, read_env_file(root / ENV_RELATIF))
+        if not ok:
+            print(f"desk activate: {service_state}", file=sys.stderr)
+            return 1
 
     # 🔴 TASK 6 — WHAT `desk` SETS UP IN THE VM, THROUGH THE WINRM PATH OF
     # `console`. Placed HERE, BEFORE the rest (account, enrolment), and never
@@ -334,18 +313,11 @@ def main() -> int:
     #      set up, `desk.env` never written or deleted since) — a problem
     #      more serious than a mere missing file, which deserves a named refusal
     #      rather than a silent fallback;
-    #   2. `add_env_variables()` (below) writes through `write_text()` THEN
-    #      `chmod`, exactly the pattern `install.py::write_env`
-    #      abandoned (commit `92cacfb`, "a secret never readable between
-    #      creation and chmod") for an atomic `os.open(..., 0o600)` — a
-    #      NEW file would be born here with the process umask, briefly readable
-    #      by anyone before the `chmod` catches up, and this file is about to
-    #      receive `AGENT_SECRET`. Refusing here guarantees that
-    #      `add_env_variables()` only EVER writes to a file already at
-    #      600: `write_text()` on an EXISTING file does not touch its
-    #      mode, so no window opens. `tests/test_desk_activate.py`
-    #      tests this refusal (dedicated scenario: `plateforme/` set up, `desk.env`
-    #      absent).
+    #   2. `add_env_variables()` (below) only APPENDS the enrolment keys:
+    #      a `desk.env` recreated from nothing here would carry them without
+    #      the secrets `install` draws, and the service would not start.
+    #      `tests/test_desk_activate.py` tests this refusal (dedicated
+    #      scenario: `plateforme/` set up, `desk.env` absent).
     if not env_chemin.is_file():
         print(f"desk activate: {env_chemin} is absent; the install hook does not "
               "seem to have laid down an environment file on this "
@@ -375,8 +347,9 @@ def main() -> int:
     # report, § Reservations.
     if all(env_deja_pose.get(cle) for cle in ACTIVATE_KEYS):
         emettre({"event": "progress", "pct": 100,
-                 "msg": "desk: already activated (AGENT_VM/AGENT_SECRET already "
-                        "present in desk.env); account and enrolment skipped"})
+                 "msg": f"desk: {service_state}; already activated (AGENT_VM/"
+                        "AGENT_SECRET already present in desk.env), account and "
+                        "enrolment skipped"})
         emettre({"event": "done"})
         return 0
 
@@ -406,7 +379,7 @@ def main() -> int:
 
     emettre({"event": "progress", "pct": 70, "msg": "Enrolling the agent"})
     nom_vm = os.environ.get("DESK_VM_NOM", NOM_VM_DEFAUT)
-    adresse_vm = os.environ.get("GUEST_IP", ADRESSE_VM_DEFAUT)
+    adresse_vm = read_vm_address()
     result, raison = enroler_agent_plateforme(plateforme_dir, nom_vm, adresse_vm, env_npm)
     if raison:
         print(f"desk activate: agent enrolment refused: {raison}", file=sys.stderr)
@@ -472,7 +445,8 @@ def main() -> int:
         return 1
 
     emettre({"event": "progress", "pct": 100,
-             "msg": "desk: service armed, account created, agent enrolled, VM assigned"})
+             "msg": f"desk: {service_state}; account created, agent enrolled, "
+                    "VM assigned"})
     emettre({"event": "done"})
     return 0
 
