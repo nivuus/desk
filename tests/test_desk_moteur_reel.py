@@ -38,7 +38,7 @@ without the `root` parameter, whose default is `""`), so in production the
 `activate` hook works on `/`. On THIS machine, `/etc/systemd/system/
 desk-plateforme.service` EXISTS (the real installation of batch 10A): calling
 `run_activate` as is would create the `multi-user.target.wants/` link there then
-launch `systemctl daemon-reload` and `systemctl start` — on the owner's
+launch `systemctl daemon-reload` and `systemctl restart` — on the owner's
 systemd, as root. This suite therefore calls `runner._run_hook(...,
 root=<temporary root>)`, the function that `run_activate` itself
 uses, with the SAME context (`merge_into_hw(hw, facts)`, the real
@@ -393,7 +393,7 @@ check_vrai("the refusal names winrm_exec.py, never a network failure",
 # --- ⑦ THE HOST HAS NOT MOVED ----------------------------------------------
 # The check that counts: had this suite called `run_activate` the way
 # production does, the `multi-user.target.wants/` link of THIS machine and
-# `systemctl start` would have run. We measure the opposite.
+# `systemctl restart` would have run. We measure the opposite.
 
 apres = {
     "host unit": os.lstat("/etc/systemd/system/desk-plateforme.service")

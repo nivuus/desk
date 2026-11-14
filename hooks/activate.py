@@ -56,12 +56,13 @@ real `/`, `os.path.realpath()` lands on the same file — that is what
 makes `os.path.exists(os.path.realpath(lien))` checkable IN TESTS, without
 ever touching the real systemd of the machine running these tests.
 
-🔴 YOU ARM NOTHING ON THIS MACHINE. `daemon-reload` and `start` only
+🔴 YOU ARM NOTHING ON THIS MACHINE. `daemon-reload` and `restart` only
 run IF `--root` is `/` — never under a test `--root`:
 reloading/starting there would drive the systemd of the INSTALLER (or of the test
-bench), not that of the target. The links created guarantee anyway
-that the next real boot is correct, with or without this immediate
-step — same reasoning as `console/hooks/activate.py::start_now`.
+bench), not that of the target. On `/`, `hooks/service_start.py::bring_up`
+restarts the unit (an update replaced the code under the running process)
+and waits for its health route; a failure is fatal, except where systemd is
+not the running init — see that module.
 
 The password of the initial account ONLY TRAVELS THROUGH STDIN, never through
 `argv`: see `plateforme/src/admin/creer-utilisateur.ts`, which explicitly  # policy: allow-fr - real file name
@@ -116,7 +117,7 @@ from administration import assign_vm_to_user, create_admin_account, enroler_agen
 from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
 from commun import lire_adresse_vm
 from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
-from service_start import start_now
+from service_start import bring_up
 from vm import poser_projfs, poser_vb_audio
 
 # --- What task 4 set up, and what this hook arms or completes -----------
@@ -215,14 +216,15 @@ def main() -> int:
         print(f"desk activate: unit absent, nothing armed: {exc}", file=sys.stderr)
         return 1
 
-    # Only on the REAL machine: see the top docstring.
+    # Only on the REAL machine: see the top docstring. A failed restart, or a
+    # service that never answers its health route, is fatal there — except
+    # when systemd is not the running init (see hooks/service_start.py).
+    etat_service = f"{UNITE} linked (not started under a test --root)"
     if str(root) == "/":
-        echecs = start_now(UNITE)
-        if echecs:
-            print("desk activate: unit linked but not started; arming "
-                  "will take effect at the next reboot", file=sys.stderr)
-            for item in echecs:
-                print(f"  - {item}", file=sys.stderr)
+        ok, etat_service = bring_up(UNITE, read_env_file(root / ENV_RELATIF))
+        if not ok:
+            print(f"desk activate: {etat_service}", file=sys.stderr)
+            return 1
 
     # 🔴 TASK 6 — WHAT `desk` SETS UP IN THE VM, THROUGH THE WINRM PATH OF
     # `console`. Placed HERE, BEFORE the rest (account, enrolment), and never
@@ -345,8 +347,9 @@ def main() -> int:
     # report, § Reservations.
     if all(env_deja_pose.get(cle) for cle in ACTIVATE_KEYS):
         emettre({"event": "progress", "pct": 100,
-                 "msg": "desk: already activated (AGENT_VM/AGENT_SECRET already "
-                        "present in desk.env); account and enrolment skipped"})
+                 "msg": f"desk: {etat_service}; already activated (AGENT_VM/"
+                        "AGENT_SECRET already present in desk.env), account and "
+                        "enrolment skipped"})
         emettre({"event": "done"})
         return 0
 
@@ -442,7 +445,8 @@ def main() -> int:
         return 1
 
     emettre({"event": "progress", "pct": 100,
-             "msg": "desk: service armed, account created, agent enrolled, VM assigned"})
+             "msg": f"desk: {etat_service}; account created, agent enrolled, "
+                    "VM assigned"})
     emettre({"event": "done"})
     return 0
 
