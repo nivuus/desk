@@ -71,6 +71,8 @@ const DELAI_REPONSE_FENETRE: Duration = Duration::from_secs(12);
 pub fn servir() -> Result<()> {
     // True as soon as a `create_instance` failure has been reported — see below.
     let mut echec_signale = false;
+    // The first instance claims the name (`FILE_FLAG_FIRST_PIPE_INSTANCE`).
+    let mut first_instance = true;
     loop {
         // A NEW instance per client. `PIPE_UNLIMITED_INSTANCES` only makes
         // sense because this loop NEVER blocks on a child's attach
@@ -91,8 +93,9 @@ pub fn servir() -> Result<()> {
         // The line is reported only once per series of failures, same reason
         // as `Enfant::etat_illisible_signale` (`superviseur/lanceur.rs`): the
         // breather alone would not be enough to bound the log if the cause lasts.
-        let tube = match create_instance() {
+        let tube = match create_instance(first_instance) {
             Ok(tube) => {
+                first_instance = false;
                 if echec_signale {
                     echec_signale = false;
                     tracing::info!("creation of pipe instances restored");

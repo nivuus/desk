@@ -11,10 +11,10 @@ use std::time::Duration;
 use anyhow::{bail, Context, Result};
 use windows::core::HRESULT;
 use windows::Win32::Foundation::{ERROR_PIPE_CONNECTED, HANDLE};
-use windows::Win32::Storage::FileSystem::PIPE_ACCESS_DUPLEX;
+use windows::Win32::Storage::FileSystem::{FILE_FLAG_FIRST_PIPE_INSTANCE, PIPE_ACCESS_DUPLEX};
 use windows::Win32::System::Pipes::{
-    ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE,
-    PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+    ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS,
+    PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
 };
 
 use crate::capteur::protocole::NOM_TUBE;
@@ -61,13 +61,29 @@ pub(super) fn connecter(tube: HANDLE) -> Result<()> {
     }
 }
 
-pub(super) fn create_instance() -> Result<HANDLE> {
+/// Creates one instance of the pipe.
+///
+/// - `PIPE_REJECT_REMOTE_CLIENTS` on every instance: the children are local
+///   processes, and nothing reaches this pipe over the network.
+/// - `FILE_FLAG_FIRST_PIPE_INSTANCE` on the `first_instance` instance: if another
+///   process already created a pipe of this name, creation fails instead of
+///   this server joining it and sharing the children's connections. The
+///   accept loop then keeps retrying and reports it once.
+///
+/// ⚠️ Still missing, and deferred: an explicit access list (the default DACL
+/// applies) and, on the child side, a check of the server's identity.
+pub(super) fn create_instance(first_instance: bool) -> Result<HANDLE> {
     let nom: Vec<u16> = NOM_TUBE.encode_utf16().chain(std::iter::once(0)).collect();
+    let open_mode = if first_instance {
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE
+    } else {
+        PIPE_ACCESS_DUPLEX
+    };
     let tube = unsafe {
         CreateNamedPipeW(
             windows::core::PCWSTR(nom.as_ptr()),
-            PIPE_ACCESS_DUPLEX,
-            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+            open_mode,
+            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
             PIPE_UNLIMITED_INSTANCES,
             TAMPON,
             TAMPON,
