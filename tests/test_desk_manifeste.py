@@ -3,11 +3,15 @@
 
 Run: python3 tests/test_desk_manifeste.py
 """
+import os
 import pathlib
 import sys
 
 RACINE = pathlib.Path(__file__).resolve().parents[1]
-INSTALLER = RACINE.parent / "installer"
+# Same override as the two other suites that need the sibling repository
+# (`test_desk_contrat_hw.py`, `test_desk_moteur_reel.py`).
+INSTALLER = pathlib.Path(os.environ.get("DESK_INSTALLER_RACINE")
+                         or (RACINE.parent / "installer"))
 sys.path.insert(0, str(INSTALLER / "installer"))
 
 from packages.manifest import load_manifest          # noqa: E402
