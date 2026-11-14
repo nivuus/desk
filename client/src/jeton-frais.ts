@@ -9,13 +9,22 @@
 // here is the network wiring around it (the two calls it injects), with
 // `fetch`, the vault and the clock injected so that it is testable in Node.
 
-import { assurerAccesFrais, paireDeReponse, type Coffre, type ReponseAuthMoi } from './jeton';
+import {
+    assurerAccesFrais,
+    issueDeReponseRafraichissement,
+    MARGE_FRAICHEUR_MS,
+    sansVerrou,
+    type Coffre,
+    type IssueRafraichissement,
+    type ReponseAuthMoi,
+    type Verrou,
+} from './jeton';
 
 /// What this module needs from `fetch`, and nothing more.
 export type FetchJeton = (
     url: string,
     init?: { method?: string; headers?: Record<string, string>; body?: string },
-) => Promise<ReponseAuthMoi>;
+) => Promise<ReponseAuthMoi & { status: number }>;
 
 export interface DepsJetonFrais {
     coffre: Coffre;
@@ -23,6 +32,21 @@ export interface DepsJetonFrais {
     base: string;
     fetch: FetchJeton;
     maintenant: () => number;
+    /// The cross-tab lock (`verrouDuNavigateur()` in production).
+    verrou: Verrou;
+}
+
+/// The Web Locks API of this browser, or no lock where it is missing (it is
+/// only exposed in a secure context). Without it, two tabs can still refresh
+/// at the same moment; nothing else in the page can serialise them.
+export function verrouDuNavigateur(): Verrou {
+    const locks = (globalThis as { navigator?: { locks?: LockManager } }).navigator?.locks;
+    if (locks === undefined) return sansVerrou;
+    // The DOM typing makes `request` return `Promise<R>` where `R` is the
+    // callback's return type, here a promise; the specification resolves the
+    // returned promise with the callback's SETTLED result, hence `T`.
+    return <T>(nom: string, travail: () => Promise<T>) =>
+        locks.request(nom, { mode: 'exclusive' }, travail) as unknown as Promise<T>;
 }
 
 /// Returns a function to call BEFORE EACH USE of the access token: a local
@@ -34,24 +58,26 @@ export function fournisseurDeJetonFrais(deps: DepsJetonFrais): () => Promise<str
             deps.base,
             (url) => deps.fetch(url),
             deps.maintenant(),
-            async (corps) => {
-                // 🔴 WRAPPED, as `accesParPomerium` always was: without it a
-                // network exception (offline, DNS, CORS) would propagate through
-                // `assurerAccesFrais` to every caller instead of falling back to
-                // Pomerium (step ③ of `assurerAccesFrais`).
+            async (corps): Promise<IssueRafraichissement> => {
+                let reponse: ReponseAuthMoi & { status: number };
                 try {
-                    const reponse = await deps.fetch(`${deps.base}/auth/rafraichir`, {
+                    reponse = await deps.fetch(`${deps.base}/auth/rafraichir`, {
                         method: 'POST',
                         headers: { 'content-type': 'application/json' },
                         body: JSON.stringify(corps),
                     });
-                    if (!reponse.ok) return undefined;
-                    // The shape is VALIDATED, never asserted: an incomplete body
-                    // would otherwise be written as is to the vault.
-                    return paireDeReponse(await reponse.json().catch(() => undefined));
                 } catch {
-                    return undefined;
+                    // 🔴 THE REQUEST NEVER GOT AN ANSWER (offline, DNS, CORS):
+                    // that is unavailability, and it says nothing about the
+                    // refresh token — the store is left untouched.
+                    return { issue: 'indisponible' };
                 }
+                // The shape is VALIDATED, never asserted: an incomplete body is
+                // never written to the vault (`issueDeReponseRafraichissement`).
+                const contenu = await reponse.json().catch(() => undefined);
+                return issueDeReponseRafraichissement(reponse.status, reponse.ok, contenu);
             },
+            MARGE_FRAICHEUR_MS,
+            deps.verrou,
         );
 }

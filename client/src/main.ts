@@ -16,7 +16,7 @@ import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import type { Recu } from './presse-papier';
 import { attacherResizeAuDOM } from './resize-dom';
 import { adressePlateforme, adresseSignaling } from './adresse-plateforme';
-import { fournisseurDeJetonFrais } from './jeton-frais';
+import { fournisseurDeJetonFrais, verrouDuNavigateur } from './jeton-frais';
 import { ADRESSES_ETRANGERES_AUTORISEES } from './politique-adresse';
 import { sessionIdFromParams } from './session-id';
 
@@ -165,6 +165,7 @@ connectSession({
         base: plateformeUrl,
         fetch: window.fetch.bind(window),
         maintenant: () => Date.now(),
+        verrou: verrouDuNavigateur(),
     }),
     onStatus: (message) => statut.show(message),
     onControl(message) {

@@ -21,7 +21,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession } from './webrtc';
-import { CLE_ACCES, CLE_RAFRAICHISSEMENT } from './jeton';
+import { CLE_ACCES, CLE_RAFRAICHISSEMENT, sansVerrou } from './jeton';
 import { fournisseurDeJetonFrais } from './jeton-frais';
 
 // These two tests cover a behaviour promised by the spec (§10) but
@@ -407,6 +407,7 @@ describe('the handshake carries a FRESH token (sub-block P2)', () => {
             urls.push(url);
             return {
                 ok: true,
+                status: 200,
                 json: async () => ({ acces: neuf, rafraichissement: 'rafraichissement-suivant' }),
             };
         };
@@ -420,6 +421,7 @@ describe('the handshake carries a FRESH token (sub-block P2)', () => {
                 base: 'https://h',
                 fetch,
                 maintenant: () => maintenant,
+                verrou: sansVerrou,
             }),
         });
 

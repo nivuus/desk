@@ -17,7 +17,7 @@ import { adressePlateforme, adresseSignaling } from '../adresse-plateforme';
 import { installerLeBureau } from '../bureau/porteur-dom';
 import { installThemeSelectorInDOM } from '../design/selecteur-theme';
 import { ADRESSES_ETRANGERES_AUTORISEES } from '../politique-adresse';
-import { fournisseurDeJetonFrais } from '../jeton-frais';
+import { fournisseurDeJetonFrais, verrouDuNavigateur } from '../jeton-frais';
 import { lirePrefixe, retenirLePrefixe } from '../prefixe';
 import {
     lireIcone,
@@ -406,6 +406,7 @@ const fournisseurJeton = fournisseurDeJetonFrais({
     base,
     fetch: window.fetch.bind(window),
     maintenant: () => Date.now(),
+    verrou: verrouDuNavigateur(),
 });
 
 void start();
