@@ -260,6 +260,10 @@ pub fn write_platform(_texte: &str) -> anyhow::Result<u32> {
 mod sondeur;
 pub use sondeur::Sondeur;
 
+// Portable, for the host tests of the bounded read `win32.rs` performs.
+#[cfg_attr(not(windows), allow(dead_code))]
+mod text_block;
+
 #[cfg(windows)]
 mod win32;
 
