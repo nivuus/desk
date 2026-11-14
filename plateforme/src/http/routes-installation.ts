@@ -60,6 +60,7 @@ import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
 import { lirePorteur } from './porteur';
 import { lirePorteurAgent } from './porteur-agent';
+import { accesVm } from './acces-vm';
 
 export interface DependancesInstallation {
     base: Pilote;
@@ -141,36 +142,6 @@ function journaliser(cas: string, ressource: string, demandeur: string): void {
         `access to ${ressource} refused for ${demandeur}: cas=${cas} — the HTTP `
             + `response itself is INDISTINGUISHABLE from an unknown resource.`,
     );
-}
-
-/// Decides whether this user has the right to see this VM.
-///
-/// ⚠️ THIRD COPY OF THE SAME RULE, and saying so beats keeping it
-/// quiet: `routes-applications.ts::acces`, `routes-icone.ts::service`, and
-/// here it is. The common factor will live in a third module the day these
-/// files are reopened — G3 opens none of them, and a half extraction would cost an
-/// indirection without closing anything. **Declared rather than endured, as
-/// `porteur-agent.ts` did for its header splitting: any fix
-/// is made IN THE THREE FILES.** ⚠️ The « not assigned » branch LOGS:
-/// `vm.utilisateur_id` is born NULL, and as long as no VM is assigned EVERY (policy: allow-fr - frozen wire key or SQLite column)
-/// AUTHENTICATED USER SEES ALL THE VMS.
-async function acces(
-    deps: DependancesInstallation, vmId: string, userId: string,
-): Promise<'ok' | 'inconnue' | 'etrangere'> {
-    const vm = await lireVm(deps.base, vmId);
-    if (vm === undefined) {
-        journaliser('inconnue', `the VM ${vmId}`, `user ${userId}`);
-        return 'inconnue';
-    }
-    if (vm.utilisateur_id === null) { // policy: allow-fr - frozen wire key or SQLite column
-        console.warn(`unassigned vm, access granted without isolation to VM ${vmId}`);
-        return 'ok';
-    }
-    if (vm.utilisateur_id !== userId) { // policy: allow-fr - frozen wire key or SQLite column
-        journaliser('etrangere', `the VM ${vmId}`, `user ${userId}`);
-        return 'etrangere';
-    }
-    return 'ok';
 }
 
 /// Is there, FOR THIS VM, an UNFINISHED installation that calls for this
@@ -282,7 +253,7 @@ async function ordre(
     // the extension or the sealing dooms. 🔴 AND THE VERDICT IS NOT REREAD:
     // both cases go through the SAME expression, so the bodies CANNOT
     // differ.
-    if ((await acces(deps, vmId, porteur.userId)) !== 'ok') {
+    if ((await accesVm(deps.base, vmId, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
@@ -382,7 +353,7 @@ async function etat(
     // the installation exists, and would reopen the oracle through the back door, on
     // the very resource the URL names. SAME expression for both cases; the
     // log line, for its part, tells them apart.
-    if (ligne === undefined || (await acces(deps, ligne.vm_id, porteur.userId)) !== 'ok') {
+    if (ligne === undefined || (await accesVm(deps.base, ligne.vm_id, porteur.userId)) !== 'ok') {
         repondre(rep, 404, { refus: 'installation-inconnue' }, cors);
         return true;
     }
