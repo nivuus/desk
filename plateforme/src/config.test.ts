@@ -58,6 +58,7 @@ describe('lireConfig', () => {
             proxyDeConfiance: new Set(['172.18.0.5']),
             repertoireIcones: 'donnees/icones',
             repertoireTeleversements: 'donnees/televersements',
+            quotaTeleversementOctets: undefined,
             racinePage: undefined,
             socketVm: undefined,
         });

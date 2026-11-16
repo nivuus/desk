@@ -96,6 +96,14 @@ export interface Config {
     /// upload their file again. Silence is therefore even less acceptable
     /// here — hence the log line when the store opens.
     repertoireTeleversements: string;
+    /// PLATEFORME_TELEVERSEMENT_QUOTA_OCTETS — OPTIONAL. How many bytes of
+    /// uploads ONE user may hold on disk, sealed or not (audit 2026-11-16).
+    /// 🔴 A POLICY, NOT A MEASUREMENT: absent or empty, the documented default
+    /// `routes-televersement.ts::QUOTA_TELEVERSEMENT_OCTETS_DEFAUT` applies — it
+    /// lives there, next to the 4 GiB per-file cap it is derived from, and
+    /// nowhere else. A value that is not a positive whole number THROWS: a
+    /// silent fallback would run another quota than the one written.
+    quotaTeleversementOctets?: number;
     /// PLATEFORME_PAGE — OPTIONAL, and **NO DEFAULT**, unlike
     /// `PLATEFORME_ICONES` and `PLATEFORME_TELEVERSEMENTS` just below.
     ///
@@ -206,6 +214,18 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
 
     // Same EMPTY string guard as above, but WITHOUT a fallback: here, empty
     // and absent both mean "no server".
+    const brutQuota = env.PLATEFORME_TELEVERSEMENT_QUOTA_OCTETS;
+    let quotaTeleversementOctets: number | undefined;
+    if (brutQuota !== undefined && brutQuota !== '') {
+        quotaTeleversementOctets = Number(brutQuota);
+        if (!/^\d+$/.test(brutQuota) || !Number.isSafeInteger(quotaTeleversementOctets)
+            || quotaTeleversementOctets <= 0) {
+            throw new Error(
+                `PLATEFORME_TELEVERSEMENT_QUOTA_OCTETS must be a positive whole number of bytes, got: ${brutQuota}`,
+            );
+        }
+    }
+
     const brutPage = env.PLATEFORME_PAGE;
     const racinePage = brutPage === undefined || brutPage === '' ? undefined : brutPage;
 
@@ -334,6 +354,7 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
         proxyDeConfiance,
         repertoireIcones,
         repertoireTeleversements,
+        quotaTeleversementOctets,
         racinePage,
         socketVm,
         auth,

@@ -301,6 +301,8 @@ export async function startServer(config: Config, base: Pilote): Promise<Service
         // ⚠️ ONLY `servirPage` READS IT. Absent ⇒ the page server steps aside and the generic
         // 404 takes over again — the behaviour from before the batch.
         racinePage: config.racinePage,
+        // ⚠️ ONLY `servirTeleversement` READS IT; absent ⇒ its documented default.
+        quotaOctets: config.quotaTeleversementOctets,
     };
 
     // `servirTout`: see its extraction into `./chaine.ts`, explained higher (policy: allow-fr - file name)
