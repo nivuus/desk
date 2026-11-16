@@ -44,8 +44,8 @@ import {
     lireTrame,
     ouvertureParLeBureau,
     promouvoir,
-    type Election,
 } from './porteur';
+import { createSeatRetry } from './seat-retry';
 
 declare global {
     interface Navigator {
@@ -152,10 +152,6 @@ export function installerLeBureau(deps: DepsBureauPage): void {
     // badly — and the temporal dead zone is an error class avoided
     // by layout rather than by vigilance.
     let socket: WebSocket | undefined;
-    /// Returned by `elire`. `undefined` as long as the election has not been set —
-    /// the fallback without Web Locks calls `devenirPorteur` SYNCHRONOUSLY, hence
-    /// before this assignment.
-    let election: Election | undefined;
 
     const poserTon = (element: HTMLElement, ton: Ton): void => {
         element.classList.remove('message--succes', 'message--alerte', 'message--danger');
@@ -342,16 +338,32 @@ export function installerLeBureau(deps: DepsBureauPage): void {
                     section: el.filesSection,
                 }),
             ouvrirSocket: (jeton) => ouvrirLeSocket(jeton),
-            sansJeton: () => {
-                // ⚠️ ACTIONABLE, and not "an error occurred": the
-                // reload restarts `assurerAccesFrais`, hence Pomerium.
-                el.statut.textContent =
-                    'Your session has expired. Reload the page to sign in again.';
-                poserTon(el.statut, 'danger');
-                desactiverLePont();
-            },
+            sansJeton,
         });
     };
+
+    const sansJeton = (): void => {
+        // ⚠️ ACTIONABLE, and not "an error occurred": the
+        // reload restarts `assurerAccesFrais`, hence Pomerium.
+        el.statut.textContent = 'Your session has expired. Reload the page to sign in again.';
+        poserTon(el.statut, 'danger');
+        desactiverLePont();
+    };
+
+    /// The seat refused by the platform is asked for again (`seat-retry.ts`).
+    /// ⚠️ NOT `ouvrirLaSession`: the bridge is already installed, and
+    /// installing it twice would double its listeners.
+    const seat = createSeatRetry({
+        show: (text, tone) => { el.statut.textContent = text; poserTon(el.statut, tone); },
+        schedule: (run, delayMs) => void setTimeout(run, delayMs),
+        freshToken: () => deps.jetonFrais(),
+        open: (jeton) => {
+            porteur = true;
+            activerLePont();
+            ouvrirLeSocket(jeton);
+        },
+        noToken: sansJeton,
+    });
 
     const ouvrirLeSocket = (jeton: string): void => {
         socket = new WebSocket(deps.signalingUrl);
@@ -372,49 +384,24 @@ export function installerLeBureau(deps: DepsBureauPage): void {
             else if (message.type === 'refus') bureau.refus(message.titre as string, message.motif as string);
             else if (message.type === 'error') {
                 if (estPlacePrise(message)) {
-                    // 🔴 "THE PLACE IS TAKEN" IS NOT AN ERROR TO
-                    // SHOW. This tab tried to become carrier, another
-                    // already held the session on the platform side. It
-                    // becomes a follower again, SILENTLY — a second tab is
-                    // not the user's fault. Any other refusal, including
-                    // the volume brake, stays displayed.
+                    // 🔴 "THE SEAT IS TAKEN" IS A STATE, TOLD AND RETRIED — it was
+                    // swallowed, and this tab became a follower for good. The
+                    // tab that gets here is the one THIS browser elected (or
+                    // one without Web Locks): what holds the seat is another
+                    // browser or device, or this tab's previous connection the
+                    // platform has not released yet. Rule and reasons:
+                    // `seat-retry.ts`.
                     //
-                    // ⚠️ **THIS PATH IS NOT RESERVED TO THE FALLBACK WITHOUT WEB
-                    // LOCKS** — a claim too broad (Minor round 1):
-                    // Web Locks are partitioned PER STORAGE
-                    // PARTITION (a private browsing window, or a
-                    // second browser, holds ITS OWN partition), so a
-                    // tab can very well hold ITS lock and still target
-                    // the SAME session on the platform side. This path is
-                    // therefore also reached OUTSIDE the fallback, whenever two
-                    // distinct partitions target the same VM.
+                    // ⚠️ `porteur = false` BEFORE the close, so the `close`
+                    // listener stays silent: "Reload the page" would be wrong
+                    // while a retry is scheduled. The election lock is KEPT —
+                    // this tab is still the one that will hold the desktop.
                     porteur = false;
                     socket?.close();
-                    // 🔴 **THE LOCK IS GIVEN BACK, AND IT WAS NOT**
-                    // (Important ③ of the final review): the promise held by
-                    // `elire` was a `Promise<never>` nothing resolved,
-                    // so that a dismissed carrier kept the lock
-                    // FOREVER and its partition **never again** had a
-                    // carrier. It goes back to follower, lock released.
-                    // ⚠️ It does NOT put itself back in the queue: see
-                    // `porteur.ts::Election::relacher` for the reason (a
-                    // refusal → release → retake loop) and for the limit
-                    // this leaves.
-                    election?.relacher();
-                    // Minor round 1: the banner still said "desktop
-                    // connected", set optimistically when the
-                    // socket opened, BEFORE knowing whether the platform would refuse.
-                    // Say it as is after the demotion: this tab IS NO
-                    // LONGER the one holding the desktop.
-                    el.statut.textContent = TEXTE_SUIVEUR;
-                    poserTon(el.statut, 'neutre');
-                    // 🔴 THIS PATH (fallback WITHOUT Web Locks) installed the bridge
-                    // OPTIMISTICALLY, AT THE SAME TIME as `porteur = true`
-                    // above, before knowing whether the platform would refuse
-                    // -- exactly like the banner. Catch it up the
-                    // same way: it is no longer this tab that handles
-                    // files.
+                    // The bridge was enabled optimistically with the socket:
+                    // this tab handles no files until the seat is granted.
                     desactiverLePont();
+                    seat.refused();
                     redessiner();
                     return;
                 }
@@ -433,7 +420,9 @@ export function installerLeBureau(deps: DepsBureauPage): void {
         });
     };
 
-    election = elire(nomDuVerrou(deps.prefixe), {
+    // ⚠️ The `Election` returned is not kept: its lock is held for the life of
+    // the tab, a refused seat included (`seat-retry.ts`).
+    elire(nomDuVerrou(deps.prefixe), {
         verrou:
             typeof navigator !== 'undefined' && 'locks' in navigator
                 ? (nom, pendant) => void navigator.locks!.request(nom, { mode: 'exclusive' }, pendant)

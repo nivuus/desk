@@ -60,6 +60,7 @@ use tokio::sync::watch;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
+use super::declaration_refusal::declaration_refusal;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::reprise_controle::Reprise;
 use crate::plateforme::Identite;
@@ -322,6 +323,20 @@ async fn servir(
                     // Pings on its own, there is nothing to do here.
                     Ok(_) => continue,
                 };
+                // 🔴 A REFUSED DECLARATION ENDS THIS CONNECTION. It was logged
+                // and ignored: on `role-occupe` this loop kept reading a
+                // socket that held no role, and nothing ever declared again.
+                // The rule is pure and tested on the host
+                // (`declaration_refusal.rs`); `tenir` resumes with its backoff.
+                if let Some(refusal) = declaration_refusal(&message) {
+                    tracing::warn!(
+                        motif = %refusal.motif,
+                        reason = %refusal.reason.as_deref().unwrap_or("(absent)"),
+                        "control session REFUSED by the platform: this connection holds no role, \
+                         it is abandoned and the declaration will be retried"
+                    );
+                    return Fin::ConnexionPerdue;
+                }
                 if let Some(message) = analyser(&message) {
                     if tx_entrant.send(message).is_err() {
                         return Fin::SuperviseurArrete;

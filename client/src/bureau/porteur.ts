@@ -63,6 +63,12 @@ export interface Election {
     /// until it is reloaded. What is gained is that the lock is FREE,
     /// hence another tab — or a reload — can take the place,
     /// which was impossible before.
+    ///
+    /// ⚠️ **NO LONGER CALLED ON A REFUSED SEAT.** `porteur-dom.ts` used to
+    /// resign here on `role-occupe`; it now keeps the lock and asks for the
+    /// seat again after a delay (`seat-retry.ts`), which is what the loop
+    /// feared above lacked: a delay. The primitive stays, for a caller that
+    /// really gives the desktop up.
     relacher(): void;
 }
 

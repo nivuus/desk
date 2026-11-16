@@ -72,6 +72,7 @@ import { marquerVu } from '../depot/agent';
 import { appliquer, lireConnues } from '../depot/application';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
 import { adresseSource } from '../http/adresse-source';
+import { watchLiveness } from '../http/liveness';
 import { ligne as ligneDeJournal } from '../obs/journal';
 import {
     BUDGET_ADRESSE,
@@ -157,6 +158,10 @@ const FERMETURE_POLITIQUE = 1008;
 export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal): void {
     const { base, secretJeton, maintenant, registre, frein, proxyDeConfiance, magasin } = options;
     const dureeJetonMs = options.dureeJetonMs ?? DUREE_JETON_ACCES_MS;
+
+    // An agent that died without closing must leave the registry, otherwise its
+    // VM stays "reachable" and every order goes to nobody: see `http/liveness.ts`.
+    watchLiveness(wss, '/agent');
 
     // ⚠️ THE UPGRADE REQUEST IS NOW RECEIVED, and `ws` is what
     // supplies it: `http/serveur.ts` already does `wss.emit('connection', client,
@@ -313,6 +318,13 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                         refuser(verdict.motif);
                         return;
                     }
+                    // 🔴 THE SOCKET MAY HAVE DIED WHILE ITS SECRET WAS BEING
+                    // VERIFIED (a database read, then `scrypt`). Its `close`
+                    // already ran, with no VM to remove: registering it now
+                    // would put a dead socket in the registry for good, and
+                    // `inscrire` would close the LIVE socket of an agent that
+                    // reconnected in the meantime. A dead socket enrols nobody.
+                    if (socket.readyState !== 1 /* OPEN */) return;
                     // 🔴 SUCCESS CLEARS THE KEY OF THE VM, NEVER THAT OF THE
                     // ADDRESS — same rule as `/auth/connexion`. Clearing it
                     // too would whitewash an attacker who owns a valid
