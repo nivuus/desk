@@ -37,6 +37,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Tranche } from '../../../proto/ts/tranches';
+import { synchroniser } from './ecriture-durable';
 
 /// Same remedy, same reason, as `icones.ts::PAS_DE_REPRISE` — MEASURED by the
 /// review (correction round 2), on a bench of 3,200 uploads: 272 ms
@@ -202,7 +203,11 @@ export function ouvrirMagasinTranches(
             plafondOctets: number,
         ): Promise<WriteResult> {
             const cible = cheminDe(id, n);
-            mkdirSync(join(racine, id), { recursive: true });
+            // A NEW upload directory is a new name in the root: flushed there,
+            // or a freeze can lose the directory with every chunk renamed into it.
+            if (mkdirSync(join(racine, id), { recursive: true }) !== undefined) {
+                synchroniser(racine);
+            }
 
             // The random suffix keeps two concurrent deposits of the same
             // rank from writing the same temporary file — same defence as `icones.ts`.
@@ -275,7 +280,15 @@ export function ouvrirMagasinTranches(
                 if (depasse) return { ok: false, motif: 'plafond-depasse', plafond: plafondOctets };
                 throw error;
             }
+            // 🔴 FLUSHED BEFORE THE RENAME, THE DIRECTORY AFTER IT (audit
+            // 2026-11-16, D5): without it a host freeze could leave the new name
+            // on disk and not the data — a 0-byte chunk that `lister` counts
+            // and sealing calls `incoherentes`, the verdict nothing repairs.
+            // The stream has closed its descriptor: `fsync` on a new one
+            // flushes the same inode. See `ecriture-durable.ts`.
+            synchroniser(provisoire);
             renameSync(provisoire, cible);
+            synchroniser(join(racine, id));
             return { ok: true, octets };
         },
 
