@@ -122,38 +122,41 @@ describe('re-sending the installations at enrolment', () => {
         pair.socket.terminate();
     });
 
-    // 🔴 THE HALF THAT PREVENTS DOUBLE EXECUTION, and without it the test
-    // above would hold for a service that replays FOREVER. As soon as an
-    // agent has reported a progress, the row goes `en_cours` and stops
-    // being re-emitted. It is the FIRST of the two belts; the second is the
-    // marker on the VM's disk, and it protects against the case where the first has
-    // lost its database.
-    it('🔴 NO LONGER RE-SENDS an installation already started', async () => {
+    // 🔴 THE HALF THAT STOPS THE RE-EMISSION, and without it the test above
+    // would hold for a service that replays FOREVER. ~~As soon as an agent has
+    // reported a progress, the row goes `en_cours` and stops being re-emitted.~~
+    // REVERSED (audit 2026-11-16, D2): that rule left an installation `en_cours`
+    // forever once its `termine` was lost — nothing ever asked the agent again.
+    // An `en_cours` order IS re-sent, and the agent answers it from its disk
+    // markers without running the installer twice. What stops the re-emission
+    // is the OUTCOME: a `terminee` row is never sent again.
+    it('🔴 re-sends an installation already started, and stops once it is finished', async () => {
         base = await baseNeuve('canal-inst-pas-deux-fois');
         await enrolerUneVm(base, 'v-1');
         const { installation } = await unOrdreEnAttente(base);
         const premier = await ouvrir(await start(base));
         await enrole(premier);
-        // The first enrolment does receive it — it is the witness without which
-        // the next assertion would hold for an entirely silent service.
         expect((await premier.recevoir()).installation).toBe(installation);
 
-        // The agent reports a progress: the row leaves `en_attente`.
-        // ⚠️ `send`, NEVER `dire`: a progress calls for NO answer,
-        // and `dire` would wait for it two seconds before turning red for the wrong
-        // reason. It is what the catalogue test already does, for the same
-        // reason — we wait for the EFFECT in the database, not an acknowledgement that does not exist.
+        // ⚠️ `send`, NEVER `dire`: a progress or an outcome calls for NO answer;
+        // we wait for the EFFECT in the database.
         premier.socket.send(encodeProgression(installation, 'transfert', 8_388_608, 3_221_225_472, 1_200));
-        // ⚠️ THE WRITE IS NOT AWAITED BY THE CHANNEL (that is the rule of the
-        // file), so we wait for the EFFECT rather than a duration.
         await attendreEtat(base, installation, 'en_cours');
         premier.socket.terminate();
 
-        // A second enrolment must receive NOTHING.
+        // The `termine` was lost: the next enrolment receives the order again.
         const second = await ouvrir(await start(base));
         await enrole(second);
-        await expect(second.recevoir()).rejects.toThrow(/no message pushed/);
+        expect((await second.recevoir()).installation).toBe(installation);
+        second.socket.send(encodeTermine(installation, 'issue-inconnue', null, null, '', false));
+        await attendreEtat(base, installation, 'terminee');
         second.socket.terminate();
+
+        // Finished: an enrolment receives NOTHING.
+        const troisieme = await ouvrir(await start(base));
+        await enrole(troisieme);
+        await expect(troisieme.recevoir()).rejects.toThrow(/no message pushed/);
+        troisieme.socket.terminate();
     });
 });
 

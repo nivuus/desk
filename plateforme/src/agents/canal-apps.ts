@@ -38,7 +38,7 @@ import type { Magasin } from '../apps/icones';
 import type { Pilote } from '../base/pilote';
 import { fusionner } from '../apps/catalogue';
 import { appliquer, lireConnues } from '../depot/application';
-import { avancer, lireEnAttentePourVm, terminer } from '../depot/installation';
+import { avancer, lireNonTermineesPourVm, terminer } from '../depot/installation';
 import { lireParId as lireTeleversement } from '../depot/televersement';
 import type { RegistreAgents } from './registre';
 
@@ -136,12 +136,11 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
     }
 
     if (message.type === 'termine') {
-        // 🔴 THIS ONE, IF LOST, DOES NOT CATCH UP ON ITS OWN — and that must be said
-        // rather than left to be believed. The agent emits `termine` only
-        // once; if the write fails, the row stays `en_cours` forever
-        // and the re-emission does not pick it up either, since it only targets
-        // the `en_attente` ones. The log is then the only trace, and that is
-        // why it carries the identifier.
+        // 🔴 THIS ONE, IF LOST, CATCHES UP ONLY AT THE NEXT ENROLMENT: the agent
+        // emits `termine` once, and `reemettreLesInstallations` re-sends the
+        // `en_cours` row then, which the agent answers from its disk markers.
+        // Until then the log is the only trace, and that is why it carries
+        // the identifier.
         //
         // ⚠️ What protects the user from a replayed installation is NOT
         // this write but the marker on the VM disk: the second
@@ -166,12 +165,36 @@ export function traiter(deps: DependancesMontantes, message: MontantDeQuatre): v
     }
 
     const identifiant = deps.vmId;
-    void lireConnues(deps.base, identifiant)
-        .then((connues) => appliquer(deps.base, identifiant, fusionner(connues, message), instant))
-        .then(() => reclamerLesIcones(deps, message))
-        .catch((cause) => {
-            console.error(`catalogue not written for VM ${identifiant}: ${String(cause)}`);
-        });
+    // 🔴 IN TURN, PER VM (audit 2026-11-16, D7): the merge READS the known
+    // applications then WRITES, so two catalogues of one VM in flight together
+    // both saw a new application as unknown, both inserted it, and the second
+    // transaction died on `UNIQUE (vm_id, cle)` — its delta lost until the next
+    // full catalogue. `ws` emits every frame of one TCP segment synchronously,
+    // so "together" is the ordinary case, not a race.
+    enchainer(identifiant, () =>
+        lireConnues(deps.base, identifiant)
+            .then((connues) => appliquer(deps.base, identifiant, fusionner(connues, message), instant))
+            .then(() => reclamerLesIcones(deps, message))
+            .catch((cause) => {
+                console.error(`catalogue not written for VM ${identifiant}: ${String(cause)}`);
+            }),
+    );
+}
+
+/// The catalogue work still in flight, per VM — the tail of each chain.
+const catalogueEnCours = new Map<string, Promise<void>>();
+
+/// Runs `travail` after every catalogue of the same VM already queued.
+///
+/// ⚠️ `travail` NEVER REJECTS — it carries its own `catch`, which logs — so one
+/// failed catalogue cannot block the next ones. A VM whose chain has drained
+/// leaves the map: it holds only the VMs with work in flight.
+function enchainer(vmId: string, travail: () => Promise<void>): void {
+    const suite = (catalogueEnCours.get(vmId) ?? Promise.resolve()).then(travail);
+    catalogueEnCours.set(vmId, suite);
+    void suite.then(() => {
+        if (catalogueEnCours.get(vmId) === suite) catalogueEnCours.delete(vmId);
+    });
 }
 
 export interface DependancesReemission {
@@ -199,11 +222,16 @@ export interface DependancesReemission {
 /// `complet = true` the agent sends back at every re-enrolment. Without it, an
 /// order emitted during an outage would be lost WITH NO END.
 ///
-/// ⚠️ **IT ONLY TARGETS THE `en_attente` ONES.** As soon as an agent has reported a
-/// progress, the row turns `en_cours` and stops being re-emitted: that is the
-/// FIRST of the two belts against a double run. The second is the
-/// marker on the VM disk, and it protects from the case where the first one
-/// lost its database.
+/// 🔴 **IT TARGETS EVERY UNFINISHED ROW, `en_cours` INCLUDED** (audit
+/// 2026-11-16, D2). It used to target only `en_attente`, as a first belt
+/// against a double run — and that belt left an installation `en_cours`
+/// forever as soon as its `termine` was lost, since nothing ever asked the
+/// agent again. The belt against a double run is the agent's: it handles
+/// orders one at a time, and its disk markers answer a known installation
+/// without executing it. ⚠️ `POST /installation` reuses this function, so an
+/// order placed while another runs re-sends the running one too: the agent
+/// answers it from its markers once the first is done, and `terminer`
+/// ignores that second outcome (`etat <> 'terminee'`).
 ///
 /// ⚠️ **THE URL IS DERIVED, NOT CONFIGURED.** It is relative — `/televersement/
 /// :id/contenu` — and the agent resolves it against the address of its own channel,
@@ -212,9 +240,8 @@ export interface DependancesReemission {
 export async function reemettreLesInstallations(
     deps: DependancesReemission,
 ): Promise<void> {
-    const enAttente = await lireEnAttentePourVm(deps.base, deps.vmId);
-    if (enAttente.length === 0) return;
-    for (const ligne of enAttente) {
+    const nonTerminees = await lireNonTermineesPourVm(deps.base, deps.vmId);
+    for (const ligne of nonTerminees) {
         const tel = await lireTeleversement(deps.base, ligne.televersement_id);
         if (tel === undefined) {
             // ⚠️ UNREACHABLE THROUGH THE FOREIGN KEY, and guarded anyway: the

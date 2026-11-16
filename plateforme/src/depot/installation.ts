@@ -106,8 +106,10 @@ export async function lireParId(
 
 /// The installations a VM has yet to receive.
 ///
-/// 🔴 IT IS THE QUERY OF THE RE-EMISSION ON ENROLMENT, and the index
-/// `installation_par_vm_et_etat` exists for it. A WebSocket `push` has
+/// ⚠️ IT WAS THE QUERY OF THE RE-EMISSION ON ENROLMENT, and no longer is:
+/// `lireNonTermineesPourVm` below replaced it (audit 2026-11-16, D2), because
+/// re-sending only these rows lost every `en_cours` whose `termine` was lost.
+/// What follows explains why a re-emission exists at all. A WebSocket `push` has
 /// NO delivery guarantee: without this re-emission, an order sent during
 /// an outage would be lost WITHOUT END. It is the same safety net as the
 /// `complet = true` of the catalogue, and the G1 acceptance run saw it work on the
@@ -119,6 +121,26 @@ export async function lireEnAttentePourVm(
     return p.interroger<LigneInstallation>(
         `SELECT ${COLUMNS} FROM installation WHERE vm_id = ? AND etat = ? ORDER BY demandee_a`,
         [vmId, 'en_attente'],
+    );
+}
+
+/// The installations of a VM that are NOT finished — `en_attente` AND `en_cours`.
+///
+/// 🔴 IT IS WHAT THE ENROLMENT RE-SENDS (audit 2026-11-16, D2). Re-sending only
+/// the `en_attente` rows left an installation `en_cours` FOREVER as soon as its
+/// `termine` was lost — agent restarted, network cut while the installer ran,
+/// write failed: nothing ever asked the agent again, and the agent only reports
+/// the outcome it holds on disk when it receives the order again. Re-sending an
+/// `en_cours` order cannot run an installer twice: the agent handles orders one
+/// at a time, and its `.commence`/`.termine` markers answer a known
+/// installation without executing it (`agent/src/apps/installation/fil.rs`).
+export async function lireNonTermineesPourVm(
+    p: Pilote,
+    vmId: string,
+): Promise<LigneInstallation[]> {
+    return p.interroger<LigneInstallation>(
+        `SELECT ${COLUMNS} FROM installation WHERE vm_id = ? AND etat <> ? ORDER BY demandee_a`,
+        [vmId, 'terminee'],
     );
 }
 
