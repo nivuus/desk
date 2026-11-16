@@ -90,6 +90,23 @@ async function inserer(
     );
 }
 
+/// Deletes every family whose NEWEST token expired before `avant`.
+///
+/// 🔴 BY FAMILY, NEVER BY ROW. A rotated row is what lets `tourner` read a
+/// replay and revoke the family — the thief's live token included. Deleting it
+/// while a member is still live would turn that replay into an `inconnu`, and
+/// the family would survive the theft. Once the newest token has expired,
+/// nothing of the family can be used any more: there is nothing left to protect.
+/// Returns the number of rows deleted.
+export async function purgerFamillesMortes(p: Pilote, avant: number): Promise<number> {
+    const r = await p.executer(
+        'DELETE FROM jeton_rafraichissement WHERE famille IN'
+            + ' (SELECT famille FROM jeton_rafraichissement GROUP BY famille HAVING MAX(expire_a) < ?)',
+        [avant],
+    );
+    return r.lignes;
+}
+
 /// Opens a NEW family — it is the gesture of signing in. Returns the token IN
 /// CLEAR, the one and only time it exists outside the browser.
 export async function emettre(

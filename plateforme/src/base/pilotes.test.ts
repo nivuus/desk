@@ -30,12 +30,12 @@ describe(`portable subset, engine=${MOTEUR}`, () => {
         // never fail. The price is that a new migration forces
         // a CONSCIOUS update of this line — which P2 paid by
         // adding `0002-identite.sql`.
-        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3, 4, 5, 6, 7]);
+        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
         // Idempotence: the second pass applies nothing.
         expect(await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, 2_000)).toBe(0);
         const apres = await base.interroger('SELECT version FROM schema_migration', []);
         // Same count as above, and hardcoded for the same reason.
-        expect(apres).toHaveLength(7);
+        expect(apres).toHaveLength(8);
     });
 
     it('🔴 the two columns of 0005 are NULLABLE, and the table is POPULATED when they are added', async () => {

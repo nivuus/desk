@@ -308,6 +308,13 @@ async function ordre(
         repondre(rep, 400, { refus: 'extension' }, cors);
         return true;
     }
+    // 🔴 THE BYTES OF A FINISHED INSTALLER MAY HAVE BEEN RELEASED by the cleanup
+    // (`depot/televersement.ts::purger`): the row stays for the history, the
+    // chunks are gone. An order would only fail on the agent, far from here.
+    if (tel.contenu_purge_a !== null) {
+        repondre(rep, 409, { refus: 'contenu-purge' }, cors);
+        return true;
+    }
     // 🔴 AN UNREACHABLE VM RETURNS 503, NEVER 201: writing the row without saying so
     // would make the hub display a « requested » installation that nobody will
     // receive — the hardest failure to diagnose there is, nothing anywhere

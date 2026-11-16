@@ -17,7 +17,7 @@ export const MOTEUR = (process.env.PLATEFORME_BASE ?? 'sqlite') as 'sqlite' | 'p
 
 /// URL of the test instance, the one of `docker-compose.plateforme.yml`.
 /// Overridable through `PLATEFORME_BASE_URL` to target another instance.
-const URL_POSTGRES =
+export const URL_POSTGRES =
     process.env.PLATEFORME_BASE_URL ??
     'postgres://plateforme:plateforme-test@127.0.0.1:5433/plateforme_test';
 
@@ -56,10 +56,18 @@ const MAX_CLIENTS_TEST = 2;
 /// `search_path`. That is what lets several test files run
 /// side by side without stepping on each other, where a global `DROP SCHEMA public`
 /// would make them destroy one another.
-export async function baseNeuve(nom: string): Promise<Pilote> {
+///
+/// `migrations` defaults to the real directory. A test of a NEW migration passes
+/// a directory holding only the ones before it, populates the tables, then
+/// applies the real directory: that is the only way to play a migration on a
+/// database that already carries rows, which is the production case.
+export async function baseNeuve(
+    nom: string,
+    migrations: string = REPERTOIRE_MIGRATIONS,
+): Promise<Pilote> {
     if (MOTEUR === 'sqlite') {
         const p = ouvrirSqlite(':memory:');
-        await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, INSTANT_MIGRATION);
+        await appliquerMigrations(p, migrations, INSTANT_MIGRATION);
         return p;
     }
 
@@ -77,7 +85,7 @@ export async function baseNeuve(nom: string): Promise<Pilote> {
         `${URL_POSTGRES}?options=-c%20search_path%3D${schema}`,
         MAX_CLIENTS_TEST,
     );
-    await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, INSTANT_MIGRATION);
+    await appliquerMigrations(p, migrations, INSTANT_MIGRATION);
     return p;
 }
 

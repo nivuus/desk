@@ -1,4 +1,5 @@
-// The background cleanup of the TWO on-disk stores (icons, slices).
+// The background cleanup of the TWO on-disk stores (icons, slices), and of the
+// identity rows nothing can use any more (dead token families, old closed sessions).
 //
 // 🔴 WITHOUT THIS FILE, `Magasin.evincer` AND `MagasinTranches.evincer` ARE A
 // MECHANISM WRITTEN, TESTED, DOCUMENTED — AND CALLED BY NOBODY. That is the most
@@ -30,10 +31,18 @@ export const PERIODE_NETTOYAGE_MS = 6 * 60 * 60_000; // 6 heures.
 import type { Pilote } from '../base/pilote';
 import type { Magasin } from './icones';
 import { AGE_EVICTION_TRANCHES_MS, type MagasinTranches } from './magasin-tranches';
+import { purgerFamillesMortes } from '../depot/jeton';
+import { purgerSessionsFermees } from '../depot/session';
 import {
     lirePlusVieuxQue as televersementsPlusVieuxQue,
-    remove as removeUpload,
+    purger as purgerTeleversement,
 } from '../depot/televersement';
+
+/// How long a dead identity row is kept: a refresh-token family after its
+/// NEWEST token expired, a session after it closed. It is a policy, not a
+/// measurement — long enough to read back a recent incident, short enough
+/// that the tables are bounded by it rather than by use. ⚠️ UNCALIBRATED.
+export const RETENTION_IDENTITE_MS = 30 * 24 * 60 * 60_000;
 
 /// Same remedy, same reason as `icones.ts::PAS_DE_REPRISE` — the loop that
 /// tries to purge a BACKLOG of rows too old must not
@@ -98,14 +107,17 @@ export async function referencesIcones(p: Pilote): Promise<Set<string>> {
 /// installation references"), and were called by NO production
 /// code: a THIRD dead mechanism, and this time the comment of
 /// their own test says it in advance — "the disk SLICES, for their part, are
-/// swept ELSEWHERE". This file is that "elsewhere". The deletion
+/// swept ELSEWHERE". This file is that "elsewhere". ~~The deletion
 /// of a row is REFUSED BY THE FOREIGN KEY as long as an `installation` still
-/// references it ("the history of an installation must remain
-/// readable"): that refusal IS the floor, at the DATABASE level, even before
-/// the disk one. Evicting the disk BEFORE this purge would leave a
+/// references it: that refusal IS the floor.~~ FALSE FLOOR, FIXED (audit
+/// 2026-11-16, D4): the foreign key refused the deletion for a FINISHED
+/// installation too, so every ordered installer stayed on disk forever.
+/// The floor is now `depot/televersement.ts::purger`: an UNFINISHED
+/// installation keeps row and bytes; finished ones keep only the row, for the
+/// history. Evicting the disk BEFORE this purge would leave a
 /// window where a row just freed has not yet had the chance to
 /// protect its directory; the reverse order carries no symmetric risk — a
-/// row still present protects its directory until the NEXT ROUND at worst.
+/// row still holding its bytes protects its directory until the NEXT ROUND at worst.
 ///
 /// 🔴 CRITICAL NARROWED TO A RACE, NOT CLOSED (correction round 2, then
 /// FIXED in correction round 3) — THE TWO FLOORS MUST MEASURE THE
@@ -182,49 +194,33 @@ async function nettoyerTranches(
             continue;
         }
 
+        // 🔴 NO ERROR IS EXPECTED ANY MORE, so none is silenced. The foreign
+        // key refusal this loop used to swallow as "expected" WAS the defect
+        // (audit 2026-11-16, D4): an upload named by any installation, even a
+        // finished one, kept its row, hence its chunks, forever. `purger`
+        // now releases the bytes of an upload whose installations are all
+        // finished and keeps the row for their history; the floor — an
+        // installation still running keeps everything — is inside its SQL.
         try {
-            await removeUpload(p, ligne.id);
+            await purgerTeleversement(p, ligne.id, maintenant);
         } catch (cause) {
-            if (!estRefusDeCleEtrangere(cause)) {
-                // ⚠️ Important ① (correction round 2): ONLY the foreign
-                // key refusal stays silent — it is EXPECTED, see above.
-                // Any other failure (database cut off, full disk…) IS NOT
-                // EXPECTED at all and must be visible: measured by the review, a
-                // bare `catch {}` produced ZERO log lines on a partial
-                // outage. The amplification argument does not apply:
-                // this loop is BOUNDED, and runs at most once every six
-                // hours — nothing to do with one packet per frame.
-                console.error(
-                    `purge of the upload row ${ligne.id} failed: ${String(cause)}`,
-                );
-            }
+            console.error(`purge of the upload row ${ligne.id} failed: ${String(cause)}`);
         }
     }
     await tranches.evincer({ maintenant, referencees: await referencesTranches(p) });
 }
 
-/// Tells a FOREIGN KEY refusal — the ONLY expected failure of
-/// `removeUpload` — apart from everything else.
-///
-/// 🔴 A CODE, NOT A TEXT: `errcode` (node:sqlite,
-/// `SQLITE_CONSTRAINT_FOREIGNKEY = 787`, measured on this repository — see
-/// `nettoyage.test.ts`) and `code` (`pg`, `23503`, the stable
-/// `foreign_key_violation` code of Postgres) are STABLE CODES, published by
-/// each engine — never the `message`, which is prose and can change
-/// from one version to the next without anything signalling it here.
-function estRefusDeCleEtrangere(cause: unknown): boolean {
-    if (!(cause instanceof Error)) return false;
-    const e = cause as Error & { errcode?: unknown; code?: unknown };
-    return e.errcode === 787 || e.code === '23503';
-}
-
-/// The set of REFERENCED upload identifiers — in the broadest
-/// sense: the ROW still exists in `televersement`. Exported separately,
+/// The set of REFERENCED upload identifiers: the ROW exists in `televersement`
+/// AND still holds its bytes — an upload whose chunks were released
+/// (`contenu_purge_a`) keeps its row for the history, not its directory. Exported separately,
 /// like `referencesIcones`, so that the guard "the set is never empty
 /// by accident" (`nettoyage.test.ts`) can measure it without going through a
 /// full round.
 export async function referencesTranches(p: Pilote): Promise<Set<string>> {
-    const lignes = await p.interroger<{ id: string }>('SELECT id FROM televersement', []);
+    const lignes = await p.interroger<{ id: string }>(
+        'SELECT id FROM televersement WHERE contenu_purge_a IS NULL',
+        [],
+    );
     return new Set(lignes.map((l) => l.id));
 }
 
@@ -266,6 +262,11 @@ export async function unTour(deps: {
     const refs = await referencesIcones(deps.base);
     await deps.magasin.evincer({ maintenant: deps.maintenant, referencees: refs });
     await nettoyerTranches(deps.base, deps.tranches, deps.maintenant);
+    // The identity rows nothing can use any more (audit 2026-11-16, P-8):
+    // without this, every token rotation and every session added a row for good.
+    const avant = deps.maintenant - RETENTION_IDENTITE_MS;
+    await purgerFamillesMortes(deps.base, avant);
+    await purgerSessionsFermees(deps.base, avant);
 }
 
 /// Starts the background cleanup: an IMMEDIATE and AWAITED round, then a round

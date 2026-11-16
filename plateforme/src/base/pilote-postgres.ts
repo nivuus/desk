@@ -78,6 +78,16 @@ export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
         connectionString: url,
         ...(maxClients === undefined ? {} : { max: maxClients }),
     });
+    // 🔴 THE POOL MUST HAVE AN `error` LISTENER (audit 2026-11-16, D8). An IDLE
+    // client whose backend goes away — Postgres restarted, image updated,
+    // `pg_terminate_backend` — makes the pool emit `error`; with no listener
+    // Node raises it as an uncaught exception and the whole service dies,
+    // every session with it. `pg` has already discarded that client and opens
+    // a new one for the next query: there is nothing to retry, only to report.
+    // A query RUNNING on a lost connection still rejects, to its own caller.
+    pool.on('error', (cause) => {
+        console.error(`postgres: an idle connection was lost and discarded: ${String(cause)}`);
+    });
     return {
         async executer(sql, params) {
             const r = await pool.query(rendreMarqueurs(sql), params);
@@ -95,16 +105,26 @@ export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
             // until it times out. The client is therefore taken once and kept
             // for the whole duration of the body.
             const client = await pool.connect();
+            let connexionPerdue: Error | undefined;
             try {
                 await client.query('BEGIN');
                 const value = await corps(surClient(client));
                 await client.query('COMMIT');
                 return value;
             } catch (cause) {
-                await client.query('ROLLBACK');
+                // ⚠️ A FAILED `ROLLBACK` MUST NOT REPLACE THE CAUSE: the caller
+                // needs the error of its transaction, not of its cleanup. The
+                // connection is then in an unknown state, so it is DESTROYED
+                // (`release(error)`) rather than handed to the next caller.
+                try {
+                    await client.query('ROLLBACK');
+                } catch (echec) {
+                    connexionPerdue = echec instanceof Error ? echec : new Error(String(echec));
+                    console.error(`postgres: ROLLBACK failed, connection discarded: ${String(echec)}`);
+                }
                 throw cause;
             } finally {
-                client.release();
+                client.release(connexionPerdue);
             }
         },
         async fermer() {

@@ -22,10 +22,11 @@
 // acceptance criterion ⑦, and it must be TESTED rather than assumed.
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { ecrireFichierDurable } from './ecriture-durable';
 
 /// 🔴 EVERY 50 NAMES EXAMINED, THE ROUND YIELDS TO THE EVENT LOOP
 /// (correction round 2) — `setImmediate` rather than a `Promise.resolve()`
@@ -145,7 +146,10 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
         /// 🔴 THE WRITE IS ATOMIC: temporary file then `rename`. An
         /// interrupted `PUT` would otherwise leave a TRUNCATED file **under a name
         /// that promises its content**, and the next link would serve it without
-        /// ever reading it back.
+        /// ever reading it back. 🔴 AND DURABLE (audit 2026-11-16, D5): without
+        /// `fsync` a host freeze could leave that name with 0 bytes, which
+        /// `manquantes` counts as present — never asked for again. See
+        /// `ecriture-durable.ts`.
         write(empreinte: string, octets: Buffer): void {
             const cible = chemin(empreinte);
             const reel = createHash('sha256').update(octets).digest('hex');
@@ -154,16 +158,7 @@ export function ouvrirMagasin(repertoire: string, journaliser: (chemin: string) 
                     `announced fingerprint ${empreinte} but content hashes to ${reel}: refused`,
                 );
             }
-            // The random suffix keeps two concurrent `PUT`s of the same
-            // digest from writing the same temporary file.
-            const provisoire = `${cible}.${process.pid}.${Math.random().toString(36).slice(2)}.part`;
-            try {
-                writeFileSync(provisoire, octets);
-                renameSync(provisoire, cible);
-            } catch (error) {
-                rmSync(provisoire, { force: true });
-                throw error;
-            }
+            ecrireFichierDurable(cible, octets);
         },
 
         lire(empreinte: string): Buffer | undefined {

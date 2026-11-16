@@ -112,6 +112,16 @@ export async function balayerLesOuvertes(p: Pilote, maintenant: number): Promise
     return r.lignes;
 }
 
+/// Deletes the sessions CLOSED before `avant`; an open session is never touched,
+/// however old. Returns the number of rows deleted.
+export async function purgerSessionsFermees(p: Pilote, avant: number): Promise<number> {
+    const r = await p.executer(
+        'DELETE FROM session WHERE fermee_a IS NOT NULL AND fermee_a < ?',
+        [avant],
+    );
+    return r.lignes;
+}
+
 /// All the rows carrying this session name, from the oldest to the most
 /// recent. There can be several: the name is not an identity.
 export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSession[]> {

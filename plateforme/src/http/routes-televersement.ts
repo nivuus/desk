@@ -59,6 +59,7 @@ import {
     compterEnCours,
     create,
     lireParId,
+    octetsDetenus,
     sceller,
     type LigneTeleversement,
 } from '../depot/televersement';
@@ -75,6 +76,8 @@ export interface DependancesTeleversement {
     /// ⚠️ ONLY THIS ROUTER READS IT — same status as `magasin` for `servirIcone`.
     tranches: MagasinTranches;
     maintenant: () => number;
+    /// `PLATEFORME_TELEVERSEMENT_QUOTA_OCTETS`; absent = `QUOTA_TELEVERSEMENT_OCTETS_DEFAUT`.
+    quotaOctets?: number;
 }
 
 /// The slicing step. ⚠️ **NOT CALIBRATED**, and NO relation to
@@ -96,6 +99,13 @@ export const TELEVERSEMENT_MAX_OCTETS = 4 * 1024 * 1024 * 1024;
 /// a valid token, and what protects them is a bound on the DISK.
 /// ⚠️ **NOT CALIBRATED.**
 export const TELEVERSEMENTS_EN_COURS_MAX = 3;
+
+/// How many BYTES of uploads one user may hold on disk, sealed or not, until
+/// the cleanup releases them (audit 2026-11-16: the count above bounds only
+/// UNSEALED uploads, so sealing in a loop filled the host root filesystem).
+/// 🔴 A POLICY, AND ITS DEFAULT IS A CHOICE: four maximal installers. It is
+/// overridden by `PLATEFORME_TELEVERSEMENT_QUOTA_OCTETS`. ⚠️ **NOT CALIBRATED.**
+export const QUOTA_TELEVERSEMENT_OCTETS_DEFAUT = 4 * TELEVERSEMENT_MAX_OCTETS;
 
 /// ⚠️ Same number as the cap in `routes-auth.ts` by COINCIDENCE of
 /// magnitude, never by derivation: the two would be recalibrated separately.
@@ -285,6 +295,13 @@ async function declarer(req: IncomingMessage, ctx: Contexte, user: string): Prom
     if ((await compterEnCours(ctx.deps.base, user)) >= TELEVERSEMENTS_EN_COURS_MAX) {
         const refus = { refus: 'trop-de-televersements', maximum: TELEVERSEMENTS_EN_COURS_MAX };
         return repondre(ctx, 429, refus);
+    }
+
+    // The BYTE quota: what the declared file would add to what this user holds.
+    const quota = ctx.deps.quotaOctets ?? QUOTA_TELEVERSEMENT_OCTETS_DEFAUT;
+    const occupe = await octetsDetenus(ctx.deps.base, user);
+    if (occupe + size > quota) {
+        return repondre(ctx, 507, { refus: 'quota-octets', maximum: quota, occupe });
     }
 
     const entree = {
