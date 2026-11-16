@@ -17,9 +17,28 @@ import { start } from './demarrage';
 
 const config = lireConfig(process.env);
 const service = await start(config);
-console.log(`platform listening on ${config.hote}, port ${service.port}`);
 
-process.on('SIGINT', async () => {
-    await service.arreter();
-    process.exit(0);
-});
+// 🔴 SIGTERM AS WELL AS SIGINT (audit 2026-11-16, D11): `systemctl stop`,
+// `systemctl restart` and `docker stop` send SIGTERM, and without a handler the
+// process died on the default action — sockets cut, sessions left open — so the
+// clean path only ever ran under Ctrl-C. A second signal during the shutdown
+// does not start another one.
+let arret: Promise<void> | undefined;
+function arreterSur(signal: NodeJS.Signals): void {
+    if (arret !== undefined) return;
+    console.log(`${signal} received: closing the platform`);
+    arret = service.arreter().then(
+        () => process.exit(0),
+        (cause) => {
+            console.error(`shutdown failed: ${String(cause)}`);
+            process.exit(1);
+        },
+    );
+}
+process.on('SIGINT', arreterSur);
+process.on('SIGTERM', arreterSur);
+
+// ⚠️ ANNOUNCED ONLY ONCE THE HANDLERS ARE IN PLACE: a supervisor that reads this
+// line as "ready" and stops the service at once must reach the clean path, not
+// the default action of a signal nobody listens to yet.
+console.log(`platform listening on ${config.hote}, port ${service.port}`);
