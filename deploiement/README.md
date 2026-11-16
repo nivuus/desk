@@ -346,7 +346,10 @@ des deux, jamais les deux à la fois sur la même écoute.**
 
 🔴 **NE PAS ÉCRIRE UNE ADRESSE EN DUR ICI.** Pomerium tourne en
 `network_mode: host` : c'est le **noyau**, pas ce document, qui choisit
-l'adresse source d'une connexion sortante vers le port `8080`. Toute valeur
+l'adresse source d'une connexion sortante vers le port de la plateforme
+(`PLATEFORME_PORT` : **3445** quand le paquet installe le service —
+`hooks/commun.py::PORT_DEFAUT`, écrit par `hooks/install.py` —, `8080` par
+défaut du service sinon, `plateforme/src/config.ts`). Toute valeur
 recopiée d'une exécution précédente peut être fausse sur la suivante. La
 mesurer sur une connexion **réelle**, pas par déduction :
 
@@ -354,7 +357,8 @@ mesurer sur une connexion **réelle**, pas par déduction :
 # Provoquer une requête RÉELLE depuis Pomerium au préalable (par exemple
 # GET /auth/moi), puis, pendant qu'une connexion est établie ou vient de
 # l'être :
-ss -tn state established '( dport = :8080 or sport = :8080 )'
+# Remplacer 3445 par la valeur de PLATEFORME_PORT (8080 hors paquet) :
+ss -tn state established '( dport = :3445 or sport = :3445 )'
 ```
 
 Poser `PLATEFORME_PROXY_DE_CONFIANCE` à l'adresse ainsi lue, jamais à un nom

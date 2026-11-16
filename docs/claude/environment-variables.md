@@ -4,8 +4,13 @@
 
 ## 🎛️ Variables d'environnement
 
-**C'est le seul inventaire de ces variables dans tout le dépôt** — il agrège
-celles du produit et celles des bancs, tous chantiers confondus.
+**C'est l'inventaire de ces variables** — il agrège celles du produit et celles
+des bancs, tous chantiers confondus. Les variables de configuration de base de
+l'agent (adresse de signalisation, identifiant de session…), les variables des
+sondes de diagnostic et deux variables Windows système sont listées dans la
+section finale « Agent: start-up, probe and system variables », relevée dans le
+code (`agent/src/configuration.rs`, `diagnostics*.rs`, `demarrage/source.rs`,
+`pont/projfs/racine.rs`, `appartenance.rs`).
 
 🔴 **DEUX CONVENTIONS COEXISTENT, ET LES CONFONDRE INVERSE LE COMPORTEMENT :**
 
@@ -119,3 +124,49 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 
 
 ---
+
+### Agent: start-up, probe and system variables
+
+Read from the source in `agent/src/` (an `std::env::var` search), not copied from older notes. Defaults are the ones in the code. Entries here were missing from the tables above.
+
+#### Connection and start-up (`agent/src/configuration.rs`, `demarrage/source.rs`)
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `SIGNALING_URL` | `ws://127.0.0.1:8080` | WebSocket URL of the signalling server the agent connects to (`configuration.rs:125`). |
+| `SESSION_ID` | `demo` | Session identifier used for signalling (`configuration.rs:127`). |
+| `LOCAL_IP` | `127.0.0.1` | Address through which the browser reaches the agent (`transport.rs:381`); a value that does not parse as an IP address is a start-up error (`configuration.rs:128`). |
+| `TEST_FILE` | absent | Path of an H.264 file used as the video source instead of capturing a window; when set, audio capture is not started (`configuration.rs:132`, `demarrage.rs:82`, `demarrage/audio.rs:34`). |
+| `FENETRE_HWND` | absent | Window handle imposed by the supervisor on a child agent. Absent: single-window mode, the window is searched by title. Present but malformed: start-up failure (`configuration.rs:141`). Set by the supervisor, not by hand. |
+| `SORTIE_DXGI` | absent | DXGI output name (`\\.\DISPLAYn`) a child serves in multi-window mode. Present but empty: start-up failure (`configuration.rs:149`). Set by the supervisor. |
+| `TAILLE_FENETRE` | absent | Window size `WxH` set by the supervisor for a child; present but malformed: start-up failure (`configuration.rs:163`). |
+| `WINDOW_TITLE` | `firefox` | Title searched for when no `FENETRE_HWND` is given (`demarrage/source.rs:52`). |
+| `BITRATE` | `12000000` | Encoder bitrate in bit/s for a single-window or hand-launched agent; unparsable values fall back to the default (`demarrage/source.rs:57`). The session-wide budget of the multi-window sensor is `BUDGET_BPS`, documented above. |
+| `ENCODER_FPS` | `90` | `MF_MT_FRAME_RATE` announced to the Media Foundation transforms; deliberately above the target frame rate (see the comment at `demarrage/source.rs:73`). |
+| `APPARTENANCE` | armed | `=0` disarms window ownership: desk adopts again windows it did not launch. Bench arm only, never a shipped configuration; same `=0 disarms` convention as above (`appartenance.rs:81`). |
+
+#### Diagnostic probes (`agent/src/diagnostics*.rs`)
+
+Each probe runs instead of the agent and exits. They are bench instruments, never a shipped configuration.
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `CAPTURE_TEST=<title fragment>` | absent | Window finding and capture check on the window whose title contains the fragment (`diagnostics.rs:46`). |
+| `ENCODE_TEST=1` | absent | During `CAPTURE_TEST`, also run the capture+encode loop. `ENCODE_TEST_TARGET` (frames, default 120) and `ENCODE_TEST_SECS` (deadline, default 5) tune it (`diagnostics/capture.rs:188-226`). |
+| `ENCODER_THROUGHPUT_TEST=1` | absent | During `CAPTURE_TEST`, measure encoder throughput. `ENCODER_THROUGHPUT_TARGET` (default 600 frames), `ENCODER_THROUGHPUT_DEADLINE_SECS` (default 30) and `ENCODER_THROUGHPUT_SUBMIT_HZ` (default 0 = unpaced) tune it (`diagnostics/capture.rs:327-382`). |
+| `AUDIO_PROBE=1` | absent | Opens the loopback capture and reports device, format and dominant frequency; `AUDIO_PROBE_SECS` (default 10) sets the duration (`diagnostics/audio.rs:17`). |
+| `PROCESS_LOOPBACK_PROBE=<pid>` | absent | Checks that process loopback can be activated for that process (`diagnostics.rs:87`). |
+| `PROCESS_LOOPBACK_CAPTURE=<pid>` | absent | Goes further: initialises, starts and reads a process loopback capture; `PROCESS_LOOPBACK_SECS` (default 15) sets the duration. Tested before `PROCESS_LOOPBACK_PROBE` because the names share a prefix (`diagnostics.rs:75`, `diagnostics/audio.rs:96`). |
+| `VIGEM_PROBE=1` | absent | Plugs a virtual Xbox 360 gamepad through ViGEmBus and reports the vibration callbacks; `VIGEM_PROBE_SECS` (default 20) sets the duration (`diagnostics.rs:98`, `diagnostics/entree.rs:50`). |
+| `INPUT_LINEARITY_PROBE=1` | absent | Injects known relative pointer movements and compares them with the real cursor displacement. `INPUT_LINEARITY_PAS` (default 10) and `INPUT_LINEARITY_REPETITIONS` (default 100) tune it (`diagnostics.rs:116`, `diagnostics/entree.rs:68-72`). |
+| `INPUT_LINEARITY_NEUTRALISER=0` | applied | Skips the pointer-acceleration neutralisation, both at agent start-up (`main.rs:200`) and inside the probe (`diagnostics/entree.rs:77`); any other value, or absence, keeps it. |
+| `MULTIFENETRE_POINTEUR=1` | absent | Checks that the virtual desktop extends to a virtual output and the pointer reaches it (`diagnostics/multifenetre.rs:176`). Runs after `MULTIFENETRE_VDD_PURGE`. |
+| `AGENT_TRACE_EXCEPTIONS_FICHIER=<path>` | `C:\dev\exceptions.log` | Destination of the exception log enabled by `AGENT_TRACE_EXCEPTIONS` (`diagnostics/exceptions.rs:82`). |
+| `AGENT_TRACE_EXCEPTIONS_AUTOTEST=1` | absent | With `AGENT_TRACE_EXCEPTIONS`, triggers a deliberate fault to check the filter (`diagnostics/exceptions.rs:109`). |
+
+#### System variables the agent reads
+
+| Variable | Used for |
+| --- | --- |
+| `USERPROFILE` | Root of the file bridge: `%USERPROFILE%\Mes Fichiers`; missing: error (`pont/projfs/racine.rs:41`). |
+| `LOCALAPPDATA` | State folder of the file bridge: `%LOCALAPPDATA%\Guacamole\pont`; missing: error (`pont/projfs/racine.rs:54`). |

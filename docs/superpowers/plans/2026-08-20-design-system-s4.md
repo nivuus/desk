@@ -10,7 +10,7 @@ tailles).
 `-s2.md` / `-s2-resultats.md`, `-s3.md` / `-s3-resultats.md`, plus leurs trois
 sections de `CLAUDE.md` (§🎨 S1, §🎨 S2, §🎨 S3). **Ils font autorité sur l'état
 réel**, et ce plan les prend comme relevé plutôt que comme intention.
-**Statut** : plan, à exécuter.
+**Statut** : plan, **exécuté** — les résultats sont consignés dans `2026-08-20-design-system-s4-resultats.md` (le texte qui suit est le plan tel qu'il a été écrit, avant exécution).
 **Portée** : la fenêtre de session (`client/index.html`, `client/src/style.css`
 et les modules qui l'écrivent), et les trois legs de ⑥ que seul S4 a le droit de
 solder.

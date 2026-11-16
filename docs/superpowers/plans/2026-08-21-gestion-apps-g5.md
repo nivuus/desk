@@ -10,9 +10,9 @@ transcrit verbatim au §3.3 de ce plan
 **Amont mesuré** : G1 (le catalogue), G2 (les icônes 256), G3 (le téléversement
 et l'installation), G4 (la surveillance), **A1** (la couleur d'accent, sous-projet
 ① « Divers »), **S1→S4** (le socle de design de ⑥, clos)
-**Statut** : plan, aucune ligne de code écrite
+**Statut** : plan, **exécuté** — les résultats sont consignés dans `2026-08-21-gestion-apps-g5-resultats.md`. (À l'écriture du plan, aucune ligne de code n'était écrite ; le texte qui suit est le plan tel qu'il a été écrit.)
 
-> 🔴 **CE PLAN EST UN DOCUMENT, ET SON AUTEUR N'A MODIFIÉ AUCUN FICHIER DE CODE.**
+> 🔴 **À L'ÉCRITURE, CE PLAN ÉTAIT UN DOCUMENT, ET SON AUTEUR N'AVAIT MODIFIÉ AUCUN FICHIER DE CODE.**
 > Tout ce qui suit est soit une **mesure** prise le 21 août 2026 sur l'arbre à
 > `HEAD = afd8196`, soit une **décision** tranchée ici pour n'être pas découverte
 > à l'exécution. Chaque nombre porte l'indication de qui l'a produit. Les
