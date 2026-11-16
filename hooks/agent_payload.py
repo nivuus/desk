@@ -1,99 +1,205 @@
 #!/usr/bin/env python3
-"""Where `console` looks for `agent.exe`, never guessed: cross build
-and drop of the binary, task 7 (2026-08-29).
+"""Building `agent.exe` and publishing it where its consumers read it.
 
-Extracted from `hooks/activate.py` by task 13 (2026-08-29), for the SAME
-reason as `hooks/administration.py` and `hooks/env_file.py` (see their
-own head docstrings): `activate.py` had reached 509 lines after
-adding the assignment of the VM to the administrator account (task 13,
-a gap found in production), and this repository forbids compressing code to avoid
-an extraction ("this repository paid for it twelve times"). This module therefore
-carries, VERBATIM, what task 7 had written: the same body, the same docstring,
-only moved in a DEDICATED commit, BEFORE the one that adds the assignment.
+`desk` is the single owner of the Windows agent: it holds the source,
+cross-compiles it, and publishes the result in ITS OWN deployed tree:
+
+    /opt/nivuus/desk/agent/agent.exe
+    /opt/nivuus/desk/agent/agent.manifest.json
+
+`/opt/nivuus/<package>/` is where the suite already lets one package reach
+another's deployed files (`home-stock` and `home-desk` write into
+`/opt/nivuus/home-manager/config`). It is NOT `/opt/nivuus-packages/console/`
+any more: this hook used to drop the binary inside the `console` package's
+tree, which `nivuus update console` replaces wholesale - the agent then went
+back to whatever `console` shipped, and nothing replayed this activation. It
+is not `/var/lib/nivuus-desk` either: the network-facing service can write
+there, and what is published here ends up executed in the Windows guest.
+`install` only ever replaces `plateforme/` and `client/dist` under
+`/opt/nivuus/desk`, so the publication survives a reinstall.
+
+The `console` package consumes the publication when it stages a guest
+payload (`console/desk_agent.py` in nivuus/installer), and refuses a binary
+that is not the one the manifest describes. The directory, the two file
+names and the manifest format are therefore a CONTRACT between two
+repositories: `tests/fixtures/agent-publication-contract.json` is the same
+file in both, and `tests/test_desk_agent_contract.py` fails when this module
+stops agreeing with it.
+
+What a reader can observe, at any instant, is one of:
+
+  * no manifest          - nothing is published (never, or mid-publication);
+  * a manifest           - and beside it the complete binary it describes.
+
+Never a manifest for a half-written or a different binary: the build lands
+in a scratch directory inside the publication directory (same filesystem),
+the previous manifest is removed, the binary is renamed into place, and the
+new manifest is written last, through a temporary file and a rename.
 
 Like `hooks/vm.py`, `hooks/administration.py` and `hooks/env_file.py`, this
-module IS NOT a hook runnable on its own (no `--phase`/stdin JSON):
-`hooks/activate.py` imports it (`from agent_payload import chemin_agent_console,
-construire_agent_reel, deposer_agent_console`) — Python automatically adds
-the directory of the LAUNCHED script (`hooks/`) to `sys.path`, so this import
-resolves without any extra manipulation, neither here nor in the caller. `tests/
-test_desk_payload.py` still reaches them through `activate.chemin_agent_console`
-etc.: a name imported BY NAME into `activate.py` becomes an attribute of the
-`activate` module just like a locally defined name — no test change
-was needed for this extraction.
-
-🔴 Not `<drivers_dir>/agent/agent.exe` (derived from `guest_workdir`, an answer OF
-`console` that this hook never receives — `activate_cli.py:107-108` only indexes
-the answers of the calling package; `/etc/nivuus/packages.json` is
-absent on this machine anyway). The REAL, fixed path that `console` reads
-itself: `console/guest/fetch_payload.py:61` —
-`PACKAGED_AGENT_EXE = Path(__file__).resolve().parent/"payload"/"agent"
-/"agent.exe"`, a VENDORED file (see `console/guest/payload/agent/
-README.md`) that `install_packaged_agent()` copies to `<drivers_dir>/
-agent/agent.exe` on every `fetch_payload.py`. This hook refreshes THAT
-source, found under `<NIVUUS_PACKAGES_DIR>/console/` (same convention
-as `hooks/vm.py::chemin_winrm_exec`, whose constant is imported here).
-⚠️ CAVEAT: `console` activates BEFORE `desk` (dependency) — the VERY
-FIRST provisioning consumes the image already committed; this drop only
-guarantees FUTURE rebuilds. See the report of task 7,
-§ Caveats.
+module is not a hook runnable on its own: `hooks/activate.py` imports it.
 """
+import contextlib
+import hashlib
+import json
 import os
 import pathlib
+import re
+import shutil
 import subprocess
+import tempfile
+from dataclasses import dataclass
 
-from vm import NIVUUS_PACKAGES_DIR_DEFAUT
+from atomic_file import fsync_directory, replace_file
 
-RACINE = pathlib.Path(__file__).resolve().parents[1]
+PACKAGE_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
-AGENT_EXE_CONSOLE_RELATIF = pathlib.Path("console") / "guest" / "payload" / "agent" / "agent.exe"
-FETCH_PAYLOAD_RELATIF = pathlib.Path("console") / "guest" / "fetch_payload.py"
+# The contract with nivuus/installer's console package. Change nothing here
+# without changing the shared fixture and `console/desk_agent.py` together.
+AGENT_PUBLICATION_DIR = "/opt/nivuus/desk/agent"
+AGENT_BINARY_NAME = "agent.exe"
+AGENT_MANIFEST_NAME = "agent.manifest.json"
+AGENT_MANIFEST_SCHEMA = 1
 
-
-def chemin_agent_console() -> pathlib.Path:
-    """Targets `<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe`
-    (reread by `fetch_payload.py:61`); raises `FileNotFoundError`, naming the
-    path, if `console/guest/fetch_payload.py` is absent — a silent
-    failure would be indistinguishable from a no-op (doctrine of
-    `hooks/vm.py::chemin_winrm_exec`)."""
-    packages_dir = os.environ.get("NIVUUS_PACKAGES_DIR", NIVUUS_PACKAGES_DIR_DEFAUT)
-    fetch_payload = pathlib.Path(packages_dir) / FETCH_PAYLOAD_RELATIF
-    if not fetch_payload.is_file():
-        raise FileNotFoundError(
-            f"fetch_payload.py not found at the expected location: {fetch_payload} "
-            "(is the console package installed? NIVUUS_PACKAGES_DIR="
-            f"{packages_dir!r} - see hooks/activate.py for the convention)"
-        )
-    return pathlib.Path(packages_dir) / AGENT_EXE_CONSOLE_RELATIF
+# Root-owned, never readable by "other": the consumer runs as root.
+_MANIFEST_MODE = 0o640
+_SCRATCH_PREFIX = ".build-"
 
 
-def construire_agent_reel(destination: pathlib.Path) -> None:
-    """Invokes `scripts/build-agent-croise.sh <destination.parent>` (a
-    DIRECTORY, never a file name); raises `RuntimeError` (the script's
-    output) on a non-zero code. Path overridable through
-    `DESK_BUILD_AGENT_SCRIPT` (never in production) so that tests never
-    compile the real agent (~40 s) — see `tests/test_desk_payload.py`.
+@dataclass(frozen=True)
+class PublishedAgent:
+    binary: pathlib.Path
+    manifest: pathlib.Path
+    sha256: str
+    size: int
+    desk_version: str
+
+
+def publication_dir(root: pathlib.Path) -> pathlib.Path:
+    """`AGENT_PUBLICATION_DIR` under `root` (`/` in production)."""
+    return pathlib.Path(root) / AGENT_PUBLICATION_DIR.lstrip("/")
+
+
+def package_version() -> str:
+    """The `version:` of this package's manifest - the build's identity.
+
+    Read with a pattern, not a YAML parser: the hooks use the standard
+    library only, and the release pipeline writes this line as a plain
+    top-level scalar.
     """
-    defaut = RACINE / "scripts" / "build-agent-croise.sh"
-    script = pathlib.Path(os.environ.get("DESK_BUILD_AGENT_SCRIPT") or defaut)
-    proc = subprocess.run([str(script), str(destination.parent)],
+    manifest = PACKAGE_ROOT / "nivuus-package.yaml"
+    match = re.search(r"^version:[ \t]*['\"]?([^'\"\s#]+)",
+                      manifest.read_text(encoding="utf-8"), re.MULTILINE)
+    if not match:
+        raise RuntimeError(f"{manifest} carries no top-level 'version:' line")
+    return match.group(1)
+
+
+def manifest_text(sha256: str, size: int, desk_version: str) -> str:
+    """The manifest, exactly as published: sorted keys, two-space indent,
+    one trailing newline. Deterministic, so an unchanged binary republished
+    by the same version yields the same bytes."""
+    return json.dumps({"schema": AGENT_MANIFEST_SCHEMA,
+                       "file": AGENT_BINARY_NAME,
+                       "sha256": sha256,
+                       "size": size,
+                       "desk_version": desk_version},
+                      indent=2, sort_keys=True) + "\n"
+
+
+def _sha256(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _fsync_file(path: pathlib.Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def build_agent(directory: pathlib.Path) -> None:
+    """Runs `scripts/build-agent-croise.sh <directory>`, which drops
+    `agent.exe` there; raises `RuntimeError` (the script's output) on a
+    non-zero code. The script is overridable through
+    `DESK_BUILD_AGENT_SCRIPT` (never in production) so that tests never
+    compile the real agent (~40 s) - see `tests/test_desk_payload.py`.
+    """
+    default = PACKAGE_ROOT / "scripts" / "build-agent-croise.sh"
+    script = pathlib.Path(os.environ.get("DESK_BUILD_AGENT_SCRIPT") or default)
+    proc = subprocess.run([str(script), str(directory)],
                           capture_output=True, text=True)
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "").strip()
-        raise RuntimeError(f"{script} failed (code {proc.returncode}): {detail or 'no output'}")
+        raise RuntimeError(f"{script} failed (code {proc.returncode}): "
+                           f"{detail or 'no output'}")
 
 
-def deposer_agent_console(construire=None) -> pathlib.Path:
-    """Builds `agent.exe` and drops it where `console` looks for it.
-    `construire`: fake in tests, `construire_agent_reel` by default.
-    🔴 Checks AFTERWARDS that the file exists (raises otherwise): a mute
-    `construire` would be a silent success ("a check never
-    seen red is not a check", paid for on `AUDIO_FAUTE_LECTURE`).
+def publish_agent(root: pathlib.Path, build=None,
+                  desk_version: str | None = None) -> PublishedAgent:
+    """Builds `agent.exe` and publishes it with its manifest under `root`.
+
+    `build`: a fake in tests, `build_agent` by default; it receives the
+    directory to drop `agent.exe` into. Raises `RuntimeError` when the build
+    returns without having dropped it - a silent no-op must not read as a
+    publication.
+
+    When what was just built is byte-identical to what is already published
+    under the same version, nothing is rewritten: the publication a consumer
+    may be reading stays untouched.
     """
-    cible = chemin_agent_console()
-    construire = construire or construire_agent_reel
-    cible.parent.mkdir(parents=True, exist_ok=True)
-    construire(cible)
-    if not cible.is_file():
-        raise RuntimeError(f"construire() returned but {cible} is absent: no agent.exe was dropped")
-    return cible
+    build = build or build_agent
+    version = desk_version if desk_version is not None else package_version()
+    directory = publication_dir(root)
+    directory.mkdir(parents=True, exist_ok=True)
+    # A scratch directory left by a run that was killed: only this hook
+    # writes here, and two activations of one package never run together.
+    for leftover in directory.glob(f"{_SCRATCH_PREFIX}*"):
+        shutil.rmtree(leftover)
+
+    binary = directory / AGENT_BINARY_NAME
+    manifest = directory / AGENT_MANIFEST_NAME
+    scratch = pathlib.Path(tempfile.mkdtemp(dir=directory, prefix=_SCRATCH_PREFIX))
+    try:
+        build(scratch)
+        built = scratch / AGENT_BINARY_NAME
+        if not built.is_file():
+            raise RuntimeError(f"the build returned but dropped no "
+                               f"{AGENT_BINARY_NAME} in {scratch}: nothing "
+                               "is published")
+        size = built.stat().st_size
+        if size == 0:
+            raise RuntimeError(f"the build dropped an empty {AGENT_BINARY_NAME}: "
+                               "nothing is published")
+        sha256 = _sha256(built)
+        text = manifest_text(sha256, size, version)
+        published = PublishedAgent(binary, manifest, sha256, size, version)
+        if _already_published(binary, manifest, text, sha256):
+            return published
+        # From here until the last line, no manifest exists: a reader sees
+        # "nothing published", never a manifest beside another binary.
+        with contextlib.suppress(FileNotFoundError):
+            manifest.unlink()
+        fsync_directory(directory)
+        _fsync_file(built)
+        os.replace(built, binary)
+        fsync_directory(directory)
+        replace_file(manifest, text, _MANIFEST_MODE)
+        return published
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def _already_published(binary: pathlib.Path, manifest: pathlib.Path,
+                       text: str, sha256: str) -> bool:
+    try:
+        if manifest.read_text(encoding="utf-8") != text:
+            return False
+        return _sha256(binary) == sha256
+    except (OSError, UnicodeDecodeError):
+        return False

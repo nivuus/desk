@@ -114,7 +114,7 @@ import pathlib
 import sys
 
 from administration import assign_vm_to_user, create_admin_account, enroler_agent_plateforme
-from agent_payload import chemin_agent_console, construire_agent_reel, deposer_agent_console  # noqa: F401
+from agent_payload import publish_agent
 from commun import read_vm_address
 from env_file import ACTIVATE_KEYS, add_env_variables, read_env_file
 from service_start import bring_up
@@ -226,6 +226,25 @@ def main() -> int:
             print(f"desk activate: {service_state}", file=sys.stderr)
             return 1
 
+    # Publishing agent.exe (see hooks/agent_payload.py). BEFORE everything
+    # that needs the Windows VM, and never behind the idempotence guard:
+    # `console` stages a guest payload from this publication, and the VM the
+    # steps below talk to does not exist until `console` has built it. The
+    # engine orders nothing between the activations of two packages, so the
+    # one thing this hook can guarantee is that the agent is published even
+    # when the rest of this activation then stops on an absent VM.
+    emettre({"event": "progress", "pct": 20,
+              "msg": "Building agent.exe and publishing it (cross build)"})
+    try:
+        agent = publish_agent(root)
+    except (RuntimeError, OSError) as exc:
+        print(f"desk activate: publishing agent.exe refused: {exc}",
+              file=sys.stderr)
+        return 1
+    emettre({"event": "progress", "pct": 22,
+              "msg": f"agent.exe published in {agent.binary.parent} "
+                     f"(sha256 {agent.sha256})"})
+
     # 🔴 TASK 6 — WHAT `desk` SETS UP IN THE VM, THROUGH THE WINRM PATH OF
     # `console`. Placed HERE, BEFORE the rest (account, enrolment), and never
     # behind the idempotence guard below (`AGENT_VM`/`AGENT_SECRET`):
@@ -284,17 +303,6 @@ def main() -> int:
         poser_vb_audio(armee=bool(answers.get("vb_audio", False)))
     except (FileNotFoundError, RuntimeError, NotImplementedError) as exc:
         print(f"desk activate: VB-Audio setup in the VM refused: {exc}",
-              file=sys.stderr)
-        return 1
-
-    # Task 7 — dropping agent.exe (see chemin_agent_console() above);
-    # independent of plateforme/, never behind the idempotence guard.
-    emettre({"event": "progress", "pct": 30,
-              "msg": "Dropping agent.exe for console (cross build)"})
-    try:
-        deposer_agent_console()
-    except (FileNotFoundError, RuntimeError, OSError) as exc:
-        print(f"desk activate: dropping agent.exe for console refused: {exc}",
               file=sys.stderr)
         return 1
 

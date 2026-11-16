@@ -71,10 +71,10 @@ def replace_file(path: pathlib.Path, content: str, mode: int,
         with contextlib.suppress(FileNotFoundError):
             os.unlink(temporary)
         raise
-    _fsync_directory(directory)
+    fsync_directory(directory)
 
 
-def _fsync_directory(directory: pathlib.Path) -> None:
+def fsync_directory(directory: pathlib.Path) -> None:
     """Makes the rename itself durable: the directory entry is data too."""
     descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
     try:

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Produces agent.exe WITHOUT the VM, and drops it at the given destination.
 #
-# 🔴 WHY THIS SCRIPT EXISTS. `console/guest/payload.py` declares the agent
-# "extracted before the wipe" and `fetch_payload.py` writes "Not fetched, and
-# never fetchable": the appliance is rebuilt today around a
-# binary nobody knows how to rebuild. This one rebuilds it.
+# 🔴 WHY THIS SCRIPT EXISTS. The appliance used to be rebuilt around a binary
+# nobody knew how to rebuild ("extracted before the wipe"). This script
+# rebuilds it, and `hooks/agent_payload.py` publishes the result under
+# /opt/nivuus/desk/agent, where the `console` package reads it.
 #
 # ⚠️ WHAT IT DOES NOT ESTABLISH: that the binary WORKS. It links; it is a
 # mingw product where the old one was built on the VM with MSVC, and it has never

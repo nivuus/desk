@@ -112,16 +112,6 @@ def poser_faux_winrm_exec(packages_dir: pathlib.Path, log: pathlib.Path) -> None
     script.chmod(0o755)
 
 
-# --- The fake fetch_payload.py (task 7): a mere presence MARKER.
-# `activate.py::chemin_agent_console()` only tests its existence
-# (`is_file()`) — never runs it — so an empty content is enough to prove
-# that "console is installed" without running anything of the real file.
-def poser_faux_fetch_payload(packages_dir: pathlib.Path) -> None:
-    guest_dir = packages_dir / "console" / "guest"
-    guest_dir.mkdir(parents=True, exist_ok=True)
-    (guest_dir / "fetch_payload.py").write_text("", encoding="utf-8")
-
-
 # --- The fake scripts/build-agent-croise.sh (task 7): never the real one (it
 # would build the real agent, ~40 s, cross toolchain). Exact contract of the
 # real script (read in full): called `<script> <destination_dir>`, it
@@ -196,19 +186,18 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=No
     bin_dir at its head, so that the npm/systemctl resolved are the fakes.
 
     `packages_dir` (task 6): where to point `NIVUUS_PACKAGES_DIR` for the
-    resolution of `winrm_exec.py` AND, since task 7, of
-    `fetch_payload.py`. By default (`None`), a WORKING fake
-    `console/guest/winrm_exec.py` and a fake
-    `console/guest/fetch_payload.py` (a mere marker) are built under
-    `root` itself — otherwise every scenario that has nothing to do with
-    ProjFS/VB-Audio/the agent.exe drop would fail on "console absent"
-    before reaching the reason it really wants to exercise.
+    resolution of `winrm_exec.py`. By default (`None`), a WORKING fake
+    `console/guest/winrm_exec.py` is built under `root` itself — otherwise
+    every scenario that has nothing to do with ProjFS/VB-Audio would fail on
+    "console absent" before reaching the reason it really wants to exercise.
+    (The agent publication no longer looks at `console` at all: it lands
+    under `root`, in desk's own tree.)
     `packages_dir=False` simulates `console` ABSENT (no file is created,
     for the dedicated scenarios).
 
     🔴 TASK 7 — `DESK_BUILD_AGENT_SCRIPT` is ALWAYS set (whatever
     `packages_dir` is) to a FAKE script that builds nothing: without it,
-    `deposer_agent_console()`, called unconditionally by `main()`,
+    `publish_agent()`, called unconditionally by `main()`,
     would invoke the REAL `scripts/build-agent-croise.sh` in EVERY scenario
     of this file — the real build the task forbids in the
     tests.
@@ -224,7 +213,6 @@ def appeler(root, bin_dir, hw=None, answers=None, root_arg=None, packages_dir=No
     if packages_dir is None:
         packages_dir = root / "fake-packages-dir"
         poser_faux_winrm_exec(packages_dir, root / "winrm.log")
-        poser_faux_fetch_payload(packages_dir)
     elif packages_dir is False:
         packages_dir = root / "console-absent-here"
     env["NIVUUS_PACKAGES_DIR"] = str(packages_dir)
