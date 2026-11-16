@@ -18,3 +18,15 @@ updates:
       interval: weekly
     commit-message:
       prefix: "ci"
+  - package-ecosystem: npm
+    directory: "/client"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+  - package-ecosystem: npm
+    directory: "/plateforme"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
