@@ -7,13 +7,13 @@
 // `en_cours` FOREVER: nothing on either side ever asked the agent again, and the
 // agent only reports a verdict it holds on disk when it receives the order again.
 //
-// ⚠️ THE ROW IS MOVED TO `en_cours` BY SQL, NOT THROUGH `avancer`: this file tests
-// the re-emission, not the progress write, and must not depend on its signature.
+// ⚠️ THE ROW STATES ARE SET BY SQL, NOT THROUGH `avancer`/`terminer`: this file
+// tests the re-emission, not those writes, and must not depend on their signatures.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
-import { create as createInstallation, terminer } from '../depot/installation';
+import { create as createInstallation } from '../depot/installation';
 import { create as createUpload, sceller } from '../depot/televersement';
 import { reemettreLesInstallations } from './canal-apps';
 
@@ -61,12 +61,7 @@ describe(`re-emission of installation orders, engine=${MOTEUR}`, () => {
         base = await baseNeuve('reemission-terminee');
         const { vm, tel } = await socle(base);
         const finie = await createInstallation(base, { vmId: vm, televersementId: tel }, MS);
-        await terminer(
-            base,
-            finie.id,
-            { issue: 'reussie', motif: null, codeSortie: 0, journal: '', journalTronque: false },
-            MS + 5,
-        );
+        await base.executer('UPDATE installation SET etat = ? WHERE id = ?', ['terminee', finie.id]);
         // Witness: the same VM DOES receive an order that is not finished, so an
         // empty list below cannot come from a re-emission that sends nothing.
         const temoin = await createInstallation(base, { vmId: vm, televersementId: tel }, MS + 6);
