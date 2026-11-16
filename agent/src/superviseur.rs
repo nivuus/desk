@@ -6,6 +6,7 @@
 //! browser side) and `table` (where each one stands), both pure logic and
 //! tested on the host.
 
+pub mod declaration_refusal;
 pub mod designation;
 pub mod enfants;
 pub mod fenetres;

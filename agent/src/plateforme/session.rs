@@ -67,7 +67,16 @@ pub(super) async fn une_session(
             // queue would grow up to its bound then silently reject:
             // the agent would believe it emits its catalogue, the platform would stay
             // empty, and NOTHING would say so.
-            Some(message) = a_emettre.recv() => {
+            //
+            // 🔴 DRAINED ONLY ONCE THIS SESSION IS ENROLLED. What was queued
+            // during an outage used to leave right behind `enroler`, while
+            // the platform was still verifying the secret: it refuses
+            // anything else from a socket it has not enrolled (`sequence`),
+            // so the message was lost AND that refusal made this loop drop
+            // the socket that had just been enrolled. The queue is bounded
+            // and `Emetteur::emettre` never blocks: waiting here costs
+            // nothing but the order.
+            Some(message) = a_emettre.recv(), if prefixe.is_some() => {
                 let Ok(texte) = serde_json::to_string(&message) else {
                     tracing::error!("cannot serialize an upstream message");
                     continue;
@@ -287,3 +296,7 @@ async fn connecter(
         .with_context(|| format!("connecting to channel {url}"))?;
     Ok(flux)
 }
+
+#[cfg(test)]
+#[path = "tests_enrolment_order.rs"]
+mod tests_enrolment_order;

@@ -161,6 +161,10 @@ impl Emetteur {
     /// (`complet = true`) at each re-enrolment, so any divergence born
     /// from a lost message has an END. Removing this complete resend would make this
     /// loss silent and permanent.
+    ///
+    /// ⚠️ WHAT THE QUEUE STILL HOLDS AT THE NEXT ENROLMENT IS SENT, AFTER IT:
+    /// `session.rs` drains the queue only once the platform has answered
+    /// `enrole`. "Lost" above is what overflowed the bound, never an order.
     pub fn emettre(&self, message: VersLaPlateforme) {
         if let Err(error) = self.file.try_send(message) {
             tracing::warn!(%error, "upstream message dropped: channel cut or queue full");

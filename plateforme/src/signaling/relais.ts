@@ -41,6 +41,7 @@ import { messagePairPresent, prevenirLArrivant, prevenirLePairEnPlace } from './
 import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
 import { adresseSource } from '../http/adresse-source';
+import { watchLiveness } from '../http/liveness';
 import { ligne } from '../obs/journal';
 import { BUDGET_REQUETES, cleRequetes, type Budget, type Frein } from '../securite/frein';
 
@@ -209,6 +210,8 @@ export function createSignalingServer(
     const port = typeof portOuWss === 'number' ? portOuWss : 0;
     const wss = typeof portOuWss === 'number' ? new WebSocketServer({ port }) : portOuWss;
     const sessions = new Appariement<WebSocket>();
+    // A peer that died without closing must lose its role: see `http/liveness.ts`.
+    watchLiveness(wss, '/signal');
 
     function send(socket: WebSocket | undefined, payload: unknown): void {
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -368,6 +371,11 @@ export function createSignalingServer(
                     // removed (rule §10.2). A client from yesterday does not read `motif`
                     // and keeps reading `reason`.
                     send(socket, { type: 'error', reason: refus, motif: 'role-occupe' });
+                    // 🔴 CLOSED, like every other handshake refusal. Left open,
+                    // this socket held NO role and nothing ever told its owner:
+                    // an agent reconnecting before its dead socket was reaped
+                    // stayed deaf for good. A close is what a peer retries on.
+                    socket.close(1008, 'role-occupe');
                     return;
                 }
 
