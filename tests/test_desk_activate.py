@@ -401,7 +401,6 @@ with tempfile.TemporaryDirectory() as tmp:
     packages_dir = root / "fake-packages-dir"
     guest = packages_dir / "console" / "guest"
     guest.mkdir(parents=True)
-    (guest / "fetch_payload.py").write_text("", encoding="utf-8")
     (guest / "winrm_exec.py").write_text(
         "#!/usr/bin/env python3\n"
         "import sys\n"

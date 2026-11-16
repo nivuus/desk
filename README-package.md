@@ -10,7 +10,7 @@ suffirait pour personne.
 |---|---|
 | `resolve` | Lecture seule, et **avant `partition()`** — le disque cible n'existe pas encore. Dérive l'adresse d'écoute, le port, les deux adresses TURN et le proxy de confiance ; valide `node` contre `engines.node` ; **refuse**, avec une raison, ce qui ne peut pas être dérivé. Émet un événement `refuse` et sort en code 0 — jamais une exception non rattrapée (voir `hooks/resolve.py`). ⚠️ Il ne dérive **aucune origine CORS** : `PLATEFORME_ORIGINE_CLIENT` n'est écrite par aucun hook, son absence étant le cas nominal derrière un proxy. Cette ligne l'affirmait ; c'était faux, relevé par la revue finale de branche. |
 | `install` | **Un pré-vol d'abord** : ce qui manque à la source (`client/dist`, `plateforme/node_modules/.bin/tsx`, `proto/ts/`, un runtime Node à déposer) est dit **avant qu'un secret soit tiré**. Pose ensuite la plateforme, le client bâti et `proto/ts/` sous `/opt/nivuus/desk/`, **le runtime Node sous `/opt/nivuus/node/`**, pris sur le `node` de la machine qui joue le hook ou, s'il n'y en a aucun sur le PATH (le cas d'un rejeu par `nivuus update` : la cible n'a que le runtime déjà déposé), repris tel quel depuis `/opt/nivuus/node/` sans se recopier sur lui-même, l'unité systemd `desk-plateforme.service`, `desk.env` (secrets tirés au sort, jamais demandés au wizard), `turnserver.conf`. N'a **aucun** canal `refuse` : une erreur ici sort en code non nul, avec une phrase (voir `hooks/install.py`). |
-| `activate` | **C'est ici que la VM Windows est éprouvée**, par un échange WinRM réel — la seule phase où elle peut exister (voir plus bas). Arme le lien systemd que `install` n'a fait que poser, pose ProjFS dans la VM, crée le compte administrateur initial, enrôle l'agent, **lui attribue la VM** (`hooks/administration.py`), puis **compile `agent.exe` par compilation croisée et le dépose là où `console` le cherche** (`scripts/build-agent-croise.sh`, `hooks/agent_payload.py`). |
+| `activate` | **C'est ici que la VM Windows est éprouvée**, par un échange WinRM réel — la seule phase où elle peut exister (voir plus bas). Arme le lien systemd que `install` n'a fait que poser, pose ProjFS dans la VM, crée le compte administrateur initial, enrôle l'agent, **lui attribue la VM** (`hooks/administration.py`), et, **avant tout ce qui exige la VM**, **compile `agent.exe` par compilation croisée et le publie dans l'arbre de `desk`** (`/opt/nivuus/desk/agent/`, avec son manifeste ; `scripts/build-agent-croise.sh`, `hooks/agent_payload.py`). |
 
 **Dépendance dure** : `desk` ne peut pas s'installer sans `console`
 (`nivuus-package.yaml::requires.packages`) — c'est `console` qui provisionne
@@ -63,10 +63,44 @@ adresses TURN, le port) ou **tiré au sort** (le secret de jeton) :
 son effacement » et « jamais récupérable autrement » — un binaire que
 personne ne savait refabriquer. `scripts/build-agent-croise.sh` le
 refabrique par compilation croisée (`x86_64-pc-windows-gnu`, sans la VM),
-et `activate` le dépose à l'emplacement fixe où `console` le cherche
-(`<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/agent.exe`) — **jamais**
-sous `<drivers_dir>/agent/agent.exe`, qui dépend d'une réponse de wizard de
-`console` que ce hook ne reçoit pas.
+et `activate` le **publie dans l'arbre de `desk`**, jamais dans celui d'un
+autre package :
+
+```
+/opt/nivuus/desk/agent/agent.exe
+/opt/nivuus/desk/agent/agent.manifest.json   {"schema": 1, "file": "agent.exe", "sha256": …, "size": …, "desk_version": …}
+```
+
+**`desk` est le seul propriétaire d'`agent.exe`** (décision du 16 novembre
+2026). Il le déposait auparavant dans
+`<NIVUUS_PACKAGES_DIR>/console/guest/payload/agent/`, un répertoire que
+`nivuus update console` remplace en entier : l'agent revenait alors à la copie
+suivie par `console`, et rien ne rejouait cette activation. `console` ne suit
+plus aucun binaire ; il lit cette publication au moment où il prépare la
+charge utile d'un invité, vérifie le binaire contre le manifeste, et refuse
+tout le reste (`console/desk_agent.py`, dépôt `nivuus/installer`).
+
+Ce qu'un lecteur peut observer est soit **aucun manifeste** (rien n'est
+publié), soit **un manifeste et, à côté, le binaire complet qu'il décrit** :
+la compilation tombe dans un répertoire de travail, l'ancien manifeste est
+retiré, le binaire est renommé en place, et le nouveau manifeste est écrit en
+dernier (fichier temporaire puis renommage). Une compilation identique à ce
+qui est déjà publié ne réécrit rien.
+
+La publication a lieu **avant** les étapes qui parlent à la VM : `console`
+construit cette VM à partir d'une charge utile qui a besoin de cet agent, et
+le moteur n'ordonne pas les activations de deux packages entre elles. Elle
+aboutit donc même quand la suite de l'activation s'arrête sur une VM absente.
+⚠️ Au tout premier démarrage, `console` peut atteindre son étape `payload`
+avant que cette publication existe : il s'arrête alors en le disant et
+reprend au démarrage suivant. Fermer cet écart demande de publier depuis
+`install` (qui, lui, est ordonné par `requires.packages`), donc de livrer un
+`agent.exe` déjà compilé dans la release — ce qui n'existe pas encore.
+
+Le chemin et le format sont un contrat entre deux dépôts :
+`tests/fixtures/agent-publication-contract.json` est le même fichier des deux
+côtés, épinglé par son sha256 dans `tests/test_desk_agent_contract.py` ici et
+dans `console/tests/test_console_desk_agent.py` là-bas.
 
 ⚠️ **Ce que ce dépôt n'établit pas** : que le binaire produit par
 compilation croisée FONCTIONNE. Il se lie ; c'est un produit `mingw` là où
